@@ -5,6 +5,42 @@ import PQueue from 'p-queue';
 import { generateUniqueFsEntryName } from '~/utils/fs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 
+function splitFileName(name: string): { baseName: string; extension: string } {
+  const lastDotIndex = name.lastIndexOf('.');
+  if (lastDotIndex <= 0 || lastDotIndex === name.length - 1) {
+    return {
+      baseName: name,
+      extension: '',
+    };
+  }
+
+  return {
+    baseName: name.slice(0, lastDotIndex),
+    extension: name.slice(lastDotIndex),
+  };
+}
+
+async function generateUniqueEntryCopyName(params: {
+  vfs: IFileSystemAdapter;
+  dirPath: string;
+  name: string;
+}): Promise<string> {
+  const { baseName, extension } = splitFileName(params.name);
+  const candidateName = extension ? `${baseName} copy${extension}` : `${baseName} copy`;
+  const candidatePath = params.dirPath ? `${params.dirPath}/${candidateName}` : candidateName;
+
+  if (!(await params.vfs.exists(candidatePath))) {
+    return candidateName;
+  }
+
+  return await generateUniqueFsEntryName({
+    vfs: params.vfs,
+    dirPath: params.dirPath,
+    baseName: extension ? `${baseName} copy_` : `${baseName} copy_`,
+    extension,
+  });
+}
+
 export interface HandleFilesDeps {
   vfs: IFileSystemAdapter;
   getTargetDirPath: (params: { file: File }) => Promise<string | null>;
@@ -148,6 +184,43 @@ export async function moveEntryCommand(
   }
 
   await deps.onDirectoryMoved?.();
+}
+
+export interface CopyEntryDeps {
+  vfs: IFileSystemAdapter;
+  onFileCopied?: (params: { sourcePath: string; newPath: string }) => Promise<void> | void;
+  onDirectoryCopied?: () => Promise<void> | void;
+}
+
+export async function copyEntryCommand(
+  params: {
+    source: FsEntry;
+    targetDirPath: string;
+  },
+  deps: CopyEntryDeps,
+): Promise<{ newPath: string }> {
+  const sourcePath = params.source.path;
+  const targetDirPath = params.targetDirPath ?? '';
+  if (!sourcePath) {
+    throw new Error('Source path is required');
+  }
+
+  const nextName = await generateUniqueEntryCopyName({
+    vfs: deps.vfs,
+    dirPath: targetDirPath,
+    name: params.source.name,
+  });
+  const newPath = targetDirPath ? `${targetDirPath}/${nextName}` : nextName;
+
+  if (params.source.kind === 'file') {
+    await deps.vfs.copyFile(sourcePath, newPath);
+    await deps.onFileCopied?.({ sourcePath, newPath });
+    return { newPath };
+  }
+
+  await deps.vfs.copyDirectory(sourcePath, newPath);
+  await deps.onDirectoryCopied?.();
+  return { newPath };
 }
 
 export async function createTimelineCommand(params: {

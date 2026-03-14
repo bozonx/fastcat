@@ -4,6 +4,7 @@ import { useFilesPageStore } from '~/stores/filesPage.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useFileDrop } from '~/composables/fileManager/useFileDrop';
 import {
+  FILE_MANAGER_COPY_DRAG_TYPE,
   useDraggedFile,
   FILE_MANAGER_MOVE_DRAG_TYPE,
   INTERNAL_DRAG_TYPE,
@@ -11,12 +12,14 @@ import {
 import type { FsEntry } from '~/types/fs';
 import type { DraggedFileData } from '~/composables/useDraggedFile';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useAppClipboard } from '~/composables/useAppClipboard';
 
 interface UseFileBrowserDragAndDropOptions {
   findEntryByPath: (path: string) => FsEntry | null;
   resolveEntryByPath: (path: string) => Promise<FsEntry | null>;
   handleFiles: (files: File[] | FileList, targetDirPath?: string) => Promise<void>;
   moveEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<void>;
+  copyEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
   loadFolderContent: () => Promise<void>;
   notifyFileManagerUpdate: () => void;
 }
@@ -26,6 +29,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   const filesPageStore = useFilesPageStore();
   const fileManager = useFileManager();
   const { setDraggedFile, clearDraggedFile } = useDraggedFile();
+  const { currentDragOperation, setCurrentDragOperation } = useAppClipboard();
 
   const isDragOverPanel = ref(false);
   const dragOverEntryPath = ref<string | null>(null);
@@ -35,7 +39,12 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       resolveEntryByPath: options.resolveEntryByPath,
       handleFiles: options.handleFiles,
       moveEntry: options.moveEntry,
+      copyEntry: options.copyEntry,
     });
+
+  function resolveDragOperation(event: DragEvent): 'copy' | 'move' {
+    return event.shiftKey ? 'copy' : 'move';
+  }
 
   function onEntryDragStart(e: DragEvent, entry: FsEntry) {
     if (!entry.path) return;
@@ -58,8 +67,14 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
     e.dataTransfer.effectAllowed = 'copyMove';
 
+    const operation = resolveDragOperation(e);
+    setCurrentDragOperation(operation);
+
     const movePayload = entriesToMove.map((e) => ({ name: e.name, kind: e.kind, path: e.path }));
-    e.dataTransfer.setData(FILE_MANAGER_MOVE_DRAG_TYPE, JSON.stringify(movePayload));
+    e.dataTransfer.setData(
+      operation === 'copy' ? FILE_MANAGER_COPY_DRAG_TYPE : FILE_MANAGER_MOVE_DRAG_TYPE,
+      JSON.stringify(movePayload),
+    );
     // Mark as internal so the global overlay is not shown
     e.dataTransfer?.setData(INTERNAL_DRAG_TYPE, '1');
 
@@ -72,6 +87,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       name: entry.name,
       kind,
       path: entry.path,
+      operation,
       count: entriesToMove.length > 1 ? entriesToMove.length : undefined,
       items: movePayload,
     };
@@ -81,6 +97,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
   function onEntryDragEnd() {
     clearDraggedFile();
+    setCurrentDragOperation(null);
     dragOverEntryPath.value = null;
   }
 
@@ -92,9 +109,18 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     if (!isDropTargetDir(entry)) return;
     const types = e.dataTransfer?.types;
     if (!types) return;
-    if (!types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) && !types.includes('Files')) return;
+    if (
+      !types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) &&
+      !types.includes(FILE_MANAGER_COPY_DRAG_TYPE) &&
+      !types.includes('Files')
+    ) {
+      return;
+    }
     dragOverEntryPath.value = entry.path ?? null;
-    e.dataTransfer!.dropEffect = types.includes('Files') ? 'copy' : 'move';
+    e.dataTransfer!.dropEffect =
+      types.includes('Files') || types.includes(FILE_MANAGER_COPY_DRAG_TYPE) || e.shiftKey
+        ? 'copy'
+        : 'move';
   }
 
   function onEntryDragLeave(e: DragEvent, entry: FsEntry) {
@@ -112,14 +138,16 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
     const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
     const hasFiles = e.dataTransfer?.types.includes('Files') ?? false;
+    const copyRaw = e.dataTransfer?.getData(FILE_MANAGER_COPY_DRAG_TYPE);
     const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
 
     const targetPath = entry.path;
 
-    if (moveRaw) {
+    const internalRaw = copyRaw || moveRaw;
+    if (internalRaw) {
       let parsed: any = null;
       try {
-        parsed = JSON.parse(moveRaw);
+        parsed = JSON.parse(internalRaw);
       } catch {
         return;
       }
@@ -133,10 +161,17 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
         const source = await options.resolveEntryByPath(sourcePath);
         if (!source) continue;
 
-        await options.moveEntry({
-          source,
-          targetDirPath: targetPath,
-        });
+        if (copyRaw) {
+          await options.copyEntry({
+            source,
+            targetDirPath: targetPath,
+          });
+        } else {
+          await options.moveEntry({
+            source,
+            targetDirPath: targetPath,
+          });
+        }
       }
 
       options.notifyFileManagerUpdate();
@@ -154,9 +189,16 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   function onPanelDragOver(e: DragEvent) {
     const types = e.dataTransfer?.types;
     if (!types) return;
-    if (types.includes('Files') || types.includes(FILE_MANAGER_MOVE_DRAG_TYPE)) {
+    if (
+      types.includes('Files') ||
+      types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
+      types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
+    ) {
       isDragOverPanel.value = true;
-      e.dataTransfer!.dropEffect = types.includes('Files') ? 'copy' : 'move';
+      e.dataTransfer!.dropEffect =
+        types.includes('Files') || types.includes(FILE_MANAGER_COPY_DRAG_TYPE) || e.shiftKey
+          ? 'copy'
+          : 'move';
     }
   }
 
@@ -173,11 +215,13 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     const targetFolder = filesPageStore.selectedFolder;
     const targetPath = targetFolder?.path ?? '';
 
+    const copyRaw = e.dataTransfer?.getData(FILE_MANAGER_COPY_DRAG_TYPE);
     const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
-    if (moveRaw) {
+    const internalRaw = copyRaw || moveRaw;
+    if (internalRaw) {
       let parsed: any = null;
       try {
-        parsed = JSON.parse(moveRaw);
+        parsed = JSON.parse(internalRaw);
       } catch {
         return;
       }
@@ -191,10 +235,17 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
         const source = await options.resolveEntryByPath(sourcePath);
         if (!source) continue;
 
-        await options.moveEntry({
-          source,
-          targetDirPath: targetPath,
-        });
+        if (copyRaw) {
+          await options.copyEntry({
+            source,
+            targetDirPath: targetPath,
+          });
+        } else {
+          await options.moveEntry({
+            source,
+            targetDirPath: targetPath,
+          });
+        }
       }
 
       options.notifyFileManagerUpdate();
@@ -205,7 +256,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
     if (droppedFiles.length === 0) return;
 
-    await options.handleFiles(droppedFiles, targetPath || undefined);
+    await options.handleFiles(droppedFiles, targetPath);
     options.notifyFileManagerUpdate();
     await options.loadFolderContent();
   }
@@ -213,6 +264,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   return {
     isDragOverPanel,
     dragOverEntryPath,
+    currentDragOperation,
     isRootDropOver,
     isRelevantDrag,
     onEntryDragStart,
