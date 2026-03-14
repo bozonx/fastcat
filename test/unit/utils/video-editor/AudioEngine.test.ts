@@ -283,8 +283,36 @@ describe('AudioEngine', () => {
     const initialSources = audioContextInstance?.createdSources.length ?? 0;
 
     engine.seek(500_000);
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
     expect(audioContextInstance?.createdSources.length).toBeGreaterThan(initialSources);
+  });
+
+  it('plays forward scrub preview without enabling playback state', async () => {
+    const engine = new AudioEngine();
+    await engine.init();
+
+    const clip = createClip({
+      durationUs: 2_000_000,
+      sourceRangeDurationUs: 2_000_000,
+      sourceDurationUs: 2_000_000,
+    });
+    await engine.loadClips([clip]);
+
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    if (!audioContextInstance) throw new Error('AudioContext not initialized');
+    audioContextInstance.currentTime = 3;
+
+    await engine.previewScrubForward(100_000, 160_000, 75_000);
+
+    expect(audioContextInstance.createdSources.length).toBe(1);
+    const source = audioContextInstance.createdSources[0];
+    expect(source.start).toHaveBeenCalledTimes(1);
+
+    engine.stopScrubPreview();
+    expect(source.stop).toHaveBeenCalledTimes(1);
+    expect(engine.getCurrentTimeUs()).toBe(0);
   });
 
   it('keeps failed decode cached as null', async () => {
