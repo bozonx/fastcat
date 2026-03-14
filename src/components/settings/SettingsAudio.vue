@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
+import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -130,8 +131,5 @@ function resetDefaults() {
       </div>
     </div>
 
-    <div class="text-xs text-ui-text-muted">
-      {{ t('videoEditor.settings.userSavedNote', 'Saved to .fastcat/user.settings.json') }}
-    </div>
   </div>
 </template>

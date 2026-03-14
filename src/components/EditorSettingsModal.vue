@@ -30,7 +30,7 @@ type SettingsSection =
   | 'user.general'
   | 'user.hotkeys'
   | 'user.mouse'
-  | 'user.optimization'
+  | 'user.proxy'
   | 'user.project'
   | 'user.export'
   | 'user.integrations'
@@ -106,14 +106,6 @@ watch(
               variant="ghost"
               color="neutral"
               class="justify-start"
-              :label="t('videoEditor.settings.userOptimization', 'Optimization')"
-              :disabled="activeSection === 'user.optimization'"
-              @click="activeSection = 'user.optimization'"
-            />
-            <UButton
-              variant="ghost"
-              color="neutral"
-              class="justify-start"
               :label="t('videoEditor.settings.userProject', 'Project presets')"
               :disabled="activeSection === 'user.project'"
               @click="activeSection = 'user.project'"
@@ -130,9 +122,9 @@ watch(
               variant="ghost"
               color="neutral"
               class="justify-start"
-              :label="t('videoEditor.settings.userIntegrations', 'Integrations')"
-              :disabled="activeSection === 'user.integrations'"
-              @click="activeSection = 'user.integrations'"
+              :label="t('videoEditor.settings.userProxy', 'Proxy')"
+              :disabled="activeSection === 'user.proxy'"
+              @click="activeSection = 'user.proxy'"
             />
             <UButton
               variant="ghost"
@@ -164,6 +156,14 @@ watch(
               :disabled="activeSection === 'workspace.storage'"
               @click="activeSection = 'workspace.storage'"
             />
+            <UButton
+              variant="ghost"
+              color="neutral"
+              class="justify-start"
+              :label="t('videoEditor.settings.userIntegrations', 'Integrations')"
+              :disabled="activeSection === 'user.integrations'"
+              @click="activeSection = 'user.integrations'"
+            />
           </div>
         </div>
       </div>
@@ -172,15 +172,15 @@ watch(
         <SettingsGeneral v-if="activeSection === 'user.general'" />
         <SettingsHotkeys v-else-if="activeSection === 'user.hotkeys'" ref="hotkeysRef" />
         <SettingsMouse v-else-if="activeSection === 'user.mouse'" />
-        <SettingsOptimization v-else-if="activeSection === 'user.optimization'" />
+        <SettingsOptimization v-else-if="activeSection === 'user.proxy'" />
         <SettingsProjectDefaults v-else-if="activeSection === 'user.project'" />
         <SettingsExportDefaults
           v-else-if="activeSection === 'user.export'"
           :is-active="activeSection === 'user.export'"
         />
-        <SettingsIntegrations v-else-if="activeSection === 'user.integrations'" />
         <SettingsVideo v-else-if="activeSection === 'user.video'" />
         <SettingsAudio v-else-if="activeSection === 'user.audio'" />
+        <SettingsIntegrations v-else-if="activeSection === 'user.integrations'" />
         <SettingsStorage v-else-if="activeSection === 'workspace.storage'" />
       </div>
     </div>

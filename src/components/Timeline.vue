@@ -140,6 +140,7 @@ const {
   movePreview,
   onTimeRulerPointerDown: onBaseTimeRulerPointerDown,
   startPlayheadDrag,
+  isDraggingPlayhead,
   onGlobalPointerMove: onBaseGlobalPointerMove,
   onGlobalPointerUp: onBaseGlobalPointerUp,
   selectItem,
@@ -152,6 +153,23 @@ const rulerMouseSettings = computed(() => workspaceStore.userSettings.mouse.rule
 const trackHeadersMouseSettings = computed(() => workspaceStore.userSettings.mouse.trackHeaders);
 
 function onTimelinePointerMove(e: PointerEvent) {
+  const isRuler = (e.target as HTMLElement | null)?.closest('.timeline-ruler-container');
+  const settings = isRuler ? rulerMouseSettings.value : timelineMouseSettings.value;
+
+  if (
+    settings.horizontalMovement === 'move_playhead' &&
+    !draggingMode.value &&
+    !isPanning.value &&
+    !isDraggingPlayhead.value
+  ) {
+    const el = scrollEl.value;
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      const x = e.clientX - rect.left + el.scrollLeft;
+      timelineStore.setCurrentTimeUs(pxToTimeUs(x, timelineStore.timelineZoom));
+    }
+  }
+
   onBaseGlobalPointerMove(e);
   onPanMove(e);
 }

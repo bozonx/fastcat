@@ -19,13 +19,11 @@ function resetDefaults() {
   <div class="flex flex-col gap-6">
     <UiConfirmModal
       v-model:open="isResetConfirmOpen"
-      :title="
-        t('videoEditor.settings.resetOptimizationSettingsConfirmTitle', 'Reset optimization?')
-      "
+      :title="t('videoEditor.settings.resetProxySettingsConfirmTitle', 'Reset proxy settings?')"
       :description="
         t(
-          'videoEditor.settings.resetOptimizationSettingsConfirmDesc',
-          'This will restore all optimization settings to their default values.',
+          'videoEditor.settings.resetProxySettingsConfirmDesc',
+          'This will restore all proxy settings to their default values.',
         )
       "
       :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction', 'Reset')"
@@ -37,7 +35,7 @@ function resetDefaults() {
 
     <div class="flex items-center justify-between gap-3">
       <div class="text-sm font-medium text-ui-text">
-        {{ t('videoEditor.settings.userOptimization', 'Optimization') }}
+        {{ t('videoEditor.settings.userProxy', 'Proxy') }}
       </div>
       <UButton size="xs" color="neutral" variant="ghost" @click="isResetConfirmOpen = true">
         {{ t('videoEditor.settings.resetDefaults', 'Reset to defaults') }}
@@ -101,23 +99,6 @@ function resetDefaults() {
           :step="1"
         />
       </UFormField>
-
-      <UFormField
-        :label="t('videoEditor.settings.videoFrameCacheMb', 'Video frame cache (MB)')"
-        :help="
-          t(
-            'videoEditor.settings.videoFrameCacheMbHelp',
-            'Maximum RAM budget for decoded preview video frames. Set 0 to disable the cache.',
-          )
-        "
-      >
-        <WheelNumberInput
-          v-model="workspaceStore.userSettings.optimization.videoFrameCacheMb"
-          :min="0"
-          :max="4096"
-          :step="16"
-        />
-      </UFormField>
     </div>
 
     <div class="grid grid-cols-4 gap-4">
@@ -171,9 +152,5 @@ function resetDefaults() {
         }}
       </span>
     </label>
-
-    <div class="text-xs text-ui-text-muted">
-      {{ t('videoEditor.settings.userSavedNote', 'Saved to .fastcat/user.settings.json') }}
-    </div>
   </div>
 </template>

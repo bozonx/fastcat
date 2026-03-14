@@ -1294,8 +1294,6 @@ function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: str
       </div>
     </div>
 
-    <div class="text-[10px] text-ui-text-muted italic px-1">
-      {{ t('videoEditor.settings.userSavedNote', 'Saved to .fastcat/user.settings.json') }}
     </div>
   </div>
 </template>
