@@ -146,6 +146,10 @@
       "lockedSuggestion": "You can continue in Read-Only mode to view the project, but we recommend returning to your original tab for editing.",
       "lockedAcknowledge": "Understood, Read-Only"
     },
+    "backgroundTasks": {
+      "title": "Background Tasks",
+      "empty": "No background tasks"
+    },
     "settings": {
       "title": "Editor settings",
       "userSection": "User settings",
@@ -466,6 +470,8 @@
     },
     "export": {
       "title": "Export Video",
+      "convertFile": "Convert file: {file}",
+      "convert": "Convert",
       "filename": "Output filename",
       "encodingSettings": "Encoding settings",
       "outputFormat": "Output format",

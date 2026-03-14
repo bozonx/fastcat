@@ -187,11 +187,14 @@ export function useGeneralHotkeys(
       const selected = selectionStore.selectedEntity;
       if (selected?.source === 'fileManager') {
         if (selected.kind === 'file' || selected.kind === 'directory') {
-          (uiStore as any).pendingFsEntryRename = selected.entry;
+          uiStore.pendingFsEntryRename = selected.entry;
           return true;
         } else if (selected.kind === 'multiple' && selected.entries.length === 1) {
-          (uiStore as any).pendingFsEntryRename = selected.entries[0];
-          return true;
+          const [entry] = selected.entries;
+          if (entry) {
+            uiStore.pendingFsEntryRename = entry;
+            return true;
+          }
         }
       }
       return false;
@@ -319,19 +322,19 @@ export function useGeneralHotkeys(
       return true;
     },
     'general.switchViewFiles': () => {
-      void import('~/stores/project.store').then((m) => m.useProjectStore().setView('files'));
+      projectStore.setView('files');
       return true;
     },
     'general.switchViewCut': () => {
-      void import('~/stores/project.store').then((m) => m.useProjectStore().setView('cut'));
+      projectStore.setView('cut');
       return true;
     },
     'general.switchViewSound': () => {
-      void import('~/stores/project.store').then((m) => m.useProjectStore().setView('sound'));
+      projectStore.setView('sound');
       return true;
     },
     'general.switchViewExport': () => {
-      void import('~/stores/project.store').then((m) => m.useProjectStore().setView('export'));
+      projectStore.setView('export');
       return true;
     },
     'general.selectAll': () => {

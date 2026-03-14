@@ -7,6 +7,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useUiStore } from '~/stores/ui.store';
+import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 
 // Module-level singleton state so all components share the same modal instance.
 const isModalOpen = ref(false);
@@ -210,7 +211,7 @@ export function useFileConversion() {
     await writable.close();
   }
 
-  async function convertVideoAudio(targetHandle: FileSystemFileHandle) {
+  async function convertVideoAudio(targetHandle: FileSystemFileHandle, bgTaskId?: string) {
     if (!targetEntry.value || !targetEntry.value.path) return;
     const { client } = getExportWorkerClient();
 
@@ -223,6 +224,9 @@ export function useFileConversion() {
         getFileByPath: async (path) => projectStore.getFileByPath(path),
         onExportProgress: (progress) => {
           conversionProgress.value = progress / 100;
+          if (bgTaskId) {
+            useBackgroundTasksStore().updateTaskProgress(bgTaskId, progress / 100);
+          }
         },
         onExportPhase: (phase) => {
           conversionPhase.value = phase;
@@ -370,8 +374,71 @@ export function useFileConversion() {
 
       if (type === 'image') {
         await convertImage(sourceFile, targetHandle);
-      } else {
+      } else if (type === 'audio') {
         await convertVideoAudio(targetHandle);
+      } else if (type === 'video') {
+        const bgTaskId = useBackgroundTasksStore().addTask({
+          type: 'conversion',
+          title: t('videoEditor.fileManager.convert.bgTaskTitle', `Converting: ${entry.name}`),
+          cancel: () => {
+            cancelConversion();
+          },
+        });
+
+        toast.add({
+          title: t(
+            'videoEditor.fileManager.convert.bgTaskAdded',
+            'Video conversion started in background',
+          ),
+          color: 'neutral',
+        });
+
+        isModalOpen.value = false;
+
+        // Run in background
+        convertVideoAudio(targetHandle, bgTaskId)
+          .then(async () => {
+            if (isCancelRequested.value) {
+              useBackgroundTasksStore().updateTaskStatus(bgTaskId, 'cancelled');
+              if (createdDirHandle && createdFileName) {
+                try {
+                  await new Promise((resolve) => setTimeout(resolve, 500));
+                  await createdDirHandle.removeEntry(createdFileName);
+                } catch {
+                  // ignore
+                }
+              }
+            } else {
+              useBackgroundTasksStore().updateTaskStatus(bgTaskId, 'completed');
+              toast.add({
+                title: t('videoEditor.fileManager.convert.success', 'File converted successfully'),
+                color: 'success',
+              });
+            }
+          })
+          .catch(async (err) => {
+            if (isCancelRequested.value) {
+              useBackgroundTasksStore().updateTaskStatus(bgTaskId, 'cancelled');
+              if (createdDirHandle && createdFileName) {
+                try {
+                  await new Promise((resolve) => setTimeout(resolve, 500));
+                  await createdDirHandle.removeEntry(createdFileName);
+                } catch {
+                  // ignore
+                }
+              }
+            } else {
+              useBackgroundTasksStore().updateTaskStatus(bgTaskId, 'failed', err.message);
+              console.error('Video conversion failed', err);
+            }
+          })
+          .finally(async () => {
+            isConverting.value = false;
+            await fileManager.reloadDirectory(dirPath);
+            uiStore.notifyFileManagerUpdate();
+          });
+
+        return; // Don't block startConversion for video
       }
 
       if (isCancelRequested.value) {

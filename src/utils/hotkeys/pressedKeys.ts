@@ -1,5 +1,3 @@
-import { ref } from 'vue';
-
 export const pressedKeyCodes = new Set<string>();
 
 if (typeof window !== 'undefined') {

@@ -517,6 +517,13 @@ export function useTimelineInteraction(
       }
 
       if (overlapMode === 'pseudo') {
+        if (lastDragAppliedCmd.value && dragStartSnapshot.value) {
+          timelineStore.timelineDoc = dragStartSnapshot.value as any;
+          timelineStore.duration = selectTimelineDurationUs(dragStartSnapshot.value as any) as any;
+          lastDragAppliedCmd.value = null;
+          draggingTrackId.value = dragOriginTrackId.value ?? trackId;
+        }
+
         movePreview.value = { itemId, trackId: targetTrackId, startUs };
         pendingMoveCommit.value = {
           fromTrackId: dragOriginTrackId.value ?? trackId,
@@ -524,8 +531,12 @@ export function useTimelineInteraction(
           itemId,
           startUs,
         };
-        draggingTrackId.value = targetTrackId;
         return;
+      }
+
+      if (movePreview.value) {
+        movePreview.value = null;
+        pendingMoveCommit.value = null;
       }
 
       try {

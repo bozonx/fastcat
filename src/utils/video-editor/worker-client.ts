@@ -235,13 +235,19 @@ function createChannelClient(channel: WorkerChannel): {
               return;
             }
             const id = (state.callIdCounter = (state.callIdCounter + 1) % Number.MAX_SAFE_INTEGER);
-            const timeoutId = window.setTimeout(() => {
-              const p = state.pendingCalls.get(id);
-              if (p) {
-                state.pendingCalls.delete(id);
-                p.reject(new Error(`Worker RPC timeout for method: ${method}`));
-              }
-            }, 30000);
+
+            let timeoutId: number | undefined;
+            // Do not apply timeout to long-running export/audio extraction methods
+            if (method !== 'exportTimeline' && method !== 'extractAudio') {
+              timeoutId = window.setTimeout(() => {
+                const p = state.pendingCalls.get(id);
+                if (p) {
+                  state.pendingCalls.delete(id);
+                  p.reject(new Error(`Worker RPC timeout for method: ${method}`));
+                }
+              }, 30000);
+            }
+
             state.pendingCalls.set(id, { resolve, reject, timeoutId });
             ensureWorker(channel).postMessage({ type: 'rpc-call', id, method, args });
           });

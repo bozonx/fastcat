@@ -25,6 +25,34 @@ function isMainPanelFocus(panelId: string | null | undefined): panelId is MainPa
   return panelId === 'monitor' || panelId === 'timeline';
 }
 
+export function isDynamicPanelFocus(
+  panelId: string | null | undefined,
+): panelId is `dynamic:${string}` {
+  return String(panelId).startsWith('dynamic:');
+}
+
+export function isPreviewPanelFocus(panelId: string | null | undefined): boolean {
+  return (
+    panelId === 'project' ||
+    panelId === 'left' ||
+    panelId === 'right' ||
+    isDynamicPanelFocus(panelId)
+  );
+}
+
+export function isPlaybackPanelFocus(panelId: string | null | undefined): boolean {
+  return (
+    panelId === 'monitor' ||
+    panelId === 'left' ||
+    panelId === 'right' ||
+    isDynamicPanelFocus(panelId)
+  );
+}
+
+export function isTimelineHotkeyPanelFocus(panelId: string | null | undefined): boolean {
+  return panelId === 'timeline' || panelId === 'audioMixer';
+}
+
 function toLegacyTempFocus(panelId: string | null | undefined): TempPanelFocus {
   if (panelId === 'left') return 'left';
   if (panelId === 'right') return 'right';
@@ -127,24 +155,10 @@ export const useFocusStore = defineStore('focus', () => {
     return effectiveFocus.value === panel;
   }
 
-  const canUseTimelineHotkeys = computed(
-    () => effectiveFocus.value === 'timeline' || effectiveFocus.value === 'audioMixer',
-  );
-  const canUsePlaybackHotkeys = computed(
-    () =>
-      effectiveFocus.value === 'monitor' ||
-      effectiveFocus.value === 'left' ||
-      effectiveFocus.value === 'right' ||
-      String(effectiveFocus.value).startsWith('dynamic:'),
-  );
+  const canUseTimelineHotkeys = computed(() => isTimelineHotkeyPanelFocus(effectiveFocus.value));
+  const canUsePlaybackHotkeys = computed(() => isPlaybackPanelFocus(effectiveFocus.value));
 
-  const canUsePreviewHotkeys = computed(
-    () =>
-      effectiveFocus.value === 'project' ||
-      effectiveFocus.value === 'left' ||
-      effectiveFocus.value === 'right' ||
-      String(effectiveFocus.value).startsWith('dynamic:'),
-  );
+  const canUsePreviewHotkeys = computed(() => isPreviewPanelFocus(effectiveFocus.value));
 
   return {
     activePanelId,
