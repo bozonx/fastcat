@@ -95,19 +95,19 @@ export function useTimelineRulerPresentation(options: UseTimelineRulerPresentati
     const pxPerFrame = zoomToPxPerSecond(currentZoom) / currentFps;
     if (pxPerFrame < 6) return null;
 
-    const currentFrameIndex = Math.floor((options.currentTime.value * currentFps) / 1_000_000);
+    const currentFrameIndex = Math.floor(
+      (options.currentTime.value * currentFps) / 1_000_000 + 0.001,
+    );
     const currentFrameStartUs = Math.round((currentFrameIndex * 1_000_000) / currentFps);
     const nextFrameStartUs = Math.round(((currentFrameIndex + 1) * 1_000_000) / currentFps);
     const currentFrameStartX =
-      timeUsToPx(currentFrameStartUs, currentZoom) - options.scrollLeft.value;
-    const currentFrameWidthPx = Math.max(
-      1,
-      timeUsToPx(nextFrameStartUs - currentFrameStartUs, currentZoom),
-    );
+      Math.round(timeUsToPx(currentFrameStartUs, currentZoom)) - options.scrollLeft.value;
+    const nextFrameStartX =
+      Math.round(timeUsToPx(nextFrameStartUs, currentZoom)) - options.scrollLeft.value;
 
     return {
       transform: `translate3d(${currentFrameStartX}px, 0, 0)`,
-      width: `${currentFrameWidthPx}px`,
+      width: `${Math.max(1, nextFrameStartX - currentFrameStartX)}px`,
     };
   });
 

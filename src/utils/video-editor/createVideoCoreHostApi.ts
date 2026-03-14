@@ -8,9 +8,9 @@ export interface CreateVideoCoreHostApiParams {
   getFileByPath?: (path: string) => Promise<File | null>;
   getWorkspaceHandle: () => FileSystemDirectoryHandle | null;
   getResolvedStorageTopology?: () => ResolvedStorageTopology | null;
-  onExportProgress: (progress: number) => void;
-  onExportPhase?: (phase: 'encoding' | 'saving') => void;
-  onExportWarning?: (message: string) => void;
+  onExportProgress: (progress: number, taskId?: string) => void;
+  onExportPhase?: (phase: 'encoding' | 'saving', taskId?: string) => void;
+  onExportWarning?: (message: string, taskId?: string) => void;
 }
 
 export function createVideoCoreHostApi(params: CreateVideoCoreHostApiParams): VideoCoreHostAPI {
@@ -43,7 +43,7 @@ export function createVideoCoreHostApi(params: CreateVideoCoreHostApiParams): Vi
         resolvedStorageTopology: params.getResolvedStorageTopology?.() ?? undefined,
       });
     },
-    onExportProgress: (progress) => params.onExportProgress(progress),
+    onExportProgress: (progress, taskId) => params.onExportProgress(progress, taskId),
     onExportPhase: params.onExportPhase,
     onExportWarning: params.onExportWarning,
   };

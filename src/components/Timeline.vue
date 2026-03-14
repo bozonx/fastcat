@@ -74,14 +74,15 @@ const currentFrameHighlightStyle = computed(() => {
   const pxPerFrame = zoomToPxPerSecond(timelineStore.timelineZoom) / fps.value;
   if (pxPerFrame < 6) return null;
 
-  const currentFrameIndex = Math.floor((timelineStore.currentTime * fps.value) / 1_000_000);
+  const currentFrameIndex = Math.floor((timelineStore.currentTime * fps.value) / 1_000_000 + 0.001);
   const currentFrameStartUs = Math.round((currentFrameIndex * 1_000_000) / fps.value);
   const nextFrameStartUs = Math.round(((currentFrameIndex + 1) * 1_000_000) / fps.value);
-  const currentFrameStartPx = timeUsToPx(currentFrameStartUs, timelineStore.timelineZoom);
+  const currentFrameStartPx = Math.round(timeUsToPx(currentFrameStartUs, timelineStore.timelineZoom));
+  const nextFrameStartPx = Math.round(timeUsToPx(nextFrameStartUs, timelineStore.timelineZoom));
 
   return {
     transform: `translate3d(${currentFrameStartPx}px, 0, 0)`,
-    width: `${Math.max(1, timeUsToPx(nextFrameStartUs - currentFrameStartUs, timelineStore.timelineZoom))}px`,
+    width: `${Math.max(1, nextFrameStartPx - currentFrameStartPx)}px`,
   };
 });
 

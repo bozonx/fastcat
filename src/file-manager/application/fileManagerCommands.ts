@@ -157,7 +157,7 @@ export async function renameEntryCommand(
 export interface MoveEntryDeps {
   vfs: IFileSystemAdapter;
   onFileMoved?: (params: { oldPath: string; newPath: string }) => Promise<void> | void;
-  onDirectoryMoved?: () => Promise<void> | void;
+  onDirectoryMoved?: (params: { oldPath: string; newPath: string }) => Promise<void> | void;
 }
 
 export async function moveEntryCommand(
@@ -183,13 +183,13 @@ export async function moveEntryCommand(
     return;
   }
 
-  await deps.onDirectoryMoved?.();
+  await deps.onDirectoryMoved?.({ oldPath: sourcePath, newPath });
 }
 
 export interface CopyEntryDeps {
   vfs: IFileSystemAdapter;
   onFileCopied?: (params: { sourcePath: string; newPath: string }) => Promise<void> | void;
-  onDirectoryCopied?: () => Promise<void> | void;
+  onDirectoryCopied?: (params: { oldPath: string; newPath: string }) => Promise<void> | void;
 }
 
 export async function copyEntryCommand(
@@ -219,7 +219,7 @@ export async function copyEntryCommand(
   }
 
   await deps.vfs.copyDirectory(sourcePath, newPath);
-  await deps.onDirectoryCopied?.();
+  await deps.onDirectoryCopied?.({ oldPath: sourcePath, newPath });
   return { newPath };
 }
 

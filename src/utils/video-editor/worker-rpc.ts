@@ -35,9 +35,10 @@ export interface VideoCoreWorkerAPI {
     options: any,
     timelineClips: (WorkerTimelineClip | { kind: 'meta' | 'track'; [key: string]: any })[],
     audioClips?: any[],
+    taskId?: string,
   ): Promise<void>;
 
-  cancelExport(): Promise<void>;
+  cancelExport(taskId?: string): Promise<void>;
 
   extractFrameToBlob(
     timeUs: number,
@@ -47,7 +48,7 @@ export interface VideoCoreWorkerAPI {
     quality: number,
   ): Promise<Blob | null>;
 
-  extractAudio(sourcePath: string, targetPath: string): Promise<void>;
+  extractAudio(sourcePath: string, targetPath: string, taskId?: string): Promise<void>;
 }
 
 export interface ExportOptions {

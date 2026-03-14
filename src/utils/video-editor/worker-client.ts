@@ -12,9 +12,9 @@ export interface VideoCoreHostAPI {
     height: number;
     sourceFileHandle: FileSystemFileHandle;
   }): Promise<FileSystemFileHandle | null>;
-  onExportProgress(progress: number): void;
-  onExportPhase?(phase: 'encoding' | 'saving'): void;
-  onExportWarning?(message: string): void;
+  onExportProgress(progress: number, taskId?: string): void;
+  onExportPhase?(phase: 'encoding' | 'saving', taskId?: string): void;
+  onExportWarning?(message: string, taskId?: string): void;
 }
 
 type WorkerChannel = 'preview' | 'export' | 'proxy';
@@ -115,8 +115,17 @@ function createWorker(channel: WorkerChannel): Worker {
           }
           throw new Error(`Method ${data.method} not found on Host API`);
         }
-        const result = await (fn as any)(...(data.args || []));
-        worker.postMessage({ type: 'rpc-response', id: data.id, result });
+        
+        const args = data.args || [];
+        if (data.taskId && (method === 'onExportProgress' || method === 'onExportPhase' || method === 'onExportWarning')) {
+          // Detect if we need to append taskId as last argument or if it's already there
+          // For now we assume taskId is passed in the message envelope
+          const result = await (fn as any)(...args, data.taskId);
+          worker.postMessage({ type: 'rpc-response', id: data.id, result });
+        } else {
+          const result = await (fn as any)(...args);
+          worker.postMessage({ type: 'rpc-response', id: data.id, result });
+        }
       } catch (err: any) {
         worker.postMessage({
           type: 'rpc-response',

@@ -152,8 +152,9 @@ export async function runExport(
   timelineClips: any[],
   audioClips: any[],
   hostClient: VideoCoreHostAPI | null,
-  reportExportWarning: (msg: string) => Promise<void>,
+  reportExportWarning: (msg: string, taskId?: string) => Promise<void>,
   checkCancel: () => boolean,
+  taskId?: string,
 ) {
   initEffects();
   initTransitions();
@@ -168,10 +169,10 @@ export async function runExport(
     throw abortErr;
   }
 
-  async function notifyPhase(phase: string) {
+  async function notifyPhase(phase: string, taskId?: string) {
     if (!hostClient) return;
     try {
-      await (hostClient as any).onExportPhase?.(phase);
+      await (hostClient as any).onExportPhase?.(phase, taskId);
     } catch {
       // ignore
     }
@@ -258,6 +259,7 @@ export async function runExport(
     fps: number;
     videoSource: any;
     compositor: VideoCompositor;
+    taskId?: string;
   }) {
     const fps = Math.max(1, Number(params.fps) || 30);
     const totalFrames = Math.ceil(params.durationS * fps);
@@ -289,7 +291,7 @@ export async function runExport(
         frameNum + 1 === totalFrames || nowProgressMs - lastProgressAtMs >= progressIntervalMs;
       if (hostClient && shouldReport) {
         lastProgressAtMs = nowProgressMs;
-        await hostClient.onExportProgress(progress);
+        await hostClient.onExportProgress(progress, params.taskId);
       }
 
       const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -347,7 +349,7 @@ export async function runExport(
       preference: 'prefer-hardware' | 'prefer-software',
       fallbackCodecString = true,
     ) {
-      await notifyPhase('encoding');
+      await notifyPhase('encoding', taskId);
 
       const { output, writable } = await createOutput({ format });
 
@@ -436,12 +438,13 @@ export async function runExport(
           fps: options.fps,
           videoSource,
           compositor: localCompositor,
+          taskId,
         });
 
         if ('close' in videoSource) (videoSource as any).close();
         if (audioSource && 'close' in audioSource) (audioSource as any).close();
 
-        await notifyPhase('saving');
+        await notifyPhase('saving', taskId);
 
         await output.finalize();
       } catch (e) {
