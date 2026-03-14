@@ -1,6 +1,7 @@
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFocusStore } from '~/stores/focus.store';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
+import { getDocFps } from '~/timeline/commands/utils';
 
 export function useTimelineHotkeys() {
   const timelineStore = useTimelineStore();
@@ -123,13 +124,33 @@ export function useTimelineHotkeys() {
 
     'timeline.moveSelectedClipsLeft': () => {
       if (!focusStore.canUseTimelineHotkeys) return false;
+      if (timelineStore.selectedItemIds.length === 0) return false;
       timelineStore.moveSelectedClips(-1);
       return true;
     },
 
     'timeline.moveSelectedClipsRight': () => {
       if (!focusStore.canUseTimelineHotkeys) return false;
+      if (timelineStore.selectedItemIds.length === 0) return false;
       timelineStore.moveSelectedClips(1);
+      return true;
+    },
+
+    'timeline.moveSelectedClipsLeftLarge': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      if (timelineStore.selectedItemIds.length === 0) return false;
+      // Move by 1 second (approx)
+      const fps = getDocFps(timelineStore.timelineDoc || ({} as any));
+      timelineStore.moveSelectedClips(-fps);
+      return true;
+    },
+
+    'timeline.moveSelectedClipsRightLarge': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      if (timelineStore.selectedItemIds.length === 0) return false;
+      // Move by 1 second (approx)
+      const fps = getDocFps(timelineStore.timelineDoc || ({} as any));
+      timelineStore.moveSelectedClips(fps);
       return true;
     },
 
