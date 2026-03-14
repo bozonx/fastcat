@@ -8,6 +8,8 @@ import {
   ensureBaseThumbnailDir,
   hashString,
 } from './base-thumbnail-generator';
+import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
+import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 
 export interface FileThumbnailTask extends BaseThumbnailTask {
   onComplete?: (url: string) => void;
@@ -95,196 +97,79 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       return;
     }
 
-    if (this.isCancelled(task.id)) {
+    if (this.isCancelled(task.id)) return;
+
+    const workspaceStore = useWorkspaceStore();
+    const projectStore = useProjectStore();
+
+    if (!workspaceStore.workspaceHandle) {
+      throw new Error('Workspace is not opened');
+    }
+
+    // If it's a timeline file, we don't have an automatic generator for it.
+    // We expect it to be saved manually during project save.
+    if (task.projectRelativePath.toLowerCase().endsWith('.otio')) return;
+
+    const file = await projectStore.getFileByPath(task.projectRelativePath);
+    if (!file) {
+      task.onError?.(new Error(`Source file not found: ${task.projectRelativePath}`));
       return;
     }
 
-    return new Promise((resolve, reject) => {
-      const workspaceStore = useWorkspaceStore();
-      const projectStore = useProjectStore();
+    setExportHostApi(
+      createVideoCoreHostApi({
+        getCurrentProjectId: () => projectStore.currentProjectId,
+        getWorkspaceHandle: () => workspaceStore.workspaceHandle,
+        getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
+        getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
+        getFileByPath: async (path) => projectStore.getFileByPath(path),
+        onExportProgress: () => {},
+      }),
+    );
 
-      if (!workspaceStore.workspaceHandle) {
-        reject(new Error('Workspace is not opened'));
-        return;
+    const { client } = getExportWorkerClient();
+
+    let blob: Blob | null = null;
+    try {
+      const blobs = await client.extractVideoFrameBlobs(file, {
+        timesS: [FILE_MANAGER_THUMBNAILS.POSITION_FRACTION],
+        maxWidth: FILE_MANAGER_THUMBNAILS.MAX_SIZE,
+        maxHeight: FILE_MANAGER_THUMBNAILS.MAX_SIZE,
+        quality: FILE_MANAGER_THUMBNAILS.QUALITY,
+        mimeType: 'image/webp',
+      });
+      blob = blobs[0] ?? null;
+    } catch (e: any) {
+      if (!this.isCancelled(task.id)) {
+        task.onError?.(e instanceof Error ? e : new Error(String(e)));
       }
+      return;
+    }
 
-      // If it's a timeline file, we don't have an automatic generator for it.
-      // We expect it to be saved manually during project save.
-      if (task.projectRelativePath.toLowerCase().endsWith('.otio')) {
-        resolve();
-        return;
-      }
+    if (!blob || this.isCancelled(task.id)) return;
 
-      const video = document.createElement('video');
-      video.muted = true;
-      video.crossOrigin = 'anonymous';
-
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-
-      if (!ctx) {
-        reject(new Error('Failed to get 2d context'));
-        return;
-      }
-
-      let sourceObjectUrl: string | null = null;
-      let seekedHandler: ((...args: any[]) => void) | null = null;
-      let errorHandler: ((...args: any[]) => void) | null = null;
-      let loadedDataHandler: ((...args: any[]) => void) | null = null;
-
-      const cleanup = (options?: { revokeSource?: boolean }) => {
-        if (seekedHandler) {
-          video.removeEventListener('seeked', seekedHandler);
-          seekedHandler = null;
-        }
-        if (errorHandler) {
-          video.removeEventListener('error', errorHandler);
-          errorHandler = null;
-        }
-        if (loadedDataHandler) {
-          video.removeEventListener('loadeddata', loadedDataHandler);
-          loadedDataHandler = null;
-        }
-
-        try {
-          video.pause();
-        } catch {
-          // ignore
-        }
-
-        try {
-          video.removeAttribute('src');
-          video.load();
-        } catch {
-          // ignore
-        }
-
-        if (options?.revokeSource !== false && sourceObjectUrl) {
-          try {
-            URL.revokeObjectURL(sourceObjectUrl);
-          } catch {
-            // ignore
-          }
-          sourceObjectUrl = null;
-        }
-      };
-
-      const ensureTargetDir = async () => {
-        return await ensureThumbnailDir({
-          projectId: task.projectId,
-          dirName: FILE_MANAGER_THUMBNAILS.DIR_NAME,
-          workspaceStore,
-          create: true,
-        });
-      };
-
-      const ensureSourceUrl = async () => {
-        const file = await projectStore.getFileByPath(task.projectRelativePath);
-        if (!file) throw new Error(`Source file not found: ${task.projectRelativePath}`);
-        sourceObjectUrl = URL.createObjectURL(file);
-        video.src = sourceObjectUrl;
-      };
-
-      seekedHandler = async () => {
-        if (this.isCancelled(task.id)) {
-          cleanup();
-          resolve();
-          return;
-        }
-        try {
-          let targetWidth = video.videoWidth;
-          let targetHeight = video.videoHeight;
-          const maxDim = FILE_MANAGER_THUMBNAILS.MAX_SIZE;
-
-          if (targetWidth > maxDim || targetHeight > maxDim) {
-            if (targetWidth > targetHeight) {
-              targetHeight = Math.round(targetHeight * (maxDim / targetWidth));
-              targetWidth = maxDim;
-            } else {
-              targetWidth = Math.round(targetWidth * (maxDim / targetHeight));
-              targetHeight = maxDim;
-            }
-          }
-
-          canvas.width = targetWidth || maxDim;
-          canvas.height = targetHeight || maxDim;
-
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-          const blob = await new Promise<Blob | null>((res) => {
-            canvas.toBlob(res, 'image/webp', FILE_MANAGER_THUMBNAILS.QUALITY);
-          });
-
-          if (blob) {
-            const dir = await ensureTargetDir();
-            const fileName = `${task.id}.webp`;
-            const fileHandle = await dir.getFileHandle(fileName, { create: true });
-            const writable = await (fileHandle as any).createWritable();
-            await writable.write(blob);
-            await writable.close();
-
-            const thumbUrl = URL.createObjectURL(blob);
-
-            this.cache.set(task.id, thumbUrl);
-            this.touchCacheEntry(task.id);
-            this.evictCacheIfNeeded();
-
-            if (!this.isCancelled(task.id)) {
-              task.onComplete?.(thumbUrl);
-            }
-          }
-        } catch (e) {
-          console.error('Error extracting file thumbnail frame', e);
-        }
-
-        cleanup();
-        resolve();
-      };
-
-      errorHandler = (e: unknown) => {
-        if (!this.isCancelled(task.id)) {
-          task.onError?.(new Error('Video error'));
-        }
-        cleanup();
-        reject(e);
-      };
-
-      loadedDataHandler = () => {
-        if (this.isCancelled(task.id)) {
-          cleanup();
-          resolve();
-          return;
-        }
-        const duration = video.duration;
-        if (!isNaN(duration) && duration > 0) {
-          video.currentTime = duration * FILE_MANAGER_THUMBNAILS.POSITION_FRACTION;
-        } else {
-          video.currentTime = 0;
-        }
-      };
-
-      if (seekedHandler) video.addEventListener('seeked', seekedHandler);
-      if (errorHandler) video.addEventListener('error', errorHandler);
-
-      (async () => {
-        try {
-          await ensureSourceUrl();
-          if (this.isCancelled(task.id)) {
-            cleanup();
-            resolve();
-            return;
-          }
-          if (loadedDataHandler) video.addEventListener('loadeddata', loadedDataHandler);
-          video.load();
-        } catch (e: any) {
-          if (!this.isCancelled(task.id)) {
-            task.onError?.(e instanceof Error ? e : new Error(String(e)));
-          }
-          cleanup();
-          reject(e);
-        }
-      })();
+    const dir = await ensureThumbnailDir({
+      projectId: task.projectId,
+      dirName: FILE_MANAGER_THUMBNAILS.DIR_NAME,
+      workspaceStore,
+      create: true,
     });
+
+    const fileName = `${task.id}.webp`;
+    const fileHandle = await dir.getFileHandle(fileName, { create: true });
+    const writable = await (fileHandle as any).createWritable();
+    await writable.write(blob);
+    await writable.close();
+
+    const thumbUrl = URL.createObjectURL(blob);
+
+    this.cache.set(task.id, thumbUrl);
+    this.touchCacheEntry(task.id);
+    this.evictCacheIfNeeded();
+
+    if (!this.isCancelled(task.id)) {
+      task.onComplete?.(thumbUrl);
+    }
   }
 
   async saveManualThumbnail(input: { projectId: string; projectRelativePath: string; blob: Blob }) {
