@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import type { TimelineTrack, TimelineClipItem, TimelineTrackItem } from '~/timeline/types';
 import { timeUsToPx } from '~/utils/timeline/geometry';
+import { CLIP_AUDIO_GAIN_MAX } from '~/utils/audio/envelope';
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -54,8 +55,8 @@ function clampHandlePx(px: number, width: number) {
 }
 
 const volumeY = computed(() => {
-  const g = Math.max(0, Math.min(2, props.clip.audioGain ?? 1));
-  return (1 - g / 2) * 100;
+  const g = Math.max(0, Math.min(CLIP_AUDIO_GAIN_MAX, props.clip.audioGain ?? 1));
+  return (1 - g / CLIP_AUDIO_GAIN_MAX) * 100;
 });
 </script>
 

@@ -104,11 +104,12 @@ export interface FastCatUserSettings {
       wheelShift: string;
       wheelSecondary: string;
       wheelSecondaryShift: string;
-      middleClick: 'add_marker' | 'reset_zoom' | 'none';
-      doubleClick: 'add_marker' | 'reset_zoom' | 'none';
-      shiftClick: 'add_marker' | 'reset_zoom' | 'none';
-      drag: 'pan' | 'move_playhead' | 'none';
-      middleDrag: 'pan' | 'move_playhead' | 'none';
+      middleClick: 'add_marker' | 'reset_zoom' | 'select_area' | 'none';
+      doubleClick: 'add_marker' | 'reset_zoom' | 'select_area' | 'none';
+      shiftClick: 'add_marker' | 'reset_zoom' | 'select_area' | 'none';
+      drag: 'pan' | 'move_playhead' | 'select_area' | 'none';
+      middleDrag: 'pan' | 'move_playhead' | 'select_area' | 'none';
+      dragShift: 'pan' | 'move_playhead' | 'select_area' | 'none';
     };
     timeline: {
       wheel: string;
@@ -214,6 +215,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       shiftClick: 'none',
       drag: 'move_playhead',
       middleDrag: 'pan',
+      dragShift: 'select_area',
     },
     timeline: {
       wheel: 'zoom_horizontal',
