@@ -39,49 +39,18 @@ function getWheelOptions(actions: readonly string[]) {
   }));
 }
 
-const rulerWheelOptions = computed(() => getWheelOptions(RULER_WHEEL_ACTIONS));
-
-const rulerClickActionOptions = computed(() => {
+const clickActionOptions = computed(() => {
   const labels: Record<string, string> = {
+    seek: t('videoEditor.settings.mouseActionSeek', 'Set playhead'),
     add_marker: t('videoEditor.settings.mouseActionAddMarker', 'Add marker'),
     reset_zoom: t('videoEditor.settings.mouseActionResetZoom', 'Reset zoom'),
     select_area: t('videoEditor.settings.mouseActionSelectArea', 'Select area'),
     none: t('videoEditor.settings.mouseActionNone', 'None'),
   };
-  return RULER_CLICK_ACTIONS.map((action) => ({
+  return CLICK_ACTIONS.map((action) => ({
     label: labels[action] || action,
     value: action,
   }));
-});
-
-const rulerDoubleClickOptions = rulerClickActionOptions;
-
-const rulerDragOptions = computed(() => {
-  const labels: Record<string, string> = {
-    pan: t('videoEditor.settings.mouseActionPan', 'Pan'),
-    move_playhead: t('videoEditor.settings.mouseActionMovePlayhead', 'Move playhead'),
-    none: t('videoEditor.settings.mouseActionNone', 'None'),
-  };
-  return DRAG_ACTIONS.map((action) => ({ label: labels[action] || action, value: action }));
-});
-
-const rulerShiftClickOptions = rulerClickActionOptions;
-const rulerMiddleClickOptions = rulerClickActionOptions;
-
-const timelineWheelOptions = computed(() => getWheelOptions(TIMELINE_WHEEL_ACTIONS));
-
-const trackHeadersWheelOptions = computed(() => getWheelOptions(TRACK_HEADERS_WHEEL_ACTIONS));
-
-const monitorWheelOptions = computed(() => getWheelOptions(MONITOR_WHEEL_ACTIONS));
-
-const middleClickOptions = computed(() => {
-  const labels: Record<string, string> = {
-    pan: t('videoEditor.settings.mouseActionPan', 'Pan'),
-    move_playhead: t('videoEditor.settings.mouseActionMovePlayhead', 'Move playhead'),
-    reset_zoom: t('videoEditor.settings.mouseActionResetZoom', 'Reset zoom'),
-    none: t('videoEditor.settings.mouseActionNone', 'None'),
-  };
-  return MIDDLE_CLICK_ACTIONS.map((action) => ({ label: labels[action] || action, value: action }));
 });
 
 const dragOptions = computed(() => {
@@ -92,6 +61,24 @@ const dragOptions = computed(() => {
     none: t('videoEditor.settings.mouseActionNone', 'None'),
   };
   return DRAG_ACTIONS.map((action) => ({ label: labels[action] || action, value: action }));
+});
+
+const rulerWheelOptions = computed(() => getWheelOptions(RULER_WHEEL_ACTIONS));
+const timelineWheelOptions = computed(() => getWheelOptions(TIMELINE_WHEEL_ACTIONS));
+const trackHeadersWheelOptions = computed(() => getWheelOptions(TRACK_HEADERS_WHEEL_ACTIONS));
+const monitorWheelOptions = computed(() => getWheelOptions(MONITOR_WHEEL_ACTIONS));
+
+const monitorMiddleClickOptions = computed(() => {
+  const labels: Record<string, string> = {
+    pan: t('videoEditor.settings.mouseActionPan', 'Pan'),
+    move_playhead: t('videoEditor.settings.mouseActionMovePlayhead', 'Move playhead'),
+    reset_zoom: t('videoEditor.settings.mouseActionResetZoom', 'Reset zoom'),
+    none: t('videoEditor.settings.mouseActionNone', 'None'),
+  };
+  return ['pan', 'move_playhead', 'reset_zoom', 'none'].map((action) => ({
+    label: labels[action] || action,
+    value: action,
+  }));
 });
 
 function resetDefaults() {
@@ -150,6 +137,7 @@ function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: str
         <div class="overflow-hidden rounded-lg border border-ui-border bg-ui-bg">
           <table class="w-full border-collapse">
             <tbody class="divide-y divide-ui-border">
+              <!-- Wheels Group -->
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
                 <td
                   class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
@@ -299,114 +287,7 @@ function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: str
                 </td>
               </tr>
 
-              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td
-                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
-                  :class="{ 'bg-yellow-400/10': isModified('ruler', 'middleClick') }"
-                >
-                  <span class="text-sm text-ui-text font-medium leading-tight">
-                    {{ t('videoEditor.settings.mouseTimelineMiddleClick', 'Middle button click') }}
-                  </span>
-                </td>
-                <td class="p-2 py-2.5 align-middle">
-                  <USelectMenu
-                    v-model="workspaceStore.userSettings.mouse.ruler.middleClick"
-                    :items="rulerMiddleClickOptions"
-                    value-key="value"
-                    label-key="label"
-                    class="w-full"
-                    @update:model-value="
-                      (v: any) =>
-                        (workspaceStore.userSettings.mouse.ruler.middleClick = v?.value ?? v)
-                    "
-                  >
-                    <template #item-label="{ item }">
-                      <span class="flex items-center gap-2">
-                        {{ item.label }}
-                        <span
-                          v-if="isDefault('ruler', 'middleClick', item.value)"
-                          class="text-[10px] opacity-50 font-normal italic"
-                        >
-                          ({{ t('common.default', 'Default') }})
-                        </span>
-                      </span>
-                    </template>
-                  </USelectMenu>
-                </td>
-              </tr>
-
-              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td
-                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
-                  :class="{ 'bg-yellow-400/10': isModified('ruler', 'doubleClick') }"
-                >
-                  <span class="text-sm text-ui-text font-medium leading-tight">
-                    {{ t('videoEditor.settings.mouseRulerDoubleClick', 'Double click') }}
-                  </span>
-                </td>
-                <td class="p-2 py-2.5 align-middle">
-                  <USelectMenu
-                    v-model="workspaceStore.userSettings.mouse.ruler.doubleClick"
-                    :items="rulerDoubleClickOptions"
-                    value-key="value"
-                    label-key="label"
-                    class="w-full"
-                    @update:model-value="
-                      (v: any) =>
-                        (workspaceStore.userSettings.mouse.ruler.doubleClick = v?.value ?? v)
-                    "
-                  >
-                    <template #item-label="{ item }">
-                      <span class="flex items-center gap-2">
-                        {{ item.label }}
-                        <span
-                          v-if="isDefault('ruler', 'doubleClick', item.value)"
-                          class="text-[10px] opacity-50 font-normal italic"
-                        >
-                          ({{ t('common.default', 'Default') }})
-                        </span>
-                      </span>
-                    </template>
-                  </USelectMenu>
-                </td>
-              </tr>
-
-              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td
-                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
-                  :class="{ 'bg-yellow-400/10': isModified('ruler', 'shiftClick') }"
-                >
-                  <span class="text-sm text-ui-text font-medium leading-tight">
-                    {{ t('videoEditor.settings.mouseTimelineShiftClick', 'Shift + Click') }}
-                  </span>
-                </td>
-                <td class="p-2 py-2.5 align-middle">
-                  <USelectMenu
-                    v-model="workspaceStore.userSettings.mouse.ruler.shiftClick"
-                    :items="rulerShiftClickOptions"
-                    value-key="value"
-                    label-key="label"
-                    class="w-full"
-                    @update:model-value="
-                      (v: any) =>
-                        (workspaceStore.userSettings.mouse.ruler.shiftClick = v?.value ?? v)
-                    "
-                  >
-                    <template #item-label="{ item }">
-                      <span class="flex items-center gap-2">
-                        {{ item.label }}
-                        <span
-                          v-if="isDefault('ruler', 'shiftClick', item.value)"
-                          class="text-[10px] opacity-50 font-normal italic"
-                        >
-                          ({{ t('common.default', 'Default') }})
-                        </span>
-                      </span>
-                    </template>
-                  </USelectMenu>
-                </td>
-              </tr>
-
+              <!-- Drags Group -->
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
                 <td
                   class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
@@ -513,6 +394,150 @@ function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: str
                   </USelectMenu>
                 </td>
               </tr>
+
+              <!-- Clicks Group -->
+              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('ruler', 'click') }"
+                >
+                  <span class="text-sm text-ui-text font-medium leading-tight">
+                    {{ t('videoEditor.settings.mouseRulerClick', 'Single Click') }}
+                  </span>
+                </td>
+                <td class="p-2 py-2.5 align-middle">
+                  <USelectMenu
+                    v-model="workspaceStore.userSettings.mouse.ruler.click"
+                    :items="clickActionOptions"
+                    value-key="value"
+                    label-key="label"
+                    class="w-full"
+                    @update:model-value="
+                      (v: any) => (workspaceStore.userSettings.mouse.ruler.click = v?.value ?? v)
+                    "
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('ruler', 'click', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
+                </td>
+              </tr>
+
+              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('ruler', 'shiftClick') }"
+                >
+                  <span class="text-sm text-ui-text font-medium leading-tight">
+                    {{ t('videoEditor.settings.mouseTimelineShiftClick', 'Shift + Click') }}
+                  </span>
+                </td>
+                <td class="p-2 py-2.5 align-middle">
+                  <USelectMenu
+                    v-model="workspaceStore.userSettings.mouse.ruler.shiftClick"
+                    :items="clickActionOptions"
+                    value-key="value"
+                    label-key="label"
+                    class="w-full"
+                    @update:model-value="
+                      (v: any) =>
+                        (workspaceStore.userSettings.mouse.ruler.shiftClick = v?.value ?? v)
+                    "
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('ruler', 'shiftClick', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
+                </td>
+              </tr>
+
+              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('ruler', 'middleClick') }"
+                >
+                  <span class="text-sm text-ui-text font-medium leading-tight">
+                    {{ t('videoEditor.settings.mouseTimelineMiddleClick', 'Middle button click') }}
+                  </span>
+                </td>
+                <td class="p-2 py-2.5 align-middle">
+                  <USelectMenu
+                    v-model="workspaceStore.userSettings.mouse.ruler.middleClick"
+                    :items="clickActionOptions"
+                    value-key="value"
+                    label-key="label"
+                    class="w-full"
+                    @update:model-value="
+                      (v: any) =>
+                        (workspaceStore.userSettings.mouse.ruler.middleClick = v?.value ?? v)
+                    "
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('ruler', 'middleClick', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
+                </td>
+              </tr>
+
+              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('ruler', 'doubleClick') }"
+                >
+                  <span class="text-sm text-ui-text font-medium leading-tight">
+                    {{ t('videoEditor.settings.mouseRulerDoubleClick', 'Double click') }}
+                  </span>
+                </td>
+                <td class="p-2 py-2.5 align-middle">
+                  <USelectMenu
+                    v-model="workspaceStore.userSettings.mouse.ruler.doubleClick"
+                    :items="clickActionOptions"
+                    value-key="value"
+                    label-key="label"
+                    class="w-full"
+                    @update:model-value="
+                      (v: any) =>
+                        (workspaceStore.userSettings.mouse.ruler.doubleClick = v?.value ?? v)
+                    "
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('ruler', 'doubleClick', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -526,6 +551,7 @@ function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: str
         <div class="overflow-hidden rounded-lg border border-ui-border bg-ui-bg">
           <table class="w-full border-collapse">
             <tbody class="divide-y divide-ui-border">
+              <!-- Wheels Group -->
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
                 <td
                   class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
@@ -675,42 +701,7 @@ function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: str
                 </td>
               </tr>
 
-              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
-                <td
-                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
-                  :class="{ 'bg-yellow-400/10': isModified('timeline', 'middleClick') }"
-                >
-                  <span class="text-sm text-ui-text font-medium leading-tight">
-                    {{ t('videoEditor.settings.mouseTimelineMiddleClick', 'Middle button click') }}
-                  </span>
-                </td>
-                <td class="p-2 py-2.5 align-middle">
-                  <USelectMenu
-                    v-model="workspaceStore.userSettings.mouse.timeline.middleClick"
-                    :items="middleClickOptions"
-                    value-key="value"
-                    label-key="label"
-                    class="w-full"
-                    @update:model-value="
-                      (v: any) =>
-                        (workspaceStore.userSettings.mouse.timeline.middleClick = v?.value ?? v)
-                    "
-                  >
-                    <template #item-label="{ item }">
-                      <span class="flex items-center gap-2">
-                        {{ item.label }}
-                        <span
-                          v-if="isDefault('timeline', 'middleClick', item.value)"
-                          class="text-[10px] opacity-50 font-normal italic"
-                        >
-                          ({{ t('common.default', 'Default') }})
-                        </span>
-                      </span>
-                    </template>
-                  </USelectMenu>
-                </td>
-              </tr>
-
+              <!-- Drags Group -->
               <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
                 <td
                   class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
@@ -737,6 +728,43 @@ function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: str
                         {{ item.label }}
                         <span
                           v-if="isDefault('timeline', 'middleDrag', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
+                </td>
+              </tr>
+
+              <!-- Clicks Group -->
+              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('timeline', 'middleClick') }"
+                >
+                  <span class="text-sm text-ui-text font-medium leading-tight">
+                    {{ t('videoEditor.settings.mouseTimelineMiddleClick', 'Middle button click') }}
+                  </span>
+                </td>
+                <td class="p-2 py-2.5 align-middle">
+                  <USelectMenu
+                    v-model="workspaceStore.userSettings.mouse.timeline.middleClick"
+                    :items="clickActionOptions"
+                    value-key="value"
+                    label-key="label"
+                    class="w-full"
+                    @update:model-value="
+                      (v: any) =>
+                        (workspaceStore.userSettings.mouse.timeline.middleClick = v?.value ?? v)
+                    "
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('timeline', 'middleClick', item.value)"
                           class="text-[10px] opacity-50 font-normal italic"
                         >
                           ({{ t('common.default', 'Default') }})
@@ -1005,7 +1033,7 @@ function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: str
                 <td class="p-2 py-2.5 align-middle">
                   <USelectMenu
                     v-model="workspaceStore.userSettings.mouse.monitor.middleClick"
-                    :items="middleClickOptions"
+                    :items="monitorMiddleClickOptions"
                     value-key="value"
                     label-key="label"
                     class="w-full"

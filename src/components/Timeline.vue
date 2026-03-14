@@ -324,9 +324,46 @@ const onDrop = async (e: DragEvent, trackId: string) => {
 };
 const onTimelineRulerWheel = (e: WheelEvent) => onTimelineWheel(e, 'ruler');
 const onTrackHeaderWheel = (e: WheelEvent) => onTimelineWheel(e, 'trackHeaders');
+const handleTimelineClickAction = (action: string, e: PointerEvent | MouseEvent) => {
+  if (action === 'none') return;
+  if (action === 'reset_zoom') {
+    timelineStore.resetTimelineZoom();
+    return;
+  }
+  if (action === 'seek' || action === 'move_playhead') {
+    const el = scrollEl.value;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const x = e.clientX - rect.left + el.scrollLeft;
+    timelineStore.setCurrentTimeUs(pxToTimeUs(x, timelineStore.timelineZoom));
+    return;
+  }
+  if (action === 'select_area') {
+    // Selection range logic in track area is usually handled by useTimelineInteraction
+    // for left click. For middle click we'd need to expose it if we want it here.
+    // For now we can use seek here.
+    return;
+  }
+  if (action === 'add_marker') {
+    const el = scrollEl.value;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const x = e.clientX - rect.left + el.scrollLeft;
+    const timeUs = pxToTimeUs(x, timelineStore.timelineZoom);
+    const newMarkerId = `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+    timelineStore.applyTimeline({
+      type: 'add_marker',
+      id: newMarkerId,
+      timeUs,
+      text: '',
+    });
+  }
+};
+
 const onTrackAreaPointerDownCapture = (e: PointerEvent) => {
   if (e.button === 1) {
     const settings = workspaceStore.userSettings.mouse.timeline;
+
     if (settings.middleDrag === 'pan') {
       startPan(e);
     } else if (settings.middleDrag === 'move_playhead') {
@@ -336,10 +373,17 @@ const onTrackAreaPointerDownCapture = (e: PointerEvent) => {
       const x = e.clientX - rect.left + el.scrollLeft;
       timelineStore.setCurrentTimeUs(pxToTimeUs(x, timelineStore.timelineZoom));
       startPlayheadDrag(e);
-    } else if (settings.middleClick === 'reset_zoom') {
-      // This ensures it works even if pan capture interferes with clicks
-      timelineStore.resetTimelineZoom();
+    } else if (settings.middleDrag === 'select_area') {
+      // Logic for select_area drag on timeline?
+      // Usually done with Left button + Shift. Implementation might be complex to port here.
     }
+  }
+};
+
+const onTrackAreaAuxClick = (e: MouseEvent) => {
+  if (e.button === 1) {
+    const settings = workspaceStore.userSettings.mouse.timeline;
+    handleTimelineClickAction(settings.middleClick, e);
   }
 };
 const onTimelinePointerMove = onGlobalPointerMove;
@@ -376,10 +420,11 @@ const onTimelinePointerUp = onGlobalPointerUp;
           <div
             ref="trackAreaRef"
             class="flex flex-col h-full w-full relative min-h-0"
-            @pointermove="onTimelinePointerMove"
-            @pointerup="onTimelinePointerUp"
+            @pointermove="onGlobalPointerMove"
+            @pointerup="onGlobalPointerUp"
             @pointercancel="onTimelinePointerUp"
             @pointerdown.capture="onTrackAreaPointerDownCapture"
+            @auxclick="onTrackAreaAuxClick"
           >
             <div class="relative shrink-0 z-10">
               <TimelineRuler
