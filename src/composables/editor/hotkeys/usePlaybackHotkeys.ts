@@ -3,27 +3,22 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useUiStore } from '~/stores/ui.store';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import { getDocFps } from '~/timeline/commands/utils';
-
-function isPreviewPanelFocus(focusId: string) {
-  return (
-    focusId === 'left' ||
-    focusId === 'right' ||
-    focusId === 'project' ||
-    focusId.startsWith('dynamic:')
-  );
-}
+import { isPreviewLikeFocus } from '~/utils/hotkeys/runtime';
 
 export function usePlaybackHotkeys() {
   const timelineStore = useTimelineStore();
   const focusStore = useFocusStore();
   const uiStore = useUiStore();
 
+  function canUsePlaybackOrTimelineFocus() {
+    return focusStore.canUsePlaybackHotkeys || focusStore.effectiveFocus === 'timeline';
+  }
+
   const handlers: Partial<Record<HotkeyCommandId, (e: KeyboardEvent) => boolean>> = {
     'playback.toggle': () => {
-      const canUse = focusStore.canUsePlaybackHotkeys || focusStore.effectiveFocus === 'timeline';
-      if (!canUse) return false;
+      if (!canUsePlaybackOrTimelineFocus()) return false;
 
-      if (isPreviewPanelFocus(focusStore.effectiveFocus)) {
+      if (isPreviewLikeFocus(focusStore.effectiveFocus)) {
         uiStore.triggerPreviewPlayback('toggle');
         return true;
       }
@@ -33,10 +28,9 @@ export function usePlaybackHotkeys() {
     },
 
     'playback.toggle1': () => {
-      const canUse = focusStore.canUsePlaybackHotkeys || focusStore.effectiveFocus === 'timeline';
-      if (!canUse) return false;
+      if (!canUsePlaybackOrTimelineFocus()) return false;
 
-      if (isPreviewPanelFocus(focusStore.effectiveFocus)) {
+      if (isPreviewLikeFocus(focusStore.effectiveFocus)) {
         uiStore.triggerPreviewPlayback('toggle1');
         return true;
       }
@@ -54,7 +48,7 @@ export function usePlaybackHotkeys() {
     'playback.toStart': () => {
       if (!focusStore.canUsePlaybackHotkeys) return false;
 
-      if (isPreviewPanelFocus(focusStore.effectiveFocus)) {
+      if (isPreviewLikeFocus(focusStore.effectiveFocus)) {
         uiStore.triggerPreviewPlayback('toStart');
         return true;
       }
@@ -66,7 +60,7 @@ export function usePlaybackHotkeys() {
     'playback.toEnd': () => {
       if (!focusStore.canUsePlaybackHotkeys) return false;
 
-      if (isPreviewPanelFocus(focusStore.effectiveFocus)) {
+      if (isPreviewLikeFocus(focusStore.effectiveFocus)) {
         uiStore.triggerPreviewPlayback('toEnd');
         return true;
       }
@@ -76,30 +70,26 @@ export function usePlaybackHotkeys() {
     },
 
     'playback.stepForward': () => {
-      const canUse = focusStore.canUsePlaybackHotkeys || focusStore.effectiveFocus === 'timeline';
-      if (!canUse) return false;
+      if (!canUsePlaybackOrTimelineFocus()) return false;
       timelineStore.seekFrames(1);
       return true;
     },
 
     'playback.stepBackward': () => {
-      const canUse = focusStore.canUsePlaybackHotkeys || focusStore.effectiveFocus === 'timeline';
-      if (!canUse) return false;
+      if (!canUsePlaybackOrTimelineFocus()) return false;
       timelineStore.seekFrames(-1);
       return true;
     },
 
     'playback.stepForwardLarge': () => {
-      const canUse = focusStore.canUsePlaybackHotkeys || focusStore.effectiveFocus === 'timeline';
-      if (!canUse) return false;
+      if (!canUsePlaybackOrTimelineFocus()) return false;
       const fps = getDocFps(timelineStore.timelineDoc || ({} as any));
       timelineStore.seekFrames(fps);
       return true;
     },
 
     'playback.stepBackwardLarge': () => {
-      const canUse = focusStore.canUsePlaybackHotkeys || focusStore.effectiveFocus === 'timeline';
-      if (!canUse) return false;
+      if (!canUsePlaybackOrTimelineFocus()) return false;
       const fps = getDocFps(timelineStore.timelineDoc || ({} as any));
       timelineStore.seekFrames(-fps);
       return true;
@@ -164,7 +154,7 @@ export function usePlaybackHotkeys() {
       const canUse = focusStore.canUsePlaybackHotkeys;
       if (!canUse) return false;
 
-      if (isPreviewPanelFocus(focusStore.effectiveFocus)) {
+      if (isPreviewLikeFocus(focusStore.effectiveFocus)) {
         if (speedCmd.direction === 'backward') {
           return true; // ignored but consumed
         }

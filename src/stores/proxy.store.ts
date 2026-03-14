@@ -5,10 +5,12 @@ import { useProjectStore } from '~/stores/project.store';
 import { createProxyFsModule } from '~/stores/proxy/proxyFs';
 import { createProxyQueueModule } from '~/stores/proxy/proxyQueue';
 import { createProxyService } from '~/stores/proxy/proxyService';
+import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 
 export const useProxyStore = defineStore('proxy', () => {
   const workspaceStore = useWorkspaceStore();
   const projectStore = useProjectStore();
+  const backgroundTasksStore = useBackgroundTasksStore();
 
   const videoExtensions = new Set(['mp4', 'mov', 'avi', 'mkv', 'webm']);
 
@@ -46,6 +48,7 @@ export const useProxyStore = defineStore('proxy', () => {
     getFileHandleByPath: async (path) => await projectStore.getFileHandleByPath(path),
     getFileByPath: async (path) => await projectStore.getFileByPath(path),
     getOptimizationSettings: () => workspaceStore.userSettings.optimization,
+    backgroundTasksStore,
   });
 
   return {

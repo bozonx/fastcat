@@ -150,8 +150,14 @@ export class VideoCompositor {
 
     for (const clip of this.clips) {
       if (clip.clipKind !== 'adjustment') continue;
-      if (!adjustmentClips.includes(clip) && clip.sprite.texture !== Texture.EMPTY) {
-        clip.sprite.texture = Texture.EMPTY;
+      if (!adjustmentClips.includes(clip) && clip.sprite && !clip.sprite.destroyed) {
+        try {
+          if (clip.sprite.texture !== Texture.EMPTY) {
+            clip.sprite.texture = Texture.EMPTY;
+          }
+        } catch (e) {
+          // ignore PixiJS internal errors on reset
+        }
       }
     }
 

@@ -49,6 +49,8 @@ export function createProxyService(params: {
     proxyAudioBitrateKbps: number;
     proxyCopyOpusAudio: boolean;
   };
+
+  backgroundTasksStore: any;
 }): ProxyService {
   params.proxyTaskIds.value.clear(); // Clear old task mappings on service creation
   params.taskIdToPath.value.clear();
@@ -63,7 +65,13 @@ export function createProxyService(params: {
         if (!taskId) return;
         const path = params.taskIdToPath.value.get(taskId);
         if (path) {
-          params.proxyProgress.value.set(path, progress);
+          const nextProgress = new Map(params.proxyProgress.value);
+          nextProgress.set(path, progress);
+          params.proxyProgress.value = nextProgress;
+          const bgTaskId = (params.proxyAbortControllers.value.get(path) as any)?.bgTaskId;
+          if (bgTaskId) {
+            params.backgroundTasksStore.updateTaskProgress(bgTaskId, progress / 100);
+          }
         }
       },
       onExportPhase: (phase: 'encoding' | 'saving', taskId?: string) => {
@@ -79,7 +87,7 @@ export function createProxyService(params: {
     dirHandle: FileSystemDirectoryHandle;
     dirPath: string;
   }): Promise<void> {
-    params.generatingProxies.value.add(input.dirPath);
+    params.generatingProxies.value = new Set([...params.generatingProxies.value, input.dirPath]);
     try {
       for await (const handle of (input.dirHandle as any).values()) {
         const fullPath = input.dirPath ? `${input.dirPath}/${handle.name}` : handle.name;
@@ -97,7 +105,9 @@ export function createProxyService(params: {
         }
       }
     } finally {
-      params.generatingProxies.value.delete(input.dirPath);
+      const nextGenerating = new Set(params.generatingProxies.value);
+      nextGenerating.delete(input.dirPath);
+      params.generatingProxies.value = nextGenerating;
     }
   }
 
@@ -137,11 +147,28 @@ export function createProxyService(params: {
     const dir = await params.ensureProjectProxiesDir();
     if (!dir) throw new Error('Could not access proxies directory');
 
-    params.generatingProxies.value.add(projectRelativePath);
-    params.proxyProgress.value.set(projectRelativePath, 0);
+    params.generatingProxies.value = new Set([
+      ...params.generatingProxies.value,
+      projectRelativePath,
+    ]);
+    params.proxyProgress.value = new Map(params.proxyProgress.value).set(projectRelativePath, 0);
 
     const controller = new AbortController();
-    params.proxyAbortControllers.value.set(projectRelativePath, controller);
+
+    // Add to background tasks
+    const bgTaskId = params.backgroundTasksStore.addTask({
+      type: 'proxy',
+      title: `Generating proxy: ${projectRelativePath.split('/').pop()}`,
+      cancel: async () => {
+        await cancelProxyGeneration(projectRelativePath);
+      },
+    });
+    (controller as any).bgTaskId = bgTaskId;
+
+    params.proxyAbortControllers.value = new Map(params.proxyAbortControllers.value).set(
+      projectRelativePath,
+      controller,
+    );
 
     const signal = options?.signal;
     const onAbort = () => {
@@ -167,9 +194,18 @@ export function createProxyService(params: {
           }
 
           const taskId = `proxy-${projectRelativePath}-${Date.now()}`;
-          params.proxyTaskIds.value.set(projectRelativePath, taskId);
-          params.taskIdToPath.value.set(taskId, projectRelativePath);
-          params.activeWorkerPaths.value.add(projectRelativePath);
+          params.proxyTaskIds.value = new Map(params.proxyTaskIds.value).set(
+            projectRelativePath,
+            taskId,
+          );
+          params.taskIdToPath.value = new Map(params.taskIdToPath.value).set(
+            taskId,
+            projectRelativePath,
+          );
+          params.activeWorkerPaths.value = new Set([
+            ...params.activeWorkerPaths.value,
+            projectRelativePath,
+          ]);
           const proxyFilename = await params.getProxyFileName(projectRelativePath);
           proxyFileHandle = await dir.getFileHandle(proxyFilename, { create: true });
 
@@ -252,6 +288,10 @@ export function createProxyService(params: {
             ...params.existingProxies.value,
             projectRelativePath,
           ]);
+
+          if (bgTaskId) {
+            params.backgroundTasksStore.updateTaskStatus(bgTaskId, 'completed');
+          }
         } catch (innerErr) {
           // Remove the incomplete proxy file on abort or error
           if (proxyFileHandle) {
@@ -263,15 +303,32 @@ export function createProxyService(params: {
             }
             proxyFileHandle = null;
           }
+          if (bgTaskId) {
+            params.backgroundTasksStore.updateTaskStatus(bgTaskId, 'failed', String(innerErr));
+          }
           throw innerErr;
         } finally {
-          params.activeWorkerPaths.value.delete(projectRelativePath);
-          params.generatingProxies.value.delete(projectRelativePath);
-          params.proxyProgress.value.delete(projectRelativePath);
+          const nextActiveWorkerPaths = new Set(params.activeWorkerPaths.value);
+          nextActiveWorkerPaths.delete(projectRelativePath);
+          params.activeWorkerPaths.value = nextActiveWorkerPaths;
+
+          const nextGenerating = new Set(params.generatingProxies.value);
+          nextGenerating.delete(projectRelativePath);
+          params.generatingProxies.value = nextGenerating;
+
+          const nextProgress = new Map(params.proxyProgress.value);
+          nextProgress.delete(projectRelativePath);
+          params.proxyProgress.value = nextProgress;
+
           const taskId = params.proxyTaskIds.value.get(projectRelativePath);
           if (taskId) {
-            params.taskIdToPath.value.delete(taskId);
-            params.proxyTaskIds.value.delete(projectRelativePath);
+            const nextTaskIdToPath = new Map(params.taskIdToPath.value);
+            nextTaskIdToPath.delete(taskId);
+            params.taskIdToPath.value = nextTaskIdToPath;
+
+            const nextProxyTaskIds = new Map(params.proxyTaskIds.value);
+            nextProxyTaskIds.delete(projectRelativePath);
+            params.proxyTaskIds.value = nextProxyTaskIds;
           }
 
           if (signal) {
@@ -281,17 +338,26 @@ export function createProxyService(params: {
               // ignore
             }
           }
-
-          params.proxyAbortControllers.value.delete(projectRelativePath);
+          const nextAbortControllers = new Map(params.proxyAbortControllers.value);
+          nextAbortControllers.delete(projectRelativePath);
+          params.proxyAbortControllers.value = nextAbortControllers;
         }
       });
     } catch (e) {
       if ((e as any)?.name === 'AbortError') {
         return;
       }
-      params.generatingProxies.value.delete(projectRelativePath);
-      params.proxyProgress.value.delete(projectRelativePath);
-      params.proxyAbortControllers.value.delete(projectRelativePath);
+      const nextGenerating = new Set(params.generatingProxies.value);
+      nextGenerating.delete(projectRelativePath);
+      params.generatingProxies.value = nextGenerating;
+
+      const nextProgress = new Map(params.proxyProgress.value);
+      nextProgress.delete(projectRelativePath);
+      params.proxyProgress.value = nextProgress;
+
+      const nextAbortControllers = new Map(params.proxyAbortControllers.value);
+      nextAbortControllers.delete(projectRelativePath);
+      params.proxyAbortControllers.value = nextAbortControllers;
       throw e;
     }
   }

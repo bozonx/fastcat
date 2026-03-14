@@ -1,4 +1,4 @@
-import { onMounted, onUnmounted } from 'vue';
+import { computed, onMounted, onUnmounted } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -8,6 +8,14 @@ import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import { hotkeyFromKeyboardEvent, isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import { DEFAULT_HOTKEYS, type HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
+import {
+  canExecuteHotkeyCommand,
+  createHotkeyLookup,
+  getFocusAwareHotkeyOrder,
+  getMatchedHotkeyCommands,
+  shouldBlurAfterHotkey,
+  shouldHandleRepeatForMatchedCommands,
+} from '~/utils/hotkeys/runtime';
 
 import { useGeneralHotkeys } from './hotkeys/useGeneralHotkeys';
 import { useTimelineHotkeys } from './hotkeys/useTimelineHotkeys';
@@ -35,6 +43,12 @@ export function useEditorHotkeys() {
     ...playbackHandlers,
   };
 
+  const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
+  const effectiveHotkeys = computed(() =>
+    getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys),
+  );
+  const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
+
   function hasBlockingModalState() {
     if (projectStore.currentView === 'fullscreen') return true;
     if (uiStore.activeModalsCount > 0) return true;
@@ -48,21 +62,14 @@ export function useEditorHotkeys() {
 
   function onGlobalKeydown(e: KeyboardEvent) {
     if (e.defaultPrevented) return;
-    if (e.repeat) return;
 
     const combo = hotkeyFromKeyboardEvent(e, workspaceStore.userSettings);
     if (!combo) return;
 
-    const effective = getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys);
+    const matched = getMatchedHotkeyCommands({ combo, lookup: hotkeyLookup.value });
+    if (matched.length === 0) return;
 
-    const cmdOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
-    const matched: HotkeyCommandId[] = [];
-    for (const cmdId of cmdOrder) {
-      const bindings = effective[cmdId];
-      if (bindings.includes(combo)) {
-        matched.push(cmdId);
-      }
-    }
+    if (e.repeat && !shouldHandleRepeatForMatchedCommands(matched)) return;
 
     if (matched.includes('general.deselect')) {
       if (timelineStore.isTrimModeActive) {
@@ -72,8 +79,6 @@ export function useEditorHotkeys() {
         return;
       }
     }
-
-    if (matched.length === 0) return;
 
     const allowsFullscreenExit = matched.includes('general.fullscreen');
 
@@ -85,36 +90,39 @@ export function useEditorHotkeys() {
       return;
     }
 
-    if (isEditableTarget(e.target) && e.key !== 'Escape') return;
-    if (isEditableTarget(document.activeElement) && e.key !== 'Escape') return;
+    const isEditableEventTarget = isEditableTarget(e.target);
+    const isEditableActiveElement = isEditableTarget(document.activeElement);
 
-    const focusAwareOrder = (() => {
-      const order: HotkeyCommandId[] = [];
-
-      const timeline = matched.filter((c) => c.startsWith('timeline.'));
-      const playback = matched.filter((c) => c.startsWith('playback.'));
-      const general = matched.filter((c) => c.startsWith('general.'));
-
-      if (focusStore.canUseTimelineHotkeys) {
-        order.push(...timeline, ...general, ...playback);
-      } else if (focusStore.canUsePlaybackHotkeys) {
-        order.push(...playback, ...general, ...timeline);
-      } else {
-        order.push(...general, ...timeline, ...playback);
-      }
-
-      return order;
-    })();
+    const focusAwareOrder = getFocusAwareHotkeyOrder({
+      matched,
+      canUseTimelineHotkeys: focusStore.canUseTimelineHotkeys,
+      canUsePlaybackHotkeys: focusStore.canUsePlaybackHotkeys,
+    });
 
     for (const cmdId of focusAwareOrder) {
+      if (
+        !canExecuteHotkeyCommand({
+          cmdId,
+          hasBlockingModalState: hasBlockingModalState() && e.key !== 'Escape',
+          isEditableEventTarget,
+          isEditableActiveElement,
+        })
+      ) {
+        continue;
+      }
+
       const handler = registry[cmdId];
       if (handler) {
         const executed = handler(e);
         if (executed) {
-          if (document.activeElement instanceof HTMLElement) {
-            if (!isEditableTarget(document.activeElement)) {
-              document.activeElement.blur();
-            }
+          if (
+            shouldBlurAfterHotkey({
+              cmdId,
+              activeElement: document.activeElement,
+              isEditableTarget,
+            })
+          ) {
+            (document.activeElement as HTMLElement).blur();
           }
           e.preventDefault();
           e.stopPropagation();
