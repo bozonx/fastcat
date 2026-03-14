@@ -437,6 +437,15 @@ watch(
   },
 );
 
+watch(
+  () => uiStore.fileBrowserSelectAllTrigger,
+  () => {
+    if (isRemoteMode.value) return;
+    const entries = sortedEntries.value;
+    selectionStore.selectFsEntries(entries);
+  },
+);
+
 // --- Refresh ---
 
 async function refreshFileTree() {

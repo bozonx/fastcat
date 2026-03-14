@@ -42,9 +42,15 @@ export function useGeneralHotkeys(
     zoomHoldRunner.startHold({
       keyCode: params.keyCode,
       action: () => {
-        timelineStore.setTimelineZoom(
-          stepTimelineZoomPosition(timelineStore.timelineZoom, params.direction),
-        );
+        if (focusStore.effectiveFocus === 'timeline') {
+          timelineStore.setTimelineZoom(
+            stepTimelineZoomPosition(timelineStore.timelineZoom, params.direction),
+          );
+        } else if (isPreviewFocus()) {
+          uiStore.triggerPreviewZoom(params.direction);
+        } else if (focusStore.effectiveFocus === 'monitor') {
+          uiStore.triggerMonitorZoom(params.direction);
+        }
       },
     });
   }
@@ -137,24 +143,12 @@ export function useGeneralHotkeys(
     },
 
     'general.zoomIn': (e) => {
-      if (focusStore.effectiveFocus === 'timeline') {
-        startZoomHotkeyHold({ direction: 1, keyCode: e.code });
-      } else if (isPreviewFocus()) {
-        uiStore.triggerPreviewZoom(1);
-      } else if (focusStore.effectiveFocus === 'monitor') {
-        uiStore.triggerMonitorZoom(1);
-      }
+      startZoomHotkeyHold({ direction: 1, keyCode: e.code });
       return true;
     },
 
     'general.zoomOut': (e) => {
-      if (focusStore.effectiveFocus === 'timeline') {
-        startZoomHotkeyHold({ direction: -1, keyCode: e.code });
-      } else if (isPreviewFocus()) {
-        uiStore.triggerPreviewZoom(-1);
-      } else if (focusStore.effectiveFocus === 'monitor') {
-        uiStore.triggerMonitorZoom(-1);
-      }
+      startZoomHotkeyHold({ direction: -1, keyCode: e.code });
       return true;
     },
 
@@ -184,14 +178,29 @@ export function useGeneralHotkeys(
       void import('~/stores/project.store').then((m) => m.useProjectStore().setView('export'));
       return true;
     },
+    'general.selectAll': () => {
+      if (focusStore.effectiveFocus === 'timeline') {
+        const trackId = timelineStore.getSelectedOrActiveTrackId();
+        if (trackId) {
+          timelineStore.selectAllClipsOnTrack(trackId);
+        }
+        return true;
+      }
+      if (focusStore.effectiveFocus === 'filesBrowser') {
+        uiStore.fileBrowserSelectAllTrigger++;
+        return true;
+      }
+      if (focusStore.effectiveFocus === 'project') {
+        uiStore.fileTreeSelectAllTrigger++;
+        return true;
+      }
+      return false;
+    },
   };
 
   async function handleFullscreen() {
-    const { useEditorViewStore } = await import('~/stores/editorView.store');
-    const viewStore = useEditorViewStore();
-
-    if (viewStore.currentView === 'fullscreen') {
-      viewStore.goToCut();
+    if (projectStore.currentView === 'fullscreen') {
+      projectStore.goToCut();
       return true;
     }
 
@@ -203,7 +212,7 @@ export function useGeneralHotkeys(
       }
     }
 
-    viewStore.goToFullscreen();
+    projectStore.goToFullscreen();
     return true;
   }
 

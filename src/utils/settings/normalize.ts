@@ -9,7 +9,16 @@ import {
   type ProjectSettingsPreset,
 } from './presets';
 import { STORAGE_ROOT_IDS } from '../storage-roots';
-import { TIMELINE_WHEEL_ACTIONS, MONITOR_WHEEL_ACTIONS, MIDDLE_CLICK_ACTIONS } from '~/utils/mouse';
+import {
+  CLICK_ACTIONS,
+  DRAG_ACTIONS,
+  MONITOR_CLICK_ACTIONS,
+  MONITOR_DRAG_ACTIONS,
+  MONITOR_WHEEL_ACTIONS,
+  RULER_WHEEL_ACTIONS,
+  TIMELINE_WHEEL_ACTIONS,
+  TRACK_HEADERS_WHEEL_ACTIONS,
+} from '~/utils/mouse';
 import { DEFAULT_HOTKEYS, type HotkeyCommandId, type HotkeyCombo } from '../hotkeys/defaultHotkeys';
 import { normalizeHotkeyCombo } from '../hotkeys/hotkeyUtils';
 import {
@@ -370,7 +379,7 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
           | 'seek'
           | 'add_marker'
           | 'reset_zoom'
-          | 'select_area'
+          | 'clear_selection'
           | 'none';
       }
 
@@ -380,7 +389,7 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
           | 'seek'
           | 'add_marker'
           | 'reset_zoom'
-          | 'select_area'
+          | 'clear_selection'
           | 'none';
       }
 
@@ -390,7 +399,7 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
           | 'seek'
           | 'add_marker'
           | 'reset_zoom'
-          | 'select_area'
+          | 'clear_selection'
           | 'none';
       }
 
@@ -427,7 +436,7 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
           | 'seek'
           | 'add_marker'
           | 'reset_zoom'
-          | 'select_area'
+          | 'clear_selection'
           | 'none';
       }
     }
@@ -454,7 +463,7 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
           | 'seek'
           | 'add_marker'
           | 'reset_zoom'
-          | 'select_area'
+          | 'clear_selection'
           | 'none';
       }
 
@@ -489,7 +498,7 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
       | Record<string, unknown>
       | undefined;
     if (rawMonitor && typeof rawMonitor === 'object') {
-      for (const k of ['wheel', 'wheelShift']) {
+      for (const k of ['wheel', 'wheelShift', 'wheelSecondary', 'wheelSecondaryShift']) {
         if (
           (MONITOR_WHEEL_ACTIONS as readonly string[]).includes(
             (rawMonitor as Record<string, unknown>)[k] as string,
@@ -502,8 +511,16 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
       }
 
       const monitorMiddleClick = (rawMonitor as Record<string, unknown>).middleClick;
-      if ((MIDDLE_CLICK_ACTIONS as readonly string[]).includes(monitorMiddleClick as string)) {
+      if ((MONITOR_CLICK_ACTIONS as readonly string[]).includes(monitorMiddleClick as string)) {
         (normalizedMouse.monitor as Record<string, unknown>).middleClick = monitorMiddleClick as
+          | 'reset_zoom'
+          | 'reset_zoom_center'
+          | 'none';
+      }
+
+      const monitorMiddleDrag = (rawMonitor as Record<string, unknown>).middleDrag;
+      if ((MONITOR_DRAG_ACTIONS as readonly string[]).includes(monitorMiddleDrag as string)) {
+        (normalizedMouse.monitor as Record<string, unknown>).middleDrag = monitorMiddleDrag as
           | 'pan'
           | 'none';
       }

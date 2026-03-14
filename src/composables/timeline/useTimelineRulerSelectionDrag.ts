@@ -143,9 +143,10 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
   }
 
   function startSelectionRangeCreate(event: PointerEvent) {
-
     event.preventDefault();
     event.stopPropagation();
+
+    suppressNextRulerClick.value = true;
 
     const timeUs = options.getTimeUsFromPointerEvent(event);
     selectionCreateStartUs.value = timeUs;

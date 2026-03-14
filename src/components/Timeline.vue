@@ -204,10 +204,7 @@ function onGlobalTimelineClick(e: MouseEvent) {
 
 useEventListener(window, 'click', onGlobalTimelineClick, { capture: true });
 
-function onTimelineWheel(
-  e: WheelEvent,
-  category: keyof FastCatUserSettings['mouse'] = 'timeline',
-) {
+function onTimelineWheel(e: WheelEvent, category: keyof FastCatUserSettings['mouse'] = 'timeline') {
   if (!scrollEl.value) return;
 
   let settings;
@@ -288,12 +285,12 @@ function onTimelineWheel(
   if (action === 'resize_track') {
     e.preventDefault();
     const target = e.target as Node;
-    const el = target.nodeType === 3 ? target.parentElement : target as Element;
+    const el = target.nodeType === 3 ? target.parentElement : (target as Element);
     const trackEl = el?.closest?.('[data-track-id]');
     const trackId = trackEl?.getAttribute('data-track-id');
     if (trackId) {
       const currentHeight = trackHeights.value[trackId] ?? 40;
-      const step = Math.abs(delta) < 10 ? delta * -1 : (delta > 0 ? -8 : 8);
+      const step = Math.abs(delta) < 10 ? delta * -1 : delta > 0 ? -8 : 8;
       const nextHeight = Math.max(32, Math.min(300, currentHeight + step));
       updateTrackHeight(trackId, nextHeight);
     }
@@ -402,6 +399,9 @@ const handleTimelineClickAction = (action: string, e: PointerEvent | MouseEvent)
 };
 
 const onTrackAreaPointerDownCapture = (e: PointerEvent) => {
+  const isRuler = (e.target as HTMLElement | null)?.closest('.timeline-ruler-container');
+  if (isRuler) return;
+
   if (e.button === 1) {
     const settings = timelineMouseSettings.value;
 
@@ -424,10 +424,7 @@ const onTrackAreaPointerDownCapture = (e: PointerEvent) => {
 const onTrackAreaAuxClick = (e: MouseEvent) => {
   if (e.button === 1) {
     const isRuler = (e.target as HTMLElement).closest('.timeline-ruler-container');
-    if (isRuler) {
-      const action = rulerMouseSettings.value.middleClick;
-      executeTimelineRulerAction(action, e);
-    } else {
+    if (!isRuler) {
       const settings = timelineMouseSettings.value;
       handleTimelineClickAction(settings.middleClick, e);
     }

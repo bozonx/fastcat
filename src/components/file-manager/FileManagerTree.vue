@@ -108,8 +108,29 @@ const emit = defineEmits<{
 const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 const proxyStore = useProxyStore();
 const selectionStore = useSelectionStore();
+const uiStore = useUiStore();
 
 const isDragOver = ref<string | null>(null);
+
+watch(
+  () => uiStore.fileTreeSelectAllTrigger,
+  () => {
+    if (props.depth !== 0) return;
+    const entries = getVisibleEntries(props.entries);
+    selectionStore.selectFsEntries(entries);
+  },
+);
+
+function getVisibleEntries(entriesList: FsEntry[]): FsEntry[] {
+  const list: FsEntry[] = [];
+  for (const e of entriesList) {
+    list.push(e);
+    if (e.kind === 'directory' && e.expanded && e.children) {
+      list.push(...getVisibleEntries(e.children));
+    }
+  }
+  return list;
+}
 
 function isDotEntry(entry: FsEntry): boolean {
   return entry.name.startsWith('.');
