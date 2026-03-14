@@ -632,6 +632,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     toggleSelection: selection.toggleSelection,
     clearSelection: selection.clearSelection,
     selectAllClipsOnTrack: selection.selectAllClipsOnTrack,
+    selectAllClips: selection.selectAllClips,
+    selectClipsRelativeToPlayhead: selection.selectClipsRelativeToPlayhead,
     getSelectedOrActiveTrackId: selection.getSelectedOrActiveTrackId,
     setTimelineZoomExact,
     seekFrames: (deltaFrames: number) => {

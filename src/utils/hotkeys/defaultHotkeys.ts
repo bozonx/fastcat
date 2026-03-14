@@ -30,6 +30,8 @@ export type HotkeyCommandId =
   | 'general.switchViewExport'
   | 'general.selectAll'
   | 'timeline.toggleSnap'
+  | 'timeline.selectClipsLeftOfPlayhead'
+  | 'timeline.selectClipsRightOfPlayhead'
   | 'timeline.trimToPlayheadLeft'
   | 'timeline.trimToPlayheadRight'
   | 'timeline.rippleTrimLeft'
@@ -130,6 +132,16 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'general.selectAll', groupId: 'general', title: 'Select all' },
 
     { id: 'timeline.toggleSnap', groupId: 'timeline', title: 'Toggle snap' },
+    {
+      id: 'timeline.selectClipsLeftOfPlayhead',
+      groupId: 'timeline',
+      title: 'Select clips left of playhead',
+    },
+    {
+      id: 'timeline.selectClipsRightOfPlayhead',
+      groupId: 'timeline',
+      title: 'Select clips right of playhead',
+    },
     {
       id: 'timeline.trimToPlayheadLeft',
       groupId: 'timeline',
@@ -280,7 +292,9 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'general.switchViewExport': ['Shift+4'],
     'general.selectAll': [`${Mod}+A`],
 
-    'timeline.toggleSnap': [`${Mod}+T`],
+    'timeline.toggleSnap': ['T'],
+    'timeline.selectClipsLeftOfPlayhead': [`${Mod}+S`],
+    'timeline.selectClipsRightOfPlayhead': [`${Mod}+D`],
     'timeline.trimToPlayheadLeft': ['V'],
     'timeline.trimToPlayheadRight': ['C'],
     'timeline.rippleTrimLeft': ['E'],

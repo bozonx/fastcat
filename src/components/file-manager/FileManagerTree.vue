@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, inject } from 'vue';
+import { ref, inject, watch } from 'vue';
 import type { ComputedRef } from 'vue';
 import {
   useDraggedFile,
@@ -11,6 +11,7 @@ import type { DraggedFileData } from '~/composables/useDraggedFile';
 import type { FsEntry } from '~/types/fs';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useUiStore } from '~/stores/ui.store';
 import FileManagerTreeRow from '~/components/file-manager/FileManagerTreeRow.vue';
 import {
   getMediaTypeFromFilename,
@@ -117,6 +118,22 @@ watch(
   () => {
     if (props.depth !== 0) return;
     const entries = getVisibleEntries(props.entries);
+    const selected = selectionStore.selectedEntity;
+    const selectedPaths =
+      selected?.source === 'fileManager'
+        ? selected.kind === 'multiple'
+          ? selected.entries.map((entry) => entry.path)
+          : [selected.entry.path]
+        : [];
+    const visiblePaths = entries.map((entry) => entry.path);
+    const isAllSelected =
+      entries.length > 0 &&
+      selectedPaths.length === visiblePaths.length &&
+      visiblePaths.every((path) => selectedPaths.includes(path));
+    if (isAllSelected) {
+      selectionStore.clearSelection();
+      return;
+    }
     selectionStore.selectFsEntries(entries);
   },
 );

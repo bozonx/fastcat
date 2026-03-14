@@ -23,6 +23,11 @@ export interface TimelineSelectionApi {
   toggleSelection: (itemId: string, options?: { multi?: boolean }) => void;
   selectTimelineItems: (itemIds: string[]) => void;
   selectAllClipsOnTrack: (trackId: string) => void;
+  selectAllClips: () => void;
+  selectClipsRelativeToPlayhead: (params: {
+    direction: 'left' | 'right';
+    trackId?: string | null;
+  }) => void;
 
   getHotkeyTargetClip: () => { trackId: string; itemId: string } | null;
   getSelectedOrActiveTrackId: () => string | null;
@@ -91,6 +96,47 @@ export function createTimelineSelection(deps: TimelineSelectionDeps): TimelineSe
     selectTimelineItems(ids);
   }
 
+  function selectAllClips() {
+    const doc = deps.timelineDoc.value;
+    if (!doc) return;
+
+    const ids = doc.tracks.flatMap((track) =>
+      track.items.filter((item) => item.kind === 'clip').map((item) => item.id),
+    );
+    selectTimelineItems(ids);
+  }
+
+  function selectClipsRelativeToPlayhead(params: {
+    direction: 'left' | 'right';
+    trackId?: string | null;
+  }) {
+    const doc = deps.timelineDoc.value;
+    if (!doc) return;
+
+    const playheadUs = deps.currentTime.value;
+    const trackIds = params.trackId ? new Set([params.trackId]) : null;
+    const items = doc.tracks.flatMap((track) => {
+      if (trackIds && !trackIds.has(track.id)) return [];
+
+      return track.items
+        .filter((item) => {
+          if (item.kind !== 'clip') return false;
+
+          const startUs = item.timelineRange.startUs;
+          const endUs = startUs + item.timelineRange.durationUs;
+
+          if (params.direction === 'left') {
+            return endUs <= playheadUs;
+          }
+
+          return startUs >= playheadUs;
+        })
+        .map((item) => item.id);
+    });
+
+    selectTimelineItems(items);
+  }
+
   function getHotkeyTargetClip(): { trackId: string; itemId: string } | null {
     const doc = deps.timelineDoc.value;
     if (!doc) return null;
@@ -142,6 +188,8 @@ export function createTimelineSelection(deps: TimelineSelectionDeps): TimelineSe
     toggleSelection,
     selectTimelineItems,
     selectAllClipsOnTrack,
+    selectAllClips,
+    selectClipsRelativeToPlayhead,
     getHotkeyTargetClip,
     getSelectedOrActiveTrackId,
   };

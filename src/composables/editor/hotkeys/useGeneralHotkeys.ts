@@ -59,6 +59,47 @@ export function useGeneralHotkeys(
     return focusStore.canUsePreviewHotkeys;
   }
 
+  function toggleTimelineSelectAll() {
+    const trackId = timelineStore.getSelectedOrActiveTrackId();
+    if (trackId) {
+      const track = timelineStore.timelineDoc?.tracks.find((item) => item.id === trackId);
+      const trackClipIds =
+        track?.items.filter((item) => item.kind === 'clip').map((item) => item.id) ?? [];
+      const selectedIds = timelineStore.selectedItemIds;
+      const isAllSelected =
+        trackClipIds.length > 0 &&
+        selectedIds.length === trackClipIds.length &&
+        trackClipIds.every((id) => selectedIds.includes(id));
+
+      if (isAllSelected) {
+        timelineStore.clearSelection();
+        timelineStore.selectTrack(null);
+        return;
+      }
+
+      timelineStore.selectAllClipsOnTrack(trackId);
+      return;
+    }
+
+    const allClipIds =
+      timelineStore.timelineDoc?.tracks.flatMap((track) =>
+        track.items.filter((item) => item.kind === 'clip').map((item) => item.id),
+      ) ?? [];
+    const selectedIds = timelineStore.selectedItemIds;
+    const isAllSelected =
+      allClipIds.length > 0 &&
+      selectedIds.length === allClipIds.length &&
+      allClipIds.every((id) => selectedIds.includes(id));
+
+    if (isAllSelected) {
+      timelineStore.clearSelection();
+      timelineStore.selectTrack(null);
+      return;
+    }
+
+    timelineStore.selectAllClips();
+  }
+
   const handlers: Partial<Record<HotkeyCommandId, (e: KeyboardEvent) => boolean>> = {
     'general.focus': () => {
       focusStore.handleFocusHotkey();
@@ -180,17 +221,14 @@ export function useGeneralHotkeys(
     },
     'general.selectAll': () => {
       if (focusStore.effectiveFocus === 'timeline') {
-        const trackId = timelineStore.getSelectedOrActiveTrackId();
-        if (trackId) {
-          timelineStore.selectAllClipsOnTrack(trackId);
-        }
+        toggleTimelineSelectAll();
         return true;
       }
       if (focusStore.effectiveFocus === 'filesBrowser') {
         uiStore.fileBrowserSelectAllTrigger++;
         return true;
       }
-      if (focusStore.effectiveFocus === 'project') {
+      if (focusStore.effectiveFocus === 'project' || focusStore.effectiveFocus === 'left') {
         uiStore.fileTreeSelectAllTrigger++;
         return true;
       }
