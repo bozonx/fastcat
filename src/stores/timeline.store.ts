@@ -16,6 +16,7 @@ import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otioS
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 
 import { createTimelinePersistence } from '~/stores/timeline/timelinePersistence';
+import { generateTimelineThumbnail } from '~/timeline/timelineThumbnail';
 import { createTimelineMarkerService } from '~/timeline/application/timelineMarkerService';
 import { createTimelineSelection } from '~/stores/timeline/timelineSelection';
 import { createTimelinePlayback } from '~/stores/timeline/timelinePlayback';
@@ -442,6 +443,14 @@ export const useTimelineStore = defineStore('timeline', () => {
     onSaveSuccess: () => {
       uiStore.notifyTimelineSave();
       void timelineMediaUsageStore.refreshUsage();
+
+      // Generate background thumbnail for nested timeline preview
+      if (currentTimelinePath.value && timelineDoc.value) {
+        void generateTimelineThumbnail({
+          timelinePath: currentTimelinePath.value,
+          timelineDoc: timelineDoc.value,
+        });
+      }
     },
   });
 

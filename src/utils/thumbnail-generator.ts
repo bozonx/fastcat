@@ -45,7 +45,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, string[]>
 
   protected get concurrencyLimit(): number {
     const workspaceStore = useWorkspaceStore();
-    return workspaceStore.userSettings.optimization.mediaTaskConcurrency;
+    return workspaceStore.userSettings?.optimization?.mediaTaskConcurrency || 2;
   }
 
   protected revokeCacheValue(urls: string[]): void {
