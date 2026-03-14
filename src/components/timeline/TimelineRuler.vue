@@ -90,11 +90,21 @@ function deleteMarker(markerId: string) {
   timelineStore.removeMarker(markerId);
 }
 
-function selectMarker(markerId: string) {
+function selectMarker(markerId: string, e?: MouseEvent) {
+  if (e && isLayer1Active(e, workspaceStore.userSettings)) {
+    executeRulerClickAction(workspaceStore.userSettings.mouse.ruler.shiftClick, e);
+    return;
+  }
+  e?.stopPropagation();
   selectionStore.selectTimelineMarker(markerId);
 }
 
-function selectSelectionRange() {
+function selectSelectionRange(e?: MouseEvent) {
+  if (e && isLayer1Active(e, workspaceStore.userSettings)) {
+    executeRulerClickAction(workspaceStore.userSettings.mouse.ruler.shiftClick, e);
+    return;
+  }
+  e?.stopPropagation();
   selectionStore.selectTimelineSelectionRange();
 }
 
@@ -383,7 +393,7 @@ function onRulerWheel(e: WheelEvent) {
                   ? 'ring-2 ring-violet-300/80'
                   : ''
               "
-              @click.stop="selectSelectionRange"
+              @click="selectSelectionRange($event)"
               @pointerdown.stop="startSelectionRangeDrag($event, 'move')"
             />
             <button
@@ -438,7 +448,7 @@ function onRulerWheel(e: WheelEvent) {
                   @dblclick.stop.prevent="selectMarker(p.id)"
                   @pointerdown.stop="onMarkerPointerDown($event, p.id)"
                   @contextmenu.stop
-                  @click.stop="selectMarker(p.id)"
+                  @click="selectMarker(p.id, $event)"
                 >
                   <svg
                     width="10"
@@ -477,7 +487,7 @@ function onRulerWheel(e: WheelEvent) {
                   @dblclick.stop.prevent="selectMarker(p.id)"
                   @pointerdown.stop="onMarkerPointerDown($event, p.id, 'right')"
                   @contextmenu.stop
-                  @click.stop="selectMarker(p.id)"
+                  @click="selectMarker(p.id, $event)"
                 >
                   <svg
                     width="10"
