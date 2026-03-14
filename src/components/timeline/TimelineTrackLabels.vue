@@ -8,6 +8,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 
 import TrackLabelItem from '~/components/timeline/TrackLabelItem.vue';
 import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
+import { useDraggedFile } from '~/composables/useDraggedFile';
 
 const { t } = useI18n();
 
@@ -25,6 +26,7 @@ const emit = defineEmits<{
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
 const settingsStore = useTimelineSettingsStore();
+const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 
 const labelsScrollContainer = ref<HTMLElement | null>(null);
 
@@ -173,6 +175,21 @@ function addTextClip() {
 function toggleClipSnapMode() {
   settingsStore.setClipSnapMode(settingsStore.clipSnapMode === 'clips' ? 'none' : 'clips');
 }
+
+function onDragVirtualStart(
+  event: DragEvent,
+  type: 'adjustment' | 'background' | 'text',
+) {
+  setDraggedFile({
+    kind: type,
+    name: t(`fastcat.timeline.${type}ClipDefaultName`, type.charAt(0).toUpperCase() + type.slice(1)),
+    path: '',
+  });
+}
+
+function onDragVirtualEnd() {
+  clearDraggedFile();
+}
 </script>
 
 <template>
@@ -182,9 +199,8 @@ function toggleClipSnapMode() {
       @toggle-snap="toggleClipSnapMode"
       @select-properties="timelineStore.selectTimelineProperties()"
       @split="timelineStore.splitClipsAtPlayhead()"
-      @add-adjustment="timelineStore.addAdjustmentClipAtPlayhead()"
-      @add-background="timelineStore.addBackgroundClipAtPlayhead()"
-      @add-text="addTextClip"
+      @drag-virtual-start="onDragVirtualStart"
+      @drag-virtual-end="onDragVirtualEnd"
     />
 
     <div

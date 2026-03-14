@@ -60,9 +60,16 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
     return timelineStore.timelineDoc?.tracks.find((track) => track.kind === kind)?.id ?? null;
   }
 
-  function getPreviewDurationUs(params: { path?: string; kind: 'file' | 'timeline' }) {
+  function getPreviewDurationUs(params: {
+    path?: string;
+    kind: 'file' | 'timeline' | 'adjustment' | 'background' | 'text' | 'shape' | 'hud';
+  }) {
     if (params.kind === 'timeline') {
       return 2_000_000;
+    }
+
+    if (params.kind !== 'file') {
+      return 5_000_000;
     }
 
     const path = params.path;
@@ -81,7 +88,7 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
 
   function resolveDropTrackId(params: {
     inputTrackId: string;
-    payloadKind: 'file' | 'timeline';
+    payloadKind: 'file' | 'timeline' | 'adjustment' | 'background' | 'text' | 'shape' | 'hud';
     path?: string;
   }) {
     const { inputTrackId, payloadKind, path } = params;
@@ -139,7 +146,7 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
 
     const targetTrackId = resolveDropTrackId({
       inputTrackId: trackId,
-      payloadKind: payload.kind === 'timeline' ? 'timeline' : 'file',
+      payloadKind: payload.kind,
       path: payload.path,
     });
 
@@ -155,7 +162,7 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
     }
 
     const durationUs = getPreviewDurationUs({
-      kind: payload.kind === 'timeline' ? 'timeline' : 'file',
+      kind: payload.kind,
       path: payload.path,
     });
     const pseudo = isLayer1Pressed(e) || timelineSettingsStore.overlapMode === 'pseudo';
@@ -256,12 +263,19 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
         const { kind, name, path } = item;
         let targetTrackId = trackId;
 
-        if (kind === 'shape' || kind === 'hud') {
+        if (
+          kind === 'shape' ||
+          kind === 'hud' ||
+          kind === 'adjustment' ||
+          kind === 'background' ||
+          (kind === 'text' && !path)
+        ) {
           targetTrackId = getCompatibleTrackId(trackId, 'video') ?? trackId;
+          const durationUs = kind === 'text' ? 5_000_000 : 5_000_000; // default for all virtual
           const nextStartUs = resolveInsertStartUs({
             trackId: targetTrackId,
             startUs: currentStartUs,
-            durationUs: 5_000_000,
+            durationUs,
             pseudo,
           });
 
@@ -269,12 +283,12 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
             trackId: targetTrackId,
             startUs: nextStartUs,
             clipType: kind,
-            name: name || (kind === 'shape' ? 'Shape' : 'HUD'),
+            name: name || kind.charAt(0).toUpperCase() + kind.slice(1),
             shapeType: kind === 'shape' ? item.type || 'square' : undefined,
             hudType: kind === 'hud' ? item.type || 'media_frame' : undefined,
             pseudo,
           });
-          currentStartUs = nextStartUs + 5_000_000;
+          currentStartUs = nextStartUs + durationUs;
           addedCount++;
         } else if (kind === 'timeline') {
           targetTrackId =
