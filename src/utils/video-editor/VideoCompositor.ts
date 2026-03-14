@@ -139,6 +139,15 @@ export class VideoCompositor {
     });
   }
 
+  private setClipSpriteVisible(clip: CompositorClip, visible: boolean) {
+    if (!clip.sprite || (clip.sprite as any).destroyed) {
+      return false;
+    }
+
+    clip.sprite.visible = visible;
+    return true;
+  }
+
   private prepareAdjustmentClips(active: CompositorClip[]) {
     if (!this.app?.renderer) return;
 
@@ -1721,15 +1730,16 @@ export class VideoCompositor {
         const shadowSamples = await Promise.all(blendShadowRequests);
         for (const { clip, sample } of shadowSamples) {
           if (!sample) {
-            clip.sprite.visible = false;
+            this.setClipSpriteVisible(clip, false);
             continue;
           }
           try {
             await this.updateClipTextureFromSample(sample, clip);
-            clip.sprite.visible = true;
-            updatedClips.push(clip);
+            if (this.setClipSpriteVisible(clip, true)) {
+              updatedClips.push(clip);
+            }
           } catch {
-            clip.sprite.visible = false;
+            this.setClipSpriteVisible(clip, false);
           } finally {
             if (typeof sample.close === 'function') {
               try {
@@ -1761,16 +1771,17 @@ export class VideoCompositor {
         const samples = await Promise.all(sampleRequests);
         for (const { clip, sample } of samples) {
           if (!sample) {
-            clip.sprite.visible = false;
+            this.setClipSpriteVisible(clip, false);
             continue;
           }
           try {
             await this.updateClipTextureFromSample(sample, clip);
-            clip.sprite.visible = true;
-            updatedClips.push(clip);
+            if (this.setClipSpriteVisible(clip, true)) {
+              updatedClips.push(clip);
+            }
           } catch (error) {
             console.error('[VideoCompositor] Failed to update clip texture', error);
-            clip.sprite.visible = false;
+            this.setClipSpriteVisible(clip, false);
           } finally {
             if (typeof sample.close === 'function') {
               try {
@@ -2522,6 +2533,9 @@ export class VideoCompositor {
       clip.transitionSprite.destroy(true);
       clip.transitionSprite = null;
     }
-    clip.sprite.destroy(true);
+    if (clip.sprite) {
+      clip.sprite.destroy(true);
+      clip.sprite = null;
+    }
   }
 }
