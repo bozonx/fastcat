@@ -47,6 +47,9 @@ export const DRAG_ACTIONS = ['pan', 'move_playhead', 'select_area', 'none'] as c
 
 export const SHIFT_CLICK_ACTIONS = RULER_CLICK_ACTIONS;
 
+/** Minimum pixel movement before a drag gesture is recognized. */
+export const DRAG_DEADZONE_PX = 3;
+
 /**
  * Helper to determine if a wheel event is primarily a horizontal scroll
  * (e.g. from a trackpad or shift+wheel).

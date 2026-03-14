@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, nextTick } from 'vue';
+import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import { useProjectStore } from '~/stores/project.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
@@ -57,6 +57,14 @@ function onWheel(e: WheelEvent) {
     e.preventDefault();
   }
 }
+
+onMounted(() => {
+  scrollContainer.value?.addEventListener('wheel', onWheel, { passive: false });
+});
+
+onBeforeUnmount(() => {
+  scrollContainer.value?.removeEventListener('wheel', onWheel);
+});
 </script>
 
 <template>
@@ -64,7 +72,6 @@ function onWheel(e: WheelEvent) {
     <div
       ref="scrollContainer"
       class="flex h-full w-full overflow-x-auto no-scrollbar items-center"
-      @wheel="onWheel"
     >
       <VueDraggable
         v-model="openPaths"
@@ -76,7 +83,7 @@ function onWheel(e: WheelEvent) {
           v-for="path in openPaths"
           :key="path"
           :data-path="path"
-          class="group relative flex items-center h-full px-4 gap-2 border-r border-ui-border cursor-pointer min-w-[120px] max-w-[220px] transition-all duration-200 border-b"
+          class="group relative flex items-center h-full px-4 gap-2 border-r border-ui-border cursor-pointer min-w-30 max-w-55 transition-all duration-200 border-b"
           :class="[
             isActive(path)
               ? 'active-tab text-primary-400 border-b-transparent'

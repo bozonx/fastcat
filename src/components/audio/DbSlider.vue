@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 
 const props = defineProps<{
   modelValue: number; // dB value
@@ -75,10 +75,9 @@ const fillColor = computed(() => {
   return 'bg-green-500';
 });
 
-const isDragging = ref(false);
 const sliderRef = ref<HTMLElement | null>(null);
 
-function updateFromMouse(event: MouseEvent) {
+function updateFromPointer(event: PointerEvent) {
   if (!sliderRef.value) return;
   const rect = sliderRef.value.getBoundingClientRect();
   const y = event.clientY - rect.top;
@@ -86,23 +85,19 @@ function updateFromMouse(event: MouseEvent) {
   emit('update:modelValue', percentToDb(percent));
 }
 
-function onMouseDown(event: MouseEvent) {
-  isDragging.value = true;
-  updateFromMouse(event);
-  window.addEventListener('mousemove', onMouseMove);
-  window.addEventListener('mouseup', onMouseUp);
+function onPointerDown(event: PointerEvent) {
+  if (event.button !== 0) return;
+  (event.currentTarget as HTMLElement | null)?.setPointerCapture(event.pointerId);
+  updateFromPointer(event);
 }
 
-function onMouseMove(event: MouseEvent) {
-  if (isDragging.value) {
-    updateFromMouse(event);
-  }
+function onPointerMove(event: PointerEvent) {
+  if (!event.buttons) return;
+  updateFromPointer(event);
 }
 
-function onMouseUp() {
-  isDragging.value = false;
-  window.removeEventListener('mousemove', onMouseMove);
-  window.removeEventListener('mouseup', onMouseUp);
+function onPointerUp(event: PointerEvent) {
+  (event.currentTarget as HTMLElement | null)?.releasePointerCapture(event.pointerId);
 }
 
 function onDoubleClick() {
@@ -117,11 +112,21 @@ function onWheel(e: WheelEvent) {
   emit('update:modelValue', nextDb);
 }
 
+const containerRef = ref<HTMLElement | null>(null);
+
+onMounted(() => {
+  containerRef.value?.addEventListener('wheel', onWheel, { passive: false });
+});
+
+onBeforeUnmount(() => {
+  containerRef.value?.removeEventListener('wheel', onWheel);
+});
+
 const ticks = [12, 6, 0, -6, -12, -24, -36, -48, -60];
 </script>
 
 <template>
-  <div class="flex h-full w-full justify-center py-2 select-none gap-1" @wheel="onWheel">
+  <div ref="containerRef" class="flex h-full w-full justify-center py-2 select-none gap-1">
     <!-- Ticks -->
     <div class="relative h-full w-6">
       <div
@@ -177,7 +182,10 @@ const ticks = [12, 6, 0, -6, -12, -24, -36, -48, -60];
     <div
       ref="sliderRef"
       class="relative w-4 h-full bg-ui-bg-muted border border-ui-border rounded-sm cursor-ns-resize"
-      @mousedown="onMouseDown"
+      @pointerdown="onPointerDown"
+      @pointermove="onPointerMove"
+      @pointerup="onPointerUp"
+      @pointercancel="onPointerUp"
       @dblclick="onDoubleClick"
     >
       <!-- Volume Set Fill -->

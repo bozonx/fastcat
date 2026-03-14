@@ -55,6 +55,7 @@ export const useProxyStore = defineStore('proxy', () => {
     generateProxiesForFolder: service.generateProxiesForFolder,
     cancelProxyGeneration: service.cancelProxyGeneration,
     deleteProxy: service.deleteProxy,
+    renameProxy: service.renameProxy,
     getProxyFileHandle: service.getProxyFileHandle,
     getProxyFile: service.getProxyFile,
   };

@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { watch, computed, ref } from 'vue';
+import { watch, computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { pxToTimeUs } from '~/utils/timeline/geometry';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { useSelectionStore } from '~/stores/selection.store';
-import { isSecondaryWheel } from '~/utils/mouse';
+import { isSecondaryWheel, DRAG_DEADZONE_PX } from '~/utils/mouse';
 import {
   truncateRulerTooltip,
   useTimelineRulerPresentation,
@@ -253,6 +253,7 @@ function onRulerPointerDown(e: PointerEvent) {
 
   if (e.button === 1) {
     middlePointerDown.value = { x: e.clientX, y: e.clientY, moved: false };
+    (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
 
     // Middle drag behavior
     handleDragAction(settings.middleDrag, e);
@@ -287,7 +288,7 @@ function onRulerPointerMove(e: PointerEvent) {
     const origin = pendingSelectAreaEvent.value;
     const dx = e.clientX - origin.clientX;
     const dy = e.clientY - origin.clientY;
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+    if (Math.abs(dx) > DRAG_DEADZONE_PX || Math.abs(dy) > DRAG_DEADZONE_PX) {
       pendingSelectAreaEvent.value = null;
       startSelectionRangeCreate(origin);
     }
@@ -297,7 +298,7 @@ function onRulerPointerMove(e: PointerEvent) {
 
   const dx = e.clientX - middlePointerDown.value.x;
   const dy = e.clientY - middlePointerDown.value.y;
-  if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+  if (Math.abs(dx) > DRAG_DEADZONE_PX || Math.abs(dy) > DRAG_DEADZONE_PX) {
     middlePointerDown.value.moved = true;
   }
 }
@@ -326,6 +327,14 @@ function onRulerWheel(e: WheelEvent) {
   e.preventDefault();
   emit('wheel', e);
 }
+
+onMounted(() => {
+  containerRef.value?.addEventListener('wheel', onRulerWheel, { passive: false });
+});
+
+onBeforeUnmount(() => {
+  containerRef.value?.removeEventListener('wheel', onRulerWheel);
+});
 </script>
 
 <template>
@@ -345,7 +354,6 @@ function onRulerWheel(e: WheelEvent) {
       @pointermove="onRulerPointerMove"
       @pointerup="onRulerPointerUp"
       @pointercancel="onRulerPointerCancel"
-      @wheel.prevent="onRulerWheel"
     >
       <canvas ref="canvasRef" class="absolute top-0 left-0 w-full h-full pointer-events-none" />
 

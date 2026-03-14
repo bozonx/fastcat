@@ -638,6 +638,7 @@ export function useFileManager() {
       cancelProxy: async (projectRelativePath) =>
         await proxyStore.cancelProxyGeneration(projectRelativePath),
       removeProxy: async (projectRelativePath) => await proxyStore.deleteProxy(projectRelativePath),
+      renameProxy: async (params) => await proxyStore.renameProxy(params),
       clearExistingProxies: () => proxyStore.existingProxies.clear(),
       clearVideoThumbnails: async ({ projectId, projectRelativePath }) => {
         await thumbnailGenerator.clearThumbnails({

@@ -17,7 +17,7 @@ export interface VideoCoreHostAPI {
   onExportWarning?(message: string): void;
 }
 
-type WorkerChannel = 'preview' | 'export';
+type WorkerChannel = 'preview' | 'export' | 'proxy';
 
 interface WorkerChannelState {
   workerInstance: Worker | null;
@@ -34,6 +34,12 @@ const channelStates: Record<WorkerChannel, WorkerChannelState> = {
     pendingCalls: new Map(),
   },
   export: {
+    workerInstance: null,
+    hostApiInstance: null,
+    callIdCounter: 0,
+    pendingCalls: new Map(),
+  },
+  proxy: {
     workerInstance: null,
     hostApiInstance: null,
     callIdCounter: 0,
@@ -244,12 +250,20 @@ export function setExportHostApi(api: VideoCoreHostAPI) {
   channelStates.export.hostApiInstance = api;
 }
 
+export function setProxyHostApi(api: VideoCoreHostAPI) {
+  channelStates.proxy.hostApiInstance = api;
+}
+
 export function terminatePreviewWorker(reason = 'Preview worker terminated') {
   terminateChannel('preview', reason);
 }
 
 export function terminateExportWorker(reason = 'Export worker terminated') {
   terminateChannel('export', reason);
+}
+
+export function terminateProxyWorker(reason = 'Proxy worker terminated') {
+  terminateChannel('proxy', reason);
 }
 
 export function restartPreviewWorker() {
@@ -262,12 +276,21 @@ export function restartExportWorker() {
   return getExportWorkerClient();
 }
 
+export function restartProxyWorker() {
+  terminateChannel('proxy', 'Proxy worker restarted');
+  return getProxyWorkerClient();
+}
+
 export function getPreviewWorkerClient(): { client: VideoCoreWorkerAPI; worker: Worker } {
   return createChannelClient('preview');
 }
 
 export function getExportWorkerClient(): { client: VideoCoreWorkerAPI; worker: Worker } {
   return createChannelClient('export');
+}
+
+export function getProxyWorkerClient(): { client: VideoCoreWorkerAPI; worker: Worker } {
+  return createChannelClient('proxy');
 }
 
 // Backward-compatible aliases (preview channel)
