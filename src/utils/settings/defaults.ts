@@ -100,89 +100,27 @@ export interface FastCatUserSettings {
   video: VideoSettings;
   mouse: {
     ruler: {
-      wheel: 'zoom_horizontal' | 'scroll_horizontal' | 'seek_frame' | 'seek_second' | 'none';
-      wheelShift: 'zoom_horizontal' | 'scroll_horizontal' | 'seek_frame' | 'seek_second' | 'none';
-      wheelSecondary:
-        | 'zoom_horizontal'
-        | 'scroll_horizontal'
-        | 'seek_frame'
-        | 'seek_second'
-        | 'none';
-      wheelSecondaryShift:
-        | 'zoom_horizontal'
-        | 'scroll_horizontal'
-        | 'seek_frame'
-        | 'seek_second'
-        | 'none';
+      wheel: string;
+      wheelShift: string;
+      wheelSecondary: string;
+      wheelSecondaryShift: string;
       middleClick: 'pan' | 'move_playhead' | 'none';
       doubleClick: 'add_marker' | 'none';
       drag: 'pan' | 'move_playhead' | 'none';
       shiftClick: 'add_marker_and_edit' | 'none';
     };
     timeline: {
-      wheel:
-        | 'scroll_vertical'
-        | 'scroll_horizontal'
-        | 'zoom_horizontal'
-        | 'zoom_vertical'
-        | 'seek_frame'
-        | 'seek_second'
-        | 'none';
-      wheelShift:
-        | 'scroll_vertical'
-        | 'scroll_horizontal'
-        | 'zoom_horizontal'
-        | 'zoom_vertical'
-        | 'seek_frame'
-        | 'seek_second'
-        | 'none';
-      wheelSecondary:
-        | 'scroll_vertical'
-        | 'scroll_horizontal'
-        | 'zoom_horizontal'
-        | 'zoom_vertical'
-        | 'seek_frame'
-        | 'seek_second'
-        | 'none';
-      wheelSecondaryShift:
-        | 'scroll_vertical'
-        | 'scroll_horizontal'
-        | 'zoom_horizontal'
-        | 'zoom_vertical'
-        | 'seek_frame'
-        | 'seek_second'
-        | 'none';
+      wheel: string;
+      wheelShift: string;
+      wheelSecondary: string;
+      wheelSecondaryShift: string;
       middleClick: 'pan' | 'none';
     };
     trackHeaders: {
-      wheel:
-        | 'scroll_vertical'
-        | 'resize_track'
-        | 'zoom_vertical'
-        | 'seek_frame'
-        | 'seek_second'
-        | 'none';
-      wheelShift:
-        | 'scroll_vertical'
-        | 'resize_track'
-        | 'zoom_vertical'
-        | 'seek_frame'
-        | 'seek_second'
-        | 'none';
-      wheelSecondary:
-        | 'scroll_vertical'
-        | 'resize_track'
-        | 'zoom_vertical'
-        | 'seek_frame'
-        | 'seek_second'
-        | 'none';
-      wheelSecondaryShift:
-        | 'scroll_vertical'
-        | 'resize_track'
-        | 'zoom_vertical'
-        | 'seek_frame'
-        | 'seek_second'
-        | 'none';
+      wheel: string;
+      wheelShift: string;
+      wheelSecondary: string;
+      wheelSecondaryShift: string;
     };
     monitor: {
       wheel: 'zoom' | 'scroll_vertical' | 'scroll_horizontal' | 'none';
@@ -265,17 +203,17 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
   },
   mouse: {
     ruler: {
-      wheel: 'zoom_horizontal',
-      wheelShift: 'scroll_horizontal',
+      wheel: 'seek_frame',
+      wheelShift: 'seek_second',
       wheelSecondary: 'scroll_horizontal',
-      wheelSecondaryShift: 'seek_frame',
+      wheelSecondaryShift: 'zoom_horizontal',
       middleClick: 'pan',
       doubleClick: 'add_marker',
       drag: 'move_playhead',
       shiftClick: 'add_marker_and_edit',
     },
     timeline: {
-      wheel: 'scroll_vertical',
+      wheel: 'zoom_horizontal',
       wheelShift: 'scroll_horizontal',
       wheelSecondary: 'scroll_horizontal',
       wheelSecondaryShift: 'zoom_vertical',
@@ -285,7 +223,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       wheel: 'scroll_vertical',
       wheelShift: 'zoom_vertical',
       wheelSecondary: 'resize_track',
-      wheelSecondaryShift: 'seek_frame',
+      wheelSecondaryShift: 'none',
     },
     monitor: {
       wheel: 'zoom',

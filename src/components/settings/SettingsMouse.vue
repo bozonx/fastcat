@@ -18,19 +18,27 @@ const workspaceStore = useWorkspaceStore();
 
 const isResetConfirmOpen = ref(false);
 
-const rulerWheelOptions = computed(() => {
-  const labels: Record<string, string> = {
-    zoom_horizontal: t('videoEditor.settings.mouseActionZoomHorizontal', 'Horizontal zoom'),
-    scroll_horizontal: t('videoEditor.settings.mouseActionScrollHorizontal', 'Horizontal scroll'),
-    seek_frame: t('videoEditor.settings.mouseActionSeekFrame', 'Seek (1 frame)'),
-    seek_second: t('videoEditor.settings.mouseActionSeekSecond', 'Seek (1 second)'),
-    none: t('videoEditor.settings.mouseActionNone', 'None'),
-  };
-  return RULER_WHEEL_ACTIONS.map((action) => ({
+const commonWheelLabels = computed(() => ({
+  scroll_vertical: t('videoEditor.settings.mouseActionScrollVertical', 'Vertical scroll'),
+  scroll_horizontal: t('videoEditor.settings.mouseActionScrollHorizontal', 'Horizontal scroll'),
+  zoom_horizontal: t('videoEditor.settings.mouseActionZoomHorizontal', 'Horizontal zoom'),
+  zoom_vertical: t('videoEditor.settings.mouseActionZoomVertical', 'Vertical zoom'),
+  seek_frame: t('videoEditor.settings.mouseActionSeekFrame', 'Seek (1 frame)'),
+  seek_second: t('videoEditor.settings.mouseActionSeekSecond', 'Seek (1 second)'),
+  none: t('videoEditor.settings.mouseActionNone', 'None'),
+  resize_track: t('videoEditor.settings.mouseActionResizeTrack', 'Resize track height'),
+  zoom: t('videoEditor.settings.mouseActionZoom', 'Zoom'),
+}));
+
+function getWheelOptions(actions: readonly string[]) {
+  const labels = commonWheelLabels.value as Record<string, string>;
+  return actions.map((action) => ({
     label: labels[action] || action,
     value: action,
   }));
-});
+}
+
+const rulerWheelOptions = computed(() => getWheelOptions(RULER_WHEEL_ACTIONS));
 
 const rulerDoubleClickOptions = computed(() => {
   const labels: Record<string, string> = {
@@ -60,49 +68,11 @@ const rulerShiftClickOptions = computed(() => {
   return SHIFT_CLICK_ACTIONS.map((action) => ({ label: labels[action] || action, value: action }));
 });
 
-const timelineWheelOptions = computed(() => {
-  const labels: Record<string, string> = {
-    scroll_vertical: t('videoEditor.settings.mouseActionScrollVertical', 'Vertical scroll'),
-    scroll_horizontal: t('videoEditor.settings.mouseActionScrollHorizontal', 'Horizontal scroll'),
-    zoom_horizontal: t('videoEditor.settings.mouseActionZoomHorizontal', 'Horizontal zoom'),
-    zoom_vertical: t('videoEditor.settings.mouseActionZoomVertical', 'Vertical zoom'),
-    seek_frame: t('videoEditor.settings.mouseActionSeekFrame', 'Seek (1 frame)'),
-    seek_second: t('videoEditor.settings.mouseActionSeekSecond', 'Seek (1 second)'),
-    none: t('videoEditor.settings.mouseActionNone', 'None'),
-  };
-  return TIMELINE_WHEEL_ACTIONS.map((action) => ({
-    label: labels[action] || action,
-    value: action,
-  }));
-});
+const timelineWheelOptions = computed(() => getWheelOptions(TIMELINE_WHEEL_ACTIONS));
 
-const trackHeadersWheelOptions = computed(() => {
-  const labels: Record<string, string> = {
-    scroll_vertical: t('videoEditor.settings.mouseActionScrollVertical', 'Vertical scroll'),
-    resize_track: t('videoEditor.settings.mouseActionResizeTrack', 'Resize track height'),
-    zoom_vertical: t('videoEditor.settings.mouseActionZoomVertical', 'Vertical zoom'),
-    seek_frame: t('videoEditor.settings.mouseActionSeekFrame', 'Seek (1 frame)'),
-    seek_second: t('videoEditor.settings.mouseActionSeekSecond', 'Seek (1 second)'),
-    none: t('videoEditor.settings.mouseActionNone', 'None'),
-  };
-  return TRACK_HEADERS_WHEEL_ACTIONS.map((action) => ({
-    label: labels[action] || action,
-    value: action,
-  }));
-});
+const trackHeadersWheelOptions = computed(() => getWheelOptions(TRACK_HEADERS_WHEEL_ACTIONS));
 
-const monitorWheelOptions = computed(() => {
-  const labels: Record<string, string> = {
-    zoom: t('videoEditor.settings.mouseActionZoom', 'Zoom'),
-    scroll_vertical: t('videoEditor.settings.mouseActionScrollVertical', 'Vertical scroll'),
-    scroll_horizontal: t('videoEditor.settings.mouseActionScrollHorizontal', 'Horizontal scroll'),
-    none: t('videoEditor.settings.mouseActionNone', 'None'),
-  };
-  return MONITOR_WHEEL_ACTIONS.map((action) => ({
-    label: labels[action] || action,
-    value: action,
-  }));
-});
+const monitorWheelOptions = computed(() => getWheelOptions(MONITOR_WHEEL_ACTIONS));
 
 const middleClickOptions = computed(() => {
   const labels: Record<string, string> = {
@@ -130,7 +100,6 @@ function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: str
     (DEFAULT_USER_SETTINGS.mouse[category] as any)[key]
   );
 }
-
 </script>
 
 <template>

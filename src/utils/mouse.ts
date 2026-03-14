@@ -1,4 +1,4 @@
-export const TIMELINE_WHEEL_ACTIONS = [
+export const COMMON_WHEEL_ACTIONS = [
   'scroll_vertical',
   'scroll_horizontal',
   'zoom_horizontal',
@@ -7,6 +7,10 @@ export const TIMELINE_WHEEL_ACTIONS = [
   'seek_second',
   'none',
 ] as const;
+
+export type CommonWheelAction = (typeof COMMON_WHEEL_ACTIONS)[number];
+
+export const TIMELINE_WHEEL_ACTIONS = COMMON_WHEEL_ACTIONS;
 
 export const MONITOR_WHEEL_ACTIONS = [
   'zoom',
@@ -15,22 +19,9 @@ export const MONITOR_WHEEL_ACTIONS = [
   'none',
 ] as const;
 
-export const TRACK_HEADERS_WHEEL_ACTIONS = [
-  'scroll_vertical',
-  'resize_track',
-  'zoom_vertical',
-  'seek_frame',
-  'seek_second',
-  'none',
-] as const;
+export const TRACK_HEADERS_WHEEL_ACTIONS = ['resize_track', ...COMMON_WHEEL_ACTIONS] as const;
 
-export const RULER_WHEEL_ACTIONS = [
-  'zoom_horizontal',
-  'scroll_horizontal',
-  'seek_frame',
-  'seek_second',
-  'none',
-] as const;
+export const RULER_WHEEL_ACTIONS = COMMON_WHEEL_ACTIONS;
 
 export const RULER_DOUBLE_CLICK_ACTIONS = ['add_marker', 'none'] as const;
 
