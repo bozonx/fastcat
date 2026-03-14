@@ -11,4 +11,5 @@ export interface FsEntry {
   remoteId?: string;
   remotePath?: string;
   remoteData?: unknown;
+  hasChildren?: boolean;
 }

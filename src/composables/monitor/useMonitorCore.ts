@@ -555,7 +555,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         }),
       );
       const audioEngineClips = audioEngineClipCandidates.filter(
-        (it): it is NonNullable<typeof it> => Boolean(it),
+        (clip): clip is NonNullable<typeof clip> => Boolean(clip),
       );
       await audioEngine.loadClips(audioEngineClips);
 

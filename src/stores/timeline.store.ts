@@ -615,11 +615,13 @@ export const useTimelineStore = defineStore('timeline', () => {
     setAudioVolume: playback.setAudioVolume,
     setTimelineZoom: playback.setTimelineZoom,
     toggleAudioMuted: playback.toggleAudioMuted,
+    setMasterMuted,
     setPlaybackGestureHandler: playback.setPlaybackGestureHandler,
     loadTimelineMetadata,
     selectTimelineItems: selection.selectTimelineItems,
     selectTrack: selection.selectTrack,
     selectTransition: selection.selectTransition,
+    toggleSelection: selection.toggleSelection,
     clearSelection: selection.clearSelection,
     setTimelineZoomExact,
   };
