@@ -346,7 +346,8 @@
       "tabs": {
         "files": "Files",
         "effects": "Effects",
-        "history": "History"
+        "history": "History",
+        "library": "Library"
       },
       "sort": {
         "name": "Name",

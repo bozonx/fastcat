@@ -85,17 +85,38 @@ const visibleEndPx = computed(() => {
   return (props.scrollLeft ?? 0) + vw + OVERSCAN_PX;
 });
 
-function isItemVisible(item: TimelineTrackItem): boolean {
-  if (visibleEndPx.value === Infinity) return true;
-  const geo = itemGeometries.value.get(item.id);
-  if (!geo) return true;
-  return geo.endPx >= visibleStartPx.value && geo.startPx <= visibleEndPx.value;
-}
+const visibleItemsByTrack = computed(() => {
+  const result: Record<string, TimelineTrackItem[]> = {};
+  const vStart = visibleStartPx.value;
+  const vEnd = visibleEndPx.value;
+  const geos = itemGeometries.value;
+
+  for (const track of props.tracks) {
+    if (vEnd === Infinity) {
+      result[track.id] = track.items;
+      continue;
+    }
+    // Optimization: Items are typically sorted by start time.
+    // We can filter out items that don't intersect the visible window.
+    result[track.id] = track.items.filter((item) => {
+      const geo = geos.get(item.id);
+      if (!geo) return true;
+      return geo.endPx >= vStart && geo.startPx <= vEnd;
+    });
+  }
+  return result;
+});
 
 function placeholderStyle(item: TimelineTrackItem): CSSProperties {
   const geo = itemGeometries.value.get(item.id);
   if (!geo) return { display: 'none' };
-  return { position: 'absolute', left: `${geo.startPx}px`, width: `${geo.widthPx}px`, top: 0, bottom: 0 };
+  return {
+    position: 'absolute',
+    left: `${geo.startPx}px`,
+    width: `${geo.widthPx}px`,
+    top: 0,
+    bottom: 0,
+  };
 }
 const { isMarqueeSelecting, marqueeStyle, startMarquee } = useTimelineMarquee(
   containerRef,
@@ -253,7 +274,13 @@ function selectTransition(
         v-if="movePreview && movePreview.trackId === track.id && movePreviewItem"
         class="opacity-60 pointer-events-none z-40!"
         :track="track"
-        :item="{ ...movePreviewItem, id: 'preview-' + movePreviewItem.id, timelineRange: { ...movePreviewItem.timelineRange, startUs: movePreview.startUs } } as any"
+        :item="
+          {
+            ...movePreviewItem,
+            id: 'preview-' + movePreviewItem.id,
+            timelineRange: { ...movePreviewItem.timelineRange, startUs: movePreview.startUs },
+          } as any
+        "
         :track-height="trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT"
         :can-edit-clip-content="false"
         :is-dragging-current-item="false"
@@ -262,46 +289,42 @@ function selectTransition(
         :resize-volume="null"
       />
 
-      <template v-for="item in track.items" :key="item.id">
-        <template v-if="isItemVisible(item)">
-          <TimelineGap
-            v-if="item.kind === 'gap'"
-            :item="item"
-            :track-id="track.id"
-            @select="(e) => emit('selectItem', e, item.id)"
-            @marquee-start="(e) => startMarquee(e, () => emit('selectItem', e, item.id))"
-          />
-          <TimelineClip
-            v-else
-            :track="track"
-            :item="item"
-            :track-height="trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT"
-            :can-edit-clip-content="canEditClipContent"
-            :is-dragging-current-item="draggingItemId === item.id"
-            :is-move-preview-current-item="movePreview?.itemId === item.id"
-            :selected-transition="selectedTransition"
-            :resize-volume="resizeVolume"
-            :scroll-left="scrollLeft"
-            :viewport-width="viewportWidth"
-            @select-item="(ev, id) => emit('selectItem', ev, id)"
-            @start-move-item="(ev, payload) => emit('startMoveItem', ev, payload)"
-            @start-trim-item="(ev, payload) => emit('startTrimItem', ev, payload)"
-            @start-resize-volume="startResizeVolume"
-            @start-resize-fade="startResizeFade"
-            @start-resize-transition="startResizeTransition"
-            @select-transition="selectTransition"
-            @clip-action="(p) => emit('clipAction', p)"
-            @open-speed-modal="
-              (p: TimelineOpenSpeedModalPayload) => openSpeedModal(track.id, p.itemId, p.speed)
-            "
-            @reset-volume="
-              (payload) =>
-                timelineStore.updateClipProperties(payload.trackId, payload.itemId, { audioGain: 1 })
-            "
-          />
-        </template>
-        <!-- Off-screen placeholder: preserves absolute positioning space without mounting heavy component -->
-        <div v-else :style="placeholderStyle(item)" />
+      <template v-for="item in visibleItemsByTrack[track.id]" :key="item.id">
+        <TimelineGap
+          v-if="item.kind === 'gap'"
+          :item="item"
+          :track-id="track.id"
+          @select="(e) => emit('selectItem', e, item.id)"
+          @marquee-start="(e) => startMarquee(e, () => emit('selectItem', e, item.id))"
+        />
+        <TimelineClip
+          v-else
+          :track="track"
+          :item="item"
+          :track-height="trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT"
+          :can-edit-clip-content="canEditClipContent"
+          :is-dragging-current-item="draggingItemId === item.id"
+          :is-move-preview-current-item="movePreview?.itemId === item.id"
+          :selected-transition="selectedTransition"
+          :resize-volume="resizeVolume"
+          :scroll-left="scrollLeft"
+          :viewport-width="viewportWidth"
+          @select-item="(ev, id) => emit('selectItem', ev, id)"
+          @start-move-item="(ev, payload) => emit('startMoveItem', ev, payload)"
+          @start-trim-item="(ev, payload) => emit('startTrimItem', ev, payload)"
+          @start-resize-volume="startResizeVolume"
+          @start-resize-fade="startResizeFade"
+          @start-resize-transition="startResizeTransition"
+          @select-transition="selectTransition"
+          @clip-action="(p) => emit('clipAction', p)"
+          @open-speed-modal="
+            (p: TimelineOpenSpeedModalPayload) => openSpeedModal(track.id, p.itemId, p.speed)
+          "
+          @reset-volume="
+            (payload) =>
+              timelineStore.updateClipProperties(payload.trackId, payload.itemId, { audioGain: 1 })
+          "
+        />
       </template>
     </div>
 

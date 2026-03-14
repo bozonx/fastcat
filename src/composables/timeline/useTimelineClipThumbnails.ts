@@ -136,6 +136,10 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
     return Math.max(naturalWidth, pxPerThumbnail.value);
   });
 
+  const sortedKeys = computed(() => {
+    return Array.from(thumbnailsBySecond.value.keys()).sort((a, b) => a - b);
+  });
+
   /**
    * Virtual thumbnail tiles: only tiles that intersect the visible viewport
    * are returned, so we never render hundreds of off-screen <img> elements.
@@ -152,6 +156,9 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
 
     const map = thumbnailsBySecond.value;
     if (map.size === 0) return [];
+
+    const keys = sortedKeys.value;
+    if (keys.length === 0) return [];
 
     // Convert viewport bounds to strip-local coordinates.
     // clipStartPx is the left edge of the clip in the timeline coordinate space.
@@ -172,25 +179,28 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
     for (let idx = firstIdx; idx <= lastIdx; idx++) {
       // Map tile index → source time key (nearest available at interval step)
       const sourceSecond = idx * intervalSeconds;
+
+      let url = map.get(sourceSecond);
+
       // Find the closest available thumbnail key that is <= sourceSecond
-      let url: string | undefined;
-      let bestKey = -1;
-      for (const [key, u] of map) {
-        if (key <= sourceSecond && key > bestKey) {
-          bestKey = key;
-          url = u;
-        }
-      }
-      // Fall back to the very first thumbnail if nothing found before this index
-      if (!url) {
-        let minKey = Infinity;
-        for (const [key, u] of map) {
-          if (key < minKey) {
-            minKey = key;
-            url = u;
+      if (!url && keys.length > 0) {
+        let low = 0;
+        let high = keys.length - 1;
+        let bestKey = keys[0] as number; // fallback to the minimum key
+
+        while (low <= high) {
+          const mid = (low + high) >> 1;
+          const midKey = keys[mid];
+          if (midKey !== undefined && midKey <= sourceSecond) {
+            bestKey = midKey;
+            low = mid + 1;
+          } else {
+            high = mid - 1;
           }
         }
+        url = map.get(bestKey);
       }
+
       if (!url) continue;
 
       tiles.push({

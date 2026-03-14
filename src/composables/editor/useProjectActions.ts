@@ -11,6 +11,7 @@ export function useProjectActions() {
   const uiStore = useUiStore();
   const focusStore = useFocusStore();
   const toast = useToast();
+  const router = useRouter();
 
   async function resetProjectState() {
     timelineStore.resetTimelineState();
@@ -19,7 +20,6 @@ export function useProjectActions() {
   }
 
   async function leaveProject(redirectPath: string = '/') {
-    const router = useRouter();
     try {
       // Сначала сбрасываем состояние
       await resetProjectState();

@@ -86,7 +86,9 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, string[]>
         try {
           const fileHandle = await hashDir.getFileHandle(fileName);
           const file = await fileHandle.getFile();
-          const url = URL.createObjectURL(file);
+          const buffer = await file.arrayBuffer();
+          const blob = new Blob([buffer], { type: file.type });
+          const url = URL.createObjectURL(blob);
           urls.push(url);
           framesProcessed++;
           if (!this.isCancelled(task.id)) {
@@ -257,8 +259,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, string[]>
             await writable.write(blob);
             await writable.close();
 
-            const savedFile = await fileHandle.getFile();
-            const thumbUrl = URL.createObjectURL(savedFile);
+            const thumbUrl = URL.createObjectURL(blob);
 
             const urls = this.cache.get(task.id) ?? [];
             urls.push(thumbUrl);
