@@ -39,9 +39,14 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
   const STORE_TIME_SYNC_MS = 100;
   const AUDIO_LEVELS_SYNC_MS = 120; // Avoid excessive store churn (can stress DevTools)
   const PLAYBACK_SEEK_EPSILON_US = 25_000;
+  const SCRUB_PREVIEW_MIN_DELTA_US = 1_000;
+  const SCRUB_PREVIEW_MAX_DELTA_US = 250_000;
+  const SCRUB_PREVIEW_THROTTLE_MS = 35;
+  const SCRUB_PREVIEW_DURATION_US = 75_000;
 
   let playbackLoopId = 0;
   let lastFrameTimeMs = 0;
+  let lastScrubPreviewAtMs = 0;
   let localCurrentTimeUs = 0;
   const uiCurrentTimeUs = ref(0);
   let renderAccumulatorMs = 0;
@@ -106,6 +111,25 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
     localCurrentTimeUs = clampToTimeline(currentTime.value);
     uiCurrentTimeUs.value = localCurrentTimeUs;
     updateTimecodeUi(localCurrentTimeUs);
+  }
+
+  function canPlayScrubPreview(fromUs: number, toUs: number) {
+    if (isUnmounted || isPlaying.value || isLoading.value || loadError.value) {
+      return false;
+    }
+
+    const deltaUs = toUs - fromUs;
+    if (deltaUs < SCRUB_PREVIEW_MIN_DELTA_US || deltaUs > SCRUB_PREVIEW_MAX_DELTA_US) {
+      return false;
+    }
+
+    const now = performance.now();
+    if (now - lastScrubPreviewAtMs < SCRUB_PREVIEW_THROTTLE_MS) {
+      return false;
+    }
+
+    lastScrubPreviewAtMs = now;
+    return true;
   }
 
   function updatePlayback(timestamp: number) {
@@ -239,6 +263,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
           updatePlayback(ts);
         });
       } else {
+        audioEngine.stopScrubPreview();
         audioEngine.stop();
         cancelAnimationFrame(playbackLoopId);
         uiCurrentTimeUs.value = clampToTimeline(localCurrentTimeUs);
@@ -269,9 +294,23 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
         return;
       }
       if (!isPlaying.value) {
+        const previousTimeUs = localCurrentTimeUs;
         localCurrentTimeUs = normalizedTimeUs;
         uiCurrentTimeUs.value = normalizedTimeUs;
         updateTimecodeUi(normalizedTimeUs);
+
+        if (normalizedTimeUs > previousTimeUs) {
+          if (canPlayScrubPreview(previousTimeUs, normalizedTimeUs)) {
+            void audioEngine.previewScrubForward(
+              previousTimeUs,
+              normalizedTimeUs,
+              SCRUB_PREVIEW_DURATION_US,
+            );
+          }
+        } else {
+          audioEngine.stopScrubPreview();
+        }
+
         scheduleRender(normalizedTimeUs);
       } else {
         // Ignore tiny store updates produced by the local playback loop itself.
@@ -311,6 +350,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
 
   onBeforeUnmount(() => {
     isUnmounted = true;
+    audioEngine.stopScrubPreview();
     cancelAnimationFrame(playbackLoopId);
     timecodeEl = null;
 
