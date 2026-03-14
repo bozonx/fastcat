@@ -9,11 +9,33 @@ export function useTimelineHotkeys() {
   const settingsStore = useTimelineSettingsStore();
   const focusStore = useFocusStore();
 
+  function getTargetTrackId() {
+    return timelineStore.getSelectedOrActiveTrackId();
+  }
+
   const handlers: Partial<Record<HotkeyCommandId, (e: KeyboardEvent) => boolean>> = {
     'timeline.toggleSnap': () => {
       if (!focusStore.canUseTimelineHotkeys) return false;
       const next = settingsStore.clipSnapMode === 'none' ? 'clips' : 'none';
       settingsStore.setClipSnapMode(next);
+      return true;
+    },
+
+    'timeline.selectClipsLeftOfPlayhead': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      timelineStore.selectClipsRelativeToPlayhead({
+        direction: 'left',
+        trackId: getTargetTrackId(),
+      });
+      return true;
+    },
+
+    'timeline.selectClipsRightOfPlayhead': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      timelineStore.selectClipsRelativeToPlayhead({
+        direction: 'right',
+        trackId: getTargetTrackId(),
+      });
       return true;
     },
 

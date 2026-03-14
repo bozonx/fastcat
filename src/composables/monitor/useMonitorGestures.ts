@@ -25,6 +25,7 @@ export function useMonitorGestures(input: {
   const isPanning = ref(false);
   const panStart = ref({ x: 0, y: 0 });
   const panOrigin = ref({ x: 0, y: 0 });
+  const middlePointerDown = ref<{ x: number; y: number; moved: boolean } | null>(null);
 
   const panX = computed({
     get: () => input.projectStore.projectSettings.monitor?.panX ?? 0,
@@ -107,6 +108,8 @@ export function useMonitorGestures(input: {
     const settings = workspaceStore.userSettings.mouse.monitor;
 
     if (event.button === 1) {
+      middlePointerDown.value = { x: event.clientX, y: event.clientY, moved: false };
+
       if (settings.middleDrag === 'pan') {
         isPanning.value = true;
         panStart.value = { x: event.clientX, y: event.clientY };
@@ -120,6 +123,14 @@ export function useMonitorGestures(input: {
 
   function onViewportAuxClick(event: MouseEvent) {
     if (event.button !== 1) return;
+
+    if (middlePointerDown.value?.moved) {
+      middlePointerDown.value = null;
+      return;
+    }
+
+    middlePointerDown.value = null;
+
     const settings = workspaceStore.userSettings.mouse.monitor;
     const action = settings.middleClick;
 
@@ -131,6 +142,14 @@ export function useMonitorGestures(input: {
   }
 
   function onViewportPointerMove(event: PointerEvent) {
+    if (middlePointerDown.value) {
+      const dx = event.clientX - middlePointerDown.value.x;
+      const dy = event.clientY - middlePointerDown.value.y;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+        middlePointerDown.value.moved = true;
+      }
+    }
+
     if (!isPanning.value) return;
     const dx = event.clientX - panStart.value.x;
     const dy = event.clientY - panStart.value.y;
@@ -148,10 +167,16 @@ export function useMonitorGestures(input: {
         // ignore
       }
     }
+
+    if (!middlePointerDown.value?.moved) return;
+    middlePointerDown.value = null;
   }
 
   function onWindowPointerUp() {
     isPanning.value = false;
+    if (middlePointerDown.value?.moved) {
+      middlePointerDown.value = null;
+    }
   }
 
   function applyZoomAtPoint(params: { delta: number; clientX: number; clientY: number }) {

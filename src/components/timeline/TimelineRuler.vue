@@ -36,6 +36,8 @@ const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
 const workspaceStore = useWorkspaceStore();
 
+const middlePointerDown = ref<{ x: number; y: number; moved: boolean } | null>(null);
+
 const rulerSettings = computed(() => workspaceStore.userSettings.mouse.ruler);
 
 const width = ref(0);
@@ -183,6 +185,12 @@ function onRulerDblClick(e: MouseEvent) {
 // Middle click
 function onRulerAuxClick(e: MouseEvent) {
   if (e.button === 1) {
+    if (middlePointerDown.value?.moved) {
+      middlePointerDown.value = null;
+      return;
+    }
+
+    middlePointerDown.value = null;
     const settings = rulerSettings.value;
     executeRulerClickAction(settings.middleClick, e);
   }
@@ -208,6 +216,7 @@ function executeRulerClickAction(action: string, e: PointerEvent | MouseEvent) {
 
   if (action === 'clear_selection') {
     timelineStore.clearSelection();
+    selectionStore.clearSelection();
     return;
   }
 
@@ -231,6 +240,8 @@ function onRulerPointerDown(e: PointerEvent) {
   const settings = rulerSettings.value;
 
   if (e.button === 1) {
+    middlePointerDown.value = { x: e.clientX, y: e.clientY, moved: false };
+
     // Middle drag behavior
     handleDragAction(settings.middleDrag, e);
     return;
@@ -257,6 +268,25 @@ function handleDragAction(action: string, e: PointerEvent) {
   } else if (action === 'none') {
     emit('pointerdown', e);
   }
+}
+
+function onRulerPointerMove(e: PointerEvent) {
+  if (!middlePointerDown.value) return;
+
+  const dx = e.clientX - middlePointerDown.value.x;
+  const dy = e.clientY - middlePointerDown.value.y;
+  if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+    middlePointerDown.value.moved = true;
+  }
+}
+
+function onRulerPointerUp() {
+  if (!middlePointerDown.value?.moved) return;
+  middlePointerDown.value = null;
+}
+
+function onRulerPointerCancel() {
+  middlePointerDown.value = null;
 }
 
 function onRulerWheel(e: WheelEvent) {
@@ -288,6 +318,9 @@ function onRulerWheel(e: WheelEvent) {
       @dblclick="onRulerDblClick"
       @auxclick="onRulerAuxClick"
       @pointerdown="onRulerPointerDown"
+      @pointermove="onRulerPointerMove"
+      @pointerup="onRulerPointerUp"
+      @pointercancel="onRulerPointerCancel"
       @wheel.prevent="onRulerWheel"
     >
       <canvas ref="canvasRef" class="absolute top-0 left-0 w-full h-full pointer-events-none" />

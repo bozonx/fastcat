@@ -252,7 +252,7 @@
       "mouseTimelineShiftClick": "Shift + Клик",
       "mouseMonitorWheel": "Колесо",
       "mouseMonitorWheelShift": "Колесо + Shift",
-      "mouseMonitorMiddleClick": "Перетаскивание средней кнопкой мыши",
+      "mouseMonitorMiddleClick": "Одинарный клик средней кнопкой мыши",
       "mouseActionZoomHorizontal": "Горизонтальный зум",
       "mouseActionScrollHorizontal": "Горизонтальная прокрутка",
       "mouseActionScrollVertical": "Вертикальная прокрутка",

@@ -442,6 +442,22 @@ watch(
   () => {
     if (isRemoteMode.value) return;
     const entries = sortedEntries.value;
+    const selected = selectionStore.selectedEntity;
+    const selectedPaths =
+      selected?.source === 'fileManager'
+        ? selected.kind === 'multiple'
+          ? selected.entries.map((entry) => entry.path)
+          : [selected.entry.path]
+        : [];
+    const visiblePaths = entries.map((entry) => entry.path);
+    const isAllSelected =
+      entries.length > 0 &&
+      selectedPaths.length === visiblePaths.length &&
+      visiblePaths.every((path) => selectedPaths.includes(path));
+    if (isAllSelected) {
+      selectionStore.clearSelection();
+      return;
+    }
     selectionStore.selectFsEntries(entries);
   },
 );

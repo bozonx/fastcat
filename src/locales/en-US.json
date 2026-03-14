@@ -252,7 +252,7 @@
       "mouseTimelineShiftClick": "Shift + Click",
       "mouseMonitorWheel": "Wheel",
       "mouseMonitorWheelShift": "Wheel + Shift",
-      "mouseMonitorMiddleClick": "Middle Mouse Button Drag",
+      "mouseMonitorMiddleClick": "Middle Mouse Button Click",
       "mouseActionZoomHorizontal": "Horizontal Zoom",
       "mouseActionScrollHorizontal": "Horizontal Scroll",
       "mouseActionScrollVertical": "Vertical Scroll",
