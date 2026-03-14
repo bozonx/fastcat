@@ -12,4 +12,5 @@ export interface FsEntry {
   remotePath?: string;
   remoteData?: unknown;
   hasChildren?: boolean;
+  hasDirectories?: boolean;
 }

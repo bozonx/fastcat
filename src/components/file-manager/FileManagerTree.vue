@@ -189,7 +189,9 @@ function getEntryViewModel(entry: FsEntry): EntryViewModel {
 
   const showChevron =
     entry.kind === 'directory' &&
-    entry.hasChildren !== false &&
+    (props.foldersOnly
+      ? entry.hasDirectories !== false
+      : entry.hasChildren !== false) &&
     (!props.foldersOnly || !entry.children || entry.children.some((c) => c.kind === 'directory'));
 
   return { selected, isDot, isCommonRoot, iconClass, nameClass, meta, showChevron };
