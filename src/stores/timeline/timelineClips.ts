@@ -170,10 +170,15 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
         | 'audioBalance'
         | 'audioFadeInUs'
         | 'audioFadeOutUs'
+        | 'audioFadeInCurve'
+        | 'audioFadeOutCurve'
         | 'audioMuted'
         | 'audioWaveformMode'
         | 'showWaveform'
         | 'showThumbnails'
+        | 'linkedVideoClipId'
+        | 'lockToLinkedVideo'
+        | 'linkedGroupId'
       >
     > & {
       backgroundColor?: string;
@@ -189,12 +194,39 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
       content?: import('~/timeline/types').HudMediaParams;
     },
   ) {
+    const validatedProperties = { ...properties };
+
+    if (typeof validatedProperties.opacity === 'number') {
+      validatedProperties.opacity = Math.max(0, Math.min(1, validatedProperties.opacity));
+    }
+
+    if (typeof validatedProperties.audioGain === 'number') {
+      validatedProperties.audioGain = Math.max(
+        0,
+        Math.min(CLIP_AUDIO_GAIN_MAX, validatedProperties.audioGain),
+      );
+    }
+
+    if (typeof validatedProperties.audioBalance === 'number') {
+      validatedProperties.audioBalance = Math.max(
+        -1,
+        Math.min(1, validatedProperties.audioBalance),
+      );
+    }
+
+    if (validatedProperties.blendMode) {
+      const validBlendModes = ['normal', 'add', 'multiply', 'screen', 'darken', 'lighten'];
+      if (!validBlendModes.includes(validatedProperties.blendMode as string)) {
+        validatedProperties.blendMode = 'normal';
+      }
+    }
+
     deps.applyTimeline(
       {
         type: 'update_clip_properties',
         trackId,
         itemId,
-        properties,
+        properties: validatedProperties,
       },
       { historyMode: 'debounced' },
     );

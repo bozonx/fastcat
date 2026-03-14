@@ -5,14 +5,16 @@ import type {
   TimelineTrack,
   TimelineDocument,
 } from '~/timeline/types';
+import type { TimelineCommand } from '~/timeline/commands';
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
 import type { FsEntry } from '~/types/fs';
 
 interface TimelineStoreActions {
   timelineDoc: TimelineDocument | null;
   selectedItemIds: string[];
-  applyTimeline: (...args: unknown[]) => void | Promise<void>;
-  batchApplyTimeline: (...args: unknown[]) => void | Promise<void>;
+  fps: number;
+  applyTimeline: (cmd: TimelineCommand, options?: any) => void | Promise<void>;
+  batchApplyTimeline: (cmds: TimelineCommand[], options?: any) => void | Promise<void>;
   updateClipProperties: (
     trackId: string,
     itemId: string,
@@ -86,8 +88,8 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
   const isFreePosition = computed(() => {
     const doc = timelineStore.timelineDoc;
     if (!doc) return false;
-    const fps = doc.timebase?.fps ?? 30; // sanitizeFps logic inline
-    const safeFps = typeof fps === 'number' && fps > 0 ? fps : 30;
+    const safeFps =
+      typeof timelineStore.fps === 'number' && timelineStore.fps > 0 ? timelineStore.fps : 30;
 
     const startFrame = (options.clip.value.timelineRange.startUs * safeFps) / 1_000_000;
     const durFrame = (options.clip.value.timelineRange.durationUs * safeFps) / 1_000_000;
@@ -165,7 +167,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
             String((it as TimelineClipItem).linkedVideoClipId) === options.clip.value.id,
         )
         .map((a: TimelineClipItem) => ({
-          type: 'update_clip_properties',
+          type: 'update_clip_properties' as const,
           trackId: a.trackId,
           itemId: a.id,
           properties: {
@@ -251,7 +253,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     const path = clip.source.path;
     const parentPath = path.split('/').slice(0, -1).join('/');
 
-    if (projectStore.currentView === 'cut' || projectStore.currentView === 'sound') {
+    if (projectStore.currentView && projectStore.currentView !== 'files') {
       setActiveTab('files');
     } else {
       editorViewStore.goToFiles();

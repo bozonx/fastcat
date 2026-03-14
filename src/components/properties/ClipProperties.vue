@@ -277,13 +277,7 @@ watch(
   () => uiStore.scrollToEffectsTrigger,
   () => {
     if (!effectsSectionRef.value) return;
-    const container = effectsSectionRef.value.closest('.overflow-auto');
-    if (container) {
-      container.scrollTo({
-        top: effectsSectionRef.value.offsetTop - 10,
-        behavior: 'smooth',
-      });
-    }
+    effectsSectionRef.value.scrollIntoView({ behavior: 'smooth', block: 'start' });
   },
 );
 
@@ -340,8 +334,8 @@ defineExpose({
 
     <ClipTransitionsSection
       :is-video-track="isVideoTrack"
-      :transition-in="(clip as any).transitionIn ?? null"
-      :transition-out="(clip as any).transitionOut ?? null"
+      :transition-in="clip.transitionIn ?? null"
+      :transition-out="clip.transitionOut ?? null"
       :clip-duration-us="clip.timelineRange.durationUs"
       @select-edge="selectTransitionEdge"
       @toggle="toggleTransition"
