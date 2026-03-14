@@ -7,6 +7,8 @@ import {
   ensureBaseThumbnailDir,
   hashString,
 } from './base-thumbnail-generator';
+import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
+import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 
 export interface ThumbnailTask extends BaseThumbnailTask {
   duration: number; // video duration in seconds
@@ -122,203 +124,91 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, string[]>
 
   protected async executeTask(task: ThumbnailTask): Promise<void> {
     const isLoaded = await this.loadThumbnailsFromOPFS(task);
-    if (isLoaded) {
-      return Promise.resolve();
+    if (isLoaded) return;
+
+    if (this.isCancelled(task.id)) return;
+
+    const workspaceStore = useWorkspaceStore();
+    const projectStore = useProjectStore();
+
+    if (!workspaceStore.workspaceHandle) {
+      throw new Error('Workspace is not opened');
     }
 
-    if (this.isCancelled(task.id)) {
-      return Promise.resolve();
+    const file = await projectStore.getFileByPath(task.projectRelativePath);
+    if (!file) throw new Error(`Source file not found: ${task.projectRelativePath}`);
+
+    const timesS: number[] = [];
+    for (let t = 0; t <= task.duration; t += TIMELINE_CLIP_THUMBNAILS.INTERVAL_SECONDS) {
+      timesS.push(t);
     }
 
-    return new Promise((resolve, reject) => {
-      const workspaceStore = useWorkspaceStore();
-      const projectStore = useProjectStore();
+    if (timesS.length === 0) return;
 
-      if (!workspaceStore.workspaceHandle) {
-        reject(new Error('Workspace is not opened'));
-        return;
-      }
+    const totalFrames = timesS.length;
 
-      const video = document.createElement('video');
-      video.muted = true;
-      video.crossOrigin = 'anonymous';
+    setExportHostApi(
+      createVideoCoreHostApi({
+        getCurrentProjectId: () => projectStore.currentProjectId,
+        getWorkspaceHandle: () => workspaceStore.workspaceHandle,
+        getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
+        getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
+        getFileByPath: async (path) => projectStore.getFileByPath(path),
+        onExportProgress: () => {},
+      }),
+    );
 
-      const canvas = document.createElement('canvas');
-      canvas.width = TIMELINE_CLIP_THUMBNAILS.WIDTH;
-      canvas.height = TIMELINE_CLIP_THUMBNAILS.HEIGHT;
-      const ctx = canvas.getContext('2d');
+    const { client } = getExportWorkerClient();
 
-      if (!ctx) {
-        reject(new Error('Failed to get 2d context'));
-        return;
-      }
-
-      let currentTime = 0;
-      const totalFrames = Math.ceil(task.duration / TIMELINE_CLIP_THUMBNAILS.INTERVAL_SECONDS);
-      let framesProcessed = 0;
-
-      let sourceObjectUrl: string | null = null;
-      let nextFrameTimer: number | null = null;
-
-      let seekedHandler: ((...args: any[]) => void) | null = null;
-      let errorHandler: ((...args: any[]) => void) | null = null;
-      let loadedDataHandler: ((...args: any[]) => void) | null = null;
-
-      const cleanup = (options?: { revokeSource?: boolean }) => {
-        if (nextFrameTimer !== null) {
-          clearTimeout(nextFrameTimer);
-          nextFrameTimer = null;
-        }
-
-        if (seekedHandler) {
-          video.removeEventListener('seeked', seekedHandler);
-          seekedHandler = null;
-        }
-        if (errorHandler) {
-          video.removeEventListener('error', errorHandler);
-          errorHandler = null;
-        }
-        if (loadedDataHandler) {
-          video.removeEventListener('loadeddata', loadedDataHandler);
-          loadedDataHandler = null;
-        }
-
-        try {
-          video.pause();
-        } catch {
-          // ignore
-        }
-
-        try {
-          video.removeAttribute('src');
-          video.load();
-        } catch {
-          // ignore
-        }
-
-        if (options?.revokeSource !== false && sourceObjectUrl) {
-          try {
-            URL.revokeObjectURL(sourceObjectUrl);
-          } catch {
-            // ignore
-          }
-          sourceObjectUrl = null;
-        }
-      };
-
-      const ensureTargetDir = async () => {
-        return await ensureTimelineThumbnailDir({
-          projectId: task.projectId,
-          workspaceStore,
-          hash: task.id,
-          create: true,
-        });
-      };
-
-      const ensureSourceUrl = async () => {
-        const file = await projectStore.getFileByPath(task.projectRelativePath);
-        if (!file) throw new Error(`Source file not found: ${task.projectRelativePath}`);
-        sourceObjectUrl = URL.createObjectURL(file);
-        video.src = sourceObjectUrl;
-      };
-
-      const processNextFrame = async () => {
-        if (this.isCancelled(task.id)) {
-          cleanup();
-          resolve();
-          return;
-        }
-        if (currentTime > task.duration) {
-          task.onComplete?.();
-          cleanup();
-          resolve();
-          return;
-        }
-
-        video.currentTime = currentTime;
-      };
-
-      seekedHandler = async () => {
-        if (this.isCancelled(task.id)) {
-          cleanup();
-          resolve();
-          return;
-        }
-        try {
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-          const blob = await new Promise<Blob | null>((res) => {
-            canvas.toBlob(res, 'image/webp', TIMELINE_CLIP_THUMBNAILS.QUALITY);
-          });
-
-          if (blob) {
-            const dir = await ensureTargetDir();
-            const fileName = `${Math.round(currentTime)}.webp`;
-            const fileHandle = await dir.getFileHandle(fileName, { create: true });
-            const writable = await (fileHandle as any).createWritable();
-            await writable.write(blob);
-            await writable.close();
-
-            const thumbUrl = URL.createObjectURL(blob);
-
-            const urls = this.cache.get(task.id) ?? [];
-            urls.push(thumbUrl);
-            this.cache.set(task.id, urls);
-            this.touchCacheEntry(task.id);
-            this.evictCacheIfNeeded();
-
-            framesProcessed++;
-            if (!this.isCancelled(task.id)) {
-              task.onProgress?.(framesProcessed / totalFrames, thumbUrl, currentTime);
-            }
-          }
-        } catch (e) {
-          console.error('Error extracting frame', e);
-        }
-
-        currentTime += TIMELINE_CLIP_THUMBNAILS.INTERVAL_SECONDS;
-
-        // Yield to main thread to prevent UI freezing
-        nextFrameTimer = window.setTimeout(() => {
-          nextFrameTimer = null;
-          void processNextFrame();
-        }, 50);
-      };
-
-      errorHandler = (e: unknown) => {
-        if (!this.isCancelled(task.id)) {
-          task.onError?.(new Error('Video error'));
-        }
-        cleanup();
-        reject(e);
-      };
-
-      loadedDataHandler = () => {
-        void processNextFrame();
-      };
-
-      if (seekedHandler) video.addEventListener('seeked', seekedHandler);
-      if (errorHandler) video.addEventListener('error', errorHandler);
-
-      (async () => {
-        try {
-          await ensureSourceUrl();
-          if (this.isCancelled(task.id)) {
-            cleanup();
-            resolve();
-            return;
-          }
-          if (loadedDataHandler) video.addEventListener('loadeddata', loadedDataHandler);
-          video.load();
-        } catch (e: any) {
-          if (!this.isCancelled(task.id)) {
-            task.onError?.(e instanceof Error ? e : new Error(String(e)));
-          }
-          cleanup();
-          reject(e);
-        }
-      })();
+    const blobs = await client.extractVideoFrameBlobs(file, {
+      timesS,
+      maxWidth: TIMELINE_CLIP_THUMBNAILS.WIDTH,
+      maxHeight: TIMELINE_CLIP_THUMBNAILS.HEIGHT,
+      quality: TIMELINE_CLIP_THUMBNAILS.QUALITY,
+      mimeType: 'image/webp',
     });
+
+    if (this.isCancelled(task.id)) return;
+
+    const dir = await ensureTimelineThumbnailDir({
+      projectId: task.projectId,
+      workspaceStore,
+      hash: task.id,
+      create: true,
+    });
+
+    let framesProcessed = 0;
+    for (let i = 0; i < timesS.length; i++) {
+      if (this.isCancelled(task.id)) return;
+
+      const blob = blobs[i];
+      const currentTime = timesS[i]!;
+
+      if (!blob) continue;
+
+      const fileName = `${Math.round(currentTime)}.webp`;
+      const fileHandle = await dir.getFileHandle(fileName, { create: true });
+      const writable = await (fileHandle as any).createWritable();
+      await writable.write(blob);
+      await writable.close();
+
+      const thumbUrl = URL.createObjectURL(blob);
+
+      const urls = this.cache.get(task.id) ?? [];
+      urls.push(thumbUrl);
+      this.cache.set(task.id, urls);
+      this.touchCacheEntry(task.id);
+      this.evictCacheIfNeeded();
+
+      framesProcessed++;
+      if (!this.isCancelled(task.id)) {
+        task.onProgress?.(framesProcessed / totalFrames, thumbUrl, currentTime);
+      }
+    }
+
+    if (!this.isCancelled(task.id)) {
+      task.onComplete?.();
+    }
   }
 
   async clearThumbnails(input: { projectId: string; hash: string }) {

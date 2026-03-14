@@ -200,6 +200,156 @@ const api: any = {
     }
   },
 
+  async extractVideoFrameBlobs(
+    file: File,
+    options: {
+      timesS: number[];
+      maxWidth: number;
+      maxHeight: number;
+      quality: number;
+      mimeType: string;
+    },
+  ): Promise<(Blob | null)[]> {
+    const { Input, BlobSource, VideoSampleSink, ALL_FORMATS } = await import('mediabunny');
+
+    const source = new BlobSource(file);
+    const input = new Input({ source, formats: ALL_FORMATS } as any);
+
+    try {
+      const track = await input.getPrimaryVideoTrack();
+
+      if (!track || !(await track.canDecode())) {
+        return options.timesS.map(() => null);
+      }
+
+      const firstTimestampS: number =
+        typeof (track as any).getFirstTimestamp === 'function'
+          ? await (track as any).getFirstTimestamp()
+          : 0;
+
+      const sink = new VideoSampleSink(track);
+
+      try {
+        const results: (Blob | null)[] = [];
+
+        for (const targetS of options.timesS) {
+          const safeTimeS = Math.max(firstTimestampS, targetS);
+
+          let sample: any = null;
+          try {
+            sample = await (sink as any).getSample(safeTimeS);
+            if (!sample && firstTimestampS > 0) {
+              sample = await (sink as any).getSample(firstTimestampS);
+            }
+            if (!sample && safeTimeS !== 0) {
+              sample = await (sink as any).getSample(1e-6);
+            }
+          } catch {
+            results.push(null);
+            continue;
+          }
+
+          if (!sample) {
+            results.push(null);
+            continue;
+          }
+
+          let blob: Blob | null = null;
+          try {
+            const isVideoFrame = typeof VideoFrame !== 'undefined' && sample instanceof VideoFrame;
+
+            const imageSource: CanvasImageSource | null = isVideoFrame
+              ? (sample as VideoFrame)
+              : typeof (sample as any).toCanvasImageSource === 'function'
+                ? (sample as any).toCanvasImageSource()
+                : null;
+
+            if (!imageSource) {
+              results.push(null);
+              continue;
+            }
+
+            const rawW: number = isVideoFrame
+              ? (sample as VideoFrame).displayWidth
+              : ((imageSource as any).displayWidth ?? (imageSource as any).width ?? 0);
+            const rawH: number = isVideoFrame
+              ? (sample as VideoFrame).displayHeight
+              : ((imageSource as any).displayHeight ?? (imageSource as any).height ?? 0);
+
+            if (!rawW || !rawH) {
+              results.push(null);
+              continue;
+            }
+
+            let targetW = rawW;
+            let targetH = rawH;
+            if (targetW > options.maxWidth || targetH > options.maxHeight) {
+              const scaleW = options.maxWidth / targetW;
+              const scaleH = options.maxHeight / targetH;
+              const scale = Math.min(scaleW, scaleH);
+              targetW = Math.round(targetW * scale);
+              targetH = Math.round(targetH * scale);
+            }
+
+            const canvas = new OffscreenCanvas(targetW, targetH);
+            const ctx = canvas.getContext('2d') as OffscreenCanvasRenderingContext2D | null;
+
+            if (!ctx) {
+              results.push(null);
+              continue;
+            }
+
+            ctx.drawImage(imageSource, 0, 0, targetW, targetH);
+            blob = await canvas.convertToBlob({
+              type: options.mimeType,
+              quality: options.quality,
+            });
+          } finally {
+            if (typeof sample.close === 'function') {
+              try {
+                sample.close();
+              } catch {
+                // ignore
+              }
+            }
+          }
+
+          results.push(blob);
+        }
+
+        return results;
+      } finally {
+        if (typeof (sink as any).close === 'function') {
+          try {
+            (sink as any).close();
+          } catch {
+            // ignore
+          }
+        } else if (typeof (sink as any).dispose === 'function') {
+          try {
+            (sink as any).dispose();
+          } catch {
+            // ignore
+          }
+        }
+      }
+    } finally {
+      if (typeof (input as any).dispose === 'function') {
+        try {
+          (input as any).dispose();
+        } catch {
+          // ignore
+        }
+      } else if (typeof (input as any).close === 'function') {
+        try {
+          (input as any).close();
+        } catch {
+          // ignore
+        }
+      }
+    }
+  },
+
   async extractAudio(sourcePath: string, targetPath: string) {
     cancelExportRequested = false;
     await extractAudioStream(

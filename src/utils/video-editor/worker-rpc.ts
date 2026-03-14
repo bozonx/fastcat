@@ -49,6 +49,17 @@ export interface VideoCoreWorkerAPI {
   ): Promise<Blob | null>;
 
   extractAudio(sourcePath: string, targetPath: string, taskId?: string): Promise<void>;
+
+  extractVideoFrameBlobs(
+    file: File,
+    options: {
+      timesS: number[];
+      maxWidth: number;
+      maxHeight: number;
+      quality: number;
+      mimeType: string;
+    },
+  ): Promise<(Blob | null)[]>;
 }
 
 export interface ExportOptions {
