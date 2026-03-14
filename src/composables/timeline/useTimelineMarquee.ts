@@ -1,4 +1,5 @@
 import { ref, computed, type Ref } from 'vue';
+import { onBeforeUnmount } from 'vue';
 import type { TimelineTrack } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -17,8 +18,22 @@ export function useTimelineMarquee(
   const isMarqueeSelecting = ref(false);
   const marqueeStart = ref({ x: 0, y: 0 });
   const marqueeCurrent = ref({ x: 0, y: 0 });
+  let activePointerMove: ((event: PointerEvent) => void) | null = null;
+  let activePointerUp: ((event: PointerEvent) => void) | null = null;
 
   const DEFAULT_TRACK_HEIGHT = 40;
+
+  function clearMarqueePointerListeners() {
+    if (activePointerMove) {
+      window.removeEventListener('pointermove', activePointerMove);
+      activePointerMove = null;
+    }
+
+    if (activePointerUp) {
+      window.removeEventListener('pointerup', activePointerUp);
+      activePointerUp = null;
+    }
+  }
 
   const marqueeStyle = computed(() => {
     if (!isMarqueeSelecting.value) return {};
@@ -129,13 +144,20 @@ export function useTimelineMarquee(
       } catch {
         /* ignore */
       }
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
+      clearMarqueePointerListeners();
     };
 
+    clearMarqueePointerListeners();
+    activePointerMove = onMove;
+    activePointerUp = onUp;
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
   }
+
+  onBeforeUnmount(() => {
+    clearMarqueePointerListeners();
+    isMarqueeSelecting.value = false;
+  });
 
   return {
     isMarqueeSelecting,

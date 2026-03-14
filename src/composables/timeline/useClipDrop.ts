@@ -29,6 +29,7 @@ interface UseClipDropOptions {
 
 export function useClipDrop(options: UseClipDropOptions) {
   const isDraggingOver = ref(false);
+  let dragDepth = 0;
 
   function hasSupportedDrop(e: DragEvent): boolean {
     return (
@@ -39,6 +40,7 @@ export function useClipDrop(options: UseClipDropOptions) {
 
   function handleDragEnter(e: DragEvent) {
     if (options.canEditClipContent.value && hasSupportedDrop(e)) {
+      dragDepth += 1;
       isDraggingOver.value = true;
     }
   }
@@ -49,12 +51,18 @@ export function useClipDrop(options: UseClipDropOptions) {
     }
   }
 
-  function handleDragLeave() {
-    isDraggingOver.value = false;
+  function handleDragLeave(e: DragEvent) {
+    if (!hasSupportedDrop(e)) return;
+
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (dragDepth === 0) {
+      isDraggingOver.value = false;
+    }
   }
 
   function handleDrop(e: DragEvent) {
     isDraggingOver.value = false;
+    dragDepth = 0;
     const clip = options.clipItem.value;
     if (!options.canEditClipContent.value || !clip) return;
 

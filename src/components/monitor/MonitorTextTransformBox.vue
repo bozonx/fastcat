@@ -282,6 +282,8 @@ function onPointerDown(event: PointerEvent, type: string) {
   if (event.button !== 0) return;
   event.stopPropagation();
 
+  cleanupDragListeners();
+
   const target = event.currentTarget as HTMLElement | null;
   const svgElement = target?.closest('svg') as SVGSVGElement | null;
 

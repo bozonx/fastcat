@@ -28,6 +28,21 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
   let activePointerMove: ((e: PointerEvent) => void) | null = null;
   let activePointerUp: ((e?: PointerEvent) => void) | null = null;
   let activeKeyDown: ((e: KeyboardEvent) => void) | null = null;
+  let pendingResizeFrame = 0;
+  let pendingResizeUpdate: (() => void) | null = null;
+
+  function flushPendingResizeUpdate() {
+    pendingResizeFrame = 0;
+    const update = pendingResizeUpdate;
+    pendingResizeUpdate = null;
+    update?.();
+  }
+
+  function scheduleResizeUpdate(update: () => void) {
+    pendingResizeUpdate = update;
+    if (pendingResizeFrame !== 0) return;
+    pendingResizeFrame = requestAnimationFrame(flushPendingResizeUpdate);
+  }
 
   function clearActivePointerListeners() {
     if (activePointerMove) {
@@ -42,6 +57,11 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       window.removeEventListener('keydown', activeKeyDown);
       activeKeyDown = null;
     }
+    if (pendingResizeFrame !== 0) {
+      cancelAnimationFrame(pendingResizeFrame);
+      pendingResizeFrame = 0;
+    }
+    pendingResizeUpdate = null;
   }
 
   const resizeTransition = ref<{
@@ -91,9 +111,11 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       let newVol = resizeVolume.value.startGain + deltaVol;
       newVol = Math.max(0, Math.min(2, newVol));
 
-      timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
-        audioGain: newVol,
-        audioMuted: false,
+      scheduleResizeUpdate(() => {
+        timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
+          audioGain: newVol,
+          audioMuted: false,
+        });
       });
     }
 
@@ -183,9 +205,12 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       const curveProp = payload.edge === 'in' ? 'audioFadeInCurve' : 'audioFadeOutCurve';
 
       resizeFade.value.activeCurve = nextCurve;
-      timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
-        [propName]: Math.round(newFadeUs),
-        ...(curveChanged ? { [curveProp]: nextCurve } : {}),
+      const nextFadeUs = Math.round(newFadeUs);
+      scheduleResizeUpdate(() => {
+        timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
+          [propName]: nextFadeUs,
+          ...(curveChanged ? { [curveProp]: nextCurve } : {}),
+        });
       });
     }
 
@@ -446,11 +471,13 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
 
       // Remove transition if duration is less than a frame
       if (newDurationUs < frameDurationUs) {
-        timelineStore.updateClipTransition(
-          payload.trackId,
-          payload.itemId,
-          payload.edge === 'in' ? { transitionIn: null } : { transitionOut: null },
-        );
+        scheduleResizeUpdate(() => {
+          timelineStore.updateClipTransition(
+            payload.trackId,
+            payload.itemId,
+            payload.edge === 'in' ? { transitionIn: null } : { transitionOut: null },
+          );
+        });
         return;
       }
 
@@ -465,7 +492,9 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
                 durationUs: Math.round(newDurationUs),
               } as ClipTransition,
             };
-      timelineStore.updateClipTransition(payload.trackId, payload.itemId, transitionPatch);
+      scheduleResizeUpdate(() => {
+        timelineStore.updateClipTransition(payload.trackId, payload.itemId, transitionPatch);
+      });
     }
 
     function onPointerUp() {
