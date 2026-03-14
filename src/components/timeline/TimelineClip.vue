@@ -46,6 +46,8 @@ interface Props {
     trackHeight: number;
   } | null;
   isMobile?: boolean;
+  scrollLeft?: number;
+  viewportWidth?: number;
 }
 
 const props = defineProps<Props>();
@@ -426,6 +428,9 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
           v-if="isVideo(item) && clipItem?.showThumbnails !== false"
           :item="item as TimelineClipItem"
           :width="clipWidthPx"
+          :scroll-left="scrollLeft ?? 0"
+          :viewport-width="viewportWidth ?? 0"
+          :clip-start-px="timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom)"
         />
         <TimelineAudioWaveform
           v-if="
