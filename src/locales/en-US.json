@@ -239,6 +239,7 @@
       "mouseRuler": "Ruler",
       "mouseTimeline": "Timeline",
       "mouseMonitor": "Monitor",
+      "mouseHorizontalMovement": "Horizontal mouse movement",
       "mouseTimelineWheel": "Main Wheel",
       "mouseTimelineWheelShift": "Main Wheel + Shift",
       "mouseTimelineWheelSecondary": "Secondary Wheel",

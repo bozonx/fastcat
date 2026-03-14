@@ -95,15 +95,17 @@ export function useTimelineRulerPresentation(options: UseTimelineRulerPresentati
     const pxPerFrame = zoomToPxPerSecond(currentZoom) / currentFps;
     if (pxPerFrame < 6) return null;
 
+    // Честная математика: currentTime округляется до целых микросекунд.
+    // Добавляем 0.5 мкс (максимальную погрешность округления) для точного определения кадра.
     const currentFrameIndex = Math.floor(
-      (options.currentTime.value * currentFps) / 1_000_000 + 0.001,
+      ((options.currentTime.value + 0.5) * currentFps) / 1_000_000,
     );
     const currentFrameStartUs = Math.round((currentFrameIndex * 1_000_000) / currentFps);
     const nextFrameStartUs = Math.round(((currentFrameIndex + 1) * 1_000_000) / currentFps);
+
     const currentFrameStartX =
-      Math.round(timeUsToPx(currentFrameStartUs, currentZoom)) - options.scrollLeft.value;
-    const nextFrameStartX =
-      Math.round(timeUsToPx(nextFrameStartUs, currentZoom)) - options.scrollLeft.value;
+      timeUsToPx(currentFrameStartUs, currentZoom) - options.scrollLeft.value;
+    const nextFrameStartX = timeUsToPx(nextFrameStartUs, currentZoom) - options.scrollLeft.value;
 
     return {
       transform: `translate3d(${currentFrameStartX}px, 0, 0)`,
@@ -112,12 +114,11 @@ export function useTimelineRulerPresentation(options: UseTimelineRulerPresentati
   });
 
   const playheadStyle = computed(() => {
-    const playheadX = Math.round(
-      timeUsToPx(options.currentTime.value, options.zoom.value) - options.scrollLeft.value,
-    );
+    const playheadX =
+      timeUsToPx(options.currentTime.value, options.zoom.value) - options.scrollLeft.value;
 
     return {
-      transform: `translate3d(${playheadX}px, 0, 0)`,
+      transform: `translate3d(${playheadX}px, 0, 0) translateX(-50%)`,
     };
   });
 

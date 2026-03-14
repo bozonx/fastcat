@@ -68,17 +68,21 @@ const fps = computed(() => projectStore.projectSettings.project.fps || 30);
 const playheadPx = computed(() =>
   timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom),
 );
-const playheadTransform = computed(() => `translate3d(${Math.round(playheadPx.value) - 0.5}px, 0, 0)`);
+// Честное центрирование 1px линии через CSS translateX(-50%), без подгонки пикселей
+const playheadTransform = computed(() => `translate3d(${playheadPx.value}px, 0, 0) translateX(-50%)`);
 
 const currentFrameHighlightStyle = computed(() => {
   const pxPerFrame = zoomToPxPerSecond(timelineStore.timelineZoom) / fps.value;
   if (pxPerFrame < 6) return null;
 
-  const currentFrameIndex = Math.floor((timelineStore.currentTime * fps.value) / 1_000_000 + 0.001);
+  // Честная математика: currentTime округляется до целых микросекунд.
+  // Максимальная погрешность при таком округлении - 0.5 мкс. Добавляем её для точного определения кадра.
+  const currentFrameIndex = Math.floor(((timelineStore.currentTime + 0.5) * fps.value) / 1_000_000);
   const currentFrameStartUs = Math.round((currentFrameIndex * 1_000_000) / fps.value);
   const nextFrameStartUs = Math.round(((currentFrameIndex + 1) * 1_000_000) / fps.value);
-  const currentFrameStartPx = Math.round(timeUsToPx(currentFrameStartUs, timelineStore.timelineZoom));
-  const nextFrameStartPx = Math.round(timeUsToPx(nextFrameStartUs, timelineStore.timelineZoom));
+  
+  const currentFrameStartPx = timeUsToPx(currentFrameStartUs, timelineStore.timelineZoom);
+  const nextFrameStartPx = timeUsToPx(nextFrameStartUs, timelineStore.timelineZoom);
 
   return {
     transform: `translate3d(${currentFrameStartPx}px, 0, 0)`,

@@ -12,6 +12,8 @@ import {
   TRACK_HEADERS_WHEEL_ACTIONS,
   DRAG_ACTIONS,
   SHIFT_CLICK_ACTIONS,
+  MOUSE_HORIZONTAL_MOVEMENT_ACTIONS,
+  type MouseHorizontalMovementAction,
 } from '~/utils/mouse';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 
@@ -32,57 +34,47 @@ const commonWheelLabels = computed(() => ({
   zoom: t('videoEditor.settings.mouseActionZoom', 'Zoom'),
 }));
 
-function getWheelOptions(actions: readonly string[]) {
-  const labels = commonWheelLabels.value as Record<string, string>;
-  return actions.map((action) => ({
+const commonClickLabels = computed(() => ({
+  seek: t('videoEditor.settings.mouseActionSeek', 'Set playhead'),
+  add_marker: t('videoEditor.settings.mouseActionAddMarker', 'Add marker'),
+  reset_zoom: t('videoEditor.settings.mouseActionResetZoom', 'Reset zoom'),
+  clear_selection: t('videoEditor.settings.mouseActionClearSelection', 'Clear selection'),
+  select_area: t('videoEditor.settings.mouseActionSelectArea', 'Select area'),
+  none: t('videoEditor.settings.mouseActionNone', 'None'),
+}));
+
+const commonDragLabels = computed(() => ({
+  pan: t('videoEditor.settings.mouseActionPan', 'Pan'),
+  move_playhead: t('videoEditor.settings.mouseActionMovePlayhead', 'Move playhead'),
+  select_area: t('videoEditor.settings.mouseActionSelectArea', 'Select area'),
+  none: t('videoEditor.settings.mouseActionNone', 'None'),
+}));
+
+const commonHorizontalMovementLabels = computed(() => ({
+  move_playhead: t('videoEditor.settings.mouseActionMovePlayhead', 'Move playhead'),
+  none: t('videoEditor.settings.mouseActionNone', 'None'),
+}));
+
+function formatOption(action: string, labels: Record<string, string>) {
+  return {
     label: labels[action] || action,
     value: action,
-  }));
+  };
 }
 
-const clickActionOptions = computed(() => {
-  const labels: Record<string, string> = {
-    seek: t('videoEditor.settings.mouseActionSeek', 'Set playhead'),
-    add_marker: t('videoEditor.settings.mouseActionAddMarker', 'Add marker'),
-    reset_zoom: t('videoEditor.settings.mouseActionResetZoom', 'Reset zoom'),
-    clear_selection: t('videoEditor.settings.mouseActionClearSelection', 'Clear selection'),
-    select_area: t('videoEditor.settings.mouseActionSelectArea', 'Select area'),
-    none: t('videoEditor.settings.mouseActionNone', 'None'),
-  };
-  return RULER_CLICK_ACTIONS.map((action) => ({
-    label: labels[action] || action,
-    value: action,
-  }));
-});
+const rulerWheelOptions = computed(() => RULER_WHEEL_ACTIONS.map((action) => formatOption(action, commonWheelLabels.value)));
+const timelineWheelOptions = computed(() => TIMELINE_WHEEL_ACTIONS.map((action) => formatOption(action, commonWheelLabels.value)));
+const trackHeadersWheelOptions = computed(() => TRACK_HEADERS_WHEEL_ACTIONS.map((action) => formatOption(action, commonWheelLabels.value)));
+const monitorWheelOptions = computed(() => MONITOR_WHEEL_ACTIONS.map((action) => formatOption(action, commonWheelLabels.value)));
 
-const shiftClickActionOptions = computed(() => {
-  const labels: Record<string, string> = {
-    seek: t('videoEditor.settings.mouseActionSeek', 'Set playhead'),
-    add_marker: t('videoEditor.settings.mouseActionAddMarker', 'Add marker'),
-    reset_zoom: t('videoEditor.settings.mouseActionResetZoom', 'Reset zoom'),
-    clear_selection: t('videoEditor.settings.mouseActionClearSelection', 'Clear selection'),
-    none: t('videoEditor.settings.mouseActionNone', 'None'),
-  };
-  return SHIFT_CLICK_ACTIONS.map((action) => ({
-    label: labels[action] || action,
-    value: action,
-  }));
-});
-
-const dragOptions = computed(() => {
-  const labels: Record<string, string> = {
-    pan: t('videoEditor.settings.mouseActionPan', 'Pan'),
-    move_playhead: t('videoEditor.settings.mouseActionMovePlayhead', 'Move playhead'),
-    select_area: t('videoEditor.settings.mouseActionSelectArea', 'Select area'),
-    none: t('videoEditor.settings.mouseActionNone', 'None'),
-  };
-  return DRAG_ACTIONS.map((action) => ({ label: labels[action] || action, value: action }));
-});
-
-const rulerWheelOptions = computed(() => getWheelOptions(RULER_WHEEL_ACTIONS));
-const timelineWheelOptions = computed(() => getWheelOptions(TIMELINE_WHEEL_ACTIONS));
-const trackHeadersWheelOptions = computed(() => getWheelOptions(TRACK_HEADERS_WHEEL_ACTIONS));
-const monitorWheelOptions = computed(() => getWheelOptions(MONITOR_WHEEL_ACTIONS));
+const clickActionOptions = computed(() => RULER_CLICK_ACTIONS.map((action) => formatOption(action, commonClickLabels.value)));
+const shiftClickActionOptions = computed(() => SHIFT_CLICK_ACTIONS.map((action) => formatOption(action, commonClickLabels.value)));
+const dragOptions = computed(() => DRAG_ACTIONS.map((action) => formatOption(action, commonDragLabels.value)));
+const mouseHorizontalMovementOptions = computed(() =>
+  MOUSE_HORIZONTAL_MOVEMENT_ACTIONS.map((action) =>
+    formatOption(action, commonHorizontalMovementLabels.value),
+  ),
+);
 
 const monitorMiddleClickOptions = computed(() => {
   const labels: Record<string, string> = {
@@ -564,6 +556,42 @@ function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: str
                   </USelectMenu>
                 </td>
               </tr>
+
+              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('ruler', 'horizontalMovement') }"
+                >
+                  <span class="text-sm text-ui-text font-medium leading-tight">
+                    {{ t('videoEditor.settings.mouseHorizontalMovement', 'Horizontal mouse movement') }}
+                  </span>
+                </td>
+                <td class="p-2 py-2.5 align-middle">
+                  <USelectMenu
+                    v-model="workspaceStore.userSettings.mouse.ruler.horizontalMovement"
+                    :items="mouseHorizontalMovementOptions"
+                    value-key="value"
+                    label-key="label"
+                    class="w-full"
+                    @update:model-value="
+                      (v: any) =>
+                        (workspaceStore.userSettings.mouse.ruler.horizontalMovement = v?.value ?? v)
+                    "
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('ruler', 'horizontalMovement', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -791,6 +819,43 @@ function isModified(category: keyof typeof DEFAULT_USER_SETTINGS.mouse, key: str
                         {{ item.label }}
                         <span
                           v-if="isDefault('timeline', 'middleClick', item.value)"
+                          class="text-[10px] opacity-50 font-normal italic"
+                        >
+                          ({{ t('common.default', 'Default') }})
+                        </span>
+                      </span>
+                    </template>
+                  </USelectMenu>
+                </td>
+              </tr>
+
+              <tr class="group hover:bg-ui-bg-accent/10 transition-colors">
+                <td
+                  class="w-[40%] p-3 py-2.5 align-middle border-r border-ui-border/50"
+                  :class="{ 'bg-yellow-400/10': isModified('timeline', 'horizontalMovement') }"
+                >
+                  <span class="text-sm text-ui-text font-medium leading-tight">
+                    {{ t('videoEditor.settings.mouseHorizontalMovement', 'Horizontal mouse movement') }}
+                  </span>
+                </td>
+                <td class="p-2 py-2.5 align-middle">
+                  <USelectMenu
+                    v-model="workspaceStore.userSettings.mouse.timeline.horizontalMovement"
+                    :items="mouseHorizontalMovementOptions"
+                    value-key="value"
+                    label-key="label"
+                    class="w-full"
+                    @update:model-value="
+                      (v: any) =>
+                        (workspaceStore.userSettings.mouse.timeline.horizontalMovement =
+                          v?.value ?? v)
+                    "
+                  >
+                    <template #item-label="{ item }">
+                      <span class="flex items-center gap-2">
+                        {{ item.label }}
+                        <span
+                          v-if="isDefault('timeline', 'horizontalMovement', item.value)"
                           class="text-[10px] opacity-50 font-normal italic"
                         >
                           ({{ t('common.default', 'Default') }})
