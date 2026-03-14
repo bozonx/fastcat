@@ -112,8 +112,9 @@ function handleSelectEffect(type: string) {
 
 <template>
   <div
-    class="flex flex-col items-center w-20 bg-ui-bg-muted border rounded-lg py-2 shrink-0 h-full transition-colors"
+    class="flex flex-col items-center w-20 bg-ui-bg-muted border rounded-lg py-2 shrink-0 h-full transition-colors cursor-pointer"
     :class="[isSelected ? 'border-primary-500 bg-ui-bg-elevated' : 'border-ui-border']"
+    @dblclick="timelineStore.selectAllClipsOnTrack(track.id)"
   >
     <!-- Pan -->
     <div class="w-full px-2 mb-2 flex flex-col items-center">
@@ -194,21 +195,28 @@ function handleSelectEffect(type: string) {
 
     <!-- Track Name -->
     <div
-      class="w-full px-1 text-center bg-ui-bg-elevated py-1 mt-auto cursor-text border-t border-ui-border rounded-b-lg"
-      @dblclick="startRename"
+      class="w-full px-1 text-center py-1 mt-auto cursor-text border-t border-ui-border rounded-b-lg flex flex-col items-center overflow-hidden"
+      @click="startRename"
     >
-      <div v-if="isRenaming" class="px-1">
-        <input
-          ref="renameInput"
-          v-model="renameValue"
-          class="w-full bg-ui-bg text-[10px] font-medium text-ui-text border border-primary-500 outline-none px-0.5"
-          @keydown.enter="confirmRename"
-          @keydown.esc="cancelRename"
-          @blur="confirmRename"
-        />
-      </div>
-      <div v-else class="text-[10px] font-medium text-ui-text truncate px-0.5" :title="trackName">
-        {{ trackName }}
+      <div
+        class="max-w-full px-1 rounded transition-colors"
+        :class="[isRenaming ? 'bg-primary-500/10' : 'hover:bg-ui-bg-elevated']"
+      >
+        <div v-if="isRenaming" class="w-full flex justify-center">
+          <input
+            ref="renameInput"
+            v-model="renameValue"
+            class="max-w-full bg-ui-bg text-[10px] font-medium text-ui-text border border-primary-500 outline-none px-0.5 text-center whitespace-nowrap overflow-hidden text-ellipsis"
+            :style="{ width: `${renameValue.length + 2}ch` }"
+            @click.stop
+            @keydown.enter.stop="confirmRename"
+            @keydown.esc.stop="cancelRename"
+            @blur="confirmRename"
+          />
+        </div>
+        <div v-else class="max-w-full text-[10px] font-medium text-ui-text truncate px-0.5" :title="trackName">
+          {{ trackName }}
+        </div>
       </div>
       <div class="text-[9px] text-ui-text-muted">
         {{ t(`fastcat.audioMixer.${track.kind}`) }}

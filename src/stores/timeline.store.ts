@@ -623,6 +623,12 @@ export const useTimelineStore = defineStore('timeline', () => {
     selectTransition: selection.selectTransition,
     toggleSelection: selection.toggleSelection,
     clearSelection: selection.clearSelection,
+    selectAllClipsOnTrack: (trackId: string) => {
+      const track = timelineDoc.value?.tracks.find((t) => t.id === trackId);
+      if (!track) return;
+      const ids = track.items.filter((it) => it.kind === 'clip').map((it) => it.id);
+      selection.selectTimelineItems(ids);
+    },
     setTimelineZoomExact,
     seekFrames: (deltaFrames: number) => {
       const fps = getDocFps(timelineDoc.value || ({} as any));

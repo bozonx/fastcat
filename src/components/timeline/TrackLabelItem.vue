@@ -71,6 +71,7 @@ function toggleAudioSolo(e: MouseEvent) {
     ]"
     :style="{ height: `${height}px` }"
     @click="emit('select')"
+    @dblclick="timelineStore.selectAllClipsOnTrack(track.id)"
     @contextmenu="emit('select')"
   >
     <!-- Track Drag Handle (Left) -->
@@ -78,27 +79,33 @@ function toggleAudioSolo(e: MouseEvent) {
       class="w-1 h-2/3 rounded-full bg-ui-border opacity-0 group-hover:opacity-100 transition-opacity mr-1"
     />
 
-    <div
-      class="flex-1 min-w-0 px-1 py-0.5 rounded border border-transparent transition-colors"
-      :class="[
-        isRenaming ? 'bg-ui-bg-elevated border-ui-border-accent' : 'hover:border-ui-border/50',
-      ]"
-      @click.stop="emit('select')"
-    >
-      <input
-        v-if="isRenaming"
-        ref="renameInput"
-        v-model="renameValue"
-        class="w-full bg-transparent border-none outline-none text-xs font-medium p-0 m-0 block"
-        @keydown.enter.stop="confirmRename"
-        @keydown.esc.stop="emit('cancelRename')"
-        @blur="confirmRename"
-      />
-      <span v-else class="truncate block" :title="track.name">{{ track.name }}</span>
+    <div class="flex-1 min-w-0 flex items-center overflow-hidden">
+      <div
+        class="max-w-full px-1 py-0.5 rounded border border-transparent transition-colors overflow-hidden"
+        :class="[
+          isRenaming ? 'bg-ui-bg-elevated border-ui-border-accent' : 'hover:border-ui-border/50',
+        ]"
+        @click.stop="timelineStore.renamingTrackId = track.id"
+        @dblclick.stop
+      >
+        <input
+          v-if="isRenaming"
+          ref="renameInput"
+          v-model="renameValue"
+          class="bg-transparent border-none outline-none text-xs font-medium p-0 m-0 block whitespace-nowrap overflow-hidden text-ellipsis"
+          :style="{ width: `${renameValue.length + 2}ch`, minWidth: '4ch', maxWidth: '100%' }"
+          @click.stop
+          @keydown.enter.stop="confirmRename"
+          @keydown.esc.stop="emit('cancelRename')"
+          @blur="confirmRename"
+        />
+        <span v-else class="truncate block" :title="track.name">{{ track.name }}</span>
+      </div>
     </div>
 
     <div
-      class="ml-auto flex items-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity"
+      class="ml-0 flex items-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity"
+      @dblclick.stop
     >
       <UButton
         v-if="track.kind === 'video'"
