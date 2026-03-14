@@ -1,6 +1,7 @@
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import { useFocusStore } from '~/stores/focus.store';
+import { useAppClipboard } from '~/composables/useAppClipboard';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import { getDocFps } from '~/timeline/commands/utils';
 
@@ -10,6 +11,7 @@ export function useTimelineHotkeys() {
   const timelineStore = useTimelineStore();
   const settingsStore = useTimelineSettingsStore();
   const focusStore = useFocusStore();
+  const { clipboardPayload, setClipboardPayload } = useAppClipboard();
 
   function getTargetTrackId() {
     return timelineStore.getSelectedOrActiveTrackId();
@@ -50,6 +52,55 @@ export function useTimelineHotkeys() {
       if (!focusStore.canUseTimelineHotkeys) return false;
       const next = settingsStore.clipSnapMode === 'none' ? 'clips' : 'none';
       settingsStore.setClipSnapMode(next);
+      return true;
+    },
+
+    'general.copy': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      if (timelineStore.selectedItemIds.length === 0) return false;
+
+      setClipboardPayload({
+        source: 'timeline',
+        operation: 'copy',
+        items: timelineStore.copySelectedClips().map((item) => ({
+          sourceTrackId: item.sourceTrackId,
+          clip: item.clip,
+        })),
+      });
+
+      return true;
+    },
+
+    'general.cut': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      if (timelineStore.selectedItemIds.length === 0) return false;
+
+      setClipboardPayload({
+        source: 'timeline',
+        operation: 'cut',
+        items: timelineStore.cutSelectedClips().map((item) => ({
+          sourceTrackId: item.sourceTrackId,
+          clip: item.clip,
+        })),
+      });
+
+      return true;
+    },
+
+    'general.paste': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+
+      const payload = clipboardPayload.value;
+      if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return false;
+
+      timelineStore.pasteClips(payload.items, {
+        targetTrackId: timelineStore.getSelectedOrActiveTrackId(),
+      });
+
+      if (payload.operation === 'cut') {
+        setClipboardPayload(null);
+      }
+
       return true;
     },
 

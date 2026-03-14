@@ -149,7 +149,7 @@ export interface TimelineClipsApi {
   cutSelectedClips: () => TimelineClipClipboardItem[];
   pasteClips: (
     items: TimelineClipClipboardItem[],
-    options?: { targetTrackId?: string | null },
+    options?: { targetTrackId?: string | null; insertStartUs?: number },
   ) => string[];
 }
 
@@ -332,6 +332,149 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
         }
       }
     }
+  }
+
+  function copySelectedClips(): TimelineClipClipboardItem[] {
+    return getSelectedClipItems();
+  }
+
+  function cutSelectedClips(): TimelineClipClipboardItem[] {
+    const items = getSelectedClipItems();
+    if (items.length === 0) return [];
+
+    const byTrack = new Map<string, string[]>();
+    for (const item of items) {
+      const current = byTrack.get(item.sourceTrackId) ?? [];
+      current.push(item.clip.id);
+      byTrack.set(item.sourceTrackId, current);
+    }
+
+    for (const [trackId, itemIds] of byTrack.entries()) {
+      deps.applyTimeline({
+        type: 'delete_items',
+        trackId,
+        itemIds,
+      });
+    }
+
+    deps.clearSelection();
+    deps.selectTrack(null);
+    return items;
+  }
+
+  function pasteClips(
+    items: TimelineClipClipboardItem[],
+    options?: { targetTrackId?: string | null; insertStartUs?: number },
+  ): string[] {
+    if (items.length === 0) return [];
+
+    if (!deps.timelineDoc.value) {
+      deps.timelineDoc.value = deps.createFallbackTimelineDoc();
+    }
+
+    const doc = deps.timelineDoc.value;
+    if (!doc) return [];
+
+    const targetTrackId = options?.targetTrackId ?? deps.resolveTargetVideoTrackIdForInsert();
+    const targetTrack = doc.tracks.find((track) => track.id === targetTrackId) ?? null;
+    if (!targetTrack) return [];
+
+    const minStartUs = Math.min(...items.map((item) => item.clip.timelineRange.startUs));
+    const insertStartUs = Math.max(0, Math.round(options?.insertStartUs ?? deps.currentTime.value));
+    const createdIds: string[] = [];
+
+    for (const item of items) {
+      const clip = cloneClip(item.clip);
+      const relativeStartUs = clip.timelineRange.startUs - minStartUs;
+      const nextStartUs = insertStartUs + relativeStartUs;
+
+      if ((clip.clipType === 'media' || clip.clipType === 'timeline') && clip.source?.path) {
+        deps.applyTimeline({
+          type: 'add_clip_to_track',
+          trackId: targetTrack.id,
+          name: clip.name,
+          path: clip.source.path,
+          clipType: clip.clipType,
+          durationUs: clip.timelineRange.durationUs,
+          sourceDurationUs: clip.sourceDurationUs,
+          isImage: clip.isImage,
+          startUs: nextStartUs,
+        });
+        continue;
+      }
+
+      deps.applyTimeline({
+        type: 'add_virtual_clip_to_track',
+        trackId: targetTrack.id,
+        clipType: clip.clipType as Extract<
+          TimelineClipType,
+          'adjustment' | 'background' | 'text' | 'shape' | 'hud'
+        >,
+        name: clip.name,
+        durationUs: clip.timelineRange.durationUs,
+        startUs: nextStartUs,
+        backgroundColor: 'backgroundColor' in clip ? clip.backgroundColor : undefined,
+        text: 'text' in clip ? clip.text : undefined,
+        style: 'style' in clip ? clip.style : undefined,
+        shapeType: 'shapeType' in clip ? clip.shapeType : undefined,
+        hudType: 'hudType' in clip ? clip.hudType : undefined,
+      });
+
+      const refreshedTrack =
+        deps.timelineDoc.value?.tracks.find((track) => track.id === targetTrack.id) ?? null;
+      const createdClip =
+        refreshedTrack?.items.find(
+          (trackItem) =>
+            trackItem.kind === 'clip' &&
+            trackItem.timelineRange.startUs === nextStartUs &&
+            trackItem.timelineRange.durationUs === clip.timelineRange.durationUs &&
+            trackItem.name === clip.name,
+        ) ?? null;
+
+      if (!createdClip || createdClip.kind !== 'clip') {
+        continue;
+      }
+
+      createdIds.push(createdClip.id);
+
+      updateClipProperties(targetTrack.id, createdClip.id, {
+        disabled: clip.disabled,
+        locked: clip.locked,
+        opacity: clip.opacity,
+        blendMode: clip.blendMode,
+        effects: cloneClip(clip.effects ?? []),
+        freezeFrameSourceUs: clip.freezeFrameSourceUs,
+        speed: clip.speed,
+        transform: cloneClip(clip.transform),
+        audioGain: clip.audioGain,
+        audioBalance: clip.audioBalance,
+        audioFadeInUs: clip.audioFadeInUs,
+        audioFadeOutUs: clip.audioFadeOutUs,
+        audioFadeInCurve: clip.audioFadeInCurve,
+        audioFadeOutCurve: clip.audioFadeOutCurve,
+        audioMuted: clip.audioMuted,
+        audioWaveformMode: clip.audioWaveformMode,
+        showWaveform: clip.showWaveform,
+        showThumbnails: clip.showThumbnails,
+        backgroundColor: 'backgroundColor' in clip ? clip.backgroundColor : undefined,
+        text: 'text' in clip ? clip.text : undefined,
+        style: 'style' in clip ? cloneClip(clip.style) : undefined,
+        shapeType: 'shapeType' in clip ? clip.shapeType : undefined,
+        fillColor: 'fillColor' in clip ? clip.fillColor : undefined,
+        strokeColor: 'strokeColor' in clip ? clip.strokeColor : undefined,
+        strokeWidth: 'strokeWidth' in clip ? clip.strokeWidth : undefined,
+        hudType: 'hudType' in clip ? clip.hudType : undefined,
+        background: 'background' in clip ? cloneClip(clip.background) : undefined,
+        content: 'content' in clip ? cloneClip(clip.content) : undefined,
+      });
+
+      updateClipTransition(targetTrack.id, createdClip.id, {
+        transitionIn: cloneClip(clip.transitionIn),
+        transitionOut: cloneClip(clip.transitionOut),
+      });
+    }
+
+    return createdIds;
   }
 
   function rippleDeleteFirstSelectedItem() {
@@ -535,6 +678,18 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
     if (!doc) return;
     const target = deps.getHotkeyTargetClip();
     if (!target) return;
+    const track = doc.tracks.find((t) => t.id === target.trackId) ?? null;
+    const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
+    if (!track || !item || item.kind !== 'clip') return;
+
+    updateClipProperties(target.trackId, target.itemId, { audioMuted: !item.audioMuted });
+    await deps.requestTimelineSave({ immediate: true });
+  }
+
+  function moveSelectedClips(deltaFrames: number) {
+    const doc = deps.timelineDoc.value;
+    if (!doc || deps.selectedItemIds.value.length === 0) return;
+
     const fps = getDocFps(doc);
     const frameUs = 1_000_000 / fps;
     const deltaUs = deltaFrames * frameUs;
@@ -544,14 +699,15 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
     const selectedSet = new Set(deps.selectedItemIds.value);
     for (const track of doc.tracks) {
       for (const item of track.items) {
-        if (selectedSet.has(item.id)) {
-          moves.push({
-            fromTrackId: track.id,
-            toTrackId: track.id,
-            itemId: item.id,
-            startUs: quantizeTimeUsToFrames(item.timelineRange.startUs + deltaUs, fps, 'round'),
-          });
-        }
+        if (item.kind !== 'clip') continue;
+        if (!selectedSet.has(item.id)) continue;
+
+        moves.push({
+          fromTrackId: track.id,
+          toTrackId: track.id,
+          itemId: item.id,
+          startUs: quantizeTimeUsToFrames(item.timelineRange.startUs + deltaUs, fps, 'round'),
+        });
       }
     }
 

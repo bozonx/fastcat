@@ -681,6 +681,42 @@ export function useTimelineInteraction(
       applyDragFromPendingClientX();
     }
 
+    const shouldCopyDraggedClip =
+      !cancel && draggingMode.value === 'move' && dragIsFreeOverride.value;
+    let copiedSingleClipPayload: {
+      sourceTrackId: string;
+      clip: any;
+      targetTrackId: string;
+      targetStartUs: number;
+    } | null = null;
+
+    if (shouldCopyDraggedClip) {
+      const doc = timelineStore.timelineDoc;
+      const movedItemId = draggingItemId.value;
+      const movedTrackId = draggingTrackId.value;
+      const commit = pendingMoveCommit.value;
+
+      if (
+        doc &&
+        movedItemId &&
+        movedTrackId &&
+        commit &&
+        timelineStore.selectedItemIds.length === 1
+      ) {
+        const track = doc.tracks.find((item) => item.id === movedTrackId) ?? null;
+        const clip =
+          track?.items.find((item) => item.kind === 'clip' && item.id === movedItemId) ?? null;
+        if (clip && clip.kind === 'clip') {
+          copiedSingleClipPayload = {
+            sourceTrackId: movedTrackId,
+            clip: JSON.parse(JSON.stringify(clip)),
+            targetTrackId: commit.toTrackId,
+            targetStartUs: commit.startUs,
+          };
+        }
+      }
+    }
+
     if (!cancel && draggingMode.value === 'move' && dragIsFreeOverride.value) {
       const doc = timelineStore.timelineDoc;
       if (doc) {
@@ -802,6 +838,24 @@ export function useTimelineInteraction(
     if (cancel && snapshot) {
       timelineStore.timelineDoc = snapshot as any;
       timelineStore.duration = selectTimelineDurationUs(snapshot as any) as any;
+    }
+
+    if (!cancel && shouldCopyDraggedClip && snapshot && copiedSingleClipPayload) {
+      timelineStore.timelineDoc = snapshot as any;
+      timelineStore.duration = selectTimelineDurationUs(snapshot as any) as any;
+      timelineStore.pasteClips(
+        [
+          {
+            sourceTrackId: copiedSingleClipPayload.sourceTrackId,
+            clip: copiedSingleClipPayload.clip,
+          },
+        ],
+        {
+          targetTrackId: copiedSingleClipPayload.targetTrackId,
+          insertStartUs: copiedSingleClipPayload.targetStartUs,
+        },
+      );
+      hasPendingTimelinePersist.value = true;
     }
 
     if (!cancel && hasPendingTimelinePersist.value) {

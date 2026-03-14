@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue';
 import type { FsEntry } from '~/types/fs';
+import type { TimelineClipItem } from '~/timeline/types';
 
 export interface FileManagerClipboardItem {
   path: string;
@@ -8,8 +9,8 @@ export interface FileManagerClipboardItem {
 }
 
 export interface TimelineClipboardItem {
-  trackId: string;
-  itemId: string;
+  sourceTrackId: string;
+  clip: TimelineClipItem;
 }
 
 export type ClipboardSource = 'fileManager' | 'timeline';
@@ -34,7 +35,8 @@ const currentDragOperation = ref<'copy' | 'move' | null>(null);
 
 export function useAppClipboard() {
   const hasFileManagerPayload = computed(
-    () => clipboardPayload.value?.source === 'fileManager' && clipboardPayload.value.items.length > 0,
+    () =>
+      clipboardPayload.value?.source === 'fileManager' && clipboardPayload.value.items.length > 0,
   );
 
   const hasTimelinePayload = computed(
