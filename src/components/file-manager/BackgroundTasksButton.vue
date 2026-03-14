@@ -27,7 +27,7 @@ const { t } = useI18n();
       />
       <UIcon
         v-else
-        name="i-heroicons-cog-6-tooth"
+        name="i-mdi-progress-helper"
         class="w-4 h-4 text-ui-text-muted"
       />
     </UButton>

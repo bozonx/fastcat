@@ -222,10 +222,11 @@ export function useFileConversion() {
         getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
         getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
         getFileByPath: async (path) => projectStore.getFileByPath(path),
-        onExportProgress: (progress) => {
+        onExportProgress: (progress, taskId) => {
           conversionProgress.value = progress / 100;
-          if (bgTaskId) {
-            useBackgroundTasksStore().updateTaskProgress(bgTaskId, progress / 100);
+          const activeTaskId = taskId || bgTaskId;
+          if (activeTaskId) {
+            useBackgroundTasksStore().updateTaskProgress(activeTaskId, progress / 100);
           }
         },
         onExportPhase: (phase) => {
@@ -333,7 +334,13 @@ export function useFileConversion() {
       }
     }
 
-    await (client as any).exportTimeline(targetHandle, exportOptions, videoPayload, audioPayload);
+    await (client as any).exportTimeline(
+      targetHandle,
+      exportOptions,
+      videoPayload,
+      audioPayload,
+      bgTaskId,
+    );
   }
 
   async function startConversion() {
@@ -399,7 +406,8 @@ export function useFileConversion() {
         convertVideoAudio(targetHandle, bgTaskId)
           .then(async () => {
             if (isCancelRequested.value) {
-              useBackgroundTasksStore().updateTaskStatus(bgTaskId, 'cancelled');
+              const taskStore = useBackgroundTasksStore();
+              taskStore.updateTaskStatus(bgTaskId, 'cancelled');
               if (createdDirHandle && createdFileName) {
                 try {
                   await new Promise((resolve) => setTimeout(resolve, 500));
@@ -409,7 +417,9 @@ export function useFileConversion() {
                 }
               }
             } else {
-              useBackgroundTasksStore().updateTaskStatus(bgTaskId, 'completed');
+              const taskStore = useBackgroundTasksStore();
+              taskStore.updateTaskProgress(bgTaskId, 1);
+              taskStore.updateTaskStatus(bgTaskId, 'completed');
               toast.add({
                 title: t('videoEditor.fileManager.convert.success', 'File converted successfully'),
                 color: 'success',
@@ -418,7 +428,8 @@ export function useFileConversion() {
           })
           .catch(async (err) => {
             if (isCancelRequested.value) {
-              useBackgroundTasksStore().updateTaskStatus(bgTaskId, 'cancelled');
+              const taskStore = useBackgroundTasksStore();
+              taskStore.updateTaskStatus(bgTaskId, 'cancelled');
               if (createdDirHandle && createdFileName) {
                 try {
                   await new Promise((resolve) => setTimeout(resolve, 500));
@@ -428,7 +439,8 @@ export function useFileConversion() {
                 }
               }
             } else {
-              useBackgroundTasksStore().updateTaskStatus(bgTaskId, 'failed', err.message);
+              const taskStore = useBackgroundTasksStore();
+              taskStore.updateTaskStatus(bgTaskId, 'failed', err.message);
               console.error('Video conversion failed', err);
             }
           })
