@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, toRefs } from 'vue';
+import { ref, computed, toRefs, type CSSProperties } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -10,6 +10,7 @@ import type {
   TimelineMoveItemPayload,
   TimelineOpenSpeedModalPayload,
   TimelineTrack,
+  TimelineTrackItem,
   TimelineTrimItemPayload,
 } from '~/timeline/types';
 import { timeUsToPx } from '~/utils/timeline/geometry';
@@ -26,10 +27,14 @@ const selectionStore = useSelectionStore();
 const mediaStore = useMediaStore();
 const { selectedTransition } = storeToRefs(timelineStore);
 
+const OVERSCAN_PX = 300;
+
 const props = defineProps<{
   tracks: TimelineTrack[];
   trackHeights: Record<string, number>;
   canEditClipContent: boolean;
+  scrollLeft?: number;
+  viewportWidth?: number;
   dragPreview?: {
     trackId: string;
     startUs: number;
@@ -57,6 +62,27 @@ const DEFAULT_TRACK_HEIGHT = 40;
 const containerRef = ref<HTMLElement | null>(null);
 
 const { tracks, trackHeights } = toRefs(props);
+
+/** Visible range in px with overscan. Falls back to rendering everything if viewport unknown. */
+const visibleStartPx = computed(() => Math.max(0, (props.scrollLeft ?? 0) - OVERSCAN_PX));
+const visibleEndPx = computed(() => {
+  const vw = props.viewportWidth ?? 0;
+  if (vw <= 0) return Infinity;
+  return (props.scrollLeft ?? 0) + vw + OVERSCAN_PX;
+});
+
+function isItemVisible(item: TimelineTrackItem): boolean {
+  if (visibleEndPx.value === Infinity) return true;
+  const itemStartPx = timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom);
+  const itemEndPx = itemStartPx + Math.max(2, timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom));
+  return itemEndPx >= visibleStartPx.value && itemStartPx <= visibleEndPx.value;
+}
+
+function placeholderStyle(item: TimelineTrackItem): CSSProperties {
+  const startPx = timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom);
+  const width = Math.max(2, timeUsToPx(item.timelineRange.durationUs, timelineStore.timelineZoom));
+  return { position: 'absolute', left: `${startPx}px`, width: `${width}px`, top: 0, bottom: 0 };
+}
 const { isMarqueeSelecting, marqueeStyle, startMarquee } = useTimelineMarquee(
   containerRef,
   tracks,
@@ -230,32 +256,35 @@ function selectTransition(
           @select="(e) => emit('selectItem', e, item.id)"
           @marquee-start="(e) => startMarquee(e, () => emit('selectItem', e, item.id))"
         />
-        <TimelineClip
-          v-else
-          :track="track"
-          :item="item"
-          :track-height="trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT"
-          :can-edit-clip-content="canEditClipContent"
-          :is-dragging-current-item="draggingItemId === item.id"
-          :is-move-preview-current-item="movePreview?.itemId === item.id"
-          :selected-transition="selectedTransition"
-          :resize-volume="resizeVolume"
-          @select-item="(ev, id) => emit('selectItem', ev, id)"
-          @start-move-item="(ev, payload) => emit('startMoveItem', ev, payload)"
-          @start-trim-item="(ev, payload) => emit('startTrimItem', ev, payload)"
-          @start-resize-volume="startResizeVolume"
-          @start-resize-fade="startResizeFade"
-          @start-resize-transition="startResizeTransition"
-          @select-transition="selectTransition"
-          @clip-action="(p) => emit('clipAction', p)"
-          @open-speed-modal="
-            (p: TimelineOpenSpeedModalPayload) => openSpeedModal(track.id, p.itemId, p.speed)
-          "
-          @reset-volume="
-            (payload) =>
-              timelineStore.updateClipProperties(payload.trackId, payload.itemId, { audioGain: 1 })
-          "
-        />
+        <template v-else-if="isItemVisible(item)">
+          <TimelineClip
+            :track="track"
+            :item="item"
+            :track-height="trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT"
+            :can-edit-clip-content="canEditClipContent"
+            :is-dragging-current-item="draggingItemId === item.id"
+            :is-move-preview-current-item="movePreview?.itemId === item.id"
+            :selected-transition="selectedTransition"
+            :resize-volume="resizeVolume"
+            @select-item="(ev, id) => emit('selectItem', ev, id)"
+            @start-move-item="(ev, payload) => emit('startMoveItem', ev, payload)"
+            @start-trim-item="(ev, payload) => emit('startTrimItem', ev, payload)"
+            @start-resize-volume="startResizeVolume"
+            @start-resize-fade="startResizeFade"
+            @start-resize-transition="startResizeTransition"
+            @select-transition="selectTransition"
+            @clip-action="(p) => emit('clipAction', p)"
+            @open-speed-modal="
+              (p: TimelineOpenSpeedModalPayload) => openSpeedModal(track.id, p.itemId, p.speed)
+            "
+            @reset-volume="
+              (payload) =>
+                timelineStore.updateClipProperties(payload.trackId, payload.itemId, { audioGain: 1 })
+            "
+          />
+        </template>
+        <!-- Off-screen placeholder: preserves absolute positioning space without mounting heavy component -->
+        <div v-else :style="placeholderStyle(item)" />
       </template>
     </div>
 

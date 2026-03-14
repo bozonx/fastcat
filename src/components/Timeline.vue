@@ -51,6 +51,7 @@ const rulerContainerRef = ref<HTMLElement | null>(null);
 const timelineTrackLabelsRef = ref<InstanceType<typeof TimelineTrackLabels> | null>(null);
 const scrollLeftRef = ref(0);
 const scrollbarHeight = ref(0);
+const viewportWidth = ref(0);
 const trackAreaRef = ref<HTMLElement | null>(null);
 
 const { trackHeights } = storeToRefs(timelineStore);
@@ -109,8 +110,10 @@ watch(
 );
 
 useResizeObserver(scrollEl, () => {
-  if (scrollEl.value)
+  if (scrollEl.value) {
     scrollbarHeight.value = scrollEl.value.offsetHeight - scrollEl.value.clientHeight;
+    viewportWidth.value = scrollEl.value.clientWidth;
+  }
 });
 
 const { onScroll, onLabelsScroll, startPan, onPanMove, stopPan, isPanning } = useTimelineScrollSync(
@@ -574,6 +577,8 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
                 :move-preview="movePreview"
                 :dragging-mode="draggingMode"
                 :dragging-item-id="draggingItemId"
+                :scroll-left="scrollLeftRef"
+                :viewport-width="viewportWidth"
                 @drop="onDrop"
                 @dragover="onTrackDragOver"
                 @dragleave="onTrackDragLeave"
