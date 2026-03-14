@@ -197,6 +197,15 @@ export function useMonitorGestures(input: {
   function onViewportWheel(e: WheelEvent) {
     if (e.defaultPrevented) return;
 
+    // Native trackpad pinch-to-zoom always sets ctrlKey to true
+    if (e.ctrlKey) {
+      e.preventDefault();
+      // Trackpad pinch delta usually maps to deltaY. Adjust scale factor based on standard browser behavior
+      const pinchDelta = -e.deltaY;
+      applyZoomAtPoint({ delta: pinchDelta, clientX: e.clientX, clientY: e.clientY });
+      return;
+    }
+
     const isShift = isLayer1Active(e, workspaceStore.userSettings);
     const isSecondary = isSecondaryWheel(e);
     const settings = workspaceStore.userSettings.mouse.monitor;

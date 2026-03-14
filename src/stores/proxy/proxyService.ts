@@ -282,7 +282,13 @@ export function createProxyService(params: {
             fps: meta.video?.fps || 30,
           };
 
-          await client.exportTimeline(proxyFileHandle, exportOptions, videoClips, audioClips);
+          await client.exportTimeline(
+            proxyFileHandle,
+            exportOptions,
+            videoClips,
+            audioClips,
+            taskId,
+          );
 
           params.existingProxies.value = new Set([
             ...params.existingProxies.value,

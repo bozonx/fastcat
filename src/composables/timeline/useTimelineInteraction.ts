@@ -477,7 +477,7 @@ export function useTimelineInteraction(
         });
 
         if (moves.length > 0) {
-          try {
+          
             if (overlapMode === 'pseudo') {
               const cmds = moves.map((move) => ({
                 type: 'overlay_place_item' as const,
@@ -508,9 +508,7 @@ export function useTimelineInteraction(
 
             draggingTrackId.value = targetTrackId;
             hasPendingTimelinePersist.value = true;
-          } catch (err) {
-            console.warn('Timeline interaction error:', err);
-          }
+          
         }
 
         return;
@@ -539,7 +537,7 @@ export function useTimelineInteraction(
         pendingMoveCommit.value = null;
       }
 
-      try {
+      
         const cmd = {
           type: 'move_item_to_track',
           fromTrackId: trackId,
@@ -553,9 +551,7 @@ export function useTimelineInteraction(
         lastDragAppliedCmd.value = cmd as any;
         draggingTrackId.value = targetTrackId;
         hasPendingTimelinePersist.value = true;
-      } catch (err) {
-        console.warn('Timeline interaction error:', err);
-      }
+      
       return;
     }
 
@@ -603,7 +599,7 @@ export function useTimelineInteraction(
     const cmdEdge = mode === 'trim_start' ? 'start' : 'end';
     const cmdType = overlapMode === 'pseudo' ? 'overlay_trim_item' : 'trim_item';
 
-    try {
+    
       const cmd = {
         type: cmdType as any,
         trackId,
@@ -615,11 +611,7 @@ export function useTimelineInteraction(
       timelineStore.applyTimeline(cmd, { saveMode: 'none', skipHistory: true });
       lastDragAppliedCmd.value = cmd as any;
       hasPendingTimelinePersist.value = true;
-    } catch (err) {
-      console.warn('Timeline trim error:', err);
-      // Keep last applied quantized delta unchanged on failure? We intentionally keep it,
-      // so the user can continue dragging and we only apply deltas when possible.
-    }
+    
   }
 
   function scheduleDragApply() {
@@ -672,12 +664,9 @@ export function useTimelineInteraction(
 
   function onGlobalPointerUp(e?: PointerEvent) {
     if (e) {
-      try {
+      
         (e.currentTarget as HTMLElement | null)?.releasePointerCapture(e.pointerId);
-      } catch (err) {
-        console.warn('Timeline interaction error:', err);
-        // ignore
-      }
+      
     }
 
     const cancel = dragCancelRequested.value;
@@ -749,7 +738,7 @@ export function useTimelineInteraction(
               Boolean((it as any).linkedVideoClipId) &&
               Boolean((it as any).lockToLinkedVideo)
             ) {
-              try {
+              
                 timelineStore.applyTimeline(
                   {
                     type: 'update_clip_properties',
@@ -766,9 +755,7 @@ export function useTimelineInteraction(
                   },
                 );
                 hasPendingTimelinePersist.value = true;
-              } catch (err) {
-                console.warn('Timeline interaction error:', err);
-              }
+              
             }
           }
         }
@@ -796,15 +783,13 @@ export function useTimelineInteraction(
           }
 
           if (cmds.length > 0) {
-            try {
+            
               timelineStore.batchApplyTimeline(cmds as any, {
                 saveMode: 'none',
                 skipHistory: true,
               });
               hasPendingTimelinePersist.value = true;
-            } catch (err) {
-              console.warn('Timeline interaction error:', err);
-            }
+            
           }
         }
       }
@@ -817,7 +802,7 @@ export function useTimelineInteraction(
       if (overlapMode === 'pseudo') {
         const commit = pendingMoveCommit.value;
         if (commit) {
-          try {
+          
             const enableFrameSnap =
               settingsStore.frameSnapMode === 'frames' && !dragIsFreeOverride.value;
             const cmd = {
@@ -832,9 +817,7 @@ export function useTimelineInteraction(
             timelineStore.applyTimeline(cmd as any, { saveMode: 'none', skipHistory: true });
             lastDragAppliedCmd.value = cmd as any;
             hasPendingTimelinePersist.value = true;
-          } catch (err) {
-            console.warn('Timeline interaction error:', err);
-          }
+          
         }
       }
     }

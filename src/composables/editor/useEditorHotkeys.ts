@@ -50,8 +50,10 @@ export function useEditorHotkeys() {
   const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
 
   function hasBlockingModalState() {
+    // Rely on DOM presence of open dialogs or headless UI modals to block hotkeys
+    // This removes tight coupling to specific stores for UI state
+    if (document.querySelector('dialog[open], [role="dialog"], [role="alertdialog"]')) return true;
     if (projectStore.currentView === 'fullscreen') return true;
-    if (uiStore.activeModalsCount > 0) return true;
     return false;
   }
 
@@ -152,16 +154,28 @@ export function useEditorHotkeys() {
     zoomHoldRunner.clearTimers();
   }
 
+  // To prevent stuck keys if window loses focus while a key is pressed,
+  // we also listen to 'visibilitychange' which sometimes catches what 'blur' misses
+  function onVisibilityChange() {
+    if (document.hidden) {
+      suppressedKeyupCodes.clear();
+      volumeHoldRunner.clearTimers();
+      zoomHoldRunner.clearTimers();
+    }
+  }
+
   onMounted(() => {
     window.addEventListener('keydown', onGlobalKeydown);
     window.addEventListener('keyup', onGlobalKeyup);
     window.addEventListener('blur', onGlobalBlur);
+    document.addEventListener('visibilitychange', onVisibilityChange);
   });
 
   onUnmounted(() => {
     window.removeEventListener('keydown', onGlobalKeydown);
     window.removeEventListener('keyup', onGlobalKeyup);
     window.removeEventListener('blur', onGlobalBlur);
+    document.removeEventListener('visibilitychange', onVisibilityChange);
     volumeHoldRunner.clearTimers();
     zoomHoldRunner.clearTimers();
   });
