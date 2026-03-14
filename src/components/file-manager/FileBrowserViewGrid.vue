@@ -21,6 +21,7 @@ const props = defineProps<{
   entries: ExtendedFsEntry[];
   isRootDropOver: boolean;
   dragOverEntryPath: string | null;
+  currentDragOperation: 'copy' | 'move' | null;
   currentGridSizeName: string;
   editingEntryPath: string | null;
   folderEntriesNames: string[];
@@ -84,7 +85,10 @@ function isWorkspaceCommonRoot(entry: FsEntry): boolean {
           'border-b-2 border-b-red-500':
             entry.path && timelineMediaUsageStore.mediaPathToTimelines[entry.path]?.length,
           'opacity-30': entry.name.startsWith('.'),
-          'ring-2 ring-primary-500 bg-primary-500/20': dragOverEntryPath === (entry.path ?? null),
+          'ring-2 ring-primary-500 bg-primary-500/20':
+            dragOverEntryPath === (entry.path ?? null) && props.currentDragOperation !== 'copy',
+          'ring-2 ring-emerald-500 bg-emerald-500/15':
+            dragOverEntryPath === (entry.path ?? null) && props.currentDragOperation === 'copy',
         }"
         :style="{ width: `${filesPageStore.gridCardSize}px` }"
         :draggable="true"
@@ -198,7 +202,10 @@ function isWorkspaceCommonRoot(entry: FsEntry): boolean {
     <div
       class="w-full flex items-center justify-center min-h-12 mt-2 rounded-lg transition-colors"
       :class="{
-        'bg-primary-500/10 outline outline-primary-500/40 -outline-offset-1': isRootDropOver,
+        'bg-primary-500/10 outline outline-primary-500/40 -outline-offset-1':
+          isRootDropOver && props.currentDragOperation !== 'copy',
+        'bg-emerald-500/10 outline outline-emerald-500/40 -outline-offset-1':
+          isRootDropOver && props.currentDragOperation === 'copy',
       }"
       @dragover.prevent="emit('rootDragOver', $event)"
       @dragleave.prevent="emit('rootDragLeave', $event)"
@@ -206,10 +213,12 @@ function isWorkspaceCommonRoot(entry: FsEntry): boolean {
     >
       <p v-if="isRootDropOver" class="text-xs font-medium text-primary-400">
         {{
-          t(
-            'videoEditor.fileManager.actions.dropToRootHint',
-            'Release to upload into the project root',
-          )
+          props.currentDragOperation === 'copy'
+            ? t('videoEditor.fileManager.actions.dropToRootCopyHint', 'Release to copy into the current folder')
+            : t(
+                'videoEditor.fileManager.actions.dropToRootHint',
+                'Release to upload into the project root',
+              )
         }}
       </p>
     </div>

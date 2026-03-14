@@ -21,6 +21,7 @@ const props = defineProps<{
   entries: ExtendedFsEntry[];
   isRootDropOver: boolean;
   dragOverEntryPath: string | null;
+  currentDragOperation: 'copy' | 'move' | null;
   folderSizesLoading: Record<string, boolean>;
   folderSizes: Record<string, number>;
   editingEntryPath: string | null;
@@ -217,7 +218,9 @@ function isWorkspaceCommonRoot(entry: FsEntry): boolean {
                   proxyStore.generatingProxies.has(entry.path || '') ||
                   isGeneratingProxyInDirectory(entry),
                 'outline-2 outline-primary-500 -outline-offset-2 bg-primary-500/10!':
-                  dragOverEntryPath === (entry.path ?? null),
+                  dragOverEntryPath === (entry.path ?? null) && props.currentDragOperation !== 'copy',
+                'outline-2 outline-emerald-500 -outline-offset-2 bg-emerald-500/10!':
+                  dragOverEntryPath === (entry.path ?? null) && props.currentDragOperation === 'copy',
               }"
               :draggable="true"
               tabindex="0"
@@ -341,7 +344,10 @@ function isWorkspaceCommonRoot(entry: FsEntry): boolean {
         <!-- Root drop zone row for list view -->
         <tr
           class="transition-colors"
-          :class="{ 'bg-primary-500/10': isRootDropOver }"
+          :class="{
+            'bg-primary-500/10': isRootDropOver && props.currentDragOperation !== 'copy',
+            'bg-emerald-500/10': isRootDropOver && props.currentDragOperation === 'copy',
+          }"
           @dragover.prevent="emit('rootDragOver', $event)"
           @dragleave.prevent="emit('rootDragLeave', $event)"
           @drop.prevent="emit('rootDrop', $event)"
@@ -349,10 +355,12 @@ function isWorkspaceCommonRoot(entry: FsEntry): boolean {
           <td colspan="5" class="py-3 px-3 text-center">
             <span v-if="isRootDropOver" class="text-xs font-medium text-primary-400">
               {{
-                t(
-                  'videoEditor.fileManager.actions.dropToRootHint',
-                  'Release to upload into the project root',
-                )
+                props.currentDragOperation === 'copy'
+                  ? t('videoEditor.fileManager.actions.dropToRootCopyHint', 'Release to copy into the current folder')
+                  : t(
+                      'videoEditor.fileManager.actions.dropToRootHint',
+                      'Release to upload into the project root',
+                    )
               }}
             </span>
           </td>

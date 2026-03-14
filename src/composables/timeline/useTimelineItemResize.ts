@@ -58,6 +58,8 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     edge: 'in' | 'out';
     startX: number;
     startFadeUs: number;
+    startCurve: 'linear' | 'logarithmic';
+    activeCurve: 'linear' | 'logarithmic';
   } | null>(null);
 
   const resizeVolume = ref<{
@@ -125,12 +127,23 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     if (!canEditClipContent()) return;
     e.stopPropagation();
     e.preventDefault();
+
+    const tracks = tracksRef();
+    const track = tracks.find((t) => t.id === payload.trackId);
+    const item = track?.items.find((i) => i.id === payload.itemId);
+    if (!item || item.kind !== 'clip') return;
+
+    const curveProp = payload.edge === 'in' ? 'audioFadeInCurve' : 'audioFadeOutCurve';
+    const startCurve = item[curveProp] === 'logarithmic' ? 'logarithmic' : 'linear';
+
     resizeFade.value = {
       trackId: payload.trackId,
       itemId: payload.itemId,
       edge: payload.edge,
       startX: e.clientX,
       startFadeUs: payload.durationUs,
+      startCurve,
+      activeCurve: startCurve,
     };
 
     clearActivePointerListeners();
@@ -161,8 +174,18 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       newFadeUs = Math.max(0, Math.min(maxUs, newFadeUs));
 
       const propName = payload.edge === 'in' ? 'audioFadeInUs' : 'audioFadeOutUs';
+      const nextCurve = ev.shiftKey
+        ? resizeFade.value.startCurve === 'logarithmic'
+          ? 'linear'
+          : 'logarithmic'
+        : resizeFade.value.startCurve;
+      const curveChanged = nextCurve !== resizeFade.value.activeCurve;
+      const curveProp = payload.edge === 'in' ? 'audioFadeInCurve' : 'audioFadeOutCurve';
+
+      resizeFade.value.activeCurve = nextCurve;
       timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
         [propName]: Math.round(newFadeUs),
+        ...(curveChanged ? { [curveProp]: nextCurve } : {}),
       });
     }
 
@@ -177,8 +200,10 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     function onKeyDown(ev: KeyboardEvent) {
       if (ev.key === 'Escape' && resizeFade.value) {
         const propName = payload.edge === 'in' ? 'audioFadeInUs' : 'audioFadeOutUs';
+        const curveProp = payload.edge === 'in' ? 'audioFadeInCurve' : 'audioFadeOutCurve';
         timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
           [propName]: resizeFade.value.startFadeUs,
+          [curveProp]: resizeFade.value.startCurve,
         });
         resizeFade.value = null;
         clearActivePointerListeners();

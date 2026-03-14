@@ -3,6 +3,9 @@ export type HotkeyGroupId = 'general' | 'playback' | 'timeline';
 export type HotkeyCommandId =
   | 'general.focus'
   | 'general.deselect'
+  | 'general.copy'
+  | 'general.cut'
+  | 'general.paste'
   | 'general.delete'
   | 'general.rename'
   | 'general.undo'
@@ -103,6 +106,9 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
   commands: [
     { id: 'general.focus', groupId: 'general', title: 'Focus' },
     { id: 'general.deselect', groupId: 'general', title: 'Deselect' },
+    { id: 'general.copy', groupId: 'general', title: 'Copy' },
+    { id: 'general.cut', groupId: 'general', title: 'Cut' },
+    { id: 'general.paste', groupId: 'general', title: 'Paste' },
     { id: 'general.delete', groupId: 'general', title: 'Delete' },
     { id: 'general.rename', groupId: 'general', title: 'Rename' },
     { id: 'general.undo', groupId: 'general', title: 'Undo' },
@@ -264,6 +270,9 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
   bindings: {
     'general.focus': ['Tab'],
     'general.deselect': ['Escape'],
+    'general.copy': [`${Mod}+C`],
+    'general.cut': [`${Mod}+X`],
+    'general.paste': [`${Mod}+V`],
     'general.delete': ['Delete', 'X'],
     'general.rename': ['F2'],
     'general.undo': [`${Mod}+Z`],
