@@ -161,6 +161,7 @@ export function isEditableTarget(target: EventTarget | null): boolean {
     'file',
     'image',
     'hidden',
+    'range',
   ];
   if (nonTextTypes.includes(type)) return false;
 

@@ -22,6 +22,7 @@ export const HOTKEY_COMMAND_POLICIES: Readonly<
 > = {
   'general.deselect': {
     allowInEditable: true,
+    blurActiveElementOnExecute: true,
   },
   'general.focus': {
     allowWhenModalOpen: false,
