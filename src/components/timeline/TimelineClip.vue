@@ -173,8 +173,8 @@ function handleDrop(e: DragEvent) {
     const videoManifest = getVideoEffectManifest(effectType);
 
     if (audioManifest && videoManifest) {
-      if ((clipItem.value.clipType as string) === 'audio') {
-        manifest = getAudioEffectManifest(effectType);
+      if (props.track.kind === 'audio') {
+        manifest = audioManifest;
         target = 'audio';
       } else {
         manifest = videoManifest;

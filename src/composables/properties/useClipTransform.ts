@@ -66,10 +66,7 @@ export function useClipTransform(options: UseClipTransformOptions) {
     if (options.trackKind) {
       return options.trackKind.value === 'video';
     }
-
-    const trackId = options.clip.value.trackId;
-    if (typeof trackId !== 'string') return false;
-    return trackId.startsWith('v');
+    return false;
   });
 
   const { t } = useI18n();
@@ -238,7 +235,7 @@ export function useClipTransform(options: UseClipTransformOptions) {
       updateSelectedClipTransform({
         anchor: {
           preset: 'custom',
-          x: clampNumber(val, -100, 100),
+          x: clampNumber(val, -10, 10),
           y: current.anchor?.y ?? 0.5,
         },
       });
@@ -256,7 +253,7 @@ export function useClipTransform(options: UseClipTransformOptions) {
         anchor: {
           preset: 'custom',
           x: current.anchor?.x ?? 0.5,
-          y: clampNumber(val, -100, 100),
+          y: clampNumber(val, -10, 10),
         },
       });
     },

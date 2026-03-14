@@ -1,5 +1,6 @@
 import { computed, type Ref } from 'vue';
 import type { TimelineClipItem, TrackKind, TimelineTrack } from '~/timeline/types';
+import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
 
 interface UseClipPropertiesActionsOptions {
   clip: Ref<TimelineClipItem>;
@@ -75,7 +76,17 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
   );
 
   function handleDeleteClip() {
-    timelineStore.deleteSelectedItems(options.clip.value.trackId);
+    timelineStore.applyTimeline({
+      type: 'delete_items',
+      trackId: options.clip.value.trackId,
+      itemIds: [options.clip.value.id],
+    });
+
+    if (Array.isArray(timelineStore.selectedItemIds)) {
+      timelineStore.selectedItemIds = timelineStore.selectedItemIds.filter(
+        (itemId: string) => itemId !== options.clip.value.id,
+      );
+    }
   }
 
   function handleUnlinkAudio() {
@@ -116,13 +127,34 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
   }
 
   function handleQuantizeClip() {
+    const doc = timelineStore.timelineDoc;
+    const clip = options.clip.value;
+    if (!doc) return;
+
+    const fps = sanitizeFps(doc.timebase?.fps);
+    const startUs = quantizeTimeUsToFrames(clip.timelineRange.startUs, fps, 'round');
+    const endUs = quantizeTimeUsToFrames(
+      clip.timelineRange.startUs + clip.timelineRange.durationUs,
+      fps,
+      'round',
+    );
+    const durationUs = Math.max(1, endUs - startUs);
+
+    timelineStore.applyTimeline({
+      type: 'move_item',
+      trackId: clip.trackId,
+      itemId: clip.id,
+      startUs,
+      quantizeToFrames: false,
+    });
+
     timelineStore.applyTimeline({
       type: 'trim_item',
-      trackId: options.clip.value.trackId,
-      itemId: options.clip.value.id,
+      trackId: clip.trackId,
+      itemId: clip.id,
       edge: 'end',
-      deltaUs: 0,
-      quantizeToFrames: true,
+      deltaUs: durationUs - clip.timelineRange.durationUs,
+      quantizeToFrames: false,
     });
   }
 
