@@ -114,7 +114,7 @@ onBeforeUnmount(() => {
     class="flex items-center px-1 text-xs font-medium cursor-pointer select-none relative group border-b border-ui-border"
     :data-track-id="track.id"
     :class="[
-      isSelected ? 'text-ui-text bg-ui-bg-accent/20' : '',
+      isSelected ? 'text-ui-text bg-primary-500/12' : '',
       isHovered && !isSelected ? 'text-ui-text bg-ui-bg-elevated/80' : 'text-ui-text-muted',
     ]"
     :style="{ height: `${height}px` }"
@@ -122,18 +122,13 @@ onBeforeUnmount(() => {
     @dblclick="timelineStore.selectAllClipsOnTrack(track.id)"
     @contextmenu.stop="emit('select')"
   >
-    <!-- Track Drag Handle (Left) -->
-    <div
-      class="w-1 h-2/3 rounded-full bg-ui-border opacity-0 group-hover:opacity-100 transition-opacity mr-1"
-    />
-
     <div class="flex-1 min-w-0 flex items-center overflow-hidden">
       <div
-        class="max-w-full px-1 py-0.5 rounded border border-transparent transition-colors overflow-hidden"
+        class="max-w-full px-1 py-0.5 rounded transition-colors overflow-hidden"
         :class="[
-          isRenaming ? 'bg-ui-bg-elevated border-ui-border-accent' : 'hover:border-ui-border/50',
+          isRenaming ? 'bg-ui-bg-elevated ring-1 ring-ui-border-accent' : '',
         ]"
-        @dblclick.stop="timelineStore.renamingTrackId = track.id"
+        @click.stop="timelineStore.renamingTrackId = track.id"
       >
         <input
           v-if="isRenaming"
