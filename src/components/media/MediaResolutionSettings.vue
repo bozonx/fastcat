@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
+import FpsInputWithPresets from '~/components/ui/FpsInputWithPresets.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -47,6 +48,7 @@ const formatOptions = [
 const sampleRateOptions = [
   { value: 44100, label: '44.1 kHz' },
   { value: 48000, label: '48 kHz' },
+  { value: 96000, label: '96 kHz' },
 ];
 
 const orientationOptions = [
@@ -64,6 +66,7 @@ const orientationOptions = [
 
 const aspectRatioOptions = [
   { value: '16:9', label: t('videoEditor.resolution.aspect.16_9', '16:9') },
+  { value: '9:16', label: t('videoEditor.resolution.aspect.9_16', '9:16') },
   { value: '4:3', label: t('videoEditor.resolution.aspect.4_3', '4:3') },
   { value: '1:1', label: t('videoEditor.resolution.aspect.1_1', '1:1') },
   { value: '21:9', label: t('videoEditor.resolution.aspect.21_9', '21:9') },
@@ -79,6 +82,7 @@ const bases: Record<string, number> = {
 
 const ratios: Record<string, number> = {
   '16:9': 16 / 9,
+  '9:16': 9 / 16,
   '4:3': 4 / 3,
   '1:1': 1,
   '21:9': 21 / 9,
@@ -186,7 +190,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
     <!-- Preset Mode -->
     <template v-if="!localIsCustom">
       <div class="flex flex-wrap gap-2">
-        <div class="flex flex-col gap-2 w-[5rem] shrink-0">
+        <div class="flex flex-col gap-2 w-20 shrink-0">
           <label class="text-xs text-ui-text-muted font-medium">
             {{ t('videoEditor.resolution.orientation', 'Orientation') }}
           </label>
@@ -199,7 +203,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
           />
         </div>
 
-        <div class="flex flex-col gap-2 w-[5rem] shrink-0">
+        <div class="flex flex-col gap-2 w-20 shrink-0">
           <label class="text-xs text-ui-text-muted font-medium">
             {{ t('videoEditor.resolution.aspectRatio', 'Aspect Ratio') }}
           </label>
@@ -214,7 +218,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
           />
         </div>
 
-        <div class="flex flex-col gap-2 w-[7rem]">
+        <div class="flex flex-col gap-2 w-28">
           <label class="text-xs text-ui-text-muted font-medium">
             {{ t('videoEditor.resolution.format', 'Format') }}
           </label>
@@ -289,11 +293,8 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.export.fps', 'FPS') }}
         </label>
-        <WheelNumberInput
+        <FpsInputWithPresets
           v-model="localFps"
-          :min="1"
-          :max="240"
-          :step="0.001"
           :disabled="disabled"
         />
       </div>

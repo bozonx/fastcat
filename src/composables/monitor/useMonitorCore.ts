@@ -5,18 +5,24 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { getPreviewWorkerClient, setPreviewHostApi } from '~/utils/video-editor/worker-client';
 
 import { AudioEngine } from '~/utils/video-editor/AudioEngine';
-import { clampTimeUs, normalizeTimeUs } from '~/utils/monitor-time';
-import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
+import { clampTimeUs } from '~/utils/monitor-time';
 
 import type { WorkerTimelineClip } from './types';
 import type { UseMonitorCoreOptions } from './useMonitorCore.types';
-import {
-  cloneWorkerPayload,
-  computeAudioDurationUs,
-  createPreviewRenderOptions,
-} from './useMonitorCore.helpers';
+import { cloneWorkerPayload, createPreviewRenderOptions } from './useMonitorCore.helpers';
 import { mapAudioEngineClips } from './useMonitorCore.audio';
-import { prepareMonitorTimelineData } from './useMonitorCore.payload';
+import { createMonitorCompositorRuntime } from './useMonitorCore.compositor';
+import { createMonitorPreviewHostApi } from './useMonitorCore.hostApi';
+import {
+  computeMonitorTimelineDuration,
+  prepareMonitorTimelineState,
+} from './useMonitorCore.timeline';
+import {
+  getMonitorLayoutUpdatePayload,
+  hasProxyForMonitorSources,
+  shouldScheduleAudioLayoutUpdate,
+  shouldScheduleClipLayoutUpdate,
+} from './useMonitorCore.watchers';
 
 export function useMonitorCore(options: UseMonitorCoreOptions) {
   const { t } = useI18n();
@@ -49,10 +55,6 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   let buildRequestId = 0;
   let lastBuiltSourceSignature = 0;
   let lastBuiltLayoutSignature = 0;
-  let canvasEl: HTMLCanvasElement | null = null;
-  let compositorReady = false;
-  let compositorWidth = 0;
-  let compositorHeight = 0;
   let buildInFlight = false;
   let buildRequested = false;
   let buildDebounceTimer: number | null = null;
@@ -60,8 +62,6 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   let layoutUpdateInFlight = false;
   let pendingLayoutClips: WorkerTimelineClip[] | null = null;
   let pendingLayoutAudioClips: WorkerTimelineClip[] | null = null;
-  let renderLoopInFlight = false;
-  let latestRenderTimeUs: number | null = null;
   let isUnmounted = false;
   let forceRecreateCompositorNextBuild = false;
   let currentTimeProvider: (() => number) | null = null;
@@ -71,6 +71,14 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
 
   const audioEngine = new AudioEngine();
   const { client } = getPreviewWorkerClient();
+  const compositorRuntime = createMonitorCompositorRuntime({
+    client,
+    containerEl,
+    renderWidth,
+    renderHeight,
+    isUnmounted: () => isUnmounted,
+    getPreviewRenderOptions,
+  });
 
   useResizeObserver(viewportEl, () => {
     if (isUnmounted || resizeScheduled) {
@@ -160,7 +168,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         pendingLayoutClips = null;
         pendingLayoutAudioClips = null;
         try {
-          const preparedTimeline = await prepareMonitorTimelineData({
+          const preparedTimeline = await prepareMonitorTimelineState({
             rawAudioClips: layoutAudioClips,
             tracks: timelineStore.timelineDoc?.tracks ?? [],
             projectStore,
@@ -177,10 +185,13 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
 
           const payload = cloneWorkerPayload(preparedTimeline.payload);
           const maxDuration = await client.updateTimelineLayout(payload);
-          const audioDuration = computeAudioDurationUs(flattenedAudio);
           // Keep store duration at least as large as current value to avoid clamping
           // when disabled clips are excluded from the worker payload.
-          timelineStore.duration = Math.max(timelineStore.duration, maxDuration, audioDuration);
+          timelineStore.duration = computeMonitorTimelineDuration({
+            currentDurationUs: timelineStore.duration,
+            maxDurationUs: maxDuration,
+            audioDurationUs: preparedTimeline.audioDurationUs,
+          });
           lastBuiltLayoutSignature = clipLayoutSignature.value;
           layoutUpdateFromQueue = false;
           scheduleRender(getRenderTimeForLayoutUpdate());
@@ -211,35 +222,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     }, BUILD_DEBOUNCE_MS);
   }
 
-  function scheduleRender(timeUs: number) {
-    if (isUnmounted) return;
-    latestRenderTimeUs = normalizeTimeUs(timeUs);
-    if (renderLoopInFlight) return;
-
-    renderLoopInFlight = true;
-    const run = async () => {
-      try {
-        while (latestRenderTimeUs !== null) {
-          if (isUnmounted) {
-            latestRenderTimeUs = null;
-            break;
-          }
-          const nextTimeUs = latestRenderTimeUs;
-          latestRenderTimeUs = null;
-          await client.renderFrame(nextTimeUs, getPreviewRenderOptions());
-        }
-      } catch (err) {
-        console.error('[Monitor] Render failed', err);
-      } finally {
-        renderLoopInFlight = false;
-        if (latestRenderTimeUs !== null) {
-          scheduleRender(latestRenderTimeUs);
-        }
-      }
-    };
-
-    void run();
-  }
+  const scheduleRender = compositorRuntime.scheduleRender;
 
   function updateStoreTime(timeUs: number) {
     const normalizedTimeUs = clampToTimeline(timeUs);
@@ -254,50 +237,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   }
 
   async function ensureCompositorReady(options?: { forceRecreate?: boolean }) {
-    if (!containerEl.value) {
-      return;
-    }
-
-    const shouldRecreate = options?.forceRecreate ?? false;
-    const targetWidth = renderWidth.value;
-    const targetHeight = renderHeight.value;
-    const needReinit =
-      !compositorReady ||
-      compositorWidth !== targetWidth ||
-      compositorHeight !== targetHeight ||
-      shouldRecreate;
-
-    if (!needReinit) {
-      return;
-    }
-
-    if (shouldRecreate || !canvasEl || needReinit) {
-      const container = containerEl.value;
-      while (container.firstChild) {
-        container.removeChild(container.firstChild);
-      }
-      canvasEl = document.createElement('canvas');
-      canvasEl.style.width = `${targetWidth}px`;
-      canvasEl.style.height = `${targetHeight}px`;
-      canvasEl.style.display = 'block';
-      containerEl.value.appendChild(canvasEl);
-      compositorReady = false;
-    }
-
-    if (!canvasEl) {
-      return;
-    }
-
-    canvasEl.width = targetWidth;
-    canvasEl.height = targetHeight;
-    canvasEl.style.width = `${targetWidth}px`;
-    canvasEl.style.height = `${targetHeight}px`;
-    const offscreen = canvasEl.transferControlToOffscreen();
-    await client.destroyCompositor();
-    await client.initCompositor(offscreen, targetWidth, targetHeight, '#000');
-    compositorReady = true;
-    compositorWidth = targetWidth;
-    compositorHeight = targetHeight;
+    await compositorRuntime.ensureReady(options);
   }
 
   async function buildTimeline() {
@@ -315,7 +255,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
 
       const rawAudio = rawWorkerAudioClips?.value ?? workerAudioClips.value;
 
-      const preparedTimeline = await prepareMonitorTimelineData({
+      const preparedTimeline = await prepareMonitorTimelineState({
         rawAudioClips: rawAudio,
         tracks: timelineStore.timelineDoc?.tracks ?? [],
         projectStore,
@@ -330,7 +270,6 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
 
       const clips = flattenedClips;
       const audioClips = flattenedAudio;
-      const audioDuration = computeAudioDurationUs(audioClips);
 
       if (clips.length === 0 && audioClips.length === 0) {
         await client.clearClips();
@@ -342,25 +281,15 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       }
 
       setPreviewHostApi(
-        createVideoCoreHostApi({
-          getCurrentProjectId: () => currentProjectStore.currentProjectId,
-          getWorkspaceHandle: () => workspaceStore.workspaceHandle,
-          getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
-          getFileHandleByPath: async (path) => {
-            if (useProxyInMonitor.value) {
-              const proxyHandle = await proxyStore.getProxyFileHandle(path);
-              if (proxyHandle) return proxyHandle;
-            }
-            return await projectStore.getFileHandleByPath(path);
-          },
-          getFileByPath: async (path) => {
-            if (useProxyInMonitor.value) {
-              const proxyFile = await proxyStore.getProxyFile(path);
-              if (proxyFile) return proxyFile;
-            }
-            return await projectStore.getFileByPath(path);
-          },
-          onExportProgress: () => {},
+        createMonitorPreviewHostApi({
+          currentProjectId: currentProjectStore.currentProjectId,
+          workspaceHandle: workspaceStore.workspaceHandle,
+          resolvedStorageTopology: workspaceStore.resolvedStorageTopology,
+          useProxyInMonitor: useProxyInMonitor.value,
+          getProxyFileHandle: proxyStore.getProxyFileHandle,
+          getProxyFile: proxyStore.getProxyFile,
+          getFileHandleByPath: projectStore.getFileHandleByPath,
+          getFileByPath: projectStore.getFileByPath,
         }),
       );
 
@@ -382,9 +311,12 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
 
       // Keep store duration at least as large as current value to avoid clamping
       // when disabled clips are excluded from the worker payload.
-      timelineStore.duration = normalizeTimeUs(
-        Math.max(timelineStore.duration, maxDuration, audioDuration),
-      );
+      timelineStore.duration = computeMonitorTimelineDuration({
+        currentDurationUs: timelineStore.duration,
+        maxDurationUs: maxDuration,
+        audioDurationUs: preparedTimeline.audioDurationUs,
+        normalize: true,
+      });
 
       // Render at current time without clamping — the dispatchers already
       // keep duration including disabled clips.
@@ -411,19 +343,10 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       if (isUnmounted) return;
       if (!useProxyInMonitor.value) return;
 
-      // Check if any of the new proxies belong to clips in our timeline
-      const clips = workerTimelineClips.value;
-      const audio = workerAudioClips.value;
-
-      const hasNewProxyForClips = [...clips, ...audio].some((c) => {
-        const path = c.source?.path;
-        if (!path) return false;
-        // Since Set mutations don't provide deep old/new comparison easily,
-        // we just check if it currently has a proxy. We should ideally check
-        // if we weren't already using it, but this serves as a fallback.
-        // The previous logic checked oldVal?.has(path), but in Vue oldVal === newVal
-        // for mutated objects. We will just check if the new proxy is in our timeline.
-        return newVal.has(path);
+      const hasNewProxyForClips = hasProxyForMonitorSources({
+        clips: workerTimelineClips.value,
+        audioClips: workerAudioClips.value,
+        existingProxies: newVal,
       });
 
       if (hasNewProxyForClips) {
@@ -445,7 +368,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       timelineStore.isPlaying = false;
       audioHandleCache.clear();
       forceRecreateCompositorNextBuild = true;
-      compositorReady = false;
+      compositorRuntime.invalidate();
       scheduleBuild();
     },
   );
@@ -459,31 +382,45 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   );
 
   watch(clipLayoutSignature, () => {
-    if (isLoading.value || !compositorReady) {
-      return;
-    }
-    if (clipSourceSignature.value !== lastBuiltSourceSignature) {
-      return;
-    }
-    if (clipLayoutSignature.value === lastBuiltLayoutSignature) {
-      return;
-    }
-    if (layoutUpdateFromQueue) {
+    if (
+      !shouldScheduleClipLayoutUpdate({
+        isLoading: isLoading.value,
+        isCompositorReady: compositorRuntime.isReady(),
+        clipSourceSignature: clipSourceSignature.value,
+        lastBuiltSourceSignature,
+        clipLayoutSignature: clipLayoutSignature.value,
+        lastBuiltLayoutSignature,
+        layoutUpdateFromQueue,
+      })
+    ) {
       return;
     }
 
-    const layoutClips = rawWorkerTimelineClips?.value ?? workerTimelineClips.value;
-    const layoutAudioClips = rawWorkerAudioClips?.value ?? workerAudioClips.value;
+    const { layoutClips, layoutAudioClips } = getMonitorLayoutUpdatePayload({
+      rawWorkerTimelineClips,
+      rawWorkerAudioClips,
+      workerTimelineClips,
+      workerAudioClips,
+    });
     scheduleLayoutUpdate(layoutClips, layoutAudioClips);
   });
 
   watch(audioClipLayoutSignature, () => {
-    if (isLoading.value || !compositorReady) {
+    if (
+      !shouldScheduleAudioLayoutUpdate({
+        isLoading: isLoading.value,
+        isCompositorReady: compositorRuntime.isReady(),
+      })
+    ) {
       return;
     }
 
-    const layoutClips = rawWorkerTimelineClips?.value ?? workerTimelineClips.value;
-    const layoutAudioClips = rawWorkerAudioClips?.value ?? workerAudioClips.value;
+    const { layoutClips, layoutAudioClips } = getMonitorLayoutUpdatePayload({
+      rawWorkerTimelineClips,
+      rawWorkerAudioClips,
+      workerTimelineClips,
+      workerAudioClips,
+    });
     scheduleLayoutUpdate(layoutClips, layoutAudioClips);
   });
 
@@ -513,7 +450,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     ],
     () => {
       updateCanvasDisplaySize();
-      compositorReady = false;
+      compositorRuntime.invalidate();
       scheduleBuild();
     },
   );
@@ -527,7 +464,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   onBeforeUnmount(() => {
     isUnmounted = true;
     timelineStore.isPlaying = false;
-    latestRenderTimeUs = null;
+    compositorRuntime.clearPendingRender();
     if (buildDebounceTimer !== null) {
       clearTimeout(buildDebounceTimer);
       buildDebounceTimer = null;
@@ -545,7 +482,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
 
     pendingLayoutClips = null;
     pendingLayoutAudioClips = null;
-    void client.destroyCompositor().catch((error) => {
+    void compositorRuntime.destroy().catch((error) => {
       console.error('[Monitor] Failed to destroy compositor on unmount', error);
     });
   });

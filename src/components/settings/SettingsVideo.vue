@@ -108,7 +108,7 @@ function resetDefaults() {
         {{ t('videoEditor.settings.video.accelerationDiagnostics', 'Acceleration diagnostics') }}
       </div>
 
-      <div class="grid grid-cols-4 gap-4">
+      <div class="flex flex-col gap-4">
         <UFormField
           :label="t('videoEditor.settings.videoFrameCacheMb', 'Video frame cache (MB)')"
           :help="
@@ -123,6 +123,7 @@ function resetDefaults() {
             :min="0"
             :max="4096"
             :step="16"
+            class="max-w-xs"
           />
         </UFormField>
       </div>

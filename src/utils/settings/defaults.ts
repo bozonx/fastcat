@@ -152,7 +152,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
   openLastProjectOnStart: true,
   timeline: {
     snapThresholdPx: 8,
-    defaultTransitionDurationUs: 1_000_000,
+    defaultTransitionDurationUs: 2_000_000,
   },
   stopFrames: {
     qualityPercent: 85,
