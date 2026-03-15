@@ -1,7 +1,12 @@
 import { ref, computed } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
-import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
+import {
+  getExportWorkerClient,
+  registerExportTaskHostApi,
+  setExportHostApi,
+  unregisterExportTaskHostApi,
+} from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { addMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -21,9 +26,52 @@ const mediaType = computed(() => {
 
 const isConverting = ref(false);
 const isCancelRequested = ref(false);
+const activeForegroundConversionTaskId = ref<string | null>(null);
 const conversionProgress = ref(0);
 const conversionError = ref<string | null>(null);
 const conversionPhase = ref<'encoding' | 'saving' | null>(null);
+
+interface SharedAudioSettings {
+  channels: 'stereo' | 'mono';
+  sampleRate: number | null;
+}
+
+interface VideoConversionSettings {
+  format: 'mp4' | 'webm' | 'mkv';
+  videoCodec: string;
+  bitrateMbps: number;
+  excludeAudio: boolean;
+  audioCodec: 'aac' | 'opus';
+  audioBitrateKbps: number;
+  bitrateMode: 'constant' | 'variable';
+  keyframeIntervalSec: number;
+  width: number;
+  height: number;
+  fps: number;
+}
+
+interface AudioOnlyConversionSettings {
+  codec: 'opus' | 'aac';
+  bitrateKbps: number;
+  reverse: boolean;
+}
+
+interface ImageConversionSettings {
+  quality: number;
+  width: number;
+  height: number;
+}
+
+interface ConversionRequest {
+  entry: FsEntry;
+  type: 'video' | 'audio' | 'image';
+  dirPath: string;
+  newFileName: string;
+  sharedAudio: SharedAudioSettings;
+  video?: VideoConversionSettings;
+  audioOnly?: AudioOnlyConversionSettings;
+  image?: ImageConversionSettings;
+}
 
 // Video Settings
 const videoFormat = ref<'mp4' | 'webm' | 'mkv'>('mp4');
@@ -83,6 +131,90 @@ export function useFileConversion() {
     const v = Number(value);
     if (!Number.isFinite(v) || v <= 0) return fallback;
     return v;
+  }
+
+  function createConversionTaskId() {
+    return `file-conversion-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  function isAbortError(error: unknown) {
+    return error instanceof Error && error.name === 'AbortError';
+  }
+
+  async function waitForFsSettling() {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  async function removeCreatedFile(params: {
+    dirHandle: FileSystemDirectoryHandle | null;
+    fileName: string | null;
+  }) {
+    if (!params.dirHandle || !params.fileName) return;
+    try {
+      await waitForFsSettling();
+      await params.dirHandle.removeEntry(params.fileName);
+    } catch {
+      // ignore
+    }
+  }
+
+  function buildConversionRequest(entry: FsEntry): ConversionRequest {
+    const type = mediaType.value;
+    if (type !== 'video' && type !== 'audio' && type !== 'image') {
+      throw new Error('Unsupported media type');
+    }
+
+    const baseName = entry.name.replace(/\.[^.]+$/, '');
+    let newExt = '';
+    if (type === 'image') newExt = 'webp';
+    else if (type === 'audio') newExt = audioOnlyFormat.value;
+    else newExt = videoFormat.value;
+
+    const sampleRate =
+      audioSampleRate.value === 0
+        ? originalAudioSampleRate.value
+        : clampPositiveNumber(Number(audioSampleRate.value), 0);
+
+    const request: ConversionRequest = {
+      entry,
+      type,
+      dirPath: entry.path.split('/').slice(0, -1).join('/'),
+      newFileName: `${baseName}_converted.${newExt}`,
+      sharedAudio: {
+        channels: audioChannels.value,
+        sampleRate: sampleRate && sampleRate > 0 ? sampleRate : null,
+      },
+    };
+
+    if (type === 'video') {
+      request.video = {
+        format: videoFormat.value,
+        videoCodec: videoCodec.value,
+        bitrateMbps: clampPositiveNumber(videoBitrateMbps.value, 5),
+        excludeAudio: excludeAudio.value,
+        audioCodec: audioCodec.value,
+        audioBitrateKbps: clampPositiveNumber(audioBitrateKbps.value, 128),
+        bitrateMode: bitrateMode.value,
+        keyframeIntervalSec: clampPositiveNumber(keyframeIntervalSec.value, 2),
+        width: Math.max(1, Math.round(Number(videoWidth.value) || 1920)),
+        height: Math.max(1, Math.round(Number(videoHeight.value) || 1080)),
+        fps: clampPositiveNumber(Number(videoFps.value), 30),
+      };
+    } else if (type === 'audio') {
+      request.audioOnly = {
+        codec: audioOnlyCodec.value,
+        bitrateKbps: clampPositiveNumber(audioOnlyBitrateKbps.value, 128),
+        reverse: audioReverse.value,
+      };
+    } else {
+      request.image = {
+        quality: Math.max(1, Math.min(100, Math.round(Number(imageQuality.value) || 80))),
+        width: Math.max(1, Math.round(Number(imageWidth.value) || 1)),
+        height: Math.max(1, Math.round(Number(imageHeight.value) || 1)),
+      };
+    }
+
+    return request;
   }
 
   async function openConversionModal(entry: FsEntry) {
@@ -189,16 +321,23 @@ export function useFileConversion() {
     }
   }
 
-  async function convertImage(file: File, targetHandle: FileSystemFileHandle) {
+  async function convertImage(params: {
+    file: File;
+    targetHandle: FileSystemFileHandle;
+    request: ConversionRequest;
+    taskId: string;
+  }) {
     return addMediaTask(
       async () => {
-        if (isCancelRequested.value) return;
+        if (isCancelRequested.value && activeForegroundConversionTaskId.value === params.taskId) {
+          return;
+        }
 
-        const bitmap = await createImageBitmap(file);
+        const bitmap = await createImageBitmap(params.file);
         const canvas = document.createElement('canvas');
 
-        const targetWidth = Math.max(1, Math.round(Number(imageWidth.value) || bitmap.width));
-        const targetHeight = Math.max(1, Math.round(Number(imageHeight.value) || bitmap.height));
+        const targetWidth = Math.max(1, params.request.image?.width || bitmap.width);
+        const targetHeight = Math.max(1, params.request.image?.height || bitmap.height);
 
         canvas.width = targetWidth;
         canvas.height = targetHeight;
@@ -207,12 +346,12 @@ export function useFileConversion() {
         ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
 
         const blob = await new Promise<Blob | null>((resolve) => {
-          canvas.toBlob(resolve, 'image/webp', imageQuality.value / 100);
+          canvas.toBlob(resolve, 'image/webp', (params.request.image?.quality ?? 80) / 100);
         });
 
         if (!blob) throw new Error('Failed to create webp blob');
 
-        const writable = await targetHandle.createWritable();
+        const writable = await params.targetHandle.createWritable();
         await writable.write(blob);
         await writable.close();
       },
@@ -220,13 +359,23 @@ export function useFileConversion() {
     );
   }
 
-  async function convertVideoAudio(targetHandle: FileSystemFileHandle, bgTaskId?: string) {
+  async function convertVideoAudio(params: {
+    request: ConversionRequest;
+    targetHandle: FileSystemFileHandle;
+    taskId: string;
+    backgroundTaskId?: string;
+  }) {
     return addMediaTask(
       async () => {
-        if (isCancelRequested.value) return;
-        if (!targetEntry.value || !targetEntry.value.path) return;
-        if (bgTaskId) {
-          backgroundTasksStore.updateTaskStatus(bgTaskId, 'running');
+        if (
+          !params.backgroundTaskId &&
+          isCancelRequested.value &&
+          activeForegroundConversionTaskId.value === params.taskId
+        ) {
+          return;
+        }
+        if (params.backgroundTaskId) {
+          backgroundTasksStore.updateTaskStatus(params.backgroundTaskId, 'running');
         }
 
         const { client } = getExportWorkerClient();
@@ -238,131 +387,136 @@ export function useFileConversion() {
             getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
             getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
             getFileByPath: async (path) => projectStore.getFileByPath(path),
-            onExportProgress: (progress, taskId) => {
-              conversionProgress.value = progress / 100;
-              const activeTaskId = taskId || bgTaskId;
-              if (activeTaskId) {
-                backgroundTasksStore.updateTaskProgress(activeTaskId, progress / 100);
-              }
-            },
-            onExportPhase: (phase) => {
-              conversionPhase.value = phase;
-            },
-            onExportWarning: (message) => {
-              console.warn(message);
-            },
+            onExportProgress: () => {},
           }),
         );
+        registerExportTaskHostApi(params.taskId, {
+          onExportProgress: (progress) => {
+            const normalizedProgress = progress / 100;
+            if (
+              !params.backgroundTaskId &&
+              activeForegroundConversionTaskId.value === params.taskId
+            ) {
+              conversionProgress.value = normalizedProgress;
+            }
+            if (params.backgroundTaskId) {
+              backgroundTasksStore.updateTaskProgress(params.backgroundTaskId, normalizedProgress);
+            }
+          },
+          onExportPhase: (phase) => {
+            if (
+              !params.backgroundTaskId &&
+              activeForegroundConversionTaskId.value === params.taskId
+            ) {
+              conversionPhase.value = phase;
+            }
+          },
+          onExportWarning: (message) => {
+            console.warn(message);
+          },
+        });
 
-        const sourceFile = await projectStore.getFileByPath(targetEntry.value.path);
-        if (!sourceFile) throw new Error('Failed to access source file');
+        try {
+          const sourceFile = await projectStore.getFileByPath(params.request.entry.path);
+          if (!sourceFile) throw new Error('Failed to access source file');
 
-        const meta = await client.extractMetadata(sourceFile);
-        const durationUs = Math.round((meta.duration || 0) * 1_000_000);
-        if (!durationUs && mediaType.value === 'video') throw new Error('Invalid media duration');
+          const meta = await client.extractMetadata(sourceFile);
+          const durationUs = Math.round((meta.duration || 0) * 1_000_000);
+          if (!durationUs && params.request.type === 'video') {
+            throw new Error('Invalid media duration');
+          }
 
-        const isVideo = mediaType.value === 'video';
+          let exportOptions: any = {};
+          let videoPayload: any[] = [];
+          let audioPayload: any[] = [];
 
-        let exportOptions: any = {};
-        let videoPayload: any[] = [];
-        let audioPayload: any[] = [];
+          if (params.request.type === 'video' && params.request.video) {
+            exportOptions = {
+              format: params.request.video.format,
+              videoCodec: params.request.video.videoCodec,
+              bitrate: params.request.video.bitrateMbps * 1_000_000,
+              audioBitrate: params.request.video.audioBitrateKbps * 1000,
+              audio: !params.request.video.excludeAudio,
+              audioCodec:
+                params.request.video.format === 'mp4' ? 'aac' : params.request.video.audioCodec,
+              width: Math.max(1, params.request.video.width || meta.video?.width || 1920),
+              height: Math.max(1, params.request.video.height || meta.video?.height || 1080),
+              fps: clampPositiveNumber(params.request.video.fps || Number(meta.video?.fps), 30),
+              bitrateMode: params.request.video.bitrateMode,
+              keyframeIntervalSec: params.request.video.keyframeIntervalSec,
+              exportAlpha: false,
+              audioChannels: params.request.sharedAudio.channels,
+              audioSampleRate: params.request.sharedAudio.sampleRate || undefined,
+            };
 
-        if (isVideo) {
-          exportOptions = {
-            format: videoFormat.value,
-            videoCodec: videoCodec.value,
-            bitrate: videoBitrateMbps.value * 1_000_000,
-            audioBitrate: audioBitrateKbps.value * 1000,
-            audio: !excludeAudio.value,
-            audioCodec: videoFormat.value === 'mp4' ? 'aac' : 'opus',
-            width: Math.max(1, Math.round(Number(videoWidth.value) || meta.video?.width || 1920)),
-            height: Math.max(
-              1,
-              Math.round(Number(videoHeight.value) || meta.video?.height || 1080),
-            ),
-            fps: clampPositiveNumber(Number(videoFps.value) || Number(meta.video?.fps), 30),
-            bitrateMode: bitrateMode.value,
-            keyframeIntervalSec: keyframeIntervalSec.value,
-            exportAlpha: false,
-            audioChannels: audioChannels.value,
-            audioSampleRate:
-              audioSampleRate.value === 0 && originalAudioSampleRate.value !== null
-                ? originalAudioSampleRate.value
-                : audioSampleRate.value || undefined,
-          };
-
-          videoPayload = [
-            {
-              kind: 'clip',
-              id: 'convert_video',
-              layer: 0,
-              source: { path: targetEntry.value.path },
-              timelineRange: { startUs: 0, durationUs },
-              sourceRange: { startUs: 0, durationUs },
-            },
-          ];
-
-          if (!excludeAudio.value && meta.audio) {
-            audioPayload = [
+            videoPayload = [
               {
                 kind: 'clip',
-                id: 'convert_audio',
+                id: 'convert_video',
                 layer: 0,
-                source: { path: targetEntry.value.path },
+                source: { path: params.request.entry.path },
                 timelineRange: { startUs: 0, durationUs },
                 sourceRange: { startUs: 0, durationUs },
-                audioGain: 1,
               },
             ];
-          }
-        } else {
-          // Audio only
-          const codec = audioOnlyCodec.value;
-          exportOptions = {
-            format: resolveAudioOnlyContainerFormat(codec),
-            videoCodec: 'none',
-            // mediabunny CanvasSource requires bitrate to be a positive integer or quality.
-            // In audio-only mode we still instantiate a video track (tiny canvas), so set valid parameters.
-            bitrate: 100_000,
-            audioBitrate: audioOnlyBitrateKbps.value * 1000,
-            audio: true,
-            audioCodec: codec,
-            width: 16,
-            height: 16,
-            fps: 1,
-            audioChannels: audioChannels.value,
-            audioSampleRate:
-              audioSampleRate.value === 0 && originalAudioSampleRate.value !== null
-                ? originalAudioSampleRate.value
-                : audioSampleRate.value || undefined,
-          };
 
-          if (meta.audio) {
-            audioPayload = [
-              {
-                kind: 'clip',
-                id: 'convert_audio',
-                layer: 0,
-                source: { path: targetEntry.value.path },
-                timelineRange: { startUs: 0, durationUs },
-                sourceRange: { startUs: 0, durationUs },
-                audioGain: 1,
-                speed: audioReverse.value ? -1 : 1,
-              },
-            ];
+            if (!params.request.video.excludeAudio && meta.audio) {
+              audioPayload = [
+                {
+                  kind: 'clip',
+                  id: 'convert_audio',
+                  layer: 0,
+                  source: { path: params.request.entry.path },
+                  timelineRange: { startUs: 0, durationUs },
+                  sourceRange: { startUs: 0, durationUs },
+                  audioGain: 1,
+                },
+              ];
+            }
+          } else if (params.request.audioOnly) {
+            exportOptions = {
+              format: resolveAudioOnlyContainerFormat(params.request.audioOnly.codec),
+              videoCodec: 'none',
+              bitrate: 100_000,
+              audioBitrate: params.request.audioOnly.bitrateKbps * 1000,
+              audio: true,
+              audioCodec: params.request.audioOnly.codec,
+              width: 16,
+              height: 16,
+              fps: 1,
+              audioChannels: params.request.sharedAudio.channels,
+              audioSampleRate: params.request.sharedAudio.sampleRate || undefined,
+            };
+
+            if (meta.audio) {
+              audioPayload = [
+                {
+                  kind: 'clip',
+                  id: 'convert_audio',
+                  layer: 0,
+                  source: { path: params.request.entry.path },
+                  timelineRange: { startUs: 0, durationUs },
+                  sourceRange: { startUs: 0, durationUs },
+                  audioGain: 1,
+                  speed: params.request.audioOnly.reverse ? -1 : 1,
+                },
+              ];
+            }
           }
+
+          await (client as any).exportTimeline(
+            params.targetHandle,
+            exportOptions,
+            videoPayload,
+            audioPayload,
+            params.taskId,
+          );
+        } finally {
+          unregisterExportTaskHostApi(params.taskId);
         }
-
-        await (client as any).exportTimeline(
-          targetHandle,
-          exportOptions,
-          videoPayload,
-          audioPayload,
-          bgTaskId,
-        );
       },
       {
-        priority: bgTaskId
+        priority: params.backgroundTaskId
           ? MEDIA_TASK_PRIORITIES.conversionBackground
           : MEDIA_TASK_PRIORITIES.conversionInteractive,
       },
@@ -374,8 +528,10 @@ export function useFileConversion() {
 
     isConverting.value = true;
     isCancelRequested.value = false;
+    activeForegroundConversionTaskId.value = null;
     conversionError.value = null;
     conversionProgress.value = 0;
+    conversionPhase.value = null;
 
     let createdFileName: string | null = null;
     let createdDirHandle: FileSystemDirectoryHandle | null = null;
@@ -383,39 +539,35 @@ export function useFileConversion() {
 
     try {
       const entry = targetEntry.value;
+      const request = buildConversionRequest(entry);
       const sourceFile = await projectStore.getFileByPath(entry.path);
       if (!sourceFile) throw new Error('Failed to access source file');
-      const type = mediaType.value;
+      const taskId = createConversionTaskId();
 
-      const baseName = entry.name.replace(/\.[^.]+$/, '');
-      let newExt = '';
-      if (type === 'image') newExt = 'webp';
-      else if (type === 'audio') newExt = audioOnlyFormat.value;
-      else if (type === 'video') newExt = videoFormat.value;
+      createdFileName = request.newFileName;
 
-      const newFileName = `${baseName}_converted.${newExt}`;
-
-      createdFileName = newFileName;
-
-      dirPath = entry.path.split('/').slice(0, -1).join('/');
+      dirPath = request.dirPath;
       const dirHandle = await projectStore.getDirectoryHandleByPath(dirPath);
       if (!dirHandle) throw new Error('Target directory not found');
 
       createdDirHandle = dirHandle;
 
-      const targetHandle = await dirHandle.getFileHandle(newFileName, { create: true });
+      const targetHandle = await dirHandle.getFileHandle(request.newFileName, { create: true });
 
-      if (type === 'image') {
-        await convertImage(sourceFile, targetHandle);
-      } else if (type === 'audio') {
-        await convertVideoAudio(targetHandle);
-      } else if (type === 'video') {
+      if (request.type === 'image') {
+        activeForegroundConversionTaskId.value = taskId;
+        await convertImage({ file: sourceFile, targetHandle, request, taskId });
+      } else if (request.type === 'audio') {
+        activeForegroundConversionTaskId.value = taskId;
+        await convertVideoAudio({ request, targetHandle, taskId });
+      } else if (request.type === 'video') {
         const bgTaskId = backgroundTasksStore.addTask({
           type: 'conversion',
           title: t('videoEditor.fileManager.convert.bgTaskTitle', `Converting: ${entry.name}`),
           status: 'pending',
-          cancel: () => {
-            cancelConversion();
+          cancel: async () => {
+            const { client } = getExportWorkerClient();
+            await client.cancelExport(taskId);
           },
         });
 
@@ -429,39 +581,24 @@ export function useFileConversion() {
 
         isModalOpen.value = false;
 
-        // Run in background
-        convertVideoAudio(targetHandle, bgTaskId)
+        convertVideoAudio({
+          request,
+          targetHandle,
+          taskId,
+          backgroundTaskId: bgTaskId,
+        })
           .then(async () => {
-            if (isCancelRequested.value) {
-              backgroundTasksStore.updateTaskStatus(bgTaskId, 'cancelled');
-              if (createdDirHandle && createdFileName) {
-                try {
-                  await new Promise((resolve) => setTimeout(resolve, 500));
-                  await createdDirHandle.removeEntry(createdFileName);
-                } catch {
-                  // ignore
-                }
-              }
-            } else {
-              backgroundTasksStore.updateTaskProgress(bgTaskId, 1);
-              backgroundTasksStore.updateTaskStatus(bgTaskId, 'completed');
-              toast.add({
-                title: t('videoEditor.fileManager.convert.success', 'File converted successfully'),
-                color: 'success',
-              });
-            }
+            backgroundTasksStore.updateTaskProgress(bgTaskId, 1);
+            backgroundTasksStore.updateTaskStatus(bgTaskId, 'completed');
+            toast.add({
+              title: t('videoEditor.fileManager.convert.success', 'File converted successfully'),
+              color: 'success',
+            });
           })
           .catch(async (err) => {
-            if (isCancelRequested.value) {
+            if (isAbortError(err)) {
               backgroundTasksStore.updateTaskStatus(bgTaskId, 'cancelled');
-              if (createdDirHandle && createdFileName) {
-                try {
-                  await new Promise((resolve) => setTimeout(resolve, 500));
-                  await createdDirHandle.removeEntry(createdFileName);
-                } catch {
-                  // ignore
-                }
-              }
+              await removeCreatedFile({ dirHandle: createdDirHandle, fileName: createdFileName });
             } else {
               backgroundTasksStore.updateTaskStatus(bgTaskId, 'failed', err.message);
               console.error('Video conversion failed', err);
@@ -477,14 +614,7 @@ export function useFileConversion() {
       }
 
       if (isCancelRequested.value) {
-        if (createdDirHandle && createdFileName) {
-          try {
-            await new Promise((resolve) => setTimeout(resolve, 500));
-            await createdDirHandle.removeEntry(createdFileName);
-          } catch {
-            // ignore
-          }
-        }
+        await removeCreatedFile({ dirHandle: createdDirHandle, fileName: createdFileName });
         await fileManager.reloadDirectory(dirPath);
         uiStore.notifyFileManagerUpdate();
         toast.add({
@@ -503,17 +633,11 @@ export function useFileConversion() {
       await fileManager.reloadDirectory(dirPath);
       uiStore.notifyFileManagerUpdate();
       isModalOpen.value = false;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
       console.error('Conversion failed', err);
-      if (isCancelRequested.value) {
-        if (createdDirHandle && createdFileName) {
-          try {
-            await new Promise((resolve) => setTimeout(resolve, 500));
-            await createdDirHandle.removeEntry(createdFileName);
-          } catch {
-            // ignore
-          }
-        }
+      if (isCancelRequested.value || isAbortError(error)) {
+        await removeCreatedFile({ dirHandle: createdDirHandle, fileName: createdFileName });
         await fileManager.reloadDirectory(dirPath);
         uiStore.notifyFileManagerUpdate();
         toast.add({
@@ -522,19 +646,25 @@ export function useFileConversion() {
         });
         isModalOpen.value = false;
       } else {
-        conversionError.value = err.message || 'Failed to convert file';
+        conversionError.value = error.message || 'Failed to convert file';
       }
     } finally {
+      activeForegroundConversionTaskId.value = null;
       isConverting.value = false;
     }
   }
 
   async function cancelConversion() {
     if (!isConverting.value) return;
+    const taskId = activeForegroundConversionTaskId.value;
+    if (!taskId) {
+      isCancelRequested.value = true;
+      return;
+    }
 
     const { client } = getExportWorkerClient();
     if (client && typeof client.cancelExport === 'function') {
-      await client.cancelExport();
+      await client.cancelExport(taskId);
     }
     isCancelRequested.value = true;
   }

@@ -1,6 +1,12 @@
 import type { VideoCoreWorkerAPI } from './worker-rpc';
 import { VIDEO_CORE_LIMITS } from '../constants';
 
+interface WorkerTaskHostApi {
+  onExportProgress?: VideoCoreHostAPI['onExportProgress'];
+  onExportPhase?: VideoCoreHostAPI['onExportPhase'];
+  onExportWarning?: VideoCoreHostAPI['onExportWarning'];
+}
+
 export interface VideoCoreHostAPI {
   getCurrentProjectId(): Promise<string | null>;
   getFileHandleByPath(path: string): Promise<FileSystemFileHandle | null>;
@@ -22,6 +28,8 @@ type WorkerChannel = 'preview' | 'export' | 'proxy';
 interface WorkerChannelState {
   workerInstance: Worker | null;
   hostApiInstance: VideoCoreHostAPI | null;
+  baseHostApi: VideoCoreHostAPI | null;
+  taskHostApis: Map<string, WorkerTaskHostApi>;
   callIdCounter: number;
   pendingCalls: Map<number, { resolve: Function; reject: Function; timeoutId?: number }>;
 }
@@ -30,18 +38,24 @@ const channelStates: Record<WorkerChannel, WorkerChannelState> = {
   preview: {
     workerInstance: null,
     hostApiInstance: null,
+    baseHostApi: null,
+    taskHostApis: new Map(),
     callIdCounter: 0,
     pendingCalls: new Map(),
   },
   export: {
     workerInstance: null,
     hostApiInstance: null,
+    baseHostApi: null,
+    taskHostApis: new Map(),
     callIdCounter: 0,
     pendingCalls: new Map(),
   },
   proxy: {
     workerInstance: null,
     hostApiInstance: null,
+    baseHostApi: null,
+    taskHostApis: new Map(),
     callIdCounter: 0,
     pendingCalls: new Map(),
   },
@@ -64,7 +78,57 @@ function terminateChannel(channel: WorkerChannel, reason: string) {
     state.workerInstance.terminate();
     state.workerInstance = null;
   }
+  state.taskHostApis.clear();
   rejectAllPendingCalls(state, new Error(reason));
+}
+
+function createRoutedHostApi(channel: WorkerChannel): VideoCoreHostAPI {
+  const state = channelStates[channel];
+
+  function getBaseHostApi() {
+    const api = state.baseHostApi;
+    if (!api) {
+      throw new Error('Host API not set');
+    }
+    return api;
+  }
+
+  function getTaskHostApi(taskId?: string) {
+    if (!taskId) return null;
+    return state.taskHostApis.get(taskId) ?? null;
+  }
+
+  return {
+    getCurrentProjectId: async () => await getBaseHostApi().getCurrentProjectId(),
+    getFileHandleByPath: async (path) => await getBaseHostApi().getFileHandleByPath(path),
+    getFileByPath: async (path) => {
+      const result = await getBaseHostApi().getFileByPath?.(path);
+      return result ?? null;
+    },
+    ensureVectorImageRaster: async (params) =>
+      await getBaseHostApi().ensureVectorImageRaster(params),
+    onExportProgress: (progress, taskId) => {
+      const taskApi = getTaskHostApi(taskId);
+      const handler = taskApi?.onExportProgress ?? state.baseHostApi?.onExportProgress;
+      if (!handler) {
+        throw new Error('Method onExportProgress not found on Host API');
+      }
+      return handler(progress, taskId);
+    },
+    onExportPhase: (phase, taskId) => {
+      const taskApi = getTaskHostApi(taskId);
+      return (
+        taskApi?.onExportPhase?.(phase, taskId) ?? state.baseHostApi?.onExportPhase?.(phase, taskId)
+      );
+    },
+    onExportWarning: (message, taskId) => {
+      const taskApi = getTaskHostApi(taskId);
+      return (
+        taskApi?.onExportWarning?.(message, taskId) ??
+        state.baseHostApi?.onExportWarning?.(message, taskId)
+      );
+    },
+  };
 }
 
 function createWorker(channel: WorkerChannel): Worker {
@@ -263,15 +327,28 @@ function createChannelClient(channel: WorkerChannel): {
 }
 
 export function setPreviewHostApi(api: VideoCoreHostAPI) {
-  channelStates.preview.hostApiInstance = api;
+  channelStates.preview.baseHostApi = api;
+  channelStates.preview.hostApiInstance = createRoutedHostApi('preview');
 }
 
 export function setExportHostApi(api: VideoCoreHostAPI) {
-  channelStates.export.hostApiInstance = api;
+  channelStates.export.baseHostApi = api;
+  channelStates.export.hostApiInstance = createRoutedHostApi('export');
 }
 
 export function setProxyHostApi(api: VideoCoreHostAPI) {
-  channelStates.proxy.hostApiInstance = api;
+  channelStates.proxy.baseHostApi = api;
+  channelStates.proxy.hostApiInstance = createRoutedHostApi('proxy');
+}
+
+export function registerExportTaskHostApi(taskId: string, api: WorkerTaskHostApi) {
+  if (!taskId) return;
+  channelStates.export.taskHostApis.set(taskId, api);
+}
+
+export function unregisterExportTaskHostApi(taskId: string) {
+  if (!taskId) return;
+  channelStates.export.taskHostApis.delete(taskId);
 }
 
 export function terminatePreviewWorker(reason = 'Preview worker terminated') {
