@@ -71,12 +71,20 @@ const exportSummary = computed(() => {
 
   return `${t('videoEditor.projectSettings.export', 'Export')}: ${format} ${vCodec} ${vBitrate} | ${aCodec} ${aBitrate}`;
 });
-
 const audioDeclickDurationMs = computed({
   get: () => (projectStore.projectSettings?.project.audioDeclickDurationUs || 0) / 1000,
   set: (val: number) => {
     if (projectStore.projectSettings) {
       projectStore.projectSettings.project.audioDeclickDurationUs = val * 1000;
+    }
+  },
+});
+
+const defaultAudioFadeCurve = computed({
+  get: () => projectStore.projectSettings?.project.defaultAudioFadeCurve || 'logarithmic',
+  set: (val: 'linear' | 'logarithmic') => {
+    if (projectStore.projectSettings) {
+      projectStore.projectSettings.project.defaultAudioFadeCurve = val;
     }
   },
 });
@@ -165,6 +173,8 @@ async function resetToDefaults() {
   projectStore.projectSettings.project.aspectRatio = pDefaults.aspectRatio;
   projectStore.projectSettings.project.isCustomResolution = pDefaults.isCustomResolution;
   projectStore.projectSettings.project.sampleRate = pDefaults.sampleRate;
+  projectStore.projectSettings.project.defaultAudioFadeCurve =
+    workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve;
 
   // Reset export encoding settings to workspace defaults
   const eDefaults = resolveExportPreset(workspaceStore.userSettings.exportPresets);
@@ -519,8 +529,32 @@ const metaDescription = computed({
           >
             <WheelNumberInput v-model="audioDeclickDurationMs" :min="0" :max="500" :step="1" />
             <template #help>
-              {{ t('videoEditor.settings.audioDeclickDurationHelp', 'Duration of fade in/out to prevent audio pops at clip boundaries (ms)') }}
+              {{ t('videoEditor.settings.audioDeclickDurationHelp', 'Micro-fades (linear) applied to edges of all clips to eliminate clicks. 0 disables it.') }}
             </template>
+          </UFormField>
+
+          <UFormField
+            :label="t('videoEditor.settings.defaultAudioFadeCurveTitle', 'Default Fade Curve')"
+            :help="t('videoEditor.settings.defaultAudioFadeCurveHint', 'Default curve used for audio fades when you manually create a fade. (De-click always uses a short linear fade).')"
+          >
+            <div class="flex items-center gap-1 rounded bg-ui-bg p-1 w-fit">
+              <UButton
+                size="xs"
+                :variant="defaultAudioFadeCurve === 'logarithmic' ? 'solid' : 'ghost'"
+                :color="defaultAudioFadeCurve === 'logarithmic' ? 'primary' : 'neutral'"
+                @click="defaultAudioFadeCurve = 'logarithmic'"
+              >
+                Logarithmic
+              </UButton>
+              <UButton
+                size="xs"
+                :variant="defaultAudioFadeCurve === 'linear' ? 'solid' : 'ghost'"
+                :color="defaultAudioFadeCurve === 'linear' ? 'primary' : 'neutral'"
+                @click="defaultAudioFadeCurve = 'linear'"
+              >
+                Linear
+              </UButton>
+            </div>
           </UFormField>
         </div>
       </div>

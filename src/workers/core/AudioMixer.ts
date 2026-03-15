@@ -185,6 +185,7 @@ interface AudioClipData {
   audioFadeInCurve?: AudioFadeCurve;
   audioFadeOutCurve?: AudioFadeCurve;
   audioDeclickDurationUs?: number;
+  defaultAudioFadeCurve?: AudioFadeCurve;
   transitionIn?: AudioTransitionEnvelope | null;
   transitionOut?: AudioTransitionEnvelope | null;
   fastcat?: {
@@ -195,6 +196,7 @@ interface AudioClipData {
     audioFadeInCurve?: AudioFadeCurve;
     audioFadeOutCurve?: AudioFadeCurve;
     audioDeclickDurationUs?: number;
+    defaultAudioFadeCurve?: AudioFadeCurve;
     transitionIn?: AudioTransitionEnvelope | null;
     transitionOut?: AudioTransitionEnvelope | null;
   };
@@ -319,6 +321,7 @@ export class AudioMixer {
         },
         previousClip,
         nextClip,
+        defaultAudioFadeCurve: clipData.defaultAudioFadeCurve ?? clipData.fastcat?.defaultAudioFadeCurve,
       });
 
       const clipStartS = Math.max(0, usToS(Number(startUs)));

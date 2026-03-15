@@ -44,6 +44,7 @@ export interface WorkerTimelineClip {
   audioFadeInCurve?: 'linear' | 'logarithmic';
   audioFadeOutCurve?: 'linear' | 'logarithmic';
   audioDeclickDurationUs?: number;
+  defaultAudioFadeCurve?: 'linear' | 'logarithmic';
   source?: { path: string };
   backgroundColor?: string;
   text?: string;
