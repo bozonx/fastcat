@@ -45,6 +45,7 @@ import { TimelineClipLayoutUpdater } from './compositor/TimelineClipLayoutUpdate
 import { TimelineFixedClipBuilder } from './compositor/TimelineFixedClipBuilder';
 import { TimelineLoadOrchestrator } from './compositor/TimelineLoadOrchestrator';
 import { TimelineMediaClipBuilder } from './compositor/TimelineMediaClipBuilder';
+import { TimelineTrackRebinder } from './compositor/TimelineTrackRebinder';
 import { TimelineUpdateLifecycle } from './compositor/TimelineUpdateLifecycle';
 import { TextRenderer } from './compositor/renderers/TextRenderer';
 import { ShapeRenderer } from './compositor/renderers/ShapeRenderer';
@@ -126,6 +127,7 @@ export class VideoCompositor {
   });
   private timelineApplyLifecycle = new TimelineApplyLifecycle();
   private timelineClipLayoutUpdater = new TimelineClipLayoutUpdater();
+  private timelineTrackRebinder = new TimelineTrackRebinder();
   private timelineUpdateLifecycle = new TimelineUpdateLifecycle();
   private clipResourceManager = new ClipResourceManager({
     width: this.width,
@@ -622,10 +624,10 @@ export class VideoCompositor {
         clearClipTransitionFilter: (currentClip) =>
           this.transitionManager.clearClipFilter(currentClip),
       });
-      const trackRuntime = this.getTrackRuntimeForClip(clip);
-      if (trackRuntime && clip.sprite.parent !== trackRuntime.container) {
-        trackRuntime.container.addChild(clip.sprite);
-      }
+      this.timelineTrackRebinder.rebind({
+        clip,
+        trackRuntime: this.getTrackRuntimeForClip(clip),
+      });
     }
 
     const updated = this.timelineUpdateLifecycle.apply(this.clips);
