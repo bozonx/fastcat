@@ -11,10 +11,15 @@ import {
   getMediaTypeFromFilename,
   isOpenableProjectFileName,
 } from '~/utils/media-types';
-import { formatAudioChannels } from '~/utils/audio';
-import PropertyRow from '~/components/properties/PropertyRow.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import EntryPreviewBox from '~/components/properties/file/EntryPreviewBox.vue';
+import AudioFilePropertiesSection from '~/components/properties/file/AudioFilePropertiesSection.vue';
+import ExpandableYamlSection from '~/components/properties/file/ExpandableYamlSection.vue';
+import FileGeneralInfoSection from '~/components/properties/file/FileGeneralInfoSection.vue';
+import FileTimelineUsageSection from '~/components/properties/file/FileTimelineUsageSection.vue';
+import ImageFilePropertiesSection from '~/components/properties/file/ImageFilePropertiesSection.vue';
+import OtioFilePropertiesSection from '~/components/properties/file/OtioFilePropertiesSection.vue';
+import VideoFilePropertiesSection from '~/components/properties/file/VideoFilePropertiesSection.vue';
 import { useEntryPreview } from '~/composables/fileManager/useEntryPreview';
 import { useImageExifInfo } from '~/composables/properties/useImageExifInfo';
 import { useFileTimelineUsage } from '~/composables/properties/useFileTimelineUsage';
@@ -428,298 +433,76 @@ const {
       />
     </PropertySection>
 
-    <!-- Usage in timelines -->
-    <div
-      v-if="timelinesUsingSelectedFile.length > 0"
-      class="space-y-1 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
-    >
-      <div
-        class="text-[10px] font-bold text-ui-text-muted uppercase tracking-widest border-b border-ui-border pb-1"
-      >
-        {{ t('fastcat.preview.usedInTimelines', 'Used in timelines') }}
-      </div>
-      <div class="flex flex-wrap gap-1 mt-1">
-        <UButton
-          v-for="usage in timelinesUsingSelectedFile"
-          :key="usage.timelinePath"
-          size="xs"
-          variant="soft"
-          color="neutral"
-          icon="i-heroicons-clock"
-          @click="openTimelineFromUsage(usage.timelinePath)"
-        >
-          {{ usage.timelineName.replace('.otio', '') }}
-        </UButton>
-      </div>
-    </div>
+    <FileTimelineUsageSection
+      :usages="timelinesUsingSelectedFile"
+      :open-timeline-from-usage="openTimelineFromUsage"
+    />
 
-    <div
+    <ImageFilePropertiesSection
       v-if="fileInfo?.kind === 'file' && mediaType === 'image' && hasImageInfo"
-      class="space-y-1 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
-    >
-      <div class="flex flex-col">
-        <PropertyRow
-          v-if="imageResolution"
-          :label="t('videoEditor.fileManager.image.resolution', 'Resolution')"
-          :value="imageResolution"
-        />
-        <PropertyRow v-if="imageCreateDate" label="CreateDate" :value="imageCreateDate" />
-        <PropertyRow
-          v-if="imageLocationLink"
-          :label="t('videoEditor.fileManager.image.location', 'Location')"
-        >
-          <a
-            class="text-primary-500 hover:underline break-all"
-            :href="imageLocationLink"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Google Maps
-          </a>
-        </PropertyRow>
-        <PropertyRow
-          v-if="imageCameraMake"
-          :label="t('videoEditor.fileManager.image.camera', 'Camera')"
-          :value="imageCameraMake"
-        />
-      </div>
-    </div>
+      :image-resolution="imageResolution"
+      :image-create-date="imageCreateDate"
+      :image-location-link="imageLocationLink"
+      :image-camera-make="imageCameraMake"
+    />
 
-    <div
+    <VideoFilePropertiesSection
       v-if="fileInfo?.kind === 'file' && isVideoFile"
-      class="space-y-1 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
-    >
-      <div class="flex flex-col gap-2">
-        <div class="flex flex-col">
-          <PropertyRow
-            :label="t('common.duration', 'Duration')"
-            :value="formatDurationSeconds(mediaMeta?.duration)"
-          />
-        </div>
-        <PropertyRow
-          :label="t('videoEditor.fileManager.video.resolution', 'Resolution')"
-          :value="
-            mediaMeta?.video?.displayWidth && mediaMeta?.video?.displayHeight
-              ? `${mediaMeta.video.displayWidth}x${mediaMeta.video.displayHeight}`
-              : '-'
-          "
-        />
-        <PropertyRow
-          :label="t('videoEditor.fileManager.video.fps', 'FPS')"
-          :value="mediaMeta?.video?.fps ?? '-'"
-        />
-        <PropertyRow
-          :label="t('videoEditor.fileManager.video.container', 'Container')"
-          :value="mediaMeta?.container ?? '-'"
-        />
-        <PropertyRow :label="t('videoEditor.fileManager.video.videoCodec', 'Video codec')">
-          {{ mediaMeta?.video?.parsedCodec ?? mediaMeta?.video?.codec ?? '-' }}
-          <span v-if="mediaMeta?.video?.bitrate"
-            >, {{ formatBitrate(mediaMeta.video.bitrate) }}</span
-          >
-        </PropertyRow>
-        <PropertyRow :label="t('videoEditor.fileManager.video.audioCodec', 'Audio codec')">
-          {{ mediaMeta?.audio?.parsedCodec ?? mediaMeta?.audio?.codec ?? '-' }}
-          <span v-if="mediaMeta?.audio?.bitrate"
-            >, {{ formatBitrate(mediaMeta.audio.bitrate) }}</span
-          >
-        </PropertyRow>
-        <PropertyRow :label="t('videoEditor.fileManager.audio.channels', 'Channels')">
-          {{ formatAudioChannels(mediaMeta?.audio?.channels) }},
-          {{ mediaMeta?.audio?.sampleRate ? `${mediaMeta.audio.sampleRate} Hz` : '-' }}
-        </PropertyRow>
+      :media-meta="mediaMeta"
+      :format-duration-seconds="formatDurationSeconds"
+      :format-bitrate="formatBitrate"
+      :can-transcribe-media="canTranscribeMedia"
+      :latest-transcription-cache-key="latestTranscriptionCacheKey"
+      :latest-transcription-was-cached="latestTranscriptionWasCached"
+      :latest-transcription-text="latestTranscriptionText"
+      :open-transcription-modal="openTranscriptionModal"
+    />
 
-        <div class="flex flex-wrap gap-2 pt-1">
-          <UButton
-            size="xs"
-            color="primary"
-            variant="soft"
-            icon="i-heroicons-microphone"
-            :disabled="!canTranscribeMedia"
-            @click="openTranscriptionModal"
-          >
-            {{ t('videoEditor.fileManager.actions.transcribe', 'Transcribe') }}
-          </UButton>
-          <span v-if="latestTranscriptionCacheKey" class="text-xs text-ui-text-muted self-center">
-            {{
-              latestTranscriptionWasCached
-                ? t('videoEditor.fileManager.audio.transcriptionCached', 'Loaded from cache')
-                : t('videoEditor.fileManager.audio.transcriptionSaved', 'Saved to cache')
-            }}
-          </span>
-        </div>
-
-        <UTextarea
-          v-if="latestTranscriptionText"
-          :model-value="latestTranscriptionText"
-          :rows="8"
-          readonly
-        />
-      </div>
-    </div>
-
-    <div
+    <AudioFilePropertiesSection
       v-if="fileInfo?.kind === 'file' && mediaType === 'audio'"
-      class="space-y-1 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
-    >
-      <div class="flex flex-col gap-2">
-        <PropertyRow
-          :label="t('common.duration', 'Duration')"
-          :value="formatDurationSeconds(mediaMeta?.duration)"
-        />
-        <PropertyRow
-          :label="t('videoEditor.fileManager.audio.format', 'Format')"
-          :value="mediaMeta?.container ?? fileInfo?.mimeType ?? '-'"
-        />
-        <PropertyRow :label="t('videoEditor.fileManager.audio.codec', 'Audio codec')">
-          {{ mediaMeta?.audio?.parsedCodec ?? mediaMeta?.audio?.codec ?? '-' }}
-          <span v-if="mediaMeta?.audio?.bitrate"
-            >, {{ formatBitrate(mediaMeta.audio.bitrate) }}</span
-          >
-        </PropertyRow>
-        <PropertyRow :label="t('videoEditor.fileManager.audio.channels', 'Channels')">
-          {{ formatAudioChannels(mediaMeta?.audio?.channels) }},
-          {{ mediaMeta?.audio?.sampleRate ? `${mediaMeta.audio.sampleRate} Hz` : '-' }}
-        </PropertyRow>
+      :media-meta="mediaMeta"
+      :mime-type="fileInfo?.mimeType"
+      :format-duration-seconds="formatDurationSeconds"
+      :format-bitrate="formatBitrate"
+      :can-transcribe-media="canTranscribeMedia"
+      :latest-transcription-cache-key="latestTranscriptionCacheKey"
+      :latest-transcription-was-cached="latestTranscriptionWasCached"
+      :latest-transcription-text="latestTranscriptionText"
+      :open-transcription-modal="openTranscriptionModal"
+    />
 
-        <div class="flex flex-wrap gap-2 pt-1">
-          <UButton
-            size="xs"
-            color="primary"
-            variant="soft"
-            icon="i-heroicons-microphone"
-            :disabled="!canTranscribeMedia"
-            @click="openTranscriptionModal"
-          >
-            {{ t('videoEditor.fileManager.actions.transcribe', 'Transcribe') }}
-          </UButton>
-          <span v-if="latestTranscriptionCacheKey" class="text-xs text-ui-text-muted self-center">
-            {{
-              latestTranscriptionWasCached
-                ? t('videoEditor.fileManager.audio.transcriptionCached', 'Loaded from cache')
-                : t('videoEditor.fileManager.audio.transcriptionSaved', 'Saved to cache')
-            }}
-          </span>
-        </div>
-
-        <UTextarea
-          v-if="latestTranscriptionText"
-          :model-value="latestTranscriptionText"
-          :rows="8"
-          readonly
-        />
-      </div>
-    </div>
-
-    <div
+    <OtioFilePropertiesSection
       v-if="fileInfo?.kind === 'file' && isOtio && timelineDocSummary"
-      class="space-y-1 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
-    >
-      <div class="flex flex-col">
-        <PropertyRow
-          :label="t('fastcat.timeline.version', 'Version')"
-          :value="timelineDocSummary.version ?? '-'"
-        />
-        <PropertyRow
-          :label="t('common.duration', 'Duration')"
-          :value="formatDurationSeconds((timelineDocSummary.durationUs ?? 0) / 1_000_000)"
-        />
-        <PropertyRow
-          :label="t('videoEditor.fileManager.otio.videoTracks', 'Video tracks')"
-          :value="timelineDocSummary.videoTracks"
-        />
-        <PropertyRow
-          :label="t('videoEditor.fileManager.otio.audioTracks', 'Audio tracks')"
-          :value="timelineDocSummary.audioTracks"
-        />
-        <PropertyRow
-          :label="t('videoEditor.fileManager.otio.clips', 'Clips')"
-          :value="timelineDocSummary.clips"
-        />
-      </div>
-    </div>
+      :summary="timelineDocSummary"
+      :format-duration-seconds="formatDurationSeconds"
+    />
 
-    <PropertySection v-if="fileInfo" :title="generalInfoTitle">
-      <PropertyRow
-        v-if="selectedPath !== undefined && selectedPath !== null"
-        :label="t('common.path', 'Path')"
-        :value="selectedPath === '' ? '/' : selectedPath"
-      />
-      <PropertyRow
-        v-if="fileInfo.size !== undefined"
-        :label="t('common.size', 'Size')"
-        :value="formatBytes(fileInfo.size)"
-      />
-      <PropertyRow
-        v-if="fileInfo.createdAt || fileInfo.lastModified"
-        :label="t('common.created', 'Created')"
-        :value="new Date(fileInfo.createdAt ?? fileInfo.lastModified!).toLocaleString()"
-      />
-      <PropertyRow
-        v-if="fileInfo.lastModified"
-        :label="t('common.updated', 'Updated')"
-        :value="new Date(fileInfo.lastModified).toLocaleString()"
-      />
-      <PropertyRow v-if="isHidden" :label="t('common.hidden', 'Hidden')" value="Yes" />
-    </PropertySection>
+    <FileGeneralInfoSection
+      v-if="fileInfo"
+      :title="generalInfoTitle"
+      :file-info="fileInfo"
+      :selected-path="selectedPath"
+      :is-hidden="isHidden"
+      :format-bytes="formatBytes"
+    />
 
-    <PropertySection
+    <ExpandableYamlSection
       v-if="fileInfo?.kind === 'file' && isVideoFile && metadataYaml"
       :title="t('common.meta', 'Meta')"
-    >
-      <div class="flex gap-2">
-        <UButton
-          size="xs"
-          variant="ghost"
-          color="neutral"
-          :label="isMetaExpanded ? t('common.hide', 'Hide') : t('common.show', 'Show')"
-          @click="isMetaExpanded = !isMetaExpanded"
-        />
-        <UButton
-          v-if="isMetaExpanded"
-          size="xs"
-          variant="ghost"
-          color="neutral"
-          icon="i-heroicons-clipboard-document"
-          :title="t('common.copy', 'Copy')"
-          @click="() => copyToClipboard(metadataYaml!)"
-        />
-      </div>
-      <pre
-        v-if="isMetaExpanded"
-        class="w-full p-2 bg-ui-bg text-[10px] font-mono whitespace-pre overflow-x-auto border border-ui-border rounded"
-        >{{ metadataYaml }}</pre
-      >
-    </PropertySection>
+      :content="metadataYaml"
+      :expanded="isMetaExpanded"
+      :on-toggle="() => (isMetaExpanded = !isMetaExpanded)"
+      :on-copy="copyToClipboard"
+    />
 
-    <PropertySection
+    <ExpandableYamlSection
       v-if="fileInfo?.kind === 'file' && mediaType === 'image' && exifYaml"
       title="EXIF"
-    >
-      <div class="flex gap-2">
-        <UButton
-          size="xs"
-          variant="ghost"
-          color="neutral"
-          :label="isExifExpanded ? t('common.hide', 'Hide') : t('common.show', 'Show')"
-          @click="isExifExpanded = !isExifExpanded"
-        />
-        <UButton
-          v-if="isExifExpanded"
-          size="xs"
-          variant="ghost"
-          color="neutral"
-          icon="i-heroicons-clipboard-document"
-          :title="t('common.copy', 'Copy')"
-          @click="() => copyToClipboard(exifYaml!)"
-        />
-      </div>
-      <pre
-        v-if="isExifExpanded"
-        class="w-full p-2 bg-ui-bg text-[10px] font-mono whitespace-pre overflow-x-auto border border-ui-border rounded"
-        >{{ exifYaml }}</pre
-      >
-    </PropertySection>
+      :content="exifYaml"
+      :expanded="isExifExpanded"
+      :on-toggle="() => (isExifExpanded = !isExifExpanded)"
+      :on-copy="copyToClipboard"
+    />
 
     <AppModal
       v-model:open="isTranscriptionModalOpen"

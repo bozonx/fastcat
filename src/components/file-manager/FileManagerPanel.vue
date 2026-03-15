@@ -6,7 +6,6 @@ import { useFileManager } from '~/composables/fileManager/useFileManager';
 import type { FsEntry } from '~/types/fs';
 import FileManagerFiles from '~/components/file-manager/FileManagerFiles.vue';
 import FileManagerPanelModals from '~/components/file-manager/FileManagerPanelModals.vue';
-import BackgroundTasksButton from '~/components/file-manager/BackgroundTasksButton.vue';
 import { useFocusStore } from '~/stores/focus.store';
 import { useFileManagerActions } from '~/composables/fileManager/useFileManagerActions';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
@@ -301,7 +300,6 @@ useFileManagerPanelBootstrap({
         />
 
         <div class="ml-auto flex items-center gap-1">
-          <BackgroundTasksButton />
 
           <UDropdownMenu
             :items="[

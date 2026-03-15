@@ -4,6 +4,12 @@ import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
 import BackgroundTasksModal from './BackgroundTasksModal.vue';
 
+const props = withDefaults(defineProps<{
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+}>(), {
+  size: 'xs',
+});
+
 const backgroundTasksStore = useBackgroundTasksStore();
 const isModalOpen = ref(false);
 
@@ -15,7 +21,7 @@ const { t } = useI18n();
     <UButton
       variant="ghost"
       color="neutral"
-      size="xs"
+      :size="size"
       class="relative"
       :title="t('videoEditor.backgroundTasks.title', 'Background Tasks')"
       @click="isModalOpen = true"
