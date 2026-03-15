@@ -45,6 +45,7 @@ import { TimelineClipLayoutUpdater } from './compositor/TimelineClipLayoutUpdate
 import { TimelineFixedClipBuilder } from './compositor/TimelineFixedClipBuilder';
 import { TimelineLoadOrchestrator } from './compositor/TimelineLoadOrchestrator';
 import { TimelineMediaClipBuilder } from './compositor/TimelineMediaClipBuilder';
+import { TimelineUpdateLifecycle } from './compositor/TimelineUpdateLifecycle';
 import { TextRenderer } from './compositor/renderers/TextRenderer';
 import { ShapeRenderer } from './compositor/renderers/ShapeRenderer';
 import { CanvasFallbackRenderer } from './compositor/renderers/CanvasFallbackRenderer';
@@ -125,6 +126,7 @@ export class VideoCompositor {
   });
   private timelineApplyLifecycle = new TimelineApplyLifecycle();
   private timelineClipLayoutUpdater = new TimelineClipLayoutUpdater();
+  private timelineUpdateLifecycle = new TimelineUpdateLifecycle();
   private clipResourceManager = new ClipResourceManager({
     width: this.width,
     height: this.height,
@@ -436,6 +438,7 @@ export class VideoCompositor {
     });
     this.timelineApplyLifecycle = new TimelineApplyLifecycle();
     this.timelineClipLayoutUpdater = new TimelineClipLayoutUpdater();
+    this.timelineUpdateLifecycle = new TimelineUpdateLifecycle();
     this.clipResourceManager = new ClipResourceManager({
       width: this.width,
       height: this.height,
@@ -625,15 +628,15 @@ export class VideoCompositor {
       }
     }
 
-    this.clips.sort((a, b) => a.startUs - b.startUs || a.layer - b.layer);
+    const updated = this.timelineUpdateLifecycle.apply(this.clips);
+    this.clips = updated.clips;
     this.rebuildPrevClipIndex();
-    this.maxDurationUs = this.clips.length > 0 ? Math.max(0, ...this.clips.map((c) => c.endUs)) : 0;
-
-    this.lastRenderedTimeUs = Number.NaN;
+    this.maxDurationUs = updated.maxDurationUs;
+    this.lastRenderedTimeUs = updated.lastRenderedTimeUs;
     this.activeTracker.reset();
     this.hideAllClipSprites();
-    this.stageSortDirty = true;
-    this.activeSortDirty = true;
+    this.stageSortDirty = updated.stageSortDirty;
+    this.activeSortDirty = updated.activeSortDirty;
     return this.maxDurationUs;
   }
 
