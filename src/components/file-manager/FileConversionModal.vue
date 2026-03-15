@@ -25,13 +25,12 @@ const {
   video,
   audio,
   image,
-  callbacks,
 } = storeToRefs(fileConversionStore);
 
 const { cancelConversion, startConversion: storeStartConversion } = fileConversionStore;
 
 onMounted(() => {
-  callbacks.value.onSuccess = (type, bgTaskTitle) => {
+  fileConversionStore.callbacks.onSuccess = (type, bgTaskTitle) => {
     if (type === 'bgTaskAdded') {
       toast.add({
         title: t('videoEditor.fileManager.convert.bgTaskAdded', 'Conversion started in background'),
@@ -45,7 +44,7 @@ onMounted(() => {
       });
     }
   };
-  callbacks.value.onError = (error) => {
+  fileConversionStore.callbacks.onError = (error) => {
     toast.add({
       title: t('videoEditor.fileManager.convert.failed', 'Conversion failed to start'),
       description: error.message,

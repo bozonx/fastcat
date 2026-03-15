@@ -35,6 +35,7 @@ describe('useEditorHotkeys', () => {
 
     expect(focusStore.activePanelId).toBe('timeline');
     await wrapper.unmount();
+    if (typeof dialog !== 'undefined') dialog?.remove();
   });
 
   it('ignores non-repeatable commands on repeated keydown', async () => {
@@ -50,6 +51,7 @@ describe('useEditorHotkeys', () => {
 
     expect(focusStore.activePanelId).toBe('monitor');
     await wrapper.unmount();
+    if (typeof dialog !== 'undefined') dialog?.remove();
   });
 
   it('blocks timeline hotkeys when editable element is active', async () => {
@@ -73,6 +75,7 @@ describe('useEditorHotkeys', () => {
 
     input.remove();
     await wrapper.unmount();
+    if (typeof dialog !== 'undefined') dialog?.remove();
   });
 
   it('allows Escape-based deselect even when editable element is active', async () => {
@@ -100,6 +103,7 @@ describe('useEditorHotkeys', () => {
 
     input.remove();
     await wrapper.unmount();
+    if (typeof dialog !== 'undefined') dialog?.remove();
   });
 
   it('blocks non-escape global hotkeys while modal state is active', async () => {
@@ -109,11 +113,12 @@ describe('useEditorHotkeys', () => {
     const uiStore = useUiStore();
 
     projectStore.setView('cut');
-    uiStore.activeModalsCount = 1;
+    const dialog = document.createElement('dialog'); dialog.setAttribute('open', ''); document.body.appendChild(dialog);
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', code: 'Tab', bubbles: true }));
 
     expect(focusStore.activePanelId).toBe('monitor');
     await wrapper.unmount();
+    if (typeof dialog !== 'undefined') dialog?.remove();
   });
 });

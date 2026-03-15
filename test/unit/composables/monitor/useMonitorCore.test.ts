@@ -128,6 +128,7 @@ describe('useMonitorCore', () => {
 
     const proxyStore = {
       getProxyFileHandle: vi.fn(async () => null),
+      existingProxies: ref(new Set()),
     };
 
     const containerEl = ref<HTMLDivElement | null>(document.createElement('div'));
@@ -195,6 +196,7 @@ describe('useMonitorCore', () => {
 
     const proxyStore = {
       getProxyFileHandle: vi.fn(async () => null),
+      existingProxies: ref(new Set()),
     };
 
     const containerEl = ref<HTMLDivElement | null>(document.createElement('div'));
@@ -267,6 +269,7 @@ describe('useMonitorCore', () => {
 
     const proxyStore = {
       getProxyFileHandle: vi.fn(async () => null),
+      existingProxies: ref(new Set()),
     };
 
     const containerEl = ref<HTMLDivElement | null>(document.createElement('div'));

@@ -34,6 +34,14 @@ const filesPageStore = useFilesPageStore();
 const selectionStore = useSelectionStore();
 const focusStore = useFocusStore();
 
+const activeEditorView = computed(() => {
+  if (projectStore.currentView === 'fullscreen') {
+    return projectStore.lastViewBeforeFullscreen ?? 'cut';
+  }
+
+  return projectStore.currentView;
+});
+
 const defaultCutPanelSizes = computed(() => {
   const len = projectStore.cutPanels?.length || 0;
   if (len === 0) return [];
@@ -78,7 +86,12 @@ const { sizes: exportSizes, onResized: onExportResize } = usePersistedSplitpanes
   [40, 60],
 );
 
-const { findEntryByPath } = useFileManager();
+let fileManager: ReturnType<typeof useFileManager> | null = null;
+
+function getFileManager() {
+  fileManager ??= useFileManager();
+  return fileManager;
+}
 
 function selectRootFolder() {
   filesPageStore.selectFolder({
@@ -107,6 +120,7 @@ function selectFolderByPath(path: string) {
     return;
   }
 
+  const { findEntryByPath } = getFileManager();
   const entry = findEntryByPath(path);
   if (entry && entry.kind === 'directory') {
     filesPageStore.selectFolder(entry);
@@ -227,16 +241,7 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
 
 <template>
   <ClientOnly>
-    <!-- Fullscreen View -->
-    <div
-      v-if="projectStore.currentView === 'fullscreen'"
-      class="h-screen w-screen bg-ui-bg text-ui-text overflow-hidden"
-    >
-      <MonitorContainer is-fullscreen />
-    </div>
-
-    <!-- Main Editor Layout (Files / Cut / Sound) -->
-    <div v-else class="flex flex-col h-full min-h-0 overflow-hidden">
+    <div class="flex flex-col h-full min-h-0 overflow-hidden">
       <Splitpanes
         class="flex-1 min-h-0 overflow-hidden editor-splitpanes"
         horizontal
@@ -245,7 +250,7 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
         <!-- Top Panel: varies by view -->
         <Pane :size="100 - projectStore.timelineHeight" min-size="10">
           <EditorFilesView
-            v-if="projectStore.currentView === 'files'"
+            v-if="activeEditorView === 'files'"
             :sizes="filesSizes"
             :selected-entity="selectionStore.selectedEntity"
             @resized="onFilesResize"
@@ -254,7 +259,7 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
           />
 
           <EditorCutView
-            v-else-if="(projectStore.currentView as any) === 'cut' || ((projectStore.currentView as any) === 'fullscreen' && projectStore.lastViewBeforeFullscreen === 'cut')"
+            v-else-if="activeEditorView === 'cut'"
             :columns="projectStore.cutPanels"
             :layout-key="cutPanelsLayoutKey"
             :top-sizes="topSplitSizes"
@@ -276,7 +281,7 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
           />
 
           <EditorSoundView
-            v-else-if="(projectStore.currentView as any) === 'sound' || ((projectStore.currentView as any) === 'fullscreen' && projectStore.lastViewBeforeFullscreen === 'sound')"
+            v-else-if="activeEditorView === 'sound'"
             :sizes="soundSizes"
             :columns="projectStore.soundPanels"
             :layout-key="soundPanelsLayoutKey"
@@ -299,13 +304,8 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
             @close="(panel, view) => closePanelAndRestoreTab(panel, { view })"
           />
 
-          <MonitorContainer
-            v-else-if="(projectStore.currentView as any) === 'fullscreen'"
-            is-fullscreen
-          />
-
           <EditorExportView
-            v-else-if="projectStore.currentView === 'export'"
+            v-else-if="activeEditorView === 'export'"
             :sizes="exportSizes"
             @resized="onExportResize"
           />

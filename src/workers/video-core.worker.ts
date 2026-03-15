@@ -8,6 +8,7 @@ import { initEffects } from '../effects';
 import { initTransitions } from '../transitions';
 import { normalizeRpcError } from './core/utils';
 import { extractMetadata, runExport, extractAudioStream } from './core/export';
+import { runTranscode } from './core/transcode';
 import { VIDEO_CORE_LIMITS } from '../utils/constants';
 
 DOMAdapter.set(WebWorkerAdapter);
@@ -129,6 +130,36 @@ const api: any = {
       options,
       timelineClips,
       audioClips,
+      hostClient,
+      (msg) => reportExportWarning(msg, taskId),
+      () => {
+        if (taskId) return activeCancels.get(taskId) === true;
+        return cancelExportRequested;
+      },
+      taskId,
+    );
+
+    if (taskId) {
+      activeCancels.delete(taskId);
+    }
+  },
+
+  async transcodeMedia(
+    sourceFile: File | FileSystemFileHandle,
+    targetHandle: FileSystemFileHandle,
+    options: any,
+    taskId?: string,
+  ) {
+    if (taskId) {
+      activeCancels.set(taskId, false);
+    } else {
+      cancelExportRequested = false;
+    }
+
+    await runTranscode(
+      sourceFile,
+      targetHandle,
+      options,
       hostClient,
       (msg) => reportExportWarning(msg, taskId),
       () => {
