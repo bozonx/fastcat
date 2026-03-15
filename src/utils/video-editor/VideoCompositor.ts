@@ -46,6 +46,9 @@ import { LayoutApplier } from './compositor/LayoutApplier';
 import { ClipResourceManager } from './compositor/ClipResourceManager';
 import { StageTextureRenderer } from './compositor/StageTextureRenderer';
 import { ClipFactory } from './compositor/ClipFactory';
+import { TimelineClipLoader } from './compositor/TimelineClipLoader';
+import { HudMediaLoader } from './compositor/HudMediaLoader';
+import { RasterImageLoader } from './compositor/RasterImageLoader';
 import { TextRenderer } from './compositor/renderers/TextRenderer';
 import { ShapeRenderer } from './compositor/renderers/ShapeRenderer';
 import { CanvasFallbackRenderer } from './compositor/renderers/CanvasFallbackRenderer';
@@ -93,6 +96,15 @@ export class VideoCompositor {
     height: this.height,
     layoutApplier: this.layoutApplier,
     clipPreferBitmapFallback: this.clipPreferBitmapFallback,
+  });
+  private timelineClipLoader = new TimelineClipLoader();
+  private hudMediaLoader = new HudMediaLoader({
+    width: this.width,
+    height: this.height,
+  });
+  private rasterImageLoader = new RasterImageLoader({
+    width: this.width,
+    height: this.height,
   });
   private clipFactory = new ClipFactory({
     width: this.width,
@@ -309,6 +321,15 @@ export class VideoCompositor {
       layoutApplier: this.layoutApplier,
       clipPreferBitmapFallback: this.clipPreferBitmapFallback,
     });
+    this.timelineClipLoader = new TimelineClipLoader();
+    this.hudMediaLoader = new HudMediaLoader({
+      width: this.width,
+      height: this.height,
+    });
+    this.rasterImageLoader = new RasterImageLoader({
+      width: this.width,
+      height: this.height,
+    });
     this.clipFactory = new ClipFactory({
       width: this.width,
       height: this.height,
@@ -455,155 +476,46 @@ export class VideoCompositor {
         (abortErr as any).name = 'AbortError';
         throw abortErr;
       }
-      if (clipData.kind !== 'clip') continue;
+      const descriptor = this.timelineClipLoader.describe({
+        index,
+        clipData,
+        sequentialTimeUs,
+        fallbackTrackId:
+          this.getTrackRuntimeForClip({ layer: Math.round(Number((clipData as any)?.layer ?? 0)) })
+            ?.id ?? null,
+      });
+      if (!descriptor) continue;
 
-      const clipTypeRaw = (clipData as any).clipType;
-      const clipType =
-        clipTypeRaw === 'background' ||
-        clipTypeRaw === 'adjustment' ||
-        clipTypeRaw === 'media' ||
-        clipTypeRaw === 'text' ||
-        clipTypeRaw === 'shape' ||
-        clipTypeRaw === 'hud'
-          ? clipTypeRaw
-          : 'media';
-
-      const itemId =
-        typeof clipData.id === 'string' && clipData.id.length > 0 ? clipData.id : `clip_${index}`;
-      const sourcePath =
-        typeof clipData?.source?.path === 'string' && clipData.source.path.length > 0
-          ? clipData.source.path
-          : '';
-
-      const sourceStartUs = Math.max(0, Math.round(Number(clipData.sourceRange?.startUs ?? 0)));
-      const freezeFrameSourceUsRaw = clipData.freezeFrameSourceUs;
-      const freezeFrameSourceUs =
-        typeof freezeFrameSourceUsRaw === 'number' && Number.isFinite(freezeFrameSourceUsRaw)
-          ? Math.max(0, Math.round(freezeFrameSourceUsRaw))
-          : undefined;
-      const layer = Math.round(Number(clipData.layer ?? 0));
-      const trackId =
-        typeof clipData.trackId === 'string' && clipData.trackId.length > 0
-          ? clipData.trackId
-          : this.getTrackRuntimeForClip({ layer })?.id;
-      const requestedTimelineDurationUs = Math.max(
-        0,
-        Math.round(Number(clipData.timelineRange?.durationUs ?? 0)),
-      );
-      const requestedSourceRangeDurationUs = Math.max(
-        0,
-        Math.round(Number(clipData.sourceRange?.durationUs ?? requestedTimelineDurationUs)),
-      );
-      const clipSourceDurationRaw = (clipData as any).sourceDurationUs;
-      const requestedSourceDurationUs = Math.max(
-        0,
-        Math.round(
-          Number(
-            typeof clipSourceDurationRaw === 'number' && clipSourceDurationRaw > 0
-              ? clipSourceDurationRaw
-              : clipData.sourceRange?.durationUs || requestedTimelineDurationUs,
-          ),
-        ),
-      );
-
-      const speedRaw = (clipData as any).speed;
-      const speed =
-        typeof speedRaw === 'number' && Number.isFinite(speedRaw) && speedRaw !== 0
-          ? Math.max(-10, Math.min(10, speedRaw))
-          : undefined;
-
-      const startUs =
-        typeof clipData.timelineRange?.startUs === 'number'
-          ? Math.max(0, Math.round(Number(clipData.timelineRange.startUs)))
-          : sequentialTimeUs;
-
-      const endUsFallback = startUs + Math.max(0, requestedTimelineDurationUs);
+      const {
+        clipType,
+        itemId,
+        sourcePath,
+        sourceStartUs,
+        freezeFrameSourceUs,
+        layer,
+        trackId,
+        requestedTimelineDurationUs,
+        requestedSourceRangeDurationUs,
+        requestedSourceDurationUs,
+        speed,
+        startUs,
+        endUsFallback,
+      } = descriptor;
 
       const reusable = this.clipById.get(itemId);
-      if (
-        reusable &&
-        reusable.sourcePath === sourcePath &&
-        (reusable as any).clipType === clipType
-      ) {
-        const safeSourceDurationUs =
-          requestedSourceDurationUs > 0 ? requestedSourceDurationUs : reusable.sourceDurationUs;
-        const safeTimelineDurationUs =
-          requestedTimelineDurationUs > 0 ? requestedTimelineDurationUs : safeSourceDurationUs;
+      if (reusable && this.timelineClipLoader.isReusableClipMatch({ reusable, descriptor })) {
+        const updated = await this.timelineClipLoader.updateReusableClip({
+          clipData,
+          descriptor,
+          reusable,
+          toVideoEffects: (value) => this.toVideoEffects(value),
+          getTrackRuntimeForClip: (clip) => this.getTrackRuntimeForClip(clip),
+          applySolidLayout: (clip) => this.layoutApplier.applySolidLayout(clip),
+        });
 
-        if (reusable.clipKind === 'video') {
-          const hasFirstTimestamp =
-            typeof reusable.firstTimestampS === 'number' &&
-            Number.isFinite(reusable.firstTimestampS);
-          if (!hasFirstTimestamp && reusable.input) {
-            try {
-              const track = await reusable.input.getPrimaryVideoTrack();
-              if (track) {
-                reusable.firstTimestampS = await track.getFirstTimestamp();
-              }
-            } catch {
-              // ignore
-            }
-          }
-        }
-
-        reusable.startUs = startUs;
-        reusable.durationUs = safeTimelineDurationUs;
-        reusable.endUs = startUs + safeTimelineDurationUs;
-        reusable.sourceStartUs = sourceStartUs;
-        reusable.sourceRangeDurationUs =
-          requestedSourceRangeDurationUs > 0
-            ? requestedSourceRangeDurationUs
-            : reusable.sourceRangeDurationUs;
-        reusable.sourceDurationUs = safeSourceDurationUs;
-        reusable.speed = speed;
-
-        reusable.freezeFrameSourceUs = freezeFrameSourceUs;
-        reusable.layer = layer;
-        reusable.trackId = trackId;
-        reusable.opacity = clipData.opacity;
-        reusable.blendMode = resolveBlendMode((clipData as any).blendMode);
-        reusable.effects = this.toVideoEffects(clipData.effects);
-        reusable.transform = (clipData as any).transform;
-        reusable.transitionIn = clipData.transitionIn;
-        reusable.transitionOut = clipData.transitionOut;
-        if (reusable.clipKind === 'text') {
-          const nextText = String((clipData as any).text ?? '');
-          const nextStyle = (clipData as any).style;
-          reusable.textDirty =
-            reusable.text !== nextText || !areTextClipStylesEqual(reusable.style, nextStyle);
-          reusable.text = nextText;
-          reusable.style = nextStyle;
-        }
-        const reusableTrack = this.getTrackRuntimeForClip(reusable);
-        if (reusableTrack && reusable.sprite.parent !== reusableTrack.container) {
-          reusableTrack.container.addChild(reusable.sprite);
-        }
-        if (reusable.clipKind === 'solid') {
-          reusable.backgroundColor = String((clipData as any).backgroundColor ?? '#000000');
-          reusable.sprite.tint = parseHexColor(reusable.backgroundColor);
-          this.layoutApplier.applySolidLayout(reusable);
-        }
-        if (reusable.clipKind === 'shape') {
-          reusable.shapeType = (clipData as any).shapeType ?? reusable.shapeType ?? 'square';
-          reusable.fillColor = String(
-            (clipData as any).fillColor ?? reusable.fillColor ?? '#ffffff',
-          );
-          reusable.strokeColor = String(
-            (clipData as any).strokeColor ?? reusable.strokeColor ?? '#000000',
-          );
-          reusable.strokeWidth = Number((clipData as any).strokeWidth ?? reusable.strokeWidth ?? 0);
-          const nextConfig = (clipData as any).shapeConfig;
-          if (!areShapeConfigsEqual(reusable.shapeConfig as any, nextConfig)) {
-            reusable.shapeConfig = nextConfig ? JSON.parse(JSON.stringify(nextConfig)) : undefined;
-          }
-          reusable.shapeDirty = true;
-        }
-
-        reusable.sprite.visible = false;
-
-        nextClips.push(reusable);
-        nextClipById.set(itemId, reusable);
-        sequentialTimeUs = Math.max(sequentialTimeUs, reusable.endUs, endUsFallback);
+        nextClips.push(updated.clip);
+        nextClipById.set(itemId, updated.clip);
+        sequentialTimeUs = updated.sequentialTimeUs;
         continue;
       }
 
@@ -811,50 +723,9 @@ export class VideoCompositor {
         const bgPath = compositorClip.background?.source?.path;
         if (bgPath) {
           try {
-            const handle = await deps.getFileHandleByPath(bgPath);
-            if (handle) {
-              const file = (await deps.getFileByPath?.(bgPath)) ?? (await handle.getFile());
-              const isImage =
-                (typeof file?.type === 'string' && file.type.startsWith('image/')) ||
-                getMediaTypeFromFilename(bgPath) === 'image';
-
-              if (isImage) {
-                let bmp: ImageBitmap | null = null;
-                let imageFile = file;
-                if (
-                  isSvgFile({ file, path: bgPath }) &&
-                  deps.getCurrentProjectId &&
-                  deps.ensureVectorImageRaster
-                ) {
-                  const projectId = await deps.getCurrentProjectId();
-                  if (projectId) {
-                    const cached = await deps.ensureVectorImageRaster({
-                      projectId,
-                      projectRelativePath: bgPath,
-                      width: this.width,
-                      height: this.height,
-                      sourceFileHandle: handle,
-                    });
-                    if (cached) imageFile = await cached.getFile();
-                  }
-                }
-                bmp = await createImageBitmap(imageFile);
-                if (compositorClip.hudMediaStates) {
-                  compositorClip.hudMediaStates.background = {
-                    sourcePath: bgPath,
-                    fileHandle: handle,
-                    sourceDurationUs: 0,
-                    clipKind: 'image',
-                    sourceKind: 'bitmap',
-                    imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
-                    sprite: new Sprite(Texture.EMPTY),
-                    lastVideoFrame: null,
-                    bitmap: bmp,
-                  };
-                }
-              } else {
-                // Video support for HUD backgrounds can be added here
-              }
+            const state = await this.hudMediaLoader.loadImageState({ sourcePath: bgPath, deps });
+            if (state && compositorClip.hudMediaStates) {
+              compositorClip.hudMediaStates.background = state;
             }
           } catch (e) {
             console.error('[VideoCompositor] Failed to load HUD background', e);
@@ -864,50 +735,12 @@ export class VideoCompositor {
         const contentPath = compositorClip.content?.source?.path;
         if (contentPath) {
           try {
-            const handle = await deps.getFileHandleByPath(contentPath);
-            if (handle) {
-              const file = (await deps.getFileByPath?.(contentPath)) ?? (await handle.getFile());
-              const isImage =
-                (typeof file?.type === 'string' && file.type.startsWith('image/')) ||
-                getMediaTypeFromFilename(contentPath) === 'image';
-
-              if (isImage) {
-                let bmp: ImageBitmap | null = null;
-                let imageFile = file;
-                if (
-                  isSvgFile({ file, path: contentPath }) &&
-                  deps.getCurrentProjectId &&
-                  deps.ensureVectorImageRaster
-                ) {
-                  const projectId = await deps.getCurrentProjectId();
-                  if (projectId) {
-                    const cached = await deps.ensureVectorImageRaster({
-                      projectId,
-                      projectRelativePath: contentPath,
-                      width: this.width,
-                      height: this.height,
-                      sourceFileHandle: handle,
-                    });
-                    if (cached) imageFile = await cached.getFile();
-                  }
-                }
-                bmp = await createImageBitmap(imageFile);
-                if (compositorClip.hudMediaStates) {
-                  compositorClip.hudMediaStates.content = {
-                    sourcePath: contentPath,
-                    fileHandle: handle,
-                    sourceDurationUs: 0,
-                    clipKind: 'image',
-                    sourceKind: 'bitmap',
-                    imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
-                    sprite: new Sprite(Texture.EMPTY),
-                    lastVideoFrame: null,
-                    bitmap: bmp,
-                  };
-                }
-              } else {
-                // Video support for HUD content can be added here
-              }
+            const state = await this.hudMediaLoader.loadImageState({
+              sourcePath: contentPath,
+              deps,
+            });
+            if (state && compositorClip.hudMediaStates) {
+              compositorClip.hudMediaStates.content = state;
             }
           } catch (e) {
             console.error('[VideoCompositor] Failed to load HUD content', e);
@@ -945,44 +778,13 @@ export class VideoCompositor {
         sequentialTimeUs = Math.max(sequentialTimeUs, endUs);
 
         const imageSource = new ImageSource({ resource: new OffscreenCanvas(2, 2) as any });
-
         let bmp: ImageBitmap | null = null;
-        try {
-          let imageFile = file;
-          if (
-            isSvgFile({ file, path: sourcePath }) &&
-            deps.getCurrentProjectId &&
-            deps.ensureVectorImageRaster
-          ) {
-            const projectId = await deps.getCurrentProjectId();
-            if (projectId) {
-              const cachedRasterHandle = await deps.ensureVectorImageRaster({
-                projectId,
-                projectRelativePath: sourcePath,
-                width: this.width,
-                height: this.height,
-                sourceFileHandle: fileHandle,
-              });
-              if (cachedRasterHandle) {
-                imageFile = await cachedRasterHandle.getFile();
-              }
-            }
-          }
-
-          bmp = await createImageBitmap(imageFile);
-          const frameW = Math.max(1, Math.round((bmp as any).width ?? 1));
-          const frameH = Math.max(1, Math.round((bmp as any).height ?? 1));
-          imageSource.resize(frameW, frameH);
+        const loadedImage = await this.rasterImageLoader.load({ sourcePath, deps });
+        if (loadedImage) {
+          bmp = loadedImage.bitmap;
+          imageSource.resize(loadedImage.width, loadedImage.height);
           (imageSource as any).resource = bmp as any;
           imageSource.update();
-        } catch (e) {
-          if (bmp) {
-            try {
-              bmp.close();
-            } catch {
-              // ignore
-            }
-          }
         }
 
         const compositorClip = this.clipFactory.createImageClip({
