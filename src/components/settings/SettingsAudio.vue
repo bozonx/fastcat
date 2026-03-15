@@ -11,8 +11,6 @@ const isResetConfirmOpen = ref(false);
 function resetDefaults() {
   workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs =
     DEFAULT_USER_SETTINGS.projectDefaults.audioDeclickDurationUs;
-  workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve =
-    DEFAULT_USER_SETTINGS.projectDefaults.defaultAudioFadeCurve;
   isResetConfirmOpen.value = false;
 }
 </script>
@@ -54,7 +52,7 @@ function resetDefaults() {
             {{
               t(
                 'videoEditor.settings.projectAudioDeclickHint',
-                'Default linear fade in/out applied to all audio and video clips. 0 disables it.',
+                'Micro-fades (linear) applied to edges of all clips to eliminate clicks. 0 disables it.',
               )
             }}
           </div>
@@ -73,60 +71,6 @@ function resetDefaults() {
                 ))
             "
           />
-        </div>
-      </div>
-    </div>
-
-    <div class="space-y-2 rounded border border-ui-border bg-ui-bg-elevated p-3">
-      <div class="flex items-center justify-between gap-3">
-        <div>
-          <div class="text-sm font-medium text-ui-text">
-            {{ t('videoEditor.settings.defaultAudioFadeCurveTitle', 'Default Fade Curve') }}
-          </div>
-          <div class="text-xs text-ui-text-muted">
-            {{
-              t(
-                'videoEditor.settings.defaultAudioFadeCurveHint',
-                'Default curve used for audio fades when transition duration is automatically computed.',
-              )
-            }}
-          </div>
-        </div>
-        <div class="flex items-center gap-1 rounded bg-ui-bg p-1">
-          <UButton
-            size="xs"
-            :variant="
-              workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve === 'logarithmic'
-                ? 'solid'
-                : 'ghost'
-            "
-            :color="
-              workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve === 'logarithmic'
-                ? 'primary'
-                : 'neutral'
-            "
-            @click="
-              workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve = 'logarithmic'
-            "
-          >
-            Logarithmic
-          </UButton>
-          <UButton
-            size="xs"
-            :variant="
-              workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve === 'linear'
-                ? 'solid'
-                : 'ghost'
-            "
-            :color="
-              workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve === 'linear'
-                ? 'primary'
-                : 'neutral'
-            "
-            @click="workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve = 'linear'"
-          >
-            Linear
-          </UButton>
         </div>
       </div>
     </div>

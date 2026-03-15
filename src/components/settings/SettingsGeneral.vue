@@ -20,6 +20,8 @@ function resetDefaults() {
     DEFAULT_USER_SETTINGS.stopFrames.qualityPercent;
   workspaceStore.userSettings.timeline.snapThresholdPx =
     DEFAULT_USER_SETTINGS.timeline.snapThresholdPx;
+  workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve =
+    DEFAULT_USER_SETTINGS.projectDefaults.defaultAudioFadeCurve;
   isResetConfirmOpen.value = false;
 }
 
@@ -140,6 +142,47 @@ function clearCache() {
           :max="20"
           :step="1"
         />
+      </UFormField>
+      <UFormField
+        :label="t('videoEditor.settings.defaultAudioFadeCurveTitle', 'Default Fade Curve')"
+        :help="t('videoEditor.settings.defaultAudioFadeCurveHint', 'Default curve used for audio fades when you manually create a fade. (De-click always uses a short linear fade).')"
+      >
+        <div class="flex items-center gap-1 rounded bg-ui-bg p-1 w-fit">
+          <UButton
+            size="xs"
+            :variant="
+              workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve === 'logarithmic'
+                ? 'solid'
+                : 'ghost'
+            "
+            :color="
+              workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve === 'logarithmic'
+                ? 'primary'
+                : 'neutral'
+            "
+            @click="
+              workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve = 'logarithmic'
+            "
+          >
+            Logarithmic
+          </UButton>
+          <UButton
+            size="xs"
+            :variant="
+              workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve === 'linear'
+                ? 'solid'
+                : 'ghost'
+            "
+            :color="
+              workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve === 'linear'
+                ? 'primary'
+                : 'neutral'
+            "
+            @click="workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve = 'linear'"
+          >
+            Linear
+          </UButton>
+        </div>
       </UFormField>
 
       <div class="flex items-center justify-between gap-3 pt-2">

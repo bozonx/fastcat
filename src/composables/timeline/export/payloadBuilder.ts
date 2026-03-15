@@ -145,7 +145,9 @@ async function buildVideoTrackTree(
         audioFadeInCurve: (item as any).audioFadeInCurve,
         audioFadeOutCurve: (item as any).audioFadeOutCurve,
         audioDeclickDurationUs:
-          params.workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs,
+          params.projectStore.projectSettings.project.audioDeclickDurationUs,
+        defaultAudioFadeCurve:
+          params.projectStore.projectSettings.project.defaultAudioFadeCurve,
         opacity: item.opacity,
         blendMode: item.blendMode,
         effects: itemEffects.length > 0 ? itemEffects : undefined,
@@ -425,6 +427,7 @@ export async function toWorkerTimelineClips(
       audioFadeInCurve: (item as any).audioFadeInCurve,
       audioFadeOutCurve: (item as any).audioFadeOutCurve,
       audioDeclickDurationUs: projectStore.projectSettings.project.audioDeclickDurationUs,
+      defaultAudioFadeCurve: projectStore.projectSettings.project.defaultAudioFadeCurve,
       opacity: combinedOpacity,
       blendMode: combinedBlendMode,
       effects: combinedEffects.length > 0 ? combinedEffects : undefined,

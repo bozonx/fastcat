@@ -114,7 +114,7 @@ function resolveEdgeFade(input: {
 
   return {
     durationUs: autoDurationUs,
-    curve: normalizeAudioFadeCurve(input.defaultCurve),
+    curve: 'linear', // Force linear for de-click
   };
 }
 
