@@ -254,7 +254,7 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
           />
 
           <EditorCutView
-            v-else-if="projectStore.currentView === 'cut'"
+            v-else-if="(projectStore.currentView as any) === 'cut' || ((projectStore.currentView as any) === 'fullscreen' && projectStore.lastViewBeforeFullscreen === 'cut')"
             :columns="projectStore.cutPanels"
             :layout-key="cutPanelsLayoutKey"
             :top-sizes="topSplitSizes"
@@ -276,7 +276,7 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
           />
 
           <EditorSoundView
-            v-else-if="projectStore.currentView === 'sound'"
+            v-else-if="(projectStore.currentView as any) === 'sound' || ((projectStore.currentView as any) === 'fullscreen' && projectStore.lastViewBeforeFullscreen === 'sound')"
             :sizes="soundSizes"
             :columns="projectStore.soundPanels"
             :layout-key="soundPanelsLayoutKey"
@@ -297,6 +297,11 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
             @drag-end="onDragEnd"
             @focus="focusDynamicPanel"
             @close="(panel, view) => closePanelAndRestoreTab(panel, { view })"
+          />
+
+          <MonitorContainer
+            v-else-if="(projectStore.currentView as any) === 'fullscreen'"
+            is-fullscreen
           />
 
           <EditorExportView

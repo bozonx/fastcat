@@ -38,21 +38,29 @@ const {
   timecodeEl,
 } = useMonitorRuntime();
 
+const effectiveFullscreen = computed(() => props.isFullscreen || isBrowserFullscreen.value);
+
 // Sync internal fullscreen state with browser fullscreen
 watch(isBrowserFullscreen, (val) => {
   if (val) {
     projectStore.goToFullscreen();
   } else if (projectStore.currentView === 'fullscreen') {
-    projectStore.goToCut();
+    if (projectStore.lastViewBeforeFullscreen) {
+      projectStore.setView(projectStore.lastViewBeforeFullscreen);
+    } else {
+      projectStore.goToCut();
+    }
   }
 });
 
 watch(
   () => projectStore.currentView,
   (view) => {
-    if (view === 'fullscreen' && !isBrowserFullscreen.value) {
+    if ((view as any) === 'fullscreen' && !isBrowserFullscreen.value) {
+      // Try to enter browser fullscreen
       void toggleBrowserFullscreen();
-    } else if (view !== 'fullscreen' && isBrowserFullscreen.value) {
+    } else if ((view as any) !== 'fullscreen' && isBrowserFullscreen.value) {
+      // Exit browser fullscreen if store state says so
       void toggleBrowserFullscreen();
     }
   },
@@ -149,15 +157,15 @@ const emit = defineEmits<{
       ref="panelRef"
       class="panel-focus-frame flex h-full min-w-0 min-h-0 transition-colors duration-300 relative"
       :class="[
-        isFullscreen ? 'bg-black flex-col' : 'bg-ui-bg-elevated',
-        !isFullscreen && toolbarPosition === 'bottom' ? 'flex-col' : '',
-        !isFullscreen && toolbarPosition === 'top' ? 'flex-col-reverse' : '',
-        !isFullscreen && toolbarPosition === 'right' ? 'flex-row' : '',
-        !isFullscreen && toolbarPosition === 'left' ? 'flex-row-reverse' : '',
+        effectiveFullscreen ? 'bg-black flex-col' : 'bg-ui-bg-elevated',
+        !effectiveFullscreen && toolbarPosition === 'bottom' ? 'flex-col' : '',
+        !effectiveFullscreen && toolbarPosition === 'top' ? 'flex-col-reverse' : '',
+        !effectiveFullscreen && toolbarPosition === 'right' ? 'flex-row' : '',
+        !effectiveFullscreen && toolbarPosition === 'left' ? 'flex-row-reverse' : '',
         {
           'panel-focus-frame--active':
-            !props.useExternalFocus && !isFullscreen && focusStore.isPanelFocused('monitor'),
-          'border-r border-ui-border': !isFullscreen,
+            !props.useExternalFocus && !effectiveFullscreen && focusStore.isPanelFocused('monitor'),
+          'border-r border-ui-border': !effectiveFullscreen,
         },
       ]"
       @pointerdown.capture="!props.useExternalFocus && focusStore.setMainFocus('monitor')"
@@ -210,10 +218,10 @@ const emit = defineEmits<{
             ref="timecodeEl"
             class="absolute text-xs text-ui-text-muted font-mono tabular-nums bg-ui-bg-elevated/80 px-2 py-1 rounded transition-all duration-300"
             :class="[
-              isFullscreen
+              effectiveFullscreen
                 ? 'bottom-24 right-8 translate-y-2'
                 : 'bottom-3 right-3',
-              isFullscreen && isIdle ? 'opacity-0' : 'opacity-100 translate-y-0',
+              effectiveFullscreen && isIdle ? 'opacity-0' : 'opacity-100 translate-y-0',
             ]"
           >
             00:00:00:00 / 00:00:00:00
@@ -225,19 +233,19 @@ const emit = defineEmits<{
       <div
         class="flex flex-wrap items-center justify-center gap-3 border-ui-border shrink-0 transition-all duration-300 select-none"
         :class="[
-          isFullscreen
+          effectiveFullscreen
             ? 'absolute bottom-8 left-1/2 -translate-x-1/2 bg-ui-bg-elevated/80 backdrop-blur-xl px-6 py-3 rounded-2xl shadow-2xl z-50 border-none translate-y-4'
             : 'px-4 py-3.5 bg-ui-bg-elevated cursor-grab active:cursor-grabbing',
-          isFullscreen && isIdle ? 'opacity-0' : 'opacity-100 translate-y-0',
-          !isFullscreen && toolbarPosition === 'bottom' ? 'border-t' : '',
-          !isFullscreen && toolbarPosition === 'top' ? 'border-b' : '',
-          !isFullscreen && toolbarPosition === 'right' ? 'border-l' : '',
-          !isFullscreen && toolbarPosition === 'left' ? 'border-r' : '',
-          (toolbarPosition === 'left' || toolbarPosition === 'right') && !isFullscreen
+          effectiveFullscreen && isIdle ? 'opacity-0' : 'opacity-100 translate-y-0',
+          !effectiveFullscreen && toolbarPosition === 'bottom' ? 'border-t' : '',
+          !effectiveFullscreen && toolbarPosition === 'top' ? 'border-b' : '',
+          !effectiveFullscreen && toolbarPosition === 'right' ? 'border-l' : '',
+          !effectiveFullscreen && toolbarPosition === 'left' ? 'border-r' : '',
+          (toolbarPosition === 'left' || toolbarPosition === 'right') && !effectiveFullscreen
             ? 'flex-col'
             : '',
         ]"
-        :draggable="!isFullscreen"
+        :draggable="!effectiveFullscreen"
         @dragstart="(e) => emit('panelDragStart', e)"
         @mouseenter="resetIdle"
       >
@@ -361,13 +369,13 @@ const emit = defineEmits<{
           </div>
 
           <UButton
-            v-if="isFullscreen"
+            v-if="effectiveFullscreen"
             size="sm"
             color="primary"
             variant="solid"
             icon="i-heroicons-arrow-left"
             :label="t('common.back', 'Back')"
-            @click="projectStore.goToCut()"
+            @click="toggleBrowserFullscreen()"
           />
 
           <UButton
@@ -377,7 +385,7 @@ const emit = defineEmits<{
             variant="ghost"
             icon="i-heroicons-arrows-pointing-out"
             :title="t('fastcat.monitor.fullscreen', 'Fullscreen')"
-            @click="projectStore.goToFullscreen()"
+            @click="toggleBrowserFullscreen()"
           />
         </div>
 
