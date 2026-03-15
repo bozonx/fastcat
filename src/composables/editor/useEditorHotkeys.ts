@@ -10,6 +10,7 @@ import { DEFAULT_HOTKEYS, type HotkeyCommandId } from '~/utils/hotkeys/defaultHo
 import { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 import {
   canExecuteHotkeyCommand,
+  createDefaultHotkeyLookup,
   createHotkeyLookup,
   getFocusAwareHotkeyOrder,
   getMatchedHotkeyCommands,
@@ -61,6 +62,7 @@ export function useEditorHotkeys() {
     getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys),
   );
   const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
+  const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
 
   function hasBlockingModalState() {
     // Rely on DOM presence of open dialogs or headless UI modals to block hotkeys
@@ -78,10 +80,24 @@ export function useEditorHotkeys() {
   function onGlobalKeydown(e: KeyboardEvent) {
     if (e.defaultPrevented) return;
 
-    const combo = hotkeyFromKeyboardEvent(e, workspaceStore.userSettings);
-    if (!combo) return;
+    // 1. Get literal combo (physical keys without virtual layers)
+    const literalCombo = hotkeyFromKeyboardEvent(e);
+    // 2. Get layered combo (with virtual layers applied)
+    const layeredCombo = hotkeyFromKeyboardEvent(e, workspaceStore.userSettings);
 
-    const matched = getMatchedHotkeyCommands({ combo, lookup: hotkeyLookup.value });
+    if (!literalCombo && !layeredCombo) return;
+
+    // Step 1: Check literal match in effective hotkeys
+    let matched = getMatchedHotkeyCommands({ combo: literalCombo, lookup: hotkeyLookup.value });
+
+    // Step 2: If no literal match, check layered match in default hotkeys
+    if (matched.length === 0 && layeredCombo && layeredCombo !== literalCombo) {
+      matched = getMatchedHotkeyCommands({
+        combo: layeredCombo,
+        lookup: defaultHotkeyLookup.value,
+      });
+    }
+
     if (matched.length === 0) return;
 
     if (e.repeat && !shouldHandleRepeatForMatchedCommands(matched)) return;

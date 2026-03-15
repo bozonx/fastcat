@@ -11,6 +11,7 @@ import MediaEncodingSettings, {
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 import {
+  BASE_AUDIO_CODEC_OPTIONS,
   BASE_VIDEO_CODEC_OPTIONS,
   checkVideoCodecSupport,
   resolveVideoCodecOptions,
@@ -38,6 +39,37 @@ const isOpen = computed({
 const isClearProjectVardataConfirmOpen = ref(false);
 const isDeleteProjectConfirmOpen = ref(false);
 const isResetConfirmOpen = ref(false);
+
+const isResolutionExpanded = ref(false);
+const isExportExpanded = ref(false);
+
+const resolutionSummary = computed(() => {
+  const p = projectStore.projectSettings?.project;
+  if (!p) return '';
+  return `${p.width}x${p.height}, ${p.fps}FPS, ${p.sampleRate / 1000}kHz`;
+});
+
+const exportSummary = computed(() => {
+  const e = projectStore.projectSettings?.exportDefaults?.encoding;
+  if (!e) return '';
+
+  const formatLabel = formatOptions.find((f) => f.value === e.format)?.label || e.format || '';
+  const format = formatLabel.split(' ')[0]?.toUpperCase() || '';
+
+  const vCodecLabel =
+    BASE_VIDEO_CODEC_OPTIONS.find((o) => o.value === e.videoCodec)?.label || e.videoCodec || '';
+  const vCodec = vCodecLabel.split(' ')[0]?.toUpperCase() || '';
+
+  const vBitrate = `${e.bitrateMbps || 0}Mb/s`;
+
+  const aCodecLabel =
+    BASE_AUDIO_CODEC_OPTIONS.find((o) => o.value === e.audioCodec)?.label || e.audioCodec || '';
+  const aCodec = aCodecLabel.split(' ')[0]?.toUpperCase() || '';
+
+  const aBitrate = `${e.audioBitrateKbps || 0} Kb/s`;
+
+  return `${format} ${vCodec} ${vBitrate} | ${aCodec} ${aBitrate}`;
+});
 
 async function confirmClearProjectVardata() {
   isClearProjectVardataConfirmOpen.value = false;
@@ -280,101 +312,167 @@ const metaDescription = computed({
       @confirm="resetToDefaults"
     />
 
-    <div class="space-y-6">
-      <!-- Resolution & FPS Settings -->
+    <div v-if="projectStore.projectSettings" class="space-y-6">
+      <!-- Project Metadata -->
       <div class="space-y-4">
-        <h3 class="text-lg font-semibold text-ui-text">
-          {{ t('videoEditor.projectSettings.resolutionAndFps', 'Resolution & FPS') }}
-        </h3>
-
-        <UFormField :label="t('videoEditor.export.presetLabel', 'Preset')">
-          <div class="flex items-center gap-2">
-            <USelectMenu
-              v-model="workspaceStore.userSettings.projectPresets.selectedPresetId"
-              :items="projectPresetOptions"
-              value-key="value"
-              label-key="label"
-              class="w-full"
-            />
-            <UButton
-              color="neutral"
-              variant="soft"
-              size="sm"
-              :label="t('common.apply', 'Apply')"
-              @click="
-                applyProjectPreset(workspaceStore.userSettings.projectPresets.selectedPresetId)
-              "
-            />
-          </div>
+        <UFormField :label="t('videoEditor.export.metadataTitle', 'Title')">
+          <UInput v-model="metaTitle" class="w-full" />
         </UFormField>
 
-        <MediaResolutionSettings
-          v-model:width="projectStore.projectSettings.project.width"
-          v-model:height="projectStore.projectSettings.project.height"
-          v-model:fps="projectStore.projectSettings.project.fps"
-          v-model:resolution-format="projectStore.projectSettings.project.resolutionFormat"
-          v-model:orientation="projectStore.projectSettings.project.orientation"
-          v-model:aspect-ratio="projectStore.projectSettings.project.aspectRatio"
-          v-model:is-custom-resolution="projectStore.projectSettings.project.isCustomResolution"
-          v-model:sample-rate="projectStore.projectSettings.project.sampleRate"
-        />
+        <div class="grid grid-cols-2 gap-4">
+          <UFormField :label="t('videoEditor.export.metadataAuthor', 'Author')">
+            <UInput v-model="metaAuthor" class="w-full" />
+          </UFormField>
+          <UFormField :label="t('videoEditor.export.metadataTags', 'Tags')">
+            <UInput v-model="metaTagsString" class="w-full" />
+          </UFormField>
+        </div>
+
+        <UFormField :label="t('videoEditor.export.metadataDescription', 'Description')">
+          <UTextarea v-model="metaDescription" :rows="2" class="w-full" />
+        </UFormField>
+      </div>
+
+      <div class="h-px bg-ui-border"></div>
+
+      <!-- Resolution & FPS Settings -->
+      <div class="space-y-4">
+        <div
+          class="w-full flex justify-between items-center cursor-pointer group"
+          @click="isResolutionExpanded = !isResolutionExpanded"
+        >
+          <div class="flex items-center gap-2">
+            <h3 v-show="isResolutionExpanded" class="text-lg font-semibold text-ui-text">
+              {{ t('videoEditor.projectSettings.resolutionAndFps', 'Resolution & FPS') }}
+            </h3>
+            <span v-show="!isResolutionExpanded" class="text-lg font-semibold text-ui-text">
+              {{ resolutionSummary }}
+            </span>
+          </div>
+          <UIcon
+            :name="
+              isResolutionExpanded
+                ? 'i-heroicons-chevron-down-20-solid'
+                : 'i-heroicons-chevron-right-20-solid'
+            "
+            class="w-5 h-5 text-ui-text-muted group-hover:text-ui-text transition-colors"
+          />
+        </div>
+
+        <div v-show="isResolutionExpanded" class="space-y-4 pt-2">
+          <UFormField :label="t('videoEditor.export.presetLabel', 'Preset')">
+            <div class="flex items-center gap-2">
+              <USelectMenu
+                v-model="workspaceStore.userSettings.projectPresets.selectedPresetId"
+                :items="projectPresetOptions"
+                value-key="value"
+                label-key="label"
+                class="w-full"
+              />
+              <UButton
+                color="neutral"
+                variant="soft"
+                size="sm"
+                :label="t('common.apply', 'Apply')"
+                @click="
+                  applyProjectPreset(workspaceStore.userSettings.projectPresets.selectedPresetId)
+                "
+              />
+            </div>
+          </UFormField>
+
+          <MediaResolutionSettings
+            v-model:width="projectStore.projectSettings.project.width"
+            v-model:height="projectStore.projectSettings.project.height"
+            v-model:fps="projectStore.projectSettings.project.fps"
+            v-model:resolution-format="projectStore.projectSettings.project.resolutionFormat"
+            v-model:orientation="projectStore.projectSettings.project.orientation"
+            v-model:aspect-ratio="projectStore.projectSettings.project.aspectRatio"
+            v-model:is-custom-resolution="projectStore.projectSettings.project.isCustomResolution"
+            v-model:sample-rate="projectStore.projectSettings.project.sampleRate"
+          />
+        </div>
       </div>
 
       <div class="h-px bg-ui-border"></div>
 
       <!-- Export Settings -->
       <div class="space-y-4">
-        <h3 class="text-lg font-semibold text-ui-text">
-          {{ t('videoEditor.projectSettings.export', 'Export Defaults') }}
-        </h3>
-
-        <UFormField :label="t('videoEditor.export.presetLabel', 'Preset')">
+        <div
+          class="w-full flex justify-between items-center cursor-pointer group"
+          @click="isExportExpanded = !isExportExpanded"
+        >
           <div class="flex items-center gap-2">
-            <USelectMenu
-              v-model="workspaceStore.userSettings.exportPresets.selectedPresetId"
-              :items="exportPresetOptions"
-              value-key="value"
-              label-key="label"
-              class="w-full"
-            />
-            <UButton
-              color="neutral"
-              variant="soft"
-              size="sm"
-              :label="t('common.apply', 'Apply')"
-              @click="applyExportPreset(workspaceStore.userSettings.exportPresets.selectedPresetId)"
-            />
+            <h3 v-show="isExportExpanded" class="text-lg font-semibold text-ui-text">
+              {{ t('videoEditor.projectSettings.export', 'Export Defaults') }}
+            </h3>
+            <span v-show="!isExportExpanded" class="text-lg font-semibold text-ui-text">
+              {{ exportSummary }}
+            </span>
           </div>
-        </UFormField>
+          <UIcon
+            :name="
+              isExportExpanded
+                ? 'i-heroicons-chevron-down-20-solid'
+                : 'i-heroicons-chevron-right-20-solid'
+            "
+            class="w-5 h-5 text-ui-text-muted group-hover:text-ui-text transition-colors"
+          />
+        </div>
 
-        <MediaEncodingSettings
-          v-model:output-format="projectStore.projectSettings.exportDefaults.encoding.format"
-          v-model:video-codec="projectStore.projectSettings.exportDefaults.encoding.videoCodec"
-          v-model:bitrate-mbps="projectStore.projectSettings.exportDefaults.encoding.bitrateMbps"
-          v-model:exclude-audio="projectStore.projectSettings.exportDefaults.encoding.excludeAudio"
-          v-model:audio-codec="projectStore.projectSettings.exportDefaults.encoding.audioCodec"
-          v-model:audio-bitrate-kbps="
-            projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps
-          "
-          v-model:bitrate-mode="projectStore.projectSettings.exportDefaults.encoding.bitrateMode"
-          v-model:keyframe-interval-sec="
-            projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec
-          "
-          v-model:export-alpha="projectStore.projectSettings.exportDefaults.encoding.exportAlpha"
-          v-model:metadata-title="metaTitle"
-          v-model:metadata-author="metaAuthor"
-          v-model:metadata-tags="metaTagsString"
-          v-model:metadata-description="metaDescription"
-          :show-audio-advanced="true"
-          :show-builtin-presets="false"
-          :hide-audio-sample-rate="true"
-          :show-metadata="true"
-          :disabled="false"
-          :has-audio="true"
-          :is-loading-codec-support="isLoadingCodecSupport"
-          :format-options="formatOptions"
-          :video-codec-options="videoCodecOptions"
-        />
+        <div v-show="isExportExpanded" class="space-y-4 pt-2">
+          <UFormField :label="t('videoEditor.export.presetLabel', 'Preset')">
+            <div class="flex items-center gap-2">
+              <USelectMenu
+                v-model="workspaceStore.userSettings.exportPresets.selectedPresetId"
+                :items="exportPresetOptions"
+                value-key="value"
+                label-key="label"
+                class="w-full"
+              />
+              <UButton
+                color="neutral"
+                variant="soft"
+                size="sm"
+                :label="t('common.apply', 'Apply')"
+                @click="
+                  applyExportPreset(workspaceStore.userSettings.exportPresets.selectedPresetId)
+                "
+              />
+            </div>
+          </UFormField>
+
+          <MediaEncodingSettings
+            v-model:output-format="projectStore.projectSettings.exportDefaults.encoding.format"
+            v-model:video-codec="projectStore.projectSettings.exportDefaults.encoding.videoCodec"
+            v-model:bitrate-mbps="projectStore.projectSettings.exportDefaults.encoding.bitrateMbps"
+            v-model:exclude-audio="
+              projectStore.projectSettings.exportDefaults.encoding.excludeAudio
+            "
+            v-model:audio-codec="projectStore.projectSettings.exportDefaults.encoding.audioCodec"
+            v-model:audio-bitrate-kbps="
+              projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps
+            "
+            v-model:bitrate-mode="projectStore.projectSettings.exportDefaults.encoding.bitrateMode"
+            v-model:keyframe-interval-sec="
+              projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec
+            "
+            v-model:export-alpha="projectStore.projectSettings.exportDefaults.encoding.exportAlpha"
+            v-model:metadata-title="metaTitle"
+            v-model:metadata-author="metaAuthor"
+            v-model:metadata-tags="metaTagsString"
+            v-model:metadata-description="metaDescription"
+            :show-audio-advanced="true"
+            :show-builtin-presets="false"
+            :hide-audio-sample-rate="true"
+            :show-metadata="false"
+            :disabled="false"
+            :has-audio="true"
+            :is-loading-codec-support="isLoadingCodecSupport"
+            :format-options="formatOptions"
+            :video-codec-options="videoCodecOptions"
+          />
+        </div>
       </div>
 
       <div class="h-px bg-ui-border"></div>
