@@ -31,20 +31,32 @@ export function isDynamicPanelFocus(
   return String(panelId).startsWith('dynamic:');
 }
 
+export function isPropertiesPanelFocus(panelId: string | null | undefined): boolean {
+  return panelId === 'properties' || String(panelId) === 'dynamic:properties';
+}
+
 export function isPreviewPanelFocus(panelId: string | null | undefined): boolean {
+  if (!panelId) return false;
+  if (panelId === 'monitor' || String(panelId).startsWith('dynamic:monitor')) return false;
+
   return (
     panelId === 'project' ||
     panelId === 'left' ||
     panelId === 'right' ||
+    isPropertiesPanelFocus(panelId) ||
     isDynamicPanelFocus(panelId)
   );
 }
 
 export function isPlaybackPanelFocus(panelId: string | null | undefined): boolean {
+  if (!panelId) return false;
+  if (isPropertiesPanelFocus(panelId)) return false;
+
   return (
     panelId === 'monitor' ||
     panelId === 'left' ||
     panelId === 'right' ||
+    panelId === 'timeline' ||
     isDynamicPanelFocus(panelId)
   );
 }
@@ -160,6 +172,8 @@ export const useFocusStore = defineStore('focus', () => {
 
   const canUsePreviewHotkeys = computed(() => isPreviewPanelFocus(effectiveFocus.value));
 
+  const isPropertiesFocus = computed(() => isPropertiesPanelFocus(effectiveFocus.value));
+
   return {
     activePanelId,
     mainFocus,
@@ -171,6 +185,7 @@ export const useFocusStore = defineStore('focus', () => {
     canUseTimelineHotkeys,
     canUsePlaybackHotkeys,
     canUsePreviewHotkeys,
+    isPropertiesFocus,
 
     isPanelFocused,
 

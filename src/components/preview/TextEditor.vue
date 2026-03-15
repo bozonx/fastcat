@@ -19,7 +19,7 @@ const isSaving = ref(false);
 const saveError = ref<string | null>(null);
 const lastSavedAt = ref<Date | null>(null);
 const lastSavedContent = ref(props.initialContent);
-const isModalOpen = ref(false);
+const isModalOpen = defineModel<boolean>('isModalOpen', { default: false });
 
 let saveTimer: number | undefined;
 
@@ -100,34 +100,39 @@ function focusPanel() {
 </script>
 
 <template>
-  <div class="flex flex-col h-full w-full bg-ui-bg" @pointerdown.capture="focusPanel">
-    <div class="flex items-center justify-between px-3 py-2 border-b border-ui-border text-xs">
-      <div class="flex items-center gap-2">
-        <span class="text-ui-text-muted">Autosave enabled</span>
-        <UButton
-          icon="i-heroicons-arrows-pointing-out"
-          variant="ghost"
-          size="xs"
-          color="neutral"
-          title="Open in modal"
-          @click="isModalOpen = true"
-        />
-      </div>
-      <span v-if="isSaving" class="text-ui-text">Saving...</span>
-      <span v-else-if="saveError" class="text-red-400">{{ saveError }}</span>
-      <span v-else-if="lastSavedAt" class="text-ui-text-muted">
-        Saved at
-        {{ lastSavedAt?.toLocaleTimeString?.() || '' }}
-      </span>
-      <span v-else class="text-ui-text-muted">No changes</span>
-    </div>
-
+  <div
+    class="flex flex-col h-full w-full bg-ui-bg relative group/text-editor"
+    @pointerdown.capture="focusPanel"
+  >
     <textarea
       v-model="content"
       class="flex-1 w-full resize-none font-mono text-sm text-ui-text bg-ui-bg focus:outline-none p-4"
       spellcheck="false"
       @focus="focusPanel"
     />
+
+    <!-- Status indicators & Modal button (bottom-right) -->
+    <div
+      class="absolute bottom-4 right-4 flex items-center gap-2 transition-opacity opacity-0 group-hover/text-editor:opacity-100"
+    >
+      <div
+        v-if="isSaving || saveError || lastSavedAt"
+        class="px-2 py-1 rounded bg-ui-bg-elevated/80 backdrop-blur-sm border border-ui-border text-[10px] text-ui-text-muted select-none"
+      >
+        <span v-if="isSaving">Saving...</span>
+        <span v-else-if="saveError" class="text-red-400">{{ saveError }}</span>
+        <span v-else-if="lastSavedAt">Saved {{ lastSavedAt?.toLocaleTimeString?.() }}</span>
+      </div>
+
+      <UButton
+        icon="i-heroicons-arrows-pointing-out"
+        variant="solid"
+        size="xs"
+        color="neutral"
+        class="shadow-lg"
+        @click="isModalOpen = true"
+      />
+    </div>
 
     <TextEditorModal
       v-model:open="isModalOpen"
@@ -140,3 +145,4 @@ function focusPanel() {
     />
   </div>
 </template>
+

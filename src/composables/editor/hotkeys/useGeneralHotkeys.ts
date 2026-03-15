@@ -360,7 +360,9 @@ export function useGeneralHotkeys(
       return true;
     }
 
-    if (isPreviewFocus()) {
+    // Toggle file preview fullscreen (modal for text, true fullscreen for media)
+    // ONLY if focus is on the Properties panel
+    if (focusStore.isPropertiesFocus) {
       const entity = selectionStore.selectedEntity;
       if (entity?.source === 'fileManager' && entity.kind === 'file') {
         uiStore.togglePreviewFullscreen();
@@ -368,6 +370,7 @@ export function useGeneralHotkeys(
       }
     }
 
+    // In all other cases: go to Monitor Fullscreen
     projectStore.goToFullscreen();
     return true;
   }

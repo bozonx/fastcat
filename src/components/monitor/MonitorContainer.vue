@@ -114,6 +114,30 @@ const props = withDefaults(
   },
 );
 
+const isIdle = ref(false);
+let idleTimer: number | undefined;
+
+function resetIdle() {
+  isIdle.value = false;
+  if (idleTimer) window.clearTimeout(idleTimer);
+  idleTimer = window.setTimeout(() => {
+    isIdle.value = true;
+  }, 2000);
+}
+
+function onGlobalMouseMove() {
+  resetIdle();
+}
+
+onMounted(() => {
+  window.addEventListener('mousemove', onGlobalMouseMove);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('mousemove', onGlobalMouseMove);
+  if (idleTimer) window.clearTimeout(idleTimer);
+});
+
 const emit = defineEmits<{
   panelDragStart: [e: DragEvent];
 }>();
@@ -187,8 +211,9 @@ const emit = defineEmits<{
             class="absolute text-xs text-ui-text-muted font-mono tabular-nums bg-ui-bg-elevated/80 px-2 py-1 rounded transition-all duration-300"
             :class="[
               isFullscreen
-                ? 'bottom-24 right-8 opacity-0 group-hover/monitor:opacity-100 translate-y-2 group-hover/monitor:translate-y-0'
+                ? 'bottom-24 right-8 translate-y-2'
                 : 'bottom-3 right-3',
+              isFullscreen && isIdle ? 'opacity-0' : 'opacity-100 translate-y-0',
             ]"
           >
             00:00:00:00 / 00:00:00:00
@@ -201,8 +226,9 @@ const emit = defineEmits<{
         class="flex flex-wrap items-center justify-center gap-3 border-ui-border shrink-0 transition-all duration-300 select-none"
         :class="[
           isFullscreen
-            ? 'absolute bottom-8 left-1/2 -translate-x-1/2 bg-ui-bg-elevated/80 backdrop-blur-xl px-6 py-3 rounded-2xl shadow-2xl z-50 border-none opacity-0 group-hover/monitor:opacity-100 hover:opacity-100! translate-y-4 group-hover/monitor:translate-y-0'
+            ? 'absolute bottom-8 left-1/2 -translate-x-1/2 bg-ui-bg-elevated/80 backdrop-blur-xl px-6 py-3 rounded-2xl shadow-2xl z-50 border-none translate-y-4'
             : 'px-4 py-3.5 bg-ui-bg-elevated cursor-grab active:cursor-grabbing',
+          isFullscreen && isIdle ? 'opacity-0' : 'opacity-100 translate-y-0',
           !isFullscreen && toolbarPosition === 'bottom' ? 'border-t' : '',
           !isFullscreen && toolbarPosition === 'top' ? 'border-b' : '',
           !isFullscreen && toolbarPosition === 'right' ? 'border-l' : '',
@@ -213,6 +239,7 @@ const emit = defineEmits<{
         ]"
         :draggable="!isFullscreen"
         @dragstart="(e) => emit('panelDragStart', e)"
+        @mouseenter="resetIdle"
       >
         <div
           class="flex items-center gap-2 shrink-0"

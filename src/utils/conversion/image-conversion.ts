@@ -1,5 +1,6 @@
 import { addMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import type { ConversionRequest } from '~/types/conversion';
+import { MAX_CANVAS_DIMENSION } from '~/utils/conversion/constants';
 
 export async function executeImageConversion(params: {
   file: File;
@@ -22,17 +23,16 @@ export async function executeImageConversion(params: {
         const targetHeight = Math.max(1, params.request.image?.height || bitmap.height);
 
         // Check if canvas size exceeds limits
-        const MAX_DIM = 16384;
         let finalWidth = targetWidth;
         let finalHeight = targetHeight;
-        if (finalWidth > MAX_DIM || finalHeight > MAX_DIM) {
+        if (finalWidth > MAX_CANVAS_DIMENSION || finalHeight > MAX_CANVAS_DIMENSION) {
           const ratio = finalWidth / finalHeight;
           if (finalWidth > finalHeight) {
-            finalWidth = MAX_DIM;
-            finalHeight = Math.round(MAX_DIM / ratio);
+            finalWidth = MAX_CANVAS_DIMENSION;
+            finalHeight = Math.round(MAX_CANVAS_DIMENSION / ratio);
           } else {
-            finalHeight = MAX_DIM;
-            finalWidth = Math.round(MAX_DIM * ratio);
+            finalHeight = MAX_CANVAS_DIMENSION;
+            finalWidth = Math.round(MAX_CANVAS_DIMENSION * ratio);
           }
         }
 
