@@ -2,7 +2,13 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { sanitizeFps } from '~/utils/monitor-time';
 import { syncMonitorAudioLevels } from './useMonitorPlayback.audioLevels';
+import {
+  advanceMonitorPlaybackLoop,
+  resetMonitorPlaybackLoopState,
+} from './useMonitorPlayback.loop';
+import { canPlayMonitorScrubPreview } from './useMonitorPlayback.scrub';
 import { syncMonitorTimecodeText } from './useMonitorPlayback.timecode';
+import { syncMonitorPlaybackVisibility } from './useMonitorPlayback.visibility';
 
 import type { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -47,13 +53,17 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
   const SCRUB_PREVIEW_DURATION_US = 75_000;
 
   let playbackLoopId = 0;
-  let lastFrameTimeMs = 0;
-  let lastScrubPreviewAtMs = 0;
+  const playbackLoopState = {
+    lastFrameTimeMs: 0,
+    renderAccumulatorMs: 0,
+    storeSyncAccumulatorMs: 0,
+    audioLevelsAccumulatorMs: 0,
+  };
+  const scrubPreviewState = {
+    lastScrubPreviewAtMs: 0,
+  };
   let localCurrentTimeUs = 0;
   const uiCurrentTimeUs = ref(0);
-  let renderAccumulatorMs = 0;
-  let storeSyncAccumulatorMs = 0;
-  let audioLevelsAccumulatorMs = 0;
   let isUnmounted = false;
   let suppressStoreSeekWatch = false;
   let timecodeEl: HTMLElement | null = null;
@@ -90,34 +100,28 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
   }
 
   function canPlayScrubPreview(fromUs: number, toUs: number) {
-    if (isUnmounted || isPlaying.value || isLoading.value || loadError.value) {
-      return false;
-    }
-
-    const deltaUs = toUs - fromUs;
-    if (deltaUs < SCRUB_PREVIEW_MIN_DELTA_US || deltaUs > SCRUB_PREVIEW_MAX_DELTA_US) {
-      return false;
-    }
-
-    const now = performance.now();
-    if (now - lastScrubPreviewAtMs < SCRUB_PREVIEW_THROTTLE_MS) {
-      return false;
-    }
-
-    lastScrubPreviewAtMs = now;
-    return true;
+    return canPlayMonitorScrubPreview({
+      fromUs,
+      toUs,
+      state: scrubPreviewState,
+      isUnmounted,
+      isPlaying: isPlaying.value,
+      isLoading: isLoading.value,
+      hasLoadError: Boolean(loadError.value),
+      minDeltaUs: SCRUB_PREVIEW_MIN_DELTA_US,
+      maxDeltaUs: SCRUB_PREVIEW_MAX_DELTA_US,
+      throttleMs: SCRUB_PREVIEW_THROTTLE_MS,
+    });
   }
 
   function updatePlayback(timestamp: number) {
     if (!isPlaying.value) return;
     if (isUnmounted) return;
 
-    const deltaMsRaw = timestamp - lastFrameTimeMs;
-    const deltaMs = Number.isFinite(deltaMsRaw) && deltaMsRaw > 0 ? deltaMsRaw : 0;
-    lastFrameTimeMs = timestamp;
-    renderAccumulatorMs += deltaMs;
-    storeSyncAccumulatorMs += deltaMs;
-    audioLevelsAccumulatorMs += deltaMs;
+    advanceMonitorPlaybackLoop({
+      timestamp,
+      state: playbackLoopState,
+    });
 
     let newTimeUs = clampToTimeline(audioEngine.getCurrentTimeUs());
 
@@ -148,22 +152,22 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
     // Avoid component rerenders on each RAF tick.
     updateTimecodeUi(newTimeUs);
 
-    if (storeSyncAccumulatorMs >= STORE_TIME_SYNC_MS) {
-      storeSyncAccumulatorMs = 0;
+    if (playbackLoopState.storeSyncAccumulatorMs >= STORE_TIME_SYNC_MS) {
+      playbackLoopState.storeSyncAccumulatorMs = 0;
       uiCurrentTimeUs.value = newTimeUs;
       updateStoreTime(newTimeUs);
     }
 
-    if (audioLevelsAccumulatorMs >= AUDIO_LEVELS_SYNC_MS) {
-      audioLevelsAccumulatorMs = 0;
+    if (playbackLoopState.audioLevelsAccumulatorMs >= AUDIO_LEVELS_SYNC_MS) {
+      playbackLoopState.audioLevelsAccumulatorMs = 0;
       updateAudioLevels();
     }
 
     const fps = sanitizeFps(getFps());
     const frameIntervalMs = 1000 / fps;
 
-    if (renderAccumulatorMs >= frameIntervalMs) {
-      renderAccumulatorMs %= frameIntervalMs;
+    if (playbackLoopState.renderAccumulatorMs >= frameIntervalMs) {
+      playbackLoopState.renderAccumulatorMs %= frameIntervalMs;
       scheduleRender(newTimeUs);
     }
 
@@ -198,14 +202,12 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
         }
 
         setLocalTimeFromStore();
-        renderAccumulatorMs = 0;
-        storeSyncAccumulatorMs = 0;
-        audioLevelsAccumulatorMs = 0;
+        resetMonitorPlaybackLoopState(playbackLoopState);
 
         audioEngine.play(localCurrentTimeUs, timelineStore.playbackSpeed);
 
         playbackLoopId = requestAnimationFrame((ts) => {
-          lastFrameTimeMs = ts;
+          playbackLoopState.lastFrameTimeMs = ts;
           updatePlayback(ts);
         });
       } else {
@@ -275,21 +277,20 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
     setLocalTimeFromStore();
 
     visibilityHandler = () => {
-      if (document.hidden) {
-        if (isPlaying.value) {
+      syncMonitorPlaybackVisibility({
+        isPlaying: isPlaying.value,
+        clampToTimeline,
+        audioEngine,
+        onPauseHiddenPlayback: () => {
           isPlaying.value = false;
-        }
-        return;
-      }
-
-      // On visibility restore, re-sync UI time and render current frame.
-      if (isPlaying.value) {
-        const timeUs = clampToTimeline(audioEngine.getCurrentTimeUs());
-        localCurrentTimeUs = timeUs;
-        uiCurrentTimeUs.value = timeUs;
-        updateTimecodeUi(timeUs);
-        scheduleRender(timeUs);
-      }
+        },
+        onRestoreVisiblePlayback: (timeUs) => {
+          localCurrentTimeUs = timeUs;
+          uiCurrentTimeUs.value = timeUs;
+          updateTimecodeUi(timeUs);
+          scheduleRender(timeUs);
+        },
+      });
     };
     document.addEventListener('visibilitychange', visibilityHandler);
   });

@@ -1,22 +1,9 @@
 import type { PreviewRenderOptions } from '~/utils/video-editor/worker-rpc';
+import { cloneMonitorValue } from './useMonitorClone';
 import type { WorkerTimelineClip } from './types';
 
 export function cloneWorkerPayload<T>(value: T): T {
-  try {
-    if (typeof structuredClone === 'function') {
-      return structuredClone(value);
-    }
-  } catch (err) {
-    console.warn('[Monitor] structuredClone failed, falling back to JSON.parse:', err);
-  }
-
-  try {
-    return JSON.parse(JSON.stringify(value));
-  } catch (err) {
-    console.warn('[Monitor] JSON clone failed as well:', err);
-  }
-
-  return value;
+  return cloneMonitorValue(value);
 }
 
 export function computeAudioDurationUs(clips: WorkerTimelineClip[]): number {
@@ -40,9 +27,6 @@ export function createPreviewRenderOptions(params: {
   };
 }
 
-export function getAudioSourceKey(params: {
-  path: string;
-  useProxyInMonitor: boolean;
-}): string {
+export function getAudioSourceKey(params: { path: string; useProxyInMonitor: boolean }): string {
   return `${params.useProxyInMonitor ? 'proxy' : 'source'}:${params.path}`;
 }
