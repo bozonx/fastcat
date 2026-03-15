@@ -8,7 +8,7 @@ import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/wo
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { IMAGES_DIR_NAME } from '~/utils/constants';
 import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
-import { addMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
+import { addLatestMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 
 export function useMonitorSnapshot(input: {
   projectStore: ReturnType<typeof useProjectStore>;
@@ -40,8 +40,9 @@ export function useMonitorSnapshot(input: {
     const timeUs = input.uiCurrentTimeUs.value;
     const clipsPayload = getClipsPayload();
 
-    void addMediaTask(
-      async () => {
+    addLatestMediaTask({
+      key: `timeline-thumbnail:${timelinePath}`,
+      task: async () => {
         try {
           const { client } = getExportWorkerClient();
           setExportHostApi(
@@ -79,8 +80,8 @@ export function useMonitorSnapshot(input: {
           console.warn('[Monitor] Failed to save timeline thumbnail', err);
         }
       },
-      { priority: MEDIA_TASK_PRIORITIES.timelineThumbnailLazy },
-    );
+      priority: MEDIA_TASK_PRIORITIES.timelineThumbnailLazy,
+    });
   }
 
   async function createStopFrameSnapshot() {
