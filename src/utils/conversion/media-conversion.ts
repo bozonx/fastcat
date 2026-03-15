@@ -11,6 +11,10 @@ import { useProjectStore } from '~/stores/project.store';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import type { ConversionRequest } from '~/types/conversion';
 import { clampPositiveNumber, resolveAudioOnlyContainerFormat } from './helpers';
+import {
+  AUDIO_ONLY_EXPORT_PLACEHOLDER_DIMENSION,
+  AUDIO_ONLY_EXPORT_PLACEHOLDER_FPS,
+} from './constants';
 import type { ExportOptions } from '~/utils/video-editor/worker-rpc';
 
 export async function executeMediaConversion(params: {
@@ -97,9 +101,9 @@ export async function executeMediaConversion(params: {
             audioBitrate: params.request.audioOnly.bitrateKbps * 1000,
             audio: true,
             audioCodec: params.request.audioOnly.codec,
-            width: 16,
-            height: 16,
-            fps: 1,
+            width: AUDIO_ONLY_EXPORT_PLACEHOLDER_DIMENSION,
+            height: AUDIO_ONLY_EXPORT_PLACEHOLDER_DIMENSION,
+            fps: AUDIO_ONLY_EXPORT_PLACEHOLDER_FPS,
             audioChannels: params.request.sharedAudio.channels,
             audioSampleRate: params.request.sharedAudio.sampleRate || undefined,
           };

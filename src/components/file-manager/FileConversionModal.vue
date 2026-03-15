@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, watch } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import AppModal from '~/components/ui/AppModal.vue';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
@@ -51,6 +51,13 @@ onMounted(() => {
       color: 'error',
     });
   };
+  fileConversionStore.callbacks.onWarning = (message) => {
+    toast.add({
+      title: t('videoEditor.fileManager.convert.metadataWarning', 'Source metadata is unavailable'),
+      description: message,
+      color: 'warning',
+    });
+  };
 });
 
 function startConversion() {
@@ -89,10 +96,6 @@ const outputFileName = computed(() => {
     return `${baseName}_converted.webp`;
   }
   return fileName.value;
-});
-
-watch(() => audio.value.onlyFormat, (nextFormat) => {
-  audio.value.onlyCodec = nextFormat;
 });
 
 function clampPositiveInt(value: number) {
