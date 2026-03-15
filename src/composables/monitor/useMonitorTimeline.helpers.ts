@@ -4,6 +4,7 @@ import {
   normalizeTransitionParams,
 } from '~/transitions';
 import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
+import { cloneMonitorValue } from './useMonitorClone';
 import type {
   ClipTransition,
   ClipEffect,
@@ -48,12 +49,12 @@ export function sanitizeMonitorTransition(raw: unknown): ClipTransition | undefi
     durationUs: Math.max(0, Math.round(durationUs)),
     mode: normalizeTransitionMode(transition.mode),
     curve: normalizeTransitionCurve(transition.curve),
-    params: normalizedParams ? JSON.parse(JSON.stringify(normalizedParams)) : undefined,
+    params: normalizedParams ? cloneMonitorValue(normalizedParams) : undefined,
   };
 }
 
 export function cloneMonitorEffects(effects?: ClipEffect[]): ClipEffect[] | undefined {
-  return effects ? JSON.parse(JSON.stringify(effects)) : undefined;
+  return effects ? cloneMonitorValue(effects) : undefined;
 }
 
 export function createBaseWorkerClip(params: {
@@ -162,7 +163,7 @@ export function applyAdjacentTransitions(clips: WorkerTimelineClip[]) {
       }
 
       if (!next.transitionIn) {
-        next.transitionIn = JSON.parse(JSON.stringify(transitionOut));
+        next.transitionIn = cloneMonitorValue(transitionOut);
       }
     }
   }

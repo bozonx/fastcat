@@ -1,3 +1,4 @@
+import { useResizeObserver } from '@vueuse/core';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -45,7 +46,6 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   const BUILD_DEBOUNCE_MS = 120;
   const LAYOUT_DEBOUNCE_MS = 50;
 
-  let viewportResizeObserver: ResizeObserver | null = null;
   let buildRequestId = 0;
   let lastBuiltSourceSignature = 0;
   let lastBuiltLayoutSignature = 0;
@@ -67,9 +67,22 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   let currentTimeProvider: (() => number) | null = null;
   let layoutUpdateFromQueue = false;
   const audioHandleCache = new Map<string, FileSystemFileHandle>();
+  let resizeScheduled = false;
 
   const audioEngine = new AudioEngine();
   const { client } = getPreviewWorkerClient();
+
+  useResizeObserver(viewportEl, () => {
+    if (isUnmounted || resizeScheduled) {
+      return;
+    }
+
+    resizeScheduled = true;
+    requestAnimationFrame(() => {
+      resizeScheduled = false;
+      updateCanvasDisplaySize();
+    });
+  });
 
   const useProxyInMonitor = computed(() => {
     return projectStore.projectSettings.monitor?.useProxy !== false;
@@ -414,7 +427,6 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       });
 
       if (hasNewProxyForClips) {
-        console.log('[Monitor] New proxies detected, rebuilding...');
         scheduleBuild();
       }
     },
@@ -509,18 +521,6 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   onMounted(() => {
     isUnmounted = false;
     updateCanvasDisplaySize();
-    if (typeof ResizeObserver !== 'undefined' && viewportEl.value) {
-      let scheduled = false;
-      viewportResizeObserver = new ResizeObserver(() => {
-        if (scheduled) return;
-        scheduled = true;
-        requestAnimationFrame(() => {
-          scheduled = false;
-          updateCanvasDisplaySize();
-        });
-      });
-      viewportResizeObserver.observe(viewportEl.value);
-    }
     scheduleBuild();
   });
 
@@ -543,8 +543,6 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       console.error('[Monitor] Failed to destroy AudioEngine', err);
     }
 
-    viewportResizeObserver?.disconnect();
-    viewportResizeObserver = null;
     pendingLayoutClips = null;
     pendingLayoutAudioClips = null;
     void client.destroyCompositor().catch((error) => {
