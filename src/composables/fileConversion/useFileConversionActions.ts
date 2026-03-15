@@ -79,6 +79,11 @@ interface UseFileConversionActionsProps {
 }
 
 export function useFileConversionActions(props: UseFileConversionActionsProps) {
+  const projectStore = useProjectStore();
+  const fileManager = useFileManager();
+  const uiStore = useUiStore();
+  const backgroundTasksStore = useBackgroundTasksStore();
+
   function syncAudioOnlyCodecWithFormat() {
     props.audioSettings.onlyCodec = props.audioSettings.onlyFormat;
   }
@@ -89,8 +94,6 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
   }
 
   async function openConversionModal(entry: FsEntry) {
-    const projectStore = useProjectStore();
-    const fileManager = useFileManager();
 
     const requestId = props.conversionModalRequestId.value + 1;
     props.conversionModalRequestId.value = requestId;
@@ -298,11 +301,6 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
 
     props.isCancelRequested.value = false;
     props.conversionError.value = '';
-
-    const projectStore = useProjectStore();
-    const fileManager = useFileManager();
-    const uiStore = useUiStore();
-    const backgroundTasksStore = useBackgroundTasksStore();
 
     let createdFileName: string | null = null;
     let createdDirHandle: FileSystemDirectoryHandle | null = null;
