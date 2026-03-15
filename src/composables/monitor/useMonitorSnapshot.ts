@@ -7,8 +7,7 @@ import { buildStopFrameBaseName } from '~/utils/stop-frames';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { IMAGES_DIR_NAME } from '~/utils/constants';
-import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
-import { addLatestMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
+import { dispatchTimelineThumbnailGeneration } from '~/timeline/services/timelineThumbnailService';
 
 export function useMonitorSnapshot(input: {
   projectStore: ReturnType<typeof useProjectStore>;
@@ -34,53 +33,21 @@ export function useMonitorSnapshot(input: {
   async function saveTimelineThumbnail() {
     if (input.isLoading.value || input.loadError.value) return;
     if (!input.projectStore.currentProjectId || !input.projectStore.currentTimelinePath) return;
+    if (!input.workspaceStore.workspaceHandle) return;
 
-    const projectId = input.projectStore.currentProjectId;
-    const timelinePath = input.projectStore.currentTimelinePath;
-    const timeUs = input.uiCurrentTimeUs.value;
-    const clipsPayload = getClipsPayload();
-
-    addLatestMediaTask({
-      key: `timeline-thumbnail:${timelinePath}`,
-      task: async () => {
-        try {
-          const { client } = getExportWorkerClient();
-          setExportHostApi(
-            createVideoCoreHostApi({
-              getCurrentProjectId: () => projectId,
-              getWorkspaceHandle: () => input.workspaceStore.workspaceHandle,
-              getResolvedStorageTopology: () => input.workspaceStore.resolvedStorageTopology,
-              getFileHandleByPath: async (path: string) =>
-                input.projectStore.getFileHandleByPath(path),
-              getFileByPath: async (path: string) => input.projectStore.getFileByPath(path),
-              onExportProgress: () => {},
-            }),
-          );
-
-          const exportWidth = 400;
-          const exportHeight = 225;
-
-          const blob = await client.extractFrameToBlob(
-            timeUs,
-            exportWidth,
-            exportHeight,
-            clipsPayload,
-            0.7,
-          );
-
-          if (!blob) return;
-
-          await fileThumbnailGenerator.saveManualThumbnail({
-            projectId,
-            projectRelativePath: timelinePath,
-            blob,
-          });
-          uiStore.notifyFileManagerUpdate();
-        } catch (err) {
-          console.warn('[Monitor] Failed to save timeline thumbnail', err);
-        }
-      },
-      priority: MEDIA_TASK_PRIORITIES.timelineThumbnailLazy,
+    dispatchTimelineThumbnailGeneration({
+      projectId: input.projectStore.currentProjectId,
+      timelinePath: input.projectStore.currentTimelinePath,
+      timeUs: input.uiCurrentTimeUs.value,
+      clipsPayload: getClipsPayload() as any[],
+      workspaceHandle: input.workspaceStore.workspaceHandle,
+      resolvedStorageTopology: input.workspaceStore.resolvedStorageTopology,
+      getFileHandleByPath: async (path: string) => input.projectStore.getFileHandleByPath(path),
+      getFileByPath: async (path: string) => input.projectStore.getFileByPath(path),
+      width: 400,
+      height: 225,
+      quality: 0.7,
+      notifyUi: true,
     });
   }
 

@@ -70,6 +70,7 @@ export function normalizeOptimizationSettings(
   const proxyResolutionRaw = optimizationInput.proxyResolution;
   const proxyVideoBitrateMbps = Number(optimizationInput.proxyVideoBitrateMbps);
   const proxyAudioBitrateKbps = Number(optimizationInput.proxyAudioBitrateKbps);
+  const proxyVideoCodec = optimizationInput.proxyVideoCodec === 'av1' ? 'av1' : 'h264';
   const proxyCopyOpusAudio = optimizationInput.proxyCopyOpusAudio;
   const autoCreateProxies = optimizationInput.autoCreateProxies;
   const mediaTaskConcurrency = Number(
@@ -98,6 +99,7 @@ export function normalizeOptimizationSettings(
       Number.isFinite(proxyAudioBitrateKbps) && proxyAudioBitrateKbps > 0
         ? Math.min(512, Math.max(32, proxyAudioBitrateKbps))
         : DEFAULT_USER_SETTINGS.optimization.proxyAudioBitrateKbps,
+    proxyVideoCodec,
     proxyCopyOpusAudio:
       typeof proxyCopyOpusAudio === 'boolean'
         ? proxyCopyOpusAudio
