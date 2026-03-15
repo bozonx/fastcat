@@ -164,6 +164,7 @@ onBeforeUnmount(() => {
         :class="[
           track.videoHidden ? 'text-black! opacity-100 hover:opacity-90' : 'opacity-60 group-hover:opacity-100'
         ]"
+        :style="track.videoHidden ? { backgroundColor: '#facc15', color: '#000000' } : undefined"
         :title="track.videoHidden ? 'Show Track' : 'Hide Track'"
         @click="toggleVideoHidden"
       />
@@ -177,6 +178,7 @@ onBeforeUnmount(() => {
         :class="[
           track.audioMuted ? 'text-black! opacity-100 hover:opacity-90' : 'opacity-60 group-hover:opacity-100'
         ]"
+        :style="track.audioMuted ? { backgroundColor: '#ef4444', color: '#000000' } : undefined"
         :title="track.audioMuted ? 'Unmute Track' : 'Mute Track'"
         @click="toggleAudioMuted"
       />
@@ -190,6 +192,7 @@ onBeforeUnmount(() => {
         :class="[
           track.audioSolo ? 'text-black! opacity-100 hover:opacity-90' : 'opacity-60 group-hover:opacity-100'
         ]"
+        :style="track.audioSolo ? { backgroundColor: '#22c55e', color: '#000000' } : undefined"
         :title="track.audioSolo ? 'Unsolo Track' : 'Solo Track'"
         @click="toggleAudioSolo"
       />

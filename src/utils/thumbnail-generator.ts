@@ -9,6 +9,7 @@ import {
 } from './base-thumbnail-generator';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
+import { MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 
 export interface ThumbnailTask extends BaseThumbnailTask {
   duration: number; // video duration in seconds
@@ -45,9 +46,8 @@ async function ensureTimelineThumbnailDir(input: {
 class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, string[]> {
   protected maxCacheEntries = 50;
 
-  protected get concurrencyLimit(): number {
-    const workspaceStore = useWorkspaceStore();
-    return workspaceStore.userSettings?.optimization?.mediaTaskConcurrency || 2;
+  protected get taskPriority(): number {
+    return MEDIA_TASK_PRIORITIES.timelineThumbnail;
   }
 
   protected revokeCacheValue(urls: string[]): void {
