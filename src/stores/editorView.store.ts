@@ -378,6 +378,8 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     },
   });
 
+  const lastViewBeforeFullscreen = ref<EditorView | null>(null);
+
   function setView(view: EditorView) {
     currentView.value = view;
   }
@@ -399,6 +401,9 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
   }
 
   function goToFullscreen() {
+    if (currentView.value !== 'fullscreen') {
+      lastViewBeforeFullscreen.value = currentView.value;
+    }
     currentView.value = 'fullscreen';
   }
 
@@ -418,6 +423,7 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     goToSound,
     goToExport,
     goToFullscreen,
+    lastViewBeforeFullscreen,
   };
 }
 

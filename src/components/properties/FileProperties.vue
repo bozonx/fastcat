@@ -6,13 +6,8 @@ import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { formatBytes, formatBitrate, formatDurationSeconds } from '~/utils/format';
-import {
-  VIDEO_EXTENSIONS,
-  getMediaTypeFromFilename,
-  isOpenableProjectFileName,
-} from '~/utils/media-types';
+import { VIDEO_EXTENSIONS } from '~/utils/media-types';
 import PropertySection from '~/components/properties/PropertySection.vue';
-import PropertyRow from '~/components/properties/PropertyRow.vue';
 import EntryPreviewBox from '~/components/properties/file/EntryPreviewBox.vue';
 import AudioFilePropertiesSection from '~/components/properties/file/AudioFilePropertiesSection.vue';
 import ExpandableYamlSection from '~/components/properties/file/ExpandableYamlSection.vue';
@@ -21,6 +16,9 @@ import FileTimelineUsageSection from '~/components/properties/file/FileTimelineU
 import ImageFilePropertiesSection from '~/components/properties/file/ImageFilePropertiesSection.vue';
 import OtioFilePropertiesSection from '~/components/properties/file/OtioFilePropertiesSection.vue';
 import VideoFilePropertiesSection from '~/components/properties/file/VideoFilePropertiesSection.vue';
+import FileProjectRootSection from '~/components/properties/file/FileProjectRootSection.vue';
+import FileTranscriptionModal from '~/components/properties/file/FileTranscriptionModal.vue';
+import EntryActions from '~/components/properties/file/EntryActions.vue';
 import { useEntryPreview } from '~/composables/fileManager/useEntryPreview';
 import { useImageExifInfo } from '~/composables/properties/useImageExifInfo';
 import { useFileTimelineUsage } from '~/composables/properties/useFileTimelineUsage';
@@ -29,13 +27,11 @@ import { useFilePropertiesBasics } from '~/composables/properties/useFilePropert
 import { useFilePropertiesActions } from '~/composables/properties/useFilePropertiesActions';
 import { useFilePropertiesTranscription } from '~/composables/properties/useFilePropertiesTranscription';
 import { useFileStorageInfo } from '~/composables/properties/useFileStorageInfo';
-import EntryActions from '~/components/properties/file/EntryActions.vue';
+import { useFilePropertiesHandlers } from '~/composables/properties/useFilePropertiesHandlers';
 import { useAudioExtraction } from '~/composables/fileManager/useAudioExtraction';
-import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
-import AppModal from '~/components/ui/AppModal.vue';
 import type { FsEntry } from '~/types/fs';
 
 const props = defineProps<{
@@ -60,7 +56,6 @@ const uiStore = useUiStore();
 const workspaceStore = useWorkspaceStore();
 const toast = useToast();
 const { extractAudio } = useAudioExtraction();
-const { addFileTab, setActiveTab } = useProjectTabs();
 const fileManager = useFileManager();
 const runtimeConfig = useRuntimeConfig();
 
@@ -191,43 +186,6 @@ async function copyToClipboard(text: string) {
   }
 }
 
-function openAsProjectTab() {
-  const entry = props.selectedFsEntry;
-  if (!entry || entry.kind !== 'file' || !entry.path) return;
-  const type = getMediaTypeFromFilename(entry.name);
-  if (type !== 'video' && type !== 'audio' && type !== 'image' && type !== 'text') return;
-  const tabId = addFileTab({ filePath: entry.path, fileName: entry.name });
-  setActiveTab(tabId);
-}
-
-function createSubfolder() {
-  const entry = props.selectedFsEntry;
-  if (!entry || entry.kind !== 'directory') return;
-  uiStore.pendingFsEntryCreateFolder = entry;
-}
-
-function createTimelineInFolder() {
-  const entry = props.selectedFsEntry;
-  if (!entry || entry.kind !== 'directory') return;
-  uiStore.pendingFsEntryCreateTimeline = entry;
-}
-
-function createMarkdownInFolder() {
-  const entry = props.selectedFsEntry;
-  if (!entry || entry.kind !== 'directory') return;
-  uiStore.pendingFsEntryCreateMarkdown = entry;
-}
-
-const canOpenAsPanel = computed(() => {
-  const entry = props.selectedFsEntry;
-  if (!entry || entry.kind !== 'file') return false;
-  return isOpenableProjectFileName(entry.name);
-});
-
-const canOpenAsProjectTab = computed(() => {
-  return canOpenAsPanel.value;
-});
-
 const isVideoFile = computed(() => mediaType.value === 'video');
 
 const showVideoProxyActions = computed(() => {
@@ -252,54 +210,6 @@ const hasExistingProxyForFile = computed(() => {
 const canConvertFile = computed(() => {
   return mediaType.value === 'video' || mediaType.value === 'audio' || mediaType.value === 'image';
 });
-
-function onRename() {
-  const entry = props.selectedFsEntry;
-  if (!entry) return;
-  uiStore.pendingFsEntryRename = entry;
-}
-
-function onDelete() {
-  const entry = props.selectedFsEntry;
-  if (!entry) return;
-  uiStore.pendingFsEntryDelete = [entry];
-}
-
-function openAsTextPanel(view: 'cut' | 'sound' = 'cut') {
-  const entry = props.selectedFsEntry;
-  if (!entry || entry.kind !== 'file') return;
-
-  if (view === 'cut') {
-    projectStore.goToCut();
-  } else {
-    projectStore.goToSound();
-  }
-
-  if (mediaType.value === 'text') {
-    projectStore.addTextPanel(
-      entry.path ?? entry.name,
-      textContent.value,
-      entry.name,
-      undefined,
-      undefined,
-      view,
-    );
-  } else if (
-    mediaType.value === 'video' ||
-    mediaType.value === 'audio' ||
-    mediaType.value === 'image'
-  ) {
-    projectStore.addMediaPanel(entry, mediaType.value, entry.name, undefined, undefined, view);
-  }
-}
-
-function openRemoteUploadPicker() {
-  if (!canUploadToRemote.value) return;
-  const selectedEntry = props.selectedFsEntry;
-  if (!selectedEntry || selectedEntry.kind !== 'file') return;
-  uiStore.remoteExchangeLocalEntry = selectedEntry;
-  uiStore.remoteExchangeModalOpen = true;
-}
 
 const {
   canTranscribeMedia,
@@ -328,6 +238,24 @@ const {
   ),
   getFileByPath: (path) => projectStore.getFileByPath(path),
   toast,
+});
+
+const {
+  canOpenAsPanel,
+  canOpenAsProjectTab,
+  openAsProjectTab,
+  createSubfolder,
+  createTimelineInFolder,
+  createMarkdownInFolder,
+  onRename,
+  onDelete,
+  openAsTextPanel,
+  openRemoteUploadPicker,
+} = useFilePropertiesHandlers({
+  selectedFsEntry: selectedFsEntryRef,
+  mediaType,
+  textContent,
+  canUploadToRemote,
 });
 
 const {
@@ -399,20 +327,12 @@ const {
       :file-name="selectedFsEntry?.name"
     />
 
-    <PropertySection
+    <FileProjectRootSection
       v-if="fileInfo?.kind === 'directory' && isProjectRootDir"
-      :title="t('videoEditor.fileManager.projectRoot.title', 'Project root')"
-    >
-      <PropertyRow
-        :label="t('videoEditor.fileManager.projectRoot.project', 'Project')"
-        :value="projectStore.currentProjectName ?? '-'"
-      />
-      <PropertyRow
-        v-if="storageFreeBytes !== null"
-        :label="t('videoEditor.fileManager.projectRoot.freeSpace', 'Free space')"
-        :value="formatBytes(storageFreeBytes)"
-      />
-    </PropertySection>
+      :is-project-root-dir="isProjectRootDir"
+      :project-name="projectStore.currentProjectName"
+      :storage-free-bytes="storageFreeBytes"
+    />
 
     <PropertySection
       v-if="fileInfo?.kind === 'directory'"
@@ -505,51 +425,12 @@ const {
       :on-copy="copyToClipboard"
     />
 
-    <AppModal
-      v-model:open="isTranscriptionModalOpen"
-      :title="t('videoEditor.fileManager.actions.transcribe', 'Transcribe')"
-      :close-button="!isTranscribingAudio"
-      :prevent-close="isTranscribingAudio"
-      :ui="{ content: 'sm:max-w-lg', body: 'overflow-y-auto' }"
-    >
-      <div class="flex flex-col gap-4">
-        <div class="text-sm text-ui-text-muted">
-          {{
-            t(
-              'videoEditor.fileManager.audio.transcriptionHint',
-              'Send the current audio file to the configured STT service. Language is optional.',
-            )
-          }}
-        </div>
-
-        <UFormField :label="t('videoEditor.fileManager.audio.transcriptionLanguage', 'Language')">
-          <UInput
-            v-model="transcriptionLanguage"
-            :disabled="isTranscribingAudio"
-            placeholder="en"
-          />
-        </UFormField>
-
-        <div v-if="transcriptionError" class="text-sm text-error-400">
-          {{ transcriptionError }}
-        </div>
-      </div>
-
-      <template #footer>
-        <div class="flex justify-end gap-2 w-full">
-          <UButton
-            color="neutral"
-            variant="ghost"
-            :disabled="isTranscribingAudio"
-            @click="isTranscriptionModalOpen = false"
-          >
-            {{ t('common.cancel', 'Cancel') }}
-          </UButton>
-          <UButton color="primary" :loading="isTranscribingAudio" @click="submitAudioTranscription">
-            {{ t('videoEditor.fileManager.audio.transcriptionSubmit', 'Transcribe') }}
-          </UButton>
-        </div>
-      </template>
-    </AppModal>
+    <FileTranscriptionModal
+      v-model:is-transcription-modal-open="isTranscriptionModalOpen"
+      v-model:transcription-language="transcriptionLanguage"
+      :is-transcribing-audio="isTranscribingAudio"
+      :transcription-error="transcriptionError"
+      @submit="submitAudioTranscription"
+    />
   </div>
 </template>

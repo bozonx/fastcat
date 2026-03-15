@@ -464,7 +464,14 @@ onUnmounted(() => {
           </span>
         </div>
 
-        <!-- No Close Button here per request -->
+        <UButton
+          v-if="type === 'video'"
+          size="sm"
+          variant="ghost"
+          color="neutral"
+          :icon="isModal ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'"
+          @click="isModal ? emit('close-modal') : emit('open-modal')"
+        />
       </div>
     </div>
   </div>
