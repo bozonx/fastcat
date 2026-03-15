@@ -7,7 +7,12 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
-import { BASE_VIDEO_CODEC_OPTIONS, resolveVideoCodecOptions } from '~/utils/webcodecs';
+import {
+  BASE_VIDEO_CODEC_OPTIONS,
+  BASE_AUDIO_CODEC_OPTIONS,
+  VIDEO_FORMAT_OPTIONS,
+  resolveVideoCodecOptions,
+} from '~/utils/webcodecs';
 import {
   useTimelineExport,
   sanitizeBaseName,
@@ -27,6 +32,39 @@ const timelineStore = useTimelineStore();
 const focusStore = useFocusStore();
 const saveAsDefaults = ref(false);
 const exportOnlySelectionRange = ref(true);
+
+const isResolutionExpanded = ref(false);
+const isEncodingExpanded = ref(false);
+
+const resolutionSummary = computed(() => {
+  return `${exportWidth.value}x${exportHeight.value}, ${exportFps.value}FPS, ${(audioSampleRate.value || 0) / 1000}kHz`;
+});
+
+const encodingSummary = computed(() => {
+  const formatLabel =
+    VIDEO_FORMAT_OPTIONS.find((f) => f.value === outputFormat.value)?.label ||
+    outputFormat.value ||
+    '';
+  const format = formatLabel.split(' ')[0]?.toUpperCase() || '';
+
+  const vCodecLabel =
+    BASE_VIDEO_CODEC_OPTIONS.find((o) => o.value === videoCodec.value)?.label ||
+    videoCodec.value ||
+    '';
+  const vCodec = vCodecLabel.split(' ')[0]?.toUpperCase() || '';
+
+  const vBitrate = `${bitrateMbps.value || 0}Mb/s`;
+
+  const aCodecLabel =
+    BASE_AUDIO_CODEC_OPTIONS.find((o) => o.value === audioCodec.value)?.label ||
+    audioCodec.value ||
+    '';
+  const aCodec = aCodecLabel.split(' ')[0]?.toUpperCase() || '';
+
+  const aBitrate = `${audioBitrateKbps.value || 0} Kb/s`;
+
+  return `${t('videoEditor.projectSettings.export', 'Export')}: ${format} ${vCodec} ${vBitrate} | ${aCodec} ${aBitrate}`;
+});
 
 function focusExportForm() {
   focusStore.setPanelFocus('exportForm');
@@ -346,7 +384,7 @@ async function handleConfirm() {
   >
     <div class="mb-6 flex items-center justify-between">
       <h2 class="text-xl font-semibold text-ui-text">
-        {{ t('videoEditor.export.title', 'Export Timeline') }}
+        {{ t('videoEditor.export.title', 'Export') }}
       </h2>
     </div>
 
@@ -405,39 +443,126 @@ async function handleConfirm() {
         </div>
       </div>
 
-      <MediaResolutionSettings
-        v-model:width="exportWidth"
-        v-model:height="exportHeight"
-        v-model:fps="exportFps"
-        v-model:resolution-format="resolutionFormat"
-        v-model:orientation="orientation"
-        v-model:aspect-ratio="aspectRatio"
-        v-model:is-custom-resolution="isCustomResolution"
-        :disabled="isExporting"
-      />
+      <div class="h-px bg-ui-border"></div>
 
-      <VideoEncodingForm
-        v-model:output-format="outputFormat"
-        v-model:video-codec="videoCodec"
-        v-model:bitrate-mbps="bitrateMbps"
-        v-model:exclude-audio="excludeAudio"
-        v-model:audio-codec="audioCodec"
-        v-model:audio-bitrate-kbps="audioBitrateKbps"
-        v-model:audio-sample-rate="audioSampleRate"
-        v-model:bitrate-mode="bitrateMode"
-        v-model:keyframe-interval-sec="keyframeIntervalSec"
-        v-model:export-alpha="exportAlpha"
-        v-model:metadata-title="metadataTitle"
-        v-model:metadata-description="metadataDescription"
-        v-model:metadata-author="metadataAuthor"
-        v-model:metadata-tags="metadataTags"
-        :show-audio-advanced="true"
-        :hide-audio-sample-rate="true"
-        :show-metadata="true"
-        :show-presets="true"
-        :disabled="isExporting"
-        :has-audio="true"
-      />
+      <!-- Resolution & FPS Settings -->
+      <div class="space-y-4">
+        <div
+          class="w-full flex justify-between items-center cursor-pointer group"
+          @click="isResolutionExpanded = !isResolutionExpanded"
+        >
+          <div class="flex items-center gap-2">
+            <h3 v-show="isResolutionExpanded" class="text-lg font-semibold text-ui-text">
+              {{ t('videoEditor.projectSettings.resolutionAndFps', 'Resolution & FPS') }}
+            </h3>
+            <span v-show="!isResolutionExpanded" class="text-sm text-ui-text-muted font-normal">
+              {{ resolutionSummary }}
+            </span>
+          </div>
+          <UIcon
+            :name="
+              isResolutionExpanded
+                ? 'i-heroicons-chevron-down-20-solid'
+                : 'i-heroicons-chevron-right-20-solid'
+            "
+            class="w-5 h-5 text-ui-text-muted group-hover:text-ui-text transition-colors"
+          />
+        </div>
+
+        <div v-show="isResolutionExpanded" class="pt-2">
+          <MediaResolutionSettings
+            v-model:width="exportWidth"
+            v-model:height="exportHeight"
+            v-model:fps="exportFps"
+            v-model:resolution-format="resolutionFormat"
+            v-model:orientation="orientation"
+            v-model:aspect-ratio="aspectRatio"
+            v-model:is-custom-resolution="isCustomResolution"
+            :disabled="isExporting"
+          />
+        </div>
+      </div>
+
+      <div class="h-px bg-ui-border"></div>
+
+      <!-- Encoding Settings -->
+      <div class="space-y-4">
+        <div
+          class="w-full flex justify-between items-center cursor-pointer group"
+          @click="isEncodingExpanded = !isEncodingExpanded"
+        >
+          <div class="flex items-center gap-2">
+            <h3 v-show="isEncodingExpanded" class="text-lg font-semibold text-ui-text">
+              {{ t('videoEditor.export.encodingSettings', 'Encoding Settings') }}
+            </h3>
+            <span v-show="!isEncodingExpanded" class="text-sm text-ui-text-muted font-normal">
+              {{ encodingSummary }}
+            </span>
+          </div>
+          <UIcon
+            :name="
+              isEncodingExpanded
+                ? 'i-heroicons-chevron-down-20-solid'
+                : 'i-heroicons-chevron-right-20-solid'
+            "
+            class="w-5 h-5 text-ui-text-muted group-hover:text-ui-text transition-colors"
+          />
+        </div>
+
+        <div v-show="isEncodingExpanded" class="pt-2">
+          <VideoEncodingForm
+            v-model:output-format="outputFormat"
+            v-model:video-codec="videoCodec"
+            v-model:bitrate-mbps="bitrateMbps"
+            v-model:exclude-audio="excludeAudio"
+            v-model:audio-codec="audioCodec"
+            v-model:audio-bitrate-kbps="audioBitrateKbps"
+            v-model:audio-sample-rate="audioSampleRate"
+            v-model:bitrate-mode="bitrateMode"
+            v-model:keyframe-interval-sec="keyframeIntervalSec"
+            v-model:export-alpha="exportAlpha"
+            v-model:metadata-title="metadataTitle"
+            v-model:metadata-description="metadataDescription"
+            v-model:metadata-author="metadataAuthor"
+            v-model:metadata-tags="metadataTags"
+            :show-audio-advanced="true"
+            :hide-audio-sample-rate="true"
+            :show-metadata="false"
+            :show-presets="true"
+            :disabled="isExporting"
+            :has-audio="true"
+          />
+        </div>
+      </div>
+
+      <div class="h-px bg-ui-border"></div>
+
+      <!-- Metadata Settings -->
+      <div class="space-y-4">
+        <UFormField :label="t('videoEditor.export.metadataTitle', 'Title')">
+          <UInput v-model="metadataTitle" class="w-full" :disabled="isExporting" />
+        </UFormField>
+
+        <div class="grid grid-cols-2 gap-4">
+          <UFormField :label="t('videoEditor.export.metadataAuthor', 'Author')">
+            <UInput v-model="metadataAuthor" class="w-full" :disabled="isExporting" />
+          </UFormField>
+          <UFormField :label="t('videoEditor.export.metadataTags', 'Tags')">
+            <UInput v-model="metadataTags" class="w-full" :disabled="isExporting" />
+          </UFormField>
+        </div>
+
+        <UFormField :label="t('videoEditor.export.metadataDescription', 'Description')">
+          <UTextarea
+            v-model="metadataDescription"
+            :rows="2"
+            class="w-full"
+            :disabled="isExporting"
+          />
+        </UFormField>
+      </div>
+
+      <div class="h-px bg-ui-border"></div>
 
       <label class="flex items-center gap-3 cursor-pointer mt-2">
         <UCheckbox v-model="saveAsDefaults" :disabled="isExporting" />

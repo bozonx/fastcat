@@ -97,6 +97,11 @@ export const useFilesPageStore = defineStore('filesPage', () => {
     }
   }
 
+  function resetFilesPageState() {
+    selectedFolder.value = null;
+    // We don't reset viewMode, sortOption, etc. as they are persisted user preferences
+  }
+
   return {
     selectedFolder,
     viewMode,
@@ -112,5 +117,6 @@ export const useFilesPageStore = defineStore('filesPage', () => {
     setSortOption,
     setGridCardSize,
     setColumnWidth,
+    resetFilesPageState,
   };
 });
