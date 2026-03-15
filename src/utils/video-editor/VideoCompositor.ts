@@ -52,6 +52,8 @@ import { TextRenderer } from './compositor/renderers/TextRenderer';
 import { ShapeRenderer } from './compositor/renderers/ShapeRenderer';
 import { CanvasFallbackRenderer } from './compositor/renderers/CanvasFallbackRenderer';
 import { buildPrevClipByIdIndex, buildTrackRuntimeList } from './compositor/trackRuntime';
+import { RenderingEngine } from './compositor/RenderingEngine';
+import { FrameSampleOrchestrator } from './compositor/FrameSampleOrchestrator';
 
 export class VideoCompositor {
   public app: Application | null = null;
@@ -131,6 +133,8 @@ export class VideoCompositor {
   private timelineClipLayoutUpdater = new TimelineClipLayoutUpdater();
   private timelineTrackRebinder = new TimelineTrackRebinder();
   private timelineUpdateLifecycle = new TimelineUpdateLifecycle();
+  private renderingEngine = new RenderingEngine();
+  private frameSampleOrchestrator = new FrameSampleOrchestrator();
   private clipResourceManager = new ClipResourceManager({
     width: this.width,
     height: this.height,
@@ -650,303 +654,103 @@ export class VideoCompositor {
     timeUs: number,
     options?: PreviewRenderOptions,
   ): Promise<OffscreenCanvas | HTMLCanvasElement | null> {
-    if (!this.app || !this.canvas || !this.app.renderer) return null;
+    if (!this.app || !this.canvas) return null;
 
-    this.videoFrameCache.applyLimitMb(options?.videoFrameCacheMb);
-
-    if (timeUs !== this.lastRenderedTimeUs) {
-      this.resourceManager.abortInFlight();
-    }
-
-    this.previewEffectsEnabled = options?.previewEffectsEnabled !== false;
-
-    if (this.contextLost) {
-      return null;
-    }
-
-    if (timeUs === this.lastRenderedTimeUs && !this.stageSortDirty && !this.activeSortDirty) {
-      return this.canvas;
-    }
-
-    const updatedClips: CompositorClip[] = [];
-    try {
-      const { activeClips: active, activeChanged } = this.activeTracker.update({
-        clips: this.clips,
-        timeUs,
-        lastTimeUs: this.lastRenderedTimeUs,
-        onDeactivate: (clip) => {
-          clip.sprite.visible = false;
-        },
-      });
-
-      if (activeChanged) {
-        this.activeSortDirty = true;
-      }
-      if (this.activeSortDirty) {
-        active.sort((a, b) => a.layer - b.layer || a.startUs - b.startUs);
-        this.activeSortDirty = false;
-      }
-
-      for (const track of this.tracks) {
-        track.container.alpha = track.opacity ?? 1;
-        track.container.blendMode = track.blendMode ?? 'normal';
+    return this.renderingEngine.renderFrame(timeUs, options, {
+      app: this.app,
+      canvas: this.canvas,
+      width: this.width,
+      height: this.height,
+      clips: this.clips,
+      tracks: this.tracks,
+      lastRenderedTimeUs: this.lastRenderedTimeUs,
+      stageSortDirty: this.stageSortDirty,
+      activeSortDirty: this.activeSortDirty,
+      contextLost: this.contextLost,
+      setPreviewEffectsEnabled: (enabled) => {
+        this.previewEffectsEnabled = enabled;
+      },
+      applyVideoFrameCacheLimit: (limitMb) => {
+        this.videoFrameCache.applyLimitMb(limitMb);
+      },
+      abortInFlightResources: () => {
+        this.resourceManager.abortInFlight();
+      },
+      updateActiveClips: (currentTimeUs, lastTimeUs) =>
+        this.activeTracker.update({
+          clips: this.clips,
+          timeUs: currentTimeUs,
+          lastTimeUs,
+          onDeactivate: (clip) => {
+            clip.sprite.visible = false;
+          },
+        }),
+      applyTrackState: (track) => {
         this.applyTrackEffects(track);
-      }
-
-      const { sampleRequests } = this.timelineActiveClipProcessor.process({
-        activeClips: active,
-        timeUs,
-        width: this.width,
-        height: this.height,
-        syncTransitionFilter: (clip, currentTimeUs) =>
-          this.syncTransitionFilter(clip, currentTimeUs),
-        computeTransitionOpacity: (clip, currentTimeUs) =>
-          this.computeTransitionOpacity(clip, currentTimeUs),
-        applyClipEffects: (clip) => this.applyClipEffects(clip),
-        drawHudClip: (clip) => this.canvasFallbackRenderer.drawHudClip(clip),
-        drawShapeClip: (clip, size) => {
-          this.shapeRenderer.draw({
-            graphics: clip.sprite,
-            type: clip.shapeType ?? 'square',
-            fill: clip.fillColor ?? '#ffffff',
-            stroke: clip.strokeColor ?? '#000000',
-            strokeWidth: clip.strokeWidth ?? 0,
-            config: clip.shapeConfig ?? {},
-            canvasWidth: size.width,
-            canvasHeight: size.height,
-          });
-        },
-        drawTextClip: (clip, size) => {
-          this.textRenderer.draw(clip, size.width, size.height);
-          this.layoutApplier.applyTextLayout(clip);
-        },
-        createPrimaryVideoSampleRequest: (clip, sampleTimeS) => {
-          const abortController = this.resourceManager.createAbortController(
-            clip.itemId + '_primary',
-          );
-
-          return this.getVideoSampleForClip({
-            clip,
-            sampleTimeS,
-            abortSignal: abortController.signal,
-          })
-            .then((sample) => ({ clip, sample }))
-            .catch((error) => {
-              console.error('[VideoCompositor] Failed to render sample', error);
-              return { clip, sample: null };
+      },
+      processFrameSamples: ({ activeClips, timeUs: currentTimeUs }) =>
+        this.frameSampleOrchestrator.process({
+          activeClips,
+          timeUs: currentTimeUs,
+          width: this.width,
+          height: this.height,
+          activeClipProcessor: this.timelineActiveClipProcessor,
+          syncTransitionFilter: (clip, clipTimeUs) => this.syncTransitionFilter(clip, clipTimeUs),
+          computeTransitionOpacity: (clip, clipTimeUs) =>
+            this.computeTransitionOpacity(clip, clipTimeUs),
+          applyClipEffects: (clip) => this.applyClipEffects(clip),
+          drawHudClip: (clip) => this.canvasFallbackRenderer.drawHudClip(clip),
+          drawShapeClip: (clip, size) => {
+            this.shapeRenderer.draw({
+              graphics: clip.sprite,
+              type: clip.shapeType ?? 'square',
+              fill: clip.fillColor ?? '#ffffff',
+              stroke: clip.strokeColor ?? '#000000',
+              strokeWidth: clip.strokeWidth ?? 0,
+              config: clip.shapeConfig ?? {},
+              canvasWidth: size.width,
+              canvasHeight: size.height,
             });
-        },
-      });
-
-      // --- Blend shadow rendering ---
-      // Behaviour:
-      //  - image / solid clips: always kept visible (infinite source)
-      //  - video with handle material (sourceDurationUs > durationUs): seek into handle frames
-      //  - video without handle material: freeze the last available frame
-      const blendShadowRequests: Array<Promise<{ clip: CompositorClip; sample: any | null }>> = [];
-
-      for (const clip of active) {
-        const tr = clip.transitionIn;
-        const mode = tr?.mode ?? DEFAULT_TRANSITION_MODE;
-        if (!tr || mode !== 'adjacent' || tr.durationUs <= 0) continue;
-        const localTimeUs = timeUs - clip.startUs;
-        if (localTimeUs >= tr.durationUs) continue;
-
-        const prevClip = this.findPrevClipOnLayer(clip);
-        if (!prevClip || active.includes(prevClip)) continue;
-
-        const manifest = getTransitionManifest(tr.type);
-        const rawProgress = Math.max(0, Math.min(1, localTimeUs / tr.durationUs));
-        const shadowAlpha = manifest
-          ? manifest.computeOutOpacity(
-              rawProgress,
-              (normalizeTransitionParams(tr.type, tr.params) as any) ?? {},
-              tr.curve ?? DEFAULT_TRANSITION_CURVE,
-            )
-          : 1 - rawProgress;
-
-        prevClip.sprite.alpha = Math.max(0, Math.min(1, shadowAlpha));
-
-        // Images and solid clips: keep visible indefinitely
-        if (
-          prevClip.clipKind === 'image' ||
-          prevClip.clipKind === 'solid' ||
-          prevClip.clipKind === 'shape' ||
-          prevClip.clipKind === 'text' ||
-          prevClip.clipKind === 'hud'
-        ) {
-          prevClip.sprite.visible = true;
-          continue;
-        }
-
-        // Check if source media has frames beyond the clip's out-point (handle material)
-        // handleUs = full media duration minus the used source end point
-        const handleUs =
-          prevClip.sourceDurationUs - prevClip.sourceStartUs - prevClip.sourceRangeDurationUs;
-        if (!prevClip.sink) {
-          prevClip.sprite.visible = false;
-          continue;
-        }
-
-        if (handleUs < 1_000) {
-          // No extra source material: freeze the last frame of the used source range.
-          const lastUs =
-            (prevClip.speed || 1) < 0
-              ? Math.max(0, prevClip.sourceStartUs + 1_000)
-              : Math.max(0, prevClip.sourceStartUs + prevClip.sourceRangeDurationUs - 1_000);
-          const shadowSampleTimeS = Math.max(0, lastUs / 1_000_000);
-          const abortController = this.resourceManager.createAbortController(
-            prevClip.itemId + '_shadow_end',
-          );
-          const req = this.getVideoSampleForClip({
-            clip: prevClip,
-            sampleTimeS: shadowSampleTimeS,
-            abortSignal: abortController.signal,
-          })
-            .then((sample) => ({ clip: prevClip, sample }))
-            .catch(() => ({ clip: prevClip, sample: null }));
-          blendShadowRequests.push(req);
-          continue;
-        }
-
-        // Seek into handle material: frames past the source range end point
-        const overrunUs = localTimeUs;
-        const sourceRangeEndUs = prevClip.sourceStartUs + prevClip.sourceRangeDurationUs;
-
-        let clampedUs: number;
-        if ((prevClip.speed || 1) < 0) {
-          clampedUs = Math.max(0, prevClip.sourceStartUs - overrunUs);
-        } else {
-          const handleSampleUs = sourceRangeEndUs + overrunUs;
-          clampedUs = Math.min(
-            handleSampleUs,
-            prevClip.sourceStartUs + prevClip.sourceDurationUs - 1_000,
-          );
-        }
-
-        const shadowSampleTimeS = Math.max(0, clampedUs / 1_000_000);
-        const abortController = this.resourceManager.createAbortController(
-          prevClip.itemId + '_shadow_overrun',
-        );
-        const req = this.getVideoSampleForClip({
-          clip: prevClip,
-          sampleTimeS: shadowSampleTimeS,
-          abortSignal: abortController.signal,
-        })
-          .then((sample) => ({ clip: prevClip, sample }))
-          .catch(() => ({ clip: prevClip, sample: null }));
-        blendShadowRequests.push(req);
-      }
-
-      if (blendShadowRequests.length > 0) {
-        const shadowSamples = await Promise.all(blendShadowRequests);
-        for (const { clip, sample } of shadowSamples) {
-          if (!sample) {
-            this.setClipSpriteVisible(clip, false);
-            continue;
-          }
-          try {
-            await this.updateClipTextureFromSample(sample, clip);
-            if (this.setClipSpriteVisible(clip, true)) {
-              updatedClips.push(clip);
-            }
-          } catch {
-            this.setClipSpriteVisible(clip, false);
-          } finally {
-            if (typeof sample.close === 'function') {
-              try {
-                sample.close();
-              } catch {
-                /**/
-              }
-            }
-          }
-        }
-      }
-
-      // --- Composite mode: explicitly hide same-layer prev clip ---
-      // In composite mode, the clip fades in over lower tracks only; prev clip on same layer must not show.
-      for (const clip of active) {
-        const tr = clip.transitionIn;
-        const mode = tr?.mode ?? DEFAULT_TRANSITION_MODE;
-        if (!tr || (mode !== 'background' && mode !== 'transparent') || tr.durationUs <= 0)
-          continue;
-        const localTimeUs = timeUs - clip.startUs;
-        if (localTimeUs >= tr.durationUs) continue;
-        const prevClip = this.findPrevClipOnLayer(clip);
-        if (prevClip && !active.includes(prevClip)) {
-          prevClip.sprite.visible = false;
-        }
-      }
-
-      if (sampleRequests.length > 0) {
-        const samples = await Promise.all(sampleRequests);
-        for (const { clip, sample } of samples) {
-          if (!sample) {
-            this.setClipSpriteVisible(clip, false);
-            continue;
-          }
-          try {
-            await this.updateClipTextureFromSample(sample, clip);
-            if (this.setClipSpriteVisible(clip, true)) {
-              updatedClips.push(clip);
-            }
-          } catch (error) {
-            console.error('[VideoCompositor] Failed to update clip texture', error);
-            this.setClipSpriteVisible(clip, false);
-          } finally {
-            if (typeof sample.close === 'function') {
-              try {
-                sample.close();
-              } catch (err) {
-                console.error('[VideoCompositor] Failed to close VideoSample', err);
-              }
-            }
-          }
-        }
-      }
-
-      if (!this.app || !this.canvas || !this.app.renderer) {
-        return null;
-      }
-
-      if (this.stageSortDirty) {
+          },
+          drawTextClip: (clip, size) => {
+            this.textRenderer.draw(clip, size.width, size.height);
+            this.layoutApplier.applyTextLayout(clip);
+          },
+          createAbortController: (key) => this.resourceManager.createAbortController(key),
+          getVideoSampleForClip: (params) => this.getVideoSampleForClip(params),
+          getPrevClipOnLayer: (clip) => this.findPrevClipOnLayer(clip),
+          updateClipTextureFromSample: (sample, clip) =>
+            this.updateClipTextureFromSample(sample, clip),
+          setClipSpriteVisible: (clip, visible) => this.setClipSpriteVisible(clip, visible),
+        }),
+      sortStage: () => {
         this.sortTrackContainerChildren();
-        this.app.stage.children.sort((a: any, b: any) => {
+        this.app?.stage.children.sort((a: any, b: any) => {
           const aTrack = this.trackById.get((a as any).__trackId ?? '') as any;
           const bTrack = this.trackById.get((b as any).__trackId ?? '') as any;
           const aLayer = typeof aTrack?.layer === 'number' ? aTrack.layer : 0;
           const bLayer = typeof bTrack?.layer === 'number' ? bTrack.layer : 0;
           return aLayer - bLayer;
         });
-        this.stageSortDirty = false;
-      }
-
-      this.prepareAdjustmentClips(active);
-
-      await this.applyShaderTransitions(active, timeUs);
-
-      if (!this.app || !this.canvas || !this.app.renderer) {
-        return null;
-      }
-
-      this.lastRenderedTimeUs = timeUs;
-
-      this.applyMasterEffects();
-
-      if (this.app.renderer) {
-        this.app.renderer.render(this.app.stage);
-      }
-
-      return this.canvas;
-    } finally {
-      // Ensure VideoFrames are always closed even when rendering fails.
-      for (const clip of updatedClips) {
-        if (!clip.lastVideoFrame) continue;
-        safeDispose(clip.lastVideoFrame);
-        clip.lastVideoFrame = null;
-      }
-    }
+      },
+      prepareAdjustmentClips: (activeClips) => {
+        this.prepareAdjustmentClips(activeClips);
+      },
+      applyShaderTransitions: (activeClips, currentTimeUs) =>
+        this.applyShaderTransitions(activeClips, currentTimeUs),
+      applyMasterEffects: () => {
+        this.applyMasterEffects();
+      },
+      setStageSortDirty: (value) => {
+        this.stageSortDirty = value;
+      },
+      setActiveSortDirty: (value) => {
+        this.activeSortDirty = value;
+      },
+      setLastRenderedTimeUs: (value) => {
+        this.lastRenderedTimeUs = value;
+      },
+    });
   }
 
   /** Find the clip on the same layer immediately adjacent to `clip` (for blend shadow rendering).

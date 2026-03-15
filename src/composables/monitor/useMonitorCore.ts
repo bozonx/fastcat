@@ -1,7 +1,4 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import type { Ref } from 'vue';
-import type { FastCatProjectSettings } from '~/utils/project-settings';
-import type { TimelineDocument } from '~/timeline/types';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { getPreviewWorkerClient, setPreviewHostApi } from '~/utils/video-editor/worker-client';
@@ -9,63 +6,16 @@ import { getPreviewWorkerClient, setPreviewHostApi } from '~/utils/video-editor/
 import { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import { clampTimeUs, normalizeTimeUs } from '~/utils/monitor-time';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
-import type { PreviewRenderOptions } from '~/utils/video-editor/worker-rpc';
-import {
-  buildVideoWorkerPayloadFromTracks,
-  toWorkerTimelineClips,
-} from '~/composables/timeline/export';
 
 import type { WorkerTimelineClip } from './types';
-
-interface MonitorTimelineState {
-  videoItems: Ref<unknown[]>;
-  rawWorkerTimelineClips?: Ref<WorkerTimelineClip[]>;
-  rawWorkerAudioClips?: Ref<WorkerTimelineClip[]>;
-  workerTimelineClips: Ref<WorkerTimelineClip[]>;
-  workerAudioClips: Ref<WorkerTimelineClip[]>;
-  safeDurationUs: Ref<number>;
-  clipSourceSignature: Ref<number>;
-  clipLayoutSignature: Ref<number>;
-  audioClipSourceSignature: Ref<number>;
-  audioClipLayoutSignature: Ref<number>;
-}
-
-interface MonitorDisplayState {
-  containerEl: Ref<HTMLDivElement | null>;
-  viewportEl: Ref<HTMLDivElement | null>;
-  renderWidth: Ref<number>;
-  renderHeight: Ref<number>;
-  updateCanvasDisplaySize: () => void;
-}
-
-interface TimelineStoreState {
-  duration: number;
-  currentTime: number;
-  setCurrentTimeUs: (timeUs: number) => void;
-  isPlaying: boolean;
-  masterGain: number;
-  audioMuted: boolean;
-  timelineDoc: TimelineDocument | null;
-}
-
-interface MonitorStoreState {
-  projectStore: {
-    projectSettings: FastCatProjectSettings;
-    getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
-    getFileByPath: (path: string) => Promise<File | null>;
-  };
-  timelineStore: TimelineStoreState;
-  proxyStore: {
-    getProxyFileHandle: (path: string) => Promise<FileSystemFileHandle | null>;
-    getProxyFile: (path: string) => Promise<File | null>;
-    existingProxies: Ref<Set<string>>;
-  };
-}
-
-export interface UseMonitorCoreOptions extends MonitorStoreState {
-  monitorTimeline: MonitorTimelineState;
-  monitorDisplay: MonitorDisplayState;
-}
+import type { UseMonitorCoreOptions } from './useMonitorCore.types';
+import {
+  cloneWorkerPayload,
+  computeAudioDurationUs,
+  createPreviewRenderOptions,
+} from './useMonitorCore.helpers';
+import { mapAudioEngineClips } from './useMonitorCore.audio';
+import { prepareMonitorTimelineData } from './useMonitorCore.payload';
 
 export function useMonitorCore(options: UseMonitorCoreOptions) {
   const { t } = useI18n();
@@ -129,61 +79,27 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     return projectStore.projectSettings.monitor?.previewEffectsEnabled !== false;
   });
 
-  function getPreviewRenderOptions(): PreviewRenderOptions {
-    return {
+  function getPreviewRenderOptions() {
+    return createPreviewRenderOptions({
       previewEffectsEnabled: previewEffectsEnabled.value,
       videoFrameCacheMb: workspaceStore.userSettings.optimization.videoFrameCacheMb,
-    };
-  }
-
-  function cloneWorkerPayload<T>(value: T): T {
-    try {
-      if (typeof structuredClone === 'function') {
-        return structuredClone(value);
-      }
-    } catch (err) {
-      console.warn('[Monitor] structuredClone failed, falling back to JSON.parse:', err);
-    }
-    try {
-      return JSON.parse(JSON.stringify(value));
-    } catch (err) {
-      console.warn('[Monitor] JSON clone failed as well:', err);
-    }
-    return value;
+    });
   }
 
   function setCurrentTimeProvider(provider: () => number) {
     currentTimeProvider = provider;
   }
 
-  function computeAudioDurationUs(clips: WorkerTimelineClip[]): number {
-    let maxEnd = 0;
-    for (const clip of clips) {
-      const end = clip.timelineRange.startUs + clip.timelineRange.durationUs;
-      if (end > maxEnd) maxEnd = end;
-    }
-    return maxEnd;
-  }
+  async function syncAudioEngineClips(audioClips: WorkerTimelineClip[]) {
+    const audioEngineClips = await mapAudioEngineClips({
+      clips: audioClips,
+      useProxyInMonitor: useProxyInMonitor.value,
+      audioHandleCache,
+      getProxyFileHandle: proxyStore.getProxyFileHandle,
+      getFileHandleByPath: projectStore.getFileHandleByPath,
+    });
 
-  function getAudioSourceKey(path: string) {
-    return `${useProxyInMonitor.value ? 'proxy' : 'source'}:${path}`;
-  }
-
-  async function getFileHandleForAudio(path: string) {
-    const cacheKey = getAudioSourceKey(path);
-    const cached = audioHandleCache.get(cacheKey);
-    if (cached) return cached;
-    if (useProxyInMonitor.value) {
-      const proxyHandle = await proxyStore.getProxyFileHandle(path);
-      if (proxyHandle) {
-        audioHandleCache.set(cacheKey, proxyHandle);
-        return proxyHandle;
-      }
-    }
-    const handle = await projectStore.getFileHandleByPath(path);
-    if (!handle) return null;
-    audioHandleCache.set(cacheKey, handle);
-    return handle;
+    return audioEngineClips;
   }
 
   async function flushBuildQueue() {
@@ -231,48 +147,22 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         pendingLayoutClips = null;
         pendingLayoutAudioClips = null;
         try {
-          const mockAudioItems = layoutAudioClips.map(
-            (c) =>
-              ({
-                kind: 'clip',
-                clipType:
-                  c.clipType === 'media' && c.source?.path?.endsWith('.otio')
-                    ? 'timeline'
-                    : c.clipType,
-                id: c.id,
-                trackId: c.trackId,
-                speed: (c as any).speed,
-                audioGain: (c as any).audioGain,
-                audioBalance: (c as any).audioBalance,
-                audioFadeInUs: (c as any).audioFadeInUs,
-                audioFadeOutUs: (c as any).audioFadeOutUs,
-                audioDeclickDurationUs: (c as any).audioDeclickDurationUs,
-                source: c.source,
-                timelineRange: c.timelineRange,
-                sourceRange: c.sourceRange,
-                freezeFrameSourceUs: c.freezeFrameSourceUs,
-                opacity: c.opacity,
-                blendMode: c.blendMode,
-                effects: c.effects,
-                transform: (c as any).transform,
-              }) as any,
-          );
-
-          const builtVideo = await buildVideoWorkerPayloadFromTracks({
+          const preparedTimeline = await prepareMonitorTimelineData({
+            rawAudioClips: layoutAudioClips,
             tracks: timelineStore.timelineDoc?.tracks ?? [],
-            projectStore: projectStore as any,
-            workspaceStore: workspaceStore as any,
+            projectStore,
+            workspaceStore,
             masterEffects: timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects,
           });
-          const flattenedClips = builtVideo.clips;
-          const flattenedAudio = await toWorkerTimelineClips(mockAudioItems, projectStore as any);
+          const flattenedClips = preparedTimeline.flattenedClips;
+          const flattenedAudio = preparedTimeline.flattenedAudio;
 
           workerTimelineClips.value = flattenedClips;
           workerAudioClips.value = flattenedAudio;
 
           layoutUpdateFromQueue = true;
 
-          const payload = cloneWorkerPayload(builtVideo.payload);
+          const payload = cloneWorkerPayload(preparedTimeline.payload);
           const maxDuration = await client.updateTimelineLayout(payload);
           const audioDuration = computeAudioDurationUs(flattenedAudio);
           // Keep store duration at least as large as current value to avoid clamping
@@ -289,39 +179,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       }
 
       const audioClips = workerAudioClips.value;
-      const audioEngineClips = (
-        await Promise.all(
-          audioClips.map(async (clip: WorkerTimelineClip) => {
-            try {
-              const path = clip.source?.path;
-              if (!path) return null;
-              const handle = await getFileHandleForAudio(path);
-              if (!handle) return null;
-              return {
-                id: clip.id,
-                trackId: clip.trackId,
-                sourcePath: getAudioSourceKey(path),
-                fileHandle: handle,
-                startUs: clip.timelineRange.startUs,
-                durationUs: clip.timelineRange.durationUs,
-                sourceStartUs: clip.sourceRange.startUs,
-                sourceRangeDurationUs: clip.sourceRange.durationUs,
-                sourceDurationUs: clip.sourceDurationUs ?? clip.sourceRange.durationUs,
-                speed: (clip as any).speed,
-                audioGain: (clip as any).audioGain,
-                audioBalance: (clip as any).audioBalance,
-                audioFadeInUs: (clip as any).audioFadeInUs,
-                audioFadeOutUs: (clip as any).audioFadeOutUs,
-                audioEffects: ((clip as any).effects ?? []).filter(
-                  (e: any) => e?.target === 'audio',
-                ),
-              };
-            } catch {
-              return null;
-            }
-          }),
-        )
-      ).filter((it): it is NonNullable<typeof it> => Boolean(it));
+      const audioEngineClips = await syncAudioEngineClips(audioClips);
 
       audioEngine.updateTimelineLayout(audioEngineClips);
     } finally {
@@ -444,38 +302,15 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
 
       const rawAudio = rawWorkerAudioClips?.value ?? workerAudioClips.value;
 
-      const mockAudioItems = rawAudio.map(
-        (c) =>
-          ({
-            kind: 'clip',
-            clipType:
-              c.clipType === 'media' && c.source?.path?.endsWith('.otio') ? 'timeline' : c.clipType,
-            id: c.id,
-            trackId: c.trackId,
-            audioBalance: (c as any).audioBalance,
-            speed: (c as any).speed,
-            audioGain: (c as any).audioGain,
-            audioFadeInUs: (c as any).audioFadeInUs,
-            audioFadeOutUs: (c as any).audioFadeOutUs,
-            source: c.source,
-            timelineRange: c.timelineRange,
-            sourceRange: c.sourceRange,
-            freezeFrameSourceUs: c.freezeFrameSourceUs,
-            opacity: c.opacity,
-            blendMode: c.blendMode,
-            effects: c.effects,
-            transform: (c as any).transform,
-          }) as any,
-      );
-
-      const builtVideo = await buildVideoWorkerPayloadFromTracks({
+      const preparedTimeline = await prepareMonitorTimelineData({
+        rawAudioClips: rawAudio,
         tracks: timelineStore.timelineDoc?.tracks ?? [],
-        projectStore: projectStore as any,
-        workspaceStore: workspaceStore as any,
+        projectStore,
+        workspaceStore,
         masterEffects: timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects,
       });
-      const flattenedClips = builtVideo.clips;
-      const flattenedAudio = await toWorkerTimelineClips(mockAudioItems, projectStore as any);
+      const flattenedClips = preparedTimeline.flattenedClips;
+      const flattenedAudio = preparedTimeline.flattenedAudio;
 
       workerTimelineClips.value = flattenedClips;
       workerAudioClips.value = flattenedAudio;
@@ -516,7 +351,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         }),
       );
 
-      const payload = cloneWorkerPayload(builtVideo.payload);
+      const payload = cloneWorkerPayload(preparedTimeline.payload);
       const maxDuration = clips.length > 0 ? await client.loadTimeline(payload) : 0;
       if (clips.length === 0) {
         await client.clearClips();
@@ -526,38 +361,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         sampleRate: projectStore.projectSettings?.project?.sampleRate,
       });
 
-      const audioEngineClipCandidates = await Promise.all(
-        audioClips.map(async (clip: WorkerTimelineClip) => {
-          try {
-            const path = clip.source?.path;
-            if (!path) return null;
-            const handle = await getFileHandleForAudio(path);
-            if (!handle) return null;
-            return {
-              id: clip.id,
-              trackId: clip.trackId,
-              sourcePath: getAudioSourceKey(path),
-              fileHandle: handle,
-              startUs: clip.timelineRange.startUs,
-              durationUs: clip.timelineRange.durationUs,
-              sourceStartUs: clip.sourceRange.startUs,
-              sourceRangeDurationUs: clip.sourceRange.durationUs,
-              sourceDurationUs: clip.sourceDurationUs ?? clip.sourceRange.durationUs,
-              speed: (clip as any).speed,
-              audioGain: (clip as any).audioGain,
-              audioBalance: (clip as any).audioBalance,
-              audioFadeInUs: (clip as any).audioFadeInUs,
-              audioFadeOutUs: (clip as any).audioFadeOutUs,
-              audioEffects: ((clip as any).effects ?? []).filter((e: any) => e?.target === 'audio'),
-            };
-          } catch {
-            return null;
-          }
-        }),
-      );
-      const audioEngineClips = audioEngineClipCandidates.filter(
-        (clip): clip is NonNullable<typeof clip> => Boolean(clip),
-      );
+      const audioEngineClips = await syncAudioEngineClips(audioClips);
       await audioEngine.loadClips(audioEngineClips);
 
       lastBuiltSourceSignature = clipSourceSignature.value;
