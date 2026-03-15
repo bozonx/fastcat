@@ -176,8 +176,12 @@ const {
 
 // --- Remote ---
 const remote = useFileBrowserRemote({
-  loadProjectDirectory: async () => {}, // Not used directly in new file browser remote flow but required by interface
-  resolveEntryByPath,
+  isRemoteMode,
+  remoteCurrentFolder,
+  folderEntries,
+  loadFolderContent: () => _loadFolderContent(),
+  loadParentFolders: async () => {}, // Handled by navigation
+  navigateToRoot: async () => {}, // Handled by navigation
   setSelectedFsEntry: (entry) => {
     if (entry) {
       handleEntryClick(new MouseEvent('click'), entry);
@@ -285,8 +289,7 @@ const {
   reloadDirectory: fileManager.reloadDirectory,
   notifyFileManagerUpdate: () => uiStore.notifyFileManagerUpdate(),
   setFileTreePathExpanded: (path, expanded) => {
-    const projectName = projectStore.currentProjectName;
-    if (projectName) uiStore.setFileTreePathExpanded(projectName, path, expanded);
+    uiStore.setFileTreePathExpanded(path, expanded);
   },
   onAfterRename: () => {
     void loadFolderContent();

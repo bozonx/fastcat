@@ -395,7 +395,7 @@ function handleArrayItemUpdate(control: any, index: number, itemKey: string, val
               :class="control.layout === 'horizontal' ? 'p-1.5' : 'pb-2 mb-1 -mx-3 -mt-3 px-3 pt-2'"
             >
               <span class="text-[10px] font-medium text-ui-text-muted uppercase tracking-wider">
-                #{{ index + 1 }}
+                #{{ Number(index) + 1 }}
               </span>
               <UButton
                 icon="i-heroicons-trash"
@@ -404,7 +404,7 @@ function handleArrayItemUpdate(control: any, index: number, itemKey: string, val
                 variant="ghost"
                 :disabled="control.disabled"
                 class="opacity-0 group-hover:opacity-100 transition-opacity"
-                @click="handleArrayRemove(control, index)"
+                @click="handleArrayRemove(control, Number(index))"
               />
             </div>
             <div :class="['flex flex-col gap-2', control.layout === 'horizontal' ? 'p-2' : '']">
@@ -413,7 +413,7 @@ function handleArrayItemUpdate(control: any, index: number, itemKey: string, val
                 :values="item"
                 :size="size"
                 as-contents
-                @update:value="(key, value) => handleArrayItemUpdate(control, index, key, value)"
+                @update:value="(key, value) => handleArrayItemUpdate(control, Number(index), key, value)"
               />
             </div>
           </div>

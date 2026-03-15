@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import PropertySection from '~/components/properties/PropertySection.vue';
+
 const props = defineProps<{
   title: string;
   content: string;
