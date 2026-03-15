@@ -1,6 +1,13 @@
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
-import type { TimelineTrack, TimelineTrackItem } from '~/timeline/types';
+import type {
+  TimelineBackgroundClipItem,
+  TimelineClipItem,
+  TimelineShapeClipItem,
+  TimelineTextClipItem,
+  TimelineTrack,
+  TimelineTrackItem,
+} from '~/timeline/types';
 import type { WorkerTimelineClip } from './types';
 import { normalizeTimeUs } from '~/utils/monitor-time';
 import { clampNumber, mergeBalance, mergeGain } from '~/utils/audio/envelope';
@@ -21,6 +28,18 @@ import {
 
 export function useMonitorTimeline() {
   const timelineStore = useTimelineStore();
+
+  function getItemSpeed(item: TimelineClipItem): number | undefined {
+    return item.speed;
+  }
+
+  function getTrackAudioGain(track: TimelineTrack): number | undefined {
+    return track.audioGain;
+  }
+
+  function getTrackAudioBalance(track: TimelineTrack): number | undefined {
+    return track.audioBalance;
+  }
 
   const videoTracks = computed(
     () =>
@@ -71,18 +90,18 @@ export function useMonitorTimeline() {
     for (const [trackIndex, track] of visibleVideoTracks.value.entries()) {
       for (const item of track.items) {
         if (item.kind !== 'clip') continue;
-        if ((item as any).disabled) continue;
+        if (item.disabled) continue;
 
-        const clipType = (item as any).clipType ?? 'media';
+        const clipType = item.clipType;
         const base = createBaseWorkerClip({
           item,
           trackId: track.id,
           layer: trackCount - 1 - trackIndex,
-          clipType,
+          clipType: clipType === 'timeline' ? 'media' : clipType,
         });
 
         if (clipType === 'media' || clipType === 'timeline') {
-          const path = (item as any).source?.path;
+          const path = item.source?.path;
           if (!path) continue;
           if (clipType === 'timeline') {
             clips.push({
@@ -94,22 +113,26 @@ export function useMonitorTimeline() {
             clips.push({ ...base, source: { path } });
           }
         } else if (clipType === 'background') {
-          clips.push(createBackgroundWorkerClip(base, (item as any).backgroundColor));
+          clips.push(
+            createBackgroundWorkerClip(base, (item as TimelineBackgroundClipItem).backgroundColor),
+          );
         } else if (clipType === 'text') {
+          const textItem = item as TimelineTextClipItem;
           clips.push(
             createTextWorkerClip(base, {
-              text: (item as any).text,
-              style: (item as any).style,
+              text: textItem.text,
+              style: textItem.style,
             }),
           );
         } else if (clipType === 'shape') {
+          const shapeItem = item as TimelineShapeClipItem;
           clips.push(
             createShapeWorkerClip(base, {
-              shapeType: (item as any).shapeType,
-              fillColor: (item as any).fillColor,
-              strokeColor: (item as any).strokeColor,
-              strokeWidth: (item as any).strokeWidth,
-              shapeConfig: (item as any).shapeConfig,
+              shapeType: shapeItem.shapeType,
+              fillColor: shapeItem.fillColor,
+              strokeColor: shapeItem.strokeColor,
+              strokeWidth: shapeItem.strokeWidth,
+              shapeConfig: shapeItem.shapeConfig,
             }),
           );
         } else {
@@ -141,7 +164,7 @@ export function useMonitorTimeline() {
         id: item.id,
         trackId: item.trackId,
         layer: 0,
-        speed: sanitizeSpeed((item as any).speed),
+        speed: sanitizeSpeed(getItemSpeed(item)),
         audioGain: item.audioGain,
         audioBalance: item.audioBalance,
         audioFadeInUs: item.audioFadeInUs,
@@ -178,26 +201,33 @@ export function useMonitorTimeline() {
     for (const item of videoItems.value) {
       hash = mixHash(hash, hashString(item.id));
       if (item.kind === 'clip') {
-        hash = mixHash(hash, hashString(String((item as any).clipType ?? '')));
+        hash = mixHash(hash, hashString(String(item.clipType ?? '')));
         if (item.clipType === 'media' && item.source?.path) {
           hash = mixHash(hash, hashString(item.source.path));
         } else if (item.clipType === 'background') {
           hash = mixHash(
             hash,
-            hashString(sanitizeTimelineColor((item as any).backgroundColor, '#000000')),
+            hashString(
+              sanitizeTimelineColor(
+                (item as TimelineBackgroundClipItem).backgroundColor,
+                '#000000',
+              ),
+            ),
           );
-        } else if ((item as any).clipType === 'text') {
-          hash = mixHash(hash, hashString(String((item as any).text ?? '')));
-          const style = (item as any).style;
+        } else if (item.clipType === 'text') {
+          const textItem = item as TimelineTextClipItem;
+          hash = mixHash(hash, hashString(String(textItem.text ?? '')));
+          const style = textItem.style;
           if (style) {
             hash = mixHash(hash, hashString(JSON.stringify(style)));
           }
-        } else if ((item as any).clipType === 'shape') {
-          hash = mixHash(hash, hashString(String((item as any).shapeType ?? 'square')));
-          hash = mixHash(hash, hashString(String((item as any).fillColor ?? '#ffffff')));
-          hash = mixHash(hash, hashString(String((item as any).strokeColor ?? '#000000')));
-          hash = mixFloat(hash, (item as any).strokeWidth ?? 0, 1000);
-          const shapeConfig = (item as any).shapeConfig;
+        } else if (item.clipType === 'shape') {
+          const shapeItem = item as TimelineShapeClipItem;
+          hash = mixHash(hash, hashString(String(shapeItem.shapeType ?? 'square')));
+          hash = mixHash(hash, hashString(String(shapeItem.fillColor ?? '#ffffff')));
+          hash = mixHash(hash, hashString(String(shapeItem.strokeColor ?? '#000000')));
+          hash = mixFloat(hash, shapeItem.strokeWidth ?? 0, 1000);
+          const shapeConfig = shapeItem.shapeConfig;
           if (shapeConfig) {
             hash = mixHash(hash, hashString(JSON.stringify(shapeConfig)));
           }
@@ -232,11 +262,11 @@ export function useMonitorTimeline() {
       hash = mixTime(hash, item.timelineRange.startUs);
       hash = mixTime(hash, item.timelineRange.durationUs);
       if (item.kind === 'clip') {
-        hash = mixHash(hash, hashString(String((item as any).clipType ?? '')));
+        hash = mixHash(hash, hashString(String(item.clipType ?? '')));
         hash = mixTime(hash, item.sourceRange.startUs);
         hash = mixTime(hash, item.sourceRange.durationUs);
-        hash = mixHash(hash, hashString(JSON.stringify((item as any).transitionIn ?? null)));
-        hash = mixHash(hash, hashString(JSON.stringify((item as any).transitionOut ?? null)));
+        hash = mixHash(hash, hashString(JSON.stringify(item.transitionIn ?? null)));
+        hash = mixHash(hash, hashString(JSON.stringify(item.transitionOut ?? null)));
 
         if (item.clipType === 'media') {
           hash = mixTime(hash, item.freezeFrameSourceUs ?? 0);
@@ -244,45 +274,50 @@ export function useMonitorTimeline() {
 
         hash = mixFloat(hash, item.opacity ?? 1, 1000);
         hash = mixHash(hash, hashString(String(item.blendMode ?? 'normal')));
-        hash = mixFloat(hash, (item as any).speed ?? 1, 1000);
+        hash = mixFloat(hash, getItemSpeed(item) ?? 1, 1000);
 
-        const clipEffects = Array.isArray((item as any).effects) ? (item as any).effects : null;
+        const clipEffects = Array.isArray(item.effects) ? item.effects : null;
         if (clipEffects) {
           hash = mixHash(hash, hashString(JSON.stringify(clipEffects)));
         }
 
-        const transform = (item as any).transform;
+        const transform = item.transform;
         if (transform) {
           hash = mixHash(hash, hashString(JSON.stringify(transform)));
         }
 
         if (item.clipType === 'background') {
-          const bgColor = sanitizeTimelineColor((item as any).backgroundColor, '#000000');
+          const bgColor = sanitizeTimelineColor(
+            (item as TimelineBackgroundClipItem).backgroundColor,
+            '#000000',
+          );
           if (bgColor) {
             hash = mixHash(hash, hashString(bgColor));
           }
         }
 
-        if ((item as any).clipType === 'text') {
-          hash = mixHash(hash, hashString(String((item as any).text ?? '')));
-          const style = (item as any).style;
+        if (item.clipType === 'text') {
+          const textItem = item as TimelineTextClipItem;
+          hash = mixHash(hash, hashString(String(textItem.text ?? '')));
+          const style = textItem.style;
           if (style) {
             hash = mixHash(hash, hashString(JSON.stringify(style)));
           }
         }
 
-        if ((item as any).clipType === 'shape') {
-          hash = mixHash(hash, hashString(String((item as any).shapeType ?? 'square')));
-          hash = mixHash(hash, hashString(String((item as any).fillColor ?? '#ffffff')));
-          hash = mixHash(hash, hashString(String((item as any).strokeColor ?? '#000000')));
-          hash = mixFloat(hash, (item as any).strokeWidth ?? 0, 1000);
-          const shapeConfig = (item as any).shapeConfig;
+        if (item.clipType === 'shape') {
+          const shapeItem = item as TimelineShapeClipItem;
+          hash = mixHash(hash, hashString(String(shapeItem.shapeType ?? 'square')));
+          hash = mixHash(hash, hashString(String(shapeItem.fillColor ?? '#ffffff')));
+          hash = mixHash(hash, hashString(String(shapeItem.strokeColor ?? '#000000')));
+          hash = mixFloat(hash, shapeItem.strokeWidth ?? 0, 1000);
+          const shapeConfig = shapeItem.shapeConfig;
           if (shapeConfig) {
             hash = mixHash(hash, hashString(JSON.stringify(shapeConfig)));
           }
         }
 
-        const track = trackById.get((item as any).trackId);
+        const track = trackById.get(item.trackId);
         if (track) {
           hash = mixFloat(hash, track.opacity ?? 1, 1000);
           hash = mixHash(hash, hashString(String(track.blendMode ?? 'normal')));
@@ -304,8 +339,8 @@ export function useMonitorTimeline() {
       hash = mixHash(hash, track.audioMuted ? 1 : 0);
       hash = mixHash(hash, track.audioSolo ? 1 : 0);
 
-      hash = mixFloat(hash, mergeGain((track as any).audioGain, 1) ?? 1, 1000);
-      hash = mixFloat(hash, mergeBalance((track as any).audioBalance, 0) ?? 0, 1000);
+      hash = mixFloat(hash, mergeGain(getTrackAudioGain(track), 1) ?? 1, 1000);
+      hash = mixFloat(hash, mergeBalance(getTrackAudioBalance(track), 0) ?? 0, 1000);
 
       const trackAudioEffects = (track.effects ?? []).filter(
         (effect) => effect?.target === 'audio',
@@ -323,15 +358,15 @@ export function useMonitorTimeline() {
         hash = mixTime(hash, item.sourceRange.startUs);
         hash = mixTime(hash, item.sourceRange.durationUs);
 
-        hash = mixFloat(hash, (item as any).speed ?? 1, 1000);
+        hash = mixFloat(hash, getItemSpeed(item) ?? 1, 1000);
 
-        hash = mixFloat(hash, (item as any).audioGain ?? 1, 1000);
-        hash = mixFloat(hash, (item as any).audioBalance ?? 0, 1000);
-        hash = mixTime(hash, Math.round(Number((item as any).audioFadeInUs ?? 0)));
-        hash = mixTime(hash, Math.round(Number((item as any).audioFadeOutUs ?? 0)));
+        hash = mixFloat(hash, item.audioGain ?? 1, 1000);
+        hash = mixFloat(hash, item.audioBalance ?? 0, 1000);
+        hash = mixTime(hash, Math.round(Number(item.audioFadeInUs ?? 0)));
+        hash = mixTime(hash, Math.round(Number(item.audioFadeOutUs ?? 0)));
 
-        const audioEffects = Array.isArray((item as any).effects)
-          ? (item as any).effects.filter((effect: any) => effect?.target === 'audio')
+        const audioEffects = Array.isArray(item.effects)
+          ? item.effects.filter((effect) => effect?.target === 'audio')
           : null;
         if (audioEffects && audioEffects.length > 0) {
           hash = mixHash(hash, hashString(JSON.stringify(audioEffects)));
@@ -357,7 +392,7 @@ export function useMonitorTimeline() {
           hash = mixHash(hash, hashString(item.source.path));
         }
 
-        hash = mixFloat(hash, (item as any).speed ?? 1, 1000);
+        hash = mixFloat(hash, getItemSpeed(item) ?? 1, 1000);
       }
     }
     return hash;

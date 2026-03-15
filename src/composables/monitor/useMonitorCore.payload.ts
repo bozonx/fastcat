@@ -2,6 +2,8 @@ import {
   buildVideoWorkerPayloadFromTracks,
   toWorkerTimelineClips,
 } from '~/composables/timeline/export';
+import type { useProjectStore } from '~/stores/project.store';
+import type { useWorkspaceStore } from '~/stores/workspace.store';
 import type { TimelineTrack, TimelineTrackItem, ClipEffect } from '~/timeline/types';
 import type { WorkerTimelineClip } from './types';
 
@@ -11,7 +13,7 @@ export interface PreparedMonitorTimelineData {
   payload: (WorkerTimelineClip | { kind: 'meta' | 'track'; [key: string]: any })[];
 }
 
-export function createMockAudioItems(audioClips: WorkerTimelineClip[]): unknown[] {
+export function createMockAudioItems(audioClips: WorkerTimelineClip[]): TimelineTrackItem[] {
   return audioClips.map((clip) => ({
     kind: 'clip',
     clipType:
@@ -34,25 +36,26 @@ export function createMockAudioItems(audioClips: WorkerTimelineClip[]): unknown[
     blendMode: clip.blendMode,
     effects: clip.effects,
     transform: clip.transform,
-  }));
+    name: clip.id,
+  })) as TimelineTrackItem[];
 }
 
 export async function prepareMonitorTimelineData(params: {
   rawAudioClips: WorkerTimelineClip[];
   tracks: TimelineTrack[];
-  projectStore: unknown;
-  workspaceStore: unknown;
+  projectStore: ReturnType<typeof useProjectStore>;
+  workspaceStore: ReturnType<typeof useWorkspaceStore>;
   masterEffects?: ClipEffect[];
 }): Promise<PreparedMonitorTimelineData> {
   const builtVideo = await buildVideoWorkerPayloadFromTracks({
     tracks: params.tracks,
-    projectStore: params.projectStore as any,
-    workspaceStore: params.workspaceStore as any,
+    projectStore: params.projectStore,
+    workspaceStore: params.workspaceStore,
     masterEffects: params.masterEffects,
   });
   const flattenedAudio = await toWorkerTimelineClips(
-    createMockAudioItems(params.rawAudioClips) as unknown as TimelineTrackItem[],
-    params.projectStore as any,
+    createMockAudioItems(params.rawAudioClips),
+    params.projectStore,
   );
 
   return {

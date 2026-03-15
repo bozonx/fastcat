@@ -1,4 +1,6 @@
 import { normalizeTimeUs } from '~/utils/monitor-time';
+import type { useProjectStore } from '~/stores/project.store';
+import type { useWorkspaceStore } from '~/stores/workspace.store';
 import type { ClipEffect, TimelineTrack } from '~/timeline/types';
 import type { WorkerTimelineClip } from './types';
 import { computeAudioDurationUs } from './useMonitorCore.helpers';
@@ -14,8 +16,8 @@ export interface PreparedMonitorTimelineState extends PreparedMonitorTimelineDat
 export async function prepareMonitorTimelineState(params: {
   rawAudioClips: WorkerTimelineClip[];
   tracks: TimelineTrack[];
-  projectStore: unknown;
-  workspaceStore: unknown;
+  projectStore: ReturnType<typeof useProjectStore>;
+  workspaceStore: ReturnType<typeof useWorkspaceStore>;
   masterEffects?: ClipEffect[];
 }): Promise<PreparedMonitorTimelineState> {
   const preparedTimeline = await prepareMonitorTimelineData({

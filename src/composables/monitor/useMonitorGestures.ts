@@ -209,14 +209,9 @@ export function useMonitorGestures(input: {
     const isShift = isLayer1Active(e, workspaceStore.userSettings);
     const isSecondary = isSecondaryWheel(e);
     const settings = workspaceStore.userSettings.mouse.monitor;
+    const secondaryAction = isShift ? settings.wheelSecondaryShift : settings.wheelSecondary;
 
-    const action = isSecondary
-      ? isShift
-        ? (settings.wheelSecondaryShift as any)
-        : (settings.wheelSecondary as any)
-      : isShift
-        ? settings.wheelShift
-        : settings.wheel;
+    const action = isSecondary ? secondaryAction : isShift ? settings.wheelShift : settings.wheel;
 
     if (action === 'none') {
       e.preventDefault();
