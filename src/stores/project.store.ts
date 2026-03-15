@@ -95,8 +95,8 @@ export const useProjectStore = defineStore('project', () => {
     mediaStore.resetMediaState();
     timelineStore.resetTimelineState();
     selectionStore.clearSelection();
-    filesPageStore.selectedFolder = null;
-    historyStore.clear();
+    filesPageStore.$reset();
+    historyStore.clear('timeline');
   }
 
   const timelinesModule = createProjectTimelinesModule({

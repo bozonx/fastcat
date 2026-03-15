@@ -4,6 +4,7 @@ import type { TimelineDocument } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 import { applyTimelineCommand } from '~/timeline/commands';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
+import { TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY } from './timelineHistoryLabels';
 
 import type { TimelineHydrationApi } from './timelineHydration';
 import type { TimelineHistoryDebounceApi } from './timelineHistoryDebounce';
@@ -15,11 +16,10 @@ export interface TimelineDispatcherDeps {
   hydration: TimelineHydrationApi;
   historyDebounce: TimelineHistoryDebounceApi;
   historyStore: {
-    canUndo: boolean;
-    canRedo: boolean;
-    multipleActionsLabelKey: string;
-    undo: (doc: TimelineDocument) => TimelineDocument | null;
-    redo: (doc: TimelineDocument) => TimelineDocument | null;
+    canUndo: (scope: string) => boolean;
+    canRedo: (scope: string) => boolean;
+    undo: <T>(scope: string, doc: T) => T | null;
+    redo: <T>(scope: string, doc: T) => T | null;
   };
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
   markTimelineAsDirty: () => void;
@@ -112,8 +112,7 @@ export function createTimelineDispatcher(deps: TimelineDispatcherDeps): Timeline
         ...options,
         historyMode: 'immediate',
         labelKey:
-          options?.labelKey ??
-          (cmds.length > 1 ? deps.historyStore.multipleActionsLabelKey : undefined),
+          options?.labelKey ?? (cmds.length > 1 ? TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY : undefined),
       });
     }
 
@@ -130,9 +129,12 @@ export function createTimelineDispatcher(deps: TimelineDispatcherDeps): Timeline
   }
 
   function undoTimeline() {
-    if (!deps.timelineDoc.value || !deps.historyStore.canUndo) return;
-    deps.historyDebounce.clearPendingDebouncedHistory();
-    const restored = deps.historyStore.undo(deps.timelineDoc.value);
+    if (!deps.timelineDoc.value || !deps.historyStore.canUndo('timeline')) return;
+
+    // Process any debounced actions before undoing
+    deps.historyDebounce.flushPendingDebouncedHistory();
+
+    const restored = deps.historyStore.undo('timeline', deps.timelineDoc.value);
     if (!restored) return;
     deps.timelineDoc.value = restored;
     deps.duration.value = selectTimelineDurationUs(restored);
@@ -141,9 +143,12 @@ export function createTimelineDispatcher(deps: TimelineDispatcherDeps): Timeline
   }
 
   function redoTimeline() {
-    if (!deps.timelineDoc.value || !deps.historyStore.canRedo) return;
-    deps.historyDebounce.clearPendingDebouncedHistory();
-    const restored = deps.historyStore.redo(deps.timelineDoc.value);
+    if (!deps.timelineDoc.value || !deps.historyStore.canRedo('timeline')) return;
+
+    // Process any debounced actions before redoing
+    deps.historyDebounce.flushPendingDebouncedHistory();
+
+    const restored = deps.historyStore.redo('timeline', deps.timelineDoc.value);
     if (!restored) return;
     deps.timelineDoc.value = restored;
     deps.duration.value = selectTimelineDurationUs(restored);

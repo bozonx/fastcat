@@ -2,10 +2,11 @@ import { ref, type Ref } from 'vue';
 
 import type { TimelineDocument } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
+import { getTimelineCommandLabelKey } from './timelineHistoryLabels';
 
 export interface TimelineHistoryDebounceDeps {
   historyStore: {
-    push: (cmd: TimelineCommand, snapshot: TimelineDocument, labelKey?: string) => void;
+    push: <T>(scope: string, commandType: string, snapshot: T, labelKey: string) => void;
   };
 }
 
@@ -16,6 +17,7 @@ export interface TimelineHistoryDebounceApi {
     timeoutId: number;
   } | null>;
   clearPendingDebouncedHistory: () => void;
+  flushPendingDebouncedHistory: () => void;
   pushHistory: (
     cmd: TimelineCommand,
     prevDoc: TimelineDocument,
@@ -43,6 +45,19 @@ export function createTimelineHistoryDebounce(
     pendingDebouncedHistory.value = null;
   }
 
+  function flushPendingDebouncedHistory() {
+    const pending = pendingDebouncedHistory.value;
+    if (!pending) return;
+    window.clearTimeout(pending.timeoutId);
+    deps.historyStore.push(
+      'timeline',
+      pending.cmd.type,
+      pending.snapshot,
+      getTimelineCommandLabelKey(pending.cmd.type),
+    );
+    pendingDebouncedHistory.value = null;
+  }
+
   function pushHistory(
     cmd: TimelineCommand,
     prevDoc: TimelineDocument,
@@ -53,6 +68,7 @@ export function createTimelineHistoryDebounce(
     },
   ) {
     const historyMode = options?.historyMode ?? 'immediate';
+    const labelKey = options?.labelKey ?? getTimelineCommandLabelKey(cmd.type);
 
     if (historyMode === 'debounced') {
       const debounceMs = Math.max(0, Math.round(options?.historyDebounceMs ?? 300));
@@ -66,7 +82,7 @@ export function createTimelineHistoryDebounce(
           timeoutId: window.setTimeout(() => {
             const p = pendingDebouncedHistory.value;
             if (!p) return;
-            deps.historyStore.push(p.cmd, p.snapshot, options?.labelKey);
+            deps.historyStore.push('timeline', p.cmd.type, p.snapshot, labelKey);
             pendingDebouncedHistory.value = null;
           }, debounceMs),
         };
@@ -77,20 +93,21 @@ export function createTimelineHistoryDebounce(
           timeoutId: window.setTimeout(() => {
             const p = pendingDebouncedHistory.value;
             if (!p) return;
-            deps.historyStore.push(p.cmd, p.snapshot, options?.labelKey);
+            deps.historyStore.push('timeline', p.cmd.type, p.snapshot, labelKey);
             pendingDebouncedHistory.value = null;
           }, debounceMs),
         };
       }
     } else {
-      clearPendingDebouncedHistory();
-      deps.historyStore.push(cmd, prevDoc, options?.labelKey);
+      flushPendingDebouncedHistory();
+      deps.historyStore.push('timeline', cmd.type, prevDoc, labelKey);
     }
   }
 
   return {
     pendingDebouncedHistory,
     clearPendingDebouncedHistory,
+    flushPendingDebouncedHistory,
     pushHistory,
   };
 }

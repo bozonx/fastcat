@@ -5,9 +5,7 @@ import { useUiStore } from '~/stores/ui.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
-import MediaEncodingSettings, {
-  type FormatOption,
-} from '~/components/media/MediaEncodingSettings.vue';
+import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import { BASE_VIDEO_CODEC_OPTIONS, resolveVideoCodecOptions } from '~/utils/webcodecs';
 import {
@@ -83,17 +81,6 @@ const {
   cancelRequested,
 } = useTimelineExport();
 
-function getFormatOptions(): readonly FormatOption[] {
-  return [
-    { value: 'mp4', label: 'MP4' },
-    { value: 'webm', label: 'WEBM' },
-    { value: 'mkv', label: 'MKV (AV1)' },
-  ];
-}
-
-function getVideoCodecOptions() {
-  return resolveVideoCodecOptions(BASE_VIDEO_CODEC_OPTIONS, videoCodecSupport.value);
-}
 
 function getPhaseLabel() {
   if (exportPhase.value === 'encoding') return t('videoEditor.export.phaseEncoding', 'Encoding');
@@ -429,7 +416,7 @@ async function handleConfirm() {
         :disabled="isExporting"
       />
 
-      <MediaEncodingSettings
+      <VideoEncodingForm
         v-model:output-format="outputFormat"
         v-model:video-codec="videoCodec"
         v-model:bitrate-mbps="bitrateMbps"
@@ -447,11 +434,9 @@ async function handleConfirm() {
         :show-audio-advanced="true"
         :hide-audio-sample-rate="true"
         :show-metadata="true"
+        :show-presets="true"
         :disabled="isExporting"
         :has-audio="true"
-        :is-loading-codec-support="isLoadingCodecSupport"
-        :format-options="getFormatOptions()"
-        :video-codec-options="getVideoCodecOptions()"
       />
 
       <label class="flex items-center gap-3 cursor-pointer mt-2">

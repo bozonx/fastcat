@@ -122,58 +122,10 @@ const audioCodecOptions = [
   { value: 'opus', label: t('videoEditor.export.codec.opus', 'Opus') },
 ];
 
-const presetOptions = [
-  { value: 'optimal', label: t('videoEditor.export.preset.optimal', 'Optimal') },
-  { value: 'social', label: t('videoEditor.export.preset.social', 'Social Media') },
-  { value: 'high', label: t('videoEditor.export.preset.high', 'High Quality') },
-  { value: 'lossless', label: t('videoEditor.export.preset.lossless', 'Visually Lossless') },
-  { value: 'custom', label: t('videoEditor.export.preset.custom', 'Custom') },
-];
-
 const bitrateModeOptions = [
   { value: 'variable', label: t('videoEditor.export.bitrateModeVbr') },
   { value: 'constant', label: t('videoEditor.export.bitrateModeCbr') },
 ];
-
-let isPresetApplying = false;
-
-function onPresetChange(newPreset: string) {
-  isPresetApplying = true;
-  if (newPreset === 'optimal') {
-    outputFormat.value = 'mkv';
-    bitrateMode.value = 'variable';
-    bitrateMbps.value = 5;
-    audioCodec.value = 'opus';
-    audioBitrateKbps.value = 128;
-    keyframeIntervalSec.value = 2;
-    exportAlpha.value = false;
-  } else if (newPreset === 'social') {
-    outputFormat.value = 'mp4';
-    bitrateMode.value = 'variable';
-    bitrateMbps.value = 8;
-    audioCodec.value = 'aac';
-    audioBitrateKbps.value = 128;
-    keyframeIntervalSec.value = 2;
-    exportAlpha.value = false;
-  } else if (newPreset === 'high') {
-    outputFormat.value = 'mkv';
-    bitrateMode.value = 'variable';
-    bitrateMbps.value = 20;
-    audioCodec.value = 'opus';
-    audioBitrateKbps.value = 192;
-    keyframeIntervalSec.value = 2;
-  } else if (newPreset === 'lossless') {
-    outputFormat.value = 'mkv';
-    bitrateMode.value = 'constant';
-    bitrateMbps.value = 50;
-    audioCodec.value = 'opus';
-    audioBitrateKbps.value = 320;
-    keyframeIntervalSec.value = 1;
-  }
-  setTimeout(() => {
-    isPresetApplying = false;
-  }, 50);
-}
 
 watch(
   [
@@ -188,9 +140,7 @@ watch(
     exportAlpha,
   ],
   () => {
-    if (!isPresetApplying) {
-      preset.value = 'custom';
-    }
+    preset.value = 'custom';
   },
   { deep: true },
 );
@@ -200,22 +150,6 @@ watch(
   <div class="flex flex-col gap-4">
     <div class="text-sm font-semibold text-ui-text uppercase tracking-wider">
       {{ t('videoEditor.export.encodingSettings', 'Encoding settings') }}
-    </div>
-
-    <div v-if="props.showBuiltinPresets" class="flex flex-col gap-2">
-      <label class="text-xs text-ui-text-muted font-medium">
-        {{ t('videoEditor.export.presetLabel', 'Preset') }}
-      </label>
-      <USelectMenu
-        v-model="preset"
-        :items="presetOptions"
-        value-key="value"
-        label-key="label"
-        :disabled="props.disabled"
-        size="sm"
-        class="w-full"
-        @update:model-value="onPresetChange"
-      />
     </div>
 
     <div class="flex flex-col gap-2">

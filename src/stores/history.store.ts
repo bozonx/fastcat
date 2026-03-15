@@ -1,79 +1,50 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
-import type { TimelineDocument } from '~/timeline/types';
-import type { TimelineCommand } from '~/timeline/commands';
-
 const MAX_HISTORY_SIZE = 100;
 
-export interface HistoryEntry {
+export interface HistoryEntry<T = unknown> {
   id: number;
   labelKey: string;
-  commandType: TimelineCommand['type'];
-  /** Snapshot of the timeline document BEFORE the command was applied */
-  snapshot: TimelineDocument;
+  scope: string; // e.g. 'timeline', 'fileManager'
+  commandType: string;
+  /** Snapshot of the document BEFORE the command was applied */
+  snapshot: T;
   timestamp: number;
 }
 
 let entryIdCounter = 0;
 
-const COMMAND_LABEL_KEYS: Record<TimelineCommand['type'], string> = {
-  add_clip_to_track: 'videoEditor.fileManager.history.entries.addClip',
-  add_virtual_clip_to_track: 'videoEditor.fileManager.history.entries.addClip',
-  remove_item: 'videoEditor.fileManager.history.entries.removeItem',
-  delete_items: 'videoEditor.fileManager.history.entries.deleteItems',
-  move_item: 'videoEditor.fileManager.history.entries.moveItem',
-  move_items: 'videoEditor.fileManager.history.entries.moveItems',
-  move_item_to_track: 'videoEditor.fileManager.history.entries.moveItem',
-  trim_item: 'videoEditor.fileManager.history.entries.trimClip',
-  overlay_trim_item: 'videoEditor.fileManager.history.entries.trimClip',
-  overlay_place_item: 'videoEditor.fileManager.history.entries.placeClip',
-  split_item: 'videoEditor.fileManager.history.entries.splitClip',
-  rename_item: 'videoEditor.fileManager.history.entries.renameClip',
-  update_clip_properties: 'videoEditor.fileManager.history.entries.updateClip',
-  update_clip_transition: 'videoEditor.fileManager.history.entries.updateTransition',
-  add_marker: 'videoEditor.fileManager.history.entries.addMarker',
-  update_marker: 'videoEditor.fileManager.history.entries.updateMarker',
-  remove_marker: 'videoEditor.fileManager.history.entries.removeMarker',
-  add_track: 'videoEditor.fileManager.history.entries.addTrack',
-  rename_track: 'videoEditor.fileManager.history.entries.renameTrack',
-  delete_track: 'videoEditor.fileManager.history.entries.deleteTrack',
-  reorder_tracks: 'videoEditor.fileManager.history.entries.reorderTracks',
-  update_track_properties: 'videoEditor.fileManager.history.entries.updateTrack',
-  extract_audio_to_track: 'videoEditor.fileManager.history.entries.extractAudio',
-  return_audio_to_video: 'videoEditor.fileManager.history.entries.returnAudio',
-  update_master_gain: 'videoEditor.fileManager.history.entries.updateMasterGain',
-  update_master_muted: 'videoEditor.fileManager.history.entries.toggleMute',
-  update_master_effects: 'videoEditor.fileManager.history.entries.updateEffects',
-  update_timeline_properties: 'videoEditor.fileManager.history.entries.updateTimelineProperties',
-};
-
-const MULTIPLE_ACTIONS_LABEL_KEY = 'videoEditor.fileManager.history.entries.multipleActions';
-
 export const useHistoryStore = defineStore('history', () => {
   /** Past states: index 0 is the oldest, last is the most recent undo target */
-  const past = ref<HistoryEntry[]>([]);
+  const past = ref<HistoryEntry<any>[]>([]);
   /** Future states available for redo, index 0 is the next redo */
-  const future = ref<HistoryEntry[]>([]);
+  const future = ref<HistoryEntry<any>[]>([]);
 
-  const canUndo = computed(() => past.value.length > 0);
-  const canRedo = computed(() => future.value.length > 0);
+  // We can provide getters for specific scopes if needed
+  function canUndo(scope: string) {
+    return past.value.filter((e) => e.scope === scope).length > 0;
+  }
 
-  const lastEntry = computed(() => past.value[past.value.length - 1] ?? null);
+  function canRedo(scope: string) {
+    return future.value.filter((e) => e.scope === scope).length > 0;
+  }
 
-  function getCommandLabelKey(type: TimelineCommand['type']): string {
-    return COMMAND_LABEL_KEYS[type];
+  function lastEntry(scope: string) {
+    const entries = past.value.filter((e) => e.scope === scope);
+    return entries[entries.length - 1] ?? null;
   }
 
   /**
    * Records a snapshot before a command is applied.
-   * Should be called BEFORE mutating the timeline document.
+   * Should be called BEFORE mutating the document.
    */
-  function push(cmd: TimelineCommand, snapshot: TimelineDocument, labelKey?: string) {
-    const entry: HistoryEntry = {
+  function push<T>(scope: string, commandType: string, snapshot: T, labelKey: string) {
+    const entry: HistoryEntry<T> = {
       id: ++entryIdCounter,
-      labelKey: labelKey ?? getCommandLabelKey(cmd.type),
-      commandType: cmd.type,
+      labelKey,
+      scope,
+      commandType,
       snapshot,
       timestamp: Date.now(),
     };
@@ -84,48 +55,60 @@ export const useHistoryStore = defineStore('history', () => {
       past.value.splice(0, past.value.length - MAX_HISTORY_SIZE);
     }
 
-    // Branching: clear redo stack on new action
-    future.value = [];
+    // Branching: clear redo stack for this scope on new action
+    future.value = future.value.filter((e) => e.scope !== scope);
   }
 
   /**
-   * Moves the top past entry into the future stack and returns the snapshot
-   * that should be restored as the current timeline document.
+   * Moves the top past entry for a scope into the future stack and returns the snapshot
+   * that should be restored as the current document.
    */
-  function undo(currentDoc: TimelineDocument): TimelineDocument | null {
-    const entry = past.value[past.value.length - 1];
+  function undo<T>(scope: string, currentDoc: T): T | null {
+    const scopePast = past.value.filter((e) => e.scope === scope);
+    const entry = scopePast[scopePast.length - 1];
     if (!entry) return null;
 
-    past.value.pop();
+    // Remove from past
+    const idx = past.value.lastIndexOf(entry);
+    past.value.splice(idx, 1);
 
     future.value.unshift({
       ...entry,
       snapshot: currentDoc,
     });
 
-    return entry.snapshot;
+    return entry.snapshot as T;
   }
 
   /**
-   * Moves the first future entry into the past stack and returns the snapshot
+   * Moves the first future entry for a scope into the past stack and returns the snapshot
    * to restore.
    */
-  function redo(currentDoc: TimelineDocument): TimelineDocument | null {
-    const entry = future.value[0];
+  function redo<T>(scope: string, currentDoc: T): T | null {
+    const scopeFuture = future.value.filter((e) => e.scope === scope);
+    const entry = scopeFuture[0];
     if (!entry) return null;
 
-    future.value.shift();
+    // Remove from future
+    const idx = future.value.indexOf(entry);
+    future.value.splice(idx, 1);
 
     past.value.push({
       ...entry,
       snapshot: currentDoc,
     });
 
-    return entry.snapshot;
+    return entry.snapshot as T;
   }
 
-  /** Clears the entire history (e.g., when a new timeline is loaded) */
-  function clear() {
+  /** Clears the entire history for a scope */
+  function clear(scope: string) {
+    past.value = past.value.filter((e) => e.scope !== scope);
+    future.value = future.value.filter((e) => e.scope !== scope);
+  }
+
+  /** Clears all history */
+  function clearAll() {
     past.value = [];
     future.value = [];
   }
@@ -136,11 +119,10 @@ export const useHistoryStore = defineStore('history', () => {
     canUndo,
     canRedo,
     lastEntry,
-    getCommandLabelKey,
-    multipleActionsLabelKey: MULTIPLE_ACTIONS_LABEL_KEY,
     push,
     undo,
     redo,
     clear,
+    clearAll,
   };
 });
