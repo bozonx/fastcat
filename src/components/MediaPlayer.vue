@@ -29,14 +29,14 @@ const playbackSpeed = ref(1);
 
 const playerRootEl = ref<HTMLElement | null>(null);
 
-let reversePlaybackTimer: number | null = null;
+let reversePlaybackRaf: number | null = null;
 let reverseLastTs = 0;
 let suppressNextPause = false;
 
 function clearReversePlaybackTimer() {
-  if (reversePlaybackTimer !== null) {
-    window.clearInterval(reversePlaybackTimer);
-    reversePlaybackTimer = null;
+  if (reversePlaybackRaf !== null) {
+    cancelAnimationFrame(reversePlaybackRaf);
+    reversePlaybackRaf = null;
   }
   reverseLastTs = 0;
 }
@@ -44,7 +44,7 @@ function clearReversePlaybackTimer() {
 function togglePlay() {
   if (!mediaElement.value) return;
 
-  if (reversePlaybackTimer !== null) {
+  if (reversePlaybackRaf !== null) {
     clearReversePlaybackTimer();
     isPlaying.value = false;
     return;
@@ -85,7 +85,8 @@ function setBackwardPlaybackSpeed(speed: number) {
   mediaElement.value.muted = true;
 
   const absSpeed = Math.max(0.1, Number(speed) || 1);
-  reversePlaybackTimer = window.setInterval(() => {
+  
+  function step() {
     if (!mediaElement.value) return;
 
     const now = performance.now();
@@ -106,8 +107,12 @@ function setBackwardPlaybackSpeed(speed: number) {
     if (next <= 0) {
       pauseAndClearPlayback();
       isPlaying.value = false;
+    } else {
+      reversePlaybackRaf = requestAnimationFrame(step);
     }
-  }, 16);
+  }
+
+  reversePlaybackRaf = requestAnimationFrame(step);
 
   isPlaying.value = true;
 }

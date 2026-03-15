@@ -1,5 +1,6 @@
 import type { AnyPanelFocus } from '~/stores/focus.store';
 import type { HotkeyCommandId, HotkeyCombo } from './defaultHotkeys';
+import { DEFAULT_HOTKEYS } from './defaultHotkeys';
 
 export interface HotkeyCommandPolicy {
   allowInEditable?: boolean;
@@ -42,11 +43,31 @@ export function getHotkeyCommandPolicy(cmdId: HotkeyCommandId): HotkeyCommandPol
 export function createHotkeyLookup(
   effective: Record<HotkeyCommandId, HotkeyCombo[]>,
   commandOrder: readonly HotkeyCommandId[],
+  filter?: (cmdId: HotkeyCommandId) => boolean,
 ): HotkeyLookup {
   const lookup: Partial<Record<HotkeyCombo, HotkeyCommandId[]>> = {};
 
   for (const cmdId of commandOrder) {
+    if (filter && !filter(cmdId)) continue;
     const bindings = effective[cmdId] ?? [];
+    for (const combo of bindings) {
+      if (!lookup[combo]) {
+        lookup[combo] = [];
+      }
+      lookup[combo]!.push(cmdId);
+    }
+  }
+
+  return lookup as HotkeyLookup;
+}
+
+export function createDefaultHotkeyLookup(
+  commandOrder: readonly HotkeyCommandId[],
+): HotkeyLookup {
+  const lookup: Partial<Record<HotkeyCombo, HotkeyCommandId[]>> = {};
+
+  for (const cmdId of commandOrder) {
+    const bindings = DEFAULT_HOTKEYS.bindings[cmdId] ?? [];
     for (const combo of bindings) {
       if (!lookup[combo]) {
         lookup[combo] = [];
