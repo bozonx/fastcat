@@ -277,8 +277,7 @@ export function createProxyService(params: {
 
             const exportOptions = {
               format: 'mp4',
-              videoCodec:
-                optimization.proxyVideoCodec === 'av1' ? 'av01.0.05M.08' : 'avc1.64001f',
+              videoCodec: optimization.proxyVideoCodec === 'av1' ? 'av01.0.05M.08' : 'avc1.64001f',
               bitrate: optimization.proxyVideoBitrateMbps * 1_000_000,
               audioBitrate: optimization.proxyAudioBitrateKbps * 1000,
               audio: !!meta.audio,
@@ -362,6 +361,11 @@ export function createProxyService(params: {
       if ((e as any)?.name === 'AbortError') {
         return;
       }
+
+      if (bgTaskId) {
+        params.backgroundTasksStore.updateTaskStatus(bgTaskId, 'failed', String(e));
+      }
+
       const nextGenerating = new Set(params.generatingProxies.value);
       nextGenerating.delete(projectRelativePath);
       params.generatingProxies.value = nextGenerating;

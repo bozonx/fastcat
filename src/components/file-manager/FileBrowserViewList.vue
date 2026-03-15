@@ -33,10 +33,12 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'rootDragOver', event: DragEvent): void;
+  (e: 'rootDragEnter', event: DragEvent): void;
   (e: 'rootDragLeave', event: DragEvent): void;
   (e: 'rootDrop', event: DragEvent): void;
   (e: 'entryDragStart', event: DragEvent, entry: FsEntry): void;
   (e: 'entryDragEnd'): void;
+  (e: 'entryDragEnter', event: DragEvent, entry: FsEntry): void;
   (e: 'entryDragOver', event: DragEvent, entry: FsEntry): void;
   (e: 'entryDragLeave', event: DragEvent, entry: FsEntry): void;
   (e: 'entryDrop', event: DragEvent, entry: FsEntry): void;
@@ -228,6 +230,7 @@ function isWorkspaceCommonRoot(entry: FsEntry): boolean {
               tabindex="0"
               @dragstart="emit('entryDragStart', $event, entry)"
               @dragend="emit('entryDragEnd')"
+              @dragenter.prevent="emit('entryDragEnter', $event, entry)"
               @dragover.prevent="emit('entryDragOver', $event, entry)"
               @dragleave="emit('entryDragLeave', $event, entry)"
               @drop.prevent="emit('entryDrop', $event, entry)"

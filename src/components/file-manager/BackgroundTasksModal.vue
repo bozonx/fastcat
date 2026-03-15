@@ -26,6 +26,18 @@ function formatTime(timestamp: number) {
     :title="t('videoEditor.backgroundTasks.title', 'Background Tasks')"
     size="3xl"
   >
+    <template #header-actions>
+      <UButton
+        v-if="backgroundTasksStore.completedTasks.length > 0"
+        size="xs"
+        variant="ghost"
+        color="neutral"
+        icon="i-heroicons-trash"
+        :label="t('common.clear', 'Clear')"
+        @click="backgroundTasksStore.clearCompletedTasks()"
+      />
+    </template>
+
     <div class="flex flex-col gap-4 p-4 min-h-75 max-h-[70vh] overflow-y-auto">
       <div v-if="backgroundTasksStore.tasks.length === 0" class="text-center text-ui-text-muted py-8">
         {{ t('videoEditor.backgroundTasks.empty', 'No background tasks') }}
@@ -41,7 +53,7 @@ function formatTime(timestamp: number) {
           <div class="w-8 flex justify-center shrink-0">
             <ProgressSpinner
               v-if="task.status === 'running' || task.status === 'pending'"
-              :progress="task.progress"
+              :progress="task.progress * 100"
               size="sm"
             />
             <UIcon

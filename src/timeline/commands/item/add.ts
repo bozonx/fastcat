@@ -77,6 +77,8 @@ export function addClipToTrack(
     isImage: cmd.isImage,
     timelineRange: { startUs, durationUs },
     sourceRange: { startUs: 0, durationUs },
+    audioFadeInCurve: cmd.audioFadeInCurve,
+    audioFadeOutCurve: cmd.audioFadeOutCurve,
   };
 
   let nextTracks = doc.tracks;
@@ -128,6 +130,8 @@ export function addVirtualClipToTrack(
     name: cmd.name,
     timelineRange: { startUs, durationUs },
     sourceRange: { startUs: 0, durationUs },
+    audioFadeInCurve: cmd.audioFadeInCurve,
+    audioFadeOutCurve: cmd.audioFadeOutCurve,
   };
 
   let clip: TimelineClipItem;

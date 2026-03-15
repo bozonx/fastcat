@@ -375,6 +375,12 @@ export function useFileConversion() {
           return;
         }
         if (params.backgroundTaskId) {
+          const task = backgroundTasksStore.tasks.find((t) => t.id === params.backgroundTaskId);
+          if (task?.status === 'cancelled') {
+            const err = new Error('Cancelled');
+            err.name = 'AbortError';
+            throw err;
+          }
           backgroundTasksStore.updateTaskStatus(params.backgroundTaskId, 'running');
         }
 

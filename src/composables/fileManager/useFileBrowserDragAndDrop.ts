@@ -34,13 +34,24 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   const isDragOverPanel = ref(false);
   const dragOverEntryPath = ref<string | null>(null);
 
-  const { isRootDropOver, isRelevantDrag, onRootDragOver, onRootDragLeave, onRootDrop } =
-    useFileDrop({
-      resolveEntryByPath: options.resolveEntryByPath,
-      handleFiles: options.handleFiles,
-      moveEntry: options.moveEntry,
-      copyEntry: options.copyEntry,
-    });
+  // Local drag counter per entry path to prevent flickering during dragover/dragleave
+  const entryDragCounters = new Map<string, number>();
+  // Local drag counter for the panel itself
+  let panelDragEnterCount = 0;
+
+  const {
+    isRootDropOver,
+    isRelevantDrag,
+    onRootDragEnter,
+    onRootDragOver,
+    onRootDragLeave,
+    onRootDrop,
+  } = useFileDrop({
+    resolveEntryByPath: options.resolveEntryByPath,
+    handleFiles: options.handleFiles,
+    moveEntry: options.moveEntry,
+    copyEntry: options.copyEntry,
+  });
 
   function resolveDragOperation(event: DragEvent): 'copy' | 'move' {
     return event.shiftKey ? 'copy' : 'move';
@@ -105,6 +116,26 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     return entry.kind === 'directory';
   }
 
+  function onEntryDragEnter(e: DragEvent, entry: FsEntry) {
+    if (!isDropTargetDir(entry)) return;
+    if (!e.dataTransfer?.types) return;
+
+    const types = e.dataTransfer.types;
+    if (
+      !types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) &&
+      !types.includes(FILE_MANAGER_COPY_DRAG_TYPE) &&
+      !types.includes('Files')
+    ) {
+      return;
+    }
+
+    e.preventDefault();
+    const path = entry.path ?? '';
+    const count = (entryDragCounters.get(path) || 0) + 1;
+    entryDragCounters.set(path, count);
+    dragOverEntryPath.value = path;
+  }
+
   function onEntryDragOver(e: DragEvent, entry: FsEntry) {
     if (!isDropTargetDir(entry)) return;
     const types = e.dataTransfer?.types;
@@ -130,16 +161,26 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   }
 
   function onEntryDragLeave(e: DragEvent, entry: FsEntry) {
-    if (dragOverEntryPath.value !== (entry.path ?? null)) return;
-    const currentTarget = e.currentTarget as HTMLElement | null;
-    if (!currentTarget?.contains(e.relatedTarget as Node | null)) {
-      dragOverEntryPath.value = null;
+    const path = entry.path ?? '';
+    if (dragOverEntryPath.value !== path) return;
+
+    const count = (entryDragCounters.get(path) || 0) - 1;
+    if (count <= 0) {
+      entryDragCounters.delete(path);
+      if (dragOverEntryPath.value === path) {
+        dragOverEntryPath.value = null;
+      }
+    } else {
+      entryDragCounters.set(path, count);
     }
   }
 
   async function onEntryDrop(e: DragEvent, entry: FsEntry) {
     if (!isDropTargetDir(entry)) return;
     e.stopPropagation();
+
+    const path = entry.path ?? '';
+    entryDragCounters.delete(path);
     dragOverEntryPath.value = null;
 
     const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
@@ -152,10 +193,14 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     const internalRaw = copyRaw || moveRaw;
     if (internalRaw) {
       const shouldCopy = !!copyRaw || e.shiftKey || currentDragOperation.value === 'copy';
-      let parsed: any = null;
+      let parsed: unknown = null;
       try {
         parsed = JSON.parse(internalRaw);
-      } catch {
+      } catch (err) {
+        console.warn(
+          '[useFileBrowserDragAndDrop] Failed to parse internal drag data on entry:',
+          err,
+        );
         return;
       }
 
@@ -193,6 +238,20 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     await options.loadFolderContent();
   }
 
+  function onPanelDragEnter(e: DragEvent) {
+    const types = e.dataTransfer?.types;
+    if (!types) return;
+    if (
+      types.includes('Files') ||
+      types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
+      types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
+    ) {
+      e.preventDefault();
+      panelDragEnterCount++;
+      isDragOverPanel.value = true;
+    }
+  }
+
   function onPanelDragOver(e: DragEvent) {
     const types = e.dataTransfer?.types;
     if (!types) return;
@@ -216,13 +275,23 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   }
 
   function onPanelDragLeave(e: DragEvent) {
-    const currentTarget = e.currentTarget as HTMLElement | null;
-    if (!currentTarget?.contains(e.relatedTarget as Node | null)) {
-      isDragOverPanel.value = false;
+    const types = e.dataTransfer?.types;
+    if (!types) return;
+    if (
+      types.includes('Files') ||
+      types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
+      types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
+    ) {
+      panelDragEnterCount--;
+      if (panelDragEnterCount <= 0) {
+        panelDragEnterCount = 0;
+        isDragOverPanel.value = false;
+      }
     }
   }
 
   async function onPanelDrop(e: DragEvent) {
+    panelDragEnterCount = 0;
     isDragOverPanel.value = false;
 
     const targetFolder = filesPageStore.selectedFolder;
@@ -233,10 +302,14 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     const internalRaw = copyRaw || moveRaw;
     if (internalRaw) {
       const shouldCopy = !!copyRaw || e.shiftKey || currentDragOperation.value === 'copy';
-      let parsed: any = null;
+      let parsed: unknown = null;
       try {
         parsed = JSON.parse(internalRaw);
-      } catch {
+      } catch (err) {
+        console.warn(
+          '[useFileBrowserDragAndDrop] Failed to parse internal drag data on panel:',
+          err,
+        );
         return;
       }
 
@@ -283,12 +356,15 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     isRelevantDrag,
     onEntryDragStart,
     onEntryDragEnd,
+    onEntryDragEnter,
     onEntryDragOver,
     onEntryDragLeave,
     onEntryDrop,
+    onRootDragEnter,
     onRootDragOver,
     onRootDragLeave,
     onRootDrop,
+    onPanelDragEnter,
     onPanelDragOver,
     onPanelDragLeave,
     onPanelDrop,

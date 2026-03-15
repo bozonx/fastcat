@@ -90,8 +90,7 @@ function toggleFadeCurve(edge: 'in' | 'out') {
   if (!clipItem.value || !props.canEditClipContent || clipItem.value.locked) return;
 
   const curveProp = edge === 'in' ? 'audioFadeInCurve' : 'audioFadeOutCurve';
-  const defaultCurve = projectStore.projectSettings?.project.defaultAudioFadeCurve || 'logarithmic';
-  const currentCurve = clipItem.value[curveProp] || defaultCurve;
+  const currentCurve = clipItem.value[curveProp] === 'logarithmic' ? 'logarithmic' : 'linear';
   const nextCurve = currentCurve === 'logarithmic' ? 'linear' : 'logarithmic';
 
   timelineStore.updateClipProperties(props.track.id, props.item.id, {
@@ -401,7 +400,6 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
         :is-dragging="isDraggingCurrentItem || isMovePreviewCurrentItem"
         :is-resizing-volume="resizeVolume?.itemId === item.id"
         :is-mobile="isMobile"
-        :default-fade-curve="projectStore.projectSettings?.project.defaultAudioFadeCurve"
         @start-resize-fade="
           (e, payload) =>
             emit('startResizeFade', e, {

@@ -11,6 +11,7 @@ import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store'
 import { getWorkspacePathFileName } from '~/utils/workspace-common';
 import { pressedKeyCodes } from '~/utils/hotkeys/pressedKeys';
 import type { HudType, ShapeType } from '~/timeline/types';
+import { useThrottleFn } from '@vueuse/core';
 
 export interface UseTimelineDropHandlingOptions {
   scrollEl: Ref<HTMLElement | null>;
@@ -398,7 +399,7 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
     return dropStrategies.find((strategy) => strategy.canHandle(item)) ?? null;
   }
 
-  async function buildDragPreview(e: DragEvent, trackId: string) {
+  const buildDragPreview = useThrottleFn(async (e: DragEvent, trackId: string) => {
     const payload = draggedFile.value;
     if (!payload) {
       clearDragPreview();
@@ -445,7 +446,7 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
 
     dragPreview.value = preview;
     return preview;
-  }
+  }, 16);
 
   async function onTrackDragOver(e: DragEvent, trackId: string) {
     const types = e.dataTransfer?.types;

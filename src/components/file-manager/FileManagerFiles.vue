@@ -303,8 +303,7 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
     class="flex-1 overflow-auto min-h-0 min-w-0 relative"
     @dragover="onContainerDragOver"
     @dragleave="onContainerDragLeave"
-    @drop.capture="onContainerDrop"
-    @drop="onContainerDrop"
+    @drop.prevent="onContainerDrop"
     @keydown="onContainerKeyDown"
   >
     <UContextMenu :items="rootContextMenuItems">
