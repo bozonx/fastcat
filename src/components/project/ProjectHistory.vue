@@ -22,6 +22,10 @@ function formatTime(ts: number): string {
   const d = new Date(ts);
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
+
+function getEntryLabel(labelKey: string): string {
+  return t(labelKey);
+}
 </script>
 
 <template>
@@ -77,7 +81,7 @@ function formatTime(ts: number): string {
           class="w-3.5 h-3.5 shrink-0"
           :class="entry.isRedo ? 'text-ui-text-muted' : 'text-primary-400'"
         />
-        <span class="flex-1 truncate font-medium">{{ entry.label }}</span>
+        <span class="flex-1 truncate font-medium">{{ getEntryLabel(entry.labelKey) }}</span>
         <span class="text-ui-text-disabled shrink-0 tabular-nums">{{
           formatTime(entry.timestamp)
         }}</span>

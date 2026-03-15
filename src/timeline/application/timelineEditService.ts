@@ -20,7 +20,7 @@ export interface TimelineEditServiceDeps {
       skipHistory?: boolean;
       historyMode?: 'immediate' | 'debounced';
       historyDebounceMs?: number;
-      label?: string;
+      labelKey?: string;
     },
   ) => void;
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;

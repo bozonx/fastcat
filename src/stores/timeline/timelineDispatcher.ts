@@ -17,6 +17,7 @@ export interface TimelineDispatcherDeps {
   historyStore: {
     canUndo: boolean;
     canRedo: boolean;
+    multipleActionsLabelKey: string;
     undo: (doc: TimelineDocument) => TimelineDocument | null;
     redo: (doc: TimelineDocument) => TimelineDocument | null;
   };
@@ -32,6 +33,7 @@ export interface TimelineDispatcherApi {
       skipHistory?: boolean;
       historyMode?: 'immediate' | 'debounced';
       historyDebounceMs?: number;
+      labelKey?: string;
     },
   ) => void;
   batchApplyTimeline: (
@@ -39,7 +41,7 @@ export interface TimelineDispatcherApi {
     options?: {
       saveMode?: 'debounced' | 'immediate' | 'none';
       skipHistory?: boolean;
-      label?: string;
+      labelKey?: string;
     },
   ) => void;
   undoTimeline: () => void;
@@ -54,6 +56,7 @@ export function createTimelineDispatcher(deps: TimelineDispatcherDeps): Timeline
       skipHistory?: boolean;
       historyMode?: 'immediate' | 'debounced';
       historyDebounceMs?: number;
+      labelKey?: string;
     },
   ) {
     if (!deps.timelineDoc.value) {
@@ -86,7 +89,7 @@ export function createTimelineDispatcher(deps: TimelineDispatcherDeps): Timeline
     options?: {
       saveMode?: 'debounced' | 'immediate' | 'none';
       skipHistory?: boolean;
-      label?: string;
+      labelKey?: string;
     },
   ) {
     if (cmds.length === 0) return;
@@ -105,7 +108,13 @@ export function createTimelineDispatcher(deps: TimelineDispatcherDeps): Timeline
     if (current === prev) return;
 
     if (!options?.skipHistory) {
-      deps.historyDebounce.pushHistory(cmds[0]!, prev, { ...options, historyMode: 'immediate' });
+      deps.historyDebounce.pushHistory(cmds[0]!, prev, {
+        ...options,
+        historyMode: 'immediate',
+        labelKey:
+          options?.labelKey ??
+          (cmds.length > 1 ? deps.historyStore.multipleActionsLabelKey : undefined),
+      });
     }
 
     deps.timelineDoc.value = current;
@@ -122,6 +131,7 @@ export function createTimelineDispatcher(deps: TimelineDispatcherDeps): Timeline
 
   function undoTimeline() {
     if (!deps.timelineDoc.value || !deps.historyStore.canUndo) return;
+    deps.historyDebounce.clearPendingDebouncedHistory();
     const restored = deps.historyStore.undo(deps.timelineDoc.value);
     if (!restored) return;
     deps.timelineDoc.value = restored;
@@ -132,6 +142,7 @@ export function createTimelineDispatcher(deps: TimelineDispatcherDeps): Timeline
 
   function redoTimeline() {
     if (!deps.timelineDoc.value || !deps.historyStore.canRedo) return;
+    deps.historyDebounce.clearPendingDebouncedHistory();
     const restored = deps.historyStore.redo(deps.timelineDoc.value);
     if (!restored) return;
     deps.timelineDoc.value = restored;

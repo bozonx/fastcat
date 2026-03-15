@@ -129,7 +129,7 @@ export function createTimelineCommands(params: CreateTimelineCommandsParams) {
     options?: {
       historyMode?: 'immediate' | 'debounced';
       historyDebounceMs?: number;
-      label?: string;
+      labelKey?: string;
       skipHistory?: boolean;
       saveMode?: 'none' | 'debounced' | 'immediate';
     },
@@ -148,7 +148,7 @@ export function createTimelineCommands(params: CreateTimelineCommandsParams) {
     options?: {
       historyMode?: 'immediate' | 'debounced';
       historyDebounceMs?: number;
-      label?: string;
+      labelKey?: string;
       skipHistory?: boolean;
       saveMode?: 'none' | 'debounced' | 'immediate';
     },

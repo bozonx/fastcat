@@ -232,7 +232,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     options?: {
       historyMode?: 'debounced' | 'immediate';
       historyDebounceMs?: number;
-      label?: string;
+      labelKey?: string;
     },
   ) {
     if (isOtioPath(input.path)) {
@@ -300,10 +300,9 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
         trackId: input.trackId,
         name: input.name,
         path: input.path,
-        clipType: 'media',
-        durationUs,
+        durationUs: Math.round(Number(metadata?.duration || 0) * 1_000_000),
         isImage: isImageLike,
-        startUs: input.startUs,
+        startUs: input.startUs ?? 0,
         pseudo: input.pseudo,
         audioFadeInCurve: deps.getProjectSettings().project.defaultAudioFadeCurve,
         audioFadeOutCurve: deps.getProjectSettings().project.defaultAudioFadeCurve,
@@ -389,7 +388,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     options?: {
       historyMode?: 'debounced' | 'immediate';
       historyDebounceMs?: number;
-      label?: string;
+      labelKey?: string;
     },
   ) {
     const track = deps.getTrackById(input.trackId);
@@ -421,10 +420,8 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
         trackId: targetTrack.id,
         name: input.name,
         path: input.path,
-        clipType: 'timeline',
+        startUs: input.startUs ?? 0,
         durationUs,
-        sourceDurationUs: durationUs,
-        startUs: input.startUs,
         pseudo: input.pseudo,
         audioFadeInCurve: deps.getProjectSettings().project.defaultAudioFadeCurve,
         audioFadeOutCurve: deps.getProjectSettings().project.defaultAudioFadeCurve,
