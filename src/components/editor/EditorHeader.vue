@@ -3,6 +3,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import TimelineTabs from '~/components/timeline/TimelineTabs.vue';
+import BackgroundTasksButton from '~/components/file-manager/BackgroundTasksButton.vue';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
@@ -62,8 +63,19 @@ defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal
 
       <div class="w-px h-4 bg-ui-border mx-1" />
 
+      <BackgroundTasksButton size="sm" />
+
+      <UButton
+        size="sm"
+        variant="ghost"
+        color="neutral"
+        icon="i-heroicons-cog-6-tooth"
+        :title="t('videoEditor.settings.title', 'Editor settings')"
+        @click="$emit('open-editor-settings')"
+      />
+
       <!-- Window Switcher -->
-      <div class="flex items-center bg-ui-bg/50 p-1 rounded-lg border border-ui-border gap-1 mx-2">
+      <div class="flex items-center bg-ui-bg/50 p-1 rounded-lg border border-ui-border gap-1 ml-2">
         <button
           class="px-3 py-1 rounded text-sm font-medium transition-colors"
           :class="
@@ -73,7 +85,7 @@ defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal
           "
           @click="projectStore.goToFiles()"
         >
-          Файлы
+          {{ t('videoEditor.fileManager.tabs.files', 'Files') }}
         </button>
         <button
           class="px-3 py-1 rounded text-sm font-medium transition-colors"
@@ -84,7 +96,7 @@ defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal
           "
           @click="projectStore.goToCut()"
         >
-          Монтаж
+          {{ t('videoEditor.timeline.tabs.cut', 'Cut') }}
         </button>
         <button
           class="px-3 py-1 rounded text-sm font-medium transition-colors"
@@ -95,7 +107,7 @@ defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal
           "
           @click="projectStore.goToSound()"
         >
-          Звук
+          {{ t('videoEditor.timeline.tabs.sound', 'Sound') }}
         </button>
         <button
           class="px-3 py-1 rounded text-sm font-medium transition-colors"
@@ -106,20 +118,9 @@ defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal
           "
           @click="projectStore.goToExport()"
         >
-          Экспорт
+          {{ t('videoEditor.export.title', 'Export') }}
         </button>
       </div>
-
-      <div class="w-px h-4 bg-ui-border mx-1" />
-
-      <UButton
-        size="sm"
-        variant="ghost"
-        color="neutral"
-        icon="i-heroicons-cog-6-tooth"
-        :title="t('videoEditor.settings.title', 'Editor settings')"
-        @click="$emit('open-editor-settings')"
-      />
     </div>
   </div>
 </template>

@@ -1,7 +1,6 @@
 import { safeDispose, parseHexColor, sanitizeTimelineColor } from './utils';
 import { getMediaTypeFromFilename } from '../media-types';
 import { TimelineActiveTracker } from './TimelineActiveTracker';
-import { isSvgFile } from '../svg';
 import {
   Application,
   Sprite,
@@ -48,6 +47,7 @@ import { StageTextureRenderer } from './compositor/StageTextureRenderer';
 import { ClipFactory } from './compositor/ClipFactory';
 import { TimelineClipLoader } from './compositor/TimelineClipLoader';
 import { HudMediaLoader } from './compositor/HudMediaLoader';
+import { MediaClipLoader } from './compositor/MediaClipLoader';
 import { RasterImageLoader } from './compositor/RasterImageLoader';
 import { TextRenderer } from './compositor/renderers/TextRenderer';
 import { ShapeRenderer } from './compositor/renderers/ShapeRenderer';
@@ -102,6 +102,7 @@ export class VideoCompositor {
     width: this.width,
     height: this.height,
   });
+  private mediaClipLoader = new MediaClipLoader();
   private rasterImageLoader = new RasterImageLoader({
     width: this.width,
     height: this.height,
@@ -326,6 +327,7 @@ export class VideoCompositor {
       width: this.width,
       height: this.height,
     });
+    this.mediaClipLoader = new MediaClipLoader();
     this.rasterImageLoader = new RasterImageLoader({
       width: this.width,
       height: this.height,
@@ -828,41 +830,37 @@ export class VideoCompositor {
       }
 
       try {
-        const source = new BlobSource(file);
-        const input = new Input({ source, formats: ALL_FORMATS } as any);
-        const track = await input.getPrimaryVideoTrack();
+        const loadedVideo = await this.mediaClipLoader.loadVideoRuntime({
+          mediabunny: {
+            Input,
+            BlobSource,
+            VideoSampleSink,
+            ALL_FORMATS,
+          },
+          file,
+          sourceStartUs,
+          requestedTimelineDurationUs,
+          requestedSourceDurationUs,
+          requestedSourceRangeDurationUs,
+          startUs,
+        });
 
-        if (!track || !(await track.canDecode())) {
-          safeDispose(input);
+        if (!loadedVideo) {
           continue;
         }
 
-        const sink = new VideoSampleSink(track);
-        const firstTimestampS = await track.getFirstTimestamp();
-        const trackAny = track as any;
-        const frameRateRaw =
-          typeof trackAny.getFrameRate === 'function'
-            ? await trackAny.getFrameRate()
-            : (trackAny.frameRate ?? trackAny.fps);
-        const frameRate = Number(frameRateRaw);
-        const mediaDurationUs = Math.max(
-          0,
-          Math.round((await track.computeDuration()) * 1_000_000),
-        );
-        const maxSourceTailUs = Math.max(0, mediaDurationUs - sourceStartUs);
-        const sourceDurationUs =
-          requestedSourceDurationUs > 0
-            ? Math.min(requestedSourceDurationUs, maxSourceTailUs)
-            : maxSourceTailUs;
-        const durationUs =
-          requestedTimelineDurationUs > 0 ? requestedTimelineDurationUs : sourceDurationUs;
-        const endUs = startUs + durationUs;
+        const {
+          input,
+          sink,
+          firstTimestampS,
+          frameRate,
+          sourceDurationUs,
+          durationUs,
+          endUs,
+          imageSource,
+        } = loadedVideo;
 
         sequentialTimeUs = Math.max(sequentialTimeUs, endUs);
-
-        // Start with a VideoFrame-powered texture source when available.
-        // Fallback to a per-clip OffscreenCanvas if VideoFrame upload fails at runtime.
-        const imageSource = new ImageSource({ resource: new OffscreenCanvas(2, 2) as any });
         const compositorClip = this.clipFactory.createVideoClip({
           itemId,
           trackId,
@@ -872,13 +870,12 @@ export class VideoCompositor {
           input,
           sink,
           firstTimestampS,
-          frameRate: Number.isFinite(frameRate) && frameRate > 0 ? frameRate : undefined,
+          frameRate,
           startUs,
           endUs,
           durationUs,
           sourceStartUs,
-          sourceRangeDurationUs:
-            requestedSourceRangeDurationUs > 0 ? requestedSourceRangeDurationUs : durationUs,
+          sourceRangeDurationUs: loadedVideo.sourceRangeDurationUs,
           sourceDurationUs,
           speed,
           freezeFrameSourceUs,
