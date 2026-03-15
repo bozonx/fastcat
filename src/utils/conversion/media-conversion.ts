@@ -11,6 +11,8 @@ import { useProjectStore } from '~/stores/project.store';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import type { ConversionRequest } from '~/types/conversion';
 import { clampPositiveNumber, resolveAudioOnlyContainerFormat } from './helpers';
+import type { ExportOptions } from '~/utils/video-editor/worker-rpc';
+import type { WorkerTimelineClip } from '~/composables/monitor/types';
 
 export async function executeMediaConversion(params: {
   request: ConversionRequest;
@@ -68,9 +70,9 @@ export async function executeMediaConversion(params: {
           throw new Error('Invalid media duration');
         }
 
-        let exportOptions: any = {};
-        let videoPayload: any[] = [];
-        let audioPayload: any[] = [];
+        let exportOptions: ExportOptions = {} as ExportOptions;
+        let videoPayload: WorkerTimelineClip[] = [];
+        let audioPayload: WorkerTimelineClip[] = [];
 
         if (params.request.type === 'video' && params.request.video) {
           exportOptions = {
@@ -99,7 +101,7 @@ export async function executeMediaConversion(params: {
               source: { path: params.request.entry.path },
               timelineRange: { startUs: 0, durationUs },
               sourceRange: { startUs: 0, durationUs },
-            },
+            } as unknown as WorkerTimelineClip,
           ];
 
           if (!params.request.video.excludeAudio && meta.audio) {
@@ -112,7 +114,7 @@ export async function executeMediaConversion(params: {
                 timelineRange: { startUs: 0, durationUs },
                 sourceRange: { startUs: 0, durationUs },
                 audioGain: 1,
-              },
+              } as unknown as WorkerTimelineClip,
             ];
           }
         } else if (params.request.audioOnly) {
@@ -141,12 +143,12 @@ export async function executeMediaConversion(params: {
                 sourceRange: { startUs: 0, durationUs },
                 audioGain: 1,
                 speed: params.request.audioOnly.reverse ? -1 : 1,
-              },
+              } as unknown as WorkerTimelineClip,
             ];
           }
         }
 
-        await (client as any).exportTimeline(
+        await client.exportTimeline(
           params.targetHandle,
           exportOptions,
           videoPayload,
