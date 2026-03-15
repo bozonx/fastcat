@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PropertyRow from '~/components/properties/PropertyRow.vue';
 interface TimelineDocSummary {
   version?: string | number | null;
   durationUs?: number | null;

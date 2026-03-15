@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PropertyRow from '~/components/properties/PropertyRow.vue';
 const props = defineProps<{
   imageResolution: string | null;
   imageCreateDate: string | null;

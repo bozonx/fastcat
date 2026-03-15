@@ -12,6 +12,7 @@ import {
   isOpenableProjectFileName,
 } from '~/utils/media-types';
 import PropertySection from '~/components/properties/PropertySection.vue';
+import PropertyRow from '~/components/properties/PropertyRow.vue';
 import EntryPreviewBox from '~/components/properties/file/EntryPreviewBox.vue';
 import AudioFilePropertiesSection from '~/components/properties/file/AudioFilePropertiesSection.vue';
 import ExpandableYamlSection from '~/components/properties/file/ExpandableYamlSection.vue';

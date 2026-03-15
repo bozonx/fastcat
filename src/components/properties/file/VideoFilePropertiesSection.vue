@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PropertyRow from '~/components/properties/PropertyRow.vue';
 import { formatAudioChannels } from '~/utils/audio';
 
 const props = defineProps<{
