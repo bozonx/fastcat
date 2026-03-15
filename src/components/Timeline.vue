@@ -74,6 +74,14 @@ const playheadTransform = computed(
   () => `translate3d(${playheadPx.value}px, 0, 0) translateX(-50%)`,
 );
 
+const playheadHeight = computed(() => {
+  const totalTracksHeight = tracks.value.reduce(
+    (sum, tr) => sum + (trackHeights.value[tr.id] ?? 40),
+    0,
+  );
+  return Math.max(totalTracksHeight + 92, 0);
+});
+
 const currentFrameHighlightStyle = computed(() => {
   const pxPerFrame = zoomToPxPerSecond(timelineStore.timelineZoom) / fps.value;
   if (pxPerFrame < 6) return null;
@@ -589,19 +597,18 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
                 @select-item="selectItem"
                 @start-trim-item="startTrimItem"
                 @clip-action="onClipAction"
-              >
-                <template #overlays>
-                  <div
-                    class="absolute top-0 bottom-0 w-px pointer-events-none"
-                    :style="{
-                      transform: playheadTransform,
-                      willChange: 'transform',
-                      zIndex: 50,
-                      backgroundColor: 'var(--color-primary-500, #3b82f6)',
-                    }"
-                  />
-                </template>
-              </TimelineTracks>
+              />
+
+              <div
+                class="absolute top-0 w-px pointer-events-none"
+                :style="{
+                  transform: playheadTransform,
+                  willChange: 'transform',
+                  zIndex: 50,
+                  height: `${playheadHeight}px`,
+                  backgroundColor: 'var(--color-primary-500, #3b82f6)',
+                }"
+              />
 
               <div
                 v-if="currentFrameHighlightStyle"

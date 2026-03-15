@@ -96,8 +96,8 @@ function onFadeHandlePointerDown(
 }
 
 const volumeY = computed(() => {
-  const g = Math.max(0, Math.min(CLIP_AUDIO_GAIN_MAX, props.clip.audioGain ?? 1));
-  return (1 - g / CLIP_AUDIO_GAIN_MAX) * 100;
+  const g = Math.max(0, Math.min(2, props.clip.audioGain ?? 1));
+  return (1 - g / 2) * 100;
 });
 </script>
 

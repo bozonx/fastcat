@@ -248,13 +248,13 @@ function selectTransition(
                 selectionStore.selectTimelineTrack(track.id);
               } else {
                 timelineStore.selectTimelineProperties();
+                selectionStore.selectTimelineProperties();
               }
             } else {
               timelineStore.selectTrack(track.id);
               selectionStore.selectTimelineTrack(track.id);
             }
             timelineStore.clearSelection();
-            selectionStore.clearSelection();
           });
         }
       "
