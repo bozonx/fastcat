@@ -70,7 +70,7 @@ function resetDefaults() {
           value-key="value"
           label-key="label"
           class="w-full"
-          :searchable="false"
+          :search-input="false"
           @update:model-value="
             (v: any) => (workspaceStore.userSettings.optimization.proxyMaxPixels = v?.value ?? v)
           "

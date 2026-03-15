@@ -14,6 +14,11 @@ import { mapAudioEngineClips } from './useMonitorCore.audio';
 import { createMonitorCompositorRuntime } from './useMonitorCore.compositor';
 import { createMonitorPreviewHostApi } from './useMonitorCore.hostApi';
 import {
+  disposeMonitorCoreRuntime,
+  initializeMonitorCoreRuntime,
+} from './useMonitorCore.lifecycle';
+import { createMonitorCoreQueues } from './useMonitorCore.queues';
+import {
   computeMonitorTimelineDuration,
   prepareMonitorTimelineState,
 } from './useMonitorCore.timeline';
@@ -55,13 +60,6 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   let buildRequestId = 0;
   let lastBuiltSourceSignature = 0;
   let lastBuiltLayoutSignature = 0;
-  let buildInFlight = false;
-  let buildRequested = false;
-  let buildDebounceTimer: number | null = null;
-  let layoutDebounceTimer: number | null = null;
-  let layoutUpdateInFlight = false;
-  let pendingLayoutClips: WorkerTimelineClip[] | null = null;
-  let pendingLayoutAudioClips: WorkerTimelineClip[] | null = null;
   let isUnmounted = false;
   let forceRecreateCompositorNextBuild = false;
   let currentTimeProvider: (() => number) | null = null;
@@ -123,104 +121,71 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     return audioEngineClips;
   }
 
-  async function flushBuildQueue() {
-    if (buildInFlight) return;
-
-    buildInFlight = true;
-    try {
-      while (buildRequested && !isUnmounted) {
-        buildRequested = false;
-        await buildTimeline();
-      }
-    } finally {
-      buildInFlight = false;
-    }
-  }
-
-  function scheduleLayoutUpdate(
-    layoutClips: WorkerTimelineClip[],
-    audioClips: WorkerTimelineClip[],
-  ) {
-    pendingLayoutClips = layoutClips;
-    pendingLayoutAudioClips = audioClips;
-    if (layoutDebounceTimer !== null) {
-      clearTimeout(layoutDebounceTimer);
-    }
-    layoutDebounceTimer = window.setTimeout(() => {
-      layoutDebounceTimer = null;
-      void flushLayoutUpdateQueue();
-    }, LAYOUT_DEBOUNCE_MS);
-  }
-
   function getRenderTimeForLayoutUpdate() {
     if (currentTimeProvider) return currentTimeProvider();
     return clampToTimeline(timelineStore.currentTime);
   }
 
-  async function flushLayoutUpdateQueue() {
-    if (layoutUpdateInFlight || isUnmounted) return;
-
-    layoutUpdateInFlight = true;
+  async function flushLayoutUpdate(params: {
+    layoutClips: WorkerTimelineClip[];
+    layoutAudioClips: WorkerTimelineClip[];
+  }) {
     try {
-      while (pendingLayoutClips && pendingLayoutAudioClips) {
-        const layoutClips = pendingLayoutClips;
-        const layoutAudioClips = pendingLayoutAudioClips;
-        pendingLayoutClips = null;
-        pendingLayoutAudioClips = null;
-        try {
-          const preparedTimeline = await prepareMonitorTimelineState({
-            rawAudioClips: layoutAudioClips,
-            tracks: timelineStore.timelineDoc?.tracks ?? [],
-            projectStore,
-            workspaceStore,
-            masterEffects: timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects,
-          });
-          const flattenedClips = preparedTimeline.flattenedClips;
-          const flattenedAudio = preparedTimeline.flattenedAudio;
+      const preparedTimeline = await prepareMonitorTimelineState({
+        rawAudioClips: params.layoutAudioClips,
+        tracks: timelineStore.timelineDoc?.tracks ?? [],
+        projectStore,
+        workspaceStore,
+        masterEffects: timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects,
+      });
+      const flattenedClips = preparedTimeline.flattenedClips;
+      const flattenedAudio = preparedTimeline.flattenedAudio;
 
-          workerTimelineClips.value = flattenedClips;
-          workerAudioClips.value = flattenedAudio;
+      workerTimelineClips.value = flattenedClips;
+      workerAudioClips.value = flattenedAudio;
 
-          layoutUpdateFromQueue = true;
+      layoutUpdateFromQueue = true;
 
-          const payload = cloneWorkerPayload(preparedTimeline.payload);
-          const maxDuration = await client.updateTimelineLayout(payload);
-          // Keep store duration at least as large as current value to avoid clamping
-          // when disabled clips are excluded from the worker payload.
-          timelineStore.duration = computeMonitorTimelineDuration({
-            currentDurationUs: timelineStore.duration,
-            maxDurationUs: maxDuration,
-            audioDurationUs: preparedTimeline.audioDurationUs,
-          });
-          lastBuiltLayoutSignature = clipLayoutSignature.value;
-          layoutUpdateFromQueue = false;
-          scheduleRender(getRenderTimeForLayoutUpdate());
-        } catch (error) {
-          console.error('[Monitor] Failed to update timeline layout', error);
-          timelineStore.isPlaying = false;
-          scheduleBuild();
-        }
-      }
-
-      const audioClips = workerAudioClips.value;
-      const audioEngineClips = await syncAudioEngineClips(audioClips);
-
-      audioEngine.updateTimelineLayout(audioEngineClips);
-    } finally {
-      layoutUpdateInFlight = false;
+      const payload = cloneWorkerPayload(preparedTimeline.payload);
+      const maxDuration = await client.updateTimelineLayout(payload);
+      timelineStore.duration = computeMonitorTimelineDuration({
+        currentDurationUs: timelineStore.duration,
+        maxDurationUs: maxDuration,
+        audioDurationUs: preparedTimeline.audioDurationUs,
+      });
+      lastBuiltLayoutSignature = clipLayoutSignature.value;
+      layoutUpdateFromQueue = false;
+      scheduleRender(getRenderTimeForLayoutUpdate());
+    } catch (error) {
+      console.error('[Monitor] Failed to update timeline layout', error);
+      timelineStore.isPlaying = false;
+      scheduleBuild();
     }
+
+    const audioClips = workerAudioClips.value;
+    const audioEngineClips = await syncAudioEngineClips(audioClips);
+
+    audioEngine.updateTimelineLayout(audioEngineClips);
   }
 
-  function scheduleBuild() {
-    if (buildDebounceTimer !== null) {
-      clearTimeout(buildDebounceTimer);
-    }
-    buildDebounceTimer = window.setTimeout(() => {
-      buildDebounceTimer = null;
-      buildRequested = true;
-      void flushBuildQueue();
-    }, BUILD_DEBOUNCE_MS);
-  }
+  const queues = createMonitorCoreQueues({
+    buildDebounceMs: BUILD_DEBOUNCE_MS,
+    layoutDebounceMs: LAYOUT_DEBOUNCE_MS,
+    isUnmounted: () => isUnmounted,
+    flushBuild: buildTimeline,
+    flushLayoutUpdate,
+  });
+
+  const scheduleBuild = queues.scheduleBuild;
+  const scheduleLayoutUpdate = (
+    layoutClips: WorkerTimelineClip[],
+    audioClips: WorkerTimelineClip[],
+  ) => {
+    queues.scheduleLayoutUpdate({
+      layoutClips,
+      layoutAudioClips: audioClips,
+    });
+  };
 
   const scheduleRender = compositorRuntime.scheduleRender;
 
@@ -456,34 +421,29 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   );
 
   onMounted(() => {
-    isUnmounted = false;
-    updateCanvasDisplaySize();
-    scheduleBuild();
+    initializeMonitorCoreRuntime({
+      setUnmounted: (value) => {
+        isUnmounted = value;
+      },
+      updateCanvasDisplaySize,
+      scheduleBuild,
+    });
   });
 
   onBeforeUnmount(() => {
-    isUnmounted = true;
-    timelineStore.isPlaying = false;
-    compositorRuntime.clearPendingRender();
-    if (buildDebounceTimer !== null) {
-      clearTimeout(buildDebounceTimer);
-      buildDebounceTimer = null;
-    }
-    if (layoutDebounceTimer !== null) {
-      clearTimeout(layoutDebounceTimer);
-      layoutDebounceTimer = null;
-    }
-
-    try {
-      audioEngine.destroy();
-    } catch (err) {
-      console.error('[Monitor] Failed to destroy AudioEngine', err);
-    }
-
-    pendingLayoutClips = null;
-    pendingLayoutAudioClips = null;
-    void compositorRuntime.destroy().catch((error) => {
-      console.error('[Monitor] Failed to destroy compositor on unmount', error);
+    disposeMonitorCoreRuntime({
+      setUnmounted: (value) => {
+        isUnmounted = value;
+      },
+      stopPlayback: () => {
+        timelineStore.isPlaying = false;
+      },
+      clearPendingRender: compositorRuntime.clearPendingRender,
+      clearQueues: queues.clear,
+      destroyAudioEngine: () => {
+        audioEngine.destroy();
+      },
+      destroyCompositor: compositorRuntime.destroy,
     });
   });
 

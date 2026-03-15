@@ -38,10 +38,10 @@ function selectPreset(value: number) {
       class="flex-1"
       @update:model-value="(v) => emit('update:modelValue', v)"
     />
-    <UDropdown
-      :items="[fpsPresets.map(p => ({ label: p.label, click: () => selectPreset(p.value) }))]"
+    <UDropdownMenu
+      :items="fpsPresets.map(p => ({ label: p.label, onSelect: () => selectPreset(p.value) }))"
       :disabled="disabled"
-      :popper="{ placement: 'bottom-end' }"
+      :content="{ align: 'end' }"
     >
       <UButton
         color="neutral"
@@ -51,6 +51,6 @@ function selectPreset(value: number) {
         :disabled="disabled"
         class="px-1"
       />
-    </UDropdown>
+    </UDropdownMenu>
   </div>
 </template>

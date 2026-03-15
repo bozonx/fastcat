@@ -16,6 +16,7 @@ import {
   TIMELINE_WHEEL_ACTIONS,
   TRACK_HEADERS_WHEEL_ACTIONS,
 } from '~/utils/mouse';
+import { LAYER_OPTIONS, type LayerKey } from '~/utils/hotkeys/layerUtils';
 
 type MouseSettings = typeof DEFAULT_USER_SETTINGS.mouse;
 type MouseCategory = keyof MouseSettings;
@@ -44,6 +45,30 @@ const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 
 const isResetConfirmOpen = ref(false);
+
+const modifier1Name = computed(() => {
+  const val = workspaceStore.userSettings.hotkeys.layer1 ?? 'Shift';
+  return LAYER_OPTIONS.find((opt) => opt.value === val)?.label || val;
+});
+
+const modifier2Name = computed(() => {
+  const val = workspaceStore.userSettings.hotkeys.layer2 ?? 'Control';
+  return LAYER_OPTIONS.find((opt) => opt.value === val)?.label || val;
+});
+
+function updateLayer1(val: LayerKey) {
+  if (!val) return;
+  void workspaceStore.batchUpdateUserSettings((draft) => {
+    draft.hotkeys.layer1 = val;
+  });
+}
+
+function updateLayer2(val: LayerKey) {
+  if (!val) return;
+  void workspaceStore.batchUpdateUserSettings((draft) => {
+    draft.hotkeys.layer2 = val;
+  });
+}
 
 const defaultLabel = computed(() => t('common.default', 'Default'));
 
@@ -133,7 +158,7 @@ const sectionConfigs = computed(() => [
       },
       {
         key: 'wheelShift',
-        label: t('videoEditor.settings.mouseTimelineWheelShift', 'Primary wheel + Shift'),
+        label: t('videoEditor.settings.mouseTimelineWheelShift', { modifier1: modifier1Name.value }),
         options: rulerWheelOptions.value,
       },
       {
@@ -143,10 +168,9 @@ const sectionConfigs = computed(() => [
       },
       {
         key: 'wheelSecondaryShift',
-        label: t(
-          'videoEditor.settings.mouseTimelineWheelSecondaryShift',
-          'Secondary wheel + Shift',
-        ),
+        label: t('videoEditor.settings.mouseTimelineWheelSecondaryShift', {
+          modifier1: modifier1Name.value,
+        }),
         options: rulerWheelOptions.value,
       },
       {
@@ -156,7 +180,7 @@ const sectionConfigs = computed(() => [
       },
       {
         key: 'dragShift',
-        label: t('videoEditor.settings.mouseRulerDragShift', 'Left button drag + Shift'),
+        label: t('videoEditor.settings.mouseRulerDragShift', { modifier1: modifier1Name.value }),
         options: dragOptions.value,
       },
       {
@@ -171,7 +195,7 @@ const sectionConfigs = computed(() => [
       },
       {
         key: 'shiftClick',
-        label: t('videoEditor.settings.mouseTimelineShiftClick', 'Shift + Click'),
+        label: t('videoEditor.settings.mouseTimelineShiftClick', { modifier1: modifier1Name.value }),
         options: shiftClickActionOptions.value,
       },
       {
@@ -203,7 +227,7 @@ const sectionConfigs = computed(() => [
       },
       {
         key: 'wheelShift',
-        label: t('videoEditor.settings.mouseTimelineWheelShift', 'Primary wheel + Shift'),
+        label: t('videoEditor.settings.mouseTimelineWheelShift', { modifier1: modifier1Name.value }),
         options: timelineWheelOptions.value,
       },
       {
@@ -213,10 +237,9 @@ const sectionConfigs = computed(() => [
       },
       {
         key: 'wheelSecondaryShift',
-        label: t(
-          'videoEditor.settings.mouseTimelineWheelSecondaryShift',
-          'Secondary wheel + Shift',
-        ),
+        label: t('videoEditor.settings.mouseTimelineWheelSecondaryShift', {
+          modifier1: modifier1Name.value,
+        }),
         options: timelineWheelOptions.value,
       },
       {
@@ -239,12 +262,12 @@ const sectionConfigs = computed(() => [
     infoColumns: true,
     infoItems: [
       t('videoEditor.settings.mouseHardcodedLeftDrag'),
-      t('videoEditor.settings.mouseHardcodedShiftDrag'),
+      t('videoEditor.settings.mouseHardcodedShiftDrag', { modifier1: modifier1Name.value }),
       t('videoEditor.settings.mouseHardcodedLeftClick'),
-      t('videoEditor.settings.mouseHardcodedShiftClick'),
+      t('videoEditor.settings.mouseHardcodedShiftClick', { modifier1: modifier1Name.value }),
       t('videoEditor.settings.mouseHardcodedRazorClick'),
-      t('videoEditor.settings.mouseHardcodedRazorShiftClick'),
-      t('videoEditor.settings.mouseHardcodedRazorCtrlClick'),
+      t('videoEditor.settings.mouseHardcodedRazorShiftClick', { modifier1: modifier1Name.value }),
+      t('videoEditor.settings.mouseHardcodedRazorCtrlClick', { modifier2: modifier2Name.value }),
     ],
   },
   {
@@ -258,7 +281,7 @@ const sectionConfigs = computed(() => [
       },
       {
         key: 'wheelShift',
-        label: t('videoEditor.settings.mouseTimelineWheelShift', 'Primary wheel + Shift'),
+        label: t('videoEditor.settings.mouseTimelineWheelShift', { modifier1: modifier1Name.value }),
         options: trackHeadersWheelOptions.value,
       },
       {
@@ -268,10 +291,9 @@ const sectionConfigs = computed(() => [
       },
       {
         key: 'wheelSecondaryShift',
-        label: t(
-          'videoEditor.settings.mouseTimelineWheelSecondaryShift',
-          'Secondary wheel + Shift',
-        ),
+        label: t('videoEditor.settings.mouseTimelineWheelSecondaryShift', {
+          modifier1: modifier1Name.value,
+        }),
         options: trackHeadersWheelOptions.value,
       },
     ],
@@ -288,7 +310,7 @@ const sectionConfigs = computed(() => [
       },
       {
         key: 'wheelShift',
-        label: t('videoEditor.settings.mouseMonitorWheelShift', 'Wheel + Shift'),
+        label: t('videoEditor.settings.mouseMonitorWheelShift', { modifier1: modifier1Name.value }),
         options: monitorWheelOptions.value,
       },
       {
@@ -298,10 +320,9 @@ const sectionConfigs = computed(() => [
       },
       {
         key: 'wheelSecondaryShift',
-        label: t(
-          'videoEditor.settings.mouseTimelineWheelSecondaryShift',
-          'Secondary wheel + Shift',
-        ),
+        label: t('videoEditor.settings.mouseTimelineWheelSecondaryShift', {
+          modifier1: modifier1Name.value,
+        }),
         options: monitorWheelOptions.value,
       },
       {
@@ -372,6 +393,31 @@ function isModified(category: MouseCategory, key: string) {
       <UButton size="xs" color="neutral" variant="ghost" @click="isResetConfirmOpen = true">
         {{ t('videoEditor.settings.resetDefaults', 'Reset to defaults') }}
       </UButton>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 px-1">
+      <div class="flex flex-col gap-1.5">
+        <label class="text-xs font-medium text-ui-text-muted">
+          {{ t('videoEditor.settings.hotkeysLayer1') }}
+        </label>
+        <USelectMenu
+          :model-value="workspaceStore.userSettings.hotkeys.layer1 ?? 'Shift'"
+          :items="LAYER_OPTIONS"
+          value-key="value"
+          @update:model-value="(val) => updateLayer1(val as LayerKey)"
+        />
+      </div>
+      <div class="flex flex-col gap-1.5">
+        <label class="text-xs font-medium text-ui-text-muted">
+          {{ t('videoEditor.settings.hotkeysLayer2') }}
+        </label>
+        <USelectMenu
+          :model-value="workspaceStore.userSettings.hotkeys.layer2 ?? 'Control'"
+          :items="LAYER_OPTIONS"
+          value-key="value"
+          @update:model-value="(val) => updateLayer2(val as LayerKey)"
+        />
+      </div>
     </div>
 
     <div class="flex flex-col gap-8">

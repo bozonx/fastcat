@@ -15,6 +15,21 @@ export type LayerKey =
   | 'MetaLeft'
   | 'MetaRight';
 
+export const LAYER_OPTIONS: { label: string; value: LayerKey }[] = [
+  { label: 'Shift (Any)', value: 'Shift' },
+  { label: 'Control (Any)', value: 'Control' },
+  { label: 'Alt (Any)', value: 'Alt' },
+  { label: 'Meta (Any)', value: 'Meta' },
+  { label: 'Left Shift', value: 'ShiftLeft' },
+  { label: 'Right Shift', value: 'ShiftRight' },
+  { label: 'Left Control', value: 'ControlLeft' },
+  { label: 'Right Control', value: 'ControlRight' },
+  { label: 'Left Alt', value: 'AltLeft' },
+  { label: 'Right Alt', value: 'AltRight' },
+  { label: 'Left Meta', value: 'MetaLeft' },
+  { label: 'Right Meta', value: 'MetaRight' },
+];
+
 export function isLayerActive(
   e: KeyboardEvent | MouseEvent | WheelEvent,
   layerType: LayerKey,
