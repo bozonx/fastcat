@@ -5,12 +5,19 @@ import type { WorkerTimelineClip } from './types';
 import { normalizeTimeUs } from '~/utils/monitor-time';
 import { clampNumber, mergeBalance, mergeGain } from '~/utils/audio/envelope';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
-import {
-  normalizeTransitionCurve,
-  normalizeTransitionMode,
-  normalizeTransitionParams,
-} from '~/transitions';
 import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
+import {
+  applyAdjacentTransitions,
+  createBackgroundWorkerClip,
+  createBaseWorkerClip,
+  createShapeWorkerClip,
+  createTextWorkerClip,
+  hashString,
+  mixFloat,
+  mixHash,
+  mixTime,
+  sanitizeMonitorSpeed,
+} from './useMonitorTimeline.helpers';
 
 export function useMonitorTimeline() {
   const timelineStore = useTimelineStore();
@@ -48,69 +55,18 @@ export function useMonitorTimeline() {
     const videoTracks = docTracks.filter((track) => track.kind === 'video' && !track.videoHidden);
     const trackCount = videoTracks.length;
 
-    function sanitizeSpeed(raw: unknown): number | undefined {
-      if (raw === undefined) return undefined;
-      const v = Number(raw);
-      if (!Number.isFinite(v)) return undefined;
-      return Math.max(-10, Math.min(10, v));
-    }
-
-    function sanitizeTransition(
-      raw: unknown,
-    ): import('~/timeline/types').ClipTransition | undefined {
-      if (!raw || typeof raw !== 'object') return undefined;
-      const anyRaw = raw as any;
-      const type = typeof anyRaw.type === 'string' ? anyRaw.type : '';
-      const durationUs = Number(anyRaw.durationUs);
-      if (!type) return undefined;
-      if (!Number.isFinite(durationUs)) return undefined;
-      const normalizedParams = normalizeTransitionParams(type, anyRaw.params) as
-        | Record<string, unknown>
-        | undefined;
-      return {
-        type,
-        durationUs: Math.max(0, Math.round(durationUs)),
-        mode: normalizeTransitionMode(anyRaw.mode),
-        curve: normalizeTransitionCurve(anyRaw.curve),
-        params: normalizedParams ? JSON.parse(JSON.stringify(normalizedParams)) : undefined,
-      };
-    }
-
     for (const [trackIndex, track] of videoTracks.entries()) {
       for (const item of track.items) {
         if (item.kind !== 'clip') continue;
         if ((item as any).disabled) continue;
 
         const clipType = (item as any).clipType ?? 'media';
-        const effects = item.effects ? JSON.parse(JSON.stringify(item.effects)) : undefined;
-
-        const base: WorkerTimelineClip = {
-          kind: 'clip',
-          clipType,
-          id: item.id,
+        const base = createBaseWorkerClip({
+          item,
           trackId: track.id,
           layer: trackCount - 1 - trackIndex,
-          speed: sanitizeSpeed((item as any).speed) ?? 1,
-          freezeFrameSourceUs: item.freezeFrameSourceUs,
-          opacity: item.opacity,
-          blendMode: item.blendMode,
-          effects,
-          transform: (item as any).transform,
-          transitionIn: sanitizeTransition((item as any).transitionIn),
-          transitionOut: sanitizeTransition((item as any).transitionOut),
-          sourceDurationUs:
-            typeof (item as any).sourceDurationUs === 'number'
-              ? (item as any).sourceDurationUs
-              : undefined,
-          timelineRange: {
-            startUs: item.timelineRange.startUs,
-            durationUs: item.timelineRange.durationUs,
-          },
-          sourceRange: {
-            startUs: item.sourceRange.startUs,
-            durationUs: item.sourceRange.durationUs,
-          },
-        };
+          clipType,
+        });
 
         if (clipType === 'media' || clipType === 'timeline') {
           const path = (item as any).source?.path;
@@ -125,60 +81,31 @@ export function useMonitorTimeline() {
             clips.push({ ...base, source: { path } });
           }
         } else if (clipType === 'background') {
-          clips.push({
-            ...base,
-            backgroundColor: sanitizeTimelineColor((item as any).backgroundColor, '#000000'),
-          });
+          clips.push(createBackgroundWorkerClip(base, (item as any).backgroundColor));
         } else if (clipType === 'text') {
-          clips.push({
-            ...base,
-            text: String((item as any).text ?? ''),
-            style: (item as any).style,
-          });
+          clips.push(
+            createTextWorkerClip(base, {
+              text: (item as any).text,
+              style: (item as any).style,
+            }),
+          );
         } else if (clipType === 'shape') {
-          clips.push({
-            ...base,
-            shapeType: (item as any).shapeType ?? 'square',
-            fillColor: String((item as any).fillColor ?? '#ffffff'),
-            strokeColor: String((item as any).strokeColor ?? '#000000'),
-            strokeWidth: Number((item as any).strokeWidth ?? 0),
-            shapeConfig: (item as any).shapeConfig,
-          });
+          clips.push(
+            createShapeWorkerClip(base, {
+              shapeType: (item as any).shapeType,
+              fillColor: (item as any).fillColor,
+              strokeColor: (item as any).strokeColor,
+              strokeWidth: (item as any).strokeWidth,
+              shapeConfig: (item as any).shapeConfig,
+            }),
+          );
         } else {
           clips.push(base);
         }
       }
     }
 
-    const clipsByTrack = new Map<string, WorkerTimelineClip[]>();
-    for (const clip of clips) {
-      const trackId = clip.trackId;
-      if (!trackId) continue;
-      const list = clipsByTrack.get(trackId) ?? [];
-      list.push(clip);
-      clipsByTrack.set(trackId, list);
-    }
-
-    for (const trackClips of clipsByTrack.values()) {
-      trackClips.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-
-      for (let index = 0; index < trackClips.length - 1; index += 1) {
-        const current = trackClips[index];
-        const next = trackClips[index + 1];
-        if (!current || !next) continue;
-
-        const transitionOut = current.transitionOut;
-        if (!transitionOut || (transitionOut.mode ?? 'transparent') !== 'adjacent') continue;
-
-        const currentEndUs = current.timelineRange.startUs + current.timelineRange.durationUs;
-        const gapUs = next.timelineRange.startUs - currentEndUs;
-        if (gapUs > 1_000) continue;
-
-        if (!next.transitionIn) {
-          next.transitionIn = JSON.parse(JSON.stringify(transitionOut));
-        }
-      }
-    }
+    applyAdjacentTransitions(clips);
 
     return clips;
   });
@@ -187,9 +114,7 @@ export function useMonitorTimeline() {
     const clips: WorkerTimelineClip[] = [];
 
     function sanitizeSpeed(raw: unknown): number {
-      const v = Number(raw);
-      if (!Number.isFinite(v)) return 1;
-      return Math.max(-10, Math.min(10, v));
+      return sanitizeMonitorSpeed(raw, 1) ?? 1;
     }
 
     const effectiveItems = buildEffectiveAudioClipItems({
@@ -240,33 +165,6 @@ export function useMonitorTimeline() {
   const workerAudioClips = ref<WorkerTimelineClip[]>([]);
 
   const safeDurationUs = computed(() => normalizeTimeUs(timelineStore.duration));
-
-  function hashString(value: string): number {
-    let hash = 2166136261;
-    for (let index = 0; index < value.length; index += 1) {
-      hash ^= value.charCodeAt(index);
-      hash = Math.imul(hash, 16777619);
-    }
-    return hash >>> 0;
-  }
-
-  function mixHash(hash: number, value: number): number {
-    hash ^= value;
-    hash = Math.imul(hash, 16777619);
-    return hash >>> 0;
-  }
-
-  function mixTime(hash: number, value: number): number {
-    const safeValue = Number.isFinite(value) ? Math.round(value) : 0;
-    const low = safeValue >>> 0;
-    const high = Math.floor(safeValue / 0x1_0000_0000) >>> 0;
-    return mixHash(mixHash(hash, low), high);
-  }
-
-  function mixFloat(hash: number, value: unknown, scale = 1000): number {
-    const n = typeof value === 'number' && Number.isFinite(value) ? value : 0;
-    return mixTime(hash, Math.round(n * scale));
-  }
 
   const clipSourceSignature = computed(() => {
     let hash = mixHash(2166136261, videoItems.value.length);
