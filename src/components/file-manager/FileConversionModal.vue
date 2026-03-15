@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, watch } from 'vue';
 import AppModal from '~/components/ui/AppModal.vue';
-import MediaEncodingSettings, {
-  type FormatOption,
-} from '~/components/media/MediaEncodingSettings.vue';
+import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
@@ -66,42 +64,11 @@ const isOpen = computed({
   },
 });
 
-const formatOptions: readonly FormatOption[] = [
-  { value: 'mp4', label: 'MP4' },
-  { value: 'webm', label: 'WEBM' },
-  { value: 'mkv', label: 'MKV (AV1)' },
-];
 
 const audioFormatOptions: readonly { value: 'opus' | 'aac'; label: string }[] = [
   { value: 'opus', label: 'OPUS' },
   { value: 'aac', label: 'AAC' },
 ];
-
-const audioCodecOptions = [
-  { value: 'aac', label: t('videoEditor.export.codec.aac', 'AAC') },
-  { value: 'opus', label: t('videoEditor.export.codec.opus', 'Opus') },
-];
-
-const videoCodecSupport = ref<Record<string, boolean>>({});
-const isLoadingCodecSupport = ref(false);
-
-const videoCodecOptions = computed(() =>
-  resolveVideoCodecOptions(BASE_VIDEO_CODEC_OPTIONS, videoCodecSupport.value),
-);
-
-async function loadCodecSupport() {
-  if (isLoadingCodecSupport.value) return;
-  isLoadingCodecSupport.value = true;
-  try {
-    videoCodecSupport.value = await checkVideoCodecSupport(BASE_VIDEO_CODEC_OPTIONS);
-  } finally {
-    isLoadingCodecSupport.value = false;
-  }
-}
-
-onMounted(() => {
-  loadCodecSupport();
-});
 
 const getPhaseLabel = computed(() => {
   if (conversionPhase.value === 'encoding')
@@ -248,7 +215,7 @@ const modalTitle = computed(() => {
             :disabled="isConverting"
           />
 
-          <MediaEncodingSettings
+          <VideoEncodingForm
             v-model:output-format="videoFormat"
             v-model:video-codec="videoCodec"
             v-model:bitrate-mbps="videoBitrateMbps"
@@ -261,14 +228,12 @@ const modalTitle = computed(() => {
             v-model:keyframe-interval-sec="keyframeIntervalSec"
             :disabled="isConverting"
             :show-metadata="false"
+            :show-presets="true"
             :has-audio="true"
             :hide-audio-bitrate="true"
             :show-audio-advanced="true"
             :original-audio-sample-rate="originalAudioSampleRate"
             :allow-original-audio-sample-rate="true"
-            :is-loading-codec-support="isLoadingCodecSupport"
-            :format-options="formatOptions"
-            :video-codec-options="videoCodecOptions"
           />
         </div>
 

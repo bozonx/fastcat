@@ -5,14 +5,13 @@ import { ref, computed } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineStore } from '~/stores/timeline.store';
-import MediaEncodingSettings, {
-  type FormatOption,
-} from '~/components/media/MediaEncodingSettings.vue';
+import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 import {
   BASE_AUDIO_CODEC_OPTIONS,
   BASE_VIDEO_CODEC_OPTIONS,
+  VIDEO_FORMAT_OPTIONS,
   checkVideoCodecSupport,
   resolveVideoCodecOptions,
 } from '~/utils/webcodecs';
@@ -54,7 +53,8 @@ const exportSummary = computed(() => {
   const e = projectStore.projectSettings?.exportDefaults?.encoding;
   if (!e) return '';
 
-  const formatLabel = formatOptions.find((f) => f.value === e.format)?.label || e.format || '';
+  const formatLabel =
+    VIDEO_FORMAT_OPTIONS.find((f) => f.value === e.format)?.label || e.format || '';
   const format = formatLabel.split(' ')[0]?.toUpperCase() || '';
 
   const vCodecLabel =
@@ -102,18 +102,6 @@ async function confirmDeleteProject() {
   // because projectStore.currentProjectName becomes null and the view switches in index.vue
 }
 
-const formatOptions: readonly FormatOption[] = [
-  { value: 'mp4', label: 'MP4' },
-  { value: 'webm', label: 'WebM (VP9/OPUS)' },
-  { value: 'mkv', label: 'MKV (AV1|OPUS)' },
-];
-
-const videoCodecSupport = ref<Record<string, boolean>>({});
-const isLoadingCodecSupport = ref(false);
-
-const videoCodecOptions = computed(() =>
-  resolveVideoCodecOptions(BASE_VIDEO_CODEC_OPTIONS, videoCodecSupport.value),
-);
 
 const projectPresetOptions = computed(() =>
   workspaceStore.userSettings.projectPresets.items.map((preset) => ({
@@ -129,18 +117,6 @@ const exportPresetOptions = computed(() =>
   })),
 );
 
-async function loadCodecSupport() {
-  if (isLoadingCodecSupport.value) return;
-  isLoadingCodecSupport.value = true;
-  try {
-    videoCodecSupport.value = await checkVideoCodecSupport(BASE_VIDEO_CODEC_OPTIONS);
-  } finally {
-    isLoadingCodecSupport.value = false;
-  }
-}
-
-// Load on mount
-loadCodecSupport();
 
 // Project settings form data
 async function applySettings() {
@@ -442,7 +418,7 @@ const metaDescription = computed({
             </div>
           </UFormField>
 
-          <MediaEncodingSettings
+          <VideoEncodingForm
             v-model:output-format="projectStore.projectSettings.exportDefaults.encoding.format"
             v-model:video-codec="projectStore.projectSettings.exportDefaults.encoding.videoCodec"
             v-model:bitrate-mbps="projectStore.projectSettings.exportDefaults.encoding.bitrateMbps"
@@ -463,14 +439,11 @@ const metaDescription = computed({
             v-model:metadata-tags="metaTagsString"
             v-model:metadata-description="metaDescription"
             :show-audio-advanced="true"
-            :show-builtin-presets="false"
+            :show-presets="false"
             :hide-audio-sample-rate="true"
             :show-metadata="false"
             :disabled="false"
             :has-audio="true"
-            :is-loading-codec-support="isLoadingCodecSupport"
-            :format-options="formatOptions"
-            :video-codec-options="videoCodecOptions"
           />
         </div>
       </div>

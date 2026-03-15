@@ -15,6 +15,7 @@ import { useHistoryStore } from '~/stores/history.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
+import { TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY } from '~/stores/timeline/timelineHistoryLabels';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import {
   zoomToPxPerSecond,
@@ -580,11 +581,12 @@ export function useTimelineItemDrag(
       }
     }
 
-    const snapshot = dragStartSnapshot.value;
+    const snapshot = JSON.parse(JSON.stringify(dragStartSnapshot.value));
     const appliedCmd = lastDragAppliedCmd.value;
     const currDoc = timelineStore.timelineDoc;
-    if (!cancel && snapshot && appliedCmd && currDoc && snapshot !== currDoc) {
-      historyStore.push(appliedCmd as any, snapshot as any);
+    if (!cancel && snapshot && appliedCmd) {
+      historyStore.push('timeline', appliedCmd.type, snapshot, TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY);
+      dragStartSnapshot.value = null;
     }
 
     if (cancel && snapshot) {

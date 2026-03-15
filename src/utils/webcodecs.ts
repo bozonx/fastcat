@@ -17,6 +17,12 @@ export const BASE_VIDEO_CODEC_OPTIONS: readonly VideoCodecOption[] = [
   { value: 'av01.0.05M.08', label: 'AV1' },
 ];
 
+export const VIDEO_FORMAT_OPTIONS = [
+  { value: 'mp4', label: 'MP4' },
+  { value: 'webm', label: 'WEBM' },
+  { value: 'mkv', label: 'MKV' },
+] as const;
+
 export interface CheckVideoCodecSupportOptions {
   width?: number;
   height?: number;

@@ -396,7 +396,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     timelineZoom.value = 50;
     selection.clearSelection();
     selection.selectTrack(null);
-    historyStore.clear();
+    historyStore.clear('timeline');
     historyDebounce.clearPendingDebouncedHistory();
   }
 
@@ -475,7 +475,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     selection.selectTrack(null);
     isPlaying.value = false;
     currentTime.value = 0;
-    historyStore.clear();
+    historyStore.clear('timeline');
     historyDebounce.clearPendingDebouncedHistory();
 
     await persistence.loadTimeline();
