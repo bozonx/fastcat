@@ -22,42 +22,40 @@ const {
   isModalOpen,
   targetEntry,
   mediaType,
-
-  videoFormat,
-  videoCodec,
-  videoBitrateMbps,
-  excludeAudio,
-  audioCodec,
-  audioBitrateKbps,
-  bitrateMode,
-  keyframeIntervalSec,
-  videoWidth,
-  videoHeight,
-  videoFps,
-  resolutionFormat,
-  orientation,
-  aspectRatio,
-  isCustomResolution,
-
-  audioOnlyFormat,
-  audioOnlyCodec,
-  audioOnlyBitrateKbps,
-  audioChannels,
-  audioSampleRate,
-  audioReverse,
-  originalAudioSampleRate,
-
-  imageQuality,
-  imageWidth,
-  imageHeight,
-  isImageResolutionLinked,
-  imageAspectRatio,
+  video,
+  audio,
+  image,
+  callbacks,
 } = storeToRefs(fileConversionStore);
 
-const { cancelConversion } = fileConversionStore;
+const { cancelConversion, startConversion: storeStartConversion } = fileConversionStore;
+
+onMounted(() => {
+  callbacks.value.onSuccess = (type, bgTaskTitle) => {
+    if (type === 'bgTaskAdded') {
+      toast.add({
+        title: t('videoEditor.fileManager.convert.bgTaskAdded', 'Conversion started in background'),
+        description: bgTaskTitle,
+        color: 'neutral',
+      });
+    } else {
+      toast.add({
+        title: t('videoEditor.fileManager.convert.success', 'File converted successfully'),
+        color: 'success',
+      });
+    }
+  };
+  callbacks.value.onError = (error) => {
+    toast.add({
+      title: t('videoEditor.fileManager.convert.failed', 'Conversion failed to start'),
+      description: error.message,
+      color: 'error',
+    });
+  };
+});
 
 function startConversion() {
-  fileConversionStore.startConversion(t, toast);
+  storeStartConversion();
 }
 
 const isOpen = computed({
@@ -74,9 +72,6 @@ const audioFormatOptions: readonly { value: 'opus' | 'aac'; label: string }[] = 
 ];
 
 const getPhaseLabel = computed(() => {
-  if (conversionPhase.value === 'encoding')
-    return t('videoEditor.export.phaseEncoding', 'Encoding');
-  if (conversionPhase.value === 'saving') return t('videoEditor.export.phaseSaving', 'Saving');
   return '';
 });
 
@@ -85,10 +80,10 @@ const fileName = computed(() => targetEntry.value?.name ?? '');
 const outputFileName = computed(() => {
   const baseName = fileName.value.replace(/\.[^.]+$/, '');
   if (mediaType.value === 'video') {
-    return `${baseName}_converted.${videoFormat.value}`;
+    return `${baseName}_converted.${video.value.format}`;
   }
   if (mediaType.value === 'audio') {
-    const ext = audioOnlyFormat.value;
+    const ext = audio.value.onlyFormat;
     return `${baseName}_converted.${ext}`;
   }
   if (mediaType.value === 'image') {
@@ -97,8 +92,8 @@ const outputFileName = computed(() => {
   return fileName.value;
 });
 
-watch(audioOnlyFormat, (nextFormat) => {
-  audioOnlyCodec.value = nextFormat;
+watch(() => audio.value.onlyFormat, (nextFormat) => {
+  audio.value.onlyCodec = nextFormat;
 });
 
 function clampPositiveInt(value: number) {
@@ -107,16 +102,16 @@ function clampPositiveInt(value: number) {
 }
 
 function onImageWidthChange(val: number) {
-  imageWidth.value = val;
-  if (isImageResolutionLinked.value && imageAspectRatio.value) {
-    imageHeight.value = clampPositiveInt(val / imageAspectRatio.value);
+  image.value.width = val;
+  if (image.value.isResolutionLinked && image.value.aspectRatio) {
+    image.value.height = clampPositiveInt(val / image.value.aspectRatio);
   }
 }
 
 function onImageHeightChange(val: number) {
-  imageHeight.value = val;
-  if (isImageResolutionLinked.value && imageAspectRatio.value) {
-    imageWidth.value = clampPositiveInt(val * imageAspectRatio.value);
+  image.value.height = val;
+  if (image.value.isResolutionLinked && image.value.aspectRatio) {
+    image.value.width = clampPositiveInt(val * image.value.aspectRatio);
   }
 }
 
@@ -145,34 +140,34 @@ const modalTitle = computed(() => {
       <template v-if="mediaType === 'video'">
         <div class="space-y-4">
           <MediaResolutionSettings
-            v-model:is-custom-resolution="isCustomResolution"
-            v-model:width="videoWidth"
-            v-model:height="videoHeight"
-            v-model:fps="videoFps"
-            v-model:resolution-format="resolutionFormat"
-            v-model:orientation="orientation"
-            v-model:aspect-ratio="aspectRatio"
+            v-model:is-custom-resolution="video.isCustomResolution"
+            v-model:width="video.width"
+            v-model:height="video.height"
+            v-model:fps="video.fps"
+            v-model:resolution-format="video.resolutionFormat"
+            v-model:orientation="video.orientation"
+            v-model:aspect-ratio="video.aspectRatio"
             :show-audio-settings="false"
             :disable-aspect-ratio="true"
           />
 
           <VideoEncodingForm
-            v-model:output-format="videoFormat"
-            v-model:video-codec="videoCodec"
-            v-model:bitrate-mbps="videoBitrateMbps"
-            v-model:exclude-audio="excludeAudio"
-            v-model:audio-codec="audioCodec"
-            v-model:audio-bitrate-kbps="audioBitrateKbps"
-            v-model:audio-channels="audioChannels"
-            v-model:audio-sample-rate="audioSampleRate"
-            v-model:bitrate-mode="bitrateMode"
-            v-model:keyframe-interval-sec="keyframeIntervalSec"
+            v-model:output-format="video.format"
+            v-model:video-codec="video.videoCodec"
+            v-model:bitrate-mbps="video.bitrateMbps"
+            v-model:exclude-audio="video.excludeAudio"
+            v-model:audio-codec="video.audioCodec"
+            v-model:audio-bitrate-kbps="video.audioBitrateKbps"
+            v-model:audio-channels="audio.channels"
+            v-model:audio-sample-rate="audio.sampleRate"
+            v-model:bitrate-mode="video.bitrateMode"
+            v-model:keyframe-interval-sec="video.keyframeIntervalSec"
             :show-metadata="false"
             :show-presets="true"
             :has-audio="true"
             :hide-audio-bitrate="true"
             :show-audio-advanced="true"
-            :original-audio-sample-rate="originalAudioSampleRate"
+            :original-audio-sample-rate="audio.originalSampleRate"
             :allow-original-audio-sample-rate="true"
           />
         </div>
@@ -185,18 +180,18 @@ const modalTitle = computed(() => {
               {{ t('videoEditor.export.outputFormat', 'Output format') }}
             </label>
             <UiAppButtonGroup
-              v-model="audioOnlyFormat"
+              v-model="audio.onlyFormat"
               :options="audioFormatOptions as any"
             />
           </div>
 
           <FileConversionAudioSettings
-            v-model:audio-bitrate-kbps="audioOnlyBitrateKbps"
-            v-model:audio-channels="audioChannels"
-            v-model:audio-sample-rate="audioSampleRate"
-            v-model:audio-reverse="audioReverse"
+            v-model:audio-bitrate-kbps="audio.onlyBitrateKbps"
+            v-model:audio-channels="audio.channels"
+            v-model:audio-sample-rate="audio.sampleRate"
+            v-model:audio-reverse="audio.reverse"
             :show-reverse="true"
-            :original-sample-rate="originalAudioSampleRate"
+            :original-sample-rate="audio.originalSampleRate"
             :allow-original-sample-rate="true"
           />
         </div>
@@ -216,7 +211,7 @@ const modalTitle = computed(() => {
               {{ t('videoEditor.fileManager.convert.imageQuality', 'Quality (0-100)') }}
             </label>
             <WheelNumberInput
-              v-model="imageQuality"
+              v-model="image.quality"
               :min="1"
               :max="100"
               :step="1"
@@ -227,7 +222,7 @@ const modalTitle = computed(() => {
             <div class="flex flex-col gap-2">
               <label class="text-xs text-ui-text-muted font-medium">W</label>
               <WheelNumberInput
-                :model-value="imageWidth"
+                :model-value="image.width"
                 :min="1"
                 :step="2"
                 @update:model-value="onImageWidthChange"
@@ -237,7 +232,7 @@ const modalTitle = computed(() => {
             <div class="flex flex-col gap-2">
               <label class="text-xs text-ui-text-muted font-medium">H</label>
               <WheelNumberInput
-                :model-value="imageHeight"
+                :model-value="image.height"
                 :min="1"
                 :step="2"
                 @update:model-value="onImageHeightChange"
