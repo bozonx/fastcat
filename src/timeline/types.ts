@@ -110,6 +110,8 @@ export type TimelineEffect<TParams = Record<string, any>> = ClipEffect<TParams> 
   target?: EffectTarget;
 };
 
+export type AudioFadeCurve = 'linear' | 'logarithmic';
+
 interface TimelineClipBase {
   kind: 'clip';
   clipType: TimelineClipType;
@@ -129,8 +131,8 @@ interface TimelineClipBase {
   audioBalance?: number;
   audioFadeInUs?: number;
   audioFadeOutUs?: number;
-  audioFadeInCurve?: 'linear' | 'logarithmic';
-  audioFadeOutCurve?: 'linear' | 'logarithmic';
+  audioFadeInCurve?: AudioFadeCurve;
+  audioFadeOutCurve?: AudioFadeCurve;
   audioMuted?: boolean;
   audioWaveformMode?: 'half' | 'full';
   showWaveform?: boolean;

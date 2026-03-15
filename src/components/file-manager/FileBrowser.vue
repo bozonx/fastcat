@@ -147,14 +147,17 @@ const {
   dragOverEntryPath,
   currentDragOperation,
   isRootDropOver,
+  onRootDragEnter,
   onRootDragOver,
   onRootDragLeave,
   onRootDrop,
   onEntryDragStart,
   onEntryDragEnd,
+  onEntryDragEnter,
   onEntryDragOver,
   onEntryDragLeave,
   onEntryDrop,
+  onPanelDragEnter,
   onPanelDragOver,
   onPanelDragLeave,
   onPanelDrop,
@@ -173,18 +176,22 @@ const {
 
 // --- Remote ---
 const remote = useFileBrowserRemote({
-  isRemoteMode,
-  remoteCurrentFolder,
-  folderEntries,
-  loadFolderContent: () => _loadFolderContent(),
-  loadParentFolders: () => navigation.loadParentFolders(),
-  navigateToRoot: () => navigation.navigateToRoot(),
-  setSelectedFsEntry,
+  loadProjectDirectory: async () => {}, // Not used directly in new file browser remote flow but required by interface
+  resolveEntryByPath,
+  setSelectedFsEntry: (entry) => {
+    if (entry) {
+      handleEntryClick(new MouseEvent('click'), entry);
+    } else {
+      selectionStore.clearSelection();
+    }
+  },
   onEntryDragStart,
   onEntryDragEnd,
+  onEntryDragEnter,
   onEntryDragOver,
   onEntryDragLeave,
   onEntryDrop,
+  onRootDragEnter,
   onRootDragOver,
   onRootDragLeave,
   onRootDrop,
@@ -204,9 +211,11 @@ const {
   cancelRemoteTransfer,
   onBrowserEntryDragStart,
   onBrowserEntryDragEnd,
+  onBrowserEntryDragEnter,
   onBrowserEntryDragOver,
   onBrowserEntryDragLeave,
   onBrowserEntryDrop,
+  onBrowserRootDragEnter,
   onBrowserRootDragOver,
   onBrowserRootDragLeave,
   onBrowserRootDrop,

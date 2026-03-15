@@ -35,6 +35,8 @@ export interface AddClipToTrackCommand {
   isImage?: boolean;
   startUs?: number;
   pseudo?: boolean;
+  audioFadeInCurve?: import('./types').AudioFadeCurve;
+  audioFadeOutCurve?: import('./types').AudioFadeCurve;
 }
 
 export interface AddVirtualClipToTrackCommand {
@@ -53,6 +55,8 @@ export interface AddVirtualClipToTrackCommand {
   style?: import('./types').TextClipStyle;
   shapeType?: import('./types').ShapeType;
   hudType?: import('./types').HudType;
+  audioFadeInCurve?: import('./types').AudioFadeCurve;
+  audioFadeOutCurve?: import('./types').AudioFadeCurve;
 }
 
 export interface RemoveItemCommand {

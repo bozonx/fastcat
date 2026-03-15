@@ -14,6 +14,7 @@ export interface UseFileDropOptions {
 
 export function useFileDrop(options: UseFileDropOptions) {
   const isRootDropOver = ref(false);
+  let rootDragEnterCount = 0;
 
   function isRelevantDrag(e: DragEvent): boolean {
     const types = e.dataTransfer?.types;
@@ -25,12 +26,17 @@ export function useFileDrop(options: UseFileDropOptions) {
     );
   }
 
+  function onRootDragEnter(e: DragEvent) {
+    if (!isRelevantDrag(e)) return;
+    e.preventDefault();
+    rootDragEnterCount++;
+    isRootDropOver.value = true;
+  }
+
   function onRootDragOver(e: DragEvent) {
     if (!isRelevantDrag(e)) return;
 
     e.stopPropagation();
-
-    isRootDropOver.value = true;
     e.dataTransfer!.dropEffect =
       e.dataTransfer?.types.includes('Files') ||
       e.dataTransfer?.types.includes(FILE_MANAGER_COPY_DRAG_TYPE) ||
@@ -40,15 +46,17 @@ export function useFileDrop(options: UseFileDropOptions) {
   }
 
   function onRootDragLeave(e: DragEvent) {
-    const currentTarget = e.currentTarget as HTMLElement | null;
-    const relatedTarget = e.relatedTarget as Node | null;
-    if (!currentTarget?.contains(relatedTarget)) {
+    if (!isRelevantDrag(e)) return;
+    rootDragEnterCount--;
+    if (rootDragEnterCount <= 0) {
+      rootDragEnterCount = 0;
       isRootDropOver.value = false;
     }
   }
 
   async function onRootDrop(e: DragEvent) {
     e.stopPropagation();
+    rootDragEnterCount = 0;
     isRootDropOver.value = false;
 
     // Snapshot data synchronously - dataTransfer becomes empty after any await
@@ -67,10 +75,11 @@ export function useFileDrop(options: UseFileDropOptions) {
 
     const shouldCopy = !!copyRaw || e.shiftKey;
 
-    let parsed: any = null;
+    let parsed: unknown = null;
     try {
       parsed = JSON.parse(internalRaw);
-    } catch {
+    } catch (err) {
+      console.warn('[useFileDrop] Failed to parse internal drag data:', err);
       return;
     }
 
@@ -100,6 +109,7 @@ export function useFileDrop(options: UseFileDropOptions) {
   return {
     isRootDropOver,
     isRelevantDrag,
+    onRootDragEnter,
     onRootDragOver,
     onRootDragLeave,
     onRootDrop,

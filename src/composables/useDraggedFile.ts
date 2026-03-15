@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 
 export interface DraggedFileData {
   name: string;
@@ -27,6 +27,16 @@ export function useDraggedFile() {
   function clearDraggedFile() {
     draggedFile.value = null;
   }
+
+  onMounted(() => {
+    window.addEventListener('dragend', clearDraggedFile);
+    window.addEventListener('drop', clearDraggedFile);
+  });
+
+  onUnmounted(() => {
+    window.removeEventListener('dragend', clearDraggedFile);
+    window.removeEventListener('drop', clearDraggedFile);
+  });
 
   return {
     draggedFile,

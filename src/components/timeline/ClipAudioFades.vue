@@ -15,7 +15,6 @@ const props = defineProps<{
   isResizingVolume?: boolean;
   isMobile?: boolean;
   trackHeight: number;
-  defaultFadeCurve?: 'linear' | 'logarithmic';
 }>();
 
 const emit = defineEmits<{
@@ -125,7 +124,7 @@ const volumeY = computed(() => {
           )}px`,
         }"
       >
-        <path :d="getAudioFadePath('in', clip.audioFadeInCurve || defaultFadeCurve)" fill="var(--clip-lower-tri)" />
+        <path :d="getAudioFadePath('in', clip.audioFadeInCurve)" fill="var(--clip-lower-tri)" />
       </svg>
 
       <svg
@@ -146,7 +145,7 @@ const volumeY = computed(() => {
           )}px`,
         }"
       >
-        <path :d="getAudioFadePath('out', clip.audioFadeOutCurve || defaultFadeCurve)" fill="var(--clip-lower-tri)" />
+        <path :d="getAudioFadePath('out', clip.audioFadeOutCurve)" fill="var(--clip-lower-tri)" />
       </svg>
     </div>
 

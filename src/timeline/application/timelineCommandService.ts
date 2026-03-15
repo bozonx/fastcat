@@ -38,7 +38,13 @@ export interface TimelineCommandServiceDeps {
   fetchMediaMetadataByPath: (path: string) => Promise<TimelineMediaMetadata | null>;
   getUserSettings: () => { optimization: { autoCreateProxies: boolean } };
   getProjectSettings: () => {
-    project: { width: number; height: number; fps: number; isAutoSettings: boolean };
+    project: {
+      width: number;
+      height: number;
+      fps: number;
+      isAutoSettings: boolean;
+      defaultAudioFadeCurve: import('../types').AudioFadeCurve;
+    };
   };
   updateProjectSettings: (settings: {
     width: number;
@@ -300,6 +306,8 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
         isImage: isImageLike,
         startUs: input.startUs,
         pseudo: input.pseudo,
+        audioFadeInCurve: deps.getProjectSettings().project.defaultAudioFadeCurve,
+        audioFadeOutCurve: deps.getProjectSettings().project.defaultAudioFadeCurve,
       },
       options,
     );
@@ -419,6 +427,8 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
         sourceDurationUs: durationUs,
         startUs: input.startUs,
         pseudo: input.pseudo,
+        audioFadeInCurve: deps.getProjectSettings().project.defaultAudioFadeCurve,
+        audioFadeOutCurve: deps.getProjectSettings().project.defaultAudioFadeCurve,
       },
       options,
     );

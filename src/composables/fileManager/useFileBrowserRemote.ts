@@ -13,12 +13,29 @@ import {
 } from '~/utils/remote-vfs';
 import type { RemoteVfsEntry, RemoteVfsFileEntry } from '~/types/remote-vfs';
 import type { FsEntry } from '~/types/fs';
-import {
-  INTERNAL_DRAG_TYPE,
-  REMOTE_FILE_DRAG_TYPE,
-  useDraggedFile,
-} from '~/composables/useDraggedFile';
-import type { DraggedFileData } from '~/composables/useDraggedFile';
+import { useProjectStore } from '~/stores/project.store';
+import { REMOTE_FILE_DRAG_TYPE, useDraggedFile } from '~/composables/useDraggedFile';
+
+export interface UseFileBrowserRemoteOptions {
+  isRemoteMode: Ref<boolean>;
+  remoteCurrentFolder: Ref<FsEntry | null>;
+  folderEntries: Ref<FsEntry[]>;
+  loadFolderContent: () => Promise<void>;
+  loadParentFolders: () => Promise<void>;
+  navigateToRoot: () => Promise<void>;
+  setSelectedFsEntry: (entry: FsEntry | null) => void;
+  onEntryDragStart: (e: DragEvent, entry: FsEntry) => void;
+  onEntryDragEnd: () => void;
+  onEntryDragEnter: (e: DragEvent, entry: FsEntry) => void;
+  onEntryDragOver: (e: DragEvent, entry: FsEntry) => void;
+  onEntryDragLeave: (e: DragEvent, entry: FsEntry) => void;
+  onEntryDrop: (e: DragEvent, entry: FsEntry) => void;
+  onRootDragEnter: (e: DragEvent) => void;
+  onRootDragOver: (e: DragEvent) => void;
+  onRootDragLeave: (e: DragEvent) => void;
+  onRootDrop: (e: DragEvent) => void;
+  handleFiles: (files: File[] | FileList, targetDirPath?: string) => Promise<void>;
+}
 
 export function useFileBrowserRemote({
   isRemoteMode,
@@ -30,36 +47,22 @@ export function useFileBrowserRemote({
   setSelectedFsEntry,
   onEntryDragStart,
   onEntryDragEnd,
+  onEntryDragEnter,
   onEntryDragOver,
   onEntryDragLeave,
   onEntryDrop,
+  onRootDragEnter,
   onRootDragOver,
   onRootDragLeave,
   onRootDrop,
   handleFiles,
-}: {
-  isRemoteMode: Ref<boolean>;
-  remoteCurrentFolder: Ref<RemoteFsEntry | null>;
-  folderEntries: Ref<FsEntry[]>;
-  loadFolderContent: () => Promise<void>;
-  loadParentFolders: () => Promise<void>;
-  navigateToRoot: () => Promise<void>;
-  setSelectedFsEntry: (entry: FsEntry | null) => void;
-  onEntryDragStart: (e: DragEvent, entry: FsEntry) => void;
-  onEntryDragEnd: () => void;
-  onEntryDragOver: (e: DragEvent, entry: FsEntry) => void;
-  onEntryDragLeave: (e: DragEvent, entry: FsEntry) => void;
-  onEntryDrop: (e: DragEvent, entry: FsEntry) => Promise<void>;
-  onRootDragOver: (e: DragEvent) => void;
-  onRootDragLeave: (e: DragEvent) => void;
-  onRootDrop: (e: DragEvent) => Promise<void>;
-  handleFiles: (files: File[], dirPath?: string) => Promise<void>;
-}) {
+}: UseFileBrowserRemoteOptions) {
   const workspaceStore = useWorkspaceStore();
   const uiStore = useUiStore();
   const runtimeConfig = useRuntimeConfig();
   const toast = useToast();
   const { t } = useI18n();
+  const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 
   const lastLocalFolder = ref<FsEntry | null>(null);
 
@@ -232,50 +235,49 @@ export function useFileBrowserRemote({
       if (entry.kind !== 'file' || !e.dataTransfer) return;
 
       e.dataTransfer.effectAllowed = 'copy';
-      e.dataTransfer.setData(REMOTE_FILE_DRAG_TYPE, JSON.stringify(entry));
-      e.dataTransfer.setData(INTERNAL_DRAG_TYPE, '1');
-
-      const data: DraggedFileData = { name: entry.name, kind: 'file', path: entry.remotePath };
-      useDraggedFile().setDraggedFile(data);
-      e.dataTransfer.setData('application/json', JSON.stringify(data));
+      const data = {
+        name: entry.name,
+        path: entry.path,
+        kind: 'file',
+        operation: 'copy',
+      };
+      e.dataTransfer.setData(REMOTE_FILE_DRAG_TYPE, JSON.stringify(data));
+      setDraggedFile(data as any);
       return;
     }
-    onEntryDragStart(e, entry);
+    return onEntryDragStart(e, entry);
   }
-
   function onBrowserEntryDragEnd() {
-    useDraggedFile().clearDraggedFile();
-    onEntryDragEnd();
+    if (isRemoteMode.value) {
+      clearDraggedFile();
+      return;
+    }
+    return onEntryDragEnd();
   }
-
+  function onBrowserEntryDragEnter(e: DragEvent, entry: FsEntry) {
+    if (!isRemoteMode.value && onEntryDragEnter) return onEntryDragEnter(e, entry);
+  }
   function onBrowserEntryDragOver(e: DragEvent, entry: FsEntry) {
-    if (isRemoteMode.value) return;
-    onEntryDragOver(e, entry);
+    if (!isRemoteMode.value) return onEntryDragOver(e, entry);
   }
-
   function onBrowserEntryDragLeave(e: DragEvent, entry: FsEntry) {
-    if (isRemoteMode.value) return;
-    onEntryDragLeave(e, entry);
+    if (!isRemoteMode.value) return onEntryDragLeave(e, entry);
+  }
+  function onBrowserEntryDrop(e: DragEvent, entry: FsEntry) {
+    if (!isRemoteMode.value) return onEntryDrop(e, entry);
   }
 
-  async function onBrowserEntryDrop(e: DragEvent, entry: FsEntry) {
-    if (isRemoteMode.value) return;
-    await onEntryDrop(e, entry);
+  function onBrowserRootDragEnter(e: DragEvent) {
+    if (!isRemoteMode.value && onRootDragEnter) return onRootDragEnter(e);
   }
-
   function onBrowserRootDragOver(e: DragEvent) {
-    if (isRemoteMode.value) return;
-    onRootDragOver(e);
+    if (!isRemoteMode.value) return onRootDragOver(e);
   }
-
   function onBrowserRootDragLeave(e: DragEvent) {
-    if (isRemoteMode.value) return;
-    onRootDragLeave(e);
+    if (!isRemoteMode.value) return onRootDragLeave(e);
   }
-
-  async function onBrowserRootDrop(e: DragEvent) {
-    if (isRemoteMode.value) return;
-    await onRootDrop(e);
+  function onBrowserRootDrop(e: DragEvent) {
+    if (!isRemoteMode.value) return onRootDrop(e);
   }
 
   return {

@@ -159,8 +159,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     if (!item || item.kind !== 'clip') return;
 
     const curveProp = payload.edge === 'in' ? 'audioFadeInCurve' : 'audioFadeOutCurve';
-    const defaultCurve = projectStore.projectSettings?.project.defaultAudioFadeCurve || 'logarithmic';
-    const startCurve = item[curveProp] || defaultCurve;
+    const startCurve = item[curveProp] === 'logarithmic' ? 'logarithmic' : 'linear';
 
     resizeFade.value = {
       trackId: payload.trackId,

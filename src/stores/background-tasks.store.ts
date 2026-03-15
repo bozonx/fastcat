@@ -127,6 +127,11 @@ export const useBackgroundTasksStore = defineStore('background-tasks', () => {
     }
   }
 
+  function clearCompletedTasks() {
+    const idsToRemove = completedTasks.value.map((t) => t.id);
+    idsToRemove.forEach((id) => removeTask(id));
+  }
+
   return {
     tasks,
     activeTasks,
@@ -139,5 +144,6 @@ export const useBackgroundTasksStore = defineStore('background-tasks', () => {
     updateTaskStatus,
     cancelTask,
     removeTask,
+    clearCompletedTasks,
   };
 });
