@@ -29,9 +29,7 @@ export const useProxyStore = defineStore('proxy', () => {
     resolvedStorageTopology: computed(() => workspaceStore.resolvedStorageTopology),
   });
 
-  const queueModule = createProxyQueueModule({
-    concurrency: computed(() => workspaceStore.userSettings.optimization.mediaTaskConcurrency),
-  });
+  const queueModule = createProxyQueueModule();
 
   const service = createProxyService({
     videoExtensions,

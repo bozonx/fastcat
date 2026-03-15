@@ -1,5 +1,6 @@
 import type { useWorkspaceStore } from '~/stores/workspace.store';
 import { ensureResolvedProjectTempDir } from '~/utils/storage-handles';
+import { addMediaTask } from '~/utils/media-task-queue';
 
 export interface BaseThumbnailTask {
   id: string;
@@ -32,7 +33,7 @@ export async function ensureBaseThumbnailDir(input: {
 }
 
 export abstract class BaseThumbnailGenerator<TTask extends BaseThumbnailTask, TCache> {
-  protected queue: TTask[] = [];
+  protected queuedTasks = new Set<string>();
   protected activeTasks = new Set<string>();
   protected cancelledTasks = new Set<string>();
   protected cache = new Map<string, TCache>();
@@ -62,7 +63,7 @@ export abstract class BaseThumbnailGenerator<TTask extends BaseThumbnailTask, TC
   cancelTask(id: string) {
     if (!id) return;
     this.cancelledTasks.add(id);
-    this.queue = this.queue.filter((t) => t.id !== id);
+    this.queuedTasks.delete(id);
   }
 
   protected isCancelled(id: string) {
@@ -73,7 +74,7 @@ export abstract class BaseThumbnailGenerator<TTask extends BaseThumbnailTask, TC
     if (this.isCancelled(task.id)) {
       this.cancelledTasks.delete(task.id);
     }
-    if (this.queue.some((t) => t.id === task.id) || this.activeTasks.has(task.id)) {
+    if (this.queuedTasks.has(task.id) || this.activeTasks.has(task.id)) {
       return;
     }
 
@@ -83,28 +84,34 @@ export abstract class BaseThumbnailGenerator<TTask extends BaseThumbnailTask, TC
       return;
     }
 
-    this.queue.push(task);
-    this.processQueue();
+    this.queuedTasks.add(task.id);
+
+    void addMediaTask(
+      async () => {
+        this.queuedTasks.delete(task.id);
+
+        if (this.isCancelled(task.id)) {
+          return;
+        }
+
+        this.activeTasks.add(task.id);
+
+        try {
+          await this.executeTask(task);
+        } catch (e) {
+          console.error(`Task ${task.id} failed:`, e);
+        } finally {
+          this.activeTasks.delete(task.id);
+        }
+      },
+      { priority: this.taskPriority },
+    ).catch((e) => {
+      this.queuedTasks.delete(task.id);
+      console.error(`Task ${task.id} failed:`, e);
+    });
   }
 
-  protected abstract get concurrencyLimit(): number;
+  protected abstract get taskPriority(): number;
   protected abstract executeTask(task: TTask): Promise<void>;
   protected abstract onCacheHit(task: TTask, cachedValue: TCache): void;
-
-  protected processQueue() {
-    while (this.activeTasks.size < this.concurrencyLimit && this.queue.length > 0) {
-      const task = this.queue.shift();
-      if (task) {
-        this.activeTasks.add(task.id);
-        this.executeTask(task)
-          .catch((e) => {
-            console.error(`Task ${task.id} failed:`, e);
-          })
-          .finally(() => {
-            this.activeTasks.delete(task.id);
-            this.processQueue();
-          });
-      }
-    }
-  }
 }

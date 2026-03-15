@@ -10,6 +10,7 @@ import {
 } from './base-thumbnail-generator';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
+import { MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 
 export interface FileThumbnailTask extends BaseThumbnailTask {
   onComplete?: (url: string) => void;
@@ -40,9 +41,8 @@ async function ensureThumbnailDir(input: {
 class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, string> {
   protected maxCacheEntries = 200;
 
-  protected get concurrencyLimit(): number {
-    const workspaceStore = useWorkspaceStore();
-    return workspaceStore.userSettings?.optimization?.mediaTaskConcurrency || 2;
+  protected get taskPriority(): number {
+    return MEDIA_TASK_PRIORITIES.fileThumbnail;
   }
 
   protected revokeCacheValue(url: string): void {

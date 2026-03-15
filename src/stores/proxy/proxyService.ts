@@ -2,6 +2,7 @@ import type PQueue from 'p-queue';
 import type { Ref } from 'vue';
 
 import { VIDEO_DIR_NAME } from '~/utils/constants';
+import { MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import { getProxyWorkerClient, setProxyHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 
@@ -159,6 +160,7 @@ export function createProxyService(params: {
     const bgTaskId = params.backgroundTasksStore.addTask({
       type: 'proxy',
       title: `Generating proxy: ${projectRelativePath.split('/').pop()}`,
+      status: 'pending',
       cancel: async () => {
         await cancelProxyGeneration(projectRelativePath);
       },
@@ -185,170 +187,175 @@ export function createProxyService(params: {
     let proxyFileHandle: FileSystemFileHandle | null = null;
 
     try {
-      await params.proxyQueue.value.add(async () => {
-        try {
-          if (controller.signal.aborted) {
-            const abortErr = new Error('Proxy generation cancelled');
-            (abortErr as any).name = 'AbortError';
-            throw abortErr;
-          }
+      await params.proxyQueue.value.add(
+        async () => {
+          try {
+            if (controller.signal.aborted) {
+              const abortErr = new Error('Proxy generation cancelled');
+              (abortErr as any).name = 'AbortError';
+              throw abortErr;
+            }
 
-          const taskId = `proxy-${projectRelativePath}-${Date.now()}`;
-          params.proxyTaskIds.value = new Map(params.proxyTaskIds.value).set(
-            projectRelativePath,
-            taskId,
-          );
-          params.taskIdToPath.value = new Map(params.taskIdToPath.value).set(
-            taskId,
-            projectRelativePath,
-          );
-          params.activeWorkerPaths.value = new Set([
-            ...params.activeWorkerPaths.value,
-            projectRelativePath,
-          ]);
-          const proxyFilename = await params.getProxyFileName(projectRelativePath);
-          proxyFileHandle = await dir.getFileHandle(proxyFilename, { create: true });
+            if (bgTaskId) {
+              params.backgroundTasksStore.updateTaskStatus(bgTaskId, 'running');
+            }
 
-          const optimization = params.getOptimizationSettings();
+            const taskId = `proxy-${projectRelativePath}-${Date.now()}`;
+            params.proxyTaskIds.value = new Map(params.proxyTaskIds.value).set(
+              projectRelativePath,
+              taskId,
+            );
+            params.taskIdToPath.value = new Map(params.taskIdToPath.value).set(
+              taskId,
+              projectRelativePath,
+            );
+            params.activeWorkerPaths.value = new Set([
+              ...params.activeWorkerPaths.value,
+              projectRelativePath,
+            ]);
+            const proxyFilename = await params.getProxyFileName(projectRelativePath);
+            proxyFileHandle = await dir.getFileHandle(proxyFilename, { create: true });
 
-          const { client } = getProxyWorkerClient();
+            const optimization = params.getOptimizationSettings();
 
-          const meta = await client.extractMetadata(file);
-          const sourceWidth = meta.video?.width || 1920;
-          const sourceHeight = meta.video?.height || 1080;
+            const { client } = getProxyWorkerClient();
 
-          const sourcePixels = sourceWidth * sourceHeight;
-          const targetPixels = optimization.proxyMaxPixels;
+            const meta = await client.extractMetadata(file);
+            const sourceWidth = meta.video?.width || 1920;
+            const sourceHeight = meta.video?.height || 1080;
 
-          let scale = 1.0;
-          if (sourcePixels > targetPixels) {
-            scale = Math.sqrt(targetPixels / sourcePixels);
-            // Snap to common scales for efficiency
-            const commonScales = [0.5, 0.25, 0.125, 0.0625];
-            for (const s of commonScales) {
-              if (s >= scale * 0.8 && s <= scale * 1.2) {
-                scale = s;
-                break;
+            const sourcePixels = sourceWidth * sourceHeight;
+            const targetPixels = optimization.proxyMaxPixels;
+
+            let scale = 1.0;
+            if (sourcePixels > targetPixels) {
+              scale = Math.sqrt(targetPixels / sourcePixels);
+              const commonScales = [0.5, 0.25, 0.125, 0.0625];
+              for (const s of commonScales) {
+                if (s >= scale * 0.8 && s <= scale * 1.2) {
+                  scale = s;
+                  break;
+                }
               }
             }
-          }
 
-          // Ensure minimum dimensions and even numbers for codecs
-          const width = Math.max(16, Math.round((sourceWidth * scale) / 2) * 2);
-          const height = Math.max(16, Math.round((sourceHeight * scale) / 2) * 2);
+            const width = Math.max(16, Math.round((sourceWidth * scale) / 2) * 2);
+            const height = Math.max(16, Math.round((sourceHeight * scale) / 2) * 2);
 
-          const durationUs = Math.round((meta.duration || 0) * 1_000_000);
+            const durationUs = Math.round((meta.duration || 0) * 1_000_000);
 
-          if (!durationUs) throw new Error('Invalid video duration');
+            if (!durationUs) throw new Error('Invalid video duration');
 
-          const videoClips = [
-            {
-              kind: 'clip' as const,
-              id: 'proxy_video',
-              layer: 0,
-              source: { path: projectRelativePath },
-              timelineRange: { startUs: 0, durationUs },
-              sourceRange: { startUs: 0, durationUs },
-            },
-          ] as any;
+            const videoClips = [
+              {
+                kind: 'clip' as const,
+                id: 'proxy_video',
+                layer: 0,
+                source: { path: projectRelativePath },
+                timelineRange: { startUs: 0, durationUs },
+                sourceRange: { startUs: 0, durationUs },
+              },
+            ] as any;
 
-          const audioClips = meta.audio
-            ? ([
-                {
-                  kind: 'clip' as const,
-                  id: 'proxy_audio',
-                  layer: 0,
-                  source: { path: projectRelativePath },
-                  timelineRange: { startUs: 0, durationUs },
-                  sourceRange: { startUs: 0, durationUs },
-                },
-              ] as any)
-            : [];
+            const audioClips = meta.audio
+              ? ([
+                  {
+                    kind: 'clip' as const,
+                    id: 'proxy_audio',
+                    layer: 0,
+                    source: { path: projectRelativePath },
+                    timelineRange: { startUs: 0, durationUs },
+                    sourceRange: { startUs: 0, durationUs },
+                  },
+                ] as any)
+              : [];
 
-          const isOpusAudio =
-            typeof meta.audio?.codec === 'string' &&
-            meta.audio.codec.toLowerCase().startsWith('opus');
+            const isOpusAudio =
+              typeof meta.audio?.codec === 'string' &&
+              meta.audio.codec.toLowerCase().startsWith('opus');
 
-          const exportOptions = {
-            format: 'webm',
-            videoCodec: 'vp09.00.10.08',
-            bitrate: optimization.proxyVideoBitrateMbps * 1_000_000,
-            audioBitrate: optimization.proxyAudioBitrateKbps * 1000,
-            audio: !!meta.audio,
-            audioCodec: 'opus',
-            audioPassthrough: optimization.proxyCopyOpusAudio && isOpusAudio,
-            width,
-            height,
-            fps: meta.video?.fps || 30,
-          };
+            const exportOptions = {
+              format: 'webm',
+              videoCodec: 'vp09.00.10.08',
+              bitrate: optimization.proxyVideoBitrateMbps * 1_000_000,
+              audioBitrate: optimization.proxyAudioBitrateKbps * 1000,
+              audio: !!meta.audio,
+              audioCodec: 'opus',
+              audioPassthrough: optimization.proxyCopyOpusAudio && isOpusAudio,
+              width,
+              height,
+              fps: meta.video?.fps || 30,
+            };
 
-          await client.exportTimeline(
-            proxyFileHandle,
-            exportOptions,
-            videoClips,
-            audioClips,
-            taskId,
-          );
+            await client.exportTimeline(
+              proxyFileHandle,
+              exportOptions,
+              videoClips,
+              audioClips,
+              taskId,
+            );
 
-          params.existingProxies.value = new Set([
-            ...params.existingProxies.value,
-            projectRelativePath,
-          ]);
+            params.existingProxies.value = new Set([
+              ...params.existingProxies.value,
+              projectRelativePath,
+            ]);
 
-          if (bgTaskId) {
-            params.backgroundTasksStore.updateTaskStatus(bgTaskId, 'completed');
-          }
-        } catch (innerErr) {
-          // Remove the incomplete proxy file on abort or error
-          if (proxyFileHandle) {
-            try {
-              const proxyFilename = await params.getProxyFileName(projectRelativePath);
-              await dir.removeEntry(proxyFilename);
-            } catch {
-              // Best-effort cleanup
+            if (bgTaskId) {
+              params.backgroundTasksStore.updateTaskStatus(bgTaskId, 'completed');
             }
-            proxyFileHandle = null;
-          }
-          if (bgTaskId) {
-            params.backgroundTasksStore.updateTaskStatus(bgTaskId, 'failed', String(innerErr));
-          }
-          throw innerErr;
-        } finally {
-          const nextActiveWorkerPaths = new Set(params.activeWorkerPaths.value);
-          nextActiveWorkerPaths.delete(projectRelativePath);
-          params.activeWorkerPaths.value = nextActiveWorkerPaths;
-
-          const nextGenerating = new Set(params.generatingProxies.value);
-          nextGenerating.delete(projectRelativePath);
-          params.generatingProxies.value = nextGenerating;
-
-          const nextProgress = new Map(params.proxyProgress.value);
-          nextProgress.delete(projectRelativePath);
-          params.proxyProgress.value = nextProgress;
-
-          const taskId = params.proxyTaskIds.value.get(projectRelativePath);
-          if (taskId) {
-            const nextTaskIdToPath = new Map(params.taskIdToPath.value);
-            nextTaskIdToPath.delete(taskId);
-            params.taskIdToPath.value = nextTaskIdToPath;
-
-            const nextProxyTaskIds = new Map(params.proxyTaskIds.value);
-            nextProxyTaskIds.delete(projectRelativePath);
-            params.proxyTaskIds.value = nextProxyTaskIds;
-          }
-
-          if (signal) {
-            try {
-              signal.removeEventListener('abort', onAbort);
-            } catch {
-              // ignore
+          } catch (innerErr) {
+            if (proxyFileHandle) {
+              try {
+                const proxyFilename = await params.getProxyFileName(projectRelativePath);
+                await dir.removeEntry(proxyFilename);
+              } catch {
+                // Best-effort cleanup
+              }
+              proxyFileHandle = null;
             }
+            if (bgTaskId) {
+              const nextStatus = (innerErr as any)?.name === 'AbortError' ? 'cancelled' : 'failed';
+              params.backgroundTasksStore.updateTaskStatus(bgTaskId, nextStatus, String(innerErr));
+            }
+            throw innerErr;
+          } finally {
+            const nextActiveWorkerPaths = new Set(params.activeWorkerPaths.value);
+            nextActiveWorkerPaths.delete(projectRelativePath);
+            params.activeWorkerPaths.value = nextActiveWorkerPaths;
+
+            const nextGenerating = new Set(params.generatingProxies.value);
+            nextGenerating.delete(projectRelativePath);
+            params.generatingProxies.value = nextGenerating;
+
+            const nextProgress = new Map(params.proxyProgress.value);
+            nextProgress.delete(projectRelativePath);
+            params.proxyProgress.value = nextProgress;
+
+            const taskId = params.proxyTaskIds.value.get(projectRelativePath);
+            if (taskId) {
+              const nextTaskIdToPath = new Map(params.taskIdToPath.value);
+              nextTaskIdToPath.delete(taskId);
+              params.taskIdToPath.value = nextTaskIdToPath;
+
+              const nextProxyTaskIds = new Map(params.proxyTaskIds.value);
+              nextProxyTaskIds.delete(projectRelativePath);
+              params.proxyTaskIds.value = nextProxyTaskIds;
+            }
+
+            if (signal) {
+              try {
+                signal.removeEventListener('abort', onAbort);
+              } catch {
+                // ignore
+              }
+            }
+            const nextAbortControllers = new Map(params.proxyAbortControllers.value);
+            nextAbortControllers.delete(projectRelativePath);
+            params.proxyAbortControllers.value = nextAbortControllers;
           }
-          const nextAbortControllers = new Map(params.proxyAbortControllers.value);
-          nextAbortControllers.delete(projectRelativePath);
-          params.proxyAbortControllers.value = nextAbortControllers;
-        }
-      });
+        },
+        { priority: MEDIA_TASK_PRIORITIES.proxy },
+      );
     } catch (e) {
       if ((e as any)?.name === 'AbortError') {
         return;

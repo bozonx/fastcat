@@ -75,7 +75,7 @@ export function useTimelineMarquee(
       const trackTop = currentY;
       const trackBottom = currentY + trackHeight;
 
-      if (trackTop >= top && trackBottom <= bottom) {
+      if (trackTop <= bottom && trackBottom >= top) {
         for (const item of track.items) {
           if (item.kind !== 'clip' || (item as any).locked) continue;
           const startPx = timeUsToPx(item.timelineRange.startUs, zoom);
@@ -83,7 +83,7 @@ export function useTimelineMarquee(
             item.timelineRange.startUs + item.timelineRange.durationUs,
             zoom,
           );
-          if (startPx >= left && endPx <= right) {
+          if (startPx <= right && endPx >= left) {
             selectedItems.push({ trackId: track.id, itemId: item.id });
           }
         }

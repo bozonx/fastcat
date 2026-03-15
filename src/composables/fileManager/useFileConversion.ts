@@ -1,9 +1,9 @@
-import { ref, computed, markRaw, watch } from 'vue';
-import PQueue from 'p-queue';
+import { ref, computed } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
+import { addMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
@@ -59,30 +59,14 @@ const isImageResolutionLinked = ref(true);
 const imageAspectRatio = ref(1);
 const conversionModalRequestId = ref(0);
 
-const conversionQueue = markRaw(new PQueue({ concurrency: 2 }));
-
-// Initialize queue concurrency from settings if available, or stay with default
-// We will update it inside the composable when workspace store is available
-let isQueueWatcherInitialized = false;
-
 export function useFileConversion() {
   const { t } = useI18n();
   const projectStore = useProjectStore();
   const workspaceStore = useWorkspaceStore();
   const fileManager = useFileManager();
   const uiStore = useUiStore();
+  const backgroundTasksStore = useBackgroundTasksStore();
   const toast = useToast();
-
-  if (!isQueueWatcherInitialized) {
-    isQueueWatcherInitialized = true;
-    watch(
-      () => workspaceStore.userSettings?.optimization?.mediaTaskConcurrency,
-      (val) => {
-        if (val) conversionQueue.concurrency = val;
-      },
-      { immediate: true },
-    );
-  }
 
   function resolveAudioChannelsFromMeta(channels?: number): 'stereo' | 'mono' {
     if (!channels) return 'stereo';
@@ -206,163 +190,183 @@ export function useFileConversion() {
   }
 
   async function convertImage(file: File, targetHandle: FileSystemFileHandle) {
-    return conversionQueue.add(async () => {
-      const bitmap = await createImageBitmap(file);
-      const canvas = document.createElement('canvas');
+    return addMediaTask(
+      async () => {
+        if (isCancelRequested.value) return;
 
-      const targetWidth = Math.max(1, Math.round(Number(imageWidth.value) || bitmap.width));
-      const targetHeight = Math.max(1, Math.round(Number(imageHeight.value) || bitmap.height));
+        const bitmap = await createImageBitmap(file);
+        const canvas = document.createElement('canvas');
 
-      canvas.width = targetWidth;
-      canvas.height = targetHeight;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Could not create canvas context');
-      ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
+        const targetWidth = Math.max(1, Math.round(Number(imageWidth.value) || bitmap.width));
+        const targetHeight = Math.max(1, Math.round(Number(imageHeight.value) || bitmap.height));
 
-      const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob(resolve, 'image/webp', imageQuality.value / 100);
-      });
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Could not create canvas context');
+        ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
 
-      if (!blob) throw new Error('Failed to create webp blob');
+        const blob = await new Promise<Blob | null>((resolve) => {
+          canvas.toBlob(resolve, 'image/webp', imageQuality.value / 100);
+        });
 
-      const writable = await targetHandle.createWritable();
-      await writable.write(blob);
-      await writable.close();
-    });
+        if (!blob) throw new Error('Failed to create webp blob');
+
+        const writable = await targetHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+      },
+      { priority: MEDIA_TASK_PRIORITIES.conversionInteractive },
+    );
   }
 
   async function convertVideoAudio(targetHandle: FileSystemFileHandle, bgTaskId?: string) {
-    return conversionQueue.add(async () => {
-      if (!targetEntry.value || !targetEntry.value.path) return;
-      const { client } = getExportWorkerClient();
+    return addMediaTask(
+      async () => {
+        if (isCancelRequested.value) return;
+        if (!targetEntry.value || !targetEntry.value.path) return;
+        if (bgTaskId) {
+          backgroundTasksStore.updateTaskStatus(bgTaskId, 'running');
+        }
 
-      setExportHostApi(
-        createVideoCoreHostApi({
-          getCurrentProjectId: () => projectStore.currentProjectId,
-          getWorkspaceHandle: () => workspaceStore.workspaceHandle,
-          getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
-          getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
-          getFileByPath: async (path) => projectStore.getFileByPath(path),
-          onExportProgress: (progress, taskId) => {
-            conversionProgress.value = progress / 100;
-            const activeTaskId = taskId || bgTaskId;
-            if (activeTaskId) {
-              useBackgroundTasksStore().updateTaskProgress(activeTaskId, progress / 100);
-            }
-          },
-          onExportPhase: (phase) => {
-            conversionPhase.value = phase;
-          },
-          onExportWarning: (message) => {
-            console.warn(message);
-          },
-        }),
-      );
+        const { client } = getExportWorkerClient();
 
-      const sourceFile = await projectStore.getFileByPath(targetEntry.value.path);
-      if (!sourceFile) throw new Error('Failed to access source file');
+        setExportHostApi(
+          createVideoCoreHostApi({
+            getCurrentProjectId: () => projectStore.currentProjectId,
+            getWorkspaceHandle: () => workspaceStore.workspaceHandle,
+            getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
+            getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
+            getFileByPath: async (path) => projectStore.getFileByPath(path),
+            onExportProgress: (progress, taskId) => {
+              conversionProgress.value = progress / 100;
+              const activeTaskId = taskId || bgTaskId;
+              if (activeTaskId) {
+                backgroundTasksStore.updateTaskProgress(activeTaskId, progress / 100);
+              }
+            },
+            onExportPhase: (phase) => {
+              conversionPhase.value = phase;
+            },
+            onExportWarning: (message) => {
+              console.warn(message);
+            },
+          }),
+        );
 
-      const meta = await client.extractMetadata(sourceFile);
-      const durationUs = Math.round((meta.duration || 0) * 1_000_000);
-      if (!durationUs && mediaType.value === 'video') throw new Error('Invalid media duration');
+        const sourceFile = await projectStore.getFileByPath(targetEntry.value.path);
+        if (!sourceFile) throw new Error('Failed to access source file');
 
-      const isVideo = mediaType.value === 'video';
+        const meta = await client.extractMetadata(sourceFile);
+        const durationUs = Math.round((meta.duration || 0) * 1_000_000);
+        if (!durationUs && mediaType.value === 'video') throw new Error('Invalid media duration');
 
-      let exportOptions: any = {};
-      let videoPayload: any[] = [];
-      let audioPayload: any[] = [];
+        const isVideo = mediaType.value === 'video';
 
-      if (isVideo) {
-        exportOptions = {
-          format: videoFormat.value,
-          videoCodec: videoCodec.value,
-          bitrate: videoBitrateMbps.value * 1_000_000,
-          audioBitrate: audioBitrateKbps.value * 1000,
-          audio: !excludeAudio.value,
-          audioCodec: videoFormat.value === 'mp4' ? 'aac' : 'opus',
-          width: Math.max(1, Math.round(Number(videoWidth.value) || meta.video?.width || 1920)),
-          height: Math.max(1, Math.round(Number(videoHeight.value) || meta.video?.height || 1080)),
-          fps: clampPositiveNumber(Number(videoFps.value) || Number(meta.video?.fps), 30),
-          bitrateMode: bitrateMode.value,
-          keyframeIntervalSec: keyframeIntervalSec.value,
-          exportAlpha: false,
-          audioChannels: audioChannels.value,
-          audioSampleRate:
-            audioSampleRate.value === 0 && originalAudioSampleRate.value !== null
-              ? originalAudioSampleRate.value
-              : audioSampleRate.value || undefined,
-        };
+        let exportOptions: any = {};
+        let videoPayload: any[] = [];
+        let audioPayload: any[] = [];
 
-        videoPayload = [
-          {
-            kind: 'clip',
-            id: 'convert_video',
-            layer: 0,
-            source: { path: targetEntry.value.path },
-            timelineRange: { startUs: 0, durationUs },
-            sourceRange: { startUs: 0, durationUs },
-          },
-        ];
+        if (isVideo) {
+          exportOptions = {
+            format: videoFormat.value,
+            videoCodec: videoCodec.value,
+            bitrate: videoBitrateMbps.value * 1_000_000,
+            audioBitrate: audioBitrateKbps.value * 1000,
+            audio: !excludeAudio.value,
+            audioCodec: videoFormat.value === 'mp4' ? 'aac' : 'opus',
+            width: Math.max(1, Math.round(Number(videoWidth.value) || meta.video?.width || 1920)),
+            height: Math.max(
+              1,
+              Math.round(Number(videoHeight.value) || meta.video?.height || 1080),
+            ),
+            fps: clampPositiveNumber(Number(videoFps.value) || Number(meta.video?.fps), 30),
+            bitrateMode: bitrateMode.value,
+            keyframeIntervalSec: keyframeIntervalSec.value,
+            exportAlpha: false,
+            audioChannels: audioChannels.value,
+            audioSampleRate:
+              audioSampleRate.value === 0 && originalAudioSampleRate.value !== null
+                ? originalAudioSampleRate.value
+                : audioSampleRate.value || undefined,
+          };
 
-        if (!excludeAudio.value && meta.audio) {
-          audioPayload = [
+          videoPayload = [
             {
               kind: 'clip',
-              id: 'convert_audio',
+              id: 'convert_video',
               layer: 0,
               source: { path: targetEntry.value.path },
               timelineRange: { startUs: 0, durationUs },
               sourceRange: { startUs: 0, durationUs },
-              audioGain: 1,
             },
           ];
-        }
-      } else {
-        // Audio only
-        const codec = audioOnlyCodec.value;
-        exportOptions = {
-          format: resolveAudioOnlyContainerFormat(codec),
-          videoCodec: 'none',
-          // mediabunny CanvasSource requires bitrate to be a positive integer or quality.
-          // In audio-only mode we still instantiate a video track (tiny canvas), so set valid parameters.
-          bitrate: 100_000,
-          audioBitrate: audioOnlyBitrateKbps.value * 1000,
-          audio: true,
-          audioCodec: codec,
-          width: 16,
-          height: 16,
-          fps: 1,
-          audioChannels: audioChannels.value,
-          audioSampleRate:
-            audioSampleRate.value === 0 && originalAudioSampleRate.value !== null
-              ? originalAudioSampleRate.value
-              : audioSampleRate.value || undefined,
-        };
 
-        if (meta.audio) {
-          audioPayload = [
-            {
-              kind: 'clip',
-              id: 'convert_audio',
-              layer: 0,
-              source: { path: targetEntry.value.path },
-              timelineRange: { startUs: 0, durationUs },
-              sourceRange: { startUs: 0, durationUs },
-              audioGain: 1,
-              speed: audioReverse.value ? -1 : 1,
-            },
-          ];
-        }
-      }
+          if (!excludeAudio.value && meta.audio) {
+            audioPayload = [
+              {
+                kind: 'clip',
+                id: 'convert_audio',
+                layer: 0,
+                source: { path: targetEntry.value.path },
+                timelineRange: { startUs: 0, durationUs },
+                sourceRange: { startUs: 0, durationUs },
+                audioGain: 1,
+              },
+            ];
+          }
+        } else {
+          // Audio only
+          const codec = audioOnlyCodec.value;
+          exportOptions = {
+            format: resolveAudioOnlyContainerFormat(codec),
+            videoCodec: 'none',
+            // mediabunny CanvasSource requires bitrate to be a positive integer or quality.
+            // In audio-only mode we still instantiate a video track (tiny canvas), so set valid parameters.
+            bitrate: 100_000,
+            audioBitrate: audioOnlyBitrateKbps.value * 1000,
+            audio: true,
+            audioCodec: codec,
+            width: 16,
+            height: 16,
+            fps: 1,
+            audioChannels: audioChannels.value,
+            audioSampleRate:
+              audioSampleRate.value === 0 && originalAudioSampleRate.value !== null
+                ? originalAudioSampleRate.value
+                : audioSampleRate.value || undefined,
+          };
 
-      await (client as any).exportTimeline(
-        targetHandle,
-        exportOptions,
-        videoPayload,
-        audioPayload,
-        bgTaskId,
-      );
-    });
+          if (meta.audio) {
+            audioPayload = [
+              {
+                kind: 'clip',
+                id: 'convert_audio',
+                layer: 0,
+                source: { path: targetEntry.value.path },
+                timelineRange: { startUs: 0, durationUs },
+                sourceRange: { startUs: 0, durationUs },
+                audioGain: 1,
+                speed: audioReverse.value ? -1 : 1,
+              },
+            ];
+          }
+        }
+
+        await (client as any).exportTimeline(
+          targetHandle,
+          exportOptions,
+          videoPayload,
+          audioPayload,
+          bgTaskId,
+        );
+      },
+      {
+        priority: bgTaskId
+          ? MEDIA_TASK_PRIORITIES.conversionBackground
+          : MEDIA_TASK_PRIORITIES.conversionInteractive,
+      },
+    );
   }
 
   async function startConversion() {
@@ -406,9 +410,10 @@ export function useFileConversion() {
       } else if (type === 'audio') {
         await convertVideoAudio(targetHandle);
       } else if (type === 'video') {
-        const bgTaskId = useBackgroundTasksStore().addTask({
+        const bgTaskId = backgroundTasksStore.addTask({
           type: 'conversion',
           title: t('videoEditor.fileManager.convert.bgTaskTitle', `Converting: ${entry.name}`),
+          status: 'pending',
           cancel: () => {
             cancelConversion();
           },
@@ -428,8 +433,7 @@ export function useFileConversion() {
         convertVideoAudio(targetHandle, bgTaskId)
           .then(async () => {
             if (isCancelRequested.value) {
-              const taskStore = useBackgroundTasksStore();
-              taskStore.updateTaskStatus(bgTaskId, 'cancelled');
+              backgroundTasksStore.updateTaskStatus(bgTaskId, 'cancelled');
               if (createdDirHandle && createdFileName) {
                 try {
                   await new Promise((resolve) => setTimeout(resolve, 500));
@@ -439,9 +443,8 @@ export function useFileConversion() {
                 }
               }
             } else {
-              const taskStore = useBackgroundTasksStore();
-              taskStore.updateTaskProgress(bgTaskId, 1);
-              taskStore.updateTaskStatus(bgTaskId, 'completed');
+              backgroundTasksStore.updateTaskProgress(bgTaskId, 1);
+              backgroundTasksStore.updateTaskStatus(bgTaskId, 'completed');
               toast.add({
                 title: t('videoEditor.fileManager.convert.success', 'File converted successfully'),
                 color: 'success',
@@ -450,8 +453,7 @@ export function useFileConversion() {
           })
           .catch(async (err) => {
             if (isCancelRequested.value) {
-              const taskStore = useBackgroundTasksStore();
-              taskStore.updateTaskStatus(bgTaskId, 'cancelled');
+              backgroundTasksStore.updateTaskStatus(bgTaskId, 'cancelled');
               if (createdDirHandle && createdFileName) {
                 try {
                   await new Promise((resolve) => setTimeout(resolve, 500));
@@ -461,8 +463,7 @@ export function useFileConversion() {
                 }
               }
             } else {
-              const taskStore = useBackgroundTasksStore();
-              taskStore.updateTaskStatus(bgTaskId, 'failed', err.message);
+              backgroundTasksStore.updateTaskStatus(bgTaskId, 'failed', err.message);
               console.error('Video conversion failed', err);
             }
           })
