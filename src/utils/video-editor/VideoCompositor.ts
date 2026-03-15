@@ -47,6 +47,7 @@ import { TimelineClipLoader } from './compositor/TimelineClipLoader';
 import { HudMediaLoader } from './compositor/HudMediaLoader';
 import { MediaClipLoader } from './compositor/MediaClipLoader';
 import { RasterImageLoader } from './compositor/RasterImageLoader';
+import { TimelineApplyLifecycle } from './compositor/TimelineApplyLifecycle';
 import { TimelineFixedClipBuilder } from './compositor/TimelineFixedClipBuilder';
 import { TimelineLoadOrchestrator } from './compositor/TimelineLoadOrchestrator';
 import { TimelineMediaClipBuilder } from './compositor/TimelineMediaClipBuilder';
@@ -128,6 +129,7 @@ export class VideoCompositor {
     mediaClipLoader: this.mediaClipLoader,
     rasterImageLoader: this.rasterImageLoader,
   });
+  private timelineApplyLifecycle = new TimelineApplyLifecycle();
   private clipResourceManager = new ClipResourceManager({
     width: this.width,
     height: this.height,
@@ -324,30 +326,24 @@ export class VideoCompositor {
     nextClipById: Map<string, CompositorClip>;
     sequentialTimeUs: number;
   }) {
-    const { nextClips, nextClipById, sequentialTimeUs } = params;
+    const applied = this.timelineApplyLifecycle.apply({
+      previousClipById: this.clipById,
+      replacedClipIds: this.replacedClipIds,
+      nextClips: params.nextClips,
+      nextClipById: params.nextClipById,
+      sequentialTimeUs: params.sequentialTimeUs,
+      destroyClip: (clip) => this.destroyClip(clip),
+    });
 
-    for (const [prevId, prevClip] of this.clipById.entries()) {
-      if (this.replacedClipIds.has(prevId)) {
-        continue;
-      }
-      if (!nextClipById.has(prevId)) {
-        this.destroyClip(prevClip);
-      }
-    }
-    this.replacedClipIds.clear();
-
-    this.clips = nextClips;
-    this.clipById = nextClipById;
-    this.clips.sort((a, b) => a.startUs - b.startUs || a.layer - b.layer);
+    this.clips = applied.clips;
+    this.clipById = applied.clipById;
     this.rebuildPrevClipIndex();
-    const maxClipEndUs = this.clips.length > 0 ? Math.max(0, ...this.clips.map((c) => c.endUs)) : 0;
-    this.maxDurationUs = Math.max(maxClipEndUs, sequentialTimeUs);
-
-    this.lastRenderedTimeUs = 0;
+    this.maxDurationUs = applied.maxDurationUs;
+    this.lastRenderedTimeUs = applied.lastRenderedTimeUs;
     this.activeTracker.reset();
     this.hideAllClipSprites();
-    this.stageSortDirty = true;
-    this.activeSortDirty = true;
+    this.stageSortDirty = applied.stageSortDirty;
+    this.activeSortDirty = applied.activeSortDirty;
 
     return this.maxDurationUs;
   }
@@ -443,6 +439,7 @@ export class VideoCompositor {
       mediaClipLoader: this.mediaClipLoader,
       rasterImageLoader: this.rasterImageLoader,
     });
+    this.timelineApplyLifecycle = new TimelineApplyLifecycle();
     this.clipResourceManager = new ClipResourceManager({
       width: this.width,
       height: this.height,
