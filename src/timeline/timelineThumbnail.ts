@@ -6,7 +6,7 @@ import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/wo
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
 import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';
-import { addMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
+import { addLatestMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 
 export function generateTimelineThumbnail(params: {
   timelinePath: string;
@@ -21,8 +21,9 @@ export function generateTimelineThumbnail(params: {
   const timelinePath = params.timelinePath;
   const timelineDoc = structuredClone(params.timelineDoc);
 
-  void addMediaTask(
-    async () => {
+  addLatestMediaTask({
+    key: `timeline-thumbnail:${timelinePath}`,
+    task: async () => {
       try {
         const { buildVideoWorkerPayloadFromTracks } = await import('~/composables/timeline/export');
 
@@ -68,6 +69,6 @@ export function generateTimelineThumbnail(params: {
         console.error('Failed to generate background timeline thumbnail:', error);
       }
     },
-    { priority: MEDIA_TASK_PRIORITIES.timelineThumbnailLazy },
-  );
+    priority: MEDIA_TASK_PRIORITIES.timelineThumbnailLazy,
+  });
 }

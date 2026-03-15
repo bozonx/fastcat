@@ -3,6 +3,7 @@ import PQueue from 'p-queue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
 const DEFAULT_MEDIA_TASK_CONCURRENCY = 2;
+const keyedTaskVersions = new Map<string, number>();
 
 export const MEDIA_TASK_PRIORITIES = {
   timelineThumbnailLazy: 0,
@@ -59,4 +60,31 @@ export function addMediaTask<T>(
   return getMediaTaskQueue().value.add(task, {
     priority: options?.priority ?? 0,
   });
+}
+
+export function addLatestMediaTask(input: {
+  key: string;
+  task: () => Promise<void>;
+  priority?: number;
+}): void {
+  const nextVersion = (keyedTaskVersions.get(input.key) ?? 0) + 1;
+  keyedTaskVersions.set(input.key, nextVersion);
+
+  void addMediaTask(
+    async () => {
+      const currentVersion = keyedTaskVersions.get(input.key);
+      if (currentVersion !== nextVersion) {
+        return;
+      }
+
+      try {
+        await input.task();
+      } finally {
+        if (keyedTaskVersions.get(input.key) === nextVersion) {
+          keyedTaskVersions.delete(input.key);
+        }
+      }
+    },
+    { priority: input.priority },
+  );
 }
