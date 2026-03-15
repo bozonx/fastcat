@@ -241,7 +241,18 @@ function selectTransition(
       @pointerdown="
         if ($event.button === 0 && $event.target === $event.currentTarget) {
           startMarquee($event, () => {
-            timelineStore.selectTrack(track.id);
+            if (timelineStore.selectedTrackId === track.id) {
+              const entity = selectionStore.selectedEntity;
+              if (entity?.source === 'timeline' && entity.kind === 'timeline-properties') {
+                timelineStore.selectTrack(track.id);
+                selectionStore.selectTimelineTrack(track.id);
+              } else {
+                timelineStore.selectTimelineProperties();
+              }
+            } else {
+              timelineStore.selectTrack(track.id);
+              selectionStore.selectTimelineTrack(track.id);
+            }
             timelineStore.clearSelection();
             selectionStore.clearSelection();
           });
@@ -256,7 +267,7 @@ function selectTransition(
       <!-- Drop Previews inside track -->
       <div
         v-if="dragPreview && dragPreview.trackId === track.id"
-        class="absolute inset-y-0 rounded px-2 flex items-center text-xs text-(--clip-text) z-30 pointer-events-none opacity-80"
+        class="absolute top-0.5 bottom-0.5 rounded px-2 flex items-center text-xs text-(--clip-text) z-30 pointer-events-none opacity-80"
         :class="
           dragPreview.kind === 'file'
             ? 'bg-primary-600 border border-primary-400'

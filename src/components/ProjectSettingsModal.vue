@@ -345,7 +345,7 @@ const metaDescription = computed({
             <h3 v-show="isResolutionExpanded" class="text-lg font-semibold text-ui-text">
               {{ t('videoEditor.projectSettings.resolutionAndFps', 'Resolution & FPS') }}
             </h3>
-            <span v-show="!isResolutionExpanded" class="text-lg font-semibold text-ui-text">
+            <span v-show="!isResolutionExpanded" class="text-sm text-ui-text-muted font-normal">
               {{ resolutionSummary }}
             </span>
           </div>
@@ -406,7 +406,7 @@ const metaDescription = computed({
             <h3 v-show="isExportExpanded" class="text-lg font-semibold text-ui-text">
               {{ t('videoEditor.projectSettings.export', 'Export') }}
             </h3>
-            <span v-show="!isExportExpanded" class="text-lg font-semibold text-ui-text">
+            <span v-show="!isExportExpanded" class="text-sm text-ui-text-muted font-normal">
               {{ exportSummary }}
             </span>
           </div>
@@ -477,28 +477,6 @@ const metaDescription = computed({
 
       <div class="h-px bg-ui-border"></div>
 
-      <!-- Project Metadata -->
-      <div class="space-y-4">
-        <UFormField :label="t('videoEditor.export.metadataTitle', 'Title')">
-          <UInput v-model="metaTitle" class="w-full" />
-        </UFormField>
-
-        <div class="grid grid-cols-2 gap-4">
-          <UFormField :label="t('videoEditor.export.metadataAuthor', 'Author')">
-            <UInput v-model="metaAuthor" class="w-full" />
-          </UFormField>
-          <UFormField :label="t('videoEditor.export.metadataTags', 'Tags')">
-            <UInput v-model="metaTagsString" class="w-full" />
-          </UFormField>
-        </div>
-
-        <UFormField :label="t('videoEditor.export.metadataDescription', 'Description')">
-          <UTextarea v-model="metaDescription" :rows="2" class="w-full" />
-        </UFormField>
-      </div>
-
-      <div class="h-px bg-ui-border"></div>
-
       <!-- Advanced Settings -->
       <div class="space-y-4">
         <div
@@ -506,11 +484,11 @@ const metaDescription = computed({
           @click="isAdvancedExpanded = !isAdvancedExpanded"
         >
           <div class="flex items-center gap-2">
-            <h3 class="text-lg font-semibold text-ui-text">
+            <h3 v-show="isAdvancedExpanded" class="text-lg font-semibold text-ui-text">
               {{ t('videoEditor.projectSettings.advanced', 'Advanced') }}
             </h3>
             <span v-show="!isAdvancedExpanded" class="text-sm text-ui-text-muted font-normal">
-              {{ t('videoEditor.projectSettings.advancedSummary', 'Advanced settings') }}
+              {{ t('videoEditor.projectSettings.advanced', 'Advanced') }}
             </span>
           </div>
           <UIcon
@@ -557,6 +535,28 @@ const metaDescription = computed({
             </div>
           </UFormField>
         </div>
+      </div>
+
+      <div class="h-px bg-ui-border"></div>
+
+      <!-- Project Metadata -->
+      <div class="space-y-4">
+        <UFormField :label="t('videoEditor.export.metadataTitle', 'Title')">
+          <UInput v-model="metaTitle" class="w-full" />
+        </UFormField>
+
+        <div class="grid grid-cols-2 gap-4">
+          <UFormField :label="t('videoEditor.export.metadataAuthor', 'Author')">
+            <UInput v-model="metaAuthor" class="w-full" />
+          </UFormField>
+          <UFormField :label="t('videoEditor.export.metadataTags', 'Tags')">
+            <UInput v-model="metaTagsString" class="w-full" />
+          </UFormField>
+        </div>
+
+        <UFormField :label="t('videoEditor.export.metadataDescription', 'Description')">
+          <UTextarea v-model="metaDescription" :rows="2" class="w-full" />
+        </UFormField>
       </div>
 
       <div class="h-px bg-ui-border"></div>
