@@ -22,12 +22,12 @@ describe('WorkspaceStore', () => {
     const store = useWorkspaceStore();
     store.lastProjectName = 'test-project';
     await nextTick();
-    expect(localStorage.getItem('fastcat-last-opened-project')).toBe('test-project');
+    expect(localStorage.getItem('fastcat:workspace:last-opened-project')).toBe('test-project');
     expect(localStorage.getItem('fastcat-editor-last-opened-project')).toBeNull();
 
     store.lastProjectName = null;
     await nextTick();
-    expect(localStorage.getItem('fastcat-last-opened-project')).toBeNull();
+    expect(localStorage.getItem('fastcat:workspace:last-opened-project')).toBeNull();
     expect(localStorage.getItem('fastcat-editor-last-opened-project')).toBeNull();
   });
 

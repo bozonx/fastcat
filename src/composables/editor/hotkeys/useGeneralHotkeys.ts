@@ -21,9 +21,17 @@ export function useGeneralHotkeys(
   const selectionStore = useSelectionStore();
   const projectStore = useProjectStore();
   const filesPageStore = useFilesPageStore();
-  const fileManager = useFileManager();
+  const route = useRoute();
+  const router = useRouter();
   const { clipboardPayload, setClipboardPayload } = useAppClipboard();
   const { loadTimeline } = useProjectActions();
+
+  let fileManager: ReturnType<typeof useFileManager> | null = null;
+
+  function getFileManager() {
+    fileManager ??= useFileManager();
+    return fileManager;
+  }
 
   function isFileManagerFocus() {
     return focusStore.effectiveFocus === 'filesBrowser' || focusStore.effectiveFocus === 'left';
@@ -60,6 +68,7 @@ export function useGeneralHotkeys(
     }
 
     const targetDirPath = getFileManagerPasteTargetDirPath();
+    const fileManager = getFileManager();
 
     for (const item of payload.items) {
       const source = fileManager.findEntryByPath(item.path);
@@ -356,7 +365,14 @@ export function useGeneralHotkeys(
 
   async function handleFullscreen() {
     if (projectStore.currentView === 'fullscreen') {
-      projectStore.goToCut();
+      const projectId = route.params.id;
+      const targetProjectId = Array.isArray(projectId) ? projectId[0] : projectId;
+      if (typeof targetProjectId === 'string' && targetProjectId.length > 0) {
+        projectStore.setView(projectStore.lastViewBeforeFullscreen ?? 'cut');
+        await router.push(`/editor/${targetProjectId}`);
+      } else {
+        projectStore.goToCut();
+      }
       return true;
     }
 
@@ -371,7 +387,11 @@ export function useGeneralHotkeys(
     }
 
     // In all other cases: go to Monitor Fullscreen
-    projectStore.goToFullscreen();
+    const projectId = route.params.id;
+    const targetProjectId = Array.isArray(projectId) ? projectId[0] : projectId;
+    if (typeof targetProjectId === 'string' && targetProjectId.length > 0) {
+      await router.push(`/editor/${targetProjectId}/fullscreen`);
+    }
     return true;
   }
 

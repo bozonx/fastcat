@@ -38,9 +38,16 @@ export interface RegisterMonitorCoreWatchersOptions {
   updateCanvasDisplaySize: () => void;
   scheduleBuild: () => void;
   scheduleRender: (timeUs: number) => void;
-  scheduleLayoutUpdate: (layoutClips: WorkerTimelineClip[], layoutAudioClips: WorkerTimelineClip[]) => void;
+  scheduleLayoutUpdate: (
+    layoutClips: WorkerTimelineClip[],
+    layoutAudioClips: WorkerTimelineClip[],
+  ) => void;
   setAudioEngineMasterVolume: (volume: number) => void;
   setAudioEngineMonitorVolume: (volume: number) => void;
+}
+
+function getExistingProxies(existingProxies?: Ref<Set<string>>): Set<string> {
+  return existingProxies?.value ?? new Set<string>();
 }
 
 function getProxyWatchKey(existingProxies: Set<string>): string {
@@ -53,15 +60,17 @@ export function registerMonitorCoreWatchers(options: RegisterMonitorCoreWatchers
   });
 
   watch(
-    () => getProxyWatchKey(options.existingProxies.value),
+    () => getProxyWatchKey(getExistingProxies(options.existingProxies)),
     () => {
       if (options.getIsUnmounted()) return;
       if (!options.useProxyInMonitor.value) return;
 
+      const existingProxies = getExistingProxies(options.existingProxies);
+
       const hasNewProxyForClips = hasProxyForMonitorSources({
         clips: options.workerTimelineClips.value,
         audioClips: options.workerAudioClips.value,
-        existingProxies: options.existingProxies.value,
+        existingProxies,
       });
 
       if (hasNewProxyForClips) {

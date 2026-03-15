@@ -38,6 +38,13 @@ export interface VideoCoreWorkerAPI {
     taskId?: string,
   ): Promise<void>;
 
+  transcodeMedia(
+    sourceFile: File | FileSystemFileHandle,
+    targetHandle: FileSystemFileHandle,
+    options: ExportOptions,
+    taskId?: string,
+  ): Promise<void>;
+
   cancelExport(taskId?: string): Promise<void>;
 
   extractFrameToBlob(

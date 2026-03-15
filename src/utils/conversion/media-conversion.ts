@@ -12,7 +12,6 @@ import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import type { ConversionRequest } from '~/types/conversion';
 import { clampPositiveNumber, resolveAudioOnlyContainerFormat } from './helpers';
 import type { ExportOptions } from '~/utils/video-editor/worker-rpc';
-import type { WorkerTimelineClip } from '~/composables/monitor/types';
 
 export async function executeMediaConversion(params: {
   request: ConversionRequest;
@@ -71,8 +70,6 @@ export async function executeMediaConversion(params: {
         }
 
         let exportOptions: ExportOptions = {} as ExportOptions;
-        let videoPayload: WorkerTimelineClip[] = [];
-        let audioPayload: WorkerTimelineClip[] = [];
 
         if (params.request.type === 'video' && params.request.video) {
           exportOptions = {
@@ -92,31 +89,6 @@ export async function executeMediaConversion(params: {
             audioChannels: params.request.sharedAudio.channels,
             audioSampleRate: params.request.sharedAudio.sampleRate || undefined,
           };
-
-          videoPayload = [
-            {
-              kind: 'clip',
-              id: 'convert_video',
-              layer: 0,
-              source: { path: params.request.entry.path },
-              timelineRange: { startUs: 0, durationUs },
-              sourceRange: { startUs: 0, durationUs },
-            } as unknown as WorkerTimelineClip,
-          ];
-
-          if (!params.request.video.excludeAudio && meta.audio) {
-            audioPayload = [
-              {
-                kind: 'clip',
-                id: 'convert_audio',
-                layer: 0,
-                source: { path: params.request.entry.path },
-                timelineRange: { startUs: 0, durationUs },
-                sourceRange: { startUs: 0, durationUs },
-                audioGain: 1,
-              } as unknown as WorkerTimelineClip,
-            ];
-          }
         } else if (params.request.audioOnly) {
           exportOptions = {
             format: resolveAudioOnlyContainerFormat(params.request.audioOnly.codec),
@@ -131,30 +103,9 @@ export async function executeMediaConversion(params: {
             audioChannels: params.request.sharedAudio.channels,
             audioSampleRate: params.request.sharedAudio.sampleRate || undefined,
           };
-
-          if (meta.audio) {
-            audioPayload = [
-              {
-                kind: 'clip',
-                id: 'convert_audio',
-                layer: 0,
-                source: { path: params.request.entry.path },
-                timelineRange: { startUs: 0, durationUs },
-                sourceRange: { startUs: 0, durationUs },
-                audioGain: 1,
-                speed: params.request.audioOnly.reverse ? -1 : 1,
-              } as unknown as WorkerTimelineClip,
-            ];
-          }
         }
 
-        await client.exportTimeline(
-          params.targetHandle,
-          exportOptions,
-          videoPayload,
-          audioPayload,
-          params.taskId,
-        );
+        await client.transcodeMedia(sourceFile, params.targetHandle, exportOptions, params.taskId);
       } finally {
         unregisterExportTaskHostApi(params.taskId);
       }
