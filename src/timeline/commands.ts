@@ -27,13 +27,13 @@ import {
 export interface AddClipToTrackCommand {
   type: 'add_clip_to_track';
   trackId: string;
+  clipId?: string;
   name: string;
   path: string;
-  clipType?: Extract<import('./types').TimelineClipType, 'media' | 'timeline'>;
-  durationUs?: number;
-  sourceDurationUs?: number;
+  startUs: number;
+  durationUs: number;
+  sourceRange?: import('./types').TimelineRange;
   isImage?: boolean;
-  startUs?: number;
   pseudo?: boolean;
   audioFadeInCurve?: import('./types').AudioFadeCurve;
   audioFadeOutCurve?: import('./types').AudioFadeCurve;

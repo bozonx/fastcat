@@ -529,6 +529,120 @@ export const TRANSITION_MIN_CLIP_DURATION_US = 100_000;
  */
 export const TRANSITION_ADJACENCY_THRESHOLD_US = 1_000;
 
+function normalizeOpposingEdgeDurations(input: {
+  clipDurationUs: number;
+  startDurationUs?: number;
+  endDurationUs?: number;
+}): { startDurationUs: number; endDurationUs: number } {
+  const clipDurationUs = Math.max(0, Math.round(input.clipDurationUs));
+  let startDurationUs = Math.max(0, Math.round(input.startDurationUs ?? 0));
+  let endDurationUs = Math.max(0, Math.round(input.endDurationUs ?? 0));
+
+  startDurationUs = Math.min(startDurationUs, clipDurationUs);
+  endDurationUs = Math.min(endDurationUs, clipDurationUs);
+
+  const totalDurationUs = startDurationUs + endDurationUs;
+  if (totalDurationUs <= clipDurationUs || totalDurationUs <= 0) {
+    return { startDurationUs, endDurationUs };
+  }
+
+  const ratio = clipDurationUs / totalDurationUs;
+  const nextStartDurationUs = Math.max(
+    0,
+    Math.min(clipDurationUs, Math.round(startDurationUs * ratio)),
+  );
+  const nextEndDurationUs = Math.max(0, clipDurationUs - nextStartDurationUs);
+
+  return {
+    startDurationUs: nextStartDurationUs,
+    endDurationUs: nextEndDurationUs,
+  };
+}
+
+export function autoAdaptClipEdgeDurations(items: TimelineTrackItem[]): TimelineTrackItem[] {
+  return items.map((it, idx, arr) => {
+    if (it.kind !== 'clip') return it;
+
+    const clipDurationUs = Math.max(0, Math.round(it.timelineRange.durationUs));
+    const prev = idx > 0 ? arr[idx - 1] : null;
+    const next = idx < arr.length - 1 ? arr[idx + 1] : null;
+
+    let transitionIn = it.transitionIn;
+    let transitionOut = it.transitionOut;
+
+    if (clipDurationUs < TRANSITION_MIN_CLIP_DURATION_US) {
+      transitionIn = undefined;
+      transitionOut = undefined;
+    } else {
+      const normalizedTransitions = normalizeOpposingEdgeDurations({
+        clipDurationUs,
+        startDurationUs: transitionIn?.durationUs,
+        endDurationUs: transitionOut?.durationUs,
+      });
+
+      if (transitionIn) {
+        transitionIn = {
+          ...transitionIn,
+          durationUs: normalizedTransitions.startDurationUs,
+        };
+      }
+
+      if (transitionOut) {
+        transitionOut = {
+          ...transitionOut,
+          durationUs: normalizedTransitions.endDurationUs,
+        };
+      }
+    }
+
+    if (transitionIn?.mode === 'adjacent') {
+      const gap = prev
+        ? it.timelineRange.startUs - (prev.timelineRange.startUs + prev.timelineRange.durationUs)
+        : Infinity;
+      if (!prev || prev.kind !== 'clip' || gap > TRANSITION_ADJACENCY_THRESHOLD_US) {
+        transitionIn = { ...transitionIn, mode: 'transparent' };
+      }
+    }
+
+    if (transitionOut?.mode === 'adjacent') {
+      const gap = next
+        ? next.timelineRange.startUs - (it.timelineRange.startUs + it.timelineRange.durationUs)
+        : Infinity;
+      if (!next || next.kind !== 'clip' || gap > TRANSITION_ADJACENCY_THRESHOLD_US) {
+        transitionOut = { ...transitionOut, mode: 'transparent' };
+      }
+    }
+
+    const normalizedFades = normalizeOpposingEdgeDurations({
+      clipDurationUs,
+      startDurationUs: (it as any).audioFadeInUs,
+      endDurationUs: (it as any).audioFadeOutUs,
+    });
+
+    const audioFadeInUs = normalizedFades.startDurationUs;
+    const audioFadeOutUs = normalizedFades.endDurationUs;
+    const hadAudioFadeInUs = typeof (it as any).audioFadeInUs === 'number';
+    const hadAudioFadeOutUs = typeof (it as any).audioFadeOutUs === 'number';
+
+    if (
+      transitionIn !== it.transitionIn ||
+      transitionOut !== it.transitionOut ||
+      (hadAudioFadeInUs && audioFadeInUs !== (it as any).audioFadeInUs) ||
+      (hadAudioFadeOutUs && audioFadeOutUs !== (it as any).audioFadeOutUs)
+    ) {
+      return {
+        ...it,
+        transitionIn,
+        transitionOut,
+        ...(hadAudioFadeInUs ? { audioFadeInUs } : {}),
+        ...(hadAudioFadeOutUs ? { audioFadeOutUs } : {}),
+      };
+    }
+
+    return it;
+  });
+}
+
 /**
  * After a geometry change (move/trim) auto-adjusts clip transitions in a track:
  * - Shrinks transition duration if it exceeds the clip duration.
@@ -538,56 +652,5 @@ export const TRANSITION_ADJACENCY_THRESHOLD_US = 1_000;
  * Returns a new items array (immutable). Does not modify the input.
  */
 export function autoAdaptClipTransitions(items: TimelineTrackItem[]): TimelineTrackItem[] {
-  return items.map((it, idx, arr) => {
-    if (it.kind !== 'clip') return it;
-
-    const clipDurationUs = it.timelineRange.durationUs;
-    let transitionIn = it.transitionIn;
-    let transitionOut = it.transitionOut;
-
-    // Shrink or remove transition-in if clip shrank
-    if (transitionIn) {
-      if (clipDurationUs < TRANSITION_MIN_CLIP_DURATION_US) {
-        transitionIn = undefined;
-      } else if (transitionIn.durationUs > clipDurationUs) {
-        transitionIn = { ...transitionIn, durationUs: clipDurationUs };
-      }
-    }
-
-    // Shrink or remove transition-out if clip shrank
-    if (transitionOut) {
-      if (clipDurationUs < TRANSITION_MIN_CLIP_DURATION_US) {
-        transitionOut = undefined;
-      } else if (transitionOut.durationUs > clipDurationUs) {
-        transitionOut = { ...transitionOut, durationUs: clipDurationUs };
-      }
-    }
-
-    // Downgrade adjacent transition-in if previous clip is no longer adjacent
-    if (transitionIn?.mode === 'adjacent') {
-      const prev = idx > 0 ? arr[idx - 1] : null;
-      const gap = prev
-        ? it.timelineRange.startUs - (prev.timelineRange.startUs + prev.timelineRange.durationUs)
-        : Infinity;
-      if (!prev || prev.kind !== 'clip' || gap > TRANSITION_ADJACENCY_THRESHOLD_US) {
-        transitionIn = { ...transitionIn, mode: 'transparent' };
-      }
-    }
-
-    // Downgrade adjacent transition-out if next clip is no longer adjacent
-    if (transitionOut?.mode === 'adjacent') {
-      const next = idx < arr.length - 1 ? arr[idx + 1] : null;
-      const gap = next
-        ? next.timelineRange.startUs - (it.timelineRange.startUs + it.timelineRange.durationUs)
-        : Infinity;
-      if (!next || next.kind !== 'clip' || gap > TRANSITION_ADJACENCY_THRESHOLD_US) {
-        transitionOut = { ...transitionOut, mode: 'transparent' };
-      }
-    }
-
-    if (transitionIn !== it.transitionIn || transitionOut !== it.transitionOut) {
-      return { ...it, transitionIn, transitionOut };
-    }
-    return it;
-  });
+  return autoAdaptClipEdgeDurations(items);
 }

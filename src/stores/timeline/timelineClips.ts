@@ -391,14 +391,13 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
       if ((clip.clipType === 'media' || clip.clipType === 'timeline') && clip.source?.path) {
         deps.applyTimeline({
           type: 'add_clip_to_track',
-          trackId: targetTrack.id,
+          trackId: clip.trackId,
           name: clip.name,
           path: clip.source.path,
-          clipType: clip.clipType,
+          startUs: clip.timelineRange.startUs,
           durationUs: clip.timelineRange.durationUs,
-          sourceDurationUs: clip.sourceDurationUs,
+          sourceRange: clip.sourceRange,
           isImage: clip.isImage,
-          startUs: nextStartUs,
         });
         continue;
       }
@@ -544,6 +543,40 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
       hudType: input.hudType,
       startUs: deps.currentTime.value,
     });
+  }
+
+  function addClipToTrackFromPath(
+    input: {
+      trackId: string;
+      name: string;
+      path: string;
+      startUs?: number;
+      pseudo?: boolean;
+    },
+    options?: {
+      skipHistory?: boolean;
+      saveMode?: 'none' | 'debounced' | 'immediate';
+      historyMode?: 'immediate' | 'debounced';
+      historyDebounceMs?: number;
+      label?: string;
+    },
+  ) {
+    if (!deps.timelineDoc.value) {
+      deps.timelineDoc.value = deps.createFallbackTimelineDoc();
+    }
+
+    deps.applyTimeline(
+      {
+        type: 'add_clip_to_track',
+        trackId: input.trackId,
+        name: input.name,
+        path: input.path,
+        startUs: input.startUs ?? 0,
+        durationUs: 0,
+        pseudo: input.pseudo,
+      },
+      options,
+    );
   }
 
   function addVirtualClipToTrack(

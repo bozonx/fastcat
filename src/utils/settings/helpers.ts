@@ -46,6 +46,7 @@ export function createDefaultProjectDefaults(): FastCatUserSettings['projectDefa
     sampleRate: DEFAULT_USER_SETTINGS.projectDefaults.sampleRate,
     audioDeclickDurationUs: DEFAULT_USER_SETTINGS.projectDefaults.audioDeclickDurationUs,
     defaultAudioFadeCurve: DEFAULT_USER_SETTINGS.projectDefaults.defaultAudioFadeCurve,
+    audioScrubbingEnabled: DEFAULT_USER_SETTINGS.projectDefaults.audioScrubbingEnabled,
   };
 }
 

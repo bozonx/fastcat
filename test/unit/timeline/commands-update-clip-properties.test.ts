@@ -248,6 +248,40 @@ describe('timeline/commands update_clip_properties', () => {
     expect(clip.timelineRange.durationUs).toBeLessThan(1_000_000);
   });
 
+  it('proportionally shrinks audio fades when they would overlap on the same clip', () => {
+    const doc = makeDoc({
+      id: 'v1',
+      kind: 'video',
+      name: 'V1',
+      items: [
+        {
+          kind: 'clip',
+          clipType: 'media',
+          id: 'c1',
+          trackId: 'v1',
+          name: 'C1',
+          source: { path: 'a.mp4' },
+          sourceDurationUs: 10_000_000,
+          timelineRange: { startUs: 0, durationUs: 5_000_000 },
+          sourceRange: { startUs: 0, durationUs: 5_000_000 },
+          audioFadeOutUs: 3_000_000,
+        },
+      ],
+    });
+
+    const next = applyTimelineCommand(doc, {
+      type: 'update_clip_properties',
+      trackId: 'v1',
+      itemId: 'c1',
+      properties: { audioFadeInUs: 4_000_000 },
+    }).next;
+
+    const clip = (next.tracks[0] as TimelineTrack).items[0] as any;
+    expect(clip.audioFadeInUs).toBe(2_000_000);
+    expect(clip.audioFadeOutUs).toBe(3_000_000);
+    expect(clip.audioFadeInUs + clip.audioFadeOutUs).toBe(5_000_000);
+  });
+
   it('ripples subsequent clips when slowing down would cause overlap', () => {
     const doc = makeDoc({
       id: 'v1',
@@ -293,6 +327,44 @@ describe('timeline/commands update_clip_properties', () => {
     expect(c1.speed).toBe(0.5);
     expect(c1.timelineRange.durationUs).toBe(2_000_000);
     expect(c2.timelineRange.startUs).toBe(2_000_000);
+  });
+
+  it('preserves audio fade lengths when clip duration increases', () => {
+    const doc = makeDoc({
+      id: 'v1',
+      kind: 'video',
+      name: 'V1',
+      items: [
+        {
+          kind: 'clip',
+          clipType: 'media',
+          id: 'c1',
+          trackId: 'v1',
+          name: 'C1',
+          source: { path: 'a.mp4' },
+          sourceDurationUs: 10_000_000,
+          timelineRange: { startUs: 0, durationUs: 4_000_000 },
+          sourceRange: { startUs: 0, durationUs: 4_000_000 },
+          audioFadeInUs: 1_000_000,
+          audioFadeOutUs: 1_500_000,
+        },
+      ],
+    });
+
+    const next = applyTimelineCommand(doc, {
+      type: 'update_clip_properties',
+      trackId: 'v1',
+      itemId: 'c1',
+      properties: {
+        timelineRange: { startUs: 0, durationUs: 6_000_000 },
+        sourceRange: { startUs: 0, durationUs: 6_000_000 },
+      },
+    }).next;
+
+    const clip = (next.tracks[0] as TimelineTrack).items[0] as any;
+    expect(clip.timelineRange.durationUs).toBe(6_000_000);
+    expect(clip.audioFadeInUs).toBe(1_000_000);
+    expect(clip.audioFadeOutUs).toBe(1_500_000);
   });
 
   it('sanitizes style for a text clip', () => {

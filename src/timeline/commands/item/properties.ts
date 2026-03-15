@@ -33,6 +33,7 @@ import {
   quantizeDeltaUsToFrames,
   clampInt,
   quantizeRangeToFrames,
+  autoAdaptClipTransitions,
 } from '../utils';
 import { normalizeBalance, normalizeGain } from '~/utils/audio/envelope';
 import {
@@ -587,7 +588,9 @@ export function updateClipProperties(
             })()
           : it,
       );
-      const normalized = normalizeGaps(doc, t.id, updatedItems, { quantizeToFrames: false });
+      const normalized = autoAdaptClipTransitions(
+        normalizeGaps(doc, t.id, updatedItems, { quantizeToFrames: false }),
+      );
       return { ...t, items: normalized };
     }
     return t;
@@ -751,7 +754,9 @@ export function updateClipTransition(
       it.id === item.id ? ({ ...it, ...(patch as any) } as TimelineTrackItem) : it,
     );
     nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-    const nextItems = normalizeGaps(doc, t.id, nextItemsRaw, { quantizeToFrames: false });
+    const nextItems = autoAdaptClipTransitions(
+      normalizeGaps(doc, t.id, nextItemsRaw, { quantizeToFrames: false }),
+    );
     return { ...t, items: nextItems };
   });
 

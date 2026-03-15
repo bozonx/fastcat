@@ -302,7 +302,6 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
         path: input.path,
         clipType: 'media',
         durationUs,
-        sourceDurationUs,
         isImage: isImageLike,
         startUs: input.startUs,
         pseudo: input.pseudo,
