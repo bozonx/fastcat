@@ -6,8 +6,6 @@ import {
   Application,
   Sprite,
   Texture,
-  Graphics,
-  CanvasSource,
   ImageSource,
   DOMAdapter,
   WebWorkerAdapter,
@@ -47,6 +45,7 @@ import { TransitionManager } from './compositor/TransitionManager';
 import { LayoutApplier } from './compositor/LayoutApplier';
 import { ClipResourceManager } from './compositor/ClipResourceManager';
 import { StageTextureRenderer } from './compositor/StageTextureRenderer';
+import { ClipFactory } from './compositor/ClipFactory';
 import { TextRenderer } from './compositor/renderers/TextRenderer';
 import { ShapeRenderer } from './compositor/renderers/ShapeRenderer';
 import { CanvasFallbackRenderer } from './compositor/renderers/CanvasFallbackRenderer';
@@ -94,6 +93,11 @@ export class VideoCompositor {
     height: this.height,
     layoutApplier: this.layoutApplier,
     clipPreferBitmapFallback: this.clipPreferBitmapFallback,
+  });
+  private clipFactory = new ClipFactory({
+    width: this.width,
+    height: this.height,
+    layoutApplier: this.layoutApplier,
   });
   private clipResourceManager = new ClipResourceManager({
     width: this.width,
@@ -304,6 +308,11 @@ export class VideoCompositor {
       height: this.height,
       layoutApplier: this.layoutApplier,
       clipPreferBitmapFallback: this.clipPreferBitmapFallback,
+    });
+    this.clipFactory = new ClipFactory({
+      width: this.width,
+      height: this.height,
+      layoutApplier: this.layoutApplier,
     });
     this.clipResourceManager = new ClipResourceManager({
       width: this.width,
@@ -607,16 +616,8 @@ export class VideoCompositor {
           this.replacedClipIds.add(itemId);
         }
 
-        const sprite = new Sprite(Texture.WHITE);
-        sprite.width = 1;
-        sprite.height = 1;
-        sprite.visible = false;
-        (sprite as any).__clipId = itemId;
-
         const backgroundColor = sanitizeTimelineColor((clipData as any).backgroundColor, '#000000');
-        sprite.tint = parseHexColor(backgroundColor);
-
-        const compositorClip: CompositorClip = {
+        const compositorClip = this.clipFactory.createSolidClip({
           itemId,
           trackId,
           layer,
@@ -627,31 +628,20 @@ export class VideoCompositor {
           sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
           speed,
-          sprite,
-          clipKind: 'solid',
-          sourceKind: 'bitmap',
-          imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
-          lastVideoFrame: null,
-          canvas: null,
-          ctx: null,
-          bitmap: null,
           backgroundColor,
+          clipType: 'background',
           opacity: clipData.opacity,
           blendMode: resolveBlendMode((clipData as any).blendMode),
           effects: this.toVideoEffects(clipData.effects),
           transform: (clipData as any).transform,
-        };
-
-        compositorClip.clipType = 'background';
-
+        });
+        compositorClip.sprite.tint = parseHexColor(backgroundColor);
         const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
-        if (trackRuntime) {
-          trackRuntime.container.addChild(sprite);
-        } else {
-          this.app.stage.addChild(sprite);
-        }
-
-        this.layoutApplier.applySolidLayout(compositorClip);
+        this.clipFactory.attachClipSprite({
+          clip: compositorClip,
+          trackRuntime,
+          stage: this.app.stage,
+        });
 
         nextClips.push(compositorClip);
         nextClipById.set(itemId, compositorClip);
@@ -667,12 +657,7 @@ export class VideoCompositor {
           this.replacedClipIds.add(itemId);
         }
 
-        // Text clips render via Canvas2D into a Sprite
-        const sprite = new Sprite(Texture.EMPTY);
-        sprite.visible = false;
-        (sprite as any).__clipId = itemId;
-
-        const compositorClip: CompositorClip = {
+        const compositorClip = this.clipFactory.createTextClip({
           itemId,
           trackId,
           layer,
@@ -683,14 +668,6 @@ export class VideoCompositor {
           sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
           speed,
-          sprite,
-          clipKind: 'text',
-          sourceKind: 'canvas',
-          imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }), // Will be replaced by CanvasSource
-          lastVideoFrame: null,
-          canvas: null,
-          ctx: null,
-          bitmap: null,
           text: String((clipData as any).text ?? ''),
           style: (clipData as any).style,
           opacity: clipData.opacity,
@@ -699,19 +676,13 @@ export class VideoCompositor {
           transform: (clipData as any).transform,
           transitionIn: clipData.transitionIn,
           transitionOut: clipData.transitionOut,
-          transitionFilter: null,
-          transitionFilterType: null,
-          textDirty: true,
-        };
-
-        compositorClip.clipType = 'text';
-
+        });
         const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
-        if (trackRuntime) {
-          trackRuntime.container.addChild(sprite);
-        } else {
-          this.app.stage.addChild(sprite);
-        }
+        this.clipFactory.attachClipSprite({
+          clip: compositorClip,
+          trackRuntime,
+          stage: this.app.stage,
+        });
 
         nextClips.push(compositorClip);
         nextClipById.set(itemId, compositorClip);
@@ -727,11 +698,7 @@ export class VideoCompositor {
           this.replacedClipIds.add(itemId);
         }
 
-        const sprite = new Graphics();
-        sprite.visible = false;
-        (sprite as any).__clipId = itemId;
-
-        const compositorClip: CompositorClip = {
+        const compositorClip = this.clipFactory.createShapeClip({
           itemId,
           trackId,
           layer,
@@ -742,14 +709,6 @@ export class VideoCompositor {
           sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
           speed,
-          sprite,
-          clipKind: 'shape',
-          sourceKind: 'graphics',
-          imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
-          lastVideoFrame: null,
-          canvas: null,
-          ctx: null,
-          bitmap: null,
           shapeType: (clipData as any).shapeType ?? 'square',
           fillColor: String((clipData as any).fillColor ?? '#ffffff'),
           strokeColor: String((clipData as any).strokeColor ?? '#000000'),
@@ -760,21 +719,13 @@ export class VideoCompositor {
           transform: (clipData as any).transform,
           transitionIn: clipData.transitionIn,
           transitionOut: clipData.transitionOut,
-          transitionFilter: null,
-          transitionFilterType: null,
-          shapeDirty: true,
-        };
-
-        compositorClip.clipType = 'shape';
-
+        });
         const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
-        if (trackRuntime) {
-          trackRuntime.container.addChild(sprite as any);
-        } else {
-          this.app.stage.addChild(sprite as any);
-        }
-
-        this.layoutApplier.applyShapeLayout(compositorClip);
+        this.clipFactory.attachClipSprite({
+          clip: compositorClip,
+          trackRuntime,
+          stage: this.app.stage,
+        });
 
         nextClips.push(compositorClip);
         nextClipById.set(itemId, compositorClip);
@@ -790,13 +741,7 @@ export class VideoCompositor {
           this.replacedClipIds.add(itemId);
         }
 
-        const sprite = new Sprite(Texture.EMPTY);
-        sprite.width = this.width;
-        sprite.height = this.height;
-        sprite.visible = false;
-        (sprite as any).__clipId = itemId;
-
-        const compositorClip: CompositorClip = {
+        const compositorClip = this.clipFactory.createAdjustmentClip({
           itemId,
           trackId,
           layer,
@@ -807,29 +752,17 @@ export class VideoCompositor {
           sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
           speed,
-          sprite,
-          clipKind: 'adjustment',
-          sourceKind: 'bitmap',
-          imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
-          lastVideoFrame: null,
-          canvas: null,
-          ctx: null,
-          bitmap: null,
           opacity: clipData.opacity,
           blendMode: resolveBlendMode((clipData as any).blendMode),
           effects: this.toVideoEffects(clipData.effects),
           transform: (clipData as any).transform,
-          adjustmentSourceTexture: null,
-        };
-
-        compositorClip.clipType = 'adjustment';
-
+        });
         const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
-        if (trackRuntime) {
-          trackRuntime.container.addChild(sprite);
-        } else {
-          this.app.stage.addChild(sprite);
-        }
+        this.clipFactory.attachClipSprite({
+          clip: compositorClip,
+          trackRuntime,
+          stage: this.app.stage,
+        });
 
         nextClips.push(compositorClip);
         nextClipById.set(itemId, compositorClip);
@@ -845,13 +778,7 @@ export class VideoCompositor {
           this.replacedClipIds.add(itemId);
         }
 
-        const sprite = new Sprite(Texture.EMPTY);
-        sprite.width = this.width;
-        sprite.height = this.height;
-        sprite.visible = false;
-        (sprite as any).__clipId = itemId;
-
-        const compositorClip: CompositorClip = {
+        const compositorClip = this.clipFactory.createHudClip({
           itemId,
           trackId,
           layer,
@@ -862,14 +789,6 @@ export class VideoCompositor {
           sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
           speed,
-          sprite,
-          clipKind: 'hud',
-          sourceKind: 'bitmap',
-          imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
-          lastVideoFrame: null,
-          canvas: new OffscreenCanvas(this.width, this.height),
-          ctx: null,
-          bitmap: null,
           hudType: (clipData as any).hudType ?? 'media_frame',
           background: (clipData as any).background,
           content: (clipData as any).content,
@@ -879,26 +798,14 @@ export class VideoCompositor {
           transform: (clipData as any).transform,
           transitionIn: clipData.transitionIn,
           transitionOut: clipData.transitionOut,
-          transitionFilter: null,
-          transitionFilterType: null,
-          hudMediaStates: {},
-        };
-
-        const ctx = compositorClip.canvas?.getContext('2d');
-        if (ctx) {
-          compositorClip.ctx = ctx as OffscreenCanvasRenderingContext2D;
-          const canvasSource = new CanvasSource({ resource: compositorClip.canvas as any });
-          sprite.texture.source = canvasSource as any;
-        }
-
-        compositorClip.clipType = 'hud';
+        });
 
         const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
-        if (trackRuntime) {
-          trackRuntime.container.addChild(sprite);
-        } else {
-          this.app.stage.addChild(sprite);
-        }
+        this.clipFactory.attachClipSprite({
+          clip: compositorClip,
+          trackRuntime,
+          stage: this.app.stage,
+        });
 
         // Initialize HUD media states
         const bgPath = compositorClip.background?.source?.path;
@@ -1038,12 +945,6 @@ export class VideoCompositor {
         sequentialTimeUs = Math.max(sequentialTimeUs, endUs);
 
         const imageSource = new ImageSource({ resource: new OffscreenCanvas(2, 2) as any });
-        const texture = new Texture({ source: imageSource });
-        const sprite = new Sprite(texture);
-        sprite.width = 1;
-        sprite.height = 1;
-        sprite.visible = false;
-        (sprite as any).__clipId = itemId;
 
         let bmp: ImageBitmap | null = null;
         try {
@@ -1074,9 +975,6 @@ export class VideoCompositor {
           imageSource.resize(frameW, frameH);
           (imageSource as any).resource = bmp as any;
           imageSource.update();
-          this.layoutApplier.applySpriteLayout(frameW, frameH, {
-            sprite,
-          } as any);
         } catch (e) {
           if (bmp) {
             try {
@@ -1085,10 +983,9 @@ export class VideoCompositor {
               // ignore
             }
           }
-          sprite.visible = false;
         }
 
-        const compositorClip: CompositorClip = {
+        const compositorClip = this.clipFactory.createImageClip({
           itemId,
           trackId,
           layer,
@@ -1101,29 +998,27 @@ export class VideoCompositor {
           sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
           sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
           speed,
-          sprite,
-          clipKind: 'image',
-          sourceKind: 'bitmap',
-          imageSource,
-          lastVideoFrame: null,
-          canvas: null,
-          ctx: null,
           bitmap: bmp,
-          backgroundColor: undefined,
+          imageSource,
           opacity: clipData.opacity,
           blendMode: resolveBlendMode((clipData as any).blendMode),
           effects: this.toVideoEffects(clipData.effects),
           transform: (clipData as any).transform,
           transitionIn: clipData.transitionIn,
           transitionOut: clipData.transitionOut,
-        };
+        });
+        if (bmp) {
+          const frameW = Math.max(1, Math.round((bmp as any).width ?? 1));
+          const frameH = Math.max(1, Math.round((bmp as any).height ?? 1));
+          this.layoutApplier.applySpriteLayout(frameW, frameH, compositorClip);
+        }
 
         const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
-        if (trackRuntime) {
-          trackRuntime.container.addChild(sprite);
-        } else {
-          this.app.stage.addChild(sprite);
-        }
+        this.clipFactory.attachClipSprite({
+          clip: compositorClip,
+          trackRuntime,
+          stage: this.app.stage,
+        });
 
         nextClips.push(compositorClip);
         nextClipById.set(itemId, compositorClip);
@@ -1166,15 +1061,7 @@ export class VideoCompositor {
         // Start with a VideoFrame-powered texture source when available.
         // Fallback to a per-clip OffscreenCanvas if VideoFrame upload fails at runtime.
         const imageSource = new ImageSource({ resource: new OffscreenCanvas(2, 2) as any });
-        const texture = new Texture({ source: imageSource });
-        const sprite = new Sprite(texture);
-
-        sprite.width = 1;
-        sprite.height = 1;
-        sprite.visible = false;
-        (sprite as any).__clipId = itemId;
-
-        const compositorClip: CompositorClip = {
+        const compositorClip = this.clipFactory.createVideoClip({
           itemId,
           trackId,
           layer,
@@ -1193,29 +1080,21 @@ export class VideoCompositor {
           sourceDurationUs,
           speed,
           freezeFrameSourceUs,
-          sprite,
-          clipKind: 'video',
-          sourceKind: 'videoFrame',
           imageSource,
-          lastVideoFrame: null,
-          canvas: null,
-          ctx: null,
-          bitmap: null,
-          backgroundColor: undefined,
           opacity: clipData.opacity,
           blendMode: resolveBlendMode((clipData as any).blendMode),
           effects: this.toVideoEffects(clipData.effects),
           transform: (clipData as any).transform,
           transitionIn: clipData.transitionIn,
           transitionOut: clipData.transitionOut,
-        };
+        });
 
         const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
-        if (trackRuntime) {
-          trackRuntime.container.addChild(sprite);
-        } else {
-          this.app.stage.addChild(sprite);
-        }
+        this.clipFactory.attachClipSprite({
+          clip: compositorClip,
+          trackRuntime,
+          stage: this.app.stage,
+        });
 
         nextClips.push(compositorClip);
         nextClipById.set(itemId, compositorClip);
