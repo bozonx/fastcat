@@ -10,9 +10,41 @@ import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { getWorkspacePathFileName } from '~/utils/workspace-common';
 import { pressedKeyCodes } from '~/utils/hotkeys/pressedKeys';
+import type { HudType, ShapeType } from '~/timeline/types';
 
 export interface UseTimelineDropHandlingOptions {
   scrollEl: Ref<HTMLElement | null>;
+}
+
+interface DragPreview {
+  trackId: string;
+  startUs: number;
+  label: string;
+  durationUs: number;
+  kind: 'timeline-clip' | 'file';
+}
+
+interface TimelineDropItem {
+  kind?: 'file' | 'timeline' | 'adjustment' | 'background' | 'text' | 'shape' | 'hud';
+  name?: string;
+  path?: string;
+  type?: string;
+}
+
+interface TimelineDropContext {
+  baseTrackId: string;
+  currentStartUs: number;
+  pseudo: boolean;
+}
+
+interface TimelineDropResult {
+  nextStartUs: number;
+  added: boolean;
+}
+
+interface TimelineDropStrategy {
+  canHandle: (item: TimelineDropItem) => boolean;
+  execute: (item: TimelineDropItem, context: TimelineDropContext) => Promise<TimelineDropResult>;
 }
 
 export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOptions) {
@@ -26,13 +58,7 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
   const { t } = useI18n();
   const toast = useToast();
 
-  const dragPreview = ref<{
-    trackId: string;
-    startUs: number;
-    label: string;
-    durationUs: number;
-    kind: 'timeline-clip' | 'file';
-  } | null>(null);
+  const dragPreview = ref<DragPreview | null>(null);
 
   function isLayer1Pressed(e: DragEvent) {
     const layer1 = workspaceStore.userSettings.hotkeys.layer1 ?? 'Shift';
@@ -135,6 +161,241 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
     }
 
     return nextStartUs;
+  }
+
+  function resolveVirtualClipName(item: TimelineDropItem) {
+    const kind = item.kind ?? 'file';
+    return item.name || kind.charAt(0).toUpperCase() + kind.slice(1);
+  }
+
+  function resolveShapeType(value?: string): ShapeType {
+    if (
+      value === 'square' ||
+      value === 'circle' ||
+      value === 'triangle' ||
+      value === 'star' ||
+      value === 'cloud' ||
+      value === 'speech_bubble' ||
+      value === 'bang'
+    ) {
+      return value;
+    }
+
+    return 'square';
+  }
+
+  function resolveHudType(value?: string): HudType {
+    return value === 'media_frame' ? value : 'media_frame';
+  }
+
+  function normalizeDropItems(payload: unknown): TimelineDropItem[] {
+    if (Array.isArray((payload as { items?: unknown[] } | null)?.items)) {
+      return (payload as { items: TimelineDropItem[] }).items;
+    }
+
+    if (Array.isArray(payload)) {
+      return payload as TimelineDropItem[];
+    }
+
+    if (payload && typeof payload === 'object') {
+      return [payload as TimelineDropItem];
+    }
+
+    return [];
+  }
+
+  async function executeVirtualClipDrop(
+    item: TimelineDropItem,
+    context: TimelineDropContext,
+  ): Promise<TimelineDropResult> {
+    const clipType = item.kind;
+    if (
+      clipType !== 'shape' &&
+      clipType !== 'hud' &&
+      clipType !== 'adjustment' &&
+      clipType !== 'background' &&
+      clipType !== 'text'
+    ) {
+      return {
+        nextStartUs: context.currentStartUs,
+        added: false,
+      };
+    }
+
+    const targetTrackId = getCompatibleTrackId(context.baseTrackId, 'video') ?? context.baseTrackId;
+    const durationUs = 5_000_000;
+    const nextStartUs = resolveInsertStartUs({
+      trackId: targetTrackId,
+      startUs: context.currentStartUs,
+      durationUs,
+      pseudo: context.pseudo,
+    });
+
+    await timelineStore.addVirtualClipToTrack({
+      trackId: targetTrackId,
+      startUs: nextStartUs,
+      clipType,
+      name: resolveVirtualClipName(item),
+      shapeType: clipType === 'shape' ? resolveShapeType(item.type) : undefined,
+      hudType: clipType === 'hud' ? resolveHudType(item.type) : undefined,
+      pseudo: context.pseudo,
+    });
+
+    return {
+      nextStartUs: nextStartUs + durationUs,
+      added: true,
+    };
+  }
+
+  async function executeTimelineClipDrop(
+    item: TimelineDropItem,
+    context: TimelineDropContext,
+  ): Promise<TimelineDropResult> {
+    if (!item.path) {
+      return {
+        nextStartUs: context.currentStartUs,
+        added: false,
+      };
+    }
+
+    const targetTrackId =
+      resolveDropTrackId({
+        inputTrackId: context.baseTrackId,
+        payloadKind: 'timeline',
+        path: item.path,
+      }) ?? context.baseTrackId;
+    const durationUs = getPreviewDurationUs({ kind: 'timeline', path: item.path });
+    const nextStartUs = resolveInsertStartUs({
+      trackId: targetTrackId,
+      startUs: context.currentStartUs,
+      durationUs,
+      pseudo: context.pseudo,
+    });
+
+    const res = await (timelineStore as any).addTimelineClipToTimelineFromPath({
+      trackId: targetTrackId,
+      name: item.name || 'Timeline',
+      path: item.path,
+      startUs: nextStartUs,
+      pseudo: context.pseudo,
+    });
+
+    return {
+      nextStartUs: nextStartUs + res.durationUs,
+      added: true,
+    };
+  }
+
+  async function executeTextFileDrop(
+    item: TimelineDropItem,
+    context: TimelineDropContext,
+  ): Promise<TimelineDropResult> {
+    if (!item.path) {
+      return {
+        nextStartUs: context.currentStartUs,
+        added: false,
+      };
+    }
+
+    const targetTrackId = getCompatibleTrackId(context.baseTrackId, 'video') ?? context.baseTrackId;
+    const file = await fileManager.vfs.getFile(item.path);
+    if (!file) {
+      return {
+        nextStartUs: context.currentStartUs,
+        added: false,
+      };
+    }
+
+    const durationUs = 5_000_000;
+    const text = await file.text();
+    const nextStartUs = resolveInsertStartUs({
+      trackId: targetTrackId,
+      startUs: context.currentStartUs,
+      durationUs,
+      pseudo: context.pseudo,
+    });
+
+    await timelineStore.addVirtualClipToTrack({
+      trackId: targetTrackId,
+      startUs: nextStartUs,
+      clipType: 'text',
+      name: item.name || getWorkspacePathFileName(item.path),
+      text,
+      pseudo: context.pseudo,
+    });
+
+    return {
+      nextStartUs: nextStartUs + durationUs,
+      added: true,
+    };
+  }
+
+  async function executeMediaFileDrop(
+    item: TimelineDropItem,
+    context: TimelineDropContext,
+  ): Promise<TimelineDropResult> {
+    if (!item.path) {
+      return {
+        nextStartUs: context.currentStartUs,
+        added: false,
+      };
+    }
+
+    const targetTrackId =
+      resolveDropTrackId({
+        inputTrackId: context.baseTrackId,
+        payloadKind: 'file',
+        path: item.path,
+      }) ?? context.baseTrackId;
+    const durationUs = getPreviewDurationUs({ kind: 'file', path: item.path });
+    const nextStartUs = resolveInsertStartUs({
+      trackId: targetTrackId,
+      startUs: context.currentStartUs,
+      durationUs,
+      pseudo: context.pseudo,
+    });
+
+    const res = await timelineStore.addClipToTimelineFromPath({
+      trackId: targetTrackId,
+      name: item.name || getWorkspacePathFileName(item.path),
+      path: item.path,
+      startUs: nextStartUs,
+      pseudo: context.pseudo,
+    });
+
+    return {
+      nextStartUs: nextStartUs + res.durationUs,
+      added: true,
+    };
+  }
+
+  const dropStrategies: TimelineDropStrategy[] = [
+    {
+      canHandle: (item) =>
+        item.kind === 'shape' ||
+        item.kind === 'hud' ||
+        item.kind === 'adjustment' ||
+        item.kind === 'background' ||
+        (item.kind === 'text' && !item.path),
+      execute: executeVirtualClipDrop,
+    },
+    {
+      canHandle: (item) => item.kind === 'timeline',
+      execute: executeTimelineClipDrop,
+    },
+    {
+      canHandle: (item) =>
+        Boolean(item.path) && getMediaTypeFromFilename(item.name || item.path || '') === 'text',
+      execute: executeTextFileDrop,
+    },
+    {
+      canHandle: (item) => Boolean(item.path),
+      execute: executeMediaFileDrop,
+    },
+  ];
+
+  function resolveDropStrategy(item: TimelineDropItem) {
+    return dropStrategies.find((strategy) => strategy.canHandle(item)) ?? null;
   }
 
   async function buildDragPreview(e: DragEvent, trackId: string) {
@@ -249,113 +510,27 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
     options?: { pseudo?: boolean },
   ) {
     try {
-      const payload = JSON.parse(data);
-      const items = Array.isArray(payload?.items)
-        ? payload.items
-        : Array.isArray(payload)
-          ? payload
-          : [payload];
+      const payload = JSON.parse(data) as unknown;
+      const items = normalizeDropItems(payload);
       let currentStartUs = startUs;
       let addedCount = 0;
       const pseudo = options?.pseudo === true;
 
       for (const item of items) {
-        const { kind, name, path } = item;
-        let targetTrackId = trackId;
+        const strategy = resolveDropStrategy(item);
+        if (!strategy) {
+          continue;
+        }
 
-        if (
-          kind === 'shape' ||
-          kind === 'hud' ||
-          kind === 'adjustment' ||
-          kind === 'background' ||
-          (kind === 'text' && !path)
-        ) {
-          targetTrackId = getCompatibleTrackId(trackId, 'video') ?? trackId;
-          const durationUs = kind === 'text' ? 5_000_000 : 5_000_000; // default for all virtual
-          const nextStartUs = resolveInsertStartUs({
-            trackId: targetTrackId,
-            startUs: currentStartUs,
-            durationUs,
-            pseudo,
-          });
+        const result = await strategy.execute(item, {
+          baseTrackId: trackId,
+          currentStartUs,
+          pseudo,
+        });
 
-          await timelineStore.addVirtualClipToTrack({
-            trackId: targetTrackId,
-            startUs: nextStartUs,
-            clipType: kind,
-            name: name || kind.charAt(0).toUpperCase() + kind.slice(1),
-            shapeType: kind === 'shape' ? item.type || 'square' : undefined,
-            hudType: kind === 'hud' ? item.type || 'media_frame' : undefined,
-            pseudo,
-          });
-          currentStartUs = nextStartUs + durationUs;
+        currentStartUs = result.nextStartUs;
+        if (result.added) {
           addedCount++;
-        } else if (kind === 'timeline') {
-          targetTrackId =
-            resolveDropTrackId({ inputTrackId: trackId, payloadKind: 'timeline', path }) ?? trackId;
-          const previewDurationUs = getPreviewDurationUs({ kind: 'timeline', path });
-          const nextStartUs = resolveInsertStartUs({
-            trackId: targetTrackId,
-            startUs: currentStartUs,
-            durationUs: previewDurationUs,
-            pseudo,
-          });
-
-          const res = await (timelineStore as any).addTimelineClipToTimelineFromPath({
-            trackId: targetTrackId,
-            name: name || 'Timeline',
-            path: path!,
-            startUs: nextStartUs,
-            pseudo,
-          });
-          currentStartUs = nextStartUs + res.durationUs;
-          addedCount++;
-        } else {
-          const mediaType = getMediaTypeFromFilename(name || path || '');
-          if (mediaType === 'text' && path) {
-            targetTrackId = getCompatibleTrackId(trackId, 'video') ?? trackId;
-            const file = await fileManager.vfs.getFile(path);
-            if (file) {
-              const text = await file.text();
-              const nextStartUs = resolveInsertStartUs({
-                trackId: targetTrackId,
-                startUs: currentStartUs,
-                durationUs: 5_000_000,
-                pseudo,
-              });
-
-              await timelineStore.addVirtualClipToTrack({
-                trackId: targetTrackId,
-                startUs: nextStartUs,
-                clipType: 'text',
-                name,
-                text,
-                pseudo,
-              });
-              currentStartUs = nextStartUs + 5_000_000;
-              addedCount++;
-            }
-          } else if (path) {
-            targetTrackId =
-              resolveDropTrackId({ inputTrackId: trackId, payloadKind: 'file', path }) ?? trackId;
-            const previewDurationUs = getPreviewDurationUs({ kind: 'file', path });
-            const nextStartUs = resolveInsertStartUs({
-              trackId: targetTrackId,
-              startUs: currentStartUs,
-              durationUs: previewDurationUs,
-              pseudo,
-            });
-
-            const res = await timelineStore.addClipToTimelineFromPath({
-              trackId: targetTrackId,
-              name: name || getWorkspacePathFileName(path),
-              path,
-              startUs: nextStartUs,
-              pseudo,
-            });
-            currentStartUs = nextStartUs + res.durationUs;
-            addedCount++;
-          }
         }
       }
 
