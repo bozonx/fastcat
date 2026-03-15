@@ -3,7 +3,6 @@ import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import { useAudioExtraction } from '~/composables/fileManager/useAudioExtraction';
-import type { useFileConversion } from '~/composables/fileManager/useFileConversion';
 import type { FsEntry } from '~/types/fs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
@@ -14,7 +13,7 @@ export function useFileBrowserFileActions({
   folderEntries,
   loadFolderContent,
   onFileActionBase,
-  fileConversion,
+  conversionStore,
   openTranscriptionModal,
   vfs,
 }: {
@@ -25,7 +24,7 @@ export function useFileBrowserFileActions({
     entry: FsEntry | FsEntry[],
     getExistingNames?: () => string[],
   ) => Promise<void>;
-  fileConversion: ReturnType<typeof useFileConversion>;
+  conversionStore: { openConversionModal: (entry: FsEntry) => void };
   openTranscriptionModal: (entry: FsEntry) => void;
   vfs: IFileSystemAdapter;
 }) {
@@ -132,7 +131,7 @@ export function useFileBrowserFileActions({
     }
 
     if (action === 'convertFile') {
-      if (entry.kind === 'file') fileConversion.openConversionModal(entry);
+      if (entry.kind === 'file') conversionStore.openConversionModal(entry);
       return;
     }
 

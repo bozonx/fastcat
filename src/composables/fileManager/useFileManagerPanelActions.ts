@@ -19,7 +19,7 @@ export interface FileManagerPanelActionsOptions {
     entry: FsEntry | FsEntry[],
     getExistingNames?: () => string[],
   ) => void | Promise<void>;
-  openConversionModal: (entry: FsEntry) => void;
+  handleConvert: (entry: FsEntry) => void;
   openTranscriptionModal: (entry: FsEntry) => void;
   extractAudio: (entry: FsEntry) => Promise<void>;
   addFileTab: (opts: { filePath: string; fileName: string }) => string;
@@ -44,7 +44,7 @@ export function useFileManagerPanelActions({
   loadProjectDirectory,
   findEntryByPath,
   onFileActionBase,
-  openConversionModal,
+  handleConvert,
   openTranscriptionModal,
   extractAudio,
   addFileTab,
@@ -183,7 +183,7 @@ export function useFileManagerPanelActions({
         }
       }
     } else if (action === 'convertFile') {
-      if (entry.kind === 'file') openConversionModal(entry);
+      if (entry.kind === 'file') handleConvert(entry);
     } else if (action === 'uploadRemote') {
       if (entry.kind === 'file' && entry.source !== 'remote') {
         uiStore.remoteExchangeLocalEntry = entry;

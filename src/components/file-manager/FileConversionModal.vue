@@ -10,18 +10,18 @@ import {
   checkVideoCodecSupport,
   resolveVideoCodecOptions,
 } from '~/utils/webcodecs';
-import { useFileConversion } from '~/composables/fileManager/useFileConversion';
+import { storeToRefs } from 'pinia';
+import { useFileConversionStore } from '~/stores/file-conversion.store';
 
 const { t } = useI18n();
+const toast = useToast();
+
+const fileConversionStore = useFileConversionStore();
 
 const {
   isModalOpen,
   targetEntry,
   mediaType,
-  isConverting,
-  conversionProgress,
-  conversionError,
-  conversionPhase,
 
   videoFormat,
   videoCodec,
@@ -52,10 +52,13 @@ const {
   imageHeight,
   isImageResolutionLinked,
   imageAspectRatio,
+} = storeToRefs(fileConversionStore);
 
-  startConversion,
-  cancelConversion,
-} = useFileConversion();
+const { cancelConversion } = fileConversionStore;
+
+function startConversion() {
+  fileConversionStore.startConversion(t, toast);
+}
 
 const isOpen = computed({
   get: () => isModalOpen.value,
@@ -118,7 +121,7 @@ function onImageHeightChange(val: number) {
 }
 
 const modalTitle = computed(() => {
-  return isConverting.value ? '' : t('videoEditor.fileManager.convert.title', 'Convert File');
+  return t('videoEditor.fileManager.convert.title', 'Convert File');
 });
 </script>
 
@@ -127,7 +130,6 @@ const modalTitle = computed(() => {
     v-model:open="isOpen"
     :title="t('videoEditor.export.convertFile', { file: fileName })"
     class="max-w-3xl"
-    :prevent-close="isConverting"
   >
     <div class="flex flex-col gap-6">
       <template v-if="mediaType === 'video'">
@@ -140,68 +142,8 @@ const modalTitle = computed(() => {
         <span class="font-mono text-ui-text">{{ outputFileName }}</span>
       </div>
 
-      <template v-if="isConverting">
-        <div class="p-4 bg-ui-bg-accent/30 rounded-lg border border-ui-border flex flex-col gap-2">
-          <div class="text-xs text-ui-text-muted font-medium mb-1">
-            {{ t('videoEditor.fileManager.convert.parameters', 'Conversion Parameters') }}
-          </div>
-
-          <template v-if="mediaType === 'video'">
-            <div class="text-sm">
-              <span class="text-ui-text-muted">Resolution:</span> {{ videoWidth }}x{{ videoHeight }}
-            </div>
-            <div class="text-sm"><span class="text-ui-text-muted">FPS:</span> {{ videoFps }}</div>
-            <div class="text-sm">
-              <span class="text-ui-text-muted">Video:</span> {{ videoFormat.toUpperCase() }} /
-              {{ videoCodec }} ({{ videoBitrateMbps }} Mbps)
-            </div>
-            <div class="text-sm">
-              <span class="text-ui-text-muted">Audio:</span>
-              {{
-                excludeAudio
-                  ? 'None'
-                  : `${audioCodec.toUpperCase()} (${audioBitrateKbps} Kbps, ${audioChannels}, ${audioSampleRate === 0 && originalAudioSampleRate ? originalAudioSampleRate : audioSampleRate || 'Original'} Hz)`
-              }}
-            </div>
-          </template>
-
-          <template v-else-if="mediaType === 'audio'">
-            <div class="text-sm">
-              <span class="text-ui-text-muted">Format:</span> {{ audioOnlyFormat.toUpperCase() }}
-            </div>
-            <div class="text-sm">
-              <span class="text-ui-text-muted">Audio:</span> {{ audioOnlyBitrateKbps }} Kbps,
-              {{ audioChannels }},
-              {{
-                audioSampleRate === 0 && originalAudioSampleRate
-                  ? originalAudioSampleRate
-                  : audioSampleRate || 'Original'
-              }}
-              Hz
-            </div>
-          </template>
-
-          <template v-else-if="mediaType === 'image'">
-            <div class="text-sm"><span class="text-ui-text-muted">Format:</span> WebP</div>
-            <div class="text-sm">
-              <span class="text-ui-text-muted">Resolution:</span> {{ imageWidth }}x{{ imageHeight }}
-            </div>
-            <div class="text-sm">
-              <span class="text-ui-text-muted">Quality:</span> {{ imageQuality }}
-            </div>
-          </template>
-        </div>
-
-        <div class="flex flex-col gap-2">
-          <div class="flex justify-between text-xs text-ui-text-muted">
-            <span class="font-medium">{{ getPhaseLabel }}</span>
-            <span class="font-mono">{{ Math.round(conversionProgress * 100) }}%</span>
-          </div>
-        </div>
-      </template>
-
-      <template v-else>
-        <div v-if="mediaType === 'video'" class="space-y-4">
+      <template v-if="mediaType === 'video'">
+        <div class="space-y-4">
           <MediaResolutionSettings
             v-model:is-custom-resolution="isCustomResolution"
             v-model:width="videoWidth"
@@ -212,7 +154,6 @@ const modalTitle = computed(() => {
             v-model:aspect-ratio="aspectRatio"
             :show-audio-settings="false"
             :disable-aspect-ratio="true"
-            :disabled="isConverting"
           />
 
           <VideoEncodingForm
@@ -226,7 +167,6 @@ const modalTitle = computed(() => {
             v-model:audio-sample-rate="audioSampleRate"
             v-model:bitrate-mode="bitrateMode"
             v-model:keyframe-interval-sec="keyframeIntervalSec"
-            :disabled="isConverting"
             :show-metadata="false"
             :show-presets="true"
             :has-audio="true"
@@ -236,8 +176,10 @@ const modalTitle = computed(() => {
             :allow-original-audio-sample-rate="true"
           />
         </div>
+      </template>
 
-        <div v-if="mediaType === 'audio'" class="space-y-4">
+      <template v-else-if="mediaType === 'audio'">
+        <div class="space-y-4">
           <div class="flex flex-col gap-2">
             <label class="text-xs text-ui-text-muted font-medium">
               {{ t('videoEditor.export.outputFormat', 'Output format') }}
@@ -245,7 +187,6 @@ const modalTitle = computed(() => {
             <UiAppButtonGroup
               v-model="audioOnlyFormat"
               :options="audioFormatOptions as any"
-              :disabled="isConverting"
             />
           </div>
 
@@ -257,11 +198,12 @@ const modalTitle = computed(() => {
             :show-reverse="true"
             :original-sample-rate="originalAudioSampleRate"
             :allow-original-sample-rate="true"
-            :disabled="isConverting"
           />
         </div>
+      </template>
 
-        <div v-if="mediaType === 'image'" class="space-y-4">
+      <template v-else-if="mediaType === 'image'">
+        <div class="space-y-4">
           <div class="flex flex-col gap-2">
             <label class="text-xs text-ui-text-muted font-medium">
               {{ t('videoEditor.fileManager.convert.imageFormat', 'Format') }}
@@ -278,7 +220,6 @@ const modalTitle = computed(() => {
               :min="1"
               :max="100"
               :step="1"
-              :disabled="isConverting"
             />
           </div>
 
@@ -289,7 +230,6 @@ const modalTitle = computed(() => {
                 :model-value="imageWidth"
                 :min="1"
                 :step="2"
-                :disabled="isConverting"
                 @update:model-value="onImageWidthChange"
               />
             </div>
@@ -300,47 +240,22 @@ const modalTitle = computed(() => {
                 :model-value="imageHeight"
                 :min="1"
                 :step="2"
-                :disabled="isConverting"
                 @update:model-value="onImageHeightChange"
               />
             </div>
           </div>
         </div>
       </template>
-
-      <div
-        v-if="conversionError"
-        class="p-3 text-sm text-error-400 bg-error-400/10 rounded-md border border-error-400/20"
-      >
-        {{ conversionError }}
-      </div>
     </div>
 
     <template #footer>
       <div class="flex items-center justify-end gap-3 mt-4">
-        <template v-if="!isConverting">
-          <UButton variant="ghost" color="neutral" @click="isOpen = false">
-            {{ t('common.cancel', 'Cancel') }}
-          </UButton>
-          <UButton color="primary" @click="startConversion">
-            {{ t('videoEditor.export.convert', 'Convert') }}
-          </UButton>
-        </template>
-        <template v-else>
-          <div v-if="conversionProgress > 0" class="flex-1 flex items-center gap-4">
-            <div class="flex-1 h-2 bg-ui-bg-muted rounded-full overflow-hidden">
-              <div
-                class="h-full bg-primary-500 transition-all duration-200"
-                :style="{ width: `${conversionProgress * 100}%` }"
-              />
-            </div>
-            <span class="text-sm font-medium">{{ Math.round(conversionProgress * 100) }}%</span>
-            <span class="text-sm text-ui-text-muted">{{ getPhaseLabel }}</span>
-          </div>
-          <UButton variant="ghost" color="error" @click="cancelConversion">
-            {{ t('common.cancel', 'Cancel') }}
-          </UButton>
-        </template>
+        <UButton variant="ghost" color="neutral" @click="isOpen = false">
+          {{ t('common.cancel', 'Cancel') }}
+        </UButton>
+        <UButton color="primary" @click="startConversion">
+          {{ t('videoEditor.export.convert', 'Convert') }}
+        </UButton>
       </div>
     </template>
   </AppModal>

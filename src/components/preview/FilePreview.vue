@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { useFullscreen } from '@vueuse/core';
 import MediaPlayer from '~/components/MediaPlayer.vue';
 import ImageViewer from '~/components/preview/ImageViewer.vue';
 import TextEditor from '~/components/preview/TextEditor.vue';
@@ -19,29 +20,26 @@ const props = defineProps<{
   focusPanelId?: PanelFocusId;
 }>();
 
-const isFullscreenOpen = ref(false);
-
-function toggleFullscreen() {
-  isFullscreenOpen.value = !isFullscreenOpen.value;
-}
+const containerRef = ref<HTMLElement | null>(null);
+const { isFullscreen, toggle: toggleFullscreen, exit: exitFullscreen } = useFullscreen(containerRef);
 
 watch(
   () => uiStore.previewFullscreenToggleTrigger,
   (timestamp) => {
     if (timestamp) {
-      toggleFullscreen();
+      void toggleFullscreen();
     }
   },
 );
 
 function handleEsc(e: KeyboardEvent) {
-  if (e.key === 'Escape' && isFullscreenOpen.value) {
-    isFullscreenOpen.value = false;
+  if (e.key === 'Escape' && isFullscreen.value) {
+    void exitFullscreen();
     e.stopPropagation();
   }
 }
 
-watch(isFullscreenOpen, (val, oldVal) => {
+watch(isFullscreen, (val, oldVal) => {
   if (val && !oldVal) {
     uiStore.activeModalsCount++;
   } else if (!val && oldVal) {
@@ -54,7 +52,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  if (isFullscreenOpen.value) {
+  if (isFullscreen.value) {
     uiStore.activeModalsCount--;
   }
   window.removeEventListener('keydown', handleEsc, { capture: true });
@@ -62,89 +60,79 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="w-full h-full flex flex-col overflow-hidden relative">
-    <Teleport to="body" :disabled="!isFullscreenOpen">
-      <div
-        v-if="isFullscreenOpen"
-        class="fixed inset-0 bg-black/95 backdrop-blur-sm pointer-events-none"
-        style="z-index: 40"
-      ></div>
+  <div
+    ref="containerRef"
+    class="w-full h-full flex flex-col overflow-hidden relative group/preview"
+    :class="{ 'bg-black': isFullscreen }"
+  >
+    <UButton
+      v-if="isFullscreen"
+      color="neutral"
+      variant="ghost"
+      icon="i-heroicons-x-mark"
+      class="absolute top-4 right-4 text-white hover:bg-white/20 z-50 transition-opacity opacity-0 group-hover/preview:opacity-100"
+      size="xl"
+      @click="exitFullscreen"
+    />
 
+    <template v-if="props.mediaType === 'image' && props.url">
       <div
-        v-if="props.mediaType === 'image' && props.url"
         :class="
-          isFullscreenOpen
-            ? 'fixed inset-0 flex flex-col items-center justify-center'
+          isFullscreen
+            ? 'flex-1 flex flex-col items-center justify-center'
             : 'w-full h-full'
         "
-        style="z-index: 41"
       >
-        <UButton
-          v-if="isFullscreenOpen"
-          color="neutral"
-          variant="ghost"
-          icon="i-heroicons-x-mark"
-          class="absolute top-4 right-4 text-white hover:bg-white/20 z-42"
-          size="xl"
-          @click="isFullscreenOpen = false"
-        />
         <ImageViewer
           :src="props.url"
           :alt="props.alt"
-          :is-modal="isFullscreenOpen"
+          :is-modal="isFullscreen"
           :focus-panel-id="props.focusPanelId"
           class="w-full h-full"
-          @open-modal="isFullscreenOpen = true"
-          @close-modal="isFullscreenOpen = false"
+          @open-modal="toggleFullscreen"
+          @close-modal="exitFullscreen"
         />
       </div>
+    </template>
 
+    <template v-else-if="(props.mediaType === 'video' || props.mediaType === 'audio') && props.url">
       <div
-        v-else-if="(props.mediaType === 'video' || props.mediaType === 'audio') && props.url"
         :class="
-          isFullscreenOpen
-            ? 'fixed inset-0 flex flex-col items-center justify-center z-41 pb-8'
+          isFullscreen
+            ? 'flex-1 flex flex-col items-center justify-center pb-8'
             : 'w-full h-full flex flex-col min-h-0'
         "
       >
-        <UButton
-          v-if="isFullscreenOpen"
-          color="neutral"
-          variant="ghost"
-          icon="i-heroicons-x-mark"
-          class="absolute top-4 right-4 text-white hover:bg-white/20 z-42"
-          size="xl"
-          @click="isFullscreenOpen = false"
-        />
         <MediaPlayer
           :src="props.url"
           :type="props.mediaType"
-          :is-modal="isFullscreenOpen"
+          :is-modal="isFullscreen"
           :focus-panel-id="props.focusPanelId"
           class="w-full h-full"
-          @open-modal="isFullscreenOpen = true"
-          @close-modal="isFullscreenOpen = false"
+          @open-modal="toggleFullscreen"
+          @close-modal="exitFullscreen"
         />
       </div>
+    </template>
 
-      <TextEditor
-        v-else-if="props.mediaType === 'text'"
-        :file-path="props.filePath || ''"
-        :file-name="props.fileName"
-        :initial-content="props.textContent || ''"
-        :focus-panel-id="props.focusPanelId"
-        class="w-full h-full"
-      />
+    <TextEditor
+      v-else-if="props.mediaType === 'text'"
+      :file-path="props.filePath || ''"
+      :file-name="props.fileName"
+      :initial-content="props.textContent || ''"
+      :focus-panel-id="props.focusPanelId"
+      class="w-full h-full"
+    />
 
-      <div
-        v-else-if="props.mediaType === 'unknown'"
-        class="flex flex-col items-center justify-center h-full w-full gap-3 text-ui-text-muted p-8 bg-ui-bg"
-      >
-        <UIcon name="i-heroicons-document" class="w-16 h-16" />
-        <p class="text-sm text-center">
-          {{ t('fastcat.preview.unsupported', 'Unsupported file format for visual preview') }}
-        </p>
-      </div>
-    </Teleport>
+    <div
+      v-else-if="props.mediaType === 'unknown'"
+      class="flex flex-col items-center justify-center h-full w-full gap-3 text-ui-text-muted p-8 bg-ui-bg"
+    >
+      <UIcon name="i-heroicons-document" class="w-16 h-16" />
+      <p class="text-sm text-center">
+        {{ t('fastcat.preview.unsupported', 'Unsupported file format for visual preview') }}
+      </p>
+    </div>
   </div>
 </template>
+

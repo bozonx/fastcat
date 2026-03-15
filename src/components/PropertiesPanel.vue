@@ -20,7 +20,7 @@ import TimelineProperties from '~/components/properties/TimelineProperties.vue';
 import ProjectEffectProperties from '~/components/properties/ProjectEffectProperties.vue';
 import ProjectTransitionProperties from '~/components/properties/ProjectTransitionProperties.vue';
 import type { SelectedEntity } from '~/stores/selection.store';
-import { useFileConversion } from '~/composables/fileManager/useFileConversion';
+import { useFileConversionStore } from '~/stores/file-conversion.store';
 
 const props = defineProps<{
   entity?: SelectedEntity | null;
@@ -37,7 +37,7 @@ const timelineStore = useTimelineStore();
 const focusStore = useFocusStore();
 const selectionStore = useSelectionStore();
 const proxyStore = useProxyStore();
-const fileConversion = useFileConversion();
+const conversionStore = useFileConversionStore();
 
 function clearAllSelection() {
   selectionStore.clearSelection();
@@ -355,7 +355,7 @@ function onPanelFocusOut() {
             :has-proxy="hasProxy"
             :preview-mode="previewMode"
             @update:preview-mode="(m) => (previewMode = m)"
-            @convert="(entry) => fileConversion.openConversionModal(entry)"
+            @convert="(entry) => conversionStore.openConversionModal(entry)"
           />
           <RemoteFileProperties
             v-else-if="

@@ -10,7 +10,7 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useFileManagerActions } from '~/composables/fileManager/useFileManagerActions';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import { useUiStore } from '~/stores/ui.store';
-import { useFileConversion } from '~/composables/fileManager/useFileConversion';
+import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { useAudioExtraction } from '~/composables/fileManager/useAudioExtraction';
 import { useFileManagerPanelPendingActions } from '~/composables/fileManager/useFileManagerPanelPendingActions';
 import { useFileManagerPanelBootstrap } from '~/composables/fileManager/useFileManagerPanelBootstrap';
@@ -34,7 +34,7 @@ const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const focusStore = useFocusStore();
 const uiStore = useUiStore();
-const fileConversion = useFileConversion();
+const conversionStore = useFileConversionStore();
 const { extractAudio } = useAudioExtraction();
 const { addFileTab, setActiveTab } = useProjectTabs();
 const runtimeConfig = useRuntimeConfig();
@@ -131,12 +131,14 @@ const { handleFileAction: onFileAction, createTimelineInDirectory } = useFileMan
   loadProjectDirectory,
   findEntryByPath,
   onFileActionBase: onFileActionBase as any,
-  openConversionModal: (entry) => fileConversion.openConversionModal(entry),
   openTranscriptionModal,
   extractAudio,
   addFileTab,
   setActiveTab,
   onSelect: (entry) => emit('select', entry),
+  handleConvert: (entry: FsEntry) => {
+    conversionStore.openConversionModal(entry);
+  },
 });
 
 async function onCreateTimeline() {
