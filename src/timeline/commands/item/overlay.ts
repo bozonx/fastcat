@@ -33,6 +33,7 @@ import {
   quantizeDeltaUsToFrames,
   clampInt,
   quantizeRangeToFrames,
+  autoAdaptClipTransitions,
 } from '../utils';
 import { normalizeBalance, normalizeGain } from '~/utils/audio/envelope';
 import {
@@ -281,6 +282,8 @@ export function overlayTrimItem(
     }
   }
 
+  nextTracks = nextTracks.map((t) => ({ ...t, items: autoAdaptClipTransitions(t.items) }));
+
   return { next: { ...doc, tracks: nextTracks } };
 }
 
@@ -404,6 +407,8 @@ export function overlayPlaceItem(
       timelineRange: { ...audio.timelineRange, startUs },
     }));
   }
+
+  nextTracks = nextTracks.map((t) => ({ ...t, items: autoAdaptClipTransitions(t.items) }));
 
   return { next: { ...doc, tracks: nextTracks } };
 }

@@ -320,12 +320,11 @@ describe('timeline/commands gap behavior', () => {
     const c2 = items.find((x: TimelineTrackItem) => x.kind === 'clip' && x.id === 'c2') as any;
     expect(c1).toBeTruthy();
     expect(c2).toBeTruthy();
-
-    const endC1 = c1.timelineRange.startUs + c1.timelineRange.durationUs;
     expect(c2.timelineRange.startUs).toBeGreaterThanOrEqual(0);
 
-    // No micro-gaps: either abuts or has a full gap item.
+    const endC1 = c1.timelineRange.startUs + c1.timelineRange.durationUs;
     const gaps = items.filter((x: TimelineTrackItem) => x.kind === 'gap');
+
     if (gaps.length === 0) {
       expect(c2.timelineRange.startUs).toBe(endC1);
     } else {
@@ -364,7 +363,6 @@ describe('timeline/commands gap behavior', () => {
       (x: TimelineTrackItem) => x.kind === 'clip' && x.id === 'c1',
     ) as any;
     expect(c1.timelineRange.durationUs).toBeGreaterThan(0);
-    // Frame accurate at 30 fps: durationUs should be stable under frame round-trip quantization.
     const fps = 30;
     const frames = Math.round((c1.timelineRange.durationUs * fps) / 1_000_000);
     const reconstructedUs = Math.round((frames * 1_000_000) / fps);
@@ -404,5 +402,91 @@ describe('timeline/commands gap behavior', () => {
 
     expect(b1).toBeTruthy();
     expect(b1.timelineRange.durationUs).toBeGreaterThan(5_000_000);
+  });
+
+  it('preserves fade and transition lengths when trim extends a clip', () => {
+    const doc = makeDoc({
+      id: 'v1',
+      kind: 'video',
+      name: 'V1',
+      items: [
+        {
+          kind: 'clip',
+          clipType: 'media',
+          id: 'c1',
+          trackId: 'v1',
+          name: 'C1',
+          source: { path: 'a.mp4' },
+          sourceDurationUs: 10_000_000,
+          timelineRange: { startUs: 0, durationUs: 4_000_000 },
+          sourceRange: { startUs: 0, durationUs: 4_000_000 },
+          audioFadeInUs: 1_000_000,
+          audioFadeOutUs: 1_000_000,
+          transitionIn: { type: 'dissolve', durationUs: 500_000 },
+          transitionOut: { type: 'dissolve', durationUs: 750_000 },
+        },
+      ],
+    });
+
+    const { next } = applyTimelineCommand(doc, {
+      type: 'trim_item',
+      trackId: 'v1',
+      itemId: 'c1',
+      edge: 'end',
+      deltaUs: 2_000_000,
+    });
+
+    const c1 = next.tracks[0].items.find(
+      (x: TimelineTrackItem) => x.kind === 'clip' && x.id === 'c1',
+    ) as any;
+
+    expect(c1.timelineRange.durationUs).toBe(6_000_000);
+    expect(c1.audioFadeInUs).toBe(1_000_000);
+    expect(c1.audioFadeOutUs).toBe(1_000_000);
+    expect(c1.transitionIn.durationUs).toBe(500_000);
+    expect(c1.transitionOut.durationUs).toBe(750_000);
+  });
+
+  it('proportionally shrinks fades and transitions when trim reduces a clip into both edges', () => {
+    const doc = makeDoc({
+      id: 'v1',
+      kind: 'video',
+      name: 'V1',
+      items: [
+        {
+          kind: 'clip',
+          clipType: 'media',
+          id: 'c1',
+          trackId: 'v1',
+          name: 'C1',
+          source: { path: 'a.mp4' },
+          sourceDurationUs: 10_000_000,
+          timelineRange: { startUs: 0, durationUs: 5_000_000 },
+          sourceRange: { startUs: 0, durationUs: 5_000_000 },
+          audioFadeInUs: 3_000_000,
+          audioFadeOutUs: 3_000_000,
+          transitionIn: { type: 'dissolve', durationUs: 3_000_000 },
+          transitionOut: { type: 'dissolve', durationUs: 3_000_000 },
+        },
+      ],
+    });
+
+    const { next } = applyTimelineCommand(doc, {
+      type: 'trim_item',
+      trackId: 'v1',
+      itemId: 'c1',
+      edge: 'end',
+      deltaUs: -2_000_000,
+    });
+
+    const c1 = next.tracks[0].items.find(
+      (x: TimelineTrackItem) => x.kind === 'clip' && x.id === 'c1',
+    ) as any;
+
+    expect(c1.timelineRange.durationUs).toBe(3_000_000);
+    expect(c1.audioFadeInUs).toBe(1_500_000);
+    expect(c1.audioFadeOutUs).toBe(1_500_000);
+    expect(c1.transitionIn.durationUs).toBe(1_500_000);
+    expect(c1.transitionOut.durationUs).toBe(1_500_000);
   });
 });

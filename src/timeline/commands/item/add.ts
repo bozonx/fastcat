@@ -56,22 +56,28 @@ export function addClipToTrack(
   const track = getTrackById(doc, cmd.trackId);
   const fps = getDocFps(doc);
   const durationUs = quantizeTimeUsToFrames(Number(cmd.durationUs ?? 0), fps, 'round');
-  const sourceDurationUs = Math.max(
-    0,
-    Math.round(Number(cmd.sourceDurationUs ?? cmd.durationUs ?? 0)),
-  );
+  const sourceDurationUs = Math.max(0, Math.round(Number(cmd.durationUs ?? 0)));
   const startCandidate =
     cmd.startUs === undefined ? computeTrackEndUs(track) : Math.max(0, Number(cmd.startUs));
   const startUs = quantizeTimeUsToFrames(startCandidate, fps, 'round');
 
-  const clipType = cmd.clipType === 'timeline' ? 'timeline' : 'media';
+  const base = {
+    id: cmd.clipId || nextItemId(track.id, 'clip'),
+    name: cmd.name,
+    trackId: cmd.trackId,
+    timelineRange: {
+      startUs: cmd.startUs,
+      durationUs: cmd.durationUs > 0 ? cmd.durationUs : Math.round(Number(cmd.durationUs ?? 0)),
+    },
+    isImage: cmd.isImage,
+  };
+
+  const clipType = cmd.path.toLowerCase().endsWith('.otio') ? 'timeline' : 'media';
 
   const clip: TimelineClipItem = {
     kind: 'clip',
     clipType,
-    id: nextItemId(track.id, 'clip'),
-    trackId: track.id,
-    name: cmd.name,
+    ...base,
     source: { path: cmd.path },
     sourceDurationUs,
     isImage: cmd.isImage,

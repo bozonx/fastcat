@@ -202,7 +202,7 @@ describe('timeline/commands update_clip_transition', () => {
     expect(nextRight.transitionIn?.durationUs).toBe(2_000_000);
   });
 
-  it('keeps opposite transition unchanged when adding a new transition on the same clip', () => {
+  it('proportionally shrinks both clip transitions when they would overlap', () => {
     const clip = {
       ...baseClip,
       transitionOut: { type: 'dissolve', durationUs: 3_000_000 },
@@ -217,8 +217,9 @@ describe('timeline/commands update_clip_transition', () => {
     }).next;
 
     const nextClip = (next.tracks[0] as TimelineTrack).items[0] as any;
-    expect(nextClip.transitionIn.durationUs).toBe(4_000_000);
-    expect(nextClip.transitionOut.durationUs).toBe(3_000_000);
+    expect(nextClip.transitionIn.durationUs).toBe(2_857_143);
+    expect(nextClip.transitionOut.durationUs).toBe(2_142_857);
+    expect(nextClip.transitionIn.durationUs + nextClip.transitionOut.durationUs).toBe(5_000_000);
   });
 
   it('keeps existing overlap geometry unchanged when editing the target transition only', () => {
