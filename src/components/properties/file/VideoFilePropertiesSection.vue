@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import { formatAudioChannels } from '~/utils/audio';
+import MediaTranscriptionSection from './MediaTranscriptionSection.vue';
 
 const props = defineProps<{
   mediaMeta: any;
