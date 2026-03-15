@@ -24,7 +24,7 @@ export interface TimelineTrimmingDeps {
   ) => void;
   batchApplyTimeline: (
     cmds: TimelineCommand[],
-    options?: { saveMode?: 'none' | 'debounced' | 'immediate'; label?: string },
+    options?: { saveMode?: 'none' | 'debounced' | 'immediate'; labelKey?: string },
   ) => void;
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
   getHotkeyTargetClip: () => { trackId: string; itemId: string } | null;
@@ -207,7 +207,7 @@ export function createTimelineTrimming(deps: TimelineTrimmingDeps): TimelineTrim
     if (cmds.length === 0) return;
 
     deps.batchApplyTimeline(cmds, {
-      label: 'Split all clips',
+      labelKey: 'videoEditor.fileManager.history.entries.splitAllClips',
       saveMode: 'immediate',
     });
   }
@@ -224,7 +224,7 @@ export function createTimelineTrimming(deps: TimelineTrimmingDeps): TimelineTrim
     if (cmds.length === 0) return;
 
     deps.batchApplyTimeline(cmds, {
-      label: 'Split selected clips',
+      labelKey: 'videoEditor.fileManager.history.entries.splitSelectedClips',
       saveMode: 'immediate',
     });
 

@@ -5,7 +5,7 @@ import type { TimelineCommand } from '~/timeline/commands';
 
 export interface TimelineHistoryDebounceDeps {
   historyStore: {
-    push: (cmd: TimelineCommand, snapshot: TimelineDocument, label?: string) => void;
+    push: (cmd: TimelineCommand, snapshot: TimelineDocument, labelKey?: string) => void;
   };
 }
 
@@ -22,7 +22,7 @@ export interface TimelineHistoryDebounceApi {
     options?: {
       historyMode?: 'immediate' | 'debounced';
       historyDebounceMs?: number;
-      label?: string;
+      labelKey?: string;
     },
   ) => void;
 }
@@ -49,7 +49,7 @@ export function createTimelineHistoryDebounce(
     options?: {
       historyMode?: 'immediate' | 'debounced';
       historyDebounceMs?: number;
-      label?: string;
+      labelKey?: string;
     },
   ) {
     const historyMode = options?.historyMode ?? 'immediate';
@@ -66,7 +66,7 @@ export function createTimelineHistoryDebounce(
           timeoutId: window.setTimeout(() => {
             const p = pendingDebouncedHistory.value;
             if (!p) return;
-            deps.historyStore.push(p.cmd, p.snapshot, options?.label);
+            deps.historyStore.push(p.cmd, p.snapshot, options?.labelKey);
             pendingDebouncedHistory.value = null;
           }, debounceMs),
         };
@@ -77,14 +77,14 @@ export function createTimelineHistoryDebounce(
           timeoutId: window.setTimeout(() => {
             const p = pendingDebouncedHistory.value;
             if (!p) return;
-            deps.historyStore.push(p.cmd, p.snapshot, options?.label);
+            deps.historyStore.push(p.cmd, p.snapshot, options?.labelKey);
             pendingDebouncedHistory.value = null;
           }, debounceMs),
         };
       }
     } else {
       clearPendingDebouncedHistory();
-      deps.historyStore.push(cmd, prevDoc, options?.label);
+      deps.historyStore.push(cmd, prevDoc, options?.labelKey);
     }
   }
 

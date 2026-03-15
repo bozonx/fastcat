@@ -8,7 +8,7 @@ const MAX_HISTORY_SIZE = 100;
 
 export interface HistoryEntry {
   id: number;
-  label: string;
+  labelKey: string;
   commandType: TimelineCommand['type'];
   /** Snapshot of the timeline document BEFORE the command was applied */
   snapshot: TimelineDocument;
@@ -17,37 +17,38 @@ export interface HistoryEntry {
 
 let entryIdCounter = 0;
 
-/** Human-readable labels for timeline command types */
-const COMMAND_LABELS: Record<TimelineCommand['type'], string> = {
-  add_clip_to_track: 'Add clip',
-  add_virtual_clip_to_track: 'Add clip',
-  remove_item: 'Remove item',
-  delete_items: 'Delete items',
-  move_item: 'fastcat.timeline.history.moveItem',
-  move_items: 'fastcat.timeline.history.moveItems',
-  move_item_to_track: 'fastcat.timeline.history.moveItem',
-  trim_item: 'Trim clip',
-  overlay_trim_item: 'Trim clip',
-  overlay_place_item: 'Place clip',
-  split_item: 'Split clip',
-  rename_item: 'Rename clip',
-  update_clip_properties: 'Update clip',
-  update_clip_transition: 'Update transition',
-  add_marker: 'Add marker',
-  update_marker: 'Update marker',
-  remove_marker: 'Remove marker',
-  add_track: 'Add track',
-  rename_track: 'Rename track',
-  delete_track: 'Delete track',
-  reorder_tracks: 'Reorder tracks',
-  update_track_properties: 'Update track',
-  extract_audio_to_track: 'Extract audio',
-  return_audio_to_video: 'Return audio',
-  update_master_gain: 'Update master gain',
-  update_master_muted: 'Toggle mute',
-  update_master_effects: 'Update effects',
-  update_timeline_properties: 'Update timeline properties',
+const COMMAND_LABEL_KEYS: Record<TimelineCommand['type'], string> = {
+  add_clip_to_track: 'videoEditor.fileManager.history.entries.addClip',
+  add_virtual_clip_to_track: 'videoEditor.fileManager.history.entries.addClip',
+  remove_item: 'videoEditor.fileManager.history.entries.removeItem',
+  delete_items: 'videoEditor.fileManager.history.entries.deleteItems',
+  move_item: 'videoEditor.fileManager.history.entries.moveItem',
+  move_items: 'videoEditor.fileManager.history.entries.moveItems',
+  move_item_to_track: 'videoEditor.fileManager.history.entries.moveItem',
+  trim_item: 'videoEditor.fileManager.history.entries.trimClip',
+  overlay_trim_item: 'videoEditor.fileManager.history.entries.trimClip',
+  overlay_place_item: 'videoEditor.fileManager.history.entries.placeClip',
+  split_item: 'videoEditor.fileManager.history.entries.splitClip',
+  rename_item: 'videoEditor.fileManager.history.entries.renameClip',
+  update_clip_properties: 'videoEditor.fileManager.history.entries.updateClip',
+  update_clip_transition: 'videoEditor.fileManager.history.entries.updateTransition',
+  add_marker: 'videoEditor.fileManager.history.entries.addMarker',
+  update_marker: 'videoEditor.fileManager.history.entries.updateMarker',
+  remove_marker: 'videoEditor.fileManager.history.entries.removeMarker',
+  add_track: 'videoEditor.fileManager.history.entries.addTrack',
+  rename_track: 'videoEditor.fileManager.history.entries.renameTrack',
+  delete_track: 'videoEditor.fileManager.history.entries.deleteTrack',
+  reorder_tracks: 'videoEditor.fileManager.history.entries.reorderTracks',
+  update_track_properties: 'videoEditor.fileManager.history.entries.updateTrack',
+  extract_audio_to_track: 'videoEditor.fileManager.history.entries.extractAudio',
+  return_audio_to_video: 'videoEditor.fileManager.history.entries.returnAudio',
+  update_master_gain: 'videoEditor.fileManager.history.entries.updateMasterGain',
+  update_master_muted: 'videoEditor.fileManager.history.entries.toggleMute',
+  update_master_effects: 'videoEditor.fileManager.history.entries.updateEffects',
+  update_timeline_properties: 'videoEditor.fileManager.history.entries.updateTimelineProperties',
 };
+
+const MULTIPLE_ACTIONS_LABEL_KEY = 'videoEditor.fileManager.history.entries.multipleActions';
 
 export const useHistoryStore = defineStore('history', () => {
   /** Past states: index 0 is the oldest, last is the most recent undo target */
@@ -60,18 +61,18 @@ export const useHistoryStore = defineStore('history', () => {
 
   const lastEntry = computed(() => past.value[past.value.length - 1] ?? null);
 
-  function getCommandLabel(type: TimelineCommand['type']): string {
-    return COMMAND_LABELS[type];
+  function getCommandLabelKey(type: TimelineCommand['type']): string {
+    return COMMAND_LABEL_KEYS[type];
   }
 
   /**
    * Records a snapshot before a command is applied.
    * Should be called BEFORE mutating the timeline document.
    */
-  function push(cmd: TimelineCommand, snapshot: TimelineDocument, label?: string) {
+  function push(cmd: TimelineCommand, snapshot: TimelineDocument, labelKey?: string) {
     const entry: HistoryEntry = {
       id: ++entryIdCounter,
-      label: label ?? getCommandLabel(cmd.type),
+      labelKey: labelKey ?? getCommandLabelKey(cmd.type),
       commandType: cmd.type,
       snapshot,
       timestamp: Date.now(),
@@ -135,6 +136,8 @@ export const useHistoryStore = defineStore('history', () => {
     canUndo,
     canRedo,
     lastEntry,
+    getCommandLabelKey,
+    multipleActionsLabelKey: MULTIPLE_ACTIONS_LABEL_KEY,
     push,
     undo,
     redo,

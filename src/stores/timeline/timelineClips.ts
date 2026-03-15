@@ -124,7 +124,7 @@ export interface TimelineClipsApi {
       saveMode?: 'none' | 'debounced' | 'immediate';
       historyMode?: 'immediate' | 'debounced';
       historyDebounceMs?: number;
-      label?: string;
+      labelKey?: string;
     },
   ) => void;
   addAdjustmentClipAtPlayhead: (options?: { durationUs?: number; name?: string }) => void;
@@ -558,7 +558,7 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
       saveMode?: 'none' | 'debounced' | 'immediate';
       historyMode?: 'immediate' | 'debounced';
       historyDebounceMs?: number;
-      label?: string;
+      labelKey?: string;
     },
   ) {
     if (!deps.timelineDoc.value) {
@@ -601,7 +601,7 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
       saveMode?: 'none' | 'debounced' | 'immediate';
       historyMode?: 'immediate' | 'debounced';
       historyDebounceMs?: number;
-      label?: string;
+      labelKey?: string;
     },
   ) {
     if (!deps.timelineDoc.value) {

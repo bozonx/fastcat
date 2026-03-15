@@ -126,6 +126,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       skipHistory?: boolean;
       historyMode?: 'immediate' | 'debounced';
       historyDebounceMs?: number;
+      labelKey?: string;
     },
   ) {
     dispatcher.applyTimeline(cmd, options);
@@ -138,6 +139,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       skipHistory?: boolean;
       historyMode?: 'immediate' | 'debounced';
       historyDebounceMs?: number;
+      labelKey?: string;
     },
   ) {
     dispatcher.batchApplyTimeline(cmds, options);
