@@ -528,10 +528,9 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
 
 <template>
   <div
-    class="flex flex-col h-full bg-ui-bg border-t border-ui-border"
+    class="panel-focus-frame flex flex-col h-full bg-ui-bg border-t border-ui-border"
     :class="{
-      'outline-2 outline-primary-500/60 -outline-offset-2 z-10':
-        focusStore.isPanelFocused('timeline'),
+      'panel-focus-frame--active': focusStore.isPanelFocused('timeline'),
     }"
     @pointerdown.capture="focusStore.setMainFocus('timeline')"
   >

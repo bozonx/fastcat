@@ -512,11 +512,10 @@ async function onDirectoryUploadChange(e: Event) {
 
 <template>
   <div
-    class="flex flex-col h-full bg-ui-bg relative overflow-hidden transition-colors duration-150"
+    class="panel-focus-frame flex flex-col h-full bg-ui-bg relative overflow-hidden transition-colors duration-150"
     :class="{
-      'bg-primary-500/5 outline-2 outline-primary-500/30 -outline-offset-2': isDragOverPanel,
-      'outline-2 outline-primary-500/60 -outline-offset-2 z-10':
-        focusStore.isPanelFocused('filesBrowser'),
+      'bg-primary-500/5': isDragOverPanel,
+      'panel-focus-frame--active': focusStore.isPanelFocused('filesBrowser'),
     }"
     @pointerdown.capture="focusBrowserPanel"
     @dragover.prevent="onPanelDragOver"

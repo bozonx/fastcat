@@ -90,11 +90,35 @@ function confirmDelete() {
 
 const selectedTrackId = computed(() => {
   const entity = selectionStore.selectedEntity;
-  if (entity?.source === 'timeline' && entity.kind === 'track') {
-    return entity.trackId;
+  if (entity?.source === 'timeline') {
+    if (entity.kind === 'track') return entity.trackId;
+    if (entity.kind === 'clip') return entity.trackId;
+    if (entity.kind === 'transition') return entity.trackId;
+    if (entity.kind === 'clips') {
+      const clips = entity as any;
+      if (clips.items && clips.items.length > 0) return clips.items[0].trackId;
+    }
   }
   return null;
 });
+
+// A helper to determine if a specific track is "visually selected".
+// A track is visually selected if the track itself is selected OR if any clips/transitions on it are selected.
+function isTrackVisuallySelected(trackId: string) {
+  const entity = selectionStore.selectedEntity;
+  if (entity?.source === 'timeline') {
+    if (entity.kind === 'track') return entity.trackId === trackId;
+    if (entity.kind === 'clip') return entity.trackId === trackId;
+    if (entity.kind === 'transition') return entity.trackId === trackId;
+    if (entity.kind === 'clips') {
+      const clips = entity as any;
+      if (clips.items) {
+        return clips.items.some((item: any) => item.trackId === trackId);
+      }
+    }
+  }
+  return false;
+}
 
 function onSelectTrack(trackId: string) {
   if (timelineStore.selectedTrackId === trackId) {
@@ -231,7 +255,7 @@ function onDragVirtualEnd() {
           <TrackLabelItem
             :track="track"
             :height="trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT"
-            :is-selected="selectedTrackId === track.id"
+            :is-selected="isTrackVisuallySelected(track.id)"
             :is-hovered="timelineStore.hoveredTrackId === track.id"
             :is-renaming="timelineStore.renamingTrackId === track.id"
             :has-audio="trackHasAudio(track, mediaStore.mediaMetadata)"

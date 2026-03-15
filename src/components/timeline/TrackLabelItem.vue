@@ -158,10 +158,12 @@ onBeforeUnmount(() => {
         v-if="track.kind === 'video'"
         size="xs"
         :variant="track.videoHidden ? 'solid' : 'ghost'"
-        :color="track.videoHidden ? 'amber' : 'neutral'"
+        :color="track.videoHidden ? 'amber' : 'gray'"
         :icon="track.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
-        class="w-6 h-6 p-0 transition-opacity"
-        :class="[track.videoHidden ? 'text-black opacity-100 hover:opacity-90' : 'opacity-60 group-hover:opacity-100']"
+        class="w-6 h-6 p-0 flex items-center justify-center transition-opacity"
+        :class="[
+          track.videoHidden ? 'text-black! opacity-100 hover:opacity-90' : 'opacity-60 group-hover:opacity-100'
+        ]"
         :title="track.videoHidden ? 'Show Track' : 'Hide Track'"
         @click="toggleVideoHidden"
       />
@@ -169,10 +171,12 @@ onBeforeUnmount(() => {
       <UButton
         size="xs"
         :variant="track.audioMuted ? 'solid' : 'ghost'"
-        :color="track.audioMuted ? 'red' : 'neutral'"
+        :color="track.audioMuted ? 'red' : 'gray'"
         :icon="track.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
-        class="w-6 h-6 p-0 transition-opacity"
-        :class="[track.audioMuted ? 'text-black opacity-100 hover:opacity-90' : 'opacity-60 group-hover:opacity-100']"
+        class="w-6 h-6 p-0 flex items-center justify-center transition-opacity"
+        :class="[
+          track.audioMuted ? 'text-black! opacity-100 hover:opacity-90' : 'opacity-60 group-hover:opacity-100'
+        ]"
         :title="track.audioMuted ? 'Unmute Track' : 'Mute Track'"
         @click="toggleAudioMuted"
       />
@@ -180,10 +184,12 @@ onBeforeUnmount(() => {
       <UButton
         size="xs"
         :variant="track.audioSolo ? 'solid' : 'ghost'"
-        :color="track.audioSolo ? 'green' : 'neutral'"
+        :color="track.audioSolo ? 'green' : 'gray'"
         icon="i-heroicons-musical-note"
-        class="w-6 h-6 p-0 transition-opacity"
-        :class="[track.audioSolo ? 'text-black opacity-100 hover:opacity-90' : 'opacity-60 group-hover:opacity-100']"
+        class="w-6 h-6 p-0 flex items-center justify-center transition-opacity"
+        :class="[
+          track.audioSolo ? 'text-black! opacity-100 hover:opacity-90' : 'opacity-60 group-hover:opacity-100'
+        ]"
         :title="track.audioSolo ? 'Unsolo Track' : 'Solo Track'"
         @click="toggleAudioSolo"
       />

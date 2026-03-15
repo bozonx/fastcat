@@ -20,6 +20,15 @@ import { useFocusStore } from '~/stores/focus.store';
 const { t } = useI18n();
 const focusStore = useFocusStore();
 
+const props = withDefaults(
+  defineProps<{
+    useExternalFocus?: boolean;
+  }>(),
+  {
+    useExternalFocus: false,
+  },
+);
+
 const { tabs, activeTabId, setActiveTab, initDefaultTab, reorderTabs, addFileTab, removeFileTab } =
   useProjectTabs();
 
@@ -261,12 +270,11 @@ onMounted(() => {
 
 <template>
   <div
-    class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0 overflow-hidden"
+    class="panel-focus-frame flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0 overflow-hidden"
     :class="{
-      'outline-2 outline-primary-500/60 -outline-offset-2 z-10':
-        focusStore.isPanelFocused('project'),
+      'panel-focus-frame--active': !props.useExternalFocus && focusStore.isPanelFocused('project'),
     }"
-    @pointerdown.capture="activateProjectFocus"
+    @pointerdown.capture="!props.useExternalFocus && activateProjectFocus()"
   >
     <!-- Tab bar -->
     <div

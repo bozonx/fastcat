@@ -24,6 +24,7 @@ import { useFileConversion } from '~/composables/fileManager/useFileConversion';
 
 const props = defineProps<{
   entity?: SelectedEntity | null;
+  useExternalFocus?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -185,11 +186,11 @@ function onPanelFocusOut() {
 
 <template>
   <div
-    class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0 relative"
+    class="panel-focus-frame flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0 relative"
     :class="{
-      'outline-2 outline-primary-500/60 -outline-offset-2 z-10': focusStore.isPanelFocused('right'),
+      'panel-focus-frame--active': !props.useExternalFocus && focusStore.isPanelFocused('right'),
     }"
-    @pointerdown.capture="focusStore.setTempFocus('right')"
+    @pointerdown.capture="!props.useExternalFocus && focusStore.setTempFocus('right')"
     @focusin.capture="onPanelFocusIn"
     @focusout.capture="onPanelFocusOut"
   >

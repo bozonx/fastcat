@@ -52,15 +52,17 @@ const mediaIcon = computed(() => {
 </script>
 
 <template>
-  <Project v-if="panel.type === 'fileManager'" class="h-full pt-2" />
+  <Project v-if="panel.type === 'fileManager'" class="h-full pt-2" :use-external-focus="true" />
   <MonitorContainer
     v-else-if="panel.type === 'monitor'"
     class="h-full"
+    :use-external-focus="true"
     @panel-drag-start="onDragStart"
   />
   <PropertiesPanel
     v-else-if="panel.type === 'properties'"
     class="h-full"
+    :use-external-focus="true"
     @panel-drag-start="onDragStart"
   />
   <div

@@ -641,7 +641,9 @@ export class VideoCompositor {
           timeUs: currentTimeUs,
           lastTimeUs,
           onDeactivate: (clip) => {
-            clip.sprite.visible = false;
+            if (clip.sprite) {
+              clip.sprite.visible = false;
+            }
           },
         }),
       applyTrackState: (track) => {

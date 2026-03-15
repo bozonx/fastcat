@@ -32,16 +32,15 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
 
 <template>
   <div
-    class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border transition-colors duration-200 min-w-0 overflow-hidden relative"
+    class="panel-focus-frame flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border transition-colors duration-200 min-w-0 overflow-hidden relative"
+    :class="{
+      'panel-focus-frame--active': focusStore.isPanelFocused('left'),
+    }"
+    @pointerdown.capture="focusStore.setTempFocus('left')"
   >
-    <!-- Content Wrapper with Focus Frame -->
+    <!-- Content Wrapper -->
     <div
       class="flex flex-col flex-1 min-h-0"
-      :class="{
-        'outline-2 outline-primary-500/60 -outline-offset-2 z-10':
-          focusStore.isPanelFocused('left'),
-      }"
-      @pointerdown.capture="focusStore.setTempFocus('left')"
     >
       <!-- Header / Tabs -->
       <div

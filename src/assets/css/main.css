@@ -51,6 +51,25 @@
   --z-clip-trim: 50;
 }
 
+ .panel-focus-frame {
+  position: relative;
+  isolation: isolate;
+ }
+
+ .panel-focus-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 60;
+  box-shadow: inset 0 0 0 0 transparent;
+  transition: box-shadow 0.15s ease;
+ }
+
+ .panel-focus-frame--active::after {
+  box-shadow: inset 0 0 0 1px var(--color-primary-500);
+ }
+
 /* Scrollbars */
 * {
   scrollbar-width: thin;
