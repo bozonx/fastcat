@@ -1,6 +1,6 @@
-import { onBeforeUnmount, type Ref } from 'vue';
+import { onBeforeUnmount, watch, type Ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { computeAnchoredScrollLeft } from '~/utils/timeline/geometry';
+import { computeAnchoredScrollLeft, pxToTimeUs } from '~/utils/timeline/geometry';
 
 export interface UseTimelineZoomOptions {
   scrollEl: Ref<HTMLElement | null>;
@@ -11,10 +11,40 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
 
   let pendingTimelineZoomDelta = 0;
   let timelineZoomFrameId = 0;
+  let pendingAnchor: { anchorTimeUs: number; anchorViewportX: number } | null = null;
+  let isInternalZoomUpdate = false;
+
+  watch(
+    () => timelineStore.timelineZoom,
+    (nextZoom, prevZoom) => {
+      if (isInternalZoomUpdate) {
+        isInternalZoomUpdate = false;
+        return;
+      }
+      if (!scrollEl.value || nextZoom === prevZoom) return;
+
+      const rect = scrollEl.value.getBoundingClientRect();
+      const anchorViewportX = rect.width / 2;
+      const anchorTimeUs = pxToTimeUs(scrollEl.value.scrollLeft + anchorViewportX, prevZoom);
+
+      const nextScrollLeft = computeAnchoredScrollLeft({
+        prevZoom,
+        nextZoom,
+        prevScrollLeft: scrollEl.value.scrollLeft,
+        viewportWidth: rect.width,
+        anchor: {
+          anchorTimeUs,
+          anchorViewportX,
+        },
+      });
+      scrollEl.value.scrollLeft = nextScrollLeft;
+    },
+  );
 
   function flushPendingTimelineZoom() {
     if (pendingTimelineZoomDelta === 0 || !scrollEl.value) {
       timelineZoomFrameId = 0;
+      pendingAnchor = null;
       return;
     }
 
@@ -25,13 +55,22 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
     const nextZoom = Math.min(110, Math.max(0, prevZoom + delta));
     if (nextZoom === prevZoom) {
       timelineZoomFrameId = 0;
+      pendingAnchor = null;
       return;
     }
 
     const rect = scrollEl.value.getBoundingClientRect();
-    // Default to playhead if no other anchor is provided
-    const anchorTimeUs = timelineStore.currentTime;
 
+    // Default to viewport center if no other anchor is provided
+    let anchorTimeUs = pxToTimeUs(scrollEl.value.scrollLeft + rect.width / 2, prevZoom);
+    let anchorViewportX = rect.width / 2;
+
+    if (pendingAnchor) {
+      anchorTimeUs = pendingAnchor.anchorTimeUs;
+      anchorViewportX = pendingAnchor.anchorViewportX;
+    }
+
+    isInternalZoomUpdate = true;
     timelineStore.setTimelineZoomExact(nextZoom);
 
     const nextScrollLeft = computeAnchoredScrollLeft({
@@ -41,16 +80,23 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
       viewportWidth: rect.width,
       anchor: {
         anchorTimeUs,
-        anchorViewportX: rect.width / 2,
+        anchorViewportX,
       },
     });
 
     scrollEl.value.scrollLeft = nextScrollLeft;
     timelineZoomFrameId = 0;
+    pendingAnchor = null;
   }
 
-  function handleZoomWheel(delta: number) {
+  function handleZoomWheel(
+    delta: number,
+    anchor?: { anchorTimeUs: number; anchorViewportX: number },
+  ) {
     pendingTimelineZoomDelta += delta;
+    if (anchor) {
+      pendingAnchor = anchor;
+    }
     if (!timelineZoomFrameId) {
       timelineZoomFrameId = window.requestAnimationFrame(flushPendingTimelineZoom);
     }
