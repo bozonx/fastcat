@@ -364,8 +364,6 @@ function setChunkCanvas(el: unknown, chunkIndex: number) {
   chunkCanvases.value[chunkIndex] = el instanceof HTMLCanvasElement ? el : null;
 }
 
-const waveColor = '#60a5fa'; // Tailwind blue-400
-const muteColor = '#94a3b8'; // Tailwind slate-400
 
 function drawChunk(chunkIndex: number) {
   const chunk = chunks.value.find((c) => c.chunkIndex === chunkIndex);
@@ -418,16 +416,10 @@ function drawChunk(chunkIndex: number) {
   const gain = props.item.audioGain ?? 1;
   const muted = isMuted.value;
 
-  const grad = ctx.createLinearGradient(0, 0, 0, targetHeight);
   if (muted) {
-    grad.addColorStop(0, '#94a3b866');
-    grad.addColorStop(1, '#64748b66');
-    ctx.fillStyle = grad;
+    ctx.fillStyle = '#ffffff66';
   } else {
-    grad.addColorStop(0.2, '#60a5fa');
-    grad.addColorStop(0.5, '#3b82f6');
-    grad.addColorStop(0.8, '#60a5fa');
-    ctx.fillStyle = grad;
+    ctx.fillStyle = '#ffffff';
   }
 
   ctx.beginPath();
@@ -559,7 +551,7 @@ watch(
 <template>
   <div
     ref="rootEl"
-    class="absolute inset-0 overflow-hidden pointer-events-none rounded opacity-90 select-none z-10"
+    class="absolute inset-0 overflow-hidden pointer-events-none rounded select-none z-10"
   >
     <div
       v-if="isExtracting && !audioPeaks"
