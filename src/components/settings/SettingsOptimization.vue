@@ -53,10 +53,12 @@ function resetDefaults() {
       }}
     </div>
 
-    <div class="grid grid-cols-4 gap-4">
-      <UFormField :label="t('videoEditor.settings.proxyMaxPixels', 'Max proxy resolution')">
+    <div class="grid grid-cols-3 gap-4">
+      <UFormField
+        :label="t('videoEditor.settings.proxyMaxPixels', 'Max proxy resolution')"
+        :title="t('videoEditor.settings.proxyMaxPixels', 'Max proxy resolution')"
+      >
         <USelectMenu
-          v-slot="{ modelValue }"
           v-model="workspaceStore.userSettings.optimization.proxyMaxPixels"
           :items="[
             { label: '3.0 MP (1080p+)', value: 3_000_000 },
@@ -68,40 +70,16 @@ function resetDefaults() {
           value-key="value"
           label-key="label"
           class="w-full"
+          :searchable="false"
           @update:model-value="
             (v: any) => (workspaceStore.userSettings.optimization.proxyMaxPixels = v?.value ?? v)
           "
-        >
-          <UButton
-            color="neutral"
-            variant="outline"
-            class="w-full justify-between"
-            :label="
-              [
-                { label: '3.0 MP (1080p+)', value: 3_000_000 },
-                { label: '1.5 MP (720p+)', value: 1_500_000 },
-                { label: '0.7 MP (480p+)', value: 700_000 },
-                { label: '0.4 MP (360p+)', value: 400_000 },
-                { label: '0.2 MP (240p+)', value: 200_000 },
-              ].find((i) => i.value === workspaceStore.userSettings.optimization.proxyMaxPixels)
-                ?.label || workspaceStore.userSettings.optimization.proxyMaxPixels + ' px'
-            "
-            icon-trailing="i-lucide-chevron-down"
-          />
-        </USelectMenu>
+        />
       </UFormField>
 
-    </div>
-
-    <div class="grid grid-cols-4 gap-4">
       <UFormField
         :label="t('videoEditor.settings.proxyVideoBitrate', 'Video bitrate (Mbps)')"
-        :help="
-          t(
-            'videoEditor.settings.proxyVideoBitrateHelp',
-            'Higher bitrate means better quality but larger file size',
-          )
-        "
+        :title="t('videoEditor.settings.proxyVideoBitrate', 'Video bitrate (Mbps)')"
       >
         <WheelNumberInput
           v-model="workspaceStore.userSettings.optimization.proxyVideoBitrateMbps"
@@ -111,7 +89,10 @@ function resetDefaults() {
         />
       </UFormField>
 
-      <UFormField :label="t('videoEditor.settings.proxyAudioBitrate', 'Audio bitrate (kbps)')">
+      <UFormField
+        :label="t('videoEditor.settings.proxyAudioBitrate', 'Audio bitrate (kbps)')"
+        :title="t('videoEditor.settings.proxyAudioBitrate', 'Audio bitrate (kbps)')"
+      >
         <WheelNumberInput
           v-model="workspaceStore.userSettings.optimization.proxyAudioBitrateKbps"
           :min="32"
@@ -121,7 +102,15 @@ function resetDefaults() {
       </UFormField>
     </div>
 
-    <label class="flex items-center gap-3 cursor-pointer">
+    <label
+      class="flex items-center gap-3 cursor-pointer"
+      :title="
+        t(
+          'videoEditor.settings.proxyCopyOpusAudioHelp',
+          'Enabling this will skip audio transcoding if the source already has Opus audio, preserving quality and saving time.',
+        )
+      "
+    >
       <UCheckbox v-model="workspaceStore.userSettings.optimization.proxyCopyOpusAudio" />
       <span class="text-sm text-ui-text">
         {{

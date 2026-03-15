@@ -901,7 +901,8 @@
         "16_9": "16:9",
         "1_1": "1:1",
         "21_9": "21:9",
-        "4_3": "4:3"
+        "4_3": "4:3",
+        "9_16": "9:16"
       },
       "aspectRatio": "Aspect Ratio",
       "customResolution": "Custom Resolution",
@@ -937,6 +938,7 @@
       "clearUiCacheDesc": "Resets layout, panel sizes, and other UI preferences.",
       "codecUnsupportedDesc": "The browser does not support hardware acceleration for this codec. Performance may be degraded.",
       "codecUnsupportedTitle": "Codec unsupported",
+      "defaultTransitionDuration": "Default transition duration (s)",
       "ephemeralTmpRootPath": "Ephemeral tmp path",
       "ephemeralTmpRootPathHelp": "Short-lived temporary job files. Leave empty to use the system temporary directory.",
       "hotkeysCaptureHint": "Waiting for key combination (Esc to cancel)",
@@ -1032,6 +1034,7 @@
       "mediaTaskConcurrency": "Media tasks concurrency",
       "mediaTaskConcurrencyHelp": "Limits the number of simultaneous heavy media operations (proxy generation, thumbnails, conversion).",
       "proxyCopyOpusAudio": "Copy Opus audio directly without re-encoding",
+      "proxyCopyOpusAudioHelp": "Enabling this will skip audio transcoding if the source already has Opus audio, preserving quality and saving time.",
       "proxyInfo": "Proxy files are used to improve playback performance in the editor. They are generated in WebM format with VP9 video codec and Opus audio codec.",
       "proxyLimit": "Proxy storage limit (GB)",
       "proxyLimitHelp": "Total limit for all proxy files in this workspace",

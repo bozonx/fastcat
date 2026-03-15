@@ -78,18 +78,6 @@ function clearCache() {
     </label>
 
     <UFormField
-      :label="t('videoEditor.settings.stopFramesQuality', 'Stop frame quality')"
-      :help="t('videoEditor.settings.stopFramesQualityHint', 'WebP quality (1-100)')"
-    >
-      <WheelNumberInput
-        v-model="workspaceStore.userSettings.stopFrames.qualityPercent"
-        :min="1"
-        :max="100"
-        :step="1"
-      />
-    </UFormField>
-
-    <UFormField
       :label="t('videoEditor.settings.snapThresholdDefault', 'Snap threshold default (px)')"
     >
       <div class="flex items-center gap-4">
@@ -109,27 +97,52 @@ function clearCache() {
 
     <UFormField
       :label="
-        t('videoEditor.settings.defaultTransitionDuration', 'Default transition duration (ms)')
+        t('videoEditor.settings.defaultTransitionDuration', 'Default transition duration (s)')
       "
     >
       <WheelNumberInput
         :model-value="
-          Math.round(workspaceStore.userSettings.timeline.defaultTransitionDurationUs / 1000)
+          workspaceStore.userSettings.timeline.defaultTransitionDurationUs / 1000000
         "
-        :min="100"
-        :max="10000"
-        :step="100"
+        :min="0.1"
+        :max="10"
+        :step="0.1"
         @update:model-value="
-          (v) => (workspaceStore.userSettings.timeline.defaultTransitionDurationUs = v * 1000)
+          (v) => (workspaceStore.userSettings.timeline.defaultTransitionDurationUs = Math.round(v * 1000000))
         "
       />
     </UFormField>
 
-    <div class="flex flex-col gap-2 pt-4 border-t border-ui-border">
+    <div class="flex flex-col gap-4 pt-4 border-t border-ui-border">
       <div class="text-xs font-semibold text-ui-text-muted uppercase tracking-wide">
         {{ t('videoEditor.settings.advancedSection', 'Advanced') }}
       </div>
-      <div class="flex items-center justify-between gap-3">
+
+      <UFormField
+        :label="t('videoEditor.settings.stopFramesQuality', 'Stop frame quality')"
+        :help="t('videoEditor.settings.stopFramesQualityHint', 'WebP quality (1-100)')"
+      >
+        <WheelNumberInput
+          v-model="workspaceStore.userSettings.stopFrames.qualityPercent"
+          :min="1"
+          :max="100"
+          :step="1"
+        />
+      </UFormField>
+
+      <UFormField
+        :label="t('videoEditor.settings.mediaTaskConcurrency', 'Media tasks concurrency')"
+        :help="t('videoEditor.settings.mediaTaskConcurrencyHelp')"
+      >
+        <WheelNumberInput
+          v-model="workspaceStore.userSettings.optimization.mediaTaskConcurrency"
+          :min="1"
+          :max="20"
+          :step="1"
+        />
+      </UFormField>
+
+      <div class="flex items-center justify-between gap-3 pt-2">
         <div class="flex flex-col gap-0.5">
           <div class="text-sm font-medium text-ui-text">
             {{ t('videoEditor.settings.clearUiCache', 'Clear UI cache') }}
@@ -147,18 +160,6 @@ function clearCache() {
           {{ t('videoEditor.settings.clearCacheAction', 'Clear cache') }}
         </UButton>
       </div>
-
-      <UFormField
-        :label="t('videoEditor.settings.mediaTaskConcurrency', 'Media tasks concurrency')"
-        :help="t('videoEditor.settings.mediaTaskConcurrencyHelp')"
-      >
-        <WheelNumberInput
-          v-model="workspaceStore.userSettings.optimization.mediaTaskConcurrency"
-          :min="1"
-          :max="20"
-          :step="1"
-        />
-      </UFormField>
     </div>
   </div>
 </template>

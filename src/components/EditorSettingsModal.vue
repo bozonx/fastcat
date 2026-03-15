@@ -142,6 +142,14 @@ watch(
               :disabled="activeSection === 'user.audio'"
               @click="activeSection = 'user.audio'"
             />
+            <UButton
+              variant="ghost"
+              color="neutral"
+              class="justify-start"
+              :label="t('videoEditor.settings.userIntegrations', 'Integrations')"
+              :disabled="activeSection === 'user.integrations'"
+              @click="activeSection = 'user.integrations'"
+            />
           </div>
 
           <div class="flex flex-col gap-2">
@@ -155,14 +163,6 @@ watch(
               :label="t('videoEditor.settings.workspaceStorage', 'Storage')"
               :disabled="activeSection === 'workspace.storage'"
               @click="activeSection = 'workspace.storage'"
-            />
-            <UButton
-              variant="ghost"
-              color="neutral"
-              class="justify-start"
-              :label="t('videoEditor.settings.userIntegrations', 'Integrations')"
-              :disabled="activeSection === 'user.integrations'"
-              @click="activeSection = 'user.integrations'"
             />
           </div>
         </div>
