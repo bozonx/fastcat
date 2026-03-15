@@ -2,21 +2,14 @@ import { safeDispose } from './utils';
 import { TimelineActiveTracker } from './TimelineActiveTracker';
 import {
   Application,
-  Sprite,
-  Texture,
   DOMAdapter,
   WebWorkerAdapter,
   RenderTexture,
+  Texture,
   Container,
 } from 'pixi.js';
 import type { Filter } from 'pixi.js';
 import type { WorkerTimelineClip } from '../../composables/monitor/types';
-import {
-  DEFAULT_TRANSITION_CURVE,
-  DEFAULT_TRANSITION_MODE,
-  getTransitionManifest,
-  normalizeTransitionParams,
-} from '~/transitions';
 import type { PreviewRenderOptions } from './worker-rpc';
 import { VIDEO_CORE_LIMITS } from '../constants';
 import type {
@@ -48,12 +41,15 @@ import { TimelineMediaClipBuilder } from './compositor/TimelineMediaClipBuilder'
 import { TimelineActiveClipProcessor } from './compositor/TimelineActiveClipProcessor';
 import { TimelineTrackRebinder } from './compositor/TimelineTrackRebinder';
 import { TimelineUpdateLifecycle } from './compositor/TimelineUpdateLifecycle';
+import { TimelineLayoutOrchestrator } from './compositor/TimelineLayoutOrchestrator';
 import { TextRenderer } from './compositor/renderers/TextRenderer';
 import { ShapeRenderer } from './compositor/renderers/ShapeRenderer';
 import { CanvasFallbackRenderer } from './compositor/renderers/CanvasFallbackRenderer';
 import { buildPrevClipByIdIndex, buildTrackRuntimeList } from './compositor/trackRuntime';
 import { RenderingEngine } from './compositor/RenderingEngine';
 import { FrameSampleOrchestrator } from './compositor/FrameSampleOrchestrator';
+import { StageManager } from './compositor/StageManager';
+import { TransitionRenderer } from './compositor/TransitionRenderer';
 
 export class VideoCompositor {
   public app: Application | null = null;
@@ -75,7 +71,6 @@ export class VideoCompositor {
 
   private masterEffects: VideoClipEffect[] | null = null;
   private masterEffectFilters = new Map<string, Filter>();
-  private filterQuadSprite: Sprite | null = null;
   private stageSortDirty = true;
   private activeSortDirty = true;
   private clipPreferBitmapFallback = new Map<string, boolean>();
@@ -133,8 +128,11 @@ export class VideoCompositor {
   private timelineClipLayoutUpdater = new TimelineClipLayoutUpdater();
   private timelineTrackRebinder = new TimelineTrackRebinder();
   private timelineUpdateLifecycle = new TimelineUpdateLifecycle();
+  private timelineLayoutOrchestrator = new TimelineLayoutOrchestrator();
   private renderingEngine = new RenderingEngine();
   private frameSampleOrchestrator = new FrameSampleOrchestrator();
+  private stageManager = new StageManager();
+  private transitionRenderer = new TransitionRenderer();
   private clipResourceManager = new ClipResourceManager({
     width: this.width,
     height: this.height,
@@ -226,7 +224,7 @@ export class VideoCompositor {
 
     for (const def of nextDefs) {
       const existing = this.trackById.get(def.id) ?? this.trackByLayer.get(def.layer);
-      const track = existing ?? {
+      const track: CompositorTrack = existing ?? {
         id: def.id,
         layer: def.layer,
         container: new Container(),
@@ -359,35 +357,6 @@ export class VideoCompositor {
     }
   }
 
-  private sortTrackContainerChildren() {
-    for (const track of this.tracks) {
-      track.container.children.sort((a: any, b: any) => {
-        const aClip = this.clipById.get((a as any)?.__clipId ?? '') as CompositorClip | undefined;
-        const bClip = this.clipById.get((b as any)?.__clipId ?? '') as CompositorClip | undefined;
-
-        const aStartUs = aClip?.startUs ?? 0;
-        const bStartUs = bClip?.startUs ?? 0;
-        if (aStartUs !== bStartUs) {
-          return aStartUs - bStartUs;
-        }
-
-        const aEndUs = aClip?.endUs ?? 0;
-        const bEndUs = bClip?.endUs ?? 0;
-        if (aEndUs !== bEndUs) {
-          return aEndUs - bEndUs;
-        }
-
-        const aOrder = typeof (a as any)?.__clipOrder === 'number' ? (a as any).__clipOrder : 0;
-        const bOrder = typeof (b as any)?.__clipOrder === 'number' ? (b as any).__clipOrder : 0;
-        if (aOrder !== bOrder) {
-          return aOrder - bOrder;
-        }
-
-        return String((a as any)?.__clipId ?? '').localeCompare(String((b as any)?.__clipId ?? ''));
-      });
-    }
-  }
-
   async init(
     width: number,
     height: number,
@@ -449,6 +418,7 @@ export class VideoCompositor {
     this.timelineClipLayoutUpdater = new TimelineClipLayoutUpdater();
     this.timelineTrackRebinder = new TimelineTrackRebinder();
     this.timelineUpdateLifecycle = new TimelineUpdateLifecycle();
+    this.timelineLayoutOrchestrator = new TimelineLayoutOrchestrator();
     this.clipResourceManager = new ClipResourceManager({
       width: this.width,
       height: this.height,
@@ -608,37 +578,26 @@ export class VideoCompositor {
     const meta = timelineClips.find((x) => x && typeof x === 'object' && x.kind === 'meta');
     const nextMaster = meta ? (this.toVideoEffects((meta as any).masterEffects) ?? null) : null;
     this.masterEffects = nextMaster;
+
     this.syncTrackRuntimes(timelineClips);
 
-    const byId = new Map<string, any>();
-    for (const clipData of timelineClips) {
-      if (clipData?.kind !== 'clip') continue;
-      if (typeof clipData.id !== 'string' || clipData.id.length === 0) continue;
-      byId.set(clipData.id, clipData);
-    }
-
-    for (const clip of this.clips) {
-      const next = byId.get(clip.itemId);
-      if (!next) continue;
-      this.timelineClipLayoutUpdater.update({
-        clip,
-        next,
-        fallbackTrackId: this.getTrackRuntimeForClip({
+    const updated = this.timelineLayoutOrchestrator.apply({
+      clips: this.clips,
+      timelineClips,
+      clipLayoutUpdater: this.timelineClipLayoutUpdater,
+      trackRebinder: this.timelineTrackRebinder,
+      updateLifecycle: this.timelineUpdateLifecycle,
+      getFallbackTrackId: ({ clip, next }) =>
+        this.getTrackRuntimeForClip({
           layer: Math.round(Number(next.layer ?? clip.layer ?? 0)),
         })?.id,
-        toVideoEffects: (value) => this.toVideoEffects(value),
-        applyClipLayoutForCurrentSource: (currentClip) =>
-          this.layoutApplier.applyClipLayoutForCurrentSource(currentClip),
-        clearClipTransitionFilter: (currentClip) =>
-          this.transitionManager.clearClipFilter(currentClip),
-      });
-      this.timelineTrackRebinder.rebind({
-        clip,
-        trackRuntime: this.getTrackRuntimeForClip(clip),
-      });
-    }
+      getTrackRuntimeForClip: (clip) => this.getTrackRuntimeForClip(clip),
+      toVideoEffects: (value) => this.toVideoEffects(value),
+      applyClipLayoutForCurrentSource: (clip) =>
+        this.layoutApplier.applyClipLayoutForCurrentSource(clip),
+      clearClipTransitionFilter: (clip) => this.transitionManager.clearClipFilter(clip),
+    });
 
-    const updated = this.timelineUpdateLifecycle.apply(this.clips);
     this.clips = updated.clips;
     this.rebuildPrevClipIndex();
     this.maxDurationUs = updated.maxDurationUs;
@@ -724,20 +683,38 @@ export class VideoCompositor {
           setClipSpriteVisible: (clip, visible) => this.setClipSpriteVisible(clip, visible),
         }),
       sortStage: () => {
-        this.sortTrackContainerChildren();
-        this.app?.stage.children.sort((a: any, b: any) => {
-          const aTrack = this.trackById.get((a as any).__trackId ?? '') as any;
-          const bTrack = this.trackById.get((b as any).__trackId ?? '') as any;
-          const aLayer = typeof aTrack?.layer === 'number' ? aTrack.layer : 0;
-          const bLayer = typeof bTrack?.layer === 'number' ? bTrack.layer : 0;
-          return aLayer - bLayer;
+        if (!this.app) {
+          return;
+        }
+
+        this.stageManager.sortStage({
+          app: this.app,
+          tracks: this.tracks,
+          getClipById: (clipId) => this.clipById.get(clipId),
+          getTrackById: (trackId) => this.trackById.get(trackId),
         });
       },
       prepareAdjustmentClips: (activeClips) => {
         this.prepareAdjustmentClips(activeClips);
       },
       applyShaderTransitions: (activeClips, currentTimeUs) =>
-        this.applyShaderTransitions(activeClips, currentTimeUs),
+        this.transitionRenderer.applyShaderTransitions(activeClips, currentTimeUs, {
+          app: this.app!,
+          clips: this.clips,
+          width: this.width,
+          height: this.height,
+          transitionManager: this.transitionManager,
+          stageTextureRenderer: this.stageTextureRenderer!,
+          getTrackById: (trackId) => this.trackById.get(trackId),
+          getActiveTransitionState: (clip, timeUs) => this.getActiveTransitionState(clip, timeUs),
+          ensureTransitionRenderTexture: (texture) =>
+            this.clipResourceManager.ensureTransitionRenderTexture(texture),
+          findPrevClipOnLayer: (clip) => this.findPrevClipOnLayer(clip),
+          createAbortController: (key) => this.resourceManager.createAbortController(key),
+          getVideoSampleForClip: (params) => this.getVideoSampleForClip(params),
+          updateClipTextureFromSample: (sample, clip) =>
+            this.updateClipTextureFromSample(sample, clip),
+        }),
       applyMasterEffects: () => {
         this.applyMasterEffects();
       },
@@ -762,280 +739,8 @@ export class VideoCompositor {
     return best;
   }
 
-  private ensureTransitionRenderTexture(texture: RenderTexture | null): RenderTexture {
-    return this.clipResourceManager.ensureTransitionRenderTexture(texture);
-  }
-
-  private ensureCombinedTransitionRenderTexture(texture: RenderTexture | null): RenderTexture {
-    return this.clipResourceManager.ensureCombinedTransitionTexture(texture);
-  }
-
-  private renderCombinedTransitionTexture(
-    fromTexture: RenderTexture,
-    toTexture: RenderTexture,
-    combined: RenderTexture,
-  ): void {
-    this.stageTextureRenderer?.renderCombinedTransitionTexture(fromTexture, toTexture, combined);
-  }
-
-  private ensureTransitionSprite(clip: CompositorClip): Sprite {
-    return this.stageTextureRenderer?.ensureTransitionSprite(clip) ?? clip.sprite;
-  }
-
-  private renderDisplayObjectToTexture(displayObject: Container, texture: RenderTexture) {
-    this.stageTextureRenderer?.renderDisplayObjectToTexture(displayObject, texture);
-  }
-
-  private renderDisplayObjectToTextureForcedVisible(
-    displayObject: Container,
-    texture: RenderTexture,
-  ) {
-    this.stageTextureRenderer?.renderDisplayObjectToTextureForcedVisible(displayObject, texture);
-  }
-
-  private renderSingleClipToTexture(
-    clip: CompositorClip,
-    texture: RenderTexture,
-    forceVisible = false,
-  ) {
-    this.stageTextureRenderer?.renderSingleClipToTexture(clip, texture, forceVisible);
-  }
-
   private renderLowerLayersToTexture(layer: number, texture: RenderTexture) {
     this.stageTextureRenderer?.renderLowerLayersToTexture(layer, texture);
-  }
-
-  private async renderTransitionClipToTexture(
-    clip: CompositorClip,
-    texture: RenderTexture,
-    options?: { transitionOffsetUs?: number },
-  ): Promise<boolean> {
-    if (
-      clip.clipKind === 'image' ||
-      clip.clipKind === 'solid' ||
-      clip.clipKind === 'text' ||
-      clip.clipKind === 'shape'
-    ) {
-      this.renderSingleClipToTexture(clip, texture);
-      return true;
-    }
-
-    if (clip.clipKind === 'adjustment') {
-      return false;
-    }
-
-    if (!clip.sink) {
-      return false;
-    }
-
-    const transitionOffsetUs = Math.max(0, Math.round(options?.transitionOffsetUs ?? 0));
-    const handleUs = Math.max(
-      0,
-      clip.sourceDurationUs - clip.sourceStartUs - clip.sourceRangeDurationUs,
-    );
-    const sourceRangeEndUs = clip.sourceStartUs + clip.sourceRangeDurationUs;
-
-    let sampleUs: number;
-    if ((clip.speed || 1) < 0) {
-      // In reverse, "overrun" goes before sourceStartUs
-      sampleUs =
-        handleUs < 1_000
-          ? Math.max(0, clip.sourceStartUs + 1_000)
-          : Math.max(0, clip.sourceStartUs - transitionOffsetUs);
-    } else {
-      sampleUs =
-        handleUs < 1_000
-          ? Math.max(0, clip.sourceStartUs + clip.sourceRangeDurationUs - 1_000)
-          : Math.min(
-              sourceRangeEndUs + transitionOffsetUs,
-              clip.sourceStartUs + clip.sourceDurationUs - 1_000,
-            );
-    }
-
-    const abortController = this.resourceManager.createAbortController(
-      clip.itemId + '_transition_texture',
-    );
-    const sample = await this.getVideoSampleForClip({
-      clip,
-      sampleTimeS: sampleUs / 1_000_000,
-      abortSignal: abortController.signal,
-    });
-
-    // Fallback: If no sample due to lacking handles, but we have a valid last frame, use it
-    if (!sample) {
-      if (clip.lastVideoFrame) {
-        try {
-          await this.updateClipTextureFromSample(
-            { frame: clip.lastVideoFrame, close: () => {} } as any,
-            clip,
-          );
-          clip.sprite.visible = true;
-          this.renderSingleClipToTexture(clip, texture);
-          return true;
-        } catch {
-          return false;
-        }
-      }
-      return false;
-    }
-
-    try {
-      await this.updateClipTextureFromSample(sample, clip);
-      clip.sprite.visible = true;
-      this.renderSingleClipToTexture(clip, texture);
-      return true;
-    } catch {
-      return false;
-    } finally {
-      if (typeof (sample as any).close === 'function') {
-        try {
-          (sample as any).close();
-        } catch (err) {
-          console.error(
-            '[VideoCompositor] Failed to close VideoSample in renderClipToTextureForTransition',
-            err,
-          );
-        }
-      }
-    }
-  }
-
-  private async applyShaderTransitions(active: CompositorClip[], timeUs: number) {
-    for (const clip of this.clips) {
-      if (clip.transitionSprite) {
-        clip.transitionSprite.visible = false;
-        clip.transitionSprite.filters = null;
-      }
-    }
-
-    for (const clip of active) {
-      const state = this.getActiveTransitionState(clip, timeUs);
-      if (!state || state.manifest?.renderMode !== 'shader' || !clip.transitionFilter) {
-        continue;
-      }
-
-      const transitionFilter = this.transitionManager.ensureUsableTransitionFilter(
-        clip,
-        state.manifest,
-      );
-      if (!transitionFilter) {
-        continue;
-      }
-
-      const mode = state.transition.mode ?? DEFAULT_TRANSITION_MODE;
-      if (mode !== 'adjacent' && mode !== 'background' && mode !== 'transparent') {
-        continue;
-      }
-
-      clip.transitionFromTexture = this.ensureTransitionRenderTexture(
-        clip.transitionFromTexture ?? null,
-      );
-      clip.transitionToTexture = this.ensureTransitionRenderTexture(
-        clip.transitionToTexture ?? null,
-      );
-      clip.transitionOutputTexture = this.ensureTransitionRenderTexture(
-        clip.transitionOutputTexture ?? null,
-      );
-
-      // Hide the clip on the main stage before taking its snapshot and before lower layers render
-      const prevClipVisible = clip.sprite.visible;
-      clip.sprite.visible = false;
-
-      this.renderSingleClipToTexture(clip, clip.transitionToTexture, true);
-
-      const fromTexture = clip.transitionFromTexture;
-      let prevClip: CompositorClip | null = null;
-
-      if (mode === 'background') {
-        this.renderLowerLayersToTexture(clip.layer, fromTexture);
-      } else if (mode === 'transparent') {
-        this.renderLowerLayersToTexture(Number.NEGATIVE_INFINITY, fromTexture);
-      } else {
-        prevClip = this.findPrevClipOnLayer(clip);
-        if (!prevClip) {
-          continue;
-        }
-        const transitionOffsetUs = Math.max(0, timeUs - clip.startUs);
-        const rendered = await this.renderTransitionClipToTexture(prevClip, fromTexture, {
-          transitionOffsetUs,
-        });
-        if (!rendered) {
-          continue;
-        }
-      }
-
-      const transitionContext = {
-        progress: state.progress,
-        curve: state.curve,
-        elapsedUs: timeUs - clip.startUs,
-        durationUs: state.transition.durationUs,
-        edge: 'in' as const,
-        params: state.transition.params,
-        fromTexture,
-        toTexture: clip.transitionToTexture,
-      };
-
-      const filterUpdated = this.transitionManager.updateTransitionFilterSafely(
-        clip,
-        state.manifest,
-        transitionFilter,
-        transitionContext,
-      );
-      if (!filterUpdated) {
-        continue;
-      }
-
-      if (!this.filterQuadSprite) {
-        this.filterQuadSprite = new Sprite(Texture.EMPTY);
-        this.filterQuadSprite.x = 0;
-        this.filterQuadSprite.y = 0;
-        this.filterQuadSprite.anchor.set(0, 0);
-      }
-      this.filterQuadSprite.texture = clip.transitionToTexture;
-      this.filterQuadSprite.scale.set(1, 1);
-      this.filterQuadSprite.width = this.width;
-      this.filterQuadSprite.height = this.height;
-      this.filterQuadSprite.filters = [filterUpdated];
-
-      this.app!.renderer.render({
-        container: this.filterQuadSprite,
-        target: clip.transitionOutputTexture!,
-        clear: true,
-      });
-
-      const transitionSprite = this.ensureTransitionSprite(clip);
-      transitionSprite.texture = clip.transitionOutputTexture!;
-      transitionSprite.scale.set(1, 1);
-      transitionSprite.width = this.width;
-      transitionSprite.height = this.height;
-      transitionSprite.alpha = 1;
-      transitionSprite.blendMode = clip.blendMode ?? 'normal';
-      transitionSprite.filters = null;
-      transitionSprite.visible = true;
-
-      clip.sprite.visible = false;
-      if (prevClip) {
-        prevClip.sprite.visible = false;
-      }
-
-      // Now that the transition is rendered onto the transitionSprite and added to the stage,
-      // we must hide the original background layers on the stage so they don't double-render
-      // behind the transition sprite (since the transition sprite already contains them).
-      if (mode === 'background') {
-        const children = this.app!.stage.children;
-        for (let i = 0; i < children.length; i++) {
-          const child = children[i] as any;
-          if (!child || child === transitionSprite) continue;
-
-          const track = this.trackById.get(child?.__trackId ?? '');
-          const childLayer =
-            typeof track?.layer === 'number' ? track.layer : Number.POSITIVE_INFINITY;
-          if (childLayer < clip.layer) {
-            child.visible = false;
-          }
-        }
-      }
-    }
   }
 
   private ensureCanvasFallback(clip: CompositorClip) {
@@ -1129,10 +834,7 @@ export class VideoCompositor {
   destroy() {
     this.clearClips();
     this.videoFrameCache.clear();
-    if (this.filterQuadSprite) {
-      this.filterQuadSprite.destroy();
-      this.filterQuadSprite = null;
-    }
+    this.transitionRenderer.destroy();
     if (this.stageTextureRenderer) {
       this.stageTextureRenderer.destroy();
       this.stageTextureRenderer = null;

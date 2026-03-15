@@ -1,6 +1,8 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-import { normalizeTimeUs, sanitizeFps } from '~/utils/monitor-time';
+import { sanitizeFps } from '~/utils/monitor-time';
+import { syncMonitorAudioLevels } from './useMonitorPlayback.audioLevels';
+import { syncMonitorTimecodeText } from './useMonitorPlayback.timecode';
 
 import type { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -67,38 +69,12 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
   }
 
   function updateTimecodeUi(timeUs: number) {
-    const el = timecodeEl;
-    if (!el) return;
-    const fps = sanitizeFps(getFps());
-
-    function formatTimecode(valueUs: number): string {
-      if (!Number.isFinite(valueUs) || valueUs <= 0) {
-        return '00:00:00:00';
-      }
-
-      const totalFrames = Math.max(0, Math.floor((valueUs / 1e6) * fps));
-      const framesPerHour = 3600 * fps;
-      const framesPerMinute = 60 * fps;
-
-      const hours = Math.floor(totalFrames / framesPerHour);
-      const minutes = Math.floor((totalFrames % framesPerHour) / framesPerMinute);
-      const seconds = Math.floor((totalFrames % framesPerMinute) / fps);
-      const frames = totalFrames % fps;
-
-      const hh = String(hours).padStart(2, '0');
-      const mm = String(minutes).padStart(2, '0');
-      const ss = String(seconds).padStart(2, '0');
-      const ff = String(frames).padStart(2, '0');
-
-      return `${hh}:${mm}:${ss}:${ff}`;
-    }
-
-    const current = formatTimecode(timeUs);
-    const total = formatTimecode(normalizeTimeUs(duration.value));
-    const nextText = `${current} / ${total}`;
-    if (el.textContent !== nextText) {
-      el.textContent = nextText;
-    }
+    syncMonitorTimecodeText({
+      element: timecodeEl,
+      currentTimeUs: timeUs,
+      durationUs: duration.value,
+      fps: sanitizeFps(getFps()),
+    });
   }
 
   function internalUpdateStoreTime(timeUs: number) {
@@ -199,40 +175,10 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
   function updateAudioLevels() {
     if (!isPlaying.value || isUnmounted) return;
 
-    const prevLevels = timelineStore.audioLevels;
-    const nextLevels = { ...prevLevels };
-    const masterLevels = audioEngine.getLevels();
-    nextLevels['master'] = masterLevels;
-
-    // Update track levels
-    const tracks = timelineStore.timelineDoc?.tracks || [];
-    for (const track of tracks) {
-      if (track.kind === 'audio' || track.kind === 'video') {
-        nextLevels[track.id] = audioEngine.getLevels(track.id);
-      }
-    }
-
-    function approxEqual(a: number, b: number) {
-      return Math.abs(a - b) <= 0.2;
-    }
-
-    let changed = false;
-    for (const [id, levels] of Object.entries(nextLevels)) {
-      const prev = prevLevels[id];
-      if (!prev) {
-        changed = true;
-        break;
-      }
-      if (!approxEqual(prev.rmsDb, levels.rmsDb) || !approxEqual(prev.peakDb, levels.peakDb)) {
-        changed = true;
-        break;
-      }
-    }
-    if (!changed && Object.keys(prevLevels).length === Object.keys(nextLevels).length) {
-      return;
-    }
-
-    timelineStore.audioLevels = nextLevels;
+    syncMonitorAudioLevels({
+      timelineStore,
+      audioEngine,
+    });
   }
 
   watch(

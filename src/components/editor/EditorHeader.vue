@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import TimelineTabs from '~/components/timeline/TimelineTabs.vue';
 import BackgroundTasksButton from '~/components/file-manager/BackgroundTasksButton.vue';
@@ -8,9 +9,30 @@ import BackgroundTasksButton from '~/components/file-manager/BackgroundTasksButt
 const { t } = useI18n();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
+const selectionStore = useSelectionStore();
 const { leaveProject } = useProjectActions();
 
-defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal']);
+const emit = defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal']);
+
+const menuItems = computed(() => [
+  [
+    {
+      label: t('fastcat.timeline.properties.title'),
+      icon: 'i-heroicons-adjustments-horizontal',
+      onSelect: () => selectionStore.selectTimelineProperties(),
+    },
+    {
+      label: t('videoEditor.projectSettings.title'),
+      icon: 'ix:project-configuration',
+      onSelect: () => emit('open-project-settings'),
+    },
+    {
+      label: t('videoEditor.settings.workspaceSection'),
+      icon: 'i-heroicons-cog-6-tooth',
+      onSelect: () => emit('open-editor-settings'),
+    },
+  ],
+]);
 </script>
 
 <template>
@@ -63,19 +85,8 @@ defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal
 
       <div class="w-px h-4 bg-ui-border mx-1" />
 
-      <BackgroundTasksButton size="sm" />
-
-      <UButton
-        size="sm"
-        variant="ghost"
-        color="neutral"
-        icon="i-heroicons-cog-6-tooth"
-        :title="t('videoEditor.settings.title', 'Editor settings')"
-        @click="$emit('open-editor-settings')"
-      />
-
       <!-- Window Switcher -->
-      <div class="flex items-center bg-ui-bg/50 p-1 rounded-lg border border-ui-border gap-1 ml-2">
+      <div class="flex items-center bg-ui-bg/50 p-1 rounded-lg border border-ui-border gap-1 mr-2">
         <button
           class="px-3 py-1 rounded text-sm font-medium transition-colors"
           :class="
@@ -121,6 +132,18 @@ defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal
           {{ t('videoEditor.export.title', 'Export') }}
         </button>
       </div>
+
+      <BackgroundTasksButton size="sm" />
+
+      <UDropdownMenu :items="menuItems" mode="hover" :ui="{ content: 'w-56' }">
+        <UButton
+          size="sm"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-ellipsis-horizontal"
+        />
+      </UDropdownMenu>
     </div>
   </div>
 </template>
+

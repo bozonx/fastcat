@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -14,6 +14,7 @@ import { useMonitorPlayback } from '~/composables/monitor/useMonitorPlayback';
 import { useMonitorCore } from '~/composables/monitor/useMonitorCore';
 import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
 import { useMonitorSnapshot } from '~/composables/monitor/useMonitorSnapshot';
+import { useMonitorContainerControls } from '~/composables/monitor/useMonitorContainerControls';
 import MonitorAudioControl from './MonitorAudioControl.vue';
 import MonitorTextTransformBox from './MonitorTextTransformBox.vue';
 import MonitorViewport from './MonitorViewport.vue';
@@ -27,28 +28,7 @@ const focusStore = useFocusStore();
 const workspaceStore = useWorkspaceStore();
 const selectionStore = useSelectionStore();
 const uiStore = useUiStore();
-const { isPlaying, currentTime, duration, audioVolume, audioMuted } = storeToRefs(timelineStore);
-
-const playbackSpeedOptions = [
-  { label: '0.5x', value: 0.5 },
-  { label: '0.75x', value: 0.75 },
-  { label: '1x', value: 1 },
-  { label: '1.25x', value: 1.25 },
-  { label: '1.5x', value: 1.5 },
-  { label: '1.75x', value: 1.75 },
-  { label: '2x', value: 2 },
-  { label: '3x', value: 3 },
-  { label: '5x', value: 5 },
-];
-
-const playbackDirection = computed(() =>
-  timelineStore.playbackSpeed < 0 ? 'backward' : 'forward',
-);
-
-const selectedPlaybackSpeedOption = computed(() => {
-  const abs = Math.abs(timelineStore.playbackSpeed);
-  return playbackSpeedOptions.find((o) => o.value === abs) ?? playbackSpeedOptions[2];
-});
+const { isPlaying, currentTime, duration } = storeToRefs(timelineStore);
 
 const {
   videoItems,
@@ -78,7 +58,6 @@ const { containerEl, renderWidth, renderHeight, updateCanvasDisplaySize } = useM
 
 const viewportRef = ref<InstanceType<typeof MonitorViewport> | null>(null);
 
-// Forward the MonitorViewport's inner viewportEl to useMonitorCore for ResizeObserver
 const viewportEl = computed(() => (viewportRef.value?.viewportEl as HTMLDivElement | null) ?? null);
 
 const {
@@ -121,33 +100,6 @@ const {
   },
 });
 
-const canInteractPlayback = computed(
-  () => !isLoading.value && (safeDurationUs.value > 0 || videoItems.value.length > 0),
-);
-
-function blurActiveElement() {
-  (document.activeElement as HTMLElement | null)?.blur?.();
-}
-
-const previewResolutions = computed(() => {
-  const projectHeight = projectStore.projectSettings.project.height;
-  const baseResolutions = [
-    { label: '2160p', value: 2160 },
-    { label: '1440p', value: 1440 },
-    { label: '1080p', value: 1080 },
-    { label: '720p', value: 720 },
-    { label: '480p', value: 480 },
-    { label: '360p', value: 360 },
-    { label: '240p', value: 240 },
-    { label: '144p', value: 144 },
-  ];
-
-  return baseResolutions.map((res) => ({
-    ...res,
-    isProject: res.value === projectHeight,
-  }));
-});
-
 const timecodeEl = ref<HTMLElement | null>(null);
 const { uiCurrentTimeUs, getLocalCurrentTimeUs, setTimecodeEl } = useMonitorPlayback({
   isLoading,
@@ -176,100 +128,6 @@ onMounted(() => {
 
 const { showGrid, toggleGrid, getGridLines } = useMonitorGrid({ projectStore });
 
-const monitorZoomLabel = computed(() => viewportRef.value?.zoomLabel ?? 'x1');
-
-const isReadonly = computed(
-  () => projectStore.currentView === 'sound' || projectStore.currentView === 'export',
-);
-
-function centerMonitor() {
-  viewportRef.value?.centerMonitor();
-}
-
-function resetZoom() {
-  viewportRef.value?.resetZoom();
-}
-
-function togglePreviewEffects() {
-  if (!projectStore.projectSettings.monitor) {
-    return;
-  }
-
-  projectStore.projectSettings.monitor.previewEffectsEnabled = !previewEffectsEnabled.value;
-}
-
-function togglePlayback() {
-  if (isLoading.value) return;
-
-  // If preview build failed, attempt a rebuild instead of permanently blocking playback controls.
-  if (loadError.value) {
-    loadError.value = null;
-    scheduleBuild();
-    return;
-  }
-
-  timelineStore.togglePlayback();
-}
-
-function setPlayback(params: { direction: 'forward' | 'backward'; speed: number }) {
-  if (isLoading.value) return;
-  if (!canInteractPlayback.value) return;
-
-  const finalSpeed = params.direction === 'backward' ? -params.speed : params.speed;
-
-  if (timelineStore.isPlaying && timelineStore.playbackSpeed === finalSpeed) {
-    timelineStore.togglePlayback();
-    blurActiveElement();
-    return;
-  }
-
-  timelineStore.setPlaybackSpeed(finalSpeed);
-  if (!timelineStore.isPlaying) {
-    timelineStore.togglePlayback();
-  }
-
-  blurActiveElement();
-}
-
-function rewindToStart() {
-  timelineStore.setCurrentTimeUs(0);
-  blurActiveElement();
-}
-
-function onPlaybackSpeedChange(v: any) {
-  if (!v) return;
-  const val = Number(v.value ?? v);
-  const isPlaying = timelineStore.isPlaying;
-  const currentSpeed = timelineStore.playbackSpeed;
-  const direction = currentSpeed < 0 ? -1 : 1;
-  timelineStore.setPlaybackSpeed(val * direction);
-  if (!isPlaying) {
-    // Only update speed state, don't start playback automatically when selecting speed
-  }
-}
-
-function handleSpeedWheel(e: WheelEvent) {
-  if (!canInteractPlayback.value) return;
-
-  const currentAbs = Math.abs(timelineStore.playbackSpeed);
-  const currentIndex = playbackSpeedOptions.findIndex((o) => o.value === currentAbs);
-  const idx = currentIndex >= 0 ? currentIndex : 2;
-
-  let nextIndex = idx;
-  if (e.deltaY < 0) {
-    nextIndex = Math.min(playbackSpeedOptions.length - 1, idx + 1);
-  } else if (e.deltaY > 0) {
-    nextIndex = Math.max(0, idx - 1);
-  }
-
-  if (nextIndex !== idx) {
-    const nextSpeed = playbackSpeedOptions[nextIndex]?.value;
-    if (!nextSpeed) return;
-    const direction = timelineStore.playbackSpeed < 0 ? -1 : 1;
-    timelineStore.setPlaybackSpeed(nextSpeed * direction);
-  }
-}
-
 const { isSavingStopFrame, createStopFrameSnapshot, saveTimelineThumbnail } = useMonitorSnapshot({
   projectStore,
   timelineStore,
@@ -281,89 +139,54 @@ const { isSavingStopFrame, createStopFrameSnapshot, saveTimelineThumbnail } = us
   rawWorkerTimelineClips,
 });
 
+const {
+  canInteractPlayback,
+  centerMonitor,
+  contextMenuItems,
+  createMarkerAtPlayhead,
+  handleSpeedWheel,
+  onPlaybackSpeedChange,
+  playbackSpeedOptions,
+  previewResolutions,
+  resetZoom,
+  rewindToStart,
+  selectedPlaybackSpeedOption,
+  setPlayback,
+  togglePlayback,
+  togglePreviewEffects,
+  toggleProxyUsage,
+  toolbarPosition,
+} = useMonitorContainerControls({
+  t,
+  projectStore,
+  timelineStore,
+  selectionStore,
+  viewportRef,
+  videoItems,
+  isLoading,
+  loadError,
+  safeDurationUs,
+  previewEffectsEnabled,
+  useProxyInMonitor,
+  showGrid,
+  isSavingStopFrame,
+  createStopFrameSnapshot,
+  scheduleBuild,
+  toggleGrid,
+});
+
+const isReadonly = computed(
+  () => projectStore.currentView === 'sound' || projectStore.currentView === 'export',
+);
+
+const monitorZoomLabel = computed(() => viewportRef.value?.zoomLabel ?? 'x1');
+
 watch(
   () => uiStore.timelineSaveTrigger,
   () => {
     saveTimelineThumbnail();
   },
 );
-
-const toolbarPosition = computed(
-  () => projectStore.projectSettings.monitor?.toolbarPosition ?? 'bottom',
-);
-
-function createMarkerAtPlayhead() {
-  const existing = timelineStore.getMarkers();
-  timelineStore.addMarkerAtPlayhead();
-  const next = timelineStore.getMarkers();
-  const created = next.find((m) => !existing.some((x) => x.id === m.id)) ?? next[next.length - 1];
-  if (created) {
-    selectionStore.selectTimelineMarker(created.id);
-  }
-}
-
-const contextMenuItems = computed(() => {
-  return [
-    [
-      {
-        label: t('fastcat.preview.resetZoom', 'Reset Zoom & Pan'),
-        icon: 'i-heroicons-arrow-path',
-        onSelect: () => viewportRef.value?.resetView(),
-      },
-      {
-        label: showGrid.value
-          ? t('fastcat.monitor.hideGrid', 'Hide grid')
-          : t('fastcat.monitor.showGrid', 'Show grid'),
-        icon: showGrid.value ? 'i-heroicons-check' : 'i-heroicons-squares-2x2',
-        onSelect: toggleGrid,
-      },
-      {
-        label: t('fastcat.monitor.snapshot', 'Create snapshot'),
-        icon: 'i-heroicons-camera',
-        onSelect: createStopFrameSnapshot,
-        disabled: isSavingStopFrame.value || isLoading.value || Boolean(loadError.value),
-      },
-    ],
-    [
-      {
-        label: t('fastcat.monitor.toolbarTop', 'Панель сверху'),
-        icon: toolbarPosition.value === 'top' ? 'i-heroicons-check' : undefined,
-        onSelect: () => {
-          if (projectStore.projectSettings.monitor) {
-            projectStore.projectSettings.monitor.toolbarPosition = 'top';
-          }
-        },
-      },
-      {
-        label: t('fastcat.monitor.toolbarRight', 'Панель справа'),
-        icon: toolbarPosition.value === 'right' ? 'i-heroicons-check' : undefined,
-        onSelect: () => {
-          if (projectStore.projectSettings.monitor) {
-            projectStore.projectSettings.monitor.toolbarPosition = 'right';
-          }
-        },
-      },
-      {
-        label: t('fastcat.monitor.toolbarBottom', 'Панель снизу'),
-        icon: toolbarPosition.value === 'bottom' ? 'i-heroicons-check' : undefined,
-        onSelect: () => {
-          if (projectStore.projectSettings.monitor) {
-            projectStore.projectSettings.monitor.toolbarPosition = 'bottom';
-          }
-        },
-      },
-      {
-        label: t('fastcat.monitor.toolbarLeft', 'Панель слева'),
-        icon: toolbarPosition.value === 'left' ? 'i-heroicons-check' : undefined,
-        onSelect: () => {
-          if (projectStore.projectSettings.monitor) {
-            projectStore.projectSettings.monitor.toolbarPosition = 'left';
-          }
-        },
-      },
-    ],
-  ];
-});
 
 const props = withDefaults(
   defineProps<{
@@ -515,7 +338,7 @@ const emit = defineEmits<{
               :color="useProxyInMonitor ? 'primary' : 'neutral'"
               :variant="useProxyInMonitor ? 'soft' : 'ghost'"
               icon="i-heroicons-bolt"
-              @click="projectStore.projectSettings.monitor.useProxy = !useProxyInMonitor"
+              @click="toggleProxyUsage"
             />
           </UTooltip>
 
