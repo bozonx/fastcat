@@ -207,6 +207,41 @@ function isMarkerSelected(markerId: string) {
       <canvas ref="canvasRef" class="absolute top-0 left-0 w-full h-full pointer-events-none" />
 
       <div
+        v-if="selectionRangePoint"
+        class="absolute inset-y-0 pointer-events-none"
+        :style="{
+          left: `${selectionRangePoint.x}px`,
+          width: `${selectionRangePoint.width}px`,
+          willChange: 'transform',
+        }"
+      >
+        <button
+          type="button"
+          class="absolute inset-y-0 left-0 right-0 border-l border-r bg-selection-range-bg border-selection-range-border shadow-[0_0_0_1px_rgba(var(--color-selection-range),0.25)]"
+          :class="
+            selectionStore.selectedEntity?.source === 'timeline' &&
+            selectionStore.selectedEntity?.kind === 'selection-range'
+              ? 'ring-2 ring-selection-range/80'
+              : ''
+          "
+          @click="selectSelectionRange($event)"
+          @pointerdown.stop="startSelectionRangeDrag($event, 'move')"
+        />
+        <button
+          type="button"
+          class="absolute inset-y-0 left-0 w-2 -translate-x-1/2 cursor-ew-resize bg-selection-range/70"
+          :aria-label="t('fastcat.timeline.selectionStartHandle')"
+          @pointerdown.stop="startSelectionRangeDrag($event, 'left')"
+        />
+        <button
+          type="button"
+          class="absolute inset-y-0 right-0 w-2 translate-x-1/2 cursor-ew-resize bg-selection-range/70"
+          :aria-label="t('fastcat.timeline.selectionEndHandle')"
+          @pointerdown.stop="startSelectionRangeDrag($event, 'right')"
+        />
+      </div>
+
+      <div
         v-if="currentFrameHighlightStyle"
         class="absolute inset-y-0 pointer-events-none"
         :style="{

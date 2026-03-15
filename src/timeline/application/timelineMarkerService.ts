@@ -62,7 +62,7 @@ export function createTimelineMarkerService(
       durationUs: patch.durationUs,
       text: patch.text,
       color: patch.color,
-    });
+    } as const);
   }
 
   function removeMarker(markerId: string) {

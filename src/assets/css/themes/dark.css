@@ -68,6 +68,9 @@
 
   /* === Selection ring (preview border) === */
   --selection-ring: #818cf8;
+  --selection-range: #818cf8;
+  --selection-range-bg: rgba(129, 140, 248, 0.18);
+  --selection-range-border: rgba(129, 140, 248, 0.80);
 
   /* === Status / semantic === */
   --color-warning: #f59e0b;
