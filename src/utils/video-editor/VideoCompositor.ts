@@ -1,4 +1,4 @@
-import { safeDispose, parseHexColor, sanitizeTimelineColor } from './utils';
+import { safeDispose } from './utils';
 import { getMediaTypeFromFilename } from '../media-types';
 import { TimelineActiveTracker } from './TimelineActiveTracker';
 import {
@@ -49,6 +49,8 @@ import { TimelineClipLoader } from './compositor/TimelineClipLoader';
 import { HudMediaLoader } from './compositor/HudMediaLoader';
 import { MediaClipLoader } from './compositor/MediaClipLoader';
 import { RasterImageLoader } from './compositor/RasterImageLoader';
+import { TimelineFixedClipBuilder } from './compositor/TimelineFixedClipBuilder';
+import { TimelineMediaClipBuilder } from './compositor/TimelineMediaClipBuilder';
 import { TextRenderer } from './compositor/renderers/TextRenderer';
 import { ShapeRenderer } from './compositor/renderers/ShapeRenderer';
 import { CanvasFallbackRenderer } from './compositor/renderers/CanvasFallbackRenderer';
@@ -110,6 +112,14 @@ export class VideoCompositor {
   private clipFactory = new ClipFactory({
     width: this.width,
     height: this.height,
+    layoutApplier: this.layoutApplier,
+  });
+  private timelineFixedClipBuilder = new TimelineFixedClipBuilder({
+    clipFactory: this.clipFactory,
+    hudMediaLoader: this.hudMediaLoader,
+  });
+  private timelineMediaClipBuilder = new TimelineMediaClipBuilder({
+    clipFactory: this.clipFactory,
     layoutApplier: this.layoutApplier,
   });
   private clipResourceManager = new ClipResourceManager({
@@ -261,6 +271,48 @@ export class VideoCompositor {
     this.prevClipById = buildPrevClipByIdIndex(this.clips);
   }
 
+  private registerLoadedClip(params: {
+    clip: CompositorClip;
+    nextClips: CompositorClip[];
+    nextClipById: Map<string, CompositorClip>;
+  }) {
+    const { clip, nextClips, nextClipById } = params;
+    if (!this.app) {
+      nextClips.push(clip);
+      nextClipById.set(clip.itemId, clip);
+      return;
+    }
+    const trackRuntime = this.getTrackRuntimeForClip(clip);
+    this.clipFactory.attachClipSprite({
+      clip,
+      trackRuntime,
+      stage: this.app.stage,
+    });
+    nextClips.push(clip);
+    nextClipById.set(clip.itemId, clip);
+  }
+
+  private replaceExistingClip(params: { reusable: CompositorClip | undefined; itemId: string }) {
+    const { reusable, itemId } = params;
+    if (!reusable) {
+      return;
+    }
+    this.destroyClip(reusable);
+    this.replacedClipIds.add(itemId);
+  }
+
+  private resolveFixedClipEnd(params: {
+    startUs: number;
+    requestedTimelineDurationUs: number;
+    sequentialTimeUs: number;
+  }) {
+    const endUs = params.startUs + Math.max(0, params.requestedTimelineDurationUs);
+    return {
+      endUs,
+      sequentialTimeUs: Math.max(params.sequentialTimeUs, endUs),
+    };
+  }
+
   private hideAllClipSprites() {
     for (const clip of this.clips) {
       clip.sprite.visible = false;
@@ -335,6 +387,14 @@ export class VideoCompositor {
     this.clipFactory = new ClipFactory({
       width: this.width,
       height: this.height,
+      layoutApplier: this.layoutApplier,
+    });
+    this.timelineFixedClipBuilder = new TimelineFixedClipBuilder({
+      clipFactory: this.clipFactory,
+      hudMediaLoader: this.hudMediaLoader,
+    });
+    this.timelineMediaClipBuilder = new TimelineMediaClipBuilder({
+      clipFactory: this.clipFactory,
       layoutApplier: this.layoutApplier,
     });
     this.clipResourceManager = new ClipResourceManager({
@@ -521,236 +581,47 @@ export class VideoCompositor {
         continue;
       }
 
-      if (clipType === 'background') {
-        const endUs = startUs + Math.max(0, requestedTimelineDurationUs);
-        sequentialTimeUs = Math.max(sequentialTimeUs, endUs);
-
-        if (reusable) {
-          this.destroyClip(reusable);
-          this.replacedClipIds.add(itemId);
-        }
-
-        const backgroundColor = sanitizeTimelineColor((clipData as any).backgroundColor, '#000000');
-        const compositorClip = this.clipFactory.createSolidClip({
-          itemId,
-          trackId,
-          layer,
+      if (
+        clipType === 'background' ||
+        clipType === 'text' ||
+        clipType === 'shape' ||
+        clipType === 'adjustment' ||
+        clipType === 'hud'
+      ) {
+        const fixedDuration = this.resolveFixedClipEnd({
           startUs,
-          endUs,
-          durationUs: Math.max(0, requestedTimelineDurationUs),
-          sourceStartUs: 0,
-          sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
-          sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
-          speed,
-          backgroundColor,
-          clipType: 'background',
-          opacity: clipData.opacity,
-          blendMode: resolveBlendMode((clipData as any).blendMode),
-          effects: this.toVideoEffects(clipData.effects),
-          transform: (clipData as any).transform,
+          requestedTimelineDurationUs,
+          sequentialTimeUs,
         });
-        compositorClip.sprite.tint = parseHexColor(backgroundColor);
-        const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
-        this.clipFactory.attachClipSprite({
+        const endUs = fixedDuration.endUs;
+        sequentialTimeUs = fixedDuration.sequentialTimeUs;
+
+        this.replaceExistingClip({ reusable, itemId });
+        const compositorClip = this.timelineFixedClipBuilder.build({
+          clipData,
+          descriptor: {
+            clipType,
+            itemId,
+            trackId,
+            layer,
+            startUs,
+            endUs,
+            requestedTimelineDurationUs,
+            speed,
+          },
+          toVideoEffects: (value) => this.toVideoEffects(value),
+        });
+        this.registerLoadedClip({
           clip: compositorClip,
-          trackRuntime,
-          stage: this.app.stage,
+          nextClips,
+          nextClipById,
         });
-
-        nextClips.push(compositorClip);
-        nextClipById.set(itemId, compositorClip);
-        continue;
-      }
-
-      if (clipType === 'text') {
-        const endUs = startUs + Math.max(0, requestedTimelineDurationUs);
-        sequentialTimeUs = Math.max(sequentialTimeUs, endUs);
-
-        if (reusable) {
-          this.destroyClip(reusable);
-          this.replacedClipIds.add(itemId);
+        if (clipType === 'hud') {
+          await this.timelineFixedClipBuilder.initializeHudMediaStates({
+            clip: compositorClip,
+            deps,
+          });
         }
-
-        const compositorClip = this.clipFactory.createTextClip({
-          itemId,
-          trackId,
-          layer,
-          startUs,
-          endUs,
-          durationUs: Math.max(0, requestedTimelineDurationUs),
-          sourceStartUs: 0,
-          sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
-          sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
-          speed,
-          text: String((clipData as any).text ?? ''),
-          style: (clipData as any).style,
-          opacity: clipData.opacity,
-          blendMode: resolveBlendMode((clipData as any).blendMode),
-          effects: this.toVideoEffects(clipData.effects),
-          transform: (clipData as any).transform,
-          transitionIn: clipData.transitionIn,
-          transitionOut: clipData.transitionOut,
-        });
-        const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
-        this.clipFactory.attachClipSprite({
-          clip: compositorClip,
-          trackRuntime,
-          stage: this.app.stage,
-        });
-
-        nextClips.push(compositorClip);
-        nextClipById.set(itemId, compositorClip);
-        continue;
-      }
-
-      if (clipType === 'shape') {
-        const endUs = startUs + Math.max(0, requestedTimelineDurationUs);
-        sequentialTimeUs = Math.max(sequentialTimeUs, endUs);
-
-        if (reusable) {
-          this.destroyClip(reusable);
-          this.replacedClipIds.add(itemId);
-        }
-
-        const compositorClip = this.clipFactory.createShapeClip({
-          itemId,
-          trackId,
-          layer,
-          startUs,
-          endUs,
-          durationUs: Math.max(0, requestedTimelineDurationUs),
-          sourceStartUs: 0,
-          sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
-          sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
-          speed,
-          shapeType: (clipData as any).shapeType ?? 'square',
-          fillColor: String((clipData as any).fillColor ?? '#ffffff'),
-          strokeColor: String((clipData as any).strokeColor ?? '#000000'),
-          strokeWidth: Number((clipData as any).strokeWidth ?? 0),
-          opacity: clipData.opacity,
-          blendMode: resolveBlendMode((clipData as any).blendMode),
-          effects: this.toVideoEffects(clipData.effects),
-          transform: (clipData as any).transform,
-          transitionIn: clipData.transitionIn,
-          transitionOut: clipData.transitionOut,
-        });
-        const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
-        this.clipFactory.attachClipSprite({
-          clip: compositorClip,
-          trackRuntime,
-          stage: this.app.stage,
-        });
-
-        nextClips.push(compositorClip);
-        nextClipById.set(itemId, compositorClip);
-        continue;
-      }
-
-      if (clipType === 'adjustment') {
-        const endUs = startUs + Math.max(0, requestedTimelineDurationUs);
-        sequentialTimeUs = Math.max(sequentialTimeUs, endUs);
-
-        if (reusable) {
-          this.destroyClip(reusable);
-          this.replacedClipIds.add(itemId);
-        }
-
-        const compositorClip = this.clipFactory.createAdjustmentClip({
-          itemId,
-          trackId,
-          layer,
-          startUs,
-          endUs,
-          durationUs: Math.max(0, requestedTimelineDurationUs),
-          sourceStartUs: 0,
-          sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
-          sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
-          speed,
-          opacity: clipData.opacity,
-          blendMode: resolveBlendMode((clipData as any).blendMode),
-          effects: this.toVideoEffects(clipData.effects),
-          transform: (clipData as any).transform,
-        });
-        const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
-        this.clipFactory.attachClipSprite({
-          clip: compositorClip,
-          trackRuntime,
-          stage: this.app.stage,
-        });
-
-        nextClips.push(compositorClip);
-        nextClipById.set(itemId, compositorClip);
-        continue;
-      }
-
-      if (clipType === 'hud') {
-        const endUs = startUs + Math.max(0, requestedTimelineDurationUs);
-        sequentialTimeUs = Math.max(sequentialTimeUs, endUs);
-
-        if (reusable) {
-          this.destroyClip(reusable);
-          this.replacedClipIds.add(itemId);
-        }
-
-        const compositorClip = this.clipFactory.createHudClip({
-          itemId,
-          trackId,
-          layer,
-          startUs,
-          endUs,
-          durationUs: Math.max(0, requestedTimelineDurationUs),
-          sourceStartUs: 0,
-          sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
-          sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
-          speed,
-          hudType: (clipData as any).hudType ?? 'media_frame',
-          background: (clipData as any).background,
-          content: (clipData as any).content,
-          opacity: clipData.opacity,
-          blendMode: resolveBlendMode((clipData as any).blendMode),
-          effects: this.toVideoEffects(clipData.effects),
-          transform: (clipData as any).transform,
-          transitionIn: clipData.transitionIn,
-          transitionOut: clipData.transitionOut,
-        });
-
-        const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
-        this.clipFactory.attachClipSprite({
-          clip: compositorClip,
-          trackRuntime,
-          stage: this.app.stage,
-        });
-
-        // Initialize HUD media states
-        const bgPath = compositorClip.background?.source?.path;
-        if (bgPath) {
-          try {
-            const state = await this.hudMediaLoader.loadImageState({ sourcePath: bgPath, deps });
-            if (state && compositorClip.hudMediaStates) {
-              compositorClip.hudMediaStates.background = state;
-            }
-          } catch (e) {
-            console.error('[VideoCompositor] Failed to load HUD background', e);
-          }
-        }
-
-        const contentPath = compositorClip.content?.source?.path;
-        if (contentPath) {
-          try {
-            const state = await this.hudMediaLoader.loadImageState({
-              sourcePath: contentPath,
-              deps,
-            });
-            if (state && compositorClip.hudMediaStates) {
-              compositorClip.hudMediaStates.content = state;
-            }
-          } catch (e) {
-            console.error('[VideoCompositor] Failed to load HUD content', e);
-          }
-        }
-
-        nextClips.push(compositorClip);
-        nextClipById.set(itemId, compositorClip);
         continue;
       }
 
@@ -759,10 +630,7 @@ export class VideoCompositor {
         continue;
       }
 
-      if (reusable) {
-        this.destroyClip(reusable);
-        this.replacedClipIds.add(itemId);
-      }
+      this.replaceExistingClip({ reusable, itemId });
 
       const fileHandle = await deps.getFileHandleByPath(sourcePath);
       if (!fileHandle) {
@@ -776,8 +644,13 @@ export class VideoCompositor {
         (typeof file?.type === 'string' && file.type.startsWith('image/')) ||
         getMediaTypeFromFilename(sourcePath) === 'image';
       if (isImage) {
-        const endUs = startUs + Math.max(0, requestedTimelineDurationUs);
-        sequentialTimeUs = Math.max(sequentialTimeUs, endUs);
+        const fixedDuration = this.resolveFixedClipEnd({
+          startUs,
+          requestedTimelineDurationUs,
+          sequentialTimeUs,
+        });
+        const endUs = fixedDuration.endUs;
+        sequentialTimeUs = fixedDuration.sequentialTimeUs;
 
         const imageSource = new ImageSource({ resource: new OffscreenCanvas(2, 2) as any });
         let bmp: ImageBitmap | null = null;
@@ -788,44 +661,28 @@ export class VideoCompositor {
           (imageSource as any).resource = bmp as any;
           imageSource.update();
         }
-
-        const compositorClip = this.clipFactory.createImageClip({
-          itemId,
-          trackId,
-          layer,
-          sourcePath,
-          fileHandle,
-          startUs,
-          endUs,
-          durationUs: Math.max(0, requestedTimelineDurationUs),
-          sourceStartUs: 0,
-          sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
-          sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
-          speed,
+        const compositorClip = this.timelineMediaClipBuilder.createImageClip({
+          clipData,
+          descriptor: {
+            itemId,
+            trackId,
+            layer,
+            sourcePath,
+            fileHandle,
+            startUs,
+            endUs,
+            requestedTimelineDurationUs,
+            speed,
+          },
           bitmap: bmp,
           imageSource,
-          opacity: clipData.opacity,
-          blendMode: resolveBlendMode((clipData as any).blendMode),
-          effects: this.toVideoEffects(clipData.effects),
-          transform: (clipData as any).transform,
-          transitionIn: clipData.transitionIn,
-          transitionOut: clipData.transitionOut,
+          toVideoEffects: (value) => this.toVideoEffects(value),
         });
-        if (bmp) {
-          const frameW = Math.max(1, Math.round((bmp as any).width ?? 1));
-          const frameH = Math.max(1, Math.round((bmp as any).height ?? 1));
-          this.layoutApplier.applySpriteLayout(frameW, frameH, compositorClip);
-        }
-
-        const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
-        this.clipFactory.attachClipSprite({
+        this.registerLoadedClip({
           clip: compositorClip,
-          trackRuntime,
-          stage: this.app.stage,
+          nextClips,
+          nextClipById,
         });
-
-        nextClips.push(compositorClip);
-        nextClipById.set(itemId, compositorClip);
         continue;
       }
 
@@ -861,42 +718,35 @@ export class VideoCompositor {
         } = loadedVideo;
 
         sequentialTimeUs = Math.max(sequentialTimeUs, endUs);
-        const compositorClip = this.clipFactory.createVideoClip({
-          itemId,
-          trackId,
-          layer,
-          sourcePath,
-          fileHandle,
+        const compositorClip = this.timelineMediaClipBuilder.createVideoClip({
+          clipData,
+          descriptor: {
+            itemId,
+            trackId,
+            layer,
+            sourcePath,
+            fileHandle,
+            startUs,
+            endUs,
+            durationUs,
+            sourceStartUs,
+            sourceRangeDurationUs: loadedVideo.sourceRangeDurationUs,
+            sourceDurationUs,
+            speed,
+            freezeFrameSourceUs,
+          },
           input,
           sink,
           firstTimestampS,
           frameRate,
-          startUs,
-          endUs,
-          durationUs,
-          sourceStartUs,
-          sourceRangeDurationUs: loadedVideo.sourceRangeDurationUs,
-          sourceDurationUs,
-          speed,
-          freezeFrameSourceUs,
           imageSource,
-          opacity: clipData.opacity,
-          blendMode: resolveBlendMode((clipData as any).blendMode),
-          effects: this.toVideoEffects(clipData.effects),
-          transform: (clipData as any).transform,
-          transitionIn: clipData.transitionIn,
-          transitionOut: clipData.transitionOut,
+          toVideoEffects: (value) => this.toVideoEffects(value),
         });
-
-        const trackRuntime = this.getTrackRuntimeForClip(compositorClip);
-        this.clipFactory.attachClipSprite({
+        this.registerLoadedClip({
           clip: compositorClip,
-          trackRuntime,
-          stage: this.app.stage,
+          nextClips,
+          nextClipById,
         });
-
-        nextClips.push(compositorClip);
-        nextClipById.set(itemId, compositorClip);
       } catch (err: any) {
         if (err?.message !== 'Input has an unsupported or unrecognizable format.') {
           console.error(`[VideoCompositor] Failed to load video clip ${itemId}:`, err);
