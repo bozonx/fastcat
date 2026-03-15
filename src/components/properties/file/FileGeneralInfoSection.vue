@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import PropertySection from '~/components/properties/PropertySection.vue';
+import PropertyRow from '~/components/properties/PropertyRow.vue';
 interface FileInfo {
   size?: number;
   createdAt?: number | string | Date | null;
