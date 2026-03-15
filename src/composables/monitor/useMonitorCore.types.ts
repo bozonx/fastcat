@@ -1,4 +1,5 @@
 import type { Ref } from 'vue';
+import type { useProjectStore } from '~/stores/project.store';
 import type { FastCatProjectSettings } from '~/utils/project-settings';
 import type { TimelineDocument } from '~/timeline/types';
 import type { WorkerTimelineClip } from './types';
@@ -35,11 +36,7 @@ export interface TimelineStoreState {
 }
 
 export interface MonitorStoreState {
-  projectStore: {
-    projectSettings: FastCatProjectSettings;
-    getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
-    getFileByPath: (path: string) => Promise<File | null>;
-  };
+  projectStore: ReturnType<typeof useProjectStore>;
   timelineStore: TimelineStoreState;
   proxyStore: {
     getProxyFileHandle: (path: string) => Promise<FileSystemFileHandle | null>;
