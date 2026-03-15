@@ -46,6 +46,7 @@ function onMainClick() {
       :icon="icon"
       :aria-label="ariaLabel"
       :disabled="disabled"
+      class="hover:bg-ui-bg"
       @click="onMainClick"
     />
 
@@ -57,6 +58,7 @@ function onMainClick() {
         icon="i-heroicons-chevron-down"
         :aria-label="caretAriaLabel ?? ariaLabel"
         :disabled="disabled"
+        class="hover:bg-ui-bg"
       />
     </UDropdownMenu>
   </UFieldGroup>

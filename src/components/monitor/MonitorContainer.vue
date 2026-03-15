@@ -244,11 +244,7 @@ const emit = defineEmits<{
               size="xs"
               :color="previewEffectsEnabled ? 'primary' : 'neutral'"
               :variant="previewEffectsEnabled ? 'soft' : 'ghost'"
-              :label="
-                previewEffectsEnabled
-                  ? t('fastcat.monitor.withEffects', 'With effects')
-                  : t('fastcat.monitor.withoutEffects', 'Without effects')
-              "
+              icon="i-heroicons-sparkles"
               @click="togglePreviewEffects"
             />
           </UTooltip>
@@ -387,6 +383,16 @@ const emit = defineEmits<{
         </div>
 
         <MonitorAudioControl :compact="toolbarPosition === 'left' || toolbarPosition === 'right'" />
+
+        <UDropdownMenu :items="contextMenuItems">
+          <UButton
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            icon="i-heroicons-ellipsis-horizontal"
+            :title="t('common.more', 'More')"
+          />
+        </UDropdownMenu>
       </div>
     </div>
   </UContextMenu>

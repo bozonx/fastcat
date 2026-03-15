@@ -268,7 +268,9 @@
     "marker": {
       "actions": "Действия",
       "info": "Инфо маркера",
-      "text": "Текст"
+      "text": "Текст",
+      "title": "Маркер",
+      "zoneMarker": "Маркер-зона"
     },
     "monitor": {
       "audioMute": "Выключить звук",
@@ -442,6 +444,8 @@
       "toggleTrackMute": "Вкл/выкл звук дорожки",
       "toggleTrackSolo": "Соло дорожки",
       "toggleTrackVisibility": "Показать/скрыть дорожку",
+      "dragToTimeline": "перетащите на таймлайн",
+      "selectionRange": "Область выделения",
       "transition": {
         "actionFall": "Падение",
         "actionRise": "Поднимается",
@@ -1092,6 +1096,8 @@
       "userAudio": "Аудио",
       "projectAudioDeclickTitle": "Длительность De-click",
       "projectAudioDeclickHint": "Микро-фейды (линейные), накладываемые на края всех клипов для устранения щелчков. 0 отключает их.",
+      "audioScrubbingTitle": "Скраббинг аудио",
+      "audioScrubbingHint": "Воспроизводить звук при перемещении по таймлайну вручную.",
       "defaultAudioFadeCurveTitle": "Тип кривой затухания",
       "defaultAudioFadeCurveHint": "Кривая по умолчанию, используемая при ручном создании фейдов. (De-click всегда использует короткое линейное затухание).",
       "userExport": "Пресеты экспорта",

@@ -15,7 +15,7 @@ export function generateTimelineThumbnail(params: {
 
   const projectId = projectStore.currentProjectId;
   const timelinePath = params.timelinePath;
-  const timelineDoc = structuredClone(params.timelineDoc);
+  const timelineDoc = JSON.parse(JSON.stringify(params.timelineDoc)) as TimelineDocument;
 
   // We still need to run buildVideoWorkerPayloadFromTracks asynchronously
   // outside the critical path, but before dispatching the thumbnail task

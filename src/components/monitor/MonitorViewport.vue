@@ -68,16 +68,6 @@ defineExpose({ viewportEl, zoom, zoomExact, zoomLabel, resetView, centerMonitor,
               :height="renderHeight"
               style="pointer-events: none"
             >
-              <rect
-                v-if="isPreviewSelected"
-                x="0"
-                y="0"
-                :width="renderWidth"
-                :height="renderHeight"
-                fill="none"
-                :stroke="'var(--selection-ring)'"
-                stroke-width="2"
-              />
               <!-- Slot for additional SVG overlay layers (grid, transform handles, etc.) -->
               <slot name="svg-overlay" />
             </svg>

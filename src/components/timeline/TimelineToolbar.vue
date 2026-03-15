@@ -93,37 +93,40 @@ function onDragEnd() {
       </UTooltip>
 
       <!-- Virtual Clips Drag Handles -->
-      <UTooltip :text="t('fastcat.timeline.addAdjustment')">
+      <UTooltip :text="`${t('fastcat.timeline.addAdjustment')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`">
         <UButton
           draggable="true"
           size="xs"
           variant="ghost"
           color="neutral"
           icon="i-heroicons-adjustments-horizontal"
+          class="hover:bg-ui-bg"
           @dragstart="onDragStart($event, 'adjustment')"
           @dragend="onDragEnd"
           @click="timelineStore.addAdjustmentClipAtPlayhead()"
         />
       </UTooltip>
-      <UTooltip :text="t('fastcat.timeline.addBackground')">
+      <UTooltip :text="`${t('fastcat.timeline.addBackground')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`">
         <UButton
           draggable="true"
           size="xs"
           variant="ghost"
           color="neutral"
           icon="i-heroicons-swatch"
+          class="hover:bg-ui-bg"
           @dragstart="onDragStart($event, 'background')"
           @dragend="onDragEnd"
           @click="timelineStore.addBackgroundClipAtPlayhead()"
         />
       </UTooltip>
-      <UTooltip :text="t('fastcat.timeline.addText')">
+      <UTooltip :text="`${t('fastcat.timeline.addText')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`">
         <UButton
           draggable="true"
           size="xs"
           variant="ghost"
           color="neutral"
           icon="i-heroicons-chat-bubble-bottom-center-text"
+          class="hover:bg-ui-bg"
           @dragstart="onDragStart($event, 'text')"
           @dragend="onDragEnd"
           @click="timelineStore.addTextClipAtPlayhead()"
