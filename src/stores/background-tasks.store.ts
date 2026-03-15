@@ -77,13 +77,18 @@ export const useBackgroundTasksStore = defineStore('background-tasks', () => {
     });
   }
 
-  function cancelTask(id: string) {
+  async function cancelTask(id: string) {
     const task = tasks.value.find((t) => t.id === id);
     if (task && (task.status === 'running' || task.status === 'pending')) {
-      if (task.cancel) {
-        task.cancel();
+      try {
+        if (task.cancel) {
+          await task.cancel();
+        }
+        updateTaskStatus(id, 'cancelled');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        updateTaskStatus(id, 'failed', message);
       }
-      updateTaskStatus(id, 'cancelled');
     }
   }
 

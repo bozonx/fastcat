@@ -5,9 +5,9 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { EXPORT_DIR_NAME } from '~/utils/constants';
 import {
   getExportWorkerClient,
+  registerExportTaskHostApi,
   setExportHostApi,
-  terminateExportWorker,
-  restartExportWorker,
+  unregisterExportTaskHostApi,
 } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
@@ -44,6 +44,7 @@ export function useTimelineExport() {
   const exportWarnings = ref<string[]>([]);
 
   const cancelRequested = ref(false);
+  const activeExportTaskId = ref<string | null>(null);
 
   const outputFilename = ref('');
   const filenameError = ref<string | null>(null);
@@ -262,6 +263,10 @@ export function useTimelineExport() {
     fileHandle: FileSystemFileHandle,
     onProgress: (progress: number) => void,
   ): Promise<void> {
+    const exportTaskId = `timeline-export-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    activeExportTaskId.value = exportTaskId;
+    cancelRequested.value = false;
+
     const doc = timelineStore.timelineDoc;
     const allVideoTracks = doc?.tracks?.filter((track) => track.kind === 'video') ?? [];
     const allAudioTracks = doc?.tracks?.filter((track) => track.kind === 'audio') ?? [];
@@ -321,46 +326,52 @@ export function useTimelineExport() {
         getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
         getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
         getFileByPath: async (path) => projectStore.getFileByPath(path),
-        onExportProgress: (progress) => onProgress(progress / 100),
-        onExportPhase: (phase) => {
-          exportPhase.value = phase;
-        },
-        onExportWarning: (message) => {
-          exportWarnings.value.push(message);
-        },
+        onExportProgress: () => {},
       }),
     );
+    registerExportTaskHostApi(exportTaskId, {
+      onExportProgress: (progress) => onProgress(progress / 100),
+      onExportPhase: (phase) => {
+        exportPhase.value = phase;
+      },
+      onExportWarning: (message) => {
+        exportWarnings.value.push(message);
+      },
+    });
 
     const finalOptions = {
       ...options,
       audioSampleRate: audioSampleRate.value,
     };
-    await (client as any).exportTimeline(fileHandle, finalOptions, videoPayload, croppedAudioClips);
+    try {
+      await (client as any).exportTimeline(
+        fileHandle,
+        finalOptions,
+        videoPayload,
+        croppedAudioClips,
+        exportTaskId,
+      );
+    } finally {
+      unregisterExportTaskHostApi(exportTaskId);
+      if (activeExportTaskId.value === exportTaskId) {
+        activeExportTaskId.value = null;
+      }
+    }
   }
 
   async function cancelExport() {
     if (!isExporting.value) return;
     if (cancelRequested.value) return;
+    const exportTaskId = activeExportTaskId.value;
+    if (!exportTaskId) return;
     cancelRequested.value = true;
 
     try {
       const { client } = getExportWorkerClient();
-      await client.cancelExport();
+      await client.cancelExport(exportTaskId);
     } catch (e) {
-      // Ignore and rely on fallback terminate
       console.warn('Failed to request cooperative export cancel', e);
     }
-
-    // Fallback: if export is still running after a grace period, terminate the worker.
-    setTimeout(() => {
-      if (!isExporting.value) return;
-      try {
-        terminateExportWorker('Export cancelled by user');
-        restartExportWorker();
-      } catch (e) {
-        console.error('Failed to cancel export worker', e);
-      }
-    }, 1500);
   }
 
   return {
