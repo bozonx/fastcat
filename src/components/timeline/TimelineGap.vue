@@ -60,7 +60,7 @@ function onPointerdown(e: PointerEvent) {
   >
     <div
       :data-gap-id="item.id"
-      class="absolute inset-y-0 rounded border border-dashed transition-colors z-10 cursor-pointer select-none"
+      class="absolute top-0.5 bottom-0.5 rounded border border-dashed transition-colors z-10 cursor-pointer select-none"
       :class="
         isSelected
           ? 'border-primary-500 bg-primary-500/15 hover:bg-primary-500/25'

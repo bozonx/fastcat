@@ -311,7 +311,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
     <div
       :data-clip-id="item.kind === 'clip' ? item.id : undefined"
       :data-gap-id="item.kind === 'gap' ? item.id : undefined"
-      class="absolute inset-y-0 rounded flex flex-col text-xs text-(--clip-text) select-none transition-shadow group/clip"
+      class="absolute top-0.5 bottom-0.5 rounded flex flex-col text-xs text-(--clip-text) select-none transition-shadow group/clip"
       :style="{
         left: `${timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom)}px`,
         width: `${clipWidthPx}px`,

@@ -133,8 +133,7 @@ onBeforeUnmount(() => {
         :class="[
           isRenaming ? 'bg-ui-bg-elevated border-ui-border-accent' : 'hover:border-ui-border/50',
         ]"
-        @click.stop="timelineStore.renamingTrackId = track.id"
-        @dblclick.stop
+        @dblclick.stop="timelineStore.renamingTrackId = track.id"
       >
         <input
           v-if="isRenaming"

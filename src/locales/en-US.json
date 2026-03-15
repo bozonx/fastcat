@@ -884,7 +884,7 @@
       "deleteProjectAction": "Delete",
       "deleteProjectConfirmDescription": "This will permanently delete the project folder and all its contents. This action cannot be undone.",
       "deleteProjectConfirmTitle": "Delete Project?",
-      "export": "Export defaults",
+      "export": "Export",
       "note": "Settings are saved to .fastcat/project.settings.json",
       "reset": "Reset to Defaults",
       "resetConfirmDescription": "This will restore all project settings to the default values from your workspace settings.",

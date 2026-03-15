@@ -589,7 +589,19 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
                 @select-item="selectItem"
                 @start-trim-item="startTrimItem"
                 @clip-action="onClipAction"
-              />
+              >
+                <template #overlays>
+                  <div
+                    class="absolute top-0 bottom-0 w-px pointer-events-none"
+                    :style="{
+                      transform: playheadTransform,
+                      willChange: 'transform',
+                      zIndex: 50,
+                      backgroundColor: 'var(--color-primary-500, #3b82f6)',
+                    }"
+                  />
+                </template>
+              </TimelineTracks>
 
               <div
                 v-if="currentFrameHighlightStyle"
@@ -599,16 +611,6 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
                   zIndex: 5,
                   backgroundColor: 'var(--color-primary-500, #3b82f6)',
                   opacity: '0.12',
-                }"
-              />
-
-              <div
-                class="absolute top-0 bottom-0 w-px pointer-events-none"
-                :style="{
-                  transform: playheadTransform,
-                  willChange: 'transform',
-                  zIndex: 50,
-                  backgroundColor: 'var(--color-primary-500, #3b82f6)',
                 }"
               />
             </div>
