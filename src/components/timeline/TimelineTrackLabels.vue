@@ -98,6 +98,7 @@ function onSelectTrack(trackId: string) {
       selectionStore.selectTimelineTrack(trackId);
     } else {
       timelineStore.selectTimelineProperties();
+      selectionStore.selectTimelineProperties();
     }
   } else {
     timelineStore.selectTrack(trackId);
@@ -210,7 +211,10 @@ function onDragVirtualEnd() {
       ref="labelsScrollContainer"
       class="flex-1 overflow-y-scroll overflow-x-hidden labels-scroll-container"
       @scroll="emit('scroll', $event)"
-      @click="timelineStore.selectTimelineProperties()"
+      @click="
+        timelineStore.selectTimelineProperties();
+        selectionStore.selectTimelineProperties();
+      "
     >
       <div class="flex flex-col min-h-full">
         <UContextMenu

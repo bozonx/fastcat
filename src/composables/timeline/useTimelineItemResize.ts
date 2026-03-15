@@ -3,7 +3,6 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import { pxToDeltaUs, pickBestSnapCandidateUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
-import { CLIP_AUDIO_GAIN_MAX } from '~/utils/audio/envelope';
 import type {
   TimelineTrack,
   TimelineClipItem,
@@ -111,9 +110,9 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     function onPointerMove(ev: PointerEvent) {
       if (!resizeVolume.value) return;
       const dy = ev.clientY - resizeVolume.value.startY;
-      const deltaVol = -(dy / resizeVolume.value.trackHeight) * CLIP_AUDIO_GAIN_MAX;
+      const deltaVol = -(dy / resizeVolume.value.trackHeight) * 2;
       let newVol = resizeVolume.value.startGain + deltaVol;
-      newVol = Math.max(0, Math.min(CLIP_AUDIO_GAIN_MAX, newVol));
+      newVol = Math.max(0, Math.min(2, newVol));
 
       scheduleResizeUpdate(() => {
         timelineStore.updateClipProperties(payload.trackId, payload.itemId, {

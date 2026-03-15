@@ -118,9 +118,9 @@ onBeforeUnmount(() => {
       isHovered && !isSelected ? 'text-ui-text bg-ui-bg-elevated/80' : 'text-ui-text-muted',
     ]"
     :style="{ height: `${height}px` }"
-    @click="emit('select')"
+    @click.stop="emit('select')"
     @dblclick="timelineStore.selectAllClipsOnTrack(track.id)"
-    @contextmenu="emit('select')"
+    @contextmenu.stop="emit('select')"
   >
     <!-- Track Drag Handle (Left) -->
     <div
