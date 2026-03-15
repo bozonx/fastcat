@@ -232,7 +232,7 @@ function selectTransition(
       :data-track-id="track.id"
       class="flex items-center px-2 relative transition-colors border-b border-ui-border"
       :class="[
-        timelineStore.selectedTrackId === track.id ? 'bg-ui-bg-elevated' : '',
+        timelineStore.selectedTrackId === track.id ? 'bg-primary-500/10' : '',
         timelineStore.hoveredTrackId === track.id && timelineStore.selectedTrackId !== track.id
           ? 'bg-ui-bg-elevated/50'
           : '',
