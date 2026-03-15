@@ -122,7 +122,12 @@ onBeforeUnmount(() => {
     @dblclick="timelineStore.selectAllClipsOnTrack(track.id)"
     @contextmenu.stop="emit('select')"
   >
-    <div class="flex-1 min-w-0 flex items-center overflow-hidden">
+    <div
+      class="absolute left-0 top-0 bottom-0 w-1 transition-colors z-10"
+      :class="[isSelected ? 'bg-primary-500' : isHovered ? 'bg-ui-border/50' : 'bg-transparent']"
+    />
+
+    <div class="flex-1 min-w-0 flex items-center overflow-hidden pl-1.5 z-10 relative">
       <div
         class="max-w-full px-1 py-0.5 rounded transition-colors overflow-hidden"
         :class="[
@@ -146,34 +151,40 @@ onBeforeUnmount(() => {
     </div>
 
     <div
-      class="ml-0 flex items-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity"
+      class="ml-0 flex items-center gap-0.5 transition-opacity z-10 relative"
       @dblclick.stop
     >
       <UButton
         v-if="track.kind === 'video'"
         size="xs"
-        variant="ghost"
-        color="neutral"
+        :variant="track.videoHidden ? 'solid' : 'ghost'"
+        :color="track.videoHidden ? 'amber' : 'neutral'"
         :icon="track.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
-        class="w-6 h-6 p-0"
+        class="w-6 h-6 p-0 transition-opacity"
+        :class="[track.videoHidden ? 'text-black opacity-100 hover:opacity-90' : 'opacity-60 group-hover:opacity-100']"
+        :title="track.videoHidden ? 'Show Track' : 'Hide Track'"
         @click="toggleVideoHidden"
       />
 
       <UButton
         size="xs"
-        variant="ghost"
-        :color="track.audioMuted ? 'error' : 'neutral'"
+        :variant="track.audioMuted ? 'solid' : 'ghost'"
+        :color="track.audioMuted ? 'red' : 'neutral'"
         :icon="track.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
-        class="w-6 h-6 p-0"
+        class="w-6 h-6 p-0 transition-opacity"
+        :class="[track.audioMuted ? 'text-black opacity-100 hover:opacity-90' : 'opacity-60 group-hover:opacity-100']"
+        :title="track.audioMuted ? 'Unmute Track' : 'Mute Track'"
         @click="toggleAudioMuted"
       />
 
       <UButton
         size="xs"
-        variant="ghost"
-        :color="track.audioSolo ? 'primary' : 'neutral'"
+        :variant="track.audioSolo ? 'solid' : 'ghost'"
+        :color="track.audioSolo ? 'green' : 'neutral'"
         icon="i-heroicons-musical-note"
-        class="w-6 h-6 p-0"
+        class="w-6 h-6 p-0 transition-opacity"
+        :class="[track.audioSolo ? 'text-black opacity-100 hover:opacity-90' : 'opacity-60 group-hover:opacity-100']"
+        :title="track.audioSolo ? 'Unsolo Track' : 'Solo Track'"
         @click="toggleAudioSolo"
       />
     </div>
@@ -191,8 +202,8 @@ onBeforeUnmount(() => {
       </div>
       <button
         type="button"
-        class="w-2.5 h-1.5 rounded-[2px] border border-ui-border transition-colors pointer-events-auto"
-        :class="hasClipped ? 'bg-red-600 shadow-[0_0_6px_rgba(220,38,38,0.75)]' : 'bg-ui-bg-dark'"
+        class="w-2.5 h-px rounded-full transition-colors pointer-events-auto"
+        :class="hasClipped ? 'bg-red-600 shadow-[0_0_6px_rgba(220,38,38,0.75)]' : 'bg-ui-border/70'"
         :title="hasClipped ? 'Clipped! Click to reset' : ''"
         @click="resetClipIndicator"
       />

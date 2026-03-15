@@ -184,9 +184,14 @@
       "audioFade": {
         "in": "Фейд в начале",
         "out": "Фейд в конце",
-        "title": "Фейды звука"
+        "title": "Фейды звука",
+        "curve": {
+          "linear": "Линейная",
+          "logarithmic": "Логарифмическая"
+        }
       },
       "blendMode": {
+        "title": "Режим наложения",
         "add": "Добавление",
         "darken": "Затемнение",
         "lighten": "Осветление",
@@ -203,6 +208,8 @@
       "opacity": "Прозрачность",
       "pointerDirection": "Направление указателя",
       "rays": "Лучи",
+      "rename": "Переименовать клип",
+      "reversed": "Обратное воспроизведение",
       "showInFileManager": "Показать в файловом менеджере",
       "showThumbnails": "Показать миниатюры",
       "showWaveform": "Показать вейвформу",
@@ -234,6 +241,9 @@
       "add": "Добавить",
       "addEffect": "Добавить эфф.",
       "clipTitle": "Эффекты клипа",
+      "presetNamePlaceholder": "Мой пресет",
+      "saveAsPreset": "Сохранить как пресет",
+      "savePresetTitle": "Сохранение пресета",
       "dropHint": "Перетащите эффекты сюда",
       "effectsCount": "{count} эфф.",
       "empty": "Эффектов нет",
@@ -664,6 +674,12 @@
       "videoCodec": "Видео кодек",
       "warningTitle": "Предупреждения при экспорте",
       "width": "Ширина"
+    },
+    "timeline": {
+      "tabs": {
+        "cut": "Монтаж",
+        "sound": "Звук"
+      }
     },
     "fileManager": {
       "actions": {

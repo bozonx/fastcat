@@ -94,7 +94,7 @@ const emit = defineEmits<{
           >
             <div
               v-if="isFocused(panel.id)"
-              class="pointer-events-none absolute inset-0 z-30 ring-2 ring-primary-500/60 ring-inset"
+              class="pointer-events-none absolute inset-0 z-50 ring-1 ring-primary-500 ring-inset"
             />
             <EditorDynamicPanelContent
               :panel="panel"

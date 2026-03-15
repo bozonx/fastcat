@@ -31,7 +31,7 @@ const { t } = useI18n();
   >
     <div class="flex flex-col gap-0.5">
       <span class="text-xs text-ui-text-muted">{{
-        t('fastcat.clip.blendMode', 'Blend mode')
+        t('fastcat.clip.blendMode.title', 'Blend mode')
       }}</span>
       <USelectMenu
         :model-value="props.blendMode"
