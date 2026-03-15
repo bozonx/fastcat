@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue';
-import type { LayerKey } from '~/utils/hotkeys/layerUtils';
+
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import SearchInput from '~/components/ui/SearchInput.vue';
-import { DEFAULT_HOTKEYS, type HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
+import { DEFAULT_HOTKEYS, type HotkeyCommandId, type HotkeyCombo } from '~/utils/hotkeys/defaultHotkeys';
 import {
   hotkeyFromKeyboardEvent,
   isEditableTarget,
@@ -53,34 +53,7 @@ function getCommandGroupTitle(groupId: string): string {
   return groupId;
 }
 
-const layerOptions = [
-  { label: 'Shift (Any)', value: 'Shift' },
-  { label: 'Control (Any)', value: 'Control' },
-  { label: 'Alt (Any)', value: 'Alt' },
-  { label: 'Meta (Any)', value: 'Meta' },
-  { label: 'Left Shift', value: 'ShiftLeft' },
-  { label: 'Right Shift', value: 'ShiftRight' },
-  { label: 'Left Control', value: 'ControlLeft' },
-  { label: 'Right Control', value: 'ControlRight' },
-  { label: 'Left Alt', value: 'AltLeft' },
-  { label: 'Right Alt', value: 'AltRight' },
-  { label: 'Left Meta', value: 'MetaLeft' },
-  { label: 'Right Meta', value: 'MetaRight' },
-];
 
-function updateLayer1(val: LayerKey) {
-  if (!val) return;
-  void workspaceStore.batchUpdateUserSettings((draft) => {
-    draft.hotkeys.layer1 = val;
-  });
-}
-
-function updateLayer2(val: LayerKey) {
-  if (!val) return;
-  void workspaceStore.batchUpdateUserSettings((draft) => {
-    draft.hotkeys.layer2 = val;
-  });
-}
 
 function getCurrentBindings(cmdId: HotkeyCommandId): string[] {
   const overrides = workspaceStore.userSettings.hotkeys.bindings[cmdId];
@@ -381,32 +354,7 @@ defineExpose({
       />
     </div>
 
-    <div class="grid grid-cols-2 gap-4 px-1">
-      <div class="flex flex-col gap-1.5">
-        <label class="text-xs font-medium text-ui-text-muted">
-          {{ t('videoEditor.settings.hotkeysLayer1', 'Layer 1 (Default: Shift)') }}
-        </label>
-        <USelectMenu
-          :model-value="workspaceStore.userSettings.hotkeys.layer1 ?? 'Shift'"
-          :items="layerOptions"
-          value-key="value"
-          :search-input="false"
-          @update:model-value="(val) => updateLayer1(val as LayerKey)"
-        />
-      </div>
-      <div class="flex flex-col gap-1.5">
-        <label class="text-xs font-medium text-ui-text-muted">
-          {{ t('videoEditor.settings.hotkeysLayer2', 'Layer 2 (Default: Ctrl)') }}
-        </label>
-        <USelectMenu
-          :model-value="workspaceStore.userSettings.hotkeys.layer2 ?? 'Control'"
-          :items="layerOptions"
-          value-key="value"
-          :search-input="false"
-          @update:model-value="(val) => updateLayer2(val as LayerKey)"
-        />
-      </div>
-    </div>
+
 
     <div v-if="hotkeyGroups.length === 0" class="px-1 py-8 text-center text-sm text-ui-text-muted">
       {{ t('common.noResults', 'No results found') }}
