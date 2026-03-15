@@ -8,17 +8,33 @@ import { useUiStore } from '~/stores/ui.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { getExportWorkerClient } from '~/utils/video-editor/worker-client';
 import type { ConversionRequest } from '~/types/conversion';
+import { dirname } from '~/utils/path';
 import {
   clampPositiveNumber,
   createConversionTaskId,
   isAbortError,
   removeCreatedFile,
 } from '~/utils/conversion/helpers';
+import {
+  DEFAULT_VIDEO_FORMAT,
+  DEFAULT_VIDEO_CODEC,
+  DEFAULT_VIDEO_BITRATE_MBPS,
+  DEFAULT_AUDIO_CODEC,
+  DEFAULT_AUDIO_BITRATE_KBPS,
+  DEFAULT_KEYFRAME_INTERVAL_SEC,
+  DEFAULT_VIDEO_WIDTH,
+  DEFAULT_VIDEO_HEIGHT,
+  DEFAULT_VIDEO_FPS,
+  DEFAULT_AUDIO_ONLY_FORMAT,
+  DEFAULT_IMAGE_QUALITY,
+} from '~/utils/conversion/constants';
 import { executeMediaConversion } from '~/utils/conversion/media-conversion';
 import { executeImageConversion } from '~/utils/conversion/image-conversion';
 
 export const useFileConversionStore = defineStore('file-conversion', () => {
   const isModalOpen = ref(false);
+  const isConverting = ref(false);
+  const conversionError = ref('');
   const targetEntry = ref<FsEntry | null>(null);
 
   const mediaType = computed(() => {
@@ -29,33 +45,33 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
   const isCancelRequested = ref(false);
 
   // Video Settings
-  const videoFormat = ref<'mp4' | 'webm' | 'mkv'>('mp4');
-  const videoCodec = ref('avc1.640032');
-  const videoBitrateMbps = ref(5);
+  const videoFormat = ref<'mp4' | 'webm' | 'mkv'>(DEFAULT_VIDEO_FORMAT);
+  const videoCodec = ref(DEFAULT_VIDEO_CODEC);
+  const videoBitrateMbps = ref(DEFAULT_VIDEO_BITRATE_MBPS);
   const excludeAudio = ref(false);
-  const audioCodec = ref<'aac' | 'opus'>('aac');
-  const audioBitrateKbps = ref(128);
+  const audioCodec = ref<'aac' | 'opus'>(DEFAULT_AUDIO_CODEC);
+  const audioBitrateKbps = ref(DEFAULT_AUDIO_BITRATE_KBPS);
   const bitrateMode = ref<'constant' | 'variable'>('variable');
-  const keyframeIntervalSec = ref(2);
-  const videoWidth = ref(1920);
-  const videoHeight = ref(1080);
-  const videoFps = ref(30);
+  const keyframeIntervalSec = ref(DEFAULT_KEYFRAME_INTERVAL_SEC);
+  const videoWidth = ref(DEFAULT_VIDEO_WIDTH);
+  const videoHeight = ref(DEFAULT_VIDEO_HEIGHT);
+  const videoFps = ref(DEFAULT_VIDEO_FPS);
   const resolutionFormat = ref('1080p');
   const orientation = ref<'landscape' | 'portrait'>('landscape');
   const aspectRatio = ref('16:9');
   const isCustomResolution = ref(false);
 
   // Audio Settings
-  const audioOnlyFormat = ref<'opus' | 'aac'>('opus');
-  const audioOnlyCodec = ref<'opus' | 'aac'>('opus');
-  const audioOnlyBitrateKbps = ref(128);
+  const audioOnlyFormat = ref<'opus' | 'aac'>(DEFAULT_AUDIO_ONLY_FORMAT);
+  const audioOnlyCodec = ref<'opus' | 'aac'>(DEFAULT_AUDIO_ONLY_FORMAT);
+  const audioOnlyBitrateKbps = ref(DEFAULT_AUDIO_BITRATE_KBPS);
   const audioChannels = ref<'stereo' | 'mono'>('stereo');
   const audioSampleRate = ref(0);
   const audioReverse = ref(false);
   const originalAudioSampleRate = ref<number | null>(null);
 
   // Image Settings
-  const imageQuality = ref(80); // 0-100
+  const imageQuality = ref(DEFAULT_IMAGE_QUALITY); // 0-100
   const imageWidth = ref(0);
   const imageHeight = ref(0);
   const isImageResolutionLinked = ref(true);
@@ -64,6 +80,8 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
 
   function resetState() {
     isCancelRequested.value = false;
+    isConverting.value = false;
+    conversionError.value = '';
   }
 
   function resolveAudioChannelsFromMeta(channels?: number): 'stereo' | 'mono' {
@@ -85,17 +103,20 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
     isModalOpen.value = true;
 
     if (type === 'video') {
-      videoFormat.value = projectStore.projectSettings?.exportDefaults?.encoding?.format ?? 'mp4';
+      videoFormat.value =
+        projectStore.projectSettings?.exportDefaults?.encoding?.format ?? DEFAULT_VIDEO_FORMAT;
       videoCodec.value =
-        projectStore.projectSettings?.exportDefaults?.encoding?.videoCodec ?? 'avc1.640032';
+        projectStore.projectSettings?.exportDefaults?.encoding?.videoCodec ?? DEFAULT_VIDEO_CODEC;
       videoBitrateMbps.value =
-        projectStore.projectSettings?.exportDefaults?.encoding?.bitrateMbps ?? 5;
+        projectStore.projectSettings?.exportDefaults?.encoding?.bitrateMbps ??
+        DEFAULT_VIDEO_BITRATE_MBPS;
       excludeAudio.value =
         projectStore.projectSettings?.exportDefaults?.encoding?.excludeAudio ?? false;
       audioCodec.value =
-        projectStore.projectSettings?.exportDefaults?.encoding?.audioCodec ?? 'aac';
+        projectStore.projectSettings?.exportDefaults?.encoding?.audioCodec ?? DEFAULT_AUDIO_CODEC;
       audioBitrateKbps.value =
-        projectStore.projectSettings?.exportDefaults?.encoding?.audioBitrateKbps ?? 128;
+        projectStore.projectSettings?.exportDefaults?.encoding?.audioBitrateKbps ??
+        DEFAULT_AUDIO_BITRATE_KBPS;
 
       try {
         const file = await projectStore.getFileByPath(entry.path);
@@ -107,9 +128,15 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
           return;
 
         if (meta?.video) {
-          videoWidth.value = Math.max(1, Math.round(Number(meta.video.width) || 1920));
-          videoHeight.value = Math.max(1, Math.round(Number(meta.video.height) || 1080));
-          videoFps.value = clampPositiveNumber(Number(meta.video.fps), 30);
+          videoWidth.value = Math.max(
+            1,
+            Math.round(Number(meta.video.width) || DEFAULT_VIDEO_WIDTH),
+          );
+          videoHeight.value = Math.max(
+            1,
+            Math.round(Number(meta.video.height) || DEFAULT_VIDEO_HEIGHT),
+          );
+          videoFps.value = clampPositiveNumber(Number(meta.video.fps), DEFAULT_VIDEO_FPS);
           isCustomResolution.value = true;
         }
 
@@ -128,9 +155,9 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
         // ignore metadata errors
       }
     } else if (type === 'audio') {
-      audioOnlyCodec.value = 'opus';
-      audioOnlyFormat.value = 'opus';
-      audioOnlyBitrateKbps.value = 128;
+      audioOnlyCodec.value = DEFAULT_AUDIO_ONLY_FORMAT;
+      audioOnlyFormat.value = DEFAULT_AUDIO_ONLY_FORMAT;
+      audioOnlyBitrateKbps.value = DEFAULT_AUDIO_BITRATE_KBPS;
       audioChannels.value = 'stereo';
       originalAudioSampleRate.value = null;
       audioSampleRate.value = 0;
@@ -157,13 +184,16 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
         // ignore metadata errors
       }
     } else if (type === 'image') {
-      imageQuality.value = 80;
+      imageQuality.value = DEFAULT_IMAGE_QUALITY;
 
       try {
         const file = await fileManager.vfs.getFile(entry.path);
         if (!file) throw new Error('Failed to access source file');
         const bitmap = await createImageBitmap(file);
-        if (requestId !== conversionModalRequestId.value || targetEntry.value?.path !== entry.path) {
+        if (
+          requestId !== conversionModalRequestId.value ||
+          targetEntry.value?.path !== entry.path
+        ) {
           bitmap.close();
           return;
         }
@@ -196,7 +226,7 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
         ? originalAudioSampleRate.value
         : clampPositiveNumber(Number(audioSampleRate.value), 0);
 
-    const dirPath = entry.path.split('/').slice(0, -1).join('/') || '';
+    const dirPath = dirname(entry.path);
 
     const request: ConversionRequest = {
       entry,
@@ -219,9 +249,9 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
         audioBitrateKbps: clampPositiveNumber(audioBitrateKbps.value, 128),
         bitrateMode: bitrateMode.value,
         keyframeIntervalSec: clampPositiveNumber(keyframeIntervalSec.value, 2),
-        width: Math.max(1, Math.round(Number(videoWidth.value) || 1920)),
-        height: Math.max(1, Math.round(Number(videoHeight.value) || 1080)),
-        fps: clampPositiveNumber(Number(videoFps.value), 30),
+        width: Math.max(1, Math.round(Number(videoWidth.value) || DEFAULT_VIDEO_WIDTH)),
+        height: Math.max(1, Math.round(Number(videoHeight.value) || DEFAULT_VIDEO_HEIGHT)),
+        fps: clampPositiveNumber(Number(videoFps.value), DEFAULT_VIDEO_FPS),
       };
     } else if (type === 'audio') {
       request.audioOnly = {
@@ -231,7 +261,10 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
       };
     } else {
       request.image = {
-        quality: Math.max(1, Math.min(100, Math.round(Number(imageQuality.value) || 80))),
+        quality: Math.max(
+          1,
+          Math.min(100, Math.round(Number(imageQuality.value) || DEFAULT_IMAGE_QUALITY)),
+        ),
         width: Math.max(1, Math.round(Number(imageWidth.value) || 1)),
         height: Math.max(1, Math.round(Number(imageHeight.value) || 1)),
       };
@@ -244,6 +277,7 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
     if (!targetEntry.value) return;
 
     isCancelRequested.value = false;
+    conversionError.value = '';
 
     const projectStore = useProjectStore();
     const fileManager = useFileManager();
@@ -268,71 +302,86 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
 
       const targetHandle = await dirHandle.getFileHandle(request.newFileName, { create: true });
 
-      const bgTaskId = backgroundTasksStore.addTask({
-        type: 'conversion',
-        title: t('videoEditor.fileManager.convert.bgTaskTitle', `Converting: ${entry.name}`),
-        status: 'pending',
-        cancel: async () => {
-          if (request.type === 'video' || request.type === 'audio') {
-             const { client } = getExportWorkerClient();
-             await client.cancelExport(taskId);
-          } else {
-             isCancelRequested.value = true;
-          }
-        },
-      });
+      if (request.type === 'video' || request.type === 'audio') {
+        const bgTaskId = backgroundTasksStore.addTask({
+          type: 'conversion',
+          title: t('videoEditor.fileManager.convert.bgTaskTitle', `Converting: ${entry.name}`),
+          status: 'pending',
+          cancel: async () => {
+            const { client } = getExportWorkerClient();
+            await client.cancelExport(taskId);
+          },
+        });
 
-      toast.add({
-        title: t(
-          'videoEditor.fileManager.convert.bgTaskAdded',
-          'Conversion started in background',
-        ),
-        color: 'neutral',
-      });
+        toast.add({
+          title: t(
+            'videoEditor.fileManager.convert.bgTaskAdded',
+            'Conversion started in background',
+          ),
+          color: 'neutral',
+        });
 
-      isModalOpen.value = false;
+        isModalOpen.value = false;
 
-      const runConversion = async () => {
-        if (request.type === 'image') {
-          backgroundTasksStore.updateTaskStatus(bgTaskId, 'running');
-          const sourceFile = await projectStore.getFileByPath(entry.path);
-          if (!sourceFile) throw new Error('Failed to access source file');
-          await executeImageConversion({ file: sourceFile, targetHandle, request, taskId, isCancelRequested: () => isCancelRequested.value });
-        } else {
-          await executeMediaConversion({
-            request,
+        executeMediaConversion({
+          request,
+          targetHandle,
+          taskId,
+          backgroundTaskId: bgTaskId,
+          isCancelRequested: () => false, // BG task handles cancel internally via cancelExport
+        })
+          .then(async () => {
+            backgroundTasksStore.updateTaskProgress(bgTaskId, 1);
+            backgroundTasksStore.updateTaskStatus(bgTaskId, 'completed');
+            toast.add({
+              title: t('videoEditor.fileManager.convert.success', 'File converted successfully'),
+              color: 'success',
+            });
+          })
+          .catch(async (err) => {
+            if (isAbortError(err)) {
+              backgroundTasksStore.updateTaskStatus(bgTaskId, 'cancelled');
+              await removeCreatedFile({ dirHandle: createdDirHandle, fileName: createdFileName });
+            } else {
+              backgroundTasksStore.updateTaskStatus(bgTaskId, 'failed', err.message);
+              console.error('Conversion failed', err);
+            }
+          })
+          .finally(async () => {
+            await fileManager.reloadDirectory(dirPath);
+            uiStore.notifyFileManagerUpdate();
+          });
+      } else if (request.type === 'image') {
+        // Images convert in foreground
+        isConverting.value = true;
+        const sourceFile = await projectStore.getFileByPath(entry.path);
+        if (!sourceFile) throw new Error('Failed to access source file');
+
+        try {
+          await executeImageConversion({
+            file: sourceFile,
             targetHandle,
+            request,
             taskId,
-            backgroundTaskId: bgTaskId,
             isCancelRequested: () => isCancelRequested.value,
           });
-        }
-      };
-
-      runConversion()
-        .then(async () => {
-          backgroundTasksStore.updateTaskProgress(bgTaskId, 1);
-          backgroundTasksStore.updateTaskStatus(bgTaskId, 'completed');
           toast.add({
             title: t('videoEditor.fileManager.convert.success', 'File converted successfully'),
             color: 'success',
           });
-        })
-        .catch(async (err) => {
+          isModalOpen.value = false;
+        } catch (err) {
           if (isAbortError(err) || isCancelRequested.value) {
-            backgroundTasksStore.updateTaskStatus(bgTaskId, 'cancelled');
             await removeCreatedFile({ dirHandle: createdDirHandle, fileName: createdFileName });
           } else {
-            backgroundTasksStore.updateTaskStatus(bgTaskId, 'failed', err.message);
-            console.error('Conversion failed', err);
+            conversionError.value = err instanceof Error ? err.message : String(err);
           }
-        })
-        .finally(async () => {
+        } finally {
+          isConverting.value = false;
           await fileManager.reloadDirectory(dirPath);
           uiStore.notifyFileManagerUpdate();
-        });
-
-      return;
+        }
+      }
     } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error(String(err));
       console.error('Conversion initiation failed', err);
@@ -351,6 +400,8 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
 
   return {
     isModalOpen,
+    isConverting,
+    conversionError,
     targetEntry,
     mediaType,
     videoFormat,

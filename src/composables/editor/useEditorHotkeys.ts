@@ -112,8 +112,7 @@ export function useEditorHotkeys() {
     }
 
     const allowsFullscreenExit = matched.includes('general.fullscreen');
-
-    if (hasBlockingModalState() && e.key !== 'Escape' && !allowsFullscreenExit) return;
+    if (hasBlockingModalState() && !allowsFullscreenExit) return;
 
     if (matched.includes('general.focus') && canHandleFocusTab()) {
       // Allow native tab navigation if we're in an editable target
@@ -137,7 +136,7 @@ export function useEditorHotkeys() {
       if (
         !canExecuteHotkeyCommand({
           cmdId,
-          hasBlockingModalState: hasBlockingModalState() && e.key !== 'Escape',
+          hasBlockingModalState: hasBlockingModalState(),
           isEditableEventTarget,
           isEditableActiveElement,
         })

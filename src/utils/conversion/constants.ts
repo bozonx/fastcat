@@ -1,0 +1,14 @@
+export const DEFAULT_VIDEO_FORMAT = 'mp4';
+export const DEFAULT_VIDEO_CODEC = 'avc1.640032';
+export const DEFAULT_VIDEO_BITRATE_MBPS = 5;
+export const DEFAULT_AUDIO_CODEC = 'aac';
+export const DEFAULT_AUDIO_BITRATE_KBPS = 128;
+export const DEFAULT_KEYFRAME_INTERVAL_SEC = 2;
+export const DEFAULT_VIDEO_WIDTH = 1920;
+export const DEFAULT_VIDEO_HEIGHT = 1080;
+export const DEFAULT_VIDEO_FPS = 30;
+
+export const DEFAULT_AUDIO_ONLY_FORMAT = 'opus';
+export const DEFAULT_IMAGE_QUALITY = 80;
+
+export const MAX_CANVAS_DIMENSION = 16384;

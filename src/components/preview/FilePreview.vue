@@ -21,28 +21,39 @@ const props = defineProps<{
 }>();
 
 const containerRef = ref<HTMLElement | null>(null);
+const isTextModalOpen = ref(false);
 const { isFullscreen, toggle: toggleFullscreen, exit: exitFullscreen } = useFullscreen(containerRef);
 
 watch(
   () => uiStore.previewFullscreenToggleTrigger,
   (timestamp) => {
-    if (timestamp) {
+    if (!timestamp) return;
+    if (props.mediaType === 'text') {
+      isTextModalOpen.value = !isTextModalOpen.value;
+    } else if (props.mediaType !== 'audio') {
       void toggleFullscreen();
     }
   },
 );
 
 function handleEsc(e: KeyboardEvent) {
-  if (e.key === 'Escape' && isFullscreen.value) {
-    void exitFullscreen();
-    e.stopPropagation();
+  if (e.key === 'Escape') {
+    if (isFullscreen.value) {
+      void exitFullscreen();
+      e.stopPropagation();
+    } else if (isTextModalOpen.value) {
+      isTextModalOpen.value = false;
+      e.stopPropagation();
+    }
   }
 }
 
-watch(isFullscreen, (val, oldVal) => {
-  if (val && !oldVal) {
+watch([isFullscreen, isTextModalOpen], ([fs, tm], [oldFs, oldTm]) => {
+  const nowOpen = fs || tm;
+  const wasOpen = oldFs || oldTm;
+  if (nowOpen && !wasOpen) {
     uiStore.activeModalsCount++;
-  } else if (!val && oldVal) {
+  } else if (!nowOpen && wasOpen) {
     uiStore.activeModalsCount--;
   }
 });
@@ -52,12 +63,14 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  if (isFullscreen.value) {
+  if (isFullscreen.value || isTextModalOpen.value) {
     uiStore.activeModalsCount--;
   }
   window.removeEventListener('keydown', handleEsc, { capture: true });
 });
 </script>
+
+
 
 <template>
   <div
@@ -65,22 +78,10 @@ onUnmounted(() => {
     class="w-full h-full flex flex-col overflow-hidden relative group/preview"
     :class="{ 'bg-black': isFullscreen }"
   >
-    <UButton
-      v-if="isFullscreen"
-      color="neutral"
-      variant="ghost"
-      icon="i-heroicons-x-mark"
-      class="absolute top-4 right-4 text-white hover:bg-white/20 z-50 transition-opacity opacity-0 group-hover/preview:opacity-100"
-      size="xl"
-      @click="exitFullscreen"
-    />
-
     <template v-if="props.mediaType === 'image' && props.url">
       <div
         :class="
-          isFullscreen
-            ? 'flex-1 flex flex-col items-center justify-center'
-            : 'w-full h-full'
+          isFullscreen ? 'flex-1 flex flex-col items-center justify-center' : 'w-full h-full'
         "
       >
         <ImageViewer
@@ -109,7 +110,7 @@ onUnmounted(() => {
           :is-modal="isFullscreen"
           :focus-panel-id="props.focusPanelId"
           class="w-full h-full"
-          @open-modal="toggleFullscreen"
+          @open-modal="props.mediaType !== 'audio' && toggleFullscreen()"
           @close-modal="exitFullscreen"
         />
       </div>
@@ -117,12 +118,14 @@ onUnmounted(() => {
 
     <TextEditor
       v-else-if="props.mediaType === 'text'"
+      v-model:is-modal-open="isTextModalOpen"
       :file-path="props.filePath || ''"
       :file-name="props.fileName"
       :initial-content="props.textContent || ''"
       :focus-panel-id="props.focusPanelId"
       class="w-full h-full"
     />
+
 
     <div
       v-else-if="props.mediaType === 'unknown'"

@@ -305,10 +305,32 @@ watch(
   },
 );
 
+const isIdle = ref(false);
+let idleTimer: number | undefined;
+
+function resetIdle() {
+  isIdle.value = false;
+  if (idleTimer) window.clearTimeout(idleTimer);
+  idleTimer = window.setTimeout(() => {
+    isIdle.value = true;
+  }, 2000);
+}
+
+function onGlobalMouseMove() {
+  resetIdle();
+}
+
+onMounted(() => {
+  window.addEventListener('mousemove', onGlobalMouseMove);
+});
+
 onUnmounted(() => {
   clearReversePlaybackTimer();
+  window.removeEventListener('mousemove', onGlobalMouseMove);
+  if (idleTimer) window.clearTimeout(idleTimer);
 });
 </script>
+
 
 <template>
   <div ref="playerRootEl" class="flex flex-col w-full h-full overflow-hidden rounded">
@@ -386,7 +408,16 @@ onUnmounted(() => {
     </div>
 
     <!-- Controls -->
-    <div class="flex flex-col px-4 py-3 border-t border-ui-border bg-ui-bg-elevated shrink-0 gap-2">
+    <div
+      class="flex flex-col shrink-0 gap-2 transition-all duration-300"
+      :class="[
+        isModal
+          ? 'absolute bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl bg-ui-bg-elevated/80 backdrop-blur-md rounded-xl border border-ui-border shadow-2xl p-4 z-50'
+          : 'px-4 py-3 border-t border-ui-border bg-ui-bg-elevated',
+        isModal && isIdle ? 'opacity-0 translate-y-4 pointer-events-none' : 'opacity-100',
+      ]"
+      @mouseenter="resetIdle"
+    >
       <div class="w-full relative flex items-center h-4 group">
         <input
           v-model.number="currentTime"
@@ -407,7 +438,7 @@ onUnmounted(() => {
             :style="{ width: `${progress}%` }"
           ></div>
           <div
-            class="absolute top-1/2 -mt-1.5 w-3 h-3 bg-white rounded-full shadow transition-transform scale-0 group-hover:scale-100 pointer-events-none"
+            class="absolute top-1/2 -mt-1.5 w-3 h-3 bg-white rounded-full shadow transition-transform scale-0 group-hover/controls:scale-100 pointer-events-none"
             :style="{ left: `calc(${progress}% - 6px)` }"
           ></div>
         </div>
@@ -433,15 +464,9 @@ onUnmounted(() => {
           </span>
         </div>
 
-        <UButton
-          v-if="type === 'video'"
-          size="sm"
-          variant="ghost"
-          color="neutral"
-          :icon="isModal ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'"
-          @click="isModal ? emit('close-modal') : emit('open-modal')"
-        />
+        <!-- No Close Button here per request -->
       </div>
     </div>
   </div>
 </template>
+
