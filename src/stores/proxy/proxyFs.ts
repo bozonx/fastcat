@@ -22,7 +22,7 @@ export function createProxyFsModule(params: {
 
   async function getProxyFileName(projectRelativePath: string): Promise<string> {
     const hash = await hashString(projectRelativePath);
-    return `${hash}.webm`;
+    return `${hash}.mp4`;
   }
 
   async function ensureProjectProxiesDir(): Promise<FileSystemDirectoryHandle | null> {

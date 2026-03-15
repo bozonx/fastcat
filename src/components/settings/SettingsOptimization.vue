@@ -3,6 +3,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
+import AppButtonGroup from '~/components/ui/AppButtonGroup.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -45,19 +46,22 @@ function resetDefaults() {
     <div
       class="p-3 bg-primary-950/40 text-primary-200 rounded text-sm border border-primary-800/30"
     >
-      {{
-        t(
-          'videoEditor.settings.proxyInfo',
-          'Proxy files are used to improve playback performance in the editor. They are generated in WebM format with VP9 video codec and Opus audio codec.',
-        )
-      }}
+      {{ t('videoEditor.settings.proxyInfo') }}
     </div>
 
-    <div class="grid grid-cols-3 gap-4">
-      <UFormField
-        :label="t('videoEditor.settings.proxyMaxPixels', 'Max proxy resolution')"
-        :title="t('videoEditor.settings.proxyMaxPixels', 'Max proxy resolution')"
-      >
+    <div class="grid grid-cols-2 gap-4">
+      <UFormField :label="t('videoEditor.settings.proxyVideoCodec')">
+        <AppButtonGroup
+          v-model="workspaceStore.userSettings.optimization.proxyVideoCodec"
+          :options="[
+            { label: 'AV1', value: 'av1' },
+            { label: 'H264', value: 'h264' },
+          ]"
+          fluid
+        />
+      </UFormField>
+
+      <UFormField :label="t('videoEditor.settings.proxyMaxPixels')">
         <USelectMenu
           v-model="workspaceStore.userSettings.optimization.proxyMaxPixels"
           :items="[
@@ -77,10 +81,7 @@ function resetDefaults() {
         />
       </UFormField>
 
-      <UFormField
-        :label="t('videoEditor.settings.proxyVideoBitrate', 'Video bitrate (Mbps)')"
-        :title="t('videoEditor.settings.proxyVideoBitrate', 'Video bitrate (Mbps)')"
-      >
+      <UFormField :label="t('videoEditor.settings.proxyVideoBitrate')">
         <WheelNumberInput
           v-model="workspaceStore.userSettings.optimization.proxyVideoBitrateMbps"
           :min="0.1"
@@ -89,10 +90,7 @@ function resetDefaults() {
         />
       </UFormField>
 
-      <UFormField
-        :label="t('videoEditor.settings.proxyAudioBitrate', 'Audio bitrate (kbps)')"
-        :title="t('videoEditor.settings.proxyAudioBitrate', 'Audio bitrate (kbps)')"
-      >
+      <UFormField :label="t('videoEditor.settings.proxyAudioBitrate')">
         <WheelNumberInput
           v-model="workspaceStore.userSettings.optimization.proxyAudioBitrateKbps"
           :min="32"

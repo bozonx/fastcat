@@ -48,6 +48,7 @@ export function createProxyService(params: {
     proxyMaxPixels: number;
     proxyVideoBitrateMbps: number;
     proxyAudioBitrateKbps: number;
+    proxyVideoCodec: 'h264' | 'av1';
     proxyCopyOpusAudio: boolean;
   };
 
@@ -275,8 +276,9 @@ export function createProxyService(params: {
               meta.audio.codec.toLowerCase().startsWith('opus');
 
             const exportOptions = {
-              format: 'webm',
-              videoCodec: 'vp09.00.10.08',
+              format: 'mp4',
+              videoCodec:
+                optimization.proxyVideoCodec === 'av1' ? 'av01.0.05M.08' : 'avc1.64001f',
               bitrate: optimization.proxyVideoBitrateMbps * 1_000_000,
               audioBitrate: optimization.proxyAudioBitrateKbps * 1000,
               audio: !!meta.audio,
