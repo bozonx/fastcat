@@ -42,6 +42,7 @@ const isResetConfirmOpen = ref(false);
 
 const isResolutionExpanded = ref(false);
 const isExportExpanded = ref(false);
+const isAdvancedExpanded = ref(false);
 
 const resolutionSummary = computed(() => {
   const p = projectStore.projectSettings?.project;
@@ -68,7 +69,16 @@ const exportSummary = computed(() => {
 
   const aBitrate = `${e.audioBitrateKbps || 0} Kb/s`;
 
-  return `${format} ${vCodec} ${vBitrate} | ${aCodec} ${aBitrate}`;
+  return `${t('videoEditor.projectSettings.export', 'Export')}: ${format} ${vCodec} ${vBitrate} | ${aCodec} ${aBitrate}`;
+});
+
+const audioDeclickDurationMs = computed({
+  get: () => (projectStore.projectSettings?.project.audioDeclickDurationUs || 0) / 1000,
+  set: (val: number) => {
+    if (projectStore.projectSettings) {
+      projectStore.projectSettings.project.audioDeclickDurationUs = val * 1000;
+    }
+  },
 });
 
 async function confirmClearProjectVardata() {
@@ -313,26 +323,6 @@ const metaDescription = computed({
     />
 
     <div v-if="projectStore.projectSettings" class="space-y-6">
-      <!-- Project Metadata -->
-      <div class="space-y-4">
-        <UFormField :label="t('videoEditor.export.metadataTitle', 'Title')">
-          <UInput v-model="metaTitle" class="w-full" />
-        </UFormField>
-
-        <div class="grid grid-cols-2 gap-4">
-          <UFormField :label="t('videoEditor.export.metadataAuthor', 'Author')">
-            <UInput v-model="metaAuthor" class="w-full" />
-          </UFormField>
-          <UFormField :label="t('videoEditor.export.metadataTags', 'Tags')">
-            <UInput v-model="metaTagsString" class="w-full" />
-          </UFormField>
-        </div>
-
-        <UFormField :label="t('videoEditor.export.metadataDescription', 'Description')">
-          <UTextarea v-model="metaDescription" :rows="2" class="w-full" />
-        </UFormField>
-      </div>
-
       <div class="h-px bg-ui-border"></div>
 
       <!-- Resolution & FPS Settings -->
@@ -404,7 +394,7 @@ const metaDescription = computed({
         >
           <div class="flex items-center gap-2">
             <h3 v-show="isExportExpanded" class="text-lg font-semibold text-ui-text">
-              {{ t('videoEditor.projectSettings.export', 'Export Defaults') }}
+              {{ t('videoEditor.projectSettings.export', 'Export') }}
             </h3>
             <span v-show="!isExportExpanded" class="text-lg font-semibold text-ui-text">
               {{ exportSummary }}
@@ -472,6 +462,66 @@ const metaDescription = computed({
             :format-options="formatOptions"
             :video-codec-options="videoCodecOptions"
           />
+        </div>
+      </div>
+
+      <div class="h-px bg-ui-border"></div>
+
+      <!-- Project Metadata -->
+      <div class="space-y-4">
+        <UFormField :label="t('videoEditor.export.metadataTitle', 'Title')">
+          <UInput v-model="metaTitle" class="w-full" />
+        </UFormField>
+
+        <div class="grid grid-cols-2 gap-4">
+          <UFormField :label="t('videoEditor.export.metadataAuthor', 'Author')">
+            <UInput v-model="metaAuthor" class="w-full" />
+          </UFormField>
+          <UFormField :label="t('videoEditor.export.metadataTags', 'Tags')">
+            <UInput v-model="metaTagsString" class="w-full" />
+          </UFormField>
+        </div>
+
+        <UFormField :label="t('videoEditor.export.metadataDescription', 'Description')">
+          <UTextarea v-model="metaDescription" :rows="2" class="w-full" />
+        </UFormField>
+      </div>
+
+      <div class="h-px bg-ui-border"></div>
+
+      <!-- Advanced Settings -->
+      <div class="space-y-4">
+        <div
+          class="w-full flex justify-between items-center cursor-pointer group"
+          @click="isAdvancedExpanded = !isAdvancedExpanded"
+        >
+          <div class="flex items-center gap-2">
+            <h3 class="text-lg font-semibold text-ui-text">
+              {{ t('videoEditor.projectSettings.advanced', 'Advanced') }}
+            </h3>
+            <span v-show="!isAdvancedExpanded" class="text-sm text-ui-text-muted font-normal">
+              {{ t('videoEditor.projectSettings.advancedSummary', 'Advanced settings') }}
+            </span>
+          </div>
+          <UIcon
+            :name="
+              isAdvancedExpanded
+                ? 'i-heroicons-chevron-down-20-solid'
+                : 'i-heroicons-chevron-right-20-solid'
+            "
+            class="w-5 h-5 text-ui-text-muted group-hover:text-ui-text transition-colors"
+          />
+        </div>
+
+        <div v-show="isAdvancedExpanded" class="space-y-4 pt-2">
+          <UFormField
+            :label="t('videoEditor.settings.audioDeclickDuration', 'Audio De-click Duration')"
+          >
+            <WheelNumberInput v-model="audioDeclickDurationMs" :min="0" :max="500" :step="1" />
+            <template #help>
+              {{ t('videoEditor.settings.audioDeclickDurationHelp', 'Duration of fade in/out to prevent audio pops at clip boundaries (ms)') }}
+            </template>
+          </UFormField>
         </div>
       </div>
 
