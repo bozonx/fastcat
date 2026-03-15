@@ -177,6 +177,7 @@ const {
   onPointerDown,
   onPointerMove,
   onPointerUp,
+  onAuxClick,
   onCustomZoom,
 } = useImagePanZoom(containerRef);
 
@@ -252,7 +253,7 @@ watch(
 
     if (detail.action === 'toggle1') {
       if (!mediaElement.value) return;
-      if (reversePlaybackTimer !== null) {
+      if (reversePlaybackRaf !== null) {
         clearReversePlaybackTimer();
       }
 
@@ -327,6 +328,7 @@ onUnmounted(() => {
         @pointermove="onPointerMove"
         @pointerup="onPointerUp"
         @pointerleave="onPointerUp"
+        @auxclick="onAuxClick"
       >
         <video
           ref="mediaElement"

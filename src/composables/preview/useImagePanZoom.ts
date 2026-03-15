@@ -1,12 +1,17 @@
 import { ref, type Ref } from 'vue';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
+import { isSecondaryWheel, getWheelDelta, DRAG_DEADZONE_PX } from '~/utils/mouse';
 
 export function useImagePanZoom(containerRef: Ref<HTMLElement | null>) {
+  const workspaceStore = useWorkspaceStore();
   const scale = ref(1);
   const translateX = ref(0);
   const translateY = ref(0);
   const isDragging = ref(false);
   const dragStartX = ref(0);
   const dragStartY = ref(0);
+  const middlePointerDown = ref<{ x: number; y: number; moved: boolean } | null>(null);
 
   function reset() {
     scale.value = 1;
@@ -14,17 +19,15 @@ export function useImagePanZoom(containerRef: Ref<HTMLElement | null>) {
     translateY.value = 0;
   }
 
-  function onWheel(e: WheelEvent) {
+  function applyZoomAtPoint(params: { delta: number; clientX: number; clientY: number }) {
     if (!containerRef.value) return;
-    e.preventDefault();
-
-    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+    const zoomFactor = params.delta < 0 ? 1.1 : 0.9;
     const newScale = Math.max(0.05, Math.min(scale.value * zoomFactor, 50));
     if (newScale === scale.value) return;
 
     const rect = containerRef.value.getBoundingClientRect();
-    const pointerX = e.clientX - rect.left;
-    const pointerY = e.clientY - rect.top;
+    const pointerX = params.clientX - rect.left;
+    const pointerY = params.clientY - rect.top;
 
     // Current image center relative to container
     const currentCenterX = rect.width / 2 + translateX.value;
@@ -43,19 +46,97 @@ export function useImagePanZoom(containerRef: Ref<HTMLElement | null>) {
     scale.value = newScale;
   }
 
-  function onPointerDown(e: PointerEvent) {
-    if (e.button !== 1) return; // Only middle button
-    e.preventDefault();
-    isDragging.value = true;
-    dragStartX.value = e.clientX - translateX.value;
-    dragStartY.value = e.clientY - translateY.value;
+  function onWheel(e: WheelEvent) {
+    if (!containerRef.value) return;
 
-    if (containerRef.value) {
-      containerRef.value.setPointerCapture(e.pointerId);
+    if (e.ctrlKey) {
+      e.preventDefault();
+      const pinchDelta = -e.deltaY;
+      applyZoomAtPoint({ delta: pinchDelta, clientX: e.clientX, clientY: e.clientY });
+      return;
+    }
+
+    const isShift = isLayer1Active(e, workspaceStore.userSettings);
+    const isSecondary = isSecondaryWheel(e);
+    const settings = workspaceStore.userSettings.mouse.monitor;
+    const secondaryAction = isShift ? settings.wheelSecondaryShift : settings.wheelSecondary;
+
+    const action = isSecondary ? secondaryAction : isShift ? settings.wheelShift : settings.wheel;
+
+    if (action === 'none') {
+      e.preventDefault();
+      return;
+    }
+
+    const delta = getWheelDelta(e);
+    if (!Number.isFinite(delta) || delta === 0) return;
+
+    if (action === 'zoom') {
+      e.preventDefault();
+      applyZoomAtPoint({ delta: e.deltaY, clientX: e.clientX, clientY: e.clientY });
+      return;
+    }
+
+    if (action === 'scroll_vertical') {
+      if (!isShift && !isSecondaryWheel(e)) return;
+      e.preventDefault();
+      translateY.value -= delta;
+      return;
+    }
+
+    if (action === 'scroll_horizontal') {
+      if (isSecondaryWheel(e) && !isShift) return;
+      e.preventDefault();
+      translateX.value -= delta;
+      return;
+    }
+  }
+
+  function onPointerDown(e: PointerEvent) {
+    const settings = workspaceStore.userSettings.mouse.monitor;
+    if (e.button !== 1) return; // Only middle button
+
+    middlePointerDown.value = { x: e.clientX, y: e.clientY, moved: false };
+
+    if (settings.middleDrag === 'pan') {
+      e.preventDefault();
+      isDragging.value = true;
+      dragStartX.value = e.clientX - translateX.value;
+      dragStartY.value = e.clientY - translateY.value;
+
+      if (containerRef.value) {
+        containerRef.value.setPointerCapture(e.pointerId);
+      }
+    }
+  }
+
+  function onAuxClick(e: MouseEvent) {
+    if (e.button !== 1) return;
+
+    if (middlePointerDown.value?.moved) {
+      middlePointerDown.value = null;
+      return;
+    }
+
+    middlePointerDown.value = null;
+
+    const settings = workspaceStore.userSettings.mouse.monitor;
+    const action = settings.middleClick;
+
+    if (action === 'reset_zoom' || action === 'reset_zoom_center') {
+      reset();
     }
   }
 
   function onPointerMove(e: PointerEvent) {
+    if (middlePointerDown.value) {
+      const dx = e.clientX - middlePointerDown.value.x;
+      const dy = e.clientY - middlePointerDown.value.y;
+      if (Math.abs(dx) > DRAG_DEADZONE_PX || Math.abs(dy) > DRAG_DEADZONE_PX) {
+        middlePointerDown.value.moved = true;
+      }
+    }
+
     if (!isDragging.value) return;
     translateX.value = e.clientX - dragStartX.value;
     translateY.value = e.clientY - dragStartY.value;
@@ -90,6 +171,7 @@ export function useImagePanZoom(containerRef: Ref<HTMLElement | null>) {
     onPointerDown,
     onPointerMove,
     onPointerUp,
+    onAuxClick,
     onCustomZoom,
     onCustomZoomReset,
   };
