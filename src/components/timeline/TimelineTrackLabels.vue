@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, onBeforeUnmount } from 'vue';
 
+import { useMediaStore } from '~/stores/media.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import type { TimelineTrack } from '~/timeline/types';
 import { useSelectionStore } from '~/stores/selection.store';
+import { trackHasAudio } from '~/utils/audio';
 
 import TrackLabelItem from '~/components/timeline/TrackLabelItem.vue';
 import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
@@ -23,6 +25,7 @@ const emit = defineEmits<{
   (e: 'scroll', event: Event): void;
 }>();
 
+const mediaStore = useMediaStore();
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
 const settingsStore = useTimelineSettingsStore();
@@ -221,6 +224,8 @@ function onDragVirtualEnd() {
             :is-selected="selectedTrackId === track.id"
             :is-hovered="timelineStore.hoveredTrackId === track.id"
             :is-renaming="timelineStore.renamingTrackId === track.id"
+            :has-audio="trackHasAudio(track, mediaStore.mediaMetadata)"
+            :level-db="timelineStore.audioLevels?.[track.id]?.peakDb"
             @select="onSelectTrack(track.id)"
             @rename="(name) => timelineStore.renameTrack(track.id, name)"
             @cancel-rename="timelineStore.renamingTrackId = null"

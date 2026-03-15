@@ -3,7 +3,8 @@ import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useFocusStore } from '~/stores/focus.store';
-import type { TimelineTrack, TimelineTrackItem, TimelineClipItem } from '~/timeline/types';
+import type { TimelineTrack } from '~/timeline/types';
+import { trackHasAudio } from '~/utils/audio';
 import AudioMixerTrack from './AudioMixerTrack.vue';
 import AudioMixerMain from './AudioMixerMain.vue';
 
@@ -12,23 +13,9 @@ const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
 const focusStore = useFocusStore();
 
-function clipHasAudio(item: TimelineTrackItem, track: TimelineTrack): boolean {
-  if (item.kind !== 'clip') return false;
-  const clip = item as TimelineClipItem;
-  if (track.kind === 'video' && clip.audioFromVideoDisabled) return false;
-  if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return track.kind === 'audio';
-  if (!clip.source?.path) return track.kind === 'audio';
-  const meta = mediaStore.mediaMetadata[clip.source.path];
-  return Boolean(meta?.audio) || track.kind === 'audio';
-}
-
-function trackHasAudio(track: TimelineTrack): boolean {
-  return track.items.some((item) => clipHasAudio(item, track));
-}
-
 const audioTracks = computed(() => {
   const docTracks = (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [];
-  return docTracks.filter(trackHasAudio);
+  return docTracks.filter((track) => trackHasAudio(track, mediaStore.mediaMetadata));
 });
 
 const selectedTrackId = computed(() => timelineStore.selectedTrackId);

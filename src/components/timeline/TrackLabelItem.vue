@@ -1,7 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, nextTick, watch } from 'vue';
+import { computed, ref, nextTick, watch, onBeforeUnmount } from 'vue';
 import type { TimelineTrack } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
+import {
+  getAudioMeterColorClass,
+  getAudioMeterPercent,
+  isAudioClipping,
+} from '~/utils/audio';
 
 const props = defineProps<{
   track: TimelineTrack;
@@ -9,6 +14,8 @@ const props = defineProps<{
   isSelected: boolean;
   isHovered: boolean;
   isRenaming: boolean;
+  hasAudio?: boolean;
+  levelDb?: number;
 }>();
 
 const emit = defineEmits<{
@@ -24,6 +31,11 @@ const timelineStore = useTimelineStore();
 
 const renameValue = ref(props.track.name);
 const renameInput = ref<HTMLInputElement | null>(null);
+const hasClipped = ref(false);
+let clipResetTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+const levelPercent = computed(() => getAudioMeterPercent(props.levelDb, -60, 12));
+const levelColorClass = computed(() => getAudioMeterColorClass(props.levelDb));
 
 watch(
   () => props.isRenaming,
@@ -36,6 +48,34 @@ watch(
     }
   },
 );
+
+watch(
+  () => props.levelDb,
+  (value) => {
+    if (!isAudioClipping(value)) return;
+
+    hasClipped.value = true;
+
+    if (clipResetTimeoutId) {
+      clearTimeout(clipResetTimeoutId);
+    }
+
+    clipResetTimeoutId = setTimeout(() => {
+      hasClipped.value = false;
+      clipResetTimeoutId = null;
+    }, 1400);
+  },
+);
+
+function resetClipIndicator(event: MouseEvent) {
+  event.stopPropagation();
+  hasClipped.value = false;
+
+  if (clipResetTimeoutId) {
+    clearTimeout(clipResetTimeoutId);
+    clipResetTimeoutId = null;
+  }
+}
 
 function confirmRename() {
   const next = renameValue.value.trim();
@@ -60,6 +100,13 @@ function toggleAudioSolo(e: MouseEvent) {
   e.stopPropagation();
   timelineStore.toggleTrackAudioSolo(props.track.id);
 }
+
+onBeforeUnmount(() => {
+  if (clipResetTimeoutId) {
+    clearTimeout(clipResetTimeoutId);
+    clipResetTimeoutId = null;
+  }
+});
 </script>
 
 <template>
@@ -134,6 +181,26 @@ function toggleAudioSolo(e: MouseEvent) {
         icon="i-heroicons-musical-note"
         class="w-6 h-6 p-0"
         @click="toggleAudioSolo"
+      />
+    </div>
+
+    <div
+      v-if="hasAudio"
+      class="absolute left-1 right-1 bottom-1 h-1 flex items-center gap-1 pointer-events-none"
+    >
+      <div class="relative flex-1 h-px bg-ui-border/70 overflow-hidden rounded-full">
+        <div
+          class="absolute inset-y-0 left-0 transition-[width] duration-75 rounded-full"
+          :class="levelColorClass"
+          :style="{ width: `${levelPercent}%` }"
+        />
+      </div>
+      <button
+        type="button"
+        class="w-2.5 h-1.5 rounded-[2px] border border-ui-border transition-colors pointer-events-auto"
+        :class="hasClipped ? 'bg-red-600 shadow-[0_0_6px_rgba(220,38,38,0.75)]' : 'bg-ui-bg-dark'"
+        :title="hasClipped ? 'Clipped! Click to reset' : ''"
+        @click="resetClipIndicator"
       />
     </div>
 
