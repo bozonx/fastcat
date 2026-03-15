@@ -34,13 +34,28 @@ export function useMonitorTimeline() {
         (track: TimelineTrack) => track.kind === 'audio',
       ) ?? [],
   );
+  const visibleVideoTracks = computed(() =>
+    videoTracks.value.filter((track) => !track.videoHidden),
+  );
+  const masterEffects = computed(
+    () => timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects ?? [],
+  );
+  const combinedAudioTracks = computed(() => [...audioTracks.value, ...videoTracks.value]);
+  const effectiveAudioItems = computed(() =>
+    buildEffectiveAudioClipItems({
+      audioTracks: audioTracks.value,
+      videoTracks: videoTracks.value,
+      masterEffects: masterEffects.value,
+    }),
+  );
+  const hasSoloAudio = computed(() =>
+    combinedAudioTracks.value.some((track) => Boolean(track.audioSolo)),
+  );
 
   const videoItems = computed(() =>
-    videoTracks.value
-      .filter((track) => !track.videoHidden)
-      .flatMap((track) =>
-        (track.items ?? []).filter((it: TimelineTrackItem) => it.kind === 'clip'),
-      ),
+    visibleVideoTracks.value.flatMap((track) =>
+      (track.items ?? []).filter((it: TimelineTrackItem) => it.kind === 'clip'),
+    ),
   );
 
   const audioItems = computed(() =>
@@ -50,12 +65,10 @@ export function useMonitorTimeline() {
   );
 
   const rawWorkerTimelineClips = computed(() => {
-    const docTracks = (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [];
     const clips: WorkerTimelineClip[] = [];
-    const videoTracks = docTracks.filter((track) => track.kind === 'video' && !track.videoHidden);
-    const trackCount = videoTracks.length;
+    const trackCount = visibleVideoTracks.value.length;
 
-    for (const [trackIndex, track] of videoTracks.entries()) {
+    for (const [trackIndex, track] of visibleVideoTracks.value.entries()) {
       for (const item of track.items) {
         if (item.kind !== 'clip') continue;
         if ((item as any).disabled) continue;
@@ -117,13 +130,7 @@ export function useMonitorTimeline() {
       return sanitizeMonitorSpeed(raw, 1) ?? 1;
     }
 
-    const effectiveItems = buildEffectiveAudioClipItems({
-      audioTracks: audioTracks.value,
-      videoTracks: videoTracks.value,
-      masterEffects: timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects,
-    });
-
-    for (const item of effectiveItems) {
+    for (const item of effectiveAudioItems.value) {
       if (item.kind !== 'clip') continue;
       if (item.clipType !== 'media' && item.clipType !== 'timeline') continue;
       if (!item.source?.path) continue;
@@ -202,18 +209,16 @@ export function useMonitorTimeline() {
 
   const clipLayoutSignature = computed(() => {
     let hash = mixHash(2166136261, videoItems.value.length);
-    const docTracks = (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [];
-    const videoTracks = docTracks.filter((t) => t.kind === 'video' && !t.videoHidden);
-    const trackById = new Map<string, TimelineTrack>(videoTracks.map((t) => [t.id, t]));
+    const trackById = new Map<string, TimelineTrack>(
+      visibleVideoTracks.value.map((t) => [t.id, t]),
+    );
 
-    const masterVideoEffects = (
-      timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects ?? []
-    ).filter((effect) => effect?.target !== 'audio');
+    const masterVideoEffects = masterEffects.value.filter((effect) => effect?.target !== 'audio');
     if (masterVideoEffects.length > 0) {
       hash = mixHash(hash, hashString(JSON.stringify(masterVideoEffects)));
     }
 
-    for (const track of videoTracks) {
+    for (const track of visibleVideoTracks.value) {
       hash = mixHash(hash, hashString(track.id));
       hash = mixFloat(hash, track.opacity ?? 1, 1000);
       hash = mixHash(hash, hashString(String(track.blendMode ?? 'normal')));
@@ -288,26 +293,13 @@ export function useMonitorTimeline() {
   });
 
   const audioClipLayoutSignature = computed(() => {
-    const allAudioTracks = audioTracks.value;
-    const allVideoTracks = videoTracks.value;
-
-    const hasSolo = [...allAudioTracks, ...allVideoTracks].some((t) => Boolean(t.audioSolo));
-
-    const effectiveItems = buildEffectiveAudioClipItems({
-      audioTracks: allAudioTracks,
-      videoTracks: allVideoTracks,
-      masterEffects: timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects,
-    });
-
-    let hash = mixHash(2166136261, effectiveItems.length);
-    hash = mixHash(hash, hasSolo ? 1 : 0);
-    const masterAudioEffects = (
-      timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects ?? []
-    ).filter((effect) => effect?.target === 'audio');
+    let hash = mixHash(2166136261, effectiveAudioItems.value.length);
+    hash = mixHash(hash, hasSoloAudio.value ? 1 : 0);
+    const masterAudioEffects = masterEffects.value.filter((effect) => effect?.target === 'audio');
     if (masterAudioEffects.length > 0) {
       hash = mixHash(hash, hashString(JSON.stringify(masterAudioEffects)));
     }
-    for (const track of [...allAudioTracks, ...allVideoTracks]) {
+    for (const track of combinedAudioTracks.value) {
       hash = mixHash(hash, hashString(track.id));
       hash = mixHash(hash, track.audioMuted ? 1 : 0);
       hash = mixHash(hash, track.audioSolo ? 1 : 0);
@@ -323,7 +315,7 @@ export function useMonitorTimeline() {
       }
     }
 
-    for (const item of effectiveItems) {
+    for (const item of effectiveAudioItems.value) {
       hash = mixHash(hash, hashString(item.id));
       hash = mixTime(hash, item.timelineRange.startUs);
       hash = mixTime(hash, item.timelineRange.durationUs);
@@ -350,26 +342,15 @@ export function useMonitorTimeline() {
   });
 
   const audioClipSourceSignature = computed(() => {
-    const allAudioTracks = audioTracks.value;
-    const allVideoTracks = videoTracks.value;
-
-    const hasSolo = [...allAudioTracks, ...allVideoTracks].some((t) => Boolean(t.audioSolo));
-
-    const effectiveItems = buildEffectiveAudioClipItems({
-      audioTracks: allAudioTracks,
-      videoTracks: allVideoTracks,
-      masterEffects: timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects,
-    });
-
-    let hash = mixHash(2166136261, effectiveItems.length);
-    hash = mixHash(hash, hasSolo ? 1 : 0);
-    for (const track of [...allAudioTracks, ...allVideoTracks]) {
+    let hash = mixHash(2166136261, effectiveAudioItems.value.length);
+    hash = mixHash(hash, hasSoloAudio.value ? 1 : 0);
+    for (const track of combinedAudioTracks.value) {
       hash = mixHash(hash, hashString(track.id));
       hash = mixHash(hash, track.audioMuted ? 1 : 0);
       hash = mixHash(hash, track.audioSolo ? 1 : 0);
     }
 
-    for (const item of effectiveItems) {
+    for (const item of effectiveAudioItems.value) {
       hash = mixHash(hash, hashString(item.id));
       if (item.kind === 'clip') {
         if (item.clipType === 'media' && item.source?.path) {

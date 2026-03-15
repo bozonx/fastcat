@@ -1,5 +1,5 @@
 import { useResizeObserver } from '@vueuse/core';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { getPreviewWorkerClient, setPreviewHostApi } from '~/utils/video-editor/worker-client';
@@ -22,12 +22,7 @@ import {
   computeMonitorTimelineDuration,
   prepareMonitorTimelineState,
 } from './useMonitorCore.timeline';
-import {
-  getMonitorLayoutUpdatePayload,
-  hasProxyForMonitorSources,
-  shouldScheduleAudioLayoutUpdate,
-  shouldScheduleClipLayoutUpdate,
-} from './useMonitorCore.watchers';
+import { registerMonitorCoreWatchers } from './useMonitorCore.wiring';
 
 export function useMonitorCore(options: UseMonitorCoreOptions) {
   const { t } = useI18n();
@@ -298,127 +293,49 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     }
   }
 
-  watch(clipSourceSignature, () => {
-    scheduleBuild();
-  });
-
-  watch(
-    () => proxyStore.existingProxies.value,
-    (newVal) => {
-      if (isUnmounted) return;
-      if (!useProxyInMonitor.value) return;
-
-      const hasNewProxyForClips = hasProxyForMonitorSources({
-        clips: workerTimelineClips.value,
-        audioClips: workerAudioClips.value,
-        existingProxies: newVal,
-      });
-
-      if (hasNewProxyForClips) {
-        scheduleBuild();
-      }
-    },
-    { deep: true }, // We need deep to watch Set mutations
-  );
-
-  watch(audioClipSourceSignature, () => {
-    scheduleBuild();
-  });
-
-  watch(
-    () => useProxyInMonitor.value,
-    () => {
-      if (isUnmounted) return;
-
-      timelineStore.isPlaying = false;
-      audioHandleCache.clear();
-      forceRecreateCompositorNextBuild = true;
-      compositorRuntime.invalidate();
-      scheduleBuild();
-    },
-  );
-
-  watch(
-    () => previewEffectsEnabled.value,
-    () => {
-      if (isUnmounted) return;
-      scheduleRender(getRenderTimeForLayoutUpdate());
-    },
-  );
-
-  watch(clipLayoutSignature, () => {
-    if (
-      !shouldScheduleClipLayoutUpdate({
-        isLoading: isLoading.value,
-        isCompositorReady: compositorRuntime.isReady(),
-        clipSourceSignature: clipSourceSignature.value,
-        lastBuiltSourceSignature,
-        clipLayoutSignature: clipLayoutSignature.value,
-        lastBuiltLayoutSignature,
-        layoutUpdateFromQueue,
-      })
-    ) {
-      return;
-    }
-
-    const { layoutClips, layoutAudioClips } = getMonitorLayoutUpdatePayload({
-      rawWorkerTimelineClips,
-      rawWorkerAudioClips,
-      workerTimelineClips,
-      workerAudioClips,
-    });
-    scheduleLayoutUpdate(layoutClips, layoutAudioClips);
-  });
-
-  watch(audioClipLayoutSignature, () => {
-    if (
-      !shouldScheduleAudioLayoutUpdate({
-        isLoading: isLoading.value,
-        isCompositorReady: compositorRuntime.isReady(),
-      })
-    ) {
-      return;
-    }
-
-    const { layoutClips, layoutAudioClips } = getMonitorLayoutUpdatePayload({
-      rawWorkerTimelineClips,
-      rawWorkerAudioClips,
-      workerTimelineClips,
-      workerAudioClips,
-    });
-    scheduleLayoutUpdate(layoutClips, layoutAudioClips);
-  });
-
-  watch(
-    () => [timelineStore.masterGain, timelineStore.audioMuted],
-    () => {
-      const effectiveMaster = timelineStore.audioMuted ? 0 : timelineStore.masterGain;
-      audioEngine.setMasterVolume(effectiveMaster);
-    },
-    { immediate: true },
-  );
-
-  watch(
-    () => [uiStore.monitorVolume, uiStore.monitorMuted],
-    () => {
-      const effectiveMonitor = uiStore.monitorMuted ? 0 : uiStore.monitorVolume;
-      audioEngine.setMonitorVolume(effectiveMonitor);
-    },
-    { immediate: true },
-  );
-
-  watch(
-    () => [
+  registerMonitorCoreWatchers({
+    clipSourceSignature,
+    audioClipSourceSignature,
+    clipLayoutSignature,
+    audioClipLayoutSignature,
+    rawWorkerTimelineClips,
+    rawWorkerAudioClips,
+    workerTimelineClips,
+    workerAudioClips,
+    existingProxies: proxyStore.existingProxies,
+    useProxyInMonitor,
+    previewEffectsEnabled,
+    isLoading,
+    getIsUnmounted: () => isUnmounted,
+    getIsCompositorReady: compositorRuntime.isReady,
+    getLastBuiltSourceSignature: () => lastBuiltSourceSignature,
+    getLastBuiltLayoutSignature: () => lastBuiltLayoutSignature,
+    getLayoutUpdateFromQueue: () => layoutUpdateFromQueue,
+    getTimelineMasterGain: () => timelineStore.masterGain,
+    getTimelineAudioMuted: () => timelineStore.audioMuted,
+    getMonitorVolume: () => uiStore.monitorVolume,
+    getMonitorMuted: () => uiStore.monitorMuted,
+    getProjectSizeKey: () => [
       projectStore.projectSettings?.project?.width ?? 0,
       projectStore.projectSettings?.project?.height ?? 0,
       projectStore.projectSettings?.monitor?.previewResolution ?? 0,
     ],
-    () => {
-      updateCanvasDisplaySize();
-      compositorRuntime.invalidate();
-      scheduleBuild();
+    getRenderTimeForLayoutUpdate,
+    stopPlayback: () => {
+      timelineStore.isPlaying = false;
     },
-  );
+    clearAudioHandleCache: () => {
+      audioHandleCache.clear();
+      forceRecreateCompositorNextBuild = true;
+    },
+    invalidateCompositor: compositorRuntime.invalidate,
+    updateCanvasDisplaySize,
+    scheduleBuild,
+    scheduleRender,
+    scheduleLayoutUpdate,
+    setAudioEngineMasterVolume: audioEngine.setMasterVolume,
+    setAudioEngineMonitorVolume: audioEngine.setMonitorVolume,
+  });
 
   onMounted(() => {
     initializeMonitorCoreRuntime({

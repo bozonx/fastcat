@@ -11,11 +11,14 @@ import type {
   TimelineResizeVolumePayload,
 } from '~/timeline/types';
 import { DEFAULT_TRANSITION_MODE } from '~/transitions';
+import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 
 export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
   const timelineStore = useTimelineStore();
   const projectStore = useProjectStore();
   const timelineSettingsStore = useTimelineSettingsStore();
+  const workspaceStore = useWorkspaceStore();
 
   function canEditClipContent(): boolean {
     return (
@@ -196,7 +199,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       newFadeUs = Math.max(0, Math.min(maxUs, newFadeUs));
 
       const propName = payload.edge === 'in' ? 'audioFadeInUs' : 'audioFadeOutUs';
-      const nextCurve = ev.shiftKey
+      const nextCurve = isLayer1Active(ev, workspaceStore.userSettings)
         ? resizeFade.value.startCurve === 'logarithmic'
           ? 'linear'
           : 'logarithmic'
