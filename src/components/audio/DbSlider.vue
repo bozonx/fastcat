@@ -1,5 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
+import {
+  getAudioMeterColorClass,
+  getAudioMeterPercent,
+  isAudioClipping,
+} from '~/utils/audio';
 
 const props = defineProps<{
   modelValue: number; // dB value
@@ -27,18 +32,33 @@ const fillPercent = computed(() => dbToPercent(props.modelValue));
 
 // Clipping state
 const hasClipped = ref(false);
+let clipResetTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 watch(
   () => props.levelDb,
   (val) => {
-    if (val !== undefined && val >= 0) {
+    if (isAudioClipping(val)) {
       hasClipped.value = true;
+
+      if (clipResetTimeoutId) {
+        clearTimeout(clipResetTimeoutId);
+      }
+
+      clipResetTimeoutId = setTimeout(() => {
+        hasClipped.value = false;
+        clipResetTimeoutId = null;
+      }, 1400);
     }
   },
 );
 
 function resetClip() {
   hasClipped.value = false;
+
+  if (clipResetTimeoutId) {
+    clearTimeout(clipResetTimeoutId);
+    clipResetTimeoutId = null;
+  }
 }
 
 // Performance-optimized VU meter level
@@ -50,32 +70,21 @@ watch(
     if (!levelBarRef.value) return;
     if (db === undefined || db <= minDb) {
       levelBarRef.value.style.height = '0%';
-      return;
-    }
-    const percent = dbToPercent(db);
-    levelBarRef.value.style.height = `${percent}%`;
-
-    // Update color based on level
-    if (db > 6) {
-      levelBarRef.value.className =
-        'absolute bottom-0 left-0 right-0 bg-red-500 transition-all duration-75';
-    } else if (db > 0) {
-      levelBarRef.value.className =
-        'absolute bottom-0 left-0 right-0 bg-yellow-500 transition-all duration-75';
-    } else {
       levelBarRef.value.className =
         'absolute bottom-0 left-0 right-0 bg-green-500 transition-all duration-75';
+      return;
     }
+
+    const percent = getAudioMeterPercent(db, minDb, maxDb);
+    levelBarRef.value.style.height = `${percent}%`;
+    levelBarRef.value.className = `absolute bottom-0 left-0 right-0 ${getAudioMeterColorClass(db)} transition-all duration-75`;
   },
   { immediate: true },
 );
 
 // Color logic for the volume slider itself
 const fillColor = computed(() => {
-  const db = props.modelValue;
-  if (db > 6) return 'bg-red-500';
-  if (db > 0) return 'bg-yellow-500';
-  return 'bg-green-500';
+  return getAudioMeterColorClass(props.modelValue);
 });
 
 const sliderRef = ref<HTMLElement | null>(null);
@@ -123,6 +132,11 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   containerRef.value?.removeEventListener('wheel', onWheel);
+
+  if (clipResetTimeoutId) {
+    clearTimeout(clipResetTimeoutId);
+    clipResetTimeoutId = null;
+  }
 });
 
 const ticks = [12, 6, 0, -6, -12, -24, -36, -48, -60];
@@ -165,8 +179,8 @@ const ticks = [12, 6, 0, -6, -12, -24, -36, -48, -60];
     <div class="flex flex-col gap-0.5 items-center">
       <!-- Clipping Light -->
       <div
-        class="w-1.5 h-1.5 rounded-full border border-ui-border transition-colors cursor-pointer"
-        :class="[hasClipped ? 'bg-red-600 shadow-[0_0_4px_rgba(220,38,38,0.8)]' : 'bg-ui-bg-dark']"
+        class="w-2.5 h-1.5 rounded-[2px] border border-ui-border transition-colors cursor-pointer"
+        :class="[hasClipped ? 'bg-red-600 shadow-[0_0_6px_rgba(220,38,38,0.75)]' : 'bg-ui-bg-dark']"
         :title="hasClipped ? 'Clipped! Click to reset' : ''"
         @click="resetClip"
       ></div>

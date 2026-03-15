@@ -27,14 +27,7 @@ import type {
 } from '~/timeline/types';
 
 // Internal modules
-import {
-  type CompositorClip,
-  type CompositorTrack,
-  type HudMediaState,
-  resolveBlendMode,
-  areTextClipStylesEqual,
-  areShapeConfigsEqual,
-} from './compositor/types';
+import { type CompositorClip, type CompositorTrack, type HudMediaState } from './compositor/types';
 import { ResourceManager } from './compositor/ResourceManager';
 import { VideoFrameCache } from './compositor/VideoFrameCache';
 import { EffectManager } from './compositor/EffectManager';
@@ -48,6 +41,7 @@ import { HudMediaLoader } from './compositor/HudMediaLoader';
 import { MediaClipLoader } from './compositor/MediaClipLoader';
 import { RasterImageLoader } from './compositor/RasterImageLoader';
 import { TimelineApplyLifecycle } from './compositor/TimelineApplyLifecycle';
+import { TimelineClipLayoutUpdater } from './compositor/TimelineClipLayoutUpdater';
 import { TimelineFixedClipBuilder } from './compositor/TimelineFixedClipBuilder';
 import { TimelineLoadOrchestrator } from './compositor/TimelineLoadOrchestrator';
 import { TimelineMediaClipBuilder } from './compositor/TimelineMediaClipBuilder';
@@ -130,6 +124,7 @@ export class VideoCompositor {
     rasterImageLoader: this.rasterImageLoader,
   });
   private timelineApplyLifecycle = new TimelineApplyLifecycle();
+  private timelineClipLayoutUpdater = new TimelineClipLayoutUpdater();
   private clipResourceManager = new ClipResourceManager({
     width: this.width,
     height: this.height,
@@ -440,6 +435,7 @@ export class VideoCompositor {
       rasterImageLoader: this.rasterImageLoader,
     });
     this.timelineApplyLifecycle = new TimelineApplyLifecycle();
+    this.timelineClipLayoutUpdater = new TimelineClipLayoutUpdater();
     this.clipResourceManager = new ClipResourceManager({
       width: this.width,
       height: this.height,
@@ -611,130 +607,21 @@ export class VideoCompositor {
     for (const clip of this.clips) {
       const next = byId.get(clip.itemId);
       if (!next) continue;
-
-      const startUs = Math.max(0, Math.round(Number(next.timelineRange?.startUs ?? clip.startUs)));
-      const timelineDurationUs = Math.max(
-        0,
-        Math.round(Number(next.timelineRange?.durationUs ?? clip.durationUs)),
-      );
-      const sourceStartUs = Math.max(
-        0,
-        Math.round(Number(next.sourceRange?.startUs ?? clip.sourceStartUs)),
-      );
-      const sourceRangeDurationUs = Math.max(
-        0,
-        Math.round(Number(next.sourceRange?.durationUs ?? clip.sourceRangeDurationUs)),
-      );
-      const nextSourceDurationRaw = (next as any).sourceDurationUs;
-      const sourceDurationUs = Math.max(
-        0,
-        Math.round(
-          Number(
-            typeof nextSourceDurationRaw === 'number' && nextSourceDurationRaw > 0
-              ? nextSourceDurationRaw
-              : clip.sourceDurationUs,
-          ),
-        ),
-      );
-      const layer = Math.round(Number(next.layer ?? clip.layer ?? 0));
-      const speedRaw = (next as any).speed;
-      const speed =
-        typeof speedRaw === 'number' && Number.isFinite(speedRaw) && speedRaw !== 0
-          ? Math.max(-10, Math.min(10, speedRaw))
-          : undefined;
-
-      const freezeFrameSourceUsRaw = (next as any).freezeFrameSourceUs;
-      const freezeFrameSourceUs =
-        typeof freezeFrameSourceUsRaw === 'number' && Number.isFinite(freezeFrameSourceUsRaw)
-          ? Math.max(0, Math.round(freezeFrameSourceUsRaw))
-          : undefined;
-
-      clip.startUs = startUs;
-      clip.durationUs = timelineDurationUs;
-      clip.endUs = startUs + timelineDurationUs;
-      clip.sourceStartUs = sourceStartUs;
-      clip.sourceRangeDurationUs = sourceRangeDurationUs;
-      clip.sourceDurationUs = sourceDurationUs;
-      clip.speed = speed;
-
-      clip.freezeFrameSourceUs = freezeFrameSourceUs;
-      clip.layer = layer;
-      clip.trackId =
-        typeof next.trackId === 'string' && next.trackId.length > 0
-          ? next.trackId
-          : this.getTrackRuntimeForClip({ layer })?.id;
-      clip.opacity = next.opacity;
-      clip.blendMode = resolveBlendMode((next as any).blendMode);
-      clip.effects = this.toVideoEffects(next.effects);
-      clip.transform = (next as any).transform;
-      this.layoutApplier.applyClipLayoutForCurrentSource(clip);
-      const prevTransitionInType = clip.transitionIn?.type ?? null;
-      const nextTransitionInType = (next as any).transitionIn?.type ?? null;
-      clip.transitionIn = (next as any).transitionIn;
-      clip.transitionOut = (next as any).transitionOut;
-      if (prevTransitionInType !== nextTransitionInType) {
-        this.transitionManager.clearClipFilter(clip);
-      }
-      if (clip.clipKind === 'text') {
-        const nextText = String((next as any).text ?? '');
-        const nextStyle = (next as any).style;
-        const styleChanged = !areTextClipStylesEqual(clip.style, nextStyle);
-        clip.textDirty = clip.text !== nextText || styleChanged || clip.textDirty === true;
-        clip.text = nextText;
-        clip.style = nextStyle;
-      }
-      if (clip.clipKind === 'shape') {
-        const nextType = (next as any).shapeType ?? 'square';
-        const nextFill = String((next as any).fillColor ?? '#ffffff');
-        const nextStroke = String((next as any).strokeColor ?? '#000000');
-        const nextStrokeWidth = Number((next as any).strokeWidth ?? 0);
-        const nextConfig = (next as any).shapeConfig;
-
-        if (
-          clip.shapeType !== nextType ||
-          clip.fillColor !== nextFill ||
-          clip.strokeColor !== nextStroke ||
-          clip.strokeWidth !== nextStrokeWidth ||
-          !areShapeConfigsEqual(clip.shapeConfig as any, nextConfig as any) ||
-          clip.shapeDirty === true
-        ) {
-          clip.shapeDirty = true;
-        }
-
-        clip.shapeType = nextType;
-        clip.fillColor = nextFill;
-        clip.strokeColor = nextStroke;
-        clip.strokeWidth = nextStrokeWidth;
-        clip.shapeConfig = nextConfig ? JSON.parse(JSON.stringify(nextConfig)) : undefined;
-      }
-      if (clip.clipKind === 'hud') {
-        const nextBg = (next as any).background?.source?.path;
-        const nextContent = (next as any).content?.source?.path;
-
-        // Basic dirty check for HUD media
-        if (
-          clip.hudMediaStates?.background?.sourcePath !== nextBg ||
-          clip.hudMediaStates?.content?.sourcePath !== nextContent
-        ) {
-          // We will recreate media states in loadTimeline on next pass if paths changed
-          // For immediate layout updates we just copy the params
-          clip.background = (next as any).background;
-          clip.content = (next as any).content;
-        }
-      }
+      this.timelineClipLayoutUpdater.update({
+        clip,
+        next,
+        fallbackTrackId: this.getTrackRuntimeForClip({
+          layer: Math.round(Number(next.layer ?? clip.layer ?? 0)),
+        })?.id,
+        toVideoEffects: (value) => this.toVideoEffects(value),
+        applyClipLayoutForCurrentSource: (currentClip) =>
+          this.layoutApplier.applyClipLayoutForCurrentSource(currentClip),
+        clearClipTransitionFilter: (currentClip) =>
+          this.transitionManager.clearClipFilter(currentClip),
+      });
       const trackRuntime = this.getTrackRuntimeForClip(clip);
       if (trackRuntime && clip.sprite.parent !== trackRuntime.container) {
         trackRuntime.container.addChild(clip.sprite);
-      }
-      if (clip.clipKind === 'solid') {
-        clip.backgroundColor = sanitizeTimelineColor(
-          (next as any).backgroundColor,
-          clip.backgroundColor ?? '#000000',
-        );
-        clip.sprite.tint = parseHexColor(clip.backgroundColor);
-      }
-      if (!clip.effectFilters) {
-        clip.effectFilters = new Map();
       }
     }
 
