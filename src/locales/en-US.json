@@ -184,9 +184,14 @@
       "audioFade": {
         "in": "Fade in",
         "out": "Fade out",
-        "title": "Audio fades"
+        "title": "Audio fades",
+        "curve": {
+          "linear": "Linear",
+          "logarithmic": "Logarithmic"
+        }
       },
       "blendMode": {
+        "title": "Blend mode",
         "add": "Add",
         "darken": "Darken",
         "lighten": "Lighten",
@@ -203,6 +208,8 @@
       "opacity": "Opacity",
       "pointerDirection": "Pointer Direction",
       "rays": "Rays",
+      "rename": "Rename clip",
+      "reversed": "Reverse Playback",
       "showInFileManager": "Show in File Manager",
       "showThumbnails": "Show thumbnails",
       "showWaveform": "Show waveform",
@@ -234,6 +241,9 @@
       "add": "Add",
       "addEffect": "Add effect",
       "clipTitle": "Clip effects",
+      "presetNamePlaceholder": "My Custom Preset",
+      "saveAsPreset": "Save as preset",
+      "savePresetTitle": "Save Preset",
       "dropHint": "Drop effects here",
       "effectsCount": "{count} fx",
       "empty": "No effects",
@@ -664,6 +674,12 @@
       "videoCodec": "Video codec",
       "warningTitle": "Export warnings",
       "width": "Width"
+    },
+    "timeline": {
+      "tabs": {
+        "cut": "Cut",
+        "sound": "Sound"
+      }
     },
     "fileManager": {
       "actions": {

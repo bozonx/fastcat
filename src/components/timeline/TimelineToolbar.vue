@@ -60,16 +60,8 @@ function onDragEnd() {
 <template>
   <div
     class="h-7 border-b border-ui-border bg-ui-bg-elevated flex items-center px-1 shrink-0 gap-0.5"
+    @click.self="timelineStore.selectTimelineProperties()"
   >
-    <UTooltip :text="t('fastcat.timeline.properties.title', 'Timeline properties')">
-      <UButton
-        size="xs"
-        variant="ghost"
-        color="neutral"
-        icon="i-heroicons-cog-6-tooth"
-        @click="timelineStore.selectTimelineProperties()"
-      />
-    </UTooltip>
 
     <UTooltip
       :text="
@@ -87,7 +79,7 @@ function onDragEnd() {
       />
     </UTooltip>
 
-    <div class="ml-auto flex items-center gap-0.5">
+    <div class="ml-auto flex items-center gap-0.5" @click.self="timelineStore.selectTimelineProperties()">
       <UTooltip :text="t('fastcat.timeline.trim', 'Trim')">
         <UiSplitDropdownButton
           size="xs"

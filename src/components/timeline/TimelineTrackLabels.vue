@@ -88,7 +88,13 @@ function confirmDelete() {
   }
 }
 
-const selectedTrackId = computed(() => timelineStore.selectedTrackId);
+const selectedTrackId = computed(() => {
+  const entity = selectionStore.selectedEntity;
+  if (entity?.source === 'timeline' && entity.kind === 'track') {
+    return entity.trackId;
+  }
+  return null;
+});
 
 function onSelectTrack(trackId: string) {
   if (timelineStore.selectedTrackId === trackId) {
