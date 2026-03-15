@@ -45,6 +45,7 @@ import { TimelineClipLayoutUpdater } from './compositor/TimelineClipLayoutUpdate
 import { TimelineFixedClipBuilder } from './compositor/TimelineFixedClipBuilder';
 import { TimelineLoadOrchestrator } from './compositor/TimelineLoadOrchestrator';
 import { TimelineMediaClipBuilder } from './compositor/TimelineMediaClipBuilder';
+import { TimelineActiveClipProcessor } from './compositor/TimelineActiveClipProcessor';
 import { TimelineTrackRebinder } from './compositor/TimelineTrackRebinder';
 import { TimelineUpdateLifecycle } from './compositor/TimelineUpdateLifecycle';
 import { TextRenderer } from './compositor/renderers/TextRenderer';
@@ -125,6 +126,7 @@ export class VideoCompositor {
     mediaClipLoader: this.mediaClipLoader,
     rasterImageLoader: this.rasterImageLoader,
   });
+  private timelineActiveClipProcessor = new TimelineActiveClipProcessor();
   private timelineApplyLifecycle = new TimelineApplyLifecycle();
   private timelineClipLayoutUpdater = new TimelineClipLayoutUpdater();
   private timelineTrackRebinder = new TimelineTrackRebinder();
@@ -438,8 +440,10 @@ export class VideoCompositor {
       mediaClipLoader: this.mediaClipLoader,
       rasterImageLoader: this.rasterImageLoader,
     });
+    this.timelineActiveClipProcessor = new TimelineActiveClipProcessor();
     this.timelineApplyLifecycle = new TimelineApplyLifecycle();
     this.timelineClipLayoutUpdater = new TimelineClipLayoutUpdater();
+    this.timelineTrackRebinder = new TimelineTrackRebinder();
     this.timelineUpdateLifecycle = new TimelineUpdateLifecycle();
     this.clipResourceManager = new ClipResourceManager({
       width: this.width,
@@ -689,112 +693,50 @@ export class VideoCompositor {
         this.applyTrackEffects(track);
       }
 
-      const sampleRequests: Array<Promise<{ clip: CompositorClip; sample: any | null }>> = [];
-
-      for (const clip of active) {
-        this.syncTransitionFilter(clip, timeUs);
-        const effectiveOpacity = this.computeTransitionOpacity(clip, timeUs);
-        clip.sprite.alpha = effectiveOpacity;
-        clip.sprite.blendMode = clip.blendMode ?? 'normal';
-
-        this.applyClipEffects(clip);
-
-        if (clip.clipKind === 'image') {
-          clip.sprite.visible = true;
-          continue;
-        }
-
-        if (clip.clipKind === 'solid') {
-          clip.sprite.visible = true;
-          continue;
-        }
-
-        if (clip.clipKind === 'adjustment') {
-          clip.sprite.visible = true;
-          continue;
-        }
-
-        if (clip.clipKind === 'hud') {
-          this.canvasFallbackRenderer.drawHudClip(clip);
-          clip.sprite.visible = true;
-          continue;
-        }
-
-        if (clip.clipKind === 'shape') {
-          if (clip.shapeDirty) {
-            this.shapeRenderer.draw({
-              graphics: clip.sprite,
-              type: clip.shapeType ?? 'square',
-              fill: clip.fillColor ?? '#ffffff',
-              stroke: clip.strokeColor ?? '#000000',
-              strokeWidth: clip.strokeWidth ?? 0,
-              config: clip.shapeConfig ?? {},
-              canvasWidth: this.width,
-              canvasHeight: this.height,
-            });
-            clip.shapeDirty = false;
-          }
-          clip.sprite.visible = true;
-          continue;
-        }
-
-        if (clip.clipKind === 'text') {
-          if (clip.textDirty) {
-            this.textRenderer.draw(clip, this.width, this.height);
-            this.layoutApplier.applyTextLayout(clip);
-            clip.textDirty = false;
-          }
-          clip.sprite.visible = true;
-          continue;
-        }
-
-        const localTimeUs = timeUs - clip.startUs;
-        const speedRaw = typeof clip.speed === 'number' && clip.speed !== 0 ? clip.speed : 1;
-        const speed = Math.abs(speedRaw);
-        const reversed = speedRaw < 0;
-        if (localTimeUs < 0 || localTimeUs >= clip.durationUs) {
-          clip.sprite.visible = false;
-          continue;
-        }
-
-        const freezeUs = clip.freezeFrameSourceUs;
-
-        // Calculate effective local time based on playback direction
-        const effectiveLocalUs = reversed
-          ? Math.max(0, clip.sourceRangeDurationUs - Math.round(localTimeUs * speed))
-          : Math.round(localTimeUs * speed);
-
-        let sampleTimeS =
-          typeof freezeUs === 'number'
-            ? Math.max(0, freezeUs) / 1_000_000
-            : Math.max(0, clip.sourceStartUs + effectiveLocalUs) / 1_000_000;
-
-        if (!Number.isFinite(sampleTimeS) || Number.isNaN(sampleTimeS)) {
-          sampleTimeS = 0;
-        }
-
-        if (!clip.sink) {
-          clip.sprite.visible = false;
-          continue;
-        }
-
-        const abortController = this.resourceManager.createAbortController(
-          clip.itemId + '_primary',
-        );
-
-        const request = this.getVideoSampleForClip({
-          clip,
-          sampleTimeS,
-          abortSignal: abortController.signal,
-        })
-          .then((sample) => ({ clip, sample }))
-          .catch((error) => {
-            console.error('[VideoCompositor] Failed to render sample', error);
-            return { clip, sample: null };
+      const { sampleRequests } = this.timelineActiveClipProcessor.process({
+        activeClips: active,
+        timeUs,
+        width: this.width,
+        height: this.height,
+        syncTransitionFilter: (clip, currentTimeUs) =>
+          this.syncTransitionFilter(clip, currentTimeUs),
+        computeTransitionOpacity: (clip, currentTimeUs) =>
+          this.computeTransitionOpacity(clip, currentTimeUs),
+        applyClipEffects: (clip) => this.applyClipEffects(clip),
+        drawHudClip: (clip) => this.canvasFallbackRenderer.drawHudClip(clip),
+        drawShapeClip: (clip, size) => {
+          this.shapeRenderer.draw({
+            graphics: clip.sprite,
+            type: clip.shapeType ?? 'square',
+            fill: clip.fillColor ?? '#ffffff',
+            stroke: clip.strokeColor ?? '#000000',
+            strokeWidth: clip.strokeWidth ?? 0,
+            config: clip.shapeConfig ?? {},
+            canvasWidth: size.width,
+            canvasHeight: size.height,
           });
+        },
+        drawTextClip: (clip, size) => {
+          this.textRenderer.draw(clip, size.width, size.height);
+          this.layoutApplier.applyTextLayout(clip);
+        },
+        createPrimaryVideoSampleRequest: (clip, sampleTimeS) => {
+          const abortController = this.resourceManager.createAbortController(
+            clip.itemId + '_primary',
+          );
 
-        sampleRequests.push(request);
-      }
+          return this.getVideoSampleForClip({
+            clip,
+            sampleTimeS,
+            abortSignal: abortController.signal,
+          })
+            .then((sample) => ({ clip, sample }))
+            .catch((error) => {
+              console.error('[VideoCompositor] Failed to render sample', error);
+              return { clip, sample: null };
+            });
+        },
+      });
 
       // --- Blend shadow rendering ---
       // Behaviour:
