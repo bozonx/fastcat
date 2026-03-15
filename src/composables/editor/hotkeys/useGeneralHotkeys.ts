@@ -21,8 +21,6 @@ export function useGeneralHotkeys(
   const selectionStore = useSelectionStore();
   const projectStore = useProjectStore();
   const filesPageStore = useFilesPageStore();
-  const route = useRoute();
-  const router = useRouter();
   const { clipboardPayload, setClipboardPayload } = useAppClipboard();
   const { loadTimeline } = useProjectActions();
 
@@ -363,16 +361,9 @@ export function useGeneralHotkeys(
     },
   };
 
-  async function handleFullscreen() {
+  function handleFullscreen() {
     if (projectStore.currentView === 'fullscreen') {
-      const projectId = route.params.id;
-      const targetProjectId = Array.isArray(projectId) ? projectId[0] : projectId;
-      if (typeof targetProjectId === 'string' && targetProjectId.length > 0) {
-        projectStore.setView(projectStore.lastViewBeforeFullscreen ?? 'cut');
-        await router.push(`/editor/${targetProjectId}`);
-      } else {
-        projectStore.goToCut();
-      }
+      projectStore.setView(projectStore.lastViewBeforeFullscreen ?? 'cut');
       return true;
     }
 
@@ -386,18 +377,12 @@ export function useGeneralHotkeys(
       }
     }
 
-    // In all other cases: go to Monitor Fullscreen
-    const projectId = route.params.id;
-    const targetProjectId = Array.isArray(projectId) ? projectId[0] : projectId;
-    if (typeof targetProjectId === 'string' && targetProjectId.length > 0) {
-      await router.push(`/editor/${targetProjectId}/fullscreen`);
-    }
+    projectStore.goToFullscreen();
     return true;
   }
 
   handlers['general.fullscreen'] = () => {
-    void handleFullscreen();
-    return true;
+    return handleFullscreen();
   };
 
   // Timeline tabs
