@@ -1,15 +1,10 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import AppModal from '~/components/ui/AppModal.vue';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
-import {
-  BASE_VIDEO_CODEC_OPTIONS,
-  checkVideoCodecSupport,
-  resolveVideoCodecOptions,
-} from '~/utils/webcodecs';
 import { storeToRefs } from 'pinia';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
 
@@ -27,7 +22,7 @@ const {
   image,
 } = storeToRefs(fileConversionStore);
 
-const { cancelConversion, startConversion: storeStartConversion } = fileConversionStore;
+const { startConversion: storeStartConversion } = fileConversionStore;
 
 onMounted(() => {
   fileConversionStore.callbacks.onSuccess = (type, bgTaskTitle) => {
@@ -71,15 +66,10 @@ const isOpen = computed({
   },
 });
 
-
 const audioFormatOptions: readonly { value: 'opus' | 'aac'; label: string }[] = [
   { value: 'opus', label: 'OPUS' },
   { value: 'aac', label: 'AAC' },
 ];
-
-const getPhaseLabel = computed(() => {
-  return '';
-});
 
 const fileName = computed(() => targetEntry.value?.name ?? '');
 
@@ -116,10 +106,6 @@ function onImageHeightChange(val: number) {
     image.value.width = clampPositiveInt(val * image.value.aspectRatio);
   }
 }
-
-const modalTitle = computed(() => {
-  return t('videoEditor.fileManager.convert.title', 'Convert File');
-});
 </script>
 
 <template>

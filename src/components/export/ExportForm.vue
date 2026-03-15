@@ -30,6 +30,7 @@ const projectStore = useProjectStore();
 const uiStore = useUiStore();
 const timelineStore = useTimelineStore();
 const focusStore = useFocusStore();
+const fileManager = useFileManager();
 const saveAsDefaults = ref(false);
 const exportOnlySelectionRange = ref(true);
 
@@ -342,7 +343,6 @@ async function handleConfirm() {
         icon: 'i-heroicons-check-circle',
       });
 
-      const fileManager = useFileManager();
       await fileManager.reloadDirectory('_export');
       uiStore.notifyFileManagerUpdate();
 
