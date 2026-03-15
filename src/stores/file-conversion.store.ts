@@ -23,15 +23,14 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
   // Callbacks are meant to be provided by the UI layer (e.g. the modal component)
   // Store just holds the references so actions can trigger them
   const callbacks = {
-    onSuccess: undefined as ((type: 'bgTaskAdded' | 'success', bgTaskTitle?: string) => void) | undefined,
+    onSuccess: undefined as
+      | ((type: 'bgTaskAdded' | 'success', bgTaskTitle?: string) => void)
+      | undefined,
     onError: undefined as ((error: Error) => void) | undefined,
+    onWarning: undefined as ((message: string) => void) | undefined,
   };
 
-  const {
-    openConversionModal,
-    startConversion,
-    cancelConversion,
-  } = useFileConversionActions({
+  const { openConversionModal, startConversion, cancelConversion } = useFileConversionActions({
     targetEntry,
     mediaType,
     videoSettings: video,
@@ -51,7 +50,7 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
     conversionError,
     targetEntry,
     mediaType,
-    
+
     // Grouped settings
     video,
     audio,

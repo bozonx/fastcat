@@ -1,5 +1,6 @@
 import type { Ref, ComputedRef } from 'vue';
 import type { FsEntry } from '~/types/fs';
+import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { useProjectStore } from '~/stores/project.store';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -12,6 +13,7 @@ import {
   createConversionTaskId,
   isAbortError,
   removeCreatedFile,
+  resolveAudioChannelsFromMeta,
 } from '~/utils/conversion/helpers';
 import { executeMediaConversion } from '~/utils/conversion/media-conversion';
 import { executeImageConversion } from '~/utils/conversion/image-conversion';
@@ -31,9 +33,39 @@ import {
 interface UseFileConversionActionsProps {
   targetEntry: Ref<FsEntry | null>;
   mediaType: ComputedRef<'video' | 'audio' | 'image' | 'text' | 'timeline' | 'unknown' | null>;
-  videoSettings: any;
-  audioSettings: any;
-  imageSettings: any;
+  videoSettings: {
+    format: 'mp4' | 'webm' | 'mkv';
+    videoCodec: string;
+    bitrateMbps: number;
+    excludeAudio: boolean;
+    audioCodec: 'aac' | 'opus';
+    audioBitrateKbps: number;
+    bitrateMode: 'constant' | 'variable';
+    keyframeIntervalSec: number;
+    width: number;
+    height: number;
+    fps: number;
+    resolutionFormat: string;
+    orientation: 'landscape' | 'portrait';
+    aspectRatio: string;
+    isCustomResolution: boolean;
+  };
+  audioSettings: {
+    onlyFormat: 'opus' | 'aac';
+    onlyCodec: 'opus' | 'aac';
+    onlyBitrateKbps: number;
+    channels: 'stereo' | 'mono';
+    sampleRate: number;
+    reverse: boolean;
+    originalSampleRate: number | null;
+  };
+  imageSettings: {
+    quality: number;
+    width: number;
+    height: number;
+    isResolutionLinked: boolean;
+    aspectRatio: number;
+  };
   isCancelRequested: Ref<boolean>;
   isConverting: Ref<boolean>;
   conversionError: Ref<string>;
@@ -42,14 +74,18 @@ interface UseFileConversionActionsProps {
   callbacks?: {
     onSuccess?: (type: 'bgTaskAdded' | 'success', bgTaskTitle?: string) => void;
     onError?: (error: Error) => void;
+    onWarning?: (message: string) => void;
   };
 }
 
 export function useFileConversionActions(props: UseFileConversionActionsProps) {
-  function resolveAudioChannelsFromMeta(channels?: number): 'stereo' | 'mono' {
-    if (!channels) return 'stereo';
-    if (channels === 1) return 'mono';
-    return 'stereo';
+  function syncAudioOnlyCodecWithFormat() {
+    props.audioSettings.onlyCodec = props.audioSettings.onlyFormat;
+  }
+
+  function notifyMetadataWarning(message: string, error: unknown) {
+    console.warn(message, error);
+    props.callbacks?.onWarning?.(message);
   }
 
   async function openConversionModal(entry: FsEntry) {
@@ -59,15 +95,8 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
     const requestId = props.conversionModalRequestId.value + 1;
     props.conversionModalRequestId.value = requestId;
     props.targetEntry.value = entry;
-    
-    // We need to wait for the mediaType computed to update based on the new targetEntry
-    // But since it's computed, we can just calculate the type here temporarily or wait
-    const type = entry.name.split('.').pop()?.toLowerCase() || '';
-    const isVideo = ['mp4', 'webm', 'mkv', 'mov', 'avi'].includes(type);
-    const isAudio = ['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'opus'].includes(type);
-    const isImage = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'].includes(type);
-    
-    const mediaCategory = isVideo ? 'video' : isAudio ? 'audio' : isImage ? 'image' : 'unknown';
+
+    const mediaCategory = getMediaTypeFromFilename(entry.name);
 
     props.isCancelRequested.value = false;
     props.isConverting.value = false;
@@ -96,7 +125,10 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
         const { client } = getExportWorkerClient();
         const meta = await client.extractMetadata(file);
 
-        if (requestId !== props.conversionModalRequestId.value || props.targetEntry.value?.path !== entry.path)
+        if (
+          requestId !== props.conversionModalRequestId.value ||
+          props.targetEntry.value?.path !== entry.path
+        )
           return;
 
         if (meta?.video) {
@@ -124,7 +156,10 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           props.audioSettings.sampleRate = 0;
         }
       } catch (err) {
-        console.warn('Failed to extract video metadata', err);
+        notifyMetadataWarning(
+          'Failed to extract video metadata. Default conversion settings will be used.',
+          err,
+        );
       }
     } else if (mediaCategory === 'audio') {
       // Reset to defaults
@@ -134,16 +169,20 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
       props.audioSettings.channels = 'stereo';
       props.audioSettings.originalSampleRate = null;
       props.audioSettings.sampleRate = 0;
+      syncAudioOnlyCodecWithFormat();
 
       try {
         const file = await projectStore.getFileByPath(entry.path);
         if (!file) throw new Error('Failed to access source file');
         const { client } = getExportWorkerClient();
         const meta = await client.extractMetadata(file);
-        
-        if (requestId !== props.conversionModalRequestId.value || props.targetEntry.value?.path !== entry.path)
+
+        if (
+          requestId !== props.conversionModalRequestId.value ||
+          props.targetEntry.value?.path !== entry.path
+        )
           return;
-          
+
         if (meta?.audio) {
           props.audioSettings.channels = resolveAudioChannelsFromMeta(meta.audio.channels);
           props.audioSettings.originalSampleRate = Math.max(
@@ -156,7 +195,10 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           props.audioSettings.sampleRate = 0;
         }
       } catch (err) {
-        console.warn('Failed to extract audio metadata', err);
+        notifyMetadataWarning(
+          'Failed to extract audio metadata. Default conversion settings will be used.',
+          err,
+        );
       }
     } else if (mediaCategory === 'image') {
       props.imageSettings.quality = DEFAULT_IMAGE_QUALITY;
@@ -194,8 +236,10 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
     const baseName = entry.name.replace(/\.[^.]+$/, '');
     let newExt = '';
     if (type === 'image') newExt = 'webp';
-    else if (type === 'audio') newExt = props.audioSettings.onlyFormat;
-    else newExt = props.videoSettings.format;
+    else if (type === 'audio') {
+      syncAudioOnlyCodecWithFormat();
+      newExt = props.audioSettings.onlyFormat;
+    } else newExt = props.videoSettings.format;
 
     const sampleRate =
       props.audioSettings.sampleRate === 0

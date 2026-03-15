@@ -12,8 +12,6 @@ import MonitorTransformBox from './MonitorTransformBox.vue';
 
 const { t } = useI18n();
 const focusStore = useFocusStore();
-const route = useRoute();
-const router = useRouter();
 
 const panelRef = ref<HTMLElement | null>(null);
 const { isFullscreen: isBrowserFullscreen, enter: enterBrowserFullscreen, exit: exitBrowserFullscreen } =
@@ -41,22 +39,6 @@ const {
 } = useMonitorRuntime();
 
 const effectiveFullscreen = computed(() => props.isFullscreen || isBrowserFullscreen.value);
-const isFullscreenRoute = computed(() => route.path.endsWith('/fullscreen'));
-
-function getRouteProjectId() {
-  const projectId = route.params.id;
-  return Array.isArray(projectId) ? projectId[0] : projectId;
-}
-
-async function openFullscreenRoute() {
-  const targetProjectId = getRouteProjectId();
-  if (typeof targetProjectId !== 'string' || targetProjectId.length === 0) {
-    await enterBrowserFullscreen();
-    return;
-  }
-
-  await router.push(`/editor/${targetProjectId}/fullscreen`);
-}
 
 function restoreViewAfterFullscreen() {
   if (projectStore.lastViewBeforeFullscreen) {
@@ -68,18 +50,11 @@ function restoreViewAfterFullscreen() {
 }
 
 // Sync internal fullscreen state with browser fullscreen
-watch(isBrowserFullscreen, async (val) => {
+watch(isBrowserFullscreen, (val) => {
   if (val) {
     projectStore.goToFullscreen();
   } else if (projectStore.currentView === 'fullscreen') {
     restoreViewAfterFullscreen();
-
-    if (isFullscreenRoute.value) {
-      const targetProjectId = getRouteProjectId();
-      if (typeof targetProjectId === 'string' && targetProjectId.length > 0) {
-        await router.replace(`/editor/${targetProjectId}`);
-      }
-    }
   }
 });
 
@@ -413,7 +388,7 @@ const emit = defineEmits<{
             variant="ghost"
             icon="i-heroicons-arrows-pointing-out"
             :title="t('fastcat.monitor.fullscreen', 'Fullscreen')"
-            @click="openFullscreenRoute()"
+            @click="enterBrowserFullscreen()"
           />
         </div>
 
