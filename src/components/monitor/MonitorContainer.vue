@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { useFullscreen } from '@vueuse/core';
 import { useFocusStore } from '~/stores/focus.store';
 import { useMonitorContainerControls } from '~/composables/monitor/useMonitorContainerControls';
 import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
@@ -11,6 +12,11 @@ import MonitorTransformBox from './MonitorTransformBox.vue';
 
 const { t } = useI18n();
 const focusStore = useFocusStore();
+
+const panelRef = ref<HTMLElement | null>(null);
+const { isFullscreen: isBrowserFullscreen, toggle: toggleBrowserFullscreen } =
+  useFullscreen(panelRef);
+
 const {
   projectStore,
   timelineStore,
@@ -32,7 +38,28 @@ const {
   timecodeEl,
 } = useMonitorRuntime();
 
+// Sync internal fullscreen state with browser fullscreen
+watch(isBrowserFullscreen, (val) => {
+  if (val) {
+    projectStore.goToFullscreen();
+  } else if (projectStore.currentView === 'fullscreen') {
+    projectStore.goToCut();
+  }
+});
+
+watch(
+  () => projectStore.currentView,
+  (view) => {
+    if (view === 'fullscreen' && !isBrowserFullscreen.value) {
+      void toggleBrowserFullscreen();
+    } else if (view !== 'fullscreen' && isBrowserFullscreen.value) {
+      void toggleBrowserFullscreen();
+    }
+  },
+);
+
 const { showGrid, toggleGrid, getGridLines } = useMonitorGrid({ projectStore });
+
 
 const {
   canInteractPlayback,
@@ -95,6 +122,7 @@ const emit = defineEmits<{
 <template>
   <UContextMenu :items="contextMenuItems" class="h-full group/monitor">
     <div
+      ref="panelRef"
       class="panel-focus-frame flex h-full min-w-0 min-h-0 transition-colors duration-300 relative"
       :class="[
         isFullscreen ? 'bg-black flex-col' : 'bg-ui-bg-elevated',

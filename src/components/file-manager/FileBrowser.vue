@@ -8,7 +8,7 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useFileManagerActions } from '~/composables/fileManager/useFileManagerActions';
-import { useFileConversion } from '~/composables/fileManager/useFileConversion';
+import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { useFileContextMenu } from '~/composables/fileManager/useFileContextMenu';
 import type { FileAction as ContextMenuFileAction } from '~/composables/fileManager/useFileContextMenu';
 import { useFileBrowserDragAndDrop } from '~/composables/fileManager/useFileBrowserDragAndDrop';
@@ -66,7 +66,7 @@ const {
   vfs,
 } = fileManager;
 
-const fileConversion = useFileConversion();
+const conversionStore = useFileConversionStore();
 
 // --- STT ---
 const stt = useFileBrowserStt();
@@ -304,7 +304,7 @@ const { onFileAction } = useFileBrowserFileActions({
   folderEntries,
   loadFolderContent,
   onFileActionBase,
-  fileConversion,
+  fileConversion: conversionStore,
   openTranscriptionModal,
   vfs,
 });
