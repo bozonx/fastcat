@@ -672,7 +672,7 @@
       "successDesc": "Timeline exported to {file}",
       "successTitle": "Export successful",
       "summary": "Summary",
-      "title": "Export Video",
+      "title": "Export",
       "videoBitrate": "Video bitrate (Mbps)",
       "videoBitrateHelp": "Approximate target bitrate. Higher values produce better quality and larger files.",
       "videoCodec": "Video codec",
