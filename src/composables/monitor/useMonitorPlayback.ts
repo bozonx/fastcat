@@ -12,6 +12,7 @@ import { syncMonitorPlaybackVisibility } from './useMonitorPlayback.visibility';
 
 import type { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 
 export interface UseMonitorPlaybackOptions {
   isLoading: { value: boolean };
@@ -43,6 +44,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
   } = options;
 
   const timelineStore = useTimelineStore();
+  const workspaceStore = useWorkspaceStore();
 
   const STORE_TIME_SYNC_MS = 100;
   const AUDIO_LEVELS_SYNC_MS = 120; // Avoid excessive store churn (can stress DevTools)
@@ -248,7 +250,10 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
         updateTimecodeUi(normalizedTimeUs);
 
         if (normalizedTimeUs > previousTimeUs) {
-          if (canPlayScrubPreview(previousTimeUs, normalizedTimeUs)) {
+          if (
+            workspaceStore.userSettings.projectDefaults.audioScrubbingEnabled &&
+            canPlayScrubPreview(previousTimeUs, normalizedTimeUs)
+          ) {
             void audioEngine.previewScrubForward(
               previousTimeUs,
               normalizedTimeUs,

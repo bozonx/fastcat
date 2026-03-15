@@ -96,7 +96,7 @@ function handleWheel(e: WheelEvent) {
   e.preventDefault();
   const direction = e.deltaY < 0 ? 1 : -1;
   const isShift = isLayer1Active(e, workspaceStore.userSettings);
-  stepValue(direction, isShift);
+  stepValue(direction, !isShift);
 }
 
 onMounted(() => {

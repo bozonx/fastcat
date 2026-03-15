@@ -46,31 +46,50 @@ function resetDefaults() {
       <div class="flex items-center justify-between gap-3">
         <div>
           <div class="text-sm font-medium text-ui-text">
-            {{ t('videoEditor.settings.projectAudioDeclickTitle', 'Audio De-click Duration') }}
+            {{ t('videoEditor.settings.audioScrubbingTitle', 'Audio Scrubbing') }}
           </div>
           <div class="text-xs text-ui-text-muted">
             {{
               t(
-                'videoEditor.settings.projectAudioDeclickHint',
-                'Micro-fades (linear) applied to edges of all clips to eliminate clicks. 0 disables it.',
+                'videoEditor.settings.audioScrubbingHint',
+                'Play audio while scrubbing the timeline.',
               )
             }}
           </div>
         </div>
-        <div class="w-32">
-          <WheelNumberInput
-            :model-value="workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs / 1000"
-            size="sm"
-            :step="1"
-            :min="0"
-            :max="1000"
-            @update:model-value="
-              (value: number) =>
-                (workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs = Math.round(
-                  Math.max(0, Math.min(1000, Number(value) || 0)) * 1000,
-                ))
-            "
-          />
+        <USwitch v-model="workspaceStore.userSettings.projectDefaults.audioScrubbingEnabled" />
+      </div>
+
+      <div class="pt-3 border-t border-ui-border mt-2">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <div class="text-sm font-medium text-ui-text">
+              {{ t('videoEditor.settings.projectAudioDeclickTitle', 'Audio De-click Duration') }}
+            </div>
+            <div class="text-xs text-ui-text-muted">
+              {{
+                t(
+                  'videoEditor.settings.projectAudioDeclickHint',
+                  'Micro-fades (linear) applied to edges of all clips to eliminate clicks. 0 disables it.',
+                )
+              }}
+            </div>
+          </div>
+          <div class="w-32">
+            <WheelNumberInput
+              :model-value="workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs / 1000"
+              size="sm"
+              :step="1"
+              :min="0"
+              :max="1000"
+              @update:model-value="
+                (value: number) =>
+                  (workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs = Math.round(
+                    Math.max(0, Math.min(1000, Number(value) || 0)) * 1000,
+                  ))
+              "
+            />
+          </div>
         </div>
       </div>
     </div>

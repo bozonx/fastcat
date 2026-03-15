@@ -101,6 +101,11 @@ const selectedMarkerId = computed<string | null>(() => {
   if (entity?.source === 'timeline' && entity.kind === 'marker') return entity.markerId;
   return null;
 });
+const isSelectedMarkerZone = computed(() => {
+  if (!selectedMarkerId.value) return false;
+  const marker = timelineStore.getMarkers().find((m) => m.id === selectedMarkerId.value);
+  return marker ? typeof marker.durationUs === 'number' && marker.durationUs > 0 : false;
+});
 
 const hasSelectionRange = computed(() => {
   const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
@@ -243,6 +248,22 @@ function onPanelFocusOut() {
             class="ml-2 text-xs text-ui-text-muted font-mono truncate"
           >
             {{ t('fastcat.transitions.title', 'Transition') }}
+          </span>
+          <span
+            v-else-if="displayMode === 'marker'"
+            class="ml-2 text-xs text-ui-text-muted font-mono truncate"
+          >
+            {{
+              isSelectedMarkerZone
+                ? t('fastcat.marker.zoneMarker', 'Zone Marker')
+                : t('fastcat.marker.title', 'Marker')
+            }}
+          </span>
+          <span
+            v-else-if="displayMode === 'selection-range'"
+            class="ml-2 text-xs text-ui-text-muted font-mono truncate"
+          >
+            {{ t('fastcat.timeline.selectionRange', 'Selection Range') }}
           </span>
         </template>
         <span v-else class="ml-2 text-xs text-ui-text-muted font-mono truncate">

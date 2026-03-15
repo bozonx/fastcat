@@ -268,7 +268,9 @@
     "marker": {
       "actions": "Actions",
       "info": "Marker Info",
-      "text": "Text"
+      "text": "Text",
+      "title": "Marker",
+      "zoneMarker": "Zone Marker"
     },
     "monitor": {
       "audioMute": "Mute",
@@ -442,6 +444,8 @@
       "toggleTrackMute": "Toggle track mute",
       "toggleTrackSolo": "Toggle track solo",
       "toggleTrackVisibility": "Toggle track visibility",
+      "dragToTimeline": "drag to timeline",
+      "selectionRange": "Selection Range",
       "transition": {
         "actionFall": "Falls",
         "actionRise": "Rises",
@@ -1092,6 +1096,8 @@
       "userAudio": "Audio",
       "projectAudioDeclickTitle": "Audio De-click Duration",
       "projectAudioDeclickHint": "Micro-fades (linear) applied to edges of all clips to eliminate clicks. 0 disables it.",
+      "audioScrubbingTitle": "Audio Scrubbing",
+      "audioScrubbingHint": "Play audio while scrubbing the timeline.",
       "defaultAudioFadeCurveTitle": "Default Fade Curve",
       "defaultAudioFadeCurveHint": "Default curve used for audio fades when you manually create a fade. (De-click always uses a short linear fade).",
       "userExport": "Export presets",

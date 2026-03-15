@@ -98,6 +98,7 @@ export interface FastCatUserSettings {
     sampleRate: number;
     audioDeclickDurationUs: number;
     defaultAudioFadeCurve: 'linear' | 'logarithmic';
+    audioScrubbingEnabled: boolean;
   };
   integrations: ExternalIntegrationsSettings;
   video: VideoSettings;
@@ -186,6 +187,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
     sampleRate: 48000,
     audioDeclickDurationUs: 5_000,
     defaultAudioFadeCurve: 'logarithmic',
+    audioScrubbingEnabled: true,
   },
   integrations: {
     fastcatPublicador: {
