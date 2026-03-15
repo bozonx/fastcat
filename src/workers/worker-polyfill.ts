@@ -9,6 +9,7 @@ if (typeof document === 'undefined') {
       contains: () => false,
       addEventListener: () => {},
       removeEventListener: () => {},
+      getContext: () => null,
     }),
     body: {
       appendChild: () => {},

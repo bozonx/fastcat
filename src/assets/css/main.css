@@ -38,6 +38,9 @@
   --color-overlay-bg: var(--overlay-bg);
   --color-media-bg: var(--media-bg);
   --color-selection-ring: var(--selection-ring);
+  --color-selection-range: var(--selection-range);
+  --color-selection-range-bg: var(--selection-range-bg);
+  --color-selection-range-border: var(--selection-range-border);
 
   /* Timeline Z-Indexes */
   --z-clip-base: 10;

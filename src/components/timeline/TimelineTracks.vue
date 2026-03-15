@@ -222,7 +222,7 @@ function selectTransition(
   >
     <div
       v-if="selectionRangeStyle"
-      class="absolute top-0 bottom-0 z-20 pointer-events-none border-l border-r border-violet-400/80 bg-violet-500/18 shadow-[0_0_0_1px_rgba(167,139,250,0.25)]"
+      class="absolute top-0 bottom-0 z-20 pointer-events-none border-l border-r border-selection-range-border bg-selection-range-bg shadow-[0_0_0_1px_rgba(var(--color-selection-range),0.25)]"
       :style="selectionRangeStyle"
     />
 

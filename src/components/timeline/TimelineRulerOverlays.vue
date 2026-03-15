@@ -67,20 +67,20 @@ function getMarkerButtonClass(marker: MarkerPoint) {
       >
         <button
           type="button"
-          class="absolute inset-y-0 left-0 right-0 border-l border-r bg-violet-500/25 border-violet-400/80 shadow-[0_0_0_1px_rgba(167,139,250,0.35)]"
-          :class="isSelectionRangeSelected ? 'ring-2 ring-violet-300/80' : ''"
+          class="absolute inset-y-0 left-0 right-0 border-l border-r bg-selection-range-bg border-selection-range-border shadow-[0_0_0_1px_rgba(var(--color-selection-range),0.25)]"
+          :class="isSelectionRangeSelected ? 'ring-2 ring-selection-range/80' : ''"
           @click="emit('select-selection-range', $event)"
           @pointerdown.stop="emit('selection-range-pointerdown', $event, 'move')"
         />
         <button
           type="button"
-          class="absolute inset-y-0 left-0 w-2 -translate-x-1/2 cursor-ew-resize bg-violet-300/70"
+          class="absolute inset-y-0 left-0 w-2 -translate-x-1/2 cursor-ew-resize bg-selection-range/70"
           :aria-label="selectionStartHandleLabel"
           @pointerdown.stop="emit('selection-range-pointerdown', $event, 'left')"
         />
         <button
           type="button"
-          class="absolute inset-y-0 right-0 w-2 translate-x-1/2 cursor-ew-resize bg-violet-300/70"
+          class="absolute inset-y-0 right-0 w-2 translate-x-1/2 cursor-ew-resize bg-selection-range/70"
           :aria-label="selectionEndHandleLabel"
           @pointerdown.stop="emit('selection-range-pointerdown', $event, 'right')"
         />

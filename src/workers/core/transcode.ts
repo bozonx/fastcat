@@ -70,6 +70,7 @@ export async function runTranscode(
         : {
             width: options.width,
             height: options.height,
+            fit: 'contain',
             frameRate: options.fps,
             codec: getBunnyVideoCodec(options.videoCodec),
             bitrate: options.bitrate,
