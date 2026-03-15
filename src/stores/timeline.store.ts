@@ -597,6 +597,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     },
     addClipToTimelineFromPath: commands.addClipToTimelineFromPath,
     addTimelineClipToTimelineFromPath: commands.addTimelineClipToTimelineFromPath,
+    ...captions,
     ...tracks,
     ...trimming,
     ...clips,
