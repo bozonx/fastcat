@@ -17,6 +17,7 @@ export interface BackgroundTask {
 
 export const useBackgroundTasksStore = defineStore('background-tasks', () => {
   const tasks = ref<BackgroundTask[]>([]);
+  const removalTimers = new Map<string, number>();
 
   const activeTasks = computed(() =>
     tasks.value.filter((t) => t.status === 'running' || t.status === 'pending'),
@@ -75,6 +76,12 @@ export const useBackgroundTasksStore = defineStore('background-tasks', () => {
         progress: status === 'completed' ? 1 : task.progress,
       };
     });
+
+    if (status === 'completed') {
+      scheduleRemoval(id);
+    } else if (status === 'running' || status === 'pending') {
+      cancelRemoval(id);
+    }
   }
 
   async function cancelTask(id: string) {
@@ -92,7 +99,28 @@ export const useBackgroundTasksStore = defineStore('background-tasks', () => {
     }
   }
 
+  function scheduleRemoval(id: string) {
+    cancelRemoval(id);
+    const timer = window.setTimeout(
+      () => {
+        removeTask(id);
+        removalTimers.delete(id);
+      },
+      5 * 60 * 1000,
+    ); // 5 minutes
+    removalTimers.set(id, timer);
+  }
+
+  function cancelRemoval(id: string) {
+    const timer = removalTimers.get(id);
+    if (timer !== undefined) {
+      window.clearTimeout(timer);
+      removalTimers.delete(id);
+    }
+  }
+
   function removeTask(id: string) {
+    cancelRemoval(id);
     const index = tasks.value.findIndex((t) => t.id === id);
     if (index !== -1) {
       tasks.value.splice(index, 1);
