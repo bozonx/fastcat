@@ -1,143 +1,38 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
-import { storeToRefs } from 'pinia';
-import { useProjectStore } from '~/stores/project.store';
-import { useTimelineStore } from '~/stores/timeline.store';
-import { useProxyStore } from '~/stores/proxy.store';
+import { computed } from 'vue';
 import { useFocusStore } from '~/stores/focus.store';
-import { useWorkspaceStore } from '~/stores/workspace.store';
-import { useSelectionStore } from '~/stores/selection.store';
-import { useUiStore } from '~/stores/ui.store';
-import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
-import { useMonitorDisplay } from '~/composables/monitor/useMonitorDisplay';
-import { useMonitorPlayback } from '~/composables/monitor/useMonitorPlayback';
-import { useMonitorCore } from '~/composables/monitor/useMonitorCore';
-import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
-import { useMonitorSnapshot } from '~/composables/monitor/useMonitorSnapshot';
 import { useMonitorContainerControls } from '~/composables/monitor/useMonitorContainerControls';
+import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
+import { useMonitorRuntime } from '~/composables/monitor/useMonitorRuntime';
 import MonitorAudioControl from './MonitorAudioControl.vue';
 import MonitorTextTransformBox from './MonitorTextTransformBox.vue';
 import MonitorViewport from './MonitorViewport.vue';
 import MonitorTransformBox from './MonitorTransformBox.vue';
 
 const { t } = useI18n();
-const projectStore = useProjectStore();
-const timelineStore = useTimelineStore();
-const proxyStore = useProxyStore();
 const focusStore = useFocusStore();
-const workspaceStore = useWorkspaceStore();
-const selectionStore = useSelectionStore();
-const uiStore = useUiStore();
-const { isPlaying, currentTime, duration } = storeToRefs(timelineStore);
-
 const {
+  projectStore,
+  timelineStore,
+  selectionStore,
   videoItems,
-  workerTimelineClips,
-  workerAudioClips,
-  rawWorkerTimelineClips,
-  rawWorkerAudioClips,
   safeDurationUs,
-  clipSourceSignature,
-  clipLayoutSignature,
-  audioClipSourceSignature,
-  audioClipLayoutSignature,
-} = useMonitorTimeline();
-
-const selectedTimelineClip = computed(() => {
-  const entity = selectionStore.selectedEntity;
-  if (entity?.source !== 'timeline' || entity.kind !== 'clip') {
-    return null;
-  }
-
-  return rawWorkerTimelineClips.value.find((clip) => clip.id === entity.itemId) ?? null;
-});
-
-const isTextClipSelected = computed(() => selectedTimelineClip.value?.clipType === 'text');
-
-const { containerEl, renderWidth, renderHeight, updateCanvasDisplaySize } = useMonitorDisplay();
-
-const viewportRef = ref<InstanceType<typeof MonitorViewport> | null>(null);
-
-const viewportEl = computed(() => (viewportRef.value?.viewportEl as HTMLDivElement | null) ?? null);
-
-const {
+  isTextClipSelected,
+  containerEl,
+  renderWidth,
+  renderHeight,
+  viewportRef,
   isLoading,
   loadError,
   previewEffectsEnabled,
-  scheduleRender,
   scheduleBuild,
-  clampToTimeline,
-  updateStoreTime,
-  audioEngine,
   useProxyInMonitor,
-  setCurrentTimeProvider,
-} = useMonitorCore({
-  projectStore,
-  timelineStore,
-  proxyStore: {
-    getProxyFileHandle: proxyStore.getProxyFileHandle,
-    getProxyFile: proxyStore.getProxyFile,
-    existingProxies: computed(() => proxyStore.existingProxies),
-  },
-  monitorTimeline: {
-    videoItems,
-    workerTimelineClips,
-    workerAudioClips,
-    rawWorkerTimelineClips,
-    rawWorkerAudioClips,
-    safeDurationUs,
-    clipSourceSignature,
-    clipLayoutSignature,
-    audioClipSourceSignature,
-    audioClipLayoutSignature,
-  },
-  monitorDisplay: {
-    containerEl,
-    viewportEl,
-    renderWidth,
-    renderHeight,
-    updateCanvasDisplaySize,
-  },
-});
-
-const timecodeEl = ref<HTMLElement | null>(null);
-const { uiCurrentTimeUs, getLocalCurrentTimeUs, setTimecodeEl } = useMonitorPlayback({
-  isLoading,
-  loadError,
-  isPlaying,
-  currentTime,
-  duration,
-  safeDurationUs,
-  getFps: () => projectStore.projectSettings?.project?.fps,
-  clampToTimeline,
-  updateStoreTime,
-  scheduleRender,
-  audioEngine,
-});
-
-setCurrentTimeProvider(getLocalCurrentTimeUs);
-
-onMounted(() => {
-  setTimecodeEl(timecodeEl.value);
-  timelineStore.setPlaybackGestureHandler((nextPlaying) => {
-    if (nextPlaying) {
-      audioEngine.resumeContext();
-    }
-  });
-});
+  isSavingStopFrame,
+  createStopFrameSnapshot,
+  timecodeEl,
+} = useMonitorRuntime();
 
 const { showGrid, toggleGrid, getGridLines } = useMonitorGrid({ projectStore });
-
-const { isSavingStopFrame, createStopFrameSnapshot, saveTimelineThumbnail } = useMonitorSnapshot({
-  projectStore,
-  timelineStore,
-  workspaceStore,
-  isLoading,
-  loadError,
-  uiCurrentTimeUs,
-  workerTimelineClips,
-  rawWorkerTimelineClips,
-});
 
 const {
   canInteractPlayback,
@@ -180,13 +75,6 @@ const isReadonly = computed(
 );
 
 const monitorZoomLabel = computed(() => viewportRef.value?.zoomLabel ?? 'x1');
-
-watch(
-  () => uiStore.timelineSaveTrigger,
-  () => {
-    saveTimelineThumbnail();
-  },
-);
 
 const props = withDefaults(
   defineProps<{

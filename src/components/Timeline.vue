@@ -99,7 +99,7 @@ const zoomFactor = computed(() =>
 const isZooming = ref(false);
 const hideZoomIndicator = useDebounceFn(() => {
   isZooming.value = false;
-}, 180);
+}, 2000);
 
 watch(
   () => timelineStore.timelineZoom,
@@ -301,7 +301,10 @@ function onTimelineWheel(e: WheelEvent, category: keyof FastCatUserSettings['mou
 
   if (action === 'zoom_horizontal') {
     e.preventDefault();
-    handleZoomWheel(delta > 0 ? -5 : 5);
+    const rect = scrollEl.value.getBoundingClientRect();
+    const anchorViewportX = e.clientX - rect.left;
+    const anchorTimeUs = pxToTimeUs(scrollEl.value.scrollLeft + anchorViewportX, timelineStore.timelineZoom);
+    handleZoomWheel(delta > 0 ? -5 : 5, { anchorTimeUs, anchorViewportX });
     return;
   }
 
