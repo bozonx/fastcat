@@ -22,6 +22,20 @@ import TimelineGap from './TimelineGap.vue';
 import TimelineSpeedModal from './TimelineSpeedModal.vue';
 
 const { t } = useI18n();
+
+function isTrackVisuallySelected(trackId: string) {
+  const entity = selectionStore.selectedEntity;
+  if (entity?.source === 'timeline') {
+    if (entity.kind === 'track') return entity.trackId === trackId;
+    if (entity.kind === 'clip') return entity.trackId === trackId;
+    if (entity.kind === 'transition') return entity.trackId === trackId;
+    if (entity.kind === 'clips' && entity.items) {
+      return entity.items.some((item) => item.trackId === trackId);
+    }
+  }
+  return false;
+}
+
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
 const mediaStore = useMediaStore();
@@ -232,8 +246,8 @@ function selectTransition(
       :data-track-id="track.id"
       class="flex items-center px-2 relative transition-colors border-b border-ui-border"
       :class="[
-        selectionStore.selectedEntity?.kind === 'track' && selectionStore.selectedEntity?.trackId === track.id ? 'bg-primary-500/10' : '',
-        timelineStore.hoveredTrackId === track.id && !(selectionStore.selectedEntity?.kind === 'track' && selectionStore.selectedEntity?.trackId === track.id)
+        isTrackVisuallySelected(track.id) ? 'bg-primary-500/10' : '',
+        timelineStore.hoveredTrackId === track.id && !isTrackVisuallySelected(track.id)
           ? 'bg-ui-bg-elevated/50'
           : '',
       ]"

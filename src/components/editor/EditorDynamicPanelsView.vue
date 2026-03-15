@@ -72,7 +72,7 @@ const emit = defineEmits<{
           min-size="5"
         >
           <div
-            class="h-full w-full relative transition-all duration-200"
+            class="panel-focus-frame h-full w-full relative transition-all duration-200"
             :class="{
               'opacity-50': draggingPanelId === panel.id,
               'border-l-2 border-l-primary-500':
@@ -83,7 +83,7 @@ const emit = defineEmits<{
                 dragOverPanelId === panel.id && dropPosition === 'top',
               'border-b-2 border-b-primary-500':
                 dragOverPanelId === panel.id && dropPosition === 'bottom',
-              'outline-2 outline-primary-500/60 -outline-offset-2 z-10': isFocused(panel.id),
+              'panel-focus-frame--active': isFocused(panel.id),
             }"
             @pointerdown.capture="emit('focus', panel.id)"
             @dragenter.prevent
@@ -92,10 +92,6 @@ const emit = defineEmits<{
             @drop.prevent="(event) => emit('drop', event, panel.id, view)"
             @dragend="emit('dragEnd')"
           >
-            <div
-              v-if="isFocused(panel.id)"
-              class="pointer-events-none absolute inset-0 z-50 ring-1 ring-primary-500 ring-inset"
-            />
             <EditorDynamicPanelContent
               :panel="panel"
               :view="view"

@@ -79,9 +79,11 @@ const monitorZoomLabel = computed(() => viewportRef.value?.zoomLabel ?? 'x1');
 const props = withDefaults(
   defineProps<{
     isFullscreen?: boolean;
+    useExternalFocus?: boolean;
   }>(),
   {
     isFullscreen: false,
+    useExternalFocus: false,
   },
 );
 
@@ -93,7 +95,7 @@ const emit = defineEmits<{
 <template>
   <UContextMenu :items="contextMenuItems" class="h-full group/monitor">
     <div
-      class="flex h-full min-w-0 min-h-0 transition-colors duration-300 relative"
+      class="panel-focus-frame flex h-full min-w-0 min-h-0 transition-colors duration-300 relative"
       :class="[
         isFullscreen ? 'bg-black flex-col' : 'bg-ui-bg-elevated',
         !isFullscreen && toolbarPosition === 'bottom' ? 'flex-col' : '',
@@ -101,12 +103,12 @@ const emit = defineEmits<{
         !isFullscreen && toolbarPosition === 'right' ? 'flex-row' : '',
         !isFullscreen && toolbarPosition === 'left' ? 'flex-row-reverse' : '',
         {
-          'outline-2 outline-primary-500/60 -outline-offset-2 z-10':
-            !isFullscreen && focusStore.isPanelFocused('monitor'),
+          'panel-focus-frame--active':
+            !props.useExternalFocus && !isFullscreen && focusStore.isPanelFocused('monitor'),
           'border-r border-ui-border': !isFullscreen,
         },
       ]"
-      @pointerdown.capture="focusStore.setMainFocus('monitor')"
+      @pointerdown.capture="!props.useExternalFocus && focusStore.setMainFocus('monitor')"
     >
       <!-- Video area: MonitorViewport handles pan/zoom/gestures -->
       <MonitorViewport ref="viewportRef" :render-width="renderWidth" :render-height="renderHeight">

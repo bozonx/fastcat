@@ -351,10 +351,9 @@ async function handleConfirm() {
 
 <template>
   <div
-    class="flex flex-col h-full bg-ui-bg-elevated p-6 overflow-y-auto custom-scrollbar"
+    class="panel-focus-frame flex flex-col h-full bg-ui-bg-elevated p-6 overflow-y-auto custom-scrollbar"
     :class="{
-      'outline-2 outline-primary-500/60 -outline-offset-2 z-10':
-        focusStore.isPanelFocused('exportForm'),
+      'panel-focus-frame--active': focusStore.isPanelFocused('exportForm'),
     }"
     @pointerdown.capture="focusExportForm"
   >
