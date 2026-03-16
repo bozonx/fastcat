@@ -163,7 +163,10 @@ export function addVirtualClipToTrack(
         ...base,
         clipType: 'shape',
         shapeType: cmd.shapeType ?? 'square',
-        fillColor: '#ffffff',
+        fillColor: cmd.fillColor ?? '#ffffff',
+        strokeColor: cmd.strokeColor,
+        strokeWidth: cmd.strokeWidth,
+        shapeConfig: cmd.shapeConfig,
       };
       break;
     case 'hud':
@@ -171,6 +174,8 @@ export function addVirtualClipToTrack(
         ...base,
         clipType: 'hud',
         hudType: cmd.hudType ?? 'media_frame',
+        background: cmd.background,
+        content: cmd.content,
       };
       break;
     default:

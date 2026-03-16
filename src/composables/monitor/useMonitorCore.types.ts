@@ -10,6 +10,7 @@ export interface MonitorTimelineState {
   rawWorkerAudioClips?: Ref<WorkerTimelineClip[]>;
   workerTimelineClips: Ref<WorkerTimelineClip[]>;
   workerAudioClips: Ref<WorkerTimelineClip[]>;
+  workerTimelinePayload: Ref<any[]>;
   safeDurationUs: Ref<number>;
   clipSourceSignature: Ref<number>;
   clipLayoutSignature: Ref<number>;

@@ -30,6 +30,7 @@ interface TimelineDropItem {
   name?: string;
   path?: string;
   type?: string;
+  presetParams?: Record<string, any>;
 }
 
 interface TimelineDropContext {
@@ -239,8 +240,18 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
       startUs: nextStartUs,
       clipType,
       name: resolveVirtualClipName(item),
-      shapeType: clipType === 'shape' ? resolveShapeType(item.type) : undefined,
-      hudType: clipType === 'hud' ? resolveHudType(item.type) : undefined,
+      shapeType:
+        clipType === 'shape'
+          ? (item.presetParams?.shapeType ?? resolveShapeType(item.type))
+          : undefined,
+      fillColor: clipType === 'shape' ? item.presetParams?.fillColor : undefined,
+      strokeColor: clipType === 'shape' ? item.presetParams?.strokeColor : undefined,
+      strokeWidth: clipType === 'shape' ? item.presetParams?.strokeWidth : undefined,
+      shapeConfig: clipType === 'shape' ? item.presetParams?.shapeConfig : undefined,
+      hudType:
+        clipType === 'hud' ? (item.presetParams?.hudType ?? resolveHudType(item.type)) : undefined,
+      background: clipType === 'hud' ? item.presetParams?.background : undefined,
+      content: clipType === 'hud' ? item.presetParams?.content : undefined,
       pseudo: context.pseudo,
     });
 

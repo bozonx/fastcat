@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import type { ShapeType, TimelineClipItem, TimelineTextClipItem } from '~/timeline/types';
 import type { ParamControl } from '~/components/properties/params';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
+import { usePresetsStore } from '~/stores/presets.store';
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -24,9 +26,69 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const presetsStore = usePresetsStore();
+
+const isSaveModalOpen = ref(false);
+const newPresetName = ref('');
+
+function openSavePresetModal() {
+  newPresetName.value = '';
+  isSaveModalOpen.value = true;
+}
+
+function handleSavePreset() {
+  const name = newPresetName.value.trim();
+  if (!name) return;
+
+  if (props.clip.clipType === 'shape') {
+    const params = {
+      shapeType: (props.clip as any).shapeType,
+      fillColor: (props.clip as any).fillColor,
+      strokeColor: (props.clip as any).strokeColor,
+      strokeWidth: (props.clip as any).strokeWidth,
+      shapeConfig: { ...((props.clip as any).shapeConfig || {}) },
+    };
+    presetsStore.saveAsPreset('shape', params.shapeType ?? 'square', name, params);
+  } else if (props.clip.clipType === 'hud') {
+    const params = {
+      hudType: (props.clip as any).hudType,
+      background: { ...((props.clip as any).background || {}) },
+      content: { ...((props.clip as any).content || {}) },
+    };
+    presetsStore.saveAsPreset('hud', params.hudType ?? 'media_frame', name, params);
+  }
+
+  isSaveModalOpen.value = false;
+}
 </script>
 
 <template>
+  <UModal
+    v-model:open="isSaveModalOpen"
+    :title="t('fastcat.effects.savePresetTitle', 'Save Preset')"
+  >
+    <template #body>
+      <div class="flex flex-col gap-4">
+        <UFormField :label="t('common.name', 'Name')">
+          <UInput
+            v-model="newPresetName"
+            :placeholder="t('fastcat.effects.presetNamePlaceholder', 'My Custom Preset')"
+            autofocus
+            @keyup.enter="handleSavePreset"
+          />
+        </UFormField>
+        <div class="flex justify-end gap-2">
+          <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">
+            {{ t('common.cancel', 'Cancel') }}
+          </UButton>
+          <UButton color="primary" :disabled="!newPresetName.trim()" @click="handleSavePreset">
+            {{ t('common.save', 'Save') }}
+          </UButton>
+        </div>
+      </div>
+    </template>
+  </UModal>
+
   <!-- Background color -->
   <PropertySection v-if="props.clip.clipType === 'background'" :title="t('common.color', 'Color')">
     <div class="flex items-center justify-between gap-3">
@@ -247,6 +309,16 @@ const { t } = useI18n();
     :title="t('fastcat.shapeClip.shape', 'Shape')"
   >
     <div class="flex flex-col gap-2">
+      <div class="flex items-center justify-end">
+        <UButton
+          size="xs"
+          variant="ghost"
+          color="primary"
+          icon="i-heroicons-bookmark"
+          :title="t('fastcat.effects.saveAsPreset', 'Save as preset')"
+          @click="openSavePresetModal"
+        />
+      </div>
       <div class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{ t('fastcat.shapeClip.type', 'Type') }}</span>
         <USelectMenu

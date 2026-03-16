@@ -117,7 +117,13 @@ export interface TimelineClipsApi {
       text?: string;
       style?: import('~/timeline/types').TextClipStyle;
       shapeType?: import('~/timeline/types').ShapeType;
+      fillColor?: string;
+      strokeColor?: string;
+      strokeWidth?: number;
+      shapeConfig?: import('~/timeline/types').ShapeConfig;
       hudType?: import('~/timeline/types').HudType;
+      background?: import('~/timeline/types').HudMediaParams;
+      content?: import('~/timeline/types').HudMediaParams;
       pseudo?: boolean;
     },
     options?: {

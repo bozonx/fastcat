@@ -69,12 +69,14 @@ export class RenderingEngine {
     }
 
     let updatedClips: CompositorClip[] = [];
+    let processingClips: CompositorClip[] = [];
 
     try {
       const { activeClips, activeChanged } = context.updateActiveClips(
         timeUs,
         context.lastRenderedTimeUs,
       );
+      processingClips = activeClips;
 
       if (activeChanged) {
         context.setActiveSortDirty(true);
@@ -119,7 +121,8 @@ export class RenderingEngine {
 
       return context.canvas;
     } finally {
-      for (const clip of updatedClips) {
+      const clipsToClean = updatedClips.length > 0 ? updatedClips : processingClips;
+      for (const clip of clipsToClean) {
         if (!clip.lastVideoFrame) {
           continue;
         }

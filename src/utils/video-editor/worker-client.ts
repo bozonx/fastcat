@@ -23,7 +23,7 @@ export interface VideoCoreHostAPI {
   onExportWarning?(message: string, taskId?: string): void;
 }
 
-type WorkerChannel = 'preview' | 'export' | 'proxy';
+type WorkerChannel = 'preview' | 'export' | 'proxy' | 'thumbnail';
 
 interface WorkerChannelState {
   workerInstance: Worker | null;
@@ -52,6 +52,14 @@ const channelStates: Record<WorkerChannel, WorkerChannelState> = {
     pendingCalls: new Map(),
   },
   proxy: {
+    workerInstance: null,
+    hostApiInstance: null,
+    baseHostApi: null,
+    taskHostApis: new Map(),
+    callIdCounter: 0,
+    pendingCalls: new Map(),
+  },
+  thumbnail: {
     workerInstance: null,
     hostApiInstance: null,
     baseHostApi: null,
@@ -341,6 +349,11 @@ export function setProxyHostApi(api: VideoCoreHostAPI) {
   channelStates.proxy.hostApiInstance = createRoutedHostApi('proxy');
 }
 
+export function setThumbnailHostApi(api: VideoCoreHostAPI) {
+  channelStates.thumbnail.baseHostApi = api;
+  channelStates.thumbnail.hostApiInstance = createRoutedHostApi('thumbnail');
+}
+
 export function registerExportTaskHostApi(taskId: string, api: WorkerTaskHostApi) {
   if (!taskId) return;
   channelStates.export.taskHostApis.set(taskId, api);
@@ -378,6 +391,15 @@ export function restartProxyWorker() {
   return getProxyWorkerClient();
 }
 
+export function terminateThumbnailWorker(reason = 'Thumbnail worker terminated') {
+  terminateChannel('thumbnail', reason);
+}
+
+export function restartThumbnailWorker() {
+  terminateChannel('thumbnail', 'Thumbnail worker restarted');
+  return getThumbnailWorkerClient();
+}
+
 export function getPreviewWorkerClient(): { client: VideoCoreWorkerAPI; worker: Worker } {
   return createChannelClient('preview');
 }
@@ -388,6 +410,10 @@ export function getExportWorkerClient(): { client: VideoCoreWorkerAPI; worker: W
 
 export function getProxyWorkerClient(): { client: VideoCoreWorkerAPI; worker: Worker } {
   return createChannelClient('proxy');
+}
+
+export function getThumbnailWorkerClient(): { client: VideoCoreWorkerAPI; worker: Worker } {
+  return createChannelClient('thumbnail');
 }
 
 // Backward-compatible aliases (preview channel)
