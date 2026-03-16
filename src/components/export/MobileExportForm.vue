@@ -1,16 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
-import {
-  useTimelineExport,
-  sanitizeBaseName,
-  resolveExportCodecs,
-  getExt,
-} from '~/composables/timeline/export';
+import { useExportForm } from '~/composables/timeline/export/useExportForm';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
-const toast = useToast();
 
 const {
   isExporting,
@@ -29,26 +23,20 @@ const {
   exportWidth,
   exportHeight,
   exportFps,
-  bitrateMode,
-  keyframeIntervalSec,
-  exportAlpha,
   metadataTitle,
   metadataDescription,
   metadataAuthor,
   metadataTags,
-  ensureExportDir,
-  preloadExportIndex,
-  validateFilename,
-  getNextAvailableFilename,
-  exportTimelineToFile,
-  cancelExport,
-  cancelRequested,
-  bitrateBps,
   normalizedExportWidth,
   normalizedExportHeight,
   normalizedExportFps,
-  loadCodecSupport,
-} = useTimelineExport();
+
+  initializeExportForm,
+  handleStartExport,
+  getPhaseLabel,
+  cancelExport,
+  cancelRequested,
+} = useExportForm();
 
 const showAdvanced = ref(false);
 const exportLocation = computed(() =>
@@ -76,87 +64,11 @@ const qualityOptions = computed(() => [
 ]);
 
 onMounted(async () => {
-  await loadCodecSupport();
-
-  // Initialize settings from project
-  outputFormat.value = projectStore.projectSettings.exportDefaults.encoding.format;
-  videoCodec.value = projectStore.projectSettings.exportDefaults.encoding.videoCodec;
-  bitrateMbps.value = projectStore.projectSettings.exportDefaults.encoding.bitrateMbps;
-  excludeAudio.value = projectStore.projectSettings.exportDefaults.encoding.excludeAudio;
-
-  exportWidth.value = projectStore.projectSettings.project.width;
-  exportHeight.value = projectStore.projectSettings.project.height;
-  exportFps.value = projectStore.projectSettings.project.fps;
-
-  await ensureExportDir();
-  await preloadExportIndex();
-
-  const timelineBase = sanitizeBaseName(
-    projectStore.currentFileName || projectStore.currentProjectName || 'timeline',
-  );
-  outputFilename.value = await getNextAvailableFilename(timelineBase, getExt(outputFormat.value));
-  await validateFilename();
+  await initializeExportForm();
 });
 
-async function handleStartExport() {
-  if (isExporting.value) return;
-
-  try {
-    const exportDir = await ensureExportDir();
-    const ok = await validateFilename();
-    if (!ok) return;
-
-    const fileHandle = await exportDir.getFileHandle(outputFilename.value, { create: true });
-
-    const resolvedCodecs = resolveExportCodecs(
-      outputFormat.value,
-      videoCodec.value,
-      audioCodec.value as 'aac' | 'opus',
-    );
-
-    await exportTimelineToFile(
-      {
-        format: outputFormat.value,
-        videoCodec: resolvedCodecs.videoCodec,
-        bitrate: bitrateBps.value,
-        audioBitrate: audioBitrateKbps.value * 1000,
-        audio: !excludeAudio.value,
-        audioCodec: resolvedCodecs.audioCodec,
-        audioSampleRate: audioSampleRate.value,
-        width: normalizedExportWidth.value,
-        height: normalizedExportHeight.value,
-        fps: normalizedExportFps.value,
-        bitrateMode: bitrateMode.value,
-        keyframeIntervalSec: keyframeIntervalSec.value,
-        exportAlpha: exportAlpha.value,
-        metadata: {
-          title: metadataTitle.value,
-          description: metadataDescription.value,
-          author: metadataAuthor.value,
-          tags: metadataTags.value,
-        },
-      },
-      fileHandle,
-      (progress) => {
-        exportProgress.value = progress;
-      },
-    );
-
-    toast.add({
-      title: t('videoEditor.export.successTitle'),
-      description: outputFilename.value,
-      color: 'success',
-    });
-  } catch (err: any) {
-    console.error('Export failed:', err);
-    exportError.value = err.message || t('videoEditor.export.error');
-  }
-}
-
-function getPhaseLabel() {
-  if (exportPhase.value === 'encoding') return t('videoEditor.export.phaseEncoding');
-  if (exportPhase.value === 'saving') return t('videoEditor.export.phaseSaving');
-  return t('videoEditor.export.processing');
+async function onStartExport() {
+  await handleStartExport();
 }
 </script>
 
@@ -168,9 +80,13 @@ function getPhaseLabel() {
     </div>
 
     <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-      <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">{{ $t('videoEditor.export.summary') }}</p>
+      <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+        {{ $t('videoEditor.export.summary') }}
+      </p>
       <p class="mt-2 text-sm font-medium text-white">{{ exportSummary }}</p>
-      <p class="mt-1 text-xs text-slate-500">{{ $t('videoEditor.export.savedTo', { location: exportLocation }) }}</p>
+      <p class="mt-1 text-xs text-slate-500">
+        {{ $t('videoEditor.export.savedTo', { location: exportLocation }) }}
+      </p>
     </div>
 
     <!-- Main Settings -->
@@ -209,7 +125,9 @@ function getPhaseLabel() {
         <div class="flex items-center justify-between text-xs">
           <span class="text-slate-400">{{ $t('common.audio') }}</span>
           <div class="flex items-center gap-2">
-            <span class="text-slate-200">{{ excludeAudio ? $t('common.disabled') : $t('common.enabled') }}</span>
+            <span class="text-slate-200">{{
+              excludeAudio ? $t('common.disabled') : $t('common.enabled')
+            }}</span>
             <USwitch v-model="excludeAudio" size="xs" :disabled="isExporting" />
           </div>
         </div>
@@ -227,7 +145,11 @@ function getPhaseLabel() {
         @click="showAdvanced = !showAdvanced"
       >
         <Icon :name="showAdvanced ? 'lucide:chevron-up' : 'lucide:chevron-down'" class="w-4 h-4" />
-        {{ showAdvanced ? $t('videoEditor.export.hideAdvanced') : $t('videoEditor.export.showAdvanced') }}
+        {{
+          showAdvanced
+            ? $t('videoEditor.export.hideAdvanced')
+            : $t('videoEditor.export.showAdvanced')
+        }}
       </button>
 
       <div v-if="showAdvanced" class="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2">
@@ -235,7 +157,9 @@ function getPhaseLabel() {
           v-if="!excludeAudio"
           class="space-y-4 rounded-xl border border-slate-800/80 bg-slate-900/40 p-3"
         >
-          <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">{{ $t('common.audio') }}</p>
+          <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">
+            {{ $t('common.audio') }}
+          </p>
           <div class="grid grid-cols-2 gap-4">
             <UFormField :label="$t('videoEditor.export.audioCodec')">
               <USelect
@@ -279,16 +203,30 @@ function getPhaseLabel() {
         </div>
 
         <div class="space-y-4 rounded-xl border border-slate-800/80 bg-slate-900/40 p-3">
-          <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">{{ $t('videoEditor.export.metadata') }}</p>
+          <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">
+            {{ $t('videoEditor.export.metadata') }}
+          </p>
           <div class="grid grid-cols-1 gap-4">
             <UFormField :label="$t('videoEditor.export.metadataTitle')">
-              <UInput v-model="metadataTitle" :placeholder="$t('videoEditor.export.metadataTitle')" :disabled="isExporting" />
+              <UInput
+                v-model="metadataTitle"
+                :placeholder="$t('videoEditor.export.metadataTitle')"
+                :disabled="isExporting"
+              />
             </UFormField>
             <UFormField :label="$t('videoEditor.export.metadataDescription')">
-              <UInput v-model="metadataDescription" :placeholder="$t('videoEditor.export.metadataDescription')" :disabled="isExporting" />
+              <UInput
+                v-model="metadataDescription"
+                :placeholder="$t('videoEditor.export.metadataDescription')"
+                :disabled="isExporting"
+              />
             </UFormField>
             <UFormField :label="$t('videoEditor.export.metadataAuthor')">
-              <UInput v-model="metadataAuthor" :placeholder="$t('videoEditor.export.metadataAuthor')" :disabled="isExporting" />
+              <UInput
+                v-model="metadataAuthor"
+                :placeholder="$t('videoEditor.export.metadataAuthor')"
+                :disabled="isExporting"
+              />
             </UFormField>
           </div>
           <UFormField :label="$t('videoEditor.export.metadataTags')">
@@ -342,10 +280,12 @@ function getPhaseLabel() {
         size="lg"
         color="primary"
         icon="lucide:download"
-        :label="isExporting ? $t('videoEditor.export.exporting') : $t('videoEditor.export.startExport')"
+        :label="
+          isExporting ? $t('videoEditor.export.exporting') : $t('videoEditor.export.startExport')
+        "
         :loading="isExporting"
         :disabled="!!filenameError || !outputFilename.trim()"
-        @click="handleStartExport"
+        @click="onStartExport"
       />
       <p class="text-[10px] text-slate-500 text-center mt-3">
         {{ $t('videoEditor.export.keepAppOpenHint') }}
@@ -353,4 +293,3 @@ function getPhaseLabel() {
     </div>
   </div>
 </template>
-

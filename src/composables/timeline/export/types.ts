@@ -26,7 +26,10 @@ export interface ExportOptions {
   width: number;
   height: number;
   fps: number;
+  audioReverse?: boolean;
+  audioDurationSec?: number;
   exportRangeUs?: TimelineSelectionRange;
+  audioPassthrough?: boolean;
 }
 
 export interface WorkerTimelineClip {
