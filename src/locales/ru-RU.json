@@ -652,6 +652,7 @@
       "onlySelectionRange": "Только выделенную область",
       "outputFormat": "Формат вывода",
       "phaseEncoding": "Кодирование видео...",
+      "phasePreparing": "Подготовка проекта...",
       "phaseSaving": "Сохранение в библиотеку...",
       "preset": {
         "custom": "Свой",

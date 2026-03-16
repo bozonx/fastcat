@@ -1,4 +1,4 @@
-import type { WorkerTimelineClip } from '../../composables/monitor/types';
+import type { WorkerTimelineClip, ExportOptions, WorkerVideoPayloadItem } from '~/composables/timeline/export/types';
 
 export interface PreviewRenderOptions {
   previewEffectsEnabled?: boolean;
@@ -32,9 +32,9 @@ export interface VideoCoreWorkerAPI {
   // Export
   exportTimeline(
     targetHandle: FileSystemFileHandle,
-    options: any,
-    timelineClips: (WorkerTimelineClip | { kind: 'meta' | 'track'; [key: string]: any })[],
-    audioClips?: any[],
+    options: ExportOptions,
+    videoPayload: WorkerVideoPayloadItem[],
+    audioClips: WorkerTimelineClip[],
     taskId?: string,
   ): Promise<void>;
 
@@ -69,20 +69,4 @@ export interface VideoCoreWorkerAPI {
   ): Promise<(Blob | null)[]>;
 }
 
-export interface ExportOptions {
-  width: number;
-  height: number;
-  fps: number;
-  bitrate: number;
-  videoCodec: string;
-  format: 'mp4' | 'webm' | 'mkv';
-  exportAlpha?: boolean;
-  bitrateMode?: 'constant' | 'variable';
-  keyframeIntervalSec?: number;
-  audio?: boolean;
-  audioPassthrough?: boolean;
-  audioSampleRate?: number;
-  audioChannels?: 'mono' | 'stereo';
-  audioCodec?: string;
-  audioBitrate?: number;
-}
+
