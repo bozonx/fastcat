@@ -189,7 +189,12 @@ export function useFileManagerActions(actions: FileManagerActions) {
     }
   }
 
-  function openDeleteConfirmModal(entries: FsEntry[]) {
+  async function openDeleteConfirmModal(entries: FsEntry[]) {
+    if (workspaceStore.userSettings.deleteWithoutConfirmation) {
+      deleteTargets.value = entries;
+      await handleDeleteConfirm();
+      return;
+    }
     deleteTargets.value = entries;
     isDeleteConfirmModalOpen.value = true;
   }
@@ -266,12 +271,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
     },
     delete: (entry) => {
       const entries = Array.isArray(entry) ? entry : [entry];
-      if (workspaceStore.userSettings.deleteWithoutConfirmation) {
-        deleteTargets.value = entries;
-        void handleDeleteConfirm();
-      } else {
-        openDeleteConfirmModal(entries);
-      }
+      void openDeleteConfirmModal(entries);
     },
     createProxy: async (entry) => {
       const entries = Array.isArray(entry) ? entry : [entry];

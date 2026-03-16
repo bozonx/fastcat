@@ -32,6 +32,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
   );
   const isLoadingProjectSettings = ref(false);
   const isSavingProjectSettings = ref(false);
+  const projectSettingsSaveError = ref<string | null>(null);
 
   const getProjectDirHandle = ref<(() => Promise<FileSystemDirectoryHandle | null>) | null>(null);
   const getCurrentProjectName = ref<(() => string | null) | null>(null);
@@ -57,6 +58,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
       if (getIsReadOnly.value?.()) return false;
 
       isSavingProjectSettings.value = true;
+      projectSettingsSaveError.value = null;
       try {
         await ensureRepo();
 
@@ -73,20 +75,15 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
             timelines: projectSettings.value.timelines,
           });
         }
+      } catch (e: unknown) {
+        projectSettingsSaveError.value = e instanceof Error ? e.message : 'Unknown error occurred';
+        throw e;
       } finally {
         isSavingProjectSettings.value = false;
       }
     },
     onError: (e) => {
-      const nuxtApp = useNuxtApp();
-      const toast = (nuxtApp as any).$toast;
-      if (toast) {
-        toast.error('Failed to save project settings', {
-          description: e instanceof Error ? e.message : 'Unknown error occurred',
-        });
-      } else {
-        console.warn('Failed to save project settings', e);
-      }
+      console.warn('Failed to save project settings', e);
     },
   });
 
