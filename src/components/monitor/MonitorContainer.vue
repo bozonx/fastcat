@@ -53,6 +53,7 @@ function restoreViewAfterFullscreen() {
 watch(isBrowserFullscreen, (val) => {
   if (val) {
     projectStore.goToFullscreen();
+    focusStore.setMainFocus('monitor');
   } else if (projectStore.currentView === 'fullscreen') {
     restoreViewAfterFullscreen();
   }
@@ -128,6 +129,14 @@ const selectedPreviewResolution = computed(() => {
     }
   );
 });
+
+const speedMenuItems = computed(() => [
+  playbackSpeedOptions.map((opt) => ({
+    label: opt.label,
+    onSelect: () => onPlaybackSpeedChange(opt),
+    icon: selectedPlaybackSpeedOption.value?.value === opt.value ? 'i-heroicons-check-20-solid' : undefined,
+  })),
+]);
 
 const monitorZoomLabel = computed(() => (viewportRef.value as any)?.zoomLabel ?? 'x1');
 
@@ -332,7 +341,7 @@ const emit = defineEmits<{
             />
           </UTooltip>
 
-          <div class="w-17">
+          <div class="w-14">
             <USelectMenu
               v-if="projectStore.activeMonitor"
               :model-value="selectedPreviewResolution as any"
@@ -341,7 +350,10 @@ const emit = defineEmits<{
               label-key="label"
               size="2xs"
               :search-input="false"
-              :ui="{ trigger: 'px-1 py-1 font-medium' }"
+              :ui="{
+                trigger: 'px-1.5 font-medium',
+                value: 'text-[11px] leading-none',
+              }"
               class="w-full"
               @update:model-value="
                 (v: any) => {
@@ -349,25 +361,23 @@ const emit = defineEmits<{
                 }
               "
             >
+              <template #default="{ modelValue }">
+                <span class="truncate text-[11px] leading-none">
+                  {{ (modelValue as any)?.label }}
+                </span>
+              </template>
               <template #item-label="{ item }">
                 <span
                   :class="[
                     item.value === projectStore.activeMonitor?.previewResolution
                       ? 'text-primary-500 font-medium'
                       : '',
-                    'truncate text-xs',
+                    'truncate text-xs flex items-center justify-between gap-1 w-full',
                   ]"
                 >
-                  {{ item.label }}
+                  <span>{{ item.label }}</span>
+                  <span v-if="item.isProject" class="text-[10px] text-primary-500/70" :title="t('fastcat.monitor.projectResolutionHint')">★</span>
                 </span>
-              </template>
-              <template #item-trailing="{ item }">
-                <UIcon
-                  v-if="item.isProject"
-                  name="i-heroicons-star-20-solid"
-                  class="w-3 h-3 text-primary-500 shrink-0"
-                  :title="t('fastcat.monitor.projectResolutionHint')"
-                />
               </template>
             </USelectMenu>
           </div>
@@ -393,61 +403,62 @@ const emit = defineEmits<{
           />
         </div>
 
-        <UButton
-          size="md"
-          variant="ghost"
-          color="neutral"
-          icon="i-heroicons-arrow-uturn-left"
-          :aria-label="t('fastcat.monitor.rewind', 'Rewind')"
-          :disabled="!canInteractPlayback"
-          @click="rewindToStart"
-        />
-
-        <UButton
-          size="md"
-          variant="ghost"
-          color="neutral"
-          icon="i-heroicons-backward"
-          :aria-label="t('fastcat.monitor.playBackward', 'Play backward')"
-          :disabled="!canInteractPlayback"
-          @click="
-            setPlayback({ direction: 'backward', speed: selectedPlaybackSpeedOption?.value ?? 1 })
-          "
-          @wheel.prevent="handleSpeedWheel"
-        />
-
-        <UButton
-          size="md"
-          variant="solid"
-          color="primary"
-          :icon="timelineStore.isPlaying ? 'i-heroicons-pause' : 'i-heroicons-play'"
-          :aria-label="t('fastcat.monitor.play', 'Play')"
-          :disabled="!canInteractPlayback"
-          @click="
-            setPlayback({ direction: 'forward', speed: selectedPlaybackSpeedOption?.value ?? 1 })
-          "
-          @wheel.prevent="handleSpeedWheel"
-        />
-
-        <div class="w-15">
-          <USelectMenu
-            :model-value="selectedPlaybackSpeedOption as any"
-            :items="playbackSpeedOptions"
-            value-key="value"
-            label-key="label"
-            size="2xs"
-            :search-input="false"
-            :ui="{ trigger: 'px-1 py-1 font-medium' }"
-            class="w-full"
+        <UContextMenu :items="speedMenuItems">
+          <UButton
+            size="md"
+            variant="ghost"
+            color="neutral"
+            icon="i-heroicons-arrow-uturn-left"
+            :aria-label="t('fastcat.monitor.rewind', 'Rewind')"
             :disabled="!canInteractPlayback"
-            @update:model-value="onPlaybackSpeedChange"
+            @click="rewindToStart"
+          />
+        </UContextMenu>
+
+        <UContextMenu :items="speedMenuItems">
+          <UButton
+            size="md"
+            variant="ghost"
+            color="neutral"
+            icon="i-heroicons-backward"
+            :aria-label="t('fastcat.monitor.playBackward', 'Play backward')"
+            :disabled="!canInteractPlayback"
+            @click="
+              setPlayback({ direction: 'backward', speed: selectedPlaybackSpeedOption?.value ?? 1 })
+            "
+            @wheel.prevent="handleSpeedWheel"
+          />
+        </UContextMenu>
+
+        <UContextMenu :items="speedMenuItems">
+          <UButton
+            size="md"
+            variant="solid"
+            color="primary"
+            class="relative overflow-hidden min-w-8 px-1.5"
+            :aria-label="t('fastcat.monitor.play', 'Play')"
+            :disabled="!canInteractPlayback"
+            @click="
+              setPlayback({ direction: 'forward', speed: selectedPlaybackSpeedOption?.value ?? 1 })
+            "
             @wheel.prevent="handleSpeedWheel"
           >
-            <template #item-label="{ item }">
-              <span class="truncate text-xs">{{ item.label }}</span>
-            </template>
-          </USelectMenu>
-        </div>
+            <div class="flex items-center justify-center">
+              <UIcon
+                :name="timelineStore.isPlaying ? 'i-heroicons-stop-20-solid' : 'i-heroicons-play-20-solid'"
+                class="w-5 h-5"
+                :class="!timelineStore.isPlaying ? 'ml-0.5' : ''"
+              />
+              <span
+                class="absolute text-[8px] font-mono leading-none opacity-90 pointer-events-none"
+                style="right: 4px; bottom: 0"
+              >
+                {{ selectedPlaybackSpeedOption?.label }}
+              </span>
+            </div>
+          </UButton>
+        </UContextMenu>
+
 
         <MonitorAudioControl :compact="toolbarPosition === 'left' || toolbarPosition === 'right'" />
 

@@ -166,9 +166,13 @@ export function registerMonitorCoreWatchers(options: RegisterMonitorCoreWatchers
     { immediate: true },
   );
 
-  watch(options.getProjectSizeKey, () => {
-    options.updateCanvasDisplaySize();
-    options.invalidateCompositor();
-    options.scheduleBuild();
-  });
+  watch(
+    options.getProjectSizeKey,
+    () => {
+      options.updateCanvasDisplaySize();
+      options.invalidateCompositor();
+      options.scheduleBuild();
+    },
+    { flush: 'post' },
+  );
 }

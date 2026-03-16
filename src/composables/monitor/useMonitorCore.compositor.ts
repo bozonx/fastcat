@@ -16,6 +16,7 @@ export interface EnsureMonitorCompositorReadyOptions {
 
 export function createMonitorCompositorRuntime(options: CreateMonitorCompositorRuntimeOptions) {
   let canvasEl: HTMLCanvasElement | null = null;
+  let pendingCanvasEl: HTMLCanvasElement | null = null;
   let compositorReady = false;
   let compositorWidth = 0;
   let compositorHeight = 0;
@@ -52,30 +53,37 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
       return;
     }
 
-    if (shouldRecreate || !canvasEl || needReinit) {
-      const container = options.containerEl.value;
-      while (container.firstChild) {
-        container.removeChild(container.firstChild);
-      }
-      canvasEl = document.createElement('canvas');
-      canvasEl.style.width = `${targetWidth}px`;
-      canvasEl.style.height = `${targetHeight}px`;
-      canvasEl.style.display = 'block';
-      options.containerEl.value.appendChild(canvasEl);
-      compositorReady = false;
-    }
+    const nextCanvasEl = document.createElement('canvas');
+    nextCanvasEl.width = targetWidth;
+    nextCanvasEl.height = targetHeight;
+    nextCanvasEl.style.width = `${targetWidth}px`;
+    nextCanvasEl.style.height = `${targetHeight}px`;
+    nextCanvasEl.style.display = 'block';
+    pendingCanvasEl = nextCanvasEl;
 
-    if (!canvasEl) {
+    const offscreen = nextCanvasEl.transferControlToOffscreen();
+    await options.client.destroyCompositor();
+    await options.client.initCompositor(offscreen, targetWidth, targetHeight, '#000');
+
+    if (options.isUnmounted()) {
+      pendingCanvasEl = null;
       return;
     }
 
-    canvasEl.width = targetWidth;
-    canvasEl.height = targetHeight;
-    canvasEl.style.width = `${targetWidth}px`;
-    canvasEl.style.height = `${targetHeight}px`;
-    const offscreen = canvasEl.transferControlToOffscreen();
-    await options.client.destroyCompositor();
-    await options.client.initCompositor(offscreen, targetWidth, targetHeight, '#000');
+    const container = options.containerEl.value;
+    if (!container) {
+      pendingCanvasEl = null;
+      return;
+    }
+
+    if (canvasEl && canvasEl.parentNode === container) {
+      container.replaceChild(nextCanvasEl, canvasEl);
+    } else {
+      container.replaceChildren(nextCanvasEl);
+    }
+
+    canvasEl = nextCanvasEl;
+    pendingCanvasEl = null;
     compositorReady = true;
     compositorWidth = targetWidth;
     compositorHeight = targetHeight;
@@ -113,6 +121,7 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
 
   async function destroy() {
     clearPendingRender();
+    pendingCanvasEl = null;
     await options.client.destroyCompositor();
   }
 

@@ -203,7 +203,14 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   async function buildTimeline() {
     if (!containerEl.value) return;
     const requestId = ++buildRequestId;
-    isLoading.value = true;
+
+    // Показываем лоадер только при первой загрузке или жестких ребилдах,
+    // чтобы не было мерцаний лоадера (jump) при смене разрешения.
+    const isFirstLoad = workerTimelineClips.value.length === 0;
+    if (isFirstLoad) {
+      isLoading.value = true;
+    }
+
     loadError.value = null;
 
     try {
