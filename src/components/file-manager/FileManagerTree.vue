@@ -526,6 +526,7 @@ const { getContextMenuItems } = useFileContextMenu(
             :existing-names="(entries || []).map((e) => e.name)"
             :file-icon="ctx.getFileIcon(entry)"
             v-bind="getEntryViewModel(entry)"
+            :menu-items="!isFilesPage ? getContextMenuItems(entry) : []"
             @click="onEntryClick($event, entry)"
             @dblclick="emit('action', 'rename', entry)"
             @keydown-enter="onEntryEnter($event, entry)"

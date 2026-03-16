@@ -136,6 +136,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
 
       workerTimelineClips.value = flattenedClips;
       workerAudioClips.value = flattenedAudio;
+      workerTimelinePayload.value = preparedTimeline.payload;
 
       layoutUpdateFromQueue = true;
 
@@ -229,6 +230,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
 
       workerTimelineClips.value = flattenedClips;
       workerAudioClips.value = flattenedAudio;
+      workerTimelinePayload.value = preparedTimeline.payload;
 
       const clips = flattenedClips;
       const audioClips = flattenedAudio;

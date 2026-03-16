@@ -23,6 +23,7 @@ const props = defineProps<{
   iconClass: string;
   nameClass: string;
   meta: EntryMeta;
+  menuItems?: any[][];
 }>();
 
 const emit = defineEmits<{
@@ -113,8 +114,25 @@ const emit = defineEmits<{
       @save="(name) => emit('commit-rename', name)"
       @cancel="emit('stop-rename')"
     />
-    <span v-else class="text-sm truncate transition-colors" :class="nameClass">
+    <span v-else class="flex-1 text-sm truncate transition-colors" :class="nameClass">
       {{ entry.name }}
     </span>
+
+    <!-- Actions button -->
+    <UDropdownMenu
+      v-if="menuItems?.length"
+      :items="menuItems"
+      :ui="{ content: 'bottom-end' }"
+      class="opacity-0 group-hover:opacity-100 transition-opacity"
+    >
+      <UButton
+        size="2xs"
+        color="neutral"
+        variant="ghost"
+        icon="i-heroicons-ellipsis-horizontal"
+        class="shrink-0 -mr-1"
+        @click.stop
+      />
+    </UDropdownMenu>
   </div>
 </template>
