@@ -1,45 +1,63 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import SearchInput from '~/components/ui/SearchInput.vue';
-import { DEFAULT_HOTKEYS, type HotkeyCommandId, type HotkeyCombo } from '~/utils/hotkeys/defaultHotkeys';
-import {
-  hotkeyFromKeyboardEvent,
-  isEditableTarget,
-  normalizeHotkeyCombo,
-} from '~/utils/hotkeys/hotkeyUtils';
+import { DEFAULT_HOTKEYS, type HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import {
   findDuplicateOwnerByContext,
   getHotkeyConflicts,
   isHotkeyConflicting,
 } from '~/utils/hotkeys/hotkeyConflicts';
+import { useHotkeyCapture } from '~/composables/settings/useHotkeyCapture';
 
 import SettingsHotkeysGroup from './hotkeys/SettingsHotkeysGroup.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 
-const isCapturingHotkey = ref(false);
-const captureTargetCommandId = ref<HotkeyCommandId | null>(null);
-const capturedCombo = ref<string | null>(null);
 const isDuplicateConfirmOpen = ref(false);
 const duplicateWarningText = ref('');
 const duplicateOwnerCommandId = ref<HotkeyCommandId | null>(null);
-
-let captureKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
 
 const isResetAllHotkeysConfirmOpen = ref(false);
 const resetCommandConfirmTarget = ref<HotkeyCommandId | null>(null);
 const isResetCommandConfirmOpen = ref(false);
 
 const searchQuery = ref('');
-
 const normalizedQuery = computed(() => searchQuery.value.toLowerCase().trim());
 
-const hardcodedHotkeysHint = computed(() => t('videoEditor.settings.hotkeysHardcodedHint'));
+const {
+  isCapturingHotkey,
+  captureTargetCommandId,
+  capturedCombo,
+  startCapture,
+  finishCapture,
+} = useHotkeyCapture({
+  onCaptured: (cmdId, combo) => {
+    const next = [...getCurrentBindings(cmdId), combo];
+    setBindings(cmdId, Array.from(new Set(next)));
+  },
+  onDuplicate: (cmdId, combo, owner) => {
+    duplicateWarningText.value = t('videoEditor.settings.hotkeysDuplicateWarning', {
+      combo,
+      cmd: getCommandTitle(owner),
+    });
+    duplicateOwnerCommandId.value = owner;
+    isDuplicateConfirmOpen.value = true;
+  },
+  findDuplicateOwner: (combo, targetCmdId) => {
+    const effective = getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys);
+    return findDuplicateOwnerByContext({
+      effective,
+      commands: DEFAULT_HOTKEYS.commands,
+      targetCmdId,
+      combo,
+    });
+  },
+});
 
 function getCommandTitle(cmdId: HotkeyCommandId): string {
   const fallback = DEFAULT_HOTKEYS.commands.find((c) => c.id === cmdId)?.title ?? cmdId;
@@ -47,32 +65,26 @@ function getCommandTitle(cmdId: HotkeyCommandId): string {
 }
 
 function getCommandGroupTitle(groupId: string): string {
-  if (groupId === 'general') return t('videoEditor.settings.hotkeysGroupGeneral', 'General');
-  if (groupId === 'playback') return t('videoEditor.settings.hotkeysGroupPlayback', 'Playback');
-  if (groupId === 'timeline') return t('videoEditor.settings.hotkeysGroupTimeline', 'Timeline');
-  return groupId;
+  const titles: Record<string, string> = {
+    general: t('videoEditor.settings.hotkeysGroupGeneral', 'General'),
+    playback: t('videoEditor.settings.hotkeysGroupPlayback', 'Playback'),
+    timeline: t('videoEditor.settings.hotkeysGroupTimeline', 'Timeline'),
+  };
+  return titles[groupId] || groupId;
 }
 
-
-
 function getCurrentBindings(cmdId: HotkeyCommandId): string[] {
-  const overrides = workspaceStore.userSettings.hotkeys.bindings[cmdId];
-  if (Array.isArray(overrides)) return overrides;
-  return DEFAULT_HOTKEYS.bindings[cmdId] ?? [];
+  return workspaceStore.userSettings.hotkeys.bindings[cmdId] ?? DEFAULT_HOTKEYS.bindings[cmdId] ?? [];
 }
 
 function isComboCustom(cmdId: HotkeyCommandId, combo: string): boolean {
-  const defaultBindings = DEFAULT_HOTKEYS.bindings[cmdId] || [];
-  return !defaultBindings.includes(combo);
+  return !(DEFAULT_HOTKEYS.bindings[cmdId] || []).includes(combo);
 }
 
 function setBindings(cmdId: HotkeyCommandId, next: string[]) {
-  void workspaceStore.batchUpdateUserSettings(
-    (draft) => {
-      draft.hotkeys.bindings[cmdId] = [...next];
-    },
-    { immediate: true },
-  );
+  void workspaceStore.batchUpdateUserSettings((draft) => {
+    draft.hotkeys.bindings[cmdId] = [...next];
+  }, { immediate: true });
 }
 
 function removeBinding(cmdId: HotkeyCommandId, combo: string) {
@@ -80,23 +92,11 @@ function removeBinding(cmdId: HotkeyCommandId, combo: string) {
   setBindings(cmdId, next);
 }
 
-function resetCommandBindings(cmdId: HotkeyCommandId) {
-  resetCommandConfirmTarget.value = cmdId;
-  isResetCommandConfirmOpen.value = true;
-}
-
-function resetAllHotkeys() {
-  isResetAllHotkeysConfirmOpen.value = true;
-}
-
 function confirmResetAllHotkeys() {
   isResetAllHotkeysConfirmOpen.value = false;
-  void workspaceStore.batchUpdateUserSettings(
-    (draft) => {
-      draft.hotkeys.bindings = {};
-    },
-    { immediate: true },
-  );
+  void workspaceStore.batchUpdateUserSettings((draft) => {
+    draft.hotkeys.bindings = {};
+  }, { immediate: true });
 }
 
 function confirmResetCommandHotkeys() {
@@ -104,103 +104,18 @@ function confirmResetCommandHotkeys() {
   isResetCommandConfirmOpen.value = false;
   resetCommandConfirmTarget.value = null;
   if (!cmdId) return;
-  void workspaceStore.batchUpdateUserSettings(
-    (draft) => {
-      delete draft.hotkeys.bindings[cmdId];
-    },
-    { immediate: true },
-  );
-}
-
-function findDuplicateOwner(combo: string, targetCmdId: HotkeyCommandId): HotkeyCommandId | null {
-  const effective = getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys);
-  return findDuplicateOwnerByContext({
-    effective,
-    commands: DEFAULT_HOTKEYS.commands,
-    targetCmdId,
-    combo,
-  });
-}
-
-function finishCapture() {
-  if (captureKeydownHandler) {
-    window.removeEventListener('keydown', captureKeydownHandler, true);
-    captureKeydownHandler = null;
-  }
-  isCapturingHotkey.value = false;
-  captureTargetCommandId.value = null;
-  capturedCombo.value = null;
-  duplicateOwnerCommandId.value = null;
-}
-
-function startCapture(cmdId: HotkeyCommandId) {
-  if (isCapturingHotkey.value) return;
-  isCapturingHotkey.value = true;
-  captureTargetCommandId.value = cmdId;
-  capturedCombo.value = null;
-
-  const handler = (e: KeyboardEvent) => {
-    if (!isCapturingHotkey.value) {
-      window.removeEventListener('keydown', handler, true);
-      if (captureKeydownHandler === handler) captureKeydownHandler = null;
-      return;
-    }
-
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      window.removeEventListener('keydown', handler, true);
-      if (captureKeydownHandler === handler) captureKeydownHandler = null;
-      finishCapture();
-      return;
-    }
-
-    if (isEditableTarget(e.target)) {
-      return;
-    }
-
-    const comboRaw = hotkeyFromKeyboardEvent(e, workspaceStore.userSettings);
-    const combo = comboRaw ? normalizeHotkeyCombo(comboRaw) : null;
-    if (!combo) return;
-
-    e.preventDefault();
-    window.removeEventListener('keydown', handler, true);
-    if (captureKeydownHandler === handler) captureKeydownHandler = null;
-    capturedCombo.value = combo;
-
-    const target = captureTargetCommandId.value;
-    if (!target) {
-      finishCapture();
-      return;
-    }
-
-    const owner = findDuplicateOwner(combo, target);
-    if (owner) {
-      duplicateWarningText.value = `${combo} is already assigned to ${getCommandTitle(owner)}.`;
-      duplicateOwnerCommandId.value = owner;
-      isDuplicateConfirmOpen.value = true;
-      return;
-    }
-
-    const next = [...getCurrentBindings(target), combo];
-    setBindings(target, Array.from(new Set(next)));
-    finishCapture();
-  };
-
-  captureKeydownHandler = handler;
-  window.addEventListener('keydown', handler, true);
+  void workspaceStore.batchUpdateUserSettings((draft) => {
+    delete draft.hotkeys.bindings[cmdId];
+  }, { immediate: true });
 }
 
 function confirmAddDuplicate() {
   const target = captureTargetCommandId.value;
   const combo = capturedCombo.value;
-  if (!target || !combo) {
-    isDuplicateConfirmOpen.value = false;
-    finishCapture();
-    return;
+  if (target && combo) {
+    const next = [...getCurrentBindings(target), combo];
+    setBindings(target, Array.from(new Set(next)));
   }
-
-  const next = [...getCurrentBindings(target), combo];
-  setBindings(target, Array.from(new Set(next)));
   isDuplicateConfirmOpen.value = false;
   finishCapture();
 }
@@ -209,23 +124,14 @@ function confirmReplaceDuplicate() {
   const target = captureTargetCommandId.value;
   const combo = capturedCombo.value;
   const owner = duplicateOwnerCommandId.value;
-  if (!target || !combo || !owner) {
-    isDuplicateConfirmOpen.value = false;
-    finishCapture();
-    return;
-  }
-
-  const ownerNext = getCurrentBindings(owner).filter((c) => c !== combo);
-  const targetNext = Array.from(new Set([...getCurrentBindings(target), combo]));
-
-  void workspaceStore.batchUpdateUserSettings(
-    (draft) => {
+  if (target && combo && owner) {
+    const ownerNext = getCurrentBindings(owner).filter((c) => c !== combo);
+    const targetNext = Array.from(new Set([...getCurrentBindings(target), combo]));
+    void workspaceStore.batchUpdateUserSettings((draft) => {
       draft.hotkeys.bindings[owner] = ownerNext;
       draft.hotkeys.bindings[target] = targetNext;
-    },
-    { immediate: true },
-  );
-
+    }, { immediate: true });
+  }
   isDuplicateConfirmOpen.value = false;
   finishCapture();
 }
@@ -233,21 +139,14 @@ function confirmReplaceDuplicate() {
 const hotkeyGroups = computed(() => {
   const query = normalizedQuery.value;
   const groupIds = Array.from(new Set(DEFAULT_HOTKEYS.commands.map((c) => c.groupId)));
-  return groupIds
-    .map((groupId) => {
-      const commands = DEFAULT_HOTKEYS.commands.filter((c) => {
-        if (c.groupId !== groupId) return false;
-        if (!query) return true;
-        return getCommandTitle(c.id).toLowerCase().includes(query);
-      });
-
-      return {
-        id: groupId,
-        title: getCommandGroupTitle(groupId),
-        commands,
-      };
-    })
-    .filter((g) => g.commands.length > 0);
+  return groupIds.map((groupId) => ({
+    id: groupId,
+    title: getCommandGroupTitle(groupId),
+    commands: DEFAULT_HOTKEYS.commands.filter((c) => {
+      if (c.groupId !== groupId) return false;
+      return !query || getCommandTitle(c.id).toLowerCase().includes(query);
+    }),
+  })).filter((g) => g.commands.length > 0);
 });
 
 const hotkeyConflicts = computed(() => {
@@ -259,14 +158,7 @@ function isConflicting(cmdId: HotkeyCommandId, combo: string): boolean {
   return isHotkeyConflicting({ conflicts: hotkeyConflicts.value, cmdId, combo });
 }
 
-onBeforeUnmount(() => {
-  finishCapture();
-});
-
-defineExpose({
-  finishCapture,
-  isDuplicateConfirmOpen,
-});
+defineExpose({ finishCapture, isDuplicateConfirmOpen });
 </script>
 
 <template>
@@ -288,12 +180,7 @@ defineExpose({
     <UiConfirmModal
       v-model:open="isResetAllHotkeysConfirmOpen"
       :title="t('videoEditor.settings.hotkeysResetAllConfirmTitle', 'Reset all hotkeys?')"
-      :description="
-        t(
-          'videoEditor.settings.hotkeysResetAllConfirmDesc',
-          'This will remove all custom hotkeys and restore defaults. This action cannot be undone.',
-        )
-      "
+      :description="t('videoEditor.settings.hotkeysResetAllConfirmDesc')"
       :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction', 'Reset')"
       :cancel-text="t('common.cancel', 'Cancel')"
       color="warning"
@@ -304,23 +191,12 @@ defineExpose({
     <UiConfirmModal
       v-model:open="isResetCommandConfirmOpen"
       :title="t('videoEditor.settings.hotkeysResetCommandConfirmTitle', 'Reset hotkey?')"
-      :description="
-        resetCommandConfirmTarget
-          ? t('videoEditor.settings.hotkeysResetCommandConfirmDesc', {
-              cmd: getCommandTitle(resetCommandConfirmTarget as HotkeyCommandId),
-            })
-          : ''
-      "
+      :description="resetCommandConfirmTarget ? t('videoEditor.settings.hotkeysResetCommandConfirmDesc', { cmd: getCommandTitle(resetCommandConfirmTarget) }) : ''"
       :confirm-text="t('videoEditor.settings.hotkeysResetCommandConfirmAction', 'Reset')"
       :cancel-text="t('common.cancel', 'Cancel')"
       color="warning"
       icon="i-heroicons-exclamation-triangle"
       @confirm="confirmResetCommandHotkeys"
-      @update:open="
-        (v: boolean) => {
-          if (!v) resetCommandConfirmTarget = null;
-        }
-      "
     />
 
     <div class="flex items-center justify-between gap-3 px-1">
@@ -332,29 +208,18 @@ defineExpose({
         color="neutral"
         variant="ghost"
         :disabled="isCapturingHotkey"
-        @click="resetAllHotkeys"
+        @click="isResetAllHotkeysConfirmOpen = true"
       >
         {{ t('videoEditor.settings.hotkeysResetAll', 'Reset all') }}
       </UButton>
       <div v-if="isCapturingHotkey" class="text-xs text-primary-500 font-medium animate-pulse">
-        {{
-          t(
-            'videoEditor.settings.hotkeysCaptureHint',
-            'Listening for key combination (Esc to cancel)',
-          )
-        }}
+        {{ t('videoEditor.settings.hotkeysCaptureHint', 'Listening for key combination (Esc to cancel)') }}
       </div>
     </div>
 
     <div class="px-1">
-      <SearchInput
-        v-model="searchQuery"
-        :placeholder="t('common.search', 'Search')"
-        :disabled="isCapturingHotkey"
-      />
+      <SearchInput v-model="searchQuery" :placeholder="t('common.search', 'Search')" :disabled="isCapturingHotkey" />
     </div>
-
-
 
     <div v-if="hotkeyGroups.length === 0" class="px-1 py-8 text-center text-sm text-ui-text-muted">
       {{ t('common.noResults', 'No results found') }}
@@ -374,12 +239,12 @@ defineExpose({
         :is-combo-custom="isComboCustom"
         @remove="removeBinding"
         @capture="startCapture"
-        @reset="resetCommandBindings"
+        @reset="(cmdId) => { resetCommandConfirmTarget = cmdId; isResetCommandConfirmOpen = true; }"
       />
     </div>
 
     <div class="text-[10px] text-ui-text-muted italic px-1">
-      {{ hardcodedHotkeysHint }}
+      {{ t('videoEditor.settings.hotkeysHardcodedHint') }}
     </div>
   </div>
 </template>

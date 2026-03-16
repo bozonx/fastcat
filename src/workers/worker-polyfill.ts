@@ -2,8 +2,13 @@
 if (typeof document === 'undefined') {
   (globalThis as any).document = {
     createElement: (tag: string) => {
+      let offscreenCanvas: OffscreenCanvas | null = null;
       if (tag && tag.toLowerCase() === 'canvas' && typeof OffscreenCanvas !== 'undefined') {
-        return new OffscreenCanvas(1, 1);
+        try {
+          offscreenCanvas = new OffscreenCanvas(1, 1);
+        } catch (e) {
+          // ignore
+        }
       }
       return {
         style: {},
@@ -13,7 +18,16 @@ if (typeof document === 'undefined') {
         contains: () => false,
         addEventListener: () => {},
         removeEventListener: () => {},
-        getContext: () => null,
+        getContext: (contextType: string, contextAttributes?: any) => {
+          if (offscreenCanvas) {
+            try {
+              return offscreenCanvas.getContext(contextType as any, contextAttributes);
+            } catch (e) {
+              return null;
+            }
+          }
+          return null;
+        },
       };
     },
     body: {
