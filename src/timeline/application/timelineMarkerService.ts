@@ -1,5 +1,6 @@
 import type { TimelineDocument, TimelineMarker } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
+import { TIMELINE_RULER_CONSTANTS } from '~/utils/constants';
 
 export interface TimelineMarkerServiceDeps {
   getDoc: () => TimelineDocument | null;
@@ -46,7 +47,7 @@ export function createTimelineMarkerService(
       type: 'add_marker',
       id: generateMarkerId(),
       timeUs: deps.getCurrentTime(),
-      durationUs: 5_000_000, // 5 seconds
+      durationUs: TIMELINE_RULER_CONSTANTS.DEFAULT_ZONE_DURATION_US,
       text: '',
     });
   }
@@ -73,7 +74,7 @@ export function createTimelineMarkerService(
     deps.applyTimeline({
       type: 'update_marker',
       id: markerId,
-      durationUs: 5_000_000, // 5 seconds
+      durationUs: TIMELINE_RULER_CONSTANTS.DEFAULT_ZONE_DURATION_US,
     });
   }
 

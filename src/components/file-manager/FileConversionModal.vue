@@ -7,6 +7,7 @@ import FileConversionAudioSettings from '~/components/file-manager/FileConversio
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 import { storeToRefs } from 'pinia';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
+import { resolveAudioOnlyFileExtension } from '~/utils/conversion/helpers';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -79,7 +80,7 @@ const outputFileName = computed(() => {
     return `${baseName}_converted.${video.value.format}`;
   }
   if (mediaType.value === 'audio') {
-    const ext = audio.value.onlyFormat;
+    const ext = resolveAudioOnlyFileExtension(audio.value.onlyFormat);
     return `${baseName}_converted.${ext}`;
   }
   if (mediaType.value === 'image') {

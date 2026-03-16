@@ -64,6 +64,10 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     return quantizeTimeUsToFrames(timeUs, options.fps.value, 'round');
   }
 
+  function getFrameDurationUs() {
+    return Math.max(1, Math.round(1_000_000 / options.fps.value));
+  }
+
   function updateSelectionRangeFromDrag(clientX: number) {
     const range = options.selectionRange.value;
     if (!range) return;
@@ -71,7 +75,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     const dx = clientX - selectionDragStartX.value;
     const deltaUs = pxToTimeUs(Math.abs(dx), options.zoom.value) * (dx < 0 ? -1 : 1);
     const minDurationUs = Math.max(
-      1,
+      getFrameDurationUs(),
       pxToTimeUs(TIMELINE_RULER_CONSTANTS.MIN_SELECTION_DURATION_PX, options.zoom.value),
     );
 
@@ -157,7 +161,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
     draggedSelectionPatch.value = {
       startUs: quantize(startUs),
-      endUs: Math.max(quantize(startUs) + 1, quantize(endUs)),
+      endUs: Math.max(quantize(startUs) + getFrameDurationUs(), quantize(endUs)),
     };
   }
 
@@ -184,7 +188,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
     draggedSelectionPatch.value = {
       startUs: timeUs,
-      endUs: timeUs + 1,
+      endUs: timeUs + getFrameDurationUs(),
     };
 
     clearSelectionPointerListeners();

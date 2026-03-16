@@ -80,7 +80,10 @@ export function createTimelineSelectionRange(params: CreateTimelineSelectionRang
     if (!marker) return;
 
     const startUs = Math.max(0, Math.round(marker.timeUs));
-    const durationUs = Math.max(1, Math.round(marker.durationUs ?? 5_000_000));
+    const durationUs = Math.max(
+      1,
+      Math.round(marker.durationUs ?? TIMELINE_RULER_CONSTANTS.DEFAULT_ZONE_DURATION_US),
+    );
 
     createSelectionRange({
       startUs,
@@ -94,7 +97,10 @@ export function createTimelineSelectionRange(params: CreateTimelineSelectionRang
     if (!marker) return;
 
     const startUs = Math.max(0, Math.round(marker.timeUs));
-    const durationUs = Math.max(1, Math.round(marker.durationUs ?? 5_000_000));
+    const durationUs = Math.max(
+      1,
+      Math.round(marker.durationUs ?? TIMELINE_RULER_CONSTANTS.DEFAULT_ZONE_DURATION_US),
+    );
 
     createSelectionRange({
       startUs,

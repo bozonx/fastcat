@@ -1,6 +1,7 @@
 import { onUnmounted, ref, type Ref, computed } from 'vue';
 import { pxToTimeUs, timeUsToPx } from '~/utils/timeline/geometry';
 import { TIMELINE_RULER_CONSTANTS } from '~/utils/constants';
+import { quantizeTimeUsToFrames } from '~/timeline/commands/utils';
 
 interface MarkerLike {
   id: string;
@@ -11,6 +12,7 @@ interface MarkerLike {
 interface UseTimelineRulerMarkerDragOptions {
   markers: Ref<MarkerLike[]>;
   zoom: Ref<number>;
+  fps: Ref<number>;
   selectMarker: (markerId: string) => void;
   updateMarker: (markerId: string, patch: { timeUs?: number; durationUs?: number }) => void;
 }
@@ -55,6 +57,10 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
     }
   }
 
+  function quantize(timeUs: number) {
+    return quantizeTimeUsToFrames(timeUs, options.fps.value, 'round');
+  }
+
   function onWindowPointerMove(event: PointerEvent) {
     if (!draggedMarkerId.value) return;
 
@@ -64,7 +70,7 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
     if (draggedMarkerPart.value === 'left') {
       const startPx = timeUsToPx(markerDragStartUs.value, currentZoom);
       const newPx = Math.max(0, startPx + dx);
-      const newUs = Math.max(0, pxToTimeUs(newPx, currentZoom));
+      const newUs = Math.max(0, quantize(pxToTimeUs(newPx, currentZoom)));
       const marker = options.markers.value.find((item) => item.id === draggedMarkerId.value);
 
       if (marker && marker.durationUs !== undefined) {
@@ -87,14 +93,21 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
       TIMELINE_RULER_CONSTANTS.MIN_MARKER_DURATION_PX,
       durationPx + dx,
     );
-    const newDurationUs = pxToTimeUs(newDurationPx, currentZoom);
+    const newDurationUs = Math.max(1, quantize(pxToTimeUs(newDurationPx, currentZoom)));
 
     draggedMarkerPatch.value = { durationUs: newDurationUs };
   }
 
   function onWindowPointerUp() {
     if (draggedMarkerId.value && draggedMarkerPatch.value) {
-      options.updateMarker(draggedMarkerId.value, draggedMarkerPatch.value);
+      const marker = options.markers.value.find((item) => item.id === draggedMarkerId.value);
+      const nextTimeUs = draggedMarkerPatch.value.timeUs ?? marker?.timeUs;
+      const nextDurationUs = draggedMarkerPatch.value.durationUs ?? marker?.durationUs;
+      const hasChanged = nextTimeUs !== marker?.timeUs || nextDurationUs !== marker?.durationUs;
+
+      if (marker && hasChanged) {
+        options.updateMarker(draggedMarkerId.value, draggedMarkerPatch.value);
+      }
     }
     draggedMarkerId.value = null;
     draggedMarkerPatch.value = null;
@@ -134,6 +147,7 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
 
   return {
     clearMarkerPointerListeners,
+    draggedMarkerId,
     onMarkerPointerDown,
     displayMarkers,
   };

@@ -4,9 +4,14 @@ export function resolveAudioChannelsFromMeta(channels?: number): 'stereo' | 'mon
   return 'stereo';
 }
 
-export function resolveAudioOnlyContainerFormat(codec: 'opus' | 'aac'): 'mkv' | 'mp4' {
-  if (codec === 'opus') return 'mkv';
+export function resolveAudioOnlyContainerFormat(codec: 'opus' | 'aac'): 'webm' | 'mp4' {
+  if (codec === 'opus') return 'webm';
   return 'mp4';
+}
+
+export function resolveAudioOnlyFileExtension(codec: 'opus' | 'aac'): 'weba' | 'm4a' {
+  if (codec === 'opus') return 'weba';
+  return 'm4a';
 }
 
 export function clampPositiveNumber(value: number, fallback: number) {

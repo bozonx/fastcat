@@ -244,18 +244,35 @@ watch(
     </label>
 
     <div
-      v-if="!excludeAudio && outputFormat === 'mp4' && !props.hideAudioBitrate"
-      class="flex flex-col gap-2"
+      v-if="!excludeAudio && !props.hideAudioBitrate"
+      class="flex flex-col gap-4"
     >
-      <label class="text-xs text-ui-text-muted font-medium">
-        {{ t('videoEditor.export.audioCodec', 'Audio codec') }}
-      </label>
-      <div class="w-full">
-        <UiAppButtonGroup
-          v-model="audioCodec"
-          :options="audioCodecOptions"
-          :disabled="props.disabled"
-        />
+      <div v-if="outputFormat === 'mp4'" class="flex flex-col gap-2">
+        <label class="text-xs text-ui-text-muted font-medium">
+          {{ t('videoEditor.export.audioCodec', 'Audio codec') }}
+        </label>
+        <div class="w-full">
+          <UiAppButtonGroup
+            v-model="audioCodec"
+            :options="audioCodecOptions"
+            :disabled="props.disabled"
+          />
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label class="text-xs text-ui-text-muted font-medium">
+          {{ t('videoEditor.export.audioBitrate', 'Audio bitrate (Kbps)') }}
+        </label>
+        <WheelNumberInput v-model="audioBitrateKbps" :min="32" :step="16" />
+        <span class="text-xs text-ui-text-muted">
+          {{
+            t(
+              'videoEditor.export.audioBitrateHelp',
+              'Higher bitrate = better quality and larger file',
+            )
+          }}
+        </span>
       </div>
     </div>
 
@@ -269,19 +286,6 @@ watch(
       :hide-sample-rate="props.hideAudioSampleRate"
       :disabled="props.disabled"
     />
-
-    <div v-else-if="!excludeAudio && !props.hideAudioBitrate" class="flex flex-col gap-2">
-      <label class="text-xs text-ui-text-muted font-medium">
-        {{ t('videoEditor.export.audioCodec', 'Audio codec') }}
-      </label>
-      <div class="w-full">
-        <UiAppButtonGroup
-          v-model="audioCodec"
-          :options="audioCodecOptions"
-          :disabled="props.disabled"
-        />
-      </div>
-    </div>
 
     <div v-else-if="!excludeAudio && !props.hideAudioBitrate" class="flex flex-col gap-2">
       <label class="text-xs text-ui-text-muted font-medium">
