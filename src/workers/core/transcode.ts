@@ -21,6 +21,8 @@ export async function runTranscode(
     BlobSource,
     Conversion,
     ALL_FORMATS,
+    getFirstEncodableVideoCodec,
+    getFirstEncodableAudioCodec,
   } = await import('mediabunny');
 
   function ensureNotCancelled() {
@@ -62,26 +64,104 @@ export async function runTranscode(
   const output = new Output({ target, format });
 
   let conversionProcess: any = null;
+  let outputCancelled = false;
+
+  async function safeCancelOutput() {
+    if (outputCancelled) return;
+    outputCancelled = true;
+
+    try {
+      if (typeof (output as any).cancel === 'function') {
+        await (output as any).cancel();
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.includes('already been canceled')) {
+        throw error;
+      }
+    }
+  }
 
   try {
+    const supportedVideoCodecs =
+      typeof (format as any).getSupportedVideoCodecs === 'function'
+        ? (format as any).getSupportedVideoCodecs()
+        : undefined;
+    const supportedAudioCodecs =
+      typeof (format as any).getSupportedAudioCodecs === 'function'
+        ? (format as any).getSupportedAudioCodecs()
+        : undefined;
+
+    const preferredVideoCodec =
+      options.videoCodec === 'none' ? null : getBunnyVideoCodec(options.videoCodec);
+    const preferredAudioCodec = options.audio ? getBunnyAudioCodec(options.audioCodec) : null;
+
+    const resolvedVideoCodec = preferredVideoCodec
+      ? await getFirstEncodableVideoCodec(
+          supportedVideoCodecs?.includes(preferredVideoCodec)
+            ? [
+                preferredVideoCodec,
+                ...supportedVideoCodecs.filter((codec: string) => codec !== preferredVideoCodec),
+              ]
+            : supportedVideoCodecs,
+          {
+            width: options.width,
+            height: options.height,
+            bitrate: options.bitrate,
+          },
+        )
+      : null;
+
+    const resolvedAudioCodec = preferredAudioCodec
+      ? await getFirstEncodableAudioCodec(
+          supportedAudioCodecs?.includes(preferredAudioCodec)
+            ? [
+                preferredAudioCodec,
+                ...supportedAudioCodecs.filter((codec: string) => codec !== preferredAudioCodec),
+              ]
+            : supportedAudioCodecs,
+          {
+            sampleRate: options.audioSampleRate,
+          },
+        )
+      : null;
+
     const videoConfig =
-      options.videoCodec === 'none'
+      options.videoCodec === 'none' || !resolvedVideoCodec
         ? { discard: true }
         : {
             width: options.width,
             height: options.height,
             fit: 'contain',
             frameRate: options.fps,
-            codec: getBunnyVideoCodec(options.videoCodec),
+            codec: resolvedVideoCodec,
             bitrate: options.bitrate,
           };
 
-    const audioConfig = !options.audio
-      ? { discard: true }
-      : {
-          codec: getBunnyAudioCodec(options.audioCodec),
-          bitrate: options.audioBitrate,
-        };
+    const audioConfig =
+      !options.audio || !resolvedAudioCodec
+        ? { discard: true }
+        : {
+            codec: resolvedAudioCodec,
+            bitrate: options.audioBitrate,
+            numberOfChannels:
+              options.audioChannels === 'mono'
+                ? 1
+                : options.audioChannels === 'stereo'
+                  ? 2
+                  : undefined,
+            sampleRate: options.audioSampleRate,
+          };
+
+    if (
+      options.videoCodec !== 'none' &&
+      !resolvedVideoCodec &&
+      (!options.audio || !resolvedAudioCodec)
+    ) {
+      throw new Error(
+        `No encodable target codec available for ${options.format} in this browser environment`,
+      );
+    }
 
     conversionProcess = await Conversion.init({
       input,
@@ -149,7 +229,7 @@ export async function runTranscode(
       }
     } catch {}
     try {
-      if (typeof (output as any).cancel === 'function') await (output as any).cancel();
+      await safeCancelOutput();
     } catch {}
     try {
       if (typeof (writable as any).abort === 'function') await (writable as any).abort();

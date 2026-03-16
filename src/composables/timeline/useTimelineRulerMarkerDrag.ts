@@ -1,5 +1,6 @@
-import { onUnmounted, ref, type Ref } from 'vue';
+import { onUnmounted, ref, type Ref, computed } from 'vue';
 import { pxToTimeUs, timeUsToPx } from '~/utils/timeline/geometry';
+import { TIMELINE_RULER_CONSTANTS } from '~/utils/constants';
 
 interface MarkerLike {
   id: string;
@@ -20,6 +21,24 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
   const markerDragStartX = ref(0);
   const markerDragStartUs = ref(0);
   const markerDragStartDurationUs = ref(0);
+  const draggedMarkerPatch = ref<{ timeUs?: number; durationUs?: number } | null>(null);
+
+  const displayMarkers = computed(() => {
+    const raw = options.markers.value;
+    if (!draggedMarkerId.value || !draggedMarkerPatch.value) return raw;
+
+    const dragId = draggedMarkerId.value;
+    const patch = draggedMarkerPatch.value;
+
+    return raw.map((m) => {
+      if (m.id !== dragId) return m;
+      return {
+        ...m,
+        timeUs: patch.timeUs ?? m.timeUs,
+        durationUs: patch.durationUs ?? m.durationUs,
+      };
+    });
+  });
 
   let activeMarkerPointerMove: ((event: PointerEvent) => void) | null = null;
   let activeMarkerPointerUp: ((event: PointerEvent) => void) | null = null;
@@ -51,27 +70,34 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
       if (marker && marker.durationUs !== undefined) {
         const endUs = markerDragStartUs.value + markerDragStartDurationUs.value;
         if (newUs < endUs) {
-          options.updateMarker(draggedMarkerId.value, {
+          draggedMarkerPatch.value = {
             timeUs: newUs,
             durationUs: endUs - newUs,
-          });
+          };
         }
         return;
       }
 
-      options.updateMarker(draggedMarkerId.value, { timeUs: newUs });
+      draggedMarkerPatch.value = { timeUs: newUs };
       return;
     }
 
     const durationPx = timeUsToPx(markerDragStartDurationUs.value, currentZoom);
-    const newDurationPx = Math.max(10, durationPx + dx);
+    const newDurationPx = Math.max(
+      TIMELINE_RULER_CONSTANTS.MIN_MARKER_DURATION_PX,
+      durationPx + dx,
+    );
     const newDurationUs = pxToTimeUs(newDurationPx, currentZoom);
 
-    options.updateMarker(draggedMarkerId.value, { durationUs: newDurationUs });
+    draggedMarkerPatch.value = { durationUs: newDurationUs };
   }
 
   function onWindowPointerUp() {
+    if (draggedMarkerId.value && draggedMarkerPatch.value) {
+      options.updateMarker(draggedMarkerId.value, draggedMarkerPatch.value);
+    }
     draggedMarkerId.value = null;
+    draggedMarkerPatch.value = null;
     clearMarkerPointerListeners();
   }
 
@@ -93,6 +119,7 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
     markerDragStartX.value = event.clientX;
     markerDragStartUs.value = marker.timeUs;
     markerDragStartDurationUs.value = marker.durationUs ?? 0;
+    draggedMarkerPatch.value = null;
 
     clearMarkerPointerListeners();
     activeMarkerPointerMove = onWindowPointerMove;
@@ -108,5 +135,6 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
   return {
     clearMarkerPointerListeners,
     onMarkerPointerDown,
+    displayMarkers,
   };
 }

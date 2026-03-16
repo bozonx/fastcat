@@ -87,7 +87,9 @@ export const useTimelineStore = defineStore('timeline', () => {
   const timelineZoom = ref(50);
   const trackHeights = ref<Record<string, number>>({});
 
-  const fps = computed(() => getDocFps(timelineDoc.value || { timebase: { fps: 30 }, tracks: [] } as any));
+  const fps = computed(() =>
+    getDocFps(timelineDoc.value || ({ timebase: { fps: 30 }, tracks: [] } as any)),
+  );
 
   const selectedItemIds = ref<string[]>([]);
   const selectedTrackId = ref<string | null>(null);
@@ -395,7 +397,6 @@ export const useTimelineStore = defineStore('timeline', () => {
   const selectionRange = createTimelineSelectionRange({
     timelineDoc,
     currentTime,
-    applyTimeline,
     selectionStore,
     markerService,
     trimming,

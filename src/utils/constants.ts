@@ -38,3 +38,9 @@ export const FILE_MANAGER_THUMBNAILS = {
 export const TIMELINE_MANAGER_THUMBNAILS = {
   DIR_NAME: 'timelines',
 } as const;
+
+export const TIMELINE_RULER_CONSTANTS = {
+  DEFAULT_ZONE_DURATION_US: 5_000_000, // 5 seconds
+  MIN_MARKER_DURATION_PX: 10,
+  MIN_SELECTION_DURATION_PX: 6,
+} as const;

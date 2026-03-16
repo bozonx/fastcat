@@ -22,6 +22,8 @@ interface UseTimelineRulerPresentationOptions {
   currentTime: Ref<number>;
   markers: Ref<MarkerLike[]>;
   selectionRange: Ref<SelectionRangeLike | null | undefined>;
+  hoveredMarkerId?: Ref<string | null>;
+  draggedMarkerId?: Ref<string | null>;
 }
 
 export function truncateRulerTooltip(text: string): string {
