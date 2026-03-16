@@ -285,7 +285,7 @@ export async function runExport(
       await (params.videoSource as any).add(usToS(currentTimeUs), dtS);
       currentTimeUs += dtUs;
 
-      const progress = Math.min(100, Math.round(((frameNum + 1) / totalFrames) * 100));
+      const progress = Math.min(99, Math.round(((frameNum + 1) / totalFrames) * 99));
       const nowProgressMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
       const shouldReport =
         frameNum + 1 === totalFrames || nowProgressMs - lastProgressAtMs >= progressIntervalMs;

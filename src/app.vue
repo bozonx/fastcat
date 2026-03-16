@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BackgroundTaskToasts from '~/components/file-manager/BackgroundTaskToasts.vue';
 import RemoteFileExchangeModal from '~/components/file-manager/RemoteFileExchangeModal.vue';
 import { usePresetsStore } from '~/stores/presets.store';
 
@@ -24,6 +25,7 @@ if (colorMode.preference === 'system') {
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
+    <BackgroundTaskToasts />
     <RemoteFileExchangeModal />
   </UApp>
 </template>
