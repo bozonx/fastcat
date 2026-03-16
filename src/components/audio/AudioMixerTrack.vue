@@ -169,7 +169,7 @@ function handleSelectEffect(type: string) {
     <div
       class="text-xs font-mono mb-2 text-ui-text cursor-default hover:text-primary-400 transition-colors"
       :title="t('common.actions.reset')"
-      @dblclick="volumeDb = 0"
+      @click="volumeDb = 0"
     >
       {{ volumeDb <= -59.9 ? '-∞' : volumeDb.toFixed(1) }} dB
     </div>
