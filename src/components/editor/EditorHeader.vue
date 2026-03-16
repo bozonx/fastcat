@@ -14,13 +14,18 @@ const { leaveProject } = useProjectActions();
 
 const emit = defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal']);
 
-const menuItems = computed(() => [
-  [
-    {
+const menuItems = computed(() => {
+  const items = [];
+
+  if (projectStore.currentView === 'cut') {
+    items.push({
       label: t('fastcat.timeline.properties.title'),
       icon: 'i-heroicons-adjustments-horizontal',
       onSelect: () => selectionStore.selectTimelineProperties(),
-    },
+    });
+  }
+
+  items.push(
     {
       label: t('videoEditor.projectSettings.title'),
       icon: 'ix:project-configuration',
@@ -31,8 +36,10 @@ const menuItems = computed(() => [
       icon: 'i-heroicons-cog-6-tooth',
       onSelect: () => emit('open-editor-settings'),
     },
-  ],
-]);
+  );
+
+  return [items];
+});
 </script>
 
 <template>
