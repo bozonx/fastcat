@@ -23,6 +23,12 @@ import { getClipClass, getOverlayGuideOffsetPx } from '~/utils/timeline/clip';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useClipDrop } from '~/composables/timeline/useClipDrop';
+import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
+import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFocusStore } from '~/stores/focus.store';
+import { useEditorViewStore } from '~/stores/editorView.store';
+import { useFilesPageStore } from '~/stores/filesPage.store';
+import { useProjectTabsStore } from '~/stores/tabs.store';
 
 import ClipTransitions from './ClipTransitions.vue';
 import ClipAudioFades from './ClipAudioFades.vue';
@@ -146,6 +152,36 @@ function onClipClick(e: MouseEvent) {
     return;
   }
   if (e.button === 0) emit('selectItem', e as PointerEvent, props.item.id);
+}
+
+const editorViewStore = useEditorViewStore();
+const focusStore = useFocusStore();
+const filesPageStore = useFilesPageStore();
+const projectTabsStore = useProjectTabsStore();
+const fileManager = useFileManager();
+
+const { handleSelectInFileManager, handleOpenNestedTimeline } = useClipPropertiesActions({
+  clip: computed(() => clipItem.value!),
+  trackKind: computed(() => props.track.kind),
+  timelineStore,
+  projectStore,
+  uiStore,
+  editorViewStore,
+  filesPageStore,
+  selectionStore,
+  focusStore,
+  fileManager,
+  setActiveTab: projectTabsStore.setActiveTab,
+});
+
+function onClipDblClick() {
+  if (!clipItem.value) return;
+
+  if (clipItem.value.clipType === 'media') {
+    void handleSelectInFileManager();
+  } else if (clipItem.value.clipType === 'timeline') {
+    void handleOpenNestedTimeline();
+  }
 }
 
 const { isDraggingOver, handleDragEnter, handleDragLeave, handleDragOver, handleDrop } =
@@ -338,6 +374,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
       ]"
       @pointerdown="onClipPointerdown"
       @click="onClipClick"
+      @dblclick="onClipDblClick"
       @dragover="handleDragOver"
       @dragenter="handleDragEnter"
       @dragleave="handleDragLeave"

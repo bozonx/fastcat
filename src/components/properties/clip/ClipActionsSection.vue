@@ -20,6 +20,7 @@ const emit = defineEmits<{
   unlinkAudio: [];
   removeFromGroup: [];
   showInFileManager: [];
+  goToTimeline: [];
   toggleShowWaveform: [];
   toggleShowThumbnails: [];
   toggleAudioWaveformMode: [];
@@ -99,6 +100,18 @@ const { t } = useI18n();
       @click="emit('showInFileManager')"
     >
       {{ t('fastcat.clip.showInFileManager', 'Show in File Manager') }}
+    </UButton>
+
+    <UButton
+      v-if="props.clip.clipType === 'timeline'"
+      size="xs"
+      variant="soft"
+      color="neutral"
+      icon="i-heroicons-arrow-right-circle"
+      class="w-full justify-center mt-2"
+      @click="emit('goToTimeline')"
+    >
+      {{ t('fastcat.clip.goToTimeline', 'Go to timeline') }}
     </UButton>
 
     <template v-if="props.canShowWaveformToggle">
