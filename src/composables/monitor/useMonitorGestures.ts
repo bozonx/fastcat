@@ -28,34 +28,34 @@ export function useMonitorGestures(input: {
   const middlePointerDown = ref<{ x: number; y: number; moved: boolean } | null>(null);
 
   const panX = computed({
-    get: () => input.projectStore.projectSettings.monitor?.panX ?? 0,
+    get: () => input.projectStore.activeMonitor?.panX ?? 0,
     set: (v: number) => {
-      if (!input.projectStore.projectSettings.monitor) return;
-      input.projectStore.projectSettings.monitor.panX = v;
+      if (!input.projectStore.activeMonitor) return;
+      input.projectStore.activeMonitor.panX = v;
     },
   });
 
   const panY = computed({
-    get: () => input.projectStore.projectSettings.monitor?.panY ?? 0,
+    get: () => input.projectStore.activeMonitor?.panY ?? 0,
     set: (v: number) => {
-      if (!input.projectStore.projectSettings.monitor) return;
-      input.projectStore.projectSettings.monitor.panY = v;
+      if (!input.projectStore.activeMonitor) return;
+      input.projectStore.activeMonitor.panY = v;
     },
   });
 
   const zoom = computed({
-    get: () => input.projectStore.projectSettings.monitor?.zoom ?? 1,
+    get: () => input.projectStore.activeMonitor?.zoom ?? 1,
     set: (v: number) => {
-      if (!input.projectStore.projectSettings.monitor) return;
-      input.projectStore.projectSettings.monitor.zoom = snapMonitorZoom(v);
+      if (!input.projectStore.activeMonitor) return;
+      input.projectStore.activeMonitor.zoom = snapMonitorZoom(v);
     },
   });
 
   const zoomExact = computed({
-    get: () => input.projectStore.projectSettings.monitor?.zoom ?? DEFAULT_MONITOR_ZOOM,
+    get: () => input.projectStore.activeMonitor?.zoom ?? DEFAULT_MONITOR_ZOOM,
     set: (v: number) => {
-      if (!input.projectStore.projectSettings.monitor) return;
-      input.projectStore.projectSettings.monitor.zoom = Math.min(
+      if (!input.projectStore.activeMonitor) return;
+      input.projectStore.activeMonitor.zoom = Math.min(
         MAX_MONITOR_ZOOM,
         Math.max(MIN_MONITOR_ZOOM, v),
       );
@@ -70,21 +70,21 @@ export function useMonitorGestures(input: {
   }));
 
   function resetView() {
-    if (!input.projectStore.projectSettings.monitor) return;
-    input.projectStore.projectSettings.monitor.panX = 0;
-    input.projectStore.projectSettings.monitor.panY = 0;
-    input.projectStore.projectSettings.monitor.zoom = DEFAULT_MONITOR_ZOOM;
+    if (!input.projectStore.activeMonitor) return;
+    input.projectStore.activeMonitor.panX = 0;
+    input.projectStore.activeMonitor.panY = 0;
+    input.projectStore.activeMonitor.zoom = DEFAULT_MONITOR_ZOOM;
   }
 
   function centerMonitor() {
-    if (!input.projectStore.projectSettings.monitor) return;
-    input.projectStore.projectSettings.monitor.panX = 0;
-    input.projectStore.projectSettings.monitor.panY = 0;
+    if (!input.projectStore.activeMonitor) return;
+    input.projectStore.activeMonitor.panX = 0;
+    input.projectStore.activeMonitor.panY = 0;
   }
 
   function resetZoom() {
-    if (!input.projectStore.projectSettings.monitor) return;
-    input.projectStore.projectSettings.monitor.zoom = DEFAULT_MONITOR_ZOOM;
+    if (!input.projectStore.activeMonitor) return;
+    input.projectStore.activeMonitor.zoom = DEFAULT_MONITOR_ZOOM;
   }
 
   function onCustomZoom(dir: number) {

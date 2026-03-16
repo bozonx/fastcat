@@ -204,6 +204,31 @@ export async function runTranscode(
   }
 
   try {
+    const sourceVideoTrack =
+      options.videoCodec === 'none' ? null : await input.getPrimaryVideoTrack().catch(() => null);
+    const sourceAudioTrack = options.audio
+      ? await input.getPrimaryAudioTrack().catch(() => null)
+      : null;
+
+    const sourceDecoderConfig =
+      sourceVideoTrack && typeof sourceVideoTrack.getDecoderConfig === 'function'
+        ? await sourceVideoTrack.getDecoderConfig().catch(() => null)
+        : null;
+    const sourceDecoderConfigAny = sourceDecoderConfig as {
+      codedWidth?: number;
+      codedHeight?: number;
+      displayWidth?: number;
+      displayHeight?: number;
+    } | null;
+    const sourceVideoTrackAny = sourceVideoTrack as { frameRate?: number } | null;
+    const sourceWidth = Number(
+      sourceDecoderConfigAny?.codedWidth || sourceDecoderConfigAny?.displayWidth || 0,
+    );
+    const sourceHeight = Number(
+      sourceDecoderConfigAny?.codedHeight || sourceDecoderConfigAny?.displayHeight || 0,
+    );
+    const sourceFrameRate = Number(sourceVideoTrackAny?.frameRate || 0);
+
     const supportedVideoCodecs =
       typeof (format as any).getSupportedVideoCodecs === 'function'
         ? (format as any).getSupportedVideoCodecs()
@@ -247,16 +272,27 @@ export async function runTranscode(
         )
       : null;
 
+    const shouldResizeVideo =
+      Boolean(sourceWidth && sourceHeight) &&
+      (Math.round(sourceWidth) !== Math.round(options.width) ||
+        Math.round(sourceHeight) !== Math.round(options.height));
+    const shouldChangeFrameRate =
+      Boolean(sourceFrameRate) && Math.abs(sourceFrameRate - options.fps) > 0.01;
+
     const videoConfig =
       options.videoCodec === 'none' || !resolvedVideoCodec
         ? { discard: true }
         : {
-            width: options.width,
-            height: options.height,
-            fit: 'contain',
-            frameRate: options.fps,
             codec: resolvedVideoCodec,
             bitrate: options.bitrate,
+            ...(shouldResizeVideo
+              ? {
+                  width: options.width,
+                  height: options.height,
+                  fit: 'contain',
+                }
+              : {}),
+            ...(shouldChangeFrameRate ? { frameRate: options.fps } : {}),
           };
 
     const audioConfig =
@@ -278,7 +314,7 @@ export async function runTranscode(
     if (
       options.videoCodec !== 'none' &&
       !resolvedVideoCodec &&
-      (!options.audio || !resolvedAudioCodec)
+      (!options.audio || !sourceAudioTrack || !resolvedAudioCodec)
     ) {
       throw new Error(
         `No encodable target codec available for ${options.format} in this browser environment`,
@@ -345,6 +381,11 @@ export async function runTranscode(
 
     await notifyPhase('saving', taskId);
   } catch (e) {
+    if (e instanceof Error && e.message === 'Assertion failed.') {
+      throw new Error(
+        'Video conversion failed in the worker rendering pipeline. The browser worker could not create a 2D OffscreenCanvas context for frame processing.',
+      );
+    }
     try {
       if (conversionProcess && typeof conversionProcess.cancel === 'function') {
         await conversionProcess.cancel();

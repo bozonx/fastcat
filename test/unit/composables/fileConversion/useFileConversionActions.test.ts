@@ -114,6 +114,7 @@ describe('useFileConversionActions', () => {
       conversionError: ref(''),
       isModalOpen: ref(false),
       conversionModalRequestId: ref(0),
+      sourceHasAudio: ref(true),
       callbacks: {
         onSuccess: vi.fn(),
         onError: vi.fn(),
@@ -128,7 +129,7 @@ describe('useFileConversionActions', () => {
 
     props.targetEntry.value = { name: 'test.mp3', path: '/test.mp3', kind: 'file' } as any;
     props.audioSettings.onlyFormat = 'aac';
-    props.audioSettings.onlyCodec = 'opus'; // Should be overwritten
+    props.audioSettings.onlyCodec = 'opus';
 
     mockProjectStore.getDirectoryHandleByPath.mockResolvedValue({
       getFileHandle: vi.fn().mockResolvedValue({}),
@@ -174,6 +175,48 @@ describe('useFileConversionActions', () => {
 
     expect(props.callbacks.onWarning).toHaveBeenCalledWith(
       expect.stringContaining('Failed to extract video metadata'),
+    );
+  });
+
+  it('forces excludeAudio for video without audio track', async () => {
+    const props = createProps('video');
+    const { openConversionModal, startConversion } = useFileConversionActions(props);
+
+    const workerClientModule = await import('../../../../src/utils/video-editor/worker-client');
+    vi.mocked(workerClientModule.getExportWorkerClient).mockReturnValue({
+      client: {
+        extractMetadata: vi.fn().mockResolvedValue({
+          video: { width: 1920, height: 1080, fps: 30 },
+          audio: null,
+        }),
+        cancelExport: vi.fn(),
+      },
+    } as any);
+
+    mockProjectStore.getFileByPath.mockResolvedValue(
+      new File(['x'], 'silent.mp4', { type: 'video/mp4' }),
+    );
+
+    await openConversionModal({ name: 'silent.mp4', path: '/silent.mp4', kind: 'file' } as any);
+
+    expect(props.sourceHasAudio.value).toBe(false);
+    expect(props.videoSettings.excludeAudio).toBe(true);
+
+    mockProjectStore.getDirectoryHandleByPath.mockResolvedValue({
+      getFileHandle: vi.fn().mockResolvedValue({}),
+    });
+
+    await startConversion();
+
+    expect(executeMediaConversion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        request: expect.objectContaining({
+          type: 'video',
+          video: expect.objectContaining({
+            excludeAudio: true,
+          }),
+        }),
+      }),
     );
   });
 });

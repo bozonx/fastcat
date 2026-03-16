@@ -79,7 +79,7 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
   });
 
   const toolbarPosition = computed(
-    () => options.projectStore.projectSettings.monitor?.toolbarPosition ?? 'bottom',
+    () => options.projectStore.activeMonitor?.toolbarPosition ?? 'bottom',
   );
 
   function blurActiveElement() {
@@ -99,28 +99,27 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
   }
 
   function setToolbarPosition(position: 'top' | 'right' | 'bottom' | 'left') {
-    if (!options.projectStore.projectSettings.monitor) {
+    if (!options.projectStore.activeMonitor) {
       return;
     }
 
-    options.projectStore.projectSettings.monitor.toolbarPosition = position;
+    options.projectStore.activeMonitor.toolbarPosition = position;
   }
 
   function togglePreviewEffects() {
-    if (!options.projectStore.projectSettings.monitor) {
+    if (!options.projectStore.activeMonitor) {
       return;
     }
 
-    options.projectStore.projectSettings.monitor.previewEffectsEnabled =
-      !options.previewEffectsEnabled.value;
+    options.projectStore.activeMonitor.previewEffectsEnabled = !options.previewEffectsEnabled.value;
   }
 
   function toggleProxyUsage() {
-    if (!options.projectStore.projectSettings.monitor) {
+    if (!options.projectStore.activeMonitor) {
       return;
     }
 
-    options.projectStore.projectSettings.monitor.useProxy = !options.useProxyInMonitor.value;
+    options.projectStore.activeMonitor.useProxy = !options.useProxyInMonitor.value;
   }
 
   function togglePlayback() {

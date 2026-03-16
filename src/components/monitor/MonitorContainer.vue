@@ -289,7 +289,7 @@ const emit = defineEmits<{
 
           <UTooltip :text="t('fastcat.monitor.useProxy', 'Use proxy')">
             <UButton
-              v-if="projectStore.projectSettings.monitor"
+              v-if="projectStore.activeMonitor"
               size="xs"
               :color="useProxyInMonitor ? 'primary' : 'neutral'"
               :variant="useProxyInMonitor ? 'soft' : 'ghost'"
@@ -306,7 +306,7 @@ const emit = defineEmits<{
             "
           >
             <UButton
-              v-if="projectStore.projectSettings.monitor"
+              v-if="projectStore.activeMonitor"
               size="xs"
               :color="previewEffectsEnabled ? 'primary' : 'neutral'"
               :variant="previewEffectsEnabled ? 'soft' : 'ghost'"
@@ -317,10 +317,10 @@ const emit = defineEmits<{
 
           <div class="w-17">
             <USelectMenu
-              v-if="projectStore.projectSettings.monitor"
+              v-if="projectStore.activeMonitor"
               :model-value="
                 (previewResolutions.find(
-                  (r) => r.value === projectStore.projectSettings.monitor.previewResolution,
+                  (r) => r.value === projectStore.activeMonitor?.previewResolution,
                 ) || previewResolutions[2]) as any
               "
               :items="previewResolutions"
@@ -332,7 +332,7 @@ const emit = defineEmits<{
               class="w-full"
               @update:model-value="
                 (v: any) => {
-                  if (v) projectStore.projectSettings.monitor.previewResolution = v.value ?? v;
+                  if (v && projectStore.activeMonitor) projectStore.activeMonitor.previewResolution = v.value ?? v;
                 }
               "
             >
@@ -348,7 +348,7 @@ const emit = defineEmits<{
               <template #item-label="{ item }">
                 <span
                   :class="[
-                    item.value === projectStore.projectSettings.monitor?.previewResolution
+                    item.value === projectStore.activeMonitor?.previewResolution
                       ? 'text-primary-500 font-medium'
                       : '',
                     'truncate text-xs',
@@ -361,7 +361,7 @@ const emit = defineEmits<{
                 <UIcon
                   v-if="
                     item.isProject &&
-                    item.value !== projectStore.projectSettings.monitor?.previewResolution
+                    item.value !== projectStore.activeMonitor?.previewResolution
                   "
                   name="i-heroicons-star-20-solid"
                   class="w-3 h-3 text-primary-500 shrink-0"

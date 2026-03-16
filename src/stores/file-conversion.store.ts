@@ -12,6 +12,7 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
   const targetEntry = ref<FsEntry | null>(null);
   const isCancelRequested = ref(false);
   const conversionModalRequestId = ref(0);
+  const sourceHasAudio = ref(true);
 
   const mediaType = computed(() => {
     if (!targetEntry.value) return null;
@@ -41,6 +42,7 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
     conversionError,
     isModalOpen,
     conversionModalRequestId,
+    sourceHasAudio,
     callbacks,
   });
 
@@ -50,6 +52,7 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
     conversionError,
     targetEntry,
     mediaType,
+    sourceHasAudio,
 
     // Grouped settings
     video,
