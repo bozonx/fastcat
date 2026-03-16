@@ -15,15 +15,6 @@ const audioDeclickDurationMs = computed({
     }
   },
 });
-
-const defaultAudioFadeCurve = computed({
-  get: () => projectStore.projectSettings?.project.defaultAudioFadeCurve || 'logarithmic',
-  set: (val: 'linear' | 'logarithmic') => {
-    if (projectStore.projectSettings) {
-      projectStore.projectSettings.project.defaultAudioFadeCurve = val;
-    }
-  },
-});
 </script>
 
 <template>
@@ -37,30 +28,6 @@ const defaultAudioFadeCurve = computed({
       <template #help>
         {{ t('videoEditor.settings.audioDeclickDurationHelp', 'Micro-fades (linear) applied to edges of all clips to eliminate clicks. 0 disables it.') }}
       </template>
-    </UFormField>
-
-    <UFormField
-      :label="t('videoEditor.settings.defaultAudioFadeCurveTitle', 'Default Fade Curve')"
-      :help="t('videoEditor.settings.defaultAudioFadeCurveHint', 'Default curve used for audio fades when you manually create a fade. (De-click always uses a short linear fade).')"
-    >
-      <div class="flex items-center gap-1 rounded bg-ui-bg p-1 w-fit">
-        <UButton
-          size="xs"
-          :variant="defaultAudioFadeCurve === 'logarithmic' ? 'solid' : 'ghost'"
-          :color="defaultAudioFadeCurve === 'logarithmic' ? 'primary' : 'neutral'"
-          @click="defaultAudioFadeCurve = 'logarithmic'"
-        >
-          Logarithmic
-        </UButton>
-        <UButton
-          size="xs"
-          :variant="defaultAudioFadeCurve === 'linear' ? 'solid' : 'ghost'"
-          :color="defaultAudioFadeCurve === 'linear' ? 'primary' : 'neutral'"
-          @click="defaultAudioFadeCurve = 'linear'"
-        >
-          Linear
-        </UButton>
-      </div>
     </UFormField>
   </SettingsSection>
 </template>

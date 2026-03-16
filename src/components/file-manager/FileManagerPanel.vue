@@ -145,13 +145,13 @@ const { handleFileAction: onFileAction, createTimelineInDirectory } = useFileMan
 const toolbarMenuItems = computed(() => [
   [
     {
-      label: t('common.sortBy', 'Sort by name'),
-      icon: sortMode.value === 'name' ? 'i-heroicons-check' : 'i-heroicons-bars-3-bottom-left',
+      label: t('videoEditor.fileManager.sort.name', 'Sort by name'),
+      color: sortMode.value === 'name' ? 'primary' : 'neutral',
       onSelect: () => onSortModeChange('name'),
     },
     {
-      label: t('common.type', 'Sort by type'),
-      icon: sortMode.value === 'type' ? 'i-heroicons-check' : 'i-heroicons-squares-2x2',
+      label: t('videoEditor.fileManager.sort.type', 'Sort by type'),
+      color: sortMode.value === 'type' ? 'primary' : 'neutral',
       onSelect: () => onSortModeChange('type'),
     },
   ],
@@ -163,6 +163,8 @@ const toolbarMenuItems = computed(() => [
       icon: uiStore.showHiddenFiles ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
       onSelect: () => {
         uiStore.showHiddenFiles = !uiStore.showHiddenFiles;
+        void loadProjectDirectory({ fullRefresh: true });
+        uiStore.notifyFileManagerUpdate();
       },
     },
     {
@@ -204,7 +206,8 @@ function triggerFileUpload() {
 function onSortModeChange(v: 'name' | 'type') {
   setSortMode(v);
   const selectedPath = uiStore.selectedFsEntry?.path;
-  void loadProjectDirectory().then(() => {
+  void loadProjectDirectory({ fullRefresh: true }).then(() => {
+    uiStore.notifyFileManagerUpdate();
     if (!selectedPath) return;
     if (uiStore.selectedFsEntry?.path !== selectedPath) return;
     focusStore.setTempFocus('left');

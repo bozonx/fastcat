@@ -56,6 +56,7 @@ export async function prepareMonitorTimelineData(params: {
   const flattenedAudio = await toWorkerTimelineClips(
     createMockAudioItems(params.rawAudioClips),
     params.projectStore,
+    params.workspaceStore,
   );
 
   return {

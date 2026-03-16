@@ -993,6 +993,7 @@
       "codecUnsupportedDesc": "The browser does not support hardware acceleration for this codec. Performance may be degraded.",
       "codecUnsupportedTitle": "Codec unsupported",
       "defaultTransitionDuration": "Default transition duration (s)",
+      "deleteWithoutConfirmation": "Delete without confirmation",
       "ephemeralTmpRootPath": "Ephemeral tmp path",
       "ephemeralTmpRootPathHelp": "Short-lived temporary job files. Leave empty to use the system temporary directory.",
       "hotkeysCaptureHint": "Waiting for key combination (Esc to cancel)",

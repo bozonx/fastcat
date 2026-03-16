@@ -60,8 +60,6 @@ async function resetToDefaults() {
   projectStore.projectSettings.project.aspectRatio = pDefaults.aspectRatio;
   projectStore.projectSettings.project.isCustomResolution = pDefaults.isCustomResolution;
   projectStore.projectSettings.project.sampleRate = pDefaults.sampleRate;
-  projectStore.projectSettings.project.defaultAudioFadeCurve =
-    workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve;
 
   // Reset export encoding settings to workspace defaults
   const eDefaults = resolveExportPreset(workspaceStore.userSettings.exportPresets);

@@ -143,6 +143,7 @@ export interface FastCatUserSettings {
       middleDrag: 'pan' | 'none';
     };
   };
+  deleteWithoutConfirmation: boolean;
 }
 
 export interface FastCatAppSettings {
@@ -259,6 +260,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       middleDrag: 'pan',
     },
   },
+  deleteWithoutConfirmation: false,
 };
 
 export const DEFAULT_APP_SETTINGS: FastCatAppSettings = {

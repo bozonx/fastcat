@@ -4,6 +4,7 @@ import { normalizeAppSettings, normalizeWorkspaceSettings } from './normalizers/
 import { normalizeHotkeys } from './normalizers/hotkeys';
 import { normalizeUserPresets } from './normalizers/presets';
 import {
+  normalizeDeleteWithoutConfirmation,
   normalizeIntegrationsSettings,
   normalizeMouseSettings,
   normalizeOpenLastProjectOnStart,
@@ -27,6 +28,7 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
   return {
     locale: normalizeLocale(input),
     openLastProjectOnStart: normalizeOpenLastProjectOnStart(input),
+    deleteWithoutConfirmation: normalizeDeleteWithoutConfirmation(input),
     timeline: normalizeTimelineSettings(input),
     stopFrames: normalizeStopFramesSettings(input),
     hotkeys,

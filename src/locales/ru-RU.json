@@ -993,6 +993,7 @@
       "codecUnsupportedDesc": "Ваш браузер не поддерживает аппаратное ускорение для этого кодека. Производительность может быть снижена.",
       "codecUnsupportedTitle": "Кодек не поддерживается",
       "defaultTransitionDuration": "Длительность перехода по умолчанию (сек)",
+      "deleteWithoutConfirmation": "Удалять без подтверждения",
       "ephemeralTmpRootPath": "Путь для ephemeral tmp",
       "ephemeralTmpRootPathHelp": "Короткоживущие временные файлы задач. Оставьте пустым, чтобы использовать системную временную папку.",
       "hotkeysCaptureHint": "Ожидание комбинации клавиш (Esc для отмены)",
