@@ -112,7 +112,7 @@ const isReadonly = computed(
   () => projectStore.currentView === 'sound' || projectStore.currentView === 'export',
 );
 
-const monitorZoomLabel = computed(() => viewportRef.value?.zoomLabel ?? 'x1');
+const monitorZoomLabel = computed(() => (viewportRef.value as any)?.zoomLabel ?? 'x1');
 
 const props = withDefaults(
   defineProps<{
