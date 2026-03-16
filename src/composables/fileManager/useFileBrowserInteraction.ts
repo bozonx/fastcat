@@ -86,12 +86,12 @@ export function useFileBrowserInteraction({
 
   function handleSort(field: FileSortField) {
     if (filesPageStore.sortOption.field === field) {
-      filesPageStore.sortOption = {
+      filesPageStore.setSortOption({
         field,
         order: filesPageStore.sortOption.order === 'asc' ? 'desc' : 'asc',
-      };
+      });
     } else {
-      filesPageStore.sortOption = { field, order: 'asc' };
+      filesPageStore.setSortOption({ field, order: 'asc' });
     }
   }
 

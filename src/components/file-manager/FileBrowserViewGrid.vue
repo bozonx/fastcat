@@ -169,7 +169,7 @@ function isWorkspaceCommonRoot(entry: FsEntry): boolean {
         />
         <span
           v-else
-          class="text-center break-all line-clamp-2 px-1 transition-colors"
+          class="text-center break-all line-clamp-2 px-1 transition-colors border border-transparent rounded-sm"
           :class="[
             entry.kind === 'directory'
               ? isWorkspaceCommonRoot(entry)
@@ -192,9 +192,10 @@ function isWorkspaceCommonRoot(entry: FsEntry): boolean {
                 currentGridSizeName === 'm',
               'text-sm': currentGridSizeName === 'l' || currentGridSizeName === 'xl',
             },
+            isSelected(entry) ? 'hover:border-primary-500/50 cursor-text' : '',
           ]"
           :title="entry.name"
-          @dblclick.stop="emit('fileAction', 'rename', entry)"
+          @click="isSelected(entry) ? (emit('fileAction', 'rename', entry), $event.stopPropagation()) : undefined"
         >
           {{ entry.name }}
         </span>

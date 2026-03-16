@@ -76,6 +76,26 @@ function isSelected(entry: FsEntry): boolean {
 function isWorkspaceCommonRoot(entry: FsEntry): boolean {
   return entry.kind === 'directory' && entry.path === WORKSPACE_COMMON_PATH_PREFIX;
 }
+
+let renameTimer: ReturnType<typeof setTimeout> | null = null;
+
+function onNameClick(event: MouseEvent, entry: FsEntry) {
+  if (!isSelected(entry)) return;
+  event.stopPropagation();
+
+  if (event.detail === 1) {
+    renameTimer = setTimeout(() => {
+      emit('fileAction', 'rename', entry);
+    }, 250);
+  }
+}
+
+function onNameDblClick(event: MouseEvent, entry: FsEntry) {
+  if (renameTimer) {
+    clearTimeout(renameTimer);
+    renameTimer = null;
+  }
+}
 </script>
 
 <template>
@@ -296,7 +316,7 @@ function isWorkspaceCommonRoot(entry: FsEntry): boolean {
                 />
                 <span
                   v-else
-                  class="truncate max-w-50 transition-colors"
+                  class="truncate max-w-50 transition-colors border border-transparent rounded-sm px-1 -mx-1"
                   :class="[
                     isWorkspaceCommonRoot(entry) ? 'text-violet-300' : '',
                     entry.name.startsWith('.') ? 'opacity-30' : '',
@@ -308,9 +328,10 @@ function isWorkspaceCommonRoot(entry: FsEntry): boolean {
                     isGeneratingProxyInDirectory(entry)
                       ? 'text-amber-400!'
                       : '',
+                    isSelected(entry) ? 'hover:border-primary-500/50 cursor-text' : '',
                   ]"
                   :title="entry.name"
-                  @dblclick.stop="emit('fileAction', 'rename', entry)"
+                  @click="isSelected(entry) && $event.detail === 1 ? (emit('fileAction', 'rename', entry), $event.stopPropagation()) : undefined"
                 >
                   {{ entry.name }}
                 </span>
