@@ -42,6 +42,7 @@ const sampleRateOptions = computed(() => {
     ...(props.allowOriginalSampleRate ? [{ value: 0, label: originalLabel }] : []),
     { value: 44100, label: '44.1 kHz' },
     { value: 48000, label: '48 kHz' },
+    { value: 96000, label: '96 kHz' },
   ];
 });
 </script>
@@ -66,9 +67,10 @@ const sampleRateOptions = computed(() => {
         </label>
         <WheelNumberInput
           v-model="audioBitrateKbps"
-          :min="32"
+          :min="0"
           :step="16"
           :disabled="props.disabled"
+          :class="{ 'ring-2 ring-error ring-inset': audioBitrateKbps <= 0 }"
         />
       </div>
 

@@ -144,6 +144,16 @@ function onImageHeightChange(val: number) {
     image.value.width = clampPositiveInt(val * image.value.aspectRatio);
   }
 }
+
+const isFormValid = computed(() => {
+  if (mediaType.value === 'video') {
+    if (video.value.bitrateMbps <= 0) return false;
+    if (!video.value.excludeAudio && video.value.audioBitrateKbps <= 0) return false;
+  } else if (mediaType.value === 'audio') {
+    if (audio.value.onlyBitrateKbps <= 0) return false;
+  }
+  return true;
+});
 </script>
 
 <template>
@@ -276,6 +286,7 @@ function onImageHeightChange(val: number) {
           {{ t('common.cancel', 'Cancel') }}
         </UButton>
         <UButton ref="convertButtonRef" color="primary" autofocus
+          :disabled="!isFormValid"
           @click="startConversion">
           {{ t('videoEditor.export.convert', 'Convert') }}
         </UButton>
