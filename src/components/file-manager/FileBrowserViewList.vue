@@ -331,7 +331,8 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
                     isSelected(entry) ? 'hover:border-primary-500/50 cursor-text' : '',
                   ]"
                   :title="entry.name"
-                  @click="isSelected(entry) && $event.detail === 1 ? (emit('fileAction', 'rename', entry), $event.stopPropagation()) : undefined"
+                  @click="onNameClick($event, entry)"
+                  @dblclick="onNameDblClick($event, entry)"
                 >
                   {{ entry.name }}
                 </span>

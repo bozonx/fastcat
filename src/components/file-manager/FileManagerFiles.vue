@@ -43,9 +43,10 @@ function scrollToSelectedEntry(path: string): boolean {
 
 watch(
   () => uiStore.selectedFsEntry,
-  async (entry) => {
-    if (!entry?.path) return;
-    const path = entry.path;
+  async (newEntry) => {
+    if (!newEntry?.path) return;
+    const path = newEntry.path;
+
     await nextTick();
     requestAnimationFrame(() => {
       // First attempt — tree may not have re-rendered yet after toggleDirectory
@@ -55,6 +56,21 @@ watch(
       }
     });
   },
+);
+
+watch(
+  () => uiStore.scrollToFileTreeEntryTrigger,
+  async () => {
+    const path = uiStore.scrollToFileTreeEntryPath;
+    if (!path) return;
+    
+    await nextTick();
+    requestAnimationFrame(() => {
+      if (!scrollToSelectedEntry(path)) {
+        requestAnimationFrame(() => scrollToSelectedEntry(path));
+      }
+    });
+  }
 );
 
 const { onKeyDown: onContainerKeyDown } = useFocusableListNavigation({
