@@ -215,11 +215,6 @@ async function handleAddToProject() {
     }
 
     await timelineStore.requestTimelineSave({ immediate: true });
-    toast.add({
-      title: 'Success',
-      description: 'Clip added to timeline',
-      color: 'success',
-    });
   } catch (err: any) {
     toast.add({
       title: t('common.error', 'Error'),

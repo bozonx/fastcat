@@ -300,7 +300,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
         trackId: input.trackId,
         name: input.name,
         path: input.path,
-        durationUs: Math.round(Number(metadata?.duration || 0) * 1_000_000),
+        durationUs,
         isImage: isImageLike,
         startUs: input.startUs ?? 0,
         pseudo: input.pseudo,

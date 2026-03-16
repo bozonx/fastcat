@@ -36,6 +36,11 @@ const showLowSpeedWarning = computed(
 
 const saveButtonRef = ref<any>(null);
 
+const handleAfterEnter = () => {
+  const el = saveButtonRef.value?.$el || saveButtonRef.value;
+  el?.focus?.();
+};
+
 watch(() => props.open, (newValue) => {
   if (newValue) {
     nextTick(() => {
@@ -52,6 +57,7 @@ watch(() => props.open, (newValue) => {
     v-model:open="isOpen"
     :title="t('fastcat.timeline.speedModalTitle')"
     :description="t('fastcat.timeline.speedModalDescription')"
+    @after:enter="handleAfterEnter"
     :ui="{ content: 'sm:max-w-md' }"
   >
     <div class="flex flex-col gap-3">

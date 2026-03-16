@@ -103,31 +103,15 @@ function clearCache() {
       "
     >
       <WheelNumberInput
-        :model-value="
-          workspaceStore.userSettings.timeline.defaultTransitionDurationUs / 1000000
-        "
+        :model-value="workspaceStore.userSettings.timeline.defaultTransitionDurationUs / 1000000"
         :min="0.1"
         :max="10"
         :step="0.1"
         @update:model-value="
-          (v) => (workspaceStore.userSettings.timeline.defaultTransitionDurationUs = Math.round(v * 1000000))
-        "
-      />
-    </UFormField>
-
-    <UFormField
-      :label="t('videoEditor.settings.defaultStaticClipDuration', 'Default static clip duration (s)')"
-      :help="t('videoEditor.settings.defaultStaticClipDurationHint', 'Default duration for clips that do not have an intrinsic length (images, text, adjustments, etc.)')"
-    >
-      <WheelNumberInput
-        :model-value="
-          workspaceStore.userSettings.timeline.defaultStaticClipDurationUs / 1000000
-        "
-        :min="0.1"
-        :max="60"
-        :step="0.1"
-        @update:model-value="
-          (v) => (workspaceStore.userSettings.timeline.defaultStaticClipDurationUs = Math.round(v * 1000000))
+          (v) =>
+            (workspaceStore.userSettings.timeline.defaultTransitionDurationUs = Math.round(
+              v * 1000000,
+            ))
         "
       />
     </UFormField>
@@ -136,6 +120,31 @@ function clearCache() {
       <div class="text-xs font-semibold text-ui-text-muted uppercase tracking-wide">
         {{ t('videoEditor.settings.advancedSection', 'Advanced') }}
       </div>
+
+      <UFormField
+        :label="
+          t('videoEditor.settings.defaultStaticClipDuration', 'Default static clip duration (s)')
+        "
+        :help="
+          t(
+            'videoEditor.settings.defaultStaticClipDurationHint',
+            'Default duration for clips that do not have an intrinsic length (images, text, adjustments, etc.)',
+          )
+        "
+      >
+        <WheelNumberInput
+          :model-value="workspaceStore.userSettings.timeline.defaultStaticClipDurationUs / 1000000"
+          :min="0.1"
+          :max="60"
+          :step="0.1"
+          @update:model-value="
+            (v) =>
+              (workspaceStore.userSettings.timeline.defaultStaticClipDurationUs = Math.round(
+                v * 1000000,
+              ))
+          "
+        />
+      </UFormField>
 
       <UFormField
         :label="t('videoEditor.settings.stopFramesQuality', 'Stop frame quality')"
@@ -162,7 +171,12 @@ function clearCache() {
       </UFormField>
       <UFormField
         :label="t('videoEditor.settings.defaultAudioFadeCurveTitle', 'Default Fade Curve')"
-        :help="t('videoEditor.settings.defaultAudioFadeCurveHint', 'Default curve used for audio fades when you manually create a fade. (De-click always uses a short linear fade).')"
+        :help="
+          t(
+            'videoEditor.settings.defaultAudioFadeCurveHint',
+            'Default curve used for audio fades when you manually create a fade. (De-click always uses a short linear fade).',
+          )
+        "
       >
         <div class="flex items-center gap-1 rounded bg-ui-bg p-1 w-fit">
           <UButton

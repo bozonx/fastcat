@@ -92,6 +92,11 @@ const outputFileName = computed(() => {
 
 const convertButtonRef = ref<any>(null);
 
+const handleAfterEnter = () => {
+  const el = convertButtonRef.value?.$el || convertButtonRef.value;
+  el?.focus?.();
+};
+
 watch(isOpen, (newValue) => {
   if (newValue) {
     nextTick(() => {

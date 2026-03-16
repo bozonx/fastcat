@@ -32,6 +32,11 @@ function onSubmit() {
 
 const submitButtonRef = ref<any>(null);
 
+const handleAfterEnter = () => {
+  const el = submitButtonRef.value?.$el || submitButtonRef.value;
+  el?.focus?.();
+};
+
 watch(() => props.isTranscriptionModalOpen, (newValue) => {
   if (newValue) {
     nextTick(() => {

@@ -34,6 +34,11 @@ const isOpen = defineModel<boolean>('open', { required: true });
 
 const confirmButtonRef = ref<any>(null);
 
+const handleAfterEnter = () => {
+  const el = confirmButtonRef.value?.$el || confirmButtonRef.value;
+  el?.focus?.();
+};
+
 watch(isOpen, (newValue) => {
   if (newValue) {
     nextTick(() => {
@@ -67,7 +72,8 @@ const handleClose = () => {
 </script>
 
 <template>
-  <AppModal v-model:open="isOpen" :title="title" :ui="{ content: 'sm:max-w-lg' }">
+  <AppModal v-model:open="isOpen" :title="title"
+    @after:enter="handleAfterEnter" :ui="{ content: 'sm:max-w-lg' }">
     <div class="flex flex-col gap-4">
       <div v-if="icon || description" class="flex gap-4">
         <div v-if="icon" class="shrink-0">

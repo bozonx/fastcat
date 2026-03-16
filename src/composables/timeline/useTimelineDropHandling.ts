@@ -96,11 +96,11 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
     }
 
     if (params.kind !== 'file') {
-      return 5_000_000;
+      return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
     }
 
     const path = params.path;
-    if (!path) return 5_000_000;
+    if (!path) return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
 
     const metadata = mediaStore.mediaMetadata[path];
     if (metadata?.duration && Number.isFinite(metadata.duration) && metadata.duration > 0) {
@@ -108,7 +108,9 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
     }
 
     const mediaType = getMediaTypeFromFilename(path);
-    if (mediaType === 'image' || mediaType === 'text') return 5_000_000;
+    if (mediaType === 'image' || mediaType === 'text') {
+      return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
+    }
 
     return 2_000_000;
   }
@@ -224,7 +226,7 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
     }
 
     const targetTrackId = getCompatibleTrackId(context.baseTrackId, 'video') ?? context.baseTrackId;
-    const durationUs = 5_000_000;
+    const durationUs = workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
     const nextStartUs = resolveInsertStartUs({
       trackId: targetTrackId,
       startUs: context.currentStartUs,
@@ -307,7 +309,7 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
       };
     }
 
-    const durationUs = 5_000_000;
+    const durationUs = workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
     const text = await file.text();
     const nextStartUs = resolveInsertStartUs({
       trackId: targetTrackId,

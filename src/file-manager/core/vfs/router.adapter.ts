@@ -107,7 +107,13 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
     }
 
     // Cross-adapter move
-    await this.copyFile(sourcePath, targetPath);
+    const meta = await sourceRoute.adapter.getMetadata(sourceRoute.mappedPath);
+    if (meta?.kind === 'directory') {
+      await this.copyDirectory(sourcePath, targetPath);
+    } else {
+      await this.copyFile(sourcePath, targetPath);
+    }
+
     await sourceRoute.adapter.deleteEntry(sourceRoute.mappedPath, true);
   }
 
