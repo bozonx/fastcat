@@ -337,8 +337,12 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     scheduleBuild,
     scheduleRender,
     scheduleLayoutUpdate,
-    setAudioEngineMasterVolume: audioEngine.setMasterVolume,
-    setAudioEngineMonitorVolume: audioEngine.setMonitorVolume,
+    setAudioEngineMasterVolume: (volume) => {
+      audioEngine.setMasterVolume(volume);
+    },
+    setAudioEngineMonitorVolume: (volume) => {
+      audioEngine.setMonitorVolume(volume);
+    },
   });
 
   onMounted(() => {

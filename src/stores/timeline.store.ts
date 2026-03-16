@@ -333,6 +333,16 @@ export const useTimelineStore = defineStore('timeline', () => {
     { flush: 'post' },
   );
 
+  watch(
+    () => timelineDoc.value?.metadata?.fastcat?.masterGain,
+    (next) => {
+      if (timelineDoc.value && typeof next === 'number') {
+        masterGain.value = next;
+      }
+    },
+    { flush: 'post' },
+  );
+
   async function requestTimelineSave(options?: { immediate?: boolean }) {
     await persistence.requestTimelineSave(options);
   }
