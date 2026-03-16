@@ -63,7 +63,7 @@ const { t } = useI18n();
 const isAudioDisabled = computed(() => props.disabled || !props.hasAudio);
 
 const filteredVideoCodecOptions = computed(() => {
-  return props.videoCodecOptions.filter((opt) => {
+  return props.videoCodecOptions.filter((opt: VideoCodecOptionResolved) => {
     if (outputFormat.value === 'mp4') {
       const v = opt.value.toLowerCase();
       if (v.startsWith('hev1') || v.startsWith('hvc1')) {
@@ -77,7 +77,7 @@ const filteredVideoCodecOptions = computed(() => {
 const isBitrateModeTouched = ref(false);
 
 function getDefaultBitrateModeByCodec(codec: string): 'constant' | 'variable' {
-  const value = String(codec || '').toLowerCase();
+  const value = (codec || '').toLowerCase();
   if (value.startsWith('avc1')) return 'constant';
   return 'variable';
 }
@@ -85,7 +85,7 @@ function getDefaultBitrateModeByCodec(codec: string): 'constant' | 'variable' {
 function getEffectiveVideoCodec(): string {
   if (outputFormat.value === 'webm') return 'vp09.00.10.08';
   if (outputFormat.value === 'mkv') return 'av01.0.05M.08';
-  return String(videoCodec.value || '');
+  return videoCodec.value || '';
 }
 
 const codecHint = computed(() => {
@@ -176,7 +176,7 @@ watch(
       <div class="w-full">
         <USelectMenu
           :model-value="
-            (filteredVideoCodecOptions.find((o) => o.value === videoCodec) || videoCodec) as any
+            (filteredVideoCodecOptions.find((o: VideoCodecOptionResolved) => o.value === videoCodec.value) || videoCodec.value) as any
           "
           :items="filteredVideoCodecOptions"
           value-key="value"
@@ -247,7 +247,7 @@ watch(
       v-if="!excludeAudio && !props.hideAudioBitrate"
       class="flex flex-col gap-4"
     >
-      <div v-if="outputFormat === 'mp4'" class="flex flex-col gap-2">
+      <div v-if="outputFormat === 'mp4' && !props.showAudioAdvanced" class="flex flex-col gap-2">
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.export.audioCodec', 'Audio codec') }}
         </label>
@@ -260,7 +260,18 @@ watch(
         </div>
       </div>
 
-      <div class="flex flex-col gap-2">
+      <FileConversionAudioSettings
+        v-if="props.showAudioAdvanced"
+        v-model:audio-bitrate-kbps="audioBitrateKbps"
+        v-model:audio-channels="audioChannels"
+        v-model:audio-sample-rate="audioSampleRate"
+        :original-sample-rate="props.originalAudioSampleRate"
+        :allow-original-audio-sample-rate="props.allowOriginalAudioSampleRate"
+        :hide-sample-rate="props.hideAudioSampleRate"
+        :disabled="props.disabled"
+      />
+
+      <div v-else class="flex flex-col gap-2">
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.export.audioBitrate', 'Audio bitrate (Kbps)') }}
         </label>
@@ -274,32 +285,6 @@ watch(
           }}
         </span>
       </div>
-    </div>
-
-    <FileConversionAudioSettings
-      v-if="!excludeAudio && props.showAudioAdvanced"
-      v-model:audio-bitrate-kbps="audioBitrateKbps"
-      v-model:audio-channels="audioChannels"
-      v-model:audio-sample-rate="audioSampleRate"
-      :original-sample-rate="props.originalAudioSampleRate"
-      :allow-original-audio-sample-rate="props.allowOriginalAudioSampleRate"
-      :hide-sample-rate="props.hideAudioSampleRate"
-      :disabled="props.disabled"
-    />
-
-    <div v-else-if="!excludeAudio && !props.hideAudioBitrate" class="flex flex-col gap-2">
-      <label class="text-xs text-ui-text-muted font-medium">
-        {{ t('videoEditor.export.audioBitrate', 'Audio bitrate (Kbps)') }}
-      </label>
-      <WheelNumberInput v-model="audioBitrateKbps" :min="32" :step="16" />
-      <span class="text-xs text-ui-text-muted">
-        {{
-          t(
-            'videoEditor.export.audioBitrateHelp',
-            'Higher bitrate = better quality and larger file',
-          )
-        }}
-      </span>
     </div>
 
     <template v-if="props.showMetadata && outputFormat !== 'webm'">

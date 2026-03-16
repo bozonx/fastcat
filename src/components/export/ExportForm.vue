@@ -124,6 +124,7 @@ const {
 function getPhaseLabel() {
   if (exportPhase.value === 'encoding') return t('videoEditor.export.phaseEncoding', 'Encoding');
   if (exportPhase.value === 'saving') return t('videoEditor.export.phaseSaving', 'Saving');
+  if (exportPhase.value === 'preparing') return t('videoEditor.export.phasePreparing', 'Preparing');
   return '';
 }
 
@@ -140,7 +141,7 @@ watch(
     isExporting.value = false;
     cancelRequested.value = false;
     saveAsDefaults.value = false;
-    exportOnlySelectionRange.value = true;
+    exportOnlySelectionRange.value = !!projectStore.timelineDoc?.metadata?.fastcat?.selectionRange;
 
     await loadCodecSupport();
 
@@ -154,7 +155,6 @@ watch(
     bitrateMode.value = projectStore.projectSettings.exportDefaults.encoding.bitrateMode;
     keyframeIntervalSec.value =
       projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec;
-    exportAlpha.value = projectStore.projectSettings.exportDefaults.encoding.exportAlpha;
     exportAlpha.value = projectStore.projectSettings.exportDefaults.encoding.exportAlpha;
     metadataTitle.value = projectStore.projectMeta?.title || '';
     metadataDescription.value = projectStore.projectMeta?.description || '';
@@ -527,7 +527,7 @@ async function handleConfirm() {
             v-model:metadata-tags="metadataTags"
             :show-audio-advanced="true"
             :hide-audio-sample-rate="true"
-            :show-metadata="false"
+            :show-metadata="true"
             :show-presets="true"
             :disabled="isExporting"
             :has-audio="true"
@@ -536,31 +536,6 @@ async function handleConfirm() {
       </div>
 
       <div class="h-px bg-ui-border"></div>
-
-      <!-- Metadata Settings -->
-      <div class="space-y-4">
-        <UFormField :label="t('videoEditor.export.metadataTitle', 'Title')">
-          <UInput v-model="metadataTitle" class="w-full" :disabled="isExporting" />
-        </UFormField>
-
-        <div class="grid grid-cols-2 gap-4">
-          <UFormField :label="t('videoEditor.export.metadataAuthor', 'Author')">
-            <UInput v-model="metadataAuthor" class="w-full" :disabled="isExporting" />
-          </UFormField>
-          <UFormField :label="t('videoEditor.export.metadataTags', 'Tags')">
-            <UInput v-model="metadataTags" class="w-full" :disabled="isExporting" />
-          </UFormField>
-        </div>
-
-        <UFormField :label="t('videoEditor.export.metadataDescription', 'Description')">
-          <UTextarea
-            v-model="metadataDescription"
-            :rows="2"
-            class="w-full"
-            :disabled="isExporting"
-          />
-        </UFormField>
-      </div>
 
       <div class="h-px bg-ui-border"></div>
 

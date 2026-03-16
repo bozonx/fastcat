@@ -267,6 +267,7 @@ export function useTimelineExport() {
     activeExportTaskId.value = exportTaskId;
     cancelRequested.value = false;
 
+    exportPhase.value = 'preparing';
     const doc = timelineStore.timelineDoc;
     const allVideoTracks = doc?.tracks?.filter((track) => track.kind === 'video') ?? [];
     const allAudioTracks = doc?.tracks?.filter((track) => track.kind === 'audio') ?? [];
@@ -344,7 +345,7 @@ export function useTimelineExport() {
       audioSampleRate: audioSampleRate.value,
     };
     try {
-      await (client as any).exportTimeline(
+      await client.exportTimeline(
         fileHandle,
         finalOptions,
         videoPayload,

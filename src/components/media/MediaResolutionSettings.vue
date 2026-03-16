@@ -3,16 +3,17 @@ import { computed, watch } from 'vue';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 import FpsInputWithPresets from '~/components/ui/FpsInputWithPresets.vue';
 
+const width = defineModel<number>('width', { required: true });
+const height = defineModel<number>('height', { required: true });
+const fps = defineModel<number>('fps', { required: true });
+const resolutionFormat = defineModel<string>('resolutionFormat', { required: true });
+const orientation = defineModel<'landscape' | 'portrait'>('orientation', { required: true });
+const aspectRatio = defineModel<string>('aspectRatio', { required: true });
+const isCustomResolution = defineModel<boolean>('isCustomResolution', { required: true });
+const sampleRate = defineModel<number>('sampleRate', { default: 48000 });
+
 const props = withDefaults(
   defineProps<{
-    width: number;
-    height: number;
-    fps: number;
-    resolutionFormat: string;
-    orientation: 'landscape' | 'portrait';
-    aspectRatio: string;
-    isCustomResolution: boolean;
-    sampleRate?: number;
     disabled?: boolean;
     showAudioSettings?: boolean;
     disableAspectRatio?: boolean;
@@ -23,17 +24,6 @@ const props = withDefaults(
     disableAspectRatio: false,
   },
 );
-
-const emit = defineEmits<{
-  'update:width': [value: number];
-  'update:height': [value: number];
-  'update:fps': [value: number];
-  'update:resolutionFormat': [value: string];
-  'update:orientation': [value: 'landscape' | 'portrait'];
-  'update:aspectRatio': [value: string];
-  'update:isCustomResolution': [value: boolean];
-  'update:sampleRate': [value: number];
-}>();
 
 const { t } = useI18n();
 
@@ -88,54 +78,14 @@ const ratios: Record<string, number> = {
   '21:9': 21 / 9,
 };
 
-const localFormat = computed({
-  get: () => props.resolutionFormat,
-  set: (val) => emit('update:resolutionFormat', val),
-});
-
-const localOrientation = computed({
-  get: () => props.orientation,
-  set: (val) => emit('update:orientation', val),
-});
-
-const localAspectRatio = computed({
-  get: () => props.aspectRatio,
-  set: (val) => emit('update:aspectRatio', val),
-});
-
-const localIsCustom = computed({
-  get: () => props.isCustomResolution,
-  set: (val) => emit('update:isCustomResolution', val),
-});
-
-const localWidth = computed({
-  get: () => props.width,
-  set: (val) => emit('update:width', val),
-});
-
-const localHeight = computed({
-  get: () => props.height,
-  set: (val) => emit('update:height', val),
-});
-
-const localFps = computed({
-  get: () => props.fps,
-  set: (val) => emit('update:fps', val),
-});
-
-const localSampleRate = computed({
-  get: () => props.sampleRate ?? 48000,
-  set: (val) => emit('update:sampleRate', val),
-});
-
-function calculateDimensions(format: string, orientation: string, ratioStr: string) {
+function calculateDimensions(format: string, orientationValue: string, ratioStr: string) {
   const base = bases[format] || 1080;
   const ratio = ratios[ratioStr] || 16 / 9;
 
   let w = 0;
   let h = 0;
 
-  if (orientation === 'landscape') {
+  if (orientationValue === 'landscape') {
     h = base;
     w = Math.round(base * ratio);
   } else {
@@ -152,28 +102,25 @@ function calculateDimensions(format: string, orientation: string, ratioStr: stri
 
 // Auto-calculate width/height when using preset formats
 watch(
-  [localFormat, localOrientation, localAspectRatio, localIsCustom],
-  ([format, orientation, ratioStr, isCustom]) => {
+  [resolutionFormat, orientation, aspectRatio, isCustomResolution],
+  ([format, orientationValue, ratioStr, isCustom]) => {
     if (!isCustom) {
-      const { w, h } = calculateDimensions(format, orientation, ratioStr);
-      if (props.width !== w) emit('update:width', w);
-      if (props.height !== h) emit('update:height', h);
+      const { w, h } = calculateDimensions(format, orientationValue, ratioStr);
+      if (width.value !== w) width.value = w;
+      if (height.value !== h) height.value = h;
     }
   },
   { immediate: true },
 );
 
 // Auto-detect orientation and ratio when custom resolution is modified
-watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
+watch([width, height, isCustomResolution], ([w, h, isCustom]) => {
   if (isCustom) {
     const isPortrait = h > w;
     const newOrientation = isPortrait ? 'portrait' : 'landscape';
-    if (props.orientation !== newOrientation) {
-      emit('update:orientation', newOrientation);
+    if (orientation.value !== newOrientation) {
+      orientation.value = newOrientation;
     }
-
-    // We could try to guess aspect ratio, but it's not strictly necessary for custom mode
-    // Just keep the current values, as they are ignored in calculation when isCustom = true
   }
 });
 </script>
