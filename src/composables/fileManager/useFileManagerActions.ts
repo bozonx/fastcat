@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -51,6 +52,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
   const selectionStore = useSelectionStore();
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
   const projectStore = useProjectStore();
+  const workspaceStore = useWorkspaceStore();
   const { removeFileTabByPath } = useProjectTabsStore();
 
   const isDeleteConfirmModalOpen = ref(false);
@@ -264,7 +266,12 @@ export function useFileManagerActions(actions: FileManagerActions) {
     },
     delete: (entry) => {
       const entries = Array.isArray(entry) ? entry : [entry];
-      openDeleteConfirmModal(entries);
+      if (workspaceStore.userSettings.deleteWithoutConfirmation) {
+        deleteTargets.value = entries;
+        void handleDeleteConfirm();
+      } else {
+        openDeleteConfirmModal(entries);
+      }
     },
     createProxy: async (entry) => {
       const entries = Array.isArray(entry) ? entry : [entry];

@@ -79,7 +79,7 @@ export function useExportProcess(
 
     const masterGain = timelineStore.masterGain;
     const audioClips = (
-      await toWorkerTimelineClips(effectiveAudioItems, projectStore, {
+      await toWorkerTimelineClips(effectiveAudioItems, projectStore, workspaceStore, {
         trackKind: 'audio',
       })
     ).map((clip) => ({

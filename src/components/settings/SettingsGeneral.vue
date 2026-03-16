@@ -144,6 +144,13 @@ function clearCache() {
           :step="1"
         />
       </UFormField>
+
+      <label class="flex items-center gap-3 cursor-pointer">
+        <UCheckbox v-model="workspaceStore.userSettings.deleteWithoutConfirmation" />
+        <span class="text-sm text-ui-text">
+          {{ t('videoEditor.settings.deleteWithoutConfirmation', 'Delete without confirmation') }}
+        </span>
+      </label>
       
       <UFormField
         :label="t('videoEditor.settings.defaultAudioFadeCurveTitle', 'Default Fade Curve')"

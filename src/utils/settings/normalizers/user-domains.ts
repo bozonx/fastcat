@@ -27,6 +27,14 @@ export function normalizeOpenLastProjectOnStart(input: Record<string, unknown>):
   return DEFAULT_USER_SETTINGS.openLastProjectOnStart;
 }
 
+export function normalizeDeleteWithoutConfirmation(input: Record<string, unknown>): boolean {
+  if (typeof input.deleteWithoutConfirmation === 'boolean') {
+    return input.deleteWithoutConfirmation;
+  }
+
+  return DEFAULT_USER_SETTINGS.deleteWithoutConfirmation;
+}
+
 export function normalizeTimelineSettings(
   input: Record<string, unknown>,
 ): FastCatUserSettings['timeline'] {

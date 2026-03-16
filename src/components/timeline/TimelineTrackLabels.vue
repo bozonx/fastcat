@@ -73,7 +73,8 @@ const trackToDeleteId = ref<string | null>(null);
 const selectedTrack = computed(() => props.tracks.find((t) => t.id === trackToDeleteId.value));
 
 function requestDeleteTrack(track: TimelineTrack) {
-  if (track.items.length > 0) {
+  const skipConfirm = workspaceStore.userSettings.deleteWithoutConfirmation;
+  if (track.items.length > 0 && !skipConfirm) {
     trackToDeleteId.value = track.id;
     isConfirmDeleteOpen.value = true;
   } else {

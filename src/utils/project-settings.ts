@@ -31,7 +31,6 @@ export interface FastCatProjectSettings {
     isCustomResolution: boolean;
     sampleRate: number;
     audioDeclickDurationUs: number;
-    defaultAudioFadeCurve: 'linear' | 'logarithmic';
     isAutoSettings: boolean;
   };
   exportDefaults: {
@@ -69,7 +68,6 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
     isCustomResolution: false,
     sampleRate: 48000,
     audioDeclickDurationUs: 5_000,
-    defaultAudioFadeCurve: 'logarithmic',
     isAutoSettings: true,
   },
   exportDefaults: {
@@ -121,7 +119,6 @@ function getProjectSettingsFromUserDefaults(
       isCustomResolution: projectPreset.isCustomResolution,
       sampleRate: projectPreset.sampleRate,
       audioDeclickDurationUs: userSettings.projectDefaults.audioDeclickDurationUs,
-      defaultAudioFadeCurve: userSettings.projectDefaults.defaultAudioFadeCurve,
       isAutoSettings: true,
     },
     exportDefaults: {
@@ -201,11 +198,7 @@ export function normalizeProjectSettings(
       ? Math.round(Math.min(1_000_000, Math.max(0, audioDeclickDurationUsRaw)))
       : defaultSettings.project.audioDeclickDurationUs;
 
-  const defaultAudioFadeCurve =
-    projectInput.defaultAudioFadeCurve === 'linear' ||
-    projectInput.defaultAudioFadeCurve === 'logarithmic'
-      ? projectInput.defaultAudioFadeCurve
-      : defaultSettings.project.defaultAudioFadeCurve;
+  // Removed defaultAudioFadeCurve from project settings, now using user settings during clip creation
 
   const previewResolution = Number(monitorInput.previewResolution);
   const useProxy = monitorInput.useProxy;
@@ -302,7 +295,7 @@ export function normalizeProjectSettings(
           : preset.isCustomResolution,
       sampleRate,
       audioDeclickDurationUs,
-      defaultAudioFadeCurve,
+
       isAutoSettings:
         input.project?.isAutoSettings !== undefined
           ? Boolean(input.project.isAutoSettings)

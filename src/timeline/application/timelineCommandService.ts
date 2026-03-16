@@ -36,14 +36,16 @@ export interface TimelineCommandServiceDeps {
   getOrFetchMetadataByPath: (path: string) => Promise<TimelineMediaMetadata | null>;
   getMediaMetadataByPath: (path: string) => TimelineMediaMetadata | null;
   fetchMediaMetadataByPath: (path: string) => Promise<TimelineMediaMetadata | null>;
-  getUserSettings: () => { optimization: { autoCreateProxies: boolean } };
+  getUserSettings: () => {
+    optimization: { autoCreateProxies: boolean };
+    projectDefaults: { defaultAudioFadeCurve: import('../types').AudioFadeCurve };
+  };
   getProjectSettings: () => {
     project: {
       width: number;
       height: number;
       fps: number;
       isAutoSettings: boolean;
-      defaultAudioFadeCurve: import('../types').AudioFadeCurve;
     };
   };
   updateProjectSettings: (settings: {
@@ -304,8 +306,8 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
         isImage: isImageLike,
         startUs: input.startUs ?? 0,
         pseudo: input.pseudo,
-        audioFadeInCurve: deps.getProjectSettings().project.defaultAudioFadeCurve,
-        audioFadeOutCurve: deps.getProjectSettings().project.defaultAudioFadeCurve,
+        audioFadeInCurve: deps.getUserSettings().projectDefaults.defaultAudioFadeCurve,
+        audioFadeOutCurve: deps.getUserSettings().projectDefaults.defaultAudioFadeCurve,
       },
       options,
     );
@@ -423,8 +425,8 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
         startUs: input.startUs ?? 0,
         durationUs,
         pseudo: input.pseudo,
-        audioFadeInCurve: deps.getProjectSettings().project.defaultAudioFadeCurve,
-        audioFadeOutCurve: deps.getProjectSettings().project.defaultAudioFadeCurve,
+        audioFadeInCurve: deps.getUserSettings().projectDefaults.defaultAudioFadeCurve,
+        audioFadeOutCurve: deps.getUserSettings().projectDefaults.defaultAudioFadeCurve,
       },
       options,
     );

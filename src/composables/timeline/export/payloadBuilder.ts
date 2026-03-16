@@ -145,7 +145,7 @@ async function buildVideoTrackTree(
         audioFadeInCurve: (item as any).audioFadeInCurve,
         audioFadeOutCurve: (item as any).audioFadeOutCurve,
         audioDeclickDurationUs: params.projectStore.projectSettings.project.audioDeclickDurationUs,
-        defaultAudioFadeCurve: params.projectStore.projectSettings.project.defaultAudioFadeCurve,
+        defaultAudioFadeCurve: params.workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve,
         opacity: item.opacity,
         blendMode: item.blendMode,
         effects: itemEffects.length > 0 ? itemEffects : undefined,
@@ -374,6 +374,7 @@ export function trimWorkerClipToRange(
 export async function toWorkerTimelineClips(
   items: TimelineTrackItem[],
   projectStore: ReturnType<typeof useProjectStore>,
+  workspaceStore: ReturnType<typeof useWorkspaceStore>,
   options?: {
     layer?: number;
     trackKind?: 'video' | 'audio';
@@ -425,7 +426,7 @@ export async function toWorkerTimelineClips(
       audioFadeInCurve: (item as any).audioFadeInCurve,
       audioFadeOutCurve: (item as any).audioFadeOutCurve,
       audioDeclickDurationUs: projectStore.projectSettings.project.audioDeclickDurationUs,
-      defaultAudioFadeCurve: projectStore.projectSettings.project.defaultAudioFadeCurve,
+      defaultAudioFadeCurve: workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve,
       opacity: combinedOpacity,
       blendMode: combinedBlendMode,
       effects: combinedEffects.length > 0 ? combinedEffects : undefined,
@@ -494,7 +495,7 @@ export async function toWorkerTimelineClips(
                 const combinedTrackEffects =
                   combinedEffects.length > 0 ? [...trackEffects, ...combinedEffects] : trackEffects;
 
-                const nestedWorkerClips = await toWorkerTimelineClips(track.items, projectStore, {
+                const nestedWorkerClips = await toWorkerTimelineClips(track.items, projectStore, workspaceStore, {
                   layer: nestedLayer,
                   trackKind: 'video',
                   visitedPaths: nextVisited,
@@ -578,6 +579,7 @@ export async function toWorkerTimelineClips(
               const nestedWorkerClips = await toWorkerTimelineClips(
                 nestedAudioItems,
                 projectStore,
+                workspaceStore,
                 {
                   layer: 0,
                   trackKind: 'audio',
