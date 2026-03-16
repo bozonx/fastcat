@@ -8,6 +8,7 @@ import type {
 import type { TimelineCommand } from '~/timeline/commands';
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
 import type { FsEntry } from '~/types/fs';
+import { normalizeWorkspaceFilePath } from '~/utils/workspace-common';
 
 interface TimelineStoreActions {
   timelineDoc: TimelineDocument | null;
@@ -15,6 +16,8 @@ interface TimelineStoreActions {
   fps: number;
   applyTimeline: (cmd: TimelineCommand, options?: any) => void | Promise<void>;
   batchApplyTimeline: (cmds: TimelineCommand[], options?: any) => void | Promise<void>;
+  loadTimeline: () => Promise<void>;
+  loadTimelineMetadata: () => Promise<void> | void;
   updateClipProperties: (
     trackId: string,
     itemId: string,
@@ -39,6 +42,7 @@ interface UiStoreActions {
 
 interface EditorViewStoreActions {
   goToFiles: () => void;
+  goToCut: () => void;
 }
 
 interface FilesPageStoreActions {
@@ -251,7 +255,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
   async function handleSelectInFileManager() {
     const clip = options.clip.value;
     if (clip.clipType !== 'media' || !clip.source?.path) return;
-    const path = clip.source.path;
+    const path = normalizeWorkspaceFilePath(clip.source.path);
     const parentPath = path.split('/').slice(0, -1).join('/');
 
     if (projectStore.currentView && projectStore.currentView !== 'files') {
@@ -277,6 +281,13 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     const entry = fileManager.findEntryByPath(path);
     if (!entry) return;
 
+    if (parentPath) {
+      const parentEntry = fileManager.findEntryByPath(parentPath);
+      if (parentEntry && parentEntry.kind === 'directory') {
+        filesPageStore.selectFolder(parentEntry);
+      }
+    }
+
     uiStore.selectedFsEntry = {
       kind: entry.kind,
       name: entry.name,
@@ -291,20 +302,18 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     };
     selectionStore.selectFsEntry(entry);
 
-    if (parentPath) {
-      const parentEntry = fileManager.findEntryByPath(parentPath);
-      if (parentEntry && parentEntry.kind === 'directory') {
-        filesPageStore.selectFolder(parentEntry);
-      }
-    }
-
     focusStore.setTempFocus('left');
   }
 
   async function handleOpenNestedTimeline() {
     const clip = options.clip.value;
     if (clip.clipType !== 'timeline' || !clip.source?.path) return;
-    await projectStore.openTimelineFile(clip.source.path);
+    const timelinePath = normalizeWorkspaceFilePath(clip.source.path);
+    if (!timelinePath.toLowerCase().endsWith('.otio')) return;
+    await projectStore.openTimelineFile(timelinePath);
+    await timelineStore.loadTimeline();
+    void timelineStore.loadTimelineMetadata();
+    editorViewStore.goToCut();
   }
 
   return {
