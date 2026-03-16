@@ -82,9 +82,10 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
 
   const prevSourceEndUs = prevSourceStartUs + prevSourceDurationUs;
 
-  // For clips with fixed source duration (non-image media), use actual source limits.
+  // For clips with fixed source duration (media and nested timelines), use actual source limits.
   // For infinite-source clips (images, virtual clips), allow unlimited expansion.
-  const hasFixedSourceDuration = item.clipType === 'media' && !item.isImage;
+  const hasFixedSourceDuration =
+    (item.clipType === 'media' && !item.isImage) || item.clipType === 'timeline';
   const maxSourceDurationUs = hasFixedSourceDuration
     ? Math.max(0, Math.round(item.sourceDurationUs))
     : Number.POSITIVE_INFINITY;
