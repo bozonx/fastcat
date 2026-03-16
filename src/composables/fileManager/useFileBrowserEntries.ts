@@ -114,37 +114,43 @@ export function useFileBrowserEntries({
 
   const sortedEntries = computed(() => {
     const arr = [...folderEntries.value] as ExtendedFsEntry[];
-    const folders = arr.filter((e) => e.kind === 'directory');
-    const files = arr.filter((e) => e.kind === 'file');
-
     const { field, order } = filesPageStore.sortOption;
     const modifier = order === 'asc' ? 1 : -1;
 
-    const compare = (a: any, b: any) => {
+    const compare = (a: string | number, b: string | number) => {
       if (a === b) return 0;
       return a > b ? modifier : -modifier;
     };
 
-    folders.sort((a, b) => compare(a.name.toLowerCase(), b.name.toLowerCase()));
-
-    files.sort((a, b) => {
+    const getSortValue = (entry: ExtendedFsEntry): string | number => {
       switch (field) {
         case 'name':
-          return compare(a.name.toLowerCase(), b.name.toLowerCase());
+          return entry.name.toLowerCase();
         case 'type':
-          return compare(a.mimeType || '', b.mimeType || '');
+          return entry.kind === 'directory' ? 'folder' : (entry.mimeType ?? '');
         case 'size':
-          return compare(a.size || 0, b.size || 0);
+          return entry.size ?? 0;
         case 'modified':
-          return compare(a.lastModified || 0, b.lastModified || 0);
+          return entry.lastModified ?? 0;
         case 'created':
-          return compare(a.created || 0, b.created || 0);
+          return entry.created ?? 0;
         default:
-          return 0;
+          return entry.name.toLowerCase();
       }
-    });
+    };
 
-    return [...folders, ...files];
+    return arr.sort((a, b) => {
+      if (a.kind !== b.kind) {
+        return a.kind === 'directory' ? -1 : 1;
+      }
+
+      const result = compare(getSortValue(a), getSortValue(b));
+      if (result !== 0) {
+        return result;
+      }
+
+      return compare(a.name.toLowerCase(), b.name.toLowerCase());
+    });
   });
 
   const { thumbnails: videoThumbnails } = useFileManagerThumbnails(sortedEntries);

@@ -34,19 +34,25 @@ export class TimelineActiveClipProcessor {
     for (const clip of activeClips) {
       params.syncTransitionFilter(clip, timeUs);
       const effectiveOpacity = params.computeTransitionOpacity(clip, timeUs);
-      clip.sprite.alpha = effectiveOpacity;
-      clip.sprite.blendMode = clip.blendMode ?? 'normal';
+      if (clip.sprite) {
+        clip.sprite.alpha = effectiveOpacity;
+        clip.sprite.blendMode = clip.blendMode ?? 'normal';
+      }
 
       params.applyClipEffects(clip);
 
-      if (clip.clipKind === 'image' || clip.clipKind === 'solid' || clip.clipKind === 'adjustment') {
-        clip.sprite.visible = true;
+      if (
+        clip.clipKind === 'image' ||
+        clip.clipKind === 'solid' ||
+        clip.clipKind === 'adjustment'
+      ) {
+        if (clip.sprite) clip.sprite.visible = true;
         continue;
       }
 
       if (clip.clipKind === 'hud') {
         params.drawHudClip(clip);
-        clip.sprite.visible = true;
+        if (clip.sprite) clip.sprite.visible = true;
         continue;
       }
 
@@ -55,7 +61,7 @@ export class TimelineActiveClipProcessor {
           params.drawShapeClip(clip, { width, height });
           clip.shapeDirty = false;
         }
-        clip.sprite.visible = true;
+        if (clip.sprite) clip.sprite.visible = true;
         continue;
       }
 
@@ -64,7 +70,7 @@ export class TimelineActiveClipProcessor {
           params.drawTextClip(clip, { width, height });
           clip.textDirty = false;
         }
-        clip.sprite.visible = true;
+        if (clip.sprite) clip.sprite.visible = true;
         continue;
       }
 
@@ -73,7 +79,7 @@ export class TimelineActiveClipProcessor {
       const speed = Math.abs(speedRaw);
       const reversed = speedRaw < 0;
       if (localTimeUs < 0 || localTimeUs >= clip.durationUs) {
-        clip.sprite.visible = false;
+        if (clip.sprite) clip.sprite.visible = false;
         continue;
       }
 
@@ -92,7 +98,7 @@ export class TimelineActiveClipProcessor {
       }
 
       if (!clip.sink) {
-        clip.sprite.visible = false;
+        if (clip.sprite) clip.sprite.visible = false;
         continue;
       }
 
