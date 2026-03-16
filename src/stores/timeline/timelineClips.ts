@@ -39,6 +39,7 @@ export interface TimelineClipsDeps {
   deleteTrack: (trackId: string, options?: { allowNonEmpty?: boolean }) => void;
   selectTrack: (trackId: string | null) => void;
   getHotkeyTargetClip: () => { trackId: string; itemId: string } | null;
+  defaultStaticClipDurationUs: number;
 }
 
 export interface TimelineClipsApi {
@@ -615,7 +616,7 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
         startUs: input.startUs,
         clipType: input.clipType,
         name: input.name,
-        durationUs: input.durationUs,
+        durationUs: input.durationUs ?? deps.defaultStaticClipDurationUs,
         backgroundColor: input.backgroundColor,
         text: input.text,
         style: input.style,

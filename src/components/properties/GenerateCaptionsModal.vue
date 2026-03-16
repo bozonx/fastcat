@@ -82,12 +82,19 @@ watch(
 );
 
 const generateButtonRef = ref<any>(null);
+
+const handleAfterEnter = () => {
+  const el = generateButtonRef.value?.$el || generateButtonRef.value;
+  el?.focus?.();
+};
+
 </script>
 
 <template>
   <AppModal
     v-model:open="isOpen"
     :title="t('fastcat.captions.modalTitle', 'Generate captions')"
+    @after:enter="handleAfterEnter"
     :description="
       t(
         'fastcat.captions.modalDescription',

@@ -91,7 +91,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
   async function handleCreateAutoFolder(targetDirPath: string, existingNames: string[]) {
     const usedNames = new Set(existingNames);
 
-    const baseName = t('common.folderBaseName', 'Папка');
+    const baseName = t('common.folderBaseName', 'Folder');
     let index = 1;
     let newName = '';
     do {

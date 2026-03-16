@@ -127,24 +127,41 @@ watch(
   () => {
     if (props.depth !== 0) return;
     const selected = selectionStore.selectedEntity;
-    if (!selected || selected.source !== 'fileManager') return;
+    
+    let anchorEntry: FsEntry | null = null;
 
-    const anchorEntry =
-      selected.kind === 'multiple'
-        ? selected.entries[selected.entries.length - 1]
-        : selected.entry;
+    if (selected && selected.source === 'fileManager') {
+      anchorEntry =
+        selected.kind === 'multiple'
+          ? selected.entries[selected.entries.length - 1]
+          : selected.entry;
+    }
+
+    // Если нет выбранного через selectionStore (например, просто кликнули по папке, 
+    // и она стала активной в uiStore), используем uiStore.selectedFsEntry
+    if (!anchorEntry && uiStore.selectedFsEntry) {
+      anchorEntry = uiStore.selectedFsEntry;
+    }
+
     if (!anchorEntry) return;
 
     const siblingEntries = getSiblingEntries(anchorEntry);
-    const selectedPaths =
-      selected.kind === 'multiple'
+    
+    let selectedPaths: string[] = [];
+    if (selected && selected.source === 'fileManager') {
+      selectedPaths = selected.kind === 'multiple'
         ? selected.entries.map((entry) => entry.path)
         : [selected.entry.path];
+    } else if (uiStore.selectedFsEntry?.path) {
+      selectedPaths = [uiStore.selectedFsEntry.path];
+    }
+
     const visiblePaths = siblingEntries.map((entry) => entry.path);
     const isAllSelected =
       siblingEntries.length > 0 &&
       selectedPaths.length === visiblePaths.length &&
       visiblePaths.every((path) => selectedPaths.includes(path));
+      
     if (isAllSelected) {
       selectionStore.clearSelection();
       return;

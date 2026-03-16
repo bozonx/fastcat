@@ -40,8 +40,6 @@ export function createTimelineCommands(params: CreateTimelineCommandsParams) {
     t,
   } = params;
 
-  const DEFAULT_IMAGE_DURATION_US = 5_000_000;
-
   const commandService = createTimelineCommandService({
     getTimelineDoc: () => timelineDoc.value,
     ensureTimelineDoc: () => {
@@ -92,8 +90,12 @@ export function createTimelineCommands(params: CreateTimelineCommandsParams) {
         projectRelativePath: string;
       }) => await proxyStore.generateProxy(options.file, options.projectRelativePath),
     } satisfies Pick<ProxyThumbnailService, 'hasProxy' | 'ensureProxy'>,
-    defaultImageDurationUs: DEFAULT_IMAGE_DURATION_US,
-    defaultImageSourceDurationUs: DEFAULT_IMAGE_DURATION_US,
+    get defaultImageDurationUs() {
+      return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
+    },
+    get defaultImageSourceDurationUs() {
+      return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
+    },
     parseTimelineFromOtio,
     selectTimelineDurationUs,
   });

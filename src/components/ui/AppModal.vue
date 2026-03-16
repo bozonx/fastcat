@@ -35,6 +35,10 @@ const props = withDefaults(defineProps<Props>(), {
 
 const isOpen = defineModel<boolean>('open', { default: false });
 
+const emit = defineEmits<{
+  (e: 'after:enter'): void;
+}>();
+
 const { t } = useI18n();
 
 const modalUi = computed(() => {
@@ -65,6 +69,7 @@ function handleClose(close?: () => void) {
 <template>
   <UModal
     v-model:open="isOpen"
+    @after:enter="emit('after:enter')"
     :dismissible="!props.preventClose"
     :title="props.title"
     :description="props.description"

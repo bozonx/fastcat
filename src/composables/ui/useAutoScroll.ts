@@ -21,6 +21,8 @@ export function useAutoScroll(scrollEl: Ref<HTMLElement | null>, options: AutoSc
 
     if (isWheelListenerAttached && typeof window !== 'undefined') {
       window.removeEventListener('wheel', onWindowWheel as any);
+      window.removeEventListener('dragend', stopAutoScroll, { capture: true });
+      window.removeEventListener('drop', stopAutoScroll, { capture: true });
       isWheelListenerAttached = false;
     }
   }
@@ -71,6 +73,8 @@ export function useAutoScroll(scrollEl: Ref<HTMLElement | null>, options: AutoSc
 
     if (!isWheelListenerAttached && typeof window !== 'undefined') {
       window.addEventListener('wheel', onWindowWheel, { passive: false });
+      window.addEventListener('dragend', stopAutoScroll, { capture: true });
+      window.addEventListener('drop', stopAutoScroll, { capture: true });
       isWheelListenerAttached = true;
     }
   }

@@ -107,6 +107,7 @@ export function addClipToTrack(
       ...doc,
       tracks: nextTracks,
     },
+    createdItemIds: [clip.id],
   };
 }
 
