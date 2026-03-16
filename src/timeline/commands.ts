@@ -343,6 +343,7 @@ export type TimelineCommand =
 
 export interface TimelineCommandResult {
   next: TimelineDocument;
+  createdItemIds?: string[];
 }
 
 export function applyTimelineCommand(

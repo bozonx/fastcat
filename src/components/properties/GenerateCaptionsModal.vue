@@ -73,19 +73,28 @@ watch(
   (open) => {
     if (open) {
       resetState();
-      nextTick(() => {
-        const el = generateButtonRef.value?.$el || generateButtonRef.value;
-        el?.focus?.();
-      });
+      focusGenerateButton();
     }
   },
 );
 
 const generateButtonRef = ref<any>(null);
 
-const handleAfterEnter = () => {
+function focusGenerateButton() {
   const el = generateButtonRef.value?.$el || generateButtonRef.value;
-  el?.focus?.();
+  if (!(el instanceof HTMLElement)) {
+    return;
+  }
+
+  nextTick(() => {
+    setTimeout(() => {
+      el.focus();
+    }, 0);
+  });
+}
+
+const handleAfterEnter = () => {
+  focusGenerateButton();
 };
 
 </script>

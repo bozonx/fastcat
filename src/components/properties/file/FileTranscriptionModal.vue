@@ -32,17 +32,26 @@ function onSubmit() {
 
 const submitButtonRef = ref<any>(null);
 
-const handleAfterEnter = () => {
+function focusSubmitButton() {
   const el = submitButtonRef.value?.$el || submitButtonRef.value;
-  el?.focus?.();
+  if (!(el instanceof HTMLElement)) {
+    return;
+  }
+
+  nextTick(() => {
+    setTimeout(() => {
+      el.focus();
+    }, 0);
+  });
+}
+
+const handleAfterEnter = () => {
+  focusSubmitButton();
 };
 
 watch(() => props.isTranscriptionModalOpen, (newValue) => {
   if (newValue) {
-    nextTick(() => {
-      const el = submitButtonRef.value?.$el || submitButtonRef.value;
-      el?.focus?.();
-    });
+    focusSubmitButton();
   }
 });
 </script>
@@ -51,6 +60,7 @@ watch(() => props.isTranscriptionModalOpen, (newValue) => {
   <AppModal
     :open="props.isTranscriptionModalOpen"
     @update:open="onModalUpdate"
+    @after:enter="handleAfterEnter"
     :title="t('videoEditor.fileManager.actions.transcribe', 'Transcribe')"
     :close-button="!props.isTranscribingAudio"
     :prevent-close="props.isTranscribingAudio"

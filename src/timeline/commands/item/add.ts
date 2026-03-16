@@ -201,5 +201,6 @@ export function addVirtualClipToTrack(
       ...doc,
       tracks: nextTracks,
     },
+    createdItemIds: [clip.id],
   };
 }

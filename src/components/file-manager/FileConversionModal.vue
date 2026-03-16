@@ -92,17 +92,26 @@ const outputFileName = computed(() => {
 
 const convertButtonRef = ref<any>(null);
 
-const handleAfterEnter = () => {
+function focusConvertButton() {
   const el = convertButtonRef.value?.$el || convertButtonRef.value;
-  el?.focus?.();
+  if (!(el instanceof HTMLElement)) {
+    return;
+  }
+
+  nextTick(() => {
+    setTimeout(() => {
+      el.focus();
+    }, 0);
+  });
+}
+
+const handleAfterEnter = () => {
+  focusConvertButton();
 };
 
 watch(isOpen, (newValue) => {
   if (newValue) {
-    nextTick(() => {
-      const el = convertButtonRef.value?.$el || convertButtonRef.value;
-      el?.focus?.();
-    });
+    focusConvertButton();
   }
 });
 
@@ -130,6 +139,7 @@ function onImageHeightChange(val: number) {
   <AppModal
     v-model:open="isOpen"
     :title="t('videoEditor.export.convertFile', { file: fileName })"
+    @after:enter="handleAfterEnter"
     class="max-w-3xl"
   >
     <div class="flex flex-col gap-6">

@@ -76,4 +76,21 @@ describe('FileManagerFiles', () => {
     expect(selectionStore.selectedEntity?.source).toBe('fileManager');
     expect((selectionStore.selectedEntity as any)?.path).toBe('');
   });
+
+  it('triggers tree select all on ctrl+a', async () => {
+    const wrapper = createWrapper({
+      projectName: 'MyProject',
+      rootEntries: [{ name: 'a' }] as any,
+    });
+
+    const uiStore = useUiStore();
+    const initialTrigger = uiStore.fileTreeSelectAllTrigger;
+
+    await wrapper.get('.flex-1.overflow-auto.min-h-0.min-w-0.relative').trigger('keydown', {
+      key: 'a',
+      ctrlKey: true,
+    });
+
+    expect(uiStore.fileTreeSelectAllTrigger).toBe(initialTrigger + 1);
+  });
 });

@@ -23,6 +23,8 @@ export interface TimelineDispatcherDeps {
   };
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
   markTimelineAsDirty: () => void;
+  selectTimelineItems: (itemIds: string[]) => void;
+  selectGlobalTimelineItems: (itemIds: string[], doc: TimelineDocument) => void;
 }
 
 export interface TimelineDispatcherApi {
@@ -65,7 +67,7 @@ export function createTimelineDispatcher(deps: TimelineDispatcherDeps): Timeline
 
     const prev = deps.timelineDoc.value;
     const hydrated = deps.hydration.hydrateClipSourceDuration(deps.timelineDoc.value, cmd);
-    const { next } = applyTimelineCommand(hydrated, cmd);
+    const { next, createdItemIds } = applyTimelineCommand(hydrated, cmd);
     if (next === prev) return;
 
     if (!options?.skipHistory) {
@@ -75,6 +77,11 @@ export function createTimelineDispatcher(deps: TimelineDispatcherDeps): Timeline
     deps.timelineDoc.value = next;
     deps.duration.value = selectTimelineDurationUs(next);
     deps.markTimelineAsDirty();
+
+    if (createdItemIds?.length) {
+      deps.selectTimelineItems(createdItemIds);
+      deps.selectGlobalTimelineItems(createdItemIds, next);
+    }
 
     const saveMode = options?.saveMode ?? 'debounced';
     if (saveMode === 'immediate') {
