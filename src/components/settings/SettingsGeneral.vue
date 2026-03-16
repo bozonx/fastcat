@@ -115,6 +115,23 @@ function clearCache() {
       />
     </UFormField>
 
+    <UFormField
+      :label="t('videoEditor.settings.defaultStaticClipDuration', 'Default static clip duration (s)')"
+      :help="t('videoEditor.settings.defaultStaticClipDurationHint', 'Default duration for clips that do not have an intrinsic length (images, text, adjustments, etc.)')"
+    >
+      <WheelNumberInput
+        :model-value="
+          workspaceStore.userSettings.timeline.defaultStaticClipDurationUs / 1000000
+        "
+        :min="0.1"
+        :max="60"
+        :step="0.1"
+        @update:model-value="
+          (v) => (workspaceStore.userSettings.timeline.defaultStaticClipDurationUs = Math.round(v * 1000000))
+        "
+      />
+    </UFormField>
+
     <div class="flex flex-col gap-4 pt-4 border-t border-ui-border">
       <div class="text-xs font-semibold text-ui-text-muted uppercase tracking-wide">
         {{ t('videoEditor.settings.advancedSection', 'Advanced') }}

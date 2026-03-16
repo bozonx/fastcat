@@ -214,7 +214,8 @@ async function onDirectoryFileSelect(e: Event) {
   } else {
     await handleFiles(files, entry.path);
   }
-  await loadProjectDirectory();
+  await loadProjectDirectory({ fullRefresh: true });
+  uiStore.notifyFileManagerUpdate();
 }
 
 function handleFileManagerFilesSelect(entry: FsEntry) {
@@ -300,55 +301,6 @@ useFileManagerPanelBootstrap({
           "
         />
 
-        <div class="ml-auto flex items-center gap-1">
-
-          <UDropdownMenu
-            :items="[
-              [
-                {
-                  label: t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree'),
-                  icon: 'i-heroicons-arrow-path',
-                  disabled: isLoading || !projectStore.currentProjectName,
-                  onSelect: async () => {
-                    await loadProjectDirectory({ fullRefresh: true });
-                    uiStore.notifyFileManagerUpdate();
-                  },
-                },
-              ],
-              [
-                {
-                  label: t('videoEditor.fileManager.sort.name', 'Sort by name'),
-                  icon:
-                    sortMode === 'name' ? 'i-heroicons-check' : 'i-heroicons-bars-3-bottom-left',
-                  onSelect: () => onSortModeChange('name'),
-                },
-                {
-                  label: t('videoEditor.fileManager.sort.type', 'Sort by type'),
-                  icon:
-                    sortMode === 'type' ? 'i-heroicons-check' : 'i-heroicons-bars-3-bottom-left',
-                  onSelect: () => onSortModeChange('type'),
-                },
-              ],
-              [
-                {
-                  label: uiStore.showHiddenFiles
-                    ? t('videoEditor.fileManager.actions.hideHiddenFiles', 'Hide hidden files')
-                    : t('videoEditor.fileManager.actions.showHiddenFiles', 'Show hidden files'),
-                  icon: uiStore.showHiddenFiles ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
-                  onSelect: () => (uiStore.showHiddenFiles = !uiStore.showHiddenFiles),
-                },
-              ],
-            ]"
-            :ui="{ content: 'bottom-end' }"
-          >
-            <UButton
-              icon="i-heroicons-ellipsis-horizontal"
-              color="neutral"
-              variant="ghost"
-              size="xs"
-            />
-          </UDropdownMenu>
-        </div>
       </div>
 
       <!-- File List -->

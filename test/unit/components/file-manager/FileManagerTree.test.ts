@@ -1,13 +1,28 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
+import { reactive } from 'vue';
 import FileManagerTree from '../../../../src/components/file-manager/FileManagerTree.vue';
 import type { FsEntry } from '../../../../src/types/fs';
 import type { RemoteFsEntry } from '../../../../src/utils/remote-vfs';
+
+const selectionStoreMock = {
+  selectedEntity: null as any,
+  selectFsEntries: vi.fn(),
+  clearSelection: vi.fn(),
+};
+
+const uiStoreMock = reactive({
+  fileTreeSelectAllTrigger: 0,
+});
 
 vi.mock('~/utils/media-types', () => ({
   getMediaTypeFromFilename: () => 'video',
   isOpenableProjectFileName: () => false,
   VIDEO_EXTENSIONS: ['mp4', 'mov', 'avi', 'mkv', 'webm'],
+  AUDIO_EXTENSIONS: ['mp3', 'wav'],
+  IMAGE_EXTENSIONS: ['jpg', 'png'],
+  TEXT_EXTENSIONS: ['txt', 'md'],
+  TIMELINE_EXTENSIONS: ['otio'],
 }));
 
 vi.mock('~/stores/proxy.store', () => ({
@@ -20,12 +35,13 @@ vi.mock('~/stores/proxy.store', () => ({
 }));
 
 vi.mock('~/stores/selection.store', () => ({
-  useSelectionStore: () => ({
-    selectedPaths: [],
-  }),
+  useSelectionStore: () => selectionStoreMock,
 }));
 
-// We mock useDraggedFile to control dragged payload directly, avoiding event dataTransfer complexity
+vi.mock('~/stores/ui.store', () => ({
+  useUiStore: () => uiStoreMock,
+}));
+
 vi.mock('~/composables/useDraggedFile', () => ({
   INTERNAL_DRAG_TYPE: 'application/fastcat-fs-entry',
   REMOTE_FILE_DRAG_TYPE: 'application/fastcat-remote-file',
@@ -38,7 +54,23 @@ vi.mock('~/composables/useDraggedFile', () => ({
   }),
 }));
 
+function mountTree(entries: FsEntry[]) {
+  return mount(FileManagerTree, {
+    props: {
+      entries,
+      depth: 0,
+    },
+  });
+}
+
 describe('FileManagerTree', () => {
+  beforeEach(() => {
+    selectionStoreMock.selectedEntity = null;
+    selectionStoreMock.selectFsEntries.mockReset();
+    selectionStoreMock.clearSelection.mockReset();
+    uiStoreMock.fileTreeSelectAllTrigger = 0;
+  });
+
   it('renders root entries', () => {
     const rootEntries: FsEntry[] = [
       {
@@ -48,12 +80,8 @@ describe('FileManagerTree', () => {
         expanded: false,
       },
     ];
-    const wrapper = mount(FileManagerTree, {
-      props: {
-        entries: rootEntries,
-        depth: 0,
-      },
-    });
+
+    const wrapper = mountTree(rootEntries);
 
     expect(wrapper.text()).toContain('_video');
   });
@@ -70,17 +98,14 @@ describe('FileManagerTree', () => {
             name: 'child.mp4',
             kind: 'file',
             path: '_video/child.mp4',
+            parentPath: '_video',
             expanded: false,
           },
         ],
       },
     ];
-    const wrapper = mount(FileManagerTree, {
-      props: {
-        entries: rootEntries,
-        depth: 0,
-      },
-    });
+
+    const wrapper = mountTree(rootEntries);
 
     expect(wrapper.text()).toContain('_video');
     expect(wrapper.text()).toContain('child.mp4');
@@ -93,15 +118,10 @@ describe('FileManagerTree', () => {
       path: '_video',
       expanded: false,
     };
-    const wrapper = mount(FileManagerTree, {
-      props: {
-        entries: [dir],
-        depth: 0,
-      },
-    });
 
-    const dropzones = wrapper.findAll('div').filter((w) => w.attributes('role') === 'treeitem');
-    const dropzone = dropzones.at(0);
+    const wrapper = mountTree([dir]);
+    const dropzone = wrapper.findAll('div').find((w) => w.attributes('role') === 'treeitem');
+
     expect(dropzone?.exists()).toBe(true);
 
     const mockEvent = {
@@ -109,9 +129,7 @@ describe('FileManagerTree', () => {
         types: ['application/fastcat-move'],
         getData: vi.fn((type) => {
           if (type === 'application/fastcat-move') {
-            return JSON.stringify({
-              path: '_video/a.mp4',
-            });
+            return JSON.stringify({ path: '_video/a.mp4' });
           }
           return '';
         }),
@@ -137,15 +155,10 @@ describe('FileManagerTree', () => {
       path: '_video',
       expanded: false,
     };
-    const wrapper = mount(FileManagerTree, {
-      props: {
-        entries: [dir],
-        depth: 0,
-      },
-    });
 
-    const dropzones = wrapper.findAll('div').filter((w) => w.attributes('role') === 'treeitem');
-    const dropzone = dropzones.at(0);
+    const wrapper = mountTree([dir]);
+    const dropzone = wrapper.findAll('div').find((w) => w.attributes('role') === 'treeitem');
+
     expect(dropzone?.exists()).toBe(true);
 
     const mockEvent = {
@@ -153,9 +166,7 @@ describe('FileManagerTree', () => {
         types: ['application/fastcat-copy'],
         getData: vi.fn((type) => {
           if (type === 'application/fastcat-copy') {
-            return JSON.stringify({
-              path: '_video/a.mp4',
-            });
+            return JSON.stringify({ path: '_video/a.mp4' });
           }
           return '';
         }),
@@ -181,15 +192,10 @@ describe('FileManagerTree', () => {
       path: '_video',
       expanded: false,
     };
-    const wrapper = mount(FileManagerTree, {
-      props: {
-        entries: [dir],
-        depth: 0,
-      },
-    });
 
-    const dropzones = wrapper.findAll('div').filter((w) => w.attributes('role') === 'treeitem');
-    const dropzone = dropzones.at(0);
+    const wrapper = mountTree([dir]);
+    const dropzone = wrapper.findAll('div').find((w) => w.attributes('role') === 'treeitem');
+
     expect(dropzone?.exists()).toBe(true);
 
     const remoteEntry = {
@@ -236,5 +242,59 @@ describe('FileManagerTree', () => {
       entry: remoteEntry,
       targetDirPath: '_video',
     });
+  });
+
+  it('selects only siblings for select all hotkey', async () => {
+    const videoA: FsEntry = {
+      name: 'a.mp4',
+      kind: 'file',
+      path: '_video/a.mp4',
+      parentPath: '_video',
+    };
+    const videoB: FsEntry = {
+      name: 'b.mp4',
+      kind: 'file',
+      path: '_video/b.mp4',
+      parentPath: '_video',
+    };
+    const audioC: FsEntry = {
+      name: 'c.wav',
+      kind: 'file',
+      path: '_audio/c.wav',
+      parentPath: '_audio',
+    };
+
+    const rootEntries: FsEntry[] = [
+      {
+        name: '_video',
+        kind: 'directory',
+        path: '_video',
+        expanded: true,
+        children: [videoA, videoB],
+      },
+      {
+        name: '_audio',
+        kind: 'directory',
+        path: '_audio',
+        expanded: true,
+        children: [audioC],
+      },
+    ];
+
+    selectionStoreMock.selectedEntity = {
+      source: 'fileManager',
+      kind: 'file',
+      path: videoA.path,
+      name: videoA.name,
+      entry: videoA,
+    };
+
+    mountTree(rootEntries);
+
+    uiStoreMock.fileTreeSelectAllTrigger++;
+    await Promise.resolve();
+
+    expect(selectionStoreMock.selectFsEntries).toHaveBeenCalledWith([videoA, videoB]);
+    expect(selectionStoreMock.selectFsEntries).not.toHaveBeenCalledWith([videoA, videoB, audioC]);
   });
 });

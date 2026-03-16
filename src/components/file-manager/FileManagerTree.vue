@@ -25,7 +25,7 @@ import {
 } from '~/utils/media-types';
 import { useFileContextMenu } from '~/composables/fileManager/useFileContextMenu';
 import { isRemoteFsEntry, type RemoteFsEntry } from '~/utils/remote-vfs';
-import { WORKSPACE_COMMON_PATH_PREFIX, isWorkspaceCommonPath } from '~/utils/workspace-common';
+import { isWorkspaceCommonPath } from '~/utils/workspace-common';
 import { isGeneratingProxyInDirectory, folderHasVideos } from '~/utils/fsEntryUtils';
 
 interface Props {
@@ -126,24 +126,30 @@ watch(
   () => uiStore.fileTreeSelectAllTrigger,
   () => {
     if (props.depth !== 0) return;
-    const entries = getVisibleEntries(props.entries);
     const selected = selectionStore.selectedEntity;
+    if (!selected || selected.source !== 'fileManager') return;
+
+    const anchorEntry =
+      selected.kind === 'multiple'
+        ? selected.entries[selected.entries.length - 1]
+        : selected.entry;
+    if (!anchorEntry) return;
+
+    const siblingEntries = getSiblingEntries(anchorEntry);
     const selectedPaths =
-      selected?.source === 'fileManager'
-        ? selected.kind === 'multiple'
-          ? selected.entries.map((entry) => entry.path)
-          : [selected.entry.path]
-        : [];
-    const visiblePaths = entries.map((entry) => entry.path);
+      selected.kind === 'multiple'
+        ? selected.entries.map((entry) => entry.path)
+        : [selected.entry.path];
+    const visiblePaths = siblingEntries.map((entry) => entry.path);
     const isAllSelected =
-      entries.length > 0 &&
+      siblingEntries.length > 0 &&
       selectedPaths.length === visiblePaths.length &&
       visiblePaths.every((path) => selectedPaths.includes(path));
     if (isAllSelected) {
       selectionStore.clearSelection();
       return;
     }
-    selectionStore.selectFsEntries(entries);
+    selectionStore.selectFsEntries(siblingEntries);
   },
 );
 
@@ -156,6 +162,17 @@ function getVisibleEntries(entriesList: FsEntry[]): FsEntry[] {
     }
   }
   return list;
+}
+
+function getSiblingEntries(entry: FsEntry): FsEntry[] {
+  const parentPath = entry.parentPath ?? entry.path?.split('/').slice(0, -1).join('/') ?? '';
+  const visibleEntries = getVisibleEntries(props.entries);
+
+  return visibleEntries.filter((candidate) => {
+    const candidateParentPath =
+      candidate.parentPath ?? candidate.path?.split('/').slice(0, -1).join('/') ?? '';
+    return candidateParentPath === parentPath;
+  });
 }
 
 function isDotEntry(entry: FsEntry): boolean {
@@ -380,6 +397,7 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
 
   e.stopPropagation();
 
+  const operation = dragOperation.value;
   isDragOver.value = null;
   dragOperation.value = null;
 
@@ -387,7 +405,7 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
   const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
   const internalRaw = copyRaw || moveRaw;
   if (internalRaw) {
-    const shouldCopy = !!copyRaw || e.shiftKey || dragOperation.value === 'copy';
+    const shouldCopy = !!copyRaw || e.shiftKey || operation === 'copy';
     let parsed: any;
     try {
       parsed = JSON.parse(internalRaw);

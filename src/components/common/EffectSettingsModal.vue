@@ -339,7 +339,8 @@ onBeforeUnmount(() => {
     </template>
     <template #footer>
       <div class="flex justify-end w-full">
-        <UButton color="primary" @click="handleClose">
+        <UButton color="primary" autofocus
+          @click="handleClose">
           {{ t('common.done', 'Done') }}
         </UButton>
       </div>

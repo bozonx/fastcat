@@ -127,6 +127,7 @@ const { t } = useI18n();
         <UButton
           color="primary"
           :loading="props.sttTranscribing"
+          autofocus
           @click="emit('submitTranscription')"
         >
           {{ t('videoEditor.fileManager.actions.transcribe', 'Transcribe') }}

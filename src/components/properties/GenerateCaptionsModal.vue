@@ -161,7 +161,8 @@ const generateButtonRef = ref<any>(null);
         <UButton color="neutral" variant="ghost" @click="isOpen = false">
           {{ t('common.cancel', 'Cancel') }}
         </UButton>
-        <UButton ref="generateButtonRef" color="primary" :loading="isGenerating" @click="generateCaptions">
+        <UButton ref="generateButtonRef" color="primary" :loading="isGenerating" autofocus
+          @click="generateCaptions">
           {{ t('fastcat.captions.generate', 'Generate captions') }}
         </UButton>
       </div>

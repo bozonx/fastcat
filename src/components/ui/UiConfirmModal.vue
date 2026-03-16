@@ -109,7 +109,13 @@ const handleClose = () => {
       >
         {{ secondaryText }}
       </UButton>
-      <UButton ref="confirmButtonRef" :color="color" :loading="loading" @click="handleConfirm">
+      <UButton
+        ref="confirmButtonRef"
+        :color="color"
+        :loading="loading"
+        autofocus
+        @click="handleConfirm"
+      >
         {{ confirmText || t('common.confirm') }}
       </UButton>
     </template>
