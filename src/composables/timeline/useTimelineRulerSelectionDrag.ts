@@ -1,6 +1,7 @@
 import { onUnmounted, ref, type Ref, computed } from 'vue';
 import { pxToTimeUs } from '~/utils/timeline/geometry';
 import { TIMELINE_RULER_CONSTANTS } from '~/utils/constants';
+import { quantizeTimeUsToFrames } from '~/timeline/commands/utils';
 
 export type TimelineRulerSelectionDragPart = 'move' | 'left' | 'right';
 
@@ -12,6 +13,7 @@ interface SelectionRangeLike {
 interface UseTimelineRulerSelectionDragOptions {
   selectionRange: Ref<SelectionRangeLike | null | undefined>;
   zoom: Ref<number>;
+  fps: Ref<number>;
   getTimeUsFromPointerEvent: (event: PointerEvent) => number;
   selectSelectionRange: () => void;
   updateSelectionRange: (payload: { startUs: number; endUs: number } | null) => void;
@@ -58,6 +60,10 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     }, 0);
   }
 
+  function quantize(timeUs: number) {
+    return quantizeTimeUsToFrames(timeUs, options.fps.value, 'round');
+  }
+
   function updateSelectionRangeFromDrag(clientX: number) {
     const range = options.selectionRange.value;
     if (!range) return;
@@ -71,7 +77,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
     if (selectionDragPart.value === 'move') {
       const durationUs = selectionDragStartEndUs.value - selectionDragStartStartUs.value;
-      const nextStartUs = Math.max(0, Math.round(selectionDragStartStartUs.value + deltaUs));
+      const nextStartUs = Math.max(0, quantize(selectionDragStartStartUs.value + deltaUs));
       draggedSelectionPatch.value = {
         startUs: nextStartUs,
         endUs: nextStartUs + durationUs,
@@ -83,7 +89,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
       const maxStartUs = selectionDragStartEndUs.value - minDurationUs;
       const nextStartUs = Math.max(
         0,
-        Math.min(maxStartUs, Math.round(selectionDragStartStartUs.value + deltaUs)),
+        Math.min(maxStartUs, quantize(selectionDragStartStartUs.value + deltaUs)),
       );
       draggedSelectionPatch.value = {
         startUs: nextStartUs,
@@ -94,7 +100,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
     const nextEndUs = Math.max(
       selectionDragStartStartUs.value + minDurationUs,
-      Math.round(selectionDragStartEndUs.value + deltaUs),
+      quantize(selectionDragStartEndUs.value + deltaUs),
     );
     draggedSelectionPatch.value = {
       startUs: selectionDragStartStartUs.value,
@@ -150,8 +156,8 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     const endUs = Math.max(selectionCreateStartUs.value, currentUs);
 
     draggedSelectionPatch.value = {
-      startUs,
-      endUs: Math.max(startUs + 1, endUs),
+      startUs: quantize(startUs),
+      endUs: Math.max(quantize(startUs) + 1, quantize(endUs)),
     };
   }
 
@@ -172,7 +178,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     event.preventDefault();
     event.stopPropagation();
 
-    const timeUs = options.getTimeUsFromPointerEvent(event);
+    const timeUs = quantize(options.getTimeUsFromPointerEvent(event));
     selectionCreateStartUs.value = timeUs;
     isCreatingSelectionRange.value = true;
 
