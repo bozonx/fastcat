@@ -14,7 +14,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useHistoryStore } from '~/stores/history.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
+import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY } from '~/stores/timeline/timelineHistoryLabels';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import {
@@ -73,6 +73,7 @@ export function useTimelineItemDrag(
   const dragCancelRequested = ref(false);
   const dragIsFreeOverride = ref(false);
   const dragUsePseudoOverlapOverride = ref(false);
+  const dragDisableFrameSnapOverride = ref(false);
 
   let dragRafId: number | null = null;
 
@@ -108,8 +109,10 @@ export function useTimelineItemDrag(
     dragAnchorClientX.value = e.clientX;
     lastDragClientX.value = e.clientX;
     const isLayer1Pressed = isLayer1Active(e, workspaceStore.userSettings);
+    const isLayer2Pressed = isLayer2Active(e, workspaceStore.userSettings);
     dragIsFreeOverride.value = isLayer1Pressed;
     dragUsePseudoOverlapOverride.value = isLayer1Pressed;
+    dragDisableFrameSnapOverride.value = isLayer2Pressed;
     dragAnchorStartUs.value = startUs;
     dragAnchorDurationUs.value =
       tracks.value.find((t) => t.id === trackId)?.items.find((it) => it.id === itemId)
@@ -167,8 +170,10 @@ export function useTimelineItemDrag(
     dragAnchorClientX.value = e.clientX;
     lastDragClientX.value = e.clientX;
     const isLayer1Pressed = isLayer1Active(e, workspaceStore.userSettings);
+    const isLayer2Pressed = isLayer2Active(e, workspaceStore.userSettings);
     dragIsFreeOverride.value = false;
     dragUsePseudoOverlapOverride.value = isLayer1Pressed;
+    dragDisableFrameSnapOverride.value = isLayer2Pressed;
     dragAnchorStartUs.value = input.startUs;
     dragLastAppliedQuantizedDeltaUs.value = 0;
 
@@ -224,7 +229,10 @@ export function useTimelineItemDrag(
 
     const fps = sanitizeFps(timelineStore.timelineDoc?.timebase?.fps);
     const zoom = timelineStore.timelineZoom;
-    const enableFrameSnap = settingsStore.frameSnapMode === 'frames' && !dragIsFreeOverride.value;
+    const enableFrameSnap =
+      settingsStore.frameSnapMode === 'frames' &&
+      !dragIsFreeOverride.value &&
+      !dragDisableFrameSnapOverride.value;
     const enableClipSnap = settingsStore.clipSnapMode === 'clips';
     const snapThresholdPx = settingsStore.snapThresholdPx;
     const isShiftPressed = dragUsePseudoOverlapOverride.value;
@@ -425,8 +433,10 @@ export function useTimelineItemDrag(
     pendingDragClientX.value = e.clientX;
     pendingDragClientY.value = e.clientY;
     const isLayer1Pressed = isLayer1Active(e, workspaceStore.userSettings);
+    const isLayer2Pressed = isLayer2Active(e, workspaceStore.userSettings);
     dragUsePseudoOverlapOverride.value = isLayer1Pressed;
     dragIsFreeOverride.value = draggingMode.value === 'move' ? isLayer1Pressed : false;
+    dragDisableFrameSnapOverride.value = isLayer2Pressed;
     scheduleDragApply();
     return true;
   }
@@ -564,7 +574,9 @@ export function useTimelineItemDrag(
         const commit = pendingMoveCommit.value;
         if (commit) {
           const enableFrameSnap =
-            settingsStore.frameSnapMode === 'frames' && !dragIsFreeOverride.value;
+            settingsStore.frameSnapMode === 'frames' &&
+            !dragIsFreeOverride.value &&
+            !dragDisableFrameSnapOverride.value;
           const cmd = {
             type: 'overlay_place_item',
             fromTrackId: commit.fromTrackId,
@@ -631,6 +643,7 @@ export function useTimelineItemDrag(
     lastDragAppliedCmd.value = null;
     dragIsFreeOverride.value = false;
     dragUsePseudoOverlapOverride.value = false;
+    dragDisableFrameSnapOverride.value = false;
 
     window.removeEventListener('keydown', onGlobalKeyDown);
   }
