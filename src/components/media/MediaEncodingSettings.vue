@@ -193,7 +193,12 @@ watch(
       <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.export.videoBitrate', 'Video bitrate (Mbps)') }}
       </label>
-      <WheelNumberInput v-model="bitrateMbps" :min="0.2" :step="0.1" />
+      <WheelNumberInput
+        v-model="bitrateMbps"
+        :min="0"
+        :step="0.1"
+        :class="{ 'ring-2 ring-error ring-inset': bitrateMbps <= 0 }"
+      />
       <span class="text-xs text-ui-text-muted">
         {{
           t(
@@ -275,7 +280,12 @@ watch(
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.export.audioBitrate', 'Audio bitrate (Kbps)') }}
         </label>
-        <WheelNumberInput v-model="audioBitrateKbps" :min="32" :step="16" />
+        <WheelNumberInput
+          v-model="audioBitrateKbps"
+          :min="0"
+          :step="16"
+          :class="{ 'ring-2 ring-error ring-inset': audioBitrateKbps <= 0 }"
+        />
         <span class="text-xs text-ui-text-muted">
           {{
             t(

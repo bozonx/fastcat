@@ -162,6 +162,38 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           );
           props.videoSettings.fps = clampPositiveNumber(Number(meta.video.fps), DEFAULT_VIDEO_FPS);
           props.videoSettings.isCustomResolution = true;
+
+          // Detect format and codec from meta
+          const sourceExt = entry.name.split('.').pop()?.toLowerCase();
+          const sourceCodec = String(meta.video.codec || '').toLowerCase();
+          const supportedFormats: any[] = ['mp4', 'webm', 'mkv'];
+
+          let matched = false;
+          if (sourceExt && supportedFormats.includes(sourceExt)) {
+            // Check if codec is one of our supported ones
+            // We search for a codec that starts with the same prefix (e.g. avc1, vp09, av01)
+            const supportedCodec = ['avc1', 'vp09', 'av01'].find((prefix) =>
+              sourceCodec.startsWith(prefix),
+            );
+
+            if (supportedCodec) {
+              props.videoSettings.format = sourceExt as any;
+              // Map to our specific codec strings
+              if (supportedCodec === 'avc1') props.videoSettings.videoCodec = 'avc1.640032';
+              else if (supportedCodec === 'vp09') props.videoSettings.videoCodec = 'vp09.00.10.08';
+              else if (supportedCodec === 'av01') props.videoSettings.videoCodec = 'av01.0.05M.08';
+              matched = true;
+            }
+          }
+
+          if (!matched) {
+            props.videoSettings.format = 'mp4';
+            props.videoSettings.videoCodec = 'av01.0.05M.08'; // Default to MP4 + AV1 as requested
+          }
+
+          props.videoSettings.bitrateMbps = meta.video.bitrate
+            ? Number((meta.video.bitrate / 1_000_000).toFixed(2))
+            : 0;
         }
 
         if (meta?.audio) {
@@ -171,18 +203,28 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
             1,
             Math.round(Number(meta.audio.sampleRate) || 0),
           );
-          props.audioSettings.sampleRate = 0;
+          // Auto-select sample rate from meta
+          props.audioSettings.sampleRate = props.audioSettings.originalSampleRate;
+          props.audioSettings.onlyBitrateKbps = meta.audio.bitrate
+            ? Math.round(meta.audio.bitrate / 1000)
+            : 0;
+          props.videoSettings.audioBitrateKbps = props.audioSettings.onlyBitrateKbps;
         } else {
           props.sourceHasAudio.value = false;
           props.videoSettings.excludeAudio = true;
           props.audioSettings.originalSampleRate = null;
           props.audioSettings.sampleRate = 0;
+          props.audioSettings.onlyBitrateKbps = 0;
+          props.videoSettings.audioBitrateKbps = 0;
         }
       } catch (err) {
         notifyMetadataWarning(
           'Failed to extract video metadata. Default conversion settings will be used.',
           err,
         );
+        props.videoSettings.bitrateMbps = 0;
+        props.videoSettings.audioBitrateKbps = 0;
+        props.audioSettings.onlyBitrateKbps = 0;
       }
     } else if (mediaCategory === 'audio') {
       props.sourceHasAudio.value = true;
@@ -212,10 +254,14 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
             1,
             Math.round(Number(meta.audio.sampleRate) || 0),
           );
-          props.audioSettings.sampleRate = 0;
+          props.audioSettings.sampleRate = props.audioSettings.originalSampleRate;
+          props.audioSettings.onlyBitrateKbps = meta.audio.bitrate
+            ? Math.round(meta.audio.bitrate / 1000)
+            : 0;
         } else {
           props.audioSettings.originalSampleRate = null;
           props.audioSettings.sampleRate = 0;
+          props.audioSettings.onlyBitrateKbps = 0;
         }
       } catch (err) {
         notifyMetadataWarning(
