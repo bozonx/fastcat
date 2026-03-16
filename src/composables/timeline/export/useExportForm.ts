@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import {
@@ -62,8 +62,45 @@ export function useExportForm() {
     cancelRequested,
   } = useTimelineExport();
 
+  const initialSavedSettingsSnapshot = ref('');
+
   const selectionRange = computed(() => timelineStore.getSelectionRange());
   const hasSelectionRange = computed(() => Boolean(selectionRange.value));
+  const savedSettingsSnapshot = computed(() =>
+    JSON.stringify({
+      width: normalizedExportWidth.value,
+      height: normalizedExportHeight.value,
+      fps: normalizedExportFps.value,
+      resolutionFormat: resolutionFormat.value,
+      orientation: orientation.value,
+      aspectRatio: aspectRatio.value,
+      isCustomResolution: isCustomResolution.value,
+      format: outputFormat.value,
+      videoCodec: videoCodec.value,
+      bitrateMbps: bitrateMbps.value,
+      excludeAudio: excludeAudio.value,
+      audioCodec: audioCodec.value,
+      audioBitrateKbps: audioBitrateKbps.value,
+      bitrateMode: bitrateMode.value,
+      keyframeIntervalSec: keyframeIntervalSec.value,
+      exportAlpha: exportAlpha.value,
+      metadataTitle: metadataTitle.value.trim(),
+      metadataDescription: metadataDescription.value.trim(),
+      metadataAuthor: metadataAuthor.value.trim(),
+      metadataTags: metadataTags.value
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+    }),
+  );
+  const isSettingsDirty = computed(
+    () => savedSettingsSnapshot.value !== initialSavedSettingsSnapshot.value,
+  );
+
+  watch(isSettingsDirty, (isDirty) => {
+    if (isDirty) return;
+    saveAsDefaults.value = false;
+  });
 
   async function initializeExportForm() {
     exportError.value = null;
@@ -102,6 +139,7 @@ export function useExportForm() {
     orientation.value = projectStore.projectSettings.project.orientation;
     aspectRatio.value = projectStore.projectSettings.project.aspectRatio;
     isCustomResolution.value = projectStore.projectSettings.project.isCustomResolution;
+    initialSavedSettingsSnapshot.value = savedSettingsSnapshot.value;
 
     await ensureExportDir();
     const timelineBase = sanitizeBaseName(
@@ -308,6 +346,7 @@ export function useExportForm() {
     exportOnlySelectionRange,
     saveAsDefaults,
     hasSelectionRange,
+    isSettingsDirty,
 
     initializeExportForm,
     handleOutputFormatChange,
