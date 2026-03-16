@@ -276,7 +276,7 @@ export function createProxyService(params: {
               meta.audio.codec.toLowerCase().startsWith('opus');
 
             const exportOptions = {
-              format: 'mp4',
+              format: 'mp4' as const,
               videoCodec: optimization.proxyVideoCodec === 'av1' ? 'av01.0.05M.08' : 'avc1.64001f',
               bitrate: optimization.proxyVideoBitrateMbps * 1_000_000,
               audioBitrate: optimization.proxyAudioBitrateKbps * 1000,

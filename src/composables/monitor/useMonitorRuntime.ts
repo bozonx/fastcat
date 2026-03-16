@@ -11,7 +11,13 @@ import { useMonitorDisplay } from '~/composables/monitor/useMonitorDisplay';
 import { useMonitorPlayback } from '~/composables/monitor/useMonitorPlayback';
 import { useMonitorCore } from '~/composables/monitor/useMonitorCore';
 import { useMonitorSnapshot } from '~/composables/monitor/useMonitorSnapshot';
-import type MonitorViewport from '~/components/monitor/MonitorViewport.vue';
+
+export interface MonitorViewportPublicApi {
+  viewportEl?: HTMLElement | null;
+  centerMonitor: () => void;
+  resetZoom: () => void;
+  resetView: () => void;
+}
 
 export function useMonitorRuntime() {
   const projectStore = useProjectStore();
@@ -48,7 +54,7 @@ export function useMonitorRuntime() {
 
   const { containerEl, renderWidth, renderHeight, updateCanvasDisplaySize } = useMonitorDisplay();
 
-  const viewportRef = ref<InstanceType<typeof MonitorViewport> | null>(null);
+  const viewportRef = ref<MonitorViewportPublicApi | null>(null);
   const viewportEl = computed(
     () => (viewportRef.value?.viewportEl as HTMLDivElement | null) ?? null,
   );

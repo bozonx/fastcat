@@ -16,7 +16,7 @@ import {
   AUDIO_ONLY_EXPORT_PLACEHOLDER_DIMENSION,
   AUDIO_ONLY_EXPORT_PLACEHOLDER_FPS,
 } from './constants';
-import type { ExportOptions } from '~/utils/video-editor/worker-rpc';
+import type { ExportOptions } from '~/composables/timeline/export/types';
 
 const METADATA_TIMEOUT_MS = 15000;
 
@@ -117,6 +117,8 @@ export async function executeMediaConversion(params: {
             fps: AUDIO_ONLY_EXPORT_PLACEHOLDER_FPS,
             audioChannels: params.request.sharedAudio.channels,
             audioSampleRate: params.request.sharedAudio.sampleRate || undefined,
+            audioReverse: params.request.audioOnly.reverse,
+            audioDurationSec: meta.duration || undefined,
           };
         }
 

@@ -19,6 +19,7 @@ import {
 
 import type { ExportOptions, WorkerTimelineClip } from './types';
 import { getExt, resolveNextAvailableFilename } from './filenameUtils';
+import { resolveExportCodecs } from './codecUtils';
 import {
   buildVideoWorkerPayload,
   buildVideoWorkerPayloadFromTracks,
@@ -34,13 +35,11 @@ export function useTimelineExport() {
   let cachedExportDir: FileSystemDirectoryHandle | null = null;
   let cachedProjectName: string | null = null;
   let cachedProjectsHandle: FileSystemDirectoryHandle | null = null;
-  let cachedExportFilenames: Set<string> | null = null;
-  let inflightExportFilenames: Promise<Set<string>> | null = null;
 
   const isExporting = ref(false);
   const exportProgress = ref(0);
   const exportError = ref<string | null>(null);
-  const exportPhase = ref<'encoding' | 'saving' | null>(null);
+  const exportPhase = ref<'preparing' | 'encoding' | 'saving' | null>(null);
   const exportWarnings = ref<string[]>([]);
 
   const cancelRequested = ref(false);
@@ -106,8 +105,6 @@ export function useTimelineExport() {
     cachedExportDir = null;
     cachedProjectName = null;
     cachedProjectsHandle = null;
-    cachedExportFilenames = null;
-    inflightExportFilenames = null;
   }
 
   function isExportDirCacheValid() {
@@ -134,8 +131,6 @@ export function useTimelineExport() {
     cachedExportDir = await projectDir.getDirectoryHandle(EXPORT_DIR_NAME, { create: true });
     cachedProjectName = projectStore.currentProjectName;
     cachedProjectsHandle = workspaceStore.projectsHandle;
-    cachedExportFilenames = null;
-    inflightExportFilenames = null;
     return cachedExportDir;
   }
 
@@ -153,45 +148,9 @@ export function useTimelineExport() {
     return names;
   }
 
-  async function loadExportFilenames(options?: { force?: boolean }): Promise<Set<string>> {
-    if (options?.force) {
-      cachedExportFilenames = null;
-      inflightExportFilenames = null;
-    }
-
-    if (cachedExportFilenames) {
-      return cachedExportFilenames;
-    }
-
-    if (inflightExportFilenames) {
-      return inflightExportFilenames;
-    }
-
-    inflightExportFilenames = (async () => {
-      const exportDir = await ensureExportDir();
-      const names = await listExportFilenames(exportDir);
-      cachedExportFilenames = names;
-      inflightExportFilenames = null;
-      return names;
-    })();
-
-    return inflightExportFilenames;
-  }
-
-  async function preloadExportIndex() {
-    await loadExportFilenames({ force: true });
-  }
-
-  function rememberExportedFilename(filename: string) {
-    if (!cachedExportFilenames) {
-      cachedExportFilenames = new Set<string>();
-    }
-    cachedExportFilenames.add(filename);
-  }
-
   async function getNextAvailableFilename(base: string, ext: string) {
-    const names = await loadExportFilenames();
-
+    const exportDir = await ensureExportDir();
+    const names = await listExportFilenames(exportDir);
     return resolveNextAvailableFilename(names, base, ext);
   }
 
@@ -207,7 +166,9 @@ export function useTimelineExport() {
       return false;
     }
 
-    const names = await loadExportFilenames();
+    const exportDir = await ensureExportDir();
+    const names = await listExportFilenames(exportDir);
+
     if (names.has(trimmed)) {
       filenameError.value = 'A file with this name already exists';
       return false;
@@ -256,6 +217,44 @@ export function useTimelineExport() {
     } finally {
       isLoadingCodecSupport.value = false;
     }
+  }
+
+  async function saveProjectSettingsAsDefault() {
+    const resolvedCodecs = resolveExportCodecs(
+      outputFormat.value,
+      videoCodec.value,
+      audioCodec.value as 'aac' | 'opus',
+    );
+
+    projectStore.projectSettings.project.width = normalizedExportWidth.value;
+    projectStore.projectSettings.project.height = normalizedExportHeight.value;
+    projectStore.projectSettings.project.fps = normalizedExportFps.value;
+    projectStore.projectSettings.project.resolutionFormat = resolutionFormat.value;
+    projectStore.projectSettings.project.orientation = orientation.value;
+    projectStore.projectSettings.project.aspectRatio = aspectRatio.value;
+    projectStore.projectSettings.project.isCustomResolution = isCustomResolution.value;
+    projectStore.projectSettings.exportDefaults.encoding.format = outputFormat.value;
+    projectStore.projectSettings.exportDefaults.encoding.videoCodec = resolvedCodecs.videoCodec;
+    projectStore.projectSettings.exportDefaults.encoding.bitrateMbps = bitrateMbps.value;
+    projectStore.projectSettings.exportDefaults.encoding.excludeAudio = excludeAudio.value;
+    projectStore.projectSettings.exportDefaults.encoding.audioCodec = resolvedCodecs.audioCodec;
+    projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps = audioBitrateKbps.value;
+    projectStore.projectSettings.exportDefaults.encoding.bitrateMode = bitrateMode.value;
+    projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec =
+      keyframeIntervalSec.value;
+    projectStore.projectSettings.exportDefaults.encoding.exportAlpha = exportAlpha.value;
+
+    await projectStore.saveProjectSettings();
+
+    await projectStore.saveProjectMeta({
+      title: metadataTitle.value,
+      description: metadataDescription.value,
+      author: metadataAuthor.value,
+      tags: metadataTags.value
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean),
+    });
   }
 
   async function exportTimelineToFile(
@@ -413,11 +412,10 @@ export function useTimelineExport() {
     normalizedExportHeight,
     normalizedExportFps,
     ensureExportDir,
-    preloadExportIndex,
     validateFilename,
     getNextAvailableFilename,
-    rememberExportedFilename,
     loadCodecSupport,
+    saveProjectSettingsAsDefault,
     exportTimelineToFile,
     cancelExport,
   };

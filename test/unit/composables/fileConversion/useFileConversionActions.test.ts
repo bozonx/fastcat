@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 
 import { useFileConversionActions } from '../../../../src/composables/fileConversion/useFileConversionActions';
+import { executeMediaConversion } from '../../../../src/utils/conversion/media-conversion';
 
 const mockProjectStore = {
   projectSettings: {
@@ -136,6 +137,31 @@ describe('useFileConversionActions', () => {
     await startConversion();
 
     expect(props.audioSettings.onlyCodec).toBe('aac');
+  });
+
+  it('passes audio reverse flag to media conversion for audio only', async () => {
+    const props = createProps('audio');
+    const { startConversion } = useFileConversionActions(props);
+
+    props.targetEntry.value = { name: 'test.mp3', path: '/test.mp3', kind: 'file' } as any;
+    props.audioSettings.reverse = true;
+
+    mockProjectStore.getDirectoryHandleByPath.mockResolvedValue({
+      getFileHandle: vi.fn().mockResolvedValue({}),
+    });
+
+    await startConversion();
+
+    expect(executeMediaConversion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        request: expect.objectContaining({
+          type: 'audio',
+          audioOnly: expect.objectContaining({
+            reverse: true,
+          }),
+        }),
+      }),
+    );
   });
 
   it('openConversionModal triggers onWarning when metadata extraction fails', async () => {
