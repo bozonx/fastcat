@@ -308,7 +308,7 @@ const { handleEntryClick: handleSelectionClick, selectSingle } = useFileManagerS
 async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
   if (event && !props.isFilesPage) {
     handleSelectionClick(event, entry);
-    if (entry.kind === 'file') focusStore.setTempFocus('left');
+    focusStore.setTempFocus('left');
     if (entry.kind === 'file' && entry.path?.toLowerCase().endsWith('.otio')) {
       await loadTimeline(entry.path);
     }
@@ -317,7 +317,7 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
 
   selectSingle(entry);
 
-  if (entry.kind === 'file') focusStore.setTempFocus('left');
+  focusStore.setTempFocus('left');
   if (entry.kind === 'file' && entry.path?.toLowerCase().endsWith('.otio')) {
     await loadTimeline(entry.path);
   }

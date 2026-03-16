@@ -111,6 +111,7 @@ export function useFileBrowserMarquee({
     const target = e.target as HTMLElement | null;
     if (target?.tagName === 'INPUT') return;
     if (target?.closest?.('[data-entry-path]')) return;
+    if (target?.closest?.('th')) return;
 
     const point = getPointInScrollContainer(e, container);
     isMarqueeSelecting.value = true;
