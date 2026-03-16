@@ -84,6 +84,7 @@ const {
   toggleShowWaveform,
   toggleShowThumbnails,
   handleSelectInFileManager,
+  handleOpenNestedTimeline,
 } = useClipPropertiesActions({
   clip: clipRef,
   trackKind: clipTrackKind,
@@ -305,6 +306,7 @@ defineExpose({
       @unlink-audio="handleUnlinkAudio"
       @remove-from-group="handleRemoveFromGroup"
       @show-in-file-manager="handleSelectInFileManager"
+      @go-to-timeline="handleOpenNestedTimeline"
       @toggle-show-waveform="toggleShowWaveform"
       @toggle-show-thumbnails="toggleShowThumbnails"
       @toggle-audio-waveform-mode="toggleAudioWaveformMode"

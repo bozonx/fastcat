@@ -211,6 +211,7 @@
       "rename": "Rename clip",
       "reversed": "Reverse Playback",
       "showInFileManager": "Show in File Manager",
+      "goToTimeline": "Go to timeline",
       "showThumbnails": "Show thumbnails",
       "showWaveform": "Show waveform",
       "transform": {

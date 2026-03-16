@@ -30,6 +30,7 @@ interface ProjectStoreActions {
       defaultDurationUs?: number;
     };
   };
+  openTimelineFile: (path: string) => Promise<void>;
 }
 
 interface UiStoreActions {
@@ -300,6 +301,12 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     focusStore.setTempFocus('left');
   }
 
+  async function handleOpenNestedTimeline() {
+    const clip = options.clip.value;
+    if (clip.clipType !== 'timeline' || !clip.source?.path) return;
+    await projectStore.openTimelineFile(clip.source.path);
+  }
+
   return {
     isFreePosition,
     hasLockedLinkedAudio,
@@ -314,5 +321,6 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     toggleShowThumbnails,
     handleRenameClip,
     handleSelectInFileManager,
+    handleOpenNestedTimeline,
   };
 }

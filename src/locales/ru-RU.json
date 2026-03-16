@@ -211,6 +211,7 @@
       "rename": "Переименовать клип",
       "reversed": "Обратное воспроизведение",
       "showInFileManager": "Показать в файловом менеджере",
+      "goToTimeline": "Перейти к таймлайну",
       "showThumbnails": "Показать миниатюры",
       "showWaveform": "Показать вейвформу",
       "transform": {

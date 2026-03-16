@@ -88,32 +88,60 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
     return timelineStore.timelineDoc?.tracks.find((track) => track.kind === kind)?.id ?? null;
   }
 
-  function getPreviewDurationUs(params: {
+  const durationCache = new Map<string, Promise<number>>();
+
+  function getPreviewDurationUsAsync(params: {
     path?: string;
     kind: 'file' | 'timeline' | 'adjustment' | 'background' | 'text' | 'shape' | 'hud';
-  }) {
-    if (params.kind === 'timeline') {
-      return 2_000_000;
-    }
-
-    if (params.kind !== 'file') {
-      return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
-    }
-
+  }): Promise<number> {
+    const defaultDurationUs = workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
     const path = params.path;
-    if (!path) return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
 
-    const metadata = mediaStore.mediaMetadata[path];
-    if (metadata?.duration && Number.isFinite(metadata.duration) && metadata.duration > 0) {
-      return Math.max(1, Math.round(metadata.duration * 1_000_000));
+    if (!path) return Promise.resolve(defaultDurationUs);
+
+    if (params.kind !== 'file' && params.kind !== 'timeline') {
+      return Promise.resolve(defaultDurationUs);
     }
 
-    const mediaType = getMediaTypeFromFilename(path);
-    if (mediaType === 'image' || mediaType === 'text') {
-      return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
+    if (params.kind === 'file') {
+      const mediaType = getMediaTypeFromFilename(path);
+      if (mediaType === 'image' || mediaType === 'text') {
+        return Promise.resolve(defaultDurationUs);
+      }
     }
 
-    return 2_000_000;
+    if (durationCache.has(path)) {
+      return durationCache.get(path)!;
+    }
+
+    const promise = (async () => {
+      if (params.kind === 'timeline') {
+        try {
+          const file = await fileManager.vfs.getFile(path);
+          if (file) {
+            const text = await file.text();
+            const { parseTimelineFromOtio } = await import('~/timeline/otioSerializer');
+            const { selectTimelineDurationUs } = await import('~/timeline/selectors');
+            const doc = parseTimelineFromOtio(text, { id: 'preview', name: 'preview', fps: 25 });
+            const durationUs = selectTimelineDurationUs(doc);
+            if (durationUs > 0) return Math.max(1, Math.round(durationUs));
+          }
+        } catch {}
+        return defaultDurationUs;
+      }
+
+      try {
+        const metadata = await mediaStore.getOrFetchMetadataByPath(path);
+        if (metadata?.duration && Number.isFinite(metadata.duration) && metadata.duration > 0) {
+          return Math.max(1, Math.round(metadata.duration * 1_000_000));
+        }
+      } catch {}
+
+      return defaultDurationUs;
+    })();
+
+    durationCache.set(path, promise);
+    return promise;
   }
 
   function resolveDropTrackId(params: {
@@ -278,7 +306,7 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
         payloadKind: 'timeline',
         path: item.path,
       }) ?? context.baseTrackId;
-    const durationUs = getPreviewDurationUs({ kind: 'timeline', path: item.path });
+    const durationUs = await getPreviewDurationUsAsync({ kind: 'timeline', path: item.path });
     const nextStartUs = resolveInsertStartUs({
       trackId: targetTrackId,
       startUs: context.currentStartUs,
@@ -361,7 +389,7 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
         payloadKind: 'file',
         path: item.path,
       }) ?? context.baseTrackId;
-    const durationUs = getPreviewDurationUs({ kind: 'file', path: item.path });
+    const durationUs = await getPreviewDurationUsAsync({ kind: 'file', path: item.path });
     const nextStartUs = resolveInsertStartUs({
       trackId: targetTrackId,
       startUs: context.currentStartUs,
@@ -436,7 +464,7 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
       return null;
     }
 
-    const durationUs = getPreviewDurationUs({
+    const durationUs = await getPreviewDurationUsAsync({
       kind: payload.kind,
       path: payload.path,
     });
