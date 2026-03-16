@@ -34,6 +34,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const isOpen = defineModel<boolean>('open', { default: false });
+const contentRef = ref<HTMLElement | null>(null);
 
 const emit = defineEmits<{
   (e: 'after:enter'): void;
@@ -50,6 +51,44 @@ const modalContent = {
     event.preventDefault();
   },
 };
+
+function isFocusableElement(element: HTMLElement) {
+  if (element.hasAttribute('disabled')) {
+    return false;
+  }
+
+  if (element.getAttribute('aria-disabled') === 'true') {
+    return false;
+  }
+
+  return element.tabIndex >= 0;
+}
+
+function focusPreferredElement() {
+  const container = contentRef.value;
+  if (!container) {
+    return;
+  }
+
+  const target = container.querySelector<HTMLElement>(
+    '[data-primary-focus="true"], [autofocus]',
+  );
+
+  if (!target || !isFocusableElement(target)) {
+    return;
+  }
+
+  nextTick(() => {
+    setTimeout(() => {
+      target.focus();
+    }, 0);
+  });
+}
+
+function handleAfterEnter() {
+  focusPreferredElement();
+  emit('after:enter');
+}
 
 const headerClass = computed(() => {
   return props.ui?.header;
@@ -75,7 +114,7 @@ function handleClose(close?: () => void) {
 <template>
   <UModal
     v-model:open="isOpen"
-    @after:enter="emit('after:enter')"
+    @after:enter="handleAfterEnter"
     :content="modalContent"
     :dismissible="!props.preventClose"
     :title="props.title"
@@ -84,6 +123,7 @@ function handleClose(close?: () => void) {
   >
     <template #content="{ close }">
       <div
+        ref="contentRef"
         class="bg-ui-bg-elevated shadow-xl overflow-hidden sm:rounded-2xl border border-ui-border flex flex-col max-h-[90vh] min-h-0 w-full"
         :class="modalUi.content"
       >
