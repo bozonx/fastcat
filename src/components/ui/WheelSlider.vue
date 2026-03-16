@@ -12,6 +12,7 @@ interface WheelSliderProps {
   wheelStepMultiplier?: number;
   defaultValue?: number;
   disabled?: boolean;
+  orientation?: 'horizontal' | 'vertical';
 }
 
 const props = withDefaults(defineProps<WheelSliderProps>(), {
@@ -19,6 +20,7 @@ const props = withDefaults(defineProps<WheelSliderProps>(), {
   step: 1,
   sliderClass: '',
   wheelStepMultiplier: 1,
+  orientation: 'horizontal',
 });
 
 const emit = defineEmits<{
@@ -169,7 +171,8 @@ function onPointerDownCapture(event: PointerEvent) {
   -->
   <div
     ref="wrapperRef"
-    class="relative py-3 -my-3"
+    class="relative"
+    :class="orientation === 'horizontal' ? 'py-3 -my-3' : 'px-3 -mx-3 h-full'"
     @pointerdown.capture="onPointerDownCapture"
     @dblclick.capture="resetToDefault"
   >
@@ -178,6 +181,7 @@ function onPointerDownCapture(event: PointerEvent) {
       :min="min"
       :max="max"
       :step="step"
+      :orientation="orientation"
       :class="sliderClass"
       :disabled="disabled"
     />

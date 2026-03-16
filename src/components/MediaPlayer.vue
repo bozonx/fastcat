@@ -2,6 +2,7 @@
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { useImagePanZoom } from '~/composables/preview/useImagePanZoom';
 import { useMediaPlayerVolume } from '~/composables/preview/useMediaPlayerVolume';
+import VolumeControl from '~/components/common/VolumeControl.vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 
@@ -490,25 +491,12 @@ onUnmounted(() => {
         </div>
 
         <div class="flex items-center gap-2">
-          <div class="flex items-center gap-1 group/volume relative">
-            <UButton
-              size="sm"
-              variant="ghost"
-              color="neutral"
-              :icon="isMuted || volume === 0 ? 'i-heroicons-speaker-x-mark' : volume < 0.5 ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-wave'"
-              @click="toggleMute"
-            />
-            <div class="w-0 overflow-hidden transition-all duration-300 group-hover/volume:w-20 flex items-center">
-              <input
-                v-model.number="volume"
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                class="w-16 accent-primary-500 h-1 cursor-pointer"
-              />
-            </div>
-          </div>
+          <VolumeControl
+            v-model:volume="volume"
+            v-model:is-muted="isMuted"
+            compact
+            orientation="horizontal"
+          />
           <UButton
             v-if="type === 'video'"
             size="sm"
