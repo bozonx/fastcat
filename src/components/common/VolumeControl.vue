@@ -154,10 +154,17 @@ onBeforeUnmount(() => {
     </span>
 
     <Teleport to="body">
-      <Transition name="volume-panel">
+      <Transition
+        enter-active-class="transition duration-150 ease-out"
+        enter-from-class="opacity-0 translate-y-1 scale-95"
+        enter-to-class="opacity-100 translate-y-0 scale-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100 translate-y-0 scale-100"
+        leave-to-class="opacity-0 translate-y-1 scale-95"
+      >
         <div
           v-if="isHovered"
-          class="fixed z-99999 pointer-events-auto"
+          class="fixed z-[var(--z-max)] pointer-events-auto"
           :class="orientation === 'vertical' ? 'origin-top -translate-x-1/2 -translate-y-1/2' : 'origin-bottom -translate-x-1/2 -translate-y-full pb-4'"
           :style="{ top: `${popupPosition.top}px`, left: `${popupPosition.left}px` }"
           @mouseenter="onPopupMouseEnter"
@@ -209,18 +216,3 @@ onBeforeUnmount(() => {
     </Teleport>
   </div>
 </template>
-
-<style scoped>
-.volume-panel-enter-active,
-.volume-panel-leave-active {
-  transition:
-    opacity 0.15s ease,
-    transform 0.15s ease;
-}
-
-.volume-panel-enter-from,
-.volume-panel-leave-to {
-  opacity: 0;
-  transform: translateY(4px) scale(0.95);
-}
-</style>
