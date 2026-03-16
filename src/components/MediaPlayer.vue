@@ -132,7 +132,7 @@ function onLoadedMetadata() {
   if (!mediaElement.value) return;
   duration.value = mediaElement.value.duration;
   playbackSpeed.value = 1;
-  mediaElement.value.volume = volume.value;
+  mediaElement.value.volume = Math.min(1, Math.max(0, volume.value));
   mediaElement.value.muted = isMuted.value;
 }
 
@@ -238,7 +238,7 @@ watch(
     reset();
     
     if (mediaElement.value) {
-      mediaElement.value.volume = volume.value;
+      mediaElement.value.volume = Math.min(1, Math.max(0, volume.value));
       mediaElement.value.muted = isMuted.value;
     }
   },
@@ -246,7 +246,7 @@ watch(
 
 watch(volume, (v) => {
   if (mediaElement.value) {
-    mediaElement.value.volume = v;
+    mediaElement.value.volume = Math.min(1, Math.max(0, v));
   }
 });
 
