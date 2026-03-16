@@ -539,14 +539,6 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
 
       if (addedCount > 0) {
         await timelineStore.requestTimelineSave({ immediate: true });
-        toast.add({
-          color: 'green',
-          title: t('fastcat.timeline.clipAdded'),
-          description:
-            addedCount === 1
-              ? t('fastcat.timeline.oneClipAdded')
-              : t('fastcat.timeline.multipleClipsAdded', { count: addedCount }),
-        });
         void timelineMediaUsageStore.refreshUsage();
       }
     } catch (err: any) {

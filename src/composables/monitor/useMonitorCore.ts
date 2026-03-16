@@ -204,12 +204,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     if (!containerEl.value) return;
     const requestId = ++buildRequestId;
 
-    // Показываем лоадер только при первой загрузке или жестких ребилдах,
-    // чтобы не было мерцаний лоадера (jump) при смене разрешения.
-    const isFirstLoad = workerTimelineClips.value.length === 0;
-    if (isFirstLoad) {
-      isLoading.value = true;
-    }
+    // Лоадер полностью убран по запросу, чтобы не блокировать превью
 
     loadError.value = null;
 
