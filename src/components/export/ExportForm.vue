@@ -340,12 +340,13 @@ async function onConfirm() {
         </div>
         <div class="flex justify-end gap-2" :class="{ 'mt-2': isExporting }">
           <UButton
+            v-if="isExporting"
             color="neutral"
             variant="ghost"
             :label="t('common.cancel', 'Cancel')"
             :loading="cancelRequested"
             :disabled="cancelRequested"
-            @click="isExporting ? cancelExport() : undefined"
+            @click="cancelExport"
           />
           <UButton
             color="primary"
