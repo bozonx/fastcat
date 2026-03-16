@@ -142,6 +142,45 @@ const { handleFileAction: onFileAction, createTimelineInDirectory } = useFileMan
   },
 });
 
+const toolbarMenuItems = computed(() => [
+  [
+    {
+      label: t('common.sortBy', 'Sort by name'),
+      icon: sortMode.value === 'name' ? 'i-heroicons-check' : 'i-heroicons-bars-3-bottom-left',
+      onSelect: () => onSortModeChange('name'),
+    },
+    {
+      label: t('common.type', 'Sort by type'),
+      icon: sortMode.value === 'type' ? 'i-heroicons-check' : 'i-heroicons-squares-2x2',
+      onSelect: () => onSortModeChange('type'),
+    },
+  ],
+  [
+    {
+      label: uiStore.showHiddenFiles
+        ? t('videoEditor.fileManager.actions.hideHiddenFiles', 'Hide hidden files')
+        : t('videoEditor.fileManager.actions.showHiddenFiles', 'Show hidden files'),
+      icon: uiStore.showHiddenFiles ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
+      onSelect: () => {
+        uiStore.showHiddenFiles = !uiStore.showHiddenFiles;
+      },
+    },
+    {
+      label: t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree'),
+      icon: 'i-heroicons-arrow-path',
+      onSelect: () => onFileAction('refresh', {
+        kind: 'directory',
+        name: projectStore.currentProjectName ?? '',
+        path: '',
+        parentPath: '',
+        lastModified: 0,
+        size: 0,
+        source: 'local',
+      } as FsEntry),
+    },
+  ],
+]);
+
 async function onCreateTimeline() {
   const createdPath = await createTimeline();
   if (!createdPath) return;
@@ -285,6 +324,16 @@ useFileManagerPanelBootstrap({
             )
           "
         />
+        <div class="ml-auto">
+          <UDropdownMenu :items="toolbarMenuItems" :ui="{ content: 'w-56' }">
+            <UButton
+              icon="i-heroicons-ellipsis-horizontal"
+              variant="ghost"
+              color="neutral"
+              size="xs"
+            />
+          </UDropdownMenu>
+        </div>
 
       </div>
 
