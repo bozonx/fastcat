@@ -381,11 +381,6 @@ export async function runTranscode(
 
     await notifyPhase('saving', taskId);
   } catch (e) {
-    if (e instanceof Error && e.message === 'Assertion failed.') {
-      throw new Error(
-        'Video conversion failed in the worker rendering pipeline. The browser worker could not create a 2D OffscreenCanvas context for frame processing.',
-      );
-    }
     try {
       if (conversionProcess && typeof conversionProcess.cancel === 'function') {
         await conversionProcess.cancel();
