@@ -139,185 +139,189 @@ async function onConfirm() {
 
 <template>
   <div
-    class="panel-focus-frame flex flex-col h-full bg-ui-bg-elevated p-6 overflow-y-auto custom-scrollbar"
+    class="panel-focus-frame flex flex-col h-full bg-ui-bg-elevated relative overflow-hidden"
     :class="{
       'panel-focus-frame--active': focusStore.isPanelFocused('exportForm'),
     }"
     @pointerdown.capture="focusExportForm"
   >
-    <div class="mb-6 flex items-center justify-between">
-      <h2 class="text-xl font-semibold text-ui-text">
-        {{ t('videoEditor.export.title', 'Export') }}
-      </h2>
-    </div>
+    <div class="flex-1 overflow-y-auto custom-scrollbar p-6 flex flex-col min-h-0">
+      <div class="mb-6 flex items-center justify-between shrink-0">
+        <h2 class="text-xl font-semibold text-ui-text">
+          {{ t('videoEditor.export.title', 'Export') }}
+        </h2>
+      </div>
 
-    <div class="flex flex-col gap-6 max-w-2xl">
-      <div
-        v-if="hasSelectionRange"
-        class="rounded-lg border border-violet-400/40 bg-violet-500/10 px-4 py-3"
-      >
-        <label class="flex items-center gap-3 cursor-pointer">
-          <UCheckbox v-model="exportOnlySelectionRange" :disabled="isExporting" />
-          <div class="flex items-center gap-2 min-w-0">
-            <UIcon
-              name="i-heroicons-exclamation-triangle-solid"
-              class="h-5 w-5 shrink-0"
-              :class="exportOnlySelectionRange ? 'text-yellow-400' : 'text-ui-text-dimmed'"
+      <div class="flex flex-col gap-6 max-w-2xl flex-1 shrink-0">
+        <div
+          v-if="hasSelectionRange"
+          class="rounded-lg border border-violet-400/40 bg-violet-500/10 px-4 py-3"
+        >
+          <label class="flex items-center gap-3 cursor-pointer">
+            <UCheckbox v-model="exportOnlySelectionRange" :disabled="isExporting" />
+            <div class="flex items-center gap-2 min-w-0">
+              <UIcon
+                name="i-heroicons-exclamation-triangle-solid"
+                class="h-5 w-5 shrink-0"
+                :class="exportOnlySelectionRange ? 'text-yellow-400' : 'text-ui-text-dimmed'"
+              />
+              <div class="flex flex-col min-w-0">
+                <span class="text-sm font-medium text-ui-text">
+                  {{ t('videoEditor.export.onlySelectionRange', 'Export only selected zone') }}
+                </span>
+                <span class="text-xs text-ui-text-muted">
+                  {{
+                    t(
+                      'videoEditor.export.onlySelectionRangeHelp',
+                      'When enabled, export uses only the current selection zone. Disable to export the whole timeline.',
+                    )
+                  }}
+                </span>
+              </div>
+            </div>
+          </label>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <UFormField
+            :label="t('videoEditor.export.filename', 'Filename')"
+            :error="filenameError ?? undefined"
+          >
+            <UInput
+              v-model="outputFilename"
+              class="w-full"
+              :disabled="isExporting"
+              :placeholder="t('videoEditor.export.filenamePlaceholder', 'e.g. video.mp4')"
             />
-            <div class="flex flex-col min-w-0">
-              <span class="text-sm font-medium text-ui-text">
-                {{ t('videoEditor.export.onlySelectionRange', 'Export only selected zone') }}
-              </span>
-              <span class="text-xs text-ui-text-muted">
-                {{
-                  t(
-                    'videoEditor.export.onlySelectionRangeHelp',
-                    'When enabled, export uses only the current selection zone. Disable to export the whole timeline.',
-                  )
-                }}
+          </UFormField>
+          <div class="text-xs text-ui-text-muted flex items-center gap-1.5 mt-1">
+            <UIcon name="i-heroicons-information-circle" class="w-4 h-4 shrink-0" />
+            <span class="leading-relaxed">
+              {{
+                t(
+                  'videoEditor.export.saveLocationNote',
+                  'File will be saved to the export/ folder in your project directory',
+                )
+              }}
+            </span>
+          </div>
+        </div>
+
+        <div class="h-px bg-ui-border"></div>
+
+        <!-- Resolution & FPS Settings -->
+        <div class="space-y-4">
+          <div
+            class="w-full flex justify-between items-center cursor-pointer group"
+            @click="isResolutionExpanded = !isResolutionExpanded"
+          >
+            <div class="flex items-center gap-2">
+              <h3 v-show="isResolutionExpanded" class="text-lg font-semibold text-ui-text">
+                {{ t('videoEditor.projectSettings.resolutionAndFps', 'Resolution & FPS') }}
+              </h3>
+              <span v-show="!isResolutionExpanded" class="text-sm text-ui-text-muted font-normal">
+                {{ resolutionSummary }}
               </span>
             </div>
+            <UIcon
+              :name="
+                isResolutionExpanded
+                  ? 'i-heroicons-chevron-down-20-solid'
+                  : 'i-heroicons-chevron-right-20-solid'
+              "
+              class="w-5 h-5 text-ui-text-muted group-hover:text-ui-text transition-colors"
+            />
           </div>
+
+          <div v-show="isResolutionExpanded" class="pt-2">
+            <MediaResolutionSettings
+              v-model:width="exportWidth"
+              v-model:height="exportHeight"
+              v-model:fps="exportFps"
+              v-model:resolution-format="resolutionFormat"
+              v-model:orientation="orientation"
+              v-model:aspect-ratio="aspectRatio"
+              v-model:is-custom-resolution="isCustomResolution"
+              :disabled="isExporting"
+            />
+          </div>
+        </div>
+
+        <div class="h-px bg-ui-border"></div>
+
+        <!-- Encoding Settings -->
+        <div class="space-y-4">
+          <div
+            class="w-full flex justify-between items-center cursor-pointer group"
+            @click="isEncodingExpanded = !isEncodingExpanded"
+          >
+            <div class="flex items-center gap-2">
+              <h3 v-show="isEncodingExpanded" class="text-lg font-semibold text-ui-text">
+                {{ t('videoEditor.export.encodingSettings', 'Encoding Settings') }}
+              </h3>
+              <span v-show="!isEncodingExpanded" class="text-sm text-ui-text-muted font-normal">
+                {{ encodingSummary }}
+              </span>
+            </div>
+            <UIcon
+              :name="
+                isEncodingExpanded
+                  ? 'i-heroicons-chevron-down-20-solid'
+                  : 'i-heroicons-chevron-right-20-solid'
+              "
+              class="w-5 h-5 text-ui-text-muted group-hover:text-ui-text transition-colors"
+            />
+          </div>
+
+          <div v-show="isEncodingExpanded" class="pt-2">
+            <VideoEncodingForm
+              v-model:output-format="outputFormat"
+              v-model:video-codec="videoCodec"
+              v-model:bitrate-mbps="bitrateMbps"
+              v-model:exclude-audio="excludeAudio"
+              v-model:audio-codec="audioCodec"
+              v-model:audio-bitrate-kbps="audioBitrateKbps"
+              v-model:audio-sample-rate="audioSampleRate"
+              v-model:bitrate-mode="bitrateMode"
+              v-model:keyframe-interval-sec="keyframeIntervalSec"
+              v-model:export-alpha="exportAlpha"
+              v-model:metadata-title="metadataTitle"
+              v-model:metadata-description="metadataDescription"
+              v-model:metadata-author="metadataAuthor"
+              v-model:metadata-tags="metadataTags"
+              :show-audio-advanced="true"
+              :hide-audio-sample-rate="true"
+              :show-metadata="true"
+              :show-presets="true"
+              :disabled="isExporting"
+              :has-audio="true"
+            />
+          </div>
+        </div>
+
+        <div class="h-px bg-ui-border"></div>
+
+        <div class="h-px bg-ui-border"></div>
+
+        <label class="flex items-center gap-3 cursor-pointer mt-2">
+          <UCheckbox v-model="saveAsDefaults" :disabled="isExporting" />
+          <span class="text-sm text-ui-text">{{
+            t('videoEditor.export.saveAsDefault', 'Save as project settings')
+          }}</span>
         </label>
-      </div>
 
-      <div class="flex flex-col gap-1.5">
-        <UFormField
-          :label="t('videoEditor.export.filename', 'Filename')"
-          :error="filenameError ?? undefined"
-        >
-          <UInput
-            v-model="outputFilename"
-            class="w-full"
-            :disabled="isExporting"
-            :placeholder="t('videoEditor.export.filenamePlaceholder', 'e.g. video.mp4')"
-          />
-        </UFormField>
-        <div class="text-xs text-ui-text-muted flex items-center gap-1.5 mt-1">
-          <UIcon name="i-heroicons-information-circle" class="w-4 h-4 shrink-0" />
-          <span class="leading-relaxed">
-            {{
-              t(
-                'videoEditor.export.saveLocationNote',
-                'File will be saved to the export/ folder in your project directory',
-              )
-            }}
-          </span>
-        </div>
-      </div>
-
-      <div class="h-px bg-ui-border"></div>
-
-      <!-- Resolution & FPS Settings -->
-      <div class="space-y-4">
         <div
-          class="w-full flex justify-between items-center cursor-pointer group"
-          @click="isResolutionExpanded = !isResolutionExpanded"
+          v-if="exportError"
+          class="p-3 text-sm text-error-400 bg-error-400/10 rounded-md border border-error-400/20"
         >
-          <div class="flex items-center gap-2">
-            <h3 v-show="isResolutionExpanded" class="text-lg font-semibold text-ui-text">
-              {{ t('videoEditor.projectSettings.resolutionAndFps', 'Resolution & FPS') }}
-            </h3>
-            <span v-show="!isResolutionExpanded" class="text-sm text-ui-text-muted font-normal">
-              {{ resolutionSummary }}
-            </span>
-          </div>
-          <UIcon
-            :name="
-              isResolutionExpanded
-                ? 'i-heroicons-chevron-down-20-solid'
-                : 'i-heroicons-chevron-right-20-solid'
-            "
-            class="w-5 h-5 text-ui-text-muted group-hover:text-ui-text transition-colors"
-          />
+          {{ exportError }}
         </div>
-
-        <div v-show="isResolutionExpanded" class="pt-2">
-          <MediaResolutionSettings
-            v-model:width="exportWidth"
-            v-model:height="exportHeight"
-            v-model:fps="exportFps"
-            v-model:resolution-format="resolutionFormat"
-            v-model:orientation="orientation"
-            v-model:aspect-ratio="aspectRatio"
-            v-model:is-custom-resolution="isCustomResolution"
-            :disabled="isExporting"
-          />
-        </div>
-      </div>
-
-      <div class="h-px bg-ui-border"></div>
-
-      <!-- Encoding Settings -->
-      <div class="space-y-4">
-        <div
-          class="w-full flex justify-between items-center cursor-pointer group"
-          @click="isEncodingExpanded = !isEncodingExpanded"
-        >
-          <div class="flex items-center gap-2">
-            <h3 v-show="isEncodingExpanded" class="text-lg font-semibold text-ui-text">
-              {{ t('videoEditor.export.encodingSettings', 'Encoding Settings') }}
-            </h3>
-            <span v-show="!isEncodingExpanded" class="text-sm text-ui-text-muted font-normal">
-              {{ encodingSummary }}
-            </span>
-          </div>
-          <UIcon
-            :name="
-              isEncodingExpanded
-                ? 'i-heroicons-chevron-down-20-solid'
-                : 'i-heroicons-chevron-right-20-solid'
-            "
-            class="w-5 h-5 text-ui-text-muted group-hover:text-ui-text transition-colors"
-          />
-        </div>
-
-        <div v-show="isEncodingExpanded" class="pt-2">
-          <VideoEncodingForm
-            v-model:output-format="outputFormat"
-            v-model:video-codec="videoCodec"
-            v-model:bitrate-mbps="bitrateMbps"
-            v-model:exclude-audio="excludeAudio"
-            v-model:audio-codec="audioCodec"
-            v-model:audio-bitrate-kbps="audioBitrateKbps"
-            v-model:audio-sample-rate="audioSampleRate"
-            v-model:bitrate-mode="bitrateMode"
-            v-model:keyframe-interval-sec="keyframeIntervalSec"
-            v-model:export-alpha="exportAlpha"
-            v-model:metadata-title="metadataTitle"
-            v-model:metadata-description="metadataDescription"
-            v-model:metadata-author="metadataAuthor"
-            v-model:metadata-tags="metadataTags"
-            :show-audio-advanced="true"
-            :hide-audio-sample-rate="true"
-            :show-metadata="true"
-            :show-presets="true"
-            :disabled="isExporting"
-            :has-audio="true"
-          />
-        </div>
-      </div>
-
-      <div class="h-px bg-ui-border"></div>
-
-      <div class="h-px bg-ui-border"></div>
-
-      <label class="flex items-center gap-3 cursor-pointer mt-2">
-        <UCheckbox v-model="saveAsDefaults" :disabled="isExporting" />
-        <span class="text-sm text-ui-text">{{
-          t('videoEditor.export.saveAsDefault', 'Save as project settings')
-        }}</span>
-      </label>
-
-      <div
-        v-if="exportError"
-        class="p-3 text-sm text-error-400 bg-error-400/10 rounded-md border border-error-400/20"
-      >
-        {{ exportError }}
       </div>
     </div>
+    <!-- Close scrollable container -->
 
-    <div class="mt-8 pt-6 border-t border-ui-border">
+    <!-- Fixed Footer -->
+    <div class="mt-auto pt-6 border-t border-ui-border p-6 bg-ui-bg-elevated shrink-0">
       <div class="flex flex-col gap-3 w-full">
         <div v-if="isExporting" class="flex flex-col gap-2">
           <div class="flex justify-between text-xs text-ui-text-muted">
