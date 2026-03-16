@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import AppModal from '~/components/ui/AppModal.vue';
+import { ref, watch, nextTick } from 'vue';
+
 
 const props = defineProps<{
   isTranscriptionModalOpen: boolean;
@@ -27,6 +29,17 @@ function onLanguageUpdate(val: string) {
 function onSubmit() {
   emit('submit');
 }
+
+const submitButtonRef = ref<any>(null);
+
+watch(() => props.isTranscriptionModalOpen, (newValue) => {
+  if (newValue) {
+    nextTick(() => {
+      const el = submitButtonRef.value?.$el || submitButtonRef.value;
+      el?.focus?.();
+    });
+  }
+});
 </script>
 
 <template>
@@ -72,7 +85,7 @@ function onSubmit() {
         >
           {{ t('common.cancel', 'Cancel') }}
         </UButton>
-        <UButton color="primary" :loading="props.isTranscribingAudio" @click="onSubmit">
+        <UButton ref="submitButtonRef" color="primary" :loading="props.isTranscribingAudio" @click="onSubmit">
           {{ t('videoEditor.fileManager.audio.transcriptionSubmit', 'Transcribe') }}
         </UButton>
       </div>

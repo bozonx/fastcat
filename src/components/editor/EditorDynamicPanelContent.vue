@@ -100,7 +100,6 @@ const mediaIcon = computed(() => {
         class="absolute inset-0 h-full w-full border-none"
         :file-path="panel.filePath || ''"
         :file-name="panel.title || ''"
-        :initial-content="panel.fileContent || ''"
         :focus-panel-id="focusPanelId"
       />
     </div>

@@ -1,7 +1,7 @@
 import { computed, type Ref } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
-import { useProjectTabs } from '~/composables/project/useProjectTabs';
+import { useProjectTabsStore } from '~/stores/tabs.store';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
 import type { FsEntry } from '~/types/fs';
 
@@ -15,7 +15,7 @@ interface UseFilePropertiesHandlersOptions {
 export function useFilePropertiesHandlers(options: UseFilePropertiesHandlersOptions) {
   const projectStore = useProjectStore();
   const uiStore = useUiStore();
-  const { addFileTab, setActiveTab } = useProjectTabs();
+  const { addFileTab, setActiveTab } = useProjectTabsStore();
 
   const canOpenAsPanel = computed(() => {
     const entry = options.selectedFsEntry.value;
@@ -77,14 +77,7 @@ export function useFilePropertiesHandlers(options: UseFilePropertiesHandlersOpti
     }
 
     if (options.mediaType.value === 'text') {
-      projectStore.addTextPanel(
-        entry.path ?? entry.name,
-        options.textContent.value,
-        entry.name,
-        undefined,
-        undefined,
-        view,
-      );
+      projectStore.addTextPanel(entry.path ?? entry.name, entry.name, undefined, undefined, view);
     } else if (
       options.mediaType.value === 'video' ||
       options.mediaType.value === 'audio' ||

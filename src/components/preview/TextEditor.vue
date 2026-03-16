@@ -1,37 +1,48 @@
 <script setup lang="ts">
-import { onUnmounted, ref, watch } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 import TextEditorModal from '~/components/preview/TextEditorModal.vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
+import { useFileManager } from '~/composables/fileManager/useFileManager';
 
 const props = defineProps<{
   filePath: string;
   fileName?: string;
-  initialContent: string;
   focusPanelId?: PanelFocusId;
 }>();
 
 const projectStore = useProjectStore();
 const focusStore = useFocusStore();
+const fm = useFileManager();
 
-const content = ref(props.initialContent);
+const content = ref('');
 const isSaving = ref(false);
 const saveError = ref<string | null>(null);
 const lastSavedAt = ref<Date | null>(null);
-const lastSavedContent = ref(props.initialContent);
+const lastSavedContent = ref('');
 const isModalOpen = defineModel<boolean>('isModalOpen', { default: false });
+const isLoading = ref(true);
 
 let saveTimer: number | undefined;
 
-watch(
-  () => props.initialContent,
-  (val) => {
-    content.value = val;
-    lastSavedContent.value = val;
-    saveError.value = null;
-    lastSavedAt.value = null;
-  },
-);
+onMounted(async () => {
+  if (!props.filePath) {
+    isLoading.value = false;
+    return;
+  }
+  
+  try {
+    const blob = await fm.vfs.readFile(props.filePath);
+    const text = await blob.text();
+    content.value = text;
+    lastSavedContent.value = text;
+  } catch (e) {
+    console.error('TextEditor: failed to read file', e);
+    saveError.value = 'Failed to read file';
+  } finally {
+    isLoading.value = false;
+  }
+});
 
 function clearTimer() {
   if (saveTimer) {
@@ -105,11 +116,15 @@ function focusPanel() {
     @pointerdown.capture="focusPanel"
   >
     <textarea
+      v-if="!isLoading"
       v-model="content"
       class="flex-1 w-full resize-none font-mono text-sm text-ui-text bg-ui-bg focus:outline-none p-4"
       spellcheck="false"
       @focus="focusPanel"
     />
+    <div v-else class="flex-1 flex items-center justify-center text-ui-text-muted text-sm">
+      Loading...
+    </div>
 
     <!-- Status indicators & Modal button (bottom-right) -->
     <div

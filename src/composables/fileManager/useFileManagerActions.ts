@@ -7,7 +7,7 @@ import type { FsEntry } from '~/types/fs';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { generateUniqueFsEntryName } from '~/utils/fs';
 import { createMarkdownCommand } from '~/file-manager/application/fileManagerCommands';
-import { useProjectTabs } from '~/composables/project/useProjectTabs';
+import { useProjectTabsStore } from '~/stores/tabs.store';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
 export type FileAction =
@@ -51,7 +51,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
   const selectionStore = useSelectionStore();
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
   const projectStore = useProjectStore();
-  const { removeFileTabByPath } = useProjectTabs();
+  const { removeFileTabByPath } = useProjectTabsStore();
 
   const isDeleteConfirmModalOpen = ref(false);
   const deleteTargets = ref<FsEntry[]>([]);

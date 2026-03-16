@@ -8,7 +8,7 @@ import FileManagerFiles from '~/components/file-manager/FileManagerFiles.vue';
 import FileManagerPanelModals from '~/components/file-manager/FileManagerPanelModals.vue';
 import { useFocusStore } from '~/stores/focus.store';
 import { useFileManagerActions } from '~/composables/fileManager/useFileManagerActions';
-import { useProjectTabs } from '~/composables/project/useProjectTabs';
+import { useProjectTabsStore } from '~/stores/tabs.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { useAudioExtraction } from '~/composables/fileManager/useAudioExtraction';
@@ -36,7 +36,7 @@ const focusStore = useFocusStore();
 const uiStore = useUiStore();
 const conversionStore = useFileConversionStore();
 const { extractAudio } = useAudioExtraction();
-const { addFileTab, setActiveTab } = useProjectTabs();
+const { addFileTab, setActiveTab } = useProjectTabsStore();
 const runtimeConfig = useRuntimeConfig();
 
 const fileManager = useFileManager();

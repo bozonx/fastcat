@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref, watch, nextTick } from 'vue';
+
 import AppModal from '~/components/ui/AppModal.vue';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
@@ -87,6 +88,17 @@ const outputFileName = computed(() => {
     return `${baseName}_converted.webp`;
   }
   return fileName.value;
+});
+
+const convertButtonRef = ref<any>(null);
+
+watch(isOpen, (newValue) => {
+  if (newValue) {
+    nextTick(() => {
+      const el = convertButtonRef.value?.$el || convertButtonRef.value;
+      el?.focus?.();
+    });
+  }
 });
 
 function clampPositiveInt(value: number) {
@@ -237,7 +249,7 @@ function onImageHeightChange(val: number) {
         <UButton variant="ghost" color="neutral" @click="isOpen = false">
           {{ t('common.cancel', 'Cancel') }}
         </UButton>
-        <UButton color="primary" @click="startConversion">
+        <UButton ref="convertButtonRef" color="primary" @click="startConversion">
           {{ t('videoEditor.export.convert', 'Convert') }}
         </UButton>
       </div>

@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import AppModal from '~/components/ui/AppModal.vue';
+import { ref, watch, nextTick } from 'vue';
+
 
 // We define the specific colors supported by UButton to ensure type safety
 type ButtonColor = 'primary' | 'secondary' | 'neutral' | 'error' | 'warning' | 'success' | 'info';
@@ -29,6 +31,19 @@ const {
 const emit = defineEmits(['confirm', 'secondary']);
 
 const isOpen = defineModel<boolean>('open', { required: true });
+
+const confirmButtonRef = ref<any>(null);
+
+watch(isOpen, (newValue) => {
+  if (newValue) {
+    nextTick(() => {
+      // Focus the confirm button when the modal opens
+      const el = confirmButtonRef.value?.$el || confirmButtonRef.value;
+      el?.focus?.();
+    });
+  }
+});
+
 
 const { t } = useI18n();
 
@@ -94,7 +109,7 @@ const handleClose = () => {
       >
         {{ secondaryText }}
       </UButton>
-      <UButton :color="color" :loading="loading" @click="handleConfirm">
+      <UButton ref="confirmButtonRef" :color="color" :loading="loading" @click="handleConfirm">
         {{ confirmText || t('common.confirm') }}
       </UButton>
     </template>

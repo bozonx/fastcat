@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, nextTick } from 'vue';
+
 import AppModal from '~/components/ui/AppModal.vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import {
@@ -72,9 +73,15 @@ watch(
   (open) => {
     if (open) {
       resetState();
+      nextTick(() => {
+        const el = generateButtonRef.value?.$el || generateButtonRef.value;
+        el?.focus?.();
+      });
     }
   },
 );
+
+const generateButtonRef = ref<any>(null);
 </script>
 
 <template>
@@ -154,7 +161,7 @@ watch(
         <UButton color="neutral" variant="ghost" @click="isOpen = false">
           {{ t('common.cancel', 'Cancel') }}
         </UButton>
-        <UButton color="primary" :loading="isGenerating" @click="generateCaptions">
+        <UButton ref="generateButtonRef" color="primary" :loading="isGenerating" @click="generateCaptions">
           {{ t('fastcat.captions.generate', 'Generate captions') }}
         </UButton>
       </div>

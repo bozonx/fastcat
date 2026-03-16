@@ -25,9 +25,7 @@ export interface DynamicPanel {
   title?: string;
   // If type is text or media, store file details
   filePath?: string;
-  fileContent?: string;
   mediaType?: 'video' | 'audio' | 'image' | 'unknown' | null;
-  fsEntry?: FsEntry; // To pass to EntryPreviewBox or logic
 }
 
 export interface PanelColumn {
@@ -46,7 +44,9 @@ const viewConfigs: Record<EditorView, ViewConfig> = {
 };
 
 function generateId() {
-  return Math.random().toString(36).substring(2, 9);
+  return typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Math.random().toString(36).substring(2, 9);
 }
 
 function sanitizePanel(panel: unknown): DynamicPanel | null {
@@ -236,17 +236,15 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
 
   function addTextPanel(
     filePath: string,
-    fileContent: string,
     title: string,
     targetPanelId?: string,
     position?: PanelPosition,
     view?: 'cut' | 'sound',
   ) {
     const newPanel: DynamicPanel = {
-      id: `text-${Date.now()}`,
+      id: `text-${generateId()}`,
       type: 'text',
       filePath,
-      fileContent,
       title,
     };
     insertPanelAt(newPanel, targetPanelId, position, view);
@@ -261,7 +259,7 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     view?: 'cut' | 'sound',
   ) {
     const newPanel: DynamicPanel = {
-      id: `media-${Date.now()}`,
+      id: `media-${generateId()}`,
       type: 'media',
       filePath: fsEntry.path ?? fsEntry.name,
       mediaType,

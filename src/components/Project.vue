@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, markRaw, ref, computed, watch, nextTick } from 'vue';
 import {
-  useProjectTabs,
-  registerProjectTab,
+  useProjectTabsStore,
   isFileTab,
   type AnyProjectTab,
   type ProjectTab,
   type ProjectFileTab,
-} from '~/composables/project/useProjectTabs';
+} from '~/stores/tabs.store';
 import { FILE_MANAGER_MOVE_DRAG_TYPE } from '~/composables/useDraggedFile';
 import { isOpenableProjectFileName } from '~/utils/media-types';
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
@@ -29,25 +28,45 @@ const props = withDefaults(
   },
 );
 
-const { tabs, activeTabId, setActiveTab, initDefaultTab, reorderTabs, addFileTab, removeFileTab } =
-  useProjectTabs();
+const {
+  tabs,
+  activeTabId,
+  setActiveTab,
+  initDefaultTab,
+  reorderTabs,
+  addFileTab,
+  removeFileTab,
+  registerProjectTab,
+} = useProjectTabsStore();
 
 /** Static tabs (not reorderable via VueDraggable — use native drag) */
-const staticTabs = computed(() => tabs.value.filter((t) => !isFileTab(t)) as ProjectTab[]);
+const staticTabs = computed(() => {
+  const t = tabs.value;
+  if (!t) return [];
+  return t.filter((tab) => !isFileTab(tab)) as ProjectTab[];
+});
 
 /** File tabs (reorderable via VueDraggable) */
 const fileTabsModel = computed({
-  get: () => tabs.value.filter((t) => isFileTab(t)) as ProjectFileTab[],
+  get: () => {
+    const t = tabs.value;
+    if (!t) return [];
+    return t.filter((tab) => isFileTab(tab)) as ProjectFileTab[];
+  },
   set: (val) => reorderTabs([...staticTabs.value, ...val]),
 });
 
 const activeFileTab = computed(() => {
-  const tab = tabs.value.find((t) => t.id === activeTabId.value);
+  const t = tabs.value;
+  if (!t) return null;
+  const tab = t.find((t) => t.id === activeTabId.value);
   return tab && isFileTab(tab) ? tab : null;
 });
 
 const activeStaticTab = computed<ProjectTab | null>(() => {
-  const tab = tabs.value.find((t) => t.id === activeTabId.value);
+  const t = tabs.value;
+  if (!t) return null;
+  const tab = t.find((t) => t.id === activeTabId.value);
   return tab && !isFileTab(tab) ? (tab as ProjectTab) : null;
 });
 
