@@ -86,11 +86,11 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   });
 
   const useProxyInMonitor = computed(() => {
-    return projectStore.projectSettings.monitor?.useProxy !== false;
+    return projectStore.activeMonitor?.useProxy !== false;
   });
 
   const previewEffectsEnabled = computed(() => {
-    return projectStore.projectSettings.monitor?.previewEffectsEnabled !== false;
+    return projectStore.activeMonitor?.previewEffectsEnabled !== false;
   });
 
   function getPreviewRenderOptions() {

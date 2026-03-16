@@ -32,7 +32,6 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
   );
   const isLoadingProjectSettings = ref(false);
   const isSavingProjectSettings = ref(false);
-  const isSwitchingView = ref(false);
 
   const editorViewStore = useEditorViewStore();
 
@@ -41,6 +40,14 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
   const getIsReadOnly = ref<(() => boolean) | null>(null);
   const getProjectMeta = ref<(() => ProjectMeta | null) | null>(null);
   const saveProjectMeta = ref<((updates: Partial<ProjectMeta>) => Promise<void>) | null>(null);
+
+  const activeMonitor = computed(() => {
+    const view = editorViewStore.currentView;
+    const targetView =
+      view === 'fullscreen' ? editorViewStore.lastViewBeforeFullscreen || 'cut' : view;
+    const safeView = ['cut', 'sound', 'export'].includes(targetView) ? targetView : 'cut';
+    return projectSettings.value.monitors[safeView] || projectSettings.value.monitor;
+  });
 
   const autoSave = createAutoSave({
     doSave: async () => {
@@ -161,13 +168,6 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
             settings.monitors.cut = { ...settings.monitors.cut, ...(uiRaw as any).monitor };
           }
 
-          // Also update active monitor from the target view
-          const view = editorViewStore.currentView;
-          const targetView = view === 'fullscreen' ? editorViewStore.lastViewBeforeFullscreen || 'cut' : view;
-          if (settings.monitors[targetView]) {
-            settings.monitor = { ...settings.monitors[targetView] };
-          }
-
           if (uiRaw.timelines) settings.timelines = { ...settings.timelines, ...uiRaw.timelines };
         }
       }
@@ -223,42 +223,9 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
   watch(
     projectSettings,
     () => {
-      if (isLoadingProjectSettings.value || isSwitchingView.value) return;
+      if (isLoadingProjectSettings.value) return;
       markProjectSettingsAsDirty();
       void requestProjectSettingsSave();
-    },
-    { deep: true },
-  );
-
-  // Sync active monitor with current view
-  watch(
-    () => editorViewStore.currentView,
-    (view) => {
-      const targetView = view === 'fullscreen' ? editorViewStore.lastViewBeforeFullscreen || 'cut' : view;
-      if (!['cut', 'sound', 'export'].includes(targetView)) return;
-
-      const newSettings = projectSettings.value.monitors[targetView];
-      if (!newSettings) return;
-
-      isSwitchingView.value = true;
-      try {
-        projectSettings.value.monitor = { ...newSettings };
-      } finally {
-        isSwitchingView.value = false;
-      }
-    },
-  );
-
-  // Update monitors record when active monitor changes
-  watch(
-    () => projectSettings.value.monitor,
-    (newVal) => {
-      if (isSwitchingView.value || isLoadingProjectSettings.value) return;
-      const view = editorViewStore.currentView;
-      const targetView = view === 'fullscreen' ? editorViewStore.lastViewBeforeFullscreen || 'cut' : view;
-      if (!['cut', 'sound', 'export'].includes(targetView)) return;
-
-      projectSettings.value.monitors[targetView] = { ...newVal };
     },
     { deep: true },
   );
@@ -273,5 +240,6 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     saveProjectSettings,
     requestProjectSettingsSave,
     saveInitialProjectSettingsForNewProject,
+    activeMonitor,
   };
 });

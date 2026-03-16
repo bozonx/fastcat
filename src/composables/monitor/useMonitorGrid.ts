@@ -8,10 +8,10 @@ import type { useProjectStore } from '~/stores/project.store';
  */
 export function useMonitorGrid(input: { projectStore: ReturnType<typeof useProjectStore> }) {
   const showGrid = computed({
-    get: () => input.projectStore.projectSettings.monitor?.showGrid ?? false,
+    get: () => input.projectStore.activeMonitor?.showGrid ?? false,
     set: (v: boolean) => {
-      if (!input.projectStore.projectSettings.monitor) return;
-      input.projectStore.projectSettings.monitor.showGrid = v;
+      if (!input.projectStore.activeMonitor) return;
+      input.projectStore.activeMonitor.showGrid = v;
     },
   });
 

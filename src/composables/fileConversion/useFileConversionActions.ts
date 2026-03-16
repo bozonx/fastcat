@@ -74,6 +74,7 @@ interface UseFileConversionActionsProps {
   conversionError: Ref<string>;
   isModalOpen: Ref<boolean>;
   conversionModalRequestId: Ref<number>;
+  sourceHasAudio: Ref<boolean>;
   callbacks?: {
     onSuccess?: (type: 'bgTaskAdded' | 'success', bgTaskTitle?: string) => void;
     onError?: (error: Error) => void;
@@ -123,6 +124,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
     props.isModalOpen.value = true;
 
     if (mediaCategory === 'video') {
+      props.sourceHasAudio.value = true;
       props.videoSettings.format =
         projectStore.projectSettings?.exportDefaults?.encoding?.format ?? DEFAULT_VIDEO_FORMAT;
       props.videoSettings.videoCodec =
@@ -163,6 +165,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
         }
 
         if (meta?.audio) {
+          props.sourceHasAudio.value = true;
           props.audioSettings.channels = resolveAudioChannelsFromMeta(meta.audio.channels);
           props.audioSettings.originalSampleRate = Math.max(
             1,
@@ -170,6 +173,8 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           );
           props.audioSettings.sampleRate = 0;
         } else {
+          props.sourceHasAudio.value = false;
+          props.videoSettings.excludeAudio = true;
           props.audioSettings.originalSampleRate = null;
           props.audioSettings.sampleRate = 0;
         }
@@ -180,6 +185,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
         );
       }
     } else if (mediaCategory === 'audio') {
+      props.sourceHasAudio.value = true;
       // Reset to defaults
       props.audioSettings.onlyCodec = 'opus';
       props.audioSettings.onlyFormat = 'opus';
@@ -218,6 +224,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
         );
       }
     } else if (mediaCategory === 'image') {
+      props.sourceHasAudio.value = false;
       props.imageSettings.quality = DEFAULT_IMAGE_QUALITY;
 
       try {
@@ -281,7 +288,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
         format: props.videoSettings.format,
         videoCodec: props.videoSettings.videoCodec,
         bitrateMbps: clampPositiveNumber(props.videoSettings.bitrateMbps, 5),
-        excludeAudio: props.videoSettings.excludeAudio,
+        excludeAudio: !props.sourceHasAudio.value || props.videoSettings.excludeAudio,
         audioCodec: props.videoSettings.audioCodec,
         audioBitrateKbps: clampPositiveNumber(props.videoSettings.audioBitrateKbps, 128),
         bitrateMode: props.videoSettings.bitrateMode,

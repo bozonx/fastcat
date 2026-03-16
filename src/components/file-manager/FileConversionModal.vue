@@ -19,6 +19,7 @@ const {
   isModalOpen,
   targetEntry,
   mediaType,
+  sourceHasAudio,
   video,
   audio,
   image,
@@ -89,6 +90,16 @@ const outputFileName = computed(() => {
   }
   return fileName.value;
 });
+
+watch(
+  sourceHasAudio,
+  (hasAudio) => {
+    if (!hasAudio && mediaType.value === 'video') {
+      video.value.excludeAudio = true;
+    }
+  },
+  { immediate: true },
+);
 
 const convertButtonRef = ref<any>(null);
 
@@ -180,8 +191,8 @@ function onImageHeightChange(val: number) {
             v-model:keyframe-interval-sec="video.keyframeIntervalSec"
             :show-metadata="false"
             :show-presets="true"
-            :has-audio="true"
-            :hide-audio-bitrate="true"
+            :has-audio="sourceHasAudio"
+            :hide-audio-bitrate="false"
             :show-audio-advanced="true"
             :original-audio-sample-rate="audio.originalSampleRate"
             :allow-original-audio-sample-rate="true"

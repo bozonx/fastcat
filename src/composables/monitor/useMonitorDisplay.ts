@@ -30,7 +30,7 @@ export function useMonitorDisplay() {
   });
 
   const renderHeight = computed(() => {
-    const value = Number(projectStore.projectSettings.monitor?.previewResolution);
+    const value = Number(projectStore.activeMonitor?.previewResolution);
     return Number.isFinite(value) && value > 0 ? value : 480;
   });
 

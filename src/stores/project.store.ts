@@ -34,7 +34,7 @@ export const useProjectStore = defineStore('project', () => {
   const projectSettingsStore = useProjectSettingsStore();
   const projectLock = useProjectLock();
 
-  const { projectSettings, isLoadingProjectSettings, isSavingProjectSettings } =
+  const { projectSettings, isLoadingProjectSettings, isSavingProjectSettings, activeMonitor } =
     storeToRefs(projectSettingsStore);
 
   function getErrorMessage(e: unknown, fallback: string): string {
@@ -375,6 +375,7 @@ export const useProjectStore = defineStore('project', () => {
     projectMeta: metaModule.projectMeta,
     saveProjectMeta: metaModule.saveProjectMeta,
     loadProjectMeta: metaModule.loadProjectMeta,
+    activeMonitor,
     ...editorViewModule,
   };
 });
