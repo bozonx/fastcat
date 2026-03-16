@@ -80,6 +80,17 @@ function onContainerDragLeave(e: DragEvent) {
   autoScrollDragLeave(e);
 }
 
+function onTreeContainerKeyDown(e: KeyboardEvent) {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+    e.preventDefault();
+    e.stopPropagation();
+    uiStore.fileTreeSelectAllTrigger++;
+    return;
+  }
+
+  onContainerKeyDown(e);
+}
+
 const props = defineProps<{
   editingEntryPath?: string | null;
   foldersOnly?: boolean;
@@ -304,7 +315,7 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
     @dragover="onContainerDragOver"
     @dragleave="onContainerDragLeave"
     @drop.prevent="onContainerDrop"
-    @keydown="onContainerKeyDown"
+    @keydown="onTreeContainerKeyDown"
   >
     <UContextMenu :items="rootContextMenuItems">
       <div class="min-w-full w-max min-h-full flex flex-col" @pointerdown.self="selectProjectRoot">

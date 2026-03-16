@@ -358,6 +358,20 @@ export const useTimelineStore = defineStore('timeline', () => {
     historyStore,
     requestTimelineSave,
     markTimelineAsDirty,
+    selectTimelineItems: selection.selectTimelineItems,
+    selectGlobalTimelineItems: (itemIds, doc) => {
+      const itemIdSet = new Set(itemIds);
+      const items = doc.tracks.flatMap((track) =>
+        track.items
+          .filter((item) => item.kind === 'clip' && itemIdSet.has(item.id))
+          .map((item) => ({
+            trackId: track.id,
+            itemId: item.id,
+          })),
+      );
+
+      selectionStore.selectTimelineItems(items);
+    },
   });
 
   const { undoTimeline, redoTimeline } = dispatcher;

@@ -36,17 +36,26 @@ const showLowSpeedWarning = computed(
 
 const saveButtonRef = ref<any>(null);
 
-const handleAfterEnter = () => {
+function focusSaveButton() {
   const el = saveButtonRef.value?.$el || saveButtonRef.value;
-  el?.focus?.();
+  if (!(el instanceof HTMLElement)) {
+    return;
+  }
+
+  nextTick(() => {
+    setTimeout(() => {
+      el.focus();
+    }, 0);
+  });
+}
+
+const handleAfterEnter = () => {
+  focusSaveButton();
 };
 
 watch(() => props.open, (newValue) => {
   if (newValue) {
-    nextTick(() => {
-      const el = saveButtonRef.value?.$el || saveButtonRef.value;
-      el?.focus?.();
-    });
+    focusSaveButton();
   }
 });
 

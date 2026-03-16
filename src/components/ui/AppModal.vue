@@ -45,6 +45,12 @@ const modalUi = computed(() => {
   return (props.ui || {}) as any;
 });
 
+const modalContent = {
+  onOpenAutoFocus: (event: Event) => {
+    event.preventDefault();
+  },
+};
+
 const headerClass = computed(() => {
   return props.ui?.header;
 });
@@ -70,6 +76,7 @@ function handleClose(close?: () => void) {
   <UModal
     v-model:open="isOpen"
     @after:enter="emit('after:enter')"
+    :content="modalContent"
     :dismissible="!props.preventClose"
     :title="props.title"
     :description="props.description"

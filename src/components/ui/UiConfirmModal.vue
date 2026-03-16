@@ -34,18 +34,26 @@ const isOpen = defineModel<boolean>('open', { required: true });
 
 const confirmButtonRef = ref<any>(null);
 
-const handleAfterEnter = () => {
+function focusConfirmButton() {
   const el = confirmButtonRef.value?.$el || confirmButtonRef.value;
-  el?.focus?.();
+  if (!(el instanceof HTMLElement)) {
+    return;
+  }
+
+  nextTick(() => {
+    setTimeout(() => {
+      el.focus();
+    }, 0);
+  });
+}
+
+const handleAfterEnter = () => {
+  focusConfirmButton();
 };
 
 watch(isOpen, (newValue) => {
   if (newValue) {
-    nextTick(() => {
-      // Focus the confirm button when the modal opens
-      const el = confirmButtonRef.value?.$el || confirmButtonRef.value;
-      el?.focus?.();
-    });
+    focusConfirmButton();
   }
 });
 
