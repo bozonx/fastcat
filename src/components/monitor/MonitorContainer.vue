@@ -112,6 +112,23 @@ const isReadonly = computed(
   () => projectStore.currentView === 'sound' || projectStore.currentView === 'export',
 );
 
+const selectedPreviewResolution = computed(() => {
+  const currentValue = Number(projectStore.activeMonitor?.previewResolution);
+  if (!Number.isFinite(currentValue) || currentValue <= 0) {
+    return null;
+  }
+
+  const normalizedCurrentValue = Math.round(currentValue);
+
+  return (
+    previewResolutions.value.find((resolution) => resolution.value === normalizedCurrentValue) ?? {
+      label: `${normalizedCurrentValue}p`,
+      value: normalizedCurrentValue,
+      isProject: normalizedCurrentValue === projectStore.projectSettings.project.height,
+    }
+  );
+});
+
 const monitorZoomLabel = computed(() => (viewportRef.value as any)?.zoomLabel ?? 'x1');
 
 const props = withDefaults(
@@ -318,11 +335,7 @@ const emit = defineEmits<{
           <div class="w-17">
             <USelectMenu
               v-if="projectStore.activeMonitor"
-              :model-value="
-                (previewResolutions.find(
-                  (r) => r.value === projectStore.activeMonitor?.previewResolution,
-                ) || previewResolutions[2]) as any
-              "
+              :model-value="selectedPreviewResolution as any"
               :items="previewResolutions"
               value-key="value"
               label-key="label"
@@ -336,15 +349,6 @@ const emit = defineEmits<{
                 }
               "
             >
-              <template #leading="{ modelValue }">
-                <UIcon
-                  v-if="(modelValue as any)?.isProject"
-                  name="i-heroicons-star-20-solid"
-                  class="w-3 h-3 text-primary-500 shrink-0"
-                  :title="t('fastcat.monitor.projectResolutionHint')"
-                />
-                <span v-else class="w-3 h-3 shrink-0"></span>
-              </template>
               <template #item-label="{ item }">
                 <span
                   :class="[
@@ -359,10 +363,7 @@ const emit = defineEmits<{
               </template>
               <template #item-trailing="{ item }">
                 <UIcon
-                  v-if="
-                    item.isProject &&
-                    item.value !== projectStore.activeMonitor?.previewResolution
-                  "
+                  v-if="item.isProject"
                   name="i-heroicons-star-20-solid"
                   class="w-3 h-3 text-primary-500 shrink-0"
                   :title="t('fastcat.monitor.projectResolutionHint')"

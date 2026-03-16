@@ -68,10 +68,20 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
   });
 
   const previewResolutions = computed<PreviewResolutionOption[]>(() => {
-    const projectHeight = options.projectStore.projectSettings.project.height;
+    const projectHeight = Math.max(
+      1,
+      Math.round(options.projectStore.projectSettings.project.height),
+    );
+    const currentPreviewResolution = Math.max(
+      1,
+      Math.round(Number(options.projectStore.activeMonitor?.previewResolution) || 480),
+    );
     const baseResolutions = [2160, 1440, 1080, 720, 480, 360, 240, 144];
+    const resolutionValues = Array.from(
+      new Set([...baseResolutions, projectHeight, currentPreviewResolution]),
+    ).sort((a, b) => b - a);
 
-    return baseResolutions.map((value) => ({
+    return resolutionValues.map((value) => ({
       label: `${value}p`,
       value,
       isProject: value === projectHeight,

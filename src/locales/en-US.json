@@ -606,6 +606,7 @@
     "audio": {
       "audioSettings": "Audio settings",
       "channels": "Channels",
+      "channelsCount": "{n} channels",
       "mono": "Mono",
       "original": "Original Audio",
       "sampleRate": "Sample Rate",

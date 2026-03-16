@@ -36,10 +36,11 @@ export function useFileConversionSettings() {
     onlyFormat: DEFAULT_AUDIO_ONLY_FORMAT as 'opus' | 'aac',
     onlyCodec: DEFAULT_AUDIO_ONLY_FORMAT as 'opus' | 'aac',
     onlyBitrateKbps: DEFAULT_AUDIO_BITRATE_KBPS,
-    channels: 'stereo' as 'stereo' | 'mono',
+    channels: 2,
     sampleRate: 0,
     reverse: false,
     originalSampleRate: null as number | null,
+    originalChannels: null as number | null,
   });
 
   const image = reactive({

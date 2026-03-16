@@ -1,7 +1,6 @@
-export function resolveAudioChannelsFromMeta(channels?: number): 'stereo' | 'mono' {
-  if (!channels) return 'stereo';
-  if (channels === 1) return 'mono';
-  return 'stereo';
+export function resolveAudioChannelsFromMeta(channels?: number): number {
+  if (!channels) return 2;
+  return channels;
 }
 
 export function resolveAudioOnlyContainerFormat(codec: 'opus' | 'aac'): 'webm' | 'mp4' {
