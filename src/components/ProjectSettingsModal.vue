@@ -46,23 +46,6 @@ async function confirmDeleteProject() {
   // because projectStore.currentProjectName becomes null and the view switches in index.vue
 }
 
-// Project settings form data
-async function applySettings() {
-  // Settings are already bound via v-model and saved automatically in projectStore
-
-  // Close modal
-  isOpen.value = false;
-
-  await projectStore.saveProjectSettings();
-  await projectStore.saveProjectMeta({}); // Just to trigger a save of the reactive state if needed, though they are usually bound
-
-  // Show success message
-  const toast = useToast();
-  toast.add({
-    title: t('videoEditor.projectSettings.applied', 'Project settings applied'),
-    color: 'success',
-  });
-}
 
 async function resetToDefaults() {
   if (!projectStore.projectSettings) return;
@@ -195,21 +178,12 @@ async function resetToDefaults() {
           :label="t('videoEditor.projectSettings.reset', 'Reset to Defaults')"
           @click="isResetConfirmOpen = true"
         />
-        <div class="flex items-center gap-2">
-          <UButton
-            variant="ghost"
-            color="neutral"
-            :label="t('common.cancel', 'Cancel')"
-            @click="(isOpen = false) && projectStore.saveProjectSettings()"
-          />
-          <UButton
-            variant="solid"
-            color="primary"
-            :label="t('videoEditor.projectSettings.apply', 'Apply Settings')"
-            autofocus
-            @click="applySettings"
-          />
-        </div>
+        <UButton
+          variant="ghost"
+          color="neutral"
+          :label="t('common.close', 'Close')"
+          @click="isOpen = false"
+        />
       </div>
     </template>
   </AppModal>
