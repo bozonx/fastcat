@@ -135,6 +135,8 @@ export const useProjectStore = defineStore('project', () => {
     getIsReadOnly: () => isReadOnly.value,
     getProjectMeta: () => metaModule.projectMeta.value,
     saveProjectMeta: metaModule.saveProjectMeta,
+    getCurrentEditorView: () => editorViewModule.currentView.value,
+    getLastViewBeforeFullscreen: () => editorViewModule.lastViewBeforeFullscreen.value,
   });
 
   async function loadProjectSettings() {

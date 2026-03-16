@@ -12,6 +12,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import type { ConversionRequest } from '~/types/conversion';
 import { clampPositiveNumber, resolveAudioOnlyContainerFormat } from './helpers';
+import { runTranscode } from '~/workers/core/transcode';
 import {
   AUDIO_ONLY_EXPORT_PLACEHOLDER_DIMENSION,
   AUDIO_ONLY_EXPORT_PLACEHOLDER_FPS,
@@ -42,17 +43,16 @@ export async function executeMediaConversion(params: {
       backgroundTasksStore.updateTaskStatus(params.backgroundTaskId, 'running');
 
       const { client } = getExportWorkerClient();
+      const hostApi = createVideoCoreHostApi({
+        getCurrentProjectId: () => projectStore.currentProjectId,
+        getWorkspaceHandle: () => workspaceStore.workspaceHandle,
+        getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
+        getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
+        getFileByPath: async (path) => projectStore.getFileByPath(path),
+        onExportProgress: () => {},
+      });
 
-      setExportHostApi(
-        createVideoCoreHostApi({
-          getCurrentProjectId: () => projectStore.currentProjectId,
-          getWorkspaceHandle: () => workspaceStore.workspaceHandle,
-          getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
-          getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
-          getFileByPath: async (path) => projectStore.getFileByPath(path),
-          onExportProgress: () => {},
-        }),
-      );
+      setExportHostApi(hostApi);
       registerExportTaskHostApi(params.taskId, {
         onExportProgress: (progress) => {
           const normalizedProgress = progress / 100;
@@ -122,7 +122,22 @@ export async function executeMediaConversion(params: {
           };
         }
 
-        await client.transcodeMedia(sourceFile, params.targetHandle, exportOptions, params.taskId);
+        await runTranscode(
+          sourceFile,
+          params.targetHandle,
+          exportOptions,
+          hostApi,
+          async (message) => {
+            console.warn(message);
+          },
+          () => {
+            const currentTask = backgroundTasksStore.tasks.find(
+              (t) => t.id === params.backgroundTaskId,
+            );
+            return currentTask?.status === 'cancelled' || params.isCancelRequested();
+          },
+          params.taskId,
+        );
       } finally {
         unregisterExportTaskHostApi(params.taskId);
       }

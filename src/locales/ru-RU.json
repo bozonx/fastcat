@@ -239,6 +239,7 @@
     },
     "effects": {
       "add": "Добавить",
+      "audioTitle": "Аудиоэффекты",
       "addEffect": "Добавить эфф.",
       "clipTitle": "Эффекты клипа",
       "presetNamePlaceholder": "Мой пресет",
@@ -687,6 +688,7 @@
       }
     },
     "fileManager": {
+      "selectFolderHint": "Выберите папку в боковой панели, чтобы просмотреть её содержимое",
       "actions": {
         "cancelProxyGeneration": "Отменить генерацию прокси",
         "convertFile": "Конвертировать файл",

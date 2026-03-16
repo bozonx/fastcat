@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import { createAutoSave } from '~/utils/autoSave';
 import {
@@ -14,7 +14,7 @@ import {
 } from '~/repositories/project-ui.repository';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { ProjectMeta } from '~/repositories/project-meta.repository';
-import { useEditorViewStore } from '~/stores/editorView.store';
+import type { EditorView } from '~/stores/editorView.store';
 
 interface ProjectSettingsRepo {
   load(): Promise<unknown | null>;
@@ -33,18 +33,18 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
   const isLoadingProjectSettings = ref(false);
   const isSavingProjectSettings = ref(false);
 
-  const editorViewStore = useEditorViewStore();
-
   const getProjectDirHandle = ref<(() => Promise<FileSystemDirectoryHandle | null>) | null>(null);
   const getCurrentProjectName = ref<(() => string | null) | null>(null);
   const getIsReadOnly = ref<(() => boolean) | null>(null);
   const getProjectMeta = ref<(() => ProjectMeta | null) | null>(null);
   const saveProjectMeta = ref<((updates: Partial<ProjectMeta>) => Promise<void>) | null>(null);
+  const getCurrentEditorView = ref<(() => EditorView) | null>(null);
+  const getLastViewBeforeFullscreen = ref<(() => EditorView | null) | null>(null);
 
   const activeMonitor = computed(() => {
-    const view = editorViewStore.currentView;
-    const targetView =
-      view === 'fullscreen' ? editorViewStore.lastViewBeforeFullscreen || 'cut' : view;
+    const view = getCurrentEditorView.value?.() ?? 'cut';
+    const lastViewBeforeFullscreen = getLastViewBeforeFullscreen.value?.() ?? null;
+    const targetView = view === 'fullscreen' ? lastViewBeforeFullscreen || 'cut' : view;
     const safeView = ['cut', 'sound', 'export'].includes(targetView) ? targetView : 'cut';
     return projectSettings.value.monitors[safeView] || projectSettings.value.monitor;
   });
@@ -96,12 +96,16 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     getIsReadOnly: () => boolean;
     getProjectMeta: () => ProjectMeta | null;
     saveProjectMeta: (updates: Partial<ProjectMeta>) => Promise<void>;
+    getCurrentEditorView: () => EditorView;
+    getLastViewBeforeFullscreen: () => EditorView | null;
   }) {
     getProjectDirHandle.value = input.getProjectDirHandle;
     getCurrentProjectName.value = input.getCurrentProjectName;
     getIsReadOnly.value = input.getIsReadOnly;
     getProjectMeta.value = input.getProjectMeta;
     saveProjectMeta.value = input.saveProjectMeta;
+    getCurrentEditorView.value = input.getCurrentEditorView;
+    getLastViewBeforeFullscreen.value = input.getLastViewBeforeFullscreen;
   }
 
   function closeProjectSettings() {
