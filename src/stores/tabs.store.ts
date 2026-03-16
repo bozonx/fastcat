@@ -69,7 +69,7 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
    */
   const tabs = computed<AnyProjectTab[]>(() => {
     const statics = registeredTabs.value.filter((t) => !hiddenStaticTabs.value.has(t.id));
-    const order = staticTabsOrder.value;
+    const order = staticTabsOrder.value || [];
 
     const sortedStatics = [...statics].sort((a, b) => {
       const ai = order.indexOf(a.id);
@@ -80,7 +80,7 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
       return ai - bi;
     });
 
-    return [...sortedStatics, ...fileTabs.value];
+    return [...sortedStatics, ...(fileTabs.value || [])];
   });
 
   const activeTab = computed(() => tabs.value.find((t) => t.id === activeTabId.value) ?? null);
@@ -171,7 +171,7 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
   }
 
   return {
-    tabs: readonly(tabs),
+    tabs,
     activeTabId,
     activeTab,
     registerProjectTab,

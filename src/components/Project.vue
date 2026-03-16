@@ -28,45 +28,44 @@ const props = withDefaults(
   },
 );
 
+const tabsStore = useProjectTabsStore();
 const {
-  tabs,
-  activeTabId,
   setActiveTab,
   initDefaultTab,
   reorderTabs,
   addFileTab,
   removeFileTab,
   registerProjectTab,
-} = useProjectTabsStore();
+} = tabsStore;
 
 /** Static tabs (not reorderable via VueDraggable — use native drag) */
 const staticTabs = computed(() => {
-  const t = tabs.value;
+  const t = tabsStore.tabs;
   if (!t) return [];
-  return t.filter((tab) => !isFileTab(tab)) as ProjectTab[];
+  return t.filter((tab: AnyProjectTab) => !isFileTab(tab)) as ProjectTab[];
 });
 
 /** File tabs (reorderable via VueDraggable) */
 const fileTabsModel = computed({
   get: () => {
-    const t = tabs.value;
+    const t = tabsStore.tabs;
     if (!t) return [];
-    return t.filter((tab) => isFileTab(tab)) as ProjectFileTab[];
+    return t.filter((tab: AnyProjectTab) => isFileTab(tab)) as ProjectFileTab[];
   },
   set: (val) => reorderTabs([...staticTabs.value, ...val]),
 });
 
 const activeFileTab = computed(() => {
-  const t = tabs.value;
+  const t = tabsStore.tabs;
   if (!t) return null;
-  const tab = t.find((t) => t.id === activeTabId.value);
+  const tab = t.find((t: AnyProjectTab) => t.id === tabsStore.activeTabId);
   return tab && isFileTab(tab) ? tab : null;
 });
 
 const activeStaticTab = computed<ProjectTab | null>(() => {
-  const t = tabs.value;
+  const t = tabsStore.tabs;
   if (!t) return null;
-  const tab = t.find((t) => t.id === activeTabId.value);
+  const tab = t.find((t: AnyProjectTab) => t.id === tabsStore.activeTabId);
   return tab && !isFileTab(tab) ? (tab as ProjectTab) : null;
 });
 
@@ -90,7 +89,7 @@ function activateProjectTab(tabId: string) {
   setActiveTab(tabId);
 }
 
-watch(activeTabId, async (newId) => {
+watch(() => tabsStore.activeTabId, async (newId) => {
   if (!newId) return;
 
   // Wait for DOM to update
@@ -316,7 +315,7 @@ onMounted(() => {
           :data-tab-id="tab.id"
           class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0"
           :class="
-            activeTabId === tab.id
+            tabsStore.activeTabId === tab.id
               ? 'bg-primary-500/15 text-primary-400'
               : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
           "
@@ -328,7 +327,7 @@ onMounted(() => {
           <UIcon
             :name="tab.icon ?? 'i-heroicons-rectangle-stack'"
             class="w-3.5 h-3.5 shrink-0"
-            :class="activeTabId === tab.id ? 'text-primary-400' : 'text-ui-text-muted'"
+            :class="tabsStore.activeTabId === tab.id ? 'text-primary-400' : 'text-ui-text-muted'"
           />
           <span class="text-[10px] font-semibold uppercase tracking-wider">
             {{ tab.label }}
@@ -342,7 +341,7 @@ onMounted(() => {
           :data-tab-id="tab.id"
           class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0"
           :class="
-            activeTabId === tab.id
+            tabsStore.activeTabId === tab.id
               ? 'bg-primary-500/15 text-primary-400'
               : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
           "
@@ -354,7 +353,7 @@ onMounted(() => {
           <UIcon
             :name="tab.icon"
             class="w-3.5 h-3.5 shrink-0"
-            :class="activeTabId === tab.id ? 'text-primary-400' : 'text-ui-text-muted'"
+            :class="tabsStore.activeTabId === tab.id ? 'text-primary-400' : 'text-ui-text-muted'"
           />
 
           <!-- Close button for file tabs -->
