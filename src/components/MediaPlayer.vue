@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { useImagePanZoom } from '~/composables/preview/useImagePanZoom';
+import { useMediaPlayerVolume } from '~/composables/preview/useMediaPlayerVolume';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 
 const { t } = useI18n();
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
+const { volume, isMuted } = useMediaPlayerVolume();
 
 const props = defineProps<{
   src: string;
@@ -129,6 +131,8 @@ function onLoadedMetadata() {
   if (!mediaElement.value) return;
   duration.value = mediaElement.value.duration;
   playbackSpeed.value = 1;
+  mediaElement.value.volume = volume.value;
+  mediaElement.value.muted = isMuted.value;
 }
 
 function onPlay() {
@@ -231,8 +235,25 @@ watch(
     playbackSpeed.value = 1;
     clearReversePlaybackTimer();
     reset();
+    
+    if (mediaElement.value) {
+      mediaElement.value.volume = volume.value;
+      mediaElement.value.muted = isMuted.value;
+    }
   },
 );
+
+watch(volume, (v) => {
+  if (mediaElement.value) {
+    mediaElement.value.volume = v;
+  }
+});
+
+watch(isMuted, (m) => {
+  if (mediaElement.value) {
+    mediaElement.value.muted = m;
+  }
+});
 
 function shouldHandlePreviewPlaybackEvent() {
   if (!playerRootEl.value || props.isModal) return false;
@@ -304,6 +325,10 @@ watch(
     reset();
   },
 );
+
+function toggleMute() {
+  isMuted.value = !isMuted.value;
+}
 
 const isIdle = ref(false);
 let idleTimer: number | undefined;
@@ -464,14 +489,35 @@ onUnmounted(() => {
           </span>
         </div>
 
-        <UButton
-          v-if="type === 'video'"
-          size="sm"
-          variant="ghost"
-          color="neutral"
-          :icon="isModal ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'"
-          @click="isModal ? emit('close-modal') : emit('open-modal')"
-        />
+        <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1 group/volume relative">
+            <UButton
+              size="sm"
+              variant="ghost"
+              color="neutral"
+              :icon="isMuted || volume === 0 ? 'i-heroicons-speaker-x-mark' : volume < 0.5 ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-wave'"
+              @click="toggleMute"
+            />
+            <div class="w-0 overflow-hidden transition-all duration-300 group-hover/volume:w-20 flex items-center">
+              <input
+                v-model.number="volume"
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                class="w-16 accent-primary-500 h-1 cursor-pointer"
+              />
+            </div>
+          </div>
+          <UButton
+            v-if="type === 'video'"
+            size="sm"
+            variant="ghost"
+            color="neutral"
+            :icon="isModal ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'"
+            @click="isModal ? emit('close-modal') : emit('open-modal')"
+          />
+        </div>
       </div>
     </div>
   </div>

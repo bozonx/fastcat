@@ -150,6 +150,10 @@ export function buildOtioTransition(
   transition: ClipTransition,
   name: string,
   fps?: number,
+  owner?: {
+    itemId: string;
+    edge: 'in' | 'out';
+  },
 ): OtioTransition | null {
   if (!transition.type || !transition.durationUs) return null;
   const halfUs = Math.round(transition.durationUs / 2);
@@ -168,6 +172,8 @@ export function buildOtioTransition(
         curve: transition.curve,
         params: transition.params,
         isOverridden: transition.isOverridden,
+        ownerItemId: owner?.itemId,
+        edge: owner?.edge,
       },
     },
   };

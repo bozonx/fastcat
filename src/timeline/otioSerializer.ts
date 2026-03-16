@@ -114,7 +114,10 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
 
       // Emit transitionIn as a Transition.1 *before* this clip.
       if (item.transitionIn) {
-        const t1 = buildOtioTransition(item.transitionIn, `${item.name}_transition_in`, fps);
+        const t1 = buildOtioTransition(item.transitionIn, `${item.name}_transition_in`, fps, {
+          itemId: item.id,
+          edge: 'in',
+        });
         if (t1) children.push(t1);
       }
 
@@ -184,7 +187,10 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
 
       // Emit transitionOut as a Transition.1 *after* this clip.
       if (item.transitionOut) {
-        const t1 = buildOtioTransition(item.transitionOut, `${item.name}_transition_out`, fps);
+        const t1 = buildOtioTransition(item.transitionOut, `${item.name}_transition_out`, fps, {
+          itemId: item.id,
+          edge: 'out',
+        });
         if (t1) children.push(t1);
       }
 
@@ -314,19 +320,30 @@ export function parseTimelineFromOtio(
       const child = children[i] as any;
 
       if (child?.OTIO_SCHEMA === 'Transition.1') {
-        // A Transition between two clips: attribute to next clip as transitionIn
-        // and previously parsed clip as transitionOut (if exists).
         const transition = parseOtioTransition(child);
         if (transition) {
-          // Attribute as transitionOut of previous clip.
+          const transitionMeta = safeFastCatMetadata(child.metadata);
+          const transitionEdge = transitionMeta?.edge;
           const prev = rawItems[rawItems.length - 1];
+
+          if (transitionEdge === 'out') {
+            if (prev && prev.kind === 'clip') {
+              (prev as any).transitionOut = transition;
+            }
+            pendingTransitionIn = null;
+            continue;
+          }
+
+          if (transitionEdge === 'in') {
+            pendingTransitionIn = transition;
+            continue;
+          }
+
           if (prev && prev.kind === 'clip') {
             (prev as any).transitionOut = transition;
           }
-          // Remember for next clip as transitionIn.
           pendingTransitionIn = transition;
         }
-        // Transitions don't advance the cursor.
         continue;
       }
 
