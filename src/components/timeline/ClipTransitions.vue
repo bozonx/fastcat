@@ -265,7 +265,7 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
           </template>
           <svg
             v-else
-            class="w-full h-full block absolute inset-0"
+            class="w-full h-full block absolute inset-0 bg-linear-to-r from-transparent to-black/30"
             preserveAspectRatio="none"
             viewBox="0 0 100 100"
           >
@@ -344,7 +344,7 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
           </template>
           <svg
             v-else
-            class="w-full h-full block absolute inset-0"
+            class="w-full h-full block absolute inset-0 bg-linear-to-r from-black/30 to-transparent"
             preserveAspectRatio="none"
             viewBox="0 0 100 100"
           >
