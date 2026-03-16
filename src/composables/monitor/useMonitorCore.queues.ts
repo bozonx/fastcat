@@ -3,6 +3,7 @@ import type { WorkerTimelineClip } from './types';
 export interface MonitorLayoutQueuePayload {
   layoutClips: WorkerTimelineClip[];
   layoutAudioClips: WorkerTimelineClip[];
+  workerTimelinePayload?: Ref<any[]>;
 }
 
 export interface CreateMonitorCoreQueuesOptions {

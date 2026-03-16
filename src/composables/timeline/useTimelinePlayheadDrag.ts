@@ -6,6 +6,8 @@ import { pxToTimeUs } from '~/utils/timeline/geometry';
 export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
   const timelineStore = useTimelineStore();
   const isDraggingPlayhead = ref(false);
+  const startDragTimeUs = ref<number | null>(null);
+  const hasMoved = ref(false);
 
   function getLocalX(e: MouseEvent): number {
     const target = e.currentTarget as HTMLElement | null;
@@ -23,6 +25,10 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
   function onGlobalKeyDown(e: KeyboardEvent) {
     if (e.key === 'Escape' && isDraggingPlayhead.value) {
       isDraggingPlayhead.value = false;
+      if (startDragTimeUs.value !== null) {
+        timelineStore.setCurrentTimeUs(startDragTimeUs.value);
+        startDragTimeUs.value = null;
+      }
       e.preventDefault();
       window.removeEventListener('keydown', onGlobalKeyDown);
     }
@@ -30,12 +36,14 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
 
   function startPlayheadDrag(e: PointerEvent) {
     isDraggingPlayhead.value = true;
+    hasMoved.value = false;
     (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
     window.addEventListener('keydown', onGlobalKeyDown);
   }
 
   function onTimeRulerPointerDown(e: PointerEvent) {
     if (e.button !== 0) return;
+    startDragTimeUs.value = timelineStore.currentTime;
     seekByMouseEvent(e);
     startPlayheadDrag(e);
   }
@@ -47,6 +55,8 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
       onGlobalPointerUp(e);
       return true;
     }
+    
+    hasMoved.value = true;
     const scrollerRect = scrollEl.value?.getBoundingClientRect();
     if (!scrollerRect) return true;
     const scrollX = scrollEl.value?.scrollLeft ?? 0;
@@ -60,7 +70,14 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
     if (e) {
       (e.currentTarget as HTMLElement | null)?.releasePointerCapture(e.pointerId);
     }
+
+    if (hasMoved.value && startDragTimeUs.value !== null) {
+      timelineStore.setCurrentTimeUs(startDragTimeUs.value);
+    }
+
     isDraggingPlayhead.value = false;
+    startDragTimeUs.value = null;
+    hasMoved.value = false;
     window.removeEventListener('keydown', onGlobalKeyDown);
   }
 

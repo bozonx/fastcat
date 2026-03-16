@@ -7,7 +7,7 @@ export interface CustomPreset {
   id: string; // Used as the type in registry
   baseType: string;
   name: string;
-  category: 'effect' | 'transition';
+  category: 'effect' | 'transition' | 'shape' | 'hud';
   effectTarget?: 'video' | 'audio';
   params: Record<string, any>;
   order: number;
@@ -22,6 +22,10 @@ export const usePresetsStore = defineStore('presets', () => {
   const transitionsCustomCollapsed = ref(false);
   const audioStandardCollapsed = ref(false);
   const audioCustomCollapsed = ref(false);
+  const shapesStandardCollapsed = ref(false);
+  const shapesCustomCollapsed = ref(false);
+  const hudsStandardCollapsed = ref(false);
+  const hudsCustomCollapsed = ref(false);
 
   // Load from localStorage
   function load() {
@@ -40,6 +44,10 @@ export const usePresetsStore = defineStore('presets', () => {
         transitionsCustomCollapsed.value = !!state.transitionsCustomCollapsed;
         audioStandardCollapsed.value = !!state.audioStandardCollapsed;
         audioCustomCollapsed.value = !!state.audioCustomCollapsed;
+        shapesStandardCollapsed.value = !!state.shapesStandardCollapsed;
+        shapesCustomCollapsed.value = !!state.shapesCustomCollapsed;
+        hudsStandardCollapsed.value = !!state.hudsStandardCollapsed;
+        hudsCustomCollapsed.value = !!state.hudsCustomCollapsed;
       }
 
       // Register custom presets
@@ -62,6 +70,10 @@ export const usePresetsStore = defineStore('presets', () => {
       transitionsCustomCollapsed,
       audioStandardCollapsed,
       audioCustomCollapsed,
+      shapesStandardCollapsed,
+      shapesCustomCollapsed,
+      hudsStandardCollapsed,
+      hudsCustomCollapsed,
     ],
     () => {
       localStorage.setItem(
@@ -73,6 +85,10 @@ export const usePresetsStore = defineStore('presets', () => {
           transitionsCustomCollapsed: transitionsCustomCollapsed.value,
           audioStandardCollapsed: audioStandardCollapsed.value,
           audioCustomCollapsed: audioCustomCollapsed.value,
+          shapesStandardCollapsed: shapesStandardCollapsed.value,
+          shapesCustomCollapsed: shapesCustomCollapsed.value,
+          hudsStandardCollapsed: hudsStandardCollapsed.value,
+          hudsCustomCollapsed: hudsCustomCollapsed.value,
         }),
       );
     },
@@ -125,7 +141,7 @@ export const usePresetsStore = defineStore('presets', () => {
   }
 
   function saveAsPreset(
-    category: 'effect' | 'transition',
+    category: 'effect' | 'transition' | 'shape' | 'hud',
     baseType: string,
     name: string,
     params: Record<string, any>,
@@ -155,7 +171,10 @@ export const usePresetsStore = defineStore('presets', () => {
     savePresets();
   }
 
-  function updatePresetsOrder(category: 'effect' | 'transition', newOrderIds: string[]) {
+  function updatePresetsOrder(
+    category: 'effect' | 'transition' | 'shape' | 'hud',
+    newOrderIds: string[],
+  ) {
     const categoryPresets = customPresets.value.filter((p) => p.category === category);
     const otherPresets = customPresets.value.filter((p) => p.category !== category);
 
@@ -187,6 +206,10 @@ export const usePresetsStore = defineStore('presets', () => {
     transitionsCustomCollapsed,
     audioStandardCollapsed,
     audioCustomCollapsed,
+    shapesStandardCollapsed,
+    shapesCustomCollapsed,
+    hudsStandardCollapsed,
+    hudsCustomCollapsed,
     load,
     saveAsPreset,
     updatePreset,

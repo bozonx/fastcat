@@ -54,7 +54,13 @@ export interface AddVirtualClipToTrackCommand {
   text?: string;
   style?: import('./types').TextClipStyle;
   shapeType?: import('./types').ShapeType;
+  fillColor?: string;
+  strokeColor?: string;
+  strokeWidth?: number;
+  shapeConfig?: import('./types').ShapeConfig;
   hudType?: import('./types').HudType;
+  background?: import('./types').HudMediaParams;
+  content?: import('./types').HudMediaParams;
   audioFadeInCurve?: import('./types').AudioFadeCurve;
   audioFadeOutCurve?: import('./types').AudioFadeCurve;
 }

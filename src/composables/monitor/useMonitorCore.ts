@@ -36,6 +36,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     rawWorkerAudioClips,
     workerTimelineClips,
     workerAudioClips,
+    workerTimelinePayload,
     safeDurationUs,
     clipSourceSignature,
     clipLayoutSignature,
@@ -121,10 +122,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     return clampToTimeline(timelineStore.currentTime);
   }
 
-  async function flushLayoutUpdate(params: {
-    layoutClips: WorkerTimelineClip[];
-    layoutAudioClips: WorkerTimelineClip[];
-  }) {
+  async function flushLayoutUpdate(params: MonitorLayoutQueuePayload) {
     try {
       const preparedTimeline = await prepareMonitorTimelineState({
         rawAudioClips: params.layoutAudioClips,
@@ -175,10 +173,12 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   const scheduleLayoutUpdate = (
     layoutClips: WorkerTimelineClip[],
     audioClips: WorkerTimelineClip[],
+    workerTimelinePayload?: Ref<any[]>,
   ) => {
     queues.scheduleLayoutUpdate({
       layoutClips,
       layoutAudioClips: audioClips,
+      workerTimelinePayload,
     });
   };
 

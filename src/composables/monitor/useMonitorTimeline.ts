@@ -193,6 +193,7 @@ export function useMonitorTimeline() {
 
   const workerTimelineClips = ref<WorkerTimelineClip[]>([]);
   const workerAudioClips = ref<WorkerTimelineClip[]>([]);
+  const workerTimelinePayload = ref<any[]>([]);
 
   const safeDurationUs = computed(() => normalizeTimeUs(timelineStore.duration));
 
@@ -399,18 +400,16 @@ export function useMonitorTimeline() {
   });
 
   return {
-    videoTracks,
     videoItems,
-    audioTracks,
-    audioItems,
     workerTimelineClips,
     workerAudioClips,
+    workerTimelinePayload,
+    rawWorkerTimelineClips,
+    rawWorkerAudioClips,
     safeDurationUs,
     clipSourceSignature,
     clipLayoutSignature,
     audioClipSourceSignature,
     audioClipLayoutSignature,
-    rawWorkerTimelineClips,
-    rawWorkerAudioClips,
   };
 }
