@@ -1,5 +1,5 @@
 export const VIDEO_EXTENSIONS = ['mp4', 'mov', 'avi', 'mkv', 'webm', 'm4v'];
-export const AUDIO_EXTENSIONS = ['mp3', 'wav', 'aac', 'flac', 'ogg', 'opus', 'm4a'];
+export const AUDIO_EXTENSIONS = ['mp3', 'wav', 'aac', 'flac', 'ogg', 'opus', 'm4a', 'weba'];
 export const IMAGE_EXTENSIONS = [
   'jpg',
   'jpeg',
@@ -31,6 +31,7 @@ export const EXTENSION_MIME_MAPPING: Record<string, string> = {
   ogg: 'audio/ogg',
   opus: 'audio/opus',
   m4a: 'audio/mp4',
+  weba: 'audio/webm',
   // Images
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
