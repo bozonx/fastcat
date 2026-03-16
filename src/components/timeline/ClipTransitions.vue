@@ -47,9 +47,9 @@ function transitionUsToPx(us: number) {
   return timeUsToPx(us, props.zoom);
 }
 
-function getTransitionButtonClass(selected: boolean, hasProblem: boolean, overridden: boolean) {
+function getTransitionButtonClass(selected: boolean, hasProblem: boolean, overridden: boolean, edge: 'in' | 'out') {
   return [
-    selected ? 'bg-primary-500/40 ring-2 ring-primary-500 z-30' : 'hover:bg-black/30',
+    selected ? `border-yellow-400 z-30 ${edge === 'in' ? 'border-r-2' : 'border-l-2'}` : 'hover:bg-white/10',
     hasProblem ? 'border border-red-500 ring-red-500 ring-1' : '',
     overridden ? 'border border-yellow-400 ring-yellow-400 ring-1' : '',
   ];
