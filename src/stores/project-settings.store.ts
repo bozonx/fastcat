@@ -235,6 +235,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     projectSettings,
     isLoadingProjectSettings,
     isSavingProjectSettings,
+    projectSettingsSaveError,
     setContext,
     closeProjectSettings,
     loadProjectSettings,

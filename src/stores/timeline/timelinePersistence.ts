@@ -56,6 +56,11 @@ export function createTimelinePersistence(deps: TimelinePersistenceDeps): Timeli
       if (!doc || !deps.isTimelineDirty.value) return false;
       if (deps.isReadOnly?.value) return false;
 
+      const currentProjectId = deps.currentProjectName.value;
+      const currentTimelinePath = deps.currentTimelinePath.value;
+
+      if (!currentProjectId || !currentTimelinePath) return false;
+
       deps.isSavingTimeline.value = true;
       deps.timelineSaveError.value = null;
 
@@ -75,6 +80,14 @@ export function createTimelinePersistence(deps: TimelinePersistenceDeps): Timeli
       };
 
       try {
+        // Double check if context changed before writing
+        if (
+          currentProjectId !== deps.currentProjectName.value ||
+          currentTimelinePath !== deps.currentTimelinePath.value
+        ) {
+          return false; // Skip save, context changed
+        }
+
         const handle = await deps.ensureTimelineFileHandle({ create: true });
         if (!handle) return false;
 
@@ -90,8 +103,14 @@ export function createTimelinePersistence(deps: TimelinePersistenceDeps): Timeli
         // Throw to let autoSave know it failed, but we also handle toast in the global error handler
         throw e;
       } finally {
-        deps.isSavingTimeline.value = false;
-        deps.isTimelineDirty.value = autoSave.isDirty();
+        // Only reset flags if we're still on the same timeline context
+        if (
+          currentProjectId === deps.currentProjectName.value &&
+          currentTimelinePath === deps.currentTimelinePath.value
+        ) {
+          deps.isSavingTimeline.value = false;
+          deps.isTimelineDirty.value = autoSave.isDirty();
+        }
       }
     },
     onError: (e) => {
