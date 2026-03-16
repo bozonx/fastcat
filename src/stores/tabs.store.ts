@@ -1,4 +1,4 @@
-import { ref, computed, readonly, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { readLocalStorageJson, writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
 import { getMediaTypeFromFilename, getIconForMediaType } from '~/utils/media-types';
 
@@ -138,17 +138,40 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
   }
 
   function removeFileTab(tabId: string) {
+    const currentTabs = tabs.value;
+    const removedIndex = currentTabs.findIndex((tab) => tab.id === tabId);
     fileTabs.value = fileTabs.value.filter((t) => t.id !== tabId);
-    if (activeTabId.value === tabId) {
-      const remaining = tabs.value.filter((t) => t.id !== tabId);
-      activeTabId.value = remaining.length > 0 ? remaining[0]!.id : null;
+    if (activeTabId.value !== tabId) return;
+
+    const remaining = currentTabs.filter((tab) => tab.id !== tabId);
+    if (remaining.length === 0) {
+      activeTabId.value = null;
+      return;
     }
+
+    const nextActiveIndex = Math.min(removedIndex, remaining.length - 1);
+    activeTabId.value = remaining[nextActiveIndex]?.id ?? null;
   }
 
   function removeFileTabByPath(filePath: string) {
     const tab = fileTabs.value.find((t) => t.filePath === filePath);
     if (!tab) return;
     removeFileTab(tab.id);
+  }
+
+  function removeOtherFileTabs(tabId: string) {
+    const retainedTab = fileTabs.value.find((tab) => tab.id === tabId);
+    if (!retainedTab) return;
+
+    fileTabs.value = [retainedTab];
+    activeTabId.value = tabId;
+  }
+
+  function removeAllFileTabs() {
+    fileTabs.value = [];
+
+    const fallbackStaticTab = tabs.value.find((tab) => !isFileTab(tab));
+    activeTabId.value = fallbackStaticTab?.id ?? null;
   }
 
   function initDefaultTab() {
@@ -182,6 +205,8 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
     addFileTab,
     removeFileTab,
     removeFileTabByPath,
+    removeOtherFileTabs,
+    removeAllFileTabs,
     hideStaticTab,
     showStaticTab,
   };

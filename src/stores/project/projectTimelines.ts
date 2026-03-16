@@ -7,6 +7,8 @@ export interface ProjectTimelinesModule {
   openTimelineFile: (path: string) => Promise<void>;
   closeTimelineFile: (path: string) => Promise<void>;
   reorderTimelines: (paths: string[]) => void;
+  closeOtherTimelineFiles: (path: string) => Promise<void>;
+  closeAllTimelineFiles: () => Promise<void>;
 }
 
 export function createProjectTimelinesModule(params: {
@@ -41,10 +43,16 @@ export function createProjectTimelinesModule(params: {
     const index = params.projectSettings.value.timelines.openPaths.indexOf(path);
     if (index === -1) return;
 
+    const previousPaths = [...params.projectSettings.value.timelines.openPaths];
     params.projectSettings.value.timelines.openPaths.splice(index, 1);
 
     if (params.currentTimelinePath.value === path) {
-      const nextPath = params.projectSettings.value.timelines.openPaths[0] || null;
+      const nextPath =
+        params.projectSettings.value.timelines.openPaths[index] ??
+        params.projectSettings.value.timelines.openPaths[index - 1] ??
+        previousPaths[index + 1] ??
+        null;
+
       if (nextPath) {
         await openTimelineFile(nextPath);
       } else {
@@ -52,6 +60,28 @@ export function createProjectTimelinesModule(params: {
         params.currentFileName.value = null;
       }
     }
+  }
+
+  async function closeOtherTimelineFiles(path: string) {
+    const hasPath = params.projectSettings.value.timelines.openPaths.includes(path);
+    if (!hasPath) return;
+
+    params.projectSettings.value.timelines.openPaths = [path];
+
+    if (params.currentTimelinePath.value !== path) {
+      await openTimelineFile(path);
+      return;
+    }
+
+    params.currentFileName.value = path.split('/').pop() ?? path;
+    void params.saveProjectMeta({ lastOpenedTimelinePath: path });
+  }
+
+  async function closeAllTimelineFiles() {
+    params.projectSettings.value.timelines.openPaths = [];
+    params.currentTimelinePath.value = null;
+    params.currentFileName.value = null;
+    void params.saveProjectMeta({ lastOpenedTimelinePath: null });
   }
 
   function reorderTimelines(paths: string[]) {
@@ -68,6 +98,8 @@ export function createProjectTimelinesModule(params: {
     openTimelineFile,
     closeTimelineFile,
     reorderTimelines,
+    closeOtherTimelineFiles,
+    closeAllTimelineFiles,
   };
 
   return module;

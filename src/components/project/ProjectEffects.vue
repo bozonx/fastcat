@@ -326,9 +326,6 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
         >
           <div class="flex flex-col gap-4">
             <div v-if="hasAudioEffects(basicAudioEffects)">
-              <h4 class="text-xs uppercase tracking-wide text-ui-text-muted mb-2">
-                {{ t('fastcat.effects.groups.standard', 'Standard') }}
-              </h4>
               <div class="grid grid-cols-1 gap-2">
                 <EffectCard
                   v-for="effect in basicAudioEffects"

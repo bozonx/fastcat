@@ -111,7 +111,13 @@ export const useProjectStore = defineStore('project', () => {
     },
   });
 
-  const { openTimelineFile, closeTimelineFile, reorderTimelines } = timelinesModule;
+  const {
+    openTimelineFile,
+    closeTimelineFile,
+    reorderTimelines,
+    closeOtherTimelineFiles,
+    closeAllTimelineFiles,
+  } = timelinesModule;
 
   watch(currentTimelinePath, async (newPath) => {
     if (newPath && metaModule.projectMeta.value) {
@@ -364,6 +370,8 @@ export const useProjectStore = defineStore('project', () => {
     openTimelineFile,
     closeTimelineFile,
     reorderTimelines,
+    closeOtherTimelineFiles,
+    closeAllTimelineFiles,
     closeProject,
     getProjectFileHandleByRelativePath,
     getFileHandleByPath,

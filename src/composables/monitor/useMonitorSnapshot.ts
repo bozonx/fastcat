@@ -4,7 +4,7 @@ import type { useTimelineStore } from '~/stores/timeline.store';
 import type { useWorkspaceStore } from '~/stores/workspace.store';
 import { useUiStore } from '~/stores/ui.store';
 import { buildStopFrameBaseName } from '~/utils/stop-frames';
-import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
+import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { IMAGES_DIR_NAME } from '~/utils/constants';
 import { dispatchTimelineThumbnailGeneration } from '~/timeline/services/timelineThumbnailService';
@@ -18,6 +18,7 @@ export function useMonitorSnapshot(input: {
   uiCurrentTimeUs: Ref<number>;
   workerTimelineClips: Ref<unknown>;
   rawWorkerTimelineClips: Ref<unknown>;
+  workerTimelinePayload: Ref<unknown>;
 }) {
   const toast = useToast();
   const uiStore = useUiStore();
@@ -26,7 +27,11 @@ export function useMonitorSnapshot(input: {
 
   function getClipsPayload() {
     return JSON.parse(
-      JSON.stringify(input.workerTimelineClips.value ?? input.rawWorkerTimelineClips.value),
+      JSON.stringify(
+        input.workerTimelinePayload.value ??
+          input.workerTimelineClips.value ??
+          input.rawWorkerTimelineClips.value,
+      ),
     );
   }
 
@@ -99,8 +104,8 @@ export function useMonitorSnapshot(input: {
         Number(input.projectStore.projectSettings?.project?.height ?? 0),
       );
 
-      const { client } = getExportWorkerClient();
-      setExportHostApi(
+      const { client } = getThumbnailWorkerClient();
+      setThumbnailHostApi(
         createVideoCoreHostApi({
           getCurrentProjectId: () => input.projectStore.currentProjectId,
           getWorkspaceHandle: () => input.workspaceStore.workspaceHandle,

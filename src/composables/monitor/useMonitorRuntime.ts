@@ -32,6 +32,7 @@ export function useMonitorRuntime() {
     videoItems,
     workerTimelineClips,
     workerAudioClips,
+    workerTimelinePayload,
     rawWorkerTimelineClips,
     rawWorkerAudioClips,
     safeDurationUs,
@@ -82,6 +83,7 @@ export function useMonitorRuntime() {
       videoItems,
       workerTimelineClips,
       workerAudioClips,
+      workerTimelinePayload,
       rawWorkerTimelineClips,
       rawWorkerAudioClips,
       safeDurationUs,
@@ -134,6 +136,7 @@ export function useMonitorRuntime() {
     uiCurrentTimeUs,
     workerTimelineClips,
     rawWorkerTimelineClips,
+    workerTimelinePayload,
   });
 
   watch(

@@ -340,6 +340,9 @@ export function useExportForm() {
     metadataDescription,
     metadataAuthor,
     metadataTags,
+    normalizedExportWidth,
+    normalizedExportHeight,
+    normalizedExportFps,
     videoCodecSupport,
     isLoadingCodecSupport,
 

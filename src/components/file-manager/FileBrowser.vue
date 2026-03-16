@@ -304,7 +304,7 @@ const { onFileAction } = useFileBrowserFileActions({
   folderEntries,
   loadFolderContent,
   onFileActionBase,
-  fileConversion: conversionStore,
+  conversionStore,
   openTranscriptionModal,
   vfs,
 });
