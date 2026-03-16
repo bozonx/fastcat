@@ -7,9 +7,11 @@ const props = withDefaults(defineProps<{
   volume: number;
   isMuted: boolean;
   orientation?: 'horizontal' | 'vertical';
+  max?: number;
 }>(), {
   compact: false,
   orientation: 'vertical',
+  max: 1,
 });
 
 const emit = defineEmits<{
@@ -110,7 +112,7 @@ onBeforeUnmount(() => {
 
     <WheelSlider
       :min="0"
-      :max="2"
+      :max="max"
       :step="0.05"
       :wheel-step-multiplier="1"
       :default-value="1"
@@ -190,7 +192,7 @@ onBeforeUnmount(() => {
               <div class="flex-1" :class="orientation === 'vertical' ? 'min-w-20' : 'min-h-20 flex justify-center'">
                 <WheelSlider
                   :min="0"
-                  :max="2"
+                  :max="max"
                   :step="0.05"
                   :wheel-step-multiplier="1"
                   :default-value="1"

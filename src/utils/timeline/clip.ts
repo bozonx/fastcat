@@ -124,32 +124,39 @@ export function getTransitionSolidPath(
   edge: 'in' | 'out',
 ): string {
   const halfHeight = height / 2;
-  let points = createCurvePoints(curve, width, halfHeight);
-
-  if (edge === 'out') {
-    points = points
-      .map((point) => ({
-        x: roundSvg(width - point.x),
-        y: point.y,
-      }))
-      .reverse();
-  }
+  const points = createCurvePoints(curve, width, halfHeight);
 
   const mirroredPoints = points.map((point) => ({
     x: point.x,
     y: roundSvg(height - point.y),
   }));
 
-  const topPath = points
-    .map((point, index) => `${index === 0 ? 'M' : 'L'}${roundSvg(point.x)},${roundSvg(point.y)}`)
-    .join(' ');
+  if (edge === 'in') {
+    const topPath = points
+      .map((point, index) => `${index === 0 ? 'M' : 'L'}${roundSvg(point.x)},${roundSvg(point.y)}`)
+      .join(' ');
 
-  const bottomPathReversed = [...mirroredPoints]
-    .reverse()
-    .map((point) => `L${roundSvg(point.x)},${roundSvg(point.y)}`)
-    .join(' ');
+    const bottomPathReversed = [...mirroredPoints]
+      .reverse()
+      .map((point) => `L${roundSvg(point.x)},${roundSvg(point.y)}`)
+      .join(' ');
 
-  return `${topPath} ${bottomPathReversed} Z`;
+    return `${topPath} ${bottomPathReversed} Z`;
+  } else {
+    const topCurveReversed = [...points]
+      .reverse()
+      .map((point) => `L${roundSvg(point.x)},${roundSvg(point.y)}`)
+      .join(' ');
+    const topShape = `M 0,0 L ${width},0 ${topCurveReversed} Z`;
+
+    const bottomCurveReversed = [...mirroredPoints]
+      .reverse()
+      .map((point) => `L${roundSvg(point.x)},${roundSvg(point.y)}`)
+      .join(' ');
+    const bottomShape = `M 0,${height} L ${width},${height} ${bottomCurveReversed} Z`;
+
+    return `${topShape} ${bottomShape}`;
+  }
 }
 
 export function getFadeLinePattern(

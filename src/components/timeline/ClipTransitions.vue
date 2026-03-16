@@ -49,9 +49,10 @@ function transitionUsToPx(us: number) {
 
 function getTransitionButtonClass(selected: boolean, hasProblem: boolean, overridden: boolean, edge: 'in' | 'out') {
   return [
-    selected ? `border-yellow-400 z-30 ${edge === 'in' ? 'border-r-2' : 'border-l-2'}` : 'hover:bg-white/10',
-    hasProblem ? 'border border-red-500 ring-red-500 ring-1' : '',
-    overridden ? 'border border-yellow-400 ring-yellow-400 ring-1' : '',
+    edge === 'in' ? 'border-r-2' : 'border-l-2',
+    selected ? 'border-yellow-400 z-30' : 'border-transparent hover:bg-white/10',
+    hasProblem ? 'border-red-500 ring-red-500 ring-1' : '',
+    overridden && !selected ? 'border-yellow-400 ring-yellow-400 ring-1' : '',
   ];
 }
 
@@ -174,8 +175,7 @@ function getTransitionCurvePath(edge: 'in' | 'out') {
 
 function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
   if (hasProblem) return 'rgba(239, 68, 68, 0.45)';
-  if (edge === 'in') return 'var(--clip-lower-tri)';
-  return 'rgba(255, 255, 255, 0.2)';
+  return 'var(--clip-lower-tri)';
 }
 
 function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') {
@@ -232,6 +232,7 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
               selectedTransition?.itemId === clip.id && selectedTransition?.edge === 'in',
               hasTransitionProblem('in'),
               Boolean(clip.transitionIn.isOverridden),
+              'in'
             )
           "
           :title="getTransitionButtonTitle('in')"
@@ -311,6 +312,7 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
               selectedTransition?.itemId === clip.id && selectedTransition?.edge === 'out',
               hasTransitionProblem('out'),
               Boolean(clip.transitionOut.isOverridden),
+              'out'
             )
           "
           :title="getTransitionButtonTitle('out')"

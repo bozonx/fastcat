@@ -17,5 +17,6 @@ const { monitorVolume, monitorMuted } = storeToRefs(uiStore);
     v-model:is-muted="monitorMuted"
     :compact="compact"
     orientation="vertical"
+    :max="2"
   />
 </template>

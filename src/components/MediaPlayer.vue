@@ -496,6 +496,7 @@ onUnmounted(() => {
             v-model:is-muted="isMuted"
             compact
             orientation="horizontal"
+            :max="1"
           />
           <UButton
             v-if="type === 'video'"

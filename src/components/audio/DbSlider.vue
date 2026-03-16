@@ -88,28 +88,57 @@ const fillColor = computed(() => {
 });
 
 const sliderRef = ref<HTMLElement | null>(null);
+const activePointerId = ref<number | null>(null);
 
-function updateFromPointer(event: PointerEvent) {
+function updateFromY(clientY: number) {
   if (!sliderRef.value) return;
   const rect = sliderRef.value.getBoundingClientRect();
-  const y = event.clientY - rect.top;
+  const y = clientY - rect.top;
   const percent = Math.max(0, Math.min(100, 100 - (y / rect.height) * 100));
   emit('update:modelValue', percentToDb(percent));
 }
 
+function onDocPointerMove(event: PointerEvent) {
+  if (activePointerId.value !== null && event.pointerId !== activePointerId.value) return;
+  updateFromY(event.clientY);
+}
+
+function onDocMouseMove(event: MouseEvent) {
+  if (activePointerId.value === null) return;
+  updateFromY(event.clientY);
+}
+
+function clearDragListeners() {
+  document.removeEventListener('pointermove', onDocPointerMove);
+  document.removeEventListener('pointerup', onDocPointerUp);
+  document.removeEventListener('pointercancel', onDocPointerUp);
+  document.removeEventListener('mousemove', onDocMouseMove);
+  document.removeEventListener('mouseup', onDocMouseUp);
+}
+
+function onDocPointerUp(event: PointerEvent) {
+  if (activePointerId.value !== null && event.pointerId !== activePointerId.value) return;
+  activePointerId.value = null;
+  clearDragListeners();
+}
+
+function onDocMouseUp() {
+  activePointerId.value = null;
+  clearDragListeners();
+}
+
 function onPointerDown(event: PointerEvent) {
   if (event.button !== 0) return;
-  (event.currentTarget as HTMLElement | null)?.setPointerCapture(event.pointerId);
-  updateFromPointer(event);
-}
-
-function onPointerMove(event: PointerEvent) {
-  if (!event.buttons) return;
-  updateFromPointer(event);
-}
-
-function onPointerUp(event: PointerEvent) {
-  (event.currentTarget as HTMLElement | null)?.releasePointerCapture(event.pointerId);
+  event.preventDefault();
+  event.stopPropagation();
+  activePointerId.value = event.pointerId;
+  sliderRef.value?.setPointerCapture?.(event.pointerId);
+  updateFromY(event.clientY);
+  document.addEventListener('pointermove', onDocPointerMove);
+  document.addEventListener('pointerup', onDocPointerUp);
+  document.addEventListener('pointercancel', onDocPointerUp);
+  document.addEventListener('mousemove', onDocMouseMove);
+  document.addEventListener('mouseup', onDocMouseUp);
 }
 
 function onDoubleClick() {
@@ -132,6 +161,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   containerRef.value?.removeEventListener('wheel', onWheel);
+  clearDragListeners();
 
   if (clipResetTimeoutId) {
     clearTimeout(clipResetTimeoutId);
@@ -200,9 +230,6 @@ const ticks = [12, 6, 0, -6, -12, -24, -36, -48, -60];
       ref="sliderRef"
       class="relative w-4 h-full bg-ui-bg-muted border border-ui-border rounded-sm cursor-ns-resize"
       @pointerdown="onPointerDown"
-      @pointermove="onPointerMove"
-      @pointerup="onPointerUp"
-      @pointercancel="onPointerUp"
       @dblclick="onDoubleClick"
     >
       <!-- Volume Set Fill -->
