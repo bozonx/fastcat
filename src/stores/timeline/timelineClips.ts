@@ -40,6 +40,7 @@ export interface TimelineClipsDeps {
   selectTrack: (trackId: string | null) => void;
   getHotkeyTargetClip: () => { trackId: string; itemId: string } | null;
   defaultStaticClipDurationUs: number;
+  defaultAudioFadeCurve: import('~/timeline/types').AudioFadeCurve;
 }
 
 export interface TimelineClipsApi {
@@ -549,6 +550,8 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
       shapeType: input.shapeType,
       hudType: input.hudType,
       startUs: deps.currentTime.value,
+      audioFadeInCurve: deps.defaultAudioFadeCurve,
+      audioFadeOutCurve: deps.defaultAudioFadeCurve,
     });
   }
 
@@ -629,6 +632,8 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
         shapeType: input.shapeType,
         hudType: input.hudType,
         pseudo: input.pseudo,
+        audioFadeInCurve: deps.defaultAudioFadeCurve,
+        audioFadeOutCurve: deps.defaultAudioFadeCurve,
       },
       options,
     );

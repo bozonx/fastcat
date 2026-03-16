@@ -1,7 +1,6 @@
 import { ref, watch, type Ref } from 'vue';
-import PQueue from 'p-queue';
-import { useDebounceFn } from '@vueuse/core';
 
+import { createAutoSave } from '~/utils/autoSave';
 import {
   type FastCatAppSettings,
   type FastCatUserSettings,
@@ -70,72 +69,60 @@ export function createWorkspaceSettingsModule(params: {
   const isSavingUserSettings = ref(false);
   const userSettingsSaveError = ref<string | null>(null);
   const isBatchUpdatingUserSettings = ref(false);
-  const debouncedEnqueueUserSettingsSave = useDebounceFn(async () => {
-    await enqueueUserSettingsSave();
-  }, 500);
-  let userSettingsRevision = 0;
-  let savedUserSettingsRevision = 0;
-  const userSettingsSaveQueue = new PQueue({ concurrency: 1 });
+
+  const autoSaveUserSettings = createAutoSave({
+    doSave: async () => {
+      if (!params.settingsRepo.value) return false;
+      isSavingUserSettings.value = true;
+      userSettingsSaveError.value = null;
+      try {
+        await params.settingsRepo.value.saveUserSettings(userSettings.value);
+      } catch (e) {
+        userSettingsSaveError.value = getErrorMessage(e, 'Failed to save user settings');
+        console.warn('Failed to save user settings', e);
+        throw e;
+      } finally {
+        isSavingUserSettings.value = false;
+      }
+    },
+    onError: (e) => {
+      console.error('Failed to save user settings', e);
+    },
+  });
 
   const isSavingAppSettings = ref(false);
   const appSettingsSaveError = ref<string | null>(null);
   const isBatchUpdatingAppSettings = ref(false);
-  const debouncedEnqueueAppSettingsSave = useDebounceFn(async () => {
-    await enqueueAppSettingsSave();
-  }, 500);
-  let appSettingsRevision = 0;
-  let savedAppSettingsRevision = 0;
-  const appSettingsSaveQueue = new PQueue({ concurrency: 1 });
 
-  function markUserSettingsAsDirty() {
-    userSettingsRevision += 1;
-  }
-
-  function markAppSettingsAsDirty() {
-    appSettingsRevision += 1;
-  }
-
-  async function persistUserSettingsNow() {
-    if (!params.settingsRepo.value) return;
-    if (savedUserSettingsRevision >= userSettingsRevision) return;
-
-    isSavingUserSettings.value = true;
-    userSettingsSaveError.value = null;
-    const revisionToSave = userSettingsRevision;
-
-    try {
-      await params.settingsRepo.value.saveUserSettings(userSettings.value);
-
-      if (savedUserSettingsRevision < revisionToSave) {
-        savedUserSettingsRevision = revisionToSave;
+  const autoSaveAppSettings = createAutoSave({
+    doSave: async () => {
+      if (!params.settingsRepo.value) return false;
+      isSavingAppSettings.value = true;
+      appSettingsSaveError.value = null;
+      try {
+        await params.settingsRepo.value.saveAppSettings(appSettings.value);
+      } catch (e) {
+        appSettingsSaveError.value = getErrorMessage(e, 'Failed to save app settings');
+        console.warn('Failed to save app settings', e);
+        throw e;
+      } finally {
+        isSavingAppSettings.value = false;
       }
-    } catch (e) {
-      userSettingsSaveError.value = getErrorMessage(e, 'Failed to save user settings');
-      console.warn('Failed to save user settings', e);
-    } finally {
-      isSavingUserSettings.value = false;
-    }
-  }
-
-  async function enqueueUserSettingsSave() {
-    await userSettingsSaveQueue.add(async () => {
-      await persistUserSettingsNow();
-    });
-  }
+    },
+    onError: (e) => {
+      console.error('Failed to save app settings', e);
+    },
+  });
 
   async function requestUserSettingsSave(options?: { immediate?: boolean }) {
-    if (options?.immediate || typeof window === 'undefined') {
-      await enqueueUserSettingsSave();
-      return;
-    }
-    await debouncedEnqueueUserSettingsSave();
+    await autoSaveUserSettings.requestSave(options);
   }
 
   watch(
     userSettings,
     () => {
       if (isBatchUpdatingUserSettings.value) return;
-      markUserSettingsAsDirty();
+      autoSaveUserSettings.markDirty();
       void requestUserSettingsSave();
     },
     { deep: true },
@@ -152,51 +139,19 @@ export function createWorkspaceSettingsModule(params: {
       isBatchUpdatingUserSettings.value = false;
     }
 
-    markUserSettingsAsDirty();
+    autoSaveUserSettings.markDirty();
     await requestUserSettingsSave(options);
   }
 
-  async function persistAppSettingsNow() {
-    if (!params.settingsRepo.value) return;
-    if (savedAppSettingsRevision >= appSettingsRevision) return;
-
-    isSavingAppSettings.value = true;
-    appSettingsSaveError.value = null;
-    const revisionToSave = appSettingsRevision;
-
-    try {
-      await params.settingsRepo.value.saveAppSettings(appSettings.value);
-
-      if (savedAppSettingsRevision < revisionToSave) {
-        savedAppSettingsRevision = revisionToSave;
-      }
-    } catch (e) {
-      appSettingsSaveError.value = getErrorMessage(e, 'Failed to save app settings');
-      console.warn('Failed to save app settings', e);
-    } finally {
-      isSavingAppSettings.value = false;
-    }
-  }
-
-  async function enqueueAppSettingsSave() {
-    await appSettingsSaveQueue.add(async () => {
-      await persistAppSettingsNow();
-    });
-  }
-
   async function requestAppSettingsSave(options?: { immediate?: boolean }) {
-    if (options?.immediate || typeof window === 'undefined') {
-      await enqueueAppSettingsSave();
-      return;
-    }
-    await debouncedEnqueueAppSettingsSave();
+    await autoSaveAppSettings.requestSave(options);
   }
 
   watch(
     appSettings,
     () => {
       if (isBatchUpdatingAppSettings.value) return;
-      markAppSettingsAsDirty();
+      autoSaveAppSettings.markDirty();
       void requestAppSettingsSave();
     },
     { deep: true },
@@ -213,7 +168,7 @@ export function createWorkspaceSettingsModule(params: {
       isBatchUpdatingAppSettings.value = false;
     }
 
-    markAppSettingsAsDirty();
+    autoSaveAppSettings.markDirty();
     await requestAppSettingsSave(options);
   }
 
@@ -233,8 +188,8 @@ export function createWorkspaceSettingsModule(params: {
     } catch {
       appSettings.value = normalizeAppSettings(null);
     } finally {
-      appSettingsRevision = 0;
-      savedAppSettingsRevision = 0;
+      autoSaveAppSettings.reset();
+      autoSaveAppSettings.markCleanForCurrentRevision();
     }
   }
 
@@ -251,8 +206,8 @@ export function createWorkspaceSettingsModule(params: {
     } catch {
       userSettings.value = normalizeUserSettings(null);
     } finally {
-      userSettingsRevision = 0;
-      savedUserSettingsRevision = 0;
+      autoSaveUserSettings.reset();
+      autoSaveUserSettings.markCleanForCurrentRevision();
     }
   }
 
@@ -276,10 +231,12 @@ export function createWorkspaceSettingsModule(params: {
     userSettings.value = createDefaultUserSettings();
     appSettings.value = createDefaultAppSettings();
 
-    userSettingsRevision = 0;
-    savedUserSettingsRevision = 0;
-    appSettingsRevision = 0;
-    savedAppSettingsRevision = 0;
+    autoSaveUserSettings.reset();
+    autoSaveAppSettings.markCleanForCurrentRevision();
+    autoSaveAppSettings.reset(); // to clear persistTimeout
+
+    autoSaveAppSettings.reset();
+    autoSaveAppSettings.markCleanForCurrentRevision();
 
     isSavingUserSettings.value = false;
     userSettingsSaveError.value = null;

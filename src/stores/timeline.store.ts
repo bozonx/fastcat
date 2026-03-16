@@ -233,6 +233,9 @@ export const useTimelineStore = defineStore('timeline', () => {
     get defaultStaticClipDurationUs() {
       return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
     },
+    get defaultAudioFadeCurve() {
+      return workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve;
+    },
   });
 
   const markerService = createTimelineMarkerService({
