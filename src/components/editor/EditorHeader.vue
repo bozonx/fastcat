@@ -69,7 +69,7 @@ const menuItems = computed(() => [
         variant="ghost"
         color="neutral"
         icon="i-heroicons-arrow-uturn-left"
-        :disabled="!timelineStore.historyStore.canUndo"
+        :disabled="!timelineStore.historyStore.canUndo('timeline')"
         :title="t('common.undo') + ' (Ctrl+Z)'"
         @click="timelineStore.undoTimeline()"
       />
@@ -78,7 +78,7 @@ const menuItems = computed(() => [
         variant="ghost"
         color="neutral"
         icon="i-heroicons-arrow-uturn-right"
-        :disabled="!timelineStore.historyStore.canRedo"
+        :disabled="!timelineStore.historyStore.canRedo('timeline')"
         :title="t('common.redo') + ' (Ctrl+Shift+Z)'"
         @click="timelineStore.redoTimeline()"
       />

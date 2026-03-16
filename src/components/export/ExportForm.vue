@@ -292,7 +292,7 @@ async function onConfirm() {
               v-model:metadata-tags="metadataTags"
               :show-audio-advanced="true"
               :hide-audio-sample-rate="true"
-              :show-metadata="true"
+              :show-metadata="false"
               :show-presets="true"
               :disabled="isExporting"
               :has-audio="true"
@@ -301,6 +301,35 @@ async function onConfirm() {
         </div>
 
         <div class="h-px bg-ui-border"></div>
+
+        <!-- Metadata Section -->
+        <div class="space-y-4">
+          <div class="text-lg font-semibold text-ui-text">
+            {{ t('videoEditor.export.metadata', 'Metadata') }}
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <UFormField :label="t('videoEditor.export.metadataTitle', 'Title')">
+              <UInput v-model="metadataTitle" :disabled="isExporting" class="w-full" />
+            </UFormField>
+            <UFormField :label="t('videoEditor.export.metadataAuthor', 'Author')">
+              <UInput v-model="metadataAuthor" :disabled="isExporting" class="w-full" />
+            </UFormField>
+          </div>
+
+          <UFormField :label="t('videoEditor.export.metadataDescription', 'Description')">
+            <UTextarea
+              v-model="metadataDescription"
+              :disabled="isExporting"
+              class="w-full"
+              :rows="3"
+            />
+          </UFormField>
+
+          <UFormField :label="t('videoEditor.export.metadataTags', 'Tags')">
+            <UInput v-model="metadataTags" :disabled="isExporting" class="w-full" />
+          </UFormField>
+        </div>
 
         <div class="h-px bg-ui-border"></div>
 
@@ -343,6 +372,13 @@ async function onConfirm() {
           </p>
         </div>
         <div class="flex justify-end gap-2" :class="{ 'mt-2': isExporting }">
+          <UButton
+            v-if="isSettingsDirty && !isExporting"
+            color="neutral"
+            variant="ghost"
+            :label="t('common.actions.reset', 'Reset')"
+            @click="initializeExportForm"
+          />
           <UButton
             v-if="isExporting"
             color="neutral"

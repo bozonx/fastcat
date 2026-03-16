@@ -66,7 +66,7 @@ function focusMainBus() {
 
     <div class="flex-1 overflow-x-auto overflow-y-hidden p-4 flex gap-4 min-h-0">
       <!-- Main Bus -->
-      <AudioMixerMain :is-selected="isMainBusSelected" @pointerdown.capture="focusMainBus" />
+      <AudioMixerMain :is-selected="isMainBusSelected" @pointerdown="focusMainBus" />
 
       <!-- Divider -->
       <div v-if="audioTracks.length > 0" class="w-px bg-ui-border shrink-0 my-2" />
@@ -78,7 +78,7 @@ function focusMainBus() {
           :key="track.id"
           :track="track"
           :is-selected="isTrackSelected(track)"
-          @pointerdown.capture="focusTrack(track.id)"
+          @pointerdown="focusTrack(track.id)"
         />
       </div>
     </div>
