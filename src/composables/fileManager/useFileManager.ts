@@ -518,7 +518,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
   async function reloadDirectory(path: string) {
     await service.reloadDirectory(path);
     if (!path) {
-      deps.rootEntries.value = await withWorkspaceCommonRoot(deps.rootEntries.value);
+      deps.rootEntries.value = await withWorkspaceCommonRoot([...deps.rootEntries.value]);
     }
     deps.onDirectoryLoaded?.();
   }

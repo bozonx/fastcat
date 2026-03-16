@@ -14,6 +14,7 @@ import {
 } from '~/repositories/project-ui.repository';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { ProjectMeta } from '~/repositories/project-meta.repository';
+import { useEditorViewStore } from '~/stores/editorView.store';
 
 interface ProjectSettingsRepo {
   load(): Promise<unknown | null>;
@@ -31,6 +32,9 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
   );
   const isLoadingProjectSettings = ref(false);
   const isSavingProjectSettings = ref(false);
+  const isSwitchingView = ref(false);
+
+  const editorViewStore = useEditorViewStore();
 
   const getProjectDirHandle = ref<(() => Promise<FileSystemDirectoryHandle | null>) | null>(null);
   const getCurrentProjectName = ref<(() => string | null) | null>(null);
@@ -58,7 +62,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
         if (projectUiRepo.value) {
           await projectUiRepo.value.save({
             version: 1,
-            monitor: projectSettings.value.monitor,
+            monitors: projectSettings.value.monitors,
             timelines: projectSettings.value.timelines,
           });
         }
@@ -150,7 +154,20 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
         const repo = projectUiRepo.value as ProjectUiRepository;
         const uiRaw = await repo.load();
         if (uiRaw) {
-          if (uiRaw.monitor) settings.monitor = { ...settings.monitor, ...uiRaw.monitor };
+          if (uiRaw.monitors) {
+            settings.monitors = { ...settings.monitors, ...uiRaw.monitors };
+          } else if ((uiRaw as any).monitor) {
+            // Migration from legacy single monitor
+            settings.monitors.cut = { ...settings.monitors.cut, ...(uiRaw as any).monitor };
+          }
+
+          // Also update active monitor from the target view
+          const view = editorViewStore.currentView;
+          const targetView = view === 'fullscreen' ? editorViewStore.lastViewBeforeFullscreen || 'cut' : view;
+          if (settings.monitors[targetView]) {
+            settings.monitor = { ...settings.monitors[targetView] };
+          }
+
           if (uiRaw.timelines) settings.timelines = { ...settings.timelines, ...uiRaw.timelines };
         }
       }
@@ -192,7 +209,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
       await projectSettingsRepo.value.save(projectSettings.value);
       await projectUiRepo.value.save({
         version: 1,
-        monitor: initial.monitor,
+        monitors: initial.monitors,
         timelines: initial.timelines,
       });
     } catch (e) {
@@ -206,9 +223,42 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
   watch(
     projectSettings,
     () => {
-      if (isLoadingProjectSettings.value) return;
+      if (isLoadingProjectSettings.value || isSwitchingView.value) return;
       markProjectSettingsAsDirty();
       void requestProjectSettingsSave();
+    },
+    { deep: true },
+  );
+
+  // Sync active monitor with current view
+  watch(
+    () => editorViewStore.currentView,
+    (view) => {
+      const targetView = view === 'fullscreen' ? editorViewStore.lastViewBeforeFullscreen || 'cut' : view;
+      if (!['cut', 'sound', 'export'].includes(targetView)) return;
+
+      const newSettings = projectSettings.value.monitors[targetView];
+      if (!newSettings) return;
+
+      isSwitchingView.value = true;
+      try {
+        projectSettings.value.monitor = { ...newSettings };
+      } finally {
+        isSwitchingView.value = false;
+      }
+    },
+  );
+
+  // Update monitors record when active monitor changes
+  watch(
+    () => projectSettings.value.monitor,
+    (newVal) => {
+      if (isSwitchingView.value || isLoadingProjectSettings.value) return;
+      const view = editorViewStore.currentView;
+      const targetView = view === 'fullscreen' ? editorViewStore.lastViewBeforeFullscreen || 'cut' : view;
+      if (!['cut', 'sound', 'export'].includes(targetView)) return;
+
+      projectSettings.value.monitors[targetView] = { ...newVal };
     },
     { deep: true },
   );

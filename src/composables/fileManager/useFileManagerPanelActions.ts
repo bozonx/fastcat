@@ -12,6 +12,7 @@ import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 export interface FileManagerPanelActionsOptions {
   vfs: IFileSystemAdapter;
   loadProjectDirectory: (opts?: any) => Promise<void>;
+  reloadDirectory: (path: string) => Promise<void>;
   findEntryByPath: (path: string) => FsEntry | null;
   onFileActionBase: (
     action: FileActionBase,
@@ -41,6 +42,7 @@ export type PanelFileAction =
 export function useFileManagerPanelActions({
   vfs,
   loadProjectDirectory,
+  reloadDirectory,
   findEntryByPath,
   onFileActionBase,
   handleConvert,
@@ -65,7 +67,7 @@ export function useFileManagerPanelActions({
         timelinesDirName: entry.path || undefined,
       });
 
-      await loadProjectDirectory();
+      await reloadDirectory(entry.path || '');
 
       const createdEntry = createdPath ? findEntryByPath(createdPath) : null;
       if (createdEntry) {
