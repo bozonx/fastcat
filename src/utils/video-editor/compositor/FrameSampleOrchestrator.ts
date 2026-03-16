@@ -35,7 +35,9 @@ export interface FrameSampleOrchestratorResult {
 }
 
 export class FrameSampleOrchestrator {
-  public async process(params: FrameSampleOrchestratorParams): Promise<FrameSampleOrchestratorResult> {
+  public async process(
+    params: FrameSampleOrchestratorParams,
+  ): Promise<FrameSampleOrchestratorResult> {
     const { sampleRequests } = params.activeClipProcessor.process({
       activeClips: params.activeClips,
       timeUs: params.timeUs,
@@ -128,7 +130,9 @@ export class FrameSampleOrchestrator {
           )
         : 1 - rawProgress;
 
-      prevClip.sprite.alpha = Math.max(0, Math.min(1, shadowAlpha));
+      if (prevClip.sprite) {
+        prevClip.sprite.alpha = Math.max(0, Math.min(1, shadowAlpha));
+      }
 
       if (
         prevClip.clipKind === 'image' ||
@@ -137,14 +141,14 @@ export class FrameSampleOrchestrator {
         prevClip.clipKind === 'text' ||
         prevClip.clipKind === 'hud'
       ) {
-        prevClip.sprite.visible = true;
+        if (prevClip.sprite) prevClip.sprite.visible = true;
         continue;
       }
 
       const handleUs =
         prevClip.sourceDurationUs - prevClip.sourceStartUs - prevClip.sourceRangeDurationUs;
       if (!prevClip.sink) {
-        prevClip.sprite.visible = false;
+        if (prevClip.sprite) prevClip.sprite.visible = false;
         continue;
       }
 
@@ -267,7 +271,7 @@ export class FrameSampleOrchestrator {
 
       const prevClip = getPrevClipOnLayer(clip);
       if (prevClip && !activeClips.includes(prevClip)) {
-        prevClip.sprite.visible = false;
+        if (prevClip.sprite) prevClip.sprite.visible = false;
       }
     }
   }
