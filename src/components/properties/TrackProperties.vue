@@ -73,10 +73,10 @@ const trackAudioGain = computed({
       typeof props.track?.audioGain === 'number' && Number.isFinite(props.track.audioGain)
         ? props.track.audioGain
         : 1;
-    return Math.max(0, Math.min(2, v));
+    return Math.max(0, Math.min(4, v));
   },
   set: (val: number) => {
-    const v = Math.max(0, Math.min(2, Number(val)));
+    const v = Math.max(0, Math.min(4, Number(val)));
     timelineStore.updateTrackProperties(props.track.id, { audioGain: v });
   },
 });

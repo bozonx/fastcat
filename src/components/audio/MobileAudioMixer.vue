@@ -52,7 +52,7 @@ const masterPeakDb = computed(() => timelineStore.audioLevels?.master?.peakDb);
 const masterVolume = computed({
   get: () => Math.round(timelineStore.masterGain * 100),
   set: (value: number) => {
-    timelineStore.setMasterGain(Math.max(0, Math.min(2, value / 100)));
+    timelineStore.setMasterGain(Math.max(0, Math.min(4, value / 100)));
   },
 });
 
@@ -72,7 +72,7 @@ function formatPan(value: number): string {
 function updateTrackGain(trackId: string, rawValue: number | string) {
   const numeric = Number(rawValue);
   timelineStore.updateTrackProperties(trackId, {
-    audioGain: Math.max(0, Math.min(2, numeric / 100)),
+    audioGain: Math.max(0, Math.min(4, numeric / 100)),
   });
 }
 
@@ -143,7 +143,7 @@ function handleTrackPanInput(trackId: string, event: Event) {
             :value="masterVolume"
             type="range"
             min="0"
-            max="200"
+            max="400"
             step="1"
             class="w-full accent-primary-500"
             @input="updateMasterVolume"
@@ -216,7 +216,7 @@ function handleTrackPanInput(trackId: string, event: Event) {
                   :value="Math.round(track.gain * 100)"
                   type="range"
                   min="0"
-                  max="200"
+                  max="400"
                   step="1"
                   class="w-full accent-primary-500"
                   @input="handleTrackGainInput(track.id, $event)"

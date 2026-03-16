@@ -1,6 +1,10 @@
 import { computed, type Ref } from 'vue';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
-import { normalizeAudioFadeCurve, type AudioFadeCurve } from '~/utils/audio/envelope';
+import {
+  CLIP_AUDIO_GAIN_MAX,
+  normalizeAudioFadeCurve,
+  type AudioFadeCurve,
+} from '~/utils/audio/envelope';
 
 interface UseClipAudioOptions {
   clip: Ref<TimelineClipItem>;
@@ -56,7 +60,7 @@ export function useClipAudio(options: UseClipAudioOptions) {
   const audioGain = computed(() => {
     const v = options.clip.value.audioGain;
     const safe = typeof v === 'number' && Number.isFinite(v) ? v : 1;
-    return Math.max(0, Math.min(2, safe));
+    return Math.max(0, Math.min(CLIP_AUDIO_GAIN_MAX, safe));
   });
 
   const audioBalance = computed(() => {
@@ -66,7 +70,7 @@ export function useClipAudio(options: UseClipAudioOptions) {
   });
 
   function updateAudioGain(val: unknown) {
-    const safe = clampNumber(val, 0, 2);
+    const safe = clampNumber(val, 0, CLIP_AUDIO_GAIN_MAX);
     options.updateAudio({ audioGain: safe });
   }
 

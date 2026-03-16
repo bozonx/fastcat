@@ -95,9 +95,10 @@ function onFadeHandlePointerDown(
   window.addEventListener('pointercancel', onPointerUp);
 }
 
+const GAIN_MAX = 4;
 const volumeY = computed(() => {
-  const g = Math.max(0, Math.min(2, props.clip.audioGain ?? 1));
-  return (1 - g / 2) * 100;
+  const g = Math.max(0, Math.min(GAIN_MAX, props.clip.audioGain ?? 1));
+  return (1 - g / GAIN_MAX) * 100;
 });
 </script>
 
