@@ -142,25 +142,6 @@ const { handleFileAction: onFileAction, createTimelineInDirectory } = useFileMan
 });
 
 async function onCreateTimeline() {
-  const selectedDir =
-    uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null;
-
-  if (selectedDir) {
-    await createTimelineInDirectory({
-      kind: 'directory',
-      name: selectedDir.name,
-      path: selectedDir.path ?? '',
-      parentPath: selectedDir.parentPath,
-      lastModified: selectedDir.lastModified,
-      size: selectedDir.size,
-      source: selectedDir.source,
-      remoteId: selectedDir.remoteId,
-      remotePath: selectedDir.remotePath,
-      remoteData: selectedDir.remoteData,
-    });
-    return;
-  }
-
   const createdPath = await createTimeline();
   if (!createdPath) return;
 
@@ -189,14 +170,7 @@ function onFileSelect(e: Event) {
     const files = Array.from(target.files);
     target.value = '';
 
-    const selectedDir =
-      uiStore.selectedFsEntry?.kind === 'directory' ? uiStore.selectedFsEntry : null;
-    if (!selectedDir || !selectedDir.path) {
-      handleFiles(files);
-      return;
-    }
-
-    handleFiles(files, selectedDir.path);
+    handleFiles(files);
   }
 }
 
@@ -274,7 +248,7 @@ useFileManagerPanelBootstrap({
           variant="ghost"
           color="neutral"
           size="xs"
-          :title="t('videoEditor.fileManager.actions.uploadFiles')"
+          :title="`${t('videoEditor.fileManager.actions.uploadFiles')} (Auto-detect folder)`"
           @click="triggerFileUpload"
         />
         <UButton
@@ -282,7 +256,7 @@ useFileManagerPanelBootstrap({
           variant="ghost"
           color="neutral"
           size="xs"
-          :title="t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline')"
+          :title="`${t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline')} (In _timelines folder)`"
           @click="onCreateTimeline"
         />
         <UButton
@@ -290,13 +264,19 @@ useFileManagerPanelBootstrap({
           variant="ghost"
           color="neutral"
           size="xs"
-          :title="t('videoEditor.fileManager.actions.createFolder')"
+          :title="`${t('videoEditor.fileManager.actions.createFolder')} (In root folder)`"
           @click="
             onFileAction(
               'createFolder',
-              (uiStore.selectedFsEntry?.kind === 'directory'
-                ? uiStore.selectedFsEntry
-                : null) as FsEntry,
+              {
+                kind: 'directory',
+                name: '',
+                path: '',
+                parentPath: '',
+                lastModified: 0,
+                size: 0,
+                source: 'local',
+              } as FsEntry
             )
           "
         />
