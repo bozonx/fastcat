@@ -59,6 +59,7 @@ const {
   exportOnlySelectionRange,
   saveAsDefaults,
   hasSelectionRange,
+  isSettingsDirty,
 
   initializeExportForm,
   handleOutputFormatChange,
@@ -303,8 +304,11 @@ async function onConfirm() {
 
         <div class="h-px bg-ui-border"></div>
 
-        <label class="flex items-center gap-3 cursor-pointer mt-2">
-          <UCheckbox v-model="saveAsDefaults" :disabled="isExporting" />
+        <label
+          class="flex items-center gap-3 mt-2"
+          :class="isSettingsDirty && !isExporting ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'"
+        >
+          <UCheckbox v-model="saveAsDefaults" :disabled="isExporting || !isSettingsDirty" />
           <span class="text-sm text-ui-text">{{
             t('videoEditor.export.saveAsDefault', 'Save as project settings')
           }}</span>

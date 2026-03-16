@@ -287,7 +287,7 @@ watch(
       </div>
     </div>
 
-    <template v-if="props.showMetadata && outputFormat !== 'webm'">
+    <template v-if="props.showMetadata">
       <div class="h-px bg-ui-border my-2"></div>
 
       <div class="text-sm font-semibold text-ui-text uppercase tracking-wider">
