@@ -33,6 +33,13 @@ export async function executeMediaConversion(params: {
 
   return addMediaTask(
     async () => {
+      const audioChannels =
+        params.request.sharedAudio.channels === 1
+          ? 'mono'
+          : params.request.sharedAudio.channels === 2
+            ? 'stereo'
+            : undefined;
+
       const task = backgroundTasksStore.tasks.find((t) => t.id === params.backgroundTaskId);
       if (task?.status === 'cancelled' || params.isCancelRequested()) {
         const err = new Error('Cancelled');
@@ -59,7 +66,9 @@ export async function executeMediaConversion(params: {
           backgroundTasksStore.updateTaskProgress(params.backgroundTaskId, normalizedProgress);
         },
         onExportPhase: (phase) => {
-          // You could also emit phase events via store/callbacks if needed
+          if (phase === 'saving') {
+            backgroundTasksStore.updateTaskProgress(params.backgroundTaskId, 0.99);
+          }
         },
         onExportWarning: (message) => {
           console.warn(message);
@@ -101,7 +110,7 @@ export async function executeMediaConversion(params: {
             bitrateMode: params.request.video.bitrateMode,
             keyframeIntervalSec: params.request.video.keyframeIntervalSec,
             exportAlpha: false,
-            audioChannels: params.request.sharedAudio.channels,
+            audioChannels,
             audioSampleRate: params.request.sharedAudio.sampleRate || undefined,
           };
         } else if (params.request.audioOnly) {
@@ -115,7 +124,7 @@ export async function executeMediaConversion(params: {
             width: AUDIO_ONLY_EXPORT_PLACEHOLDER_DIMENSION,
             height: AUDIO_ONLY_EXPORT_PLACEHOLDER_DIMENSION,
             fps: AUDIO_ONLY_EXPORT_PLACEHOLDER_FPS,
-            audioChannels: params.request.sharedAudio.channels,
+            audioChannels,
             audioSampleRate: params.request.sharedAudio.sampleRate || undefined,
             audioReverse: params.request.audioOnly.reverse,
             audioDurationSec: meta.duration || undefined,

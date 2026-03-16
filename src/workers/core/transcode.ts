@@ -352,7 +352,7 @@ export async function runTranscode(
       if (nowMs - lastProgressAtMs >= progressIntervalMs) {
         lastProgressAtMs = nowMs;
         if (hostClient) {
-          hostClient.onExportProgress(Math.round(progress * 100), taskId);
+          hostClient.onExportProgress(Math.min(99, Math.round(progress * 99)), taskId);
         }
       }
     };
@@ -373,10 +373,6 @@ export async function runTranscode(
       await conversionProcess.execute();
     } finally {
       clearInterval(cancelInterval);
-    }
-
-    if (hostClient) {
-      await hostClient.onExportProgress(100, taskId);
     }
 
     await notifyPhase('saving', taskId);

@@ -77,7 +77,13 @@ export function createProxyService(params: {
         }
       },
       onExportPhase: (phase: 'encoding' | 'saving', taskId?: string) => {
-        console.log(`[Proxy Worker] Phase: ${phase} for task ${taskId}`);
+        if (!taskId || phase !== 'saving') return;
+        const path = params.taskIdToPath.value.get(taskId);
+        if (!path) return;
+        const bgTaskId = (params.proxyAbortControllers.value.get(path) as any)?.bgTaskId;
+        if (bgTaskId) {
+          params.backgroundTasksStore.updateTaskProgress(bgTaskId, 0.99);
+        }
       },
       onExportWarning: (msg: string, taskId?: string) => {
         console.warn(`[Proxy Worker] Warning: ${msg} for task ${taskId}`);

@@ -35,11 +35,6 @@ onMounted(() => {
         description: bgTaskTitle,
         color: 'neutral',
       });
-    } else {
-      toast.add({
-        title: t('videoEditor.fileManager.convert.success', 'File converted successfully'),
-        color: 'success',
-      });
     }
   };
   fileConversionStore.callbacks.onError = (error) => {
