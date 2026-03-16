@@ -318,7 +318,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     getProjectSizeKey: () => [
       projectStore.projectSettings?.project?.width ?? 0,
       projectStore.projectSettings?.project?.height ?? 0,
-      projectStore.projectSettings?.monitor?.previewResolution ?? 0,
+      projectStore.activeMonitor?.previewResolution ?? 0,
     ],
     getRenderTimeForLayoutUpdate,
     stopPlayback: () => {

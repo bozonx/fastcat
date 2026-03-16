@@ -205,6 +205,7 @@ const isFormValid = computed(() => {
             :hide-audio-bitrate="false"
             :show-audio-advanced="true"
             :original-audio-sample-rate="audio.originalSampleRate"
+            :original-audio-channels="audio.originalChannels"
             :allow-original-audio-sample-rate="true"
           />
         </div>
@@ -229,6 +230,7 @@ const isFormValid = computed(() => {
             v-model:audio-reverse="audio.reverse"
             :show-reverse="true"
             :original-sample-rate="audio.originalSampleRate"
+            :original-channels="audio.originalChannels"
             :allow-original-sample-rate="true"
           />
         </div>

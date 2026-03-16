@@ -1,5 +1,5 @@
 export interface SharedAudioSettings {
-  channels: 'stereo' | 'mono';
+  channels: number;
   sampleRate: number | null;
 }
 

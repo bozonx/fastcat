@@ -20,6 +20,7 @@ interface Props {
   formatOptions: readonly FormatOption[];
   videoCodecOptions: readonly VideoCodecOptionResolved[];
   showMetadata?: boolean;
+  originalAudioChannels?: number | null;
   hideAudioBitrate?: boolean;
   hideAudioSampleRate?: boolean;
   showBuiltinPresets?: boolean;
@@ -45,7 +46,7 @@ const bitrateMbps = defineModel<number>('bitrateMbps', { required: true });
 const excludeAudio = defineModel<boolean>('excludeAudio', { required: true });
 const audioCodec = defineModel<'aac' | 'opus'>('audioCodec', { default: 'aac' });
 const audioBitrateKbps = defineModel<number>('audioBitrateKbps', { required: true });
-const audioChannels = defineModel<'stereo' | 'mono'>('audioChannels', { default: 'stereo' });
+const audioChannels = defineModel<number>('audioChannels', { default: 2 });
 const audioSampleRate = defineModel<number>('audioSampleRate', { default: 0 });
 const preset = defineModel<'optimal' | 'social' | 'high' | 'lossless' | 'custom'>('preset', {
   default: 'custom',
@@ -77,8 +78,7 @@ const filteredVideoCodecOptions = computed(() => {
 const isBitrateModeTouched = ref(false);
 
 function getDefaultBitrateModeByCodec(codec: string): 'constant' | 'variable' {
-  const value = (codec || '').toLowerCase();
-  if (value.startsWith('avc1')) return 'constant';
+  // Requirement: default to VBR
   return 'variable';
 }
 
@@ -176,7 +176,7 @@ watch(
       <div class="w-full">
         <USelectMenu
           :model-value="
-            (filteredVideoCodecOptions.find((o: VideoCodecOptionResolved) => o.value === videoCodec.value) || videoCodec.value) as any
+            (filteredVideoCodecOptions.find((o: VideoCodecOptionResolved) => o.value === videoCodec) || videoCodec) as any
           "
           :items="filteredVideoCodecOptions"
           value-key="value"
@@ -271,6 +271,7 @@ watch(
         v-model:audio-channels="audioChannels"
         v-model:audio-sample-rate="audioSampleRate"
         :original-sample-rate="props.originalAudioSampleRate"
+        :original-channels="props.originalAudioChannels"
         :allow-original-audio-sample-rate="props.allowOriginalAudioSampleRate"
         :hide-sample-rate="props.hideAudioSampleRate"
         :disabled="props.disabled"

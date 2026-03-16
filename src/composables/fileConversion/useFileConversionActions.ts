@@ -57,10 +57,11 @@ interface UseFileConversionActionsProps {
     onlyFormat: 'opus' | 'aac';
     onlyCodec: 'opus' | 'aac';
     onlyBitrateKbps: number;
-    channels: 'stereo' | 'mono';
+    channels: number;
     sampleRate: number;
     reverse: boolean;
     originalSampleRate: number | null;
+    originalChannels: number | null;
   };
   imageSettings: {
     quality: number;
@@ -121,9 +122,12 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
     props.isCancelRequested.value = false;
     props.isConverting.value = false;
     props.conversionError.value = '';
-    props.isModalOpen.value = true;
+      props.isModalOpen.value = true;
 
-    if (mediaCategory === 'video') {
+      // Default to VBR as requested
+      props.videoSettings.bitrateMode = 'variable';
+
+      if (mediaCategory === 'video') {
       props.sourceHasAudio.value = true;
       props.videoSettings.format =
         projectStore.projectSettings?.exportDefaults?.encoding?.format ?? DEFAULT_VIDEO_FORMAT;
@@ -169,21 +173,25 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           const supportedFormats: any[] = ['mp4', 'webm', 'mkv'];
 
           let matched = false;
-          if (sourceExt && supportedFormats.includes(sourceExt)) {
-            // Check if codec is one of our supported ones
-            // We search for a codec that starts with the same prefix (e.g. avc1, vp09, av01)
-            const supportedCodec = ['avc1', 'vp09', 'av01'].find((prefix) =>
-              sourceCodec.startsWith(prefix),
-            );
 
-            if (supportedCodec) {
+          // Soft resolve codec: check if any of our supported codecs is a prefix of the source codec
+          const supportedCodec = ['avc1', 'vp09', 'av01'].find((prefix) =>
+            sourceCodec.startsWith(prefix),
+          );
+
+          if (supportedCodec) {
+            // Map to our specific codec strings
+            if (supportedCodec === 'avc1') props.videoSettings.videoCodec = 'avc1.640032';
+            else if (supportedCodec === 'vp09') props.videoSettings.videoCodec = 'vp09.00.10.08';
+            else if (supportedCodec === 'av01') props.videoSettings.videoCodec = 'av01.0.05M.08';
+
+            // If format is also supported, use it, otherwise default to mp4
+            if (sourceExt && supportedFormats.includes(sourceExt)) {
               props.videoSettings.format = sourceExt as any;
-              // Map to our specific codec strings
-              if (supportedCodec === 'avc1') props.videoSettings.videoCodec = 'avc1.640032';
-              else if (supportedCodec === 'vp09') props.videoSettings.videoCodec = 'vp09.00.10.08';
-              else if (supportedCodec === 'av01') props.videoSettings.videoCodec = 'av01.0.05M.08';
-              matched = true;
+            } else {
+              props.videoSettings.format = 'mp4';
             }
+            matched = true;
           }
 
           if (!matched) {
@@ -198,24 +206,24 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
 
         if (meta?.audio) {
           props.sourceHasAudio.value = true;
-          props.audioSettings.channels = resolveAudioChannelsFromMeta(meta.audio.channels);
+          props.audioSettings.originalChannels = meta.audio.channels || 2;
+          props.audioSettings.channels = props.audioSettings.originalChannels || 2;
           props.audioSettings.originalSampleRate = Math.max(
             1,
             Math.round(Number(meta.audio.sampleRate) || 0),
           );
           // Auto-select sample rate from meta
-          props.audioSettings.sampleRate = props.audioSettings.originalSampleRate;
+          props.audioSettings.sampleRate = props.audioSettings.originalSampleRate || 0;
           props.audioSettings.onlyBitrateKbps = meta.audio.bitrate
             ? Math.round(meta.audio.bitrate / 1000)
             : 0;
-          props.videoSettings.audioBitrateKbps = props.audioSettings.onlyBitrateKbps;
+          props.videoSettings.audioBitrateKbps = props.audioSettings.onlyBitrateKbps || 0;
         } else {
           props.sourceHasAudio.value = false;
           props.videoSettings.excludeAudio = true;
           props.audioSettings.originalSampleRate = null;
           props.audioSettings.sampleRate = 0;
           props.audioSettings.onlyBitrateKbps = 0;
-          props.videoSettings.audioBitrateKbps = 0;
         }
       } catch (err) {
         notifyMetadataWarning(
@@ -232,8 +240,9 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
       props.audioSettings.onlyCodec = 'opus';
       props.audioSettings.onlyFormat = 'opus';
       props.audioSettings.onlyBitrateKbps = DEFAULT_AUDIO_BITRATE_KBPS;
-      props.audioSettings.channels = 'stereo';
+      props.audioSettings.channels = 2;
       props.audioSettings.originalSampleRate = null;
+      props.audioSettings.originalChannels = null;
       props.audioSettings.sampleRate = 0;
       syncAudioOnlyCodecWithFormat();
 
@@ -249,17 +258,19 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           return;
 
         if (meta?.audio) {
-          props.audioSettings.channels = resolveAudioChannelsFromMeta(meta.audio.channels);
+          props.audioSettings.originalChannels = meta.audio.channels || 2;
+          props.audioSettings.channels = props.audioSettings.originalChannels || 2;
           props.audioSettings.originalSampleRate = Math.max(
             1,
             Math.round(Number(meta.audio.sampleRate) || 0),
           );
-          props.audioSettings.sampleRate = props.audioSettings.originalSampleRate;
+          props.audioSettings.sampleRate = props.audioSettings.originalSampleRate || 0;
           props.audioSettings.onlyBitrateKbps = meta.audio.bitrate
             ? Math.round(meta.audio.bitrate / 1000)
             : 0;
         } else {
           props.audioSettings.originalSampleRate = null;
+          props.audioSettings.originalChannels = null;
           props.audioSettings.sampleRate = 0;
           props.audioSettings.onlyBitrateKbps = 0;
         }

@@ -49,7 +49,7 @@ describe('useMonitorDisplay', () => {
     const projectStore = useProjectStore();
     projectStore.projectSettings.project.width = 1920;
     projectStore.projectSettings.project.height = 1080;
-    projectStore.projectSettings.monitor.previewResolution = 480;
+    projectStore.projectSettings.monitors.cut.previewResolution = 480;
 
     const { getCanvasWrapperStyle, renderWidth, renderHeight } = useMonitorDisplay();
 
@@ -65,7 +65,7 @@ describe('useMonitorDisplay', () => {
     const projectStore = useProjectStore();
     projectStore.projectSettings.project.width = 1920;
     projectStore.projectSettings.project.height = 1080;
-    projectStore.projectSettings.monitor.previewResolution = 480;
+    projectStore.projectSettings.monitors.cut.previewResolution = 480;
 
     const { getCanvasInnerStyle, renderWidth, renderHeight } = useMonitorDisplay();
 
@@ -73,7 +73,6 @@ describe('useMonitorDisplay', () => {
     const currentRenderWidth = renderWidth.value;
     const currentRenderHeight = renderHeight.value;
 
-    // No-op edit just to satisfy the tool call that I startednder dimensions
     const style = getCanvasInnerStyle();
     expect(style.width).toBe(`${currentRenderWidth}px`);
     expect(style.height).toBe(`${currentRenderHeight}px`);
@@ -83,7 +82,7 @@ describe('useMonitorDisplay', () => {
     const projectStore = useProjectStore();
     projectStore.projectSettings.project.width = 1920;
     projectStore.projectSettings.project.height = 1080;
-    projectStore.projectSettings.monitor.previewResolution = 480;
+    projectStore.projectSettings.monitors.cut.previewResolution = 480;
 
     const { updateCanvasDisplaySize, viewportEl, renderWidth, renderHeight } = useMonitorDisplay();
 
@@ -96,5 +95,17 @@ describe('useMonitorDisplay', () => {
 
     expect(renderHeight.value).toBe(480);
     expect(renderWidth.value).toBe(Math.round(480 * (1920 / 1080)));
+  });
+
+  it('uses active monitor preview resolution below 480p without fallback reset', () => {
+    const projectStore = useProjectStore();
+    projectStore.projectSettings.project.width = 1920;
+    projectStore.projectSettings.project.height = 1080;
+    projectStore.projectSettings.monitors.cut.previewResolution = 240;
+
+    const { renderHeight, renderWidth } = useMonitorDisplay();
+
+    expect(renderHeight.value).toBe(240);
+    expect(renderWidth.value).toBe(Math.round(240 * (1920 / 1080)));
   });
 });

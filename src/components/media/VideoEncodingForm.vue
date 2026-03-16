@@ -13,6 +13,7 @@ interface Props {
   showPresets?: boolean;
   showAudioAdvanced?: boolean;
   originalAudioSampleRate?: number | null;
+  originalAudioChannels?: number | null;
   allowOriginalAudioSampleRate?: boolean;
   hideAudioBitrate?: boolean;
   hideAudioSampleRate?: boolean;
@@ -25,6 +26,7 @@ const props = withDefaults(defineProps<Props>(), {
   showPresets: false,
   showAudioAdvanced: false,
   originalAudioSampleRate: null,
+  originalAudioChannels: null,
   allowOriginalAudioSampleRate: false,
   hideAudioBitrate: false,
   hideAudioSampleRate: false,
@@ -37,7 +39,7 @@ const bitrateMbps = defineModel<number>('bitrateMbps', { required: true });
 const excludeAudio = defineModel<boolean>('excludeAudio', { required: true });
 const audioCodec = defineModel<'aac' | 'opus'>('audioCodec', { default: 'aac' });
 const audioBitrateKbps = defineModel<number>('audioBitrateKbps', { required: true });
-const audioChannels = defineModel<'stereo' | 'mono'>('audioChannels', { default: 'stereo' });
+const audioChannels = defineModel<number>('audioChannels', { default: 2 });
 const audioSampleRate = defineModel<number>('audioSampleRate', { default: 0 });
 const preset = defineModel<string>('preset', { default: 'custom' });
 const bitrateMode = defineModel<'constant' | 'variable'>('bitrateMode', { default: 'variable' });
@@ -125,6 +127,7 @@ function applyPreset(presetId: string) {
       :show-metadata="props.showMetadata"
       :show-audio-advanced="props.showAudioAdvanced"
       :original-audio-sample-rate="props.originalAudioSampleRate"
+      :original-audio-channels="props.originalAudioChannels"
       :allow-original-audio-sample-rate="props.allowOriginalAudioSampleRate"
       :hide-audio-bitrate="props.hideAudioBitrate"
       :hide-audio-sample-rate="props.hideAudioSampleRate"

@@ -5,6 +5,7 @@ const props = withDefaults(
   defineProps<{
     disabled?: boolean;
     originalSampleRate?: number | null;
+    originalChannels?: number | null;
     allowOriginalSampleRate?: boolean;
     hideSampleRate?: boolean;
     showReverse?: boolean;
@@ -12,6 +13,7 @@ const props = withDefaults(
   {
     disabled: false,
     originalSampleRate: null,
+    originalChannels: null,
     allowOriginalSampleRate: false,
     hideSampleRate: false,
     showReverse: false,
@@ -19,16 +21,29 @@ const props = withDefaults(
 );
 
 const audioBitrateKbps = defineModel<number>('audioBitrateKbps', { required: true });
-const audioChannels = defineModel<'stereo' | 'mono'>('audioChannels', { required: true });
+const audioChannels = defineModel<number>('audioChannels', { required: true });
 const audioSampleRate = defineModel<number>('audioSampleRate', { required: true });
 const audioReverse = defineModel<boolean>('audioReverse', { default: false });
 
 const { t } = useI18n();
 
-const audioChannelsOptions = [
-  { value: 'stereo', label: t('videoEditor.audio.stereo', 'Stereo') },
-  { value: 'mono', label: t('videoEditor.audio.mono', 'Mono') },
-];
+const audioChannelsOptions = computed(() => {
+  const options = [{ value: 1, label: t('videoEditor.audio.mono', 'Mono') }];
+
+  const original = props.originalChannels || 2;
+  if (original === 1) return options;
+
+  if (original === 2) {
+    options.push({ value: 2, label: t('videoEditor.audio.stereo', 'Stereo') });
+  } else {
+    options.push({
+      value: original,
+      label: t('videoEditor.audio.channelsCount', { n: original }),
+    });
+  }
+
+  return options;
+});
 
 const sampleRateOptions = computed(() => {
   const originalRaw = props.originalSampleRate;

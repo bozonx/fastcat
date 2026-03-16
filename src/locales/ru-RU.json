@@ -606,6 +606,7 @@
     "audio": {
       "audioSettings": "Настройки аудио",
       "channels": "Каналы",
+      "channelsCount": "{n} канала(ов)",
       "mono": "Моно",
       "original": "Оригинальное аудио",
       "sampleRate": "Частота дискретизации",
