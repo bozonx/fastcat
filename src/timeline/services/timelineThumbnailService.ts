@@ -1,4 +1,4 @@
-import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
+import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
 import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';
@@ -29,8 +29,8 @@ export function dispatchTimelineThumbnailGeneration(params: GenerateTimelineThum
         const height = params.height ?? Math.max(90, Math.round(TIMELINE_CLIP_THUMBNAILS.HEIGHT));
         const quality = params.quality ?? 0.8;
 
-        const { client } = getExportWorkerClient();
-        setExportHostApi(
+        const { client } = getThumbnailWorkerClient();
+        setThumbnailHostApi(
           createVideoCoreHostApi({
             getCurrentProjectId: () => params.projectId,
             getWorkspaceHandle: () => params.workspaceHandle,

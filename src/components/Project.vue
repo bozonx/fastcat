@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, markRaw, ref, computed, watch, nextTick } from 'vue';
+import { VueDraggable } from 'vue-draggable-plus';
 import {
   useProjectTabsStore,
   isFileTab,
@@ -35,6 +36,8 @@ const {
   reorderTabs,
   addFileTab,
   removeFileTab,
+  removeOtherFileTabs,
+  removeAllFileTabs,
   registerProjectTab,
 } = tabsStore;
 
@@ -88,6 +91,57 @@ function activateProjectTab(tabId: string) {
   activateProjectFocus();
   setActiveTab(tabId);
 }
+
+function isMiddleClick(event: MouseEvent) {
+  return event.button === 1;
+}
+
+function onStaticTabMouseDown(event: MouseEvent, tabId: string) {
+  if (!isMiddleClick(event) || tabId === 'files') return;
+  event.preventDefault();
+}
+
+function onStaticTabAuxClick(event: MouseEvent, tabId: string) {
+  if (!isMiddleClick(event) || tabId === 'files') return;
+  event.preventDefault();
+}
+
+function onFileTabMouseDown(event: MouseEvent) {
+  if (!isMiddleClick(event)) return;
+  event.preventDefault();
+}
+
+function onFileTabAuxClick(event: MouseEvent, tabId: string) {
+  if (!isMiddleClick(event)) return;
+  event.preventDefault();
+  removeFileTab(tabId);
+}
+
+const projectTabContextMenuItems = computed(() => {
+  if (!activeFileTab.value) return [];
+
+  const activeTabId = activeFileTab.value.id;
+
+  return [
+    [
+      {
+        label: t('common.close', 'Close'),
+        icon: 'i-heroicons-x-mark',
+        onSelect: () => removeFileTab(activeTabId),
+      },
+      {
+        label: t('videoEditor.projectTabs.closeOthers', 'Close Others'),
+        icon: 'i-heroicons-minus-circle',
+        onSelect: () => removeOtherFileTabs(activeTabId),
+      },
+      {
+        label: t('videoEditor.projectTabs.closeAll', 'Close All'),
+        icon: 'i-heroicons-x-circle',
+        onSelect: () => removeAllFileTabs(),
+      },
+    ],
+  ];
+});
 
 watch(() => tabsStore.activeTabId, async (newId) => {
   if (!newId) return;
@@ -304,67 +358,92 @@ onMounted(() => {
       @drop="onTabBarDrop"
     >
       <!-- All tabs in a single scrollable container -->
-      <div
-        ref="tabContainerRef"
-        class="flex items-center h-full flex-1 min-w-0 overflow-x-auto no-scrollbar px-1 gap-0.5 py-1"
-      >
+      <div ref="tabContainerRef" class="flex items-center h-full flex-1 min-w-0 overflow-x-auto no-scrollbar">
         <!-- Static tabs -->
-        <div
-          v-for="tab in staticTabs"
-          :key="tab.id"
-          :data-tab-id="tab.id"
-          class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0"
-          :class="
-            tabsStore.activeTabId === tab.id
-              ? 'bg-primary-500/15 text-primary-400'
-              : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
-          "
-          :title="tab.label"
-          :draggable="tab.id !== 'files'"
-          @dragstart="tab.id !== 'files' ? onStaticTabDragStart($event, tab) : undefined"
-          @click="activateProjectTab(tab.id)"
-        >
-          <UIcon
-            :name="tab.icon ?? 'i-heroicons-rectangle-stack'"
-            class="w-3.5 h-3.5 shrink-0"
-            :class="tabsStore.activeTabId === tab.id ? 'text-primary-400' : 'text-ui-text-muted'"
-          />
-          <span class="text-[10px] font-semibold uppercase tracking-wider">
-            {{ tab.label }}
-          </span>
+        <div class="flex items-center px-1 gap-0.5 py-1 shrink-0">
+          <div
+            v-for="tab in staticTabs"
+            :key="tab.id"
+            :data-tab-id="tab.id"
+            class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0"
+            :class="
+              tabsStore.activeTabId === tab.id
+                ? 'bg-primary-500/15 text-primary-400'
+                : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
+            "
+            :title="tab.label"
+            :draggable="tab.id !== 'files'"
+            @mousedown="onStaticTabMouseDown($event, tab.id)"
+            @auxclick="onStaticTabAuxClick($event, tab.id)"
+            @dragstart="tab.id !== 'files' ? onStaticTabDragStart($event, tab) : undefined"
+            @click="activateProjectTab(tab.id)"
+          >
+            <UIcon
+              :name="tab.icon ?? 'i-heroicons-rectangle-stack'"
+              class="w-3.5 h-3.5 shrink-0"
+              :class="tabsStore.activeTabId === tab.id ? 'text-primary-400' : 'text-ui-text-muted'"
+            />
+            <span class="text-[10px] font-semibold uppercase tracking-wider">
+              {{ tab.label }}
+            </span>
+          </div>
         </div>
 
         <!-- File tabs -->
-        <div
-          v-for="tab in fileTabsModel"
-          :key="tab.id"
-          :data-tab-id="tab.id"
-          class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0"
-          :class="
-            tabsStore.activeTabId === tab.id
-              ? 'bg-primary-500/15 text-primary-400'
-              : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
-          "
-          :title="tab.fileName"
-          draggable="true"
-          @dragstart="onFileTabDragStart($event, tab)"
-          @click="activateProjectTab(tab.id)"
+        <UContextMenu
+          v-if="fileTabsModel.length > 0"
+          :items="projectTabContextMenuItems"
+          class="min-w-0 flex-1"
         >
-          <UIcon
-            :name="tab.icon"
-            class="w-3.5 h-3.5 shrink-0"
-            :class="tabsStore.activeTabId === tab.id ? 'text-primary-400' : 'text-ui-text-muted'"
-          />
-
-          <!-- Close button for file tabs -->
-          <button
-            class="ml-0.5 p-0.5 rounded hover:bg-red-500/15 hover:text-red-400 transition-colors"
-            :title="t('common.close', 'Close')"
-            @click.stop="removeFileTab(tab.id)"
+          <VueDraggable
+            v-model="fileTabsModel"
+            class="flex items-center px-1 gap-0.5 py-1 min-w-max"
+            :animation="150"
+            handle=".project-file-tab-drag-handle"
+            ghost-class="project-tab-ghost"
+            fallback-on-body
+            force-fallback
           >
-            <UIcon name="i-heroicons-x-mark" class="w-3 h-3" />
-          </button>
-        </div>
+            <div
+              v-for="tab in fileTabsModel"
+              :key="tab.id"
+              :data-tab-id="tab.id"
+              class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0"
+              :class="
+                tabsStore.activeTabId === tab.id
+                  ? 'bg-primary-500/15 text-primary-400'
+                  : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
+              "
+              :title="tab.fileName"
+              @mousedown="onFileTabMouseDown($event)"
+              @auxclick="onFileTabAuxClick($event, tab.id)"
+              @click="activateProjectTab(tab.id)"
+            >
+              <div
+                class="project-file-tab-drag-handle flex items-center gap-1.5 min-w-0"
+                draggable="true"
+                @dragstart="onFileTabDragStart($event, tab)"
+              >
+                <UIcon
+                  :name="tab.icon"
+                  class="w-3.5 h-3.5 shrink-0"
+                  :class="tabsStore.activeTabId === tab.id ? 'text-primary-400' : 'text-ui-text-muted'"
+                />
+                <span class="text-[10px] font-semibold tracking-wide truncate max-w-[140px]">
+                  {{ tab.fileName }}
+                </span>
+              </div>
+
+              <button
+                class="ml-0.5 p-0.5 rounded hover:bg-red-500/15 hover:text-red-400 transition-colors"
+                :title="t('common.close', 'Close')"
+                @click.stop="removeFileTab(tab.id)"
+              >
+                <UIcon name="i-heroicons-x-mark" class="w-3 h-3" />
+              </button>
+            </div>
+          </VueDraggable>
+        </UContextMenu>
       </div>
 
       <!-- Drop hint when dragging over -->

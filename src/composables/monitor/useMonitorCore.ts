@@ -17,7 +17,7 @@ import {
   disposeMonitorCoreRuntime,
   initializeMonitorCoreRuntime,
 } from './useMonitorCore.lifecycle';
-import { createMonitorCoreQueues } from './useMonitorCore.queues';
+import { createMonitorCoreQueues, type MonitorLayoutQueuePayload } from './useMonitorCore.queues';
 import {
   computeMonitorTimelineDuration,
   prepareMonitorTimelineState,

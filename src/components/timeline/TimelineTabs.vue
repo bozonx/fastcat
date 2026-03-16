@@ -18,7 +18,7 @@ const openPaths = computed({
 
 function getFileName(path: string) {
   const name = path.split('/').pop() || path;
-  return name.replace(/\.otio$/i, '');
+  return name.replace(/\.[^.]+$/i, '');
 }
 
 function isActive(path: string) {
@@ -33,6 +33,47 @@ function closeTab(path: string, event: Event) {
   event.stopPropagation();
   projectStore.closeTimelineFile(path);
 }
+
+function isMiddleClick(event: MouseEvent) {
+  return event.button === 1;
+}
+
+function onTabMouseDown(event: MouseEvent) {
+  if (!isMiddleClick(event)) return;
+  event.preventDefault();
+}
+
+function onTabAuxClick(event: MouseEvent, path: string) {
+  if (!isMiddleClick(event)) return;
+  event.preventDefault();
+  void projectStore.closeTimelineFile(path);
+}
+
+const timelineTabContextMenuItems = computed(() => {
+  if (!currentTimelinePath.value) return [];
+
+  const activePath = currentTimelinePath.value;
+
+  return [
+    [
+      {
+        label: 'Close',
+        icon: 'i-heroicons-x-mark',
+        onSelect: () => projectStore.closeTimelineFile(activePath),
+      },
+      {
+        label: 'Close Others',
+        icon: 'i-heroicons-minus-circle',
+        onSelect: () => projectStore.closeOtherTimelineFiles(activePath),
+      },
+      {
+        label: 'Close All',
+        icon: 'i-heroicons-x-circle',
+        onSelect: () => projectStore.closeAllTimelineFiles(),
+      },
+    ],
+  ];
+});
 
 watch(currentTimelinePath, async (newPath) => {
   if (!newPath) return;
@@ -69,50 +110,61 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="timeline-tabs flex items-center h-full min-w-0 flex-1 select-none">
-    <div ref="scrollContainer" class="flex h-full w-full overflow-x-auto no-scrollbar items-center">
-      <VueDraggable
-        v-model="openPaths"
-        class="flex h-full items-center"
-        :animation="150"
-        ghost-class="tab-ghost"
+    <div ref="scrollContainer" class="flex h-full w-full overflow-x-auto no-scrollbar items-center min-w-0">
+      <div
+        v-if="openPaths.length === 0"
+        class="flex items-center h-full px-4 text-xs font-semibold uppercase tracking-wider text-ui-text-muted"
       >
-        <div
-          v-for="path in openPaths"
-          :key="path"
-          :data-path="path"
-          class="group relative flex items-center h-full px-4 gap-2 border-r border-ui-border cursor-pointer min-w-30 max-w-55 transition-all duration-200 border-b"
-          :class="[
-            isActive(path)
-              ? 'active-tab text-primary-400 border-b-transparent'
-              : 'text-ui-text-muted bg-black/10 hover:bg-black/5 hover:text-ui-text border-b-ui-border',
-          ]"
-          @click="selectTab(path)"
+        No timelines open
+      </div>
+
+      <UContextMenu v-else :items="timelineTabContextMenuItems" class="flex h-full min-w-max">
+        <VueDraggable
+          v-model="openPaths"
+          class="flex h-full items-center"
+          :animation="150"
+          ghost-class="tab-ghost"
         >
-          <!-- Active Indicator Line -->
-          <div v-if="isActive(path)" class="absolute top-0 left-0 right-0 h-0.5 bg-primary-500" />
-
-          <UIcon
-            name="i-heroicons-film-20-solid"
-            class="w-4 h-4 shrink-0"
-            :class="
+          <div
+            v-for="path in openPaths"
+            :key="path"
+            :data-path="path"
+            class="group relative flex items-center h-full px-4 gap-2 border-r border-ui-border cursor-pointer min-w-[120px] max-w-[220px] transition-all duration-200 border-b"
+            :class="[
               isActive(path)
-                ? 'text-primary-500'
-                : 'text-ui-text-disabled group-hover:text-ui-text-muted'
-            "
-          />
-
-          <span class="text-[10px] truncate flex-1 font-bold tracking-widest uppercase">
-            {{ getFileName(path) }}
-          </span>
-
-          <button
-            class="tab-close-btn text-ui-text-muted hover:bg-red-500/10 hover:text-red-500 p-0.5 rounded-md transition-all duration-200"
-            @click="closeTab(path, $event)"
+                ? 'active-tab text-primary-400 border-b-transparent'
+                : 'text-ui-text-muted bg-black/10 hover:bg-black/5 hover:text-ui-text border-b-ui-border',
+            ]"
+            :title="path"
+            @mousedown="onTabMouseDown($event)"
+            @auxclick="onTabAuxClick($event, path)"
+            @click="selectTab(path)"
           >
-            <UIcon name="i-heroicons-x-mark-20-solid" class="w-4 h-4" />
-          </button>
-        </div>
-      </VueDraggable>
+            <div v-if="isActive(path)" class="absolute top-0 left-0 right-0 h-0.5 bg-primary-500" />
+
+            <UIcon
+              name="i-heroicons-film-20-solid"
+              class="w-4 h-4 shrink-0"
+              :class="
+                isActive(path)
+                  ? 'text-primary-500'
+                  : 'text-ui-text-disabled group-hover:text-ui-text-muted'
+              "
+            />
+
+            <span class="text-[10px] truncate flex-1 font-bold tracking-widest uppercase">
+              {{ getFileName(path) }}
+            </span>
+
+            <button
+              class="tab-close-btn text-ui-text-muted hover:bg-red-500/10 hover:text-red-500 p-0.5 rounded-md transition-all duration-200"
+              @click="closeTab(path, $event)"
+            >
+              <UIcon name="i-heroicons-x-mark-20-solid" class="w-4 h-4" />
+            </button>
+          </div>
+        </VueDraggable>
+      </UContextMenu>
     </div>
   </div>
 </template>

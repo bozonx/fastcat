@@ -133,14 +133,14 @@ watch(
     if (selected && selected.source === 'fileManager') {
       anchorEntry =
         selected.kind === 'multiple'
-          ? selected.entries[selected.entries.length - 1]
-          : selected.entry;
+          ? (selected.entries[selected.entries.length - 1] as FsEntry)
+          : (selected.entry as FsEntry);
     }
 
     // Если нет выбранного через selectionStore (например, просто кликнули по папке, 
     // и она стала активной в uiStore), используем uiStore.selectedFsEntry
     if (!anchorEntry && uiStore.selectedFsEntry) {
-      anchorEntry = uiStore.selectedFsEntry;
+      anchorEntry = uiStore.selectedFsEntry as FsEntry;
     }
 
     if (!anchorEntry) return;
