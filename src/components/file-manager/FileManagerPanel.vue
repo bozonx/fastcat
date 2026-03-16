@@ -148,6 +148,13 @@ async function onCreateTimeline() {
   await projectStore.openTimelineFile(createdPath);
   await timelineStore.loadTimeline();
   void timelineStore.loadTimelineMetadata();
+  
+  // Раскрываем папку с таймлайнами, если нужно, и скроллим к файлу
+  const parentDir = createdPath.substring(0, createdPath.lastIndexOf('/'));
+  if (parentDir) {
+    uiStore.setFileTreePathExpanded(parentDir, true);
+  }
+  uiStore.triggerScrollToFileTreeEntry(createdPath);
 }
 
 function triggerFileUpload() {

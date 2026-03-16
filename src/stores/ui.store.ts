@@ -149,6 +149,14 @@ export const useUiStore = defineStore('ui', () => {
     scrollToEffectsTrigger.value = Date.now();
   }
 
+  const scrollToFileTreeEntryPath = ref<string | null>(null);
+  const scrollToFileTreeEntryTrigger = ref(0);
+
+  function triggerScrollToFileTreeEntry(path: string) {
+    scrollToFileTreeEntryPath.value = path;
+    scrollToFileTreeEntryTrigger.value = Date.now();
+  }
+
   const timelineSaveTrigger = ref(0);
 
   function notifyTimelineSave() {
@@ -201,6 +209,10 @@ export const useUiStore = defineStore('ui', () => {
 
     scrollToEffectsTrigger,
     triggerScrollToEffects,
+
+    scrollToFileTreeEntryPath,
+    scrollToFileTreeEntryTrigger,
+    triggerScrollToFileTreeEntry,
 
     monitorVolume,
     monitorMuted,

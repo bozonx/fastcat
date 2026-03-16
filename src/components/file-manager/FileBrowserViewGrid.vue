@@ -68,6 +68,26 @@ function isSelected(entry: FsEntry): boolean {
 function isWorkspaceCommonRoot(entry: FsEntry): boolean {
   return entry.kind === 'directory' && entry.path === WORKSPACE_COMMON_PATH_PREFIX;
 }
+
+let renameTimer: ReturnType<typeof setTimeout> | null = null;
+
+function onNameClick(event: MouseEvent, entry: FsEntry) {
+  if (!isSelected(entry)) return;
+  event.stopPropagation();
+
+  if (event.detail === 1) {
+    renameTimer = setTimeout(() => {
+      emit('fileAction', 'rename', entry);
+    }, 250);
+  }
+}
+
+function onNameDblClick(event: MouseEvent, entry: FsEntry) {
+  if (renameTimer) {
+    clearTimeout(renameTimer);
+    renameTimer = null;
+  }
+}
 </script>
 
 <template>
@@ -195,7 +215,8 @@ function isWorkspaceCommonRoot(entry: FsEntry): boolean {
             isSelected(entry) ? 'hover:border-primary-500/50 cursor-text' : '',
           ]"
           :title="entry.name"
-          @click="isSelected(entry) ? (emit('fileAction', 'rename', entry), $event.stopPropagation()) : undefined"
+          @click="onNameClick($event, entry)"
+          @dblclick="onNameDblClick($event, entry)"
         >
           {{ entry.name }}
         </span>
