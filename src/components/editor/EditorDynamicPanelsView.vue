@@ -85,7 +85,8 @@ const emit = defineEmits<{
                 dragOverPanelId === panel.id && dropPosition === 'bottom',
               'panel-focus-frame--active': isFocused(panel.id),
             }"
-            @pointerdown.capture="emit('focus', panel.id)"
+            @pointerdown.capture="emit('focus', panel.id)" 
+            
             @dragenter.prevent
             @dragover.prevent="(event) => emit('dragOver', event, panel.id, view)"
             @dragleave="(event) => emit('dragLeave', event, panel.id)"

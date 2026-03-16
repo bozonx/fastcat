@@ -39,7 +39,7 @@ export function createUiActionRunner(state: UiActionRunnerState, deps: UiActionR
       const message = e instanceof Error ? e.message : params.defaultErrorMessage;
       state.error.value = message;
       deps.toast.add({
-        color: 'red',
+        color: 'error',
         title: params.toastTitle,
         description:
           params.toastDescription?.() ?? (state.error.value || params.defaultErrorMessage),

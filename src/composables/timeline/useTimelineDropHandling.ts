@@ -497,7 +497,7 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
       void timelineMediaUsageStore.refreshUsage();
     } catch (err: any) {
       toast.add({
-        color: 'red',
+        color: 'error',
         title: t('common.error'),
         description: err.message,
       });
@@ -549,7 +549,7 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
       }
     } catch (err: any) {
       toast.add({
-        color: 'red',
+        color: 'error',
         title: t('common.error'),
         description: String(err?.message ?? err),
       });

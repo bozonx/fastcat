@@ -132,7 +132,7 @@ export function useMonitorSnapshot(input: {
 
       if (!fileHandle) {
         toast.add({
-          color: 'red',
+          color: 'error',
           title: 'Snapshot failed',
           description: 'Could not access project folder for writing',
         });
@@ -153,7 +153,7 @@ export function useMonitorSnapshot(input: {
     } catch (err) {
       console.error('[Monitor] Failed to create stop frame snapshot', err);
       toast.add({
-        color: 'red',
+        color: 'error',
         title: 'Snapshot failed',
         description: err instanceof Error ? err.message : 'Unknown error',
       });
