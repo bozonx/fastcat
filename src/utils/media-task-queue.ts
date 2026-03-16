@@ -10,7 +10,6 @@ export const MEDIA_TASK_PRIORITIES = {
   proxy: 1,
   conversionBackground: 1,
   fileThumbnail: 2,
-  conversionInteractive: 2,
   timelineThumbnail: 3,
 } as const;
 

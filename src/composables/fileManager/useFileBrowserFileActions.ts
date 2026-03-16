@@ -1,7 +1,7 @@
 import type { Ref } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
-import { useProjectTabs } from '~/composables/project/useProjectTabs';
+import { useProjectTabsStore } from '~/stores/tabs.store';
 import { useAudioExtraction } from '~/composables/fileManager/useAudioExtraction';
 import type { FsEntry } from '~/types/fs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
@@ -31,7 +31,7 @@ export function useFileBrowserFileActions({
   const projectStore = useProjectStore();
   const uiStore = useUiStore();
   const proxyStore = useProxyStore();
-  const { addFileTab, setActiveTab } = useProjectTabs();
+  const { addFileTab, setActiveTab } = useProjectTabsStore();
   const { extractAudio } = useAudioExtraction();
 
   function handleBatchAction(action: string, entries: FsEntry[]): boolean {
@@ -77,29 +77,7 @@ export function useFileBrowserFileActions({
 
       const type = getMediaTypeFromFilename(entry.name);
       if (type === 'text') {
-        void (async () => {
-          try {
-            const blob = entry.path ? await vfs.readFile(entry.path) : null;
-            const content = blob ? await blob.text() : '';
-            projectStore.addTextPanel(
-              entry.path,
-              content,
-              entry.name,
-              undefined,
-              undefined,
-              panelTarget,
-            );
-          } catch {
-            projectStore.addTextPanel(
-              entry.path,
-              '',
-              entry.name,
-              undefined,
-              undefined,
-              panelTarget,
-            );
-          }
-        })();
+        projectStore.addTextPanel(entry.path || '', entry.name, undefined, undefined, panelTarget);
       } else if (type === 'video' || type === 'audio' || type === 'image') {
         projectStore.addMediaPanel(entry, type, entry.name, undefined, undefined, panelTarget);
       }

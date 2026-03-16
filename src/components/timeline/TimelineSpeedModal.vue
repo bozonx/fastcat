@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch, nextTick } from 'vue';
+
 import type { TimelineClipItem } from '~/timeline/types';
 import AppModal from '~/components/ui/AppModal.vue';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
@@ -32,6 +33,18 @@ const showNegativeSpeedAudioWarning = computed(() => props.speed < 0 && props.ha
 const showLowSpeedWarning = computed(
   () => Math.abs(props.speed) > 0 && Math.abs(props.speed) < 0.1,
 );
+
+const saveButtonRef = ref<any>(null);
+
+watch(() => props.open, (newValue) => {
+  if (newValue) {
+    nextTick(() => {
+      const el = saveButtonRef.value?.$el || saveButtonRef.value;
+      el?.focus?.();
+    });
+  }
+});
+
 </script>
 
 <template>
@@ -71,7 +84,7 @@ const showLowSpeedWarning = computed(
         <UButton color="neutral" variant="ghost" @click="isOpen = false">
           {{ t('common.cancel') }}
         </UButton>
-        <UButton color="primary" @click="emit('save')">
+        <UButton ref="saveButtonRef" color="primary" @click="emit('save')">
           {{ t('common.save') }}
         </UButton>
       </div>

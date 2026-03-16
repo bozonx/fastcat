@@ -1,6 +1,6 @@
 import { computed, ref, watch, type Ref } from 'vue';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
-import { hideStaticTab, showStaticTab } from '~/composables/project/useProjectTabs';
+import { useProjectTabsStore } from '~/stores/tabs.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
 import { readLocalStorageJson, writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
@@ -201,7 +201,8 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
   function closePanelAndRestoreTab(panel: DynamicPanel, options?: ClosePanelOptions) {
     const tabId = panelTypeToTabId[panel.type];
     if (tabId) {
-      showStaticTab(tabId);
+      const tabsStore = useProjectTabsStore();
+      tabsStore.showStaticTab(tabId);
     }
 
     projectStore.removePanel(panel.id, options?.view);
@@ -227,14 +228,19 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
         const panelType = panelTypeMap[payload.tabId] ?? 'fileManager';
 
         projectStore.insertPanelAt(
-          { id: `static-${payload.tabId}-${Date.now()}`, type: panelType, title: payload.label },
+          {
+            id: `static-${payload.tabId}-${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2, 7)}`,
+            type: panelType,
+            title: payload.label,
+          },
           targetPanelId,
           dropPosition.value,
           view,
         );
-        hideStaticTab(payload.tabId);
-      } catch {
-        // ignore
+        const tabsStore = useProjectTabsStore();
+        tabsStore.hideStaticTab(payload.tabId);
+      } catch (err) {
+        console.warn('Failed to parse static-tab-drag payload', err);
       }
 
       resetDragState();
@@ -258,7 +264,7 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
 
         projectStore.insertPanelAt(
           {
-            id: `file-panel-${Date.now()}`,
+            id: `file-panel-${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2, 7)}`,
             type: 'media',
             filePath: payload.filePath,
             mediaType,
@@ -268,8 +274,8 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
           dropPosition.value,
           view,
         );
-      } catch {
-        // ignore
+      } catch (err) {
+        console.warn('Failed to parse file-tab-drag payload', err);
       }
 
       resetDragState();
@@ -296,24 +302,13 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
           const mediaType = resolveMediaTypeByExtension(ext);
 
           if (isTextExtension(ext)) {
-            void (async () => {
-              let content = `File: ${payload.name}`;
-              try {
-                const blob = await vfs.readFile(payload.path);
-                content = await blob.text();
-              } catch {
-                // ignore
-              }
-
-              projectStore.addTextPanel(
-                payload.path,
-                content,
-                payload.name,
-                targetPanelId,
-                panelPosition,
-                view,
-              );
-            })();
+            projectStore.addTextPanel(
+              payload.path,
+              payload.name,
+              targetPanelId,
+              panelPosition,
+              view,
+            );
           } else {
             projectStore.addMediaPanel(
               {
@@ -333,8 +328,8 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
           resetDragState();
           return;
         }
-      } catch {
-        // ignore
+      } catch (err) {
+        console.warn('Failed to parse file drag payload', err);
       }
     }
 

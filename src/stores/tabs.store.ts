@@ -2,6 +2,8 @@ import { ref, computed, readonly, watch } from 'vue';
 import { readLocalStorageJson, writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
 import { getMediaTypeFromFilename, getIconForMediaType } from '~/utils/media-types';
 
+import { defineStore } from 'pinia';
+
 export interface ProjectTab {
   id: string;
   label: string;
@@ -24,41 +26,43 @@ export function isFileTab(tab: AnyProjectTab): tab is ProjectFileTab {
   return 'filePath' in tab;
 }
 
-const STATIC_TABS_ORDER_KEY = 'fastcat-project-tabs-order';
-const FILE_TABS_KEY = 'fastcat-project-file-tabs';
+export const useProjectTabsStore = defineStore('projectTabs', () => {
+  const STATIC_TABS_ORDER_KEY = 'fastcat-project-tabs-order';
+  const FILE_TABS_KEY = 'fastcat-project-file-tabs';
 
-const registeredTabs = ref<ProjectTab[]>([]);
+  const registeredTabs = ref<ProjectTab[]>([]);
 
-/** Order of static tab IDs (persisted) */
-const staticTabsOrder = ref<string[]>(readLocalStorageJson<string[]>(STATIC_TABS_ORDER_KEY, []));
+  /** Order of static tab IDs (persisted) */
+  const staticTabsOrder = ref<string[]>(readLocalStorageJson<string[]>(STATIC_TABS_ORDER_KEY, []));
 
-/** Static tabs that are currently detached as panels (hidden from tab bar) */
-const hiddenStaticTabs = ref<Set<string>>(new Set());
+  /** Static tabs that are currently detached as panels (hidden from tab bar) */
+  const hiddenStaticTabs = ref<Set<string>>(new Set());
 
-/** File tabs added by drag-drop (persisted, no FileSystemHandle — resolved at runtime) */
-const fileTabs = ref<ProjectFileTab[]>(readLocalStorageJson<ProjectFileTab[]>(FILE_TABS_KEY, []));
+  /** File tabs added by drag-drop (persisted, no FileSystemHandle — resolved at runtime) */
+  const fileTabs = ref<ProjectFileTab[]>(readLocalStorageJson<ProjectFileTab[]>(FILE_TABS_KEY, []));
 
-/** Shared active tab ID across all consumers */
-const activeTabId = ref<string | null>(null);
+  /** Shared active tab ID across all consumers */
+  const activeTabId = ref<string | null>(null);
 
-watch(staticTabsOrder, (val) => writeLocalStorageJson(STATIC_TABS_ORDER_KEY, val), { deep: true });
+  watch(staticTabsOrder, (val) => writeLocalStorageJson(STATIC_TABS_ORDER_KEY, val), {
+    deep: true,
+  });
 
-watch(fileTabs, (val) => writeLocalStorageJson(FILE_TABS_KEY, val), { deep: true });
+  watch(fileTabs, (val) => writeLocalStorageJson(FILE_TABS_KEY, val), { deep: true });
 
-export function registerProjectTab(tab: ProjectTab) {
-  if (!registeredTabs.value.find((t) => t.id === tab.id)) {
-    registeredTabs.value.push(tab);
+  function registerProjectTab(tab: ProjectTab) {
+    if (!registeredTabs.value.find((t) => t.id === tab.id)) {
+      registeredTabs.value.push(tab);
+    }
   }
-}
 
-export function unregisterProjectTab(tabId: string) {
-  const index = registeredTabs.value.findIndex((t) => t.id === tabId);
-  if (index !== -1) {
-    registeredTabs.value.splice(index, 1);
+  function unregisterProjectTab(tabId: string) {
+    const index = registeredTabs.value.findIndex((t) => t.id === tabId);
+    if (index !== -1) {
+      registeredTabs.value.splice(index, 1);
+    }
   }
-}
 
-export function useProjectTabs() {
   /**
    * All tabs in display order: static tabs (sorted by user) + file tabs.
    * Static tabs are sorted according to staticTabsOrder; new ones appended.
@@ -121,7 +125,7 @@ export function useProjectTabs() {
     const icon = getIconForMediaType(mediaType);
 
     const tab: ProjectFileTab = {
-      id: `file-tab-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      id: `file-tab-${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2, 7)}`,
       filePath,
       fileName,
       mediaType: mappedType,
@@ -156,10 +160,22 @@ export function useProjectTabs() {
     }
   }
 
+  /** Hide a static tab from the tab bar (detached as a panel) */
+  function hideStaticTab(tabId: string) {
+    hiddenStaticTabs.value.add(tabId);
+  }
+
+  /** Show a static tab in the tab bar (panel was closed) */
+  function showStaticTab(tabId: string) {
+    hiddenStaticTabs.value.delete(tabId);
+  }
+
   return {
     tabs: readonly(tabs),
-    activeTabId: readonly(activeTabId),
-    activeTab: readonly(activeTab),
+    activeTabId,
+    activeTab,
+    registerProjectTab,
+    unregisterProjectTab,
     setActiveTab,
     initDefaultTab,
     reorderTabs,
@@ -169,14 +185,4 @@ export function useProjectTabs() {
     hideStaticTab,
     showStaticTab,
   };
-}
-
-/** Hide a static tab from the tab bar (detached as a panel) */
-export function hideStaticTab(tabId: string) {
-  hiddenStaticTabs.value.add(tabId);
-}
-
-/** Show a static tab in the tab bar (panel was closed) */
-export function showStaticTab(tabId: string) {
-  hiddenStaticTabs.value.delete(tabId);
-}
+});
