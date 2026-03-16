@@ -1,5 +1,6 @@
-import { onUnmounted, ref, type Ref } from 'vue';
+import { onUnmounted, ref, type Ref, computed } from 'vue';
 import { pxToTimeUs } from '~/utils/timeline/geometry';
+import { TIMELINE_RULER_CONSTANTS } from '~/utils/constants';
 
 export type TimelineRulerSelectionDragPart = 'move' | 'left' | 'right';
 
@@ -13,7 +14,7 @@ interface UseTimelineRulerSelectionDragOptions {
   zoom: Ref<number>;
   getTimeUsFromPointerEvent: (event: PointerEvent) => number;
   selectSelectionRange: () => void;
-  updateSelectionRange: (payload: { startUs: number; endUs: number }) => void;
+  updateSelectionRange: (payload: { startUs: number; endUs: number } | null) => void;
   createSelectionRange: (payload: { startUs: number; endUs: number }) => void;
 }
 
@@ -23,9 +24,18 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
   const selectionDragStartX = ref(0);
   const selectionDragStartStartUs = ref(0);
   const selectionDragStartEndUs = ref(0);
+  const draggedSelectionPatch = ref<{ startUs: number; endUs: number } | null>(null);
+
   const suppressNextRulerClick = ref(false);
   const isCreatingSelectionRange = ref(false);
   const selectionCreateStartUs = ref(0);
+
+  const displaySelectionRange = computed(() => {
+    if (isDraggingSelectionRange.value && draggedSelectionPatch.value) {
+      return draggedSelectionPatch.value;
+    }
+    return options.selectionRange.value;
+  });
 
   let activeSelectionPointerMove: ((event: PointerEvent) => void) | null = null;
   let activeSelectionPointerUp: ((event: PointerEvent) => void) | null = null;
@@ -54,15 +64,18 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
     const dx = clientX - selectionDragStartX.value;
     const deltaUs = pxToTimeUs(Math.abs(dx), options.zoom.value) * (dx < 0 ? -1 : 1);
-    const minDurationUs = Math.max(1, pxToTimeUs(6, options.zoom.value));
+    const minDurationUs = Math.max(
+      1,
+      pxToTimeUs(TIMELINE_RULER_CONSTANTS.MIN_SELECTION_DURATION_PX, options.zoom.value),
+    );
 
     if (selectionDragPart.value === 'move') {
       const durationUs = selectionDragStartEndUs.value - selectionDragStartStartUs.value;
       const nextStartUs = Math.max(0, Math.round(selectionDragStartStartUs.value + deltaUs));
-      options.updateSelectionRange({
+      draggedSelectionPatch.value = {
         startUs: nextStartUs,
         endUs: nextStartUs + durationUs,
-      });
+      };
       return;
     }
 
@@ -72,10 +85,10 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
         0,
         Math.min(maxStartUs, Math.round(selectionDragStartStartUs.value + deltaUs)),
       );
-      options.updateSelectionRange({
+      draggedSelectionPatch.value = {
         startUs: nextStartUs,
         endUs: selectionDragStartEndUs.value,
-      });
+      };
       return;
     }
 
@@ -83,10 +96,10 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
       selectionDragStartStartUs.value + minDurationUs,
       Math.round(selectionDragStartEndUs.value + deltaUs),
     );
-    options.updateSelectionRange({
+    draggedSelectionPatch.value = {
       startUs: selectionDragStartStartUs.value,
       endUs: nextEndUs,
-    });
+    };
   }
 
   function onSelectionPointerMove(event: PointerEvent) {
@@ -96,7 +109,12 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
   }
 
   function onSelectionPointerUp() {
+    if (isDraggingSelectionRange.value && draggedSelectionPatch.value) {
+      options.updateSelectionRange(draggedSelectionPatch.value);
+    }
+
     isDraggingSelectionRange.value = false;
+    draggedSelectionPatch.value = null;
     resetSuppressNextRulerClick();
     clearSelectionPointerListeners();
   }
@@ -113,6 +131,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     selectionDragStartX.value = event.clientX;
     selectionDragStartStartUs.value = options.selectionRange.value.startUs;
     selectionDragStartEndUs.value = options.selectionRange.value.endUs;
+    draggedSelectionPatch.value = null;
     suppressNextRulerClick.value = part !== 'move';
 
     clearSelectionPointerListeners();
@@ -130,14 +149,21 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     const startUs = Math.min(selectionCreateStartUs.value, currentUs);
     const endUs = Math.max(selectionCreateStartUs.value, currentUs);
 
-    options.createSelectionRange({
+    draggedSelectionPatch.value = {
       startUs,
       endUs: Math.max(startUs + 1, endUs),
-    });
+    };
   }
 
   function onSelectionCreatePointerUp() {
+    if (isCreatingSelectionRange.value && draggedSelectionPatch.value) {
+      options.createSelectionRange(draggedSelectionPatch.value);
+    } else {
+      options.updateSelectionRange(null);
+    }
+
     isCreatingSelectionRange.value = false;
+    draggedSelectionPatch.value = null;
     clearSelectionPointerListeners();
     resetSuppressNextRulerClick();
   }
@@ -150,10 +176,10 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     selectionCreateStartUs.value = timeUs;
     isCreatingSelectionRange.value = true;
 
-    options.createSelectionRange({
+    draggedSelectionPatch.value = {
       startUs: timeUs,
       endUs: timeUs + 1,
-    });
+    };
 
     clearSelectionPointerListeners();
     activeSelectionPointerMove = onSelectionCreatePointerMove;
@@ -173,5 +199,6 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     startSelectionRangeCreate,
     startSelectionRangeDrag,
     suppressNextRulerClick,
+    displaySelectionRange,
   };
 }

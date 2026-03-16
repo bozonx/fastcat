@@ -102,7 +102,7 @@ function selectSelectionRange(e?: MouseEvent) {
   selectionStore.selectTimelineSelectionRange();
 }
 
-const { onMarkerPointerDown } = useTimelineRulerMarkerDrag({
+const { onMarkerPointerDown, displayMarkers } = useTimelineRulerMarkerDrag({
   markers,
   zoom,
   selectMarker,
@@ -111,9 +111,11 @@ const { onMarkerPointerDown } = useTimelineRulerMarkerDrag({
 
 const {
   isDraggingSelectionRange,
-  startSelectionRangeCreate,
+  isCreatingSelectionRange,
   startSelectionRangeDrag,
+  startSelectionRangeCreate,
   suppressNextRulerClick,
+  displaySelectionRange,
 } = useTimelineRulerSelectionDrag({
   selectionRange,
   zoom,
@@ -123,16 +125,24 @@ const {
   createSelectionRange: timelineStore.createSelectionRange,
 });
 
-const { markerPoints, selectionRangePoint, currentFrameHighlightStyle, playheadStyle } =
-  useTimelineRulerPresentation({
-    width,
-    scrollLeft,
-    zoom,
-    fps,
-    currentTime,
-    markers,
-    selectionRange,
-  });
+const hoveredMarkerId = ref<string | null>(null);
+
+const {
+  markerPoints,
+  selectionRangePoint,
+  currentFrameHighlightStyle,
+  playheadStyle,
+} = useTimelineRulerPresentation({
+  width,
+  scrollLeft,
+  zoom,
+  fps,
+  currentTime: computed(() => timelineStore.currentTime),
+  markers: displayMarkers,
+  selectionRange: displaySelectionRange,
+  hoveredMarkerId,
+  draggedMarkerId: computed(() => hoveredMarkerId.value), // TODO: could pass actual dragged id if needed
+});
 
 const {
   rulerContextMenuItems,

@@ -55,7 +55,7 @@ function handleUpdateStartTime(val: number | string) {
     typeof val === 'number' ? val : Math.max(0, Math.round(Number(val) * 1_000_000));
   if (newStartUs === marker.value.timeUs) return;
 
-  const patch: any = { timeUs: newStartUs };
+  const patch: { timeUs: number; durationUs?: number } = { timeUs: newStartUs };
   if (isZone.value && marker.value.durationUs) {
     const endUs = marker.value.timeUs + marker.value.durationUs;
     const newDurationUs = Math.max(0, endUs - newStartUs);

@@ -1,25 +1,25 @@
-import type { Ref } from 'vue';
+import { ref, type Ref } from 'vue';
 import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types';
-import type { TimelineCommand } from '~/timeline/commands';
 import type { useSelectionStore } from '~/stores/selection.store';
 import type { createTimelineMarkerService } from '~/timeline/application/timelineMarkerService';
 import type { createTimelineTrimming } from './timelineTrimming';
+import { TIMELINE_RULER_CONSTANTS } from '~/utils/constants';
 
 interface CreateTimelineSelectionRangeParams {
   timelineDoc: Ref<TimelineDocument | null>;
   currentTime: Ref<number>;
-  applyTimeline: (cmd: TimelineCommand) => void;
   selectionStore: ReturnType<typeof useSelectionStore>;
   markerService: ReturnType<typeof createTimelineMarkerService>;
   trimming: ReturnType<typeof createTimelineTrimming>;
 }
 
 export function createTimelineSelectionRange(params: CreateTimelineSelectionRangeParams) {
-  const { timelineDoc, currentTime, applyTimeline, selectionStore, markerService, trimming } =
-    params;
+  const { timelineDoc, currentTime, selectionStore, markerService, trimming } = params;
+
+  const currentSelectionRange = ref<TimelineSelectionRange | null>(null);
 
   function getSelectionRange(): TimelineSelectionRange | null {
-    const range = timelineDoc.value?.metadata?.fastcat?.selectionRange;
+    const range = currentSelectionRange.value;
     if (!range) return null;
     if (!Number.isFinite(range.startUs) || !Number.isFinite(range.endUs)) return null;
 
@@ -35,22 +35,20 @@ export function createTimelineSelectionRange(params: CreateTimelineSelectionRang
   }
 
   function updateSelectionRange(range: TimelineSelectionRange | null) {
-    const currentFastCat = timelineDoc.value?.metadata?.fastcat ?? {};
-    applyTimeline({
-      type: 'update_timeline_properties',
-      properties: {
-        ...currentFastCat,
-        selectionRange: range
-          ? {
-              startUs: Math.max(0, Math.round(range.startUs)),
-              endUs: Math.max(Math.round(range.startUs), Math.round(range.endUs)),
-            }
-          : undefined,
-      },
-    });
+    if (!range) {
+      currentSelectionRange.value = null;
+      return;
+    }
+
+    currentSelectionRange.value = {
+      startUs: Math.max(0, Math.round(range.startUs)),
+      endUs: Math.max(Math.round(range.startUs), Math.round(range.endUs)),
+    };
   }
 
-  function createSelectionRangeAtPlayhead(durationUs = 5_000_000) {
+  function createSelectionRangeAtPlayhead(
+    durationUs = TIMELINE_RULER_CONSTANTS.DEFAULT_ZONE_DURATION_US,
+  ) {
     const startUs = Math.max(0, Math.round(currentTime.value));
     updateSelectionRange({
       startUs,
@@ -115,13 +113,17 @@ export function createTimelineSelectionRange(params: CreateTimelineSelectionRang
     const range = getSelectionRange();
     if (!range) return;
 
-    applyTimeline({
-      type: 'add_marker',
-      id: `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
-      timeUs: range.startUs,
-      durationUs: range.endUs - range.startUs,
-      text: '',
-    });
+    markerService.addMarkerAtPlayhead();
+    const markers = markerService.getMarkers();
+    const lastMarker = markers[markers.length - 1];
+
+    if (lastMarker) {
+      markerService.updateMarker(lastMarker.id, {
+        timeUs: range.startUs,
+        durationUs: range.endUs - range.startUs,
+      });
+    }
+
     removeSelectionRange();
   }
 
@@ -143,8 +145,10 @@ export function createTimelineSelectionRange(params: CreateTimelineSelectionRang
         const markerStartUs = marker.timeUs;
         const markerEndUs = marker.timeUs + Math.max(0, marker.durationUs ?? 0);
 
+        // Marker ends before the deleted range
         if (markerEndUs <= range.startUs) continue;
 
+        // Marker starts after the deleted range (shift left)
         if (markerStartUs >= range.endUs) {
           markerService.updateMarker(marker.id, {
             timeUs: Math.max(0, markerStartUs - deltaUs),
@@ -152,7 +156,24 @@ export function createTimelineSelectionRange(params: CreateTimelineSelectionRang
           continue;
         }
 
-        markerService.removeMarker(marker.id);
+        // Marker intersects the deleted range
+        if (marker.durationUs !== undefined) {
+          // It's a zone marker: reduce duration or remove if fully inside
+          const newStartUs = Math.min(markerStartUs, range.startUs);
+          const newEndUs = Math.max(markerEndUs, range.endUs) - deltaUs;
+
+          if (newEndUs <= newStartUs) {
+            markerService.removeMarker(marker.id);
+          } else {
+            markerService.updateMarker(marker.id, {
+              timeUs: newStartUs,
+              durationUs: newEndUs - newStartUs,
+            });
+          }
+        } else {
+          // Regular point marker inside the deleted range: remove it
+          markerService.removeMarker(marker.id);
+        }
       }
     }
 
