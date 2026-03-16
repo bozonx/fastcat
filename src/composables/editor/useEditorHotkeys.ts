@@ -65,11 +65,11 @@ export function useEditorHotkeys() {
   const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
 
   function hasBlockingModalState() {
-    // Rely on DOM presence of open dialogs or headless UI modals to block hotkeys
-    // This removes tight coupling to specific stores for UI state
-    if (document.querySelector('dialog[open], [role="dialog"], [role="alertdialog"]')) return true;
-    if (projectStore.currentView === 'fullscreen') return true;
-    return false;
+    return !!document.querySelector('dialog[open], [role="dialog"], [role="alertdialog"]');
+  }
+
+  function isFullscreen() {
+    return projectStore.currentView === 'fullscreen';
   }
 
   function canHandleFocusTab() {
@@ -112,7 +112,12 @@ export function useEditorHotkeys() {
     }
 
     const allowsFullscreenExit = matched.includes('general.fullscreen');
-    if (hasBlockingModalState() && !allowsFullscreenExit) return;
+    const isPlaybackCmd = matched.some((cmdId) => cmdId.startsWith('playback.'));
+    const modalOpen = hasBlockingModalState();
+    const fullscreen = isFullscreen();
+
+    if (modalOpen && !allowsFullscreenExit) return;
+    if (fullscreen && !allowsFullscreenExit && !isPlaybackCmd) return;
 
     if (matched.includes('general.focus') && canHandleFocusTab()) {
       // Allow native tab navigation if we're in an editable target
@@ -133,10 +138,11 @@ export function useEditorHotkeys() {
     });
 
     for (const cmdId of focusAwareOrder) {
+      const isPlayback = cmdId.startsWith('playback.');
       if (
         !canExecuteHotkeyCommand({
           cmdId,
-          hasBlockingModalState: hasBlockingModalState(),
+          hasBlockingModalState: modalOpen || (fullscreen && !isPlayback),
           isEditableEventTarget,
           isEditableActiveElement,
         })
