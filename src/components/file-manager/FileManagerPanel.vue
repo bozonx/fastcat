@@ -129,6 +129,7 @@ const {
 const { handleFileAction: onFileAction, createTimelineInDirectory } = useFileManagerPanelActions({
   vfs,
   loadProjectDirectory,
+  reloadDirectory,
   findEntryByPath,
   onFileActionBase: onFileActionBase as any,
   openTranscriptionModal,
@@ -219,9 +220,6 @@ useFileManagerPanelBootstrap({
   onRootEntrySelected: (entry) => emit('select', entry),
 });
 
-// Sync: refresh the tree when needed
-// (Removed watch on fileManagerUpdateCounter to prevent full tree reloads.
-// Tree updates reactively via rootEntries modification in reloadDirectory)
 </script>
 
 <template>

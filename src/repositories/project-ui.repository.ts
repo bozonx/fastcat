@@ -5,18 +5,11 @@ import {
   type DirectoryHandleLike,
 } from './fastcat-fs';
 
+import type { MonitorSettings } from '~/utils/project-settings';
+
 export interface ProjectUiSettings {
   version: number;
-  monitor: {
-    previewResolution: number;
-    useProxy: boolean;
-    previewEffectsEnabled: boolean;
-    panX: number;
-    panY: number;
-    zoom: number;
-    showGrid: boolean;
-    toolbarPosition: 'top' | 'bottom' | 'left' | 'right';
-  };
+  monitors: Record<string, MonitorSettings>;
   timelines: {
     openPaths: string[];
   };
@@ -43,7 +36,7 @@ export function createProjectUiRepository(input: {
 
       return {
         version: Number(raw.version) || 1,
-        monitor: raw.monitor || {},
+        monitors: raw.monitors || { cut: raw.monitor || {} },
         timelines: raw.timelines || {},
       } as ProjectUiSettings;
     },

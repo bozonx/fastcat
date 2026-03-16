@@ -8,6 +8,17 @@ interface ProjectSettingsUserDefaultsInput {
   exportPresets: FastCatUserSettings['exportPresets'];
 }
 
+export interface MonitorSettings {
+  previewResolution: number;
+  useProxy: boolean;
+  previewEffectsEnabled: boolean;
+  panX: number;
+  panY: number;
+  zoom: number;
+  showGrid: boolean;
+  toolbarPosition: 'top' | 'bottom' | 'left' | 'right';
+}
+
 export interface FastCatProjectSettings {
   version: number;
   project: {
@@ -36,16 +47,8 @@ export interface FastCatProjectSettings {
       exportAlpha: boolean;
     };
   };
-  monitor: {
-    previewResolution: number;
-    useProxy: boolean;
-    previewEffectsEnabled: boolean;
-    panX: number;
-    panY: number;
-    zoom: number;
-    showGrid: boolean;
-    toolbarPosition: 'top' | 'bottom' | 'left' | 'right';
-  };
+  monitor: MonitorSettings;
+  monitors: Record<string, MonitorSettings>;
   timelines: {
     openPaths: string[];
   };
@@ -92,6 +95,7 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
     showGrid: false,
     toolbarPosition: 'bottom',
   },
+  monitors: {},
   timelines: {
     openPaths: [],
   },
@@ -140,10 +144,16 @@ export function createDefaultProjectSettings(
   userSettings: ProjectSettingsUserDefaultsInput,
 ): FastCatProjectSettings {
   const base = getProjectSettingsFromUserDefaults(userSettings);
+  const monitorBase = { ...DEFAULT_PROJECT_SETTINGS.monitor };
   return {
     ...base,
     version: 1,
-    monitor: { ...DEFAULT_PROJECT_SETTINGS.monitor },
+    monitor: { ...monitorBase },
+    monitors: {
+      cut: { ...monitorBase },
+      sound: { ...monitorBase },
+      export: { ...monitorBase },
+    },
     timelines: {
       openPaths: [],
     },
@@ -203,6 +213,41 @@ export function normalizeProjectSettings(
   const panX = Number(monitorInput.panX);
   const panY = Number(monitorInput.panY);
   const zoom = Number(monitorInput.zoom);
+
+  const monitorsInput = input.monitors ?? {};
+  const monitors: Record<string, MonitorSettings> = {};
+  ['cut', 'sound', 'export'].forEach((view) => {
+    const vInput = monitorsInput[view] || (view === 'cut' ? monitorInput : {}); // Fallback 'cut' to legacy 'monitor'
+    const vDefault = defaultSettings.monitors[view] || defaultSettings.monitor;
+
+    const vRes = Number(vInput.previewResolution);
+    const vPanX = Number(vInput.panX);
+    const vPanY = Number(vInput.panY);
+    const vZoom = Number(vInput.zoom);
+
+    monitors[view] = {
+      previewResolution:
+        Number.isFinite(vRes) && vRes > 0
+          ? Math.round(Math.min(4320, Math.max(1, vRes)))
+          : vDefault.previewResolution,
+      useProxy: vInput.useProxy === undefined ? vDefault.useProxy : Boolean(vInput.useProxy),
+      previewEffectsEnabled:
+        vInput.previewEffectsEnabled === undefined
+          ? vDefault.previewEffectsEnabled
+          : Boolean(vInput.previewEffectsEnabled),
+      panX: Number.isFinite(vPanX) ? vPanX : vDefault.panX,
+      panY: Number.isFinite(vPanY) ? vPanY : vDefault.panY,
+      zoom:
+        Number.isFinite(vZoom) && vZoom > 0
+          ? Math.min(20, Math.max(0.05, vZoom))
+          : vDefault.zoom,
+      showGrid: vInput.showGrid !== undefined ? Boolean(vInput.showGrid) : vDefault.showGrid,
+      toolbarPosition: ['top', 'bottom', 'left', 'right'].includes(vInput.toolbarPosition)
+        ? vInput.toolbarPosition
+        : vDefault.toolbarPosition,
+    };
+  });
+
   const defaultTransitionDurationUs = Number(transitionsInput.defaultDurationUs);
 
   const finalWidth =
@@ -316,6 +361,7 @@ export function normalizeProjectSettings(
         ? monitorInput.toolbarPosition
         : DEFAULT_PROJECT_SETTINGS.monitor.toolbarPosition,
     },
+    monitors,
     timelines: {
       openPaths: Array.isArray(input.timelines?.openPaths)
         ? input.timelines.openPaths.filter((p: any) => typeof p === 'string').map(String)
