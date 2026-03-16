@@ -119,6 +119,7 @@ const {
 } = useTimelineRulerSelectionDrag({
   selectionRange,
   zoom,
+  fps,
   getTimeUsFromPointerEvent: (event) => getTimeUsFromMouseEvent(event as unknown as MouseEvent),
   selectSelectionRange,
   updateSelectionRange: timelineStore.updateSelectionRange,
