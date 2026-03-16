@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
+import DbSlider from '~/components/audio/DbSlider.vue';
 import type { AudioFadeCurve } from '~/utils/audio/envelope';
+import { linearToDb, dbToLinear } from '~/utils/audio';
 
 const props = defineProps<{
   canEditAudioFades: boolean;
@@ -10,6 +12,7 @@ const props = defineProps<{
   selectedTrackKind: 'audio' | 'video' | null;
   audioGain: number;
   audioBalance: number;
+  audioLevelDb?: number;
   audioFadeInSec: number;
   audioFadeOutSec: number;
   audioFadeInMaxSec: number;
@@ -28,6 +31,11 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+const audioGainDb = computed({
+  get: () => linearToDb(props.audioGain),
+  set: (db: number) => emit('updateAudioGain', dbToLinear(db)),
+});
 
 const fadeCurveOptions = [
   {
@@ -60,17 +68,20 @@ const fadeCurveOptions = [
         <span class="text-xs text-ui-text-muted">{{
           t('fastcat.clip.audio.volume', 'Volume')
         }}</span>
-        <span class="text-xs font-mono text-ui-text-muted">{{ props.audioGain.toFixed(3) }}x</span>
+        <span
+          class="text-xs font-mono text-ui-text-muted cursor-pointer hover:text-primary-400"
+          :title="t('common.actions.reset')"
+          @click="audioGainDb = 0"
+        >
+          {{ audioGainDb <= -59.9 ? '-∞' : audioGainDb.toFixed(1) }} dB
+        </span>
       </div>
-      <WheelSlider
-        :model-value="props.audioGain"
-        :min="0"
-        :max="2"
-        :step="0.001"
-        :wheel-step-multiplier="10"
-        :default-value="1"
-        @update:model-value="(v: unknown) => emit('updateAudioGain', Number(v))"
-      />
+      <div class="h-32">
+        <DbSlider
+          v-model="audioGainDb"
+          :level-db="props.audioLevelDb"
+        />
+      </div>
     </div>
 
     <div v-if="props.canEditAudioBalance" class="space-y-1.5">

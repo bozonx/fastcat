@@ -66,7 +66,7 @@ export function createTimelinePlayback(deps: TimelinePlaybackDeps): TimelinePlay
   function setAudioVolume(next: number) {
     const parsed = Number(next);
     if (!Number.isFinite(parsed)) return;
-    deps.audioVolume.value = Math.min(2, Math.max(0, parsed));
+    deps.audioVolume.value = Math.min(10, Math.max(0, parsed));
     if (deps.audioVolume.value > 0 && deps.audioMuted.value) {
       deps.audioMuted.value = false;
     }

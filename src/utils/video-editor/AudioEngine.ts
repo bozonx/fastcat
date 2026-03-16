@@ -678,14 +678,14 @@ export class AudioEngine {
   }
 
   setMasterVolume(volume: number) {
-    this.currentMasterVolume = Math.max(0, Math.min(2, volume));
+    this.currentMasterVolume = Math.max(0, Math.min(10, volume));
     if (this.masterGain) {
       this.masterGain.gain.value = this.currentMasterVolume;
     }
   }
 
   setMonitorVolume(volume: number) {
-    this.currentMonitorVolume = Math.max(0, Math.min(2, volume));
+    this.currentMonitorVolume = Math.max(0, Math.min(10, volume));
     if (this.monitorGain) {
       this.monitorGain.gain.value = this.currentMonitorVolume;
     }
