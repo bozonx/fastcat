@@ -40,7 +40,7 @@ export function useProjectActions() {
       void timelineStore.loadTimelineMetadata();
     } catch (e) {
       toast.add({
-        color: 'red',
+        color: 'error',
         title: 'Failed to load timeline',
         description: e instanceof Error ? e.message : String(e),
       });
@@ -59,7 +59,7 @@ export function useProjectActions() {
       }
     } catch (e) {
       toast.add({
-        color: 'red',
+        color: 'error',
         title: 'Failed to open project',
         description: e instanceof Error ? e.message : String(e),
       });

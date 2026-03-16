@@ -3,14 +3,14 @@ import { computed, watch } from 'vue';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 import FpsInputWithPresets from '~/components/ui/FpsInputWithPresets.vue';
 
-const width = defineModel<number>('width', { required: true });
-const height = defineModel<number>('height', { required: true });
-const fps = defineModel<number>('fps', { required: true });
-const resolutionFormat = defineModel<string>('resolutionFormat', { required: true });
-const orientation = defineModel<'landscape' | 'portrait'>('orientation', { required: true });
-const aspectRatio = defineModel<string>('aspectRatio', { required: true });
-const isCustomResolution = defineModel<boolean>('isCustomResolution', { required: true });
-const sampleRate = defineModel<number>('sampleRate', { default: 48000 });
+const localWidth = defineModel<number>('width', { required: true });
+const localHeight = defineModel<number>('height', { required: true });
+const localFps = defineModel<number>('fps', { required: true });
+const localFormat = defineModel<string>('resolutionFormat', { required: true });
+const localOrientation = defineModel<'landscape' | 'portrait'>('orientation', { required: true });
+const localAspectRatio = defineModel<string>('aspectRatio', { required: true });
+const localIsCustom = defineModel<boolean>('isCustomResolution', { required: true });
+const localSampleRate = defineModel<number>('sampleRate', { default: 48000 });
 
 const props = withDefaults(
   defineProps<{
@@ -102,24 +102,24 @@ function calculateDimensions(format: string, orientationValue: string, ratioStr:
 
 // Auto-calculate width/height when using preset formats
 watch(
-  [resolutionFormat, orientation, aspectRatio, isCustomResolution],
+  [localFormat, localOrientation, localAspectRatio, localIsCustom],
   ([format, orientationValue, ratioStr, isCustom]) => {
     if (!isCustom) {
       const { w, h } = calculateDimensions(format, orientationValue, ratioStr);
-      if (width.value !== w) width.value = w;
-      if (height.value !== h) height.value = h;
+      if (localWidth.value !== w) localWidth.value = w;
+      if (localHeight.value !== h) localHeight.value = h;
     }
   },
   { immediate: true },
 );
 
 // Auto-detect orientation and ratio when custom resolution is modified
-watch([width, height, isCustomResolution], ([w, h, isCustom]) => {
+watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
   if (isCustom) {
     const isPortrait = h > w;
     const newOrientation = isPortrait ? 'portrait' : 'landscape';
-    if (orientation.value !== newOrientation) {
-      orientation.value = newOrientation;
+    if (localOrientation.value !== newOrientation) {
+      localOrientation.value = newOrientation;
     }
   }
 });

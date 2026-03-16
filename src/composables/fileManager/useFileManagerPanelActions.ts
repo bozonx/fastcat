@@ -7,11 +7,10 @@ import { useUiStore } from '~/stores/ui.store';
 import { createTimelineCommand } from '~/file-manager/application/fileManagerCommands';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
 import type { FileAction as FileActionBase } from '~/composables/fileManager/useFileManagerActions';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
 export interface FileManagerPanelActionsOptions {
-  vfs: {
-    readFile: (path: string) => Promise<Blob>;
-  };
+  vfs: IFileSystemAdapter;
   loadProjectDirectory: (opts?: any) => Promise<void>;
   findEntryByPath: (path: string) => FsEntry | null;
   onFileActionBase: (
@@ -62,7 +61,7 @@ export function useFileManagerPanelActions({
     if (entry.kind !== 'directory') return;
     try {
       const createdPath = await createTimelineCommand({
-        vfs: vfs as any,
+        vfs,
         timelinesDirName: entry.path || undefined,
       });
 
@@ -87,7 +86,7 @@ export function useFileManagerPanelActions({
     } catch (e: unknown) {
       console.error('[FileManagerPanel] Failed to create timeline', e);
       toast.add({
-        color: 'red',
+        color: 'error',
         title: 'Timeline error',
         description: e instanceof Error ? e.message : 'Failed to create timeline',
       });

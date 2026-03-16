@@ -107,7 +107,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         ? `${params.message}: ${String((params.error as any)?.message ?? params.error)}`
         : params.message;
       deps.toast.add({
-        color: 'red',
+        color: 'error',
         title: params.title ?? 'File manager error',
         description,
       });

@@ -59,7 +59,7 @@ async function generateCaptions() {
     isOpen.value = false;
   } catch (error: unknown) {
     toast.add({
-      color: 'red',
+      color: 'error',
       title: t('common.error', 'Error'),
       description: error instanceof Error ? error.message : 'Failed to generate captions',
     });

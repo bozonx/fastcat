@@ -127,7 +127,7 @@ const {
 });
 
 const { handleFileAction: onFileAction, createTimelineInDirectory } = useFileManagerPanelActions({
-  vfs: { readFile: (path) => vfs.readFile(path) },
+  vfs,
   loadProjectDirectory,
   findEntryByPath,
   onFileActionBase: onFileActionBase as any,
