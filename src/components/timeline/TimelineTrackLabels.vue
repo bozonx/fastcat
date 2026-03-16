@@ -3,6 +3,7 @@ import { computed, ref, onBeforeUnmount } from 'vue';
 
 import { useMediaStore } from '~/stores/media.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import type { TimelineTrack } from '~/timeline/types';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -27,6 +28,7 @@ const emit = defineEmits<{
 
 const mediaStore = useMediaStore();
 const timelineStore = useTimelineStore();
+const workspaceStore = useWorkspaceStore();
 const selectionStore = useSelectionStore();
 const settingsStore = useTimelineSettingsStore();
 const { setDraggedFile, clearDraggedFile } = useDraggedFile();

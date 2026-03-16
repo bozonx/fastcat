@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import type {
   TimelineBlendMode,
   TimelineTrack,
@@ -20,6 +21,7 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
+const workspaceStore = useWorkspaceStore();
 
 const isDeleteConfirmOpen = ref(false);
 const isGenerateCaptionsOpen = ref(false);
@@ -128,8 +130,9 @@ function handleRenameTrack(newName: string) {
 }
 
 function requestDeleteTrack() {
-  if (canDeleteWithoutConfirm.value) {
-    timelineStore.deleteTrack(props.track.id);
+  const skipConfirm = workspaceStore.userSettings.deleteWithoutConfirmation;
+  if (canDeleteWithoutConfirm.value || skipConfirm) {
+    timelineStore.deleteTrack(props.track.id, { allowNonEmpty: true });
     return;
   }
   isDeleteConfirmOpen.value = true;
