@@ -9,8 +9,8 @@ export function resolveAudioOnlyContainerFormat(codec: 'opus' | 'aac'): 'webm' |
   return 'mp4';
 }
 
-export function resolveAudioOnlyFileExtension(codec: 'opus' | 'aac'): 'weba' | 'm4a' {
-  if (codec === 'opus') return 'weba';
+export function resolveAudioOnlyFileExtension(codec: 'opus' | 'aac'): 'opus' | 'm4a' {
+  if (codec === 'opus') return 'opus';
   return 'm4a';
 }
 
