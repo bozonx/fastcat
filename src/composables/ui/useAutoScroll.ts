@@ -76,6 +76,11 @@ export function useAutoScroll(scrollEl: Ref<HTMLElement | null>, options: AutoSc
   }
 
   function onDragLeave(e: DragEvent) {
+    if (e.relatedTarget === null) {
+      stopAutoScroll();
+      return;
+    }
+
     const currentTarget = e.currentTarget as HTMLElement | null;
     const relatedTarget = e.relatedTarget as Node | null;
     if (!currentTarget?.contains(relatedTarget)) {

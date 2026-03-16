@@ -249,7 +249,8 @@ function onImageHeightChange(val: number) {
         <UButton variant="ghost" color="neutral" @click="isOpen = false">
           {{ t('common.cancel', 'Cancel') }}
         </UButton>
-        <UButton ref="convertButtonRef" color="primary" @click="startConversion">
+        <UButton ref="convertButtonRef" color="primary" autofocus
+          @click="startConversion">
           {{ t('videoEditor.export.convert', 'Convert') }}
         </UButton>
       </div>

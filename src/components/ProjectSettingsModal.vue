@@ -616,6 +616,7 @@ const metaDescription = computed({
             variant="solid"
             color="primary"
             :label="t('videoEditor.projectSettings.apply', 'Apply Settings')"
+            autofocus
             @click="applySettings"
           />
         </div>

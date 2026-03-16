@@ -85,7 +85,8 @@ watch(() => props.isTranscriptionModalOpen, (newValue) => {
         >
           {{ t('common.cancel', 'Cancel') }}
         </UButton>
-        <UButton ref="submitButtonRef" color="primary" :loading="props.isTranscribingAudio" @click="onSubmit">
+        <UButton ref="submitButtonRef" color="primary" :loading="props.isTranscribingAudio" autofocus
+          @click="onSubmit">
           {{ t('videoEditor.fileManager.audio.transcriptionSubmit', 'Transcribe') }}
         </UButton>
       </div>

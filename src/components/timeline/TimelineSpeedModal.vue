@@ -84,7 +84,8 @@ watch(() => props.open, (newValue) => {
         <UButton color="neutral" variant="ghost" @click="isOpen = false">
           {{ t('common.cancel') }}
         </UButton>
-        <UButton ref="saveButtonRef" color="primary" @click="emit('save')">
+        <UButton ref="saveButtonRef" color="primary" autofocus
+          @click="emit('save')">
           {{ t('common.save') }}
         </UButton>
       </div>

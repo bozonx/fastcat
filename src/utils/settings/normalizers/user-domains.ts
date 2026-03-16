@@ -42,7 +42,12 @@ export function normalizeTimelineSettings(
       Number.isFinite(timelineSnapThresholdPxCandidate) && timelineSnapThresholdPxCandidate > 0
         ? Math.max(1, Math.round(timelineSnapThresholdPxCandidate))
         : DEFAULT_USER_SETTINGS.timeline.snapThresholdPx,
-    defaultTransitionDurationUs: DEFAULT_USER_SETTINGS.timeline.defaultTransitionDurationUs,
+    defaultTransitionDurationUs: Number.isFinite(Number(rawTimeline.defaultTransitionDurationUs))
+      ? Math.max(0, Math.round(Number(rawTimeline.defaultTransitionDurationUs)))
+      : DEFAULT_USER_SETTINGS.timeline.defaultTransitionDurationUs,
+    defaultStaticClipDurationUs: Number.isFinite(Number(rawTimeline.defaultStaticClipDurationUs))
+      ? Math.max(0, Math.round(Number(rawTimeline.defaultStaticClipDurationUs)))
+      : DEFAULT_USER_SETTINGS.timeline.defaultStaticClipDurationUs,
   };
 }
 
