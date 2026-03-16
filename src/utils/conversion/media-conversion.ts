@@ -2,6 +2,7 @@ import { addMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import {
   getExportWorkerClient,
   registerExportTaskHostApi,
+  restartExportWorker,
   setExportHostApi,
   unregisterExportTaskHostApi,
 } from '~/utils/video-editor/worker-client';
@@ -16,6 +17,8 @@ import {
   AUDIO_ONLY_EXPORT_PLACEHOLDER_FPS,
 } from './constants';
 import type { ExportOptions } from '~/utils/video-editor/worker-rpc';
+
+const METADATA_TIMEOUT_MS = 15000;
 
 export async function executeMediaConversion(params: {
   request: ConversionRequest;
@@ -67,7 +70,15 @@ export async function executeMediaConversion(params: {
         const sourceFile = await projectStore.getFileByPath(params.request.entry.path);
         if (!sourceFile) throw new Error('Failed to access source file');
 
-        const meta = await client.extractMetadata(sourceFile);
+        const meta = await Promise.race([
+          client.extractMetadata(sourceFile),
+          new Promise<never>((_, reject) => {
+            window.setTimeout(() => {
+              restartExportWorker();
+              reject(new Error('Metadata extraction timed out'));
+            }, METADATA_TIMEOUT_MS);
+          }),
+        ]);
         const durationUs = Math.round((meta.duration || 0) * 1_000_000);
         if (!durationUs && params.request.type === 'video') {
           throw new Error('Invalid media duration');

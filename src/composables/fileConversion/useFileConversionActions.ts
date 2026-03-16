@@ -5,7 +5,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
-import { getExportWorkerClient } from '~/utils/video-editor/worker-client';
+import { getExportWorkerClient, restartExportWorker } from '~/utils/video-editor/worker-client';
 import type { ConversionRequest } from '~/types/conversion';
 import { dirname } from '~/utils/path';
 import {
@@ -14,6 +14,7 @@ import {
   isAbortError,
   removeCreatedFile,
   resolveAudioChannelsFromMeta,
+  resolveAudioOnlyFileExtension,
 } from '~/utils/conversion/helpers';
 import { executeMediaConversion } from '~/utils/conversion/media-conversion';
 import { executeImageConversion } from '~/utils/conversion/image-conversion';
@@ -29,6 +30,8 @@ import {
   DEFAULT_VIDEO_FPS,
   DEFAULT_IMAGE_QUALITY,
 } from '~/utils/conversion/constants';
+
+const METADATA_TIMEOUT_MS = 15000;
 
 interface UseFileConversionActionsProps {
   targetEntry: Ref<FsEntry | null>;
@@ -93,8 +96,21 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
     props.callbacks?.onWarning?.(message);
   }
 
-  async function openConversionModal(entry: FsEntry) {
+  async function extractMetadataWithTimeout(file: File) {
+    const { client } = getExportWorkerClient();
 
+    return await Promise.race([
+      client.extractMetadata(file),
+      new Promise<never>((_, reject) => {
+        window.setTimeout(() => {
+          restartExportWorker();
+          reject(new Error('Metadata extraction timed out'));
+        }, METADATA_TIMEOUT_MS);
+      }),
+    ]);
+  }
+
+  async function openConversionModal(entry: FsEntry) {
     const requestId = props.conversionModalRequestId.value + 1;
     props.conversionModalRequestId.value = requestId;
     props.targetEntry.value = entry;
@@ -125,8 +141,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
       try {
         const file = await projectStore.getFileByPath(entry.path);
         if (!file) throw new Error('Failed to access source file');
-        const { client } = getExportWorkerClient();
-        const meta = await client.extractMetadata(file);
+        const meta = await extractMetadataWithTimeout(file);
 
         if (
           requestId !== props.conversionModalRequestId.value ||
@@ -177,8 +192,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
       try {
         const file = await projectStore.getFileByPath(entry.path);
         if (!file) throw new Error('Failed to access source file');
-        const { client } = getExportWorkerClient();
-        const meta = await client.extractMetadata(file);
+        const meta = await extractMetadataWithTimeout(file);
 
         if (
           requestId !== props.conversionModalRequestId.value ||
@@ -241,7 +255,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
     if (type === 'image') newExt = 'webp';
     else if (type === 'audio') {
       syncAudioOnlyCodecWithFormat();
-      newExt = props.audioSettings.onlyFormat;
+      newExt = resolveAudioOnlyFileExtension(props.audioSettings.onlyCodec);
     } else newExt = props.videoSettings.format;
 
     const sampleRate =
@@ -327,6 +341,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           title,
           status: 'pending',
           cancel: async () => {
+            backgroundTasksStore.updateTaskStatus(bgTaskId, 'cancelled');
             const { client } = getExportWorkerClient();
             await client.cancelExport(taskId);
           },
@@ -340,7 +355,10 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           targetHandle,
           taskId,
           backgroundTaskId: bgTaskId,
-          isCancelRequested: () => false, // BG task handles cancel internally via cancelExport
+          isCancelRequested: () => {
+            const task = backgroundTasksStore.tasks.find((item) => item.id === bgTaskId);
+            return task?.status === 'cancelled';
+          },
         })
           .then(async () => {
             backgroundTasksStore.updateTaskProgress(bgTaskId, 1);
