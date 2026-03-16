@@ -26,13 +26,13 @@ export function useMonitorSnapshot(input: {
   const isSavingStopFrame = ref(false);
 
   function getClipsPayload() {
-    return JSON.parse(
-      JSON.stringify(
-        input.workerTimelinePayload.value ??
-          input.workerTimelineClips.value ??
-          input.rawWorkerTimelineClips.value,
-      ),
-    );
+    const payload =
+      (input.workerTimelinePayload.value as any[])?.length > 0
+        ? input.workerTimelinePayload.value
+        : (input.workerTimelineClips.value as any[])?.length > 0
+          ? input.workerTimelineClips.value
+          : input.rawWorkerTimelineClips.value;
+    return JSON.parse(JSON.stringify(payload));
   }
 
   async function saveTimelineThumbnail() {
