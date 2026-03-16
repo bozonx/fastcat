@@ -2,12 +2,23 @@
 if (typeof document === 'undefined') {
   (globalThis as any).document = {
     createElement: (tag: string) => {
-      let offscreenCanvas: OffscreenCanvas | null = null;
       if (tag && tag.toLowerCase() === 'canvas' && typeof OffscreenCanvas !== 'undefined') {
         try {
-          offscreenCanvas = new OffscreenCanvas(1, 1);
+          // Return a real OffscreenCanvas so mediabunny instanceof checks pass.
+          // OffscreenCanvas natively supports .width, .height, .getContext().
+          // PixiJS-required DOM properties are added via Object.assign.
+          const canvas = new OffscreenCanvas(1, 1);
+          return Object.assign(canvas, {
+            style: {},
+            appendChild: () => {},
+            removeChild: () => {},
+            remove: () => {},
+            contains: () => false,
+            addEventListener: () => {},
+            removeEventListener: () => {},
+          });
         } catch (e) {
-          // ignore
+          // ignore, fall through to plain mock
         }
       }
       return {
@@ -18,16 +29,7 @@ if (typeof document === 'undefined') {
         contains: () => false,
         addEventListener: () => {},
         removeEventListener: () => {},
-        getContext: (contextType: string, contextAttributes?: any) => {
-          if (offscreenCanvas) {
-            try {
-              return offscreenCanvas.getContext(contextType as any, contextAttributes);
-            } catch (e) {
-              return null;
-            }
-          }
-          return null;
-        },
+        getContext: () => null,
       };
     },
     body: {
