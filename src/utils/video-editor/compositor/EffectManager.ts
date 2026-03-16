@@ -16,6 +16,10 @@ export class EffectManager {
       clip.effectFilters = new Map();
     }
 
+    if (!clip.sprite) {
+      return;
+    }
+
     if (!context.previewEffectsEnabled) {
       clip.sprite.filters = null;
       return;
@@ -31,6 +35,10 @@ export class EffectManager {
   public applyTrackEffects(track: CompositorTrack, context: EffectManagerContext) {
     if (!track.effectFilters) {
       track.effectFilters = new Map();
+    }
+
+    if (!track.container) {
+      return;
     }
 
     if (!context.previewEffectsEnabled) {
@@ -51,6 +59,10 @@ export class EffectManager {
     filtersMap: Map<string, Filter>,
     context: EffectManagerContext,
   ) {
+    if (!container) {
+      return;
+    }
+
     if (!context.previewEffectsEnabled) {
       container.filters = null;
       return;

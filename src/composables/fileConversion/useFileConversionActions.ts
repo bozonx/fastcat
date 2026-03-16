@@ -101,15 +101,20 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
   async function extractMetadataWithTimeout(file: File) {
     const { client } = getExportWorkerClient();
 
-    return await Promise.race([
-      client.extractMetadata(file),
-      new Promise<never>((_, reject) => {
-        window.setTimeout(() => {
-          restartExportWorker();
-          reject(new Error('Metadata extraction timed out'));
-        }, METADATA_TIMEOUT_MS);
-      }),
-    ]);
+    let timeoutId: number | undefined;
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = window.setTimeout(() => {
+        restartExportWorker();
+        reject(new Error('Metadata extraction timed out'));
+      }, METADATA_TIMEOUT_MS);
+    });
+
+    try {
+      return await Promise.race([client.extractMetadata(file), timeoutPromise]);
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
   }
 
   async function openConversionModal(entry: FsEntry) {
@@ -122,12 +127,12 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
     props.isCancelRequested.value = false;
     props.isConverting.value = false;
     props.conversionError.value = '';
-      props.isModalOpen.value = true;
+    props.isModalOpen.value = true;
 
-      // Default to VBR as requested
-      props.videoSettings.bitrateMode = 'variable';
+    // Default to VBR as requested
+    props.videoSettings.bitrateMode = 'variable';
 
-      if (mediaCategory === 'video') {
+    if (mediaCategory === 'video') {
       props.sourceHasAudio.value = true;
       props.videoSettings.format =
         projectStore.projectSettings?.exportDefaults?.encoding?.format ?? DEFAULT_VIDEO_FORMAT;

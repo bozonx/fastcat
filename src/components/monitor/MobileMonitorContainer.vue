@@ -123,13 +123,6 @@ const containerHeightClass = computed(() =>
           <p class="text-sm text-ui-text-muted">{{ statusText }}</p>
         </div>
         <div
-          v-else-if="isLoading"
-          class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-ui-text-muted"
-        >
-          <UIcon name="lucide:loader-2" class="w-8 h-8 animate-spin" />
-          <p class="text-sm">{{ statusText }}</p>
-        </div>
-        <div
           v-else-if="loadError"
           class="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-red-300"
         >

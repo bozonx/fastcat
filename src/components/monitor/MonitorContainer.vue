@@ -341,19 +341,14 @@ const emit = defineEmits<{
             />
           </UTooltip>
 
-          <div class="w-14">
+          <div class="w-auto min-w-14">
             <USelectMenu
               v-if="projectStore.activeMonitor"
               :model-value="selectedPreviewResolution as any"
               :items="previewResolutions"
               value-key="value"
               label-key="label"
-              size="2xs"
               :search-input="false"
-              :ui="{
-                trigger: 'px-1.5 font-medium',
-                value: 'text-[11px] leading-none',
-              }"
               class="w-full"
               @update:model-value="
                 (v: any) => {
@@ -362,7 +357,7 @@ const emit = defineEmits<{
               "
             >
               <template #default="{ modelValue }">
-                <span class="truncate text-[11px] leading-none">
+                <span class="truncate text-[11px] leading-none font-medium">
                   {{ (modelValue as any)?.label }}
                 </span>
               </template>
@@ -372,11 +367,10 @@ const emit = defineEmits<{
                     item.value === projectStore.activeMonitor?.previewResolution
                       ? 'text-primary-500 font-medium'
                       : '',
-                    'truncate text-xs flex items-center justify-between gap-1 w-full',
+                    'truncate',
                   ]"
                 >
-                  <span>{{ item.label }}</span>
-                  <span v-if="item.isProject" class="text-[10px] text-primary-500/70" :title="t('fastcat.monitor.projectResolutionHint')">★</span>
+                  {{ item.label }}{{ item.isProject ? ' *' : '' }}
                 </span>
               </template>
             </USelectMenu>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch, nextTick } from 'vue';
+import { computed, onMounted, watch } from 'vue';
 
 import AppModal from '~/components/ui/AppModal.vue';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
@@ -101,31 +101,6 @@ watch(
   { immediate: true },
 );
 
-const convertButtonRef = ref<any>(null);
-
-function focusConvertButton() {
-  const el = convertButtonRef.value?.$el || convertButtonRef.value;
-  if (!(el instanceof HTMLElement)) {
-    return;
-  }
-
-  nextTick(() => {
-    setTimeout(() => {
-      el.focus();
-    }, 0);
-  });
-}
-
-const handleAfterEnter = () => {
-  focusConvertButton();
-};
-
-watch(isOpen, (newValue) => {
-  if (newValue) {
-    focusConvertButton();
-  }
-});
-
 function clampPositiveInt(value: number) {
   const v = Math.round(Number(value) || 0);
   return Math.max(1, v);
@@ -160,8 +135,7 @@ const isFormValid = computed(() => {
   <AppModal
     v-model:open="isOpen"
     :title="t('videoEditor.export.convertFile', { file: fileName })"
-    @after:enter="handleAfterEnter"
-    class="max-w-3xl"
+      class="max-w-3xl"
   >
     <div class="flex flex-col gap-6">
       <template v-if="mediaType === 'video'">
@@ -287,7 +261,7 @@ const isFormValid = computed(() => {
         <UButton variant="ghost" color="neutral" @click="isOpen = false">
           {{ t('common.cancel', 'Cancel') }}
         </UButton>
-        <UButton ref="convertButtonRef" color="primary" autofocus
+        <UButton color="primary" data-primary-focus="true"
           :disabled="!isFormValid"
           @click="startConversion">
           {{ t('videoEditor.export.convert', 'Convert') }}
