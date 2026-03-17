@@ -61,6 +61,11 @@ pnpm tauri:build
 - `src/timeline`: Core timeline logic and OTIO serialization.
 - `src/composables/monitor`: Monitor composables (timeline, playback, core orchestration).
 - `src/utils/video-editor`: Video composition and worker client logic.
+- `test/unit`: Unit tests for business logic, stores, and utilities.
+- `test/components`: Tests for Vue components using Vitest and @vue/test-utils.
+- `test/integration`: Integration tests for cross-module interactions.
+- `test/e2e`: End-to-end tests using Playwright.
+- `test/fixtures`: Mock data and files for testing.
 - Clip transforms use a shared layout helper in `src/utils/video-editor/clip-layout.ts` so monitor overlays and compositor rendering resolve the same anchor, fit and translation math.
 - Clip transform `position` values are stored in 1920x1080 design-space units and are scaled to the active preview/export resolution during layout.
 - Text clip style sizing (`width`, `fontSize`, `padding`, `letterSpacing`) is normalized before persistence and scaled from the same design-space baseline during rendering.
@@ -216,6 +221,15 @@ The current behavior is:
 - Fullscreen preview and modal dialogs block panel focus routing and `Tab` switching.
 - `Backspace` closes the currently focused detached panel in `Cut` view and restores focus to the last active main panel.
 - Text inputs and text editors keep their native keyboard behavior and do not receive editor hotkeys.
+
+## Testing
+
+The project uses a structured testing approach:
+
+- **Unit Tests** (`test/unit/`): Logic and utilities. Run via `pnpm test:unit`.
+- **Component Tests** (`test/components/`): Vue component rendering and behavior. Run via `pnpm test:unit`.
+- **Integration Tests** (`test/integration/`): Complex interactions between modules. Run via `pnpm test:unit`.
+- **E2E Tests** (`test/e2e/`): Full application flows in the browser. Run via `pnpm test:e2e`.
 
 ## License
 

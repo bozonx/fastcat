@@ -224,12 +224,18 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
     event.preventDefault();
     event.stopPropagation();
 
-    const movePayloadRaw = event.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
+    const movePayloadRaw =
+      event.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE) ||
+      event.dataTransfer?.getData('application/fastcat-file-manager-move');
+
     if (movePayloadRaw) {
       try {
-        const payload = JSON.parse(movePayloadRaw) as FileMovePayload;
-        if (payload.kind === 'file' && payload.path && isOpenableProjectFileName(payload.name)) {
-          await openDroppedFile({ filePath: payload.path, fileName: payload.name });
+        const parsed = JSON.parse(movePayloadRaw);
+        const items = Array.isArray(parsed) ? parsed : [parsed];
+        for (const payload of items) {
+          if (payload.kind === 'file' && payload.path && isOpenableProjectFileName(payload.name)) {
+            await openDroppedFile({ filePath: payload.path, fileName: payload.name });
+          }
         }
       } catch {}
       return;
