@@ -144,10 +144,12 @@ const props = withDefaults(
   defineProps<{
     isFullscreen?: boolean;
     useExternalFocus?: boolean;
+    panelDragCursorClass?: string;
   }>(),
   {
     isFullscreen: false,
     useExternalFocus: false,
+    panelDragCursorClass: 'cursor-grab active:cursor-grabbing',
   },
 );
 
@@ -264,7 +266,7 @@ const emit = defineEmits<{
         :class="[
           effectiveFullscreen
             ? 'absolute bottom-8 left-1/2 -translate-x-1/2 bg-ui-bg-elevated/80 backdrop-blur-xl px-6 py-3 rounded-2xl shadow-2xl z-50 border-none translate-y-4'
-            : 'px-4 py-3.5 bg-ui-bg-elevated cursor-grab active:cursor-grabbing',
+            : ['px-4 py-3.5 bg-ui-bg-elevated', props.panelDragCursorClass],
           effectiveFullscreen && isIdle ? 'opacity-0' : 'opacity-100 translate-y-0',
           !effectiveFullscreen && toolbarPosition === 'bottom' ? 'border-t' : '',
           !effectiveFullscreen && toolbarPosition === 'top' ? 'border-b' : '',

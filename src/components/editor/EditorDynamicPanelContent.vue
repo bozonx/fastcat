@@ -18,11 +18,13 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const { t } = useI18n();
 
 const emit = defineEmits<{
   dragStart: [event: DragEvent, panelId: string];
   close: [panel: DynamicPanel, view: 'cut' | 'sound'];
   focus: [panelId: string];
+  moveToView: [panel: DynamicPanel, view: 'cut' | 'sound'];
 }>();
 
 function onDragStart(event: DragEvent) {
@@ -37,6 +39,10 @@ function onFocus() {
   emit('focus', props.panel.id);
 }
 
+function movePanelToView(view: 'cut' | 'sound') {
+  emit('moveToView', props.panel, view);
+}
+
 const mediaIcon = computed(() => {
   switch (props.panel.mediaType) {
     case 'image':
@@ -49,14 +55,59 @@ const mediaIcon = computed(() => {
       return 'i-heroicons-document';
   }
 });
+
+const customPanelContextMenuItems = computed(() => {
+  if (props.panel.type !== 'media' && props.panel.type !== 'text') {
+    return [];
+  }
+
+  const moveTargetView = props.view === 'sound' ? 'cut' : 'sound';
+  const moveLabel =
+    props.view === 'sound'
+      ? t('fastcat.dynamicPanels.moveToCutWindow', 'Move to edit window')
+      : t('fastcat.dynamicPanels.moveToSoundWindow', 'Move to sound window');
+
+  return [
+    [
+      {
+        label: moveLabel,
+        icon: 'i-heroicons-arrow-right-circle',
+        onSelect: () => movePanelToView(moveTargetView),
+      },
+    ],
+    [
+      {
+        label: t('common.close', 'Close'),
+        icon: 'i-heroicons-x-mark',
+        onSelect: onClose,
+      },
+    ],
+  ];
+});
+
+const detachedStaticPanelContextMenuItems = computed(() => {
+  if (!['history', 'effects', 'fileManager'].includes(props.panel.type)) {
+    return [];
+  }
+
+  return [
+    [
+      {
+        label: t('fastcat.dynamicPanels.returnToProjectPanel', 'Return to project panel'),
+        icon: 'i-heroicons-arrow-uturn-left',
+        onSelect: onClose,
+      },
+    ],
+  ];
+});
 </script>
 
 <template>
-  <Project v-if="panel.type === 'fileManager'" class="h-full pt-2" :use-external-focus="true" />
   <MonitorContainer
-    v-else-if="panel.type === 'monitor'"
+    v-if="panel.type === 'monitor'"
     class="h-full"
     :use-external-focus="true"
+    panel-drag-cursor-class="cursor-default"
     @panel-drag-start="onDragStart"
   />
   <PropertiesPanel
@@ -73,6 +124,7 @@ const mediaIcon = computed(() => {
       :title="panel.title || ''"
       :icon="mediaIcon"
       :is-absolute="true"
+      :context-menu-items="customPanelContextMenuItems"
       @drag-start="onDragStart"
       @close="onClose"
     />
@@ -92,6 +144,7 @@ const mediaIcon = computed(() => {
       :title="panel.title || ''"
       icon="i-heroicons-bars-2"
       :is-absolute="true"
+      :context-menu-items="customPanelContextMenuItems"
       @drag-start="onDragStart"
       @close="onClose"
     />
@@ -111,6 +164,7 @@ const mediaIcon = computed(() => {
     <EditorPanelHeader
       :title="panel.title || 'History'"
       icon="i-heroicons-clock"
+      :context-menu-items="detachedStaticPanelContextMenuItems"
       @drag-start="onDragStart"
       @close="onClose"
     />
@@ -125,11 +179,27 @@ const mediaIcon = computed(() => {
     <EditorPanelHeader
       :title="panel.title || 'Effects'"
       icon="i-heroicons-sparkles"
+      :context-menu-items="detachedStaticPanelContextMenuItems"
       @drag-start="onDragStart"
       @close="onClose"
     />
     <div class="flex-1 overflow-hidden min-h-0">
       <ProjectEffects class="h-full" />
+    </div>
+  </div>
+  <div
+    v-else-if="panel.type === 'fileManager'"
+    class="h-full w-full bg-ui-bg-elevated flex flex-col relative border border-ui-border"
+  >
+    <EditorPanelHeader
+      :title="t('fastcat.dynamicPanels.projectFiles', 'Project files')"
+      icon="i-heroicons-folder"
+      :context-menu-items="detachedStaticPanelContextMenuItems"
+      @drag-start="onDragStart"
+      @close="onClose"
+    />
+    <div class="flex-1 overflow-hidden min-h-0">
+      <Project class="h-full pt-2" :use-external-focus="true" />
     </div>
   </div>
 </template>

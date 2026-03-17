@@ -149,6 +149,7 @@ const {
   getVerticalSize,
   focusDynamicPanel,
   closePanelAndRestoreTab,
+  movePanelToView,
   onDragEnd,
   onDragLeave,
   onDragOver,
@@ -278,6 +279,7 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
             @drag-end="onDragEnd"
             @focus="focusDynamicPanel"
             @close="(panel, view) => closePanelAndRestoreTab(panel, { view })"
+            @move-to-view="movePanelToView"
           />
 
           <EditorSoundView
@@ -302,6 +304,7 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
             @drag-end="onDragEnd"
             @focus="focusDynamicPanel"
             @close="(panel, view) => closePanelAndRestoreTab(panel, { view })"
+            @move-to-view="movePanelToView"
           />
 
           <EditorExportView

@@ -956,6 +956,12 @@
     "projectTabs": {
       "dropHint": "Добавить как вкладку"
     },
+    "dynamicPanels": {
+      "moveToCutWindow": "Переместить на окно монтаж",
+      "moveToSoundWindow": "Переместить на окно звук",
+      "projectFiles": "Файлы проекта",
+      "returnToProjectPanel": "Вернуть на панель проекта"
+    },
     "resolution": {
       "aspect": {
         "16_9": "16:9",

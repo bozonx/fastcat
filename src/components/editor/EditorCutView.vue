@@ -40,6 +40,7 @@ const emit = defineEmits<{
   dragEnd: [];
   focus: [panelId: string];
   close: [panel: DynamicPanel, view: 'cut' | 'sound'];
+  moveToView: [panel: DynamicPanel, view: 'cut' | 'sound'];
 }>();
 </script>
 
@@ -64,5 +65,6 @@ const emit = defineEmits<{
     @drag-end="emit('dragEnd')"
     @focus="(panelId) => emit('focus', panelId)"
     @close="(panel, view) => emit('close', panel, view)"
+    @move-to-view="(panel, view) => emit('moveToView', panel, view)"
   />
 </template>
