@@ -47,6 +47,16 @@ export const DRAG_ACTIONS = ['pan', 'move_playhead', 'select_area', 'none'] as c
 export const MOUSE_HORIZONTAL_MOVEMENT_ACTIONS = ['move_playhead', 'none'] as const;
 export type MouseHorizontalMovementAction = (typeof MOUSE_HORIZONTAL_MOVEMENT_ACTIONS)[number];
 
+export const CLIP_DRAG_ACTIONS = [
+  'pseudo_overlap',
+  'free_mode',
+  'copy',
+  'toggle_snap',
+  'none',
+] as const;
+
+export type ClipDragAction = (typeof CLIP_DRAG_ACTIONS)[number];
+
 export const SHIFT_CLICK_ACTIONS = RULER_CLICK_ACTIONS;
 
 /** Minimum pixel movement before a drag gesture is recognized. */

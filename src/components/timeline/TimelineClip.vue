@@ -105,10 +105,18 @@ function toggleFadeCurve(edge: 'in' | 'out') {
   void timelineStore.requestTimelineSave({ immediate: true });
 }
 
+function onContextMenu(e: MouseEvent) {
+  if (didStartClipDrag) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+}
+
 function onClipPointerdown(e: PointerEvent) {
   if (timelineStore.isTrimModeActive) return;
-  if (e.button !== 0 || !props.canEditClipContent || !clipItem.value || clipItem.value.locked)
-    return;
+  if (e.button !== 0 && e.button !== 1 && e.button !== 2) return;
+  if (!props.canEditClipContent || !clipItem.value || clipItem.value.locked) return;
+  
   didStartClipDrag = false;
   const startX = e.clientX;
   const startY = e.clientY;
@@ -372,7 +380,9 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
         isMobile ? 'touch-manipulation' : '',
         ...getClipClass(item, track),
       ]"
-      @pointerdown="onClipPointerdown"
+      @pointerdown="onClipPointerdown($event, true)"
+      @pointerdown.right="onClipPointerdown($event, false)"
+      @pointerdown.middle="onClipPointerdown($event, false)"
       @click="onClipClick"
       @dblclick="onClipDblClick"
       @dragover="handleDragOver"
