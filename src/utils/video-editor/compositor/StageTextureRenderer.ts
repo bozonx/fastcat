@@ -64,9 +64,9 @@ export class StageTextureRenderer {
       clip.transitionSprite = sprite;
     }
 
-    const parent = clip.sprite.parent;
-    if (parent && sprite.parent !== parent) {
-      parent.addChild(sprite);
+    const spriteParent = clip.sprite?.parent;
+    if (spriteParent && sprite.parent !== spriteParent) {
+      spriteParent.addChild(sprite);
     }
 
     sprite.x = 0;
@@ -118,8 +118,8 @@ export class StageTextureRenderer {
       (c as any).visible = c === clip.sprite;
     }
 
-    const previousClipVisible = clip.sprite.visible;
-    if (forceVisible) {
+    const previousClipVisible = clip.sprite?.visible;
+    if (forceVisible && clip.sprite) {
       clip.sprite.visible = true;
     }
 
@@ -129,7 +129,9 @@ export class StageTextureRenderer {
       clear: true,
     });
 
-    clip.sprite.visible = previousClipVisible;
+    if (clip.sprite) {
+      clip.sprite.visible = previousClipVisible;
+    }
 
     for (let i = 0; i < containerChildren.length; i++) {
       (containerChildren[i] as any).visible = containerPrev[i] ?? true;

@@ -42,8 +42,12 @@ export interface TimelineTrimmingDeps {
 }
 
 export interface TimelineTrimmingApi {
-  trimToPlayheadLeftNoRipple: () => Promise<void>;
-  trimToPlayheadRightNoRipple: () => Promise<void>;
+  trimToPlayheadLeftNoRipple: (
+    targetOverride?: { trackId: string; itemId: string } | null,
+  ) => Promise<void>;
+  trimToPlayheadRightNoRipple: (
+    targetOverride?: { trackId: string; itemId: string } | null,
+  ) => Promise<void>;
   rippleDeleteRange: (
     input: { trackIds: string[]; startUs: number; endUs: number },
     options?: any,
@@ -54,17 +58,21 @@ export interface TimelineTrimmingApi {
   advancedRippleTrimLeft: () => Promise<void>;
   jumpToPrevClipBoundary: (options?: { currentTrackOnly?: boolean }) => void;
   jumpToNextClipBoundary: (options?: { currentTrackOnly?: boolean }) => void;
-  splitClipAtPlayhead: () => Promise<void>;
+  splitClipAtPlayhead: (
+    targetOverride?: { trackId: string; itemId: string } | null,
+  ) => Promise<void>;
   splitAllClipsAtPlayhead: () => Promise<void>;
   splitClipsAtPlayhead: () => Promise<void>;
 }
 
 export function createTimelineTrimming(deps: TimelineTrimmingDeps): TimelineTrimmingApi {
-  async function trimToPlayheadLeftNoRipple() {
+  async function trimToPlayheadLeftNoRipple(
+    targetOverride?: { trackId: string; itemId: string } | null,
+  ) {
     const doc = deps.timelineDoc.value;
     if (!doc) return;
 
-    const target = deps.getHotkeyTargetClip();
+    const target = targetOverride ?? deps.getHotkeyTargetClip();
     if (!target) return;
 
     const track = doc.tracks.find((t) => t.id === target.trackId) ?? null;
@@ -104,11 +112,13 @@ export function createTimelineTrimming(deps: TimelineTrimmingDeps): TimelineTrim
     await deps.requestTimelineSave({ immediate: true });
   }
 
-  async function trimToPlayheadRightNoRipple() {
+  async function trimToPlayheadRightNoRipple(
+    targetOverride?: { trackId: string; itemId: string } | null,
+  ) {
     const doc = deps.timelineDoc.value;
     if (!doc) return;
 
-    const target = deps.getHotkeyTargetClip();
+    const target = targetOverride ?? deps.getHotkeyTargetClip();
     if (!target) return;
 
     const track = doc.tracks.find((t) => t.id === target.trackId) ?? null;
@@ -196,11 +206,11 @@ export function createTimelineTrimming(deps: TimelineTrimmingDeps): TimelineTrim
     deps.currentTime.value = nextUs;
   }
 
-  async function splitClipAtPlayhead() {
+  async function splitClipAtPlayhead(targetOverride?: { trackId: string; itemId: string } | null) {
     const doc = deps.timelineDoc.value;
     if (!doc) return;
 
-    const target = deps.getHotkeyTargetClip();
+    const target = targetOverride ?? deps.getHotkeyTargetClip();
     const cmds = buildSplitClipCommands(doc, deps.currentTime.value, target);
     for (const cmd of cmds) {
       deps.applyTimeline(cmd, { saveMode: 'none' });

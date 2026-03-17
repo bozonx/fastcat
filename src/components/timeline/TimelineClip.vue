@@ -203,17 +203,19 @@ function onClipClick(e: MouseEvent) {
     if (e.button === 0 && props.canEditClipContent && clipItem.value && !clipItem.value.locked) {
       const isShift = isLayer1Active(e, workspaceStore.userSettings);
       const isCtrl = isLayer2Active(e, workspaceStore.userSettings);
+      const target = {
+        trackId: props.track.id,
+        itemId: props.item.id,
+      };
 
       timelineStore.selectTimelineItems([props.item.id]);
 
       if (isShift && !isCtrl) {
-        // Left part will be deleted
-        timelineStore.trimToPlayheadLeftNoRipple();
+        void timelineStore.trimToPlayheadLeftNoRipple(target);
       } else if (!isShift && isCtrl) {
-        // Right part will be deleted
-        timelineStore.trimToPlayheadRightNoRipple();
+        void timelineStore.trimToPlayheadRightNoRipple(target);
       } else {
-        timelineStore.splitClipAtPlayhead();
+        void timelineStore.splitClipAtPlayhead(target);
       }
     }
     return;

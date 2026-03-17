@@ -34,6 +34,7 @@ const snapMenuItems = computed(() => [
       icon: settingsStore.toolbarMoveMode === 'snap' ? 'i-heroicons-check' : 'i-heroicons-none',
       onSelect: () => {
         settingsStore.toolbarMoveMode = 'snap';
+        settingsStore.toolbarMoveModeEnabled = false;
       },
     },
     {
@@ -41,6 +42,7 @@ const snapMenuItems = computed(() => [
       icon: settingsStore.toolbarMoveMode === 'free_mode' ? 'i-heroicons-check' : 'i-heroicons-none',
       onSelect: () => {
         settingsStore.toolbarMoveMode = 'free_mode';
+        settingsStore.toolbarMoveModeEnabled = true;
       },
     },
     {
@@ -48,6 +50,7 @@ const snapMenuItems = computed(() => [
       icon: settingsStore.toolbarMoveMode === 'pseudo_overlap' ? 'i-heroicons-check' : 'i-heroicons-none',
       onSelect: () => {
         settingsStore.toolbarMoveMode = 'pseudo_overlap';
+        settingsStore.toolbarMoveModeEnabled = true;
       },
     },
     {
@@ -55,10 +58,15 @@ const snapMenuItems = computed(() => [
       icon: settingsStore.toolbarMoveMode === 'copy' ? 'i-heroicons-check' : 'i-heroicons-none',
       onSelect: () => {
         settingsStore.toolbarMoveMode = 'copy';
+        settingsStore.toolbarMoveModeEnabled = true;
       },
     },
   ],
 ]);
+
+const isToolbarMoveModeActive = computed(() => {
+  return settingsStore.toolbarMoveModeEnabled;
+});
 
 const toolbarMoveModeIcon = computed(() => {
   if (settingsStore.toolbarMoveMode === 'free_mode') {
@@ -77,26 +85,11 @@ const toolbarMoveModeIcon = computed(() => {
 });
 
 const toolbarMoveModeVariant = computed(() => {
-  return settingsStore.toolbarMoveMode === 'snap' ? 'ghost' : 'solid';
+  return isToolbarMoveModeActive.value ? 'solid' : 'ghost';
 });
 
-function cycleToolbarMoveMode() {
-  if (settingsStore.toolbarMoveMode === 'snap') {
-    settingsStore.toolbarMoveMode = 'free_mode';
-    return;
-  }
-
-  if (settingsStore.toolbarMoveMode === 'free_mode') {
-    settingsStore.toolbarMoveMode = 'pseudo_overlap';
-    return;
-  }
-
-  if (settingsStore.toolbarMoveMode === 'pseudo_overlap') {
-    settingsStore.toolbarMoveMode = 'copy';
-    return;
-  }
-
-  settingsStore.toolbarMoveMode = 'snap';
+function toggleToolbarMoveMode() {
+  settingsStore.toolbarMoveModeEnabled = !settingsStore.toolbarMoveModeEnabled;
 }
 
 function onDragStart(event: DragEvent, type: 'adjustment' | 'background' | 'text') {
@@ -137,11 +130,11 @@ function onDragEnd() {
       <UiSplitDropdownButton
         size="xs"
         :variant="toolbarMoveModeVariant"
-        :color="settingsStore.toolbarMoveMode === 'snap' ? 'neutral' : 'primary'"
+        :color="isToolbarMoveModeActive ? 'primary' : 'neutral'"
         :icon="toolbarMoveModeIcon"
         :ariaLabel="t('fastcat.timeline.moveMode', 'Clip Move Mode')"
         :items="snapMenuItems"
-        @click="cycleToolbarMoveMode"
+        @click="toggleToolbarMoveMode"
       />
     </UTooltip>
 
