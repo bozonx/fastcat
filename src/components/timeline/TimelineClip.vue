@@ -84,6 +84,8 @@ const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 
 let didStartClipDrag = false;
+let rightClickDragTriggered = false;
+let rightClickDragTimer: number | null = null;
 
 const clipItem = computed<TimelineClipItem | null>(() =>
   props.item.kind === 'clip' ? (props.item as TimelineClipItem) : null,
@@ -106,7 +108,7 @@ function toggleFadeCurve(edge: 'in' | 'out') {
 }
 
 function onContextMenu(e: MouseEvent) {
-  if (didStartClipDrag) {
+  if (didStartClipDrag || rightClickDragTriggered) {
     e.preventDefault();
     e.stopPropagation();
   }
@@ -114,28 +116,81 @@ function onContextMenu(e: MouseEvent) {
 
 function onClipPointerdown(e: PointerEvent) {
   if (timelineStore.isTrimModeActive) return;
-  if (e.button !== 0 && e.button !== 1 && e.button !== 2) return;
+  if (e.button !== 0 && e.button !== 2) return;
   if (!props.canEditClipContent || !clipItem.value || clipItem.value.locked) return;
-  
+
+  e.stopPropagation();
+
   didStartClipDrag = false;
+  rightClickDragTriggered = false;
   const startX = e.clientX;
   const startY = e.clientY;
 
-  const cleanup = () => window.removeEventListener('pointermove', onMove);
-  const onMove = (ev: PointerEvent) => {
-    if (Math.abs(ev.clientX - startX) > 3 || Math.abs(ev.clientY - startY) > 3) {
-      didStartClipDrag = true;
-      cleanup();
-      emit('startMoveItem', e, {
-        trackId: props.track.id,
-        itemId: props.item.id,
-        startUs: props.item.timelineRange.startUs,
-      });
+  const cleanup = () => {
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onPointerUp);
+    window.removeEventListener('pointercancel', onPointerCancel);
+    if (rightClickDragTimer !== null) {
+      window.clearTimeout(rightClickDragTimer);
+      rightClickDragTimer = null;
     }
   };
+
+  const startDrag = () => {
+    if (didStartClipDrag) return;
+    didStartClipDrag = true;
+    if (e.button === 2) {
+      rightClickDragTriggered = true;
+    }
+    cleanup();
+    e.preventDefault();
+    emit('startMoveItem', e, {
+      trackId: props.track.id,
+      itemId: props.item.id,
+      startUs: props.item.timelineRange.startUs,
+    });
+  };
+
+  const onMove = (ev: PointerEvent) => {
+    if (Math.abs(ev.clientX - startX) > 3 || Math.abs(ev.clientY - startY) > 3) {
+      startDrag();
+    }
+  };
+
+  const onPointerUp = () => {
+    cleanup();
+  };
+
+  const onPointerCancel = () => {
+    cleanup();
+  };
+
+  if (e.button !== 2) {
+    e.preventDefault();
+  } else {
+    rightClickDragTimer = window.setTimeout(() => {
+      rightClickDragTimer = null;
+      startDrag();
+    }, 180);
+  }
+
   window.addEventListener('pointermove', onMove);
-  window.addEventListener('pointerup', cleanup, { once: true });
-  window.addEventListener('pointercancel', cleanup, { once: true });
+  window.addEventListener('pointerup', onPointerUp, { once: true });
+  window.addEventListener('pointercancel', onPointerCancel, { once: true });
+}
+
+function onTrimHandlePointerDown(e: PointerEvent, edge: 'start' | 'end') {
+  if (e.button !== 0 && e.button !== 2) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  emit('startTrimItem', e, {
+    trackId: item.trackId,
+    itemId: item.id,
+    edge,
+    startUs: item.timelineRange.startUs,
+  });
 }
 
 function onClipClick(e: MouseEvent) {
@@ -380,11 +435,10 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
         isMobile ? 'touch-manipulation' : '',
         ...getClipClass(item, track),
       ]"
-      @pointerdown="onClipPointerdown($event, true)"
-      @pointerdown.right="onClipPointerdown($event, false)"
-      @pointerdown.middle="onClipPointerdown($event, false)"
+      @pointerdown="onClipPointerdown"
       @click="onClipClick"
       @dblclick="onClipDblClick"
+      @contextmenu="onContextMenu"
       @dragover="handleDragOver"
       @dragenter="handleDragEnter"
       @dragleave="handleDragLeave"
@@ -516,27 +570,13 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
           class="absolute left-0 top-0 bottom-0 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors group/trim"
           :style="{ zIndex: 'var(--z-clip-trim)' }"
           :class="isMobile ? 'w-4' : 'w-1.5'"
-          @pointerdown.stop="
-            emit('startTrimItem', $event, {
-              trackId: item.trackId,
-              itemId: item.id,
-              edge: 'start',
-              startUs: item.timelineRange.startUs,
-            })
-          "
+          @pointerdown="onTrimHandlePointerDown($event, 'start')"
         />
         <div
           class="absolute right-0 top-0 bottom-0 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors group/trim"
           :style="{ zIndex: 'var(--z-clip-trim)' }"
           :class="isMobile ? 'w-4' : 'w-1.5'"
-          @pointerdown.stop="
-            emit('startTrimItem', $event, {
-              trackId: item.trackId,
-              itemId: item.id,
-              edge: 'end',
-              startUs: item.timelineRange.startUs,
-            })
-          "
+          @pointerdown="onTrimHandlePointerDown($event, 'end')"
         />
       </template>
     </div>
