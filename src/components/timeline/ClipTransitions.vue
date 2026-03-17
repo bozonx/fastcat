@@ -228,7 +228,7 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
     if (Math.abs(moveEvent.clientX - startX) > 3 || Math.abs(moveEvent.clientY - startY) > 3) {
       isDragging = true;
       cleanup();
-      emit('createTransition', moveEvent, { edge, drag: true });
+      emit('createTransition', e, { edge, drag: true });
     }
   };
 

@@ -393,6 +393,21 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
 function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; drag: boolean }) {
   if (!clipItem.value || !props.canEditClipContent) return;
 
+  const pointerEventSnapshot = {
+    clientX: e.clientX,
+    clientY: e.clientY,
+    button: e.button,
+    buttons: e.buttons,
+    altKey: e.altKey,
+    ctrlKey: e.ctrlKey,
+    metaKey: e.metaKey,
+    shiftKey: e.shiftKey,
+    pointerId: e.pointerId,
+    pointerType: e.pointerType,
+    stopPropagation: () => {},
+    preventDefault: () => {},
+  } as PointerEvent;
+
   const defaultUs = Math.max(
     0,
     Math.round(
@@ -417,7 +432,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
   if (payload.drag) {
     // Defer starting drag to give vue time to render transition
     window.setTimeout(() => {
-      emit('startResizeTransition', e, {
+      emit('startResizeTransition', pointerEventSnapshot, {
         trackId: props.track.id,
         itemId: props.item.id,
         edge: payload.edge,
