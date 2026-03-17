@@ -107,7 +107,7 @@ const detachedStaticPanelContextMenuItems = computed(() => {
     v-if="panel.type === 'monitor'"
     class="h-full"
     :use-external-focus="true"
-    panel-drag-cursor-class="cursor-default"
+    panel-drag-cursor-class=""
     @panel-drag-start="onDragStart"
   />
   <PropertiesPanel

@@ -16,6 +16,14 @@ The project uses a custom `src/` directory. Besides the standard Nuxt folders (`
 - `src/timeline/` — logic and components specific to the video editor timeline.
 - `src/locales/` — localization files (i18n).
 
+## Testing Structure (`test/`)
+- `test/unit/` — Unit tests for internal logic, stores, and utils.
+- `test/components/` — Tests for Vue components.
+- `test/integration/` — Integration tests for cross-module interactions.
+- `test/e2e/` — E2E tests (Playwright).
+- `test/fixtures/` — Static assets and mock data for tests.
+- `test/vitest.setup.ts` — Global configuration and mocks for Vitest.
+
 ## General Principles
 - Communication with the user is conducted in Russian (including plans and reasoning).
 - Code, commits, JSDoc, variable and function names must be in English (except i18n).
