@@ -14,7 +14,7 @@ import ExpandableYamlSection from '~/components/properties/file/ExpandableYamlSe
 import FileGeneralInfoSection from '~/components/properties/file/FileGeneralInfoSection.vue';
 import FileTimelineUsageSection from '~/components/properties/file/FileTimelineUsageSection.vue';
 import ImageFilePropertiesSection from '~/components/properties/file/ImageFilePropertiesSection.vue';
-import OtioFilePropertiesSection from '~/components/properties/file/OtioFilePropertiesSection.vue';
+import TimelineProperties from '~/components/properties/TimelineProperties.vue';
 import VideoFilePropertiesSection from '~/components/properties/file/VideoFilePropertiesSection.vue';
 import FileProjectRootSection from '~/components/properties/file/FileProjectRootSection.vue';
 import FileTranscriptionModal from '~/components/properties/file/FileTranscriptionModal.vue';
@@ -392,10 +392,10 @@ const {
       :open-transcription-modal="openTranscriptionModal"
     />
 
-    <OtioFilePropertiesSection
+    <TimelineProperties
       v-if="fileInfo?.kind === 'file' && isOtio && timelineDocSummary"
       :summary="timelineDocSummary"
-      :format-duration-seconds="formatDurationSeconds"
+      is-read-only
     />
 
     <FileGeneralInfoSection

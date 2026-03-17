@@ -6,7 +6,8 @@ import { DEFAULT_SNAP_SETTINGS } from '~/utils/timeline-modes';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 
-export type ToolbarMoveMode = 'snap' | 'free_mode' | 'pseudo_overlap' | 'copy' | 'slip';
+export type ToolbarSnapMode = 'snap' | 'no_snap' | 'free_mode';
+export type ToolbarDragMode = 'pseudo_overlap' | 'copy' | 'slip';
 
 export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
   const workspaceStore = useWorkspaceStore();
@@ -28,11 +29,23 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
     DEFAULT_SNAP_SETTINGS.clipSnapMode,
   );
 
-  const toolbarMoveMode = useLocalStorage<ToolbarMoveMode>(
+  const toolbarSnapMode = useLocalStorage<ToolbarSnapMode>(
+    'fastcat:timeline:toolbar-snap-mode',
+    'snap',
+  );
+  const toolbarDragMode = useLocalStorage<ToolbarDragMode>(
+    'fastcat:timeline:toolbar-drag-mode',
+    'pseudo_overlap',
+  );
+  const toolbarDragModeEnabled = useLocalStorage<boolean>(
+    'fastcat:timeline:toolbar-drag-mode-enabled',
+    false,
+  );
+  const legacyToolbarMoveMode = useLocalStorage<string>(
     'fastcat:timeline:toolbar-move-mode',
     'snap',
   );
-  const toolbarMoveModeEnabled = useLocalStorage<boolean>(
+  const legacyToolbarMoveModeEnabled = useLocalStorage<boolean>(
     'fastcat:timeline:toolbar-move-mode-enabled',
     false,
   );
@@ -50,25 +63,50 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
   }
 
   if (
-    toolbarMoveMode.value !== 'snap' &&
-    toolbarMoveMode.value !== 'free_mode' &&
-    toolbarMoveMode.value !== 'pseudo_overlap' &&
-    toolbarMoveMode.value !== 'copy' &&
-    toolbarMoveMode.value !== 'slip'
+    legacyToolbarMoveMode.value === 'snap' ||
+    legacyToolbarMoveMode.value === 'free_mode' ||
+    legacyToolbarMoveMode.value === 'pseudo_overlap' ||
+    legacyToolbarMoveMode.value === 'copy' ||
+    legacyToolbarMoveMode.value === 'slip'
   ) {
-    toolbarMoveMode.value = 'snap';
+    if (legacyToolbarMoveMode.value === 'snap' || legacyToolbarMoveMode.value === 'free_mode') {
+      toolbarSnapMode.value = legacyToolbarMoveMode.value;
+    }
+
+    if (
+      legacyToolbarMoveMode.value === 'pseudo_overlap' ||
+      legacyToolbarMoveMode.value === 'copy' ||
+      legacyToolbarMoveMode.value === 'slip'
+    ) {
+      toolbarDragMode.value = legacyToolbarMoveMode.value;
+      toolbarDragModeEnabled.value = legacyToolbarMoveModeEnabled.value;
+    }
+
+    legacyToolbarMoveMode.value = 'snap';
+    legacyToolbarMoveModeEnabled.value = false;
   }
 
-  if (typeof toolbarMoveModeEnabled.value !== 'boolean') {
-    toolbarMoveModeEnabled.value = false;
+  if (
+    toolbarSnapMode.value !== 'snap' &&
+    toolbarSnapMode.value !== 'no_snap' &&
+    toolbarSnapMode.value !== 'free_mode'
+  ) {
+    toolbarSnapMode.value = 'snap';
+  }
+
+  if (
+    toolbarDragMode.value !== 'pseudo_overlap' &&
+    toolbarDragMode.value !== 'copy' &&
+    toolbarDragMode.value !== 'slip'
+  ) {
+    toolbarDragMode.value = 'pseudo_overlap';
+  }
+
+  if (typeof toolbarDragModeEnabled.value !== 'boolean') {
+    toolbarDragModeEnabled.value = false;
   }
 
   const snapThresholdPx = computed(() => {
-    const docThreshold = timelineStore.timelineDoc?.metadata?.fastcat?.snapThresholdPx;
-    if (typeof docThreshold === 'number' && Number.isFinite(docThreshold) && docThreshold > 0) {
-      return Math.round(docThreshold);
-    }
-
     const globalThreshold = Number(workspaceStore.userSettings.timeline?.snapThresholdPx);
     if (Number.isFinite(globalThreshold) && globalThreshold > 0) {
       return Math.round(globalThreshold);
@@ -89,43 +127,64 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
     clipSnapMode.value = mode;
   }
 
-  function setSnapThresholdPx(value: number) {
-    const next = Math.max(1, Math.round(value));
-    timelineStore.applyTimeline({
-      type: 'update_timeline_properties',
-      properties: {
-        snapThresholdPx: next,
-      },
-    });
-  }
-
   function setGlobalSnapThresholdPx(value: number) {
     const next = Math.max(1, Math.round(value));
     workspaceStore.userSettings.timeline.snapThresholdPx = next;
   }
 
-  function selectToolbarMoveMode(mode: ToolbarMoveMode) {
-    toolbarMoveMode.value = mode;
-    toolbarMoveModeEnabled.value = mode !== 'snap';
+  function selectToolbarSnapMode(mode: ToolbarSnapMode) {
+    toolbarSnapMode.value = mode;
   }
 
-  function toggleSelectedToolbarMoveMode() {
-    toolbarMoveModeEnabled.value = !toolbarMoveModeEnabled.value;
+  function cycleToolbarSnapMode() {
+    if (toolbarSnapMode.value === 'snap') {
+      toolbarSnapMode.value = 'no_snap';
+      return;
+    }
+
+    if (toolbarSnapMode.value === 'no_snap') {
+      toolbarSnapMode.value = 'free_mode';
+      return;
+    }
+
+    toolbarSnapMode.value = 'snap';
+  }
+
+  function selectToolbarDragMode(mode: ToolbarDragMode) {
+    toolbarDragMode.value = mode;
+    toolbarDragModeEnabled.value = true;
+  }
+
+  function toggleSelectedToolbarDragMode() {
+    toolbarDragModeEnabled.value = !toolbarDragModeEnabled.value;
+  }
+
+  function toggleToolbarPseudoOverlapMode() {
+    if (toolbarDragMode.value !== 'pseudo_overlap') {
+      toolbarDragMode.value = 'pseudo_overlap';
+      toolbarDragModeEnabled.value = true;
+      return;
+    }
+
+    toolbarDragModeEnabled.value = !toolbarDragModeEnabled.value;
   }
 
   return {
     overlapMode,
     frameSnapMode,
     clipSnapMode,
-    toolbarMoveMode,
-    toolbarMoveModeEnabled,
+    toolbarSnapMode,
+    toolbarDragMode,
+    toolbarDragModeEnabled,
     snapThresholdPx,
     setOverlapMode,
     setFrameSnapMode,
     setClipSnapMode,
-    setSnapThresholdPx,
     setGlobalSnapThresholdPx,
-    selectToolbarMoveMode,
-    toggleSelectedToolbarMoveMode,
+    selectToolbarSnapMode,
+    cycleToolbarSnapMode,
+    selectToolbarDragMode,
+    toggleSelectedToolbarDragMode,
+    toggleToolbarPseudoOverlapMode,
   };
 });

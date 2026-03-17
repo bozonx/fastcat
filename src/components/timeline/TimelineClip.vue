@@ -162,7 +162,7 @@ function onClipPointerdown(e: PointerEvent) {
       itemId: props.item.id,
       startUs: props.item.timelineRange.startUs,
       mode:
-        settingsStore.toolbarMoveModeEnabled && settingsStore.toolbarMoveMode === 'slip'
+        settingsStore.toolbarDragModeEnabled && settingsStore.toolbarDragMode === 'slip'
           ? 'slip'
           : 'move',
     });

@@ -92,20 +92,24 @@ export function useTimelineItemDrag(
 
   let dragRafId: number | null = null;
 
-  function getToolbarMoveModeAction(): string {
-    if (!settingsStore.toolbarMoveModeEnabled || settingsStore.toolbarMoveMode === 'snap') {
-      return 'snap';
-    }
-
-    return settingsStore.toolbarMoveMode;
+  function getToolbarSnapAction(): 'snap' | 'no_snap' | 'free_mode' {
+    return settingsStore.toolbarSnapMode;
   }
 
-  function toggleToolbarMoveMode(mode: string): string {
-    if (mode === 'snap') {
-      return settingsStore.toolbarMoveMode === 'snap' ? 'free_mode' : settingsStore.toolbarMoveMode;
+  function getToolbarDragAction(): ToolbarDragMode | 'none' {
+    if (!settingsStore.toolbarDragModeEnabled) {
+      return 'none';
     }
 
-    return 'snap';
+    return settingsStore.toolbarDragMode;
+  }
+
+  function toggleToolbarDragAction(mode: ToolbarDragMode | 'none'): ToolbarDragMode | 'none' {
+    if (mode === 'none') {
+      return settingsStore.toolbarDragMode;
+    }
+
+    return 'none';
   }
 
   function resolveDragAction(
@@ -130,18 +134,26 @@ export function useTimelineItemDrag(
   }
 
   function applyDragAction(action: string) {
+    let snapAction = getToolbarSnapAction();
+    let dragAction = getToolbarDragAction();
+
     if (action === 'none') {
-      action = getToolbarMoveModeAction();
+      action = '';
     }
 
     if (action === 'toggle_clip_move_mode') {
-      action = toggleToolbarMoveMode(getToolbarMoveModeAction());
+      dragAction = toggleToolbarDragAction(dragAction);
+    } else if (action === 'pseudo_overlap' || action === 'copy' || action === 'slip') {
+      dragAction = action;
+    } else if (action === 'free_mode' || action === 'no_snap' || action === 'snap') {
+      snapAction = action;
+      dragAction = 'none';
     }
 
-    dragIsFreeOverride.value = action === 'free_mode' || action === 'copy';
-    dragUsePseudoOverlapOverride.value = action === 'pseudo_overlap';
-    dragDisableFrameSnapOverride.value = action === 'free_mode' || action === 'copy';
-    dragIsCopyOverride.value = action === 'copy';
+    dragIsFreeOverride.value = snapAction === 'free_mode' || dragAction === 'copy';
+    dragUsePseudoOverlapOverride.value = dragAction === 'pseudo_overlap';
+    dragDisableFrameSnapOverride.value = snapAction === 'free_mode' || dragAction === 'copy';
+    dragIsCopyOverride.value = dragAction === 'copy';
     dragToggleSnapOverride.value = action === 'toggle_snap';
   }
 
