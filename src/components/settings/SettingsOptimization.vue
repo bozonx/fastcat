@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
-import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 
@@ -82,7 +82,7 @@ function resetDefaults() {
       </UFormField>
 
       <UFormField :label="t('videoEditor.settings.proxyVideoBitrate')">
-        <WheelNumberInput
+        <UiWheelNumberInput
           v-model="workspaceStore.userSettings.optimization.proxyVideoBitrateMbps"
           :min="0.1"
           :max="50"
@@ -91,7 +91,7 @@ function resetDefaults() {
       </UFormField>
 
       <UFormField :label="t('videoEditor.settings.proxyAudioBitrate')">
-        <WheelNumberInput
+        <UiWheelNumberInput
           v-model="workspaceStore.userSettings.optimization.proxyAudioBitrateKbps"
           :min="32"
           :max="512"

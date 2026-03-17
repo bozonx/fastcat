@@ -3,7 +3,7 @@ import { computed, ref, watch, nextTick } from 'vue';
 
 import type { TimelineClipItem } from '~/timeline/types';
 import UiModal from '~/components/ui/UiModal.vue';
-import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 
 const { t } = useI18n();
 
@@ -75,7 +75,7 @@ watch(() => props.open, (newValue) => {
         <span class="text-sm font-mono text-ui-text-muted">{{ speed.toFixed(2) }}</span>
       </div>
 
-      <WheelNumberInput v-model="speedValue" :min="-10" :max="10" :step="0.05" />
+      <UiWheelNumberInput v-model="speedValue" :min="-10" :max="10" :step="0.05" />
 
       <UAlert
         v-if="showNegativeSpeedAudioWarning"

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import WheelNumberInput from './WheelNumberInput.vue';
+import UiWheelNumberInput from './UiWheelNumberInput.vue';
 
 const props = defineProps<{
   modelValue: number;
@@ -29,7 +29,7 @@ function selectPreset(value: number) {
 
 <template>
   <div class="flex items-center gap-1">
-    <WheelNumberInput
+    <UiWheelNumberInput
       :model-value="props.modelValue"
       :min="1"
       :max="240"

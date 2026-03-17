@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
-import WheelSlider from '~/components/ui/WheelSlider.vue';
-import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
-import Knob from '~/components/ui/Knob.vue';
+import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiKnob from '~/components/ui/UiKnob.vue';
 import type {
   ButtonGroupParamControl,
   FileParamControl,
@@ -174,7 +174,7 @@ function handleArrayItemUpdate(control: any, index: number, itemKey: string, val
             }}
           </span>
         </div>
-        <WheelSlider
+        <UiWheelSlider
           :model-value="Number(getValue(control.key) ?? control.defaultValue ?? control.min)"
           :min="control.min"
           :max="control.max"
@@ -189,7 +189,7 @@ function handleArrayItemUpdate(control: any, index: number, itemKey: string, val
         v-else-if="control.kind === 'knob'"
         class="flex flex-col items-center justify-center gap-1.5 py-1"
       >
-        <Knob
+        <UiKnob
           :model-value="Number(getValue(control.key) ?? control.defaultValue ?? control.min)"
           :min="control.min"
           :max="control.max"
@@ -215,7 +215,7 @@ function handleArrayItemUpdate(control: any, index: number, itemKey: string, val
 
       <div v-else-if="control.kind === 'number'" class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{ getLabel(control) }}</span>
-        <WheelNumberInput
+        <UiWheelNumberInput
           :model-value="Number(getValue(control.key) ?? control.defaultValue ?? 0)"
           :size="size"
           :min="control.min"

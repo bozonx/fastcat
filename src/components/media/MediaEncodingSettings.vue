@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, watch, ref } from 'vue';
-import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
 import type { VideoCodecOptionResolved } from '~/utils/webcodecs';
 
@@ -193,7 +193,7 @@ watch(
       <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.export.videoBitrate', 'Video bitrate (Mbps)') }}
       </label>
-      <WheelNumberInput
+      <UiWheelNumberInput
         v-model="bitrateMbps"
         :min="0"
         :step="0.1"
@@ -229,7 +229,7 @@ watch(
       <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.export.keyframeInterval', 'Keyframe Interval (GOP Size, sec)') }}
       </label>
-      <WheelNumberInput v-model="keyframeIntervalSec" :min="1" :max="10" :step="1" />
+      <UiWheelNumberInput v-model="keyframeIntervalSec" :min="1" :max="10" :step="1" />
     </div>
 
     <label v-if="outputFormat === 'webm'" class="flex items-center gap-3 cursor-pointer">
@@ -281,7 +281,7 @@ watch(
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.export.audioBitrate', 'Audio bitrate (Kbps)') }}
         </label>
-        <WheelNumberInput
+        <UiWheelNumberInput
           v-model="audioBitrateKbps"
           :min="0"
           :step="16"

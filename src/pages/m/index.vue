@@ -132,7 +132,7 @@ const smartSortedProjects = computed(() => {
       </div>
 
       <!-- Search -->
-      <SearchInput
+      <UiSearchInput
         v-model="searchQuery"
         :placeholder="t('fastcat.projects.searchPlaceholder')"
         class="mb-2"

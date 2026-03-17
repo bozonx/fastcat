@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
-interface WheelNumberInputProps {
+interface UiWheelNumberInputProps {
   modelValue: number;
   min?: number;
   max?: number;
@@ -11,7 +11,7 @@ interface WheelNumberInputProps {
   disabled?: boolean;
 }
 
-const props = withDefaults(defineProps<WheelNumberInputProps>(), {
+const props = withDefaults(defineProps<UiWheelNumberInputProps>(), {
   step: 1,
   wheelStepMultiplier: 1,
   size: 'sm',

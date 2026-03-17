@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import PropertySection from '~/components/properties/PropertySection.vue';
-import WheelSlider from '~/components/ui/WheelSlider.vue';
+import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 import AudioEffectsEditor from '~/components/common/AudioEffectsEditor.vue';
 import type { VideoClipEffect, AudioClipEffect } from '~/timeline/types';
@@ -138,7 +138,7 @@ function handleAddAudioTrack() {
           </div>
           <div class="flex items-center gap-2">
             <div class="min-w-0 flex-1">
-              <WheelSlider
+              <UiWheelSlider
                 v-model="timelineZoom"
                 :min="MIN_TIMELINE_ZOOM_POSITION"
                 :max="MAX_TIMELINE_ZOOM_POSITION"
@@ -191,7 +191,7 @@ function handleAddAudioTrack() {
             }}</span>
             <span class="text-[10px] font-mono text-ui-text-muted">{{ snapThresholdPx }}px</span>
           </div>
-          <WheelSlider
+          <UiWheelSlider
             v-model="snapThresholdPx"
             :min="1"
             :max="40"
@@ -241,7 +241,7 @@ function handleAddAudioTrack() {
         <div class="flex items-center justify-between">
           <span class="text-[10px] font-mono text-ui-text-muted">{{ masterGain.toFixed(3) }}x</span>
         </div>
-        <WheelSlider
+        <UiWheelSlider
           v-model="masterGain"
           :min="0"
           :max="2"

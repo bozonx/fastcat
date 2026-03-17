@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import WheelSlider from '~/components/ui/WheelSlider.vue';
+import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -68,7 +68,7 @@ function onInputUpdate(value: unknown) {
       <span class="font-mono text-[10px]">{{ displayValue }}{{ unit }}</span>
     </div>
 
-    <WheelSlider
+    <UiWheelSlider
       v-model="clampedValue"
       :min="min"
       :max="max"

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
-import WheelSlider from '~/components/ui/WheelSlider.vue';
+import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 
 const props = withDefaults(defineProps<{
   compact?: boolean;
@@ -110,7 +110,7 @@ onBeforeUnmount(() => {
       @click="toggleMute"
     />
 
-    <WheelSlider
+    <UiWheelSlider
       :min="0"
       :max="max"
       :step="0.05"
@@ -197,7 +197,7 @@ onBeforeUnmount(() => {
                 @click="toggleMute"
               />
               <div class="flex-1" :class="orientation === 'vertical' ? 'min-w-20' : 'min-h-20 flex justify-center'">
-                <WheelSlider
+                <UiWheelSlider
                   :min="0"
                   :max="max"
                   :step="0.05"

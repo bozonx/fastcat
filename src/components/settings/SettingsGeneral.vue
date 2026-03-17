@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
-import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
-import WheelSlider from '~/components/ui/WheelSlider.vue';
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import { clearUiCache } from '~/stores/ui/uiLocalStorage';
@@ -79,7 +79,7 @@ function clearCache() {
 
     <UFormField :label="t('videoEditor.settings.snapThresholdDefault', 'Snap threshold default (px)')">
       <div class="flex items-center gap-4">
-        <WheelSlider
+        <UiWheelSlider
           :model-value="workspaceStore.userSettings.timeline.snapThresholdPx"
           :min="1"
           :max="100"
@@ -94,7 +94,7 @@ function clearCache() {
     </UFormField>
 
     <UFormField :label="t('videoEditor.settings.defaultTransitionDuration', 'Default transition duration (s)')">
-      <WheelNumberInput
+      <UiWheelNumberInput
         :model-value="workspaceStore.userSettings.timeline.defaultTransitionDurationUs / 1000000"
         :min="0.1"
         :max="10"
@@ -112,7 +112,7 @@ function clearCache() {
         :label="t('videoEditor.settings.defaultStaticClipDuration', 'Default static clip duration (s)')"
         :help="t('videoEditor.settings.defaultStaticClipDurationHint')"
       >
-        <WheelNumberInput
+        <UiWheelNumberInput
           :model-value="workspaceStore.userSettings.timeline.defaultStaticClipDurationUs / 1000000"
           :min="0.1"
           :max="60"
@@ -125,7 +125,7 @@ function clearCache() {
         :label="t('videoEditor.settings.stopFramesQuality', 'Stop frame quality')"
         :help="t('videoEditor.settings.stopFramesQualityHint')"
       >
-        <WheelNumberInput
+        <UiWheelNumberInput
           v-model="workspaceStore.userSettings.stopFrames.qualityPercent"
           :min="1"
           :max="100"
@@ -137,7 +137,7 @@ function clearCache() {
         :label="t('videoEditor.settings.mediaTaskConcurrency', 'Media tasks concurrency')"
         :help="t('videoEditor.settings.mediaTaskConcurrencyHelp')"
       >
-        <WheelNumberInput
+        <UiWheelNumberInput
           v-model="workspaceStore.userSettings.optimization.mediaTaskConcurrency"
           :min="1"
           :max="20"

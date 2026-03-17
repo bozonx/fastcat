@@ -8,7 +8,7 @@ import {
   type VideoDiagnosticsStatus,
 } from '~/utils/settings/videoDiagnostics';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
-import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -118,7 +118,7 @@ function resetDefaults() {
             )
           "
         >
-          <WheelNumberInput
+          <UiWheelNumberInput
             v-model="workspaceStore.userSettings.optimization.videoFrameCacheMb"
             :min="0"
             :max="4096"

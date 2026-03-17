@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import WheelSlider from '~/components/ui/WheelSlider.vue';
-import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
+import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import DbSlider from '~/components/audio/DbSlider.vue';
 import type { AudioFadeCurve } from '~/utils/audio/envelope';
 import { linearToDb, dbToLinear } from '~/utils/audio';
@@ -93,7 +93,7 @@ const fadeCurveOptions = [
           props.audioBalance.toFixed(2)
         }}</span>
       </div>
-      <WheelSlider
+      <UiWheelSlider
         :model-value="props.audioBalance"
         :min="-1"
         :max="1"
@@ -108,7 +108,7 @@ const fadeCurveOptions = [
         <span class="text-xs text-ui-text-muted">{{
           t('fastcat.clip.audioFade.in', 'Fade in')
         }}</span>
-        <WheelNumberInput
+        <UiWheelNumberInput
           :model-value="props.audioFadeInSec"
           size="sm"
           :step="0.01"
@@ -129,7 +129,7 @@ const fadeCurveOptions = [
         <span class="text-xs text-ui-text-muted">{{
           t('fastcat.clip.audioFade.out', 'Fade out')
         }}</span>
-        <WheelNumberInput
+        <UiWheelNumberInput
           :model-value="props.audioFadeOutSec"
           size="sm"
           :step="0.01"

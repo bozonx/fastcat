@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -80,7 +80,7 @@ const sampleRateOptions = computed(() => {
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.export.audioBitrate', 'Audio bitrate (Kbps)') }}
         </label>
-        <WheelNumberInput
+        <UiWheelNumberInput
           v-model="audioBitrateKbps"
           :min="0"
           :step="16"

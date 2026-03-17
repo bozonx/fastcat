@@ -8,7 +8,7 @@ import type {
   VideoClipEffect,
   AudioClipEffect,
 } from '~/timeline/types';
-import WheelSlider from '~/components/ui/WheelSlider.vue';
+import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 import AudioEffectsEditor from '~/components/common/AudioEffectsEditor.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
@@ -215,7 +215,7 @@ function confirmDeleteTrack() {
             >{{ Math.round(trackOpacity * 100) }}%</span
           >
         </div>
-        <WheelSlider
+        <UiWheelSlider
           :model-value="trackOpacity"
           :min="0"
           :max="1"
@@ -243,7 +243,7 @@ function confirmDeleteTrack() {
           }}</span>
           <span class="text-xs font-mono text-ui-text-muted">{{ trackAudioGain.toFixed(3) }}x</span>
         </div>
-        <WheelSlider
+        <UiWheelSlider
           :model-value="trackAudioGain"
           :min="0"
           :max="2"
@@ -263,7 +263,7 @@ function confirmDeleteTrack() {
             trackAudioBalance.toFixed(2)
           }}</span>
         </div>
-        <WheelSlider
+        <UiWheelSlider
           :model-value="trackAudioBalance"
           :min="-1"
           :max="1"

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
-import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
+import UiProgressSpinner from '~/components/ui/UiProgressSpinner.vue';
 import BackgroundTasksModal from './BackgroundTasksModal.vue';
 
 const props = withDefaults(defineProps<{
@@ -26,7 +26,7 @@ const { t } = useI18n();
       :title="t('videoEditor.backgroundTasks.title', 'Background Tasks')"
       @click="isModalOpen = true"
     >
-      <ProgressSpinner
+      <UiProgressSpinner
         v-if="backgroundTasksStore.hasActiveTasks"
         :progress="backgroundTasksStore.globalProgress * 100"
         size="sm"

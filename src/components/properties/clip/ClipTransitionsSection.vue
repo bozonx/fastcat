@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import DurationSliderInput from '~/components/ui/DurationSliderInput.vue';
+import UiDurationSliderInput from '~/components/ui/UiDurationSliderInput.vue';
 import { getAllTransitionManifests } from '~/transitions';
 
 const props = defineProps<{
@@ -81,7 +81,7 @@ const transitionOptions = computed(() =>
                 value && emit('updateType', { edge: 'in', type: value?.value ?? value })
             "
           />
-          <DurationSliderInput
+          <UiDurationSliderInput
             :model-value="props.transitionIn.durationUs / 1_000_000"
             :min="0.1"
             :max="
@@ -142,7 +142,7 @@ const transitionOptions = computed(() =>
                 value && emit('updateType', { edge: 'out', type: value?.value ?? value })
             "
           />
-          <DurationSliderInput
+          <UiDurationSliderInput
             :model-value="props.transitionOut.durationUs / 1_000_000"
             :min="0.1"
             :max="

@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
-import SearchInput from '~/components/ui/SearchInput.vue';
+import UiSearchInput from '~/components/ui/UiSearchInput.vue';
 import { DEFAULT_HOTKEYS, type HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import {
@@ -218,7 +218,7 @@ defineExpose({ finishCapture, isDuplicateConfirmOpen });
     </div>
 
     <div class="px-1">
-      <SearchInput v-model="searchQuery" :placeholder="t('common.search', 'Search')" :disabled="isCapturingHotkey" />
+      <UiSearchInput v-model="searchQuery" :placeholder="t('common.search', 'Search')" :disabled="isCapturingHotkey" />
     </div>
 
     <div v-if="hotkeyGroups.length === 0" class="px-1 py-8 text-center text-sm text-ui-text-muted">
