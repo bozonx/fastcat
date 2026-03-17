@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useMediaStore } from '~/stores/media.store';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import type { TimelineClipItem } from '~/timeline/types';
@@ -13,6 +14,7 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
+const mediaStore = useMediaStore();
 
 const generatedGroupId = () =>
   `linked-group-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -175,45 +177,47 @@ const hasFreeClip = computed(() => {
 
 const allDisabled = computed(() => selectedClips.value.every((c) => c.disabled));
 const allMuted = computed(() => selectedClips.value.every((c) => c.audioMuted));
-const allShowWaveform = computed(() => selectedClips.value.every((c) => c.showWaveform !== false));
-const allWaveformHalf = computed(() =>
-  selectedClips.value.every((c) => c.audioWaveformMode !== 'full'),
-);
-
-const hasAudioOrVideoWithAudio = computed(() => {
+const firstWaveformClip = computed(() => {
   const doc = timelineStore.timelineDoc;
-  if (!doc) return false;
-  return props.items.some(({ trackId, itemId }) => {
+  if (!doc) return undefined;
+  for (const { trackId, itemId } of props.items) {
     const track = doc.tracks.find((t) => t.id === trackId);
-    if (!track) return false;
+    if (!track) continue;
     const clip = track.items.find((it) => it.id === itemId);
-    if (!clip || clip.kind !== 'clip') return false;
+    if (!clip || clip.kind !== 'clip') continue;
 
-    if (track.kind === 'audio') return true;
-    if (
+    const isAudioTrack = track.kind === 'audio';
+    const isVideoWithAudio =
       track.kind === 'video' &&
       clip.clipType === 'media' &&
-      Boolean((clip as any).linkedVideoClipId)
-    )
-      return true;
-    if (
-      track.kind === 'video' &&
-      clip.clipType === 'media' &&
-      Boolean((clip as any).source?.hasAudio)
-    )
-      return true;
-    return false;
-  });
+      (Boolean((clip as any).linkedVideoClipId) ||
+        Boolean(mediaStore.mediaMetadata[clip.source?.path ?? '']?.audio));
+
+    if (isAudioTrack || isVideoWithAudio) return clip as TimelineClipItem;
+  }
+  return undefined;
 });
 
-const hasVideo = computed(() => {
+const firstVideoClip = computed(() => {
   const doc = timelineStore.timelineDoc;
-  if (!doc) return false;
-  return props.items.some(({ trackId }) => {
+  if (!doc) return undefined;
+  for (const { trackId, itemId } of props.items) {
     const track = doc.tracks.find((t) => t.id === trackId);
-    return track?.kind === 'video';
-  });
+    if (!track) continue;
+    const clip = track.items.find((it) => it.id === itemId);
+    if (!clip || clip.kind !== 'clip') continue;
+
+    if (track.kind === 'video') return clip as TimelineClipItem;
+  }
+  return undefined;
 });
+
+const isWaveformShown = computed(() => firstWaveformClip.value?.showWaveform !== false);
+const isWaveformFull = computed(() => firstWaveformClip.value?.audioWaveformMode !== 'half');
+const isThumbnailsShown = computed(() => firstVideoClip.value?.showThumbnails !== false);
+
+const hasAudioOrVideoWithAudio = computed(() => Boolean(firstWaveformClip.value));
+const hasVideo = computed(() => Boolean(firstVideoClip.value));
 
 function handleDelete() {
   const cmds = props.items.map(({ trackId, itemId }) => ({
@@ -248,7 +252,7 @@ function toggleMuted() {
 }
 
 function toggleShowWaveform() {
-  const nextVal = !allShowWaveform.value;
+  const nextVal = !isWaveformShown.value;
   const cmds = props.items.map(({ trackId, itemId }) => ({
     type: 'update_clip_properties' as const,
     trackId,
@@ -259,12 +263,23 @@ function toggleShowWaveform() {
 }
 
 function toggleWaveformMode() {
-  const nextVal: 'full' | 'half' = allWaveformHalf.value ? 'full' : 'half';
+  const nextVal: 'full' | 'half' = isWaveformFull.value ? 'half' : 'full';
   const cmds = props.items.map(({ trackId, itemId }) => ({
     type: 'update_clip_properties' as const,
     trackId,
     itemId,
     properties: { audioWaveformMode: nextVal },
+  }));
+  timelineStore.batchApplyTimeline(cmds);
+}
+
+function toggleShowThumbnails() {
+  const nextVal = !isThumbnailsShown.value;
+  const cmds = props.items.map(({ trackId, itemId }) => ({
+    type: 'update_clip_properties' as const,
+    trackId,
+    itemId,
+    properties: { showThumbnails: nextVal },
   }));
   timelineStore.batchApplyTimeline(cmds);
 }
@@ -451,11 +466,24 @@ function handleQuantizeSelected() {
             size="sm"
             color="neutral"
             variant="soft"
+            :icon="isWaveformShown ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
+            :label="
+              isWaveformShown
+                ? t('fastcat.timeline.hideWaveform', 'Hide Waveform')
+                : t('fastcat.timeline.showWaveform', 'Show Waveform')
+            "
+            @click="toggleShowWaveform"
+          />
+
+          <UButton
+            size="sm"
+            color="neutral"
+            variant="soft"
             icon="i-heroicons-chart-bar"
             :label="
-              allWaveformHalf
-                ? t('fastcat.timeline.waveformFull', 'Waveform: Full')
-                : t('fastcat.timeline.waveformHalf', 'Waveform: Half')
+              isWaveformFull
+                ? t('fastcat.timeline.waveformHalf', 'Waveform: Half')
+                : t('fastcat.timeline.waveformFull', 'Waveform: Full')
             "
             @click="toggleWaveformMode"
           />
@@ -466,13 +494,13 @@ function handleQuantizeSelected() {
             size="sm"
             color="neutral"
             variant="soft"
-            :icon="allShowWaveform ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
+            :icon="isThumbnailsShown ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
             :label="
-              allShowWaveform
-                ? t('fastcat.timeline.hideWaveform', 'Hide Waveform')
-                : t('fastcat.timeline.showWaveform', 'Show Waveform')
+              isThumbnailsShown
+                ? t('fastcat.timeline.hideThumbnails', 'Hide Thumbnails')
+                : t('fastcat.timeline.showThumbnails', 'Show Thumbnails')
             "
-            @click="toggleShowWaveform"
+            @click="toggleShowThumbnails"
           />
         </template>
       </div>
