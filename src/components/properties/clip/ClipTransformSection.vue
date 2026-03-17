@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ClipTransform } from '~/timeline/types';
-import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import { useClipTransform } from '~/composables/properties/useClipTransform';
 import { computed, type Ref } from 'vue';
 
@@ -87,7 +87,7 @@ const {
               ? t('fastcat.clip.transform.scale', 'Scale (%)')
               : t('fastcat.clip.transform.scaleX', 'Scale X (%)')
           }}</span>
-          <WheelNumberInput v-model="transformScaleX" size="sm" :step="1" />
+          <UiWheelNumberInput v-model="transformScaleX" size="sm" :step="1" />
         </div>
 
         <div class="flex items-center justify-center pb-1">
@@ -105,7 +105,7 @@ const {
           <span class="text-xs text-ui-text-muted">{{
             t('fastcat.clip.transform.scaleY', 'Scale Y (%)')
           }}</span>
-          <WheelNumberInput v-model="transformScaleY" size="sm" :step="1" />
+          <UiWheelNumberInput v-model="transformScaleY" size="sm" :step="1" />
         </div>
         <div v-else class="flex flex-col gap-0.5" />
       </div>
@@ -114,7 +114,7 @@ const {
         <span class="text-xs text-ui-text-muted">{{
           t('fastcat.clip.transform.rotation', 'Rotation (deg)')
         }}</span>
-        <WheelNumberInput v-model="transformRotationDeg" size="sm" :step="1" />
+        <UiWheelNumberInput v-model="transformRotationDeg" size="sm" :step="1" />
       </div>
 
       <div class="grid grid-cols-2 gap-2">
@@ -122,13 +122,13 @@ const {
           <span class="text-xs text-ui-text-muted">{{
             t('fastcat.clip.transform.positionX', 'Position X (px)')
           }}</span>
-          <WheelNumberInput v-model="transformPosX" size="sm" :step="1" />
+          <UiWheelNumberInput v-model="transformPosX" size="sm" :step="1" />
         </div>
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{
             t('fastcat.clip.transform.positionY', 'Position Y (px)')
           }}</span>
-          <WheelNumberInput v-model="transformPosY" size="sm" :step="1" />
+          <UiWheelNumberInput v-model="transformPosY" size="sm" :step="1" />
         </div>
       </div>
 
@@ -151,13 +151,13 @@ const {
           <span class="text-xs text-ui-text-muted">{{
             t('fastcat.clip.transform.anchorX', 'Anchor X (0..1)')
           }}</span>
-          <WheelNumberInput v-model="transformAnchorX" size="sm" :step="0.01" />
+          <UiWheelNumberInput v-model="transformAnchorX" size="sm" :step="0.01" />
         </div>
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{
             t('fastcat.clip.transform.anchorY', 'Anchor Y (0..1)')
           }}</span>
-          <WheelNumberInput v-model="transformAnchorY" size="sm" :step="0.01" />
+          <UiWheelNumberInput v-model="transformAnchorY" size="sm" :step="0.01" />
         </div>
       </div>
     </div>

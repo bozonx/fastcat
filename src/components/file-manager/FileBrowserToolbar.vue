@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useFilesPageStore, type FileSortField } from '~/stores/filesPage.store';
 import { useUiStore } from '~/stores/ui.store';
-import WheelSlider from '~/components/ui/WheelSlider.vue';
+import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 
 defineProps<{
   gridSizes: number[];
@@ -54,7 +54,7 @@ const sortFields: { label: string; value: FileSortField }[] = [
       class="flex items-center gap-2 ml-2 w-24"
       :title="`${t('videoEditor.fileManager.cardScale', 'Масштаб карточек')}: ${currentGridSizeName}`"
     >
-      <WheelSlider
+      <UiWheelSlider
         :model-value="gridSizes.indexOf(filesPageStore.gridCardSize)"
         :min="0"
         :max="gridSizes.length - 1"

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 
-interface WheelSliderProps {
+interface UiWheelSliderProps {
   modelValue: number;
   min: number;
   max: number;
@@ -15,7 +15,7 @@ interface WheelSliderProps {
   orientation?: 'horizontal' | 'vertical';
 }
 
-const props = withDefaults(defineProps<WheelSliderProps>(), {
+const props = withDefaults(defineProps<UiWheelSliderProps>(), {
   disabled: false,
   step: 1,
   sliderClass: '',

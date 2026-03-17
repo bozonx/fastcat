@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { FsEntry } from '~/types/fs';
-import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
+import UiProgressSpinner from '~/components/ui/UiProgressSpinner.vue';
 import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
 
 interface EntryMeta {
@@ -94,7 +94,7 @@ const emit = defineEmits<{
           class="w-4 h-4 shrink-0 relative flex items-center justify-center"
           :title="`${meta.proxyProgress ?? 0}%`"
         >
-          <ProgressSpinner :progress="meta.proxyProgress ?? 0" size="sm" />
+          <UiProgressSpinner :progress="meta.proxyProgress ?? 0" size="sm" />
         </div>
         <UIcon
           v-else

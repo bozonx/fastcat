@@ -2,7 +2,7 @@
 import { computed, ref, nextTick, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import type { TimelineTrack } from '~/timeline/types';
-import WheelSlider from '~/components/ui/WheelSlider.vue';
+import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import DbSlider from './DbSlider.vue';
 import { linearToDb, dbToLinear } from '~/utils/audio';
 import { getAudioEffectManifest } from '~/effects';
@@ -121,7 +121,7 @@ function handleSelectEffect(type: string) {
       <span class="text-[10px] text-ui-text-muted mb-1">{{
         pan === 0 ? 'C' : pan < 0 ? `L${Math.round(-pan * 100)}` : `R${Math.round(pan * 100)}`
       }}</span>
-      <WheelSlider
+      <UiWheelSlider
         v-model="pan"
         :min="-1"
         :max="1"

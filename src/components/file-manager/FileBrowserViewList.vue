@@ -8,7 +8,7 @@ import type { FsEntry } from '~/types/fs';
 import { formatBytes } from '~/utils/format';
 import { WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
-import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
+import UiProgressSpinner from '~/components/ui/UiProgressSpinner.vue';
 
 type ExtendedFsEntry = FsEntry & {
   objectUrl?: string;
@@ -268,7 +268,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
                       : '',
                   ]"
                 >
-                  <ProgressSpinner
+                  <UiProgressSpinner
                     v-if="proxyStore.generatingProxies.has(entry.path || '')"
                     :progress="proxyStore.proxyProgress.get(entry.path || '') ?? 0"
                     size="sm"

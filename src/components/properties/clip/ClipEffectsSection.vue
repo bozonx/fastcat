@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TimelineBlendMode, AudioClipEffect, VideoClipEffect } from '~/timeline/types';
-import WheelSlider from '~/components/ui/WheelSlider.vue';
+import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import AudioEffectsEditor from '~/components/common/AudioEffectsEditor.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 
@@ -51,7 +51,7 @@ const { t } = useI18n();
         >{{ Math.round(props.opacity * 100) }}%</span
       >
     </div>
-    <WheelSlider
+    <UiWheelSlider
       :model-value="props.opacity"
       :min="0"
       :max="1"

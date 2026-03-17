@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue';
-import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
-import FpsInputWithPresets from '~/components/ui/FpsInputWithPresets.vue';
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiFpsInputWithPresets from '~/components/ui/UiFpsInputWithPresets.vue';
 
 const localWidth = defineModel<number>('width', { required: true });
 const localHeight = defineModel<number>('height', { required: true });
@@ -200,7 +200,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
           <label class="text-xs text-ui-text-muted font-medium">
             {{ t('videoEditor.export.width', 'Width') }}
           </label>
-          <WheelNumberInput
+          <UiWheelNumberInput
             v-model="localWidth"
             :min="2"
             :step="2"
@@ -212,7 +212,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
           <label class="text-xs text-ui-text-muted font-medium">
             {{ t('videoEditor.export.height', 'Height') }}
           </label>
-          <WheelNumberInput
+          <UiWheelNumberInput
             v-model="localHeight"
             :min="2"
             :step="2"
@@ -240,7 +240,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.export.fps', 'FPS') }}
         </label>
-        <FpsInputWithPresets
+        <UiFpsInputWithPresets
           v-model="localFps"
           :disabled="disabled"
         />

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectManagement } from '~/composables/project/useProjectManagement';
-import SearchInput from '~/components/ui/SearchInput.vue';
+import UiSearchInput from '~/components/ui/UiSearchInput.vue';
 import UiModal from '~/components/ui/UiModal.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import ProjectThumbnail from '~/components/startup/ProjectThumbnail.vue';
@@ -103,7 +103,7 @@ const smartSortedProjects = computed(() => {
             {{ t('fastcat.projects.title') }} ({{ workspaceStore.projects.length }})
           </h3>
           <div class="w-64">
-            <SearchInput
+            <UiSearchInput
               v-model="searchQuery"
               :placeholder="t('fastcat.projects.searchPlaceholder')"
             />

@@ -5,7 +5,7 @@ import UiModal from '~/components/ui/UiModal.vue';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
-import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import { storeToRefs } from 'pinia';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { resolveAudioOnlyFileExtension } from '~/utils/conversion/helpers';
@@ -218,7 +218,7 @@ const isFormValid = computed(() => {
             <label class="text-xs text-ui-text-muted font-medium">
               {{ t('videoEditor.fileManager.convert.imageQuality', 'Quality (0-100)') }}
             </label>
-            <WheelNumberInput
+            <UiWheelNumberInput
               v-model="image.quality"
               :min="1"
               :max="100"
@@ -229,7 +229,7 @@ const isFormValid = computed(() => {
           <div class="grid grid-cols-2 gap-3">
             <div class="flex flex-col gap-2">
               <label class="text-xs text-ui-text-muted font-medium">W</label>
-              <WheelNumberInput
+              <UiWheelNumberInput
                 :model-value="image.width"
                 :min="1"
                 :step="2"
@@ -239,7 +239,7 @@ const isFormValid = computed(() => {
 
             <div class="flex flex-col gap-2">
               <label class="text-xs text-ui-text-muted font-medium">H</label>
-              <WheelNumberInput
+              <UiWheelNumberInput
                 :model-value="image.height"
                 :min="1"
                 :step="2"

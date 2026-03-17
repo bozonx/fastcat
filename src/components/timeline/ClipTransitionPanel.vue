@@ -3,7 +3,7 @@ import { computed, ref, toRef } from 'vue';
 import { getAllTransitionManifests } from '~/transitions';
 import type { ClipTransition, TimelineTrack, TimelineClipItem } from '~/timeline/types';
 import type { TransitionCurve, TransitionParamField } from '~/transitions/core/registry';
-import DurationSliderInput from '~/components/ui/DurationSliderInput.vue';
+import UiDurationSliderInput from '~/components/ui/UiDurationSliderInput.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import UiModal from '~/components/ui/UiModal.vue';
 import TransitionParamFields from '~/components/properties/TransitionParamFields.vue';
@@ -260,7 +260,7 @@ function handleSavePreset() {
       <div class="flex justify-between text-ui-text-muted">
         <span>{{ t('fastcat.timeline.transition.duration') }}</span>
       </div>
-      <DurationSliderInput
+      <UiDurationSliderInput
         v-model="durationSec"
         :min="durationMin"
         :max="durationMax"

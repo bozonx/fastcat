@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import UiModal from '~/components/ui/UiModal.vue';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
-import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
+import UiProgressSpinner from '~/components/ui/UiProgressSpinner.vue';
 
 const props = defineProps<{
   open: boolean;
@@ -51,7 +51,7 @@ function formatTime(timestamp: number) {
         >
           <!-- Status Icon / Progress -->
           <div class="w-8 flex justify-center shrink-0">
-            <ProgressSpinner
+            <UiProgressSpinner
               v-if="task.status === 'running' || task.status === 'pending'"
               :progress="task.progress * 100"
               size="sm"

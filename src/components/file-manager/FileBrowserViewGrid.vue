@@ -7,7 +7,7 @@ import { useFileManager } from '~/composables/fileManager/useFileManager';
 import type { FsEntry } from '~/types/fs';
 import { WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
-import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
+import UiProgressSpinner from '~/components/ui/UiProgressSpinner.vue';
 
 // Local type for entries that might have objectUrl
 type ExtendedFsEntry = FsEntry & {
@@ -147,7 +147,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
             v-else-if="proxyStore.generatingProxies.has(entry.path || '')"
             class="relative flex items-center justify-center text-amber-400"
           >
-            <ProgressSpinner
+            <UiProgressSpinner
               :progress="proxyStore.proxyProgress.get(entry.path || '') ?? 0"
               size="md"
             />

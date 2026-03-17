@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
-interface KnobProps {
+interface UiKnobProps {
   modelValue: number;
   min: number;
   max: number;
@@ -11,7 +11,7 @@ interface KnobProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
-const props = withDefaults(defineProps<KnobProps>(), {
+const props = withDefaults(defineProps<UiKnobProps>(), {
   step: 1,
   disabled: false,
   size: 'md',

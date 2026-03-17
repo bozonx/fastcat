@@ -5,7 +5,7 @@ import type { ShapeType, TimelineClipItem, TimelineTextClipItem } from '~/timeli
 import type { ParamControl } from '~/components/properties/params';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
-import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import { usePresetsStore } from '~/stores/presets.store';
 
 const props = defineProps<{
@@ -150,7 +150,7 @@ function handleSavePreset() {
           <span class="text-xs text-ui-text-muted">{{
             t('fastcat.textClip.fontSize', 'Font size')
           }}</span>
-          <WheelNumberInput
+          <UiWheelNumberInput
             :model-value="Number((props.clip as TimelineTextClipItem).style?.fontSize ?? 64)"
             size="sm"
             :step="1"
@@ -207,7 +207,7 @@ function handleSavePreset() {
         <span class="text-xs text-ui-text-muted">{{
           t('fastcat.textClip.width', 'Text width (0 - auto)')
         }}</span>
-        <WheelNumberInput
+        <UiWheelNumberInput
           :model-value="Number((props.clip as TimelineTextClipItem).style?.width ?? 0)"
           size="sm"
           :step="10"
@@ -259,7 +259,7 @@ function handleSavePreset() {
           <span class="text-xs text-ui-text-muted">{{
             t('fastcat.textClip.lineHeight', 'Line height')
           }}</span>
-          <WheelNumberInput
+          <UiWheelNumberInput
             :model-value="Number((props.clip as TimelineTextClipItem).style?.lineHeight ?? 1.2)"
             size="sm"
             :step="0.1"
@@ -270,7 +270,7 @@ function handleSavePreset() {
           <span class="text-xs text-ui-text-muted">{{
             t('fastcat.textClip.letterSpacing', 'Letter spacing')
           }}</span>
-          <WheelNumberInput
+          <UiWheelNumberInput
             :model-value="Number((props.clip as TimelineTextClipItem).style?.letterSpacing ?? 0)"
             size="sm"
             :step="1"
@@ -283,7 +283,7 @@ function handleSavePreset() {
         <span class="text-xs text-ui-text-muted">{{
           t('fastcat.textClip.padding', 'Padding')
         }}</span>
-        <WheelNumberInput
+        <UiWheelNumberInput
           :model-value="
             (() => {
               const p = (props.clip as TimelineTextClipItem).style?.padding;
@@ -371,7 +371,7 @@ function handleSavePreset() {
         <span class="text-xs text-ui-text-muted">{{
           t('fastcat.shapeClip.strokeWidth', 'Stroke Width')
         }}</span>
-        <WheelNumberInput
+        <UiWheelNumberInput
           :model-value="Number((props.clip as any).strokeWidth ?? 0)"
           size="sm"
           :step="1"
@@ -383,7 +383,7 @@ function handleSavePreset() {
       <template v-if="(props.clip as any).shapeType === 'circle'">
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.squashX') }}</span>
-          <WheelNumberInput
+          <UiWheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.squashX ?? 0)"
             size="sm"
             :step="1"
@@ -392,7 +392,7 @@ function handleSavePreset() {
         </div>
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.squashY') }}</span>
-          <WheelNumberInput
+          <UiWheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.squashY ?? 0)"
             size="sm"
             :step="1"
@@ -404,7 +404,7 @@ function handleSavePreset() {
       <template v-else-if="(props.clip as any).shapeType === 'square'">
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.width') }}</span>
-          <WheelNumberInput
+          <UiWheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.width ?? 100)"
             size="sm"
             :step="1"
@@ -413,7 +413,7 @@ function handleSavePreset() {
         </div>
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.height') }}</span>
-          <WheelNumberInput
+          <UiWheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.height ?? 100)"
             size="sm"
             :step="1"
@@ -422,7 +422,7 @@ function handleSavePreset() {
         </div>
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.cornerRadius') }}</span>
-          <WheelNumberInput
+          <UiWheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.cornerRadius ?? 0)"
             size="sm"
             :step="1"
@@ -436,7 +436,7 @@ function handleSavePreset() {
       <template v-else-if="(props.clip as any).shapeType === 'triangle'">
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.baseLength') }}</span>
-          <WheelNumberInput
+          <UiWheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.baseLength ?? 100)"
             size="sm"
             :step="1"
@@ -445,7 +445,7 @@ function handleSavePreset() {
         </div>
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.vertexOffset') }}</span>
-          <WheelNumberInput
+          <UiWheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.vertexOffset ?? 50)"
             size="sm"
             :step="1"
@@ -461,7 +461,7 @@ function handleSavePreset() {
       >
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{ $t('fastcat.clip.rays') }}</span>
-          <WheelNumberInput
+          <UiWheelNumberInput
             :model-value="
               Number(
                 (props.clip as any).shapeConfig?.rays ??
@@ -476,7 +476,7 @@ function handleSavePreset() {
         </div>
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.innerRadius') }}</span>
-          <WheelNumberInput
+          <UiWheelNumberInput
             :model-value="
               Number(
                 (props.clip as any).shapeConfig?.innerRadius ??
@@ -512,7 +512,7 @@ function handleSavePreset() {
       <template v-else-if="(props.clip as any).shapeType === 'speech_bubble'">
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.width') }}</span>
-          <WheelNumberInput
+          <UiWheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.width ?? 100)"
             size="sm"
             :step="1"
@@ -521,7 +521,7 @@ function handleSavePreset() {
         </div>
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.height') }}</span>
-          <WheelNumberInput
+          <UiWheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.height ?? 70)"
             size="sm"
             :step="1"
@@ -530,7 +530,7 @@ function handleSavePreset() {
         </div>
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.cornerRadius') }}</span>
-          <WheelNumberInput
+          <UiWheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.cornerRadius ?? 20)"
             size="sm"
             :step="1"
@@ -541,7 +541,7 @@ function handleSavePreset() {
         </div>
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.pointerSharpness') }}</span>
-          <WheelNumberInput
+          <UiWheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.pointerSharpness ?? 40)"
             size="sm"
             :step="1"
@@ -552,7 +552,7 @@ function handleSavePreset() {
         </div>
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.pointerAngle') }}</span>
-          <WheelNumberInput
+          <UiWheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.pointerAngle ?? 20)"
             size="sm"
             :step="1"
@@ -561,7 +561,7 @@ function handleSavePreset() {
         </div>
         <div class="flex flex-col gap-0.5">
           <span class="text-xs text-ui-text-muted">{{ $t('fastcat.shapeClip.pointerX') }}</span>
-          <WheelNumberInput
+          <UiWheelNumberInput
             :model-value="Number((props.clip as any).shapeConfig?.pointerX ?? 30)"
             size="sm"
             :step="1"

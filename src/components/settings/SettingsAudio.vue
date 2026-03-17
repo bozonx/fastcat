@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
-import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -76,7 +76,7 @@ function resetDefaults() {
             </div>
           </div>
           <div class="w-32">
-            <WheelNumberInput
+            <UiWheelNumberInput
               :model-value="workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs / 1000"
               size="sm"
               :step="1"
