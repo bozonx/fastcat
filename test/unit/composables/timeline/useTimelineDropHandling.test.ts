@@ -23,6 +23,7 @@ describe('useTimelineDropHandling', () => {
 
     clearDraggedFile();
     timelineStore.timelineZoom = 50;
+    timelineStore.duration = 2_000_000;
     timelineStore.timelineDoc = {
       OTIO_SCHEMA: 'Timeline.1',
       id: 'doc-1',
@@ -70,7 +71,20 @@ describe('useTimelineDropHandling', () => {
         },
       },
     } as any;
-    workspaceStore.userSettings.hotkeys.layer1 = 'Shift';
+    mediaStore.getOrFetchMetadataByPath = vi.fn().mockImplementation((path) => {
+      return Promise.resolve(mediaStore.mediaMetadata[path] || null);
+    });
+    workspaceStore.userSettings = {
+      ...workspaceStore.userSettings,
+      timeline: {
+        ...workspaceStore.userSettings.timeline,
+        defaultStaticClipDurationUs: 5_000_000,
+      },
+      hotkeys: {
+        ...workspaceStore.userSettings.hotkeys,
+        layer1: 'Shift',
+      },
+    };
   });
 
   it('builds drag preview on dragover and shifts insert position in normal mode to avoid overlap', async () => {

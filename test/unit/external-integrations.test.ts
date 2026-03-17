@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { createDefaultUserSettings } from '../../src/utils/settings';
-import { GRAN_PUBLICADOR_APP_NAME } from '../../src/utils/constants';
+import { FASTCAT_PUBLICADOR_APP_NAME } from '../../src/utils/constants';
 import {
   getFastCatPublicadorConnectUrl,
   getFastCatPublicadorHealthUrl,
@@ -26,12 +26,12 @@ describe('external integrations', () => {
     expect(
       getFastCatPublicadorConnectUrl({
         baseUrl: 'https://fastcat.example.com/api/v1',
-        name: GRAN_PUBLICADOR_APP_NAME,
+        name: FASTCAT_PUBLICADOR_APP_NAME,
         redirectUri: 'http://localhost:3000/editor',
         scopes: ['vfs:read', 'stt:transcribe'],
       }),
     ).toBe(
-      'https://fastcat.example.com/integrations/connect?name=FastCat+Video+Editor&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Feditor&scopes=vfs%3Aread%2Cstt%3Atranscribe',
+      'https://fastcat.example.com/integrations/connect?name=FastCat&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Feditor&scopes=vfs%3Aread%2Cstt%3Atranscribe',
     );
   });
 

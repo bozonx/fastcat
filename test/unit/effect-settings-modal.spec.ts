@@ -4,6 +4,30 @@ import { mountWithNuxt } from '../utils/mount';
 import EffectSettingsModal from '../../src/components/common/EffectSettingsModal.vue';
 import { parametricEqManifest } from '../../src/effects/audio/parametric-eq/manifest';
 import type { EffectManifest } from '../../src/effects/core/registry';
+import { createDefaultProjectPresets, createDefaultExportPresets } from '../../src/utils/settings';
+
+vi.mock('reka-ui', () => ({
+  DialogTitle: { name: 'DialogTitle', template: '<div><slot/></div>' },
+  DialogDescription: { name: 'DialogDescription', template: '<div><slot/></div>' },
+}));
+
+vi.mock('../../src/stores/timeline.store', () => ({
+  useTimelineStore: vi.fn(() => ({
+    timelineZoom: 50,
+  })),
+}));
+
+vi.mock('../../src/stores/workspace.store', () => ({
+  useWorkspaceStore: vi.fn(() => ({
+    userSettings: {
+      projectDefaults: { audioDeclickDurationUs: 5000, defaultAudioFadeCurve: 'logarithmic' },
+      projectPresets: createDefaultProjectPresets(),
+      exportPresets: createDefaultExportPresets(),
+      optimization: { proxyConcurrency: 2 },
+      timeline: { defaultStaticClipDurationUs: 5000000, snapThresholdPx: 8 },
+    },
+  })),
+}));
 
 describe('EffectSettingsModal', () => {
   const originalRequestAnimationFrame = globalThis.requestAnimationFrame;

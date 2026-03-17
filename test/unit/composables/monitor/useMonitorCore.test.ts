@@ -128,6 +128,7 @@ describe('useMonitorCore', () => {
 
     const proxyStore = {
       getProxyFileHandle: vi.fn(async () => null),
+      getProxyFile: vi.fn(async () => null),
       existingProxies: ref(new Set()),
     };
 
@@ -144,8 +145,10 @@ describe('useMonitorCore', () => {
           proxyStore,
           monitorTimeline: {
             videoItems: ref([]),
+            rawWorkerAudioClips: audioClips,
             workerTimelineClips: ref([]),
             workerAudioClips: audioClips,
+            workerTimelinePayload: ref([]),
             safeDurationUs: ref(0),
             clipSourceSignature: ref(1),
             clipLayoutSignature: ref(1),
@@ -196,6 +199,7 @@ describe('useMonitorCore', () => {
 
     const proxyStore = {
       getProxyFileHandle: vi.fn(async () => null),
+      getProxyFile: vi.fn(async () => null),
       existingProxies: ref(new Set()),
     };
 
@@ -212,6 +216,7 @@ describe('useMonitorCore', () => {
             videoItems: ref([]),
             workerTimelineClips: ref([]),
             workerAudioClips: ref([]),
+            workerTimelinePayload: ref([]),
             safeDurationUs: ref(0),
             clipSourceSignature: ref(1),
             clipLayoutSignature: ref(1),
@@ -264,11 +269,13 @@ describe('useMonitorCore', () => {
         export: { width: 1920, height: 1080 },
         monitor: createMonitorSettings(),
       },
+      activeMonitor: createMonitorSettings(),
       getFileHandleByPath: vi.fn(async () => ({}) as FileSystemFileHandle),
     });
 
     const proxyStore = {
       getProxyFileHandle: vi.fn(async () => null),
+      getProxyFile: vi.fn(async () => null),
       existingProxies: ref(new Set()),
     };
 
@@ -285,6 +292,7 @@ describe('useMonitorCore', () => {
             videoItems: ref([{ id: 'clip-1' }]),
             workerTimelineClips: ref([]),
             workerAudioClips: ref([]),
+            workerTimelinePayload: ref([]),
             safeDurationUs: ref(2_000_000),
             clipSourceSignature: ref(1),
             clipLayoutSignature: ref(1),
@@ -307,7 +315,7 @@ describe('useMonitorCore', () => {
 
     mockClient.renderFrame.mockClear();
 
-    projectStore.projectSettings.monitor.previewEffectsEnabled = false;
+    projectStore.activeMonitor.previewEffectsEnabled = false;
     await nextTick();
 
     expect(mockClient.renderFrame).toHaveBeenCalledWith(
@@ -315,7 +323,7 @@ describe('useMonitorCore', () => {
       expect.objectContaining({ previewEffectsEnabled: false }),
     );
 
-    projectStore.projectSettings.monitor.previewEffectsEnabled = true;
+    projectStore.activeMonitor.previewEffectsEnabled = true;
     await nextTick();
 
     expect(mockClient.renderFrame).toHaveBeenLastCalledWith(

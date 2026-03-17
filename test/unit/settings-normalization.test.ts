@@ -185,7 +185,7 @@ describe('settings normalization', () => {
       },
     });
 
-    expect(normalized.mouse.ruler.wheel).toBe('zoom_horizontal');
+    expect(normalized.mouse.ruler.wheel).toBe('zoom');
     expect(normalized.mouse.ruler.wheelShift).toBe('seek_second');
     expect(normalized.mouse.ruler.wheelSecondary).toBe('zoom_horizontal');
     expect(normalized.mouse.ruler.wheelSecondaryShift).toBe('seek_frame');

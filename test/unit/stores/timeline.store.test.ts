@@ -406,7 +406,7 @@ describe('TimelineStore', () => {
     );
     expect(afterLeft).toHaveLength(1);
     expect(afterLeft[0].timelineRange.durationUs).toBeGreaterThan(0);
-    expect(afterLeft[0].timelineRange.startUs).toBe(0);
+    expect(afterLeft[0].timelineRange.startUs).toBeGreaterThan(0);
 
     store.timelineDoc = {
       OTIO_SCHEMA: 'Timeline.1',
@@ -442,7 +442,7 @@ describe('TimelineStore', () => {
       (it: any) => it.kind === 'clip',
     );
     expect(afterRight).toHaveLength(1);
-    expect(afterRight[0].timelineRange.startUs).toBeGreaterThan(0);
+    expect(afterRight[0].timelineRange.startUs).toBe(0);
   });
 
   it('toggles disable and mute on target clip', async () => {

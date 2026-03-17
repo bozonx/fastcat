@@ -77,9 +77,10 @@ describe('useFileManagerPanelActions', () => {
     const actions = useFileManagerPanelActions({
       vfs: { readFile: vi.fn() },
       loadProjectDirectory: vi.fn().mockResolvedValue(undefined),
+      reloadDirectory: vi.fn().mockResolvedValue(undefined),
       findEntryByPath: vi.fn().mockReturnValue(createdEntry),
       onFileActionBase: vi.fn(),
-      openConversionModal: vi.fn(),
+      handleConvert: vi.fn(),
       openTranscriptionModal: vi.fn(),
       extractAudio: vi.fn().mockResolvedValue(undefined),
       addFileTab: vi.fn(),
@@ -109,9 +110,10 @@ describe('useFileManagerPanelActions', () => {
     const actions = useFileManagerPanelActions({
       vfs: { readFile: vi.fn() },
       loadProjectDirectory: vi.fn().mockResolvedValue(undefined),
+      reloadDirectory: vi.fn().mockResolvedValue(undefined),
       findEntryByPath: vi.fn().mockReturnValue(null),
       onFileActionBase,
-      openConversionModal: vi.fn(),
+      handleConvert: vi.fn(),
       openTranscriptionModal: vi.fn(),
       extractAudio: vi.fn().mockResolvedValue(undefined),
       addFileTab: vi.fn(),

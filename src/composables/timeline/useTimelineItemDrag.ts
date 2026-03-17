@@ -220,14 +220,17 @@ export function useTimelineItemDrag(
     const timelineEndUs = Number.isFinite(timelineStore.duration)
       ? Math.max(0, Math.round(timelineStore.duration))
       : null;
+    const snapSettings = workspaceStore.userSettings.timeline.snapping;
     dragSnapTargetsUs.value = computeSnapTargetsUs({
       tracks: tracks.value,
       excludeItemId: itemId,
-      includeTimelineStart: true,
-      includeTimelineEndUs: timelineEndUs,
-      includePlayheadUs: timelineStore.currentTime,
-      includeMarkers: true,
+      includeTimelineStart: snapSettings.timelineEdges,
+      includeTimelineEndUs: snapSettings.timelineEdges ? timelineEndUs : null,
+      includePlayheadUs: snapSettings.playhead ? timelineStore.currentTime : null,
+      includeMarkers: snapSettings.markers,
       markers: timelineStore.getMarkers(),
+      includeClips: snapSettings.clips,
+      selectionRangeUs: snapSettings.selection ? timelineStore.getSelectionRange() : null,
     });
 
     dragStartSnapshot.value = timelineStore.timelineDoc;
@@ -281,14 +284,17 @@ export function useTimelineItemDrag(
     const timelineEndUs = Number.isFinite(timelineStore.duration)
       ? Math.max(0, Math.round(timelineStore.duration))
       : null;
+    const snapSettings = workspaceStore.userSettings.timeline.snapping;
     dragSnapTargetsUs.value = computeSnapTargetsUs({
       tracks: tracks.value,
       excludeItemId: input.itemId,
-      includeTimelineStart: true,
-      includeTimelineEndUs: timelineEndUs,
-      includePlayheadUs: timelineStore.currentTime,
-      includeMarkers: true,
+      includeTimelineStart: snapSettings.timelineEdges,
+      includeTimelineEndUs: snapSettings.timelineEdges ? timelineEndUs : null,
+      includePlayheadUs: snapSettings.playhead ? timelineStore.currentTime : null,
+      includeMarkers: snapSettings.markers,
       markers: timelineStore.getMarkers(),
+      includeClips: snapSettings.clips,
+      selectionRangeUs: snapSettings.selection ? timelineStore.getSelectionRange() : null,
     });
 
     dragStartSnapshot.value = timelineStore.timelineDoc;

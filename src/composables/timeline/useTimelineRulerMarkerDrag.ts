@@ -1,5 +1,10 @@
 import { onUnmounted, ref, type Ref, computed } from 'vue';
-import { pxToTimeUs, timeUsToPx } from '~/utils/timeline/geometry';
+import {
+  pxToTimeUs,
+  timeUsToPx,
+  pickBestSnapCandidateUs,
+  zoomToPxPerSecond,
+} from '~/utils/timeline/geometry';
 import { TIMELINE_RULER_CONSTANTS } from '~/utils/constants';
 import { quantizeTimeUsToFrames } from '~/timeline/commands/utils';
 
@@ -15,6 +20,8 @@ interface UseTimelineRulerMarkerDragOptions {
   fps: Ref<number>;
   selectMarker: (markerId: string) => void;
   updateMarker: (markerId: string, patch: { timeUs?: number; durationUs?: number }) => void;
+  computeSnapTargets?: () => number[];
+  snapThresholdPx?: Ref<number>;
 }
 
 export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOptions) {
@@ -70,8 +77,19 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
     if (draggedMarkerPart.value === 'left') {
       const startPx = timeUsToPx(markerDragStartUs.value, currentZoom);
       const newPx = Math.max(0, startPx + dx);
-      const newUs = Math.max(0, quantize(pxToTimeUs(newPx, currentZoom)));
+      let newUs = Math.max(0, quantize(pxToTimeUs(newPx, currentZoom)));
       const marker = options.markers.value.find((item) => item.id === draggedMarkerId.value);
+
+      if (options.computeSnapTargets && options.snapThresholdPx) {
+        const thresholdUs = Math.round(
+          (options.snapThresholdPx.value / zoomToPxPerSecond(currentZoom)) * 1e6,
+        );
+        const targets = options.computeSnapTargets();
+        const snap = pickBestSnapCandidateUs({ rawUs: newUs, thresholdUs, targetsUs: targets });
+        if (snap.distUs < thresholdUs) {
+          newUs = Math.max(0, snap.snappedUs);
+        }
+      }
 
       if (marker && marker.durationUs !== undefined) {
         const endUs = markerDragStartUs.value + markerDragStartDurationUs.value;
@@ -93,7 +111,19 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
       TIMELINE_RULER_CONSTANTS.MIN_MARKER_DURATION_PX,
       durationPx + dx,
     );
-    const newDurationUs = Math.max(1, quantize(pxToTimeUs(newDurationPx, currentZoom)));
+    let newDurationUs = Math.max(1, quantize(pxToTimeUs(newDurationPx, currentZoom)));
+
+    if (options.computeSnapTargets && options.snapThresholdPx) {
+      const endUs = markerDragStartUs.value + newDurationUs;
+      const thresholdUs = Math.round(
+        (options.snapThresholdPx.value / zoomToPxPerSecond(currentZoom)) * 1e6,
+      );
+      const targets = options.computeSnapTargets();
+      const snap = pickBestSnapCandidateUs({ rawUs: endUs, thresholdUs, targetsUs: targets });
+      if (snap.distUs < thresholdUs) {
+        newDurationUs = Math.max(1, snap.snappedUs - markerDragStartUs.value);
+      }
+    }
 
     draggedMarkerPatch.value = { durationUs: newDurationUs };
   }

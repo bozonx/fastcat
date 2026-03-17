@@ -8,14 +8,14 @@ import {
 } from '../../../src/utils/conversion/helpers';
 
 describe('conversion/helpers', () => {
-  it('resolveAudioChannelsFromMeta maps mono and falls back to stereo', () => {
-    expect(resolveAudioChannelsFromMeta(1)).toBe('mono');
-    expect(resolveAudioChannelsFromMeta(2)).toBe('stereo');
-    expect(resolveAudioChannelsFromMeta(undefined)).toBe('stereo');
+  it('resolveAudioChannelsFromMeta returns numeric channels and falls back to stereo channel count', () => {
+    expect(resolveAudioChannelsFromMeta(1)).toBe(1);
+    expect(resolveAudioChannelsFromMeta(2)).toBe(2);
+    expect(resolveAudioChannelsFromMeta(undefined)).toBe(2);
   });
 
   it('resolveAudioOnlyContainerFormat returns container by codec', () => {
-    expect(resolveAudioOnlyContainerFormat('opus')).toBe('mkv');
+    expect(resolveAudioOnlyContainerFormat('opus')).toBe('webm');
     expect(resolveAudioOnlyContainerFormat('aac')).toBe('mp4');
   });
 
