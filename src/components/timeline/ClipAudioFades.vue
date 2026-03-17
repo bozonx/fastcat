@@ -51,12 +51,18 @@ function shouldCollapseFades() {
   return props.clipWidthPx < 20;
 }
 
-function clampHandlePx(px: number, width: number) {
-  const pad = 4;
-  if (width <= pad * 2) {
-    return width / 2;
+function getFadeHandlePositionPx(edge: 'in' | 'out') {
+  const fadeUs = Math.max(
+    0,
+    Math.round(Number(edge === 'in' ? props.clip.audioFadeInUs : props.clip.audioFadeOutUs) || 0),
+  );
+  const fadePx = Math.min(Math.max(0, timeUsToPx(fadeUs, props.zoom)), props.clipWidthPx);
+
+  if (edge === 'in') {
+    return Math.max(0, Math.min(props.clipWidthPx, fadePx));
   }
-  return Math.min(Math.max(pad, px), width - pad);
+
+  return Math.max(0, Math.min(props.clipWidthPx, props.clipWidthPx - fadePx));
 }
 
 function onFadeHandlePointerDown(
@@ -82,7 +88,7 @@ function onFadeHandlePointerDown(
     if (Math.abs(moveEvent.clientX - startX) > 3 || Math.abs(moveEvent.clientY - startY) > 3) {
       didStartDrag = true;
       cleanup();
-      emit('startResizeFade', moveEvent, payload);
+      emit('startResizeFade', event, payload);
     }
   };
 
@@ -163,7 +169,7 @@ const volumeY = computed(() => {
           isMobile ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100',
         ]"
         :style="{
-          left: `${clampHandlePx(Math.min(Math.max(0, timeUsToPx(clip.audioFadeInUs || 0, zoom)), clipWidthPx), clipWidthPx)}px`,
+          left: `${getFadeHandlePositionPx('in')}px`,
           zIndex: 'var(--z-clip-handles)',
         }"
       >
@@ -182,7 +188,7 @@ const volumeY = computed(() => {
           isMobile ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100',
         ]"
         :style="{
-          left: `${clipWidthPx - clampHandlePx(Math.min(Math.max(0, timeUsToPx(clip.audioFadeOutUs || 0, zoom)), clipWidthPx), clipWidthPx)}px`,
+          left: `${getFadeHandlePositionPx('out')}px`,
           zIndex: 'var(--z-clip-handles)',
         }"
       >
