@@ -42,6 +42,7 @@ const emit = defineEmits<{
   dragEnd: [];
   focus: [panelId: string];
   close: [panel: DynamicPanel, view: 'cut' | 'sound'];
+  moveToView: [panel: DynamicPanel, view: 'cut' | 'sound'];
 }>();
 </script>
 
@@ -97,11 +98,11 @@ const emit = defineEmits<{
             <EditorDynamicPanelContent
               :panel="panel"
               :view="view"
-              :is-focused="isFocused(panel.id)"
               :focus-panel-id="getFocusId(panel.id)"
               @drag-start="(event, panelId) => emit('dragStart', event, panelId)"
               @focus="(panelId) => emit('focus', panelId)"
               @close="(targetPanel, targetView) => emit('close', targetPanel, targetView)"
+              @move-to-view="(targetPanel, targetView) => emit('moveToView', targetPanel, targetView)"
             />
           </div>
         </Pane>

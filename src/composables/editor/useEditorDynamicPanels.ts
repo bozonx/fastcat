@@ -115,11 +115,29 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
     if (!String(focusId).startsWith('dynamic:')) return null;
     const panelId = String(focusId).slice('dynamic:'.length);
 
+    return getPanelById(panelId);
+  }
+
+  function getPanelById(panelId: string) {
     return (
       [...projectStore.cutPanels, ...projectStore.soundPanels]
         .flatMap((column) => column.panels)
         .find((panel) => panel.id === panelId) ?? null
     );
+  }
+
+  function getPanelView(panelId: string): 'cut' | 'sound' | null {
+    const isInCut = projectStore.cutPanels.some((column) =>
+      column.panels.some((panel) => panel.id === panelId),
+    );
+    if (isInCut) return 'cut';
+
+    const isInSound = projectStore.soundPanels.some((column) =>
+      column.panels.some((panel) => panel.id === panelId),
+    );
+    if (isInSound) return 'sound';
+
+    return null;
   }
 
   function resetDragState() {
@@ -212,9 +230,26 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
     }
   }
 
+  function movePanelToView(panel: DynamicPanel, targetView: 'cut' | 'sound') {
+    const sourceView = getPanelView(panel.id);
+    if (!sourceView || sourceView === targetView) {
+      return;
+    }
+
+    projectStore.removePanel(panel.id, sourceView);
+    projectStore.insertPanelAt({ ...panel }, undefined, undefined, targetView);
+
+    if (projectStore.currentView !== targetView) {
+      projectStore.setView(targetView);
+    }
+
+    focusDynamicPanel(panel.id);
+  }
+
   function onDrop(input: PanelDropInput) {
     const { event, targetPanelId, view = 'cut' } = input;
     event.preventDefault();
+    const targetPanel = getPanelById(targetPanelId);
 
     const staticTabRaw = event.dataTransfer?.getData('static-tab-drag');
     if (staticTabRaw && dropPosition.value) {
@@ -290,6 +325,11 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
       try {
         const payload = JSON.parse(fileDragData);
         if (payload.kind === 'file' && dropPosition.value) {
+          if (targetPanel?.filePath && targetPanel.filePath === payload.path) {
+            resetDragState();
+            return;
+          }
+
           const panelPosition = dropPosition.value;
           if (!isOpenableProjectFileName(String(payload.name ?? ''))) {
             resetDragState();
@@ -384,9 +424,11 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
     dropPosition,
     getActiveDetachedPanel,
     getDynamicPanelFocusId,
+    getPanelView,
     getVerticalSize,
     focusDynamicPanel,
     closePanelAndRestoreTab,
+    movePanelToView,
     onDragEnd,
     onDragLeave,
     onDragOver,

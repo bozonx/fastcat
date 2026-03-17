@@ -229,13 +229,29 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     if (!isCreatingSelectionRange.value) return;
 
     suppressNextRulerClick.value = true;
-    const currentUs = options.getTimeUsFromPointerEvent(event);
+    let currentUs = quantize(options.getTimeUsFromPointerEvent(event));
+
+    if (options.computeSnapTargets && options.snapThresholdPx) {
+      const thresholdUs = Math.round(
+        (options.snapThresholdPx / zoomToPxPerSecond(options.zoom.value)) * 1e6,
+      );
+      const targets = options.computeSnapTargets();
+      const snap = pickBestSnapCandidateUs({
+        rawUs: currentUs,
+        thresholdUs,
+        targetsUs: targets,
+      });
+      if (snap.distUs < thresholdUs) {
+        currentUs = snap.snappedUs;
+      }
+    }
+
     const startUs = Math.min(selectionCreateStartUs.value, currentUs);
     const endUs = Math.max(selectionCreateStartUs.value, currentUs);
 
     draggedSelectionPatch.value = {
-      startUs: quantize(startUs),
-      endUs: Math.max(quantize(startUs) + getFrameDurationUs(), quantize(endUs)),
+      startUs,
+      endUs: Math.max(startUs + getFrameDurationUs(), endUs),
     };
 
     if (options.setPreviewSelectionRange) {
