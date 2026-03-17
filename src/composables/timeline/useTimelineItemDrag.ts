@@ -26,11 +26,19 @@ import {
   computeSnappedStartUs,
 } from '~/utils/timeline/geometry';
 import { sanitizeFps, getLinkedClipGroupItemIds } from '~/timeline/commands/utils';
+import { formatStopFrameTimecode } from '~/utils/stop-frames';
 
 export interface TimelineMovePreview {
   itemId: string;
   trackId: string;
   startUs: number;
+}
+
+export interface TimelineSlipPreview {
+  itemId: string;
+  trackId: string;
+  deltaUs: number;
+  timecode: string;
 }
 
 export function useTimelineItemDrag(
@@ -47,10 +55,12 @@ export function useTimelineItemDrag(
   const draggingItemId = ref<string | null>(null);
   const draggingTrackId = ref<string | null>(null);
   const dragOriginTrackId = ref<string | null>(null);
-  const draggingMode = ref<'move' | 'trim_start' | 'trim_end' | null>(null);
+  const draggingMode = ref<'move' | 'slip' | 'trim_start' | 'trim_end' | null>(null);
   const dragAnchorClientX = ref(0);
   const dragAnchorStartUs = ref(0);
   const dragAnchorDurationUs = ref(0);
+  const dragAnchorSourceStartUs = ref(0);
+  const dragAnchorSourceDurationUs = ref(0);
   const dragFrameOffsetUs = ref(0);
   const dragLastAppliedQuantizedDeltaUs = ref(0);
   const dragSnapTargetsUs = ref<number[]>([]);
@@ -62,6 +72,7 @@ export function useTimelineItemDrag(
   const pendingDragClientY = ref<number | null>(null);
 
   const movePreview = ref<TimelineMovePreview | null>(null);
+  const slipPreview = ref<TimelineSlipPreview | null>(null);
   const pendingMoveCommit = ref<{
     fromTrackId: string;
     toTrackId: string;
@@ -90,7 +101,11 @@ export function useTimelineItemDrag(
   }
 
   function toggleToolbarMoveMode(mode: string): string {
-    return mode === 'snap' ? 'free_mode' : 'snap';
+    if (mode === 'snap') {
+      return settingsStore.toolbarMoveMode === 'snap' ? 'free_mode' : settingsStore.toolbarMoveMode;
+    }
+
+    return 'snap';
   }
 
   function resolveDragAction(
@@ -130,6 +145,21 @@ export function useTimelineItemDrag(
     dragToggleSnapOverride.value = action === 'toggle_snap';
   }
 
+  function canSlipClip(
+    payloadMode: TimelineMoveItemPayload['mode'],
+    item: TimelineTrack['items'][number] | undefined,
+  ): boolean {
+    if (payloadMode !== 'slip') return false;
+    if (!item || item.kind !== 'clip') return false;
+    if (item.clipType !== 'media' && item.clipType !== 'timeline') return false;
+    if (item.isImage) return false;
+
+    const sourceDurationUs = Math.max(0, Math.round(Number(item.sourceDurationUs ?? 0)));
+    const sourceRangeDurationUs = Math.max(0, Math.round(Number(item.sourceRange.durationUs ?? 0)));
+
+    return sourceDurationUs > sourceRangeDurationUs;
+  }
+
   function scheduleDragReapplyFromLastPointerPosition() {
     if (!draggingMode.value) return;
 
@@ -165,7 +195,7 @@ export function useTimelineItemDrag(
       }
     }
 
-    draggingMode.value = 'move';
+    draggingMode.value = canSlipClip(payload.mode, item) ? 'slip' : 'move';
     draggingTrackId.value = trackId;
     dragOriginTrackId.value = trackId;
     draggingItemId.value = itemId;
@@ -179,6 +209,8 @@ export function useTimelineItemDrag(
     dragAnchorDurationUs.value =
       tracks.value.find((t) => t.id === trackId)?.items.find((it) => it.id === itemId)
         ?.timelineRange.durationUs ?? 0;
+    dragAnchorSourceStartUs.value = item?.kind === 'clip' ? item.sourceRange.startUs : 0;
+    dragAnchorSourceDurationUs.value = item?.kind === 'clip' ? item.sourceRange.durationUs : 0;
     dragAnchorItemDurationUs.value = dragAnchorDurationUs.value;
     const fps = sanitizeFps(timelineStore.timelineDoc?.timebase?.fps);
     const q = quantizeStartUsToFrames(startUs, fps);
@@ -208,6 +240,7 @@ export function useTimelineItemDrag(
       startUs,
     };
     pendingMoveCommit.value = null;
+    slipPreview.value = null;
 
     (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
     window.addEventListener('keydown', onGlobalKeyDown);
@@ -312,6 +345,49 @@ export function useTimelineItemDrag(
     const snapThresholdPx = settingsStore.snapThresholdPx;
     const isShiftPressed = dragUsePseudoOverlapOverride.value;
     const overlapMode = isShiftPressed ? 'pseudo' : settingsStore.overlapMode;
+
+    if (mode === 'slip') {
+      const track = tracks.value.find((value) => value.id === trackId);
+      const item = track?.items.find((value) => value.id === itemId);
+      if (!item || item.kind !== 'clip') return;
+
+      const dxPx = clientX - dragAnchorClientX.value;
+      const rawDeltaUs = pxToDeltaUs(dxPx, zoom);
+      const maxSourceStartUs = Math.max(
+        0,
+        Math.round(Number(item.sourceDurationUs ?? 0) - dragAnchorSourceDurationUs.value),
+      );
+      const nextSourceStartUs = Math.min(
+        maxSourceStartUs,
+        Math.max(0, Math.round(dragAnchorSourceStartUs.value + rawDeltaUs)),
+      );
+      const deltaUs = nextSourceStartUs - dragAnchorSourceStartUs.value;
+
+      slipPreview.value = {
+        itemId,
+        trackId,
+        deltaUs,
+        timecode: formatStopFrameTimecode({ timeUs: Math.abs(deltaUs), fps }),
+      };
+
+      const cmd = {
+        type: 'update_clip_properties',
+        trackId,
+        itemId,
+        properties: {
+          sourceRange: {
+            ...item.sourceRange,
+            startUs: nextSourceStartUs,
+            durationUs: dragAnchorSourceDurationUs.value,
+          },
+        },
+      } as const;
+
+      timelineStore.applyTimeline(cmd as any, { saveMode: 'none', skipHistory: true });
+      lastDragAppliedCmd.value = cmd as any;
+      hasPendingTimelinePersist.value = true;
+      return;
+    }
 
     if (mode === 'move') {
       const dxPx = clientX - dragAnchorClientX.value;
@@ -726,6 +802,7 @@ export function useTimelineItemDrag(
 
     movePreview.value = null;
     pendingMoveCommit.value = null;
+    slipPreview.value = null;
 
     dragStartSnapshot.value = null;
     lastDragAppliedCmd.value = null;
@@ -752,6 +829,7 @@ export function useTimelineItemDrag(
     draggingMode,
     draggingItemId,
     movePreview,
+    slipPreview,
     startMoveItem,
     startTrimItem,
     onGlobalPointerMove,

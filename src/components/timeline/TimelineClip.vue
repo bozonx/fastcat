@@ -17,6 +17,7 @@ import { useMediaStore } from '~/stores/media.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import { timeUsToPx, sanitizeFps } from '~/utils/timeline/geometry';
 import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
 import { getClipClass, getOverlayGuideOffsetPx } from '~/utils/timeline/clip';
@@ -43,6 +44,12 @@ interface Props {
   canEditClipContent: boolean;
   isDraggingCurrentItem: boolean;
   isMovePreviewCurrentItem: boolean;
+  slipPreview?: {
+    itemId: string;
+    trackId: string;
+    deltaUs: number;
+    timecode: string;
+  } | null;
   selectedTransition: { trackId: string; itemId: string; edge: 'in' | 'out' } | null;
   resizeVolume: {
     itemId: string;
@@ -81,6 +88,7 @@ const selectionStore = useSelectionStore();
 const mediaStore = useMediaStore();
 const uiStore = useUiStore();
 const projectStore = useProjectStore();
+const settingsStore = useTimelineSettingsStore();
 const workspaceStore = useWorkspaceStore();
 
 let didStartClipDrag = false;
@@ -149,6 +157,10 @@ function onClipPointerdown(e: PointerEvent) {
       trackId: props.track.id,
       itemId: props.item.id,
       startUs: props.item.timelineRange.startUs,
+      mode:
+        settingsStore.toolbarMoveModeEnabled && settingsStore.toolbarMoveMode === 'slip'
+          ? 'slip'
+          : 'move',
     });
   };
 

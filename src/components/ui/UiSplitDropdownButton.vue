@@ -10,16 +10,22 @@ const props = withDefaults(
   defineProps<{
     ariaLabel: string;
     caretAriaLabel?: string;
+    buttonClass?: string;
     color?: 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error' | 'neutral';
+    caretButtonClass?: string;
     disabled?: boolean;
     icon?: string;
+    caretIconClass?: string;
     items: DropdownActionItem[][];
     size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
     variant?: 'solid' | 'outline' | 'soft' | 'subtle' | 'ghost' | 'link';
   }>(),
   {
     caretAriaLabel: undefined,
+    buttonClass: '',
     color: 'neutral',
+    caretButtonClass: '',
+    caretIconClass: 'size-3',
     disabled: false,
     icon: undefined,
     size: 'sm',
@@ -46,7 +52,7 @@ function onMainClick() {
       :icon="icon"
       :aria-label="ariaLabel"
       :disabled="disabled"
-      class="hover:bg-ui-bg-hover"
+      :class="buttonClass"
       @click="onMainClick"
     />
 
@@ -58,8 +64,8 @@ function onMainClick() {
         icon="i-heroicons-chevron-down"
         :aria-label="caretAriaLabel ?? ariaLabel"
         :disabled="disabled"
-        class="px-1 hover:bg-ui-bg-hover"
-        :ui="{ leadingIcon: 'size-3' }"
+        :class="caretButtonClass"
+        :ui="{ leadingIcon: caretIconClass }"
       />
     </UDropdownMenu>
   </UFieldGroup>

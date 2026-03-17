@@ -275,6 +275,7 @@ export interface TimelineMoveItemPayload {
   trackId: string;
   itemId: string;
   startUs: number;
+  mode?: 'move' | 'slip';
 }
 
 export interface TimelineTrimItemPayload {

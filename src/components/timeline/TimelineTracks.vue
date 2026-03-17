@@ -57,7 +57,8 @@ const props = defineProps<{
     kind: 'timeline-clip' | 'file';
   } | null;
   movePreview?: { itemId: string; trackId: string; startUs: number } | null;
-  draggingMode?: 'move' | 'trim_start' | 'trim_end' | null;
+  slipPreview?: { itemId: string; trackId: string; deltaUs: number; timecode: string } | null;
+  draggingMode?: 'move' | 'slip' | 'trim_start' | 'trim_end' | null;
   draggingItemId?: string | null;
   isMobile?: boolean;
 }>();
@@ -334,6 +335,7 @@ function selectTransition(
           :resize-volume="resizeVolume"
           :scroll-left="scrollLeft"
           :viewport-width="viewportWidth"
+          :slip-preview="slipPreview?.itemId === item.id ? slipPreview : null"
           @select-item="(ev, id) => emit('selectItem', ev, id)"
           @start-move-item="(ev, payload) => emit('startMoveItem', ev, payload)"
           @start-trim-item="(ev, payload) => emit('startTrimItem', ev, payload)"
