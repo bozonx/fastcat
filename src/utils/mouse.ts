@@ -48,6 +48,7 @@ export const MOUSE_HORIZONTAL_MOVEMENT_ACTIONS = ['move_playhead', 'none'] as co
 export type MouseHorizontalMovementAction = (typeof MOUSE_HORIZONTAL_MOVEMENT_ACTIONS)[number];
 
 export const CLIP_DRAG_ACTIONS = [
+  'toggle_clip_move_mode',
   'pseudo_overlap',
   'free_mode',
   'copy',

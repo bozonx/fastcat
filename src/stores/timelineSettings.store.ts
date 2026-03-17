@@ -6,6 +6,8 @@ import { DEFAULT_SNAP_SETTINGS } from '~/utils/timeline-modes';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 
+export type ToolbarMoveMode = 'snap' | 'free_mode' | 'pseudo_overlap' | 'copy';
+
 export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
   const workspaceStore = useWorkspaceStore();
 
@@ -26,6 +28,11 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
     DEFAULT_SNAP_SETTINGS.clipSnapMode,
   );
 
+  const toolbarMoveMode = useLocalStorage<ToolbarMoveMode>(
+    'fastcat:timeline:toolbar-move-mode',
+    'snap',
+  );
+
   if (overlapMode.value !== 'none' && overlapMode.value !== 'pseudo') {
     overlapMode.value = DEFAULT_SNAP_SETTINGS.overlapMode;
   }
@@ -36,6 +43,15 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
 
   if (clipSnapMode.value !== 'none' && clipSnapMode.value !== 'clips') {
     clipSnapMode.value = DEFAULT_SNAP_SETTINGS.clipSnapMode;
+  }
+
+  if (
+    toolbarMoveMode.value !== 'snap' &&
+    toolbarMoveMode.value !== 'free_mode' &&
+    toolbarMoveMode.value !== 'pseudo_overlap' &&
+    toolbarMoveMode.value !== 'copy'
+  ) {
+    toolbarMoveMode.value = 'snap';
   }
 
   const snapThresholdPx = computed(() => {
@@ -83,6 +99,7 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
     overlapMode,
     frameSnapMode,
     clipSnapMode,
+    toolbarMoveMode,
     snapThresholdPx,
     setOverlapMode,
     setFrameSnapMode,

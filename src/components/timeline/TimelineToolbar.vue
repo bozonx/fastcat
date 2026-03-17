@@ -27,8 +27,76 @@ const trimMenuItems = [
   ],
 ];
 
-function toggleClipSnapMode() {
-  settingsStore.setClipSnapMode(settingsStore.clipSnapMode === 'clips' ? 'none' : 'clips');
+const snapMenuItems = computed(() => [
+  [
+    {
+      label: t('fastcat.timeline.clipSnapOn', 'Snap'),
+      icon: settingsStore.toolbarMoveMode === 'snap' ? 'i-heroicons-check' : 'i-heroicons-none',
+      onSelect: () => {
+        settingsStore.toolbarMoveMode = 'snap';
+      },
+    },
+    {
+      label: t('videoEditor.settings.actionFreeMode', 'Free mode'),
+      icon: settingsStore.toolbarMoveMode === 'free_mode' ? 'i-heroicons-check' : 'i-heroicons-none',
+      onSelect: () => {
+        settingsStore.toolbarMoveMode = 'free_mode';
+      },
+    },
+    {
+      label: t('videoEditor.settings.actionPseudoOverlap', 'Pseudo overlap'),
+      icon: settingsStore.toolbarMoveMode === 'pseudo_overlap' ? 'i-heroicons-check' : 'i-heroicons-none',
+      onSelect: () => {
+        settingsStore.toolbarMoveMode = 'pseudo_overlap';
+      },
+    },
+    {
+      label: t('videoEditor.settings.actionCopy', 'Copy clip'),
+      icon: settingsStore.toolbarMoveMode === 'copy' ? 'i-heroicons-check' : 'i-heroicons-none',
+      onSelect: () => {
+        settingsStore.toolbarMoveMode = 'copy';
+      },
+    },
+  ],
+]);
+
+const toolbarMoveModeIcon = computed(() => {
+  if (settingsStore.toolbarMoveMode === 'free_mode') {
+    return 'i-heroicons-arrows-pointing-out';
+  }
+
+  if (settingsStore.toolbarMoveMode === 'pseudo_overlap') {
+    return 'i-heroicons-rectangle-stack';
+  }
+
+  if (settingsStore.toolbarMoveMode === 'copy') {
+    return 'i-heroicons-document-duplicate';
+  }
+
+  return 'i-heroicons-link';
+});
+
+const toolbarMoveModeVariant = computed(() => {
+  return settingsStore.toolbarMoveMode === 'snap' ? 'ghost' : 'solid';
+});
+
+function cycleToolbarMoveMode() {
+  if (settingsStore.toolbarMoveMode === 'snap') {
+    settingsStore.toolbarMoveMode = 'free_mode';
+    return;
+  }
+
+  if (settingsStore.toolbarMoveMode === 'free_mode') {
+    settingsStore.toolbarMoveMode = 'pseudo_overlap';
+    return;
+  }
+
+  if (settingsStore.toolbarMoveMode === 'pseudo_overlap') {
+    settingsStore.toolbarMoveMode = 'copy';
+    return;
+  }
+
+  settingsStore.toolbarMoveMode = 'snap';
 }
 
 function onDragStart(event: DragEvent, type: 'adjustment' | 'background' | 'text') {
@@ -64,18 +132,16 @@ function onDragEnd() {
   >
 
     <UTooltip
-      :text="
-        settingsStore.clipSnapMode === 'clips'
-          ? t('fastcat.timeline.clipSnapOn', 'Snap to clips')
-          : t('fastcat.timeline.clipSnapOff', 'No clip snapping')
-      "
+      :text="t('fastcat.timeline.moveMode', 'Clip Move Mode')"
     >
-      <UButton
+      <UiSplitDropdownButton
         size="xs"
-        :variant="settingsStore.clipSnapMode === 'clips' ? 'solid' : 'ghost'"
-        :color="settingsStore.clipSnapMode === 'clips' ? 'primary' : 'neutral'"
-        icon="i-heroicons-link"
-        @click="toggleClipSnapMode"
+        :variant="toolbarMoveModeVariant"
+        :color="settingsStore.toolbarMoveMode === 'snap' ? 'neutral' : 'primary'"
+        :icon="toolbarMoveModeIcon"
+        :ariaLabel="t('fastcat.timeline.moveMode', 'Clip Move Mode')"
+        :items="snapMenuItems"
+        @click="cycleToolbarMoveMode"
       />
     </UTooltip>
 
