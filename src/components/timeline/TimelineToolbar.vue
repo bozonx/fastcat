@@ -76,7 +76,7 @@ const toolbarMoveModeIcon = computed(() => {
   }
 
   if (settingsStore.toolbarMoveMode === 'slip') {
-    return 'i-heroicons-bars-arrow-horizontal';
+    return 'i-heroicons-arrows-right-left';
   }
 
   return 'i-heroicons-link';
@@ -94,7 +94,9 @@ function toggleToolbarMoveMode() {
   settingsStore.toggleSelectedToolbarMoveMode();
 }
 
-function toggleTrimMode() {
+function toggleTrimMode(event?: MouseEvent) {
+  event?.preventDefault();
+  event?.stopPropagation();
   timelineStore.isTrimModeActive = !timelineStore.isTrimModeActive;
 }
 
