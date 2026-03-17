@@ -12,6 +12,7 @@ export const MAX_AUDIO_FILE_BYTES = 200 * 1024 * 1024; // 200MB
 
 export const VIDEO_CORE_LIMITS = {
   MAX_CONCURRENT_VIDEO_SAMPLE_REQUESTS: 4,
+  MAX_VIDEO_SAMPLE_REQUEST_TIMEOUT_MS: 5_000,
   MAX_VIDEO_FRAME_CACHE_MB: 256,
   MAX_WORKER_RPC_PENDING_CALLS: 500,
   /** Max gap (µs) between adjacent clips to still apply blend shadow during transitions */
