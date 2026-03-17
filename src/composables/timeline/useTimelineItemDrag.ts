@@ -81,6 +81,10 @@ export function useTimelineItemDrag(
 
   let dragRafId: number | null = null;
 
+  function toggleToolbarMoveMode(mode: string): string {
+    return mode === 'snap' ? 'free_mode' : 'snap';
+  }
+
   function resolveDragAction(
     event: PointerEvent | KeyboardEvent | MouseEvent,
     pointerButton: 0 | 2,
@@ -103,6 +107,14 @@ export function useTimelineItemDrag(
   }
 
   function applyDragAction(action: string) {
+    if (action === 'none') {
+      action = 'snap';
+    }
+
+    if (action === 'toggle_clip_move_mode') {
+      action = toggleToolbarMoveMode(settingsStore.toolbarMoveMode);
+    }
+
     dragIsFreeOverride.value = action === 'free_mode' || action === 'copy';
     dragUsePseudoOverlapOverride.value = action === 'pseudo_overlap';
     dragDisableFrameSnapOverride.value = action === 'free_mode' || action === 'copy';

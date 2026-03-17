@@ -232,8 +232,6 @@ function onDragVirtualEnd() {
 <template>
   <div class="h-full w-full shrink-0 border-r border-ui-border flex flex-col bg-ui-bg">
     <TimelineToolbar
-      :is-snap-active="settingsStore.clipSnapMode === 'clips'"
-      @toggle-snap="toggleClipSnapMode"
       @select-properties="timelineStore.selectTimelineProperties()"
       @split="timelineStore.splitClipsAtPlayhead()"
       @drag-virtual-start="onDragVirtualStart"

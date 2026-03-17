@@ -103,6 +103,10 @@ export function useMouseSettings() {
   }));
 
   const clipDragLabels = computed<Record<string, string>>(() => ({
+    toggle_clip_move_mode: t(
+      'videoEditor.settings.mouseActionToggleClipMoveMode',
+      'Toggle current move mode on/off',
+    ),
     pseudo_overlap: t('videoEditor.settings.mouseActionPseudoOverlap', 'Pseudo overlap'),
     free_mode: t('videoEditor.settings.mouseActionFreeMode', 'Free mode'),
     copy: t('videoEditor.settings.mouseActionCopy', 'Copy clip'),
