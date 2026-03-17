@@ -21,7 +21,7 @@ import {
 } from '~/utils/workspace-common';
 
 import MonitorContainer from '~/components/monitor/MonitorContainer.vue';
-import Timeline from '~/components/Timeline.vue';
+import Timeline from '~/components/layout-panels/Timeline.vue';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 

@@ -2,7 +2,7 @@
 import { computed, ref, watch, nextTick } from 'vue';
 
 import type { TimelineClipItem } from '~/timeline/types';
-import AppModal from '~/components/ui/AppModal.vue';
+import UiModal from '~/components/ui/UiModal.vue';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 
 const { t } = useI18n();
@@ -62,7 +62,7 @@ watch(() => props.open, (newValue) => {
 </script>
 
 <template>
-  <AppModal
+  <UiModal
     v-model:open="isOpen"
     :title="t('fastcat.timeline.speedModalTitle')"
     :description="t('fastcat.timeline.speedModalDescription')"
@@ -105,5 +105,5 @@ watch(() => props.open, (newValue) => {
         </UButton>
       </div>
     </template>
-  </AppModal>
+  </UiModal>
 </template>

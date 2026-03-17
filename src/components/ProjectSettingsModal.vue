@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import AppModal from '~/components/ui/AppModal.vue';
+import UiModal from '~/components/ui/UiModal.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import { ref, computed } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
@@ -87,7 +87,7 @@ async function resetToDefaults() {
 </script>
 
 <template>
-  <AppModal
+  <UiModal
     v-model:open="isOpen"
     :title="
       t('videoEditor.projectSettings.title', 'Project Settings') +
@@ -184,5 +184,5 @@ async function resetToDefaults() {
         />
       </div>
     </template>
-  </AppModal>
+  </UiModal>
 </template>

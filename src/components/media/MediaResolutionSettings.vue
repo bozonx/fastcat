@@ -141,7 +141,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
           <label class="text-xs text-ui-text-muted font-medium">
             {{ t('videoEditor.resolution.orientation', 'Orientation') }}
           </label>
-          <UiAppButtonGroup
+          <UiButtonGroup
             v-model="localOrientation"
             :options="orientationOptions as any"
             :disabled="disabled"

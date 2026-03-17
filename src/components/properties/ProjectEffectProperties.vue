@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UiModal from "~/components/ui/UiModal.vue";
 import { ref, watch, computed } from 'vue';
 import { getEffectManifest } from '~/effects';
 import { usePresetsStore } from '~/stores/presets.store';
@@ -99,7 +100,7 @@ function handleUpdatePreset() {
       </UButton>
     </div>
 
-    <UModal
+    <UiModal
       v-model:open="isSaveModalOpen"
       :title="t('fastcat.effects.savePresetTitle', 'Save Preset')"
     >
@@ -123,7 +124,7 @@ function handleUpdatePreset() {
           </div>
         </div>
       </template>
-    </UModal>
+    </UiModal>
   </div>
   <div v-else class="text-ui-text-muted text-center text-sm p-4">
     {{ t('common.notFound', 'Not found') }}

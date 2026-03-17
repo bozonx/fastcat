@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue';
 
+import UiModal from '~/components/ui/UiModal.vue';
+
 const props = defineProps<{
   open: boolean;
   title?: string;
@@ -48,19 +50,17 @@ function handleSubmit() {
 </script>
 
 <template>
-  <UModal v-model:open="isOpen" :title="title || t('common.rename', 'Rename')">
-    <template #body>
-      <form class="space-y-4" @submit.prevent="handleSubmit">
-        <UFormField :label="t('common.name', 'Name')">
-          <UInput
-            ref="inputRef"
-            v-model="name"
-            class="w-full"
-            :placeholder="t('common.namePlaceholder', 'Enter name...')"
-          />
-        </UFormField>
-      </form>
-    </template>
+  <UiModal v-model:open="isOpen" :title="title || t('common.rename', 'Rename')">
+    <form class="space-y-4" @submit.prevent="handleSubmit">
+      <UFormField :label="t('common.name', 'Name')">
+        <UInput
+          ref="inputRef"
+          v-model="name"
+          class="w-full"
+          :placeholder="t('common.namePlaceholder', 'Enter name...')"
+        />
+      </UFormField>
+    </form>
 
     <template #footer>
       <div class="flex justify-end gap-2">
@@ -72,5 +72,5 @@ function handleSubmit() {
         </UButton>
       </div>
     </template>
-  </UModal>
+  </UiModal>
 </template>

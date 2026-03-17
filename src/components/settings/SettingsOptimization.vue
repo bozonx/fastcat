@@ -3,7 +3,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
-import AppButtonGroup from '~/components/ui/AppButtonGroup.vue';
+import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -51,7 +51,7 @@ function resetDefaults() {
 
     <div class="grid grid-cols-2 gap-4">
       <UFormField :label="t('videoEditor.settings.proxyVideoCodec')">
-        <AppButtonGroup
+        <UiButtonGroup
           v-model="workspaceStore.userSettings.optimization.proxyVideoCodec"
           :options="[
             { label: 'AV1', value: 'av1' },

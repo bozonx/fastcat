@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import AppModal from '~/components/ui/AppModal.vue';
+import UiModal from '~/components/ui/UiModal.vue';
 import { ref, watch, nextTick } from 'vue';
 
 
@@ -80,7 +80,7 @@ const handleClose = () => {
 </script>
 
 <template>
-  <AppModal v-model:open="isOpen" :title="title"
+  <UiModal v-model:open="isOpen" :title="title"
     @after:enter="handleAfterEnter" :ui="{ content: 'sm:max-w-lg' }">
     <div class="flex flex-col gap-4">
       <div v-if="icon || description" class="flex gap-4">
@@ -133,5 +133,5 @@ const handleClose = () => {
         {{ confirmText || t('common.confirm') }}
       </UButton>
     </template>
-  </AppModal>
+  </UiModal>
 </template>

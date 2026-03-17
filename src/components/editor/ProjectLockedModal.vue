@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
-import AppModal from '~/components/ui/AppModal.vue';
+import UiModal from '~/components/ui/UiModal.vue';
 
 const projectStore = useProjectStore();
 const { t } = useI18n();
@@ -26,7 +26,7 @@ function handleClose() {
 </script>
 
 <template>
-  <AppModal
+  <UiModal
     v-model:open="isOpen"
     :title="t('videoEditor.project.lockedTitle', 'Project Locked')"
     :prevent-close="true"
@@ -48,5 +48,5 @@ function handleClose() {
         </UButton>
       </div>
     </template>
-  </AppModal>
+  </UiModal>
 </template>

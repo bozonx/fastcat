@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue';
 
-import AppModal from '~/components/ui/AppModal.vue';
+import UiModal from '~/components/ui/UiModal.vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import {
   createDefaultCaptionGenerationSettings,
@@ -100,7 +100,7 @@ const handleAfterEnter = () => {
 </script>
 
 <template>
-  <AppModal
+  <UiModal
     v-model:open="isOpen"
     :title="t('fastcat.captions.modalTitle', 'Generate captions')"
     @after:enter="handleAfterEnter"
@@ -183,5 +183,5 @@ const handleAfterEnter = () => {
         </UButton>
       </div>
     </template>
-  </AppModal>
+  </UiModal>
 </template>

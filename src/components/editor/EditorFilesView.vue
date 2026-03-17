@@ -2,7 +2,7 @@
 import { Pane, Splitpanes } from 'splitpanes';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
-import PropertiesPanel from '~/components/PropertiesPanel.vue';
+import PropertiesPanel from '~/components/layout-panels/PropertiesPanel.vue';
 import type { FsEntry } from '~/types/fs';
 import type { SelectedEntity } from '~/stores/selection.store';
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue';
 
-import AppModal from '~/components/ui/AppModal.vue';
+import UiModal from '~/components/ui/UiModal.vue';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
@@ -127,7 +127,7 @@ const isFormValid = computed(() => {
 </script>
 
 <template>
-  <AppModal
+  <UiModal
     v-model:open="isOpen"
     :title="t('videoEditor.export.convertFile', { file: fileName })"
       class="max-w-3xl"
@@ -186,7 +186,7 @@ const isFormValid = computed(() => {
             <label class="text-xs text-ui-text-muted font-medium">
               {{ t('videoEditor.export.outputFormat', 'Output format') }}
             </label>
-            <UiAppButtonGroup
+            <UiButtonGroup
               v-model="audio.onlyFormat"
               :options="audioFormatOptions as any"
             />
@@ -263,5 +263,5 @@ const isFormValid = computed(() => {
         </UButton>
       </div>
     </template>
-  </AppModal>
+  </UiModal>
 </template>

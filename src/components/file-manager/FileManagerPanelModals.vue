@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { FsEntry } from '~/types/fs';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
-import AppModal from '~/components/ui/AppModal.vue';
+import UiModal from '~/components/ui/UiModal.vue';
 
 interface TimelineRef {
   timelineName: string;
@@ -88,7 +88,7 @@ const { t } = useI18n();
     </div>
   </UiConfirmModal>
 
-  <AppModal
+  <UiModal
     :open="props.sttTranscriptionModalOpen"
     :title="t('videoEditor.fileManager.actions.transcribe', 'Transcribe')"
     :close-button="!props.sttTranscribing"
@@ -143,5 +143,5 @@ const { t } = useI18n();
         </UButton>
       </div>
     </template>
-  </AppModal>
+  </UiModal>
 </template>

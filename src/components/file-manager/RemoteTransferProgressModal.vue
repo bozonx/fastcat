@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import AppModal from '~/components/ui/AppModal.vue';
+import UiModal from '~/components/ui/UiModal.vue';
 
 const props = defineProps<{
   open: boolean;
@@ -28,7 +28,7 @@ const progressPercent = computed(() =>
 </script>
 
 <template>
-  <AppModal
+  <UiModal
     v-model:open="isOpen"
     :title="title"
     :description="description"
@@ -57,5 +57,5 @@ const progressPercent = computed(() =>
         {{ t('common.cancel', 'Cancel') }}
       </UButton>
     </template>
-  </AppModal>
+  </UiModal>
 </template>

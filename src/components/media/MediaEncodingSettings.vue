@@ -156,7 +156,7 @@ watch(
       <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.export.outputFormat', 'Output format') }}
       </label>
-      <UiAppButtonGroup
+      <UiButtonGroup
         v-model="outputFormat"
         :options="props.formatOptions as any"
         :disabled="props.disabled"
@@ -213,7 +213,7 @@ watch(
       <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.export.bitrateMode', 'Bitrate Mode') }}
       </label>
-      <UiAppButtonGroup
+      <UiButtonGroup
         v-model="bitrateMode"
         :options="bitrateModeOptions"
         :disabled="props.disabled"
@@ -257,7 +257,7 @@ watch(
           {{ t('videoEditor.export.audioCodec', 'Audio codec') }}
         </label>
         <div class="w-full">
-          <UiAppButtonGroup
+          <UiButtonGroup
             v-model="audioCodec"
             :options="audioCodecOptions"
             :disabled="props.disabled"

@@ -2,7 +2,7 @@
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectManagement } from '~/composables/project/useProjectManagement';
 import SearchInput from '~/components/ui/SearchInput.vue';
-import AppModal from '~/components/ui/AppModal.vue';
+import UiModal from '~/components/ui/UiModal.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import ProjectThumbnail from '~/components/startup/ProjectThumbnail.vue';
 import EditorSettingsModal from '~/components/EditorSettingsModal.vue';
@@ -215,7 +215,7 @@ const smartSortedProjects = computed(() => {
     </div>
   </div>
 
-  <AppModal
+  <UiModal
     v-model:open="isCreateModalOpen"
     :title="t('fastcat.projects.newProject')"
     :ui="{ content: 'sm:max-w-lg max-h-[90vh]', body: 'overflow-y-auto' }"
@@ -305,7 +305,7 @@ const smartSortedProjects = computed(() => {
         />
       </div>
     </template>
-  </AppModal>
+  </UiModal>
 
   <EditorSettingsModal v-model:open="isSettingsOpen" />
 </template>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import AppModal from '~/components/ui/AppModal.vue';
+import UiModal from '~/components/ui/UiModal.vue';
 import SettingsGeneral from '~/components/settings/SettingsGeneral.vue';
 import SettingsHotkeys from '~/components/settings/SettingsHotkeys.vue';
 import SettingsMouse from '~/components/settings/SettingsMouse.vue';
@@ -63,7 +63,7 @@ watch(
 </script>
 
 <template>
-  <AppModal
+  <UiModal
     v-model:open="isOpen"
     :title="t('videoEditor.settings.title', 'Editor settings')"
     :ui="{
@@ -184,5 +184,5 @@ watch(
         <SettingsStorage v-else-if="activeSection === 'workspace.storage'" />
       </div>
     </div>
-  </AppModal>
+  </UiModal>
 </template>

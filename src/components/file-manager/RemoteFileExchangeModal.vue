@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import AppModal from '~/components/ui/AppModal.vue';
+import UiModal from '~/components/ui/UiModal.vue';
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import RemoteTransferProgressModal from '~/components/file-manager/RemoteTransferProgressModal.vue';
 import { useRemoteExchange } from '~/composables/fileManager/useRemoteExchange';
@@ -46,7 +46,7 @@ const {
 </script>
 
 <template>
-  <AppModal
+  <UiModal
     v-model:open="isOpen"
     :title="t('videoEditor.fileManager.remote.exchange', 'File exchange')"
     :description="
@@ -375,7 +375,7 @@ const {
     </div>
 
     <template #footer />
-  </AppModal>
+  </UiModal>
 
   <RemoteTransferProgressModal
     v-model:open="uploadProgressOpen"

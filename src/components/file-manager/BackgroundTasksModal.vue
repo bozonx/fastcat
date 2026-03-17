@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import AppModal from '~/components/ui/AppModal.vue';
+import UiModal from '~/components/ui/UiModal.vue';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import ProgressSpinner from '~/components/ui/ProgressSpinner.vue';
 
@@ -20,7 +20,7 @@ function formatTime(timestamp: number) {
 </script>
 
 <template>
-  <AppModal
+  <UiModal
     :open="open"
     @update:open="emit('update:open', $event)"
     :title="t('videoEditor.backgroundTasks.title', 'Background Tasks')"
@@ -108,5 +108,5 @@ function formatTime(timestamp: number) {
         </div>
       </div>
     </div>
-  </AppModal>
+  </UiModal>
 </template>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import AppButtonGroup from '~/components/ui/AppButtonGroup.vue';
+import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import WheelSlider from '~/components/ui/WheelSlider.vue';
 import WheelNumberInput from '~/components/ui/WheelNumberInput.vue';
 import Knob from '~/components/ui/Knob.vue';
@@ -256,7 +256,7 @@ function handleArrayItemUpdate(control: any, index: number, itemKey: string, val
 
       <div v-else-if="control.kind === 'button-group'" class="flex flex-col gap-1">
         <span class="text-xs text-ui-text-muted">{{ getLabel(control) }}</span>
-        <AppButtonGroup
+        <UiButtonGroup
           :model-value="getValue(control.key)"
           :options="getSelectItems(control)"
           size="xs"

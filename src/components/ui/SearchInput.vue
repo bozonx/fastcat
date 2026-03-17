@@ -34,7 +34,7 @@ function clear() {
     >
       <template #trailing>
         <UButton
-          v-show="localValue"
+          v-if="localValue"
           color="neutral"
           variant="link"
           icon="i-heroicons-x-mark-20-solid"

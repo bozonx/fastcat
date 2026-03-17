@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UiModal from "~/components/ui/UiModal.vue";
 import { ref } from 'vue';
 import type { ShapeType, TimelineClipItem, TimelineTextClipItem } from '~/timeline/types';
 import type { ParamControl } from '~/components/properties/params';
@@ -63,7 +64,7 @@ function handleSavePreset() {
 </script>
 
 <template>
-  <UModal
+  <UiModal
     v-model:open="isSaveModalOpen"
     :title="t('fastcat.effects.savePresetTitle', 'Save Preset')"
   >
@@ -87,7 +88,7 @@ function handleSavePreset() {
         </div>
       </div>
     </template>
-  </UModal>
+  </UiModal>
 
   <!-- Background color -->
   <PropertySection v-if="props.clip.clipType === 'background'" :title="t('common.color', 'Color')">
