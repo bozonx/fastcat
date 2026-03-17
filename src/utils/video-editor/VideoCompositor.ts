@@ -175,7 +175,7 @@ export class VideoCompositor {
       if (clip.clipKind !== 'adjustment') continue;
       if (!adjustmentClips.includes(clip) && clip.sprite && !clip.sprite.destroyed) {
         try {
-          if (clip.sprite.texture !== Texture.EMPTY) {
+          if (clip.sprite.texture && clip.sprite.texture !== Texture.EMPTY) {
             clip.sprite.texture = Texture.EMPTY;
           }
         } catch (e) {
@@ -353,7 +353,9 @@ export class VideoCompositor {
 
   private hideAllClipSprites() {
     for (const clip of this.clips) {
-      clip.sprite.visible = false;
+      if (clip.sprite) {
+        clip.sprite.visible = false;
+      }
     }
   }
 

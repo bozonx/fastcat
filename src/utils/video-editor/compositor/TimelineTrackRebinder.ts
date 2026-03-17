@@ -9,7 +9,7 @@ export class TimelineTrackRebinder {
   public rebind(params: TimelineTrackRebinderParams): void {
     const { clip, trackRuntime } = params;
 
-    if (!trackRuntime) {
+    if (!trackRuntime || !clip.sprite) {
       return;
     }
 

@@ -202,13 +202,15 @@ export class TimelineClipLoader {
     }
 
     const reusableTrack = getTrackRuntimeForClip(reusable);
-    if (reusableTrack && reusable.sprite.parent !== reusableTrack.container) {
+    if (reusableTrack && reusable.sprite && reusable.sprite.parent !== reusableTrack.container) {
       reusableTrack.container.addChild(reusable.sprite);
     }
 
     if (reusable.clipKind === 'solid') {
       reusable.backgroundColor = sanitizeTimelineColor(clipData.backgroundColor, '#000000');
-      reusable.sprite.tint = parseHexColor(reusable.backgroundColor);
+      if (reusable.sprite) {
+        reusable.sprite.tint = parseHexColor(reusable.backgroundColor);
+      }
       applySolidLayout(reusable);
     }
 

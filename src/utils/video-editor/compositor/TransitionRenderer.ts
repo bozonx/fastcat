@@ -73,7 +73,9 @@ export class TransitionRenderer {
         clip.transitionOutputTexture ?? null,
       );
 
-      clip.sprite.visible = false;
+      if (clip.sprite) {
+        clip.sprite.visible = false;
+      }
       params.stageTextureRenderer.renderSingleClipToTexture(clip, clip.transitionToTexture, true);
 
       const fromTexture = clip.transitionFromTexture;
@@ -146,8 +148,10 @@ export class TransitionRenderer {
       transitionSprite.filters = null;
       transitionSprite.visible = true;
 
-      clip.sprite.visible = false;
-      if (prevClip) {
+      if (clip.sprite) {
+        clip.sprite.visible = false;
+      }
+      if (prevClip && prevClip.sprite) {
         prevClip.sprite.visible = false;
       }
 
@@ -241,7 +245,9 @@ export class TransitionRenderer {
       if (clip.lastVideoFrame) {
         try {
           await params.updateClipTextureFromSample({ frame: clip.lastVideoFrame, close: () => {} } as any, clip);
-          clip.sprite.visible = true;
+          if (clip.sprite) {
+            clip.sprite.visible = true;
+          }
           params.stageTextureRenderer.renderSingleClipToTexture(clip, texture);
           return true;
         } catch {
@@ -254,7 +260,9 @@ export class TransitionRenderer {
 
     try {
       await params.updateClipTextureFromSample(sample, clip);
-      clip.sprite.visible = true;
+      if (clip.sprite) {
+        clip.sprite.visible = true;
+      }
       params.stageTextureRenderer.renderSingleClipToTexture(clip, texture);
       return true;
     } catch {

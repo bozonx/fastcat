@@ -81,6 +81,14 @@ export function useTimelineItemDrag(
 
   let dragRafId: number | null = null;
 
+  function getToolbarMoveModeAction(): string {
+    if (!settingsStore.toolbarMoveModeEnabled || settingsStore.toolbarMoveMode === 'snap') {
+      return 'snap';
+    }
+
+    return settingsStore.toolbarMoveMode;
+  }
+
   function toggleToolbarMoveMode(mode: string): string {
     return mode === 'snap' ? 'free_mode' : 'snap';
   }
@@ -108,11 +116,11 @@ export function useTimelineItemDrag(
 
   function applyDragAction(action: string) {
     if (action === 'none') {
-      action = 'snap';
+      action = getToolbarMoveModeAction();
     }
 
     if (action === 'toggle_clip_move_mode') {
-      action = toggleToolbarMoveMode(settingsStore.toolbarMoveMode);
+      action = toggleToolbarMoveMode(getToolbarMoveModeAction());
     }
 
     dragIsFreeOverride.value = action === 'free_mode' || action === 'copy';
