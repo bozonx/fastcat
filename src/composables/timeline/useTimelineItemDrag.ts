@@ -74,12 +74,17 @@ export function useTimelineItemDrag(
   const dragIsFreeOverride = ref(false);
   const dragUsePseudoOverlapOverride = ref(false);
   const dragDisableFrameSnapOverride = ref(false);
+  const dragIsCopyOverride = ref(false);
+  const dragToggleSnapOverride = ref(false);
 
   let dragRafId: number | null = null;
 
   function startMoveItem(e: PointerEvent, payload: TimelineMoveItemPayload) {
     const { trackId, itemId, startUs } = payload;
-    if (e.button !== 0) return;
+
+    // Ignore invalid buttons or right click which has a specific handler maybe
+    if (e.button !== 0 && e.button !== 1 && e.button !== 2) return;
+
     e.stopPropagation();
 
     const item = tracks.value.find((t) => t.id === trackId)?.items.find((it) => it.id === itemId);
@@ -108,11 +113,36 @@ export function useTimelineItemDrag(
     draggingItemId.value = itemId;
     dragAnchorClientX.value = e.clientX;
     lastDragClientX.value = e.clientX;
+
     const isLayer1Pressed = isLayer1Active(e, workspaceStore.userSettings);
     const isLayer2Pressed = isLayer2Active(e, workspaceStore.userSettings);
-    dragIsFreeOverride.value = isLayer1Pressed;
-    dragUsePseudoOverlapOverride.value = isLayer1Pressed;
-    dragDisableFrameSnapOverride.value = isLayer2Pressed;
+
+    // Determine the action based on the settings
+    const settings = workspaceStore.userSettings.mouse.timeline;
+    let action = 'none';
+    if (e.button === 1) {
+      action = settings.clipDragMiddle;
+    } else if (e.button === 2) {
+      action = settings.clipDragRight;
+    } else if (isLayer1Pressed) {
+      action = settings.clipDragShift;
+    } else if (isLayer2Pressed) {
+      action = settings.clipDragCtrl;
+    }
+
+    dragIsFreeOverride.value = action === 'free_mode' || action === 'copy';
+    dragUsePseudoOverlapOverride.value = action === 'pseudo_overlap';
+    dragDisableFrameSnapOverride.value = action === 'free_mode' || action === 'copy';
+
+    // If the action is copy, we only copy it on drop, but we track it via dragIsFreeOverride for now,
+    // we'll need to know it was explicitly a copy action, so let's add a flag or assume if action === 'copy'
+    dragIsCopyOverride.value = action === 'copy';
+    dragToggleSnapOverride.value = action === 'toggle_snap';
+
+    if (dragToggleSnapOverride.value) {
+      dragDisableFrameSnapOverride.value = !dragDisableFrameSnapOverride.value;
+    }
+
     dragAnchorStartUs.value = startUs;
     dragAnchorDurationUs.value =
       tracks.value.find((t) => t.id === trackId)?.items.find((it) => it.id === itemId)
@@ -155,7 +185,7 @@ export function useTimelineItemDrag(
     e: PointerEvent,
     input: { trackId: string; itemId: string; edge: 'start' | 'end'; startUs: number },
   ) {
-    if (e.button !== 0) return;
+    if (e.button !== 0 && e.button !== 1 && e.button !== 2) return;
     e.preventDefault();
     e.stopPropagation();
 
@@ -171,9 +201,30 @@ export function useTimelineItemDrag(
     lastDragClientX.value = e.clientX;
     const isLayer1Pressed = isLayer1Active(e, workspaceStore.userSettings);
     const isLayer2Pressed = isLayer2Active(e, workspaceStore.userSettings);
-    dragIsFreeOverride.value = false;
-    dragUsePseudoOverlapOverride.value = isLayer1Pressed;
-    dragDisableFrameSnapOverride.value = isLayer2Pressed;
+
+    const settings = workspaceStore.userSettings.mouse.timeline;
+    let action = 'none';
+    if (e.button === 1) {
+      action = settings.clipDragMiddle;
+    } else if (e.button === 2) {
+      action = settings.clipDragRight;
+    } else if (isLayer1Pressed) {
+      action = settings.clipDragShift;
+    } else if (isLayer2Pressed) {
+      action = settings.clipDragCtrl;
+    }
+
+    dragIsFreeOverride.value = action === 'free_mode' || action === 'copy';
+    dragUsePseudoOverlapOverride.value = action === 'pseudo_overlap';
+    dragDisableFrameSnapOverride.value = action === 'free_mode' || action === 'copy';
+
+    dragIsCopyOverride.value = action === 'copy';
+    dragToggleSnapOverride.value = action === 'toggle_snap';
+
+    if (dragToggleSnapOverride.value) {
+      dragDisableFrameSnapOverride.value = !dragDisableFrameSnapOverride.value;
+    }
+
     dragAnchorStartUs.value = input.startUs;
     dragLastAppliedQuantizedDeltaUs.value = 0;
 
@@ -432,11 +483,17 @@ export function useTimelineItemDrag(
 
     pendingDragClientX.value = e.clientX;
     pendingDragClientY.value = e.clientY;
-    const isLayer1Pressed = isLayer1Active(e, workspaceStore.userSettings);
-    const isLayer2Pressed = isLayer2Active(e, workspaceStore.userSettings);
-    dragUsePseudoOverlapOverride.value = isLayer1Pressed;
-    dragIsFreeOverride.value = draggingMode.value === 'move' ? isLayer1Pressed : false;
-    dragDisableFrameSnapOverride.value = isLayer2Pressed;
+
+    // During move we don't dynamically update the modifier action - we use the one determined on mouse down
+    // since user may release modifier while dragging. Actually, maybe we should update? For now we'll
+    // just stick to what we decided at the start of the drag, but wait...
+    // In previous code:
+    // const isLayer1Pressed = isLayer1Active(e, workspaceStore.userSettings);
+    // const isLayer2Pressed = isLayer2Active(e, workspaceStore.userSettings);
+    // dragUsePseudoOverlapOverride.value = isLayer1Pressed;
+    // dragIsFreeOverride.value = draggingMode.value === 'move' ? isLayer1Pressed : false;
+    // dragDisableFrameSnapOverride.value = isLayer2Pressed;
+
     scheduleDragApply();
     return true;
   }
@@ -461,7 +518,7 @@ export function useTimelineItemDrag(
     }
 
     const shouldCopyDraggedClip =
-      !cancel && draggingMode.value === 'move' && dragIsFreeOverride.value;
+      !cancel && draggingMode.value === 'move' && dragIsCopyOverride.value;
     let copiedSingleClipPayload: {
       sourceTrackId: string;
       clip: any;
@@ -644,6 +701,8 @@ export function useTimelineItemDrag(
     dragIsFreeOverride.value = false;
     dragUsePseudoOverlapOverride.value = false;
     dragDisableFrameSnapOverride.value = false;
+    dragIsCopyOverride.value = false;
+    dragToggleSnapOverride.value = false;
 
     window.removeEventListener('keydown', onGlobalKeyDown);
   }

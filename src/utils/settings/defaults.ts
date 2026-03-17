@@ -127,6 +127,10 @@ export interface FastCatUserSettings {
       middleClick: 'seek' | 'add_marker' | 'reset_zoom' | 'clear_selection' | 'none';
       middleDrag: 'pan' | 'move_playhead' | 'select_area' | 'none';
       horizontalMovement: 'move_playhead' | 'none';
+      clipDragShift: 'pseudo_overlap' | 'free_mode' | 'copy' | 'toggle_snap' | 'none';
+      clipDragCtrl: 'pseudo_overlap' | 'free_mode' | 'copy' | 'toggle_snap' | 'none';
+      clipDragMiddle: 'pseudo_overlap' | 'free_mode' | 'copy' | 'toggle_snap' | 'none';
+      clipDragRight: 'pseudo_overlap' | 'free_mode' | 'copy' | 'toggle_snap' | 'none';
     };
     trackHeaders: {
       wheel: string;
@@ -244,6 +248,10 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       middleClick: 'seek',
       middleDrag: 'pan',
       horizontalMovement: 'none',
+      clipDragShift: 'pseudo_overlap',
+      clipDragCtrl: 'free_mode',
+      clipDragMiddle: 'copy',
+      clipDragRight: 'toggle_snap',
     },
     trackHeaders: {
       wheel: 'scroll_vertical',

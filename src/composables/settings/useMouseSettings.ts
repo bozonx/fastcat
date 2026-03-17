@@ -2,6 +2,7 @@ import { computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import {
+  CLIP_DRAG_ACTIONS,
   DRAG_ACTIONS,
   MONITOR_CLICK_ACTIONS,
   MONITOR_DRAG_ACTIONS,
@@ -101,6 +102,14 @@ export function useMouseSettings() {
     none: t('videoEditor.settings.mouseActionNone', 'None'),
   }));
 
+  const clipDragLabels = computed<Record<string, string>>(() => ({
+    pseudo_overlap: t('videoEditor.settings.mouseActionPseudoOverlap', 'Pseudo overlap'),
+    free_mode: t('videoEditor.settings.mouseActionFreeMode', 'Free mode'),
+    copy: t('videoEditor.settings.mouseActionCopy', 'Copy clip'),
+    toggle_snap: t('videoEditor.settings.mouseActionToggleSnap', 'Toggle snapping'),
+    none: t('videoEditor.settings.mouseActionNone', 'None'),
+  }));
+
   function formatOptions(
     actions: readonly string[],
     labels: Record<string, string>,
@@ -133,6 +142,7 @@ export function useMouseSettings() {
   const mouseHorizontalMovementOptions = computed(() =>
     formatOptions(MOUSE_HORIZONTAL_MOVEMENT_ACTIONS, commonHorizontalMovementLabels.value),
   );
+  const clipDragOptions = computed(() => formatOptions(CLIP_DRAG_ACTIONS, clipDragLabels.value));
   const monitorMiddleClickOptions = computed(() =>
     formatOptions(MONITOR_CLICK_ACTIONS, {
       reset_zoom: t('videoEditor.settings.mouseActionResetZoom', 'Reset zoom'),
@@ -267,6 +277,33 @@ export function useMouseSettings() {
               options: clickActionOptions.value,
             },
             {
+              key: 'clipDragShift',
+              label: t('videoEditor.settings.mouseTimelineClipDragShift', {
+                modifier1: modifier1Name.value,
+              }),
+              options: clipDragOptions.value,
+            },
+            {
+              key: 'clipDragCtrl',
+              label: t('videoEditor.settings.mouseTimelineClipDragCtrl', {
+                modifier2: modifier2Name.value,
+              }),
+              options: clipDragOptions.value,
+            },
+            {
+              key: 'clipDragMiddle',
+              label: t(
+                'videoEditor.settings.mouseTimelineClipDragMiddle',
+                'Middle button clip drag',
+              ),
+              options: clipDragOptions.value,
+            },
+            {
+              key: 'clipDragRight',
+              label: t('videoEditor.settings.mouseTimelineClipDragRight', 'Right button clip drag'),
+              options: clipDragOptions.value,
+            },
+            {
               key: 'horizontalMovement',
               label: t('videoEditor.settings.mouseHorizontalMovement', 'Horizontal mouse movement'),
               options: mouseHorizontalMovementOptions.value,
@@ -276,7 +313,6 @@ export function useMouseSettings() {
           infoColumns: true,
           infoItems: [
             t('videoEditor.settings.mouseHardcodedLeftDrag'),
-            t('videoEditor.settings.mouseHardcodedShiftDrag', { modifier1: modifier1Name.value }),
             t('videoEditor.settings.mouseHardcodedLeftClick'),
             t('videoEditor.settings.mouseHardcodedShiftClick', { modifier1: modifier1Name.value }),
             t('videoEditor.settings.mouseHardcodedRazorClick'),
