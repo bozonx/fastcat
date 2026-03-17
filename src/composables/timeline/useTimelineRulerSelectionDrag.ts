@@ -18,6 +18,7 @@ interface UseTimelineRulerSelectionDragOptions {
   selectSelectionRange: () => void;
   updateSelectionRange: (payload: { startUs: number; endUs: number } | null) => void;
   createSelectionRange: (payload: { startUs: number; endUs: number }) => void;
+  setPreviewSelectionRange?: (payload: { startUs: number; endUs: number } | null) => void;
 }
 
 export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelectionDragOptions) {
@@ -34,6 +35,9 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
   const displaySelectionRange = computed(() => {
     if (isDraggingSelectionRange.value && draggedSelectionPatch.value) {
+      return draggedSelectionPatch.value;
+    }
+    if (isCreatingSelectionRange.value && draggedSelectionPatch.value) {
       return draggedSelectionPatch.value;
     }
     return options.selectionRange.value;
@@ -86,6 +90,9 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
         startUs: nextStartUs,
         endUs: nextStartUs + durationUs,
       };
+      if (options.setPreviewSelectionRange) {
+        options.setPreviewSelectionRange(draggedSelectionPatch.value);
+      }
       return;
     }
 
@@ -99,6 +106,9 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
         startUs: nextStartUs,
         endUs: selectionDragStartEndUs.value,
       };
+      if (options.setPreviewSelectionRange) {
+        options.setPreviewSelectionRange(draggedSelectionPatch.value);
+      }
       return;
     }
 
@@ -110,6 +120,9 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
       startUs: selectionDragStartStartUs.value,
       endUs: nextEndUs,
     };
+    if (options.setPreviewSelectionRange) {
+      options.setPreviewSelectionRange(draggedSelectionPatch.value);
+    }
   }
 
   function onSelectionPointerMove(event: PointerEvent) {
@@ -125,6 +138,9 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
     isDraggingSelectionRange.value = false;
     draggedSelectionPatch.value = null;
+    if (options.setPreviewSelectionRange) {
+      options.setPreviewSelectionRange(null);
+    }
     resetSuppressNextRulerClick();
     clearSelectionPointerListeners();
   }
@@ -163,6 +179,10 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
       startUs: quantize(startUs),
       endUs: Math.max(quantize(startUs) + getFrameDurationUs(), quantize(endUs)),
     };
+
+    if (options.setPreviewSelectionRange) {
+      options.setPreviewSelectionRange(draggedSelectionPatch.value);
+    }
   }
 
   function onSelectionCreatePointerUp() {
@@ -174,6 +194,9 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
     isCreatingSelectionRange.value = false;
     draggedSelectionPatch.value = null;
+    if (options.setPreviewSelectionRange) {
+      options.setPreviewSelectionRange(null);
+    }
     clearSelectionPointerListeners();
     resetSuppressNextRulerClick();
   }
@@ -190,6 +213,10 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
       startUs: timeUs,
       endUs: timeUs + getFrameDurationUs(),
     };
+
+    if (options.setPreviewSelectionRange) {
+      options.setPreviewSelectionRange(draggedSelectionPatch.value);
+    }
 
     clearSelectionPointerListeners();
     activeSelectionPointerMove = onSelectionCreatePointerMove;

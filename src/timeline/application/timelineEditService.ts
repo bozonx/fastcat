@@ -37,7 +37,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     return doc.tracks.find((t) => t.id === trackId) ?? null;
   }
 
-  function rippleDeleteRange(input: RippleDeleteRangeParams) {
+  function rippleDeleteRange(input: RippleDeleteRangeParams, options?: any) {
     const doc = deps.getDoc();
     if (!doc) return;
 
@@ -61,7 +61,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       for (const t of splitTargets) {
         deps.applyTimeline(
           { type: 'split_item', trackId: t.trackId, itemId: t.itemId, atUs },
-          { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
+          options || { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
         );
       }
     };
@@ -89,7 +89,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       if (toDelete.length > 0) {
         deps.applyTimeline(
           { type: 'delete_items', trackId: track.id, itemIds: toDelete },
-          { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
+          options || { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
         );
       }
     }
@@ -117,7 +117,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
               startUs: Math.max(0, clipStart - deltaUs),
               quantizeToFrames: false,
             },
-            { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
+            options || { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
           );
         }
       }

@@ -1,4 +1,4 @@
-import type { Ref } from 'vue';
+import { computed, type Ref, type ComputedRef } from 'vue';
 import type { TimelineDocument, TimelineTrack } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 
@@ -7,6 +7,10 @@ export interface TimelineTracksDeps {
   selectedTrackId: Ref<string | null>;
   applyTimeline: (
     cmd: TimelineCommand,
+    options?: { historyMode?: 'immediate' | 'debounced' },
+  ) => void;
+  batchApplyTimeline: (
+    cmds: TimelineCommand[],
     options?: { historyMode?: 'immediate' | 'debounced' },
   ) => void;
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
@@ -45,6 +49,8 @@ export interface TimelineTracksApi {
   toggleVisibilityTargetTrack: () => Promise<void>;
   toggleMuteTargetTrack: () => Promise<void>;
   toggleSoloTargetTrack: () => Promise<void>;
+  isAnyTrackSoloed: ComputedRef<boolean>;
+  unsoloAllTracks: () => void;
 }
 
 export function createTimelineTracks(deps: TimelineTracksDeps): TimelineTracksApi {
@@ -168,6 +174,24 @@ export function createTimelineTracks(deps: TimelineTracksDeps): TimelineTracksAp
     await deps.requestTimelineSave({ immediate: true });
   }
 
+  const isAnyTrackSoloed = computed(
+    () => deps.timelineDoc.value?.tracks.some((t) => t.audioSolo) ?? false,
+  );
+
+  function unsoloAllTracks() {
+    const tracksWithSolo = deps.timelineDoc.value?.tracks.filter((t) => t.audioSolo) ?? [];
+    if (tracksWithSolo.length === 0) return;
+
+    const cmds = tracksWithSolo.map((t) => ({
+      type: 'update_track_properties' as const,
+      trackId: t.id,
+      properties: { audioSolo: false },
+    }));
+
+    deps.batchApplyTimeline(cmds, { historyMode: 'debounced' });
+    void deps.requestTimelineSave({ immediate: true });
+  }
+
   return {
     addTrack,
     resolveTargetVideoTrackIdForInsert,
@@ -181,5 +205,7 @@ export function createTimelineTracks(deps: TimelineTracksDeps): TimelineTracksAp
     toggleVisibilityTargetTrack,
     toggleMuteTargetTrack,
     toggleSoloTargetTrack,
+    isAnyTrackSoloed,
+    unsoloAllTracks,
   };
 }

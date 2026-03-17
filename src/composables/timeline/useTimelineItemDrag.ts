@@ -57,6 +57,7 @@ export function useTimelineItemDrag(
   const dragAnchorItemDurationUs = ref(0);
   const hasPendingTimelinePersist = ref(false);
   const lastDragClientX = ref(0);
+  const lastDragClientY = ref(0);
   const pendingDragClientX = ref<number | null>(null);
   const pendingDragClientY = ref<number | null>(null);
 
@@ -76,8 +77,46 @@ export function useTimelineItemDrag(
   const dragDisableFrameSnapOverride = ref(false);
   const dragIsCopyOverride = ref(false);
   const dragToggleSnapOverride = ref(false);
+  const dragPointerButton = ref<0 | 2>(0);
 
   let dragRafId: number | null = null;
+
+  function resolveDragAction(
+    event: PointerEvent | KeyboardEvent | MouseEvent,
+    pointerButton: 0 | 2,
+  ): string {
+    const settings = workspaceStore.userSettings.mouse.timeline;
+
+    if (pointerButton === 2) {
+      return settings.clipDragRight;
+    }
+
+    if (isLayer1Active(event as MouseEvent | KeyboardEvent, workspaceStore.userSettings)) {
+      return settings.clipDragShift;
+    }
+
+    if (isLayer2Active(event as MouseEvent | KeyboardEvent, workspaceStore.userSettings)) {
+      return settings.clipDragCtrl;
+    }
+
+    return 'none';
+  }
+
+  function applyDragAction(action: string) {
+    dragIsFreeOverride.value = action === 'free_mode' || action === 'copy';
+    dragUsePseudoOverlapOverride.value = action === 'pseudo_overlap';
+    dragDisableFrameSnapOverride.value = action === 'free_mode' || action === 'copy';
+    dragIsCopyOverride.value = action === 'copy';
+    dragToggleSnapOverride.value = action === 'toggle_snap';
+  }
+
+  function scheduleDragReapplyFromLastPointerPosition() {
+    if (!draggingMode.value) return;
+
+    pendingDragClientX.value = lastDragClientX.value;
+    pendingDragClientY.value = lastDragClientY.value;
+    scheduleDragApply();
+  }
 
   function startMoveItem(e: PointerEvent, payload: TimelineMoveItemPayload) {
     const { trackId, itemId, startUs } = payload;
@@ -112,32 +151,9 @@ export function useTimelineItemDrag(
     draggingItemId.value = itemId;
     dragAnchorClientX.value = e.clientX;
     lastDragClientX.value = e.clientX;
-
-    const isLayer1Pressed = isLayer1Active(e, workspaceStore.userSettings);
-    const isLayer2Pressed = isLayer2Active(e, workspaceStore.userSettings);
-
-    const settings = workspaceStore.userSettings.mouse.timeline;
-    let action = 'none';
-    if (e.button === 2) {
-      action = settings.clipDragRight;
-    } else if (isLayer1Pressed) {
-      action = settings.clipDragShift;
-    } else if (isLayer2Pressed) {
-      action = settings.clipDragCtrl;
-    }
-
-    dragIsFreeOverride.value = action === 'free_mode' || action === 'copy';
-    dragUsePseudoOverlapOverride.value = action === 'pseudo_overlap';
-    dragDisableFrameSnapOverride.value = action === 'free_mode' || action === 'copy';
-
-    // If the action is copy, we only copy it on drop, but we track it via dragIsFreeOverride for now,
-    // we'll need to know it was explicitly a copy action, so let's add a flag or assume if action === 'copy'
-    dragIsCopyOverride.value = action === 'copy';
-    dragToggleSnapOverride.value = action === 'toggle_snap';
-
-    if (dragToggleSnapOverride.value) {
-      dragDisableFrameSnapOverride.value = !dragDisableFrameSnapOverride.value;
-    }
+    lastDragClientY.value = e.clientY;
+    dragPointerButton.value = e.button as 0 | 2;
+    applyDragAction(resolveDragAction(e, dragPointerButton.value));
 
     dragAnchorStartUs.value = startUs;
     dragAnchorDurationUs.value =
@@ -175,6 +191,7 @@ export function useTimelineItemDrag(
 
     (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
     window.addEventListener('keydown', onGlobalKeyDown);
+    window.addEventListener('keyup', onGlobalKeyUp);
   }
 
   function startTrimItem(
@@ -195,29 +212,9 @@ export function useTimelineItemDrag(
     draggingItemId.value = input.itemId;
     dragAnchorClientX.value = e.clientX;
     lastDragClientX.value = e.clientX;
-    const isLayer1Pressed = isLayer1Active(e, workspaceStore.userSettings);
-    const isLayer2Pressed = isLayer2Active(e, workspaceStore.userSettings);
-
-    const settings = workspaceStore.userSettings.mouse.timeline;
-    let action = 'none';
-    if (e.button === 2) {
-      action = settings.clipDragRight;
-    } else if (isLayer1Pressed) {
-      action = settings.clipDragShift;
-    } else if (isLayer2Pressed) {
-      action = settings.clipDragCtrl;
-    }
-
-    dragIsFreeOverride.value = action === 'free_mode' || action === 'copy';
-    dragUsePseudoOverlapOverride.value = action === 'pseudo_overlap';
-    dragDisableFrameSnapOverride.value = action === 'free_mode' || action === 'copy';
-
-    dragIsCopyOverride.value = action === 'copy';
-    dragToggleSnapOverride.value = action === 'toggle_snap';
-
-    if (dragToggleSnapOverride.value) {
-      dragDisableFrameSnapOverride.value = !dragDisableFrameSnapOverride.value;
-    }
+    lastDragClientY.value = e.clientY;
+    dragPointerButton.value = e.button as 0 | 2;
+    applyDragAction(resolveDragAction(e, dragPointerButton.value));
 
     dragAnchorStartUs.value = input.startUs;
     dragLastAppliedQuantizedDeltaUs.value = 0;
@@ -247,6 +244,7 @@ export function useTimelineItemDrag(
 
     (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
     window.addEventListener('keydown', onGlobalKeyDown);
+    window.addEventListener('keyup', onGlobalKeyUp);
   }
 
   function onGlobalKeyDown(e: KeyboardEvent) {
@@ -256,7 +254,18 @@ export function useTimelineItemDrag(
       dragCancelRequested.value = true;
       e.preventDefault();
       onGlobalPointerUp();
+      return;
     }
+
+    applyDragAction(resolveDragAction(e, dragPointerButton.value));
+    scheduleDragReapplyFromLastPointerPosition();
+  }
+
+  function onGlobalKeyUp(e: KeyboardEvent) {
+    if (!draggingMode.value) return;
+
+    applyDragAction(resolveDragAction(e, dragPointerButton.value));
+    scheduleDragReapplyFromLastPointerPosition();
   }
 
   function applyDragFromPendingClientX() {
@@ -278,7 +287,8 @@ export function useTimelineItemDrag(
       settingsStore.frameSnapMode === 'frames' &&
       !dragIsFreeOverride.value &&
       !dragDisableFrameSnapOverride.value;
-    const enableClipSnap = settingsStore.clipSnapMode === 'clips';
+    const enableClipSnapBase = settingsStore.clipSnapMode === 'clips';
+    const enableClipSnap = dragToggleSnapOverride.value ? !enableClipSnapBase : enableClipSnapBase;
     const snapThresholdPx = settingsStore.snapThresholdPx;
     const isShiftPressed = dragUsePseudoOverlapOverride.value;
     const overlapMode = isShiftPressed ? 'pseudo' : settingsStore.overlapMode;
@@ -477,16 +487,9 @@ export function useTimelineItemDrag(
 
     pendingDragClientX.value = e.clientX;
     pendingDragClientY.value = e.clientY;
-
-    // During move we don't dynamically update the modifier action - we use the one determined on mouse down
-    // since user may release modifier while dragging. Actually, maybe we should update? For now we'll
-    // just stick to what we decided at the start of the drag, but wait...
-    // In previous code:
-    // const isLayer1Pressed = isLayer1Active(e, workspaceStore.userSettings);
-    // const isLayer2Pressed = isLayer2Active(e, workspaceStore.userSettings);
-    // dragUsePseudoOverlapOverride.value = isLayer1Pressed;
-    // dragIsFreeOverride.value = draggingMode.value === 'move' ? isLayer1Pressed : false;
-    // dragDisableFrameSnapOverride.value = isLayer2Pressed;
+    lastDragClientX.value = e.clientX;
+    lastDragClientY.value = e.clientY;
+    applyDragAction(resolveDragAction(e, dragPointerButton.value));
 
     scheduleDragApply();
     return true;
@@ -526,28 +529,27 @@ export function useTimelineItemDrag(
       const movedTrackId = draggingTrackId.value;
       const commit = pendingMoveCommit.value;
 
-      if (
-        doc &&
-        movedItemId &&
-        movedTrackId &&
-        commit &&
-        timelineStore.selectedItemIds.length === 1
-      ) {
+      if (doc && movedItemId && movedTrackId && timelineStore.selectedItemIds.length === 1) {
         const track = doc.tracks.find((item) => item.id === movedTrackId) ?? null;
         const clip =
           track?.items.find((item) => item.kind === 'clip' && item.id === movedItemId) ?? null;
         if (clip && clip.kind === 'clip') {
           copiedSingleClipPayload = {
-            sourceTrackId: movedTrackId,
+            sourceTrackId: dragOriginTrackId.value ?? movedTrackId,
             clip: JSON.parse(JSON.stringify(clip)),
-            targetTrackId: commit.toTrackId,
-            targetStartUs: commit.startUs,
+            targetTrackId: movedTrackId,
+            targetStartUs: clip.timelineRange.startUs,
           };
         }
       }
     }
 
-    if (!cancel && draggingMode.value === 'move' && dragIsFreeOverride.value) {
+    if (
+      !cancel &&
+      draggingMode.value === 'move' &&
+      dragIsFreeOverride.value &&
+      !dragIsCopyOverride.value
+    ) {
       const doc = timelineStore.timelineDoc;
       if (doc) {
         const movedVideoIds: string[] = [];
@@ -660,18 +662,33 @@ export function useTimelineItemDrag(
     if (!cancel && shouldCopyDraggedClip && snapshot && copiedSingleClipPayload) {
       timelineStore.timelineDoc = snapshot as any;
       timelineStore.duration = selectTimelineDurationUs(snapshot as any) as any;
-      timelineStore.pasteClips(
-        [
+      const copyClip = copiedSingleClipPayload.clip;
+      if (
+        (copyClip.clipType === 'media' || copyClip.clipType === 'timeline') &&
+        copyClip.source?.path
+      ) {
+        timelineStore.applyTimeline(
           {
-            sourceTrackId: copiedSingleClipPayload.sourceTrackId,
-            clip: copiedSingleClipPayload.clip,
+            type: 'add_clip_to_track',
+            trackId: copiedSingleClipPayload.targetTrackId,
+            name: copyClip.name,
+            path: copyClip.source.path,
+            startUs: copiedSingleClipPayload.targetStartUs,
+            durationUs: copyClip.timelineRange.durationUs,
+            sourceRange: copyClip.sourceRange,
+            isImage: copyClip.isImage,
+          } as any,
+          { saveMode: 'none', skipHistory: false },
+        );
+      } else {
+        timelineStore.pasteClips(
+          [{ sourceTrackId: copiedSingleClipPayload.sourceTrackId, clip: copyClip }],
+          {
+            targetTrackId: copiedSingleClipPayload.targetTrackId,
+            insertStartUs: copiedSingleClipPayload.targetStartUs,
           },
-        ],
-        {
-          targetTrackId: copiedSingleClipPayload.targetTrackId,
-          insertStartUs: copiedSingleClipPayload.targetStartUs,
-        },
-      );
+        );
+      }
       hasPendingTimelinePersist.value = true;
     }
 
@@ -699,6 +716,7 @@ export function useTimelineItemDrag(
     dragToggleSnapOverride.value = false;
 
     window.removeEventListener('keydown', onGlobalKeyDown);
+    window.removeEventListener('keyup', onGlobalKeyUp);
   }
 
   onBeforeUnmount(() => {
@@ -707,6 +725,7 @@ export function useTimelineItemDrag(
       dragRafId = null;
     }
     window.removeEventListener('keydown', onGlobalKeyDown);
+    window.removeEventListener('keyup', onGlobalKeyUp);
   });
 
   return {

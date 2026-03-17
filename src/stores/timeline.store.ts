@@ -197,6 +197,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     timelineDoc,
     selectedTrackId,
     applyTimeline,
+    batchApplyTimeline,
     requestTimelineSave,
     getSelectedOrActiveTrackId: () => selection.getSelectedOrActiveTrackId(),
   });
@@ -242,6 +243,9 @@ export const useTimelineStore = defineStore('timeline', () => {
     getDoc: () => timelineDoc.value,
     getCurrentTime: () => currentTime.value,
     applyTimeline,
+    get defaultZoneDurationUs() {
+      return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
+    },
   });
 
   const hydration = createTimelineHydration({
@@ -430,6 +434,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     selectionStore,
     markerService,
     trimming,
+    applyTimeline,
+    get defaultStaticClipDurationUs() {
+      return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
+    },
   });
 
   const captions = createTimelineCaptions({
@@ -454,6 +462,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     timelineDoc,
     getMarkers: markerService.getMarkers,
     getSelectionRange: selectionRange.getSelectionRange,
+    setPreviewSelectionRange: selectionRange.setPreviewSelectionRange,
     fps,
     isTimelineDirty,
     isSavingTimeline,
