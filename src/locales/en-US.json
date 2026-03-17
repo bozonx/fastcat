@@ -169,11 +169,14 @@
     "captions": {
       "generate": "Generate captions",
       "generated": "Captions generated",
-      "maxDurationMs": "Max duration (ms)",
+      "generatedDescription": "{addedCount} text clips were created from {sourceCount} source files",
+      "maxDurationMs": "Max clip duration, ms",
       "maxWordsPerClip": "Max words per clip",
+      "modalDescription": "Create text clips from transcription cache of active audio and video clips across the timeline.",
       "modalTitle": "Generate captions",
-      "silenceGapMs": "Silence gap (ms)",
-      "splitOnPunctuation": "Split on punctuation"
+      "silenceGapMs": "Split on silence gap, ms",
+      "splitOnPunctuation": "Split on punctuation",
+      "timelineWideDescription": "The editor will scan all active audio and video media clips on non-muted, visible tracks, load their existing transcription cache, account for trims, and keep only the top visible source on overlaps."
     },
     "clip": {
       "actions": "Actions",

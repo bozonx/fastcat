@@ -50,10 +50,10 @@ async function generateCaptions() {
     toast.add({
       color: 'success',
       title: t('fastcat.captions.generated', 'Captions generated'),
-      description: t(
-        'fastcat.captions.generatedDescription',
-        `${result.addedCount} text clips were created from ${result.sourceCount} source files`,
-      ),
+      description: t('fastcat.captions.generatedDescription', {
+        addedCount: result.addedCount,
+        sourceCount: result.sourceCount,
+      }),
     });
     emit('generated');
     isOpen.value = false;

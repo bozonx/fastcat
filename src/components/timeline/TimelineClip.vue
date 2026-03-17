@@ -162,11 +162,6 @@ function onClipPointerdown(e: PointerEvent) {
 
   const onPointerUp = () => {
     cleanup();
-    if (e.button === 2) {
-      window.setTimeout(() => {
-        rightClickDragTriggered.value = false;
-      }, 0);
-    }
   };
 
   const onPointerCancel = () => {
@@ -426,28 +421,31 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
         zIndex: timelineStore.selectedItemIds.includes(item.id)
           ? 'var(--z-clip-selected)'
           : isDraggingOver
-            ? 'var(--z-clip-dragging)'
-            : 'var(--z-clip-base)',
+            ? 'var(--z-clip-dragging-over)'
+            : 'var(--z-clip-normal)',
       }"
       :class="[
-        timelineStore.isTrimModeActive ? 'cursor-crosshair' : 'cursor-pointer',
+        getClipClass(item, track),
         timelineStore.selectedItemIds.includes(item.id)
-          ? 'outline-2 outline-(--selection-ring) shadow-lg'
-          : '',
-        isDraggingOver ? 'ring-2 ring-primary-500' : '',
+          ? 'outline-(--color-primary) outline-2 z-10 shadow-lg'
+          : 'outline-transparent',
         clipItem && typeof clipItem.freezeFrameSourceUs === 'number'
           ? 'outline-(--color-warning) outline-2'
           : '',
-        clipItem && (Boolean(clipItem.disabled) || Boolean(track.videoHidden) || (timelineStore.isAnyTrackSoloed && !track.audioSolo)) ? 'opacity-40' : '',
+        clipItem &&
+        (Boolean(clipItem.disabled) ||
+          Boolean(track.videoHidden) ||
+          (timelineStore.isAnyTrackSoloed && !track.audioSolo))
+          ? 'opacity-40'
+          : '',
         isMediaMissing ? 'bg-red-600! border-red-800! text-white!' : '',
         clipItem && Boolean(clipItem.locked) ? 'cursor-not-allowed' : '',
         isMobile ? 'touch-manipulation' : '',
-        ...getClipClass(item, track),
       ]"
       @pointerdown="onClipPointerdown"
       @click="onClipClick"
       @dblclick="onClipDblClick"
-      @contextmenu="onContextMenu"
+      @contextmenu.capture="onContextMenu"
       @dragover="handleDragOver"
       @dragenter="handleDragEnter"
       @dragleave="handleDragLeave"
