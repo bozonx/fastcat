@@ -148,6 +148,13 @@ const displayMode = computed<
   if (entity?.source === 'project' && entity.kind === 'effect') return 'project-effect';
   if (entity?.source === 'project' && entity.kind === 'transition') return 'project-transition';
   if (entity?.source === 'timeline' && entity.kind === 'marker') return 'marker';
+  // .otio file → same timeline mode as top bar
+  if (
+    entity?.source === 'fileManager' &&
+    entity.kind === 'file' &&
+    entity.entry?.name?.toLowerCase().endsWith('.otio')
+  )
+    return 'timeline';
   if (entity?.source === 'fileManager' && (entity.kind === 'file' || entity.kind === 'directory'))
     return 'file';
   if (entity?.source === 'fileManager' && entity.kind === 'multiple') return 'files';
@@ -243,7 +250,7 @@ function onPanelFocusOut() {
             v-else-if="displayMode === 'timeline'"
             class="ml-2 text-xs text-ui-text-muted font-mono truncate"
           >
-            {{ t('fastcat.timeline.properties.title', 'Timeline Properties') }}
+            {{ selectedFsEntry?.name ?? t('fastcat.timeline.properties.title', 'Timeline Properties') }}
           </span>
           <span
             v-else-if="displayMode === 'project-effect'"
@@ -357,7 +364,10 @@ function onPanelFocusOut() {
             v-model:marker-id="selectedMarkerId"
           />
           <SelectionRangeProperties v-else-if="displayMode === 'selection-range'" />
-          <TimelineProperties v-else-if="displayMode === 'timeline'" />
+          <TimelineProperties
+            v-else-if="displayMode === 'timeline'"
+            :fs-entry="selectedFsEntry?.name?.toLowerCase().endsWith('.otio') ? selectedFsEntry : null"
+          />
           <ProjectEffectProperties
             v-else-if="displayMode === 'project-effect' && selectedProjectEffectType"
             :effect-type="selectedProjectEffectType"

@@ -188,12 +188,6 @@ async function copyToClipboard(text: string) {
 
 const isVideoFile = computed(() => mediaType.value === 'video');
 
-const isActiveTimeline = computed(() => {
-  if (!isOtio.value) return false;
-  const currentPath = timelineStore.currentTimelinePath;
-  return Boolean(currentPath && props.selectedFsEntry.path === currentPath);
-});
-
 const showVideoProxyActions = computed(() => {
   if (isProjectRootDir.value) return false;
   if (!isVideoFile.value) return false;
@@ -396,11 +390,6 @@ const {
       :latest-transcription-was-cached="latestTranscriptionWasCached"
       :latest-transcription-text="latestTranscriptionText"
       :open-transcription-modal="openTranscriptionModal"
-    />
-
-    <TimelineProperties
-      v-if="fileInfo?.kind === 'file' && isOtio"
-      v-bind="isActiveTimeline ? {} : { summary: timelineDocSummary, isReadOnly: true }"
     />
 
     <FileGeneralInfoSection
