@@ -129,15 +129,15 @@ describe('useEditorHotkeys', () => {
 
     projectStore.setView('cut');
     focusStore.setMainFocus('timeline');
-    settingsStore.selectToolbarMoveMode('slip');
+    settingsStore.selectToolbarDragMode('slip');
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 't', code: 'KeyT', bubbles: true }));
-    expect(settingsStore.toolbarMoveMode).toBe('slip');
-    expect(settingsStore.toolbarMoveModeEnabled).toBe(false);
+    expect(settingsStore.toolbarDragMode).toBe('pseudo_overlap');
+    expect(settingsStore.toolbarDragModeEnabled).toBe(true);
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 't', code: 'KeyT', bubbles: true }));
-    expect(settingsStore.toolbarMoveMode).toBe('slip');
-    expect(settingsStore.toolbarMoveModeEnabled).toBe(true);
+    expect(settingsStore.toolbarDragMode).toBe('pseudo_overlap');
+    expect(settingsStore.toolbarDragModeEnabled).toBe(false);
 
     await wrapper.unmount();
   });

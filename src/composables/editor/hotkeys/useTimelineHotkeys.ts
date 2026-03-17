@@ -52,7 +52,7 @@ export function useTimelineHotkeys() {
   const handlers: Partial<Record<HotkeyCommandId, (e: KeyboardEvent) => boolean>> = {
     'timeline.toggleSnap': () => {
       if (!focusStore.canUseTimelineHotkeys) return false;
-      settingsStore.toggleSelectedToolbarMoveMode();
+      settingsStore.toggleToolbarPseudoOverlapMode();
       return true;
     },
 

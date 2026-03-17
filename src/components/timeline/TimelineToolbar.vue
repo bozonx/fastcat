@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ToolbarMoveMode } from '~/stores/timelineSettings.store';
+import type { ToolbarDragMode, ToolbarSnapMode } from '~/stores/timelineSettings.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import UiSplitDropdownButton from '~/components/ui/UiSplitDropdownButton.vue';
@@ -28,70 +28,92 @@ const trimMenuItems = [
   ],
 ];
 
-const moveModeItems = computed(() => [
+const snapModeItems = computed(() => [
   [
     {
       label: t('fastcat.timeline.clipSnapOn', 'Snap'),
-      icon: settingsStore.toolbarMoveMode === 'snap' ? 'i-heroicons-check' : 'i-heroicons-none',
-      onSelect: () => selectToolbarMoveMode('snap'),
+      icon: settingsStore.toolbarSnapMode === 'snap' ? 'i-heroicons-check' : 'i-heroicons-none',
+      onSelect: () => selectToolbarSnapMode('snap'),
+    },
+    {
+      label: t('fastcat.timeline.clipSnapOffFrames', 'No snap'),
+      icon: settingsStore.toolbarSnapMode === 'no_snap' ? 'i-heroicons-check' : 'i-heroicons-none',
+      onSelect: () => selectToolbarSnapMode('no_snap'),
     },
     {
       label: t('videoEditor.settings.actionFreeMode', 'Free mode'),
-      icon: settingsStore.toolbarMoveMode === 'free_mode' ? 'i-heroicons-check' : 'i-heroicons-none',
-      onSelect: () => selectToolbarMoveMode('free_mode'),
-    },
-    {
-      label: t('videoEditor.settings.actionPseudoOverlap', 'Pseudo overlap'),
-      icon: settingsStore.toolbarMoveMode === 'pseudo_overlap' ? 'i-heroicons-check' : 'i-heroicons-none',
-      onSelect: () => selectToolbarMoveMode('pseudo_overlap'),
-    },
-    {
-      label: t('videoEditor.settings.actionCopy', 'Copy clip'),
-      icon: settingsStore.toolbarMoveMode === 'copy' ? 'i-heroicons-check' : 'i-heroicons-none',
-      onSelect: () => selectToolbarMoveMode('copy'),
-    },
-    {
-      label: t('fastcat.timeline.slipMode', 'Slip content'),
-      icon: settingsStore.toolbarMoveMode === 'slip' ? 'i-heroicons-check' : 'i-heroicons-none',
-      onSelect: () => selectToolbarMoveMode('slip'),
+      icon: settingsStore.toolbarSnapMode === 'free_mode' ? 'i-heroicons-check' : 'i-heroicons-none',
+      onSelect: () => selectToolbarSnapMode('free_mode'),
     },
   ],
 ]);
 
-const isToolbarMoveModeActive = computed(() => {
-  return settingsStore.toolbarMoveModeEnabled;
-});
+const dragModeItems = computed(() => [
+  [
+    {
+      label: t('videoEditor.settings.actionPseudoOverlap', 'Pseudo overlap'),
+      icon: settingsStore.toolbarDragMode === 'pseudo_overlap' ? 'i-heroicons-check' : 'i-heroicons-none',
+      onSelect: () => selectToolbarDragMode('pseudo_overlap'),
+    },
+    {
+      label: t('fastcat.timeline.slipMode', 'Slip content'),
+      icon: settingsStore.toolbarDragMode === 'slip' ? 'i-heroicons-check' : 'i-heroicons-none',
+      onSelect: () => selectToolbarDragMode('slip'),
+    },
+    {
+      label: t('videoEditor.settings.actionCopy', 'Copy clip'),
+      icon: settingsStore.toolbarDragMode === 'copy' ? 'i-heroicons-check' : 'i-heroicons-none',
+      onSelect: () => selectToolbarDragMode('copy'),
+    },
+  ],
+]);
 
-const toolbarMoveModeIcon = computed(() => {
-  if (settingsStore.toolbarMoveMode === 'free_mode') {
+const toolbarSnapModeIcon = computed(() => {
+  if (settingsStore.toolbarSnapMode === 'free_mode') {
     return 'i-heroicons-arrows-pointing-out';
   }
 
-  if (settingsStore.toolbarMoveMode === 'pseudo_overlap') {
-    return 'i-heroicons-rectangle-stack';
-  }
-
-  if (settingsStore.toolbarMoveMode === 'copy') {
-    return 'i-heroicons-document-duplicate';
-  }
-
-  if (settingsStore.toolbarMoveMode === 'slip') {
-    return 'i-heroicons-arrows-right-left';
+  if (settingsStore.toolbarSnapMode === 'no_snap') {
+    return 'i-heroicons-link-slash';
   }
 
   return 'i-heroicons-link';
 });
 
-const toolbarMoveModeVariant = computed(() => {
-  return isToolbarMoveModeActive.value ? 'solid' : 'ghost';
+const toolbarDragModeIcon = computed(() => {
+  if (settingsStore.toolbarDragMode === 'pseudo_overlap') {
+    return 'i-heroicons-rectangle-stack';
+  }
+
+  if (settingsStore.toolbarDragMode === 'copy') {
+    return 'i-heroicons-document-duplicate';
+  }
+
+  if (settingsStore.toolbarDragMode === 'slip') {
+    return 'i-heroicons-arrows-right-left';
+  }
+
+  return 'i-heroicons-rectangle-stack';
 });
 
-function selectToolbarMoveMode(mode: ToolbarMoveMode) {
-  settingsStore.selectToolbarMoveMode(mode);
+const toolbarDragModeVariant = computed(() => {
+  return settingsStore.toolbarDragModeEnabled ? 'solid' : 'ghost';
+});
+
+function selectToolbarSnapMode(mode: ToolbarSnapMode) {
+  settingsStore.selectToolbarSnapMode(mode);
 }
 
-function toggleToolbarMoveMode() {
-  settingsStore.toggleSelectedToolbarMoveMode();
+function cycleToolbarSnapMode() {
+  settingsStore.cycleToolbarSnapMode();
+}
+
+function selectToolbarDragMode(mode: ToolbarDragMode) {
+  settingsStore.selectToolbarDragMode(mode);
+}
+
+function toggleToolbarDragMode() {
+  settingsStore.toggleSelectedToolbarDragMode();
 }
 
 function toggleTrimMode(event?: MouseEvent) {
@@ -133,18 +155,33 @@ function onDragEnd() {
     @click.self="timelineStore.selectTimelineProperties()"
   >
 
-    <UTooltip :text="t('fastcat.timeline.moveMode', 'Clip Move Mode')">
+    <UTooltip :text="t('fastcat.timeline.snapMode', 'Snap Mode')">
       <UiSplitDropdownButton
         size="xs"
-        :variant="toolbarMoveModeVariant"
-        :color="isToolbarMoveModeActive ? 'primary' : 'neutral'"
-        :icon="toolbarMoveModeIcon"
-        :ariaLabel="t('fastcat.timeline.moveMode', 'Clip Move Mode')"
-        :items="moveModeItems"
+        variant="ghost"
+        color="neutral"
+        :icon="toolbarSnapModeIcon"
+        :ariaLabel="t('fastcat.timeline.snapMode', 'Snap Mode')"
+        :items="snapModeItems"
         button-class="hover:bg-ui-bg-hover/60"
         caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
         caret-icon-class="size-2.5"
-        @click="toggleToolbarMoveMode"
+        @click="cycleToolbarSnapMode"
+      />
+    </UTooltip>
+
+    <UTooltip :text="t('fastcat.timeline.moveMode', 'Clip Move Mode')">
+      <UiSplitDropdownButton
+        size="xs"
+        :variant="toolbarDragModeVariant"
+        :color="settingsStore.toolbarDragModeEnabled ? 'primary' : 'neutral'"
+        :icon="toolbarDragModeIcon"
+        :ariaLabel="t('fastcat.timeline.moveMode', 'Clip Move Mode')"
+        :items="dragModeItems"
+        button-class="hover:bg-ui-bg-hover/60"
+        caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
+        caret-icon-class="size-2.5"
+        @click="toggleToolbarDragMode"
       />
     </UTooltip>
 

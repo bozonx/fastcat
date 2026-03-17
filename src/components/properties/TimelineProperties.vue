@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import PropertySection from '~/components/properties/PropertySection.vue';
+import PropertyRow from '~/components/properties/PropertyRow.vue';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 import AudioEffectsEditor from '~/components/common/AudioEffectsEditor.vue';
@@ -15,16 +15,41 @@ import {
   TIMELINE_ZOOM_POSITIONS,
   timelineZoomPositionToScale,
 } from '~/utils/zoom';
+import { formatDurationSeconds } from '~/utils/format';
+import { selectTimelineDurationUs } from '~/timeline/selectors';
+
+const props = defineProps<{
+  summary?: {
+    version?: string | number | null;
+    durationUs?: number | null;
+    videoTracks?: number | null;
+    audioTracks?: number | null;
+    clips?: number | null;
+  };
+  isReadOnly?: boolean;
+}>();
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
-const settingsStore = useTimelineSettingsStore();
 
-const snapThresholdPx = computed({
-  get: () => settingsStore.snapThresholdPx,
-  set: (val: number) => {
-    settingsStore.setSnapThresholdPx(val);
-  },
+const computedSummary = computed(() => {
+  if (props.summary) return props.summary;
+  const doc = timelineStore.timelineDoc;
+  if (!doc) return null;
+  const videoTracks = doc.tracks.filter((tr) => tr.kind === 'video').length;
+  const audioTracks = doc.tracks.filter((tr) => tr.kind === 'audio').length;
+  const clips = doc.tracks.reduce(
+    (acc, tr) => acc + tr.items.filter((i) => i.kind === 'clip').length,
+    0,
+  );
+  const durationUs = selectTimelineDurationUs(doc);
+  return {
+    version: '-',
+    durationUs,
+    videoTracks,
+    audioTracks,
+    clips,
+  };
 });
 
 const masterGain = computed({
@@ -104,8 +129,34 @@ function handleAddAudioTrack() {
 
 <template>
   <div class="w-full flex flex-col gap-3">
+    <!-- Info Section -->
+    <PropertySection :title="t('common.info', 'Info')" v-if="computedSummary">
+      <div class="flex flex-col">
+        <PropertyRow
+          :label="t('fastcat.timeline.version', 'Version')"
+          :value="computedSummary.version ?? '-'"
+        />
+        <PropertyRow
+          :label="t('common.duration', 'Duration')"
+          :value="formatDurationSeconds((computedSummary.durationUs ?? 0) / 1_000_000)"
+        />
+        <PropertyRow
+          :label="t('videoEditor.fileManager.otio.videoTracks', 'Video tracks')"
+          :value="computedSummary.videoTracks ?? '-'"
+        />
+        <PropertyRow
+          :label="t('videoEditor.fileManager.otio.audioTracks', 'Audio tracks')"
+          :value="computedSummary.audioTracks ?? '-'"
+        />
+        <PropertyRow
+          :label="t('videoEditor.fileManager.otio.clips', 'Clips')"
+          :value="computedSummary.clips ?? '-'"
+        />
+      </div>
+    </PropertySection>
+
     <!-- Actions -->
-    <PropertySection :title="t('fastcat.timeline.properties.actions', 'Actions')">
+    <PropertySection :title="t('fastcat.timeline.properties.actions', 'Actions')" v-if="!isReadOnly">
       <div class="grid grid-cols-2 gap-2 w-full mt-1">
         <UButton
           size="xs"
@@ -128,14 +179,12 @@ function handleAddAudioTrack() {
           {{ t('fastcat.timeline.addAudioTrack', 'Add audio track') }}
         </UButton>
       </div>
+    </PropertySection>
 
-      <div class="flex flex-col gap-2 mt-3 p-2 bg-ui-bg rounded border border-ui-border">
-        <div class="border-b border-ui-border pb-2 mb-1">
-          <div class="flex items-center justify-between gap-2 mb-2">
-            <span class="text-xs text-ui-text-muted">{{
-              t('fastcat.timeline.properties.zoom', 'Zoom')
-            }}</span>
-          </div>
+    <!-- Settings -->
+    <PropertySection :title="t('common.settings', 'Settings')" v-if="!isReadOnly">
+      <div class="flex flex-col">
+        <PropertyRow :label="t('fastcat.timeline.properties.zoom', 'Zoom')">
           <div class="flex items-center gap-2">
             <div class="min-w-0 flex-1">
               <UiWheelSlider
@@ -147,74 +196,26 @@ function handleAddAudioTrack() {
                 :default-value="DEFAULT_TIMELINE_ZOOM_POSITION"
               />
             </div>
-            <div class="w-24 shrink-0">
-              <UInput v-model="timelineZoomMultiplierInput" size="xs" class="w-full font-mono" />
+            <div class="w-16 shrink-0">
+              <UInput v-model="timelineZoomMultiplierInput" size="xs" class="w-full font-mono text-center" />
             </div>
           </div>
-        </div>
+        </PropertyRow>
 
-        <div class="flex items-center justify-between">
-          <span class="text-xs text-ui-text-muted">{{
-            t('fastcat.timeline.properties.snapToFrames', 'Snap to frames')
-          }}</span>
-          <USwitch
-            size="sm"
-            :model-value="settingsStore.frameSnapMode === 'frames'"
-            @update:model-value="settingsStore.setFrameSnapMode($event ? 'frames' : 'free')"
-          />
-        </div>
-        <div class="flex items-center justify-between">
-          <span class="text-xs text-ui-text-muted">{{
-            t('fastcat.timeline.properties.snapToClips', 'Snap to clips')
-          }}</span>
-          <USwitch
-            size="sm"
-            :model-value="settingsStore.clipSnapMode === 'clips'"
-            @update:model-value="settingsStore.setClipSnapMode($event ? 'clips' : 'none')"
-          />
-        </div>
-        <div class="flex items-center justify-between">
-          <span class="text-xs text-ui-text-muted">{{
-            t('fastcat.timeline.properties.overlapMode', 'Pseudo-overlap')
-          }}</span>
-          <USwitch
-            size="sm"
-            :model-value="settingsStore.overlapMode === 'pseudo'"
-            @update:model-value="settingsStore.setOverlapMode($event ? 'pseudo' : 'none')"
-          />
-        </div>
-
-        <div class="border-t border-ui-border pt-2 mt-2">
-          <div class="flex items-center justify-between">
-            <span class="text-xs text-ui-text-muted">{{
-              t('videoEditor.settings.snapThreshold', 'Snap threshold (px)')
-            }}</span>
-            <span class="text-[10px] font-mono text-ui-text-muted">{{ snapThresholdPx }}px</span>
+        <PropertyRow :label="t('videoEditor.hotkeys.general.mute', 'Mute')">
+          <div class="flex justify-end w-full">
+            <USwitch
+              size="sm"
+              :model-value="masterMuted"
+              @update:model-value="masterMuted = $event"
+            />
           </div>
-          <UiWheelSlider
-            v-model="snapThresholdPx"
-            :min="1"
-            :max="40"
-            :step="1"
-            :wheel-step-multiplier="1"
-          />
-        </div>
-
-        <div class="flex items-center justify-between border-t border-ui-border pt-1 mt-1">
-          <span class="text-xs text-ui-text-muted">{{
-            t('videoEditor.hotkeys.general.mute', 'Mute')
-          }}</span>
-          <USwitch
-            size="sm"
-            :model-value="masterMuted"
-            @update:model-value="masterMuted = $event"
-          />
-        </div>
+        </PropertyRow>
       </div>
     </PropertySection>
 
     <!-- Master Video Effects -->
-    <div class="relative">
+    <div class="relative" v-if="!isReadOnly">
       <EffectsEditor
         :effects="masterEffects"
         :title="t('fastcat.effects.masterTitle', 'Master effects')"
@@ -231,24 +232,24 @@ function handleAddAudioTrack() {
     </div>
 
     <AudioEffectsEditor
+      v-if="!isReadOnly"
       :effects="masterAudioEffects"
       @update:effects="handleUpdateMasterAudioEffects"
     />
 
     <!-- Master Volume -->
-    <PropertySection :title="t('fastcat.timeline.properties.masterVolume', 'Master Volume')">
-      <div class="space-y-1.5 mt-1">
-        <div class="flex items-center justify-between">
-          <span class="text-[10px] font-mono text-ui-text-muted">{{ masterGain.toFixed(3) }}x</span>
-        </div>
-        <UiWheelSlider
-          v-model="masterGain"
-          :min="0"
-          :max="2"
-          :step="0.001"
-          :wheel-step-multiplier="10"
-          :default-value="1"
-        />
+    <PropertySection :title="t('fastcat.timeline.properties.masterVolume', 'Master Volume')" v-if="!isReadOnly">
+      <div class="flex flex-col">
+        <PropertyRow :label="masterGain.toFixed(3) + 'x'">
+          <UiWheelSlider
+            v-model="masterGain"
+            :min="0"
+            :max="2"
+            :step="0.001"
+            :wheel-step-multiplier="10"
+            :default-value="1"
+          />
+        </PropertyRow>
       </div>
     </PropertySection>
   </div>
