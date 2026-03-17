@@ -44,6 +44,13 @@ export interface FastCatUserSettings {
     defaultTransitionDurationUs: number;
     /** Default duration for static clips (images, text, etc) in microseconds */
     defaultStaticClipDurationUs: number;
+    snapping: {
+      timelineEdges: boolean;
+      clips: boolean;
+      markers: boolean;
+      selection: boolean;
+      playhead: boolean;
+    };
   };
   stopFrames: {
     qualityPercent: number;
@@ -180,6 +187,13 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
     snapThresholdPx: 8,
     defaultTransitionDurationUs: 2_000_000,
     defaultStaticClipDurationUs: 5_000_000,
+    snapping: {
+      timelineEdges: true,
+      clips: true,
+      markers: true,
+      selection: true,
+      playhead: true,
+    },
   },
   stopFrames: {
     qualityPercent: 85,

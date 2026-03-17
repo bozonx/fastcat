@@ -12,6 +12,7 @@ import SettingsIntegrations from '~/components/settings/SettingsIntegrations.vue
 import SettingsVideo from '~/components/settings/SettingsVideo.vue';
 import SettingsAudio from '~/components/settings/SettingsAudio.vue';
 import SettingsStorage from '~/components/settings/SettingsStorage.vue';
+import SettingsSnapping from '~/components/settings/SettingsSnapping.vue';
 
 interface Props {
   open: boolean;
@@ -30,6 +31,7 @@ type SettingsSection =
   | 'user.general'
   | 'user.hotkeys'
   | 'user.mouse'
+  | 'user.snapping'
   | 'user.proxy'
   | 'user.project'
   | 'user.export'
@@ -101,6 +103,14 @@ watch(
               :label="t('videoEditor.settings.userMouse', 'Mouse')"
               :disabled="activeSection === 'user.mouse'"
               @click="activeSection = 'user.mouse'"
+            />
+            <UButton
+              variant="ghost"
+              color="neutral"
+              class="justify-start"
+              :label="t('videoEditor.settings.userSnapping', 'Snapping')"
+              :disabled="activeSection === 'user.snapping'"
+              @click="activeSection = 'user.snapping'"
             />
             <UButton
               variant="ghost"

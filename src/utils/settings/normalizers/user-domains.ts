@@ -40,6 +40,7 @@ export function normalizeTimelineSettings(
 ): FastCatUserSettings['timeline'] {
   const legacyTimelineSnapThresholdPx = Number(input.snapThresholdPx);
   const rawTimeline = asRecord(input.timeline);
+  const rawSnapping = asRecord(rawTimeline.snapping);
   const timelineSnapThresholdPxRaw = Number(rawTimeline.snapThresholdPx);
   const timelineSnapThresholdPxCandidate = Number.isFinite(timelineSnapThresholdPxRaw)
     ? timelineSnapThresholdPxRaw
@@ -56,6 +57,28 @@ export function normalizeTimelineSettings(
     defaultStaticClipDurationUs: Number.isFinite(Number(rawTimeline.defaultStaticClipDurationUs))
       ? Math.max(0, Math.round(Number(rawTimeline.defaultStaticClipDurationUs)))
       : DEFAULT_USER_SETTINGS.timeline.defaultStaticClipDurationUs,
+    snapping: {
+      timelineEdges:
+        typeof rawSnapping.timelineEdges === 'boolean'
+          ? rawSnapping.timelineEdges
+          : DEFAULT_USER_SETTINGS.timeline.snapping.timelineEdges,
+      clips:
+        typeof rawSnapping.clips === 'boolean'
+          ? rawSnapping.clips
+          : DEFAULT_USER_SETTINGS.timeline.snapping.clips,
+      markers:
+        typeof rawSnapping.markers === 'boolean'
+          ? rawSnapping.markers
+          : DEFAULT_USER_SETTINGS.timeline.snapping.markers,
+      selection:
+        typeof rawSnapping.selection === 'boolean'
+          ? rawSnapping.selection
+          : DEFAULT_USER_SETTINGS.timeline.snapping.selection,
+      playhead:
+        typeof rawSnapping.playhead === 'boolean'
+          ? rawSnapping.playhead
+          : DEFAULT_USER_SETTINGS.timeline.snapping.playhead,
+    },
   };
 }
 
