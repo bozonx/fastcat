@@ -56,9 +56,27 @@ function getMarkerButtonClass(marker: MarkerPoint) {
 
 <template>
   <div class="absolute inset-0 pointer-events-none">
+    <!-- 1. Marker Zones (lowest z-index) -->
+    <div
+      v-for="point in markerPoints.filter(p => p.isZone)"
+      :key="`zone-bg-${point.id}`"
+      class="absolute bottom-0 h-full pointer-events-auto z-10"
+      :style="{ left: `${point.x}px`, width: `${point.width}px` }"
+    >
+      <div
+        class="absolute inset-y-0 left-0 w-full bg-primary-500/20 border-l border-r border-primary-500/50 pointer-events-none"
+        :style="
+          point.color
+            ? { backgroundColor: `${point.color}33`, borderColor: `${point.color}80` }
+            : {}
+        "
+      />
+    </div>
+
+    <!-- 2. Selection Area (middle z-index) -->
     <UContextMenu v-if="selectionRangePoint" :items="selectionRangeMenuItems">
       <div
-        class="absolute inset-y-0 pointer-events-auto z-30"
+        class="absolute inset-y-0 pointer-events-auto z-20"
         :style="{
           left: `${selectionRangePoint.x}px`,
           width: `${selectionRangePoint.width}px`,
@@ -72,45 +90,24 @@ function getMarkerButtonClass(marker: MarkerPoint) {
           @click="emit('select-selection-range', $event)"
           @pointerdown.stop="emit('selection-range-pointerdown', $event, 'move')"
         />
-        <button
-          type="button"
-          class="absolute inset-y-0 left-0 w-2 -translate-x-1/2 cursor-ew-resize bg-selection-range/70"
-          :aria-label="selectionStartHandleLabel"
-          @pointerdown.stop="emit('selection-range-pointerdown', $event, 'left')"
-        />
-        <button
-          type="button"
-          class="absolute inset-y-0 right-0 w-2 translate-x-1/2 cursor-ew-resize bg-selection-range/70"
-          :aria-label="selectionEndHandleLabel"
-          @pointerdown.stop="emit('selection-range-pointerdown', $event, 'right')"
-        />
       </div>
     </UContextMenu>
 
+    <!-- 3. Markers (higher z-index) -->
     <div
       v-for="point in markerPoints"
-      :key="point.id"
-      class="absolute bottom-0 h-full pointer-events-auto"
-      :style="{ left: `${point.x}px`, width: point.isZone ? `${point.width}px` : 'auto' }"
+      :key="`marker-${point.id}`"
+      class="absolute bottom-0 h-full pointer-events-auto z-30"
+      :style="{ left: `${point.x}px`, width: point.isZone ? `${point.width}px` : 'auto', pointerEvents: 'none' }"
     >
-      <div
-        v-if="point.isZone"
-        class="absolute inset-y-0 left-0 w-full bg-primary-500/20 border-l border-r border-primary-500/50 pointer-events-none"
-        :style="
-          point.color
-            ? { backgroundColor: `${point.color}33`, borderColor: `${point.color}80` }
-            : {}
-        "
-      />
-
-      <div class="absolute bottom-0 left-0">
+      <div class="absolute bottom-0 left-0 pointer-events-auto">
         <UContextMenu
           :items="point.isZone ? getZoneMarkerMenuItems(point.id) : getMarkerMenuItems(point.id)"
         >
           <UTooltip :text="truncateTooltip(point.text)" :disabled="!point.text">
             <button
               type="button"
-              class="-translate-x-1 relative z-10"
+              class="-translate-x-1 relative z-30"
               :class="getMarkerButtonClass(point)"
               :style="point.color ? { color: point.color } : {}"
               :aria-label="point.isZone ? zoneMarkerStartLabel : markerLabel"
@@ -133,12 +130,12 @@ function getMarkerButtonClass(marker: MarkerPoint) {
         </UContextMenu>
       </div>
 
-      <div v-if="point.isZone" class="absolute bottom-0 right-0">
+      <div v-if="point.isZone" class="absolute bottom-0 right-0 pointer-events-auto">
         <UContextMenu :items="getZoneMarkerMenuItems(point.id)">
           <UTooltip :text="truncateTooltip(point.text)" :disabled="!point.text">
             <button
               type="button"
-              class="translate-x-1 relative z-10"
+              class="translate-x-1 relative z-30"
               :class="getMarkerButtonClass(point)"
               :style="point.color ? { color: point.color } : {}"
               :aria-label="zoneMarkerEndLabel"
@@ -160,6 +157,29 @@ function getMarkerButtonClass(marker: MarkerPoint) {
           </UTooltip>
         </UContextMenu>
       </div>
+    </div>
+
+    <!-- 4. Selection Area Handles (highest z-index) -->
+    <div
+      v-if="selectionRangePoint"
+      class="absolute inset-y-0 pointer-events-none z-40"
+      :style="{
+        left: `${selectionRangePoint.x}px`,
+        width: `${selectionRangePoint.width}px`,
+      }"
+    >
+      <button
+        type="button"
+        class="absolute inset-y-0 left-0 w-2 -translate-x-1/2 cursor-ew-resize bg-selection-range/70 pointer-events-auto"
+        :aria-label="selectionStartHandleLabel"
+        @pointerdown.stop="emit('selection-range-pointerdown', $event, 'left')"
+      />
+      <button
+        type="button"
+        class="absolute inset-y-0 right-0 w-2 translate-x-1/2 cursor-ew-resize bg-selection-range/70 pointer-events-auto"
+        :aria-label="selectionEndHandleLabel"
+        @pointerdown.stop="emit('selection-range-pointerdown', $event, 'right')"
+      />
     </div>
   </div>
 </template>

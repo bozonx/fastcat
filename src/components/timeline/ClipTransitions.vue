@@ -253,7 +253,7 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
 
 <template>
   <div class="absolute inset-0 pointer-events-none">
-    <div class="absolute inset-0 pointer-events-none overflow-hidden rounded" style="z-index: 25">
+    <div class="absolute inset-0 overflow-hidden rounded" style="z-index: 25">
       <!-- Transition In -->
       <div
         v-if="clip.transitionIn"
@@ -326,7 +326,7 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
           />
           <div
             v-if="canEdit && !clip.locked"
-            class="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40"
+            class="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40 pointer-events-auto"
             @pointerdown.stop.prevent="
               emit('resize', $event, { edge: 'in', durationUs: clip.transitionIn!.durationUs })
             "
@@ -406,7 +406,7 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
           />
           <div
             v-if="canEdit && !clip.locked"
-            class="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40"
+            class="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40 pointer-events-auto"
             @pointerdown.stop.prevent="
               emit('resize', $event, { edge: 'out', durationUs: clip.transitionOut!.durationUs })
             "
@@ -418,15 +418,15 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
     <!-- Create Transition In Handle -->
     <div
       v-if="!clip.transitionIn && canEdit && !clip.locked"
-      class="absolute top-1/2 w-6 h-8 -ml-3 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto"
-      style="left: 0; z-index: calc(var(--z-clip-trim) + 10)"
+      class="absolute w-5 h-8 transition-opacity flex items-center justify-center pointer-events-auto"
+      :style="{ top: '50%', left: '-8px', transform: 'translateY(-50%)', zIndex: 'var(--z-clip-handles)' }"
       :class="[
         clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
         isMobile ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100',
       ]"
     >
       <div
-        class="w-4 h-6 bg-white border border-black/30 hover:bg-primary-100 transition-colors"
+        class="w-3 h-4 bg-white border border-black/30 hover:bg-yellow-400 transition-colors"
         style="clip-path: polygon(0 0, 100% 50%, 0 100%)"
         @pointerdown="handleTransitionCreatePointerDown($event, 'in')"
       ></div>
@@ -435,15 +435,15 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
     <!-- Create Transition Out Handle -->
     <div
       v-if="!clip.transitionOut && canEdit && !clip.locked"
-      class="absolute top-1/2 w-6 h-8 -mr-3 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto"
-      style="right: 0; z-index: calc(var(--z-clip-trim) + 10)"
+      class="absolute w-5 h-8 transition-opacity flex items-center justify-center pointer-events-auto"
+      :style="{ top: '50%', right: '-8px', transform: 'translateY(-50%)', zIndex: 'var(--z-clip-handles)' }"
       :class="[
         clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
         isMobile ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100',
       ]"
     >
       <div
-        class="w-4 h-6 bg-white border border-black/30 hover:bg-primary-100 transition-colors"
+        class="w-3 h-4 bg-white border border-black/30 hover:bg-yellow-400 transition-colors"
         style="clip-path: polygon(0 50%, 100% 0, 100% 100%)"
         @pointerdown="handleTransitionCreatePointerDown($event, 'out')"
       ></div>

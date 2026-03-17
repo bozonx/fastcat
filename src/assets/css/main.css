@@ -43,15 +43,18 @@
   --color-selection-range-border: var(--selection-range-border);
 
   /* Timeline Z-Indexes */
+  --z-clip-normal: 1;
   --z-clip-base: 10;
   --z-clip-name: 15;
   --z-clip-selected: 20;
   --z-clip-content: 20;
   --z-clip-guide: 25;
   --z-clip-dragging: 30;
+  --z-clip-dragging-over: 30;
   --z-clip-free-pos: 35;
   --z-clip-speed: 40;
   --z-clip-trim: 50;
+  --z-clip-handles: 100;
 
   /* App Global Z-Indexes */
   --z-dropdown: 100;

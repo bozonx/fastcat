@@ -52,7 +52,11 @@ function shouldCollapseFades() {
 }
 
 function clampHandlePx(px: number, width: number) {
-  return Math.min(Math.max(0, px), width);
+  const pad = 4;
+  if (width <= pad * 2) {
+    return width / 2;
+  }
+  return Math.min(Math.max(pad, px), width - pad);
 }
 
 function onFadeHandlePointerDown(
@@ -106,7 +110,7 @@ const volumeY = computed(() => {
   <div
     v-if="!shouldCollapseFades()"
     class="absolute inset-0 pointer-events-none"
-    style="z-index: 25"
+    style="z-index: calc(var(--z-clip-trim) + 10)"
   >
     <!-- Fade Paths -->
     <div class="absolute inset-0 rounded overflow-hidden">
@@ -153,17 +157,18 @@ const volumeY = computed(() => {
     <!-- Fade Handles -->
     <template v-if="canEdit && !clip.locked">
       <div
-        class="absolute top-0 w-6 h-6 -ml-3 -translate-y-1/2 transition-opacity z-60 flex items-center justify-center shadow-sm pointer-events-auto"
+        class="absolute top-0 w-4 h-4 -translate-x-1/2 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto"
         :class="[
           clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
           isMobile ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100',
         ]"
         :style="{
           left: `${clampHandlePx(Math.min(Math.max(0, timeUsToPx(clip.audioFadeInUs || 0, zoom)), clipWidthPx), clipWidthPx)}px`,
+          zIndex: 'var(--z-clip-handles)',
         }"
       >
         <div
-          class="w-2.5 h-2.5 rounded-full bg-white border border-black/30"
+          class="w-2.5 h-2.5 rounded-full bg-white border border-black/30 hover:bg-yellow-400 transition-colors"
           @pointerdown="
             onFadeHandlePointerDown($event, { edge: 'in', durationUs: clip.audioFadeInUs || 0 })
           "
@@ -171,17 +176,18 @@ const volumeY = computed(() => {
       </div>
 
       <div
-        class="absolute top-0 w-6 h-6 -mr-3 -translate-y-1/2 transition-opacity z-60 flex items-center justify-center shadow-sm pointer-events-auto"
+        class="absolute top-0 w-4 h-4 -translate-x-1/2 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto"
         :class="[
           clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
           isMobile ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100',
         ]"
         :style="{
-          right: `${clampHandlePx(Math.min(Math.max(0, timeUsToPx(clip.audioFadeOutUs || 0, zoom)), clipWidthPx), clipWidthPx)}px`,
+          left: `${clipWidthPx - clampHandlePx(Math.min(Math.max(0, timeUsToPx(clip.audioFadeOutUs || 0, zoom)), clipWidthPx), clipWidthPx)}px`,
+          zIndex: 'var(--z-clip-handles)',
         }"
       >
         <div
-          class="w-2.5 h-2.5 rounded-full bg-white border border-black/30"
+          class="w-2.5 h-2.5 rounded-full bg-white border border-black/30 hover:bg-yellow-400 transition-colors"
           @pointerdown="
             onFadeHandlePointerDown($event, { edge: 'out', durationUs: clip.audioFadeOutUs || 0 })
           "

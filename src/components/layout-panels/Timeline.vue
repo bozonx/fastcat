@@ -573,9 +573,17 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
                 @start-pan="startPan"
               />
             </div>
+            
+            <!-- Grid lines overlaid on tracks area, below ruler, behind tracks -->
+            <TimelineGrid
+              class="absolute left-0 right-0 pointer-events-none z-0"
+              :style="{ top: '28px', bottom: `${scrollbarHeight}px` }"
+              :scroll-el="scrollEl"
+            />
+
             <div
               ref="scrollEl"
-              class="w-full flex-1 overflow-auto relative timeline-scroll-el"
+              class="w-full flex-1 overflow-auto relative timeline-scroll-el z-10"
               @click="onTimelineClick"
               @scroll="onScroll"
             >
@@ -623,13 +631,6 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
                 }"
               />
             </div>
-
-            <!-- Grid lines overlaid on tracks area, below ruler -->
-            <TimelineGrid
-              class="absolute left-0 right-0 pointer-events-none"
-              :style="{ top: '28px', bottom: `${scrollbarHeight}px` }"
-              :scroll-el="scrollEl"
-            />
 
             <!-- Zoom indicator — absolute in bottom-right of visible track area -->
             <Transition

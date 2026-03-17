@@ -95,6 +95,7 @@ let didStartClipDrag = false;
 const rightClickDragTriggered = ref(false);
 let rightClickDragTimer: number | null = null;
 const RIGHT_CLICK_DRAG_DELAY_MS = 300;
+const isHovered = ref(false);
 
 const clipItem = computed<TimelineClipItem | null>(() =>
   props.item.kind === 'clip' ? (props.item as TimelineClipItem) : null,
@@ -436,11 +437,13 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
       :style="{
         left: `${timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom)}px`,
         width: `${clipWidthPx}px`,
-        zIndex: timelineStore.selectedItemIds.includes(item.id)
-          ? 'var(--z-clip-selected)'
-          : isDraggingOver
-            ? 'var(--z-clip-dragging-over)'
-            : 'var(--z-clip-normal)',
+        zIndex: isHovered
+          ? 'var(--z-clip-handles)'
+          : timelineStore.selectedItemIds.includes(item.id)
+            ? 'var(--z-clip-selected)'
+            : isDraggingOver
+              ? 'var(--z-clip-dragging-over)'
+              : 'var(--z-clip-normal)',
       }"
       :class="[
         getClipClass(item, track),
@@ -464,10 +467,10 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
       @click="onClipClick"
       @dblclick="onClipDblClick"
       @contextmenu.capture="onContextMenu"
-      @dragover="handleDragOver"
-      @dragenter="handleDragEnter"
       @dragleave="handleDragLeave"
       @drop="handleDrop"
+      @pointerenter="isHovered = true"
+      @pointerleave="isHovered = false"
     >
       <!-- Indicators -->
       <div
