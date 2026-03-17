@@ -67,7 +67,22 @@ export function createTimelineDispatcher(deps: TimelineDispatcherDeps): Timeline
 
     const prev = deps.timelineDoc.value;
     const hydrated = deps.hydration.hydrateClipSourceDuration(deps.timelineDoc.value, cmd);
-    const { next, createdItemIds } = applyTimelineCommand(hydrated, cmd);
+    let next: TimelineDocument;
+    let createdItemIds: string[] | undefined;
+
+    try {
+      const result = applyTimelineCommand(hydrated, cmd);
+      next = result.next;
+      createdItemIds = result.createdItemIds;
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Item overlaps with another item') {
+        // Expected behavior when validating moves/trims that result in overlap
+        return;
+      }
+      console.warn('Failed to apply timeline command:', error, cmd);
+      return;
+    }
+
     if (next === prev) return;
 
     if (!options?.skipHistory) {
@@ -108,8 +123,20 @@ export function createTimelineDispatcher(deps: TimelineDispatcherDeps): Timeline
     let current = prev;
     for (const cmd of cmds) {
       const hydrated = deps.hydration.hydrateClipSourceDuration(current, cmd);
-      const { next } = applyTimelineCommand(hydrated, cmd);
-      current = next;
+      try {
+        const { next } = applyTimelineCommand(hydrated, cmd);
+        current = next;
+      } catch (error) {
+        if (error instanceof Error && error.message === 'Item overlaps with another item') {
+          // Expected behavior when validating moves/trims that result in overlap
+          break;
+        }
+        console.warn('Failed to apply timeline command in batch:', error, cmd);
+        // Continue with the next command or break?
+        // Usually, if a batch command fails, we can just skip it, or abort the rest.
+        // Let's break to avoid applying subsequent commands that might depend on the failed one.
+        break;
+      }
     }
 
     if (current === prev) return;

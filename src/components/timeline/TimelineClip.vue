@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, nextTick } from 'vue';
+import { computed, ref } from 'vue';
 import type {
   TimelineTrack,
   TimelineTrackItem,
@@ -162,10 +162,10 @@ function onClipPointerdown(e: PointerEvent) {
 
   const onPointerUp = () => {
     cleanup();
-    if (e.button === 2 && rightClickDragTriggered.value) {
-      void nextTick(() => {
+    if (e.button === 2) {
+      window.setTimeout(() => {
         rightClickDragTriggered.value = false;
-      });
+      }, 0);
     }
   };
 
