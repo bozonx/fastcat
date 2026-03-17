@@ -41,6 +41,12 @@ function onMainClick() {
   if (props.disabled) return;
   emit('click');
 }
+
+function onMainButtonClick(event: MouseEvent) {
+  event.preventDefault();
+  event.stopPropagation();
+  onMainClick();
+}
 </script>
 
 <template>
@@ -53,7 +59,7 @@ function onMainClick() {
       :aria-label="ariaLabel"
       :disabled="disabled"
       :class="buttonClass"
-      @click="onMainClick"
+      @click="onMainButtonClick"
     />
 
     <UDropdownMenu :items="items" :disabled="disabled" :ui="{ content: 'bottom-end' }">

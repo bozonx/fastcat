@@ -359,7 +359,7 @@ export function useTimelineItemDrag(
       );
       const nextSourceStartUs = Math.min(
         maxSourceStartUs,
-        Math.max(0, Math.round(dragAnchorSourceStartUs.value + rawDeltaUs)),
+        Math.max(0, Math.round(dragAnchorSourceStartUs.value - rawDeltaUs)),
       );
       const deltaUs = nextSourceStartUs - dragAnchorSourceStartUs.value;
 
@@ -367,7 +367,7 @@ export function useTimelineItemDrag(
         itemId,
         trackId,
         deltaUs,
-        timecode: formatStopFrameTimecode({ timeUs: Math.abs(deltaUs), fps }),
+        timecode: `${deltaUs >= 0 ? '+' : '-'}${formatStopFrameTimecode({ timeUs: Math.abs(deltaUs), fps })}`,
       };
 
       const cmd = {
@@ -516,7 +516,80 @@ export function useTimelineItemDrag(
     const anchorDurationUs = Math.max(0, Math.round(dragAnchorItemDurationUs.value));
     const anchorEndUs = anchorStartUs + anchorDurationUs;
 
-    const rawEdgeUs = mode === 'trim_start' ? anchorStartUs + rawDeltaUs : anchorEndUs + rawDeltaUs;
+    let minEdgeUs = 0;
+    let maxEdgeUs = Number.POSITIVE_INFINITY;
+
+    const doc = dragStartSnapshot.value;
+    if (doc) {
+      const startTrack = doc.tracks.find((t) => t.id === trackId);
+      const startItem = startTrack?.items.find((it) => it.id === itemId);
+
+      if (startTrack && startItem && startItem.kind === 'clip') {
+        const isPseudo = overlapMode === 'pseudo';
+        let prevClipEnd = 0;
+        let nextClipStart = Number.POSITIVE_INFINITY;
+
+        if (!isPseudo) {
+          const itemsOnTrack = startTrack.items
+            .filter((it) => it.kind === 'clip' && it.id !== itemId && !it.locked)
+            .map((it) => ({
+              start: it.timelineRange.startUs,
+              end: it.timelineRange.startUs + it.timelineRange.durationUs,
+            }));
+
+          for (const it of itemsOnTrack) {
+            if (it.end <= anchorStartUs && it.end > prevClipEnd) {
+              prevClipEnd = it.end;
+            }
+            if (it.start >= anchorEndUs && it.start < nextClipStart) {
+              nextClipStart = it.start;
+            }
+          }
+        }
+
+        const speed =
+          typeof startItem.speed === 'number' && Number.isFinite(startItem.speed)
+            ? startItem.speed
+            : 1;
+        const absSpeed = Math.abs(speed);
+
+        const hasFixedSourceDuration =
+          (startItem.clipType === 'media' && !startItem.isImage) ||
+          startItem.clipType === 'timeline';
+        const maxSourceDurationUs = hasFixedSourceDuration
+          ? Math.max(0, Math.round(startItem.sourceDurationUs))
+          : Number.POSITIVE_INFINITY;
+
+        const prevSourceStartUs = Math.max(0, Math.round(startItem.sourceRange.startUs));
+        const prevSourceDurationUs = Math.max(0, Math.round(startItem.sourceRange.durationUs));
+        const prevSourceEndUs = prevSourceStartUs + prevSourceDurationUs;
+
+        if (mode === 'trim_start') {
+          const maxLeftExpansionSource =
+            speed >= 0 ? prevSourceStartUs : maxSourceDurationUs - prevSourceEndUs;
+
+          const minSourceBound = hasFixedSourceDuration
+            ? anchorStartUs - maxLeftExpansionSource / absSpeed
+            : Number.NEGATIVE_INFINITY;
+
+          minEdgeUs = Math.max(prevClipEnd, minSourceBound);
+          maxEdgeUs = anchorEndUs;
+        } else {
+          const maxRightExpansionSource =
+            speed >= 0 ? maxSourceDurationUs - prevSourceEndUs : prevSourceStartUs;
+
+          const maxSourceBound = hasFixedSourceDuration
+            ? anchorEndUs + maxRightExpansionSource / absSpeed
+            : Number.POSITIVE_INFINITY;
+
+          minEdgeUs = anchorStartUs;
+          maxEdgeUs = Math.min(nextClipStart, maxSourceBound);
+        }
+      }
+    }
+
+    let rawEdgeUs = mode === 'trim_start' ? anchorStartUs + rawDeltaUs : anchorEndUs + rawDeltaUs;
+    rawEdgeUs = Math.max(minEdgeUs, Math.min(maxEdgeUs, rawEdgeUs));
 
     let snappedEdgeUs = Math.round(rawEdgeUs);
     let bestDist = thresholdUs;

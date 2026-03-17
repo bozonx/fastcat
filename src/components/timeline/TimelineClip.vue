@@ -102,6 +102,10 @@ const clipItem = computed<TimelineClipItem | null>(() =>
 const clipWidthPx = computed(() =>
   Math.max(2, timeUsToPx(props.item.timelineRange.durationUs, timelineStore.timelineZoom)),
 );
+const currentSlipPreview = computed(() => {
+  if (!props.slipPreview || props.slipPreview.itemId !== props.item.id) return null;
+  return props.slipPreview;
+});
 
 function toggleFadeCurve(edge: 'in' | 'out') {
   if (!clipItem.value || !props.canEditClipContent || clipItem.value.locked) return;
@@ -570,6 +574,14 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
           <span class="truncate text-[10px] leading-tight opacity-70" :title="clipItem.name">{{
             clipItem.name
           }}</span>
+        </div>
+
+        <div
+          v-if="currentSlipPreview"
+          class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded bg-black/80 px-2 py-1 text-[10px] font-medium text-white shadow-lg whitespace-nowrap pointer-events-none"
+          :style="{ zIndex: 'var(--z-clip-guide)' }"
+        >
+          {{ currentSlipPreview.timecode }}
         </div>
 
         <div
