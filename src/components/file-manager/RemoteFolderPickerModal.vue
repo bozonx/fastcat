@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import AppModal from '~/components/ui/AppModal.vue';
+import UiModal from '~/components/ui/UiModal.vue';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
 
 const props = defineProps<{
@@ -25,7 +25,7 @@ const isOpen = computed({
 </script>
 
 <template>
-  <AppModal v-model:open="isOpen" :title="title" :ui="{ content: 'sm:max-w-xl max-h-[80vh]' }">
+  <UiModal v-model:open="isOpen" :title="title" :ui="{ content: 'sm:max-w-xl max-h-[80vh]' }">
     <div class="flex flex-col gap-4 min-h-0">
       <div class="text-xs text-ui-text-muted break-all">
         {{ currentPath || '/' }}
@@ -74,5 +74,5 @@ const isOpen = computed({
         </UButton>
       </div>
     </template>
-  </AppModal>
+  </UiModal>
 </template>

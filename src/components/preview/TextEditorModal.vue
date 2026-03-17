@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import AppModal from '~/components/ui/AppModal.vue';
+import UiModal from '~/components/ui/UiModal.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -18,7 +18,7 @@ const content = defineModel<string>('content', { default: '' });
 </script>
 
 <template>
-  <AppModal v-model:open="isOpen" :title="props.fileName" :ui="{ content: 'max-w-4xl h-[80vh]' }">
+  <UiModal v-model:open="isOpen" :title="props.fileName" :ui="{ content: 'max-w-4xl h-[80vh]' }">
     <div class="flex flex-col h-full min-h-0 pt-2">
       <textarea
         v-model="content"
@@ -26,5 +26,5 @@ const content = defineModel<string>('content', { default: '' });
         spellcheck="false"
       />
     </div>
-  </AppModal>
+  </UiModal>
 </template>

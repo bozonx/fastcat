@@ -3,6 +3,8 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { EffectManifest } from '~/effects/core/registry';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
 
+import UiModal from '~/components/ui/UiModal.vue';
+
 const props = defineProps<{
   modelValue: boolean;
   effect?: Record<string, any>;
@@ -302,41 +304,39 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <UModal
+  <UiModal
     v-model:open="isOpen"
     :title="manifest?.name ?? t('fastcat.effects.settings', 'Settings')"
-    class="sm:max-w-2xl"
+    :ui="{ content: 'sm:max-w-2xl' }"
   >
-    <template #body>
-      <div v-if="settingsControls.length > 0" class="max-h-[60vh] overflow-y-auto pr-2 space-y-4">
-        <div
-          v-if="isParametricEq"
-          class="rounded-lg border border-white/10 bg-slate-950/90 p-3 space-y-3"
-          data-testid="parametric-eq-visualization"
-        >
-          <div class="flex items-center justify-between gap-3 text-xs text-slate-300">
-            <span>20 Hz</span>
-            <span>-24 dB ... +24 dB</span>
-            <span>20 kHz</span>
-          </div>
-          <canvas
-            ref="curveCanvas"
-            :width="canvasWidth"
-            :height="canvasHeight"
-            class="h-44 w-full rounded-md border border-white/8 bg-slate-900"
-          />
+    <div v-if="settingsControls.length > 0" class="max-h-[60vh] overflow-y-auto pr-2 space-y-4">
+      <div
+        v-if="isParametricEq"
+        class="rounded-lg border border-white/10 bg-slate-950/90 p-3 space-y-3"
+        data-testid="parametric-eq-visualization"
+      >
+        <div class="flex items-center justify-between gap-3 text-xs text-slate-300">
+          <span>20 Hz</span>
+          <span>-24 dB ... +24 dB</span>
+          <span>20 kHz</span>
         </div>
-        <ParamsRenderer
-          :controls="settingsControls"
-          :values="effectValues"
-          size="sm"
-          @update:value="handleUpdateValue"
+        <canvas
+          ref="curveCanvas"
+          :width="canvasWidth"
+          :height="canvasHeight"
+          class="h-44 w-full rounded-md border border-white/8 bg-slate-900"
         />
       </div>
-      <div v-else class="text-center text-sm text-ui-text-muted py-8">
-        {{ t('fastcat.effects.noSettings', 'No additional settings available.') }}
-      </div>
-    </template>
+      <ParamsRenderer
+        :controls="settingsControls"
+        :values="effectValues"
+        size="sm"
+        @update:value="handleUpdateValue"
+      />
+    </div>
+    <div v-else class="text-center text-sm text-ui-text-muted py-8">
+      {{ t('fastcat.effects.noSettings', 'No additional settings available.') }}
+    </div>
     <template #footer>
       <div class="flex justify-end w-full">
         <UButton color="primary" autofocus
@@ -345,5 +345,5 @@ onBeforeUnmount(() => {
         </UButton>
       </div>
     </template>
-  </UModal>
+  </UiModal>
 </template>

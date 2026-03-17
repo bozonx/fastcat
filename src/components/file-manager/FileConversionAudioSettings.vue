@@ -68,7 +68,7 @@ const sampleRateOptions = computed(() => {
       <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.audio.channels', 'Channels') }}
       </label>
-      <UiAppButtonGroup
+      <UiButtonGroup
         v-model="audioChannels"
         :options="audioChannelsOptions"
         :disabled="props.disabled"

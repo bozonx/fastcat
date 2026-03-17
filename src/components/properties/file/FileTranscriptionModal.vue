@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import AppModal from '~/components/ui/AppModal.vue';
+import UiModal from '~/components/ui/UiModal.vue';
 import { ref, watch, nextTick } from 'vue';
 
 
@@ -57,7 +57,7 @@ watch(() => props.isTranscriptionModalOpen, (newValue) => {
 </script>
 
 <template>
-  <AppModal
+  <UiModal
     :open="props.isTranscriptionModalOpen"
     @update:open="onModalUpdate"
     @after:enter="handleAfterEnter"
@@ -106,5 +106,5 @@ watch(() => props.isTranscriptionModalOpen, (newValue) => {
         </UButton>
       </div>
     </template>
-  </AppModal>
+  </UiModal>
 </template>

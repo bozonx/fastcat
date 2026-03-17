@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import yaml from 'js-yaml';
-import AppModal from '~/components/ui/AppModal.vue';
+import UiModal from '~/components/ui/UiModal.vue';
 
 import type { FileInfo } from '~/types/fileManager';
 
@@ -25,7 +25,7 @@ const metadataYaml = computed(() => {
 </script>
 
 <template>
-  <AppModal
+  <UiModal
     v-model:open="isOpen"
     :title="t('videoEditor.fileManager.info.title', 'File Information')"
     :ui="{ content: 'sm:max-w-md' }"
@@ -74,5 +74,5 @@ const metadataYaml = computed(() => {
         {{ t('common.close', 'Close') }}
       </UButton>
     </template>
-  </AppModal>
+  </UiModal>
 </template>

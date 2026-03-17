@@ -4,7 +4,8 @@ import { getAllTransitionManifests } from '~/transitions';
 import type { ClipTransition, TimelineTrack, TimelineClipItem } from '~/timeline/types';
 import type { TransitionCurve, TransitionParamField } from '~/transitions/core/registry';
 import DurationSliderInput from '~/components/ui/DurationSliderInput.vue';
-import AppButtonGroup from '~/components/ui/AppButtonGroup.vue';
+import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
+import UiModal from '~/components/ui/UiModal.vue';
 import TransitionParamFields from '~/components/properties/TransitionParamFields.vue';
 import { useClipTransitionPanel } from '~/composables/timeline/useClipTransitionPanel';
 import {
@@ -272,13 +273,13 @@ function handleSavePreset() {
     <!-- Mode toggle -->
     <div class="flex flex-col gap-1">
       <span class="text-ui-text-muted">{{ t('fastcat.timeline.transition.source') }}</span>
-      <AppButtonGroup v-model="selectedMode" :options="sourceOptions" />
+      <UiButtonGroup v-model="selectedMode" :options="sourceOptions" />
     </div>
 
     <!-- Curve toggle -->
     <div class="flex flex-col gap-1">
       <span class="text-ui-text-muted">{{ t('fastcat.timeline.transition.curve') }}</span>
-      <AppButtonGroup v-model="selectedCurve" :options="curveOptions" orientation="vertical" fluid>
+      <UiButtonGroup v-model="selectedCurve" :options="curveOptions" orientation="vertical" fluid>
         <template #option="{ option }">
           <div class="flex items-center gap-2 w-full min-w-0">
             <svg class="w-14 h-8 shrink-0" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -296,7 +297,7 @@ function handleSavePreset() {
             }}</span>
           </div>
         </template>
-      </AppButtonGroup>
+      </UiButtonGroup>
     </div>
 
     <div v-if="visibleParamFields.length" class="flex flex-col gap-2">
@@ -310,30 +311,28 @@ function handleSavePreset() {
       />
     </div>
 
-    <UModal
+    <UiModal
       v-model:open="isSaveModalOpen"
       :title="t('fastcat.effects.savePresetTitle', 'Save Preset')"
     >
-      <template #body>
-        <div class="flex flex-col gap-4">
-          <UFormField :label="t('common.name', 'Name')">
-            <UInput
-              v-model="newPresetName"
-              :placeholder="t('fastcat.effects.presetNamePlaceholder', 'My Custom Preset')"
-              autofocus
-              @keyup.enter="handleSavePreset"
-            />
-          </UFormField>
-          <div class="flex justify-end gap-2">
-            <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">
-              {{ t('common.cancel', 'Cancel') }}
-            </UButton>
-            <UButton color="primary" :disabled="!newPresetName.trim()" @click="handleSavePreset">
-              {{ t('common.save', 'Save') }}
-            </UButton>
-          </div>
+      <div class="flex flex-col gap-4">
+        <UFormField :label="t('common.name', 'Name')">
+          <UInput
+            v-model="newPresetName"
+            :placeholder="t('fastcat.effects.presetNamePlaceholder', 'My Custom Preset')"
+            autofocus
+            @keyup.enter="handleSavePreset"
+          />
+        </UFormField>
+        <div class="flex justify-end gap-2">
+          <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">
+            {{ t('common.cancel', 'Cancel') }}
+          </UButton>
+          <UButton color="primary" :disabled="!newPresetName.trim()" @click="handleSavePreset">
+            {{ t('common.save', 'Save') }}
+          </UButton>
         </div>
-      </template>
-    </UModal>
+      </div>
+    </UiModal>
   </div>
 </template>

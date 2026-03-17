@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useMediaStore } from '~/stores/media.store';
+import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
+import UiSegmentedControl from '~/components/ui/UiSegmentedControl.vue';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProxyStore } from '~/stores/proxy.store';
@@ -171,6 +174,11 @@ const selectedFsEntries = computed(() => {
 
 const previewMode = ref<'original' | 'proxy'>('original');
 
+const previewOptions = computed(() => [
+  { value: 'original', label: t('videoEditor.fileManager.preview.original', 'Original') },
+  { value: 'proxy', label: t('videoEditor.fileManager.preview.proxy', 'Proxy') },
+]);
+
 const hasProxy = computed(() => {
   if (displayMode.value !== 'file' || !selectedFsEntry.value || !selectedFsEntry.value.path)
     return false;
@@ -271,34 +279,11 @@ function onPanelFocusOut() {
         </span>
       </div>
       <div v-if="displayMode !== 'empty'" class="flex gap-1 shrink-0 ml-2">
-        <div v-if="displayMode === 'file' && hasProxy" class="flex gap-1">
-          <div class="flex items-center bg-ui-bg/50 p-0.5 rounded-md border border-ui-border">
-            <button
-              type="button"
-              class="px-2 py-1 rounded text-xs font-medium transition-colors"
-              :class="
-                previewMode === 'original'
-                  ? 'bg-ui-bg-elevated text-primary-500 shadow-sm'
-                  : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50'
-              "
-              @click="previewMode = 'original'"
-            >
-              {{ t('videoEditor.fileManager.preview.original', 'Original') }}
-            </button>
-            <button
-              type="button"
-              class="px-2 py-1 rounded text-xs font-medium transition-colors"
-              :class="
-                previewMode === 'proxy'
-                  ? 'bg-ui-bg-elevated text-primary-500 shadow-sm'
-                  : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50'
-              "
-              @click="previewMode = 'proxy'"
-            >
-              {{ t('videoEditor.fileManager.preview.proxy', 'Proxy') }}
-            </button>
-          </div>
-        </div>
+        <UiSegmentedControl
+          v-if="displayMode === 'file' && hasProxy"
+          v-model="previewMode"
+          :options="previewOptions"
+        />
         <button
           type="button"
           class="inline-flex items-center justify-center h-7 w-7 rounded-md text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50 transition-colors"

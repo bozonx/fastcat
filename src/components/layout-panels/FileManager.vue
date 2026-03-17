@@ -7,6 +7,7 @@ import type { FsEntry } from '~/types/fs';
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import ProjectHistory from '~/components/project/ProjectHistory.vue';
 import ProjectEffects from '~/components/project/ProjectEffects.vue';
+import UiTabs from '~/components/ui/UiTabs.vue';
 
 const _props = defineProps<{
   foldersOnly?: boolean;
@@ -24,6 +25,12 @@ const focusStore = useFocusStore();
 const uiStore = useUiStore();
 
 const activeTab = ref('files');
+
+const tabOptions = computed(() => [
+  { value: 'files', label: t('videoEditor.fileManager.tabs.files', 'Files') },
+  { value: 'effects', label: t('videoEditor.fileManager.tabs.effects', 'Effects') },
+  { value: 'history', label: t('videoEditor.fileManager.tabs.history', 'History') },
+]);
 
 function handleFileManagerFilesSelect(entry: FsEntry) {
   emit('select', entry);
@@ -43,38 +50,12 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
       class="flex flex-col flex-1 min-h-0"
     >
       <!-- Header / Tabs -->
-      <div
+      <UiTabs
         v-if="!foldersOnly"
-        class="flex items-center gap-4 px-3 py-2 border-b border-ui-border shrink-0 select-none"
-      >
-        <button
-          class="text-xs font-semibold uppercase tracking-wider transition-colors outline-none"
-          :class="
-            activeTab === 'files' ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'
-          "
-          @click="activeTab = 'files'"
-        >
-          {{ t('videoEditor.fileManager.tabs.files', 'Files') }}
-        </button>
-        <button
-          class="text-xs font-semibold uppercase tracking-wider transition-colors outline-none"
-          :class="
-            activeTab === 'effects' ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'
-          "
-          @click="activeTab = 'effects'"
-        >
-          {{ t('videoEditor.fileManager.tabs.effects', 'Effects') }}
-        </button>
-        <button
-          class="text-xs font-semibold uppercase tracking-wider transition-colors outline-none"
-          :class="
-            activeTab === 'history' ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'
-          "
-          @click="activeTab = 'history'"
-        >
-          {{ t('videoEditor.fileManager.tabs.history', 'History') }}
-        </button>
-      </div>
+        v-model="activeTab"
+        :options="tabOptions"
+        border
+      />
 
       <!-- Content -->
       <FileManagerPanel

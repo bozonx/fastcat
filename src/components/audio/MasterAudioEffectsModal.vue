@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UiModal from '~/components/ui/UiModal.vue';
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import AudioEffectsEditor from '~/components/common/AudioEffectsEditor.vue';
@@ -33,12 +34,10 @@ function handleUpdateEffects(effects: AudioClipEffect[]) {
 </script>
 
 <template>
-  <UModal v-model:open="isOpen" :title="t('fastcat.effects.masterTitle')">
-    <template #body>
-      <div class="max-h-[70vh] overflow-y-auto pr-1">
-        <AudioEffectsEditor :effects="masterEffects" @update:effects="handleUpdateEffects" />
-      </div>
-    </template>
+  <UiModal v-model:open="isOpen" :title="t('fastcat.effects.masterTitle')">
+    <div class="max-h-[70vh] overflow-y-auto pr-1">
+      <AudioEffectsEditor :effects="masterEffects" @update:effects="handleUpdateEffects" />
+    </div>
     <template #footer>
       <div class="flex justify-end w-full">
         <UButton color="neutral" variant="ghost" @click="isOpen = false">
@@ -46,5 +45,5 @@ function handleUpdateEffects(effects: AudioClipEffect[]) {
         </UButton>
       </div>
     </template>
-  </UModal>
+  </UiModal>
 </template>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UiModal from "~/components/ui/UiModal.vue";
 import { computed, ref } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
@@ -235,7 +236,7 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
 
     <SelectEffectModal v-model:open="isSelectModalOpen" target="audio" @select="handleAddEffect" />
 
-    <UModal
+    <UiModal
       v-model:open="isSaveModalOpen"
       :title="t('fastcat.effects.savePresetTitle', 'Save Preset')"
     >
@@ -259,6 +260,6 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
           </div>
         </div>
       </template>
-    </UModal>
+    </UiModal>
   </div>
 </template>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UiModal from "~/components/ui/UiModal.vue";
 import { computed, ref } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import SelectEffectModal from '~/components/common/SelectEffectModal.vue';
@@ -196,7 +197,7 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
 
     <SelectEffectModal v-model:open="isEffectModalOpen" @select="handleAddEffect" />
 
-    <UModal
+    <UiModal
       v-model:open="isSaveModalOpen"
       :title="t('fastcat.effects.savePresetTitle', 'Save Preset')"
     >
@@ -220,6 +221,6 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
           </div>
         </div>
       </template>
-    </UModal>
+    </UiModal>
   </div>
 </template>

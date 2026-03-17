@@ -10,6 +10,8 @@ import { usePresetsStore } from '~/stores/presets.store';
 import CollapsibleEffectGroup from './CollapsibleEffectGroup.vue';
 import EffectCard from './EffectCard.vue';
 
+import UiModal from '~/components/ui/UiModal.vue';
+
 const props = withDefaults(
   defineProps<{
     open: boolean;
@@ -72,7 +74,7 @@ function handleSelect(type: string) {
 </script>
 
 <template>
-  <UModal
+  <UiModal
     v-model:open="isOpen"
     :title="
       target === 'video'
@@ -80,61 +82,59 @@ function handleSelect(type: string) {
         : t('fastcat.effects.tabs.audio')
     "
   >
-    <template #body>
-      <div class="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
-        <!-- Basic Effects -->
-        <CollapsibleEffectGroup
-          v-if="basicEffects.length > 0"
-          v-model:is-collapsed="presetsStore.effectsStandardCollapsed"
-          :title="t('fastcat.effects.groups.standard')"
-        >
-          <div class="grid grid-cols-1 gap-2">
-            <EffectCard
-              v-for="effect in basicEffects"
-              :key="effect.type"
-              :manifest="effect"
-              @click="handleSelect(effect.type)"
-            />
-          </div>
-        </CollapsibleEffectGroup>
-
-        <!-- Artistic/Voice Effects (mostly for audio) -->
-        <CollapsibleEffectGroup
-          v-if="nonBasicEffects.length > 0"
-          v-model:is-collapsed="presetsStore.audioStandardCollapsed"
-          :title="t('fastcat.effects.groups.artistic')"
-        >
-          <div class="grid grid-cols-1 gap-2">
-            <EffectCard
-              v-for="effect in nonBasicEffects"
-              :key="effect.type"
-              :manifest="effect"
-              @click="handleSelect(effect.type)"
-            />
-          </div>
-        </CollapsibleEffectGroup>
-
-        <!-- Custom Effects -->
-        <CollapsibleEffectGroup
-          v-if="customEffects.length > 0"
-          v-model:is-collapsed="presetsStore.effectsCustomCollapsed"
-          :title="t('fastcat.effects.groups.custom')"
-        >
-          <div class="grid grid-cols-1 gap-2">
-            <EffectCard
-              v-for="effect in customEffects"
-              :key="effect.type"
-              :manifest="effect"
-              @click="handleSelect(effect.type)"
-            />
-          </div>
-        </CollapsibleEffectGroup>
-
-        <div v-if="!hasAnyEffects" class="py-8 text-center text-ui-text-muted italic">
-          {{ t('fastcat.effects.empty') }}
+    <div class="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
+      <!-- Basic Effects -->
+      <CollapsibleEffectGroup
+        v-if="basicEffects.length > 0"
+        v-model:is-collapsed="presetsStore.effectsStandardCollapsed"
+        :title="t('fastcat.effects.groups.standard')"
+      >
+        <div class="grid grid-cols-1 gap-2">
+          <EffectCard
+            v-for="effect in basicEffects"
+            :key="effect.type"
+            :manifest="effect"
+            @click="handleSelect(effect.type)"
+          />
         </div>
+      </CollapsibleEffectGroup>
+
+      <!-- Artistic/Voice Effects (mostly for audio) -->
+      <CollapsibleEffectGroup
+        v-if="nonBasicEffects.length > 0"
+        v-model:is-collapsed="presetsStore.audioStandardCollapsed"
+        :title="t('fastcat.effects.groups.artistic')"
+      >
+        <div class="grid grid-cols-1 gap-2">
+          <EffectCard
+            v-for="effect in nonBasicEffects"
+            :key="effect.type"
+            :manifest="effect"
+            @click="handleSelect(effect.type)"
+          />
+        </div>
+      </CollapsibleEffectGroup>
+
+      <!-- Custom Effects -->
+      <CollapsibleEffectGroup
+        v-if="customEffects.length > 0"
+        v-model:is-collapsed="presetsStore.effectsCustomCollapsed"
+        :title="t('fastcat.effects.groups.custom')"
+      >
+        <div class="grid grid-cols-1 gap-2">
+          <EffectCard
+            v-for="effect in customEffects"
+            :key="effect.type"
+            :manifest="effect"
+            @click="handleSelect(effect.type)"
+          />
+        </div>
+      </CollapsibleEffectGroup>
+
+      <div v-if="!hasAnyEffects" class="py-8 text-center text-ui-text-muted italic">
+        {{ t('fastcat.effects.empty') }}
       </div>
-    </template>
+    </div>
     <template #footer>
       <div class="flex justify-end gap-2 w-full">
         <UButton color="neutral" variant="ghost" @click="isOpen = false">
@@ -142,5 +142,5 @@ function handleSelect(type: string) {
         </UButton>
       </div>
     </template>
-  </UModal>
+  </UiModal>
 </template>
