@@ -149,6 +149,8 @@ const {
   updateSelectionRange: timelineStore.updateSelectionRange,
   createSelectionRange: timelineStore.createSelectionRange,
   setPreviewSelectionRange: timelineStore.setPreviewSelectionRange,
+  computeSnapTargets,
+  snapThresholdPx,
 });
 
 const hoveredMarkerId = ref<string | null>(null);

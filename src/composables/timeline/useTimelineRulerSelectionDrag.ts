@@ -20,7 +20,7 @@ interface UseTimelineRulerSelectionDragOptions {
   createSelectionRange: (payload: { startUs: number; endUs: number }) => void;
   setPreviewSelectionRange?: (payload: { startUs: number; endUs: number } | null) => void;
   computeSnapTargets?: () => number[];
-  snapThresholdPx?: number;
+  snapThresholdPx?: Ref<number> | number;
 }
 
 export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelectionDragOptions) {
@@ -74,6 +74,12 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     return Math.max(1, Math.round(1_000_000 / options.fps.value));
   }
 
+  function getSnapThresholdPx() {
+    return typeof options.snapThresholdPx === 'number'
+      ? options.snapThresholdPx
+      : (options.snapThresholdPx?.value ?? 0);
+  }
+
   function updateSelectionRangeFromDrag(clientX: number) {
     const range = options.selectionRange.value;
     if (!range) return;
@@ -92,7 +98,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
       if (options.computeSnapTargets && options.snapThresholdPx) {
         const thresholdUs = Math.round(
-          (options.snapThresholdPx / zoomToPxPerSecond(options.zoom.value)) * 1e6,
+          (getSnapThresholdPx() / zoomToPxPerSecond(options.zoom.value)) * 1e6,
         );
         const targets = options.computeSnapTargets();
 
@@ -135,7 +141,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
       if (options.computeSnapTargets && options.snapThresholdPx) {
         const thresholdUs = Math.round(
-          (options.snapThresholdPx / zoomToPxPerSecond(options.zoom.value)) * 1e6,
+          (getSnapThresholdPx() / zoomToPxPerSecond(options.zoom.value)) * 1e6,
         );
         const targets = options.computeSnapTargets();
         const snap = pickBestSnapCandidateUs({
@@ -165,7 +171,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
     if (options.computeSnapTargets && options.snapThresholdPx) {
       const thresholdUs = Math.round(
-        (options.snapThresholdPx / zoomToPxPerSecond(options.zoom.value)) * 1e6,
+        (getSnapThresholdPx() / zoomToPxPerSecond(options.zoom.value)) * 1e6,
       );
       const targets = options.computeSnapTargets();
       const snap = pickBestSnapCandidateUs({ rawUs: nextEndUs, thresholdUs, targetsUs: targets });
@@ -233,7 +239,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
     if (options.computeSnapTargets && options.snapThresholdPx) {
       const thresholdUs = Math.round(
-        (options.snapThresholdPx / zoomToPxPerSecond(options.zoom.value)) * 1e6,
+        (getSnapThresholdPx() / zoomToPxPerSecond(options.zoom.value)) * 1e6,
       );
       const targets = options.computeSnapTargets();
       const snap = pickBestSnapCandidateUs({
