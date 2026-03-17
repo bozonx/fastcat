@@ -82,8 +82,7 @@ export function useTimelineItemDrag(
   function startMoveItem(e: PointerEvent, payload: TimelineMoveItemPayload) {
     const { trackId, itemId, startUs } = payload;
 
-    // Ignore invalid buttons or right click which has a specific handler maybe
-    if (e.button !== 0 && e.button !== 1 && e.button !== 2) return;
+    if (e.button !== 0 && e.button !== 2) return;
 
     e.stopPropagation();
 
@@ -117,12 +116,9 @@ export function useTimelineItemDrag(
     const isLayer1Pressed = isLayer1Active(e, workspaceStore.userSettings);
     const isLayer2Pressed = isLayer2Active(e, workspaceStore.userSettings);
 
-    // Determine the action based on the settings
     const settings = workspaceStore.userSettings.mouse.timeline;
     let action = 'none';
-    if (e.button === 1) {
-      action = settings.clipDragMiddle;
-    } else if (e.button === 2) {
+    if (e.button === 2) {
       action = settings.clipDragRight;
     } else if (isLayer1Pressed) {
       action = settings.clipDragShift;
@@ -185,7 +181,7 @@ export function useTimelineItemDrag(
     e: PointerEvent,
     input: { trackId: string; itemId: string; edge: 'start' | 'end'; startUs: number },
   ) {
-    if (e.button !== 0 && e.button !== 1 && e.button !== 2) return;
+    if (e.button !== 0 && e.button !== 2) return;
     e.preventDefault();
     e.stopPropagation();
 
@@ -204,9 +200,7 @@ export function useTimelineItemDrag(
 
     const settings = workspaceStore.userSettings.mouse.timeline;
     let action = 'none';
-    if (e.button === 1) {
-      action = settings.clipDragMiddle;
-    } else if (e.button === 2) {
+    if (e.button === 2) {
       action = settings.clipDragRight;
     } else if (isLayer1Pressed) {
       action = settings.clipDragShift;
@@ -624,8 +618,8 @@ export function useTimelineItemDrag(
     }
 
     if (!cancel && draggingMode.value === 'move') {
-      const isShiftPressed = dragIsFreeOverride.value;
-      const overlapMode = isShiftPressed ? 'pseudo' : settingsStore.overlapMode;
+      const usePseudoOverlap = dragUsePseudoOverlapOverride.value;
+      const overlapMode = usePseudoOverlap ? 'pseudo' : settingsStore.overlapMode;
 
       if (overlapMode === 'pseudo') {
         const commit = pendingMoveCommit.value;
@@ -641,7 +635,7 @@ export function useTimelineItemDrag(
             itemId: commit.itemId,
             startUs: commit.startUs,
             quantizeToFrames: enableFrameSnap,
-            ignoreLinks: isShiftPressed,
+            ignoreLinks: usePseudoOverlap,
           } as const;
           timelineStore.applyTimeline(cmd as any, { saveMode: 'none', skipHistory: true });
           lastDragAppliedCmd.value = cmd as any;

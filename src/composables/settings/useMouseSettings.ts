@@ -291,14 +291,6 @@ export function useMouseSettings() {
               options: clipDragOptions.value,
             },
             {
-              key: 'clipDragMiddle',
-              label: t(
-                'videoEditor.settings.mouseTimelineClipDragMiddle',
-                'Middle button clip drag',
-              ),
-              options: clipDragOptions.value,
-            },
-            {
               key: 'clipDragRight',
               label: t('videoEditor.settings.mouseTimelineClipDragRight', 'Right button clip drag'),
               options: clipDragOptions.value,

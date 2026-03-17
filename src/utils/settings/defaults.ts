@@ -129,7 +129,6 @@ export interface FastCatUserSettings {
       horizontalMovement: 'move_playhead' | 'none';
       clipDragShift: 'pseudo_overlap' | 'free_mode' | 'copy' | 'toggle_snap' | 'none';
       clipDragCtrl: 'pseudo_overlap' | 'free_mode' | 'copy' | 'toggle_snap' | 'none';
-      clipDragMiddle: 'pseudo_overlap' | 'free_mode' | 'copy' | 'toggle_snap' | 'none';
       clipDragRight: 'pseudo_overlap' | 'free_mode' | 'copy' | 'toggle_snap' | 'none';
     };
     trackHeaders: {
@@ -250,8 +249,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       horizontalMovement: 'none',
       clipDragShift: 'pseudo_overlap',
       clipDragCtrl: 'free_mode',
-      clipDragMiddle: 'copy',
-      clipDragRight: 'toggle_snap',
+      clipDragRight: 'copy',
     },
     trackHeaders: {
       wheel: 'scroll_vertical',
