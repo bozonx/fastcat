@@ -1,6 +1,7 @@
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import { useFocusStore } from '~/stores/focus.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import { getDocFps } from '~/timeline/commands/utils';
@@ -11,6 +12,7 @@ export function useTimelineHotkeys() {
   const timelineStore = useTimelineStore();
   const settingsStore = useTimelineSettingsStore();
   const focusStore = useFocusStore();
+  const workspaceStore = useWorkspaceStore();
   const { clipboardPayload, setClipboardPayload } = useAppClipboard();
 
   function getTargetTrackId() {
@@ -280,6 +282,58 @@ export function useTimelineHotkeys() {
       if (!focusStore.canUseTimelineHotkeys) return false;
       if (adjustAudioMixerGain(-AUDIO_MIXER_GAIN_STEP)) return true;
       timelineStore.adjustSelectedClipsVolume(-1);
+      return true;
+    },
+
+    'timeline.setSelectionIn': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      const currentRange = timelineStore.getSelectionRange();
+      const currentUs = timelineStore.currentTime;
+
+      if (!currentRange) {
+        // No range exists, create a new one with default duration
+        const endUs = currentUs + workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
+        timelineStore.createSelectionRange({
+          startUs: currentUs,
+          endUs: endUs,
+        });
+      } else {
+        // Range exists, update the in point (startUs)
+        // If currentUs is greater than endUs, we can't make start > end, so we bring end along or just set it
+        const nextStartUs = currentUs;
+        const nextEndUs = Math.max(currentRange.endUs, currentUs + 1);
+        timelineStore.updateSelectionRange({
+          startUs: nextStartUs,
+          endUs: nextEndUs,
+        });
+      }
+      return true;
+    },
+
+    'timeline.setSelectionOut': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      const currentRange = timelineStore.getSelectionRange();
+      const currentUs = timelineStore.currentTime;
+
+      if (!currentRange) {
+        // No range exists, create a new one ending at playhead and starting before it based on default duration
+        const startUs = Math.max(
+          0,
+          currentUs - workspaceStore.userSettings.timeline.defaultStaticClipDurationUs,
+        );
+        timelineStore.createSelectionRange({
+          startUs: startUs,
+          endUs: currentUs,
+        });
+      } else {
+        // Range exists, update the out point (endUs)
+        const nextEndUs = currentUs;
+        const nextStartUs = Math.min(currentRange.startUs, currentUs - 1);
+        timelineStore.updateSelectionRange({
+          startUs: nextStartUs,
+          endUs: nextEndUs,
+        });
+      }
       return true;
     },
   };

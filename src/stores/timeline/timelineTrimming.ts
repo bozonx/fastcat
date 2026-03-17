@@ -30,7 +30,10 @@ export interface TimelineTrimmingDeps {
   getHotkeyTargetClip: () => { trackId: string; itemId: string } | null;
   getSelectedOrActiveTrackId: () => string | null;
   editService: {
-    rippleDeleteRange: (input: { trackIds: string[]; startUs: number; endUs: number }) => void;
+    rippleDeleteRange: (
+      input: { trackIds: string[]; startUs: number; endUs: number },
+      options?: any,
+    ) => void;
     rippleTrimRight: () => Promise<void>;
     rippleTrimLeft: () => Promise<void>;
     advancedRippleTrimRight: () => Promise<void>;
@@ -41,7 +44,10 @@ export interface TimelineTrimmingDeps {
 export interface TimelineTrimmingApi {
   trimToPlayheadLeftNoRipple: () => Promise<void>;
   trimToPlayheadRightNoRipple: () => Promise<void>;
-  rippleDeleteRange: (input: { trackIds: string[]; startUs: number; endUs: number }) => void;
+  rippleDeleteRange: (
+    input: { trackIds: string[]; startUs: number; endUs: number },
+    options?: any,
+  ) => void;
   rippleTrimRight: () => Promise<void>;
   rippleTrimLeft: () => Promise<void>;
   advancedRippleTrimRight: () => Promise<void>;
@@ -143,8 +149,11 @@ export function createTimelineTrimming(deps: TimelineTrimmingDeps): TimelineTrim
     await deps.requestTimelineSave({ immediate: true });
   }
 
-  function rippleDeleteRange(input: { trackIds: string[]; startUs: number; endUs: number }) {
-    deps.editService.rippleDeleteRange(input);
+  function rippleDeleteRange(
+    input: { trackIds: string[]; startUs: number; endUs: number },
+    options?: any,
+  ) {
+    deps.editService.rippleDeleteRange(input, options);
   }
 
   async function rippleTrimRight() {

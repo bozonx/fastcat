@@ -79,6 +79,21 @@ function onDragEnd() {
       />
     </UTooltip>
 
+    <div v-if="timelineStore.isAnyTrackSoloed" class="ml-2 flex items-center">
+      <UTooltip :text="t('fastcat.timeline.clearSolos', 'Clear all solos')">
+        <UButton
+          size="xs"
+          color="amber"
+          variant="solid"
+          icon="i-heroicons-musical-note"
+          class="h-6 text-[10px] px-2 gap-1 font-bold animate-pulse hover:animate-none"
+          @click="timelineStore.unsoloAllTracks"
+        >
+          {{ t('fastcat.timeline.soloActive', 'SOLO ACTIVE') }}
+        </UButton>
+      </UTooltip>
+    </div>
+
     <div class="ml-auto flex items-center gap-0.5" @click.self="timelineStore.selectTimelineProperties()">
       <UTooltip :text="t('fastcat.timeline.trim', 'Trim')">
         <UiSplitDropdownButton

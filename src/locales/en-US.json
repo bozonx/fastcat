@@ -448,6 +448,8 @@
       "toggleTrackVisibility": "Toggle track visibility",
       "dragToTimeline": "drag to timeline",
       "selectionRange": "Selection Range",
+      "soloActive": "SOLO ACTIVE",
+      "clearSolos": "Clear all solos",
       "transition": {
         "actionFall": "Falls",
         "actionRise": "Rises",

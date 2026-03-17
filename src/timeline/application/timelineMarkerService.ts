@@ -1,24 +1,25 @@
 import type { TimelineDocument, TimelineMarker } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
-import { TIMELINE_RULER_CONSTANTS } from '~/utils/constants';
 
 export interface TimelineMarkerServiceDeps {
   getDoc: () => TimelineDocument | null;
   getCurrentTime: () => number;
-  applyTimeline: (cmd: TimelineCommand) => void;
+  applyTimeline: (cmd: TimelineCommand, options?: any) => void;
+  defaultZoneDurationUs: number;
 }
 
 export interface TimelineMarkerService {
   getMarkers: () => TimelineMarker[];
-  addMarkerAtPlayhead: () => void;
-  addZoneMarkerAtPlayhead: () => void;
+  addMarkerAtPlayhead: (options?: any) => void;
+  addZoneMarkerAtPlayhead: (options?: any) => void;
   updateMarker: (
     markerId: string,
     patch: { timeUs?: number; durationUs?: number | null; text?: string; color?: string },
+    options?: any,
   ) => void;
-  removeMarker: (markerId: string) => void;
-  convertMarkerToZone: (markerId: string) => void;
-  convertZoneToMarker: (markerId: string) => void;
+  removeMarker: (markerId: string, options?: any) => void;
+  convertMarkerToZone: (markerId: string, options?: any) => void;
+  convertZoneToMarker: (markerId: string, options?: any) => void;
 }
 
 function generateMarkerId(): string {
@@ -33,57 +34,73 @@ export function createTimelineMarkerService(
     return Array.isArray(raw) ? (raw as TimelineMarker[]) : [];
   }
 
-  function addMarkerAtPlayhead() {
-    deps.applyTimeline({
-      type: 'add_marker',
-      id: generateMarkerId(),
-      timeUs: deps.getCurrentTime(),
-      text: '',
-    });
+  function addMarkerAtPlayhead(options?: any) {
+    deps.applyTimeline(
+      {
+        type: 'add_marker',
+        id: generateMarkerId(),
+        timeUs: deps.getCurrentTime(),
+        text: '',
+      },
+      options,
+    );
   }
 
-  function addZoneMarkerAtPlayhead() {
-    deps.applyTimeline({
-      type: 'add_marker',
-      id: generateMarkerId(),
-      timeUs: deps.getCurrentTime(),
-      durationUs: TIMELINE_RULER_CONSTANTS.DEFAULT_ZONE_DURATION_US,
-      text: '',
-    });
+  function addZoneMarkerAtPlayhead(options?: any) {
+    deps.applyTimeline(
+      {
+        type: 'add_marker',
+        id: generateMarkerId(),
+        timeUs: deps.getCurrentTime(),
+        durationUs: deps.defaultZoneDurationUs,
+        text: '',
+      },
+      options,
+    );
   }
 
   function updateMarker(
     markerId: string,
     patch: { timeUs?: number; durationUs?: number | null; text?: string; color?: string },
+    options?: any,
   ) {
-    deps.applyTimeline({
-      type: 'update_marker',
-      id: markerId,
-      timeUs: patch.timeUs,
-      durationUs: patch.durationUs,
-      text: patch.text,
-      color: patch.color,
-    } as const);
+    deps.applyTimeline(
+      {
+        type: 'update_marker',
+        id: markerId,
+        timeUs: patch.timeUs,
+        durationUs: patch.durationUs,
+        text: patch.text,
+        color: patch.color,
+      } as const,
+      options,
+    );
   }
 
-  function removeMarker(markerId: string) {
-    deps.applyTimeline({ type: 'remove_marker', id: markerId });
+  function removeMarker(markerId: string, options?: any) {
+    deps.applyTimeline({ type: 'remove_marker', id: markerId }, options);
   }
 
-  function convertMarkerToZone(markerId: string) {
-    deps.applyTimeline({
-      type: 'update_marker',
-      id: markerId,
-      durationUs: TIMELINE_RULER_CONSTANTS.DEFAULT_ZONE_DURATION_US,
-    });
+  function convertMarkerToZone(markerId: string, options?: any) {
+    deps.applyTimeline(
+      {
+        type: 'update_marker',
+        id: markerId,
+        durationUs: deps.defaultZoneDurationUs,
+      },
+      options,
+    );
   }
 
-  function convertZoneToMarker(markerId: string) {
-    deps.applyTimeline({
-      type: 'update_marker',
-      id: markerId,
-      durationUs: null,
-    });
+  function convertZoneToMarker(markerId: string, options?: any) {
+    deps.applyTimeline(
+      {
+        type: 'update_marker',
+        id: markerId,
+        durationUs: null,
+      },
+      options,
+    );
   }
 
   return {

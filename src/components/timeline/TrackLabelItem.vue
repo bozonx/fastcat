@@ -116,6 +116,7 @@ onBeforeUnmount(() => {
     :class="[
       isSelected ? 'text-ui-text bg-primary-500/12' : '',
       isHovered && !isSelected ? 'text-ui-text bg-ui-bg-elevated/80' : 'text-ui-text-muted',
+      timelineStore.isAnyTrackSoloed && !track.audioSolo ? 'opacity-50 grayscale-[0.5]' : '',
     ]"
     :style="{ height: `${height}px` }"
     @click.stop="emit('select')"
@@ -186,13 +187,13 @@ onBeforeUnmount(() => {
       <UButton
         size="xs"
         :variant="track.audioSolo ? 'solid' : 'ghost'"
-        :color="track.audioSolo ? 'green' : 'gray'"
+        :color="track.audioSolo ? 'amber' : 'gray'"
         icon="i-heroicons-musical-note"
         class="w-6 h-6 p-0 flex items-center justify-center transition-opacity"
         :class="[
-          track.audioSolo ? 'text-black! opacity-100 hover:opacity-90' : 'opacity-60 group-hover:opacity-100'
+          track.audioSolo ? 'text-black! opacity-100 hover:opacity-90 ring-1 ring-amber-500/50' : 'opacity-60 group-hover:opacity-100'
         ]"
-        :style="track.audioSolo ? { backgroundColor: '#22c55e', color: '#000000' } : undefined"
+        :style="track.audioSolo ? { backgroundColor: '#fbbf24', color: '#000000' } : undefined"
         :title="track.audioSolo ? 'Unsolo Track' : 'Solo Track'"
         @click="toggleAudioSolo"
       />

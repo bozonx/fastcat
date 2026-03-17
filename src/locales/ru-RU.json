@@ -448,6 +448,8 @@
       "toggleTrackVisibility": "Показать/скрыть дорожку",
       "dragToTimeline": "перетащите на таймлайн",
       "selectionRange": "Область выделения",
+      "soloActive": "СОЛО АКТИВНО",
+      "clearSolos": "Сбросить соло",
       "transition": {
         "actionFall": "Падение",
         "actionRise": "Поднимается",

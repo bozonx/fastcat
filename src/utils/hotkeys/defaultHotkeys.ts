@@ -59,6 +59,8 @@ export type HotkeyCommandId =
   | 'timeline.moveSelectedClipsRightLarge'
   | 'timeline.increaseSelectedClipsVolume'
   | 'timeline.decreaseSelectedClipsVolume'
+  | 'timeline.setSelectionIn'
+  | 'timeline.setSelectionOut'
   | 'playback.toggle'
   | 'playback.toggle1'
   | 'playback.toStart'
@@ -240,6 +242,8 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
       groupId: 'timeline',
       title: 'Decrease selected clip(s) volume',
     },
+    { id: 'timeline.setSelectionIn', groupId: 'timeline', title: 'Set selection in point' },
+    { id: 'timeline.setSelectionOut', groupId: 'timeline', title: 'Set selection out point' },
 
     { id: 'playback.toggle', groupId: 'playback', title: 'Play / Pause (keeps current speed)' },
     { id: 'playback.toggle1', groupId: 'playback', title: 'Play / pause (1x)' },
@@ -328,6 +332,8 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'timeline.moveSelectedClipsRightLarge': ['Shift+ArrowRight'],
     'timeline.increaseSelectedClipsVolume': ['ArrowUp'],
     'timeline.decreaseSelectedClipsVolume': ['ArrowDown'],
+    'timeline.setSelectionIn': ['I'],
+    'timeline.setSelectionOut': ['O'],
 
     'playback.toggle': ['Space'],
     'playback.toggle1': ['Shift+Space'],

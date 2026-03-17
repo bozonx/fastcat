@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, nextTick } from 'vue';
 import type {
   TimelineTrack,
   TimelineTrackItem,
@@ -84,8 +84,9 @@ const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 
 let didStartClipDrag = false;
-let rightClickDragTriggered = false;
+const rightClickDragTriggered = ref(false);
 let rightClickDragTimer: number | null = null;
+const RIGHT_CLICK_DRAG_DELAY_MS = 300;
 
 const clipItem = computed<TimelineClipItem | null>(() =>
   props.item.kind === 'clip' ? (props.item as TimelineClipItem) : null,
@@ -108,7 +109,7 @@ function toggleFadeCurve(edge: 'in' | 'out') {
 }
 
 function onContextMenu(e: MouseEvent) {
-  if (didStartClipDrag || rightClickDragTriggered) {
+  if (didStartClipDrag || rightClickDragTriggered.value) {
     e.preventDefault();
     e.stopPropagation();
   }
@@ -122,7 +123,7 @@ function onClipPointerdown(e: PointerEvent) {
   e.stopPropagation();
 
   didStartClipDrag = false;
-  rightClickDragTriggered = false;
+  rightClickDragTriggered.value = false;
   const startX = e.clientX;
   const startY = e.clientY;
 
@@ -140,7 +141,7 @@ function onClipPointerdown(e: PointerEvent) {
     if (didStartClipDrag) return;
     didStartClipDrag = true;
     if (e.button === 2) {
-      rightClickDragTriggered = true;
+      rightClickDragTriggered.value = true;
     }
     cleanup();
     e.preventDefault();
@@ -152,6 +153,8 @@ function onClipPointerdown(e: PointerEvent) {
   };
 
   const onMove = (ev: PointerEvent) => {
+    if (e.button === 2) return;
+
     if (Math.abs(ev.clientX - startX) > 3 || Math.abs(ev.clientY - startY) > 3) {
       startDrag();
     }
@@ -159,10 +162,16 @@ function onClipPointerdown(e: PointerEvent) {
 
   const onPointerUp = () => {
     cleanup();
+    if (e.button === 2 && rightClickDragTriggered.value) {
+      void nextTick(() => {
+        rightClickDragTriggered.value = false;
+      });
+    }
   };
 
   const onPointerCancel = () => {
     cleanup();
+    rightClickDragTriggered.value = false;
   };
 
   if (e.button !== 2) {
@@ -171,7 +180,7 @@ function onClipPointerdown(e: PointerEvent) {
     rightClickDragTimer = window.setTimeout(() => {
       rightClickDragTimer = null;
       startDrag();
-    }, 180);
+    }, RIGHT_CLICK_DRAG_DELAY_MS);
   }
 
   window.addEventListener('pointermove', onMove);
@@ -186,10 +195,10 @@ function onTrimHandlePointerDown(e: PointerEvent, edge: 'start' | 'end') {
   e.stopPropagation();
 
   emit('startTrimItem', e, {
-    trackId: item.trackId,
-    itemId: item.id,
+    trackId: props.item.trackId,
+    itemId: props.item.id,
     edge,
-    startUs: item.timelineRange.startUs,
+    startUs: props.item.timelineRange.startUs,
   });
 }
 
@@ -406,7 +415,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
 </script>
 
 <template>
-  <UContextMenu :items="contextMenuItems">
+  <UContextMenu :items="contextMenuItems" :disabled="rightClickDragTriggered">
     <div
       :data-clip-id="item.kind === 'clip' ? item.id : undefined"
       :data-gap-id="item.kind === 'gap' ? item.id : undefined"
@@ -429,7 +438,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
         clipItem && typeof clipItem.freezeFrameSourceUs === 'number'
           ? 'outline-(--color-warning) outline-2'
           : '',
-        clipItem && (Boolean(clipItem.disabled) || Boolean(track.videoHidden)) ? 'opacity-40' : '',
+        clipItem && (Boolean(clipItem.disabled) || Boolean(track.videoHidden) || (timelineStore.isAnyTrackSoloed && !track.audioSolo)) ? 'opacity-40' : '',
         isMediaMissing ? 'bg-red-600! border-red-800! text-white!' : '',
         clipItem && Boolean(clipItem.locked) ? 'cursor-not-allowed' : '',
         isMobile ? 'touch-manipulation' : '',
