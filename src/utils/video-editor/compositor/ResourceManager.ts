@@ -42,6 +42,71 @@ export class ResourceManager {
   private readonly sampleRequestQueue: Array<{ resolve: () => void; signal?: AbortSignal }> = [];
   private sampleAbortControllers = new Map<string, AbortController>();
 
+  private async raceTaskWithAbortAndTimeout<T>(
+    task: () => Promise<T>,
+    signal?: AbortSignal,
+  ): Promise<T> {
+    const timeoutMs = Math.max(
+      1,
+      Math.round(VIDEO_CORE_LIMITS.MAX_VIDEO_SAMPLE_REQUEST_TIMEOUT_MS),
+    );
+
+    return await new Promise<T>((resolve, reject) => {
+      let settled = false;
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+      const cleanup = () => {
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+
+        if (signal) {
+          signal.removeEventListener('abort', onAbort);
+        }
+      };
+
+      const finishResolve = (value: T) => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        cleanup();
+        resolve(value);
+      };
+
+      const finishReject = (error: unknown) => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        cleanup();
+        reject(error);
+      };
+
+      const onAbort = () => {
+        finishReject(new Error('Aborted while reading video sample'));
+      };
+
+      if (signal?.aborted) {
+        finishReject(new Error('Aborted while reading video sample'));
+        return;
+      }
+
+      if (signal) {
+        signal.addEventListener('abort', onAbort);
+      }
+
+      timeoutId = setTimeout(() => {
+        finishReject(new Error('Timed out while reading video sample'));
+      }, timeoutMs);
+
+      void task().then(finishResolve, finishReject);
+    });
+  }
+
   public async withVideoSampleSlot<T>(task: () => Promise<T>, signal?: AbortSignal): Promise<T> {
     const max = Math.max(1, Math.round(VIDEO_CORE_LIMITS.MAX_CONCURRENT_VIDEO_SAMPLE_REQUESTS));
     if (this.sampleRequestsInFlight >= max) {
@@ -71,7 +136,7 @@ export class ResourceManager {
 
     this.sampleRequestsInFlight += 1;
     try {
-      return await task();
+      return await this.raceTaskWithAbortAndTimeout(task, signal);
     } finally {
       this.sampleRequestsInFlight -= 1;
       this.processRequestQueue();
