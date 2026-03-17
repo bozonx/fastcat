@@ -129,6 +129,7 @@ function onDragEnd() {
 <template>
   <div
     class="h-7 border-b border-ui-border bg-ui-bg-elevated flex items-center px-1 shrink-0 gap-0.5"
+    data-timeline-toolbar
     @click.self="timelineStore.selectTimelineProperties()"
   >
 

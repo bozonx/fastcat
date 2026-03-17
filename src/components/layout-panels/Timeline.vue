@@ -151,6 +151,7 @@ const {
   draggingMode,
   draggingItemId,
   movePreview,
+  slipPreview,
   onTimeRulerPointerDown: onBaseTimeRulerPointerDown,
   startPlayheadDrag,
   isDraggingPlayhead,
@@ -234,6 +235,7 @@ function onTimelineClick(e: MouseEvent) {
 function onGlobalTimelineClick(e: MouseEvent) {
   if (!timelineStore.isTrimModeActive) return;
   const target = e.target as HTMLElement;
+  if (target?.closest('[data-timeline-toolbar]')) return;
   if (!target?.closest('.timeline-scroll-el') && !target?.closest('[data-clip-id]')) {
     timelineStore.isTrimModeActive = false;
   }
@@ -585,6 +587,7 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
                 :can-edit-clip-content="canEditClipContent"
                 :drag-preview="dragPreview"
                 :move-preview="movePreview"
+                :slip-preview="slipPreview"
                 :dragging-mode="draggingMode"
                 :dragging-item-id="draggingItemId"
                 :scroll-left="scrollLeftRef"

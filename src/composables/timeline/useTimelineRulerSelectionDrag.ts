@@ -1,5 +1,5 @@
 import { onUnmounted, ref, type Ref, computed } from 'vue';
-import { pxToTimeUs } from '~/utils/timeline/geometry';
+import { pxToTimeUs, pickBestSnapCandidateUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { TIMELINE_RULER_CONSTANTS } from '~/utils/constants';
 import { quantizeTimeUsToFrames } from '~/timeline/commands/utils';
 
@@ -19,6 +19,8 @@ interface UseTimelineRulerSelectionDragOptions {
   updateSelectionRange: (payload: { startUs: number; endUs: number } | null) => void;
   createSelectionRange: (payload: { startUs: number; endUs: number }) => void;
   setPreviewSelectionRange?: (payload: { startUs: number; endUs: number } | null) => void;
+  computeSnapTargets?: () => number[];
+  snapThresholdPx?: number;
 }
 
 export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelectionDragOptions) {
@@ -85,10 +87,38 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
     if (selectionDragPart.value === 'move') {
       const durationUs = selectionDragStartEndUs.value - selectionDragStartStartUs.value;
-      const nextStartUs = Math.max(0, quantize(selectionDragStartStartUs.value + deltaUs));
+      let nextStartUs = Math.max(0, quantize(selectionDragStartStartUs.value + deltaUs));
+      let nextEndUs = nextStartUs + durationUs;
+
+      if (options.computeSnapTargets && options.snapThresholdPx) {
+        const thresholdUs = Math.round(
+          (options.snapThresholdPx / zoomToPxPerSecond(options.zoom.value)) * 1e6,
+        );
+        const targets = options.computeSnapTargets();
+
+        const snapStart = pickBestSnapCandidateUs({
+          rawUs: nextStartUs,
+          thresholdUs,
+          targetsUs: targets,
+        });
+        const snapEnd = pickBestSnapCandidateUs({
+          rawUs: nextEndUs,
+          thresholdUs,
+          targetsUs: targets,
+        });
+
+        if (snapStart.distUs < thresholdUs && snapStart.distUs <= snapEnd.distUs) {
+          nextStartUs = snapStart.snappedUs;
+          nextEndUs = nextStartUs + durationUs;
+        } else if (snapEnd.distUs < thresholdUs) {
+          nextEndUs = snapEnd.snappedUs;
+          nextStartUs = Math.max(0, nextEndUs - durationUs);
+        }
+      }
+
       draggedSelectionPatch.value = {
         startUs: nextStartUs,
-        endUs: nextStartUs + durationUs,
+        endUs: nextEndUs,
       };
       if (options.setPreviewSelectionRange) {
         options.setPreviewSelectionRange(draggedSelectionPatch.value);
@@ -98,10 +128,26 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
     if (selectionDragPart.value === 'left') {
       const maxStartUs = selectionDragStartEndUs.value - minDurationUs;
-      const nextStartUs = Math.max(
+      let nextStartUs = Math.max(
         0,
         Math.min(maxStartUs, quantize(selectionDragStartStartUs.value + deltaUs)),
       );
+
+      if (options.computeSnapTargets && options.snapThresholdPx) {
+        const thresholdUs = Math.round(
+          (options.snapThresholdPx / zoomToPxPerSecond(options.zoom.value)) * 1e6,
+        );
+        const targets = options.computeSnapTargets();
+        const snap = pickBestSnapCandidateUs({
+          rawUs: nextStartUs,
+          thresholdUs,
+          targetsUs: targets,
+        });
+        if (snap.distUs < thresholdUs) {
+          nextStartUs = Math.max(0, Math.min(maxStartUs, snap.snappedUs));
+        }
+      }
+
       draggedSelectionPatch.value = {
         startUs: nextStartUs,
         endUs: selectionDragStartEndUs.value,
@@ -112,10 +158,22 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
       return;
     }
 
-    const nextEndUs = Math.max(
+    let nextEndUs = Math.max(
       selectionDragStartStartUs.value + minDurationUs,
       quantize(selectionDragStartEndUs.value + deltaUs),
     );
+
+    if (options.computeSnapTargets && options.snapThresholdPx) {
+      const thresholdUs = Math.round(
+        (options.snapThresholdPx / zoomToPxPerSecond(options.zoom.value)) * 1e6,
+      );
+      const targets = options.computeSnapTargets();
+      const snap = pickBestSnapCandidateUs({ rawUs: nextEndUs, thresholdUs, targetsUs: targets });
+      if (snap.distUs < thresholdUs) {
+        nextEndUs = Math.max(selectionDragStartStartUs.value + minDurationUs, snap.snappedUs);
+      }
+    }
+
     draggedSelectionPatch.value = {
       startUs: selectionDragStartStartUs.value,
       endUs: nextEndUs,

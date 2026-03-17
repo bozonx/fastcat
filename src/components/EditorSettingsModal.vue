@@ -182,6 +182,7 @@ watch(
         <SettingsGeneral v-if="activeSection === 'user.general'" />
         <SettingsHotkeys v-else-if="activeSection === 'user.hotkeys'" ref="hotkeysRef" />
         <SettingsMouse v-else-if="activeSection === 'user.mouse'" />
+        <SettingsSnapping v-else-if="activeSection === 'user.snapping'" />
         <SettingsOptimization v-else-if="activeSection === 'user.proxy'" />
         <SettingsProjectDefaults v-else-if="activeSection === 'user.project'" />
         <SettingsExportDefaults

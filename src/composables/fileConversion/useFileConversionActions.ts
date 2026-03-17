@@ -101,10 +101,10 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
   async function extractMetadataWithTimeout(file: File) {
     const { client } = getExportWorkerClient();
 
-    let timeoutId: number | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
     const timeoutPromise = new Promise<never>((_, reject) => {
-      timeoutId = window.setTimeout(() => {
+      timeoutId = globalThis.setTimeout(() => {
         restartExportWorker();
         reject(new Error('Metadata extraction timed out'));
       }, METADATA_TIMEOUT_MS);
@@ -113,7 +113,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
     try {
       return await Promise.race([client.extractMetadata(file), timeoutPromise]);
     } finally {
-      window.clearTimeout(timeoutId);
+      globalThis.clearTimeout(timeoutId);
     }
   }
 

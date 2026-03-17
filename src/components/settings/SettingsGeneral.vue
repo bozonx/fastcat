@@ -70,27 +70,22 @@ function clearCache() {
       />
     </UFormField>
 
-    <label class="flex items-center gap-3 cursor-pointer">
-      <UCheckbox v-model="workspaceStore.userSettings.openLastProjectOnStart" />
-      <span class="text-sm text-ui-text">
-        {{ t('videoEditor.settings.openLastProjectOnStart', 'Open last project on start') }}
-      </span>
-    </label>
+    <UFormField>
+      <label class="flex items-center gap-2 cursor-pointer">
+        <UCheckbox v-model="workspaceStore.userSettings.openLastProjectOnStart" />
+        <span class="text-sm text-ui-text">
+          {{ t('videoEditor.settings.openLastProjectOnStart', 'Open last project on start') }}
+        </span>
+      </label>
+    </UFormField>
 
-    <UFormField :label="t('videoEditor.settings.snapThresholdDefault', 'Snap threshold default (px)')">
-      <div class="flex items-center gap-4">
-        <UiWheelSlider
-          :model-value="workspaceStore.userSettings.timeline.snapThresholdPx"
-          :min="1"
-          :max="100"
-          :step="1"
-          class="flex-1"
-          @update:model-value="settingsStore.setGlobalSnapThresholdPx"
-        />
-        <div class="text-xs font-mono text-ui-text-muted w-8 text-right">
-          {{ workspaceStore.userSettings.timeline.snapThresholdPx }}
-        </div>
-      </div>
+    <UFormField>
+      <label class="flex items-center gap-2 cursor-pointer">
+        <UCheckbox v-model="workspaceStore.userSettings.deleteWithoutConfirmation" />
+        <span class="text-sm text-ui-text">
+          {{ t('videoEditor.settings.deleteWithoutConfirmation', 'Delete items without confirmation') }}
+        </span>
+      </label>
     </UFormField>
 
     <UFormField :label="t('videoEditor.settings.defaultTransitionDuration', 'Default transition duration (s)')">

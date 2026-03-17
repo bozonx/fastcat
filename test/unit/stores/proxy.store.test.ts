@@ -29,7 +29,7 @@ describe('ProxyStore', () => {
     expect(store.generatingProxies.size).toBe(0);
     expect(store.existingProxies.size).toBe(0);
     expect(store.activeWorkerPaths.size).toBe(0);
-    expect(store.proxyProgress).toEqual({});
+    expect(store.proxyProgress.size).toBe(0);
   });
 
   it('can have its internal proxy collections cleared manually', () => {
@@ -37,16 +37,16 @@ describe('ProxyStore', () => {
     store.generatingProxies.add('a');
     store.existingProxies.add('b');
     store.activeWorkerPaths.add('c');
-    store.proxyProgress['a'] = 50;
+    store.proxyProgress.set('a', 50);
 
     store.generatingProxies.clear();
     store.existingProxies.clear();
     store.activeWorkerPaths.clear();
-    store.proxyProgress = {};
+    store.proxyProgress.clear();
 
     expect(store.generatingProxies.size).toBe(0);
     expect(store.existingProxies.size).toBe(0);
     expect(store.activeWorkerPaths.size).toBe(0);
-    expect(store.proxyProgress).toEqual({});
+    expect(store.proxyProgress.size).toBe(0);
   });
 });

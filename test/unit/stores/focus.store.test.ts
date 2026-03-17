@@ -89,7 +89,7 @@ describe('FocusStore', () => {
     expect(store.canUsePreviewHotkeys).toBe(false);
 
     store.setMainFocus('timeline');
-    expect(store.canUsePlaybackHotkeys).toBe(false);
+    expect(store.canUsePlaybackHotkeys).toBe(true);
     expect(store.canUseTimelineHotkeys).toBe(true);
     expect(store.canUsePreviewHotkeys).toBe(false);
 

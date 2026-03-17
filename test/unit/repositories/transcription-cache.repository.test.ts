@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { createTranscriptionCacheRepository } from '../../../src/repositories/transcription-cache.repository';
+import type { ResolvedStorageTopology } from '../../../src/utils/storage-topology';
 
 interface FileHandleWithMeta {
   kind: 'file';
@@ -74,11 +75,21 @@ function createDirMock() {
   };
 }
 
+const topology: ResolvedStorageTopology = {
+  projectsRoot: 'projects',
+  commonRoot: 'common',
+  dataRoot: 'data',
+  tempRoot: 'temp',
+  proxiesRoot: 'proxies',
+  ephemeralTmpRoot: 'tmp',
+};
+
 describe('transcription-cache.repository', () => {
   it('returns null when cache record is missing', async () => {
     const workspaceDir = createDirMock();
     const repo = createTranscriptionCacheRepository({
       workspaceDir: workspaceDir as any,
+      topology,
       projectId: 'project-1',
     });
 
@@ -89,6 +100,7 @@ describe('transcription-cache.repository', () => {
     const workspaceDir = createDirMock();
     const repo = createTranscriptionCacheRepository({
       workspaceDir: workspaceDir as any,
+      topology,
       projectId: 'project-1',
     });
 
@@ -123,6 +135,7 @@ describe('transcription-cache.repository', () => {
     const workspaceDir = createDirMock();
     const repo = createTranscriptionCacheRepository({
       workspaceDir: workspaceDir as any,
+      topology,
       projectId: 'project-1',
     });
 

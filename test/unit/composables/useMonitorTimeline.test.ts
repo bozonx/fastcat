@@ -12,7 +12,7 @@ describe('useMonitorTimeline', () => {
     return useTimelineStore() as any;
   }
 
-  it('provides computed videoTrack', () => {
+  it('provides monitor timeline clip collections', () => {
     const timelineStore = getTimelineStore();
     timelineStore.timelineDoc = {
       tracks: [
@@ -23,6 +23,7 @@ describe('useMonitorTimeline', () => {
             {
               id: 'audio1',
               kind: 'clip',
+              clipType: 'media',
               source: { path: 'test.mp3' },
               timelineRange: { startUs: 0, durationUs: 1000 },
               sourceRange: { startUs: 0, durationUs: 1000 },
@@ -32,10 +33,12 @@ describe('useMonitorTimeline', () => {
         {
           id: '2',
           kind: 'video',
+          videoHidden: false,
           items: [
             {
               id: 'item1',
               kind: 'clip',
+              clipType: 'media',
               source: { path: 'test.mp4' },
               timelineRange: { startUs: 0, durationUs: 1000 },
               sourceRange: { startUs: 0, durationUs: 1000 },
@@ -45,16 +48,14 @@ describe('useMonitorTimeline', () => {
       ],
     } as any;
 
-    const { videoTracks, videoItems, audioTracks, audioItems } = useMonitorTimeline();
+    const { videoItems, rawWorkerAudioClips } = useMonitorTimeline();
 
-    expect(videoTracks.value.length).toBe(1);
-    expect(videoTracks.value[0].id).toBe('2');
     expect(videoItems.value.length).toBe(1);
     expect(videoItems.value[0].id).toBe('item1');
 
-    expect(audioTracks.value.length).toBe(1);
-    expect(audioItems.value.length).toBe(1);
-    expect(audioItems.value[0].id).toBe('audio1');
+    expect(rawWorkerAudioClips.value.length).toBe(2);
+    expect(rawWorkerAudioClips.value.map((clip) => clip.id)).toEqual(['audio1', 'item1__audio']);
+    expect(rawWorkerAudioClips.value.every((clip) => clip.clipType === 'media')).toBe(true);
   });
 
   it('computes workerTimelineClips and workerAudioClips correctly', () => {
@@ -69,6 +70,7 @@ describe('useMonitorTimeline', () => {
             {
               id: 'item1',
               kind: 'clip',
+              clipType: 'media',
               trackId: '2',
               source: { path: 'test1.mp4' },
               timelineRange: { startUs: 0, durationUs: 1000 },
@@ -89,6 +91,7 @@ describe('useMonitorTimeline', () => {
             {
               id: 'audio1',
               kind: 'clip',
+              clipType: 'media',
               trackId: '1',
               source: { path: 'test1.mp3' },
               timelineRange: { startUs: 0, durationUs: 1000 },

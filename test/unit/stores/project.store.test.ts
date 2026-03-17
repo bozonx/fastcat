@@ -17,6 +17,7 @@ vi.mock('../../../src/stores/workspace.store', () => ({
       projectPresets: createDefaultProjectPresets(),
       exportPresets: createDefaultExportPresets(),
       optimization: { proxyConcurrency: 2 },
+      timeline: { defaultStaticClipDurationUs: 5000000, snapThresholdPx: 8 },
     },
     loadProjects: vi.fn(),
   })),

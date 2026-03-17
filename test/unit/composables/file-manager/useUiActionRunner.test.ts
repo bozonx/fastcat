@@ -44,7 +44,7 @@ describe('useUiActionRunner', () => {
     expect(state.isLoading.value).toBe(false);
     expect(state.error.value).toBe('Custom error message');
     expect(toast.add).toHaveBeenCalledWith({
-      color: 'red',
+      color: 'error',
       title: 'Error Title',
       description: 'Custom error message',
     });

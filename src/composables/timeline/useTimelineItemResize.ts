@@ -198,6 +198,41 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       let newFadeUs = resizeFade.value.startFadeUs + deltaUs;
       newFadeUs = Math.max(0, Math.min(maxUs, newFadeUs));
 
+      if (timelineSettingsStore.clipSnapMode === 'clips') {
+        const thresholdUs = Math.round(
+          (timelineSettingsStore.snapThresholdPx / zoomToPxPerSecond(timelineStore.timelineZoom)) *
+            1e6,
+        );
+
+        const edgeUs =
+          payload.edge === 'in'
+            ? item.timelineRange.startUs + newFadeUs
+            : item.timelineRange.startUs + item.timelineRange.durationUs - newFadeUs;
+
+        const targets = [];
+        if (workspaceStore.userSettings.timeline.snapping.playhead) {
+          targets.push(timelineStore.currentTime);
+        }
+
+        const snap = pickBestSnapCandidateUs({
+          rawUs: edgeUs,
+          thresholdUs,
+          targetsUs: targets,
+        });
+
+        if (snap.distUs < thresholdUs) {
+          if (payload.edge === 'in') {
+            newFadeUs = Math.max(0, snap.snappedUs - item.timelineRange.startUs);
+          } else {
+            newFadeUs = Math.max(
+              0,
+              item.timelineRange.startUs + item.timelineRange.durationUs - snap.snappedUs,
+            );
+          }
+          newFadeUs = Math.min(maxUs, newFadeUs);
+        }
+      }
+
       const propName = payload.edge === 'in' ? 'audioFadeInUs' : 'audioFadeOutUs';
       const nextCurve = isLayer1Active(ev, workspaceStore.userSettings)
         ? resizeFade.value.startCurve === 'logarithmic'
@@ -449,6 +484,17 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
           (timelineSettingsStore.snapThresholdPx / zoomToPxPerSecond(timelineStore.timelineZoom)) *
             1e6,
         );
+
+        const edgeUs =
+          payload.edge === 'in'
+            ? item.timelineRange.startUs + newDurationUs
+            : item.timelineRange.startUs + item.timelineRange.durationUs - newDurationUs;
+
+        const targets = [];
+        if (workspaceStore.userSettings.timeline.snapping.playhead) {
+          targets.push(timelineStore.currentTime);
+        }
+
         const handleSnapUs = computeTransitionHandleSnapDurationUs({
           trackId: payload.trackId,
           itemId: payload.itemId,
@@ -456,13 +502,31 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
           currentTransition: current,
           rawDurationUs: newDurationUs,
         });
+
         if (handleSnapUs !== null) {
-          const snap = pickBestSnapCandidateUs({
-            rawUs: newDurationUs,
-            thresholdUs,
-            targetsUs: [handleSnapUs],
-          });
-          newDurationUs = snap.snappedUs;
+          targets.push(
+            payload.edge === 'in'
+              ? item.timelineRange.startUs + handleSnapUs
+              : item.timelineRange.startUs + item.timelineRange.durationUs - handleSnapUs,
+          );
+        }
+
+        const snap = pickBestSnapCandidateUs({
+          rawUs: edgeUs,
+          thresholdUs,
+          targetsUs: targets,
+        });
+
+        if (snap.distUs < thresholdUs) {
+          if (payload.edge === 'in') {
+            newDurationUs = Math.max(0, snap.snappedUs - item.timelineRange.startUs);
+          } else {
+            newDurationUs = Math.max(
+              0,
+              item.timelineRange.startUs + item.timelineRange.durationUs - snap.snappedUs,
+            );
+          }
+          newDurationUs = Math.min(hardMaxUs, newDurationUs);
         }
       }
 

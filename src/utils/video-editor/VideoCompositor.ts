@@ -214,6 +214,40 @@ export class VideoCompositor {
     });
   }
 
+  public buildTrackRuntimeList(timelineItems: any[]) {
+    return buildTrackRuntimeList(timelineItems, (value) => this.toVideoEffects(value));
+  }
+
+  public async applyShaderTransitions(activeClips: CompositorClip[], currentTimeUs: number) {
+    if (!this.app) return;
+
+    const self = this as any;
+    const stageTextureRenderer = this.stageTextureRenderer ?? {
+      renderSingleClipToTexture: (clip: CompositorClip, texture: RenderTexture, clear?: boolean) =>
+        self.renderSingleClipToTexture?.(clip, texture, clear),
+      renderLowerLayersToTexture: (layer: number, texture: RenderTexture) =>
+        self.renderLowerLayersToTexture?.(layer, texture),
+      ensureTransitionSprite: (clip: CompositorClip) => self.ensureTransitionSprite?.(clip),
+    };
+
+    await this.transitionRenderer.applyShaderTransitions(activeClips, currentTimeUs, {
+      app: this.app,
+      clips: this.clips,
+      width: this.width,
+      height: this.height,
+      transitionManager: this.transitionManager,
+      stageTextureRenderer: stageTextureRenderer as any,
+      getTrackById: (trackId) => this.trackById.get(trackId),
+      getActiveTransitionState: (clip, timeUs) => this.getActiveTransitionState(clip, timeUs),
+      ensureTransitionRenderTexture: (texture) =>
+        this.clipResourceManager.ensureTransitionRenderTexture(texture),
+      findPrevClipOnLayer: (clip) => this.findPrevClipOnLayer(clip),
+      createAbortController: (key) => this.resourceManager.createAbortController(key),
+      getVideoSampleForClip: (params) => this.getVideoSampleForClip(params),
+      updateClipTextureFromSample: (sample, clip) => this.updateClipTextureFromSample(sample, clip),
+    });
+  }
+
   private syncTrackRuntimes(timelineItems: any[]) {
     if (!this.app) return;
 

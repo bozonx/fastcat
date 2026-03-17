@@ -1,4 +1,9 @@
-import type { TimelineDocument, TimelineMarker, TimelineTrack } from '~/timeline/types';
+import type {
+  TimelineDocument,
+  TimelineMarker,
+  TimelineTrack,
+  TimelineSelectionRange,
+} from '~/timeline/types';
 
 import { sanitizeSnapTargetsUs } from '~/utils/timeline/geometry';
 
@@ -11,12 +16,14 @@ export interface TimelineMoveOperation {
 
 export function computeSnapTargetsUs(params: {
   tracks: TimelineTrack[];
-  excludeItemId: string;
+  excludeItemId?: string;
   includeTimelineStart: boolean;
   includeTimelineEndUs: number | null;
   includePlayheadUs: number | null;
   includeMarkers: boolean;
   markers: TimelineMarker[];
+  includeClips: boolean;
+  selectionRangeUs?: TimelineSelectionRange | null;
 }): number[] {
   const targets: number[] = [];
   if (params.includeTimelineStart) targets.push(0);
@@ -40,12 +47,23 @@ export function computeSnapTargetsUs(params: {
     }
   }
 
-  for (const track of params.tracks) {
-    for (const item of track.items) {
-      if (item.kind !== 'clip') continue;
-      if (item.id === params.excludeItemId) continue;
-      targets.push(item.timelineRange.startUs);
-      targets.push(item.timelineRange.startUs + item.timelineRange.durationUs);
+  if (params.selectionRangeUs) {
+    if (Number.isFinite(params.selectionRangeUs.startUs)) {
+      targets.push(params.selectionRangeUs.startUs);
+    }
+    if (Number.isFinite(params.selectionRangeUs.endUs)) {
+      targets.push(params.selectionRangeUs.endUs);
+    }
+  }
+
+  if (params.includeClips) {
+    for (const track of params.tracks) {
+      for (const item of track.items) {
+        if (item.kind !== 'clip') continue;
+        if (params.excludeItemId && item.id === params.excludeItemId) continue;
+        targets.push(item.timelineRange.startUs);
+        targets.push(item.timelineRange.startUs + item.timelineRange.durationUs);
+      }
     }
   }
 

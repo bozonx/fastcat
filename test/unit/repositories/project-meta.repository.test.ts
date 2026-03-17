@@ -82,6 +82,16 @@ describe('project-meta.repository', () => {
     const repo = createProjectMetaRepository({ projectDir: projectDir as any });
 
     await repo.save({ id: 'abc' });
-    expect(await repo.load()).toEqual({ id: 'abc' });
+    await expect(repo.load()).resolves.toEqual({
+      id: 'abc',
+      version: 1,
+      title: '',
+      description: '',
+      author: '',
+      tags: [],
+      createdAt: expect.any(String),
+      updatedAt: expect.any(String),
+      lastOpenedTimelinePath: undefined,
+    });
   });
 });

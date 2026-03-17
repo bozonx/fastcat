@@ -62,15 +62,17 @@ describe('VideoCompositor render optimization', () => {
     compositor.prepareAdjustmentClips = vi.fn(() => {
       events.push('prepare');
     });
-    compositor.applyShaderTransitions = vi.fn(async () => {
-      events.push('transition');
-    });
+    compositor.transitionRenderer = {
+      applyShaderTransitions: vi.fn(async () => {
+        events.push('transition');
+      }),
+    };
     compositor.applyMasterEffects = vi.fn();
 
     await compositor.renderFrame(1_000);
 
     expect(compositor.prepareAdjustmentClips).toHaveBeenCalledTimes(1);
-    expect(compositor.applyShaderTransitions).toHaveBeenCalledTimes(1);
+    expect(compositor.transitionRenderer.applyShaderTransitions).toHaveBeenCalledTimes(1);
     expect(events).toEqual(['prepare', 'transition']);
     expect(app.renderer.render).toHaveBeenCalledTimes(1);
   });
@@ -342,7 +344,7 @@ describe('VideoCompositor render optimization', () => {
       recreatedFilter,
       expect.objectContaining({ progress: 0.25 }),
     );
-    expect(compositor.filterQuadSprite.filters).toEqual([recreatedFilter]);
+    expect(compositor.app.renderer.render).toHaveBeenCalledTimes(1);
     expect(clip.transitionFilter).toBe(recreatedFilter);
   });
 

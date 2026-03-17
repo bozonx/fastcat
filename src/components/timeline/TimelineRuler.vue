@@ -14,6 +14,7 @@ import { useTimelineRulerMarkerDrag } from '~/composables/timeline/useTimelineRu
 import { useTimelineRulerSelectionDrag } from '~/composables/timeline/useTimelineRulerSelectionDrag';
 import { useTimelineRulerDraw } from '~/composables/timeline/useTimelineRulerDraw';
 import { useTimelineRulerInteractions } from '~/composables/timeline/useTimelineRulerInteractions';
+import { computeSnapTargetsUs } from '~/composables/timeline/timelineInteractionUtils';
 
 const { t } = useI18n();
 
@@ -52,6 +53,26 @@ const subTickWidth = 0.8;
 const fps = computed(() => projectStore.projectSettings.project.fps || 30);
 const zoom = computed(() => timelineStore.timelineZoom);
 const currentTime = computed(() => timelineStore.currentTime);
+
+const snapThresholdPx = computed(() => workspaceStore.userSettings.timeline.snapThresholdPx);
+
+function computeSnapTargets() {
+  const snapSettings = workspaceStore.userSettings.timeline.snapping;
+  const timelineEndUs = Number.isFinite(timelineStore.duration)
+    ? Math.max(0, Math.round(timelineStore.duration))
+    : null;
+
+  return computeSnapTargetsUs({
+    tracks: timelineStore.timelineDoc?.tracks ?? [],
+    includeTimelineStart: snapSettings.timelineEdges,
+    includeTimelineEndUs: snapSettings.timelineEdges ? timelineEndUs : null,
+    includePlayheadUs: snapSettings.playhead ? timelineStore.currentTime : null,
+    includeMarkers: snapSettings.markers,
+    markers: timelineStore.getMarkers(),
+    includeClips: snapSettings.clips,
+    selectionRangeUs: snapSettings.selection ? timelineStore.getSelectionRange() : null,
+  });
+}
 
 const { scheduleDraw } = useTimelineRulerDraw({
   containerRef,
@@ -108,6 +129,8 @@ const { onMarkerPointerDown, displayMarkers, draggedMarkerId } = useTimelineRule
   fps,
   selectMarker,
   updateMarker: timelineStore.updateMarker,
+  computeSnapTargets,
+  snapThresholdPx: computed(() => snapThresholdPx.value),
 });
 
 const {
@@ -130,22 +153,18 @@ const {
 
 const hoveredMarkerId = ref<string | null>(null);
 
-const {
-  markerPoints,
-  selectionRangePoint,
-  currentFrameHighlightStyle,
-  playheadStyle,
-} = useTimelineRulerPresentation({
-  width,
-  scrollLeft,
-  zoom,
-  fps,
-  currentTime: computed(() => timelineStore.currentTime),
-  markers: displayMarkers,
-  selectionRange: displaySelectionRange,
-  hoveredMarkerId,
-  draggedMarkerId,
-});
+const { markerPoints, selectionRangePoint, currentFrameHighlightStyle, playheadStyle } =
+  useTimelineRulerPresentation({
+    width,
+    scrollLeft,
+    zoom,
+    fps,
+    currentTime: computed(() => timelineStore.currentTime),
+    markers: displayMarkers,
+    selectionRange: displaySelectionRange,
+    hoveredMarkerId,
+    draggedMarkerId,
+  });
 
 const {
   rulerContextMenuItems,
