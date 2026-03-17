@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useUiStore } from '~/stores/ui.store';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
+import EntryActions from '~/components/properties/file/EntryActions.vue';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 import AudioEffectsEditor from '~/components/common/AudioEffectsEditor.vue';
 import type { VideoClipEffect, AudioClipEffect } from '~/timeline/types';
+import type { FsEntry } from '~/types/fs';
 import {
   DEFAULT_TIMELINE_ZOOM_POSITION,
   formatZoomMultiplier,
@@ -17,6 +20,7 @@ import {
 } from '~/utils/zoom';
 import { formatDurationSeconds } from '~/utils/format';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
+import { useFilePropertiesHandlers } from '~/composables/properties/useFilePropertiesHandlers';
 
 const props = defineProps<{
   summary?: {
@@ -27,10 +31,54 @@ const props = defineProps<{
     clips?: number | null;
   };
   isReadOnly?: boolean;
+  fsEntry?: FsEntry | null;
 }>();
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
+const uiStore = useUiStore();
+
+const fsEntryRef = computed(() => props.fsEntry ?? null);
+const mediaTypeRef = computed(() => null as string | null | undefined);
+const textContentRef = computed(() => null as string | null | undefined);
+const canUploadToRemoteRef = computed(() => false);
+
+const { onRename, onDelete } = useFilePropertiesHandlers({
+  selectedFsEntry: fsEntryRef,
+  mediaType: mediaTypeRef,
+  textContent: textContentRef,
+  canUploadToRemote: canUploadToRemoteRef,
+});
+
+const fileActions = computed(() => {
+  if (!props.fsEntry) return null;
+  return {
+    primary: [
+      {
+        id: 'rename',
+        title: t('common.rename', 'Rename'),
+        icon: 'i-heroicons-pencil',
+        onClick: onRename,
+      },
+      {
+        id: 'delete',
+        title: t('common.delete', 'Delete'),
+        icon: 'i-heroicons-trash',
+        onClick: onDelete,
+      },
+    ],
+    secondary: [
+      {
+        id: 'createOtioVersion',
+        label: t('fastcat.timeline.createVersion', 'Create version'),
+        icon: 'i-heroicons-document-duplicate',
+        onClick: () => {
+          uiStore.pendingOtioCreateVersion = props.fsEntry!;
+        },
+      },
+    ],
+  };
+});
 
 const computedSummary = computed(() => {
   if (props.summary) return props.summary;
@@ -155,7 +203,18 @@ function handleAddAudioTrack() {
       </div>
     </PropertySection>
 
-    <!-- Actions -->
+    <!-- File actions (rename, delete, create version) when opened from file manager -->
+    <PropertySection
+      v-if="fileActions"
+      :title="t('videoEditor.fileManager.actions.title', 'Actions')"
+    >
+      <EntryActions
+        :primary-actions="fileActions.primary"
+        :secondary-actions="fileActions.secondary"
+      />
+    </PropertySection>
+
+    <!-- Timeline actions (add track) -->
     <PropertySection :title="t('fastcat.timeline.properties.actions', 'Actions')" v-if="!isReadOnly">
       <div class="grid grid-cols-2 gap-2 w-full mt-1">
         <UButton
