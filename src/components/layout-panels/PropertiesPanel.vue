@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
+import { useProjectStore } from '~/stores/project.store';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiSegmentedControl from '~/components/ui/UiSegmentedControl.vue';
 import { useFocusStore } from '~/stores/focus.store';
@@ -37,6 +38,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
+const projectStore = useProjectStore();
 const focusStore = useFocusStore();
 const selectionStore = useSelectionStore();
 const proxyStore = useProxyStore();
@@ -124,6 +126,16 @@ const selectedClips = computed(() => {
   return null;
 });
 
+const isCurrentTimelineFileSelection = computed(() => {
+  const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
+  if (entity?.source !== 'fileManager' || entity.kind !== 'file') return false;
+
+  const currentTimelinePath = projectStore.currentTimelinePath;
+  if (!currentTimelinePath || entity.path !== currentTimelinePath) return false;
+
+  return entity.name.toLowerCase().endsWith('.otio');
+});
+
 const displayMode = computed<
   | 'transition'
   | 'clip'
@@ -143,6 +155,7 @@ const displayMode = computed<
   if (selectedClip.value) return 'clip';
   if (selectedTrack.value) return 'track';
   if (hasSelectionRange.value) return 'selection-range';
+  if (isCurrentTimelineFileSelection.value) return 'timeline';
 
   const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
   if (entity?.source === 'project' && entity.kind === 'effect') return 'project-effect';

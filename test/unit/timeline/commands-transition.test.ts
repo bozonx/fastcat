@@ -222,7 +222,7 @@ describe('timeline/commands update_clip_transition', () => {
     expect(nextClip.transitionIn.durationUs + nextClip.transitionOut.durationUs).toBe(5_000_000);
   });
 
-  it('keeps existing overlap geometry unchanged when editing the target transition only', () => {
+  it('rejects clip overlap even when both sides have adjacent transitions', () => {
     const left = {
       ...baseClip,
       id: 'c1',
@@ -244,25 +244,15 @@ describe('timeline/commands update_clip_transition', () => {
 
     const doc = makeDoc({ id: 'v1', kind: 'video', name: 'V1', items: [left, right] as any });
 
-    // Simulate dragging transitionIn of right clip to 3s (growing by 1s)
-    const next = applyTimelineCommand(doc, {
-      type: 'update_clip_transition',
-      trackId: 'v1',
-      itemId: 'c2',
-      transitionIn: { type: 'dissolve', durationUs: 3_000_000 },
-    }).next;
-
-    const items = (next.tracks[0] as TimelineTrack).items as any[];
-    const nextLeft = items.find((it) => it.id === 'c1');
-    const nextRight = items.find((it) => it.id === 'c2');
-
-    const overlapUs =
-      nextLeft.timelineRange.startUs +
-      nextLeft.timelineRange.durationUs -
-      nextRight.timelineRange.startUs;
-    expect(overlapUs).toBe(2_000_000);
-    expect(nextLeft.transitionOut.durationUs).toBe(2_000_000);
-    expect(nextRight.transitionIn.durationUs).toBe(3_000_000);
+    expect(() =>
+      applyTimelineCommand(doc, {
+        type: 'move_item',
+        trackId: 'v1',
+        itemId: 'c2',
+        startUs: 4_000_000,
+        quantizeToFrames: false,
+      }),
+    ).toThrow('Item overlaps with another item');
   });
 
   it('preserves normalized transition params when updating a clip transition', () => {
