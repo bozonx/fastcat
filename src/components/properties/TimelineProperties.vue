@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
+import { useMediaStore } from '~/stores/media.store';
+import { useProxyStore } from '~/stores/proxy.store';
+import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useEntryPreview } from '~/composables/fileManager/useEntryPreview';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import EntryActions from '~/components/properties/file/EntryActions.vue';
@@ -18,9 +22,14 @@ import {
   TIMELINE_ZOOM_POSITIONS,
   timelineZoomPositionToScale,
 } from '~/utils/zoom';
-import { formatDurationSeconds } from '~/utils/format';
+import { formatDurationSeconds, formatBytes } from '~/utils/format';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
+import EntryPreviewBox from '~/components/properties/file/EntryPreviewBox.vue';
+import FileGeneralInfoSection from '~/components/properties/file/FileGeneralInfoSection.vue';
+import { useFilePropertiesBasics } from '~/composables/properties/useFilePropertiesBasics';
+
 import { useFilePropertiesHandlers } from '~/composables/properties/useFilePropertiesHandlers';
+import { useProjectStore } from '~/stores/project.store';
 
 const props = defineProps<{
   summary?: {
@@ -36,12 +45,41 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
+const projectStore = useProjectStore();
 const uiStore = useUiStore();
+const mediaStore = useMediaStore();
+const proxyStore = useProxyStore();
+const fileManager = useFileManager();
 
 const fsEntryRef = computed(() => props.fsEntry ?? null);
 const mediaTypeRef = computed(() => null as string | null | undefined);
 const textContentRef = computed(() => null as string | null | undefined);
 const canUploadToRemoteRef = computed(() => false);
+
+const { timelineDocSummary, fileInfo, currentUrl, isUnknown, mediaType, textContent } =
+  useEntryPreview({
+    selectedFsEntry: fsEntryRef,
+    previewMode: ref('original'),
+    hasProxy: ref(false),
+    mediaStore,
+    proxyStore,
+    getFileByPath: (path) => fileManager.vfs.getFile(path),
+    onResetPreviewMode: () => {},
+  });
+
+const { generalInfoTitle, isHidden, selectedPath } = useFilePropertiesBasics({
+  selectedFsEntry: fsEntryRef,
+  fileInfo,
+  isOtio: ref(true),
+  mediaType,
+});
+
+const isInactiveTimeline = computed(() => {
+  if (!props.fsEntry) return false;
+  return props.fsEntry.path !== projectStore.currentTimelinePath;
+});
+
+const finalIsReadOnly = computed(() => props.isReadOnly || isInactiveTimeline.value);
 
 const { onRename, onDelete } = useFilePropertiesHandlers({
   selectedFsEntry: fsEntryRef,
@@ -82,6 +120,7 @@ const fileActions = computed(() => {
 
 const computedSummary = computed(() => {
   if (props.summary) return props.summary;
+  if (isInactiveTimeline.value && timelineDocSummary.value) return timelineDocSummary.value;
   const doc = timelineStore.timelineDoc;
   if (!doc) return null;
   const videoTracks = doc.tracks.filter((tr) => tr.kind === 'video').length;
@@ -177,8 +216,31 @@ function handleAddAudioTrack() {
 
 <template>
   <div class="w-full flex flex-col gap-3">
+    <!-- File Preview & Info -->
+    <template v-if="fsEntry">
+      <EntryPreviewBox
+        :selected-entry-kind="fsEntry.kind ?? null"
+        :is-otio="true"
+        :is-unknown="isUnknown"
+        :current-url="currentUrl"
+        :media-type="mediaType"
+        :text-content="textContent"
+        :file-path="fsEntry.path"
+        :file-name="fsEntry.name"
+      />
+
+      <FileGeneralInfoSection
+        v-if="fileInfo"
+        :title="generalInfoTitle"
+        :file-info="fileInfo"
+        :selected-path="selectedPath"
+        :is-hidden="isHidden"
+        :format-bytes="formatBytes"
+      />
+    </template>
+
     <!-- Info Section -->
-    <PropertySection :title="t('common.info', 'Info')" v-if="computedSummary">
+    <PropertySection v-if="computedSummary" :title="t('common.info', 'Info')">
       <div class="flex flex-col">
         <PropertyRow
           :label="t('fastcat.timeline.version', 'Version')"
@@ -215,7 +277,10 @@ function handleAddAudioTrack() {
     </PropertySection>
 
     <!-- Timeline actions (add track) -->
-    <PropertySection :title="t('fastcat.timeline.properties.actions', 'Actions')" v-if="!isReadOnly">
+    <PropertySection
+      v-if="!finalIsReadOnly"
+      :title="t('fastcat.timeline.properties.actions', 'Actions')"
+    >
       <div class="grid grid-cols-2 gap-2 w-full mt-1">
         <UButton
           size="xs"
@@ -241,7 +306,7 @@ function handleAddAudioTrack() {
     </PropertySection>
 
     <!-- Settings -->
-    <PropertySection :title="t('common.settings', 'Settings')" v-if="!isReadOnly">
+    <PropertySection v-if="!finalIsReadOnly" :title="t('common.settings', 'Settings')">
       <div class="flex flex-col">
         <PropertyRow :label="t('fastcat.timeline.properties.zoom', 'Zoom')">
           <div class="flex items-center gap-2">
@@ -256,7 +321,11 @@ function handleAddAudioTrack() {
               />
             </div>
             <div class="w-16 shrink-0">
-              <UInput v-model="timelineZoomMultiplierInput" size="xs" class="w-full font-mono text-center" />
+              <UInput
+                v-model="timelineZoomMultiplierInput"
+                size="xs"
+                class="w-full font-mono text-center"
+              />
             </div>
           </div>
         </PropertyRow>
@@ -274,7 +343,7 @@ function handleAddAudioTrack() {
     </PropertySection>
 
     <!-- Master Video Effects -->
-    <div class="relative" v-if="!isReadOnly">
+    <div v-if="!finalIsReadOnly" class="relative">
       <EffectsEditor
         :effects="masterEffects"
         :title="t('fastcat.effects.masterTitle', 'Master effects')"
@@ -291,13 +360,16 @@ function handleAddAudioTrack() {
     </div>
 
     <AudioEffectsEditor
-      v-if="!isReadOnly"
+      v-if="!finalIsReadOnly"
       :effects="masterAudioEffects"
       @update:effects="handleUpdateMasterAudioEffects"
     />
 
     <!-- Master Volume -->
-    <PropertySection :title="t('fastcat.timeline.properties.masterVolume', 'Master Volume')" v-if="!isReadOnly">
+    <PropertySection
+      v-if="!finalIsReadOnly"
+      :title="t('fastcat.timeline.properties.masterVolume', 'Master Volume')"
+    >
       <div class="flex flex-col">
         <PropertyRow :label="masterGain.toFixed(3) + 'x'">
           <UiWheelSlider
