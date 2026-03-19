@@ -4,12 +4,14 @@ interface TimelinePointerSessionHandlers {
   onPointerMove?: ((event: PointerEvent) => void) | null;
   onPointerUp?: ((event?: PointerEvent) => void) | null;
   onKeyDown?: ((event: KeyboardEvent) => void) | null;
+  onKeyUp?: ((event: KeyboardEvent) => void) | null;
 }
 
 export function useTimelinePointerSession() {
   let activePointerMove: ((event: PointerEvent) => void) | null = null;
   let activePointerUp: ((event?: PointerEvent) => void) | null = null;
   let activeKeyDown: ((event: KeyboardEvent) => void) | null = null;
+  let activeKeyUp: ((event: KeyboardEvent) => void) | null = null;
   let scheduledFrameId = 0;
   let scheduledUpdate: (() => void) | null = null;
 
@@ -42,6 +44,11 @@ export function useTimelinePointerSession() {
       activeKeyDown = null;
     }
 
+    if (activeKeyUp) {
+      window.removeEventListener('keyup', activeKeyUp);
+      activeKeyUp = null;
+    }
+
     if (scheduledFrameId !== 0) {
       cancelAnimationFrame(scheduledFrameId);
       scheduledFrameId = 0;
@@ -56,6 +63,7 @@ export function useTimelinePointerSession() {
     activePointerMove = handlers.onPointerMove ?? null;
     activePointerUp = handlers.onPointerUp ?? null;
     activeKeyDown = handlers.onKeyDown ?? null;
+    activeKeyUp = handlers.onKeyUp ?? null;
 
     if (activePointerMove) {
       window.addEventListener('pointermove', activePointerMove);
@@ -67,6 +75,10 @@ export function useTimelinePointerSession() {
 
     if (activeKeyDown) {
       window.addEventListener('keydown', activeKeyDown);
+    }
+
+    if (activeKeyUp) {
+      window.addEventListener('keyup', activeKeyUp);
     }
   }
 

@@ -27,6 +27,7 @@ import {
 } from '~/utils/timeline/geometry';
 import { sanitizeFps, getLinkedClipGroupItemIds } from '~/timeline/commands/utils';
 import { formatStopFrameTimecode } from '~/utils/stop-frames';
+import { useTimelinePointerSession } from '~/composables/timeline/useTimelinePointerSession';
 
 export interface TimelineMovePreview {
   itemId: string;
@@ -51,6 +52,7 @@ export function useTimelineItemDrag(
   const settingsStore = useTimelineSettingsStore();
   const selectionStore = useSelectionStore();
   const workspaceStore = useWorkspaceStore();
+  const { bindSession, clearSession, scheduleUpdate } = useTimelinePointerSession();
 
   const draggingItemId = ref<string | null>(null);
   const draggingTrackId = ref<string | null>(null);
@@ -89,8 +91,6 @@ export function useTimelineItemDrag(
   const dragIsCopyOverride = ref(false);
   const dragToggleSnapOverride = ref(false);
   const dragPointerButton = ref<0 | 2>(0);
-
-  let dragRafId: number | null = null;
 
   function getToolbarSnapAction(): 'snap' | 'no_snap' | 'free_mode' {
     return settingsStore.toolbarSnapMode;
@@ -180,6 +180,13 @@ export function useTimelineItemDrag(
     scheduleDragApply();
   }
 
+  function bindDragSession() {
+    bindSession({
+      onKeyDown: onGlobalKeyDown,
+      onKeyUp: onGlobalKeyUp,
+    });
+  }
+
   function startMoveItem(e: PointerEvent, payload: TimelineMoveItemPayload) {
     const { trackId, itemId, startUs } = payload;
 
@@ -258,8 +265,7 @@ export function useTimelineItemDrag(
     slipPreview.value = null;
 
     (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
-    window.addEventListener('keydown', onGlobalKeyDown);
-    window.addEventListener('keyup', onGlobalKeyUp);
+    bindDragSession();
   }
 
   function startTrimItem(
@@ -314,8 +320,7 @@ export function useTimelineItemDrag(
     dragCancelRequested.value = false;
 
     (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
-    window.addEventListener('keydown', onGlobalKeyDown);
-    window.addEventListener('keyup', onGlobalKeyUp);
+    bindDragSession();
   }
 
   function onGlobalKeyDown(e: KeyboardEvent) {
@@ -348,7 +353,6 @@ export function useTimelineItemDrag(
 
     pendingDragClientX.value = null;
     pendingDragClientY.value = null;
-    dragRafId = null;
 
     if (!mode || !trackId || !itemId || clientX === null || clientY === null) return;
 
@@ -655,8 +659,7 @@ export function useTimelineItemDrag(
   }
 
   function scheduleDragApply() {
-    if (dragRafId !== null) return;
-    dragRafId = requestAnimationFrame(() => {
+    scheduleUpdate(() => {
       applyDragFromPendingClientX();
     });
   }
@@ -692,10 +695,7 @@ export function useTimelineItemDrag(
     const cancel = dragCancelRequested.value;
     dragCancelRequested.value = false;
 
-    if (dragRafId !== null) {
-      cancelAnimationFrame(dragRafId);
-      dragRafId = null;
-    }
+    clearSession();
 
     if (!cancel) {
       applyDragFromPendingClientX();
@@ -714,7 +714,6 @@ export function useTimelineItemDrag(
       const doc = timelineStore.timelineDoc;
       const movedItemId = draggingItemId.value;
       const movedTrackId = draggingTrackId.value;
-      const commit = pendingMoveCommit.value;
 
       if (doc && movedItemId && movedTrackId && timelineStore.selectedItemIds.length === 1) {
         const track = doc.tracks.find((item) => item.id === movedTrackId) ?? null;
@@ -835,7 +834,6 @@ export function useTimelineItemDrag(
 
     const snapshot = JSON.parse(JSON.stringify(dragStartSnapshot.value));
     const appliedCmd = lastDragAppliedCmd.value;
-    const currDoc = timelineStore.timelineDoc;
     if (!cancel && snapshot && appliedCmd) {
       historyStore.push('timeline', appliedCmd.type, snapshot, TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY);
       dragStartSnapshot.value = null;
@@ -902,18 +900,10 @@ export function useTimelineItemDrag(
     dragDisableFrameSnapOverride.value = false;
     dragIsCopyOverride.value = false;
     dragToggleSnapOverride.value = false;
-
-    window.removeEventListener('keydown', onGlobalKeyDown);
-    window.removeEventListener('keyup', onGlobalKeyUp);
   }
 
   onBeforeUnmount(() => {
-    if (dragRafId !== null) {
-      cancelAnimationFrame(dragRafId);
-      dragRafId = null;
-    }
-    window.removeEventListener('keydown', onGlobalKeyDown);
-    window.removeEventListener('keyup', onGlobalKeyUp);
+    clearSession();
   });
 
   return {
