@@ -11,6 +11,8 @@ import type {
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 import AudioEffectsEditor from '~/components/common/AudioEffectsEditor.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
+import PropertyActionList from '~/components/properties/PropertyActionList.vue';
+import PropertySlider from '~/components/properties/PropertySlider.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import GenerateCaptionsModal from '~/components/properties/GenerateCaptionsModal.vue';
 
