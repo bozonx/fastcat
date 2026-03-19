@@ -1,28 +1,27 @@
+import { z } from 'zod';
 import type { FastCatAppSettings, FastCatWorkspaceSettings } from '../defaults';
 import { createDefaultAppSettings } from '../helpers';
-import { asRecord, normalizeStoragePathValue } from './shared';
+
+const getAppSchema = () => {
+  const defaults = createDefaultAppSettings();
+  return z.object({
+    paths: z.object({
+      contentRootPath: z.string().trim().catch(defaults.paths.contentRootPath),
+      dataRootPath: z.string().trim().catch(defaults.paths.dataRootPath),
+      tempRootPath: z.string().trim().catch(defaults.paths.tempRootPath),
+      proxiesRootPath: z.string().trim().catch(defaults.paths.proxiesRootPath),
+      ephemeralTmpRootPath: z.string().trim().catch(defaults.paths.ephemeralTmpRootPath),
+      placementMode: z.enum(['system-default', 'portable']).catch(defaults.paths.placementMode),
+    }).catch(defaults.paths),
+  }).catch(defaults);
+};
 
 export function normalizeAppSettings(raw: unknown): FastCatAppSettings {
+  const schema = getAppSchema();
   if (!raw || typeof raw !== 'object') {
-    return createDefaultAppSettings();
+     return schema.parse({});
   }
-
-  const input = asRecord(raw);
-  const pathsInput = asRecord(input.paths);
-  const defaultSettings = createDefaultAppSettings();
-  const placementMode =
-    pathsInput.placementMode === 'portable' ? 'portable' : defaultSettings.paths.placementMode;
-
-  return {
-    paths: {
-      contentRootPath: normalizeStoragePathValue(pathsInput.contentRootPath),
-      dataRootPath: normalizeStoragePathValue(pathsInput.dataRootPath),
-      tempRootPath: normalizeStoragePathValue(pathsInput.tempRootPath),
-      proxiesRootPath: normalizeStoragePathValue(pathsInput.proxiesRootPath),
-      ephemeralTmpRootPath: normalizeStoragePathValue(pathsInput.ephemeralTmpRootPath),
-      placementMode,
-    },
-  };
+  return schema.parse(raw);
 }
 
 export function normalizeWorkspaceSettings(raw: unknown): FastCatWorkspaceSettings {
