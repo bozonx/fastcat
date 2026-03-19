@@ -28,6 +28,7 @@ import { createProjectFsModule } from '~/stores/project/projectFs';
 import { createProjectMetaModule } from '~/stores/project/projectMeta';
 import { createProjectTimelinesModule } from '~/stores/project/projectTimelines';
 import { useProjectLock } from '~/composables/editor/useProjectLock';
+import { getErrorMessage } from '~/utils/errors';
 
 export const useProjectStore = defineStore('project', () => {
   const workspaceStore = useWorkspaceStore();
@@ -36,13 +37,6 @@ export const useProjectStore = defineStore('project', () => {
 
   const { projectSettings, isLoadingProjectSettings, isSavingProjectSettings, activeMonitor } =
     storeToRefs(projectSettingsStore);
-
-  function getErrorMessage(e: unknown, fallback: string): string {
-    if (!e || typeof e !== 'object') return fallback;
-    if (!('message' in e)) return fallback;
-    const msg = (e as { message?: unknown }).message;
-    return typeof msg === 'string' && msg.length > 0 ? msg : fallback;
-  }
 
   const currentProjectName = ref<string | null>(null);
   const currentProjectId = ref<string | null>(null);

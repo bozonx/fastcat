@@ -1,25 +1,17 @@
 import { ref, watch, type Ref } from 'vue';
 
 import { createAutoSave } from '~/utils/autoSave';
+import { getErrorMessage } from '~/utils/errors';
 import {
   type FastCatAppSettings,
   type FastCatUserSettings,
   type FastCatWorkspaceSettings,
   createDefaultAppSettings,
   createDefaultUserSettings,
-  createDefaultWorkspaceSettings,
   normalizeAppSettings,
   normalizeUserSettings,
-  normalizeWorkspaceSettings,
 } from '~/utils/settings';
 import type { WorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
-
-function getErrorMessage(e: unknown, fallback: string): string {
-  if (!e || typeof e !== 'object') return fallback;
-  if (!('message' in e)) return fallback;
-  const msg = (e as { message?: unknown }).message;
-  return typeof msg === 'string' && msg.length > 0 ? msg : fallback;
-}
 
 export interface WorkspaceSettingsModule {
   userSettings: Ref<FastCatUserSettings>;
