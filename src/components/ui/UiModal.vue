@@ -52,7 +52,7 @@ const modalUi = computed(() => {
     title: `text-lg font-semibold text-ui-text truncate ${props.ui?.title || ''}`,
     description: `mt-1 text-sm text-ui-text-muted ${props.ui?.description || ''}`,
     close: `-mr-2 ml-4 ${props.ui?.close || ''}`,
-    ...props.ui
+    ...props.ui,
   } as any;
 });
 
@@ -80,9 +80,7 @@ function focusPreferredElement() {
     return;
   }
 
-  const target = container.querySelector<HTMLElement>(
-    '[data-primary-focus="true"], [autofocus]',
-  );
+  const target = container.querySelector<HTMLElement>('[data-primary-focus="true"], [autofocus]');
 
   if (!target || !isFocusableElement(target)) {
     return;
@@ -108,13 +106,13 @@ function handleClose() {
 <template>
   <UModal
     v-model:open="isOpen"
-    @after:enter="handleAfterEnter"
     :content="modalContent"
     :dismissible="!props.preventClose"
     :title="props.title"
     :description="props.description"
     :close="props.closeButton"
     :ui="modalUi"
+    @after:enter="handleAfterEnter"
   >
     <template v-if="$slots.header" #header>
       <div class="flex items-center justify-between w-full">

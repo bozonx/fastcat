@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * Unified Tabs Component
- * 
+ *
  * Provides a consistent look for tab-style navigation.
  */
 
@@ -31,7 +31,7 @@ function select(value: string) {
 </script>
 
 <template>
-  <div 
+  <div
     class="flex items-center gap-4 px-3 py-2 shrink-0 select-none overflow-x-auto no-scrollbar"
     :class="{ 'border-b border-ui-border': border }"
   >
@@ -41,9 +41,7 @@ function select(value: string) {
       type="button"
       class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider transition-colors outline-none cursor-pointer whitespace-nowrap"
       :class="
-        modelValue === option.value 
-          ? 'text-primary-400' 
-          : 'text-ui-text-muted hover:text-ui-text'
+        modelValue === option.value ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'
       "
       @click="select(option.value)"
     >

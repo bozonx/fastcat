@@ -2,7 +2,6 @@
 import UiModal from '~/components/ui/UiModal.vue';
 import { ref, watch, nextTick } from 'vue';
 
-
 // We define the specific colors supported by UButton to ensure type safety
 type ButtonColor = 'primary' | 'secondary' | 'neutral' | 'error' | 'warning' | 'success' | 'info';
 
@@ -57,7 +56,6 @@ watch(isOpen, (newValue) => {
   }
 });
 
-
 const { t } = useI18n();
 
 const handleConfirm = () => {
@@ -80,8 +78,12 @@ const handleClose = () => {
 </script>
 
 <template>
-  <UiModal v-model:open="isOpen" :title="title"
-    @after:enter="handleAfterEnter" :ui="{ content: 'sm:max-w-lg' }">
+  <UiModal
+    v-model:open="isOpen"
+    :title="title"
+    :ui="{ content: 'sm:max-w-lg' }"
+    @after:enter="handleAfterEnter"
+  >
     <div class="flex flex-col gap-4">
       <div v-if="icon || description" class="flex gap-4">
         <div v-if="icon" class="shrink-0">

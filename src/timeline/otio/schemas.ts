@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import type { TimelineClipType, ShapeType, HudType, AudioFadeCurve, TimelineBlendMode } from '../types';
+import type {
+  TimelineClipType,
+  ShapeType,
+  HudType,
+  AudioFadeCurve,
+  TimelineBlendMode,
+} from '../types';
 
 export const ClipScaleSchema = z.object({
   x: z.number().catch(1),
@@ -8,7 +14,12 @@ export const ClipScaleSchema = z.object({
 });
 
 export const ClipAnchorPresetSchema = z.enum([
-  'center', 'topLeft', 'topRight', 'bottomLeft', 'bottomRight', 'custom',
+  'center',
+  'topLeft',
+  'topRight',
+  'bottomLeft',
+  'bottomRight',
+  'custom',
 ]);
 
 export const ClipAnchorSchema = z.object({
@@ -67,77 +78,100 @@ export const HudMediaParamsSchema = z.object({
   effects: z.array(z.any()).optional(),
 });
 
-export const TimelineClipTypeSchema = z.enum(['media', 'timeline', 'adjustment', 'background', 'text', 'shape', 'hud']);
-export const TimelineBlendModeSchema = z.enum(['normal', 'add', 'multiply', 'screen', 'darken', 'lighten']);
+export const TimelineClipTypeSchema = z.enum([
+  'media',
+  'timeline',
+  'adjustment',
+  'background',
+  'text',
+  'shape',
+  'hud',
+]);
+export const TimelineBlendModeSchema = z.enum([
+  'normal',
+  'add',
+  'multiply',
+  'screen',
+  'darken',
+  'lighten',
+]);
 export const AudioFadeCurveSchema = z.enum(['linear', 'logarithmic']);
 
-export const TimelineClipFastCatMetaSchema = z.object({
-  id: z.string().trim().min(1).optional(),
-  clipType: TimelineClipTypeSchema.optional(),
-  locked: z.boolean().optional(),
-  speed: z.number().min(-10).max(10).optional(),
-  audioGain: z.number().min(0).max(10).optional(),
-  audioBalance: z.number().min(-1).max(1).optional(),
-  audioFadeInUs: z.number().min(0).optional(),
-  audioFadeOutUs: z.number().min(0).optional(),
-  audioFadeInCurve: AudioFadeCurveSchema.optional(),
-  audioFadeOutCurve: AudioFadeCurveSchema.optional(),
-  audioMuted: z.boolean().optional(),
-  audioWaveformMode: z.enum(['half', 'full']).optional(),
-  showWaveform: z.boolean().optional(),
-  audioFromVideoDisabled: z.boolean().optional(),
-  freezeFrameSourceUs: z.number().min(0).optional(),
-  opacity: z.number().min(0).max(1).optional(),
-  blendMode: TimelineBlendModeSchema.optional(),
-  linkedGroupId: z.string().trim().min(1).optional(),
-  linkedVideoClipId: z.string().trim().min(1).optional(),
-  lockToLinkedVideo: z.boolean().optional(),
-  isImage: z.boolean().optional(),
-  transform: ClipTransformSchema.optional(),
-  sourceDurationUs: z.number().min(0).optional(),
-  effects: z.array(z.any()).optional(),
-  transitionIn: z.any().optional(),
-  transitionOut: z.any().optional(),
+export const TimelineClipFastCatMetaSchema = z
+  .object({
+    id: z.string().trim().min(1).optional(),
+    clipType: TimelineClipTypeSchema.optional(),
+    locked: z.boolean().optional(),
+    speed: z.number().min(-10).max(10).optional(),
+    audioGain: z.number().min(0).max(10).optional(),
+    audioBalance: z.number().min(-1).max(1).optional(),
+    audioFadeInUs: z.number().min(0).optional(),
+    audioFadeOutUs: z.number().min(0).optional(),
+    audioFadeInCurve: AudioFadeCurveSchema.optional(),
+    audioFadeOutCurve: AudioFadeCurveSchema.optional(),
+    audioMuted: z.boolean().optional(),
+    audioWaveformMode: z.enum(['half', 'full']).optional(),
+    showWaveform: z.boolean().optional(),
+    audioFromVideoDisabled: z.boolean().optional(),
+    freezeFrameSourceUs: z.number().min(0).optional(),
+    opacity: z.number().min(0).max(1).optional(),
+    blendMode: TimelineBlendModeSchema.optional(),
+    linkedGroupId: z.string().trim().min(1).optional(),
+    linkedVideoClipId: z.string().trim().min(1).optional(),
+    lockToLinkedVideo: z.boolean().optional(),
+    isImage: z.boolean().optional(),
+    transform: ClipTransformSchema.optional(),
+    sourceDurationUs: z.number().min(0).optional(),
+    effects: z.array(z.any()).optional(),
+    transitionIn: z.any().optional(),
+    transitionOut: z.any().optional(),
 
-  // Type specific extensions
-  backgroundColor: z.string().optional(), // Background
-  text: z.string().optional(), // Text
-  style: TextClipStyleSchema.optional(), // Text
-  shapeType: z.enum(['square', 'circle', 'triangle', 'star', 'cloud', 'speech_bubble', 'bang']).optional(), // Shape
-  fillColor: z.string().optional(), // Shape
-  strokeColor: z.string().optional(), // Shape
-  strokeWidth: z.number().min(0).optional(), // Shape
-  shapeConfig: ShapeConfigSchema.optional(), // Shape
-  hudType: z.enum(['media_frame']).optional(), // Hud
-  background: HudMediaParamsSchema.optional(), // Hud
-  content: HudMediaParamsSchema.optional(), // Hud
-}).catch({});
+    // Type specific extensions
+    backgroundColor: z.string().optional(), // Background
+    text: z.string().optional(), // Text
+    style: TextClipStyleSchema.optional(), // Text
+    shapeType: z
+      .enum(['square', 'circle', 'triangle', 'star', 'cloud', 'speech_bubble', 'bang'])
+      .optional(), // Shape
+    fillColor: z.string().optional(), // Shape
+    strokeColor: z.string().optional(), // Shape
+    strokeWidth: z.number().min(0).optional(), // Shape
+    shapeConfig: ShapeConfigSchema.optional(), // Shape
+    hudType: z.enum(['media_frame']).optional(), // Hud
+    background: HudMediaParamsSchema.optional(), // Hud
+    content: HudMediaParamsSchema.optional(), // Hud
+  })
+  .catch({});
 
-export const TimelineTrackFastCatMetaSchema = z.object({
-  id: z.string().trim().min(1).optional(),
-  name: z.string().optional(),
-  kind: z.enum(['video', 'audio']).optional(),
-  videoHidden: z.boolean().optional(),
-  opacity: z.number().min(0).max(1).optional(),
-  blendMode: TimelineBlendModeSchema.optional(),
-  audioMuted: z.boolean().optional(),
-  audioSolo: z.boolean().optional(),
-  audioGain: z.number().min(0).max(10).optional(),
-  audioBalance: z.number().min(-1).max(1).optional(),
-  effects: z.array(z.any()).optional(),
-}).catch({});
+export const TimelineTrackFastCatMetaSchema = z
+  .object({
+    id: z.string().trim().min(1).optional(),
+    name: z.string().optional(),
+    kind: z.enum(['video', 'audio']).optional(),
+    videoHidden: z.boolean().optional(),
+    opacity: z.number().min(0).max(1).optional(),
+    blendMode: TimelineBlendModeSchema.optional(),
+    audioMuted: z.boolean().optional(),
+    audioSolo: z.boolean().optional(),
+    audioGain: z.number().min(0).max(10).optional(),
+    audioBalance: z.number().min(-1).max(1).optional(),
+    effects: z.array(z.any()).optional(),
+  })
+  .catch({});
 
-export const TimelineDocFastCatMetaSchema = z.object({
-  version: z.number().optional(),
-  docId: z.string().trim().min(1).optional(),
-  timebase: z.object({ fps: z.number() }).optional(),
-  selectionRange: z.object({ startUs: z.number(), endUs: z.number() }).optional(),
-  snapThresholdPx: z.number().min(1).optional(),
-  playheadUs: z.number().min(0).optional(),
-  masterGain: z.number().optional(),
-  masterMuted: z.boolean().optional(),
-  masterEffects: z.array(z.any()).optional(),
-  zoom: z.number().optional(),
-  trackHeights: z.record(z.string(), z.number()).optional(),
-  markers: z.array(z.any()).optional(),
-}).catch({});
+export const TimelineDocFastCatMetaSchema = z
+  .object({
+    version: z.number().optional(),
+    docId: z.string().trim().min(1).optional(),
+    timebase: z.object({ fps: z.number() }).optional(),
+    selectionRange: z.object({ startUs: z.number(), endUs: z.number() }).optional(),
+    snapThresholdPx: z.number().min(1).optional(),
+    playheadUs: z.number().min(0).optional(),
+    masterGain: z.number().optional(),
+    masterMuted: z.boolean().optional(),
+    masterEffects: z.array(z.any()).optional(),
+    zoom: z.number().optional(),
+    trackHeights: z.record(z.string(), z.number()).optional(),
+    markers: z.array(z.any()).optional(),
+  })
+  .catch({});

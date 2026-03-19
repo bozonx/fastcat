@@ -29,17 +29,19 @@ const { t } = useI18n();
         :label="t('videoEditor.fileManager.video.container', 'Container')"
         :value="props.mediaMeta?.container ?? '-'"
       />
-      <PropertyRow 
+      <PropertyRow
         v-if="props.mediaMeta?.video"
-        :label="t('videoEditor.fileManager.video.videoCodec', 'Video codec')">
+        :label="t('videoEditor.fileManager.video.videoCodec', 'Video codec')"
+      >
         {{ props.mediaMeta?.video?.parsedCodec ?? props.mediaMeta?.video?.codec ?? '-' }}
         <span v-if="props.mediaMeta?.video?.bitrate">
           , {{ props.formatBitrate(props.mediaMeta.video.bitrate) }}
         </span>
       </PropertyRow>
-      <PropertyRow 
+      <PropertyRow
         v-if="props.mediaMeta?.audio"
-        :label="t('videoEditor.fileManager.video.audioCodec', 'Audio codec')">
+        :label="t('videoEditor.fileManager.video.audioCodec', 'Audio codec')"
+      >
         {{ props.mediaMeta?.audio?.parsedCodec ?? props.mediaMeta?.audio?.codec ?? '-' }}
         <span v-if="props.mediaMeta?.audio?.bitrate">
           , {{ props.formatBitrate(props.mediaMeta.audio.bitrate) }}

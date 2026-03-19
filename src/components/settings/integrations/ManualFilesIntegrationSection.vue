@@ -135,12 +135,7 @@ function getHealthTone(status: typeof healthState.status) {
     </UFormField>
 
     <div class="flex flex-wrap gap-2">
-      <UButton
-        color="neutral"
-        variant="soft"
-        :loading="healthState.loading"
-        @click="runHealth"
-      >
+      <UButton color="neutral" variant="soft" :loading="healthState.loading" @click="runHealth">
         {{ t('videoEditor.settings.integrationHealthCheck', 'Check health') }}
       </UButton>
     </div>

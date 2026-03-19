@@ -4,11 +4,14 @@ import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import UiProgressSpinner from '~/components/ui/UiProgressSpinner.vue';
 import BackgroundTasksModal from './BackgroundTasksModal.vue';
 
-const props = withDefaults(defineProps<{
-  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-}>(), {
-  size: 'xs',
-});
+const props = withDefaults(
+  defineProps<{
+    size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  }>(),
+  {
+    size: 'xs',
+  },
+);
 
 const backgroundTasksStore = useBackgroundTasksStore();
 const isModalOpen = ref(false);
@@ -31,11 +34,7 @@ const { t } = useI18n();
         :progress="backgroundTasksStore.globalProgress * 100"
         size="sm"
       />
-      <UIcon
-        v-else
-        name="i-mdi-progress-helper"
-        class="w-4 h-4 text-ui-text-muted"
-      />
+      <UIcon v-else name="i-mdi-progress-helper" class="w-4 h-4 text-ui-text-muted" />
     </UButton>
 
     <BackgroundTasksModal v-model:open="isModalOpen" />

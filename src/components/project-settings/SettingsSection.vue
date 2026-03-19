@@ -26,9 +26,7 @@ const isExpanded = ref(props.defaultExpanded ?? false);
       </div>
       <UIcon
         :name="
-          isExpanded
-            ? 'i-heroicons-chevron-down-20-solid'
-            : 'i-heroicons-chevron-right-20-solid'
+          isExpanded ? 'i-heroicons-chevron-down-20-solid' : 'i-heroicons-chevron-right-20-solid'
         "
         class="w-5 h-5 text-ui-text-muted group-hover:text-ui-text transition-colors"
       />

@@ -340,7 +340,7 @@ export async function runTranscode(
     await notifyPhase('encoding', taskId);
 
     let lastProgressAtMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    let lastYieldAtMs = lastProgressAtMs;
+    const lastYieldAtMs = lastProgressAtMs;
     const progressIntervalMs = 250;
     const yieldIntervalMs = 32;
 

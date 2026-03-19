@@ -74,7 +74,6 @@ const emit = defineEmits<{
         >
           <div
             class="panel-focus-frame h-full w-full relative transition-all duration-200"
-            @click.stop="emit('focus', panel.id)"
             :class="{
               'opacity-50': draggingPanelId === panel.id,
               'border-l-2 border-l-primary-500':
@@ -87,8 +86,7 @@ const emit = defineEmits<{
                 dragOverPanelId === panel.id && dropPosition === 'bottom',
               'panel-focus-frame--active': isFocused(panel.id),
             }"
-            
-            
+            @click.stop="emit('focus', panel.id)"
             @dragenter.prevent
             @dragover.prevent="(event) => emit('dragOver', event, panel.id, view)"
             @dragleave="(event) => emit('dragLeave', event, panel.id)"
@@ -102,7 +100,9 @@ const emit = defineEmits<{
               @drag-start="(event, panelId) => emit('dragStart', event, panelId)"
               @focus="(panelId) => emit('focus', panelId)"
               @close="(targetPanel, targetView) => emit('close', targetPanel, targetView)"
-              @move-to-view="(targetPanel, targetView) => emit('moveToView', targetPanel, targetView)"
+              @move-to-view="
+                (targetPanel, targetView) => emit('moveToView', targetPanel, targetView)
+              "
             />
           </div>
         </Pane>

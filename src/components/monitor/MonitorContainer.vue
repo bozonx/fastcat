@@ -14,8 +14,11 @@ const { t } = useI18n();
 const focusStore = useFocusStore();
 
 const panelRef = ref<HTMLElement | null>(null);
-const { isFullscreen: isBrowserFullscreen, enter: enterBrowserFullscreen, exit: exitBrowserFullscreen } =
-  useFullscreen(panelRef);
+const {
+  isFullscreen: isBrowserFullscreen,
+  enter: enterBrowserFullscreen,
+  exit: exitBrowserFullscreen,
+} = useFullscreen(panelRef);
 
 const {
   projectStore,
@@ -71,7 +74,6 @@ watch(
 );
 
 const { showGrid, toggleGrid, getGridLines } = useMonitorGrid({ projectStore });
-
 
 const {
   canInteractPlayback,
@@ -134,7 +136,10 @@ const speedMenuItems = computed(() => [
   playbackSpeedOptions.map((opt) => ({
     label: opt.label,
     onSelect: () => onPlaybackSpeedChange(opt),
-    icon: selectedPlaybackSpeedOption.value?.value === opt.value ? 'i-heroicons-check-20-solid' : undefined,
+    icon:
+      selectedPlaybackSpeedOption.value?.value === opt.value
+        ? 'i-heroicons-check-20-solid'
+        : undefined,
   })),
 ]);
 
@@ -249,9 +254,7 @@ const emit = defineEmits<{
             ref="timecodeEl"
             class="absolute text-xs text-ui-text-muted font-mono tabular-nums bg-ui-bg-elevated/80 px-2 py-1 rounded transition-all duration-300"
             :class="[
-              effectiveFullscreen
-                ? 'bottom-24 right-8 translate-y-2'
-                : 'bottom-3 right-3',
+              effectiveFullscreen ? 'bottom-24 right-8 translate-y-2' : 'bottom-3 right-3',
               effectiveFullscreen && isIdle ? 'opacity-0' : 'opacity-100 translate-y-0',
             ]"
           >
@@ -354,7 +357,8 @@ const emit = defineEmits<{
               class="w-full"
               @update:model-value="
                 (v: any) => {
-                  if (v && projectStore.activeMonitor) projectStore.activeMonitor.previewResolution = v.value ?? v;
+                  if (v && projectStore.activeMonitor)
+                    projectStore.activeMonitor.previewResolution = v.value ?? v;
                 }
               "
             >
@@ -441,7 +445,11 @@ const emit = defineEmits<{
           >
             <div class="flex items-center justify-center">
               <UIcon
-                :name="timelineStore.isPlaying ? 'i-heroicons-stop-20-solid' : 'i-heroicons-play-20-solid'"
+                :name="
+                  timelineStore.isPlaying
+                    ? 'i-heroicons-stop-20-solid'
+                    : 'i-heroicons-play-20-solid'
+                "
                 class="w-5 h-5"
                 :class="!timelineStore.isPlaying ? 'ml-0.5' : ''"
               />
@@ -454,7 +462,6 @@ const emit = defineEmits<{
             </div>
           </UButton>
         </UContextMenu>
-
 
         <MonitorAudioControl :compact="toolbarPosition === 'left' || toolbarPosition === 'right'" />
 

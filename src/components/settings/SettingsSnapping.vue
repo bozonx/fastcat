@@ -44,22 +44,16 @@ const playhead = computed({
         {{ t('videoEditor.settings.snappingTitle', 'Snapping') }}
       </h3>
       <p class="text-sm text-ui-text-muted mt-1">
-        {{
-          t('videoEditor.settings.snappingDescription', 'Configure timeline snapping behavior.')
-        }}
+        {{ t('videoEditor.settings.snappingDescription', 'Configure timeline snapping behavior.') }}
       </p>
     </div>
 
     <div class="space-y-4 max-w-xl">
-      <UFormField :label="t('videoEditor.settings.snapThresholdDefault', 'Snap threshold default (px)')">
+      <UFormField
+        :label="t('videoEditor.settings.snapThresholdDefault', 'Snap threshold default (px)')"
+      >
         <div class="flex items-center gap-4">
-          <UiWheelSlider
-            v-model="snapThresholdPx"
-            :min="1"
-            :max="100"
-            :step="1"
-            class="flex-1"
-          />
+          <UiWheelSlider v-model="snapThresholdPx" :min="1" :max="100" :step="1" class="flex-1" />
           <div class="text-xs font-mono text-ui-text-muted w-8 text-right">
             {{ snapThresholdPx }}
           </div>
@@ -75,22 +69,16 @@ const playhead = computed({
           v-model="timelineEdges"
           :label="t('videoEditor.settings.snapToTimelineEdges', 'Timeline start and end')"
         />
-        
-        <UCheckbox
-          v-model="clips"
-          :label="t('videoEditor.settings.snapToClips', 'Clips')"
-        />
-        
-        <UCheckbox
-          v-model="markers"
-          :label="t('videoEditor.settings.snapToMarkers', 'Markers')"
-        />
-        
+
+        <UCheckbox v-model="clips" :label="t('videoEditor.settings.snapToClips', 'Clips')" />
+
+        <UCheckbox v-model="markers" :label="t('videoEditor.settings.snapToMarkers', 'Markers')" />
+
         <UCheckbox
           v-model="selection"
           :label="t('videoEditor.settings.snapToSelection', 'Selection')"
         />
-        
+
         <UCheckbox
           v-model="playhead"
           :label="t('videoEditor.settings.snapToPlayhead', 'Playhead')"

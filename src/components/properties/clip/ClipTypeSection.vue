@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import UiModal from "~/components/ui/UiModal.vue";
+import UiModal from '~/components/ui/UiModal.vue';
 import { ref } from 'vue';
 import type { ShapeType, TimelineClipItem, TimelineTextClipItem } from '~/timeline/types';
 import type { ParamControl } from '~/components/properties/params';
@@ -99,7 +99,7 @@ function handleSavePreset() {
 
   <ClipTextProperties
     v-else-if="props.clip.clipType === 'text'"
-    :clip="(props.clip as TimelineTextClipItem)"
+    :clip="props.clip as TimelineTextClipItem"
     @update-text="emit('updateText', $event)"
     @update-text-style="emit('updateTextStyle', $event)"
   />

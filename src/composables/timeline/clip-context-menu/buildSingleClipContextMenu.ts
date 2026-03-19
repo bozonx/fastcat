@@ -2,9 +2,7 @@ import type { TimelineClipItem, TimelineTrack, TimelineTrackItem } from '~/timel
 import type { ContextMenuGroup, UseClipContextMenuOptions } from './types';
 import { isClipFreePosition } from './utils';
 
-export function buildSingleClipMainGroup(
-  options: UseClipContextMenuOptions,
-): ContextMenuGroup {
+export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): ContextMenuGroup {
   const track = options.track.value;
   const item = options.item.value;
   if (item.kind !== 'clip') return [];
@@ -173,7 +171,9 @@ export function buildSingleClipMainGroup(
   });
 
   const canExtract =
-    track.kind === 'video' && clipItem.clipType === 'media' && !(clipItem as any).audioFromVideoDisabled;
+    track.kind === 'video' &&
+    clipItem.clipType === 'media' &&
+    !(clipItem as any).audioFromVideoDisabled;
   if (canExtract) {
     mainGroup.push({
       label: options.t('fastcat.timeline.extractAudio', 'Extract audio to audio track'),
@@ -264,9 +264,7 @@ export function buildSingleClipMainGroup(
   return mainGroup;
 }
 
-export function buildSingleItemActionGroup(
-  options: UseClipContextMenuOptions,
-): ContextMenuGroup {
+export function buildSingleItemActionGroup(options: UseClipContextMenuOptions): ContextMenuGroup {
   const track = options.track.value;
   const item = options.item.value;
 

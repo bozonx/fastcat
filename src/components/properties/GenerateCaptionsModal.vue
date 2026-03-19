@@ -96,14 +96,12 @@ function focusGenerateButton() {
 const handleAfterEnter = () => {
   focusGenerateButton();
 };
-
 </script>
 
 <template>
   <UiModal
     v-model:open="isOpen"
     :title="t('fastcat.captions.modalTitle', 'Generate captions')"
-    @after:enter="handleAfterEnter"
     :description="
       t(
         'fastcat.captions.modalDescription',
@@ -111,6 +109,7 @@ const handleAfterEnter = () => {
       )
     "
     :ui="{ content: 'sm:max-w-2xl' }"
+    @after:enter="handleAfterEnter"
   >
     <div class="flex flex-col gap-4">
       <div class="text-xs text-ui-text-muted bg-ui-bg-elevated rounded border border-ui-border p-3">
@@ -177,8 +176,13 @@ const handleAfterEnter = () => {
         <UButton color="neutral" variant="ghost" @click="isOpen = false">
           {{ t('common.cancel', 'Cancel') }}
         </UButton>
-        <UButton ref="generateButtonRef" color="primary" :loading="isGenerating" autofocus
-          @click="generateCaptions">
+        <UButton
+          ref="generateButtonRef"
+          color="primary"
+          :loading="isGenerating"
+          autofocus
+          @click="generateCaptions"
+        >
           {{ t('fastcat.captions.generate', 'Generate captions') }}
         </UButton>
       </div>

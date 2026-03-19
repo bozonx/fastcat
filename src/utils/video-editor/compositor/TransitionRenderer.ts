@@ -68,7 +68,9 @@ export class TransitionRenderer {
       clip.transitionFromTexture = params.ensureTransitionRenderTexture(
         clip.transitionFromTexture ?? null,
       );
-      clip.transitionToTexture = params.ensureTransitionRenderTexture(clip.transitionToTexture ?? null);
+      clip.transitionToTexture = params.ensureTransitionRenderTexture(
+        clip.transitionToTexture ?? null,
+      );
       clip.transitionOutputTexture = params.ensureTransitionRenderTexture(
         clip.transitionOutputTexture ?? null,
       );
@@ -84,7 +86,10 @@ export class TransitionRenderer {
       if (mode === 'background') {
         params.stageTextureRenderer.renderLowerLayersToTexture(clip.layer, fromTexture);
       } else if (mode === 'transparent') {
-        params.stageTextureRenderer.renderLowerLayersToTexture(Number.NEGATIVE_INFINITY, fromTexture);
+        params.stageTextureRenderer.renderLowerLayersToTexture(
+          Number.NEGATIVE_INFINITY,
+          fromTexture,
+        );
       } else {
         prevClip = params.findPrevClipOnLayer(clip);
         if (!prevClip) {
@@ -164,7 +169,8 @@ export class TransitionRenderer {
           }
 
           const track = params.getTrackById(child?.__trackId ?? '');
-          const childLayer = typeof track?.layer === 'number' ? track.layer : Number.POSITIVE_INFINITY;
+          const childLayer =
+            typeof track?.layer === 'number' ? track.layer : Number.POSITIVE_INFINITY;
           if (childLayer < clip.layer) {
             child.visible = false;
           }
@@ -218,7 +224,10 @@ export class TransitionRenderer {
     }
 
     const transitionOffsetUs = Math.max(0, Math.round(params.transitionOffsetUs ?? 0));
-    const handleUs = Math.max(0, clip.sourceDurationUs - clip.sourceStartUs - clip.sourceRangeDurationUs);
+    const handleUs = Math.max(
+      0,
+      clip.sourceDurationUs - clip.sourceStartUs - clip.sourceRangeDurationUs,
+    );
     const sourceRangeEndUs = clip.sourceStartUs + clip.sourceRangeDurationUs;
 
     let sampleUs: number;
@@ -231,7 +240,10 @@ export class TransitionRenderer {
       sampleUs =
         handleUs < 1_000
           ? Math.max(0, clip.sourceStartUs + clip.sourceRangeDurationUs - 1_000)
-          : Math.min(sourceRangeEndUs + transitionOffsetUs, clip.sourceStartUs + clip.sourceDurationUs - 1_000);
+          : Math.min(
+              sourceRangeEndUs + transitionOffsetUs,
+              clip.sourceStartUs + clip.sourceDurationUs - 1_000,
+            );
     }
 
     const abortController = params.createAbortController(clip.itemId + '_transition_texture');
@@ -244,7 +256,10 @@ export class TransitionRenderer {
     if (!sample) {
       if (clip.lastVideoFrame) {
         try {
-          await params.updateClipTextureFromSample({ frame: clip.lastVideoFrame, close: () => {} } as any, clip);
+          await params.updateClipTextureFromSample(
+            { frame: clip.lastVideoFrame, close: () => {} } as any,
+            clip,
+          );
           if (clip.sprite) {
             clip.sprite.visible = true;
           }

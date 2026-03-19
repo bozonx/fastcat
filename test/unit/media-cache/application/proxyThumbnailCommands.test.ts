@@ -68,7 +68,10 @@ describe('proxyThumbnailCommands', () => {
       newPath: '_video2/a.mp4',
     });
 
-    expect(service.renameProxy).toHaveBeenCalledWith({ oldPath: '_video/a.mp4', newPath: '_video2/a.mp4' });
+    expect(service.renameProxy).toHaveBeenCalledWith({
+      oldPath: '_video/a.mp4',
+      newPath: '_video2/a.mp4',
+    });
     expect(service.clearExistingProxies).toHaveBeenCalled();
     expect(service.clearVideoThumbnails).toHaveBeenCalledWith({
       projectId: 'p1',

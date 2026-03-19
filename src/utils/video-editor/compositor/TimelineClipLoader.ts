@@ -38,7 +38,9 @@ export interface UpdateReusableClipContext {
   descriptor: TimelineClipDescriptor;
   reusable: CompositorClip;
   toVideoEffects: (value: unknown) => VideoClipEffect[] | undefined;
-  getTrackRuntimeForClip: (clip: Pick<CompositorClip, 'trackId' | 'layer'>) => CompositorTrack | null;
+  getTrackRuntimeForClip: (
+    clip: Pick<CompositorClip, 'trackId' | 'layer'>,
+  ) => CompositorTrack | null;
   applySolidLayout: (clip: CompositorClip) => void;
 }
 
@@ -82,7 +84,7 @@ export class TimelineClipLoader {
     const trackId =
       typeof clipData.trackId === 'string' && clipData.trackId.length > 0
         ? clipData.trackId
-        : fallbackTrackId ?? undefined;
+        : (fallbackTrackId ?? undefined);
     const requestedTimelineDurationUs = Math.max(
       0,
       Math.round(Number(clipData.timelineRange?.durationUs ?? 0)),
@@ -138,16 +140,22 @@ export class TimelineClipLoader {
     const { reusable, descriptor } = params;
     return Boolean(
       reusable &&
-        reusable.sourcePath === descriptor.sourcePath &&
-        (reusable as any).clipType === descriptor.clipType,
+      reusable.sourcePath === descriptor.sourcePath &&
+      (reusable as any).clipType === descriptor.clipType,
     );
   }
 
   public async updateReusableClip(
     context: UpdateReusableClipContext,
   ): Promise<UpdateReusableClipResult> {
-    const { clipData, descriptor, reusable, toVideoEffects, getTrackRuntimeForClip, applySolidLayout } =
-      context;
+    const {
+      clipData,
+      descriptor,
+      reusable,
+      toVideoEffects,
+      getTrackRuntimeForClip,
+      applySolidLayout,
+    } = context;
 
     const safeSourceDurationUs =
       descriptor.requestedSourceDurationUs > 0
@@ -196,7 +204,8 @@ export class TimelineClipLoader {
     if (reusable.clipKind === 'text') {
       const nextText = String(clipData.text ?? '');
       const nextStyle = clipData.style;
-      reusable.textDirty = reusable.text !== nextText || !areTextClipStylesEqual(reusable.style, nextStyle);
+      reusable.textDirty =
+        reusable.text !== nextText || !areTextClipStylesEqual(reusable.style, nextStyle);
       reusable.text = nextText;
       reusable.style = nextStyle;
     }

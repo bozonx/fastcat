@@ -5,8 +5,8 @@ import type { TransitionManager } from './TransitionManager';
 import type { CompositorClip } from './types';
 import type { ResourceManager } from './ResourceManager';
 import { getVideoSampleWithZeroFallback } from './ResourceManager';
+import type { VideoFrameCache } from './VideoFrameCache';
 import {
-  VideoFrameCache,
   buildVideoFrameCacheKey,
   computeFrameIndex,
   estimateVideoFrameSizeBytes,

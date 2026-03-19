@@ -67,7 +67,8 @@ export function useRemoteExchange() {
 
   const remoteDirectories = computed(() =>
     remoteEntries.value.filter(
-      (entry): entry is Extract<RemoteVfsEntry, { type: 'directory' }> => entry.type === 'directory',
+      (entry): entry is Extract<RemoteVfsEntry, { type: 'directory' }> =>
+        entry.type === 'directory',
     ),
   );
   const remoteItems = computed(() =>
@@ -173,7 +174,11 @@ export function useRemoteExchange() {
     });
   }
 
-  function resolveRemotePosterUrl(item: RemoteVfsFileEntry, media: RemoteVfsMedia, mediaIndex: number): string {
+  function resolveRemotePosterUrl(
+    item: RemoteVfsFileEntry,
+    media: RemoteVfsMedia,
+    mediaIndex: number,
+  ): string {
     const config = remoteFilesConfig.value;
     if (!config) return '';
 
@@ -192,7 +197,8 @@ export function useRemoteExchange() {
 
   function getLocalFileFromDragPayload(payload: unknown): FsEntry | null {
     const first = Array.isArray(payload) ? payload[0] : payload;
-    const path = first && typeof first === 'object' && 'path' in first ? (first.path as string) : '';
+    const path =
+      first && typeof first === 'object' && 'path' in first ? (first.path as string) : '';
     if (!path) return null;
 
     const entry = fileManager.findEntryByPath(path);

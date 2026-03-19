@@ -240,10 +240,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.export.fps', 'FPS') }}
         </label>
-        <UiFpsInputWithPresets
-          v-model="localFps"
-          :disabled="disabled"
-        />
+        <UiFpsInputWithPresets v-model="localFps" :disabled="disabled" />
       </div>
 
       <template v-if="props.showAudioSettings">

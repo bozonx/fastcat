@@ -145,7 +145,8 @@ async function buildVideoTrackTree(
         audioFadeInCurve: (item as any).audioFadeInCurve,
         audioFadeOutCurve: (item as any).audioFadeOutCurve,
         audioDeclickDurationUs: params.projectStore.projectSettings.project.audioDeclickDurationUs,
-        defaultAudioFadeCurve: params.workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve,
+        defaultAudioFadeCurve:
+          params.workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve,
         opacity: item.opacity,
         blendMode: item.blendMode,
         effects: itemEffects.length > 0 ? itemEffects : undefined,
@@ -495,15 +496,20 @@ export async function toWorkerTimelineClips(
                 const combinedTrackEffects =
                   combinedEffects.length > 0 ? [...trackEffects, ...combinedEffects] : trackEffects;
 
-                const nestedWorkerClips = await toWorkerTimelineClips(track.items, projectStore, workspaceStore, {
-                  layer: nestedLayer,
-                  trackKind: 'video',
-                  visitedPaths: nextVisited,
-                  nestedPathStack: nextNestedPathStack,
-                  parentOpacity: combinedOpacity,
-                  parentBlendMode: combinedBlendMode,
-                  parentEffects: combinedTrackEffects,
-                });
+                const nestedWorkerClips = await toWorkerTimelineClips(
+                  track.items,
+                  projectStore,
+                  workspaceStore,
+                  {
+                    layer: nestedLayer,
+                    trackKind: 'video',
+                    visitedPaths: nextVisited,
+                    nestedPathStack: nextNestedPathStack,
+                    parentOpacity: combinedOpacity,
+                    parentBlendMode: combinedBlendMode,
+                    parentEffects: combinedTrackEffects,
+                  },
+                );
 
                 for (const nClip of nestedWorkerClips) {
                   const resolvedNClip: WorkerTimelineClip =

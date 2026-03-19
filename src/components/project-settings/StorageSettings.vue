@@ -24,7 +24,12 @@ const emit = defineEmits<{
             {{ t('videoEditor.projectSettings.clearTemp', 'Clear temporary files') }}
           </div>
           <div class="text-xs text-ui-text-muted">
-            {{ t('videoEditor.projectSettings.clearTempHint', 'Removes all files from vardata for this project') }}
+            {{
+              t(
+                'videoEditor.projectSettings.clearTempHint',
+                'Removes all files from vardata for this project',
+              )
+            }}
           </div>
         </div>
 
@@ -39,13 +44,20 @@ const emit = defineEmits<{
       </div>
 
       <!-- Delete Project -->
-      <div class="flex items-center justify-between gap-3 p-3 rounded border border-error-500/20 bg-error-500/5">
+      <div
+        class="flex items-center justify-between gap-3 p-3 rounded border border-error-500/20 bg-error-500/5"
+      >
         <div class="flex flex-col gap-1 min-w-0">
           <div class="text-sm font-medium text-error-400">
             {{ t('videoEditor.projectSettings.deleteProject', 'Delete Project') }}
           </div>
           <div class="text-xs text-error-400/70">
-            {{ t('videoEditor.projectSettings.deleteProjectConfirmDescription', 'Permanently delete project folder and all its content') }}
+            {{
+              t(
+                'videoEditor.projectSettings.deleteProjectConfirmDescription',
+                'Permanently delete project folder and all its content',
+              )
+            }}
           </div>
         </div>
 

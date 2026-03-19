@@ -45,8 +45,10 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
       aspectRatio: presets.selectedProjectPreset.aspectRatio,
       isCustomResolution: presets.selectedProjectPreset.isCustomResolution,
       sampleRate: presets.selectedProjectPreset.sampleRate,
-      audioDeclickDurationUs: projectInput.audioDeclickDurationUs ?? presets.fallbackAudioDeclickDurationUs,
-      defaultAudioFadeCurve: projectInput.defaultAudioFadeCurve ?? presets.fallbackDefaultAudioFadeCurve,
+      audioDeclickDurationUs:
+        projectInput.audioDeclickDurationUs ?? presets.fallbackAudioDeclickDurationUs,
+      defaultAudioFadeCurve:
+        projectInput.defaultAudioFadeCurve ?? presets.fallbackDefaultAudioFadeCurve,
       audioScrubbingEnabled: projectInput.audioScrubbingEnabled,
     }),
     integrations: normalizeIntegrationsSettings(input),

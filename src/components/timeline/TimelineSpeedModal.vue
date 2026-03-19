@@ -53,12 +53,14 @@ const handleAfterEnter = () => {
   focusSaveButton();
 };
 
-watch(() => props.open, (newValue) => {
-  if (newValue) {
-    focusSaveButton();
-  }
-});
-
+watch(
+  () => props.open,
+  (newValue) => {
+    if (newValue) {
+      focusSaveButton();
+    }
+  },
+);
 </script>
 
 <template>
@@ -66,8 +68,8 @@ watch(() => props.open, (newValue) => {
     v-model:open="isOpen"
     :title="t('fastcat.timeline.speedModalTitle')"
     :description="t('fastcat.timeline.speedModalDescription')"
-    @after:enter="handleAfterEnter"
     :ui="{ content: 'sm:max-w-md' }"
+    @after:enter="handleAfterEnter"
   >
     <div class="flex flex-col gap-3">
       <div class="flex items-center justify-between gap-3">
@@ -99,8 +101,7 @@ watch(() => props.open, (newValue) => {
         <UButton color="neutral" variant="ghost" @click="isOpen = false">
           {{ t('common.cancel') }}
         </UButton>
-        <UButton ref="saveButtonRef" color="primary" autofocus
-          @click="emit('save')">
+        <UButton ref="saveButtonRef" color="primary" autofocus @click="emit('save')">
           {{ t('common.save') }}
         </UButton>
       </div>

@@ -54,7 +54,11 @@ export class RasterImageLoader {
     }
 
     let imageFile = file;
-    if (isSvgFile({ file, path: sourcePath }) && deps.getCurrentProjectId && deps.ensureVectorImageRaster) {
+    if (
+      isSvgFile({ file, path: sourcePath }) &&
+      deps.getCurrentProjectId &&
+      deps.ensureVectorImageRaster
+    ) {
       const projectId = await deps.getCurrentProjectId();
       if (projectId) {
         const cached = await deps.ensureVectorImageRaster({

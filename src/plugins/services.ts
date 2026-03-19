@@ -4,7 +4,7 @@ import type { I18nService } from '~/services/I18nService';
 
 export default defineNuxtPlugin((nuxtApp) => {
   const toast = useToast();
-  
+
   // Cast i18n properly to match our interface
   const i18n = nuxtApp.$i18n as unknown as { t: (key: string, ...args: any[]) => string };
 

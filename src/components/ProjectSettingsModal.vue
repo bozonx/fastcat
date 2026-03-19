@@ -46,7 +46,6 @@ async function confirmDeleteProject() {
   // because projectStore.currentProjectName becomes null and the view switches in index.vue
 }
 
-
 async function resetToDefaults() {
   if (!projectStore.projectSettings) return;
 

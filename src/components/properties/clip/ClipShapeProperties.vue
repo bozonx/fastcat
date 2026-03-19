@@ -150,19 +150,10 @@ const { t } = useI18n();
         </PropertyField>
       </template>
 
-      <template
-        v-else-if="
-          clip.shapeType === 'star' || clip.shapeType === 'bang'
-        "
-      >
+      <template v-else-if="clip.shapeType === 'star' || clip.shapeType === 'bang'">
         <PropertyField :label="$t('fastcat.clip.rays')">
           <UiWheelNumberInput
-            :model-value="
-              Number(
-                clip.shapeConfig?.rays ??
-                  (clip.shapeType === 'star' ? 5 : 12),
-              )
-            "
+            :model-value="Number(clip.shapeConfig?.rays ?? (clip.shapeType === 'star' ? 5 : 12))"
             size="sm"
             :step="1"
             :min="3"
@@ -172,10 +163,7 @@ const { t } = useI18n();
         <PropertyField :label="$t('fastcat.shapeClip.innerRadius')">
           <UiWheelNumberInput
             :model-value="
-              Number(
-                clip.shapeConfig?.innerRadius ??
-                  (clip.shapeType === 'star' ? 40 : 70),
-              )
+              Number(clip.shapeConfig?.innerRadius ?? (clip.shapeType === 'star' ? 40 : 70))
             "
             size="sm"
             :step="1"
@@ -189,8 +177,14 @@ const { t } = useI18n();
           <USelectMenu
             :model-value="String(clip.shapeConfig?.cloudType ?? '1')"
             :items="[
-              { value: '1', label: `${t('fastcat.projects.projectNamePlaceholder').replace('Name', 'Type')} 1` },
-              { value: '2', label: `${t('fastcat.projects.projectNamePlaceholder').replace('Name', 'Type')} 2` },
+              {
+                value: '1',
+                label: `${t('fastcat.projects.projectNamePlaceholder').replace('Name', 'Type')} 1`,
+              },
+              {
+                value: '2',
+                label: `${t('fastcat.projects.projectNamePlaceholder').replace('Name', 'Type')} 2`,
+              },
             ]"
             value-key="value"
             label-key="label"

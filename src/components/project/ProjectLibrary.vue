@@ -26,7 +26,9 @@ const standardShapes = [
   },
 ];
 
-const standardHuds = [{ type: 'media_frame' as HudType, name: 'Media Frame', icon: 'i-heroicons-photo' }];
+const standardHuds = [
+  { type: 'media_frame' as HudType, name: 'Media Frame', icon: 'i-heroicons-photo' },
+];
 
 const customShapes = computed(() => {
   return presetsStore.customPresets
@@ -42,7 +44,12 @@ const customHuds = computed(() => {
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 });
 
-function handleDragStart(event: DragEvent, type: string, category: 'shape' | 'hud', presetParams?: any) {
+function handleDragStart(
+  event: DragEvent,
+  type: string,
+  category: 'shape' | 'hud',
+  presetParams?: any,
+) {
   if (!event.dataTransfer) return;
 
   event.dataTransfer.setData(
@@ -60,11 +67,17 @@ function handleDragStart(event: DragEvent, type: string, category: 'shape' | 'hu
 }
 
 function updateCustomShapesOrder(newCustomShapes: any[]) {
-  presetsStore.updatePresetsOrder('shape', newCustomShapes.map((s) => s.id));
+  presetsStore.updatePresetsOrder(
+    'shape',
+    newCustomShapes.map((s) => s.id),
+  );
 }
 
 function updateCustomHudsOrder(newCustomHuds: any[]) {
-  presetsStore.updatePresetsOrder('hud', newCustomHuds.map((h) => h.id));
+  presetsStore.updatePresetsOrder(
+    'hud',
+    newCustomHuds.map((h) => h.id),
+  );
 }
 </script>
 
@@ -122,7 +135,10 @@ function updateCustomHudsOrder(newCustomHuds: any[]) {
                 </h4>
               </div>
             </div>
-            <div v-if="standardShapes.length === 0" class="text-center text-ui-text-muted py-4 italic text-xs">
+            <div
+              v-if="standardShapes.length === 0"
+              class="text-center text-ui-text-muted py-4 italic text-xs"
+            >
               {{ t('common.noData') }}
             </div>
           </div>
@@ -156,7 +172,13 @@ function updateCustomHudsOrder(newCustomHuds: any[]) {
                 draggable="true"
                 @dragstart="handleDragStart($event, shape.id, 'shape', shape.params)"
               >
-                <UIcon :name="standardShapes.find(s => s.type === shape.baseType)?.icon || 'i-heroicons-stop'" class="w-8 h-8 text-primary shrink-0" />
+                <UIcon
+                  :name="
+                    standardShapes.find((s) => s.type === shape.baseType)?.icon ||
+                    'i-heroicons-stop'
+                  "
+                  class="w-8 h-8 text-primary shrink-0"
+                />
                 <div class="flex-1 min-w-0 flex items-center justify-between">
                   <h4 class="text-sm font-medium text-ui-text truncate">{{ shape.name }}</h4>
                   <UButton
@@ -171,7 +193,10 @@ function updateCustomHudsOrder(newCustomHuds: any[]) {
               </div>
             </div>
           </VueDraggable>
-          <div v-if="customShapes.length === 0" class="text-center text-ui-text-muted py-4 italic text-xs">
+          <div
+            v-if="customShapes.length === 0"
+            class="text-center text-ui-text-muted py-4 italic text-xs"
+          >
             {{ t('common.noData') }}
           </div>
         </CollapsibleEffectGroup>
@@ -199,7 +224,10 @@ function updateCustomHudsOrder(newCustomHuds: any[]) {
                 </h4>
               </div>
             </div>
-            <div v-if="standardHuds.length === 0" class="text-center text-ui-text-muted py-4 italic text-xs">
+            <div
+              v-if="standardHuds.length === 0"
+              class="text-center text-ui-text-muted py-4 italic text-xs"
+            >
               {{ t('common.noData') }}
             </div>
           </div>
@@ -233,7 +261,12 @@ function updateCustomHudsOrder(newCustomHuds: any[]) {
                 draggable="true"
                 @dragstart="handleDragStart($event, hud.id, 'hud', hud.params)"
               >
-                <UIcon :name="standardHuds.find(h => h.type === hud.baseType)?.icon || 'i-heroicons-photo'" class="w-8 h-8 text-primary shrink-0" />
+                <UIcon
+                  :name="
+                    standardHuds.find((h) => h.type === hud.baseType)?.icon || 'i-heroicons-photo'
+                  "
+                  class="w-8 h-8 text-primary shrink-0"
+                />
                 <div class="flex-1 min-w-0 flex items-center justify-between">
                   <h4 class="text-sm font-medium text-ui-text truncate">{{ hud.name }}</h4>
                   <UButton
@@ -248,7 +281,10 @@ function updateCustomHudsOrder(newCustomHuds: any[]) {
               </div>
             </div>
           </VueDraggable>
-          <div v-if="customHuds.length === 0" class="text-center text-ui-text-muted py-4 italic text-xs">
+          <div
+            v-if="customHuds.length === 0"
+            class="text-center text-ui-text-muted py-4 italic text-xs"
+          >
             {{ t('common.noData') }}
           </div>
         </CollapsibleEffectGroup>

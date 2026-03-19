@@ -14,12 +14,14 @@ export const ExportOptionsSchema = z.object({
   bitrateMode: z.enum(['constant', 'variable']).optional(),
   keyframeIntervalSec: z.number().optional(),
   exportAlpha: z.boolean().optional(),
-  metadata: z.object({
-    title: z.string(),
-    description: z.string(),
-    author: z.string(),
-    tags: z.string(),
-  }).optional(),
+  metadata: z
+    .object({
+      title: z.string(),
+      description: z.string(),
+      author: z.string(),
+      tags: z.string(),
+    })
+    .optional(),
   audioBitrate: z.number(),
   audio: z.boolean(),
   audioCodec: z.string().optional(),

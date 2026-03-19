@@ -22,7 +22,6 @@ const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const toast = useToast();
 
-
 const selectedPreset = computed(() =>
   resolveExportPreset(workspaceStore.userSettings.exportPresets),
 );

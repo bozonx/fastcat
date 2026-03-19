@@ -1,4 +1,8 @@
-import type { WorkerTimelineClip, ExportOptions, WorkerVideoPayloadItem } from '~/composables/timeline/export/types';
+import type {
+  WorkerTimelineClip,
+  ExportOptions,
+  WorkerVideoPayloadItem,
+} from '~/composables/timeline/export/types';
 
 export interface PreviewRenderOptions {
   previewEffectsEnabled?: boolean;
@@ -68,5 +72,3 @@ export interface VideoCoreWorkerAPI {
     },
   ): Promise<(Blob | null)[]>;
 }
-
-

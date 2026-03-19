@@ -40,7 +40,9 @@ const fastcatConnectUrl = computed(() =>
 );
 
 const fastcatConnectScopesLabel = computed(() =>
-  resolveFastCatConnectScopes({ integrations: workspaceStore.userSettings.integrations }).join(', '),
+  resolveFastCatConnectScopes({ integrations: workspaceStore.userSettings.integrations }).join(
+    ', ',
+  ),
 );
 
 function disconnectFastCat() {
@@ -149,12 +151,7 @@ function getHealthTone(status: typeof healthState.status) {
       >
         {{ t('videoEditor.settings.integrationAutoConnect', 'Auto connect') }}
       </UButton>
-      <UButton
-        color="neutral"
-        variant="soft"
-        :loading="healthState.loading"
-        @click="runHealth"
-      >
+      <UButton color="neutral" variant="soft" :loading="healthState.loading" @click="runHealth">
         {{ t('videoEditor.settings.integrationHealthCheck', 'Check health') }}
       </UButton>
       <UButton color="neutral" variant="ghost" @click="disconnectFastCat">

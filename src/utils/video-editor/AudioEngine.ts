@@ -361,7 +361,7 @@ export class AudioEngine {
       return null;
     }
 
-    let buffer = this.decodedCache.get(sourceKey) ?? null;
+    const buffer = this.decodedCache.get(sourceKey) ?? null;
     if (buffer) {
       return buffer;
     }

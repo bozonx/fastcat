@@ -150,12 +150,7 @@ const extraActions = computed(() => {
   <div v-if="marker" class="w-full flex flex-col gap-2 text-ui-text">
     <PropertySection :title="t('fastcat.marker.actions', 'Actions')">
       <div class="flex flex-col w-full gap-2">
-        <PropertyActionList
-          :actions="mainActions"
-          :vertical="false"
-          justify="center"
-          size="xs"
-        >
+        <PropertyActionList :actions="mainActions" :vertical="false" justify="center" size="xs">
           <template #action-convert>
             <span class="flex-1 text-center">{{ mainActions[0]?.label }}</span>
           </template>

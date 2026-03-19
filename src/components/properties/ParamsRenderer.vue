@@ -413,7 +413,9 @@ function handleArrayItemUpdate(control: any, index: number, itemKey: string, val
                 :values="item"
                 :size="size"
                 as-contents
-                @update:value="(key, value) => handleArrayItemUpdate(control, Number(index), key, value)"
+                @update:value="
+                  (key, value) => handleArrayItemUpdate(control, Number(index), key, value)
+                "
               />
             </div>
           </div>

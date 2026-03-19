@@ -77,7 +77,9 @@ function resetDefaults() {
           </div>
           <div class="w-32">
             <UiWheelNumberInput
-              :model-value="workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs / 1000"
+              :model-value="
+                workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs / 1000
+              "
               size="sm"
               :step="1"
               :min="0"

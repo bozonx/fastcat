@@ -6,10 +6,7 @@ import type {
   TimelineTrack,
   TimelineTrackItem,
 } from '~/timeline/types';
-import type {
-  TimelineCommand,
-  UpdateClipPropertiesCommand,
-} from '~/timeline/commands';
+import type { TimelineCommand, UpdateClipPropertiesCommand } from '~/timeline/commands';
 import type { FastCatProjectSettings } from '~/utils/project-settings';
 
 export interface ContextMenuAction {

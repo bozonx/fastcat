@@ -73,7 +73,9 @@ export class TimelineClipLayoutUpdater {
     clip.freezeFrameSourceUs = freezeFrameSourceUs;
     clip.layer = layer;
     clip.trackId =
-      typeof next.trackId === 'string' && next.trackId.length > 0 ? next.trackId : fallbackTrackId ?? undefined;
+      typeof next.trackId === 'string' && next.trackId.length > 0
+        ? next.trackId
+        : (fallbackTrackId ?? undefined);
     clip.opacity = next.opacity;
     clip.blendMode = resolveBlendMode((next as any).blendMode);
     clip.effects = toVideoEffects(next.effects);

@@ -58,7 +58,7 @@ function getMarkerButtonClass(marker: MarkerPoint) {
   <div class="absolute inset-0 pointer-events-none">
     <!-- 1. Marker Zones (lowest z-index) -->
     <div
-      v-for="point in markerPoints.filter(p => p.isZone)"
+      v-for="point in markerPoints.filter((p) => p.isZone)"
       :key="`zone-bg-${point.id}`"
       class="absolute bottom-0 h-full pointer-events-auto z-10"
       :style="{ left: `${point.x}px`, width: `${point.width}px` }"
@@ -98,7 +98,11 @@ function getMarkerButtonClass(marker: MarkerPoint) {
       v-for="point in markerPoints"
       :key="`marker-${point.id}`"
       class="absolute bottom-0 h-full pointer-events-auto z-30"
-      :style="{ left: `${point.x}px`, width: point.isZone ? `${point.width}px` : 'auto', pointerEvents: 'none' }"
+      :style="{
+        left: `${point.x}px`,
+        width: point.isZone ? `${point.width}px` : 'auto',
+        pointerEvents: 'none',
+      }"
     >
       <div class="absolute bottom-0 left-0 pointer-events-auto">
         <UContextMenu

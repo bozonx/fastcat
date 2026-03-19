@@ -45,7 +45,10 @@ function handleStaticTabDragStart(event: DragEvent, tab: AnyProjectTab) {
     @dragleave="onTabBarDragLeave"
     @drop="onTabBarDrop"
   >
-    <div ref="tabContainerRef" class="flex items-center h-full flex-1 min-w-0 overflow-x-auto no-scrollbar">
+    <div
+      ref="tabContainerRef"
+      class="flex items-center h-full flex-1 min-w-0 overflow-x-auto no-scrollbar"
+    >
       <div class="flex items-center px-1 gap-0.5 py-1 shrink-0">
         <div
           v-for="tab in staticTabs"
@@ -75,7 +78,11 @@ function handleStaticTabDragStart(event: DragEvent, tab: AnyProjectTab) {
         </div>
       </div>
 
-      <UContextMenu v-if="fileTabsModel.length > 0" :items="projectTabContextMenuItems" class="min-w-0 flex-1">
+      <UContextMenu
+        v-if="fileTabsModel.length > 0"
+        :items="projectTabContextMenuItems"
+        class="min-w-0 flex-1"
+      >
         <VueDraggable
           v-model="fileTabsModel"
           class="flex items-center px-1 gap-0.5 py-1 min-w-max"
@@ -108,7 +115,9 @@ function handleStaticTabDragStart(event: DragEvent, tab: AnyProjectTab) {
               <UIcon
                 :name="tab.icon"
                 class="w-3.5 h-3.5 shrink-0"
-                :class="tabsStore.activeTabId === tab.id ? 'text-primary-400' : 'text-ui-text-muted'"
+                :class="
+                  tabsStore.activeTabId === tab.id ? 'text-primary-400' : 'text-ui-text-muted'
+                "
               />
               <span class="text-[10px] font-semibold tracking-wide truncate max-w-[140px]">
                 {{ tab.fileName }}

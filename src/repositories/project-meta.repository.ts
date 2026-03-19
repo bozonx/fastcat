@@ -39,11 +39,11 @@ export function createProjectMetaRepository(input: {
       if (!handle) return null;
       const raw = await readJsonFromFileHandle<any>(handle);
       if (!raw) return null;
-      
+
       const parsed = ProjectMetaSchema.safeParse(raw);
       if (!parsed.success) {
-         console.warn(`[ProjectMeta] Invalid project metadata`, parsed.error);
-         return null;
+        console.warn(`[ProjectMeta] Invalid project metadata`, parsed.error);
+        return null;
       }
       return parsed.data;
     },

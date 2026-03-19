@@ -31,8 +31,11 @@ export const TIMELINE_COMMAND_LABEL_KEYS: Record<TimelineCommand['type'], string
   update_timeline_properties: 'videoEditor.fileManager.history.entries.updateTimelineProperties',
 };
 
-export const TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY = 'videoEditor.fileManager.history.entries.multipleActions';
+export const TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY =
+  'videoEditor.fileManager.history.entries.multipleActions';
 
 export function getTimelineCommandLabelKey(type: TimelineCommand['type']): string {
-  return TIMELINE_COMMAND_LABEL_KEYS[type] || 'videoEditor.fileManager.history.entries.multipleActions';
+  return (
+    TIMELINE_COMMAND_LABEL_KEYS[type] || 'videoEditor.fileManager.history.entries.multipleActions'
+  );
 }

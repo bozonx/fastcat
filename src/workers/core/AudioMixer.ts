@@ -321,7 +321,8 @@ export class AudioMixer {
         },
         previousClip,
         nextClip,
-        defaultAudioFadeCurve: clipData.defaultAudioFadeCurve ?? clipData.fastcat?.defaultAudioFadeCurve,
+        defaultAudioFadeCurve:
+          clipData.defaultAudioFadeCurve ?? clipData.fastcat?.defaultAudioFadeCurve,
       });
 
       const clipStartS = Math.max(0, usToS(Number(startUs)));

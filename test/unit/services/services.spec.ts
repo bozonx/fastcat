@@ -7,14 +7,14 @@ describe('Services Interfaces', () => {
     const mockService: AppNotificationService = {
       add: vi.fn(),
     };
-    
+
     mockService.add({
       title: 'Test',
       description: 'Desc',
       color: 'success',
-      actions: [{ label: 'Action', onClick: () => {} }]
+      actions: [{ label: 'Action', onClick: () => {} }],
     });
-    
+
     expect(mockService.add).toHaveBeenCalled();
   });
 
@@ -22,9 +22,9 @@ describe('Services Interfaces', () => {
     const mockService: I18nService = {
       t: vi.fn().mockReturnValue('translated'),
     };
-    
+
     const result = mockService.t('key', { param: 'value' });
-    
+
     expect(result).toBe('translated');
     expect(mockService.t).toHaveBeenCalledWith('key', { param: 'value' });
   });

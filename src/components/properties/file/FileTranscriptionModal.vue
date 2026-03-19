@@ -2,7 +2,6 @@
 import UiModal from '~/components/ui/UiModal.vue';
 import { ref, watch, nextTick } from 'vue';
 
-
 const props = defineProps<{
   isTranscriptionModalOpen: boolean;
   transcriptionLanguage: string;
@@ -49,22 +48,25 @@ const handleAfterEnter = () => {
   focusSubmitButton();
 };
 
-watch(() => props.isTranscriptionModalOpen, (newValue) => {
-  if (newValue) {
-    focusSubmitButton();
-  }
-});
+watch(
+  () => props.isTranscriptionModalOpen,
+  (newValue) => {
+    if (newValue) {
+      focusSubmitButton();
+    }
+  },
+);
 </script>
 
 <template>
   <UiModal
     :open="props.isTranscriptionModalOpen"
-    @update:open="onModalUpdate"
-    @after:enter="handleAfterEnter"
     :title="t('videoEditor.fileManager.actions.transcribe', 'Transcribe')"
     :close-button="!props.isTranscribingAudio"
     :prevent-close="props.isTranscribingAudio"
     :ui="{ content: 'sm:max-w-lg', body: 'overflow-y-auto' }"
+    @update:open="onModalUpdate"
+    @after:enter="handleAfterEnter"
   >
     <div class="flex flex-col gap-4">
       <div class="text-sm text-ui-text-muted">
@@ -79,9 +81,9 @@ watch(() => props.isTranscriptionModalOpen, (newValue) => {
       <UFormField :label="t('videoEditor.fileManager.audio.transcriptionLanguage', 'Language')">
         <UInput
           :model-value="props.transcriptionLanguage"
-          @update:model-value="onLanguageUpdate"
           :disabled="props.isTranscribingAudio"
           placeholder="en"
+          @update:model-value="onLanguageUpdate"
         />
       </UFormField>
 
@@ -100,8 +102,13 @@ watch(() => props.isTranscriptionModalOpen, (newValue) => {
         >
           {{ t('common.cancel', 'Cancel') }}
         </UButton>
-        <UButton ref="submitButtonRef" color="primary" :loading="props.isTranscribingAudio" autofocus
-          @click="onSubmit">
+        <UButton
+          ref="submitButtonRef"
+          color="primary"
+          :loading="props.isTranscribingAudio"
+          autofocus
+          @click="onSubmit"
+        >
           {{ t('videoEditor.fileManager.audio.transcriptionSubmit', 'Transcribe') }}
         </UButton>
       </div>

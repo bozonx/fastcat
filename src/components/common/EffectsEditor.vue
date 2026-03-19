@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import UiModal from "~/components/ui/UiModal.vue";
+import UiModal from '~/components/ui/UiModal.vue';
 import { computed, ref } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import SelectEffectModal from '~/components/common/SelectEffectModal.vue';

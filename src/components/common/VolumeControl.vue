@@ -2,17 +2,20 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 
-const props = withDefaults(defineProps<{
-  compact?: boolean;
-  volume: number;
-  isMuted: boolean;
-  orientation?: 'horizontal' | 'vertical';
-  max?: number;
-}>(), {
-  compact: false,
-  orientation: 'vertical',
-  max: 1,
-});
+const props = withDefaults(
+  defineProps<{
+    compact?: boolean;
+    volume: number;
+    isMuted: boolean;
+    orientation?: 'horizontal' | 'vertical';
+    max?: number;
+  }>(),
+  {
+    compact: false,
+    orientation: 'vertical',
+    max: 1,
+  },
+);
 
 const emit = defineEmits<{
   (e: 'update:volume', value: number): void;
@@ -21,9 +24,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const volumePercent = computed(() =>
-  Math.round((props.isMuted ? 0 : props.volume) * 100),
-);
+const volumePercent = computed(() => Math.round((props.isMuted ? 0 : props.volume) * 100));
 
 function toggleMute() {
   emit('update:isMuted', !props.isMuted);
@@ -101,7 +102,13 @@ onBeforeUnmount(() => {
       size="sm"
       variant="ghost"
       color="neutral"
-      :icon="isMuted || volume === 0 ? 'i-heroicons-speaker-x-mark' : volume < 0.5 ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-wave'"
+      :icon="
+        isMuted || volume === 0
+          ? 'i-heroicons-speaker-x-mark'
+          : volume < 0.5
+            ? 'i-heroicons-speaker-wave'
+            : 'i-heroicons-speaker-wave'
+      "
       :aria-label="
         isMuted
           ? t('fastcat.monitor.audioUnmute', 'Unmute')
@@ -137,7 +144,13 @@ onBeforeUnmount(() => {
       size="sm"
       variant="ghost"
       color="neutral"
-      :icon="isMuted || volume === 0 ? 'i-heroicons-speaker-x-mark' : volume < 0.5 ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-wave'"
+      :icon="
+        isMuted || volume === 0
+          ? 'i-heroicons-speaker-x-mark'
+          : volume < 0.5
+            ? 'i-heroicons-speaker-wave'
+            : 'i-heroicons-speaker-wave'
+      "
       :aria-label="
         isMuted
           ? t('fastcat.monitor.audioUnmute', 'Unmute')
@@ -165,7 +178,11 @@ onBeforeUnmount(() => {
         <div
           v-if="isHovered"
           class="fixed z-[var(--z-max)] pointer-events-auto"
-          :class="orientation === 'vertical' ? 'origin-top -translate-x-1/2 -translate-y-1/2' : 'origin-bottom -translate-x-1/2 -translate-y-full pb-4'"
+          :class="
+            orientation === 'vertical'
+              ? 'origin-top -translate-x-1/2 -translate-y-1/2'
+              : 'origin-bottom -translate-x-1/2 -translate-y-full pb-4'
+          "
           :style="{ top: `${popupPosition.top}px`, left: `${popupPosition.left}px` }"
           @mouseenter="onPopupMouseEnter"
           @mouseleave="onPopupMouseLeave"
@@ -174,7 +191,11 @@ onBeforeUnmount(() => {
             <!-- Value badge -->
             <div
               class="absolute select-none whitespace-nowrap bg-neutral-800 dark:bg-neutral-900 text-white border border-neutral-700/50 text-xs font-mono px-2.5 py-1 rounded-md shadow-lg"
-              :class="orientation === 'vertical' ? 'bottom-full left-1/2 -translate-x-1/2 -mb-2' : 'top-full left-1/2 -translate-x-1/2 mt-2'"
+              :class="
+                orientation === 'vertical'
+                  ? 'bottom-full left-1/2 -translate-x-1/2 -mb-2'
+                  : 'top-full left-1/2 -translate-x-1/2 mt-2'
+              "
             >
               {{ volumePercent }}%
             </div>
@@ -188,7 +209,13 @@ onBeforeUnmount(() => {
                 size="xs"
                 variant="ghost"
                 color="neutral"
-                :icon="isMuted || volume === 0 ? 'i-heroicons-speaker-x-mark' : volume < 0.5 ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-wave'"
+                :icon="
+                  isMuted || volume === 0
+                    ? 'i-heroicons-speaker-x-mark'
+                    : volume < 0.5
+                      ? 'i-heroicons-speaker-wave'
+                      : 'i-heroicons-speaker-wave'
+                "
                 :aria-label="
                   isMuted
                     ? t('fastcat.monitor.audioUnmute', 'Unmute')
@@ -196,7 +223,10 @@ onBeforeUnmount(() => {
                 "
                 @click="toggleMute"
               />
-              <div class="flex-1" :class="orientation === 'vertical' ? 'min-w-20' : 'min-h-20 flex justify-center'">
+              <div
+                class="flex-1"
+                :class="orientation === 'vertical' ? 'min-w-20' : 'min-h-20 flex justify-center'"
+              >
                 <UiWheelSlider
                   :min="0"
                   :max="max"

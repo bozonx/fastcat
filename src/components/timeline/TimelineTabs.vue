@@ -110,7 +110,10 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="timeline-tabs flex items-center h-full min-w-0 flex-1 select-none">
-    <div ref="scrollContainer" class="flex h-full w-full overflow-x-auto no-scrollbar items-center min-w-0">
+    <div
+      ref="scrollContainer"
+      class="flex h-full w-full overflow-x-auto no-scrollbar items-center min-w-0"
+    >
       <div
         v-if="openPaths.length === 0"
         class="flex items-center h-full px-4 text-xs font-semibold uppercase tracking-wider text-ui-text-muted"

@@ -335,7 +335,9 @@ async function onConfirm() {
 
         <label
           class="flex items-center gap-3 mt-2"
-          :class="isSettingsDirty && !isExporting ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'"
+          :class="
+            isSettingsDirty && !isExporting ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'
+          "
         >
           <UCheckbox v-model="saveAsDefaults" :disabled="isExporting || !isSettingsDirty" />
           <span class="text-sm text-ui-text">{{
