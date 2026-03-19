@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import PropertySection from '~/components/properties/PropertySection.vue';
+import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 import TimecodeInput from '~/components/common/TimecodeInput.vue';
 
 const { t } = useI18n();
@@ -54,43 +55,35 @@ function handleDelete() {
     selectionStore.clearSelection();
   }
 }
+
+const actions = computed(() => [
+  {
+    id: 'convert',
+    label: t('fastcat.timeline.convertSelectionToZoneMarker', 'Convert to zone marker'),
+    icon: 'i-heroicons-bookmark-square',
+    onClick: handleConvertToMarker,
+  },
+  {
+    id: 'ripple-trim',
+    label: t('fastcat.timeline.rippleTrimSelection', 'Ripple trim selection'),
+    icon: 'i-heroicons-scissors',
+    color: 'warning' as const,
+    onClick: handleRippleTrim,
+  },
+  {
+    id: 'delete',
+    label: t('common.delete', 'Delete'),
+    icon: 'i-heroicons-trash',
+    color: 'danger' as const,
+    onClick: handleDelete,
+  },
+]);
 </script>
 
 <template>
   <div v-if="selectionRange" class="w-full flex flex-col gap-2 text-ui-text">
     <PropertySection :title="t('fastcat.selectionRange.actions', 'Actions')">
-      <div class="grid grid-cols-1 gap-2 w-full">
-        <UButton
-          size="xs"
-          variant="soft"
-          color="neutral"
-          icon="i-heroicons-bookmark-square"
-          class="justify-center"
-          @click="handleConvertToMarker"
-        >
-          {{ t('fastcat.timeline.convertSelectionToZoneMarker', 'Convert to zone marker') }}
-        </UButton>
-        <UButton
-          size="xs"
-          variant="soft"
-          color="warning"
-          icon="i-heroicons-scissors"
-          class="justify-center"
-          @click="handleRippleTrim"
-        >
-          {{ t('fastcat.timeline.rippleTrimSelection', 'Ripple trim selection') }}
-        </UButton>
-        <UButton
-          size="xs"
-          variant="soft"
-          color="red"
-          icon="i-heroicons-trash"
-          class="justify-center"
-          @click="handleDelete"
-        >
-          {{ t('common.delete', 'Delete') }}
-        </UButton>
-      </div>
+      <PropertyActionList :actions="actions" justify="center" size="xs" />
     </PropertySection>
 
     <PropertySection :title="t('fastcat.selectionRange.info', 'Selection Range')">

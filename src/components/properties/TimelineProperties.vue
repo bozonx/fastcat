@@ -12,6 +12,7 @@ import EntryActions from '~/components/properties/file/EntryActions.vue';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 import AudioEffectsEditor from '~/components/common/AudioEffectsEditor.vue';
+import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 import type { VideoClipEffect, AudioClipEffect } from '~/timeline/types';
 import type { FsEntry } from '~/types/fs';
 import {
@@ -224,6 +225,21 @@ function handleAddAudioTrack() {
     (timelineStore.timelineDoc?.tracks.filter((tr) => tr.kind === 'audio').length ?? 0) + 1;
   timelineStore.addTrack('audio', `Audio ${idx}`);
 }
+
+const addTrackActions = computed(() => [
+  {
+    id: 'add-video',
+    label: t('fastcat.timeline.addVideoTrack', 'Add video track'),
+    icon: 'i-heroicons-video-camera',
+    onClick: handleAddVideoTrack,
+  },
+  {
+    id: 'add-audio',
+    label: t('fastcat.timeline.addAudioTrack', 'Add audio track'),
+    icon: 'i-heroicons-musical-note',
+    onClick: handleAddAudioTrack,
+  },
+]);
 </script>
 
 <template>
@@ -299,28 +315,7 @@ function handleAddAudioTrack() {
       v-if="!finalIsReadOnly"
       :title="t('fastcat.timeline.properties.actions', 'Actions')"
     >
-      <div class="grid grid-cols-2 gap-2 w-full mt-1">
-        <UButton
-          size="xs"
-          variant="soft"
-          color="neutral"
-          icon="i-heroicons-video-camera"
-          class="justify-start"
-          @click="handleAddVideoTrack"
-        >
-          {{ t('fastcat.timeline.addVideoTrack', 'Add video track') }}
-        </UButton>
-        <UButton
-          size="xs"
-          variant="soft"
-          color="neutral"
-          icon="i-heroicons-musical-note"
-          class="justify-start"
-          @click="handleAddAudioTrack"
-        >
-          {{ t('fastcat.timeline.addAudioTrack', 'Add audio track') }}
-        </UButton>
-      </div>
+      <PropertyActionList :actions="addTrackActions" :vertical="false" justify="start" size="xs" />
     </PropertySection>
 
     <!-- Settings -->

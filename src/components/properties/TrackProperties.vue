@@ -142,43 +142,44 @@ function confirmDeleteTrack() {
   timelineStore.deleteTrack(props.track.id, { allowNonEmpty: true });
   isDeleteConfirmOpen.value = false;
 }
+
+const mainActions = computed(() => [
+  {
+    id: 'rename',
+    label: t('common.rename', 'Rename'),
+    icon: 'i-heroicons-pencil',
+    onClick: () => (timelineStore.renamingTrackId = props.track.id),
+  },
+  {
+    id: 'delete',
+    label: t('common.delete', 'Delete'),
+    icon: 'i-heroicons-trash',
+    color: 'danger' as const,
+    onClick: requestDeleteTrack,
+  },
+]);
+
+const extraActions = computed(() => {
+  const list: any[] = [];
+  if (props.track.kind === 'video') {
+    list.push({
+      id: 'generate-captions',
+      label: t('fastcat.captions.generate', 'Generate captions'),
+      icon: 'i-heroicons-chat-bubble-bottom-center-text',
+      color: 'primary' as const,
+      onClick: () => (isGenerateCaptionsOpen.value = true),
+    });
+  }
+  return list;
+});
 </script>
 
 <template>
   <div class="w-full flex flex-col gap-2">
     <PropertySection :title="t('fastcat.track.actions', 'Actions')">
-      <div class="flex gap-2 w-full flex-wrap">
-        <UButton
-          size="xs"
-          variant="soft"
-          color="neutral"
-          icon="i-heroicons-pencil"
-          class="flex-1 justify-center"
-          @click="timelineStore.renamingTrackId = track.id"
-        >
-          {{ t('common.rename', 'Rename') }}
-        </UButton>
-        <UButton
-          size="xs"
-          variant="soft"
-          color="red"
-          icon="i-heroicons-trash"
-          class="flex-1 justify-center"
-          @click="requestDeleteTrack"
-        >
-          {{ t('common.delete', 'Delete') }}
-        </UButton>
-        <UButton
-          v-if="track.kind === 'video'"
-          size="xs"
-          variant="soft"
-          color="primary"
-          icon="i-heroicons-chat-bubble-bottom-center-text"
-          class="w-full justify-center"
-          @click="isGenerateCaptionsOpen = true"
-        >
-          {{ t('fastcat.captions.generate', 'Generate captions') }}
-        </UButton>
+      <div class="flex flex-col w-full gap-2">
+        <PropertyActionList :actions="mainActions" :vertical="false" justify="center" size="xs" />
+        <PropertyActionList :actions="extraActions" justify="center" size="xs" />
       </div>
     </PropertySection>
 

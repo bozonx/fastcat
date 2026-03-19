@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import type { TimelineMarker } from '~/timeline/types';
 import PropertySection from '~/components/properties/PropertySection.vue';
+import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 import TimecodeInput from '~/components/common/TimecodeInput.vue';
 
 const props = defineProps<{
@@ -103,59 +104,68 @@ function handleCreateSelectionRange() {
   if (!marker.value || !isZone.value) return;
   timelineStore.createSelectionRangeFromMarker(marker.value.id);
 }
+
+const mainActions = computed(() => [
+  {
+    id: 'convert',
+    label: isZone.value
+      ? t('fastcat.timeline.convertZoneToMarker', 'Convert to normal marker')
+      : t('fastcat.timeline.convertMarkerToZone', 'Convert to zone marker'),
+    icon: 'i-heroicons-arrows-right-left',
+    onClick: handleConvertMarker,
+  },
+  {
+    id: 'delete',
+    label: t('common.delete', 'Delete'),
+    icon: 'i-heroicons-trash',
+    color: 'danger' as const,
+    onClick: handleDeleteMarker,
+  },
+]);
+
+const extraActions = computed(() => {
+  const list: any[] = [];
+  if (isZone.value) {
+    list.push(
+      {
+        id: 'convert-to-selection',
+        label: t('fastcat.timeline.convertZoneToSelection', 'Convert to selection area'),
+        icon: 'i-heroicons-rectangle-group',
+        onClick: handleConvertToSelectionRange,
+      },
+      {
+        id: 'create-selection',
+        label: t('fastcat.timeline.createSelectionFromZone', 'Create selection area'),
+        icon: 'i-heroicons-sparkles',
+        color: 'secondary' as const,
+        onClick: handleCreateSelectionRange,
+      },
+    );
+  }
+  return list;
+});
 </script>
 
 <template>
   <div v-if="marker" class="w-full flex flex-col gap-2 text-ui-text">
     <PropertySection :title="t('fastcat.marker.actions', 'Actions')">
-      <div class="flex gap-2 w-full">
-        <UButton
+      <div class="flex flex-col w-full gap-2">
+        <PropertyActionList
+          :actions="mainActions"
+          :vertical="false"
+          justify="center"
           size="xs"
-          variant="soft"
-          color="neutral"
-          icon="i-heroicons-arrows-right-left"
-          class="flex-1 justify-center"
-          @click="handleConvertMarker"
         >
-          {{
-            isZone
-              ? t('fastcat.timeline.convertZoneToMarker', 'Convert to normal marker')
-              : t('fastcat.timeline.convertMarkerToZone', 'Convert to zone marker')
-          }}
-        </UButton>
-        <UButton
-          size="xs"
-          variant="soft"
-          color="red"
-          icon="i-heroicons-trash"
-          class="flex-1 justify-center"
-          @click="handleDeleteMarker"
-        >
-          {{ t('common.delete', 'Delete') }}
-        </UButton>
+          <template #action-convert>
+            <span class="flex-1 text-center">{{ mainActions[0]?.label }}</span>
+          </template>
+          <template #action-delete>
+            <span class="flex-1 text-center">{{ mainActions[1]?.label }}</span>
+          </template>
+        </PropertyActionList>
+
+        <PropertyActionList :actions="extraActions" justify="center" size="xs" />
       </div>
-      <UButton
-        v-if="isZone"
-        size="xs"
-        variant="soft"
-        color="neutral"
-        icon="i-heroicons-rectangle-group"
-        class="w-full justify-center mt-2"
-        @click="handleConvertToSelectionRange"
-      >
-        {{ t('fastcat.timeline.convertZoneToSelection', 'Convert to selection area') }}
-      </UButton>
-      <UButton
-        v-if="isZone"
-        size="xs"
-        variant="soft"
-        color="secondary"
-        icon="i-heroicons-sparkles"
-        class="w-full justify-center mt-2"
-        @click="handleCreateSelectionRange"
-      >
-        {{ t('fastcat.timeline.createSelectionFromZone', 'Create selection area') }}
-      </UButton>
     </PropertySection>
 
     <PropertySection :title="t('fastcat.marker.info', 'Marker Info')">
