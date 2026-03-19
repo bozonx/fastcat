@@ -53,8 +53,9 @@ export const useTimelineStore = defineStore('timeline', () => {
   const proxyStore = useProxyStore();
   const selectionStore = useSelectionStore();
   const uiStore = useUiStore();
-  const toast = useToast();
-  const { t } = useI18n();
+  const nuxtApp = useNuxtApp();
+  const toast = nuxtApp.$notificationService as any;
+  const { t } = nuxtApp.$i18nService as any;
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
 
   const historyDebounce = createTimelineHistoryDebounce({ historyStore });
