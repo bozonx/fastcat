@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
-import UiSegmentedControl from '~/components/ui/UiSegmentedControl.vue';
+import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProxyStore } from '~/stores/proxy.store';
@@ -308,7 +308,7 @@ function onPanelFocusOut() {
         </span>
       </div>
       <div v-if="displayMode !== 'empty'" class="flex gap-1 shrink-0 ml-2">
-        <UiSegmentedControl
+        <UiButtonGroup
           v-if="displayMode === 'file' && hasProxy"
           v-model="previewMode"
           :options="previewOptions"

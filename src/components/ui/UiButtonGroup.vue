@@ -51,10 +51,9 @@ function isSelected(value: any) {
 </script>
 
 <template>
-  <div
-    class="rounded-md shadow-sm isolate"
+  <UButtonGroup
+    :orientation="orientation"
     :class="[
-      orientation === 'horizontal' ? 'flex -space-x-px' : 'flex flex-col -space-y-px',
       fluid ? 'w-full' : 'inline-flex',
       disabled ? 'opacity-50 cursor-not-allowed' : '',
     ]"
@@ -69,17 +68,14 @@ function isSelected(value: any) {
       :variant="isSelected(option.value) ? activeVariant : variant"
       :disabled="disabled || option.disabled"
       :title="option.title"
-      class="focus:z-10 rounded-none! transition-all duration-200 justify-center whitespace-normal h-auto py-1.5 px-2 text-xs"
+      class="transition-all duration-200 justify-center whitespace-normal h-auto py-1.5 px-2 text-xs"
       :class="[
         !(disabled || option.disabled) ? 'cursor-pointer' : '',
-        orientation === 'horizontal'
-          ? 'first:rounded-s-md! last:rounded-e-md!'
-          : 'first:rounded-t-md! last:rounded-b-md!',
-        fluid ? 'flex-1 w-full' : '',
+        fluid ? 'flex-1' : '',
       ]"
       @click="select(option)"
     >
       <slot name="option" :option="option" :selected="isSelected(option.value)" />
     </UButton>
-  </div>
+  </UButtonGroup>
 </template>

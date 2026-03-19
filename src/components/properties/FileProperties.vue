@@ -9,12 +9,11 @@ import { formatBytes, formatBitrate, formatDurationSeconds } from '~/utils/forma
 import { VIDEO_EXTENSIONS } from '~/utils/media-types';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import EntryPreviewBox from '~/components/properties/file/EntryPreviewBox.vue';
-import AudioFilePropertiesSection from '~/components/properties/file/AudioFilePropertiesSection.vue';
+import MediaPropertiesSection from '~/components/properties/file/MediaPropertiesSection.vue';
 import ExpandableYamlSection from '~/components/properties/file/ExpandableYamlSection.vue';
 import FileGeneralInfoSection from '~/components/properties/file/FileGeneralInfoSection.vue';
 import FileTimelineUsageSection from '~/components/properties/file/FileTimelineUsageSection.vue';
 import ImageFilePropertiesSection from '~/components/properties/file/ImageFilePropertiesSection.vue';
-import VideoFilePropertiesSection from '~/components/properties/file/VideoFilePropertiesSection.vue';
 import FileProjectRootSection from '~/components/properties/file/FileProjectRootSection.vue';
 import FileTranscriptionModal from '~/components/properties/file/FileTranscriptionModal.vue';
 import EntryActions from '~/components/properties/file/EntryActions.vue';
@@ -364,22 +363,9 @@ const {
       :image-camera-make="imageCameraMake"
     />
 
-    <VideoFilePropertiesSection
-      v-if="fileInfo?.kind === 'file' && isVideoFile"
+    <MediaPropertiesSection
+      v-if="fileInfo?.kind === 'file' && (isVideoFile || mediaType === 'audio')"
       :media-meta="mediaMeta"
-      :format-duration-seconds="formatDurationSeconds"
-      :format-bitrate="formatBitrate"
-      :can-transcribe-media="canTranscribeMedia"
-      :latest-transcription-cache-key="latestTranscriptionCacheKey"
-      :latest-transcription-was-cached="latestTranscriptionWasCached"
-      :latest-transcription-text="latestTranscriptionText"
-      :open-transcription-modal="openTranscriptionModal"
-    />
-
-    <AudioFilePropertiesSection
-      v-if="fileInfo?.kind === 'file' && mediaType === 'audio'"
-      :media-meta="mediaMeta"
-      :mime-type="fileInfo?.mimeType"
       :format-duration-seconds="formatDurationSeconds"
       :format-bitrate="formatBitrate"
       :can-transcribe-media="canTranscribeMedia"
