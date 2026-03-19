@@ -28,15 +28,10 @@ const transitionOptions = computed(() =>
 </script>
 
 <template>
-  <div
+  <PropertySection
     v-if="props.isVideoTrack"
-    class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border"
+    :title="t('fastcat.timeline.transitions', 'Transitions')"
   >
-    <div
-      class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
-    >
-      {{ t('fastcat.timeline.transitions', 'Transitions') }}
-    </div>
 
     <div class="grid grid-cols-2 gap-2">
       <div class="flex flex-col gap-1">
@@ -161,5 +156,5 @@ const transitionOptions = computed(() =>
         </div>
       </div>
     </div>
-  </div>
+  </PropertySection>
 </template>

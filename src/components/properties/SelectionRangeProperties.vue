@@ -2,9 +2,7 @@
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
-import TimecodeInput from '~/components/common/TimecodeInput.vue';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
@@ -87,21 +85,17 @@ const actions = computed(() => [
     </PropertySection>
 
     <PropertySection :title="t('fastcat.selectionRange.info', 'Selection Range')">
-      <div class="flex flex-col gap-0.5 mt-2">
-        <span class="text-xs text-ui-text-muted">{{ t('common.start', 'Start Time') }}</span>
-        <TimecodeInput
-          :model-value="selectionRange.startUs"
-          @update:model-value="handleUpdateStartTime"
-        />
-      </div>
+      <PropertyTimecode
+        :label="t('common.start', 'Start Time')"
+        :model-value="selectionRange.startUs"
+        @update:model-value="handleUpdateStartTime"
+      />
 
-      <div class="flex flex-col gap-0.5 mt-2">
-        <span class="text-xs text-ui-text-muted">{{ t('common.end', 'End Time') }}</span>
-        <TimecodeInput
-          :model-value="selectionRange.endUs"
-          @update:model-value="handleUpdateEndTime"
-        />
-      </div>
+      <PropertyTimecode
+        :label="t('common.end', 'End Time')"
+        :model-value="selectionRange.endUs"
+        @update:model-value="handleUpdateEndTime"
+      />
     </PropertySection>
   </div>
 </template>

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { TimelineBlendMode, AudioClipEffect, VideoClipEffect } from '~/timeline/types';
-import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import AudioEffectsEditor from '~/components/common/AudioEffectsEditor.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 
@@ -43,21 +42,15 @@ const { t } = useI18n();
       />
     </div>
 
-    <div class="flex items-center justify-between">
-      <span class="text-xs font-semibold text-ui-text uppercase tracking-wide">
-        {{ t('fastcat.clip.opacity', 'Opacity') }}
-      </span>
-      <span class="text-xs font-mono text-ui-text-muted"
-        >{{ Math.round(props.opacity * 100) }}%</span
-      >
-    </div>
-    <UiWheelSlider
+    <PropertySlider
+      :label="t('fastcat.clip.opacity', 'Opacity')"
+      :formatted-value="`${Math.round(props.opacity * 100)}%`"
       :model-value="props.opacity"
       :min="0"
       :max="1"
       :step="0.01"
       :default-value="1"
-      @update:model-value="emit('updateOpacity', $event as number)"
+      @update:model-value="emit('updateOpacity', $event)"
     />
   </div>
 

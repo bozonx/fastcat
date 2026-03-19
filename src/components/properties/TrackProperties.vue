@@ -8,7 +8,6 @@ import type {
   VideoClipEffect,
   AudioClipEffect,
 } from '~/timeline/types';
-import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 import AudioEffectsEditor from '~/components/common/AudioEffectsEditor.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
@@ -207,24 +206,16 @@ const extraActions = computed(() => {
         />
       </div>
 
-      <div class="space-y-1.5">
-        <div class="flex items-center justify-between">
-          <span class="text-xs text-ui-text-muted">{{
-            t('fastcat.track.opacity', 'Opacity')
-          }}</span>
-          <span class="text-xs font-mono text-ui-text-muted"
-            >{{ Math.round(trackOpacity * 100) }}%</span
-          >
-        </div>
-        <UiWheelSlider
-          :model-value="trackOpacity"
-          :min="0"
-          :max="1"
-          :step="0.01"
-          :default-value="1"
-          @update:model-value="(v: any) => (trackOpacity = Number(v))"
-        />
-      </div>
+      <PropertySlider
+        :label="t('fastcat.track.opacity', 'Opacity')"
+        :formatted-value="`${Math.round(trackOpacity * 100)}%`"
+        :model-value="trackOpacity"
+        :min="0"
+        :max="1"
+        :step="0.01"
+        :default-value="1"
+        @update:model-value="(v: number) => (trackOpacity = v)"
+      />
     </div>
 
     <div
@@ -237,42 +228,28 @@ const extraActions = computed(() => {
         {{ t('fastcat.track.audio.title', 'Track audio') }}
       </div>
 
-      <div class="space-y-1.5">
-        <div class="flex items-center justify-between">
-          <span class="text-xs text-ui-text-muted">{{
-            t('fastcat.track.audio.volume', 'Volume')
-          }}</span>
-          <span class="text-xs font-mono text-ui-text-muted">{{ trackAudioGain.toFixed(3) }}x</span>
-        </div>
-        <UiWheelSlider
-          :model-value="trackAudioGain"
-          :min="0"
-          :max="2"
-          :step="0.001"
-          :wheel-step-multiplier="10"
-          :default-value="1"
-          @update:model-value="(v: any) => (trackAudioGain = Number(v))"
-        />
-      </div>
+      <PropertySlider
+        :label="t('fastcat.track.audio.volume', 'Volume')"
+        :formatted-value="`${trackAudioGain.toFixed(3)}x`"
+        :model-value="trackAudioGain"
+        :min="0"
+        :max="2"
+        :step="0.001"
+        :wheel-step-multiplier="10"
+        :default-value="1"
+        @update:model-value="(v: number) => (trackAudioGain = v)"
+      />
 
-      <div class="space-y-1.5">
-        <div class="flex items-center justify-between">
-          <span class="text-xs text-ui-text-muted">{{
-            t('fastcat.track.audio.balance', 'Balance')
-          }}</span>
-          <span class="text-xs font-mono text-ui-text-muted">{{
-            trackAudioBalance.toFixed(2)
-          }}</span>
-        </div>
-        <UiWheelSlider
-          :model-value="trackAudioBalance"
-          :min="-1"
-          :max="1"
-          :step="0.01"
-          :default-value="0"
-          @update:model-value="(v: any) => (trackAudioBalance = Number(v))"
-        />
-      </div>
+      <PropertySlider
+        :label="t('fastcat.track.audio.balance', 'Balance')"
+        :formatted-value="trackAudioBalance.toFixed(2)"
+        :model-value="trackAudioBalance"
+        :min="-1"
+        :max="1"
+        :step="0.01"
+        :default-value="0"
+        @update:model-value="(v: number) => (trackAudioBalance = v)"
+      />
     </div>
 
     <EffectsEditor
