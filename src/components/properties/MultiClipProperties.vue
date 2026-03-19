@@ -3,12 +3,17 @@ import { computed, toRef } from 'vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 import { useClipBatchActions } from '~/composables/timeline/useClipBatchActions';
+import { useTimelineStore } from '~/stores/timeline.store';
+import { useMediaStore } from '~/stores/media.store';
 
 const props = defineProps<{
   items: { trackId: string; itemId: string }[];
 }>();
 
 const { t } = useI18n();
+
+const timelineStore = useTimelineStore();
+const mediaStore = useMediaStore();
 
 const itemsRef = toRef(props, 'items');
 const {
@@ -34,7 +39,12 @@ const {
   toggleShowThumbnails,
   handleSetUniformDuration,
   handleQuantizeSelected,
-} = useClipBatchActions(itemsRef);
+} = useClipBatchActions(itemsRef, {
+  timelineDoc: computed(() => timelineStore.timelineDoc),
+  mediaMetadata: computed(() => mediaStore.mediaMetadata),
+  batchApplyTimeline: (cmds) => timelineStore.batchApplyTimeline(cmds),
+  clearSelection: () => timelineStore.clearSelection(),
+});
 
 const selectedCountLabel = computed(() => {
   return (t as any)('fastcat.timeline.selectedClipsCount', '{count} clips selected', {

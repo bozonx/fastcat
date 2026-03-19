@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { TimelineBlendMode, AudioClipEffect, VideoClipEffect } from '~/timeline/types';
 import AudioEffectsEditor from '~/components/common/AudioEffectsEditor.vue';
+import PropertySlider from '~/components/properties/PropertySlider.vue';
 import EffectsEditor from '~/components/common/EffectsEditor.vue';
 
 const props = defineProps<{

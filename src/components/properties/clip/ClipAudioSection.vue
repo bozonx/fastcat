@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import DbSlider from '~/components/audio/DbSlider.vue';
+import PropertySlider from '~/components/properties/PropertySlider.vue';
+import PropertySection from '~/components/properties/PropertySection.vue';
 import type { AudioFadeCurve } from '~/utils/audio/envelope';
 import { linearToDb, dbToLinear } from '~/utils/audio';
 
