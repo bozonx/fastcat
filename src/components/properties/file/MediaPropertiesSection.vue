@@ -5,7 +5,6 @@ import MediaTranscriptionSection from './MediaTranscriptionSection.vue';
 
 const props = defineProps<{
   mediaMeta: any;
-  mimeType?: string;
   formatDurationSeconds: (seconds: number | null | undefined) => string;
   formatBitrate: (bitrate: number) => string;
   canTranscribeMedia: boolean;
@@ -26,16 +25,42 @@ const { t } = useI18n();
         :value="props.formatDurationSeconds(props.mediaMeta?.duration)"
       />
       <PropertyRow
-        :label="t('videoEditor.fileManager.audio.format', 'Format')"
-        :value="props.mediaMeta?.container ?? props.mimeType ?? '-'"
+        v-if="props.mediaMeta?.video"
+        :label="t('videoEditor.fileManager.video.resolution', 'Resolution')"
+        :value="
+          props.mediaMeta?.video?.displayWidth && props.mediaMeta?.video?.displayHeight
+            ? `${props.mediaMeta.video.displayWidth}x${props.mediaMeta.video.displayHeight}`
+            : '-'
+        "
       />
-      <PropertyRow :label="t('videoEditor.fileManager.audio.codec', 'Audio codec')">
+      <PropertyRow
+        v-if="props.mediaMeta?.video"
+        :label="t('videoEditor.fileManager.video.fps', 'FPS')"
+        :value="props.mediaMeta?.video?.fps ?? '-'"
+      />
+      <PropertyRow
+        :label="t('videoEditor.fileManager.video.container', 'Container')"
+        :value="props.mediaMeta?.container ?? '-'"
+      />
+      <PropertyRow 
+        v-if="props.mediaMeta?.video"
+        :label="t('videoEditor.fileManager.video.videoCodec', 'Video codec')">
+        {{ props.mediaMeta?.video?.parsedCodec ?? props.mediaMeta?.video?.codec ?? '-' }}
+        <span v-if="props.mediaMeta?.video?.bitrate">
+          , {{ props.formatBitrate(props.mediaMeta.video.bitrate) }}
+        </span>
+      </PropertyRow>
+      <PropertyRow 
+        v-if="props.mediaMeta?.audio"
+        :label="t('videoEditor.fileManager.video.audioCodec', 'Audio codec')">
         {{ props.mediaMeta?.audio?.parsedCodec ?? props.mediaMeta?.audio?.codec ?? '-' }}
         <span v-if="props.mediaMeta?.audio?.bitrate">
           , {{ props.formatBitrate(props.mediaMeta.audio.bitrate) }}
         </span>
       </PropertyRow>
-      <PropertyRow :label="t('videoEditor.fileManager.audio.channels', 'Channels')">
+      <PropertyRow 
+        v-if="props.mediaMeta?.audio"
+        :label="t('videoEditor.fileManager.audio.channels', 'Channels')">
         {{ formatAudioChannels(props.mediaMeta?.audio?.channels) }},
         {{ props.mediaMeta?.audio?.sampleRate ? `${props.mediaMeta.audio.sampleRate} Hz` : '-' }}
       </PropertyRow>
