@@ -12,6 +12,7 @@ import {
   normalizeStopFramesSettings,
   normalizeTimelineSettings,
   normalizeVideoSettings,
+  normalizeProjectDefaults,
 } from './normalizers/user-domains';
 import { normalizeLocale } from './normalizers/shared';
 
@@ -35,34 +36,19 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
     optimization: normalizeOptimizationSettings(input),
     projectPresets: presets.projectPresets,
     exportPresets: presets.exportPresets,
-    projectDefaults: {
-      width: Number(presets.selectedProjectPreset.width) || 1920,
-      height: Number(presets.selectedProjectPreset.height) || 1080,
-      fps: Number(presets.selectedProjectPreset.fps) || 60,
-      resolutionFormat: String(presets.selectedProjectPreset.resolutionFormat || '1080p'),
-      orientation: ['landscape', 'portrait'].includes(
-        String(presets.selectedProjectPreset.orientation),
-      )
-        ? (presets.selectedProjectPreset.orientation as 'landscape' | 'portrait')
-        : 'landscape',
-      aspectRatio: String(presets.selectedProjectPreset.aspectRatio || '16:9'),
-      isCustomResolution: Boolean(presets.selectedProjectPreset.isCustomResolution),
-      sampleRate: Number(presets.selectedProjectPreset.sampleRate) || 48000,
-      audioDeclickDurationUs:
-        Number.isFinite(Number(projectInput.audioDeclickDurationUs)) &&
-        Number(projectInput.audioDeclickDurationUs) >= 0
-          ? Number(projectInput.audioDeclickDurationUs)
-          : presets.fallbackAudioDeclickDurationUs,
-      defaultAudioFadeCurve:
-        projectInput.defaultAudioFadeCurve === 'linear' ||
-        projectInput.defaultAudioFadeCurve === 'logarithmic'
-          ? projectInput.defaultAudioFadeCurve
-          : presets.fallbackDefaultAudioFadeCurve,
-      audioScrubbingEnabled:
-        typeof projectInput.audioScrubbingEnabled === 'boolean'
-          ? projectInput.audioScrubbingEnabled
-          : true,
-    },
+    projectDefaults: normalizeProjectDefaults({
+      width: presets.selectedProjectPreset.width,
+      height: presets.selectedProjectPreset.height,
+      fps: presets.selectedProjectPreset.fps,
+      resolutionFormat: presets.selectedProjectPreset.resolutionFormat,
+      orientation: presets.selectedProjectPreset.orientation,
+      aspectRatio: presets.selectedProjectPreset.aspectRatio,
+      isCustomResolution: presets.selectedProjectPreset.isCustomResolution,
+      sampleRate: presets.selectedProjectPreset.sampleRate,
+      audioDeclickDurationUs: projectInput.audioDeclickDurationUs ?? presets.fallbackAudioDeclickDurationUs,
+      defaultAudioFadeCurve: projectInput.defaultAudioFadeCurve ?? presets.fallbackDefaultAudioFadeCurve,
+      audioScrubbingEnabled: projectInput.audioScrubbingEnabled,
+    }),
     integrations: normalizeIntegrationsSettings(input),
     video: normalizeVideoSettings(input),
     mouse: normalizeMouseSettings(input.mouse),

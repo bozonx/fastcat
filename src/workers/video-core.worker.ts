@@ -4,6 +4,7 @@ import { DOMAdapter, WebWorkerAdapter } from 'pixi.js';
 import type { VideoCoreHostAPI } from '../utils/video-editor/worker-client';
 import { VideoCompositor } from '../utils/video-editor/VideoCompositor';
 import type { PreviewRenderOptions } from '../utils/video-editor/worker-rpc';
+import { ExportOptionsSchema } from '../composables/timeline/export/types';
 import { initEffects } from '../effects';
 import { initTransitions } from '../transitions';
 import { normalizeRpcError } from './core/utils';
@@ -127,7 +128,7 @@ const api: any = {
 
     await runExport(
       targetHandle,
-      options,
+      ExportOptionsSchema.parse(options),
       timelineClips,
       audioClips,
       hostClient,
@@ -159,7 +160,7 @@ const api: any = {
     await runTranscode(
       sourceFile,
       targetHandle,
-      options,
+      ExportOptionsSchema.parse(options),
       hostClient,
       (msg) => reportExportWarning(msg, taskId),
       () => {

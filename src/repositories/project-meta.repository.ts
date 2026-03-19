@@ -5,17 +5,21 @@ import {
   type DirectoryHandleLike,
 } from './fastcat-fs';
 
-export interface ProjectMeta {
-  id: string;
-  version: number;
-  title: string;
-  description: string;
-  author: string;
-  tags: string[];
-  createdAt: string;
-  updatedAt: string;
-  lastOpenedTimelinePath?: string;
-}
+import { z } from 'zod';
+
+export const ProjectMetaSchema = z.object({
+  id: z.string().trim().min(1),
+  version: z.coerce.number().catch(1),
+  title: z.coerce.string().catch(''),
+  description: z.coerce.string().catch(''),
+  author: z.coerce.string().catch(''),
+  tags: z.array(z.coerce.string()).catch([]),
+  createdAt: z.coerce.string().catch(() => new Date().toISOString()),
+  updatedAt: z.coerce.string().catch(() => new Date().toISOString()),
+  lastOpenedTimelinePath: z.string().optional(),
+});
+
+export type ProjectMeta = z.infer<typeof ProjectMetaSchema>;
 
 export interface ProjectMetaRepository {
   load(): Promise<ProjectMeta | null>;
@@ -34,21 +38,14 @@ export function createProjectMetaRepository(input: {
       });
       if (!handle) return null;
       const raw = await readJsonFromFileHandle<any>(handle);
-      if (!raw || typeof raw.id !== 'string' || !raw.id) return null;
-
-      return {
-        id: raw.id,
-        version: Number(raw.version) || 1,
-        title: String(raw.title || ''),
-        description: String(raw.description || ''),
-        author: String(raw.author || ''),
-        tags: Array.isArray(raw.tags) ? raw.tags.map(String) : [],
-        createdAt: String(raw.createdAt || new Date().toISOString()),
-        updatedAt: String(raw.updatedAt || new Date().toISOString()),
-        lastOpenedTimelinePath: raw.lastOpenedTimelinePath
-          ? String(raw.lastOpenedTimelinePath)
-          : undefined,
-      };
+      if (!raw) return null;
+      
+      const parsed = ProjectMetaSchema.safeParse(raw);
+      if (!parsed.success) {
+         console.warn(`[ProjectMeta] Invalid project metadata`, parsed.error);
+         return null;
+      }
+      return parsed.data;
     },
 
     async save(data) {
