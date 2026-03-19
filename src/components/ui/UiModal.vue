@@ -6,8 +6,6 @@
  * Wraps @nuxt/ui's UModal and provides standard padding and styling.
  */
 
-import { DialogTitle, DialogDescription } from 'reka-ui';
-
 interface Props {
   /** Title of the modal */
   title?: string;
@@ -23,6 +21,9 @@ interface Props {
     body?: string;
     header?: string;
     footer?: string;
+    title?: string;
+    description?: string;
+    close?: string;
     [key: string]: unknown;
   };
 }
@@ -43,7 +44,16 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const modalUi = computed(() => {
-  return (props.ui || {}) as any;
+  return {
+    content: `bg-ui-bg-elevated shadow-xl overflow-hidden sm:rounded-2xl border border-ui-border flex flex-col max-h-[90vh] min-h-0 w-full ${props.ui?.content || ''}`,
+    header: `px-6 py-4 border-b border-ui-border flex items-center justify-between shrink-0 ${props.ui?.header || ''}`,
+    body: `px-6 py-6 w-full overflow-y-auto flex-auto custom-scrollbar ${props.ui?.body || ''}`,
+    footer: `px-6 py-4 bg-ui-bg border-t border-ui-border flex justify-end gap-3 shrink-0 ${props.ui?.footer || ''}`,
+    title: `text-lg font-semibold text-ui-text truncate ${props.ui?.title || ''}`,
+    description: `mt-1 text-sm text-ui-text-muted ${props.ui?.description || ''}`,
+    close: `-mr-2 ml-4 ${props.ui?.close || ''}`,
+    ...props.ui
+  } as any;
 });
 
 const modalContent = {
@@ -90,23 +100,7 @@ function handleAfterEnter() {
   emit('after:enter');
 }
 
-const headerClass = computed(() => {
-  return props.ui?.header;
-});
-
-const bodyClass = computed(() => {
-  return props.ui?.body;
-});
-
-const footerClass = computed(() => {
-  return props.ui?.footer;
-});
-
-function handleClose(close?: () => void) {
-  if (close) {
-    close();
-    return;
-  }
+function handleClose() {
   isOpen.value = false;
 }
 </script>
@@ -119,58 +113,36 @@ function handleClose(close?: () => void) {
     :dismissible="!props.preventClose"
     :title="props.title"
     :description="props.description"
+    :close="props.closeButton"
     :ui="modalUi"
   >
-    <template #content="{ close }">
-      <div
-        ref="contentRef"
-        class="bg-ui-bg-elevated shadow-xl overflow-hidden sm:rounded-2xl border border-ui-border flex flex-col max-h-[90vh] min-h-0 w-full"
-        :class="modalUi.content"
-      >
-        <!-- Header -->
-        <div
-          v-if="props.title || $slots.header || props.closeButton"
-          class="px-6 py-4 border-b border-ui-border flex items-center justify-between shrink-0"
-          :class="headerClass"
-        >
-          <div class="min-w-0 flex-1">
-            <slot name="header">
-              <DialogTitle v-if="props.title" class="text-lg font-semibold text-ui-text truncate">
-                {{ props.title }}
-              </DialogTitle>
-              <DialogDescription
-                :class="[props.description ? 'mt-1 text-sm text-ui-text-muted' : 'sr-only']"
-              >
-                {{ props.description || props.title || 'Modal' }}
-              </DialogDescription>
-            </slot>
-          </div>
-
-          <UButton
-            v-if="props.closeButton"
-            color="neutral"
-            variant="ghost"
-            icon="i-heroicons-x-mark"
-            class="-mr-2 ml-4"
-            size="md"
-            :aria-label="t('common.close')"
-            @click="handleClose(close)"
-          />
+    <template v-if="$slots.header" #header>
+      <div class="flex items-center justify-between w-full">
+        <div class="min-w-0 flex-1">
+          <slot name="header" />
         </div>
+        <UButton
+          v-if="props.closeButton"
+          color="neutral"
+          variant="ghost"
+          icon="i-heroicons-x-mark"
+          class="-mr-2 ml-4"
+          size="md"
+          :aria-label="t('common.close')"
+          @click="handleClose"
+        />
+      </div>
+    </template>
 
-        <!-- Body -->
-        <div class="px-6 py-6 w-full overflow-y-auto flex-auto custom-scrollbar" :class="bodyClass">
-          <slot />
-        </div>
+    <template #body>
+      <div ref="contentRef" class="w-full h-full">
+        <slot />
+      </div>
+    </template>
 
-        <!-- Footer -->
-        <div
-          v-if="$slots.footer"
-          class="px-6 py-4 bg-ui-bg border-t border-ui-border flex justify-end gap-3 shrink-0"
-          :class="footerClass"
-        >
-          <slot name="footer" />
-        </div>
+    <template v-if="$slots.footer" #footer>
+      <div class="flex w-full justify-end gap-3">
+        <slot name="footer" />
       </div>
     </template>
   </UModal>
@@ -179,20 +151,20 @@ function handleClose(close?: () => void) {
 <style scoped>
 @reference "tailwindcss";
 
-.custom-scrollbar::-webkit-scrollbar {
+:deep(.custom-scrollbar::-webkit-scrollbar) {
   width: 6px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
+:deep(.custom-scrollbar::-webkit-scrollbar-track) {
   background: transparent;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
+:deep(.custom-scrollbar::-webkit-scrollbar-thumb) {
   background: var(--scrollbar-thumb);
   border-radius: 9999px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+:deep(.custom-scrollbar::-webkit-scrollbar-thumb:hover) {
   background: var(--scrollbar-thumb-hover);
 }
 </style>
