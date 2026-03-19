@@ -2,6 +2,8 @@
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { useImagePanZoom } from '~/composables/preview/useImagePanZoom';
 import { useMediaPlayerVolume } from '~/composables/preview/useMediaPlayerVolume';
+import { useMediaPlayerPlayback } from '~/composables/preview/useMediaPlayerPlayback';
+import { formatTime } from '~/utils/time';
 import VolumeControl from '~/components/common/VolumeControl.vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
@@ -24,129 +26,27 @@ const emit = defineEmits<{
 }>();
 
 const mediaElement = ref<HTMLVideoElement | HTMLAudioElement | null>(null);
-const isPlaying = ref(false);
-const currentTime = ref(0);
-const duration = ref(0);
-const progress = ref(0);
-const playbackSpeed = ref(1);
-
 const playerRootEl = ref<HTMLElement | null>(null);
 
-let reversePlaybackRaf: number | null = null;
-let reverseLastTs = 0;
-let suppressNextPause = false;
-
-function clearReversePlaybackTimer() {
-  if (reversePlaybackRaf !== null) {
-    cancelAnimationFrame(reversePlaybackRaf);
-    reversePlaybackRaf = null;
-  }
-  reverseLastTs = 0;
-}
-
-function togglePlay() {
-  if (!mediaElement.value) return;
-
-  if (reversePlaybackRaf !== null) {
-    clearReversePlaybackTimer();
-    isPlaying.value = false;
-    return;
-  }
-
-  if (isPlaying.value) {
-    mediaElement.value.pause();
-    return;
-  }
-
-  void mediaElement.value.play();
-}
-
-function pauseAndClearPlayback() {
-  suppressNextPause = true;
-  clearReversePlaybackTimer();
-  mediaElement.value?.pause();
-}
-
-function setForwardPlaybackSpeed(speed: number) {
-  if (!mediaElement.value) return;
-  pauseAndClearPlayback();
-  const nextSpeed = Number(speed);
-  playbackSpeed.value = Number.isFinite(nextSpeed) ? nextSpeed : 1;
-  mediaElement.value.playbackRate = Math.max(0.1, Math.abs(playbackSpeed.value));
-  mediaElement.value.muted = false;
-  void mediaElement.value.play();
-}
-
-function setBackwardPlaybackSpeed(speed: number) {
-  if (!mediaElement.value) return;
-
-  pauseAndClearPlayback();
-
-  const nextSpeed = Number(speed);
-  playbackSpeed.value = Number.isFinite(nextSpeed) ? -Math.abs(nextSpeed) : -1;
-  mediaElement.value.playbackRate = 1;
-  mediaElement.value.muted = true;
-
-  const absSpeed = Math.max(0.1, Number(speed) || 1);
-  
-  function step() {
-    if (!mediaElement.value) return;
-
-    const now = performance.now();
-    const dtMs = reverseLastTs > 0 ? now - reverseLastTs : 0;
-    reverseLastTs = now;
-
-    const dtSec = Math.max(0, dtMs / 1000);
-    const delta = dtSec * absSpeed;
-
-    const next = Math.max(0, mediaElement.value.currentTime - delta);
-    mediaElement.value.currentTime = next;
-    currentTime.value = next;
-
-    if (duration.value > 0) {
-      progress.value = (currentTime.value / duration.value) * 100;
-    }
-
-    if (next <= 0) {
-      pauseAndClearPlayback();
-      isPlaying.value = false;
-    } else {
-      reversePlaybackRaf = requestAnimationFrame(step);
-    }
-  }
-
-  reversePlaybackRaf = requestAnimationFrame(step);
-
-  isPlaying.value = true;
-}
+const {
+  isPlaying,
+  currentTime,
+  duration,
+  progress,
+  playbackSpeed,
+  togglePlay,
+  setForwardPlaybackSpeed,
+  setBackwardPlaybackSpeed,
+  onTimeUpdate: playOnTimeUpdate,
+  onLoadedMetadata,
+  onPlay,
+  onPause,
+  resetState: resetPlaybackState,
+  pauseAndClearPlayback,
+} = useMediaPlayerPlayback(mediaElement, props, volume, isMuted, focusStore);
 
 function onTimeUpdate() {
-  if (!mediaElement.value || isDragging.value) return;
-  currentTime.value = mediaElement.value.currentTime;
-  if (duration.value > 0) {
-    progress.value = (currentTime.value / duration.value) * 100;
-  }
-}
-
-function onLoadedMetadata() {
-  if (!mediaElement.value) return;
-  duration.value = mediaElement.value.duration;
-  playbackSpeed.value = 1;
-  mediaElement.value.volume = Math.min(1, Math.max(0, volume.value));
-  mediaElement.value.muted = isMuted.value;
-}
-
-function onPlay() {
-  isPlaying.value = true;
-}
-
-function onPause() {
-  if (suppressNextPause) {
-    suppressNextPause = false;
-    return;
-  }
-  isPlaying.value = false;
-  clearReversePlaybackTimer();
+  playOnTimeUpdate(isDragging);
 }
 
 const playbackSpeedLabel = computed(() => {
@@ -157,17 +57,6 @@ const playbackSpeedLabel = computed(() => {
   return `${normalized}x`;
 });
 
-function formatTime(seconds: number) {
-  if (!seconds || isNaN(seconds)) return '00:00';
-  const m = Math.floor(seconds / 60)
-    .toString()
-    .padStart(2, '0');
-  const s = Math.floor(seconds % 60)
-    .toString()
-    .padStart(2, '0');
-  return `${m}:${s}`;
-}
-
 const isDragging = ref(false);
 const wasPlayingBeforeDrag = ref(false);
 
@@ -177,7 +66,7 @@ const {
   scale,
   translateX,
   translateY,
-  reset,
+  reset: resetZoom,
   onWheel,
   onPointerDown,
   onPointerMove,
@@ -196,8 +85,8 @@ const contextMenuItems = computed(() => [
     {
       label: t('fastcat.preview.resetZoom', 'Reset Zoom & Pan'),
       icon: 'i-heroicons-arrow-path',
-      onSelect: () => reset(),
-      click: () => reset(),
+      onSelect: () => resetZoom(),
+      click: () => resetZoom(),
     },
   ],
 ]);
@@ -229,14 +118,9 @@ function onSeekEnd() {
 watch(
   () => props.src,
   () => {
-    isPlaying.value = false;
-    currentTime.value = 0;
-    progress.value = 0;
-    duration.value = 0;
-    playbackSpeed.value = 1;
-    clearReversePlaybackTimer();
-    reset();
-    
+    resetPlaybackState();
+    resetZoom();
+
     if (mediaElement.value) {
       mediaElement.value.volume = Math.min(1, Math.max(0, volume.value));
       mediaElement.value.muted = isMuted.value;
@@ -262,49 +146,7 @@ function shouldHandlePreviewPlaybackEvent() {
   return focusStore.effectiveFocus === props.focusPanelId;
 }
 
-watch(
-  () => uiStore.previewPlaybackTrigger,
-  (detail) => {
-    if (!shouldHandlePreviewPlaybackEvent()) return;
-    if (!detail || !detail.timestamp) return;
-
-    if (detail.action === 'toggle') {
-      togglePlay();
-      return;
-    }
-
-    if (detail.action === 'toggle1') {
-      if (!mediaElement.value) return;
-      if (reversePlaybackRaf !== null) {
-        clearReversePlaybackTimer();
-      }
-
-      if (isPlaying.value) {
-        mediaElement.value.playbackRate = 1;
-        playbackSpeed.value = 1;
-        return;
-      }
-
-      if (!mediaElement.value) return;
-      pauseAndClearPlayback();
-      mediaElement.value.currentTime = 0;
-      currentTime.value = 0;
-    } else if (detail.action === 'toEnd') {
-      if (!mediaElement.value) return;
-      pauseAndClearPlayback();
-      const end = Number.isFinite(mediaElement.value.duration) ? mediaElement.value.duration : 0;
-      mediaElement.value.currentTime = end;
-      currentTime.value = end;
-    } else if (detail.action === 'set') {
-      if (detail.direction === 'forward') {
-        setForwardPlaybackSpeed(detail.speed ?? 1);
-      } else {
-        setBackwardPlaybackSpeed(detail.speed ?? 1);
-      }
-    }
-  },
-  { deep: true },
-);
+// UI playback watch logic removed as it is now in useMediaPlayerPlayback composable
 
 watch(
   () => uiStore.previewZoomTrigger,
@@ -323,7 +165,7 @@ watch(
   (timestamp) => {
     if (!shouldHandlePreviewPlaybackEvent() || !timestamp) return;
 
-    reset();
+    resetZoom();
   },
 );
 
@@ -351,7 +193,6 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  clearReversePlaybackTimer();
   window.removeEventListener('mousemove', onGlobalMouseMove);
   if (idleTimer) window.clearTimeout(idleTimer);
 });
@@ -389,7 +230,7 @@ onUnmounted(() => {
           @pause="onPause"
           @ended="onPause"
           @click="togglePlay"
-          @dblclick.prevent="reset"
+          @dblclick.prevent="resetZoom"
         ></video>
       </div>
     </UContextMenu>
