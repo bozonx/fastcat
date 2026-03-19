@@ -26,15 +26,6 @@ importers:
       '@vueuse/core':
         specifier: ^14.2.1
         version: 14.2.1(vue@3.5.30(typescript@5.9.3))
-      '@webav/av-canvas':
-        specifier: ^1.2.8
-        version: 1.2.8
-      '@webav/av-cliper':
-        specifier: ^1.2.8
-        version: 1.2.8
-      bidc:
-        specifier: ^0.0.4
-        version: 0.0.4
       exifr:
         specifier: ^7.1.3
         version: 7.1.3
@@ -77,9 +68,6 @@ importers:
       wavesurfer.js:
         specifier: ^7.12.1
         version: 7.12.1
-      webm-muxer:
-        specifier: ^5.1.4
-        version: 5.1.4
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -2479,9 +2467,6 @@ packages:
   '@types/dom-webcodecs@0.1.13':
     resolution: {integrity: sha512-O5hkiFIcjjszPIYyUSyvScyvrBoV3NOEEZx/pMlsu44TKzWNkLVBBxnxJz42in5n3QIolYOcBYFCPZZ0h8SkwQ==}
 
-  '@types/dom-webcodecs@0.1.18':
-    resolution: {integrity: sha512-vAvE8C9DGWR+tkb19xyjk1TSUlJ7RUzzp4a9Anu7mwBT+fpyePWK1UxmH14tMO5zHmrnrRIMg5NutnnDztLxgg==}
-
   '@types/earcut@3.0.0':
     resolution: {integrity: sha512-k/9fOUGO39yd2sCjrbAJvGDEQvRwRnQIZlBz43roGwUZo5SHAmyVvSFyaVVZkicRVCaDXPKlbxrUcBuJoSWunQ==}
 
@@ -2529,9 +2514,6 @@ packages:
 
   '@types/whatwg-mimetype@3.0.2':
     resolution: {integrity: sha512-c2AKvDT8ToxLIOUlN51gTiHXflsfIFisS4pO7pDPoKouJCESkhZnEy623gwP9laCy5lnLDAw1vAzu2vM2YLOrA==}
-
-  '@types/wicg-file-system-access@2020.9.8':
-    resolution: {integrity: sha512-ggMz8nOygG7d/stpH40WVaNvBwuyYLnrg5Mbyf6bmsj/8+gb6Ei4ZZ9/4PNpcPNTT8th9Q8sM8wYmWGjMWLX/A==}
 
   '@types/ws@8.18.1':
     resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
@@ -2916,18 +2898,6 @@ packages:
     peerDependencies:
       vue: ^3.5.0
 
-  '@webav/av-canvas@1.2.8':
-    resolution: {integrity: sha512-j7wvlmdQcwSeMDPiOjfnw2LR/+F/yqYScs9dzwh8SHQre6nnnxS/eOPBghhgVx/RlqFk6VR4UYtnXlhfgnhWtA==}
-
-  '@webav/av-cliper@1.2.8':
-    resolution: {integrity: sha512-lxCXgP5AJsl+6xRo1puU5lTv7rAsxX9StQVK8xYdbg02p9FswCt76iTPqNxmlJ0ZfV1g+lmyNufLXu/qBAnJnA==}
-
-  '@webav/internal-utils@1.2.8':
-    resolution: {integrity: sha512-ZiEXl4U6PRqotkux0eTUdVn5zxbzXYm4Xfjt+HvH5bowwGSJVho/mmbPrdPf3ZRtfIu0aWCWa04LUDBQuY5ltA==}
-
-  '@webav/mp4box.js@0.5.7':
-    resolution: {integrity: sha512-KgScEtDpiLnWvj1Rj8Ri9fDWxTjfdNr7cmY/PT88EmttHh6cLxMAeyD/W8Vydes4z7qV/c5VDAaP4cTlaO0E9g==}
-
   '@webgpu/types@0.1.69':
     resolution: {integrity: sha512-RPmm6kgRbI8e98zSD3RVACvnuktIja5+yLgDAkTmxLr90BEwdTXRQWNLF3ETTTyH/8mKhznZuN5AveXYFEsMGQ==}
 
@@ -3103,9 +3073,6 @@ packages:
     resolution: {integrity: sha512-lIyg0szRfYbiy67j9KN8IyeD7q7hcmqnJ1ddWmNt19ItGpNN64mnllmxUNFIOdOm6by97jlL6wfpTTJrmnjWAA==}
     engines: {node: '>=6.0.0'}
     hasBin: true
-
-  bidc@0.0.4:
-    resolution: {integrity: sha512-WgHZ4TFk9/Lb6QhW/ntEquB6RSieCcMToRSG2xIOHeALDeiUTOXdMx9ixBHUe3wuXphtjqGEOXBvkmkGEZznSw==}
 
   bindings@1.5.0:
     resolution: {integrity: sha512-p2q/t/mhvuOj/UeLlV6566GD/guowlr0hHxClI0W9m7MWYkL1F0hLo+0Aexs9HSPCtR1SXQ0TD3MMKrXZajbiQ==}
@@ -4768,9 +4735,6 @@ packages:
     resolution: {integrity: sha512-7x81NCL719oNbsq/3mh+hVrAWmFuEYUqrq/Iw3kUzH8ReypT9QQ0BLoJS7/G9k6N81XjW4qHWtjWwe/9eLy1EQ==}
     engines: {node: '>=12'}
 
-  opfs-tools@0.7.4:
-    resolution: {integrity: sha512-DJgQnXyPcCj3q8pKa8SjP4HfNBPffj8kO6W1nc2zQydTqu5G/AxOuIjmWnRxZ84nE1EOpzZzhj8MYCZP1jRR9A==}
-
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
     engines: {node: '>= 0.8.0'}
@@ -6084,19 +6048,11 @@ packages:
   w3c-keyname@2.2.8:
     resolution: {integrity: sha512-dpojBhNsCNN7T82Tm7k26A6G9ML3NkhDsnw9n/eoxSRlVBB4CEtIQ/KTCLI2Fwf3ataSXRhYFkQi3SlnFwPvPQ==}
 
-  wave-resampler@1.0.0:
-    resolution: {integrity: sha512-bE3rbpZXuKAV52Cd8/BeJvy82ZqEHK8pPWHrZ9JioaVVTBlmWbDC+u4p9blhFcf0Skepb4hlOAHc25XfqLC48g==}
-    engines: {node: '>=8'}
-
   wavesurfer.js@7.12.1:
     resolution: {integrity: sha512-NswPjVHxk0Q1F/VMRemCPUzSojjuHHisQrBqQiRXg7MVbe3f5vQ6r0rTTXA/a/neC/4hnOEC4YpXca4LpH0SUg==}
 
   webidl-conversions@3.0.1:
     resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
-
-  webm-muxer@5.1.4:
-    resolution: {integrity: sha512-ditzgFVFbfqPaugkIr4mGhAdob5K9HY6Rzlh7TRsA368yA1sp/m5O7nQCcMLdgFDeNGtFPg8B+MeXLtpzKWX6Q==}
-    deprecated: This library is superseded by Mediabunny. Please migrate to it.
 
   webpack-virtual-modules@0.6.2:
     resolution: {integrity: sha512-66/V2i5hQanC51vBQKPH4aI8NMAcBW59FVBs+rC7eGHupMyfn34q7rZIE+ETlJ+XTevqfUhVVBgSUNSW2flEUQ==}
@@ -8522,8 +8478,6 @@ snapshots:
 
   '@types/dom-webcodecs@0.1.13': {}
 
-  '@types/dom-webcodecs@0.1.18': {}
-
   '@types/earcut@3.0.0': {}
 
   '@types/esrecurse@4.3.1': {}
@@ -8562,8 +8516,6 @@ snapshots:
   '@types/web-bluetooth@0.0.21': {}
 
   '@types/whatwg-mimetype@3.0.2': {}
-
-  '@types/wicg-file-system-access@2020.9.8': {}
 
   '@types/ws@8.18.1':
     dependencies:
@@ -9014,24 +8966,6 @@ snapshots:
     dependencies:
       vue: 3.5.30(typescript@5.9.3)
 
-  '@webav/av-canvas@1.2.8':
-    dependencies:
-      '@webav/av-cliper': 1.2.8
-      '@webav/internal-utils': 1.2.8
-
-  '@webav/av-cliper@1.2.8':
-    dependencies:
-      '@webav/internal-utils': 1.2.8
-      '@webav/mp4box.js': 0.5.7
-      opfs-tools: 0.7.4
-      wave-resampler: 1.0.0
-
-  '@webav/internal-utils@1.2.8':
-    dependencies:
-      '@webav/mp4box.js': 0.5.7
-
-  '@webav/mp4box.js@0.5.7': {}
-
   '@webgpu/types@0.1.69': {}
 
   '@xmldom/xmldom@0.8.11': {}
@@ -9187,8 +9121,6 @@ snapshots:
   base64-js@1.5.1: {}
 
   baseline-browser-mapping@2.10.0: {}
-
-  bidc@0.0.4: {}
 
   bindings@1.5.0:
     dependencies:
@@ -11020,8 +10952,6 @@ snapshots:
       is-docker: 2.2.1
       is-wsl: 2.2.0
 
-  opfs-tools@0.7.4: {}
-
   optionator@0.9.4:
     dependencies:
       deep-is: 0.1.4
@@ -12487,16 +12417,9 @@ snapshots:
 
   w3c-keyname@2.2.8: {}
 
-  wave-resampler@1.0.0: {}
-
   wavesurfer.js@7.12.1: {}
 
   webidl-conversions@3.0.1: {}
-
-  webm-muxer@5.1.4:
-    dependencies:
-      '@types/dom-webcodecs': 0.1.18
-      '@types/wicg-file-system-access': 2020.9.8
 
   webpack-virtual-modules@0.6.2: {}
 
