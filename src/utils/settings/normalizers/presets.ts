@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { DEFAULT_USER_SETTINGS } from '../defaults';
 import { getResolutionPreset } from '../helpers';
 import {
@@ -8,106 +9,78 @@ import {
   type ExportSettingsPreset,
   type ProjectSettingsPreset,
 } from '../presets';
-import { asRecord } from './shared';
 
 export function getProjectInput(raw: Record<string, unknown>): Record<string, unknown> {
   const legacyExportInput = raw.exportDefaults ?? raw.export ?? null;
-  return asRecord(raw.projectDefaults ?? legacyExportInput ?? {});
+  const projectDefaults = raw.projectDefaults ?? legacyExportInput ?? {};
+  return typeof projectDefaults === 'object' && projectDefaults !== null ? (projectDefaults as Record<string, unknown>) : {};
 }
 
 export function getExportEncodingInput(raw: Record<string, unknown>): Record<string, unknown> {
-  const exportDefaults = asRecord(raw.exportDefaults);
-  const legacyExport = asRecord(raw.export);
-  return asRecord(exportDefaults.encoding ?? legacyExport.encoding ?? {});
+  const exportDefaults = raw.exportDefaults && typeof raw.exportDefaults === 'object' ? raw.exportDefaults : {};
+  const legacyExport = raw.export && typeof raw.export === 'object' ? raw.export : {};
+  const enc = (exportDefaults as any).encoding ?? (legacyExport as any).encoding ?? {};
+  return typeof enc === 'object' && enc !== null ? (enc as Record<string, unknown>) : {};
 }
 
 export function normalizeProjectPresetItem(
   raw: unknown,
   fallback: ProjectSettingsPreset,
 ): ProjectSettingsPreset {
-  const input = asRecord(raw);
-  const width = Number(input.width);
-  const height = Number(input.height);
-  const fps = Number(input.fps);
-  const sampleRateRaw = Number(input.sampleRate);
-  const normalizedWidth = Number.isFinite(width) && width > 0 ? Math.round(width) : fallback.width;
-  const normalizedHeight =
-    Number.isFinite(height) && height > 0 ? Math.round(height) : fallback.height;
-  const preset = getResolutionPreset(normalizedWidth, normalizedHeight);
-  const isWidthHeightCustom =
-    normalizedWidth !== fallback.width || normalizedHeight !== fallback.height;
+  const schema = z.object({
+    id: z.string().trim().min(1).catch(fallback.id),
+    name: z.string().trim().min(1).catch(fallback.name),
+    width: z.coerce.number().int().min(1).catch(fallback.width),
+    height: z.coerce.number().int().min(1).catch(fallback.height),
+    fps: z.coerce.number().min(1).max(240).catch(fallback.fps),
+    resolutionFormat: z.string().catch(''),
+    orientation: z.enum(['landscape', 'portrait']).catch('landscape' as any),
+    aspectRatio: z.string().catch(''),
+    isCustomResolution: z.coerce.boolean().catch(false),
+    sampleRate: z.coerce.number().min(8000).max(192000).catch(fallback.sampleRate),
+  }).transform((val) => {
+    const isWidthHeightCustom = val.width !== fallback.width || val.height !== fallback.height;
+    if (!isWidthHeightCustom) {
+      return {
+        ...val,
+        resolutionFormat: val.resolutionFormat || fallback.resolutionFormat,
+        orientation: (val.orientation || fallback.orientation) as 'landscape' | 'portrait',
+        aspectRatio: val.aspectRatio || fallback.aspectRatio,
+        isCustomResolution: val.isCustomResolution ?? fallback.isCustomResolution,
+      };
+    }
+    const preset = getResolutionPreset(val.width, val.height);
+    return {
+      ...val,
+      resolutionFormat: preset.resolutionFormat,
+      orientation: preset.orientation as 'landscape' | 'portrait',
+      aspectRatio: preset.aspectRatio,
+      isCustomResolution: preset.isCustomResolution,
+    };
+  }).catch(fallback);
 
-  return {
-    id: typeof input.id === 'string' && input.id.trim().length > 0 ? input.id.trim() : fallback.id,
-    name:
-      typeof input.name === 'string' && input.name.trim().length > 0
-        ? input.name.trim()
-        : fallback.name,
-    width: normalizedWidth,
-    height: normalizedHeight,
-    fps:
-      Number.isFinite(fps) && fps > 0 ? Math.round(Math.min(240, Math.max(1, fps))) : fallback.fps,
-    resolutionFormat:
-      typeof input.resolutionFormat === 'string' && input.resolutionFormat && !isWidthHeightCustom
-        ? input.resolutionFormat
-        : preset.resolutionFormat,
-    orientation:
-      (input.orientation === 'portrait' || input.orientation === 'landscape') &&
-      !isWidthHeightCustom
-        ? input.orientation
-        : (preset.orientation as 'landscape' | 'portrait'),
-    aspectRatio:
-      typeof input.aspectRatio === 'string' && input.aspectRatio && !isWidthHeightCustom
-        ? input.aspectRatio
-        : preset.aspectRatio,
-    isCustomResolution:
-      input.isCustomResolution !== undefined && !isWidthHeightCustom
-        ? Boolean(input.isCustomResolution)
-        : preset.isCustomResolution,
-    sampleRate:
-      Number.isFinite(sampleRateRaw) && sampleRateRaw > 0
-        ? Math.round(Math.min(192000, Math.max(8000, sampleRateRaw)))
-        : fallback.sampleRate,
-  };
+  return schema.parse(raw ?? {});
 }
 
 export function normalizeExportPresetItem(
   raw: unknown,
   fallback: ExportSettingsPreset,
 ): ExportSettingsPreset {
-  const input = asRecord(raw);
-  const bitrateMbps = Number(input.bitrateMbps);
-  const audioBitrateKbps = Number(input.audioBitrateKbps);
-  const keyframeIntervalSec = Number(input.keyframeIntervalSec);
+  const schema = z.object({
+    id: z.string().trim().min(1).catch(fallback.id),
+    name: z.string().trim().min(1).catch(fallback.name),
+    format: z.enum(['mp4', 'webm', 'mkv']).catch(fallback.format as any),
+    videoCodec: z.string().trim().min(1).catch(fallback.videoCodec),
+    bitrateMbps: z.coerce.number().min(0.2).max(200).catch(fallback.bitrateMbps),
+    excludeAudio: z.boolean().catch(fallback.excludeAudio),
+    audioCodec: z.enum(['aac', 'opus']).catch(fallback.audioCodec as any),
+    audioBitrateKbps: z.coerce.number().min(32).max(1024).catch(fallback.audioBitrateKbps),
+    bitrateMode: z.enum(['constant', 'variable']).catch(fallback.bitrateMode as any),
+    keyframeIntervalSec: z.coerce.number().min(1).max(60).catch(fallback.keyframeIntervalSec),
+    exportAlpha: z.boolean().catch(fallback.exportAlpha),
+  }).catch(fallback);
 
-  return {
-    id: typeof input.id === 'string' && input.id.trim().length > 0 ? input.id.trim() : fallback.id,
-    name:
-      typeof input.name === 'string' && input.name.trim().length > 0
-        ? input.name.trim()
-        : fallback.name,
-    format: input.format === 'webm' || input.format === 'mkv' ? input.format : 'mp4',
-    videoCodec:
-      typeof input.videoCodec === 'string' && input.videoCodec.trim().length > 0
-        ? input.videoCodec
-        : fallback.videoCodec,
-    bitrateMbps:
-      Number.isFinite(bitrateMbps) && bitrateMbps > 0
-        ? Math.min(200, Math.max(0.2, bitrateMbps))
-        : fallback.bitrateMbps,
-    excludeAudio: Boolean(input.excludeAudio),
-    audioCodec: input.audioCodec === 'opus' ? 'opus' : 'aac',
-    audioBitrateKbps:
-      Number.isFinite(audioBitrateKbps) && audioBitrateKbps > 0
-        ? Math.round(Math.min(1024, Math.max(32, audioBitrateKbps)))
-        : fallback.audioBitrateKbps,
-    bitrateMode: input.bitrateMode === 'constant' ? 'constant' : 'variable',
-    keyframeIntervalSec:
-      Number.isFinite(keyframeIntervalSec) && keyframeIntervalSec > 0
-        ? Math.round(Math.min(60, Math.max(1, keyframeIntervalSec)))
-        : fallback.keyframeIntervalSec,
-    exportAlpha: Boolean(input.exportAlpha),
-  };
+  return schema.parse(raw ?? {});
 }
 
 export function normalizeUserPresets(input: Record<string, unknown>) {
@@ -137,29 +110,29 @@ export function normalizeUserPresets(input: Record<string, unknown>) {
     defaultExportPresets.items[0]!,
   );
 
-  const rawProjectPresets = asRecord(input.projectPresets);
+  const rawProjectPresets = (input.projectPresets && typeof input.projectPresets === 'object') ? (input.projectPresets as any) : {};
   const rawProjectPresetItems = Array.isArray(rawProjectPresets.items) ? rawProjectPresets.items : null;
   const projectPresetFallbacks = defaultProjectPresets.items;
-  const normalizedProjectPresetItems = rawProjectPresetItems?.map((item, index) =>
+  const normalizedProjectPresetItems = rawProjectPresetItems?.map((item: any, index: number) =>
     normalizeProjectPresetItem(item, projectPresetFallbacks[index] ?? projectPresetFallbacks[0]!),
   ) ?? [legacyProjectPreset, ...projectPresetFallbacks.slice(1).map((preset) => ({ ...preset }))];
 
-  const rawExportPresets = asRecord(input.exportPresets);
+  const rawExportPresets = (input.exportPresets && typeof input.exportPresets === 'object') ? (input.exportPresets as any) : {};
   const rawExportPresetItems = Array.isArray(rawExportPresets.items) ? rawExportPresets.items : null;
   const exportPresetFallbacks = defaultExportPresets.items;
-  const normalizedExportPresetItems = rawExportPresetItems?.map((item, index) =>
+  const normalizedExportPresetItems = rawExportPresetItems?.map((item: any, index: number) =>
     normalizeExportPresetItem(item, exportPresetFallbacks[index] ?? exportPresetFallbacks[0]!),
   ) ?? [legacyExportPreset, ...exportPresetFallbacks.slice(1).map((preset) => ({ ...preset }))];
 
   const projectPresets = {
     selectedPresetId:
       typeof rawProjectPresets.selectedPresetId === 'string' &&
-      normalizedProjectPresetItems.some((preset) => preset.id === rawProjectPresets.selectedPresetId)
+      normalizedProjectPresetItems.some((preset: any) => preset.id === rawProjectPresets.selectedPresetId)
         ? rawProjectPresets.selectedPresetId
         : normalizedProjectPresetItems[0]!.id,
     lastUsedPresetId:
       typeof rawProjectPresets.lastUsedPresetId === 'string' &&
-      normalizedProjectPresetItems.some((preset) => preset.id === rawProjectPresets.lastUsedPresetId)
+      normalizedProjectPresetItems.some((preset: any) => preset.id === rawProjectPresets.lastUsedPresetId)
         ? rawProjectPresets.lastUsedPresetId
         : normalizedProjectPresetItems[0]!.id,
     items: normalizedProjectPresetItems,
@@ -168,7 +141,7 @@ export function normalizeUserPresets(input: Record<string, unknown>) {
   const exportPresets = {
     selectedPresetId:
       typeof rawExportPresets.selectedPresetId === 'string' &&
-      normalizedExportPresetItems.some((preset) => preset.id === rawExportPresets.selectedPresetId)
+      normalizedExportPresetItems.some((preset: any) => preset.id === rawExportPresets.selectedPresetId)
         ? rawExportPresets.selectedPresetId
         : normalizedExportPresetItems[0]!.id,
     items: normalizedExportPresetItems,
