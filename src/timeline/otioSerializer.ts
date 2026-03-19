@@ -32,6 +32,7 @@ import {
   parseOtioTransition,
 } from './otio/components';
 import { parseGapItem, parseClipItem, parseItemSequenceDurationUs } from './otio/items';
+import { TimelineDocFastCatMetaSchema, TimelineTrackFastCatMetaSchema } from './otio/schemas';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -283,22 +284,22 @@ export function parseTimelineFromOtio(
     });
   }
 
-  const fastcatMeta = (parsed.metadata as any)?.fastcat;
-  const timebase = assertTimelineTimebase(fastcatMeta?.timebase ?? { fps: fallback.fps });
+  const fastcatMeta = TimelineDocFastCatMetaSchema.parse((parsed.metadata as any)?.fastcat ?? {});
+  const timebase = assertTimelineTimebase(fastcatMeta.timebase ?? { fps: fallback.fps });
 
   const stackChildren = Array.isArray((parsed.tracks as any)?.children)
     ? (parsed.tracks as any).children
     : [];
 
   const tracks: TimelineTrack[] = stackChildren.map((otioTrack: OtioTrack, trackIndex: number) => {
-    const trackFastCatMeta = safeFastCatMetadata(otioTrack.metadata);
+    const trackFastCatMeta = TimelineTrackFastCatMetaSchema.parse(safeFastCatMetadata(otioTrack.metadata));
 
     const id = coerceId(
-      trackFastCatMeta?.id,
+      trackFastCatMeta.id,
       `${otioTrack.kind === 'Audio' ? 'a' : 'v'}${trackIndex + 1}`,
     );
     const kind =
-      trackFastCatMeta?.kind === 'audio' || trackFastCatMeta?.kind === 'video'
+      trackFastCatMeta.kind === 'audio' || trackFastCatMeta.kind === 'video'
         ? trackFastCatMeta.kind
         : trackKindFromOtioKind(otioTrack.kind);
     const name = coerceName(
@@ -379,29 +380,19 @@ export function parseTimelineFromOtio(
 
     const items = [...rawItems].sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
 
-    const videoHidden = kind === 'video' ? Boolean(trackFastCatMeta?.videoHidden) : undefined;
-    const opacity =
-      typeof trackFastCatMeta?.opacity === 'number' && Number.isFinite(trackFastCatMeta.opacity)
-        ? Math.max(0, Math.min(1, Number(trackFastCatMeta.opacity)))
-        : undefined;
-    const blendMode = coerceBlendMode(trackFastCatMeta?.blendMode);
-    const audioMuted = Boolean(trackFastCatMeta?.audioMuted);
-    const audioSolo = Boolean(trackFastCatMeta?.audioSolo);
-    const audioGain =
-      typeof trackFastCatMeta?.audioGain === 'number' && Number.isFinite(trackFastCatMeta.audioGain)
-        ? Math.max(0, Math.min(10, Number(trackFastCatMeta.audioGain)))
-        : undefined;
-    const audioBalance =
-      typeof trackFastCatMeta?.audioBalance === 'number' &&
-      Number.isFinite(trackFastCatMeta.audioBalance)
-        ? Math.max(-1, Math.min(1, Number(trackFastCatMeta.audioBalance)))
-        : undefined;
+    const videoHidden = kind === 'video' ? Boolean(trackFastCatMeta.videoHidden) : undefined;
+    const opacity = trackFastCatMeta.opacity;
+    const blendMode = coerceBlendMode(trackFastCatMeta.blendMode);
+    const audioMuted = Boolean(trackFastCatMeta.audioMuted);
+    const audioSolo = Boolean(trackFastCatMeta.audioSolo);
+    const audioGain = trackFastCatMeta.audioGain;
+    const audioBalance = trackFastCatMeta.audioBalance;
 
     // Track effects: prefer OTIO standard, fallback to fastcat metadata.
     const effects =
       Array.isArray(otioTrack.effects) && otioTrack.effects.length > 0
         ? parseEffects(otioTrack.effects)
-        : Array.isArray(trackFastCatMeta?.effects)
+        : Array.isArray(trackFastCatMeta.effects)
           ? (trackFastCatMeta.effects as import('./types').ClipEffect[])
           : undefined;
 
@@ -428,53 +419,31 @@ export function parseTimelineFromOtio(
     };
   });
 
-  const docId = coerceId(fastcatMeta?.docId, fallback.id);
-  const version = typeof fastcatMeta?.version === 'number' ? fastcatMeta.version : 0;
+  const docId = coerceId(fastcatMeta.docId, fallback.id);
+  const version = typeof fastcatMeta.version === 'number' ? fastcatMeta.version : 0;
   const name = coerceName(parsed.name, fallback.name);
 
   // Markers: prefer standard OTIO markers on Timeline, fallback to fastcat metadata for old files.
   const markers =
     Array.isArray(parsed.markers) && (parsed.markers as any[]).length > 0
       ? parseOtioMarkers(parsed.markers as any[])
-      : Array.isArray(fastcatMeta?.markers)
+      : Array.isArray(fastcatMeta.markers)
         ? parseOtioMarkers(fastcatMeta.markers)
         : [];
 
-  const playheadUs =
-    typeof fastcatMeta?.playheadUs === 'number' && Number.isFinite(fastcatMeta.playheadUs)
-      ? Math.max(0, Math.round(fastcatMeta.playheadUs))
-      : 0;
+  const playheadUs = fastcatMeta.playheadUs ? Math.round(fastcatMeta.playheadUs) : 0;
+  const snapThresholdPx = fastcatMeta.snapThresholdPx ? Math.round(fastcatMeta.snapThresholdPx) : undefined;
+  const zoom = fastcatMeta.zoom;
+  const masterGain = fastcatMeta.masterGain;
+  const masterMuted = fastcatMeta.masterMuted;
+  const masterEffects = fastcatMeta.masterEffects;
+  const trackHeights: Record<string, number> = fastcatMeta.trackHeights ?? {};
 
-  const snapThresholdPx =
-    typeof fastcatMeta?.snapThresholdPx === 'number' && Number.isFinite(fastcatMeta.snapThresholdPx)
-      ? Math.max(1, Math.round(fastcatMeta.snapThresholdPx))
+  const selectionRange =
+    fastcatMeta.selectionRange?.startUs !== undefined &&
+    fastcatMeta.selectionRange?.endUs !== undefined
+      ? coerceSelectionRange({ startUs: fastcatMeta.selectionRange.startUs, endUs: fastcatMeta.selectionRange.endUs })
       : undefined;
-
-  const zoom =
-    typeof fastcatMeta?.zoom === 'number' && Number.isFinite(fastcatMeta.zoom)
-      ? fastcatMeta.zoom
-      : undefined;
-
-  const masterGain =
-    typeof fastcatMeta?.masterGain === 'number' && Number.isFinite(fastcatMeta.masterGain)
-      ? fastcatMeta.masterGain
-      : undefined;
-
-  const masterMuted =
-    typeof fastcatMeta?.masterMuted === 'boolean' ? fastcatMeta.masterMuted : undefined;
-
-  const masterEffects = Array.isArray(fastcatMeta?.masterEffects)
-    ? (fastcatMeta!.masterEffects as any[])
-    : undefined;
-
-  const trackHeights: Record<string, number> = {};
-  if (fastcatMeta?.trackHeights && typeof fastcatMeta.trackHeights === 'object') {
-    for (const [k, v] of Object.entries(fastcatMeta.trackHeights)) {
-      if (typeof v === 'number' && Number.isFinite(v)) {
-        trackHeights[k] = v;
-      }
-    }
-  }
 
   if (tracks.length === 0) {
     const base = createDefaultTimelineDocument({ id: docId, name, fps: timebase.fps });
@@ -493,6 +462,7 @@ export function parseTimelineFromOtio(
         masterMuted,
         masterEffects,
         trackHeights,
+        selectionRange,
       },
     };
     return base;
@@ -517,6 +487,7 @@ export function parseTimelineFromOtio(
         masterMuted,
         masterEffects,
         trackHeights,
+        selectionRange,
       },
     },
   };

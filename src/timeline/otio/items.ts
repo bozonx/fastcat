@@ -12,6 +12,7 @@ import {
 } from './utils';
 import { parseEffects, parseFastCatTransition } from './components';
 import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
+import { TimelineClipFastCatMetaSchema } from './schemas';
 
 // ---------------------------------------------------------------------------
 // Sequence duration helper
@@ -55,28 +56,13 @@ export function parseClipItem(input: {
       ? fromTimeRange(ref.available_range)
       : null;
 
-  const fastcatMeta = safeFastCatMetadata(otio.metadata);
+  const fastcatMeta = TimelineClipFastCatMetaSchema.parse(safeFastCatMetadata(otio.metadata));
 
-  const clipTypeRaw = fastcatMeta?.clipType;
-  const clipType =
-    clipTypeRaw === 'background' ||
-    clipTypeRaw === 'adjustment' ||
-    clipTypeRaw === 'media' ||
-    clipTypeRaw === 'timeline' ||
-    clipTypeRaw === 'text' ||
-    clipTypeRaw === 'shape' ||
-    clipTypeRaw === 'hud'
-      ? clipTypeRaw
-      : isOtioPath(path)
-        ? 'timeline'
-        : 'media';
+  const clipType = fastcatMeta.clipType ?? (isOtioPath(path) ? 'timeline' : 'media');
 
   const timelineStartUs = fallbackStartUs;
 
-  const sourceDurationUsFromMeta = Math.max(
-    0,
-    Math.round(Number(fastcatMeta?.sourceDurationUs ?? 0)),
-  );
+  const sourceDurationUsFromMeta = Math.max(0, Math.round(fastcatMeta.sourceDurationUs ?? 0));
   const sourceDurationUs =
     sourceDurationUsFromMeta > 0
       ? sourceDurationUsFromMeta
@@ -100,7 +86,7 @@ export function parseClipItem(input: {
   const otioEffects =
     Array.isArray(otio.effects) && otio.effects.length > 0
       ? parseEffects(otio.effects)
-      : Array.isArray(fastcatMeta?.effects)
+      : Array.isArray(fastcatMeta.effects)
         ? (fastcatMeta.effects as ClipEffect[])
         : undefined;
 
@@ -111,85 +97,42 @@ export function parseClipItem(input: {
     trackId,
     name,
     disabled: otio.enabled === false ? true : undefined,
-    locked: fastcatMeta?.locked !== undefined ? Boolean(fastcatMeta.locked) : undefined,
+    locked: fastcatMeta.locked,
     sourceDurationUs,
     timelineRange: { startUs: timelineStartUs, durationUs: sourceRange.durationUs },
     sourceRange,
-    speed:
-      typeof fastcatMeta?.speed === 'number' && Number.isFinite(fastcatMeta.speed)
-        ? Math.max(-10, Math.min(10, Number(fastcatMeta.speed)))
-        : undefined,
-    audioGain:
-      typeof fastcatMeta?.audioGain === 'number' && Number.isFinite(fastcatMeta.audioGain)
-        ? Math.max(0, Math.min(10, Number(fastcatMeta.audioGain)))
-        : undefined,
-    audioBalance:
-      typeof fastcatMeta?.audioBalance === 'number' && Number.isFinite(fastcatMeta.audioBalance)
-        ? Math.max(-1, Math.min(1, Number(fastcatMeta.audioBalance)))
-        : undefined,
-    audioFadeInUs:
-      typeof fastcatMeta?.audioFadeInUs === 'number' && Number.isFinite(fastcatMeta.audioFadeInUs)
-        ? Math.max(0, Math.round(fastcatMeta.audioFadeInUs))
-        : undefined,
-    audioFadeOutUs:
-      typeof fastcatMeta?.audioFadeOutUs === 'number' && Number.isFinite(fastcatMeta.audioFadeOutUs)
-        ? Math.max(0, Math.round(fastcatMeta.audioFadeOutUs))
-        : undefined,
-    audioFadeInCurve:
-      fastcatMeta?.audioFadeInCurve === 'linear' || fastcatMeta?.audioFadeInCurve === 'logarithmic'
-        ? fastcatMeta.audioFadeInCurve
-        : undefined,
-    audioFadeOutCurve:
-      fastcatMeta?.audioFadeOutCurve === 'linear' ||
-      fastcatMeta?.audioFadeOutCurve === 'logarithmic'
-        ? fastcatMeta.audioFadeOutCurve
-        : undefined,
-    audioMuted: fastcatMeta?.audioMuted !== undefined ? Boolean(fastcatMeta.audioMuted) : undefined,
-    audioWaveformMode:
-      fastcatMeta?.audioWaveformMode === 'half' || fastcatMeta?.audioWaveformMode === 'full'
-        ? fastcatMeta.audioWaveformMode
-        : undefined,
-    showWaveform:
-      fastcatMeta?.showWaveform !== undefined ? Boolean(fastcatMeta.showWaveform) : undefined,
-    audioFromVideoDisabled: Boolean(fastcatMeta?.audioFromVideoDisabled),
+    speed: fastcatMeta.speed,
+    audioGain: fastcatMeta.audioGain,
+    audioBalance: fastcatMeta.audioBalance,
+    audioFadeInUs: fastcatMeta.audioFadeInUs !== undefined ? Math.round(fastcatMeta.audioFadeInUs) : undefined,
+    audioFadeOutUs: fastcatMeta.audioFadeOutUs !== undefined ? Math.round(fastcatMeta.audioFadeOutUs) : undefined,
+    audioFadeInCurve: fastcatMeta.audioFadeInCurve,
+    audioFadeOutCurve: fastcatMeta.audioFadeOutCurve,
+    audioMuted: fastcatMeta.audioMuted,
+    audioWaveformMode: fastcatMeta.audioWaveformMode,
+    showWaveform: fastcatMeta.showWaveform,
+    audioFromVideoDisabled: Boolean(fastcatMeta.audioFromVideoDisabled),
     freezeFrameSourceUs:
-      clipType === 'media' &&
-      typeof fastcatMeta?.freezeFrameSourceUs === 'number' &&
-      Number.isFinite(fastcatMeta.freezeFrameSourceUs)
-        ? Math.max(0, Math.round(fastcatMeta.freezeFrameSourceUs))
+      clipType === 'media' && fastcatMeta.freezeFrameSourceUs !== undefined
+        ? Math.round(fastcatMeta.freezeFrameSourceUs)
         : undefined,
-    opacity:
-      typeof fastcatMeta?.opacity === 'number' && Number.isFinite(fastcatMeta.opacity)
-        ? Math.max(0, Math.min(1, fastcatMeta.opacity))
-        : undefined,
-    blendMode: coerceBlendMode(fastcatMeta?.blendMode),
+    opacity: fastcatMeta.opacity,
+    blendMode: coerceBlendMode(fastcatMeta.blendMode),
     effects: otioEffects,
-    // Transitions come from adjacent Transition.1 nodes (passed in from track parser),
-    // falling back to metadata.fastcat for backward compat with external OTIO that has no fastcat transitions.
-    transitionIn: transitionIn ?? parseFastCatTransition(fastcatMeta?.transitionIn),
-    transitionOut: transitionOut ?? parseFastCatTransition(fastcatMeta?.transitionOut),
-    linkedGroupId:
-      typeof fastcatMeta?.linkedGroupId === 'string' && fastcatMeta.linkedGroupId.trim().length > 0
-        ? fastcatMeta.linkedGroupId
-        : undefined,
-    linkedVideoClipId:
-      typeof fastcatMeta?.linkedVideoClipId === 'string' &&
-      fastcatMeta.linkedVideoClipId.trim().length > 0
-        ? fastcatMeta.linkedVideoClipId
-        : undefined,
-    lockToLinkedVideo:
-      fastcatMeta?.lockToLinkedVideo !== undefined
-        ? Boolean(fastcatMeta.lockToLinkedVideo)
-        : undefined,
-    isImage: fastcatMeta?.isImage !== undefined ? Boolean(fastcatMeta.isImage) : undefined,
-    transform: coerceTransform(fastcatMeta?.transform),
+    transitionIn: transitionIn ?? parseFastCatTransition(fastcatMeta.transitionIn),
+    transitionOut: transitionOut ?? parseFastCatTransition(fastcatMeta.transitionOut),
+    linkedGroupId: fastcatMeta.linkedGroupId,
+    linkedVideoClipId: fastcatMeta.linkedVideoClipId,
+    lockToLinkedVideo: fastcatMeta.lockToLinkedVideo,
+    isImage: fastcatMeta.isImage,
+    transform: coerceTransform(fastcatMeta.transform),
   };
 
   if (clipType === 'background') {
     return {
       ...base,
       clipType: 'background',
-      backgroundColor: sanitizeTimelineColor(fastcatMeta?.backgroundColor, '#000000'),
+      backgroundColor: sanitizeTimelineColor(fastcatMeta.backgroundColor, '#000000'),
     };
   }
 
@@ -198,55 +141,29 @@ export function parseClipItem(input: {
   }
 
   if (clipType === 'text') {
-    const text = typeof fastcatMeta?.text === 'string' ? fastcatMeta.text : 'Text';
-    const style =
-      fastcatMeta?.style && typeof fastcatMeta.style === 'object' ? fastcatMeta.style : undefined;
     return {
       ...base,
       clipType: 'text',
       sourceDurationUs,
       timelineRange: { startUs: timelineStartUs, durationUs: sourceRange.durationUs },
       sourceRange,
-      text,
-      style,
+      text: fastcatMeta.text ?? 'Text',
+      style: fastcatMeta.style,
     };
   }
 
   if (clipType === 'shape') {
-    const shapeType =
-      fastcatMeta?.shapeType === 'square' ||
-      fastcatMeta?.shapeType === 'circle' ||
-      fastcatMeta?.shapeType === 'triangle' ||
-      fastcatMeta?.shapeType === 'star' ||
-      fastcatMeta?.shapeType === 'cloud' ||
-      fastcatMeta?.shapeType === 'speech_bubble' ||
-      fastcatMeta?.shapeType === 'bang'
-        ? fastcatMeta.shapeType
-        : 'square';
-
     return {
       ...base,
       clipType: 'shape',
       sourceDurationUs,
       timelineRange: { startUs: timelineStartUs, durationUs: sourceRange.durationUs },
       sourceRange,
-      shapeType,
-      fillColor:
-        typeof fastcatMeta?.fillColor === 'string' && fastcatMeta.fillColor.trim().length > 0
-          ? fastcatMeta.fillColor
-          : '#ffffff',
-      strokeColor:
-        typeof fastcatMeta?.strokeColor === 'string' && fastcatMeta.strokeColor.trim().length > 0
-          ? fastcatMeta.strokeColor
-          : '#000000',
-      strokeWidth:
-        typeof fastcatMeta?.strokeWidth === 'number' && Number.isFinite(fastcatMeta.strokeWidth)
-          ? Math.max(0, Number(fastcatMeta.strokeWidth))
-          : 0,
-      shapeConfig:
-        fastcatMeta?.shapeConfig && typeof fastcatMeta.shapeConfig === 'object'
-          ? fastcatMeta.shapeConfig
-          : undefined,
+      shapeType: fastcatMeta.shapeType ?? 'square',
+      fillColor: fastcatMeta.fillColor && fastcatMeta.fillColor.trim().length > 0 ? fastcatMeta.fillColor : '#ffffff',
+      strokeColor: fastcatMeta.strokeColor && fastcatMeta.strokeColor.trim().length > 0 ? fastcatMeta.strokeColor : '#000000',
+      strokeWidth: fastcatMeta.strokeWidth ?? 0,
+      shapeConfig: fastcatMeta.shapeConfig,
     };
   }
 
@@ -254,15 +171,9 @@ export function parseClipItem(input: {
     return {
       ...base,
       clipType: 'hud',
-      hudType: fastcatMeta?.hudType === 'media_frame' ? fastcatMeta.hudType : 'media_frame',
-      background:
-        fastcatMeta?.background && typeof fastcatMeta.background === 'object'
-          ? fastcatMeta.background
-          : undefined,
-      content:
-        fastcatMeta?.content && typeof fastcatMeta.content === 'object'
-          ? fastcatMeta.content
-          : undefined,
+      hudType: fastcatMeta.hudType ?? 'media_frame',
+      background: fastcatMeta.background,
+      content: fastcatMeta.content,
     };
   }
 

@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { DEFAULT_USER_SETTINGS, type FastCatUserSettings } from '../defaults';
 import {
   CLICK_ACTIONS,
@@ -10,369 +11,189 @@ import {
   TIMELINE_WHEEL_ACTIONS,
   TRACK_HEADERS_WHEEL_ACTIONS,
 } from '~/utils/mouse';
-import { asRecord, normalizeTokenValue, normalizeUrlValue } from './shared';
+import { normalizeTokenValue, normalizeUrlValue } from './shared';
 
-export function normalizeOpenLastProjectOnStart(input: Record<string, unknown>): boolean {
-  const openLastProjectOnStartRaw = input.openLastProjectOnStart;
-  const openBehavior = input.openBehavior;
-
-  if (typeof openLastProjectOnStartRaw === 'boolean') {
-    return openLastProjectOnStartRaw;
-  }
-
-  if (openBehavior === 'show_project_picker') {
-    return false;
-  }
-
-  return DEFAULT_USER_SETTINGS.openLastProjectOnStart;
+export function normalizeOpenLastProjectOnStart(raw: unknown): boolean {
+  return z.boolean().catch(DEFAULT_USER_SETTINGS.openLastProjectOnStart).parse(
+    (raw as any)?.openBehavior === 'show_project_picker' ? false : (raw as any)?.openLastProjectOnStart
+  );
 }
 
-export function normalizeDeleteWithoutConfirmation(input: Record<string, unknown>): boolean {
-  if (typeof input.deleteWithoutConfirmation === 'boolean') {
-    return input.deleteWithoutConfirmation;
-  }
-
-  return DEFAULT_USER_SETTINGS.deleteWithoutConfirmation;
+export function normalizeDeleteWithoutConfirmation(raw: unknown): boolean {
+  return z.boolean().catch(DEFAULT_USER_SETTINGS.deleteWithoutConfirmation).parse((raw as any)?.deleteWithoutConfirmation);
 }
 
 export function normalizeTimelineSettings(
-  input: Record<string, unknown>,
+  raw: unknown,
 ): FastCatUserSettings['timeline'] {
-  const legacyTimelineSnapThresholdPx = Number(input.snapThresholdPx);
-  const rawTimeline = asRecord(input.timeline);
-  const rawSnapping = asRecord(rawTimeline.snapping);
-  const timelineSnapThresholdPxRaw = Number(rawTimeline.snapThresholdPx);
-  const timelineSnapThresholdPxCandidate = Number.isFinite(timelineSnapThresholdPxRaw)
-    ? timelineSnapThresholdPxRaw
-    : legacyTimelineSnapThresholdPx;
-
-  return {
-    snapThresholdPx:
-      Number.isFinite(timelineSnapThresholdPxCandidate) && timelineSnapThresholdPxCandidate > 0
-        ? Math.max(1, Math.round(timelineSnapThresholdPxCandidate))
-        : DEFAULT_USER_SETTINGS.timeline.snapThresholdPx,
-    defaultTransitionDurationUs: Number.isFinite(Number(rawTimeline.defaultTransitionDurationUs))
-      ? Math.max(0, Math.round(Number(rawTimeline.defaultTransitionDurationUs)))
-      : DEFAULT_USER_SETTINGS.timeline.defaultTransitionDurationUs,
-    defaultStaticClipDurationUs: Number.isFinite(Number(rawTimeline.defaultStaticClipDurationUs))
-      ? Math.max(0, Math.round(Number(rawTimeline.defaultStaticClipDurationUs)))
-      : DEFAULT_USER_SETTINGS.timeline.defaultStaticClipDurationUs,
-    snapping: {
-      timelineEdges:
-        typeof rawSnapping.timelineEdges === 'boolean'
-          ? rawSnapping.timelineEdges
-          : DEFAULT_USER_SETTINGS.timeline.snapping.timelineEdges,
-      clips:
-        typeof rawSnapping.clips === 'boolean'
-          ? rawSnapping.clips
-          : DEFAULT_USER_SETTINGS.timeline.snapping.clips,
-      markers:
-        typeof rawSnapping.markers === 'boolean'
-          ? rawSnapping.markers
-          : DEFAULT_USER_SETTINGS.timeline.snapping.markers,
-      selection:
-        typeof rawSnapping.selection === 'boolean'
-          ? rawSnapping.selection
-          : DEFAULT_USER_SETTINGS.timeline.snapping.selection,
-      playhead:
-        typeof rawSnapping.playhead === 'boolean'
-          ? rawSnapping.playhead
-          : DEFAULT_USER_SETTINGS.timeline.snapping.playhead,
-    },
-  };
+  const legacySnap = (raw as any)?.snapThresholdPx;
+  
+  const schema = z.object({
+    snapThresholdPx: z.coerce.number().min(1).catch(DEFAULT_USER_SETTINGS.timeline.snapThresholdPx),
+    defaultTransitionDurationUs: z.coerce.number().min(0).catch(DEFAULT_USER_SETTINGS.timeline.defaultTransitionDurationUs),
+    defaultStaticClipDurationUs: z.coerce.number().min(0).catch(DEFAULT_USER_SETTINGS.timeline.defaultStaticClipDurationUs),
+    snapping: z.object({
+      timelineEdges: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.timelineEdges),
+      clips: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.clips),
+      markers: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.markers),
+      selection: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.selection),
+      playhead: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.playhead),
+    }).catch(DEFAULT_USER_SETTINGS.timeline.snapping),
+  }).catch(DEFAULT_USER_SETTINGS.timeline);
+  
+  const tl = schema.parse((raw as any)?.timeline);
+  if (legacySnap !== undefined && (raw as any)?.timeline?.snapThresholdPx === undefined) {
+      const parsedLegacy = z.coerce.number().min(1).safeParse(legacySnap);
+      if (parsedLegacy.success) {
+          tl.snapThresholdPx = parsedLegacy.data;
+      }
+  }
+  return tl;
 }
 
 export function normalizeStopFramesSettings(
-  input: Record<string, unknown>,
+  raw: unknown,
 ): FastCatUserSettings['stopFrames'] {
-  const stopFramesInput = asRecord(input.stopFrames);
-  const qualityPercentRaw =
-    stopFramesInput.qualityPercent ?? input.stopFrameQualityPercent ?? input.stopFramesQuality;
-  const qualityPercentParsed = Number(qualityPercentRaw);
-
-  return {
-    qualityPercent:
-      Number.isFinite(qualityPercentParsed) && qualityPercentParsed > 0
-        ? Math.round(Math.min(100, Math.max(1, qualityPercentParsed)))
-        : DEFAULT_USER_SETTINGS.stopFrames.qualityPercent,
-  };
+  const qp = (raw as any)?.stopFrames?.qualityPercent ?? (raw as any)?.stopFrameQualityPercent ?? (raw as any)?.stopFramesQuality;
+  return z.object({
+    qualityPercent: z.coerce.number().min(1).max(100).catch(DEFAULT_USER_SETTINGS.stopFrames.qualityPercent),
+  }).catch(DEFAULT_USER_SETTINGS.stopFrames).parse({ qualityPercent: qp });
 }
 
 export function normalizeOptimizationSettings(
-  input: Record<string, unknown>,
+  raw: unknown,
 ): FastCatUserSettings['optimization'] {
-  const optimizationInput = asRecord(input.optimization);
-  const proxyMaxPixels = Number(optimizationInput.proxyMaxPixels);
-  const proxyResolutionRaw = optimizationInput.proxyResolution;
-  const proxyVideoBitrateMbps = Number(optimizationInput.proxyVideoBitrateMbps);
-  const proxyAudioBitrateKbps = Number(optimizationInput.proxyAudioBitrateKbps);
-  const proxyVideoCodec = optimizationInput.proxyVideoCodec === 'av1' ? 'av1' : 'h264';
-  const proxyCopyOpusAudio = optimizationInput.proxyCopyOpusAudio;
-  const autoCreateProxies = optimizationInput.autoCreateProxies;
-  const mediaTaskConcurrency = Number(
-    optimizationInput.mediaTaskConcurrency ?? optimizationInput.proxyConcurrency,
-  );
-  const videoFrameCacheMb = Number(optimizationInput.videoFrameCacheMb);
+  const opt = (raw as any)?.optimization ?? {};
+  
+  // Custom parsing step for proxyResolution string mapping
+  let proxyMaxPixels = opt.proxyMaxPixels;
+  if (proxyMaxPixels === undefined && opt.proxyResolution) {
+      if (opt.proxyResolution === '360p') proxyMaxPixels = 400_000;
+      else if (opt.proxyResolution === '480p') proxyMaxPixels = 700_000;
+      else if (opt.proxyResolution === '720p') proxyMaxPixels = 1_500_000;
+      else if (opt.proxyResolution === '1080p') proxyMaxPixels = 3_000_000;
+  }
 
-  return {
-    proxyMaxPixels:
-      Number.isFinite(proxyMaxPixels) && proxyMaxPixels > 0
-        ? Math.min(10_000_000, Math.max(100_000, proxyMaxPixels))
-        : proxyResolutionRaw === '360p'
-          ? 400_000
-          : proxyResolutionRaw === '480p'
-            ? 700_000
-            : proxyResolutionRaw === '720p'
-              ? 1_500_000
-              : proxyResolutionRaw === '1080p'
-                ? 3_000_000
-                : DEFAULT_USER_SETTINGS.optimization.proxyMaxPixels,
-    proxyVideoBitrateMbps:
-      Number.isFinite(proxyVideoBitrateMbps) && proxyVideoBitrateMbps > 0
-        ? Math.min(50, Math.max(0.1, proxyVideoBitrateMbps))
-        : DEFAULT_USER_SETTINGS.optimization.proxyVideoBitrateMbps,
-    proxyAudioBitrateKbps:
-      Number.isFinite(proxyAudioBitrateKbps) && proxyAudioBitrateKbps > 0
-        ? Math.min(512, Math.max(32, proxyAudioBitrateKbps))
-        : DEFAULT_USER_SETTINGS.optimization.proxyAudioBitrateKbps,
-    proxyVideoCodec,
-    proxyCopyOpusAudio:
-      typeof proxyCopyOpusAudio === 'boolean'
-        ? proxyCopyOpusAudio
-        : DEFAULT_USER_SETTINGS.optimization.proxyCopyOpusAudio,
-    autoCreateProxies:
-      typeof autoCreateProxies === 'boolean'
-        ? autoCreateProxies
-        : DEFAULT_USER_SETTINGS.optimization.autoCreateProxies,
-    mediaTaskConcurrency:
-      Number.isFinite(mediaTaskConcurrency) && mediaTaskConcurrency > 0
-        ? Math.min(16, Math.max(1, Math.round(mediaTaskConcurrency)))
-        : DEFAULT_USER_SETTINGS.optimization.mediaTaskConcurrency,
-    videoFrameCacheMb:
-      Number.isFinite(videoFrameCacheMb) && videoFrameCacheMb >= 0
-        ? Math.min(4096, Math.max(0, Math.round(videoFrameCacheMb)))
-        : DEFAULT_USER_SETTINGS.optimization.videoFrameCacheMb,
-  };
+  const schema = z.object({
+    proxyMaxPixels: z.coerce.number().min(100_000).max(10_000_000).catch(DEFAULT_USER_SETTINGS.optimization.proxyMaxPixels),
+    proxyVideoBitrateMbps: z.coerce.number().min(0.1).max(50).catch(DEFAULT_USER_SETTINGS.optimization.proxyVideoBitrateMbps),
+    proxyAudioBitrateKbps: z.coerce.number().min(32).max(512).catch(DEFAULT_USER_SETTINGS.optimization.proxyAudioBitrateKbps),
+    proxyVideoCodec: z.enum(['h264', 'av1']).catch('h264'), // Note: legacy is checked against 'av1', else 'h264'
+    proxyCopyOpusAudio: z.boolean().catch(DEFAULT_USER_SETTINGS.optimization.proxyCopyOpusAudio),
+    autoCreateProxies: z.boolean().catch(DEFAULT_USER_SETTINGS.optimization.autoCreateProxies),
+    mediaTaskConcurrency: z.coerce.number().min(1).max(16).catch(DEFAULT_USER_SETTINGS.optimization.mediaTaskConcurrency),
+    videoFrameCacheMb: z.coerce.number().min(0).max(4096).catch(DEFAULT_USER_SETTINGS.optimization.videoFrameCacheMb),
+  }).catch(DEFAULT_USER_SETTINGS.optimization);
+  
+  return schema.parse({
+     ...opt,
+     proxyMaxPixels,
+     mediaTaskConcurrency: opt.mediaTaskConcurrency ?? opt.proxyConcurrency,
+  });
 }
 
 export function normalizeIntegrationsSettings(
-  input: Record<string, unknown>,
+  raw: unknown,
 ): FastCatUserSettings['integrations'] {
-  const integrationsInput = asRecord(input.integrations);
-  const fastcatPublicadorInput = asRecord(integrationsInput.fastcatPublicador);
-  const manualFilesApiInput = asRecord(integrationsInput.manualFilesApi);
-  const manualSttApiInput = asRecord(integrationsInput.manualSttApi);
-  const sttInput = asRecord(integrationsInput.stt);
+  const schema = z.object({
+    fastcatPublicador: z.object({
+       enabled: z.coerce.boolean().catch(false),
+       bearerToken: z.string().transform(normalizeTokenValue).catch(''),
+    }).catch(DEFAULT_USER_SETTINGS.integrations.fastcatPublicador),
+    manualFilesApi: z.object({
+       enabled: z.coerce.boolean().catch(false),
+       baseUrl: z.string().transform(normalizeUrlValue).catch(''),
+       bearerToken: z.string().transform(normalizeTokenValue).catch(''),
+       overrideFastCat: z.coerce.boolean().catch(false),
+    }).catch(DEFAULT_USER_SETTINGS.integrations.manualFilesApi),
+    manualSttApi: z.object({
+       enabled: z.coerce.boolean().catch(false),
+       baseUrl: z.string().transform(normalizeUrlValue).catch(''),
+       bearerToken: z.string().transform(normalizeTokenValue).catch(''),
+       overrideFastCat: z.coerce.boolean().catch(false),
+    }).catch(DEFAULT_USER_SETTINGS.integrations.manualSttApi),
+    stt: z.object({
+       provider: z.string().trim().catch(DEFAULT_USER_SETTINGS.integrations.stt.provider),
+       models: z.array(z.string().trim()).catch([...DEFAULT_USER_SETTINGS.integrations.stt.models]),
+       restorePunctuation: z.boolean().catch(DEFAULT_USER_SETTINGS.integrations.stt.restorePunctuation),
+       formatText: z.boolean().catch(DEFAULT_USER_SETTINGS.integrations.stt.formatText),
+       includeWords: z.boolean().catch(DEFAULT_USER_SETTINGS.integrations.stt.includeWords),
+    }).catch(DEFAULT_USER_SETTINGS.integrations.stt),
+  }).catch(DEFAULT_USER_SETTINGS.integrations);
 
-  return {
-    fastcatPublicador: {
-      enabled: Boolean(fastcatPublicadorInput.enabled),
-      bearerToken: normalizeTokenValue(fastcatPublicadorInput.bearerToken),
-    },
-    manualFilesApi: {
-      enabled: Boolean(manualFilesApiInput.enabled),
-      baseUrl: normalizeUrlValue(manualFilesApiInput.baseUrl),
-      bearerToken: normalizeTokenValue(manualFilesApiInput.bearerToken),
-      overrideFastCat: Boolean(manualFilesApiInput.overrideFastCat),
-    },
-    manualSttApi: {
-      enabled: Boolean(manualSttApiInput.enabled),
-      baseUrl: normalizeUrlValue(manualSttApiInput.baseUrl),
-      bearerToken: normalizeTokenValue(manualSttApiInput.bearerToken),
-      overrideFastCat: Boolean(manualSttApiInput.overrideFastCat),
-    },
-    stt: {
-      provider:
-        typeof sttInput.provider === 'string'
-          ? sttInput.provider.trim()
-          : DEFAULT_USER_SETTINGS.integrations.stt.provider,
-      models: Array.isArray(sttInput.models)
-        ? sttInput.models
-            .filter((model): model is string => typeof model === 'string')
-            .map((model) => model.trim())
-            .filter(Boolean)
-        : [...DEFAULT_USER_SETTINGS.integrations.stt.models],
-      restorePunctuation:
-        typeof sttInput.restorePunctuation === 'boolean'
-          ? sttInput.restorePunctuation
-          : DEFAULT_USER_SETTINGS.integrations.stt.restorePunctuation,
-      formatText:
-        typeof sttInput.formatText === 'boolean'
-          ? sttInput.formatText
-          : DEFAULT_USER_SETTINGS.integrations.stt.formatText,
-      includeWords:
-        typeof sttInput.includeWords === 'boolean'
-          ? sttInput.includeWords
-          : DEFAULT_USER_SETTINGS.integrations.stt.includeWords,
-    },
-  };
+  return schema.parse((raw as any)?.integrations ?? {});
 }
 
 export function normalizeVideoSettings(
-  input: Record<string, unknown>,
+  raw: unknown,
 ): FastCatUserSettings['video'] {
-  const videoInput = asRecord(input.video);
-
-  return {
-    enableFfmpeg:
-      typeof videoInput.enableFfmpeg === 'boolean'
-        ? videoInput.enableFfmpeg
-        : DEFAULT_USER_SETTINGS.video.enableFfmpeg,
-  };
+  return z.object({
+    enableFfmpeg: z.boolean().catch(DEFAULT_USER_SETTINGS.video.enableFfmpeg),
+  }).catch(DEFAULT_USER_SETTINGS.video).parse((raw as any)?.video ?? {});
 }
 
 export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse'] {
-  const normalizedMouse: FastCatUserSettings['mouse'] = {
-    ruler: { ...DEFAULT_USER_SETTINGS.mouse.ruler },
-    timeline: { ...DEFAULT_USER_SETTINGS.mouse.timeline },
-    trackHeaders: { ...DEFAULT_USER_SETTINGS.mouse.trackHeaders },
-    monitor: { ...DEFAULT_USER_SETTINGS.mouse.monitor },
-  };
-
-  if (!raw || typeof raw !== 'object') {
-    return normalizedMouse;
-  }
-
-  const rawMouse = asRecord(raw);
-  const rawRuler = asRecord(rawMouse.ruler);
+  const rWheelEnum = z.enum(RULER_WHEEL_ACTIONS as any);
+  const clickEnum = z.enum(CLICK_ACTIONS as any);
+  const dragEnum = z.enum(DRAG_ACTIONS as any);
+  const horizEnum = z.enum(MOUSE_HORIZONTAL_MOVEMENT_ACTIONS as any);
+  const tWheelEnum = z.enum(TIMELINE_WHEEL_ACTIONS as any);
+  const thWheelEnum = z.enum(TRACK_HEADERS_WHEEL_ACTIONS as any);
+  const mWheelEnum = z.enum(MONITOR_WHEEL_ACTIONS as any);
+  const mClickEnum = z.enum(MONITOR_CLICK_ACTIONS as any);
+  const mDragEnum = z.enum(MONITOR_DRAG_ACTIONS as any);
 
   const rulerWheelFallbacks = {
     wheel: DEFAULT_USER_SETTINGS.mouse.timeline.wheel,
     wheelSecondary: DEFAULT_USER_SETTINGS.mouse.timeline.wheel,
     wheelSecondaryShift: DEFAULT_USER_SETTINGS.mouse.ruler.wheel,
-  } as const;
+  };
 
-  for (const key of ['wheel', 'wheelShift', 'wheelSecondary', 'wheelSecondaryShift']) {
-    const rawValue = rawRuler[key] as string | undefined;
-    if ((RULER_WHEEL_ACTIONS as readonly string[]).includes(rawValue as string)) {
-      (normalizedMouse.ruler as Record<string, unknown>)[key] = rawValue;
-      continue;
-    }
+  const schema = z.object({
+    ruler: z.object({
+      wheel: rWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.wheel),
+      wheelShift: rWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.wheelShift),
+      wheelSecondary: rWheelEnum.catch(rulerWheelFallbacks.wheelSecondary),
+      wheelSecondaryShift: rWheelEnum.catch(rulerWheelFallbacks.wheelSecondaryShift),
+      click: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.click as any),
+      middleClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.middleClick as any),
+      doubleClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.doubleClick as any),
+      shiftClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.shiftClick as any),
+      drag: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.drag as any),
+      middleDrag: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.middleDrag as any),
+      dragShift: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.dragShift as any),
+      horizontalMovement: horizEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.horizontalMovement as any),
+    }).catch(DEFAULT_USER_SETTINGS.mouse.ruler),
+    
+    timeline: z.object({
+      wheel: tWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.wheel as any),
+      wheelShift: tWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.wheelShift as any),
+      wheelSecondary: tWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.wheelSecondary as any),
+      wheelSecondaryShift: tWheelEnum.catch('none'),
+      middleClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.middleDrag as any), // Legacy middleClick fallback was middleDrag? Well, kept standard
+      middleDrag: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.middleDrag as any),
+      horizontalMovement: horizEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.horizontalMovement as any),
+      clipDragShift: z.enum(['pseudo_overlap', 'free_mode', 'copy', 'toggle_snap', 'toggle_clip_move_mode', 'none']).catch(DEFAULT_USER_SETTINGS.mouse.timeline.clipDragShift),
+      clipDragCtrl: z.enum(['pseudo_overlap', 'free_mode', 'copy', 'toggle_snap', 'toggle_clip_move_mode', 'none']).catch(DEFAULT_USER_SETTINGS.mouse.timeline.clipDragCtrl),
+      clipDragRight: z.enum(['pseudo_overlap', 'free_mode', 'copy', 'toggle_snap', 'toggle_clip_move_mode', 'none']).catch(DEFAULT_USER_SETTINGS.mouse.timeline.clipDragRight),
+    }).catch(DEFAULT_USER_SETTINGS.mouse.timeline),
+    
+    trackHeaders: z.object({
+      wheel: thWheelEnum.catch('seek_frame'),
+      wheelShift: thWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.trackHeaders.wheelShift as any),
+      wheelSecondary: thWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.trackHeaders.wheelSecondary as any),
+      wheelSecondaryShift: thWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.trackHeaders.wheelSecondaryShift as any),
+    }).catch(DEFAULT_USER_SETTINGS.mouse.trackHeaders),
+    
+    monitor: z.object({
+      wheel: mWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.wheel as any),
+      wheelShift: mWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.wheelShift as any),
+      wheelSecondary: mWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.wheelSecondary as any),
+      wheelSecondaryShift: mWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.wheelSecondaryShift as any),
+      middleClick: mClickEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.middleClick as any),
+      middleDrag: mDragEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.middleDrag as any),
+    }).catch(DEFAULT_USER_SETTINGS.mouse.monitor),
+  }).catch(DEFAULT_USER_SETTINGS.mouse);
 
-    const fallbackKey = key as keyof typeof rulerWheelFallbacks;
-    if (fallbackKey in rulerWheelFallbacks) {
-      (normalizedMouse.ruler as Record<string, unknown>)[key] = rulerWheelFallbacks[fallbackKey];
-    }
-  }
-
-  for (const key of ['click', 'middleClick', 'doubleClick', 'shiftClick']) {
-    if ((CLICK_ACTIONS as readonly string[]).includes(rawRuler[key] as string)) {
-      (normalizedMouse.ruler as Record<string, unknown>)[key] = rawRuler[key];
-    }
-  }
-
-  for (const key of ['drag', 'middleDrag', 'dragShift']) {
-    if ((DRAG_ACTIONS as readonly string[]).includes(rawRuler[key] as string)) {
-      (normalizedMouse.ruler as Record<string, unknown>)[key] = rawRuler[key];
-    }
-  }
-
-  if (
-    (MOUSE_HORIZONTAL_MOVEMENT_ACTIONS as readonly string[]).includes(
-      rawRuler.horizontalMovement as string,
-    )
-  ) {
-    normalizedMouse.ruler.horizontalMovement = rawRuler.horizontalMovement as
-      | 'move_playhead'
-      | 'none';
-  }
-
-  const rawTimeline = asRecord(rawMouse.timeline);
-  const timelineWheelFallbacks = {
-    wheelShift: DEFAULT_USER_SETTINGS.mouse.timeline.wheelShift,
-    wheelSecondaryShift: 'none',
-  } as const;
-
-  for (const key of ['wheel', 'wheelShift', 'wheelSecondary', 'wheelSecondaryShift']) {
-    const rawValue = rawTimeline[key] as string | undefined;
-    if ((TIMELINE_WHEEL_ACTIONS as readonly string[]).includes(rawValue as string)) {
-      (normalizedMouse.timeline as Record<string, unknown>)[key] = rawValue;
-      continue;
-    }
-
-    const fallbackKey = key as keyof typeof timelineWheelFallbacks;
-    if (fallbackKey in timelineWheelFallbacks) {
-      (normalizedMouse.timeline as Record<string, unknown>)[key] =
-        timelineWheelFallbacks[fallbackKey];
-    }
-  }
-
-  for (const key of ['middleClick']) {
-    if ((CLICK_ACTIONS as readonly string[]).includes(rawTimeline[key] as string)) {
-      (normalizedMouse.timeline as Record<string, unknown>)[key] = rawTimeline[key];
-      continue;
-    }
-
-    (normalizedMouse.timeline as Record<string, unknown>)[key] =
-      DEFAULT_USER_SETTINGS.mouse.timeline.middleDrag;
-  }
-
-  for (const key of ['middleDrag']) {
-    if ((DRAG_ACTIONS as readonly string[]).includes(rawTimeline[key] as string)) {
-      (normalizedMouse.timeline as Record<string, unknown>)[key] = rawTimeline[key];
-    }
-  }
-
-  if (
-    (MOUSE_HORIZONTAL_MOVEMENT_ACTIONS as readonly string[]).includes(
-      rawTimeline.horizontalMovement as string,
-    )
-  ) {
-    normalizedMouse.timeline.horizontalMovement = rawTimeline.horizontalMovement as
-      | 'move_playhead'
-      | 'none';
-  }
-
-  const rawTrackHeaders = asRecord(rawMouse.trackHeaders);
-  const trackHeadersWheelFallbacks = {
-    wheel: 'seek_frame',
-    wheelShift: DEFAULT_USER_SETTINGS.mouse.trackHeaders.wheelShift,
-  } as const;
-
-  for (const key of ['wheel', 'wheelShift', 'wheelSecondary', 'wheelSecondaryShift']) {
-    const rawValue = rawTrackHeaders[key] as string | undefined;
-    if ((TRACK_HEADERS_WHEEL_ACTIONS as readonly string[]).includes(rawValue as string)) {
-      (normalizedMouse.trackHeaders as Record<string, unknown>)[key] = rawValue;
-      continue;
-    }
-
-    const fallbackKey = key as keyof typeof trackHeadersWheelFallbacks;
-    if (fallbackKey in trackHeadersWheelFallbacks) {
-      (normalizedMouse.trackHeaders as Record<string, unknown>)[key] =
-        trackHeadersWheelFallbacks[fallbackKey];
-    }
-  }
-
-  const rawMonitor = asRecord(rawMouse.monitor);
-  const monitorWheelFallbacks = {
-    wheelShift: DEFAULT_USER_SETTINGS.mouse.monitor.wheelShift,
-  } as const;
-
-  for (const key of ['wheel', 'wheelShift', 'wheelSecondary', 'wheelSecondaryShift']) {
-    const rawValue = rawMonitor[key] as string | undefined;
-    if ((MONITOR_WHEEL_ACTIONS as readonly string[]).includes(rawValue as string)) {
-      (normalizedMouse.monitor as Record<string, unknown>)[key] = rawValue;
-      continue;
-    }
-
-    const fallbackKey = key as keyof typeof monitorWheelFallbacks;
-    if (fallbackKey in monitorWheelFallbacks) {
-      (normalizedMouse.monitor as Record<string, unknown>)[key] =
-        monitorWheelFallbacks[fallbackKey];
-    }
-  }
-
-  for (const key of ['middleClick']) {
-    if ((MONITOR_CLICK_ACTIONS as readonly string[]).includes(rawMonitor[key] as string)) {
-      (normalizedMouse.monitor as Record<string, unknown>)[key] = rawMonitor[key];
-    }
-  }
-
-  for (const key of ['middleDrag']) {
-    if ((MONITOR_DRAG_ACTIONS as readonly string[]).includes(rawMonitor[key] as string)) {
-      (normalizedMouse.monitor as Record<string, unknown>)[key] = rawMonitor[key];
-    }
-  }
-
-  return normalizedMouse;
+  return schema.parse((raw as any)?.mouse ?? {});
 }
