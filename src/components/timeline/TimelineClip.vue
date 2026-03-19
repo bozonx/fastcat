@@ -30,6 +30,7 @@ import {
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useClipDrop } from '~/composables/timeline/useClipDrop';
+import { useClickOrDrag } from '~/composables/timeline/useClickOrDrag';
 import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useFocusStore } from '~/stores/focus.store';
@@ -97,10 +98,6 @@ const projectStore = useProjectStore();
 const settingsStore = useTimelineSettingsStore();
 const workspaceStore = useWorkspaceStore();
 
-let didStartClipDrag = false;
-const rightClickDragTriggered = ref(false);
-let rightClickDragTimer: number | null = null;
-const RIGHT_CLICK_DRAG_DELAY_MS = 300;
 const isHovered = ref(false);
 
 const clipItem = computed<TimelineClipItem | null>(() =>
@@ -128,42 +125,14 @@ function toggleFadeCurve(edge: 'in' | 'out') {
 }
 
 function onContextMenu(e: MouseEvent) {
-  if (didStartClipDrag || rightClickDragTriggered.value) {
+  if (didStartDrag.value || rightClickDragTriggered.value) {
     e.preventDefault();
     e.stopPropagation();
   }
 }
 
-function onClipPointerdown(e: PointerEvent) {
-  if (timelineStore.isTrimModeActive) return;
-  if (e.button !== 0 && e.button !== 2) return;
-  if (!props.canEditClipContent || !clipItem.value || clipItem.value.locked) return;
-
-  e.stopPropagation();
-
-  didStartClipDrag = false;
-  rightClickDragTriggered.value = false;
-  const startX = e.clientX;
-  const startY = e.clientY;
-
-  const cleanup = () => {
-    window.removeEventListener('pointermove', onMove);
-    window.removeEventListener('pointerup', onPointerUp);
-    window.removeEventListener('pointercancel', onPointerCancel);
-    if (rightClickDragTimer !== null) {
-      window.clearTimeout(rightClickDragTimer);
-      rightClickDragTimer = null;
-    }
-  };
-
-  const startDrag = () => {
-    if (didStartClipDrag) return;
-    didStartClipDrag = true;
-    if (e.button === 2) {
-      rightClickDragTriggered.value = true;
-    }
-    cleanup();
-    e.preventDefault();
+const { didStartDrag, rightClickDragTriggered, onPointerDown } = useClickOrDrag({
+  onDragStart: (e) => {
     emit('startMoveItem', e, {
       trackId: props.track.id,
       itemId: props.item.id,
@@ -173,37 +142,15 @@ function onClipPointerdown(e: PointerEvent) {
           ? 'slip'
           : 'move',
     });
-  };
+  },
+});
 
-  const onMove = (ev: PointerEvent) => {
-    if (e.button === 2) return;
+function onClipPointerdown(e: PointerEvent) {
+  if (timelineStore.isTrimModeActive) return;
+  if (!props.canEditClipContent || !clipItem.value || clipItem.value.locked) return;
 
-    if (Math.abs(ev.clientX - startX) > 3 || Math.abs(ev.clientY - startY) > 3) {
-      startDrag();
-    }
-  };
-
-  const onPointerUp = () => {
-    cleanup();
-  };
-
-  const onPointerCancel = () => {
-    cleanup();
-    rightClickDragTriggered.value = false;
-  };
-
-  if (e.button !== 2) {
-    e.preventDefault();
-  } else {
-    rightClickDragTimer = window.setTimeout(() => {
-      rightClickDragTimer = null;
-      startDrag();
-    }, RIGHT_CLICK_DRAG_DELAY_MS);
-  }
-
-  window.addEventListener('pointermove', onMove);
-  window.addEventListener('pointerup', onPointerUp, { once: true });
-  window.addEventListener('pointercancel', onPointerCancel, { once: true });
+  e.stopPropagation();
+  onPointerDown(e);
 }
 
 function onTrimHandlePointerDown(e: PointerEvent, edge: 'start' | 'end') {
@@ -221,7 +168,7 @@ function onTrimHandlePointerDown(e: PointerEvent, edge: 'start' | 'end') {
 }
 
 function onClipClick(e: MouseEvent) {
-  if (didStartClipDrag) return;
+  if (didStartDrag.value) return;
   if (timelineStore.isTrimModeActive) {
     if (e.button === 0 && props.canEditClipContent && clipItem.value && !clipItem.value.locked) {
       const isShift = isLayer1Active(e, workspaceStore.userSettings);
