@@ -241,6 +241,12 @@
         "title": "Transform"
       }
     },
+    "dynamicPanels": {
+      "moveToCutWindow": "Move to edit window",
+      "moveToSoundWindow": "Move to sound window",
+      "projectFiles": "Project files",
+      "returnToProjectPanel": "Return to project panel"
+    },
     "effects": {
       "add": "Add",
       "audioTitle": "Audio effects",
@@ -381,6 +387,7 @@
       "backgroundClipDefaultName": "Background Color",
       "clipSnapOff": "No clip snapping",
       "clipSnapOn": "Snap to clips",
+      "clipSnapOffFrames": "No snap",
       "clipThumbnail": "Clip thumbnail",
       "convertMarkerToZone": "Convert to zone marker",
       "convertSelectionToZoneMarker": "Convert to zone marker",
@@ -435,6 +442,7 @@
       "rippleTrimLeft": "Ripple trim left",
       "rippleTrimRight": "Ripple trim right",
       "rippleTrimSelection": "Ripple trim selection",
+      "slipMode": "Slip content",
       "selectionEndHandle": "Selection end handle",
       "selectionStartHandle": "Selection start handle",
       "showThumbnails": "Show thumbnails",
@@ -453,6 +461,8 @@
       "selectionRange": "Selection Range",
       "soloActive": "SOLO ACTIVE",
       "clearSolos": "Clear all solos",
+      "snapMode": "Snap Mode",
+      "moveMode": "Clip Move Mode",
       "transition": {
         "actionFall": "Falls",
         "actionRise": "Rises",
@@ -956,12 +966,6 @@
     "projectTabs": {
       "dropHint": "Add as tab"
     },
-    "dynamicPanels": {
-      "moveToCutWindow": "Move to edit window",
-      "moveToSoundWindow": "Move to sound window",
-      "projectFiles": "Project files",
-      "returnToProjectPanel": "Return to project panel"
-    },
     "resolution": {
       "aspect": {
         "16_9": "16:9",
@@ -988,6 +992,9 @@
       }
     },
     "settings": {
+      "actionCopy": "Copy clip",
+      "actionFreeMode": "Free mode",
+      "actionPseudoOverlap": "Pseudo overlap",
       "advancedSection": "Advanced",
       "autoCreateProxies": "Automatically create proxies when adding media to the timeline",
       "browserEphemeralTmpRootPathHelp": "Leave empty to use the runtime temporary location when supported. Browser workspaces always keep rebuildable cache inside the selected workspace folder.",

@@ -241,6 +241,12 @@
         "title": "Трансформация"
       }
     },
+    "dynamicPanels": {
+      "moveToCutWindow": "Переместить на окно монтаж",
+      "moveToSoundWindow": "Переместить на окно звук",
+      "projectFiles": "Файлы проекта",
+      "returnToProjectPanel": "Вернуть на панель проекта"
+    },
     "effects": {
       "add": "Добавить",
       "audioTitle": "Аудиоэффекты",
@@ -381,6 +387,7 @@
       "backgroundClipDefaultName": "Фоновый цвет",
       "clipSnapOff": "Без привязки к клипам",
       "clipSnapOn": "Привязка к клипам",
+      "clipSnapOffFrames": "Без привязки (кадры)",
       "clipThumbnail": "Миниатюра клипа",
       "convertMarkerToZone": "Преобразовать в маркер зоны",
       "convertSelectionToZoneMarker": "Преобразовать в маркер зоны",
@@ -435,6 +442,7 @@
       "rippleTrimLeft": "Обрезать слева со сдвигом",
       "rippleTrimRight": "Обрезать справа со сдвигом",
       "rippleTrimSelection": "Удалить выделение со сдвигом",
+      "slipMode": "Прокрутка содержимого",
       "selectionEndHandle": "Конец области выделения",
       "selectionStartHandle": "Начало области выделения",
       "showThumbnails": "Показать миниатюры",
@@ -453,6 +461,8 @@
       "selectionRange": "Область выделения",
       "soloActive": "СОЛО АКТИВНО",
       "clearSolos": "Сбросить соло",
+      "snapMode": "Режим привязки",
+      "moveMode": "Режим перемещения",
       "transition": {
         "actionFall": "Падение",
         "actionRise": "Поднимается",
@@ -956,12 +966,6 @@
     "projectTabs": {
       "dropHint": "Добавить как вкладку"
     },
-    "dynamicPanels": {
-      "moveToCutWindow": "Переместить на окно монтаж",
-      "moveToSoundWindow": "Переместить на окно звук",
-      "projectFiles": "Файлы проекта",
-      "returnToProjectPanel": "Вернуть на панель проекта"
-    },
     "resolution": {
       "aspect": {
         "16_9": "16:9",
@@ -988,6 +992,9 @@
       }
     },
     "settings": {
+      "actionCopy": "Копировать клип",
+      "actionFreeMode": "Свободный режим",
+      "actionPseudoOverlap": "Псевдо-наложение",
       "advancedSection": "Расширенные",
       "autoCreateProxies": "Автоматически создавать прокси при добавлении медиа на таймлайн",
       "browserEphemeralTmpRootPathHelp": "Оставьте пустым, чтобы использовать временное расположение рантайма, если оно поддерживается. В браузерном workspace-режиме пересоздаваемый кэш всегда хранится внутри выбранной папки workspace.",
