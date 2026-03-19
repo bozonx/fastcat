@@ -23,23 +23,12 @@ import TimelineSpeedModal from './TimelineSpeedModal.vue';
 
 const { t } = useI18n();
 
-function isTrackVisuallySelected(trackId: string) {
-  const entity = selectionStore.selectedEntity;
-  if (entity?.source === 'timeline') {
-    if (entity.kind === 'track') return entity.trackId === trackId;
-    if (entity.kind === 'clip') return entity.trackId === trackId;
-    if (entity.kind === 'transition') return entity.trackId === trackId;
-    if (entity.kind === 'clips' && entity.items) {
-      return entity.items.some((item) => item.trackId === trackId);
-    }
-  }
-  return false;
-}
-
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
 const mediaStore = useMediaStore();
 const { selectedTransition } = storeToRefs(timelineStore);
+
+const { isTrackVisuallySelected } = selectionStore;
 
 const OVERSCAN_PX = 300;
 

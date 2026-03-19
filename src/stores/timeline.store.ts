@@ -398,11 +398,30 @@ export const useTimelineStore = defineStore('timeline', () => {
     currentTimelinePath,
     mediaMetadata,
     applyTimeline,
-    projectStore,
-    mediaStore,
-    workspaceStore,
-    proxyStore,
-    uiStore,
+    createFallbackTimelineDoc: () => projectStore.createFallbackTimelineDoc(),
+    getFileHandleByPath: (path) => projectStore.getFileHandleByPath(path),
+    getFileByPath: (path) => projectStore.getFileByPath(path),
+    getOrFetchMetadataByPath: (path) => mediaStore.getOrFetchMetadataByPath(path),
+    getUserSettings: () => workspaceStore.userSettings,
+    getProjectSettings: () => projectStore.projectSettings,
+    updateProjectSettings: async (settings) => {
+      const { getResolutionPreset } = await import('~/utils/settings/helpers');
+      const preset = getResolutionPreset(settings.width, settings.height);
+
+      Object.assign(projectStore.projectSettings.project, {
+        ...settings,
+        ...preset,
+      });
+      await projectStore.saveProjectSettings();
+    },
+    hasProxy: (path: string) => proxyStore.existingProxies.has(path),
+    ensureProxy: async (options: {
+      file: File | FileSystemFileHandle;
+      projectRelativePath: string;
+    }) => await proxyStore.generateProxy(options.file, options.projectRelativePath),
+    openProjectSettings: () => {
+      uiStore.isProjectSettingsOpen = true;
+    },
     toast,
     t,
   });
@@ -431,7 +450,11 @@ export const useTimelineStore = defineStore('timeline', () => {
   const selectionRange = createTimelineSelectionRange({
     timelineDoc,
     currentTime,
-    selectionStore,
+    isSelectionRangeSelected: () =>
+      selectionStore.selectedEntity?.source === 'timeline' &&
+      selectionStore.selectedEntity.kind === 'selection-range',
+    selectTimelineSelectionRange: () => selectionStore.selectTimelineSelectionRange(),
+    clearSelection: () => selectionStore.clearSelection(),
     markerService,
     trimming,
     applyTimeline,
@@ -442,10 +465,11 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   const captions = createTimelineCaptions({
     timelineDoc,
-    workspaceStore,
-    projectStore,
     clips,
     requestTimelineSave,
+    getWorkspaceHandle: () => workspaceStore.workspaceHandle,
+    getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
+    getCurrentProjectId: () => projectStore.currentProjectId,
   });
 
   function setTimelineZoomExact(next: number) {

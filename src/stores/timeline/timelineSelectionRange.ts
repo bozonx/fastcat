@@ -1,26 +1,29 @@
 import { ref, type Ref } from 'vue';
 import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types';
-import type { useSelectionStore } from '~/stores/selection.store';
 import type { createTimelineMarkerService } from '~/timeline/application/timelineMarkerService';
 import type { createTimelineTrimming } from './timelineTrimming';
 import { TIMELINE_RULER_CONSTANTS } from '~/utils/constants';
 import type { TimelineCommand } from '~/timeline/commands';
 
-interface CreateTimelineSelectionRangeParams {
+export interface TimelineSelectionRangeDeps {
   timelineDoc: Ref<TimelineDocument | null>;
   currentTime: Ref<number>;
-  selectionStore: ReturnType<typeof useSelectionStore>;
+  isSelectionRangeSelected: () => boolean;
+  selectTimelineSelectionRange: () => void;
+  clearSelection: () => void;
   markerService: ReturnType<typeof createTimelineMarkerService>;
   trimming: ReturnType<typeof createTimelineTrimming>;
   applyTimeline: (cmd: TimelineCommand, options?: any) => void;
   defaultStaticClipDurationUs: number;
 }
 
-export function createTimelineSelectionRange(params: CreateTimelineSelectionRangeParams) {
+export function createTimelineSelectionRange(params: TimelineSelectionRangeDeps) {
   const {
     timelineDoc,
     currentTime,
-    selectionStore,
+    isSelectionRangeSelected: checkSelectionRangeSelected,
+    selectTimelineSelectionRange,
+    clearSelection,
     markerService,
     trimming,
     applyTimeline,
@@ -84,7 +87,7 @@ export function createTimelineSelectionRange(params: CreateTimelineSelectionRang
       startUs,
       endUs: startUs + Math.max(1, Math.round(dur)),
     });
-    selectionStore.selectTimelineSelectionRange();
+    selectTimelineSelectionRange();
   }
 
   function createSelectionRange(input: TimelineSelectionRange) {
@@ -92,16 +95,13 @@ export function createTimelineSelectionRange(params: CreateTimelineSelectionRang
       startUs: Math.max(0, Math.round(input.startUs)),
       endUs: Math.max(Math.round(input.startUs) + 1, Math.round(input.endUs)),
     });
-    selectionStore.selectTimelineSelectionRange();
+    selectTimelineSelectionRange();
   }
 
   function removeSelectionRange(options?: any) {
     updateSelectionRange(null, options);
-    if (
-      selectionStore.selectedEntity?.source === 'timeline' &&
-      selectionStore.selectedEntity.kind === 'selection-range'
-    ) {
-      selectionStore.clearSelection();
+    if (checkSelectionRangeSelected()) {
+      clearSelection();
     }
   }
 
@@ -133,10 +133,7 @@ export function createTimelineSelectionRange(params: CreateTimelineSelectionRang
   }
 
   function isSelectionRangeSelected() {
-    return (
-      selectionStore.selectedEntity?.source === 'timeline' &&
-      selectionStore.selectedEntity.kind === 'selection-range'
-    );
+    return checkSelectionRangeSelected();
   }
 
   function convertSelectionRangeToMarker() {

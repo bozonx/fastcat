@@ -282,3 +282,29 @@ export function getOverlayGuideOffsetPx(
 
   return Math.max(0, Math.min(clipWidthPx, transitionUsToPxFn(handleUs)));
 }
+
+export function isVideo(item: TimelineTrackItem, track: TimelineTrack): item is TimelineClipItem {
+  if (item.kind !== 'clip') return false;
+  const clipType = (item as any).clipType;
+  return (clipType === 'media' || clipType === 'timeline') && track.kind === 'video';
+}
+
+export function isAudio(item: TimelineTrackItem, track: TimelineTrack): item is TimelineClipItem {
+  if (item.kind !== 'clip') return false;
+  const clipType = (item as any).clipType;
+  return (clipType === 'media' || clipType === 'timeline') && track.kind === 'audio';
+}
+
+export function clipHasAudio(
+  item: TimelineTrackItem,
+  track: TimelineTrack,
+  mediaMetadata: Record<string, any>,
+): boolean {
+  if (item.kind !== 'clip') return false;
+  const clip = item as any;
+  if (clip.clipType === 'timeline') return true;
+  if (track.kind === 'video' && clip.audioFromVideoDisabled) return false;
+  if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return track.kind === 'audio';
+  if (!clip.source?.path) return track.kind === 'audio';
+  return Boolean(mediaMetadata[clip.source.path]?.audio);
+}

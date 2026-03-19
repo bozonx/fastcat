@@ -215,6 +215,19 @@ export const useSelectionStore = defineStore('selection', () => {
     selectedEntity.value = null;
   }
 
+  function isTrackVisuallySelected(trackId: string) {
+    if (selectedEntity.value?.source === 'timeline') {
+      const entity = selectedEntity.value;
+      if (entity.kind === 'track') return entity.trackId === trackId;
+      if (entity.kind === 'clip') return entity.trackId === trackId;
+      if (entity.kind === 'transition') return entity.trackId === trackId;
+      if (entity.kind === 'clips' && entity.items) {
+        return entity.items.some((item) => item.trackId === trackId);
+      }
+    }
+    return false;
+  }
+
   return {
     selectedEntity,
     selectTimelineItem,
@@ -229,5 +242,6 @@ export const useSelectionStore = defineStore('selection', () => {
     selectProjectEffect,
     selectProjectTransition,
     clearSelection,
+    isTrackVisuallySelected,
   };
 });

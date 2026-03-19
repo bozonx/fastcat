@@ -14,20 +14,26 @@ import {
 } from '~/repositories/transcription-cache.repository';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
-import type { useWorkspaceStore } from '~/stores/workspace.store';
-import type { useProjectStore } from '~/stores/project.store';
 import type { createTimelineClips } from './timelineClips';
 
-interface CreateTimelineCaptionsParams {
+export interface TimelineCaptionsDeps {
   timelineDoc: Ref<TimelineDocument | null>;
-  workspaceStore: ReturnType<typeof useWorkspaceStore>;
-  projectStore: ReturnType<typeof useProjectStore>;
   clips: ReturnType<typeof createTimelineClips>;
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
+  getWorkspaceHandle: () => FileSystemDirectoryHandle | null;
+  getResolvedStorageTopology: () => any;
+  getCurrentProjectId: () => string | null;
 }
 
-export function createTimelineCaptions(params: CreateTimelineCaptionsParams) {
-  const { timelineDoc, workspaceStore, projectStore, clips, requestTimelineSave } = params;
+export function createTimelineCaptions(params: TimelineCaptionsDeps) {
+  const {
+    timelineDoc,
+    clips,
+    requestTimelineSave,
+    getWorkspaceHandle,
+    getResolvedStorageTopology,
+    getCurrentProjectId,
+  } = params;
 
   function isTrackActiveForCaptions(track: TimelineDocument['tracks'][number]): boolean {
     if (track.kind === 'video' && track.videoHidden) return false;
@@ -146,13 +152,13 @@ export function createTimelineCaptions(params: CreateTimelineCaptionsParams) {
   }
 
   async function listCachedTranscriptions(): Promise<TranscriptionCacheRecord[]> {
-    const workspaceHandle = workspaceStore.workspaceHandle;
-    const projectId = projectStore.currentProjectId;
+    const workspaceHandle = getWorkspaceHandle();
+    const projectId = getCurrentProjectId();
     if (!workspaceHandle || !projectId) return [];
 
     const repository = createTranscriptionCacheRepository({
       workspaceDir: workspaceHandle,
-      topology: workspaceStore.resolvedStorageTopology,
+      topology: getResolvedStorageTopology(),
       projectId,
     });
 
@@ -165,15 +171,15 @@ export function createTimelineCaptions(params: CreateTimelineCaptionsParams) {
       throw new Error('Timeline not loaded');
     }
 
-    const workspaceHandle = workspaceStore.workspaceHandle;
-    const projectId = projectStore.currentProjectId;
+    const workspaceHandle = getWorkspaceHandle();
+    const projectId = getCurrentProjectId();
     if (!workspaceHandle || !projectId) {
       throw new Error('Project workspace is not available');
     }
 
     const repository = createTranscriptionCacheRepository({
       workspaceDir: workspaceHandle,
-      topology: workspaceStore.resolvedStorageTopology,
+      topology: getResolvedStorageTopology(),
       projectId,
     });
     const records = await repository.list();

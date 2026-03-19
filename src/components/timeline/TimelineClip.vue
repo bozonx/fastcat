@@ -20,7 +20,13 @@ import { useProjectStore } from '~/stores/project.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import { timeUsToPx, sanitizeFps } from '~/utils/timeline/geometry';
 import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
-import { getClipClass, getOverlayGuideOffsetPx } from '~/utils/timeline/clip';
+import {
+  getClipClass,
+  getOverlayGuideOffsetPx,
+  isVideo,
+  isAudio,
+  clipHasAudio,
+} from '~/utils/timeline/clip';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useClipDrop } from '~/composables/timeline/useClipDrop';
@@ -289,31 +295,6 @@ const { isDraggingOver, handleDragEnter, handleDragLeave, handleDragOver, handle
     ),
   });
 
-function isVideo(it: TimelineTrackItem): it is TimelineClipItem {
-  return (
-    it.kind === 'clip' &&
-    (it.clipType === 'media' || it.clipType === 'timeline') &&
-    props.track.kind === 'video'
-  );
-}
-
-function isAudio(it: TimelineTrackItem): it is TimelineClipItem {
-  return (
-    it.kind === 'clip' &&
-    (it.clipType === 'media' || it.clipType === 'timeline') &&
-    props.track.kind === 'audio'
-  );
-}
-
-function clipHasAudio(it: TimelineTrackItem, track: TimelineTrack): boolean {
-  if (it.kind !== 'clip') return false;
-  const clip = it as any;
-  if (clip.clipType === 'timeline') return true;
-  if (track.kind === 'video' && clip.audioFromVideoDisabled) return false;
-  if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return track.kind === 'audio';
-  if (!clip.source?.path) return track.kind === 'audio';
-  return Boolean(mediaStore.mediaMetadata[clip.source.path]?.audio);
-}
 
 const isMediaMissing = computed(() => {
   if (
@@ -533,7 +514,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
       />
 
       <ClipAudioFades
-        v-if="clipItem && clipHasAudio(item, track)"
+        v-if="clipItem && clipHasAudio(item, track, mediaStore.mediaMetadata)"
         :clip="clipItem"
         :item="item"
         :track="track"
@@ -569,7 +550,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
       <!-- Content Area (Thumbnails / Waveform) -->
       <div class="flex-1 flex w-full min-h-0 relative" :style="{ zIndex: 'var(--z-clip-content)' }">
         <TimelineClipThumbnails
-          v-if="isVideo(item) && clipItem?.showThumbnails !== false"
+          v-if="isVideo(item, track) && clipItem?.showThumbnails !== false"
           :item="item as TimelineClipItem"
           :width="clipWidthPx"
           :scroll-left="scrollLeft ?? 0"
@@ -578,8 +559,10 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
         />
         <TimelineAudioWaveform
           v-if="
-            isAudio(item) ||
-            (isVideo(item) && clipHasAudio(item, track) && clipItem?.showWaveform !== false)
+            isAudio(item, track) ||
+            (isVideo(item, track) &&
+              clipHasAudio(item, track, mediaStore.mediaMetadata) &&
+              clipItem?.showWaveform !== false)
           "
           :item="item as TimelineClipItem"
         />
