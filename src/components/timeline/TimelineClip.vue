@@ -295,7 +295,6 @@ const { isDraggingOver, handleDragEnter, handleDragLeave, handleDragOver, handle
     ),
   });
 
-
 const isMediaMissing = computed(() => {
   if (
     !clipItem.value ||

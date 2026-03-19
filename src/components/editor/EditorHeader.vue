@@ -143,14 +143,8 @@ const menuItems = computed(() => {
       <BackgroundTasksButton size="sm" />
 
       <UDropdownMenu :items="menuItems" mode="hover" :ui="{ content: 'w-56' }">
-        <UButton
-          size="sm"
-          variant="ghost"
-          color="neutral"
-          icon="i-heroicons-ellipsis-horizontal"
-        />
+        <UButton size="sm" variant="ghost" color="neutral" icon="i-heroicons-ellipsis-horizontal" />
       </UDropdownMenu>
     </div>
   </div>
 </template>
-

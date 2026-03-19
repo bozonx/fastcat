@@ -292,7 +292,9 @@ export function parseTimelineFromOtio(
     : [];
 
   const tracks: TimelineTrack[] = stackChildren.map((otioTrack: OtioTrack, trackIndex: number) => {
-    const trackFastCatMeta = TimelineTrackFastCatMetaSchema.parse(safeFastCatMetadata(otioTrack.metadata));
+    const trackFastCatMeta = TimelineTrackFastCatMetaSchema.parse(
+      safeFastCatMetadata(otioTrack.metadata),
+    );
 
     const id = coerceId(
       trackFastCatMeta.id,
@@ -432,7 +434,9 @@ export function parseTimelineFromOtio(
         : [];
 
   const playheadUs = fastcatMeta.playheadUs ? Math.round(fastcatMeta.playheadUs) : 0;
-  const snapThresholdPx = fastcatMeta.snapThresholdPx ? Math.round(fastcatMeta.snapThresholdPx) : undefined;
+  const snapThresholdPx = fastcatMeta.snapThresholdPx
+    ? Math.round(fastcatMeta.snapThresholdPx)
+    : undefined;
   const zoom = fastcatMeta.zoom;
   const masterGain = fastcatMeta.masterGain;
   const masterMuted = fastcatMeta.masterMuted;
@@ -442,7 +446,10 @@ export function parseTimelineFromOtio(
   const selectionRange =
     fastcatMeta.selectionRange?.startUs !== undefined &&
     fastcatMeta.selectionRange?.endUs !== undefined
-      ? coerceSelectionRange({ startUs: fastcatMeta.selectionRange.startUs, endUs: fastcatMeta.selectionRange.endUs })
+      ? coerceSelectionRange({
+          startUs: fastcatMeta.selectionRange.startUs,
+          endUs: fastcatMeta.selectionRange.endUs,
+        })
       : undefined;
 
   if (tracks.length === 0) {

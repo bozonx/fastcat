@@ -30,7 +30,7 @@ onMounted(async () => {
     isLoading.value = false;
     return;
   }
-  
+
   try {
     const blob = await fm.vfs.readFile(props.filePath);
     const text = await blob.text();
@@ -160,4 +160,3 @@ function focusPanel() {
     />
   </div>
 </template>
-

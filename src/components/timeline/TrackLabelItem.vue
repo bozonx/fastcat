@@ -2,11 +2,7 @@
 import { computed, ref, nextTick, watch, onBeforeUnmount } from 'vue';
 import type { TimelineTrack } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
-import {
-  getAudioMeterColorClass,
-  getAudioMeterPercent,
-  isAudioClipping,
-} from '~/utils/audio';
+import { getAudioMeterColorClass, getAudioMeterPercent, isAudioClipping } from '~/utils/audio';
 
 const props = defineProps<{
   track: TimelineTrack;
@@ -131,9 +127,7 @@ onBeforeUnmount(() => {
     <div class="flex-1 min-w-0 flex items-center overflow-hidden pl-1.5 z-10 relative">
       <div
         class="max-w-full px-1 py-0.5 rounded transition-colors overflow-hidden"
-        :class="[
-          isRenaming ? 'bg-ui-bg-elevated ring-1 ring-ui-border-accent' : '',
-        ]"
+        :class="[isRenaming ? 'bg-ui-bg-elevated ring-1 ring-ui-border-accent' : '']"
         @click.stop="timelineStore.renamingTrackId = track.id"
       >
         <input
@@ -151,10 +145,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div
-      class="ml-0 flex items-center gap-0.5 transition-opacity z-10 relative"
-      @dblclick.stop
-    >
+    <div class="ml-0 flex items-center gap-0.5 transition-opacity z-10 relative" @dblclick.stop>
       <UButton
         v-if="track.kind === 'video'"
         size="xs"
@@ -163,7 +154,9 @@ onBeforeUnmount(() => {
         :icon="track.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
         class="w-6 h-6 p-0 flex items-center justify-center transition-opacity"
         :class="[
-          track.videoHidden ? 'text-black! opacity-100 hover:opacity-90' : 'opacity-60 group-hover:opacity-100'
+          track.videoHidden
+            ? 'text-black! opacity-100 hover:opacity-90'
+            : 'opacity-60 group-hover:opacity-100',
         ]"
         :style="track.videoHidden ? { backgroundColor: '#facc15', color: '#000000' } : undefined"
         :title="track.videoHidden ? 'Show Track' : 'Hide Track'"
@@ -177,7 +170,9 @@ onBeforeUnmount(() => {
         :icon="track.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
         class="w-6 h-6 p-0 flex items-center justify-center transition-opacity"
         :class="[
-          track.audioMuted ? 'text-black! opacity-100 hover:opacity-90' : 'opacity-60 group-hover:opacity-100'
+          track.audioMuted
+            ? 'text-black! opacity-100 hover:opacity-90'
+            : 'opacity-60 group-hover:opacity-100',
         ]"
         :style="track.audioMuted ? { backgroundColor: '#ef4444', color: '#000000' } : undefined"
         :title="track.audioMuted ? 'Unmute Track' : 'Mute Track'"
@@ -191,7 +186,9 @@ onBeforeUnmount(() => {
         icon="i-heroicons-musical-note"
         class="w-6 h-6 p-0 flex items-center justify-center transition-opacity"
         :class="[
-          track.audioSolo ? 'text-black! opacity-100 hover:opacity-90 ring-1 ring-amber-500/50' : 'opacity-60 group-hover:opacity-100'
+          track.audioSolo
+            ? 'text-black! opacity-100 hover:opacity-90 ring-1 ring-amber-500/50'
+            : 'opacity-60 group-hover:opacity-100',
         ]"
         :style="track.audioSolo ? { backgroundColor: '#fbbf24', color: '#000000' } : undefined"
         :title="track.audioSolo ? 'Unsolo Track' : 'Solo Track'"

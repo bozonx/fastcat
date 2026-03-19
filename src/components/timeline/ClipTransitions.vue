@@ -267,7 +267,7 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
             getTransitionButtonClass(
               selectedTransition?.itemId === clip.id && selectedTransition?.edge === 'in',
               hasTransitionProblem('in'),
-              'in'
+              'in',
             )
           "
           :title="getTransitionButtonTitle('in')"
@@ -347,7 +347,7 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
             getTransitionButtonClass(
               selectedTransition?.itemId === clip.id && selectedTransition?.edge === 'out',
               hasTransitionProblem('out'),
-              'out'
+              'out',
             )
           "
           :title="getTransitionButtonTitle('out')"
@@ -419,7 +419,12 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
     <div
       v-if="!clip.transitionIn && canEdit && !clip.locked"
       class="absolute w-5 h-8 transition-opacity flex items-center justify-center pointer-events-auto"
-      :style="{ top: '50%', left: '-8px', transform: 'translateY(-50%)', zIndex: 'var(--z-clip-handles)' }"
+      :style="{
+        top: '50%',
+        left: '-8px',
+        transform: 'translateY(-50%)',
+        zIndex: 'var(--z-clip-handles)',
+      }"
       :class="[
         clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
         isMobile ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100',
@@ -436,7 +441,12 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
     <div
       v-if="!clip.transitionOut && canEdit && !clip.locked"
       class="absolute w-5 h-8 transition-opacity flex items-center justify-center pointer-events-auto"
-      :style="{ top: '50%', right: '-8px', transform: 'translateY(-50%)', zIndex: 'var(--z-clip-handles)' }"
+      :style="{
+        top: '50%',
+        right: '-8px',
+        transform: 'translateY(-50%)',
+        zIndex: 'var(--z-clip-handles)',
+      }"
       :class="[
         clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
         isMobile ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100',

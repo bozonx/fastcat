@@ -170,15 +170,16 @@ const toolbarMenuItems = computed(() => [
     {
       label: t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree'),
       icon: 'i-heroicons-arrow-path',
-      onSelect: () => onFileAction('refresh', {
-        kind: 'directory',
-        name: projectStore.currentProjectName ?? '',
-        path: '',
-        parentPath: '',
-        lastModified: 0,
-        size: 0,
-        source: 'local',
-      } as FsEntry),
+      onSelect: () =>
+        onFileAction('refresh', {
+          kind: 'directory',
+          name: projectStore.currentProjectName ?? '',
+          path: '',
+          parentPath: '',
+          lastModified: 0,
+          size: 0,
+          source: 'local',
+        } as FsEntry),
     },
   ],
 ]);
@@ -190,7 +191,7 @@ async function onCreateTimeline() {
   await projectStore.openTimelineFile(createdPath);
   await timelineStore.loadTimeline();
   void timelineStore.loadTimelineMetadata();
-  
+
   // Раскрываем папку с таймлайнами, если нужно, и скроллим к файлу
   const parentDir = createdPath.substring(0, createdPath.lastIndexOf('/'));
   if (parentDir) {
@@ -261,7 +262,6 @@ useFileManagerPanelBootstrap({
   loadProjectDirectory,
   onRootEntrySelected: (entry) => emit('select', entry),
 });
-
 </script>
 
 <template>
@@ -282,9 +282,7 @@ useFileManagerPanelBootstrap({
       @change="onDirectoryFileSelect"
     />
 
-    <div
-      class="flex flex-col flex-1 min-h-0"
-    >
+    <div class="flex flex-col flex-1 min-h-0">
       <!-- Actions Toolbar -->
       <div
         v-if="projectStore.currentProjectName"
@@ -313,18 +311,15 @@ useFileManagerPanelBootstrap({
           size="xs"
           :title="`${t('videoEditor.fileManager.actions.createFolder')} (In root folder)`"
           @click="
-            onFileAction(
-              'createFolder',
-              {
-                kind: 'directory',
-                name: '',
-                path: '',
-                parentPath: '',
-                lastModified: 0,
-                size: 0,
-                source: 'local',
-              } as FsEntry
-            )
+            onFileAction('createFolder', {
+              kind: 'directory',
+              name: '',
+              path: '',
+              parentPath: '',
+              lastModified: 0,
+              size: 0,
+              source: 'local',
+            } as FsEntry)
           "
         />
         <div class="ml-auto">
@@ -337,7 +332,6 @@ useFileManagerPanelBootstrap({
             />
           </UDropdownMenu>
         </div>
-
       </div>
 
       <!-- File List -->

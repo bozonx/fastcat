@@ -57,20 +57,20 @@ describe('timelineSelectionRange', () => {
         type: 'update_timeline_properties',
         properties: { selectionRange: { startUs: 1000000, endUs: 3000000 } },
       },
-      undefined
+      undefined,
     );
   });
 
   it('removes selection range', () => {
     isSelectionRangeSelected.mockReturnValue(true);
     selectionRange.removeSelectionRange();
-    
+
     expect(applyTimeline).toHaveBeenCalledWith(
       {
         type: 'update_timeline_properties',
         properties: { selectionRange: undefined },
       },
-      undefined
+      undefined,
     );
     expect(clearSelection).toHaveBeenCalled();
   });
@@ -78,13 +78,13 @@ describe('timelineSelectionRange', () => {
   it('creates selection range at playhead', () => {
     currentTime.value = 2000000;
     selectionRange.createSelectionRangeAtPlayhead();
-    
+
     expect(applyTimeline).toHaveBeenCalledWith(
       {
         type: 'update_timeline_properties',
         properties: { selectionRange: { startUs: 2000000, endUs: 7000000 } },
       },
-      undefined
+      undefined,
     );
     expect(selectTimelineSelectionRange).toHaveBeenCalled();
   });

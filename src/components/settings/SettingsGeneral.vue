@@ -16,15 +16,18 @@ const isResetConfirmOpen = ref(false);
 function resetGeneralDefaults() {
   workspaceStore.userSettings.locale = DEFAULT_USER_SETTINGS.locale;
   workspaceStore.userSettings.openLastProjectOnStart = DEFAULT_USER_SETTINGS.openLastProjectOnStart;
-  
+
   // Reset timeline section
   workspaceStore.userSettings.timeline = { ...DEFAULT_USER_SETTINGS.timeline };
-  
+
   // Reset other specific fields shown in this form
-  workspaceStore.userSettings.stopFrames.qualityPercent = DEFAULT_USER_SETTINGS.stopFrames.qualityPercent;
-  workspaceStore.userSettings.optimization.mediaTaskConcurrency = DEFAULT_USER_SETTINGS.optimization.mediaTaskConcurrency;
-  workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve = DEFAULT_USER_SETTINGS.projectDefaults.defaultAudioFadeCurve;
-  
+  workspaceStore.userSettings.stopFrames.qualityPercent =
+    DEFAULT_USER_SETTINGS.stopFrames.qualityPercent;
+  workspaceStore.userSettings.optimization.mediaTaskConcurrency =
+    DEFAULT_USER_SETTINGS.optimization.mediaTaskConcurrency;
+  workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve =
+    DEFAULT_USER_SETTINGS.projectDefaults.defaultAudioFadeCurve;
+
   isResetConfirmOpen.value = false;
 }
 
@@ -83,18 +86,29 @@ function clearCache() {
       <label class="flex items-center gap-2 cursor-pointer">
         <UCheckbox v-model="workspaceStore.userSettings.deleteWithoutConfirmation" />
         <span class="text-sm text-ui-text">
-          {{ t('videoEditor.settings.deleteWithoutConfirmation', 'Delete items without confirmation') }}
+          {{
+            t('videoEditor.settings.deleteWithoutConfirmation', 'Delete items without confirmation')
+          }}
         </span>
       </label>
     </UFormField>
 
-    <UFormField :label="t('videoEditor.settings.defaultTransitionDuration', 'Default transition duration (s)')">
+    <UFormField
+      :label="
+        t('videoEditor.settings.defaultTransitionDuration', 'Default transition duration (s)')
+      "
+    >
       <UiWheelNumberInput
         :model-value="workspaceStore.userSettings.timeline.defaultTransitionDurationUs / 1000000"
         :min="0.1"
         :max="10"
         :step="0.1"
-        @update:model-value="(v) => (workspaceStore.userSettings.timeline.defaultTransitionDurationUs = Math.round(v * 1000000))"
+        @update:model-value="
+          (v) =>
+            (workspaceStore.userSettings.timeline.defaultTransitionDurationUs = Math.round(
+              v * 1000000,
+            ))
+        "
       />
     </UFormField>
 
@@ -104,7 +118,9 @@ function clearCache() {
       </div>
 
       <UFormField
-        :label="t('videoEditor.settings.defaultStaticClipDuration', 'Default static clip duration (s)')"
+        :label="
+          t('videoEditor.settings.defaultStaticClipDuration', 'Default static clip duration (s)')
+        "
         :help="t('videoEditor.settings.defaultStaticClipDurationHint')"
       >
         <UiWheelNumberInput
@@ -112,7 +128,12 @@ function clearCache() {
           :min="0.1"
           :max="60"
           :step="0.1"
-          @update:model-value="(v) => (workspaceStore.userSettings.timeline.defaultStaticClipDurationUs = Math.round(v * 1000000))"
+          @update:model-value="
+            (v) =>
+              (workspaceStore.userSettings.timeline.defaultStaticClipDurationUs = Math.round(
+                v * 1000000,
+              ))
+          "
         />
       </UFormField>
 
@@ -146,7 +167,7 @@ function clearCache() {
           {{ t('videoEditor.settings.deleteWithoutConfirmation', 'Delete without confirmation') }}
         </span>
       </label>
-      
+
       <UFormField
         :label="t('videoEditor.settings.defaultAudioFadeCurveTitle', 'Default Fade Curve')"
         :help="t('videoEditor.settings.defaultAudioFadeCurveHint')"
@@ -154,16 +175,34 @@ function clearCache() {
         <div class="flex items-center gap-1 rounded bg-ui-bg p-1 w-fit">
           <UButton
             size="xs"
-            :variant="workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve === 'logarithmic' ? 'solid' : 'ghost'"
-            :color="workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve === 'logarithmic' ? 'primary' : 'neutral'"
-            @click="workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve = 'logarithmic'"
+            :variant="
+              workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve === 'logarithmic'
+                ? 'solid'
+                : 'ghost'
+            "
+            :color="
+              workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve === 'logarithmic'
+                ? 'primary'
+                : 'neutral'
+            "
+            @click="
+              workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve = 'logarithmic'
+            "
           >
             Logarithmic
           </UButton>
           <UButton
             size="xs"
-            :variant="workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve === 'linear' ? 'solid' : 'ghost'"
-            :color="workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve === 'linear' ? 'primary' : 'neutral'"
+            :variant="
+              workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve === 'linear'
+                ? 'solid'
+                : 'ghost'
+            "
+            :color="
+              workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve === 'linear'
+                ? 'primary'
+                : 'neutral'
+            "
             @click="workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve = 'linear'"
           >
             Linear

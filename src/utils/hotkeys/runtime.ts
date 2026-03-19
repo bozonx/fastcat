@@ -61,9 +61,7 @@ export function createHotkeyLookup(
   return lookup as HotkeyLookup;
 }
 
-export function createDefaultHotkeyLookup(
-  commandOrder: readonly HotkeyCommandId[],
-): HotkeyLookup {
+export function createDefaultHotkeyLookup(commandOrder: readonly HotkeyCommandId[]): HotkeyLookup {
   const lookup: Partial<Record<HotkeyCombo, HotkeyCommandId[]>> = {};
 
   for (const cmdId of commandOrder) {

@@ -1,6 +1,10 @@
 import { ref, onBeforeUnmount } from 'vue';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
-import { hotkeyFromKeyboardEvent, isEditableTarget, normalizeHotkeyCombo } from '~/utils/hotkeys/hotkeyUtils';
+import {
+  hotkeyFromKeyboardEvent,
+  isEditableTarget,
+  normalizeHotkeyCombo,
+} from '~/utils/hotkeys/hotkeyUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
 export function useHotkeyCapture(params: {
@@ -12,7 +16,7 @@ export function useHotkeyCapture(params: {
   const isCapturingHotkey = ref(false);
   const captureTargetCommandId = ref<HotkeyCommandId | null>(null);
   const capturedCombo = ref<string | null>(null);
-  
+
   let captureKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
 
   function finishCapture() {

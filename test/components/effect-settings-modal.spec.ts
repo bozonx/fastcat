@@ -6,7 +6,6 @@ import { parametricEqManifest } from '../../src/effects/audio/parametric-eq/mani
 import type { EffectManifest } from '../../src/effects/core/registry';
 import { createDefaultProjectPresets, createDefaultExportPresets } from '../../src/utils/settings';
 
-
 vi.mock('../../src/stores/timeline.store', () => ({
   useTimelineStore: vi.fn(() => ({
     timelineZoom: 50,

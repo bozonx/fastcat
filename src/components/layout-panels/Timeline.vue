@@ -313,7 +313,10 @@ function onTimelineWheel(e: WheelEvent, category: keyof FastCatUserSettings['mou
     e.preventDefault();
     const rect = scrollEl.value.getBoundingClientRect();
     const anchorViewportX = e.clientX - rect.left;
-    const anchorTimeUs = pxToTimeUs(scrollEl.value.scrollLeft + anchorViewportX, timelineStore.timelineZoom);
+    const anchorTimeUs = pxToTimeUs(
+      scrollEl.value.scrollLeft + anchorViewportX,
+      timelineStore.timelineZoom,
+    );
     handleZoomWheel(delta > 0 ? -5 : 5, { anchorTimeUs, anchorViewportX });
     return;
   }
@@ -573,7 +576,7 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
                 @start-pan="startPan"
               />
             </div>
-            
+
             <!-- Grid lines overlaid on tracks area, below ruler, behind tracks -->
             <TimelineGrid
               class="absolute left-0 right-0 pointer-events-none z-0"

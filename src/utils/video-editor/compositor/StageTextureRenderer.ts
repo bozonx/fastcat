@@ -100,7 +100,11 @@ export class StageTextureRenderer {
     }
   }
 
-  public renderSingleClipToTexture(clip: CompositorClip, texture: RenderTexture, forceVisible = false) {
+  public renderSingleClipToTexture(
+    clip: CompositorClip,
+    texture: RenderTexture,
+    forceVisible = false,
+  ) {
     const stageChildren = this.context.app.stage.children;
     const stagePrev = stageChildren.map((child) => child.visible);
 

@@ -198,7 +198,6 @@ onUnmounted(() => {
 });
 </script>
 
-
 <template>
   <div ref="playerRootEl" class="flex flex-col w-full h-full overflow-hidden rounded">
     <!-- Video -->
@@ -352,4 +351,3 @@ onUnmounted(() => {
     </div>
   </div>
 </template>
-

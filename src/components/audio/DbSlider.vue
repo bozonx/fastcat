@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
-import {
-  getAudioMeterColorClass,
-  getAudioMeterPercent,
-  isAudioClipping,
-} from '~/utils/audio';
+import { getAudioMeterColorClass, getAudioMeterPercent, isAudioClipping } from '~/utils/audio';
 
 const props = defineProps<{
   modelValue: number; // dB value

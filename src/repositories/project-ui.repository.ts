@@ -23,9 +23,11 @@ const MonitorSettingsSchema = z.object({
 export const ProjectUiSettingsSchema = z.object({
   version: z.coerce.number().catch(1),
   monitors: z.record(z.string(), MonitorSettingsSchema).catch({}),
-  timelines: z.object({
-    openPaths: z.array(z.string()).catch([]),
-  }).catch({ openPaths: [] }),
+  timelines: z
+    .object({
+      openPaths: z.array(z.string()).catch([]),
+    })
+    .catch({ openPaths: [] }),
 });
 
 export type ProjectUiSettings = z.infer<typeof ProjectUiSettingsSchema>;
@@ -55,8 +57,8 @@ export function createProjectUiRepository(input: {
       });
 
       if (!parsed.success) {
-         console.warn(`[ProjectUi] Invalid UI settings`, parsed.error);
-         return null;
+        console.warn(`[ProjectUi] Invalid UI settings`, parsed.error);
+        return null;
       }
       return parsed.data;
     },

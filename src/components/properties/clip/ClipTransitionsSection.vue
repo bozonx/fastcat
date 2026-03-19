@@ -32,7 +32,6 @@ const transitionOptions = computed(() =>
     v-if="props.isVideoTrack"
     :title="t('fastcat.timeline.transitions', 'Transitions')"
   >
-
     <div class="grid grid-cols-2 gap-2">
       <div class="flex flex-col gap-1">
         <div class="flex items-center justify-between">

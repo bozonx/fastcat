@@ -42,7 +42,8 @@ const snapModeItems = computed(() => [
     },
     {
       label: t('videoEditor.settings.actionFreeMode', 'Free mode'),
-      icon: settingsStore.toolbarSnapMode === 'free_mode' ? 'i-heroicons-check' : 'i-heroicons-none',
+      icon:
+        settingsStore.toolbarSnapMode === 'free_mode' ? 'i-heroicons-check' : 'i-heroicons-none',
       onSelect: () => selectToolbarSnapMode('free_mode'),
     },
   ],
@@ -52,7 +53,10 @@ const dragModeItems = computed(() => [
   [
     {
       label: t('videoEditor.settings.actionPseudoOverlap', 'Pseudo overlap'),
-      icon: settingsStore.toolbarDragMode === 'pseudo_overlap' ? 'i-heroicons-check' : 'i-heroicons-none',
+      icon:
+        settingsStore.toolbarDragMode === 'pseudo_overlap'
+          ? 'i-heroicons-check'
+          : 'i-heroicons-none',
       onSelect: () => selectToolbarDragMode('pseudo_overlap'),
     },
     {
@@ -154,14 +158,13 @@ function onDragEnd() {
     data-timeline-toolbar
     @click.self="timelineStore.selectTimelineProperties()"
   >
-
     <UTooltip :text="t('fastcat.timeline.snapMode', 'Snap Mode')">
       <UiSplitDropdownButton
         size="xs"
         variant="ghost"
         color="neutral"
         :icon="toolbarSnapModeIcon"
-        :ariaLabel="t('fastcat.timeline.snapMode', 'Snap Mode')"
+        :aria-label="t('fastcat.timeline.snapMode', 'Snap Mode')"
         :items="snapModeItems"
         button-class="hover:bg-ui-bg-hover/60"
         caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
@@ -176,7 +179,7 @@ function onDragEnd() {
         :variant="toolbarDragModeVariant"
         :color="settingsStore.toolbarDragModeEnabled ? 'primary' : 'neutral'"
         :icon="toolbarDragModeIcon"
-        :ariaLabel="t('fastcat.timeline.moveMode', 'Clip Move Mode')"
+        :aria-label="t('fastcat.timeline.moveMode', 'Clip Move Mode')"
         :items="dragModeItems"
         button-class="hover:bg-ui-bg-hover/60"
         caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
@@ -191,7 +194,7 @@ function onDragEnd() {
         :variant="timelineStore.isTrimModeActive ? 'solid' : 'ghost'"
         :color="timelineStore.isTrimModeActive ? 'primary' : 'neutral'"
         icon="i-heroicons-scissors"
-        :ariaLabel="t('fastcat.timeline.trim', 'Trim')"
+        :aria-label="t('fastcat.timeline.trim', 'Trim')"
         :items="trimMenuItems"
         button-class="hover:bg-ui-bg-hover/60"
         caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
@@ -215,9 +218,14 @@ function onDragEnd() {
       </UTooltip>
     </div>
 
-    <div class="ml-auto flex items-center gap-0.5" @click.self="timelineStore.selectTimelineProperties()">
+    <div
+      class="ml-auto flex items-center gap-0.5"
+      @click.self="timelineStore.selectTimelineProperties()"
+    >
       <!-- Virtual Clips Drag Handles -->
-      <UTooltip :text="`${t('fastcat.timeline.addAdjustment')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`">
+      <UTooltip
+        :text="`${t('fastcat.timeline.addAdjustment')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
+      >
         <UButton
           draggable="true"
           size="xs"
@@ -230,7 +238,9 @@ function onDragEnd() {
           @click="timelineStore.addAdjustmentClipAtPlayhead()"
         />
       </UTooltip>
-      <UTooltip :text="`${t('fastcat.timeline.addBackground')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`">
+      <UTooltip
+        :text="`${t('fastcat.timeline.addBackground')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
+      >
         <UButton
           draggable="true"
           size="xs"
@@ -243,7 +253,9 @@ function onDragEnd() {
           @click="timelineStore.addBackgroundClipAtPlayhead()"
         />
       </UTooltip>
-      <UTooltip :text="`${t('fastcat.timeline.addText')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`">
+      <UTooltip
+        :text="`${t('fastcat.timeline.addText')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
+      >
         <UButton
           draggable="true"
           size="xs"

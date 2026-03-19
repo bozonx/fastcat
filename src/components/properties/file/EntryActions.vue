@@ -26,36 +26,32 @@ const props = defineProps<{
   secondaryActions: SecondaryAction[];
 }>();
 
-const mappedPrimary = computed(() => 
-  props.primaryActions.map(a => ({
+const mappedPrimary = computed(() =>
+  props.primaryActions.map((a) => ({
     ...a,
     label: undefined, // Primary actions in EntryActions are icon-only
-  }))
+  })),
 );
 
-const mappedSecondary = computed(() => 
-  props.secondaryActions.map(a => ({
+const mappedSecondary = computed(() =>
+  props.secondaryActions.map((a) => ({
     ...a,
-  }))
+  })),
 );
 </script>
 
 <template>
   <div class="flex flex-col gap-2 w-full">
     <!-- Primary Actions (Horizontal Icons) -->
-    <PropertyActionList 
+    <PropertyActionList
       v-if="mappedPrimary.length > 0"
-      :actions="mappedPrimary" 
+      :actions="mappedPrimary"
       :vertical="false"
-      variant="ghost" 
+      variant="ghost"
       size="xs"
     />
 
     <!-- Secondary Actions (Vertical Text Buttons) -->
-    <PropertyActionList 
-      v-if="mappedSecondary.length > 0"
-      :actions="mappedSecondary" 
-      size="xs"
-    />
+    <PropertyActionList v-if="mappedSecondary.length > 0" :actions="mappedSecondary" size="xs" />
   </div>
 </template>

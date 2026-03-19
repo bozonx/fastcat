@@ -55,7 +55,7 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
       onGlobalPointerUp(e);
       return true;
     }
-    
+
     hasMoved.value = true;
     const scrollerRect = scrollEl.value?.getBoundingClientRect();
     if (!scrollerRect) return true;

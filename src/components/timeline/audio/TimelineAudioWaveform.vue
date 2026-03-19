@@ -364,7 +364,6 @@ function setChunkCanvas(el: unknown, chunkIndex: number) {
   chunkCanvases.value[chunkIndex] = el instanceof HTMLCanvasElement ? el : null;
 }
 
-
 function drawChunk(chunkIndex: number) {
   const chunk = chunks.value.find((c) => c.chunkIndex === chunkIndex);
   if (!chunk) return;

@@ -31,7 +31,9 @@ describe('timelineCommands', () => {
     getFileHandleByPath = vi.fn().mockResolvedValue({});
     getFileByPath = vi.fn().mockResolvedValue({});
     getOrFetchMetadataByPath = vi.fn().mockResolvedValue({});
-    getUserSettings = vi.fn().mockReturnValue({ timeline: { defaultStaticClipDurationUs: 5000000 } });
+    getUserSettings = vi
+      .fn()
+      .mockReturnValue({ timeline: { defaultStaticClipDurationUs: 5000000 } });
     getProjectSettings = vi.fn().mockReturnValue({});
     updateProjectSettings = vi.fn().mockResolvedValue(undefined);
     hasProxy = vi.fn().mockReturnValue(false);
@@ -61,18 +63,20 @@ describe('timelineCommands', () => {
   });
 
   it('fails to add current timeline to itself', async () => {
-    await expect(commands.addTimelineClipToTimelineFromPath({
-      trackId: 'track1',
-      name: 'nested',
-      path: '/path/to/timeline'
-    })).rejects.toThrow('Cannot insert the currently opened timeline into itself');
+    await expect(
+      commands.addTimelineClipToTimelineFromPath({
+        trackId: 'track1',
+        name: 'nested',
+        path: '/path/to/timeline',
+      }),
+    ).rejects.toThrow('Cannot insert the currently opened timeline into itself');
   });
 
   it('returns audio to video applies correct command', () => {
     commands.returnAudioToVideo({ videoItemId: 'clip1' });
     expect(applyTimeline).toHaveBeenCalledWith({
       type: 'return_audio_to_video',
-      videoItemId: 'clip1'
+      videoItemId: 'clip1',
     });
   });
 });

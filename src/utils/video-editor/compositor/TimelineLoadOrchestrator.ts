@@ -35,7 +35,9 @@ export interface TimelineLoadOrchestratorCallbacks {
   destroyClip: (clip: CompositorClip) => void;
   getExistingClipById: (itemId: string) => CompositorClip | undefined;
   getFallbackTrackId: (clipData: any) => string | null;
-  getTrackRuntimeForClip: (clip: Pick<CompositorClip, 'trackId' | 'layer'>) => CompositorTrack | null;
+  getTrackRuntimeForClip: (
+    clip: Pick<CompositorClip, 'trackId' | 'layer'>,
+  ) => CompositorTrack | null;
   applySolidLayout: (clip: CompositorClip) => void;
   replaceExistingClip: (params: { reusable: CompositorClip | undefined; itemId: string }) => void;
   resolveFixedClipEnd: (params: {
@@ -70,7 +72,9 @@ export interface TimelineLoadOrchestratorResult {
 export class TimelineLoadOrchestrator {
   constructor(private readonly context: TimelineLoadOrchestratorContext) {}
 
-  public async load(params: TimelineLoadOrchestratorParams): Promise<TimelineLoadOrchestratorResult> {
+  public async load(
+    params: TimelineLoadOrchestratorParams,
+  ): Promise<TimelineLoadOrchestratorResult> {
     const { timelineClips, deps, mediabunny, callbacks } = params;
     const nextClips: CompositorClip[] = [];
     const nextClipById = new Map<string, CompositorClip>();

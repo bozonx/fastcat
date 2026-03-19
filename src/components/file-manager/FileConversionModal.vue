@@ -15,15 +15,8 @@ const toast = useToast();
 
 const fileConversionStore = useFileConversionStore();
 
-const {
-  isModalOpen,
-  targetEntry,
-  mediaType,
-  sourceHasAudio,
-  video,
-  audio,
-  image,
-} = storeToRefs(fileConversionStore);
+const { isModalOpen, targetEntry, mediaType, sourceHasAudio, video, audio, image } =
+  storeToRefs(fileConversionStore);
 
 const { startConversion: storeStartConversion } = fileConversionStore;
 
@@ -130,7 +123,7 @@ const isFormValid = computed(() => {
   <UiModal
     v-model:open="isOpen"
     :title="t('videoEditor.export.convertFile', { file: fileName })"
-      class="max-w-3xl"
+    class="max-w-3xl"
   >
     <div class="flex flex-col gap-6">
       <template v-if="mediaType === 'video'">
@@ -186,10 +179,7 @@ const isFormValid = computed(() => {
             <label class="text-xs text-ui-text-muted font-medium">
               {{ t('videoEditor.export.outputFormat', 'Output format') }}
             </label>
-            <UiButtonGroup
-              v-model="audio.onlyFormat"
-              :options="audioFormatOptions as any"
-            />
+            <UiButtonGroup v-model="audio.onlyFormat" :options="audioFormatOptions as any" />
           </div>
 
           <FileConversionAudioSettings
@@ -218,12 +208,7 @@ const isFormValid = computed(() => {
             <label class="text-xs text-ui-text-muted font-medium">
               {{ t('videoEditor.fileManager.convert.imageQuality', 'Quality (0-100)') }}
             </label>
-            <UiWheelNumberInput
-              v-model="image.quality"
-              :min="1"
-              :max="100"
-              :step="1"
-            />
+            <UiWheelNumberInput v-model="image.quality" :min="1" :max="100" :step="1" />
           </div>
 
           <div class="grid grid-cols-2 gap-3">
@@ -256,9 +241,12 @@ const isFormValid = computed(() => {
         <UButton variant="ghost" color="neutral" @click="isOpen = false">
           {{ t('common.cancel', 'Cancel') }}
         </UButton>
-        <UButton color="primary" data-primary-focus="true"
+        <UButton
+          color="primary"
+          data-primary-focus="true"
           :disabled="!isFormValid"
-          @click="startConversion">
+          @click="startConversion"
+        >
           {{ t('videoEditor.export.convert', 'Convert') }}
         </UButton>
       </div>

@@ -1,9 +1,9 @@
 import type { CompositorClip, CompositorTrack } from './types';
-import { TimelineClipLayoutUpdater } from './TimelineClipLayoutUpdater';
-import { TimelineTrackRebinder } from './TimelineTrackRebinder';
-import {
+import type { TimelineClipLayoutUpdater } from './TimelineClipLayoutUpdater';
+import type { TimelineTrackRebinder } from './TimelineTrackRebinder';
+import type {
   TimelineUpdateLifecycle,
-  type TimelineUpdateLifecycleResult,
+  TimelineUpdateLifecycleResult,
 } from './TimelineUpdateLifecycle';
 
 export interface TimelineLayoutOrchestratorParams {

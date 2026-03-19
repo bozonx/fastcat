@@ -176,7 +176,9 @@ watch(
       <div class="w-full">
         <USelectMenu
           :model-value="
-            (filteredVideoCodecOptions.find((o: VideoCodecOptionResolved) => o.value === videoCodec) || videoCodec) as any
+            (filteredVideoCodecOptions.find(
+              (o: VideoCodecOptionResolved) => o.value === videoCodec,
+            ) || videoCodec) as any
           "
           :items="filteredVideoCodecOptions"
           value-key="value"
@@ -248,10 +250,7 @@ watch(
       }}</span>
     </label>
 
-    <div
-      v-if="!excludeAudio && !props.hideAudioBitrate"
-      class="flex flex-col gap-4"
-    >
+    <div v-if="!excludeAudio && !props.hideAudioBitrate" class="flex flex-col gap-4">
       <div v-if="outputFormat === 'mp4' && !props.showAudioAdvanced" class="flex flex-col gap-2">
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.export.audioCodec', 'Audio codec') }}

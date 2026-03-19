@@ -127,7 +127,7 @@ watch(
   () => {
     if (props.depth !== 0) return;
     const selected = selectionStore.selectedEntity;
-    
+
     let anchorEntry: FsEntry | null = null;
 
     if (selected && selected.source === 'fileManager') {
@@ -137,7 +137,7 @@ watch(
           : (selected.entry as FsEntry);
     }
 
-    // Если нет выбранного через selectionStore (например, просто кликнули по папке, 
+    // Если нет выбранного через selectionStore (например, просто кликнули по папке,
     // и она стала активной в uiStore), используем uiStore.selectedFsEntry
     if (!anchorEntry && uiStore.selectedFsEntry) {
       anchorEntry = uiStore.selectedFsEntry as FsEntry;
@@ -146,12 +146,13 @@ watch(
     if (!anchorEntry) return;
 
     const siblingEntries = getSiblingEntries(anchorEntry);
-    
+
     let selectedPaths: string[] = [];
     if (selected && selected.source === 'fileManager') {
-      selectedPaths = selected.kind === 'multiple'
-        ? selected.entries.map((entry) => entry.path)
-        : [selected.entry.path];
+      selectedPaths =
+        selected.kind === 'multiple'
+          ? selected.entries.map((entry) => entry.path)
+          : [selected.entry.path];
     } else if (uiStore.selectedFsEntry?.path) {
       selectedPaths = [uiStore.selectedFsEntry.path];
     }
@@ -161,7 +162,7 @@ watch(
       siblingEntries.length > 0 &&
       selectedPaths.length === visiblePaths.length &&
       visiblePaths.every((path) => selectedPaths.includes(path));
-      
+
     if (isAllSelected) {
       selectionStore.clearSelection();
       return;

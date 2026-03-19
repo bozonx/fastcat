@@ -83,7 +83,7 @@ export function createTranscriptionCacheRepository(params: {
         const handle = await cacheDir.getFileHandle(`${key}.json`, { create: false });
         const raw = await readJsonFromFileHandle<unknown>(handle);
         if (!raw) return null;
-        
+
         const parsed = TranscriptionCacheRecordSchema.safeParse(raw);
         if (!parsed.success) {
           console.warn(`[TranscriptionCache] Invalid cache record for key ${key}`, parsed.error);
@@ -115,7 +115,10 @@ export function createTranscriptionCacheRepository(params: {
             if (parsed.success) {
               records.push(parsed.data);
             } else {
-              console.warn(`[TranscriptionCache] Invalid cache record in file ${handle.name}`, parsed.error);
+              console.warn(
+                `[TranscriptionCache] Invalid cache record in file ${handle.name}`,
+                parsed.error,
+              );
             }
           }
         } catch (error: unknown) {

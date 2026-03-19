@@ -26,7 +26,12 @@ const audioDeclickDurationMs = computed({
     <UFormField :label="t('videoEditor.settings.audioDeclickDuration', 'Audio De-click Duration')">
       <UiWheelNumberInput v-model="audioDeclickDurationMs" :min="0" :max="500" :step="1" />
       <template #help>
-        {{ t('videoEditor.settings.audioDeclickDurationHelp', 'Micro-fades (linear) applied to edges of all clips to eliminate clicks. 0 disables it.') }}
+        {{
+          t(
+            'videoEditor.settings.audioDeclickDurationHelp',
+            'Micro-fades (linear) applied to edges of all clips to eliminate clicks. 0 disables it.',
+          )
+        }}
       </template>
     </UFormField>
   </SettingsSection>

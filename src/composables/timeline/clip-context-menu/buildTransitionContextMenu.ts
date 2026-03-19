@@ -18,10 +18,7 @@ export function buildTransitionContextMenu(
     0,
     Math.round(Number(options.defaultTransitionDurationUs.value ?? 1_000_000)),
   );
-  const clipDurationUs = Math.max(
-    0,
-    Math.round(Number(clipItem.timelineRange?.durationUs ?? 0)),
-  );
+  const clipDurationUs = Math.max(0, Math.round(Number(clipItem.timelineRange?.durationUs ?? 0)));
   const suggestedDurationUs =
     clipDurationUs > 0 && clipDurationUs < defaultTransitionDurationUs
       ? Math.round(clipDurationUs * 0.3)

@@ -53,10 +53,7 @@ function isSelected(value: any) {
 <template>
   <UButtonGroup
     :orientation="orientation"
-    :class="[
-      fluid ? 'w-full' : 'inline-flex',
-      disabled ? 'opacity-50 cursor-not-allowed' : '',
-    ]"
+    :class="[fluid ? 'w-full' : 'inline-flex', disabled ? 'opacity-50 cursor-not-allowed' : '']"
   >
     <UButton
       v-for="option in options"
@@ -69,10 +66,7 @@ function isSelected(value: any) {
       :disabled="disabled || option.disabled"
       :title="option.title"
       class="transition-all duration-200 justify-center whitespace-normal h-auto py-1.5 px-2 text-xs"
-      :class="[
-        !(disabled || option.disabled) ? 'cursor-pointer' : '',
-        fluid ? 'flex-1' : '',
-      ]"
+      :class="[!(disabled || option.disabled) ? 'cursor-pointer' : '', fluid ? 'flex-1' : '']"
       @click="select(option)"
     >
       <slot name="option" :option="option" :selected="isSelected(option.value)" />

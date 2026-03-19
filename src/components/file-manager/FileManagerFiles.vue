@@ -63,14 +63,14 @@ watch(
   async () => {
     const path = uiStore.scrollToFileTreeEntryPath;
     if (!path) return;
-    
+
     await nextTick();
     requestAnimationFrame(() => {
       if (!scrollToSelectedEntry(path)) {
         requestAnimationFrame(() => scrollToSelectedEntry(path));
       }
     });
-  }
+  },
 );
 
 const { onKeyDown: onContainerKeyDown } = useFocusableListNavigation({

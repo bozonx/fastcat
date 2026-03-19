@@ -31,7 +31,9 @@ export interface LoadedVideoRuntime {
 }
 
 export class MediaClipLoader {
-  public async loadVideoRuntime(params: LoadVideoRuntimeParams): Promise<LoadedVideoRuntime | null> {
+  public async loadVideoRuntime(
+    params: LoadVideoRuntimeParams,
+  ): Promise<LoadedVideoRuntime | null> {
     const {
       mediabunny,
       file,
@@ -68,7 +70,8 @@ export class MediaClipLoader {
       requestedSourceDurationUs > 0
         ? Math.min(requestedSourceDurationUs, maxSourceTailUs)
         : maxSourceTailUs;
-    const durationUs = requestedTimelineDurationUs > 0 ? requestedTimelineDurationUs : sourceDurationUs;
+    const durationUs =
+      requestedTimelineDurationUs > 0 ? requestedTimelineDurationUs : sourceDurationUs;
     const endUs = startUs + durationUs;
 
     return {
@@ -77,7 +80,8 @@ export class MediaClipLoader {
       firstTimestampS,
       frameRate: Number.isFinite(frameRate) && frameRate > 0 ? frameRate : undefined,
       sourceDurationUs,
-      sourceRangeDurationUs: requestedSourceRangeDurationUs > 0 ? requestedSourceRangeDurationUs : durationUs,
+      sourceRangeDurationUs:
+        requestedSourceRangeDurationUs > 0 ? requestedSourceRangeDurationUs : durationUs,
       durationUs,
       endUs,
       imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),

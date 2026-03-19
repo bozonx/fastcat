@@ -1,4 +1,4 @@
-import { ImageSource } from 'pixi.js';
+import type { ImageSource } from 'pixi.js';
 import type { VideoClipEffect } from '~/timeline/types';
 import type { ClipFactory } from './ClipFactory';
 import type { LayoutApplier } from './LayoutApplier';

@@ -104,8 +104,10 @@ export function parseClipItem(input: {
     speed: fastcatMeta.speed,
     audioGain: fastcatMeta.audioGain,
     audioBalance: fastcatMeta.audioBalance,
-    audioFadeInUs: fastcatMeta.audioFadeInUs !== undefined ? Math.round(fastcatMeta.audioFadeInUs) : undefined,
-    audioFadeOutUs: fastcatMeta.audioFadeOutUs !== undefined ? Math.round(fastcatMeta.audioFadeOutUs) : undefined,
+    audioFadeInUs:
+      fastcatMeta.audioFadeInUs !== undefined ? Math.round(fastcatMeta.audioFadeInUs) : undefined,
+    audioFadeOutUs:
+      fastcatMeta.audioFadeOutUs !== undefined ? Math.round(fastcatMeta.audioFadeOutUs) : undefined,
     audioFadeInCurve: fastcatMeta.audioFadeInCurve,
     audioFadeOutCurve: fastcatMeta.audioFadeOutCurve,
     audioMuted: fastcatMeta.audioMuted,
@@ -160,8 +162,14 @@ export function parseClipItem(input: {
       timelineRange: { startUs: timelineStartUs, durationUs: sourceRange.durationUs },
       sourceRange,
       shapeType: fastcatMeta.shapeType ?? 'square',
-      fillColor: fastcatMeta.fillColor && fastcatMeta.fillColor.trim().length > 0 ? fastcatMeta.fillColor : '#ffffff',
-      strokeColor: fastcatMeta.strokeColor && fastcatMeta.strokeColor.trim().length > 0 ? fastcatMeta.strokeColor : '#000000',
+      fillColor:
+        fastcatMeta.fillColor && fastcatMeta.fillColor.trim().length > 0
+          ? fastcatMeta.fillColor
+          : '#ffffff',
+      strokeColor:
+        fastcatMeta.strokeColor && fastcatMeta.strokeColor.trim().length > 0
+          ? fastcatMeta.strokeColor
+          : '#000000',
       strokeWidth: fastcatMeta.strokeWidth ?? 0,
       shapeConfig: fastcatMeta.shapeConfig,
     };

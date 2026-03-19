@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import UiModal from "~/components/ui/UiModal.vue";
+import UiModal from '~/components/ui/UiModal.vue';
 import { ref, watch, computed } from 'vue';
 import { getTransitionManifest, normalizeTransitionParams } from '~/transitions';
 import { usePresetsStore } from '~/stores/presets.store';

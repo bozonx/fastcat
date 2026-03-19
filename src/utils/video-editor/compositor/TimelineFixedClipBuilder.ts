@@ -95,7 +95,10 @@ export class TimelineFixedClipBuilder {
     const bgPath = clip.background?.source?.path;
     if (bgPath) {
       try {
-        const state = await this.context.hudMediaLoader.loadImageState({ sourcePath: bgPath, deps });
+        const state = await this.context.hudMediaLoader.loadImageState({
+          sourcePath: bgPath,
+          deps,
+        });
         if (state && clip.hudMediaStates) {
           clip.hudMediaStates.background = state;
         }

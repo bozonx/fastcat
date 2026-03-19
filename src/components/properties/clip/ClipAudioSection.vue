@@ -56,7 +56,6 @@ const fadeCurveOptions = [
     "
     :title="t('fastcat.clip.audioFade.title', 'Audio fades')"
   >
-
     <div v-if="props.canEditAudioGain" class="space-y-1.5">
       <div class="flex items-center justify-between">
         <span class="text-xs text-ui-text-muted">{{
@@ -71,10 +70,7 @@ const fadeCurveOptions = [
         </span>
       </div>
       <div class="h-32">
-        <DbSlider
-          v-model="audioGainDb"
-          :level-db="props.audioLevelDb"
-        />
+        <DbSlider v-model="audioGainDb" :level-db="props.audioLevelDb" />
       </div>
     </div>
 

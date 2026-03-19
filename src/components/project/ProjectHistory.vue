@@ -6,8 +6,8 @@ import { useHistoryStore } from '~/stores/history.store';
 const timelineStore = useTimelineStore();
 const historyStore = useHistoryStore();
 
-const past = computed(() => historyStore.past.filter(e => e.scope === 'timeline'));
-const future = computed(() => historyStore.future.filter(e => e.scope === 'timeline'));
+const past = computed(() => historyStore.past.filter((e) => e.scope === 'timeline'));
+const future = computed(() => historyStore.future.filter((e) => e.scope === 'timeline'));
 
 const canUndo = computed(() => historyStore.canUndo('timeline'));
 const canRedo = computed(() => historyStore.canRedo('timeline'));
@@ -104,7 +104,9 @@ function formatTime(timestamp: number): string {
         >
           <div
             class="w-2 h-2 rounded-full"
-            :class="[index === 0 ? 'bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.5)]' : 'bg-slate-600']"
+            :class="[
+              index === 0 ? 'bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.5)]' : 'bg-slate-600',
+            ]"
           ></div>
           <div class="flex-1 truncate" :class="[index === 0 ? 'font-medium' : '']">
             {{ $t(entry.labelKey) }}

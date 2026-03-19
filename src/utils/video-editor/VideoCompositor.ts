@@ -1,14 +1,7 @@
 import { safeDispose } from './utils';
 import { TimelineActiveTracker } from './TimelineActiveTracker';
-import {
-  Application,
-  DOMAdapter,
-  WebWorkerAdapter,
-  RenderTexture,
-  Texture,
-  Container,
-} from 'pixi.js';
-import type { Filter } from 'pixi.js';
+import { Application, DOMAdapter, WebWorkerAdapter, Texture, Container } from 'pixi.js';
+import type { Filter, RenderTexture } from 'pixi.js';
 import type { WorkerTimelineClip } from '../../composables/monitor/types';
 import type { PreviewRenderOptions } from './worker-rpc';
 import { VIDEO_CORE_LIMITS } from '../constants';
@@ -20,7 +13,7 @@ import type {
 } from '~/timeline/types';
 
 // Internal modules
-import { type CompositorClip, type CompositorTrack, type HudMediaState } from './compositor/types';
+import type { CompositorClip, CompositorTrack, HudMediaState } from './compositor/types';
 import { ResourceManager } from './compositor/ResourceManager';
 import { VideoFrameCache } from './compositor/VideoFrameCache';
 import { EffectManager } from './compositor/EffectManager';

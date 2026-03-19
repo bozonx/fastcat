@@ -15,20 +15,20 @@ describe('timelineCaptions', () => {
   beforeEach(() => {
     timelineDoc = ref<TimelineDocument | null>({
       tracks: [
-        { 
-          id: 'track1', 
-          kind: 'video', 
+        {
+          id: 'track1',
+          kind: 'video',
           videoHidden: false,
           audioMuted: false,
-          items: [] 
-        }
+          items: [],
+        },
       ],
     } as any);
-    
+
     clips = {
       addVirtualClipToTrack: vi.fn(),
     };
-    
+
     requestTimelineSave = vi.fn().mockResolvedValue(undefined);
     getWorkspaceHandle = vi.fn().mockReturnValue({});
     getResolvedStorageTopology = vi.fn().mockReturnValue({});
@@ -46,24 +46,30 @@ describe('timelineCaptions', () => {
 
   it('fails to generate captions if timeline not loaded', async () => {
     timelineDoc.value = null;
-    await expect(captions.generateCaptionsFromTimeline({ 
-      trackId: 'track1', 
-      settings: {} as any 
-    })).rejects.toThrow('Timeline not loaded');
+    await expect(
+      captions.generateCaptionsFromTimeline({
+        trackId: 'track1',
+        settings: {} as any,
+      }),
+    ).rejects.toThrow('Timeline not loaded');
   });
 
   it('fails to generate captions on non-existent track', async () => {
-    await expect(captions.generateCaptionsFromTimeline({ 
-      trackId: 'track2', 
-      settings: {} as any 
-    })).rejects.toThrow('Captions can only be generated on a video track');
+    await expect(
+      captions.generateCaptionsFromTimeline({
+        trackId: 'track2',
+        settings: {} as any,
+      }),
+    ).rejects.toThrow('Captions can only be generated on a video track');
   });
 
   it('fails to generate captions on track with items', async () => {
     timelineDoc.value!.tracks[0].items.push({ kind: 'clip', id: 'clip1' } as any);
-    await expect(captions.generateCaptionsFromTimeline({ 
-      trackId: 'track1', 
-      settings: {} as any 
-    })).rejects.toThrow('Select an empty video track for generated captions');
+    await expect(
+      captions.generateCaptionsFromTimeline({
+        trackId: 'track1',
+        settings: {} as any,
+      }),
+    ).rejects.toThrow('Select an empty video track for generated captions');
   });
 });

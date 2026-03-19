@@ -123,7 +123,9 @@ function handleTrackPanInput(trackId: string, event: Event) {
             <p class="text-xs uppercase tracking-[0.18em] text-slate-500">
               {{ t('fastcat.audioMixer.title', 'Mixer') }}
             </p>
-            <h2 class="mt-1 text-base font-semibold text-white">{{ t('fastcat.audioMixer.master') }} {{ t('fastcat.audioMixer.output') }}</h2>
+            <h2 class="mt-1 text-base font-semibold text-white">
+              {{ t('fastcat.audioMixer.master') }} {{ t('fastcat.audioMixer.output') }}
+            </h2>
           </div>
           <UButton
             size="sm"
@@ -183,7 +185,11 @@ function handleTrackPanInput(trackId: string, event: Event) {
               <div class="min-w-0">
                 <h4 class="truncate text-sm font-medium text-white">{{ track.name }}</h4>
                 <p class="text-[11px] text-slate-500">
-                  {{ track.kind === 'video' ? $t('fastcat.track.video.title') : $t('fastcat.track.audio.title') }}
+                  {{
+                    track.kind === 'video'
+                      ? $t('fastcat.track.video.title')
+                      : $t('fastcat.track.audio.title')
+                  }}
                 </p>
               </div>
               <div class="flex items-center gap-2">
@@ -247,7 +253,6 @@ function handleTrackPanInput(trackId: string, event: Event) {
           </article>
         </div>
       </section>
-
     </div>
   </div>
 </template>

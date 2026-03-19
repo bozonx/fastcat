@@ -22,7 +22,11 @@ const props = defineProps<{
 
 const containerRef = ref<HTMLElement | null>(null);
 const isTextModalOpen = ref(false);
-const { isFullscreen, toggle: toggleFullscreen, exit: exitFullscreen } = useFullscreen(containerRef);
+const {
+  isFullscreen,
+  toggle: toggleFullscreen,
+  exit: exitFullscreen,
+} = useFullscreen(containerRef);
 
 watch(
   () => uiStore.previewFullscreenToggleTrigger,
@@ -70,8 +74,6 @@ onUnmounted(() => {
 });
 </script>
 
-
-
 <template>
   <div
     ref="containerRef"
@@ -80,9 +82,7 @@ onUnmounted(() => {
   >
     <template v-if="props.mediaType === 'image' && props.url">
       <div
-        :class="
-          isFullscreen ? 'flex-1 flex flex-col items-center justify-center' : 'w-full h-full'
-        "
+        :class="isFullscreen ? 'flex-1 flex flex-col items-center justify-center' : 'w-full h-full'"
       >
         <ImageViewer
           :src="props.url"
@@ -126,7 +126,6 @@ onUnmounted(() => {
       class="w-full h-full"
     />
 
-
     <div
       v-else-if="props.mediaType === 'unknown'"
       class="flex flex-col items-center justify-center h-full w-full gap-3 text-ui-text-muted p-8 bg-ui-bg"
@@ -138,4 +137,3 @@ onUnmounted(() => {
     </div>
   </div>
 </template>
-

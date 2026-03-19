@@ -39,7 +39,7 @@ function selectPreset(value: number) {
       @update:model-value="(v) => emit('update:modelValue', v)"
     />
     <UDropdownMenu
-      :items="fpsPresets.map(p => ({ label: p.label, onSelect: () => selectPreset(p.value) }))"
+      :items="fpsPresets.map((p) => ({ label: p.label, onSelect: () => selectPreset(p.value) }))"
       :disabled="disabled"
       :content="{ align: 'end' }"
     >

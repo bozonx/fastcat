@@ -96,9 +96,13 @@ function applyExportPreset(presetId: string) {
       v-model:bitrate-mbps="projectStore.projectSettings.exportDefaults.encoding.bitrateMbps"
       v-model:exclude-audio="projectStore.projectSettings.exportDefaults.encoding.excludeAudio"
       v-model:audio-codec="projectStore.projectSettings.exportDefaults.encoding.audioCodec"
-      v-model:audio-bitrate-kbps="projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps"
+      v-model:audio-bitrate-kbps="
+        projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps
+      "
       v-model:bitrate-mode="projectStore.projectSettings.exportDefaults.encoding.bitrateMode"
-      v-model:keyframe-interval-sec="projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec"
+      v-model:keyframe-interval-sec="
+        projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec
+      "
       v-model:export-alpha="projectStore.projectSettings.exportDefaults.encoding.exportAlpha"
       :show-audio-advanced="true"
       :show-presets="false"

@@ -113,9 +113,7 @@ function getHealthTone(status: typeof healthState.status) {
     </label>
 
     <label class="flex items-center gap-3 cursor-pointer">
-      <UCheckbox
-        v-model="workspaceStore.userSettings.integrations.manualSttApi.overrideFastCat"
-      />
+      <UCheckbox v-model="workspaceStore.userSettings.integrations.manualSttApi.overrideFastCat" />
       <span class="text-sm text-ui-text">
         {{
           t(
@@ -178,12 +176,7 @@ function getHealthTone(status: typeof healthState.status) {
     </label>
 
     <div class="flex flex-wrap gap-2">
-      <UButton
-        color="neutral"
-        variant="soft"
-        :loading="healthState.loading"
-        @click="runHealth"
-      >
+      <UButton color="neutral" variant="soft" :loading="healthState.loading" @click="runHealth">
         {{ t('videoEditor.settings.integrationHealthCheck', 'Check health') }}
       </UButton>
     </div>

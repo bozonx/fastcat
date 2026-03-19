@@ -22,9 +22,9 @@ function formatTime(timestamp: number) {
 <template>
   <UiModal
     :open="open"
-    @update:open="emit('update:open', $event)"
     :title="t('videoEditor.backgroundTasks.title', 'Background Tasks')"
     size="3xl"
+    @update:open="emit('update:open', $event)"
   >
     <template #header-actions>
       <UButton
@@ -39,7 +39,10 @@ function formatTime(timestamp: number) {
     </template>
 
     <div class="flex flex-col gap-4 p-4 min-h-75 max-h-[70vh] overflow-y-auto">
-      <div v-if="backgroundTasksStore.tasks.length === 0" class="text-center text-ui-text-muted py-8">
+      <div
+        v-if="backgroundTasksStore.tasks.length === 0"
+        class="text-center text-ui-text-muted py-8"
+      >
         {{ t('videoEditor.backgroundTasks.empty', 'No background tasks') }}
       </div>
 

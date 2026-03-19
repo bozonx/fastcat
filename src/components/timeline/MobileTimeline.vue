@@ -85,7 +85,11 @@ const {
 } = useTimelineInteraction(scrollEl, tracks);
 
 function onStartMoveItem(event: PointerEvent, payload: TimelineMoveItemPayload) {
-  startMoveItem(event, { trackId: payload.trackId, itemId: payload.itemId, startUs: payload.startUs });
+  startMoveItem(event, {
+    trackId: payload.trackId,
+    itemId: payload.itemId,
+    startUs: payload.startUs,
+  });
 }
 
 function onStartTrimItem(event: PointerEvent, payload: TimelineTrimItemPayload) {
