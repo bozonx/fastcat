@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useMediaStore } from '~/stores/media.store';
-import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
+import { useProjectStore } from '~/stores/project.store';
 import UiSegmentedControl from '~/components/ui/UiSegmentedControl.vue';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
+import { useFileManager } from '~/composables/fileManager/useFileManager';
 
 import ClipProperties from '~/components/properties/ClipProperties.vue';
 import TrackProperties from '~/components/properties/TrackProperties.vue';
@@ -37,9 +37,11 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
+const projectStore = useProjectStore();
 const focusStore = useFocusStore();
 const selectionStore = useSelectionStore();
 const proxyStore = useProxyStore();
+const fileManager = useFileManager();
 const conversionStore = useFileConversionStore();
 
 function clearAllSelection() {
@@ -152,7 +154,7 @@ const displayMode = computed<
   if (
     entity?.source === 'fileManager' &&
     entity.kind === 'file' &&
-    entity.entry?.name?.toLowerCase().endsWith('.otio')
+    entity.name?.toLowerCase().endsWith('.otio')
   )
     return 'timeline';
   if (entity?.source === 'fileManager' && (entity.kind === 'file' || entity.kind === 'directory'))
@@ -165,9 +167,27 @@ const displayMode = computed<
 
 const selectedFsEntry = computed(() => {
   const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
+
   if (entity?.source === 'fileManager' && (entity.kind === 'file' || entity.kind === 'directory')) {
     return entity.entry;
   }
+
+  if (entity?.source === 'timeline' && entity.kind === 'timeline-properties') {
+    const currentTimelinePath = projectStore.currentTimelinePath;
+    if (currentTimelinePath) {
+      const entry = fileManager.findEntryByPath(currentTimelinePath);
+      if (entry && entry.kind === 'file') {
+        return entry;
+      }
+      return {
+        name: currentTimelinePath.split('/').pop() || 'Timeline.otio',
+        path: currentTimelinePath,
+        kind: 'file' as const,
+        source: 'local' as const,
+      };
+    }
+  }
+
   return null;
 });
 
@@ -250,7 +270,9 @@ function onPanelFocusOut() {
             v-else-if="displayMode === 'timeline'"
             class="ml-2 text-xs text-ui-text-muted font-mono truncate"
           >
-            {{ selectedFsEntry?.name ?? t('fastcat.timeline.properties.title', 'Timeline Properties') }}
+            {{
+              selectedFsEntry?.name ?? t('fastcat.timeline.properties.title', 'Timeline Properties')
+            }}
           </span>
           <span
             v-else-if="displayMode === 'project-effect'"
@@ -364,10 +386,7 @@ function onPanelFocusOut() {
             v-model:marker-id="selectedMarkerId"
           />
           <SelectionRangeProperties v-else-if="displayMode === 'selection-range'" />
-          <TimelineProperties
-            v-else-if="displayMode === 'timeline'"
-            :fs-entry="selectedFsEntry?.name?.toLowerCase().endsWith('.otio') ? selectedFsEntry : null"
-          />
+          <TimelineProperties v-else-if="displayMode === 'timeline'" :fs-entry="selectedFsEntry" />
           <ProjectEffectProperties
             v-else-if="displayMode === 'project-effect' && selectedProjectEffectType"
             :effect-type="selectedProjectEffectType"

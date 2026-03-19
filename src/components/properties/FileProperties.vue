@@ -14,7 +14,6 @@ import ExpandableYamlSection from '~/components/properties/file/ExpandableYamlSe
 import FileGeneralInfoSection from '~/components/properties/file/FileGeneralInfoSection.vue';
 import FileTimelineUsageSection from '~/components/properties/file/FileTimelineUsageSection.vue';
 import ImageFilePropertiesSection from '~/components/properties/file/ImageFilePropertiesSection.vue';
-import TimelineProperties from '~/components/properties/TimelineProperties.vue';
 import VideoFilePropertiesSection from '~/components/properties/file/VideoFilePropertiesSection.vue';
 import FileProjectRootSection from '~/components/properties/file/FileProjectRootSection.vue';
 import FileTranscriptionModal from '~/components/properties/file/FileTranscriptionModal.vue';
@@ -127,13 +126,11 @@ const {
   mediaType,
   textContent,
   fileInfo,
-  timelineDocSummary,
   exifData,
   exifYaml,
   imageDimensions,
   metadataYaml,
   isUnknown,
-  isOtio,
 } = useEntryPreview({
   selectedFsEntry: selectedFsEntryRef,
   previewMode: previewModeRef,
@@ -147,7 +144,7 @@ const {
 const { generalInfoTitle, isHidden, mediaMeta, selectedPath } = useFilePropertiesBasics({
   selectedFsEntry: selectedFsEntryRef,
   fileInfo,
-  isOtio,
+  isOtio: ref(false),
   mediaType,
 });
 
@@ -276,7 +273,7 @@ const {
   showVideoProxyActions,
   hasExistingProxyForFile,
   isGeneratingProxyForFile,
-  isOtio,
+  isOtio: ref(false),
   isVideoFile,
   triggerDirectoryUpload,
   createSubfolder,
@@ -318,7 +315,7 @@ const {
 
     <EntryPreviewBox
       :selected-entry-kind="selectedFsEntry?.kind ?? null"
-      :is-otio="isOtio"
+      :is-otio="false"
       :is-unknown="isUnknown"
       :current-url="currentUrl"
       :media-type="mediaType"
