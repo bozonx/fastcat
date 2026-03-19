@@ -7,13 +7,28 @@ import {
 
 import type { MonitorSettings } from '~/utils/project-settings';
 
-export interface ProjectUiSettings {
-  version: number;
-  monitors: Record<string, MonitorSettings>;
-  timelines: {
-    openPaths: string[];
-  };
-}
+import { z } from 'zod';
+
+const MonitorSettingsSchema = z.object({
+  previewResolution: z.coerce.number().int().min(1).max(4320).catch(480),
+  useProxy: z.coerce.boolean().catch(true),
+  previewEffectsEnabled: z.coerce.boolean().catch(true),
+  panX: z.coerce.number().catch(0),
+  panY: z.coerce.number().catch(0),
+  zoom: z.coerce.number().min(0.05).max(20).catch(1),
+  showGrid: z.coerce.boolean().catch(false),
+  toolbarPosition: z.enum(['top', 'bottom', 'left', 'right']).catch('bottom'),
+});
+
+export const ProjectUiSettingsSchema = z.object({
+  version: z.coerce.number().catch(1),
+  monitors: z.record(z.string(), MonitorSettingsSchema).catch({}),
+  timelines: z.object({
+    openPaths: z.array(z.string()).catch([]),
+  }).catch({ openPaths: [] }),
+});
+
+export type ProjectUiSettings = z.infer<typeof ProjectUiSettingsSchema>;
 
 export interface ProjectUiRepository {
   load(): Promise<ProjectUiSettings | null>;
@@ -34,11 +49,16 @@ export function createProjectUiRepository(input: {
       const raw = await readJsonFromFileHandle<any>(handle);
       if (!raw) return null;
 
-      return {
-        version: Number(raw.version) || 1,
+      const parsed = ProjectUiSettingsSchema.safeParse({
+        ...raw,
         monitors: raw.monitors || { cut: raw.monitor || {} },
-        timelines: raw.timelines || {},
-      } as ProjectUiSettings;
+      });
+
+      if (!parsed.success) {
+         console.warn(`[ProjectUi] Invalid UI settings`, parsed.error);
+         return null;
+      }
+      return parsed.data;
     },
 
     async save(data) {

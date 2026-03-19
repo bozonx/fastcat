@@ -5,19 +5,22 @@ import {
 } from './fastcat-fs';
 import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 import { ensureResolvedProjectTempDir } from '~/utils/storage-handles';
+import { z } from 'zod';
 
-export interface TranscriptionCacheRecord {
-  key: string;
-  createdAt: string;
-  sourcePath: string;
-  sourceName: string;
-  sourceSize: number;
-  sourceLastModified: number;
-  language: string;
-  provider: string;
-  models: string[];
-  response: unknown;
-}
+export const TranscriptionCacheRecordSchema = z.object({
+  key: z.string(),
+  createdAt: z.string(),
+  sourcePath: z.string(),
+  sourceName: z.string(),
+  sourceSize: z.number(),
+  sourceLastModified: z.number(),
+  language: z.string(),
+  provider: z.string(),
+  models: z.array(z.string()),
+  response: z.unknown(),
+});
+
+export type TranscriptionCacheRecord = z.infer<typeof TranscriptionCacheRecordSchema>;
 
 export interface TranscriptionCacheRepository {
   load: (key: string) => Promise<TranscriptionCacheRecord | null>;
@@ -78,7 +81,15 @@ export function createTranscriptionCacheRepository(params: {
 
       try {
         const handle = await cacheDir.getFileHandle(`${key}.json`, { create: false });
-        return await readJsonFromFileHandle<TranscriptionCacheRecord>(handle);
+        const raw = await readJsonFromFileHandle<unknown>(handle);
+        if (!raw) return null;
+        
+        const parsed = TranscriptionCacheRecordSchema.safeParse(raw);
+        if (!parsed.success) {
+          console.warn(`[TranscriptionCache] Invalid cache record for key ${key}`, parsed.error);
+          return null;
+        }
+        return parsed.data;
       } catch (error: unknown) {
         if ((error as { name?: unknown }).name === 'NotFoundError') {
           return null;
@@ -98,9 +109,14 @@ export function createTranscriptionCacheRepository(params: {
 
         try {
           const fileHandle = await cacheDir.getFileHandle(handle.name, { create: false });
-          const record = await readJsonFromFileHandle<TranscriptionCacheRecord>(fileHandle);
-          if (record) {
-            records.push(record);
+          const raw = await readJsonFromFileHandle<unknown>(fileHandle);
+          if (raw) {
+            const parsed = TranscriptionCacheRecordSchema.safeParse(raw);
+            if (parsed.success) {
+              records.push(parsed.data);
+            } else {
+              console.warn(`[TranscriptionCache] Invalid cache record in file ${handle.name}`, parsed.error);
+            }
           }
         } catch (error: unknown) {
           if ((error as { name?: unknown }).name === 'NotFoundError') {

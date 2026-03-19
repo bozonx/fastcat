@@ -5,33 +5,36 @@ import type {
   TimelineBlendMode,
 } from '~/timeline/types';
 
-export interface ExportOptions {
-  format: 'mp4' | 'webm' | 'mkv';
-  videoCodec: string;
-  bitrate: number;
-  bitrateMode?: 'constant' | 'variable';
-  keyframeIntervalSec?: number;
-  exportAlpha?: boolean;
-  metadata?: {
-    title: string;
-    description: string;
-    author: string;
-    tags: string;
-  };
-  audioBitrate: number;
-  audio: boolean;
-  audioCodec?: string;
-  audioSampleRate?: number;
-  audioChannels?: 'stereo' | 'mono';
-  width: number;
-  height: number;
-  fps: number;
-  audioReverse?: boolean;
-  audioDurationSec?: number;
-  exportRangeUs?: TimelineSelectionRange;
-  audioPassthrough?: boolean;
-}
+import { z } from 'zod';
 
+export const ExportOptionsSchema = z.object({
+  format: z.enum(['mp4', 'webm', 'mkv']),
+  videoCodec: z.string(),
+  bitrate: z.number(),
+  bitrateMode: z.enum(['constant', 'variable']).optional(),
+  keyframeIntervalSec: z.number().optional(),
+  exportAlpha: z.boolean().optional(),
+  metadata: z.object({
+    title: z.string(),
+    description: z.string(),
+    author: z.string(),
+    tags: z.string(),
+  }).optional(),
+  audioBitrate: z.number(),
+  audio: z.boolean(),
+  audioCodec: z.string().optional(),
+  audioSampleRate: z.number().optional(),
+  audioChannels: z.enum(['stereo', 'mono']).optional(),
+  width: z.number(),
+  height: z.number(),
+  fps: z.number(),
+  audioReverse: z.boolean().optional(),
+  audioDurationSec: z.number().optional(),
+  exportRangeUs: z.object({ startUs: z.number(), endUs: z.number() }).optional(),
+  audioPassthrough: z.boolean().optional(),
+});
+
+export type ExportOptions = z.infer<typeof ExportOptionsSchema>;
 export interface WorkerTimelineClip {
   kind: 'clip';
   clipType: 'media' | 'adjustment' | 'background' | 'text' | 'shape' | 'hud';

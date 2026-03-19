@@ -132,6 +132,26 @@ export function normalizeVideoSettings(
   }).catch(DEFAULT_USER_SETTINGS.video).parse((raw as any)?.video ?? {});
 }
 
+export function normalizeProjectDefaults(
+  raw: unknown,
+): FastCatUserSettings['projectDefaults'] {
+  const schema = z.object({
+    width: z.coerce.number().min(1).catch(DEFAULT_USER_SETTINGS.projectDefaults.width),
+    height: z.coerce.number().min(1).catch(DEFAULT_USER_SETTINGS.projectDefaults.height),
+    fps: z.coerce.number().min(1).max(240).catch(DEFAULT_USER_SETTINGS.projectDefaults.fps),
+    resolutionFormat: z.string().catch(DEFAULT_USER_SETTINGS.projectDefaults.resolutionFormat),
+    orientation: z.enum(['landscape', 'portrait']).catch('landscape'),
+    aspectRatio: z.string().catch(DEFAULT_USER_SETTINGS.projectDefaults.aspectRatio),
+    isCustomResolution: z.coerce.boolean().catch(DEFAULT_USER_SETTINGS.projectDefaults.isCustomResolution),
+    sampleRate: z.coerce.number().min(8000).max(192000).catch(DEFAULT_USER_SETTINGS.projectDefaults.sampleRate),
+    audioDeclickDurationUs: z.coerce.number().min(0).catch(DEFAULT_USER_SETTINGS.projectDefaults.audioDeclickDurationUs),
+    defaultAudioFadeCurve: z.enum(['linear', 'logarithmic']).catch(DEFAULT_USER_SETTINGS.projectDefaults.defaultAudioFadeCurve),
+    audioScrubbingEnabled: z.boolean().catch(DEFAULT_USER_SETTINGS.projectDefaults.audioScrubbingEnabled),
+  }).catch(DEFAULT_USER_SETTINGS.projectDefaults);
+
+  return schema.parse(raw);
+}
+
 export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse'] {
   const rWheelEnum = z.enum(RULER_WHEEL_ACTIONS as any);
   const clickEnum = z.enum(CLICK_ACTIONS as any);
