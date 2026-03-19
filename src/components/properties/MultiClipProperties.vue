@@ -7,6 +7,7 @@ import PropertyRow from '~/components/properties/PropertyRow.vue';
 import type { TimelineClipItem } from '~/timeline/types';
 import TimecodeInput from '~/components/common/TimecodeInput.vue';
 import { sanitizeFps } from '~/timeline/commands/utils';
+import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 
 const props = defineProps<{
   items: { trackId: string; itemId: string }[];
@@ -364,6 +365,96 @@ function handleQuantizeSelected() {
   if (cmds.length === 0) return;
   timelineStore.batchApplyTimeline(cmds);
 }
+
+const actions = computed(() => {
+  const result: any[] = [
+    {
+      id: 'delete',
+      label: t('common.delete', 'Delete'),
+      icon: 'i-heroicons-trash',
+      color: 'danger',
+      onClick: handleDelete,
+    },
+    {
+      id: 'toggle-disabled',
+      label: allDisabled.value
+        ? t('fastcat.timeline.enableClips', 'Enable clips')
+        : t('fastcat.timeline.disableClips', 'Disable clips'),
+      icon: allDisabled.value ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
+      onClick: toggleDisabled,
+    },
+    {
+      id: 'group',
+      label: t('fastcat.timeline.groupClips', 'Group clips'),
+      icon: 'i-heroicons-link',
+      hidden: props.items.length < 2,
+      onClick: handleGroupSelected,
+    },
+    {
+      id: 'ungroup',
+      label: t('fastcat.timeline.ungroupClips', 'Ungroup clips'),
+      icon: 'i-heroicons-link-slash',
+      hidden: !hasGroupedClip.value,
+      onClick: handleUngroupSelected,
+    },
+    {
+      id: 'quantize',
+      label: t('fastcat.timeline.quantize', 'Quantize to frames'),
+      icon: 'i-heroicons-squares-2x2',
+      hidden: !hasFreeClip.value,
+      onClick: handleQuantizeSelected,
+    },
+    {
+      id: 'unlink-audio',
+      label: t('fastcat.timeline.unlinkAudio', 'Unlink audio'),
+      icon: 'i-heroicons-link-slash',
+      hidden: !hasLockedLinks.value,
+      onClick: handleUnlinkSelected,
+    },
+  ];
+
+  if (hasAudioOrVideoWithAudio.value) {
+    result.push(
+      {
+        id: 'toggle-muted',
+        label: allMuted.value
+          ? t('fastcat.timeline.unmuteClips', 'Unmute clips')
+          : t('fastcat.timeline.muteClips', 'Mute clips'),
+        icon: allMuted.value ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark',
+        onClick: toggleMuted,
+      },
+      {
+        id: 'toggle-waveform',
+        label: isWaveformShown.value
+          ? t('fastcat.timeline.hideWaveform', 'Hide Waveform')
+          : t('fastcat.timeline.showWaveform', 'Show Waveform'),
+        icon: isWaveformShown.value ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
+        onClick: toggleShowWaveform,
+      },
+      {
+        id: 'waveform-mode',
+        label: isWaveformFull.value
+          ? t('fastcat.timeline.waveformHalf', 'Waveform: Half')
+          : t('fastcat.timeline.waveformFull', 'Waveform: Full'),
+        icon: 'i-heroicons-chart-bar',
+        onClick: toggleWaveformMode,
+      },
+    );
+  }
+
+  if (hasVideo.value) {
+    result.push({
+      id: 'toggle-thumbnails',
+      label: isThumbnailsShown.value
+        ? t('fastcat.timeline.hideThumbnails', 'Hide Thumbnails')
+        : t('fastcat.timeline.showThumbnails', 'Show Thumbnails'),
+      icon: isThumbnailsShown.value ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
+      onClick: toggleShowThumbnails,
+    });
+  }
+
+  return result;
+});
 </script>
 
 <template>
@@ -385,124 +476,8 @@ function handleQuantizeSelected() {
     </PropertySection>
 
     <PropertySection :title="t('common.actions.title', 'Actions')">
-      <div class="px-3 pb-3 flex flex-col gap-2">
-        <UButton
-          size="sm"
-          color="danger"
-          variant="soft"
-          icon="i-heroicons-trash"
-          :label="t('common.delete', 'Delete')"
-          @click="handleDelete"
-        />
-
-        <UButton
-          size="sm"
-          color="neutral"
-          variant="soft"
-          :icon="allDisabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
-          :label="
-            allDisabled
-              ? t('fastcat.timeline.enableClips', 'Enable clips')
-              : t('fastcat.timeline.disableClips', 'Disable clips')
-          "
-          @click="toggleDisabled"
-        />
-
-        <UButton
-          v-if="items.length > 1"
-          size="sm"
-          color="neutral"
-          variant="soft"
-          icon="i-heroicons-link"
-          :label="t('fastcat.timeline.groupClips', 'Group clips')"
-          @click="handleGroupSelected"
-        />
-
-        <UButton
-          v-if="hasGroupedClip"
-          size="sm"
-          color="neutral"
-          variant="soft"
-          icon="i-heroicons-link-slash"
-          :label="t('fastcat.timeline.ungroupClips', 'Ungroup clips')"
-          @click="handleUngroupSelected"
-        />
-
-        <UButton
-          v-if="hasFreeClip"
-          size="sm"
-          color="neutral"
-          variant="soft"
-          icon="i-heroicons-squares-2x2"
-          :label="t('fastcat.timeline.quantize', 'Quantize to frames')"
-          @click="handleQuantizeSelected"
-        />
-
-        <UButton
-          v-if="hasLockedLinks"
-          size="sm"
-          color="neutral"
-          variant="soft"
-          icon="i-heroicons-link-slash"
-          :label="t('fastcat.timeline.unlinkAudio', 'Unlink audio')"
-          @click="handleUnlinkSelected"
-        />
-
-        <template v-if="hasAudioOrVideoWithAudio">
-          <UButton
-            size="sm"
-            color="neutral"
-            variant="soft"
-            :icon="allMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
-            :label="
-              allMuted
-                ? t('fastcat.timeline.unmuteClips', 'Unmute clips')
-                : t('fastcat.timeline.muteClips', 'Mute clips')
-            "
-            @click="toggleMuted"
-          />
-
-          <UButton
-            size="sm"
-            color="neutral"
-            variant="soft"
-            :icon="isWaveformShown ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
-            :label="
-              isWaveformShown
-                ? t('fastcat.timeline.hideWaveform', 'Hide Waveform')
-                : t('fastcat.timeline.showWaveform', 'Show Waveform')
-            "
-            @click="toggleShowWaveform"
-          />
-
-          <UButton
-            size="sm"
-            color="neutral"
-            variant="soft"
-            icon="i-heroicons-chart-bar"
-            :label="
-              isWaveformFull
-                ? t('fastcat.timeline.waveformHalf', 'Waveform: Half')
-                : t('fastcat.timeline.waveformFull', 'Waveform: Full')
-            "
-            @click="toggleWaveformMode"
-          />
-        </template>
-
-        <template v-if="hasVideo">
-          <UButton
-            size="sm"
-            color="neutral"
-            variant="soft"
-            :icon="isThumbnailsShown ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
-            :label="
-              isThumbnailsShown
-                ? t('fastcat.timeline.hideThumbnails', 'Hide Thumbnails')
-                : t('fastcat.timeline.showThumbnails', 'Show Thumbnails')
-            "
-            @click="toggleShowThumbnails"
-          />
-        </template>
+      <div class="px-3 pb-3">
+        <PropertyActionList :actions="actions" />
       </div>
     </PropertySection>
   </div>

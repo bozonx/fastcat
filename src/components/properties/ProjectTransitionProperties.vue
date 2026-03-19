@@ -4,6 +4,7 @@ import { ref, watch, computed } from 'vue';
 import { getTransitionManifest, normalizeTransitionParams } from '~/transitions';
 import { usePresetsStore } from '~/stores/presets.store';
 import TransitionParamFields from '~/components/properties/TransitionParamFields.vue';
+import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 
 const props = defineProps<{
   transitionType: string;
@@ -52,6 +53,27 @@ function handleUpdatePreset() {
   if (!manifest.value || !manifest.value.isCustom) return;
   presetsStore.updatePreset(manifest.value.type, params.value);
 }
+
+const actions = computed(() => {
+  const list: any[] = [];
+  if (manifest.value?.isCustom) {
+    list.push({
+      id: 'update-preset',
+      label: t('common.save', 'Save'),
+      icon: 'i-heroicons-check',
+      onClick: handleUpdatePreset,
+    });
+  }
+  list.push({
+    id: 'save-as-preset',
+    label: manifest.value?.isCustom
+      ? t('fastcat.effects.saveAsNew', 'Save as new')
+      : t('fastcat.effects.saveAsPreset', 'Save as preset'),
+    icon: 'i-heroicons-bookmark',
+    onClick: () => (isSaveModalOpen.value = true),
+  });
+  return list;
+});
 </script>
 
 <template>
@@ -73,31 +95,7 @@ function handleUpdatePreset() {
       </div>
     </div>
 
-    <div class="flex gap-2">
-      <UButton
-        v-if="manifest.isCustom"
-        variant="soft"
-        color="primary"
-        icon="i-heroicons-check"
-        class="flex-1 justify-center"
-        @click="handleUpdatePreset"
-      >
-        {{ t('common.save', 'Save') }}
-      </UButton>
-      <UButton
-        variant="soft"
-        color="primary"
-        icon="i-heroicons-bookmark"
-        class="flex-1 justify-center"
-        @click="isSaveModalOpen = true"
-      >
-        {{
-          manifest.isCustom
-            ? t('fastcat.effects.saveAsNew', 'Save as new')
-            : t('fastcat.effects.saveAsPreset', 'Save as preset')
-        }}
-      </UButton>
-    </div>
+    <PropertyActionList :actions="actions" :vertical="false" size="sm" />
 
     <UiModal
       v-model:open="isSaveModalOpen"

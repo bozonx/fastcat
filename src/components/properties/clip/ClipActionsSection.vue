@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { TimelineClipItem, TrackKind } from '~/timeline/types';
 import PropertySection from '~/components/properties/PropertySection.vue';
+import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -27,141 +29,131 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+const commonActions = computed(() => [
+  {
+    id: 'rename',
+    label: t('common.rename', 'Rename'),
+    icon: 'i-heroicons-pencil',
+    onClick: () => emit('rename'),
+  },
+  {
+    id: 'delete',
+    label: t('common.delete', 'Delete'),
+    icon: 'i-heroicons-trash',
+    color: 'danger' as const,
+    onClick: () => emit('delete'),
+  },
+]);
+
+const otherActions = computed(() => {
+  const list: any[] = [];
+
+  if (props.isFreePosition) {
+    list.push({
+      id: 'quantize',
+      label: t('fastcat.timeline.quantize', 'Quantize to frames'),
+      icon: 'i-heroicons-squares-2x2',
+      onClick: () => emit('quantize'),
+    });
+  }
+
+  if (props.hasLockedLinkedAudio || props.isLockedLinkedAudioClip) {
+    list.push({
+      id: 'unlinkAudio',
+      label: t('fastcat.timeline.unlinkAudio', 'Unlink audio'),
+      icon: 'i-heroicons-link-slash',
+      onClick: () => emit('unlinkAudio'),
+    });
+  }
+
+  if (props.isInLinkedGroup) {
+    list.push({
+      id: 'removeFromGroup',
+      label: t('fastcat.timeline.removeFromGroup', 'Remove from group'),
+      icon: 'i-heroicons-link-slash',
+      onClick: () => emit('removeFromGroup'),
+    });
+  }
+
+  if (props.clip.clipType === 'media') {
+    list.push({
+      id: 'showInFileManager',
+      label: t('fastcat.clip.showInFileManager', 'Show in File Manager'),
+      icon: 'i-heroicons-folder-open',
+      onClick: () => emit('showInFileManager'),
+    });
+  }
+
+  if (props.clip.clipType === 'timeline') {
+    list.push({
+      id: 'goToTimeline',
+      label: t('fastcat.clip.goToTimeline', 'Go to timeline'),
+      icon: 'i-heroicons-arrow-right-circle',
+      onClick: () => emit('goToTimeline'),
+    });
+  }
+
+  if (props.canShowWaveformToggle && props.trackKind === 'video') {
+    list.push({
+      id: 'toggleShowWaveform',
+      label:
+        props.clip.showWaveform === false
+          ? t('fastcat.clip.showWaveform', 'Show Waveform')
+          : t('fastcat.clip.hideWaveform', 'Hide Waveform'),
+      icon: 'i-heroicons-eye',
+      onClick: () => emit('toggleShowWaveform'),
+    });
+
+    list.push({
+      id: 'toggleShowThumbnails',
+      label:
+        props.clip.showThumbnails === false
+          ? t('fastcat.clip.showThumbnails', 'Show Thumbnails')
+          : t('fastcat.clip.hideThumbnails', 'Hide Thumbnails'),
+      icon: 'i-heroicons-photo',
+      onClick: () => emit('toggleShowThumbnails'),
+    });
+  }
+
+  if (
+    props.canShowWaveformToggle &&
+    (props.trackKind === 'audio' || props.clip.showWaveform !== false)
+  ) {
+    list.push({
+      id: 'toggleAudioWaveformMode',
+      label:
+        (props.clip.audioWaveformMode || 'half') === 'full'
+          ? t('fastcat.clip.halfWaveform', 'Half Waveform')
+          : t('fastcat.clip.fullWaveform', 'Full Waveform'),
+      icon: 'i-heroicons-chart-bar',
+      onClick: () => emit('toggleAudioWaveformMode'),
+    });
+  }
+
+  return list;
+});
 </script>
 
 <template>
   <PropertySection :title="t('fastcat.clip.actions', 'Actions')">
-    <div class="flex gap-2 w-full">
-      <UButton
+    <div class="flex flex-col w-full">
+      <PropertyActionList
+        :actions="commonActions"
+        :vertical="false"
+        justify="center"
         size="xs"
-        variant="soft"
-        color="neutral"
-        icon="i-heroicons-pencil"
-        class="flex-1 justify-center"
-        @click="emit('rename')"
+        class="mb-2"
       >
-        {{ t('common.rename', 'Rename') }}
-      </UButton>
-      <UButton
-        size="xs"
-        variant="soft"
-        color="red"
-        icon="i-heroicons-trash"
-        class="flex-1 justify-center"
-        @click="emit('delete')"
-      >
-        {{ t('common.delete', 'Delete') }}
-      </UButton>
+        <template #action-rename>
+          <span class="flex-1 text-center">{{ t('common.rename', 'Rename') }}</span>
+        </template>
+        <template #action-delete>
+          <span class="flex-1 text-center">{{ t('common.delete', 'Delete') }}</span>
+        </template>
+      </PropertyActionList>
+
+      <PropertyActionList :actions="otherActions" justify="center" size="xs" />
     </div>
-
-    <UButton
-      v-if="props.isFreePosition"
-      size="xs"
-      variant="soft"
-      color="neutral"
-      icon="i-heroicons-squares-2x2"
-      class="w-full justify-center mt-2"
-      @click="emit('quantize')"
-    >
-      {{ t('fastcat.timeline.quantize', 'Quantize to frames') }}
-    </UButton>
-
-    <UButton
-      v-if="props.hasLockedLinkedAudio || props.isLockedLinkedAudioClip"
-      size="xs"
-      variant="soft"
-      color="neutral"
-      icon="i-heroicons-link-slash"
-      class="w-full justify-center mt-2"
-      @click="emit('unlinkAudio')"
-    >
-      {{ t('fastcat.timeline.unlinkAudio', 'Unlink audio') }}
-    </UButton>
-
-    <UButton
-      v-if="props.isInLinkedGroup"
-      size="xs"
-      variant="soft"
-      color="neutral"
-      icon="i-heroicons-link-slash"
-      class="w-full justify-center mt-2"
-      @click="emit('removeFromGroup')"
-    >
-      {{ t('fastcat.timeline.removeFromGroup', 'Remove from group') }}
-    </UButton>
-
-    <UButton
-      v-if="props.clip.clipType === 'media'"
-      size="xs"
-      variant="soft"
-      color="neutral"
-      icon="i-heroicons-folder-open"
-      class="w-full justify-center mt-2"
-      @click="emit('showInFileManager')"
-    >
-      {{ t('fastcat.clip.showInFileManager', 'Show in File Manager') }}
-    </UButton>
-
-    <UButton
-      v-if="props.clip.clipType === 'timeline'"
-      size="xs"
-      variant="soft"
-      color="neutral"
-      icon="i-heroicons-arrow-right-circle"
-      class="w-full justify-center mt-2"
-      @click="emit('goToTimeline')"
-    >
-      {{ t('fastcat.clip.goToTimeline', 'Go to timeline') }}
-    </UButton>
-
-    <template v-if="props.canShowWaveformToggle">
-      <UButton
-        v-if="props.trackKind === 'video'"
-        size="xs"
-        variant="soft"
-        color="neutral"
-        icon="i-heroicons-eye"
-        class="w-full justify-center mt-2"
-        @click="emit('toggleShowWaveform')"
-      >
-        {{
-          props.clip.showWaveform === false
-            ? t('fastcat.clip.showWaveform', 'Show Waveform')
-            : t('fastcat.clip.hideWaveform', 'Hide Waveform')
-        }}
-      </UButton>
-
-      <UButton
-        v-if="props.trackKind === 'video'"
-        size="xs"
-        variant="soft"
-        color="neutral"
-        icon="i-heroicons-photo"
-        class="w-full justify-center mt-2"
-        @click="emit('toggleShowThumbnails')"
-      >
-        {{
-          props.clip.showThumbnails === false
-            ? t('fastcat.clip.showThumbnails', 'Show Thumbnails')
-            : t('fastcat.clip.hideThumbnails', 'Hide Thumbnails')
-        }}
-      </UButton>
-
-      <UButton
-        v-if="props.trackKind === 'audio' || props.clip.showWaveform !== false"
-        size="xs"
-        variant="soft"
-        color="neutral"
-        icon="i-heroicons-chart-bar"
-        class="w-full justify-center mt-2"
-        @click="emit('toggleAudioWaveformMode')"
-      >
-        {{
-          (props.clip.audioWaveformMode || 'half') === 'full'
-            ? t('fastcat.clip.halfWaveform', 'Half Waveform')
-            : t('fastcat.clip.fullWaveform', 'Full Waveform')
-        }}
-      </UButton>
-    </template>
   </PropertySection>
 </template>
