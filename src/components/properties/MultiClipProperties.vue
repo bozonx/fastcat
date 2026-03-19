@@ -2,10 +2,8 @@
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
-import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import type { TimelineClipItem } from '~/timeline/types';
-import TimecodeInput from '~/components/common/TimecodeInput.vue';
 import { sanitizeFps } from '~/timeline/commands/utils';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 
@@ -465,13 +463,11 @@ const actions = computed(() => {
           {{ selectedCountLabel }}
         </span>
 
-        <div class="flex flex-col gap-0.5 mt-2">
-          <span class="text-xs text-ui-text-muted">{{ t('common.duration', 'Duration') }}</span>
-          <TimecodeInput
-            :model-value="selectedClips[0]?.timelineRange.durationUs ?? 0"
-            @update:model-value="handleSetUniformDuration"
-          />
-        </div>
+        <PropertyTimecode
+          :label="t('common.duration', 'Duration')"
+          :model-value="selectedClips[0]?.timelineRange.durationUs ?? 0"
+          @update:model-value="handleSetUniformDuration"
+        />
       </div>
     </PropertySection>
 

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import DbSlider from '~/components/audio/DbSlider.vue';
 import type { AudioFadeCurve } from '~/utils/audio/envelope';
@@ -50,18 +49,13 @@ const fadeCurveOptions = [
 </script>
 
 <template>
-  <div
+  <PropertySection
     v-if="
       props.canEditAudioFades &&
       (props.selectedTrackKind === 'audio' || props.selectedTrackKind === 'video')
     "
-    class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border"
+    :title="t('fastcat.clip.audioFade.title', 'Audio fades')"
   >
-    <div
-      class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
-    >
-      {{ t('fastcat.clip.audioFade.title', 'Audio fades') }}
-    </div>
 
     <div v-if="props.canEditAudioGain" class="space-y-1.5">
       <div class="flex items-center justify-between">
@@ -84,24 +78,17 @@ const fadeCurveOptions = [
       </div>
     </div>
 
-    <div v-if="props.canEditAudioBalance" class="space-y-1.5">
-      <div class="flex items-center justify-between">
-        <span class="text-xs text-ui-text-muted">{{
-          t('fastcat.clip.audio.balance', 'Balance')
-        }}</span>
-        <span class="text-xs font-mono text-ui-text-muted">{{
-          props.audioBalance.toFixed(2)
-        }}</span>
-      </div>
-      <UiWheelSlider
-        :model-value="props.audioBalance"
-        :min="-1"
-        :max="1"
-        :step="0.01"
-        :default-value="0"
-        @update:model-value="(v: unknown) => emit('updateAudioBalance', Number(v))"
-      />
-    </div>
+    <PropertySlider
+      v-if="props.canEditAudioBalance"
+      :label="t('fastcat.clip.audio.balance', 'Balance')"
+      :formatted-value="props.audioBalance.toFixed(2)"
+      :model-value="props.audioBalance"
+      :min="-1"
+      :max="1"
+      :step="0.01"
+      :default-value="0"
+      @update:model-value="(v: number) => emit('updateAudioBalance', v)"
+    />
 
     <div class="grid grid-cols-2 gap-2">
       <div class="flex flex-col gap-0.5">
@@ -147,5 +134,5 @@ const fadeCurveOptions = [
         />
       </div>
     </div>
-  </div>
+  </PropertySection>
 </template>
