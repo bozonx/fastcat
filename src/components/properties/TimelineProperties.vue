@@ -30,6 +30,9 @@ import { useFilePropertiesBasics } from '~/composables/properties/useFilePropert
 
 import { useFilePropertiesHandlers } from '~/composables/properties/useFilePropertiesHandlers';
 import { useProjectStore } from '~/stores/project.store';
+import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
+import { useFileTimelineUsage } from '~/composables/properties/useFileTimelineUsage';
+import FileTimelineUsageSection from '~/components/properties/file/FileTimelineUsageSection.vue';
 
 const props = defineProps<{
   summary?: {
@@ -88,6 +91,14 @@ const { onRename, onDelete } = useFilePropertiesHandlers({
   canUploadToRemote: canUploadToRemoteRef,
 });
 
+const timelineMediaUsageStore = useTimelineMediaUsageStore();
+const { timelinesUsingSelectedFile, openTimelineFromUsage } = useFileTimelineUsage({
+  selectedFsEntry: fsEntryRef,
+  timelineMediaUsageStore,
+  projectStore,
+  timelineStore,
+});
+
 const fileActions = computed(() => {
   if (!props.fsEntry) return null;
   return {
@@ -129,9 +140,10 @@ const computedSummary = computed(() => {
     (acc, tr) => acc + tr.items.filter((i) => i.kind === 'clip').length,
     0,
   );
+  const version = doc.metadata?.fastcat?.version ?? '-';
   const durationUs = selectTimelineDurationUs(doc);
   return {
-    version: '-',
+    version,
     durationUs,
     videoTracks,
     audioTracks,
@@ -236,6 +248,12 @@ function handleAddAudioTrack() {
         :selected-path="selectedPath"
         :is-hidden="isHidden"
         :format-bytes="formatBytes"
+      />
+
+      <FileTimelineUsageSection
+        v-if="timelinesUsingSelectedFile.length > 0"
+        :usages="timelinesUsingSelectedFile"
+        :open-timeline-from-usage="openTimelineFromUsage"
       />
     </template>
 
