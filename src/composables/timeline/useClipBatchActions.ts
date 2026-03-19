@@ -1,19 +1,24 @@
 import { computed, type Ref } from 'vue';
-import { useTimelineStore } from '~/stores/timeline.store';
-import { useMediaStore } from '~/stores/media.store';
 import { sanitizeFps } from '~/timeline/commands/utils';
-import type { TimelineClipItem } from '~/timeline/types';
+import type { TimelineClipItem, TimelineDocument } from '~/timeline/types';
 
-export function useClipBatchActions(items: Ref<{ trackId: string; itemId: string }[]>) {
-  const timelineStore = useTimelineStore();
-  const mediaStore = useMediaStore();
+export interface ClipBatchActionsContext {
+  timelineDoc: Ref<TimelineDocument | null>;
+  mediaMetadata: Ref<Record<string, any>>;
+  batchApplyTimeline: (cmds: any[]) => void;
+  clearSelection: () => void;
+}
 
+export function useClipBatchActions(
+  items: Ref<{ trackId: string; itemId: string }[]>,
+  ctx: ClipBatchActionsContext
+) {
   const generatedGroupId = () =>
     `linked-group-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
   const selectedClips = computed(() => {
     const clips: TimelineClipItem[] = [];
-    const doc = timelineStore.timelineDoc;
+    const doc = ctx.timelineDoc.value;
     if (!doc) return clips;
 
     for (const { trackId, itemId } of items.value) {
@@ -28,7 +33,7 @@ export function useClipBatchActions(items: Ref<{ trackId: string; itemId: string
   });
 
   const hasLockedLinks = computed(() => {
-    const doc = timelineStore.timelineDoc;
+    const doc = ctx.timelineDoc.value;
     if (!doc) return false;
 
     const selectedIds = new Set(items.value.map((x) => x.itemId));
@@ -71,7 +76,7 @@ export function useClipBatchActions(items: Ref<{ trackId: string; itemId: string
   );
 
   const hasFreeClip = computed(() => {
-    const doc = timelineStore.timelineDoc;
+    const doc = ctx.timelineDoc.value;
     if (!doc) return false;
     const fps = sanitizeFps(doc.timebase?.fps);
     return selectedClips.value.some((clip) => {
@@ -87,7 +92,7 @@ export function useClipBatchActions(items: Ref<{ trackId: string; itemId: string
   const allMuted = computed(() => selectedClips.value.every((c) => c.audioMuted));
   
   const firstWaveformClip = computed(() => {
-    const doc = timelineStore.timelineDoc;
+    const doc = ctx.timelineDoc.value;
     if (!doc) return undefined;
     for (const { trackId, itemId } of items.value) {
       const track = doc.tracks.find((t) => t.id === trackId);
@@ -100,7 +105,7 @@ export function useClipBatchActions(items: Ref<{ trackId: string; itemId: string
         track.kind === 'video' &&
         clip.clipType === 'media' &&
         (Boolean((clip as any).linkedVideoClipId) ||
-          Boolean(mediaStore.mediaMetadata[clip.source?.path ?? '']?.audio));
+          Boolean(ctx.mediaMetadata.value[clip.source?.path ?? '']?.audio));
 
       if (isAudioTrack || isVideoWithAudio) return clip as TimelineClipItem;
     }
@@ -108,7 +113,7 @@ export function useClipBatchActions(items: Ref<{ trackId: string; itemId: string
   });
 
   const firstVideoClip = computed(() => {
-    const doc = timelineStore.timelineDoc;
+    const doc = ctx.timelineDoc.value;
     if (!doc) return undefined;
     for (const { trackId, itemId } of items.value) {
       const track = doc.tracks.find((t) => t.id === trackId);
@@ -129,7 +134,7 @@ export function useClipBatchActions(items: Ref<{ trackId: string; itemId: string
   const hasVideo = computed(() => Boolean(firstVideoClip.value));
 
   function handleUnlinkSelected() {
-    const doc = timelineStore.timelineDoc;
+    const doc = ctx.timelineDoc.value;
     if (!doc) return;
 
     const selectedIds = new Set(items.value.map((x) => x.itemId));
@@ -173,7 +178,7 @@ export function useClipBatchActions(items: Ref<{ trackId: string; itemId: string
     }
 
     if (cmds.length === 0) return;
-    timelineStore.batchApplyTimeline(cmds as any);
+    ctx.batchApplyTimeline(cmds as any);
   }
 
   function handleGroupSelected() {
@@ -189,7 +194,7 @@ export function useClipBatchActions(items: Ref<{ trackId: string; itemId: string
       },
     }));
 
-    timelineStore.batchApplyTimeline(cmds as any);
+    ctx.batchApplyTimeline(cmds as any);
   }
 
   function handleUngroupSelected() {
@@ -202,7 +207,7 @@ export function useClipBatchActions(items: Ref<{ trackId: string; itemId: string
       },
     }));
 
-    timelineStore.batchApplyTimeline(cmds as any);
+    ctx.batchApplyTimeline(cmds as any);
   }
 
   function handleDelete() {
@@ -211,8 +216,8 @@ export function useClipBatchActions(items: Ref<{ trackId: string; itemId: string
       trackId,
       itemIds: [itemId],
     }));
-    timelineStore.batchApplyTimeline(cmds);
-    timelineStore.clearSelection();
+    ctx.batchApplyTimeline(cmds);
+    ctx.clearSelection();
   }
 
   function toggleDisabled() {
@@ -223,7 +228,7 @@ export function useClipBatchActions(items: Ref<{ trackId: string; itemId: string
       itemId,
       properties: { disabled: nextVal },
     }));
-    timelineStore.batchApplyTimeline(cmds);
+    ctx.batchApplyTimeline(cmds);
   }
 
   function toggleMuted() {
@@ -234,7 +239,7 @@ export function useClipBatchActions(items: Ref<{ trackId: string; itemId: string
       itemId,
       properties: { audioMuted: nextVal },
     }));
-    timelineStore.batchApplyTimeline(cmds);
+    ctx.batchApplyTimeline(cmds);
   }
 
   function toggleShowWaveform() {
@@ -245,7 +250,7 @@ export function useClipBatchActions(items: Ref<{ trackId: string; itemId: string
       itemId,
       properties: { showWaveform: nextVal },
     }));
-    timelineStore.batchApplyTimeline(cmds);
+    ctx.batchApplyTimeline(cmds);
   }
 
   function toggleWaveformMode() {
@@ -256,7 +261,7 @@ export function useClipBatchActions(items: Ref<{ trackId: string; itemId: string
       itemId,
       properties: { audioWaveformMode: nextVal },
     }));
-    timelineStore.batchApplyTimeline(cmds);
+    ctx.batchApplyTimeline(cmds);
   }
 
   function toggleShowThumbnails() {
@@ -267,11 +272,11 @@ export function useClipBatchActions(items: Ref<{ trackId: string; itemId: string
       itemId,
       properties: { showThumbnails: nextVal },
     }));
-    timelineStore.batchApplyTimeline(cmds);
+    ctx.batchApplyTimeline(cmds);
   }
 
   function handleSetUniformDuration(durationUs: number) {
-    const doc = timelineStore.timelineDoc;
+    const doc = ctx.timelineDoc.value;
     if (!doc) return;
 
     const nextDurationUs = Math.max(1, Math.round(Number(durationUs)));
@@ -306,11 +311,11 @@ export function useClipBatchActions(items: Ref<{ trackId: string; itemId: string
     }
 
     if (cmds.length === 0) return;
-    timelineStore.batchApplyTimeline(cmds);
+    ctx.batchApplyTimeline(cmds);
   }
 
   function handleQuantizeSelected() {
-    const doc = timelineStore.timelineDoc;
+    const doc = ctx.timelineDoc.value;
     if (!doc) return;
     const fps = sanitizeFps(doc.timebase?.fps);
 
@@ -348,7 +353,7 @@ export function useClipBatchActions(items: Ref<{ trackId: string; itemId: string
     }
 
     if (cmds.length === 0) return;
-    timelineStore.batchApplyTimeline(cmds);
+    ctx.batchApplyTimeline(cmds);
   }
 
   return {

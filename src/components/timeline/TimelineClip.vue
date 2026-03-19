@@ -30,6 +30,8 @@ import {
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useClipDrop } from '~/composables/timeline/useClipDrop';
+import { useClipInteractions } from '~/composables/timeline/useClipInteractions';
+import { isClipFreePosition } from '~/utils/timeline/clipChecks';
 import { useClickOrDrag } from '~/composables/timeline/useClickOrDrag';
 import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
@@ -100,9 +102,6 @@ const workspaceStore = useWorkspaceStore();
 
 const isHovered = ref(false);
 
-const clipItem = computed<TimelineClipItem | null>(() =>
-  props.item.kind === 'clip' ? (props.item as TimelineClipItem) : null,
-);
 const clipWidthPx = computed(() =>
   Math.max(2, timeUsToPx(props.item.timelineRange.durationUs, timelineStore.timelineZoom)),
 );
@@ -167,31 +166,19 @@ function onTrimHandlePointerDown(e: PointerEvent, edge: 'start' | 'end') {
   });
 }
 
-function onClipClick(e: MouseEvent) {
-  if (didStartDrag.value) return;
-  if (timelineStore.isTrimModeActive) {
-    if (e.button === 0 && props.canEditClipContent && clipItem.value && !clipItem.value.locked) {
-      const isShift = isLayer1Active(e, workspaceStore.userSettings);
-      const isCtrl = isLayer2Active(e, workspaceStore.userSettings);
-      const target = {
-        trackId: props.track.id,
-        itemId: props.item.id,
-      };
-
-      timelineStore.selectTimelineItems([props.item.id]);
-
-      if (isShift && !isCtrl) {
-        void timelineStore.trimToPlayheadLeftNoRipple(target);
-      } else if (!isShift && isCtrl) {
-        void timelineStore.trimToPlayheadRightNoRipple(target);
-      } else {
-        void timelineStore.splitClipAtPlayhead(target);
-      }
-    }
-    return;
-  }
-  if (e.button === 0) emit('selectItem', e as PointerEvent, props.item.id);
-}
+const { clipItem, onClipClick } = useClipInteractions({
+  track: computed(() => props.track),
+  item: computed(() => props.item),
+  canEditClipContent: computed(() => props.canEditClipContent),
+  isTrimModeActive: computed(() => timelineStore.isTrimModeActive),
+  userSettings: computed(() => workspaceStore.userSettings),
+  selectTimelineItems: (ids) => timelineStore.selectTimelineItems(ids),
+  trimToPlayheadLeftNoRipple: (target) => void timelineStore.trimToPlayheadLeftNoRipple(target),
+  trimToPlayheadRightNoRipple: (target) => void timelineStore.trimToPlayheadRightNoRipple(target),
+  splitClipAtPlayhead: (target) => void timelineStore.splitClipAtPlayhead(target),
+  emitSelectItem: (e, itemId) => emit('selectItem', e, itemId),
+  didStartDrag,
+});
 
 const editorViewStore = useEditorViewStore();
 const focusStore = useFocusStore();
@@ -277,16 +264,7 @@ const { contextMenuItems } = useClipContextMenu({
   t,
 });
 
-const isFreePosition = computed(() => {
-  if (!clipItem.value || !timelineStore.timelineDoc) return false;
-  const fps = timelineStore.fps || 30;
-  const startFrame = (clipItem.value.timelineRange.startUs * fps) / 1_000_000;
-  const durFrame = (clipItem.value.timelineRange.durationUs * fps) / 1_000_000;
-  return (
-    Math.abs(startFrame - Math.round(startFrame)) > 0.001 ||
-    Math.abs(durFrame - Math.round(durFrame)) > 0.001
-  );
-});
+const isFreePosition = computed(() => isClipFreePosition(clipItem.value, timelineStore.timelineDoc, timelineStore.fps || 30));
 
 const transitionInOverlayGuideStyle = computed<Record<string, string> | null>(() => {
   const offsetPx = getOverlayGuideOffsetPx(
