@@ -1,16 +1,10 @@
 import type { Ref } from 'vue';
 import type { ResolvedStorageTopology } from '~/utils/storage-topology';
+import { getErrorMessage } from '~/utils/errors';
 import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
 import { toStoragePathSegments } from '~/utils/storage-topology';
 import { ensureDirectoryChain, resolveStorageRootHandle } from '~/utils/storage-handles';
 import { renameDirectoryFallback } from '~/file-manager/fs/ops';
-
-function getErrorMessage(e: unknown, fallback: string): string {
-  if (!e || typeof e !== 'object') return fallback;
-  if (!('message' in e)) return fallback;
-  const msg = (e as { message?: unknown }).message;
-  return typeof msg === 'string' && msg.length > 0 ? msg : fallback;
-}
 
 export interface WorkspaceProjectsModule {
   loadProjects: () => Promise<void>;
@@ -18,6 +12,10 @@ export interface WorkspaceProjectsModule {
   clearProjectVardata: (projectId: string) => Promise<void>;
   deleteProject: (name: string, projectId?: string) => Promise<void>;
   renameProject: (oldName: string, newName: string) => Promise<void>;
+}
+
+interface MovableDirectoryHandle extends FileSystemDirectoryHandle {
+  move?: (newName: string) => Promise<void>;
 }
 
 export function createWorkspaceProjectsModule(params: {
@@ -139,10 +137,12 @@ export function createWorkspaceProjectsModule(params: {
     }
 
     try {
-      const oldHandle = await params.projectsHandle.value.getDirectoryHandle(oldName);
+      const oldHandle = (await params.projectsHandle.value.getDirectoryHandle(
+        oldName,
+      )) as MovableDirectoryHandle;
       // modern File System Access API supports move()
-      if (typeof (oldHandle as any).move === 'function') {
-        await (oldHandle as any).move(newName);
+      if (typeof oldHandle.move === 'function') {
+        await oldHandle.move(newName);
       } else {
         await renameDirectoryFallback({
           sourceDirHandle: oldHandle,

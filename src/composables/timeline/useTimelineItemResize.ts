@@ -13,12 +13,26 @@ import type {
 import { DEFAULT_TRANSITION_MODE } from '~/transitions';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useTimelinePointerSession } from '~/composables/timeline/useTimelinePointerSession';
+
+interface ClipResizeFields {
+  audioFadeInUs?: number;
+  audioFadeOutUs?: number;
+  sourceDurationUs?: number;
+  transitionIn?: ClipTransition | null;
+  transitionOut?: ClipTransition | null;
+}
 
 export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
   const timelineStore = useTimelineStore();
   const projectStore = useProjectStore();
   const timelineSettingsStore = useTimelineSettingsStore();
   const workspaceStore = useWorkspaceStore();
+  const { bindSession, clearSession, scheduleUpdate } = useTimelinePointerSession();
+
+  function getClipResizeFields(item: TimelineClipItem): ClipResizeFields {
+    return item as TimelineClipItem & ClipResizeFields;
+  }
 
   function canEditClipContent(): boolean {
     return (
@@ -26,45 +40,6 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       projectStore.currentView === 'files' ||
       projectStore.currentView === 'sound'
     );
-  }
-
-  let activePointerMove: ((e: PointerEvent) => void) | null = null;
-  let activePointerUp: ((e?: PointerEvent) => void) | null = null;
-  let activeKeyDown: ((e: KeyboardEvent) => void) | null = null;
-  let pendingResizeFrame = 0;
-  let pendingResizeUpdate: (() => void) | null = null;
-
-  function flushPendingResizeUpdate() {
-    pendingResizeFrame = 0;
-    const update = pendingResizeUpdate;
-    pendingResizeUpdate = null;
-    update?.();
-  }
-
-  function scheduleResizeUpdate(update: () => void) {
-    pendingResizeUpdate = update;
-    if (pendingResizeFrame !== 0) return;
-    pendingResizeFrame = requestAnimationFrame(flushPendingResizeUpdate);
-  }
-
-  function clearActivePointerListeners() {
-    if (activePointerMove) {
-      window.removeEventListener('pointermove', activePointerMove);
-      activePointerMove = null;
-    }
-    if (activePointerUp) {
-      window.removeEventListener('pointerup', activePointerUp as any);
-      activePointerUp = null;
-    }
-    if (activeKeyDown) {
-      window.removeEventListener('keydown', activeKeyDown);
-      activeKeyDown = null;
-    }
-    if (pendingResizeFrame !== 0) {
-      cancelAnimationFrame(pendingResizeFrame);
-      pendingResizeFrame = 0;
-    }
-    pendingResizeUpdate = null;
   }
 
   const resizeTransition = ref<{
@@ -105,7 +80,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       trackHeight: payload.trackHeight,
     };
 
-    clearActivePointerListeners();
+    clearSession();
 
     function onPointerMove(ev: PointerEvent) {
       if (!resizeVolume.value) return;
@@ -114,7 +89,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       let newVol = resizeVolume.value.startGain + deltaVol;
       newVol = Math.max(0, Math.min(4, newVol));
 
-      scheduleResizeUpdate(() => {
+      scheduleUpdate(() => {
         timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
           audioGain: newVol,
           audioMuted: false,
@@ -127,7 +102,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
         timelineStore.requestTimelineSave({ immediate: true });
       }
       resizeVolume.value = null;
-      clearActivePointerListeners();
+      clearSession();
     }
 
     function onKeyDown(ev: KeyboardEvent) {
@@ -136,16 +111,15 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
           audioGain: resizeVolume.value.startGain,
         });
         resizeVolume.value = null;
-        clearActivePointerListeners();
+        clearSession();
       }
     }
 
-    activePointerMove = onPointerMove;
-    activePointerUp = onPointerUp;
-    activeKeyDown = onKeyDown;
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp);
-    window.addEventListener('keydown', onKeyDown);
+    bindSession({
+      onPointerMove,
+      onPointerUp,
+      onKeyDown,
+    });
   }
 
   function startResizeFade(e: PointerEvent, payload: TimelineResizeFadePayload) {
@@ -171,7 +145,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       activeCurve: startCurve,
     };
 
-    clearActivePointerListeners();
+    clearSession();
 
     function onPointerMove(ev: PointerEvent) {
       if (!resizeFade.value) return;
@@ -186,12 +160,13 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       if (!item || item.kind !== 'clip') return;
 
       const clipDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
+      const clipFields = getClipResizeFields(item);
       const oppFadeUs = Math.max(
         0,
         Math.round(
           payload.edge === 'in'
-            ? ((item as any).audioFadeOutUs ?? 0)
-            : ((item as any).audioFadeInUs ?? 0),
+            ? (clipFields.audioFadeOutUs ?? 0)
+            : (clipFields.audioFadeInUs ?? 0),
         ),
       );
       const maxUs = Math.max(0, clipDurationUs - oppFadeUs);
@@ -244,7 +219,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
 
       resizeFade.value.activeCurve = nextCurve;
       const nextFadeUs = Math.round(newFadeUs);
-      scheduleResizeUpdate(() => {
+      scheduleUpdate(() => {
         timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
           [propName]: nextFadeUs,
           ...(curveChanged ? { [curveProp]: nextCurve } : {}),
@@ -257,7 +232,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
         timelineStore.requestTimelineSave({ immediate: true });
       }
       resizeFade.value = null;
-      clearActivePointerListeners();
+      clearSession();
     }
 
     function onKeyDown(ev: KeyboardEvent) {
@@ -269,16 +244,15 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
           [curveProp]: resizeFade.value.startCurve,
         });
         resizeFade.value = null;
-        clearActivePointerListeners();
+        clearSession();
       }
     }
 
-    activePointerMove = onPointerMove;
-    activePointerUp = onPointerUp;
-    activeKeyDown = onKeyDown;
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp);
-    window.addEventListener('keydown', onKeyDown);
+    bindSession({
+      onPointerMove,
+      onPointerUp,
+      onKeyDown,
+    });
   }
 
   function getOrderedClipsOnTrack(track: TimelineTrack): TimelineClipItem[] {
@@ -317,10 +291,11 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
 
     if (input.edge === 'in') {
       const prev = input.adjacent;
+      const prevFields = getClipResizeFields(prev);
       const prevSourceEnd = (prev.sourceRange?.startUs ?? 0) + (prev.sourceRange?.durationUs ?? 0);
       const prevMaxEnd =
         (prev.clipType === 'media' || prev.clipType === 'timeline') && !prev.isImage
-          ? ((prev as any).sourceDurationUs ?? prevSourceEnd)
+          ? (prevFields.sourceDurationUs ?? prevSourceEnd)
           : Number.POSITIVE_INFINITY;
       return Number.isFinite(prevMaxEnd)
         ? Math.max(0, Math.round(Number(prevMaxEnd)) - Math.round(prevSourceEnd))
@@ -346,12 +321,13 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     if (!resolved) return 10_000_000;
 
     const { clip, adjacent } = resolved;
+    const clipFields = getClipResizeFields(clip);
 
     const clipDuration = clip.timelineRange.durationUs;
     const oppTransitionUs =
       input.edge === 'in'
-        ? ((clip as any).transitionOut?.durationUs ?? 0)
-        : ((clip as any).transitionIn?.durationUs ?? 0);
+        ? (clipFields.transitionOut?.durationUs ?? 0)
+        : (clipFields.transitionIn?.durationUs ?? 0);
     const maxWithinClip = Math.max(0, clipDuration - oppTransitionUs);
 
     let limitByHandle = Number.POSITIVE_INFINITY;
@@ -375,7 +351,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
           (clip.sourceRange?.startUs ?? 0) + (clip.sourceRange?.durationUs ?? 0);
         const clipMaxEnd =
           (clip.clipType === 'media' || clip.clipType === 'timeline') && !clip.isImage
-            ? ((clip as any).sourceDurationUs ?? clipSourceEnd)
+            ? (clipFields.sourceDurationUs ?? clipSourceEnd)
             : Number.POSITIVE_INFINITY;
         limitByHandle = Number.isFinite(clipMaxEnd)
           ? Math.max(0, Math.round(Number(clipMaxEnd)) - Math.round(clipSourceEnd))
@@ -436,7 +412,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       startDurationUs: payload.durationUs,
     };
 
-    clearActivePointerListeners();
+    clearSession();
 
     function onPointerMove(ev: PointerEvent) {
       if (!resizeTransition.value) return;
@@ -538,7 +514,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
 
       // Remove transition if duration is less than a frame
       if (newDurationUs < frameDurationUs) {
-        scheduleResizeUpdate(() => {
+        scheduleUpdate(() => {
           timelineStore.updateClipTransition(
             payload.trackId,
             payload.itemId,
@@ -559,7 +535,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
                 durationUs: Math.round(newDurationUs),
               } as ClipTransition,
             };
-      scheduleResizeUpdate(() => {
+      scheduleUpdate(() => {
         timelineStore.updateClipTransition(payload.trackId, payload.itemId, transitionPatch);
       });
     }
@@ -569,7 +545,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
         timelineStore.requestTimelineSave({ immediate: true });
       }
       resizeTransition.value = null;
-      clearActivePointerListeners();
+      clearSession();
     }
 
     function onKeyDown(ev: KeyboardEvent) {
@@ -598,20 +574,19 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
           }
         }
         resizeTransition.value = null;
-        clearActivePointerListeners();
+        clearSession();
       }
     }
 
-    activePointerMove = onPointerMove;
-    activePointerUp = onPointerUp;
-    activeKeyDown = onKeyDown;
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp);
-    window.addEventListener('keydown', onKeyDown);
+    bindSession({
+      onPointerMove,
+      onPointerUp,
+      onKeyDown,
+    });
   }
 
   onBeforeUnmount(() => {
-    clearActivePointerListeners();
+    clearSession();
     resizeTransition.value = null;
     resizeFade.value = null;
     resizeVolume.value = null;

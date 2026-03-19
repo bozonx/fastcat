@@ -2,6 +2,7 @@ import type { Ref } from 'vue';
 
 import { createWorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
 import type { WorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
+import { getErrorMessage, isAbortError } from '~/utils/errors';
 import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
 import type { WorkspaceProvider } from './provider';
 
@@ -29,19 +30,6 @@ export interface WorkspaceInitApi {
   openWorkspace: () => Promise<void>;
   resetWorkspace: () => void;
   setupWorkspace: (handle: FileSystemDirectoryHandle) => Promise<void>;
-}
-
-function getErrorMessage(e: unknown, fallback: string): string {
-  if (!e || typeof e !== 'object') return fallback;
-  if (!('message' in e)) return fallback;
-  const msg = (e as { message?: unknown }).message;
-  return typeof msg === 'string' && msg.length > 0 ? msg : fallback;
-}
-
-function isAbortError(e: unknown): boolean {
-  if (!e || typeof e !== 'object') return false;
-  if (!('name' in e)) return false;
-  return (e as { name?: unknown }).name === 'AbortError';
 }
 
 export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceInitApi {
