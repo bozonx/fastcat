@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { applyTimelineCommand } from '../../../src/timeline/commands';
-import type { TimelineDocument, TimelineTrack } from '../../../src/timeline/types';
+import { applyTimelineCommand } from '~/timeline/commands';
+import type { TimelineDocument, TimelineTrack } from '~/timeline/types';
 
 function makeDoc(): TimelineDocument {
   const videoTrack: TimelineTrack = {

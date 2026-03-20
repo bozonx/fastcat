@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-import { AudioEngine } from '../../../../src/utils/video-editor/AudioEngine';
+import { AudioEngine } from '../~/utils/video-editor/AudioEngine';
 
 interface WorkerMessageEvent<T> {
   data: T;

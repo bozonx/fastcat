@@ -3,7 +3,6 @@ import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 
 const props = withDefaults(
   defineProps<{
-    modelValue: number;
     label?: string;
     formattedValue?: string;
     min: number;
@@ -29,30 +28,17 @@ const props = withDefaults(
   },
 );
 
-const emit = defineEmits<{
-  (e: 'update:modelValue', value: number): void;
-}>();
+const modelValue = defineModel<number>({ required: true });
 
-const clampedValue = computed({
-  get: () => {
-    const v = Number(props.modelValue);
-    if (!Number.isFinite(v)) return props.min;
-    return Math.min(props.max, Math.max(props.min, v));
-  },
-  set: (val: number) => {
-    const v = Number(val);
-    if (!Number.isFinite(v)) return;
-    const next = Math.min(props.max, Math.max(props.min, v));
-    emit('update:modelValue', next);
-  },
+const displayValue = computed(() => {
+  const v = Number(modelValue.value);
+  return Number.isFinite(v) ? v.toFixed(props.decimals) : '0';
 });
-
-const displayValue = computed(() => clampedValue.value.toFixed(props.decimals));
 
 function onInputUpdate(value: unknown) {
   const num = Number(value);
   if (!Number.isFinite(num)) return;
-  clampedValue.value = num;
+  modelValue.value = num;
 }
 </script>
 
@@ -82,7 +68,7 @@ function onInputUpdate(value: unknown) {
     </div>
 
     <UiWheelSlider
-      v-model="clampedValue"
+      v-model="modelValue"
       :min="min"
       :max="max"
       :step="step"

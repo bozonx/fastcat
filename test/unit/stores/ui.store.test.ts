@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { useUiStore } from '../../../src/stores/ui.store';
+import { useUiStore } from '~/stores/ui.store';
 
-vi.mock('../../../src/stores/project.store', () => ({
+vi.mock('~/stores/project.store', () => ({
   useProjectStore: () => ({
     currentProjectId: 'p',
   }),

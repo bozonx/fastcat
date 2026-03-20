@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { ref } from 'vue';
 import { mountWithNuxt } from '../utils/mount';
 
-import FileProperties from '../../src/components/properties/FileProperties.vue';
+import FileProperties from '~/components/properties/FileProperties.vue';
 
 vi.mock('~/composables/fileManager/useEntryPreview', () => {
   return {

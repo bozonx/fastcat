@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { mountWithNuxt } from '../../utils/mount';
-import ClipActionsSection from '../../../src/components/properties/clip/ClipActionsSection.vue';
-import ClipInfoSection from '../../../src/components/properties/clip/ClipInfoSection.vue';
-import type { TimelineClipItem } from '../../../src/timeline/types';
+import ClipActionsSection from '~/components/properties/clip/ClipActionsSection.vue';
+import ClipInfoSection from '~/components/properties/clip/ClipInfoSection.vue';
+import type { TimelineClipItem } from '~/timeline/types';
 
 function createClip(overrides: Partial<TimelineClipItem> = {}): TimelineClipItem {
   return {

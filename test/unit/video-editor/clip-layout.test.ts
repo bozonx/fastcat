@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   computeClipBoxLayout,
   resolveNormalizedAnchor,
-} from '../../../src/utils/video-editor/clip-layout';
+} from '~/utils/video-editor/clip-layout';
 
 describe('clip-layout', () => {
   it('resolves preset anchors', () => {

@@ -29,32 +29,17 @@ const emit = defineEmits(['confirm', 'secondary']);
 
 const isOpen = defineModel<boolean>('open', { required: true });
 
-const confirmButtonRef = ref<any>(null);
-
-function focusConfirmButton() {
-  const el = confirmButtonRef.value?.$el || confirmButtonRef.value;
-  if (!(el instanceof HTMLElement)) {
-    return;
-  }
-
-  nextTick(() => {
-    setTimeout(() => {
-      el.focus();
-    }, 0);
-  });
-}
-
-const handleAfterEnter = () => {
-  focusConfirmButton();
-};
-
-watch(isOpen, (newValue) => {
-  if (newValue) {
-    focusConfirmButton();
-  }
-});
-
 const { t } = useI18n();
+
+const iconColorMap: Record<ButtonColor, string> = {
+  primary: 'text-primary-500',
+  error: 'text-error-500',
+  warning: 'text-warning-500',
+  success: 'text-success-500',
+  info: 'text-info-500',
+  neutral: 'text-ui-text-muted',
+  secondary: 'text-ui-text-muted',
+};
 
 const handleConfirm = () => {
   // Use a slight delay to allow the active button click event to run to completion
@@ -80,7 +65,6 @@ const handleClose = () => {
     v-model:open="isOpen"
     :title="props.title"
     :ui="{ content: 'sm:max-w-lg' }"
-    @after:enter="handleAfterEnter"
   >
     <div class="flex flex-col gap-4">
       <div v-if="props.icon || props.description" class="flex gap-4">
@@ -88,14 +72,7 @@ const handleClose = () => {
           <UIcon
             :name="props.icon"
             class="w-6 h-6"
-            :class="{
-              'text-primary-500': props.color === 'primary',
-              'text-error-500': props.color === 'error',
-              'text-warning-500': props.color === 'warning',
-              'text-success-500': props.color === 'success',
-              'text-info-500': props.color === 'info',
-              'text-ui-text-muted': props.color === 'neutral' || props.color === 'secondary',
-            }"
+            :class="iconColorMap[props.color]"
           />
         </div>
         <div v-if="props.description" class="flex-1">
@@ -124,10 +101,9 @@ const handleClose = () => {
         {{ props.secondaryText }}
       </UButton>
       <UButton
-        ref="confirmButtonRef"
         :color="props.color"
         :loading="props.loading"
-        autofocus
+        data-primary-focus="true"
         @click="handleConfirm"
       >
         {{ props.confirmText || t('common.confirm') }}

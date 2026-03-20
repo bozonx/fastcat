@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { ref } from 'vue';
-import { useClipTransform } from '../../../src/composables/properties/useClipTransform';
-import type { ClipTransform, TimelineClipItem, TrackKind } from '../../../src/timeline/types';
+import { useClipTransform } from '~/composables/properties/useClipTransform';
+import type { ClipTransform, TimelineClipItem, TrackKind } from '~/timeline/types';
 
 function makeClip(partial: Partial<TimelineClipItem> = {}): TimelineClipItem {
   return {

@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
-import { useMediaStore } from '../../../src/stores/media.store';
-import { useWorkspaceStore } from '../../../src/stores/workspace.store';
-import { useProjectStore } from '../../../src/stores/project.store';
+import { useMediaStore } from '~/stores/media.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useProjectStore } from '~/stores/project.store';
 vi.mock('#app-manifest', () => ({}));
 
-vi.mock('../../../src/stores/workspace.store', () => ({
+vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: vi.fn(() => ({
     workspaceHandle: (() => {
       const mockDir: any = {
@@ -23,7 +23,7 @@ vi.mock('../../../src/stores/workspace.store', () => ({
   })),
 }));
 
-vi.mock('../../../src/stores/project.store', () => ({
+vi.mock('~/stores/project.store', () => ({
   useProjectStore: vi.fn(() => ({
     currentProjectId: 'test-project',
     getFileHandleByPath: vi.fn(),

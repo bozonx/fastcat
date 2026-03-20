@@ -7,9 +7,9 @@ import {
   resolveNextAvailableFilename,
   resolveExportCodecs,
   toWorkerTimelineClips,
-} from '../../../../src/composables/timeline/useTimelineExport';
-import type { VideoCoreHostAPI } from '../../../../src/utils/video-editor/worker-client';
-import type { TimelineTrackItem } from '../../../../src/timeline/types';
+} from '../~/composables/timeline/useTimelineExport';
+import type { VideoCoreHostAPI } from '../~/utils/video-editor/worker-client';
+import type { TimelineTrackItem } from '../~/timeline/types';
 
 describe('useTimelineExport pure functions', () => {
   it('VideoCoreHostAPI allows omitting onExportPhase (backward compatible)', () => {

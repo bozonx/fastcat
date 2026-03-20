@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import type { MediaMetadata } from '~/stores/media.store';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import MediaTranscriptionSection from './MediaTranscriptionSection.vue';
 import MediaMetadataList from '~/components/properties/MediaMetadataList.vue';
 
 const props = defineProps<{
-  mediaMeta: any;
+  mediaMeta: MediaMetadata | null | undefined;
   formatDurationSeconds: (seconds: number | null | undefined) => string;
   formatBitrate: (bitrate: number) => string;
   canTranscribeMedia: boolean;

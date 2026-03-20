@@ -1,12 +1,10 @@
 <script setup lang="ts">
+import type { MediaMetadata } from '~/stores/media.store';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import { formatAudioChannels } from '~/utils/audio';
 
 const props = defineProps<{
-  mediaMeta: {
-    video?: { displayWidth?: number; displayHeight?: number; fps?: number } | null;
-    audio?: { channels?: number; sampleRate?: number } | null;
-  } | null;
+  mediaMeta: MediaMetadata | null | undefined;
 }>();
 
 const { t } = useI18n();

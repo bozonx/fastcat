@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
-import { useTimelineStore } from '../../../src/stores/timeline.store';
-import { useHistoryStore } from '../../../src/stores/history.store';
+import { useTimelineStore } from '~/stores/timeline.store';
+import { useHistoryStore } from '~/stores/history.store';
 import { createTestTimeline } from '../utils/timeline-builder';
 
 const projectStoreMock = {
@@ -26,7 +26,7 @@ const projectStoreMock = {
   }),
 };
 
-vi.mock('../../../src/stores/project.store', () => ({
+vi.mock('~/stores/project.store', () => ({
   useProjectStore: () => projectStoreMock,
 }));
 
@@ -36,7 +36,7 @@ const mediaStoreMock = {
   getOrFetchMetadata: vi.fn(),
 };
 
-vi.mock('../../../src/stores/media.store', () => ({
+vi.mock('~/stores/media.store', () => ({
   useMediaStore: () => mediaStoreMock,
 }));
 

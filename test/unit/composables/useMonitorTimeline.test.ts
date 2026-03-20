@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
-import { useMonitorTimeline } from '../../../src/composables/monitor/useMonitorTimeline';
-import { useTimelineStore } from '../../../src/stores/timeline.store';
+import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
+import { useTimelineStore } from '~/stores/timeline.store';
 
 describe('useMonitorTimeline', () => {
   beforeEach(() => {

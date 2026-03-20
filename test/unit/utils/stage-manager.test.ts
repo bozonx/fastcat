@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 
-import { StageManager } from '../../src/utils/video-editor/compositor/StageManager';
+import { StageManager } from '~/utils/video-editor/compositor/StageManager';
 
 describe('StageManager', () => {
   it('sorts stage children by track layer and clip children by timeline order', () => {

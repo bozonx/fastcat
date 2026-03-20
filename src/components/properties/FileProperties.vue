@@ -14,6 +14,7 @@ import ExpandableYamlSection from '~/components/properties/file/ExpandableYamlSe
 import FileGeneralInfoSection from '~/components/properties/file/FileGeneralInfoSection.vue';
 import FileTimelineUsageSection from '~/components/properties/file/FileTimelineUsageSection.vue';
 import ImageFilePropertiesSection from '~/components/properties/file/ImageFilePropertiesSection.vue';
+import OtioPropertiesSection from '~/components/properties/file/OtioPropertiesSection.vue';
 import FileProjectRootSection from '~/components/properties/file/FileProjectRootSection.vue';
 import FileTranscriptionModal from '~/components/properties/file/FileTranscriptionModal.vue';
 import EntryActions from '~/components/properties/file/EntryActions.vue';
@@ -128,8 +129,11 @@ const {
   exifData,
   exifYaml,
   imageDimensions,
+  timelineDocSummary,
+  lineCount,
   metadataYaml,
   isUnknown,
+  isOtio,
 } = useEntryPreview({
   selectedFsEntry: selectedFsEntryRef,
   previewMode: previewModeRef,
@@ -143,7 +147,7 @@ const {
 const { generalInfoTitle, isHidden, mediaMeta, selectedPath } = useFilePropertiesBasics({
   selectedFsEntry: selectedFsEntryRef,
   fileInfo,
-  isOtio: ref(false),
+  isOtio,
   mediaType,
 });
 
@@ -272,7 +276,7 @@ const {
   showVideoProxyActions,
   hasExistingProxyForFile,
   isGeneratingProxyForFile,
-  isOtio: ref(false),
+  isOtio,
   isVideoFile,
   triggerDirectoryUpload,
   createSubfolder,
@@ -314,13 +318,13 @@ const {
 
     <EntryPreviewBox
       :selected-entry-kind="selectedFsEntry?.kind ?? null"
-      :is-otio="false"
       :is-unknown="isUnknown"
       :current-url="currentUrl"
       :media-type="mediaType"
       :text-content="textContent"
       :file-path="selectedFsEntry?.path"
       :file-name="selectedFsEntry?.name"
+      :is-otio="isOtio"
     />
 
     <FileProjectRootSection
@@ -363,6 +367,12 @@ const {
       :image-camera-make="imageCameraMake"
     />
 
+    <OtioPropertiesSection
+      v-if="fileInfo?.kind === 'file' && isOtio"
+      :summary="timelineDocSummary"
+      :format-duration-seconds="formatDurationSeconds"
+    />
+
     <MediaPropertiesSection
       v-if="fileInfo?.kind === 'file' && (isVideoFile || mediaType === 'audio')"
       :media-meta="mediaMeta"
@@ -382,7 +392,11 @@ const {
       :selected-path="selectedPath"
       :is-hidden="isHidden"
       :format-bytes="formatBytes"
-    />
+    >
+      <template v-if="mediaType === 'text' && lineCount !== null">
+        <PropertyRow :label="t('fastcat.file.lineCount', 'Line Count')" :value="lineCount" />
+      </template>
+    </FileGeneralInfoSection>
 
     <ExpandableYamlSection
       v-if="fileInfo?.kind === 'file' && isVideoFile && metadataYaml"

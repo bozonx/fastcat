@@ -4,7 +4,7 @@ import {
   buildStopFrameBaseName,
   formatStopFrameTimecode,
   renderExportFrameBlob,
-} from '../../../src/utils/stop-frames';
+} from '~/utils/stop-frames';
 
 describe('stop-frames', () => {
   it('formats timecode as HH-MM-SS-FF', () => {

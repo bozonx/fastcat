@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   serializeTimelineToOtio,
   parseTimelineFromOtio,
-} from '../../../src/timeline/otioSerializer';
-import type { TimelineDocument } from '../../../src/timeline/types';
+} from '~/timeline/otioSerializer';
+import type { TimelineDocument } from '~/timeline/types';
 
 function makeDoc(): TimelineDocument {
   return {

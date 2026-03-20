@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createVideoDiagnosticsSnapshot } from '../../../src/utils/settings/videoDiagnostics';
+import { createVideoDiagnosticsSnapshot } from '~/utils/settings/videoDiagnostics';
 
 describe('videoDiagnostics', () => {
   it('builds a healthy summary when compositor and WebCodecs paths are available', () => {

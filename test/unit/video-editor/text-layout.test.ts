@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   computeTextLayoutMetrics,
   normalizeTextClipStyle,
-} from '../../../src/utils/video-editor/text-layout';
+} from '~/utils/video-editor/text-layout';
 
 describe('text-layout', () => {
   it('normalizes default text style values', () => {

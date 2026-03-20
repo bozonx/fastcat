@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useFileManagerPanelActions } from '../../../../src/composables/fileManager/useFileManagerPanelActions';
-import type { FsEntry } from '../../../../src/types/fs';
+import { useFileManagerPanelActions } from '../~/composables/fileManager/useFileManagerPanelActions';
+import type { FsEntry } from '../~/types/fs';
 
 const { createTimelineCommand } = vi.hoisted(() => ({
   createTimelineCommand: vi.fn(),

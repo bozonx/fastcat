@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
-import { useHistoryStore } from '../../../src/stores/history.store';
-import type { TimelineDocument } from '../../../src/timeline/types';
+import { useHistoryStore } from '~/stores/history.store';
+import type { TimelineDocument } from '~/timeline/types';
 
 function makeDoc(id: string): TimelineDocument {
   return {

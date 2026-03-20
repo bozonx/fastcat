@@ -1,18 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { mountWithNuxt } from '../utils/mount';
-import EffectSettingsModal from '../../src/components/common/EffectSettingsModal.vue';
-import { parametricEqManifest } from '../../src/effects/audio/parametric-eq/manifest';
-import type { EffectManifest } from '../../src/effects/core/registry';
-import { createDefaultProjectPresets, createDefaultExportPresets } from '../../src/utils/settings';
+import EffectSettingsModal from '~/components/common/EffectSettingsModal.vue';
+import { parametricEqManifest } from '~/effects/audio/parametric-eq/manifest';
+import type { EffectManifest } from '~/effects/core/registry';
+import { createDefaultProjectPresets, createDefaultExportPresets } from '~/utils/settings';
 
-vi.mock('../../src/stores/timeline.store', () => ({
+vi.mock('~/stores/timeline.store', () => ({
   useTimelineStore: vi.fn(() => ({
     timelineZoom: 50,
   })),
 }));
 
-vi.mock('../../src/stores/workspace.store', () => ({
+vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: vi.fn(() => ({
     userSettings: {
       projectDefaults: { audioDeclickDurationUs: 5000, defaultAudioFadeCurve: 'logarithmic' },

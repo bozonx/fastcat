@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 
-import { TimelineActiveTracker } from '../../../../src/utils/video-editor/TimelineActiveTracker';
+import { TimelineActiveTracker } from '../~/utils/video-editor/TimelineActiveTracker';
 
 interface Clip {
   id: string;

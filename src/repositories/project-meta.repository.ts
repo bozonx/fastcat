@@ -10,9 +10,9 @@ import { z } from 'zod';
 export const ProjectMetaSchema = z.object({
   id: z.string().trim().min(1),
   version: z.coerce.number().catch(1),
-  title: z.coerce.string().catch(''),
-  description: z.coerce.string().catch(''),
-  author: z.coerce.string().catch(''),
+  title: z.string().catch(''),
+  description: z.string().catch(''),
+  author: z.string().catch(''),
   tags: z.array(z.coerce.string()).catch([]),
   createdAt: z.coerce.string().catch(() => new Date().toISOString()),
   updatedAt: z.coerce.string().catch(() => new Date().toISOString()),

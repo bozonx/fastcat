@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { normalizeProjectSettings } from '../../src/utils/project-settings';
-import { createDefaultUserSettings } from '../../src/utils/settings';
+import { normalizeProjectSettings } from '~/utils/project-settings';
+import { createDefaultUserSettings } from '~/utils/settings';
 
 describe('project settings normalization', () => {
   it('clamps numeric fields to reasonable bounds', () => {

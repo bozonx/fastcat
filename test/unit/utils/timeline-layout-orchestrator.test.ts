@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest';
 
-import { TimelineLayoutOrchestrator } from '../../src/utils/video-editor/compositor/TimelineLayoutOrchestrator';
+import { TimelineLayoutOrchestrator } from '~/utils/video-editor/compositor/TimelineLayoutOrchestrator';
 
 describe('TimelineLayoutOrchestrator', () => {
   it('updates and rebinds only clips that have matching timeline payload, then returns lifecycle result', () => {

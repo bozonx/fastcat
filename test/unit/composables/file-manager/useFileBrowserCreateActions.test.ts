@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useFileBrowserCreateActions } from '../../../../src/composables/fileManager/useFileBrowserCreateActions';
-import type { FsEntry } from '../../../../src/types/fs';
+import { useFileBrowserCreateActions } from '../~/composables/fileManager/useFileBrowserCreateActions';
+import type { FsEntry } from '../~/types/fs';
 
 const { createTimelineCommand, createMarkdownCommand } = vi.hoisted(() => ({
   createTimelineCommand: vi.fn(),

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { createTranscriptionCacheRepository } from '../../../src/repositories/transcription-cache.repository';
-import type { ResolvedStorageTopology } from '../../../src/utils/storage-topology';
+import { createTranscriptionCacheRepository } from '~/repositories/transcription-cache.repository';
+import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 
 interface FileHandleWithMeta {
   kind: 'file';

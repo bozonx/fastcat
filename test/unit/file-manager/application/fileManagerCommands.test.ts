@@ -1,13 +1,13 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest';
-import type { FsEntry } from '../../../../src/types/fs';
+import type { FsEntry } from '../~/types/fs';
 import {
   handleFilesCommand,
   deleteEntryCommand,
   renameEntryCommand,
   moveEntryCommand,
   createTimelineCommand,
-} from '../../../../src/file-manager/application/fileManagerCommands';
+} from '../~/file-manager/application/fileManagerCommands';
 
 function createDirHandleMock() {
   return {

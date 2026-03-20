@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { getAllAudioEffectManifests, getAudioEffectManifest, initEffects } from '../../src/effects';
+import { getAllAudioEffectManifests, getAudioEffectManifest, initEffects } from '~/effects';
 
 beforeAll(() => {
   initEffects();

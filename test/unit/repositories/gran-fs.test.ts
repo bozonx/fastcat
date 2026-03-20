@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import {
   readJsonFromFileHandle,
   writeJsonToFileHandle,
-} from '../../../src/repositories/fastcat-fs';
+} from '~/repositories/fastcat-fs';
 
 function createFileHandleMock(initialText: string) {
   let text = initialText;

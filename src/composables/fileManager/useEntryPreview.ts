@@ -60,6 +60,7 @@ export function useEntryPreview(params: {
   const fileInfo = ref<EntryPreviewInfo | null>(null);
   const exifData = ref<unknown | null>(null);
   const imageDimensions = ref<{ width: number; height: number } | null>(null);
+  const lineCount = ref<number | null>(null);
   const timelineDocSummary = ref<{
     durationUs: number;
     videoTracks: number;
@@ -170,6 +171,7 @@ export function useEntryPreview(params: {
       exifData.value = null;
       imageDimensions.value = null;
       timelineDocSummary.value = null;
+      lineCount.value = null;
       params.onResetPreviewMode('original');
 
       if (!entry) return;
@@ -201,6 +203,7 @@ export function useEntryPreview(params: {
           mediaType.value = 'text';
           try {
             const text = await file.text();
+            lineCount.value = text.split('\n').length;
             const parsedDoc = parseTimelineFromOtio(text, {
               id: entry.path ?? 'unknown',
               name: entry.name,
@@ -219,7 +222,9 @@ export function useEntryPreview(params: {
         } else if (extBasedType === 'text') {
           mediaType.value = 'text';
           const textSlice = file.slice(0, 1024 * 1024);
-          textContent.value = await textSlice.text();
+          const fullText = await textSlice.text();
+          textContent.value = fullText;
+          lineCount.value = fullText.split('\n').length;
           if (file.size > 1024 * 1024) {
             textContent.value += '\n... (truncated)';
           }
@@ -288,6 +293,7 @@ export function useEntryPreview(params: {
     exifYaml,
     imageDimensions,
     timelineDocSummary,
+    lineCount,
     metadataYaml,
     isUnknown,
     isOtio,

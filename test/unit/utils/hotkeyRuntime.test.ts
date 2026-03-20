@@ -9,8 +9,8 @@ import {
   isPreviewLikeFocus,
   shouldBlurAfterHotkey,
   shouldHandleRepeatForMatchedCommands,
-} from '../../../src/utils/hotkeys/runtime';
-import type { HotkeyCommandId } from '../../../src/utils/hotkeys/defaultHotkeys';
+} from '~/utils/hotkeys/runtime';
+import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 
 function createEffective(bindings: Partial<Record<HotkeyCommandId, string[]>>) {
   return bindings as Record<HotkeyCommandId, string[]>;

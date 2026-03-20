@@ -1,17 +1,17 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
-import { useProxyStore } from '../../../src/stores/proxy.store';
-import { useWorkspaceStore } from '../../../src/stores/workspace.store';
-import { useProjectStore } from '../../../src/stores/project.store';
+import { useProxyStore } from '~/stores/proxy.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useProjectStore } from '~/stores/project.store';
 
-vi.mock('../../../src/stores/workspace.store', () => ({
+vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: vi.fn(() => ({
     workspaceHandle: {},
     userSettings: { optimization: { proxyConcurrency: 2 } },
   })),
 }));
 
-vi.mock('../../../src/stores/project.store', () => ({
+vi.mock('~/stores/project.store', () => ({
   useProjectStore: vi.fn(() => ({
     currentProjectId: 'test-project',
     getFileHandleByPath: vi.fn(),

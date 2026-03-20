@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { formatBitrate, formatBytes, formatDurationSeconds } from '../../../src/utils/format';
+import { formatBitrate, formatBytes, formatDurationSeconds } from '~/utils/format';
 
 describe('utils/format', () => {
   it('formatBytes formats using base 1024 and fixed units', () => {

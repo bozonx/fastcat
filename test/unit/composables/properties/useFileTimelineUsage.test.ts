@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ref } from 'vue';
-import { useFileTimelineUsage } from '../../../../src/composables/properties/useFileTimelineUsage';
+import { useFileTimelineUsage } from '../~/composables/properties/useFileTimelineUsage';
 
 describe('useFileTimelineUsage', () => {
   it('returns empty usage when entry is not a file or has no path', () => {

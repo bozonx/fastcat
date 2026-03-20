@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import App from '../../src/app.vue';
+import App from '~/app.vue';
 import { mountWithNuxt } from '../utils/mount';
 
 vi.mock('#imports', () => ({

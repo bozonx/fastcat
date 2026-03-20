@@ -3,8 +3,8 @@ import {
   buildCaptionChunks,
   buildCaptionChunksFromWords,
   createDefaultCaptionGenerationSettings,
-} from '../../../src/utils/transcription/captions';
-import type { TranscriptionCacheRecord } from '../../../src/repositories/transcription-cache.repository';
+} from '~/utils/transcription/captions';
+import type { TranscriptionCacheRecord } from '~/repositories/transcription-cache.repository';
 
 function createRecord(
   words: Array<{ start: number; end: number; text: string }>,

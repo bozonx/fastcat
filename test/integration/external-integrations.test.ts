@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { createDefaultUserSettings } from '../../src/utils/settings';
-import { FASTCAT_PUBLICADOR_APP_NAME } from '../../src/utils/constants';
+import { createDefaultUserSettings } from '~/utils/settings';
+import { FASTCAT_PUBLICADOR_APP_NAME } from '~/utils/constants';
 import {
   getFastCatPublicadorConnectUrl,
   getFastCatPublicadorHealthUrl,
@@ -12,7 +12,7 @@ import {
   resolveFastCatConnectScopes,
   resolveExternalServiceConfig,
   resolveSttStreamUrl,
-} from '../../src/utils/external-integrations';
+} from '~/utils/external-integrations';
 
 describe('external integrations', () => {
   it('builds FastCat Publicador URLs from instance or api base URL', () => {

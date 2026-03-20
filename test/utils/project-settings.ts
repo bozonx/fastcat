@@ -1,9 +1,9 @@
 import {
   createDefaultProjectSettings,
   type FastCatProjectSettings,
-} from '../../src/utils/project-settings';
+} from '~/utils/project-settings';
 
-import type { FastCatUserSettings } from '../../src/utils/settings';
+import type { FastCatUserSettings } from '~/utils/settings';
 
 import { deepMerge } from './merge';
 import { buildUserSettings } from './settings';

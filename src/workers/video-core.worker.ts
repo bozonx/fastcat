@@ -28,13 +28,20 @@ async function reportExportWarning(message: string, taskId?: string) {
   console.warn(message, taskId ? `[task:${taskId}]` : '');
   if (!hostClient) return;
   try {
-    await (hostClient as any).onExportWarning?.(message, taskId);
+    await hostClient.onExportWarning?.(message, taskId);
   } catch {
     // ignore
   }
 }
 
-const api: any = {
+const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
+  initCompositor(
+    canvas: OffscreenCanvas,
+    width: number,
+    height: number,
+    bgColor: string,
+  ): Promise<void>;
+} = {
   extractMetadata,
 
   async initCompositor(canvas: OffscreenCanvas, width: number, height: number, bgColor: string) {
@@ -47,7 +54,7 @@ const api: any = {
     compositor = nextCompositor;
   },
 
-  async loadTimeline(clips: any[]) {
+  async loadTimeline(clips: import('../composables/timeline/export/types').WorkerVideoPayloadItem[]) {
     if (!compositor) throw new Error('Compositor not initialized');
     return compositor.loadTimeline(clips, {
       getFileHandleByPath: async (path: string) => {
@@ -69,7 +76,9 @@ const api: any = {
     });
   },
 
-  async updateTimelineLayout(clips: any[]) {
+  async updateTimelineLayout(
+    clips: import('../composables/timeline/export/types').WorkerVideoPayloadItem[],
+  ) {
     if (!compositor) throw new Error('Compositor not initialized');
     return compositor.updateTimelineLayout(clips);
   },
@@ -90,7 +99,7 @@ const api: any = {
         try {
           await compositor.renderFrame(next, opt);
         } catch (err) {
-          if ((err as any)?.name === 'AbortError') break;
+          if (err instanceof Error && err.name === 'AbortError') break;
           console.error('[Worker] renderFrame error at time', next, err);
         }
       }
@@ -115,9 +124,9 @@ const api: any = {
 
   async exportTimeline(
     targetHandle: FileSystemFileHandle,
-    options: any,
-    timelineClips: any[],
-    audioClips: any[] = [],
+    options: import('../composables/timeline/export/types').ExportOptions,
+    timelineClips: import('../composables/timeline/export/types').WorkerVideoPayloadItem[],
+    audioClips: import('../composables/timeline/export/types').WorkerTimelineClip[] = [],
     taskId?: string,
   ) {
     if (taskId) {
@@ -148,7 +157,7 @@ const api: any = {
   async transcodeMedia(
     sourceFile: File | FileSystemFileHandle,
     targetHandle: FileSystemFileHandle,
-    options: any,
+    options: import('../composables/timeline/export/types').ExportOptions,
     taskId?: string,
   ) {
     if (taskId) {
@@ -187,7 +196,7 @@ const api: any = {
     timeUs: number,
     width: number,
     height: number,
-    timelineClips: any[],
+    timelineClips: import('../composables/timeline/export/types').WorkerVideoPayloadItem[],
     quality: number,
   ) {
     const localCompositor = new VideoCompositor();
@@ -425,20 +434,21 @@ self.addEventListener('message', async (e: any) => {
       if (typeof api[method] !== 'function') {
         throw new Error(`Method ${method} not found on Worker API`);
       }
-      const result = await api[method](...(data.args || []));
+      const result = await (api as any)[method](...(data.args || []));
       self.postMessage({ type: 'rpc-response', id: data.id, result });
-    } catch (err: any) {
-      if (err?.name !== 'AbortError') {
+    } catch (err: unknown) {
+      const error = err as Error;
+      if (error?.name !== 'AbortError') {
         console.error(`[Worker] Error in method ${data.method}:`, err);
       }
       self.postMessage({
         type: 'rpc-response',
         id: data.id,
         error: {
-          name: err?.name || 'Error',
-          message: err?.message || String(err),
-          cause: err?.cause,
-          stack: err?.stack,
+          name: error?.name || 'Error',
+          message: error?.message || String(err),
+          cause: (error as any)?.cause,
+          stack: error?.stack,
         },
       });
     }
