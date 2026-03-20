@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 interface UiKnobProps {
   modelValue: number;
   min: number;
@@ -12,6 +11,7 @@ interface UiKnobProps {
 
 const props = withDefaults(defineProps<UiKnobProps>(), {
   step: 1,
+  defaultValue: undefined,
   disabled: false,
   size: 'md',
 });

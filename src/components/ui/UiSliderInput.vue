@@ -17,9 +17,13 @@ const props = withDefaults(
     sliderClass?: string;
   }>(),
   {
+    label: undefined,
+    formattedValue: undefined,
     step: 0.01,
     unit: '',
     decimals: 2,
+    defaultValue: undefined,
+    wheelStepMultiplier: undefined,
     inputClass: 'w-20',
     sliderClass: '',
   },

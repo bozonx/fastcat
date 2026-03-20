@@ -24,6 +24,8 @@ interface Props {
   dropPosition: 'left' | 'right' | 'top' | 'bottom' | null;
   isFocused: (panelId: string) => boolean;
   getFocusId: (panelId: string) => PanelFocusId;
+  leftPanelType: 'files' | 'settings' | 'export';
+  rightPanelType: 'monitor' | 'properties';
 }
 
 const props = defineProps<Props>();

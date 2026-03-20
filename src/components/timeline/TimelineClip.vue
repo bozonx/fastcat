@@ -264,7 +264,9 @@ const { contextMenuItems } = useClipContextMenu({
   t,
 });
 
-const isFreePosition = computed(() => isClipFreePosition(clipItem.value, timelineStore.timelineDoc, timelineStore.fps || 30));
+const isFreePosition = computed(() =>
+  isClipFreePosition(clipItem.value, timelineStore.timelineDoc, timelineStore.fps || 30),
+);
 
 const transitionInOverlayGuideStyle = computed<Record<string, string> | null>(() => {
   const offsetPx = getOverlayGuideOffsetPx(

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 interface UiWheelNumberInputProps {
   modelValue: number;
   min?: number;
@@ -11,6 +10,8 @@ interface UiWheelNumberInputProps {
 }
 
 const props = withDefaults(defineProps<UiWheelNumberInputProps>(), {
+  min: undefined,
+  max: undefined,
   step: 1,
   wheelStepMultiplier: 1,
   size: 'sm',

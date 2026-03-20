@@ -3,7 +3,7 @@ import UiModal from '~/components/ui/UiModal.vue';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import UiProgressSpinner from '~/components/ui/UiProgressSpinner.vue';
 
-const props = defineProps<{
+defineProps<{
   open: boolean;
 }>();
 

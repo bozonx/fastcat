@@ -326,7 +326,11 @@ const emit = defineEmits<{
               color="neutral"
               :variant="useProxyInMonitor ? 'soft' : 'ghost'"
               icon="i-heroicons-bolt"
-              :class="useProxyInMonitor ? 'text-[var(--selection-accent-400)] ring-1 ring-[var(--selection-accent-500)]/40 bg-[color:rgba(59,130,246,0.12)]' : ''"
+              :class="
+                useProxyInMonitor
+                  ? 'text-[var(--selection-accent-400)] ring-1 ring-[var(--selection-accent-500)]/40 bg-[color:rgba(59,130,246,0.12)]'
+                  : ''
+              "
               @click="toggleProxyUsage"
             />
           </UiTooltip>
@@ -344,7 +348,11 @@ const emit = defineEmits<{
               color="neutral"
               :variant="previewEffectsEnabled ? 'soft' : 'ghost'"
               icon="i-heroicons-sparkles"
-              :class="previewEffectsEnabled ? 'text-[var(--selection-accent-400)] ring-1 ring-[var(--selection-accent-500)]/40 bg-[color:rgba(59,130,246,0.12)]' : ''"
+              :class="
+                previewEffectsEnabled
+                  ? 'text-[var(--selection-accent-400)] ring-1 ring-[var(--selection-accent-500)]/40 bg-[color:rgba(59,130,246,0.12)]'
+                  : ''
+              "
               @click="togglePreviewEffects"
             />
           </UiTooltip>

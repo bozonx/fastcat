@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, nextTick, watch } from 'vue';
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import type { TimelineTrack } from '~/timeline/types';
 import UiWheelSlider from '~/components/ui/editor/UiWheelSlider.vue';

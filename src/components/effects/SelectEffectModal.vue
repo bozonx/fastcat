@@ -4,7 +4,7 @@ import {
   getAllVideoEffectManifests,
   getAllAudioEffectManifests,
   getEffectManifest,
-  type AudioEffectManifest,
+  type EffectManifest,
 } from '~/effects';
 import { usePresetsStore } from '~/stores/presets.store';
 import CollapsibleEffectGroup from './CollapsibleEffectGroup.vue';

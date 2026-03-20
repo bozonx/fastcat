@@ -30,7 +30,6 @@ const {
   isExporting,
   exportProgress,
   exportError,
-  exportPhase,
   cancelRequested,
   outputFilename,
   filenameError,

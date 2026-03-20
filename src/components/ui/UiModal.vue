@@ -29,6 +29,8 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  title: undefined,
+  description: undefined,
   closeButton: true,
   preventClose: false,
   ui: () => ({}),
@@ -53,7 +55,7 @@ const modalUi = computed(() => {
     description: `mt-1 text-sm text-ui-text-muted ${props.ui?.description || ''}`,
     close: `-mr-2 ml-4 ${props.ui?.close || ''}`,
     ...props.ui,
-  } as any;
+  } as Record<string, unknown>;
 });
 
 const modalContent = {
@@ -111,7 +113,7 @@ function handleClose() {
     :title="props.title"
     :description="props.description"
     :close="props.closeButton"
-    :ui="modalUi"
+    :ui="modalUi as any"
     @after:enter="handleAfterEnter"
   >
     <template v-if="$slots.header" #header>

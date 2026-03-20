@@ -9,7 +9,7 @@ const props = withDefaults(
     text: '',
     placement: 'top',
     disabled: false,
-  }
+  },
 );
 </script>
 

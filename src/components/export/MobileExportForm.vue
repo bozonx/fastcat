@@ -1,6 +1,6 @@
+import { useProjectStore } from "~/stores/project.store";
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
-import { useProjectStore } from '~/stores/project.store';
 import { useExportForm } from '~/composables/timeline/export/useExportForm';
 
 const { t } = useI18n();
@@ -10,11 +10,9 @@ const {
   isExporting,
   exportProgress,
   exportError,
-  exportPhase,
   outputFilename,
   filenameError,
   outputFormat,
-  videoCodec,
   bitrateMbps,
   excludeAudio,
   audioCodec,

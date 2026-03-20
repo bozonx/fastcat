@@ -20,12 +20,11 @@ const emit = defineEmits<{
   'update:modelValue': [value: string];
 }>();
 
-
 const items = computed(() =>
   props.options.map((opt) => ({
     ...opt,
     slot: opt.value,
-  }))
+  })),
 );
 
 const selectedIndex = computed({
@@ -49,7 +48,8 @@ const selectedIndex = computed({
       :ui="{
         root: 'gap-4',
         list: 'px-3 py-2 gap-4 bg-transparent p-0 rounded-none',
-        trigger: 'text-xs font-semibold uppercase tracking-wider transition-colors outline-none cursor-pointer whitespace-nowrap px-0 py-0 data-[state=active]:text-primary-400 data-[state=active]:bg-transparent data-[state=inactive]:text-ui-text-muted data-[state=inactive]:hover:text-ui-text data-[state=inactive]:bg-transparent',
+        trigger:
+          'text-xs font-semibold uppercase tracking-wider transition-colors outline-none cursor-pointer whitespace-nowrap px-0 py-0 data-[state=active]:text-primary-400 data-[state=active]:bg-transparent data-[state=inactive]:text-ui-text-muted data-[state=inactive]:hover:text-ui-text data-[state=inactive]:bg-transparent',
       }"
     >
       <template #default="{ item }">

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 import UiModal from '~/components/ui/UiModal.vue';
 
 const props = defineProps<{
