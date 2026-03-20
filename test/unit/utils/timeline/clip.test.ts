@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { clampHandlePx } from '../~/utils/timeline/clip';
+import { clampHandlePx } from '~/utils/timeline/clip';
 
 describe('utils/timeline/clip', () => {
   it('clampHandlePx clamps to clip padding', () => {

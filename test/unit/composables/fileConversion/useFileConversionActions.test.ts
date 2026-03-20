@@ -2,8 +2,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 
-import { useFileConversionActions } from '../~/composables/fileConversion/useFileConversionActions';
-import { executeMediaConversion } from '../~/utils/conversion/media-conversion';
+import { useFileConversionActions } from '~/composables/fileConversion/useFileConversionActions';
+import { executeMediaConversion } from '~/utils/conversion/media-conversion';
 
 const mockProjectStore = {
   projectSettings: {
@@ -182,7 +182,7 @@ describe('useFileConversionActions', () => {
     const props = createProps('video');
     const { openConversionModal, startConversion } = useFileConversionActions(props);
 
-    const workerClientModule = await import('../~/utils/video-editor/worker-client');
+    const workerClientModule = await import('~/utils/video-editor/worker-client');
     vi.mocked(workerClientModule.getExportWorkerClient).mockReturnValue({
       client: {
         extractMetadata: vi.fn().mockResolvedValue({

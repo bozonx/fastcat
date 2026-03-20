@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { reactive } from 'vue';
-import FileManagerTree from '../~/components/file-manager/FileManagerTree.vue';
-import type { FsEntry } from '../~/types/fs';
-import type { RemoteFsEntry } from '../~/utils/remote-vfs';
+import FileManagerTree from '~/components/file-manager/FileManagerTree.vue';
+import type { FsEntry } from '~/types/fs';
+import type { RemoteFsEntry } from '~/utils/remote-vfs';
 
 const selectionStoreMock = {
   selectedEntity: null as any,

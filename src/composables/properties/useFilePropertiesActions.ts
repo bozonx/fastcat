@@ -85,6 +85,12 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
 
   const directorySecondaryActions = computed<SecondaryEntryAction[]>(() => [
     {
+      id: 'createSubfolder',
+      label: options.t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
+      icon: 'i-heroicons-folder-plus',
+      onClick: options.createSubfolder,
+    },
+    {
       id: 'createTimeline',
       label: options.t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline'),
       icon: 'i-heroicons-document-plus',

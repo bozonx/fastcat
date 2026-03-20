@@ -5,7 +5,7 @@ import {
   clearVideoThumbnailsCommand,
   onVideoPathMovedCommand,
   removeProxyCommand,
-} from '../~/media-cache/application/proxyThumbnailCommands';
+} from '~/media-cache/application/proxyThumbnailCommands';
 
 function createServiceMock() {
   return {

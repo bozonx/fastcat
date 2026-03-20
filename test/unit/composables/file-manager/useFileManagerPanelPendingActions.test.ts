@@ -1,7 +1,7 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { nextTick, reactive, effectScope, type EffectScope } from 'vue';
 
-import { useFileManagerPanelPendingActions } from '../~/composables/fileManager/useFileManagerPanelPendingActions';
+import { useFileManagerPanelPendingActions } from '~/composables/fileManager/useFileManagerPanelPendingActions';
 
 const uiStore = reactive({
   pendingFsEntryDelete: null as any,

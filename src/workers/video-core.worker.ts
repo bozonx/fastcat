@@ -411,12 +411,16 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
   },
 };
 
+import type { PreviewRenderOptions, VideoCoreWorkerAPI, WorkerRpcMessage } from '../utils/video-editor/worker-rpc';
+
+// ... other imports ...
+
 const activeCancels = new Map<string, boolean>();
 
 let callIdCounter = 0;
 const pendingCalls = new Map<number, { resolve: Function; reject: Function; timeoutId?: number }>();
 
-self.addEventListener('message', async (e: any) => {
+self.addEventListener('message', async (e: MessageEvent<WorkerRpcMessage>) => {
   const data = e.data;
   if (!data) return;
 

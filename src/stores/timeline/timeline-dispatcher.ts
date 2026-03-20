@@ -4,10 +4,10 @@ import type { TimelineDocument } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 import { applyTimelineCommand } from '~/timeline/commands';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
-import { TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY } from './timelineHistoryLabels';
+import { TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY } from './timeline-history-labels';
 
-import type { TimelineHydrationApi } from './timelineHydration';
-import type { TimelineHistoryDebounceApi } from './timelineHistoryDebounce';
+import type { TimelineHydrationApi } from './timeline-hydration';
+import type { TimelineHistoryDebounceApi } from './timeline-history-debounce';
 
 export interface TimelineDispatcherDeps {
   timelineDoc: Ref<TimelineDocument | null>;

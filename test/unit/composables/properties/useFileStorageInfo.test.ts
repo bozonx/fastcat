@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { ref } from 'vue';
-import { useFileStorageInfo } from '../~/composables/properties/useFileStorageInfo';
+import { useFileStorageInfo } from '~/composables/properties/useFileStorageInfo';
 
 describe('useFileStorageInfo', () => {
   it('identifies project root dir when name matches and path is empty', () => {

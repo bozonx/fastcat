@@ -139,6 +139,10 @@ function createRoutedHostApi(channel: WorkerChannel): VideoCoreHostAPI {
   };
 }
 
+import type { VideoCoreWorkerAPI, WorkerRpcMessage } from './worker-rpc';
+
+// ... other imports ...
+
 function createWorker(channel: WorkerChannel): Worker {
   const state = channelStates[channel];
   const worker = new Worker(new URL('../../workers/video-core.worker.ts', import.meta.url), {
@@ -146,7 +150,7 @@ function createWorker(channel: WorkerChannel): Worker {
     name: `video-core-${channel}`,
   });
 
-  worker.addEventListener('message', async (e) => {
+  worker.addEventListener('message', async (e: MessageEvent<WorkerRpcMessage>) => {
     const data = e.data;
     if (!data || !data.type) return;
 

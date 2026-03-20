@@ -1,7 +1,7 @@
 import { ref, type Ref } from 'vue';
 import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types';
 import type { createTimelineMarkerService } from '~/timeline/application/timelineMarkerService';
-import type { createTimelineTrimming } from './timelineTrimming';
+import type { createTimelineTrimming } from './timeline-trimming';
 import { TIMELINE_RULER_CONSTANTS } from '~/utils/constants';
 import type { TimelineCommand } from '~/timeline/commands';
 

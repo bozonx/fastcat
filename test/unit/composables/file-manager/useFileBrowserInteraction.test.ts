@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 
-import { useFileBrowserInteraction } from '../~/composables/fileManager/useFileBrowserInteraction';
-import type { FsEntry } from '../~/types/fs';
+import { useFileBrowserInteraction } from '~/composables/fileManager/useFileBrowserInteraction';
+import type { FsEntry } from '~/types/fs';
 
 const filesPageStore = {
   sortOption: { field: 'name', order: 'asc' },
@@ -24,7 +24,7 @@ const timelineStore = {
   loadTimelineMetadata: vi.fn(),
 };
 
-vi.mock('~/stores/filesPage.store', () => ({ useFilesPageStore: () => filesPageStore }));
+vi.mock('~/stores/files-page.store', () => ({ useFilesPageStore: () => filesPageStore }));
 vi.mock('~/stores/project.store', () => ({ useProjectStore: () => projectStore }));
 vi.mock('~/stores/timeline.store', () => ({ useTimelineStore: () => timelineStore }));
 vi.mock('~/utils/media-types', () => ({

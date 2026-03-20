@@ -15,7 +15,7 @@ import type {
 const props = withDefaults(
   defineProps<{
     controls: ParamControl[];
-    values: Record<string, any>;
+    values: Record<string, unknown>;
     size?: 'xs' | 'sm' | 'md';
     asContents?: boolean;
   }>(),
@@ -26,7 +26,7 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-  (e: 'update:value', key: string, value: any): void;
+  (e: 'update:value', key: string, value: unknown): void;
   (e: 'action', action: string, key: string): void;
 }>();
 
@@ -35,7 +35,7 @@ const { t } = useI18n();
 const dragOverKey = ref<string | null>(null);
 
 const visibleControls = computed(() =>
-  props.controls.filter((control) => !control.showIf || control.showIf(props.values)),
+  props.controls.filter((control) => !control.showIf || control.showIf(props.values as Record<string, any>)),
 );
 
 function getLabel(control: ParamControl): string {
@@ -50,12 +50,12 @@ function getLabel(control: ParamControl): string {
   return '';
 }
 
-function getValue(key: string | undefined): any {
+function getValue(key: string | undefined): unknown {
   if (!key) return undefined;
   return props.values[key];
 }
 
-function updateValue(key: string | undefined, value: any) {
+function updateValue(key: string | undefined, value: unknown) {
   if (!key) return;
   emit('update:value', key, value);
 }
@@ -120,20 +120,23 @@ function handleAction(action: string, key: string) {
   emit('action', action, key);
 }
 
-function handleArrayAdd(control: any) {
-  const current = Array.isArray(getValue(control.key)) ? [...getValue(control.key)] : [];
+function handleArrayAdd(control: ParamControl) {
+  if (control.kind !== 'array') return;
+  const current = Array.isArray(getValue(control.key)) ? [...(getValue(control.key) as any[])] : [];
   current.push({ ...control.defaultItem });
   updateValue(control.key, current);
 }
 
-function handleArrayRemove(control: any, index: number) {
-  const current = Array.isArray(getValue(control.key)) ? [...getValue(control.key)] : [];
+function handleArrayRemove(control: ParamControl, index: number) {
+  if (control.kind !== 'array') return;
+  const current = Array.isArray(getValue(control.key)) ? [...(getValue(control.key) as any[])] : [];
   current.splice(index, 1);
   updateValue(control.key, current);
 }
 
-function handleArrayItemUpdate(control: any, index: number, itemKey: string, value: any) {
-  const current = Array.isArray(getValue(control.key)) ? [...getValue(control.key)] : [];
+function handleArrayItemUpdate(control: ParamControl, index: number, itemKey: string, value: unknown) {
+  if (control.kind !== 'array') return;
+  const current = Array.isArray(getValue(control.key)) ? [...(getValue(control.key) as any[])] : [];
   if (current[index]) {
     current[index] = { ...current[index], [itemKey]: value };
     updateValue(control.key, current);
