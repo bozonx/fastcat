@@ -282,13 +282,7 @@ export function useClipBatchActions(
     const nextDurationUs = Math.max(1, Math.round(Number(durationUs)));
     if (!Number.isFinite(nextDurationUs)) return;
 
-    const cmds: Array<{
-      type: 'trim_item';
-      trackId: string;
-      itemId: string;
-      edge: 'end';
-      deltaUs: number;
-    }> = [];
+    const cmds: any[] = [];
 
     for (const { trackId, itemId } of items.value) {
       const track = doc.tracks.find((t) => t.id === trackId);
@@ -311,6 +305,16 @@ export function useClipBatchActions(
     }
 
     if (cmds.length === 0) return;
+    ctx.batchApplyTimeline(cmds);
+  }
+
+  function handleBatchUpdateProperties(properties: Partial<TimelineClipItem>) {
+    const cmds = items.value.map(({ trackId, itemId }) => ({
+      type: 'update_clip_properties' as const,
+      trackId,
+      itemId,
+      properties,
+    }));
     ctx.batchApplyTimeline(cmds);
   }
 
@@ -379,5 +383,6 @@ export function useClipBatchActions(
     toggleShowThumbnails,
     handleSetUniformDuration,
     handleQuantizeSelected,
+    handleBatchUpdateProperties,
   };
 }

@@ -6,6 +6,7 @@ import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 
 const props = defineProps<{
   clip: any;
+  presets: Array<{ label: string; value: string }>;
 }>();
 
 const emit = defineEmits<{
@@ -15,6 +16,7 @@ const emit = defineEmits<{
   (e: 'updateStrokeWidth', val: number): void;
   (e: 'updateShapeConfig', patch: Record<string, unknown>): void;
   (e: 'openSavePresetModal'): void;
+  (e: 'loadPreset', val: string): void;
 }>();
 
 const { t } = useI18n();
@@ -23,16 +25,33 @@ const { t } = useI18n();
 <template>
   <PropertySection :title="t('fastcat.shapeClip.shape', 'Shape')">
     <div class="flex flex-col gap-2">
-      <div class="flex items-center justify-end">
-        <UButton
-          size="xs"
-          variant="ghost"
-          color="primary"
-          icon="i-heroicons-bookmark"
-          :title="t('fastcat.effects.saveAsPreset', 'Save as preset')"
-          @click="emit('openSavePresetModal')"
-        />
+      <div v-if="props.presets.length > 0 || true" class="flex flex-col gap-1 pb-2 border-b border-ui-border mb-1">
+        <span class="text-[10px] text-ui-text-muted uppercase tracking-wider font-semibold">
+          {{ t('fastcat.effects.presetsTitle', 'Presets') }}
+        </span>
+        <div class="flex gap-2">
+          <USelectMenu
+            v-if="props.presets.length > 0"
+            :items="props.presets"
+            :placeholder="t('fastcat.effects.loadPresetPlaceholder', 'Load preset...')"
+            class="flex-1"
+            size="xs"
+            @update:model-value="(v: any) => emit('loadPreset', v?.value ?? v)"
+          />
+          <div v-else class="flex-1 text-xs text-ui-text-muted italic flex items-center">
+            {{ t('fastcat.effects.noPresets', 'No presets saved') }}
+          </div>
+          <UButton
+            size="xs"
+            variant="ghost"
+            color="primary"
+            icon="i-heroicons-bookmark"
+            :title="t('fastcat.effects.saveAsPreset', 'Save as preset')"
+            @click="emit('openSavePresetModal')"
+          />
+        </div>
       </div>
+
       <PropertyField :label="t('fastcat.shapeClip.type', 'Type')">
         <USelectMenu
           :model-value="String(clip.shapeType ?? 'square')"

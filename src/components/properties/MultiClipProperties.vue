@@ -2,6 +2,9 @@
 import { computed, toRef } from 'vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
+import PropertyTimecode from '~/components/properties/PropertyTimecode.vue';
+import PropertySection from '~/components/properties/PropertySection.vue';
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import { useClipBatchActions } from '~/composables/timeline/useClipBatchActions';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
@@ -39,6 +42,7 @@ const {
   toggleShowThumbnails,
   handleSetUniformDuration,
   handleQuantizeSelected,
+  handleBatchUpdateProperties,
 } = useClipBatchActions(itemsRef, {
   timelineDoc: computed(() => timelineStore.timelineDoc),
   mediaMetadata: computed(() => mediaStore.mediaMetadata),
@@ -50,6 +54,87 @@ const selectedCountLabel = computed(() => {
   return (t as any)('fastcat.timeline.selectedClipsCount', '{count} clips selected', {
     count: props.items.length,
   }) as string;
+});
+
+const blendModeOptions = computed(() => [
+  { value: 'normal', label: t('fastcat.clip.blendMode.normal') },
+  { value: 'add', label: t('fastcat.clip.blendMode.add') },
+  { value: 'multiply', label: t('fastcat.clip.blendMode.multiply') },
+  { value: 'screen', label: t('fastcat.clip.blendMode.screen') },
+  { value: 'darken', label: t('fastcat.clip.blendMode.darken') },
+  { value: 'lighten', label: t('fastcat.clip.blendMode.lighten') },
+]);
+
+const firstClip = computed(() => selectedClips.value[0]);
+
+const batchOpacity = computed({
+  get: () => Math.round((firstClip.value?.opacity ?? 1) * 100),
+  set: (val: number) => handleBatchUpdateProperties({ opacity: val / 100 }),
+});
+
+const batchBlendMode = computed({
+  get: () => firstClip.value?.blendMode ?? 'normal',
+  set: (val: any) => handleBatchUpdateProperties({ blendMode: val }),
+});
+
+const batchAudioGain = computed({
+  get: () => Number(firstClip.value?.audioGain ?? 0),
+  set: (val: number) => handleBatchUpdateProperties({ audioGain: val }),
+});
+
+const batchScale = computed({
+  get: () => Math.round((firstClip.value?.transform?.scale?.x ?? 1) * 100),
+  set: (val: number) => {
+    const s = val / 100;
+    handleBatchUpdateProperties({
+      transform: {
+        ...(firstClip.value?.transform ?? {}),
+        scale: { x: s, y: s, linked: true },
+      },
+    } as any);
+  },
+});
+
+const batchRotation = computed({
+  get: () => firstClip.value?.transform?.rotationDeg ?? 0,
+  set: (val: number) => {
+    handleBatchUpdateProperties({
+      transform: {
+        ...(firstClip.value?.transform ?? {}),
+        rotationDeg: val,
+      },
+    } as any);
+  },
+});
+
+const batchPosX = computed({
+  get: () => firstClip.value?.transform?.position?.x ?? 0,
+  set: (val: number) => {
+    handleBatchUpdateProperties({
+      transform: {
+        ...(firstClip.value?.transform ?? {}),
+        position: {
+          x: val,
+          y: firstClip.value?.transform?.position?.y ?? 0,
+        },
+      },
+    } as any);
+  },
+});
+
+const batchPosY = computed({
+  get: () => firstClip.value?.transform?.position?.y ?? 0,
+  set: (val: number) => {
+    handleBatchUpdateProperties({
+      transform: {
+        ...(firstClip.value?.transform ?? {}),
+        position: {
+          x: firstClip.value?.transform?.position?.x ?? 0,
+          y: val,
+        },
+      },
+    } as any);
+  },
 });
 
 const actions = computed(() => {
@@ -146,16 +231,74 @@ const actions = computed(() => {
 <template>
   <div class="flex flex-col gap-4 w-full">
     <PropertySection :title="t('fastcat.timeline.multipleSelection', 'Multiple Selection')">
-      <div class="px-3 pb-3 flex flex-col gap-2">
+      <div class="px-3 pb-3 flex flex-col gap-4">
         <span class="text-sm text-ui-text-muted">
           {{ selectedCountLabel }}
         </span>
 
         <PropertyTimecode
           :label="t('common.duration', 'Duration')"
-          :model-value="selectedClips[0]?.timelineRange.durationUs ?? 0"
+          :model-value="firstClip?.timelineRange.durationUs ?? 0"
           @update:model-value="handleSetUniformDuration"
         />
+
+        <div v-if="hasVideo" class="space-y-4 pt-2 border-t border-ui-border">
+          <div class="flex flex-col gap-1">
+            <span class="text-xs text-ui-text-muted">{{
+              t('fastcat.clip.opacity', 'Opacity (%)')
+            }}</span>
+            <UiWheelNumberInput v-model="batchOpacity" size="sm" :step="1" :min="0" :max="100" />
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <span class="text-xs text-ui-text-muted">{{
+              t('fastcat.clip.blendMode.title', 'Blend Mode')
+            }}</span>
+            <USelectMenu
+              v-model="batchBlendMode"
+              :items="blendModeOptions"
+              value-key="value"
+              label-key="label"
+              size="sm"
+            />
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div class="flex flex-col gap-1">
+              <span class="text-xs text-ui-text-muted">{{
+                t('fastcat.clip.transform.scale', 'Scale (%)')
+              }}</span>
+              <UiWheelNumberInput v-model="batchScale" size="sm" :step="1" />
+            </div>
+            <div class="flex flex-col gap-1">
+              <span class="text-xs text-ui-text-muted">{{
+                t('fastcat.clip.transform.rotation', 'Rotation (deg)')
+              }}</span>
+              <UiWheelNumberInput v-model="batchRotation" size="sm" :step="1" />
+            </div>
+            <div class="flex flex-col gap-1">
+              <span class="text-xs text-ui-text-muted">{{
+                t('fastcat.clip.transform.positionX', 'Position X')
+              }}</span>
+              <UiWheelNumberInput v-model="batchPosX" size="sm" :step="1" />
+            </div>
+            <div class="flex flex-col gap-1">
+              <span class="text-xs text-ui-text-muted">{{
+                t('fastcat.clip.transform.positionY', 'Position Y')
+              }}</span>
+              <UiWheelNumberInput v-model="batchPosY" size="sm" :step="1" />
+            </div>
+          </div>
+        </div>
+
+        <div v-if="hasAudioOrVideoWithAudio" class="pt-2 border-t border-ui-border">
+          <div class="flex flex-col gap-1">
+            <span class="text-xs text-ui-text-muted">{{
+              t('fastcat.clip.audioGain', 'Audio Gain (dB)')
+            }}</span>
+            <UiWheelNumberInput v-model="batchAudioGain" size="sm" :step="0.1" :min="-60" :max="20" />
+          </div>
+        </div>
       </div>
     </PropertySection>
 

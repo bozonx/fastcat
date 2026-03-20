@@ -24,6 +24,7 @@ interface TimelineStoreActions {
     patch: Record<string, unknown>,
   ) => void | Promise<void>;
   renameItem: (trackId: string, itemId: string, name: string) => void;
+  selectTimelineItems: (items: { trackId: string; itemId: string }[]) => void;
 }
 
 interface ProjectStoreActions {
@@ -133,6 +134,55 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       typeof options.clip.value.linkedGroupId === 'string' &&
       options.clip.value.linkedGroupId.trim().length > 0,
   );
+
+  const linkedAudioClip = computed(() => {
+    const doc = timelineStore.timelineDoc;
+    if (!doc || options.trackKind.value !== 'video') return null;
+    for (const track of doc.tracks) {
+      if (track.kind !== 'audio') continue;
+      for (const item of track.items) {
+        if (
+          item.kind === 'clip' &&
+          (item as TimelineClipItem).linkedVideoClipId === options.clip.value.id
+        ) {
+          return item as TimelineClipItem;
+        }
+      }
+    }
+    return null;
+  });
+
+  const linkedVideoClip = computed(() => {
+    const doc = timelineStore.timelineDoc;
+    if (!doc || options.trackKind.value !== 'audio') return null;
+    const videoId = options.clip.value.linkedVideoClipId;
+    if (!videoId) return null;
+    for (const track of doc.tracks) {
+      if (track.kind !== 'video') continue;
+      for (const item of track.items) {
+        if (item.kind === 'clip' && item.id === videoId) {
+          return item as TimelineClipItem;
+        }
+      }
+    }
+    return null;
+  });
+
+  function goToLinkedAudio() {
+    if (linkedAudioClip.value) {
+      timelineStore.selectTimelineItems([
+        { trackId: linkedAudioClip.value.trackId, itemId: linkedAudioClip.value.id },
+      ]);
+    }
+  }
+
+  function goToLinkedVideo() {
+    if (linkedVideoClip.value) {
+      timelineStore.selectTimelineItems([
+        { trackId: linkedVideoClip.value.trackId, itemId: linkedVideoClip.value.id },
+      ]);
+    }
+  }
 
   function handleDeleteClip() {
     timelineStore.applyTimeline({
@@ -331,5 +381,9 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     handleRenameClip,
     handleSelectInFileManager,
     handleOpenNestedTimeline,
+    goToLinkedAudio,
+    goToLinkedVideo,
+    linkedAudioClip,
+    linkedVideoClip,
   };
 }

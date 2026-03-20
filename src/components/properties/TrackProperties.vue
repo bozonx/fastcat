@@ -144,6 +144,45 @@ function confirmDeleteTrack() {
   isDeleteConfirmOpen.value = false;
 }
 
+const trackColorPresets = [
+  '#2a2a2a', // Default
+  '#4a90e2', // Blue
+  '#50e3c2', // Teal
+  '#b8e986', // Green
+  '#f8e71c', // Yellow
+  '#f5a623', // Orange
+  '#d0021b', // Red
+  '#bd10e0', // Purple
+  '#9013fe', // Violet
+];
+
+const trackColor = computed({
+  get: () => props.track.color ?? '#2a2a2a',
+  set: (val: string) => timelineStore.updateTrackProperties(props.track.id, { color: val }),
+});
+
+const isLocked = computed({
+  get: () => props.track.locked ?? false,
+  set: (val: boolean) => timelineStore.updateTrackProperties(props.track.id, { locked: val }),
+});
+
+const isMuted = computed({
+  get: () =>
+    props.track.kind === 'video' ? props.track.videoHidden : props.track.audioMuted ?? false,
+  set: (val: boolean) => {
+    if (props.track.kind === 'video') {
+      timelineStore.updateTrackProperties(props.track.id, { videoHidden: val });
+    } else {
+      timelineStore.updateTrackProperties(props.track.id, { audioMuted: val });
+    }
+  },
+});
+
+const isSolo = computed({
+  get: () => props.track.audioSolo ?? false,
+  set: (val: boolean) => timelineStore.updateTrackProperties(props.track.id, { audioSolo: val }),
+});
+
 const mainActions = computed(() => [
   {
     id: 'rename',
@@ -179,6 +218,50 @@ const extraActions = computed(() => {
   <div class="w-full flex flex-col gap-2">
     <PropertySection :title="t('fastcat.track.actions', 'Actions')">
       <div class="flex flex-col w-full gap-2">
+        <div class="flex items-center justify-around pb-2 border-b border-ui-border">
+          <UButton
+            :icon="isLocked ? 'i-heroicons-lock-closed' : 'i-heroicons-lock-open'"
+            size="sm"
+            :color="isLocked ? 'primary' : 'neutral'"
+            variant="ghost"
+            :title="t('fastcat.track.lock', 'Lock track')"
+            @click="isLocked = !isLocked"
+          />
+          <UButton
+            :icon="isMuted ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
+            size="sm"
+            :color="isMuted ? 'danger' : 'neutral'"
+            variant="ghost"
+            :title="t('fastcat.track.mute', 'Mute/Hide track')"
+            @click="isMuted = !isMuted"
+          />
+          <UButton
+            v-if="track.kind === 'audio' || track.kind === 'video'"
+            icon="i-heroicons-star"
+            size="sm"
+            :color="isSolo ? 'warning' : 'neutral'"
+            variant="ghost"
+            :title="t('fastcat.track.solo', 'Solo track')"
+            @click="isSolo = !isSolo"
+          />
+        </div>
+
+        <div class="flex flex-col gap-1.5 pt-1 px-1">
+          <span class="text-[10px] text-ui-text-muted uppercase tracking-wider font-semibold">
+            {{ t('fastcat.track.color', 'Track color') }}
+          </span>
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              v-for="preset in trackColorPresets"
+              :key="preset"
+              class="w-5 h-5 rounded-full border border-ui-border-elevated transition-transform hover:scale-110"
+              :class="{ 'ring-2 ring-ui-primary ring-offset-1 ring-offset-ui-bg': trackColor === preset }"
+              :style="{ backgroundColor: preset }"
+              @click="trackColor = preset"
+            />
+          </div>
+        </div>
+
         <PropertyActionList :actions="mainActions" :vertical="false" justify="center" size="xs" />
         <PropertyActionList :actions="extraActions" justify="center" size="xs" />
       </div>

@@ -13,6 +13,8 @@ const props = defineProps<{
   isInLinkedGroup: boolean;
   canShowWaveformToggle: boolean;
   canShowThumbnailsToggle: boolean;
+  linkedAudioClip?: TimelineClipItem | null;
+  linkedVideoClip?: TimelineClipItem | null;
 }>();
 
 const emit = defineEmits<{
@@ -26,6 +28,8 @@ const emit = defineEmits<{
   toggleShowWaveform: [];
   toggleShowThumbnails: [];
   toggleAudioWaveformMode: [];
+  goToLinkedAudio: [];
+  goToLinkedVideo: [];
 }>();
 
 const { t } = useI18n();
@@ -55,6 +59,26 @@ const otherActions = computed(() => {
       label: t('fastcat.timeline.quantize', 'Quantize to frames'),
       icon: 'i-heroicons-squares-2x2',
       onClick: () => emit('quantize'),
+    });
+  }
+
+  if (props.linkedAudioClip) {
+    list.push({
+      id: 'goToLinkedAudio',
+      label: t('fastcat.clip.goToLinkedAudio', 'Go to linked audio'),
+      icon: 'i-heroicons-speaker-wave',
+      color: 'primary' as const,
+      onClick: () => emit('goToLinkedAudio'),
+    });
+  }
+
+  if (props.linkedVideoClip) {
+    list.push({
+      id: 'goToLinkedVideo',
+      label: t('fastcat.clip.goToLinkedVideo', 'Go to linked video'),
+      icon: 'i-heroicons-film',
+      color: 'primary' as const,
+      onClick: () => emit('goToLinkedVideo'),
     });
   }
 

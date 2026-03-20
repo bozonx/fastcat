@@ -76,6 +76,17 @@ export interface ClipPosition {
   y: number;
 }
 
+export interface ClipCrop {
+  /** Top crop in percent (0..100) */
+  top?: number;
+  /** Bottom crop in percent (0..100) */
+  bottom?: number;
+  /** Left crop in percent (0..100) */
+  left?: number;
+  /** Right crop in percent (0..100) */
+  right?: number;
+}
+
 export interface ClipTransform {
   scale?: ClipScale;
   /** Rotation in degrees */
@@ -83,6 +94,7 @@ export interface ClipTransform {
   /** Translation in compositor pixels, applied to the anchor point */
   position?: ClipPosition;
   anchor?: ClipAnchor;
+  crop?: ClipCrop;
 }
 
 export interface ClipTransition {
@@ -312,6 +324,8 @@ export interface TimelineTrack {
   audioBalance?: number;
   effects?: ClipEffect[];
   items: TimelineTrackItem[];
+  color?: string;
+  locked?: boolean;
 }
 
 export interface TimelineMarker {

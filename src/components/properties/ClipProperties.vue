@@ -85,6 +85,10 @@ const {
   toggleShowThumbnails,
   handleSelectInFileManager,
   handleOpenNestedTimeline,
+  goToLinkedAudio,
+  goToLinkedVideo,
+  linkedAudioClip,
+  linkedVideoClip,
 } = useClipPropertiesActions({
   clip: clipRef,
   trackKind: clipTrackKind,
@@ -300,6 +304,8 @@ defineExpose({
       :is-in-linked-group="isInLinkedGroup"
       :can-show-waveform-toggle="canEditAudioGain"
       :can-show-thumbnails-toggle="canEditAudioGain"
+      :linked-audio-clip="linkedAudioClip"
+      :linked-video-clip="linkedVideoClip"
       @rename="isUiRenameModalOpen = true"
       @delete="handleDeleteClip"
       @quantize="handleQuantizeClip"
@@ -310,6 +316,8 @@ defineExpose({
       @toggle-show-waveform="toggleShowWaveform"
       @toggle-show-thumbnails="toggleShowThumbnails"
       @toggle-audio-waveform-mode="toggleAudioWaveformMode"
+      @go-to-linked-audio="goToLinkedAudio"
+      @go-to-linked-video="goToLinkedVideo"
     />
 
     <ClipInfoSection
@@ -392,6 +400,9 @@ defineExpose({
         (next) => timelineStore.updateClipProperties(clip.trackId, clip.id, { transform: next })
       "
       @toggle-reversed="toggleReversed"
+      @update-speed="
+        (speed) => timelineStore.updateClipProperties(clip.trackId, clip.id, { speed })
+      "
     />
 
     <UiRenameModal

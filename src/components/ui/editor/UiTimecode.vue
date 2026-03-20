@@ -32,19 +32,34 @@ function formatTimecode(us: number, fpsValue: number): string {
   return `${pad(hh)}:${pad(mm)}:${pad(ss)}:${pad(ff)}`;
 }
 
-// Parse HH:MM:SS:FF to microseconds
+// Parse HH:MM:SS:FF or MM:SS:FF or SS:FF or just SS to microseconds
 function parseTimecode(tc: string, fpsValue: number): number {
-  const parts = tc.split(':').map(Number);
-  if (parts.length === 4 && !parts.some(isNaN)) {
-    const hh = parts[0] || 0;
-    const mm = parts[1] || 0;
-    const ss = parts[2] || 0;
-    const ff = parts[3] || 0;
-    const totalSeconds = hh * 3600 + mm * 60 + ss;
-    const totalFrames = totalSeconds * fpsValue + ff;
-    return Math.round((totalFrames / fpsValue) * 1_000_000);
+  // Remove any non-numeric characters except colons
+  const clean = tc.replace(/[^\d:]/g, '');
+  const parts = clean.split(':').map((p) => (p === '' ? 0 : Number(p)));
+
+  if (parts.some(isNaN)) return NaN;
+
+  let hh = 0;
+  let mm = 0;
+  let ss = 0;
+  let ff = 0;
+
+  if (parts.length === 4) {
+    [hh, mm, ss, ff] = parts;
+  } else if (parts.length === 3) {
+    [mm, ss, ff] = parts;
+  } else if (parts.length === 2) {
+    [ss, ff] = parts;
+  } else if (parts.length === 1) {
+    ss = parts[0];
+  } else {
+    return NaN;
   }
-  return NaN;
+
+  const totalSeconds = hh * 3600 + mm * 60 + ss;
+  const totalFrames = totalSeconds * fpsValue + ff;
+  return Math.round((totalFrames / fpsValue) * 1_000_000);
 }
 
 watch(
