@@ -42,12 +42,18 @@ export function useFileProxyFolder(options: UseFileProxyFolderOptions) {
 
   const isGeneratingProxyForFolder = computed(() => {
     const entry = options.selectedFsEntry.value;
-    if (!entry || entry.kind !== 'directory') return false;
+    if (!entry || entry.kind !== 'directory' || !entry.path) return false;
 
     const gp = generatingProxies.value;
-    if (!gp) return false;
+    if (!gp || gp.size === 0) return false;
 
-    return gp.has(entry.path ?? '');
+    const dirPath = entry.path;
+    for (const p of gp) {
+      if (p.startsWith(`${dirPath}/`)) {
+        return true;
+      }
+    }
+    return false;
   });
 
   async function generateProxiesForSelectedFolder() {

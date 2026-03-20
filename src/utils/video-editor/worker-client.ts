@@ -1,4 +1,9 @@
-import type { VideoCoreWorkerAPI } from './worker-rpc';
+import type {
+  VideoCoreHostRpcMessage,
+  VideoCoreWorkerAPI,
+  VideoCoreWorkerRpcMessage,
+  WorkerRpcErrorShape,
+} from './worker-rpc';
 import { VIDEO_CORE_LIMITS } from '../constants';
 
 interface WorkerTaskHostApi {
@@ -25,13 +30,21 @@ export interface VideoCoreHostAPI {
 
 type WorkerChannel = 'preview' | 'export' | 'proxy' | 'thumbnail';
 
+type PendingCall = {
+  resolve: (value: unknown) => void;
+  reject: (reason?: unknown) => void;
+  timeoutId?: number;
+};
+
+type WorkerMethod = keyof VideoCoreWorkerAPI;
+
 interface WorkerChannelState {
   workerInstance: Worker | null;
   hostApiInstance: VideoCoreHostAPI | null;
   baseHostApi: VideoCoreHostAPI | null;
   taskHostApis: Map<string, WorkerTaskHostApi>;
   callIdCounter: number;
-  pendingCalls: Map<number, { resolve: Function; reject: Function; timeoutId?: number }>;
+  pendingCalls: Map<number, PendingCall>;
 }
 
 const channelStates: Record<WorkerChannel, WorkerChannelState> = {
@@ -77,6 +90,67 @@ function rejectAllPendingCalls(state: WorkerChannelState, error: Error) {
     } finally {
       state.pendingCalls.delete(id);
     }
+  }
+}
+
+function toError(error: WorkerRpcErrorShape | unknown): Error {
+  if (error instanceof Error) {
+    return error;
+  }
+
+  const shape = error as WorkerRpcErrorShape | undefined;
+  const message =
+    typeof shape?.message === 'string' ? shape.message : String(error ?? 'Worker error');
+  const nextError = new Error(message);
+
+  if (typeof shape?.name === 'string') {
+    nextError.name = shape.name;
+  }
+  if (typeof shape?.stack === 'string') {
+    nextError.stack = shape.stack;
+  }
+  if (shape && 'cause' in shape) {
+    Object.defineProperty(nextError, 'cause', {
+      value: shape.cause,
+      configurable: true,
+      enumerable: false,
+      writable: true,
+    });
+  }
+
+  return nextError;
+}
+
+async function callHostMethod(hostApi: VideoCoreHostAPI, message: VideoCoreHostRpcMessage) {
+  if (message.type !== 'rpc-call') {
+    return undefined;
+  }
+
+  switch (message.method) {
+    case 'getCurrentProjectId':
+      return await hostApi.getCurrentProjectId();
+    case 'getFileHandleByPath':
+      return await hostApi.getFileHandleByPath(
+        ...(message.args as Parameters<VideoCoreHostAPI['getFileHandleByPath']>),
+      );
+    case 'getFileByPath':
+      return (
+        (await hostApi.getFileByPath?.(
+          ...(message.args as Parameters<VideoCoreHostAPI['getFileByPath']>),
+        )) ?? null
+      );
+    case 'ensureVectorImageRaster':
+      return await hostApi.ensureVectorImageRaster(
+        ...(message.args as Parameters<VideoCoreHostAPI['ensureVectorImageRaster']>),
+      );
+    case 'onExportProgress':
+      return hostApi.onExportProgress(...(message.args as [number]), message.taskId);
+    case 'onExportPhase':
+      return hostApi.onExportPhase?.(...(message.args as ['encoding' | 'saving']), message.taskId);
+    case 'onExportWarning':
+      return hostApi.onExportWarning?.(...(message.args as [string]), message.taskId);
+    default:
+      throw new Error(`Method ${String(message.method)} not found on Host API`);
   }
 }
 
@@ -139,10 +213,6 @@ function createRoutedHostApi(channel: WorkerChannel): VideoCoreHostAPI {
   };
 }
 
-import type { VideoCoreWorkerAPI, WorkerRpcMessage } from './worker-rpc';
-
-// ... other imports ...
-
 function createWorker(channel: WorkerChannel): Worker {
   const state = channelStates[channel];
   const worker = new Worker(new URL('../../workers/video-core.worker.ts', import.meta.url), {
@@ -150,7 +220,7 @@ function createWorker(channel: WorkerChannel): Worker {
     name: `video-core-${channel}`,
   });
 
-  worker.addEventListener('message', async (e: MessageEvent<WorkerRpcMessage>) => {
+  worker.addEventListener('message', async (e: MessageEvent<VideoCoreHostRpcMessage>) => {
     const data = e.data;
     if (!data || !data.type) return;
 
@@ -159,62 +229,26 @@ function createWorker(channel: WorkerChannel): Worker {
       if (pending) {
         if (pending.timeoutId !== undefined) window.clearTimeout(pending.timeoutId);
         if (data.error) {
-          const errData = data.error;
-          const message =
-            typeof errData === 'string'
-              ? errData
-              : typeof errData?.message === 'string'
-                ? errData.message
-                : 'Worker error';
-
-          const err = new Error(message);
-          if (errData && typeof errData === 'object') {
-            if (typeof (errData as any).name === 'string')
-              (err as any).name = (errData as any).name;
-            if (typeof (errData as any).stack === 'string')
-              (err as any).stack = (errData as any).stack;
-            if ((errData as any).cause !== undefined) (err as any).cause = (errData as any).cause;
-          }
-          pending.reject(err);
+          pending.reject(toError(data.error));
         } else pending.resolve(data.result);
         state.pendingCalls.delete(data.id);
       }
     } else if (data.type === 'rpc-call') {
       try {
         if (!state.hostApiInstance) throw new Error('Host API not set');
-        const method = data.method as keyof VideoCoreHostAPI;
-        const fn = state.hostApiInstance[method];
-        if (typeof fn !== 'function') {
-          if (data.method === 'onExportPhase' || data.method === 'onExportWarning') {
-            worker.postMessage({ type: 'rpc-response', id: data.id, result: undefined });
-            return;
-          }
-          throw new Error(`Method ${data.method} not found on Host API`);
-        }
-
-        const args = data.args || [];
-        if (
-          data.taskId &&
-          (method === 'onExportProgress' ||
-            method === 'onExportPhase' ||
-            method === 'onExportWarning')
-        ) {
-          // Detect if we need to append taskId as last argument or if it's already there
-          // For now we assume taskId is passed in the message envelope
-          const result = await (fn as any)(...args, data.taskId);
-          worker.postMessage({ type: 'rpc-response', id: data.id, result });
-        } else {
-          const result = await (fn as any)(...args);
-          worker.postMessage({ type: 'rpc-response', id: data.id, result });
-        }
-      } catch (err: any) {
+        const result = await callHostMethod(state.hostApiInstance, data);
+        worker.postMessage({ type: 'rpc-response', id: data.id, method: data.method, result });
+      } catch (err: unknown) {
+        const error = toError(err);
         worker.postMessage({
           type: 'rpc-response',
           id: data.id,
+          method: data.method,
           error: {
-            name: err?.name || 'Error',
-            message: err?.message || String(err),
-            stack: err?.stack,
+            name: error.name || 'Error',
+            message: error.message,
+            cause: 'cause' in error ? error.cause : undefined,
+            stack: error.stack,
           },
         });
       }
@@ -257,15 +291,54 @@ function createChannelClient(channel: WorkerChannel): {
     const max = Math.max(1, Math.round(VIDEO_CORE_LIMITS.MAX_WORKER_RPC_PENDING_CALLS));
     if (state.pendingCalls.size >= max) {
       const err = new Error('Worker RPC queue overflow');
-      (err as any).name = 'WorkerQueueOverflowError';
+      err.name = 'WorkerQueueOverflowError';
       throw err;
     }
+  }
+
+  function postWorkerCall<K extends WorkerMethod>(
+    method: K,
+    args: Parameters<VideoCoreWorkerAPI[K]>,
+    transferables?: Transferable[],
+  ): Promise<Awaited<ReturnType<VideoCoreWorkerAPI[K]>>> {
+    return new Promise((resolve, reject) => {
+      try {
+        ensurePendingSlot();
+      } catch (err) {
+        reject(err);
+        return;
+      }
+
+      const id = (state.callIdCounter = (state.callIdCounter + 1) % Number.MAX_SAFE_INTEGER);
+
+      let timeoutId: number | undefined;
+      if (method !== 'exportTimeline' && method !== 'extractAudio') {
+        timeoutId = window.setTimeout(() => {
+          const pending = state.pendingCalls.get(id);
+          if (pending) {
+            state.pendingCalls.delete(id);
+            pending.reject(new Error(`Worker RPC timeout for method: ${method}`));
+          }
+        }, 30000);
+      }
+
+      state.pendingCalls.set(id, { resolve, reject, timeoutId });
+
+      const message = {
+        type: 'rpc-call',
+        id,
+        method,
+        args,
+      } as VideoCoreWorkerRpcMessage;
+
+      ensureWorker(channel).postMessage(message, transferables ?? []);
+    });
   }
 
   const clientAPI = new Proxy(
     {},
     {
-      get(_, method: string) {
+      get(_, method: WorkerMethod) {
         if (method === 'initCompositor') {
           return async (
             canvas: OffscreenCanvas,
@@ -273,60 +346,11 @@ function createChannelClient(channel: WorkerChannel): {
             height: number,
             bgColor: string,
           ) => {
-            return new Promise<void>((resolve, reject) => {
-              try {
-                ensurePendingSlot();
-              } catch (err) {
-                reject(err);
-                return;
-              }
-              const id = (state.callIdCounter =
-                (state.callIdCounter + 1) % Number.MAX_SAFE_INTEGER);
-              const timeoutId = window.setTimeout(() => {
-                const p = state.pendingCalls.get(id);
-                if (p) {
-                  state.pendingCalls.delete(id);
-                  p.reject(new Error(`Worker RPC timeout for method: initCompositor`));
-                }
-              }, 30000);
-              state.pendingCalls.set(id, { resolve, reject, timeoutId });
-              ensureWorker(channel).postMessage(
-                {
-                  type: 'rpc-call',
-                  id,
-                  method: 'initCompositor',
-                  args: [canvas, width, height, bgColor],
-                },
-                [canvas],
-              );
-            });
+            return postWorkerCall('initCompositor', [canvas, width, height, bgColor], [canvas]);
           };
         }
-        return async (...args: any[]) => {
-          return new Promise((resolve, reject) => {
-            try {
-              ensurePendingSlot();
-            } catch (err) {
-              reject(err);
-              return;
-            }
-            const id = (state.callIdCounter = (state.callIdCounter + 1) % Number.MAX_SAFE_INTEGER);
-
-            let timeoutId: number | undefined;
-            // Do not apply timeout to long-running export/audio extraction methods
-            if (method !== 'exportTimeline' && method !== 'extractAudio') {
-              timeoutId = window.setTimeout(() => {
-                const p = state.pendingCalls.get(id);
-                if (p) {
-                  state.pendingCalls.delete(id);
-                  p.reject(new Error(`Worker RPC timeout for method: ${method}`));
-                }
-              }, 30000);
-            }
-
-            state.pendingCalls.set(id, { resolve, reject, timeoutId });
-            ensureWorker(channel).postMessage({ type: 'rpc-call', id, method, args });
-          });
+        return async (...args: Parameters<VideoCoreWorkerAPI[typeof method]>) => {
+          return postWorkerCall(method, args);
         };
       },
     },

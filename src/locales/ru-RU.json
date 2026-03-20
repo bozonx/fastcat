@@ -22,6 +22,7 @@
     "confirm": "Подтвердить",
     "confirmDelete": "Подтвердить удаление",
     "copy": "Копировать",
+    "copiedToClipboard": "Скопировано в буфер обмена",
     "create": "Создать",
     "created": "Создано",
     "createdAt": "Дата создания",
@@ -740,9 +741,15 @@
         "codec": "Аудио кодек",
         "format": "Формат",
         "transcriptionCached": "Используется кэшированная транскрипция",
+        "transcriptionCompleted": "Транскрибация завершена",
+        "transcriptionCachedDescription": "Кэшированная транскрипция была загружена из vardata.",
         "transcriptionLanguage": "Язык",
+        "transcriptionSavedDescription": "Транскрипция была сохранена в кэш vardata.",
+        "transcriptionSavedVideoDescription": "Аудиодорожка видео была транскрибирована и сохранена в кэш vardata.",
         "transcriptionSaved": "Транскрипция сохранена",
-        "transcriptionSubmit": "Транскрибировать"
+        "transcriptionSubmit": "Транскрибировать",
+        "transcriptionFailed": "Не удалось транскрибировать медиа",
+        "transcriptionAudioFailed": "Не удалось транскрибировать аудио"
       },
       "cardScale": "Масштаб карточек",
       "commonFolder": "Общие файлы",
@@ -840,7 +847,11 @@
       },
       "remote": {
         "exchange": "Токен авторизации",
-        "exchangeDescription": "Введите токен с платформы FastCat для доступа к вашим удаленным файлам."
+        "exchangeDescription": "Введите токен с платформы FastCat для доступа к вашим удаленным файлам.",
+        "loadFailed": "Не удалось загрузить удалённую библиотеку",
+        "collectionUnavailable": "Удалённая коллекция недоступна",
+        "localFileUnavailable": "Не удалось получить доступ к локальному файлу",
+        "uploadFailed": "Ошибка загрузки"
       },
       "skipOtio": {
         "title": "Пропущенные файлы проекта"
@@ -1183,5 +1194,13 @@
       "workspaceSection": "Настройки приложения",
       "workspaceStorage": "Хранилище"
     }
+  },
+  "mobileFiles": {
+    "noSuitableTrack": "Подходящая дорожка не найдена",
+    "unknownFileType": "Неизвестный тип файла"
+  },
+  "timelineCreation": {
+    "errorTitle": "Ошибка таймлайна",
+    "failed": "Не удалось создать таймлайн"
   }
 }

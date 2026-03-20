@@ -12,6 +12,7 @@ import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-edi
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { IMAGES_DIR_NAME } from '~/utils/constants';
 import { dispatchTimelineThumbnailGeneration } from '~/timeline/services/timelineThumbnailService';
+import { cloneValue } from '~/utils/clone';
 
 export function useMonitorSnapshot(input: {
   projectStore: ReturnType<typeof useProjectStore>;
@@ -36,7 +37,7 @@ export function useMonitorSnapshot(input: {
         : input.workerTimelineClips.value?.length > 0
           ? input.workerTimelineClips.value
           : (input.rawWorkerTimelineClips.value ?? []);
-    return JSON.parse(JSON.stringify(payload)) as WorkerVideoPayloadItem[];
+    return cloneValue(payload) as WorkerVideoPayloadItem[];
   }
 
   async function saveTimelineThumbnail() {

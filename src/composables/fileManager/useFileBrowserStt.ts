@@ -13,6 +13,7 @@ export function useFileBrowserStt() {
   const projectStore = useProjectStore();
   const runtimeConfig = useRuntimeConfig();
   const toast = useToast();
+  const { t } = useI18n();
 
   const sttTranscriptionModalOpen = ref(false);
   const sttTranscriptionLanguage = ref('');
@@ -92,17 +93,30 @@ export function useFileBrowserStt() {
       sttTranscriptionModalOpen.value = false;
 
       toast.add({
-        title: result.cached ? 'Transcription loaded from cache' : 'Transcription completed',
+        title: result.cached
+          ? t('videoEditor.fileManager.audio.transcriptionCached', 'Using cached transcription')
+          : t('videoEditor.fileManager.audio.transcriptionCompleted', 'Transcription completed'),
         description: result.cached
-          ? 'Cached transcription was loaded from vardata.'
+          ? t(
+              'videoEditor.fileManager.audio.transcriptionCachedDescription',
+              'Cached transcription was loaded from vardata.',
+            )
           : mediaType === 'video'
-            ? 'Video audio track was transcribed and saved to vardata cache.'
-            : 'Transcription was saved to vardata cache.',
+            ? t(
+                'videoEditor.fileManager.audio.transcriptionSavedVideoDescription',
+                'Video audio track was transcribed and saved to vardata cache.',
+              )
+            : t(
+                'videoEditor.fileManager.audio.transcriptionSavedDescription',
+                'Transcription was saved to vardata cache.',
+              ),
         color: 'success',
       });
     } catch (error: unknown) {
       sttTranscriptionError.value =
-        error instanceof Error ? error.message : 'Failed to transcribe media';
+        error instanceof Error
+          ? error.message
+          : t('videoEditor.fileManager.audio.transcriptionFailed', 'Failed to transcribe media');
     } finally {
       sttTranscribing.value = false;
     }

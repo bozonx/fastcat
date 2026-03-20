@@ -1,15 +1,5 @@
-export function cloneMonitorValue<T>(value: T): T {
-  try {
-    if (typeof structuredClone === 'function') {
-      return structuredClone(value);
-    }
-  } catch {
-    // ignore and fallback
-  }
+import { cloneValue } from '~/utils/clone';
 
-  try {
-    return JSON.parse(JSON.stringify(value));
-  } catch {
-    return value;
-  }
+export function cloneMonitorValue<T>(value: T): T {
+  return cloneValue(value);
 }

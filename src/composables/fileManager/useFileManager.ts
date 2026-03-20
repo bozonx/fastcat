@@ -77,6 +77,7 @@ export interface FileManagerCreateDeps {
 export function createFileManager(deps: FileManagerCreateDeps) {
   const isLoading = ref(false);
   const error = ref<string | null>(null);
+  const { t } = useI18n();
   const runWithUiFeedback = createUiActionRunner({ isLoading, error }, { toast: deps.toast });
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
 
@@ -498,9 +499,10 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         await reloadDirectory(TIMELINES_DIR_NAME);
         return createdPath;
       },
-      defaultErrorMessage: 'Failed to create timeline',
-      toastTitle: 'Timeline error',
-      toastDescription: () => error.value || 'Failed to create timeline',
+      defaultErrorMessage: t('timelineCreation.failed', 'Failed to create timeline'),
+      toastTitle: t('timelineCreation.errorTitle', 'Timeline error'),
+      toastDescription: () =>
+        error.value || t('timelineCreation.failed', 'Failed to create timeline'),
     });
   }
 

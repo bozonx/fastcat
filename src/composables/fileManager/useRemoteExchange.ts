@@ -122,7 +122,10 @@ export function useRemoteExchange() {
       toast.add({
         color: 'error',
         title: t('videoEditor.fileManager.remote.exchange', 'File exchange'),
-        description: error instanceof Error ? error.message : 'Failed to load remote library',
+        description:
+          error instanceof Error
+            ? error.message
+            : t('videoEditor.fileManager.remote.loadFailed', 'Failed to load remote library'),
       });
     } finally {
       remoteLoading.value = false;
@@ -224,7 +227,10 @@ export function useRemoteExchange() {
       toast.add({
         color: 'error',
         title: t('videoEditor.fileManager.actions.uploadRemote', 'Upload to remote'),
-        description: 'Remote collection is not available',
+        description: t(
+          'videoEditor.fileManager.remote.collectionUnavailable',
+          'Remote collection is not available',
+        ),
       });
       return;
     }
@@ -234,7 +240,10 @@ export function useRemoteExchange() {
       toast.add({
         color: 'error',
         title: t('videoEditor.fileManager.actions.uploadRemote', 'Upload to remote'),
-        description: 'Failed to access local file',
+        description: t(
+          'videoEditor.fileManager.remote.localFileUnavailable',
+          'Failed to access local file',
+        ),
       });
       return;
     }
@@ -261,7 +270,10 @@ export function useRemoteExchange() {
         toast.add({
           color: 'error',
           title: t('videoEditor.fileManager.actions.uploadRemote', 'Upload to remote'),
-          description: error instanceof Error ? error.message : 'Upload failed',
+          description:
+            error instanceof Error
+              ? error.message
+              : t('videoEditor.fileManager.remote.uploadFailed', 'Upload failed'),
         });
       }
     } finally {

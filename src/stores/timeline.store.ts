@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, watch, toRef } from 'vue';
+import { ref, toRef } from 'vue';
 
 import type {
   TimelineDocument,
@@ -16,7 +16,6 @@ import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otioS
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 
 import { createTimelinePersistence } from '~/stores/timeline/timeline-persistence';
-import { generateTimelineThumbnail } from '~/timeline/timelineThumbnail';
 import { createTimelineMarkerService } from '~/timeline/application/timelineMarkerService';
 import { createTimelineSelection } from '~/stores/timeline/timeline-selection';
 import { createTimelinePlayback } from '~/stores/timeline/timeline-playback';
@@ -30,8 +29,9 @@ import { createTimelineDispatcher } from '~/stores/timeline/timeline-dispatcher'
 import { createTimelineSelectionRange } from '~/stores/timeline/timeline-selection-range';
 import { createTimelineCaptions } from '~/stores/timeline/timeline-captions';
 import { createTimelineCommands } from '~/stores/timeline/timeline-commands';
+import { createTimelineLifecycle } from '~/stores/timeline/timeline-lifecycle';
 
-import { quantizeTimeUsToFrames, sanitizeFps, getDocFps } from '~/timeline/commands/utils';
+import { getDocFps } from '~/timeline/commands/utils';
 
 import { useProjectStore } from './project.store';
 import { useMediaStore } from './media.store';
@@ -43,7 +43,6 @@ import { useUiStore } from './ui.store';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { MAX_TIMELINE_ZOOM_POSITION, MIN_TIMELINE_ZOOM_POSITION } from '~/utils/zoom';
 import { useTimelineMediaUsageStore } from './timeline-media-usage.store';
-import { computeMediaUsageByTimelineDocs } from '~/utils/timeline-media-usage';
 
 import type { AppNotificationService } from '~/services/AppNotificationService';
 import type { I18nService } from '~/services/I18nService';
@@ -106,23 +105,6 @@ export const useTimelineStore = defineStore('timeline', () => {
     edge: 'in' | 'out';
   } | null>(null);
 
-  // Sync live usage to the usage store
-  watch(
-    [() => timelineDoc.value, () => projectStore.currentTimelinePath],
-    ([doc, path]) => {
-      if (!doc || !path) {
-        timelineMediaUsageStore.setLiveUsage(null, {});
-        return;
-      }
-      const name = path.split('/').pop() ?? path;
-      const usage = computeMediaUsageByTimelineDocs([
-        { timelinePath: path, timelineDoc: doc, timelineName: name },
-      ]);
-      timelineMediaUsageStore.setLiveUsage(path, usage.mediaPathToTimelines);
-    },
-    { immediate: true, deep: true },
-  );
-
   const isTrimModeActive = ref(false);
 
   // Wrapper for applyTimeline to resolve circular dependencies in setup
@@ -180,22 +162,11 @@ export const useTimelineStore = defineStore('timeline', () => {
     playbackGestureHandler,
   });
 
-  function resetTimelineZoom() {
-    timelineZoom.value = 50;
-  }
-
   function setMasterMuted(nextMuted: boolean) {
     const muted = Boolean(nextMuted);
     audioMuted.value = muted;
     if (!timelineDoc.value) return;
     applyTimeline({ type: 'update_master_muted', muted });
-  }
-
-  function setCurrentTimeUs(nextTimeUs: number) {
-    const fps = sanitizeFps(timelineDoc.value?.timebase?.fps);
-    const quantized = quantizeTimeUsToFrames(nextTimeUs, fps, 'round');
-    const max = Number.isFinite(duration.value) ? Math.max(0, Math.round(duration.value)) : 0;
-    currentTime.value = max > 0 ? Math.min(Math.max(0, quantized), max) : Math.max(0, quantized);
   }
 
   const tracks = createTimelineTracks({
@@ -257,32 +228,19 @@ export const useTimelineStore = defineStore('timeline', () => {
     mediaMetadata,
   });
 
-  function resetTimelineState() {
-    persistence.resetPersistenceState();
-    timelineDoc.value = null;
-    isTimelineDirty.value = false;
-    isSavingTimeline.value = false;
-    timelineSaveError.value = null;
-    isPlaying.value = false;
-    currentTime.value = 0;
-    duration.value = 0;
-    masterGain.value = 1;
-    audioMuted.value = false;
-    audioLevels.value = {};
-    timelineZoom.value = 50;
-    selection.clearSelection();
-    selection.selectTrack(null);
-    historyStore.clear('timeline');
-    historyDebounce.clearPendingDebouncedHistory();
+  async function requestTimelineSave(options?: { immediate?: boolean }) {
+    await lifecycle.requestTimelineSave(options);
   }
 
-  function markTimelineAsCleanForCurrentRevision() {
-    persistence.markCleanForCurrentRevision();
+  async function loadTimeline() {
+    await lifecycle.loadTimeline();
   }
 
-  function markTimelineAsDirty() {
-    persistence.markDirty();
+  async function saveTimeline() {
+    await lifecycle.saveTimeline();
   }
+
+  let lifecycle!: ReturnType<typeof createTimelineLifecycle>;
 
   async function ensureTimelineFileHandle(options?: {
     create?: boolean;
@@ -319,57 +277,31 @@ export const useTimelineStore = defineStore('timeline', () => {
     serializeTimelineToOtio,
     selectTimelineDurationUs,
     onSaveSuccess: () => {
-      uiStore.notifyTimelineSave();
-      void timelineMediaUsageStore.refreshUsage();
-
-      // Generate background thumbnail for nested timeline preview
-      if (currentTimelinePath.value && timelineDoc.value) {
-        void generateTimelineThumbnail({
-          timelinePath: currentTimelinePath.value,
-          timelineDoc: timelineDoc.value,
-        });
-      }
+      void lifecycle.handleSaveSuccess();
     },
   });
 
-  watch(
-    () => timelineDoc.value?.metadata?.fastcat?.masterMuted,
-    (next) => {
-      if (timelineDoc.value) {
-        audioMuted.value = Boolean(next);
-      }
-    },
-    { flush: 'post' },
-  );
-
-  watch(
-    () => timelineDoc.value?.metadata?.fastcat?.masterGain,
-    (next) => {
-      if (timelineDoc.value && typeof next === 'number') {
-        masterGain.value = next;
-      }
-    },
-    { flush: 'post' },
-  );
-
-  async function requestTimelineSave(options?: { immediate?: boolean }) {
-    await persistence.requestTimelineSave(options);
-  }
-
-  async function loadTimeline() {
-    selection.clearSelection();
-    selection.selectTrack(null);
-    isPlaying.value = false;
-    currentTime.value = 0;
-    historyStore.clear('timeline');
-    historyDebounce.clearPendingDebouncedHistory();
-
-    await persistence.loadTimeline();
-  }
-
-  async function saveTimeline() {
-    await persistence.saveTimeline();
-  }
+  lifecycle = createTimelineLifecycle({
+    timelineDoc,
+    currentTimelinePath,
+    isTimelineDirty,
+    isSavingTimeline,
+    timelineSaveError,
+    isPlaying,
+    currentTime,
+    duration,
+    masterGain,
+    audioMuted,
+    audioLevels,
+    timelineZoom,
+    historyStore,
+    historyDebounce,
+    selection,
+    persistence,
+    timelineMediaUsageStore,
+    getOrFetchMetadataByPath: (path) => mediaStore.getOrFetchMetadataByPath(path),
+    uiStore,
+  });
 
   const dispatcher = createTimelineDispatcher({
     timelineDoc,
@@ -378,8 +310,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     hydration,
     historyDebounce,
     historyStore,
-    requestTimelineSave,
-    markTimelineAsDirty,
+    requestTimelineSave: lifecycle.requestTimelineSave,
+    markTimelineAsDirty: lifecycle.markTimelineAsDirty,
     selectTimelineItems: selection.selectTimelineItems,
     selectGlobalTimelineItems: (itemIds, doc) => {
       const itemIdSet = new Set(itemIds);
@@ -431,27 +363,6 @@ export const useTimelineStore = defineStore('timeline', () => {
     t,
   });
 
-  async function loadTimelineMetadata() {
-    if (!timelineDoc.value) return;
-
-    const requestId = persistence.getLoadRequestId();
-    const timelinePathSnapshot = currentTimelinePath.value;
-
-    const items: { path: string }[] = [];
-    for (const track of timelineDoc.value.tracks) {
-      for (const item of track.items) {
-        if (item.kind === 'clip' && item.clipType === 'media' && item.source?.path) {
-          items.push({ path: item.source.path });
-        }
-      }
-    }
-
-    if (requestId !== persistence.getLoadRequestId()) return;
-    if (timelinePathSnapshot !== currentTimelinePath.value) return;
-
-    await Promise.all(items.map((it) => mediaStore.getOrFetchMetadataByPath(it.path)));
-  }
-
   const selectionRange = createTimelineSelectionRange({
     timelineDoc,
     currentTime,
@@ -498,7 +409,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     timelineSaveError,
     isPlaying,
     currentTime,
-    setCurrentTimeUs,
+    setCurrentTimeUs: lifecycle.setCurrentTimeUs,
     duration,
     masterGain,
     audioVolume: masterGain,
@@ -514,8 +425,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     isTrimModeActive,
     trackHeights,
     loadTimeline,
-    saveTimeline,
-    requestTimelineSave,
+    saveTimeline: lifecycle.saveTimeline,
+    requestTimelineSave: lifecycle.requestTimelineSave,
     applyTimeline,
     setMasterGain: (gain: number) => {
       applyTimeline({ type: 'update_master_gain', gain });
@@ -547,9 +458,9 @@ export const useTimelineStore = defineStore('timeline', () => {
     moveItemToTrack: commands.moveItemToTrack,
     extractAudioToTrack: commands.extractAudioToTrack,
     returnAudioToVideo: commands.returnAudioToVideo,
-    markTimelineAsDirty,
-    markTimelineAsCleanForCurrentRevision,
-    resetTimelineState,
+    markTimelineAsDirty: lifecycle.markTimelineAsDirty,
+    markTimelineAsCleanForCurrentRevision: lifecycle.markTimelineAsCleanForCurrentRevision,
+    resetTimelineState: lifecycle.resetTimelineState,
     undoTimeline,
     redoTimeline,
     selectTimelineProperties: () => selectionStore.selectTimelineProperties(),
@@ -561,11 +472,11 @@ export const useTimelineStore = defineStore('timeline', () => {
     goToEnd: playback.goToEnd,
     setAudioVolume: playback.setAudioVolume,
     setTimelineZoom: playback.setTimelineZoom,
-    resetTimelineZoom,
+    resetTimelineZoom: lifecycle.resetTimelineZoom,
     toggleAudioMuted: playback.toggleAudioMuted,
     setMasterMuted,
     setPlaybackGestureHandler: playback.setPlaybackGestureHandler,
-    loadTimelineMetadata,
+    loadTimelineMetadata: lifecycle.loadTimelineMetadata,
     selectTimelineItems: selection.selectTimelineItems,
     selectTrack: selection.selectTrack,
     selectTransition: selection.selectTransition,
@@ -579,7 +490,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     seekFrames: (deltaFrames: number) => {
       const docFps = timelineDoc.value ? getDocFps(timelineDoc.value) : 30;
       const frameUs = 1_000_000 / docFps;
-      setCurrentTimeUs(currentTime.value + deltaFrames * frameUs);
+      lifecycle.setCurrentTimeUs(currentTime.value + deltaFrames * frameUs);
     },
   };
 });

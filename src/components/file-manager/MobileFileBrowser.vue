@@ -172,7 +172,7 @@ async function handleAddToProject() {
   if (mediaType === 'unknown') {
     toast.add({
       title: t('common.error', 'Error'),
-      description: 'Unknown file type',
+      description: t('mobileFiles.unknownFileType', 'Unknown file type'),
       color: 'error',
     });
     return;
@@ -187,7 +187,7 @@ async function handleAddToProject() {
     if (!trackId) {
       toast.add({
         title: t('common.error', 'Error'),
-        description: 'No suitable track found',
+        description: t('mobileFiles.noSuitableTrack', 'No suitable track found'),
         color: 'error',
       });
       return;
