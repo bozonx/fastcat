@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { mountWithNuxt } from '../utils/mount';
+import { mountWithNuxt } from '../../../utils/mount';
 import EffectSettingsModal from '~/components/common/EffectSettingsModal.vue';
 import { parametricEqManifest } from '~/effects/audio/parametric-eq/manifest';
 import type { EffectManifest } from '~/effects/core/registry';

@@ -74,12 +74,23 @@ const stt = useFileManagerPanelStt({
   fastcatPublicadorBaseUrl,
   onSuccess: ({ cached, mediaType }) => {
     toast.add({
-      title: cached ? 'Transcription loaded from cache' : 'Transcription completed',
+      title: cached
+        ? t('videoEditor.fileManager.audio.transcriptionCached', 'Using cached transcription')
+        : t('videoEditor.fileManager.audio.transcriptionCompleted', 'Transcription completed'),
       description: cached
-        ? 'Cached transcription was loaded from vardata.'
+        ? t(
+            'videoEditor.fileManager.audio.transcriptionCachedDescription',
+            'Cached transcription was loaded from vardata.',
+          )
         : mediaType === 'video'
-          ? 'Video audio track was transcribed and saved to vardata cache.'
-          : 'Transcription was saved to vardata cache.',
+          ? t(
+              'videoEditor.fileManager.audio.transcriptionSavedVideoDescription',
+              'Video audio track was transcribed and saved to vardata cache.',
+            )
+          : t(
+              'videoEditor.fileManager.audio.transcriptionSavedDescription',
+              'Transcription was saved to vardata cache.',
+            ),
       color: 'success',
     });
   },

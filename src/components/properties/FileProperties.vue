@@ -181,7 +181,7 @@ const {
 async function copyToClipboard(text: string) {
   try {
     await navigator.clipboard.writeText(text);
-    toast.add({ title: 'Copied to clipboard' });
+    toast.add({ title: t('common.copiedToClipboard', 'Copied to clipboard') });
   } catch (e) {
     console.error('Failed to copy to clipboard', e);
   }
@@ -239,6 +239,7 @@ const {
   ),
   getFileByPath: (path) => projectStore.getFileByPath(path),
   toast,
+  t,
 });
 
 const {
@@ -318,6 +319,7 @@ const {
     />
 
     <EntryPreviewBox
+      v-if="fileInfo?.kind !== 'directory'"
       :selected-entry-kind="selectedFsEntry?.kind ?? null"
       :is-unknown="isUnknown"
       :current-url="currentUrl"

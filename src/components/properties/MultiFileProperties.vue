@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useFileManager } from '~/composables/fileManager/useFileManager';
 import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
+import { formatBytes } from '~/utils/format';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import EntryActions from '~/components/properties/file/EntryActions.vue';
 
@@ -16,10 +18,26 @@ const { t } = useI18n();
 const uiStore = useUiStore();
 const proxyStore = useProxyStore();
 const projectStore = useProjectStore();
+const fileManager = useFileManager();
 
-const totalSize = computed(() => {
-  return props.entries.reduce((acc, e) => acc + (e.kind === 'file' ? (e as any).size || 0 : 0), 0);
-});
+const totalSize = ref(0);
+
+watch(
+  () => props.entries,
+  async (entries) => {
+    let size = 0;
+    for (const e of entries) {
+      if (e.kind === 'file' && e.path) {
+        const file = await fileManager.vfs.getFile(e.path);
+        if (file) {
+          size += file.size;
+        }
+      }
+    }
+    totalSize.value = size;
+  },
+  { immediate: true, deep: true },
+);
 
 const typeBreakdown = computed(() => {
   const counts: Record<string, number> = {};
@@ -29,14 +47,6 @@ const typeBreakdown = computed(() => {
   });
   return counts;
 });
-
-const formatBytes = (bytes: number) => {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-};
 
 const hasVideo = computed(() => {
   return props.entries.some(

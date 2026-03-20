@@ -1,5 +1,5 @@
 import type { ComputedRef, Ref } from 'vue';
-import { ref, onBeforeUnmount } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import type { TimelineTrack, TimelineMoveItemPayload } from '~/timeline/types';
 import {
@@ -16,7 +16,8 @@ import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY } from '~/stores/timeline/timeline-history-labels';
-import { selectTimelineDurationUs } from '~/timeline/selectors';
+
+import { cloneValue } from '~/utils/clone';
 import {
   zoomToPxPerSecond,
   pxToDeltaUs,
@@ -722,7 +723,7 @@ export function useTimelineItemDrag(
         if (clip && clip.kind === 'clip') {
           copiedSingleClipPayload = {
             sourceTrackId: dragOriginTrackId.value ?? movedTrackId,
-            clip: JSON.parse(JSON.stringify(clip)),
+            clip: cloneValue(clip),
             targetTrackId: movedTrackId,
             targetStartUs: clip.timelineRange.startUs,
           };
@@ -832,7 +833,7 @@ export function useTimelineItemDrag(
       }
     }
 
-    const snapshot = JSON.parse(JSON.stringify(dragStartSnapshot.value));
+    const snapshot = cloneValue(dragStartSnapshot.value);
     const appliedCmd = lastDragAppliedCmd.value;
     if (!cancel && snapshot && appliedCmd) {
       historyStore.push('timeline', appliedCmd.type, snapshot, TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY);

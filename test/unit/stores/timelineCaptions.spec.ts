@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
-import { createTimelineCaptions } from '~/stores/timeline/timelineCaptions';
+import { createTimelineCaptions } from '~/stores/timeline/timeline-captions';
 import type { TimelineDocument } from '~/timeline/types';
 
 describe('timelineCaptions', () => {

@@ -7,11 +7,12 @@ import {
   resolveNextAvailableFilename,
   resolveExportCodecs,
   toWorkerTimelineClips,
-} from '~/composables/timeline/useTimelineExport';
+} from '~/composables/timeline/export';
 import type { VideoCoreHostAPI } from '~/utils/video-editor/worker-client';
 import type { TimelineTrackItem } from '~/timeline/types';
 
 describe('useTimelineExport pure functions', () => {
+  const wsMock: any = { userSettings: { projectDefaults: { defaultAudioFadeCurve: 'linear' } } };
   it('VideoCoreHostAPI allows omitting onExportPhase (backward compatible)', () => {
     const api: VideoCoreHostAPI = {
       getCurrentProjectId: async () => null,
@@ -141,7 +142,7 @@ describe('useTimelineExport pure functions', () => {
       projectSettings: { project: { audioDeclickDurationUs: 5000 } },
     } as any;
 
-    expect(await toWorkerTimelineClips(items, projectStoreMock)).toMatchObject([
+    expect(await toWorkerTimelineClips(items, projectStoreMock, wsMock)).toMatchObject([
       {
         kind: 'clip',
         clipType: 'media',
@@ -157,7 +158,7 @@ describe('useTimelineExport pure functions', () => {
       },
     ]);
 
-    const nested = await toWorkerTimelineClips(items, projectStoreMock, { layer: 3 });
+    const nested = await toWorkerTimelineClips(items, projectStoreMock, wsMock, { layer: 3 });
     expect(nested[0]?.layer).toBe(3);
   });
 
@@ -187,7 +188,7 @@ describe('useTimelineExport pure functions', () => {
       getFileHandleByPath: async () => null,
       projectSettings: { project: { audioDeclickDurationUs: 5000 } },
     } as any;
-    const clips = await toWorkerTimelineClips(items, projectStoreMock);
+    const clips = await toWorkerTimelineClips(items, projectStoreMock, wsMock);
 
     expect(clips[0]?.transform).toEqual((items[0] as any).transform);
   });
@@ -214,7 +215,7 @@ describe('useTimelineExport pure functions', () => {
       getFileHandleByPath: async () => null,
       projectSettings: { project: { audioDeclickDurationUs: 5000 } },
     } as any;
-    const clips = await toWorkerTimelineClips(items, projectStoreMock, {
+    const clips = await toWorkerTimelineClips(items, projectStoreMock, wsMock, {
       layer: 3,
       trackKind: 'video',
     });
@@ -249,7 +250,7 @@ describe('useTimelineExport pure functions', () => {
       projectSettings: { project: { audioDeclickDurationUs: 5000 } },
     } as any;
 
-    const clips = await toWorkerTimelineClips(items, projectStoreMock);
+    const clips = await toWorkerTimelineClips(items, projectStoreMock, wsMock);
 
     expect(clips).toHaveLength(1);
     expect(clips[0]).toMatchObject({
@@ -271,6 +272,7 @@ describe('useTimelineExport pure functions', () => {
     } as any;
 
     const result = await buildVideoWorkerPayloadFromTracks({
+      workspaceStore: wsMock,
       tracks: [
         {
           id: 'v1',
@@ -350,7 +352,7 @@ describe('useTimelineExport pure functions', () => {
       projectSettings: { project: { audioDeclickDurationUs: 5000 } },
     } as any;
 
-    const clips = await toWorkerTimelineClips(items, projectStoreMock);
+    const clips = await toWorkerTimelineClips(items, projectStoreMock, wsMock);
 
     expect(clips[0]).toMatchObject({
       clipType: 'background',
@@ -380,6 +382,7 @@ describe('useTimelineExport pure functions', () => {
     } as any;
 
     const result = await buildVideoWorkerPayloadFromTracks({
+      workspaceStore: wsMock,
       tracks: [
         {
           id: 'v1',
@@ -441,10 +444,10 @@ describe('useTimelineExport pure functions', () => {
       projectSettings: { project: { audioDeclickDurationUs: 5000 } },
     } as any;
 
-    const clips = await toWorkerTimelineClips(items, projectStoreMock);
+    const clips = await toWorkerTimelineClips(items, projectStoreMock, wsMock);
     expect(clips[0]?.layer).toBe(5);
 
-    const overridden = await toWorkerTimelineClips(items, projectStoreMock, { layer: 2 });
+    const overridden = await toWorkerTimelineClips(items, projectStoreMock, wsMock, { layer: 2 });
     expect(overridden[0]?.layer).toBe(2);
   });
 
@@ -505,7 +508,7 @@ describe('useTimelineExport pure functions', () => {
       },
     } as any;
 
-    const clips = await toWorkerTimelineClips(items, projectStoreMock, {
+    const clips = await toWorkerTimelineClips(items, projectStoreMock, wsMock, {
       layer: 1,
       trackKind: 'video',
     });
@@ -569,6 +572,7 @@ describe('useTimelineExport pure functions', () => {
     } as any;
 
     const result = await buildVideoWorkerPayloadFromTracks({
+      workspaceStore: wsMock,
       tracks: [
         {
           id: 'v1',
@@ -682,7 +686,7 @@ describe('useTimelineExport pure functions', () => {
       },
     } as any;
 
-    const clips = await toWorkerTimelineClips(items, projectStoreMock, {
+    const clips = await toWorkerTimelineClips(items, projectStoreMock, wsMock, {
       trackKind: 'audio',
     });
 

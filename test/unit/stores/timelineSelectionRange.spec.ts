@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
-import { createTimelineSelectionRange } from '~/stores/timeline/timelineSelectionRange';
+import { createTimelineSelectionRange } from '~/stores/timeline/timeline-selection-range';
 import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types';
 
-describe('timelineSelectionRange', () => {
+describe('timeline-selection-range', () => {
   let timelineDoc: any;
   let currentTime: any;
   let isSelectionRangeSelected: ReturnType<typeof vi.fn>;

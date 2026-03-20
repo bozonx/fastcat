@@ -3,7 +3,15 @@ import { DOMAdapter, WebWorkerAdapter } from 'pixi.js';
 
 import type { VideoCoreHostAPI } from '../utils/video-editor/worker-client';
 import { VideoCompositor } from '../utils/video-editor/VideoCompositor';
-import type { PreviewRenderOptions } from '../utils/video-editor/worker-rpc';
+import { parseMediaMetadata, PreviewRenderOptionsSchema } from '../utils/video-editor/worker-rpc';
+import type {
+  PreviewRenderOptions,
+  VideoCoreHostRpcMessage,
+  VideoCoreWorkerAPI,
+  VideoCoreWorkerRpcMessage,
+  WorkerRpcErrorShape,
+} from '../utils/video-editor/worker-rpc';
+import type { MediaMetadata } from '../stores/media.store';
 import { ExportOptionsSchema } from '../composables/timeline/export/types';
 import { initEffects } from '../effects';
 import { initTransitions } from '../transitions';
@@ -24,6 +32,114 @@ let renderInFlight = false;
 let latestRenderTimeUs: number | null = null;
 let latestPreviewOptions: PreviewRenderOptions | undefined;
 
+type WorkerPendingCall = {
+  resolve: (value: unknown) => void;
+  reject: (reason?: unknown) => void;
+  timeoutId?: number;
+};
+
+type WorkerMethod = keyof VideoCoreWorkerAPI;
+
+function serializeWorkerError(err: unknown): WorkerRpcErrorShape {
+  if (err instanceof Error) {
+    return {
+      name: err.name || 'Error',
+      message: err.message,
+      cause: 'cause' in err ? err.cause : undefined,
+      stack: err.stack,
+    };
+  }
+
+  return {
+    name: 'Error',
+    message: String(err),
+  };
+}
+
+async function callWorkerMethod<K extends WorkerMethod>(
+  method: K,
+  args: Parameters<VideoCoreWorkerAPI[K]>,
+): Promise<Awaited<ReturnType<VideoCoreWorkerAPI[K]>>> {
+  switch (method) {
+    case 'extractMetadata':
+      return parseMediaMetadata(await extractMetadata(args[0])) as Awaited<
+        ReturnType<VideoCoreWorkerAPI[K]>
+      >;
+    case 'renderFrame': {
+      const [timeUs, options] = args as Parameters<VideoCoreWorkerAPI['renderFrame']>;
+      const parsedOptions = options ? PreviewRenderOptionsSchema.parse(options) : undefined;
+      return api.renderFrame(timeUs, parsedOptions) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
+    }
+    case 'initCompositor':
+      return api.initCompositor(
+        ...(args as Parameters<VideoCoreWorkerAPI['initCompositor']>),
+      ) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
+    case 'loadTimeline':
+      return api.loadTimeline(
+        ...(args as Parameters<VideoCoreWorkerAPI['loadTimeline']>),
+      ) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
+    case 'updateTimelineLayout':
+      return api.updateTimelineLayout(
+        ...(args as Parameters<VideoCoreWorkerAPI['updateTimelineLayout']>),
+      ) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
+    case 'clearClips':
+      return api.clearClips() as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
+    case 'destroyCompositor':
+      return api.destroyCompositor() as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
+    case 'exportTimeline':
+      return api.exportTimeline(
+        ...(args as Parameters<VideoCoreWorkerAPI['exportTimeline']>),
+      ) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
+    case 'transcodeMedia':
+      return api.transcodeMedia(
+        ...(args as Parameters<VideoCoreWorkerAPI['transcodeMedia']>),
+      ) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
+    case 'cancelExport':
+      return api.cancelExport(
+        ...(args as Parameters<VideoCoreWorkerAPI['cancelExport']>),
+      ) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
+    case 'extractFrameToBlob':
+      return api.extractFrameToBlob(
+        ...(args as Parameters<VideoCoreWorkerAPI['extractFrameToBlob']>),
+      ) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
+    case 'extractAudio':
+      return api.extractAudio(
+        ...(args as Parameters<VideoCoreWorkerAPI['extractAudio']>),
+      ) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
+    case 'extractVideoFrameBlobs':
+      return api.extractVideoFrameBlobs(
+        ...(args as Parameters<VideoCoreWorkerAPI['extractVideoFrameBlobs']>),
+      ) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
+    default:
+      throw new Error(`Unsupported worker method: ${String(method)}`);
+  }
+}
+
+function createHostRpcCall(method: keyof VideoCoreHostAPI, args: unknown[]) {
+  let taskId: string | undefined;
+  let messageArgs = args;
+
+  if (
+    (method === 'onExportProgress' || method === 'onExportPhase' || method === 'onExportWarning') &&
+    args.length >= 2 &&
+    typeof args[args.length - 1] === 'string'
+  ) {
+    taskId = args[args.length - 1] as string;
+    messageArgs = args.slice(0, -1);
+  }
+
+  return {
+    taskId,
+    message: {
+      type: 'rpc-call',
+      id: 0,
+      method,
+      args: messageArgs,
+      taskId,
+    } as VideoCoreHostRpcMessage,
+  };
+}
+
 async function reportExportWarning(message: string, taskId?: string) {
   console.warn(message, taskId ? `[task:${taskId}]` : '');
   if (!hostClient) return;
@@ -42,7 +158,9 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     bgColor: string,
   ): Promise<void>;
 } = {
-  extractMetadata,
+  async extractMetadata(file: File | FileSystemFileHandle): Promise<MediaMetadata> {
+    return parseMediaMetadata(await extractMetadata(file));
+  },
 
   async initCompositor(canvas: OffscreenCanvas, width: number, height: number, bgColor: string) {
     const nextCompositor = new VideoCompositor();
@@ -54,7 +172,9 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     compositor = nextCompositor;
   },
 
-  async loadTimeline(clips: import('../composables/timeline/export/types').WorkerVideoPayloadItem[]) {
+  async loadTimeline(
+    clips: import('../composables/timeline/export/types').WorkerVideoPayloadItem[],
+  ) {
     if (!compositor) throw new Error('Compositor not initialized');
     return compositor.loadTimeline(clips, {
       getFileHandleByPath: async (path: string) => {
@@ -84,10 +204,10 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
   },
 
   async renderFrame(timeUs: number, options?: PreviewRenderOptions) {
-    if (!compositor) return;
+    if (!compositor) return null;
     latestRenderTimeUs = Math.round(Number(timeUs) || 0);
-    latestPreviewOptions = options;
-    if (renderInFlight) return;
+    latestPreviewOptions = options ? PreviewRenderOptionsSchema.parse(options) : undefined;
+    if (renderInFlight) return null;
 
     renderInFlight = true;
     try {
@@ -103,6 +223,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
           console.error('[Worker] renderFrame error at time', next, err);
         }
       }
+      return null;
     } finally {
       renderInFlight = false;
       latestRenderTimeUs = null;
@@ -411,16 +532,12 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
   },
 };
 
-import type { PreviewRenderOptions, VideoCoreWorkerAPI, WorkerRpcMessage } from '../utils/video-editor/worker-rpc';
-
-// ... other imports ...
-
 const activeCancels = new Map<string, boolean>();
 
 let callIdCounter = 0;
-const pendingCalls = new Map<number, { resolve: Function; reject: Function; timeoutId?: number }>();
+const pendingCalls = new Map<number, WorkerPendingCall>();
 
-self.addEventListener('message', async (e: MessageEvent<WorkerRpcMessage>) => {
+self.addEventListener('message', async (e: MessageEvent<VideoCoreWorkerRpcMessage>) => {
   const data = e.data;
   if (!data) return;
 
@@ -434,26 +551,18 @@ self.addEventListener('message', async (e: MessageEvent<WorkerRpcMessage>) => {
     }
   } else if (data.type === 'rpc-call') {
     try {
-      const method = data.method;
-      if (typeof api[method] !== 'function') {
-        throw new Error(`Method ${method} not found on Worker API`);
-      }
-      const result = await (api as any)[method](...(data.args || []));
-      self.postMessage({ type: 'rpc-response', id: data.id, result });
+      const result = await callWorkerMethod(data.method, data.args);
+      self.postMessage({ type: 'rpc-response', id: data.id, method: data.method, result });
     } catch (err: unknown) {
-      const error = err as Error;
+      const error = err instanceof Error ? err : new Error(String(err));
       if (error?.name !== 'AbortError') {
         console.error(`[Worker] Error in method ${data.method}:`, err);
       }
       self.postMessage({
         type: 'rpc-response',
         id: data.id,
-        error: {
-          name: error?.name || 'Error',
-          message: error?.message || String(err),
-          cause: (error as any)?.cause,
-          stack: error?.stack,
-        },
+        method: data.method,
+        error: serializeWorkerError(err),
       });
     }
   }
@@ -462,13 +571,13 @@ self.addEventListener('message', async (e: MessageEvent<WorkerRpcMessage>) => {
 hostClient = new Proxy(
   {},
   {
-    get(_, method: string) {
-      return async (...args: any[]) => {
+    get(_, method: keyof VideoCoreHostAPI) {
+      return async (...args: unknown[]) => {
         return new Promise((resolve, reject) => {
           const max = Math.max(1, Math.round(VIDEO_CORE_LIMITS.MAX_WORKER_RPC_PENDING_CALLS));
           if (pendingCalls.size >= max) {
             const err = new Error('Host RPC queue overflow');
-            (err as any).name = 'HostQueueOverflowError';
+            err.name = 'HostQueueOverflowError';
             reject(err);
             return;
           }
@@ -481,22 +590,9 @@ hostClient = new Proxy(
             }
           }, 30000);
 
-          // If the last argument is a taskId (string and doesn't look like path), we move it to the envelope
-          // Actually, we should check if the called method is one of the progress/phase/warning ones
-          let taskId: string | undefined;
-          if (
-            method === 'onExportProgress' ||
-            method === 'onExportPhase' ||
-            method === 'onExportWarning'
-          ) {
-            // These methods are now called with (value, taskId) from runExport
-            if (args.length >= 2 && typeof args[args.length - 1] === 'string') {
-              taskId = args.pop();
-            }
-          }
-
           pendingCalls.set(id, { resolve, reject, timeoutId });
-          self.postMessage({ type: 'rpc-call', id, method, args, taskId });
+          const { message } = createHostRpcCall(method, args);
+          self.postMessage({ ...message, id } as VideoCoreHostRpcMessage);
         });
       };
     },

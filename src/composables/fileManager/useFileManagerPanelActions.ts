@@ -52,6 +52,7 @@ export function useFileManagerPanelActions({
   setActiveTab,
   onSelect,
 }: FileManagerPanelActionsOptions) {
+  const { t } = useI18n();
   const projectStore = useProjectStore();
   const timelineStore = useTimelineStore();
   const selectionStore = useSelectionStore();
@@ -89,8 +90,11 @@ export function useFileManagerPanelActions({
       console.error('[FileManagerPanel] Failed to create timeline', e);
       toast.add({
         color: 'error',
-        title: 'Timeline error',
-        description: e instanceof Error ? e.message : 'Failed to create timeline',
+        title: t('timelineCreation.errorTitle', 'Timeline error'),
+        description:
+          e instanceof Error
+            ? e.message
+            : t('timelineCreation.failed', 'Failed to create timeline'),
       });
     }
   }

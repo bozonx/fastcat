@@ -18,6 +18,7 @@ interface UseFilePropertiesTranscriptionOptions {
   fastcatPublicadorBaseUrl: Ref<string>;
   getFileByPath: (path: string) => Promise<File | null | undefined>;
   toast: { add: (payload: { title: string; description?: string; color?: string }) => void };
+  t: (key: string, fallback?: string) => string;
 }
 
 function extractTranscriptionText(payload: unknown): string {
@@ -147,15 +148,34 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
       isTranscriptionModalOpen.value = false;
 
       options.toast.add({
-        title: result.cached ? 'Transcription loaded from cache' : 'Transcription completed',
+        title: result.cached
+          ? options.t(
+              'videoEditor.fileManager.audio.transcriptionCached',
+              'Using cached transcription',
+            )
+          : options.t(
+              'videoEditor.fileManager.audio.transcriptionCompleted',
+              'Transcription completed',
+            ),
         description: result.cached
-          ? 'Cached transcription was loaded from vardata.'
-          : 'Transcription was saved to vardata cache.',
+          ? options.t(
+              'videoEditor.fileManager.audio.transcriptionCachedDescription',
+              'Cached transcription was loaded from vardata.',
+            )
+          : options.t(
+              'videoEditor.fileManager.audio.transcriptionSavedDescription',
+              'Transcription was saved to vardata cache.',
+            ),
         color: 'success',
       });
     } catch (error: unknown) {
       transcriptionError.value =
-        error instanceof Error ? error.message : 'Failed to transcribe audio';
+        error instanceof Error
+          ? error.message
+          : options.t(
+              'videoEditor.fileManager.audio.transcriptionAudioFailed',
+              'Failed to transcribe audio',
+            );
     } finally {
       isTranscribingAudio.value = false;
     }

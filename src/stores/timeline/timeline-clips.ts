@@ -10,6 +10,7 @@ import type {
 import type { TimelineCommand } from '~/timeline/commands';
 import { getDocFps, quantizeTimeUsToFrames } from '~/timeline/commands/utils';
 import { CLIP_AUDIO_GAIN_MAX } from '~/utils/audio/envelope';
+import { cloneValue } from '~/utils/clone';
 
 export interface TimelineClipClipboardItem {
   sourceTrackId: string;
@@ -163,11 +164,7 @@ export interface TimelineClipsApi {
 
 export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
   function cloneClip<T>(value: T): T {
-    try {
-      return JSON.parse(JSON.stringify(value));
-    } catch {
-      return value;
-    }
+    return cloneValue(value);
   }
 
   function getSelectedClipItems(): TimelineClipClipboardItem[] {

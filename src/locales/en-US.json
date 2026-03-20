@@ -22,6 +22,7 @@
     "confirm": "Confirm",
     "confirmDelete": "Confirm Delete",
     "copy": "Copy",
+    "copiedToClipboard": "Copied to clipboard",
     "create": "Create",
     "created": "Created",
     "createdAt": "Created date",
@@ -740,9 +741,15 @@
         "codec": "Audio codec",
         "format": "Format",
         "transcriptionCached": "Using cached transcription",
+        "transcriptionCompleted": "Transcription completed",
+        "transcriptionCachedDescription": "Cached transcription was loaded from vardata.",
         "transcriptionLanguage": "Language",
+        "transcriptionSavedDescription": "Transcription was saved to vardata cache.",
+        "transcriptionSavedVideoDescription": "Video audio track was transcribed and saved to vardata cache.",
         "transcriptionSaved": "Transcription saved",
-        "transcriptionSubmit": "Transcribe"
+        "transcriptionSubmit": "Transcribe",
+        "transcriptionFailed": "Failed to transcribe media",
+        "transcriptionAudioFailed": "Failed to transcribe audio"
       },
       "cardScale": "Card scale",
       "commonFolder": "Shared Files",
@@ -840,7 +847,11 @@
       },
       "remote": {
         "exchange": "Authentication token",
-        "exchangeDescription": "Enter the token from the FastCat platform to access your remote files."
+        "exchangeDescription": "Enter the token from the FastCat platform to access your remote files.",
+        "loadFailed": "Failed to load remote library",
+        "collectionUnavailable": "Remote collection is not available",
+        "localFileUnavailable": "Failed to access local file",
+        "uploadFailed": "Upload failed"
       },
       "skipOtio": {
         "title": "Project files skipped"
@@ -1177,11 +1188,15 @@
       },
       "videoFrameCacheMb": "Video frame cache (MB)",
       "videoFrameCacheMbHelp": "Maximum amount of RAM to use for decoded preview frames. Set to 0 to disable cache.",
-      "workspaceFolder": "Workspace folder",
-      "workspaceFolderNotSelected": "Workspace folder is not selected",
-      "workspaceSavedNote": "Saved to .fastcat/workspace.settings.json",
-      "workspaceSection": "Application settings",
-      "workspaceStorage": "Storage"
+      "workspaceFolder": "Workspace folder"
     }
+  },
+  "mobileFiles": {
+    "noSuitableTrack": "No suitable track found",
+    "unknownFileType": "Unknown file type"
+  },
+  "timelineCreation": {
+    "errorTitle": "Timeline error",
+    "failed": "Failed to create timeline"
   }
 }
