@@ -120,8 +120,14 @@ onBeforeUnmount(() => {
     @contextmenu.stop="emit('select')"
   >
     <div
-      class="absolute left-0 top-0 bottom-0 w-1 transition-colors z-10"
-      :class="[isSelected ? 'bg-primary-500' : isHovered ? 'bg-ui-border/50' : 'bg-transparent']"
+      class="absolute right-0 top-0 bottom-0 w-1 transition-colors z-10"
+      :class="[
+        isSelected
+          ? 'bg-(--selection-accent-500)'
+          : isHovered
+            ? 'bg-ui-border/50'
+            : 'bg-transparent',
+      ]"
     />
 
     <div class="flex-1 min-w-0 flex items-center overflow-hidden pl-1.5 z-10 relative">

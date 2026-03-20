@@ -322,9 +322,10 @@ const emit = defineEmits<{
             <UButton
               v-if="projectStore.activeMonitor"
               size="xs"
-              :color="useProxyInMonitor ? 'primary' : 'neutral'"
+              color="neutral"
               :variant="useProxyInMonitor ? 'soft' : 'ghost'"
               icon="i-heroicons-bolt"
+              :class="useProxyInMonitor ? 'text-[var(--selection-accent-400)] ring-1 ring-[var(--selection-accent-500)]/40 bg-[color:rgba(59,130,246,0.12)]' : ''"
               @click="toggleProxyUsage"
             />
           </UTooltip>
@@ -339,9 +340,10 @@ const emit = defineEmits<{
             <UButton
               v-if="projectStore.activeMonitor"
               size="xs"
-              :color="previewEffectsEnabled ? 'primary' : 'neutral'"
+              color="neutral"
               :variant="previewEffectsEnabled ? 'soft' : 'ghost'"
               icon="i-heroicons-sparkles"
+              :class="previewEffectsEnabled ? 'text-[var(--selection-accent-400)] ring-1 ring-[var(--selection-accent-500)]/40 bg-[color:rgba(59,130,246,0.12)]' : ''"
               @click="togglePreviewEffects"
             />
           </UTooltip>
@@ -371,7 +373,7 @@ const emit = defineEmits<{
                 <span
                   :class="[
                     item.value === projectStore.activeMonitor?.previewResolution
-                      ? 'text-primary-500 font-medium'
+                      ? 'text-ui-text font-medium'
                       : '',
                     'truncate',
                   ]"
@@ -385,7 +387,7 @@ const emit = defineEmits<{
           <UButton
             v-if="effectiveFullscreen"
             size="sm"
-            color="primary"
+            color="neutral"
             variant="solid"
             icon="i-heroicons-arrow-left"
             :label="t('common.back', 'Back')"
@@ -434,7 +436,7 @@ const emit = defineEmits<{
           <UButton
             size="md"
             variant="solid"
-            color="primary"
+            color="neutral"
             class="relative overflow-hidden min-w-8 px-1.5"
             :aria-label="t('fastcat.monitor.play', 'Play')"
             :disabled="!canInteractPlayback"

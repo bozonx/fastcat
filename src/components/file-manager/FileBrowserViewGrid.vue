@@ -97,7 +97,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
         :data-entry-path="entry.path ?? null"
         class="flex flex-col items-center p-2 rounded-lg border border-transparent hover:border-ui-border hover:bg-ui-bg-elevated cursor-pointer group transition-all shrink-0 focus:outline-none"
         :class="{
-          'bg-ui-bg-elevated ring-1 ring-(--selection-ring)': isSelected(entry),
+          'ring-1 ring-(--selection-ring) bg-(--selection-range-bg)': isSelected(entry),
           'text-(--color-success)!':
             fileManager.mediaCache.hasProxy(entry.path || '') &&
             !proxyStore.generatingProxies.has(entry.path || ''),
@@ -212,7 +212,9 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
                 currentGridSizeName === 'm',
               'text-sm': currentGridSizeName === 'l' || currentGridSizeName === 'xl',
             },
-            isSelected(entry) ? 'hover:border-primary-500/50 cursor-text' : '',
+            isSelected(entry)
+              ? 'hover:border-(--selection-accent-500)/50 border-(--selection-accent-500)/35 cursor-text'
+              : '',
           ]"
           :title="entry.name"
           @click="onNameClick($event, entry)"
