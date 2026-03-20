@@ -230,7 +230,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
               :data-entry-path="entry.path ?? null"
               class="hover:bg-ui-bg-elevated cursor-pointer group border-b border-ui-border/50 transition-colors focus:outline-none"
               :class="{
-                'bg-ui-bg-elevated ring-1 ring-(--selection-ring) ring-inset z-10 relative':
+                'ring-1 ring-(--selection-ring) ring-inset z-10 relative bg-(--selection-range-bg)':
                   isSelected(entry),
                 'opacity-30': entry.name.startsWith('.'),
                 'text-(--color-success)!':
@@ -328,7 +328,9 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
                     isGeneratingProxyInDirectory(entry)
                       ? 'text-amber-400!'
                       : '',
-                    isSelected(entry) ? 'hover:border-primary-500/50 cursor-text' : '',
+                    isSelected(entry)
+                      ? 'hover:border-(--selection-accent-500)/50 border-(--selection-accent-500)/35 cursor-text'
+                      : '',
                   ]"
                   :title="entry.name"
                   @click="onNameClick($event, entry)"

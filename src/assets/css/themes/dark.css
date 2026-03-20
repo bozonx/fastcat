@@ -14,19 +14,24 @@
   --ui-text-muted: #8a8a8a;
   --ui-text-disabled: #4a4a4a;
 
-  /* === Primary (blue/indigo) === */
-  --theme-primary-50: #eef2ff;
-  --theme-primary-100: #e0e7ff;
-  --theme-primary-200: #c7d2fe;
-  --theme-primary-300: #a5b4fc;
-  --theme-primary-400: #818cf8;
-  --theme-primary-500: #6366f1;
-  --theme-primary-600: #4f46e5;
-  --theme-primary-700: #4338ca;
-  --theme-primary-800: #3730a3;
-  --theme-primary-900: #312e81;
-  --theme-primary-950: #1e1b4b;
+  /* === Primary (neutral gray) === */
+  --theme-primary-50: #fafafa;
+  --theme-primary-100: #f4f4f5;
+  --theme-primary-200: #e4e4e7;
+  --theme-primary-300: #d4d4d8;
+  --theme-primary-400: #a1a1aa;
+  --theme-primary-500: #71717a;
+  --theme-primary-600: #52525b;
+  --theme-primary-700: #3f3f46;
+  --theme-primary-800: #27272a;
+  --theme-primary-900: #18181b;
+  --theme-primary-950: #09090b;
   --on-primary: #ffffff;
+
+  /* === Selection accent (blue) === */
+  --selection-accent-400: #60a5fa;
+  --selection-accent-500: #3b82f6;
+  --selection-accent-600: #2563eb;
 
   /* === Clip colors === */
   --clip-text: #ffffff;
@@ -67,10 +72,10 @@
   --range-track-bg: #2a2a2a;
 
   /* === Selection ring (preview border) === */
-  --selection-ring: #818cf8;
-  --selection-range: #818cf8;
-  --selection-range-bg: rgba(129, 140, 248, 0.18);
-  --selection-range-border: rgba(129, 140, 248, 0.80);
+  --selection-ring: var(--selection-accent-500);
+  --selection-range: var(--selection-accent-500);
+  --selection-range-bg: rgba(59, 130, 246, 0.18);
+  --selection-range-border: rgba(59, 130, 246, 0.8);
 
   /* === Status / semantic === */
   --color-warning: #f59e0b;
