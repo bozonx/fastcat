@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UiTooltip from '~/components/ui/UiTooltip.vue';
 interface MarkerPoint {
   id: string;
   x: number;
@@ -108,7 +109,7 @@ function getMarkerButtonClass(marker: MarkerPoint) {
         <UContextMenu
           :items="point.isZone ? getZoneMarkerMenuItems(point.id) : getMarkerMenuItems(point.id)"
         >
-          <UTooltip :text="truncateTooltip(point.text)" :disabled="!point.text">
+          <UiTooltip :text="truncateTooltip(point.text)" :disabled="!point.text">
             <button
               type="button"
               class="-translate-x-1 relative z-30"
@@ -130,13 +131,13 @@ function getMarkerButtonClass(marker: MarkerPoint) {
                 <path d="M0 0H10V9L5 14L0 9V0Z" :fill="point.color ?? '#3b82f6'" />
               </svg>
             </button>
-          </UTooltip>
+          </UiTooltip>
         </UContextMenu>
       </div>
 
       <div v-if="point.isZone" class="absolute bottom-0 right-0 pointer-events-auto">
         <UContextMenu :items="getZoneMarkerMenuItems(point.id)">
-          <UTooltip :text="truncateTooltip(point.text)" :disabled="!point.text">
+          <UiTooltip :text="truncateTooltip(point.text)" :disabled="!point.text">
             <button
               type="button"
               class="translate-x-1 relative z-30"
@@ -158,7 +159,7 @@ function getMarkerButtonClass(marker: MarkerPoint) {
                 <path d="M0 0H10V9L5 14L0 9V0Z" :fill="point.color ?? '#3b82f6'" />
               </svg>
             </button>
-          </UTooltip>
+          </UiTooltip>
         </UContextMenu>
       </div>
     </div>

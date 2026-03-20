@@ -48,20 +48,12 @@ const selectedIndex = computed({
       v-model="selectedIndex"
       :items="items"
       :ui="{
-        list: {
-          base: 'px-3 py-2 gap-4 bg-transparent',
-          padding: 'p-0',
-          rounded: 'rounded-none',
-          tab: {
-            base: 'text-xs font-semibold uppercase tracking-wider transition-colors outline-none cursor-pointer whitespace-nowrap',
-            active: 'text-primary-400 bg-transparent',
-            inactive: 'text-ui-text-muted hover:text-ui-text bg-transparent',
-            padding: 'px-0 py-0',
-          },
-        },
+        root: 'gap-4',
+        list: 'px-3 py-2 gap-4 bg-transparent p-0 rounded-none',
+        trigger: 'text-xs font-semibold uppercase tracking-wider transition-colors outline-none cursor-pointer whitespace-nowrap px-0 py-0 data-[state=active]:text-primary-400 data-[state=active]:bg-transparent data-[state=inactive]:text-ui-text-muted data-[state=inactive]:hover:text-ui-text data-[state=inactive]:bg-transparent',
       }"
     >
-      <template #default="{ item, index, selected }">
+      <template #default="{ item }">
         <div class="flex items-center gap-2">
           <UIcon v-if="item.icon" :name="item.icon" class="w-4 h-4" />
           <span>{{ item.label }}</span>
