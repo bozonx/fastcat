@@ -3,7 +3,7 @@ import { computed, ref, watch, nextTick } from 'vue';
 
 import type { TimelineClipItem } from '~/timeline/types';
 import UiModal from '~/components/ui/UiModal.vue';
-import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiWheelNumberInput from '~/components/ui/editor/UiWheelNumberInput.vue';
 
 const { t } = useI18n();
 

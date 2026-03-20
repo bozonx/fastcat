@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useUiStore } from '~/stores/ui.store';
 import { storeToRefs } from 'pinia';
-import VolumeControl from '~/components/common/VolumeControl.vue';
+import UiVolumeControl from '~/components/ui/editor/UiVolumeControl.vue';
 
 const props = defineProps<{
   compact?: boolean;
@@ -12,7 +12,7 @@ const { monitorVolume, monitorMuted } = storeToRefs(uiStore);
 </script>
 
 <template>
-  <VolumeControl
+  <UiVolumeControl
     v-model:volume="monitorVolume"
     v-model:is-muted="monitorMuted"
     :compact="compact"

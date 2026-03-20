@@ -2,7 +2,7 @@
 import UiModal from '~/components/ui/UiModal.vue';
 import { computed, ref } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
-import SelectEffectModal from '~/components/common/SelectEffectModal.vue';
+import SelectEffectModal from '~/components/effects/SelectEffectModal.vue';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
 import { getVideoEffectManifest } from '~/effects';
 import type { VideoClipEffect } from '~/timeline/types';

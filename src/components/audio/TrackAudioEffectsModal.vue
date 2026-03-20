@@ -2,7 +2,7 @@
 import UiModal from '~/components/ui/UiModal.vue';
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
-import AudioEffectsEditor from '~/components/common/AudioEffectsEditor.vue';
+import AudioEffectsEditor from '~/components/effects/AudioEffectsEditor.vue';
 import type { AudioClipEffect } from '~/timeline/types';
 
 const props = defineProps<{

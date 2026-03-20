@@ -18,7 +18,7 @@ import type {
   TrackKind,
   VideoClipEffect,
 } from '~/timeline/types';
-import RenameModal from '~/components/common/RenameModal.vue';
+import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import ClipAudioSection from '~/components/properties/clip/ClipAudioSection.vue';
 import ClipTransitionsSection from '~/components/properties/clip/ClipTransitionsSection.vue';
 import ClipActionsSection from '~/components/properties/clip/ClipActionsSection.vue';
@@ -50,7 +50,7 @@ const workspaceStore = useWorkspaceStore();
 const focusStore = useFocusStore();
 const filesPageStore = useFilesPageStore();
 
-const isRenameModalOpen = ref(false);
+const isUiRenameModalOpen = ref(false);
 
 const clipRef = computed(() => props.clip);
 
@@ -284,7 +284,7 @@ watch(
 );
 
 defineExpose({
-  isRenameModalOpen,
+  isUiRenameModalOpen,
   handleDeleteClip,
 });
 </script>
@@ -300,7 +300,7 @@ defineExpose({
       :is-in-linked-group="isInLinkedGroup"
       :can-show-waveform-toggle="canEditAudioGain"
       :can-show-thumbnails-toggle="canEditAudioGain"
-      @rename="isRenameModalOpen = true"
+      @rename="isUiRenameModalOpen = true"
       @delete="handleDeleteClip"
       @quantize="handleQuantizeClip"
       @unlink-audio="handleUnlinkAudio"
@@ -394,15 +394,15 @@ defineExpose({
       @toggle-reversed="toggleReversed"
     />
 
-    <RenameModal
-      :open="isRenameModalOpen"
+    <UiRenameModal
+      :open="isUiRenameModalOpen"
       :current-name="clip.name"
       :title="t('fastcat.clip.rename', 'Rename clip')"
-      @update:open="isRenameModalOpen = $event"
+      @update:open="isUiRenameModalOpen = $event"
       @rename="
         (name) => {
           timelineStore.renameItem(clip.trackId, clip.id, name);
-          isRenameModalOpen = false;
+          isUiRenameModalOpen = false;
         }
       "
     />

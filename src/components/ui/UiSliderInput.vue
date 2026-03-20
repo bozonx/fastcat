@@ -1,21 +1,25 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
+import UiWheelSlider from '~/components/ui/editor/UiWheelSlider.vue';
 
 const props = withDefaults(
   defineProps<{
     modelValue: number;
+    label?: string;
+    formattedValue?: string;
     min: number;
     max: number;
     step?: number;
     unit?: string;
     decimals?: number;
+    defaultValue?: number;
+    wheelStepMultiplier?: number;
     inputClass?: string;
     sliderClass?: string;
   }>(),
   {
     step: 0.01,
-    unit: 's',
+    unit: '',
     decimals: 2,
     inputClass: 'w-20',
     sliderClass: '',
@@ -52,20 +56,26 @@ function onInputUpdate(value: unknown) {
 <template>
   <div class="flex flex-col gap-1">
     <div class="flex items-center justify-between gap-2 text-ui-text-muted">
-      <div class="flex items-center gap-1">
-        <UInput
-          :model-value="displayValue"
-          type="number"
-          size="xs"
-          :min="min"
-          :max="max"
-          :step="step"
-          :class="inputClass"
-          @update:model-value="onInputUpdate"
-        />
-        <span class="text-[10px]">{{ unit }}</span>
-      </div>
-      <span class="font-mono text-[10px]">{{ displayValue }}{{ unit }}</span>
+      <template v-if="label">
+        <span class="text-xs">{{ label }}</span>
+        <span class="text-xs font-mono">{{ formattedValue ?? displayValue + unit }}</span>
+      </template>
+      <template v-else>
+        <div class="flex items-center gap-1">
+          <UInput
+            :model-value="displayValue"
+            type="number"
+            size="xs"
+            :min="min"
+            :max="max"
+            :step="step"
+            :class="inputClass"
+            @update:model-value="onInputUpdate"
+          />
+          <span v-if="unit" class="text-[10px]">{{ unit }}</span>
+        </div>
+        <span class="font-mono text-[10px]">{{ formattedValue ?? displayValue + unit }}</span>
+      </template>
     </div>
 
     <UiWheelSlider
@@ -73,6 +83,8 @@ function onInputUpdate(value: unknown) {
       :min="min"
       :max="max"
       :step="step"
+      :default-value="defaultValue"
+      :wheel-step-multiplier="wheelStepMultiplier"
       :slider-class="sliderClass"
     />
   </div>

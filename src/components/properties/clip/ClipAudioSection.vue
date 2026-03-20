@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiWheelNumberInput from '~/components/ui/editor/UiWheelNumberInput.vue';
 import DbSlider from '~/components/audio/DbSlider.vue';
-import PropertySlider from '~/components/properties/PropertySlider.vue';
+import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import type { AudioFadeCurve } from '~/utils/audio/envelope';
 import { linearToDb, dbToLinear } from '~/utils/audio';
@@ -76,7 +76,7 @@ const fadeCurveOptions = [
       </div>
     </div>
 
-    <PropertySlider
+    <UiSliderInput
       v-if="props.canEditAudioBalance"
       :label="t('fastcat.clip.audio.balance', 'Balance')"
       :formatted-value="props.audioBalance.toFixed(2)"
