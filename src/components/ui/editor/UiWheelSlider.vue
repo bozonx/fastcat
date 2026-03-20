@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 interface UiWheelSliderProps {
   modelValue: number;
   min: number;
@@ -15,10 +14,12 @@ interface UiWheelSliderProps {
 }
 
 const props = withDefaults(defineProps<UiWheelSliderProps>(), {
-  disabled: false,
   step: 1,
+  steps: undefined,
   sliderClass: '',
   wheelStepMultiplier: 1,
+  defaultValue: undefined,
+  disabled: false,
   orientation: 'horizontal',
 });
 

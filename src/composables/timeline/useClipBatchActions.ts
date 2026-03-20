@@ -11,7 +11,7 @@ export interface ClipBatchActionsContext {
 
 export function useClipBatchActions(
   items: Ref<{ trackId: string; itemId: string }[]>,
-  ctx: ClipBatchActionsContext
+  ctx: ClipBatchActionsContext,
 ) {
   const generatedGroupId = () =>
     `linked-group-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -90,7 +90,7 @@ export function useClipBatchActions(
 
   const allDisabled = computed(() => selectedClips.value.every((c) => c.disabled));
   const allMuted = computed(() => selectedClips.value.every((c) => c.audioMuted));
-  
+
   const firstWaveformClip = computed(() => {
     const doc = ctx.timelineDoc.value;
     if (!doc) return undefined;

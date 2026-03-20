@@ -10,7 +10,7 @@ const { t } = useI18n();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
-const { leaveProject } = useProjectActions();
+const { loadTimeline } = useProjectActions();
 
 const emit = defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal']);
 

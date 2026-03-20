@@ -35,6 +35,7 @@ const props = withDefaults(defineProps<Props>(), {
   originalAudioSampleRate: null,
   allowOriginalAudioSampleRate: false,
   showMetadata: false,
+  originalAudioChannels: null,
   hideAudioBitrate: false,
   hideAudioSampleRate: false,
   showBuiltinPresets: true,

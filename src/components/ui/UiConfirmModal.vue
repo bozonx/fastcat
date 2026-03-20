@@ -4,17 +4,7 @@ import UiModal from '~/components/ui/UiModal.vue';
 // We define the specific colors supported by UButton to ensure type safety
 type ButtonColor = 'primary' | 'secondary' | 'neutral' | 'error' | 'warning' | 'success' | 'info';
 
-const {
-  title,
-  description,
-  confirmText,
-  secondaryText,
-  cancelText,
-  color = 'primary',
-  secondaryColor = 'neutral',
-  icon,
-  loading = false,
-} = defineProps<{
+const props = withDefaults(defineProps<{
   title: string;
   description?: string;
   confirmText?: string;
@@ -24,7 +14,16 @@ const {
   secondaryColor?: ButtonColor;
   icon?: string;
   loading?: boolean;
-}>();
+}>(), {
+  description: undefined,
+  confirmText: undefined,
+  secondaryText: undefined,
+  cancelText: undefined,
+  color: 'primary',
+  secondaryColor: 'neutral',
+  icon: undefined,
+  loading: false,
+});
 
 const emit = defineEmits(['confirm', 'secondary']);
 
@@ -79,29 +78,29 @@ const handleClose = () => {
 <template>
   <UiModal
     v-model:open="isOpen"
-    :title="title"
+    :title="props.title"
     :ui="{ content: 'sm:max-w-lg' }"
     @after:enter="handleAfterEnter"
   >
     <div class="flex flex-col gap-4">
-      <div v-if="icon || description" class="flex gap-4">
-        <div v-if="icon" class="shrink-0">
+      <div v-if="props.icon || props.description" class="flex gap-4">
+        <div v-if="props.icon" class="shrink-0">
           <UIcon
-            :name="icon"
+            :name="props.icon"
             class="w-6 h-6"
             :class="{
-              'text-primary-500': color === 'primary',
-              'text-error-500': color === 'error',
-              'text-warning-500': color === 'warning',
-              'text-success-500': color === 'success',
-              'text-info-500': color === 'info',
-              'text-ui-text-muted': color === 'neutral' || color === 'secondary',
+              'text-primary-500': props.color === 'primary',
+              'text-error-500': props.color === 'error',
+              'text-warning-500': props.color === 'warning',
+              'text-success-500': props.color === 'success',
+              'text-info-500': props.color === 'info',
+              'text-ui-text-muted': props.color === 'neutral' || props.color === 'secondary',
             }"
           />
         </div>
-        <div v-if="description" class="flex-1">
+        <div v-if="props.description" class="flex-1">
           <p class="text-sm text-ui-text-muted">
-            {{ description }}
+            {{ props.description }}
           </p>
         </div>
       </div>
@@ -113,25 +112,25 @@ const handleClose = () => {
 
     <template #footer>
       <UButton color="neutral" variant="ghost" @click="handleClose">
-        {{ cancelText || t('common.cancel') }}
+        {{ props.cancelText || t('common.cancel') }}
       </UButton>
       <UButton
-        v-if="secondaryText"
-        :color="secondaryColor"
+        v-if="props.secondaryText"
+        :color="props.secondaryColor"
         variant="ghost"
-        :disabled="loading"
+        :disabled="props.loading"
         @click="handleSecondary"
       >
-        {{ secondaryText }}
+        {{ props.secondaryText }}
       </UButton>
       <UButton
         ref="confirmButtonRef"
-        :color="color"
-        :loading="loading"
+        :color="props.color"
+        :loading="props.loading"
         autofocus
         @click="handleConfirm"
       >
-        {{ confirmText || t('common.confirm') }}
+        {{ props.confirmText || t('common.confirm') }}
       </UButton>
     </template>
   </UiModal>

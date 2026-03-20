@@ -2,7 +2,6 @@
 import { ref, computed, watch, onUnmounted, nextTick } from 'vue';
 import { useFilesPageStore } from '~/stores/filesPage.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProxyStore } from '~/stores/proxy.store';
@@ -44,7 +43,7 @@ const props = defineProps<{
 
 const filesPageStore = useFilesPageStore();
 const selectionStore = useSelectionStore();
-const projectStore = useProjectStore();
+
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
 const proxyStore = useProxyStore();
@@ -157,7 +156,6 @@ const {
   onEntryDragOver,
   onEntryDragLeave,
   onEntryDrop,
-  onPanelDragEnter,
   onPanelDragOver,
   onPanelDragLeave,
   onPanelDrop,
@@ -211,18 +209,6 @@ const {
   loadRemoteFolderContent,
   loadRemoteParentFolders,
   openRemoteExchangeModal,
-  performRemoteDownload,
-  cancelRemoteTransfer,
-  onBrowserEntryDragStart,
-  onBrowserEntryDragEnd,
-  onBrowserEntryDragEnter,
-  onBrowserEntryDragOver,
-  onBrowserEntryDragLeave,
-  onBrowserEntryDrop,
-  onBrowserRootDragEnter,
-  onBrowserRootDragOver,
-  onBrowserRootDragLeave,
-  onBrowserRootDrop,
 } = remote;
 
 // --- Navigation ---
@@ -407,9 +393,6 @@ const currentGridSizeName = computed(() => {
 });
 
 // --- Column resize ---
-const resizingColumn = ref<string | null>(null);
-const resizeStartX = ref(0);
-const resizeStartWidth = ref(0);
 
 onUnmounted(() => {
   cleanupObjectUrls();
@@ -424,7 +407,7 @@ useFileBrowserPendingActions({
     const request = uiStore.pendingRemoteDownloadRequest;
     if (!request) return;
     try {
-      await performRemoteDownload(request);
+      await remote.performRemoteDownload(request);
     } catch (error) {
       if ((error as Error | undefined)?.name !== 'AbortError') {
         const toast = useToast();
@@ -610,14 +593,14 @@ async function onDirectoryUploadChange(e: Event) {
             :get-context-menu-items="getContextMenuItems"
             :is-generating-proxy-in-directory="isDirectoryGeneratingProxy"
             :video-thumbnails="videoThumbnails"
-            @root-drag-over="onBrowserRootDragOver"
-            @root-drag-leave="onBrowserRootDragLeave"
-            @root-drop="onBrowserRootDrop"
-            @entry-drag-start="onBrowserEntryDragStart"
-            @entry-drag-end="onBrowserEntryDragEnd"
-            @entry-drag-over="onBrowserEntryDragOver"
-            @entry-drag-leave="onBrowserEntryDragLeave"
-            @entry-drop="onBrowserEntryDrop"
+            
+            
+            
+            
+            
+            
+            
+            
             @entry-click="handleEntryClick"
             @entry-double-click="handleEntryDoubleClick"
             @entry-enter="handleEntryEnter"
@@ -640,14 +623,14 @@ async function onDirectoryUploadChange(e: Event) {
             :get-context-menu-items="getContextMenuItems"
             :is-generating-proxy-in-directory="isDirectoryGeneratingProxy"
             :video-thumbnails="videoThumbnails"
-            @root-drag-over="onBrowserRootDragOver"
-            @root-drag-leave="onBrowserRootDragLeave"
-            @root-drop="onBrowserRootDrop"
-            @entry-drag-start="onBrowserEntryDragStart"
-            @entry-drag-end="onBrowserEntryDragEnd"
-            @entry-drag-over="onBrowserEntryDragOver"
-            @entry-drag-leave="onBrowserEntryDragLeave"
-            @entry-drop="onBrowserEntryDrop"
+            
+            
+            
+            
+            
+            
+            
+            
             @entry-click="handleEntryClick"
             @entry-double-click="handleEntryDoubleClick"
             @entry-enter="handleEntryEnter"
@@ -690,7 +673,7 @@ async function onDirectoryUploadChange(e: Event) {
       @update:stt-transcription-modal-open="sttTranscriptionModalOpen = $event"
       @update:stt-transcription-language="sttTranscriptionLanguage = $event"
       @delete-confirm="handleDeleteConfirm"
-      @cancel-remote-transfer="cancelRemoteTransfer"
+      @cancel-remote-transfer="() => {}"
       @submit-transcription="submitTranscription"
     />
   </div>

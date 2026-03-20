@@ -31,6 +31,7 @@ const props = withDefaults(
     disabled: false,
     orientation: 'horizontal',
     fluid: false,
+    ui: undefined,
   },
 );
 

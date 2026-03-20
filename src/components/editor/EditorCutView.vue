@@ -46,6 +46,8 @@ const emit = defineEmits<{
 
 <template>
   <EditorDynamicPanelsView
+      left-panel-type="files"
+      right-panel-type="monitor"
     view="cut"
     :columns="columns"
     :layout-key="layoutKey"

@@ -1,4 +1,4 @@
-import { computed, type Ref } from 'vue';
+import { computed, type Ref, type ComputedRef } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useProjectTabsStore } from '~/stores/tabs.store';
@@ -6,9 +6,9 @@ import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/med
 import type { FsEntry } from '~/types/fs';
 
 interface UseFilePropertiesHandlersOptions {
-  selectedFsEntry: Ref<FsEntry | undefined>;
-  mediaType: Ref<string | null | undefined>;
-  textContent: Ref<string>;
+  selectedFsEntry: Ref<FsEntry | undefined | null> | ComputedRef<FsEntry | undefined | null>;
+  mediaType: Ref<string | null | undefined> | ComputedRef<string | null | undefined>;
+  textContent: Ref<string | null | undefined> | ComputedRef<string | null | undefined>;
   canUploadToRemote: Ref<boolean>;
 }
 

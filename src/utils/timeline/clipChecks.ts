@@ -3,7 +3,7 @@ import type { TimelineClipItem, TimelineDocument } from '~/timeline/types';
 export function isClipFreePosition(
   clipItem: TimelineClipItem | null,
   timelineDoc: TimelineDocument | null,
-  fps: number
+  fps: number,
 ): boolean {
   if (!clipItem || !timelineDoc) return false;
   const startFrame = (clipItem.timelineRange.startUs * fps) / 1_000_000;

@@ -4,8 +4,9 @@ import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import UiProgressSpinner from '~/components/ui/UiProgressSpinner.vue';
 import BackgroundTasksModal from './BackgroundTasksModal.vue';
 
-const props = withDefaults(
+withDefaults(
   defineProps<{
+    showLabel?: boolean;
     size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   }>(),
   {

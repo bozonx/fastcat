@@ -58,6 +58,8 @@ const emit = defineEmits<{
     </Pane>
     <Pane :size="sizes[1]" min-size="10">
       <EditorDynamicPanelsView
+      left-panel-type="files"
+      right-panel-type="monitor"
         view="sound"
         :columns="columns"
         :layout-key="layoutKey"

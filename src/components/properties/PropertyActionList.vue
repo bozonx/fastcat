@@ -48,6 +48,9 @@ const props = withDefaults(
     vertical: true,
     size: 'sm',
     justify: 'start',
+    variant: undefined,
+    color: undefined,
+    class: undefined,
   },
 );
 
