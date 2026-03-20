@@ -74,8 +74,8 @@ watch(
     }"
   >
     <div class="flex flex-1 min-h-0 w-full h-full">
-      <div class="w-56 shrink-0 p-6 bg-ui-bg border-r border-ui-border overflow-y-auto">
-        <div class="flex flex-col gap-6">
+      <div class="w-56 shrink-0 px-4 py-4 bg-ui-bg border-r border-ui-border overflow-y-auto">
+        <div class="flex flex-col gap-5">
           <div class="flex flex-col gap-2">
             <div class="text-xs font-semibold text-ui-text-muted uppercase tracking-wide">
               {{ t('videoEditor.settings.userSection', 'User settings') }}
@@ -178,7 +178,7 @@ watch(
         </div>
       </div>
 
-      <div class="flex-1 min-w-0 p-6 overflow-y-auto">
+      <div class="flex-1 min-w-0 px-4 py-4 overflow-y-auto">
         <SettingsGeneral v-if="activeSection === 'user.general'" />
         <SettingsHotkeys v-else-if="activeSection === 'user.hotkeys'" ref="hotkeysRef" />
         <SettingsMouse v-else-if="activeSection === 'user.mouse'" />

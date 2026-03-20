@@ -45,11 +45,11 @@ const { t } = useI18n();
 
 const modalUi = computed(() => {
   return {
-    content: `bg-ui-bg-elevated shadow-xl overflow-hidden sm:rounded-2xl border border-ui-border flex flex-col max-h-[90vh] min-h-0 w-full ${props.ui?.content || ''}`,
-    header: `px-6 py-4 border-b border-ui-border flex items-center justify-between shrink-0 ${props.ui?.header || ''}`,
-    body: `px-6 py-6 w-full overflow-y-auto flex-auto custom-scrollbar ${props.ui?.body || ''}`,
-    footer: `px-6 py-4 bg-ui-bg border-t border-ui-border flex justify-end gap-3 shrink-0 ${props.ui?.footer || ''}`,
-    title: `text-lg font-semibold text-ui-text truncate ${props.ui?.title || ''}`,
+    content: `bg-ui-bg-elevated shadow-xl overflow-hidden rounded-[var(--radius-ui-lg)] border border-ui-border flex flex-col max-h-[90vh] min-h-0 w-full ${props.ui?.content || ''}`,
+    header: `px-4 py-3 border-b border-ui-border flex items-center justify-between shrink-0 ${props.ui?.header || ''}`,
+    body: `px-4 py-4 w-full overflow-y-auto flex-auto custom-scrollbar ${props.ui?.body || ''}`,
+    footer: `px-4 py-3 bg-ui-bg border-t border-ui-border flex justify-end gap-2 shrink-0 ${props.ui?.footer || ''}`,
+    title: `text-base font-semibold text-ui-text truncate ${props.ui?.title || ''}`,
     description: `mt-1 text-sm text-ui-text-muted ${props.ui?.description || ''}`,
     close: `-mr-2 ml-4 ${props.ui?.close || ''}`,
     ...props.ui,
@@ -125,7 +125,7 @@ function handleClose() {
           variant="ghost"
           icon="i-heroicons-x-mark"
           class="-mr-2 ml-4"
-          size="md"
+          size="sm"
           :aria-label="t('common.close')"
           @click="handleClose"
         />
