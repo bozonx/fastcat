@@ -25,8 +25,8 @@ export function generateTimelineThumbnail(params: {
 
       const builtVideo = await buildVideoWorkerPayloadFromTracks({
         tracks: timelineDoc.tracks,
-        projectStore: projectStore as any,
-        workspaceStore: workspaceStore as any,
+        projectStore,
+        workspaceStore,
       });
 
       const rawClips = builtVideo.payload;

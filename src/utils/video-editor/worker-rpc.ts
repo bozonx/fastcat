@@ -3,6 +3,7 @@ import type {
   ExportOptions,
   WorkerVideoPayloadItem,
 } from '~/composables/timeline/export/types';
+import type { MediaMetadata } from '~/stores/media.store';
 
 export interface PreviewRenderOptions {
   previewEffectsEnabled?: boolean;
@@ -11,7 +12,7 @@ export interface PreviewRenderOptions {
 
 export interface VideoCoreWorkerAPI {
   // Metadata
-  extractMetadata(file: File | FileSystemFileHandle): Promise<any>;
+  extractMetadata(file: File | FileSystemFileHandle): Promise<MediaMetadata>;
 
   // initCompositor is implemented manually in the client proxy
   initCompositor(
@@ -20,12 +21,8 @@ export interface VideoCoreWorkerAPI {
     height: number,
     bgColor: string,
   ): Promise<void>;
-  loadTimeline(
-    clips: (WorkerTimelineClip | { kind: 'meta' | 'track'; [key: string]: any })[],
-  ): Promise<number>;
-  updateTimelineLayout(
-    clips: (WorkerTimelineClip | { kind: 'meta' | 'track'; [key: string]: any })[],
-  ): Promise<number>;
+  loadTimeline(clips: WorkerVideoPayloadItem[]): Promise<number>;
+  updateTimelineLayout(clips: WorkerVideoPayloadItem[]): Promise<number>;
   renderFrame(
     timeUs: number,
     options?: PreviewRenderOptions,
@@ -55,7 +52,7 @@ export interface VideoCoreWorkerAPI {
     timeUs: number,
     width: number,
     height: number,
-    timelineClips: (WorkerTimelineClip | { kind: 'meta' | 'track'; [key: string]: any })[],
+    timelineClips: WorkerVideoPayloadItem[],
     quality: number,
   ): Promise<Blob | null>;
 

@@ -1,9 +1,11 @@
+import type { Ref } from 'vue';
+import type { WorkerVideoPayloadItem } from '~/composables/timeline/export/types';
 import type { WorkerTimelineClip } from './types';
 
 export interface MonitorLayoutQueuePayload {
   layoutClips: WorkerTimelineClip[];
   layoutAudioClips: WorkerTimelineClip[];
-  workerTimelinePayload?: Ref<any[]>;
+  workerTimelinePayload?: Ref<WorkerVideoPayloadItem[]>;
 }
 
 export interface CreateMonitorCoreQueuesOptions {

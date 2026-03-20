@@ -1,4 +1,8 @@
 import { ref, type Ref } from 'vue';
+import type {
+  WorkerTimelineClip,
+  WorkerVideoPayloadItem,
+} from '~/composables/timeline/export/types';
 import type { useProjectStore } from '~/stores/project.store';
 import type { useTimelineStore } from '~/stores/timeline.store';
 import type { useWorkspaceStore } from '~/stores/workspace.store';
@@ -16,23 +20,23 @@ export function useMonitorSnapshot(input: {
   isLoading: Ref<boolean>;
   loadError: Ref<string | null>;
   uiCurrentTimeUs: Ref<number>;
-  workerTimelineClips: Ref<unknown>;
-  rawWorkerTimelineClips: Ref<unknown>;
-  workerTimelinePayload: Ref<unknown>;
+  workerTimelineClips: Ref<WorkerTimelineClip[]>;
+  rawWorkerTimelineClips: Ref<WorkerTimelineClip[] | undefined>;
+  workerTimelinePayload: Ref<WorkerVideoPayloadItem[]>;
 }) {
   const toast = useToast();
   const uiStore = useUiStore();
 
   const isSavingStopFrame = ref(false);
 
-  function getClipsPayload() {
+  function getClipsPayload(): WorkerVideoPayloadItem[] {
     const payload =
-      (input.workerTimelinePayload.value as any[])?.length > 0
+      input.workerTimelinePayload.value?.length > 0
         ? input.workerTimelinePayload.value
-        : (input.workerTimelineClips.value as any[])?.length > 0
+        : input.workerTimelineClips.value?.length > 0
           ? input.workerTimelineClips.value
-          : input.rawWorkerTimelineClips.value;
-    return JSON.parse(JSON.stringify(payload));
+          : (input.rawWorkerTimelineClips.value ?? []);
+    return JSON.parse(JSON.stringify(payload)) as WorkerVideoPayloadItem[];
   }
 
   async function saveTimelineThumbnail() {
@@ -44,7 +48,7 @@ export function useMonitorSnapshot(input: {
       projectId: input.projectStore.currentProjectId,
       timelinePath: input.projectStore.currentTimelinePath,
       timeUs: input.uiCurrentTimeUs.value,
-      clipsPayload: getClipsPayload() as any[],
+      clipsPayload: getClipsPayload(),
       workspaceHandle: input.workspaceStore.workspaceHandle,
       resolvedStorageTopology: input.workspaceStore.resolvedStorageTopology,
       getFileHandleByPath: async (path: string) => input.projectStore.getFileHandleByPath(path),

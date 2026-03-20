@@ -1,6 +1,6 @@
 import { computed, type Ref } from 'vue';
 import type { TimelineTrack, TimelineTrackItem, TimelineClipItem } from '~/timeline/types';
-import type { UserSettings } from '~/types/settings.types';
+import type { FastCatUserSettings } from '~/utils/settings';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 
 export interface ClipInteractionsContext {
@@ -8,7 +8,7 @@ export interface ClipInteractionsContext {
   item: Ref<TimelineTrackItem>;
   canEditClipContent: Ref<boolean>;
   isTrimModeActive: Ref<boolean>;
-  userSettings: Ref<UserSettings>;
+  userSettings: Ref<FastCatUserSettings>;
   selectTimelineItems: (ids: string[]) => void;
   trimToPlayheadLeftNoRipple: (target: { trackId: string; itemId: string }) => void;
   trimToPlayheadRightNoRipple: (target: { trackId: string; itemId: string }) => void;

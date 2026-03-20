@@ -2,6 +2,7 @@ import {
   buildVideoWorkerPayloadFromTracks,
   toWorkerTimelineClips,
 } from '~/composables/timeline/export';
+import type { WorkerVideoPayloadItem } from '~/composables/timeline/export/types';
 import type { useProjectStore } from '~/stores/project.store';
 import type { useWorkspaceStore } from '~/stores/workspace.store';
 import type { TimelineTrack, TimelineTrackItem, ClipEffect } from '~/timeline/types';
@@ -10,7 +11,7 @@ import type { WorkerTimelineClip } from './types';
 export interface PreparedMonitorTimelineData {
   flattenedClips: WorkerTimelineClip[];
   flattenedAudio: WorkerTimelineClip[];
-  payload: (WorkerTimelineClip | { kind: 'meta' | 'track'; [key: string]: any })[];
+  payload: WorkerVideoPayloadItem[];
 }
 
 export function createMockAudioItems(audioClips: WorkerTimelineClip[]): TimelineTrackItem[] {

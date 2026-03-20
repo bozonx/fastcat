@@ -27,10 +27,16 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
     }
 
     const name = parts[parts.length - 1];
+    if (!name) {
+      throw new Error(`Invalid path: ${path}`);
+    }
     let current = this.root;
 
     for (let i = 0; i < parts.length - 1; i++) {
       const part = parts[i];
+      if (!part) {
+        throw new Error(`Invalid path segment at index ${i}: ${path}`);
+      }
       let next = current.children!.get(part);
       if (!next) {
         if (options.createParent) {
@@ -95,7 +101,9 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
     if (data instanceof Blob) {
       blob = data;
     } else if (data instanceof Uint8Array) {
-      blob = new Blob([data]);
+      const copy = new Uint8Array(data.byteLength);
+      copy.set(data);
+      blob = new Blob([copy]);
     } else {
       blob = new Blob([data], { type: 'text/plain' });
     }

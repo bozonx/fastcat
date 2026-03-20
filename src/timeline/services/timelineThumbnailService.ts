@@ -4,14 +4,16 @@ import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
 import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';
 import { addLatestMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import { useUiStore } from '~/stores/ui.store';
+import type { ResolvedStorageTopology } from '~/utils/storage-topology';
+import type { WorkerVideoPayloadItem } from '~/composables/timeline/export/types';
 
 export interface GenerateTimelineThumbnailParams {
   projectId: string;
   timelinePath: string;
   timeUs: number;
-  clipsPayload: any[];
+  clipsPayload: WorkerVideoPayloadItem[];
   workspaceHandle: FileSystemDirectoryHandle;
-  resolvedStorageTopology: any;
+  resolvedStorageTopology: ResolvedStorageTopology;
   getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
   getFileByPath: (path: string) => Promise<File | null>;
   width?: number;

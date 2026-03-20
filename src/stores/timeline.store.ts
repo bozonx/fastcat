@@ -45,6 +45,9 @@ import { MAX_TIMELINE_ZOOM_POSITION, MIN_TIMELINE_ZOOM_POSITION } from '~/utils/
 import { useTimelineMediaUsageStore } from './timeline-media-usage.store';
 import { computeMediaUsageByTimelineDocs } from '~/utils/timeline-media-usage';
 
+import type { AppNotificationService } from '~/services/AppNotificationService';
+import type { I18nService } from '~/services/I18nService';
+
 export const useTimelineStore = defineStore('timeline', () => {
   const projectStore = useProjectStore();
   const mediaStore = useMediaStore();
@@ -54,8 +57,8 @@ export const useTimelineStore = defineStore('timeline', () => {
   const selectionStore = useSelectionStore();
   const uiStore = useUiStore();
   const nuxtApp = useNuxtApp();
-  const toast = nuxtApp.$notificationService as any;
-  const { t } = nuxtApp.$i18nService as any;
+  const toast = nuxtApp.$notificationService as AppNotificationService;
+  const { t } = nuxtApp.$i18nService as I18nService;
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
 
   const historyDebounce = createTimelineHistoryDebounce({ historyStore });

@@ -91,7 +91,7 @@ export function useTimelineHotkeys() {
     'general.paste': () => {
       if (!focusStore.canUseTimelineHotkeys) return false;
 
-      const payload = clipboardPayload.value;
+      const payload = clipboardPayload;
       if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return false;
 
       timelineStore.pasteClips(payload.items, {

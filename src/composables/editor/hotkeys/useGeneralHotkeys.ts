@@ -60,7 +60,7 @@ export function useGeneralHotkeys(
   }
 
   async function handleFileManagerPaste() {
-    const payload = clipboardPayload.value;
+    const payload = clipboardPayload;
     if (!payload || payload.source !== 'fileManager' || payload.items.length === 0) {
       return false;
     }

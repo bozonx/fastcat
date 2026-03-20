@@ -136,7 +136,7 @@ export const useMediaStore = defineStore('media', () => {
     }
 
     try {
-      const meta = (await workerModule.extractMetadata(file)) as MediaMetadata | null;
+      const meta = await workerModule.extractMetadata(file);
 
       if (meta) {
         mediaMetadata.value[cacheKey] = meta;
