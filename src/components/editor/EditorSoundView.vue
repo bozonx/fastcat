@@ -3,7 +3,7 @@ import { Pane, Splitpanes } from 'splitpanes';
 import AudioMixer from '~/components/audio/AudioMixer.vue';
 import EditorDynamicPanelsView from '~/components/editor/EditorDynamicPanelsView.vue';
 import type { PanelFocusId } from '~/stores/focus.store';
-import type { DynamicPanel, PanelColumn } from '~/stores/editorView.store';
+import type { DynamicPanel, PanelColumn } from '~/stores/editor-view.store';
 
 interface SplitResizeEvent {
   panes: Array<{ size: number }>;

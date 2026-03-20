@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useFilesPageStore } from '~/stores/filesPage.store';
+import { useFilesPageStore } from '~/stores/files-page.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useProxyStore } from '~/stores/proxy.store';

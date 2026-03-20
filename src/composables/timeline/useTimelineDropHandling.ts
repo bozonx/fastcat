@@ -1,7 +1,7 @@
 import { ref, type Ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
-import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
+import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useDraggedFile } from '~/composables/useDraggedFile';

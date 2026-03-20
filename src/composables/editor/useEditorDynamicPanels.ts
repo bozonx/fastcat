@@ -4,7 +4,7 @@ import { useProjectTabsStore } from '~/stores/tabs.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
 import { readLocalStorageJson, writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
-import type { DynamicPanel } from '~/stores/editorView.store';
+import type { DynamicPanel } from '~/stores/editor-view.store';
 import { isOpenableProjectFileName } from '~/utils/media-types';
 
 interface UseEditorDynamicPanelsOptions {

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import UiTooltip from '~/components/ui/UiTooltip.vue';
-import type { ToolbarDragMode, ToolbarSnapMode } from '~/stores/timelineSettings.store';
+import type { ToolbarDragMode, ToolbarSnapMode } from '~/stores/timeline-settings.store';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
+import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import UiSplitDropdownButton from '~/components/ui/UiSplitDropdownButton.vue';
 
 const { t } = useI18n();

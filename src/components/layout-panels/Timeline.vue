@@ -12,7 +12,7 @@ import { useMediaStore } from '~/stores/media.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useProjectStore } from '~/stores/project.store';
-import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
+import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 
 import type { TimelineClipActionPayload, TimelineTrack } from '~/timeline/types';

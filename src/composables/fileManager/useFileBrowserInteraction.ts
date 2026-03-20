@@ -4,7 +4,7 @@ import type { FsEntry } from '~/types/fs';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
 import { isRemoteFsEntry } from '~/utils/remote-vfs';
 import { isOpenableProjectFileName } from '~/utils/media-types';
-import { useFilesPageStore, type FileSortField } from '~/stores/filesPage.store';
+import { useFilesPageStore, type FileSortField } from '~/stores/files-page.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFileManagerSelection } from '~/composables/fileManager/useFileManagerSelection';

@@ -1,5 +1,5 @@
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
+import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';

@@ -15,21 +15,21 @@ import { createTimelineEditService } from '~/timeline/application/timelineEditSe
 import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otioSerializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 
-import { createTimelinePersistence } from '~/stores/timeline/timelinePersistence';
+import { createTimelinePersistence } from '~/stores/timeline/timeline-persistence';
 import { generateTimelineThumbnail } from '~/timeline/timelineThumbnail';
 import { createTimelineMarkerService } from '~/timeline/application/timelineMarkerService';
-import { createTimelineSelection } from '~/stores/timeline/timelineSelection';
-import { createTimelinePlayback } from '~/stores/timeline/timelinePlayback';
-import { createTimelineTracks } from '~/stores/timeline/timelineTracks';
-import { createTimelineClips } from '~/stores/timeline/timelineClips';
-import { createTimelineTrimming } from '~/stores/timeline/timelineTrimming';
-import { createTimelineHydration } from '~/stores/timeline/timelineHydration';
-import { createTimelineExternalRefs } from '~/stores/timeline/timelineExternalRefs';
-import { createTimelineHistoryDebounce } from '~/stores/timeline/timelineHistoryDebounce';
-import { createTimelineDispatcher } from '~/stores/timeline/timelineDispatcher';
-import { createTimelineSelectionRange } from '~/stores/timeline/timelineSelectionRange';
-import { createTimelineCaptions } from '~/stores/timeline/timelineCaptions';
-import { createTimelineCommands } from '~/stores/timeline/timelineCommands';
+import { createTimelineSelection } from '~/stores/timeline/timeline-selection';
+import { createTimelinePlayback } from '~/stores/timeline/timeline-playback';
+import { createTimelineTracks } from '~/stores/timeline/timeline-tracks';
+import { createTimelineClips } from '~/stores/timeline/timeline-clips';
+import { createTimelineTrimming } from '~/stores/timeline/timeline-trimming';
+import { createTimelineHydration } from '~/stores/timeline/timeline-hydration';
+import { createTimelineExternalRefs } from '~/stores/timeline/timeline-external-refs';
+import { createTimelineHistoryDebounce } from '~/stores/timeline/timeline-history-debounce';
+import { createTimelineDispatcher } from '~/stores/timeline/timeline-dispatcher';
+import { createTimelineSelectionRange } from '~/stores/timeline/timeline-selection-range';
+import { createTimelineCaptions } from '~/stores/timeline/timeline-captions';
+import { createTimelineCommands } from '~/stores/timeline/timeline-commands';
 
 import { quantizeTimeUsToFrames, sanitizeFps, getDocFps } from '~/timeline/commands/utils';
 

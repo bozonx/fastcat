@@ -7,9 +7,9 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { useEditorViewStore } from '~/stores/editorView.store';
+import { useEditorViewStore } from '~/stores/editor-view.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
-import { useFilesPageStore } from '~/stores/filesPage.store';
+import { useFilesPageStore } from '~/stores/files-page.store';
 import type {
   AudioClipEffect,
   TimelineBlendMode,

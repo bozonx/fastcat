@@ -4,7 +4,7 @@ import { computed, ref, onBeforeUnmount } from 'vue';
 import { useMediaStore } from '~/stores/media.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
+import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import type { TimelineTrack } from '~/timeline/types';
 import { useSelectionStore } from '~/stores/selection.store';
 import { trackHasAudio } from '~/utils/audio';

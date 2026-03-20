@@ -1,5 +1,5 @@
 import { ref, type Ref } from 'vue';
-import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
+import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 
 export interface UseTimelineScrollSyncOptions {
   scrollEl: Ref<HTMLElement | null>;
