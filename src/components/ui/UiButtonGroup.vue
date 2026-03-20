@@ -52,7 +52,7 @@ function isSelected(value: any) {
 </script>
 
 <template>
-  <UButtonGroup
+  <UFieldGroup
     :orientation="orientation"
     :class="[fluid ? 'w-full' : 'inline-flex', disabled ? 'opacity-50 cursor-not-allowed' : '']"
   >
@@ -72,5 +72,5 @@ function isSelected(value: any) {
     >
       <slot name="option" :option="option" :selected="isSelected(option.value)" />
     </UButton>
-  </UButtonGroup>
+  </UFieldGroup>
 </template>
