@@ -62,7 +62,7 @@ async function callWorkerMethod<K extends WorkerMethod>(
 ): Promise<Awaited<ReturnType<VideoCoreWorkerAPI[K]>>> {
   switch (method) {
     case 'extractMetadata':
-      return parseMediaMetadata(await extractMetadata(args[0])) as Awaited<
+      return parseMediaMetadata(await extractMetadata(args[0] as File)) as Awaited<
         ReturnType<VideoCoreWorkerAPI[K]>
       >;
     case 'renderFrame': {

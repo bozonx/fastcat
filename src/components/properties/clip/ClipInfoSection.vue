@@ -29,7 +29,7 @@ const { t } = useI18n();
     :title="t('common.source', 'Source File')"
   >
     <PropertyRow :label="t('common.path', 'Path')" :value="props.clip.source.path" />
-    <MediaMetadataList :media-meta="props.mediaMeta" />
+    <MediaMetadataList :media-meta="props.mediaMeta as any" />
   </PropertySection>
 
   <PropertySection :title="t('fastcat.clip.info', 'Clip Info')">

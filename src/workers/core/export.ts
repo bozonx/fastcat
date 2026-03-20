@@ -72,7 +72,7 @@ export async function extractMetadata(
           parsedCodec: parseVideoCodec(codecParam || vTrack.codec || ''),
           fps: stats.averagePacketRate,
           bitrate: stats.averageBitrate,
-          colorSpace,
+          colorSpace: colorSpace as any,
         };
       }
 
@@ -103,16 +103,20 @@ function isOpusCodec(codec: string | undefined): boolean {
   return value.startsWith('opus');
 }
 
+function isMediaClip(clip: any): clip is WorkerTimelineClip {
+  return clip.clipType === 'media';
+}
+
 async function buildPassthroughAudioTrack(params: {
-  clip: WorkerTimelineClip;
+  clip: any;
   hostClient: VideoCoreHostAPI | null;
   reportExportWarning: (message: string) => Promise<void>;
 }) {
   const { clip, hostClient, reportExportWarning } = params;
-  const sourcePath = clip.sourcePath || clip.source?.path;
+  const sourcePath = (clip as any).sourcePath || (clip as any).source?.path;
   if (!sourcePath || !hostClient) return null;
 
-  const fileHandle = clip.fileHandle || (await hostClient.getFileHandleByPath(sourcePath));
+  const fileHandle = (clip as any).fileHandle || (await hostClient.getFileHandleByPath(sourcePath));
   if (!fileHandle) return null;
 
   const file = (await hostClient.getFileByPath?.(sourcePath)) ?? (await fileHandle.getFile());
@@ -388,9 +392,9 @@ export async function runExport(
         input: any;
       } | null = null;
       if (options.audio && hasAnyAudio) {
-        if (options.audioPassthrough && audioClips.length === 1) {
+        if (options.audioPassthrough && audioClips.length === 1 && audioClips[0] !== undefined) {
           audioPacketState = await buildPassthroughAudioTrack({
-            clip: audioClips[0],
+            clip: audioClips[0] as any,
             hostClient,
             reportExportWarning,
           });
@@ -511,8 +515,8 @@ export async function extractAudioStream(
     const audioTrack = await input.getPrimaryAudioTrack();
     if (!audioTrack) throw new Error('No audio track found in source file');
 
-    const codecStr = (await audioTrack.getCodecParameterString()) || audioTrack.codec || '';
-    const lowercaseCodec = codecStr.toLowerCase();
+    const inputCodecStr = (await audioTrack.getCodecParameterString()) || audioTrack.codec || '';
+    const lowercaseCodec = inputCodecStr.toLowerCase();
 
     let format: any;
     if (lowercaseCodec.startsWith('mp4a') || lowercaseCodec.includes('aac')) {
@@ -527,8 +531,10 @@ export async function extractAudioStream(
     const target = new StreamTarget(writable, { chunked: true });
     const output = new Output({ target, format });
 
-    const decoderConfig = await audioTrack.getDecoderConfig();
-    const packetSource = new EncodedAudioPacketSource(getBunnyAudioCodec(codecStr));
+    // Fallback if missing decoderConfig in audioTrack extraction
+    const decoderConfig = audioTrack.decoderConfig || null;
+
+    const packetSource = new EncodedAudioPacketSource(getBunnyAudioCodec(lowercaseCodec as any));
     output.addAudioTrack(packetSource);
 
     await output.start();

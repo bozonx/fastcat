@@ -38,7 +38,9 @@ export async function buildMixedAudioTrack(
   if (prepared.length === 0) return null;
 
   const audioSource = new AudioSampleSource({
-    codec: getBunnyAudioCodec(options.audioCodec),
+    codec: getBunnyAudioCodec(
+      (options.audioCodec === 'mulaw' ? 'alaw' : options.audioCodec) as any,
+    ) as any,
     bitrate: options.audioBitrate,
   });
 

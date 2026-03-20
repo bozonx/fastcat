@@ -29,6 +29,7 @@ import {
 import { sanitizeFps, getLinkedClipGroupItemIds } from '~/timeline/commands/utils';
 import { formatStopFrameTimecode } from '~/utils/stop-frames';
 import { useTimelinePointerSession } from '~/composables/timeline/useTimelinePointerSession';
+import { selectTimelineDurationUs } from '~/timeline/selectors';
 
 export interface TimelineMovePreview {
   itemId: string;
