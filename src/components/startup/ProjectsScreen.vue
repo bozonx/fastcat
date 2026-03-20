@@ -5,7 +5,7 @@ import UiSearchInput from '~/components/ui/UiSearchInput.vue';
 import UiModal from '~/components/ui/UiModal.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import ProjectThumbnail from '~/components/startup/ProjectThumbnail.vue';
-import EditorSettingsModal from '~/components/EditorSettingsModal.vue';
+import EditorSettingsModal from '~/components/settings/EditorSettingsModal.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();

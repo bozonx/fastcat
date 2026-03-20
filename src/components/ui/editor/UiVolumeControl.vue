@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import UiWheelSlider from '~/components/ui/editor/UiWheelSlider.vue';
 
 const props = withDefaults(

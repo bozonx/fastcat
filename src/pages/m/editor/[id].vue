@@ -10,7 +10,7 @@ import MobileExportForm from '~/components/export/MobileExportForm.vue';
 import MobileMonitorContainer from '~/components/monitor/MobileMonitorContainer.vue';
 import MobileTimeline from '~/components/timeline/MobileTimeline.vue';
 import MobileAudioMixer from '~/components/audio/MobileAudioMixer.vue';
-import ProjectSettingsModal from '~/components/ProjectSettingsModal.vue';
+import ProjectSettingsModal from '~/components/project-settings/ProjectSettingsModal.vue';
 
 definePageMeta({
   layout: 'mobile',

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import Project from '~/components/Project.vue';
+import Project from '~/components/project/Project.vue';
 import PropertiesPanel from '~/components/layout-panels/PropertiesPanel.vue';
 import MonitorContainer from '~/components/monitor/MonitorContainer.vue';
 import MediaPanelWrapper from '~/components/properties/file/MediaPanelWrapper.vue';

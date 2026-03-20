@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import UiModal from '~/components/ui/UiModal.vue';
-import { ref, watch, nextTick } from 'vue';
 
 // We define the specific colors supported by UButton to ensure type safety
 type ButtonColor = 'primary' | 'secondary' | 'neutral' | 'error' | 'warning' | 'success' | 'info';
