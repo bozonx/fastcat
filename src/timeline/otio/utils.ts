@@ -24,9 +24,10 @@ export function toRationalTime(us: number, fps?: number): OtioRationalTime {
   };
 }
 
-export function fromRationalTimeUs(rt: any): number {
-  const value = Number(rt?.value);
-  const rate = Number(rt?.rate);
+export function fromRationalTimeUs(rt: unknown): number {
+  if (!rt || typeof rt !== 'object') return 0;
+  const value = Number((rt as Record<string, unknown>).value);
+  const rate = Number((rt as Record<string, unknown>).rate);
   if (!Number.isFinite(value) || !Number.isFinite(rate) || rate <= 0) return 0;
   if (rate === TIME_RATE_US) return Math.round(value);
   return Math.round((value / rate) * TIME_RATE_US);
@@ -40,10 +41,11 @@ export function toTimeRange(range: TimelineRange, fps?: number): OtioTimeRange {
   };
 }
 
-export function fromTimeRange(tr: any): TimelineRange {
+export function fromTimeRange(tr: unknown): TimelineRange {
+  if (!tr || typeof tr !== 'object') return { startUs: 0, durationUs: 0 };
   return {
-    startUs: fromRationalTimeUs(tr?.start_time),
-    durationUs: fromRationalTimeUs(tr?.duration),
+    startUs: fromRationalTimeUs((tr as Record<string, unknown>).start_time),
+    durationUs: fromRationalTimeUs((tr as Record<string, unknown>).duration),
   };
 }
 
@@ -51,17 +53,18 @@ export function trackKindToOtioKind(kind: TrackKind): 'Video' | 'Audio' {
   return kind === 'audio' ? 'Audio' : 'Video';
 }
 
-export function trackKindFromOtioKind(kind: any): TrackKind {
+export function trackKindFromOtioKind(kind: unknown): TrackKind {
   return kind === 'Audio' ? 'audio' : 'video';
 }
 
-export function assertTimelineTimebase(raw: any): TimelineTimebase {
-  const fps = Number(raw?.fps);
+export function assertTimelineTimebase(raw: unknown): TimelineTimebase {
+  if (!raw || typeof raw !== 'object') return { fps: 25 };
+  const fps = Number((raw as Record<string, unknown>).fps);
   if (!Number.isFinite(fps) || fps <= 0) return { fps: 25 };
   return { fps: Math.min(240, Math.max(1, Math.round(fps * 1000) / 1000)) };
 }
 
-export function coerceId(raw: any, fallback: string): string {
+export function coerceId(raw: unknown, fallback: string): string {
   return typeof raw === 'string' && raw.trim().length > 0 ? raw.trim() : fallback;
 }
 
@@ -76,7 +79,7 @@ export function coerceBlendMode(raw: unknown): TimelineBlendMode | undefined {
     : undefined;
 }
 
-export function coerceName(raw: any, fallback: string): string {
+export function coerceName(raw: unknown, fallback: string): string {
   return typeof raw === 'string' && raw.trim().length > 0 ? raw.trim() : fallback;
 }
 
@@ -85,38 +88,43 @@ export function clampNumber(value: unknown, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
 }
 
-export function coerceTransform(raw: any): ClipTransform | undefined {
+export function coerceTransform(raw: unknown): ClipTransform | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
+  const rawObj = raw as Record<string, unknown>;
 
-  const scaleRaw = (raw as any).scale;
+  const scaleRaw = rawObj.scale;
   const scale =
     scaleRaw && typeof scaleRaw === 'object'
       ? {
-          x: clampNumber((scaleRaw as any).x, -1000, 1000),
-          y: clampNumber((scaleRaw as any).y, -1000, 1000),
+          x: clampNumber((scaleRaw as Record<string, unknown>).x, -1000, 1000),
+          y: clampNumber((scaleRaw as Record<string, unknown>).y, -1000, 1000),
           linked:
-            (scaleRaw as any).linked !== undefined ? Boolean((scaleRaw as any).linked) : undefined,
+            (scaleRaw as Record<string, unknown>).linked !== undefined
+              ? Boolean((scaleRaw as Record<string, unknown>).linked)
+              : undefined,
         }
       : undefined;
 
-  const rotationDegRaw = (raw as any).rotationDeg;
+  const rotationDegRaw = rawObj.rotationDeg;
   const rotationDeg =
     typeof rotationDegRaw === 'number' && Number.isFinite(rotationDegRaw)
       ? Math.max(-36000, Math.min(36000, rotationDegRaw))
       : undefined;
 
-  const positionRaw = (raw as any).position;
+  const positionRaw = rawObj.position;
   const position =
     positionRaw && typeof positionRaw === 'object'
       ? {
-          x: clampNumber((positionRaw as any).x, -1_000_000, 1_000_000),
-          y: clampNumber((positionRaw as any).y, -1_000_000, 1_000_000),
+          x: clampNumber((positionRaw as Record<string, unknown>).x, -1_000_000, 1_000_000),
+          y: clampNumber((positionRaw as Record<string, unknown>).y, -1_000_000, 1_000_000),
         }
       : undefined;
 
-  const anchorRaw = (raw as any).anchor;
+  const anchorRaw = rawObj.anchor;
   const preset =
-    anchorRaw && typeof anchorRaw === 'object' ? String((anchorRaw as any).preset ?? '') : '';
+    anchorRaw && typeof anchorRaw === 'object'
+      ? String((anchorRaw as Record<string, unknown>).preset ?? '')
+      : '';
   const safePreset =
     preset === 'center' ||
     preset === 'topLeft' ||
@@ -130,8 +138,14 @@ export function coerceTransform(raw: any): ClipTransform | undefined {
     safePreset !== undefined
       ? {
           preset: safePreset,
-          x: safePreset === 'custom' ? clampNumber((anchorRaw as any).x, -10, 10) : undefined,
-          y: safePreset === 'custom' ? clampNumber((anchorRaw as any).y, -10, 10) : undefined,
+          x:
+            safePreset === 'custom'
+              ? clampNumber((anchorRaw as Record<string, unknown>).x, -10, 10)
+              : undefined,
+          y:
+            safePreset === 'custom'
+              ? clampNumber((anchorRaw as Record<string, unknown>).y, -10, 10)
+              : undefined,
         }
       : undefined;
 
@@ -178,10 +192,14 @@ export function resolveStableItemId(input: {
   prefix: 'clip' | 'gap';
   trackId: string;
   fallbackFingerprint: string;
-  metadata: any;
+  metadata: unknown;
   occupiedIds: Set<string>;
 }): string {
-  const metadataId = coerceId(input.metadata?.id, '');
+  const metadataObj =
+    input.metadata && typeof input.metadata === 'object'
+      ? (input.metadata as Record<string, unknown>)
+      : undefined;
+  const metadataId = coerceId(metadataObj?.id, '');
   if (metadataId && !input.occupiedIds.has(metadataId)) {
     input.occupiedIds.add(metadataId);
     return metadataId;
@@ -195,11 +213,11 @@ export function resolveStableItemId(input: {
   });
 }
 
-export function safeFastCatMetadata(raw: any): any {
+export function safeFastCatMetadata(raw: unknown): Record<string, unknown> {
   if (!raw || typeof raw !== 'object') return {};
-  const fastcat = (raw as any).fastcat;
+  const fastcat = (raw as Record<string, unknown>).fastcat;
   if (!fastcat || typeof fastcat !== 'object') return {};
-  return fastcat;
+  return fastcat as Record<string, unknown>;
 }
 
 export function isOtioPath(value: unknown): value is string {

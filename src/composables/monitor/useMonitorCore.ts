@@ -6,6 +6,7 @@ import { getPreviewWorkerClient, setPreviewHostApi } from '~/utils/video-editor/
 
 import { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import { clampTimeUs } from '~/utils/monitor-time';
+import type { WorkerVideoPayloadItem } from '~/composables/timeline/export/types';
 
 import type { WorkerTimelineClip } from './types';
 import type { UseMonitorCoreOptions } from './useMonitorCore.types';
@@ -175,7 +176,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   const scheduleLayoutUpdate = (
     layoutClips: WorkerTimelineClip[],
     audioClips: WorkerTimelineClip[],
-    workerTimelinePayload?: Ref<any[]>,
+    workerTimelinePayload?: Ref<WorkerVideoPayloadItem[]>,
   ) => {
     queues.scheduleLayoutUpdate({
       layoutClips,

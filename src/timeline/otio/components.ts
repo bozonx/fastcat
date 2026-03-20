@@ -34,10 +34,11 @@ export function serializeEffects(effects: ClipEffect[] | undefined): OtioEffect[
   }));
 }
 
-export function parseEffects(raw: any[]): ClipEffect[] {
+export function parseEffects(raw: unknown[]): ClipEffect[] {
   const result: ClipEffect[] = [];
-  for (const e of raw) {
-    if (!e || typeof e !== 'object') continue;
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const e = item as Record<string, unknown>;
     if (e.OTIO_SCHEMA !== 'Effect.1') continue;
     const fastcatMeta = safeFastCatMetadata(e.metadata);
     const id = coerceId(fastcatMeta?.id ?? e.name, '');
@@ -54,7 +55,7 @@ export function parseEffects(raw: any[]): ClipEffect[] {
       id,
       type,
       enabled: e.enabled !== false,
-      target: fastcatMeta?.target,
+      target: fastcatMeta?.target as import('../../effects/core/registry').EffectTarget | undefined,
       ...params,
     });
   }
@@ -107,11 +108,12 @@ export function serializeMarker(marker: TimelineMarker, fps?: number): OtioMarke
   };
 }
 
-export function parseOtioMarkers(raw: any): TimelineMarker[] {
+export function parseOtioMarkers(raw: unknown): TimelineMarker[] {
   if (!Array.isArray(raw)) return [];
   const result: TimelineMarker[] = [];
-  for (const m of raw) {
-    if (!m || typeof m !== 'object') continue;
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const m = item as Record<string, unknown>;
     if (m.OTIO_SCHEMA !== 'Marker.2' && m.OTIO_SCHEMA !== 'Marker.1') continue;
     const fastcatMeta = safeFastCatMetadata(m.metadata);
     const range = fromTimeRange(m.marked_range);
@@ -179,24 +181,28 @@ export function buildOtioTransition(
   };
 }
 
-export function parseOtioTransition(t: any): ClipTransition | null {
-  if (!t || t.OTIO_SCHEMA !== 'Transition.1') return null;
+export function parseOtioTransition(tRaw: unknown): ClipTransition | null {
+  if (!tRaw || typeof tRaw !== 'object') return null;
+  const t = tRaw as Record<string, unknown>;
+  if (t.OTIO_SCHEMA !== 'Transition.1') return null;
   const inUs = fromRationalTimeUs(t.in_offset);
   const outUs = fromRationalTimeUs(t.out_offset);
   const durationUs = inUs + outUs;
   if (durationUs <= 0) return null;
   const fastcatMeta = safeFastCatMetadata(t.metadata);
-  const type = fastcatMeta?.type ?? transitionTypeFromOtio(t.transition_type ?? '');
+  const transitionTypeStr = typeof t.transition_type === 'string' ? t.transition_type : '';
+  const typeStr = typeof fastcatMeta?.type === 'string' ? fastcatMeta.type : undefined;
+  const type = typeStr ?? transitionTypeFromOtio(transitionTypeStr);
   if (!type) return null;
   return {
     type,
-    durationUs: fastcatMeta?.durationUs ?? durationUs,
+    durationUs: typeof fastcatMeta?.durationUs === 'number' ? fastcatMeta.durationUs : durationUs,
     mode: normalizeTransitionMode(fastcatMeta?.mode),
     curve: normalizeTransitionCurve(fastcatMeta?.curve),
     params:
       fastcatMeta?.params && typeof fastcatMeta.params === 'object'
         ? (fastcatMeta.params as Record<string, unknown>)
-        : Object.keys(t.parameters ?? {}).length > 0
+        : t.parameters && typeof t.parameters === 'object' && Object.keys(t.parameters).length > 0
           ? (t.parameters as Record<string, unknown>)
           : undefined,
     isOverridden:
@@ -204,8 +210,10 @@ export function parseOtioTransition(t: any): ClipTransition | null {
   };
 }
 
-export function parseFastCatTransition(raw: any): ClipTransition | undefined {
-  if (!raw || typeof raw.type !== 'string' || typeof raw.durationUs !== 'number') return undefined;
+export function parseFastCatTransition(rawRaw: unknown): ClipTransition | undefined {
+  if (!rawRaw || typeof rawRaw !== 'object') return undefined;
+  const raw = rawRaw as Record<string, unknown>;
+  if (typeof raw.type !== 'string' || typeof raw.durationUs !== 'number') return undefined;
   return {
     type: raw.type,
     durationUs: Math.max(0, Math.round(raw.durationUs)),

@@ -96,17 +96,17 @@ export interface ClipTransition {
   params?: Record<string, unknown>;
 }
 
-export type ClipEffect<TParams = Record<string, any>> = BaseClipEffect<TParams>;
+export type ClipEffect<TParams = Record<string, unknown>> = BaseClipEffect<TParams>;
 
-export type VideoClipEffect<TParams = Record<string, any>> = ClipEffect<TParams> & {
+export type VideoClipEffect<TParams = Record<string, unknown>> = ClipEffect<TParams> & {
   target?: 'video';
 };
 
-export type AudioClipEffect<TParams = Record<string, any>> = ClipEffect<TParams> & {
+export type AudioClipEffect<TParams = Record<string, unknown>> = ClipEffect<TParams> & {
   target: 'audio';
 };
 
-export type TimelineEffect<TParams = Record<string, any>> = ClipEffect<TParams> & {
+export type TimelineEffect<TParams = Record<string, unknown>> = ClipEffect<TParams> & {
   target?: EffectTarget;
 };
 

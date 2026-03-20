@@ -192,7 +192,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
     const internalRaw = copyRaw || moveRaw;
     if (internalRaw) {
-      const shouldCopy = !!copyRaw || e.shiftKey || currentDragOperation.value === 'copy';
+      const shouldCopy = !!copyRaw || e.shiftKey || currentDragOperation === 'copy';
       let parsed: unknown = null;
       try {
         parsed = JSON.parse(internalRaw);
@@ -301,7 +301,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
     const internalRaw = copyRaw || moveRaw;
     if (internalRaw) {
-      const shouldCopy = !!copyRaw || e.shiftKey || currentDragOperation.value === 'copy';
+      const shouldCopy = !!copyRaw || e.shiftKey || currentDragOperation === 'copy';
       let parsed: unknown = null;
       try {
         parsed = JSON.parse(internalRaw);

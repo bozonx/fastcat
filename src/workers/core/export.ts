@@ -9,8 +9,11 @@ import { initEffects } from '../../effects';
 import { initTransitions } from '../../transitions';
 import { getMediaTypeFromFilename, getMimeTypeFromFilename } from '../../utils/media-types';
 import type { ExportOptions } from '~/composables/timeline/export/types';
+import type { MediaMetadata } from '~/stores/media.store';
 
-export async function extractMetadata(fileOrHandle: File | FileSystemFileHandle) {
+export async function extractMetadata(
+  fileOrHandle: File | FileSystemFileHandle,
+): Promise<MediaMetadata> {
   const file =
     fileOrHandle instanceof File
       ? fileOrHandle

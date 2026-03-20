@@ -4,22 +4,22 @@ import type { TimelineCommand } from '~/timeline/commands';
 export interface TimelineMarkerServiceDeps {
   getDoc: () => TimelineDocument | null;
   getCurrentTime: () => number;
-  applyTimeline: (cmd: TimelineCommand, options?: any) => void;
+  applyTimeline: (cmd: TimelineCommand, options?: Record<string, unknown>) => void;
   defaultZoneDurationUs: number;
 }
 
 export interface TimelineMarkerService {
   getMarkers: () => TimelineMarker[];
-  addMarkerAtPlayhead: (options?: any) => void;
-  addZoneMarkerAtPlayhead: (options?: any) => void;
+  addMarkerAtPlayhead: (options?: Record<string, unknown>) => void;
+  addZoneMarkerAtPlayhead: (options?: Record<string, unknown>) => void;
   updateMarker: (
     markerId: string,
     patch: { timeUs?: number; durationUs?: number | null; text?: string; color?: string },
-    options?: any,
+    options?: Record<string, unknown>,
   ) => void;
-  removeMarker: (markerId: string, options?: any) => void;
-  convertMarkerToZone: (markerId: string, options?: any) => void;
-  convertZoneToMarker: (markerId: string, options?: any) => void;
+  removeMarker: (markerId: string, options?: Record<string, unknown>) => void;
+  convertMarkerToZone: (markerId: string, options?: Record<string, unknown>) => void;
+  convertZoneToMarker: (markerId: string, options?: Record<string, unknown>) => void;
 }
 
 function generateMarkerId(): string {
@@ -34,7 +34,7 @@ export function createTimelineMarkerService(
     return Array.isArray(raw) ? (raw as TimelineMarker[]) : [];
   }
 
-  function addMarkerAtPlayhead(options?: any) {
+  function addMarkerAtPlayhead(options?: Record<string, unknown>) {
     deps.applyTimeline(
       {
         type: 'add_marker',
@@ -46,7 +46,7 @@ export function createTimelineMarkerService(
     );
   }
 
-  function addZoneMarkerAtPlayhead(options?: any) {
+  function addZoneMarkerAtPlayhead(options?: Record<string, unknown>) {
     deps.applyTimeline(
       {
         type: 'add_marker',
@@ -62,7 +62,7 @@ export function createTimelineMarkerService(
   function updateMarker(
     markerId: string,
     patch: { timeUs?: number; durationUs?: number | null; text?: string; color?: string },
-    options?: any,
+    options?: Record<string, unknown>,
   ) {
     deps.applyTimeline(
       {
@@ -77,11 +77,11 @@ export function createTimelineMarkerService(
     );
   }
 
-  function removeMarker(markerId: string, options?: any) {
+  function removeMarker(markerId: string, options?: Record<string, unknown>) {
     deps.applyTimeline({ type: 'remove_marker', id: markerId }, options);
   }
 
-  function convertMarkerToZone(markerId: string, options?: any) {
+  function convertMarkerToZone(markerId: string, options?: Record<string, unknown>) {
     deps.applyTimeline(
       {
         type: 'update_marker',
@@ -92,7 +92,7 @@ export function createTimelineMarkerService(
     );
   }
 
-  function convertZoneToMarker(markerId: string, options?: any) {
+  function convertZoneToMarker(markerId: string, options?: Record<string, unknown>) {
     deps.applyTimeline(
       {
         type: 'update_marker',

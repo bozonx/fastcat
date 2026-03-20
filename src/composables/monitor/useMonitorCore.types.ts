@@ -2,6 +2,7 @@ import type { Ref } from 'vue';
 import type { useProjectStore } from '~/stores/project.store';
 import type { FastCatProjectSettings } from '~/utils/project-settings';
 import type { TimelineDocument } from '~/timeline/types';
+import type { WorkerVideoPayloadItem } from '~/composables/timeline/export/types';
 import type { WorkerTimelineClip } from './types';
 
 export interface MonitorTimelineState {
@@ -10,7 +11,7 @@ export interface MonitorTimelineState {
   rawWorkerAudioClips?: Ref<WorkerTimelineClip[]>;
   workerTimelineClips: Ref<WorkerTimelineClip[]>;
   workerAudioClips: Ref<WorkerTimelineClip[]>;
-  workerTimelinePayload: Ref<any[]>;
+  workerTimelinePayload: Ref<WorkerVideoPayloadItem[]>;
   safeDurationUs: Ref<number>;
   clipSourceSignature: Ref<number>;
   clipLayoutSignature: Ref<number>;
