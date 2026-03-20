@@ -120,7 +120,7 @@ onBeforeUnmount(() => {
     @contextmenu.stop="emit('select')"
   >
     <div
-      class="absolute right-0 top-0 bottom-0 w-1 transition-colors z-10"
+      class="absolute left-0 top-0 bottom-0 w-1 transition-colors z-10"
       :class="[
         isSelected
           ? 'bg-(--selection-accent-500)'
