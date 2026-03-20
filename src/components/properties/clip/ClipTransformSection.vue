@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ClipTransform } from '~/timeline/types';
-import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiWheelNumberInput from '~/components/ui/editor/UiWheelNumberInput.vue';
 import { useClipTransform } from '~/composables/properties/useClipTransform';
 import { computed, type Ref } from 'vue';
 

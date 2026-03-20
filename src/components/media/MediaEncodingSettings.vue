@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, watch, ref } from 'vue';
-import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiWheelNumberInput from '~/components/ui/editor/UiWheelNumberInput.vue';
 import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
 import type { VideoCodecOptionResolved } from '~/utils/webcodecs';
 

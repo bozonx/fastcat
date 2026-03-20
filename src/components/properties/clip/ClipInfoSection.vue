@@ -2,7 +2,7 @@
 import type { TimelineClipItem } from '~/timeline/types';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
-import TimecodeInput from '~/components/common/TimecodeInput.vue';
+import UiTimecode from '~/components/ui/editor/UiTimecode.vue';
 import PropertyTimecode from '~/components/properties/PropertyTimecode.vue';
 import MediaMetadataList from '~/components/properties/MediaMetadataList.vue';
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
-import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiWheelNumberInput from '~/components/ui/editor/UiWheelNumberInput.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 

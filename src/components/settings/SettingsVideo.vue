@@ -8,7 +8,7 @@ import {
   type VideoDiagnosticsStatus,
 } from '~/utils/settings/videoDiagnostics';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
-import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiWheelNumberInput from '~/components/ui/editor/UiWheelNumberInput.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();

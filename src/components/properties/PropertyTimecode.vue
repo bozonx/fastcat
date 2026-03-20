@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import PropertyField from './PropertyField.vue';
-import TimecodeInput from '~/components/common/TimecodeInput.vue';
+import UiTimecode from '~/components/ui/editor/UiTimecode.vue';
 
 const props = defineProps<{
   label: string;
@@ -14,7 +14,7 @@ const emit = defineEmits<{
 
 <template>
   <PropertyField :label="props.label" class="mt-2">
-    <TimecodeInput
+    <UiTimecode
       :model-value="props.modelValue"
       @update:model-value="emit('update:modelValue', $event)"
     />

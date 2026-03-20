@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
-import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiWheelNumberInput from '~/components/ui/editor/UiWheelNumberInput.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();

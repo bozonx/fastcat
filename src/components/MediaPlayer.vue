@@ -4,7 +4,7 @@ import { useImagePanZoom } from '~/composables/preview/useImagePanZoom';
 import { useMediaPlayerVolume } from '~/composables/preview/useMediaPlayerVolume';
 import { useMediaPlayerPlayback } from '~/composables/preview/useMediaPlayerPlayback';
 import { formatTime } from '~/utils/time';
-import VolumeControl from '~/components/common/VolumeControl.vue';
+import UiVolumeControl from '~/components/ui/editor/UiVolumeControl.vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 
@@ -331,7 +331,7 @@ onUnmounted(() => {
         </div>
 
         <div class="flex items-center gap-2">
-          <VolumeControl
+          <UiVolumeControl
             v-model:volume="volume"
             v-model:is-muted="isMuted"
             compact

@@ -1,8 +1,6 @@
 <script setup lang="ts">
 /**
- * Unified Tabs Component
- *
- * Provides a consistent look for tab-style navigation.
+ * Unified Tabs Component (Wrapper over UTabs)
  */
 
 interface TabOption {
@@ -15,7 +13,6 @@ interface TabOption {
 const props = defineProps<{
   modelValue: string;
   options: TabOption[];
-  /** Whether to show a bottom border on the container */
   border?: boolean;
 }>();
 
@@ -23,42 +20,56 @@ const emit = defineEmits<{
   'update:modelValue': [value: string];
 }>();
 
-const { t } = useI18n();
+import { computed } from 'vue';
 
-function select(value: string) {
-  emit('update:modelValue', value);
-}
+const items = computed(() =>
+  props.options.map((opt) => ({
+    ...opt,
+    slot: opt.value,
+  }))
+);
+
+const selectedIndex = computed({
+  get: () => {
+    const idx = props.options.findIndex((opt) => opt.value === props.modelValue);
+    return idx === -1 ? 0 : idx;
+  },
+  set: (idx: number) => {
+    if (props.options[idx]) {
+      emit('update:modelValue', props.options[idx].value);
+    }
+  },
+});
 </script>
 
 <template>
-  <div
-    class="flex items-center gap-4 px-3 py-2 shrink-0 select-none overflow-x-auto no-scrollbar"
-    :class="{ 'border-b border-ui-border': border }"
-  >
-    <button
-      v-for="option in options"
-      :key="option.value"
-      type="button"
-      class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider transition-colors outline-none cursor-pointer whitespace-nowrap"
-      :class="
-        modelValue === option.value ? 'text-primary-400' : 'text-ui-text-muted hover:text-ui-text'
-      "
-      @click="select(option.value)"
+  <div :class="{ 'border-b border-ui-border': border }">
+    <UTabs
+      v-model="selectedIndex"
+      :items="items"
+      :ui="{
+        list: {
+          base: 'px-3 py-2 gap-4 bg-transparent',
+          padding: 'p-0',
+          rounded: 'rounded-none',
+          tab: {
+            base: 'text-xs font-semibold uppercase tracking-wider transition-colors outline-none cursor-pointer whitespace-nowrap',
+            active: 'text-primary-400 bg-transparent',
+            inactive: 'text-ui-text-muted hover:text-ui-text bg-transparent',
+            padding: 'px-0 py-0',
+          },
+        },
+      }"
     >
-      <UIcon v-if="option.icon" :name="option.icon" class="w-4 h-4" />
-      <span>{{ option.label }}</span>
-      <span v-if="option.count !== undefined" class="ml-1 opacity-50 font-mono text-[10px]">
-        ({{ option.count }})
-      </span>
-    </button>
+      <template #default="{ item, index, selected }">
+        <div class="flex items-center gap-2">
+          <UIcon v-if="item.icon" :name="item.icon" class="w-4 h-4" />
+          <span>{{ item.label }}</span>
+          <span v-if="item.count !== undefined" class="ml-1 opacity-50 font-mono text-[10px]">
+            ({{ item.count }})
+          </span>
+        </div>
+      </template>
+    </UTabs>
   </div>
 </template>
-
-<style scoped>
-.no-scrollbar {
-  scrollbar-width: none;
-}
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-</style>

@@ -8,11 +8,11 @@ import type {
   VideoClipEffect,
   AudioClipEffect,
 } from '~/timeline/types';
-import EffectsEditor from '~/components/common/EffectsEditor.vue';
-import AudioEffectsEditor from '~/components/common/AudioEffectsEditor.vue';
+import EffectsEditor from '~/components/effects/EffectsEditor.vue';
+import AudioEffectsEditor from '~/components/effects/AudioEffectsEditor.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
-import PropertySlider from '~/components/properties/PropertySlider.vue';
+import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import GenerateCaptionsModal from '~/components/properties/GenerateCaptionsModal.vue';
 
@@ -208,7 +208,7 @@ const extraActions = computed(() => {
         />
       </div>
 
-      <PropertySlider
+      <UiSliderInput
         :label="t('fastcat.track.opacity', 'Opacity')"
         :formatted-value="`${Math.round(trackOpacity * 100)}%`"
         :model-value="trackOpacity"
@@ -230,7 +230,7 @@ const extraActions = computed(() => {
         {{ t('fastcat.track.audio.title', 'Track audio') }}
       </div>
 
-      <PropertySlider
+      <UiSliderInput
         :label="t('fastcat.track.audio.volume', 'Volume')"
         :formatted-value="`${trackAudioGain.toFixed(3)}x`"
         :model-value="trackAudioGain"
@@ -242,7 +242,7 @@ const extraActions = computed(() => {
         @update:model-value="(v: number) => (trackAudioGain = v)"
       />
 
-      <PropertySlider
+      <UiSliderInput
         :label="t('fastcat.track.audio.balance', 'Balance')"
         :formatted-value="trackAudioBalance.toFixed(2)"
         :model-value="trackAudioBalance"

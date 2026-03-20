@@ -2,11 +2,11 @@
 import { computed, ref, nextTick, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import type { TimelineTrack } from '~/timeline/types';
-import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
+import UiWheelSlider from '~/components/ui/editor/UiWheelSlider.vue';
 import DbSlider from './DbSlider.vue';
 import { linearToDb, dbToLinear } from '~/utils/audio';
 import { getAudioEffectManifest } from '~/effects';
-import SelectEffectModal from '~/components/common/SelectEffectModal.vue';
+import SelectEffectModal from '~/components/effects/SelectEffectModal.vue';
 import TrackAudioEffectsModal from './TrackAudioEffectsModal.vue';
 
 const props = defineProps<{

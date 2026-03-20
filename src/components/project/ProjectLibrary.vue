@@ -4,7 +4,7 @@ import { VueDraggable } from 'vue-draggable-plus';
 import { useSelectionStore } from '~/stores/selection.store';
 import { usePresetsStore } from '~/stores/presets.store';
 import type { ShapeType, HudType } from '~/timeline/types';
-import CollapsibleEffectGroup from '~/components/common/CollapsibleEffectGroup.vue';
+import CollapsibleEffectGroup from '~/components/effects/CollapsibleEffectGroup.vue';
 
 const { t } = useI18n();
 const selectionStore = useSelectionStore();

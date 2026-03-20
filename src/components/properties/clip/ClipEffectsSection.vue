@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { TimelineBlendMode, AudioClipEffect, VideoClipEffect } from '~/timeline/types';
-import AudioEffectsEditor from '~/components/common/AudioEffectsEditor.vue';
-import PropertySlider from '~/components/properties/PropertySlider.vue';
-import EffectsEditor from '~/components/common/EffectsEditor.vue';
+import AudioEffectsEditor from '~/components/effects/AudioEffectsEditor.vue';
+import UiSliderInput from '~/components/ui/UiSliderInput.vue';
+import EffectsEditor from '~/components/effects/EffectsEditor.vue';
 
 const props = defineProps<{
   clipType: string;
@@ -43,7 +43,7 @@ const { t } = useI18n();
       />
     </div>
 
-    <PropertySlider
+    <UiSliderInput
       :label="t('fastcat.clip.opacity', 'Opacity')"
       :formatted-value="`${Math.round(props.opacity * 100)}%`"
       :model-value="props.opacity"

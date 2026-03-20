@@ -11,8 +11,8 @@ import { getAllTransitionManifests, getTransitionManifest } from '~/transitions'
 import { useSelectionStore } from '~/stores/selection.store';
 import { usePresetsStore } from '~/stores/presets.store';
 
-import CollapsibleEffectGroup from '~/components/common/CollapsibleEffectGroup.vue';
-import EffectCard from '~/components/common/EffectCard.vue';
+import CollapsibleEffectGroup from '~/components/effects/CollapsibleEffectGroup.vue';
+import EffectCard from '~/components/effects/EffectCard.vue';
 
 const { t } = useI18n();
 const selectionStore = useSelectionStore();

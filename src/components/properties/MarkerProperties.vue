@@ -4,7 +4,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import type { TimelineMarker } from '~/timeline/types';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
-import TimecodeInput from '~/components/common/TimecodeInput.vue';
+import UiTimecode from '~/components/ui/editor/UiTimecode.vue';
 
 const props = defineProps<{
   markerId: string;
@@ -178,12 +178,12 @@ const extraActions = computed(() => {
         <span class="text-xs text-ui-text-muted">{{
           isZone ? t('common.start', 'Start Time') : t('common.position', 'Position')
         }}</span>
-        <TimecodeInput :model-value="marker.timeUs" @update:model-value="handleUpdateStartTime" />
+        <UiTimecode :model-value="marker.timeUs" @update:model-value="handleUpdateStartTime" />
       </div>
 
       <div v-if="isZone" class="flex flex-col gap-0.5 mt-2">
         <span class="text-xs text-ui-text-muted">{{ t('common.end', 'End Time') }}</span>
-        <TimecodeInput
+        <UiTimecode
           :model-value="marker.timeUs + (marker.durationUs || 0)"
           @update:model-value="handleUpdateEndTime"
         />

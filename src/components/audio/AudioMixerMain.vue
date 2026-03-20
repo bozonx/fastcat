@@ -4,7 +4,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import DbSlider from './DbSlider.vue';
 import { linearToDb, dbToLinear } from '~/utils/audio';
 import { getAudioEffectManifest } from '~/effects';
-import SelectEffectModal from '~/components/common/SelectEffectModal.vue';
+import SelectEffectModal from '~/components/effects/SelectEffectModal.vue';
 import MasterAudioEffectsModal from './MasterAudioEffectsModal.vue';
 
 defineProps<{
