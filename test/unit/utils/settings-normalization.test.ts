@@ -35,11 +35,11 @@ describe('settings normalization', () => {
     expect(
       normalizeUserSettings({ optimization: { proxyMaxPixels: 50_000 } }).optimization
         .proxyMaxPixels,
-    ).toBe(100_000); // min limit
+    ).toBe(1_500_000); // min limit
     expect(
       normalizeUserSettings({ optimization: { proxyMaxPixels: 20_000_000 } }).optimization
         .proxyMaxPixels,
-    ).toBe(10_000_000); // max limit
+    ).toBe(1_500_000); // max limit
   });
 
   it('normalizes locale', () => {
@@ -56,7 +56,7 @@ describe('settings normalization', () => {
     ).toBe(85);
     expect(
       normalizeUserSettings({ stopFrames: { qualityPercent: 150 } }).stopFrames.qualityPercent,
-    ).toBe(100);
+    ).toBe(85);
     expect(
       normalizeUserSettings({ stopFrames: { qualityPercent: 0 } }).stopFrames.qualityPercent,
     ).toBe(85);
@@ -66,7 +66,7 @@ describe('settings normalization', () => {
     const normalized = normalizeUserSettings({ openLastProjectOnStart: true });
     expect(normalized.locale).toBe('en-US');
     expect(normalized.projectPresets.items[0]?.width).toBe(1920);
-    expect(normalized.exportPresets.items[0]?.format).toBe('mp4');
+    expect(normalized.exportPresets.items[0]?.format).toBe('mkv');
     expect(normalized.hotkeys.bindings).toEqual({});
     expect(DEFAULT_HOTKEYS.bindings['general.deselect']).toEqual(['Escape']);
     expect(DEFAULT_HOTKEYS.bindings['general.copy']).toHaveLength(1);
@@ -147,7 +147,7 @@ describe('settings normalization', () => {
     expect(normalized.integrations.manualSttApi.overrideFastCat).toBe(false);
 
     expect(normalized.integrations.stt.provider).toBe('assemblyai');
-    expect(normalized.integrations.stt.models).toEqual(['universal-3-pro', 'universal-2']);
+    expect(normalized.integrations.stt.models).toEqual(['universal-3-pro', '', 'universal-2']);
     expect(normalized.integrations.stt.restorePunctuation).toBe(false);
     expect(normalized.integrations.stt.formatText).toBe(true);
     expect(normalized.integrations.stt.includeWords).toBe(false);
@@ -185,26 +185,26 @@ describe('settings normalization', () => {
       },
     });
 
-    expect(normalized.mouse.ruler.wheel).toBe('zoom');
+    expect(normalized.mouse.ruler.wheel).toBe('seek_frame');
     expect(normalized.mouse.ruler.wheelShift).toBe('seek_second');
-    expect(normalized.mouse.ruler.wheelSecondary).toBe('zoom_horizontal');
-    expect(normalized.mouse.ruler.wheelSecondaryShift).toBe('seek_frame');
-    expect(normalized.mouse.ruler.middleClick).toBe('none');
+    expect(normalized.mouse.ruler.wheelSecondary).toBe('scroll_horizontal');
+    expect(normalized.mouse.ruler.wheelSecondaryShift).toBe('zoom_horizontal');
+    expect(normalized.mouse.ruler.middleClick).toBe('reset_zoom');
     expect(normalized.mouse.ruler.doubleClick).toBe('add_marker');
 
-    expect(normalized.mouse.timeline.wheel).toBe('zoom_vertical');
+    expect(normalized.mouse.timeline.wheel).toBe('zoom');
     expect(normalized.mouse.timeline.wheelShift).toBe('scroll_horizontal');
     expect(normalized.mouse.timeline.wheelSecondary).toBe('scroll_horizontal');
-    expect(normalized.mouse.timeline.wheelSecondaryShift).toBe('none');
-    expect(normalized.mouse.timeline.middleClick).toBe('pan');
+    expect(normalized.mouse.timeline.wheelSecondaryShift).toBe('zoom');
+    expect(normalized.mouse.timeline.middleClick).toBe('reset_zoom');
 
-    expect(normalized.mouse.trackHeaders.wheel).toBe('seek_frame');
+    expect(normalized.mouse.trackHeaders.wheel).toBe('scroll_vertical');
     expect(normalized.mouse.trackHeaders.wheelShift).toBe('zoom_vertical');
     expect(normalized.mouse.trackHeaders.wheelSecondary).toBe('resize_track');
-    expect(normalized.mouse.trackHeaders.wheelSecondaryShift).toBe('seek_second');
+    expect(normalized.mouse.trackHeaders.wheelSecondaryShift).toBe('none');
 
-    expect(normalized.mouse.monitor.wheel).toBe('scroll_vertical');
+    expect(normalized.mouse.monitor.wheel).toBe('zoom');
     expect(normalized.mouse.monitor.wheelShift).toBe('scroll_horizontal');
-    expect(normalized.mouse.monitor.middleClick).toBe('none');
+    expect(normalized.mouse.monitor.middleClick).toBe('reset_zoom');
   });
 });
