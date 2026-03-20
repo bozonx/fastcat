@@ -6,11 +6,11 @@ import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveExportPreset, resolveProjectPreset } from '~/utils/settings';
 
-import ResolutionSettings from './project-settings/ResolutionSettings.vue';
-import ExportSettings from './project-settings/ExportSettings.vue';
-import AdvancedSettings from './project-settings/AdvancedSettings.vue';
-import MetadataSettings from './project-settings/MetadataSettings.vue';
-import StorageSettings from './project-settings/StorageSettings.vue';
+import ResolutionSettings from './ResolutionSettings.vue';
+import ExportSettings from './ExportSettings.vue';
+import AdvancedSettings from './AdvancedSettings.vue';
+import MetadataSettings from './MetadataSettings.vue';
+import StorageSettings from './StorageSettings.vue';
 
 const props = defineProps<{
   open: boolean;

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 
 interface UiWheelSliderProps {
   modelValue: number;

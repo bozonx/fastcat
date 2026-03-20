@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
+import PropertySection from '~/components/properties/PropertySection.vue';
 import { getAllTransitionManifests } from '~/transitions';
 
 const props = defineProps<{

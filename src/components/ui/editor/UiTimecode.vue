@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';

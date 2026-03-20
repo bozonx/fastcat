@@ -20,7 +20,6 @@ const emit = defineEmits<{
   'update:modelValue': [value: string];
 }>();
 
-import { computed } from 'vue';
 
 const items = computed(() =>
   props.options.map((opt) => ({

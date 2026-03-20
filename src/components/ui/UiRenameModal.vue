@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue';
 
 import UiModal from '~/components/ui/UiModal.vue';
 
