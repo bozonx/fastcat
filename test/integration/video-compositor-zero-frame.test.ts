@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   getVideoSampleWithZeroFallback,
   ResourceManager,
-} from '../../src/utils/video-editor/compositor/ResourceManager';
+} from '~/utils/video-editor/compositor/ResourceManager';
 
 describe('getVideoSampleWithZeroFallback', () => {
   afterEach(() => {

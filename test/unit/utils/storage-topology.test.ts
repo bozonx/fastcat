@@ -5,7 +5,7 @@ import {
   getResolvedProjectTempSegments,
   getResolvedProjectWaveformsSegments,
   resolveWorkspaceLocalStorageTopology,
-} from '../../../src/utils/storage-topology';
+} from '~/utils/storage-topology';
 
 describe('storage topology', () => {
   it('resolves workspace-local topology with defaults', () => {

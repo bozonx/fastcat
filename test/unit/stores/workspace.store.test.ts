@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { nextTick } from 'vue';
-import { useWorkspaceStore } from '../../../src/stores/workspace.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 
 describe('WorkspaceStore', () => {
   beforeEach(() => {

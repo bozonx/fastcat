@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   computeMediaUsageByTimelineDocs,
   getTimelinesUsingMediaPath,
-} from '../../../src/utils/timeline-media-usage';
+} from '~/utils/timeline-media-usage';
 
 describe('timeline-media-usage', () => {
   it('collects unique media paths per timeline and returns sorted timeline refs', () => {

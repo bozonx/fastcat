@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 
-import { clampTimeUs, normalizeTimeUs, sanitizeFps } from '../../src/utils/monitor-time';
+import { clampTimeUs, normalizeTimeUs, sanitizeFps } from '~/utils/monitor-time';
 
 describe('monitor-time utils', () => {
   it('normalizeTimeUs returns rounded positive integer and guards invalid values', () => {

@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import {
   interleavedToPlanar,
   normalizeSampleChannels,
-} from '../../../../src/workers/core/AudioMixer';
+} from '../~/workers/core/AudioMixer';
 
 describe('AudioMixer interleavedToPlanar', () => {
   it('converts stereo interleaved to planar', () => {

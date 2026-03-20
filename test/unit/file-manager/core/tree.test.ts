@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { FsEntry } from '../../../../src/types/fs';
-import { findEntryByPath, mergeEntries } from '../../../../src/file-manager/core/tree';
+import type { FsEntry } from '../~/types/fs';
+import { findEntryByPath, mergeEntries } from '../~/file-manager/core/tree';
 
 function createDir(params: {
   name: string;

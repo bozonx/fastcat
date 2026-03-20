@@ -10,7 +10,6 @@ interface Option {
 
 const props = withDefaults(
   defineProps<{
-    modelValue: string | number | boolean | any;
     options: Option[];
     size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
     color?: 'neutral' | 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info';
@@ -35,19 +34,20 @@ const props = withDefaults(
   },
 );
 
+const modelValue = defineModel<any>({ required: true });
+
 const emit = defineEmits<{
-  'update:modelValue': [value: any];
   change: [value: any];
 }>();
 
 function select(option: Option) {
   if (props.disabled || option.disabled) return;
-  emit('update:modelValue', option.value);
+  modelValue.value = option.value;
   emit('change', option.value);
 }
 
 function isSelected(value: any) {
-  return props.modelValue === value;
+  return modelValue.value === value;
 }
 </script>
 

@@ -2,41 +2,28 @@
 import UiModal from '~/components/ui/UiModal.vue';
 
 const props = defineProps<{
-  open: boolean;
   title?: string;
   initialName?: string;
   currentName?: string;
 }>();
 
 const emit = defineEmits<{
-  (e: 'update:open', value: boolean): void;
   (e: 'rename', newName: string): void;
 }>();
 
 const { t } = useI18n();
 
-const isOpen = computed({
-  get: () => props.open,
-  set: (val) => emit('update:open', val),
-});
+const isOpen = defineModel<boolean>('open', { required: true });
 
 const name = ref('');
 const inputRef = ref<HTMLInputElement | null>(null);
 
-watch(
-  () => props.open,
-  (val) => {
-    if (val) {
-      name.value = props.initialName ?? props.currentName ?? '';
-      nextTick(() => {
-        if (inputRef.value) {
-          inputRef.value.focus();
-          inputRef.value.select();
-        }
-      });
-    }
-  },
-);
+watch(isOpen, (val) => {
+  if (val) {
+    name.value = props.initialName ?? props.currentName ?? '';
+    // Focus management is handled by UiModal using data-primary-focus
+  }
+});
 
 function handleSubmit() {
   const trimmed = name.value.trim();

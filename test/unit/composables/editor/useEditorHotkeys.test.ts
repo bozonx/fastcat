@@ -3,13 +3,13 @@ import { createPinia, setActivePinia } from 'pinia';
 import { defineComponent, h } from 'vue';
 import { mount } from '@vue/test-utils';
 
-import { useEditorHotkeys } from '../../../../src/composables/editor/useEditorHotkeys';
-import { useFocusStore } from '../../../../src/stores/focus.store';
-import { useProjectStore } from '../../../../src/stores/project.store';
-import { useSelectionStore } from '../../../../src/stores/selection.store';
-import { useTimelineSettingsStore } from '../../../../src/stores/timelineSettings.store';
-import { useTimelineStore } from '../../../../src/stores/timeline.store';
-import { useUiStore } from '../../../../src/stores/ui.store';
+import { useEditorHotkeys } from '../~/composables/editor/useEditorHotkeys';
+import { useFocusStore } from '../~/stores/focus.store';
+import { useProjectStore } from '../~/stores/project.store';
+import { useSelectionStore } from '../~/stores/selection.store';
+import { useTimelineSettingsStore } from '../~/stores/timelineSettings.store';
+import { useTimelineStore } from '../~/stores/timeline.store';
+import { useUiStore } from '../~/stores/ui.store';
 
 const HotkeysHarness = defineComponent({
   setup() {

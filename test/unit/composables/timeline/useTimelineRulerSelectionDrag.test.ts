@@ -2,7 +2,7 @@ import { mount } from '@vue/test-utils';
 import { defineComponent, h, ref } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 
-import { useTimelineRulerSelectionDrag } from '../../../../src/composables/timeline/useTimelineRulerSelectionDrag';
+import { useTimelineRulerSelectionDrag } from '../~/composables/timeline/useTimelineRulerSelectionDrag';
 
 describe('useTimelineRulerSelectionDrag', () => {
   it('snaps created selection range to snap targets while dragging', async () => {

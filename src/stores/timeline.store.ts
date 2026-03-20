@@ -91,9 +91,10 @@ export const useTimelineStore = defineStore('timeline', () => {
   const timelineZoom = ref(50);
   const trackHeights = ref<Record<string, number>>({});
 
-  const fps = computed(() =>
-    getDocFps(timelineDoc.value || ({ timebase: { fps: 30 }, tracks: [] } as any)),
-  );
+  const fps = computed(() => {
+    if (timelineDoc.value) return getDocFps(timelineDoc.value);
+    return 30;
+  });
 
   const selectedItemIds = ref<string[]>([]);
   const selectedTrackId = ref<string | null>(null);
@@ -576,8 +577,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     getSelectedOrActiveTrackId: selection.getSelectedOrActiveTrackId,
     setTimelineZoomExact,
     seekFrames: (deltaFrames: number) => {
-      const fps = getDocFps(timelineDoc.value || ({ timebase: { fps: 30 } } as any));
-      const frameUs = 1_000_000 / fps;
+      const docFps = timelineDoc.value ? getDocFps(timelineDoc.value) : 30;
+      const frameUs = 1_000_000 / docFps;
       setCurrentTimeUs(currentTime.value + deltaFrames * frameUs);
     },
   };

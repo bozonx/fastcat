@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { ref } from 'vue';
-import { useImageExifInfo } from '../../../../src/composables/properties/useImageExifInfo';
+import { useImageExifInfo } from '../~/composables/properties/useImageExifInfo';
 
 describe('useImageExifInfo', () => {
   it('returns resolution from imageDimensions when exif is missing', () => {

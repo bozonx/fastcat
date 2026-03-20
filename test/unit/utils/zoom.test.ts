@@ -9,7 +9,7 @@ import {
   stepMonitorZoom,
   stepTimelineZoomPosition,
   timelineZoomPositionToScale,
-} from '../../../src/utils/zoom';
+} from '~/utils/zoom';
 
 describe('zoom utils', () => {
   it('keeps timeline default zoom at x1', () => {

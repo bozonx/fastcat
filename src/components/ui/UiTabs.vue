@@ -11,14 +11,11 @@ interface TabOption {
 }
 
 const props = defineProps<{
-  modelValue: string;
   options: TabOption[];
   border?: boolean;
 }>();
 
-const emit = defineEmits<{
-  'update:modelValue': [value: string];
-}>();
+const modelValue = defineModel<string>({ required: true });
 
 const items = computed(() =>
   props.options.map((opt) => ({
@@ -29,12 +26,12 @@ const items = computed(() =>
 
 const selectedIndex = computed({
   get: () => {
-    const idx = props.options.findIndex((opt) => opt.value === props.modelValue);
+    const idx = props.options.findIndex((opt) => opt.value === modelValue.value);
     return idx === -1 ? 0 : idx;
   },
   set: (idx: number) => {
     if (props.options[idx]) {
-      emit('update:modelValue', props.options[idx].value);
+      modelValue.value = props.options[idx].value;
     }
   },
 });

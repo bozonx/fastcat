@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest';
 
-import { VideoCompositor } from '../../src/utils/video-editor/VideoCompositor';
+import { VideoCompositor } from '~/utils/video-editor/VideoCompositor';
 
 describe('VideoCompositor render optimization', () => {
   function createCompositor() {

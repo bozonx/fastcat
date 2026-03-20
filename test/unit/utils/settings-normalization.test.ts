@@ -4,8 +4,8 @@ import {
   normalizeAppSettings,
   normalizeUserSettings,
   normalizeWorkspaceSettings,
-} from '../../src/utils/settings';
-import { DEFAULT_HOTKEYS } from '../../src/utils/hotkeys/defaultHotkeys';
+} from '~/utils/settings';
+import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
 
 describe('settings normalization', () => {
   it('migrates openBehavior to openLastProjectOnStart', () => {

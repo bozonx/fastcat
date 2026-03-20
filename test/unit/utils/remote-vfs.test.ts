@@ -1,12 +1,12 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import type { RemoteVfsFileEntry } from '../../src/types/remote-vfs';
+import type { RemoteVfsFileEntry } from '~/types/remote-vfs';
 import {
   createRemoteMediaFsEntry,
   getRemoteFileDownloadUrl,
   isRemoteFsEntry,
   toRemoteFsEntry,
-} from '../../src/utils/remote-vfs';
+} from '~/utils/remote-vfs';
 
 describe('remote-vfs utils', () => {
   it('converts remote file entry to FsEntry-compatible remote entry', () => {

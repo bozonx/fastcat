@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { ref } from 'vue';
-import { useTimelineDropHandling } from '../../../../src/composables/timeline/useTimelineDropHandling';
-import { useDraggedFile } from '../../../../src/composables/useDraggedFile';
-import { useTimelineStore } from '../../../../src/stores/timeline.store';
-import { useMediaStore } from '../../../../src/stores/media.store';
-import { useWorkspaceStore } from '../../../../src/stores/workspace.store';
+import { useTimelineDropHandling } from '../~/composables/timeline/useTimelineDropHandling';
+import { useDraggedFile } from '../~/composables/useDraggedFile';
+import { useTimelineStore } from '../~/stores/timeline.store';
+import { useMediaStore } from '../~/stores/media.store';
+import { useWorkspaceStore } from '../~/stores/workspace.store';
 
 vi.stubGlobal('useToast', () => ({
   add: vi.fn(),

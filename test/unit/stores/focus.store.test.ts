@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
-import { useFocusStore } from '../../../src/stores/focus.store';
+import { useFocusStore } from '~/stores/focus.store';
 
 describe('FocusStore', () => {
   beforeEach(() => {

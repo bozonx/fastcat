@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { createWorkspaceSettingsRepository } from '../../../src/repositories/workspace-settings.repository';
+import { createWorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
 
 function createFileHandleMock(input: { text: string }) {
   let text = input.text;

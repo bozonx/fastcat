@@ -5,7 +5,7 @@ import {
   clampPositiveNumber,
   resolveAudioChannelsFromMeta,
   resolveAudioOnlyContainerFormat,
-} from '../../../src/utils/conversion/helpers';
+} from '~/utils/conversion/helpers';
 
 describe('conversion/helpers', () => {
   it('resolveAudioChannelsFromMeta returns numeric channels and falls back to stereo channel count', () => {

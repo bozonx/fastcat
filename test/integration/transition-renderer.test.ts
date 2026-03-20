@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { TransitionRenderer } from '../../src/utils/video-editor/compositor/TransitionRenderer';
+import { TransitionRenderer } from '~/utils/video-editor/compositor/TransitionRenderer';
 
 vi.mock('pixi.js', async () => {
   class MockSprite {

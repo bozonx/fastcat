@@ -1,9 +1,9 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
-import type { FsEntry } from '../../../../src/types/fs';
-import { createFileManagerService } from '../../../../src/file-manager/application/fileManagerService';
-import { VIDEO_DIR_NAME } from '../../../../src/utils/constants';
+import type { FsEntry } from '../~/types/fs';
+import { createFileManagerService } from '../~/file-manager/application/fileManagerService';
+import { VIDEO_DIR_NAME } from '../~/utils/constants';
 
 describe('fileManagerService', () => {
   it('readDirectory filters hidden files when showHiddenFiles=false and sorts directories first', async () => {

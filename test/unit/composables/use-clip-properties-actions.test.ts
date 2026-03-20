@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ref } from 'vue';
-import { useClipPropertiesActions } from '../../../src/composables/properties/useClipPropertiesActions';
-import type { TimelineClipItem, TrackKind } from '../../../src/timeline/types';
-import type { FsEntry } from '../../../src/types/fs';
-import { quantizeTimeUsToFrames, sanitizeFps } from '../../../src/timeline/commands/utils';
+import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
+import type { TimelineClipItem, TrackKind } from '~/timeline/types';
+import type { FsEntry } from '~/types/fs';
+import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
 
 function makeClip(partial: Partial<TimelineClipItem> = {}): TimelineClipItem {
   return {

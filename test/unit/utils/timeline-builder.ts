@@ -2,7 +2,7 @@ import type {
   TimelineDocument,
   TimelineTrack,
   TimelineClipItem,
-} from '../../../src/timeline/types';
+} from '~/timeline/types';
 
 export class TimelineBuilder {
   private doc: TimelineDocument;

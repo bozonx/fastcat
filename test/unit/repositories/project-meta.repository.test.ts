@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { createProjectMetaRepository } from '../../../src/repositories/project-meta.repository';
+import { createProjectMetaRepository } from '~/repositories/project-meta.repository';
 
 function createFileHandleMock(input: { text: string }) {
   let text = input.text;

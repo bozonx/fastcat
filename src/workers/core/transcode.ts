@@ -149,14 +149,14 @@ export async function runTranscode(
   function ensureNotCancelled() {
     if (!checkCancel()) return;
     const abortErr = new Error('Export was cancelled');
-    (abortErr as any).name = 'AbortError';
+    abortErr.name = 'AbortError';
     throw abortErr;
   }
 
-  async function notifyPhase(phase: string, taskId?: string) {
+  async function notifyPhase(phase: 'encoding' | 'saving', taskId?: string) {
     if (!hostClient) return;
     try {
-      await (hostClient as any).onExportPhase?.(phase, taskId);
+      await hostClient.onExportPhase?.(phase, taskId);
     } catch {
       // ignore
     }

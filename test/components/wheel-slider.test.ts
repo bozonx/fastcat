@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { mount } from '@vue/test-utils';
-import WheelSlider from '../../../src/components/ui/WheelSlider.vue';
+import WheelSlider from '~/components/ui/WheelSlider.vue';
 
 describe('WheelSlider', () => {
   it('increases value on wheel up', async () => {

@@ -1,7 +1,7 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { nextTick, ref, reactive, effectScope, type EffectScope } from 'vue';
 
-import { useFileBrowserPendingActions } from '../../../../src/composables/fileManager/useFileBrowserPendingActions';
+import { useFileBrowserPendingActions } from '../~/composables/fileManager/useFileBrowserPendingActions';
 
 const uiStore = reactive({
   pendingFsEntryRename: null as any,

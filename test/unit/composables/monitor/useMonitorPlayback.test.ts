@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ref, nextTick, defineComponent, h } from 'vue';
 import { mount } from '@vue/test-utils';
-import { useMonitorPlayback } from '../../../../src/composables/monitor/useMonitorPlayback';
+import { useMonitorPlayback } from '../~/composables/monitor/useMonitorPlayback';
 
 describe('useMonitorPlayback', () => {
   beforeEach(() => {

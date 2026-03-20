@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 
-import { useFileBrowserInteraction } from '../../../../src/composables/fileManager/useFileBrowserInteraction';
-import type { FsEntry } from '../../../../src/types/fs';
+import { useFileBrowserInteraction } from '../~/composables/fileManager/useFileBrowserInteraction';
+import type { FsEntry } from '../~/types/fs';
 
 const filesPageStore = {
   sortOption: { field: 'name', order: 'asc' },

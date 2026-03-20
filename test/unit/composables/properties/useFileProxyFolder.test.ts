@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ref } from 'vue';
-import { useFileProxyFolder } from '../../../../src/composables/properties/useFileProxyFolder';
+import { useFileProxyFolder } from '../~/composables/properties/useFileProxyFolder';
 
 describe('useFileProxyFolder', () => {
   it('detects folder with video based on extensions', () => {

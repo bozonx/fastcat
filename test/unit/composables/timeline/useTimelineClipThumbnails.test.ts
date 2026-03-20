@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { ThumbnailTile } from '../../../../src/composables/timeline/useTimelineClipThumbnails';
+import type { ThumbnailTile } from '../~/composables/timeline/useTimelineClipThumbnails';
 
 describe('ThumbnailTile interface', () => {
   it('has expected shape', () => {

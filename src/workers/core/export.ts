@@ -8,7 +8,7 @@ import { usToS } from './time';
 import { initEffects } from '../../effects';
 import { initTransitions } from '../../transitions';
 import { getMediaTypeFromFilename, getMimeTypeFromFilename } from '../../utils/media-types';
-import type { ExportOptions } from '~/composables/timeline/export/types';
+import type { ExportOptions, WorkerTimelineClip } from '~/composables/timeline/export/types';
 import type { MediaMetadata } from '~/stores/media.store';
 
 export async function extractMetadata(
@@ -46,7 +46,7 @@ export async function extractMetadata(
       const vTrack = await input.getPrimaryVideoTrack();
       const aTrack = await input.getPrimaryAudioTrack();
 
-      const meta: any = {
+      const meta: MediaMetadata = {
         source: {
           size: file.size,
           lastModified: file.lastModified,
@@ -104,7 +104,7 @@ function isOpusCodec(codec: string | undefined): boolean {
 }
 
 async function buildPassthroughAudioTrack(params: {
-  clip: any;
+  clip: WorkerTimelineClip;
   hostClient: VideoCoreHostAPI | null;
   reportExportWarning: (message: string) => Promise<void>;
 }) {
@@ -152,8 +152,8 @@ async function buildPassthroughAudioTrack(params: {
 export async function runExport(
   targetHandle: FileSystemFileHandle,
   options: ExportOptions,
-  timelineClips: any[],
-  audioClips: any[],
+  timelineClips: import('~/composables/timeline/export/types').WorkerVideoPayloadItem[],
+  audioClips: WorkerTimelineClip[],
   hostClient: VideoCoreHostAPI | null,
   reportExportWarning: (msg: string, taskId?: string) => Promise<void>,
   checkCancel: () => boolean,
@@ -168,14 +168,14 @@ export async function runExport(
   function ensureNotCancelled() {
     if (!checkCancel()) return;
     const abortErr = new Error('Export was cancelled');
-    (abortErr as any).name = 'AbortError';
+    abortErr.name = 'AbortError';
     throw abortErr;
   }
 
-  async function notifyPhase(phase: string, taskId?: string) {
+  async function notifyPhase(phase: 'encoding' | 'saving', taskId?: string) {
     if (!hostClient) return;
     try {
-      await (hostClient as any).onExportPhase?.(phase, taskId);
+      await hostClient.onExportPhase?.(phase, taskId);
     } catch {
       // ignore
     }

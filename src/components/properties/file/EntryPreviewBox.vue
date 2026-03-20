@@ -19,7 +19,7 @@ const props = defineProps<{
 
 <template>
   <div
-    v-if="props.selectedEntryKind === 'file' && !props.isOtio"
+    v-if="(props.selectedEntryKind === 'file' && !props.isOtio) || props.selectedEntryKind === 'directory'"
     class="w-full bg-ui-bg rounded border border-ui-border flex flex-col min-h-50 overflow-hidden shrink-0"
     :class="
       props.mediaType === 'text'
@@ -28,7 +28,17 @@ const props = defineProps<{
     "
   >
     <div
-      v-if="props.isUnknown && !props.isOtio"
+      v-if="props.selectedEntryKind === 'directory'"
+      class="flex flex-col items-center gap-3 text-ui-text-muted p-8 w-full h-full justify-center"
+    >
+      <UIcon name="i-heroicons-folder" class="w-16 h-16" />
+      <p v-if="props.fileName" class="text-sm font-medium text-center truncate w-full px-4">
+        {{ props.fileName }}
+      </p>
+    </div>
+
+    <div
+      v-else-if="props.isUnknown && !props.isOtio"
       class="flex flex-col items-center gap-3 text-ui-text-muted p-8 w-full h-full justify-center"
     >
       <UIcon name="i-heroicons-document" class="w-16 h-16" />

@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
+import { clamp } from '../../utils/math';
+import { useWheelSupport } from '../../composables/useWheelSupport';
+
 interface UiWheelSliderProps {
   modelValue: number;
   min: number;
@@ -28,7 +32,7 @@ const emit = defineEmits<{
 }>();
 
 function clampValue(value: number): number {
-  return Math.min(props.max, Math.max(props.min, value));
+  return clamp(value, props.min, props.max);
 }
 
 function findNearestStep(value: number): number {
@@ -93,49 +97,27 @@ const value = computed({
   },
 });
 
-function getStepPrecision(step: number): number {
-  const stepAsString = String(step);
-  const dotIndex = stepAsString.indexOf('.');
-  if (dotIndex === -1) return 0;
-  return stepAsString.length - dotIndex - 1;
-}
-
 const wrapperRef = ref<HTMLElement | null>(null);
 
-function onWheel(e: WheelEvent) {
-  if (props.disabled) return;
-  e.preventDefault();
+useWheelSupport({
+  wrapperRef,
+  disabled: () => props.disabled,
+  step: () => props.step,
+  wheelStepMultiplier: () => props.wheelStepMultiplier,
+  onWheelStep: (direction, wheelStep, precision) => {
+    const current = Number(props.modelValue);
+    const safeCurrent = Number.isFinite(current) ? current : props.min;
 
-  const deltaY = Number(e.deltaY ?? 0);
-  const deltaX = Number(e.deltaX ?? 0);
-  const delta = Math.abs(deltaY) >= Math.abs(deltaX) ? deltaY : deltaX;
-  if (!Number.isFinite(delta) || delta === 0) return;
+    if (props.steps?.length) {
+      emit('update:modelValue', findSteppedValue({ value: safeCurrent, direction }));
+      return;
+    }
 
-  const direction = delta < 0 ? 1 : -1;
-  const baseStep = props.step > 0 ? props.step : 1;
-  const wheelStep = baseStep * Math.max(1, props.wheelStepMultiplier);
-  const precision = getStepPrecision(baseStep);
-
-  const current = Number(props.modelValue);
-  const safeCurrent = Number.isFinite(current) ? current : props.min;
-
-  if (props.steps?.length) {
-    emit('update:modelValue', findSteppedValue({ value: safeCurrent, direction }));
-    return;
-  }
-
-  const next = safeCurrent + direction * wheelStep;
-  const rounded = Number(next.toFixed(precision));
-  const clamped = clampValue(rounded);
-  emit('update:modelValue', clamped);
-}
-
-onMounted(() => {
-  wrapperRef.value?.addEventListener('wheel', onWheel, { passive: false });
-});
-
-onBeforeUnmount(() => {
-  wrapperRef.value?.removeEventListener('wheel', onWheel);
+    const next = safeCurrent + direction * wheelStep;
+    const rounded = Number(next.toFixed(precision));
+    const clamped = clampValue(rounded);
+    emit('update:modelValue', clamped);
+  },
 });
 
 function resetToDefault() {

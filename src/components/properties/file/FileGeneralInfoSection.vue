@@ -2,6 +2,7 @@
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 interface FileInfo {
+  kind: 'file' | 'directory';
   size?: number;
   createdAt?: number | string | Date | null;
   lastModified?: number | string | Date | null;
@@ -26,10 +27,16 @@ const { t } = useI18n();
       :value="props.selectedPath === '' ? '/' : props.selectedPath"
     />
     <PropertyRow
-      v-if="props.fileInfo.size !== undefined"
+      v-if="props.fileInfo.size !== undefined && props.fileInfo.size > 0"
       :label="t('common.size', 'Size')"
       :value="props.formatBytes(props.fileInfo.size)"
     />
+    <PropertyRow
+      v-else-if="props.fileInfo.kind === 'directory'"
+      :label="t('common.type', 'Type')"
+      :value="t('common.folder', 'Folder')"
+    />
+    <slot />
     <PropertyRow
       v-if="props.fileInfo.createdAt || props.fileInfo.lastModified"
       :label="t('common.created', 'Created')"
