@@ -14,8 +14,8 @@ export const ProjectMetaSchema = z.object({
   description: z.string().catch(''),
   author: z.string().catch(''),
   tags: z.array(z.coerce.string()).catch([]),
-  createdAt: z.coerce.string().catch(() => new Date().toISOString()),
-  updatedAt: z.coerce.string().catch(() => new Date().toISOString()),
+  createdAt: z.string().catch(() => new Date().toISOString()),
+  updatedAt: z.string().catch(() => new Date().toISOString()),
   lastOpenedTimelinePath: z.string().optional(),
 });
 
