@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import UiWheelNumberInput from '~/components/ui/editor/UiWheelNumberInput.vue';
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 
 const props = withDefaults(
   defineProps<{

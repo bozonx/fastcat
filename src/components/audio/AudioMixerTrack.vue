@@ -2,7 +2,7 @@
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import type { TimelineTrack } from '~/timeline/types';
-import UiWheelSlider from '~/components/ui/editor/UiWheelSlider.vue';
+import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import DbSlider from './DbSlider.vue';
 import { linearToDb, dbToLinear } from '~/utils/audio';
 import { getAudioEffectManifest } from '~/effects';

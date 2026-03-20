@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
-import UiWheelNumberInput from '~/components/ui/editor/UiWheelNumberInput.vue';
-import UiWheelSlider from '~/components/ui/editor/UiWheelSlider.vue';
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
 import { clearUiCache } from '~/stores/ui/uiLocalStorage';
