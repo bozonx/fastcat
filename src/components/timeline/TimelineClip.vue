@@ -17,7 +17,7 @@ import { useMediaStore } from '~/stores/media.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useProjectStore } from '~/stores/project.store';
-import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
+import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { timeUsToPx, sanitizeFps } from '~/utils/timeline/geometry';
 import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
 import {
@@ -36,8 +36,8 @@ import { useClickOrDrag } from '~/composables/timeline/useClickOrDrag';
 import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useFocusStore } from '~/stores/focus.store';
-import { useEditorViewStore } from '~/stores/editorView.store';
-import { useFilesPageStore } from '~/stores/filesPage.store';
+import { useEditorViewStore } from '~/stores/editor-view.store';
+import { useFilesPageStore } from '~/stores/files-page.store';
 import { useProjectTabsStore } from '~/stores/tabs.store';
 
 import ClipTransitions from './ClipTransitions.vue';

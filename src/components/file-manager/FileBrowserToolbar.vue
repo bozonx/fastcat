@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useFilesPageStore, type FileSortField } from '~/stores/filesPage.store';
+import { useFilesPageStore, type FileSortField } from '~/stores/files-page.store';
 import { useUiStore } from '~/stores/ui.store';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 

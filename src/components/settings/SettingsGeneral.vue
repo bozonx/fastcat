@@ -4,7 +4,7 @@ import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
-import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
+import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { clearUiCache } from '~/stores/ui/uiLocalStorage';
 
 const { t } = useI18n();

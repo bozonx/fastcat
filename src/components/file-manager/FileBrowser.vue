@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted, nextTick } from 'vue';
-import { useFilesPageStore } from '~/stores/filesPage.store';
+import { useFilesPageStore } from '~/stores/files-page.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';

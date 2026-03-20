@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
-import { useFilesPageStore } from '~/stores/filesPage.store';
+import { useFilesPageStore } from '~/stores/files-page.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useFileDrop } from '~/composables/fileManager/useFileDrop';
 import {

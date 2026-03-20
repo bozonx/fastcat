@@ -14,7 +14,7 @@ import {
 } from '~/repositories/project-ui.repository';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { ProjectMeta } from '~/repositories/project-meta.repository';
-import type { EditorView } from '~/stores/editorView.store';
+import type { EditorView } from '~/stores/editor-view.store';
 
 interface ProjectSettingsRepo {
   load(): Promise<unknown | null>;

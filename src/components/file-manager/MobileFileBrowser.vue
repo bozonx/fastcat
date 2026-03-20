@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue';
-import { useFilesPageStore } from '~/stores/filesPage.store';
+import { useFilesPageStore } from '~/stores/files-page.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';

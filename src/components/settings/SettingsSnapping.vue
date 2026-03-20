@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
+import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();

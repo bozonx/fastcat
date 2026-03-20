@@ -8,7 +8,7 @@ import ProjectHistory from '~/components/project/ProjectHistory.vue';
 import ProjectEffects from '~/components/project/ProjectEffects.vue';
 import TextEditor from '~/components/preview/TextEditor.vue';
 import EditorPanelHeader from '~/components/editor/EditorPanelHeader.vue';
-import type { DynamicPanel } from '~/stores/editorView.store';
+import type { DynamicPanel } from '~/stores/editor-view.store';
 import type { PanelFocusId } from '~/stores/focus.store';
 
 interface Props {

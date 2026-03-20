@@ -8,7 +8,7 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
-import { useFilesPageStore } from '~/stores/filesPage.store';
+import { useFilesPageStore } from '~/stores/files-page.store';
 import { useFocusableListNavigation } from '~/composables/fileManager/useFocusableListNavigation';
 import FileManagerTree from './FileManagerTree.vue';
 import type { FsEntry } from '~/types/fs';

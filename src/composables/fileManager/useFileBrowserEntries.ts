@@ -1,6 +1,6 @@
 import { ref, computed, watch } from 'vue';
 import type { Ref } from 'vue';
-import { useFilesPageStore } from '~/stores/filesPage.store';
+import { useFilesPageStore } from '~/stores/files-page.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useFileManagerThumbnails } from '~/composables/fileManager/useFileManagerThumbnails';

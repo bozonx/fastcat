@@ -4,7 +4,7 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
-import { useFilesPageStore } from '~/stores/filesPage.store';
+import { useFilesPageStore } from '~/stores/files-page.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';

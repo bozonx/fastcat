@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useFilesPageStore } from '~/stores/filesPage.store';
+import { useFilesPageStore } from '~/stores/files-page.store';
 
 defineProps<{
   stats: {

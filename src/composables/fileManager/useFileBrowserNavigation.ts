@@ -1,6 +1,6 @@
 import { ref, watch, nextTick } from 'vue';
 import type { Ref } from 'vue';
-import { useFilesPageStore } from '~/stores/filesPage.store';
+import { useFilesPageStore } from '~/stores/files-page.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import type { FsEntry } from '~/types/fs';

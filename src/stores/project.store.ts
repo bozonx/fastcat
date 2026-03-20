@@ -17,11 +17,11 @@ import {
 
 import { useWorkspaceStore } from './workspace.store';
 import { useProjectSettingsStore } from './project-settings.store';
-import { createEditorViewModule } from './editorView.store';
+import { createEditorViewModule } from './editor-view.store';
 import { useMediaStore } from './media.store';
 import { useTimelineStore } from './timeline.store';
 import { useSelectionStore } from './selection.store';
-import { useFilesPageStore } from './filesPage.store';
+import { useFilesPageStore } from './files-page.store';
 import { useHistoryStore } from './history.store';
 
 import { createProjectFsModule } from '~/stores/project/projectFs';
