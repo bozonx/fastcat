@@ -19,6 +19,8 @@ export function useVideoCodecs() {
     isLoadingCodecSupport.value = true;
     try {
       videoCodecSupport.value = await checkVideoCodecSupport(BASE_VIDEO_CODEC_OPTIONS);
+    } catch (error) {
+      console.warn('Failed to check video codec support', error);
     } finally {
       isLoadingCodecSupport.value = false;
     }
