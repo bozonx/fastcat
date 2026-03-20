@@ -9,14 +9,14 @@ import {
   BASE_PX_PER_SECOND,
   computeAnchoredScrollLeft,
   useTimelineInteraction,
-} from '../~/composables/timeline/useTimelineInteraction';
+} from '~/composables/timeline/useTimelineInteraction';
 import {
   computeSnappedStartUs,
   quantizeStartUsToFrames,
   pickBestSnapCandidateUs,
-} from '../~/utils/timeline/geometry';
-import { useTimelineStore } from '../~/stores/timeline.store';
-import { useSelectionStore } from '../~/stores/selection.store';
+} from '~/utils/timeline/geometry';
+import { useTimelineStore } from '~/stores/timeline.store';
+import { useSelectionStore } from '~/stores/selection.store';
 
 describe('useTimelineInteraction', () => {
   beforeEach(() => {

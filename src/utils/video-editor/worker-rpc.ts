@@ -69,3 +69,8 @@ export interface VideoCoreWorkerAPI {
     },
   ): Promise<(Blob | null)[]>;
 }
+
+export type WorkerRpcMessage =
+  | { type: 'rpc-call'; id: number; method: string; args: any[]; taskId?: string }
+  | { type: 'rpc-response'; id: number; result?: any; error?: any };
+

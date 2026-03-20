@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
-import FileManagerFiles from '../~/components/file-manager/FileManagerFiles.vue';
+import FileManagerFiles from '~/components/file-manager/FileManagerFiles.vue';
 import { setupTestPinia } from '../../../utils/pinia';
-import { useUiStore } from '../~/stores/ui.store';
-import { useSelectionStore } from '../~/stores/selection.store';
+import { useUiStore } from '~/stores/ui.store';
+import { useSelectionStore } from '~/stores/selection.store';
 
 function createWrapper(params: {
   projectName: string;

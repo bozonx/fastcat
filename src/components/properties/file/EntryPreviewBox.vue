@@ -19,10 +19,10 @@ const props = defineProps<{
 
 <template>
   <div
-    v-if="(props.selectedEntryKind === 'file' && !props.isOtio) || props.selectedEntryKind === 'directory'"
+    v-if="props.selectedEntryKind === 'file' || props.selectedEntryKind === 'directory'"
     class="w-full bg-ui-bg rounded border border-ui-border flex flex-col min-h-50 overflow-hidden shrink-0"
     :class="
-      props.mediaType === 'text'
+      props.mediaType === 'text' && !props.isOtio
         ? 'justify-start items-start text-left'
         : 'items-center justify-center'
     "
@@ -38,7 +38,17 @@ const props = defineProps<{
     </div>
 
     <div
-      v-else-if="props.isUnknown && !props.isOtio"
+      v-else-if="props.isOtio"
+      class="flex flex-col items-center gap-3 text-ui-text-muted p-8 w-full h-full justify-center"
+    >
+      <UIcon name="i-heroicons-queue-list" class="w-16 h-16" />
+      <p class="text-sm font-medium text-center truncate w-full px-4">
+        {{ props.fileName || t('fastcat.timeline.project', 'Timeline Project') }}
+      </p>
+    </div>
+
+    <div
+      v-else-if="props.isUnknown"
       class="flex flex-col items-center gap-3 text-ui-text-muted p-8 w-full h-full justify-center"
     >
       <UIcon name="i-heroicons-document" class="w-16 h-16" />

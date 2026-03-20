@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useFileManagerPanelStt } from '../~/composables/fileManager/useFileManagerPanelStt';
-import type { FsEntry } from '../~/types/fs';
+import { useFileManagerPanelStt } from '~/composables/fileManager/useFileManagerPanelStt';
+import type { FsEntry } from '~/types/fs';
 
 const { transcribeProjectAudioFile } = vi.hoisted(() => ({
   transcribeProjectAudioFile: vi.fn(),

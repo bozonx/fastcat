@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ref } from 'vue';
-import { useClipTransitionPanel } from '../~/composables/timeline/useClipTransitionPanel';
-import type { ClipTransition } from '../~/timeline/types';
+import { useClipTransitionPanel } from '~/composables/timeline/useClipTransitionPanel';
+import type { ClipTransition } from '~/timeline/types';
 
 describe('useClipTransitionPanel', () => {
   it('emits update when selectedType changes', async () => {

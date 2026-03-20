@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { ref } from 'vue';
-import { useFilePropertiesBasics } from '../~/composables/properties/useFilePropertiesBasics';
+import { useFilePropertiesBasics } from '~/composables/properties/useFilePropertiesBasics';
 
 describe('useFilePropertiesBasics', () => {
   it('detects hidden entries by name', () => {

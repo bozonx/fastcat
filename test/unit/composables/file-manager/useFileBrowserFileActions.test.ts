@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 
-import { useFileBrowserFileActions } from '../~/composables/fileManager/useFileBrowserFileActions';
-import type { FsEntry } from '../~/types/fs';
+import { useFileBrowserFileActions } from '~/composables/fileManager/useFileBrowserFileActions';
+import type { FsEntry } from '~/types/fs';
 
 const projectStore = {
   getDirectoryHandleByPath: vi.fn().mockResolvedValue({}),

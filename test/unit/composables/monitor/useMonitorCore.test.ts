@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { defineComponent, h, nextTick, reactive, ref } from 'vue';
 import { mount } from '@vue/test-utils';
-import type { WorkerTimelineClip } from '../~/composables/monitor/types';
+import type { WorkerTimelineClip } from '~/composables/monitor/types';
 
-import { useMonitorCore } from '../~/composables/monitor/useMonitorCore';
+import { useMonitorCore } from '~/composables/monitor/useMonitorCore';
 
 const mockClient = {
   loadTimeline: vi.fn().mockResolvedValue(0),

@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ref } from 'vue';
 
-import { createTimelineSelection } from '~/stores/timeline/timelineSelection';
+import { createTimelineSelection } from '~/stores/timeline/timeline-selection';
 import type { TimelineDocument } from '~/timeline/types';
 
-describe('timelineSelection', () => {
+describe('timeline-selection', () => {
   function makeMockDoc(tracks: any[]): TimelineDocument {
     return {
       OTIO_SCHEMA: 'Timeline.1',
