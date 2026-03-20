@@ -9,7 +9,7 @@ import { useEntryPreview } from '~/composables/fileManager/useEntryPreview';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import EntryActions from '~/components/properties/file/EntryActions.vue';
-import UiWheelSlider from '~/components/ui/editor/UiWheelSlider.vue';
+import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import EffectsEditor from '~/components/effects/EffectsEditor.vue';
 import AudioEffectsEditor from '~/components/effects/AudioEffectsEditor.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';

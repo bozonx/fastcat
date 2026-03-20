@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
-import UiWheelSlider from '~/components/ui/editor/UiWheelSlider.vue';
-import UiWheelNumberInput from '~/components/ui/editor/UiWheelNumberInput.vue';
+import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiKnob from '~/components/ui/editor/UiKnob.vue';
 import type {
   ButtonGroupParamControl,

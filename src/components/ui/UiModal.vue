@@ -150,21 +150,4 @@ function handleClose() {
 
 <style scoped>
 @reference "tailwindcss";
-
-:deep(.custom-scrollbar::-webkit-scrollbar) {
-  width: 6px;
-}
-
-:deep(.custom-scrollbar::-webkit-scrollbar-track) {
-  background: transparent;
-}
-
-:deep(.custom-scrollbar::-webkit-scrollbar-thumb) {
-  background: var(--scrollbar-thumb);
-  border-radius: 9999px;
-}
-
-:deep(.custom-scrollbar::-webkit-scrollbar-thumb:hover) {
-  background: var(--scrollbar-thumb-hover);
-}
 </style>

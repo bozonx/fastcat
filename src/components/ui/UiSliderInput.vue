@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import UiWheelSlider from '~/components/ui/editor/UiWheelSlider.vue';
+import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 
 const props = withDefaults(
   defineProps<{

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue';
-import UiWheelNumberInput from '~/components/ui/editor/UiWheelNumberInput.vue';
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiFpsInputWithPresets from '~/components/ui/editor/UiFpsInputWithPresets.vue';
 
 const localWidth = defineModel<number>('width', { required: true });

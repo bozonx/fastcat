@@ -5,7 +5,7 @@ import UiModal from '~/components/ui/UiModal.vue';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
-import UiWheelNumberInput from '~/components/ui/editor/UiWheelNumberInput.vue';
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import { storeToRefs } from 'pinia';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { resolveAudioOnlyFileExtension } from '~/utils/conversion/helpers';

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useFilesPageStore, type FileSortField } from '~/stores/filesPage.store';
 import { useUiStore } from '~/stores/ui.store';
-import UiWheelSlider from '~/components/ui/editor/UiWheelSlider.vue';
+import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 
 defineProps<{
   gridSizes: number[];
