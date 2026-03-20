@@ -532,9 +532,11 @@ export async function extractAudioStream(
     const output = new Output({ target, format });
 
     // Fallback if missing decoderConfig in audioTrack extraction
-    const decoderConfig = audioTrack.decoderConfig || null;
+    const decoderConfig = await audioTrack.getDecoderConfig();
 
-    const packetSource = new EncodedAudioPacketSource(getBunnyAudioCodec(lowercaseCodec as any));
+    const packetSource = new EncodedAudioPacketSource(
+      getBunnyAudioCodec((lowercaseCodec === 'mulaw' ? 'alaw' : lowercaseCodec) as any) as any,
+    );
     output.addAudioTrack(packetSource);
 
     await output.start();
