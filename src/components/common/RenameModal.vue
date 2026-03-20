@@ -51,12 +51,13 @@ function handleSubmit() {
 
 <template>
   <UiModal v-model:open="isOpen" :title="title || t('common.rename', 'Rename')">
-    <form class="space-y-4" @submit.prevent="handleSubmit">
+    <form class="ui-section" @submit.prevent="handleSubmit">
       <UFormField :label="t('common.name', 'Name')">
         <UInput
           ref="inputRef"
           v-model="name"
           class="w-full"
+          data-primary-focus="true"
           :placeholder="t('common.namePlaceholder', 'Enter name...')"
         />
       </UFormField>
