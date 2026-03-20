@@ -50,10 +50,11 @@ function handleUpdateColor(val: string) {
   });
 }
 
-function handleUpdateStartTime(val: number | string) {
+function handleUpdateStartTime(val: number) {
   if (!marker.value) return;
-  const newStartUs =
-    typeof val === 'number' ? val : Math.max(0, Math.round(Number(val) * 1_000_000));
+  const newStartUs = val;
+
+  if (isNaN(newStartUs) || newStartUs < 0) return;
   if (newStartUs === marker.value.timeUs) return;
 
   const patch: { timeUs: number; durationUs?: number } = { timeUs: newStartUs };
@@ -66,9 +67,11 @@ function handleUpdateStartTime(val: number | string) {
   timelineStore.updateMarker(marker.value.id, patch);
 }
 
-function handleUpdateEndTime(val: number | string) {
+function handleUpdateEndTime(val: number) {
   if (!marker.value || !isZone.value) return;
-  const newEndUs = typeof val === 'number' ? val : Math.max(0, Math.round(Number(val) * 1_000_000));
+  const newEndUs = val;
+
+  if (isNaN(newEndUs) || newEndUs < 0) return;
   const currentStartUs = marker.value.timeUs;
 
   if (newEndUs <= currentStartUs) return;

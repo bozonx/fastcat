@@ -57,10 +57,52 @@ function handleSavePreset() {
       background: { ...((props.clip as any).background || {}) },
       content: { ...((props.clip as any).content || {}) },
     };
-    presetsStore.saveAsPreset('hud', params.hudType ?? 'media_frame', name, params);
+    presetsStore.saveAsPreset('hud', (props.clip as any).hudType ?? 'media_frame', name, params);
   }
 
   isSaveModalOpen.value = false;
+}
+
+const shapePresets = computed(() =>
+  presetsStore.customPresets
+    .filter((p) => p.category === 'shape')
+    .map((p) => ({ label: p.name, value: p.id, params: p.params })),
+);
+
+const hudPresets = computed(() =>
+  presetsStore.customPresets
+    .filter((p) => p.category === 'hud')
+    .map((p) => ({ label: p.name, value: p.id, params: p.params })),
+);
+
+function handleLoadShapePreset(presetId: string) {
+  const preset = presetsStore.customPresets.find((p) => p.id === presetId);
+  if (!preset) return;
+
+  const p = preset.params;
+  if (p.shapeType) emit('updateShapeType', p.shapeType);
+  if (p.fillColor) emit('updateFillColor', p.fillColor);
+  if (p.strokeColor) emit('updateStrokeColor', p.strokeColor);
+  if (p.strokeWidth !== undefined) emit('updateStrokeWidth', p.strokeWidth);
+  if (p.shapeConfig) emit('updateShapeConfig', p.shapeConfig);
+}
+
+function handleLoadHudPreset(presetId: string) {
+  const preset = presetsStore.customPresets.find((p) => p.id === presetId);
+  if (!preset) return;
+
+  const p = preset.params;
+  // HUD presets might have background/content params
+  if (p.background) {
+    Object.entries(p.background).forEach(([key, val]) => {
+      emit('updateHudControl', `background.${key}`, val);
+    });
+  }
+  if (p.content) {
+    Object.entries(p.content).forEach(([key, val]) => {
+      emit('updateHudControl', `content.${key}`, val);
+    });
+  }
 }
 </script>
 
@@ -107,12 +149,14 @@ function handleSavePreset() {
   <ClipShapeProperties
     v-else-if="props.clip.clipType === 'shape'"
     :clip="props.clip"
+    :presets="shapePresets"
     @update-shape-type="emit('updateShapeType', $event)"
     @update-fill-color="emit('updateFillColor', $event)"
     @update-stroke-color="emit('updateStrokeColor', $event)"
     @update-stroke-width="emit('updateStrokeWidth', $event)"
     @update-shape-config="emit('updateShapeConfig', $event)"
     @open-save-preset-modal="openSavePresetModal"
+    @load-preset="handleLoadShapePreset"
   />
 
   <ClipHudProperties
@@ -120,6 +164,9 @@ function handleSavePreset() {
     :clip="props.clip"
     :hud-manifest="props.hudManifest"
     :hud-control-values="props.hudControlValues"
+    :presets="hudPresets"
     @update-hud-control="(key: string, val: unknown) => emit('updateHudControl', key, val)"
+    @open-save-preset-modal="openSavePresetModal"
+    @load-preset="handleLoadHudPreset"
   />
 </template>

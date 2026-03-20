@@ -43,6 +43,15 @@ function getSafeTransform(clip: TimelineClipItem): ClipTransform {
   const anchorY =
     typeof anchorRaw.y === 'number' && Number.isFinite(anchorRaw.y) ? anchorRaw.y : 0.5;
 
+  const cropRaw = tr.crop ?? {};
+  const cropTop = typeof cropRaw.top === 'number' && Number.isFinite(cropRaw.top) ? cropRaw.top : 0;
+  const cropBottom =
+    typeof cropRaw.bottom === 'number' && Number.isFinite(cropRaw.bottom) ? cropRaw.bottom : 0;
+  const cropLeft =
+    typeof cropRaw.left === 'number' && Number.isFinite(cropRaw.left) ? cropRaw.left : 0;
+  const cropRight =
+    typeof cropRaw.right === 'number' && Number.isFinite(cropRaw.right) ? cropRaw.right : 0;
+
   return {
     scale: {
       x: scaleX === 0 ? 0.001 : clampNumber(scaleX, -1000, 1000),
@@ -58,6 +67,12 @@ function getSafeTransform(clip: TimelineClipItem): ClipTransform {
       preset === 'custom'
         ? { preset, x: clampNumber(anchorX, -10, 10), y: clampNumber(anchorY, -10, 10) }
         : { preset },
+    crop: {
+      top: clampNumber(cropTop, 0, 100),
+      bottom: clampNumber(cropBottom, 0, 100),
+      left: clampNumber(cropLeft, 0, 100),
+      right: clampNumber(cropRight, 0, 100),
+    },
   };
 }
 
@@ -109,6 +124,10 @@ export function useClipTransform(options: UseClipTransformOptions) {
       anchor: {
         ...(current.anchor ?? { preset: 'center' }),
         ...(patch.anchor ?? {}),
+      },
+      crop: {
+        ...(current.crop ?? { top: 0, bottom: 0, left: 0, right: 0 }),
+        ...(patch.crop ?? {}),
       },
     };
 
@@ -259,6 +278,46 @@ export function useClipTransform(options: UseClipTransformOptions) {
     },
   });
 
+  const transformCropTop = computed({
+    get: () => getSafeTransform(options.clip.value).crop?.top ?? 0,
+    set: (val: number) => {
+      const current = getSafeTransform(options.clip.value);
+      updateSelectedClipTransform({
+        crop: { ...(current.crop ?? { top: 0, bottom: 0, left: 0, right: 0 }), top: val },
+      });
+    },
+  });
+
+  const transformCropBottom = computed({
+    get: () => getSafeTransform(options.clip.value).crop?.bottom ?? 0,
+    set: (val: number) => {
+      const current = getSafeTransform(options.clip.value);
+      updateSelectedClipTransform({
+        crop: { ...(current.crop ?? { top: 0, bottom: 0, left: 0, right: 0 }), bottom: val },
+      });
+    },
+  });
+
+  const transformCropLeft = computed({
+    get: () => getSafeTransform(options.clip.value).crop?.left ?? 0,
+    set: (val: number) => {
+      const current = getSafeTransform(options.clip.value);
+      updateSelectedClipTransform({
+        crop: { ...(current.crop ?? { top: 0, bottom: 0, left: 0, right: 0 }), left: val },
+      });
+    },
+  });
+
+  const transformCropRight = computed({
+    get: () => getSafeTransform(options.clip.value).crop?.right ?? 0,
+    set: (val: number) => {
+      const current = getSafeTransform(options.clip.value);
+      updateSelectedClipTransform({
+        crop: { ...(current.crop ?? { top: 0, bottom: 0, left: 0, right: 0 }), right: val },
+      });
+    },
+  });
+
   function toggleFlipHorizontal() {
     const current = getSafeTransform(options.clip.value);
     const x = -(current.scale?.x ?? 1);
@@ -275,6 +334,36 @@ export function useClipTransform(options: UseClipTransformOptions) {
     updateSelectedClipTransform({ scale: { x, y, linked } });
   }
 
+  function resetScale() {
+    updateSelectedClipTransform({ scale: { x: 1, y: 1, linked: true } });
+  }
+
+  function resetPosition() {
+    updateSelectedClipTransform({ position: { x: 0, y: 0 } });
+  }
+
+  function resetRotation() {
+    updateSelectedClipTransform({ rotationDeg: 0 });
+  }
+
+  function resetAnchor() {
+    updateSelectedClipTransform({ anchor: { preset: 'center' } });
+  }
+
+  function resetCrop() {
+    updateSelectedClipTransform({ crop: { top: 0, bottom: 0, left: 0, right: 0 } });
+  }
+
+  function resetAll() {
+    options.updateTransform({
+      scale: { x: 1, y: 1, linked: true },
+      position: { x: 0, y: 0 },
+      rotationDeg: 0,
+      anchor: { preset: 'center' },
+      crop: { top: 0, bottom: 0, left: 0, right: 0 },
+    });
+  }
+
   return {
     anchorPresetOptions,
     canEditTransform,
@@ -289,5 +378,15 @@ export function useClipTransform(options: UseClipTransformOptions) {
     transformScaleLinked,
     transformScaleX,
     transformScaleY,
+    transformCropTop,
+    transformCropBottom,
+    transformCropLeft,
+    transformCropRight,
+    resetScale,
+    resetPosition,
+    resetRotation,
+    resetAnchor,
+    resetCrop,
+    resetAll,
   };
 }
