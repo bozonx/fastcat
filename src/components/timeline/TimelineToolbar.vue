@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UiTooltip from '~/components/ui/UiTooltip.vue';
 import type { ToolbarDragMode, ToolbarSnapMode } from '~/stores/timelineSettings.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timelineSettings.store';
@@ -158,53 +159,53 @@ function onDragEnd() {
     data-timeline-toolbar
     @click.self="timelineStore.selectTimelineProperties()"
   >
-    <UTooltip :text="t('fastcat.timeline.snapMode', 'Snap Mode')">
+    <UiTooltip :text="t('fastcat.timeline.snapMode', 'Snap Mode')">
       <UiSplitDropdownButton
         size="xs"
         variant="ghost"
         color="neutral"
         :icon="toolbarSnapModeIcon"
-        :aria-label="t('fastcat.timeline.snapMode', 'Snap Mode')"
+        :ariaLabel="t('fastcat.timeline.snapMode', 'Snap Mode')"
         :items="snapModeItems"
         button-class="hover:bg-ui-bg-hover/60"
         caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
         caret-icon-class="size-2.5"
         @click="cycleToolbarSnapMode"
       />
-    </UTooltip>
+    </UiTooltip>
 
-    <UTooltip :text="t('fastcat.timeline.moveMode', 'Clip Move Mode')">
+    <UiTooltip :text="t('fastcat.timeline.moveMode', 'Clip Move Mode')">
       <UiSplitDropdownButton
         size="xs"
         :variant="toolbarDragModeVariant"
         :color="settingsStore.toolbarDragModeEnabled ? 'primary' : 'neutral'"
         :icon="toolbarDragModeIcon"
-        :aria-label="t('fastcat.timeline.moveMode', 'Clip Move Mode')"
+        :ariaLabel="t('fastcat.timeline.moveMode', 'Clip Move Mode')"
         :items="dragModeItems"
         button-class="hover:bg-ui-bg-hover/60"
         caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
         caret-icon-class="size-2.5"
         @click="toggleToolbarDragMode"
       />
-    </UTooltip>
+    </UiTooltip>
 
-    <UTooltip :text="t('fastcat.timeline.trim', 'Trim')">
+    <UiTooltip :text="t('fastcat.timeline.trim', 'Trim')">
       <UiSplitDropdownButton
         size="xs"
         :variant="timelineStore.isTrimModeActive ? 'solid' : 'ghost'"
         :color="timelineStore.isTrimModeActive ? 'primary' : 'neutral'"
         icon="i-heroicons-scissors"
-        :aria-label="t('fastcat.timeline.trim', 'Trim')"
+        :ariaLabel="t('fastcat.timeline.trim', 'Trim')"
         :items="trimMenuItems"
         button-class="hover:bg-ui-bg-hover/60"
         caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
         caret-icon-class="size-2.5"
         @click="toggleTrimMode"
       />
-    </UTooltip>
+    </UiTooltip>
 
     <div v-if="timelineStore.isAnyTrackSoloed" class="ml-2 flex items-center">
-      <UTooltip :text="t('fastcat.timeline.clearSolos', 'Clear all solos')">
+      <UiTooltip :text="t('fastcat.timeline.clearSolos', 'Clear all solos')">
         <UButton
           size="xs"
           color="amber"
@@ -215,7 +216,7 @@ function onDragEnd() {
         >
           {{ t('fastcat.timeline.soloActive', 'SOLO ACTIVE') }}
         </UButton>
-      </UTooltip>
+      </UiTooltip>
     </div>
 
     <div
@@ -223,7 +224,7 @@ function onDragEnd() {
       @click.self="timelineStore.selectTimelineProperties()"
     >
       <!-- Virtual Clips Drag Handles -->
-      <UTooltip
+      <UiTooltip
         :text="`${t('fastcat.timeline.addAdjustment')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
       >
         <UButton
@@ -237,8 +238,8 @@ function onDragEnd() {
           @dragend="onDragEnd"
           @click="timelineStore.addAdjustmentClipAtPlayhead()"
         />
-      </UTooltip>
-      <UTooltip
+      </UiTooltip>
+      <UiTooltip
         :text="`${t('fastcat.timeline.addBackground')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
       >
         <UButton
@@ -252,8 +253,8 @@ function onDragEnd() {
           @dragend="onDragEnd"
           @click="timelineStore.addBackgroundClipAtPlayhead()"
         />
-      </UTooltip>
-      <UTooltip
+      </UiTooltip>
+      <UiTooltip
         :text="`${t('fastcat.timeline.addText')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
       >
         <UButton
@@ -267,7 +268,7 @@ function onDragEnd() {
           @dragend="onDragEnd"
           @click="timelineStore.addTextClipAtPlayhead()"
         />
-      </UTooltip>
+      </UiTooltip>
     </div>
   </div>
 </template>

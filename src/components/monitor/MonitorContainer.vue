@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UiTooltip from '~/components/ui/UiTooltip.vue';
 import { computed, ref, watch } from 'vue';
 import { useFullscreen } from '@vueuse/core';
 import { useFocusStore } from '~/stores/focus.store';
@@ -287,7 +288,7 @@ const emit = defineEmits<{
           class="flex items-center gap-2 shrink-0"
           :class="toolbarPosition === 'left' || toolbarPosition === 'right' ? 'flex-col' : ''"
         >
-          <UTooltip :text="t('fastcat.timeline.addMarkerAtPlayhead', 'Add marker at playhead')">
+          <UiTooltip :text="t('fastcat.timeline.addMarkerAtPlayhead', 'Add marker at playhead')">
             <UButton
               size="2xs"
               color="neutral"
@@ -295,9 +296,9 @@ const emit = defineEmits<{
               icon="i-heroicons-bookmark"
               @click="createMarkerAtPlayhead"
             />
-          </UTooltip>
+          </UiTooltip>
 
-          <UTooltip :text="t('fastcat.monitor.center', 'Center')">
+          <UiTooltip :text="t('fastcat.monitor.center', 'Center')">
             <UButton
               size="2xs"
               color="neutral"
@@ -305,9 +306,9 @@ const emit = defineEmits<{
               icon="i-lucide-crosshair"
               @click="centerMonitor"
             />
-          </UTooltip>
+          </UiTooltip>
 
-          <UTooltip :text="t('fastcat.monitor.resetZoom', 'Reset zoom')">
+          <UiTooltip :text="t('fastcat.monitor.resetZoom', 'Reset zoom')">
             <UButton
               size="xs"
               color="neutral"
@@ -316,9 +317,9 @@ const emit = defineEmits<{
               :label="monitorZoomLabel"
               @click="resetZoom"
             />
-          </UTooltip>
+          </UiTooltip>
 
-          <UTooltip :text="t('fastcat.monitor.useProxy', 'Use proxy')">
+          <UiTooltip :text="t('fastcat.monitor.useProxy', 'Use proxy')">
             <UButton
               v-if="projectStore.activeMonitor"
               size="xs"
@@ -328,9 +329,9 @@ const emit = defineEmits<{
               :class="useProxyInMonitor ? 'text-[var(--selection-accent-400)] ring-1 ring-[var(--selection-accent-500)]/40 bg-[color:rgba(59,130,246,0.12)]' : ''"
               @click="toggleProxyUsage"
             />
-          </UTooltip>
+          </UiTooltip>
 
-          <UTooltip
+          <UiTooltip
             :text="
               previewEffectsEnabled
                 ? t('fastcat.monitor.previewWithEffects', 'Preview with effects')
@@ -346,7 +347,7 @@ const emit = defineEmits<{
               :class="previewEffectsEnabled ? 'text-[var(--selection-accent-400)] ring-1 ring-[var(--selection-accent-500)]/40 bg-[color:rgba(59,130,246,0.12)]' : ''"
               @click="togglePreviewEffects"
             />
-          </UTooltip>
+          </UiTooltip>
 
           <div class="w-auto min-w-14">
             <USelectMenu

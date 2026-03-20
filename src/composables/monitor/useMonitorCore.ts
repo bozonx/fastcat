@@ -141,6 +141,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       layoutUpdateFromQueue = true;
 
       const payload = cloneWorkerPayload(preparedTimeline.payload);
+      await ensureCompositorReady();
       const maxDuration = await client.updateTimelineLayout(payload);
       timelineStore.duration = computeMonitorTimelineDuration({
         currentDurationUs: timelineStore.duration,
