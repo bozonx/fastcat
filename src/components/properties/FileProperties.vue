@@ -389,7 +389,7 @@ const {
     />
 
     <FileGeneralInfoSection
-      v-if="fileInfo"
+      v-if="fileInfo && !isProjectRootDir"
       :title="generalInfoTitle"
       :file-info="fileInfo"
       :selected-path="selectedPath"

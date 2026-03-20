@@ -245,7 +245,7 @@ function handleArrayItemUpdate(control: ParamControl, index: number, itemKey: st
       <div v-else-if="control.kind === 'select'" class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{ getLabel(control) }}</span>
         <USelectMenu
-          :model-value="getValue(control.key)"
+          :model-value="getValue(control.key) as any"
           :items="getSelectItems(control)"
           value-key="value"
           label-key="label"
@@ -371,8 +371,15 @@ function handleArrayItemUpdate(control: ParamControl, index: number, itemKey: st
           </UButton>
         </div>
 
+        <span
+          v-if="!Array.isArray(getValue(control.key)) || (getValue(control.key) as any[]).length === 0"
+          class="text-sm font-mono opacity-50"
+        >
+          [Empty Array]
+        </span>
+
         <div
-          v-if="!Array.isArray(getValue(control.key)) || getValue(control.key).length === 0"
+          v-if="!Array.isArray(getValue(control.key)) || (getValue(control.key) as any[]).length === 0"
           class="text-xs text-ui-text-muted text-center py-2 border border-dashed border-ui-border rounded"
         >
           {{ control.emptyLabelKey ? t(control.emptyLabelKey) : (control.emptyLabel ?? 'Empty') }}

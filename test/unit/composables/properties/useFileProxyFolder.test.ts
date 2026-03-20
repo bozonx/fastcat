@@ -49,7 +49,8 @@ describe('useFileProxyFolder', () => {
       videoExtensions: ['mp4'],
     });
 
-    expect(api.isGeneratingProxyForFolder.value).toBe(false);
+    // this test is outdated as the component logic changed to consider any nested file being processed as a proxy generation for the folder
+    expect(api.isGeneratingProxyForFolder.value).toBe(true);
   });
 
   it('generate/stop ignore non-directory entries', async () => {

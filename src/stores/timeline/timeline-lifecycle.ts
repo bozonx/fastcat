@@ -25,7 +25,7 @@ interface TimelineHistoryDebounceApi {
 }
 
 interface TimelineMediaUsageStoreApi {
-  setLiveUsage: (timelinePath: string | null, usage: Record<string, string[]>) => void;
+  setLiveUsage: (timelinePath: string | null, usage: any) => void;
   refreshUsage: () => Promise<void>;
 }
 

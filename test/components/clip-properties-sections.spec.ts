@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mountWithNuxt } from '../../../../utils/mount';
+import { mountWithNuxt } from '../utils/mount';
 import ClipActionsSection from '~/components/properties/clip/ClipActionsSection.vue';
 import ClipInfoSection from '~/components/properties/clip/ClipInfoSection.vue';
 import type { TimelineClipItem } from '~/timeline/types';

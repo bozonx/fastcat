@@ -74,10 +74,7 @@ export function useFileProxyFolder(options: UseFileProxyFolderOptions) {
 
     for (const p of generatingProxies.value) {
       if (p.startsWith(`${dirPath}/`)) {
-        const rel = p.slice(dirPath.length + 1);
-        if (!rel.includes('/')) {
-          await options.proxyStore.cancelProxyGeneration(p);
-        }
+        await options.proxyStore.cancelProxyGeneration(p);
       }
     }
   }
