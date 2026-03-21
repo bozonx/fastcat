@@ -194,17 +194,17 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <UContextMenu
-    :items="contextMenuItems"
-    :modal="false"
-    class="h-full group/monitor"
-    :ui="{ content: 'z-[100000]' }"
-  >
     <!-- Portal context menu rendered inside panelRef — works in browser fullscreen -->
     <UiContextMenuPortal :items="contextMenuItems" :target-el="panelRef" />
 
-    <div
-      ref="panelRef"
+    <UContextMenu
+      :items="contextMenuItems"
+      :modal="false"
+      class="h-full group/monitor"
+      :ui="{ content: 'z-[100000]' }"
+    >
+      <div
+        ref="panelRef"
       class="panel-focus-frame flex h-full min-w-0 min-h-0 transition-colors duration-300 relative"
       :class="[
         effectiveFullscreen ? 'bg-black flex-col' : 'bg-ui-bg-elevated',
@@ -341,7 +341,7 @@ const emit = defineEmits<{
               icon="i-heroicons-bolt"
               :class="
                 useProxyInMonitor
-                  ? 'text-[var(--selection-accent-400)] ring-1 ring-[var(--selection-accent-500)]/40 bg-[color:rgba(59,130,246,0.12)]'
+                  ? 'text-(--selection-accent-400) ring-(--selection-accent-500)/40 bg-[rgba(59,130,246,0.12)]'
                   : ''
               "
               @click="toggleProxyUsage"
@@ -363,7 +363,7 @@ const emit = defineEmits<{
               icon="i-heroicons-sparkles"
               :class="
                 previewEffectsEnabled
-                  ? 'text-[var(--selection-accent-400)] ring-1 ring-[var(--selection-accent-500)]/40 bg-[color:rgba(59,130,246,0.12)]'
+                  ? 'text-(--selection-accent-400) ring-(--selection-accent-500)/40 bg-[rgba(59,130,246,0.12)]'
                   : ''
               "
               @click="togglePreviewEffects"
