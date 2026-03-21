@@ -195,7 +195,7 @@ function getTransitionButtonTitle(edge: 'in' | 'out'): string | undefined {
 function getTransitionFadeLines(edge: 'in' | 'out') {
   const transition = edge === 'in' ? props.clip.transitionIn : props.clip.transitionOut;
   const curve = transition?.curve ?? DEFAULT_TRANSITION_CURVE;
-  return getTransitionFadeLinePattern(edge, curve, 100);
+  return getTransitionFadeLinePattern(edge, curve, 100, transition?.params);
 }
 
 function getFadeLineColor(hasProblem: boolean) {
@@ -206,7 +206,7 @@ function getFadeLineColor(hasProblem: boolean) {
 function getTransitionCurvePath(edge: 'in' | 'out') {
   const transition = edge === 'in' ? props.clip.transitionIn : props.clip.transitionOut;
   const curve = transition?.curve ?? DEFAULT_TRANSITION_CURVE;
-  return getTransitionSolidPath(100, 100, curve, edge);
+  return getTransitionSolidPath(100, 100, curve, edge, transition?.params);
 }
 
 function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {

@@ -191,13 +191,6 @@ const detachedStaticPanelContextMenuItems = computed(() => {
     v-else-if="panel.type === 'fileManager'"
     class="h-full w-full bg-ui-bg-elevated flex flex-col relative border border-ui-border"
   >
-    <EditorPanelHeader
-      :title="t('fastcat.dynamicPanels.projectFiles', 'Project files')"
-      icon="i-heroicons-folder"
-      :context-menu-items="detachedStaticPanelContextMenuItems"
-      @drag-start="onDragStart"
-      @close="onClose"
-    />
     <div class="flex-1 overflow-hidden min-h-0">
       <Project class="h-full pt-2" :use-external-focus="true" />
     </div>
