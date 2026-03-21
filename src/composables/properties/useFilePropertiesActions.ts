@@ -32,6 +32,7 @@ interface UseFilePropertiesActionsOptions {
   isGeneratingProxyForFile: Ref<boolean>;
   isOtio: Ref<boolean>;
   isVideoFile: Ref<boolean>;
+  isCommonDir: Ref<boolean>;
   triggerDirectoryUpload: () => void;
   createSubfolder: () => void;
   createTimelineInFolder: () => void;
@@ -59,14 +60,14 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'rename',
       title: options.t('common.rename', 'Rename'),
       icon: 'i-heroicons-pencil',
-      hidden: options.isProjectRootDir.value,
+      hidden: options.isProjectRootDir.value || options.isCommonDir.value,
       onClick: options.onRename,
     },
     {
       id: 'delete',
       title: options.t('common.delete', 'Delete'),
       icon: 'i-heroicons-trash',
-      hidden: options.isProjectRootDir.value,
+      hidden: options.isProjectRootDir.value || options.isCommonDir.value,
       onClick: options.onDelete,
     },
     {
@@ -84,12 +85,6 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
   ]);
 
   const directorySecondaryActions = computed<SecondaryEntryAction[]>(() => [
-    {
-      id: 'createSubfolder',
-      label: options.t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
-      icon: 'i-heroicons-folder-plus',
-      onClick: options.createSubfolder,
-    },
     {
       id: 'createTimeline',
       label: options.t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline'),
@@ -142,13 +137,6 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       onClick: options.onDelete,
     },
     {
-      id: 'convertFile',
-      title: options.t('videoEditor.fileManager.actions.convertFile', 'Convert File'),
-      icon: 'i-heroicons-arrow-path',
-      hidden: !options.canConvertFile.value,
-      onClick: options.onConvert,
-    },
-    {
       id: 'uploadRemote',
       title: options.t('videoEditor.fileManager.actions.uploadRemote', 'Upload to remote'),
       icon: 'i-heroicons-cloud-arrow-up',
@@ -165,6 +153,13 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
   ]);
 
   const fileSecondaryActions = computed<SecondaryEntryAction[]>(() => [
+    {
+      id: 'convertFile',
+      label: options.t('videoEditor.fileManager.actions.convertFile', 'Convert File'),
+      icon: 'i-heroicons-arrow-path',
+      hidden: !options.canConvertFile.value,
+      onClick: options.onConvert,
+    },
     {
       id: 'openAsPanelCut',
       label: options.t('videoEditor.fileManager.actions.openAsPanelCut', 'Open as panel (Editor)'),

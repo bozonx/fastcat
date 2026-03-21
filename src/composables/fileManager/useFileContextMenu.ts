@@ -309,19 +309,27 @@ export function useFileContextMenu(
       ]);
     }
 
-    items.push([
-      {
-        label: t('common.rename', 'Rename'),
-        icon: 'i-heroicons-pencil',
-        onSelect: () => onAction('rename', entry),
-      },
-      {
-        label: t('common.delete', 'Delete'),
-        icon: 'i-heroicons-trash',
-        color: 'error',
-        onSelect: () => onAction('delete', entry),
-      },
-    ]);
+    const isCommon =
+      entry.kind === 'directory' &&
+      entry.name.toLowerCase() === 'common' &&
+      (entry.path === 'common' || entry.path === '');
+    const isProjectRoot = entry.kind === 'directory' && entry.path === '';
+
+    if (!isCommon && !isProjectRoot) {
+      items.push([
+        {
+          label: t('common.rename', 'Rename'),
+          icon: 'i-heroicons-pencil',
+          onSelect: () => onAction('rename', entry),
+        },
+        {
+          label: t('common.delete', 'Delete'),
+          icon: 'i-heroicons-trash',
+          color: 'error',
+          onSelect: () => onAction('delete', entry),
+        },
+      ]);
+    }
 
     return items;
   }
