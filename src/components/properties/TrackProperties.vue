@@ -209,80 +209,88 @@ const extraActions = computed(() => {
 
 <template>
   <div class="w-full flex flex-col gap-2">
-    <div class="flex flex-col w-full gap-4 px-1 pb-4">
-      <!-- Direct Actions Row (Matched with Header style) -->
-      <div class="flex items-center gap-1.5 py-1 bg-ui-bg rounded-lg">
-        <UButton
-          v-if="track.kind === 'video'"
-          size="sm"
-          :variant="props.track.videoHidden ? 'solid' : 'ghost'"
-          :color="props.track.videoHidden ? 'amber' : 'neutral'"
-          :icon="props.track.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
-          class="w-8 h-8 p-0 flex items-center justify-center transition-opacity"
-          :class="[props.track.videoHidden ? 'text-black! opacity-100 hover:opacity-90' : 'opacity-60 hover:opacity-100']"
-          :style="props.track.videoHidden ? { backgroundColor: '#facc15', color: '#000000' } : undefined"
-          :title="t('fastcat.timeline.toggleTrackVisibility')"
-          @click="timelineStore.updateTrackProperties(props.track.id, { videoHidden: !props.track.videoHidden })"
-        />
-        <UButton
-          size="sm"
-          :variant="props.track.audioMuted ? 'solid' : 'ghost'"
-          :color="props.track.audioMuted ? 'error' : 'neutral'"
-          :icon="props.track.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
-          class="w-8 h-8 p-0 flex items-center justify-center transition-opacity"
-          :class="[props.track.audioMuted ? 'text-black! opacity-100 hover:opacity-90' : 'opacity-60 hover:opacity-100']"
-          :style="props.track.audioMuted ? { backgroundColor: '#ef4444', color: '#000000' } : undefined"
-          :title="t('fastcat.timeline.toggleTrackMute')"
-          @click="timelineStore.updateTrackProperties(props.track.id, { audioMuted: !props.track.audioMuted })"
-        />
-        <UButton
-          v-if="track.kind === 'audio' || track.kind === 'video'"
-          size="sm"
-          :variant="isSolo ? 'solid' : 'ghost'"
-          :color="isSolo ? 'warning' : 'neutral'"
-          icon="i-heroicons-musical-note"
-          class="w-8 h-8 p-0 flex items-center justify-center transition-opacity"
-          :class="[isSolo ? 'text-black! opacity-100 hover:opacity-90' : 'opacity-60 hover:opacity-100']"
-          :style="isSolo ? { backgroundColor: '#fbbf24', color: '#000000' } : undefined"
-          :title="t('fastcat.timeline.toggleTrackSolo')"
-          @click="isSolo = !isSolo"
-        />
-        <UButton
-          size="sm"
-          :variant="isLocked ? 'solid' : 'ghost'"
-          :color="isLocked ? 'primary' : 'neutral'"
-          :icon="isLocked ? 'i-heroicons-lock-closed' : 'i-heroicons-lock-open'"
-          class="w-8 h-8 p-0 flex items-center justify-center transition-opacity"
-          :class="[isLocked ? 'text-white! opacity-100 hover:opacity-90' : 'opacity-60 hover:opacity-100']"
-          :style="isLocked ? { backgroundColor: 'var(--color-primary-500)', color: '#ffffff' } : undefined"
-          :title="t('fastcat.track.lock', 'Lock track')"
-          @click="isLocked = !isLocked"
-        />
-        
-        <div class="flex-1" />
-        
-        <div class="flex items-center gap-1">
+    <PropertySection :title="t('fastcat.track.actions', 'Actions')">
+      <div class="flex flex-col w-full gap-3">
+        <!-- Direct Actions Row (Matched with Header style) -->
+        <div class="flex items-center gap-1.5 py-1">
           <UButton
-            icon="i-heroicons-pencil"
+            v-if="track.kind === 'video'"
             size="sm"
-            variant="ghost"
-            color="neutral"
-            class="opacity-60 hover:opacity-100 w-8 h-8"
-            :title="t('common.rename', 'Rename')"
-            @click="timelineStore.renamingTrackId = props.track.id"
+            :variant="props.track.videoHidden ? 'solid' : 'ghost'"
+            :color="props.track.videoHidden ? 'amber' : 'neutral'"
+            :icon="props.track.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
+            class="w-8 h-8 p-0 flex items-center justify-center transition-opacity"
+            :class="[props.track.videoHidden ? 'text-black! opacity-100 hover:opacity-90' : 'opacity-60 hover:opacity-100']"
+            :style="props.track.videoHidden ? { backgroundColor: '#facc15', color: '#000000' } : undefined"
+            :title="t('fastcat.timeline.toggleTrackVisibility')"
+            @click="timelineStore.updateTrackProperties(props.track.id, { videoHidden: !props.track.videoHidden })"
           />
           <UButton
-            icon="i-heroicons-trash"
             size="sm"
-            variant="ghost"
-            color="danger"
-            class="opacity-60 hover:opacity-100 w-8 h-8"
-            :title="t('common.delete', 'Delete')"
-            @click="requestDeleteTrack"
+            :variant="props.track.audioMuted ? 'solid' : 'ghost'"
+            :color="props.track.audioMuted ? 'error' : 'neutral'"
+            :icon="props.track.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
+            class="w-8 h-8 p-0 flex items-center justify-center transition-opacity"
+            :class="[props.track.audioMuted ? 'text-black! opacity-100 hover:opacity-90' : 'opacity-60 hover:opacity-100']"
+            :style="props.track.audioMuted ? { backgroundColor: '#ef4444', color: '#000000' } : undefined"
+            :title="t('fastcat.timeline.toggleTrackMute')"
+            @click="timelineStore.updateTrackProperties(props.track.id, { audioMuted: !props.track.audioMuted })"
           />
+          <UButton
+            v-if="track.kind === 'audio' || track.kind === 'video'"
+            size="sm"
+            :variant="isSolo ? 'solid' : 'ghost'"
+            :color="isSolo ? 'warning' : 'neutral'"
+            icon="i-heroicons-musical-note"
+            class="w-8 h-8 p-0 flex items-center justify-center transition-opacity"
+            :class="[isSolo ? 'text-black! opacity-100 hover:opacity-90' : 'opacity-60 hover:opacity-100']"
+            :style="isSolo ? { backgroundColor: '#fbbf24', color: '#000000' } : undefined"
+            :title="t('fastcat.timeline.toggleTrackSolo')"
+            @click="isSolo = !isSolo"
+          />
+          <UButton
+            size="sm"
+            :variant="isLocked ? 'solid' : 'ghost'"
+            :color="isLocked ? 'primary' : 'neutral'"
+            :icon="isLocked ? 'i-heroicons-lock-closed' : 'i-heroicons-lock-open'"
+            class="w-8 h-8 p-0 flex items-center justify-center transition-opacity"
+            :class="[isLocked ? 'text-white! opacity-100 hover:opacity-90' : 'opacity-60 hover:opacity-100']"
+            :style="isLocked ? { backgroundColor: 'var(--color-primary-500)', color: '#ffffff' } : undefined"
+            :title="t('fastcat.track.lock', 'Lock track')"
+            @click="isLocked = !isLocked"
+          />
+          
+          <div class="h-4 w-px bg-ui-border mx-1 opacity-50" />
+          
+          <div class="flex items-center gap-1">
+            <UButton
+              icon="i-heroicons-pencil"
+              size="sm"
+              variant="ghost"
+              color="neutral"
+              class="opacity-60 hover:opacity-100 w-8 h-8"
+              :title="t('common.rename', 'Rename')"
+              @click="timelineStore.renamingTrackId = props.track.id"
+            />
+            <UButton
+              icon="i-heroicons-trash"
+              size="sm"
+              variant="ghost"
+              color="danger"
+              class="opacity-60 hover:opacity-100 w-8 h-8"
+              :title="t('common.delete', 'Delete')"
+              @click="requestDeleteTrack"
+            />
+          </div>
+        </div>
+
+        <div v-if="extraActions.length > 0" class="pt-1">
+          <PropertyActionList :actions="extraActions" justify="start" size="sm" />
         </div>
       </div>
+    </PropertySection>
 
+    <div class="flex flex-col w-full gap-4 px-3 py-3 bg-ui-bg-elevated/40 rounded-lg border border-ui-border/50">
       <!-- Color Selection (Shared) -->
       <div class="flex flex-col gap-2">
         <span class="text-[10px] text-ui-text-muted uppercase tracking-wider font-bold">
@@ -291,13 +299,13 @@ const extraActions = computed(() => {
         <UiColorPicker :model-value="trackColor" mode="track" @update:model-value="(v) => (trackColor = v)" />
       </div>
 
-      <div class="h-px bg-ui-border opacity-50 my-1" />
+      <div class="h-px bg-ui-border opacity-30 my-1" />
 
       <!-- Track Composition & Media Settings -->
       <div class="flex flex-col gap-4">
         <div v-if="track.kind === 'video'" class="flex flex-col gap-3">
-          <div class="flex flex-col gap-0.5">
-            <span class="text-xs text-ui-text-muted">{{ t('fastcat.track.blendMode', 'Blend mode') }}</span>
+          <div class="flex flex-col gap-1">
+            <span class="text-xs text-ui-text-muted font-medium">{{ t('fastcat.track.blendMode', 'Blend mode') }}</span>
             <UiSelect
               :model-value="trackBlendMode"
               :items="blendModeOptions"
@@ -322,7 +330,7 @@ const extraActions = computed(() => {
             @update:model-value="(v: number) => (trackOpacity = v)"
           />
 
-          <div class="h-px bg-ui-border opacity-50 my-1" />
+          <div class="h-px bg-ui-border opacity-30 my-1" />
         </div>
 
         <div v-if="track.kind === 'audio' || track.kind === 'video'" class="flex flex-col gap-3">
@@ -350,12 +358,8 @@ const extraActions = computed(() => {
           />
         </div>
       </div>
-
-      <!-- Specialized Actions (e.g., Generate Captions) -->
-      <div v-if="extraActions.length > 0" class="mt-2 pt-2 border-t border-ui-border">
-        <PropertyActionList :actions="extraActions" justify="start" size="sm" />
-      </div>
     </div>
+
 
 
     <EffectsEditor
