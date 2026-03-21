@@ -77,7 +77,7 @@ function shouldHandlePreviewZoom() {
 watch(
   () => props.src,
   () => {
-    reset();
+    fitToContainer();
   },
 );
 
@@ -102,7 +102,13 @@ watch(
   },
 );
 
-onMounted(() => {});
+function onImageLoad() {
+  fitToContainer();
+}
+
+onMounted(() => {
+  fitToContainer();
+});
 
 onUnmounted(() => {});
 </script>
@@ -116,7 +122,7 @@ onUnmounted(() => {});
   >
     <div
       ref="containerRef"
-      class="image-viewer-container flex items-center justify-center w-full h-full bg-[#1a1a1a] overflow-hidden p-4 relative select-none outline-none"
+      class="image-viewer-container flex items-center justify-center w-full h-full bg-[#1a1a1a] overflow-hidden relative select-none outline-none"
       tabindex="-1"
       @wheel="onWheel"
       @pointerdown="onPointerDown"
@@ -132,6 +138,7 @@ onUnmounted(() => {});
         class="max-w-full max-h-full block checkerboard-bg transition-transform duration-75"
         :style="imageStyle"
         draggable="false"
+        @load="onImageLoad"
       />
     </div>
   </UContextMenu>

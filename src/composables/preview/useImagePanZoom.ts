@@ -21,7 +21,36 @@ export function useImagePanZoom(containerRef: Ref<HTMLElement | null>) {
 
   function fitToContainer() {
     if (!containerRef.value) return;
-    reset();
+    const container = containerRef.value;
+    const media = container.querySelector('img, video') as
+      | HTMLImageElement
+      | HTMLVideoElement
+      | null;
+    const vpW = container.clientWidth;
+    const vpH = container.clientHeight;
+    if (!vpW || !vpH) {
+      reset();
+      return;
+    }
+    const naturalW =
+      media instanceof HTMLImageElement
+        ? media.naturalWidth
+        : media instanceof HTMLVideoElement
+          ? media.videoWidth
+          : 0;
+    const naturalH =
+      media instanceof HTMLImageElement
+        ? media.naturalHeight
+        : media instanceof HTMLVideoElement
+          ? media.videoHeight
+          : 0;
+    if (!naturalW || !naturalH) {
+      reset();
+      return;
+    }
+    scale.value = Math.min(vpW / naturalW, vpH / naturalH);
+    translateX.value = 0;
+    translateY.value = 0;
   }
 
   function applyZoomAtPoint(params: { delta: number; clientX: number; clientY: number }) {

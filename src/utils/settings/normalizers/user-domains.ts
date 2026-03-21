@@ -339,5 +339,5 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
     })
     .catch(DEFAULT_USER_SETTINGS.mouse);
 
-  return schema.parse((raw as any)?.mouse ?? {});
+  return schema.parse(raw ?? {});
 }

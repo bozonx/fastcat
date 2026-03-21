@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import UiTooltip from '~/components/ui/UiTooltip.vue';
-import { computed, ref, watch } from 'vue';
+import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useFullscreen } from '@vueuse/core';
 import { useFocusStore } from '~/stores/focus.store';
 import { useMonitorContainerControls } from '~/composables/monitor/useMonitorContainerControls';
@@ -61,6 +62,10 @@ watch(isBrowserFullscreen, (val) => {
   } else if (projectStore.currentView === 'fullscreen') {
     restoreViewAfterFullscreen();
   }
+  // Re-fit monitor after viewport size changes on fullscreen toggle
+  void nextTick(() => {
+    (viewportRef.value as any)?.fitMonitor?.();
+  });
 });
 
 watch(
@@ -195,6 +200,9 @@ const emit = defineEmits<{
     class="h-full group/monitor"
     :ui="{ content: 'z-[100000]' }"
   >
+    <!-- Portal context menu rendered inside panelRef — works in browser fullscreen -->
+    <UiContextMenuPortal :items="contextMenuItems" :target-el="panelRef" />
+
     <div
       ref="panelRef"
       class="panel-focus-frame flex h-full min-w-0 min-h-0 transition-colors duration-300 relative"
