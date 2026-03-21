@@ -242,24 +242,22 @@ const addTrackActions = computed(() => [
 
 <template>
   <div class="w-full flex flex-col gap-3">
-    <!-- File Info -->
-    <template v-if="fsEntry">
-
-      <FileGeneralInfoSection
-        v-if="fileInfo"
-        :title="generalInfoTitle"
-        :file-info="fileInfo"
-        :selected-path="selectedPath"
-        :is-hidden="isHidden"
-        :format-bytes="formatBytes"
-      />
-
-      <FileTimelineUsageSection
-        v-if="timelinesUsingSelectedFile.length > 0"
-        :usages="timelinesUsingSelectedFile"
-        :open-timeline-from-usage="openTimelineFromUsage"
-      />
-    </template>
+    <!-- Actions (merge file and timeline actions) -->
+    <PropertySection
+      v-if="fileActions || !finalIsReadOnly"
+      :title="t('videoEditor.fileManager.actions.title', 'Actions')"
+    >
+      <div class="flex flex-col gap-2">
+        <EntryActions
+          v-if="fileActions"
+          :primary-actions="fileActions.primary"
+          :secondary-actions="fileActions.secondary"
+        />
+        <div v-if="!finalIsReadOnly" :class="{ 'mt-1 pt-1 border-t border-ui-border/50': fileActions }">
+          <PropertyActionList :actions="addTrackActions" :vertical="false" justify="start" size="xs" />
+        </div>
+      </div>
+    </PropertySection>
 
     <!-- Info Section -->
     <PropertySection v-if="computedSummary" :title="t('common.info', 'Info')">
@@ -287,22 +285,23 @@ const addTrackActions = computed(() => [
       </div>
     </PropertySection>
 
-    <!-- Actions (merge file and timeline actions) -->
-    <PropertySection
-      v-if="fileActions || !finalIsReadOnly"
-      :title="t('videoEditor.fileManager.actions.title', 'Actions')"
-    >
-      <div class="flex flex-col gap-2">
-        <EntryActions
-          v-if="fileActions"
-          :primary-actions="fileActions.primary"
-          :secondary-actions="fileActions.secondary"
-        />
-        <div v-if="!finalIsReadOnly" :class="{ 'mt-1 pt-1 border-t border-ui-border/50': fileActions }">
-          <PropertyActionList :actions="addTrackActions" :vertical="false" justify="start" size="xs" />
-        </div>
-      </div>
-    </PropertySection>
+    <!-- OTIO Section (File Info) -->
+    <template v-if="fsEntry">
+      <FileGeneralInfoSection
+        v-if="fileInfo"
+        :title="generalInfoTitle"
+        :file-info="fileInfo"
+        :selected-path="selectedPath"
+        :is-hidden="isHidden"
+        :format-bytes="formatBytes"
+      />
+
+      <FileTimelineUsageSection
+        v-if="timelinesUsingSelectedFile.length > 0"
+        :usages="timelinesUsingSelectedFile"
+        :open-timeline-from-usage="openTimelineFromUsage"
+      />
+    </template>
 
     <!-- Settings (No title, includes Master Volume) -->
     <PropertySection v-if="!finalIsReadOnly">
@@ -365,7 +364,7 @@ const addTrackActions = computed(() => [
     <div v-if="!finalIsReadOnly" class="relative">
       <EffectsEditor
         :effects="masterEffects"
-        :title="t('fastcat.effects.masterTitle', 'Master effects')"
+        :title="`${t('fastcat.effects.tabs.video')} ${t('fastcat.effects.title').toLowerCase()}`"
         @update:effects="handleUpdateMasterEffects"
       />
       <div

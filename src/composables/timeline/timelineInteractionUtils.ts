@@ -75,10 +75,12 @@ export function getSelectedMovableItemIds(params: {
   tracks: TimelineTrack[];
 }): string[] {
   return params.selectedItemIds.filter((selectedId) => {
-    const selectedItem = params.tracks
-      .find((track) => track.items.some((trackItem) => trackItem.id === selectedId))
-      ?.items.find((trackItem) => trackItem.id === selectedId);
+    const track = params.tracks.find((t) =>
+      t.items.some((trackItem) => trackItem.id === selectedId),
+    );
+    if (!track || track.locked) return false;
 
+    const selectedItem = track?.items.find((trackItem) => trackItem.id === selectedId);
     return selectedItem?.kind === 'clip' && !selectedItem.locked;
   });
 }
@@ -99,7 +101,7 @@ export function resolveMoveTargetTrackId(params: {
 
   const fromTrack = params.tracks.find((track) => track.id === params.draggingTrackId);
   const toTrack = params.tracks.find((track) => track.id === hoverTrackId);
-  if (!fromTrack || !toTrack || fromTrack.kind !== toTrack.kind) {
+  if (!fromTrack || !toTrack || fromTrack.kind !== toTrack.kind || toTrack.locked) {
     return params.draggingTrackId;
   }
 

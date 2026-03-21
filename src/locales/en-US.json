@@ -798,7 +798,11 @@
         "volume": "Volume"
       },
       "blendMode": "Blend mode",
+      "lock": "Lock track",
+      "locked": "Track is locked",
       "opacity": "Opacity",
+      "unlock": "Unlock track",
+      "unlocked": "Track is unlocked",
       "video": {
         "title": "Video tracks"
       }

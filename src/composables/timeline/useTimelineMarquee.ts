@@ -76,6 +76,7 @@ export function useTimelineMarquee(
       const trackBottom = currentY + trackHeight;
 
       if (trackTop <= bottom && trackBottom >= top) {
+        if (track.locked) continue;
         for (const item of track.items) {
           if (item.kind !== 'clip' || (item as any).locked) continue;
           const startPx = timeUsToPx(item.timelineRange.startUs, zoom);
