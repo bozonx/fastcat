@@ -158,14 +158,14 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'copy',
       title: options.t('common.copy', 'Copy'),
       icon: 'i-heroicons-document-duplicate',
-      hidden: true, // Hidden in primary (icons)
+      hidden: !options.canCopyOrCut.value,
       onClick: options.onCopy,
     },
     {
       id: 'cut',
       title: options.t('common.cut', 'Cut'),
       icon: 'i-heroicons-scissors',
-      hidden: true, // Hidden in primary (icons), available in secondary if needed
+      hidden: !options.canCopyOrCut.value,
       onClick: options.onCut,
     },
     {
@@ -192,13 +192,6 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
   ]);
 
   const fileSecondaryActions = computed<SecondaryEntryAction[]>(() => [
-    {
-      id: 'paste',
-      label: options.t('common.paste', 'Paste'),
-      icon: 'i-heroicons-clipboard',
-      hidden: !options.hasClipboardItems.value,
-      onClick: options.onPaste,
-    },
     {
       id: 'convertFile',
       label: options.t('videoEditor.fileManager.actions.convertFile', 'Convert File'),

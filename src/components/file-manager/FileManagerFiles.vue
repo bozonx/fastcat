@@ -113,8 +113,10 @@ function onTreeContainerKeyDown(e: KeyboardEvent) {
   if (isMod && key === 'v') {
     e.preventDefault();
     e.stopPropagation();
-    const target = props.findEntryByPath(selectedPath.value ?? '');
-    onFileActionBase.paste(target ?? { kind: 'directory', path: '', name: 'root' } as FsEntry);
+    // Paste into selected entry (or root if nothing directory selected)
+    const entry = props.findEntryByPath(selectedPath.value ?? '') ??
+      ({ kind: 'directory', path: '', name: 'root' } as FsEntry);
+    props.onPasteToEntry?.(entry);
     return;
   }
 
@@ -125,7 +127,7 @@ function onTreeContainerKeyDown(e: KeyboardEvent) {
       e.preventDefault();
       e.stopPropagation();
       const entries = selected.kind === 'multiple' ? selected.entries : [selected.entry];
-      onFileActionBase.copy(entries);
+      props.onCopyEntries?.(entries);
     }
     return;
   }
@@ -137,7 +139,7 @@ function onTreeContainerKeyDown(e: KeyboardEvent) {
       e.preventDefault();
       e.stopPropagation();
       const entries = selected.kind === 'multiple' ? selected.entries : [selected.entry];
-      onFileActionBase.cut(entries);
+      props.onCutEntries?.(entries);
     }
     return;
   }
@@ -159,6 +161,9 @@ const props = defineProps<{
   moveEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<void>;
   copyEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
   handleFiles: (files: FileList | File[], targetDirPath?: string) => Promise<void>;
+  onCopyEntries?: (entries: FsEntry[]) => void;
+  onCutEntries?: (entries: FsEntry[]) => void;
+  onPasteToEntry?: (entry: FsEntry) => void;
 }>();
 
 const filesPageStore = useFilesPageStore();

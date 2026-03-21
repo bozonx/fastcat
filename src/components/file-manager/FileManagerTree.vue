@@ -13,7 +13,7 @@ import type { FsEntry } from '~/types/fs';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
-import { useClipboardPaths } from '~/composables/fileManager/useClipboardIndicator';
+import { useClipboardPaths, useClipboardCopyPaths } from '~/composables/fileManager/useClipboardIndicator';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import FileManagerTreeRow from '~/components/file-manager/FileManagerTreeRow.vue';
 import {
@@ -52,6 +52,7 @@ interface TreeContext {
 const props = defineProps<Props>();
 
 const clipboardPaths = useClipboardPaths();
+const clipboardCopyPaths = useClipboardCopyPaths();
 
 const ctx = inject<TreeContext>('fileManagerTreeCtx', {
   getFileIcon: () => 'i-heroicons-document',
@@ -245,6 +246,7 @@ interface EntryViewModel {
   isDot: boolean;
   isCommonRoot: boolean;
   isCut: boolean;
+  isCopy: boolean;
   iconClass: string;
   nameClass: string;
   meta: ReturnType<typeof ctx.getEntryMeta>;
@@ -257,13 +259,15 @@ function getEntryViewModel(entry: FsEntry): EntryViewModel {
   const isDot = isDotEntry(entry);
   const isCommonRoot = isWorkspaceCommonRoot(entry);
   const isCut = entry.path ? clipboardPaths.value.has(entry.path) : false;
+  const isCopy = entry.path ? clipboardCopyPaths.value.has(entry.path) : false;
   const iconBase = getEntryIconClass(entry);
   const generatingDir = isGeneratingProxyInDirectory(entry, proxyStore.generatingProxies);
 
   const iconClass = [
     iconBase,
     meta.hasProxy ? 'text-(--color-success)!' : '',
-    isCut ? 'opacity-50' : '',
+    isCut ? 'opacity-40' : '',
+    isCopy ? 'opacity-75' : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -276,7 +280,8 @@ function getEntryViewModel(entry: FsEntry): EntryViewModel {
     isDot ? 'opacity-30' : '',
     meta.hasProxy && !meta.generatingProxy ? 'text-(--color-success)!' : '',
     meta.generatingProxy || generatingDir ? 'text-amber-400!' : '',
-    isCut ? 'opacity-50' : '',
+    isCut ? 'opacity-40 line-through decoration-dotted' : '',
+    isCopy ? 'text-primary-300!' : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -286,7 +291,7 @@ function getEntryViewModel(entry: FsEntry): EntryViewModel {
     (props.foldersOnly ? entry.hasDirectories !== false : entry.hasChildren !== false) &&
     (!props.foldersOnly || !entry.children || entry.children.some((c) => c.kind === 'directory'));
 
-  return { selected, isDot, isCommonRoot, isCut, iconClass, nameClass, meta, showChevron };
+  return { selected, isDot, isCommonRoot, isCut, isCopy, iconClass, nameClass, meta, showChevron };
 }
 
 function isVideo(entry: FsEntry): boolean {
