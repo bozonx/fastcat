@@ -1,4 +1,5 @@
 import type { FsEntry } from '~/types/fs';
+import { isWorkspaceCommonPath } from '~/utils/workspace-common';
 
 export type FileAction =
   | 'createFolder'
@@ -314,8 +315,9 @@ export function useFileContextMenu(
       entry.name.toLowerCase() === 'common' &&
       (entry.path === 'common' || entry.path === '');
     const isProjectRoot = entry.kind === 'directory' && entry.path === '';
+    const isCommonPath = isWorkspaceCommonPath(entry.path);
 
-    if (!isCommon && !isProjectRoot) {
+    if (!isCommon && !isProjectRoot && !isCommonPath) {
       items.push([
         {
           label: t('common.rename', 'Rename'),

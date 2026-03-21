@@ -31,7 +31,13 @@ export const CLICK_ACTIONS = [
   'none',
 ] as const;
 
-export const MONITOR_CLICK_ACTIONS = ['reset_zoom', 'reset_zoom_center', 'none'] as const;
+export const MONITOR_CLICK_ACTIONS = [
+  'fit',
+  'reset_zoom',
+  'reset_zoom_center',
+  'center',
+  'none',
+] as const;
 
 export const MONITOR_DRAG_ACTIONS = ['pan', 'none'] as const;
 

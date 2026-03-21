@@ -312,6 +312,11 @@ function onEntryEnter(event: KeyboardEvent, entry: FsEntry) {
   }
 }
 
+function onRenameClick(entry: FsEntry) {
+  if (isWorkspaceCommonPath(entry.path)) return;
+  emit('action', 'rename', entry);
+}
+
 function onCaretClick(e: MouseEvent, entry: FsEntry) {
   e.stopPropagation();
   if (entry.kind !== 'directory') return;
@@ -529,7 +534,7 @@ const { getContextMenuItems } = useFileContextMenu(
             v-bind="getEntryViewModel(entry)"
             :menu-items="!isFilesPage ? getContextMenuItems(entry) : []"
             @click="onEntryClick($event, entry)"
-            @dblclick="emit('action', 'rename', entry)"
+            @dblclick="onRenameClick(entry)"
             @keydown-enter="onEntryEnter($event, entry)"
             @keydown-space="onEntryEnter($event, entry)"
             @dragstart="onDragStart($event, entry)"

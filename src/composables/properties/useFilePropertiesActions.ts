@@ -33,6 +33,7 @@ interface UseFilePropertiesActionsOptions {
   isOtio: Ref<boolean>;
   isVideoFile: Ref<boolean>;
   isCommonDir: Ref<boolean>;
+  isCommonPath: Ref<boolean>;
   triggerDirectoryUpload: () => void;
   createSubfolder: () => void;
   createTimelineInFolder: () => void;
@@ -60,14 +61,14 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'rename',
       title: options.t('common.rename', 'Rename'),
       icon: 'i-heroicons-pencil',
-      hidden: options.isProjectRootDir.value || options.isCommonDir.value,
+      hidden: options.isProjectRootDir.value || options.isCommonDir.value || options.isCommonPath.value,
       onClick: options.onRename,
     },
     {
       id: 'delete',
       title: options.t('common.delete', 'Delete'),
       icon: 'i-heroicons-trash',
-      hidden: options.isProjectRootDir.value || options.isCommonDir.value,
+      hidden: options.isProjectRootDir.value || options.isCommonDir.value || options.isCommonPath.value,
       onClick: options.onDelete,
     },
     {
@@ -128,12 +129,14 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'rename',
       title: options.t('common.rename', 'Rename'),
       icon: 'i-heroicons-pencil',
+      hidden: options.isCommonPath.value,
       onClick: options.onRename,
     },
     {
       id: 'delete',
       title: options.t('common.delete', 'Delete'),
       icon: 'i-heroicons-trash',
+      hidden: options.isCommonPath.value,
       onClick: options.onDelete,
     },
     {
@@ -142,13 +145,6 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       icon: 'i-heroicons-cloud-arrow-up',
       hidden: !options.canUploadToRemote.value,
       onClick: options.openRemoteUploadPicker,
-    },
-    {
-      id: 'transcribe',
-      title: options.t('videoEditor.fileManager.actions.transcribe', 'Transcribe'),
-      icon: 'i-heroicons-microphone',
-      hidden: !options.canTranscribeMedia.value,
-      onClick: options.openTranscriptionModal,
     },
   ]);
 
@@ -159,6 +155,13 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       icon: 'i-heroicons-arrow-path',
       hidden: !options.canConvertFile.value,
       onClick: options.onConvert,
+    },
+    {
+      id: 'transcribe',
+      label: options.t('videoEditor.fileManager.actions.transcribe', 'Transcribe'),
+      icon: 'i-heroicons-microphone',
+      hidden: !options.canTranscribeMedia.value,
+      onClick: options.openTranscriptionModal,
     },
     {
       id: 'openAsPanelCut',

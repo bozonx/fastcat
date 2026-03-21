@@ -6,7 +6,7 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import type { FsEntry } from '~/types/fs';
 import { formatBytes } from '~/utils/format';
-import { WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
+import { WORKSPACE_COMMON_PATH_PREFIX, isWorkspaceCommonPath } from '~/utils/workspace-common';
 import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
 import UiProgressSpinner from '~/components/ui/UiProgressSpinner.vue';
 
@@ -81,6 +81,7 @@ let renameTimer: ReturnType<typeof setTimeout> | null = null;
 
 function onNameClick(event: MouseEvent, entry: FsEntry) {
   if (!isSelected(entry)) return;
+  if (isWorkspaceCommonPath(entry.path)) return;
   event.stopPropagation();
 
   if (event.detail === 1) {

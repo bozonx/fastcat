@@ -67,6 +67,7 @@ const {
   translateX,
   translateY,
   reset: resetZoom,
+  fitToContainer,
   onWheel,
   onPointerDown,
   onPointerMove,
@@ -82,6 +83,12 @@ const mediaStyle = computed(() => ({
 
 const contextMenuItems = computed(() => [
   [
+    {
+      label: t('fastcat.preview.fitToWindow', 'Fit to Window'),
+      icon: 'i-heroicons-arrows-pointing-in',
+      onSelect: () => fitToContainer(),
+      click: () => fitToContainer(),
+    },
     {
       label: t('fastcat.preview.resetZoom', 'Reset Zoom & Pan'),
       icon: 'i-heroicons-arrow-path',
