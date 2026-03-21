@@ -134,8 +134,6 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
       </UButton>
     </template>
 
-    <div class="space-y-2 py-1">
-
     <div v-if="safeEffects.length === 0" class="text-xs text-ui-text-muted text-center py-2">
       {{ safeEmptyLabel }}
     </div>
@@ -195,8 +193,6 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
         </div>
       </div>
     </VueDraggable>
-
-    </div>
     
     <SelectEffectModal v-model:open="isEffectModalOpen" @select="handleAddEffect" />
 

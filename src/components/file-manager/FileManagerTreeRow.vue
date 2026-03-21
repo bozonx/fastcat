@@ -24,6 +24,7 @@ const props = defineProps<{
   nameClass: string;
   meta: EntryMeta;
   menuItems?: any[][];
+  isCut?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -55,6 +56,7 @@ const emit = defineEmits<{
         ? 'bg-primary-500/20 outline outline-primary-500 -outline-offset-1'
         : '',
       selected ? 'bg-ui-bg-elevated outline-1 outline-(--selection-ring) -outline-offset-1' : '',
+      isCut ? 'opacity-50' : '',
     ]"
     :draggable="true"
     :aria-selected="selected"

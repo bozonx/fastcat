@@ -13,6 +13,7 @@ import type { FsEntry } from '~/types/fs';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
+import { useClipboardPaths } from '~/composables/fileManager/useClipboardIndicator';
 import FileManagerTreeRow from '~/components/file-manager/FileManagerTreeRow.vue';
 import {
   getMediaTypeFromFilename,
@@ -48,6 +49,8 @@ interface TreeContext {
 }
 
 const props = defineProps<Props>();
+
+const clipboardPaths = useClipboardPaths();
 
 const ctx = inject<TreeContext>('fileManagerTreeCtx', {
   getFileIcon: () => 'i-heroicons-document',
@@ -239,6 +242,7 @@ interface EntryViewModel {
   selected: boolean;
   isDot: boolean;
   isCommonRoot: boolean;
+  isCut: boolean;
   iconClass: string;
   nameClass: string;
   meta: ReturnType<typeof ctx.getEntryMeta>;
@@ -250,10 +254,15 @@ function getEntryViewModel(entry: FsEntry): EntryViewModel {
   const selected = isSelected(entry);
   const isDot = isDotEntry(entry);
   const isCommonRoot = isWorkspaceCommonRoot(entry);
+  const isCut = entry.path ? clipboardPaths.value.has(entry.path) : false;
   const iconBase = getEntryIconClass(entry);
   const generatingDir = isGeneratingProxyInDirectory(entry, proxyStore.generatingProxies);
 
-  const iconClass = [iconBase, meta.hasProxy ? 'text-(--color-success)!' : '']
+  const iconClass = [
+    iconBase,
+    meta.hasProxy ? 'text-(--color-success)!' : '',
+    isCut ? 'opacity-50' : '',
+  ]
     .filter(Boolean)
     .join(' ');
 
@@ -265,6 +274,7 @@ function getEntryViewModel(entry: FsEntry): EntryViewModel {
     isDot ? 'opacity-30' : '',
     meta.hasProxy && !meta.generatingProxy ? 'text-(--color-success)!' : '',
     meta.generatingProxy || generatingDir ? 'text-amber-400!' : '',
+    isCut ? 'opacity-50' : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -274,7 +284,7 @@ function getEntryViewModel(entry: FsEntry): EntryViewModel {
     (props.foldersOnly ? entry.hasDirectories !== false : entry.hasChildren !== false) &&
     (!props.foldersOnly || !entry.children || entry.children.some((c) => c.kind === 'directory'));
 
-  return { selected, isDot, isCommonRoot, iconClass, nameClass, meta, showChevron };
+  return { selected, isDot, isCommonRoot, isCut, iconClass, nameClass, meta, showChevron };
 }
 
 function isVideo(entry: FsEntry): boolean {

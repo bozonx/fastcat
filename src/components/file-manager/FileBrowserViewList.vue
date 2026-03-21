@@ -4,6 +4,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useClipboardPaths } from '~/composables/fileManager/useClipboardIndicator';
 import type { FsEntry } from '~/types/fs';
 import { formatBytes } from '~/utils/format';
 import { WORKSPACE_COMMON_PATH_PREFIX, isWorkspaceCommonPath } from '~/utils/workspace-common';
@@ -58,6 +59,11 @@ const selectionStore = useSelectionStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const proxyStore = useProxyStore();
 const fileManager = useFileManager();
+const clipboardPaths = useClipboardPaths();
+
+function isCutEntry(entry: FsEntry): boolean {
+  return entry.path ? clipboardPaths.value.has(entry.path) : false;
+}
 
 function formatDate(timestamp?: number) {
   if (!timestamp) return '-';
@@ -234,6 +240,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
                 'ring-1 ring-(--selection-ring) ring-inset z-10 relative bg-(--selection-range-bg)':
                   isSelected(entry),
                 'opacity-30': entry.name.startsWith('.'),
+                'opacity-50': isCutEntry(entry),
                 'text-(--color-success)!':
                   fileManager.mediaCache.hasProxy(entry.path || '') &&
                   !proxyStore.generatingProxies.has(entry.path || ''),

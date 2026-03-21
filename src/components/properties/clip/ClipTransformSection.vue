@@ -71,19 +71,31 @@ const mediaHeight = computed(() => props.mediaMeta?.video?.displayHeight ?? prop
 
 const cropTopPx = computed({
   get: () => Math.round(((transformCropTop.value || 0) / 100) * mediaHeight.value),
-  set: (val: number) => { transformCropTop.value = clampNumber(((val || 0) / mediaHeight.value) * 100, 0, 100); },
+  set: (val: number) => { 
+    if (!mediaHeight.value) return;
+    transformCropTop.value = clampNumber((val / mediaHeight.value) * 100, 0, 100); 
+  },
 });
 const cropBottomPx = computed({
   get: () => Math.round(((transformCropBottom.value || 0) / 100) * mediaHeight.value),
-  set: (val: number) => { transformCropBottom.value = clampNumber(((val || 0) / mediaHeight.value) * 100, 0, 100); },
+  set: (val: number) => { 
+    if (!mediaHeight.value) return;
+    transformCropBottom.value = clampNumber((val / mediaHeight.value) * 100, 0, 100); 
+  },
 });
 const cropLeftPx = computed({
   get: () => Math.round(((transformCropLeft.value || 0) / 100) * mediaWidth.value),
-  set: (val: number) => { transformCropLeft.value = clampNumber(((val || 0) / mediaWidth.value) * 100, 0, 100); },
+  set: (val: number) => { 
+    if (!mediaWidth.value) return;
+    transformCropLeft.value = clampNumber((val / mediaWidth.value) * 100, 0, 100); 
+  },
 });
 const cropRightPx = computed({
   get: () => Math.round(((transformCropRight.value || 0) / 100) * mediaWidth.value),
-  set: (val: number) => { transformCropRight.value = clampNumber(((val || 0) / mediaWidth.value) * 100, 0, 100); },
+  set: (val: number) => { 
+    if (!mediaWidth.value) return;
+    transformCropRight.value = clampNumber((val / mediaWidth.value) * 100, 0, 100); 
+  },
 });
 
 function clampNumber(value: number, min: number, max: number): number {
@@ -129,7 +141,7 @@ function clampNumber(value: number, min: number, max: number): number {
             :max="50"
             :default-value="1"
             :wheel-step-multiplier="10"
-            class="w-14"
+            class="w-16"
           />
           <button
             class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text shrink-0"
@@ -257,11 +269,15 @@ function clampNumber(value: number, min: number, max: number): number {
             <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
           </button>
         </div>
-        <div class="flex items-center gap-2">
-          <span class="text-[10px] text-ui-text-muted uppercase tracking-tight w-2 text-center">X</span>
-          <UiWheelNumberInput v-model="transformPosX" size="sm" :step="1" :wheel-step-multiplier="10" :default-value="0" />
-          <span class="text-[10px] text-ui-text-muted uppercase tracking-tight w-2 text-center ml-1">Y</span>
-          <UiWheelNumberInput v-model="transformPosY" size="sm" :step="1" :wheel-step-multiplier="10" :default-value="0" />
+        <div class="grid grid-cols-2 gap-2">
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] text-ui-text-muted uppercase tracking-tight w-2 text-center shrink-0">X</span>
+            <UiWheelNumberInput v-model="transformPosX" size="sm" :step="1" :wheel-step-multiplier="10" :default-value="0" />
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] text-ui-text-muted uppercase tracking-tight w-2 text-center shrink-0 ml-1">Y</span>
+            <UiWheelNumberInput v-model="transformPosY" size="sm" :step="1" :wheel-step-multiplier="10" :default-value="0" />
+          </div>
         </div>
       </div>
 

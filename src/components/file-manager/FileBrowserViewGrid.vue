@@ -4,6 +4,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useClipboardPaths } from '~/composables/fileManager/useClipboardIndicator';
 import type { FsEntry } from '~/types/fs';
 import { WORKSPACE_COMMON_PATH_PREFIX, isWorkspaceCommonPath } from '~/utils/workspace-common';
 import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
@@ -55,6 +56,11 @@ const selectionStore = useSelectionStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const proxyStore = useProxyStore();
 const fileManager = useFileManager();
+const clipboardPaths = useClipboardPaths();
+
+function isCutEntry(entry: FsEntry): boolean {
+  return entry.path ? clipboardPaths.value.has(entry.path) : false;
+}
 
 function isSelected(entry: FsEntry): boolean {
   const selected = selectionStore.selectedEntity;
@@ -108,6 +114,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
           'border-b-2 border-b-red-500':
             entry.path && timelineMediaUsageStore.mediaPathToTimelines[entry.path]?.length,
           'opacity-30': entry.name.startsWith('.'),
+          'opacity-50': isCutEntry(entry),
           'ring-2 ring-primary-500 bg-primary-500/20':
             dragOverEntryPath === (entry.path ?? null) && props.currentDragOperation !== 'copy',
           'ring-2 ring-emerald-500 bg-emerald-500/15':

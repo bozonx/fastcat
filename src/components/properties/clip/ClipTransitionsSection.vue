@@ -82,7 +82,7 @@ const transitionOptions = computed(() =>
                 (props.clipDurationUs - (props.transitionOut?.durationUs ?? 0)) / 1_000_000,
               )
             "
-            :step="0.01"
+            :step="0.1"
             :wheel-step-multiplier="10"
             @update:model-value="
               (v: any) => emit('updateDuration', { edge: 'in', durationSec: Number(v) })
@@ -139,7 +139,7 @@ const transitionOptions = computed(() =>
                 (props.clipDurationUs - (props.transitionIn?.durationUs ?? 0)) / 1_000_000,
               )
             "
-            :step="0.01"
+            :step="0.1"
             :wheel-step-multiplier="10"
             @update:model-value="
               (v: any) => emit('updateDuration', { edge: 'out', durationSec: Number(v) })
