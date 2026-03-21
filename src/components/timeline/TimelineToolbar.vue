@@ -14,20 +14,26 @@ const emit = defineEmits<{
   (e: 'dragVirtualEnd'): void;
 }>();
 
-const trimMenuItems = [
-  [
-    {
-      label: t('fastcat.timeline.rippleTrimLeft', 'Ripple trim left'),
-      icon: 'i-heroicons-arrow-left',
-      onSelect: () => timelineStore.rippleTrimLeft(),
-    },
-    {
-      label: t('fastcat.timeline.rippleTrimRight', 'Ripple trim right'),
-      icon: 'i-heroicons-arrow-right',
-      onSelect: () => timelineStore.rippleTrimRight(),
-    },
-  ],
-];
+const trimMenuItems = computed(() => {
+  const isNoClipSelected = timelineStore.selectedItemIds.length === 0;
+
+  return [
+    [
+      {
+        label: t('fastcat.timeline.rippleTrimLeft', 'Ripple trim left'),
+        icon: 'i-heroicons-arrow-left',
+        disabled: isNoClipSelected,
+        onSelect: () => timelineStore.rippleTrimLeft(),
+      },
+      {
+        label: t('fastcat.timeline.rippleTrimRight', 'Ripple trim right'),
+        icon: 'i-heroicons-arrow-right',
+        disabled: isNoClipSelected,
+        onSelect: () => timelineStore.rippleTrimRight(),
+      },
+    ],
+  ];
+});
 
 const snapModeItems = computed(() => [
   [
