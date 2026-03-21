@@ -9,7 +9,7 @@ export function buildGapContextMenu(options: UseClipContextMenuOptions): Context
   return [
     [
       {
-        label: options.t('fastcat.timeline.delete', 'Delete'),
+        label: options.t('fastcat.timeline.delete'),
         icon: 'i-heroicons-trash',
         onSelect: () => {
           options.applyTimelineCommand({

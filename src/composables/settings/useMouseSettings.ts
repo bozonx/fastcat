@@ -67,51 +67,48 @@ export function useMouseSettings() {
     });
   }
 
-  const defaultLabel = computed(() => t('common.default', 'Default'));
+  const defaultLabel = computed(() => t('common.default'));
 
   const commonWheelLabels = computed<Record<string, string>>(() => ({
-    scroll_vertical: t('videoEditor.settings.mouseActionScrollVertical', 'Vertical scroll'),
-    scroll_horizontal: t('videoEditor.settings.mouseActionScrollHorizontal', 'Horizontal scroll'),
-    zoom_horizontal: t('videoEditor.settings.mouseActionZoomHorizontal', 'Horizontal zoom'),
-    zoom_vertical: t('videoEditor.settings.mouseActionZoomVertical', 'Vertical zoom'),
-    seek_frame: t('videoEditor.settings.mouseActionSeekFrame', 'Seek (1 frame)'),
-    seek_second: t('videoEditor.settings.mouseActionSeekSecond', 'Seek (1 second)'),
-    none: t('videoEditor.settings.mouseActionNone', 'None'),
-    resize_track: t('videoEditor.settings.mouseActionResizeTrack', 'Resize track height'),
-    zoom: t('videoEditor.settings.mouseActionZoom', 'Zoom'),
+    scroll_vertical: t('videoEditor.settings.mouseActionScrollVertical'),
+    scroll_horizontal: t('videoEditor.settings.mouseActionScrollHorizontal'),
+    zoom_horizontal: t('videoEditor.settings.mouseActionZoomHorizontal'),
+    zoom_vertical: t('videoEditor.settings.mouseActionZoomVertical'),
+    seek_frame: t('videoEditor.settings.mouseActionSeekFrame'),
+    seek_second: t('videoEditor.settings.mouseActionSeekSecond'),
+    none: t('videoEditor.settings.mouseActionNone'),
+    resize_track: t('videoEditor.settings.mouseActionResizeTrack'),
+    zoom: t('videoEditor.settings.mouseActionZoom'),
   }));
 
   const commonClickLabels = computed<Record<string, string>>(() => ({
-    seek: t('videoEditor.settings.mouseActionSeek', 'Set playhead'),
-    add_marker: t('videoEditor.settings.mouseActionAddMarker', 'Add marker'),
-    reset_zoom: t('videoEditor.settings.mouseActionResetZoom', 'Reset zoom'),
-    clear_selection: t('videoEditor.settings.mouseActionClearSelection', 'Clear selection'),
-    select_area: t('videoEditor.settings.mouseActionSelectArea', 'Select area'),
-    none: t('videoEditor.settings.mouseActionNone', 'None'),
+    seek: t('videoEditor.settings.mouseActionSeek'),
+    add_marker: t('videoEditor.settings.mouseActionAddMarker'),
+    reset_zoom: t('videoEditor.settings.mouseActionResetZoom'),
+    clear_selection: t('videoEditor.settings.mouseActionClearSelection'),
+    select_area: t('videoEditor.settings.mouseActionSelectArea'),
+    none: t('videoEditor.settings.mouseActionNone'),
   }));
 
   const commonDragLabels = computed<Record<string, string>>(() => ({
-    pan: t('videoEditor.settings.mouseActionPan', 'Pan'),
-    move_playhead: t('videoEditor.settings.mouseActionMovePlayhead', 'Move playhead'),
-    select_area: t('videoEditor.settings.mouseActionSelectArea', 'Select area'),
-    none: t('videoEditor.settings.mouseActionNone', 'None'),
+    pan: t('videoEditor.settings.mouseActionPan'),
+    move_playhead: t('videoEditor.settings.mouseActionMovePlayhead'),
+    select_area: t('videoEditor.settings.mouseActionSelectArea'),
+    none: t('videoEditor.settings.mouseActionNone'),
   }));
 
   const commonHorizontalMovementLabels = computed<Record<string, string>>(() => ({
-    move_playhead: t('videoEditor.settings.mouseActionMovePlayhead', 'Move playhead'),
-    none: t('videoEditor.settings.mouseActionNone', 'None'),
+    move_playhead: t('videoEditor.settings.mouseActionMovePlayhead'),
+    none: t('videoEditor.settings.mouseActionNone'),
   }));
 
   const clipDragLabels = computed<Record<string, string>>(() => ({
-    toggle_clip_move_mode: t(
-      'videoEditor.settings.mouseActionToggleClipMoveMode',
-      'Toggle current move mode on/off',
-    ),
-    pseudo_overlap: t('videoEditor.settings.mouseActionPseudoOverlap', 'Pseudo overlap'),
-    free_mode: t('videoEditor.settings.mouseActionFreeMode', 'Free mode'),
-    copy: t('videoEditor.settings.mouseActionCopy', 'Copy clip'),
-    toggle_snap: t('videoEditor.settings.mouseActionToggleSnap', 'Toggle snapping'),
-    none: t('videoEditor.settings.mouseActionNone', 'None'),
+    toggle_clip_move_mode: t('videoEditor.settings.mouseActionToggleClipMoveMode'),
+    pseudo_overlap: t('videoEditor.settings.mouseActionPseudoOverlap'),
+    free_mode: t('videoEditor.settings.mouseActionFreeMode'),
+    copy: t('videoEditor.settings.mouseActionCopy'),
+    toggle_snap: t('videoEditor.settings.mouseActionToggleSnap'),
+    none: t('videoEditor.settings.mouseActionNone'),
   }));
 
   function formatOptions(
@@ -149,20 +146,17 @@ export function useMouseSettings() {
   const clipDragOptions = computed(() => formatOptions(CLIP_DRAG_ACTIONS, clipDragLabels.value));
   const monitorMiddleClickOptions = computed(() =>
     formatOptions(MONITOR_CLICK_ACTIONS, {
-      fit: t('videoEditor.settings.mouseActionFit', 'Fit to window'),
-      reset_zoom: t('videoEditor.settings.mouseActionResetZoom', 'Reset zoom'),
-      reset_zoom_center: t(
-        'videoEditor.settings.mouseActionResetZoomCenter',
-        'Reset zoom + center',
-      ),
-      center: t('videoEditor.settings.mouseActionCenter', 'Center'),
-      none: t('videoEditor.settings.mouseActionNone', 'None'),
+      fit: t('videoEditor.settings.mouseActionFit'),
+      reset_zoom: t('videoEditor.settings.mouseActionResetZoom'),
+      reset_zoom_center: t('videoEditor.settings.mouseActionResetZoomCenter'),
+      center: t('videoEditor.settings.mouseActionCenter'),
+      none: t('videoEditor.settings.mouseActionNone'),
     }),
   );
   const monitorMiddleDragOptions = computed(() =>
     formatOptions(MONITOR_DRAG_ACTIONS, {
-      pan: t('videoEditor.settings.mouseActionPan', 'Pan'),
-      none: t('videoEditor.settings.mouseActionNone', 'None'),
+      pan: t('videoEditor.settings.mouseActionPan'),
+      none: t('videoEditor.settings.mouseActionNone'),
     }),
   );
 
@@ -171,11 +165,11 @@ export function useMouseSettings() {
       [
         {
           key: 'ruler',
-          title: t('videoEditor.settings.mouseRuler', 'Ruler'),
+          title: t('videoEditor.settings.mouseRuler'),
           rows: [
             {
               key: 'wheel',
-              label: t('videoEditor.settings.mouseTimelineWheel', 'Primary wheel'),
+              label: t('videoEditor.settings.mouseTimelineWheel'),
               options: rulerWheelOptions.value,
             },
             {
@@ -187,7 +181,7 @@ export function useMouseSettings() {
             },
             {
               key: 'wheelSecondary',
-              label: t('videoEditor.settings.mouseTimelineWheelSecondary', 'Secondary wheel'),
+              label: t('videoEditor.settings.mouseTimelineWheelSecondary'),
               options: rulerWheelOptions.value,
             },
             {
@@ -199,7 +193,7 @@ export function useMouseSettings() {
             },
             {
               key: 'drag',
-              label: t('videoEditor.settings.mouseTimelineDrag', 'Left button drag'),
+              label: t('videoEditor.settings.mouseTimelineDrag'),
               options: dragOptions.value,
             },
             {
@@ -211,12 +205,12 @@ export function useMouseSettings() {
             },
             {
               key: 'middleDrag',
-              label: t('videoEditor.settings.mouseTimelineMiddleDrag', 'Middle button drag'),
+              label: t('videoEditor.settings.mouseTimelineMiddleDrag'),
               options: dragOptions.value,
             },
             {
               key: 'click',
-              label: t('videoEditor.settings.mouseRulerClick', 'Single Click'),
+              label: t('videoEditor.settings.mouseRulerClick'),
               options: clickActionOptions.value,
             },
             {
@@ -228,17 +222,17 @@ export function useMouseSettings() {
             },
             {
               key: 'middleClick',
-              label: t('videoEditor.settings.mouseTimelineMiddleClick', 'Middle button click'),
+              label: t('videoEditor.settings.mouseTimelineMiddleClick'),
               options: clickActionOptions.value,
             },
             {
               key: 'doubleClick',
-              label: t('videoEditor.settings.mouseRulerDoubleClick', 'Double click'),
+              label: t('videoEditor.settings.mouseRulerDoubleClick'),
               options: clickActionOptions.value,
             },
             {
               key: 'horizontalMovement',
-              label: t('videoEditor.settings.mouseHorizontalMovement', 'Horizontal mouse movement'),
+              label: t('videoEditor.settings.mouseHorizontalMovement'),
               options: mouseHorizontalMovementOptions.value,
             },
           ],
@@ -246,11 +240,11 @@ export function useMouseSettings() {
         },
         {
           key: 'timeline',
-          title: t('videoEditor.settings.mouseTimeline', 'Timeline'),
+          title: t('videoEditor.settings.mouseTimeline'),
           rows: [
             {
               key: 'wheel',
-              label: t('videoEditor.settings.mouseTimelineWheel', 'Primary wheel'),
+              label: t('videoEditor.settings.mouseTimelineWheel'),
               options: timelineWheelOptions.value,
             },
             {
@@ -262,7 +256,7 @@ export function useMouseSettings() {
             },
             {
               key: 'wheelSecondary',
-              label: t('videoEditor.settings.mouseTimelineWheelSecondary', 'Secondary wheel'),
+              label: t('videoEditor.settings.mouseTimelineWheelSecondary'),
               options: timelineWheelOptions.value,
             },
             {
@@ -274,12 +268,12 @@ export function useMouseSettings() {
             },
             {
               key: 'middleDrag',
-              label: t('videoEditor.settings.mouseTimelineMiddleDrag', 'Middle button drag'),
+              label: t('videoEditor.settings.mouseTimelineMiddleDrag'),
               options: dragOptions.value,
             },
             {
               key: 'middleClick',
-              label: t('videoEditor.settings.mouseTimelineMiddleClick', 'Middle button click'),
+              label: t('videoEditor.settings.mouseTimelineMiddleClick'),
               options: clickActionOptions.value,
             },
             {
@@ -298,16 +292,16 @@ export function useMouseSettings() {
             },
             {
               key: 'clipDragRight',
-              label: t('videoEditor.settings.mouseTimelineClipDragRight', 'Right button clip drag'),
+              label: t('videoEditor.settings.mouseTimelineClipDragRight'),
               options: clipDragOptions.value,
             },
             {
               key: 'horizontalMovement',
-              label: t('videoEditor.settings.mouseHorizontalMovement', 'Horizontal mouse movement'),
+              label: t('videoEditor.settings.mouseHorizontalMovement'),
               options: mouseHorizontalMovementOptions.value,
             },
           ],
-          infoTitle: t('videoEditor.settings.mouseHardcodedTitle', 'Fixed Functions'),
+          infoTitle: t('videoEditor.settings.mouseHardcodedTitle'),
           infoColumns: true,
           infoItems: [
             t('videoEditor.settings.mouseHardcodedLeftDrag'),
@@ -324,11 +318,11 @@ export function useMouseSettings() {
         },
         {
           key: 'trackHeaders',
-          title: t('videoEditor.settings.mouseTrackHeaders', 'Track Headers'),
+          title: t('videoEditor.settings.mouseTrackHeaders'),
           rows: [
             {
               key: 'wheel',
-              label: t('videoEditor.settings.mouseTimelineWheel', 'Primary wheel'),
+              label: t('videoEditor.settings.mouseTimelineWheel'),
               options: trackHeadersWheelOptions.value,
             },
             {
@@ -340,7 +334,7 @@ export function useMouseSettings() {
             },
             {
               key: 'wheelSecondary',
-              label: t('videoEditor.settings.mouseTimelineWheelSecondary', 'Secondary wheel'),
+              label: t('videoEditor.settings.mouseTimelineWheelSecondary'),
               options: trackHeadersWheelOptions.value,
             },
             {
@@ -355,11 +349,11 @@ export function useMouseSettings() {
         },
         {
           key: 'monitor',
-          title: t('videoEditor.settings.mouseMonitor', 'Monitor'),
+          title: t('videoEditor.settings.mouseMonitor'),
           rows: [
             {
               key: 'wheel',
-              label: t('videoEditor.settings.mouseMonitorWheel', 'Wheel'),
+              label: t('videoEditor.settings.mouseMonitorWheel'),
               options: monitorWheelOptions.value,
             },
             {
@@ -371,7 +365,7 @@ export function useMouseSettings() {
             },
             {
               key: 'wheelSecondary',
-              label: t('videoEditor.settings.mouseTimelineWheelSecondary', 'Secondary wheel'),
+              label: t('videoEditor.settings.mouseTimelineWheelSecondary'),
               options: monitorWheelOptions.value,
             },
             {
@@ -383,12 +377,12 @@ export function useMouseSettings() {
             },
             {
               key: 'middleDrag',
-              label: t('videoEditor.settings.mouseTimelineMiddleDrag', 'Middle button drag'),
+              label: t('videoEditor.settings.mouseTimelineMiddleDrag'),
               options: monitorMiddleDragOptions.value,
             },
             {
               key: 'middleClick',
-              label: t('videoEditor.settings.mouseMonitorMiddleClick', 'Middle button click'),
+              label: t('videoEditor.settings.mouseMonitorMiddleClick'),
               options: monitorMiddleClickOptions.value,
             },
           ],

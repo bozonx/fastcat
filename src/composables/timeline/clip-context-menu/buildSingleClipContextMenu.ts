@@ -36,8 +36,8 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
 
   mainGroup.push({
     label: clipItem.disabled
-      ? options.t('fastcat.timeline.enableClip', 'Enable clip')
-      : options.t('fastcat.timeline.disableClip', 'Disable clip'),
+      ? options.t('fastcat.timeline.enableClip')
+      : options.t('fastcat.timeline.disableClip'),
     icon: clipItem.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
     onSelect: async () => {
       options.updateClipProperties(track.id, clipItem.id, {
@@ -52,8 +52,8 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
   if (hasAudio) {
     mainGroup.push({
       label: clipItem.audioMuted
-        ? options.t('fastcat.timeline.unmuteClip', 'Unmute')
-        : options.t('fastcat.timeline.muteClip', 'Mute'),
+        ? options.t('fastcat.timeline.unmuteClip')
+        : options.t('fastcat.timeline.muteClip'),
       icon: clipItem.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark',
       onSelect: async () => {
         options.updateClipProperties(track.id, clipItem.id, {
@@ -67,8 +67,8 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     mainGroup.push({
       label:
         currentMode === 'half'
-          ? options.t('fastcat.timeline.waveformFull', 'Full waveform')
-          : options.t('fastcat.timeline.waveformHalf', 'Half waveform'),
+          ? options.t('fastcat.timeline.waveformFull')
+          : options.t('fastcat.timeline.waveformHalf'),
       icon: 'i-heroicons-chart-bar',
       onSelect: async () => {
         options.updateClipProperties(track.id, clipItem.id, {
@@ -81,7 +81,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
 
   if (isFree && !clipItem.locked) {
     mainGroup.push({
-      label: options.t('fastcat.timeline.quantize', 'Quantize to frames'),
+      label: options.t('fastcat.timeline.quantize'),
       icon: 'i-heroicons-squares-2x2',
       onSelect: async () => {
         options.applyTimelineCommand({
@@ -99,7 +99,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
 
   if (isLockedAudioClip) {
     mainGroup.push({
-      label: options.t('fastcat.timeline.unlinkAudio', 'Unlink from video'),
+      label: options.t('fastcat.timeline.unlinkAudio'),
       icon: 'i-heroicons-link-slash',
       onSelect: async () => {
         options.updateClipProperties(track.id, clipItem.id, {
@@ -111,7 +111,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     });
   } else if (linkedAudioForThisVideo.length > 0) {
     mainGroup.push({
-      label: options.t('fastcat.timeline.unlinkAudio', 'Unlink audio'),
+      label: options.t('fastcat.timeline.unlinkAudio'),
       icon: 'i-heroicons-link-slash',
       onSelect: async () => {
         const cmds = linkedAudioForThisVideo.map((audioClip) => ({
@@ -131,8 +131,8 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
 
   mainGroup.push({
     label: clipItem.locked
-      ? options.t('fastcat.timeline.unlockClip', 'Unlock clip')
-      : options.t('fastcat.timeline.lockClip', 'Lock clip'),
+      ? options.t('fastcat.timeline.unlockClip')
+      : options.t('fastcat.timeline.lockClip'),
     icon: clipItem.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
     onSelect: async () => {
       options.updateClipProperties(track.id, clipItem.id, {
@@ -146,8 +146,8 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     mainGroup.push({
       label:
         clipItem.showThumbnails === false
-          ? options.t('fastcat.timeline.showThumbnails', 'Show thumbnails')
-          : options.t('fastcat.timeline.hideThumbnails', 'Hide thumbnails'),
+          ? options.t('fastcat.timeline.showThumbnails')
+          : options.t('fastcat.timeline.hideThumbnails'),
       icon: 'i-heroicons-photo',
       onSelect: async () => {
         options.updateClipProperties(track.id, clipItem.id, {
@@ -160,7 +160,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
 
   const currentSpeed = clipItem.speed ?? 1;
   mainGroup.push({
-    label: `${options.t('fastcat.timeline.speed', 'Speed')} (${currentSpeed.toFixed(2)})`,
+    label: `${options.t('fastcat.timeline.speed')} (${currentSpeed.toFixed(2)})`,
     icon: 'i-heroicons-forward',
     onSelect: () =>
       options.emitOpenSpeedModal({
@@ -176,7 +176,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     !(clipItem as any).audioFromVideoDisabled;
   if (canExtract) {
     mainGroup.push({
-      label: options.t('fastcat.timeline.extractAudio', 'Extract audio to audio track'),
+      label: options.t('fastcat.timeline.extractAudio'),
       icon: 'i-heroicons-musical-note',
       onSelect: () =>
         options.emitClipAction({
@@ -209,7 +209,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
 
   if (hasReturnFromVideoClip) {
     mainGroup.push({
-      label: options.t('fastcat.timeline.returnAudio', 'Return audio to video clip'),
+      label: options.t('fastcat.timeline.returnAudio'),
       icon: 'i-heroicons-arrow-uturn-left',
       onSelect: () =>
         options.emitClipAction({
@@ -220,7 +220,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     });
   } else if (hasReturnFromLockedAudioClip) {
     mainGroup.push({
-      label: options.t('fastcat.timeline.returnAudio', 'Return audio to video clip'),
+      label: options.t('fastcat.timeline.returnAudio'),
       icon: 'i-heroicons-arrow-uturn-left',
       onSelect: () =>
         options.emitClipAction({
@@ -237,7 +237,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
 
   if (isMediaVideoClip && !hasFreezeFrame) {
     mainGroup.push({
-      label: options.t('fastcat.timeline.freezeFrame', 'Freeze frame'),
+      label: options.t('fastcat.timeline.freezeFrame'),
       icon: 'i-heroicons-pause-circle',
       onSelect: () =>
         options.emitClipAction({
@@ -250,7 +250,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
 
   if (isMediaVideoClip && hasFreezeFrame) {
     mainGroup.push({
-      label: options.t('fastcat.timeline.resetFreezeFrame', 'Reset freeze frame'),
+      label: options.t('fastcat.timeline.resetFreezeFrame'),
       icon: 'i-heroicons-play-circle',
       onSelect: () =>
         options.emitClipAction({
@@ -271,7 +271,7 @@ export function buildSingleItemActionGroup(options: UseClipContextMenuOptions): 
 
   return [
     {
-      label: options.t('fastcat.timeline.delete', 'Delete'),
+      label: options.t('fastcat.timeline.delete'),
       icon: 'i-heroicons-trash',
       disabled:
         isTrackLocked || (item.kind === 'clip' && Boolean((item as TimelineClipItem).locked)),
