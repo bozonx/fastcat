@@ -37,13 +37,13 @@ const { t } = useI18n();
 const commonActions = computed(() => [
   {
     id: 'rename',
-    label: t('common.rename', 'Rename'),
+    title: t('common.rename', 'Rename'),
     icon: 'i-heroicons-pencil',
     onClick: () => emit('rename'),
   },
   {
     id: 'delete',
-    label: t('common.delete', 'Delete'),
+    title: t('common.delete', 'Delete'),
     icon: 'i-heroicons-trash',
     color: 'danger' as const,
     onClick: () => emit('delete'),
@@ -167,17 +167,11 @@ const otherActions = computed(() => {
       <PropertyActionList
         :actions="commonActions"
         :vertical="false"
-        justify="center"
+        justify="start"
+        variant="ghost"
         size="xs"
         class="mb-2"
-      >
-        <template #action-rename>
-          <span class="flex-1 text-center">{{ t('common.rename', 'Rename') }}</span>
-        </template>
-        <template #action-delete>
-          <span class="flex-1 text-center">{{ t('common.delete', 'Delete') }}</span>
-        </template>
-      </PropertyActionList>
+      />
 
       <PropertyActionList :actions="otherActions" justify="center" size="xs" />
     </div>

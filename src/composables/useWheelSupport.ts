@@ -27,7 +27,8 @@ export function useWheelSupport(options: UseWheelSupportOptions) {
 
     const direction = delta < 0 ? 1 : -1
     const baseStep = (options.step?.() ?? 1) > 0 ? (options.step?.() ?? 1) : 1
-    const wheelStep = baseStep * Math.max(1, options.wheelStepMultiplier?.() ?? 1)
+    const multiplier = e.shiftKey ? Math.max(1, options.wheelStepMultiplier?.() ?? 1) : 1
+    const wheelStep = baseStep * multiplier
     const precision = getStepPrecision(baseStep)
 
     options.onWheelStep(direction, wheelStep, precision)

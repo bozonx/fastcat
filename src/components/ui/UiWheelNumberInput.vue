@@ -11,6 +11,7 @@ interface UiWheelNumberInputProps {
   wheelStepMultiplier?: number;
   size?: '2xs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   disabled?: boolean;
+  defaultValue?: number;
 }
 
 const props = withDefaults(defineProps<UiWheelNumberInputProps>(), {
@@ -60,10 +61,17 @@ useWheelSupport({
     emit('update:modelValue', clamped);
   },
 });
+
+function onAuxClick(e: MouseEvent) {
+  if (e.button === 1 && props.defaultValue !== undefined && !props.disabled) {
+    e.preventDefault();
+    emit('update:modelValue', props.defaultValue);
+  }
+}
 </script>
 
 <template>
-  <div ref="wrapperRef" class="relative w-full">
+  <div ref="wrapperRef" class="relative w-full" @auxclick="onAuxClick">
     <UInput
       v-model.number="value"
       type="number"
