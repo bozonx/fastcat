@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
+import UiTextInput from '~/components/ui/UiTextInput.vue';
 import {
   BASE_VIDEO_CODEC_OPTIONS,
   checkVideoCodecSupport,
@@ -96,7 +97,7 @@ function removePreset() {
     </UFormField>
 
     <UFormField :label="t('common.name', 'Name')">
-      <UInput v-model="selectedPreset.name" class="w-full" />
+      <UiTextInput v-model="selectedPreset.name" full-width />
     </UFormField>
 
     <VideoEncodingForm

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import UiModal from '~/components/ui/UiModal.vue';
+import UiTextInput from '~/components/ui/UiTextInput.vue';
 import { ref, watch, nextTick } from 'vue';
 
 const props = defineProps<{
@@ -79,10 +80,11 @@ watch(
       </div>
 
       <UFormField :label="t('videoEditor.fileManager.audio.transcriptionLanguage', 'Language')">
-        <UInput
+        <UiTextInput
           :model-value="props.transcriptionLanguage"
           :disabled="props.isTranscribingAudio"
           placeholder="en"
+          full-width
           @update:model-value="onLanguageUpdate"
         />
       </UFormField>

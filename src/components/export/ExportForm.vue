@@ -6,6 +6,7 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
+import UiTextInput from '~/components/ui/UiTextInput.vue';
 import {
   BASE_VIDEO_CODEC_OPTIONS,
   BASE_AUDIO_CODEC_OPTIONS,
@@ -187,9 +188,9 @@ async function onConfirm() {
             :label="t('videoEditor.export.filename', 'Filename')"
             :error="filenameError ?? undefined"
           >
-            <UInput
+            <UiTextInput
               v-model="outputFilename"
-              class="w-full"
+              full-width
               :disabled="isExporting"
               :placeholder="t('videoEditor.export.filenamePlaceholder', 'e.g. video.mp4')"
             />
@@ -309,10 +310,10 @@ async function onConfirm() {
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <UFormField :label="t('videoEditor.export.metadataTitle', 'Title')">
-              <UInput v-model="metadataTitle" :disabled="isExporting" class="w-full" />
+              <UiTextInput v-model="metadataTitle" :disabled="isExporting" full-width />
             </UFormField>
             <UFormField :label="t('videoEditor.export.metadataAuthor', 'Author')">
-              <UInput v-model="metadataAuthor" :disabled="isExporting" class="w-full" />
+              <UiTextInput v-model="metadataAuthor" :disabled="isExporting" full-width />
             </UFormField>
           </div>
 
@@ -326,7 +327,7 @@ async function onConfirm() {
           </UFormField>
 
           <UFormField :label="t('videoEditor.export.metadataTags', 'Tags')">
-            <UInput v-model="metadataTags" :disabled="isExporting" class="w-full" />
+            <UiTextInput v-model="metadataTags" :disabled="isExporting" full-width />
           </UFormField>
         </div>
 

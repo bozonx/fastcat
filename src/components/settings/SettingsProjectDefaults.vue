@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
+import UiTextInput from '~/components/ui/UiTextInput.vue';
 import {
   createDefaultProjectPresets,
   createProjectPresetId,
@@ -88,7 +89,7 @@ function removePreset() {
     </UFormField>
 
     <UFormField :label="t('common.name', 'Name')">
-      <UInput v-model="selectedPreset.name" class="w-full" />
+      <UiTextInput v-model="selectedPreset.name" full-width />
     </UFormField>
 
     <MediaResolutionSettings

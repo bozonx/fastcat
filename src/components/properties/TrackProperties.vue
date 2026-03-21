@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { trackColorPresets, blendModeOptions as rawBlendModeOptions } from '~/utils/constants';
+import { blendModeOptions as rawBlendModeOptions } from '~/utils/constants';
 import type {
   TimelineBlendMode,
   TimelineTrack,
@@ -209,173 +209,154 @@ const extraActions = computed(() => {
 
 <template>
   <div class="w-full flex flex-col gap-2">
-    <PropertySection :title="t('fastcat.track.actions', 'Actions')">
-      <div class="flex flex-col w-full gap-3">
-        <!-- Row of Action Icons -->
-        <div class="flex items-center justify-between px-1.5 py-2 border-b border-ui-border bg-ui-bg-elevated/30 rounded-t">
-          <div class="flex items-center gap-1.5">
-            <UButton
-              icon="i-heroicons-pencil"
-              size="sm"
-              variant="ghost"
-              color="neutral"
-              :title="t('common.rename', 'Rename')"
-              @click="timelineStore.renamingTrackId = props.track.id"
-            />
-            <UButton
-              icon="i-heroicons-trash"
-              size="sm"
-              variant="ghost"
-              color="danger"
-              :title="t('common.delete', 'Delete')"
-              @click="requestDeleteTrack"
-            />
-          </div>
-          
-          <div class="h-4 w-px bg-ui-border mx-1" />
-          
-          <div class="flex items-center gap-1.5">
-            <UButton
-              v-if="track.kind === 'video'"
-              :icon="props.track.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
-              size="sm"
-              :variant="props.track.videoHidden ? 'solid' : 'ghost'"
-              :color="props.track.videoHidden ? 'amber' : 'neutral'"
-              :title="t('fastcat.timeline.toggleTrackVisibility')"
-              @click="timelineStore.updateTrackProperties(props.track.id, { videoHidden: !props.track.videoHidden })"
-            />
-            <UButton
-              :icon="props.track.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
-              size="sm"
-              :variant="props.track.audioMuted ? 'solid' : 'ghost'"
-              :color="props.track.audioMuted ? 'error' : 'neutral'"
-              :title="t('fastcat.timeline.toggleTrackMute')"
-              @click="timelineStore.updateTrackProperties(props.track.id, { audioMuted: !props.track.audioMuted })"
-            />
-            <UButton
-              v-if="track.kind === 'audio' || track.kind === 'video'"
-              icon="i-heroicons-musical-note"
-              size="sm"
-              :variant="isSolo ? 'solid' : 'ghost'"
-              :color="isSolo ? 'warning' : 'neutral'"
-              :title="t('fastcat.timeline.toggleTrackSolo')"
-              @click="isSolo = !isSolo"
-            />
-            <UButton
-              :icon="isLocked ? 'i-heroicons-lock-closed' : 'i-heroicons-lock-open'"
-              size="sm"
-              variant="ghost"
-              :color="isLocked ? 'primary' : 'neutral'"
-              :title="t('fastcat.track.lock', 'Lock track')"
-              @click="isLocked = !isLocked"
-            />
-          </div>
-        </div>
-
-        <!-- Track Color Selection -->
-        <div class="flex flex-col gap-2 px-1">
-          <span class="text-[10px] text-ui-text-muted uppercase tracking-wider font-bold">
-            {{ t('fastcat.track.color', 'Track color') }}
-          </span>
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="preset in trackColorPresets"
-              :key="preset"
-              class="w-6 h-6 rounded-full border border-ui-border-elevated transition-all hover:scale-110 active:scale-95 shadow-sm"
-              :class="{
-                'ring-2 ring-ui-primary ring-offset-2 ring-offset-ui-bg z-10': trackColor === preset,
-              }"
-              :style="{ backgroundColor: preset === '#2a2a2a' ? '#3f3f3f' : preset }"
-              :title="preset === '#2a2a2a' ? t('common.default', 'Default') : ''"
-              @click="trackColor = preset"
-            >
-              <div v-if="preset === '#2a2a2a'" class="w-full h-full flex items-center justify-center">
-                 <div class="w-1.5 h-1.5 rounded-full bg-ui-text-muted/50" />
-              </div>
-            </button>
-          </div>
-        </div>
-
-        <!-- Additional Actions -->
-        <div class="pt-1">
-          <PropertyActionList :actions="extraActions" justify="start" size="sm" />
-        </div>
-      </div>
-    </PropertySection>
-
-    <div
-      v-if="track.kind === 'video'"
-      class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border"
-    >
-      <div
-        class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
-      >
-        {{ t('fastcat.track.video.title', 'Track compositing') }}
-      </div>
-
-      <div class="flex flex-col gap-0.5">
-        <span class="text-xs text-ui-text-muted">{{
-          t('fastcat.track.blendMode', 'Blend mode')
-        }}</span>
-        <UiSelect
-          :model-value="trackBlendMode"
-          :items="blendModeOptions"
-          value-key="value"
-          label-key="label"
+    <div class="flex flex-col w-full gap-4 px-1 pb-4">
+      <!-- Direct Actions Row (Matched with Header style) -->
+      <div class="flex items-center gap-1.5 py-1 bg-ui-bg rounded-lg">
+        <UButton
+          v-if="track.kind === 'video'"
           size="sm"
-          @update:model-value="
-            (v: unknown) =>
-              (trackBlendMode =
-                (v as { value: TimelineBlendMode })?.value ?? (v as TimelineBlendMode))
-          "
+          :variant="props.track.videoHidden ? 'solid' : 'ghost'"
+          :color="props.track.videoHidden ? 'amber' : 'neutral'"
+          :icon="props.track.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
+          class="w-8 h-8 p-0 flex items-center justify-center transition-opacity"
+          :class="[props.track.videoHidden ? 'text-black! opacity-100 hover:opacity-90' : 'opacity-60 hover:opacity-100']"
+          :style="props.track.videoHidden ? { backgroundColor: '#facc15', color: '#000000' } : undefined"
+          :title="t('fastcat.timeline.toggleTrackVisibility')"
+          @click="timelineStore.updateTrackProperties(props.track.id, { videoHidden: !props.track.videoHidden })"
         />
+        <UButton
+          size="sm"
+          :variant="props.track.audioMuted ? 'solid' : 'ghost'"
+          :color="props.track.audioMuted ? 'error' : 'neutral'"
+          :icon="props.track.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
+          class="w-8 h-8 p-0 flex items-center justify-center transition-opacity"
+          :class="[props.track.audioMuted ? 'text-black! opacity-100 hover:opacity-90' : 'opacity-60 hover:opacity-100']"
+          :style="props.track.audioMuted ? { backgroundColor: '#ef4444', color: '#000000' } : undefined"
+          :title="t('fastcat.timeline.toggleTrackMute')"
+          @click="timelineStore.updateTrackProperties(props.track.id, { audioMuted: !props.track.audioMuted })"
+        />
+        <UButton
+          v-if="track.kind === 'audio' || track.kind === 'video'"
+          size="sm"
+          :variant="isSolo ? 'solid' : 'ghost'"
+          :color="isSolo ? 'warning' : 'neutral'"
+          icon="i-heroicons-musical-note"
+          class="w-8 h-8 p-0 flex items-center justify-center transition-opacity"
+          :class="[isSolo ? 'text-black! opacity-100 hover:opacity-90' : 'opacity-60 hover:opacity-100']"
+          :style="isSolo ? { backgroundColor: '#fbbf24', color: '#000000' } : undefined"
+          :title="t('fastcat.timeline.toggleTrackSolo')"
+          @click="isSolo = !isSolo"
+        />
+        <UButton
+          size="sm"
+          :variant="isLocked ? 'solid' : 'ghost'"
+          :color="isLocked ? 'primary' : 'neutral'"
+          :icon="isLocked ? 'i-heroicons-lock-closed' : 'i-heroicons-lock-open'"
+          class="w-8 h-8 p-0 flex items-center justify-center transition-opacity"
+          :class="[isLocked ? 'text-white! opacity-100 hover:opacity-90' : 'opacity-60 hover:opacity-100']"
+          :style="isLocked ? { backgroundColor: 'var(--color-primary-500)', color: '#ffffff' } : undefined"
+          :title="t('fastcat.track.lock', 'Lock track')"
+          @click="isLocked = !isLocked"
+        />
+        
+        <div class="flex-1" />
+        
+        <div class="flex items-center gap-1">
+          <UButton
+            icon="i-heroicons-pencil"
+            size="sm"
+            variant="ghost"
+            color="neutral"
+            class="opacity-60 hover:opacity-100 w-8 h-8"
+            :title="t('common.rename', 'Rename')"
+            @click="timelineStore.renamingTrackId = props.track.id"
+          />
+          <UButton
+            icon="i-heroicons-trash"
+            size="sm"
+            variant="ghost"
+            color="danger"
+            class="opacity-60 hover:opacity-100 w-8 h-8"
+            :title="t('common.delete', 'Delete')"
+            @click="requestDeleteTrack"
+          />
+        </div>
       </div>
 
-      <UiSliderInput
-        :label="t('fastcat.track.opacity', 'Opacity')"
-        :formatted-value="`${Math.round(trackOpacity * 100)}%`"
-        :model-value="trackOpacity"
-        :min="0"
-        :max="1"
-        :step="0.01"
-        :default-value="1"
-        @update:model-value="(v: number) => (trackOpacity = v)"
-      />
-    </div>
-
-    <div
-      v-if="track.kind === 'audio' || track.kind === 'video'"
-      class="space-y-2 bg-ui-bg-elevated p-2 rounded border border-ui-border"
-    >
-      <div
-        class="text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-1"
-      >
-        {{ t('fastcat.track.audio.title', 'Track audio') }}
+      <!-- Color Selection (Shared) -->
+      <div class="flex flex-col gap-2">
+        <span class="text-[10px] text-ui-text-muted uppercase tracking-wider font-bold">
+          {{ t('fastcat.track.color', 'Color') }}
+        </span>
+        <UiColorPicker :model-value="trackColor" mode="track" @update:model-value="(v) => (trackColor = v)" />
       </div>
 
-      <UiSliderInput
-        :label="t('fastcat.track.audio.volume', 'Volume')"
-        :formatted-value="`${trackAudioGain.toFixed(3)}x`"
-        :model-value="trackAudioGain"
-        :min="0"
-        :max="2"
-        :step="0.001"
-        :wheel-step-multiplier="10"
-        :default-value="1"
-        @update:model-value="(v: number) => (trackAudioGain = v)"
-      />
+      <div class="h-px bg-ui-border opacity-50 my-1" />
 
-      <UiSliderInput
-        :label="t('fastcat.track.audio.balance', 'Balance')"
-        :formatted-value="trackAudioBalance.toFixed(2)"
-        :model-value="trackAudioBalance"
-        :min="-1"
-        :max="1"
-        :step="0.01"
-        :default-value="0"
-        @update:model-value="(v: number) => (trackAudioBalance = v)"
-      />
+      <!-- Track Composition & Media Settings -->
+      <div class="flex flex-col gap-4">
+        <div v-if="track.kind === 'video'" class="flex flex-col gap-3">
+          <div class="flex flex-col gap-0.5">
+            <span class="text-xs text-ui-text-muted">{{ t('fastcat.track.blendMode', 'Blend mode') }}</span>
+            <UiSelect
+              :model-value="trackBlendMode"
+              :items="blendModeOptions"
+              value-key="value"
+              label-key="label"
+              size="sm"
+              @update:model-value="
+                (v: unknown) =>
+                  (trackBlendMode = (v as { value: TimelineBlendMode })?.value ?? (v as TimelineBlendMode))
+              "
+            />
+          </div>
+
+          <UiSliderInput
+            :label="t('fastcat.track.opacity', 'Opacity')"
+            :formatted-value="`${Math.round(trackOpacity * 100)}%`"
+            :model-value="trackOpacity"
+            :min="0"
+            :max="1"
+            :step="0.01"
+            :default-value="1"
+            @update:model-value="(v: number) => (trackOpacity = v)"
+          />
+
+          <div class="h-px bg-ui-border opacity-50 my-1" />
+        </div>
+
+        <div v-if="track.kind === 'audio' || track.kind === 'video'" class="flex flex-col gap-3">
+          <UiSliderInput
+            :label="t('fastcat.track.audio.volume', 'Volume')"
+            :formatted-value="`${trackAudioGain.toFixed(3)}x`"
+            :model-value="trackAudioGain"
+            :min="0"
+            :max="2"
+            :step="0.001"
+            :wheel-step-multiplier="10"
+            :default-value="1"
+            @update:model-value="(v: number) => (trackAudioGain = v)"
+          />
+
+          <UiSliderInput
+            :label="t('fastcat.track.audio.balance', 'Balance')"
+            :formatted-value="trackAudioBalance.toFixed(2)"
+            :model-value="trackAudioBalance"
+            :min="-1"
+            :max="1"
+            :step="0.01"
+            :default-value="0"
+            @update:model-value="(v: number) => (trackAudioBalance = v)"
+          />
+        </div>
+      </div>
+
+      <!-- Specialized Actions (e.g., Generate Captions) -->
+      <div v-if="extraActions.length > 0" class="mt-2 pt-2 border-t border-ui-border">
+        <PropertyActionList :actions="extraActions" justify="start" size="sm" />
+      </div>
     </div>
+
 
     <EffectsEditor
       v-if="track.kind === 'video'"

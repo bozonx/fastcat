@@ -8,6 +8,9 @@ interface UiTextInputProps {
   size?: '2xs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   mono?: boolean;
   fullWidth?: boolean;
+  type?: 'text' | 'password' | 'email' | 'url' | 'search';
+  autofocus?: boolean;
+  ui?: { base?: string };
 }
 
 const props = withDefaults(defineProps<UiTextInputProps>(), {
@@ -16,6 +19,9 @@ const props = withDefaults(defineProps<UiTextInputProps>(), {
   size: 'xs',
   mono: false,
   fullWidth: false,
+  type: 'text',
+  autofocus: false,
+  ui: undefined,
 });
 
 const emit = defineEmits<{
@@ -31,12 +37,15 @@ const value = computed({
 <template>
   <UInput
     v-model="value"
+    :type="type"
     :placeholder="placeholder"
     :disabled="disabled"
     :size="size"
+    :autofocus="autofocus"
     :class="[fullWidth ? 'w-full' : 'w-auto max-w-80', mono ? 'font-mono' : '']"
     :ui="{
       base: 'transition-colors',
+      ...ui,
     }"
   />
 </template>

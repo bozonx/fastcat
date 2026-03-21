@@ -2,6 +2,7 @@
 import type { FsEntry } from '~/types/fs';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiModal from '~/components/ui/UiModal.vue';
+import UiTextInput from '~/components/ui/UiTextInput.vue';
 import RemoteTransferProgressModal from '~/components/file-manager/RemoteTransferProgressModal.vue';
 
 interface Props {
@@ -101,10 +102,11 @@ const { t } = useI18n();
       </div>
 
       <UFormField :label="t('videoEditor.fileManager.audio.transcriptionLanguage', 'Language')">
-        <UInput
+        <UiTextInput
           :model-value="props.sttTranscriptionLanguage"
           :disabled="props.sttTranscribing"
           placeholder="en"
+          full-width
           @update:model-value="emit('update:sttTranscriptionLanguage', $event)"
         />
       </UFormField>

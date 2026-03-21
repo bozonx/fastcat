@@ -4,6 +4,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
+import UiTextInput from '~/components/ui/UiTextInput.vue';
 import { DEFAULT_APP_SETTINGS } from '~/utils/settings/defaults';
 import type { StoragePlacementMode } from '~/utils/storage-roots';
 
@@ -204,12 +205,12 @@ function resetPathDefaults() {
         "
       >
         <div class="flex gap-2">
-          <UInput v-model="contentRootPath" class="w-full" />
+          <UiTextInput v-model="ephemeralTmpRootPath" full-width />
           <UButton
             color="neutral"
             variant="soft"
             icon="i-heroicons-folder-open"
-            @click="pickDesktopPath('content')"
+            @click="pickDesktopPath('ephemeralTmp')"
           />
         </div>
       </UFormField>
@@ -224,7 +225,7 @@ function resetPathDefaults() {
         "
       >
         <div class="flex gap-2">
-          <UInput v-model="dataRootPath" class="w-full" />
+          <UiTextInput v-model="dataRootPath" full-width />
           <UButton
             color="neutral"
             variant="soft"
@@ -244,7 +245,7 @@ function resetPathDefaults() {
         "
       >
         <div class="flex gap-2">
-          <UInput v-model="tempRootPath" class="w-full" />
+          <UiTextInput v-model="tempRootPath" full-width />
           <UButton
             color="neutral"
             variant="soft"
@@ -264,7 +265,7 @@ function resetPathDefaults() {
         "
       >
         <div class="flex gap-2">
-          <UInput v-model="proxiesRootPath" class="w-full" />
+          <UiTextInput v-model="proxiesRootPath" full-width />
           <UButton
             color="neutral"
             variant="soft"
@@ -327,7 +328,7 @@ function resetPathDefaults() {
           )
         "
       >
-        <UInput v-model="ephemeralTmpRootPath" class="w-full" />
+        <UiTextInput v-model="ephemeralTmpRootPath" full-width />
       </UFormField>
     </div>
 

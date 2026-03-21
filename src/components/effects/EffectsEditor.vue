@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import UiModal from '~/components/ui/UiModal.vue';
+import UiTextInput from '~/components/ui/UiTextInput.vue';
 import { computed, ref } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import SelectEffectModal from '~/components/effects/SelectEffectModal.vue';
@@ -117,12 +118,7 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
 </script>
 
 <template>
-  <PropertySection
-    :title="safeTitle"
-    class="mt-2"
-    @dragover="onDragOver"
-    @drop="onDrop"
-  >
+  <PropertySection :title="safeTitle" class="mt-2" @dragover="onDragOver" @drop="onDrop">
     <template #header-actions>
       <UButton
         size="xs"
@@ -166,7 +162,7 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
             {{
               getVideoEffectManifest(effect.type)?.nameKey
                 ? t(getVideoEffectManifest(effect.type)!.nameKey!)
-                : (getVideoEffectManifest(effect.type)?.name || effect.type)
+                : getVideoEffectManifest(effect.type)?.name || effect.type
             }}
           </span>
           <div class="flex items-center gap-1 shrink-0">
@@ -198,7 +194,7 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
         </div>
       </div>
     </VueDraggable>
-    
+
     <SelectEffectModal v-model:open="isEffectModalOpen" @select="handleAddEffect" />
 
     <UiModal
