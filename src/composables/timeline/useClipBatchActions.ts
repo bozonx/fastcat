@@ -308,13 +308,22 @@ export function useClipBatchActions(
     ctx.batchApplyTimeline(cmds);
   }
 
-  function handleBatchUpdateProperties(properties: Partial<TimelineClipItem>) {
-    const cmds = items.value.map(({ trackId, itemId }) => ({
-      type: 'update_clip_properties' as const,
-      trackId,
-      itemId,
-      properties,
-    }));
+  function handleBatchUpdateProperties(properties: Partial<TimelineClipItem> | ((clip: TimelineClipItem) => Partial<TimelineClipItem>)) {
+    const doc = ctx.timelineDoc.value;
+    const cmds = items.value.map(({ trackId, itemId }) => {
+      let props = properties;
+      if (typeof properties === 'function') {
+        const track = doc?.tracks.find((t) => t.id === trackId);
+        const clip = track?.items.find((it) => it.id === itemId) as TimelineClipItem;
+        props = clip ? properties(clip) : {};
+      }
+      return {
+        type: 'update_clip_properties' as const,
+        trackId,
+        itemId,
+        properties: props,
+      };
+    });
     ctx.batchApplyTimeline(cmds);
   }
 

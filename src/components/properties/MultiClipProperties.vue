@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, toRef } from 'vue';
+import { useI18n } from 'vue-i18n';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 import PropertyTimecode from '~/components/properties/PropertyTimecode.vue';
@@ -8,6 +9,8 @@ import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import { useClipBatchActions } from '~/composables/timeline/useClipBatchActions';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
+import { blendModeOptions as rawBlendModeOptions } from '~/utils/constants';
+import type { TimelineBlendMode } from '~/timeline/types';
 
 const props = defineProps<{
   items: { trackId: string; itemId: string }[];
@@ -51,19 +54,17 @@ const {
 });
 
 const selectedCountLabel = computed(() => {
-  return (t as any)('fastcat.timeline.selectedClipsCount', '{count} clips selected', {
+  return t('fastcat.timeline.selectedClipsCount', {
     count: props.items.length,
-  }) as string;
+  });
 });
 
-const blendModeOptions = computed(() => [
-  { value: 'normal', label: t('fastcat.clip.blendMode.normal') },
-  { value: 'add', label: t('fastcat.clip.blendMode.add') },
-  { value: 'multiply', label: t('fastcat.clip.blendMode.multiply') },
-  { value: 'screen', label: t('fastcat.clip.blendMode.screen') },
-  { value: 'darken', label: t('fastcat.clip.blendMode.darken') },
-  { value: 'lighten', label: t('fastcat.clip.blendMode.lighten') },
-]);
+const blendModeOptions = computed<Array<{ value: TimelineBlendMode; label: string }>>(() =>
+  rawBlendModeOptions.map(opt => ({
+    value: opt.value as TimelineBlendMode,
+    label: t(opt.labelKey)
+  }))
+);
 
 const firstClip = computed(() => selectedClips.value[0]);
 
@@ -74,7 +75,7 @@ const batchOpacity = computed({
 
 const batchBlendMode = computed({
   get: () => firstClip.value?.blendMode ?? 'normal',
-  set: (val: any) => handleBatchUpdateProperties({ blendMode: val }),
+  set: (val: TimelineBlendMode) => handleBatchUpdateProperties({ blendMode: val }),
 });
 
 const batchAudioGain = computed({
@@ -86,59 +87,66 @@ const batchScale = computed({
   get: () => Math.round((firstClip.value?.transform?.scale?.x ?? 1) * 100),
   set: (val: number) => {
     const s = val / 100;
-    handleBatchUpdateProperties({
+    handleBatchUpdateProperties((clip) => ({
       transform: {
-        ...(firstClip.value?.transform ?? {}),
+        ...(clip.transform ?? {}),
         scale: { x: s, y: s, linked: true },
       },
-    } as any);
+    }));
   },
 });
 
 const batchRotation = computed({
   get: () => firstClip.value?.transform?.rotationDeg ?? 0,
   set: (val: number) => {
-    handleBatchUpdateProperties({
+    handleBatchUpdateProperties((clip) => ({
       transform: {
-        ...(firstClip.value?.transform ?? {}),
+        ...(clip.transform ?? {}),
         rotationDeg: val,
       },
-    } as any);
+    }));
   },
 });
 
 const batchPosX = computed({
   get: () => firstClip.value?.transform?.position?.x ?? 0,
   set: (val: number) => {
-    handleBatchUpdateProperties({
+    handleBatchUpdateProperties((clip) => ({
       transform: {
-        ...(firstClip.value?.transform ?? {}),
+        ...(clip.transform ?? {}),
         position: {
           x: val,
-          y: firstClip.value?.transform?.position?.y ?? 0,
+          y: clip.transform?.position?.y ?? 0,
         },
       },
-    } as any);
+    }));
   },
 });
 
 const batchPosY = computed({
   get: () => firstClip.value?.transform?.position?.y ?? 0,
   set: (val: number) => {
-    handleBatchUpdateProperties({
+    handleBatchUpdateProperties((clip) => ({
       transform: {
-        ...(firstClip.value?.transform ?? {}),
+        ...(clip.transform ?? {}),
         position: {
-          x: firstClip.value?.transform?.position?.x ?? 0,
+          x: clip.transform?.position?.x ?? 0,
           y: val,
         },
       },
-    } as any);
+    }));
   },
 });
 
 const actions = computed(() => {
-  const result: any[] = [
+  const result: Array<{
+    id: string;
+    label: string;
+    icon: string;
+    hidden?: boolean;
+    color?: 'primary' | 'danger' | 'warning' | 'success' | 'neutral';
+    onClick: () => void;
+  }> = [
     {
       id: 'delete',
       label: t('common.delete', 'Delete'),

@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { trackColorPresets, blendModeOptions as rawBlendModeOptions } from '~/utils/constants';
 import type {
   TimelineBlendMode,
   TimelineTrack,
@@ -29,14 +30,12 @@ const isGenerateCaptionsOpen = ref(false);
 
 const canDeleteWithoutConfirm = computed(() => (props.track.items?.length ?? 0) === 0);
 
-const blendModeOptions: Array<{ value: TimelineBlendMode; label: string }> = [
-  { value: 'normal', label: t('fastcat.clip.blendMode.normal') },
-  { value: 'add', label: t('fastcat.clip.blendMode.add') },
-  { value: 'multiply', label: t('fastcat.clip.blendMode.multiply') },
-  { value: 'screen', label: t('fastcat.clip.blendMode.screen') },
-  { value: 'darken', label: t('fastcat.clip.blendMode.darken') },
-  { value: 'lighten', label: t('fastcat.clip.blendMode.lighten') },
-];
+const blendModeOptions = computed<Array<{ value: TimelineBlendMode; label: string }>>(() =>
+  rawBlendModeOptions.map((opt) => ({
+    value: opt.value as TimelineBlendMode,
+    label: t(opt.labelKey),
+  })),
+);
 
 const trackOpacity = computed({
   get: () => {
@@ -113,14 +112,14 @@ function handleUpdateTrackEffects(effects: VideoClipEffect[]) {
     (e): e is AudioClipEffect => e?.target === 'audio',
   );
   timelineStore.updateTrackProperties(props.track.id, {
-    effects: [...effects, ...audioEffects] as any,
+    effects: [...effects, ...audioEffects] as (VideoClipEffect | AudioClipEffect)[],
   });
 }
 
 function handleUpdateTrackAudioEffects(effects: AudioClipEffect[]) {
   const videoEffects = (props.track.effects ?? []).filter((e) => e?.target !== 'audio');
   timelineStore.updateTrackProperties(props.track.id, {
-    effects: [...videoEffects, ...effects] as any,
+    effects: [...videoEffects, ...effects] as (VideoClipEffect | AudioClipEffect)[],
   });
 }
 
@@ -143,18 +142,6 @@ function confirmDeleteTrack() {
   timelineStore.deleteTrack(props.track.id, { allowNonEmpty: true });
   isDeleteConfirmOpen.value = false;
 }
-
-const trackColorPresets = [
-  '#2a2a2a', // Default
-  '#4a90e2', // Blue
-  '#50e3c2', // Teal
-  '#b8e986', // Green
-  '#f8e71c', // Yellow
-  '#f5a623', // Orange
-  '#d0021b', // Red
-  '#bd10e0', // Purple
-  '#9013fe', // Violet
-];
 
 const trackColor = computed({
   get: () => props.track.color ?? '#2a2a2a',
@@ -200,13 +187,19 @@ const mainActions = computed(() => [
 ]);
 
 const extraActions = computed(() => {
-  const list: any[] = [];
+  const list: Array<{
+    id: string;
+    label: string;
+    icon: string;
+    color?: 'primary' | 'danger' | 'warning' | 'success' | 'neutral';
+    onClick: () => void;
+  }> = [];
   if (props.track.kind === 'video') {
     list.push({
       id: 'generate-captions',
       label: t('fastcat.captions.generate', 'Generate captions'),
       icon: 'i-heroicons-chat-bubble-bottom-center-text',
-      color: 'primary' as const,
+      color: 'primary',
       onClick: () => (isGenerateCaptionsOpen.value = true),
     });
   }

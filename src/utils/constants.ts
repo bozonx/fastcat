@@ -45,3 +45,24 @@ export const TIMELINE_RULER_CONSTANTS = {
   MIN_MARKER_DURATION_PX: 10,
   MIN_SELECTION_DURATION_PX: 6,
 } as const;
+
+export const blendModeOptions = [
+  { value: 'normal', labelKey: 'fastcat.clip.blendMode.normal' },
+  { value: 'add', labelKey: 'fastcat.clip.blendMode.add' },
+  { value: 'multiply', labelKey: 'fastcat.clip.blendMode.multiply' },
+  { value: 'screen', labelKey: 'fastcat.clip.blendMode.screen' },
+  { value: 'darken', labelKey: 'fastcat.clip.blendMode.darken' },
+  { value: 'lighten', labelKey: 'fastcat.clip.blendMode.lighten' },
+];
+
+export const trackColorPresets = [
+  '#2a2a2a', // Default
+  '#4a90e2', // Blue
+  '#50e3c2', // Teal
+  '#b8e986', // Green
+  '#f8e71c', // Yellow
+  '#f5a623', // Orange
+  '#d0021b', // Red
+  '#bd10e0', // Purple
+  '#9013fe', // Violet
+];

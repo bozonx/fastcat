@@ -118,7 +118,7 @@ const otherActions = computed(() => {
     });
   }
 
-  if (props.canShowWaveformToggle && props.trackKind === 'video') {
+  if (props.canShowWaveformToggle && (props.trackKind === 'video' || props.trackKind === 'audio')) {
     list.push({
       id: 'toggleShowWaveform',
       label:
@@ -128,7 +128,9 @@ const otherActions = computed(() => {
       icon: 'i-heroicons-eye',
       onClick: () => emit('toggleShowWaveform'),
     });
+  }
 
+  if (props.canShowThumbnailsToggle && props.trackKind === 'video') {
     list.push({
       id: 'toggleShowThumbnails',
       label:

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import UiModal from '~/components/ui/UiModal.vue';
-import { ref } from 'vue';
-import type { ShapeType, TimelineClipItem, TimelineTextClipItem } from '~/timeline/types';
+import { ref, computed } from 'vue';
+import type { ShapeType, TimelineClipItem, TimelineTextClipItem, TimelineShapeClipItem, TimelineHudClipItem } from '~/timeline/types';
 import type { ParamControl } from '~/components/properties/params';
 import { usePresetsStore } from '~/stores/presets.store';
 import ClipBackgroundProperties from './ClipBackgroundProperties.vue';
@@ -43,21 +43,23 @@ function handleSavePreset() {
   if (!name) return;
 
   if (props.clip.clipType === 'shape') {
+    const shapeClip = props.clip as TimelineShapeClipItem;
     const params = {
-      shapeType: (props.clip as any).shapeType,
-      fillColor: (props.clip as any).fillColor,
-      strokeColor: (props.clip as any).strokeColor,
-      strokeWidth: (props.clip as any).strokeWidth,
-      shapeConfig: { ...((props.clip as any).shapeConfig || {}) },
+      shapeType: shapeClip.shapeType,
+      fillColor: shapeClip.fillColor,
+      strokeColor: shapeClip.strokeColor,
+      strokeWidth: shapeClip.strokeWidth,
+      shapeConfig: { ...(shapeClip.shapeConfig || {}) },
     };
     presetsStore.saveAsPreset('shape', params.shapeType ?? 'square', name, params);
   } else if (props.clip.clipType === 'hud') {
+    const hudClip = props.clip as TimelineHudClipItem;
     const params = {
-      hudType: (props.clip as any).hudType,
-      background: { ...((props.clip as any).background || {}) },
-      content: { ...((props.clip as any).content || {}) },
+      hudType: hudClip.hudType,
+      background: { ...(hudClip.background || {}) },
+      content: { ...(hudClip.content || {}) },
     };
-    presetsStore.saveAsPreset('hud', (props.clip as any).hudType ?? 'media_frame', name, params);
+    presetsStore.saveAsPreset('hud', hudClip.hudType ?? 'media_frame', name, params);
   }
 
   isSaveModalOpen.value = false;

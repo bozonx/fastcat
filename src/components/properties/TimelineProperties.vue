@@ -22,6 +22,7 @@ import {
   MIN_TIMELINE_ZOOM_POSITION,
   TIMELINE_ZOOM_POSITIONS,
   timelineZoomPositionToScale,
+  timelineZoomScaleToPosition,
 } from '~/utils/zoom';
 import { formatDurationSeconds, formatBytes } from '~/utils/format';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
@@ -56,9 +57,6 @@ const proxyStore = useProxyStore();
 const fileManager = useFileManager();
 
 const fsEntryRef = computed(() => props.fsEntry ?? null);
-const mediaTypeRef = computed(() => null as string | null | undefined);
-const textContentRef = computed(() => null as string | null | undefined);
-const canUploadToRemoteRef = computed(() => false);
 
 const { timelineDocSummary, fileInfo, currentUrl, isUnknown, mediaType, textContent } =
   useEntryPreview({
@@ -87,9 +85,9 @@ const finalIsReadOnly = computed(() => props.isReadOnly || isInactiveTimeline.va
 
 const { onRename, onDelete } = useFilePropertiesHandlers({
   selectedFsEntry: fsEntryRef,
-  mediaType: mediaTypeRef,
-  textContent: textContentRef,
-  canUploadToRemote: canUploadToRemoteRef,
+  mediaType: mediaType,
+  textContent: textContent,
+  canUploadToRemote: ref(false),
 });
 
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
@@ -196,21 +194,21 @@ const timelineZoomMultiplierInput = computed({
     const normalized = String(value).trim().toLowerCase().replace(',', '.').replace(/^x/, '');
     const parsed = Number(normalized);
     if (!Number.isFinite(parsed) || parsed <= 0) return;
-    timelineStore.setTimelineZoomExact(DEFAULT_TIMELINE_ZOOM_POSITION + 7 * Math.log2(parsed));
+    timelineStore.setTimelineZoomExact(timelineZoomScaleToPosition(parsed));
   },
 });
 
 function handleUpdateMasterEffects(effects: VideoClipEffect[]) {
   timelineStore.applyTimeline({
     type: 'update_master_effects',
-    effects: [...effects, ...masterAudioEffects.value] as any,
+    effects: [...effects, ...masterAudioEffects.value] as (VideoClipEffect | AudioClipEffect)[],
   });
 }
 
 function handleUpdateMasterAudioEffects(effects: AudioClipEffect[]) {
   timelineStore.applyTimeline({
     type: 'update_master_effects',
-    effects: [...masterEffects.value, ...effects] as any,
+    effects: [...masterEffects.value, ...effects] as (VideoClipEffect | AudioClipEffect)[],
   });
 }
 
