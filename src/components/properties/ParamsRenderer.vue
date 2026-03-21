@@ -105,11 +105,23 @@ function getDisplayFileValue(control: FileParamControl): string {
 function handleFileDrop(event: DragEvent, control: FileParamControl) {
   dragOverKey.value = null;
   const raw = event.dataTransfer?.getData('application/json');
-  if (!raw) return;
+  if (!raw) {
+    // Fallback: Check for files in event.dataTransfer.files
+    const files = event.dataTransfer?.files;
+    if (files && files.length > 0) {
+      // Assuming we need a path, but browser drag and drop doesn't always give full path.
+      // In electron/tauri it might.
+      const file = files[0] as any;
+      if (file && file.path) {
+        updateValue(control.key, file.path);
+      }
+    }
+    return;
+  }
 
   try {
     const item = JSON.parse(raw);
-    if (item.kind === 'file' && typeof item.path === 'string' && item.path) {
+    if (item && typeof item.path === 'string' && item.path) {
       updateValue(control.key, item.path);
     }
   } catch {
@@ -370,13 +382,6 @@ function handleArrayItemUpdate(control: ParamControl, index: number, itemKey: st
             {{ control.addLabelKey ? t(control.addLabelKey) : (control.addLabel ?? 'Add') }}
           </UButton>
         </div>
-
-        <span
-          v-if="!Array.isArray(getValue(control.key)) || (getValue(control.key) as any[]).length === 0"
-          class="text-sm font-mono opacity-50"
-        >
-          [Empty Array]
-        </span>
 
         <div
           v-if="!Array.isArray(getValue(control.key)) || (getValue(control.key) as any[]).length === 0"

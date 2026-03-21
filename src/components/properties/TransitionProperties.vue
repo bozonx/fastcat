@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import ClipTransitionPanel from '~/components/timeline/ClipTransitionPanel.vue';
+import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 
 const props = defineProps<{
   transitionSelection: {
@@ -9,8 +10,8 @@ const props = defineProps<{
     itemId: string;
     edge: 'in' | 'out';
   };
-  clip: any; // TimelineClipItem
-  track?: any; // TimelineTrack
+  clip?: TimelineClipItem;
+  track?: TimelineTrack;
 }>();
 
 const timelineStore = useTimelineStore();

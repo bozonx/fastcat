@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useProjectTabsStore } from '~/stores/tabs.store';
@@ -8,8 +9,10 @@ import { useMediaStore } from '~/stores/media.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useEditorViewStore } from '~/stores/editor-view.store';
+import { useFocusStore } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useFilesPageStore } from '~/stores/files-page.store';
+import { blendModeOptions as rawBlendModeOptions } from '~/utils/constants';
 import type {
   AudioClipEffect,
   TimelineBlendMode,
@@ -60,14 +63,12 @@ const clipTrack = computed<TimelineTrack | undefined>(() =>
 
 const clipTrackKind = computed<TrackKind>(() => clipTrack.value?.kind ?? 'video');
 
-const blendModeOptions = computed<Array<{ value: TimelineBlendMode; label: string }>>(() => [
-  { value: 'normal', label: t('fastcat.clip.blendMode.normal') },
-  { value: 'add', label: t('fastcat.clip.blendMode.add') },
-  { value: 'multiply', label: t('fastcat.clip.blendMode.multiply') },
-  { value: 'screen', label: t('fastcat.clip.blendMode.screen') },
-  { value: 'darken', label: t('fastcat.clip.blendMode.darken') },
-  { value: 'lighten', label: t('fastcat.clip.blendMode.lighten') },
-]);
+const blendModeOptions = computed<Array<{ value: TimelineBlendMode; label: string }>>(() =>
+  rawBlendModeOptions.map(opt => ({
+    value: opt.value as TimelineBlendMode,
+    label: t(opt.labelKey)
+  }))
+);
 
 const isVideoTrack = computed(() => clipTrackKind.value === 'video');
 
