@@ -73,7 +73,7 @@ function onAuxClick(e: MouseEvent) {
 </script>
 
 <template>
-  <div ref="wrapperRef" class="relative group max-w-24" @auxclick="onAuxClick">
+  <div ref="wrapperRef" class="relative group max-w-24" @auxclick.capture.prevent="onAuxClick">
     <UInput
       v-model="value"
       type="number"

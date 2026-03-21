@@ -1144,7 +1144,9 @@
         "volumeUp": "Volume Up",
         "zoomIn": "Zoom in",
         "zoomOut": "Zoom out",
-        "zoomReset": "Reset zoom"
+        "zoomReset": "Reset zoom",
+        "snapshot": "Create snapshot from monitor",
+        "exportTimeline": "Export timeline to file"
       },
       "playback": {
         "backward0_5": "Backward x0.5 (Monitor only)",

@@ -144,6 +144,14 @@ function onPointerDownCapture(event: PointerEvent) {
     lastPointerDownTime.value = now;
   }
 }
+
+function onAuxClick(event: MouseEvent) {
+  if (props.disabled) return;
+  if (event.button === 1 && props.defaultValue !== undefined) {
+    event.preventDefault();
+    resetToDefault();
+  }
+}
 </script>
 
 <template>
@@ -157,6 +165,7 @@ function onPointerDownCapture(event: PointerEvent) {
     :class="orientation === 'horizontal' ? 'py-3 -my-3' : 'px-3 -mx-3 h-full'"
     @pointerdown.capture="onPointerDownCapture"
     @dblclick.capture="resetToDefault"
+    @auxclick.capture.prevent="onAuxClick"
   >
     <USlider
       v-model="value"
