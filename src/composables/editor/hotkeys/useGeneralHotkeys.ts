@@ -1,3 +1,4 @@
+import { inject } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
@@ -10,6 +11,13 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import type { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 import { DEFAULT_TIMELINE_ZOOM_POSITION, stepTimelineZoomPosition } from '~/utils/zoom';
+
+const MONITOR_RUNTIME_KEY = Symbol('monitorRuntime');
+
+interface MonitorRuntimeContext {
+  createStopFrameSnapshot: () => Promise<void>;
+  exportTimelineToFile: () => Promise<void>;
+}
 
 export function useGeneralHotkeys(
   zoomHoldRunner: ReturnType<typeof createHotkeyHoldRunner>,
@@ -355,6 +363,22 @@ export function useGeneralHotkeys(
       }
       if (focusStore.effectiveFocus === 'project' || focusStore.effectiveFocus === 'left') {
         uiStore.fileTreeSelectAllTrigger++;
+        return true;
+      }
+      return false;
+    },
+    'general.snapshot': () => {
+      const ctx = inject<MonitorRuntimeContext>(MONITOR_RUNTIME_KEY);
+      if (ctx?.createStopFrameSnapshot) {
+        void ctx.createStopFrameSnapshot();
+        return true;
+      }
+      return false;
+    },
+    'general.exportTimeline': () => {
+      const ctx = inject<MonitorRuntimeContext>(MONITOR_RUNTIME_KEY);
+      if (ctx?.exportTimelineToFile) {
+        void ctx.exportTimelineToFile();
         return true;
       }
       return false;

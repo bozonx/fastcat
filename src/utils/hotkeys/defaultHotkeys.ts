@@ -32,6 +32,8 @@ export type HotkeyCommandId =
   | 'general.switchViewSound'
   | 'general.switchViewExport'
   | 'general.selectAll'
+  | 'general.snapshot'
+  | 'general.exportTimeline'
   | 'timeline.toggleSnap'
   | 'timeline.selectClipsLeftOfPlayhead'
   | 'timeline.selectClipsRightOfPlayhead'
@@ -138,6 +140,8 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'general.switchViewSound', groupId: 'general', title: 'Switch to Sound' },
     { id: 'general.switchViewExport', groupId: 'general', title: 'Switch to Export' },
     { id: 'general.selectAll', groupId: 'general', title: 'Select all' },
+    { id: 'general.snapshot', groupId: 'general', title: 'Create snapshot from monitor' },
+    { id: 'general.exportTimeline', groupId: 'general', title: 'Export timeline to file' },
 
     { id: 'timeline.toggleSnap', groupId: 'timeline', title: 'Toggle snap' },
     {
@@ -304,6 +308,9 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'general.switchViewSound': ['Shift+3'],
     'general.switchViewExport': ['Shift+4'],
     'general.selectAll': [`${Mod}+A`],
+
+    'general.snapshot': ['Mod2+B'],
+    'general.exportTimeline': ['Mod2+N'],
 
     'timeline.toggleSnap': ['T'],
     'timeline.selectClipsLeftOfPlayhead': [`${Mod}+S`],
