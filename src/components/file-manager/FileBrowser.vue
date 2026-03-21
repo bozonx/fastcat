@@ -24,6 +24,7 @@ import { useFocusableListNavigation } from '~/composables/fileManager/useFocusab
 import { useFileBrowserPendingActions } from '~/composables/fileManager/useFileBrowserPendingActions';
 import { useFileBrowserCreateActions } from '~/composables/fileManager/useFileBrowserCreateActions';
 import { useFileBrowserInteraction } from '~/composables/fileManager/useFileBrowserInteraction';
+import { useAppClipboard } from '~/composables/useAppClipboard';
 import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
 import {
@@ -47,6 +48,7 @@ const selectionStore = useSelectionStore();
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
 const proxyStore = useProxyStore();
+const clipboardStore = useAppClipboard();
 const { t } = useI18n();
 
 const fileManager = useFileManager();
@@ -273,6 +275,8 @@ const {
   findEntryByPath: fileManager.findEntryByPath,
   readDirectory: fileManager.readDirectory,
   reloadDirectory: fileManager.reloadDirectory,
+  copyEntry,
+  moveEntry,
   notifyFileManagerUpdate: () => uiStore.notifyFileManagerUpdate(),
   setFileTreePathExpanded: (path, expanded) => {
     uiStore.setFileTreePathExpanded(path, expanded);
@@ -330,6 +334,7 @@ const { getContextMenuItems } = useFileContextMenu(
       }
       return [];
     },
+    hasClipboardItems: clipboardStore.hasFileManagerPayload,
   },
   (action: ContextMenuFileAction, entry: FsEntry | FsEntry[]) => onFileAction(action, entry),
 );
@@ -593,14 +598,6 @@ async function onDirectoryUploadChange(e: Event) {
             :get-context-menu-items="getContextMenuItems"
             :is-generating-proxy-in-directory="isDirectoryGeneratingProxy"
             :video-thumbnails="videoThumbnails"
-            
-            
-            
-            
-            
-            
-            
-            
             @entry-click="handleEntryClick"
             @entry-double-click="handleEntryDoubleClick"
             @entry-enter="handleEntryEnter"
@@ -623,14 +620,6 @@ async function onDirectoryUploadChange(e: Event) {
             :get-context-menu-items="getContextMenuItems"
             :is-generating-proxy-in-directory="isDirectoryGeneratingProxy"
             :video-thumbnails="videoThumbnails"
-            
-            
-            
-            
-            
-            
-            
-            
             @entry-click="handleEntryClick"
             @entry-double-click="handleEntryDoubleClick"
             @entry-enter="handleEntryEnter"

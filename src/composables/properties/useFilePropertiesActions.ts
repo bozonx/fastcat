@@ -35,6 +35,7 @@ interface UseFilePropertiesActionsOptions {
   isVideoFile: Ref<boolean>;
   isCommonDir: Ref<boolean>;
   isCommonPath: Ref<boolean>;
+  canCopyOrCut: Ref<boolean>;
   triggerDirectoryUpload: () => void;
   createSubfolder: () => void;
   createTimelineInFolder: () => void;
@@ -54,22 +55,40 @@ interface UseFilePropertiesActionsOptions {
   deleteProxy: () => void;
   createOtioVersion: () => void;
   extractAudio: () => void;
+  onCopy: () => void;
+  onCut: () => void;
 }
 
 export function useFilePropertiesActions(options: UseFilePropertiesActionsOptions) {
   const directoryPrimaryActions = computed<PrimaryEntryAction[]>(() => [
     {
+      id: 'copy',
+      title: options.t('common.copy', 'Copy'),
+      icon: 'i-heroicons-document-duplicate',
+      hidden: !options.canCopyOrCut.value,
+      onClick: options.onCopy,
+    },
+    {
+      id: 'cut',
+      title: options.t('common.cut', 'Cut'),
+      icon: 'i-heroicons-scissors',
+      hidden: !options.canCopyOrCut.value,
+      onClick: options.onCut,
+    },
+    {
       id: 'rename',
       title: options.t('common.rename', 'Rename'),
       icon: 'i-heroicons-pencil',
-      hidden: options.isProjectRootDir.value || options.isCommonDir.value || options.isCommonPath.value,
+      hidden:
+        options.isProjectRootDir.value || options.isCommonDir.value || options.isCommonPath.value,
       onClick: options.onRename,
     },
     {
       id: 'delete',
       title: options.t('common.delete', 'Delete'),
       icon: 'i-heroicons-trash',
-      hidden: options.isProjectRootDir.value || options.isCommonDir.value || options.isCommonPath.value,
+      hidden:
+        options.isProjectRootDir.value || options.isCommonDir.value || options.isCommonPath.value,
       onClick: options.onDelete,
     },
     {
@@ -126,6 +145,20 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
   ]);
 
   const filePrimaryActions = computed<PrimaryEntryAction[]>(() => [
+    {
+      id: 'copy',
+      title: options.t('common.copy', 'Copy'),
+      icon: 'i-heroicons-document-duplicate',
+      hidden: !options.canCopyOrCut.value,
+      onClick: options.onCopy,
+    },
+    {
+      id: 'cut',
+      title: options.t('common.cut', 'Cut'),
+      icon: 'i-heroicons-scissors',
+      hidden: !options.canCopyOrCut.value,
+      onClick: options.onCut,
+    },
     {
       id: 'rename',
       title: options.t('common.rename', 'Rename'),

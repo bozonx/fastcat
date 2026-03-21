@@ -20,7 +20,10 @@ export type FileAction =
   | 'convertFile'
   | 'uploadRemote'
   | 'transcribe'
-  | 'extractAudio';
+  | 'extractAudio'
+  | 'copy'
+  | 'cut'
+  | 'paste';
 
 interface ContextMenuDeps {
   isGeneratingProxyInDirectory: (entry: FsEntry) => boolean;
@@ -35,6 +38,7 @@ interface ContextMenuDeps {
   };
   isFilesPage?: boolean;
   getSelectedEntries?: () => FsEntry[];
+  hasClipboardItems?: boolean;
 }
 
 export function useFileContextMenu(
@@ -115,6 +119,19 @@ export function useFileContextMenu(
 
       items.push([
         {
+          label: t('common.copy', 'Copy'),
+          icon: 'i-heroicons-document-duplicate',
+          onSelect: () => onAction('copy', selectedEntries),
+        },
+        {
+          label: t('common.cut', 'Cut'),
+          icon: 'i-heroicons-scissors',
+          onSelect: () => onAction('cut', selectedEntries),
+        },
+      ]);
+
+      items.push([
+        {
           label: t('common.delete', 'Delete'),
           icon: 'i-heroicons-trash',
           color: 'error',
@@ -152,6 +169,16 @@ export function useFileContextMenu(
           onSelect: () => onAction('createMarkdown', entry),
         },
       ]);
+
+      if (deps.hasClipboardItems) {
+        items.push([
+          {
+            label: t('common.paste', 'Paste'),
+            icon: 'i-heroicons-clipboard',
+            onSelect: () => onAction('paste', entry),
+          },
+        ]);
+      }
 
       if (hasVideos) {
         if (deps.isGeneratingProxyInDirectory(entry)) {
@@ -319,6 +346,16 @@ export function useFileContextMenu(
 
     if (!isCommon && !isProjectRoot && !isCommonPath) {
       items.push([
+        {
+          label: t('common.copy', 'Copy'),
+          icon: 'i-heroicons-document-duplicate',
+          onSelect: () => onAction('copy', entry),
+        },
+        {
+          label: t('common.cut', 'Cut'),
+          icon: 'i-heroicons-scissors',
+          onSelect: () => onAction('cut', entry),
+        },
         {
           label: t('common.rename', 'Rename'),
           icon: 'i-heroicons-pencil',

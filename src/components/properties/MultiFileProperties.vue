@@ -4,6 +4,7 @@ import { useUiStore } from '~/stores/ui.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useAppClipboard } from '~/composables/useAppClipboard';
 import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { formatBytes } from '~/utils/format';
@@ -19,6 +20,7 @@ const uiStore = useUiStore();
 const proxyStore = useProxyStore();
 const projectStore = useProjectStore();
 const fileManager = useFileManager();
+const clipboardStore = useAppClipboard();
 
 const totalSize = ref(0);
 
@@ -91,13 +93,39 @@ function onDeleteProxy() {
     }
   }
 }
+
+function onCopy() {
+  const validEntries = props.entries.filter((e) => Boolean(e.path));
+  if (validEntries.length === 0) return;
+  clipboardStore.setClipboardPayload({
+    source: 'fileManager',
+    operation: 'copy',
+    items: validEntries.map((e) => ({
+      path: e.path!,
+      kind: e.kind,
+      name: e.name,
+    })),
+  });
+}
+
+function onCut() {
+  const validEntries = props.entries.filter((e) => Boolean(e.path));
+  if (validEntries.length === 0) return;
+  clipboardStore.setClipboardPayload({
+    source: 'fileManager',
+    operation: 'cut',
+    items: validEntries.map((e) => ({
+      path: e.path!,
+      kind: e.kind,
+      name: e.name,
+    })),
+  });
+}
 </script>
 
 <template>
   <div class="w-full flex flex-col gap-4">
-    <div
-      class="bg-ui-bg-elevated p-4 rounded border border-ui-border flex flex-col gap-3"
-    >
+    <div class="bg-ui-bg-elevated p-4 rounded border border-ui-border flex flex-col gap-3">
       <div class="flex flex-col items-center justify-center">
         <UIcon name="i-heroicons-document-duplicate" class="w-8 h-8 text-ui-text-muted mb-2" />
         <span class="text-sm font-medium"
@@ -124,6 +152,18 @@ function onDeleteProxy() {
     <PropertySection :title="t('videoEditor.fileManager.actions.title', 'Actions')">
       <EntryActions
         :primary-actions="[
+          {
+            id: 'copy',
+            title: t('common.copy', 'Copy'),
+            icon: 'i-heroicons-document-duplicate',
+            onClick: onCopy,
+          },
+          {
+            id: 'cut',
+            title: t('common.cut', 'Cut'),
+            icon: 'i-heroicons-scissors',
+            onClick: onCut,
+          },
           {
             id: 'delete',
             title: t('common.delete', 'Delete'),

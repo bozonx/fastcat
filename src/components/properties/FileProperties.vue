@@ -30,6 +30,7 @@ import { useFileStorageInfo } from '~/composables/properties/useFileStorageInfo'
 import { useFilePropertiesHandlers } from '~/composables/properties/useFilePropertiesHandlers';
 import { useAudioExtraction } from '~/composables/fileManager/useAudioExtraction';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useAppClipboard } from '~/composables/useAppClipboard';
 import { isWorkspaceCommonPath } from '~/utils/workspace-common';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
@@ -59,6 +60,7 @@ const toast = useToast();
 const { extractAudio } = useAudioExtraction();
 const fileManager = useFileManager();
 const runtimeConfig = useRuntimeConfig();
+const clipboardStore = useAppClipboard();
 
 const isMetaExpanded = ref(false);
 const isExifExpanded = ref(false);
@@ -269,6 +271,42 @@ const {
   canUploadToRemote,
 });
 
+const canCopyOrCut = computed(() => {
+  return !isProjectRootDir.value && !isCommonPath.value;
+});
+
+function onCopy() {
+  const entry = props.selectedFsEntry;
+  if (!entry || !entry.path) return;
+  clipboardStore.setClipboardPayload({
+    source: 'fileManager',
+    operation: 'copy',
+    items: [
+      {
+        path: entry.path,
+        kind: entry.kind,
+        name: entry.name,
+      },
+    ],
+  });
+}
+
+function onCut() {
+  const entry = props.selectedFsEntry;
+  if (!entry || !entry.path) return;
+  clipboardStore.setClipboardPayload({
+    source: 'fileManager',
+    operation: 'cut',
+    items: [
+      {
+        path: entry.path,
+        kind: entry.kind,
+        name: entry.name,
+      },
+    ],
+  });
+}
+
 const {
   directoryPrimaryActions,
   directorySecondaryActions,
@@ -292,6 +330,7 @@ const {
   isVideoFile,
   isCommonDir,
   isCommonPath,
+  canCopyOrCut,
   triggerDirectoryUpload,
   createSubfolder,
   createTimelineInFolder,
@@ -317,6 +356,8 @@ const {
     uiStore.pendingOtioCreateVersion = props.selectedFsEntry;
   },
   extractAudio: () => extractAudio(props.selectedFsEntry),
+  onCopy,
+  onCut,
 });
 </script>
 
