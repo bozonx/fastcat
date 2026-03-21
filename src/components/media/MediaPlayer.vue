@@ -315,7 +315,7 @@ onUnmounted(() => {
           class="max-w-full max-h-full object-contain transition-transform duration-75"
           :style="mediaStyle"
           @timeupdate="onTimeUpdate"
-          @loadedmetadata="onLoadedMetadata"
+          @loadedmetadata="onLoadedMetadata(); fitToContainer()"
           @play="onPlay"
           @pause="onPause"
           @ended="onPause"
@@ -425,7 +425,7 @@ onUnmounted(() => {
           <UiVolumeControl
             v-model:volume="volume"
             v-model:is-muted="isMuted"
-            compact
+            :compact="!isModal"
             orientation="horizontal"
             :max="1"
           />

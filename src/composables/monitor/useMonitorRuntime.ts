@@ -17,6 +17,7 @@ export interface MonitorViewportPublicApi {
   centerMonitor: () => void;
   resetZoom: () => void;
   resetView: () => void;
+  fitMonitor: () => void;
 }
 
 export function useMonitorRuntime() {
