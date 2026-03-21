@@ -4,6 +4,7 @@ import { computed, ref } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import SelectEffectModal from '~/components/effects/SelectEffectModal.vue';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
+import PropertySection from '~/components/properties/PropertySection.vue';
 import { getVideoEffectManifest } from '~/effects';
 import type { VideoClipEffect } from '~/timeline/types';
 import { usePresetsStore } from '~/stores/presets.store';

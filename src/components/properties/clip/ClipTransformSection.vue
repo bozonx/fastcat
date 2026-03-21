@@ -140,13 +140,13 @@ function clampNumber(value: number, min: number, max: number): number {
             :min="-50"
             :max="50"
             :default-value="1"
-            :wheel-step-multiplier="10"
+            :wheel-step-multiplier="1"
             class="w-16"
           />
           <button
             class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text shrink-0"
             :title="t('common.reset', 'Reset')"
-            @click="emit('updateSpeed', 1)"
+            @click="() => { emit('updateSpeed', 1); }"
           >
             <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
           </button>

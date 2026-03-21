@@ -355,8 +355,7 @@ export function useClipTransform(options: UseClipTransformOptions) {
   }
 
   function resetAll() {
-    const current = getSafeTransform(options.clip.value);
-    updateSelectedClipTransform({
+    options.updateTransform({
       scale: { x: 1, y: 1, linked: true },
       position: { x: 0, y: 0 },
       rotationDeg: 0,
