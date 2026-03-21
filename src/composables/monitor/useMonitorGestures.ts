@@ -16,6 +16,8 @@ import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 export function useMonitorGestures(input: {
   projectStore: ReturnType<typeof useProjectStore>;
   viewportEl: Ref<HTMLElement | null>;
+  renderWidth: Ref<number>;
+  renderHeight: Ref<number>;
 }) {
   const workspaceStore = useWorkspaceStore();
   const uiStore = useUiStore();
@@ -126,8 +128,8 @@ export function useMonitorGestures(input: {
     if (!input.projectStore.activeMonitor || !el) return;
     const vpW = el.clientWidth;
     const vpH = el.clientHeight;
-    const w = input.projectStore.activeMonitor.width ?? vpW;
-    const h = input.projectStore.activeMonitor.height ?? vpH;
+    const w = input.renderWidth.value;
+    const h = input.renderHeight.value;
     if (!w || !h) {
       resetView();
       return;

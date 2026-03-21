@@ -5,6 +5,7 @@
  * Additional SVG elements (grid, transform handles, etc.) should be added inside the svg-overlay slot.
  * Canvas content is placed via the default slot inside the canvas wrapper.
  */
+import { toRef } from 'vue';
 import { useMonitorGestures } from '~/composables/monitor/useMonitorGestures';
 import { useProjectStore } from '~/stores/project.store';
 
@@ -33,7 +34,12 @@ const {
   onViewportAuxClick,
   stopPan,
   onViewportWheel,
-} = useMonitorGestures({ projectStore, viewportEl });
+} = useMonitorGestures({
+  projectStore,
+  viewportEl,
+  renderWidth: toRef(props, 'renderWidth'),
+  renderHeight: toRef(props, 'renderHeight'),
+});
 
 defineExpose({ viewportEl, zoom, zoomExact, zoomLabel, resetView, centerMonitor, resetZoom, fitMonitor });
 </script>

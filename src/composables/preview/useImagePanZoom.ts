@@ -21,26 +21,7 @@ export function useImagePanZoom(containerRef: Ref<HTMLElement | null>) {
 
   function fitToContainer() {
     if (!containerRef.value) return;
-    const img = containerRef.value.querySelector('img, video') as HTMLElement | null;
-    if (!img) return;
-    const container = containerRef.value.getBoundingClientRect();
-    const naturalWidth =
-      (img as HTMLImageElement | HTMLVideoElement) instanceof HTMLImageElement
-        ? (img as HTMLImageElement).naturalWidth
-        : (img as HTMLVideoElement).videoWidth;
-    const naturalHeight =
-      (img as HTMLImageElement | HTMLVideoElement) instanceof HTMLImageElement
-        ? (img as HTMLImageElement).naturalHeight
-        : (img as HTMLVideoElement).videoHeight;
-    if (!naturalWidth || !naturalHeight) {
-      reset();
-      return;
-    }
-    const scaleX = container.width / naturalWidth;
-    const scaleY = container.height / naturalHeight;
-    scale.value = Math.min(scaleX, scaleY);
-    translateX.value = 0;
-    translateY.value = 0;
+    reset();
   }
 
   function applyZoomAtPoint(params: { delta: number; clientX: number; clientY: number }) {
