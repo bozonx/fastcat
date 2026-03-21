@@ -1146,7 +1146,7 @@
         "zoomOut": "Zoom out",
         "zoomReset": "Reset zoom",
         "snapshot": "Create snapshot from monitor",
-        "exportTimeline": "Export timeline to file"
+        "newTimeline": "Create new timeline"
       },
       "playback": {
         "backward0_5": "Backward x0.5 (Monitor only)",

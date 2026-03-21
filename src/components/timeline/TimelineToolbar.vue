@@ -15,7 +15,7 @@ const emit = defineEmits<{
 }>();
 
 const trimMenuItems = computed(() => {
-  const isNoClipSelected = timelineStore.selectedItemIds.length === 0;
+  const isNoClipSelected = timelineStore.getHotkeyTargetClip() === null;
 
   return [
     [

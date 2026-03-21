@@ -490,6 +490,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     selectAllClips: selection.selectAllClips,
     selectClipsRelativeToPlayhead: selection.selectClipsRelativeToPlayhead,
     getSelectedOrActiveTrackId: selection.getSelectedOrActiveTrackId,
+    getHotkeyTargetClip: selection.getHotkeyTargetClip,
     setTimelineZoomExact,
   };
 });
