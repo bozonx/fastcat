@@ -21,20 +21,6 @@ const isZone = computed(() => {
   return typeof marker.value?.durationUs === 'number';
 });
 
-const activeColor = computed(() => marker.value?.color ?? '#eab308');
-
-const COLORS = [
-  { value: '#ef4444', label: 'Red' },
-  { value: '#f97316', label: 'Orange' },
-  { value: '#eab308', label: 'Yellow' },
-  { value: '#22c55e', label: 'Green' },
-  { value: '#84cc16', label: 'Light Green' },
-  { value: '#0ea5e9', label: 'Light Blue' },
-  { value: '#3b82f6', label: 'Blue' },
-  { value: '#a855f7', label: 'Purple' },
-  { value: '#ffffff', label: 'White' },
-  { value: '#000000', label: 'Black' },
-];
 
 function handleUpdateText(val: string | undefined) {
   if (!marker.value) return;
@@ -192,20 +178,13 @@ const extraActions = computed(() => {
         />
       </div>
 
-      <div class="flex flex-col gap-1.5 mt-4">
+      <div class="flex flex-col gap-2 mt-4 pb-2">
         <span class="text-xs text-ui-text-muted">{{ t('common.color', 'Color') }}</span>
-        <div class="grid grid-cols-5 gap-2">
-          <button
-            v-for="c in COLORS"
-            :key="c.value"
-            type="button"
-            class="w-6 h-6 rounded-full border border-ui-border-muted transition-transform hover:scale-110 flex items-center justify-center"
-            :class="{ 'ring-2 ring-primary-500 scale-110': activeColor === c.value }"
-            :style="{ backgroundColor: c.value }"
-            :title="c.label"
-            @click.prevent="handleUpdateColor(c.value)"
-          ></button>
-        </div>
+        <UiColorPicker
+          :model-value="marker.color ?? '#eab308'"
+          mode="marker"
+          @update:model-value="handleUpdateColor"
+        />
       </div>
     </PropertySection>
   </div>

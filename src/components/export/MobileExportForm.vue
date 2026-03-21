@@ -2,6 +2,7 @@
 import { useProjectStore } from '~/stores/project.store';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
+import UiTextInput from '~/components/ui/UiTextInput.vue';
 import { computed, ref, onMounted } from 'vue';
 import { useExportForm } from '~/composables/timeline/export/useExportForm';
 
@@ -92,7 +93,12 @@ async function onStartExport() {
     <!-- Main Settings -->
     <div class="space-y-4">
       <UFormField :label="$t('videoEditor.export.filename')" :error="filenameError ?? undefined">
-        <UInput v-model="outputFilename" placeholder="video_name" :disabled="isExporting" />
+        <UiTextInput
+          v-model="outputFilename"
+          placeholder="video_name"
+          :disabled="isExporting"
+          full-width
+        />
       </UFormField>
 
       <div class="grid grid-cols-2 gap-4">
@@ -219,24 +225,27 @@ async function onStartExport() {
           </p>
           <div class="grid grid-cols-1 gap-4">
             <UFormField :label="$t('videoEditor.export.metadataTitle')">
-              <UInput
+              <UiTextInput
                 v-model="metadataTitle"
                 :placeholder="$t('videoEditor.export.metadataTitle')"
                 :disabled="isExporting"
+                full-width
               />
             </UFormField>
             <UFormField :label="$t('videoEditor.export.metadataDescription')">
-              <UInput
+              <UiTextInput
                 v-model="metadataDescription"
                 :placeholder="$t('videoEditor.export.metadataDescription')"
                 :disabled="isExporting"
+                full-width
               />
             </UFormField>
             <UFormField :label="$t('videoEditor.export.metadataAuthor')">
-              <UInput
+              <UiTextInput
                 v-model="metadataAuthor"
                 :placeholder="$t('videoEditor.export.metadataAuthor')"
                 :disabled="isExporting"
+                full-width
               />
             </UFormField>
           </div>

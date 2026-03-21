@@ -5,6 +5,7 @@ import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiKnob from '~/components/ui/editor/UiKnob.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
+import UiTextInput from '~/components/ui/UiTextInput.vue';
 import type {
   ButtonGroupParamControl,
   FileParamControl,
@@ -315,15 +316,14 @@ function handleArrayItemUpdate(
             (value: string | number) => updateValue(control.key, String(value ?? ''))
           "
         />
-        <UInput
+        <UiTextInput
           v-else
           :model-value="String(getValue(control.key) ?? '')"
           :placeholder="control.placeholder"
           :size="size"
           :disabled="control.disabled"
-          @update:model-value="
-            (value: string | number) => updateValue(control.key, String(value ?? ''))
-          "
+          full-width
+          @update:model-value="(value: string) => updateValue(control.key, String(value ?? ''))"
         />
       </div>
 

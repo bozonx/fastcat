@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { reactive, computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import UiTextInput from '~/components/ui/UiTextInput.vue';
 import {
   resolveExternalServiceConfig,
   runExternalHealthCheck,
@@ -125,17 +126,17 @@ function getHealthTone(status: typeof healthState.status) {
     </label>
 
     <UFormField :label="t('videoEditor.settings.integrationBaseUrl', 'Base URL')">
-      <UInput
+      <UiTextInput
         v-model="workspaceStore.userSettings.integrations.manualSttApi.baseUrl"
-        class="w-full"
+        full-width
         placeholder="https://api.example.com/api/v1/external/stt"
       />
     </UFormField>
 
     <UFormField :label="t('videoEditor.settings.integrationBearerToken', 'Bearer token')">
-      <UInput
+      <UiTextInput
         v-model="workspaceStore.userSettings.integrations.manualSttApi.bearerToken"
-        class="w-full"
+        full-width
         type="password"
         autocomplete="off"
         placeholder="Bearer token"
@@ -143,15 +144,15 @@ function getHealthTone(status: typeof healthState.status) {
     </UFormField>
 
     <UFormField :label="t('videoEditor.settings.integrationSttProvider', 'Provider')">
-      <UInput
+      <UiTextInput
         v-model="workspaceStore.userSettings.integrations.stt.provider"
-        class="w-full"
+        full-width
         placeholder="assemblyai"
       />
     </UFormField>
 
     <UFormField :label="t('videoEditor.settings.integrationSttModels', 'Models')">
-      <UInput v-model="sttModelsText" class="w-full" placeholder="universal-3-pro, universal-2" />
+      <UiTextInput v-model="sttModelsText" full-width placeholder="universal-3-pro, universal-2" />
     </UFormField>
 
     <label class="flex items-center gap-3 cursor-pointer">

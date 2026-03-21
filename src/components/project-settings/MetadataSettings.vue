@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
+import UiTextInput from '~/components/ui/UiTextInput.vue';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
@@ -48,15 +49,15 @@ const metaDescription = computed({
 <template>
   <div v-if="projectStore.projectSettings" class="space-y-4">
     <UFormField :label="t('videoEditor.export.metadataTitle', 'Title')">
-      <UInput v-model="metaTitle" class="w-full" />
+      <UiTextInput v-model="metaTitle" full-width />
     </UFormField>
 
     <div class="grid grid-cols-2 gap-4">
       <UFormField :label="t('videoEditor.export.metadataAuthor', 'Author')">
-        <UInput v-model="metaAuthor" class="w-full" />
+        <UiTextInput v-model="metaAuthor" full-width />
       </UFormField>
       <UFormField :label="t('videoEditor.export.metadataTags', 'Tags')">
-        <UInput v-model="metaTagsString" class="w-full" />
+        <UiTextInput v-model="metaTagsString" full-width />
       </UFormField>
     </div>
 

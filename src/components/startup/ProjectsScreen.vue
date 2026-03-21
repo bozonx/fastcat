@@ -2,6 +2,7 @@
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectManagement } from '~/composables/project/useProjectManagement';
 import UiSearchInput from '~/components/ui/UiSearchInput.vue';
+import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiModal from '~/components/ui/UiModal.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';

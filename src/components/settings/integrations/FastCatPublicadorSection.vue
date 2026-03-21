@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { reactive, computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import UiTextInput from '~/components/ui/UiTextInput.vue';
 import { FASTCAT_PUBLICADOR_APP_NAME } from '~/utils/constants';
 import {
   getFastCatPublicadorConnectUrl,
@@ -133,9 +134,9 @@ function getHealthTone(status: typeof healthState.status) {
     </div>
 
     <UFormField :label="t('videoEditor.settings.integrationBearerToken', 'Bearer token')">
-      <UInput
+      <UiTextInput
         v-model="workspaceStore.userSettings.integrations.fastcatPublicador.bearerToken"
-        class="w-full"
+        full-width
         type="password"
         autocomplete="off"
         placeholder="gp_token_..."

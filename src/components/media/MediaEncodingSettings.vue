@@ -2,6 +2,7 @@
 import { computed, watch, ref } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
+import UiTextInput from '~/components/ui/UiTextInput.vue';
 import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
 import type { VideoCodecOptionResolved } from '~/utils/webcodecs';
 
@@ -312,14 +313,14 @@ watch(
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.export.metadataTitle', 'Title') }}
         </label>
-        <UInput v-model="metadataTitle" size="sm" :disabled="props.disabled" class="w-full" />
+        <UiTextInput v-model="metadataTitle" size="sm" :disabled="props.disabled" full-width />
       </div>
 
       <div class="flex flex-col gap-2">
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.export.metadataAuthor', 'Author') }}
         </label>
-        <UInput v-model="metadataAuthor" size="sm" :disabled="props.disabled" class="w-full" />
+        <UiTextInput v-model="metadataAuthor" size="sm" :disabled="props.disabled" full-width />
       </div>
 
       <div class="flex flex-col gap-2">
@@ -339,7 +340,7 @@ watch(
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.export.metadataTags', 'Tags') }}
         </label>
-        <UInput v-model="metadataTags" size="sm" :disabled="props.disabled" class="w-full" />
+        <UiTextInput v-model="metadataTags" size="sm" :disabled="props.disabled" full-width />
       </div>
     </template>
   </div>
