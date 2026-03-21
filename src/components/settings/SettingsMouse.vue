@@ -2,6 +2,7 @@
 import SettingsMouseSection from '~/components/settings/SettingsMouseSection.vue';
 import SettingsMouseSelectRow from '~/components/settings/SettingsMouseSelectRow.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { LAYER_OPTIONS, type LayerKey } from '~/utils/hotkeys/layerUtils';
 import { useMouseSettings } from '~/composables/settings/useMouseSettings';
@@ -63,10 +64,11 @@ function handleResetDefaults() {
         <label class="text-xs font-medium text-ui-text-muted">
           {{ t('videoEditor.settings.hotkeysLayer1') }}
         </label>
-        <USelectMenu
+        <UiSelect
           :model-value="workspaceStore.userSettings.hotkeys.layer1 ?? 'Shift'"
           :items="LAYER_OPTIONS"
           value-key="value"
+          full-width
           @update:model-value="(val) => updateLayer1(val as LayerKey)"
         />
       </div>
@@ -74,10 +76,11 @@ function handleResetDefaults() {
         <label class="text-xs font-medium text-ui-text-muted">
           {{ t('videoEditor.settings.hotkeysLayer2') }}
         </label>
-        <USelectMenu
+        <UiSelect
           :model-value="workspaceStore.userSettings.hotkeys.layer2 ?? 'Control'"
           :items="LAYER_OPTIONS"
           value-key="value"
+          full-width
           @update:model-value="(val) => updateLayer2(val as LayerKey)"
         />
       </div>

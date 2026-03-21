@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import UiSliderInput from '~/components/ui/UiSliderInput.vue';
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import { getAllTransitionManifests } from '~/transitions';
 
@@ -61,7 +62,7 @@ const transitionOptions = computed(() =>
         </div>
 
         <div v-if="props.transitionIn" class="pl-1.5 border-l-2 border-primary-500/40">
-          <USelectMenu
+          <UiSelect
             :model-value="props.transitionIn.type"
             :items="transitionOptions"
             value-key="value"
@@ -69,8 +70,12 @@ const transitionOptions = computed(() =>
             size="xs"
             class="mb-2"
             @update:model-value="
-              (value: any) =>
-                value && emit('updateType', { edge: 'in', type: value?.value ?? value })
+              (value: unknown) =>
+                value &&
+                emit('updateType', {
+                  edge: 'in',
+                  type: (value as { value: string })?.value ?? (value as string),
+                })
             "
           />
           <UiWheelNumberInput
@@ -118,7 +123,7 @@ const transitionOptions = computed(() =>
         </div>
 
         <div v-if="props.transitionOut" class="pl-1.5 border-l-2 border-primary-500/40">
-          <USelectMenu
+          <UiSelect
             :model-value="props.transitionOut.type"
             :items="transitionOptions"
             value-key="value"
@@ -126,8 +131,12 @@ const transitionOptions = computed(() =>
             size="xs"
             class="mb-2"
             @update:model-value="
-              (value: any) =>
-                value && emit('updateType', { edge: 'out', type: value?.value ?? value })
+              (value: unknown) =>
+                value &&
+                emit('updateType', {
+                  edge: 'out',
+                  type: (value as { value: string })?.value ?? (value as string),
+                })
             "
           />
           <UiWheelNumberInput

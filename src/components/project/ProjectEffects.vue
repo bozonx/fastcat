@@ -245,7 +245,9 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
             >
               <UIcon :name="transition.icon" class="w-8 h-8 text-primary shrink-0" />
               <div class="flex-1 min-w-0">
-                <h4 class="text-sm font-medium text-ui-text">{{ transition.name }}</h4>
+                <h4 class="text-sm font-medium text-ui-text">
+                  {{ transition.nameKey ? t(transition.nameKey) : transition.name }}
+                </h4>
               </div>
             </div>
             <div
@@ -295,7 +297,9 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
               >
                 <UIcon :name="transition.icon" class="w-8 h-8 text-primary shrink-0" />
                 <div class="flex-1 min-w-0 flex items-center justify-between">
-                  <h4 class="text-sm font-medium text-ui-text truncate">{{ transition.name }}</h4>
+                  <h4 class="text-sm font-medium text-ui-text truncate">
+                    {{ transition.nameKey ? t(transition.nameKey) : transition.name }}
+                  </h4>
                   <UButton
                     icon="i-heroicons-trash"
                     color="red"

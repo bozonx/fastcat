@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import UiSelect from '~/components/ui/UiSelect.vue';
+
 interface SelectItem {
   label: string;
   value: string;
@@ -19,8 +21,9 @@ const emit = defineEmits<{
   'update:modelValue': [value: string];
 }>();
 
-function updateValue(value: SelectItem | string | null | undefined) {
-  emit('update:modelValue', value && typeof value === 'object' ? value.value : (value ?? ''));
+function updateValue(value: unknown) {
+  const item = value as SelectItem | string | null | undefined;
+  emit('update:modelValue', item && typeof item === 'object' ? item.value : (item ?? ''));
 }
 </script>
 
@@ -35,12 +38,12 @@ function updateValue(value: SelectItem | string | null | undefined) {
       </span>
     </td>
     <td class="p-2 py-2.5 align-middle">
-      <USelectMenu
+      <UiSelect
         :model-value="modelValue"
         :items="items"
         value-key="value"
         label-key="label"
-        class="w-full"
+        full-width
         @update:model-value="updateValue"
       >
         <template #item-label="{ item }">
@@ -51,7 +54,7 @@ function updateValue(value: SelectItem | string | null | undefined) {
             </span>
           </span>
         </template>
-      </USelectMenu>
+      </UiSelect>
     </td>
   </tr>
 </template>
