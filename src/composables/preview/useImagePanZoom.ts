@@ -3,6 +3,14 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { isSecondaryWheel, getWheelDelta, DRAG_DEADZONE_PX } from '~/utils/mouse';
 
+interface MediaMetrics {
+  naturalWidth: number;
+  naturalHeight: number;
+  fittedWidth: number;
+  fittedHeight: number;
+  fitScale: number;
+}
+
 export function useImagePanZoom(containerRef: Ref<HTMLElement | null>) {
   const workspaceStore = useWorkspaceStore();
   const scale = ref(1);
@@ -12,49 +20,90 @@ export function useImagePanZoom(containerRef: Ref<HTMLElement | null>) {
   const dragStartX = ref(0);
   const dragStartY = ref(0);
   const middlePointerDown = ref<{ x: number; y: number; moved: boolean } | null>(null);
+  const isReady = ref(false);
 
-  function reset() {
-    scale.value = 1;
+  function resetPan() {
     translateX.value = 0;
     translateY.value = 0;
   }
 
-  function fitToContainer() {
-    if (!containerRef.value) return;
+  function getMediaMetrics(): MediaMetrics | null {
+    if (!containerRef.value) return null;
+
     const container = containerRef.value;
     const media = container.querySelector('img, video') as
       | HTMLImageElement
       | HTMLVideoElement
       | null;
-    const vpW = container.clientWidth;
-    const vpH = container.clientHeight;
-    if (!vpW || !vpH) {
-      reset();
-      return;
-    }
-    const naturalW =
+
+    if (!media) return null;
+
+    const naturalWidth =
       media instanceof HTMLImageElement
         ? media.naturalWidth
         : media instanceof HTMLVideoElement
           ? media.videoWidth
           : 0;
-    const naturalH =
+
+    const naturalHeight =
       media instanceof HTMLImageElement
         ? media.naturalHeight
         : media instanceof HTMLVideoElement
           ? media.videoHeight
           : 0;
-    if (!naturalW || !naturalH) {
-      reset();
+
+    const vpW = container.clientWidth;
+    const vpH = container.clientHeight;
+
+    if (!naturalWidth || !naturalHeight || !vpW || !vpH) return null;
+
+    const fitScale = Math.min(1, vpW / naturalWidth, vpH / naturalHeight);
+
+    return {
+      naturalWidth,
+      naturalHeight,
+      fittedWidth: naturalWidth * fitScale,
+      fittedHeight: naturalHeight * fitScale,
+      fitScale,
+    };
+  }
+
+  function applyFit() {
+    const metrics = getMediaMetrics();
+    if (!metrics) return false;
+
+    scale.value = 1;
+    resetPan();
+    isReady.value = true;
+
+    return true;
+  }
+
+  function reset() {
+    const metrics = getMediaMetrics();
+    if (!metrics) {
+      scale.value = 1;
+      resetPan();
+      isReady.value = false;
       return;
     }
-    scale.value = Math.min(vpW / naturalW, vpH / naturalH);
-    translateX.value = 0;
-    translateY.value = 0;
+
+    scale.value = 1 / metrics.fitScale;
+    resetPan();
+    isReady.value = true;
+  }
+
+  function fitToContainer() {
+    if (applyFit()) return;
+
+    scale.value = 1;
+    resetPan();
+    isReady.value = false;
   }
 
   function applyZoomAtPoint(params: { delta: number; clientX: number; clientY: number }) {
     if (!containerRef.value) return;
+
     const zoomFactor = params.delta < 0 ? 1.1 : 0.9;
     const newScale = Math.max(0.05, Math.min(scale.value * zoomFactor, 50));
     if (newScale === scale.value) return;
@@ -63,21 +112,19 @@ export function useImagePanZoom(containerRef: Ref<HTMLElement | null>) {
     const pointerX = params.clientX - rect.left;
     const pointerY = params.clientY - rect.top;
 
-    // Current image center relative to container
     const currentCenterX = rect.width / 2 + translateX.value;
     const currentCenterY = rect.height / 2 + translateY.value;
 
-    // Distance from pointer to center
     const dx = pointerX - currentCenterX;
     const dy = pointerY - currentCenterY;
 
-    // New distance from pointer to center
     const newDx = dx * (newScale / scale.value);
     const newDy = dy * (newScale / scale.value);
 
     translateX.value += dx - newDx;
     translateY.value += dy - newDy;
     scale.value = newScale;
+    isReady.value = true;
   }
 
   function onWheel(e: WheelEvent) {
@@ -202,6 +249,7 @@ export function useImagePanZoom(containerRef: Ref<HTMLElement | null>) {
     scale,
     translateX,
     translateY,
+    isReady,
     reset,
     fitToContainer,
     onWheel,

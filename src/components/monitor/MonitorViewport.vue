@@ -41,7 +41,16 @@ const {
   renderHeight: toRef(props, 'renderHeight'),
 });
 
-defineExpose({ viewportEl, zoom, zoomExact, zoomLabel, resetView, centerMonitor, resetZoom, fitMonitor });
+defineExpose({
+  viewportEl,
+  zoom,
+  zoomExact,
+  zoomLabel,
+  resetView,
+  centerMonitor,
+  resetZoom,
+  fitMonitor,
+});
 </script>
 
 <template>

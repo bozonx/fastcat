@@ -86,7 +86,7 @@ export function useMonitorGestures(input: {
 
   function resetZoom() {
     if (!input.projectStore.activeMonitor) return;
-    input.projectStore.activeMonitor.zoom = DEFAULT_MONITOR_ZOOM;
+    input.projectStore.activeMonitor.zoom = 1;
   }
 
   function onCustomZoom(dir: number) {
@@ -165,6 +165,11 @@ export function useMonitorGestures(input: {
     } else if (action === 'reset_zoom_center') {
       resetView();
     }
+  }
+
+  function onViewportContextMenu(event: MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
   }
 
   function onViewportPointerMove(event: PointerEvent) {
@@ -314,5 +319,6 @@ export function useMonitorGestures(input: {
     onViewportAuxClick,
     stopPan,
     onViewportWheel,
+    onViewportContextMenu,
   };
 }

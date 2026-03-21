@@ -33,7 +33,10 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'open-modal'): void;
   (e: 'close-modal'): void;
-  (e: 'sync-state', value: { currentTime: number; isPlaying: boolean; source: 'inline' | 'modal' }): void;
+  (
+    e: 'sync-state',
+    value: { currentTime: number; isPlaying: boolean; source: 'inline' | 'modal' },
+  ): void;
 }>();
 
 const mediaElement = ref<HTMLVideoElement | HTMLAudioElement | null>(null);
@@ -78,6 +81,7 @@ const {
   scale,
   translateX,
   translateY,
+  isReady,
   reset: resetZoom,
   fitToContainer,
   onWheel,
@@ -313,9 +317,13 @@ onUnmounted(() => {
           ref="mediaElement"
           :src="src"
           class="max-w-full max-h-full object-contain transition-transform duration-75"
+          :class="isReady ? 'opacity-100' : 'opacity-0'"
           :style="mediaStyle"
           @timeupdate="onTimeUpdate"
-          @loadedmetadata="onLoadedMetadata(); fitToContainer()"
+          @loadedmetadata="
+            onLoadedMetadata();
+            fitToContainer();
+          "
           @play="onPlay"
           @pause="onPause"
           @ended="onPause"
