@@ -1,5 +1,6 @@
-import { useProjectStore } from "~/stores/project.store";
 <script setup lang="ts">
+import { useProjectStore } from "~/stores/project.store";
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import { computed, ref, onMounted } from 'vue';
 import { useExportForm } from '~/composables/timeline/export/useExportForm';
 
@@ -184,19 +185,18 @@ async function onStartExport() {
             </UFormField>
           </div>
           <UFormField :label="$t('videoEditor.export.audioBitrate')">
-            <UInput
-              :model-value="String(audioBitrateKbps)"
-              type="number"
-              min="64"
-              max="512"
-              step="16"
+            <UiWheelNumberInput
+              v-model="audioBitrateKbps"
+              :min="64"
+              :max="512"
+              :step="16"
               :disabled="isExporting"
-              @update:model-value="(v) => (audioBitrateKbps = Number(v))"
+              class="max-w-none"
             >
               <template #trailing>
                 <span class="text-xs text-slate-500">kbps</span>
               </template>
-            </UInput>
+            </UiWheelNumberInput>
           </UFormField>
         </div>
 

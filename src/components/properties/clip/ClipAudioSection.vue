@@ -110,7 +110,11 @@ const fadeCurveOptions = [
           label-key="label"
           size="xs"
           @update:model-value="
-            (v: unknown) => emit('updateAudioFadeInCurve', (v as { value: string })?.value ?? v)
+            (v: unknown) =>
+              emit(
+                'updateAudioFadeInCurve',
+                ((v as { value: string })?.value ?? v) as AudioFadeCurve,
+              )
           "
         />
       </div>
@@ -134,7 +138,11 @@ const fadeCurveOptions = [
           label-key="label"
           size="xs"
           @update:model-value="
-            (v: unknown) => emit('updateAudioFadeOutCurve', (v as { value: string })?.value ?? v)
+            (v: unknown) =>
+              emit(
+                'updateAudioFadeOutCurve',
+                ((v as { value: string })?.value ?? v) as AudioFadeCurve,
+              )
           "
         />
       </div>

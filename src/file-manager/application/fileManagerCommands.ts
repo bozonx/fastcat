@@ -270,7 +270,7 @@ export async function createMarkdownCommand(params: {
   const fileName = await generateUniqueFsEntryName({
     vfs: params.vfs,
     dirPath: params.dirPath,
-    baseName: 'Документ_',
+    baseName: 'Document_',
     extension: '.md',
     existingNames: params.existingNames,
   });

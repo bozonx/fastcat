@@ -14,6 +14,7 @@ import AudioEffectsEditor from '~/components/effects/AudioEffectsEditor.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import GenerateCaptionsModal from '~/components/properties/GenerateCaptionsModal.vue';
 
@@ -155,7 +156,7 @@ const isLocked = computed({
 
 const isMuted = computed({
   get: () =>
-    props.track.kind === 'video' ? props.track.videoHidden : props.track.audioMuted ?? false,
+    props.track.kind === 'video' ? props.track.videoHidden : (props.track.audioMuted ?? false),
   set: (val: boolean) => {
     if (props.track.kind === 'video') {
       timelineStore.updateTrackProperties(props.track.id, { videoHidden: val });
@@ -247,14 +248,22 @@ const extraActions = computed(() => {
               v-for="preset in trackColorPresets"
               :key="preset"
               class="w-5 h-5 rounded-full border border-ui-border-elevated transition-transform hover:scale-110"
-              :class="{ 'ring-2 ring-ui-primary ring-offset-1 ring-offset-ui-bg': trackColor === preset }"
+              :class="{
+                'ring-2 ring-ui-primary ring-offset-1 ring-offset-ui-bg': trackColor === preset,
+              }"
               :style="{ backgroundColor: preset }"
               @click="trackColor = preset"
             />
           </div>
         </div>
 
-        <PropertyActionList :actions="mainActions" :vertical="false" variant="ghost" justify="start" size="xs" />
+        <PropertyActionList
+          :actions="mainActions"
+          :vertical="false"
+          variant="ghost"
+          justify="start"
+          size="xs"
+        />
         <PropertyActionList :actions="extraActions" justify="start" size="xs" />
       </div>
     </PropertySection>
@@ -273,13 +282,17 @@ const extraActions = computed(() => {
         <span class="text-xs text-ui-text-muted">{{
           t('fastcat.track.blendMode', 'Blend mode')
         }}</span>
-        <USelectMenu
+        <UiSelect
           :model-value="trackBlendMode"
           :items="blendModeOptions"
           value-key="value"
           label-key="label"
           size="sm"
-          @update:model-value="(v: any) => (trackBlendMode = v)"
+          @update:model-value="
+            (v: unknown) =>
+              (trackBlendMode =
+                (v as { value: TimelineBlendMode })?.value ?? (v as TimelineBlendMode))
+          "
         />
       </div>
 

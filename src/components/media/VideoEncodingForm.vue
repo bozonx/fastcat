@@ -5,6 +5,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import MediaEncodingSettings, {
   type FormatOption,
 } from '~/components/media/MediaEncodingSettings.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 import { resolveExportPreset } from '~/utils/settings/presets';
 
 interface Props {
@@ -93,14 +94,14 @@ function applyPreset(presetId: string) {
         {{ t('videoEditor.export.presetLabel', 'Preset') }}
       </label>
       <div class="flex items-center gap-2">
-        <USelectMenu
+        <UiSelect
           v-model="preset"
           :items="presetOptions"
           value-key="value"
           label-key="label"
           :disabled="props.disabled"
           size="sm"
-          class="w-full"
+          full-width
           @update:model-value="applyPreset"
         />
       </div>

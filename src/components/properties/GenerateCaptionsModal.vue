@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue';
 
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiModal from '~/components/ui/UiModal.vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import {
@@ -126,12 +127,10 @@ const handleAfterEnter = () => {
           <span class="text-xs text-ui-text-muted">
             {{ t('fastcat.captions.maxWordsPerClip', 'Max words per clip') }}
           </span>
-          <UInput
-            :model-value="String(settings.maxWordsPerClip)"
-            type="number"
-            min="1"
-            max="20"
-            @update:model-value="(value) => (settings.maxWordsPerClip = Number(value) || 1)"
+          <UiWheelNumberInput
+            v-model="settings.maxWordsPerClip"
+            :min="1"
+            :max="20"
           />
         </div>
 
@@ -139,12 +138,10 @@ const handleAfterEnter = () => {
           <span class="text-xs text-ui-text-muted">
             {{ t('fastcat.captions.maxDurationMs', 'Max clip duration, ms') }}
           </span>
-          <UInput
-            :model-value="String(settings.maxDurationMs)"
-            type="number"
-            min="100"
-            step="50"
-            @update:model-value="(value) => (settings.maxDurationMs = Number(value) || 100)"
+          <UiWheelNumberInput
+            v-model="settings.maxDurationMs"
+            :min="100"
+            :step="50"
           />
         </div>
 
@@ -152,12 +149,10 @@ const handleAfterEnter = () => {
           <span class="text-xs text-ui-text-muted">
             {{ t('fastcat.captions.silenceGapMs', 'Split on silence gap, ms') }}
           </span>
-          <UInput
-            :model-value="String(settings.silenceGapMs)"
-            type="number"
-            min="0"
-            step="10"
-            @update:model-value="(value) => (settings.silenceGapMs = Number(value) || 0)"
+          <UiWheelNumberInput
+            v-model="settings.silenceGapMs"
+            :min="0"
+            :step="10"
           />
         </div>
 

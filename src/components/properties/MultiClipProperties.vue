@@ -6,6 +6,7 @@ import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 import PropertyTimecode from '~/components/properties/PropertyTimecode.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 import { useClipBatchActions } from '~/composables/timeline/useClipBatchActions';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
@@ -60,10 +61,10 @@ const selectedCountLabel = computed(() => {
 });
 
 const blendModeOptions = computed<Array<{ value: TimelineBlendMode; label: string }>>(() =>
-  rawBlendModeOptions.map(opt => ({
+  rawBlendModeOptions.map((opt) => ({
     value: opt.value as TimelineBlendMode,
-    label: t(opt.labelKey)
-  }))
+    label: t(opt.labelKey),
+  })),
 );
 
 const firstClip = computed(() => selectedClips.value[0]);
@@ -262,7 +263,7 @@ const actions = computed(() => {
             <span class="text-xs text-ui-text-muted">{{
               t('fastcat.clip.blendMode.title', 'Blend Mode')
             }}</span>
-            <USelectMenu
+            <UiSelect
               v-model="batchBlendMode"
               :items="blendModeOptions"
               value-key="value"
@@ -304,7 +305,13 @@ const actions = computed(() => {
             <span class="text-xs text-ui-text-muted">{{
               t('fastcat.clip.audioGain', 'Audio Gain (dB)')
             }}</span>
-            <UiWheelNumberInput v-model="batchAudioGain" size="sm" :step="0.1" :min="-60" :max="20" />
+            <UiWheelNumberInput
+              v-model="batchAudioGain"
+              size="sm"
+              :step="0.1"
+              :min="-60"
+              :max="20"
+            />
           </div>
         </div>
       </div>

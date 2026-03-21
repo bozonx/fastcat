@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -93,12 +94,12 @@ const sampleRateOptions = computed(() => {
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.audio.sampleRate', 'Sample Rate') }}
         </label>
-        <USelect
+        <UiSelect
           v-model.number="audioSampleRate"
           :items="sampleRateOptions"
           :disabled="props.disabled"
           size="sm"
-          class="w-full"
+          full-width
           value-key="value"
           label-key="label"
         />

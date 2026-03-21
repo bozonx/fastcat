@@ -3,6 +3,7 @@ import type { TimelineTextClipItem } from '~/timeline/types';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyField from '~/components/properties/PropertyField.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 
 const props = defineProps<{
   clip: TimelineTextClipItem;
@@ -27,7 +28,7 @@ const { t } = useI18n();
       />
 
       <PropertyField :label="t('fastcat.textClip.fontFamily', 'Font family')">
-        <USelectMenu
+        <UiSelect
           :model-value="String(clip.style?.fontFamily ?? 'sans-serif')"
           :items="[
             { value: 'sans-serif', label: 'Sans Serif' },
@@ -46,7 +47,10 @@ const { t } = useI18n();
           value-key="value"
           label-key="label"
           size="sm"
-          @update:model-value="(v: any) => emit('updateTextStyle', { fontFamily: v?.value ?? v })"
+          @update:model-value="
+            (v: unknown) =>
+              emit('updateTextStyle', { fontFamily: (v as { value: string })?.value ?? v })
+          "
         />
       </PropertyField>
 
@@ -61,7 +65,7 @@ const { t } = useI18n();
           />
         </PropertyField>
         <PropertyField :label="t('fastcat.textClip.fontWeight', 'Font weight')">
-          <USelectMenu
+          <UiSelect
             :model-value="String(clip.style?.fontWeight ?? '700')"
             :items="
               ['100', '200', '300', '400', '500', '600', '700', '800', '900'].map((w) => ({
@@ -72,7 +76,10 @@ const { t } = useI18n();
             value-key="value"
             label-key="label"
             size="sm"
-            @update:model-value="(v: any) => emit('updateTextStyle', { fontWeight: v?.value ?? v })"
+            @update:model-value="
+              (v: unknown) =>
+                emit('updateTextStyle', { fontWeight: (v as { value: string })?.value ?? v })
+            "
           />
         </PropertyField>
       </div>
@@ -111,7 +118,7 @@ const { t } = useI18n();
       </PropertyField>
 
       <PropertyField :label="t('fastcat.textClip.align', 'Align')">
-        <USelectMenu
+        <UiSelect
           :model-value="String(clip.style?.align ?? 'center')"
           :items="[
             { value: 'left', label: 'Left' },
@@ -121,12 +128,12 @@ const { t } = useI18n();
           value-key="value"
           label-key="label"
           size="sm"
-          @update:model-value="(v: any) => emit('updateTextStyle', { align: v })"
+          @update:model-value="(v: unknown) => emit('updateTextStyle', { align: v })"
         />
       </PropertyField>
 
       <PropertyField :label="t('fastcat.textClip.verticalAlign', 'Vertical align')">
-        <USelectMenu
+        <UiSelect
           :model-value="String(clip.style?.verticalAlign ?? 'middle')"
           :items="[
             { value: 'top', label: 'Top' },
@@ -136,7 +143,7 @@ const { t } = useI18n();
           value-key="value"
           label-key="label"
           size="sm"
-          @update:model-value="(v: any) => emit('updateTextStyle', { verticalAlign: v })"
+          @update:model-value="(v: unknown) => emit('updateTextStyle', { verticalAlign: v })"
         />
       </PropertyField>
 
