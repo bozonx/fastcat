@@ -552,6 +552,12 @@ watch(
     ref="rootEl"
     class="absolute inset-0 overflow-hidden pointer-events-none rounded select-none z-10"
   >
+    <!-- Background Gradient Shading to make waveform more visible -->
+    <div
+      v-if="audioPeaks"
+      class="absolute inset-0 bg-linear-to-b from-black/0 via-black/30 to-black/0"
+    />
+
     <div
       v-if="isExtracting && !audioPeaks"
       class="absolute inset-0 flex items-center justify-center"
