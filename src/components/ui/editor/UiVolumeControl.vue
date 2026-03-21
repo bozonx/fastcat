@@ -198,7 +198,7 @@ onBeforeUnmount(() => {
       >
         <div
           v-if="isHovered"
-          class="fixed z-[var(--z-max)] pointer-events-auto"
+          class="fixed z-(--z-max) pointer-events-auto"
           :class="
             orientation === 'vertical'
               ? 'origin-bottom -translate-x-1/2 -translate-y-full'
@@ -209,22 +209,12 @@ onBeforeUnmount(() => {
           @mouseleave="onPopupMouseLeave"
         >
           <div class="relative">
-            <!-- Value badge -->
-            <div
-              class="absolute select-none whitespace-nowrap bg-neutral-800 dark:bg-neutral-900 text-white border border-neutral-700/50 text-xs font-mono px-2.5 py-1 rounded-md shadow-lg"
-              :class="
-                orientation === 'vertical'
-                  ? 'bottom-full left-1/2 -translate-x-1/2 mb-1'
-                  : 'top-1/2 right-full -translate-y-1/2 mr-2'
-              "
-            >
-              {{ volumePercent }}%
-            </div>
+
 
             <!-- Main panel with slider -->
             <div
               class="bg-ui-bg-elevated border border-ui-border rounded-lg shadow-xl px-3 py-2 flex items-center gap-2"
-              :class="orientation === 'vertical' ? 'w-48 flex-row' : 'h-48 flex-col pb-4'"
+              :class="orientation === 'vertical' ? 'w-48 flex-row' : 'h-48 flex-col'"
             >
               <UButton
                 size="xs"
@@ -260,6 +250,11 @@ onBeforeUnmount(() => {
                   @update:model-value="onVolumeUpdate"
                 />
               </div>
+              <span
+                class="text-[10px] text-ui-text-muted font-mono tabular-nums select-none leading-none"
+              >
+                {{ volumePercent }}%
+              </span>
             </div>
           </div>
         </div>
