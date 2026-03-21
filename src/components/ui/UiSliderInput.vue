@@ -25,7 +25,7 @@ const props = withDefaults(
     decimals: 2,
     defaultValue: undefined,
     wheelStepMultiplier: undefined,
-    inputClass: 'w-18!',
+    inputClass: 'w-16!',
     sliderClass: '',
   },
 );
@@ -40,12 +40,29 @@ function onInputUpdate(value: unknown) {
 </script>
 
 <template>
-  <div class="flex flex-col gap-1.5 w-full">
-    <div class="flex items-center justify-between gap-2 overflow-hidden">
-      <div v-if="label" class="flex-1 min-w-0">
-        <span class="text-xs text-ui-text-muted font-medium truncate block leading-tight">
-          {{ label }}
-        </span>
+  <div class="flex flex-col gap-1 w-full">
+    <!-- Label with Unit in parentheses -->
+    <div v-if="label" class="flex items-center justify-between gap-2 overflow-hidden">
+      <span class="text-[10px] text-ui-text-muted font-bold uppercase truncate block tracking-wider" :title="label">
+        {{ label }}{{ unit ? ` (${unit})` : '' }}
+      </span>
+      <span v-if="formattedValue" class="text-[10px] text-ui-text-muted font-mono leading-none">
+        {{ formattedValue }}
+      </span>
+    </div>
+
+    <!-- Controls row (Slider + Input) -->
+    <div class="flex items-center gap-2">
+      <div class="flex-1 min-w-0">
+        <UiWheelSlider
+          v-model="modelValue"
+          :min="min"
+          :max="max"
+          :step="step"
+          :default-value="defaultValue"
+          :wheel-step-multiplier="wheelStepMultiplier"
+          :slider-class="sliderClass"
+        />
       </div>
 
       <div class="flex items-center gap-1.5 shrink-0">
@@ -60,22 +77,7 @@ function onInputUpdate(value: unknown) {
           :wheel-step-multiplier="wheelStepMultiplier"
           @update:model-value="onInputUpdate"
         />
-        <span v-if="unit || formattedValue" class="text-[10px] text-ui-text-muted font-mono leading-none">
-          {{ formattedValue ?? unit }}
-        </span>
       </div>
-    </div>
-
-    <div class="px-0.5">
-      <UiWheelSlider
-        v-model="modelValue"
-        :min="min"
-        :max="max"
-        :step="step"
-        :default-value="defaultValue"
-        :wheel-step-multiplier="wheelStepMultiplier"
-        :slider-class="sliderClass"
-      />
     </div>
   </div>
 </template>
