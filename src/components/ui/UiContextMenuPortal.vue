@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
 
+defineOptions({
+  inheritAttrs: false,
+});
+
 interface MenuItem {
   label?: string;
   icon?: string;
