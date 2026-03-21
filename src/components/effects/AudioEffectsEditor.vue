@@ -138,7 +138,7 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
 
 <template>
   <div
-    class="space-y-3 mt-2 bg-ui-bg-elevated p-4 rounded border border-ui-border text-sm"
+    class="space-y-2 mt-2 bg-ui-bg-elevated px-2 py-3 rounded border border-ui-border text-sm"
     @dragover="onDragOver"
     @drop="onDrop"
   >
@@ -171,24 +171,23 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
       <div
         v-for="effect in safeEffects"
         :key="effect.id"
-        class="bg-ui-bg border border-ui-border rounded p-3"
+        class="bg-ui-bg border border-ui-border rounded px-2 py-2"
       >
-        <div class="flex items-center justify-between mb-3">
-          <div class="flex items-center gap-2">
-            <UIcon
-              name="i-heroicons-bars-2"
-              class="drag-handle w-4 h-4 text-ui-text-muted hover:text-ui-text cursor-grab active:cursor-grabbing shrink-0"
-            />
-            <USwitch
-              :model-value="effect.enabled"
-              size="sm"
-              @update:model-value="handleUpdateEffect(effect.id, { enabled: $event })"
-            />
-            <span class="font-medium">
-              {{ getAudioEffectManifest(effect.type)?.name || effect.type }}
-            </span>
-          </div>
-          <div class="flex items-center gap-1">
+        <div class="flex items-center w-full gap-2 mb-1">
+          <UIcon
+            name="i-heroicons-bars-2"
+            class="drag-handle w-4 h-4 text-ui-text-muted hover:text-ui-text cursor-grab active:cursor-grabbing shrink-0"
+          />
+          <USwitch
+            :model-value="effect.enabled"
+            size="sm"
+            @update:model-value="handleUpdateEffect(effect.id, { enabled: $event })"
+            class="shrink-0"
+          />
+          <span class="font-medium flex-1 truncate">
+            {{ getAudioEffectManifest(effect.type)?.name || effect.type }}
+          </span>
+          <div class="flex items-center gap-1 shrink-0">
             <UButton
               size="xs"
               variant="ghost"
@@ -200,14 +199,14 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
             <UButton
               size="xs"
               variant="ghost"
-              color="red"
+              color="neutral"
               icon="i-heroicons-trash"
               @click="handleRemoveEffect(effect.id)"
             />
           </div>
         </div>
 
-        <div class="space-y-3 pl-6">
+        <div class="mt-1 pl-1">
           <ParamsRenderer
             v-if="getAudioEffectManifest(effect.type)?.controls"
             :controls="getAudioEffectManifest(effect.type)?.controls ?? []"

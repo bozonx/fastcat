@@ -7,9 +7,10 @@ const props = defineProps<{
 <template>
   <div class="space-y-1 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full">
     <div
-      class="text-[10px] font-bold text-ui-text-muted uppercase tracking-widest border-b border-ui-border pb-1"
+      class="flex items-center justify-between text-[10px] font-bold text-ui-text-muted uppercase tracking-widest border-b border-ui-border pb-1"
     >
-      {{ props.title }}
+      <span>{{ props.title }}</span>
+      <slot name="header-actions" />
     </div>
     <div class="flex flex-col">
       <slot />

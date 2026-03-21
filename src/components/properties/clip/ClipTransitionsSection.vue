@@ -36,16 +36,13 @@ const transitionOptions = computed(() =>
     <div class="grid grid-cols-2 gap-2">
       <div class="flex flex-col gap-1">
         <div class="flex items-center justify-between">
-          <UButton
+          <button
             v-if="props.transitionIn"
-            variant="link"
-            color="primary"
-            size="xs"
-            class="p-0 h-auto font-mono text-[11px] font-medium uppercase"
+            class="p-0 h-auto font-mono text-[11px] font-medium uppercase text-blue-500 hover:text-blue-400"
             @click="emit('selectEdge', 'in')"
           >
             IN {{ props.transitionIn.type }}
-          </UButton>
+          </button>
           <button
             v-else
             type="button"
@@ -97,16 +94,13 @@ const transitionOptions = computed(() =>
 
       <div class="flex flex-col gap-1">
         <div class="flex items-center justify-between">
-          <UButton
+          <button
             v-if="props.transitionOut"
-            variant="link"
-            color="primary"
-            size="xs"
-            class="p-0 h-auto font-mono text-[11px] font-medium uppercase"
+            class="p-0 h-auto font-mono text-[11px] font-medium uppercase text-blue-500 hover:text-blue-400"
             @click="emit('selectEdge', 'out')"
           >
             OUT {{ props.transitionOut.type }}
-          </UButton>
+          </button>
           <button
             v-else
             type="button"

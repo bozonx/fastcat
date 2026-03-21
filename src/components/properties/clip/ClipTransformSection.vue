@@ -2,6 +2,7 @@
 import type { ClipTransform } from '~/timeline/types';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
+import PropertySection from '~/components/properties/PropertySection.vue';
 import { useClipTransform } from '~/composables/properties/useClipTransform';
 import { computed, type Ref } from 'vue';
 
@@ -69,20 +70,20 @@ const mediaWidth = computed(() => props.mediaMeta?.video?.displayWidth ?? props.
 const mediaHeight = computed(() => props.mediaMeta?.video?.displayHeight ?? props.mediaMeta?.image?.height ?? 1080);
 
 const cropTopPx = computed({
-  get: () => Math.round((transformCropTop.value / 100) * mediaHeight.value),
-  set: (val: number) => { transformCropTop.value = clampNumber((val / mediaHeight.value) * 100, 0, 100); },
+  get: () => Math.round(((transformCropTop.value || 0) / 100) * mediaHeight.value),
+  set: (val: number) => { transformCropTop.value = clampNumber(((val || 0) / mediaHeight.value) * 100, 0, 100); },
 });
 const cropBottomPx = computed({
-  get: () => Math.round((transformCropBottom.value / 100) * mediaHeight.value),
-  set: (val: number) => { transformCropBottom.value = clampNumber((val / mediaHeight.value) * 100, 0, 100); },
+  get: () => Math.round(((transformCropBottom.value || 0) / 100) * mediaHeight.value),
+  set: (val: number) => { transformCropBottom.value = clampNumber(((val || 0) / mediaHeight.value) * 100, 0, 100); },
 });
 const cropLeftPx = computed({
-  get: () => Math.round((transformCropLeft.value / 100) * mediaWidth.value),
-  set: (val: number) => { transformCropLeft.value = clampNumber((val / mediaWidth.value) * 100, 0, 100); },
+  get: () => Math.round(((transformCropLeft.value || 0) / 100) * mediaWidth.value),
+  set: (val: number) => { transformCropLeft.value = clampNumber(((val || 0) / mediaWidth.value) * 100, 0, 100); },
 });
 const cropRightPx = computed({
-  get: () => Math.round((transformCropRight.value / 100) * mediaWidth.value),
-  set: (val: number) => { transformCropRight.value = clampNumber((val / mediaWidth.value) * 100, 0, 100); },
+  get: () => Math.round(((transformCropRight.value || 0) / 100) * mediaWidth.value),
+  set: (val: number) => { transformCropRight.value = clampNumber(((val || 0) / mediaWidth.value) * 100, 0, 100); },
 });
 
 function clampNumber(value: number, min: number, max: number): number {
@@ -91,14 +92,11 @@ function clampNumber(value: number, min: number, max: number): number {
 </script>
 
 <template>
-  <div
+  <PropertySection
     v-if="canEditTransform || props.canEditReversed"
-    class="space-y-4 bg-ui-bg-elevated p-4 rounded-lg border border-ui-border"
+    :title="t('fastcat.clip.transform.title', 'Transform')"
   >
-    <div
-      class="flex items-center justify-between text-xs font-semibold text-ui-text uppercase tracking-wide border-b border-ui-border pb-2"
-    >
-      <span>{{ t('fastcat.clip.transform.title', 'Transform') }}</span>
+    <template #header-actions>
       <button
         v-if="canEditTransform"
         class="flex items-center gap-1 text-[10px] text-ui-text-muted hover:text-ui-text"
@@ -107,7 +105,9 @@ function clampNumber(value: number, min: number, max: number): number {
       >
         <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
       </button>
-    </div>
+    </template>
+
+    <div class="flex flex-col gap-4">
 
     <div v-if="props.canEditReversed" class="space-y-4">
       <div class="flex flex-col gap-0.5">
@@ -129,7 +129,7 @@ function clampNumber(value: number, min: number, max: number): number {
             :max="50"
             :default-value="1"
             :wheel-step-multiplier="10"
-            class="w-20"
+            class="w-14"
           />
           <button
             class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text shrink-0"
@@ -327,6 +327,7 @@ function clampNumber(value: number, min: number, max: number): number {
           </div>
         </div>
       </div>
+      </div>
     </div>
-  </div>
+  </PropertySection>
 </template>
