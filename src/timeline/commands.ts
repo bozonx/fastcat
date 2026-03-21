@@ -1,4 +1,19 @@
-import type { TimelineDocument, ClipTransition } from './types';
+import type {
+  TimelineDocument,
+  ClipTransition,
+  TimelineRange,
+  AudioFadeCurve,
+  TimelineClipType,
+  TextClipStyle,
+  ShapeType,
+  ShapeConfig,
+  HudType,
+  HudMediaParams,
+  TimelineClipItem,
+  TimelineTrack,
+  ClipEffect,
+  TimelineFastCatMetadata,
+} from './types';
 import { extractAudioToTrack, returnAudioToVideo } from './commands/audioHandlers';
 import {
   addTrack,
@@ -32,37 +47,34 @@ export interface AddClipToTrackCommand {
   path: string;
   startUs: number;
   durationUs: number;
-  sourceRange?: import('./types').TimelineRange;
+  sourceRange?: TimelineRange;
   isImage?: boolean;
   pseudo?: boolean;
-  audioFadeInCurve?: import('./types').AudioFadeCurve;
-  audioFadeOutCurve?: import('./types').AudioFadeCurve;
+  audioFadeInCurve?: AudioFadeCurve;
+  audioFadeOutCurve?: AudioFadeCurve;
 }
 
 export interface AddVirtualClipToTrackCommand {
   type: 'add_virtual_clip_to_track';
   trackId: string;
-  clipType: Extract<
-    import('./types').TimelineClipType,
-    'adjustment' | 'background' | 'text' | 'shape' | 'hud'
-  >;
+  clipType: Extract<TimelineClipType, 'adjustment' | 'background' | 'text' | 'shape' | 'hud'>;
   name: string;
   durationUs?: number;
   startUs?: number;
   pseudo?: boolean;
   backgroundColor?: string;
   text?: string;
-  style?: import('./types').TextClipStyle;
-  shapeType?: import('./types').ShapeType;
+  style?: TextClipStyle;
+  shapeType?: ShapeType;
   fillColor?: string;
   strokeColor?: string;
   strokeWidth?: number;
-  shapeConfig?: import('./types').ShapeConfig;
-  hudType?: import('./types').HudType;
-  background?: import('./types').HudMediaParams;
-  content?: import('./types').HudMediaParams;
-  audioFadeInCurve?: import('./types').AudioFadeCurve;
-  audioFadeOutCurve?: import('./types').AudioFadeCurve;
+  shapeConfig?: ShapeConfig;
+  hudType?: HudType;
+  background?: HudMediaParams;
+  content?: HudMediaParams;
+  audioFadeInCurve?: AudioFadeCurve;
+  audioFadeOutCurve?: AudioFadeCurve;
 }
 
 export interface RemoveItemCommand {
@@ -169,7 +181,7 @@ export interface UpdateClipPropertiesCommand {
   itemId: string;
   properties: Partial<
     Pick<
-      import('./types').TimelineClipItem,
+      TimelineClipItem,
       | 'disabled'
       | 'locked'
       | 'linkedVideoClipId'
@@ -195,14 +207,14 @@ export interface UpdateClipPropertiesCommand {
     linkedGroupId?: string;
     backgroundColor?: string;
     text?: string;
-    style?: import('./types').TextClipStyle;
-    shapeType?: import('./types').ShapeType;
+    style?: TextClipStyle;
+    shapeType?: ShapeType;
     fillColor?: string;
     strokeColor?: string;
     strokeWidth?: number;
-    hudType?: import('./types').HudType;
-    background?: import('./types').HudMediaParams;
-    content?: import('./types').HudMediaParams;
+    hudType?: HudType;
+    background?: HudMediaParams;
+    content?: HudMediaParams;
   };
 }
 
@@ -211,7 +223,7 @@ export interface UpdateTrackPropertiesCommand {
   trackId: string;
   properties: Partial<
     Pick<
-      import('./types').TimelineTrack,
+      TimelineTrack,
       | 'videoHidden'
       | 'opacity'
       | 'blendMode'
@@ -296,12 +308,12 @@ export interface UpdateMasterMutedCommand {
 
 export interface UpdateMasterEffectsCommand {
   type: 'update_master_effects';
-  effects: import('./types').ClipEffect[];
+  effects: ClipEffect[];
 }
 
 export interface UpdateTimelinePropertiesCommand {
   type: 'update_timeline_properties';
-  properties: Partial<import('./types').TimelineFastCatMetadata>;
+  properties: Partial<TimelineFastCatMetadata>;
 }
 
 export interface MoveItemsCommand {

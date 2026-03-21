@@ -1,6 +1,13 @@
 import { VIDEO_DIR_NAME } from '~/utils/constants';
 import type { TimelineCommand } from '~/timeline/commands';
-import type { TimelineDocument, TimelineTrack, TimelineClipItem } from '~/timeline/types';
+import type {
+  TimelineDocument,
+  TimelineTrack,
+  TimelineClipItem,
+  AudioFadeCurve,
+} from '~/timeline/types';
+import type { parseTimelineFromOtio } from '~/timeline/otioSerializer';
+import type { selectTimelineDurationUs } from '~/timeline/selectors';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { ensureProxyCommand } from '~/media-cache/application/proxyThumbnailCommands';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
@@ -38,7 +45,7 @@ export interface TimelineCommandServiceDeps {
   fetchMediaMetadataByPath: (path: string) => Promise<TimelineMediaMetadata | null>;
   getUserSettings: () => {
     optimization: { autoCreateProxies: boolean };
-    projectDefaults: { defaultAudioFadeCurve: import('../types').AudioFadeCurve };
+    projectDefaults: { defaultAudioFadeCurve: AudioFadeCurve };
   };
   getProjectSettings: () => {
     project: {
@@ -58,8 +65,8 @@ export interface TimelineCommandServiceDeps {
   mediaCache: Pick<ProxyThumbnailService, 'hasProxy' | 'ensureProxy'>;
   defaultImageDurationUs: number;
   defaultImageSourceDurationUs: number;
-  parseTimelineFromOtio: typeof import('~/timeline/otioSerializer').parseTimelineFromOtio;
-  selectTimelineDurationUs: typeof import('~/timeline/selectors').selectTimelineDurationUs;
+  parseTimelineFromOtio: typeof parseTimelineFromOtio;
+  selectTimelineDurationUs: typeof selectTimelineDurationUs;
 }
 
 export interface AddClipToTimelineFromPathInput {

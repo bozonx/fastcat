@@ -4,6 +4,8 @@ import type {
   TimelineSelectionRange,
   TimelineTrack,
   TimelineTrackItem,
+  ClipTransition,
+  ClipEffect,
 } from './types';
 import type {
   OtioTrack,
@@ -315,7 +317,7 @@ export function parseTimelineFromOtio(
 
     // Pre-scan track children to associate adjacent Transition.1 nodes with clips.
     // A Transition.1 before a Clip becomes transitionIn; one after becomes transitionOut.
-    let pendingTransitionIn: import('./types').ClipTransition | null = null;
+    let pendingTransitionIn: ClipTransition | null = null;
 
     const rawItems: TimelineTrackItem[] = [];
 
@@ -395,7 +397,7 @@ export function parseTimelineFromOtio(
       Array.isArray(otioTrack.effects) && otioTrack.effects.length > 0
         ? parseEffects(otioTrack.effects)
         : Array.isArray(trackFastCatMeta.effects)
-          ? (trackFastCatMeta.effects as import('./types').ClipEffect[])
+          ? (trackFastCatMeta.effects as ClipEffect[])
           : undefined;
 
     // Track-level markers (e.g. from an external OTIO).

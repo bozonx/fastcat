@@ -1,6 +1,7 @@
 import { watch, type Ref } from 'vue';
 
 import type { TimelineDocument } from '~/timeline/types';
+import type { MediaPathToTimelinesMap } from '~/utils/timeline-media-usage';
 import { computeMediaUsageByTimelineDocs } from '~/utils/timeline-media-usage';
 import { generateTimelineThumbnail } from '~/timeline/timelineThumbnail';
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
@@ -25,7 +26,7 @@ interface TimelineHistoryDebounceApi {
 }
 
 interface TimelineMediaUsageStoreApi {
-  setLiveUsage: (timelinePath: string | null, usage: any) => void;
+  setLiveUsage: (timelinePath: string | null, usage: MediaPathToTimelinesMap) => void;
   refreshUsage: () => Promise<void>;
 }
 

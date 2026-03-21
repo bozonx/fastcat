@@ -8,21 +8,21 @@ interface HotkeyTarget {
   itemId: string;
 }
 
+interface ApplyTimelineOptions {
+  saveMode?: 'debounced' | 'immediate' | 'none';
+  skipHistory?: boolean;
+  historyMode?: 'immediate' | 'debounced';
+  historyDebounceMs?: number;
+  labelKey?: string;
+}
+
 export interface TimelineEditServiceDeps {
   getDoc: () => TimelineDocument | null;
   getHotkeyTargetClip: () => HotkeyTarget | null;
   getSelectedItemIds: () => string[];
   getCurrentTime: () => number;
-  applyTimeline: (
-    cmd: TimelineCommand,
-    options?: {
-      saveMode?: 'debounced' | 'immediate' | 'none';
-      skipHistory?: boolean;
-      historyMode?: 'immediate' | 'debounced';
-      historyDebounceMs?: number;
-      labelKey?: string;
-    },
-  ) => void;
+  applyTimeline: (cmd: TimelineCommand, options?: ApplyTimelineOptions) => void;
+  batchApplyTimeline: (cmds: TimelineCommand[], options?: ApplyTimelineOptions) => void;
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
 }
 
@@ -37,7 +37,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     return doc.tracks.find((t) => t.id === trackId) ?? null;
   }
 
-  function rippleDeleteRange(input: RippleDeleteRangeParams, options?: any) {
+  function rippleDeleteRange(input: RippleDeleteRangeParams, options?: ApplyTimelineOptions) {
     const doc = deps.getDoc();
     if (!doc) return;
 
@@ -47,7 +47,13 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
 
     const deltaUs = endUs - startUs;
     const trackIdSet = new Set(input.trackIds);
+    const batchOptions: ApplyTimelineOptions = options ?? {
+      saveMode: 'none',
+      historyMode: 'debounced',
+      historyDebounceMs: 100,
+    };
 
+    // Phase 1: split at endUs then startUs (sequential — each split changes doc state)
     const splitTargets: Array<{ trackId: string; itemId: string }> = [];
     for (const track of doc.tracks) {
       if (!trackIdSet.has(track.id)) continue;
@@ -57,21 +63,31 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       }
     }
 
-    const splitAt = (atUs: number) => {
-      for (const t of splitTargets) {
-        deps.applyTimeline(
-          { type: 'split_item', trackId: t.trackId, itemId: t.itemId, atUs },
-          options || { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
-        );
-      }
-    };
+    const splitCmdsEnd: TimelineCommand[] = splitTargets.map((t) => ({
+      type: 'split_item',
+      trackId: t.trackId,
+      itemId: t.itemId,
+      atUs: endUs,
+    }));
+    if (splitCmdsEnd.length > 0) {
+      deps.batchApplyTimeline(splitCmdsEnd, batchOptions);
+    }
 
-    splitAt(endUs);
-    splitAt(startUs);
+    const splitCmdsStart: TimelineCommand[] = splitTargets.map((t) => ({
+      type: 'split_item',
+      trackId: t.trackId,
+      itemId: t.itemId,
+      atUs: startUs,
+    }));
+    if (splitCmdsStart.length > 0) {
+      deps.batchApplyTimeline(splitCmdsStart, batchOptions);
+    }
 
+    // Phase 2: delete clips in range
     const updated = deps.getDoc();
     if (!updated) return;
 
+    const deleteCmds: TimelineCommand[] = [];
     for (const track of updated.tracks) {
       if (!trackIdSet.has(track.id)) continue;
 
@@ -80,24 +96,25 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
         if (it.kind !== 'clip') continue;
         const itStart = it.timelineRange.startUs;
         const center = itStart + it.timelineRange.durationUs / 2;
-
         if (center >= startUs && center <= endUs) {
           toDelete.push(it.id);
         }
       }
 
       if (toDelete.length > 0) {
-        deps.applyTimeline(
-          { type: 'delete_items', trackId: track.id, itemIds: toDelete },
-          options || { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
-        );
+        deleteCmds.push({ type: 'delete_items', trackId: track.id, itemIds: toDelete });
       }
     }
+    if (deleteCmds.length > 0) {
+      deps.batchApplyTimeline(deleteCmds, batchOptions);
+    }
 
+    // Phase 3: shift clips after the deleted range
     const afterDelete = deps.getDoc();
     if (!afterDelete) return;
 
     const EPSILON = 10;
+    const moveCmds: TimelineCommand[] = [];
     for (const track of afterDelete.tracks) {
       if (!trackIdSet.has(track.id)) continue;
 
@@ -109,18 +126,18 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       for (const clip of clips) {
         const clipStart = clip.timelineRange.startUs;
         if (clipStart >= endUs - EPSILON) {
-          deps.applyTimeline(
-            {
-              type: 'move_item',
-              trackId: track.id,
-              itemId: clip.id,
-              startUs: Math.max(0, clipStart - deltaUs),
-              quantizeToFrames: false,
-            },
-            options || { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
-          );
+          moveCmds.push({
+            type: 'move_item',
+            trackId: track.id,
+            itemId: clip.id,
+            startUs: Math.max(0, clipStart - deltaUs),
+            quantizeToFrames: false,
+          });
         }
       }
+    }
+    if (moveCmds.length > 0) {
+      deps.batchApplyTimeline(moveCmds, batchOptions);
     }
   }
 

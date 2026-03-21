@@ -148,6 +148,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     getSelectedItemIds: () => selectedItemIds.value,
     getCurrentTime: () => currentTime.value,
     applyTimeline,
+    batchApplyTimeline,
     requestTimelineSave,
   });
 
@@ -160,6 +161,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     audioMuted,
     duration,
     playbackGestureHandler,
+    getDocFps: () => (timelineDoc.value ? getDocFps(timelineDoc.value) : 30),
+    setCurrentTimeUs: (nextTimeUs) => lifecycle.setCurrentTimeUs(nextTimeUs),
   });
 
   function setMasterMuted(nextMuted: boolean) {
@@ -476,6 +479,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     toggleAudioMuted: playback.toggleAudioMuted,
     setMasterMuted,
     setPlaybackGestureHandler: playback.setPlaybackGestureHandler,
+    seekFrames: playback.seekFrames,
     loadTimelineMetadata: lifecycle.loadTimelineMetadata,
     selectTimelineItems: selection.selectTimelineItems,
     selectTrack: selection.selectTrack,
@@ -487,10 +491,5 @@ export const useTimelineStore = defineStore('timeline', () => {
     selectClipsRelativeToPlayhead: selection.selectClipsRelativeToPlayhead,
     getSelectedOrActiveTrackId: selection.getSelectedOrActiveTrackId,
     setTimelineZoomExact,
-    seekFrames: (deltaFrames: number) => {
-      const docFps = timelineDoc.value ? getDocFps(timelineDoc.value) : 30;
-      const frameUs = 1_000_000 / docFps;
-      lifecycle.setCurrentTimeUs(currentTime.value + deltaFrames * frameUs);
-    },
   };
 });
