@@ -33,7 +33,7 @@ export type HotkeyCommandId =
   | 'general.switchViewExport'
   | 'general.selectAll'
   | 'general.snapshot'
-  | 'general.exportTimeline'
+  | 'general.newTimeline'
   | 'timeline.toggleSnap'
   | 'timeline.selectClipsLeftOfPlayhead'
   | 'timeline.selectClipsRightOfPlayhead'
@@ -141,7 +141,7 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'general.switchViewExport', groupId: 'general', title: 'Switch to Export' },
     { id: 'general.selectAll', groupId: 'general', title: 'Select all' },
     { id: 'general.snapshot', groupId: 'general', title: 'Create snapshot from monitor' },
-    { id: 'general.exportTimeline', groupId: 'general', title: 'Export timeline to file' },
+    { id: 'general.newTimeline', groupId: 'general', title: 'Create new timeline' },
 
     { id: 'timeline.toggleSnap', groupId: 'timeline', title: 'Toggle snap' },
     {
@@ -309,8 +309,8 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'general.switchViewExport': ['Shift+4'],
     'general.selectAll': [`${Mod}+A`],
 
-    'general.snapshot': ['Mod2+B'],
-    'general.exportTimeline': ['Mod2+N'],
+    'general.snapshot': ['H'],
+    'general.newTimeline': ['N'],
 
     'timeline.toggleSnap': ['T'],
     'timeline.selectClipsLeftOfPlayhead': [`${Mod}+S`],

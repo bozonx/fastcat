@@ -14,9 +14,9 @@ import { DEFAULT_TIMELINE_ZOOM_POSITION, stepTimelineZoomPosition } from '~/util
 
 const MONITOR_RUNTIME_KEY = Symbol('monitorRuntime');
 
-interface MonitorRuntimeContext {
+interface MonitorRuntimeApi {
   createStopFrameSnapshot: () => Promise<void>;
-  exportTimelineToFile: () => Promise<void>;
+  createNewTimeline: () => Promise<void>;
 }
 
 export function useGeneralHotkeys(
@@ -28,6 +28,8 @@ export function useGeneralHotkeys(
   const focusStore = useFocusStore();
   const selectionStore = useSelectionStore();
   const projectStore = useProjectStore();
+
+  const monitorRuntime = inject<MonitorRuntimeApi>(MONITOR_RUNTIME_KEY);
   const filesPageStore = useFilesPageStore();
   const { clipboardPayload, setClipboardPayload } = useAppClipboard();
   const { loadTimeline } = useProjectActions();
@@ -368,17 +370,15 @@ export function useGeneralHotkeys(
       return false;
     },
     'general.snapshot': () => {
-      const ctx = inject<MonitorRuntimeContext>(MONITOR_RUNTIME_KEY);
-      if (ctx?.createStopFrameSnapshot) {
-        void ctx.createStopFrameSnapshot();
+      if (monitorRuntime?.createStopFrameSnapshot) {
+        void monitorRuntime.createStopFrameSnapshot();
         return true;
       }
       return false;
     },
-    'general.exportTimeline': () => {
-      const ctx = inject<MonitorRuntimeContext>(MONITOR_RUNTIME_KEY);
-      if (ctx?.exportTimelineToFile) {
-        void ctx.exportTimelineToFile();
+    'general.newTimeline': () => {
+      if (monitorRuntime?.createNewTimeline) {
+        void monitorRuntime.createNewTimeline();
         return true;
       }
       return false;

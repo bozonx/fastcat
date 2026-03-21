@@ -110,21 +110,21 @@ export const useSelectionStore = defineStore('selection', () => {
     };
   }
 
-  function selectTimelineItems(items: { trackId: string; itemId: string }[]) {
+  function selectTimelineItems(items: { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[]) {
     if (items.length === 0) {
       selectedEntity.value = null;
     } else if (items.length === 1 && items[0]) {
       selectedEntity.value = {
         source: 'timeline',
-        kind: 'clip',
+        kind: items[0].kind ?? 'clip',
         trackId: items[0].trackId,
         itemId: items[0].itemId,
-      };
+      } as SelectedTimelineClip | SelectedTimelineGap;
     } else {
       selectedEntity.value = {
         source: 'timeline',
         kind: 'clips',
-        items,
+        items: items.map((it) => ({ trackId: it.trackId, itemId: it.itemId })),
       };
     }
   }

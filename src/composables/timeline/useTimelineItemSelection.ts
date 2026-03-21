@@ -46,7 +46,7 @@ export function useTimelineItemSelection(tracks: ComputedRef<TimelineTrack[]>) {
     const items = tracks.value
       .flatMap((t) => t.items.map((it) => ({ trackId: t.id, item: it })))
       .filter((x) => nextSelectedIds.includes(x.item.id))
-      .map((x) => ({ trackId: x.trackId, itemId: x.item.id }));
+      .map((x) => ({ trackId: x.trackId, itemId: x.item.id, kind: x.item.kind }));
 
     if (canOpenClipProperties.value) {
       selectionStore.selectTimelineItems(items);

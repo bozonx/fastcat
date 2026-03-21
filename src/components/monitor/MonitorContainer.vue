@@ -19,9 +19,9 @@ import MonitorTransformBox from './MonitorTransformBox.vue';
 
 const MONITOR_RUNTIME_KEY = Symbol('monitorRuntime');
 
-interface MonitorRuntimeContext {
+interface MonitorRuntimeApi {
   createStopFrameSnapshot: () => Promise<void>;
-  exportTimelineToFile: () => Promise<void>;
+  createNewTimeline: () => Promise<void>;
 }
 
 const { t } = useI18n();
@@ -129,9 +129,9 @@ const {
   timecodeEl,
 } = useMonitorRuntime();
 
-const runtimeCtx = {
+const runtimeCtx: MonitorRuntimeApi = {
   createStopFrameSnapshot,
-  exportTimelineToFile,
+  createNewTimeline: exportTimelineToFile,
 };
 
 provide(MONITOR_RUNTIME_KEY, runtimeCtx);
