@@ -13,9 +13,9 @@ export interface DropShadowParams {
 
 export const dropShadowManifest: EffectManifest<DropShadowParams> = {
   type: 'dropShadow',
-  name: 'Тень',
+  name: 'Shadow',
   nameKey: 'fastcat.effects.video.dropShadow.name',
-  description: 'Эффект падающей тени',
+  description: 'Drop shadow effect',
   descriptionKey: 'fastcat.effects.video.dropShadow.description',
   icon: 'i-heroicons-squares-plus',
   defaultValues: {
@@ -31,7 +31,7 @@ export const dropShadowManifest: EffectManifest<DropShadowParams> = {
     {
       kind: 'slider',
       key: 'offsetX',
-      label: 'Смещение X',
+      label: 'Offset X',
       labelKey: 'fastcat.effects.video.dropShadow.params.offsetX',
       min: -50,
       max: 50,
@@ -41,7 +41,7 @@ export const dropShadowManifest: EffectManifest<DropShadowParams> = {
     {
       kind: 'slider',
       key: 'offsetY',
-      label: 'Смещение Y',
+      label: 'Offset Y',
       labelKey: 'fastcat.effects.video.dropShadow.params.offsetY',
       min: -50,
       max: 50,
@@ -51,7 +51,7 @@ export const dropShadowManifest: EffectManifest<DropShadowParams> = {
     {
       kind: 'slider',
       key: 'alpha',
-      label: 'Прозрачность',
+      label: 'Opacity',
       labelKey: 'fastcat.effects.video.dropShadow.params.alpha',
       min: 0,
       max: 1,
@@ -61,7 +61,7 @@ export const dropShadowManifest: EffectManifest<DropShadowParams> = {
     {
       kind: 'slider',
       key: 'blur',
-      label: 'Размытие',
+      label: 'Blur',
       labelKey: 'fastcat.effects.video.dropShadow.params.blur',
       min: 0,
       max: 20,
@@ -70,7 +70,7 @@ export const dropShadowManifest: EffectManifest<DropShadowParams> = {
     {
       kind: 'slider',
       key: 'quality',
-      label: 'Качество',
+      label: 'Quality',
       labelKey: 'fastcat.effects.video.dropShadow.params.quality',
       min: 1,
       max: 10,
@@ -79,7 +79,7 @@ export const dropShadowManifest: EffectManifest<DropShadowParams> = {
     {
       kind: 'toggle',
       key: 'shadowOnly',
-      label: 'Только тень',
+      label: 'Shadow Only',
       labelKey: 'fastcat.effects.video.dropShadow.params.shadowOnly',
     },
   ],

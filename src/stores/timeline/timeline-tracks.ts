@@ -38,6 +38,8 @@ export interface TimelineTracksApi {
         | 'effects'
         | 'audioGain'
         | 'audioBalance'
+        | 'color'
+        | 'locked'
       >
     >,
   ) => void;
@@ -101,6 +103,8 @@ export function createTimelineTracks(deps: TimelineTracksDeps): TimelineTracksAp
         | 'effects'
         | 'audioGain'
         | 'audioBalance'
+        | 'color'
+        | 'locked'
       >
     >,
   ) {

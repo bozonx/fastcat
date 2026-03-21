@@ -8,9 +8,9 @@ export interface BlurParams {
 
 export const blurManifest: EffectManifest<BlurParams> = {
   type: 'blur',
-  name: 'Размытие',
+  name: 'Blur',
   nameKey: 'fastcat.effects.video.blur.name',
-  description: 'Размытие по Гауссу',
+  description: 'Gaussian blur',
   descriptionKey: 'fastcat.effects.video.blur.description',
   icon: 'i-heroicons-sparkles',
   defaultValues: {
@@ -21,7 +21,7 @@ export const blurManifest: EffectManifest<BlurParams> = {
     {
       kind: 'slider',
       key: 'strength',
-      label: 'Сила',
+      label: 'Strength',
       labelKey: 'fastcat.effects.video.blur.params.strength',
       min: 0,
       max: 50,
@@ -31,7 +31,7 @@ export const blurManifest: EffectManifest<BlurParams> = {
     {
       kind: 'slider',
       key: 'quality',
-      label: 'Качество',
+      label: 'Quality',
       labelKey: 'fastcat.effects.video.blur.params.quality',
       min: 1,
       max: 10,

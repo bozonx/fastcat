@@ -10,9 +10,9 @@ export interface BevelParams {
 
 export const bevelManifest: EffectManifest<BevelParams> = {
   type: 'bevel',
-  name: 'Скос (Фаска)',
+  name: 'Bevel',
   nameKey: 'fastcat.effects.video.bevel.name',
-  description: 'Эффект объемной рамки (фаски)',
+  description: 'Bevel/emboss effect',
   descriptionKey: 'fastcat.effects.video.bevel.description',
   icon: 'i-heroicons-cube',
   defaultValues: {
@@ -25,7 +25,7 @@ export const bevelManifest: EffectManifest<BevelParams> = {
     {
       kind: 'slider',
       key: 'rotation',
-      label: 'Угол',
+      label: 'Angle',
       labelKey: 'fastcat.effects.video.bevel.params.rotation',
       min: 0,
       max: 360,
@@ -35,7 +35,7 @@ export const bevelManifest: EffectManifest<BevelParams> = {
     {
       kind: 'slider',
       key: 'thickness',
-      label: 'Толщина',
+      label: 'Thickness',
       labelKey: 'fastcat.effects.video.bevel.params.thickness',
       min: 0,
       max: 20,
@@ -44,7 +44,7 @@ export const bevelManifest: EffectManifest<BevelParams> = {
     {
       kind: 'slider',
       key: 'lightAlpha',
-      label: 'Прозрачность света',
+      label: 'Light Opacity',
       labelKey: 'fastcat.effects.video.bevel.params.lightAlpha',
       min: 0,
       max: 1,
@@ -53,7 +53,7 @@ export const bevelManifest: EffectManifest<BevelParams> = {
     {
       kind: 'slider',
       key: 'shadowAlpha',
-      label: 'Прозрачность тени',
+      label: 'Shadow Opacity',
       labelKey: 'fastcat.effects.video.bevel.params.shadowAlpha',
       min: 0,
       max: 1,

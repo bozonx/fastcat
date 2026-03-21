@@ -266,22 +266,22 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
     ],
     [
       {
-        label: options.t('fastcat.monitor.toolbarTop', 'Панель сверху'),
+        label: options.t('fastcat.monitor.toolbarTop', 'Top panel'),
         icon: toolbarPosition.value === 'top' ? 'i-heroicons-check' : undefined,
         onSelect: () => setToolbarPosition('top'),
       },
       {
-        label: options.t('fastcat.monitor.toolbarRight', 'Панель справа'),
+        label: options.t('fastcat.monitor.toolbarRight', 'Right panel'),
         icon: toolbarPosition.value === 'right' ? 'i-heroicons-check' : undefined,
         onSelect: () => setToolbarPosition('right'),
       },
       {
-        label: options.t('fastcat.monitor.toolbarBottom', 'Панель снизу'),
+        label: options.t('fastcat.monitor.toolbarBottom', 'Bottom panel'),
         icon: toolbarPosition.value === 'bottom' ? 'i-heroicons-check' : undefined,
         onSelect: () => setToolbarPosition('bottom'),
       },
       {
-        label: options.t('fastcat.monitor.toolbarLeft', 'Панель слева'),
+        label: options.t('fastcat.monitor.toolbarLeft', 'Left panel'),
         icon: toolbarPosition.value === 'left' ? 'i-heroicons-check' : undefined,
         onSelect: () => setToolbarPosition('left'),
       },

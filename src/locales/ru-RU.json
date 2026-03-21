@@ -372,6 +372,18 @@
           "params": {
             "filterType": "Нет",
             "intensity": "Интенсивность"
+          },
+          "options": {
+            "none": "Нет",
+            "sepia": "Сепия",
+            "negative": "Негатив",
+            "blackAndWhite": "Ч/Б",
+            "browni": "Брауни",
+            "vintage": "Винтаж",
+            "kodachrome": "Кодахром",
+            "technicolor": "Техниколор",
+            "polaroid": "Полароид",
+            "lsd": "LSD"
           }
         },
         "colorOverlay": {

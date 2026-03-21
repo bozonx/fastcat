@@ -36,6 +36,7 @@ The project uses a custom `src/` directory. Besides the standard Nuxt folders (`
 - Use named exports instead of default exports.
 - Choose the most common, proven solutions for specific tasks.
 - Do not change DB schemas, do not run migrations, and do not change the API without an explicit request.
+- Do not write fallbacks of i18n srings in the code.
 
 ## Documentation and Tests
 - Add detailed comments only to complex blocks; skip them for obvious lines.

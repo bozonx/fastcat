@@ -42,12 +42,12 @@ const visibleControls = computed(() =>
 );
 
 function getLabel(control: ParamControl): string {
-  if ('label' in control && typeof control.label === 'string') {
-    return control.label;
-  }
-
   if ('labelKey' in control && typeof control.labelKey === 'string') {
     return t(control.labelKey);
+  }
+
+  if ('label' in control && typeof control.label === 'string') {
+    return control.label;
   }
 
   return '';
@@ -80,10 +80,10 @@ function getSelectItems(control: SelectParamControl | ButtonGroupParamControl) {
   return control.options.map((option: ParamOption) => ({
     value: option.value,
     label:
-      typeof option.label === 'string'
-        ? option.label
-        : typeof option.labelKey === 'string'
-          ? t(option.labelKey)
+      typeof option.labelKey === 'string'
+        ? t(option.labelKey)
+        : typeof option.label === 'string'
+          ? option.label
           : String(option.value),
   }));
 }

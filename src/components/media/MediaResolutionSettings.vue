@@ -2,6 +2,7 @@
 import { computed, watch } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiFpsInputWithPresets from '~/components/ui/editor/UiFpsInputWithPresets.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 
 const localWidth = defineModel<number>('width', { required: true });
 const localHeight = defineModel<number>('height', { required: true });
@@ -154,12 +155,12 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
           <label class="text-xs text-ui-text-muted font-medium">
             {{ t('videoEditor.resolution.aspectRatio', 'Aspect Ratio') }}
           </label>
-          <USelect
+          <UiSelect
             v-model="localAspectRatio"
             :items="aspectRatioOptions"
             :disabled="disabled || disableAspectRatio"
             size="sm"
-            class="w-full"
+            full-width
             value-key="value"
             label-key="label"
           />
@@ -169,12 +170,12 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
           <label class="text-xs text-ui-text-muted font-medium">
             {{ t('videoEditor.resolution.format', 'Format') }}
           </label>
-          <USelect
+          <UiSelect
             v-model="localFormat"
             :items="formatOptions"
             :disabled="disabled"
             size="sm"
-            class="w-full"
+            full-width
             value-key="value"
             label-key="label"
           />
@@ -248,12 +249,12 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
           <label class="text-xs text-ui-text-muted font-medium">
             {{ t('videoEditor.audio.sampleRate', 'Sample Rate') }}
           </label>
-          <USelect
+          <UiSelect
             v-model.number="localSampleRate"
             :items="sampleRateOptions"
             :disabled="disabled"
             size="sm"
-            class="w-full"
+            full-width
             value-key="value"
             label-key="label"
           />

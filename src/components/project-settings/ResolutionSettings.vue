@@ -5,6 +5,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveProjectPreset } from '~/utils/settings';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import SettingsSection from './SettingsSection.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
@@ -49,12 +50,12 @@ function applyProjectPreset(presetId: string) {
   >
     <UFormField :label="t('videoEditor.export.presetLabel', 'Preset')">
       <div class="flex items-center gap-2">
-        <USelectMenu
+        <UiSelect
           v-model="workspaceStore.userSettings.projectPresets.selectedPresetId"
           :items="projectPresetOptions"
           value-key="value"
           label-key="label"
-          class="w-full"
+          full-width
         />
         <UButton
           color="neutral"

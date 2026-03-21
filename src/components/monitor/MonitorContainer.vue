@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import UiTooltip from '~/components/ui/UiTooltip.vue';
 import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useFullscreen } from '@vueuse/core';
 import { useFocusStore } from '~/stores/focus.store';
@@ -383,18 +384,18 @@ onUnmounted(() => {
           </UiTooltip>
 
           <div class="w-auto min-w-14">
-            <USelectMenu
+            <UiSelect
               v-if="projectStore.activeMonitor"
               :model-value="selectedPreviewResolution as any"
               :items="previewResolutions"
               value-key="value"
               label-key="label"
-              :search-input="false"
-              class="w-full"
+              full-width
               @update:model-value="
-                (v: any) => {
+                (v: unknown) => {
                   if (v && projectStore.activeMonitor)
-                    projectStore.activeMonitor.previewResolution = v.value ?? v;
+                    projectStore.activeMonitor.previewResolution = ((v as { value: number })
+                      .value ?? v) as number;
                 }
               "
             >
@@ -415,7 +416,7 @@ onUnmounted(() => {
                   {{ item.label }}{{ item.isProject ? ' *' : '' }}
                 </span>
               </template>
-            </USelectMenu>
+            </UiSelect>
           </div>
 
           <UButton

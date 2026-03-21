@@ -4,6 +4,7 @@ import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useProjectManagement } from '~/composables/project/useProjectManagement';
 import WelcomeScreen from '~/components/startup/WelcomeScreen.vue';
 import UiModal from '~/components/ui/UiModal.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import ProjectThumbnail from '~/components/startup/ProjectThumbnail.vue';
 import EditorSettingsModal from '~/components/settings/EditorSettingsModal.vue';
@@ -261,13 +262,18 @@ const smartSortedProjects = computed(() => {
         <template #content>
           <div class="pt-4 border-t border-slate-800 mt-2">
             <UFormField :label="t('videoEditor.export.presetLabel', 'Preset')" class="mb-4">
-              <USelectMenu
+              <UiSelect
                 v-model="projectCreationSettings.presetId"
                 :items="projectPresetOptions"
                 value-key="value"
                 label-key="label"
-                class="w-full"
-                @update:model-value="(value: string) => applyProjectCreationPreset(value)"
+                full-width
+                @update:model-value="
+                  (value: unknown) =>
+                    applyProjectCreationPreset(
+                      (value as { value: string })?.value ?? (value as string),
+                    )
+                "
               />
             </UFormField>
 

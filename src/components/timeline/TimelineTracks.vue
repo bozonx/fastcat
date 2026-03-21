@@ -247,7 +247,6 @@ function selectTransition(
         :data-track-id="track.id"
         class="flex items-center px-2 relative transition-colors border-b border-ui-border"
         :class="[
-          isTrackVisuallySelected(track.id) ? 'bg-primary-500/10' : '',
           timelineStore.hoveredTrackId === track.id && !isTrackVisuallySelected(track.id)
             ? 'bg-ui-bg-elevated/50'
             : '',
@@ -279,6 +278,20 @@ function selectTransition(
         @dragleave.prevent="emit('dragleave', $event, track.id)"
         @drop.prevent="emit('drop', $event, track.id)"
       >
+        <!-- Selection Highlight -->
+        <div 
+          v-if="isTrackVisuallySelected(track.id)"
+          class="absolute inset-0 z-0 pointer-events-none border-y-2 border-primary-500/30 bg-primary-500/5 transition-colors"
+          :class="{
+            'border-y-2! border-primary-500/40 bg-primary-500/10': !track.color || track.color === '#2a2a2a'
+          }"
+          :style="{
+            borderColor: track.color && track.color !== '#2a2a2a' ? `${track.color}4d` : undefined,
+            backgroundColor: track.color && track.color !== '#2a2a2a' ? `${track.color}1a` : undefined,
+            borderTopWidth: '2px',
+            borderBottomWidth: '2px'
+          }"
+        />
         <!-- Drop Previews inside track -->
         <div
           v-if="dragPreview && dragPreview.trackId === track.id"

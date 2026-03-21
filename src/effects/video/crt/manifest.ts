@@ -15,9 +15,9 @@ export interface CRTParams {
 
 export const crtManifest: EffectManifest<CRTParams> = {
   type: 'crt',
-  name: 'ЭЛТ Монитор',
+  name: 'CRT Monitor',
   nameKey: 'fastcat.effects.video.crt.name',
-  description: 'Эффект старого телевизора',
+  description: 'Old TV effect',
   descriptionKey: 'fastcat.effects.video.crt.description',
   icon: 'i-heroicons-computer-desktop',
   defaultValues: {
@@ -35,7 +35,7 @@ export const crtManifest: EffectManifest<CRTParams> = {
     {
       kind: 'slider',
       key: 'curvature',
-      label: 'Искажение',
+      label: 'Distortion',
       labelKey: 'fastcat.effects.video.crt.params.curvature',
       min: 0,
       max: 10,
@@ -44,7 +44,7 @@ export const crtManifest: EffectManifest<CRTParams> = {
     {
       kind: 'slider',
       key: 'lineWidth',
-      label: 'Толщина линий',
+      label: 'Line Width',
       labelKey: 'fastcat.effects.video.crt.params.lineWidth',
       min: 0,
       max: 5,
@@ -53,7 +53,7 @@ export const crtManifest: EffectManifest<CRTParams> = {
     {
       kind: 'slider',
       key: 'lineContrast',
-      label: 'Контраст линий',
+      label: 'Line Contrast',
       labelKey: 'fastcat.effects.video.crt.params.lineContrast',
       min: 0,
       max: 1,
@@ -63,13 +63,13 @@ export const crtManifest: EffectManifest<CRTParams> = {
     {
       kind: 'toggle',
       key: 'verticalLine',
-      label: 'Вертикальные линии',
+      label: 'Vertical Lines',
       labelKey: 'fastcat.effects.video.crt.params.verticalLine',
     },
     {
       kind: 'slider',
       key: 'noise',
-      label: 'Шум',
+      label: 'Noise',
       labelKey: 'fastcat.effects.video.crt.params.noise',
       min: 0,
       max: 1,
@@ -79,7 +79,7 @@ export const crtManifest: EffectManifest<CRTParams> = {
     {
       kind: 'slider',
       key: 'noiseSize',
-      label: 'Размер шума',
+      label: 'Noise Size',
       labelKey: 'fastcat.effects.video.crt.params.noiseSize',
       min: 1,
       max: 10,
@@ -88,7 +88,7 @@ export const crtManifest: EffectManifest<CRTParams> = {
     {
       kind: 'slider',
       key: 'vignetting',
-      label: 'Виньетка',
+      label: 'Vignette',
       labelKey: 'fastcat.effects.video.crt.params.vignetting',
       min: 0,
       max: 1,
@@ -98,7 +98,7 @@ export const crtManifest: EffectManifest<CRTParams> = {
     {
       kind: 'slider',
       key: 'vignettingAlpha',
-      label: 'Прозрачность виньетки',
+      label: 'Vignette Opacity',
       labelKey: 'fastcat.effects.video.crt.params.vignettingAlpha',
       min: 0,
       max: 1,
@@ -108,7 +108,7 @@ export const crtManifest: EffectManifest<CRTParams> = {
     {
       kind: 'slider',
       key: 'vignettingBlur',
-      label: 'Размытие виньетки',
+      label: 'Vignette Blur',
       labelKey: 'fastcat.effects.video.crt.params.vignettingBlur',
       min: 0,
       max: 1,

@@ -11,9 +11,9 @@ export interface AdvancedBloomParams {
 
 export const advancedBloomManifest: EffectManifest<AdvancedBloomParams> = {
   type: 'advancedBloom',
-  name: 'Свечение (Продвинутое)',
+  name: 'Advanced Bloom',
   nameKey: 'fastcat.effects.video.advancedBloom.name',
-  description: 'Продвинутый эффект свечения с настройкой порога и яркости',
+  description: 'Advanced bloom effect with threshold and brightness',
   descriptionKey: 'fastcat.effects.video.advancedBloom.description',
   icon: 'i-heroicons-sparkles',
   defaultValues: {
@@ -27,7 +27,7 @@ export const advancedBloomManifest: EffectManifest<AdvancedBloomParams> = {
     {
       kind: 'slider',
       key: 'threshold',
-      label: 'Порог',
+      label: 'Threshold',
       labelKey: 'fastcat.effects.video.advancedBloom.params.threshold',
       min: 0,
       max: 1,
@@ -37,7 +37,7 @@ export const advancedBloomManifest: EffectManifest<AdvancedBloomParams> = {
     {
       kind: 'slider',
       key: 'bloomScale',
-      label: 'Сила свечения',
+      label: 'Bloom Intensity',
       labelKey: 'fastcat.effects.video.advancedBloom.params.bloomScale',
       min: 0,
       max: 5,
@@ -46,7 +46,7 @@ export const advancedBloomManifest: EffectManifest<AdvancedBloomParams> = {
     {
       kind: 'slider',
       key: 'brightness',
-      label: 'Яркость',
+      label: 'Brightness',
       labelKey: 'fastcat.effects.video.advancedBloom.params.brightness',
       min: 0,
       max: 5,
@@ -55,7 +55,7 @@ export const advancedBloomManifest: EffectManifest<AdvancedBloomParams> = {
     {
       kind: 'slider',
       key: 'blur',
-      label: 'Размытие',
+      label: 'Blur',
       labelKey: 'fastcat.effects.video.advancedBloom.params.blur',
       min: 0,
       max: 20,
@@ -64,7 +64,7 @@ export const advancedBloomManifest: EffectManifest<AdvancedBloomParams> = {
     {
       kind: 'slider',
       key: 'quality',
-      label: 'Качество',
+      label: 'Quality',
       labelKey: 'fastcat.effects.video.advancedBloom.params.quality',
       min: 1,
       max: 10,
