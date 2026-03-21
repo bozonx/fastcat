@@ -117,7 +117,7 @@ const sourceOptions = computed(() => [
 ]);
 
 const curveOptions = computed<CurveOption[]>(() => {
-  const curves: TransitionCurve[] = ['linear', 'smooth', 'ease-in', 'ease-out', 'custom'];
+  const curves: TransitionCurve[] = ['linear', 'smooth', 'ease-in', 'ease-out'];
 
   return curves.map((curve) => {
     return {
@@ -142,8 +142,24 @@ function toCurveLabelKey(curve: TransitionCurve): string {
       return 'EaseIn';
     case 'ease-out':
       return 'EaseOut';
-    case 'custom':
-      return 'Custom';
+  }
+}
+
+function handleCurveChange(curve: TransitionCurve) {
+  selectedCurve.value = curve;
+
+  if (curve === 'linear') {
+    // Keep as is or remove params
+  } else {
+    // Reset to defaults for each type
+    let bulge = 0.8;
+    let offset = 0.5;
+
+    if (curve === 'ease-in') offset = 1.0;
+    else if (curve === 'ease-out') offset = 0.0;
+
+    updateParam('curveBulge', bulge);
+    updateParam('curveOffset', offset);
   }
 }
 
@@ -268,7 +284,13 @@ function handleSavePreset() {
     <!-- Curve toggle -->
     <div class="flex flex-col gap-1">
       <span class="text-ui-text-muted">{{ t('fastcat.timeline.transition.curve') }}</span>
-      <UiButtonGroup v-model="selectedCurve" :options="curveOptions" orientation="vertical" fluid>
+      <UiButtonGroup
+        :model-value="selectedCurve"
+        :options="curveOptions"
+        orientation="vertical"
+        fluid
+        @update:model-value="handleCurveChange"
+      >
         <template #option="{ option }">
           <div class="flex items-center gap-2 w-full min-w-0">
             <svg

@@ -5,19 +5,13 @@ export type TransitionType = string;
 
 export type TransitionMode = 'adjacent' | 'background' | 'transparent';
 
-export type TransitionCurve = 'linear' | 'smooth' | 'ease-in' | 'ease-out' | 'custom';
+export type TransitionCurve = 'linear' | 'smooth' | 'ease-in' | 'ease-out';
 
 export const DEFAULT_TRANSITION_MODE: TransitionMode = 'transparent';
 
 export const DEFAULT_TRANSITION_CURVE: TransitionCurve = 'linear';
 
-export const TRANSITION_CURVE_VALUES: TransitionCurve[] = [
-  'linear',
-  'smooth',
-  'ease-in',
-  'ease-out',
-  'custom',
-];
+export const TRANSITION_CURVE_VALUES: TransitionCurve[] = ['linear', 'smooth', 'ease-in', 'ease-out'];
 
 export interface TransitionShaderContext {
   progress: number;
@@ -111,31 +105,14 @@ export function applyTransitionCurve(
 ): number {
   const t = clampProgress(progress);
 
-  let bulge = 0.8;
-  let offset = 0.5;
-
   if (curve === 'linear') {
     return t;
   }
 
-  // Extract custom parameters if present
-  if (params) {
-    if (typeof params.curveBulge === 'number') bulge = params.curveBulge;
-    if (typeof params.curveOffset === 'number') offset = params.curveOffset;
-  }
+  // Use provided params if available, otherwise use defaults based on curve type
+  const bulge = params?.curveBulge ?? 0.8;
+  const offset = params?.curveOffset ?? (curve === 'ease-in' ? 1.0 : curve === 'ease-out' ? 0.0 : 0.5);
 
-  // Preset overrides
-  if (curve === 'smooth') {
-    // Default smooth (ease-in-out)
-  } else if (curve === 'ease-in') {
-    offset = 1.0;
-  } else if (curve === 'ease-out') {
-    offset = 0.0;
-  }
-
-  // Map bulge [0..1] and offset [0..1] to cubic bezier handles
-  // x1 = offset * bulge
-  // x2 = 1 - (1 - offset) * bulge
   const x1 = offset * bulge;
   const x2 = 1 - (1 - offset) * bulge;
 
