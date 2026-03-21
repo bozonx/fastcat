@@ -51,13 +51,14 @@ const { t } = useI18n();
       :max="1"
       :step="0.01"
       :default-value="1"
+      :wheel-step-multiplier="10"
       @update:model-value="emit('updateOpacity', $event)"
     />
   </div>
 
   <EffectsEditor
     :effects="props.videoEffects"
-    :title="t('fastcat.effects.clipTitle', 'Clip effects')"
+    :title="t('fastcat.effects.videoTitle', 'Video effects')"
     :add-label="t('fastcat.effects.add', 'Add')"
     :empty-label="t('fastcat.effects.empty', 'No effects')"
     @update:effects="emit('updateVideoEffects', $event)"

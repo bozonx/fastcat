@@ -3,6 +3,7 @@ import UiModal from '~/components/ui/UiModal.vue';
 import { computed, ref } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
+import PropertySection from '~/components/properties/PropertySection.vue';
 import EffectSettingsModal from '~/components/effects/EffectSettingsModal.vue';
 import SelectEffectModal from '~/components/effects/SelectEffectModal.vue';
 import { getAllAudioEffectManifests, getAudioEffectManifest } from '~/effects';
@@ -137,15 +138,13 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
 </script>
 
 <template>
-  <div
-    class="space-y-2 mt-2 bg-ui-bg-elevated px-2 py-3 rounded border border-ui-border text-sm"
+  <PropertySection
+    :title="t('fastcat.effects.audioTitle', 'Audio effects')"
+    class="mt-2"
     @dragover="onDragOver"
     @drop="onDrop"
   >
-    <div class="flex items-center justify-between">
-      <span class="font-medium text-ui-text">
-        {{ t('fastcat.effects.audioTitle', 'Audio effects') }}
-      </span>
+    <template #header-actions>
       <UButton
         size="xs"
         variant="soft"
@@ -155,7 +154,9 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
       >
         {{ t('fastcat.effects.add', 'Add') }}
       </UButton>
-    </div>
+    </template>
+
+    <div class="space-y-2 py-1">
 
     <div v-if="safeEffects.length === 0" class="text-xs text-ui-text-muted text-center py-2">
       {{ t('fastcat.effects.empty', 'No effects') }}
@@ -211,12 +212,14 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
             v-if="getAudioEffectManifest(effect.type)?.controls"
             :controls="getAudioEffectManifest(effect.type)?.controls ?? []"
             :values="effect as any"
-            @update:value="(key, value) => handleUpdateEffectValue(effect.id, key, value)"
-            @action="(action, key) => handleAction(effect.id, action, key)"
+            @update:value="(key: any, value: any) => handleUpdateEffectValue(effect.id, key, value)"
+            @action="(action: any, key: any) => handleAction(effect.id, action, key)"
           />
         </div>
       </div>
     </VueDraggable>
+
+    </div>
 
     <EffectSettingsModal
       v-if="settingsEffectId"
@@ -260,5 +263,5 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
         </div>
       </template>
     </UiModal>
-  </div>
+  </PropertySection>
 </template>
