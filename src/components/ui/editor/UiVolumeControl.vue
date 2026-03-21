@@ -160,25 +160,26 @@ onBeforeUnmount(() => {
     @mouseenter="openPopup"
     @mouseleave="scheduleClosePopup"
   >
-    <UButton
-      ref="iconAnchorEl"
-      size="sm"
-      variant="ghost"
-      color="neutral"
-      :icon="
-        isMuted || volume === 0
-          ? 'i-heroicons-speaker-x-mark'
-          : volume < 0.5
-            ? 'i-heroicons-speaker-wave'
-            : 'i-heroicons-speaker-wave'
-      "
-      :aria-label="
-        isMuted
-          ? t('fastcat.monitor.audioUnmute', 'Unmute')
-          : t('fastcat.monitor.audioMute', 'Mute')
-      "
-      class="pointer-events-none"
-    />
+    <div ref="iconAnchorEl" class="flex items-center justify-center shrink-0">
+      <UButton
+        size="sm"
+        variant="ghost"
+        color="neutral"
+        :icon="
+          isMuted || volume === 0
+            ? 'i-heroicons-speaker-x-mark'
+            : volume < 0.5
+              ? 'i-heroicons-speaker-wave'
+              : 'i-heroicons-speaker-wave'
+        "
+        :aria-label="
+          isMuted
+            ? t('fastcat.monitor.audioUnmute', 'Unmute')
+            : t('fastcat.monitor.audioMute', 'Mute')
+        "
+        class="pointer-events-none"
+      />
+    </div>
     <span
       class="leading-none text-ui-text-muted tabular-nums select-none"
       :class="orientation === 'vertical' ? 'text-[10px] text-center' : 'text-sm min-w-[3ch]'"
