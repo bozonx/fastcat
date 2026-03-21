@@ -54,6 +54,8 @@ useWheelSupport({
   onWheelStep: (direction, wheelStep, precision) => {
     const current = Number(props.modelValue);
     const safeCurrent = Number.isFinite(current) ? current : (props.min ?? 0);
+    
+    // If step is small (e.g. 0.01), we want shift to jump significantly
     const next = safeCurrent + direction * wheelStep;
     const rounded = Number(next.toFixed(precision));
     const clamped = clampValue(rounded);
@@ -71,7 +73,7 @@ function onAuxClick(e: MouseEvent) {
 </script>
 
 <template>
-  <div ref="wrapperRef" class="relative" @auxclick="onAuxClick">
+  <div ref="wrapperRef" class="relative group" @auxclick="onAuxClick">
     <UInput
       v-model="value"
       type="number"
@@ -80,9 +82,10 @@ function onAuxClick(e: MouseEvent) {
       :step="step"
       :size="size"
       :disabled="disabled"
-      variant="soft"
-      class="w-full"
-      :ui="{ base: 'text-center font-mono focus:ring-1 focus:ring-primary-500 !bg-ui-bg-elevated hover:!bg-ui-border-elevated transition-colors cursor-ns-resize' }"
+      class="w-full transition-all duration-200"
+      :ui="{ 
+        base: 'text-center font-mono focus:ring-1 focus:ring-primary-500 !bg-ui-bg-elevated hover:!bg-ui-border-elevated transition-colors cursor-ns-resize ring-1 ring-ui-border focus:ring-2'
+      }"
     />
   </div>
 </template>

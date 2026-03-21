@@ -36,6 +36,7 @@ interface UseFilePropertiesActionsOptions {
   isCommonDir: Ref<boolean>;
   isCommonPath: Ref<boolean>;
   canCopyOrCut: Ref<boolean>;
+  hasClipboardItems: Ref<boolean>;
   triggerDirectoryUpload: () => void;
   createSubfolder: () => void;
   createTimelineInFolder: () => void;
@@ -57,6 +58,7 @@ interface UseFilePropertiesActionsOptions {
   extractAudio: () => void;
   onCopy: () => void;
   onCut: () => void;
+  onPaste: () => void;
 }
 
 export function useFilePropertiesActions(options: UseFilePropertiesActionsOptions) {
@@ -106,6 +108,13 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
   ]);
 
   const directorySecondaryActions = computed<SecondaryEntryAction[]>(() => [
+    {
+      id: 'paste',
+      label: options.t('common.paste', 'Paste'),
+      icon: 'i-heroicons-clipboard',
+      hidden: !options.hasClipboardItems.value,
+      onClick: options.onPaste,
+    },
     {
       id: 'createTimeline',
       label: options.t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline'),
