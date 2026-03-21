@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 import {
   createDefaultProjectPresets,
   createProjectPresetId,
@@ -77,12 +78,12 @@ function removePreset() {
     </div>
 
     <UFormField :label="t('videoEditor.export.presetLabel', 'Preset')">
-      <USelectMenu
+      <UiSelect
         v-model="workspaceStore.userSettings.projectPresets.selectedPresetId"
         :items="presetOptions"
         value-key="value"
         label-key="label"
-        class="w-full"
+        full-width
       />
     </UFormField>
 

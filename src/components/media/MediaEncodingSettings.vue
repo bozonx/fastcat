@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, watch, ref } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
 import type { VideoCodecOptionResolved } from '~/utils/webcodecs';
 
@@ -175,7 +176,7 @@ watch(
         {{ t('videoEditor.export.videoCodec', 'Video codec') }}
       </label>
       <div class="w-full">
-        <USelectMenu
+        <UiSelect
           :model-value="
             (filteredVideoCodecOptions.find(
               (o: VideoCodecOptionResolved) => o.value === videoCodec,
@@ -186,8 +187,10 @@ watch(
           label-key="label"
           :disabled="props.disabled || props.isLoadingCodecSupport"
           size="sm"
-          class="w-full"
-          @update:model-value="(v: any) => (videoCodec = v?.value ?? v)"
+          full-width
+          @update:model-value="
+            (v: unknown) => (videoCodec = (v as { value: string })?.value ?? (v as string))
+          "
         />
       </div>
     </div>

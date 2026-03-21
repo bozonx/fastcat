@@ -234,7 +234,7 @@
         "anchorY": "Anchor Y (0..1)",
         "flipHorizontal": "Flip Horizontal",
         "flipVertical": "Flip Vertical",
-        "paramContentMode": "Режим контента",
+        "paramContentMode": "Content mode",
         "positionX": "Position X (px)",
         "positionY": "Position Y (px)",
         "rotation": "Rotation (deg)",
@@ -277,179 +277,179 @@
       "trackTitle": "Track effects",
       "video": {
         "advancedBloom": {
-          "name": "Свечение (Продвинутое)",
-          "description": "Продвинутый эффект свечения с настройкой порога и яркости",
+          "name": "Advanced Bloom",
+          "description": "Advanced bloom effect with threshold and brightness settings",
           "params": {
-            "threshold": "Порог",
-            "bloomScale": "Сила свечения",
-            "brightness": "Яркость",
-            "blur": "Размытие",
-            "quality": "Качество"
+            "threshold": "Threshold",
+            "bloomScale": "Bloom Strength",
+            "brightness": "Brightness",
+            "blur": "Blur",
+            "quality": "Quality"
           }
         },
         "ascii": {
           "name": "ASCII Art",
-          "description": "Эффект ASCII символов",
+          "description": "ASCII symbols effect",
           "params": {
-            "size": "Размер"
+            "size": "Size"
           }
         },
         "backdropBlur": {
-          "name": "Размытие фона",
-          "description": "Размытие всего, что находится позади объекта",
+          "name": "Backdrop Blur",
+          "description": "Blur everything behind the object",
           "params": {
-            "strength": "Сила",
-            "quality": "Качество"
+            "strength": "Strength",
+            "quality": "Quality"
           }
         },
         "bevel": {
-          "name": "Скос (Фаска)",
-          "description": "Эффект объемной рамки (фаски)",
+          "name": "Bevel",
+          "description": "Bevel/emboss effect",
           "params": {
-            "rotation": "Угол",
-            "thickness": "Толщина",
-            "lightAlpha": "Прозрачность света",
-            "shadowAlpha": "Прозрачность тени"
+            "rotation": "Angle",
+            "thickness": "Thickness",
+            "lightAlpha": "Light Opacity",
+            "shadowAlpha": "Shadow Opacity"
           }
         },
         "bloom": {
-          "name": "Свечение (Bloom)",
-          "description": "Эффект размытого свечения",
+          "name": "Bloom",
+          "description": "Soft bloom effect",
           "params": {
-            "strength": "Сила",
-            "quality": "Качество"
+            "strength": "Strength",
+            "quality": "Quality"
           }
         },
         "blur": {
-          "name": "Размытие",
-          "description": "Размытие по Гауссу",
+          "name": "Blur",
+          "description": "Gaussian blur",
           "params": {
-            "strength": "Сила",
-            "quality": "Качество"
+            "strength": "Strength",
+            "quality": "Quality"
           }
         },
         "bulgePinch": {
-          "name": "Искажение (Выпуклость)",
-          "description": "Эффект выпуклости или сжатия (эффект рыбьего глаза)",
+          "name": "Bulge/Pinch",
+          "description": "Bulge or pinch distortion (fisheye)",
           "params": {
-            "centerX": "Центр X",
-            "centerY": "Центр Y",
-            "radius": "Радиус",
-            "strength": "Сила"
+            "centerX": "Center X",
+            "centerY": "Center Y",
+            "radius": "Radius",
+            "strength": "Strength"
           }
         },
         "color-adjustment": {
-          "name": "Цветокоррекция",
-          "description": "Настройка яркости, контрастности и насыщенности",
+          "name": "Color Correction",
+          "description": "Adjust brightness, contrast, and saturation",
           "params": {
-            "brightness": "Яркость",
-            "contrast": "Контрастность",
-            "saturation": "Насыщенность"
+            "brightness": "Brightness",
+            "contrast": "Contrast",
+            "saturation": "Saturation"
           }
         },
         "colorGradient": {
-          "name": "Цветовой градиент",
-          "description": "Наложение цветового градиента",
+          "name": "Color Gradient",
+          "description": "Overlay a color gradient",
           "params": {
-            "type": "Линейный",
-            "angle": "Угол",
-            "alpha": "Прозрачность",
-            "maxColors": "Кол-во цветов (0=Безлимит)",
-            "replace": "Заменить цвет"
+            "type": "Linear",
+            "angle": "Angle",
+            "alpha": "Opacity",
+            "maxColors": "Color Count (0=Unlimited)",
+            "replace": "Replace color"
           }
         },
         "colorMap": {
-          "name": "Цветовая карта",
-          "description": "Применение цветовой карты (LUT)",
+          "name": "Color Map",
+          "description": "Apply a Color Lookup Table (LUT)",
           "params": {
-            "mix": "Интенсивность",
-            "nearest": "Режим Nearest"
+            "mix": "Intensity",
+            "nearest": "Nearest Mode"
           }
         },
         "colorMatrix": {
-          "name": "Цветовой фильтр",
-          "description": "Готовые цветовые пресеты",
+          "name": "Color Filter",
+          "description": "Ready-to-use color presets",
           "params": {
-            "filterType": "Нет",
-            "intensity": "Интенсивность"
+            "filterType": "None",
+            "intensity": "Intensity"
           }
         },
         "colorOverlay": {
-          "name": "Наложение цвета",
-          "description": "Заливка сплошным цветом",
+          "name": "Color Overlay",
+          "description": "Fill with a solid color",
           "params": {
-            "alpha": "Прозрачность"
+            "alpha": "Opacity"
           }
         },
         "colorReplace": {
-          "name": "Замена цвета",
-          "description": "Замена одного цвета на другой",
+          "name": "Color Replace",
+          "description": "Replace one color with another",
           "params": {
-            "tolerance": "Допуск"
+            "tolerance": "Tolerance"
           }
         },
         "convolution": {
-          "name": "Свертка",
-          "description": "Применение матрицы свертки (Convolution Matrix)",
+          "name": "Convolution",
+          "description": "Apply a convolution matrix",
           "params": {
-            "width": "Ширина",
-            "height": "Высота"
+            "width": "Width",
+            "height": "Height"
           }
         },
         "crossHatch": {
-          "name": "Штриховка",
-          "description": "Эффект перекрестной штриховки"
+          "name": "Cross Hatch",
+          "description": "Cross-hatching effect"
         },
         "crt": {
-          "name": "ЭЛТ Монитор",
-          "description": "Эффект старого телевизора",
+          "name": "CRT Monitor",
+          "description": "Old TV effect",
           "params": {
-            "curvature": "Искажение",
-            "lineWidth": "Толщина линий",
-            "lineContrast": "Контраст линий",
-            "verticalLine": "Вертикальные линии",
-            "noise": "Шум",
-            "noiseSize": "Размер шума",
-            "vignetting": "Виньетка",
-            "vignettingAlpha": "Прозрачность виньетки",
-            "vignettingBlur": "Размытие виньетки"
+            "curvature": "Distortion",
+            "lineWidth": "Line Width",
+            "lineContrast": "Line Contrast",
+            "verticalLine": "Vertical Lines",
+            "noise": "Noise",
+            "noiseSize": "Noise Size",
+            "vignetting": "Vignette",
+            "vignettingAlpha": "Vignette Opacity",
+            "vignettingBlur": "Vignette Blur"
           }
         },
         "displacement": {
-          "name": "Искажение",
-          "description": "Эффект смещения/волн",
+          "name": "Distortion",
+          "description": "Displacement/wave effect",
           "params": {
-            "scaleX": "Смещение X",
-            "scaleY": "Смещение Y"
+            "scaleX": "Offset X",
+            "scaleY": "Offset Y"
           }
         },
         "dot": {
-          "name": "Точки (Полутон)",
-          "description": "Эффект растровой печати",
+          "name": "Halftone Dots",
+          "description": "Raster printing effect",
           "params": {
-            "scale": "Масштаб",
-            "angle": "Угол",
-            "grayscale": "Ч/Б"
+            "scale": "Scale",
+            "angle": "Angle",
+            "grayscale": "Grayscale"
           }
         },
         "dropShadow": {
-          "name": "Тень",
-          "description": "Эффект падающей тени",
+          "name": "Shadow",
+          "description": "Drop shadow effect",
           "params": {
-            "offsetX": "Смещение X",
-            "offsetY": "Смещение Y",
-            "alpha": "Прозрачность",
-            "blur": "Размытие",
-            "quality": "Качество",
-            "shadowOnly": "Только тень"
+            "offsetX": "Offset X",
+            "offsetY": "Offset Y",
+            "alpha": "Opacity",
+            "blur": "Blur",
+            "quality": "Quality",
+            "shadowOnly": "Shadow Only"
           }
         },
         "noise": {
-          "name": "Шум",
-          "description": "Эффект зернистости пленки",
+          "name": "Noise",
+          "description": "Film grain effect",
           "params": {
-            "noise": "Интенсивность",
-            "seed": "Зерно"
+            "noise": "Intensity",
+            "seed": "Grain"
           }
         }
       }
@@ -588,8 +588,8 @@
       "enableClip": "Enable clip",
       "enableClips": "Enable clips",
       "extractAudio": "Extract audio to audio track",
-      "fpsMismatch": "Несоответствие FPS",
-      "fpsMismatchDesc": "FPS файла {fileFps} отличается от настроек проекта {projectFps}.",
+      "fpsMismatch": "FPS Mismatch",
+      "fpsMismatchDesc": "File FPS {fileFps} differs from project settings {projectFps}.",
       "frameSnapOff": "Free placement",
       "frameSnapOn": "Snap to frames",
       "freezeFrame": "Freeze frame",

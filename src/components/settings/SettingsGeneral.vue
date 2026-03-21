@@ -4,6 +4,7 @@ import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { clearUiCache } from '~/stores/ui/uiLocalStorage';
 
@@ -60,7 +61,7 @@ function clearCache() {
     </div>
 
     <UFormField :label="t('videoEditor.settings.uiLanguage', 'Interface language')">
-      <USelectMenu
+      <UiSelect
         v-model="workspaceStore.userSettings.locale"
         :items="[
           { label: 'English (US)', value: 'en-US' },
@@ -68,8 +69,11 @@ function clearCache() {
         ]"
         value-key="value"
         label-key="label"
-        class="w-full"
-        @update:model-value="(v: any) => (workspaceStore.userSettings.locale = v?.value ?? v)"
+        full-width
+        @update:model-value="
+          (v: unknown) =>
+            (workspaceStore.userSettings.locale = (v as { value: string })?.value ?? (v as string))
+        "
       />
     </UFormField>
 

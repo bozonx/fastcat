@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { open } from '@tauri-apps/plugin-dialog';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 import { DEFAULT_APP_SETTINGS } from '~/utils/settings/defaults';
 import type { StoragePlacementMode } from '~/utils/storage-roots';
 
@@ -162,7 +163,12 @@ function resetPathDefaults() {
         )
       "
     >
-      <USelectMenu v-model="placementMode" :items="placementModeOptions" value-key="value" />
+      <UiSelect
+        v-model="placementMode"
+        :items="placementModeOptions"
+        value-key="value"
+        full-width
+      />
     </UFormField>
 
     <div

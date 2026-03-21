@@ -40,7 +40,13 @@ const { t } = useI18n();
         value-key="value"
         label-key="label"
         size="sm"
-        @update:model-value="emit('updateBlendMode', $event)"
+        @update:model-value="
+          (v: unknown) =>
+            emit(
+              'updateBlendMode',
+              ((v as { value: TimelineBlendMode })?.value ?? v) as TimelineBlendMode | string,
+            )
+        "
       />
     </div>
 

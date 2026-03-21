@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 
 const props = withDefaults(
@@ -51,9 +52,8 @@ function onInputUpdate(value: unknown) {
       </template>
       <template v-else>
         <div class="flex items-center gap-1">
-          <UInput
-            :model-value="displayValue"
-            type="number"
+          <UiWheelNumberInput
+            :model-value="Number(displayValue)"
             size="xs"
             :min="min"
             :max="max"

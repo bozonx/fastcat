@@ -86,6 +86,10 @@ function onAuxClick(e: MouseEvent) {
       :ui="{
         base: 'font-mono transition-colors cursor-ns-resize',
       }"
-    />
+    >
+      <template v-for="(_, name) in $slots" #[name]="slotProps">
+        <slot :name="name" v-bind="slotProps" />
+      </template>
+    </UInput>
   </div>
 </template>

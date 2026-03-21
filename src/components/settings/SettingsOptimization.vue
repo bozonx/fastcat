@@ -2,6 +2,7 @@
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 
@@ -62,7 +63,7 @@ function resetDefaults() {
       </UFormField>
 
       <UFormField :label="t('videoEditor.settings.proxyMaxPixels')">
-        <USelectMenu
+        <UiSelect
           v-model="workspaceStore.userSettings.optimization.proxyMaxPixels"
           :items="[
             { label: '3.0 MP (1080p+)', value: 3_000_000 },
@@ -73,10 +74,11 @@ function resetDefaults() {
           ]"
           value-key="value"
           label-key="label"
-          class="w-full"
-          :search-input="false"
+          full-width
           @update:model-value="
-            (v: any) => (workspaceStore.userSettings.optimization.proxyMaxPixels = v?.value ?? v)
+            (v: unknown) =>
+              (workspaceStore.userSettings.optimization.proxyMaxPixels =
+                (v as { value: number })?.value ?? (v as number))
           "
         />
       </UFormField>

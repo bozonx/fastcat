@@ -4,6 +4,7 @@ import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiKnob from '~/components/ui/editor/UiKnob.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 import type {
   ButtonGroupParamControl,
   FileParamControl,
@@ -35,7 +36,9 @@ const { t } = useI18n();
 const dragOverKey = ref<string | null>(null);
 
 const visibleControls = computed(() =>
-  props.controls.filter((control) => !control.showIf || control.showIf(props.values as Record<string, any>)),
+  props.controls.filter(
+    (control) => !control.showIf || control.showIf(props.values as Record<string, any>),
+  ),
 );
 
 function getLabel(control: ParamControl): string {
@@ -146,7 +149,12 @@ function handleArrayRemove(control: ParamControl, index: number) {
   updateValue(control.key, current);
 }
 
-function handleArrayItemUpdate(control: ParamControl, index: number, itemKey: string, value: unknown) {
+function handleArrayItemUpdate(
+  control: ParamControl,
+  index: number,
+  itemKey: string,
+  value: unknown,
+) {
   if (control.kind !== 'array') return;
   const current = Array.isArray(getValue(control.key)) ? [...(getValue(control.key) as any[])] : [];
   if (current[index]) {
@@ -256,7 +264,7 @@ function handleArrayItemUpdate(control: ParamControl, index: number, itemKey: st
 
       <div v-else-if="control.kind === 'select'" class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{ getLabel(control) }}</span>
-        <USelectMenu
+        <UiSelect
           :model-value="getValue(control.key) as any"
           :items="getSelectItems(control)"
           value-key="value"
@@ -384,7 +392,9 @@ function handleArrayItemUpdate(control: ParamControl, index: number, itemKey: st
         </div>
 
         <div
-          v-if="!Array.isArray(getValue(control.key)) || (getValue(control.key) as any[]).length === 0"
+          v-if="
+            !Array.isArray(getValue(control.key)) || (getValue(control.key) as any[]).length === 0
+          "
           class="text-xs text-ui-text-muted text-center py-2 border border-dashed border-ui-border rounded"
         >
           {{ control.emptyLabelKey ? t(control.emptyLabelKey) : (control.emptyLabel ?? 'Empty') }}
