@@ -176,24 +176,30 @@ function handleSelectEffect(type: string) {
 
     <!-- Controls -->
     <div class="flex gap-1 mb-2">
-      <UButton
+      <UiToggleButton
+        :model-value="isMuted"
         size="xs"
-        :variant="isMuted ? 'solid' : 'soft'"
-        :color="isMuted ? 'error' : 'neutral'"
-        class="w-6 h-6 p-0 justify-center font-bold text-xs"
+        label="M"
+        active-color="error"
+        inactive-color="neutral"
+        inactive-variant="soft"
+        active-variant="solid"
+        :square="true"
+        title="Mute"
         @click="toggleMute"
-      >
-        {{ t('fastcat.audioMixer.mute') }}
-      </UButton>
-      <UButton
+      />
+      <UiToggleButton
+        :model-value="isSolo"
         size="xs"
-        :variant="isSolo ? 'solid' : 'soft'"
-        :color="isSolo ? 'primary' : 'neutral'"
-        class="w-6 h-6 p-0 justify-center font-bold text-xs"
+        label="S"
+        active-color="primary"
+        inactive-color="neutral"
+        inactive-variant="soft"
+        active-variant="solid"
+        :square="true"
+        title="Solo"
         @click="toggleSolo"
-      >
-        {{ t('fastcat.audioMixer.solo') }}
-      </UButton>
+      />
     </div>
 
     <!-- Track Name -->

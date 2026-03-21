@@ -184,72 +184,49 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="ml-0 flex items-center gap-0.5 transition-opacity z-10 relative" @dblclick.stop>
-      <UButton
+      <UiToggleButton
         v-if="track.kind === 'video'"
-        size="xs"
-        :variant="track.videoHidden ? 'solid' : 'ghost'"
-        :color="track.videoHidden ? 'amber' : 'gray'"
-        :icon="track.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
-        class="w-6 h-6 p-0 flex items-center justify-center transition-opacity"
-        :class="[
-          track.videoHidden
-            ? 'text-black! opacity-100 hover:opacity-90'
-            : 'opacity-60 group-hover:opacity-100',
-        ]"
-        :style="track.videoHidden ? { backgroundColor: '#facc15', color: '#000000' } : undefined"
-        :title="track.videoHidden ? 'Show Track' : 'Hide Track'"
+        :model-value="track.videoHidden || false"
+        icon="i-heroicons-eye"
+        active-icon="i-heroicons-eye-slash"
+        inactive-color="neutral"
+        active-color="warning"
+        :active-bg="'#facc15'"
+        :active-text="'#000000'"
+        title="Hide/Show Track"
         @click="toggleVideoHidden"
       />
 
-      <UButton
-        size="xs"
-        :variant="track.audioMuted ? 'solid' : 'ghost'"
-        :color="track.audioMuted ? 'red' : 'gray'"
-        :icon="track.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
-        class="w-6 h-6 p-0 flex items-center justify-center transition-opacity"
-        :class="[
-          track.audioMuted
-            ? 'text-black! opacity-100 hover:opacity-90'
-            : 'opacity-60 group-hover:opacity-100',
-        ]"
-        :style="track.audioMuted ? { backgroundColor: '#ef4444', color: '#000000' } : undefined"
-        :title="track.audioMuted ? 'Unmute Track' : 'Mute Track'"
+      <UiToggleButton
+        :model-value="track.audioMuted || false"
+        icon="i-heroicons-speaker-wave"
+        active-icon="i-heroicons-speaker-x-mark"
+        inactive-color="neutral"
+        active-color="error"
+        :active-bg="'#ef4444'"
+        :active-text="'#000000'"
+        title="Mute/Unmute Track"
         @click="toggleAudioMuted"
       />
 
-      <UButton
-        size="xs"
-        :variant="track.audioSolo ? 'solid' : 'ghost'"
-        :color="track.audioSolo ? 'amber' : 'gray'"
+      <UiToggleButton
+        :model-value="track.audioSolo || false"
         icon="i-heroicons-musical-note"
-        class="w-6 h-6 p-0 flex items-center justify-center transition-opacity"
-        :class="[
-          track.audioSolo
-            ? 'text-black! opacity-100 hover:opacity-90 ring-1 ring-amber-500/50'
-            : 'opacity-60 group-hover:opacity-100',
-        ]"
-        :style="track.audioSolo ? { backgroundColor: '#fbbf24', color: '#000000' } : undefined"
-        :title="track.audioSolo ? 'Unsolo Track' : 'Solo Track'"
+        inactive-color="neutral"
+        active-color="warning"
+        :active-bg="'#fbbf24'"
+        :active-text="'#000000'"
+        title="Solo Track"
         @click="toggleAudioSolo"
       />
 
-      <UButton
-        size="xs"
-        :variant="track.locked ? 'solid' : 'ghost'"
-        :color="track.locked ? 'primary' : 'gray'"
+      <UiToggleButton
+        :model-value="track.locked || false"
         icon="i-heroicons-lock-closed"
-        class="w-6 h-6 p-0 flex items-center justify-center transition-opacity"
-        :class="[
-          track.locked
-            ? 'text-white! opacity-100 hover:opacity-90'
-            : 'opacity-60 group-hover:opacity-100',
-        ]"
-        :style="
-          track.locked
-            ? { backgroundColor: 'var(--color-primary-500)', color: '#ffffff' }
-            : undefined
-        "
-        :title="track.locked ? 'Unlock Track' : 'Lock Track'"
+        inactive-color="neutral"
+        active-color="primary"
+        active-variant="soft"
+        title="Lock/Unlock Track"
         @click="toggleTrackLock"
       />
     </div>

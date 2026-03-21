@@ -116,15 +116,17 @@ function handleSelectEffect(type: string) {
 
     <!-- Controls -->
     <div class="flex gap-1 mb-2">
-      <UButton
+      <UiToggleButton
+        :model-value="isMuted"
         size="sm"
-        :variant="isMuted ? 'solid' : 'soft'"
-        :color="isMuted ? 'error' : 'primary'"
-        class="w-10 h-8 justify-center font-bold"
+        label="MUTE"
+        active-color="error"
+        inactive-color="primary"
+        inactive-variant="soft"
+        active-variant="solid"
+        title="Mute"
         @click="toggleMute"
-      >
-        {{ t('fastcat.audioMixer.mute') }}
-      </UButton>
+      />
     </div>
 
     <!-- Label -->

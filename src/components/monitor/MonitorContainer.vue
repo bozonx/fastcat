@@ -315,8 +315,8 @@ onUnmounted(() => {
           :class="toolbarPosition === 'left' || toolbarPosition === 'right' ? 'flex-col' : ''"
         >
           <UiTooltip :text="t('fastcat.timeline.addMarkerAtPlayhead', 'Add marker at playhead')">
-            <UButton
-              size="2xs"
+            <UiActionButton
+              size="xs"
               color="neutral"
               variant="ghost"
               icon="i-heroicons-bookmark"
@@ -325,8 +325,8 @@ onUnmounted(() => {
           </UiTooltip>
 
           <UiTooltip :text="t('fastcat.monitor.center', 'Center')">
-            <UButton
-              size="2xs"
+            <UiActionButton
+              size="xs"
               color="neutral"
               variant="ghost"
               icon="i-lucide-crosshair"
@@ -335,7 +335,7 @@ onUnmounted(() => {
           </UiTooltip>
 
           <UiTooltip :text="t('fastcat.monitor.resetZoom', 'Reset zoom')">
-            <UButton
+            <UiActionButton
               size="xs"
               color="neutral"
               variant="ghost"
@@ -346,17 +346,17 @@ onUnmounted(() => {
           </UiTooltip>
 
           <UiTooltip :text="t('fastcat.monitor.useProxy', 'Use proxy')">
-            <UButton
+            <UiToggleButton
               v-if="projectStore.activeMonitor"
-              size="xs"
-              color="neutral"
-              :variant="useProxyInMonitor ? 'soft' : 'ghost'"
+              :model-value="useProxyInMonitor"
               icon="i-heroicons-bolt"
-              :class="
-                useProxyInMonitor
-                  ? 'text-(--selection-accent-400) ring-(--selection-accent-500)/40 bg-[rgba(59,130,246,0.12)]'
-                  : ''
-              "
+              inactive-color="neutral"
+              inactive-variant="ghost"
+              active-color="neutral"
+              active-variant="soft"
+              :active-bg="'rgba(59,130,246,0.12)'"
+              title="Use proxy"
+              no-toggle
               @click="toggleProxyUsage"
             />
           </UiTooltip>
@@ -368,17 +368,17 @@ onUnmounted(() => {
                 : t('fastcat.monitor.previewWithoutEffects', 'Preview without effects')
             "
           >
-            <UButton
+            <UiToggleButton
               v-if="projectStore.activeMonitor"
-              size="xs"
-              color="neutral"
-              :variant="previewEffectsEnabled ? 'soft' : 'ghost'"
+              :model-value="previewEffectsEnabled"
               icon="i-heroicons-sparkles"
-              :class="
-                previewEffectsEnabled
-                  ? 'text-(--selection-accent-400) ring-(--selection-accent-500)/40 bg-[rgba(59,130,246,0.12)]'
-                  : ''
-              "
+              inactive-color="neutral"
+              inactive-variant="ghost"
+              active-color="neutral"
+              active-variant="soft"
+              :active-bg="'rgba(59,130,246,0.12)'"
+              title="Preview effects"
+              no-toggle
               @click="togglePreviewEffects"
             />
           </UiTooltip>
@@ -419,7 +419,7 @@ onUnmounted(() => {
             </UiSelect>
           </div>
 
-          <UButton
+          <UiActionButton
             v-if="effectiveFullscreen"
             size="sm"
             color="neutral"
@@ -428,7 +428,7 @@ onUnmounted(() => {
             :label="t('common.back', 'Back')"
             @click="exitBrowserFullscreen()"
           />
-          <UButton
+          <UiActionButton
             v-else
             size="xs"
             color="neutral"

@@ -71,7 +71,7 @@ const menuItems = computed(() => {
     </div>
 
     <div class="flex items-center gap-2">
-      <UButton
+      <UiActionButton
         size="sm"
         variant="ghost"
         color="neutral"
@@ -80,7 +80,7 @@ const menuItems = computed(() => {
         :title="t('common.undo') + ' (Ctrl+Z)'"
         @click="timelineStore.undoTimeline()"
       />
-      <UButton
+      <UiActionButton
         size="sm"
         variant="ghost"
         color="neutral"
@@ -143,7 +143,12 @@ const menuItems = computed(() => {
       <BackgroundTasksButton size="sm" />
 
       <UDropdownMenu :items="menuItems" mode="hover" :ui="{ content: 'w-56' }">
-        <UButton size="sm" variant="ghost" color="neutral" icon="i-heroicons-ellipsis-horizontal" />
+        <UiActionButton
+          size="sm"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-ellipsis-horizontal"
+        />
       </UDropdownMenu>
     </div>
   </div>
