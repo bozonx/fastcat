@@ -132,6 +132,8 @@ const {
   findEntryByPath,
   readDirectory,
   reloadDirectory,
+  copyEntry,
+  moveEntry,
   notifyFileManagerUpdate: () => uiStore.notifyFileManagerUpdate(),
   setFileTreePathExpanded: (path, expanded) => uiStore.setFileTreePathExpanded(path, expanded),
   onFileSelect: (entry) => emit('select', entry),

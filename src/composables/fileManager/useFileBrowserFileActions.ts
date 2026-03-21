@@ -35,7 +35,14 @@ export function useFileBrowserFileActions({
   const { extractAudio } = useAudioExtraction();
 
   function handleBatchAction(action: string, entries: FsEntry[]): boolean {
-    const delegated: FmFileAction[] = ['delete', 'createProxy', 'cancelProxy', 'deleteProxy'];
+    const delegated: FmFileAction[] = [
+      'delete',
+      'createProxy',
+      'cancelProxy',
+      'deleteProxy',
+      'copy',
+      'cut',
+    ];
     if (delegated.includes(action as FmFileAction)) {
       void onFileActionBase(action as FmFileAction, entries);
       return true;
@@ -131,6 +138,11 @@ export function useFileBrowserFileActions({
       return;
     }
 
+    if (action === 'paste') {
+      void onFileActionBase('paste', entry);
+      return;
+    }
+
     const delegated: FmFileAction[] = [
       'delete',
       'rename',
@@ -138,6 +150,8 @@ export function useFileBrowserFileActions({
       'cancelProxy',
       'deleteProxy',
       'upload',
+      'copy',
+      'cut',
     ];
     if (delegated.includes(action as FmFileAction)) {
       void onFileActionBase(action as FmFileAction, entry);

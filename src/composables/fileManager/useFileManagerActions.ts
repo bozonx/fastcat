@@ -4,6 +4,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useAppClipboard } from '~/composables/useAppClipboard';
 import type { FsEntry } from '~/types/fs';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { generateUniqueFsEntryName } from '~/utils/fs';
@@ -26,7 +27,10 @@ export type FileAction =
   | 'cancelProxyForFolder'
   | 'convertFile'
   | 'openAsPanel'
-  | 'openAsProjectTab';
+  | 'openAsProjectTab'
+  | 'copy'
+  | 'cut'
+  | 'paste';
 
 interface FileManagerActions {
   createFolder: (name: string, parentPath?: string) => Promise<void>;
@@ -44,6 +48,8 @@ interface FileManagerActions {
   onAfterRename?: () => void;
   onAfterDelete?: () => void;
   onFileSelect?: (entry: FsEntry) => void;
+  copyEntry?: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
+  moveEntry?: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
 }
 
 export function useFileManagerActions(actions: FileManagerActions) {
@@ -54,6 +60,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
   const projectStore = useProjectStore();
   const workspaceStore = useWorkspaceStore();
   const { removeFileTabByPath } = useProjectTabsStore();
+  const clipboardStore = useAppClipboard();
 
   const isDeleteConfirmModalOpen = ref(false);
   const deleteTargets = ref<FsEntry[]>([]);
@@ -310,6 +317,58 @@ export function useFileManagerActions(actions: FileManagerActions) {
       if (e && e.kind === 'directory') {
         await createMarkdownInDirectory(e);
       }
+    },
+    copy: (entry) => {
+      const entries = Array.isArray(entry) ? entry : [entry];
+      const validEntries = entries.filter((e) => Boolean(e.path));
+      if (validEntries.length === 0) return;
+      clipboardStore.setClipboardPayload({
+        source: 'fileManager',
+        operation: 'copy',
+        items: validEntries.map((e) => ({
+          path: e.path!,
+          kind: e.kind,
+          name: e.name,
+        })),
+      });
+    },
+    cut: (entry) => {
+      const entries = Array.isArray(entry) ? entry : [entry];
+      const validEntries = entries.filter((e) => Boolean(e.path));
+      if (validEntries.length === 0) return;
+      clipboardStore.setClipboardPayload({
+        source: 'fileManager',
+        operation: 'cut',
+        items: validEntries.map((e) => ({
+          path: e.path!,
+          kind: e.kind,
+          name: e.name,
+        })),
+      });
+    },
+    paste: async (entry) => {
+      const payload = clipboardStore.clipboardPayload;
+      if (!payload || payload.source !== 'fileManager' || payload.items.length === 0) return;
+
+      const e = Array.isArray(entry) ? entry[0] : entry;
+      const targetDirPath = e?.kind === 'directory' ? (e.path ?? '') : '';
+
+      for (const item of payload.items) {
+        const source = actions.findEntryByPath(item.path);
+        if (!source) continue;
+
+        if (payload.operation === 'copy') {
+          await actions.copyEntry?.({ source, targetDirPath });
+        } else {
+          await actions.moveEntry?.({ source, targetDirPath });
+        }
+      }
+
+      if (payload.operation === 'cut') {
+        clipboardStore.setClipboardPayload(null);
+      }
+
+      actions.notifyFileManagerUpdate?.();
     },
   };
 
