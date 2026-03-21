@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
+import { computed, ref, nextTick } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import type { TimelineTrack } from '~/timeline/types';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
@@ -49,14 +49,14 @@ function toggleSolo() {
 // Renaming
 const isRenaming = ref(false);
 const renameValue = ref('');
-const renameInput = ref<HTMLInputElement | null>(null);
+const renameInput = ref<{ input: HTMLInputElement } | null>(null);
 
 function startRename() {
   renameValue.value = trackName.value;
   isRenaming.value = true;
   nextTick(() => {
-    renameInput.value?.focus();
-    renameInput.value?.select();
+    renameInput.value?.input?.focus();
+    renameInput.value?.input?.select();
   });
 }
 
@@ -206,11 +206,13 @@ function handleSelectEffect(type: string) {
         :class="[isRenaming ? 'bg-primary-500/10' : 'hover:bg-ui-bg-elevated']"
       >
         <div v-if="isRenaming" class="w-full flex justify-center">
-          <input
+          <UInput
             ref="renameInput"
             v-model="renameValue"
-            class="max-w-full bg-ui-bg text-[10px] font-medium text-ui-text border border-primary-500 outline-none px-0.5 text-center whitespace-nowrap overflow-hidden text-ellipsis"
-            :style="{ width: `${renameValue.length + 2}ch` }"
+            size="xs"
+            class="text-center"
+            :ui="{ base: 'font-mono text-center' }"
+            :style="{ width: `${Math.max(4, renameValue.length + 2)}ch` }"
             @click.stop
             @keydown.enter.stop="confirmRename"
             @keydown.esc.stop="cancelRename"

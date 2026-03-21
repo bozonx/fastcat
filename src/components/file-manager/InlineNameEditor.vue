@@ -15,7 +15,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const toast = useToast();
 
-const inputRef = ref<HTMLInputElement | null>(null);
+const inputRef = ref<{ input: HTMLInputElement } | null>(null);
 const currentName = ref(props.initialName);
 
 const invalidCharsRegex = /[<>:"/\\|?*]/;
@@ -34,22 +34,23 @@ let isReady = false;
 let blurTimer: ReturnType<typeof setTimeout> | null = null;
 
 function focusAndSelectName() {
-  if (!inputRef.value) return;
+  const input = inputRef.value?.input;
+  if (!input) return;
 
-  inputRef.value.focus({ preventScroll: true });
-  inputRef.value.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  input.focus({ preventScroll: true });
+  input.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 
   if (!props.isFolder) {
     const lastDot = props.initialName.lastIndexOf('.');
     if (lastDot > 0) {
-      inputRef.value.setSelectionRange(0, lastDot);
+      input.setSelectionRange(0, lastDot);
     } else {
-      inputRef.value.select();
+      input.select();
     }
     return;
   }
 
-  inputRef.value.select();
+  input.select();
 }
 
 onMounted(() => {
@@ -146,12 +147,14 @@ function cancel() {
 </script>
 
 <template>
-  <input
+  <UInput
     ref="inputRef"
     v-model="currentName"
-    type="text"
-    class="text-sm bg-ui-bg-elevated text-ui-text px-1 py-0 border rounded-sm outline-hidden w-full max-w-50"
-    :class="isInvalid ? 'border-red-500' : 'border-primary-500'"
+    size="xs"
+    class="w-full max-w-50"
+    :ui="{ base: 'font-mono' }"
+    :style="{ width: `${Math.max(4, currentName.length + 2)}ch` }"
+    :class="isInvalid ? 'ring-2 ring-red-500' : 'ring-2 ring-primary-500'"
     @keydown.enter="finish"
     @keydown.esc="cancel"
     @blur="onBlur"
