@@ -7,6 +7,7 @@ interface UiTextInputProps {
   disabled?: boolean;
   size?: '2xs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   mono?: boolean;
+  fullWidth?: boolean;
 }
 
 const props = withDefaults(defineProps<UiTextInputProps>(), {
@@ -14,6 +15,7 @@ const props = withDefaults(defineProps<UiTextInputProps>(), {
   disabled: false,
   size: 'xs',
   mono: false,
+  fullWidth: false,
 });
 
 const emit = defineEmits<{
@@ -32,10 +34,9 @@ const value = computed({
     :placeholder="placeholder"
     :disabled="disabled"
     :size="size"
-    class="w-full"
+    :class="[fullWidth ? 'w-full' : 'w-auto max-w-80', mono ? 'font-mono' : '']"
     :ui="{
       base: 'transition-colors',
     }"
-    :class="mono ? 'font-mono' : ''"
   />
 </template>

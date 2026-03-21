@@ -22,7 +22,9 @@ export type AudioEffectNode = AudioNode | AudioEffectNodeGraph;
 export interface BaseEffectManifest<T = Record<string, any>> {
   type: EffectType;
   name: string;
+  nameKey?: string;
   description: string;
+  descriptionKey?: string;
   icon: string;
   target?: EffectTarget;
   defaultValues: T;

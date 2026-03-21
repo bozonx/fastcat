@@ -48,6 +48,8 @@ export type TransitionParamField = ParamControl;
 export interface TransitionManifest<T = Record<string, any>> {
   type: TransitionType;
   name: string;
+  nameKey?: string;
+  descriptionKey?: string;
   icon: string;
   defaultDurationUs: number;
   defaultParams: T;

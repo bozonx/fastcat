@@ -162,9 +162,13 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
             @update:model-value="handleUpdateEffect(effect.id, { enabled: $event })"
             class="shrink-0"
           />
-          <span class="font-medium flex-1 truncate">{{
-            getVideoEffectManifest(effect.type)?.name || effect.type
-          }}</span>
+          <span class="font-medium flex-1 truncate">
+            {{
+              getVideoEffectManifest(effect.type)?.nameKey
+                ? t(getVideoEffectManifest(effect.type)!.nameKey!)
+                : (getVideoEffectManifest(effect.type)?.name || effect.type)
+            }}
+          </span>
           <div class="flex items-center gap-1 shrink-0">
             <UButton
               size="xs"

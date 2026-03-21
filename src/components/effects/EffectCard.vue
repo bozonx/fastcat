@@ -10,6 +10,8 @@ const props = defineProps<{
   actionColor?: string;
 }>();
 
+const { t } = useI18n();
+
 const emit = defineEmits<{
   click: [];
   action: [];
@@ -39,7 +41,9 @@ function onDragStart(e: DragEvent) {
     <UIcon :name="manifest.icon" class="w-8 h-8 text-primary shrink-0" />
     <div class="flex-1 min-w-0">
       <div class="flex items-center justify-between gap-2">
-        <h4 class="text-sm font-medium text-ui-text truncate">{{ manifest.name }}</h4>
+        <h4 class="text-sm font-medium text-ui-text truncate">
+          {{ manifest.nameKey ? t(manifest.nameKey) : manifest.name }}
+        </h4>
         <UButton
           v-if="showAction"
           :icon="actionIcon || 'i-heroicons-trash'"
@@ -51,11 +55,11 @@ function onDragStart(e: DragEvent) {
         />
       </div>
       <p
-        v-if="manifest.description"
+        v-if="manifest.descriptionKey || manifest.description"
         class="text-xs text-ui-text-muted mt-1 line-clamp-2"
-        :title="manifest.description"
+        :title="manifest.descriptionKey ? t(manifest.descriptionKey) : manifest.description"
       >
-        {{ manifest.description }}
+        {{ manifest.descriptionKey ? t(manifest.descriptionKey) : manifest.description }}
       </p>
     </div>
     <div v-if="!showAction && !isDraggable" class="shrink-0 flex items-center self-center">
