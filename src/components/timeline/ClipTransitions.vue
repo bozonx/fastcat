@@ -289,8 +289,8 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
             >
               <rect x="0" y="0" width="100" height="100" fill="transparent" />
               <rect
-                v-for="line in getTransitionFadeLines('in')"
-                :key="`fade-in-${line.x}`"
+                v-for="(line, index) in getTransitionFadeLines('in')"
+                :key="`fade-in-${index}-${line.x}`"
                 :x="line.x"
                 y="0"
                 :width="line.width"
@@ -369,8 +369,8 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
             >
               <rect x="0" y="0" width="100" height="100" fill="transparent" />
               <rect
-                v-for="line in getTransitionFadeLines('out')"
-                :key="`fade-out-${line.x}`"
+                v-for="(line, index) in getTransitionFadeLines('out')"
+                :key="`fade-out-${index}-${line.x}`"
                 :x="line.x"
                 y="0"
                 :width="line.width"
