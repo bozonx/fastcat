@@ -80,7 +80,6 @@ const fadeCurveOptions = [
     <UiSliderInput
       v-if="props.canEditAudioBalance"
       :label="t('fastcat.clip.audio.balance', 'Balance')"
-      :formatted-value="props.audioBalance.toFixed(2)"
       :model-value="props.audioBalance"
       :min="-1"
       :max="1"

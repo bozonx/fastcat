@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
+import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -49,16 +50,15 @@ const playhead = computed({
     </div>
 
     <div class="space-y-4 max-w-xl">
-      <UFormField
+      <UiSliderInput
+        v-model="snapThresholdPx"
         :label="t('videoEditor.settings.snapThresholdDefault', 'Snap threshold default (px)')"
-      >
-        <div class="flex items-center gap-4">
-          <UiWheelSlider v-model="snapThresholdPx" :min="1" :max="100" :step="1" class="flex-1" />
-          <div class="text-xs font-mono text-ui-text-muted w-8 text-right">
-            {{ snapThresholdPx }}
-          </div>
-        </div>
-      </UFormField>
+        :min="1"
+        :max="100"
+        :step="1"
+        :default-value="10"
+        unit="px"
+      />
 
       <div class="pt-4 space-y-4">
         <h4 class="text-sm font-medium text-ui-text">
