@@ -1,12 +1,13 @@
 <script setup lang="ts">
 const props = defineProps<{
-  title: string;
+  title?: string;
 }>();
 </script>
 
 <template>
   <div class="space-y-1 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full">
     <div
+      v-if="props.title || $slots['header-actions']"
       class="flex items-center justify-between text-[10px] font-bold text-ui-text-muted uppercase tracking-widest border-b border-ui-border pb-1"
     >
       <span>{{ props.title }}</span>

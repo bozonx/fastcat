@@ -199,7 +199,6 @@ const extraActions = computed(() => {
       id: 'generate-captions',
       label: t('fastcat.captions.generate', 'Generate captions'),
       icon: 'i-heroicons-chat-bubble-bottom-center-text',
-      color: 'primary',
       onClick: () => (isGenerateCaptionsOpen.value = true),
     });
   }
@@ -290,75 +289,84 @@ const extraActions = computed(() => {
       </div>
     </PropertySection>
 
-    <div class="flex flex-col w-full gap-4 px-3 py-3 bg-ui-bg-elevated/40 rounded-lg border border-ui-border/50">
-      <!-- Color Selection (Shared) -->
-      <div class="flex flex-col gap-2">
-        <span class="text-[10px] text-ui-text-muted uppercase tracking-wider font-bold">
-          {{ t('fastcat.track.color', 'Color') }}
-        </span>
-        <UiColorPicker :model-value="trackColor" mode="track" @update:model-value="(v) => (trackColor = v)" />
-      </div>
+    <PropertySection :title="t('common.properties', 'Properties')">
+      <div class="flex flex-col w-full gap-4 py-1">
+        <!-- Color Selection (Shared) -->
+        <div class="flex flex-col gap-2">
+          <span class="text-[10px] text-ui-text-muted uppercase tracking-wider font-bold">
+            {{ t('fastcat.track.color', 'Color') }}
+          </span>
+          <UiColorPicker
+            :model-value="trackColor"
+            mode="track"
+            @update:model-value="(v) => (trackColor = v)"
+          />
+        </div>
 
-      <div class="h-px bg-ui-border opacity-30 my-1" />
+        <div class="h-px bg-ui-border opacity-30 my-1" />
 
-      <!-- Track Composition & Media Settings -->
-      <div class="flex flex-col gap-4">
-        <div v-if="track.kind === 'video'" class="flex flex-col gap-3">
-          <div class="flex flex-col gap-1">
-            <span class="text-xs text-ui-text-muted font-medium">{{ t('fastcat.track.blendMode', 'Blend mode') }}</span>
-            <UiSelect
-              :model-value="trackBlendMode"
-              :items="blendModeOptions"
-              value-key="value"
-              label-key="label"
-              size="sm"
-              @update:model-value="
-                (v: unknown) =>
-                  (trackBlendMode = (v as { value: TimelineBlendMode })?.value ?? (v as TimelineBlendMode))
-              "
+        <!-- Track Composition & Media Settings -->
+        <div class="flex flex-col gap-4">
+          <div v-if="track.kind === 'video'" class="flex flex-col gap-3">
+            <div class="flex flex-col gap-1">
+              <span class="text-xs text-ui-text-muted font-medium">{{
+                t('fastcat.track.blendMode', 'Blend mode')
+              }}</span>
+              <UiSelect
+                :model-value="trackBlendMode"
+                :items="blendModeOptions"
+                value-key="value"
+                label-key="label"
+                size="sm"
+                @update:model-value="
+                  (v: unknown) =>
+                    (trackBlendMode =
+                      (v as { value: TimelineBlendMode })?.value ?? (v as TimelineBlendMode))
+                "
+              />
+            </div>
+
+            <UiSliderInput
+              :label="t('fastcat.track.opacity', 'Opacity')"
+              :formatted-value="`${Math.round(trackOpacity * 100)}%`"
+              :model-value="trackOpacity"
+              :min="0"
+              :max="1"
+              :step="0.01"
+              :default-value="1"
+              @update:model-value="(v: number) => (trackOpacity = v)"
             />
+
+            <div class="h-px bg-ui-border opacity-30 my-1" />
           </div>
 
-          <UiSliderInput
-            :label="t('fastcat.track.opacity', 'Opacity')"
-            :formatted-value="`${Math.round(trackOpacity * 100)}%`"
-            :model-value="trackOpacity"
-            :min="0"
-            :max="1"
-            :step="0.01"
-            :default-value="1"
-            @update:model-value="(v: number) => (trackOpacity = v)"
-          />
+          <div v-if="track.kind === 'audio' || track.kind === 'video'" class="flex flex-col gap-3">
+            <UiSliderInput
+              :label="t('fastcat.track.audio.volume', 'Volume')"
+              :formatted-value="`${trackAudioGain.toFixed(3)}x`"
+              :model-value="trackAudioGain"
+              :min="0"
+              :max="2"
+              :step="0.001"
+              :wheel-step-multiplier="10"
+              :default-value="1"
+              @update:model-value="(v: number) => (trackAudioGain = v)"
+            />
 
-          <div class="h-px bg-ui-border opacity-30 my-1" />
-        </div>
-
-        <div v-if="track.kind === 'audio' || track.kind === 'video'" class="flex flex-col gap-3">
-          <UiSliderInput
-            :label="t('fastcat.track.audio.volume', 'Volume')"
-            :formatted-value="`${trackAudioGain.toFixed(3)}x`"
-            :model-value="trackAudioGain"
-            :min="0"
-            :max="2"
-            :step="0.001"
-            :wheel-step-multiplier="10"
-            :default-value="1"
-            @update:model-value="(v: number) => (trackAudioGain = v)"
-          />
-
-          <UiSliderInput
-            :label="t('fastcat.track.audio.balance', 'Balance')"
-            :formatted-value="trackAudioBalance.toFixed(2)"
-            :model-value="trackAudioBalance"
-            :min="-1"
-            :max="1"
-            :step="0.01"
-            :default-value="0"
-            @update:model-value="(v: number) => (trackAudioBalance = v)"
-          />
+            <UiSliderInput
+              :label="t('fastcat.track.audio.balance', 'Balance')"
+              :formatted-value="trackAudioBalance.toFixed(2)"
+              :model-value="trackAudioBalance"
+              :min="-1"
+              :max="1"
+              :step="0.01"
+              :default-value="0"
+              @update:model-value="(v: number) => (trackAudioBalance = v)"
+            />
+          </div>
         </div>
       </div>
-    </div>
+    </PropertySection>
 
 
 
