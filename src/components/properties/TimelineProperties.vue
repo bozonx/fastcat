@@ -242,18 +242,8 @@ const addTrackActions = computed(() => [
 
 <template>
   <div class="w-full flex flex-col gap-3">
-    <!-- File Preview & Info -->
+    <!-- File Info -->
     <template v-if="fsEntry">
-      <EntryPreviewBox
-        :selected-entry-kind="fsEntry.kind ?? null"
-        :is-otio="true"
-        :is-unknown="isUnknown"
-        :current-url="currentUrl"
-        :media-type="mediaType"
-        :text-content="textContent"
-        :file-path="fsEntry.path"
-        :file-name="fsEntry.name"
-      />
 
       <FileGeneralInfoSection
         v-if="fileInfo"
@@ -297,28 +287,26 @@ const addTrackActions = computed(() => [
       </div>
     </PropertySection>
 
-    <!-- File actions (rename, delete, create version) when opened from file manager -->
+    <!-- Actions (merge file and timeline actions) -->
     <PropertySection
-      v-if="fileActions"
+      v-if="fileActions || !finalIsReadOnly"
       :title="t('videoEditor.fileManager.actions.title', 'Actions')"
     >
-      <EntryActions
-        :primary-actions="fileActions.primary"
-        :secondary-actions="fileActions.secondary"
-      />
+      <div class="flex flex-col gap-2">
+        <EntryActions
+          v-if="fileActions"
+          :primary-actions="fileActions.primary"
+          :secondary-actions="fileActions.secondary"
+        />
+        <div v-if="!finalIsReadOnly" :class="{ 'mt-1 pt-1 border-t border-ui-border/50': fileActions }">
+          <PropertyActionList :actions="addTrackActions" :vertical="false" justify="start" size="xs" />
+        </div>
+      </div>
     </PropertySection>
 
-    <!-- Timeline actions (add track) -->
-    <PropertySection
-      v-if="!finalIsReadOnly"
-      :title="t('fastcat.timeline.properties.actions', 'Actions')"
-    >
-      <PropertyActionList :actions="addTrackActions" :vertical="false" justify="start" size="xs" />
-    </PropertySection>
-
-    <!-- Settings -->
-    <PropertySection v-if="!finalIsReadOnly" :title="t('common.settings', 'Settings')">
-      <div class="flex flex-col">
+    <!-- Settings (No title, includes Master Volume) -->
+    <PropertySection v-if="!finalIsReadOnly">
+      <div class="flex flex-col gap-3 py-1">
         <PropertyRow :label="t('fastcat.timeline.properties.zoom', 'Zoom')">
           <div class="flex items-center gap-2">
             <div class="min-w-0 flex-1">
@@ -350,6 +338,26 @@ const addTrackActions = computed(() => [
             />
           </div>
         </PropertyRow>
+
+        <div class="h-px bg-ui-border opacity-30 my-0.5" />
+
+        <PropertyRow :label="t('fastcat.track.audio.volume', 'Volume')">
+          <div class="flex items-center gap-2">
+            <div class="min-w-0 flex-1">
+              <UiWheelSlider
+                v-model="masterGain"
+                :min="0"
+                :max="2"
+                :step="0.001"
+                :wheel-step-multiplier="10"
+                :default-value="1"
+              />
+            </div>
+            <div class="w-16 shrink-0 text-xs font-mono text-center opacity-60">
+              {{ masterGain.toFixed(3) }}x
+            </div>
+          </div>
+        </PropertyRow>
       </div>
     </PropertySection>
 
@@ -375,24 +383,5 @@ const addTrackActions = computed(() => [
       :effects="masterAudioEffects"
       @update:effects="handleUpdateMasterAudioEffects"
     />
-
-    <!-- Master Volume -->
-    <PropertySection
-      v-if="!finalIsReadOnly"
-      :title="t('fastcat.timeline.properties.masterVolume', 'Master Volume')"
-    >
-      <div class="flex flex-col">
-        <PropertyRow :label="masterGain.toFixed(3) + 'x'">
-          <UiWheelSlider
-            v-model="masterGain"
-            :min="0"
-            :max="2"
-            :step="0.001"
-            :wheel-step-multiplier="10"
-            :default-value="1"
-          />
-        </PropertyRow>
-      </div>
-    </PropertySection>
   </div>
 </template>
