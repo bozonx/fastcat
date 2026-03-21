@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, provide, watch, nextTick } from 'vue';
+import { useSelectionStore } from '~/stores/selection.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useAutoScroll } from '~/composables/ui/useAutoScroll';
 import { useProjectStore } from '~/stores/project.store';
@@ -23,6 +24,7 @@ const uiStore = useUiStore();
 const focusStore = useFocusStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const proxyStore = useProxyStore();
+const selectionStore = useSelectionStore();
 const clipboardStore = useAppClipboard();
 const { currentDragOperation } = clipboardStore;
 const { loadTimeline } = useProjectActions();
@@ -98,10 +100,45 @@ function onContainerDragLeave(e: DragEvent) {
 }
 
 function onTreeContainerKeyDown(e: KeyboardEvent) {
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+  const isMod = e.ctrlKey || e.metaKey;
+  const key = e.key.toLowerCase();
+
+  if (isMod && key === 'a') {
     e.preventDefault();
     e.stopPropagation();
     uiStore.fileTreeSelectAllTrigger++;
+    return;
+  }
+
+  if (isMod && key === 'v') {
+    e.preventDefault();
+    e.stopPropagation();
+    const target = props.findEntryByPath(selectedPath.value ?? '');
+    onFileActionBase.paste(target ?? { kind: 'directory', path: '', name: 'root' } as FsEntry);
+    return;
+  }
+
+  if (isMod && key === 'c') {
+    if ((e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'TEXTAREA') return;
+    const selected = selectionStore.selectedEntity;
+    if (selected?.source === 'fileManager') {
+      e.preventDefault();
+      e.stopPropagation();
+      const entries = selected.kind === 'multiple' ? selected.entries : [selected.entry];
+      onFileActionBase.copy(entries);
+    }
+    return;
+  }
+
+  if (isMod && key === 'x') {
+    if ((e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'TEXTAREA') return;
+    const selected = selectionStore.selectedEntity;
+    if (selected?.source === 'fileManager') {
+      e.preventDefault();
+      e.stopPropagation();
+      const entries = selected.kind === 'multiple' ? selected.entries : [selected.entry];
+      onFileActionBase.cut(entries);
+    }
     return;
   }
 

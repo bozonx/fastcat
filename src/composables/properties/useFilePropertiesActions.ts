@@ -105,16 +105,16 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       icon: 'i-heroicons-folder-plus',
       onClick: options.createSubfolder,
     },
-  ]);
-
-  const directorySecondaryActions = computed<SecondaryEntryAction[]>(() => [
     {
       id: 'paste',
-      label: options.t('common.paste', 'Paste'),
+      title: options.t('common.paste', 'Paste'),
       icon: 'i-heroicons-clipboard',
       hidden: !options.hasClipboardItems.value,
       onClick: options.onPaste,
     },
+  ]);
+
+  const directorySecondaryActions = computed<SecondaryEntryAction[]>(() => [
     {
       id: 'createTimeline',
       label: options.t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline'),
@@ -158,14 +158,14 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'copy',
       title: options.t('common.copy', 'Copy'),
       icon: 'i-heroicons-document-duplicate',
-      hidden: !options.canCopyOrCut.value,
+      hidden: true, // Hidden in primary (icons)
       onClick: options.onCopy,
     },
     {
       id: 'cut',
       title: options.t('common.cut', 'Cut'),
       icon: 'i-heroicons-scissors',
-      hidden: !options.canCopyOrCut.value,
+      hidden: true, // Hidden in primary (icons), available in secondary if needed
       onClick: options.onCut,
     },
     {
@@ -193,11 +193,32 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
 
   const fileSecondaryActions = computed<SecondaryEntryAction[]>(() => [
     {
+      id: 'paste',
+      label: options.t('common.paste', 'Paste'),
+      icon: 'i-heroicons-clipboard',
+      hidden: !options.hasClipboardItems.value,
+      onClick: options.onPaste,
+    },
+    {
       id: 'convertFile',
       label: options.t('videoEditor.fileManager.actions.convertFile', 'Convert File'),
       icon: 'i-heroicons-arrow-path',
       hidden: !options.canConvertFile.value,
       onClick: options.onConvert,
+    },
+    {
+      id: 'copy',
+      label: options.t('common.copy', 'Copy'),
+      icon: 'i-heroicons-document-duplicate',
+      hidden: !options.canCopyOrCut.value,
+      onClick: options.onCopy,
+    },
+    {
+      id: 'cut',
+      label: options.t('common.cut', 'Cut'),
+      icon: 'i-heroicons-scissors',
+      hidden: !options.canCopyOrCut.value,
+      onClick: options.onCut,
     },
     {
       id: 'transcribe',

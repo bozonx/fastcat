@@ -20,25 +20,28 @@ function splitFileName(name: string): { baseName: string; extension: string } {
   };
 }
 
-async function generateUniqueEntryCopyName(params: {
+async function generateUniqueEntryNameWithSuffix(params: {
   vfs: IFileSystemAdapter;
   dirPath: string;
   name: string;
 }): Promise<string> {
   const { baseName, extension } = splitFileName(params.name);
-  const candidateName = extension ? `${baseName} copy${extension}` : `${baseName} copy`;
-  const candidatePath = params.dirPath ? `${params.dirPath}/${candidateName}` : candidateName;
+  let candidateName = params.name;
+  let candidatePath = params.dirPath ? `${params.dirPath}/${candidateName}` : candidateName;
 
   if (!(await params.vfs.exists(candidatePath))) {
     return candidateName;
   }
 
-  return await generateUniqueFsEntryName({
-    vfs: params.vfs,
-    dirPath: params.dirPath,
-    baseName: extension ? `${baseName} copy_` : `${baseName} copy_`,
-    extension,
-  });
+  let counter = 1;
+  while (true) {
+    candidateName = `${baseName} (${counter})${extension}`;
+    candidatePath = params.dirPath ? `${params.dirPath}/${candidateName}` : candidateName;
+    if (!(await params.vfs.exists(candidatePath))) {
+      return candidateName;
+    }
+    counter++;
+  }
 }
 
 export interface HandleFilesDeps {
@@ -170,11 +173,12 @@ export async function moveEntryCommand(
   const sourcePath = params.source.path;
   const targetDirPath = params.targetDirPath ?? '';
   if (!sourcePath) return;
-  const newPath = targetDirPath ? `${targetDirPath}/${params.source.name}` : params.source.name;
-
-  if (await deps.vfs.exists(newPath)) {
-    throw new Error(`Target already exists: ${params.source.name}`);
-  }
+  const newName = await generateUniqueEntryNameWithSuffix({
+    vfs: deps.vfs,
+    dirPath: targetDirPath,
+    name: params.source.name,
+  });
+  const newPath = targetDirPath ? `${targetDirPath}/${newName}` : newName;
 
   await deps.vfs.moveEntry(sourcePath, newPath);
 
@@ -205,7 +209,7 @@ export async function copyEntryCommand(
     throw new Error('Source path is required');
   }
 
-  const nextName = await generateUniqueEntryCopyName({
+  const nextName = await generateUniqueEntryNameWithSuffix({
     vfs: deps.vfs,
     dirPath: targetDirPath,
     name: params.source.name,
