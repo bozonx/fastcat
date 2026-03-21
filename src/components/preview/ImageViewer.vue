@@ -26,6 +26,7 @@ const {
   scale,
   translateX,
   translateY,
+  isReady,
   reset,
   fitToContainer,
   onWheel,
@@ -136,6 +137,7 @@ onUnmounted(() => {});
         :src="props.src"
         :alt="props.alt || t('common.imagePreview')"
         class="max-w-full max-h-full block checkerboard-bg transition-transform duration-75"
+        :class="isReady ? 'opacity-100' : 'opacity-0'"
         :style="imageStyle"
         draggable="false"
         @load="onImageLoad"
