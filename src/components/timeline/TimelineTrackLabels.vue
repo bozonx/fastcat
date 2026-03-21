@@ -202,6 +202,19 @@ const emptyAreaContextMenuItems = [
   ],
 ];
 
+const propertiesContextMenuItems = [
+  [
+    {
+      label: t('fastcat.timeline.properties.title'),
+      icon: 'i-heroicons-cog-6-tooth',
+      onSelect: () => {
+        timelineStore.selectTimelineProperties();
+        selectionStore.selectTimelineProperties();
+      },
+    },
+  ],
+];
+
 function addTextClip() {
   timelineStore.addTextClipAtPlayhead({
     name: t('fastcat.timeline.textClipDefaultName'),
@@ -269,7 +282,9 @@ function onDragVirtualEnd() {
             @mouseleave="timelineStore.hoveredTrackId = null"
           />
         </UContextMenu>
-        <div class="w-full flex-1 min-h-7 shrink-0" />
+        <UContextMenu :items="propertiesContextMenuItems">
+          <div class="w-full flex-1 min-h-7 shrink-0" />
+        </UContextMenu>
         <div class="shrink-0" :style="{ height: `calc(4rem + ${scrollbarCompensation || 0}px)` }" />
       </div>
     </div>
