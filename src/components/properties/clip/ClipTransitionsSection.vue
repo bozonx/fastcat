@@ -73,7 +73,7 @@ const transitionOptions = computed(() =>
                 value && emit('updateType', { edge: 'in', type: value?.value ?? value })
             "
           />
-          <UiSliderInput
+          <UiWheelNumberInput
             :model-value="props.transitionIn.durationUs / 1_000_000"
             :min="0.1"
             :max="
@@ -83,10 +83,9 @@ const transitionOptions = computed(() =>
               )
             "
             :step="0.01"
-            unit="s"
-            :decimals="2"
+            :wheel-step-multiplier="10"
             @update:model-value="
-              (v: number) => emit('updateDuration', { edge: 'in', durationSec: v })
+              (v: any) => emit('updateDuration', { edge: 'in', durationSec: Number(v) })
             "
           />
         </div>
@@ -131,7 +130,7 @@ const transitionOptions = computed(() =>
                 value && emit('updateType', { edge: 'out', type: value?.value ?? value })
             "
           />
-          <UiSliderInput
+          <UiWheelNumberInput
             :model-value="props.transitionOut.durationUs / 1_000_000"
             :min="0.1"
             :max="
@@ -141,10 +140,9 @@ const transitionOptions = computed(() =>
               )
             "
             :step="0.01"
-            unit="s"
-            :decimals="2"
+            :wheel-step-multiplier="10"
             @update:model-value="
-              (v: number) => emit('updateDuration', { edge: 'out', durationSec: v })
+              (v: any) => emit('updateDuration', { edge: 'out', durationSec: Number(v) })
             "
           />
         </div>

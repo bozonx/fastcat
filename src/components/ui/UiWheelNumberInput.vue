@@ -19,7 +19,7 @@ const props = withDefaults(defineProps<UiWheelNumberInputProps>(), {
   max: undefined,
   step: 1,
   wheelStepMultiplier: 1,
-  size: 'sm',
+  size: 'xs',
   disabled: false,
 });
 
@@ -71,16 +71,18 @@ function onAuxClick(e: MouseEvent) {
 </script>
 
 <template>
-  <div ref="wrapperRef" class="relative w-full" @auxclick="onAuxClick">
+  <div ref="wrapperRef" class="relative" @auxclick="onAuxClick">
     <UInput
-      v-model.number="value"
+      v-model="value"
       type="number"
       :min="min"
       :max="max"
       :step="step"
       :size="size"
       :disabled="disabled"
+      variant="soft"
       class="w-full"
+      :ui="{ base: 'text-center font-mono focus:ring-1 focus:ring-primary-500 !bg-ui-bg-elevated hover:!bg-ui-border-elevated transition-colors cursor-ns-resize' }"
     />
   </div>
 </template>

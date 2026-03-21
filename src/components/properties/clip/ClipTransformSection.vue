@@ -101,7 +101,7 @@ function clampNumber(value: number, min: number, max: number): number {
         v-if="canEditTransform"
         class="flex items-center gap-1 text-[10px] text-ui-text-muted hover:text-ui-text"
         :title="t('fastcat.clip.transform.resetAll', 'Reset All')"
-        @click="resetAll"
+        @click="() => { resetAll(); emit('updateSpeed', 1); }"
       >
         <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
       </button>

@@ -116,13 +116,13 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
 </script>
 
 <template>
-  <div
-    class="space-y-2 mt-2 bg-ui-bg-elevated px-2 py-3 rounded border border-ui-border text-sm"
+  <PropertySection
+    :title="safeTitle"
+    class="mt-2"
     @dragover="onDragOver"
     @drop="onDrop"
   >
-    <div class="flex items-center justify-between">
-      <span class="font-medium text-ui-text">{{ safeTitle }}</span>
+    <template #header-actions>
       <UButton
         size="xs"
         variant="soft"
@@ -132,7 +132,9 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
       >
         {{ safeAddLabel }}
       </UButton>
-    </div>
+    </template>
+
+    <div class="space-y-2 py-1">
 
     <div v-if="safeEffects.length === 0" class="text-xs text-ui-text-muted text-center py-2">
       {{ safeEmptyLabel }}
@@ -194,6 +196,8 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
       </div>
     </VueDraggable>
 
+    </div>
+    
     <SelectEffectModal v-model:open="isEffectModalOpen" @select="handleAddEffect" />
 
     <UiModal
@@ -221,5 +225,5 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
         </div>
       </template>
     </UiModal>
-  </div>
+  </PropertySection>
 </template>
