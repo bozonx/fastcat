@@ -2,9 +2,9 @@
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectManagement } from '~/composables/project/useProjectManagement';
 import UiSearchInput from '~/components/ui/UiSearchInput.vue';
-import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiModal from '~/components/ui/UiModal.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
+import UiTextInput from '~/components/ui/UiTextInput.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import ProjectThumbnail from '~/components/startup/ProjectThumbnail.vue';
 import EditorSettingsModal from '~/components/settings/EditorSettingsModal.vue';
@@ -157,7 +157,7 @@ const smartSortedProjects = computed(() => {
                     />
                   </div>
                   <div v-if="isRenaming === project.projectName" class="flex-1">
-                    <UInput
+                    <UiTextInput
                       v-model="renameValue"
                       size="sm"
                       autofocus
@@ -223,17 +223,14 @@ const smartSortedProjects = computed(() => {
     :ui="{ content: 'sm:max-w-lg max-h-[90vh]', body: 'overflow-y-auto' }"
   >
     <div class="space-y-6">
-      <div class="space-y-2">
-        <label class="text-sm font-medium text-ui-text">
-          {{ t('fastcat.projects.projectNamePlaceholder') }}
-        </label>
-        <UInput
+      <UFormField :label="t('fastcat.projects.projectNamePlaceholder')">
+        <UiTextInput
           v-model="projectCreationSettings.name"
           :placeholder="t('fastcat.projects.projectNamePlaceholder')"
           autofocus
           @keyup.enter="createNewProject"
         />
-      </div>
+      </UFormField>
 
       <div
         v-if="!projectCreationSettings.isAdvancedSettingsOpen"

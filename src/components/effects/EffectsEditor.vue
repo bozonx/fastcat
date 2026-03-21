@@ -204,7 +204,7 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
       <template #body>
         <div class="flex flex-col gap-4">
           <UFormField :label="t('common.name', 'Name')">
-            <UInput
+            <UiTextInput
               v-model="newPresetName"
               :placeholder="t('fastcat.effects.presetNamePlaceholder', 'My Custom Preset')"
               autofocus

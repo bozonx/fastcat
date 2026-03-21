@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import UiModal from '~/components/ui/UiModal.vue';
+import UiTextInput from '~/components/ui/UiTextInput.vue';
 import { ref, computed } from 'vue';
-import type { ShapeType, TimelineClipItem, TimelineTextClipItem, TimelineShapeClipItem, TimelineHudClipItem } from '~/timeline/types';
+import type {
+  ShapeType,
+  TimelineClipItem,
+  TimelineTextClipItem,
+  TimelineShapeClipItem,
+  TimelineHudClipItem,
+} from '~/timeline/types';
 import type { ParamControl } from '~/components/properties/params';
 import { usePresetsStore } from '~/stores/presets.store';
 import ClipBackgroundProperties from './ClipBackgroundProperties.vue';
@@ -116,7 +123,7 @@ function handleLoadHudPreset(presetId: string) {
     <template #body>
       <div class="flex flex-col gap-4">
         <UFormField :label="t('common.name', 'Name')">
-          <UInput
+          <UiTextInput
             v-model="newPresetName"
             :placeholder="t('fastcat.effects.presetNamePlaceholder', 'My Custom Preset')"
             autofocus

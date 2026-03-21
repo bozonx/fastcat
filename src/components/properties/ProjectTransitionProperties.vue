@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import UiModal from '~/components/ui/UiModal.vue';
+import UiTextInput from '~/components/ui/UiTextInput.vue';
 import { ref, watch, computed } from 'vue';
 import { getTransitionManifest, normalizeTransitionParams } from '~/transitions';
 import { usePresetsStore } from '~/stores/presets.store';
@@ -104,7 +105,7 @@ const actions = computed(() => {
       <template #body>
         <div class="flex flex-col gap-4">
           <UFormField :label="t('common.name', 'Name')">
-            <UInput
+            <UiTextInput
               v-model="newPresetName"
               :placeholder="t('fastcat.effects.presetNamePlaceholder', 'My Custom Preset')"
               autofocus
