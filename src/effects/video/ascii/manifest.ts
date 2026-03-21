@@ -19,7 +19,7 @@ export const asciiManifest: EffectManifest<AsciiParams> = {
     {
       kind: 'slider',
       key: 'size',
-      label: 'Размер',
+      label: 'Size',
       labelKey: 'fastcat.effects.video.ascii.params.size',
       min: 2,
       max: 64,
