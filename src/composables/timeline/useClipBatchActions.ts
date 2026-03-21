@@ -286,7 +286,7 @@ export function useClipBatchActions(
 
     for (const { trackId, itemId } of items.value) {
       const track = doc.tracks.find((t) => t.id === trackId);
-      if (!track) continue;
+      if (!track || track.locked) continue;
       const clip = track.items.find((it) => it.id === itemId);
       if (!clip || clip.kind !== 'clip') continue;
       if ((clip as any).locked) continue;
@@ -308,7 +308,9 @@ export function useClipBatchActions(
     ctx.batchApplyTimeline(cmds);
   }
 
-  function handleBatchUpdateProperties(properties: Partial<TimelineClipItem> | ((clip: TimelineClipItem) => Partial<TimelineClipItem>)) {
+  function handleBatchUpdateProperties(
+    properties: Partial<TimelineClipItem> | ((clip: TimelineClipItem) => Partial<TimelineClipItem>),
+  ) {
     const doc = ctx.timelineDoc.value;
     const cmds = items.value.map(({ trackId, itemId }) => {
       let props = properties;
@@ -343,7 +345,7 @@ export function useClipBatchActions(
 
     for (const { trackId, itemId } of items.value) {
       const track = doc.tracks.find((t) => t.id === trackId);
-      if (!track) continue;
+      if (!track || track.locked) continue;
       const clip = track.items.find((it) => it.id === itemId);
       if (!clip || clip.kind !== 'clip') continue;
       if ((clip as any).locked) continue;

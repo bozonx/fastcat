@@ -20,9 +20,13 @@ export function collectMultiSelectionState(
 ): MultiSelectionState {
   const selectedClips: TimelineClipItem[] = [];
   const itemsToUpdate: MultiSelectionItemRef[] = [];
+  const lockedTrackIds = new Set<string>();
 
   if (doc) {
     for (const track of doc.tracks) {
+      if (track.locked) {
+        lockedTrackIds.add(track.id);
+      }
       for (const item of track.items) {
         if (!selectedItemIds.includes(item.id)) continue;
 
@@ -129,6 +133,7 @@ export function collectMultiSelectionState(
     allDisabled: selectedClips.length > 0 && selectedClips.every((clip) => clip.disabled),
     hasFreeClip: selectedClips.some((clip) => isClipFreePosition(clip, doc)),
     hasLockedLinks,
+    hasLockedTrack: lockedTrackIds.size > 0,
     hasAudioOrVideoWithAudio,
     hasVideo,
     allMuted,

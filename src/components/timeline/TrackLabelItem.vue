@@ -97,6 +97,11 @@ function toggleAudioSolo(e: MouseEvent) {
   timelineStore.toggleTrackAudioSolo(props.track.id);
 }
 
+function toggleTrackLock(e: MouseEvent) {
+  e.stopPropagation();
+  timelineStore.updateTrackProperties(props.track.id, { locked: !props.track.locked });
+}
+
 onBeforeUnmount(() => {
   if (clipResetTimeoutId) {
     clearTimeout(clipResetTimeoutId);
@@ -113,15 +118,19 @@ onBeforeUnmount(() => {
       isSelected ? 'text-ui-text' : 'text-ui-text-muted',
       isHovered && !isSelected ? 'bg-ui-bg-elevated/80' : '',
       timelineStore.isAnyTrackSoloed && !track.audioSolo ? 'opacity-50 grayscale-[0.5]' : '',
+      track.locked ? 'grayscale-[0.3]' : '',
     ]"
-    :style="{ 
+    :style="{
       height: `${height}px`,
-      backgroundColor: isSelected && track.color && track.color !== '#2a2a2a' 
-        ? `${track.color}1a` 
-        : isSelected ? 'rgba(var(--color-primary-500), 0.12)' : undefined 
+      backgroundColor:
+        isSelected && track.color && track.color !== '#2a2a2a'
+          ? `${track.color}1a`
+          : isSelected
+            ? 'rgba(var(--color-primary-500), 0.12)'
+            : undefined,
     }"
     @click.stop="emit('select')"
-    @dblclick="timelineStore.selectAllClipsOnTrack(track.id)"
+    @dblclick="!track.locked && timelineStore.selectAllClipsOnTrack(track.id)"
     @contextmenu.stop="emit('select')"
   >
     <div
@@ -133,10 +142,11 @@ onBeforeUnmount(() => {
             ? 'bg-ui-border/50'
             : '',
       ]"
-      :style="{ 
-        backgroundColor: (isSelected || isHovered) && track.color && track.color !== '#2a2a2a' 
-          ? track.color 
-          : undefined 
+      :style="{
+        backgroundColor:
+          (isSelected || isHovered) && track.color && track.color !== '#2a2a2a'
+            ? track.color
+            : undefined,
       }"
     />
 
@@ -145,9 +155,10 @@ onBeforeUnmount(() => {
         class="max-w-full px-1 py-0.5 rounded transition-colors overflow-hidden"
         :class="[isRenaming ? 'bg-ui-bg-elevated ring-1 ring-ui-border-accent' : '']"
         :style="{
-           backgroundColor: !isRenaming && isSelected && track.color && track.color !== '#2a2a2a'
-             ? `${track.color}33`
-             : undefined
+          backgroundColor:
+            !isRenaming && isSelected && track.color && track.color !== '#2a2a2a'
+              ? `${track.color}33`
+              : undefined,
         }"
         @click.stop="timelineStore.renamingTrackId = track.id"
       >
@@ -220,6 +231,26 @@ onBeforeUnmount(() => {
         :style="track.audioSolo ? { backgroundColor: '#fbbf24', color: '#000000' } : undefined"
         :title="track.audioSolo ? 'Unsolo Track' : 'Solo Track'"
         @click="toggleAudioSolo"
+      />
+
+      <UButton
+        size="xs"
+        :variant="track.locked ? 'solid' : 'ghost'"
+        :color="track.locked ? 'primary' : 'gray'"
+        icon="i-heroicons-lock-closed"
+        class="w-6 h-6 p-0 flex items-center justify-center transition-opacity"
+        :class="[
+          track.locked
+            ? 'text-white! opacity-100 hover:opacity-90'
+            : 'opacity-60 group-hover:opacity-100',
+        ]"
+        :style="
+          track.locked
+            ? { backgroundColor: 'var(--color-primary-500)', color: '#ffffff' }
+            : undefined
+        "
+        :title="track.locked ? 'Unlock Track' : 'Lock Track'"
+        @click="toggleTrackLock"
       />
     </div>
 

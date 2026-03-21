@@ -267,12 +267,14 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
 export function buildSingleItemActionGroup(options: UseClipContextMenuOptions): ContextMenuGroup {
   const track = options.track.value;
   const item = options.item.value;
+  const isTrackLocked = Boolean(track.locked);
 
   return [
     {
       label: options.t('fastcat.timeline.delete', 'Delete'),
       icon: 'i-heroicons-trash',
-      disabled: item.kind === 'clip' && Boolean((item as TimelineClipItem).locked),
+      disabled:
+        isTrackLocked || (item.kind === 'clip' && Boolean((item as TimelineClipItem).locked)),
       onSelect: () => {
         options.clearSelection();
         options.applyTimelineCommand({

@@ -30,7 +30,8 @@ export function useClipInteractions(ctx: ClipInteractionsContext) {
         e.button === 0 &&
         ctx.canEditClipContent.value &&
         clipItem.value &&
-        !clipItem.value.locked
+        !clipItem.value.locked &&
+        !ctx.track.value.locked
       ) {
         const isShift = isLayer1Active(e, ctx.userSettings.value);
         const isCtrl = isLayer2Active(e, ctx.userSettings.value);

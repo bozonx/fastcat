@@ -187,6 +187,7 @@ export function buildMultiSelectionContextMenu(
     {
       label: options.t('fastcat.timeline.delete', 'Delete'),
       icon: 'i-heroicons-trash',
+      disabled: state.hasLockedTrack,
       onSelect: () => {
         options.clearSelection();
         const cmds = state.itemsToUpdate.map(({ trackId, itemId }) => ({

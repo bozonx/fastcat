@@ -171,6 +171,15 @@ function getTrackContextMenuItems(track: TimelineTrack) {
         },
       },
       {
+        label: track.locked
+          ? t('fastcat.track.unlock', 'Unlock track')
+          : t('fastcat.track.lock', 'Lock track'),
+        icon: track.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
+        onSelect: () => {
+          timelineStore.updateTrackProperties(track.id, { locked: !track.locked });
+        },
+      },
+      {
         label: t('fastcat.timeline.deleteTrack'),
         icon: 'i-heroicons-trash',
         onSelect: () => requestDeleteTrack(track),

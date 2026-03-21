@@ -66,6 +66,7 @@ export interface MultiSelectionState {
   allDisabled: boolean;
   hasFreeClip: boolean;
   hasLockedLinks: boolean;
+  hasLockedTrack: boolean;
   hasAudioOrVideoWithAudio: boolean;
   hasVideo: boolean;
   allMuted: boolean;

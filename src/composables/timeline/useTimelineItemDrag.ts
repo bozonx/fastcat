@@ -196,7 +196,10 @@ export function useTimelineItemDrag(
 
     e.stopPropagation();
 
-    const item = tracks.value.find((t) => t.id === trackId)?.items.find((it) => it.id === itemId);
+    const track = tracks.value.find((t) => t.id === trackId);
+    if (track?.locked) return;
+
+    const item = track?.items.find((it) => it.id === itemId);
     if (item?.kind === 'clip' && Boolean((item as any).locked)) return;
 
     if (!timelineStore.selectedItemIds.includes(itemId)) {
@@ -278,9 +281,10 @@ export function useTimelineItemDrag(
     e.preventDefault();
     e.stopPropagation();
 
-    const item = tracks.value
-      .find((t) => t.id === input.trackId)
-      ?.items.find((it) => it.id === input.itemId);
+    const track = tracks.value.find((t) => t.id === input.trackId);
+    if (track?.locked) return;
+
+    const item = track?.items.find((it) => it.id === input.itemId);
     if (item?.kind === 'clip' && Boolean((item as any).locked)) return;
 
     draggingMode.value = input.edge === 'start' ? 'trim_start' : 'trim_end';
