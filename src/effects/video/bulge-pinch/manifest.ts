@@ -10,7 +10,7 @@ export interface BulgePinchParams {
 
 export const bulgePinchManifest: EffectManifest<BulgePinchParams> = {
   type: 'bulgePinch',
-  name: 'Искажение (Выпуклость)',
+  name: 'Bulge/Pinch',
   nameKey: 'fastcat.effects.video.bulgePinch.name',
   description: 'Bulge or pinch distortion (fisheye)',
   descriptionKey: 'fastcat.effects.video.bulgePinch.description',

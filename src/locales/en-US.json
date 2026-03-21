@@ -356,6 +356,11 @@
             "alpha": "Opacity",
             "maxColors": "Color Count (0=Unlimited)",
             "replace": "Replace color"
+          },
+          "options": {
+            "linear": "Linear",
+            "radial": "Radial",
+            "conic": "Conic"
           }
         },
         "colorMap": {
@@ -370,7 +375,7 @@
           "name": "Color Filter",
           "description": "Ready-to-use color presets",
           "params": {
-            "filterType": "None",
+            "filterType": "Filter",
             "intensity": "Intensity"
           },
           "options": {
