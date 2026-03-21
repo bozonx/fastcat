@@ -87,6 +87,7 @@ function createCurvePoints(
   curve: TransitionCurve,
   width: number,
   height: number,
+  params?: Record<string, any>,
 ): TransitionPreviewPoint[] {
   const steps = 18;
   const points: TransitionPreviewPoint[] = [];
@@ -95,7 +96,7 @@ function createCurvePoints(
     const t = index / steps;
     points.push({
       x: roundSvg(t * width),
-      y: roundSvg(applyTransitionCurve(t, curve) * height),
+      y: roundSvg(applyTransitionCurve(t, curve, params) * height),
     });
   }
 
@@ -112,8 +113,9 @@ export function getTransitionCurveSinglePath(
   width: number,
   height: number,
   curve: TransitionCurve,
+  params?: Record<string, any>,
 ): string {
-  const points = createCurvePoints(curve, width, height);
+  const points = createCurvePoints(curve, width, height, params);
   return buildPathFromPoints(points);
 }
 
@@ -122,9 +124,10 @@ export function getTransitionSolidPath(
   height: number,
   curve: TransitionCurve,
   edge: 'in' | 'out',
+  params?: Record<string, any>,
 ): string {
   const halfHeight = height / 2;
-  const points = createCurvePoints(curve, width, halfHeight);
+  const points = createCurvePoints(curve, width, halfHeight, params);
 
   const mirroredPoints = points.map((point) => ({
     x: point.x,
@@ -163,6 +166,7 @@ export function getFadeLinePattern(
   edge: 'in' | 'out',
   curve: TransitionCurve,
   width = 100,
+  params?: Record<string, any>,
 ): FadePatternLine[] {
   const count = 28;
   const sampleSteps = 256;
@@ -176,8 +180,8 @@ export function getFadeLinePattern(
     const t = i / sampleSteps;
     const tPrev = Math.max(0, t - dt);
     const tNext = Math.min(1, t + dt);
-    const yPrev = applyTransitionCurve(tPrev, curve);
-    const yNext = applyTransitionCurve(tNext, curve);
+    const yPrev = applyTransitionCurve(tPrev, curve, params);
+    const yNext = applyTransitionCurve(tNext, curve, params);
     const slope = Math.abs(yNext - yPrev) / (tNext - tPrev || dt);
     const weight = Math.max(minWeight, slope);
     cumulative[i] = (cumulative[i - 1] ?? 0) + weight;

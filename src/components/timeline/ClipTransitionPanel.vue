@@ -117,21 +117,13 @@ const sourceOptions = computed(() => [
 ]);
 
 const curveOptions = computed<CurveOption[]>(() => {
-  const curves: TransitionCurve[] = [
-    'linear',
-    'bezier',
-    'linear-slow-end',
-    'fast-slow-end',
-    'fast-linear-end',
-    'slow-linear-end',
-    'linear-fast-end',
-  ];
+  const curves: TransitionCurve[] = ['linear', 'smooth', 'ease-in', 'ease-out', 'custom'];
 
   return curves.map((curve) => {
     return {
       value: curve,
       label: t(`fastcat.timeline.transition.curve${toCurveLabelKey(curve)}`),
-      curvePath: getTransitionCurveSinglePath(100, 100, curve),
+      curvePath: getTransitionCurveSinglePath(100, 100, curve, selectedParams.value),
     };
   });
 });
@@ -144,18 +136,14 @@ function toCurveLabelKey(curve: TransitionCurve): string {
   switch (curve) {
     case 'linear':
       return 'Linear';
-    case 'bezier':
-      return 'Bezier';
-    case 'linear-slow-end':
-      return 'LinearSlowEnd';
-    case 'fast-slow-end':
-      return 'FastSlowEnd';
-    case 'fast-linear-end':
-      return 'FastLinearEnd';
-    case 'slow-linear-end':
-      return 'SlowLinearEnd';
-    case 'linear-fast-end':
-      return 'LinearFastEnd';
+    case 'smooth':
+      return 'Smooth';
+    case 'ease-in':
+      return 'EaseIn';
+    case 'ease-out':
+      return 'EaseOut';
+    case 'custom':
+      return 'Custom';
   }
 }
 
@@ -283,7 +271,11 @@ function handleSavePreset() {
       <UiButtonGroup v-model="selectedCurve" :options="curveOptions" orientation="vertical" fluid>
         <template #option="{ option }">
           <div class="flex items-center gap-2 w-full min-w-0">
-            <svg class="w-14 h-8 shrink-0" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <svg
+              class="w-14 h-8 shrink-0 rounded overflow-hidden"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+            >
               <rect x="0" y="0" width="100" height="100" fill="rgba(255,255,255,0.04)" />
               <path
                 :d="toCurveOption(option).curvePath"
@@ -299,6 +291,34 @@ function handleSavePreset() {
           </div>
         </template>
       </UiButtonGroup>
+    </div>
+
+    <!-- Curve fine-tuning sliders -->
+    <div v-if="selectedCurve !== 'linear'" class="flex flex-col gap-2 p-2 bg-ui-bg/30 rounded border border-ui-border/50">
+      <div class="flex flex-col gap-1">
+        <span class="text-ui-text-muted text-[10px] uppercase font-bold tracking-wider">
+          {{ t('fastcat.timeline.transition.curveParamBulge') }}
+        </span>
+        <UiSliderInput
+          :model-value="Number(selectedParams.curveBulge ?? 0.8)"
+          :min="0"
+          :max="1"
+          :step="0.01"
+          @update:model-value="updateParam('curveBulge', $event)"
+        />
+      </div>
+      <div class="flex flex-col gap-1">
+        <span class="text-ui-text-muted text-[10px] uppercase font-bold tracking-wider">
+          {{ t('fastcat.timeline.transition.curveParamOffset') }}
+        </span>
+        <UiSliderInput
+          :model-value="Number(selectedParams.curveOffset ?? 0.5)"
+          :min="0"
+          :max="1"
+          :step="0.01"
+          @update:model-value="updateParam('curveOffset', $event)"
+        />
+      </div>
     </div>
 
     <div v-if="visibleParamFields.length" class="flex flex-col gap-2">

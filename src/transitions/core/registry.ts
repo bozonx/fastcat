@@ -5,14 +5,7 @@ export type TransitionType = string;
 
 export type TransitionMode = 'adjacent' | 'background' | 'transparent';
 
-export type TransitionCurve =
-  | 'linear'
-  | 'bezier'
-  | 'linear-slow-end'
-  | 'fast-slow-end'
-  | 'fast-linear-end'
-  | 'slow-linear-end'
-  | 'linear-fast-end';
+export type TransitionCurve = 'linear' | 'smooth' | 'ease-in' | 'ease-out' | 'custom';
 
 export const DEFAULT_TRANSITION_MODE: TransitionMode = 'transparent';
 
@@ -20,17 +13,19 @@ export const DEFAULT_TRANSITION_CURVE: TransitionCurve = 'linear';
 
 export const TRANSITION_CURVE_VALUES: TransitionCurve[] = [
   'linear',
-  'bezier',
-  'linear-slow-end',
-  'fast-slow-end',
-  'fast-linear-end',
-  'slow-linear-end',
-  'linear-fast-end',
+  'smooth',
+  'ease-in',
+  'ease-out',
+  'custom',
 ];
 
 export interface TransitionShaderContext {
   progress: number;
   curve: TransitionCurve;
+  curveParams?: {
+    bulge?: number;
+    offset?: number;
+  };
   elapsedUs?: number;
   durationUs?: number;
   edge?: 'in' | 'out';
@@ -103,27 +98,48 @@ function solveCubicBezier(t: number, x1: number, y1: number, x2: number, y2: num
   return ((ay * guess + by) * guess + cy) * guess;
 }
 
-export function applyTransitionCurve(progress: number, curve: TransitionCurve): number {
+/**
+ * Applies an interpolation curve to the progress value.
+ * @param progress Value from 0 to 1
+ * @param curve Curve type
+ * @param params Optional parameters (curveBulge [0..1], curveOffset [0..1])
+ */
+export function applyTransitionCurve(
+  progress: number,
+  curve: TransitionCurve,
+  params?: Record<string, any>,
+): number {
   const t = clampProgress(progress);
 
-  switch (curve) {
-    case 'linear':
-      return t;
-    case 'bezier':
-      return solveCubicBezier(t, 0.42, 0.0, 0.58, 1.0);
-    case 'linear-slow-end':
-      return solveCubicBezier(t, 0.333, 0.333, 0.333, 1.0);
-    case 'fast-slow-end':
-      return solveCubicBezier(t, 0.0, 0.5, 0.5, 1.0);
-    case 'fast-linear-end':
-      return solveCubicBezier(t, 0.0, 0.333, 0.667, 0.667);
-    case 'slow-linear-end':
-      return solveCubicBezier(t, 0.333, 0.0, 0.667, 0.667);
-    case 'linear-fast-end':
-      return solveCubicBezier(t, 0.333, 0.333, 1.0, 0.667);
-    default:
-      return t;
+  let bulge = 0.8;
+  let offset = 0.5;
+
+  if (curve === 'linear') {
+    return t;
   }
+
+  // Extract custom parameters if present
+  if (params) {
+    if (typeof params.curveBulge === 'number') bulge = params.curveBulge;
+    if (typeof params.curveOffset === 'number') offset = params.curveOffset;
+  }
+
+  // Preset overrides
+  if (curve === 'smooth') {
+    // Default smooth (ease-in-out)
+  } else if (curve === 'ease-in') {
+    offset = 1.0;
+  } else if (curve === 'ease-out') {
+    offset = 0.0;
+  }
+
+  // Map bulge [0..1] and offset [0..1] to cubic bezier handles
+  // x1 = offset * bulge
+  // x2 = 1 - (1 - offset) * bulge
+  const x1 = offset * bulge;
+  const x2 = 1 - (1 - offset) * bulge;
+
+  return solveCubicBezier(t, x1, 0, x2, 1);
 }
 
 export function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
