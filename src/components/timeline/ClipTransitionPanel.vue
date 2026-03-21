@@ -6,6 +6,7 @@ import type { TransitionCurve, TransitionParamField } from '~/transitions/core/r
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import UiModal from '~/components/ui/UiModal.vue';
+import UiTextInput from '~/components/ui/UiTextInput.vue';
 import TransitionParamFields from '~/components/properties/TransitionParamFields.vue';
 import { useClipTransitionPanel } from '~/composables/timeline/useClipTransitionPanel';
 import {
@@ -317,7 +318,7 @@ function handleSavePreset() {
     >
       <div class="flex flex-col gap-4">
         <UFormField :label="t('common.name', 'Name')">
-          <UInput
+          <UiTextInput
             v-model="newPresetName"
             :placeholder="t('fastcat.effects.presetNamePlaceholder', 'My Custom Preset')"
             autofocus
