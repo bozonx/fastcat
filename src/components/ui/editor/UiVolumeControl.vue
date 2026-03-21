@@ -40,8 +40,13 @@ interface PopupPosition {
   left: number;
 }
 
+interface ElementLike {
+  $el?: Element | null;
+}
+
 const isHovered = ref(false);
-const triggerEl = ref<HTMLElement | null>(null);
+const triggerEl = ref<HTMLElement | ElementLike | null>(null);
+const iconAnchorEl = ref<HTMLElement | ElementLike | null>(null);
 const closeTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const popupPosition = ref<PopupPosition>({ top: 0, left: 0 });
 
@@ -51,17 +56,24 @@ function clearCloseTimer() {
   closeTimer.value = null;
 }
 
+function resolveElement(target: HTMLElement | ElementLike | null): HTMLElement | null {
+  if (!target) return null;
+  if (target instanceof HTMLElement) return target;
+  if (target.$el instanceof HTMLElement) return target.$el;
+  return null;
+}
+
 function updatePopupPosition() {
-  if (!triggerEl.value || !props.compact) return;
-  const rect = triggerEl.value.getBoundingClientRect();
+  if (!props.compact) return;
+  const anchorEl = resolveElement(iconAnchorEl.value) ?? resolveElement(triggerEl.value);
+  if (!anchorEl) return;
+  const rect = anchorEl.getBoundingClientRect();
   if (props.orientation === 'horizontal') {
-    // Popup renders to the left of the trigger, centered vertically
     popupPosition.value = {
       top: rect.top + rect.height / 2,
-      left: rect.left,
+      left: rect.left + rect.width / 2,
     };
   } else {
-    // Popup renders above the trigger, centered horizontally
     popupPosition.value = {
       top: rect.top,
       left: rect.left + rect.width / 2,
@@ -149,6 +161,7 @@ onBeforeUnmount(() => {
     @mouseleave="scheduleClosePopup"
   >
     <UButton
+      ref="iconAnchorEl"
       size="sm"
       variant="ghost"
       color="neutral"
@@ -189,7 +202,7 @@ onBeforeUnmount(() => {
           :class="
             orientation === 'vertical'
               ? 'origin-bottom -translate-x-1/2 -translate-y-full'
-              : 'origin-right -translate-x-full -translate-y-1/2'
+              : '-translate-x-1/2 -translate-y-1/2'
           "
           :style="{ top: `${popupPosition.top}px`, left: `${popupPosition.left}px` }"
           @mouseenter="onPopupMouseEnter"
