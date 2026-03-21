@@ -45,7 +45,6 @@ const commonActions = computed(() => [
     id: 'delete',
     title: t('common.delete', 'Delete'),
     icon: 'i-heroicons-trash',
-    color: 'danger' as const,
     onClick: () => emit('delete'),
   },
 ]);
@@ -173,7 +172,11 @@ const otherActions = computed(() => {
         class="mb-2"
       />
 
-      <PropertyActionList :actions="otherActions" justify="center" size="xs" />
+      <PropertyActionList
+        :actions="otherActions"
+        justify="start"
+        size="xs"
+      />
     </div>
   </PropertySection>
 </template>

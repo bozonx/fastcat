@@ -22,10 +22,10 @@ export default defineAppConfig({
     },
     input: {
       slots: {
-        base: 'rounded-[var(--radius-ui-md)]',
+        base: 'font-mono text-[11px] rounded-sm',
       },
       defaultVariants: {
-        size: 'sm',
+        size: 'xs',
         variant: 'outline',
       },
     },
@@ -40,10 +40,10 @@ export default defineAppConfig({
     },
     select: {
       slots: {
-        base: 'rounded-[var(--radius-ui-md)]',
+        base: 'text-[11px] rounded-sm',
       },
       defaultVariants: {
-        size: 'sm',
+        size: 'xs',
         variant: 'outline',
       },
     },

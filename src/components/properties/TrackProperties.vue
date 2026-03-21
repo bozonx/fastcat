@@ -181,7 +181,6 @@ const mainActions = computed(() => [
     id: 'delete',
     title: t('common.delete', 'Delete'),
     icon: 'i-heroicons-trash',
-    color: 'danger' as const,
     onClick: requestDeleteTrack,
   },
 ]);
@@ -256,7 +255,7 @@ const extraActions = computed(() => {
         </div>
 
         <PropertyActionList :actions="mainActions" :vertical="false" variant="ghost" justify="start" size="xs" />
-        <PropertyActionList :actions="extraActions" justify="center" size="xs" />
+        <PropertyActionList :actions="extraActions" justify="start" size="xs" />
       </div>
     </PropertySection>
 
