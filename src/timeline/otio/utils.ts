@@ -4,6 +4,7 @@ import type {
   TrackKind,
   ClipTransform,
   TimelineBlendMode,
+  ClipAnchorPreset,
 } from '../types';
 import type { OtioRationalTime, OtioTimeRange } from './types';
 
@@ -132,7 +133,7 @@ export function coerceTransform(raw: unknown): ClipTransform | undefined {
     preset === 'bottomLeft' ||
     preset === 'bottomRight' ||
     preset === 'custom'
-      ? (preset as import('../types').ClipAnchorPreset)
+      ? (preset as ClipAnchorPreset)
       : undefined;
   const anchor =
     safePreset !== undefined

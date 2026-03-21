@@ -1,4 +1,11 @@
-import type { TimelineDocument, TimelineTrackItem, TimelineClipItem } from '../../types';
+import type {
+  TimelineDocument,
+  TimelineTrackItem,
+  TimelineClipItem,
+  TimelineBlendMode,
+  ClipTransform,
+  ClipAnchorPreset,
+} from '../../types';
 import type {
   AddClipToTrackCommand,
   AddVirtualClipToTrackCommand,
@@ -86,9 +93,7 @@ export function updateClipProperties(
     return Math.max(min, Math.min(max, n));
   }
 
-  function sanitizeBlendMode(
-    value: unknown,
-  ): import('~/timeline/types').TimelineBlendMode | undefined {
+  function sanitizeBlendMode(value: unknown): TimelineBlendMode | undefined {
     return value === 'add' ||
       value === 'multiply' ||
       value === 'screen' ||
@@ -105,7 +110,7 @@ export function updateClipProperties(
     return clampNumber(n, 0, Math.max(0, Math.round(maxUs)));
   }
 
-  function sanitizeTransform(raw: unknown): import('~/timeline/types').ClipTransform | undefined {
+  function sanitizeTransform(raw: unknown): ClipTransform | undefined {
     if (!raw || typeof raw !== 'object') return undefined;
     const anyRaw = raw as any;
 
@@ -143,7 +148,7 @@ export function updateClipProperties(
       preset === 'bottomLeft' ||
       preset === 'bottomRight' ||
       preset === 'custom'
-        ? (preset as import('~/timeline/types').ClipAnchorPreset)
+        ? (preset as ClipAnchorPreset)
         : undefined;
     const anchor =
       safePreset !== undefined
@@ -189,7 +194,7 @@ export function updateClipProperties(
         } catch {
           // Exception means overlap occurred (or we want to explicitly ripple shift)
           const clips = track.items
-            .filter((it): it is import('~/timeline/types').TimelineClipItem => it.kind === 'clip')
+            .filter((it): it is TimelineClipItem => it.kind === 'clip')
             .map((c) => ({ ...c, timelineRange: { ...c.timelineRange } }));
           clips.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
 

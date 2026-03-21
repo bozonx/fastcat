@@ -1,4 +1,5 @@
 import type { ClipEffect, TimelineMarker, ClipTransition } from '../types';
+import type { EffectTarget } from '../../effects/core/registry';
 import type { OtioEffect, OtioMarker, OtioTransition } from './types';
 import {
   toTimeRange,
@@ -55,7 +56,7 @@ export function parseEffects(raw: unknown[]): ClipEffect[] {
       id,
       type,
       enabled: e.enabled !== false,
-      target: fastcatMeta?.target as import('../../effects/core/registry').EffectTarget | undefined,
+      target: fastcatMeta?.target as EffectTarget | undefined,
       ...params,
     });
   }

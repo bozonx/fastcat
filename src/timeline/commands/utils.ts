@@ -20,7 +20,7 @@ export function sanitizeFps(value: unknown): number {
 }
 
 export function getDocFps(doc: TimelineDocument): number {
-  return sanitizeFps((doc as any)?.timebase?.fps);
+  return sanitizeFps(doc.timebase.fps);
 }
 
 export type QuantizeMode = 'round' | 'floor' | 'ceil';
@@ -194,15 +194,15 @@ export function mergeAdjacentGaps(items: TimelineTrackItem[]): TimelineTrackItem
 }
 
 export function sliceTrackItemsForOverlay(
-  items: import('../types').TimelineTrackItem[],
+  items: TimelineTrackItem[],
   startUs: number,
   durationUs: number,
   fps: number,
   shouldQuantizeToFrames: boolean,
   excludeItemId?: string,
-): import('../types').TimelineTrackItem[] {
+): TimelineTrackItem[] {
   const endUs = startUs + durationUs;
-  const nextItems: import('../types').TimelineTrackItem[] = [];
+  const nextItems: TimelineTrackItem[] = [];
 
   for (const it of items) {
     if (it.kind !== 'clip') {

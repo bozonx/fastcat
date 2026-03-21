@@ -14,6 +14,8 @@ export interface TimelinePlaybackDeps {
   audioMuted: Ref<boolean>;
   duration: Ref<number>;
   playbackGestureHandler: Ref<((nextPlaying: boolean) => void) | null>;
+  getDocFps: () => number;
+  setCurrentTimeUs: (nextTimeUs: number) => void;
 }
 
 export interface TimelinePlaybackApi {
@@ -27,6 +29,7 @@ export interface TimelinePlaybackApi {
   setPlaybackGestureHandler: (handler: ((nextPlaying: boolean) => void) | null) => void;
   togglePlayback: () => void;
   stopPlayback: () => void;
+  seekFrames: (deltaFrames: number) => void;
 }
 
 export function createTimelinePlayback(deps: TimelinePlaybackDeps): TimelinePlaybackApi {
@@ -96,6 +99,12 @@ export function createTimelinePlayback(deps: TimelinePlaybackDeps): TimelinePlay
     deps.currentTime.value = 0;
   }
 
+  function seekFrames(deltaFrames: number) {
+    const fps = deps.getDocFps();
+    const frameUs = 1_000_000 / fps;
+    deps.setCurrentTimeUs(deps.currentTime.value + deltaFrames * frameUs);
+  }
+
   return {
     setPlaybackSpeed,
     goToStart,
@@ -107,5 +116,6 @@ export function createTimelinePlayback(deps: TimelinePlaybackDeps): TimelinePlay
     setPlaybackGestureHandler,
     togglePlayback,
     stopPlayback,
+    seekFrames,
   };
 }
