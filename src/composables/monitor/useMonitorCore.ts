@@ -290,7 +290,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     } catch (e: any) {
       console.error('Failed to build timeline components', e);
       if (requestId === buildRequestId) {
-        loadError.value = e.message || t('fastcat.monitor.loadError', 'Error loading timeline');
+        loadError.value = e.message || t('fastcat.monitor.loadError');
       }
     } finally {
       if (requestId === buildRequestId) {

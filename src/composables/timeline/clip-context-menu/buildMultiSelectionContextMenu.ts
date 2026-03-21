@@ -16,8 +16,8 @@ export function buildMultiSelectionContextMenu(
 
   mainGroup.push({
     label: state.allDisabled
-      ? options.t('fastcat.timeline.enableClips', 'Enable clips')
-      : options.t('fastcat.timeline.disableClips', 'Disable clips'),
+      ? options.t('fastcat.timeline.enableClips')
+      : options.t('fastcat.timeline.disableClips'),
     icon: state.allDisabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
     onSelect: async () => {
       const cmds = state.itemsToUpdate.map(({ trackId, itemId }) => ({
@@ -34,8 +34,8 @@ export function buildMultiSelectionContextMenu(
   if (state.hasAudioOrVideoWithAudio) {
     mainGroup.push({
       label: state.allMuted
-        ? options.t('fastcat.timeline.unmuteClips', 'Unmute clips')
-        : options.t('fastcat.timeline.muteClips', 'Mute clips'),
+        ? options.t('fastcat.timeline.unmuteClips')
+        : options.t('fastcat.timeline.muteClips'),
       icon: state.allMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark',
       onSelect: async () => {
         const cmds = state.itemsToUpdate.map(({ trackId, itemId }) => ({
@@ -51,8 +51,8 @@ export function buildMultiSelectionContextMenu(
 
     mainGroup.push({
       label: state.allWaveformHalf
-        ? options.t('fastcat.timeline.waveformFull', 'Waveform: Full')
-        : options.t('fastcat.timeline.waveformHalf', 'Waveform: Half'),
+        ? options.t('fastcat.timeline.waveformFull')
+        : options.t('fastcat.timeline.waveformHalf'),
       icon: 'i-heroicons-chart-bar',
       onSelect: async () => {
         const cmds = state.itemsToUpdate.map(({ trackId, itemId }) => ({
@@ -71,7 +71,7 @@ export function buildMultiSelectionContextMenu(
 
   if (state.hasFreeClip) {
     mainGroup.push({
-      label: options.t('fastcat.timeline.quantize', 'Quantize to frames'),
+      label: options.t('fastcat.timeline.quantize'),
       icon: 'i-heroicons-squares-2x2',
       onSelect: async () => {
         if (!state.doc) return;
@@ -104,7 +104,7 @@ export function buildMultiSelectionContextMenu(
 
   if (state.hasLockedLinks) {
     mainGroup.push({
-      label: options.t('fastcat.timeline.unlinkAudio', 'Unlink audio'),
+      label: options.t('fastcat.timeline.unlinkAudio'),
       icon: 'i-heroicons-link-slash',
       onSelect: async () => {
         if (!state.doc) return;
@@ -150,8 +150,8 @@ export function buildMultiSelectionContextMenu(
   if (state.hasVideo) {
     mainGroup.push({
       label: state.allShowWaveform
-        ? options.t('fastcat.timeline.hideWaveform', 'Hide Waveform')
-        : options.t('fastcat.timeline.showWaveform', 'Show Waveform'),
+        ? options.t('fastcat.timeline.hideWaveform')
+        : options.t('fastcat.timeline.showWaveform'),
       icon: state.allShowWaveform ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
       onSelect: async () => {
         const cmds = state.itemsToUpdate.map(({ trackId, itemId }) => ({
@@ -167,8 +167,8 @@ export function buildMultiSelectionContextMenu(
 
     mainGroup.push({
       label: state.allShowThumbnails
-        ? options.t('fastcat.timeline.hideThumbnails', 'Hide Thumbnails')
-        : options.t('fastcat.timeline.showThumbnails', 'Show Thumbnails'),
+        ? options.t('fastcat.timeline.hideThumbnails')
+        : options.t('fastcat.timeline.showThumbnails'),
       icon: 'i-heroicons-photo',
       onSelect: async () => {
         const cmds = state.itemsToUpdate.map(({ trackId, itemId }) => ({
@@ -185,7 +185,7 @@ export function buildMultiSelectionContextMenu(
 
   const actionGroup: ContextMenuGroup = [
     {
-      label: options.t('fastcat.timeline.delete', 'Delete'),
+      label: options.t('fastcat.timeline.delete'),
       icon: 'i-heroicons-trash',
       disabled: state.hasLockedTrack,
       onSelect: () => {

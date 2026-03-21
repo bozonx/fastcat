@@ -135,7 +135,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
 
     if (normalizedPath === WORKSPACE_COMMON_PATH_PREFIX) {
       return {
-        name: deps.t('videoEditor.fileManager.commonFolder', 'Shared Files'),
+        name: deps.t('videoEditor.fileManager.commonFolder'),
         kind: 'directory',
         path: WORKSPACE_COMMON_PATH_PREFIX,
       };
@@ -167,7 +167,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
       (entry) => entry.path === WORKSPACE_COMMON_PATH_PREFIX,
     );
     const commonEntry: FsEntry = {
-      name: deps.t('videoEditor.fileManager.commonFolder', 'Shared Files'),
+      name: deps.t('videoEditor.fileManager.commonFolder'),
       kind: 'directory',
       path: WORKSPACE_COMMON_PATH_PREFIX,
       parentPath: undefined,
@@ -241,11 +241,10 @@ export function createFileManager(deps: FileManagerCreateDeps) {
             onSkipProjectFile: ({ file }) => {
               deps.toast.add({
                 color: 'neutral',
-                title: deps.t('videoEditor.fileManager.skipOtio.title', 'Project files skipped'),
-                description: deps.t(
-                  'videoEditor.fileManager.skipOtio.description',
-                  `${file.name} is a project file and cannot be imported this way. Use Create Timeline instead.`,
-                ),
+                title: deps.t('videoEditor.fileManager.skipOtio.title'),
+                description: deps.t('videoEditor.fileManager.skipOtio.description', {
+                  fileName: file.name,
+                }),
               });
             },
             onMediaImported: ({ projectRelativePath }) => {
@@ -499,10 +498,9 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         await reloadDirectory(TIMELINES_DIR_NAME);
         return createdPath;
       },
-      defaultErrorMessage: t('timelineCreation.failed', 'Failed to create timeline'),
-      toastTitle: t('timelineCreation.errorTitle', 'Timeline error'),
-      toastDescription: () =>
-        error.value || t('timelineCreation.failed', 'Failed to create timeline'),
+      defaultErrorMessage: t('timelineCreation.failed'),
+      toastTitle: t('timelineCreation.errorTitle'),
+      toastDescription: () => error.value || t('timelineCreation.failed'),
     });
   }
 

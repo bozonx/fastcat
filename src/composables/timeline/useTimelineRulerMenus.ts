@@ -27,7 +27,7 @@ export function useTimelineRulerMenus(options: UseTimelineRulerMenusOptions) {
   const rulerContextMenuItems = computed(() => [
     [
       {
-        label: options.t('fastcat.timeline.addMarkerAtPlayhead', 'Add marker at playhead'),
+        label: options.t('fastcat.timeline.addMarkerAtPlayhead'),
         icon: 'i-heroicons-bookmark',
         onSelect: () => {
           options.timelineStore.addMarkerAtPlayhead();
@@ -36,7 +36,7 @@ export function useTimelineRulerMenus(options: UseTimelineRulerMenusOptions) {
         },
       },
       {
-        label: options.t('fastcat.timeline.addZoneMarkerAtPlayhead', 'Add zone marker at playhead'),
+        label: options.t('fastcat.timeline.addZoneMarkerAtPlayhead'),
         icon: 'i-heroicons-arrows-right-left',
         onSelect: () => {
           options.timelineStore.addZoneMarkerAtPlayhead();
@@ -45,7 +45,7 @@ export function useTimelineRulerMenus(options: UseTimelineRulerMenusOptions) {
         },
       },
       {
-        label: options.t('fastcat.timeline.createSelectionArea', 'Create selection area'),
+        label: options.t('fastcat.timeline.createSelectionArea'),
         icon: 'i-heroicons-rectangle-group',
         onSelect: () => {
           options.timelineStore.createSelectionRangeAtPlayhead();
@@ -58,22 +58,22 @@ export function useTimelineRulerMenus(options: UseTimelineRulerMenusOptions) {
     return [
       [
         {
-          label: options.t('fastcat.timeline.convertZoneToMarker', 'Convert to normal marker'),
+          label: options.t('fastcat.timeline.convertZoneToMarker'),
           icon: 'i-heroicons-arrows-pointing-in',
           onSelect: () => options.timelineStore.convertZoneToMarker(markerId),
         },
         {
-          label: options.t('fastcat.timeline.convertZoneToSelection', 'Convert to selection area'),
+          label: options.t('fastcat.timeline.convertZoneToSelection'),
           icon: 'i-heroicons-rectangle-group',
           onSelect: () => options.timelineStore.convertMarkerToSelectionRange(markerId),
         },
         {
-          label: options.t('fastcat.timeline.createSelectionFromZone', 'Create selection area'),
+          label: options.t('fastcat.timeline.createSelectionFromZone'),
           icon: 'i-heroicons-sparkles',
           onSelect: () => options.timelineStore.createSelectionRangeFromMarker(markerId),
         },
         {
-          label: options.t('fastcat.timeline.deleteMarker', 'Delete marker'),
+          label: options.t('fastcat.timeline.deleteMarker'),
           icon: 'i-heroicons-trash',
           color: 'red' as const,
           onSelect: () => options.deleteMarker(markerId),
@@ -86,12 +86,12 @@ export function useTimelineRulerMenus(options: UseTimelineRulerMenusOptions) {
     return [
       [
         {
-          label: options.t('fastcat.timeline.convertMarkerToZone', 'Convert to zone marker'),
+          label: options.t('fastcat.timeline.convertMarkerToZone'),
           icon: 'i-heroicons-arrows-pointing-out',
           onSelect: () => options.timelineStore.convertMarkerToZone(markerId),
         },
         {
-          label: options.t('fastcat.timeline.deleteMarker', 'Delete marker'),
+          label: options.t('fastcat.timeline.deleteMarker'),
           icon: 'i-heroicons-trash',
           color: 'red' as const,
           onSelect: () => options.deleteMarker(markerId),
@@ -103,17 +103,17 @@ export function useTimelineRulerMenus(options: UseTimelineRulerMenusOptions) {
   const selectionRangeMenuItems = computed(() => [
     [
       {
-        label: options.t('fastcat.timeline.convertSelectionToZoneMarker', 'Convert to zone marker'),
+        label: options.t('fastcat.timeline.convertSelectionToZoneMarker'),
         icon: 'i-heroicons-bookmark-square',
         onSelect: () => options.timelineStore.convertSelectionRangeToMarker(),
       },
       {
-        label: options.t('fastcat.timeline.rippleTrimSelection', 'Ripple trim selection'),
+        label: options.t('fastcat.timeline.rippleTrimSelection'),
         icon: 'i-heroicons-scissors',
         onSelect: () => options.timelineStore.rippleTrimSelectionRange(),
       },
       {
-        label: options.t('common.delete', 'Delete'),
+        label: options.t('common.delete'),
         icon: 'i-heroicons-trash',
         color: 'red' as const,
         onSelect: () => options.timelineStore.removeSelectionRange(),

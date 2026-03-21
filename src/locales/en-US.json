@@ -511,6 +511,7 @@
       "audioTrack": "Audio Track",
       "noSelection": "No item selected",
       "renameClip": "Rename clip",
+      "fitToWindow": "Fit to Window",
       "resetZoom": "Reset Zoom & Pan",
       "unsupported": "Unsupported file format",
       "usedInTimelines": "Used in timelines"
@@ -1099,7 +1100,8 @@
         "uploadFailed": "Upload failed"
       },
       "skipOtio": {
-        "title": "Project files skipped"
+        "title": "Project files skipped",
+        "description": "{fileName} is a project file and cannot be imported this way. Use Create Timeline instead."
       },
       "sort": {
         "name": "Name",
@@ -1315,10 +1317,15 @@
       "integrationSttRestorePunctuation": "Restore punctuation",
       "mouseActionAddMarker": "Add Marker",
       "mouseActionAddMarkerAndEdit": "Add and Edit Marker",
+      "mouseActionCenter": "Center",
       "mouseActionClearSelection": "Clear Selection",
+      "mouseActionCopy": "Copy clip",
+      "mouseActionFit": "Fit to window",
+      "mouseActionFreeMode": "Free mode",
       "mouseActionMovePlayhead": "Move Playhead",
       "mouseActionNone": "None",
       "mouseActionPan": "Pan",
+      "mouseActionPseudoOverlap": "Pseudo overlap",
       "mouseActionResetZoom": "Reset Zoom",
       "mouseActionResetZoomCenter": "Reset Zoom & Center",
       "mouseActionResizeTrack": "Resize Track Height",
@@ -1328,6 +1335,8 @@
       "mouseActionSeekFrame": "Seek (1 frame)",
       "mouseActionSeekSecond": "Seek (1 second)",
       "mouseActionSelectArea": "Select Area",
+      "mouseActionToggleClipMoveMode": "Toggle current move mode on/off",
+      "mouseActionToggleSnap": "Toggle snapping",
       "mouseActionZoom": "Zoom",
       "mouseActionZoomHorizontal": "Horizontal Zoom",
       "mouseActionZoomVertical": "Vertical Zoom",

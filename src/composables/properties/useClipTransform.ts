@@ -87,24 +87,24 @@ export function useClipTransform(options: UseClipTransformOptions) {
   const { t } = useI18n();
 
   const anchorPresetOptions = computed(() => [
-    { value: 'center', label: t('fastcat.clip.transform.anchorPreset.center', 'Center') },
+    { value: 'center', label: t('fastcat.clip.transform.anchorPreset.center') },
     {
       value: 'topLeft',
-      label: t('fastcat.clip.transform.anchorPreset.topLeft', 'Top Left'),
+      label: t('fastcat.clip.transform.anchorPreset.topLeft'),
     },
     {
       value: 'topRight',
-      label: t('fastcat.clip.transform.anchorPreset.topRight', 'Top Right'),
+      label: t('fastcat.clip.transform.anchorPreset.topRight'),
     },
     {
       value: 'bottomLeft',
-      label: t('fastcat.clip.transform.anchorPreset.bottomLeft', 'Bottom Left'),
+      label: t('fastcat.clip.transform.anchorPreset.bottomLeft'),
     },
     {
       value: 'bottomRight',
-      label: t('fastcat.clip.transform.anchorPreset.bottomRight', 'Bottom Right'),
+      label: t('fastcat.clip.transform.anchorPreset.bottomRight'),
     },
-    { value: 'custom', label: t('fastcat.clip.transform.anchorPreset.custom', 'Custom') },
+    { value: 'custom', label: t('fastcat.clip.transform.anchorPreset.custom') },
   ]);
 
   function updateSelectedClipTransform(patch: Partial<ClipTransform>) {

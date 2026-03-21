@@ -65,47 +65,47 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
   const directoryPrimaryActions = computed<PrimaryEntryAction[]>(() => [
     {
       id: 'copy',
-      title: options.t('common.copy', 'Copy'),
+      title: options.t('common.copy'),
       icon: 'i-heroicons-document-duplicate',
       hidden: !options.canCopyOrCut.value,
       onClick: options.onCopy,
     },
     {
       id: 'cut',
-      title: options.t('common.cut', 'Cut'),
+      title: options.t('common.cut'),
       icon: 'i-heroicons-scissors',
       hidden: !options.canCopyOrCut.value,
       onClick: options.onCut,
     },
     {
       id: 'rename',
-      title: options.t('common.rename', 'Rename'),
+      title: options.t('common.rename'),
       icon: 'i-heroicons-pencil',
       hidden: options.isProjectRootDir.value || options.isCommonDir.value,
       onClick: options.onRename,
     },
     {
       id: 'delete',
-      title: options.t('common.delete', 'Delete'),
+      title: options.t('common.delete'),
       icon: 'i-heroicons-trash',
       hidden: options.isProjectRootDir.value || options.isCommonDir.value,
       onClick: options.onDelete,
     },
     {
       id: 'upload',
-      title: options.t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),
+      title: options.t('videoEditor.fileManager.actions.uploadFiles'),
       icon: 'i-heroicons-arrow-up-tray',
       onClick: options.triggerDirectoryUpload,
     },
     {
       id: 'createSubfolder',
-      title: options.t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
+      title: options.t('videoEditor.fileManager.actions.createFolder'),
       icon: 'i-heroicons-folder-plus',
       onClick: options.createSubfolder,
     },
     {
       id: 'paste',
-      title: options.t('common.paste', 'Paste'),
+      title: options.t('common.paste'),
       icon: 'i-heroicons-clipboard',
       disabled: !options.hasClipboardItems.value,
       onClick: options.onPaste,
@@ -115,35 +115,26 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
   const directorySecondaryActions = computed<SecondaryEntryAction[]>(() => [
     {
       id: 'createTimeline',
-      label: options.t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline'),
+      label: options.t('videoEditor.fileManager.actions.createTimeline'),
       icon: 'i-heroicons-document-plus',
       onClick: options.createTimelineInFolder,
     },
     {
       id: 'createMarkdown',
-      label: options.t(
-        'videoEditor.fileManager.actions.createMarkdown',
-        'Create Markdown document',
-      ),
+      label: options.t('videoEditor.fileManager.actions.createMarkdown'),
       icon: 'i-heroicons-document-text',
       onClick: options.createMarkdownInFolder,
     },
     {
       id: 'createProxyForAll',
-      label: options.t(
-        'videoEditor.fileManager.actions.createProxyForAll',
-        'Create proxy for all videos',
-      ),
+      label: options.t('videoEditor.fileManager.actions.createProxyForAll'),
       icon: 'i-heroicons-film',
       hidden: !options.isFolderWithVideo.value || options.isGeneratingProxyForFolder.value,
       onClick: options.generateProxiesForSelectedFolder,
     },
     {
       id: 'cancelProxyForAll',
-      label: options.t(
-        'videoEditor.fileManager.actions.cancelProxyGeneration',
-        'Cancel proxy generation',
-      ),
+      label: options.t('videoEditor.fileManager.actions.cancelProxyGeneration'),
       icon: 'i-heroicons-x-circle',
       color: 'error',
       hidden: !options.isFolderWithVideo.value || !options.isGeneratingProxyForFolder.value,
@@ -154,35 +145,35 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
   const filePrimaryActions = computed<PrimaryEntryAction[]>(() => [
     {
       id: 'copy',
-      title: options.t('common.copy', 'Copy'),
+      title: options.t('common.copy'),
       icon: 'i-heroicons-document-duplicate',
       hidden: !options.canCopyOrCut.value,
       onClick: options.onCopy,
     },
     {
       id: 'cut',
-      title: options.t('common.cut', 'Cut'),
+      title: options.t('common.cut'),
       icon: 'i-heroicons-scissors',
       hidden: !options.canCopyOrCut.value,
       onClick: options.onCut,
     },
     {
       id: 'rename',
-      title: options.t('common.rename', 'Rename'),
+      title: options.t('common.rename'),
       icon: 'i-heroicons-pencil',
       hidden: false, // Root project or common root are already checked by isCommonDir for folders
       onClick: options.onRename,
     },
     {
       id: 'delete',
-      title: options.t('common.delete', 'Delete'),
+      title: options.t('common.delete'),
       icon: 'i-heroicons-trash',
       hidden: false,
       onClick: options.onDelete,
     },
     {
       id: 'uploadRemote',
-      title: options.t('videoEditor.fileManager.actions.uploadRemote', 'Upload to remote'),
+      title: options.t('videoEditor.fileManager.actions.uploadRemote'),
       icon: 'i-heroicons-cloud-arrow-up',
       hidden: !options.canUploadToRemote.value,
       onClick: options.openRemoteUploadPicker,
@@ -192,28 +183,28 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
   const fileSecondaryActions = computed<SecondaryEntryAction[]>(() => [
     {
       id: 'convertFile',
-      label: options.t('videoEditor.fileManager.actions.convertFile', 'Convert File'),
+      label: options.t('videoEditor.fileManager.actions.convertFile'),
       icon: 'i-heroicons-arrow-path',
       hidden: !options.canConvertFile.value,
       onClick: options.onConvert,
     },
     {
       id: 'copy',
-      label: options.t('common.copy', 'Copy'),
+      label: options.t('common.copy'),
       icon: 'i-heroicons-document-duplicate',
       hidden: !options.canCopyOrCut.value,
       onClick: options.onCopy,
     },
     {
       id: 'cut',
-      label: options.t('common.cut', 'Cut'),
+      label: options.t('common.cut'),
       icon: 'i-heroicons-scissors',
       hidden: !options.canCopyOrCut.value,
       onClick: options.onCut,
     },
     {
       id: 'transcribe',
-      label: options.t('videoEditor.fileManager.actions.transcribe', 'Transcribe'),
+      label: options.t('videoEditor.fileManager.actions.transcribe'),
       icon: 'i-heroicons-microphone',
       hidden: !options.isVideoFile.value && !options.isAudioFile.value,
       disabled: !options.canTranscribeMedia.value,
@@ -221,21 +212,21 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
     },
     {
       id: 'openAsPanelCut',
-      label: options.t('videoEditor.fileManager.actions.openAsPanelCut', 'Open as panel (Editor)'),
+      label: options.t('videoEditor.fileManager.actions.openAsPanelCut'),
       icon: 'i-heroicons-window',
       hidden: !options.canOpenAsPanel.value,
       onClick: options.openAsPanelCut,
     },
     {
       id: 'openAsPanelSound',
-      label: options.t('videoEditor.fileManager.actions.openAsPanelSound', 'Open as panel (Sound)'),
+      label: options.t('videoEditor.fileManager.actions.openAsPanelSound'),
       icon: 'i-heroicons-window',
       hidden: !options.canOpenAsPanel.value,
       onClick: options.openAsPanelSound,
     },
     {
       id: 'openAsProjectTab',
-      label: options.t('videoEditor.fileManager.actions.openAsProjectTab', 'Open as project tab'),
+      label: options.t('videoEditor.fileManager.actions.openAsProjectTab'),
       icon: 'i-heroicons-squares-plus',
       hidden: !options.canOpenAsProjectTab.value,
       onClick: options.openAsProjectTab,
@@ -243,18 +234,15 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
     {
       id: 'createProxy',
       label: options.hasExistingProxyForFile.value
-        ? options.t('videoEditor.fileManager.proxy.regenerate', 'Regenerate proxy')
-        : options.t('videoEditor.fileManager.proxy.create', 'Create proxy'),
+        ? options.t('videoEditor.fileManager.proxy.regenerate')
+        : options.t('videoEditor.fileManager.proxy.create'),
       icon: options.hasExistingProxyForFile.value ? 'i-heroicons-arrow-path' : 'i-heroicons-film',
       hidden: !options.showVideoProxyActions.value || options.isGeneratingProxyForFile.value,
       onClick: options.createProxy,
     },
     {
       id: 'cancelProxy',
-      label: options.t(
-        'videoEditor.fileManager.actions.cancelProxyGeneration',
-        'Cancel proxy generation',
-      ),
+      label: options.t('videoEditor.fileManager.actions.cancelProxyGeneration'),
       icon: 'i-heroicons-x-circle',
       color: 'error',
       hidden: !options.showVideoProxyActions.value || !options.isGeneratingProxyForFile.value,
@@ -262,7 +250,7 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
     },
     {
       id: 'deleteProxy',
-      label: options.t('videoEditor.fileManager.proxy.delete', 'Delete proxy'),
+      label: options.t('videoEditor.fileManager.proxy.delete'),
       icon: 'i-heroicons-trash',
       color: 'error',
       hidden: !options.showVideoProxyActions.value || !options.hasExistingProxyForFile.value,
@@ -270,14 +258,14 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
     },
     {
       id: 'createOtioVersion',
-      label: options.t('fastcat.timeline.createVersion', 'Create version'),
+      label: options.t('fastcat.timeline.createVersion'),
       icon: 'i-heroicons-document-duplicate',
       hidden: !options.isOtio.value,
       onClick: options.createOtioVersion,
     },
     {
       id: 'extractAudio',
-      label: options.t('videoEditor.fileManager.actions.extractAudio', 'Extract Audio'),
+      label: options.t('videoEditor.fileManager.actions.extractAudio'),
       icon: 'i-heroicons-musical-note',
       hidden: !options.isVideoFile.value,
       onClick: options.extractAudio,

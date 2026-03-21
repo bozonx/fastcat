@@ -511,6 +511,7 @@
       "audioTrack": "Аудиодорожка",
       "noSelection": "Ничего не выбрано",
       "renameClip": "Переименовать клип",
+      "fitToWindow": "Вписать в окно",
       "resetZoom": "Сбросить зум и панораму",
       "unsupported": "Формат не поддерживается",
       "usedInTimelines": "Используется в таймлайнах"
@@ -1099,7 +1100,8 @@
         "uploadFailed": "Ошибка загрузки"
       },
       "skipOtio": {
-        "title": "Пропущенные файлы проекта"
+        "title": "Пропущенные файлы проекта",
+        "description": "{fileName} является файлом проекта и не может быть импортирован таким образом. Используйте «Создать Таймлайн»."
       },
       "sort": {
         "name": "По имени",
@@ -1315,10 +1317,15 @@
       "integrationSttRestorePunctuation": "Восстановить пунктуацию",
       "mouseActionAddMarker": "Добавить маркер",
       "mouseActionAddMarkerAndEdit": "Добавить и редактировать маркер",
+      "mouseActionCenter": "Центрировать",
       "mouseActionClearSelection": "Сбросить выделение",
+      "mouseActionCopy": "Копировать клип",
+      "mouseActionFit": "Вписать в окно",
+      "mouseActionFreeMode": "Свободный режим",
       "mouseActionMovePlayhead": "Перемещение плейхеда",
       "mouseActionNone": "Нет",
       "mouseActionPan": "Панорама",
+      "mouseActionPseudoOverlap": "Псевдо-наложение",
       "mouseActionResetZoom": "Сбросить зум",
       "mouseActionResetZoomCenter": "Сбросить зум и центрировать",
       "mouseActionResizeTrack": "Изменить высоту дорожки",
@@ -1328,6 +1335,8 @@
       "mouseActionSeekFrame": "Перемотка (1 кадр)",
       "mouseActionSeekSecond": "Перемотка (1 секунда)",
       "mouseActionSelectArea": "Выделение области",
+      "mouseActionToggleClipMoveMode": "Переключить режим перемещения",
+      "mouseActionToggleSnap": "Переключить привязку",
       "mouseActionZoom": "Зум",
       "mouseActionZoomHorizontal": "Горизонтальный зум",
       "mouseActionZoomVertical": "Вертикальный зум",
