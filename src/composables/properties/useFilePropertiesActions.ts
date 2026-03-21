@@ -81,16 +81,14 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'rename',
       title: options.t('common.rename', 'Rename'),
       icon: 'i-heroicons-pencil',
-      hidden:
-        options.isProjectRootDir.value || options.isCommonDir.value || options.isCommonPath.value,
+      hidden: options.isProjectRootDir.value || options.isCommonDir.value,
       onClick: options.onRename,
     },
     {
       id: 'delete',
       title: options.t('common.delete', 'Delete'),
       icon: 'i-heroicons-trash',
-      hidden:
-        options.isProjectRootDir.value || options.isCommonDir.value || options.isCommonPath.value,
+      hidden: options.isProjectRootDir.value || options.isCommonDir.value,
       onClick: options.onDelete,
     },
     {
@@ -104,20 +102,6 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       title: options.t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
       icon: 'i-heroicons-folder-plus',
       onClick: options.createSubfolder,
-    },
-    {
-      id: 'copy',
-      title: options.t('common.copy', 'Copy'),
-      icon: 'i-heroicons-document-duplicate',
-      hidden: options.isCommonPath.value,
-      onClick: options.onCopy,
-    },
-    {
-      id: 'cut',
-      title: options.t('common.cut', 'Cut'),
-      icon: 'i-heroicons-scissors',
-      hidden: options.isCommonPath.value,
-      onClick: options.onCut,
     },
     {
       id: 'paste',
@@ -186,14 +170,14 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'rename',
       title: options.t('common.rename', 'Rename'),
       icon: 'i-heroicons-pencil',
-      hidden: options.isCommonPath.value,
+      hidden: false, // Root project or common root are already checked by isCommonDir for folders
       onClick: options.onRename,
     },
     {
       id: 'delete',
       title: options.t('common.delete', 'Delete'),
       icon: 'i-heroicons-trash',
-      hidden: options.isCommonPath.value,
+      hidden: false,
       onClick: options.onDelete,
     },
     {

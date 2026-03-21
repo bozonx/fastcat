@@ -31,7 +31,7 @@ import { useFilePropertiesHandlers } from '~/composables/properties/useFilePrope
 import { useAudioExtraction } from '~/composables/fileManager/useAudioExtraction';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useAppClipboard } from '~/composables/useAppClipboard';
-import { isWorkspaceCommonPath } from '~/utils/workspace-common';
+import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import type { FsEntry } from '~/types/fs';
@@ -103,12 +103,16 @@ const { isProjectRootDir, storageFreeBytes } = useFileStorageInfo({
   currentProjectName: computed(() => projectStore.currentProjectName),
 });
 
-const isCommonDir = computed(() => {
+const isCommonRoot = computed(() => {
   const entry = props.selectedFsEntry;
   if (!entry || entry.kind !== 'directory') return false;
-  return entry.name.toLowerCase() === 'common' && (entry.path === 'common' || entry.path === '');
+  return (
+    entry.path === WORKSPACE_COMMON_PATH_PREFIX ||
+    (entry.name.toLowerCase() === 'common' && (entry.path === 'common' || entry.path === ''))
+  );
 });
 
+// isCommonPath matches all items within common, used for visual indicators but not for blocking actions anymore
 const isCommonPath = computed(() => isWorkspaceCommonPath(props.selectedFsEntry?.path));
 
 function triggerDirectoryUpload() {
@@ -272,7 +276,7 @@ const {
 });
 
 const canCopyOrCut = computed(() => {
-  return !isProjectRootDir.value && !isCommonPath.value;
+  return !isProjectRootDir.value && !isCommonRoot.value;
 });
 
 function onCopy() {
@@ -357,7 +361,7 @@ const {
   isGeneratingProxyForFile,
   isOtio,
   isVideoFile,
-  isCommonDir,
+  isCommonDir: isCommonRoot,
   isCommonPath,
   canCopyOrCut,
   hasClipboardItems,

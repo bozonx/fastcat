@@ -1,5 +1,5 @@
 import type { FsEntry } from '~/types/fs';
-import { isWorkspaceCommonPath } from '~/utils/workspace-common';
+import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 
 export type FileAction =
   | 'createFolder'
@@ -335,15 +335,14 @@ export function useFileContextMenu(
       ]);
     }
 
-    const isCommon =
+    const isCommonRoot =
       entry.kind === 'directory' &&
-      entry.name.toLowerCase() === 'common' &&
-      (entry.path === 'common' || entry.path === '');
+      (entry.path === WORKSPACE_COMMON_PATH_PREFIX ||
+        (entry.name.toLowerCase() === 'common' && (entry.path === 'common' || entry.path === '')));
     const isProjectRoot = entry.kind === 'directory' && (entry.path === '' || entry.path === '/');
-    const isCommonPath = isWorkspaceCommonPath(entry.path);
 
     const managementItems = [];
-    if (!isCommon && !isProjectRoot && !isCommonPath) {
+    if (!isCommonRoot && !isProjectRoot) {
       managementItems.push(
         {
           label: t('common.copy', 'Copy'),
@@ -367,7 +366,7 @@ export function useFileContextMenu(
       });
     }
 
-    if (!isCommon && !isProjectRoot && !isCommonPath) {
+    if (!isCommonRoot && !isProjectRoot) {
       managementItems.push(
         {
           label: t('common.rename', 'Rename'),

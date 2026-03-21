@@ -251,43 +251,46 @@ function onDragVirtualEnd() {
       @drag-virtual-end="onDragVirtualEnd"
     />
 
-    <div
-      ref="labelsScrollContainer"
-      class="flex-1 overflow-y-scroll overflow-x-hidden labels-scroll-container"
-      @scroll="emit('scroll', $event)"
-      @click="
-        timelineStore.selectTimelineProperties();
-        selectionStore.selectTimelineProperties();
-      "
-    >
-      <div class="flex flex-col min-h-full">
-        <UContextMenu
-          v-for="track in tracks"
-          :key="track.id"
-          :items="getTrackContextMenuItems(track)"
-        >
-          <TrackLabelItem
-            :track="track"
-            :height="trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT"
-            :is-selected="isTrackVisuallySelected(track.id)"
-            :is-hovered="timelineStore.hoveredTrackId === track.id"
-            :is-renaming="timelineStore.renamingTrackId === track.id"
-            :has-audio="trackHasAudio(track, mediaStore.mediaMetadata)"
-            :level-db="timelineStore.audioLevels?.[track.id]?.peakDb"
-            @select="onSelectTrack(track.id)"
-            @rename="(name) => timelineStore.renameTrack(track.id, name)"
-            @cancel-rename="timelineStore.renamingTrackId = null"
-            @resize-start="(e) => onResizeStart(track.id, e)"
-            @mouseenter="timelineStore.hoveredTrackId = track.id"
-            @mouseleave="timelineStore.hoveredTrackId = null"
-          />
-        </UContextMenu>
-        <UContextMenu :items="propertiesContextMenuItems">
+    <UContextMenu :items="propertiesContextMenuItems">
+      <div
+        ref="labelsScrollContainer"
+        class="flex-1 overflow-y-scroll overflow-x-hidden labels-scroll-container"
+        @scroll="emit('scroll', $event)"
+        @click="
+          timelineStore.selectTimelineProperties();
+          selectionStore.selectTimelineProperties();
+        "
+      >
+        <div class="flex flex-col min-h-full">
+          <UContextMenu
+            v-for="track in tracks"
+            :key="track.id"
+            :items="getTrackContextMenuItems(track)"
+          >
+            <TrackLabelItem
+              :track="track"
+              :height="trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT"
+              :is-selected="isTrackVisuallySelected(track.id)"
+              :is-hovered="timelineStore.hoveredTrackId === track.id"
+              :is-renaming="timelineStore.renamingTrackId === track.id"
+              :has-audio="trackHasAudio(track, mediaStore.mediaMetadata)"
+              :level-db="timelineStore.audioLevels?.[track.id]?.peakDb"
+              @select="onSelectTrack(track.id)"
+              @rename="(name) => timelineStore.renameTrack(track.id, name)"
+              @cancel-rename="timelineStore.renamingTrackId = null"
+              @resize-start="(e) => onResizeStart(track.id, e)"
+              @mouseenter="timelineStore.hoveredTrackId = track.id"
+              @mouseleave="timelineStore.hoveredTrackId = null"
+            />
+          </UContextMenu>
           <div class="w-full flex-1 min-h-7 shrink-0" />
-        </UContextMenu>
-        <div class="shrink-0" :style="{ height: `calc(4rem + ${scrollbarCompensation || 0}px)` }" />
+          <div
+            class="shrink-0"
+            :style="{ height: `calc(4rem + ${scrollbarCompensation || 0}px)` }"
+          />
+        </div>
       </div>
-    </div>
+    </UContextMenu>
 
     <UiConfirmModal
       v-if="selectedTrack"
