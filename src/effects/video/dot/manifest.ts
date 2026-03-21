@@ -10,7 +10,9 @@ export interface DotParams {
 export const dotManifest: EffectManifest<DotParams> = {
   type: 'dot',
   name: 'Точки (Полутон)',
+  nameKey: 'fastcat.effects.video.dot.name',
   description: 'Эффект растровой печати',
+  descriptionKey: 'fastcat.effects.video.dot.description',
   icon: 'i-heroicons-dots-circle-horizontal',
   defaultValues: {
     scale: 1,
@@ -22,6 +24,7 @@ export const dotManifest: EffectManifest<DotParams> = {
       kind: 'slider',
       key: 'scale',
       label: 'Масштаб',
+      labelKey: 'fastcat.effects.video.dot.params.scale',
       min: 0.1,
       max: 10,
       step: 0.1,
@@ -30,6 +33,7 @@ export const dotManifest: EffectManifest<DotParams> = {
       kind: 'slider',
       key: 'angle',
       label: 'Угол',
+      labelKey: 'fastcat.effects.video.dot.params.angle',
       min: 0,
       max: 360,
       step: 1,
@@ -39,6 +43,7 @@ export const dotManifest: EffectManifest<DotParams> = {
       kind: 'toggle',
       key: 'grayscale',
       label: 'Ч/Б',
+      labelKey: 'fastcat.effects.video.dot.params.grayscale',
     },
   ],
   createFilter: () =>

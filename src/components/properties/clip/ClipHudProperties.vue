@@ -3,6 +3,7 @@ import type { TimelineClipItem } from '~/timeline/types';
 import type { ParamControl } from '~/components/properties/params';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -27,13 +28,16 @@ const { t } = useI18n();
         {{ t('fastcat.effects.presetsTitle', 'Presets') }}
       </span>
       <div class="flex gap-2">
-        <USelectMenu
+        <UiSelect
           v-if="props.presets.length > 0"
           :items="props.presets"
           :placeholder="t('fastcat.effects.loadPresetPlaceholder', 'Load preset...')"
           class="flex-1"
           size="xs"
-          @update:model-value="(v: any) => emit('loadPreset', v?.value ?? v)"
+          full-width
+          @update:model-value="
+            (v: unknown) => emit('loadPreset', (v as { value: string })?.value ?? v)
+          "
         />
         <div v-else class="flex-1 text-xs text-ui-text-muted italic flex items-center">
           {{ t('fastcat.effects.noPresets', 'No presets saved') }}

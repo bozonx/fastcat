@@ -7,6 +7,7 @@ export interface DissolveParams {}
 export const dissolveManifest: TransitionManifest<DissolveParams> = {
   type: 'dissolve',
   name: 'Dissolve',
+  nameKey: 'fastcat.transitions.dissolve.name',
   icon: 'i-heroicons-arrows-right-left',
   defaultDurationUs: 500_000,
   defaultParams: {},

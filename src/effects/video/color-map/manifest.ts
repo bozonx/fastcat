@@ -10,7 +10,9 @@ export interface ColorMapParams {
 export const colorMapManifest: EffectManifest<ColorMapParams> = {
   type: 'colorMap',
   name: 'Цветовая карта',
+  nameKey: 'fastcat.effects.video.colorMap.name',
   description: 'Применение цветовой карты (LUT)',
+  descriptionKey: 'fastcat.effects.video.colorMap.description',
   icon: 'i-heroicons-map',
   defaultValues: {
     mix: 1,
@@ -21,6 +23,7 @@ export const colorMapManifest: EffectManifest<ColorMapParams> = {
       kind: 'slider',
       key: 'mix',
       label: 'Интенсивность',
+      labelKey: 'fastcat.effects.video.colorMap.params.mix',
       min: 0,
       max: 1,
       step: 0.01,
@@ -30,6 +33,7 @@ export const colorMapManifest: EffectManifest<ColorMapParams> = {
       kind: 'toggle',
       key: 'nearest',
       label: 'Режим Nearest',
+      labelKey: 'fastcat.effects.video.colorMap.params.nearest',
     },
   ],
   createFilter: () => {

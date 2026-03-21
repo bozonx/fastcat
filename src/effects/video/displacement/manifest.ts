@@ -43,7 +43,9 @@ if (displacementSprite.texture.source) {
 export const displacementManifest: EffectManifest<DisplacementParams> = {
   type: 'displacement',
   name: 'Искажение',
+  nameKey: 'fastcat.effects.video.displacement.name',
   description: 'Эффект смещения/волн',
+  descriptionKey: 'fastcat.effects.video.displacement.description',
   icon: 'i-heroicons-arrows-pointing-out',
   defaultValues: {
     scaleX: 20,
@@ -54,6 +56,7 @@ export const displacementManifest: EffectManifest<DisplacementParams> = {
       kind: 'slider',
       key: 'scaleX',
       label: 'Смещение X',
+      labelKey: 'fastcat.effects.video.displacement.params.scaleX',
       min: 0,
       max: 200,
       step: 1,
@@ -62,6 +65,7 @@ export const displacementManifest: EffectManifest<DisplacementParams> = {
       kind: 'slider',
       key: 'scaleY',
       label: 'Смещение Y',
+      labelKey: 'fastcat.effects.video.displacement.params.scaleY',
       min: 0,
       max: 200,
       step: 1,

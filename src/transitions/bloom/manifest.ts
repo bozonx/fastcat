@@ -144,6 +144,7 @@ function normalizeBloomParams(params?: Record<string, unknown>): BloomParams {
 export const bloomManifest: TransitionManifest<BloomParams> = {
   type: 'bloom' as any,
   name: 'Bloom',
+  nameKey: 'fastcat.transitions.bloom.name',
   icon: 'i-heroicons-sparkles',
   defaultDurationUs: 500_000,
   defaultParams: normalizeBloomParams(),

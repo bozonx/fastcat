@@ -222,6 +222,7 @@ function normalizeZoomParams(params?: Record<string, unknown>): ZoomParams {
 export const zoomManifest: TransitionManifest<ZoomParams> = {
   type: 'zoom',
   name: 'Zoom',
+  nameKey: 'fastcat.transitions.zoom.name',
   icon: 'i-heroicons-magnifying-glass',
   defaultDurationUs: 500_000,
   defaultParams: normalizeZoomParams(),

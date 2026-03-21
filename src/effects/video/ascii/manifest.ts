@@ -8,7 +8,9 @@ export interface AsciiParams {
 export const asciiManifest: EffectManifest<AsciiParams> = {
   type: 'ascii',
   name: 'ASCII Art',
+  nameKey: 'fastcat.effects.video.ascii.name',
   description: 'Эффект ASCII символов',
+  descriptionKey: 'fastcat.effects.video.ascii.description',
   icon: 'i-heroicons-document-text',
   defaultValues: {
     size: 8,
@@ -18,6 +20,7 @@ export const asciiManifest: EffectManifest<AsciiParams> = {
       kind: 'slider',
       key: 'size',
       label: 'Размер',
+      labelKey: 'fastcat.effects.video.ascii.params.size',
       min: 2,
       max: 64,
       step: 1,

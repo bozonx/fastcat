@@ -138,6 +138,7 @@ function getDirectionVector(direction: WipeParams['direction']): { x: number; y:
 export const wipeManifest: TransitionManifest<WipeParams> = {
   type: 'wipe',
   name: 'Wipe',
+  nameKey: 'fastcat.transitions.wipe.name',
   icon: 'i-heroicons-bars-3-bottom-left',
   defaultDurationUs: 500_000,
   defaultParams: normalizeWipeParams(),

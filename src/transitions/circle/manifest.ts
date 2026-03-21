@@ -137,6 +137,7 @@ function normalizeCircleParams(params?: Record<string, unknown>): CircleParams {
 export const circleManifest: TransitionManifest<CircleParams> = {
   type: 'circle',
   name: 'Circle',
+  nameKey: 'fastcat.transitions.circle.name',
   icon: 'i-heroicons-stop-circle',
   defaultDurationUs: 600_000,
   defaultParams: normalizeCircleParams(),

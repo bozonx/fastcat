@@ -157,6 +157,7 @@ function normalizeBarnDoorParams(params?: Record<string, unknown>): BarnDoorPara
 export const barnDoorManifest: TransitionManifest<BarnDoorParams> = {
   type: 'barn-door',
   name: 'Barn Door',
+  nameKey: 'fastcat.transitions.barn-door.name',
   icon: 'i-heroicons-arrows-right-left',
   defaultDurationUs: 500_000,
   defaultParams: normalizeBarnDoorParams(),

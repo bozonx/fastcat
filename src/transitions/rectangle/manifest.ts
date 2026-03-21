@@ -154,6 +154,7 @@ function normalizeRectangleParams(params?: Record<string, unknown>): RectanglePa
 export const rectangleManifest: TransitionManifest<RectangleParams> = {
   type: 'rectangle',
   name: 'Rectangle',
+  nameKey: 'fastcat.transitions.rectangle.name',
   icon: 'i-heroicons-stop',
   defaultDurationUs: 600_000,
   defaultParams: normalizeRectangleParams(),

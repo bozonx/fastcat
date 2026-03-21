@@ -10,7 +10,9 @@ export interface ColorAdjustmentParams {
 export const colorAdjustmentManifest: EffectManifest<ColorAdjustmentParams> = {
   type: 'color-adjustment',
   name: 'Цветокоррекция',
+  nameKey: 'fastcat.effects.video.color-adjustment.name',
   description: 'Настройка яркости, контрастности и насыщенности',
+  descriptionKey: 'fastcat.effects.video.color-adjustment.description',
   icon: 'i-heroicons-swatch',
   defaultValues: {
     brightness: 1,
@@ -22,6 +24,7 @@ export const colorAdjustmentManifest: EffectManifest<ColorAdjustmentParams> = {
       kind: 'slider',
       key: 'brightness',
       label: 'Яркость',
+      labelKey: 'fastcat.effects.video.color-adjustment.params.brightness',
       min: 0,
       max: 2,
       step: 0.05,
@@ -31,6 +34,7 @@ export const colorAdjustmentManifest: EffectManifest<ColorAdjustmentParams> = {
       kind: 'slider',
       key: 'contrast',
       label: 'Контрастность',
+      labelKey: 'fastcat.effects.video.color-adjustment.params.contrast',
       min: 0,
       max: 2,
       step: 0.05,
@@ -40,6 +44,7 @@ export const colorAdjustmentManifest: EffectManifest<ColorAdjustmentParams> = {
       kind: 'slider',
       key: 'saturation',
       label: 'Насыщенность',
+      labelKey: 'fastcat.effects.video.color-adjustment.params.saturation',
       min: 0,
       max: 2,
       step: 0.05,
