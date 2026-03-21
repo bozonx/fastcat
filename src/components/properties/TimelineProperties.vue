@@ -10,6 +10,7 @@ import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import EntryActions from '~/components/properties/file/EntryActions.vue';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
+import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import EffectsEditor from '~/components/effects/EffectsEditor.vue';
 import AudioEffectsEditor from '~/components/effects/AudioEffectsEditor.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
@@ -340,23 +341,16 @@ const addTrackActions = computed(() => [
 
         <div class="h-px bg-ui-border opacity-30 my-0.5" />
 
-        <PropertyRow :label="t('fastcat.track.audio.volume', 'Volume')">
-          <div class="flex items-center gap-2">
-            <div class="min-w-0 flex-1">
-              <UiWheelSlider
-                v-model="masterGain"
-                :min="0"
-                :max="2"
-                :step="0.001"
-                :wheel-step-multiplier="10"
-                :default-value="1"
-              />
-            </div>
-            <div class="w-16 shrink-0 text-xs font-mono text-center opacity-60">
-              {{ masterGain.toFixed(3) }}x
-            </div>
-          </div>
-        </PropertyRow>
+        <UiSliderInput
+          :label="t('fastcat.track.audio.volume', 'Volume')"
+          v-model="masterGain"
+          :min="0"
+          :max="2"
+          :step="0.001"
+          :wheel-step-multiplier="10"
+          :default-value="1"
+          unit="x"
+        />
       </div>
     </PropertySection>
 

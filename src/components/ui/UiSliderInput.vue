@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 
@@ -24,17 +25,12 @@ const props = withDefaults(
     decimals: 2,
     defaultValue: undefined,
     wheelStepMultiplier: undefined,
-    inputClass: 'w-20',
+    inputClass: 'w-18!',
     sliderClass: '',
   },
 );
 
 const modelValue = defineModel<number>({ required: true });
-
-const displayValue = computed(() => {
-  const v = Number(modelValue.value);
-  return Number.isFinite(v) ? v.toFixed(props.decimals) : '0';
-});
 
 function onInputUpdate(value: unknown) {
   const num = Number(value);
@@ -44,37 +40,42 @@ function onInputUpdate(value: unknown) {
 </script>
 
 <template>
-  <div class="flex flex-col gap-1">
-    <div class="flex items-center justify-between gap-2 text-ui-text-muted">
-      <template v-if="label">
-        <span class="text-xs">{{ label }}</span>
-        <span class="text-xs font-mono">{{ formattedValue ?? displayValue + unit }}</span>
-      </template>
-      <template v-else>
-        <div class="flex items-center gap-1">
-          <UiWheelNumberInput
-            :model-value="Number(displayValue)"
-            size="xs"
-            :min="min"
-            :max="max"
-            :step="step"
-            :class="inputClass"
-            @update:model-value="onInputUpdate"
-          />
-          <span v-if="unit" class="text-[10px]">{{ unit }}</span>
-        </div>
-        <span class="font-mono text-[10px]">{{ formattedValue ?? displayValue + unit }}</span>
-      </template>
+  <div class="flex flex-col gap-1.5 w-full">
+    <div class="flex items-center justify-between gap-2 overflow-hidden">
+      <div v-if="label" class="flex-1 min-w-0">
+        <span class="text-xs text-ui-text-muted font-medium truncate block leading-tight">
+          {{ label }}
+        </span>
+      </div>
+
+      <div class="flex items-center gap-1.5 shrink-0">
+        <UiWheelNumberInput
+          :model-value="modelValue"
+          size="2xs"
+          :min="min"
+          :max="max"
+          :step="step"
+          :class="inputClass"
+          :default-value="defaultValue"
+          :wheel-step-multiplier="wheelStepMultiplier"
+          @update:model-value="onInputUpdate"
+        />
+        <span v-if="unit || formattedValue" class="text-[10px] text-ui-text-muted font-mono leading-none">
+          {{ formattedValue ?? unit }}
+        </span>
+      </div>
     </div>
 
-    <UiWheelSlider
-      v-model="modelValue"
-      :min="min"
-      :max="max"
-      :step="step"
-      :default-value="defaultValue"
-      :wheel-step-multiplier="wheelStepMultiplier"
-      :slider-class="sliderClass"
-    />
+    <div class="px-0.5">
+      <UiWheelSlider
+        v-model="modelValue"
+        :min="min"
+        :max="max"
+        :step="step"
+        :default-value="defaultValue"
+        :wheel-step-multiplier="wheelStepMultiplier"
+        :slider-class="sliderClass"
+      />
+    </div>
   </div>
 </template>

@@ -2,6 +2,7 @@
 import type { ClipTransform } from '~/timeline/types';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
+import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import { useClipTransform } from '~/composables/properties/useClipTransform';
@@ -131,43 +132,16 @@ function clampNumber(value: number, min: number, max: number): number {
 
     <div class="flex flex-col gap-4">
       <div v-if="props.canEditReversed" class="space-y-4">
-        <div class="flex flex-col gap-0.5">
-          <span class="text-xs text-ui-text-muted">{{
-            t('fastcat.clip.speedMultiplier', 'Speed (x)')
-          }}</span>
-          <div class="flex items-center gap-2">
-            <UiWheelSlider
-              v-model="speedMultiplier"
-              :min="-5"
-              :max="5"
-              :step="0.01"
-              :default-value="1"
-              :wheel-step-multiplier="10"
-              class="flex-1"
-            />
-            <UiWheelNumberInput
-              v-model="speedMultiplier"
-              size="sm"
-              :step="0.01"
-              :min="-50"
-              :max="50"
-              :default-value="1"
-              :wheel-step-multiplier="10"
-              class="w-16"
-            />
-            <button
-              class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text shrink-0"
-              :title="t('common.reset', 'Reset')"
-              @click="
-                () => {
-                  emit('updateSpeed', 1);
-                }
-              "
-            >
-              <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
-            </button>
-          </div>
-        </div>
+        <UiSliderInput
+          :label="t('fastcat.clip.speedMultiplier', 'Speed (x)')"
+          v-model="speedMultiplier"
+          :min="-50"
+          :max="50"
+          :step="0.01"
+          :wheel-step-multiplier="10"
+          :default-value="1"
+          unit="x"
+        />
       </div>
 
       <div v-if="canEditTransform" class="space-y-4">
