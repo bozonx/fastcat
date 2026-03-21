@@ -131,16 +131,17 @@ function clampNumber(value: number, min: number, max: number): number {
             :max="5"
             :step="0.01"
             :default-value="1"
+            :wheel-step-multiplier="10"
             class="flex-1"
           />
           <UiWheelNumberInput
             v-model="speedMultiplier"
             size="sm"
-            :step="0.1"
+            :step="0.01"
             :min="-50"
             :max="50"
             :default-value="1"
-            :wheel-step-multiplier="1"
+            :wheel-step-multiplier="10"
             class="w-16"
           />
           <button

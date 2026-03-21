@@ -351,11 +351,24 @@ export function useFileManagerActions(actions: FileManagerActions) {
       if (!payload || payload.source !== 'fileManager' || payload.items.length === 0) return;
 
       const e = Array.isArray(entry) ? entry[0] : entry;
-      const targetDirPath = e?.kind === 'directory' ? (e.path ?? '') : '';
+      let targetDirPath = '';
+      if (e) {
+        if (e.kind === 'directory') {
+          targetDirPath = e.path ?? '';
+        } else {
+          targetDirPath = e.parentPath ?? (e.path ? e.path.split('/').slice(0, -1).join('/') : '');
+        }
+      }
 
       for (const item of payload.items) {
-        const source = actions.findEntryByPath(item.path);
-        if (!source) continue;
+        let source = actions.findEntryByPath(item.path);
+        if (!source) {
+          source = {
+            path: item.path,
+            kind: item.kind,
+            name: item.name,
+          } as FsEntry;
+        }
 
         if (payload.operation === 'copy') {
           await actions.copyEntry?.({ source, targetDirPath });

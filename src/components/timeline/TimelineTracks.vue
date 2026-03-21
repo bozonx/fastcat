@@ -179,6 +179,16 @@ const speedModalTargetHasAudio = computed(() => {
   return Boolean(clip.source?.path && mediaStore.mediaMetadata[clip.source.path]?.audio);
 });
 
+const timelineEmptyAreaContextMenuItems = [
+  [
+    {
+      label: t('fastcat.timeline.properties.title'),
+      icon: 'i-heroicons-cog-6-tooth',
+      onSelect: () => timelineStore.selectTimelineProperties(),
+    },
+  ],
+];
+
 const movePreviewItem = computed(() =>
   props.tracks
     .flatMap((track) => track.items)
@@ -344,7 +354,9 @@ function selectTransition(
       </template>
     </div>
 
-    <div class="w-full flex-1 min-h-7" @click="timelineStore.selectTrack(null)" />
+    <UContextMenu :items="timelineEmptyAreaContextMenuItems">
+      <div class="w-full flex-1 min-h-7" @click="timelineStore.selectTrack(null)" />
+    </UContextMenu>
     <div class="h-16 shrink-0" />
   </div>
 </template>

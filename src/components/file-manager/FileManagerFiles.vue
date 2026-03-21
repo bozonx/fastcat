@@ -23,7 +23,8 @@ const uiStore = useUiStore();
 const focusStore = useFocusStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const proxyStore = useProxyStore();
-const { currentDragOperation } = useAppClipboard();
+const clipboardStore = useAppClipboard();
+const { currentDragOperation } = clipboardStore;
 const { loadTimeline } = useProjectActions();
 
 const scrollEl = ref<HTMLElement | null>(null);
@@ -220,7 +221,8 @@ const emit = defineEmits<{
       | 'convertFile'
       | 'uploadRemote'
       | 'transcribe'
-      | 'extractAudio',
+      | 'extractAudio'
+      | 'paste',
     entry: FsEntry,
   ): void;
   (
@@ -242,7 +244,7 @@ const rootContextMenuItems = computed(() => {
     path: '',
   };
 
-  return [
+  const menu: Record<string, any>[][] = [
     [
       {
         label: t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),
@@ -274,6 +276,18 @@ const rootContextMenuItems = computed(() => {
       },
     ],
   ];
+
+  if (clipboardStore.hasFileManagerPayload) {
+    if (menu[0]) {
+      menu[0].push({
+        label: t('common.paste', 'Paste'),
+        icon: 'i-heroicons-clipboard',
+        onSelect: async () => emit('action', 'paste', rootEntry),
+      });
+    }
+  }
+
+  return menu;
 });
 
 function selectProjectRoot() {

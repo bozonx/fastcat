@@ -269,6 +269,10 @@ export class ClipResourceManager {
       clip.transitionSprite.destroy(true);
       clip.transitionSprite = null;
     }
+    if (clip.cropMask) {
+      clip.cropMask.destroy(true);
+      clip.cropMask = undefined;
+    }
     if (clip.sprite) {
       clip.sprite.destroy(true);
       clip.sprite = null;

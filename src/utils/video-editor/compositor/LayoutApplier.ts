@@ -5,6 +5,7 @@ import {
 } from '../clip-layout';
 import { computeTextLayoutMetrics } from '../text-layout';
 import type { CompositorClip } from './types';
+import { Graphics } from 'pixi.js';
 
 export interface LayoutApplierContext {
   width: number;
@@ -187,5 +188,60 @@ export class LayoutApplier {
     sprite.rotation = (input.rotationDeg * Math.PI) / 180;
     sprite.x = input.baseX + input.anchorOffsetX + input.stagePosX;
     sprite.y = input.baseY + input.anchorOffsetY + input.stagePosY;
+
+    const crop = input.clip.transform?.crop;
+    if (crop && (crop.top || crop.bottom || crop.left || crop.right)) {
+      if (!input.clip.cropMask) {
+        input.clip.cropMask = new Graphics();
+        if (sprite.parent) {
+          sprite.parent.addChild(input.clip.cropMask);
+        } else {
+          sprite.addChild(input.clip.cropMask);
+        }
+        sprite.mask = input.clip.cropMask;
+      } else if (sprite.parent && input.clip.cropMask.parent !== sprite.parent) {
+        sprite.parent.addChild(input.clip.cropMask);
+      }
+      
+      const mask = input.clip.cropMask as Graphics;
+      mask.clear();
+      
+      const t = Math.max(0, Math.min(100, crop.top ?? 0)) / 100 * input.targetH;
+      const b = Math.max(0, Math.min(100, crop.bottom ?? 0)) / 100 * input.targetH;
+      const l = Math.max(0, Math.min(100, crop.left ?? 0)) / 100 * input.targetW;
+      const r = Math.max(0, Math.min(100, crop.right ?? 0)) / 100 * input.targetW;
+      
+      const cw = Math.max(1, input.targetW - l - r);
+      const ch = Math.max(1, input.targetH - t - b);
+      
+      mask.rect(0, 0, cw, ch);
+      mask.fill(0xffffff);
+      
+      // Orient the mask the same as the sprite
+      mask.pivot.set((sprite.anchor?.x ?? 0) * input.targetW, (sprite.anchor?.y ?? 0) * input.targetH);
+      mask.scale.set(Math.sign(sprite.scale.x), Math.sign(sprite.scale.y));
+      mask.rotation = sprite.rotation;
+      
+      // Calculate unrotated local top-left offset
+      const localOffsetX = l - ((sprite.anchor?.x ?? 0) * input.targetW);
+      const localOffsetY = t - ((sprite.anchor?.y ?? 0) * input.targetH);
+      
+      // Rotate the offset into global space
+      const cosR = Math.cos(sprite.rotation);
+      const sinR = Math.sin(sprite.rotation);
+      
+      const rx = localOffsetX * cosR - localOffsetY * sinR;
+      const ry = localOffsetX * sinR + localOffsetY * cosR;
+      
+      mask.x = sprite.x + rx * Math.sign(sprite.scale.x);
+      mask.y = sprite.y + ry * Math.sign(sprite.scale.y);
+      
+    } else if (input.clip.cropMask) {
+      if (typeof input.clip.cropMask.destroy === 'function') {
+        input.clip.cropMask.destroy();
+      }
+      input.clip.cropMask = undefined;
+      sprite.mask = null;
+    }
   }
 }
