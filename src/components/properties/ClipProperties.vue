@@ -397,6 +397,7 @@ defineExpose({
       :track-kind="clipTrackKind"
       :can-edit-reversed="canEditReversed"
       :is-reversed="isReversed"
+      :media-meta="mediaMeta"
       @update-transform="
         (next) => timelineStore.updateClipProperties(clip.trackId, clip.id, { transform: next })
       "

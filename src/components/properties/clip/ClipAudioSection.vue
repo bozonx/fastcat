@@ -96,7 +96,8 @@ const fadeCurveOptions = [
         <UiWheelNumberInput
           :model-value="props.audioFadeInSec"
           size="sm"
-          :step="0.01"
+          :step="0.1"
+          :wheel-step-multiplier="10"
           :min="0"
           :max="props.audioFadeInMaxSec"
           @update:model-value="(v: any) => emit('updateAudioFadeInSec', Number(v))"
@@ -117,7 +118,8 @@ const fadeCurveOptions = [
         <UiWheelNumberInput
           :model-value="props.audioFadeOutSec"
           size="sm"
-          :step="0.01"
+          :step="0.1"
+          :wheel-step-multiplier="10"
           :min="0"
           :max="props.audioFadeOutMaxSec"
           @update:model-value="(v: any) => emit('updateAudioFadeOutSec', Number(v))"

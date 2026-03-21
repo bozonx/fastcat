@@ -173,13 +173,13 @@ const isSolo = computed({
 const mainActions = computed(() => [
   {
     id: 'rename',
-    label: t('common.rename', 'Rename'),
+    title: t('common.rename', 'Rename'),
     icon: 'i-heroicons-pencil',
     onClick: () => (timelineStore.renamingTrackId = props.track.id),
   },
   {
     id: 'delete',
-    label: t('common.delete', 'Delete'),
+    title: t('common.delete', 'Delete'),
     icon: 'i-heroicons-trash',
     color: 'danger' as const,
     onClick: requestDeleteTrack,
@@ -255,7 +255,7 @@ const extraActions = computed(() => {
           </div>
         </div>
 
-        <PropertyActionList :actions="mainActions" :vertical="false" justify="center" size="xs" />
+        <PropertyActionList :actions="mainActions" :vertical="false" variant="ghost" justify="start" size="xs" />
         <PropertyActionList :actions="extraActions" justify="center" size="xs" />
       </div>
     </PropertySection>
