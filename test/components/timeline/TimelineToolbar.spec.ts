@@ -12,7 +12,8 @@ const mockTimelineStore = reactive({
   addTextClipAtPlayhead: vi.fn(),
   selectTimelineProperties: vi.fn(),
   rippleTrimLeft: vi.fn(),
-  rippleTrimRight: vi.fn()
+  rippleTrimRight: vi.fn(),
+  selectedItemIds: [] as string[]
 });
 
 const mockSettingsStore = {
@@ -59,7 +60,7 @@ describe('TimelineToolbar', () => {
   it('renders correctly', async () => {
     const component = await mountSuspended(TimelineToolbar);
     expect(component.exists()).toBe(true);
-    expect(component.attributes('data-timeline-toolbar')).toBeDefined();
+    expect(component.find('[data-timeline-toolbar]').exists()).toBe(true);
   });
 
   it('toggles trim mode when clicking trim button', async () => {
@@ -104,5 +105,33 @@ describe('TimelineToolbar', () => {
     expect(component.emitted('dragVirtualStart')).toBeTruthy();
     expect(component.emitted('dragVirtualStart')![0][1]).toBe('adjustment');
     expect(dataTransfer.setData).toHaveBeenCalledWith('application/fastcat-virtual-clip', 'adjustment');
+  });
+
+  it('disables ripple trim items when no clip is selected', async () => {
+    mockTimelineStore.selectedItemIds = [];
+    const component = await mountSuspended(TimelineToolbar);
+    const dropdowns = component.findAllComponents({ name: 'UiSplitDropdownButton' });
+    const trimDropdown = dropdowns[2];
+
+    const items = trimDropdown.props('items') as any[][];
+    const rippleTrimLeft = items[0][0];
+    const rippleTrimRight = items[0][1];
+
+    expect(rippleTrimLeft.disabled).toBe(true);
+    expect(rippleTrimRight.disabled).toBe(true);
+  });
+
+  it('enables ripple trim items when a clip is selected', async () => {
+    mockTimelineStore.selectedItemIds = ['clip1'];
+    const component = await mountSuspended(TimelineToolbar);
+    const dropdowns = component.findAllComponents({ name: 'UiSplitDropdownButton' });
+    const trimDropdown = dropdowns[2];
+
+    const items = trimDropdown.props('items') as any[][];
+    const rippleTrimLeft = items[0][0];
+    const rippleTrimRight = items[0][1];
+
+    expect(rippleTrimLeft.disabled).toBe(false);
+    expect(rippleTrimRight.disabled).toBe(false);
   });
 });
