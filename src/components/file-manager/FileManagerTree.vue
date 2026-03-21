@@ -85,7 +85,8 @@ const emit = defineEmits<{
       | 'openAsProjectTab'
       | 'uploadRemote'
       | 'transcribe'
-      | 'extractAudio',
+      | 'extractAudio'
+      | 'paste',
     entry: FsEntry,
   ): void;
   (
