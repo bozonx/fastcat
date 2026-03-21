@@ -27,7 +27,7 @@ import {
 } from '~/utils/media-types';
 import { useFileContextMenu } from '~/composables/fileManager/useFileContextMenu';
 import { isRemoteFsEntry, type RemoteFsEntry } from '~/utils/remote-vfs';
-import { isWorkspaceCommonPath } from '~/utils/workspace-common';
+import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import { isGeneratingProxyInDirectory, folderHasVideos } from '~/utils/fsEntryUtils';
 
 interface Props {
@@ -330,7 +330,7 @@ function onEntryEnter(event: KeyboardEvent, entry: FsEntry) {
 }
 
 function onRenameClick(entry: FsEntry) {
-  if (isWorkspaceCommonPath(entry.path)) return;
+  if (entry.path === WORKSPACE_COMMON_PATH_PREFIX) return;
   emit('action', 'rename', entry);
 }
 
