@@ -127,11 +127,15 @@ function handleTrackPanInput(trackId: string, event: Event) {
               {{ t('fastcat.audioMixer.master') }} {{ t('fastcat.audioMixer.output') }}
             </h2>
           </div>
-          <UButton
+          <UiToggleButton
+            :model-value="isMasterMuted"
             size="sm"
-            :variant="isMasterMuted ? 'solid' : 'soft'"
-            :color="isMasterMuted ? 'error' : 'neutral'"
-            :label="isMasterMuted ? $t('common.disabled') : $t('common.enabled')"
+            label="M"
+            active-color="error"
+            inactive-color="neutral"
+            inactive-variant="soft"
+            active-variant="solid"
+            title="Mute master"
             @click="toggleMasterMute"
           />
         </div>
@@ -193,18 +197,26 @@ function handleTrackPanInput(trackId: string, event: Event) {
                 </p>
               </div>
               <div class="flex items-center gap-2">
-                <UButton
+                <UiToggleButton
+                  :model-value="track.muted"
                   size="xs"
-                  :variant="track.muted ? 'solid' : 'soft'"
-                  :color="track.muted ? 'error' : 'neutral'"
                   label="M"
+                  active-color="error"
+                  inactive-color="neutral"
+                  inactive-variant="soft"
+                  active-variant="solid"
+                  title="Mute track"
                   @click="toggleTrackMute(track.id)"
                 />
-                <UButton
+                <UiToggleButton
+                  :model-value="track.solo"
                   size="xs"
-                  :variant="track.solo ? 'solid' : 'soft'"
-                  :color="track.solo ? 'primary' : 'neutral'"
                   label="S"
+                  active-color="primary"
+                  inactive-color="neutral"
+                  inactive-variant="soft"
+                  active-variant="solid"
+                  title="Solo track"
                   @click="toggleTrackSolo(track.id)"
                 />
               </div>

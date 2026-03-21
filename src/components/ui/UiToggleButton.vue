@@ -22,6 +22,7 @@ const props = withDefaults(
     title?: string;
     square?: boolean;
     noToggle?: boolean;
+    class?: string;
   }>(),
   {
     size: 'xs',
@@ -40,6 +41,7 @@ const props = withDefaults(
     title: undefined,
     square: false,
     noToggle: false,
+    class: undefined,
   },
 );
 
@@ -94,6 +96,7 @@ const computedStyle = computed(() => {
     :style="computedStyle"
     class="transition-all duration-200"
     :class="[
+      $props.class,
       square ? 'aspect-square p-0' : 'w-6 h-6 p-0 flex items-center justify-center',
       modelValue ? 'opacity-100' : 'opacity-60 hover:opacity-100',
     ]"
