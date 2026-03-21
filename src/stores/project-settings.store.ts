@@ -228,7 +228,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
       markProjectSettingsAsDirty();
       void requestProjectSettingsSave();
     },
-    { deep: true },
+    { deep: true, flush: 'sync' },
   );
 
   return {

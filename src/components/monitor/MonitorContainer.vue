@@ -189,7 +189,12 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <UContextMenu :items="contextMenuItems" class="h-full group/monitor">
+  <UContextMenu
+    :items="contextMenuItems"
+    :modal="false"
+    class="h-full group/monitor"
+    :ui="{ content: 'z-[100000]' }"
+  >
     <div
       ref="panelRef"
       class="panel-focus-frame flex h-full min-w-0 min-h-0 transition-colors duration-300 relative"

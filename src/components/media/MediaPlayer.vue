@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
+import { ref, watch, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useImagePanZoom } from '~/composables/preview/useImagePanZoom';
 import { useMediaPlayerVolume } from '~/composables/preview/useMediaPlayerVolume';
 import { useMediaPlayerPlayback } from '~/composables/preview/useMediaPlayerPlayback';
@@ -7,6 +7,13 @@ import { formatTime } from '~/utils/time';
 import UiVolumeControl from '~/components/ui/editor/UiVolumeControl.vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
+
+interface MediaPlaybackTransferState {
+  currentTime: number;
+  isPlaying: boolean;
+  token: number;
+  source: 'inline' | 'modal';
+}
 
 const { t } = useI18n();
 const uiStore = useUiStore();
@@ -18,11 +25,15 @@ const props = defineProps<{
   type: 'video' | 'audio';
   isModal?: boolean;
   focusPanelId?: string;
+  resumeState?: MediaPlaybackTransferState | null;
+  instanceKey?: 'inline' | 'modal';
+  forcePaused?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: 'open-modal'): void;
   (e: 'close-modal'): void;
+  (e: 'sync-state', value: { currentTime: number; isPlaying: boolean; source: 'inline' | 'modal' }): void;
 }>();
 
 const mediaElement = ref<HTMLVideoElement | HTMLAudioElement | null>(null);
@@ -47,6 +58,7 @@ const {
 
 function onTimeUpdate() {
   playOnTimeUpdate(isDragging);
+  emitPlaybackState();
 }
 
 const playbackSpeedLabel = computed(() => {
@@ -98,6 +110,48 @@ const contextMenuItems = computed(() => [
   ],
 ]);
 
+function emitPlaybackState() {
+  emit('sync-state', {
+    currentTime: currentTime.value,
+    isPlaying: isPlaying.value,
+    source: props.instanceKey ?? 'inline',
+  });
+}
+
+async function applyResumeState() {
+  if (!props.resumeState || !mediaElement.value) return;
+  if (props.resumeState.source === (props.instanceKey ?? 'inline')) return;
+
+  const element = mediaElement.value;
+  const nextTime = Math.max(0, props.resumeState.currentTime);
+
+  if (props.type === 'video' || props.type === 'audio') {
+    const setTime = () => {
+      if (!mediaElement.value) return;
+      if (Number.isFinite(nextTime)) {
+        mediaElement.value.currentTime = nextTime;
+      }
+      if (props.resumeState?.isPlaying) {
+        void mediaElement.value.play().catch(() => {});
+      } else {
+        mediaElement.value.pause();
+      }
+    };
+
+    if (element.readyState >= 1) {
+      setTime();
+      return;
+    }
+
+    const onLoaded = () => {
+      element.removeEventListener('loadedmetadata', onLoaded);
+      setTime();
+    };
+
+    element.addEventListener('loadedmetadata', onLoaded, { once: true });
+  }
+}
+
 function onSeekStart() {
   isDragging.value = true;
   if (isPlaying.value) {
@@ -145,6 +199,31 @@ watch(isMuted, (m) => {
   if (mediaElement.value) {
     mediaElement.value.muted = m;
   }
+});
+
+watch(
+  () => props.forcePaused,
+  (forcePaused) => {
+    if (!mediaElement.value || !forcePaused) return;
+    mediaElement.value.pause();
+  },
+  { immediate: true },
+);
+
+watch(
+  () => props.resumeState?.token,
+  async () => {
+    await nextTick();
+    await applyResumeState();
+  },
+);
+
+watch(isPlaying, () => {
+  emitPlaybackState();
+});
+
+watch(currentTime, () => {
+  emitPlaybackState();
 });
 
 function shouldHandlePreviewPlaybackEvent() {
@@ -197,6 +276,10 @@ function onGlobalMouseMove() {
 
 onMounted(() => {
   window.addEventListener('mousemove', onGlobalMouseMove);
+  void nextTick(async () => {
+    await applyResumeState();
+    emitPlaybackState();
+  });
 });
 
 onUnmounted(() => {
@@ -211,8 +294,9 @@ onUnmounted(() => {
     <UContextMenu
       v-if="type === 'video'"
       :items="contextMenuItems"
+      :modal="false"
       class="flex-1 flex min-h-0"
-      :ui="{ content: 'z-[9999]' }"
+      :ui="{ content: 'z-[100000]' }"
     >
       <div
         ref="containerRef"
