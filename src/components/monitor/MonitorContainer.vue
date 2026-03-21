@@ -2,7 +2,7 @@
 import UiTooltip from '~/components/ui/UiTooltip.vue';
 import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
-import { computed, nextTick, onMounted, onUnmounted, provide, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useFullscreen } from '@vueuse/core';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -16,88 +16,26 @@ import MonitorAudioControl from './MonitorAudioControl.vue';
 import MonitorTextTransformBox from './MonitorTextTransformBox.vue';
 import MonitorViewport from './MonitorViewport.vue';
 import MonitorTransformBox from './MonitorTransformBox.vue';
-
-const MONITOR_RUNTIME_KEY = Symbol('monitorRuntime');
-
-interface MonitorRuntimeApi {
-  createStopFrameSnapshot: () => Promise<void>;
-  createNewTimeline: () => Promise<void>;
-}
+import { registerMonitorActions } from '~/composables/editor/hotkeys/monitorActions';
+import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useProjectActions } from '~/composables/editor/useProjectActions';
 
 const { t } = useI18n();
 const toast = useToast();
 const focusStore = useFocusStore();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
+const fileManager = useFileManager();
+const { loadTimeline } = useProjectActions();
 
-async function exportTimelineToFile() {
-  if (!projectStore.currentProjectId || !projectStore.currentTimelinePath) {
-    toast.add({
-      color: 'error',
-      title: 'Export failed',
-      description: 'No project or timeline is open',
-    });
-    return;
-  }
-
-  const currentName = timelineStore.timelineDoc?.name || 'timeline';
-  const baseName = currentName.replace(/\.otio$/i, '');
-  let fileName = `${baseName}_export.otio`;
-  let attempt = 0;
-  const MAX_ATTEMPTS = 1000;
-
-  while (attempt < MAX_ATTEMPTS) {
-    const existingHandle = await projectStore.getProjectFileHandleByRelativePath({
-      relativePath: `${TIMELINES_DIR_NAME}/${fileName}`,
-      create: false,
-    });
-    if (!existingHandle) break;
-    attempt++;
-    const suffix = String(attempt).padStart(3, '0');
-    fileName = `${baseName}_export_${suffix}.otio`;
-  }
-
-  try {
-    const doc = timelineStore.timelineDoc;
-    if (!doc) {
-      toast.add({
-        color: 'error',
-        title: 'Export failed',
-        description: 'No timeline document to export',
-      });
-      return;
-    }
-
-    const serialized = serializeTimelineToOtio(doc);
-    const fileHandle = await projectStore.getProjectFileHandleByRelativePath({
-      relativePath: `${TIMELINES_DIR_NAME}/${fileName}`,
-      create: true,
-    });
-
-    if (!fileHandle) {
-      toast.add({
-        color: 'error',
-        title: 'Export failed',
-        description: 'Could not access project folder for writing',
-      });
-      return;
-    }
-
-    const writable = await (fileHandle as FileSystemFileHandle).createWritable();
-    await writable.write(serialized);
-    await writable.close();
-
+async function createNewTimeline() {
+  const createdPath = await fileManager.createTimeline();
+  if (createdPath) {
+    await loadTimeline(createdPath);
     toast.add({
       color: 'success',
-      title: 'Timeline exported',
-      description: `Saved to ${TIMELINES_DIR_NAME}/${fileName}`,
-    });
-  } catch (err) {
-    console.error('[Monitor] Failed to export timeline', err);
-    toast.add({
-      color: 'error',
-      title: 'Export failed',
-      description: err instanceof Error ? err.message : 'Unknown error',
+      title: t('timelineCreation.successTitle', 'Timeline created'),
+      description: createdPath,
     });
   }
 }
@@ -129,12 +67,10 @@ const {
   timecodeEl,
 } = useMonitorRuntime();
 
-const runtimeCtx: MonitorRuntimeApi = {
+registerMonitorActions({
   createStopFrameSnapshot,
-  createNewTimeline: exportTimelineToFile,
-};
-
-provide(MONITOR_RUNTIME_KEY, runtimeCtx);
+  createNewTimeline,
+});
 
 const props = withDefaults(
   defineProps<{

@@ -1,4 +1,3 @@
-import { inject } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
@@ -8,16 +7,10 @@ import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useFilesPageStore } from '~/stores/files-page.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useAppClipboard } from '~/composables/useAppClipboard';
+import { useMonitorActions } from '~/composables/editor/hotkeys/monitorActions';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import type { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 import { DEFAULT_TIMELINE_ZOOM_POSITION, stepTimelineZoomPosition } from '~/utils/zoom';
-
-const MONITOR_RUNTIME_KEY = Symbol('monitorRuntime');
-
-interface MonitorRuntimeApi {
-  createStopFrameSnapshot: () => Promise<void>;
-  createNewTimeline: () => Promise<void>;
-}
 
 export function useGeneralHotkeys(
   zoomHoldRunner: ReturnType<typeof createHotkeyHoldRunner>,
@@ -29,7 +22,7 @@ export function useGeneralHotkeys(
   const selectionStore = useSelectionStore();
   const projectStore = useProjectStore();
 
-  const monitorRuntime = inject<MonitorRuntimeApi>(MONITOR_RUNTIME_KEY);
+  const { createStopFrameSnapshot, createNewTimeline } = useMonitorActions();
   const filesPageStore = useFilesPageStore();
   const { clipboardPayload, setClipboardPayload } = useAppClipboard();
   const { loadTimeline } = useProjectActions();
@@ -370,15 +363,15 @@ export function useGeneralHotkeys(
       return false;
     },
     'general.snapshot': () => {
-      if (monitorRuntime?.createStopFrameSnapshot) {
-        void monitorRuntime.createStopFrameSnapshot();
+      if (createStopFrameSnapshot.value) {
+        void createStopFrameSnapshot.value();
         return true;
       }
       return false;
     },
     'general.newTimeline': () => {
-      if (monitorRuntime?.createNewTimeline) {
-        void monitorRuntime.createNewTimeline();
+      if (createNewTimeline.value) {
+        void createNewTimeline.value();
         return true;
       }
       return false;
