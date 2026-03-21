@@ -106,10 +106,24 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       onClick: options.createSubfolder,
     },
     {
+      id: 'copy',
+      title: options.t('common.copy', 'Copy'),
+      icon: 'i-heroicons-document-duplicate',
+      hidden: options.isCommonPath.value,
+      onClick: options.onCopy,
+    },
+    {
+      id: 'cut',
+      title: options.t('common.cut', 'Cut'),
+      icon: 'i-heroicons-scissors',
+      hidden: options.isCommonPath.value,
+      onClick: options.onCut,
+    },
+    {
       id: 'paste',
       title: options.t('common.paste', 'Paste'),
       icon: 'i-heroicons-clipboard',
-      hidden: !options.hasClipboardItems.value,
+      disabled: !options.hasClipboardItems.value,
       onClick: options.onPaste,
     },
   ]);

@@ -128,6 +128,12 @@ export function useFileContextMenu(
           icon: 'i-heroicons-scissors',
           onSelect: () => onAction('cut', selectedEntries),
         },
+        {
+          label: t('common.paste', 'Paste'),
+          icon: 'i-heroicons-clipboard',
+          disabled: !deps.hasClipboardItems,
+          onSelect: () => onAction('paste', entry),
+        },
       ]);
 
       items.push([
@@ -170,15 +176,7 @@ export function useFileContextMenu(
         },
       ]);
 
-      if (deps.hasClipboardItems) {
-        items.push([
-          {
-            label: t('common.paste', 'Paste'),
-            icon: 'i-heroicons-clipboard',
-            onSelect: () => onAction('paste', entry),
-          },
-        ]);
-      }
+
 
       if (hasVideos) {
         if (deps.isGeneratingProxyInDirectory(entry)) {
@@ -341,11 +339,12 @@ export function useFileContextMenu(
       entry.kind === 'directory' &&
       entry.name.toLowerCase() === 'common' &&
       (entry.path === 'common' || entry.path === '');
-    const isProjectRoot = entry.kind === 'directory' && entry.path === '';
+    const isProjectRoot = entry.kind === 'directory' && (entry.path === '' || entry.path === '/');
     const isCommonPath = isWorkspaceCommonPath(entry.path);
 
+    const managementItems = [];
     if (!isCommon && !isProjectRoot && !isCommonPath) {
-      items.push([
+      managementItems.push(
         {
           label: t('common.copy', 'Copy'),
           icon: 'i-heroicons-document-duplicate',
@@ -356,6 +355,20 @@ export function useFileContextMenu(
           icon: 'i-heroicons-scissors',
           onSelect: () => onAction('cut', entry),
         },
+      );
+    }
+
+    if (entry.kind === 'directory') {
+      managementItems.push({
+        label: t('common.paste', 'Paste'),
+        icon: 'i-heroicons-clipboard',
+        disabled: !deps.hasClipboardItems,
+        onSelect: () => onAction('paste', entry),
+      });
+    }
+
+    if (!isCommon && !isProjectRoot && !isCommonPath) {
+      managementItems.push(
         {
           label: t('common.rename', 'Rename'),
           icon: 'i-heroicons-pencil',
@@ -367,7 +380,11 @@ export function useFileContextMenu(
           color: 'error',
           onSelect: () => onAction('delete', entry),
         },
-      ]);
+      );
+    }
+
+    if (managementItems.length > 0) {
+      items.push(managementItems);
     }
 
     return items;
