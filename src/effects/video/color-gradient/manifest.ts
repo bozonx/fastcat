@@ -12,7 +12,9 @@ export interface ColorGradientParams {
 export const colorGradientManifest: EffectManifest<ColorGradientParams> = {
   type: 'colorGradient',
   name: 'Цветовой градиент',
+  nameKey: 'fastcat.effects.video.colorGradient.name',
   description: 'Наложение цветового градиента',
+  descriptionKey: 'fastcat.effects.video.colorGradient.description',
   icon: 'i-heroicons-swatch',
   defaultValues: {
     type: 0, // Linear
@@ -26,6 +28,7 @@ export const colorGradientManifest: EffectManifest<ColorGradientParams> = {
       kind: 'select',
       key: 'type',
       label: 'Тип',
+      labelKey: 'fastcat.effects.video.colorGradient.params.type',
       options: [
         { label: 'Линейный', value: 0 },
         { label: 'Радиальный', value: 1 },
@@ -36,6 +39,7 @@ export const colorGradientManifest: EffectManifest<ColorGradientParams> = {
       kind: 'slider',
       key: 'angle',
       label: 'Угол',
+      labelKey: 'fastcat.effects.video.colorGradient.params.angle',
       min: 0,
       max: 360,
       step: 1,
@@ -45,6 +49,7 @@ export const colorGradientManifest: EffectManifest<ColorGradientParams> = {
       kind: 'slider',
       key: 'alpha',
       label: 'Прозрачность',
+      labelKey: 'fastcat.effects.video.colorGradient.params.alpha',
       min: 0,
       max: 1,
       step: 0.01,
@@ -54,6 +59,7 @@ export const colorGradientManifest: EffectManifest<ColorGradientParams> = {
       kind: 'slider',
       key: 'maxColors',
       label: 'Кол-во цветов (0=Безлимит)',
+      labelKey: 'fastcat.effects.video.colorGradient.params.maxColors',
       min: 0,
       max: 256,
       step: 1,
@@ -62,6 +68,7 @@ export const colorGradientManifest: EffectManifest<ColorGradientParams> = {
       kind: 'toggle',
       key: 'replace',
       label: 'Заменить цвет',
+      labelKey: 'fastcat.effects.video.colorGradient.params.replace',
     },
   ],
   createFilter: () => {

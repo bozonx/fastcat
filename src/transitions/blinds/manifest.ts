@@ -191,6 +191,7 @@ function normalizeBlindsParams(params?: Record<string, unknown>): BlindsParams {
 export const blindsManifest: TransitionManifest<BlindsParams> = {
   type: 'blinds',
   name: 'Blinds',
+  nameKey: 'fastcat.transitions.blinds.name',
   icon: 'i-heroicons-bars-3',
   defaultDurationUs: 1_000_000,
   defaultParams: normalizeBlindsParams(),

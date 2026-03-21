@@ -189,6 +189,7 @@ function getDirectionVector(direction: SlideParams['direction']): { x: number; y
 export const slideManifest: TransitionManifest<SlideParams> = {
   type: 'slide',
   name: 'Slide',
+  nameKey: 'fastcat.transitions.slide.name',
   icon: 'i-heroicons-arrows-right-left',
   defaultDurationUs: 500_000,
   defaultParams: normalizeSlideParams(),

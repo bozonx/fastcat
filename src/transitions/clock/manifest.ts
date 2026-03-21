@@ -91,6 +91,7 @@ function normalizeClockParams(params?: Record<string, unknown>): ClockParams {
 export const clockManifest: TransitionManifest<ClockParams> = {
   type: 'clock',
   name: 'Clock',
+  nameKey: 'fastcat.transitions.clock.name',
   icon: 'i-heroicons-clock',
   defaultDurationUs: 600_000,
   defaultParams: normalizeClockParams(),

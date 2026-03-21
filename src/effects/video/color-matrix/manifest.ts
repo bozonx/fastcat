@@ -19,7 +19,9 @@ export interface ColorMatrixParams {
 export const colorMatrixManifest: EffectManifest<ColorMatrixParams> = {
   type: 'colorMatrix',
   name: 'Цветовой фильтр',
+  nameKey: 'fastcat.effects.video.colorMatrix.name',
   description: 'Готовые цветовые пресеты',
+  descriptionKey: 'fastcat.effects.video.colorMatrix.description',
   icon: 'i-heroicons-swatch',
   defaultValues: {
     filterType: 'none',
@@ -30,6 +32,7 @@ export const colorMatrixManifest: EffectManifest<ColorMatrixParams> = {
       kind: 'select',
       key: 'filterType',
       label: 'Фильтр',
+      labelKey: 'fastcat.effects.video.colorMatrix.params.filterType',
       options: [
         { label: 'Нет', value: 'none' },
         { label: 'Сепия', value: 'sepia' },
@@ -47,6 +50,7 @@ export const colorMatrixManifest: EffectManifest<ColorMatrixParams> = {
       kind: 'slider',
       key: 'intensity',
       label: 'Интенсивность',
+      labelKey: 'fastcat.effects.video.colorMatrix.params.intensity',
       min: 0,
       max: 1,
       step: 0.01,

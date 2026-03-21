@@ -9,7 +9,9 @@ export interface NoiseParams {
 export const noiseManifest: EffectManifest<NoiseParams> = {
   type: 'noise',
   name: 'Шум',
+  nameKey: 'fastcat.effects.video.noise.name',
   description: 'Эффект зернистости пленки',
+  descriptionKey: 'fastcat.effects.video.noise.description',
   icon: 'i-heroicons-sparkles',
   defaultValues: {
     noise: 0.5,
@@ -20,6 +22,7 @@ export const noiseManifest: EffectManifest<NoiseParams> = {
       kind: 'slider',
       key: 'noise',
       label: 'Интенсивность',
+      labelKey: 'fastcat.effects.video.noise.params.noise',
       min: 0,
       max: 1,
       step: 0.01,
@@ -29,6 +32,7 @@ export const noiseManifest: EffectManifest<NoiseParams> = {
       kind: 'slider',
       key: 'seed',
       label: 'Зерно',
+      labelKey: 'fastcat.effects.video.noise.params.seed',
       min: 0,
       max: 1,
       step: 0.01,

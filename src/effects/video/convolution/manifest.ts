@@ -9,7 +9,9 @@ export interface ConvolutionParams {
 export const convolutionManifest: EffectManifest<ConvolutionParams> = {
   type: 'convolution',
   name: 'Свертка',
+  nameKey: 'fastcat.effects.video.convolution.name',
   description: 'Применение матрицы свертки (Convolution Matrix)',
+  descriptionKey: 'fastcat.effects.video.convolution.description',
   icon: 'i-heroicons-view-columns',
   defaultValues: {
     width: 200,
@@ -20,6 +22,7 @@ export const convolutionManifest: EffectManifest<ConvolutionParams> = {
       kind: 'slider',
       key: 'width',
       label: 'Ширина',
+      labelKey: 'fastcat.effects.video.convolution.params.width',
       min: 1,
       max: 2000,
       step: 1,
@@ -28,6 +31,7 @@ export const convolutionManifest: EffectManifest<ConvolutionParams> = {
       kind: 'slider',
       key: 'height',
       label: 'Высота',
+      labelKey: 'fastcat.effects.video.convolution.params.height',
       min: 1,
       max: 2000,
       step: 1,

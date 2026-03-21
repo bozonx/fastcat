@@ -70,6 +70,7 @@ function normalizeFadeToBlackParams(params?: Record<string, unknown>): FadeToBla
 export const fadeToBlackManifest: TransitionManifest<FadeToBlackParams> = {
   type: 'fade-to-black',
   name: 'Fade to Black',
+  nameKey: 'fastcat.transitions.fade-to-black.name',
   icon: 'i-heroicons-moon',
   defaultDurationUs: 500_000,
   defaultParams: normalizeFadeToBlackParams(),

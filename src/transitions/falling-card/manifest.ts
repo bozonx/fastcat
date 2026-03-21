@@ -180,6 +180,7 @@ function normalizeFallingCardParams(params?: Record<string, unknown>): FallingCa
 export const fallingCardTransitionManifest: TransitionManifest<FallingCardParams> = {
   type: 'falling-card' as any,
   name: 'Falling Card',
+  nameKey: 'fastcat.transitions.falling-card.name',
   icon: 'i-heroicons-square-3-stack-3d',
   defaultDurationUs: 500_000,
   defaultParams: normalizeFallingCardParams(),

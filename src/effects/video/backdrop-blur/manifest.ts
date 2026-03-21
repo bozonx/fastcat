@@ -9,7 +9,9 @@ export interface BackdropBlurParams {
 export const backdropBlurManifest: EffectManifest<BackdropBlurParams> = {
   type: 'backdropBlur',
   name: 'Размытие фона',
+  nameKey: 'fastcat.effects.video.backdropBlur.name',
   description: 'Размытие всего, что находится позади объекта',
+  descriptionKey: 'fastcat.effects.video.backdropBlur.description',
   icon: 'i-heroicons-sparkles',
   defaultValues: {
     strength: 5,
@@ -20,6 +22,7 @@ export const backdropBlurManifest: EffectManifest<BackdropBlurParams> = {
       kind: 'slider',
       key: 'strength',
       label: 'Сила',
+      labelKey: 'fastcat.effects.video.backdropBlur.params.strength',
       min: 0,
       max: 50,
       step: 1,
@@ -29,6 +32,7 @@ export const backdropBlurManifest: EffectManifest<BackdropBlurParams> = {
       kind: 'slider',
       key: 'quality',
       label: 'Качество',
+      labelKey: 'fastcat.effects.video.backdropBlur.params.quality',
       min: 1,
       max: 10,
       step: 1,

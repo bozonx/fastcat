@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 import DbSlider from '~/components/audio/DbSlider.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
@@ -102,13 +103,15 @@ const fadeCurveOptions = [
           :max="props.audioFadeInMaxSec"
           @update:model-value="(v: any) => emit('updateAudioFadeInSec', Number(v))"
         />
-        <USelectMenu
+        <UiSelect
           :model-value="props.audioFadeInCurve"
           :items="fadeCurveOptions"
           value-key="value"
           label-key="label"
           size="xs"
-          @update:model-value="(v: any) => emit('updateAudioFadeInCurve', v?.value ?? v)"
+          @update:model-value="
+            (v: unknown) => emit('updateAudioFadeInCurve', (v as { value: string })?.value ?? v)
+          "
         />
       </div>
       <div class="flex flex-col gap-0.5">
@@ -124,13 +127,15 @@ const fadeCurveOptions = [
           :max="props.audioFadeOutMaxSec"
           @update:model-value="(v: any) => emit('updateAudioFadeOutSec', Number(v))"
         />
-        <USelectMenu
+        <UiSelect
           :model-value="props.audioFadeOutCurve"
           :items="fadeCurveOptions"
           value-key="value"
           label-key="label"
           size="xs"
-          @update:model-value="(v: any) => emit('updateAudioFadeOutCurve', v?.value ?? v)"
+          @update:model-value="
+            (v: unknown) => emit('updateAudioFadeOutCurve', (v as { value: string })?.value ?? v)
+          "
         />
       </div>
     </div>

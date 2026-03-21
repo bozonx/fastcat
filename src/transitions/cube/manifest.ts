@@ -169,6 +169,7 @@ function normalizeCubeParams(params?: Record<string, unknown>): CubeParams {
 export const cubeTransitionManifest: TransitionManifest<CubeParams> = {
   type: 'cube' as any,
   name: 'Cube',
+  nameKey: 'fastcat.transitions.cube.name',
   icon: 'i-heroicons-cube',
   defaultDurationUs: 500_000,
   defaultParams: normalizeCubeParams(),

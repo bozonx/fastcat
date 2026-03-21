@@ -2,6 +2,7 @@
 import type { TimelineBlendMode, AudioClipEffect, VideoClipEffect } from '~/timeline/types';
 import AudioEffectsEditor from '~/components/effects/AudioEffectsEditor.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 import EffectsEditor from '~/components/effects/EffectsEditor.vue';
 
 const props = defineProps<{
@@ -33,7 +34,7 @@ const { t } = useI18n();
       <span class="text-xs text-ui-text-muted">{{
         t('fastcat.clip.blendMode.title', 'Blend mode')
       }}</span>
-      <USelectMenu
+      <UiSelect
         :model-value="props.blendMode"
         :items="props.blendModeOptions"
         value-key="value"

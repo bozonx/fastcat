@@ -300,6 +300,7 @@ function normalizeCardSwapParams(params?: Record<string, unknown>): CardSwapPara
 export const cardSwapTransitionManifest: TransitionManifest<CardSwapParams> = {
   type: 'card-swap' as any,
   name: 'Card Swap',
+  nameKey: 'fastcat.transitions.card-swap.name',
   icon: 'i-heroicons-arrow-path-rounded-square',
   defaultDurationUs: 500_000,
   defaultParams: normalizeCardSwapParams(),

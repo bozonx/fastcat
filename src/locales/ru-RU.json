@@ -274,7 +274,185 @@
       },
       "title": "Эффекты",
       "trackAudioTitle": "Эффекты аудио дорожки: {name}",
-      "trackTitle": "Эффекты дорожки"
+      "trackTitle": "Эффекты дорожки",
+      "video": {
+        "advancedBloom": {
+          "name": "Свечение (Продвинутое)",
+          "description": "Продвинутый эффект свечения с настройкой порога и яркости",
+          "params": {
+            "threshold": "Порог",
+            "bloomScale": "Сила свечения",
+            "brightness": "Яркость",
+            "blur": "Размытие",
+            "quality": "Качество"
+          }
+        },
+        "ascii": {
+          "name": "ASCII Art",
+          "description": "Эффект ASCII символов",
+          "params": {
+            "size": "Размер"
+          }
+        },
+        "backdropBlur": {
+          "name": "Размытие фона",
+          "description": "Размытие всего, что находится позади объекта",
+          "params": {
+            "strength": "Сила",
+            "quality": "Качество"
+          }
+        },
+        "bevel": {
+          "name": "Скос (Фаска)",
+          "description": "Эффект объемной рамки (фаски)",
+          "params": {
+            "rotation": "Угол",
+            "thickness": "Толщина",
+            "lightAlpha": "Прозрачность света",
+            "shadowAlpha": "Прозрачность тени"
+          }
+        },
+        "bloom": {
+          "name": "Свечение (Bloom)",
+          "description": "Эффект размытого свечения",
+          "params": {
+            "strength": "Сила",
+            "quality": "Качество"
+          }
+        },
+        "blur": {
+          "name": "Размытие",
+          "description": "Размытие по Гауссу",
+          "params": {
+            "strength": "Сила",
+            "quality": "Качество"
+          }
+        },
+        "bulgePinch": {
+          "name": "Искажение (Выпуклость)",
+          "description": "Эффект выпуклости или сжатия (эффект рыбьего глаза)",
+          "params": {
+            "centerX": "Центр X",
+            "centerY": "Центр Y",
+            "radius": "Радиус",
+            "strength": "Сила"
+          }
+        },
+        "color-adjustment": {
+          "name": "Цветокоррекция",
+          "description": "Настройка яркости, контрастности и насыщенности",
+          "params": {
+            "brightness": "Яркость",
+            "contrast": "Контрастность",
+            "saturation": "Насыщенность"
+          }
+        },
+        "colorGradient": {
+          "name": "Цветовой градиент",
+          "description": "Наложение цветового градиента",
+          "params": {
+            "type": "Линейный",
+            "angle": "Угол",
+            "alpha": "Прозрачность",
+            "maxColors": "Кол-во цветов (0=Безлимит)",
+            "replace": "Заменить цвет"
+          }
+        },
+        "colorMap": {
+          "name": "Цветовая карта",
+          "description": "Применение цветовой карты (LUT)",
+          "params": {
+            "mix": "Интенсивность",
+            "nearest": "Режим Nearest"
+          }
+        },
+        "colorMatrix": {
+          "name": "Цветовой фильтр",
+          "description": "Готовые цветовые пресеты",
+          "params": {
+            "filterType": "Нет",
+            "intensity": "Интенсивность"
+          }
+        },
+        "colorOverlay": {
+          "name": "Наложение цвета",
+          "description": "Заливка сплошным цветом",
+          "params": {
+            "alpha": "Прозрачность"
+          }
+        },
+        "colorReplace": {
+          "name": "Замена цвета",
+          "description": "Замена одного цвета на другой",
+          "params": {
+            "tolerance": "Допуск"
+          }
+        },
+        "convolution": {
+          "name": "Свертка",
+          "description": "Применение матрицы свертки (Convolution Matrix)",
+          "params": {
+            "width": "Ширина",
+            "height": "Высота"
+          }
+        },
+        "crossHatch": {
+          "name": "Штриховка",
+          "description": "Эффект перекрестной штриховки"
+        },
+        "crt": {
+          "name": "ЭЛТ Монитор",
+          "description": "Эффект старого телевизора",
+          "params": {
+            "curvature": "Искажение",
+            "lineWidth": "Толщина линий",
+            "lineContrast": "Контраст линий",
+            "verticalLine": "Вертикальные линии",
+            "noise": "Шум",
+            "noiseSize": "Размер шума",
+            "vignetting": "Виньетка",
+            "vignettingAlpha": "Прозрачность виньетки",
+            "vignettingBlur": "Размытие виньетки"
+          }
+        },
+        "displacement": {
+          "name": "Искажение",
+          "description": "Эффект смещения/волн",
+          "params": {
+            "scaleX": "Смещение X",
+            "scaleY": "Смещение Y"
+          }
+        },
+        "dot": {
+          "name": "Точки (Полутон)",
+          "description": "Эффект растровой печати",
+          "params": {
+            "scale": "Масштаб",
+            "angle": "Угол",
+            "grayscale": "Ч/Б"
+          }
+        },
+        "dropShadow": {
+          "name": "Тень",
+          "description": "Эффект падающей тени",
+          "params": {
+            "offsetX": "Смещение X",
+            "offsetY": "Смещение Y",
+            "alpha": "Прозрачность",
+            "blur": "Размытие",
+            "quality": "Качество",
+            "shadowOnly": "Только тень"
+          }
+        },
+        "noise": {
+          "name": "Шум",
+          "description": "Эффект зернистости пленки",
+          "params": {
+            "noise": "Интенсивность",
+            "seed": "Зерно"
+          }
+        }
+      }
     },
     "fileManager": {
       "unsupported": "API доступа к файловой системе не поддерживается в этом браузере"
@@ -611,6 +789,50 @@
     "welcome": {
       "openWorkspace": "Выбрать папку рабочей области",
       "selectFolder": "Выберите папку рабочей области на вашем компьютере. В этой папке будут храниться все ваши файлы проектов, медиа-прокси и кэш."
+    },
+    "transitions": {
+      "barn-door": {
+        "name": "Barn Door"
+      },
+      "blinds": {
+        "name": "Blinds"
+      },
+      "bloom": {
+        "name": "Bloom"
+      },
+      "card-swap": {
+        "name": "Card Swap"
+      },
+      "circle": {
+        "name": "Circle"
+      },
+      "clock": {
+        "name": "Clock"
+      },
+      "cube": {
+        "name": "Cube"
+      },
+      "dissolve": {
+        "name": "Dissolve"
+      },
+      "fade-to-black": {
+        "name": "Fade to Black"
+      },
+      "falling-card": {
+        "name": "Falling Card"
+      },
+      "rectangle": {
+        "name": "Rectangle"
+      },
+      "slide": {
+        "name": "Slide"
+      },
+      "wipe": {
+        "name": "Wipe"
+      },
+      "zoom": {
+        "name": "Zoom"
+      }
     }
   },
   "form": {
@@ -996,10 +1218,10 @@
       "orientation": "Ориентация",
       "portrait": "Портрет",
       "preset": {
-        "1080p": "1080p (FHD)",
         "2": {
           "7k": "2.7K (QHD)"
         },
+        "1080p": "1080p (FHD)",
         "480p": "480p (Предпросмотр)",
         "4k": "4K (UHD)",
         "720p": "720p (HD)"

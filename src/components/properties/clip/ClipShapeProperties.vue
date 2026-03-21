@@ -3,6 +3,7 @@ import type { ShapeType } from '~/timeline/types';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyField from '~/components/properties/PropertyField.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 
 const props = defineProps<{
   clip: any;
@@ -25,18 +26,24 @@ const { t } = useI18n();
 <template>
   <PropertySection :title="t('fastcat.shapeClip.shape', 'Shape')">
     <div class="flex flex-col gap-2">
-      <div v-if="props.presets.length > 0 || true" class="flex flex-col gap-1 pb-2 border-b border-ui-border mb-1">
+      <div
+        v-if="props.presets.length > 0 || true"
+        class="flex flex-col gap-1 pb-2 border-b border-ui-border mb-1"
+      >
         <span class="text-[10px] text-ui-text-muted uppercase tracking-wider font-semibold">
           {{ t('fastcat.effects.presetsTitle', 'Presets') }}
         </span>
         <div class="flex gap-2">
-          <USelectMenu
+          <UiSelect
             v-if="props.presets.length > 0"
             :items="props.presets"
             :placeholder="t('fastcat.effects.loadPresetPlaceholder', 'Load preset...')"
             class="flex-1"
             size="xs"
-            @update:model-value="(v: any) => emit('loadPreset', v?.value ?? v)"
+            full-width
+            @update:model-value="
+              (v: unknown) => emit('loadPreset', (v as { value: string })?.value ?? v)
+            "
           />
           <div v-else class="flex-1 text-xs text-ui-text-muted italic flex items-center">
             {{ t('fastcat.effects.noPresets', 'No presets saved') }}
@@ -53,7 +60,7 @@ const { t } = useI18n();
       </div>
 
       <PropertyField :label="t('fastcat.shapeClip.type', 'Type')">
-        <USelectMenu
+        <UiSelect
           :model-value="String(clip.shapeType ?? 'square')"
           :items="[
             { value: 'square', label: t('fastcat.shapeClip.types.square', 'Square') },
@@ -70,7 +77,9 @@ const { t } = useI18n();
           value-key="value"
           label-key="label"
           size="sm"
-          @update:model-value="(v: any) => emit('updateShapeType', v?.value ?? v)"
+          @update:model-value="
+            (v: unknown) => emit('updateShapeType', (v as { value: ShapeType })?.value ?? v)
+          "
         />
       </PropertyField>
 
@@ -193,7 +202,7 @@ const { t } = useI18n();
 
       <template v-else-if="clip.shapeType === 'cloud'">
         <PropertyField :label="$t('fastcat.clip.cloudType')">
-          <USelectMenu
+          <UiSelect
             :model-value="String(clip.shapeConfig?.cloudType ?? '1')"
             :items="[
               {
@@ -209,7 +218,10 @@ const { t } = useI18n();
             label-key="label"
             size="sm"
             @update:model-value="
-              (v: any) => emit('updateShapeConfig', { cloudType: Number(v?.value ?? v) as 1 | 2 })
+              (v: unknown) =>
+                emit('updateShapeConfig', {
+                  cloudType: Number((v as { value: string })?.value ?? v) as 1 | 2,
+                })
             "
           />
         </PropertyField>
@@ -269,7 +281,7 @@ const { t } = useI18n();
           />
         </PropertyField>
         <PropertyField :label="$t('fastcat.clip.pointerDirection')">
-          <USelectMenu
+          <UiSelect
             :model-value="String(clip.shapeConfig?.pointerDirection ?? 'left')"
             :items="[
               { value: 'left', label: $t('fastcat.timeline.transition.directionLeft') },
@@ -279,7 +291,10 @@ const { t } = useI18n();
             label-key="label"
             size="sm"
             @update:model-value="
-              (v: any) => emit('updateShapeConfig', { pointerDirection: v?.value ?? v })
+              (v: unknown) =>
+                emit('updateShapeConfig', {
+                  pointerDirection: (v as { value: string })?.value ?? v,
+                })
             "
           />
         </PropertyField>
