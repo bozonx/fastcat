@@ -133,7 +133,7 @@ function clampNumber(value: number, min: number, max: number): number {
     <div class="flex flex-col gap-4">
       <div v-if="props.canEditReversed" class="space-y-4">
         <UiSliderInput
-          :label="t('fastcat.clip.speedMultiplier', 'Speed (x)')"
+          :label="t('fastcat.clip.speedMultiplier', 'Speed')"
           v-model="speedMultiplier"
           :min="-50"
           :max="50"

@@ -328,7 +328,7 @@ const extraActions = computed(() => {
 
             <UiSliderInput
               :label="t('fastcat.track.opacity', 'Opacity')"
-              :formatted-value="`${Math.round(trackOpacity * 100)}%`"
+              unit="%"
               v-model="trackOpacity"
               :min="0"
               :max="1"

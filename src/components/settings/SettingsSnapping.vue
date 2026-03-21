@@ -52,7 +52,7 @@ const playhead = computed({
     <div class="space-y-4 max-w-xl">
       <UiSliderInput
         v-model="snapThresholdPx"
-        :label="t('videoEditor.settings.snapThresholdDefault', 'Snap threshold default (px)')"
+        :label="t('videoEditor.settings.snapThresholdDefault', 'Snap threshold default')"
         :min="1"
         :max="100"
         :step="1"

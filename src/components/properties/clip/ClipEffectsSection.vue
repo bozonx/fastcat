@@ -52,7 +52,7 @@ const { t } = useI18n();
 
     <UiSliderInput
       :label="t('fastcat.clip.opacity', 'Opacity')"
-      :formatted-value="`${Math.round(props.opacity * 100)}%`"
+      unit="%"
       :model-value="props.opacity"
       :min="0"
       :max="1"
