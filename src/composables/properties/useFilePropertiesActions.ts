@@ -25,6 +25,7 @@ interface UseFilePropertiesActionsOptions {
   canConvertFile: Ref<boolean>;
   canUploadToRemote: Ref<boolean>;
   canTranscribeMedia: Ref<boolean>;
+  isAudioFile: Ref<boolean>;
   canOpenAsPanel: Ref<boolean>;
   canOpenAsProjectTab: Ref<boolean>;
   showVideoProxyActions: Ref<boolean>;
@@ -160,7 +161,8 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'transcribe',
       label: options.t('videoEditor.fileManager.actions.transcribe', 'Transcribe'),
       icon: 'i-heroicons-microphone',
-      hidden: !options.canTranscribeMedia.value,
+      hidden: !options.isVideoFile.value && !options.isAudioFile.value,
+      disabled: !options.canTranscribeMedia.value,
       onClick: options.openTranscriptionModal,
     },
     {

@@ -26,6 +26,7 @@ const {
   resetView,
   centerMonitor,
   resetZoom,
+  fitMonitor,
   onPreviewPointerDown,
   onViewportPointerDown,
   onViewportPointerMove,
@@ -34,7 +35,7 @@ const {
   onViewportWheel,
 } = useMonitorGestures({ projectStore, viewportEl });
 
-defineExpose({ viewportEl, zoom, zoomExact, zoomLabel, resetView, centerMonitor, resetZoom });
+defineExpose({ viewportEl, zoom, zoomExact, zoomLabel, resetView, centerMonitor, resetZoom, fitMonitor });
 </script>
 
 <template>

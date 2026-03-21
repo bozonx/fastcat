@@ -32,27 +32,25 @@ function openProjectSettings() {
     v-if="props.isProjectRootDir"
     :title="t('videoEditor.fileManager.projectRoot.title', 'Project root')"
   >
-    <div class="flex flex-col gap-2">
-      <PropertyRow
-        v-if="props.storageFreeBytes !== null"
-        :label="t('videoEditor.fileManager.projectRoot.freeSpace', 'Free space')"
-        :value="formatBytes(props.storageFreeBytes)"
-      />
-      
-      <div class="flex items-center justify-between text-xs">
-        <div class="flex flex-col gap-0.5">
-          <span class="text-neutral-500">{{ t('videoEditor.fileManager.projectRoot.parameters', 'Parameters') }}</span>
-          <span class="text-neutral-200">{{ projectParams }}</span>
-        </div>
-        <UButton
-          icon="i-heroicons-pencil"
-          color="gray"
-          variant="ghost"
-          size="sm"
-          :title="t('common.edit', 'Edit')"
-          @click="openProjectSettings"
-        />
+    <PropertyRow
+      v-if="props.storageFreeBytes !== null"
+      :label="t('videoEditor.fileManager.projectRoot.freeSpace', 'Free space')"
+      :value="formatBytes(props.storageFreeBytes)"
+    />
+    
+    <div class="flex items-center justify-between text-xs px-2 py-1">
+      <div class="flex flex-col gap-0.5">
+        <span class="text-neutral-500">{{ t('videoEditor.fileManager.projectRoot.parameters', 'Parameters') }}</span>
+        <span class="text-neutral-200">{{ projectParams }}</span>
       </div>
+      <UButton
+        icon="i-heroicons-pencil"
+        color="gray"
+        variant="ghost"
+        size="sm"
+        :title="t('common.edit', 'Edit')"
+        @click="openProjectSettings"
+      />
     </div>
   </PropertySection>
 </template>

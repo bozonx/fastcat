@@ -282,6 +282,7 @@ const {
   canConvertFile,
   canUploadToRemote,
   canTranscribeMedia,
+  isAudioFile,
   canOpenAsPanel,
   canOpenAsProjectTab,
   showVideoProxyActions,
@@ -392,11 +393,9 @@ const {
       :media-meta="mediaMeta"
       :format-duration-seconds="formatDurationSeconds"
       :format-bitrate="formatBitrate"
-      :can-transcribe-media="canTranscribeMedia"
       :latest-transcription-cache-key="latestTranscriptionCacheKey"
       :latest-transcription-was-cached="latestTranscriptionWasCached"
       :latest-transcription-text="latestTranscriptionText"
-      :open-transcription-modal="openTranscriptionModal"
     />
 
     <FileGeneralInfoSection
