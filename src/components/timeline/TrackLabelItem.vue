@@ -26,7 +26,7 @@ const { t } = useI18n();
 const timelineStore = useTimelineStore();
 
 const renameValue = ref(props.track.name);
-const renameInput = ref<HTMLInputElement | null>(null);
+const renameInput = ref<{ input: HTMLInputElement } | null>(null);
 const hasClipped = ref(false);
 let clipResetTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
@@ -39,8 +39,8 @@ watch(
     if (val) {
       renameValue.value = props.track.name;
       await nextTick();
-      renameInput.value?.focus();
-      renameInput.value?.select();
+      renameInput.value?.input?.focus();
+      renameInput.value?.input?.select();
     }
   },
 );
@@ -136,12 +136,18 @@ onBeforeUnmount(() => {
         :class="[isRenaming ? 'bg-ui-bg-elevated ring-1 ring-ui-border-accent' : '']"
         @click.stop="timelineStore.renamingTrackId = track.id"
       >
-        <input
+        <UInput
           v-if="isRenaming"
           ref="renameInput"
           v-model="renameValue"
-          class="bg-transparent border-none outline-none text-xs font-medium p-0 m-0 block whitespace-nowrap overflow-hidden text-ellipsis"
-          :style="{ width: `${renameValue.length + 2}ch`, minWidth: '4ch', maxWidth: '100%' }"
+          size="xs"
+          class="w-full"
+          :ui="{ base: 'bg-transparent border-none text-xs font-medium p-0' }"
+          :style="{
+            width: `${Math.max(4, renameValue.length + 2)}ch`,
+            minWidth: '4ch',
+            maxWidth: '100%',
+          }"
           @click.stop
           @keydown.enter.stop="confirmRename"
           @keydown.esc.stop="emit('cancelRename')"

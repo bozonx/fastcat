@@ -1191,7 +1191,11 @@
       },
       "videoFrameCacheMb": "Video frame cache (MB)",
       "videoFrameCacheMbHelp": "Maximum amount of RAM to use for decoded preview frames. Set to 0 to disable cache.",
-      "workspaceFolder": "Workspace folder"
+      "workspaceFolder": "Workspace folder",
+      "workspaceFolderNotSelected": "Workspace folder not selected",
+      "workspaceSavedNote": "Workspace folder saved in this browser",
+      "workspaceSection": "App Settings",
+      "workspaceStorage": "Storage"
     }
   },
   "mobileFiles": {

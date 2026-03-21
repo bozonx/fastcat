@@ -46,13 +46,19 @@ function parseTimecode(tc: string, fpsValue: number): number {
   let ff = 0;
 
   if (parts.length === 4) {
-    [hh, mm, ss, ff] = parts;
+    hh = parts[0] ?? 0;
+    mm = parts[1] ?? 0;
+    ss = parts[2] ?? 0;
+    ff = parts[3] ?? 0;
   } else if (parts.length === 3) {
-    [mm, ss, ff] = parts;
+    mm = parts[0] ?? 0;
+    ss = parts[1] ?? 0;
+    ff = parts[2] ?? 0;
   } else if (parts.length === 2) {
-    [ss, ff] = parts;
+    ss = parts[0] ?? 0;
+    ff = parts[1] ?? 0;
   } else if (parts.length === 1) {
-    ss = parts[0];
+    ss = parts[0] ?? 0;
   } else {
     return NaN;
   }
@@ -140,32 +146,33 @@ function stepValue(direction: number, isFrame: boolean) {
 </script>
 
 <template>
-  <div ref="wrapperRef" class="relative flex items-center w-full">
+  <div ref="wrapperRef" class="relative flex items-center max-w-36">
     <UInput
       v-model="localValue"
-      size="sm"
+      size="xs"
       class="w-full font-mono"
+      :ui="{ base: 'pr-7' }"
       @focus="handleFocus"
       @blur="handleBlur"
       @keydown="handleKeydown"
     >
       <template #trailing>
-        <div class="flex flex-col border-l border-ui-border-muted h-full">
+        <div class="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col">
           <button
             type="button"
-            class="flex-1 px-1 hover:bg-ui-bg-muted flex items-center justify-center text-ui-text-muted hover:text-ui-text transition-colors"
+            class="px-1 py-0.5 hover:bg-ui-bg-muted flex items-center justify-center text-ui-text-muted hover:text-ui-text transition-colors"
             tabindex="-1"
             @click="stepValue(1, true)"
           >
-            <UIcon name="i-heroicons-chevron-up" class="w-3 h-3" />
+            <UIcon name="i-heroicons-chevron-up" class="w-2.5 h-2.5" />
           </button>
           <button
             type="button"
-            class="flex-1 px-1 hover:bg-ui-bg-muted flex items-center justify-center text-ui-text-muted hover:text-ui-text transition-colors border-t border-ui-border-muted"
+            class="px-1 py-0.5 hover:bg-ui-bg-muted flex items-center justify-center text-ui-text-muted hover:text-ui-text transition-colors"
             tabindex="-1"
             @click="stepValue(-1, true)"
           >
-            <UIcon name="i-heroicons-chevron-down" class="w-3 h-3" />
+            <UIcon name="i-heroicons-chevron-down" class="w-2.5 h-2.5" />
           </button>
         </div>
       </template>
