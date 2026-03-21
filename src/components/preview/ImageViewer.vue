@@ -27,10 +27,12 @@ const {
   translateX,
   translateY,
   reset,
+  fitToContainer,
   onWheel,
   onPointerDown,
   onPointerMove,
   onPointerUp,
+  onAuxClick,
   onCustomZoom,
 } = useImagePanZoom(containerRef);
 
@@ -42,6 +44,12 @@ const imageStyle = computed(() => ({
 
 const contextMenuItems = computed(() => [
   [
+    {
+      label: t('fastcat.preview.fitToWindow', 'Fit to Window'),
+      icon: 'i-heroicons-arrows-pointing-in',
+      onSelect: () => fitToContainer(),
+      click: () => fitToContainer(),
+    },
     {
       label: t('fastcat.preview.resetZoom', 'Reset Zoom & Pan'),
       icon: 'i-heroicons-arrow-path',
@@ -110,6 +118,7 @@ onUnmounted(() => {});
       @pointermove="onPointerMove"
       @pointerup="onPointerUp"
       @pointerleave="onPointerUp"
+      @auxclick="onAuxClick"
       @click="onClick"
     >
       <img

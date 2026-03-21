@@ -167,7 +167,7 @@ export interface FastCatUserSettings {
       wheelShift: string;
       wheelSecondary: string;
       wheelSecondaryShift: string;
-      middleClick: 'reset_zoom' | 'reset_zoom_center' | 'none';
+      middleClick: 'fit' | 'reset_zoom' | 'reset_zoom_center' | 'center' | 'none';
       middleDrag: 'pan' | 'none';
     };
   };
@@ -294,7 +294,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       wheelShift: 'scroll_horizontal',
       wheelSecondary: 'scroll_horizontal',
       wheelSecondaryShift: 'none',
-      middleClick: 'reset_zoom',
+      middleClick: 'fit',
       middleDrag: 'pan',
     },
   },

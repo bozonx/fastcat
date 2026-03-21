@@ -149,11 +149,13 @@ export function useMouseSettings() {
   const clipDragOptions = computed(() => formatOptions(CLIP_DRAG_ACTIONS, clipDragLabels.value));
   const monitorMiddleClickOptions = computed(() =>
     formatOptions(MONITOR_CLICK_ACTIONS, {
+      fit: t('videoEditor.settings.mouseActionFit', 'Fit to window'),
       reset_zoom: t('videoEditor.settings.mouseActionResetZoom', 'Reset zoom'),
       reset_zoom_center: t(
         'videoEditor.settings.mouseActionResetZoomCenter',
         'Reset zoom + center',
       ),
+      center: t('videoEditor.settings.mouseActionCenter', 'Center'),
       none: t('videoEditor.settings.mouseActionNone', 'None'),
     }),
   );

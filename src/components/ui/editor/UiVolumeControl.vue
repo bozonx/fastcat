@@ -54,10 +54,19 @@ function clearCloseTimer() {
 function updatePopupPosition() {
   if (!triggerEl.value || !props.compact) return;
   const rect = triggerEl.value.getBoundingClientRect();
-  popupPosition.value = {
-    top: rect.top + rect.height / 2,
-    left: rect.left + rect.width / 2,
-  };
+  if (props.orientation === 'horizontal') {
+    // Popup renders to the left of the trigger, centered vertically
+    popupPosition.value = {
+      top: rect.top + rect.height / 2,
+      left: rect.left,
+    };
+  } else {
+    // Popup renders above the trigger, centered horizontally
+    popupPosition.value = {
+      top: rect.top,
+      left: rect.left + rect.width / 2,
+    };
+  }
 }
 
 function openPopup() {
@@ -168,19 +177,19 @@ onBeforeUnmount(() => {
     <Teleport to="body">
       <Transition
         enter-active-class="transition duration-150 ease-out"
-        enter-from-class="opacity-0 translate-y-1 scale-95"
-        enter-to-class="opacity-100 translate-y-0 scale-100"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
         leave-active-class="transition duration-150 ease-in"
-        leave-from-class="opacity-100 translate-y-0 scale-100"
-        leave-to-class="opacity-0 translate-y-1 scale-95"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
       >
         <div
           v-if="isHovered"
           class="fixed z-[var(--z-max)] pointer-events-auto"
           :class="
             orientation === 'vertical'
-              ? 'origin-top -translate-x-1/2 -translate-y-1/2'
-              : 'origin-bottom -translate-x-1/2 -translate-y-full pb-4'
+              ? 'origin-bottom -translate-x-1/2 -translate-y-full'
+              : 'origin-right -translate-x-full -translate-y-1/2'
           "
           :style="{ top: `${popupPosition.top}px`, left: `${popupPosition.left}px` }"
           @mouseenter="onPopupMouseEnter"
@@ -192,8 +201,8 @@ onBeforeUnmount(() => {
               class="absolute select-none whitespace-nowrap bg-neutral-800 dark:bg-neutral-900 text-white border border-neutral-700/50 text-xs font-mono px-2.5 py-1 rounded-md shadow-lg"
               :class="
                 orientation === 'vertical'
-                  ? 'bottom-full left-1/2 -translate-x-1/2 -mb-2'
-                  : 'top-full left-1/2 -translate-x-1/2 mt-2'
+                  ? 'bottom-full left-1/2 -translate-x-1/2 mb-1'
+                  : 'top-1/2 right-full -translate-y-1/2 mr-2'
               "
             >
               {{ volumePercent }}%

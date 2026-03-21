@@ -121,6 +121,26 @@ export function useMonitorGestures(input: {
     }
   }
 
+  function fitMonitor() {
+    const el = input.viewportEl.value;
+    if (!input.projectStore.activeMonitor || !el) return;
+    const vpW = el.clientWidth;
+    const vpH = el.clientHeight;
+    const w = input.projectStore.activeMonitor.width ?? vpW;
+    const h = input.projectStore.activeMonitor.height ?? vpH;
+    if (!w || !h) {
+      resetView();
+      return;
+    }
+    const fitZoom = Math.min(vpW / w, vpH / h);
+    input.projectStore.activeMonitor.zoom = Math.min(
+      MAX_MONITOR_ZOOM,
+      Math.max(MIN_MONITOR_ZOOM, fitZoom),
+    );
+    input.projectStore.activeMonitor.panX = 0;
+    input.projectStore.activeMonitor.panY = 0;
+  }
+
   function onViewportAuxClick(event: MouseEvent) {
     if (event.button !== 1) return;
 
@@ -134,7 +154,11 @@ export function useMonitorGestures(input: {
     const settings = workspaceStore.userSettings.mouse.monitor;
     const action = settings.middleClick;
 
-    if (action === 'reset_zoom') {
+    if (action === 'fit') {
+      fitMonitor();
+    } else if (action === 'center') {
+      centerMonitor();
+    } else if (action === 'reset_zoom') {
       resetZoom();
     } else if (action === 'reset_zoom_center') {
       resetView();

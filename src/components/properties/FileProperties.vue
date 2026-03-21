@@ -30,6 +30,7 @@ import { useFileStorageInfo } from '~/composables/properties/useFileStorageInfo'
 import { useFilePropertiesHandlers } from '~/composables/properties/useFilePropertiesHandlers';
 import { useAudioExtraction } from '~/composables/fileManager/useAudioExtraction';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { isWorkspaceCommonPath } from '~/utils/workspace-common';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import type { FsEntry } from '~/types/fs';
@@ -105,6 +106,8 @@ const isCommonDir = computed(() => {
   if (!entry || entry.kind !== 'directory') return false;
   return entry.name.toLowerCase() === 'common' && (entry.path === 'common' || entry.path === '');
 });
+
+const isCommonPath = computed(() => isWorkspaceCommonPath(props.selectedFsEntry?.path));
 
 function triggerDirectoryUpload() {
   uploadInputRef.value?.click();
@@ -287,6 +290,7 @@ const {
   isOtio,
   isVideoFile,
   isCommonDir,
+  isCommonPath,
   triggerDirectoryUpload,
   createSubfolder,
   createTimelineInFolder,
