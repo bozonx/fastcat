@@ -23,6 +23,7 @@
     "confirmDelete": "Confirm Delete",
     "copy": "Copy",
     "copiedToClipboard": "Copied to clipboard",
+    "cut": "Cut",
     "create": "Create",
     "created": "Created",
     "createdAt": "Created date",
@@ -79,6 +80,7 @@
     "open": "Open",
     "optional": "Optional",
     "pan": "Pan",
+    "paste": "Paste",
     "path": "Path",
     "peak": "Peak",
     "position": "Position",
@@ -837,6 +839,7 @@
       },
       "projectRoot": {
         "freeSpace": "Free space",
+        "parameters": "Parameters",
         "project": "Project",
         "title": "Project root"
       },
