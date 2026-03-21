@@ -159,12 +159,24 @@ export function updateClipProperties(
           }
         : undefined;
 
-    if (!scale && rotationDeg === undefined && !position && !anchor) return undefined;
+    const cropRaw = anyRaw.crop;
+    const crop =
+      cropRaw && typeof cropRaw === 'object'
+        ? {
+            top: clampNumber(cropRaw.top ?? 0, 0, 100),
+            bottom: clampNumber(cropRaw.bottom ?? 0, 0, 100),
+            left: clampNumber(cropRaw.left ?? 0, 0, 100),
+            right: clampNumber(cropRaw.right ?? 0, 0, 100),
+          }
+        : undefined;
+
+    if (!scale && rotationDeg === undefined && !position && !anchor && !crop) return undefined;
     return {
       scale,
       rotationDeg,
       position,
       anchor,
+      crop,
     };
   }
 

@@ -334,7 +334,9 @@ const { getContextMenuItems } = useFileContextMenu(
       }
       return [];
     },
-    hasClipboardItems: clipboardStore.hasFileManagerPayload,
+    get hasClipboardItems() {
+      return clipboardStore.hasFileManagerPayload;
+    },
   },
   (action: ContextMenuFileAction, entry: FsEntry | FsEntry[]) => onFileAction(action, entry),
 );

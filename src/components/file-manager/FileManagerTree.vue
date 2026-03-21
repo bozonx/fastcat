@@ -14,6 +14,7 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useClipboardPaths } from '~/composables/fileManager/useClipboardIndicator';
+import { useAppClipboard } from '~/composables/useAppClipboard';
 import FileManagerTreeRow from '~/components/file-manager/FileManagerTreeRow.vue';
 import {
   getMediaTypeFromFilename,
@@ -521,6 +522,10 @@ const { getContextMenuItems } = useFileContextMenu(
         if ('entry' in selected) return [selected.entry];
       }
       return [];
+    },
+    get hasClipboardItems() {
+      const clipboardStore = useAppClipboard();
+      return clipboardStore.hasFileManagerPayload;
     },
   },
   (action: any, entry: any) => emit('action', action as any, entry),
