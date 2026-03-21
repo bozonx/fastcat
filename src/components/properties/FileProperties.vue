@@ -100,6 +100,12 @@ const { isProjectRootDir, storageFreeBytes } = useFileStorageInfo({
   currentProjectName: computed(() => projectStore.currentProjectName),
 });
 
+const isCommonDir = computed(() => {
+  const entry = props.selectedFsEntry;
+  if (!entry || entry.kind !== 'directory') return false;
+  return entry.name.toLowerCase() === 'common' && (entry.path === 'common' || entry.path === '');
+});
+
 function triggerDirectoryUpload() {
   uploadInputRef.value?.click();
 }
@@ -280,6 +286,7 @@ const {
   isGeneratingProxyForFile,
   isOtio,
   isVideoFile,
+  isCommonDir,
   triggerDirectoryUpload,
   createSubfolder,
   createTimelineInFolder,
