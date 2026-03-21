@@ -349,7 +349,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
 
             <div v-if="hasAudioEffects(nonBasicAudioEffects)">
               <h4 class="text-xs uppercase tracking-wide text-ui-text-muted mb-2">
-                {{ t('fastcat.effects.groups.artistic', 'Художественные') }}
+                {{ t('fastcat.effects.groups.artistic', 'Artistic') }}
               </h4>
               <div class="grid grid-cols-1 gap-2">
                 <EffectCard

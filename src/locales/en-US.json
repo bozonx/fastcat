@@ -372,6 +372,18 @@
           "params": {
             "filterType": "None",
             "intensity": "Intensity"
+          },
+          "options": {
+            "none": "None",
+            "sepia": "Sepia",
+            "negative": "Negative",
+            "blackAndWhite": "Grayscale",
+            "browni": "Brownie",
+            "vintage": "Vintage",
+            "kodachrome": "Kodachrome",
+            "technicolor": "Technicolor",
+            "polaroid": "Polaroid",
+            "lsd": "LSD"
           }
         },
         "colorOverlay": {

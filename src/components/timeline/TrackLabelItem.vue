@@ -107,14 +107,19 @@ onBeforeUnmount(() => {
 
 <template>
   <div
-    class="flex items-center px-1 text-xs font-medium cursor-pointer select-none relative group border-b border-ui-border"
+    class="flex items-center px-1 text-xs font-medium cursor-pointer select-none relative group border-b border-ui-border transition-colors"
     :data-track-id="track.id"
     :class="[
-      isSelected ? 'text-ui-text bg-primary-500/12' : '',
-      isHovered && !isSelected ? 'text-ui-text bg-ui-bg-elevated/80' : 'text-ui-text-muted',
+      isSelected ? 'text-ui-text' : 'text-ui-text-muted',
+      isHovered && !isSelected ? 'bg-ui-bg-elevated/80' : '',
       timelineStore.isAnyTrackSoloed && !track.audioSolo ? 'opacity-50 grayscale-[0.5]' : '',
     ]"
-    :style="{ height: `${height}px` }"
+    :style="{ 
+      height: `${height}px`,
+      backgroundColor: isSelected && track.color && track.color !== '#2a2a2a' 
+        ? `${track.color}1a` 
+        : isSelected ? 'rgba(var(--color-primary-500), 0.12)' : undefined 
+    }"
     @click.stop="emit('select')"
     @dblclick="timelineStore.selectAllClipsOnTrack(track.id)"
     @contextmenu.stop="emit('select')"
@@ -122,18 +127,28 @@ onBeforeUnmount(() => {
     <div
       class="absolute left-0 top-0 bottom-0 w-1 transition-colors z-10"
       :class="[
-        isSelected
+        isSelected && (!track.color || track.color === '#2a2a2a')
           ? 'bg-(--selection-accent-500)'
-          : isHovered
+          : isHovered && (!track.color || track.color === '#2a2a2a')
             ? 'bg-ui-border/50'
-            : 'bg-transparent',
+            : '',
       ]"
+      :style="{ 
+        backgroundColor: (isSelected || isHovered) && track.color && track.color !== '#2a2a2a' 
+          ? track.color 
+          : undefined 
+      }"
     />
 
     <div class="flex-1 min-w-0 flex items-center overflow-hidden pl-1.5 z-10 relative">
       <div
         class="max-w-full px-1 py-0.5 rounded transition-colors overflow-hidden"
         :class="[isRenaming ? 'bg-ui-bg-elevated ring-1 ring-ui-border-accent' : '']"
+        :style="{
+           backgroundColor: !isRenaming && isSelected && track.color && track.color !== '#2a2a2a'
+             ? `${track.color}33`
+             : undefined
+        }"
         @click.stop="timelineStore.renamingTrackId = track.id"
       >
         <UInput

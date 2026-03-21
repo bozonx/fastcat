@@ -12,7 +12,7 @@ export const bulgePinchManifest: EffectManifest<BulgePinchParams> = {
   type: 'bulgePinch',
   name: 'Искажение (Выпуклость)',
   nameKey: 'fastcat.effects.video.bulgePinch.name',
-  description: 'Эффект выпуклости или сжатия (эффект рыбьего глаза)',
+  description: 'Bulge or pinch distortion (fisheye)',
   descriptionKey: 'fastcat.effects.video.bulgePinch.description',
   icon: 'i-heroicons-arrows-pointing-out',
   defaultValues: {
@@ -25,7 +25,7 @@ export const bulgePinchManifest: EffectManifest<BulgePinchParams> = {
     {
       kind: 'slider',
       key: 'centerX',
-      label: 'Центр X',
+      label: 'Center X',
       labelKey: 'fastcat.effects.video.bulgePinch.params.centerX',
       min: 0,
       max: 1,
@@ -35,7 +35,7 @@ export const bulgePinchManifest: EffectManifest<BulgePinchParams> = {
     {
       kind: 'slider',
       key: 'centerY',
-      label: 'Центр Y',
+      label: 'Center Y',
       labelKey: 'fastcat.effects.video.bulgePinch.params.centerY',
       min: 0,
       max: 1,
@@ -45,7 +45,7 @@ export const bulgePinchManifest: EffectManifest<BulgePinchParams> = {
     {
       kind: 'slider',
       key: 'radius',
-      label: 'Радиус',
+      label: 'Radius',
       labelKey: 'fastcat.effects.video.bulgePinch.params.radius',
       min: 0,
       max: 500,
@@ -55,7 +55,7 @@ export const bulgePinchManifest: EffectManifest<BulgePinchParams> = {
     {
       kind: 'slider',
       key: 'strength',
-      label: 'Сила',
+      label: 'Strength',
       labelKey: 'fastcat.effects.video.bulgePinch.params.strength',
       min: -1,
       max: 1,

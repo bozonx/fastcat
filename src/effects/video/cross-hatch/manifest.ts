@@ -3,9 +3,9 @@ import type { EffectManifest } from '../../core/registry';
 
 export const crossHatchManifest: EffectManifest<{}> = {
   type: 'crossHatch',
-  name: 'Штриховка',
+  name: 'Cross Hatch',
   nameKey: 'fastcat.effects.video.crossHatch.name',
-  description: 'Эффект перекрестной штриховки',
+  description: 'Cross-hatching effect',
   descriptionKey: 'fastcat.effects.video.crossHatch.description',
   icon: 'i-heroicons-pencil-square',
   defaultValues: {},

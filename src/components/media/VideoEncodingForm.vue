@@ -102,7 +102,9 @@ function applyPreset(presetId: string) {
           :disabled="props.disabled"
           size="sm"
           full-width
-          @update:model-value="applyPreset"
+          @update:model-value="
+            (v: unknown) => applyPreset((v as { value: string })?.value ?? (v as string))
+          "
         />
       </div>
     </div>

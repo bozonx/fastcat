@@ -210,61 +210,96 @@ const extraActions = computed(() => {
 <template>
   <div class="w-full flex flex-col gap-2">
     <PropertySection :title="t('fastcat.track.actions', 'Actions')">
-      <div class="flex flex-col w-full gap-2">
-        <div class="flex items-center justify-around pb-2 border-b border-ui-border">
-          <UButton
-            :icon="isLocked ? 'i-heroicons-lock-closed' : 'i-heroicons-lock-open'"
-            size="sm"
-            :color="isLocked ? 'primary' : 'neutral'"
-            variant="ghost"
-            :title="t('fastcat.track.lock', 'Lock track')"
-            @click="isLocked = !isLocked"
-          />
-          <UButton
-            :icon="isMuted ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
-            size="sm"
-            :color="isMuted ? 'danger' : 'neutral'"
-            variant="ghost"
-            :title="t('fastcat.track.mute', 'Mute/Hide track')"
-            @click="isMuted = !isMuted"
-          />
-          <UButton
-            v-if="track.kind === 'audio' || track.kind === 'video'"
-            icon="i-heroicons-star"
-            size="sm"
-            :color="isSolo ? 'warning' : 'neutral'"
-            variant="ghost"
-            :title="t('fastcat.track.solo', 'Solo track')"
-            @click="isSolo = !isSolo"
-          />
-        </div>
-
-        <div class="flex flex-col gap-1.5 pt-1 px-1">
-          <span class="text-[10px] text-ui-text-muted uppercase tracking-wider font-semibold">
-            {{ t('fastcat.track.color', 'Track color') }}
-          </span>
-          <div class="flex flex-wrap gap-1.5">
-            <button
-              v-for="preset in trackColorPresets"
-              :key="preset"
-              class="w-5 h-5 rounded-full border border-ui-border-elevated transition-transform hover:scale-110"
-              :class="{
-                'ring-2 ring-ui-primary ring-offset-1 ring-offset-ui-bg': trackColor === preset,
-              }"
-              :style="{ backgroundColor: preset }"
-              @click="trackColor = preset"
+      <div class="flex flex-col w-full gap-3">
+        <!-- Row of Action Icons -->
+        <div class="flex items-center justify-between px-1.5 py-2 border-b border-ui-border bg-ui-bg-elevated/30 rounded-t">
+          <div class="flex items-center gap-1.5">
+            <UButton
+              icon="i-heroicons-pencil"
+              size="sm"
+              variant="ghost"
+              color="neutral"
+              :title="t('common.rename', 'Rename')"
+              @click="timelineStore.renamingTrackId = props.track.id"
+            />
+            <UButton
+              icon="i-heroicons-trash"
+              size="sm"
+              variant="ghost"
+              color="danger"
+              :title="t('common.delete', 'Delete')"
+              @click="requestDeleteTrack"
+            />
+          </div>
+          
+          <div class="h-4 w-px bg-ui-border mx-1" />
+          
+          <div class="flex items-center gap-1.5">
+            <UButton
+              v-if="track.kind === 'video'"
+              :icon="props.track.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
+              size="sm"
+              :variant="props.track.videoHidden ? 'solid' : 'ghost'"
+              :color="props.track.videoHidden ? 'amber' : 'neutral'"
+              :title="t('fastcat.timeline.toggleTrackVisibility')"
+              @click="timelineStore.updateTrackProperties(props.track.id, { videoHidden: !props.track.videoHidden })"
+            />
+            <UButton
+              :icon="props.track.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
+              size="sm"
+              :variant="props.track.audioMuted ? 'solid' : 'ghost'"
+              :color="props.track.audioMuted ? 'error' : 'neutral'"
+              :title="t('fastcat.timeline.toggleTrackMute')"
+              @click="timelineStore.updateTrackProperties(props.track.id, { audioMuted: !props.track.audioMuted })"
+            />
+            <UButton
+              v-if="track.kind === 'audio' || track.kind === 'video'"
+              icon="i-heroicons-musical-note"
+              size="sm"
+              :variant="isSolo ? 'solid' : 'ghost'"
+              :color="isSolo ? 'warning' : 'neutral'"
+              :title="t('fastcat.timeline.toggleTrackSolo')"
+              @click="isSolo = !isSolo"
+            />
+            <UButton
+              :icon="isLocked ? 'i-heroicons-lock-closed' : 'i-heroicons-lock-open'"
+              size="sm"
+              variant="ghost"
+              :color="isLocked ? 'primary' : 'neutral'"
+              :title="t('fastcat.track.lock', 'Lock track')"
+              @click="isLocked = !isLocked"
             />
           </div>
         </div>
 
-        <PropertyActionList
-          :actions="mainActions"
-          :vertical="false"
-          variant="ghost"
-          justify="start"
-          size="xs"
-        />
-        <PropertyActionList :actions="extraActions" justify="start" size="xs" />
+        <!-- Track Color Selection -->
+        <div class="flex flex-col gap-2 px-1">
+          <span class="text-[10px] text-ui-text-muted uppercase tracking-wider font-bold">
+            {{ t('fastcat.track.color', 'Track color') }}
+          </span>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="preset in trackColorPresets"
+              :key="preset"
+              class="w-6 h-6 rounded-full border border-ui-border-elevated transition-all hover:scale-110 active:scale-95 shadow-sm"
+              :class="{
+                'ring-2 ring-ui-primary ring-offset-2 ring-offset-ui-bg z-10': trackColor === preset,
+              }"
+              :style="{ backgroundColor: preset === '#2a2a2a' ? '#3f3f3f' : preset }"
+              :title="preset === '#2a2a2a' ? t('common.default', 'Default') : ''"
+              @click="trackColor = preset"
+            >
+              <div v-if="preset === '#2a2a2a'" class="w-full h-full flex items-center justify-center">
+                 <div class="w-1.5 h-1.5 rounded-full bg-ui-text-muted/50" />
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Additional Actions -->
+        <div class="pt-1">
+          <PropertyActionList :actions="extraActions" justify="start" size="sm" />
+        </div>
       </div>
     </PropertySection>
 
@@ -345,7 +380,7 @@ const extraActions = computed(() => {
     <EffectsEditor
       v-if="track.kind === 'video'"
       :effects="trackVideoEffects"
-      :title="t('fastcat.effects.trackTitle', 'Track effects')"
+      :title="`${t('fastcat.effects.tabs.video')} ${t('fastcat.effects.title').toLowerCase()}`"
       :add-label="t('fastcat.effects.add', 'Add')"
       :empty-label="t('fastcat.effects.empty', 'No effects')"
       @update:effects="handleUpdateTrackEffects"
@@ -356,6 +391,7 @@ const extraActions = computed(() => {
       :effects="trackAudioEffects"
       @update:effects="handleUpdateTrackAudioEffects"
     />
+
 
     <UiConfirmModal
       v-model:open="isDeleteConfirmOpen"

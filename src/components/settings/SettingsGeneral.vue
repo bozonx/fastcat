@@ -72,7 +72,9 @@ function clearCache() {
         full-width
         @update:model-value="
           (v: unknown) =>
-            (workspaceStore.userSettings.locale = (v as { value: string })?.value ?? (v as string))
+            (workspaceStore.userSettings.locale = ((v as { value: string })?.value ?? v) as
+              | 'en-US'
+              | 'ru-RU')
         "
       />
     </UFormField>

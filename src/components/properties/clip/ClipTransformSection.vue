@@ -213,7 +213,7 @@ function clampNumber(value: number, min: number, max: number): number {
         <!-- Reflect -->
         <div class="flex items-center gap-2">
           <span class="text-xs text-ui-text-muted mr-1">{{
-            t('fastcat.clip.transform.reflect', 'Отразить:')
+            t('fastcat.clip.transform.reflect', 'Reflect:')
           }}</span>
           <UButton
             icon="i-heroicons-arrows-right-left"

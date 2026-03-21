@@ -9,9 +9,9 @@ export interface ColorReplaceParams {
 
 export const colorReplaceManifest: EffectManifest<ColorReplaceParams> = {
   type: 'colorReplace',
-  name: 'Замена цвета',
+  name: 'Color Replace',
   nameKey: 'fastcat.effects.video.colorReplace.name',
-  description: 'Замена одного цвета на другой',
+  description: 'Replace one color with another',
   descriptionKey: 'fastcat.effects.video.colorReplace.description',
   icon: 'i-heroicons-arrow-path',
   defaultValues: {
@@ -24,7 +24,7 @@ export const colorReplaceManifest: EffectManifest<ColorReplaceParams> = {
     {
       kind: 'slider',
       key: 'tolerance',
-      label: 'Допуск',
+      label: 'Tolerance',
       labelKey: 'fastcat.effects.video.colorReplace.params.tolerance',
       min: 0,
       max: 1,

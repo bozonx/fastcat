@@ -10,6 +10,7 @@ import {
 } from '~/utils/webcodecs';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import SettingsSection from './SettingsSection.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
@@ -73,12 +74,12 @@ function applyExportPreset(presetId: string) {
   >
     <UFormField :label="t('videoEditor.export.presetLabel', 'Preset')">
       <div class="flex items-center gap-2">
-        <USelectMenu
+        <UiSelect
           v-model="workspaceStore.userSettings.exportPresets.selectedPresetId"
           :items="exportPresetOptions"
           value-key="value"
           label-key="label"
-          class="w-full"
+          full-width
         />
         <UButton
           color="neutral"

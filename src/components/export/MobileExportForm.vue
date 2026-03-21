@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { useProjectStore } from "~/stores/project.store";
+import { useProjectStore } from '~/stores/project.store';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 import { computed, ref, onMounted } from 'vue';
 import { useExportForm } from '~/composables/timeline/export/useExportForm';
 
@@ -96,20 +97,26 @@ async function onStartExport() {
 
       <div class="grid grid-cols-2 gap-4">
         <UFormField :label="$t('videoEditor.export.outputFormat')">
-          <USelect
+          <UiSelect
             v-model="outputFormat"
-            :options="formatOptions"
-            class="w-full"
+            :items="formatOptions"
+            value-key="value"
+            label-key="label"
+            full-width
             :disabled="isExporting"
           />
         </UFormField>
         <UFormField :label="$t('videoEditor.export.videoBitrate')">
-          <USelect
+          <UiSelect
             :model-value="bitrateMbps"
-            :options="qualityOptions"
-            class="w-full"
+            :items="qualityOptions"
+            value-key="value"
+            label-key="label"
+            full-width
             :disabled="isExporting"
-            @update:model-value="(v) => (bitrateMbps = Number(v))"
+            @update:model-value="
+              (v: unknown) => (bitrateMbps = Number((v as { value: number })?.value ?? v))
+            "
           />
         </UFormField>
       </div>
@@ -161,26 +168,32 @@ async function onStartExport() {
           </p>
           <div class="grid grid-cols-2 gap-4">
             <UFormField :label="$t('videoEditor.export.audioCodec')">
-              <USelect
+              <UiSelect
                 v-model="audioCodec"
-                :options="[
+                :items="[
                   { value: 'aac', label: $t('videoEditor.export.codec.aac') },
                   { value: 'opus', label: $t('videoEditor.export.codec.opus') },
                 ]"
-                class="w-full"
+                value-key="value"
+                label-key="label"
+                full-width
                 :disabled="isExporting"
               />
             </UFormField>
             <UFormField :label="$t('videoEditor.audio.sampleRate')">
-              <USelect
+              <UiSelect
                 :model-value="audioSampleRate"
-                :options="[
+                :items="[
                   { value: 44100, label: '44.1 kHz' },
                   { value: 48000, label: '48 kHz' },
                 ]"
-                class="w-full"
+                value-key="value"
+                label-key="label"
+                full-width
                 :disabled="isExporting"
-                @update:model-value="(v) => (audioSampleRate = Number(v))"
+                @update:model-value="
+                  (v: unknown) => (audioSampleRate = Number((v as { value: number })?.value ?? v))
+                "
               />
             </UFormField>
           </div>

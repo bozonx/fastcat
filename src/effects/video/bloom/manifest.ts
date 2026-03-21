@@ -8,9 +8,9 @@ export interface BloomParams {
 
 export const bloomManifest: EffectManifest<BloomParams> = {
   type: 'bloom',
-  name: 'Свечение (Bloom)',
+  name: 'Bloom',
   nameKey: 'fastcat.effects.video.bloom.name',
-  description: 'Эффект размытого свечения',
+  description: 'Soft bloom effect',
   descriptionKey: 'fastcat.effects.video.bloom.description',
   icon: 'i-heroicons-sparkles',
   defaultValues: {
@@ -21,7 +21,7 @@ export const bloomManifest: EffectManifest<BloomParams> = {
     {
       kind: 'slider',
       key: 'strength',
-      label: 'Сила',
+      label: 'Strength',
       labelKey: 'fastcat.effects.video.bloom.params.strength',
       min: 0,
       max: 20,
@@ -30,7 +30,7 @@ export const bloomManifest: EffectManifest<BloomParams> = {
     {
       kind: 'slider',
       key: 'quality',
-      label: 'Качество',
+      label: 'Quality',
       labelKey: 'fastcat.effects.video.bloom.params.quality',
       min: 1,
       max: 10,

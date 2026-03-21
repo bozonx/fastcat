@@ -11,9 +11,9 @@ export interface ColorGradientParams {
 
 export const colorGradientManifest: EffectManifest<ColorGradientParams> = {
   type: 'colorGradient',
-  name: 'Цветовой градиент',
+  name: 'Color Gradient',
   nameKey: 'fastcat.effects.video.colorGradient.name',
-  description: 'Наложение цветового градиента',
+  description: 'Overlay color gradient',
   descriptionKey: 'fastcat.effects.video.colorGradient.description',
   icon: 'i-heroicons-swatch',
   defaultValues: {
@@ -27,18 +27,18 @@ export const colorGradientManifest: EffectManifest<ColorGradientParams> = {
     {
       kind: 'select',
       key: 'type',
-      label: 'Тип',
+      label: 'Type',
       labelKey: 'fastcat.effects.video.colorGradient.params.type',
       options: [
-        { label: 'Линейный', value: 0 },
-        { label: 'Радиальный', value: 1 },
-        { label: 'Конический', value: 2 },
+        { label: 'Linear', labelKey: 'fastcat.effects.video.colorGradient.options.linear', value: 0 },
+        { label: 'Radial', labelKey: 'fastcat.effects.video.colorGradient.options.radial', value: 1 },
+        { label: 'Conic', labelKey: 'fastcat.effects.video.colorGradient.options.conic', value: 2 },
       ],
     },
     {
       kind: 'slider',
       key: 'angle',
-      label: 'Угол',
+      label: 'Angle',
       labelKey: 'fastcat.effects.video.colorGradient.params.angle',
       min: 0,
       max: 360,
@@ -48,7 +48,7 @@ export const colorGradientManifest: EffectManifest<ColorGradientParams> = {
     {
       kind: 'slider',
       key: 'alpha',
-      label: 'Прозрачность',
+      label: 'Opacity',
       labelKey: 'fastcat.effects.video.colorGradient.params.alpha',
       min: 0,
       max: 1,
@@ -58,7 +58,7 @@ export const colorGradientManifest: EffectManifest<ColorGradientParams> = {
     {
       kind: 'slider',
       key: 'maxColors',
-      label: 'Кол-во цветов (0=Безлимит)',
+      label: 'Color count (0=Unlimited)',
       labelKey: 'fastcat.effects.video.colorGradient.params.maxColors',
       min: 0,
       max: 256,
@@ -67,7 +67,7 @@ export const colorGradientManifest: EffectManifest<ColorGradientParams> = {
     {
       kind: 'toggle',
       key: 'replace',
-      label: 'Заменить цвет',
+      label: 'Replace color',
       labelKey: 'fastcat.effects.video.colorGradient.params.replace',
     },
   ],

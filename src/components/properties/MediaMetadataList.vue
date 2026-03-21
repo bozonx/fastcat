@@ -26,7 +26,7 @@ const { t } = useI18n();
     />
   </template>
   <template v-if="props.mediaMeta?.audio">
-    <PropertyRow :label="t('videoEditor.fileManager.audio.sound', 'Звук')">
+    <PropertyRow :label="t('videoEditor.fileManager.audio.sound', 'Sound')">
       {{ formatAudioChannels(props.mediaMeta.audio.channels) }},
       {{ props.mediaMeta.audio.sampleRate ? `${props.mediaMeta.audio.sampleRate} Hz` : '-' }}
     </PropertyRow>

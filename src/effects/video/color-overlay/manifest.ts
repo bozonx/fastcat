@@ -8,9 +8,9 @@ export interface ColorOverlayParams {
 
 export const colorOverlayManifest: EffectManifest<ColorOverlayParams> = {
   type: 'colorOverlay',
-  name: 'Наложение цвета',
+  name: 'Color Overlay',
   nameKey: 'fastcat.effects.video.colorOverlay.name',
-  description: 'Заливка сплошным цветом',
+  description: 'Fill with solid color',
   descriptionKey: 'fastcat.effects.video.colorOverlay.description',
   icon: 'i-heroicons-paint-brush',
   defaultValues: {
@@ -22,7 +22,7 @@ export const colorOverlayManifest: EffectManifest<ColorOverlayParams> = {
     {
       kind: 'slider',
       key: 'alpha',
-      label: 'Прозрачность',
+      label: 'Opacity',
       labelKey: 'fastcat.effects.video.colorOverlay.params.alpha',
       min: 0,
       max: 1,

@@ -9,7 +9,7 @@ export const asciiManifest: EffectManifest<AsciiParams> = {
   type: 'ascii',
   name: 'ASCII Art',
   nameKey: 'fastcat.effects.video.ascii.name',
-  description: 'Эффект ASCII символов',
+  description: 'ASCII symbols effect',
   descriptionKey: 'fastcat.effects.video.ascii.description',
   icon: 'i-heroicons-document-text',
   defaultValues: {

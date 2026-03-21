@@ -2,6 +2,7 @@
 import { useFilesPageStore, type FileSortField } from '~/stores/files-page.store';
 import { useUiStore } from '~/stores/ui.store';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 
 defineProps<{
   gridSizes: number[];
@@ -52,7 +53,7 @@ const sortFields: { label: string; value: FileSortField }[] = [
     <div
       v-if="filesPageStore.viewMode === 'grid'"
       class="flex items-center gap-2 ml-2 w-24"
-      :title="`${t('videoEditor.fileManager.cardScale', 'Масштаб карточек')}: ${currentGridSizeName}`"
+      :title="`${t('videoEditor.fileManager.cardScale', 'Card scale')}: ${currentGridSizeName}`"
     >
       <UiWheelSlider
         :model-value="gridSizes.indexOf(filesPageStore.gridCardSize)"
@@ -76,13 +77,12 @@ const sortFields: { label: string; value: FileSortField }[] = [
         Remote
       </UButton>
       <span class="text-xs text-ui-text-muted">{{ t('common.sortBy', 'Sort by') }}:</span>
-      <USelectMenu
+      <UiSelect
         v-model="filesPageStore.sortOption.field"
         :items="sortFields"
         value-key="value"
         size="xs"
         class="w-32"
-        :search-input="false"
       />
       <UButton
         :icon="
