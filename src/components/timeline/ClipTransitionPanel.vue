@@ -120,12 +120,25 @@ const curveOptions = computed<CurveOption[]>(() => {
   const curves: TransitionCurve[] = ['linear', 'smooth', 'ease-in', 'ease-out'];
 
   return curves.map((curve) => {
+    // Static parameters for preset previews
+    const previewParams =
+      curve === 'linear'
+        ? undefined
+        : {
+            curveBulge: 0.8,
+            curveOffset: curve === 'ease-in' ? 1.0 : curve === 'ease-out' ? 0.0 : 0.5,
+          };
+
     return {
       value: curve,
       label: t(`fastcat.timeline.transition.curve${toCurveLabelKey(curve)}`),
-      curvePath: getTransitionCurveSinglePath(100, 100, curve, selectedParams.value),
+      curvePath: getTransitionCurveSinglePath(100, 100, curve, previewParams),
     };
   });
+});
+
+const resultCurvePath = computed(() => {
+  return getTransitionCurveSinglePath(240, 100, selectedCurve.value, selectedParams.value);
 });
 
 function toCurveOption(option: unknown): CurveOption {
@@ -340,6 +353,28 @@ function handleSavePreset() {
           :step="0.01"
           @update:model-value="updateParam('curveOffset', $event)"
         />
+      </div>
+
+      <!-- Result Graph -->
+      <div class="flex flex-col gap-1 mt-1 pt-2 border-t border-ui-border/30">
+        <svg
+          class="w-full h-16 rounded overflow-hidden bg-black/40 text-primary-400"
+          viewBox="0 0 240 100"
+          preserveAspectRatio="none"
+        >
+          <!-- Grid lines -->
+          <line x1="0" y1="50" x2="240" y2="50" stroke="currentColor" stroke-width="1" stroke-dasharray="4" opacity="0.1" />
+          <line x1="120" y1="0" x2="120" y2="100" stroke="currentColor" stroke-width="1" stroke-dasharray="4" opacity="0.1" />
+          
+          <path
+            :d="resultCurvePath"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="5"
+            stroke-linecap="round"
+            class="drop-shadow-[0_0_8px_rgba(var(--color-primary-400),0.3)]"
+          />
+        </svg>
       </div>
     </div>
 
