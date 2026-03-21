@@ -181,8 +181,7 @@ onBeforeUnmount(() => {
       />
     </div>
     <span
-      class="leading-none text-ui-text-muted tabular-nums select-none"
-      :class="orientation === 'vertical' ? 'text-[10px] text-center' : 'text-sm min-w-[3ch]'"
+      class="text-[10px] font-mono tabular-nums text-ui-text-muted select-none leading-none w-8 text-center"
       @click.stop="toggleMute"
     >
       {{ volumePercent }}%
@@ -252,7 +251,7 @@ onBeforeUnmount(() => {
                 />
               </div>
               <span
-                class="text-[10px] text-ui-text-muted font-mono tabular-nums select-none leading-none"
+                class="text-[10px] text-ui-text-muted font-mono tabular-nums select-none leading-none w-8 text-center"
               >
                 {{ volumePercent }}%
               </span>
