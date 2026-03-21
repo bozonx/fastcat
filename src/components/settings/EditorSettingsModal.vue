@@ -80,84 +80,114 @@ watch(
             <div class="text-xs font-semibold text-ui-text-muted uppercase tracking-wide">
               {{ t('videoEditor.settings.userSection', 'User settings') }}
             </div>
-            <UButton
-              variant="ghost"
-              color="neutral"
+            <UiToggleButton
+              :model-value="activeSection === 'user.general'"
+              label="General"
+              inactive-color="neutral"
+              active-color="primary"
+              inactive-variant="ghost"
+              active-variant="soft"
+              no-toggle
               class="justify-start"
-              :label="t('videoEditor.settings.userGeneral', 'General')"
-              :disabled="activeSection === 'user.general'"
               @click="activeSection = 'user.general'"
             />
-            <UButton
-              variant="ghost"
-              color="neutral"
+            <UiToggleButton
+              :model-value="activeSection === 'user.hotkeys'"
+              label="Hotkeys"
+              inactive-color="neutral"
+              active-color="primary"
+              inactive-variant="ghost"
+              active-variant="soft"
+              no-toggle
               class="justify-start"
-              :label="t('videoEditor.settings.userHotkeys', 'Hotkeys')"
-              :disabled="activeSection === 'user.hotkeys'"
               @click="activeSection = 'user.hotkeys'"
             />
-            <UButton
-              variant="ghost"
-              color="neutral"
+            <UiToggleButton
+              :model-value="activeSection === 'user.mouse'"
+              label="Mouse"
+              inactive-color="neutral"
+              active-color="primary"
+              inactive-variant="ghost"
+              active-variant="soft"
+              no-toggle
               class="justify-start"
-              :label="t('videoEditor.settings.userMouse', 'Mouse')"
-              :disabled="activeSection === 'user.mouse'"
               @click="activeSection = 'user.mouse'"
             />
-            <UButton
-              variant="ghost"
-              color="neutral"
+            <UiToggleButton
+              :model-value="activeSection === 'user.snapping'"
+              label="Snapping"
+              inactive-color="neutral"
+              active-color="primary"
+              inactive-variant="ghost"
+              active-variant="soft"
+              no-toggle
               class="justify-start"
-              :label="t('videoEditor.settings.userSnapping', 'Snapping')"
-              :disabled="activeSection === 'user.snapping'"
               @click="activeSection = 'user.snapping'"
             />
-            <UButton
-              variant="ghost"
-              color="neutral"
+            <UiToggleButton
+              :model-value="activeSection === 'user.project'"
+              label="Project presets"
+              inactive-color="neutral"
+              active-color="primary"
+              inactive-variant="ghost"
+              active-variant="soft"
+              no-toggle
               class="justify-start"
-              :label="t('videoEditor.settings.userProject', 'Project presets')"
-              :disabled="activeSection === 'user.project'"
               @click="activeSection = 'user.project'"
             />
-            <UButton
-              variant="ghost"
-              color="neutral"
+            <UiToggleButton
+              :model-value="activeSection === 'user.export'"
+              label="Export presets"
+              inactive-color="neutral"
+              active-color="primary"
+              inactive-variant="ghost"
+              active-variant="soft"
+              no-toggle
               class="justify-start"
-              :label="t('videoEditor.settings.userExport', 'Export presets')"
-              :disabled="activeSection === 'user.export'"
               @click="activeSection = 'user.export'"
             />
-            <UButton
-              variant="ghost"
-              color="neutral"
+            <UiToggleButton
+              :model-value="activeSection === 'user.proxy'"
+              label="Proxy"
+              inactive-color="neutral"
+              active-color="primary"
+              inactive-variant="ghost"
+              active-variant="soft"
+              no-toggle
               class="justify-start"
-              :label="t('videoEditor.settings.userProxy', 'Proxy')"
-              :disabled="activeSection === 'user.proxy'"
               @click="activeSection = 'user.proxy'"
             />
-            <UButton
-              variant="ghost"
-              color="neutral"
+            <UiToggleButton
+              :model-value="activeSection === 'user.video'"
+              label="Video"
+              inactive-color="neutral"
+              active-color="primary"
+              inactive-variant="ghost"
+              active-variant="soft"
+              no-toggle
               class="justify-start"
-              :label="t('videoEditor.settings.userVideo', 'Video')"
-              :disabled="activeSection === 'user.video'"
               @click="activeSection = 'user.video'"
             />
-            <UButton
-              variant="ghost"
-              color="neutral"
+            <UiToggleButton
+              :model-value="activeSection === 'user.audio'"
+              label="Audio"
+              inactive-color="neutral"
+              active-color="primary"
+              inactive-variant="ghost"
+              active-variant="soft"
+              no-toggle
               class="justify-start"
-              :label="t('videoEditor.settings.userAudio', 'Audio')"
-              :disabled="activeSection === 'user.audio'"
               @click="activeSection = 'user.audio'"
             />
-            <UButton
-              variant="ghost"
-              color="neutral"
+            <UiToggleButton
+              :model-value="activeSection === 'user.integrations'"
+              label="Integrations"
+              inactive-color="neutral"
+              active-color="primary"
+              inactive-variant="ghost"
+              active-variant="soft"
+              no-toggle
               class="justify-start"
-              :label="t('videoEditor.settings.userIntegrations', 'Integrations')"
-              :disabled="activeSection === 'user.integrations'"
               @click="activeSection = 'user.integrations'"
             />
           </div>
@@ -166,12 +196,15 @@ watch(
             <div class="text-xs font-semibold text-ui-text-muted uppercase tracking-wide">
               {{ t('videoEditor.settings.workspaceSection', 'Application settings') }}
             </div>
-            <UButton
-              variant="ghost"
-              color="neutral"
+            <UiToggleButton
+              :model-value="activeSection === 'workspace.storage'"
+              label="Storage"
+              inactive-color="neutral"
+              active-color="primary"
+              inactive-variant="ghost"
+              active-variant="soft"
+              no-toggle
               class="justify-start"
-              :label="t('videoEditor.settings.workspaceStorage', 'Storage')"
-              :disabled="activeSection === 'workspace.storage'"
               @click="activeSection = 'workspace.storage'"
             />
           </div>

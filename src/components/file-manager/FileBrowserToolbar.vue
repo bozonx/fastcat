@@ -33,18 +33,24 @@ const sortFields: { label: string; value: FileSortField }[] = [
     class="flex items-center gap-4 px-4 py-2 border-b border-ui-border shrink-0 bg-ui-bg-elevated/50"
   >
     <div class="flex items-center gap-1">
-      <UButton
-        :color="filesPageStore.viewMode === 'grid' ? 'primary' : 'neutral'"
-        variant="ghost"
+      <UiToggleButton
+        :model-value="filesPageStore.viewMode === 'grid'"
         icon="i-heroicons-squares-2x2"
+        inactive-color="neutral"
+        active-color="primary"
         size="sm"
+        title="Grid view"
+        no-toggle
         @click="filesPageStore.setViewMode('grid')"
       />
-      <UButton
-        :color="filesPageStore.viewMode === 'list' ? 'primary' : 'neutral'"
-        variant="ghost"
+      <UiToggleButton
+        :model-value="filesPageStore.viewMode === 'list'"
         icon="i-heroicons-list-bullet"
+        inactive-color="neutral"
+        active-color="primary"
         size="sm"
+        title="List view"
+        no-toggle
         @click="filesPageStore.setViewMode('list')"
       />
     </div>
@@ -66,16 +72,14 @@ const sortFields: { label: string; value: FileSortField }[] = [
     </div>
 
     <div class="ml-auto flex items-center gap-2">
-      <UButton
+      <UiActionButton
         v-if="remoteAvailable"
         color="neutral"
-        variant="ghost"
         size="xs"
         icon="i-heroicons-cloud"
+        label="Remote"
         @click="emit('openRemote')"
-      >
-        Remote
-      </UButton>
+      />
       <span class="text-xs text-ui-text-muted">{{ t('common.sortBy', 'Sort by') }}:</span>
       <UiSelect
         v-model="filesPageStore.sortOption.field"
@@ -84,39 +88,36 @@ const sortFields: { label: string; value: FileSortField }[] = [
         size="xs"
         class="w-32"
       />
-      <UButton
-        :icon="
-          filesPageStore.sortOption.order === 'asc'
-            ? 'i-heroicons-bars-arrow-up'
-            : 'i-heroicons-bars-arrow-down'
-        "
-        variant="ghost"
-        color="neutral"
+      <UiToggleButton
+        :model-value="filesPageStore.sortOption.order === 'asc'"
+        icon="i-heroicons-bars-arrow-down"
+        active-icon="i-heroicons-bars-arrow-up"
+        inactive-color="neutral"
+        active-color="primary"
         size="xs"
+        title="Sort order"
+        no-toggle
         @click="
           filesPageStore.sortOption.order =
             filesPageStore.sortOption.order === 'asc' ? 'desc' : 'asc'
         "
       />
       <div class="w-px h-4 bg-ui-border mx-1"></div>
-      <UButton
+      <UiActionButton
         icon="i-heroicons-arrow-path"
-        variant="ghost"
         color="neutral"
         size="xs"
-        :title="t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree')"
+        title="Refresh"
         @click="emit('refresh')"
       />
-      <UButton
-        :icon="uiStore.showHiddenFiles ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
-        variant="ghost"
-        color="neutral"
+      <UiToggleButton
+        :model-value="uiStore.showHiddenFiles"
+        icon="i-heroicons-eye"
+        active-icon="i-heroicons-eye-slash"
+        inactive-color="neutral"
+        active-color="primary"
         size="xs"
-        :title="
-          uiStore.showHiddenFiles
-            ? t('videoEditor.fileManager.actions.hideHiddenFiles', 'Hide hidden files')
-            : t('videoEditor.fileManager.actions.showHiddenFiles', 'Show hidden files')
-        "
+        title="Show hidden files"
         @click="uiStore.showHiddenFiles = !uiStore.showHiddenFiles"
       />
     </div>

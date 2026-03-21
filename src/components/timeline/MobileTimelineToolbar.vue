@@ -44,40 +44,36 @@ function handleZoomOut() {
   >
     <div class="flex items-center gap-2">
       <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1">
-        <UButton
+        <UiActionButton
           icon="lucide:undo"
-          variant="ghost"
           color="neutral"
           size="sm"
-          aria-label="Undo"
+          title="Undo"
           @click="handleUndo"
         />
-        <UButton
+        <UiActionButton
           icon="lucide:redo"
-          variant="ghost"
           color="neutral"
           size="sm"
-          aria-label="Redo"
+          title="Redo"
           @click="handleRedo"
         />
       </div>
 
       <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1">
-        <UButton
+        <UiActionButton
           icon="i-lucide-scissors"
-          variant="ghost"
           color="neutral"
           size="sm"
-          aria-label="Split"
+          title="Split"
           @click="handleSplit"
         />
-        <UButton
+        <UiActionButton
           icon="lucide:trash-2"
-          variant="ghost"
           color="neutral"
           size="sm"
-          aria-label="Delete selection"
           :disabled="!hasSelection"
+          title="Delete selection"
           @click="handleDelete"
         />
       </div>
@@ -88,20 +84,18 @@ function handleZoomOut() {
         >{{ timelineZoom }}%</span
       >
       <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1">
-        <UButton
+        <UiActionButton
           icon="lucide:zoom-out"
-          variant="ghost"
           color="neutral"
           size="sm"
-          aria-label="Zoom out"
+          title="Zoom out"
           @click="handleZoomOut"
         />
-        <UButton
+        <UiActionButton
           icon="lucide:zoom-in"
-          variant="ghost"
           color="neutral"
           size="sm"
-          aria-label="Zoom in"
+          title="Zoom in"
           @click="handleZoomIn"
         />
       </div>
