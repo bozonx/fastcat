@@ -117,7 +117,7 @@ export function createWorkspaceSettingsModule(params: {
       autoSaveUserSettings.markDirty();
       void requestUserSettingsSave();
     },
-    { deep: true },
+    { deep: true, flush: 'sync' },
   );
 
   async function batchUpdateUserSettings(
@@ -146,7 +146,7 @@ export function createWorkspaceSettingsModule(params: {
       autoSaveAppSettings.markDirty();
       void requestAppSettingsSave();
     },
-    { deep: true },
+    { deep: true, flush: 'sync' },
   );
 
   async function batchUpdateAppSettings(

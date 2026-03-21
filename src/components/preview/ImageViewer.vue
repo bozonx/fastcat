@@ -108,7 +108,12 @@ onUnmounted(() => {});
 </script>
 
 <template>
-  <UContextMenu :items="contextMenuItems" class="w-full h-full" :ui="{ content: 'z-[9999]' }">
+  <UContextMenu
+    :items="contextMenuItems"
+    :modal="false"
+    class="w-full h-full"
+    :ui="{ content: 'z-[100000]' }"
+  >
     <div
       ref="containerRef"
       class="image-viewer-container flex items-center justify-center w-full h-full bg-[#1a1a1a] overflow-hidden p-4 relative select-none outline-none"

@@ -6,6 +6,13 @@ import TextEditor from '~/components/preview/TextEditor.vue';
 import { useUiStore } from '~/stores/ui.store';
 import type { PanelFocusId } from '~/stores/focus.store';
 
+interface MediaPlaybackTransferState {
+  currentTime: number;
+  isPlaying: boolean;
+  token: number;
+  source: 'inline' | 'modal';
+}
+
 const { t } = useI18n();
 const uiStore = useUiStore();
 
@@ -21,19 +28,40 @@ const props = defineProps<{
 
 const isMediaModalOpen = ref(false);
 const isTextModalOpen = ref(false);
+const mediaPlaybackState = ref<MediaPlaybackTransferState | null>(null);
+
+function blurActiveElement() {
+  (document.activeElement as HTMLElement | null)?.blur?.();
+}
 
 function openMediaModal() {
+  blurActiveElement();
   isMediaModalOpen.value = true;
 }
 
 function closeMediaModal() {
+  blurActiveElement();
   isMediaModalOpen.value = false;
+}
+
+function onMediaSyncState(payload: {
+  currentTime: number;
+  isPlaying: boolean;
+  source: 'inline' | 'modal';
+}) {
+  mediaPlaybackState.value = {
+    currentTime: payload.currentTime,
+    isPlaying: payload.isPlaying,
+    source: payload.source,
+    token: Date.now(),
+  };
 }
 
 watch(
   () => uiStore.previewFullscreenToggleTrigger,
   (timestamp) => {
     if (!timestamp) return;
+    blurActiveElement();
     if (props.mediaType === 'text') {
       isTextModalOpen.value = !isTextModalOpen.value;
     } else if (props.mediaType !== 'audio') {
@@ -79,31 +107,29 @@ onUnmounted(() => {
 <template>
   <div class="w-full h-full flex flex-col overflow-hidden relative group/preview">
     <template v-if="props.mediaType === 'image' && props.url">
-      <div class="w-full h-full">
-        <ImageViewer
-          :src="props.url"
-          :alt="props.alt"
-          :is-modal="false"
-          :focus-panel-id="props.focusPanelId"
-          class="w-full h-full"
-          @open-modal="openMediaModal"
-          @close-modal="closeMediaModal"
-        />
-      </div>
+      <ImageViewer
+        :src="props.url"
+        :alt="props.alt"
+        :is-modal="false"
+        :focus-panel-id="props.focusPanelId"
+        class="w-full h-full"
+        @open-modal="openMediaModal"
+      />
     </template>
 
     <template v-else-if="(props.mediaType === 'video' || props.mediaType === 'audio') && props.url">
-      <div class="w-full h-full flex flex-col min-h-0">
-        <MediaPlayer
-          :src="props.url"
-          :type="props.mediaType"
-          :is-modal="false"
-          :focus-panel-id="props.focusPanelId"
-          class="w-full h-full"
-          @open-modal="props.mediaType !== 'audio' && openMediaModal()"
-          @close-modal="closeMediaModal"
-        />
-      </div>
+      <MediaPlayer
+        :src="props.url"
+        :type="props.mediaType"
+        :is-modal="false"
+        instance-key="inline"
+        :resume-state="mediaPlaybackState"
+        :force-paused="isMediaModalOpen"
+        :focus-panel-id="props.focusPanelId"
+        class="w-full h-full"
+        @open-modal="props.mediaType !== 'audio' && openMediaModal()"
+        @sync-state="onMediaSyncState"
+      />
     </template>
 
     <TextEditor
@@ -127,7 +153,7 @@ onUnmounted(() => {
     </div>
   </div>
 
-  <!-- Window-modal for image/video fullscreen preview -->
+  <!-- Full-screen modal teleported to body to escape any stacking context -->
   <Teleport to="body">
     <Transition
       enter-active-class="transition duration-200 ease-out"
@@ -139,44 +165,44 @@ onUnmounted(() => {
     >
       <div
         v-if="isMediaModalOpen"
-        class="fixed inset-0 z-[var(--z-max)] flex items-center justify-center bg-black/90"
+        style="position: fixed; inset: 0; z-index: 99999; background: black"
         @click.self="closeMediaModal"
       >
-        <div class="relative w-full h-full flex flex-col">
-          <!-- Close button -->
-          <div class="absolute top-3 right-3 z-10">
-            <UButton
-              size="sm"
-              variant="ghost"
-              color="neutral"
-              icon="i-heroicons-x-mark"
-              class="bg-black/40 hover:bg-black/60"
-              @click="closeMediaModal"
-            />
-          </div>
-
-          <template v-if="props.mediaType === 'image' && props.url">
-            <ImageViewer
-              :src="props.url"
-              :alt="props.alt"
-              :is-modal="true"
-              :focus-panel-id="props.focusPanelId"
-              class="w-full h-full"
-              @close-modal="closeMediaModal"
-            />
-          </template>
-
-          <template v-else-if="props.mediaType === 'video' && props.url">
-            <MediaPlayer
-              :src="props.url"
-              type="video"
-              :is-modal="true"
-              :focus-panel-id="props.focusPanelId"
-              class="w-full h-full"
-              @close-modal="closeMediaModal"
-            />
-          </template>
+        <div class="absolute top-3 right-3 z-10">
+          <UButton
+            size="sm"
+            variant="ghost"
+            color="neutral"
+            icon="i-heroicons-x-mark"
+            class="bg-black/40 hover:bg-black/60"
+            @click="closeMediaModal"
+          />
         </div>
+
+        <template v-if="props.mediaType === 'image' && props.url">
+          <ImageViewer
+            :src="props.url"
+            :alt="props.alt"
+            :is-modal="true"
+            :focus-panel-id="props.focusPanelId"
+            class="w-full h-full"
+            @close-modal="closeMediaModal"
+          />
+        </template>
+
+        <template v-else-if="props.mediaType === 'video' && props.url">
+          <MediaPlayer
+            :src="props.url"
+            type="video"
+            :is-modal="true"
+            instance-key="modal"
+            :resume-state="mediaPlaybackState"
+            :focus-panel-id="props.focusPanelId"
+            class="w-full h-full"
+            @close-modal="closeMediaModal"
+            @sync-state="onMediaSyncState"
+          />
+        </template>
       </div>
     </Transition>
   </Teleport>
