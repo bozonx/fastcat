@@ -20,6 +20,7 @@ interface MonitorViewportPublicApi {
   centerMonitor: () => void;
   resetZoom: () => void;
   resetView: () => void;
+  fitMonitor: () => void;
 }
 
 interface UseMonitorContainerControlsOptions {
@@ -106,6 +107,10 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
 
   function resetView() {
     options.viewportRef.value?.resetView();
+  }
+
+  function fitMonitor() {
+    options.viewportRef.value?.fitMonitor();
   }
 
   function setToolbarPosition(position: 'top' | 'right' | 'bottom' | 'left') {
@@ -227,6 +232,16 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
 
   const contextMenuItems = computed(() => [
     [
+      {
+        label: options.t('fastcat.preview.fitToWindow', 'Fit to Window'),
+        icon: 'i-heroicons-arrows-pointing-in',
+        onSelect: fitMonitor,
+      },
+      {
+        label: options.t('fastcat.monitor.center', 'Center'),
+        icon: 'i-lucide-crosshair',
+        onSelect: centerMonitor,
+      },
       {
         label: options.t('fastcat.preview.resetZoom', 'Reset Zoom & Pan'),
         icon: 'i-heroicons-arrow-path',

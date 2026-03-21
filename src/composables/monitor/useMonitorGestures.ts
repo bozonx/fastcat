@@ -305,6 +305,7 @@ export function useMonitorGestures(input: {
     resetView,
     centerMonitor,
     resetZoom,
+    fitMonitor,
     onPreviewPointerDown,
     onViewportPointerDown,
     onViewportPointerMove,

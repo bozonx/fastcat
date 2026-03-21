@@ -1,5 +1,7 @@
 <script setup lang="ts">
-interface TimelineUsage {
+import PropertySection from '~/components/properties/PropertySection.vue';
+
+export interface TimelineUsage {
   timelinePath: string;
   timelineName: string;
 }
@@ -13,15 +15,10 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <div
+  <PropertySection
     v-if="props.usages.length > 0"
-    class="space-y-1 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full"
+    :title="t('fastcat.preview.usedInTimelines', 'Used in timelines')"
   >
-    <div
-      class="text-[10px] font-bold text-ui-text-muted uppercase tracking-widest border-b border-ui-border pb-1"
-    >
-      {{ t('fastcat.preview.usedInTimelines', 'Used in timelines') }}
-    </div>
     <div class="flex flex-wrap gap-1 mt-1">
       <UButton
         v-for="usage in props.usages"
@@ -32,8 +29,8 @@ const { t } = useI18n();
         icon="i-heroicons-clock"
         @click="props.openTimelineFromUsage(usage.timelinePath)"
       >
-        {{ usage.timelineName.replace('.otio', '') }}
+        {{ usage.timelineName }}
       </UButton>
     </div>
-  </div>
+  </PropertySection>
 </template>
