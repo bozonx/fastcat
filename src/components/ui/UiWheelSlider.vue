@@ -134,6 +134,15 @@ const DOUBLE_CLICK_MS = 350;
 
 function onPointerDownCapture(event: PointerEvent) {
   if (props.disabled) return;
+
+  // Middle click reset
+  if (event.button === 1 && props.defaultValue !== undefined) {
+    if (event.pointerType === 'mouse') event.preventDefault();
+    resetToDefault();
+    return;
+  }
+
+  // Double-pointer-down detection — works with mouse, touch, stylus.
   // Only primary button / primary touch
   if (event.button !== 0 && event.pointerType === 'mouse') return;
   const now = Date.now();
@@ -145,13 +154,6 @@ function onPointerDownCapture(event: PointerEvent) {
   }
 }
 
-function onAuxClick(event: MouseEvent) {
-  if (props.disabled) return;
-  if (event.button === 1 && props.defaultValue !== undefined) {
-    event.preventDefault();
-    resetToDefault();
-  }
-}
 </script>
 
 <template>
@@ -165,7 +167,6 @@ function onAuxClick(event: MouseEvent) {
     :class="orientation === 'horizontal' ? 'py-3 -my-3' : 'px-3 -mx-3 h-full'"
     @pointerdown.capture="onPointerDownCapture"
     @dblclick.capture="resetToDefault"
-    @auxclick.capture.prevent="onAuxClick"
   >
     <USlider
       v-model="value"

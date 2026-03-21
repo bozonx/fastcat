@@ -64,16 +64,18 @@ useWheelSupport({
   },
 });
 
-function onAuxClick(e: MouseEvent) {
+function onPointerDown(e: PointerEvent) {
   if (e.button === 1 && props.defaultValue !== undefined && !props.disabled) {
-    e.preventDefault();
+    if (e.pointerType === 'mouse') {
+      e.preventDefault();
+    }
     emit('update:modelValue', props.defaultValue);
   }
 }
 </script>
 
 <template>
-  <div ref="wrapperRef" class="relative group max-w-24" @auxclick.capture.prevent="onAuxClick">
+  <div ref="wrapperRef" class="relative group max-w-24" @pointerdown.capture="onPointerDown">
     <UInput
       v-model="value"
       type="number"
