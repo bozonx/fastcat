@@ -380,18 +380,45 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
     const doc = deps.timelineDoc.value;
     if (!doc) return [];
 
-    const targetTrackId = options?.targetTrackId ?? deps.resolveTargetVideoTrackIdForInsert();
-    const targetTrack = doc.tracks.find((track) => track.id === targetTrackId) ?? null;
-    if (!targetTrack) return [];
+    // 1. Determine the base target track
+    const baseTargetTrackId = options?.targetTrackId ?? deps.resolveTargetVideoTrackIdForInsert();
+    const baseTargetTrackIndex = doc.tracks.findIndex((track) => track.id === baseTargetTrackId);
+    if (baseTargetTrackIndex === -1) return [];
 
+    const baseTargetTrack = doc.tracks[baseTargetTrackIndex];
+
+    // 2. Determine horizontal and vertical offsets
     const minStartUs = Math.min(...items.map((item) => item.clip.timelineRange.startUs));
     const insertStartUs = Math.max(0, Math.round(options?.insertStartUs ?? deps.currentTime.value));
+
+    // Identify unique source tracks and find the "top-most" one among copied items
+    const sourceTrackIdsSet = new Set(items.map((it) => it.sourceTrackId));
+    const sourceTrackIndices = Array.from(sourceTrackIdsSet)
+      .map((id) => doc.tracks.findIndex((t) => t.id === id))
+      .filter((idx) => idx !== -1)
+      .sort((a, b) => a - b);
+
+    const minSourceTrackIndex = sourceTrackIndices.length > 0 ? (sourceTrackIndices[0] as number) : 0;
+
     const createdItems: { trackId: string; itemId: string }[] = [];
 
     for (const item of items) {
       const clip = cloneClip(item.clip);
       const relativeStartUs = clip.timelineRange.startUs - minStartUs;
       const nextStartUs = insertStartUs + relativeStartUs;
+
+      // Find the target track based on relative vertical offset
+      const sourceTrackIndex = doc.tracks.findIndex((t) => t.id === item.sourceTrackId);
+      const relativeTrackOffset = sourceTrackIndex - minSourceTrackIndex;
+      const targetTrackIndex = baseTargetTrackIndex + relativeTrackOffset;
+
+      // Ensure we stay within bounds
+      const targetTrack =
+        targetTrackIndex >= 0 && targetTrackIndex < doc.tracks.length
+          ? doc.tracks[targetTrackIndex]
+          : baseTargetTrack;
+
+      if (!targetTrack) continue;
 
       if ((clip.clipType === 'media' || clip.clipType === 'timeline') && clip.source?.path) {
         deps.applyTimeline({
@@ -423,13 +450,15 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
         });
       }
 
+      // Re-fetch document state to find the newly created clip
+      const refreshedDoc = deps.timelineDoc.value;
       const refreshedTrack =
-        deps.timelineDoc.value?.tracks.find((track) => track.id === targetTrack.id) ?? null;
+        refreshedDoc?.tracks.find((track) => track.id === targetTrack.id) ?? null;
       const createdClip =
         refreshedTrack?.items.find(
           (trackItem) =>
             trackItem.kind === 'clip' &&
-            trackItem.timelineRange.startUs === nextStartUs &&
+            Math.abs(trackItem.timelineRange.startUs - nextStartUs) < 2 &&
             trackItem.timelineRange.durationUs === clip.timelineRange.durationUs &&
             trackItem.name === clip.name,
         ) ?? null;
