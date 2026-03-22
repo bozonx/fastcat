@@ -10,7 +10,7 @@ import type { MonitorSettings } from '~/utils/project-settings';
 import { z } from 'zod';
 
 const MonitorSettingsSchema = z.object({
-  previewResolution: z.coerce.number().int().min(1).max(4320).catch(480),
+  previewResolution: z.coerce.number().min(0.01).max(4320).catch(0.5),
   useProxy: z.coerce.boolean().catch(true),
   previewEffectsEnabled: z.coerce.boolean().catch(true),
   panX: z.coerce.number().catch(0),
