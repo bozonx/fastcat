@@ -54,7 +54,16 @@ function handleDelete() {
   }
 }
 
-const actions = computed(() => [
+const commonActions = computed(() => [
+  {
+    id: 'delete',
+    title: t('common.delete', 'Delete'),
+    icon: 'i-heroicons-trash',
+    onClick: handleDelete,
+  },
+]);
+
+const mainActions = computed(() => [
   {
     id: 'convert',
     label: t('fastcat.timeline.convertSelectionToZoneMarker', 'Convert to zone marker'),
@@ -68,20 +77,24 @@ const actions = computed(() => [
     color: 'warning' as const,
     onClick: handleRippleTrim,
   },
-  {
-    id: 'delete',
-    label: t('common.delete', 'Delete'),
-    icon: 'i-heroicons-trash',
-    color: 'danger' as const,
-    onClick: handleDelete,
-  },
 ]);
 </script>
 
 <template>
   <div v-if="selectionRange" class="w-full flex flex-col gap-2 text-ui-text">
     <PropertySection :title="t('fastcat.selectionRange.actions', 'Actions')">
-      <PropertyActionList :actions="actions" justify="center" size="xs" />
+      <div class="flex flex-col w-full">
+        <PropertyActionList
+          :actions="commonActions"
+          :vertical="false"
+          justify="start"
+          variant="ghost"
+          size="xs"
+          class="mb-2"
+        />
+
+        <PropertyActionList :actions="mainActions" justify="start" size="xs" />
+      </div>
     </PropertySection>
 
     <PropertySection :title="t('fastcat.selectionRange.info', 'Selection Range')">

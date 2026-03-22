@@ -113,6 +113,11 @@ function selectMarker(markerId: string, e?: MouseEvent) {
   }
   e?.stopPropagation();
   selectionStore.selectTimelineMarker(markerId);
+
+  const marker = timelineStore.getMarkers().find((m) => m.id === markerId);
+  if (marker) {
+    timelineStore.setCurrentTimeUs(marker.timeUs);
+  }
 }
 
 function selectSelectionRange(e?: MouseEvent) {

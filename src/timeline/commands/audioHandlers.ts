@@ -156,13 +156,12 @@ export function returnAudioToVideo(
         it.kind === 'clip' &&
         it.linkedVideoClipId === cmd.videoItemId &&
         Boolean(it.lockToLinkedVideo),
-    );
-  if (!linkedAudio || linkedAudio.kind !== 'clip') return { next: doc };
+    ) as TimelineClipItem | undefined;
 
-  const audioEffectsToReturn = (linkedAudio.effects ?? []).filter((e) => e?.target === 'audio');
+  const audioEffectsToReturn = linkedAudio ? (linkedAudio.effects ?? []).filter((e) => e?.target === 'audio') : [];
 
   const nextTracks = doc.tracks.map((t) => {
-    if (t.kind === 'audio') {
+    if (linkedAudio && t.kind === 'audio') {
       const nextItems = t.items.filter((it) => it.id !== linkedAudio.id);
       return nextItems.length === t.items.length ? t : { ...t, items: nextItems };
     }
