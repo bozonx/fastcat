@@ -126,15 +126,20 @@ export class TimelineClipLayoutUpdater {
     }
 
     if (clip.clipKind === 'hud') {
-      const nextBg = (next as any).background?.source?.path;
-      const nextContent = (next as any).content?.source?.path;
+      const nextBg = (next as any).background;
+      const nextContent = (next as any).content;
+      const nextHudType = (next as any).hudType ?? 'media_frame';
 
-      if (
-        clip.hudMediaStates?.background?.sourcePath !== nextBg ||
-        clip.hudMediaStates?.content?.sourcePath !== nextContent
-      ) {
-        clip.background = (next as any).background;
-        clip.content = (next as any).content;
+      const hudChanged =
+        clip.hudType !== nextHudType ||
+        JSON.stringify(clip.background) !== JSON.stringify(nextBg) ||
+        JSON.stringify(clip.content) !== JSON.stringify(nextContent);
+
+      if (hudChanged || clip.hudDirty === true) {
+        clip.hudType = nextHudType;
+        clip.background = nextBg ? JSON.parse(JSON.stringify(nextBg)) : undefined;
+        clip.content = nextContent ? JSON.parse(JSON.stringify(nextContent)) : undefined;
+        clip.hudDirty = true;
       }
     }
 

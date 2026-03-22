@@ -103,7 +103,7 @@ export class TimelineFixedClipBuilder {
       const file = (await deps.getFileByPath?.(path)) ?? (await fileHandle.getFile());
       
       const isImage = (typeof file?.type === 'string' && file.type.startsWith('image/')) ||
-                      path.match(/\\.(jpe?g|png|webp|gif|svg)$/i);
+                      path.match(/\.(jpe?g|png|webp|gif|svg)$/i);
       
       if (isImage) {
         return await this.context.hudMediaLoader.loadImageState({
