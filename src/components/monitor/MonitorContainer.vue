@@ -66,6 +66,7 @@ const {
   isSavingStopFrame,
   createStopFrameSnapshot,
   timecodeEl,
+  uiCurrentTimeUs,
 } = useMonitorRuntime();
 
 registerMonitorActions({
@@ -219,6 +220,18 @@ const speedMenuItems = computed(() => [
 
 const monitorZoomLabel = computed(() => (viewportRef.value as any)?.zoomLabel ?? 'x1');
 
+const activeMarkers = computed(() => {
+  const time = uiCurrentTimeUs.value;
+  return (timelineStore.getMarkers() || []).filter((m) => {
+    if (!m.text.trim()) return false;
+    if (m.durationUs) {
+      return time >= m.timeUs && time < m.timeUs + m.durationUs;
+    }
+    // Threshold of 1ms to match point markers during playback/scrubbing
+    return Math.abs(time - m.timeUs) < 1000;
+  });
+});
+
 const isIdle = ref(false);
 let idleTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -303,6 +316,24 @@ onUnmounted(() => {
             class="absolute inset-0 flex items-center justify-center text-red-500"
           >
             {{ loadError }}
+          </div>
+
+          <!-- Active Markers -->
+          <div
+            v-if="activeMarkers.length"
+            class="absolute flex flex-col items-end gap-1 pointer-events-none transition-all duration-300 z-10"
+            :class="[
+              effectiveFullscreen ? 'bottom-32 right-8' : 'bottom-11 right-3',
+              effectiveFullscreen && isIdle ? 'opacity-0' : 'opacity-100',
+            ]"
+          >
+            <div
+              v-for="marker in activeMarkers"
+              :key="marker.id"
+              class="text-[10px] text-ui-text-muted bg-ui-bg-elevated/80 px-2 py-0.5 rounded max-w-[240px] truncate shadow-sm border border-white/5"
+            >
+              {{ marker.text }}
+            </div>
           </div>
 
           <span
