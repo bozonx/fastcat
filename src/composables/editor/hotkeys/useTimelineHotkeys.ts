@@ -94,9 +94,13 @@ export function useTimelineHotkeys() {
       const payload = clipboardPayload;
       if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return false;
 
-      timelineStore.pasteClips(payload.items, {
+      const createdItems = timelineStore.pasteClips(payload.items, {
         targetTrackId: timelineStore.getSelectedOrActiveTrackId(),
       });
+
+      if (createdItems.length > 0) {
+        timelineStore.selectTimelineItems(createdItems);
+      }
 
       if (payload.operation === 'cut') {
         setClipboardPayload(null);

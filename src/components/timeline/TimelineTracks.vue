@@ -16,6 +16,7 @@ import type {
 import { timeUsToPx } from '~/utils/timeline/geometry';
 import { useTimelineItemResize } from '~/composables/timeline/useTimelineItemResize';
 import { useTimelineMarquee } from '~/composables/timeline/useTimelineMarquee';
+import { useFocusStore } from '~/stores/focus.store';
 
 import TimelineClip from './TimelineClip.vue';
 import TimelineGap from './TimelineGap.vue';
@@ -25,6 +26,7 @@ const { t } = useI18n();
 
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
+const focusStore = useFocusStore();
 const mediaStore = useMediaStore();
 const { selectedTransition } = storeToRefs(timelineStore);
 
@@ -212,6 +214,7 @@ function selectTransition(
       class="flex flex-col min-h-full relative"
       :style="{ minWidth: `max(100%, ${timelineWidthPx}px)` }"
       @pointerdown="
+        focusStore.setPanelFocus('timeline');
         if ($event.button === 0 && $event.target === $event.currentTarget) {
           startMarquee($event);
         } else if ($event.button !== 1 && $event.target === $event.currentTarget) {
@@ -253,6 +256,7 @@ function selectTransition(
         ]"
         :style="{ height: `${trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT}px` }"
         @pointerdown="
+          focusStore.setPanelFocus('timeline');
           if ($event.button === 0 && $event.target === $event.currentTarget) {
             startMarquee($event, () => {
               if (timelineStore.selectedTrackId === track.id) {

@@ -3,11 +3,13 @@ import UiTooltip from '~/components/ui/UiTooltip.vue';
 import type { ToolbarDragMode, ToolbarSnapMode } from '~/stores/timeline-settings.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
+import { useFocusStore } from '~/stores/focus.store';
 import UiSplitDropdownButton from '~/components/ui/UiSplitDropdownButton.vue';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const settingsStore = useTimelineSettingsStore();
+const focusStore = useFocusStore();
 
 const emit = defineEmits<{
   (e: 'dragVirtualStart', event: DragEvent, type: 'adjustment' | 'background' | 'text'): void;
@@ -178,6 +180,7 @@ function onToolbarContextMenu(e: MouseEvent) {
     <div
       class="h-7 border-b border-ui-border bg-ui-bg-elevated flex items-center px-1 shrink-0 gap-0.5"
       data-timeline-toolbar
+      @pointerdown.capture="focusStore.setPanelFocus('timeline')"
       @click.self="timelineStore.selectTimelineProperties()"
       @contextmenu="onToolbarContextMenu"
     >

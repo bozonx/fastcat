@@ -1,17 +1,36 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
-import {
-  isFileTab,
-  type AnyProjectTab,
-  useProjectTabsStore,
-} from '~/stores/tabs.store';
+import { isFileTab, type AnyProjectTab, useProjectTabsStore } from '~/stores/tabs.store';
 import { defineComponent } from 'vue';
 
 const DummyComponent = defineComponent({ template: '<div>Dummy</div>' });
 
+const mockProjectStore = {
+  insertPanelAt: vi.fn(),
+  setView: vi.fn(),
+  currentView: 'cut',
+};
+
+vi.mock('~/stores/project.store', () => ({
+  useProjectStore: () => mockProjectStore,
+}));
+
+vi.mock('~/stores/focus.store', () => ({
+  useFocusStore: () => ({
+    setPanelFocus: vi.fn(),
+  }),
+}));
+
+vi.mock('~/composables/fileManager/useFileManager', () => ({
+  useFileManager: () => ({
+    findEntryByPath: vi.fn(),
+    vfs: {},
+  }),
+}));
+
 describe('useProjectTabs', () => {
   beforeEach(() => {
-    // Clear tabs before each test
+    vi.clearAllMocks();
     const { tabsStore } = useProjectTabs();
     const { unregisterProjectTab } = tabsStore;
     tabsStore.tabs.forEach((t: AnyProjectTab) => {
@@ -50,5 +69,62 @@ describe('useProjectTabs', () => {
 
     removeFileTab(tabId);
     expect(tabsStore.tabs.length).toBe(0);
+  });
+
+  describe('getStaticTabContextMenuItems', () => {
+    it('returns disabled detach item for files tab', () => {
+      const { getStaticTabContextMenuItems } = useProjectTabs({ enableUiEffects: false });
+      const items = getStaticTabContextMenuItems('files');
+
+      expect(items).toHaveLength(1);
+      expect(items[0]).toHaveLength(1);
+      expect(items[0]![0]!.label).toBe('common.detach');
+      expect(items[0]![0]!.disabled).toBe(true);
+    });
+
+    it('returns enabled detach item for non-files tab', () => {
+      const { getStaticTabContextMenuItems } = useProjectTabs({ enableUiEffects: false });
+      const items = getStaticTabContextMenuItems('history');
+
+      expect(items).toHaveLength(1);
+      expect(items[0]).toHaveLength(1);
+      expect(items[0]![0]!.label).toBe('common.detach');
+      expect(items[0]![0]!.disabled).toBe(false);
+    });
+  });
+
+  describe('detachStaticTab', () => {
+    it('does nothing for files tab', () => {
+      const { detachStaticTab } = useProjectTabs({ enableUiEffects: false });
+
+      detachStaticTab('files');
+
+      expect(mockProjectStore.insertPanelAt).not.toHaveBeenCalled();
+    });
+
+    it('creates panel and hides tab for detachable tab', () => {
+      const { tabsStore, detachStaticTab } = useProjectTabs({ enableUiEffects: false });
+      const { registerProjectTab, hideStaticTab } = tabsStore;
+
+      registerProjectTab({
+        id: 'history',
+        label: 'History',
+        component: DummyComponent as any,
+      });
+
+      detachStaticTab('history');
+
+      expect(mockProjectStore.insertPanelAt).toHaveBeenCalledTimes(1);
+      expect(mockProjectStore.insertPanelAt).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'history',
+          title: 'History',
+        }),
+        undefined,
+        undefined,
+        'cut',
+      );
+      expect(hideStaticTab).toHaveBeenCalled();
+    });
   });
 });

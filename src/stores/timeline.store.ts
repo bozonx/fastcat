@@ -140,6 +140,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     selectedItemIds,
     selectedTrackId,
     selectedTransition,
+    selectionStore,
   });
 
   const editService = createTimelineEditService({

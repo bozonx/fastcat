@@ -9,7 +9,9 @@ const emit = defineEmits<{
 
 const {
   activateProjectTab,
+  detachStaticTab,
   fileTabsModel,
+  getStaticTabContextMenuItems,
   isDropTarget,
   onFileTabAuxClick,
   onFileTabDragStart,
@@ -50,32 +52,36 @@ function handleStaticTabDragStart(event: DragEvent, tab: AnyProjectTab) {
       class="flex items-center h-full flex-1 min-w-0 overflow-x-auto no-scrollbar"
     >
       <div class="flex items-center px-1 gap-0.5 py-1 shrink-0">
-        <div
+        <UContextMenu
           v-for="tab in staticTabs"
           :key="tab.id"
-          :data-tab-id="tab.id"
-          class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0"
-          :class="
-            tabsStore.activeTabId === tab.id
-              ? 'bg-primary-500/15 text-primary-400'
-              : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
-          "
-          :title="tab.label"
-          :draggable="tab.id !== 'files'"
-          @mousedown="onStaticTabMouseDown($event, tab.id)"
-          @auxclick="onStaticTabAuxClick($event, tab.id)"
-          @dragstart="tab.id !== 'files' ? handleStaticTabDragStart($event, tab) : undefined"
-          @click="activateProjectTab(tab.id)"
+          :items="getStaticTabContextMenuItems(tab.id)"
         >
-          <UIcon
-            :name="tab.icon ?? 'i-heroicons-rectangle-stack'"
-            class="w-3.5 h-3.5 shrink-0"
-            :class="tabsStore.activeTabId === tab.id ? 'text-primary-400' : 'text-ui-text-muted'"
-          />
-          <span class="text-[10px] font-semibold uppercase tracking-wider">
-            {{ tab.label }}
-          </span>
-        </div>
+          <div
+            :data-tab-id="tab.id"
+            class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0"
+            :class="
+              tabsStore.activeTabId === tab.id
+                ? 'bg-primary-500/15 text-primary-400'
+                : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
+            "
+            :title="tab.label"
+            :draggable="tab.id !== 'files'"
+            @mousedown="onStaticTabMouseDown($event, tab.id)"
+            @auxclick="onStaticTabAuxClick($event, tab.id)"
+            @dragstart="tab.id !== 'files' ? handleStaticTabDragStart($event, tab) : undefined"
+            @click="activateProjectTab(tab.id)"
+          >
+            <UIcon
+              :name="tab.icon ?? 'i-heroicons-rectangle-stack'"
+              class="w-3.5 h-3.5 shrink-0"
+              :class="tabsStore.activeTabId === tab.id ? 'text-primary-400' : 'text-ui-text-muted'"
+            />
+            <span class="text-[10px] font-semibold uppercase tracking-wider">
+              {{ tab.label }}
+            </span>
+          </div>
+        </UContextMenu>
       </div>
 
       <UContextMenu

@@ -11,6 +11,12 @@ import {
 } from '~/stores/tabs.store';
 import { isOpenableProjectFileName } from '~/utils/media-types';
 
+const TAB_ID_TO_PANEL_TYPE: Record<string, 'fileManager' | 'history' | 'effects'> = {
+  files: 'fileManager',
+  history: 'history',
+  effects: 'effects',
+};
+
 interface UseProjectTabsOptions {
   enableUiEffects?: boolean;
   onStaticTabDragStart?: (event: DragEvent, tabId: string) => void;
@@ -305,12 +311,63 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
     });
   }
 
+  function detachStaticTab(tabId: string) {
+    if (tabId === 'files') return;
+
+    const panelType = TAB_ID_TO_PANEL_TYPE[tabId];
+    if (!panelType) return;
+
+    const tab = staticTabs.value.find((t) => t.id === tabId);
+    if (!tab) return;
+
+    const panelId = `static-${tabId}-${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2, 7)}`;
+
+    projectStore.insertPanelAt(
+      {
+        id: panelId,
+        type: panelType,
+        title: tab.label,
+      },
+      undefined,
+      undefined,
+      'cut',
+    );
+
+    tabsStore.hideStaticTab(tabId);
+
+    if (projectStore.currentView !== 'cut') {
+      projectStore.setView('cut');
+    }
+  }
+
+  function getStaticTabContextMenuItems(tabId: string) {
+    const isFilesTab = tabId === 'files';
+
+    return [
+      [
+        {
+          label: t('common.detach', 'Detach'),
+          icon: 'i-heroicons-arrow-turn-down-right',
+          disabled: isFilesTab,
+          kbds: isFilesTab ? [] : undefined,
+          onSelect: () => {
+            if (!isFilesTab) {
+              detachStaticTab(tabId);
+            }
+          },
+        },
+      ],
+    ];
+  }
+
   return {
     activateProjectFocus,
     activateProjectTab,
     activeFileTab,
     activeStaticComponent,
+    detachStaticTab,
     fileTabsModel,
+    getStaticTabContextMenuItems,
     isDropTarget,
     onFileTabAuxClick,
     onFileTabDragStart,

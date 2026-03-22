@@ -159,7 +159,7 @@ export interface TimelineClipsApi {
   pasteClips: (
     items: TimelineClipClipboardItem[],
     options?: { targetTrackId?: string | null; insertStartUs?: number },
-  ) => string[];
+  ) => { trackId: string; itemId: string }[];
 }
 
 export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
@@ -370,7 +370,7 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
   function pasteClips(
     items: TimelineClipClipboardItem[],
     options?: { targetTrackId?: string | null; insertStartUs?: number },
-  ): string[] {
+  ): { trackId: string; itemId: string }[] {
     if (items.length === 0) return [];
 
     if (!deps.timelineDoc.value) {
@@ -386,7 +386,7 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
 
     const minStartUs = Math.min(...items.map((item) => item.clip.timelineRange.startUs));
     const insertStartUs = Math.max(0, Math.round(options?.insertStartUs ?? deps.currentTime.value));
-    const createdIds: string[] = [];
+    const createdItems: { trackId: string; itemId: string }[] = [];
 
     for (const item of items) {
       const clip = cloneClip(item.clip);
@@ -396,33 +396,32 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
       if ((clip.clipType === 'media' || clip.clipType === 'timeline') && clip.source?.path) {
         deps.applyTimeline({
           type: 'add_clip_to_track',
-          trackId: clip.trackId,
+          trackId: targetTrack.id,
           name: clip.name,
           path: clip.source.path,
-          startUs: clip.timelineRange.startUs,
+          startUs: nextStartUs,
           durationUs: clip.timelineRange.durationUs,
           sourceRange: clip.sourceRange,
           isImage: clip.isImage,
         });
-        continue;
+      } else {
+        deps.applyTimeline({
+          type: 'add_virtual_clip_to_track',
+          trackId: targetTrack.id,
+          clipType: clip.clipType as Extract<
+            TimelineClipType,
+            'adjustment' | 'background' | 'text' | 'shape' | 'hud'
+          >,
+          name: clip.name,
+          durationUs: clip.timelineRange.durationUs,
+          startUs: nextStartUs,
+          backgroundColor: 'backgroundColor' in clip ? clip.backgroundColor : undefined,
+          text: 'text' in clip ? clip.text : undefined,
+          style: 'style' in clip ? clip.style : undefined,
+          shapeType: 'shapeType' in clip ? clip.shapeType : undefined,
+          hudType: 'hudType' in clip ? clip.hudType : undefined,
+        });
       }
-
-      deps.applyTimeline({
-        type: 'add_virtual_clip_to_track',
-        trackId: targetTrack.id,
-        clipType: clip.clipType as Extract<
-          TimelineClipType,
-          'adjustment' | 'background' | 'text' | 'shape' | 'hud'
-        >,
-        name: clip.name,
-        durationUs: clip.timelineRange.durationUs,
-        startUs: nextStartUs,
-        backgroundColor: 'backgroundColor' in clip ? clip.backgroundColor : undefined,
-        text: 'text' in clip ? clip.text : undefined,
-        style: 'style' in clip ? clip.style : undefined,
-        shapeType: 'shapeType' in clip ? clip.shapeType : undefined,
-        hudType: 'hudType' in clip ? clip.hudType : undefined,
-      });
 
       const refreshedTrack =
         deps.timelineDoc.value?.tracks.find((track) => track.id === targetTrack.id) ?? null;
@@ -439,7 +438,7 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
         continue;
       }
 
-      createdIds.push(createdClip.id);
+      createdItems.push({ trackId: targetTrack.id, itemId: createdClip.id });
 
       updateClipProperties(targetTrack.id, createdClip.id, {
         disabled: clip.disabled,
@@ -449,7 +448,7 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
         effects: cloneClip(clip.effects ?? []),
         freezeFrameSourceUs: clip.freezeFrameSourceUs,
         speed: clip.speed,
-        transform: cloneClip(clip.transform),
+        transform: cloneValue(clip.transform),
         audioGain: clip.audioGain,
         audioBalance: clip.audioBalance,
         audioFadeInUs: clip.audioFadeInUs,
@@ -462,23 +461,23 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
         showThumbnails: clip.showThumbnails,
         backgroundColor: 'backgroundColor' in clip ? clip.backgroundColor : undefined,
         text: 'text' in clip ? clip.text : undefined,
-        style: 'style' in clip ? cloneClip(clip.style) : undefined,
+        style: 'style' in clip ? cloneValue(clip.style) : undefined,
         shapeType: 'shapeType' in clip ? clip.shapeType : undefined,
         fillColor: 'fillColor' in clip ? clip.fillColor : undefined,
         strokeColor: 'strokeColor' in clip ? clip.strokeColor : undefined,
         strokeWidth: 'strokeWidth' in clip ? clip.strokeWidth : undefined,
         hudType: 'hudType' in clip ? clip.hudType : undefined,
-        background: 'background' in clip ? cloneClip(clip.background) : undefined,
-        content: 'content' in clip ? cloneClip(clip.content) : undefined,
+        background: 'background' in clip ? cloneValue(clip.background) : undefined,
+        content: 'content' in clip ? cloneValue(clip.content) : undefined,
       });
 
       updateClipTransition(targetTrack.id, createdClip.id, {
-        transitionIn: cloneClip(clip.transitionIn),
-        transitionOut: cloneClip(clip.transitionOut),
+        transitionIn: cloneValue(clip.transitionIn),
+        transitionOut: cloneValue(clip.transitionOut),
       });
     }
 
-    return createdIds;
+    return createdItems;
   }
 
   function rippleDeleteFirstSelectedItem() {
