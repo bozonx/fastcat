@@ -2,10 +2,17 @@
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 
-const props = defineProps<{
-  modelValue: number; // Time in microseconds
-}>();
+const props = withDefaults(
+  defineProps<{
+    modelValue: number; // Time in microseconds
+    allowNegative?: boolean;
+  }>(),
+  {
+    allowNegative: false,
+  },
+);
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: number): void;
@@ -19,21 +26,27 @@ const isFocused = ref(false);
 const localValue = ref('');
 const wrapperRef = ref<HTMLElement | null>(null);
 
+let lastCommittedValue = props.modelValue;
+
 // Format microseconds to HH:MM:SS:FF
 function formatTimecode(us: number, fpsValue: number): string {
-  const totalFrames = Math.round((us / 1_000_000) * fpsValue);
+  const isNegative = us < 0;
+  const absUs = Math.abs(us);
+  const totalFrames = Math.round((absUs / 1_000_000) * fpsValue);
   const ff = totalFrames % fpsValue;
-  const totalSeconds = Math.floor(us / 1_000_000);
+  const totalSeconds = Math.floor(absUs / 1_000_000);
   const ss = totalSeconds % 60;
   const mm = Math.floor(totalSeconds / 60) % 60;
   const hh = Math.floor(totalSeconds / 3600);
 
   const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(hh)}:${pad(mm)}:${pad(ss)}:${pad(ff)}`;
+  const formatted = `${pad(hh)}:${pad(mm)}:${pad(ss)}:${pad(ff)}`;
+  return isNegative ? `-${formatted}` : formatted;
 }
 
 // Parse HH:MM:SS:FF or MM:SS:FF or SS:FF or just SS to microseconds
 function parseTimecode(tc: string, fpsValue: number): number {
+  const isNegative = tc.trim().startsWith('-');
   // Remove any non-numeric characters except colons
   const clean = tc.replace(/[^\d:]/g, '');
   const parts = clean.split(':').map((p) => (p === '' ? 0 : Number(p)));
@@ -65,12 +78,14 @@ function parseTimecode(tc: string, fpsValue: number): number {
 
   const totalSeconds = hh * 3600 + mm * 60 + ss;
   const totalFrames = totalSeconds * fpsValue + ff;
-  return Math.round((totalFrames / fpsValue) * 1_000_000);
+  const result = Math.round((totalFrames / fpsValue) * 1_000_000);
+  return isNegative ? -result : result;
 }
 
 watch(
   () => props.modelValue,
   (newVal) => {
+    lastCommittedValue = newVal;
     if (!isFocused.value) {
       localValue.value = formatTimecode(newVal, fps.value);
     }
@@ -80,8 +95,11 @@ watch(
 
 function commitValue() {
   const parsed = parseTimecode(localValue.value, fps.value);
-  if (!isNaN(parsed) && parsed >= 0) {
-    emit('update:modelValue', parsed);
+  if (!isNaN(parsed) && (props.allowNegative || parsed >= 0)) {
+    if (parsed !== lastCommittedValue) {
+      emit('update:modelValue', parsed);
+      lastCommittedValue = parsed;
+    }
     localValue.value = formatTimecode(parsed, fps.value);
   } else {
     // Revert to valid prop value
@@ -96,6 +114,11 @@ function handleFocus() {
 function handleBlur() {
   isFocused.value = false;
   commitValue();
+  // Force reset if parent didn't update prop
+  if (lastCommittedValue !== props.modelValue) {
+    localValue.value = formatTimecode(props.modelValue, fps.value);
+    lastCommittedValue = props.modelValue;
+  }
 }
 
 function handleKeydown(e: KeyboardEvent) {
@@ -134,7 +157,10 @@ function stepValue(direction: number, isFrame: boolean) {
   const frameUs = 1_000_000 / fps.value;
   const stepUs = isFrame ? frameUs : 1_000_000; // frame or 1 second
 
-  const newUs = Math.max(0, validUs + direction * stepUs);
+  let newUs = validUs + direction * stepUs;
+  if (!props.allowNegative) {
+    newUs = Math.max(0, newUs);
+  }
 
   if (isFocused.value) {
     localValue.value = formatTimecode(newUs, fps.value);
