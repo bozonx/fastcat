@@ -38,7 +38,7 @@ import { TimelineLayoutOrchestrator } from './compositor/TimelineLayoutOrchestra
 import { TextRenderer } from './compositor/renderers/TextRenderer';
 import { ShapeRenderer } from './compositor/renderers/ShapeRenderer';
 import { CanvasFallbackRenderer } from './compositor/renderers/CanvasFallbackRenderer';
-import { buildPrevClipByIdIndex, buildTrackRuntimeList } from './compositor/trackRuntime';
+import { buildPrevClipByIdIndex, buildNextClipByIdIndex, buildTrackRuntimeList } from './compositor/trackRuntime';
 import { RenderingEngine } from './compositor/RenderingEngine';
 import { FrameSampleOrchestrator } from './compositor/FrameSampleOrchestrator';
 import { StageManager } from './compositor/StageManager';
@@ -54,6 +54,7 @@ export class VideoCompositor {
   private height = 1080;
   private clipById = new Map<string, CompositorClip>();
   private prevClipById = new Map<string, CompositorClip | null>();
+  private nextClipById = new Map<string, CompositorClip | null>();
   private trackById = new Map<string, CompositorTrack>();
   private trackByLayer = new Map<number, CompositorTrack>();
   private tracks: CompositorTrack[] = [];
@@ -235,6 +236,7 @@ export class VideoCompositor {
       ensureTransitionRenderTexture: (texture) =>
         this.clipResourceManager.ensureTransitionRenderTexture(texture),
       findPrevClipOnLayer: (clip) => this.findPrevClipOnLayer(clip),
+      findNextClipOnLayer: (clip) => this.findNextClipOnLayer(clip),
       createAbortController: (key) => this.resourceManager.createAbortController(key),
       getVideoSampleForClip: (params) => this.getVideoSampleForClip(params),
       updateClipTextureFromSample: (sample, clip) => this.updateClipTextureFromSample(sample, clip),
@@ -307,6 +309,7 @@ export class VideoCompositor {
 
   private rebuildPrevClipIndex() {
     this.prevClipById = buildPrevClipByIdIndex(this.clips);
+    this.nextClipById = buildNextClipByIdIndex(this.clips);
   }
 
   private registerLoadedClip(params: {
@@ -741,6 +744,7 @@ export class VideoCompositor {
           ensureTransitionRenderTexture: (texture) =>
             this.clipResourceManager.ensureTransitionRenderTexture(texture),
           findPrevClipOnLayer: (clip) => this.findPrevClipOnLayer(clip),
+          findNextClipOnLayer: (clip) => this.findNextClipOnLayer(clip),
           createAbortController: (key) => this.resourceManager.createAbortController(key),
           getVideoSampleForClip: (params) => this.getVideoSampleForClip(params),
           updateClipTextureFromSample: (sample, clip) =>
@@ -761,12 +765,17 @@ export class VideoCompositor {
     });
   }
 
-  /** Find the clip on the same layer immediately adjacent to `clip` (for blend shadow rendering).
-   *  Returns null if there is a gap larger than the configured threshold. */
   private findPrevClipOnLayer(clip: CompositorClip): CompositorClip | null {
     const best = this.prevClipById.get(clip.itemId) ?? null;
     if (!best) return null;
     if (clip.startUs - best.endUs > VIDEO_CORE_LIMITS.BLEND_SHADOW_GAP_THRESHOLD_US) return null;
+    return best;
+  }
+
+  private findNextClipOnLayer(clip: CompositorClip): CompositorClip | null {
+    const best = this.nextClipById.get(clip.itemId) ?? null;
+    if (!best) return null;
+    if (best.startUs - clip.endUs > VIDEO_CORE_LIMITS.BLEND_SHADOW_GAP_THRESHOLD_US) return null;
     return best;
   }
 
@@ -852,6 +861,7 @@ export class VideoCompositor {
     this.tracks = [];
     this.clipById.clear();
     this.prevClipById.clear();
+    this.nextClipById.clear();
     this.trackById.clear();
     this.trackByLayer.clear();
     this.replacedClipIds.clear();

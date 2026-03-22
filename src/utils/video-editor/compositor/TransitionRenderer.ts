@@ -15,6 +15,7 @@ export interface TransitionRendererParams {
   getActiveTransitionState: (clip: CompositorClip, timeUs: number) => any;
   ensureTransitionRenderTexture: (texture: RenderTexture | null) => RenderTexture;
   findPrevClipOnLayer: (clip: CompositorClip) => CompositorClip | null;
+  findNextClipOnLayer: (clip: CompositorClip) => CompositorClip | null;
   createAbortController: (key: string) => AbortController;
   getVideoSampleForClip: (params: {
     clip: CompositorClip;
@@ -91,14 +92,15 @@ export class TransitionRenderer {
           fromTexture,
         );
       } else {
-        prevClip = params.findPrevClipOnLayer(clip);
+        prevClip = state.edge === 'in' ? params.findPrevClipOnLayer(clip) : params.findNextClipOnLayer(clip);
         if (!prevClip) {
           continue;
         }
 
-        const transitionOffsetUs = Math.max(0, timeUs - clip.startUs);
+        const transitionOffsetUs = Math.max(0, state.edge === 'in' ? timeUs - clip.startUs : clip.endUs - timeUs);
         const rendered = await this.renderTransitionClipToTexture(prevClip, fromTexture, {
           transitionOffsetUs,
+          isNextClip: state.edge === 'out',
           stageTextureRenderer: params.stageTextureRenderer,
           createAbortController: params.createAbortController,
           getVideoSampleForClip: params.getVideoSampleForClip,
@@ -109,15 +111,23 @@ export class TransitionRenderer {
         }
       }
 
+      let shaderToTexture = clip.transitionToTexture;
+      let shaderFromTexture = fromTexture;
+      
+      if (state.edge === 'out') {
+        shaderToTexture = fromTexture;
+        shaderFromTexture = clip.transitionToTexture;
+      }
+
       const transitionContext = {
         progress: state.progress,
         curve: state.curve,
-        elapsedUs: timeUs - clip.startUs,
+        elapsedUs: state.edge === 'in' ? timeUs - clip.startUs : timeUs - (clip.endUs - state.transition.durationUs),
         durationUs: state.transition.durationUs,
-        edge: 'in' as const,
+        edge: state.edge as 'in' | 'out',
         params: state.transition.params,
-        fromTexture,
-        toTexture: clip.transitionToTexture,
+        fromTexture: shaderFromTexture,
+        toTexture: shaderToTexture,
       };
 
       const filterUpdated = params.transitionManager.updateTransitionFilterSafely(
@@ -131,7 +141,7 @@ export class TransitionRenderer {
       }
 
       const filterQuadSprite = this.ensureFilterQuadSprite();
-      filterQuadSprite.texture = clip.transitionToTexture;
+      filterQuadSprite.texture = shaderToTexture;
       filterQuadSprite.scale.set(1, 1);
       filterQuadSprite.width = params.width;
       filterQuadSprite.height = params.height;
@@ -195,6 +205,7 @@ export class TransitionRenderer {
     texture: RenderTexture,
     params: {
       transitionOffsetUs?: number;
+      isNextClip?: boolean;
       stageTextureRenderer: StageTextureRenderer;
       createAbortController: (key: string) => AbortController;
       getVideoSampleForClip: (params: {
@@ -224,26 +235,38 @@ export class TransitionRenderer {
     }
 
     const transitionOffsetUs = Math.max(0, Math.round(params.transitionOffsetUs ?? 0));
-    const handleUs = Math.max(
-      0,
-      clip.sourceDurationUs - clip.sourceStartUs - clip.sourceRangeDurationUs,
-    );
-    const sourceRangeEndUs = clip.sourceStartUs + clip.sourceRangeDurationUs;
-
     let sampleUs: number;
-    if ((clip.speed || 1) < 0) {
-      sampleUs =
-        handleUs < 1_000
+
+    if (params.isNextClip) {
+      const handleUs = Math.max(0, clip.sourceStartUs);
+      if ((clip.speed || 1) < 0) {
+        sampleUs = handleUs < 1_000
+          ? Math.max(0, clip.sourceStartUs + clip.sourceRangeDurationUs - 1_000)
+          : Math.min(clip.sourceStartUs + clip.sourceRangeDurationUs + transitionOffsetUs, clip.sourceDurationUs - 1_000);
+      } else {
+        sampleUs = handleUs < 1_000
           ? Math.max(0, clip.sourceStartUs + 1_000)
           : Math.max(0, clip.sourceStartUs - transitionOffsetUs);
+      }
     } else {
-      sampleUs =
-        handleUs < 1_000
-          ? Math.max(0, clip.sourceStartUs + clip.sourceRangeDurationUs - 1_000)
-          : Math.min(
-              sourceRangeEndUs + transitionOffsetUs,
-              clip.sourceStartUs + clip.sourceDurationUs - 1_000,
-            );
+      const handleUs = Math.max(
+        0,
+        clip.sourceDurationUs - clip.sourceStartUs - clip.sourceRangeDurationUs,
+      );
+      const sourceRangeEndUs = clip.sourceStartUs + clip.sourceRangeDurationUs;
+
+      if ((clip.speed || 1) < 0) {
+        sampleUs = handleUs < 1_000
+            ? Math.max(0, clip.sourceStartUs + 1_000)
+            : Math.max(0, clip.sourceStartUs - transitionOffsetUs);
+      } else {
+        sampleUs = handleUs < 1_000
+            ? Math.max(0, clip.sourceStartUs + clip.sourceRangeDurationUs - 1_000)
+            : Math.min(
+                sourceRangeEndUs + transitionOffsetUs,
+                clip.sourceStartUs + clip.sourceDurationUs - 1_000,
+              );
+      }
     }
 
     const abortController = params.createAbortController(clip.itemId + '_transition_texture');

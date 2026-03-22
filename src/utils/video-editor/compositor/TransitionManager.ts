@@ -14,19 +14,37 @@ export class TransitionManager {
     timeUs: number,
     previewEffectsEnabled: boolean,
   ) {
-    const transition = clip.transitionIn;
-    if (!transition || transition.durationUs <= 0) return null;
-
     const localTimeUs = timeUs - clip.startUs;
-    if (localTimeUs < 0 || localTimeUs >= transition.durationUs) return null;
+    
+    let transition = clip.transitionIn;
+    let edge: 'in' | 'out' = 'in';
+    let progress = 0;
+    
+    if (transition && transition.durationUs > 0 && localTimeUs >= 0 && localTimeUs < transition.durationUs) {
+      edge = 'in';
+      progress = Math.max(0, Math.min(1, localTimeUs / transition.durationUs));
+    } else {
+      transition = clip.transitionOut;
+      if (transition && transition.durationUs > 0) {
+        const outStartUs = clip.durationUs - transition.durationUs;
+        if (localTimeUs >= outStartUs && localTimeUs < clip.durationUs) {
+          edge = 'out';
+          progress = Math.max(0, Math.min(1, (localTimeUs - outStartUs) / transition.durationUs));
+        } else {
+          return null;
+        }
+      } else {
+        return null;
+      }
+    }
 
-    const progress = Math.max(0, Math.min(1, localTimeUs / transition.durationUs));
     const manifest = previewEffectsEnabled ? getTransitionManifest(transition.type) : null;
 
     return {
       transition,
       manifest,
       progress,
+      edge,
       curve: transition.curve ?? DEFAULT_TRANSITION_CURVE,
     };
   }
