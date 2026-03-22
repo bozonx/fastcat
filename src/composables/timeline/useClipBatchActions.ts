@@ -88,8 +88,31 @@ export function useClipBatchActions(
     });
   });
 
-  const allDisabled = computed(() => selectedClips.value.every((c) => c.disabled));
-  const allMuted = computed(() => selectedClips.value.every((c) => c.audioMuted));
+  const allDisabled = computed(() => {
+    const nonAudioClips = selectedClips.value.filter((clip) => {
+      const track = ctx.timelineDoc.value?.tracks.find((t) => t.id === clip.trackId);
+      return track?.kind !== 'audio';
+    });
+    if (nonAudioClips.length === 0) return false;
+    return nonAudioClips.every((c) => c.disabled);
+  });
+
+  const allMuted = computed(() => {
+    const clipsWithAudio = selectedClips.value.filter((clip) => {
+      const track = ctx.timelineDoc.value?.tracks.find((t) => t.id === clip.trackId);
+      if (!track) return false;
+      return (
+        track.kind === 'audio' ||
+        (track.kind === 'video' &&
+          clip.clipType === 'media' &&
+          (Boolean(clip.linkedVideoClipId) ||
+            Boolean(ctx.mediaMetadata.value[clip.source?.path ?? '']?.audio)))
+      );
+    });
+    if (clipsWithAudio.length === 0) return false;
+    return clipsWithAudio.every((c) => c.audioMuted);
+  });
+
   const allLocked = computed(() => selectedClips.value.every((c) => c.locked));
 
   const firstWaveformClip = computed(() => {
@@ -151,7 +174,7 @@ export function useClipBatchActions(
     if (!doc) return;
 
     const safeDeltaUs = Math.round(Number(deltaUs));
-    if (!Number.isFinite(safeDeltaUs)) return;
+    if (!Number.isFinite(safeDeltaUs) || safeDeltaUs === 0) return;
 
     const cmds: any[] = [];
 
@@ -166,7 +189,7 @@ export function useClipBatchActions(
         type: 'move_item',
         trackId,
         itemId,
-        startUs: clip.timelineRange.startUs + safeDeltaUs,
+        startUs: Math.max(0, clip.timelineRange.startUs + safeDeltaUs),
       });
     }
 
@@ -179,7 +202,7 @@ export function useClipBatchActions(
     if (!doc) return;
 
     const safeDeltaUs = Math.round(Number(deltaUs));
-    if (!Number.isFinite(safeDeltaUs)) return;
+    if (!Number.isFinite(safeDeltaUs) || safeDeltaUs === 0) return;
 
     const cmds: any[] = [];
 
@@ -303,24 +326,51 @@ export function useClipBatchActions(
 
   function toggleDisabled() {
     const nextVal = !allDisabled.value;
-    const cmds = items.value.map(({ trackId, itemId }) => ({
-      type: 'update_clip_properties' as const,
-      trackId,
-      itemId,
-      properties: { disabled: nextVal },
-    }));
-    ctx.batchApplyTimeline(cmds);
+    const doc = ctx.timelineDoc.value;
+    const cmds: any[] = [];
+    for (const { trackId, itemId } of items.value) {
+      const track = doc?.tracks.find((t) => t.id === trackId);
+      if (track?.kind === 'audio') continue;
+      cmds.push({
+        type: 'update_clip_properties',
+        trackId,
+        itemId,
+        properties: { disabled: nextVal },
+      });
+    }
+    if (cmds.length > 0) {
+      ctx.batchApplyTimeline(cmds);
+    }
   }
 
   function toggleMuted() {
     const nextVal = !allMuted.value;
-    const cmds = items.value.map(({ trackId, itemId }) => ({
-      type: 'update_clip_properties' as const,
-      trackId,
-      itemId,
-      properties: { audioMuted: nextVal },
-    }));
-    ctx.batchApplyTimeline(cmds);
+    const doc = ctx.timelineDoc.value;
+    const cmds: any[] = [];
+    for (const { trackId, itemId } of items.value) {
+      const track = doc?.tracks.find((t) => t.id === trackId);
+      const clip = track?.items.find((it) => it.id === itemId);
+      if (!track || !clip || clip.kind !== 'clip') continue;
+
+      const isAudioTrack = track.kind === 'audio';
+      const isVideoWithAudio =
+        track.kind === 'video' &&
+        clip.clipType === 'media' &&
+        (Boolean((clip as any).linkedVideoClipId) ||
+          Boolean(ctx.mediaMetadata.value[clip.source?.path ?? '']?.audio));
+
+      if (isAudioTrack || isVideoWithAudio) {
+        cmds.push({
+          type: 'update_clip_properties',
+          trackId,
+          itemId,
+          properties: { audioMuted: nextVal },
+        });
+      }
+    }
+    if (cmds.length > 0) {
+      ctx.batchApplyTimeline(cmds);
+    }
   }
 
   function toggleShowWaveform() {

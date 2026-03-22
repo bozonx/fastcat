@@ -8,12 +8,17 @@ import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTimecode from '~/components/ui/editor/UiTimecode.vue';
+import ClipTransitionsSection from '~/components/properties/clip/ClipTransitionsSection.vue';
+import ClipTransformSection from '~/components/properties/clip/ClipTransformSection.vue';
 import { useClipBatchActions } from '~/composables/timeline/useClipBatchActions';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { blendModeOptions as rawBlendModeOptions } from '~/utils/constants';
-import type { TimelineBlendMode } from '~/timeline/types';
+import { DEFAULT_TRANSITION_CURVE, DEFAULT_TRANSITION_MODE } from '~/transitions';
+import type { TimelineBlendMode, TimelineClipItem, ClipTransform } from '~/timeline/types';
 
 const props = defineProps<{
   items: { trackId: string; itemId: string }[];
@@ -23,6 +28,8 @@ const { t } = useI18n();
 
 const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
+const workspaceStore = useWorkspaceStore();
+const selectionStore = useSelectionStore();
 const clipboardStore = useAppClipboard();
 
 function handleCopyClips() {
@@ -62,6 +69,7 @@ const {
   hasAudioOrVideoWithAudio,
   hasVideo,
   hasVideoOrImage,
+  firstVideoClip,
   handleUnlinkSelected,
   handleGroupSelected,
   handleUngroupSelected,
@@ -114,60 +122,238 @@ const batchAudioGain = computed({
   set: (val: number) => handleBatchUpdateProperties({ audioGain: val }),
 });
 
-const batchScale = computed({
-  get: () => Math.round((firstClip.value?.transform?.scale?.x ?? 1) * 100),
-  set: (val: number) => {
-    const s = val / 100;
-    handleBatchUpdateProperties((clip) => ({
-      transform: {
-        ...(clip.transform ?? {}),
-        scale: { x: s, y: s, linked: true },
-      },
-    }));
-  },
-});
+function handleBatchToggleTransition(edge: 'in' | 'out') {
+  const doc = timelineStore.timelineDoc;
+  if (!doc || !firstVideoClip.value) return;
 
-const batchRotation = computed({
-  get: () => firstClip.value?.transform?.rotationDeg ?? 0,
-  set: (val: number) => {
-    handleBatchUpdateProperties((clip) => ({
-      transform: {
-        ...(clip.transform ?? {}),
-        rotationDeg: val,
-      },
-    }));
-  },
-});
+  const current =
+    edge === 'in' ? firstVideoClip.value.transitionIn : firstVideoClip.value.transitionOut;
 
-const batchPosX = computed({
-  get: () => firstClip.value?.transform?.position?.x ?? 0,
-  set: (val: number) => {
-    handleBatchUpdateProperties((clip) => ({
-      transform: {
-        ...(clip.transform ?? {}),
-        position: {
-          x: val,
-          y: clip.transform?.position?.y ?? 0,
+  const cmds: any[] = [];
+
+  if (current) {
+    for (const { trackId, itemId } of props.items) {
+      const track = doc.tracks.find((t) => t.id === trackId);
+      if (!track || track.kind === 'audio') continue;
+      cmds.push({
+        type: 'update_clip_transition',
+        trackId,
+        itemId,
+        patch: edge === 'in' ? { transitionIn: null } : { transitionOut: null },
+      });
+    }
+  } else {
+    const safeDefaultDurationUs = Math.max(
+      0,
+      Math.round(
+        Number(workspaceStore.userSettings.timeline.defaultTransitionDurationUs ?? 1_000_000),
+      ),
+    );
+
+    for (const { trackId, itemId } of props.items) {
+      const track = doc.tracks.find((t) => t.id === trackId);
+      if (!track || track.kind === 'audio') continue;
+      const clip = track.items.find((it) => it.id === itemId) as TimelineClipItem;
+      if (!clip || clip.kind !== 'clip') continue;
+
+      const clipDurationUs = Math.max(0, Math.round(Number(clip.timelineRange?.durationUs ?? 0)));
+      const suggestedDurationUs =
+        clipDurationUs > 0 && clipDurationUs < safeDefaultDurationUs
+          ? Math.round(clipDurationUs * 0.3)
+          : safeDefaultDurationUs;
+
+      const transition = {
+        type: 'dissolve',
+        durationUs: suggestedDurationUs,
+        mode: DEFAULT_TRANSITION_MODE,
+        curve: DEFAULT_TRANSITION_CURVE,
+      };
+
+      cmds.push({
+        type: 'update_clip_transition',
+        trackId,
+        itemId,
+        patch: edge === 'in' ? { transitionIn: transition } : { transitionOut: transition },
+      });
+    }
+  }
+
+  if (cmds.length > 0) {
+    timelineStore.batchApplyTimeline(cmds);
+  }
+}
+
+function handleBatchUpdateTransitionDuration(edge: 'in' | 'out', durationSec: number) {
+  const doc = timelineStore.timelineDoc;
+  if (!doc) return;
+  const cmds: any[] = [];
+  const durationUs = Math.round(durationSec * 1_000_000);
+  for (const { trackId, itemId } of props.items) {
+    const track = doc.tracks.find((t) => t.id === trackId);
+    if (!track || track.kind === 'audio') continue;
+    const clip = track.items.find((it) => it.id === itemId) as TimelineClipItem;
+    if (!clip || clip.kind !== 'clip') continue;
+
+    const current = edge === 'in' ? (clip as any).transitionIn : (clip as any).transitionOut;
+    if (!current) continue;
+
+    cmds.push({
+      type: 'update_clip_transition',
+      trackId,
+      itemId,
+      patch:
+        edge === 'in'
+          ? { transitionIn: { ...current, durationUs } }
+          : { transitionOut: { ...current, durationUs } },
+    });
+  }
+  if (cmds.length > 0) timelineStore.batchApplyTimeline(cmds);
+}
+
+function handleBatchUpdateTransitionType(edge: 'in' | 'out', type: string) {
+  const doc = timelineStore.timelineDoc;
+  if (!doc) return;
+  const cmds: any[] = [];
+  for (const { trackId, itemId } of props.items) {
+    const track = doc.tracks.find((t) => t.id === trackId);
+    if (!track || track.kind === 'audio') continue;
+    const clip = track.items.find((it) => it.id === itemId) as TimelineClipItem;
+    if (!clip || clip.kind !== 'clip') continue;
+
+    const current = edge === 'in' ? (clip as any).transitionIn : (clip as any).transitionOut;
+    if (!current) continue;
+
+    cmds.push({
+      type: 'update_clip_transition',
+      trackId,
+      itemId,
+      patch:
+        edge === 'in'
+          ? { transitionIn: { ...current, type } }
+          : { transitionOut: { ...current, type } },
+    });
+  }
+  if (cmds.length > 0) timelineStore.batchApplyTimeline(cmds);
+}
+
+function handleBatchSelectTransitionEdge(edge: 'in' | 'out') {
+  if (!firstVideoClip.value) return;
+  const clip = firstVideoClip.value;
+  timelineStore.selectTransition({ trackId: clip.trackId, itemId: clip.id, edge });
+  selectionStore.selectTimelineTransition(clip.trackId, clip.id, edge);
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function handleBatchTransform(next: ClipTransform) {
+  const baseTransform = firstVideoClip.value?.transform || {};
+
+  const newFlip = next.flip;
+  const newAnchorPreset = next.anchorPreset;
+  const newAnchor = next.anchor;
+
+  const deltaScaleX = (next.scale?.x ?? 1) - (baseTransform.scale?.x ?? 1);
+  const deltaScaleY = (next.scale?.y ?? 1) - (baseTransform.scale?.y ?? 1);
+  const nextLinked = next.scale?.linked ?? true;
+
+  const deltaRot = (next.rotationDeg ?? 0) - (baseTransform.rotationDeg ?? 0);
+
+  const deltaPosX = (next.position?.x ?? 0) - (baseTransform.position?.x ?? 0);
+  const deltaPosY = (next.position?.y ?? 0) - (baseTransform.position?.y ?? 0);
+
+  const deltaCropTop = (next.crop?.top ?? 0) - (baseTransform.crop?.top ?? 0);
+  const deltaCropBottom = (next.crop?.bottom ?? 0) - (baseTransform.crop?.bottom ?? 0);
+  const deltaCropLeft = (next.crop?.left ?? 0) - (baseTransform.crop?.left ?? 0);
+  const deltaCropRight = (next.crop?.right ?? 0) - (baseTransform.crop?.right ?? 0);
+
+  const doc = timelineStore.timelineDoc;
+  if (!doc) return;
+
+  const cmds: any[] = [];
+
+  for (const { trackId, itemId } of props.items) {
+    const track = doc.tracks.find((t) => t.id === trackId);
+    if (!track || track.kind !== 'video') continue;
+    const clip = track.items.find((it) => it.id === itemId) as TimelineClipItem;
+    if (!clip || clip.kind !== 'clip') continue;
+
+    const curr = clip.transform || {};
+
+    cmds.push({
+      type: 'update_clip_properties',
+      trackId,
+      itemId,
+      properties: {
+        transform: {
+          ...curr,
+          flip: newFlip,
+          anchorPreset: newAnchorPreset,
+          anchor: newAnchor,
+          scale: {
+            x: (curr.scale?.x ?? 1) + deltaScaleX,
+            y: (curr.scale?.y ?? 1) + deltaScaleY,
+            linked: nextLinked,
+          },
+          rotationDeg: (curr.rotationDeg ?? 0) + deltaRot,
+          position: {
+            x: (curr.position?.x ?? 0) + deltaPosX,
+            y: (curr.position?.y ?? 0) + deltaPosY,
+          },
+          crop: {
+            ...curr.crop,
+            top: clampNumber((curr.crop?.top ?? 0) + deltaCropTop, 0, 100),
+            bottom: clampNumber((curr.crop?.bottom ?? 0) + deltaCropBottom, 0, 100),
+            left: clampNumber((curr.crop?.left ?? 0) + deltaCropLeft, 0, 100),
+            right: clampNumber((curr.crop?.right ?? 0) + deltaCropRight, 0, 100),
+          },
         },
       },
-    }));
-  },
-});
+    });
+  }
 
-const batchPosY = computed({
-  get: () => firstClip.value?.transform?.position?.y ?? 0,
-  set: (val: number) => {
-    handleBatchUpdateProperties((clip) => ({
-      transform: {
-        ...(clip.transform ?? {}),
-        position: {
-          x: clip.transform?.position?.x ?? 0,
-          y: val,
-        },
-      },
-    }));
-  },
-});
+  if (cmds.length > 0) {
+    timelineStore.batchApplyTimeline(cmds);
+  }
+}
+
+function handleBatchUpdateSpeed(speed: number) {
+  const doc = timelineStore.timelineDoc;
+  if (!doc) return;
+  const cmds: any[] = [];
+  for (const { trackId, itemId } of props.items) {
+    const track = doc.tracks.find((t) => t.id === trackId);
+    if (!track || track.kind !== 'video') continue;
+    cmds.push({
+      type: 'update_clip_properties',
+      trackId,
+      itemId,
+      properties: { speed },
+    });
+  }
+  if (cmds.length > 0) timelineStore.batchApplyTimeline(cmds);
+}
+
+function handleBatchToggleReversed() {
+  const doc = timelineStore.timelineDoc;
+  if (!doc) return;
+  const cmds: any[] = [];
+  for (const { trackId, itemId } of props.items) {
+    const track = doc.tracks.find((t) => t.id === trackId);
+    if (!track || track.kind !== 'video') continue;
+    const clip = track.items.find((it) => it.id === itemId) as TimelineClipItem;
+    if (!clip || clip.kind !== 'clip') continue;
+    const currentSpeed = typeof clip.speed === 'number' ? clip.speed : 1;
+    cmds.push({
+      type: 'update_clip_properties',
+      trackId,
+      itemId,
+      properties: { speed: -currentSpeed },
+    });
+  }
+  if (cmds.length > 0) timelineStore.batchApplyTimeline(cmds);
+}
 
 const commonActions = computed(() => {
   const actions = [
@@ -314,11 +500,19 @@ const otherActions = computed(() => {
         />
 
         <PropertyField :label="t('fastcat.timeline.startShift', 'Start Shift')" class="mt-2">
-          <UiTimecode :model-value="0" @update:model-value="handleRelativeStartShift" />
+          <UiTimecode
+            :model-value="0"
+            @update:model-value="handleRelativeStartShift"
+            allow-negative
+          />
         </PropertyField>
 
         <PropertyField :label="t('fastcat.timeline.endShift', 'End Shift')" class="mt-2">
-          <UiTimecode :model-value="0" @update:model-value="handleRelativeEndShift" />
+          <UiTimecode
+            :model-value="0"
+            @update:model-value="handleRelativeEndShift"
+            allow-negative
+          />
         </PropertyField>
 
         <div v-if="hasVideoOrImage" class="space-y-4 pt-2 border-t border-ui-border">
@@ -345,33 +539,6 @@ const otherActions = computed(() => {
               label-key="label"
               size="sm"
             />
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <div class="flex flex-col gap-1">
-              <span class="text-xs text-ui-text-muted">{{
-                t('fastcat.clip.transform.scale', 'Scale (%)')
-              }}</span>
-              <UiWheelNumberInput v-model="batchScale" size="sm" :step="1" />
-            </div>
-            <div class="flex flex-col gap-1">
-              <span class="text-xs text-ui-text-muted">{{
-                t('fastcat.clip.transform.rotation', 'Rotation (deg)')
-              }}</span>
-              <UiWheelNumberInput v-model="batchRotation" size="sm" :step="1" />
-            </div>
-            <div class="flex flex-col gap-1">
-              <span class="text-xs text-ui-text-muted">{{
-                t('fastcat.clip.transform.positionX', 'Position X')
-              }}</span>
-              <UiWheelNumberInput v-model="batchPosX" size="sm" :step="1" />
-            </div>
-            <div class="flex flex-col gap-1">
-              <span class="text-xs text-ui-text-muted">{{
-                t('fastcat.clip.transform.positionY', 'Position Y')
-              }}</span>
-              <UiWheelNumberInput v-model="batchPosY" size="sm" :step="1" />
-            </div>
           </div>
         </div>
 
@@ -406,5 +573,32 @@ const otherActions = computed(() => {
         <PropertyActionList :actions="otherActions" justify="start" size="xs" />
       </div>
     </PropertySection>
+
+    <ClipTransitionsSection
+      v-if="hasVideoOrImage && firstVideoClip"
+      :is-video-track="true"
+      :transition-in="(firstVideoClip as any).transitionIn ?? null"
+      :transition-out="(firstVideoClip as any).transitionOut ?? null"
+      :clip-duration-us="firstVideoClip.timelineRange.durationUs"
+      @select-edge="handleBatchSelectTransitionEdge"
+      @toggle="handleBatchToggleTransition"
+      @update-duration="
+        ({ edge, durationSec }) => handleBatchUpdateTransitionDuration(edge, durationSec)
+      "
+      @update-type="({ edge, type }) => handleBatchUpdateTransitionType(edge, type)"
+    />
+
+    <ClipTransformSection
+      v-if="hasVideoOrImage && firstVideoClip"
+      :clip="firstVideoClip"
+      track-kind="video"
+      :can-edit-reversed="
+        firstVideoClip.clipType === 'media' || firstVideoClip.clipType === 'timeline'
+      "
+      :is-reversed="typeof firstVideoClip.speed === 'number' && firstVideoClip.speed < 0"
+      @update-transform="handleBatchTransform"
+      @toggle-reversed="handleBatchToggleReversed"
+      @update-speed="handleBatchUpdateSpeed"
+    />
   </div>
 </template>
