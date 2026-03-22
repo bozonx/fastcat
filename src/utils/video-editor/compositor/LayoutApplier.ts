@@ -1,5 +1,6 @@
 import {
   computeClipBoxLayout,
+  computeCropMaskPolygon,
   TRANSFORM_DESIGN_BASE,
   resolveNormalizedAnchor,
 } from '../clip-layout';
@@ -202,40 +203,32 @@ export class LayoutApplier {
       } else if (sprite.parent && input.clip.cropMask.parent !== sprite.parent) {
         sprite.parent.addChild(input.clip.cropMask);
       }
-      
+
       const mask = input.clip.cropMask as Graphics;
       mask.clear();
-      
-      const t = Math.max(0, Math.min(100, crop.top ?? 0)) / 100 * input.targetH;
-      const b = Math.max(0, Math.min(100, crop.bottom ?? 0)) / 100 * input.targetH;
-      const l = Math.max(0, Math.min(100, crop.left ?? 0)) / 100 * input.targetW;
-      const r = Math.max(0, Math.min(100, crop.right ?? 0)) / 100 * input.targetW;
-      
-      const cw = Math.max(1, input.targetW - l - r);
-      const ch = Math.max(1, input.targetH - t - b);
-      
-      mask.rect(0, 0, cw, ch);
+
+      const { points } = computeCropMaskPolygon({
+        crop,
+        targetW: input.targetW,
+        targetH: input.targetH,
+        anchorX: input.normalizedAnchor.x,
+        anchorY: input.normalizedAnchor.y,
+        scaleX: input.scaleX,
+        scaleY: input.scaleY,
+        rotationRad: sprite.rotation,
+        spritePosX: sprite.x,
+        spritePosY: sprite.y,
+      });
+
+      // Reset mask transform — polygon is already in world/parent coordinates
+      mask.x = 0;
+      mask.y = 0;
+      mask.rotation = 0;
+      mask.scale.set(1, 1);
+      mask.pivot.set(0, 0);
+
+      mask.poly(points);
       mask.fill(0xffffff);
-      
-      // Orient the mask the same as the sprite
-      mask.pivot.set((sprite.anchor?.x ?? 0) * input.targetW, (sprite.anchor?.y ?? 0) * input.targetH);
-      mask.scale.set(Math.sign(sprite.scale.x), Math.sign(sprite.scale.y));
-      mask.rotation = sprite.rotation;
-      
-      // Calculate unrotated local top-left offset
-      const localOffsetX = l - ((sprite.anchor?.x ?? 0) * input.targetW);
-      const localOffsetY = t - ((sprite.anchor?.y ?? 0) * input.targetH);
-      
-      // Rotate the offset into global space
-      const cosR = Math.cos(sprite.rotation);
-      const sinR = Math.sin(sprite.rotation);
-      
-      const rx = localOffsetX * cosR - localOffsetY * sinR;
-      const ry = localOffsetX * sinR + localOffsetY * cosR;
-      
-      mask.x = sprite.x + rx * Math.sign(sprite.scale.x);
-      mask.y = sprite.y + ry * Math.sign(sprite.scale.y);
-      
     } else if (input.clip.cropMask) {
       if (typeof input.clip.cropMask.destroy === 'function') {
         input.clip.cropMask.destroy();

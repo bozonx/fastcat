@@ -185,6 +185,17 @@ export function buildMultiSelectionContextMenu(
 
   const actionGroup: ContextMenuGroup = [
     {
+      label: options.t('common.copy'),
+      icon: 'i-heroicons-document-duplicate',
+      onSelect: () => options.copySelectedClips(),
+    },
+    {
+      label: options.t('common.cut'),
+      icon: 'i-heroicons-scissors',
+      disabled: state.hasLockedTrack,
+      onSelect: () => options.cutSelectedClips(),
+    },
+    {
       label: options.t('fastcat.timeline.delete'),
       icon: 'i-heroicons-trash',
       disabled: state.hasLockedTrack,

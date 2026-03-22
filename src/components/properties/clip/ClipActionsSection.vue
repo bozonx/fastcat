@@ -19,6 +19,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   rename: [];
+  copy: [];
+  cut: [];
   delete: [];
   quantize: [];
   unlinkAudio: [];
@@ -40,6 +42,18 @@ const commonActions = computed(() => [
     title: t('common.rename', 'Rename'),
     icon: 'i-heroicons-pencil',
     onClick: () => emit('rename'),
+  },
+  {
+    id: 'copy',
+    title: t('common.copy', 'Copy'),
+    icon: 'i-heroicons-document-duplicate',
+    onClick: () => emit('copy'),
+  },
+  {
+    id: 'cut',
+    title: t('common.cut', 'Cut'),
+    icon: 'i-heroicons-scissors',
+    onClick: () => emit('cut'),
   },
   {
     id: 'delete',

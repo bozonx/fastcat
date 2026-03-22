@@ -39,6 +39,7 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useEditorViewStore } from '~/stores/editor-view.store';
 import { useFilesPageStore } from '~/stores/files-page.store';
 import { useProjectTabsStore } from '~/stores/tabs.store';
+import { useAppClipboard } from '~/composables/useAppClipboard';
 
 import ClipTransitions from './ClipTransitions.vue';
 import ClipAudioFades from './ClipAudioFades.vue';
@@ -99,6 +100,7 @@ const uiStore = useUiStore();
 const projectStore = useProjectStore();
 const settingsStore = useTimelineSettingsStore();
 const workspaceStore = useWorkspaceStore();
+const clipboardStore = useAppClipboard();
 
 const isHovered = ref(false);
 
@@ -263,6 +265,36 @@ const { contextMenuItems } = useClipContextMenu({
     selectionStore.selectTimelineTransition(trackId, itemId, edge),
   emitOpenSpeedModal: (p) => emit('openSpeedModal', p),
   emitClipAction: (p) => emit('clipAction', p),
+  copySelectedClips: () => {
+    clipboardStore.setClipboardPayload({
+      source: 'timeline',
+      operation: 'copy',
+      items: timelineStore.copySelectedClips().map((item) => ({
+        sourceTrackId: item.sourceTrackId,
+        clip: item.clip,
+      })),
+    });
+  },
+  cutSelectedClips: () => {
+    clipboardStore.setClipboardPayload({
+      source: 'timeline',
+      operation: 'cut',
+      items: timelineStore.cutSelectedClips().map((item) => ({
+        sourceTrackId: item.sourceTrackId,
+        clip: item.clip,
+      })),
+    });
+  },
+  pasteClips: (insertStartUs?: number) => {
+    const payload = clipboardStore.clipboardPayload;
+    if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
+    const created = timelineStore.pasteClips(payload.items, { insertStartUs });
+    if (created.length > 0) timelineStore.selectTimelineItems(created);
+    if (payload.operation === 'cut') clipboardStore.setClipboardPayload(null);
+  },
+  get hasTimelineClipboard() {
+    return clipboardStore.hasTimelinePayload;
+  },
   t,
 });
 
