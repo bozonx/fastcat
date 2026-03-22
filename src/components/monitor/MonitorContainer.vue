@@ -410,39 +410,38 @@ onUnmounted(() => {
             />
           </UiTooltip>
 
-          <div class="w-auto min-w-14">
-            <UiCompactSelect
-              v-if="projectStore.activeMonitor"
-              :model-value="selectedPreviewResolution as any"
-              :items="previewResolutions"
-              value-key="value"
-              label-key="label"
-              full-width
-              :searchable="false"
-              @update:model-value="
-                (v: unknown) => {
-                  if (v && projectStore.activeMonitor)
-                    projectStore.activeMonitor.previewResolution = ((v as { value: number })
-                      .value ?? v) as number;
-                }
-              "
-            >
-              <template #default="{ modelValue }">
-                <span>
-                  {{ (modelValue as any)?.shortLabel || (modelValue as any)?.label }}
-                </span>
-              </template>
-              <template #item-label="{ item }">
-                <span
-                  :class="[
-                    'truncate',
-                  ]"
-                >
-                  {{ item.label }}
-                </span>
-              </template>
-            </UiCompactSelect>
-          </div>
+          <UiCompactSelect
+            v-if="projectStore.activeMonitor"
+            :model-value="selectedPreviewResolution as any"
+            :items="previewResolutions"
+            value-key="value"
+            label-key="label"
+            full-width
+            class="min-w-14"
+            :searchable="false"
+            @update:model-value="
+              (v: unknown) => {
+                if (v && projectStore.activeMonitor)
+                  projectStore.activeMonitor.previewResolution = ((v as { value: number })
+                    .value ?? v) as number;
+              }
+            "
+          >
+            <template #default="{ modelValue }">
+              <span>
+                {{ (modelValue as any)?.shortLabel || (modelValue as any)?.label }}
+              </span>
+            </template>
+            <template #item-label="{ item }">
+              <span
+                :class="[
+                  'truncate',
+                ]"
+              >
+                {{ item.label }}
+              </span>
+            </template>
+          </UiCompactSelect>
 
           <UiActionButton
             v-if="effectiveFullscreen"
