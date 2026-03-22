@@ -1448,7 +1448,9 @@
       "workspaceFolderNotSelected": "Workspace folder not selected",
       "workspaceSavedNote": "Workspace folder saved in this browser",
       "workspaceSection": "App Settings",
-      "workspaceStorage": "Storage"
+      "workspaceStorage": "Storage",
+      "uiInterfaceScale": "Interface scale (px)",
+      "uiLanguage": "Interface language"
     }
   },
   "mobileFiles": {

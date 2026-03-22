@@ -173,7 +173,7 @@ export interface FastCatUserSettings {
   };
   deleteWithoutConfirmation: boolean;
   ui: {
-    baseFontSize: number;
+    interfaceScale: number;
   };
 }
 
@@ -303,7 +303,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
   },
   deleteWithoutConfirmation: false,
   ui: {
-    baseFontSize: 14,
+    interfaceScale: 14,
   },
 };
 

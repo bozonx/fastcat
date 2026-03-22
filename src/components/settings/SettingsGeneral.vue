@@ -82,9 +82,9 @@ function clearCache() {
       />
     </UFormField>
 
-    <UFormField :label="t('videoEditor.settings.uiBaseFontSize', 'Base font size (px)')">
+    <UFormField :label="t('videoEditor.settings.uiInterfaceScale', 'Interface scale (px)')">
       <UiWheelNumberInput
-        v-model="workspaceStore.userSettings.ui.baseFontSize"
+        v-model="workspaceStore.userSettings.ui.interfaceScale"
         :min="10"
         :max="24"
         :step="1"
