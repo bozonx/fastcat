@@ -189,20 +189,6 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       onClick: options.onConvert,
     },
     {
-      id: 'copy',
-      label: options.t('common.copy'),
-      icon: 'i-heroicons-document-duplicate',
-      hidden: !options.canCopyOrCut.value,
-      onClick: options.onCopy,
-    },
-    {
-      id: 'cut',
-      label: options.t('common.cut'),
-      icon: 'i-heroicons-scissors',
-      hidden: !options.canCopyOrCut.value,
-      onClick: options.onCut,
-    },
-    {
       id: 'transcribe',
       label: options.t('videoEditor.fileManager.actions.transcribe'),
       icon: 'i-heroicons-microphone',
