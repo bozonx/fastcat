@@ -31,7 +31,9 @@ export function useMonitorDisplay() {
 
   const renderHeight = computed(() => {
     const value = Number(projectStore.activeMonitor?.previewResolution);
-    if (!Number.isFinite(value) || value <= 0) return 480;
+    if (!Number.isFinite(value) || value <= 0) {
+      return Math.round((exportHeight.value * 0.5) / 2) * 2;
+    }
 
     // Interpret values <= 1 as scale factor relative to project height
     if (value <= 1) {

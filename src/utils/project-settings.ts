@@ -85,7 +85,7 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
     },
   },
   monitor: {
-    previewResolution: 480,
+    previewResolution: 0.5,
     useProxy: true,
     previewEffectsEnabled: true,
     panX: 0,
