@@ -249,6 +249,7 @@ export class ClipFactory {
       transitionOut: params.transitionOut,
       transitionFilter: null,
       transitionFilterType: null,
+      hudDirty: true,
       hudMediaStates: {},
     };
 

@@ -206,6 +206,7 @@ export class TimelineLoadOrchestrator {
         await this.context.timelineFixedClipBuilder.initializeHudMediaStates({
           clip: compositorClip,
           deps,
+          mediabunny,
         });
       }
       return { sequentialTimeUs };

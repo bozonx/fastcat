@@ -21,6 +21,8 @@ export interface TimelineClipDescriptor {
   clipType: TimelineClipType;
   itemId: string;
   sourcePath: string;
+  hudBackgroundPath?: string;
+  hudContentPath?: string;
   sourceStartUs: number;
   freezeFrameSourceUs?: number;
   layer: number;
@@ -73,6 +75,9 @@ export class TimelineClipLoader {
       typeof clipData?.source?.path === 'string' && clipData.source.path.length > 0
         ? clipData.source.path
         : '';
+        
+    const hudBackgroundPath = clipData.background?.source?.path ?? '';
+    const hudContentPath = clipData.content?.source?.path ?? '';
 
     const sourceStartUs = Math.max(0, Math.round(Number(clipData.sourceRange?.startUs ?? 0)));
     const freezeFrameSourceUsRaw = clipData.freezeFrameSourceUs;
@@ -120,6 +125,8 @@ export class TimelineClipLoader {
       clipType,
       itemId,
       sourcePath,
+      hudBackgroundPath,
+      hudContentPath,
       sourceStartUs,
       freezeFrameSourceUs,
       layer,
@@ -138,8 +145,19 @@ export class TimelineClipLoader {
     descriptor: TimelineClipDescriptor;
   }): params is { reusable: CompositorClip; descriptor: TimelineClipDescriptor } {
     const { reusable, descriptor } = params;
+    if (!reusable) return false;
+    
+    if (descriptor.clipType === 'hud') {
+      const prevBg = reusable.background?.source?.path ?? '';
+      const prevContent = reusable.content?.source?.path ?? '';
+      return (
+        (reusable as any).clipType === descriptor.clipType &&
+        prevBg === descriptor.hudBackgroundPath &&
+        prevContent === descriptor.hudContentPath
+      );
+    }
+
     return Boolean(
-      reusable &&
       reusable.sourcePath === descriptor.sourcePath &&
       (reusable as any).clipType === descriptor.clipType,
     );

@@ -126,9 +126,10 @@ export class CanvasFallbackRenderer {
 
       // Draw background if available
       const bgState = clip.hudMediaStates?.background;
-      if (bgState && bgState.bitmap) {
+      if (bgState && (bgState.bitmap || bgState.lastVideoFrame)) {
+        let frame: any = bgState.bitmap || bgState.lastVideoFrame;
         // Draw background filling the whole canvas (or fitting it)
-        ctx.drawImage(bgState.bitmap, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(frame as CanvasImageSource, 0, 0, canvas.width, canvas.height);
       } else {
         // Fallback default background
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
@@ -137,12 +138,13 @@ export class CanvasFallbackRenderer {
 
       // Draw content if available inside the frame
       const contentState = clip.hudMediaStates?.content;
-      if (contentState && contentState.bitmap) {
+      if (contentState && (contentState.bitmap || contentState.lastVideoFrame)) {
+        let frame: any = contentState.bitmap || contentState.lastVideoFrame;
         // Example: scale content to fit inside padding
         const cw = canvas.width - padding * 2;
         const ch = canvas.height - padding * 2;
 
-        ctx.drawImage(contentState.bitmap, padding, padding, cw, ch);
+        ctx.drawImage(frame as CanvasImageSource, padding, padding, cw, ch);
 
         // Draw a neat frame around it
         ctx.strokeStyle = '#ffffff';
