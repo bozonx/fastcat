@@ -9,6 +9,7 @@ const presetsStore = usePresetsStore();
 // Load presets on startup
 onMounted(() => {
   presetsStore.load();
+  window.addEventListener('contextmenu', (e) => e.preventDefault());
 });
 
 /**
