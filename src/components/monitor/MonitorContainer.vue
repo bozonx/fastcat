@@ -196,12 +196,11 @@ const isReadonly = computed(
 const selectedPreviewResolution = computed(() => {
   const raw = Number(projectStore.activeMonitor?.previewResolution);
   if (!Number.isFinite(raw) || raw <= 0) return null;
-  const value = Math.round(raw);
   return (
-    previewResolutions.value.find((r) => r.value === value) ?? {
-      label: `${value}p`,
-      value,
-      isProject: value === projectStore.projectSettings.project.height,
+    previewResolutions.value.find((r) => Math.abs(r.value - raw) < 0.001) ?? {
+      label: `${raw}p`,
+      value: raw,
+      isProject: Math.abs(raw - projectStore.projectSettings.project.height) < 0.001,
     }
   );
 });
@@ -428,7 +427,7 @@ onUnmounted(() => {
             >
               <template #default="{ modelValue }">
                 <span class="truncate text-2xs leading-none font-medium">
-                  {{ (modelValue as any)?.label }}
+                  {{ (modelValue as any)?.shortLabel || (modelValue as any)?.label }}
                 </span>
               </template>
               <template #item-label="{ item }">

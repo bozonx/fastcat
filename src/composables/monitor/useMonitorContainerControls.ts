@@ -10,6 +10,7 @@ interface PlaybackSpeedOption {
 
 interface PreviewResolutionOption {
   label: string;
+  shortLabel: string;
   value: number;
   isProject: boolean;
 }
@@ -73,20 +74,29 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
       1,
       Math.round(options.projectStore.projectSettings.project.height),
     );
-    const currentPreviewResolution = Math.max(
-      1,
-      Math.round(Number(options.projectStore.activeMonitor?.previewResolution) || 480),
-    );
-    const baseResolutions = [2160, 1440, 1080, 720, 480, 360, 240, 144];
-    const resolutionValues = Array.from(
-      new Set([...baseResolutions, projectHeight, currentPreviewResolution]),
-    ).sort((a, b) => b - a);
 
-    return resolutionValues.map((value) => ({
-      label: `${value}p`,
-      value,
-      isProject: value === projectHeight,
-    }));
+    // Standard fractional preview resolutions (Full, 1/2, 1/4, 1/8)
+    const scales = [1, 0.5, 0.25, 0.125];
+
+    return scales.map((scale) => {
+      const height = Math.max(
+        1,
+        Math.round((projectHeight * scale) / 2) * 2,
+      );
+
+      const shortLabel = scale === 1 ? '1/1' : `1/${1 / scale}`;
+      let label = shortLabel;
+
+      // Append absolute height for clarity
+      label += ` (${height}p)`;
+
+      return {
+        label,
+        shortLabel,
+        value: scale, // Stored as scale factor
+        isProject: scale === 1,
+      };
+    });
   });
 
   const toolbarPosition = computed(
