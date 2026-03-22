@@ -56,7 +56,10 @@ export function addClipToTrack(
   const track = getTrackById(doc, cmd.trackId);
   const fps = getDocFps(doc);
   const durationUs = quantizeTimeUsToFrames(Number(cmd.durationUs ?? 0), fps, 'round');
-  const sourceDurationUs = Math.max(0, Math.round(Number(cmd.durationUs ?? 0)));
+  const sourceDurationUs =
+    cmd.sourceDurationUs !== undefined
+      ? Math.max(0, Math.round(Number(cmd.sourceDurationUs)))
+      : Math.max(0, Math.round(Number(cmd.durationUs ?? 0)));
   const startCandidate =
     cmd.startUs === undefined ? computeTrackEndUs(track) : Math.max(0, Number(cmd.startUs));
   const startUs = quantizeTimeUsToFrames(startCandidate, fps, 'round');
@@ -82,7 +85,7 @@ export function addClipToTrack(
     sourceDurationUs,
     isImage: cmd.isImage,
     timelineRange: { startUs, durationUs },
-    sourceRange: { startUs: 0, durationUs },
+    sourceRange: cmd.sourceRange ?? { startUs: 0, durationUs },
     audioFadeInCurve: cmd.audioFadeInCurve,
     audioFadeOutCurve: cmd.audioFadeOutCurve,
   };

@@ -381,13 +381,18 @@ export function useTimelineItemDrag(
 
       const dxPx = clientX - dragAnchorClientX.value;
       const rawDeltaUs = pxToDeltaUs(dxPx, zoom);
+
+      const speed = typeof item.speed === 'number' && Number.isFinite(item.speed) ? item.speed : 1;
+      const absSpeed = Math.abs(speed);
+      const sourceDeltaUs = rawDeltaUs * absSpeed;
+
       const maxSourceStartUs = Math.max(
         0,
         Math.round(Number(item.sourceDurationUs ?? 0) - dragAnchorSourceDurationUs.value),
       );
       const nextSourceStartUs = Math.min(
         maxSourceStartUs,
-        Math.max(0, Math.round(dragAnchorSourceStartUs.value - rawDeltaUs)),
+        Math.max(0, Math.round(dragAnchorSourceStartUs.value - sourceDeltaUs)),
       );
       const deltaUs = nextSourceStartUs - dragAnchorSourceStartUs.value;
 
@@ -854,32 +859,13 @@ export function useTimelineItemDrag(
       timelineStore.timelineDoc = snapshot as any;
       timelineStore.duration = selectTimelineDurationUs(snapshot as any) as any;
       const copyClip = copiedSingleClipPayload.clip;
-      if (
-        (copyClip.clipType === 'media' || copyClip.clipType === 'timeline') &&
-        copyClip.source?.path
-      ) {
-        timelineStore.applyTimeline(
-          {
-            type: 'add_clip_to_track',
-            trackId: copiedSingleClipPayload.targetTrackId,
-            name: copyClip.name,
-            path: copyClip.source.path,
-            startUs: copiedSingleClipPayload.targetStartUs,
-            durationUs: copyClip.timelineRange.durationUs,
-            sourceRange: copyClip.sourceRange,
-            isImage: copyClip.isImage,
-          } as any,
-          { saveMode: 'none', skipHistory: false },
-        );
-      } else {
-        timelineStore.pasteClips(
-          [{ sourceTrackId: copiedSingleClipPayload.sourceTrackId, clip: copyClip }],
-          {
-            targetTrackId: copiedSingleClipPayload.targetTrackId,
-            insertStartUs: copiedSingleClipPayload.targetStartUs,
-          },
-        );
-      }
+      timelineStore.pasteClips(
+        [{ sourceTrackId: copiedSingleClipPayload.sourceTrackId, clip: copyClip }],
+        {
+          targetTrackId: copiedSingleClipPayload.targetTrackId,
+          insertStartUs: copiedSingleClipPayload.targetStartUs,
+        },
+      );
       hasPendingTimelinePersist.value = true;
     }
 

@@ -2,7 +2,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { useFileManagerPanelBootstrap } from '~/composables/fileManager/useFileManagerPanelBootstrap';
 
-const projectStore = { currentProjectName: 'Demo Project' };
+const projectStore = {
+  currentProjectName: 'Demo Project',
+  currentProjectId: 'project-1',
+};
 const selectionStore = { selectFsEntry: vi.fn() };
 const uiStore = {
   restoreFileTreeStateOnce: vi.fn(),

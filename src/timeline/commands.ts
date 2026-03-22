@@ -47,6 +47,7 @@ export interface AddClipToTrackCommand {
   path: string;
   startUs: number;
   durationUs: number;
+  sourceDurationUs?: number;
   sourceRange?: TimelineRange;
   isImage?: boolean;
   pseudo?: boolean;

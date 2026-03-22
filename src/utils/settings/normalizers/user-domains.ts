@@ -237,9 +237,9 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
   const mDragEnum = z.enum(MONITOR_DRAG_ACTIONS as any);
 
   const rulerWheelFallbacks = {
-    wheel: DEFAULT_USER_SETTINGS.mouse.timeline.wheel,
-    wheelSecondary: DEFAULT_USER_SETTINGS.mouse.timeline.wheel,
-    wheelSecondaryShift: DEFAULT_USER_SETTINGS.mouse.ruler.wheel,
+    wheel: DEFAULT_USER_SETTINGS.mouse.ruler.wheel,
+    wheelSecondary: DEFAULT_USER_SETTINGS.mouse.ruler.wheelSecondary,
+    wheelSecondaryShift: DEFAULT_USER_SETTINGS.mouse.ruler.wheelSecondaryShift,
   };
 
   const schema = z
@@ -271,7 +271,7 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
             DEFAULT_USER_SETTINGS.mouse.timeline.wheelSecondary as any,
           ),
           wheelSecondaryShift: tWheelEnum.catch('none'),
-          middleClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.middleDrag as any), // Legacy middleClick fallback was middleDrag? Well, kept standard
+          middleClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.middleClick as any),
           middleDrag: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.middleDrag as any),
           horizontalMovement: horizEnum.catch(
             DEFAULT_USER_SETTINGS.mouse.timeline.horizontalMovement as any,

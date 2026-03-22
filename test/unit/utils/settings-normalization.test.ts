@@ -187,24 +187,24 @@ describe('settings normalization', () => {
 
     expect(normalized.mouse.ruler.wheel).toBe('seek_frame');
     expect(normalized.mouse.ruler.wheelShift).toBe('seek_second');
-    expect(normalized.mouse.ruler.wheelSecondary).toBe('scroll_horizontal');
+    expect(normalized.mouse.ruler.wheelSecondary).toBe('zoom_horizontal');
     expect(normalized.mouse.ruler.wheelSecondaryShift).toBe('zoom_horizontal');
-    expect(normalized.mouse.ruler.middleClick).toBe('reset_zoom');
+    expect(normalized.mouse.ruler.middleClick).toBe('none');
     expect(normalized.mouse.ruler.doubleClick).toBe('add_marker');
 
-    expect(normalized.mouse.timeline.wheel).toBe('zoom');
+    expect(normalized.mouse.timeline.wheel).toBe('zoom_vertical');
     expect(normalized.mouse.timeline.wheelShift).toBe('scroll_horizontal');
     expect(normalized.mouse.timeline.wheelSecondary).toBe('scroll_horizontal');
-    expect(normalized.mouse.timeline.wheelSecondaryShift).toBe('zoom');
+    expect(normalized.mouse.timeline.wheelSecondaryShift).toBe('none');
     expect(normalized.mouse.timeline.middleClick).toBe('reset_zoom');
 
-    expect(normalized.mouse.trackHeaders.wheel).toBe('scroll_vertical');
+    expect(normalized.mouse.trackHeaders.wheel).toBe('seek_frame');
     expect(normalized.mouse.trackHeaders.wheelShift).toBe('zoom_vertical');
     expect(normalized.mouse.trackHeaders.wheelSecondary).toBe('resize_track');
-    expect(normalized.mouse.trackHeaders.wheelSecondaryShift).toBe('none');
+    expect(normalized.mouse.trackHeaders.wheelSecondaryShift).toBe('seek_second');
 
-    expect(normalized.mouse.monitor.wheel).toBe('zoom');
+    expect(normalized.mouse.monitor.wheel).toBe('scroll_vertical');
     expect(normalized.mouse.monitor.wheelShift).toBe('scroll_horizontal');
-    expect(normalized.mouse.monitor.middleClick).toBe('reset_zoom');
+    expect(normalized.mouse.monitor.middleClick).toBe('none');
   });
 });
