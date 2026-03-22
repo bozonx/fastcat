@@ -417,6 +417,7 @@ onUnmounted(() => {
               value-key="value"
               label-key="label"
               full-width
+              :searchable="false"
               @update:model-value="
                 (v: unknown) => {
                   if (v && projectStore.activeMonitor)
@@ -439,7 +440,7 @@ onUnmounted(() => {
                     'truncate',
                   ]"
                 >
-                  {{ item.label }}{{ item.isProject ? ' *' : '' }}
+                  {{ item.label }}
                 </span>
               </template>
             </UiSelect>
