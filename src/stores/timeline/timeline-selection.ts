@@ -13,6 +13,7 @@ export interface TimelineSelectionDeps {
     itemId: string;
     edge: 'in' | 'out';
   } | null>;
+  selectionStore?: any;
 }
 
 export interface TimelineSelectionApi {
@@ -21,7 +22,7 @@ export interface TimelineSelectionApi {
   selectTransition: (input: { trackId: string; itemId: string; edge: 'in' | 'out' } | null) => void;
   selectTrack: (trackId: string | null) => void;
   toggleSelection: (itemId: string, options?: { multi?: boolean }) => void;
-  selectTimelineItems: (itemIds: string[]) => void;
+  selectTimelineItems: (itemIds: string[] | { trackId: string; itemId: string }[]) => void;
   selectAllClipsOnTrack: (trackId: string) => void;
   selectAllClips: () => void;
   selectClipsRelativeToPlayhead: (params: {
@@ -51,6 +52,7 @@ export function createTimelineSelection(deps: TimelineSelectionDeps): TimelineSe
   function clearSelection() {
     deps.selectedItemIds.value = [];
     deps.selectedTransition.value = null;
+    deps.selectionStore?.clearTimelineSelection?.();
   }
 
   function clearSelectedTransition() {
@@ -68,6 +70,7 @@ export function createTimelineSelection(deps: TimelineSelectionDeps): TimelineSe
     if (trackId) {
       deps.selectedTransition.value = null;
       deps.selectedItemIds.value = [];
+      deps.selectionStore?.selectTimelineTrack?.(trackId);
     }
   }
 
@@ -84,9 +87,22 @@ export function createTimelineSelection(deps: TimelineSelectionDeps): TimelineSe
     }
   }
 
-  function selectTimelineItems(itemIds: string[]) {
+  function selectTimelineItems(items: string[] | { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[]) {
     deps.selectedTransition.value = null;
-    deps.selectedItemIds.value = [...itemIds];
+    if (items.length === 0) {
+      deps.selectedItemIds.value = [];
+      deps.selectionStore?.clearTimelineSelection?.();
+      return;
+    }
+
+    if (typeof items[0] === 'string') {
+      deps.selectedItemIds.value = [...(items as string[])];
+      // We don't update global selection store here because we don't have trackIds
+    } else {
+      const objects = items as { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[];
+      deps.selectedItemIds.value = objects.map((it) => it.itemId);
+      deps.selectionStore?.selectTimelineItems?.(objects);
+    }
   }
 
   function selectAllClipsOnTrack(trackId: string) {

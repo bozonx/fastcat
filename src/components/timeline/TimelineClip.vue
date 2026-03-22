@@ -148,6 +148,8 @@ function onClipPointerdown(e: PointerEvent) {
   if (timelineStore.isTrimModeActive) return;
   if (!props.canEditClipContent || !clipItem.value || clipItem.value.locked) return;
 
+  focusStore.setPanelFocus('timeline');
+
   e.stopPropagation();
   onPointerDown(e);
 }
@@ -172,7 +174,7 @@ const { clipItem, onClipClick } = useClipInteractions({
   canEditClipContent: computed(() => props.canEditClipContent),
   isTrimModeActive: computed(() => timelineStore.isTrimModeActive),
   userSettings: computed(() => workspaceStore.userSettings),
-  selectTimelineItems: (ids) => timelineStore.selectTimelineItems(ids),
+  selectTimelineItems: (ids) => timelineStore.selectTimelineItems(ids.map(id => ({ trackId: props.track.id, itemId: id, kind: 'clip' }))),
   trimToPlayheadLeftNoRipple: (target) => void timelineStore.trimToPlayheadLeftNoRipple(target),
   trimToPlayheadRightNoRipple: (target) => void timelineStore.trimToPlayheadRightNoRipple(target),
   splitClipAtPlayhead: (target) => void timelineStore.splitClipAtPlayhead(target),
