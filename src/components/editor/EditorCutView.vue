@@ -41,6 +41,8 @@ const emit = defineEmits<{
   focus: [panelId: string];
   close: [panel: DynamicPanel, view: 'cut' | 'sound'];
   moveToView: [panel: DynamicPanel, view: 'cut' | 'sound'];
+  topReset: [view: 'cut' | 'sound'];
+  verticalReset: [colId: string, view: 'cut' | 'sound'];
 }>();
 </script>
 
@@ -68,5 +70,7 @@ const emit = defineEmits<{
     @focus="(panelId) => emit('focus', panelId)"
     @close="(panel, view) => emit('close', panel, view)"
     @move-to-view="(panel, view) => emit('moveToView', panel, view)"
+    @top-reset="(view) => emit('topReset', view)"
+    @vertical-reset="(colId, view) => emit('verticalReset', colId, view)"
   />
 </template>

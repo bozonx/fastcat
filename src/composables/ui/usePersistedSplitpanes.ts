@@ -65,8 +65,15 @@ export function usePersistedSplitpanes(
     }
   }
 
+  function reset() {
+    const defaults = isRef(defaultSizes) ? defaultSizes.value : defaultSizes;
+    sizes.value = [...defaults];
+    writeLocalStorageJson(key.value, sizes.value);
+  }
+
   return {
     sizes,
     onResized,
+    reset,
   };
 }

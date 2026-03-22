@@ -26,6 +26,7 @@ import TimelineTrackLabels from '~/components/timeline/TimelineTrackLabels.vue';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
 import TimelineRuler from '~/components/timeline/TimelineRuler.vue';
 import TimelineGrid from '~/components/timeline/TimelineGrid.vue';
+import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
 
 import { useTimelineZoom } from '~/composables/timeline/useTimelineZoom';
 import { useTimelineScrollSync } from '~/composables/timeline/useTimelineScrollSync';
@@ -56,11 +57,38 @@ const trackAreaRef = ref<HTMLElement | null>(null);
 
 const { trackHeights } = storeToRefs(timelineStore);
 const timelineSplitKey = computed(() => `timeline-split-${currentView.value}`);
-const { sizes: timelineSplitSizes, onResized: onTimelineSplitResize } = usePersistedSplitpanes(
+const { 
+  sizes: timelineSplitSizes, 
+  onResized: onTimelineSplitResize,
+  reset: resetTimelineSplit 
+} = usePersistedSplitpanes(
   timelineSplitKey.value,
   currentProjectId,
   [10, 90],
 );
+
+const menuRef = ref<InstanceType<typeof UiContextMenuPortal> | null>(null);
+const containerRef = ref<HTMLElement | null>(null);
+
+const timelineMenuItems = computed(() => [
+  [
+    {
+      label: t('common.actions.reset'),
+      icon: 'i-heroicons-arrow-path',
+      onSelect: () => {
+        resetTimelineSplit();
+      },
+    },
+  ],
+]);
+
+function onContextMenu(e: MouseEvent) {
+  const target = e.target as HTMLElement;
+  if (target.classList.contains('splitpanes__splitter')) {
+    e.preventDefault();
+    menuRef.value?.open(e);
+  }
+}
 
 const canEditClipContent = computed(() => ['cut', 'files', 'sound'].includes(currentView.value));
 const tracks = computed(() => (timelineStore.timelineDoc?.tracks as TimelineTrack[]) ?? []);
@@ -533,16 +561,24 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
 
 <template>
   <div
-    class="panel-focus-frame flex flex-col h-full bg-ui-bg border-t border-ui-border"
+    ref="containerRef"
+    class="panel-focus-frame relative flex flex-col h-full bg-ui-bg border-t border-ui-border"
     :class="{
       'panel-focus-frame--active': focusStore.isPanelFocused('timeline'),
     }"
     @pointerdown.capture="focusStore.setMainFocus('timeline')"
   >
+    <UiContextMenuPortal
+      ref="menuRef"
+      :items="timelineMenuItems"
+      :target-el="containerRef"
+      manual
+    />
     <ClientOnly>
       <Splitpanes
         class="flex flex-1 min-h-0 overflow-hidden editor-splitpanes"
         @resized="onTimelineSplitResize"
+        @contextmenu="onContextMenu"
       >
         <Pane :size="timelineSplitSizes[0]" min-size="5" max-size="50">
           <div ref="trackHeadersContainerRef" class="h-full">

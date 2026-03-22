@@ -12,10 +12,16 @@ interface MenuItem {
   onSelect?: () => void;
 }
 
-const props = defineProps<{
-  items: MenuItem[][];
-  targetEl: HTMLElement | null;
-}>();
+const props = withDefaults(
+  defineProps<{
+    items: MenuItem[][];
+    targetEl: HTMLElement | null;
+    manual?: boolean;
+  }>(),
+  {
+    manual: false,
+  },
+);
 
 const isOpen = ref(false);
 const menuX = ref(0);
@@ -63,6 +69,7 @@ function onContextMenu(e: MouseEvent) {
 watch(
   () => props.targetEl,
   (el, prev) => {
+    if (props.manual) return;
     prev?.removeEventListener('contextmenu', onContextMenu);
     el?.addEventListener('contextmenu', onContextMenu);
   },
@@ -85,7 +92,7 @@ defineExpose({ open, close });
   <Teleport v-if="targetEl && isOpen" :to="targetEl">
     <div
       ref="menuEl"
-      class="absolute z-[99999] min-w-[160px] rounded-md border border-ui-border bg-ui-bg shadow-lg py-1 select-none"
+      class="absolute z-99999 min-w-[160px] rounded-md border border-ui-border bg-ui-bg shadow-lg py-1 select-none"
       :style="{ left: `${menuX}px`, top: `${menuY}px` }"
     >
       <template v-for="(group, gi) in items" :key="gi">
