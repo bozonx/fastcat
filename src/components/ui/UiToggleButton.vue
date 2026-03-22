@@ -96,9 +96,13 @@ const computedStyle = computed(() => {
     :style="computedStyle"
     class="transition-all duration-200"
     :class="[
-      $props.class,
-      square ? 'aspect-square p-0' : 'w-6 h-6 p-0 flex items-center justify-center',
+      square
+        ? 'aspect-square p-0 flex items-center justify-center'
+        : label
+          ? 'w-full h-8 px-2'
+          : 'w-6 h-6 p-0 flex items-center justify-center',
       modelValue ? 'opacity-100' : 'opacity-60 hover:opacity-100',
+      $props.class,
     ]"
     @click="onClick"
   >
