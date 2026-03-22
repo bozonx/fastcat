@@ -2,6 +2,7 @@
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { pxToTimeUs, timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { useResizeObserver } from '@vueuse/core';
 
@@ -14,6 +15,7 @@ const containerRef = ref<HTMLElement | null>(null);
 
 const timelineStore = useTimelineStore();
 const projectStore = useProjectStore();
+const workspaceStore = useWorkspaceStore();
 
 const width = ref(0);
 const height = ref(0);
@@ -127,8 +129,10 @@ function draw() {
   const startUs = pxToTimeUs(startPx, currentZoom);
   const endUs = pxToTimeUs(endPx, currentZoom);
 
+  const scale = workspaceStore.userSettings.ui.interfaceScale / 14;
+
   // Same step calculation as TimelineRuler for perfect sync
-  const MIN_DIST_PX = 90;
+  const MIN_DIST_PX = 90 * scale;
   const timeStepsS = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1800, 3600];
   let mainStepS = timeStepsS[timeStepsS.length - 1]!;
   for (const step of timeStepsS) {

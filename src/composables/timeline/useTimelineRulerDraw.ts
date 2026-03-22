@@ -16,6 +16,7 @@ interface TimelineRulerDrawOptions {
   tickColor: string;
   majorTickWidth: number;
   subTickWidth: number;
+  interfaceScale: Ref<number>;
 }
 
 export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
@@ -97,12 +98,14 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
     const pxPerSec = zoomToPxPerSecond(currentZoom);
     const pxPerFrame = pxPerSec / currentFps;
 
+    const scale = options.interfaceScale.value / 14;
+
     const startPx = options.scrollLeft.value;
     const endPx = startPx + w;
     const startUs = pxToTimeUs(startPx, currentZoom);
     const endUs = pxToTimeUs(endPx, currentZoom);
 
-    const MIN_DIST_PX = 90;
+    const MIN_DIST_PX = 90 * scale;
     const timeStepsS = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1800, 3600];
     let mainStepS = timeStepsS[timeStepsS.length - 1]!;
     for (const step of timeStepsS) {
@@ -115,21 +118,25 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
     ctx.fillStyle = options.textColor;
     ctx.strokeStyle = options.tickColor;
     ctx.lineWidth = options.majorTickWidth;
-    ctx.font = '10px monospace';
+    ctx.font = `${10 * scale}px monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
 
     const startS = Math.floor(startUs / 1_000_000 / mainStepS) * mainStepS;
     const endS = Math.ceil(endUs / 1_000_000);
 
+    const majorTickHeight = 12 * scale;
+    const subTickHeight = 5 * scale;
+    const textTopOffset = 4 * scale;
+
     ctx.beginPath();
     for (let s = startS; s <= endS; s += mainStepS) {
       const x = Math.round(timeUsToPx(s * 1_000_000, currentZoom) - startPx) + 0.5;
 
       if (x >= -50 && x <= w + 50) {
-        ctx.moveTo(x, h - 12);
+        ctx.moveTo(x, h - majorTickHeight);
         ctx.lineTo(x, h);
-        ctx.fillText(formatRulerTime(s * 1_000_000, currentFps), x, 4);
+        ctx.fillText(formatRulerTime(s * 1_000_000, currentFps), x, textTopOffset);
       }
     }
     ctx.stroke();
@@ -140,8 +147,9 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
     for (let s = startS; s <= endS; s += mainStepS) {
       if (mainStepS === 1) {
         let frameStep = 1;
-        if (pxPerFrame < 5) {
-          frameStep = Math.ceil(5 / pxPerFrame);
+        const minFrameDist = 5 * scale;
+        if (pxPerFrame < minFrameDist) {
+          frameStep = Math.ceil(minFrameDist / pxPerFrame);
         }
 
         for (let f = 1; f < currentFps; f += frameStep) {
@@ -150,7 +158,7 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
               timeUsToPx(s * 1_000_000 + (f * 1_000_000) / currentFps, currentZoom) - startPx,
             ) + 0.5;
           if (frameX >= -50 && frameX <= w + 50) {
-            ctx.moveTo(frameX, h - 5);
+            ctx.moveTo(frameX, h - subTickHeight);
             ctx.lineTo(frameX, h);
           }
         }
@@ -163,7 +171,7 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
         for (let sub = s + subStepS; sub < s + mainStepS; sub += subStepS) {
           const subX = Math.round(timeUsToPx(sub * 1_000_000, currentZoom) - startPx) + 0.5;
           if (subX >= -50 && subX <= w + 50) {
-            ctx.moveTo(subX, h - 5);
+            ctx.moveTo(subX, h - subTickHeight);
             ctx.lineTo(subX, h);
           }
         }
