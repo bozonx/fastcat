@@ -8,6 +8,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useEditorViewStore } from '~/stores/editor-view.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
@@ -52,6 +53,7 @@ const uiStore = useUiStore();
 const workspaceStore = useWorkspaceStore();
 const focusStore = useFocusStore();
 const filesPageStore = useFilesPageStore();
+const clipboardStore = useAppClipboard();
 
 const isUiRenameModalOpen = ref(false);
 
@@ -71,6 +73,28 @@ const blendModeOptions = computed<Array<{ value: TimelineBlendMode; label: strin
 );
 
 const isVideoTrack = computed(() => clipTrackKind.value === 'video');
+
+function handleCopyClip() {
+  clipboardStore.setClipboardPayload({
+    source: 'timeline',
+    operation: 'copy',
+    items: timelineStore.copySelectedClips().map((item) => ({
+      sourceTrackId: item.sourceTrackId,
+      clip: item.clip,
+    })),
+  });
+}
+
+function handleCutClip() {
+  clipboardStore.setClipboardPayload({
+    source: 'timeline',
+    operation: 'cut',
+    items: timelineStore.cutSelectedClips().map((item) => ({
+      sourceTrackId: item.sourceTrackId,
+      clip: item.clip,
+    })),
+  });
+}
 
 const {
   isFreePosition,
@@ -308,6 +332,8 @@ defineExpose({
       :linked-audio-clip="linkedAudioClip"
       :linked-video-clip="linkedVideoClip"
       @rename="isUiRenameModalOpen = true"
+      @copy="handleCopyClip"
+      @cut="handleCutClip"
       @delete="handleDeleteClip"
       @quantize="handleQuantizeClip"
       @unlink-audio="handleUnlinkAudio"

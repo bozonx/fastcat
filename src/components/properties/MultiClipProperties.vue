@@ -10,6 +10,7 @@ import UiSelect from '~/components/ui/UiSelect.vue';
 import { useClipBatchActions } from '~/composables/timeline/useClipBatchActions';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
+import { useAppClipboard } from '~/composables/useAppClipboard';
 import { blendModeOptions as rawBlendModeOptions } from '~/utils/constants';
 import type { TimelineBlendMode } from '~/timeline/types';
 
@@ -21,6 +22,29 @@ const { t } = useI18n();
 
 const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
+const clipboardStore = useAppClipboard();
+
+function handleCopyClips() {
+  clipboardStore.setClipboardPayload({
+    source: 'timeline',
+    operation: 'copy',
+    items: timelineStore.copySelectedClips().map((item) => ({
+      sourceTrackId: item.sourceTrackId,
+      clip: item.clip,
+    })),
+  });
+}
+
+function handleCutClips() {
+  clipboardStore.setClipboardPayload({
+    source: 'timeline',
+    operation: 'cut',
+    items: timelineStore.cutSelectedClips().map((item) => ({
+      sourceTrackId: item.sourceTrackId,
+      clip: item.clip,
+    })),
+  });
+}
 
 const itemsRef = toRef(props, 'items');
 const {
@@ -148,6 +172,18 @@ const actions = computed(() => {
     color?: 'primary' | 'danger' | 'warning' | 'success' | 'neutral';
     onClick: () => void;
   }> = [
+    {
+      id: 'copy',
+      label: t('common.copy', 'Copy'),
+      icon: 'i-heroicons-document-duplicate',
+      onClick: handleCopyClips,
+    },
+    {
+      id: 'cut',
+      label: t('common.cut', 'Cut'),
+      icon: 'i-heroicons-scissors',
+      onClick: handleCutClips,
+    },
     {
       id: 'delete',
       label: t('common.delete', 'Delete'),

@@ -13,7 +13,7 @@ export function useTimelineHotkeys() {
   const settingsStore = useTimelineSettingsStore();
   const focusStore = useFocusStore();
   const workspaceStore = useWorkspaceStore();
-  const { clipboardPayload, setClipboardPayload } = useAppClipboard();
+  const clipboardStore = useAppClipboard();
 
   function getTargetTrackId() {
     return timelineStore.getSelectedOrActiveTrackId();
@@ -60,7 +60,7 @@ export function useTimelineHotkeys() {
       if (!focusStore.canUseTimelineHotkeys) return false;
       if (timelineStore.selectedItemIds.length === 0) return false;
 
-      setClipboardPayload({
+      clipboardStore.setClipboardPayload({
         source: 'timeline',
         operation: 'copy',
         items: timelineStore.copySelectedClips().map((item) => ({
@@ -76,7 +76,7 @@ export function useTimelineHotkeys() {
       if (!focusStore.canUseTimelineHotkeys) return false;
       if (timelineStore.selectedItemIds.length === 0) return false;
 
-      setClipboardPayload({
+      clipboardStore.setClipboardPayload({
         source: 'timeline',
         operation: 'cut',
         items: timelineStore.cutSelectedClips().map((item) => ({
@@ -91,7 +91,7 @@ export function useTimelineHotkeys() {
     'general.paste': () => {
       if (!focusStore.canUseTimelineHotkeys) return false;
 
-      const payload = clipboardPayload;
+      const payload = clipboardStore.clipboardPayload;
       if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return false;
 
       const createdItems = timelineStore.pasteClips(payload.items, {
@@ -103,7 +103,7 @@ export function useTimelineHotkeys() {
       }
 
       if (payload.operation === 'cut') {
-        setClipboardPayload(null);
+        clipboardStore.setClipboardPayload(null);
       }
 
       return true;

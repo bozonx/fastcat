@@ -268,13 +268,24 @@ export function buildSingleItemActionGroup(options: UseClipContextMenuOptions): 
   const track = options.track.value;
   const item = options.item.value;
   const isTrackLocked = Boolean(track.locked);
+  const isLocked = item.kind === 'clip' && Boolean((item as TimelineClipItem).locked);
 
   return [
     {
+      label: options.t('common.copy'),
+      icon: 'i-heroicons-document-duplicate',
+      onSelect: () => options.copySelectedClips(),
+    },
+    {
+      label: options.t('common.cut'),
+      icon: 'i-heroicons-scissors',
+      disabled: isTrackLocked || isLocked,
+      onSelect: () => options.cutSelectedClips(),
+    },
+    {
       label: options.t('fastcat.timeline.delete'),
       icon: 'i-heroicons-trash',
-      disabled:
-        isTrackLocked || (item.kind === 'clip' && Boolean((item as TimelineClipItem).locked)),
+      disabled: isTrackLocked || isLocked,
       onSelect: () => {
         options.clearSelection();
         options.applyTimelineCommand({

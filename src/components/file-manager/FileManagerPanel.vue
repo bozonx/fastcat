@@ -16,6 +16,7 @@ import { useFileManagerPanelPendingActions } from '~/composables/fileManager/use
 import { useFileManagerPanelBootstrap } from '~/composables/fileManager/useFileManagerPanelBootstrap';
 import { useFileManagerPanelStt } from '~/composables/fileManager/useFileManagerPanelStt';
 import { useFileManagerPanelActions } from '~/composables/fileManager/useFileManagerPanelActions';
+import { useAppClipboard } from '~/composables/useAppClipboard';
 
 const props = defineProps<{
   foldersOnly?: boolean;
@@ -153,6 +154,65 @@ const { handleFileAction: onFileAction, createTimelineInDirectory } = useFileMan
   handleConvert: (entry: FsEntry) => {
     conversionStore.openConversionModal(entry);
   },
+});
+
+const rootContextMenuItems = computed(() => {
+  if (!projectStore.currentProjectName) return [];
+  const rootEntry: FsEntry = {
+    kind: 'directory',
+    name: projectStore.currentProjectName,
+    path: '',
+    parentPath: '',
+    lastModified: 0,
+    size: 0,
+    source: 'local',
+  };
+
+  const menu: any[][] = [
+    [
+      {
+        label: t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),
+        icon: 'i-heroicons-arrow-up-tray',
+        onSelect: () => onFileAction('upload', rootEntry),
+      },
+      {
+        label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
+        icon: 'i-heroicons-folder-plus',
+        onSelect: () => onFileAction('createFolder', rootEntry),
+      },
+      {
+        label: t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline'),
+        icon: 'i-heroicons-document-plus',
+        onSelect: () => onFileAction('createTimeline', rootEntry),
+      },
+      {
+        label: t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document'),
+        icon: 'i-heroicons-document-text',
+        onSelect: () => onFileAction('createMarkdown', rootEntry),
+      },
+    ],
+    [
+      {
+        label: t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree'),
+        icon: 'i-heroicons-arrow-path',
+        disabled: isLoading.value,
+        onSelect: () => onFileAction('refresh', rootEntry),
+      },
+    ],
+  ];
+
+  const clipboardStore = useAppClipboard();
+  if (clipboardStore.hasFileManagerPayload) {
+    if (menu[0]) {
+      menu[0].push({
+        label: t('common.paste', 'Paste'),
+        icon: 'i-heroicons-clipboard',
+        onSelect: () => onFileActionBase('paste', rootEntry),
+      });
+    }
+  }
+
+  return menu;
 });
 
 const toolbarMenuItems = computed(() => [
@@ -299,55 +359,57 @@ useFileManagerPanelBootstrap({
 
     <div class="flex flex-col flex-1 min-h-0">
       <!-- Actions Toolbar -->
-      <div
-        v-if="projectStore.currentProjectName"
-        class="flex items-center gap-1 px-2 py-1 bg-ui-bg-accent/30 border-b border-ui-border/50"
-      >
-        <UButton
-          icon="i-heroicons-arrow-up-tray"
-          variant="ghost"
-          color="neutral"
-          size="xs"
-          :title="`${t('videoEditor.fileManager.actions.uploadFiles')} (Auto-detect folder)`"
-          @click="triggerFileUpload"
-        />
-        <UButton
-          icon="i-heroicons-document-plus"
-          variant="ghost"
-          color="neutral"
-          size="xs"
-          :title="`${t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline')} (In _timelines folder)`"
-          @click="onCreateTimeline"
-        />
-        <UButton
-          icon="i-heroicons-folder-plus"
-          variant="ghost"
-          color="neutral"
-          size="xs"
-          :title="`${t('videoEditor.fileManager.actions.createFolder')} (In root folder)`"
-          @click="
-            onFileAction('createFolder', {
-              kind: 'directory',
-              name: '',
-              path: '',
-              parentPath: '',
-              lastModified: 0,
-              size: 0,
-              source: 'local',
-            } as FsEntry)
-          "
-        />
-        <div class="ml-auto">
-          <UDropdownMenu :items="toolbarMenuItems" :ui="{ content: 'w-56' }">
-            <UButton
-              icon="i-heroicons-ellipsis-horizontal"
-              variant="ghost"
-              color="neutral"
-              size="xs"
-            />
-          </UDropdownMenu>
+      <UContextMenu :items="rootContextMenuItems">
+        <div
+          v-if="projectStore.currentProjectName"
+          class="flex items-center gap-1 px-2 py-1 bg-ui-bg-accent/30 border-b border-ui-border/50"
+        >
+          <UButton
+            icon="i-heroicons-arrow-up-tray"
+            variant="ghost"
+            color="neutral"
+            size="xs"
+            :title="`${t('videoEditor.fileManager.actions.uploadFiles')} (Auto-detect folder)`"
+            @click="triggerFileUpload"
+          />
+          <UButton
+            icon="i-heroicons-document-plus"
+            variant="ghost"
+            color="neutral"
+            size="xs"
+            :title="`${t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline')} (In _timelines folder)`"
+            @click="onCreateTimeline"
+          />
+          <UButton
+            icon="i-heroicons-folder-plus"
+            variant="ghost"
+            color="neutral"
+            size="xs"
+            :title="`${t('videoEditor.fileManager.actions.createFolder')} (In root folder)`"
+            @click="
+              onFileAction('createFolder', {
+                kind: 'directory',
+                name: '',
+                path: '',
+                parentPath: '',
+                lastModified: 0,
+                size: 0,
+                source: 'local',
+              } as FsEntry)
+            "
+          />
+          <div class="ml-auto">
+            <UDropdownMenu :items="toolbarMenuItems" :ui="{ content: 'w-56' }">
+              <UButton
+                icon="i-heroicons-ellipsis-horizontal"
+                variant="ghost"
+                color="neutral"
+                size="xs"
+              />
+            </UDropdownMenu>
+          </div>
         </div>
-      </div>
+      </UContextMenu>
 
       <!-- File List -->
       <FileManagerFiles

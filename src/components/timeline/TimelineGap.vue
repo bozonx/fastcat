@@ -2,11 +2,25 @@
 import type { TimelineTrackItem } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useAppClipboard } from '~/composables/useAppClipboard';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
+const clipboardStore = useAppClipboard();
+
+const hasTimelineClipboard = computed(() => clipboardStore.hasTimelinePayload);
+
+function onPaste() {
+  const payload = clipboardStore.clipboardPayload;
+  if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
+  const created = timelineStore.pasteClips(payload.items, {
+    insertStartUs: props.item.timelineRange.startUs,
+  });
+  if (created.length > 0) timelineStore.selectTimelineItems(created);
+  if (payload.operation === 'cut') clipboardStore.setClipboardPayload(null);
+}
 
 const props = defineProps<{
   item: TimelineTrackItem;
@@ -50,6 +64,12 @@ function onPointerdown(e: PointerEvent) {
   <UContextMenu
     :items="[
       [
+        {
+          label: t('common.paste'),
+          icon: 'i-heroicons-clipboard',
+          disabled: !hasTimelineClipboard,
+          onSelect: onPaste,
+        },
         {
           label: t('fastcat.timeline.delete'),
           icon: 'i-heroicons-trash',

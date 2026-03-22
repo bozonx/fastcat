@@ -49,6 +49,10 @@ export interface UseClipContextMenuOptions {
     itemId: string;
     videoItemId?: string;
   }) => void;
+  copySelectedClips: () => void;
+  cutSelectedClips: () => void;
+  pasteClips: (insertStartUs?: number) => void;
+  hasTimelineClipboard: boolean;
   t: (key: string, ...args: (string | number)[]) => string;
 }
 

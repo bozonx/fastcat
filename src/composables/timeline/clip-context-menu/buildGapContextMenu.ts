@@ -9,6 +9,12 @@ export function buildGapContextMenu(options: UseClipContextMenuOptions): Context
   return [
     [
       {
+        label: options.t('common.paste'),
+        icon: 'i-heroicons-clipboard',
+        disabled: !options.hasTimelineClipboard,
+        onSelect: () => options.pasteClips(item.timelineRange.startUs),
+      },
+      {
         label: options.t('fastcat.timeline.delete'),
         icon: 'i-heroicons-trash',
         onSelect: () => {
