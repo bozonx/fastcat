@@ -160,7 +160,7 @@ export interface ExtractAudioToTrackCommand {
   type: 'extract_audio_to_track';
   videoTrackId: string;
   videoItemId: string;
-  audioTrackId: string;
+  audioTrackId?: string;
 }
 
 export interface ReturnAudioToVideoCommand {

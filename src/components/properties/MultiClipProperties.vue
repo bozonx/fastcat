@@ -92,6 +92,12 @@ const {
   clearSelection: () => timelineStore.clearSelection(),
 });
 
+const mediaMeta = computed(() => {
+  if (!firstVideoClip.value) return null;
+  if (firstVideoClip.value.clipType !== 'media' || !firstVideoClip.value.source?.path) return null;
+  return mediaStore.mediaMetadata[firstVideoClip.value.source.path] || null;
+});
+
 const selectedCountLabel = computed(() => {
   return t('fastcat.timeline.selectedClipsCount', {
     count: props.items.length,
@@ -250,12 +256,18 @@ function clampNumber(value: number, min: number, max: number): number {
 function handleBatchTransform(next: ClipTransform) {
   const baseTransform = firstVideoClip.value?.transform || {};
 
-  const newFlip = next.flip;
-  const newAnchorPreset = next.anchorPreset;
   const newAnchor = next.anchor;
 
-  const deltaScaleX = (next.scale?.x ?? 1) - (baseTransform.scale?.x ?? 1);
-  const deltaScaleY = (next.scale?.y ?? 1) - (baseTransform.scale?.y ?? 1);
+  const nextScaleXSign = (next.scale?.x ?? 1) >= 0 ? 1 : -1;
+  const nextScaleYSign = (next.scale?.y ?? 1) >= 0 ? 1 : -1;
+
+  const baseScaleXMag = Math.abs(baseTransform.scale?.x ?? 1);
+  const baseScaleYMag = Math.abs(baseTransform.scale?.y ?? 1);
+  const nextScaleXMag = Math.abs(next.scale?.x ?? 1);
+  const nextScaleYMag = Math.abs(next.scale?.y ?? 1);
+
+  const deltaScaleXMag = nextScaleXMag - baseScaleXMag;
+  const deltaScaleYMag = nextScaleYMag - baseScaleYMag;
   const nextLinked = next.scale?.linked ?? true;
 
   const deltaRot = (next.rotationDeg ?? 0) - (baseTransform.rotationDeg ?? 0);
@@ -281,6 +293,12 @@ function handleBatchTransform(next: ClipTransform) {
 
     const curr = clip.transform || {};
 
+    const currScaleXMag = Math.abs(curr.scale?.x ?? 1);
+    const currScaleYMag = Math.abs(curr.scale?.y ?? 1);
+
+    const newScaleX = nextScaleXSign * Math.abs(currScaleXMag + deltaScaleXMag);
+    const newScaleY = nextScaleYSign * Math.abs(currScaleYMag + deltaScaleYMag);
+
     cmds.push({
       type: 'update_clip_properties',
       trackId,
@@ -288,12 +306,10 @@ function handleBatchTransform(next: ClipTransform) {
       properties: {
         transform: {
           ...curr,
-          flip: newFlip,
-          anchorPreset: newAnchorPreset,
           anchor: newAnchor,
           scale: {
-            x: (curr.scale?.x ?? 1) + deltaScaleX,
-            y: (curr.scale?.y ?? 1) + deltaScaleY,
+            x: newScaleX,
+            y: newScaleY,
             linked: nextLinked,
           },
           rotationDeg: (curr.rotationDeg ?? 0) + deltaRot,
@@ -596,6 +612,7 @@ const otherActions = computed(() => {
         firstVideoClip.clipType === 'media' || firstVideoClip.clipType === 'timeline'
       "
       :is-reversed="typeof firstVideoClip.speed === 'number' && firstVideoClip.speed < 0"
+      :media-meta="mediaMeta"
       @update-transform="handleBatchTransform"
       @toggle-reversed="handleBatchToggleReversed"
       @update-speed="handleBatchUpdateSpeed"

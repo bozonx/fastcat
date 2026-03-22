@@ -1,6 +1,7 @@
 import { computed, type Ref } from 'vue';
 
 import type { TimelineDocument } from '~/timeline/types';
+import { getLinkedClipGroupItemIds } from '~/timeline/commands/utils';
 
 export interface TimelineSelectionDeps {
   timelineDoc: Ref<TimelineDocument | null>;
@@ -76,14 +77,21 @@ export function createTimelineSelection(deps: TimelineSelectionDeps): TimelineSe
 
   function toggleSelection(itemId: string, options?: { multi?: boolean }) {
     deps.selectedTransition.value = null;
+    const doc = deps.timelineDoc.value;
+    const groupIds = doc ? getLinkedClipGroupItemIds(doc, itemId) : [itemId];
+
     if (options?.multi) {
       if (deps.selectedItemIds.value.includes(itemId)) {
-        deps.selectedItemIds.value = deps.selectedItemIds.value.filter((id) => id !== itemId);
+        deps.selectedItemIds.value = deps.selectedItemIds.value.filter(
+          (id) => !groupIds.includes(id)
+        );
       } else {
-        deps.selectedItemIds.value.push(itemId);
+        const nextIds = new Set(deps.selectedItemIds.value);
+        for (const id of groupIds) nextIds.add(id);
+        deps.selectedItemIds.value = Array.from(nextIds);
       }
     } else {
-      deps.selectedItemIds.value = [itemId];
+      deps.selectedItemIds.value = groupIds;
     }
   }
 
@@ -95,13 +103,42 @@ export function createTimelineSelection(deps: TimelineSelectionDeps): TimelineSe
       return;
     }
 
+    const doc = deps.timelineDoc.value;
+    const nextIds = new Set<string>();
+
     if (typeof items[0] === 'string') {
-      deps.selectedItemIds.value = [...(items as string[])];
+      for (const id of items as string[]) {
+        if (doc) {
+          for (const gid of getLinkedClipGroupItemIds(doc, id)) nextIds.add(gid);
+        } else {
+          nextIds.add(id);
+        }
+      }
+      deps.selectedItemIds.value = Array.from(nextIds);
       // We don't update global selection store here because we don't have trackIds
     } else {
       const objects = items as { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[];
-      deps.selectedItemIds.value = objects.map((it) => it.itemId);
-      deps.selectionStore?.selectTimelineItems?.(objects);
+      for (const obj of objects) {
+        if (doc) {
+          for (const gid of getLinkedClipGroupItemIds(doc, obj.itemId)) nextIds.add(gid);
+        } else {
+          nextIds.add(obj.itemId);
+        }
+      }
+      deps.selectedItemIds.value = Array.from(nextIds);
+
+      const expandedObjects: {trackId: string; itemId: string; kind?: 'clip' | 'gap'}[] = [];
+      for (const id of nextIds) {
+        const trackId = itemToTrackMap.value.get(id);
+        if (trackId) {
+          expandedObjects.push({ trackId, itemId: id, kind: 'clip' });
+        }
+      }
+      if (expandedObjects.length > 0) {
+        deps.selectionStore?.selectTimelineItems?.(expandedObjects);
+      } else {
+        deps.selectionStore?.selectTimelineItems?.(objects);
+      }
     }
   }
 

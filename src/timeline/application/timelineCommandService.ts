@@ -379,16 +379,10 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     const metadata = await resolveMetadataByPath(path);
     if (!metadata.audio) throw new Error('Source has no audio');
 
-    const audioTracks = doc.tracks.filter((t) => t.kind === 'audio');
-    if (audioTracks.length === 0) throw new Error('No audio tracks');
-
-    const targetAudioTrackId = audioTracks[0]!.id;
-
     deps.applyTimeline({
       type: 'extract_audio_to_track',
       videoTrackId: videoTrack.id,
       videoItemId: videoItem.id,
-      audioTrackId: targetAudioTrackId,
     });
   }
 
