@@ -147,6 +147,27 @@ export function buildMultiSelectionContextMenu(
     });
   }
 
+  mainGroup.push({
+    label: state.hasGroupedClip ? options.t('fastcat.timeline.ungroup') : options.t('fastcat.timeline.group'),
+    icon: state.hasGroupedClip ? 'i-heroicons-rectangle-group' : 'i-heroicons-square-2-stack',
+    onSelect: async () => {
+      const isGrouping = !state.hasGroupedClip;
+      const nextGroupId = isGrouping
+        ? `linked-group-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
+        : undefined;
+
+      const cmds = state.itemsToUpdate.map(({ trackId, itemId }) => ({
+        type: 'update_clip_properties' as const,
+        trackId,
+        itemId,
+        properties: { linkedGroupId: nextGroupId },
+      }));
+
+      options.batchApplyTimeline(cmds);
+      await options.requestTimelineSave({ immediate: true });
+    },
+  });
+
   if (state.hasVideo) {
     mainGroup.push({
       label: state.allShowWaveform

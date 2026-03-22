@@ -4,7 +4,7 @@ import type {
   ReturnAudioToVideoCommand,
   TimelineCommandResult,
 } from '../commands';
-import { getTrackById, nextItemId, findClipById } from './utils';
+import { getTrackById, nextItemId, findClipById, rangesOverlap, nextTrackId, normalizeGaps } from './utils';
 
 export function extractAudioToTrack(
   doc: TimelineDocument,
@@ -12,8 +12,11 @@ export function extractAudioToTrack(
 ): TimelineCommandResult {
   const videoTrack = getTrackById(doc, cmd.videoTrackId);
   if (videoTrack.kind !== 'video') throw new Error('Invalid video track');
-  const audioTrack = getTrackById(doc, cmd.audioTrackId);
-  if (audioTrack.kind !== 'audio') throw new Error('Invalid audio track');
+
+  if (cmd.audioTrackId) {
+    const audioTrack = getTrackById(doc, cmd.audioTrackId);
+    if (audioTrack.kind !== 'audio') throw new Error('Invalid audio track');
+  }
 
   const item = videoTrack.items.find((x) => x.id === cmd.videoItemId);
   if (!item || item.kind !== 'clip') throw new Error('Video clip not found');
@@ -38,10 +41,66 @@ export function extractAudioToTrack(
 
   const audioEffectsFromVideo = (item.effects ?? []).filter((e) => e?.target === 'audio');
 
+  const startUs = item.timelineRange.startUs;
+  const durationUs = item.timelineRange.durationUs;
+  const endUs = startUs + durationUs;
+
+  let targetAudioTrackId: string | undefined = cmd.audioTrackId;
+
+  if (!targetAudioTrackId) {
+    for (const t of doc.tracks) {
+      if (t.kind === 'audio') {
+        let hasOverlap = false;
+        for (const it of t.items) {
+          if (it.kind !== 'clip') continue;
+          const itStart = it.timelineRange.startUs;
+          const itEnd = itStart + it.timelineRange.durationUs;
+          if (rangesOverlap(startUs, endUs, itStart, itEnd)) {
+            hasOverlap = true;
+            break;
+          }
+        }
+        if (!hasOverlap) {
+          targetAudioTrackId = t.id;
+          break;
+        }
+      }
+    }
+  }
+
+  let nextTracks = [...doc.tracks];
+
+  if (!targetAudioTrackId) {
+    targetAudioTrackId = nextTrackId(doc, 'a');
+    let numAudioTracks = 0;
+    let lastAudioTrackIndex = -1;
+    for (let i = 0; i < nextTracks.length; i++) {
+        const tr = nextTracks[i];
+        if (tr?.kind === 'audio') {
+            numAudioTracks++;
+            lastAudioTrackIndex = i;
+        }
+    }
+    const newTrack: TimelineTrack = {
+      id: targetAudioTrackId,
+      kind: 'audio',
+      name: `Audio ${numAudioTracks + 1}`,
+      items: [],
+    };
+    if (lastAudioTrackIndex !== -1) {
+        nextTracks.splice(lastAudioTrackIndex + 1, 0, newTrack);
+    } else {
+        nextTracks.push(newTrack);
+    }
+  }
+
+  const targetAudioTrackIndex = nextTracks.findIndex(t => t.id === targetAudioTrackId);
+  if (targetAudioTrackIndex === -1) throw new Error('Audio track not found');
+
   const audioClip: TimelineClipItem = {
     kind: 'clip',
-    id: nextItemId(audioTrack.id, 'clip'),
-    trackId: audioTrack.id,
+    id: nextItemId(targetAudioTrackId, 'clip'),
+    trackId: targetAudioTrackId,
     clipType: item.clipType,
     name: item.name,
     source: { ...item.source },
@@ -54,7 +113,7 @@ export function extractAudioToTrack(
     effects: audioEffectsFromVideo.length > 0 ? [...audioEffectsFromVideo] : undefined,
   };
 
-  const nextTracks = doc.tracks.map((t) => {
+  nextTracks = nextTracks.map((t) => {
     if (t.id === videoTrack.id) {
       return {
         ...t,
@@ -70,8 +129,10 @@ export function extractAudioToTrack(
         }),
       };
     }
-    if (t.id === audioTrack.id) {
-      return { ...t, items: [...t.items, audioClip] };
+    if (t.id === targetAudioTrackId) {
+      const nextItems = [...t.items, audioClip];
+      nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+      return { ...t, items: normalizeGaps(doc, t.id, nextItems, { quantizeToFrames: false }) };
     }
     return t;
   });

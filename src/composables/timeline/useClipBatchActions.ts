@@ -531,5 +531,6 @@ export function useClipBatchActions(
     handleRelativeEndShift,
     handleQuantizeSelected,
     handleBatchUpdateProperties,
+    firstVideoClip,
   };
 }
