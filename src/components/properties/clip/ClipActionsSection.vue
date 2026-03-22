@@ -32,36 +32,110 @@ const emit = defineEmits<{
   toggleAudioWaveformMode: [];
   goToLinkedAudio: [];
   goToLinkedVideo: [];
+  toggleDisabled: [];
+  toggleLocked: [];
+  toggleMuted: [];
+  freezeFrame: [];
+  resetFreezeFrame: [];
+  extractAudio: [];
+  returnAudio: [];
 }>();
 
 const { t } = useI18n();
 
-const commonActions = computed(() => [
-  {
-    id: 'rename',
-    title: t('common.rename', 'Rename'),
-    icon: 'i-heroicons-pencil',
-    onClick: () => emit('rename'),
-  },
-  {
-    id: 'copy',
-    title: t('common.copy', 'Copy'),
-    icon: 'i-heroicons-document-duplicate',
-    onClick: () => emit('copy'),
-  },
-  {
-    id: 'cut',
-    title: t('common.cut', 'Cut'),
-    icon: 'i-heroicons-scissors',
-    onClick: () => emit('cut'),
-  },
-  {
-    id: 'delete',
-    title: t('common.delete', 'Delete'),
-    icon: 'i-heroicons-trash',
-    onClick: () => emit('delete'),
-  },
-]);
+const hasAudio = computed(() => {
+  return (
+    props.trackKind === 'audio' ||
+    props.clip.clipType === 'media' ||
+    props.clip.clipType === 'timeline'
+  );
+});
+
+const isMediaVideoClip = computed(() => {
+  return props.trackKind === 'video' && props.clip.clipType === 'media';
+});
+
+const hasFreezeFrame = computed(() => {
+  return typeof props.clip.freezeFrameSourceUs === 'number';
+});
+
+const canExtractAudio = computed(() => {
+  return (
+    props.trackKind === 'video' &&
+    props.clip.clipType === 'media' &&
+    !(props.clip as any).audioFromVideoDisabled
+  );
+});
+
+const hasReturnFromVideoClip = computed(() => {
+  return props.trackKind === 'video' && Boolean(props.clip.audioFromVideoDisabled);
+});
+
+const hasReturnFromLockedAudioClip = computed(() => {
+  return (
+    props.trackKind === 'audio' &&
+    Boolean(props.clip.linkedVideoClipId) &&
+    Boolean(props.clip.lockToLinkedVideo)
+  );
+});
+
+const commonActions = computed(() => {
+  const actions = [
+    {
+      id: 'rename',
+      title: t('common.rename', 'Rename'),
+      icon: 'i-heroicons-pencil',
+      onClick: () => emit('rename'),
+    },
+    {
+      id: 'copy',
+      title: t('common.copy', 'Copy'),
+      icon: 'i-heroicons-document-duplicate',
+      onClick: () => emit('copy'),
+    },
+    {
+      id: 'cut',
+      title: t('common.cut', 'Cut'),
+      icon: 'i-heroicons-scissors',
+      onClick: () => emit('cut'),
+    },
+    {
+      id: 'delete',
+      title: t('common.delete', 'Delete'),
+      icon: 'i-heroicons-trash',
+      onClick: () => emit('delete'),
+    },
+    {
+      id: 'toggle-disabled',
+      title: props.clip.disabled
+        ? t('fastcat.timeline.enableClip', 'Enable clip')
+        : t('fastcat.timeline.disableClip', 'Disable clip'),
+      icon: props.clip.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
+      onClick: () => emit('toggleDisabled'),
+    },
+    {
+      id: 'toggle-locked',
+      title: props.clip.locked
+        ? t('fastcat.timeline.unlockClip', 'Unlock clip')
+        : t('fastcat.timeline.lockClip', 'Lock clip'),
+      icon: props.clip.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
+      onClick: () => emit('toggleLocked'),
+    },
+  ];
+
+  if (hasAudio.value) {
+    actions.push({
+      id: 'toggle-muted',
+      title: props.clip.audioMuted
+        ? t('fastcat.timeline.unmuteClip', 'Unmute clip')
+        : t('fastcat.timeline.muteClip', 'Mute clip'),
+      icon: props.clip.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark',
+      onClick: () => emit('toggleMuted'),
+    });
+  }
+
+  return actions;
+});
 
 const otherActions = computed(() => {
   const list: any[] = [];
@@ -131,6 +205,18 @@ const otherActions = computed(() => {
     });
   }
 
+  if (hasAudio.value) {
+    list.push({
+      id: 'toggleAudioWaveformMode',
+      label:
+        (props.clip.audioWaveformMode || 'half') === 'full'
+          ? t('fastcat.clip.halfWaveform', 'Half Waveform')
+          : t('fastcat.clip.fullWaveform', 'Full Waveform'),
+      icon: 'i-heroicons-chart-bar',
+      onClick: () => emit('toggleAudioWaveformMode'),
+    });
+  }
+
   if (props.canShowWaveformToggle && (props.trackKind === 'video' || props.trackKind === 'audio')) {
     list.push({
       id: 'toggleShowWaveform',
@@ -155,18 +241,39 @@ const otherActions = computed(() => {
     });
   }
 
-  if (
-    props.canShowWaveformToggle &&
-    (props.trackKind === 'audio' || props.clip.showWaveform !== false)
-  ) {
+  if (isMediaVideoClip.value && !hasFreezeFrame.value) {
     list.push({
-      id: 'toggleAudioWaveformMode',
-      label:
-        (props.clip.audioWaveformMode || 'half') === 'full'
-          ? t('fastcat.clip.halfWaveform', 'Half Waveform')
-          : t('fastcat.clip.fullWaveform', 'Full Waveform'),
-      icon: 'i-heroicons-chart-bar',
-      onClick: () => emit('toggleAudioWaveformMode'),
+      id: 'freezeFrame',
+      label: t('fastcat.timeline.freezeFrame', 'Freeze Frame'),
+      icon: 'i-heroicons-pause-circle',
+      onClick: () => emit('freezeFrame'),
+    });
+  }
+
+  if (isMediaVideoClip.value && hasFreezeFrame.value) {
+    list.push({
+      id: 'resetFreezeFrame',
+      label: t('fastcat.timeline.resetFreezeFrame', 'Reset Freeze Frame'),
+      icon: 'i-heroicons-play-circle',
+      onClick: () => emit('resetFreezeFrame'),
+    });
+  }
+
+  if (canExtractAudio.value) {
+    list.push({
+      id: 'extractAudio',
+      label: t('fastcat.timeline.extractAudio', 'Extract Audio'),
+      icon: 'i-heroicons-musical-note',
+      onClick: () => emit('extractAudio'),
+    });
+  }
+
+  if (hasReturnFromVideoClip.value || hasReturnFromLockedAudioClip.value) {
+    list.push({
+      id: 'returnAudio',
+      label: t('fastcat.timeline.returnAudio', 'Return Audio'),
+      icon: 'i-heroicons-arrow-uturn-left',
+      onClick: () => emit('returnAudio'),
     });
   }
 
@@ -186,11 +293,7 @@ const otherActions = computed(() => {
         class="mb-2"
       />
 
-      <PropertyActionList
-        :actions="otherActions"
-        justify="start"
-        size="xs"
-      />
+      <PropertyActionList :actions="otherActions" justify="start" size="xs" />
     </div>
   </PropertySection>
 </template>

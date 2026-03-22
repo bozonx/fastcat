@@ -617,6 +617,7 @@
       "lockClip": "Lock clip in place",
       "marker": "Marker",
       "multipleSelection": "Multiple selection",
+      "selectedClipsCount": "Selected {count} clips",
       "muteClip": "Mute",
       "muteClips": "Mute clips",
       "noMedia": "No media",

@@ -30,7 +30,7 @@ const emit = defineEmits<{ (e: 'update:modelValue', value: unknown): void }>();
 
 const ui = computed(() => ({
   content: 'min-w-48',
-  select: 'px-1 pe-4',
+  base: 'px-1! pe-3.5!',
   trailing: 'ps-0 pe-0.5',
   trailingIcon: 'w-3 h-3',
 }));
