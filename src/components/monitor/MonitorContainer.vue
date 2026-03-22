@@ -2,6 +2,7 @@
 import UiTooltip from '~/components/ui/UiTooltip.vue';
 import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
+import UiCompactSelect from '~/components/ui/UiCompactSelect.vue';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useFullscreen } from '@vueuse/core';
 import { useFocusStore } from '~/stores/focus.store';
@@ -410,13 +411,12 @@ onUnmounted(() => {
           </UiTooltip>
 
           <div class="w-auto min-w-14">
-            <UiSelect
+            <UiCompactSelect
               v-if="projectStore.activeMonitor"
               :model-value="selectedPreviewResolution as any"
               :items="previewResolutions"
               value-key="value"
               label-key="label"
-              compact
               full-width
               :searchable="false"
               @update:model-value="
@@ -441,7 +441,7 @@ onUnmounted(() => {
                   {{ item.label }}
                 </span>
               </template>
-            </UiSelect>
+            </UiCompactSelect>
           </div>
 
           <UiActionButton
