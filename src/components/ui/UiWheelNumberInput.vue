@@ -19,7 +19,7 @@ const props = withDefaults(defineProps<UiWheelNumberInputProps>(), {
   max: undefined,
   step: 1,
   wheelStepMultiplier: 1,
-  size: 'xs',
+  size: 'sm',
   disabled: false,
 });
 

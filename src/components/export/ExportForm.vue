@@ -167,10 +167,10 @@ async function onConfirm() {
                 :class="exportOnlySelectionRange ? 'text-yellow-400' : 'text-ui-text-dimmed'"
               />
               <div class="flex flex-col min-w-0">
-                <span class="text-sm font-medium text-ui-text">
+                <span class="font-medium text-ui-text">
                   {{ t('videoEditor.export.onlySelectionRange', 'Export only selected zone') }}
                 </span>
-                <span class="text-xs text-ui-text-muted">
+                <span class="text-sm text-ui-text-muted">
                   {{
                     t(
                       'videoEditor.export.onlySelectionRangeHelp',
@@ -195,7 +195,7 @@ async function onConfirm() {
               :placeholder="t('videoEditor.export.filenamePlaceholder', 'e.g. video.mp4')"
             />
           </UFormField>
-          <div class="text-xs text-ui-text-muted flex items-center gap-1.5 mt-1">
+          <div class="text-sm text-ui-text-muted flex items-center gap-1.5 mt-1">
             <UIcon name="i-heroicons-information-circle" class="w-4 h-4 shrink-0" />
             <span class="leading-relaxed">
               {{
@@ -220,7 +220,7 @@ async function onConfirm() {
               <h3 v-show="isResolutionExpanded" class="text-lg font-semibold text-ui-text">
                 {{ t('videoEditor.projectSettings.resolutionAndFps', 'Resolution & FPS') }}
               </h3>
-              <span v-show="!isResolutionExpanded" class="text-sm text-ui-text-muted font-normal">
+              <span v-show="!isResolutionExpanded" class="text-ui-text-muted font-normal">
                 {{ resolutionSummary }}
               </span>
             </div>
@@ -260,7 +260,7 @@ async function onConfirm() {
               <h3 v-show="isEncodingExpanded" class="text-lg font-semibold text-ui-text">
                 {{ t('videoEditor.export.encodingSettings', 'Encoding Settings') }}
               </h3>
-              <span v-show="!isEncodingExpanded" class="text-sm text-ui-text-muted font-normal">
+              <span v-show="!isEncodingExpanded" class="text-ui-text-muted font-normal">
                 {{ encodingSummary }}
               </span>
             </div>
@@ -340,7 +340,7 @@ async function onConfirm() {
           "
         >
           <UCheckbox v-model="saveAsDefaults" :disabled="isExporting || !isSettingsDirty" />
-          <span class="text-sm text-ui-text">{{
+          <span class="text-ui-text">{{
             t('videoEditor.export.saveAsDefault', 'Save as project settings')
           }}</span>
         </label>
@@ -359,12 +359,12 @@ async function onConfirm() {
     <div class="mt-auto pt-6 border-t border-ui-border p-6 bg-ui-bg-elevated shrink-0">
       <div class="flex flex-col gap-3 w-full">
         <div v-if="isExporting" class="flex flex-col gap-2">
-          <div class="flex justify-between text-xs text-ui-text-muted">
+          <div class="flex justify-between text-sm text-ui-text-muted">
             <span class="font-medium">{{ getPhaseLabel() }}</span>
             <span class="font-mono">{{ Math.round(exportProgress * 100) }}%</span>
           </div>
           <UProgress :value="exportProgress * 100" />
-          <p class="text-xs text-ui-text-muted text-center mt-1">
+          <p class="text-sm text-ui-text-muted text-center mt-1">
             {{
               t(
                 'videoEditor.export.doNotClose',

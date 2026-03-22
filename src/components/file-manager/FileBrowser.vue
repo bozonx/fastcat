@@ -25,6 +25,7 @@ import { useFileBrowserPendingActions } from '~/composables/fileManager/useFileB
 import { useFileBrowserCreateActions } from '~/composables/fileManager/useFileBrowserCreateActions';
 import { useFileBrowserInteraction } from '~/composables/fileManager/useFileBrowserInteraction';
 import { useAppClipboard } from '~/composables/useAppClipboard';
+import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
 import {
@@ -376,6 +377,41 @@ function handleContainerClick() {
   selectionStore.clearSelection();
 }
 
+// --- Keyboard shortcuts (copy/cut/paste) ---
+function onBrowserKeyDown(e: KeyboardEvent) {
+  const isMod = e.ctrlKey || e.metaKey;
+  if (!isMod) return;
+
+  const key = e.key.toLowerCase();
+  if (key !== 'c' && key !== 'x' && key !== 'v') return;
+
+  if (isEditableTarget(e.target)) return;
+
+  if (key === 'c' || key === 'x') {
+    const selected = selectionStore.selectedEntity;
+    if (selected?.source !== 'fileManager') return;
+    e.preventDefault();
+    e.stopPropagation();
+    const entries = selected.kind === 'multiple' ? selected.entries : [selected.entry];
+    void onFileActionBase(key === 'c' ? 'copy' : 'cut', entries);
+    return;
+  }
+
+  if (key === 'v') {
+    e.preventDefault();
+    e.stopPropagation();
+    const selected = selectionStore.selectedEntity;
+    const targetEntry =
+      (selected?.source === 'fileManager' && selected.kind === 'directory'
+        ? selected.entry
+        : null) ??
+      filesPageStore.selectedFolder ??
+      ({ kind: 'directory', path: '', name: 'root' } as FsEntry);
+    void onFileActionBase('paste', targetEntry);
+    return;
+  }
+}
+
 // --- Keyboard navigation ---
 const { onKeyDown: onContainerKeyDown } = useFocusableListNavigation({
   containerRef: rootContainer,
@@ -520,6 +556,7 @@ async function onDirectoryUploadChange(e: Event) {
       'panel-focus-frame--active': focusStore.isPanelFocused('filesBrowser'),
     }"
     @pointerdown.capture="focusBrowserPanel"
+    @keydown="onBrowserKeyDown"
     @dragover.prevent="onPanelDragOver"
     @dragleave="onPanelDragLeave"
     @drop.prevent="onPanelDrop"
