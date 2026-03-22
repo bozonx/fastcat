@@ -231,6 +231,28 @@ export class ClipResourceManager {
       clip.bitmap = null;
     }
 
+    if (clip.hudMediaStates) {
+      const bgs = clip.hudMediaStates.background;
+      if (bgs) {
+        this.context.videoFrameCache.clearForClip(clip.itemId + '_bg');
+        safeDispose(bgs.sink);
+        safeDispose(bgs.input);
+        if (bgs.lastVideoFrame) safeDispose(bgs.lastVideoFrame);
+        if (bgs.bitmap) safeDispose(bgs.bitmap);
+        if (bgs.sprite) bgs.sprite.destroy(true);
+      }
+      const cts = clip.hudMediaStates.content;
+      if (cts) {
+        this.context.videoFrameCache.clearForClip(clip.itemId + '_ct');
+        safeDispose(cts.sink);
+        safeDispose(cts.input);
+        if (cts.lastVideoFrame) safeDispose(cts.lastVideoFrame);
+        if (cts.bitmap) safeDispose(cts.bitmap);
+        if (cts.sprite) cts.sprite.destroy(true);
+      }
+      clip.hudMediaStates = {};
+    }
+
     if (clip.sprite && clip.sprite.parent) {
       clip.sprite.parent.removeChild(clip.sprite);
     }

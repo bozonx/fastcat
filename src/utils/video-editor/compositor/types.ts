@@ -86,6 +86,7 @@ export interface CompositorClip {
   cropMask?: import('pixi.js').Graphics;
   textDirty?: boolean;
   shapeDirty?: boolean;
+  hudDirty?: boolean;
   hudMediaStates?: {
     background?: HudMediaState;
     content?: HudMediaState;

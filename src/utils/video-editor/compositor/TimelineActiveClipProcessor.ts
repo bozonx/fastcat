@@ -51,7 +51,52 @@ export class TimelineActiveClipProcessor {
       }
 
       if (clip.clipKind === 'hud') {
-        params.drawHudClip(clip);
+        let dirty = !!clip.hudDirty;
+        let hudHasVideo = false;
+
+        const handleState = (state: import('./types').HudMediaState | undefined, suffix: string) => {
+          if (!state || state.clipKind !== 'video' || !state.sink) return;
+          dirty = true;
+          hudHasVideo = true;
+          const localTimeUs = timeUs - clip.startUs;
+          if (localTimeUs < 0 || localTimeUs >= clip.durationUs) return;
+          
+          const speedRaw = typeof clip.speed === 'number' && clip.speed !== 0 ? clip.speed : 1;
+          const speed = Math.abs(speedRaw);
+          const reversed = speedRaw < 0;
+          
+          let sampleUs = reversed
+            ? Math.max(0, state.sourceDurationUs - Math.round(localTimeUs * speed))
+            : Math.round(localTimeUs * speed);
+            
+          let sampleTimeS = sampleUs / 1_000_000;
+          if (!Number.isFinite(sampleTimeS) || Number.isNaN(sampleTimeS)) sampleTimeS = 0;
+          
+          const mockClip = { itemId: clip.itemId + suffix, sink: state.sink, firstTimestampS: state.firstTimestampS } as CompositorClip;
+          
+          sampleRequests.push(params.createPrimaryVideoSampleRequest(mockClip, sampleTimeS).then(res => {
+            if (res.sample) {
+              if (typeof res.sample.toVideoFrame === 'function') {
+                if (state.lastVideoFrame) {
+                  try { state.lastVideoFrame.close(); } catch {}
+                }
+                state.lastVideoFrame = res.sample.toVideoFrame();
+              }
+              try { res.sample.close?.(); } catch {}
+            }
+            params.drawHudClip(clip);
+            return { clip, sample: null };
+          }));
+        };
+
+        handleState(clip.hudMediaStates?.background, '_bg');
+        handleState(clip.hudMediaStates?.content, '_ct');
+
+        if (dirty && !hudHasVideo) {
+           params.drawHudClip(clip);
+        }
+        clip.hudDirty = false;
+
         if (clip.sprite) clip.sprite.visible = true;
         continue;
       }

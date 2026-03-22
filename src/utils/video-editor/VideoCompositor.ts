@@ -105,6 +105,7 @@ export class VideoCompositor {
   private timelineFixedClipBuilder = new TimelineFixedClipBuilder({
     clipFactory: this.clipFactory,
     hudMediaLoader: this.hudMediaLoader,
+    mediaClipLoader: this.mediaClipLoader,
   });
   private timelineMediaClipBuilder = new TimelineMediaClipBuilder({
     clipFactory: this.clipFactory,
@@ -433,6 +434,7 @@ export class VideoCompositor {
     this.timelineFixedClipBuilder = new TimelineFixedClipBuilder({
       clipFactory: this.clipFactory,
       hudMediaLoader: this.hudMediaLoader,
+      mediaClipLoader: this.mediaClipLoader,
     });
     this.timelineMediaClipBuilder = new TimelineMediaClipBuilder({
       clipFactory: this.clipFactory,
@@ -517,6 +519,22 @@ export class VideoCompositor {
       if (clip.lastVideoFrame) {
         safeDispose(clip.lastVideoFrame);
         clip.lastVideoFrame = null;
+      }
+      if (clip.hudMediaStates) {
+        const resetState = (s: any) => {
+          if (!s) return;
+          if (s.lastVideoFrame) {
+            safeDispose(s.lastVideoFrame);
+            s.lastVideoFrame = null;
+          }
+          if (s.bitmap) {
+            try { s.bitmap.close(); } catch {}
+            s.bitmap = null;
+          }
+        };
+        resetState(clip.hudMediaStates.background);
+        resetState(clip.hudMediaStates.content);
+        clip.hudDirty = true;
       }
       clip.canvas = null;
       if (clip.bitmap) {

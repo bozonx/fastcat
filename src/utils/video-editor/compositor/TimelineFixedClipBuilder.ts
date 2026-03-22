@@ -2,7 +2,9 @@ import { parseHexColor, sanitizeTimelineColor } from '../utils';
 import type { VideoClipEffect } from '~/timeline/types';
 import type { ClipFactory } from './ClipFactory';
 import type { HudMediaLoader, HudMediaLoaderDeps } from './HudMediaLoader';
-import { resolveBlendMode, type CompositorClip } from './types';
+import type { MediaClipLoader, MediaClipLoaderMediabunny } from './MediaClipLoader';
+import { resolveBlendMode, type CompositorClip, type HudMediaState } from './types';
+import { Sprite, Texture } from 'pixi.js';
 
 export interface TimelineFixedClipDescriptor {
   clipType: 'background' | 'adjustment' | 'text' | 'shape' | 'hud';
@@ -24,6 +26,7 @@ export interface BuildFixedClipParams {
 export interface TimelineFixedClipBuilderContext {
   clipFactory: ClipFactory;
   hudMediaLoader: HudMediaLoader;
+  mediaClipLoader: MediaClipLoader;
 }
 
 export class TimelineFixedClipBuilder {
@@ -90,15 +93,64 @@ export class TimelineFixedClipBuilder {
   public async initializeHudMediaStates(params: {
     clip: CompositorClip;
     deps: HudMediaLoaderDeps;
+    mediabunny: MediaClipLoaderMediabunny;
   }) {
-    const { clip, deps } = params;
+    const { clip, deps, mediabunny } = params;
+
+    const loadState = async (path: string): Promise<HudMediaState | null> => {
+      const fileHandle = await deps.getFileHandleByPath(path);
+      if (!fileHandle) return null;
+      const file = (await deps.getFileByPath?.(path)) ?? (await fileHandle.getFile());
+      
+      const isImage = (typeof file?.type === 'string' && file.type.startsWith('image/')) ||
+                      path.match(/\\.(jpe?g|png|webp|gif|svg)$/i);
+      
+      if (isImage) {
+        return await this.context.hudMediaLoader.loadImageState({
+          sourcePath: path,
+          deps,
+        });
+      }
+
+      try {
+        const loadedVideo = await this.context.mediaClipLoader.loadVideoRuntime({
+          mediabunny,
+          file,
+          sourceStartUs: 0,
+          requestedTimelineDurationUs: clip.durationUs,
+          requestedSourceDurationUs: 0,
+          requestedSourceRangeDurationUs: 0,
+          startUs: clip.startUs,
+        });
+        
+        if (loadedVideo) {
+          return {
+            sourcePath: path,
+            fileHandle: fileHandle,
+            input: loadedVideo.input,
+            sink: loadedVideo.sink,
+            firstTimestampS: loadedVideo.firstTimestampS,
+            sourceDurationUs: loadedVideo.sourceDurationUs,
+            clipKind: 'video',
+            sourceKind: 'videoFrame',
+            imageSource: loadedVideo.imageSource,
+            sprite: new Sprite(Texture.EMPTY),
+            lastVideoFrame: null,
+            bitmap: null,
+          };
+        }
+      } catch (err: any) {
+        if (err?.message !== 'Input has an unsupported or unrecognizable format.') {
+          console.error('[VideoCompositor] Failed to load HUD video state', err);
+        }
+      }
+      return null;
+    };
+
     const bgPath = clip.background?.source?.path;
     if (bgPath) {
       try {
-        const state = await this.context.hudMediaLoader.loadImageState({
-          sourcePath: bgPath,
-          deps,
-        });
+        const state = await loadState(bgPath);
         if (state && clip.hudMediaStates) {
           clip.hudMediaStates.background = state;
         }
@@ -110,10 +162,7 @@ export class TimelineFixedClipBuilder {
     const contentPath = clip.content?.source?.path;
     if (contentPath) {
       try {
-        const state = await this.context.hudMediaLoader.loadImageState({
-          sourcePath: contentPath,
-          deps,
-        });
+        const state = await loadState(contentPath);
         if (state && clip.hudMediaStates) {
           clip.hudMediaStates.content = state;
         }
