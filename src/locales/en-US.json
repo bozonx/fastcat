@@ -261,6 +261,9 @@
       "dropHint": "Drop effects here",
       "effectsCount": "{count} fx",
       "empty": "No effects",
+      "loadPresetPlaceholder": "Load preset...",
+      "noPresets": "No presets saved",
+      "presetsTitle": "Presets",
       "groups": {
         "artistic": "Artistic",
         "custom": "Custom",
@@ -473,6 +476,16 @@
     },
     "fileManager": {
       "unsupported": "File System Access API is not supported in this browser"
+    },
+    "hudClip": {
+      "background": "Background",
+      "content": "Content",
+      "emptyLayer": "Empty layer",
+      "hud": "HUD",
+      "type": "Type",
+      "types": {
+        "mediaFrame": "Media Frame"
+      }
     },
     "marker": {
       "actions": "Actions",

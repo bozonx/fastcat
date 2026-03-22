@@ -261,6 +261,9 @@
       "dropHint": "Перетащите эффекты сюда",
       "effectsCount": "{count} эфф.",
       "empty": "Эффектов нет",
+      "loadPresetPlaceholder": "Загрузить пресет...",
+      "noPresets": "Пресеты не найдены",
+      "presetsTitle": "Пресеты",
       "groups": {
         "artistic": "Художественные",
         "custom": "Свои",
@@ -473,6 +476,16 @@
     },
     "fileManager": {
       "unsupported": "API доступа к файловой системе не поддерживается в этом браузере"
+    },
+    "hudClip": {
+      "background": "Фон",
+      "content": "Содержимое",
+      "emptyLayer": "Пустой слой",
+      "hud": "HUD",
+      "type": "Тип",
+      "types": {
+        "mediaFrame": "Медиарамка"
+      }
     },
     "marker": {
       "actions": "Действия",

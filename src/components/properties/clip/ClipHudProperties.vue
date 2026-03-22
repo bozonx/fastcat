@@ -22,16 +22,16 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <PropertySection :title="t('fastcat.hudClip.hud', 'HUD')">
+  <PropertySection :title="t('fastcat.hudClip.hud')">
     <div class="flex flex-col gap-1 pb-4 border-b border-ui-border mb-4">
       <span class="text-2xs text-ui-text-muted uppercase tracking-wider font-semibold">
-        {{ t('fastcat.effects.presetsTitle', 'Presets') }}
+        {{ t('fastcat.effects.presetsTitle') }}
       </span>
       <div class="flex gap-2">
         <UiSelect
           v-if="props.presets.length > 0"
           :items="props.presets"
-          :placeholder="t('fastcat.effects.loadPresetPlaceholder', 'Load preset...')"
+          :placeholder="t('fastcat.effects.loadPresetPlaceholder')"
           class="flex-1"
           size="xs"
           full-width
@@ -40,14 +40,14 @@ const { t } = useI18n();
           "
         />
         <div v-else class="flex-1 text-xs text-ui-text-muted italic flex items-center">
-          {{ t('fastcat.effects.noPresets', 'No presets saved') }}
+          {{ t('fastcat.effects.noPresets') }}
         </div>
         <UButton
           size="xs"
           variant="ghost"
           color="primary"
           icon="i-heroicons-bookmark"
-          :title="t('fastcat.effects.saveAsPreset', 'Save as preset')"
+          :title="t('fastcat.effects.saveAsPreset')"
           @click="emit('openSavePresetModal')"
         />
       </div>
