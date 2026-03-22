@@ -15,13 +15,10 @@ onMounted(() => {
 
 const workspaceStore = useWorkspaceStore();
 
-// Apply base font size dynamically
+// Apply interface scale dynamically
 watchEffect(() => {
-  if (typeof document !== 'undefined' && workspaceStore.userSettings?.ui?.baseFontSize) {
-    document.documentElement.style.setProperty(
-      '--base-font-size',
-      `${workspaceStore.userSettings.ui.baseFontSize}px`,
-    );
+  if (typeof document !== 'undefined' && workspaceStore.userSettings?.ui?.interfaceScale) {
+    document.documentElement.style.fontSize = `${workspaceStore.userSettings.ui.interfaceScale}px`;
   }
 });
 

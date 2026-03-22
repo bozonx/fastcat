@@ -1448,7 +1448,9 @@
       "workspaceFolderNotSelected": "Папка workspace не выбрана",
       "workspaceSavedNote": "Сохранено в .fastcat/workspace.settings.json",
       "workspaceSection": "Настройки приложения",
-      "workspaceStorage": "Хранилище"
+      "workspaceStorage": "Хранилище",
+      "uiInterfaceScale": "Масштаб интерфейса (px)",
+      "uiLanguage": "Язык интерфейса"
     }
   },
   "mobileFiles": {
