@@ -94,26 +94,27 @@ function handleCreateSelectionRange() {
   timelineStore.createSelectionRangeFromMarker(marker.value.id);
 }
 
-const mainActions = computed(() => [
-  {
-    id: 'convert',
-    label: isZone.value
-      ? t('fastcat.timeline.convertZoneToMarker', 'Convert to normal marker')
-      : t('fastcat.timeline.convertMarkerToZone', 'Convert to zone marker'),
-    icon: 'i-heroicons-arrows-right-left',
-    onClick: handleConvertMarker,
-  },
+const commonActions = computed(() => [
   {
     id: 'delete',
-    label: t('common.delete', 'Delete'),
+    title: t('common.delete', 'Delete'),
     icon: 'i-heroicons-trash',
-    color: 'danger' as const,
     onClick: handleDeleteMarker,
   },
 ]);
 
-const extraActions = computed(() => {
-  const list: any[] = [];
+const mainActions = computed<any[]>(() => {
+  const list: any[] = [
+    {
+      id: 'convert',
+      label: isZone.value
+        ? t('fastcat.timeline.convertZoneToMarker', 'Convert to normal marker')
+        : t('fastcat.timeline.convertMarkerToZone', 'Convert to zone marker'),
+      icon: 'i-heroicons-arrows-right-left',
+      onClick: handleConvertMarker,
+    },
+  ];
+
   if (isZone.value) {
     list.push(
       {
@@ -138,17 +139,17 @@ const extraActions = computed(() => {
 <template>
   <div v-if="marker" class="w-full flex flex-col gap-2 text-ui-text">
     <PropertySection :title="t('fastcat.marker.actions', 'Actions')">
-      <div class="flex flex-col w-full gap-2">
-        <PropertyActionList :actions="mainActions" :vertical="false" justify="center" size="xs">
-          <template #action-convert>
-            <span class="flex-1 text-center">{{ mainActions[0]?.label }}</span>
-          </template>
-          <template #action-delete>
-            <span class="flex-1 text-center">{{ mainActions[1]?.label }}</span>
-          </template>
-        </PropertyActionList>
+      <div class="flex flex-col w-full">
+        <PropertyActionList
+          :actions="commonActions"
+          :vertical="false"
+          justify="start"
+          variant="ghost"
+          size="xs"
+          class="mb-2"
+        />
 
-        <PropertyActionList :actions="extraActions" justify="center" size="xs" />
+        <PropertyActionList :actions="mainActions" justify="start" size="xs" />
       </div>
     </PropertySection>
 
