@@ -247,7 +247,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
       @dragleave.prevent="emit('rootDragLeave', $event)"
       @drop.prevent="emit('rootDrop', $event)"
     >
-      <p v-if="isRootDropOver" class="text-xs font-medium text-primary-400">
+      <p v-if="isRootDropOver" class="font-medium text-primary-400">
         {{
           props.currentDragOperation === 'copy'
             ? t(

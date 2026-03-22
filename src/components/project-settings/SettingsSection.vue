@@ -20,7 +20,7 @@ const isExpanded = ref(props.defaultExpanded ?? false);
         <h3 v-show="isExpanded" class="text-lg font-semibold text-ui-text">
           {{ title }}
         </h3>
-        <span v-show="!isExpanded" class="text-sm text-ui-text-muted font-normal">
+        <span v-show="!isExpanded" class="text-ui-text-muted font-normal">
           {{ summary || title }}
         </span>
       </div>

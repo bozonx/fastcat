@@ -55,7 +55,7 @@ function clearCache() {
     />
 
     <div class="flex items-center justify-between gap-3 px-1">
-      <div class="text-sm font-semibold text-ui-text">
+      <div class="font-semibold text-ui-text">
         {{ t('videoEditor.settings.userGeneral', 'General') }}
       </div>
       <UButton size="xs" color="neutral" variant="ghost" @click="isResetConfirmOpen = true">
@@ -94,7 +94,7 @@ function clearCache() {
     <UFormField>
       <label class="flex items-center gap-2 cursor-pointer">
         <UCheckbox v-model="workspaceStore.userSettings.openLastProjectOnStart" />
-        <span class="text-sm text-ui-text">
+        <span class="text-ui-text">
           {{ t('videoEditor.settings.openLastProjectOnStart', 'Open last project on start') }}
         </span>
       </label>
@@ -103,7 +103,7 @@ function clearCache() {
     <UFormField>
       <label class="flex items-center gap-2 cursor-pointer">
         <UCheckbox v-model="workspaceStore.userSettings.deleteWithoutConfirmation" />
-        <span class="text-sm text-ui-text">
+        <span class="text-ui-text">
           {{
             t('videoEditor.settings.deleteWithoutConfirmation', 'Delete items without confirmation')
           }}
@@ -181,7 +181,7 @@ function clearCache() {
 
       <label class="flex items-center gap-3 cursor-pointer">
         <UCheckbox v-model="workspaceStore.userSettings.deleteWithoutConfirmation" />
-        <span class="text-sm text-ui-text">
+        <span class="text-ui-text">
           {{ t('videoEditor.settings.deleteWithoutConfirmation', 'Delete without confirmation') }}
         </span>
       </label>
@@ -230,7 +230,7 @@ function clearCache() {
 
       <div class="flex items-center justify-between gap-3 pt-2">
         <div class="flex flex-col gap-0.5">
-          <div class="text-sm font-medium text-ui-text">
+          <div class="font-medium text-ui-text">
             {{ t('videoEditor.settings.clearUiCache', 'Clear UI cache') }}
           </div>
           <div class="text-xs text-ui-text-muted">

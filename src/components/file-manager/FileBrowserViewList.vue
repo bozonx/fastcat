@@ -107,7 +107,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
 
 <template>
   <div class="flex flex-col w-full min-w-max">
-    <table class="w-full text-left text-xs border-collapse">
+    <table class="w-full text-left border-collapse">
       <thead>
         <tr class="text-ui-text-muted border-b border-ui-border">
           <th
@@ -390,7 +390,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
           @drop.prevent="emit('rootDrop', $event)"
         >
           <td colspan="5" class="py-3 px-3 text-center">
-            <span v-if="isRootDropOver" class="text-xs font-medium text-primary-400">
+            <span v-if="isRootDropOver" class="font-medium text-primary-400">
               {{
                 props.currentDragOperation === 'copy'
                   ? t(

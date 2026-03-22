@@ -17,7 +17,7 @@ const props = withDefaults(defineProps<UiSelectProps>(), {
   modelValue: undefined,
   placeholder: undefined,
   disabled: false,
-  size: 'xs',
+  size: 'sm',
   valueKey: 'value',
   labelKey: 'label',
   multiple: false,
