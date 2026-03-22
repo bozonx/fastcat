@@ -217,7 +217,7 @@ async function onConfirm() {
             @click="isResolutionExpanded = !isResolutionExpanded"
           >
             <div class="flex items-center gap-2">
-              <h3 v-show="isResolutionExpanded" class="text-lg font-semibold text-ui-text">
+              <h3 v-show="isResolutionExpanded" class="font-semibold text-ui-text">
                 {{ t('videoEditor.projectSettings.resolutionAndFps', 'Resolution & FPS') }}
               </h3>
               <span v-show="!isResolutionExpanded" class="text-ui-text-muted font-normal">
@@ -257,7 +257,7 @@ async function onConfirm() {
             @click="isEncodingExpanded = !isEncodingExpanded"
           >
             <div class="flex items-center gap-2">
-              <h3 v-show="isEncodingExpanded" class="text-lg font-semibold text-ui-text">
+              <h3 v-show="isEncodingExpanded" class="font-semibold text-ui-text">
                 {{ t('videoEditor.export.encodingSettings', 'Encoding Settings') }}
               </h3>
               <span v-show="!isEncodingExpanded" class="text-ui-text-muted font-normal">
@@ -304,7 +304,7 @@ async function onConfirm() {
 
         <!-- Metadata Section -->
         <div class="space-y-4">
-          <div class="text-lg font-semibold text-ui-text">
+          <div class="font-semibold text-ui-text text-sm">
             {{ t('videoEditor.export.metadata', 'Metadata') }}
           </div>
 
@@ -340,7 +340,7 @@ async function onConfirm() {
           "
         >
           <UCheckbox v-model="saveAsDefaults" :disabled="isExporting || !isSettingsDirty" />
-          <span class="text-ui-text">{{
+          <span class="text-ui-text text-sm">{{
             t('videoEditor.export.saveAsDefault', 'Save as project settings')
           }}</span>
         </label>

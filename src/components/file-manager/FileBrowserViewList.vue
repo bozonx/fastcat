@@ -107,7 +107,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
 
 <template>
   <div class="flex flex-col w-full min-w-max">
-    <table class="w-full text-left border-collapse">
+    <table class="w-full text-left text-sm border-collapse">
       <thead>
         <tr class="text-ui-text-muted border-b border-ui-border">
           <th
