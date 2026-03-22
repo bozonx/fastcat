@@ -82,3 +82,34 @@ export function buildPrevClipByIdIndex(
 
   return prevClipById;
 }
+
+export function buildNextClipByIdIndex(
+  clips: CompositorClip[],
+): Map<string, CompositorClip | null> {
+  const nextClipById = new Map<string, CompositorClip | null>();
+  const byLayer = new Map<number, CompositorClip[]>();
+
+  for (const clip of clips) {
+    const layerClips = byLayer.get(clip.layer);
+    if (layerClips) {
+      layerClips.push(clip);
+    } else {
+      byLayer.set(clip.layer, [clip]);
+    }
+  }
+
+  for (const layerClips of byLayer.values()) {
+    const sorted = [...layerClips].sort(
+      (a, b) => a.startUs - b.startUs || a.endUs - b.endUs || a.itemId.localeCompare(b.itemId),
+    );
+
+    for (let index = 0; index < sorted.length; index += 1) {
+      const clip = sorted[index];
+      if (!clip) continue;
+      const next = index < sorted.length - 1 ? (sorted[index + 1] ?? null) : null;
+      nextClipById.set(clip.itemId, next);
+    }
+  }
+
+  return nextClipById;
+}
