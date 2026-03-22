@@ -253,6 +253,13 @@ export class TimelineClipLoader {
       reusable.shapeDirty = true;
     }
 
+    if (reusable.clipKind === 'hud') {
+      reusable.hudType = clipData.hudType ?? reusable.hudType ?? 'media_frame';
+      reusable.background = clipData.background ? JSON.parse(JSON.stringify(clipData.background)) : undefined;
+      reusable.content = clipData.content ? JSON.parse(JSON.stringify(clipData.content)) : undefined;
+      reusable.hudDirty = true;
+    }
+
     reusable.sprite.visible = false;
 
     return {

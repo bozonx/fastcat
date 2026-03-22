@@ -52,12 +52,11 @@ export class TimelineActiveClipProcessor {
 
       if (clip.clipKind === 'hud') {
         let dirty = !!clip.hudDirty;
-        let hudHasVideo = false;
+        const statePromises: Promise<void>[] = [];
 
         const handleState = (state: import('./types').HudMediaState | undefined, suffix: string) => {
           if (!state || state.clipKind !== 'video' || !state.sink) return;
-          dirty = true;
-          hudHasVideo = true;
+          
           const localTimeUs = timeUs - clip.startUs;
           if (localTimeUs < 0 || localTimeUs >= clip.durationUs) return;
           
@@ -74,7 +73,7 @@ export class TimelineActiveClipProcessor {
           
           const mockClip = { itemId: clip.itemId + suffix, sink: state.sink, firstTimestampS: state.firstTimestampS } as CompositorClip;
           
-          sampleRequests.push(params.createPrimaryVideoSampleRequest(mockClip, sampleTimeS).then(res => {
+          statePromises.push(params.createPrimaryVideoSampleRequest(mockClip, sampleTimeS).then(res => {
             if (res.sample) {
               if (typeof res.sample.toVideoFrame === 'function') {
                 if (state.lastVideoFrame) {
@@ -84,19 +83,23 @@ export class TimelineActiveClipProcessor {
               }
               try { res.sample.close?.(); } catch {}
             }
-            params.drawHudClip(clip);
-            return { clip, sample: null };
           }));
         };
 
         handleState(clip.hudMediaStates?.background, '_bg');
         handleState(clip.hudMediaStates?.content, '_ct');
 
-        if (dirty && !hudHasVideo) {
+        if (statePromises.length > 0) {
+          sampleRequests.push(Promise.all(statePromises).then(() => {
+            params.drawHudClip(clip);
+            // Return a special object that tells applySampleResults not to hide the clip
+            return { clip, sample: { isHud: true, close: () => {} } as any };
+          }));
+        } else if (dirty) {
            params.drawHudClip(clip);
         }
+        
         clip.hudDirty = false;
-
         if (clip.sprite) clip.sprite.visible = true;
         continue;
       }
