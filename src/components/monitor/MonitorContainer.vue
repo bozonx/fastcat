@@ -416,8 +416,6 @@ onUnmounted(() => {
             :items="previewResolutions"
             value-key="value"
             label-key="label"
-            full-width
-            class="min-w-14"
             :searchable="false"
             @update:model-value="
               (v: unknown) => {
