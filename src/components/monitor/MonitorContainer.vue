@@ -416,6 +416,7 @@ onUnmounted(() => {
               :items="previewResolutions"
               value-key="value"
               label-key="label"
+              compact
               full-width
               :searchable="false"
               @update:model-value="
@@ -427,16 +428,13 @@ onUnmounted(() => {
               "
             >
               <template #default="{ modelValue }">
-                <span class="truncate text-2xs leading-none font-medium">
+                <span>
                   {{ (modelValue as any)?.shortLabel || (modelValue as any)?.label }}
                 </span>
               </template>
               <template #item-label="{ item }">
                 <span
                   :class="[
-                    item.value === projectStore.activeMonitor?.previewResolution
-                      ? 'text-ui-text font-medium'
-                      : '',
                     'truncate',
                   ]"
                 >
