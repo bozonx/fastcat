@@ -106,7 +106,7 @@ function deleteMarker(markerId: string) {
   timelineStore.removeMarker(markerId);
 }
 
-function selectMarker(markerId: string, e?: MouseEvent) {
+function selectMarker(markerId: string, e?: MouseEvent, part: 'left' | 'right' = 'left', movePlayhead = true) {
   if (e && isLayer1Active(e, workspaceStore.userSettings)) {
     executeRulerClickAction(workspaceStore.userSettings.mouse.ruler.shiftClick, e);
     return;
@@ -114,9 +114,15 @@ function selectMarker(markerId: string, e?: MouseEvent) {
   e?.stopPropagation();
   selectionStore.selectTimelineMarker(markerId);
 
+  if (!movePlayhead) return;
+
   const marker = timelineStore.getMarkers().find((m) => m.id === markerId);
   if (marker) {
-    timelineStore.setCurrentTimeUs(marker.timeUs);
+    if (part === 'right' && marker.durationUs !== undefined) {
+      timelineStore.setCurrentTimeUs(marker.timeUs + marker.durationUs);
+    } else {
+      timelineStore.setCurrentTimeUs(marker.timeUs);
+    }
   }
 }
 

@@ -2,7 +2,9 @@
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
+import PropertyTimecode from '~/components/properties/PropertyTimecode.vue';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
