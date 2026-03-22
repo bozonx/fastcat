@@ -603,9 +603,9 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
             @pointerdown.capture="onTrackAreaPointerDownCapture"
             @auxclick="onTrackAreaAuxClick"
           >
-            <div ref="rulerContainerRef" class="relative shrink-0 z-10 timeline-ruler-container">
+            <div ref="rulerContainerRef" class="relative shrink-0 z-10 timeline-ruler-container h-8">
               <TimelineRuler
-                class="h-7 border-b border-ui-border bg-ui-bg-elevated cursor-pointer w-full"
+                class="h-full border-b border-ui-border bg-ui-bg-elevated cursor-pointer w-full"
                 :scroll-el="scrollEl"
                 @pointerdown="onTimeRulerPointerDown"
                 @start-playhead-drag="startPlayheadDrag"
@@ -616,7 +616,7 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
             <!-- Grid lines overlaid on tracks area, below ruler, behind tracks -->
             <TimelineGrid
               class="absolute left-0 right-0 pointer-events-none z-0"
-              :style="{ top: '28px', bottom: `${scrollbarHeight}px` }"
+              :style="{ top: '2rem', bottom: `${scrollbarHeight}px` }"
               :scroll-el="scrollEl"
             />
 
