@@ -187,7 +187,7 @@ describe('timeline/otioSerializer: transitions', () => {
                 type: 'clock',
                 durationUs: 300_000,
                 mode: 'background' as const,
-                curve: 'bezier',
+                curve: 'smooth',
                 params: { direction: 'counterclockwise' },
               },
               transitionOut: {
@@ -211,7 +211,7 @@ describe('timeline/otioSerializer: transitions', () => {
       type: 'clock',
       durationUs: 300_000,
       mode: 'background',
-      curve: 'bezier',
+      curve: 'smooth',
       params: { direction: 'counterclockwise' },
     });
     expect(clip.transitionOut).toMatchObject({

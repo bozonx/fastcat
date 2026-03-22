@@ -46,12 +46,15 @@ function formatTimecode(us: number, fpsValue: number): string {
 
 // Parse HH:MM:SS:FF or MM:SS:FF or SS:FF or just SS to microseconds
 function parseTimecode(tc: string, fpsValue: number): number {
-  const isNegative = tc.trim().startsWith('-');
-  // Remove any non-numeric characters except colons
-  const clean = tc.replace(/[^\d:]/g, '');
-  const parts = clean.split(':').map((p) => (p === '' ? 0 : Number(p)));
+  const trimmed = tc.trim();
+  if (!trimmed) return NaN;
 
-  if (parts.some(isNaN)) return NaN;
+  const isNegative = trimmed.startsWith('-');
+  const clean = trimmed.replace(/^-/, '');
+
+  if (!/^[0-9:]+$/.test(clean)) return NaN;
+
+  const parts = clean.split(':').map((p) => (p === '' ? 0 : Number(p)));
 
   let hh = 0;
   let mm = 0;

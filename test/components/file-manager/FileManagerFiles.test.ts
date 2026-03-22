@@ -1,48 +1,112 @@
 import { describe, expect, it, vi } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { mountSuspended } from '@nuxt/test-utils/runtime';
 import FileManagerFiles from '~/components/file-manager/FileManagerFiles.vue';
 import { setupTestPinia } from '../../utils/pinia';
 import { useUiStore } from '~/stores/ui.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { ref, reactive } from 'vue';
 
-function createWrapper(params: {
+vi.mock('~/composables/useAppClipboard', () => ({
+  useAppClipboard: () => ({
+    currentDragOperation: ref(null),
+    hasFileManagerPayload: false,
+  }),
+}));
+
+vi.mock('~/stores/project.store', () => ({
+  useProjectStore: () => ({
+    currentProjectName: 'MyProject',
+  }),
+}));
+
+vi.mock('~/stores/focus.store', () => ({
+  useFocusStore: () => ({
+    setTempFocus: vi.fn(),
+  }),
+}));
+
+vi.mock('~/stores/timeline-media-usage.store', () => ({
+  useTimelineMediaUsageStore: () => ({
+    mediaPathToTimelines: {},
+  }),
+}));
+
+vi.mock('~/stores/proxy.store', () => ({
+  useProxyStore: () => ({
+    generatingProxies: new Set(),
+    proxyProgress: new Map(),
+  }),
+}));
+
+vi.mock('~/composables/editor/useProjectActions', () => ({
+  useProjectActions: () => ({
+    loadTimeline: vi.fn(),
+  }),
+}));
+
+const mockSelectionStore = reactive({
+  selectedEntity: null as any,
+  selectFsEntry: vi.fn((entry) => {
+    mockSelectionStore.selectedEntity = {
+      source: 'fileManager',
+      kind: entry.kind === 'directory' ? 'directory' : 'file',
+      entry,
+      path: entry.path,
+    };
+  }),
+  selectFsEntries: vi.fn((entries) => {
+    mockSelectionStore.selectedEntity = {
+      source: 'fileManager',
+      kind: 'multiple',
+      entries,
+    };
+  }),
+});
+vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelectionStore }));
+
+const mockUiStore = reactive({
+  selectedFsEntry: null as any,
+  fileTreeSelectAllTrigger: 0,
+  scrollToFileTreeEntryTrigger: 0,
+  scrollToFileTreeEntryPath: null,
+  notifyFileManagerUpdate: vi.fn(),
+});
+vi.mock('~/stores/ui.store', () => ({
+  useUiStore: () => {
+    // In some contexts, we might need to update the mock state
+    return mockUiStore;
+  },
+}));
+
+async function createWrapper(params: {
   projectName: string;
   rootEntries?: any[];
   getProjectRootDirHandle?: () => Promise<FileSystemDirectoryHandle | null>;
 }) {
-  const pinia = setupTestPinia({
-    initialState: {
-      project: {
-        currentProjectName: params.projectName,
-      },
-      ui: {
-        selectedFsEntry: null,
-      },
-      selection: {
-        selectedEntity: null,
-      },
-    },
-  });
+  mockUiStore.selectedFsEntry = null;
+  mockUiStore.fileTreeSelectAllTrigger = 0;
+  mockSelectionStore.selectedEntity = null;
 
   const getProjectRootDirHandle =
     params.getProjectRootDirHandle ??
     vi.fn(async () => ({}) as unknown as FileSystemDirectoryHandle);
 
-  return mount(FileManagerFiles, {
+  return await mountSuspended(FileManagerFiles, {
     props: {
       isDragging: false,
       isLoading: false,
       isApiSupported: true,
       rootEntries: params.rootEntries ?? [],
       getFileIcon: () => 'i-heroicons-document',
-      findEntryByPath: () => null,
+      findEntryByPath: (path: string) =>
+        (params.rootEntries ?? []).find((e) => e.path === path) || null,
       mediaCache: { hasProxy: () => false },
       moveEntry: async () => {},
+      copyEntry: async () => {},
       getProjectRootDirHandle,
       handleFiles: async () => {},
     },
     global: {
-      plugins: [pinia],
       stubs: {
         UContextMenu: { template: '<div><slot /></div>' },
         UIcon: true,
@@ -55,7 +119,7 @@ function createWrapper(params: {
 describe('FileManagerFiles', () => {
   it('selects project root on background click', async () => {
     const getProjectRootDirHandle = vi.fn(async () => ({}) as unknown as FileSystemDirectoryHandle);
-    const wrapper = createWrapper({
+    const wrapper = await createWrapper({
       projectName: 'MyProject',
       rootEntries: [{ name: 'a' }] as any,
       getProjectRootDirHandle,
@@ -78,7 +142,7 @@ describe('FileManagerFiles', () => {
   });
 
   it('triggers tree select all on ctrl+a', async () => {
-    const wrapper = createWrapper({
+    const wrapper = await createWrapper({
       projectName: 'MyProject',
       rootEntries: [{ name: 'a' }] as any,
     });

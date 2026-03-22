@@ -32,6 +32,16 @@ const props = withDefaults(
 
 const modelValue = defineModel<number>({ required: true });
 
+const safeValue = computed(() => {
+  return Number.isFinite(modelValue.value) ? modelValue.value : (props.defaultValue ?? 0);
+});
+
+const displayValueInLabel = computed(() => {
+  if (props.formattedValue) return props.formattedValue;
+  const val = safeValue.value;
+  return val.toFixed(props.decimals) + props.unit;
+});
+
 function onInputUpdate(value: unknown) {
   const num = Number(value);
   if (!Number.isFinite(num)) return;
@@ -43,11 +53,14 @@ function onInputUpdate(value: unknown) {
   <div class="flex flex-col gap-1 w-full">
     <!-- Label with Unit in parentheses -->
     <div v-if="label" class="flex items-center justify-between gap-2 overflow-hidden">
-      <span class="text-2xs text-ui-text-muted font-bold uppercase truncate block tracking-wider" :title="label">
-        {{ label }}{{ unit ? ` (${unit})` : '' }}
+      <span
+        class="text-2xs text-ui-text-muted font-bold uppercase truncate block tracking-wider"
+        :title="label"
+      >
+        {{ label }}
       </span>
-      <span v-if="formattedValue" class="text-2xs text-ui-text-muted font-mono leading-none">
-        {{ formattedValue }}
+      <span class="text-2xs text-ui-text-muted font-mono leading-none">
+        {{ displayValueInLabel }}
       </span>
     </div>
 
@@ -65,7 +78,7 @@ function onInputUpdate(value: unknown) {
         />
       </div>
 
-      <div class="flex items-center gap-1.5 shrink-0">
+      <div v-if="!label" class="flex items-center gap-1.5 shrink-0">
         <UiWheelNumberInput
           :model-value="modelValue"
           size="2xs"

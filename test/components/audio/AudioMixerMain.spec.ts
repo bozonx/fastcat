@@ -4,9 +4,19 @@ import { reactive } from 'vue';
 import AudioMixerMain from '~/components/audio/AudioMixerMain.vue';
 
 // Mock subcomponents
-vi.mock('~/components/audio/DbSlider.vue', () => ({ default: { name: 'DbSlider', template: '<div><input type="range" class="mock-db-slider" /></div>', props: ['modelValue', 'levelDb'] } }));
-vi.mock('~/components/effects/SelectEffectModal.vue', () => ({ default: { name: 'SelectEffectModal', template: '<div></div>' } }));
-vi.mock('~/components/audio/MasterAudioEffectsModal.vue', () => ({ default: { name: 'MasterAudioEffectsModal', template: '<div></div>' } }));
+vi.mock('~/components/audio/DbSlider.vue', () => ({
+  default: {
+    name: 'DbSlider',
+    template: '<div><input type="range" class="mock-db-slider" /></div>',
+    props: ['modelValue', 'levelDb'],
+  },
+}));
+vi.mock('~/components/effects/SelectEffectModal.vue', () => ({
+  default: { name: 'SelectEffectModal', template: '<div></div>' },
+}));
+vi.mock('~/components/audio/MasterAudioEffectsModal.vue', () => ({
+  default: { name: 'MasterAudioEffectsModal', template: '<div></div>' },
+}));
 
 const mockTimelineStore = reactive({
   audioLevels: {},
@@ -37,7 +47,7 @@ describe('AudioMixerMain', () => {
     const component = await mountSuspended(AudioMixerMain);
 
     const buttons = component.findAll('button');
-    const muteBtn = buttons.find(b => b.text().includes('mute'));
+    const muteBtn = buttons.find((b) => b.text().toLowerCase().includes('mute'));
 
     await muteBtn?.trigger('click');
     expect(mockTimelineStore.audioMuted).toBe(true);

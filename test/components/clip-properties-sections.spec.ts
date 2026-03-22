@@ -36,9 +36,9 @@ describe('clip properties sections', () => {
 
     const buttons = wrapper.findAll('button');
 
-    await buttons[0]?.trigger('click');
-    await buttons[1]?.trigger('click');
-    await buttons[2]?.trigger('click');
+    await buttons[0]?.trigger('click'); // rename
+    await buttons[3]?.trigger('click'); // delete
+    await buttons[7]?.trigger('click'); // quantize
 
     expect(wrapper.emitted('rename')).toHaveLength(1);
     expect(wrapper.emitted('delete')).toHaveLength(1);

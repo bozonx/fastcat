@@ -398,7 +398,8 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
       .filter((idx) => idx !== -1)
       .sort((a, b) => a - b);
 
-    const minSourceTrackIndex = sourceTrackIndices.length > 0 ? (sourceTrackIndices[0] as number) : 0;
+    const minSourceTrackIndex =
+      sourceTrackIndices.length > 0 ? (sourceTrackIndices[0] as number) : 0;
 
     const createdItems: { trackId: string; itemId: string }[] = [];
 
@@ -428,6 +429,7 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
           path: clip.source.path,
           startUs: nextStartUs,
           durationUs: clip.timelineRange.durationUs,
+          sourceDurationUs: clip.sourceDurationUs,
           sourceRange: clip.sourceRange,
           isImage: clip.isImage,
         });
