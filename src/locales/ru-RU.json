@@ -617,6 +617,7 @@
       "lockClip": "Заблокировать клип",
       "marker": "Маркер",
       "multipleSelection": "Множественное выделение",
+      "selectedClipsCount": "Выделено {count} клипов",
       "muteClip": "Выключить звук",
       "muteClips": "Выключить звук клипов",
       "noMedia": "Нет медиа",

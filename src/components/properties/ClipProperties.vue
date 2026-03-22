@@ -65,10 +65,10 @@ const clipTrack = computed<TimelineTrack | undefined>(() =>
 const clipTrackKind = computed<TrackKind>(() => clipTrack.value?.kind ?? 'video');
 
 const blendModeOptions = computed<Array<{ value: TimelineBlendMode; label: string }>>(() =>
-  rawBlendModeOptions.map(opt => ({
+  rawBlendModeOptions.map((opt) => ({
     value: opt.value as TimelineBlendMode,
-    label: t(opt.labelKey)
-  }))
+    label: t(opt.labelKey),
+  })),
 );
 
 const isVideoTrack = computed(() => clipTrackKind.value === 'video');
@@ -204,6 +204,57 @@ function handleUpdateBackgroundColor(val: string) {
   timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
     backgroundColor: safe,
   });
+}
+
+function handleToggleDisabled() {
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
+    disabled: !props.clip.disabled,
+  });
+}
+
+function handleToggleLocked() {
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
+    locked: !props.clip.locked,
+  });
+}
+
+function handleToggleMuted() {
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
+    audioMuted: !props.clip.audioMuted,
+  });
+}
+
+function handleFreezeFrame() {
+  const playheadUs = timelineStore.currentTime;
+  const clipStartUs = props.clip.timelineRange.startUs;
+  const relativeUs = playheadUs - clipStartUs;
+  const clampedUs = Math.max(0, Math.min(relativeUs, props.clip.timelineRange.durationUs));
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
+    freezeFrameSourceUs: Math.round(clampedUs),
+  });
+}
+
+function handleResetFreezeFrame() {
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
+    freezeFrameSourceUs: undefined,
+  });
+}
+
+async function handleExtractAudio() {
+  await timelineStore.extractAudioToTrack({
+    videoTrackId: props.clip.trackId,
+    videoItemId: props.clip.id,
+  });
+  await timelineStore.requestTimelineSave({ immediate: true });
+}
+
+function handleReturnAudio() {
+  if (props.clip.linkedVideoClipId) {
+    timelineStore.returnAudioToVideo({ videoItemId: props.clip.linkedVideoClipId });
+  } else {
+    timelineStore.returnAudioToVideo({ videoItemId: props.clip.id });
+  }
+  timelineStore.requestTimelineSave({ immediate: true });
 }
 
 const { handleUpdateText, handleUpdateTextStyle } = useClipTextProperties({
@@ -344,6 +395,13 @@ defineExpose({
       @toggle-audio-waveform-mode="toggleAudioWaveformMode"
       @go-to-linked-audio="goToLinkedAudio"
       @go-to-linked-video="goToLinkedVideo"
+      @toggle-disabled="handleToggleDisabled"
+      @toggle-locked="handleToggleLocked"
+      @toggle-muted="handleToggleMuted"
+      @freeze-frame="handleFreezeFrame"
+      @reset-freeze-frame="handleResetFreezeFrame"
+      @extract-audio="handleExtractAudio"
+      @return-audio="handleReturnAudio"
     />
 
     <ClipInfoSection

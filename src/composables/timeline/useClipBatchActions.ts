@@ -90,6 +90,7 @@ export function useClipBatchActions(
 
   const allDisabled = computed(() => selectedClips.value.every((c) => c.disabled));
   const allMuted = computed(() => selectedClips.value.every((c) => c.audioMuted));
+  const allLocked = computed(() => selectedClips.value.every((c) => c.locked));
 
   const firstWaveformClip = computed(() => {
     const doc = ctx.timelineDoc.value;
@@ -132,6 +133,86 @@ export function useClipBatchActions(
 
   const hasAudioOrVideoWithAudio = computed(() => Boolean(firstWaveformClip.value));
   const hasVideo = computed(() => Boolean(firstVideoClip.value));
+  const hasVideoOrImage = computed(() => {
+    const doc = ctx.timelineDoc.value;
+    if (!doc) return false;
+    for (const { trackId, itemId } of items.value) {
+      const track = doc.tracks.find((t) => t.id === trackId);
+      if (!track || track.kind !== 'video') continue;
+      const clip = track.items.find((it) => it.id === itemId);
+      if (!clip || clip.kind !== 'clip') continue;
+      return true;
+    }
+    return false;
+  });
+
+  function handleRelativeStartShift(deltaUs: number) {
+    const doc = ctx.timelineDoc.value;
+    if (!doc) return;
+
+    const safeDeltaUs = Math.round(Number(deltaUs));
+    if (!Number.isFinite(safeDeltaUs)) return;
+
+    const cmds: any[] = [];
+
+    for (const { trackId, itemId } of items.value) {
+      const track = doc.tracks.find((t) => t.id === trackId);
+      if (!track || track.locked) continue;
+      const clip = track.items.find((it) => it.id === itemId);
+      if (!clip || clip.kind !== 'clip') continue;
+      if ((clip as any).locked) continue;
+
+      cmds.push({
+        type: 'move_item',
+        trackId,
+        itemId,
+        startUs: clip.timelineRange.startUs + safeDeltaUs,
+      });
+    }
+
+    if (cmds.length === 0) return;
+    ctx.batchApplyTimeline(cmds);
+  }
+
+  function handleRelativeEndShift(deltaUs: number) {
+    const doc = ctx.timelineDoc.value;
+    if (!doc) return;
+
+    const safeDeltaUs = Math.round(Number(deltaUs));
+    if (!Number.isFinite(safeDeltaUs)) return;
+
+    const cmds: any[] = [];
+
+    for (const { trackId, itemId } of items.value) {
+      const track = doc.tracks.find((t) => t.id === trackId);
+      if (!track || track.locked) continue;
+      const clip = track.items.find((it) => it.id === itemId);
+      if (!clip || clip.kind !== 'clip') continue;
+      if ((clip as any).locked) continue;
+
+      cmds.push({
+        type: 'trim_item',
+        trackId,
+        itemId,
+        edge: 'end',
+        deltaUs: safeDeltaUs,
+      });
+    }
+
+    if (cmds.length === 0) return;
+    ctx.batchApplyTimeline(cmds);
+  }
+
+  function toggleLocked() {
+    const nextVal = !allLocked.value;
+    const cmds = items.value.map(({ trackId, itemId }) => ({
+      type: 'update_clip_properties' as const,
+      trackId,
+      itemId,
+      properties: { locked: nextVal },
+    }));
+    ctx.batchApplyTimeline(cmds);
+  }
 
   function handleUnlinkSelected() {
     const doc = ctx.timelineDoc.value;
@@ -378,21 +459,26 @@ export function useClipBatchActions(
     hasFreeClip,
     allDisabled,
     allMuted,
+    allLocked,
     isWaveformShown,
     isWaveformFull,
     isThumbnailsShown,
     hasAudioOrVideoWithAudio,
     hasVideo,
+    hasVideoOrImage,
     handleUnlinkSelected,
     handleGroupSelected,
     handleUngroupSelected,
     handleDelete,
     toggleDisabled,
     toggleMuted,
+    toggleLocked,
     toggleShowWaveform,
     toggleWaveformMode,
     toggleShowThumbnails,
     handleSetUniformDuration,
+    handleRelativeStartShift,
+    handleRelativeEndShift,
     handleQuantizeSelected,
     handleBatchUpdateProperties,
   };
