@@ -364,7 +364,7 @@ onUnmounted(() => {
             <UIcon name="i-heroicons-musical-note" class="w-8 h-8 opacity-70" />
           </div>
           <div
-            class="mt-4 text-[10px] sm:text-xs uppercase tracking-wider opacity-70 text-center font-medium"
+            class="mt-4 text-2xs sm:text-xs uppercase tracking-wider opacity-70 text-center font-medium"
           >
             {{ t('fastcat.preview.audioTrack', 'Audio Track') }}
           </div>
@@ -423,7 +423,7 @@ onUnmounted(() => {
           </span>
           <span
             v-if="playbackSpeedLabel"
-            class="text-[10px] px-2 py-0.5 rounded-full border border-ui-border bg-ui-bg text-ui-text-muted font-mono"
+            class="text-2xs px-2 py-0.5 rounded-full border border-ui-border bg-ui-bg text-ui-text-muted font-mono"
           >
             {{ playbackSpeedLabel }}
           </span>

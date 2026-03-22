@@ -82,7 +82,7 @@ const { t } = useI18n();
             class="text-xs text-ui-text break-all"
           >
             {{ tl.timelineName }}
-            <span class="text-[10px] text-ui-text-muted">({{ tl.timelinePath }})</span>
+            <span class="text-2xs text-ui-text-muted">({{ tl.timelinePath }})</span>
           </div>
         </div>
       </div>

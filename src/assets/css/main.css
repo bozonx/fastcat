@@ -4,6 +4,23 @@
 @import "./components/splitpanes.css";
 
 @theme {
+  --text-3xs: calc(var(--base-font-size, 14px) * 0.57);
+  --text-3xs--line-height: 1.5;
+  --text-2xs: calc(var(--base-font-size, 14px) * 0.714);
+  --text-2xs--line-height: 1.5;
+  --text-xs: calc(var(--base-font-size, 14px) * 0.857);
+  --text-xs--line-height: 1.4;
+  --text-sm: var(--base-font-size, 14px);
+  --text-sm--line-height: 1.4;
+  --text-base: calc(var(--base-font-size, 14px) * 1.142);
+  --text-base--line-height: 1.4;
+  --text-lg: calc(var(--base-font-size, 14px) * 1.285);
+  --text-lg--line-height: 1.4;
+  --text-xl: calc(var(--base-font-size, 14px) * 1.428);
+  --text-xl--line-height: 1.4;
+  --text-2xl: calc(var(--base-font-size, 14px) * 1.714);
+  --text-2xl--line-height: 1.3;
+
   /* Semantic UI Colors - Tailwind utilities backed by CSS vars from the theme */
   --color-ui-bg: var(--ui-bg);
   --color-ui-bg-elevated: var(--ui-bg-elevated);

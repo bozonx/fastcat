@@ -179,7 +179,7 @@ const ticks = [12, 6, 0, -6, -12, -24, -36, -48, -60];
         :style="{ bottom: `${dbToPercent(tick)}%` }"
       >
         <span
-          class="text-[9px] font-mono leading-none mr-1"
+          class="text-3xs font-mono leading-none mr-1"
           :class="{
             'text-green-500 font-bold': tick === 0,
             'text-yellow-500': tick > 0 && tick <= 6,

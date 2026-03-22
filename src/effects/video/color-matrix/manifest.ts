@@ -33,7 +33,6 @@ export const colorMatrixManifest: EffectManifest<ColorMatrixParams> = {
       key: 'filterType',
       label: 'Filter',
       labelKey: 'fastcat.effects.video.colorMatrix.params.filterType',
-      labelKey: 'fastcat.effects.video.colorMatrix.params.filterType',
       options: [
         { label: 'None', labelKey: 'fastcat.effects.video.colorMatrix.options.none', value: 'none' },
         { label: 'Sepia', labelKey: 'fastcat.effects.video.colorMatrix.options.sepia', value: 'sepia' },

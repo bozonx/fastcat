@@ -2,6 +2,7 @@
 import BackgroundTaskToasts from '~/components/file-manager/BackgroundTaskToasts.vue';
 import RemoteFileExchangeModal from '~/components/file-manager/RemoteFileExchangeModal.vue';
 import { usePresetsStore } from '~/stores/presets.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 
 const colorMode = useColorMode();
 const presetsStore = usePresetsStore();
@@ -10,6 +11,18 @@ const presetsStore = usePresetsStore();
 onMounted(() => {
   presetsStore.load();
   window.addEventListener('contextmenu', (e) => e.preventDefault());
+});
+
+const workspaceStore = useWorkspaceStore();
+
+// Apply base font size dynamically
+watchEffect(() => {
+  if (typeof document !== 'undefined' && workspaceStore.userSettings?.ui?.baseFontSize) {
+    document.documentElement.style.setProperty(
+      '--base-font-size',
+      `${workspaceStore.userSettings.ui.baseFontSize}px`,
+    );
+  }
 });
 
 /**

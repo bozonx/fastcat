@@ -178,7 +178,7 @@ const smartSortedProjects = computed(() => {
               <span v-else class="font-medium text-slate-200 truncate">{{
                 project.projectName
               }}</span>
-              <span v-if="project.projectId" class="text-[10px] text-slate-500">
+              <span v-if="project.projectId" class="text-2xs text-slate-500">
                 {{ t('fastcat.projects.recent') }}
               </span>
             </div>

@@ -43,10 +43,10 @@ function onInputUpdate(value: unknown) {
   <div class="flex flex-col gap-1 w-full">
     <!-- Label with Unit in parentheses -->
     <div v-if="label" class="flex items-center justify-between gap-2 overflow-hidden">
-      <span class="text-[10px] text-ui-text-muted font-bold uppercase truncate block tracking-wider" :title="label">
+      <span class="text-2xs text-ui-text-muted font-bold uppercase truncate block tracking-wider" :title="label">
         {{ label }}{{ unit ? ` (${unit})` : '' }}
       </span>
-      <span v-if="formattedValue" class="text-[10px] text-ui-text-muted font-mono leading-none">
+      <span v-if="formattedValue" class="text-2xs text-ui-text-muted font-mono leading-none">
         {{ formattedValue }}
       </span>
     </div>

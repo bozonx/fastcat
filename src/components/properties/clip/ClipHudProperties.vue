@@ -24,7 +24,7 @@ const { t } = useI18n();
 <template>
   <PropertySection :title="t('fastcat.hudClip.hud', 'HUD')">
     <div class="flex flex-col gap-1 pb-4 border-b border-ui-border mb-4">
-      <span class="text-[10px] text-ui-text-muted uppercase tracking-wider font-semibold">
+      <span class="text-2xs text-ui-text-muted uppercase tracking-wider font-semibold">
         {{ t('fastcat.effects.presetsTitle', 'Presets') }}
       </span>
       <div class="flex gap-2">

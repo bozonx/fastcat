@@ -11,7 +11,7 @@ defineProps<Props>();
 
 <template>
   <div class="flex flex-col gap-3">
-    <div class="px-1 text-[10px] font-bold uppercase tracking-widest text-ui-text-muted">
+    <div class="px-1 text-2xs font-bold uppercase tracking-widest text-ui-text-muted">
       {{ title }}
     </div>
 
@@ -29,7 +29,7 @@ defineProps<Props>();
     >
       <div
         v-if="infoTitle"
-        class="mb-1.5 flex items-center gap-1.5 px-1 text-[10px] font-bold uppercase tracking-widest text-ui-text-muted"
+        class="mb-1.5 flex items-center gap-1.5 px-1 text-2xs font-bold uppercase tracking-widest text-ui-text-muted"
       >
         <UIcon name="i-heroicons-information-circle" class="h-3 w-3" />
         {{ infoTitle }}
@@ -42,7 +42,7 @@ defineProps<Props>();
         <li
           v-for="item in infoItems"
           :key="item"
-          class="flex items-start gap-2 text-[11px] leading-tight text-ui-text-muted"
+          class="flex items-start gap-2 text-2xs leading-tight text-ui-text-muted"
         >
           <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-ui-border/50" />
           {{ item }}

@@ -14,7 +14,7 @@ const filesPageStore = useFilesPageStore();
 
 <template>
   <div
-    class="px-4 py-2 border-t border-ui-border shrink-0 bg-ui-bg-elevated/50 flex items-center justify-end text-[10px] uppercase font-bold tracking-wider text-ui-text-muted"
+    class="px-4 py-2 border-t border-ui-border shrink-0 bg-ui-bg-elevated/50 flex items-center justify-end text-2xs uppercase font-bold tracking-wider text-ui-text-muted"
   >
     <div v-if="filesPageStore.selectedFolder" class="flex items-center gap-4">
       <span>

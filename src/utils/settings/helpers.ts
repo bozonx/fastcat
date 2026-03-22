@@ -58,6 +58,7 @@ export function createDefaultUserSettings(): FastCatUserSettings {
     locale: DEFAULT_USER_SETTINGS.locale,
     openLastProjectOnStart: DEFAULT_USER_SETTINGS.openLastProjectOnStart,
     deleteWithoutConfirmation: DEFAULT_USER_SETTINGS.deleteWithoutConfirmation,
+    ui: { ...DEFAULT_USER_SETTINGS.ui },
     timeline: { ...DEFAULT_USER_SETTINGS.timeline },
     stopFrames: {
       qualityPercent: DEFAULT_USER_SETTINGS.stopFrames.qualityPercent,

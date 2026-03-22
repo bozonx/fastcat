@@ -83,7 +83,7 @@ function handleSelectEffect(type: string) {
           variant="ghost"
           color="neutral"
           icon="i-heroicons-plus-circle"
-          class="w-full h-8 text-[9px] px-1 py-0 justify-center whitespace-nowrap overflow-hidden border border-primary/20 hover:border-primary/50 hover:bg-primary/5 text-primary-400/80 hover:text-primary-400 transition-all"
+          class="w-full h-8 text-3xs px-1 py-0 justify-center whitespace-nowrap overflow-hidden border border-primary/20 hover:border-primary/50 hover:bg-primary/5 text-primary-400/80 hover:text-primary-400 transition-all"
           @click="openSelectEffect"
         >
           {{ t('fastcat.effects.addEffect') }}
@@ -94,7 +94,7 @@ function handleSelectEffect(type: string) {
         class="w-full h-8 bg-primary/10 hover:bg-primary/20 text-primary-400 border border-primary/40 rounded flex items-center justify-center cursor-pointer transition-all animate-in fade-in zoom-in-95 duration-200"
         @click="openEffectsEditor"
       >
-        <span class="text-[9px] font-bold uppercase truncate px-1 tracking-wider">
+        <span class="text-3xs font-bold uppercase truncate px-1 tracking-wider">
           {{ t('fastcat.effects.effectsCount', { count: masterEffectsCount }) }}
         </span>
       </div>
@@ -131,7 +131,7 @@ function handleSelectEffect(type: string) {
 
     <!-- Label -->
     <div class="w-full px-1 text-center py-1 mt-auto">
-      <div class="text-[10px] font-bold text-ui-text uppercase">
+      <div class="text-2xs font-bold text-ui-text uppercase">
         {{ t('fastcat.audioMixer.master') }}
       </div>
     </div>

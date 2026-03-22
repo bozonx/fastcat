@@ -39,7 +39,7 @@ const transitionOptions = computed(() =>
         <div class="flex items-center justify-between">
           <button
             v-if="props.transitionIn"
-            class="p-0 h-auto font-mono text-[11px] font-medium uppercase text-blue-500 hover:text-blue-400"
+            class="p-0 h-auto font-mono text-2xs font-medium uppercase text-blue-500 hover:text-blue-400"
             @click="emit('selectEdge', 'in')"
           >
             IN {{ props.transitionIn.type }}
@@ -47,7 +47,7 @@ const transitionOptions = computed(() =>
           <button
             v-else
             type="button"
-            class="text-[11px] font-medium text-ui-text-muted uppercase text-left"
+            class="text-2xs font-medium text-ui-text-muted uppercase text-left"
             @click="emit('selectEdge', 'in')"
           >
             IN
@@ -100,7 +100,7 @@ const transitionOptions = computed(() =>
         <div class="flex items-center justify-between">
           <button
             v-if="props.transitionOut"
-            class="p-0 h-auto font-mono text-[11px] font-medium uppercase text-blue-500 hover:text-blue-400"
+            class="p-0 h-auto font-mono text-2xs font-medium uppercase text-blue-500 hover:text-blue-400"
             @click="emit('selectEdge', 'out')"
           >
             OUT {{ props.transitionOut.type }}
@@ -108,7 +108,7 @@ const transitionOptions = computed(() =>
           <button
             v-else
             type="button"
-            class="text-[11px] font-medium text-ui-text-muted uppercase text-left"
+            class="text-2xs font-medium text-ui-text-muted uppercase text-left"
             @click="emit('selectEdge', 'out')"
           >
             OUT

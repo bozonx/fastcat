@@ -317,11 +317,11 @@ onMounted(() => {
                 <span class="truncate text-sm font-medium" :class="getStatusColor(entry)">
                   {{ entry.name }}
                 </span>
-                <span v-if="entry.kind === 'file'" class="text-[10px] tabular-nums text-slate-500">
+                <span v-if="entry.kind === 'file'" class="text-2xs tabular-nums text-slate-500">
                   {{ formatBytes((entry as any).size || 0) }}
                 </span>
               </div>
-              <div class="flex items-center gap-2 text-[10px] text-slate-500">
+              <div class="flex items-center gap-2 text-2xs text-slate-500">
                 <span>{{
                   entry.kind === 'directory' ? 'Folder' : getMediaTypeFromFilename(entry.name)
                 }}</span>
@@ -360,7 +360,7 @@ onMounted(() => {
       <div class="flex items-center justify-between gap-4">
         <div class="flex-1 min-w-0">
           <p class="truncate text-xs font-semibold">{{ selectedFile.name }}</p>
-          <p class="text-[10px] text-slate-500">
+          <p class="text-2xs text-slate-500">
             {{ selectedFileTypeLabel }}
             <span v-if="selectedFile.path">• ready to add at playhead</span>
           </p>

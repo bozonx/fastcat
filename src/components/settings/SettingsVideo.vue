@@ -183,7 +183,7 @@ function resetDefaults() {
               </div>
             </div>
             <div
-              class="shrink-0 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium"
+              class="shrink-0 inline-flex items-center rounded-full border px-2 py-0.5 text-2xs font-medium"
               :class="statusToneClasses[section.status.tone]"
             >
               {{ section.status.label }}
