@@ -107,7 +107,7 @@ const splitterMenuItems = computed(() => [
           horizontal
           class="editor-splitpanes"
           @resized="(event: SplitResizeEvent) => emit('verticalResize', event, col.id, view)"
-          @contextmenu.stop="onContextMenu($event, col.id)"
+          @contextmenu.stop.prevent="onContextMenu($event, col.id)"
         >
           <Pane
             v-for="(panel, rowIndex) in col.panels"
