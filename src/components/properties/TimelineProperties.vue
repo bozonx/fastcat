@@ -365,7 +365,7 @@ const addTrackActions = computed(() => [
         v-if="masterEffects.length === 0"
         class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
       >
-        <div class="text-[10px] text-primary-400 font-medium uppercase tracking-wider">
+        <div class="text-2xs text-primary-400 font-medium uppercase tracking-wider">
           {{ t('fastcat.effects.dropHint', 'Drop effect here') }}
         </div>
       </div>

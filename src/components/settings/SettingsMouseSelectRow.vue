@@ -49,7 +49,7 @@ function updateValue(value: unknown) {
         <template #item-label="{ item }">
           <span class="flex items-center gap-2">
             {{ item.label }}
-            <span v-if="props.isDefaultValue(item.value)" class="text-[10px] italic opacity-50">
+            <span v-if="props.isDefaultValue(item.value)" class="text-2xs italic opacity-50">
               ({{ defaultLabel }})
             </span>
           </span>

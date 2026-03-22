@@ -331,7 +331,7 @@ function handleSavePreset() {
     <!-- Curve fine-tuning sliders -->
     <div v-if="selectedCurve !== 'linear'" class="flex flex-col gap-2 p-2 bg-ui-bg/30 rounded border border-ui-border/50">
       <div class="flex flex-col gap-1">
-        <span class="text-ui-text-muted text-[10px] uppercase font-bold tracking-wider">
+        <span class="text-ui-text-muted text-2xs uppercase font-bold tracking-wider">
           {{ t('fastcat.timeline.transition.curveParamBulge') }}
         </span>
         <UiSliderInput
@@ -343,7 +343,7 @@ function handleSavePreset() {
         />
       </div>
       <div class="flex flex-col gap-1">
-        <span class="text-ui-text-muted text-[10px] uppercase font-bold tracking-wider">
+        <span class="text-ui-text-muted text-2xs uppercase font-bold tracking-wider">
           {{ t('fastcat.timeline.transition.curveParamOffset') }}
         </span>
         <UiSliderInput

@@ -21,6 +21,9 @@ function resetGeneralDefaults() {
   // Reset timeline section
   workspaceStore.userSettings.timeline = { ...DEFAULT_USER_SETTINGS.timeline };
 
+  // Reset ui section
+  workspaceStore.userSettings.ui = { ...DEFAULT_USER_SETTINGS.ui };
+
   // Reset other specific fields shown in this form
   workspaceStore.userSettings.stopFrames.qualityPercent =
     DEFAULT_USER_SETTINGS.stopFrames.qualityPercent;
@@ -76,6 +79,15 @@ function clearCache() {
               | 'en-US'
               | 'ru-RU')
         "
+      />
+    </UFormField>
+
+    <UFormField :label="t('videoEditor.settings.uiBaseFontSize', 'Base font size (px)')">
+      <UiWheelNumberInput
+        v-model="workspaceStore.userSettings.ui.baseFontSize"
+        :min="10"
+        :max="24"
+        :step="1"
       />
     </UFormField>
 

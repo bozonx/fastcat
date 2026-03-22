@@ -427,7 +427,7 @@ onUnmounted(() => {
               "
             >
               <template #default="{ modelValue }">
-                <span class="truncate text-[11px] leading-none font-medium">
+                <span class="truncate text-2xs leading-none font-medium">
                   {{ (modelValue as any)?.label }}
                 </span>
               </template>
@@ -518,7 +518,7 @@ onUnmounted(() => {
                 :class="!timelineStore.isPlaying ? 'ml-0.5' : ''"
               />
               <span
-                class="absolute text-[8px] font-mono leading-none opacity-90 pointer-events-none"
+                class="absolute text-3xs font-mono leading-none opacity-90 pointer-events-none"
                 style="right: 4px; bottom: 0"
               >
                 {{ selectedPlaybackSpeedOption?.label }}

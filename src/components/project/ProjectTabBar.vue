@@ -77,7 +77,7 @@ function handleStaticTabDragStart(event: DragEvent, tab: AnyProjectTab) {
               class="w-3.5 h-3.5 shrink-0"
               :class="tabsStore.activeTabId === tab.id ? 'text-primary-400' : 'text-ui-text-muted'"
             />
-            <span class="text-[10px] font-semibold uppercase tracking-wider">
+            <span class="text-2xs font-semibold uppercase tracking-wider">
               {{ tab.label }}
             </span>
           </div>
@@ -125,7 +125,7 @@ function handleStaticTabDragStart(event: DragEvent, tab: AnyProjectTab) {
                   tabsStore.activeTabId === tab.id ? 'text-primary-400' : 'text-ui-text-muted'
                 "
               />
-              <span class="text-[10px] font-semibold tracking-wide truncate max-w-[140px]">
+              <span class="text-2xs font-semibold tracking-wide truncate max-w-[140px]">
                 {{ tab.fileName }}
               </span>
             </div>
@@ -144,7 +144,7 @@ function handleStaticTabDragStart(event: DragEvent, tab: AnyProjectTab) {
 
     <div
       v-if="isDropTarget"
-      class="flex items-center gap-1 px-2 text-[10px] text-primary-400 font-semibold uppercase tracking-wider shrink-0 pointer-events-none"
+      class="flex items-center gap-1 px-2 text-2xs text-primary-400 font-semibold uppercase tracking-wider shrink-0 pointer-events-none"
     >
       <UIcon name="i-heroicons-arrow-down-tray" class="w-3.5 h-3.5" />
       {{ t('videoEditor.projectTabs.dropHint', 'Add as tab') }}

@@ -117,7 +117,7 @@ function clampNumber(value: number, min: number, max: number): number {
     <template #header-actions>
       <button
         v-if="canEditTransform"
-        class="flex items-center gap-1 text-[10px] text-ui-text-muted hover:text-ui-text"
+        class="flex items-center gap-1 text-2xs text-ui-text-muted hover:text-ui-text"
         :title="t('fastcat.clip.transform.resetAll', 'Reset All')"
         @click="
           () => {
@@ -167,14 +167,14 @@ function clampNumber(value: number, min: number, max: number): number {
             full-width
           />
           <div v-if="transformAnchorPreset === 'custom'" class="flex items-center gap-2 mt-2">
-            <span class="text-[10px] text-ui-text-muted uppercase tracking-tight">X</span>
+            <span class="text-2xs text-ui-text-muted uppercase tracking-tight">X</span>
             <UiWheelNumberInput
               v-model="transformAnchorX"
               size="sm"
               :step="0.01"
               :default-value="0.5"
             />
-            <span class="text-[10px] text-ui-text-muted uppercase tracking-tight ml-2">Y</span>
+            <span class="text-2xs text-ui-text-muted uppercase tracking-tight ml-2">Y</span>
             <UiWheelNumberInput
               v-model="transformAnchorY"
               size="sm"
@@ -292,7 +292,7 @@ function clampNumber(value: number, min: number, max: number): number {
           <div class="grid grid-cols-2 gap-2">
             <div class="flex items-center gap-1.5">
               <span
-                class="text-[10px] text-ui-text-muted uppercase tracking-tight w-2 text-center shrink-0"
+                class="text-2xs text-ui-text-muted uppercase tracking-tight w-2 text-center shrink-0"
                 >X</span
               >
               <UiWheelNumberInput
@@ -305,7 +305,7 @@ function clampNumber(value: number, min: number, max: number): number {
             </div>
             <div class="flex items-center gap-1.5">
               <span
-                class="text-[10px] text-ui-text-muted uppercase tracking-tight w-2 text-center shrink-0 ml-1"
+                class="text-2xs text-ui-text-muted uppercase tracking-tight w-2 text-center shrink-0 ml-1"
                 >Y</span
               >
               <UiWheelNumberInput

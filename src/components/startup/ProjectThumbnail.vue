@@ -54,7 +54,7 @@ watch(() => [props.projectId, props.projectRelativePath], load);
       class="flex flex-col items-center justify-center text-ui-text-muted gap-2 opacity-40"
     >
       <UIcon name="i-heroicons-film" class="w-10 h-10" />
-      <span v-if="projectName" class="text-[10px] font-medium uppercase tracking-tighter">{{
+      <span v-if="projectName" class="text-2xs font-medium uppercase tracking-tighter">{{
         projectName[0]
       }}</span>
     </div>

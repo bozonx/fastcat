@@ -138,7 +138,7 @@ async function handleBack() {
             <p class="truncate text-sm font-medium text-white">
               {{ projectStore.currentProjectName || 'Opening project' }}
             </p>
-            <p class="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+            <p class="text-2xs uppercase tracking-[0.18em] text-slate-500">
               {{ currentViewLabel }}
             </p>
           </div>
@@ -148,7 +148,7 @@ async function handleBack() {
 
       <div
         v-if="projectStore.isReadOnly"
-        class="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10px] font-medium text-amber-300"
+        class="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-2xs font-medium text-amber-300"
       >
         Read only
       </div>
@@ -228,7 +228,7 @@ async function handleBack() {
           @click="activeTab = item.id"
         >
           <Icon :name="item.icon" class="w-6 h-6" />
-          <span class="text-[10px] font-medium">{{ item.label }}</span>
+          <span class="text-2xs font-medium">{{ item.label }}</span>
         </button>
       </div>
     </nav>

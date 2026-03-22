@@ -22,7 +22,7 @@ export default defineAppConfig({
     },
     input: {
       slots: {
-        base: 'font-mono text-[11px] rounded-sm',
+        base: 'font-mono text-2xs rounded-sm',
       },
       defaultVariants: {
         size: 'xs',
@@ -40,7 +40,7 @@ export default defineAppConfig({
     },
     select: {
       slots: {
-        base: 'text-[11px] rounded-sm',
+        base: 'text-2xs rounded-sm',
       },
       defaultVariants: {
         size: 'xs',

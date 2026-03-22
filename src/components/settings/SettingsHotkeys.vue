@@ -274,7 +274,7 @@ defineExpose({ finishCapture, isDuplicateConfirmOpen });
       />
     </div>
 
-    <div class="text-[10px] text-ui-text-muted italic px-1">
+    <div class="text-2xs text-ui-text-muted italic px-1">
       {{ t('videoEditor.settings.hotkeysHardcodedHint') }}
     </div>
   </div>

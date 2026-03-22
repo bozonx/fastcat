@@ -118,7 +118,7 @@ function handleSelectEffect(type: string) {
   >
     <!-- Pan -->
     <div class="w-full px-2 mb-2 flex flex-col items-center">
-      <span class="text-[10px] text-ui-text-muted mb-1">{{
+      <span class="text-2xs text-ui-text-muted mb-1">{{
         pan === 0 ? 'C' : pan < 0 ? `L${Math.round(-pan * 100)}` : `R${Math.round(pan * 100)}`
       }}</span>
       <UiWheelSlider
@@ -140,7 +140,7 @@ function handleSelectEffect(type: string) {
           variant="ghost"
           color="neutral"
           icon="i-heroicons-plus-circle"
-          class="w-full h-6 text-[8px] px-1 py-0 justify-center whitespace-nowrap overflow-hidden hover:bg-primary-500/10 hover:text-primary-400 border border-transparent hover:border-primary-500/30"
+          class="w-full h-6 text-3xs px-1 py-0 justify-center whitespace-nowrap overflow-hidden hover:bg-primary-500/10 hover:text-primary-400 border border-transparent hover:border-primary-500/30"
           @click="openSelectEffect"
         >
           {{ t('fastcat.effects.addEffect') }}
@@ -151,7 +151,7 @@ function handleSelectEffect(type: string) {
         class="w-full h-6 bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 border border-primary-500/30 rounded flex items-center justify-center cursor-pointer transition-colors"
         @click="openEffectsEditor"
       >
-        <span class="text-[8px] font-bold uppercase truncate px-1">
+        <span class="text-3xs font-bold uppercase truncate px-1">
           {{ t('fastcat.effects.effectsCount', { count: audioEffectsCount }) }}
         </span>
       </div>
@@ -227,13 +227,13 @@ function handleSelectEffect(type: string) {
         </div>
         <div
           v-else
-          class="max-w-full text-[10px] font-medium text-ui-text truncate px-0.5"
+          class="max-w-full text-2xs font-medium text-ui-text truncate px-0.5"
           :title="trackName"
         >
           {{ trackName }}
         </div>
       </div>
-      <div class="text-[9px] text-ui-text-muted">
+      <div class="text-3xs text-ui-text-muted">
         {{ t(`fastcat.audioMixer.${track.kind}`) }}
       </div>
     </div>

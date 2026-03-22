@@ -224,7 +224,7 @@ const volumeY = computed(() => {
       ></div>
 
       <div
-        class="absolute left-1/2 -translate-x-1/2 text-[10px] font-mono text-yellow-400 leading-none py-0.5 bg-black/60 px-1 rounded pointer-events-none select-none transition-opacity"
+        class="absolute left-1/2 -translate-x-1/2 text-2xs font-mono text-yellow-400 leading-none py-0.5 bg-black/60 px-1 rounded pointer-events-none select-none transition-opacity"
         :class="[
           clipWidthPx < 30 ? 'hidden' : 'opacity-100',
           (clip.audioGain ?? 1) > 1 ? 'top-full mt-0.5' : 'bottom-full mb-0.5',

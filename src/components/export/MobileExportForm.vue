@@ -81,7 +81,7 @@ async function onStartExport() {
     </div>
 
     <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-      <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+      <p class="text-2xs uppercase tracking-[0.18em] text-slate-500">
         {{ $t('videoEditor.export.summary') }}
       </p>
       <p class="mt-2 text-sm font-medium text-white">{{ exportSummary }}</p>
@@ -169,7 +169,7 @@ async function onStartExport() {
           v-if="!excludeAudio"
           class="space-y-4 rounded-xl border border-slate-800/80 bg-slate-900/40 p-3"
         >
-          <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">
+          <p class="text-2xs font-medium uppercase tracking-[0.18em] text-slate-500">
             {{ $t('common.audio') }}
           </p>
           <div class="grid grid-cols-2 gap-4">
@@ -220,7 +220,7 @@ async function onStartExport() {
         </div>
 
         <div class="space-y-4 rounded-xl border border-slate-800/80 bg-slate-900/40 p-3">
-          <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">
+          <p class="text-2xs font-medium uppercase tracking-[0.18em] text-slate-500">
             {{ $t('videoEditor.export.metadata') }}
           </p>
           <div class="grid grid-cols-1 gap-4">
@@ -307,7 +307,7 @@ async function onStartExport() {
         :disabled="!!filenameError || !outputFilename.trim()"
         @click="onStartExport"
       />
-      <p class="text-[10px] text-slate-500 text-center mt-3">
+      <p class="text-2xs text-slate-500 text-center mt-3">
         {{ $t('videoEditor.export.keepAppOpenHint') }}
       </p>
     </div>

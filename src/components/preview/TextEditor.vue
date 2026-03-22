@@ -132,7 +132,7 @@ function focusPanel() {
     >
       <div
         v-if="isSaving || saveError || lastSavedAt"
-        class="px-2 py-1 rounded bg-ui-bg-elevated/80 backdrop-blur-sm border border-ui-border text-[10px] text-ui-text-muted select-none"
+        class="px-2 py-1 rounded bg-ui-bg-elevated/80 backdrop-blur-sm border border-ui-border text-2xs text-ui-text-muted select-none"
       >
         <span v-if="isSaving">Saving...</span>
         <span v-else-if="saveError" class="text-red-400">{{ saveError }}</span>

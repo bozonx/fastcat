@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, toRef } from 'vue';
-import { useI18n } from 'vue-i18n';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 import PropertyTimecode from '~/components/properties/PropertyTimecode.vue';

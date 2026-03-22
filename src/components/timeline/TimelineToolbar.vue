@@ -236,7 +236,7 @@ function onToolbarContextMenu(e: MouseEvent) {
             color="amber"
             variant="solid"
             icon="i-heroicons-musical-note"
-            class="h-6 text-[10px] px-2 gap-1 font-bold animate-pulse hover:animate-none"
+            class="h-6 text-2xs px-2 gap-1 font-bold animate-pulse hover:animate-none"
             @click="timelineStore.unsoloAllTracks"
           >
             {{ t('fastcat.timeline.soloActive', 'SOLO ACTIVE') }}

@@ -223,7 +223,7 @@ function handleArrayItemUpdate(
           size="md"
           @update:model-value="(value: number) => updateValue(control.key, value)"
         />
-        <div class="flex flex-col items-center text-[10px] leading-tight">
+        <div class="flex flex-col items-center text-2xs leading-tight">
           <span class="text-ui-text-muted text-center">{{ getLabel(control) }}</span>
           <span class="font-mono text-ui-text">
             {{
@@ -419,7 +419,7 @@ function handleArrayItemUpdate(
               class="flex items-center justify-between border-b border-ui-border/50 bg-ui-bg-muted/50 rounded-t"
               :class="control.layout === 'horizontal' ? 'p-1.5' : 'pb-2 mb-1 -mx-3 -mt-3 px-3 pt-2'"
             >
-              <span class="text-[10px] font-medium text-ui-text-muted uppercase tracking-wider">
+              <span class="text-2xs font-medium text-ui-text-muted uppercase tracking-wider">
                 #{{ Number(index) + 1 }}
               </span>
               <UButton

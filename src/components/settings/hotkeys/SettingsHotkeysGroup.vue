@@ -49,7 +49,7 @@ function getTitleParts(cmdId: HotkeyCommandId) {
 
 <template>
   <div class="flex flex-col gap-3">
-    <div class="text-[10px] font-bold text-ui-text-muted uppercase tracking-widest px-1">
+    <div class="text-2xs font-bold text-ui-text-muted uppercase tracking-widest px-1">
       {{ title }}
     </div>
 
@@ -84,7 +84,7 @@ function getTitleParts(cmdId: HotkeyCommandId) {
                   "
                 >
                   <span
-                    class="text-[10px] font-mono font-medium select-none"
+                    class="text-2xs font-mono font-medium select-none"
                     :class="[
                       isConflicting(cmd.id, combo)
                         ? 'text-error-600 dark:text-error-400'
@@ -119,7 +119,7 @@ function getTitleParts(cmdId: HotkeyCommandId) {
               </div>
               <div
                 v-if="capturingCommandId === cmd.id"
-                class="mt-1 text-[9px] text-primary-500 font-bold uppercase tracking-wider animate-pulse"
+                class="mt-1 text-3xs text-primary-500 font-bold uppercase tracking-wider animate-pulse"
               >
                 {{ t('videoEditor.settings.hotkeysCapturing', 'Listening') }}
               </div>

@@ -62,7 +62,7 @@ const metadataYaml = computed(() => {
             t('videoEditor.fileManager.info.metadata', 'Metadata')
           }}</span>
           <pre
-            class="bg-ui-bg p-2 rounded text-[10px] font-mono overflow-auto max-h-64 whitespace-pre text-ui-text-muted"
+            class="bg-ui-bg p-2 rounded text-2xs font-mono overflow-auto max-h-64 whitespace-pre text-ui-text-muted"
             >{{ metadataYaml }}</pre
           >
         </div>

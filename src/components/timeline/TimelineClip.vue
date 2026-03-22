@@ -532,14 +532,14 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
           class="absolute bottom-0 left-0 right-0 flex items-end justify-center px-2 pb-0.5 pointer-events-none"
           :style="{ zIndex: 'var(--z-clip-name)' }"
         >
-          <span class="truncate text-[10px] leading-tight opacity-70" :title="clipItem.name">{{
+          <span class="truncate text-2xs leading-tight opacity-70" :title="clipItem.name">{{
             clipItem.name
           }}</span>
         </div>
 
         <div
           v-if="currentSlipPreview"
-          class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded bg-black/80 px-2 py-1 text-[10px] font-medium text-white shadow-lg whitespace-nowrap pointer-events-none"
+          class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded bg-black/80 px-2 py-1 text-2xs font-medium text-white shadow-lg whitespace-nowrap pointer-events-none"
           :style="{ zIndex: 'var(--z-clip-guide)' }"
         >
           {{ currentSlipPreview.timecode }}

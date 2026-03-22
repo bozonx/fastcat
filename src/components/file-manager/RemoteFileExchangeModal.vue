@@ -206,26 +206,26 @@ const {
                             class="flex h-full w-full flex-col items-center justify-center gap-2 text-ui-text-muted transition group-hover:bg-ui-bg-hover"
                           >
                             <UIcon name="i-heroicons-musical-note" class="h-8 w-8" />
-                            <span class="text-[10px] uppercase">Audio</span>
+                            <span class="text-2xs uppercase">Audio</span>
                           </div>
                           <div
                             v-else-if="getRemoteMediaKind(media) === 'document'"
                             class="flex h-full w-full flex-col items-center justify-center gap-2 text-ui-text-muted"
                           >
                             <UIcon name="i-heroicons-document-text" class="h-8 w-8" />
-                            <span class="text-[10px] uppercase">Document</span>
+                            <span class="text-2xs uppercase">Document</span>
                           </div>
                           <div
                             v-else
                             class="flex h-full w-full flex-col items-center justify-center gap-2 text-ui-text-muted"
                           >
                             <UIcon name="i-heroicons-film" class="h-8 w-8" />
-                            <span class="text-[10px] uppercase">
+                            <span class="text-2xs uppercase">
                               {{ getRemoteMediaKind(media) }}
                             </span>
                           </div>
                         </div>
-                        <div class="line-clamp-2 text-[11px] leading-4 text-ui-text">
+                        <div class="line-clamp-2 text-2xs leading-4 text-ui-text">
                           {{
                             media.title ||
                             media.name ||
@@ -240,13 +240,13 @@ const {
                         @click="selectRemoteItem(item)"
                       >
                         <div
-                          class="flex aspect-square items-center justify-center rounded-lg bg-ui-bg-elevated p-2 text-[10px] leading-4 text-ui-text-muted"
+                          class="flex aspect-square items-center justify-center rounded-lg bg-ui-bg-elevated p-2 text-2xs leading-4 text-ui-text-muted"
                         >
                           <div class="line-clamp-6 w-full text-left">
                             {{ item.text }}
                           </div>
                         </div>
-                        <div class="text-[11px] text-ui-text">Text</div>
+                        <div class="text-2xs text-ui-text">Text</div>
                       </button>
                     </div>
                   </div>

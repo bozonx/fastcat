@@ -135,7 +135,7 @@ const containerHeightClass = computed(() =>
 
     <!-- Playback controls -->
     <div class="shrink-0 border-t border-ui-border bg-ui-bg px-4 py-2.5">
-      <div class="mb-2 flex items-center justify-between gap-3 text-[11px] text-ui-text-muted">
+      <div class="mb-2 flex items-center justify-between gap-3 text-2xs text-ui-text-muted">
         <span class="uppercase tracking-[0.18em]">{{
           props.mode === 'sound' ? 'Monitor' : 'Preview'
         }}</span>
