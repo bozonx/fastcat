@@ -165,8 +165,7 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
   const monitorSchema = z.object({
     previewResolution: z.coerce
       .number()
-      .int()
-      .min(1)
+      .min(0.01)
       .max(4320)
       .catch(defaults.monitor.previewResolution),
     useProxy: z.coerce.boolean().catch(defaults.monitor.useProxy),
