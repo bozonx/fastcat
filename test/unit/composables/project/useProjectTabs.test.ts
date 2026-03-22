@@ -78,7 +78,7 @@ describe('useProjectTabs', () => {
 
       expect(items).toHaveLength(1);
       expect(items[0]).toHaveLength(1);
-      expect(items[0]![0]!.label).toBe('common.detach');
+      expect(items[0]![0]!.label).toBe('Detach');
       expect(items[0]![0]!.disabled).toBe(true);
     });
 
@@ -88,7 +88,7 @@ describe('useProjectTabs', () => {
 
       expect(items).toHaveLength(1);
       expect(items[0]).toHaveLength(1);
-      expect(items[0]![0]!.label).toBe('common.detach');
+      expect(items[0]![0]!.label).toBe('Detach');
       expect(items[0]![0]!.disabled).toBe(false);
     });
   });
@@ -104,13 +104,16 @@ describe('useProjectTabs', () => {
 
     it('creates panel and hides tab for detachable tab', () => {
       const { tabsStore, detachStaticTab } = useProjectTabs({ enableUiEffects: false });
-      const { registerProjectTab, hideStaticTab } = tabsStore;
+      const { registerProjectTab } = tabsStore;
 
       registerProjectTab({
         id: 'history',
         label: 'History',
         component: DummyComponent as any,
       });
+
+      const tabsBeforeDetach = tabsStore.tabs;
+      expect(tabsBeforeDetach.some((t: AnyProjectTab) => t.id === 'history')).toBe(true);
 
       detachStaticTab('history');
 
@@ -124,7 +127,9 @@ describe('useProjectTabs', () => {
         undefined,
         'cut',
       );
-      expect(hideStaticTab).toHaveBeenCalled();
+
+      const tabsAfterDetach = tabsStore.tabs;
+      expect(tabsAfterDetach.some((t: AnyProjectTab) => t.id === 'history')).toBe(false);
     });
   });
 });

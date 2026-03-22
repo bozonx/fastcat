@@ -11,10 +11,11 @@ import {
 } from '~/stores/tabs.store';
 import { isOpenableProjectFileName } from '~/utils/media-types';
 
-const TAB_ID_TO_PANEL_TYPE: Record<string, 'fileManager' | 'history' | 'effects'> = {
+const TAB_ID_TO_PANEL_TYPE: Record<string, 'fileManager' | 'history' | 'effects' | 'library'> = {
   files: 'fileManager',
   history: 'history',
   effects: 'effects',
+  library: 'library',
 };
 
 interface UseProjectTabsOptions {

@@ -6,6 +6,7 @@ import MonitorContainer from '~/components/monitor/MonitorContainer.vue';
 import MediaPanelWrapper from '~/components/properties/file/MediaPanelWrapper.vue';
 import ProjectHistory from '~/components/project/ProjectHistory.vue';
 import ProjectEffects from '~/components/project/ProjectEffects.vue';
+import ProjectLibrary from '~/components/project/ProjectLibrary.vue';
 import TextEditor from '~/components/preview/TextEditor.vue';
 import EditorPanelHeader from '~/components/editor/EditorPanelHeader.vue';
 import type { DynamicPanel } from '~/stores/editor-view.store';
@@ -86,7 +87,7 @@ const customPanelContextMenuItems = computed(() => {
 });
 
 const detachedStaticPanelContextMenuItems = computed(() => {
-  if (!['history', 'effects', 'fileManager'].includes(props.panel.type)) {
+  if (!['history', 'effects', 'fileManager', 'library'].includes(props.panel.type)) {
     return [];
   }
 
@@ -185,6 +186,21 @@ const detachedStaticPanelContextMenuItems = computed(() => {
     />
     <div class="flex-1 overflow-hidden min-h-0">
       <ProjectEffects class="h-full" />
+    </div>
+  </div>
+  <div
+    v-else-if="panel.type === 'library'"
+    class="h-full w-full bg-ui-bg-elevated flex flex-col relative border border-ui-border"
+  >
+    <EditorPanelHeader
+      :title="panel.title || 'Library'"
+      icon="i-heroicons-rectangle-group"
+      :context-menu-items="detachedStaticPanelContextMenuItems"
+      @drag-start="onDragStart"
+      @close="onClose"
+    />
+    <div class="flex-1 overflow-hidden min-h-0">
+      <ProjectLibrary class="h-full" />
     </div>
   </div>
   <div
