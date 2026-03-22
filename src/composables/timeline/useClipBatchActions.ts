@@ -532,5 +532,6 @@ export function useClipBatchActions(
     handleQuantizeSelected,
     handleBatchUpdateProperties,
     firstVideoClip,
+    firstWaveformClip,
   };
 }

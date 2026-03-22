@@ -18,7 +18,7 @@ interface UseTimelineRulerMarkerDragOptions {
   markers: Ref<MarkerLike[]>;
   zoom: Ref<number>;
   fps: Ref<number>;
-  selectMarker: (markerId: string) => void;
+  selectMarker: (markerId: string, e?: MouseEvent, part?: 'left' | 'right', movePlayhead?: boolean) => void;
   updateMarker: (markerId: string, patch: { timeUs?: number; durationUs?: number }) => void;
   computeSnapTargets?: () => number[];
   snapThresholdPx?: Ref<number>;
@@ -152,7 +152,8 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
     if (event.button !== 0) return;
 
     event.stopPropagation();
-    options.selectMarker(markerId);
+    // Select marker but do not move playhead so it doesn't snap to playhead immediately
+    options.selectMarker(markerId, undefined, part, false);
 
     const marker = options.markers.value.find((item) => item.id === markerId);
     if (!marker) return;

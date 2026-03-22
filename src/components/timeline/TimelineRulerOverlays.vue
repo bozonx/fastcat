@@ -40,7 +40,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'select-marker', markerId: string, event?: MouseEvent): void;
+  (e: 'select-marker', markerId: string, event?: MouseEvent, part?: 'left' | 'right'): void;
   (e: 'marker-pointerdown', event: PointerEvent, markerId: string, part?: 'left' | 'right'): void;
   (e: 'select-selection-range', event?: MouseEvent): void;
   (e: 'selection-range-pointerdown', event: PointerEvent, part: 'move' | 'left' | 'right'): void;
@@ -116,10 +116,10 @@ function getMarkerButtonClass(marker: MarkerPoint) {
               :class="getMarkerButtonClass(point)"
               :style="point.color ? { color: point.color } : {}"
               :aria-label="point.isZone ? zoneMarkerStartLabel : markerLabel"
-              @dblclick.stop.prevent="emit('select-marker', point.id)"
+              @dblclick.stop.prevent="emit('select-marker', point.id, undefined, 'left')"
               @pointerdown.stop="emit('marker-pointerdown', $event, point.id)"
               @contextmenu.stop
-              @click="emit('select-marker', point.id, $event)"
+              @click="emit('select-marker', point.id, $event, 'left')"
             >
               <svg
                 width="10"
@@ -144,10 +144,10 @@ function getMarkerButtonClass(marker: MarkerPoint) {
               :class="getMarkerButtonClass(point)"
               :style="point.color ? { color: point.color } : {}"
               :aria-label="zoneMarkerEndLabel"
-              @dblclick.stop.prevent="emit('select-marker', point.id)"
+              @dblclick.stop.prevent="emit('select-marker', point.id, undefined, 'right')"
               @pointerdown.stop="emit('marker-pointerdown', $event, point.id, 'right')"
               @contextmenu.stop
-              @click="emit('select-marker', point.id, $event)"
+              @click="emit('select-marker', point.id, $event, 'right')"
             >
               <svg
                 width="10"

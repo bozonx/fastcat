@@ -10,7 +10,9 @@ import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTimecode from '~/components/ui/editor/UiTimecode.vue';
 import ClipTransitionsSection from '~/components/properties/clip/ClipTransitionsSection.vue';
 import ClipTransformSection from '~/components/properties/clip/ClipTransformSection.vue';
+import ClipAudioSection from '~/components/properties/clip/ClipAudioSection.vue';
 import { useClipBatchActions } from '~/composables/timeline/useClipBatchActions';
+import { useClipAudio } from '~/composables/properties/useClipAudio';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -70,6 +72,7 @@ const {
   hasVideo,
   hasVideoOrImage,
   firstVideoClip,
+  firstWaveformClip,
   handleUnlinkSelected,
   handleGroupSelected,
   handleUngroupSelected,
@@ -111,6 +114,35 @@ const blendModeOptions = computed<Array<{ value: TimelineBlendMode; label: strin
   })),
 );
 
+const startShiftAccumulator = ref(0);
+const endShiftAccumulator = ref(0);
+const durationShiftAccumulator = ref(0);
+
+watch(itemsRef, () => {
+  startShiftAccumulator.value = 0;
+  endShiftAccumulator.value = 0;
+  durationShiftAccumulator.value = 0;
+});
+
+function onStartShiftChange(newVal: number) {
+  const deltaUs = newVal - startShiftAccumulator.value;
+  handleRelativeStartShift(deltaUs);
+  startShiftAccumulator.value = newVal;
+}
+
+function onEndShiftChange(newVal: number) {
+  const deltaUs = newVal - endShiftAccumulator.value;
+  // End shift logic using trim_item (which moves the end)
+  handleRelativeEndShift(deltaUs);
+  endShiftAccumulator.value = newVal;
+}
+
+function onDurationShiftChange(newVal: number) {
+  const deltaUs = newVal - durationShiftAccumulator.value;
+  handleRelativeEndShift(deltaUs);
+  durationShiftAccumulator.value = newVal;
+}
+
 const firstClip = computed(() => selectedClips.value[0]);
 
 const batchOpacity = computed({
@@ -126,6 +158,59 @@ const batchBlendMode = computed({
 const batchAudioGain = computed({
   get: () => Number(firstClip.value?.audioGain ?? 0),
   set: (val: number) => handleBatchUpdateProperties({ audioGain: val }),
+});
+
+const {
+  audioBalance,
+  audioFadeInCurve,
+  audioFadeInMaxSec,
+  audioFadeInSec,
+  audioFadeOutCurve,
+  audioFadeOutMaxSec,
+  audioFadeOutSec,
+  audioGain,
+  canEditAudioBalance,
+  canEditAudioFades,
+  canEditAudioGain,
+  updateAudioBalance,
+  updateAudioFadeInCurve,
+  updateAudioFadeInSec,
+  updateAudioFadeOutCurve,
+  updateAudioFadeOutSec,
+  updateAudioGain,
+} = useClipAudio({
+  clip: computed(() => (firstWaveformClip.value || props.items[0]) as any),
+  tracks: computed(() => timelineStore.timelineDoc?.tracks),
+  mediaMetadataByPath: computed(() => mediaStore.mediaMetadata),
+  updateAudio: (patch) => {
+    const doc = timelineStore.timelineDoc;
+    if (!doc) return;
+    const cmds: any[] = [];
+    for (const { trackId, itemId } of props.items) {
+      const track = doc.tracks.find((t) => t.id === trackId);
+      const clip = track?.items.find((it) => it.id === itemId);
+      if (!track || !clip || clip.kind !== 'clip') continue;
+
+      const isAudioTrack = track.kind === 'audio';
+      const isVideoWithAudio =
+        track.kind === 'video' &&
+        clip.clipType === 'media' &&
+        (Boolean((clip as any).linkedVideoClipId) ||
+          Boolean(mediaStore.mediaMetadata[clip.source?.path ?? '']?.audio));
+
+      if (isAudioTrack || isVideoWithAudio) {
+        cmds.push({
+          type: 'update_clip_properties',
+          trackId,
+          itemId,
+          properties: patch,
+        });
+      }
+    }
+    if (cmds.length > 0) {
+      timelineStore.batchApplyTimeline(cmds);
+    }
+  },
 });
 
 function handleBatchToggleTransition(edge: 'in' | 'out') {
@@ -145,7 +230,7 @@ function handleBatchToggleTransition(edge: 'in' | 'out') {
         type: 'update_clip_transition',
         trackId,
         itemId,
-        patch: edge === 'in' ? { transitionIn: null } : { transitionOut: null },
+        ...(edge === 'in' ? { transitionIn: null } : { transitionOut: null }),
       });
     }
   } else {
@@ -179,7 +264,7 @@ function handleBatchToggleTransition(edge: 'in' | 'out') {
         type: 'update_clip_transition',
         trackId,
         itemId,
-        patch: edge === 'in' ? { transitionIn: transition } : { transitionOut: transition },
+        ...(edge === 'in' ? { transitionIn: transition } : { transitionOut: transition }),
       });
     }
   }
@@ -207,10 +292,9 @@ function handleBatchUpdateTransitionDuration(edge: 'in' | 'out', durationSec: nu
       type: 'update_clip_transition',
       trackId,
       itemId,
-      patch:
-        edge === 'in'
-          ? { transitionIn: { ...current, durationUs } }
-          : { transitionOut: { ...current, durationUs } },
+      ...(edge === 'in'
+        ? { transitionIn: { ...current, durationUs } }
+        : { transitionOut: { ...current, durationUs } }),
     });
   }
   if (cmds.length > 0) timelineStore.batchApplyTimeline(cmds);
@@ -233,10 +317,9 @@ function handleBatchUpdateTransitionType(edge: 'in' | 'out', type: string) {
       type: 'update_clip_transition',
       trackId,
       itemId,
-      patch:
-        edge === 'in'
-          ? { transitionIn: { ...current, type } }
-          : { transitionOut: { ...current, type } },
+      ...(edge === 'in'
+        ? { transitionIn: { ...current, type } }
+        : { transitionOut: { ...current, type } }),
     });
   }
   if (cmds.length > 0) timelineStore.batchApplyTimeline(cmds);
@@ -502,81 +585,13 @@ const otherActions = computed(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 w-full">
-    <PropertySection :title="t('fastcat.timeline.multipleSelection', 'Multiple Selection')">
-      <div class="px-3 pb-3 flex flex-col gap-4">
-        <span class="text-sm text-ui-text-muted">
+  <div class="flex flex-col gap-2 w-full text-ui-text">
+    <PropertySection :title="t('fastcat.clip.actions', 'Actions')">
+      <div class="flex flex-col w-full px-3 pb-3">
+        <span class="text-sm text-ui-text-muted mb-2">
           {{ selectedCountLabel }}
         </span>
 
-        <PropertyTimecode
-          :label="t('common.duration', 'Duration')"
-          :model-value="firstClip?.timelineRange.durationUs ?? 0"
-          @update:model-value="handleSetUniformDuration"
-        />
-
-        <PropertyField :label="t('fastcat.timeline.startShift', 'Start Shift')" class="mt-2">
-          <UiTimecode
-            :model-value="0"
-            @update:model-value="handleRelativeStartShift"
-            allow-negative
-          />
-        </PropertyField>
-
-        <PropertyField :label="t('fastcat.timeline.endShift', 'End Shift')" class="mt-2">
-          <UiTimecode
-            :model-value="0"
-            @update:model-value="handleRelativeEndShift"
-            allow-negative
-          />
-        </PropertyField>
-
-        <div v-if="hasVideoOrImage" class="space-y-4 pt-2 border-t border-ui-border">
-          <UiSliderInput
-            :label="t('fastcat.clip.opacity', 'Opacity')"
-            unit="%"
-            :model-value="batchOpacity"
-            :min="0"
-            :max="1"
-            :step="0.01"
-            :default-value="1"
-            :wheel-step-multiplier="10"
-            @update:model-value="batchOpacity = $event"
-          />
-
-          <div class="flex flex-col gap-1">
-            <span class="text-xs text-ui-text-muted">{{
-              t('fastcat.clip.blendMode.title', 'Blend Mode')
-            }}</span>
-            <UiSelect
-              v-model="batchBlendMode"
-              :items="blendModeOptions"
-              value-key="value"
-              label-key="label"
-              size="sm"
-            />
-          </div>
-        </div>
-
-        <div v-if="hasAudioOrVideoWithAudio" class="pt-2 border-t border-ui-border">
-          <div class="flex flex-col gap-1">
-            <span class="text-xs text-ui-text-muted">{{
-              t('fastcat.clip.audioGain', 'Audio Gain (dB)')
-            }}</span>
-            <UiWheelNumberInput
-              v-model="batchAudioGain"
-              size="sm"
-              :step="0.1"
-              :min="-60"
-              :max="20"
-            />
-          </div>
-        </div>
-      </div>
-    </PropertySection>
-
-    <PropertySection :title="t('common.actions.title', 'Actions')">
-      <div class="flex flex-col w-full px-3 pb-3">
         <PropertyActionList
           :actions="commonActions"
           :vertical="false"
@@ -588,6 +603,38 @@ const otherActions = computed(() => {
 
         <PropertyActionList :actions="otherActions" justify="start" size="xs" />
       </div>
+    </PropertySection>
+
+    <PropertySection :title="t('fastcat.clip.info', 'Clip Info')">
+      <PropertyTimecode
+        :label="t('common.duration', 'Duration')"
+        :model-value="firstClip?.timelineRange.durationUs ?? 0"
+        @update:model-value="handleSetUniformDuration"
+      />
+
+      <PropertyField :label="t('fastcat.timeline.durationShift', 'Duration Shift')" class="mt-2">
+        <UiTimecode
+          :model-value="durationShiftAccumulator"
+          @update:model-value="onDurationShiftChange"
+          allow-negative
+        />
+      </PropertyField>
+
+      <PropertyField :label="t('fastcat.timeline.startShift', 'Start Shift')" class="mt-2">
+        <UiTimecode
+          :model-value="startShiftAccumulator"
+          @update:model-value="onStartShiftChange"
+          allow-negative
+        />
+      </PropertyField>
+
+      <PropertyField :label="t('fastcat.timeline.endShift', 'End Shift')" class="mt-2">
+        <UiTimecode
+          :model-value="endShiftAccumulator"
+          @update:model-value="onEndShiftChange"
+          allow-negative
+        />
+      </PropertyField>
     </PropertySection>
 
     <ClipTransitionsSection
@@ -602,6 +649,62 @@ const otherActions = computed(() => {
         ({ edge, durationSec }) => handleBatchUpdateTransitionDuration(edge, durationSec)
       "
       @update-type="({ edge, type }) => handleBatchUpdateTransitionType(edge, type)"
+    />
+
+    <div
+      v-if="hasVideoOrImage"
+      class="space-y-1.5 bg-ui-bg-elevated p-2 rounded border border-ui-border"
+    >
+      <div class="flex flex-col gap-0.5">
+        <span class="text-xs text-ui-text-muted">{{
+          t('fastcat.clip.blendMode.title', 'Blend Mode')
+        }}</span>
+        <UiSelect
+          v-model="batchBlendMode"
+          :items="blendModeOptions"
+          value-key="value"
+          label-key="label"
+          size="sm"
+        />
+      </div>
+
+      <UiSliderInput
+        :label="t('fastcat.clip.opacity', 'Opacity')"
+        unit="%"
+        :model-value="batchOpacity"
+        :min="0"
+        :max="1"
+        :step="0.01"
+        :default-value="1"
+        :wheel-step-multiplier="10"
+        @update:model-value="batchOpacity = $event"
+      />
+    </div>
+
+    <ClipAudioSection
+      :can-edit-audio-fades="canEditAudioFades"
+      :can-edit-audio-balance="canEditAudioBalance"
+      :can-edit-audio-gain="canEditAudioGain"
+      :selected-track-kind="
+        firstWaveformClip?.trackId
+          ? (timelineStore.timelineDoc?.tracks.find((t) => t.id === firstWaveformClip?.trackId)
+              ?.kind ?? null)
+          : null
+      "
+      :audio-gain="audioGain"
+      :audio-balance="audioBalance"
+      :audio-fade-in-sec="audioFadeInSec"
+      :audio-fade-out-sec="audioFadeOutSec"
+      :audio-fade-in-max-sec="audioFadeInMaxSec"
+      :audio-fade-out-max-sec="audioFadeOutMaxSec"
+      :audio-fade-in-curve="audioFadeInCurve"
+      :audio-fade-out-curve="audioFadeOutCurve"
+      @update-audio-gain="updateAudioGain"
+      @update-audio-balance="updateAudioBalance"
+      @update-audio-fade-in-curve="updateAudioFadeInCurve"
+      @update-audio-fade-in-sec="updateAudioFadeInSec"
+      @update-audio-fade-out-curve="updateAudioFadeOutCurve"
+      @update-audio-fade-out-sec="updateAudioFadeOutSec"
     />
 
     <ClipTransformSection
