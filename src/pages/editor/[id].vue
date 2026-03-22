@@ -10,7 +10,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useEditorDynamicPanels } from '~/composables/editor/useEditorDynamicPanels';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useEventListener, until } from '@vueuse/core';
 import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
@@ -24,9 +24,53 @@ import MonitorContainer from '~/components/monitor/MonitorContainer.vue';
 import Timeline from '~/components/layout-panels/Timeline.vue';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
 
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
+const { t } = useI18n();
+const menuRef = ref<InstanceType<typeof UiContextMenuPortal> | null>(null);
+const containerRef = ref<HTMLElement | null>(null);
+const activeResetAction = ref<(() => void) | null>(null);
+
+function onMainContextMenu(e: MouseEvent) {
+  const target = e.target as HTMLElement;
+  const splitter = target.closest('.splitpanes__splitter');
+  if (!splitter) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  // Find which splitter it is
+  // Horizontal splitter between Top and Bottom (Timeline)
+  const isHorizontalSplitter = splitter.parentElement?.classList.contains('splitpanes--horizontal');
+  if (isHorizontalSplitter) {
+    activeResetAction.value = () => projectStore.resetTimelineHeight();
+  } else if (activeEditorView.value === 'files') {
+    activeResetAction.value = () => filesReset();
+  } else if (activeEditorView.value === 'sound') {
+    activeResetAction.value = () => soundReset();
+  } else if (activeEditorView.value === 'export') {
+    activeResetAction.value = () => exportReset();
+  } else {
+    // Other views? They use EditorDynamicPanelsView which has its own menu
+    return;
+  }
+
+  menuRef.value?.open(e);
+}
+
+const mainSplitterMenuItems = computed(() => [
+  [
+    {
+      label: t('common.actions.reset'),
+      icon: 'i-heroicons-arrow-path',
+      onSelect: () => {
+        activeResetAction.value?.();
+      },
+    },
+  ],
+]);
 const route = useRoute();
 const router = useRouter();
 const { currentProjectId } = storeToRefs(projectStore);
@@ -56,35 +100,35 @@ const defaultSoundPanelSizes = computed(() => {
   return Array(len).fill(size);
 });
 
-const { sizes: topSplitSizes, onResized: onTopSplitResize } = usePersistedSplitpanes(
-  'editor-cut-top-dynamic',
-  currentProjectId,
-  defaultCutPanelSizes,
-);
+const {
+  sizes: topSplitSizes,
+  onResized: onTopSplitResize,
+  reset: topSplitReset,
+} = usePersistedSplitpanes('editor-cut-top-dynamic', currentProjectId, defaultCutPanelSizes);
 
-const { sizes: soundTopSplitSizes, onResized: onSoundTopSplitResize } = usePersistedSplitpanes(
-  'editor-sound-dynamic',
-  currentProjectId,
-  defaultSoundPanelSizes,
-);
+const {
+  sizes: soundTopSplitSizes,
+  onResized: onSoundTopSplitResize,
+  reset: soundTopSplitReset,
+} = usePersistedSplitpanes('editor-sound-dynamic', currentProjectId, defaultSoundPanelSizes);
 
-const { sizes: filesSizes, onResized: onFilesResize } = usePersistedSplitpanes(
-  'editor-files-top',
-  currentProjectId,
-  [20, 60, 20],
-);
+const {
+  sizes: filesSizes,
+  onResized: onFilesResize,
+  reset: filesReset,
+} = usePersistedSplitpanes('editor-files-top', currentProjectId, [20, 60, 20]);
 
-const { sizes: soundSizes, onResized: onSoundResize } = usePersistedSplitpanes(
-  'editor-sound-top',
-  currentProjectId,
-  [75, 25],
-);
+const {
+  sizes: soundSizes,
+  onResized: onSoundResize,
+  reset: soundReset,
+} = usePersistedSplitpanes('editor-sound-top', currentProjectId, [75, 25]);
 
-const { sizes: exportSizes, onResized: onExportResize } = usePersistedSplitpanes(
-  'editor-export-top',
-  currentProjectId,
-  [40, 60],
-);
+const {
+  sizes: exportSizes,
+  onResized: onExportResize,
+  reset: exportReset,
+} = usePersistedSplitpanes('editor-export-top', currentProjectId, [40, 60]);
 
 let fileManager: ReturnType<typeof useFileManager> | null = null;
 
@@ -156,6 +200,7 @@ const {
   onDragStart,
   onDrop,
   onVerticalSplitResize,
+  resetVerticalSizes,
 } = useEditorDynamicPanels({
   currentProjectId,
 });
@@ -242,11 +287,18 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
 
 <template>
   <ClientOnly>
-    <div class="flex flex-col h-full min-h-0 overflow-hidden">
+    <div ref="containerRef" class="flex flex-col h-full min-h-0 overflow-hidden relative">
+      <UiContextMenuPortal
+        ref="menuRef"
+        :items="mainSplitterMenuItems"
+        :target-el="containerRef"
+        manual
+      />
       <Splitpanes
         class="flex-1 min-h-0 overflow-hidden editor-splitpanes"
         horizontal
         @resized="onMainSplitResize"
+        @contextmenu="onMainContextMenu"
       >
         <!-- Top Panel: varies by view -->
         <Pane :size="100 - projectStore.timelineHeight" min-size="10">
@@ -280,6 +332,8 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
             @focus="focusDynamicPanel"
             @close="(panel, view) => closePanelAndRestoreTab(panel, { view })"
             @move-to-view="movePanelToView"
+            @top-reset="topSplitReset"
+            @vertical-reset="resetVerticalSizes"
           />
 
           <EditorSoundView
@@ -305,6 +359,8 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
             @focus="focusDynamicPanel"
             @close="(panel, view) => closePanelAndRestoreTab(panel, { view })"
             @move-to-view="movePanelToView"
+            @top-reset="soundTopSplitReset"
+            @vertical-reset="resetVerticalSizes"
           />
 
           <EditorExportView
@@ -316,7 +372,7 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
 
         <!-- Bottom Panel: Timeline (always visible, height varies) -->
         <Pane :size="projectStore.timelineHeight" min-size="5">
-          <div class="h-full min-h-0 overflow-hidden">
+          <div class="h-full min-h-0 overflow-hidden text-clip">
             <Timeline class="h-full" />
           </div>
         </Pane>

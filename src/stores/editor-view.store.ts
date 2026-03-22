@@ -361,20 +361,29 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     getPanelSizesKey(`timeline-height-${currentView.value}`, projectIdRef.value),
   );
 
-  const timelineHeight = computed({
-    get() {
-      const key = timelineHeightKey.value;
-      const stored = readLocalStorageJson<number | null>(key, null);
+  const timelineHeight = ref(viewConfigs[currentView.value].timelineHeight);
+
+  // Sync with local storage
+  watch(
+    timelineHeightKey,
+    () => {
+      const stored = readLocalStorageJson<number | null>(timelineHeightKey.value, null);
       if (stored && stored > 0 && stored < 100) {
-        return stored;
+        timelineHeight.value = stored;
+      } else {
+        timelineHeight.value = viewConfigs[currentView.value].timelineHeight;
       }
-      return viewConfigs[currentView.value].timelineHeight;
     },
-    set(value: number) {
-      const key = timelineHeightKey.value;
-      writeLocalStorageJson(key, value);
-    },
+    { immediate: true },
+  );
+
+  watch(timelineHeight, (newVal) => {
+    writeLocalStorageJson(timelineHeightKey.value, newVal);
   });
+
+  function resetTimelineHeight() {
+    timelineHeight.value = viewConfigs[currentView.value].timelineHeight;
+  }
 
   const lastViewBeforeFullscreen = ref<EditorView | null>(null);
 
@@ -421,6 +430,7 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     goToSound,
     goToExport,
     goToFullscreen,
+    resetTimelineHeight,
     lastViewBeforeFullscreen,
   };
 }

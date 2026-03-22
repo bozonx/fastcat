@@ -422,6 +422,16 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
     return saved[rowIndex];
   }
 
+  function resetVerticalSizes(colId: string, view: 'cut' | 'sound' = 'cut') {
+    if (view === 'cut') {
+      delete verticalSplitSizes.value[colId];
+      writeLocalStorageJson(verticalSplitSizesKey.value, verticalSplitSizes.value);
+    } else {
+      delete soundVerticalSplitSizes.value[colId];
+      writeLocalStorageJson(soundVerticalSplitSizesKey.value, soundVerticalSplitSizes.value);
+    }
+  }
+
   return {
     cutPanelsLayoutKey,
     soundPanelsLayoutKey,
@@ -441,5 +451,6 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
     onDragStart,
     onDrop,
     onVerticalSplitResize,
+    resetVerticalSizes,
   };
 }
