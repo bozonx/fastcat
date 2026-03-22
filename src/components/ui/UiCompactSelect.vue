@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+
 defineOptions({ inheritAttrs: false });
 
-interface UiSelectProps {
+interface UiCompactSelectProps {
   modelValue?: unknown;
   items: unknown[];
   placeholder?: string;
@@ -13,7 +15,7 @@ interface UiSelectProps {
   fullWidth?: boolean;
 }
 
-const props = withDefaults(defineProps<UiSelectProps>(), {
+const props = withDefaults(defineProps<UiCompactSelectProps>(), {
   modelValue: undefined,
   placeholder: undefined,
   disabled: false,
@@ -25,6 +27,13 @@ const props = withDefaults(defineProps<UiSelectProps>(), {
 });
 
 const emit = defineEmits<{ (e: 'update:modelValue', value: unknown): void }>();
+
+const ui = computed(() => ({
+  content: 'min-w-48',
+  select: 'px-1 pe-4',
+  trailing: 'ps-0 pe-0.5',
+  trailingIcon: 'w-3 h-3',
+}));
 </script>
 
 <template>
@@ -38,8 +47,8 @@ const emit = defineEmits<{ (e: 'update:modelValue', value: unknown): void }>();
     :value-key="props.valueKey as never"
     :label-key="props.labelKey as never"
     :multiple="props.multiple"
-    :class="props.fullWidth ? 'w-full' : 'w-auto min-w-20'"
-    :ui="{ content: 'min-w-48' }"
+    :class="props.fullWidth ? 'w-full' : 'w-auto'"
+    :ui="ui"
     @update:model-value="(val: unknown) => emit('update:modelValue', val)"
   >
     <template v-for="(_, slot) in $slots" #[slot]="slotProps">
