@@ -71,7 +71,7 @@ export class EffectManager {
     return filter;
   }
 
-  private resolveMaskSource(clip: CompositorClip): TextureSource | null {
+  private resolveMaskSource(clip: CompositorClip): Texture | null {
     const maskState = clip.maskState;
     if (!maskState?.imageSource) {
       return null;
@@ -100,7 +100,14 @@ export class EffectManager {
       maskState.imageSource.update();
     }
 
-    return maskState.imageSource;
+    // Ensure the texture is wrapped in a Texture object if needed by the filter system
+    if (!clip.maskTexture) {
+      clip.maskTexture = new Texture({ source: maskState.imageSource });
+    } else {
+      clip.maskTexture.source = maskState.imageSource;
+    }
+
+    return clip.maskTexture;
   }
 
 

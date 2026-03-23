@@ -14,10 +14,7 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
 
   const timelineStore = useTimelineStore();
 
-  const overlapMode = useLocalStorage<OverlapMode>(
-    'fastcat:timeline:overlap-mode',
-    DEFAULT_SNAP_SETTINGS.overlapMode,
-  );
+  const overlapMode = ref<OverlapMode>(DEFAULT_SNAP_SETTINGS.overlapMode);
 
   const frameSnapMode = useLocalStorage<FrameSnapMode>(
     'fastcat:timeline:frame-snap-mode',
@@ -33,14 +30,9 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
     'fastcat:timeline:toolbar-snap-mode',
     'snap',
   );
-  const toolbarDragMode = useLocalStorage<ToolbarDragMode>(
-    'fastcat:timeline:toolbar-drag-mode',
-    'pseudo_overlap',
-  );
-  const toolbarDragModeEnabled = useLocalStorage<boolean>(
-    'fastcat:timeline:toolbar-drag-mode-enabled',
-    false,
-  );
+  const toolbarDragMode = ref<ToolbarDragMode>('pseudo_overlap');
+  const toolbarDragModeEnabled = ref<boolean>(false);
+
   const legacyToolbarMoveMode = useLocalStorage<string>(
     'fastcat:timeline:toolbar-move-mode',
     'snap',

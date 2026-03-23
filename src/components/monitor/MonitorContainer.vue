@@ -367,7 +367,11 @@ onUnmounted(() => {
         :class="[
           effectiveFullscreen
             ? 'absolute bottom-8 left-1/2 -translate-x-1/2 bg-ui-bg-elevated/80 backdrop-blur-xl px-6 py-3 rounded-2xl shadow-2xl z-50 border-none'
-            : ['px-4 py-3.5 bg-ui-bg-elevated', props.panelDragCursorClass],
+            : [
+                toolbarPosition === 'left' || toolbarPosition === 'right' ? 'px-1.5 py-3' : 'px-4 py-3.5',
+                'bg-ui-bg-elevated',
+                props.panelDragCursorClass,
+              ],
           effectiveFullscreen && isIdle ? 'opacity-0 pointer-events-none' : 'opacity-100',
           !effectiveFullscreen && toolbarPosition === 'bottom' ? 'border-t' : '',
           !effectiveFullscreen && toolbarPosition === 'top' ? 'border-b' : '',
@@ -384,6 +388,25 @@ onUnmounted(() => {
           class="flex items-center gap-2 shrink-0"
           :class="toolbarPosition === 'left' || toolbarPosition === 'right' ? 'flex-col' : ''"
         >
+          <UiActionButton
+            v-if="effectiveFullscreen"
+            size="sm"
+            color="neutral"
+            variant="solid"
+            icon="i-heroicons-arrow-left"
+            :label="t('common.back', 'Back')"
+            @click="exitBrowserFullscreen()"
+          />
+          <UiActionButton
+            v-else
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            icon="i-heroicons-arrows-pointing-out"
+            :title="t('fastcat.monitor.fullscreen', 'Fullscreen')"
+            @click="enterBrowserFullscreen()"
+          />
+
           <UiTooltip :text="t('fastcat.timeline.addMarkerAtPlayhead', 'Add marker at playhead')">
             <UiActionButton
               size="xs"
@@ -459,7 +482,7 @@ onUnmounted(() => {
             :items="previewResolutions"
             value-key="value"
             label-key="label"
-            :searchable="false"
+            :search-input="false"
             @update:model-value="
               (v: unknown) => {
                 if (v && projectStore.activeMonitor)
@@ -483,25 +506,6 @@ onUnmounted(() => {
               </span>
             </template>
           </UiCompactSelect>
-
-          <UiActionButton
-            v-if="effectiveFullscreen"
-            size="sm"
-            color="neutral"
-            variant="solid"
-            icon="i-heroicons-arrow-left"
-            :label="t('common.back', 'Back')"
-            @click="exitBrowserFullscreen()"
-          />
-          <UiActionButton
-            v-else
-            size="xs"
-            color="neutral"
-            variant="ghost"
-            icon="i-heroicons-arrows-pointing-out"
-            :title="t('fastcat.monitor.fullscreen', 'Fullscreen')"
-            @click="enterBrowserFullscreen()"
-          />
         </div>
 
         <!-- Playback buttons — right-click opens speed selector -->
