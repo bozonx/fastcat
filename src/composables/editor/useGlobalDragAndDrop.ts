@@ -3,6 +3,14 @@ import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { computed } from 'vue';
+import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
+import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
+import {
+  createDefaultHotkeyLookup,
+  createHotkeyLookup,
+  isCommandMatched,
+} from '~/utils/hotkeys/runtime';
 
 const isDropInProgress = ref(false);
 
@@ -11,6 +19,30 @@ export function useGlobalDragAndDrop() {
   const workspaceStore = useWorkspaceStore();
   const projectStore = useProjectStore();
   const fm = useFileManager();
+
+  const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
+  const effectiveHotkeys = computed(() =>
+    getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys),
+  );
+  const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
+  const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
+
+  function onGlobalKeyDown(e: KeyboardEvent) {
+    if (!uiStore.isGlobalDragging) return;
+
+    const isCancel = isCommandMatched({
+      event: e,
+      cmdId: 'general.deselect',
+      userSettings: workspaceStore.userSettings,
+      hotkeyLookup: hotkeyLookup.value,
+      defaultHotkeyLookup: defaultHotkeyLookup.value,
+    });
+
+    if (isCancel) {
+      uiStore.isGlobalDragging = false;
+      // Note: We can't cancel the actual OS drag, but we reset our UI state
+    }
+  }
 
   // Web Drop
   function onGlobalDragOver(e: DragEvent) {
@@ -86,6 +118,8 @@ export function useGlobalDragAndDrop() {
   let unlistenTauriDrop: (() => void) | undefined;
 
   onMounted(async () => {
+    window.addEventListener('keydown', onGlobalKeyDown, { capture: true });
+
     if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
       try {
         const { getCurrentWebview } = await import('@tauri-apps/api/webview');
@@ -143,6 +177,8 @@ export function useGlobalDragAndDrop() {
   });
 
   onUnmounted(() => {
+    window.removeEventListener('keydown', onGlobalKeyDown, { capture: true });
+
     if (unlistenTauriDrop) {
       unlistenTauriDrop();
     }
