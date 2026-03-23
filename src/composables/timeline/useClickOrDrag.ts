@@ -40,8 +40,6 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
     };
 
     const onMove = (ev: PointerEvent) => {
-      if (e.button === 2) return;
-
       if (Math.abs(ev.clientX - startX) > 3 || Math.abs(ev.clientY - startY) > 3) {
         startDrag();
       }

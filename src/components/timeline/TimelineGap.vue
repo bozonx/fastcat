@@ -15,10 +15,9 @@ const hasTimelineClipboard = computed(() => clipboardStore.hasTimelinePayload);
 function onPaste() {
   const payload = clipboardStore.clipboardPayload;
   if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
-  const created = timelineStore.pasteClips(payload.items, {
+  timelineStore.pasteClips(payload.items, {
     insertStartUs: props.item.timelineRange.startUs,
   });
-  if (created.length > 0) timelineStore.selectTimelineItems(created);
   if (payload.operation === 'cut') clipboardStore.setClipboardPayload(null);
 }
 
