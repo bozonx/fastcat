@@ -51,31 +51,42 @@ export class EffectManager {
 
     let filter = clip.effectFilters?.get('__mask') as ClipMaskFilter | undefined;
     
-    // Update mask texture
-    let maskTexture: Texture | null = null;
+    // Update mask source
+    let maskSource: any = null;
     if (clip.maskState.clipKind === 'video' && clip.maskState.lastVideoFrame) {
-      maskTexture = new Texture({ source: clip.maskState.lastVideoFrame as any });
+      maskSource = clip.maskState.lastVideoFrame;
+    } else if (clip.maskState.clipKind === 'image' && clip.maskState.imageSource) {
+      maskSource = clip.maskState.imageSource;
     } else if (clip.maskState.clipKind === 'image' && clip.maskState.bitmap) {
-      maskTexture = new Texture({ source: clip.maskState.bitmap as any });
+      maskSource = clip.maskState.bitmap;
     }
 
-    if (!maskTexture) return filter || null;
+    if (!maskSource) return filter || null;
+
+    // Reuse or create mask texture wrapper
+    if (!clip.maskTexture) {
+      clip.maskTexture = new Texture({ source: maskSource });
+    } else {
+      clip.maskTexture.source = maskSource;
+    }
 
     if (!filter) {
       filter = new ClipMaskFilter({
-        uMask: maskTexture,
-        uMode: clip.mask.mode === 'luma' ? 1 : 0,
+        uMask: clip.maskTexture,
+        uMode: clip.mask.mode === 'luma' ? 1.0 : 0.0,
         uInvert: !!clip.mask.invert,
       });
       clip.effectFilters?.set('__mask', filter);
     } else {
-      filter.uMask = maskTexture.source;
-      filter.uMode = clip.mask.mode === 'luma' ? 1 : 0;
+      filter.uMask = clip.maskTexture;
+      filter.uMode = clip.mask.mode === 'luma' ? 1.0 : 0.0;
       filter.uInvert = !!clip.mask.invert;
     }
 
     return filter;
   }
+
+
 
   /**
    * Applies effects to a track's container.
