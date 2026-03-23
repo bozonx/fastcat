@@ -433,11 +433,12 @@ onUnmounted(() => {
               size="xs"
               color="neutral"
               variant="ghost"
-              class="font-mono tabular-nums min-w-10 justify-center text-[10px]"
-
+              class="font-mono tabular-nums min-w-10 justify-center text-[10px] px-0! hover:bg-transparent! text-ui-text-muted hover:text-ui-text"
+              hover-class=""
               :label="monitorZoomLabel"
               @click="resetZoom"
             />
+
           </UiTooltip>
 
           <UiTooltip :text="t('fastcat.monitor.useProxy', 'Use proxy')">
