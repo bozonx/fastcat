@@ -175,8 +175,14 @@ export function createTimelineLifecycle(deps: TimelineLifecycleDeps) {
     const items: { path: string }[] = [];
     for (const track of deps.timelineDoc.value.tracks) {
       for (const item of track.items) {
-        if (item.kind === 'clip' && item.clipType === 'media' && item.source?.path) {
+        if (item.kind !== 'clip') continue;
+
+        if (item.clipType === 'media' && item.source?.path) {
           items.push({ path: item.source.path });
+        }
+
+        if (item.mask?.source?.path) {
+          items.push({ path: item.mask.source.path });
         }
       }
     }

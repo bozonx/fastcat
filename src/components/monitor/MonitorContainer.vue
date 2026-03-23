@@ -3,7 +3,7 @@ import UiTooltip from '~/components/ui/UiTooltip.vue';
 import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiCompactSelect from '~/components/ui/UiCompactSelect.vue';
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useFullscreen } from '@vueuse/core';
 import { useFocusStore } from '~/stores/focus.store';
@@ -14,6 +14,7 @@ import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
 import { useMonitorRuntime } from '~/composables/monitor/useMonitorRuntime';
 import { TIMELINES_DIR_NAME } from '~/utils/constants';
 import { serializeTimelineToOtio } from '~/timeline/otioSerializer';
+import type { TimelineMarker } from '~/timeline/types';
 import MonitorAudioControl from './MonitorAudioControl.vue';
 import MonitorTextTransformBox from './MonitorTextTransformBox.vue';
 import MonitorViewport from './MonitorViewport.vue';
@@ -222,18 +223,18 @@ const speedMenuItems = computed(() => [
 
 const monitorZoomLabel = computed(() => (viewportRef.value as any)?.zoomLabel ?? 'x1');
 
-const activeMarkers = computed(() => {
+const activeMarkers = ref<TimelineMarker[]>([]);
+watchEffect(() => {
   const time = uiCurrentTimeUs.value;
-  const rawMarkers = timelineDoc.value?.metadata?.fastcat?.markers;
-  if (!Array.isArray(rawMarkers)) return [];
-  return rawMarkers.filter((m) => {
-    if (!m.text.trim()) return false;
-    if (m.durationUs != null) {
-      return time >= m.timeUs && time < m.timeUs + m.durationUs;
-    }
-    // Threshold of 1ms to match point markers during playback/scrubbing
-    return Math.abs(time - m.timeUs) < 1000;
-  });
+  const markers = timelineDoc.value?.metadata?.fastcat?.markers;
+  activeMarkers.value = Array.isArray(markers)
+    ? markers.filter((m) => {
+        if (!m.text.trim()) return false;
+        if (m.durationUs != null) return time >= m.timeUs && time < m.timeUs + m.durationUs;
+        // Threshold of 1ms to match point markers during playback/scrubbing
+        return Math.abs(time - m.timeUs) < 1000;
+      })
+    : [];
 });
 
 const isIdle = ref(false);
