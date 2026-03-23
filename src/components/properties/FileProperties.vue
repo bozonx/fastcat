@@ -456,7 +456,7 @@ const {
     />
 
     <FileGeneralInfoSection
-      v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'file'"
+      v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'file' && !isVideoFile && !isAudioFile"
       :title="generalInfoTitle"
       :file-info="fileInfo"
       :selected-path="selectedPath"
@@ -497,8 +497,17 @@ const {
       />
     </PropertySection>
 
+    <FileGeneralInfoSection
+      v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'file' && (isVideoFile || isAudioFile)"
+      :title="generalInfoTitle"
+      :file-info="fileInfo"
+      :selected-path="selectedPath"
+      :is-hidden="isHidden"
+      :format-bytes="formatBytes"
+    />
+
     <ExpandableYamlSection
-      v-if="fileInfo?.kind === 'file' && isVideoFile && metadataYaml"
+      v-if="fileInfo?.kind === 'file' && (isVideoFile || isAudioFile) && metadataYaml"
       :title="t('common.meta', 'Meta')"
       :content="metadataYaml"
       :expanded="isMetaExpanded"
