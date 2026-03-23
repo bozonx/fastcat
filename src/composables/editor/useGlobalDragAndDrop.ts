@@ -13,6 +13,7 @@ import {
 } from '~/utils/hotkeys/runtime';
 
 const isDropInProgress = ref(false);
+const isCurrentDragCancelled = ref(false);
 
 export function useGlobalDragAndDrop() {
   const uiStore = useUiStore();
@@ -40,12 +41,16 @@ export function useGlobalDragAndDrop() {
 
     if (isCancel) {
       uiStore.isGlobalDragging = false;
+      isCurrentDragCancelled.value = true;
       // Note: We can't cancel the actual OS drag, but we reset our UI state
+      // and stop appearing as a drop target until the user leaves the window
     }
   }
 
   // Web Drop
   function onGlobalDragOver(e: DragEvent) {
+    if (isCurrentDragCancelled.value) return;
+
     const types = e.dataTransfer?.types;
     if (!types) return;
 
@@ -61,6 +66,7 @@ export function useGlobalDragAndDrop() {
   function onGlobalDragLeave(e: DragEvent) {
     if (!e.relatedTarget) {
       uiStore.isGlobalDragging = false;
+      isCurrentDragCancelled.value = false;
     }
   }
 
@@ -75,6 +81,7 @@ export function useGlobalDragAndDrop() {
     isDropInProgress.value = true;
     try {
       await fm.handleFiles(files);
+      isCurrentDragCancelled.value = false;
     } finally {
       isDropInProgress.value = false;
     }
@@ -90,6 +97,7 @@ export function useGlobalDragAndDrop() {
     isDropInProgress.value = true;
     try {
       await fm.handleFiles(files, targetDirPath);
+      isCurrentDragCancelled.value = false;
     } finally {
       isDropInProgress.value = false;
     }
@@ -103,6 +111,7 @@ export function useGlobalDragAndDrop() {
 
     try {
       uiStore.isGlobalDragging = false;
+      isCurrentDragCancelled.value = false;
 
       const files = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
       if (files.length === 0) return;
