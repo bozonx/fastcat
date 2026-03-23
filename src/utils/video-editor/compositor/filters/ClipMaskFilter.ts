@@ -1,50 +1,58 @@
-import { Filter, GlProgram, Texture, type FilterSystem, type RenderSurface, type TextureSource } from 'pixi.js';
+import { Filter, GlProgram, type TextureSource } from 'pixi.js';
 
 const vertex = `
-    attribute vec2 aPosition;
-    attribute vec2 aUV;
+in vec2 aPosition;
+out vec2 vTextureCoord;
 
-    uniform mat3 projectionMatrix;
+uniform vec4 uInputSize;
+uniform vec4 uOutputFrame;
+uniform vec4 uOutputTexture;
 
-    varying vec2 vUv;
+vec4 filterVertexPosition(void) {
+  vec2 position = aPosition * uOutputFrame.zw + uOutputFrame.xy;
+  position.x = position.x * (2.0 / uOutputTexture.x) - 1.0;
+  position.y = position.y * (2.0 * uOutputTexture.z / uOutputTexture.y) - uOutputTexture.z;
+  return vec4(position, 0.0, 1.0);
+}
 
-    void main() {
-        gl_Position = vec4((projectionMatrix * vec3(aPosition, 1.0)).xy, 0.0, 1.0);
-        vUv = aUV;
-    }
+vec2 filterTextureCoord(void) {
+  return aPosition * (uOutputFrame.zw * uInputSize.zw);
+}
+
+void main(void) {
+  gl_Position = filterVertexPosition();
+  vTextureCoord = filterTextureCoord();
+}
 `;
 
 const fragment = `
-    precision highp float;
+in vec2 vTextureCoord;
 
-    varying vec2 vUv;
+uniform sampler2D uTexture;
+uniform sampler2D uMask;
+uniform float uMode;
+uniform float uInvert;
 
-    uniform sampler2D uSampler;
-    uniform sampler2D uMask;
-    uniform float uMode; // 0.0 = Alpha, 1.0 = Luma
-    uniform float uInvert; // 0.0 = False, 1.0 = True
+out vec4 finalColor;
 
-    void main() {
-        vec4 color = texture2D(uSampler, vUv);
-        vec4 maskColor = texture2D(uMask, vUv);
+void main(void) {
+  vec4 color = texture(uTexture, vTextureCoord);
+  vec4 maskColor = texture(uMask, vTextureCoord);
 
-        float maskAlpha;
-        if (uMode < 0.5) {
-            maskAlpha = maskColor.a;
-        } else {
-            maskAlpha = dot(maskColor.rgb, vec3(0.299, 0.587, 0.114)) * maskColor.a;
-        }
+  float maskAlpha = uMode < 0.5
+    ? maskColor.a
+    : dot(maskColor.rgb, vec3(0.299, 0.587, 0.114)) * maskColor.a;
 
-        if (uInvert > 0.5) {
-            maskAlpha = 1.0 - maskAlpha;
-        }
+  if (uInvert > 0.5) {
+    maskAlpha = 1.0 - maskAlpha;
+  }
 
-        gl_FragColor = color * maskAlpha;
-    }
+  finalColor = color * maskAlpha;
+}
 `;
 
 export interface ClipMaskFilterOptions {
-  uMask: Texture;
+  uMask: TextureSource;
   uMode: number;
   uInvert: boolean;
 }
@@ -61,7 +69,7 @@ export class ClipMaskFilter extends Filter {
       glProgram,
       resources: {
         uMask: options.uMask,
-        filterUniforms: {
+        clipMaskUniforms: {
           uMode: { value: options.uMode, type: 'f32' },
           uInvert: { value: options.uInvert ? 1.0 : 0.0, type: 'f32' },
         },
@@ -70,23 +78,23 @@ export class ClipMaskFilter extends Filter {
   }
 
   get uMode() {
-    return this.resources.filterUniforms.uMode.value;
+    return this.resources.clipMaskUniforms.uniforms.uMode;
   }
   set uMode(value: number) {
-    this.resources.filterUniforms.uMode.value = value;
+    this.resources.clipMaskUniforms.uniforms.uMode = value;
   }
 
   get uInvert() {
-    return this.resources.filterUniforms.uInvert.value > 0.5;
+    return this.resources.clipMaskUniforms.uniforms.uInvert > 0.5;
   }
   set uInvert(value: boolean) {
-    this.resources.filterUniforms.uInvert.value = value ? 1.0 : 0.0;
+    this.resources.clipMaskUniforms.uniforms.uInvert = value ? 1.0 : 0.0;
   }
 
   get uMask() {
     return this.resources.uMask;
   }
-  set uMask(value: any) {
+  set uMask(value: TextureSource) {
     this.resources.uMask = value;
   }
 }

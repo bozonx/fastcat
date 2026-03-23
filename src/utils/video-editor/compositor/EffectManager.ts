@@ -1,9 +1,9 @@
 import type { Filter, Container } from 'pixi.js';
+import type { TextureSource } from 'pixi.js';
 import { getVideoEffectManifest } from '../../../effects';
 import type { VideoClipEffect } from '~/timeline/types';
 import type { CompositorClip, CompositorTrack } from './types';
 import { ClipMaskFilter } from './filters/ClipMaskFilter';
-import { Texture } from 'pixi.js';
 
 export interface EffectManagerContext {
   previewEffectsEnabled: boolean;
@@ -50,40 +50,57 @@ export class EffectManager {
     }
 
     let filter = clip.effectFilters?.get('__mask') as ClipMaskFilter | undefined;
-    
-    // Update mask source
-    let maskSource: any = null;
-    if (clip.maskState.clipKind === 'video' && clip.maskState.lastVideoFrame) {
-      maskSource = clip.maskState.lastVideoFrame;
-    } else if (clip.maskState.clipKind === 'image' && clip.maskState.imageSource) {
-      maskSource = clip.maskState.imageSource;
-    } else if (clip.maskState.clipKind === 'image' && clip.maskState.bitmap) {
-      maskSource = clip.maskState.bitmap;
-    }
+
+    const maskSource = this.resolveMaskSource(clip);
 
     if (!maskSource) return filter || null;
 
-    // Reuse or create mask texture wrapper
-    if (!clip.maskTexture) {
-      clip.maskTexture = new Texture({ source: maskSource });
-    } else {
-      clip.maskTexture.source = maskSource;
-    }
-
     if (!filter) {
       filter = new ClipMaskFilter({
-        uMask: clip.maskTexture,
+        uMask: maskSource,
         uMode: clip.mask.mode === 'luma' ? 1.0 : 0.0,
         uInvert: !!clip.mask.invert,
       });
       clip.effectFilters?.set('__mask', filter);
     } else {
-      filter.uMask = clip.maskTexture;
+      filter.uMask = maskSource;
       filter.uMode = clip.mask.mode === 'luma' ? 1.0 : 0.0;
       filter.uInvert = !!clip.mask.invert;
     }
 
     return filter;
+  }
+
+  private resolveMaskSource(clip: CompositorClip): TextureSource | null {
+    const maskState = clip.maskState;
+    if (!maskState?.imageSource) {
+      return null;
+    }
+
+    if (maskState.clipKind === 'video') {
+      const frame = maskState.lastVideoFrame;
+      if (!frame) {
+        return null;
+      }
+
+      const frameWidth = Math.max(
+        1,
+        Math.round(Number((frame as any).displayWidth ?? (frame as any).codedWidth ?? 1)),
+      );
+      const frameHeight = Math.max(
+        1,
+        Math.round(Number((frame as any).displayHeight ?? (frame as any).codedHeight ?? 1)),
+      );
+
+      if (maskState.imageSource.width !== frameWidth || maskState.imageSource.height !== frameHeight) {
+        maskState.imageSource.resize(frameWidth, frameHeight);
+      }
+
+      (maskState.imageSource as any).resource = frame as any;
+      maskState.imageSource.update();
+    }
+
+    return maskState.imageSource;
   }
 
 
