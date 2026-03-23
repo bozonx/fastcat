@@ -221,7 +221,12 @@ const speedMenuItems = computed(() => [
   })),
 ]);
 
-const monitorZoomLabel = computed(() => (viewportRef.value as any)?.zoomLabel ?? 'x1');
+const monitorZoomLabel = computed(() => {
+  const zoom = projectStore.activeMonitor?.zoom ?? 1;
+  return `x${zoom.toFixed(2)}`;
+});
+
+
 
 const activeMarkers = ref<TimelineMarker[]>([]);
 watchEffect(() => {
@@ -428,7 +433,8 @@ onUnmounted(() => {
               size="xs"
               color="neutral"
               variant="ghost"
-              class="font-mono tabular-nums min-w-10 justify-center"
+              class="font-mono tabular-nums min-w-10 justify-center text-[10px]"
+
               :label="monitorZoomLabel"
               @click="resetZoom"
             />
