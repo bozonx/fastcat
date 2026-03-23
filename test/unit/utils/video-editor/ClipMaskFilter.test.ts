@@ -11,7 +11,7 @@ describe('ClipMaskFilter', () => {
       uInvert: true,
     });
 
-    expect(filter.resources.uMask).toBe(Texture.WHITE.source);
+    expect(filter.resources.uMaskTexture).toBe(Texture.WHITE.source);
     expect(filter.resources.clipMaskUniforms.uniforms.uMode).toBe(1);
     expect(filter.resources.clipMaskUniforms.uniforms.uInvert).toBe(1);
     expect(filter.uMode).toBe(1);

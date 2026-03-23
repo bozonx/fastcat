@@ -36,6 +36,7 @@ export class HudMediaLoader {
     }
 
     const imageSource = new ImageSource({ resource: loaded.bitmap });
+    imageSource.update();
 
     return {
       sourcePath: params.sourcePath,
