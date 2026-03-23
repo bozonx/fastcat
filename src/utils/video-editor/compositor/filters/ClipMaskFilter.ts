@@ -1,4 +1,4 @@
-import { Filter, GlProgram, type Texture } from 'pixi.js';
+import { Filter, GlProgram, type TextureSource } from 'pixi.js';
 
 const vertex = `
 in vec2 aPosition;
@@ -29,7 +29,7 @@ in vec2 vTextureCoord;
 in vec2 vMaskCoord;
 
 uniform sampler2D uTexture;
-uniform sampler2D uMask;
+uniform sampler2D uMaskTexture;
 uniform float uMode;
 uniform float uInvert;
 
@@ -37,7 +37,7 @@ out vec4 finalColor;
 
 void main(void) {
   vec4 color = texture(uTexture, vTextureCoord);
-  vec4 maskColor = texture(uMask, vMaskCoord);
+  vec4 maskColor = texture(uMaskTexture, vMaskCoord);
 
   float maskAlpha = uMode < 0.5
     ? maskColor.a
@@ -52,7 +52,7 @@ void main(void) {
 `;
 
 export interface ClipMaskFilterOptions {
-  uMask: Texture;
+  uMask: TextureSource;
   uMode: number;
   uInvert: boolean;
 }
@@ -68,7 +68,7 @@ export class ClipMaskFilter extends Filter {
     super({
       glProgram,
       resources: {
-        uMask: options.uMask.source,
+        uMaskTexture: options.uMask,
         clipMaskUniforms: {
           uMode: { value: options.uMode, type: 'f32' },
           uInvert: { value: options.uInvert ? 1.0 : 0.0, type: 'f32' },
@@ -92,9 +92,9 @@ export class ClipMaskFilter extends Filter {
   }
 
   get uMask() {
-    return this.resources.uMask;
+    return this.resources.uMaskTexture;
   }
-  set uMask(value: Texture) {
-    this.resources.uMask = value.source;
+  set uMask(value: TextureSource) {
+    this.resources.uMaskTexture = value;
   }
 }

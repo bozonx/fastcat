@@ -16,7 +16,6 @@ interface UiCompactSelectProps {
   searchInput?: any;
 }
 
-
 const props = withDefaults(defineProps<UiCompactSelectProps>(), {
   modelValue: undefined,
   placeholder: undefined,
@@ -28,8 +27,6 @@ const props = withDefaults(defineProps<UiCompactSelectProps>(), {
   fullWidth: false,
   searchInput: undefined,
 });
-
-
 
 const emit = defineEmits<{ (e: 'update:modelValue', value: unknown): void }>();
 
@@ -56,8 +53,6 @@ const ui = computed(() => ({
     :ui="ui"
     :search-input="props.searchInput"
     @update:model-value="(val: unknown) => emit('update:modelValue', val)"
-
-
   >
     <template v-for="(_, slot) in $slots" #[slot]="slotProps">
       <slot :name="slot" v-bind="slotProps" />

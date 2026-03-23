@@ -384,10 +384,6 @@ onUnmounted(() => {
         @mouseenter="resetIdle"
       >
         <!-- Left cluster: utility buttons -->
-        <div
-          class="flex items-center gap-2 shrink-0"
-          :class="toolbarPosition === 'left' || toolbarPosition === 'right' ? 'flex-col' : ''"
-        >
           <UiActionButton
             v-if="effectiveFullscreen"
             size="sm"
@@ -432,7 +428,7 @@ onUnmounted(() => {
               size="xs"
               color="neutral"
               variant="ghost"
-              class="font-mono tabular-nums min-w-12 justify-center"
+              class="font-mono tabular-nums min-w-10 justify-center"
               :label="monitorZoomLabel"
               @click="resetZoom"
             />
@@ -506,7 +502,6 @@ onUnmounted(() => {
               </span>
             </template>
           </UiCompactSelect>
-        </div>
 
         <!-- Playback buttons — right-click opens speed selector -->
         <UContextMenu :items="speedMenuItems">
