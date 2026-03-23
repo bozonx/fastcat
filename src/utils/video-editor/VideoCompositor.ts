@@ -534,6 +534,7 @@ export class VideoCompositor {
         };
         resetState(clip.hudMediaStates.background);
         resetState(clip.hudMediaStates.content);
+        resetState(clip.hudMediaStates.frame);
         clip.hudDirty = true;
       }
       clip.canvas = null;
@@ -710,7 +711,7 @@ export class VideoCompositor {
           computeTransitionOpacity: (clip, clipTimeUs) =>
             this.computeTransitionOpacity(clip, clipTimeUs),
           applyClipEffects: (clip) => this.applyClipEffects(clip),
-          drawHudClip: (clip) => this.canvasFallbackRenderer.drawHudClip(clip),
+          drawHudClip: (clip, timeUs) => this.canvasFallbackRenderer.drawHudClip(clip, timeUs),
           drawShapeClip: (clip, size) => {
             this.shapeRenderer.draw({
               graphics: clip.sprite,

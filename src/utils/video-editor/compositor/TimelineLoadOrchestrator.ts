@@ -161,6 +161,14 @@ export class TimelineLoadOrchestrator {
         applySolidLayout: callbacks.applySolidLayout,
       });
 
+      if (updated.clip.clipKind === 'hud' && updated.clip.hudDirty) {
+        await this.context.timelineFixedClipBuilder.initializeHudMediaStates({
+          clip: updated.clip,
+          deps,
+          mediabunny,
+        });
+      }
+
       nextClips.push(updated.clip);
       nextClipById.set(itemId, updated.clip);
       return {

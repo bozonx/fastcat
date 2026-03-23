@@ -182,6 +182,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
             hudType: item.clipType === 'hud' ? (item as any).hudType : undefined,
             background: item.clipType === 'hud' ? (item as any).background : undefined,
             content: item.clipType === 'hud' ? (item as any).content : undefined,
+            frame: item.clipType === 'hud' ? (item as any).frame : undefined,
             isImage: item.isImage,
             transform: item.transform,
             mask: item.mask,

@@ -215,6 +215,7 @@ export class ClipFactory {
       hudType: NonNullable<CompositorClip['hudType']>;
       background: CompositorClip['background'];
       content: CompositorClip['content'];
+      frame: CompositorClip['frame'];
     },
   ): CompositorClip {
     const sprite = new Sprite(Texture.EMPTY);
@@ -246,6 +247,7 @@ export class ClipFactory {
       hudType: params.hudType,
       background: params.background,
       content: params.content,
+      frame: params.frame,
       opacity: params.opacity,
       blendMode: params.blendMode,
       effects: params.effects,
