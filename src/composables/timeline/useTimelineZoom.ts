@@ -102,6 +102,32 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
     }
   }
 
+  function fitTimelineZoom() {
+    if (!scrollEl.value) return;
+
+    const durationUs = timelineStore.duration;
+    if (durationUs <= 0) {
+      timelineStore.resetTimelineZoom();
+      scrollEl.value.scrollLeft = 0;
+      return;
+    }
+
+    const rect = scrollEl.value.getBoundingClientRect();
+    const viewportWidth = rect.width;
+    if (viewportWidth <= 0) return;
+
+    // Add 5% padding on each side (total 10%)
+    const desiredPPS = (viewportWidth * 0.9) / (durationUs / 1e6);
+
+    // Zoom formula: PPS = 10 * 2^((pos - 50) / 7)
+    // pos = 7 * log2(PPS / 10) + 50
+    const nextZoom = 7 * Math.log2(desiredPPS / 10) + 50;
+
+    isInternalZoomUpdate = true;
+    timelineStore.setTimelineZoomExact(nextZoom);
+    scrollEl.value.scrollLeft = 0;
+  }
+
   onBeforeUnmount(() => {
     if (timelineZoomFrameId) {
       window.cancelAnimationFrame(timelineZoomFrameId);
@@ -110,5 +136,6 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
 
   return {
     handleZoomWheel,
+    fitTimelineZoom,
   };
 }

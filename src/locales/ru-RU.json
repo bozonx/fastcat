@@ -656,6 +656,7 @@
         "zoom": "Масштаб"
       },
       "quantize": "Привязать к кадрам",
+      "zoomToFit": "Вписать всё",
       "removeFromGroup": "Удалить из группы",
       "removeTransitionIn": "Убрать переход в начале",
       "removeTransitionOut": "Убрать переход в конце",

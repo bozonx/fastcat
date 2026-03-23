@@ -52,6 +52,7 @@ const props = defineProps<{
   draggingMode?: 'move' | 'slip' | 'trim_start' | 'trim_end' | null;
   draggingItemId?: string | null;
   isMobile?: boolean;
+  onZoomToFit?: () => void;
 }>();
 
 const emit = defineEmits<{
@@ -183,6 +184,11 @@ const speedModalTargetHasAudio = computed(() => {
 
 const timelineEmptyAreaContextMenuItems = [
   [
+    {
+      label: t('fastcat.timeline.zoomToFit'),
+      icon: 'i-heroicons-arrows-pointing-out',
+      onSelect: () => props.onZoomToFit?.(),
+    },
     {
       label: t('fastcat.timeline.properties.title'),
       icon: 'i-heroicons-cog-6-tooth',
