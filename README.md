@@ -134,7 +134,7 @@ Current implementation scope:
 
 - settings and provider resolution
 - connect flow token capture via `?token=...`
-- auto-connect URL generation from `FCPAN_PUBLICADOR_BASE_URL`
+- auto-connect URL generation from `BLOGGERDOG_BASE_URL`
 - connect app name from a global constant
 - connect flow `scopes` generation based on active Files/STT overrides
 - provider override rules for `Files API` and `STT API`
@@ -159,7 +159,7 @@ If a manual Files or STT service explicitly overrides FastCat, the related scope
 
 Notes:
 
-- `FCPAN_PUBLICADOR_BASE_URL` defines the FastCat Publicador instance URL for connect flow and API resolution
+- `FASTCAT_PUBLICADOR_BASE_URL` defines the FastCat Publicador instance URL for connect flow and API resolution
 - FastCat connect app name is fixed globally and is not editable in user settings
 - desktop user/app settings are stored in the OS app config directory
 - OPFS and portable workspace settings are stored in `.fastcat-config/user.settings.json` and `.fastcat-config/app.settings.json`
