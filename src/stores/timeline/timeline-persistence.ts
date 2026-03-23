@@ -33,6 +33,7 @@ export interface TimelinePersistenceDeps {
   selectTimelineDurationUs: (doc: TimelineDocument) => number;
 
   onSaveSuccess?: () => void;
+  onSaveError?: (error: unknown) => void;
 }
 
 export interface TimelinePersistence {
@@ -115,6 +116,7 @@ export function createTimelinePersistence(deps: TimelinePersistenceDeps): Timeli
     },
     onError: (e) => {
       console.error('Failed to save timeline', e);
+      deps.onSaveError?.(e);
     },
   });
 
