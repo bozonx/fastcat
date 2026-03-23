@@ -209,6 +209,13 @@ export class TimelineLoadOrchestrator {
           mediabunny,
         });
       }
+      if (descriptor.maskPath) {
+        await this.context.timelineFixedClipBuilder.initializeMaskState({
+          clip: compositorClip,
+          deps,
+          mediabunny,
+        });
+      }
       return { sequentialTimeUs };
     }
 
@@ -270,6 +277,13 @@ export class TimelineLoadOrchestrator {
         nextClips,
         nextClipById,
       });
+      if (descriptor.maskPath) {
+        await this.context.timelineFixedClipBuilder.initializeMaskState({
+          clip: compositorClip,
+          deps,
+          mediabunny,
+        });
+      }
       return { sequentialTimeUs };
     }
 
@@ -317,6 +331,13 @@ export class TimelineLoadOrchestrator {
         nextClips,
         nextClipById,
       });
+      if (descriptor.maskPath) {
+        await this.context.timelineFixedClipBuilder.initializeMaskState({
+          clip: compositorClip,
+          deps,
+          mediabunny,
+        });
+      }
       return { sequentialTimeUs };
     } catch (err: any) {
       if (err?.message !== 'Input has an unsupported or unrecognizable format.') {

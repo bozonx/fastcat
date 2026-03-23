@@ -151,6 +151,29 @@ export class TimelineActiveClipProcessor {
       }
 
       sampleRequests.push(params.createPrimaryVideoSampleRequest(clip, sampleTimeS));
+
+      if (clip.maskState?.clipKind === 'video' && clip.maskState.sink) {
+        const mockClip = {
+          itemId: clip.itemId + '_mask',
+          sink: clip.maskState.sink,
+          firstTimestampS: clip.maskState.firstTimestampS,
+        } as CompositorClip;
+        
+        const maskPromise = params.createPrimaryVideoSampleRequest(mockClip, sampleTimeS).then(res => {
+          if (res.sample) {
+            const state = clip.maskState!;
+            if (typeof res.sample.toVideoFrame === 'function') {
+              if (state.lastVideoFrame) {
+                try { state.lastVideoFrame.close(); } catch {}
+              }
+              state.lastVideoFrame = res.sample.toVideoFrame();
+            }
+            try { res.sample.close?.(); } catch {}
+          }
+          return { clip, sample: { isMask: true, close: () => {} } as any };
+        });
+        sampleRequests.push(maskPromise);
+      }
     }
 
     return { sampleRequests };

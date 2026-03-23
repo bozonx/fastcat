@@ -19,6 +19,7 @@ export interface CreateClipBaseParams {
   transform?: CompositorClip['transform'];
   transitionIn?: CompositorClip['transitionIn'];
   transitionOut?: CompositorClip['transitionOut'];
+  mask?: CompositorClip['mask'];
 }
 
 export interface ClipFactoryContext {
@@ -67,6 +68,7 @@ export class ClipFactory {
       blendMode: params.blendMode,
       effects: params.effects,
       transform: params.transform,
+      mask: params.mask,
     };
 
     this.context.layoutApplier.applySolidLayout(clip);
@@ -112,6 +114,7 @@ export class ClipFactory {
       transform: params.transform,
       transitionIn: params.transitionIn,
       transitionOut: params.transitionOut,
+      mask: params.mask,
       transitionFilter: null,
       transitionFilterType: null,
       textDirty: true,
@@ -160,6 +163,7 @@ export class ClipFactory {
       transform: params.transform,
       transitionIn: params.transitionIn,
       transitionOut: params.transitionOut,
+      mask: params.mask,
       transitionFilter: null,
       transitionFilterType: null,
       shapeDirty: true,
@@ -201,6 +205,7 @@ export class ClipFactory {
       blendMode: params.blendMode,
       effects: params.effects,
       transform: params.transform,
+      mask: params.mask,
       adjustmentSourceTexture: null,
     };
   }
@@ -249,6 +254,7 @@ export class ClipFactory {
       transitionOut: params.transitionOut,
       transitionFilter: null,
       transitionFilterType: null,
+      mask: params.mask,
       hudDirty: true,
       hudMediaStates: {},
     };
@@ -306,6 +312,7 @@ export class ClipFactory {
       transform: params.transform,
       transitionIn: params.transitionIn,
       transitionOut: params.transitionOut,
+      mask: params.mask,
     };
   }
 
@@ -361,6 +368,7 @@ export class ClipFactory {
       transform: params.transform,
       transitionIn: params.transitionIn,
       transitionOut: params.transitionOut,
+      mask: params.mask,
     };
   }
 

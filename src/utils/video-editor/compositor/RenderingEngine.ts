@@ -129,6 +129,11 @@ export class RenderingEngine {
 
         safeDispose(clip.lastVideoFrame);
         clip.lastVideoFrame = null;
+
+        if (clip.maskState?.lastVideoFrame) {
+          safeDispose(clip.maskState.lastVideoFrame);
+          clip.maskState.lastVideoFrame = null;
+        }
       }
     }
   }

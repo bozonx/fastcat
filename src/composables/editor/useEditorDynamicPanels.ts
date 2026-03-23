@@ -200,7 +200,7 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
     const distBottom = rect.height - y;
     const minDist = Math.min(distLeft, distRight, distTop, distBottom);
 
-    const threshold = Math.min(rect.width * 0.3, rect.height * 0.3, 120);
+    const threshold = Math.min(rect.width * 0.15, rect.height * 0.15, 60);
 
     if (minDist > threshold) {
       dropPosition.value = null;

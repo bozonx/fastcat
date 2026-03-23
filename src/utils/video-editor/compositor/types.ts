@@ -10,6 +10,7 @@ import type {
   HudType,
   HudMediaParams,
   VideoClipEffect,
+  ClipMask,
 } from '~/timeline/types';
 
 export interface HudMediaState {
@@ -91,6 +92,8 @@ export interface CompositorClip {
     background?: HudMediaState;
     content?: HudMediaState;
   };
+  mask?: ClipMask;
+  maskState?: HudMediaState | null;
 }
 
 export interface CompositorTrack {

@@ -69,6 +69,7 @@ export class TimelineMediaClipBuilder {
       transform: clipData.transform,
       transitionIn: clipData.transitionIn,
       transitionOut: clipData.transitionOut,
+      mask: clipData.mask,
     });
 
     if (bitmap) {
@@ -126,6 +127,7 @@ export class TimelineMediaClipBuilder {
       transform: clipData.transform,
       transitionIn: clipData.transitionIn,
       transitionOut: clipData.transitionOut,
+      mask: clipData.mask,
     });
   }
 }

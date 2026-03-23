@@ -51,6 +51,7 @@ export class TimelineFixedClipBuilder {
       transform: clipData.transform,
       transitionIn: clipData.transitionIn,
       transitionOut: clipData.transitionOut,
+      mask: clipData.mask,
     };
 
     switch (descriptor.clipType) {
@@ -169,6 +170,61 @@ export class TimelineFixedClipBuilder {
       } catch (e) {
         console.error('[VideoCompositor] Failed to load HUD content', e);
       }
+    }
+  }
+
+  public async initializeMaskState(params: {
+    clip: CompositorClip;
+    deps: HudMediaLoaderDeps;
+    mediabunny: MediaClipLoaderMediabunny;
+  }) {
+    const { clip, deps, mediabunny } = params;
+    const maskPath = clip.mask?.source?.path;
+    if (!maskPath) return;
+
+    try {
+      const fileHandle = await deps.getFileHandleByPath(maskPath);
+      if (!fileHandle) return;
+      const file = (await deps.getFileByPath?.(maskPath)) ?? (await fileHandle.getFile());
+      
+      const isImage = (typeof file?.type === 'string' && file.type.startsWith('image/')) ||
+                      maskPath.match(/\.(jpe?g|png|webp|gif|svg)$/i);
+      
+      if (isImage) {
+        clip.maskState = await this.context.hudMediaLoader.loadImageState({
+          sourcePath: maskPath,
+          deps,
+        });
+      } else {
+        const loadedVideo = await this.context.mediaClipLoader.loadVideoRuntime({
+          mediabunny,
+          file,
+          sourceStartUs: 0,
+          requestedTimelineDurationUs: clip.durationUs,
+          requestedSourceDurationUs: 0,
+          requestedSourceRangeDurationUs: 0,
+          startUs: clip.startUs,
+        });
+        
+        if (loadedVideo) {
+          clip.maskState = {
+            sourcePath: maskPath,
+            fileHandle,
+            input: loadedVideo.input,
+            sink: loadedVideo.sink,
+            firstTimestampS: loadedVideo.firstTimestampS,
+            sourceDurationUs: loadedVideo.sourceDurationUs,
+            clipKind: 'video',
+            sourceKind: 'videoFrame',
+            imageSource: loadedVideo.imageSource,
+            sprite: new Sprite(Texture.EMPTY),
+            lastVideoFrame: null,
+            bitmap: null,
+          };
+        }
+      }
+    } catch (e) {
+      console.error('[VideoCompositor] Failed to load clip mask', e);
     }
   }
 }
