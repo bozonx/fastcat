@@ -529,6 +529,8 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
         :is-dragging="isDraggingCurrentItem || isMovePreviewCurrentItem"
         :is-resizing-volume="resizeVolume?.itemId === item.id"
         :is-mobile="isMobile"
+        :scroll-left="scrollLeft"
+        :viewport-width="viewportWidth"
         @start-resize-fade="
           (e, payload) =>
             emit('startResizeFade', e, {
