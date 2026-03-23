@@ -17,8 +17,8 @@ export interface ThumbnailTile {
   widthPx: number;
 }
 
-/** Aspect ratio of stored thumbnail frames (width / height). */
-const THUMB_ASPECT = TIMELINE_CLIP_THUMBNAILS.WIDTH / TIMELINE_CLIP_THUMBNAILS.HEIGHT;
+/** Fallback aspect ratio (16:9) when video metadata is not yet available. */
+const DEFAULT_THUMB_ASPECT = 16 / 9;
 
 export interface UseTimelineClipThumbnailsOptions {
   item: Ref<TimelineClipItem>;
@@ -121,16 +121,31 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
   });
 
   /**
+   * Aspect ratio of the actual video (displayWidth / displayHeight).
+   * Uses media metadata when available so vertical videos get correct tile widths.
+   */
+  const videoAspect = computed(() => {
+    const url = fileUrl.value;
+    if (!url) return DEFAULT_THUMB_ASPECT;
+    const meta = mediaStore.mediaMetadata[url];
+    const v = meta?.video;
+    if (v && v.displayWidth > 0 && v.displayHeight > 0) {
+      return v.displayWidth / v.displayHeight;
+    }
+    return DEFAULT_THUMB_ASPECT;
+  });
+
+  /**
    * Display width of one thumbnail tile.
    *
-   * Always equals height × THUMB_ASPECT so tiles never overlap and never have
+   * Always equals height × videoAspect so tiles never overlap and never have
    * gaps — they are placed consecutively regardless of timeline zoom. When the
    * clip row is taller (e.g. vertical zoom) tiles grow proportionally.
    */
   const tileDisplayWidthPx = computed(() => {
     const h = options.clipHeightPx.value;
     if (!h || h <= 0) return TIMELINE_CLIP_THUMBNAILS.WIDTH;
-    return h * THUMB_ASPECT;
+    return h * videoAspect.value;
   });
 
   const sortedKeys = computed(() => {
