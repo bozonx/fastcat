@@ -253,6 +253,7 @@ function selectTransition(
           timelineStore.hoveredTrackId === track.id && !isTrackVisuallySelected(track.id)
             ? 'bg-ui-bg-elevated/50'
             : '',
+          track.locked ? 'hatching-horizontal-track bg-black/10' : '',
         ]"
         :style="{ height: `${trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT}px` }"
         @pointerdown="

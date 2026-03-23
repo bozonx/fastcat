@@ -113,7 +113,7 @@ const currentSlipPreview = computed(() => {
 });
 
 function toggleFadeCurve(edge: 'in' | 'out') {
-  if (!clipItem.value || !props.canEditClipContent || clipItem.value.locked) return;
+  if (!clipItem.value || !props.canEditClipContent || clipItem.value.locked || props.track.locked) return;
 
   const curveProp = edge === 'in' ? 'audioFadeInCurve' : 'audioFadeOutCurve';
   const currentCurve = clipItem.value[curveProp] === 'logarithmic' ? 'logarithmic' : 'linear';
@@ -163,7 +163,7 @@ const { didStartDrag, rightClickDragTriggered, rightClickPointerActive, onPointe
 
 function onClipPointerdown(e: PointerEvent) {
   if (timelineStore.isTrimModeActive) return;
-  if (!props.canEditClipContent || !clipItem.value || clipItem.value.locked) return;
+  if (!props.canEditClipContent || !clipItem.value || clipItem.value.locked || props.track.locked) return;
 
   focusStore.setPanelFocus('timeline');
 
@@ -346,7 +346,7 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
   };
 });
 function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; drag: boolean }) {
-  if (!clipItem.value || !props.canEditClipContent) return;
+  if (!clipItem.value || !props.canEditClipContent || props.track.locked) return;
 
   const defaultUs = Math.max(
     0,
@@ -449,7 +449,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
           ? 'opacity-40'
           : '',
         isMediaMissing ? 'bg-red-600! border-red-800! text-white!' : '',
-        clipItem && Boolean(clipItem.locked) ? 'cursor-not-allowed' : '',
+        (clipItem && Boolean(clipItem.locked)) || track.locked ? 'cursor-not-allowed' : '',
         isMobile ? 'touch-manipulation' : '',
       ]"
       @pointerdown="onClipPointerdown"
@@ -475,6 +475,11 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
         v-if="isFreePosition"
         class="absolute inset-0 rounded border-2 border-yellow-400 pointer-events-none"
         :style="{ zIndex: 'var(--z-clip-free-pos)' }"
+      />
+      <div
+        v-if="track.locked || (clipItem && clipItem.locked)"
+        class="absolute inset-0 rounded hatching-horizontal pointer-events-none"
+        :style="{ zIndex: 'var(--z-clip-handles)' }"
       />
 
       <!-- Overlays (Missing Media, Disabled, Muted) -->
@@ -593,7 +598,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
       </div>
 
       <!-- Trim Handles -->
-      <template v-if="clipItem && canEditClipContent && !clipItem.locked">
+      <template v-if="clipItem && canEditClipContent && !clipItem.locked && !track.locked">
         <div
           class="absolute left-0 top-0 bottom-0 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors group/trim"
           :style="{ zIndex: 'var(--z-clip-trim)' }"
