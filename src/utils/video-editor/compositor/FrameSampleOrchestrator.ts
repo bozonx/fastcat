@@ -229,7 +229,12 @@ export class FrameSampleOrchestrator {
       }
 
       try {
-        await params.updateClipTextureFromSample(sample, clip);
+        if (sample.isHud || sample.isMask) {
+          // HUD and Mask frames are handled during sample request processing
+          // or in drawHudClip, so we don't update main texture here.
+        } else {
+          await params.updateClipTextureFromSample(sample, clip);
+        }
         if (params.setClipSpriteVisible(clip, true)) {
           params.updatedClips.push(clip);
         }

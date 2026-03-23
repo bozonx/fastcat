@@ -253,6 +253,16 @@ export class ClipResourceManager {
       clip.hudMediaStates = {};
     }
 
+    if (clip.maskState) {
+      this.context.videoFrameCache.clearForClip(clip.itemId + '_mask');
+      safeDispose(clip.maskState.sink);
+      safeDispose(clip.maskState.input);
+      if (clip.maskState.lastVideoFrame) safeDispose(clip.maskState.lastVideoFrame);
+      if (clip.maskState.bitmap) safeDispose(clip.maskState.bitmap);
+      if (clip.maskState.sprite) clip.maskState.sprite.destroy(true);
+      clip.maskState = null;
+    }
+
     if (clip.sprite && clip.sprite.parent) {
       clip.sprite.parent.removeChild(clip.sprite);
     }

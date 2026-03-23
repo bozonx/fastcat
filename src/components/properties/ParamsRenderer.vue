@@ -336,9 +336,9 @@ function handleArrayItemUpdate(
               ? 'border-primary-500 bg-primary-500/10'
               : 'border-ui-border bg-ui-bg-muted'
           "
-          @dragover.prevent="dragOverKey = control.key"
-          @dragleave.prevent="dragOverKey = dragOverKey === control.key ? null : dragOverKey"
-          @drop.prevent="handleFileDrop($event, control)"
+          @dragover.prevent.stop="dragOverKey = control.key"
+          @dragleave.prevent.stop="dragOverKey = dragOverKey === control.key ? null : dragOverKey"
+          @drop.prevent.stop="handleFileDrop($event, control)"
         >
           <div class="flex-1 min-w-0 flex items-center gap-2">
             <UIcon

@@ -2,6 +2,8 @@ import type { Filter, Container } from 'pixi.js';
 import { getVideoEffectManifest } from '../../../effects';
 import type { VideoClipEffect } from '~/timeline/types';
 import type { CompositorClip, CompositorTrack } from './types';
+import { ClipMaskFilter } from './filters/ClipMaskFilter';
+import { Texture } from 'pixi.js';
 
 export interface EffectManagerContext {
   previewEffectsEnabled: boolean;
@@ -26,7 +28,53 @@ export class EffectManager {
     }
 
     const filters = this.syncFilters(clip.effectFilters, clip.effects ?? []);
+    
+    // Add mask filter if present
+    const maskFilter = this.syncMaskFilter(clip);
+    if (maskFilter) {
+      filters.push(maskFilter);
+    }
+
     clip.sprite.filters = filters.length > 0 ? filters : null;
+  }
+
+  private syncMaskFilter(clip: CompositorClip): ClipMaskFilter | null {
+    if (!clip.mask || !clip.maskState) {
+      // Remove mask filter if it exists
+      if (clip.effectFilters?.has('__mask')) {
+        const filter = clip.effectFilters.get('__mask');
+        clip.effectFilters.delete('__mask');
+        try { (filter as any)?.destroy?.(); } catch {}
+      }
+      return null;
+    }
+
+    let filter = clip.effectFilters?.get('__mask') as ClipMaskFilter | undefined;
+    
+    // Update mask texture
+    let maskTexture: Texture | null = null;
+    if (clip.maskState.clipKind === 'video' && clip.maskState.lastVideoFrame) {
+      maskTexture = new Texture({ source: clip.maskState.lastVideoFrame as any });
+    } else if (clip.maskState.clipKind === 'image' && clip.maskState.bitmap) {
+      maskTexture = new Texture({ source: clip.maskState.bitmap as any });
+    }
+
+    if (!maskTexture) return filter || null;
+
+    if (!filter) {
+      filter = new ClipMaskFilter({
+        uMask: maskTexture,
+        uMode: clip.mask.mode === 'luma' ? 1 : 0,
+        uInvert: !!clip.mask.invert,
+      });
+      clip.effectFilters?.set('__mask', filter);
+    } else {
+      filter.uMask = maskTexture.source;
+      filter.uMode = clip.mask.mode === 'luma' ? 1 : 0;
+      filter.uInvert = !!clip.mask.invert;
+    }
+
+    return filter;
   }
 
   /**
