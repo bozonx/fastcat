@@ -348,52 +348,71 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
 function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; drag: boolean }) {
   if (!clipItem.value || !props.canEditClipContent) return;
 
-  const pointerEventSnapshot = {
-    clientX: e.clientX,
-    clientY: e.clientY,
-    button: e.button,
-    buttons: e.buttons,
-    altKey: e.altKey,
-    ctrlKey: e.ctrlKey,
-    metaKey: e.metaKey,
-    shiftKey: e.shiftKey,
-    pointerId: e.pointerId,
-    pointerType: e.pointerType,
-    stopPropagation: () => {},
-    preventDefault: () => {},
-  } as PointerEvent;
-
   const defaultUs = Math.max(
     0,
     Math.round(
       Number(workspaceStore.userSettings.timeline.defaultTransitionDurationUs ?? 1_000_000),
     ),
   );
-  const durationUs = Math.min(defaultUs, Math.round(clipItem.value.timelineRange.durationUs * 0.3));
-
-  const transitionPatch = {
-    type: 'dissolve',
-    durationUs,
-    mode: 'adjacent' as const,
-    curve: 'linear' as const,
-  };
-
-  timelineStore.updateClipTransition(
-    props.track.id,
-    props.item.id,
-    payload.edge === 'in' ? { transitionIn: transitionPatch } : { transitionOut: transitionPatch },
+  const defaultDurationUs = Math.min(
+    defaultUs,
+    Math.round(clipItem.value.timelineRange.durationUs * 0.3),
   );
 
   if (payload.drag) {
-    // Defer starting drag to give vue time to render transition
+    // Create at 0 duration so the transition length matches the mouse position from the start.
+    // History will be recorded on drag release by startResizeTransition.
+    const transitionPatch = {
+      type: 'dissolve',
+      durationUs: 0,
+      mode: 'adjacent' as const,
+      curve: 'linear' as const,
+    };
+
+    timelineStore.updateClipTransition(
+      props.track.id,
+      props.item.id,
+      payload.edge === 'in' ? { transitionIn: transitionPatch } : { transitionOut: transitionPatch },
+      { skipHistory: true, saveMode: 'none' },
+    );
+
+    const pointerEventSnapshot = {
+      clientX: e.clientX,
+      clientY: e.clientY,
+      button: e.button,
+      buttons: e.buttons,
+      altKey: e.altKey,
+      ctrlKey: e.ctrlKey,
+      metaKey: e.metaKey,
+      shiftKey: e.shiftKey,
+      pointerId: e.pointerId,
+      pointerType: e.pointerType,
+      stopPropagation: () => {},
+      preventDefault: () => {},
+    } as PointerEvent;
+
+    // Defer starting drag to give Vue time to render the transition element
     window.setTimeout(() => {
       emit('startResizeTransition', pointerEventSnapshot, {
         trackId: props.track.id,
         itemId: props.item.id,
         edge: payload.edge,
-        durationUs,
+        durationUs: 0,
       });
     }, 0);
+  } else {
+    const transitionPatch = {
+      type: 'dissolve',
+      durationUs: defaultDurationUs,
+      mode: 'adjacent' as const,
+      curve: 'linear' as const,
+    };
+
+    timelineStore.updateClipTransition(
+      props.track.id,
+      props.item.id,
+      payload.edge === 'in' ? { transitionIn: transitionPatch } : { transitionOut: transitionPatch },
+    );
   }
 }
 </script>
