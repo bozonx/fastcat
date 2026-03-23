@@ -14,6 +14,14 @@ import { DEFAULT_TRANSITION_MODE } from '~/transitions';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelinePointerSession } from '~/composables/timeline/useTimelinePointerSession';
+import { computed } from 'vue';
+import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
+import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
+import {
+  createDefaultHotkeyLookup,
+  createHotkeyLookup,
+  isCommandMatched,
+} from '~/utils/hotkeys/runtime';
 
 interface ClipResizeFields {
   audioFadeInUs?: number;
@@ -29,6 +37,13 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
   const timelineSettingsStore = useTimelineSettingsStore();
   const workspaceStore = useWorkspaceStore();
   const { bindSession, clearSession, scheduleUpdate } = useTimelinePointerSession();
+
+  const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
+  const effectiveHotkeys = computed(() =>
+    getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys),
+  );
+  const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
+  const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
 
   function getClipResizeFields(item: TimelineClipItem): ClipResizeFields {
     return item as TimelineClipItem & ClipResizeFields;
@@ -106,7 +121,15 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     }
 
     function onKeyDown(ev: KeyboardEvent) {
-      if (ev.key === 'Escape' && resizeVolume.value) {
+      const isCancel = isCommandMatched({
+        event: ev,
+        cmdId: 'general.deselect',
+        userSettings: workspaceStore.userSettings,
+        hotkeyLookup: hotkeyLookup.value,
+        defaultHotkeyLookup: defaultHotkeyLookup.value,
+      });
+
+      if (isCancel && resizeVolume.value) {
         timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
           audioGain: resizeVolume.value.startGain,
         });
@@ -236,7 +259,15 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     }
 
     function onKeyDown(ev: KeyboardEvent) {
-      if (ev.key === 'Escape' && resizeFade.value) {
+      const isCancel = isCommandMatched({
+        event: ev,
+        cmdId: 'general.deselect',
+        userSettings: workspaceStore.userSettings,
+        hotkeyLookup: hotkeyLookup.value,
+        defaultHotkeyLookup: defaultHotkeyLookup.value,
+      });
+
+      if (isCancel && resizeFade.value) {
         const propName = payload.edge === 'in' ? 'audioFadeInUs' : 'audioFadeOutUs';
         const curveProp = payload.edge === 'in' ? 'audioFadeInCurve' : 'audioFadeOutCurve';
         timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
@@ -549,7 +580,15 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     }
 
     function onKeyDown(ev: KeyboardEvent) {
-      if (ev.key === 'Escape' && resizeTransition.value) {
+      const isCancel = isCommandMatched({
+        event: ev,
+        cmdId: 'general.deselect',
+        userSettings: workspaceStore.userSettings,
+        hotkeyLookup: hotkeyLookup.value,
+        defaultHotkeyLookup: defaultHotkeyLookup.value,
+      });
+
+      if (isCancel && resizeTransition.value) {
         const tracks = tracksRef();
         const track = tracks.find((t) => t.id === payload.trackId);
         const item = track?.items.find((i) => i.id === payload.itemId);

@@ -7,6 +7,14 @@ import {
 } from '~/utils/timeline/geometry';
 import { TIMELINE_RULER_CONSTANTS } from '~/utils/constants';
 import { quantizeTimeUsToFrames } from '~/timeline/commands/utils';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
+import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
+import {
+  createDefaultHotkeyLookup,
+  createHotkeyLookup,
+  isCommandMatched,
+} from '~/utils/hotkeys/runtime';
 
 interface MarkerLike {
   id: string;
@@ -31,6 +39,14 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
   const markerDragStartUs = ref(0);
   const markerDragStartDurationUs = ref(0);
   const draggedMarkerPatch = ref<{ timeUs?: number; durationUs?: number } | null>(null);
+  const workspaceStore = useWorkspaceStore();
+
+  const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
+  const effectiveHotkeys = computed(() =>
+    getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys),
+  );
+  const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
+  const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
 
   const displayMarkers = computed(() => {
     const raw = options.markers.value;
@@ -51,6 +67,7 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
 
   let activeMarkerPointerMove: ((event: PointerEvent) => void) | null = null;
   let activeMarkerPointerUp: ((event: PointerEvent) => void) | null = null;
+  let activeMarkerKeyDown: ((event: KeyboardEvent) => void) | null = null;
 
   function clearMarkerPointerListeners() {
     if (activeMarkerPointerMove) {
@@ -61,6 +78,11 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
     if (activeMarkerPointerUp) {
       window.removeEventListener('pointerup', activeMarkerPointerUp);
       activeMarkerPointerUp = null;
+    }
+
+    if (activeMarkerKeyDown) {
+      window.removeEventListener('keydown', activeMarkerKeyDown);
+      activeMarkerKeyDown = null;
     }
   }
 
@@ -144,6 +166,23 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
     clearMarkerPointerListeners();
   }
 
+  function onWindowKeyDown(event: KeyboardEvent) {
+    const isCancel = isCommandMatched({
+      event,
+      cmdId: 'general.deselect',
+      userSettings: workspaceStore.userSettings,
+      hotkeyLookup: hotkeyLookup.value,
+      defaultHotkeyLookup: defaultHotkeyLookup.value,
+    });
+
+    if (isCancel && draggedMarkerId.value) {
+      event.preventDefault();
+      draggedMarkerId.value = null;
+      draggedMarkerPatch.value = null;
+      clearMarkerPointerListeners();
+    }
+  }
+
   function onMarkerPointerDown(
     event: PointerEvent,
     markerId: string,
@@ -168,8 +207,10 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
     clearMarkerPointerListeners();
     activeMarkerPointerMove = onWindowPointerMove;
     activeMarkerPointerUp = () => onWindowPointerUp();
+    activeMarkerKeyDown = onWindowKeyDown;
     window.addEventListener('pointermove', activeMarkerPointerMove);
     window.addEventListener('pointerup', activeMarkerPointerUp);
+    window.addEventListener('keydown', activeMarkerKeyDown);
   }
 
   onUnmounted(() => {

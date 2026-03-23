@@ -1,6 +1,9 @@
 import type { AnyPanelFocus } from '~/stores/focus.store';
 import type { HotkeyCommandId, HotkeyCombo } from './defaultHotkeys';
 import { DEFAULT_HOTKEYS } from './defaultHotkeys';
+import { hotkeyFromKeyboardEvent } from './hotkeyUtils';
+import { getEffectiveHotkeyBindings } from './effectiveHotkeys';
+import type { FastCatUserSettings } from '../settings/defaults';
 
 export interface HotkeyCommandPolicy {
   allowInEditable?: boolean;
@@ -156,4 +159,32 @@ export function isPreviewLikeFocus(focusId: AnyPanelFocus): boolean {
     focusId === 'project' ||
     String(focusId).startsWith('dynamic:')
   );
+}
+
+export function isCommandMatched(params: {
+  event: KeyboardEvent;
+  cmdId: HotkeyCommandId;
+  userSettings: FastCatUserSettings;
+  hotkeyLookup: HotkeyLookup;
+  defaultHotkeyLookup: HotkeyLookup;
+}): boolean {
+  const { event, cmdId, userSettings, hotkeyLookup, defaultHotkeyLookup } = params;
+
+  const literalCombo = hotkeyFromKeyboardEvent(event);
+  const layeredCombo = hotkeyFromKeyboardEvent(event, userSettings);
+
+  if (literalCombo) {
+    const matched = getMatchedHotkeyCommands({ combo: literalCombo, lookup: hotkeyLookup });
+    if (matched.includes(cmdId)) return true;
+  }
+
+  if (layeredCombo && layeredCombo !== literalCombo) {
+    const matched = getMatchedHotkeyCommands({
+      combo: layeredCombo,
+      lookup: defaultHotkeyLookup,
+    });
+    if (matched.includes(cmdId)) return true;
+  }
+
+  return false;
 }

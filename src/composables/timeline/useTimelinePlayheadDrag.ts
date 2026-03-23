@@ -1,13 +1,30 @@
 import type { Ref } from 'vue';
 import { ref, onBeforeUnmount } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { pxToTimeUs } from '~/utils/timeline/geometry';
+import { computed } from 'vue';
+import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
+import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
+import {
+  createDefaultHotkeyLookup,
+  createHotkeyLookup,
+  isCommandMatched,
+} from '~/utils/hotkeys/runtime';
 
 export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
   const timelineStore = useTimelineStore();
   const isDraggingPlayhead = ref(false);
   const startDragTimeUs = ref<number | null>(null);
   const hasMoved = ref(false);
+  const workspaceStore = useWorkspaceStore();
+
+  const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
+  const effectiveHotkeys = computed(() =>
+    getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys),
+  );
+  const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
+  const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
 
   function getLocalX(e: MouseEvent): number {
     const target = e.currentTarget as HTMLElement | null;
@@ -23,7 +40,15 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
   }
 
   function onGlobalKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Escape' && isDraggingPlayhead.value) {
+    const isCancel = isCommandMatched({
+      event: e,
+      cmdId: 'general.deselect',
+      userSettings: workspaceStore.userSettings,
+      hotkeyLookup: hotkeyLookup.value,
+      defaultHotkeyLookup: defaultHotkeyLookup.value,
+    });
+
+    if (isCancel && isDraggingPlayhead.value) {
       isDraggingPlayhead.value = false;
       if (startDragTimeUs.value !== null) {
         timelineStore.setCurrentTimeUs(startDragTimeUs.value);

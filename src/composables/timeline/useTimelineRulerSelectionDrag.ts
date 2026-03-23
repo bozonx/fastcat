@@ -1,7 +1,14 @@
 import { onUnmounted, ref, type Ref, computed } from 'vue';
 import { pxToTimeUs, pickBestSnapCandidateUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
-import { TIMELINE_RULER_CONSTANTS } from '~/utils/constants';
 import { quantizeTimeUsToFrames } from '~/timeline/commands/utils';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
+import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
+import {
+  createDefaultHotkeyLookup,
+  createHotkeyLookup,
+  isCommandMatched,
+} from '~/utils/hotkeys/runtime';
 
 export type TimelineRulerSelectionDragPart = 'move' | 'left' | 'right';
 
@@ -30,6 +37,14 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
   const selectionDragStartStartUs = ref(0);
   const selectionDragStartEndUs = ref(0);
   const draggedSelectionPatch = ref<{ startUs: number; endUs: number } | null>(null);
+  const workspaceStore = useWorkspaceStore();
+
+  const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
+  const effectiveHotkeys = computed(() =>
+    getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys),
+  );
+  const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
+  const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
 
   const suppressNextRulerClick = ref(false);
   const isCreatingSelectionRange = ref(false);
@@ -47,6 +62,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
   let activeSelectionPointerMove: ((event: PointerEvent) => void) | null = null;
   let activeSelectionPointerUp: ((event: PointerEvent) => void) | null = null;
+  let activeSelectionKeyDown: ((event: KeyboardEvent) => void) | null = null;
 
   function clearSelectionPointerListeners() {
     if (activeSelectionPointerMove) {
@@ -57,6 +73,11 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     if (activeSelectionPointerUp) {
       window.removeEventListener('pointerup', activeSelectionPointerUp);
       activeSelectionPointerUp = null;
+    }
+
+    if (activeSelectionKeyDown) {
+      window.removeEventListener('keydown', activeSelectionKeyDown);
+      activeSelectionKeyDown = null;
     }
   }
 
@@ -209,6 +230,28 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     clearSelectionPointerListeners();
   }
 
+  function onSelectionKeyDown(event: KeyboardEvent) {
+    const isCancel = isCommandMatched({
+      event,
+      cmdId: 'general.deselect',
+      userSettings: workspaceStore.userSettings,
+      hotkeyLookup: hotkeyLookup.value,
+      defaultHotkeyLookup: defaultHotkeyLookup.value,
+    });
+
+    if (isCancel && (isDraggingSelectionRange.value || isCreatingSelectionRange.value)) {
+      event.preventDefault();
+      isDraggingSelectionRange.value = false;
+      isCreatingSelectionRange.value = false;
+      draggedSelectionPatch.value = null;
+      if (options.setPreviewSelectionRange) {
+        options.setPreviewSelectionRange(null);
+      }
+      clearSelectionPointerListeners();
+      resetSuppressNextRulerClick();
+    }
+  }
+
   function startSelectionRangeDrag(event: PointerEvent, part: TimelineRulerSelectionDragPart) {
     if (!options.selectionRange.value) return;
 
@@ -227,8 +270,10 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     clearSelectionPointerListeners();
     activeSelectionPointerMove = onSelectionPointerMove;
     activeSelectionPointerUp = () => onSelectionPointerUp();
+    activeSelectionKeyDown = onSelectionKeyDown;
     window.addEventListener('pointermove', activeSelectionPointerMove);
     window.addEventListener('pointerup', activeSelectionPointerUp);
+    window.addEventListener('keydown', activeSelectionKeyDown);
   }
 
   function onSelectionCreatePointerMove(event: PointerEvent) {
@@ -301,8 +346,10 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     clearSelectionPointerListeners();
     activeSelectionPointerMove = onSelectionCreatePointerMove;
     activeSelectionPointerUp = () => onSelectionCreatePointerUp();
+    activeSelectionKeyDown = onSelectionKeyDown;
     window.addEventListener('pointermove', activeSelectionPointerMove);
     window.addEventListener('pointerup', activeSelectionPointerUp);
+    window.addEventListener('keydown', activeSelectionKeyDown);
   }
 
   onUnmounted(() => {
