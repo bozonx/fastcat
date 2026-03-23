@@ -19,6 +19,7 @@ const props = defineProps<{
   tracks: TimelineTrack[];
   trackHeights: Record<string, number>;
   scrollbarCompensation?: number;
+  onZoomToFit?: () => void;
 }>();
 
 const emit = defineEmits<{
@@ -213,6 +214,11 @@ const emptyAreaContextMenuItems = [
 
 const propertiesContextMenuItems = [
   [
+    {
+      label: t('fastcat.timeline.zoomToFit'),
+      icon: 'i-heroicons-arrows-pointing-out',
+      onSelect: () => props.onZoomToFit?.(),
+    },
     {
       label: t('fastcat.timeline.properties.title'),
       icon: 'i-heroicons-cog-6-tooth',

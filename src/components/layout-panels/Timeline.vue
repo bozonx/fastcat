@@ -157,7 +157,7 @@ const { onScroll, onLabelsScroll, startPan, onPanMove, stopPan, isPanning } = us
   },
 );
 
-const { handleZoomWheel } = useTimelineZoom({ scrollEl });
+const { handleZoomWheel, fitTimelineZoom } = useTimelineZoom({ scrollEl });
 const {
   dragPreview,
   clearDragPreview,
@@ -581,6 +581,7 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
               :track-heights="trackHeights"
               :scrollbar-compensation="scrollbarHeight"
               class="h-full border-r border-ui-border"
+              :on-zoom-to-fit="fitTimelineZoom"
               @update:track-height="updateTrackHeight"
               @scroll="onLabelsScroll"
             />
@@ -632,6 +633,7 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
                 :dragging-item-id="draggingItemId"
                 :scroll-left="scrollLeftRef"
                 :viewport-width="viewportWidth"
+                :on-zoom-to-fit="fitTimelineZoom"
                 @drop="onDrop"
                 @dragover="onTrackDragOver"
                 @dragleave="onTrackDragLeave"

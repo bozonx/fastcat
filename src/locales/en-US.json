@@ -656,6 +656,7 @@
         "zoom": "Zoom"
       },
       "quantize": "Quantize to frames",
+      "zoomToFit": "Fit to Project",
       "removeFromGroup": "Remove from group",
       "removeTransitionIn": "Remove transition in",
       "removeTransitionOut": "Remove transition out",
