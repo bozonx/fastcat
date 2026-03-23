@@ -271,7 +271,6 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
             )
           "
           :title="getTransitionButtonTitle('in')"
-          @pointerdown.stop
           @click.stop="
             canEdit &&
             emit('select', $event as PointerEvent, {
@@ -351,7 +350,6 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
             )
           "
           :title="getTransitionButtonTitle('out')"
-          @pointerdown.stop
           @click.stop="
             canEdit &&
             emit('select', $event as PointerEvent, {
