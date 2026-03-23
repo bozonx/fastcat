@@ -10,8 +10,8 @@ import { timeUsToPx } from '~/utils/timeline/geometry';
 import {
   getFadeLinePattern as getTransitionFadeLinePattern,
   getTransitionSolidPath,
-  getClipHeadHandleUs,
-  getClipTailHandleUs,
+  getClipHeadTimelineHandleUs,
+  getClipTailTimelineHandleUs,
   getNextClipForItem,
   getPrevClipForItem,
 } from '~/utils/timeline/clip';
@@ -121,7 +121,7 @@ function hasTransitionInProblem(track: TimelineTrack, item: TimelineClipItem): s
       return t('fastcat.timeline.transition.errorGapBetweenClips', {
         gapSeconds: (gapUs / 1e6).toFixed(2),
       });
-    const prevTailHandleUs = getClipTailHandleUs(prev);
+    const prevTailHandleUs = getClipTailTimelineHandleUs(prev);
     if (Number.isFinite(prevTailHandleUs) && prevTailHandleUs < tr.durationUs - 1_000) {
       return t('fastcat.timeline.transition.errorPrevHandleTooShort', {
         needSeconds: needS.toFixed(2),
@@ -159,7 +159,7 @@ function hasTransitionOutProblem(track: TimelineTrack, item: TimelineClipItem): 
       return t('fastcat.timeline.transition.errorGapBetweenClips', {
         gapSeconds: (gapUs / 1e6).toFixed(2),
       });
-    const nextHeadHandleUs = getClipHeadHandleUs(next);
+    const nextHeadHandleUs = getClipHeadTimelineHandleUs(next);
     if (Number.isFinite(nextHeadHandleUs) && nextHeadHandleUs < tr.durationUs - 1_000)
       return t('fastcat.timeline.transition.errorNextHandleTooShort', {
         needSeconds: needS.toFixed(2),

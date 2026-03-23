@@ -264,6 +264,22 @@ export function getClipTailHandleUs(clip: TimelineClipItem): number {
   return Math.max(0, sourceDurationUs - sourceEndUs);
 }
 
+export function getClipHeadTimelineHandleUs(clip: TimelineClipItem): number {
+  const speed = clip.speed ?? 1;
+  if (speed === 0) return Number.POSITIVE_INFINITY;
+  const absSpeed = Math.abs(speed);
+  const sourceHandleUs = speed >= 0 ? getClipHeadHandleUs(clip) : getClipTailHandleUs(clip);
+  return sourceHandleUs / absSpeed;
+}
+
+export function getClipTailTimelineHandleUs(clip: TimelineClipItem): number {
+  const speed = clip.speed ?? 1;
+  if (speed === 0) return Number.POSITIVE_INFINITY;
+  const absSpeed = Math.abs(speed);
+  const sourceHandleUs = speed >= 0 ? getClipTailHandleUs(clip) : getClipHeadHandleUs(clip);
+  return sourceHandleUs / absSpeed;
+}
+
 export function getOverlayGuideOffsetPx(
   track: TimelineTrack,
   clipItem: TimelineClipItem | null,
@@ -281,10 +297,11 @@ export function getOverlayGuideOffsetPx(
     edge === 'in' ? getPrevClipForItem(track, clipItem) : getNextClipForItem(track, clipItem);
   if (!adjacent) return null;
 
-  const handleUs = edge === 'in' ? getClipTailHandleUs(adjacent) : getClipHeadHandleUs(adjacent);
-  if (!Number.isFinite(handleUs) || handleUs <= 0) return null;
+  const timelineHandleUs =
+    edge === 'in' ? getClipTailTimelineHandleUs(adjacent) : getClipHeadTimelineHandleUs(adjacent);
+  if (!Number.isFinite(timelineHandleUs) || timelineHandleUs <= 0) return null;
 
-  return Math.max(0, Math.min(clipWidthPx, transitionUsToPxFn(handleUs)));
+  return Math.max(0, Math.min(clipWidthPx, transitionUsToPxFn(timelineHandleUs)));
 }
 
 export function isVideo(item: TimelineTrackItem, track: TimelineTrack): item is TimelineClipItem {

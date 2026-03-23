@@ -234,7 +234,8 @@ export class TransitionRenderer {
       return false;
     }
 
-    const transitionOffsetUs = Math.max(0, Math.round(params.transitionOffsetUs ?? 0));
+    const speed = Math.abs(clip.speed || 1);
+    const transitionOffsetUs = Math.max(0, Math.round((params.transitionOffsetUs ?? 0) * speed));
     let sampleUs: number;
 
     if (params.isNextClip) {
