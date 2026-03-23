@@ -117,8 +117,8 @@ export const useTimelineStore = defineStore('timeline', () => {
       historyDebounceMs?: number;
       labelKey?: string;
     },
-  ) {
-    dispatcher.applyTimeline(cmd, options);
+  ): string[] {
+    return dispatcher.applyTimeline(cmd, options);
   }
 
   function batchApplyTimeline(
@@ -130,8 +130,8 @@ export const useTimelineStore = defineStore('timeline', () => {
       historyDebounceMs?: number;
       labelKey?: string;
     },
-  ) {
-    dispatcher.batchApplyTimeline(cmds, options);
+  ): string[] {
+    return dispatcher.batchApplyTimeline(cmds, options);
   }
 
   const selection = createTimelineSelection({
@@ -202,6 +202,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     selectedTransition,
     currentTime,
     applyTimeline,
+    batchApplyTimeline,
     requestTimelineSave,
     resolveTargetVideoTrackIdForInsert: () => tracks.resolveTargetVideoTrackIdForInsert(),
     clearSelection: () => selection.clearSelection(),

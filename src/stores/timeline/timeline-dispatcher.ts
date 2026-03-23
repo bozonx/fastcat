@@ -37,7 +37,7 @@ export interface TimelineDispatcherApi {
       historyDebounceMs?: number;
       labelKey?: string;
     },
-  ) => void;
+  ) => string[];
   batchApplyTimeline: (
     cmds: TimelineCommand[],
     options?: {
@@ -45,7 +45,7 @@ export interface TimelineDispatcherApi {
       skipHistory?: boolean;
       labelKey?: string;
     },
-  ) => void;
+  ) => string[];
   undoTimeline: () => void;
   redoTimeline: () => void;
 }
@@ -60,7 +60,7 @@ export function createTimelineDispatcher(deps: TimelineDispatcherDeps): Timeline
       historyDebounceMs?: number;
       labelKey?: string;
     },
-  ) {
+  ): string[] {
     if (!deps.timelineDoc.value) {
       deps.timelineDoc.value = deps.createFallbackTimelineDoc();
     }
@@ -77,13 +77,13 @@ export function createTimelineDispatcher(deps: TimelineDispatcherDeps): Timeline
     } catch (error) {
       if (error instanceof Error && error.message === 'Item overlaps with another item') {
         // Expected behavior when validating moves/trims that result in overlap
-        return;
+        return [];
       }
       console.warn('Failed to apply timeline command:', error, cmd);
-      return;
+      return [];
     }
 
-    if (next === prev) return;
+    if (next === prev) return [];
 
     if (!options?.skipHistory) {
       deps.historyDebounce.pushHistory(cmd, prev, options);
@@ -104,6 +104,8 @@ export function createTimelineDispatcher(deps: TimelineDispatcherDeps): Timeline
     } else if (saveMode === 'debounced') {
       void deps.requestTimelineSave();
     }
+
+    return createdItemIds ?? [];
   }
 
   function batchApplyTimeline(
@@ -113,33 +115,35 @@ export function createTimelineDispatcher(deps: TimelineDispatcherDeps): Timeline
       skipHistory?: boolean;
       labelKey?: string;
     },
-  ) {
-    if (cmds.length === 0) return;
+  ): string[] {
+    if (cmds.length === 0) return [];
     if (!deps.timelineDoc.value) {
       deps.timelineDoc.value = deps.createFallbackTimelineDoc();
     }
 
     const prev = deps.timelineDoc.value;
     let current = prev;
+    const allCreatedItemIds: string[] = [];
+
     for (const cmd of cmds) {
       const hydrated = deps.hydration.hydrateClipSourceDuration(current, cmd);
       try {
-        const { next } = applyTimelineCommand(hydrated, cmd);
+        const { next, createdItemIds } = applyTimelineCommand(hydrated, cmd);
         current = deps.hydration.hydrateAllClips(next);
+        if (createdItemIds) {
+          allCreatedItemIds.push(...createdItemIds);
+        }
       } catch (error) {
         if (error instanceof Error && error.message === 'Item overlaps with another item') {
           // Expected behavior when validating moves/trims that result in overlap
           break;
         }
         console.warn('Failed to apply timeline command in batch:', error, cmd);
-        // Continue with the next command or break?
-        // Usually, if a batch command fails, we can just skip it, or abort the rest.
-        // Let's break to avoid applying subsequent commands that might depend on the failed one.
         break;
       }
     }
 
-    if (current === prev) return;
+    if (current === prev) return [];
 
     if (!options?.skipHistory) {
       deps.historyDebounce.pushHistory(cmds[0]!, prev, {
@@ -154,12 +158,19 @@ export function createTimelineDispatcher(deps: TimelineDispatcherDeps): Timeline
     deps.duration.value = selectTimelineDurationUs(current);
     deps.markTimelineAsDirty();
 
+    if (allCreatedItemIds.length > 0) {
+      deps.selectTimelineItems(allCreatedItemIds);
+      deps.selectGlobalTimelineItems(allCreatedItemIds, current);
+    }
+
     const saveMode = options?.saveMode ?? 'debounced';
     if (saveMode === 'immediate') {
       void deps.requestTimelineSave({ immediate: true });
     } else if (saveMode === 'debounced') {
       void deps.requestTimelineSave();
     }
+
+    return allCreatedItemIds;
   }
 
   function undoTimeline() {

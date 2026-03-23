@@ -26,18 +26,18 @@ export interface UseClipContextMenuOptions {
   projectSettings: Ref<FastCatProjectSettings>;
   defaultTransitionDurationUs: Ref<number>;
   selectedItemIds: Ref<string[]>;
-  applyTimelineCommand: (cmd: TimelineCommand) => void;
-  batchApplyTimeline: (cmds: TimelineCommand[]) => void;
+  applyTimelineCommand: (cmd: TimelineCommand) => string[];
+  batchApplyTimeline: (cmds: TimelineCommand[]) => string[];
   updateClipProperties: (
     trackId: string,
     itemId: string,
     props: UpdateClipPropertiesCommand['properties'],
-  ) => void;
+  ) => string[];
   updateClipTransition: (
     trackId: string,
     itemId: string,
     props: { transitionIn?: ClipTransition | null; transitionOut?: ClipTransition | null },
-  ) => void;
+  ) => string[];
   requestTimelineSave: (opts: { immediate: boolean }) => Promise<void>;
   selectTransition: (payload: { trackId: string; itemId: string; edge: 'in' | 'out' }) => void;
   clearSelection: () => void;
@@ -51,7 +51,7 @@ export interface UseClipContextMenuOptions {
   }) => void;
   copySelectedClips: () => void;
   cutSelectedClips: () => void;
-  pasteClips: (insertStartUs?: number) => void;
+  pasteClips: (insertStartUs?: number) => string[];
   hasTimelineClipboard: boolean;
   t: (key: string, ...args: (string | number)[]) => string;
 }

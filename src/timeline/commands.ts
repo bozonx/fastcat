@@ -185,6 +185,7 @@ export interface UpdateClipPropertiesCommand {
       TimelineClipItem,
       | 'disabled'
       | 'locked'
+      | 'audioFromVideoDisabled'
       | 'linkedVideoClipId'
       | 'lockToLinkedVideo'
       | 'opacity'
@@ -215,6 +216,7 @@ export interface UpdateClipPropertiesCommand {
     fillColor?: string;
     strokeColor?: string;
     strokeWidth?: number;
+    shapeConfig?: ShapeConfig;
     hudType?: HudType;
     background?: HudMediaParams;
     content?: HudMediaParams;
