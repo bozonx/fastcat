@@ -6,6 +6,7 @@ interface FileInfo {
   size?: number;
   createdAt?: number | string | Date | null;
   lastModified?: number | string | Date | null;
+  filesCount?: number;
 }
 
 const props = defineProps<{
@@ -26,15 +27,27 @@ const { t } = useI18n();
       :label="t('common.path', 'Path')"
       :value="props.selectedPath === '' ? '/' : props.selectedPath"
     />
+    <template v-if="props.fileInfo.kind === 'directory'">
+      <PropertyRow
+        v-if="props.fileInfo.size !== undefined && props.fileInfo.size > 0"
+        :label="t('common.size', 'Size')"
+        :value="props.formatBytes(props.fileInfo.size)"
+      />
+      <PropertyRow
+        v-if="props.fileInfo.filesCount !== undefined"
+        :label="t('videoEditor.fileManager.folder.filesCount', 'Files Count')"
+        :value="props.fileInfo.filesCount"
+      />
+      <PropertyRow
+        v-if="props.fileInfo.size === undefined || props.fileInfo.size === 0"
+        :label="t('common.type', 'Type')"
+        :value="t('common.folder', 'Folder')"
+      />
+    </template>
     <PropertyRow
-      v-if="props.fileInfo.size !== undefined && props.fileInfo.size > 0"
+      v-else-if="props.fileInfo.size !== undefined && props.fileInfo.size > 0"
       :label="t('common.size', 'Size')"
       :value="props.formatBytes(props.fileInfo.size)"
-    />
-    <PropertyRow
-      v-else-if="props.fileInfo.kind === 'directory'"
-      :label="t('common.type', 'Type')"
-      :value="t('common.folder', 'Folder')"
     />
     <slot />
     <PropertyRow

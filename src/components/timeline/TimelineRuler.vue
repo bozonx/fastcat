@@ -40,8 +40,8 @@ const width = ref(0);
 const height = ref(0);
 const scrollLeft = ref(0);
 
-const markers = computed(() => timelineStore.getMarkers());
-const selectionRange = computed(() => timelineStore.getSelectionRange());
+const markers = computed(() => timelineStore.markers);
+const selectionRange = computed(() => timelineStore.selectionRange);
 
 // --- Styling Settings (Adjust these for desired look) ---
 const textColor = 'rgba(255, 255, 255, 0.5)';
@@ -68,9 +68,9 @@ function computeSnapTargets() {
     includeTimelineEndUs: snapSettings.timelineEdges ? timelineEndUs : null,
     includePlayheadUs: snapSettings.playhead ? timelineStore.currentTime : null,
     includeMarkers: snapSettings.markers,
-    markers: timelineStore.getMarkers(),
+    markers: timelineStore.markers,
     includeClips: snapSettings.clips,
-    selectionRangeUs: snapSettings.selection ? timelineStore.getSelectionRange() : null,
+    selectionRangeUs: snapSettings.selection ? timelineStore.selectionRange : null,
   });
 }
 
@@ -116,7 +116,7 @@ function selectMarker(markerId: string, e?: MouseEvent, part: 'left' | 'right' =
 
   if (!movePlayhead) return;
 
-  const marker = timelineStore.getMarkers().find((m) => m.id === markerId);
+  const marker = timelineStore.markers.find((m) => m.id === markerId);
   if (marker) {
     if (part === 'right' && marker.durationUs !== undefined) {
       timelineStore.setCurrentTimeUs(marker.timeUs + marker.durationUs);

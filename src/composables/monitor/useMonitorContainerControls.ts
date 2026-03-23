@@ -228,9 +228,9 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
   }
 
   function createMarkerAtPlayhead() {
-    const existingMarkers = options.timelineStore.getMarkers();
+    const existingMarkers = options.timelineStore.markers;
     options.timelineStore.addMarkerAtPlayhead();
-    const nextMarkers = options.timelineStore.getMarkers();
+    const nextMarkers = options.timelineStore.markers;
     const createdMarker =
       nextMarkers.find((marker) => !existingMarkers.some((item) => item.id === marker.id)) ??
       nextMarkers[nextMarkers.length - 1];

@@ -78,6 +78,13 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       onClick: options.onCut,
     },
     {
+      id: 'paste',
+      title: options.t('common.paste'),
+      icon: 'i-heroicons-clipboard',
+      disabled: !options.hasClipboardItems.value,
+      onClick: options.onPaste,
+    },
+    {
       id: 'rename',
       title: options.t('common.rename'),
       icon: 'i-heroicons-pencil',
@@ -91,28 +98,21 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       hidden: options.isProjectRootDir.value || options.isCommonDir.value,
       onClick: options.onDelete,
     },
+  ]);
+
+  const directorySecondaryActions = computed<SecondaryEntryAction[]>(() => [
     {
       id: 'upload',
-      title: options.t('videoEditor.fileManager.actions.uploadFiles'),
+      label: options.t('videoEditor.fileManager.actions.uploadFiles'),
       icon: 'i-heroicons-arrow-up-tray',
       onClick: options.triggerDirectoryUpload,
     },
     {
       id: 'createSubfolder',
-      title: options.t('videoEditor.fileManager.actions.createFolder'),
+      label: options.t('videoEditor.fileManager.actions.createFolder'),
       icon: 'i-heroicons-folder-plus',
       onClick: options.createSubfolder,
     },
-    {
-      id: 'paste',
-      title: options.t('common.paste'),
-      icon: 'i-heroicons-clipboard',
-      disabled: !options.hasClipboardItems.value,
-      onClick: options.onPaste,
-    },
-  ]);
-
-  const directorySecondaryActions = computed<SecondaryEntryAction[]>(() => [
     {
       id: 'createTimeline',
       label: options.t('videoEditor.fileManager.actions.createTimeline'),

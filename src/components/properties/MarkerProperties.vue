@@ -14,7 +14,7 @@ const { t } = useI18n();
 const timelineStore = useTimelineStore();
 
 const marker = computed<TimelineMarker | null>(() => {
-  return timelineStore.getMarkers().find((m) => m.id === props.markerId) ?? null;
+  return timelineStore.markers.find((m) => m.id === props.markerId) ?? null;
 });
 
 const isZone = computed(() => {

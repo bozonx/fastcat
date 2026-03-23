@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, toRef } from 'vue';
+import { ref, toRef, computed } from 'vue';
 
 import type {
   TimelineDocument,
@@ -424,6 +424,8 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   return {
     timelineDoc,
+    markers: computed(() => markerService.getMarkers()),
+    selectionRange: computed(() => selectionRange.getSelectionRange()),
     getMarkers: markerService.getMarkers,
     getSelectionRange: selectionRange.getSelectionRange,
     setPreviewSelectionRange: selectionRange.setPreviewSelectionRange,

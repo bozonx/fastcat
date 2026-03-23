@@ -125,14 +125,10 @@ function toggleFadeCurve(edge: 'in' | 'out') {
   void timelineStore.requestTimelineSave({ immediate: true });
 }
 
-let pendingSyntheticContextMenu = false;
-
 function onContextMenu(e: MouseEvent) {
-  if (pendingSyntheticContextMenu) {
-    pendingSyntheticContextMenu = false;
-    return;
-  }
-  if (rightClickPointerActive.value || rightClickDragTriggered.value) {
+  console.log('[CTX] onContextMenu fired, isTrusted:', e.isTrusted, 'target:', e.target);
+  // Always block native contextmenu (isTrusted=true) — let only synthetic events through
+  if (e.isTrusted) {
     e.preventDefault();
     e.stopPropagation();
   }
@@ -152,15 +148,19 @@ const { didStartDrag, rightClickDragTriggered, rightClickPointerActive, onPointe
       });
     },
     onShortRightClick: (e) => {
-      pendingSyntheticContextMenu = true;
-      (e.target as HTMLElement | null)?.dispatchEvent(
-        new MouseEvent('contextmenu', {
-          bubbles: true,
-          cancelable: true,
-          clientX: e.clientX,
-          clientY: e.clientY,
-        }),
-      );
+      console.log('[CTX] onShortRightClick called, target:', e.target);
+      const target = e.target as HTMLElement | null;
+      void nextTick().then(() => {
+        console.log('[CTX] nextTick fired, dispatching synthetic contextmenu on:', target);
+        target?.dispatchEvent(
+          new MouseEvent('contextmenu', {
+            bubbles: true,
+            cancelable: true,
+            clientX: e.clientX,
+            clientY: e.clientY,
+          }),
+        );
+      });
     },
   });
 
