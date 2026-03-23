@@ -80,6 +80,7 @@ export class TimelineClipLayoutUpdater {
     clip.blendMode = resolveBlendMode((next as any).blendMode);
     clip.effects = toVideoEffects(next.effects);
     clip.transform = (next as any).transform;
+    clip.mask = next.mask;
     applyClipLayoutForCurrentSource(clip);
 
     const prevTransitionInType = clip.transitionIn?.type ?? null;

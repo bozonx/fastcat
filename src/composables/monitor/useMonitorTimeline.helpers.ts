@@ -74,6 +74,7 @@ export function createBaseWorkerClip(params: {
     opacity: params.item.opacity,
     blendMode: params.item.blendMode as TimelineBlendMode | undefined,
     effects: cloneMonitorEffects(params.item.effects),
+    mask: params.item.mask ? cloneMonitorValue(params.item.mask) : undefined,
     transform: params.item.transform,
     transitionIn: sanitizeMonitorTransition(params.item.transitionIn),
     transitionOut: sanitizeMonitorTransition(params.item.transitionOut),

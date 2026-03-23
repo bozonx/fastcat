@@ -10,6 +10,10 @@ export function zoomToPxPerSecond(zoom: number) {
   return BASE_PX_PER_SECOND * factor;
 }
 
+export function pxPerSecondToZoom(pps: number): number {
+  return 7 * Math.log2(pps / BASE_PX_PER_SECOND) + 50;
+}
+
 export function timeUsToPx(timeUs: number, zoom = 100) {
   const pxPerSecond = zoomToPxPerSecond(zoom);
   return (timeUs / 1e6) * pxPerSecond;

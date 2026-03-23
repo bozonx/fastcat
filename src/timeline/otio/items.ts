@@ -128,6 +128,7 @@ export function parseClipItem(input: {
     lockToLinkedVideo: fastcatMeta.lockToLinkedVideo,
     isImage: fastcatMeta.isImage,
     transform: coerceTransform(fastcatMeta.transform),
+    mask: fastcatMeta.mask as any,
   };
 
   if (clipType === 'background') {

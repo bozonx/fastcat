@@ -1,6 +1,6 @@
 import { onBeforeUnmount, watch, type Ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { computeAnchoredScrollLeft, pxToTimeUs } from '~/utils/timeline/geometry';
+import { computeAnchoredScrollLeft, pxToTimeUs, pxPerSecondToZoom } from '~/utils/timeline/geometry';
 
 export interface UseTimelineZoomOptions {
   scrollEl: Ref<HTMLElement | null>;
@@ -119,9 +119,7 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
     // Add 5% padding on each side (total 10%)
     const desiredPPS = (viewportWidth * 0.9) / (durationUs / 1e6);
 
-    // Zoom formula: PPS = 10 * 2^((pos - 50) / 7)
-    // pos = 7 * log2(PPS / 10) + 50
-    const nextZoom = 7 * Math.log2(desiredPPS / 10) + 50;
+    const nextZoom = pxPerSecondToZoom(desiredPPS);
 
     isInternalZoomUpdate = true;
     timelineStore.setTimelineZoomExact(nextZoom);

@@ -33,6 +33,7 @@ export interface WorkerTimelineClip {
   opacity?: number;
   blendMode?: import('~/timeline/types').TimelineBlendMode;
   effects?: import('~/timeline/types').ClipEffect[];
+  mask?: import('~/timeline/types').ClipMask;
   transform?: import('~/timeline/types').ClipTransform;
   sourceDurationUs?: number;
   timelineRange: {
