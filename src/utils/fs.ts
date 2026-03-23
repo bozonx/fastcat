@@ -38,20 +38,26 @@ export async function generateUniqueFsEntryName(params: {
   return fileName;
 }
 
-export async function computeDirectorySize(
+export interface DirectoryStats {
+  size: number;
+  filesCount: number;
+}
+
+export async function computeDirectoryStats(
   dirHandle: FileSystemDirectoryHandle,
   options?: { maxEntries?: number },
-): Promise<number | undefined> {
+): Promise<DirectoryStats | undefined> {
   const maxEntries = options?.maxEntries ?? 25_000;
   let seen = 0;
 
-  async function walk(handle: FileSystemDirectoryHandle): Promise<number> {
+  async function walk(handle: FileSystemDirectoryHandle): Promise<DirectoryStats> {
     const iterator =
       (handle as FsDirectoryHandleWithIteration).values?.() ??
       (handle as FsDirectoryHandleWithIteration).entries?.();
-    if (!iterator) return 0;
+    if (!iterator) return { size: 0, filesCount: 0 };
 
-    let total = 0;
+    let totalSize = 0;
+    let totalFiles = 0;
     for await (const value of iterator) {
       if (seen >= maxEntries) {
         throw new Error('Directory too large');
@@ -65,15 +71,18 @@ export async function computeDirectorySize(
       if (entryHandle.kind === 'file') {
         try {
           const file = await (entryHandle as FileSystemFileHandle).getFile();
-          total += file.size;
+          totalSize += file.size;
+          totalFiles += 1;
         } catch {
           // ignore
         }
       } else {
-        total += await walk(entryHandle as FileSystemDirectoryHandle);
+        const sub = await walk(entryHandle as FileSystemDirectoryHandle);
+        totalSize += sub.size;
+        totalFiles += sub.filesCount;
       }
     }
-    return total;
+    return { size: totalSize, filesCount: totalFiles };
   }
 
   try {
