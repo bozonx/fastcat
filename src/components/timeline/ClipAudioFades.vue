@@ -15,6 +15,8 @@ const props = defineProps<{
   isResizingVolume?: boolean;
   isMobile?: boolean;
   trackHeight: number;
+  scrollLeft?: number;
+  viewportWidth?: number;
 }>();
 
 const emit = defineEmits<{
@@ -109,6 +111,52 @@ const GAIN_MAX = 4;
 const volumeY = computed(() => {
   const g = Math.max(0, Math.min(GAIN_MAX, props.clip.audioGain ?? 1));
   return (1 - g / GAIN_MAX) * 100;
+});
+
+const isIndicatorVisible = computed(() => {
+  // Hide if track height is too small
+  if (props.trackHeight < 35) return false;
+
+  // Hide if clip is too narrow
+  if (props.clipWidthPx < 45) return false;
+
+  return true;
+});
+
+const volumeIndicatorPosition = computed(() => {
+  const idealX = props.clipWidthPx / 2;
+
+  if (props.scrollLeft === undefined || props.viewportWidth === undefined) {
+    return { left: `${idealX}px` };
+  }
+
+  const zoom = props.zoom;
+  const clipStartPx = timeUsToPx(props.item.timelineRange.startUs, zoom);
+  const vpStart = props.scrollLeft;
+  const vpEnd = vpStart + props.viewportWidth;
+
+  const clipCenterPx = clipStartPx + idealX;
+  const isCenterOutsideViewport = clipCenterPx < vpStart || clipCenterPx > vpEnd;
+
+  if (!isCenterOutsideViewport) {
+    return { left: `${idealX}px` };
+  }
+
+  // Shift indicator to stay visible
+  const padding = 24; // Padding to keep the text within the clip boundaries
+  const localVpStart = vpStart - clipStartPx;
+  const localVpEnd = localVpStart + props.viewportWidth;
+
+  let shiftedX = idealX;
+  if (clipCenterPx < vpStart) {
+    shiftedX = localVpStart + padding;
+  } else if (clipCenterPx > vpEnd) {
+    shiftedX = localVpEnd - padding;
+  }
+
+  // Ensure it stays within clip boundaries
+  const finalX = Math.max(padding, Math.min(props.clipWidthPx - padding, shiftedX));
+  return { left: `${finalX}px` };
 });
 </script>
 
@@ -224,11 +272,12 @@ const volumeY = computed(() => {
       ></div>
 
       <div
-        class="absolute left-1/2 -translate-x-1/2 text-2xs font-mono text-yellow-400 leading-none py-0.5 bg-black/60 px-1 rounded pointer-events-none select-none transition-opacity"
+        v-if="isIndicatorVisible"
+        class="absolute -translate-x-1/2 text-2xs font-mono text-yellow-400 leading-none py-0.5 bg-black/60 px-1 rounded pointer-events-none select-none transition-opacity opacity-100"
         :class="[
-          clipWidthPx < 30 ? 'hidden' : 'opacity-100',
           (clip.audioGain ?? 1) > 1 ? 'top-full mt-0.5' : 'bottom-full mb-0.5',
         ]"
+        :style="volumeIndicatorPosition"
       >
         {{ Math.round((clip.audioGain ?? 1) * 100) }}%
       </div>
