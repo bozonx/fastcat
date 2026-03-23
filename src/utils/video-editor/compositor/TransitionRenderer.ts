@@ -93,21 +93,25 @@ export class TransitionRenderer {
         );
       } else {
         prevClip = state.edge === 'in' ? params.findPrevClipOnLayer(clip) : params.findNextClipOnLayer(clip);
+        
         if (!prevClip) {
-          continue;
-        }
-
-        const transitionOffsetUs = Math.max(0, state.edge === 'in' ? timeUs - clip.startUs : clip.endUs - timeUs);
-        const rendered = await this.renderTransitionClipToTexture(prevClip, fromTexture, {
-          transitionOffsetUs,
-          isNextClip: state.edge === 'out',
-          stageTextureRenderer: params.stageTextureRenderer,
-          createAbortController: params.createAbortController,
-          getVideoSampleForClip: params.getVideoSampleForClip,
-          updateClipTextureFromSample: params.updateClipTextureFromSample,
-        });
-        if (!rendered) {
-          continue;
+          // If no adjacent clip is found (e.g., at the end of the track),
+          // fallback to rendering lower layers so we can fade to/from background.
+          params.stageTextureRenderer.renderLowerLayersToTexture(clip.layer, fromTexture);
+        } else {
+          const transitionOffsetUs = Math.max(0, state.edge === 'in' ? timeUs - clip.startUs : clip.endUs - timeUs);
+          const rendered = await this.renderTransitionClipToTexture(prevClip, fromTexture, {
+            transitionOffsetUs,
+            isNextClip: state.edge === 'out',
+            stageTextureRenderer: params.stageTextureRenderer,
+            createAbortController: params.createAbortController,
+            getVideoSampleForClip: params.getVideoSampleForClip,
+            updateClipTextureFromSample: params.updateClipTextureFromSample,
+          });
+          if (!rendered) {
+            // If rendering the peer clip failed, also fallback to background
+            params.stageTextureRenderer.renderLowerLayersToTexture(clip.layer, fromTexture);
+          }
         }
       }
 

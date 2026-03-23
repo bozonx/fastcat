@@ -125,26 +125,44 @@ function toggleFadeCurve(edge: 'in' | 'out') {
   void timelineStore.requestTimelineSave({ immediate: true });
 }
 
+let pendingSyntheticContextMenu = false;
+
 function onContextMenu(e: MouseEvent) {
-  if (didStartDrag.value || rightClickDragTriggered.value) {
+  if (pendingSyntheticContextMenu) {
+    pendingSyntheticContextMenu = false;
+    return;
+  }
+  if (rightClickPointerActive.value || rightClickDragTriggered.value) {
     e.preventDefault();
     e.stopPropagation();
   }
 }
 
-const { didStartDrag, rightClickDragTriggered, onPointerDown } = useClickOrDrag({
-  onDragStart: (e) => {
-    emit('startMoveItem', e, {
-      trackId: props.track.id,
-      itemId: props.item.id,
-      startUs: props.item.timelineRange.startUs,
-      mode:
-        settingsStore.toolbarDragModeEnabled && settingsStore.toolbarDragMode === 'slip'
-          ? 'slip'
-          : 'move',
-    });
-  },
-});
+const { didStartDrag, rightClickDragTriggered, rightClickPointerActive, onPointerDown } =
+  useClickOrDrag({
+    onDragStart: (e) => {
+      emit('startMoveItem', e, {
+        trackId: props.track.id,
+        itemId: props.item.id,
+        startUs: props.item.timelineRange.startUs,
+        mode:
+          settingsStore.toolbarDragModeEnabled && settingsStore.toolbarDragMode === 'slip'
+            ? 'slip'
+            : 'move',
+      });
+    },
+    onShortRightClick: (e) => {
+      pendingSyntheticContextMenu = true;
+      (e.target as HTMLElement | null)?.dispatchEvent(
+        new MouseEvent('contextmenu', {
+          bubbles: true,
+          cancelable: true,
+          clientX: e.clientX,
+          clientY: e.clientY,
+        }),
+      );
+    },
+  });
 
 function onClipPointerdown(e: PointerEvent) {
   if (timelineStore.isTrimModeActive) return;
@@ -384,7 +402,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
 </script>
 
 <template>
-  <UContextMenu :items="contextMenuItems" :disabled="rightClickDragTriggered">
+  <UContextMenu :items="contextMenuItems" :disabled="rightClickPointerActive || rightClickDragTriggered">
     <div
       :data-clip-id="item.kind === 'clip' ? item.id : undefined"
       :data-gap-id="item.kind === 'gap' ? item.id : undefined"
