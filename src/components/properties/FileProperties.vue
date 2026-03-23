@@ -157,6 +157,7 @@ const {
   mediaStore,
   proxyStore,
   getFileByPath: (path) => fileManager.vfs.getFile(path),
+  getDirectoryHandleByPath: (path) => projectStore.getDirectoryHandleByPath(path),
   onResetPreviewMode: (mode) => emit('update:previewMode', mode),
 });
 

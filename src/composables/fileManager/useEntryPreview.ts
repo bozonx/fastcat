@@ -7,6 +7,7 @@ import {
 } from '~/utils/media-types';
 import { parseTimelineFromOtio } from '~/timeline/otioSerializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
+import { computeDirectoryStats } from '~/utils/fs';
 import type { TimelineDocument } from '~/timeline/types';
 import type { FsEntry } from '~/types/fs';
 import type { MediaMetadata } from '~/stores/media.store';
@@ -53,7 +54,8 @@ export function useEntryPreview(params: {
   };
   proxyStore: { getProxyFile: (path: string) => Promise<File | null> };
   getFileByPath: (path: string) => Promise<File | null>;
-  onResetPreviewMode: (mode: PreviewMode) => void;
+  getDirectoryHandleByPath?: (path: string) => Promise<FileSystemDirectoryHandle | null>;
+  onResetPreviewMode: (mode: 'original' | 'proxy') => void;
 }) {
   const currentUrl = ref<string | null>(null);
   const mediaType = ref<MediaType>(null);
@@ -178,11 +180,23 @@ export function useEntryPreview(params: {
       if (!entry) return;
 
       if (entry.kind === 'directory') {
-        const size =
-          typeof entry.size === 'number'
-            ? entry.size
-            : entry.children?.reduce((acc, c) => acc + (c.size ?? 0), 0);
-        const filesCount = entry.children?.filter((c) => c.kind === 'file').length;
+        let size = 0;
+        let filesCount = entry.children?.filter((c) => c.kind === 'file').length ?? 0;
+
+        if (entry.path && params.getDirectoryHandleByPath) {
+          const handle = await params.getDirectoryHandleByPath(entry.path);
+          if (handle) {
+            const stats = await computeDirectoryStats(handle);
+            if (stats) {
+              size = stats.size;
+              filesCount = stats.filesCount;
+            }
+          }
+        }
+
+        if (size === 0 && typeof entry.size === 'number') {
+          size = entry.size;
+        }
 
         fileInfo.value = {
           name: entry.name,
