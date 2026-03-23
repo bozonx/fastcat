@@ -45,7 +45,6 @@ export class FrameSampleOrchestrator {
       height: params.height,
       syncTransitionFilter: params.syncTransitionFilter,
       computeTransitionOpacity: params.computeTransitionOpacity,
-      applyClipEffects: params.applyClipEffects,
       drawHudClip: params.drawHudClip,
       drawShapeClip: params.drawShapeClip,
       drawTextClip: params.drawTextClip,
@@ -93,6 +92,13 @@ export class FrameSampleOrchestrator {
           console.error('[VideoCompositor] Failed to update clip texture', error);
         },
       });
+    }
+
+    // Effects (including clip mask) must run after video textures and mask frames are updated.
+    // TimelineActiveClipProcessor previously ran applyClipEffects before samples, so video masks
+    // had no maskState.lastVideoFrame yet and the mask filter never applied correctly.
+    for (const clip of params.activeClips) {
+      params.applyClipEffects(clip);
     }
 
     return { updatedClips };
