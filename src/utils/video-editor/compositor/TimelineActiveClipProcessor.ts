@@ -12,7 +12,6 @@ export interface TimelineActiveClipProcessorParams {
   height: number;
   syncTransitionFilter: (clip: CompositorClip, timeUs: number) => void;
   computeTransitionOpacity: (clip: CompositorClip, timeUs: number) => number;
-  applyClipEffects: (clip: CompositorClip) => void;
   drawHudClip: (clip: CompositorClip) => void;
   drawShapeClip: (clip: CompositorClip, size: { width: number; height: number }) => void;
   drawTextClip: (clip: CompositorClip, size: { width: number; height: number }) => void;
@@ -38,8 +37,6 @@ export class TimelineActiveClipProcessor {
         clip.sprite.alpha = effectiveOpacity;
         clip.sprite.blendMode = clip.blendMode ?? 'normal';
       }
-
-      params.applyClipEffects(clip);
 
       if (
         clip.clipKind === 'image' ||

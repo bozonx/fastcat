@@ -35,7 +35,13 @@ export class HudMediaLoader {
       return null;
     }
 
-    const imageSource = new ImageSource({ resource: loaded.bitmap as any });
+    // Use the same initialization pattern as TimelineLoadOrchestrator for regular image clips:
+    // start with a dummy canvas, then set the bitmap resource and call update() so Pixi
+    // properly marks the texture as dirty and uploads it to the GPU on first use.
+    const imageSource = new ImageSource({ resource: new OffscreenCanvas(2, 2) as any });
+    imageSource.resize(loaded.width, loaded.height);
+    (imageSource as any).resource = loaded.bitmap;
+    imageSource.update();
 
     return {
       sourcePath: params.sourcePath,

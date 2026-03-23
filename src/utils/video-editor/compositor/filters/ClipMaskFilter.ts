@@ -3,6 +3,7 @@ import { Filter, GlProgram, type TextureSource } from 'pixi.js';
 const vertex = `
 in vec2 aPosition;
 out vec2 vTextureCoord;
+out vec2 vMaskCoord;
 
 uniform vec4 uInputSize;
 uniform vec4 uOutputFrame;
@@ -15,18 +16,17 @@ vec4 filterVertexPosition(void) {
   return vec4(position, 0.0, 1.0);
 }
 
-vec2 filterTextureCoord(void) {
-  return aPosition * (uOutputFrame.zw * uInputSize.zw);
-}
-
 void main(void) {
   gl_Position = filterVertexPosition();
-  vTextureCoord = filterTextureCoord();
+  vTextureCoord = aPosition * (uOutputFrame.zw * uInputSize.zw);
+  // Sample the mask in normalized filter-area space (0..1 across the clip bounds)
+  vMaskCoord = aPosition;
 }
 `;
 
 const fragment = `
 in vec2 vTextureCoord;
+in vec2 vMaskCoord;
 
 uniform sampler2D uTexture;
 uniform sampler2D uMask;
@@ -37,7 +37,7 @@ out vec4 finalColor;
 
 void main(void) {
   vec4 color = texture(uTexture, vTextureCoord);
-  vec4 maskColor = texture(uMask, vTextureCoord);
+  vec4 maskColor = texture(uMask, vMaskCoord);
 
   float maskAlpha = uMode < 0.5
     ? maskColor.a
