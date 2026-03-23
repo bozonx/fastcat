@@ -320,7 +320,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
     },
     copy: (entry) => {
       const entries = Array.isArray(entry) ? entry : [entry];
-      const validEntries = entries.filter((e) => Boolean(e.path));
+      const validEntries = entries.filter((e) => typeof e.path === 'string');
       if (validEntries.length === 0) return;
       clipboardStore.setClipboardPayload({
         source: 'fileManager',
@@ -334,7 +334,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
     },
     cut: (entry) => {
       const entries = Array.isArray(entry) ? entry : [entry];
-      const validEntries = entries.filter((e) => Boolean(e.path));
+      const validEntries = entries.filter((e) => typeof e.path === 'string');
       if (validEntries.length === 0) return;
       clipboardStore.setClipboardPayload({
         source: 'fileManager',

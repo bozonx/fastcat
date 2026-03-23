@@ -72,7 +72,7 @@ export function createTimelineDispatcher(deps: TimelineDispatcherDeps): Timeline
 
     try {
       const result = applyTimelineCommand(hydrated, cmd);
-      next = result.next;
+      next = deps.hydration.hydrateAllClips(result.next);
       createdItemIds = result.createdItemIds;
     } catch (error) {
       if (error instanceof Error && error.message === 'Item overlaps with another item') {
@@ -125,7 +125,7 @@ export function createTimelineDispatcher(deps: TimelineDispatcherDeps): Timeline
       const hydrated = deps.hydration.hydrateClipSourceDuration(current, cmd);
       try {
         const { next } = applyTimelineCommand(hydrated, cmd);
-        current = next;
+        current = deps.hydration.hydrateAllClips(next);
       } catch (error) {
         if (error instanceof Error && error.message === 'Item overlaps with another item') {
           // Expected behavior when validating moves/trims that result in overlap

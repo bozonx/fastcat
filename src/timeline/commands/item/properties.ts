@@ -617,7 +617,7 @@ export function updateClipProperties(
   const updatedDoc = { ...doc, tracks: nextTracks };
   const updated = findClipById(updatedDoc, cmd.itemId);
   if (updated && updated.track.kind === 'video' && updated.item.clipType === 'media') {
-    if ('timelineRange' in nextProps || 'speed' in nextProps) {
+    if ('timelineRange' in nextProps || 'speed' in nextProps || 'sourceRange' in nextProps) {
       finalTracks = updateLinkedLockedAudio(
         { ...doc, tracks: finalTracks },
         updated.item.id,

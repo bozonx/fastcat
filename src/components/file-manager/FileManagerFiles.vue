@@ -18,6 +18,66 @@ import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumb
 import { useFileManagerSelection } from '~/composables/fileManager/useFileManagerSelection';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
 
+const props = defineProps<{
+  editingEntryPath?: string | null;
+  foldersOnly?: boolean;
+  isDragging: boolean;
+  isLoading: boolean;
+  isApiSupported: boolean;
+  isFilesPage?: boolean;
+  rootEntries: FsEntry[];
+  getFileIcon: (entry: FsEntry) => string;
+  findEntryByPath: (path: string) => FsEntry | null;
+  mediaCache: Pick<ProxyThumbnailService, 'hasProxy'>;
+  moveEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<void>;
+  copyEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
+  handleFiles: (files: FileList | File[], targetDirPath?: string) => Promise<void>;
+  onCopyEntries?: (entries: FsEntry[]) => void;
+  onCutEntries?: (entries: FsEntry[]) => void;
+  onPasteToEntry?: (entry: FsEntry) => void;
+}>();
+
+const emit = defineEmits<{
+  (e: 'toggle', entry: FsEntry): void;
+  (e: 'select', entry: FsEntry): void;
+  (
+    e: 'action',
+    action:
+      | 'refresh'
+      | 'rename'
+      | 'delete'
+      | 'addToTimeline'
+      | 'createProxy'
+      | 'cancelProxy'
+      | 'deleteProxy'
+      | 'upload'
+      | 'createProxyForFolder'
+      | 'cancelProxyForFolder'
+      | 'createMarkdown'
+      | 'createTimeline'
+      | 'createFolder'
+      | 'openAsPanelCut'
+      | 'openAsPanelSound'
+      | 'openAsProjectTab'
+      | 'createOtioVersion'
+      | 'convertFile'
+      | 'uploadRemote'
+      | 'transcribe'
+      | 'extractAudio'
+      | 'paste',
+    entry: FsEntry,
+  ): void;
+  (
+    e: 'requestCopy',
+    params: {
+      sourcePath: string;
+      targetDirPath: string;
+    },
+  ): void;
+  (e: 'commitRename', entry: FsEntry, newName: string): void;
+  (e: 'stopRename'): void;
+}>();
+
 const { t } = useI18n();
 const projectStore = useProjectStore();
 const uiStore = useUiStore();
@@ -28,8 +88,18 @@ const selectionStore = useSelectionStore();
 const clipboardStore = useAppClipboard();
 const { currentDragOperation } = clipboardStore;
 const { loadTimeline } = useProjectActions();
+const filesPageStore = useFilesPageStore();
 
 const scrollEl = ref<HTMLElement | null>(null);
+
+const selectedPath = computed(() => {
+  if (props.isFilesPage) {
+    return filesPageStore.selectedFolder?.path ?? projectStore.currentProjectName ?? null;
+  }
+  return uiStore.selectedFsEntry?.path ?? null;
+});
+
+const mediaUsageMap = computed(() => timelineMediaUsageStore.mediaPathToTimelines);
 
 function scrollToSelectedEntry(path: string): boolean {
   const container = scrollEl.value;
@@ -99,6 +169,14 @@ function onContainerDragLeave(e: DragEvent) {
   autoScrollDragLeave(e);
 }
 
+function onEntryFocus(_entry: FsEntry) {
+  if (props.isFilesPage) {
+    focusStore.setPanelFocus('filesBrowser');
+  } else {
+    focusStore.setTempFocus('left');
+  }
+}
+
 function onTreeContainerKeyDown(e: KeyboardEvent) {
   const isMod = e.ctrlKey || e.metaKey;
   const key = e.key.toLowerCase();
@@ -114,14 +192,19 @@ function onTreeContainerKeyDown(e: KeyboardEvent) {
     e.preventDefault();
     e.stopPropagation();
     // Paste into selected entry (or root if nothing directory selected)
-    const entry = props.findEntryByPath(selectedPath.value ?? '') ??
+    const entry =
+      props.findEntryByPath(selectedPath.value ?? '') ??
       ({ kind: 'directory', path: '', name: 'root' } as FsEntry);
     props.onPasteToEntry?.(entry);
     return;
   }
 
   if (isMod && key === 'c') {
-    if ((e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'TEXTAREA') return;
+    if (
+      (e.target as HTMLElement)?.tagName === 'INPUT' ||
+      (e.target as HTMLElement)?.tagName === 'TEXTAREA'
+    )
+      return;
     const selected = selectionStore.selectedEntity;
     if (selected?.source === 'fileManager') {
       e.preventDefault();
@@ -133,7 +216,11 @@ function onTreeContainerKeyDown(e: KeyboardEvent) {
   }
 
   if (isMod && key === 'x') {
-    if ((e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'TEXTAREA') return;
+    if (
+      (e.target as HTMLElement)?.tagName === 'INPUT' ||
+      (e.target as HTMLElement)?.tagName === 'TEXTAREA'
+    )
+      return;
     const selected = selectionStore.selectedEntity;
     if (selected?.source === 'fileManager') {
       e.preventDefault();
@@ -146,35 +233,6 @@ function onTreeContainerKeyDown(e: KeyboardEvent) {
 
   onContainerKeyDown(e);
 }
-
-const props = defineProps<{
-  editingEntryPath?: string | null;
-  foldersOnly?: boolean;
-  isDragging: boolean;
-  isLoading: boolean;
-  isApiSupported: boolean;
-  isFilesPage?: boolean;
-  rootEntries: FsEntry[];
-  getFileIcon: (entry: FsEntry) => string;
-  findEntryByPath: (path: string) => FsEntry | null;
-  mediaCache: Pick<ProxyThumbnailService, 'hasProxy'>;
-  moveEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<void>;
-  copyEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
-  handleFiles: (files: FileList | File[], targetDirPath?: string) => Promise<void>;
-  onCopyEntries?: (entries: FsEntry[]) => void;
-  onCutEntries?: (entries: FsEntry[]) => void;
-  onPasteToEntry?: (entry: FsEntry) => void;
-}>();
-
-const filesPageStore = useFilesPageStore();
-const selectedPath = computed(() => {
-  if (props.isFilesPage) {
-    return filesPageStore.selectedFolder?.path ?? projectStore.currentProjectName ?? null;
-  }
-  return uiStore.selectedFsEntry?.path ?? null;
-});
-
-const mediaUsageMap = computed(() => timelineMediaUsageStore.mediaPathToTimelines);
 
 provide('fileManagerTreeCtx', {
   getFileIcon: props.getFileIcon,
@@ -228,55 +286,12 @@ function onRequestDownload(params: { entry: RemoteFsEntry; targetDirPath: string
   uiStore.pendingRemoteDownloadRequest = params;
 }
 
-const { isRootDropOver, isRelevantDrag, onRootDragOver, onRootDragLeave, onRootDrop } = useFileDrop(
-  {
-    resolveEntryByPath: async (path: string) => props.findEntryByPath(path),
-    handleFiles: props.handleFiles,
-    moveEntry: props.moveEntry,
-    copyEntry: props.copyEntry,
-  },
-);
-
-const emit = defineEmits<{
-  (e: 'toggle', entry: FsEntry): void;
-  (e: 'select', entry: FsEntry): void;
-  (
-    e: 'action',
-    action:
-      | 'refresh'
-      | 'rename'
-      | 'delete'
-      | 'addToTimeline'
-      | 'createProxy'
-      | 'cancelProxy'
-      | 'deleteProxy'
-      | 'upload'
-      | 'createProxyForFolder'
-      | 'cancelProxyForFolder'
-      | 'createMarkdown'
-      | 'createTimeline'
-      | 'createFolder'
-      | 'openAsPanelCut'
-      | 'openAsPanelSound'
-      | 'openAsProjectTab'
-      | 'createOtioVersion'
-      | 'convertFile'
-      | 'uploadRemote'
-      | 'transcribe'
-      | 'extractAudio'
-      | 'paste',
-    entry: FsEntry,
-  ): void;
-  (
-    e: 'requestCopy',
-    params: {
-      sourcePath: string;
-      targetDirPath: string;
-    },
-  ): void;
-  (e: 'commitRename', entry: FsEntry, newName: string): void;
-  (e: 'stopRename'): void;
-}>();
+const { isRootDropOver, isRelevantDrag, onRootDragOver, onRootDragLeave, onRootDrop } = useFileDrop({
+  resolveEntryByPath: async (path: string) => props.findEntryByPath(path),
+  handleFiles: props.handleFiles,
+  moveEntry: props.moveEntry,
+  copyEntry: props.copyEntry,
+});
 
 const rootContextMenuItems = computed(() => {
   if (!projectStore.currentProjectName) return [];
@@ -420,6 +435,7 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
             @stop-rename="emit('stopRename')"
             @toggle="emit('toggle', $event)"
             @select="onEntrySelect"
+            @focus="onEntryFocus"
             @action="(action, entry) => emit('action', action as any, entry)"
             @request-move="onRequestMove"
             @request-copy="onRequestCopy"

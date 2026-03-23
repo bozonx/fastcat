@@ -11,6 +11,7 @@ import { useMonitorActions } from '~/composables/editor/hotkeys/monitorActions';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import type { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 import { DEFAULT_TIMELINE_ZOOM_POSITION, stepTimelineZoomPosition } from '~/utils/zoom';
+import type { FsEntry } from '~/types/fs';
 
 export function useGeneralHotkeys(
   zoomHoldRunner: ReturnType<typeof createHotkeyHoldRunner>,
@@ -55,8 +56,17 @@ export function useGeneralHotkeys(
     }
 
     const selected = selectionStore.selectedEntity;
-    if (selected?.source === 'fileManager' && selected.kind === 'directory') {
-      return selected.entry.path ?? '';
+    if (selected?.source === 'fileManager') {
+      if (selected.kind === 'directory') {
+        return selected.entry.path ?? '';
+      }
+      if (selected.kind === 'file' || selected.kind === 'multiple') {
+        const entry =
+          selected.kind === 'multiple' ? (selected.entries[0] as FsEntry) : selected.entry;
+        if (entry) {
+          return entry.parentPath ?? (entry.path ? entry.path.split('/').slice(0, -1).join('/') : '');
+        }
+      }
     }
 
     return '';
@@ -72,8 +82,11 @@ export function useGeneralHotkeys(
     const fileManager = getFileManager();
 
     for (const item of payload.items) {
-      const source = fileManager.findEntryByPath(item.path);
-      if (!source) continue;
+      const source = fileManager.findEntryByPath(item.path) ?? ({
+        path: item.path,
+        kind: item.kind,
+        name: item.name,
+      } as FsEntry);
 
       if (payload.operation === 'copy') {
         await fileManager.copyEntry({
@@ -220,7 +233,7 @@ export function useGeneralHotkeys(
         source: 'fileManager',
         operation: 'copy',
         items: entries
-          .filter((entry) => Boolean(entry.path))
+          .filter((entry) => typeof entry.path === 'string')
           .map((entry) => ({
             path: entry.path!,
             kind: entry.kind,
@@ -241,7 +254,7 @@ export function useGeneralHotkeys(
         source: 'fileManager',
         operation: 'cut',
         items: entries
-          .filter((entry) => Boolean(entry.path))
+          .filter((entry) => typeof entry.path === 'string')
           .map((entry) => ({
             path: entry.path!,
             kind: entry.kind,

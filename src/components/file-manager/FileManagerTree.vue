@@ -65,6 +65,7 @@ const emit = defineEmits<{
   (e: 'commitRename', entry: FsEntry, newName: string): void;
   (e: 'stopRename'): void;
   (e: 'select', entry: FsEntry, event?: MouseEvent): void;
+  (e: 'focus', entry: FsEntry, event?: FocusEvent): void;
   (
     e: 'action',
     action:
@@ -320,6 +321,10 @@ function onEntryClick(event: MouseEvent, entry: FsEntry) {
   emit('select', entry, event);
 }
 
+function onEntryFocus(entry: FsEntry, event?: FocusEvent) {
+  emit('focus', entry, event);
+}
+
 function onEntryEnter(event: KeyboardEvent, entry: FsEntry) {
   if (entry.kind === 'directory') {
     emit('toggle', entry);
@@ -555,6 +560,7 @@ const { getContextMenuItems } = useFileContextMenu(
             v-bind="getEntryViewModel(entry)"
             :menu-items="!isFilesPage ? getContextMenuItems(entry) : []"
             @click="onEntryClick($event, entry)"
+            @focus="onEntryFocus(entry)"
             @dblclick="onRenameClick(entry)"
             @keydown-enter="onEntryEnter($event, entry)"
             @keydown-space="onEntryEnter($event, entry)"
@@ -581,6 +587,7 @@ const { getContextMenuItems } = useFileContextMenu(
             @stop-rename="emit('stopRename')"
             @toggle="emit('toggle', $event)"
             @select="(entry, event) => emit('select', entry, event)"
+            @focus="(entry, event) => emit('focus', entry, event)"
             @action="(action, childEntry) => emit('action', action, childEntry)"
             @request-move="emit('requestMove', $event)"
             @request-copy="emit('requestCopy', $event)"
