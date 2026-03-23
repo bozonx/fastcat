@@ -25,6 +25,7 @@ export type EntryPreviewInfo = {
   container?: string;
   metadata?: unknown;
   ext?: string;
+  filesCount?: number;
 };
 
 function computeTimelineSummary(doc: TimelineDocument) {
@@ -177,12 +178,18 @@ export function useEntryPreview(params: {
       if (!entry) return;
 
       if (entry.kind === 'directory') {
-        const size = entry.path ? undefined : 0;
+        const size =
+          typeof entry.size === 'number'
+            ? entry.size
+            : entry.children?.reduce((acc, c) => acc + (c.size ?? 0), 0);
+        const filesCount = entry.children?.filter((c) => c.kind === 'file').length;
+
         fileInfo.value = {
           name: entry.name,
           kind: 'directory',
           path: entry.path,
           size,
+          filesCount,
         };
         return;
       }

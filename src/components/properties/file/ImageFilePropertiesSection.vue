@@ -12,7 +12,7 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <PropertySection :title="t('videoEditor.fileManager.image.title', 'Image Details')">
+  <PropertySection>
     <PropertyRow
       v-if="props.imageResolution"
       :label="t('videoEditor.fileManager.image.resolution', 'Resolution')"

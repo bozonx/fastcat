@@ -222,7 +222,7 @@ const monitorZoomLabel = computed(() => (viewportRef.value as any)?.zoomLabel ??
 
 const activeMarkers = computed(() => {
   const time = uiCurrentTimeUs.value;
-  return (timelineStore.getMarkers() || []).filter((m) => {
+  return (timelineStore.markers || []).filter((m) => {
     if (!m.text.trim()) return false;
     if (m.durationUs) {
       return time >= m.timeUs && time < m.timeUs + m.durationUs;

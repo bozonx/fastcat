@@ -26,10 +26,11 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
     return value && value !== name.toLowerCase() ? value : value;
   });
 
+  const { t } = useI18n();
   const generalInfoTitle = computed(() => {
     const info = options.fileInfo.value;
     if (!info) return '';
-    if (info.kind === 'directory') return 'Folder';
+    if (info.kind === 'directory') return t('common.folder', 'Folder');
     if (options.isOtio.value) return 'OTIO';
 
     if (options.mediaType.value === 'text') {

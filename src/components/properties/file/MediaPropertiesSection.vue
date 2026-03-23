@@ -18,7 +18,7 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <PropertySection :title="t('videoEditor.fileManager.media.title', 'Media')">
+  <PropertySection>
     <PropertyRow
       :label="t('common.duration', 'Duration')"
       :value="props.formatDurationSeconds(props.mediaMeta?.duration)"

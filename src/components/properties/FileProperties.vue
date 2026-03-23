@@ -418,11 +418,63 @@ const {
       :is-otio="isOtio"
     />
 
+    <ImageFilePropertiesSection
+      v-if="fileInfo?.kind === 'file' && mediaType === 'image' && hasImageInfo"
+      :image-resolution="imageResolution"
+      :image-create-date="imageCreateDate"
+      :image-location-link="imageLocationLink"
+      :image-camera-make="imageCameraMake"
+    />
+
+    <MediaPropertiesSection
+      v-if="fileInfo?.kind === 'file' && (isVideoFile || mediaType === 'audio')"
+      :media-meta="mediaMeta"
+      :format-duration-seconds="formatDurationSeconds"
+      :format-bitrate="formatBitrate"
+      :latest-transcription-cache-key="latestTranscriptionCacheKey"
+      :latest-transcription-was-cached="latestTranscriptionWasCached"
+      :latest-transcription-text="latestTranscriptionText"
+    />
+
     <FileProjectRootSection
       v-if="fileInfo?.kind === 'directory' && isProjectRootDir"
       :is-project-root-dir="isProjectRootDir"
       :project-name="projectStore.currentProjectName"
       :storage-free-bytes="storageFreeBytes"
+    />
+
+    <FileTimelineUsageSection
+      v-if="fileInfo?.kind === 'file'"
+      :usages="timelinesUsingSelectedFile"
+      :open-timeline-from-usage="openTimelineFromUsage"
+    />
+
+    <OtioPropertiesSection
+      v-if="fileInfo?.kind === 'file' && isOtio"
+      :summary="timelineDocSummary"
+      :format-duration-seconds="formatDurationSeconds"
+    />
+
+    <FileGeneralInfoSection
+      v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'file'"
+      :title="generalInfoTitle"
+      :file-info="fileInfo"
+      :selected-path="selectedPath"
+      :is-hidden="isHidden"
+      :format-bytes="formatBytes"
+    >
+      <template v-if="mediaType === 'text' && lineCount !== null">
+        <PropertyRow :label="t('fastcat.file.lineCount', 'Line Count')" :value="lineCount" />
+      </template>
+    </FileGeneralInfoSection>
+
+    <FileGeneralInfoSection
+      v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'directory'"
+      :title="generalInfoTitle"
+      :file-info="fileInfo"
+      :selected-path="selectedPath"
+      :is-hidden="isHidden"
+      :format-bytes="formatBytes"
     />
 
     <PropertySection
@@ -444,48 +496,6 @@ const {
         :secondary-actions="fileSecondaryActions"
       />
     </PropertySection>
-
-    <FileTimelineUsageSection
-      :usages="timelinesUsingSelectedFile"
-      :open-timeline-from-usage="openTimelineFromUsage"
-    />
-
-    <ImageFilePropertiesSection
-      v-if="fileInfo?.kind === 'file' && mediaType === 'image' && hasImageInfo"
-      :image-resolution="imageResolution"
-      :image-create-date="imageCreateDate"
-      :image-location-link="imageLocationLink"
-      :image-camera-make="imageCameraMake"
-    />
-
-    <OtioPropertiesSection
-      v-if="fileInfo?.kind === 'file' && isOtio"
-      :summary="timelineDocSummary"
-      :format-duration-seconds="formatDurationSeconds"
-    />
-
-    <MediaPropertiesSection
-      v-if="fileInfo?.kind === 'file' && (isVideoFile || mediaType === 'audio')"
-      :media-meta="mediaMeta"
-      :format-duration-seconds="formatDurationSeconds"
-      :format-bitrate="formatBitrate"
-      :latest-transcription-cache-key="latestTranscriptionCacheKey"
-      :latest-transcription-was-cached="latestTranscriptionWasCached"
-      :latest-transcription-text="latestTranscriptionText"
-    />
-
-    <FileGeneralInfoSection
-      v-if="fileInfo && !isProjectRootDir"
-      :title="generalInfoTitle"
-      :file-info="fileInfo"
-      :selected-path="selectedPath"
-      :is-hidden="isHidden"
-      :format-bytes="formatBytes"
-    >
-      <template v-if="mediaType === 'text' && lineCount !== null">
-        <PropertyRow :label="t('fastcat.file.lineCount', 'Line Count')" :value="lineCount" />
-      </template>
-    </FileGeneralInfoSection>
 
     <ExpandableYamlSection
       v-if="fileInfo?.kind === 'file' && isVideoFile && metadataYaml"

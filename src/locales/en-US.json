@@ -1042,6 +1042,9 @@
         "failed": "Failed to extract audio",
         "success": "Audio extracted successfully"
       },
+      "folder": {
+        "filesCount": "Files Count"
+      },
       "history": {
         "empty": "No history yet. Start editing to record actions.",
         "entries": {
