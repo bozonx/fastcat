@@ -136,6 +136,7 @@ function onContextMenu(e: MouseEvent) {
 const { didStartDrag, rightClickDragTriggered, rightClickPointerActive, onPointerDown } =
   useClickOrDrag({
     onDragStart: (e) => {
+      if (clipItem.value?.locked || props.track.locked) return;
       emit('startMoveItem', e, {
         trackId: props.track.id,
         itemId: props.item.id,
@@ -163,7 +164,7 @@ const { didStartDrag, rightClickDragTriggered, rightClickPointerActive, onPointe
 
 function onClipPointerdown(e: PointerEvent) {
   if (timelineStore.isTrimModeActive) return;
-  if (!props.canEditClipContent || !clipItem.value || clipItem.value.locked || props.track.locked) return;
+  if (!props.canEditClipContent || !clipItem.value) return;
 
   focusStore.setPanelFocus('timeline');
 
