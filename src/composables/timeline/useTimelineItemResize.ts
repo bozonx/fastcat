@@ -6,6 +6,7 @@ import { pxToDeltaUs, pickBestSnapCandidateUs, zoomToPxPerSecond } from '~/utils
 import type {
   TimelineTrack,
   TimelineClipItem,
+  TimelineDocument,
   ClipTransition,
   TimelineResizeFadePayload,
   TimelineResizeVolumePayload,
@@ -57,12 +58,20 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     );
   }
 
+  /** Minimum visible width in pixels before a transition is removed on drag release */
+  const TRANSITION_DELETE_THRESHOLD_PX = 6;
+
   const resizeTransition = ref<{
     trackId: string;
     itemId: string;
     edge: 'in' | 'out';
     startX: number;
     startDurationUs: number;
+    lastDurationUs: number;
+    shouldDelete: boolean;
+    hasMoved: boolean;
+    isCreating: boolean;
+    docBeforeDrag: TimelineDocument | null;
   } | null>(null);
 
   const resizeFade = ref<{
@@ -435,12 +444,25 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     if (!canEditClipContent()) return;
     e.stopPropagation();
     e.preventDefault();
+
+    const isCreating = payload.durationUs === 0;
+    const docBeforeDrag = timelineStore.timelineDoc;
+    const deleteThresholdUs = Math.max(
+      0,
+      pxToDeltaUs(TRANSITION_DELETE_THRESHOLD_PX, timelineStore.timelineZoom),
+    );
+
     resizeTransition.value = {
       trackId: payload.trackId,
       itemId: payload.itemId,
       edge: payload.edge,
       startX: e.clientX,
       startDurationUs: payload.durationUs,
+      lastDurationUs: payload.durationUs,
+      shouldDelete: payload.durationUs < deleteThresholdUs,
+      hasMoved: false,
+      isCreating,
+      docBeforeDrag,
     };
 
     clearSession();
@@ -487,7 +509,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       );
 
       if (timelineSettingsStore.clipSnapMode === 'clips') {
-        const thresholdUs = Math.round(
+        const snapThresholdUs = Math.round(
           (timelineSettingsStore.snapThresholdPx / zoomToPxPerSecond(timelineStore.timelineZoom)) *
             1e6,
         );
@@ -520,11 +542,11 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
 
         const snap = pickBestSnapCandidateUs({
           rawUs: edgeUs,
-          thresholdUs,
+          thresholdUs: snapThresholdUs,
           targetsUs: targets,
         });
 
-        if (snap.distUs < thresholdUs) {
+        if (snap.distUs < snapThresholdUs) {
           if (payload.edge === 'in') {
             newDurationUs = Math.max(0, snap.snappedUs - item.timelineRange.startUs);
           } else {
@@ -537,21 +559,17 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
         }
       }
 
-      if (maxUsRaw <= 0 && newDurationUs <= 0) return;
+      const currentDeleteThresholdUs = Math.max(
+        0,
+        pxToDeltaUs(TRANSITION_DELETE_THRESHOLD_PX, timelineStore.timelineZoom),
+      );
 
-      const timelineDoc = timelineStore.timelineDoc;
-      const fps = timelineDoc ? timelineDoc.timebase.fps : 30;
-      const frameDurationUs = 1_000_000 / fps;
+      resizeTransition.value.lastDurationUs = newDurationUs;
+      resizeTransition.value.shouldDelete = newDurationUs < currentDeleteThresholdUs;
+      resizeTransition.value.hasMoved = true;
 
-      // Remove transition if duration is less than a frame
-      if (newDurationUs < frameDurationUs) {
-        scheduleUpdate(() => {
-          timelineStore.updateClipTransition(
-            payload.trackId,
-            payload.itemId,
-            payload.edge === 'in' ? { transitionIn: null } : { transitionOut: null },
-          );
-        });
+      if (maxUsRaw <= 0 && newDurationUs <= 0) {
+        resizeTransition.value.shouldDelete = true;
         return;
       }
 
@@ -567,16 +585,90 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
               } as ClipTransition,
             };
       scheduleUpdate(() => {
-        timelineStore.updateClipTransition(payload.trackId, payload.itemId, transitionPatch);
+        timelineStore.updateClipTransition(payload.trackId, payload.itemId, transitionPatch, {
+          skipHistory: true,
+          saveMode: 'none',
+        });
       });
     }
 
     function onPointerUp() {
-      if (resizeTransition.value) {
-        timelineStore.requestTimelineSave({ immediate: true });
-      }
+      const state = resizeTransition.value;
       resizeTransition.value = null;
       clearSession();
+
+      if (!state) return;
+
+      const {
+        shouldDelete,
+        docBeforeDrag: doc,
+        isCreating: creating,
+        hasMoved,
+        lastDurationUs,
+      } = state;
+
+      if (!hasMoved && !creating) {
+        return;
+      }
+
+      if (shouldDelete) {
+        timelineStore.updateClipTransition(
+          payload.trackId,
+          payload.itemId,
+          payload.edge === 'in' ? { transitionIn: null } : { transitionOut: null },
+          { skipHistory: true, saveMode: 'none' },
+        );
+        // Record history only when deleting an already-existing transition (not ephemeral create)
+        if (!creating && doc) {
+          timelineStore.historyStore.push(
+            'timeline',
+            'update_clip_transition',
+            doc,
+            'videoEditor.fileManager.history.entries.updateTransition',
+          );
+        }
+      } else {
+        // Apply final duration explicitly (pending scheduleUpdate was cancelled by clearSession)
+        const tracks = tracksRef();
+        const track = tracks.find((t) => t.id === payload.trackId);
+        const item = track?.items.find((i) => i.id === payload.itemId);
+        if (item && item.kind === 'clip') {
+          const current =
+            payload.edge === 'in'
+              ? (item as TimelineClipItem).transitionIn
+              : (item as TimelineClipItem).transitionOut;
+          if (current) {
+            const finalPatch =
+              payload.edge === 'in'
+                ? ({
+                    transitionIn: {
+                      ...current,
+                      durationUs: Math.round(lastDurationUs),
+                    },
+                  } as { transitionIn: ClipTransition })
+                : ({
+                    transitionOut: {
+                      ...current,
+                      durationUs: Math.round(lastDurationUs),
+                    },
+                  } as { transitionOut: ClipTransition });
+            timelineStore.updateClipTransition(payload.trackId, payload.itemId, finalPatch, {
+              skipHistory: true,
+              saveMode: 'none',
+            });
+          }
+        }
+        if (doc) {
+          timelineStore.historyStore.push(
+            'timeline',
+            'update_clip_transition',
+            doc,
+            'videoEditor.fileManager.history.entries.updateTransition',
+          );
+        }
+      }
+
+      timelineStore.requestTimelineSave({ immediate: true });
     }
 
     function onKeyDown(ev: KeyboardEvent) {
@@ -589,31 +681,50 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       });
 
       if (isCancel && resizeTransition.value) {
-        const tracks = tracksRef();
-        const track = tracks.find((t) => t.id === payload.trackId);
-        const item = track?.items.find((i) => i.id === payload.itemId);
-        if (item && item.kind === 'clip') {
-          const current = payload.edge === 'in' ? item.transitionIn : item.transitionOut;
-          if (current) {
-            const transitionPatch =
-              payload.edge === 'in'
-                ? {
-                    transitionIn: {
-                      ...current,
-                      durationUs: resizeTransition.value.startDurationUs,
-                    } as ClipTransition,
-                  }
-                : {
-                    transitionOut: {
-                      ...current,
-                      durationUs: resizeTransition.value.startDurationUs,
-                    } as ClipTransition,
-                  };
-            timelineStore.updateClipTransition(payload.trackId, payload.itemId, transitionPatch);
-          }
-        }
+        const state = resizeTransition.value;
         resizeTransition.value = null;
         clearSession();
+
+        if (state.isCreating) {
+          // Remove the just-created transition without recording history
+          timelineStore.updateClipTransition(
+            payload.trackId,
+            payload.itemId,
+            payload.edge === 'in' ? { transitionIn: null } : { transitionOut: null },
+            { skipHistory: true, saveMode: 'none' },
+          );
+        } else {
+          // Restore original duration without recording history
+          const tracks = tracksRef();
+          const track = tracks.find((t) => t.id === payload.trackId);
+          const item = track?.items.find((i) => i.id === payload.itemId);
+          if (item && item.kind === 'clip') {
+            const current =
+              payload.edge === 'in'
+                ? (item as TimelineClipItem).transitionIn
+                : (item as TimelineClipItem).transitionOut;
+            if (current) {
+              const restorePatch =
+                payload.edge === 'in'
+                  ? ({
+                      transitionIn: {
+                        ...current,
+                        durationUs: state.startDurationUs,
+                      },
+                    } as { transitionIn: ClipTransition })
+                  : ({
+                      transitionOut: {
+                        ...current,
+                        durationUs: state.startDurationUs,
+                      },
+                    } as { transitionOut: ClipTransition });
+              timelineStore.updateClipTransition(payload.trackId, payload.itemId, restorePatch, {
+                skipHistory: true,
+                saveMode: 'none',
+              });
+            }
+          }
+        }
       }
     }
 

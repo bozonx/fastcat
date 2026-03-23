@@ -111,6 +111,10 @@ export interface TimelineClipsApi {
       transitionIn?: ClipTransition | null;
       transitionOut?: ClipTransition | null;
     },
+    applyOptions?: {
+      skipHistory?: boolean;
+      saveMode?: 'debounced' | 'immediate' | 'none';
+    },
   ) => void;
   deleteSelectedItems: (trackId: string) => void;
   deleteFirstSelectedItem: () => void;
@@ -307,13 +311,20 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
       transitionIn?: ClipTransition | null;
       transitionOut?: ClipTransition | null;
     },
+    applyOptions?: {
+      skipHistory?: boolean;
+      saveMode?: 'debounced' | 'immediate' | 'none';
+    },
   ) {
-    deps.applyTimeline({
-      type: 'update_clip_transition',
-      trackId,
-      itemId,
-      ...options,
-    });
+    deps.applyTimeline(
+      {
+        type: 'update_clip_transition',
+        trackId,
+        itemId,
+        ...options,
+      },
+      applyOptions,
+    );
   }
 
   function deleteSelectedItems(trackId: string) {
@@ -492,7 +503,9 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
       const translatedLinkedVideoId = clip.linkedVideoClipId
         ? idMap.get(clip.linkedVideoClipId) || clip.linkedVideoClipId
         : undefined;
-      const translatedGroupId = clip.linkedGroupId ? idMap.get(clip.linkedGroupId) || clip.linkedGroupId : undefined;
+      const translatedGroupId = clip.linkedGroupId
+        ? idMap.get(clip.linkedGroupId) || clip.linkedGroupId
+        : undefined;
 
       commands.push({
         type: 'update_clip_properties',
