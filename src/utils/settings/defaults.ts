@@ -284,7 +284,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       horizontalMovement: 'move_playhead',
       clipDragShift: 'toggle_clip_move_mode',
       clipDragCtrl: 'copy',
-      clipDragRight: 'free_mode',
+      clipDragRight: 'copy',
     },
     trackHeaders: {
       wheel: 'scroll_vertical',

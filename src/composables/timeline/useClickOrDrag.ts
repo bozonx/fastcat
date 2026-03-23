@@ -2,11 +2,13 @@ import { ref } from 'vue';
 
 export interface UseClickOrDragOptions {
   onDragStart: (e: PointerEvent) => void;
+  onShortRightClick?: (e: PointerEvent) => void;
 }
 
 export function useClickOrDrag(options: UseClickOrDragOptions) {
   const didStartDrag = ref(false);
   const rightClickDragTriggered = ref(false);
+  const rightClickPointerActive = ref(false);
   let rightClickDragTimer: number | null = null;
   const RIGHT_CLICK_DRAG_DELAY_MS = 300;
 
@@ -15,6 +17,11 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
 
     didStartDrag.value = false;
     rightClickDragTriggered.value = false;
+
+    if (e.button === 2) {
+      rightClickPointerActive.value = true;
+    }
+
     const startX = e.clientX;
     const startY = e.clientY;
 
@@ -33,6 +40,7 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
       didStartDrag.value = true;
       if (e.button === 2) {
         rightClickDragTriggered.value = true;
+        rightClickPointerActive.value = false;
       }
       cleanup();
       e.preventDefault();
@@ -45,13 +53,19 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
       }
     };
 
-    const onPointerUp = () => {
+    const onPointerUp = (ev: PointerEvent) => {
+      const wasShortRightClick = e.button === 2 && !didStartDrag.value;
+      rightClickPointerActive.value = false;
       cleanup();
+      if (wasShortRightClick) {
+        options.onShortRightClick?.(ev);
+      }
     };
 
     const onPointerCancel = () => {
-      cleanup();
+      rightClickPointerActive.value = false;
       rightClickDragTriggered.value = false;
+      cleanup();
     };
 
     if (e.button !== 2) {
@@ -71,6 +85,7 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
   return {
     didStartDrag,
     rightClickDragTriggered,
+    rightClickPointerActive,
     onPointerDown,
   };
 }
