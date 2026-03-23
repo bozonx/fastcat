@@ -23,8 +23,10 @@ export function buildSplitAllClipsCommands(doc: TimelineDocument, atUs: number):
   const cutUs = computeCutUs(doc, atUs);
   const cmds: TimelineCommand[] = [];
   for (const track of doc.tracks) {
+    if (track.locked) continue;
     for (const it of track.items) {
       if (it.kind !== 'clip') continue;
+      if (it.locked) continue;
       cmds.push({ type: 'split_item', trackId: track.id, itemId: it.id, atUs: cutUs });
     }
   }
@@ -42,8 +44,10 @@ export function buildSplitSelectedClipsCommands(
   const shouldUseSelection = selected.size > 0;
 
   for (const track of doc.tracks) {
+    if (track.locked) continue;
     for (const it of track.items) {
       if (it.kind !== 'clip') continue;
+      if (it.locked) continue;
       if (shouldUseSelection && !selected.has(it.id)) continue;
       cmds.push({ type: 'split_item', trackId: track.id, itemId: it.id, atUs: cutUs });
     }

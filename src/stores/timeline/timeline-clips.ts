@@ -329,12 +329,34 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
 
   function deleteSelectedItems(trackId: string) {
     if (deps.selectedItemIds.value.length === 0) return;
+    const doc = deps.timelineDoc.value;
+    if (!doc) return;
+
+    const track = doc.tracks.find((t) => t.id === trackId);
+    if (!track) return;
+
+    // Filter out locked items
+    const selectedSet = new Set(deps.selectedItemIds.value);
+    const itemIdsToDelete = track.items
+      .filter((item) => selectedSet.has(item.id))
+      .filter((item) => {
+        if (track.locked) return false;
+        if (item.kind === 'clip' && item.locked) return false;
+        return true;
+      })
+      .map((item) => item.id);
+
+    if (itemIdsToDelete.length === 0) return;
+
     deps.applyTimeline({
       type: 'delete_items',
       trackId,
-      itemIds: [...deps.selectedItemIds.value],
+      itemIds: itemIdsToDelete,
     });
-    deps.selectedItemIds.value = [];
+
+    // Remove only deleted IDs from selection
+    const deletedIdSet = new Set(itemIdsToDelete);
+    deps.selectedItemIds.value = deps.selectedItemIds.value.filter((id) => !deletedIdSet.has(id));
   }
 
   function deleteFirstSelectedItem() {
@@ -363,7 +385,9 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
 
     const selectedSet = new Set(deps.selectedItemIds.value);
     for (const track of doc.tracks) {
+      if (track.locked) continue;
       for (const item of track.items) {
+        if (item.kind === 'clip' && item.locked) continue;
         if (selectedSet.has(item.id)) {
           deleteSelectedItems(track.id);
           return;
@@ -381,7 +405,14 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
     if (items.length === 0) return [];
 
     const byTrack = new Map<string, string[]>();
+    const doc = deps.timelineDoc.value;
+    if (!doc) return [];
+
     for (const item of items) {
+      const track = doc.tracks.find((t) => t.id === item.sourceTrackId);
+      if (!track || track.locked) continue;
+      if (item.clip.locked) continue;
+
       const current = byTrack.get(item.sourceTrackId) ?? [];
       current.push(item.clip.id);
       byTrack.set(item.sourceTrackId, current);
@@ -400,10 +431,12 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
       deps.batchApplyTimeline(deleteCommands, {
         labelKey: 'timeline.cutItems',
       });
+
+      // Clear selection only of cut items
+      const cutIds = new Set(Array.from(byTrack.values()).flat());
+      deps.selectedItemIds.value = deps.selectedItemIds.value.filter((id) => !cutIds.has(id));
     }
 
-    deps.clearSelection();
-    deps.selectTrack(null);
     return items;
   }
 

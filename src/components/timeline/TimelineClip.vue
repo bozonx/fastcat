@@ -113,7 +113,7 @@ const currentSlipPreview = computed(() => {
 });
 
 function toggleFadeCurve(edge: 'in' | 'out') {
-  if (!clipItem.value || !props.canEditClipContent || clipItem.value.locked || props.track.locked) return;
+  if (!clipItem.value || !props.canEditClipContent) return;
 
   const curveProp = edge === 'in' ? 'audioFadeInCurve' : 'audioFadeOutCurve';
   const currentCurve = clipItem.value[curveProp] === 'logarithmic' ? 'logarithmic' : 'linear';
@@ -347,7 +347,7 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
   };
 });
 function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; drag: boolean }) {
-  if (!clipItem.value || !props.canEditClipContent || props.track.locked) return;
+  if (!clipItem.value || !props.canEditClipContent) return;
 
   const defaultUs = Math.max(
     0,
