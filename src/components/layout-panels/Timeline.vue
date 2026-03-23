@@ -102,13 +102,6 @@ const playheadTransform = computed(
   () => `translate3d(${playheadPx.value}px, 0, 0) translateX(-50%)`,
 );
 
-const playheadHeight = computed(() => {
-  const totalTracksHeight = tracks.value.reduce(
-    (sum, tr) => sum + (trackHeights.value[tr.id] ?? 40),
-    0,
-  );
-  return Math.max(totalTracksHeight + 92, 0);
-});
 
 const currentFrameHighlightStyle = computed(() => {
   const pxPerFrame = zoomToPxPerSecond(timelineStore.timelineZoom) / fps.value;
@@ -649,13 +642,12 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
               />
 
               <div
-                class="absolute top-0 w-px pointer-events-none"
+                class="absolute inset-y-0 w-px pointer-events-none"
                 :style="{
                   transform: playheadTransform,
                   willChange: 'transform',
                   zIndex: 50,
-                  height: `${playheadHeight}px`,
-                  backgroundColor: 'var(--color-primary-500, #3b82f6)',
+                  backgroundColor: '#ef4444',
                 }"
               />
 
@@ -665,7 +657,7 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
                 :style="{
                   ...currentFrameHighlightStyle,
                   zIndex: 5,
-                  backgroundColor: 'var(--color-primary-500, #3b82f6)',
+                  backgroundColor: '#ef4444',
                   opacity: '0.12',
                 }"
               />
