@@ -57,8 +57,10 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     const splitTargets: Array<{ trackId: string; itemId: string }> = [];
     for (const track of doc.tracks) {
       if (!trackIdSet.has(track.id)) continue;
+      if (track.locked) continue;
       for (const it of track.items) {
         if (it.kind !== 'clip') continue;
+        if (it.locked) continue;
         splitTargets.push({ trackId: track.id, itemId: it.id });
       }
     }
@@ -91,9 +93,12 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     for (const track of updated.tracks) {
       if (!trackIdSet.has(track.id)) continue;
 
+      if (track.locked) continue;
+
       const toDelete: string[] = [];
       for (const it of track.items) {
         if (it.kind !== 'clip') continue;
+        if (it.locked) continue;
         const itStart = it.timelineRange.startUs;
         const center = itStart + it.timelineRange.durationUs / 2;
         if (center >= startUs && center <= endUs) {
@@ -117,6 +122,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     const moveCmds: TimelineCommand[] = [];
     for (const track of afterDelete.tracks) {
       if (!trackIdSet.has(track.id)) continue;
+      if (track.locked) continue;
 
       const clips = track.items
         .filter((it): it is TimelineClipItem => it.kind === 'clip')
@@ -124,6 +130,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
         .sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
 
       for (const clip of clips) {
+        if (clip.locked) continue;
         const clipStart = clip.timelineRange.startUs;
         if (clipStart >= endUs - EPSILON) {
           moveCmds.push({
@@ -151,6 +158,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     const track = getTrackById(doc, target.trackId);
     const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
     if (!track || !item || item.kind !== 'clip') return;
+    if (track.locked || item.locked) return;
 
     const cutUs = computeCutUs(doc, deps.getCurrentTime());
     const startUs = item.timelineRange.startUs;
@@ -207,6 +215,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     const track = getTrackById(doc, target.trackId);
     const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
     if (!track || !item || item.kind !== 'clip') return;
+    if (track.locked || item.locked) return;
 
     const cutUs = computeCutUs(doc, deps.getCurrentTime());
     const startUs = item.timelineRange.startUs;
@@ -264,6 +273,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     const track = getTrackById(doc, target.trackId);
     const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
     if (!track || !item || item.kind !== 'clip') return;
+    if (track.locked || item.locked) return;
 
     const cutUs = computeCutUs(doc, deps.getCurrentTime());
     const startUs = item.timelineRange.startUs;
@@ -276,13 +286,15 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
 
     const splitAt = (atUs: number) => {
       for (const t of doc.tracks) {
+        if (t.locked) continue;
         for (const it of t.items) {
           if (it.kind !== 'clip') continue;
+          if (it.locked) continue;
           const itStart = it.timelineRange.startUs;
           const itEnd = itStart + it.timelineRange.durationUs;
           if (atUs > itStart && atUs < itEnd) {
             deps.applyTimeline(
-              { type: 'split_item', trackId: t.id, itemId: it.id, atUs, ignoreLocks: true },
+              { type: 'split_item', trackId: t.id, itemId: it.id, atUs },
               { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
             );
           }
@@ -297,9 +309,11 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     if (!updated) return;
 
     for (const t of updated.tracks) {
+      if (t.locked) continue;
       const toDelete: string[] = [];
       for (const it of t.items) {
         if (it.kind !== 'clip') continue;
+        if (it.locked) continue;
         const itStart = it.timelineRange.startUs;
         const center = itStart + it.timelineRange.durationUs / 2;
 
@@ -310,7 +324,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
 
       if (toDelete.length > 0) {
         deps.applyTimeline(
-          { type: 'delete_items', trackId: t.id, itemIds: toDelete, ignoreLocks: true },
+          { type: 'delete_items', trackId: t.id, itemIds: toDelete },
           { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
         );
       }
@@ -321,12 +335,14 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
 
     const EPSILON = 10;
     for (const t of afterDelete.tracks) {
+      if (t.locked) continue;
       const clips = t.items
         .filter((it): it is TimelineClipItem => it.kind === 'clip')
         .slice()
         .sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
 
       for (const clip of clips) {
+        if (clip.locked) continue;
         const clipStart = clip.timelineRange.startUs;
         if (clipStart >= endUs - EPSILON) {
           deps.applyTimeline(
@@ -335,7 +351,6 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
               trackId: t.id,
               itemId: clip.id,
               startUs: Math.max(0, clipStart - deltaUs),
-              ignoreLocks: true,
               quantizeToFrames: false,
             },
             { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
@@ -358,6 +373,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     const track = getTrackById(doc, target.trackId);
     const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
     if (!track || !item || item.kind !== 'clip') return;
+    if (track.locked || item.locked) return;
 
     const cutUs = computeCutUs(doc, deps.getCurrentTime());
     const startUs = item.timelineRange.startUs;
@@ -370,13 +386,15 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
 
     const splitAt = (atUs: number) => {
       for (const t of doc.tracks) {
+        if (t.locked) continue;
         for (const it of t.items) {
           if (it.kind !== 'clip') continue;
+          if (it.locked) continue;
           const itStart = it.timelineRange.startUs;
           const itEnd = itStart + it.timelineRange.durationUs;
           if (atUs > itStart && atUs < itEnd) {
             deps.applyTimeline(
-              { type: 'split_item', trackId: t.id, itemId: it.id, atUs, ignoreLocks: true },
+              { type: 'split_item', trackId: t.id, itemId: it.id, atUs },
               { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
             );
           }
@@ -391,9 +409,11 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     if (!updated) return;
 
     for (const t of updated.tracks) {
+      if (t.locked) continue;
       const toDelete: string[] = [];
       for (const it of t.items) {
         if (it.kind !== 'clip') continue;
+        if (it.locked) continue;
         const itStart = it.timelineRange.startUs;
         const center = itStart + it.timelineRange.durationUs / 2;
 
@@ -404,7 +424,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
 
       if (toDelete.length > 0) {
         deps.applyTimeline(
-          { type: 'delete_items', trackId: t.id, itemIds: toDelete, ignoreLocks: true },
+          { type: 'delete_items', trackId: t.id, itemIds: toDelete },
           { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
         );
       }
@@ -415,12 +435,14 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
 
     const EPSILON = 10;
     for (const t of afterDelete.tracks) {
+      if (t.locked) continue;
       const clips = t.items
         .filter((it): it is TimelineClipItem => it.kind === 'clip')
         .slice()
         .sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
 
       for (const clip of clips) {
+        if (clip.locked) continue;
         const clipStart = clip.timelineRange.startUs;
         if (clipStart >= cutUs - EPSILON) {
           deps.applyTimeline(
@@ -429,7 +451,6 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
               trackId: t.id,
               itemId: clip.id,
               startUs: Math.max(0, clipStart - deltaUs),
-              ignoreLocks: true,
               quantizeToFrames: false,
             },
             { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
