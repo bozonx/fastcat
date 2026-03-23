@@ -126,7 +126,6 @@ function toggleFadeCurve(edge: 'in' | 'out') {
 }
 
 function onContextMenu(e: MouseEvent) {
-  console.log('[CTX] onContextMenu fired, isTrusted:', e.isTrusted, 'target:', e.target);
   // Always block native contextmenu (isTrusted=true) — let only synthetic events through
   if (e.isTrusted) {
     e.preventDefault();
@@ -148,10 +147,8 @@ const { didStartDrag, rightClickDragTriggered, rightClickPointerActive, onPointe
       });
     },
     onShortRightClick: (e) => {
-      console.log('[CTX] onShortRightClick called, target:', e.target);
       const target = e.target as HTMLElement | null;
       void nextTick().then(() => {
-        console.log('[CTX] nextTick fired, dispatching synthetic contextmenu on:', target);
         target?.dispatchEvent(
           new MouseEvent('contextmenu', {
             bubbles: true,
@@ -440,6 +437,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
       @click="onClipClick"
       @dblclick="onClipDblClick"
       @contextmenu.capture="onContextMenu"
+      @contextmenu.stop
       @dragleave="handleDragLeave"
       @drop="handleDrop"
       @pointerenter="isHovered = true"

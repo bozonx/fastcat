@@ -2,6 +2,15 @@ import { ref } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useFilesPageStore } from '~/stores/files-page.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { computed, onMounted, onUnmounted } from 'vue';
+import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
+import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
+import {
+  createDefaultHotkeyLookup,
+  createHotkeyLookup,
+  isCommandMatched,
+} from '~/utils/hotkeys/runtime';
 import { useFileDrop } from '~/composables/fileManager/useFileDrop';
 import {
   FILE_MANAGER_COPY_DRAG_TYPE,
@@ -26,8 +35,41 @@ interface UseFileBrowserDragAndDropOptions {
 
 export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOptions) {
   const uiStore = useUiStore();
+  const workspaceStore = useWorkspaceStore();
   const filesPageStore = useFilesPageStore();
   const fileManager = useFileManager();
+
+  const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
+  const effectiveHotkeys = computed(() =>
+    getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys),
+  );
+  const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
+  const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
+
+  function onGlobalKeyDown(e: KeyboardEvent) {
+    if (!uiStore.isFileManagerDragging) return;
+
+    const isCancel = isCommandMatched({
+      event: e,
+      cmdId: 'general.deselect',
+      userSettings: workspaceStore.userSettings,
+      hotkeyLookup: hotkeyLookup.value,
+      defaultHotkeyLookup: defaultHotkeyLookup.value,
+    });
+
+    if (isCancel) {
+      uiStore.isFileManagerDragging = false;
+      onEntryDragEnd();
+    }
+  }
+
+  onMounted(() => {
+    window.addEventListener('keydown', onGlobalKeyDown, { capture: true });
+  });
+
+  onUnmounted(() => {
+    window.removeEventListener('keydown', onGlobalKeyDown, { capture: true });
+  });
   const { setDraggedFile, clearDraggedFile } = useDraggedFile();
   const { currentDragOperation, setCurrentDragOperation } = useAppClipboard();
 
@@ -103,11 +145,13 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       items: movePayload,
     };
     setDraggedFile(data);
+    uiStore.isFileManagerDragging = true;
     e.dataTransfer?.setData('application/json', JSON.stringify(data));
   }
 
   function onEntryDragEnd() {
     clearDraggedFile();
+    uiStore.isFileManagerDragging = false;
     setCurrentDragOperation(null);
     dragOverEntryPath.value = null;
   }
