@@ -12,7 +12,7 @@ export interface TimelineActiveClipProcessorParams {
   height: number;
   syncTransitionFilter: (clip: CompositorClip, timeUs: number) => void;
   computeTransitionOpacity: (clip: CompositorClip, timeUs: number) => number;
-  drawHudClip: (clip: CompositorClip) => void;
+  drawHudClip: (clip: CompositorClip, timeUs: number) => void;
   drawShapeClip: (clip: CompositorClip, size: { width: number; height: number }) => void;
   drawTextClip: (clip: CompositorClip, size: { width: number; height: number }) => void;
   createPrimaryVideoSampleRequest: (
@@ -85,15 +85,16 @@ export class TimelineActiveClipProcessor {
 
         handleState(clip.hudMediaStates?.background, '_bg');
         handleState(clip.hudMediaStates?.content, '_ct');
+        handleState(clip.hudMediaStates?.frame, '_fr');
 
         if (statePromises.length > 0) {
           sampleRequests.push(Promise.all(statePromises).then(() => {
-            params.drawHudClip(clip);
+            params.drawHudClip(clip, timeUs);
             // Return a special object that tells applySampleResults not to hide the clip
             return { clip, sample: { isHud: true, close: () => {} } as any };
           }));
         } else if (dirty) {
-           params.drawHudClip(clip);
+           params.drawHudClip(clip, timeUs);
         }
         
         clip.hudDirty = false;

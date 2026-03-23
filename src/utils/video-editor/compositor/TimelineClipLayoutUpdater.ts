@@ -129,17 +129,20 @@ export class TimelineClipLayoutUpdater {
     if (clip.clipKind === 'hud') {
       const nextBg = (next as any).background;
       const nextContent = (next as any).content;
+      const nextFrame = (next as any).frame;
       const nextHudType = (next as any).hudType ?? 'media_frame';
 
       const hudChanged =
         clip.hudType !== nextHudType ||
         JSON.stringify(clip.background) !== JSON.stringify(nextBg) ||
-        JSON.stringify(clip.content) !== JSON.stringify(nextContent);
+        JSON.stringify(clip.content) !== JSON.stringify(nextContent) ||
+        JSON.stringify(clip.frame) !== JSON.stringify(nextFrame);
 
       if (hudChanged || clip.hudDirty === true) {
         clip.hudType = nextHudType;
         clip.background = nextBg ? JSON.parse(JSON.stringify(nextBg)) : undefined;
         clip.content = nextContent ? JSON.parse(JSON.stringify(nextContent)) : undefined;
+        clip.frame = nextFrame ? JSON.parse(JSON.stringify(nextFrame)) : undefined;
         clip.hudDirty = true;
       }
     }

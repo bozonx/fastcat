@@ -244,6 +244,18 @@ export interface HudMediaParams {
   transitionIn?: ClipTransition;
   transitionOut?: ClipTransition;
   effects?: ClipEffect[];
+  scaleX?: number;
+  scaleY?: number;
+  offsetX?: number;
+  offsetY?: number;
+  shadow?: {
+    enabled?: boolean;
+    blur?: number;
+    color?: string;
+    offsetX?: number;
+    offsetY?: number;
+    alpha?: number;
+  };
 }
 
 export interface TimelineHudClipItem extends TimelineClipBase {
@@ -251,6 +263,7 @@ export interface TimelineHudClipItem extends TimelineClipBase {
   hudType: HudType;
   background?: HudMediaParams;
   content?: HudMediaParams;
+  frame?: HudMediaParams;
 }
 
 export type TimelineClipItem =

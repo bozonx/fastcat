@@ -16,7 +16,7 @@ export interface FrameSampleOrchestratorParams {
   syncTransitionFilter: (clip: CompositorClip, timeUs: number) => void;
   computeTransitionOpacity: (clip: CompositorClip, timeUs: number) => number;
   applyClipEffects: (clip: CompositorClip) => void;
-  drawHudClip: (clip: CompositorClip) => void;
+  drawHudClip: (clip: CompositorClip, timeUs: number) => void;
   drawShapeClip: (clip: CompositorClip, size: { width: number; height: number }) => void;
   drawTextClip: (clip: CompositorClip, size: { width: number; height: number }) => void;
   createAbortController: (key: string) => AbortController;

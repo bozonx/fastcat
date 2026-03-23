@@ -183,6 +183,7 @@ export function parseClipItem(input: {
       hudType: fastcatMeta.hudType ?? 'media_frame',
       background: fastcatMeta.background,
       content: fastcatMeta.content,
+      frame: fastcatMeta.frame,
     };
   }
 

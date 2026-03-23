@@ -95,7 +95,7 @@ export class CanvasFallbackRenderer {
     }
   }
 
-  public drawHudClip(clip: CompositorClip) {
+  public drawHudClip(clip: CompositorClip, timeUs: number) {
     if (clip.clipKind !== 'hud') return;
     if (!clip.canvas || !clip.ctx) return;
 
@@ -118,51 +118,74 @@ export class CanvasFallbackRenderer {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Default fallback simple rendering for "media_frame"
     const type = clip.hudType ?? 'media_frame';
+    if (type !== 'media_frame') return;
 
-    if (type === 'media_frame') {
-      const padding = Math.min(canvas.width, canvas.height) * 0.05;
+    const localTimeUs = timeUs - clip.startUs;
+    const clipEndUs = clip.endUs - clip.startUs;
 
-      // Draw background if available
-      const bgState = clip.hudMediaStates?.background;
-      if (bgState && (bgState.bitmap || bgState.lastVideoFrame)) {
-        let frame: any = bgState.bitmap || bgState.lastVideoFrame;
-        // Draw background filling the whole canvas (or fitting it)
-        ctx.drawImage(frame as CanvasImageSource, 0, 0, canvas.width, canvas.height);
-      } else {
-        // Fallback default background
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const getLayerOpacity = (params?: import('../../../../timeline/types').HudMediaParams) => {
+      let opacity = 1;
+      if (!params) return opacity;
+      if (params.transitionIn?.durationUs && localTimeUs < params.transitionIn.durationUs) {
+        opacity = Math.max(0, localTimeUs / params.transitionIn.durationUs);
+      } else if (params.transitionOut?.durationUs && localTimeUs > clipEndUs - params.transitionOut.durationUs) {
+        opacity = Math.max(0, (clipEndUs - localTimeUs) / params.transitionOut.durationUs);
+      }
+      return opacity;
+    };
+
+    const drawLayer = (
+      state: any,
+      params: import('../../../../timeline/types').HudMediaParams | undefined,
+      defaultScale: number = 1,
+    ) => {
+      if (!state || !(state.bitmap || state.lastVideoFrame)) return;
+      const frame = state.bitmap || state.lastVideoFrame;
+      const w = frame.displayWidth ?? frame.width;
+      const h = frame.displayHeight ?? frame.height;
+      if (!w || !h) return;
+
+      const layerOpacity = getLayerOpacity(params);
+      if (layerOpacity <= 0) return;
+
+      ctx.save();
+      ctx.globalAlpha = layerOpacity;
+
+      const scaleX = params?.scaleX ?? 100;
+      const scaleY = params?.scaleY ?? 100;
+      const offsetX = params?.offsetX ?? 0;
+      const offsetY = params?.offsetY ?? 0;
+
+      const aspect = w / h;
+      let targetW = canvas.width;
+      let targetH = canvas.width / aspect;
+      if (targetH > canvas.height) {
+        targetH = canvas.height;
+        targetW = targetH * aspect;
       }
 
-      // Draw content if available inside the frame
-      const contentState = clip.hudMediaStates?.content;
-      if (contentState && (contentState.bitmap || contentState.lastVideoFrame)) {
-        let frame: any = contentState.bitmap || contentState.lastVideoFrame;
-        // Example: scale content to fit inside padding
-        const cw = canvas.width - padding * 2;
-        const ch = canvas.height - padding * 2;
+      const sw = targetW * (scaleX / 100) * defaultScale;
+      const sh = targetH * (scaleY / 100) * defaultScale;
 
-        ctx.drawImage(frame as CanvasImageSource, padding, padding, cw, ch);
+      const cx = canvas.width / 2 + canvas.width * (offsetX / 100);
+      const cy = canvas.height / 2 + canvas.height * (offsetY / 100);
 
-        // Draw a neat frame around it
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(padding, padding, cw, ch);
-      } else {
-        // Fallback placeholder content
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(padding, padding, canvas.width - padding * 2, canvas.height - padding * 2);
-
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.font = 'bold 48px sans-serif';
-        ctx.fillText('NO CONTENT', canvas.width / 2, canvas.height / 2);
+      if (params?.shadow?.enabled) {
+        ctx.shadowColor = params.shadow.color ?? '#000000';
+        ctx.shadowBlur = params.shadow.blur ?? 10;
+        ctx.shadowOffsetX = params.shadow.offsetX ?? 5;
+        ctx.shadowOffsetY = params.shadow.offsetY ?? 5;
       }
-    }
+
+      ctx.translate(cx, cy);
+      ctx.drawImage(frame as CanvasImageSource, -sw / 2, -sh / 2, sw, sh);
+      ctx.restore();
+    };
+
+    drawLayer(clip.hudMediaStates?.background, clip.background, 1.0);
+    drawLayer(clip.hudMediaStates?.content, clip.content, 0.75);
+    drawLayer(clip.hudMediaStates?.frame, clip.frame, 1.0);
 
     try {
       (clip.sprite.texture.source as any)?.update?.();

@@ -250,6 +250,15 @@ export class ClipResourceManager {
         if (cts.bitmap) safeDispose(cts.bitmap);
         if (cts.sprite) cts.sprite.destroy(true);
       }
+      const frs = clip.hudMediaStates.frame;
+      if (frs) {
+        this.context.videoFrameCache.clearForClip(clip.itemId + '_fr');
+        safeDispose(frs.sink);
+        safeDispose(frs.input);
+        if (frs.lastVideoFrame) safeDispose(frs.lastVideoFrame);
+        if (frs.bitmap) safeDispose(frs.bitmap);
+        if (frs.sprite) frs.sprite.destroy(true);
+      }
       clip.hudMediaStates = {};
     }
 

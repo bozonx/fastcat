@@ -268,6 +268,9 @@ export class TimelineClipLoader {
       reusable.content = clipData.content
         ? JSON.parse(JSON.stringify(clipData.content))
         : undefined;
+      reusable.frame = clipData.frame
+        ? JSON.parse(JSON.stringify(clipData.frame))
+        : undefined;
       reusable.hudDirty = true;
     }
 

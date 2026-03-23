@@ -69,6 +69,7 @@ export interface CompositorClip {
   hudType?: HudType;
   background?: HudMediaParams;
   content?: HudMediaParams;
+  frame?: HudMediaParams;
   opacity?: number;
   blendMode?: TimelineBlendMode;
   effects?: VideoClipEffect[];
@@ -91,6 +92,7 @@ export interface CompositorClip {
   hudMediaStates?: {
     background?: HudMediaState;
     content?: HudMediaState;
+    frame?: HudMediaState;
   };
   mask?: ClipMask;
   maskState?: HudMediaState | null;

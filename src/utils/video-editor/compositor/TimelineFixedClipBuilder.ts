@@ -87,6 +87,7 @@ export class TimelineFixedClipBuilder {
           hudType: clipData.hudType ?? 'media_frame',
           background: clipData.background,
           content: clipData.content,
+          frame: clipData.frame,
         });
     }
   }
@@ -97,6 +98,22 @@ export class TimelineFixedClipBuilder {
     mediabunny: MediaClipLoaderMediabunny;
   }) {
     const { clip, deps, mediabunny } = params;
+
+    const resetState = (s: import('./types').HudMediaState | undefined) => {
+      if (!s) return;
+      import('../utils').then(({ safeDispose }) => {
+        safeDispose(s.sink);
+        safeDispose(s.input);
+        if (s.lastVideoFrame) {
+          safeDispose(s.lastVideoFrame);
+          s.lastVideoFrame = null;
+        }
+        if (s.bitmap) {
+          try { s.bitmap.close(); } catch {}
+          s.bitmap = null;
+        }
+      });
+    };
 
     const loadState = async (path: string): Promise<HudMediaState | null> => {
       const fileHandle = await deps.getFileHandleByPath(path);
@@ -149,26 +166,44 @@ export class TimelineFixedClipBuilder {
     };
 
     const bgPath = clip.background?.source?.path;
-    if (bgPath) {
+    if (!bgPath) {
+      resetState(clip.hudMediaStates?.background);
+      if (clip.hudMediaStates) clip.hudMediaStates.background = undefined;
+    } else if (clip.hudMediaStates?.background?.sourcePath !== bgPath) {
+      resetState(clip.hudMediaStates?.background);
       try {
         const state = await loadState(bgPath);
-        if (state && clip.hudMediaStates) {
-          clip.hudMediaStates.background = state;
-        }
+        if (state && clip.hudMediaStates) clip.hudMediaStates.background = state;
       } catch (e) {
         console.error('[VideoCompositor] Failed to load HUD background', e);
       }
     }
 
     const contentPath = clip.content?.source?.path;
-    if (contentPath) {
+    if (!contentPath) {
+      resetState(clip.hudMediaStates?.content);
+      if (clip.hudMediaStates) clip.hudMediaStates.content = undefined;
+    } else if (clip.hudMediaStates?.content?.sourcePath !== contentPath) {
+      resetState(clip.hudMediaStates?.content);
       try {
         const state = await loadState(contentPath);
-        if (state && clip.hudMediaStates) {
-          clip.hudMediaStates.content = state;
-        }
+        if (state && clip.hudMediaStates) clip.hudMediaStates.content = state;
       } catch (e) {
         console.error('[VideoCompositor] Failed to load HUD content', e);
+      }
+    }
+
+    const framePath = clip.frame?.source?.path;
+    if (!framePath) {
+      resetState(clip.hudMediaStates?.frame);
+      if (clip.hudMediaStates) clip.hudMediaStates.frame = undefined;
+    } else if (clip.hudMediaStates?.frame?.sourcePath !== framePath) {
+      resetState(clip.hudMediaStates?.frame);
+      try {
+        const state = await loadState(framePath);
+        if (state && clip.hudMediaStates) clip.hudMediaStates.frame = state;
+      } catch (e) {
+        console.error('[VideoCompositor] Failed to load HUD frame', e);
       }
     }
   }
