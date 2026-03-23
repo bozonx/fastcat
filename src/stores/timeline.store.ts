@@ -14,6 +14,7 @@ import { createTimelineCommandService } from '~/timeline/application/timelineCom
 import { createTimelineEditService } from '~/timeline/application/timelineEditService';
 import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otioSerializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
+import { pxPerSecondToZoom } from '~/utils/timeline/geometry';
 
 import { createTimelinePersistence } from '~/stores/timeline/timeline-persistence';
 import { createTimelineMarkerService } from '~/timeline/application/timelineMarkerService';
@@ -88,6 +89,8 @@ export const useTimelineStore = defineStore('timeline', () => {
   const playbackGestureHandler = ref<((nextPlaying: boolean) => void) | null>(null);
 
   const timelineZoom = ref(50);
+  const timelineViewportWidth = ref(0);
+  const scrollResetTicket = ref(0);
   const trackHeights = ref<Record<string, number>>({});
 
   const fps = computed(() => {
@@ -429,6 +432,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     getMarkers: markerService.getMarkers,
     getSelectionRange: selectionRange.getSelectionRange,
     setPreviewSelectionRange: selectionRange.setPreviewSelectionRange,
+    timelineViewportWidth,
+    scrollResetTicket,
     fps,
     isTimelineDirty,
     isSavingTimeline,
@@ -499,6 +504,16 @@ export const useTimelineStore = defineStore('timeline', () => {
     setAudioVolume: playback.setAudioVolume,
     setTimelineZoom: playback.setTimelineZoom,
     resetTimelineZoom: lifecycle.resetTimelineZoom,
+    fitTimelineZoom: () => {
+      if (timelineViewportWidth.value <= 0) return;
+      if (duration.value <= 0) {
+        lifecycle.resetTimelineZoom();
+      } else {
+        const desiredPPS = (timelineViewportWidth.value * 0.9) / (duration.value / 1e6);
+        setTimelineZoomExact(pxPerSecondToZoom(desiredPPS));
+      }
+      scrollResetTicket.value++;
+    },
     toggleAudioMuted: playback.toggleAudioMuted,
     setMasterMuted,
     setPlaybackGestureHandler: playback.setPlaybackGestureHandler,

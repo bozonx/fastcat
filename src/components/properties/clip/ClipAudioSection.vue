@@ -59,91 +59,109 @@ const fadeCurveOptions = [
     "
     :title="t('fastcat.clip.audioFade.title', 'Audio fades')"
   >
-    <div v-if="props.canEditAudioGain" class="space-y-1.5">
-      <div class="flex items-center justify-between">
-        <span class="text-xs text-ui-text-muted">{{
-          t('fastcat.clip.audio.volume', 'Volume')
-        }}</span>
-        <span
-          class="text-xs font-mono text-ui-text-muted cursor-pointer hover:text-primary-400"
-          :title="t('common.actions.reset')"
-          @click="audioGainDb = 0"
-        >
-          {{ audioGainDb <= -59.9 ? '-∞' : audioGainDb.toFixed(1) }} dB
-        </span>
-      </div>
-      <div class="h-32">
-        <DbSlider v-model="audioGainDb" :level-db="props.audioLevelDb" />
-      </div>
-    </div>
+    <div class="flex gap-4">
+      <!-- Left column: Balance and Fades -->
+      <div class="flex-1 flex flex-col gap-4">
+        <UiSliderInput
+          v-if="props.canEditAudioBalance"
+          :label="t('fastcat.clip.audio.balance', 'Balance')"
+          :model-value="props.audioBalance"
+          :min="-1"
+          :max="1"
+          :step="0.01"
+          :default-value="0"
+          @update:model-value="(v: number) => emit('updateAudioBalance', v)"
+        />
 
-    <UiSliderInput
-      v-if="props.canEditAudioBalance"
-      :label="t('fastcat.clip.audio.balance', 'Balance')"
-      :model-value="props.audioBalance"
-      :min="-1"
-      :max="1"
-      :step="0.01"
-      :default-value="0"
-      @update:model-value="(v: number) => emit('updateAudioBalance', v)"
-    />
+        <div class="flex flex-col gap-3">
+          <!-- Fade In -->
+          <div class="flex flex-col gap-1">
+            <span class="text-xs text-ui-text-muted font-medium">{{
+              t('fastcat.clip.audioFade.in', 'Fade in')
+            }}</span>
+            <div class="flex flex-col gap-1.5">
+              <UiWheelNumberInput
+                :model-value="props.audioFadeInSec"
+                size="sm"
+                class="w-full"
+                :step="0.1"
+                :wheel-step-multiplier="10"
+                :min="0"
+                :max="props.audioFadeInMaxSec"
+                @update:model-value="(v: any) => emit('updateAudioFadeInSec', Number(v))"
+              />
+              <UiSelect
+                :model-value="props.audioFadeInCurve"
+                :items="fadeCurveOptions"
+                value-key="value"
+                label-key="label"
+                size="xs"
+                @update:model-value="
+                  (v: unknown) =>
+                    emit(
+                      'updateAudioFadeInCurve',
+                      ((v as { value: string })?.value ?? v) as AudioFadeCurve,
+                    )
+                "
+              />
+            </div>
+          </div>
 
-    <div class="grid grid-cols-2 gap-2">
-      <div class="flex flex-col gap-0.5">
-        <span class="text-xs text-ui-text-muted">{{
-          t('fastcat.clip.audioFade.in', 'Fade in')
-        }}</span>
-        <UiWheelNumberInput
-          :model-value="props.audioFadeInSec"
-          size="sm"
-          :step="0.1"
-          :wheel-step-multiplier="10"
-          :min="0"
-          :max="props.audioFadeInMaxSec"
-          @update:model-value="(v: any) => emit('updateAudioFadeInSec', Number(v))"
-        />
-        <UiSelect
-          :model-value="props.audioFadeInCurve"
-          :items="fadeCurveOptions"
-          value-key="value"
-          label-key="label"
-          size="xs"
-          @update:model-value="
-            (v: unknown) =>
-              emit(
-                'updateAudioFadeInCurve',
-                ((v as { value: string })?.value ?? v) as AudioFadeCurve,
-              )
-          "
-        />
+          <!-- Fade Out -->
+          <div class="flex flex-col gap-1">
+            <span class="text-xs text-ui-text-muted font-medium">{{
+              t('fastcat.clip.audioFade.out', 'Fade out')
+            }}</span>
+            <div class="flex flex-col gap-1.5">
+              <UiWheelNumberInput
+                :model-value="props.audioFadeOutSec"
+                size="sm"
+                class="w-full"
+                :step="0.1"
+                :wheel-step-multiplier="10"
+                :min="0"
+                :max="props.audioFadeOutMaxSec"
+                @update:model-value="(v: any) => emit('updateAudioFadeOutSec', Number(v))"
+              />
+              <UiSelect
+                :model-value="props.audioFadeOutCurve"
+                :items="fadeCurveOptions"
+                value-key="value"
+                label-key="label"
+                size="xs"
+                @update:model-value="
+                  (v: unknown) =>
+                    emit(
+                      'updateAudioFadeOutCurve',
+                      ((v as { value: string })?.value ?? v) as AudioFadeCurve,
+                    )
+                "
+              />
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="flex flex-col gap-0.5">
-        <span class="text-xs text-ui-text-muted">{{
-          t('fastcat.clip.audioFade.out', 'Fade out')
-        }}</span>
-        <UiWheelNumberInput
-          :model-value="props.audioFadeOutSec"
-          size="sm"
-          :step="0.1"
-          :wheel-step-multiplier="10"
-          :min="0"
-          :max="props.audioFadeOutMaxSec"
-          @update:model-value="(v: any) => emit('updateAudioFadeOutSec', Number(v))"
-        />
-        <UiSelect
-          :model-value="props.audioFadeOutCurve"
-          :items="fadeCurveOptions"
-          value-key="value"
-          label-key="label"
-          size="xs"
-          @update:model-value="
-            (v: unknown) =>
-              emit(
-                'updateAudioFadeOutCurve',
-                ((v as { value: string })?.value ?? v) as AudioFadeCurve,
-              )
-          "
-        />
+
+      <!-- Right column: Volume -->
+      <div
+        v-if="props.canEditAudioGain"
+        class="w-20 shrink-0 flex flex-col gap-2 border-l border-ui-border/30 pl-3"
+      >
+        <div class="flex flex-col items-end px-1 h-8 justify-center">
+          <span class="text-[10px] uppercase font-bold text-ui-text-muted/70 leading-tight line-clamp-1">{{
+            t('fastcat.clip.audio.volume', 'Volume')
+          }}</span>
+          <span
+            class="text-xs font-mono text-ui-text-muted cursor-pointer hover:text-primary-400 tabular-nums whitespace-nowrap"
+            :title="t('common.actions.reset')"
+            @click="audioGainDb = 0"
+          >
+            {{ audioGainDb <= -59.9 ? '-∞' : audioGainDb.toFixed(1) }}<span class="text-[10px] ml-0.5 opacity-50">dB</span>
+          </span>
+        </div>
+        <div class="flex-1 min-h-[160px]">
+          <DbSlider v-model="audioGainDb" :level-db="props.audioLevelDb" />
+        </div>
       </div>
     </div>
   </PropertySection>

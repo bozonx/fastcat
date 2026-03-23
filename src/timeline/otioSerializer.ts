@@ -184,6 +184,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
             content: item.clipType === 'hud' ? (item as any).content : undefined,
             isImage: item.isImage,
             transform: item.transform,
+            mask: item.mask,
           },
         },
       });

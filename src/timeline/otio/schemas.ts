@@ -40,6 +40,12 @@ export const ClipTransformSchema = z.object({
   anchor: ClipAnchorSchema.optional(),
 });
 
+export const ClipMaskSchema = z.object({
+  source: z.object({ path: z.string() }).optional(),
+  mode: z.enum(['alpha', 'luma']).optional(),
+  invert: z.boolean().optional(),
+});
+
 export const TextClipStyleSchema = z.object({
   width: z.number().optional(),
   fontFamily: z.string().optional(),
@@ -121,6 +127,7 @@ export const TimelineClipFastCatMetaSchema = z
     lockToLinkedVideo: z.boolean().optional(),
     isImage: z.boolean().optional(),
     transform: ClipTransformSchema.optional(),
+    mask: ClipMaskSchema.optional(),
     sourceDurationUs: z.number().min(0).optional(),
     effects: z.array(z.any()).optional(),
     transitionIn: z.any().optional(),

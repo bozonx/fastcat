@@ -205,7 +205,13 @@ export function useMonitorTimeline() {
         hash = mixHash(hash, hashString(String(item.clipType ?? '')));
         if (item.clipType === 'media' && item.source?.path) {
           hash = mixHash(hash, hashString(item.source.path));
-        } else if (item.clipType === 'background') {
+        }
+
+        if (item.mask?.source?.path) {
+          hash = mixHash(hash, hashString(item.mask.source.path));
+        }
+
+        if (item.clipType === 'background') {
           hash = mixHash(
             hash,
             hashString(
@@ -285,6 +291,11 @@ export function useMonitorTimeline() {
         const transform = item.transform;
         if (transform) {
           hash = mixHash(hash, hashString(JSON.stringify(transform)));
+        }
+
+        const mask = item.mask;
+        if (mask) {
+          hash = mixHash(hash, hashString(JSON.stringify(mask)));
         }
 
         if (item.clipType === 'background') {

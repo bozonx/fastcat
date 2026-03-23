@@ -142,8 +142,16 @@ useResizeObserver(scrollEl, () => {
   if (scrollEl.value) {
     scrollbarHeight.value = scrollEl.value.offsetHeight - scrollEl.value.clientHeight;
     viewportWidth.value = scrollEl.value.clientWidth;
+    timelineStore.timelineViewportWidth = viewportWidth.value;
   }
 });
+
+watch(
+  () => timelineStore.scrollResetTicket,
+  () => {
+    if (scrollEl.value) scrollEl.value.scrollLeft = 0;
+  },
+);
 
 const { onScroll, onLabelsScroll, startPan, onPanMove, stopPan, isPanning } = useTimelineScrollSync(
   {

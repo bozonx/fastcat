@@ -76,7 +76,7 @@ export class TimelineClipLoader {
       typeof clipData?.source?.path === 'string' && clipData.source.path.length > 0
         ? clipData.source.path
         : '';
-        
+
     const hudBackgroundPath = clipData.background?.source?.path ?? '';
     const hudContentPath = clipData.content?.source?.path ?? '';
     const maskPath = clipData.mask?.source?.path ?? '';
@@ -149,7 +149,7 @@ export class TimelineClipLoader {
   }): params is { reusable: CompositorClip; descriptor: TimelineClipDescriptor } {
     const { reusable, descriptor } = params;
     if (!reusable) return false;
-    
+
     if (descriptor.clipType === 'hud') {
       const prevBg = reusable.background?.source?.path ?? '';
       const prevContent = reusable.content?.source?.path ?? '';
@@ -160,10 +160,12 @@ export class TimelineClipLoader {
       );
     }
 
+    const prevMaskPath = reusable.mask?.source?.path ?? '';
+
     return Boolean(
       reusable.sourcePath === descriptor.sourcePath &&
-      reusable.mask?.source?.path === descriptor.maskPath &&
-      (reusable as any).clipType === descriptor.clipType
+      prevMaskPath === descriptor.maskPath &&
+      (reusable as any).clipType === descriptor.clipType,
     );
   }
 
@@ -260,8 +262,12 @@ export class TimelineClipLoader {
 
     if (reusable.clipKind === 'hud') {
       reusable.hudType = clipData.hudType ?? reusable.hudType ?? 'media_frame';
-      reusable.background = clipData.background ? JSON.parse(JSON.stringify(clipData.background)) : undefined;
-      reusable.content = clipData.content ? JSON.parse(JSON.stringify(clipData.content)) : undefined;
+      reusable.background = clipData.background
+        ? JSON.parse(JSON.stringify(clipData.background))
+        : undefined;
+      reusable.content = clipData.content
+        ? JSON.parse(JSON.stringify(clipData.content))
+        : undefined;
       reusable.hudDirty = true;
     }
 

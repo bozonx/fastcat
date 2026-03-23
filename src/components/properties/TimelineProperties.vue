@@ -308,24 +308,36 @@ const addTrackActions = computed(() => [
     <PropertySection v-if="!finalIsReadOnly">
       <div class="flex flex-col gap-3 py-1">
         <PropertyRow :label="t('fastcat.timeline.properties.zoom', 'Zoom')">
-          <div class="flex items-center gap-2">
-            <div class="min-w-0 flex-1">
-              <UiWheelSlider
-                v-model="timelineZoom"
-                :min="MIN_TIMELINE_ZOOM_POSITION"
-                :max="MAX_TIMELINE_ZOOM_POSITION"
-                :step="0.01"
-                :steps="TIMELINE_ZOOM_POSITIONS"
-                :default-value="DEFAULT_TIMELINE_ZOOM_POSITION"
-              />
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center gap-2">
+              <div class="min-w-0 flex-1">
+                <UiWheelSlider
+                  v-model="timelineZoom"
+                  :min="MIN_TIMELINE_ZOOM_POSITION"
+                  :max="MAX_TIMELINE_ZOOM_POSITION"
+                  :step="0.01"
+                  :steps="TIMELINE_ZOOM_POSITIONS"
+                  :default-value="DEFAULT_TIMELINE_ZOOM_POSITION"
+                />
+              </div>
+              <div class="w-16 shrink-0">
+                <UInput
+                  v-model="timelineZoomMultiplierInput"
+                  size="xs"
+                  class="w-full font-mono text-center"
+                />
+              </div>
             </div>
-            <div class="w-16 shrink-0">
-              <UInput
-                v-model="timelineZoomMultiplierInput"
-                size="xs"
-                class="w-full font-mono text-center"
-              />
-            </div>
+            <UButton
+              size="xs"
+              color="neutral"
+              variant="subtle"
+              class="w-full"
+              icon="i-heroicons-arrows-pointing-out"
+              @click="timelineStore.fitTimelineZoom()"
+            >
+              {{ t('fastcat.timeline.zoomToFit') }}
+            </UButton>
           </div>
         </PropertyRow>
 
