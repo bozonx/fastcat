@@ -29,6 +29,7 @@ import ClipInfoSection from '~/components/properties/clip/ClipInfoSection.vue';
 import ClipEffectsSection from '~/components/properties/clip/ClipEffectsSection.vue';
 import ClipTransformSection from '~/components/properties/clip/ClipTransformSection.vue';
 import ClipTypeSection from '~/components/properties/clip/ClipTypeSection.vue';
+import ClipMaskSection from '~/components/properties/clip/ClipMaskSection.vue';
 import { useClipAudio } from '~/composables/properties/useClipAudio';
 import { useClipTransitions } from '~/composables/properties/useClipTransitions';
 import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
@@ -180,6 +181,10 @@ function handleUpdateBlendMode(val: TimelineBlendMode | string) {
       ? val
       : 'normal';
   timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { blendMode: safe });
+}
+
+function handleUpdateMask(mask: any) {
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { mask });
 }
 
 function handleUpdateClipEffects(effects: VideoClipEffect[]) {
@@ -453,6 +458,12 @@ defineExpose({
         @update-audio-effects="handleUpdateClipAudioEffects"
       />
     </div>
+
+    <ClipMaskSection
+      v-if="isVideoTrack"
+      :clip="clip"
+      @update-mask="handleUpdateMask"
+    />
 
     <ClipAudioSection
       :can-edit-audio-fades="canEditAudioFades"

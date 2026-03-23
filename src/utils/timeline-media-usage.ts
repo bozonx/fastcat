@@ -24,28 +24,29 @@ export function computeMediaUsageByTimelineDocs(timelines: TimelineUsageTimeline
     for (const track of tl.timelineDoc.tracks) {
       for (const item of track.items) {
         if (item.kind !== 'clip') continue;
-        if (item.clipType !== 'media' && item.clipType !== 'timeline') continue;
-        const mediaPath = item.source?.path;
-        if (!mediaPath) continue;
 
-        if (seenInTimeline.has(mediaPath)) continue;
-        seenInTimeline.add(mediaPath);
+        const mediaPaths: string[] = [];
 
-        (mediaPathToTimelines[mediaPath] ??= []).push({
-          timelinePath: tl.timelinePath,
-          timelineName: tl.timelineName,
-        });
-      }
+        if (item.clipType === 'media' || item.clipType === 'timeline') {
+          if (item.source?.path) {
+            mediaPaths.push(item.source.path);
+          }
+        }
 
-      // Check HUD clips for background and content sources
-      for (const item of track.items) {
-        if (item.kind !== 'clip' || item.clipType !== 'hud') continue;
+        if (item.clipType === 'hud') {
+          if (item.background?.source?.path) {
+            mediaPaths.push(item.background.source.path);
+          }
+          if (item.content?.source?.path) {
+            mediaPaths.push(item.content.source.path);
+          }
+        }
 
-        const hudPaths = [item.background?.source?.path, item.content?.source?.path].filter(
-          Boolean,
-        ) as string[];
+        if (item.mask?.source?.path) {
+          mediaPaths.push(item.mask.source.path);
+        }
 
-        for (const mediaPath of hudPaths) {
+        for (const mediaPath of mediaPaths) {
           if (seenInTimeline.has(mediaPath)) continue;
           seenInTimeline.add(mediaPath);
 

@@ -242,6 +242,15 @@
         "scaleX": "Scale X (%)",
         "scaleY": "Scale Y (%)",
         "title": "Transform"
+      },
+      "mask": {
+        "title": "Mask",
+        "file": "Mask file",
+        "dropFile": "Drop mask file here",
+        "mode": "Mask mode",
+        "modeAlpha": "Alpha (Transparency)",
+        "modeLuma": "Luma (Brightness)",
+        "invert": "Invert"
       }
     },
     "dynamicPanels": {

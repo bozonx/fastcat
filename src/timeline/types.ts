@@ -124,6 +124,12 @@ export type TimelineEffect<TParams = Record<string, unknown>> = ClipEffect<TPara
 
 export type AudioFadeCurve = 'linear' | 'logarithmic';
 
+export interface ClipMask {
+  source?: TimelineSourceRef;
+  mode?: 'alpha' | 'luma';
+  invert?: boolean;
+}
+
 interface TimelineClipBase {
   kind: 'clip';
   clipType: TimelineClipType;
@@ -156,6 +162,7 @@ interface TimelineClipBase {
   isImage?: boolean;
   opacity?: number;
   blendMode?: TimelineBlendMode;
+  mask?: ClipMask;
   effects?: ClipEffect[];
   transitionIn?: ClipTransition;
   transitionOut?: ClipTransition;
