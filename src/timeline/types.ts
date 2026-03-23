@@ -309,6 +309,8 @@ export interface TimelineResizeFadePayload {
   itemId: string;
   edge: 'in' | 'out';
   durationUs: number;
+  /** Pre-drag document snapshot for correct undo history. Pass when creation and drag start together. */
+  docBeforeDrag?: TimelineDocument | null;
 }
 
 export interface TimelineTrack {

@@ -446,7 +446,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     e.preventDefault();
 
     const isCreating = payload.durationUs === 0;
-    const docBeforeDrag = timelineStore.timelineDoc;
+    const docBeforeDrag = payload.docBeforeDrag ?? timelineStore.timelineDoc;
     const deleteThresholdUs = Math.max(
       0,
       pxToDeltaUs(TRANSITION_DELETE_THRESHOLD_PX, timelineStore.timelineZoom),

@@ -317,22 +317,22 @@ select {
 
 
 /* Hatching patterns for locked state */
-.hatching-horizontal {
+.hatching-diagonal {
   background-image: repeating-linear-gradient(
-    0deg,
-    rgba(255, 255, 255, 0.07) 0px,
-    rgba(255, 255, 255, 0.07) 1px,
-    transparent 1px,
-    transparent 4px
+    45deg,
+    rgba(255, 255, 255, 0.1) 0px,
+    rgba(255, 255, 255, 0.1) 2px,
+    transparent 2px,
+    transparent 8px
   );
 }
 
-.hatching-horizontal-track {
+.hatching-diagonal-track {
   background-image: repeating-linear-gradient(
-    0deg,
-    rgba(255, 255, 255, 0.03) 0px,
-    rgba(255, 255, 255, 0.03) 1px,
-    transparent 1px,
-    transparent 6px
+    45deg,
+    rgba(255, 255, 255, 0.05) 0px,
+    rgba(255, 255, 255, 0.05) 2px,
+    transparent 2px,
+    transparent 12px
   );
 }

@@ -361,7 +361,10 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
 
   if (payload.drag) {
     // Create at 0 duration so the transition length matches the mouse position from the start.
+    // Capture snapshot BEFORE creating so undo restores to "no transition" state.
     // History will be recorded on drag release by startResizeTransition.
+    const docBeforeDrag = timelineStore.timelineDoc;
+
     const transitionPatch = {
       type: 'dissolve',
       durationUs: 0,
@@ -398,6 +401,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
         itemId: props.item.id,
         edge: payload.edge,
         durationUs: 0,
+        docBeforeDrag,
       });
     }, 0);
   } else {
@@ -478,7 +482,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
       />
       <div
         v-if="track.locked || (clipItem && clipItem.locked)"
-        class="absolute inset-0 rounded hatching-horizontal pointer-events-none"
+        class="absolute inset-0 rounded hatching-diagonal pointer-events-none"
         :style="{ zIndex: 'var(--z-clip-handles)' }"
       />
 

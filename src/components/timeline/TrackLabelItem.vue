@@ -224,8 +224,8 @@ onBeforeUnmount(() => {
         v-if="track.locked"
         :model-value="true"
         icon="i-heroicons-lock-closed"
-        active-color="primary"
-        active-variant="soft"
+        :active-bg="'#3b82f6'"
+        :active-text="'#ffffff'"
         title="Unlock Track"
         @click="toggleTrackLock"
       />
