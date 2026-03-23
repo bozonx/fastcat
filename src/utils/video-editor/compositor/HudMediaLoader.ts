@@ -35,14 +35,16 @@ export class HudMediaLoader {
       return null;
     }
 
+    const imageSource = new ImageSource({ resource: loaded.bitmap as any });
+
     return {
       sourcePath: params.sourcePath,
       fileHandle: loaded.fileHandle,
       sourceDurationUs: 0,
       clipKind: 'image',
       sourceKind: 'bitmap',
-      imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
-      sprite: new Sprite(Texture.EMPTY),
+      imageSource,
+      sprite: new Sprite(new Texture({ source: imageSource })),
       lastVideoFrame: null,
       bitmap: loaded.bitmap,
     };

@@ -5,15 +5,12 @@ const vertex = `
     attribute vec2 aUV;
 
     uniform mat3 projectionMatrix;
-    uniform mat3 filterMatrix;
 
     varying vec2 vUv;
-    varying vec2 vMaskUv;
 
     void main() {
         gl_Position = vec4((projectionMatrix * vec3(aPosition, 1.0)).xy, 0.0, 1.0);
         vUv = aUV;
-        vMaskUv = (filterMatrix * vec3(aUV, 1.0)).xy;
     }
 `;
 
@@ -21,25 +18,24 @@ const fragment = `
     precision highp float;
 
     varying vec2 vUv;
-    varying vec2 vMaskUv;
 
     uniform sampler2D uSampler;
     uniform sampler2D uMask;
-    uniform int uMode; // 0 = Alpha, 1 = Luma
-    uniform bool uInvert;
+    uniform float uMode; // 0.0 = Alpha, 1.0 = Luma
+    uniform float uInvert; // 0.0 = False, 1.0 = True
 
     void main() {
         vec4 color = texture2D(uSampler, vUv);
-        vec4 maskColor = texture2D(uMask, vMaskUv);
+        vec4 maskColor = texture2D(uMask, vUv);
 
         float maskAlpha;
-        if (uMode == 0) {
+        if (uMode < 0.5) {
             maskAlpha = maskColor.a;
         } else {
             maskAlpha = dot(maskColor.rgb, vec3(0.299, 0.587, 0.114)) * maskColor.a;
         }
 
-        if (uInvert) {
+        if (uInvert > 0.5) {
             maskAlpha = 1.0 - maskAlpha;
         }
 
@@ -64,10 +60,9 @@ export class ClipMaskFilter extends Filter {
     super({
       glProgram,
       resources: {
-        uSampler: Texture.WHITE.source, // Placeholder, Pixi.js handles uSampler
-        uMask: options.uMask.source,
+        uMask: options.uMask,
         filterUniforms: {
-          uMode: { value: options.uMode, type: 'i32' },
+          uMode: { value: options.uMode, type: 'f32' },
           uInvert: { value: options.uInvert ? 1.0 : 0.0, type: 'f32' },
         },
       },
@@ -78,11 +73,11 @@ export class ClipMaskFilter extends Filter {
     return this.resources.filterUniforms.uMode.value;
   }
   set uMode(value: number) {
-    this.resources.filterUniforms.uMode.value = Math.round(value);
+    this.resources.filterUniforms.uMode.value = value;
   }
 
   get uInvert() {
-    return Boolean(this.resources.filterUniforms.uInvert.value);
+    return this.resources.filterUniforms.uInvert.value > 0.5;
   }
   set uInvert(value: boolean) {
     this.resources.filterUniforms.uInvert.value = value ? 1.0 : 0.0;
@@ -91,7 +86,7 @@ export class ClipMaskFilter extends Filter {
   get uMask() {
     return this.resources.uMask;
   }
-  set uMask(value: TextureSource) {
+  set uMask(value: any) {
     this.resources.uMask = value;
   }
 }

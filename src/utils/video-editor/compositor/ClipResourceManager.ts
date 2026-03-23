@@ -263,6 +263,11 @@ export class ClipResourceManager {
       clip.maskState = null;
     }
 
+    if (clip.maskTexture) {
+      safeDispose(clip.maskTexture);
+      clip.maskTexture = undefined;
+    }
+
     if (clip.sprite && clip.sprite.parent) {
       clip.sprite.parent.removeChild(clip.sprite);
     }
