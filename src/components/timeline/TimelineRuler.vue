@@ -258,7 +258,7 @@ function isMarkerSelected(markerId: string) {
         :style="{
           ...currentFrameHighlightStyle,
           willChange: 'transform',
-          backgroundColor: 'var(--color-primary-500, #71717a)',
+          backgroundColor: '#ef4444',
           opacity: '0.12',
         }"
       />
@@ -269,11 +269,11 @@ function isMarkerSelected(markerId: string) {
       >
         <div
           class="absolute left-0 bottom-0 -translate-x-1/2 w-0 h-0 border-l-[5px] border-r-[5px] border-b-0 border-t-10 border-l-transparent border-r-transparent"
-          :style="{ borderTopColor: 'var(--color-primary-500, #71717a)' }"
+          :style="{ borderTopColor: '#ef4444' }"
         />
         <div
           class="absolute left-0 bottom-0 -translate-x-1/2 w-px h-px"
-          :style="{ backgroundColor: 'var(--color-primary-500, #71717a)' }"
+          :style="{ backgroundColor: '#ef4444' }"
         />
       </div>
 
