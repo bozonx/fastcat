@@ -70,6 +70,8 @@ export interface TimelineClipsApi {
         | 'audioWaveformMode'
         | 'showWaveform'
         | 'showThumbnails'
+        | 'sourceRange'
+        | 'sourceDurationUs'
       >
     > & {
       backgroundColor?: string;
@@ -222,6 +224,8 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
         | 'audioWaveformMode'
         | 'showWaveform'
         | 'showThumbnails'
+        | 'sourceRange'
+        | 'sourceDurationUs'
         | 'linkedVideoClipId'
         | 'lockToLinkedVideo'
         | 'linkedGroupId'
@@ -490,6 +494,8 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
         audioWaveformMode: clip.audioWaveformMode,
         showWaveform: clip.showWaveform,
         showThumbnails: clip.showThumbnails,
+        sourceRange: clip.sourceRange,
+        sourceDurationUs: clip.sourceDurationUs,
         backgroundColor: 'backgroundColor' in clip ? clip.backgroundColor : undefined,
         text: 'text' in clip ? clip.text : undefined,
         style: 'style' in clip ? cloneValue(clip.style) : undefined,

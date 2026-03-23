@@ -232,6 +232,19 @@ export const useTimelineStore = defineStore('timeline', () => {
     mediaMetadata,
   });
 
+  watch(
+    () => mediaMetadata.value,
+    () => {
+      if (timelineDoc.value) {
+        const next = hydration.hydrateAllClips(timelineDoc.value);
+        if (next !== timelineDoc.value) {
+          timelineDoc.value = next;
+        }
+      }
+    },
+    { deep: true },
+  );
+
   async function requestTimelineSave(options?: { immediate?: boolean }) {
     await lifecycle.requestTimelineSave(options);
   }

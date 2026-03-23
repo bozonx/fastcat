@@ -203,6 +203,8 @@ export interface UpdateClipPropertiesCommand {
       | 'audioWaveformMode'
       | 'showWaveform'
       | 'showThumbnails'
+      | 'sourceRange'
+      | 'sourceDurationUs'
     >
   > & {
     linkedGroupId?: string;

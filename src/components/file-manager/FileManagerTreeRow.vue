@@ -30,6 +30,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'click', event: MouseEvent): void;
+  (e: 'focus', event: FocusEvent): void;
   (e: 'dblclick'): void;
   (e: 'keydown-enter', event: KeyboardEvent): void;
   (e: 'keydown-space', event: KeyboardEvent): void;
@@ -74,6 +75,7 @@ const emit = defineEmits<{
     @dragleave.prevent="emit('dragleave', $event)"
     @drop.prevent="emit('drop', $event)"
     @click="emit('click', $event)"
+    @focus="emit('focus', $event)"
     @dblclick.stop="emit('dblclick')"
   >
     <!-- Chevron -->
