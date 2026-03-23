@@ -13,7 +13,9 @@ interface UiCompactSelectProps {
   labelKey?: string;
   multiple?: boolean;
   fullWidth?: boolean;
+  searchInput?: any;
 }
+
 
 const props = withDefaults(defineProps<UiCompactSelectProps>(), {
   modelValue: undefined,
@@ -24,7 +26,10 @@ const props = withDefaults(defineProps<UiCompactSelectProps>(), {
   labelKey: 'label',
   multiple: false,
   fullWidth: false,
+  searchInput: undefined,
 });
+
+
 
 const emit = defineEmits<{ (e: 'update:modelValue', value: unknown): void }>();
 
@@ -49,7 +54,10 @@ const ui = computed(() => ({
     :multiple="props.multiple"
     :class="props.fullWidth ? 'w-full' : 'w-auto'"
     :ui="ui"
+    :search-input="props.searchInput"
     @update:model-value="(val: unknown) => emit('update:modelValue', val)"
+
+
   >
     <template v-for="(_, slot) in $slots" #[slot]="slotProps">
       <slot :name="slot" v-bind="slotProps" />

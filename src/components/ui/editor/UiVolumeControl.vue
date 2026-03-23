@@ -149,7 +149,12 @@ onBeforeUnmount(() => {
       @update:model-value="onVolumeUpdate"
     />
 
-    <span class="text-sm text-ui-text-muted tabular-nums min-w-12"> {{ volumePercent }}% </span>
+    <span
+      class="text-2xs font-mono tabular-nums text-ui-text-muted select-none leading-none w-8 text-center"
+      @click.stop="toggleMute"
+    >
+      {{ volumePercent }}%
+    </span>
   </div>
 
   <div

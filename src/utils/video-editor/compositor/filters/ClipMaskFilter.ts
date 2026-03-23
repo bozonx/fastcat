@@ -1,4 +1,4 @@
-import { Filter, GlProgram, type TextureSource } from 'pixi.js';
+import { Filter, GlProgram, type Texture } from 'pixi.js';
 
 const vertex = `
 in vec2 aPosition;
@@ -52,7 +52,7 @@ void main(void) {
 `;
 
 export interface ClipMaskFilterOptions {
-  uMask: TextureSource;
+  uMask: Texture;
   uMode: number;
   uInvert: boolean;
 }
@@ -68,7 +68,7 @@ export class ClipMaskFilter extends Filter {
     super({
       glProgram,
       resources: {
-        uMask: options.uMask,
+        uMask: options.uMask.source,
         clipMaskUniforms: {
           uMode: { value: options.uMode, type: 'f32' },
           uInvert: { value: options.uInvert ? 1.0 : 0.0, type: 'f32' },
@@ -94,7 +94,7 @@ export class ClipMaskFilter extends Filter {
   get uMask() {
     return this.resources.uMask;
   }
-  set uMask(value: TextureSource) {
-    this.resources.uMask = value;
+  set uMask(value: Texture) {
+    this.resources.uMask = value.source;
   }
 }

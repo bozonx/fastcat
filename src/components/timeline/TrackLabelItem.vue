@@ -168,7 +168,7 @@ onBeforeUnmount(() => {
           v-model="renameValue"
           size="xs"
           class="w-full"
-          :ui="{ base: 'bg-transparent border-none text-xs font-medium p-0' }"
+          :ui="{ base: 'bg-transparent border-none text-[10px] font-medium p-0' }"
           :style="{
             width: `${Math.max(4, renameValue.length + 2)}ch`,
             minWidth: '4ch',
@@ -179,7 +179,7 @@ onBeforeUnmount(() => {
           @keydown.esc.stop="emit('cancelRename')"
           @blur="confirmRename"
         />
-        <span v-else class="truncate block" :title="track.name">{{ track.name }}</span>
+        <span v-else class="truncate block text-[10px]" :title="track.name">{{ track.name }}</span>
       </div>
     </div>
 
