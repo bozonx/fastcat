@@ -296,6 +296,12 @@ export const useTimelineStore = defineStore('timeline', () => {
     onSaveSuccess: () => {
       void lifecycle.handleSaveSuccess();
     },
+    onSaveError: () => {
+      toast.add({
+        title: t('common.saveError'),
+        color: 'error',
+      });
+    },
   });
 
   lifecycle = createTimelineLifecycle({
