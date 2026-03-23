@@ -22,8 +22,9 @@ export const VIDEO_CORE_LIMITS = {
 export const TIMELINE_CLIP_THUMBNAILS = {
   DIR_NAME: 'video_clips',
   INTERVAL_SECONDS: 4,
+  /** Max dimension (px) for thumbnail generation — applies to both axes so vertical videos get 180×320, horizontal 320×180. */
   WIDTH: 320,
-  HEIGHT: 180,
+  HEIGHT: 320,
   QUALITY: 0.7,
   MAX_CONCURRENT_TASKS: 2,
 } as const;
