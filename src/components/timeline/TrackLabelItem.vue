@@ -221,12 +221,12 @@ onBeforeUnmount(() => {
       />
 
       <UiToggleButton
-        :model-value="track.locked || false"
+        v-if="track.locked"
+        :model-value="true"
         icon="i-heroicons-lock-closed"
-        inactive-color="neutral"
         active-color="primary"
         active-variant="soft"
-        title="Lock/Unlock Track"
+        title="Unlock Track"
         @click="toggleTrackLock"
       />
     </div>
