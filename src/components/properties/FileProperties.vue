@@ -455,18 +455,6 @@ const {
       :format-duration-seconds="formatDurationSeconds"
     />
 
-    <FileGeneralInfoSection
-      v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'file' && !isVideoFile && !isAudioFile"
-      :title="generalInfoTitle"
-      :file-info="fileInfo"
-      :selected-path="selectedPath"
-      :is-hidden="isHidden"
-      :format-bytes="formatBytes"
-    >
-      <template v-if="mediaType === 'text' && lineCount !== null">
-        <PropertyRow :label="t('fastcat.file.lineCount', 'Line Count')" :value="lineCount" />
-      </template>
-    </FileGeneralInfoSection>
 
     <FileGeneralInfoSection
       v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'directory'"
@@ -498,13 +486,17 @@ const {
     </PropertySection>
 
     <FileGeneralInfoSection
-      v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'file' && (isVideoFile || isAudioFile)"
+      v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'file'"
       :title="generalInfoTitle"
       :file-info="fileInfo"
       :selected-path="selectedPath"
       :is-hidden="isHidden"
       :format-bytes="formatBytes"
-    />
+    >
+      <template v-if="mediaType === 'text' && lineCount !== null">
+        <PropertyRow :label="t('fastcat.file.lineCount', 'Line Count')" :value="lineCount" />
+      </template>
+    </FileGeneralInfoSection>
 
     <ExpandableYamlSection
       v-if="fileInfo?.kind === 'file' && (isVideoFile || isAudioFile) && metadataYaml"
