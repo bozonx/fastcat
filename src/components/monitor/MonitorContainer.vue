@@ -227,7 +227,7 @@ const activeMarkers = ref<TimelineMarker[]>([]);
 watchEffect(() => {
   const time = uiCurrentTimeUs.value;
   const markers = timelineDoc.value?.metadata?.fastcat?.markers;
-  activeMarkers.value = Array.isArray(markers)
+  const filtered = Array.isArray(markers)
     ? markers.filter((m) => {
         if (!m.text.trim()) return false;
         if (m.durationUs != null) return time >= m.timeUs && time < m.timeUs + m.durationUs;
@@ -235,6 +235,13 @@ watchEffect(() => {
         return Math.abs(time - m.timeUs) < 1000;
       })
     : [];
+  // DEBUG: remove after fix
+  console.log('[MarkerDebug]', {
+    time,
+    allMarkers: markers?.map((m) => ({ id: m.id.slice(-4), text: m.text, timeUs: m.timeUs, diff: Math.abs(time - m.timeUs), durationUs: m.durationUs })),
+    filtered: filtered.length,
+  });
+  activeMarkers.value = filtered;
 });
 
 const isIdle = ref(false);
