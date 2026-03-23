@@ -17,6 +17,18 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY } from '~/stores/timeline/timeline-history-labels';
 
+import {
+  DEFAULT_HOTKEYS,
+  type HotkeyCommandId,
+  type HotkeyCombo,
+} from '~/utils/hotkeys/defaultHotkeys';
+import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
+import {
+  createDefaultHotkeyLookup,
+  createHotkeyLookup,
+  isCommandMatched,
+} from '~/utils/hotkeys/runtime';
+
 import { cloneValue } from '~/utils/clone';
 import {
   zoomToPxPerSecond,
@@ -83,6 +95,11 @@ export function useTimelineItemDrag(
     itemId: string;
     startUs: number;
   } | null>(null);
+
+  const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
+  const effectiveHotkeys = computed(() => getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys));
+  const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
+  const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
 
   const dragStartSnapshot = ref<import('~/timeline/types').TimelineDocument | null>(null);
   const lastDragAppliedCmd = ref<import('~/timeline/commands').TimelineCommand | null>(null);
@@ -330,7 +347,15 @@ export function useTimelineItemDrag(
   }
 
   function onGlobalKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Escape') {
+    const isCancel = isCommandMatched({
+      event: e,
+      cmdId: 'general.deselect',
+      userSettings: workspaceStore.userSettings,
+      hotkeyLookup: hotkeyLookup.value,
+      defaultHotkeyLookup: defaultHotkeyLookup.value,
+    });
+
+    if (isCancel) {
       if (!draggingMode.value) return;
 
       dragCancelRequested.value = true;

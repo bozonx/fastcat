@@ -6,6 +6,15 @@ import { useMediaStore } from '~/stores/media.store';
 import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
 import type { ClipTransform } from '~/timeline/types';
 import { computeClipBoxLayout, TRANSFORM_DESIGN_BASE } from '~/utils/video-editor/clip-layout';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
+import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
+import {
+  createDefaultHotkeyLookup,
+  createHotkeyLookup,
+  isCommandMatched,
+} from '~/utils/hotkeys/runtime';
+import { cloneValue } from '~/utils/clone';
 
 const props = defineProps<{
   renderWidth: number;
@@ -15,7 +24,15 @@ const props = defineProps<{
 const selectionStore = useSelectionStore();
 const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
+const workspaceStore = useWorkspaceStore();
 const { rawWorkerTimelineClips } = useMonitorTimeline();
+
+const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
+const effectiveHotkeys = computed(() =>
+  getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys),
+);
+const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
+const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
 
 const selectedClipId = computed(() => {
   const entity = selectionStore.selectedEntity;
@@ -210,6 +227,7 @@ function cleanupDragListeners() {
   window.removeEventListener('pointermove', onWindowPointerMove);
   window.removeEventListener('pointerup', onWindowPointerUp);
   window.removeEventListener('pointercancel', onWindowPointerCancel);
+  window.removeEventListener('keydown', onWindowKeyDown);
 }
 
 function endDrag(event?: PointerEvent) {
@@ -280,6 +298,28 @@ function onPointerDown(e: PointerEvent, type: string) {
   window.addEventListener('pointermove', onWindowPointerMove);
   window.addEventListener('pointerup', onWindowPointerUp);
   window.addEventListener('pointercancel', onWindowPointerCancel);
+  window.addEventListener('keydown', onWindowKeyDown);
+}
+
+function onWindowKeyDown(e: KeyboardEvent) {
+  const isCancel = isCommandMatched({
+    event: e,
+    cmdId: 'general.deselect',
+    userSettings: workspaceStore.userSettings,
+    hotkeyLookup: hotkeyLookup.value,
+    defaultHotkeyLookup: defaultHotkeyLookup.value,
+  });
+
+  if (isCancel && isDragging.value) {
+    e.preventDefault();
+    // Revert to start transform
+    updateTransform({
+      position: { x: dragStartTransform.posX, y: dragStartTransform.posY },
+      rotationDeg: dragStartTransform.rotationDeg,
+      scale: { x: dragStartTransform.scaleX, y: dragStartTransform.scaleY, linked: true },
+    });
+    endDrag();
+  }
 }
 
 // Convert screen drag delta to monitor viewport coordinate delta

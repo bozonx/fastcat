@@ -6,6 +6,14 @@ import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
 import type { ClipTransform, TextClipStyle } from '~/timeline/types';
 import { computeClipBoxLayout, TRANSFORM_DESIGN_BASE } from '~/utils/video-editor/clip-layout';
 import { computeTextLayoutMetrics } from '~/utils/video-editor/text-layout';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
+import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
+import {
+  createDefaultHotkeyLookup,
+  createHotkeyLookup,
+  isCommandMatched,
+} from '~/utils/hotkeys/runtime';
 
 const props = defineProps<{
   renderWidth: number;
@@ -14,7 +22,15 @@ const props = defineProps<{
 
 const selectionStore = useSelectionStore();
 const timelineStore = useTimelineStore();
+const workspaceStore = useWorkspaceStore();
 const { rawWorkerTimelineClips } = useMonitorTimeline();
+
+const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
+const effectiveHotkeys = computed(() =>
+  getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys),
+);
+const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
+const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
 
 const selectedClipId = computed(() => {
   const entity = selectionStore.selectedEntity;
@@ -243,6 +259,7 @@ function cleanupDragListeners() {
   window.removeEventListener('pointermove', onWindowPointerMove);
   window.removeEventListener('pointerup', onWindowPointerUp);
   window.removeEventListener('pointercancel', onWindowPointerCancel);
+  window.removeEventListener('keydown', onWindowKeyDown);
 }
 
 function endDrag(event?: PointerEvent) {
@@ -307,6 +324,33 @@ function onPointerDown(event: PointerEvent, type: string) {
   window.addEventListener('pointermove', onWindowPointerMove);
   window.addEventListener('pointerup', onWindowPointerUp);
   window.addEventListener('pointercancel', onWindowPointerCancel);
+  window.addEventListener('keydown', onWindowKeyDown);
+}
+
+function onWindowKeyDown(e: KeyboardEvent) {
+  const isCancel = isCommandMatched({
+    event: e,
+    cmdId: 'general.deselect',
+    userSettings: workspaceStore.userSettings,
+    hotkeyLookup: hotkeyLookup.value,
+    defaultHotkeyLookup: defaultHotkeyLookup.value,
+  });
+
+  if (isCancel && isDragging.value) {
+    e.preventDefault();
+    // Revert to start state
+    updateClip({
+      transform: {
+        position: { x: dragStartState.posX, y: dragStartState.posY },
+        rotationDeg: dragStartState.rotationDeg,
+      },
+      style: {
+        width: dragStartState.width,
+        fontSize: dragStartState.fontSize,
+      },
+    });
+    endDrag();
+  }
 }
 
 function getViewportDelta(event: PointerEvent) {

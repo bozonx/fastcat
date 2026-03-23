@@ -4,6 +4,14 @@ import { computed, onMounted, onBeforeUnmount } from 'vue';
 import type { TimelineTrack, TimelineMoveItemPayload } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
+import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
+import {
+  createDefaultHotkeyLookup,
+  createHotkeyLookup,
+  isCommandMatched,
+} from '~/utils/hotkeys/runtime';
 import {
   BASE_PX_PER_SECOND,
   timeUsToPx,
@@ -23,6 +31,14 @@ export function useTimelineInteraction(
 ) {
   const timelineStore = useTimelineStore();
   const projectStore = useProjectStore();
+  const workspaceStore = useWorkspaceStore();
+
+  const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
+  const effectiveHotkeys = computed(() =>
+    getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys),
+  );
+  const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
+  const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
 
   const {
     isDraggingPlayhead,
@@ -86,7 +102,15 @@ export function useTimelineInteraction(
   }
 
   function onGlobalKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Escape' && timelineStore.isTrimModeActive) {
+    const isCancel = isCommandMatched({
+      event: e,
+      cmdId: 'general.deselect',
+      userSettings: workspaceStore.userSettings,
+      hotkeyLookup: hotkeyLookup.value,
+      defaultHotkeyLookup: defaultHotkeyLookup.value,
+    });
+
+    if (isCancel && timelineStore.isTrimModeActive) {
       timelineStore.isTrimModeActive = false;
       e.preventDefault();
     }

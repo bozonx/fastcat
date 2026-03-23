@@ -5,6 +5,15 @@ import ImageViewer from '~/components/preview/ImageViewer.vue';
 import TextEditor from '~/components/preview/TextEditor.vue';
 import { useUiStore } from '~/stores/ui.store';
 import type { PanelFocusId } from '~/stores/focus.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { computed } from 'vue';
+import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
+import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
+import {
+  createDefaultHotkeyLookup,
+  createHotkeyLookup,
+  isCommandMatched,
+} from '~/utils/hotkeys/runtime';
 
 interface MediaPlaybackTransferState {
   currentTime: number;
@@ -15,6 +24,14 @@ interface MediaPlaybackTransferState {
 
 const { t } = useI18n();
 const uiStore = useUiStore();
+const workspaceStore = useWorkspaceStore();
+
+const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
+const effectiveHotkeys = computed(() =>
+  getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys),
+);
+const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
+const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
 
 const props = defineProps<{
   url?: string | null;
@@ -71,7 +88,15 @@ watch(
 );
 
 function handleEsc(e: KeyboardEvent) {
-  if (e.key === 'Escape') {
+  const isCancel = isCommandMatched({
+    event: e,
+    cmdId: 'general.deselect',
+    userSettings: workspaceStore.userSettings,
+    hotkeyLookup: hotkeyLookup.value,
+    defaultHotkeyLookup: defaultHotkeyLookup.value,
+  });
+
+  if (isCancel) {
     if (isMediaModalOpen.value) {
       isMediaModalOpen.value = false;
       e.stopPropagation();
