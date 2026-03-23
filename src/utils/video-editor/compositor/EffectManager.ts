@@ -35,6 +35,23 @@ export class EffectManager {
       filters.push(maskFilter);
     }
 
+    if (clip.mask) {
+      console.log('[Mask Debug] applyClipEffects', {
+        itemId: clip.itemId,
+        hasMask: !!clip.mask,
+        maskPath: clip.mask?.source?.path,
+        maskState: clip.maskState ? {
+          clipKind: clip.maskState.clipKind,
+          hasImageSource: !!clip.maskState.imageSource,
+          imageSourceWidth: clip.maskState.imageSource?.width,
+          imageSourceHeight: clip.maskState.imageSource?.height,
+          hasLastVideoFrame: !!clip.maskState.lastVideoFrame,
+        } : clip.maskState,
+        maskFilterCreated: !!maskFilter,
+        filtersCount: filters.length,
+      });
+    }
+
     clip.sprite.filters = filters.length > 0 ? filters : null;
   }
 
