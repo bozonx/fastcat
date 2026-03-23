@@ -215,7 +215,7 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
 }
 
 function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') {
-  if (!props.canEdit || props.clip.locked) return;
+  if (!props.canEdit || props.clip.locked || props.track.locked) return;
   e.stopPropagation();
   e.preventDefault();
 
@@ -325,7 +325,7 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
             class="i-heroicons-square-3-stack-3d w-3 h-3 absolute inset-0 m-auto opacity-70"
           />
           <div
-            v-if="canEdit && !clip.locked"
+            v-if="canEdit && !clip.locked && !track.locked"
             class="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40 pointer-events-auto"
             @pointerdown.stop.prevent="
               emit('resize', $event, { edge: 'in', durationUs: clip.transitionIn!.durationUs })
@@ -405,7 +405,7 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
             class="i-heroicons-square-3-stack-3d w-3 h-3 absolute inset-0 m-auto opacity-70"
           />
           <div
-            v-if="canEdit && !clip.locked"
+            v-if="canEdit && !clip.locked && !track.locked"
             class="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40 pointer-events-auto"
             @pointerdown.stop.prevent="
               emit('resize', $event, { edge: 'out', durationUs: clip.transitionOut!.durationUs })
@@ -417,7 +417,7 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
 
     <!-- Create Transition In Handle -->
     <div
-      v-if="!clip.transitionIn && canEdit && !clip.locked"
+      v-if="!clip.transitionIn && canEdit && !clip.locked && !track.locked"
       class="absolute w-5 h-8 transition-opacity flex items-center justify-center pointer-events-auto"
       :style="{
         top: '50%',
@@ -439,7 +439,7 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
 
     <!-- Create Transition Out Handle -->
     <div
-      v-if="!clip.transitionOut && canEdit && !clip.locked"
+      v-if="!clip.transitionOut && canEdit && !clip.locked && !track.locked"
       class="absolute w-5 h-8 transition-opacity flex items-center justify-center pointer-events-auto"
       :style="{
         top: '50%',

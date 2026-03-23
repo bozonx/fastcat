@@ -78,6 +78,7 @@ export function createTimelineTrimming(deps: TimelineTrimmingDeps): TimelineTrim
     const track = doc.tracks.find((t) => t.id === target.trackId) ?? null;
     const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
     if (!track || !item || item.kind !== 'clip') return;
+    if (track.locked || item.locked) return;
 
     const cutUs = computeCutUs(doc, deps.currentTime.value);
     const startUs = item.timelineRange.startUs;
@@ -124,6 +125,7 @@ export function createTimelineTrimming(deps: TimelineTrimmingDeps): TimelineTrim
     const track = doc.tracks.find((t) => t.id === target.trackId) ?? null;
     const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
     if (!track || !item || item.kind !== 'clip') return;
+    if (track.locked || item.locked) return;
 
     const cutUs = computeCutUs(doc, deps.currentTime.value);
     const startUs = item.timelineRange.startUs;
@@ -211,6 +213,13 @@ export function createTimelineTrimming(deps: TimelineTrimmingDeps): TimelineTrim
     if (!doc) return;
 
     const target = targetOverride ?? deps.getHotkeyTargetClip();
+    if (!target) return;
+
+    const track = doc.tracks.find((t) => t.id === target.trackId);
+    if (!track || track.locked) return;
+    const item = track.items.find((it) => it.id === target.itemId);
+    if (!item || (item.kind === 'clip' && item.locked)) return;
+
     const cmds = buildSplitClipCommands(doc, deps.currentTime.value, target);
     for (const cmd of cmds) {
       deps.applyTimeline(cmd, { saveMode: 'none' });
@@ -235,10 +244,25 @@ export function createTimelineTrimming(deps: TimelineTrimmingDeps): TimelineTrim
     const doc = deps.timelineDoc.value;
     if (!doc) return;
 
+    const selectedItemIds = deps.selectedItemIds.value;
+    const itemIdsToSplit = selectedItemIds.filter((itemId) => {
+      let isLocked = false;
+      for (const track of doc.tracks) {
+        const item = track.items.find((it) => it.id === itemId);
+        if (item) {
+          if (track.locked || (item.kind === 'clip' && item.locked)) {
+            isLocked = true;
+          }
+          break;
+        }
+      }
+      return !isLocked;
+    });
+
     const cmds = buildSplitSelectedClipsCommands(
       doc,
       deps.currentTime.value,
-      deps.selectedItemIds.value,
+      itemIdsToSplit,
     );
     if (cmds.length === 0) return;
 

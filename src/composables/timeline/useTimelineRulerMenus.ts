@@ -30,18 +30,20 @@ export function useTimelineRulerMenus(options: UseTimelineRulerMenusOptions) {
         label: options.t('fastcat.timeline.addMarkerAtPlayhead'),
         icon: 'i-heroicons-bookmark',
         onSelect: () => {
+          const existingIds = new Set(options.timelineStore.getMarkers().map((m) => m.id));
           options.timelineStore.addMarkerAtPlayhead();
-          const latest = options.timelineStore.getMarkers().at(-1);
-          if (latest) options.selectMarker(latest.id);
+          const created = options.timelineStore.getMarkers().find((m) => !existingIds.has(m.id));
+          if (created) options.selectMarker(created.id);
         },
       },
       {
         label: options.t('fastcat.timeline.addZoneMarkerAtPlayhead'),
         icon: 'i-heroicons-arrows-right-left',
         onSelect: () => {
+          const existingIds = new Set(options.timelineStore.getMarkers().map((m) => m.id));
           options.timelineStore.addZoneMarkerAtPlayhead();
-          const latest = options.timelineStore.getMarkers().at(-1);
-          if (latest) options.selectMarker(latest.id);
+          const created = options.timelineStore.getMarkers().find((m) => !existingIds.has(m.id));
+          if (created) options.selectMarker(created.id);
         },
       },
       {

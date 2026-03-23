@@ -4,6 +4,7 @@ import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiCompactSelect from '~/components/ui/UiCompactSelect.vue';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useFullscreen } from '@vueuse/core';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -26,6 +27,7 @@ const toast = useToast();
 const focusStore = useFocusStore();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
+const { markers: timelineMarkers } = storeToRefs(timelineStore);
 const fileManager = useFileManager();
 const { loadTimeline } = useProjectActions();
 
@@ -222,7 +224,7 @@ const monitorZoomLabel = computed(() => (viewportRef.value as any)?.zoomLabel ??
 
 const activeMarkers = computed(() => {
   const time = uiCurrentTimeUs.value;
-  return (timelineStore.markers || []).filter((m) => {
+  return (timelineMarkers.value || []).filter((m) => {
     if (!m.text.trim()) return false;
     if (m.durationUs) {
       return time >= m.timeUs && time < m.timeUs + m.durationUs;

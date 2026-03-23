@@ -161,7 +161,7 @@ const volumeY = computed(() => {
     </div>
 
     <!-- Fade Handles -->
-    <template v-if="canEdit && !clip.locked">
+    <template v-if="canEdit && !clip.locked && !track.locked">
       <div
         class="absolute top-0 w-4 h-4 -translate-x-1/2 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto"
         :class="[
@@ -205,15 +205,15 @@ const volumeY = computed(() => {
     <div
       class="absolute left-0 right-0 z-45 h-3 -mt-1.5 flex flex-col justify-center transition-opacity pointer-events-auto"
       :class="[
-        canEdit && !clip.locked ? 'cursor-ns-resize' : '',
+        canEdit && !clip.locked && !track.locked ? 'cursor-ns-resize' : '',
         clip.audioMuted ? 'opacity-0 hover:opacity-100' : 'opacity-100',
         isDragging && !isResizingVolume ? 'opacity-0! pointer-events-none' : '',
       ]"
       :style="{ top: `${volumeY}%` }"
       @pointerdown.stop.prevent="
-        canEdit && !clip.locked && emit('startResizeVolume', $event, clip.audioGain ?? 1)
+        canEdit && !clip.locked && !track.locked && emit('startResizeVolume', $event, clip.audioGain ?? 1)
       "
-      @dblclick.stop.prevent="canEdit && !clip.locked && emit('resetVolume')"
+      @dblclick.stop.prevent="canEdit && !clip.locked && !track.locked && emit('resetVolume')"
     >
       <div
         class="w-full bg-yellow-400 opacity-80"

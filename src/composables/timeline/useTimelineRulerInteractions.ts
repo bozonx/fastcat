@@ -6,6 +6,7 @@ import type { FastCatUserSettings } from '~/utils/settings';
 
 interface TimelineSelectionStoreLike {
   clearSelection: () => void;
+  selectTimelineMarker: (markerId: string) => void;
 }
 
 interface TimelineStoreLike {
@@ -95,6 +96,7 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
         timeUs,
         text: '',
       });
+      options.selectionStore.selectTimelineMarker(markerId);
     }
   }
 
