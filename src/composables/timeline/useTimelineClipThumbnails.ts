@@ -123,16 +123,14 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
   /**
    * Display width of one thumbnail tile.
    *
-   * The tile is rendered at its natural aspect ratio (height = clip row height,
-   * width = height × THUMB_ASPECT). When the zoom is large enough that one
-   * interval spans more pixels than the natural width the tile is stretched to
-   * fill the interval slot instead, so there are never gaps between tiles.
+   * Always equals height × THUMB_ASPECT so tiles never overlap and never have
+   * gaps — they are placed consecutively regardless of timeline zoom. When the
+   * clip row is taller (e.g. vertical zoom) tiles grow proportionally.
    */
   const tileDisplayWidthPx = computed(() => {
     const h = options.clipHeightPx.value;
-    if (!h || h <= 0) return pxPerThumbnail.value;
-    const naturalWidth = h * THUMB_ASPECT;
-    return Math.max(naturalWidth, pxPerThumbnail.value);
+    if (!h || h <= 0) return TIMELINE_CLIP_THUMBNAILS.WIDTH;
+    return h * THUMB_ASPECT;
   });
 
   const sortedKeys = computed(() => {
@@ -143,13 +141,14 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
    * Virtual thumbnail tiles: only tiles that intersect the visible viewport
    * are returned, so we never render hundreds of off-screen <img> elements.
    *
-   * Coordinate system of leftPx is relative to the strip container which
-   * starts at -trimOffsetPx (i.e. at source time = 0).
+   * Tiles are aligned to trimOffsetPx so index 0 always starts at the clip's
+   * left edge (first frame fully visible). Subsequent tiles follow at tileW
+   * intervals — no gaps, no overlaps. Each tile looks up the nearest snapshot
+   * on the fixed INTERVAL_SECONDS grid.
+   *
+   * leftPx is relative to the strip container which starts at -trimOffsetPx.
    */
   const thumbnailTiles = computed<ThumbnailTile[]>(() => {
-    const pxPerThumb = pxPerThumbnail.value;
-    if (!Number.isFinite(pxPerThumb) || pxPerThumb <= 0) return [];
-
     const tileW = tileDisplayWidthPx.value;
     if (!Number.isFinite(tileW) || tileW <= 0) return [];
 
@@ -159,38 +158,44 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
     const keys = sortedKeys.value;
     if (keys.length === 0) return [];
 
-    // Convert viewport bounds to strip-local coordinates.
-    // clipStartPx is the left edge of the clip in the timeline coordinate space.
-    // The strip starts at clipStartPx - trimOffsetPx.
-    const stripStartInTimeline = options.clipStartPx.value - trimOffsetPx.value;
+    const pxPerThumb = pxPerThumbnail.value;
+    if (!Number.isFinite(pxPerThumb) || pxPerThumb <= 0) return [];
+
+    // Pixels per second at current zoom.
+    const pxPerSec = pxPerThumb / intervalSeconds;
+    const trimOff = trimOffsetPx.value;
+
+    // Strip-local visible bounds.
+    // The strip div is offset left by -trimOff, so the clip left edge = strip position trimOff.
+    const stripStartInTimeline = options.clipStartPx.value - trimOff;
     const visibleLeft = options.scrollLeft.value - stripStartInTimeline;
     const visibleRight = visibleLeft + Math.max(0, options.viewportWidth.value);
 
-    // First tile index whose right edge can reach the visible area:
-    //   tileRight = (index + 1) * tileW >= visibleLeft  →  index >= visibleLeft/tileW - 1
-    const firstIdx = Math.max(0, Math.floor(visibleLeft / tileW) - 1);
-    // Last tile index whose left edge is still within visible area:
-    //   tileLeft = index * tileW <= visibleRight
-    const lastIdx = Math.ceil(visibleRight / tileW);
+    // Tiles start at (trimOff + idx*tileW), index 0 = clip left edge.
+    const firstIdx = Math.max(0, Math.floor((visibleLeft - trimOff) / tileW) - 1);
+    const lastIdx = Math.ceil((visibleRight - trimOff) / tileW);
 
     const tiles: ThumbnailTile[] = [];
 
     for (let idx = firstIdx; idx <= lastIdx; idx++) {
-      // Map tile index → source time key (nearest available at interval step)
-      const sourceSecond = idx * intervalSeconds;
+      // Source time at this tile's left edge in seconds.
+      const sourceTimeSec = (trimOff + idx * tileW) / pxPerSec;
 
-      let url = map.get(sourceSecond);
+      // Snap to the nearest snapshot on the fixed interval grid.
+      const nearestSecond = Math.round(sourceTimeSec / intervalSeconds) * intervalSeconds;
 
-      // Find the closest available thumbnail key that is <= sourceSecond
+      let url = map.get(nearestSecond);
+
+      // Binary search for the closest available key <= nearestSecond.
       if (!url && keys.length > 0) {
         let low = 0;
         let high = keys.length - 1;
-        let bestKey = keys[0] as number; // fallback to the minimum key
+        let bestKey = keys[0] as number;
 
         while (low <= high) {
           const mid = (low + high) >> 1;
           const midKey = keys[mid];
-          if (midKey !== undefined && midKey <= sourceSecond) {
+          if (midKey !== undefined && midKey <= nearestSecond) {
             bestKey = midKey;
             low = mid + 1;
           } else {
@@ -205,7 +210,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
       tiles.push({
         key: idx,
         url,
-        leftPx: idx * pxPerThumb,
+        leftPx: trimOff + idx * tileW,
         widthPx: tileW,
       });
     }

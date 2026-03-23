@@ -22,9 +22,9 @@ export const VIDEO_CORE_LIMITS = {
 export const TIMELINE_CLIP_THUMBNAILS = {
   DIR_NAME: 'video_clips',
   INTERVAL_SECONDS: 4,
-  WIDTH: 160,
-  HEIGHT: 90,
-  QUALITY: 0.4,
+  WIDTH: 320,
+  HEIGHT: 180,
+  QUALITY: 0.7,
   MAX_CONCURRENT_TASKS: 2,
 } as const;
 
