@@ -27,7 +27,7 @@ const toast = useToast();
 const focusStore = useFocusStore();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
-const { markers: timelineMarkers } = storeToRefs(timelineStore);
+const { timelineDoc } = storeToRefs(timelineStore);
 const fileManager = useFileManager();
 const { loadTimeline } = useProjectActions();
 
@@ -224,9 +224,11 @@ const monitorZoomLabel = computed(() => (viewportRef.value as any)?.zoomLabel ??
 
 const activeMarkers = computed(() => {
   const time = uiCurrentTimeUs.value;
-  return (timelineMarkers.value || []).filter((m) => {
+  const rawMarkers = timelineDoc.value?.metadata?.fastcat?.markers;
+  if (!Array.isArray(rawMarkers)) return [];
+  return rawMarkers.filter((m) => {
     if (!m.text.trim()) return false;
-    if (m.durationUs) {
+    if (m.durationUs != null) {
       return time >= m.timeUs && time < m.timeUs + m.durationUs;
     }
     // Threshold of 1ms to match point markers during playback/scrubbing
