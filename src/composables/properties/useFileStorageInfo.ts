@@ -1,8 +1,10 @@
 import { computed, ref, watch, type Ref } from 'vue';
+import { computeDirectoryStats, type DirectoryStats } from '~/utils/fs';
 
 interface UseFileStorageInfoOptions {
   selectedFsEntry: Ref<any>;
   currentProjectName: Ref<string | null | undefined>;
+  getDirectoryHandleByPath?: (path: string) => Promise<FileSystemDirectoryHandle | null>;
 }
 
 export function useFileStorageInfo(options: UseFileStorageInfoOptions) {
@@ -16,23 +18,40 @@ export function useFileStorageInfo(options: UseFileStorageInfoOptions) {
   });
 
   const storageEstimate = ref<{ quota?: number; usage?: number } | null>(null);
+  const projectStats = ref<DirectoryStats | null>(null);
 
   watch(
     isProjectRootDir,
     async (isRoot) => {
       storageEstimate.value = null;
+      projectStats.value = null;
       if (!isRoot) return;
+      
       const estimateFn = (navigator as any)?.storage?.estimate as undefined | (() => Promise<any>);
-      if (typeof estimateFn !== 'function') return;
-      try {
-        const res = await estimateFn.call((navigator as any).storage);
-        if (!res || typeof res !== 'object') return;
-        const quota = typeof res.quota === 'number' ? res.quota : undefined;
-        const usage = typeof res.usage === 'number' ? res.usage : undefined;
-        if (quota === undefined || usage === undefined) return;
-        storageEstimate.value = { quota, usage };
-      } catch {
-        storageEstimate.value = null;
+      if (typeof estimateFn === 'function') {
+        try {
+          const res = await estimateFn.call((navigator as any).storage);
+          if (res && typeof res === 'object') {
+            const quota = typeof res.quota === 'number' ? res.quota : undefined;
+            const usage = typeof res.usage === 'number' ? res.usage : undefined;
+            if (quota !== undefined && usage !== undefined) {
+              storageEstimate.value = { quota, usage };
+            }
+          }
+        } catch {
+          storageEstimate.value = null;
+        }
+      }
+
+      if (options.getDirectoryHandleByPath) {
+        try {
+          const rootHandle = await options.getDirectoryHandleByPath('');
+          if (rootHandle) {
+            projectStats.value = (await computeDirectoryStats(rootHandle)) ?? null;
+          }
+        } catch {
+          projectStats.value = null;
+        }
       }
     },
     { immediate: true },
@@ -48,5 +67,6 @@ export function useFileStorageInfo(options: UseFileStorageInfoOptions) {
   return {
     isProjectRootDir,
     storageFreeBytes,
+    projectStats,
   };
 }

@@ -5,11 +5,13 @@ import PropertyRow from '~/components/properties/PropertyRow.vue';
 import { formatBytes } from '~/utils/format';
 import { useProjectSettingsStore } from '~/stores/project-settings.store';
 import { useUiStore } from '~/stores/ui.store';
+import type { DirectoryStats } from '~/utils/fs';
 
 const props = defineProps<{
   isProjectRootDir: boolean;
   projectName: string | null | undefined;
   storageFreeBytes: number | null;
+  projectStats: DirectoryStats | null;
 }>();
 
 const { t } = useI18n();
@@ -32,6 +34,12 @@ function openProjectSettings() {
     v-if="props.isProjectRootDir"
     :title="t('videoEditor.fileManager.projectRoot.title', 'Project root')"
   >
+    <PropertyRow
+      v-if="props.projectStats?.size !== undefined"
+      :label="t('common.size', 'Size')"
+      :value="formatBytes(props.projectStats!.size)"
+    />
+
     <PropertyRow
       v-if="props.storageFreeBytes !== null"
       :label="t('videoEditor.fileManager.projectRoot.freeSpace', 'Free space')"

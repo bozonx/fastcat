@@ -371,7 +371,14 @@ onUnmounted(() => {
         class="flex flex-wrap items-center justify-center gap-3 border-ui-border shrink-0 transition-all duration-300 select-none"
         :class="[
           effectiveFullscreen
-            ? 'absolute bottom-8 left-1/2 -translate-x-1/2 bg-ui-bg-elevated/80 backdrop-blur-xl px-6 py-3 rounded-2xl shadow-2xl z-50 border-none'
+            ? [
+                'absolute bg-ui-bg-elevated/80 backdrop-blur-xl rounded-2xl shadow-2xl z-50 border-none transition-all duration-300',
+                toolbarPosition === 'left' || toolbarPosition === 'right'
+                  ? 'top-1/2 -translate-y-1/2 px-3 py-6 flex-col'
+                  : 'bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 flex-row',
+                toolbarPosition === 'left' ? 'left-8' : '',
+                toolbarPosition === 'right' ? 'right-8' : '',
+              ]
             : [
                 toolbarPosition === 'left' || toolbarPosition === 'right' ? 'px-1.5 py-3' : 'px-4 py-3.5',
                 'bg-ui-bg-elevated',

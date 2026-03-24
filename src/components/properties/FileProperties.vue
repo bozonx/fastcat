@@ -98,9 +98,10 @@ const selectedFsEntryRef = computed(() => props.selectedFsEntry);
 const previewModeRef = computed(() => props.previewMode);
 const hasProxyRef = computed(() => props.hasProxy);
 
-const { isProjectRootDir, storageFreeBytes } = useFileStorageInfo({
+const { isProjectRootDir, storageFreeBytes, projectStats } = useFileStorageInfo({
   selectedFsEntry: selectedFsEntryRef,
   currentProjectName: computed(() => projectStore.currentProjectName),
+  getDirectoryHandleByPath: (path) => projectStore.getDirectoryHandleByPath(path),
 });
 
 const isCommonRoot = computed(() => {
@@ -442,6 +443,7 @@ const {
       :is-project-root-dir="isProjectRootDir"
       :project-name="projectStore.currentProjectName"
       :storage-free-bytes="storageFreeBytes"
+      :project-stats="projectStats"
     />
 
     <FileTimelineUsageSection

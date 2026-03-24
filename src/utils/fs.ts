@@ -45,12 +45,13 @@ export interface DirectoryStats {
 
 export async function computeDirectoryStats(
   dirHandle: FileSystemDirectoryHandle,
-  options?: { maxEntries?: number },
+  options?: { maxEntries?: number; recursiveFilesCount?: boolean },
 ): Promise<DirectoryStats | undefined> {
   const maxEntries = options?.maxEntries ?? 25_000;
+  const recursiveFilesCount = options?.recursiveFilesCount ?? true;
   let seen = 0;
 
-  async function walk(handle: FileSystemDirectoryHandle): Promise<DirectoryStats> {
+  async function walk(handle: FileSystemDirectoryHandle, isRoot = true): Promise<DirectoryStats> {
     const iterator =
       (handle as FsDirectoryHandleWithIteration).values?.() ??
       (handle as FsDirectoryHandleWithIteration).entries?.();
@@ -72,14 +73,18 @@ export async function computeDirectoryStats(
         try {
           const file = await (entryHandle as FileSystemFileHandle).getFile();
           totalSize += file.size;
-          totalFiles += 1;
+          if (isRoot || recursiveFilesCount) {
+             totalFiles += 1;
+          }
         } catch {
           // ignore
         }
       } else {
-        const sub = await walk(entryHandle as FileSystemDirectoryHandle);
+        const sub = await walk(entryHandle as FileSystemDirectoryHandle, false);
         totalSize += sub.size;
-        totalFiles += sub.filesCount;
+        if (recursiveFilesCount) {
+          totalFiles += sub.filesCount;
+        }
       }
     }
     return { size: totalSize, filesCount: totalFiles };
