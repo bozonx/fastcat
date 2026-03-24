@@ -69,6 +69,7 @@ export interface WorkerTimelineClip {
   opacity?: number;
   blendMode?: TimelineBlendMode;
   effects?: ClipEffect[];
+  mask?: import('~/timeline/types').ClipMask;
   transform?: ClipTransform;
   transitionIn?: import('~/timeline/types').ClipTransition;
   transitionOut?: import('~/timeline/types').ClipTransition;

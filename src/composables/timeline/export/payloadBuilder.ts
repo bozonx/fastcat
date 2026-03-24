@@ -150,6 +150,7 @@ async function buildVideoTrackTree(
         opacity: item.opacity,
         blendMode: item.blendMode,
         effects: itemEffects.length > 0 ? itemEffects : undefined,
+        mask: clonePlain((item as any).mask),
         transform: clonePlain((item as any).transform),
         transitionIn: clonePlain((item as any).transitionIn),
         transitionOut: clonePlain((item as any).transitionOut),

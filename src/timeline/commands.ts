@@ -220,6 +220,7 @@ export interface UpdateClipPropertiesCommand {
     hudType?: HudType;
     background?: HudMediaParams;
     content?: HudMediaParams;
+    frame?: HudMediaParams;
   };
 }
 
