@@ -72,6 +72,7 @@ struct ClipMaskUniforms {
 
 @group(1) @binding(0) var<uniform> clipMaskUniforms: ClipMaskUniforms;
 @group(1) @binding(1) var uMaskTexture: texture_2d<f32>;
+@group(1) @binding(2) var uMaskSampler: sampler;
 
 struct VSOutput {
   @builtin(position) position: vec4<f32>,
@@ -105,7 +106,7 @@ fn mainFragment(
   @location(1) maskCoord: vec2<f32>
 ) -> @location(0) vec4<f32> {
   let color = textureSample(uTexture, uSampler, textureCoord);
-  let maskColor = textureSample(uMaskTexture, uSampler, maskCoord);
+  let maskColor = textureSample(uMaskTexture, uMaskSampler, maskCoord);
 
   var maskAlpha = select(
     dot(maskColor.rgb, vec3<f32>(0.299, 0.587, 0.114)) * maskColor.a,
@@ -149,11 +150,12 @@ export class ClipMaskFilter extends Filter {
       gpuProgram,
       glProgram,
       resources: {
-        uMaskTexture: options.uMask,
         clipMaskUniforms: {
           uMode: { value: options.uMode, type: 'f32' },
           uInvert: { value: options.uInvert ? 1.0 : 0.0, type: 'f32' },
         },
+        uMaskTexture: options.uMask,
+        uMaskSampler: options.uMask.style,
       },
     });
   }
@@ -177,5 +179,6 @@ export class ClipMaskFilter extends Filter {
   }
   set uMask(value: TextureSource) {
     this.resources.uMaskTexture = value;
+    this.resources.uMaskSampler = value.style;
   }
 }
