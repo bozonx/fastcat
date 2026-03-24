@@ -175,7 +175,7 @@ function stepValue(direction: number, isFrame: boolean) {
 </script>
 
 <template>
-  <div ref="wrapperRef" class="relative flex items-center max-w-31">
+  <div ref="wrapperRef" class="relative flex items-center max-w-34">
     <UInput
       v-model="localValue"
       size="xs"
