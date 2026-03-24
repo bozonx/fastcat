@@ -79,7 +79,7 @@ function applyExportPreset(presetId: string) {
         value-key="value"
         label-key="label"
         full-width
-        :searchable="false"
+        :search-input="false"
         @update:model-value="(val) => applyExportPreset(val as string)"
       />
     </UFormField>
