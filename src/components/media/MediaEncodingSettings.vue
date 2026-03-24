@@ -2,6 +2,7 @@
 import { computed, watch, ref } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
+import UiFormField from '~/components/ui/UiFormField.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
 import type { VideoCodecOptionResolved } from '~/utils/webcodecs';
@@ -152,10 +153,7 @@ watch(
 <template>
   <div class="flex flex-col gap-4">
 
-    <div class="flex flex-col gap-2">
-      <label class="text-xs text-ui-text-muted font-medium">
-        {{ t('videoEditor.export.outputFormat', 'Output format') }}
-      </label>
+    <UiFormField :label="t('videoEditor.export.outputFormat', 'Output format')">
       <UiButtonGroup
         v-model="outputFormat"
         :options="props.formatOptions as any"
@@ -167,12 +165,9 @@ watch(
       >
         {{ codecHint }}
       </div>
-    </div>
+    </UiFormField>
 
-    <div v-if="outputFormat === 'mp4'" class="flex flex-col gap-2">
-      <label class="text-xs text-ui-text-muted font-medium">
-        {{ t('videoEditor.export.videoCodec', 'Video codec') }}
-      </label>
+    <UiFormField v-if="outputFormat === 'mp4'" :label="t('videoEditor.export.videoCodec', 'Video codec')">
       <div class="w-full">
         <UiSelect
           :model-value="
@@ -192,12 +187,12 @@ watch(
           "
         />
       </div>
-    </div>
+    </UiFormField>
 
-    <div class="flex flex-col gap-2">
-      <label class="text-xs text-ui-text-muted font-medium">
-        {{ t('videoEditor.export.videoBitrate', 'Video bitrate (Mbps)') }}
-      </label>
+    <UiFormField
+      :label="t('videoEditor.export.videoBitrate', 'Video bitrate (Mbps)')"
+      :help="t('videoEditor.export.videoBitrateHelp', 'Higher bitrate = better quality and larger file')"
+    >
       <UiWheelNumberInput
         v-model="bitrateMbps"
         :min="0"
@@ -205,20 +200,9 @@ watch(
         :wheel-step-multiplier="10"
         :class="{ 'ring-2 ring-error ring-inset': bitrateMbps <= 0 }"
       />
-      <span class="text-xs text-ui-text-muted">
-        {{
-          t(
-            'videoEditor.export.videoBitrateHelp',
-            'Higher bitrate = better quality and larger file',
-          )
-        }}
-      </span>
-    </div>
+    </UiFormField>
 
-    <div class="flex flex-col gap-2">
-      <label class="text-xs text-ui-text-muted font-medium">
-        {{ t('videoEditor.export.bitrateMode', 'Bitrate Mode') }}
-      </label>
+    <UiFormField :label="t('videoEditor.export.bitrateMode', 'Bitrate Mode')">
       <UiButtonGroup
         v-model="bitrateMode"
         :options="bitrateModeOptions"
@@ -229,12 +213,9 @@ watch(
           }
         "
       />
-    </div>
+    </UiFormField>
 
-    <div class="flex flex-col gap-2">
-      <label class="text-xs text-ui-text-muted font-medium">
-        {{ t('videoEditor.export.keyframeInterval', 'Keyframe Interval (GOP Size, sec)') }}
-      </label>
+    <UiFormField :label="t('videoEditor.export.keyframeInterval', 'Keyframe Interval (GOP Size, sec)')">
       <UiWheelNumberInput
         v-model="keyframeIntervalSec"
         :min="1"
@@ -242,29 +223,29 @@ watch(
         :step="1"
         :wheel-step-multiplier="10"
       />
-    </div>
+    </UiFormField>
 
-    <label v-if="outputFormat === 'webm'" class="flex items-center gap-3 cursor-pointer">
-      <UCheckbox v-model="exportAlpha" :disabled="props.disabled" />
-      <span class="text-sm text-ui-text">{{
-        t('videoEditor.export.exportAlpha', 'Export Alpha Channel')
-      }}</span>
-    </label>
+    <UCheckbox
+      v-if="outputFormat === 'webm'"
+      v-model="exportAlpha"
+      :label="t('videoEditor.export.exportAlpha', 'Export Alpha Channel')"
+      :disabled="props.disabled"
+      :ui="{ label: 'text-sm text-ui-text-muted' }"
+      class="cursor-pointer"
+    />
 
     <div class="h-px bg-ui-border my-2"></div>
 
-    <label class="flex items-center gap-3 cursor-pointer">
-      <UCheckbox v-model="excludeAudio" :disabled="isAudioDisabled" />
-      <span class="text-sm text-ui-text">{{
-        t('videoEditor.export.excludeAudio', 'Exclude audio')
-      }}</span>
-    </label>
+    <UCheckbox
+      v-model="excludeAudio"
+      :label="t('videoEditor.export.excludeAudio', 'Exclude audio')"
+      :disabled="isAudioDisabled"
+      :ui="{ label: 'text-sm text-ui-text-muted' }"
+      class="cursor-pointer"
+    />
 
     <div v-if="!excludeAudio && !props.hideAudioBitrate" class="flex flex-col gap-4">
-      <div v-if="outputFormat === 'mp4' && !props.showAudioAdvanced" class="flex flex-col gap-2">
-        <label class="text-xs text-ui-text-muted font-medium">
-          {{ t('videoEditor.export.audioCodec', 'Audio codec') }}
-        </label>
+      <UiFormField v-if="outputFormat === 'mp4' && !props.showAudioAdvanced" :label="t('videoEditor.export.audioCodec', 'Audio codec')">
         <div class="w-full">
           <UiButtonGroup
             v-model="audioCodec"
@@ -272,7 +253,7 @@ watch(
             :disabled="props.disabled"
           />
         </div>
-      </div>
+      </UiFormField>
 
       <FileConversionAudioSettings
         v-if="props.showAudioAdvanced"
@@ -314,24 +295,15 @@ watch(
         {{ t('videoEditor.export.metadata', 'Metadata') }}
       </div>
 
-      <div class="flex flex-col gap-2">
-        <label class="text-xs text-ui-text-muted font-medium">
-          {{ t('videoEditor.export.metadataTitle', 'Title') }}
-        </label>
+      <UiFormField :label="t('videoEditor.export.metadataTitle', 'Title')">
         <UiTextInput v-model="metadataTitle" size="sm" :disabled="props.disabled" full-width />
-      </div>
+      </UiFormField>
 
-      <div class="flex flex-col gap-2">
-        <label class="text-xs text-ui-text-muted font-medium">
-          {{ t('videoEditor.export.metadataAuthor', 'Author') }}
-        </label>
+      <UiFormField :label="t('videoEditor.export.metadataAuthor', 'Author')">
         <UiTextInput v-model="metadataAuthor" size="sm" :disabled="props.disabled" full-width />
-      </div>
+      </UiFormField>
 
-      <div class="flex flex-col gap-2">
-        <label class="text-xs text-ui-text-muted font-medium">
-          {{ t('videoEditor.export.metadataDescription', 'Description') }}
-        </label>
+      <UiFormField :label="t('videoEditor.export.metadataDescription', 'Description')">
         <UTextarea
           v-model="metadataDescription"
           size="sm"
@@ -339,14 +311,11 @@ watch(
           class="w-full"
           :rows="3"
         />
-      </div>
+      </UiFormField>
 
-      <div class="flex flex-col gap-2">
-        <label class="text-xs text-ui-text-muted font-medium">
-          {{ t('videoEditor.export.metadataTags', 'Tags') }}
-        </label>
+      <UiFormField :label="t('videoEditor.export.metadataTags', 'Tags')">
         <UiTextInput v-model="metadataTags" size="sm" :disabled="props.disabled" full-width />
-      </div>
+      </UiFormField>
     </template>
   </div>
 </template>

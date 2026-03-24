@@ -3,6 +3,7 @@ import { computed, watch } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiFpsInputWithPresets from '~/components/ui/editor/UiFpsInputWithPresets.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
+import UiFormField from '~/components/ui/UiFormField.vue';
 
 const localWidth = defineModel<number>('width', { required: true });
 const localHeight = defineModel<number>('height', { required: true });
@@ -128,20 +129,14 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
 
 <template>
   <div class="flex flex-col gap-4">
-    <div class="flex items-center justify-between">
-      <label class="text-xs text-ui-text-muted font-medium">
-        {{ t('videoEditor.resolution.customResolution', 'Custom Resolution') }}
-      </label>
+    <UiFormField :label="t('videoEditor.resolution.customResolution', 'Custom Resolution')">
       <USwitch v-model="localIsCustom" :disabled="disabled" />
-    </div>
+    </UiFormField>
 
     <!-- Preset Mode -->
     <template v-if="!localIsCustom">
       <div class="flex flex-wrap gap-2">
-        <div class="flex flex-col gap-2 w-20 shrink-0">
-          <label class="text-xs text-ui-text-muted font-medium">
-            {{ t('videoEditor.resolution.orientation', 'Orientation') }}
-          </label>
+        <UiFormField :label="t('videoEditor.resolution.orientation', 'Orientation')" class="w-20 shrink-0">
           <UiButtonGroup
             v-model="localOrientation"
             :options="orientationOptions as any"
@@ -149,12 +144,9 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
             :ui="{ base: 'px-2' }"
             class="w-full h-8"
           />
-        </div>
+        </UiFormField>
 
-        <div class="flex flex-col gap-2 w-20 shrink-0">
-          <label class="text-xs text-ui-text-muted font-medium">
-            {{ t('videoEditor.resolution.aspectRatio', 'Aspect Ratio') }}
-          </label>
+        <UiFormField :label="t('videoEditor.resolution.aspectRatio', 'Aspect Ratio')" class="w-20 shrink-0">
           <UiSelect
             v-model="localAspectRatio"
             :items="aspectRatioOptions"
@@ -165,12 +157,9 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
             label-key="label"
             :search-input="false"
           />
-        </div>
+        </UiFormField>
 
-        <div class="flex flex-col gap-2 w-28">
-          <label class="text-xs text-ui-text-muted font-medium">
-            {{ t('videoEditor.resolution.format', 'Format') }}
-          </label>
+        <UiFormField :label="t('videoEditor.resolution.format', 'Format')" class="w-28">
           <UiSelect
             v-model="localFormat"
             :items="formatOptions"
@@ -181,48 +170,40 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
             label-key="label"
             :search-input="false"
           />
-        </div>
+        </UiFormField>
 
-        <div class="flex flex-col gap-2 flex-1 shrink-0">
-          <label class="text-xs text-ui-text-muted font-medium whitespace-nowrap">
-            {{ t('videoEditor.resolution.finalResolution', 'Final Resolution:') }}
-          </label>
+        <UiFormField
+          :label="t('videoEditor.resolution.finalResolution', 'Final Resolution:')"
+          class="flex-1 shrink-0"
+        >
           <div
             class="text-sm text-ui-text font-mono font-medium bg-ui-bg-accent px-3 rounded flex items-center justify-center border border-ui-border/50 h-8"
           >
             {{ localWidth }} &times; {{ localHeight }}
           </div>
-        </div>
+        </UiFormField>
       </div>
     </template>
 
     <!-- Custom Mode -->
     <template v-else>
       <div class="grid grid-cols-2 gap-4">
-        <div class="flex flex-col gap-2">
-          <label class="text-xs text-ui-text-muted font-medium">
-            {{ t('videoEditor.export.width', 'Width') }}
-          </label>
+        <UiFormField :label="t('videoEditor.export.width', 'Width')" class="flex-1">
           <UiWheelNumberInput
             v-model="localWidth"
             :min="2"
             :step="2"
             :disabled="disabled"
-            class="flex-1"
           />
-        </div>
-        <div class="flex flex-col gap-2">
-          <label class="text-xs text-ui-text-muted font-medium">
-            {{ t('videoEditor.export.height', 'Height') }}
-          </label>
+        </UiFormField>
+        <UiFormField :label="t('videoEditor.export.height', 'Height')" class="flex-1">
           <UiWheelNumberInput
             v-model="localHeight"
             :min="2"
             :step="2"
             :disabled="disabled"
-            class="flex-1"
           />
-        </div>
+        </UiFormField>
       </div>
       <div class="text-xs text-ui-text-muted flex justify-end">
         {{
@@ -239,18 +220,12 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
         props.showAudioSettings ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : 'flex flex-col gap-2'
       "
     >
-      <div class="flex flex-col gap-2">
-        <label class="text-xs text-ui-text-muted font-medium">
-          {{ t('videoEditor.export.fps', 'FPS') }}
-        </label>
+      <UiFormField :label="t('videoEditor.export.fps', 'FPS')">
         <UiFpsInputWithPresets v-model="localFps" :disabled="disabled" />
-      </div>
+      </UiFormField>
 
       <template v-if="props.showAudioSettings">
-        <div class="flex flex-col gap-2">
-          <label class="text-xs text-ui-text-muted font-medium">
-            {{ t('videoEditor.audio.sampleRate', 'Sample Rate') }}
-          </label>
+        <UiFormField :label="t('videoEditor.audio.sampleRate', 'Sample Rate')">
           <UiSelect
             v-model.number="localSampleRate"
             :items="sampleRateOptions"
@@ -261,7 +236,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
             label-key="label"
             :search-input="false"
           />
-        </div>
+        </UiFormField>
       </template>
     </div>
   </div>

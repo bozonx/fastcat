@@ -11,6 +11,7 @@ import {
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import SettingsSection from './SettingsSection.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
+import UiFormField from '~/components/ui/UiFormField.vue';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
@@ -72,7 +73,7 @@ function applyExportPreset(presetId: string) {
     :title="t('videoEditor.projectSettings.export', 'Export')"
     :summary="exportSummary"
   >
-    <UFormField :label="t('videoEditor.export.presetLabel', 'Preset')">
+    <UiFormField :label="t('videoEditor.export.presetLabel', 'Preset')">
       <UiSelect
         v-model="workspaceStore.userSettings.exportPresets.selectedPresetId"
         :items="exportPresetOptions"
@@ -81,7 +82,7 @@ function applyExportPreset(presetId: string) {
         full-width
         @update:model-value="(val) => applyExportPreset(val as string)"
       />
-    </UFormField>
+    </UiFormField>
 
     <VideoEncodingForm
       v-model:output-format="projectStore.projectSettings.exportDefaults.encoding.format"
