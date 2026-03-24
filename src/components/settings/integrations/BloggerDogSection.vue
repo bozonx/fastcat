@@ -103,12 +103,12 @@ function getHealthTone(status: typeof healthState.status) {
   <div class="rounded-lg border border-ui-border p-4 flex flex-col gap-4">
     <div class="flex items-start justify-between gap-4">
       <div class="min-w-0">
-        <div class="text-sm font-medium text-ui-text">FastCat Publicador</div>
+        <div class="text-sm font-medium text-ui-text">BloggerDog</div>
         <div class="text-xs text-ui-text-muted mt-1">
           {{
             t(
-              'videoEditor.settings.fastcatIntegrationHint',
-              'Connect via FastCat Publicador connect flow using the global FASTCAT_PUBLICADOR_BASE_URL or set token manually for the external API.',
+              'videoEditor.settings.bloggerDogIntegrationHint',
+              'Connect via BloggerDog connect flow using the global BLOGGERDOG_BASE_URL or set token manually for the external API.',
             )
           }}
         </div>
@@ -122,7 +122,7 @@ function getHealthTone(status: typeof healthState.status) {
     </div>
 
     <div class="text-xs text-ui-text-muted">
-      FASTCAT_PUBLICADOR_BASE_URL: {{ fastcatPublicadorBaseUrl || '—' }}
+      BLOGGERDOG_BASE_URL: {{ fastcatPublicadorBaseUrl || '—' }}
     </div>
 
     <div class="text-xs text-ui-text-muted">
@@ -141,7 +141,7 @@ function getHealthTone(status: typeof healthState.status) {
         full-width
         type="password"
         autocomplete="off"
-        placeholder="gp_token_..."
+        placeholder="bd_token_..."
       />
     </UiFormField>
 
