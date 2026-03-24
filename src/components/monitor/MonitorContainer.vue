@@ -519,7 +519,10 @@ onUnmounted(() => {
             icon="i-heroicons-arrow-uturn-left"
             :aria-label="t('fastcat.monitor.rewind', 'Rewind')"
             :disabled="!canInteractPlayback"
-            @click="rewindToStart"
+            @click="(e) => {
+              rewindToStart();
+              (e.currentTarget as HTMLElement).blur();
+            }"
           />
         </UContextMenu>
 
@@ -531,9 +534,10 @@ onUnmounted(() => {
             icon="i-heroicons-backward"
             :aria-label="t('fastcat.monitor.playBackward', 'Play backward')"
             :disabled="!canInteractPlayback"
-            @click="
-              setPlayback({ direction: 'backward', speed: selectedPlaybackSpeedOption?.value ?? 1 })
-            "
+            @click="(e) => {
+              setPlayback({ direction: 'backward', speed: selectedPlaybackSpeedOption?.value ?? 1 });
+              (e.currentTarget as HTMLElement).blur();
+            }"
             @wheel.prevent="handleSpeedWheel"
           />
         </UContextMenu>
@@ -546,9 +550,10 @@ onUnmounted(() => {
             class="relative overflow-hidden min-w-8 px-1.5"
             :aria-label="t('fastcat.monitor.play', 'Play')"
             :disabled="!canInteractPlayback"
-            @click="
-              setPlayback({ direction: 'forward', speed: selectedPlaybackSpeedOption?.value ?? 1 })
-            "
+            @click="(e) => {
+              setPlayback({ direction: 'forward', speed: selectedPlaybackSpeedOption?.value ?? 1 });
+              (e.currentTarget as HTMLElement).blur();
+            }"
             @wheel.prevent="handleSpeedWheel"
           >
             <div class="flex items-center justify-center">

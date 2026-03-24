@@ -36,6 +36,7 @@ const emit = defineEmits<{
 
 function onClick(event: MouseEvent) {
   if (props.disabled || props.loading) return;
+  (event.currentTarget as HTMLElement).blur();
   emit('click', event);
 }
 </script>

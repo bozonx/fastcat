@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { nextTick } from 'vue';
+
 defineOptions({ inheritAttrs: false });
 
 interface UiSelectProps {
@@ -14,7 +16,6 @@ interface UiSelectProps {
   searchInput?: any;
 }
 
-
 const props = withDefaults(defineProps<UiSelectProps>(), {
   modelValue: undefined,
   placeholder: undefined,
@@ -27,8 +28,14 @@ const props = withDefaults(defineProps<UiSelectProps>(), {
   searchInput: undefined,
 });
 
-
 const emit = defineEmits<{ (e: 'update:modelValue', value: unknown): void }>();
+
+function onUpdate(val: unknown) {
+  emit('update:modelValue', val);
+  nextTick(() => {
+    (document.activeElement as HTMLElement)?.blur();
+  });
+}
 </script>
 
 <template>
@@ -45,7 +52,7 @@ const emit = defineEmits<{ (e: 'update:modelValue', value: unknown): void }>();
     :class="props.fullWidth ? 'w-full' : 'w-auto min-w-20'"
     :ui="{ content: 'min-w-48' }"
     :search-input="props.searchInput"
-    @update:model-value="(val: unknown) => emit('update:modelValue', val)"
+    @update:model-value="onUpdate"
   >
     <template v-for="(_, slot) in $slots" #[slot]="slotProps">
       <slot :name="slot" v-bind="slotProps" />
