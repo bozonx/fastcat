@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
+import UiFormField from '~/components/ui/UiFormField.vue';
+import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 
@@ -11,6 +13,10 @@ const isResetConfirmOpen = ref(false);
 function resetDefaults() {
   workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs =
     DEFAULT_USER_SETTINGS.projectDefaults.audioDeclickDurationUs;
+  workspaceStore.userSettings.projectDefaults.audioScrubbingEnabled =
+    DEFAULT_USER_SETTINGS.projectDefaults.audioScrubbingEnabled;
+  workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve =
+    DEFAULT_USER_SETTINGS.projectDefaults.defaultAudioFadeCurve;
   isResetConfirmOpen.value = false;
 }
 </script>
@@ -42,58 +48,53 @@ function resetDefaults() {
       </UButton>
     </div>
 
-    <div class="space-y-2 rounded border border-ui-border bg-ui-bg-elevated p-3">
-      <div class="flex items-center justify-between gap-3">
-        <div>
-          <div class="text-sm font-medium text-ui-text">
-            {{ t('videoEditor.settings.audioScrubbingTitle', 'Audio Scrubbing') }}
-          </div>
-          <div class="text-xs text-ui-text-muted">
-            {{
-              t(
-                'videoEditor.settings.audioScrubbingHint',
-                'Play audio while scrubbing the timeline.',
-              )
-            }}
-          </div>
-        </div>
-        <USwitch v-model="workspaceStore.userSettings.projectDefaults.audioScrubbingEnabled" />
-      </div>
+    <UiFormField
+      :label="t('videoEditor.settings.audioScrubbingTitle', 'Audio Scrubbing')"
+      :help="t('videoEditor.settings.audioScrubbingHint', 'Play audio while scrubbing the timeline.')"
+    >
+      <USwitch v-model="workspaceStore.userSettings.projectDefaults.audioScrubbingEnabled" />
+    </UiFormField>
 
-      <div class="pt-3 border-t border-ui-border mt-2">
-        <div class="flex items-center justify-between gap-3">
-          <div>
-            <div class="text-sm font-medium text-ui-text">
-              {{ t('videoEditor.settings.projectAudioDeclickTitle', 'Audio De-click Duration') }}
-            </div>
-            <div class="text-xs text-ui-text-muted">
-              {{
-                t(
-                  'videoEditor.settings.projectAudioDeclickHint',
-                  'Micro-fades (linear) applied to edges of all clips to eliminate clicks. 0 disables it.',
-                )
-              }}
-            </div>
-          </div>
-          <div class="w-32">
-            <UiWheelNumberInput
-              :model-value="
-                workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs / 1000
-              "
-              size="sm"
-              :step="1"
-              :min="0"
-              :max="1000"
-              @update:model-value="
-                (value: number) =>
-                  (workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs = Math.round(
-                    Math.max(0, Math.min(1000, Number(value) || 0)) * 1000,
-                  ))
-              "
-            />
-          </div>
-        </div>
-      </div>
-    </div>
+    <UiFormField
+      :label="t('videoEditor.settings.defaultAudioFadeCurveTitle', 'Default Fade Curve')"
+      :help="
+        t(
+          'videoEditor.settings.defaultAudioFadeCurveHint',
+          'Default curve used for audio fades when you manually create a fade. (De-click always uses a short linear fade).',
+        )
+      "
+    >
+      <UiButtonGroup
+        v-model="workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve"
+        :options="[
+          { label: t('fastcat.clip.audioFade.curve.logarithmic', 'Logarithmic'), value: 'logarithmic' },
+          { label: t('fastcat.clip.audioFade.curve.linear', 'Linear'), value: 'linear' },
+        ]"
+      />
+    </UiFormField>
+
+    <UiFormField
+      :label="t('videoEditor.settings.projectAudioDeclickTitle', 'Audio De-click Duration') + ' (ms)'"
+      :help="
+        t(
+          'videoEditor.settings.projectAudioDeclickHint',
+          'Micro-fades (linear) applied to edges of all clips to eliminate clicks. 0 disables it.',
+        )
+      "
+    >
+      <UiWheelNumberInput
+        :model-value="workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs / 1000"
+        size="sm"
+        :step="1"
+        :min="0"
+        :max="1000"
+        @update:model-value="
+          (value: number) =>
+            (workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs = Math.round(
+              Math.max(0, Math.min(1000, Number(value) || 0)) * 1000,
+            ))
+        "
+      />
+    </UiFormField>
   </div>
 </template>

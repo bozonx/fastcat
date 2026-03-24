@@ -4,8 +4,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 
-import FastCatPublicadorSection from './integrations/FastCatPublicadorSection.vue';
-import ManualFilesIntegrationSection from './integrations/ManualFilesIntegrationSection.vue';
+import BloggerDogSection from './integrations/BloggerDogSection.vue';
 import SttIntegrationSection from './integrations/SttIntegrationSection.vue';
 
 const { t } = useI18n();
@@ -66,8 +65,8 @@ watch(
       @confirm="resetDefaults"
     />
 
-    <div class="flex items-center justify-between gap-3">
-      <div class="text-sm font-medium text-ui-text">
+    <div class="flex items-center justify-between gap-3 px-1">
+      <div class="font-semibold text-ui-text">
         {{ t('videoEditor.settings.userIntegrations', 'Integrations') }}
       </div>
       <UButton size="xs" color="neutral" variant="ghost" @click="isResetConfirmOpen = true">
@@ -75,9 +74,7 @@ watch(
       </UButton>
     </div>
 
-    <FastCatPublicadorSection />
-
-    <ManualFilesIntegrationSection />
+    <BloggerDogSection />
 
     <SttIntegrationSection />
   </div>

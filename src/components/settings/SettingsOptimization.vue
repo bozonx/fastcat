@@ -77,6 +77,7 @@ function resetDefaults() {
           value-key="value"
           label-key="label"
           full-width
+          :search-input="false"
           @update:model-value="
             (v: unknown) =>
               (workspaceStore.userSettings.optimization.proxyMaxPixels =
@@ -91,6 +92,7 @@ function resetDefaults() {
           :min="0.1"
           :max="50"
           :step="0.1"
+          :wheel-step-multiplier="10"
           full-width
         />
       </UiFormField>
