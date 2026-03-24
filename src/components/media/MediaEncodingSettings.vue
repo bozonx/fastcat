@@ -3,6 +3,7 @@ import { computed, watch, ref } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
+import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
 import type { VideoCodecOptionResolved } from '~/utils/webcodecs';
@@ -267,33 +268,24 @@ watch(
         :disabled="props.disabled"
       />
 
-      <div v-else class="flex flex-col gap-2">
-        <label class="text-xs text-ui-text-muted font-medium">
-          {{ t('videoEditor.export.audioBitrate', 'Audio bitrate (Kbps)') }}
-        </label>
+      <UiFormField
+        v-else
+        :label="t('videoEditor.export.audioBitrate', 'Audio bitrate (Kbps)')"
+        :help="t('videoEditor.export.audioBitrateHelp', 'Higher bitrate = better quality and larger file')"
+      >
         <UiWheelNumberInput
           v-model="audioBitrateKbps"
           :min="0"
           :step="16"
           :class="{ 'ring-2 ring-error ring-inset': audioBitrateKbps <= 0 }"
         />
-        <span class="text-xs text-ui-text-muted">
-          {{
-            t(
-              'videoEditor.export.audioBitrateHelp',
-              'Higher bitrate = better quality and larger file',
-            )
-          }}
-        </span>
-      </div>
+      </UiFormField>
     </div>
 
     <template v-if="props.showMetadata">
       <div class="h-px bg-ui-border my-2"></div>
 
-      <div class="text-sm font-semibold text-ui-text uppercase tracking-wider">
-        {{ t('videoEditor.export.metadata', 'Metadata') }}
-      </div>
+      <UiFormSectionHeader :title="t('videoEditor.export.metadata', 'Metadata')" />
 
       <UiFormField :label="t('videoEditor.export.metadataTitle', 'Title')">
         <UiTextInput v-model="metadataTitle" size="sm" :disabled="props.disabled" full-width />

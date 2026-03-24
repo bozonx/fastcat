@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import UiModal from '~/components/ui/UiModal.vue';
+import UiFormField from '~/components/ui/UiFormField.vue';
+
 
 const props = defineProps<{
   title?: string;
@@ -37,7 +39,7 @@ function handleSubmit() {
 <template>
   <UiModal v-model:open="isOpen" :title="title || t('common.rename', 'Rename')">
     <form class="ui-section" @submit.prevent="handleSubmit">
-      <UFormField :label="t('common.name', 'Name')">
+      <UiFormField :label="t('common.name', 'Name')">
         <UInput
           ref="inputRef"
           v-model="name"
@@ -45,7 +47,7 @@ function handleSubmit() {
           data-primary-focus="true"
           :placeholder="t('common.namePlaceholder', 'Enter name...')"
         />
-      </UFormField>
+      </UiFormField>
     </form>
 
     <template #footer>
