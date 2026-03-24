@@ -49,16 +49,7 @@ export function isPreviewPanelFocus(panelId: string | null | undefined): boolean
 }
 
 export function isPlaybackPanelFocus(panelId: string | null | undefined): boolean {
-  if (!panelId) return false;
-  if (isPropertiesPanelFocus(panelId)) return false;
-
-  return (
-    panelId === 'monitor' ||
-    panelId === 'left' ||
-    panelId === 'right' ||
-    panelId === 'timeline' ||
-    isDynamicPanelFocus(panelId)
-  );
+  return !!panelId;
 }
 
 export function isTimelineHotkeyPanelFocus(panelId: string | null | undefined): boolean {

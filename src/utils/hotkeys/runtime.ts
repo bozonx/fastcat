@@ -92,14 +92,14 @@ export function getFocusAwareHotkeyOrder(params: {
   const general = matched.filter((c) => c.startsWith('general.'));
 
   if (canUseTimelineHotkeys) {
-    return [...timeline, ...general, ...playback];
+    return [...timeline, ...playback, ...general];
   }
 
   if (canUsePlaybackHotkeys) {
     return [...playback, ...general, ...timeline];
   }
 
-  return [...general, ...timeline, ...playback];
+  return [...playback, ...general, ...timeline];
 }
 
 export function canExecuteHotkeyCommand(params: {
