@@ -153,10 +153,12 @@ export class TimelineClipLoader {
     if (descriptor.clipType === 'hud') {
       const prevBg = reusable.background?.source?.path ?? '';
       const prevContent = reusable.content?.source?.path ?? '';
+      const prevMaskPath = reusable.mask?.source?.path ?? '';
       return (
         (reusable as any).clipType === descriptor.clipType &&
         prevBg === descriptor.hudBackgroundPath &&
-        prevContent === descriptor.hudContentPath
+        prevContent === descriptor.hudContentPath &&
+        prevMaskPath === (descriptor.maskPath ?? '')
       );
     }
 
@@ -268,9 +270,7 @@ export class TimelineClipLoader {
       reusable.content = clipData.content
         ? JSON.parse(JSON.stringify(clipData.content))
         : undefined;
-      reusable.frame = clipData.frame
-        ? JSON.parse(JSON.stringify(clipData.frame))
-        : undefined;
+      reusable.frame = clipData.frame ? JSON.parse(JSON.stringify(clipData.frame)) : undefined;
       reusable.hudDirty = true;
     }
 

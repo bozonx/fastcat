@@ -22,34 +22,16 @@ export class EffectManager {
       return;
     }
 
+    const maskFilter = this.syncMaskFilter(clip);
+
     if (!context.previewEffectsEnabled) {
-      clip.sprite.filters = null;
+      clip.sprite.filters = maskFilter ? [maskFilter] : null;
       return;
     }
 
     const filters = this.syncFilters(clip.effectFilters, clip.effects ?? []);
-    
-    // Add mask filter if present
-    const maskFilter = this.syncMaskFilter(clip);
     if (maskFilter) {
       filters.push(maskFilter);
-    }
-
-    if (clip.mask) {
-      console.log('[Mask Debug] applyClipEffects', {
-        itemId: clip.itemId,
-        hasMask: !!clip.mask,
-        maskPath: clip.mask?.source?.path,
-        maskState: clip.maskState ? {
-          clipKind: clip.maskState.clipKind,
-          hasImageSource: !!clip.maskState.imageSource,
-          imageSourceWidth: clip.maskState.imageSource?.width,
-          imageSourceHeight: clip.maskState.imageSource?.height,
-          hasLastVideoFrame: !!clip.maskState.lastVideoFrame,
-        } : clip.maskState,
-        maskFilterCreated: !!maskFilter,
-        filtersCount: filters.length,
-      });
     }
 
     clip.sprite.filters = filters.length > 0 ? filters : null;
@@ -61,7 +43,9 @@ export class EffectManager {
       if (clip.effectFilters?.has('__mask')) {
         const filter = clip.effectFilters.get('__mask');
         clip.effectFilters.delete('__mask');
-        try { (filter as any)?.destroy?.(); } catch {}
+        try {
+          (filter as any)?.destroy?.();
+        } catch {}
       }
       return null;
     }
@@ -109,7 +93,10 @@ export class EffectManager {
         Math.round(Number((frame as any).displayHeight ?? (frame as any).codedHeight ?? 1)),
       );
 
-      if (maskState.imageSource.width !== frameWidth || maskState.imageSource.height !== frameHeight) {
+      if (
+        maskState.imageSource.width !== frameWidth ||
+        maskState.imageSource.height !== frameHeight
+      ) {
         maskState.imageSource.resize(frameWidth, frameHeight);
       }
 
@@ -119,8 +106,6 @@ export class EffectManager {
 
     return maskState.imageSource;
   }
-
-
 
   /**
    * Applies effects to a track's container.

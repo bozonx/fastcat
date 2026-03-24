@@ -21,7 +21,7 @@ const maskControls = computed<ParamControl[]>(() => [
     key: 'sourcePath',
     labelKey: 'fastcat.clip.mask.file',
     emptyLabelKey: 'fastcat.clip.mask.dropFile',
-    icon: 'i-heroicons-face-smile',
+    icon: 'i-heroicons-viewfinder-circle',
   },
   {
     kind: 'select',

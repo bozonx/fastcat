@@ -96,7 +96,6 @@ export interface CompositorClip {
   };
   mask?: ClipMask;
   maskState?: HudMediaState | null;
-  maskTexture?: import('pixi.js').Texture;
 }
 
 export interface CompositorTrack {
