@@ -73,22 +73,14 @@ function applyExportPreset(presetId: string) {
     :summary="exportSummary"
   >
     <UFormField :label="t('videoEditor.export.presetLabel', 'Preset')">
-      <div class="flex items-center gap-2">
-        <UiSelect
-          v-model="workspaceStore.userSettings.exportPresets.selectedPresetId"
-          :items="exportPresetOptions"
-          value-key="value"
-          label-key="label"
-          full-width
-        />
-        <UButton
-          color="neutral"
-          variant="soft"
-          size="sm"
-          :label="t('common.apply', 'Apply')"
-          @click="applyExportPreset(workspaceStore.userSettings.exportPresets.selectedPresetId)"
-        />
-      </div>
+      <UiSelect
+        v-model="workspaceStore.userSettings.exportPresets.selectedPresetId"
+        :items="exportPresetOptions"
+        value-key="value"
+        label-key="label"
+        full-width
+        @update:model-value="(val) => applyExportPreset(val as string)"
+      />
     </UFormField>
 
     <VideoEncodingForm

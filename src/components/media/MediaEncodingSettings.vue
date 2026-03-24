@@ -204,6 +204,7 @@ watch(
         v-model="bitrateMbps"
         :min="0"
         :step="0.1"
+        :wheel-step-multiplier="10"
         :class="{ 'ring-2 ring-error ring-inset': bitrateMbps <= 0 }"
       />
       <span class="text-xs text-ui-text-muted">
@@ -236,7 +237,13 @@ watch(
       <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.export.keyframeInterval', 'Keyframe Interval (GOP Size, sec)') }}
       </label>
-      <UiWheelNumberInput v-model="keyframeIntervalSec" :min="1" :max="10" :step="1" />
+      <UiWheelNumberInput
+        v-model="keyframeIntervalSec"
+        :min="1"
+        :max="1000"
+        :step="1"
+        :wheel-step-multiplier="10"
+      />
     </div>
 
     <label v-if="outputFormat === 'webm'" class="flex items-center gap-3 cursor-pointer">

@@ -47,10 +47,13 @@ function toggle() {
   <div class="flex flex-col w-full">
     <button
       type="button"
-      class="w-full flex justify-between items-center px-4 py-4 -mx-4 rounded-lg hover:bg-ui-bg-hover transition-all duration-200 group text-left select-none relative focus-visible:ring-2 focus-visible:ring-primary-500 outline-none"
+      class="w-full flex justify-between items-center px-3 py-3 rounded-lg hover:bg-ui-bg-hover transition-colors group text-left select-none relative focus-visible:ring-2 focus-visible:ring-primary-500 outline-none"
       @click="toggle"
     >
-      <div class="flex flex-col gap-0.5 min-w-0 pr-4">
+      <div
+        class="flex flex-col gap-0.5 min-w-0 pr-4 transition-all duration-200"
+        :class="[isCurrentlyOpen ? 'pl-3' : 'pl-0']"
+      >
         <h3
           v-if="title"
           v-show="isCurrentlyOpen"

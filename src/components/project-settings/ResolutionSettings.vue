@@ -49,22 +49,14 @@ function applyProjectPreset(presetId: string) {
     :summary="resolutionSummary"
   >
     <UFormField :label="t('videoEditor.export.presetLabel', 'Preset')">
-      <div class="flex items-center gap-2">
-        <UiSelect
-          v-model="workspaceStore.userSettings.projectPresets.selectedPresetId"
-          :items="projectPresetOptions"
-          value-key="value"
-          label-key="label"
-          full-width
-        />
-        <UButton
-          color="neutral"
-          variant="soft"
-          size="sm"
-          :label="t('common.apply', 'Apply')"
-          @click="applyProjectPreset(workspaceStore.userSettings.projectPresets.selectedPresetId)"
-        />
-      </div>
+      <UiSelect
+        v-model="workspaceStore.userSettings.projectPresets.selectedPresetId"
+        :items="projectPresetOptions"
+        value-key="value"
+        label-key="label"
+        full-width
+        @update:model-value="(val) => applyProjectPreset(val as string)"
+      />
     </UFormField>
 
     <MediaResolutionSettings
