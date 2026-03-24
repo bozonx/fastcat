@@ -11,10 +11,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div v-if="projectStore.projectSettings" class="space-y-4">
-    <h3 class="text-lg font-semibold text-ui-text">
-      {{ t('videoEditor.projectSettings.storage', 'Storage') }}
-    </h3>
+  <div v-if="projectStore.projectSettings" class="space-y-4 pt-1">
 
     <div class="space-y-3">
       <!-- Clear Vardata -->

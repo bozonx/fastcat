@@ -1268,6 +1268,7 @@
       "deleteProjectConfirmDescription": "Это навсегда удалит папку проекта и все её содержимое. Это действие нельзя отменить.",
       "deleteProjectConfirmTitle": "Удалить проект?",
       "export": "Экспорт",
+      "metadata": "Метаданные",
       "note": "Настройки сохраняются в .fastcat/project.settings.json",
       "reset": "Сбросить по умолчанию",
       "resetConfirmDescription": "Это вернет все настройки текущего проекта к значениям по умолчанию из настроек рабочей области.",

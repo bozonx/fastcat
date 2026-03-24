@@ -11,6 +11,7 @@ import ExportSettings from './ExportSettings.vue';
 import AdvancedSettings from './AdvancedSettings.vue';
 import MetadataSettings from './MetadataSettings.vue';
 import StorageSettings from './StorageSettings.vue';
+import SettingsSection from './SettingsSection.vue';
 
 const props = defineProps<{
   open: boolean;
@@ -157,14 +158,21 @@ async function resetToDefaults() {
 
       <div class="h-px bg-ui-border"></div>
 
-      <MetadataSettings />
+      <SettingsSection
+        :title="t('videoEditor.projectSettings.metadata', 'Metadata')"
+        :summary="projectStore.projectMeta?.title || t('videoEditor.projectSettings.metadata', 'Metadata')"
+      >
+        <MetadataSettings />
+      </SettingsSection>
 
       <div class="h-px bg-ui-border"></div>
 
-      <StorageSettings
-        @clear-temp="isClearProjectVardataConfirmOpen = true"
-        @delete-project="isDeleteProjectConfirmOpen = true"
-      />
+      <SettingsSection :title="t('videoEditor.projectSettings.storage', 'Storage')">
+        <StorageSettings
+          @clear-temp="isClearProjectVardataConfirmOpen = true"
+          @delete-project="isDeleteProjectConfirmOpen = true"
+        />
+      </SettingsSection>
     </div>
 
     <template #footer>
