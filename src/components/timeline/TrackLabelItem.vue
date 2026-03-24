@@ -26,7 +26,7 @@ const { t } = useI18n();
 const timelineStore = useTimelineStore();
 
 const renameValue = ref(props.track.name);
-const renameInput = ref<{ input: HTMLInputElement } | null>(null);
+const renameInput = ref<HTMLInputElement | null>(null);
 const hasClipped = ref(false);
 let clipResetTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
@@ -35,7 +35,7 @@ const levelColorClass = computed(() => getAudioMeterColorClass(props.levelDb));
 
 function handleOutsideClick(event: MouseEvent) {
   if (props.isRenaming && renameInput.value) {
-    const inputEl = (renameInput.value as any).input || (renameInput.value as any).$el;
+    const inputEl = renameInput.value;
     if (inputEl && !inputEl.contains(event.target as Node)) {
       confirmRename();
     }
@@ -48,7 +48,7 @@ watch(
     if (val) {
       renameValue.value = props.track.name;
       await nextTick();
-      const input = renameInput.value?.input;
+      const input = renameInput.value;
       if (input) {
         input.focus();
         input.select();
@@ -185,19 +185,11 @@ onBeforeUnmount(() => {
         }"
         @click.stop="timelineStore.renamingTrackId = track.id"
       >
-        <UInput
+        <input
           v-if="isRenaming"
           ref="renameInput"
           v-model="renameValue"
-          variant="none"
-          class="w-full"
-          :ui="{
-            root: 'p-0 h-auto',
-            base: 'p-0 bg-transparent border-none shadow-none ring-0 focus:ring-0 !text-[10px] leading-3 font-medium select-text',
-          }"
-          :style="{
-            minWidth: '4ch',
-          }"
+          class="w-full bg-transparent border-none outline-none ring-0 p-0 text-[10px]! leading-3 font-medium select-text text-ui-text focus:outline-none"
           @click.stop
           @keydown.enter.stop="confirmRename"
           @keydown.esc.stop="emit('cancelRename')"
