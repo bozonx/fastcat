@@ -250,6 +250,125 @@ function handleArrayItemUpdate(
         />
       </div>
 
+      <div v-else-if="control.kind === 'scale-xy'" class="flex flex-col gap-2">
+        <div class="flex items-center gap-2">
+          <span
+            class="flex-1 text-xs text-ui-text-muted"
+            :class="[
+              (getValue(control.keyLinked) ?? control.defaultLinked ?? true)
+                ? 'cursor-pointer'
+                : 'cursor-default',
+            ]"
+          >
+            {{
+              (getValue(control.keyLinked) ?? control.defaultLinked ?? true)
+                ? control.labelKey
+                  ? t(control.labelKey)
+                  : 'Scale'
+                : control.labelXKey
+                  ? t(control.labelXKey)
+                  : 'Scale X'
+            }}
+          </span>
+          <UButton
+            v-if="
+              ((getValue(control.keyLinked) ?? control.defaultLinked ?? true) &&
+                getValue(control.keyX) !== 100) ||
+              (!(getValue(control.keyLinked) ?? control.defaultLinked ?? true) &&
+                (getValue(control.keyX) !== 100 || getValue(control.keyY) !== 100))
+            "
+            icon="i-heroicons-arrow-path"
+            size="2xs"
+            variant="ghost"
+            color="gray"
+            class="opacity-50 hover:opacity-100 transition-opacity"
+            @click="
+              () => {
+                updateValue(control.keyX, control.defaultValueX ?? 100);
+                setTimeout(() => {
+                  updateValue(control.keyY, control.defaultValueY ?? 100);
+                }, 10);
+              }
+            "
+          />
+        </div>
+        <div class="flex items-center gap-2">
+          <UiWheelNumberInput
+            class="flex-1"
+            :model-value="Number(getValue(control.keyX) ?? control.defaultValueX ?? 100)"
+            :size="size"
+            :min="control.min"
+            :max="control.max"
+            :step="control.step ?? 1"
+            :disabled="control.disabled"
+            @update:model-value="
+              (value: number) => {
+                const numValue = Number(value);
+                updateValue(control.keyX, numValue);
+                if (getValue(control.keyLinked) ?? control.defaultLinked ?? true) {
+                  setTimeout(() => {
+                    updateValue(control.keyY, numValue);
+                  }, 10);
+                }
+              }
+            "
+          />
+          <UButton
+            size="xs"
+            variant="ghost"
+            color="gray"
+            :icon="
+              (getValue(control.keyLinked) ?? control.defaultLinked ?? true)
+                ? 'i-heroicons-link'
+                : 'i-heroicons-link-slash'
+            "
+            :class="[
+              (getValue(control.keyLinked) ?? control.defaultLinked ?? true)
+                ? 'text-ui-primary'
+                : 'text-ui-text-muted',
+            ]"
+            @click="
+              () => {
+                const isLinked = !(getValue(control.keyLinked) ?? control.defaultLinked ?? true);
+                updateValue(control.keyLinked, isLinked);
+                if (isLinked) {
+                  setTimeout(() => {
+                    updateValue(control.keyY, getValue(control.keyX));
+                  }, 10);
+                }
+              }
+            "
+          />
+        </div>
+        <div
+          v-if="!(getValue(control.keyLinked) ?? control.defaultLinked ?? true)"
+          class="flex flex-col gap-0.5 mt-2"
+        >
+          <span class="text-xs text-ui-text-muted">{{
+            control.labelYKey ? t(control.labelYKey) : 'Scale Y'
+          }}</span>
+          <UiWheelNumberInput
+            :model-value="Number(getValue(control.keyY) ?? control.defaultValueY ?? 100)"
+            :size="size"
+            :min="control.min"
+            :max="control.max"
+            :step="control.step ?? 1"
+            :disabled="control.disabled"
+            @update:model-value="
+              (value: number) => {
+                const numValue = Number(value);
+                updateValue(control.keyY, numValue);
+                if (getValue(control.keyLinked) ?? control.defaultLinked ?? true) {
+                  setTimeout(() => {
+                    updateValue(control.keyX, numValue);
+                  }, 10);
+                }
+              }
+            "
+          />
+        </div>
+      </div>
+
       <div
         v-else-if="control.kind === 'toggle' || control.kind === 'boolean'"
         class="flex items-center justify-between gap-3"

@@ -3,6 +3,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import type {
   TimelineBackgroundClipItem,
   TimelineClipItem,
+  TimelineHudClipItem,
   TimelineShapeClipItem,
   TimelineTextClipItem,
   TimelineTrack,
@@ -135,6 +136,15 @@ export function useMonitorTimeline() {
               shapeConfig: shapeItem.shapeConfig,
             }),
           );
+        } else if (clipType === 'hud') {
+          const hudItem = item as TimelineHudClipItem;
+          clips.push({
+            ...base,
+            hudType: hudItem.hudType,
+            background: hudItem.background,
+            content: hudItem.content,
+            frame: hudItem.frame,
+          });
         } else {
           clips.push(base);
         }
@@ -238,6 +248,15 @@ export function useMonitorTimeline() {
           if (shapeConfig) {
             hash = mixHash(hash, hashString(JSON.stringify(shapeConfig)));
           }
+        } else if (item.clipType === 'hud') {
+          const hudItem = item as TimelineHudClipItem;
+          hash = mixHash(hash, hashString(String(hudItem.hudType ?? 'media_frame')));
+          if (hudItem.background?.source?.path) {
+            hash = mixHash(hash, hashString(hudItem.background.source.path));
+          }
+          if (hudItem.content?.source?.path) {
+            hash = mixHash(hash, hashString(hudItem.content.source.path));
+          }
         }
       }
     }
@@ -326,6 +345,20 @@ export function useMonitorTimeline() {
           const shapeConfig = shapeItem.shapeConfig;
           if (shapeConfig) {
             hash = mixHash(hash, hashString(JSON.stringify(shapeConfig)));
+          }
+        }
+
+        if (item.clipType === 'hud') {
+          const hudItem = item as TimelineHudClipItem;
+          hash = mixHash(hash, hashString(String(hudItem.hudType ?? 'media_frame')));
+          if (hudItem.background) {
+            hash = mixHash(hash, hashString(JSON.stringify(hudItem.background)));
+          }
+          if (hudItem.content) {
+            hash = mixHash(hash, hashString(JSON.stringify(hudItem.content)));
+          }
+          if (hudItem.frame) {
+            hash = mixHash(hash, hashString(JSON.stringify(hudItem.frame)));
           }
         }
 

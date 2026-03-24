@@ -489,6 +489,7 @@
     "hudClip": {
       "background": "Background",
       "content": "Content",
+      "frame": "Frame",
       "emptyLayer": "Empty layer",
       "hud": "HUD",
       "type": "Type",
@@ -555,6 +556,20 @@
       "switchToDesktop": "Switch to desktop view",
       "switchToMobile": "Switch to mobile view",
       "title": "Projects"
+    },
+    "properties": {
+      "blur": "Blur",
+      "color": "Color",
+      "fadeIn": "Fade in",
+      "fadeOut": "Fade out",
+      "offsetX": "Offset X",
+      "offsetY": "Offset Y",
+      "positionX": "Position X",
+      "positionY": "Position Y",
+      "scale": "Scale",
+      "scaleX": "Scale X",
+      "scaleY": "Scale Y",
+      "shadow": "Shadow"
     },
     "selectionRange": {
       "actions": "Actions",

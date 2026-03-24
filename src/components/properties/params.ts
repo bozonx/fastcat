@@ -106,10 +106,27 @@ export interface KnobParamControl extends BaseParamControl {
   defaultValue?: number;
 }
 
+export interface ScaleXYParamControl extends BaseParamControl {
+  kind: 'scale-xy';
+  keyX: string;
+  keyY: string;
+  keyLinked: string;
+  labelKey?: string;
+  labelXKey?: string;
+  labelYKey?: string;
+  min?: number;
+  max?: number;
+  step?: number;
+  defaultValueX?: number;
+  defaultValueY?: number;
+  defaultLinked?: boolean;
+}
+
 export type ParamControl =
   | SliderParamControl
   | NumberParamControl
   | KnobParamControl
+  | ScaleXYParamControl
   | ToggleParamControl
   | SelectParamControl
   | ButtonGroupParamControl
