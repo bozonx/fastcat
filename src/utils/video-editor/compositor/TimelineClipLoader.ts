@@ -23,6 +23,7 @@ export interface TimelineClipDescriptor {
   sourcePath: string;
   hudBackgroundPath?: string;
   hudContentPath?: string;
+  hudFramePath?: string;
   maskPath?: string;
   sourceStartUs: number;
   freezeFrameSourceUs?: number;
@@ -79,6 +80,7 @@ export class TimelineClipLoader {
 
     const hudBackgroundPath = clipData.background?.source?.path ?? '';
     const hudContentPath = clipData.content?.source?.path ?? '';
+    const hudFramePath = clipData.frame?.source?.path ?? '';
     const maskPath = clipData.mask?.source?.path ?? '';
 
     const sourceStartUs = Math.max(0, Math.round(Number(clipData.sourceRange?.startUs ?? 0)));
@@ -129,6 +131,7 @@ export class TimelineClipLoader {
       sourcePath,
       hudBackgroundPath,
       hudContentPath,
+      hudFramePath,
       maskPath,
       sourceStartUs,
       freezeFrameSourceUs,
@@ -153,11 +156,13 @@ export class TimelineClipLoader {
     if (descriptor.clipType === 'hud') {
       const prevBg = reusable.background?.source?.path ?? '';
       const prevContent = reusable.content?.source?.path ?? '';
+      const prevFrame = reusable.frame?.source?.path ?? '';
       const prevMaskPath = reusable.mask?.source?.path ?? '';
       return (
         (reusable as any).clipType === descriptor.clipType &&
         prevBg === descriptor.hudBackgroundPath &&
         prevContent === descriptor.hudContentPath &&
+        prevFrame === (descriptor.hudFramePath ?? '') &&
         prevMaskPath === (descriptor.maskPath ?? '')
       );
     }

@@ -338,6 +338,9 @@ export function updateClipProperties(
     if ('content' in nextProps) {
       (nextProps as any).content = nextProps.content;
     }
+    if ('frame' in nextProps) {
+      (nextProps as any).frame = nextProps.frame;
+    }
   }
 
   if ('text' in nextProps) {

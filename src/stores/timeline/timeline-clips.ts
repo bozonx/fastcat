@@ -264,6 +264,7 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
       hudType?: import('~/timeline/types').HudType;
       background?: import('~/timeline/types').HudMediaParams;
       content?: import('~/timeline/types').HudMediaParams;
+      frame?: import('~/timeline/types').HudMediaParams;
     },
   ) {
     const validatedProperties = { ...properties };

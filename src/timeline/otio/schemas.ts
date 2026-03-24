@@ -79,6 +79,7 @@ export const ShapeConfigSchema = z.object({
 
 export const HudMediaParamsSchema = z.object({
   source: z.object({ path: z.string() }).optional(),
+  sourceKind: z.enum(['media', 'timeline']).optional(),
   transitionIn: z.any().optional(),
   transitionOut: z.any().optional(),
   effects: z.array(z.any()).optional(),
@@ -86,14 +87,16 @@ export const HudMediaParamsSchema = z.object({
   scaleY: z.number().optional(),
   offsetX: z.number().optional(),
   offsetY: z.number().optional(),
-  shadow: z.object({
-    enabled: z.boolean().optional(),
-    blur: z.number().optional(),
-    color: z.string().optional(),
-    offsetX: z.number().optional(),
-    offsetY: z.number().optional(),
-    alpha: z.number().optional(),
-  }).optional(),
+  shadow: z
+    .object({
+      enabled: z.boolean().optional(),
+      blur: z.number().optional(),
+      color: z.string().optional(),
+      offsetX: z.number().optional(),
+      offsetY: z.number().optional(),
+      alpha: z.number().optional(),
+    })
+    .optional(),
 });
 
 export const TimelineClipTypeSchema = z.enum([
