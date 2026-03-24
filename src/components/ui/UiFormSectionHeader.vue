@@ -11,7 +11,7 @@ defineProps<{
 </script>
 
 <template>
-  <div class="text-xs text-ui-text-muted font-bold uppercase tracking-wider mb-2 mt-4 first:mt-0 select-none">
+  <h3 class="text-xs text-ui-text-muted font-bold uppercase tracking-wider mb-2 mt-4 first:mt-0 select-none">
     {{ title }}
-  </div>
+  </h3>
 </template>

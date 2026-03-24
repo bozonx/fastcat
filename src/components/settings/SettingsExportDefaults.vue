@@ -4,6 +4,8 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
+import UiFormField from '~/components/ui/UiFormField.vue';
+
 import {
   BASE_VIDEO_CODEC_OPTIONS,
   checkVideoCodecSupport,
@@ -86,7 +88,7 @@ function removePreset() {
       </div>
     </div>
 
-    <UFormField :label="t('videoEditor.export.presetLabel', 'Preset')">
+    <UiFormField :label="t('videoEditor.export.presetLabel', 'Preset')">
       <UiSelect
         v-model="workspaceStore.userSettings.exportPresets.selectedPresetId"
         :items="presetOptions"
@@ -94,11 +96,11 @@ function removePreset() {
         label-key="label"
         full-width
       />
-    </UFormField>
+    </UiFormField>
 
-    <UFormField :label="t('common.name', 'Name')">
+    <UiFormField :label="t('common.name', 'Name')">
       <UiTextInput v-model="selectedPreset.name" full-width />
-    </UFormField>
+    </UiFormField>
 
     <VideoEncodingForm
       v-model:output-format="selectedPreset.format"

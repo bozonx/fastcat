@@ -8,7 +8,9 @@ import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import UiModal from '~/components/ui/UiModal.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import TransitionParamFields from '~/components/properties/TransitionParamFields.vue';
+import UiFormField from '~/components/ui/UiFormField.vue';
 import { useClipTransitionPanel } from '~/composables/timeline/useClipTransitionPanel';
+
 import {
   getTransitionCurveSinglePath,
   getPrevClipForItem,
@@ -273,11 +275,7 @@ function handleSavePreset() {
       </button>
     </div>
 
-    <!-- Duration slider -->
-    <div class="flex flex-col gap-1">
-      <div class="flex justify-between text-ui-text-muted">
-        <span>{{ t('fastcat.timeline.transition.duration') }}</span>
-      </div>
+    <UiFormField :label="t('fastcat.timeline.transition.duration')">
       <UiSliderInput
         v-model="durationSec"
         :min="durationMin"
@@ -286,17 +284,13 @@ function handleSavePreset() {
         unit="s"
         :decimals="2"
       />
-    </div>
+    </UiFormField>
 
-    <!-- Mode toggle -->
-    <div class="flex flex-col gap-1">
-      <span class="text-ui-text-muted">{{ t('fastcat.timeline.transition.source') }}</span>
+    <UiFormField :label="t('fastcat.timeline.transition.source')">
       <UiButtonGroup v-model="selectedMode" :options="sourceOptions" />
-    </div>
+    </UiFormField>
 
-    <!-- Curve toggle -->
-    <div class="flex flex-col gap-1">
-      <span class="text-ui-text-muted">{{ t('fastcat.timeline.transition.curve') }}</span>
+    <UiFormField :label="t('fastcat.timeline.transition.curve')">
       <UiButtonGroup
         :model-value="selectedCurve"
         :options="curveOptions"
@@ -326,14 +320,11 @@ function handleSavePreset() {
           </div>
         </template>
       </UiButtonGroup>
-    </div>
+    </UiFormField>
 
     <!-- Curve fine-tuning sliders -->
     <div v-if="selectedCurve !== 'linear'" class="flex flex-col gap-2 p-2 bg-ui-bg/30 rounded border border-ui-border/50">
-      <div class="flex flex-col gap-1">
-        <span class="text-ui-text-muted text-2xs uppercase font-bold tracking-wider">
-          {{ t('fastcat.timeline.transition.curveParamBulge') }}
-        </span>
+      <UiFormField :label="t('fastcat.timeline.transition.curveParamBulge')">
         <UiSliderInput
           :model-value="Number(selectedParams.curveBulge ?? 0.8)"
           :min="0"
@@ -341,11 +332,8 @@ function handleSavePreset() {
           :step="0.01"
           @update:model-value="updateParam('curveBulge', $event)"
         />
-      </div>
-      <div class="flex flex-col gap-1">
-        <span class="text-ui-text-muted text-2xs uppercase font-bold tracking-wider">
-          {{ t('fastcat.timeline.transition.curveParamOffset') }}
-        </span>
+      </UiFormField>
+      <UiFormField :label="t('fastcat.timeline.transition.curveParamOffset')">
         <UiSliderInput
           :model-value="Number(selectedParams.curveOffset ?? 0.5)"
           :min="0"
@@ -353,7 +341,7 @@ function handleSavePreset() {
           :step="0.01"
           @update:model-value="updateParam('curveOffset', $event)"
         />
-      </div>
+      </UiFormField>
 
       <!-- Result Graph -->
       <div class="flex flex-col gap-1 mt-1 pt-2 border-t border-ui-border/30">
@@ -379,14 +367,13 @@ function handleSavePreset() {
     </div>
 
     <div v-if="visibleParamFields.length" class="flex flex-col gap-2">
-      <div class="text-ui-text-muted">
-        {{ t('fastcat.timeline.transition.parameters') }}
-      </div>
-      <TransitionParamFields
-        :fields="visibleParamFields"
-        :params="selectedParams"
-        @update:param="updateParam"
-      />
+      <UiFormField :label="t('fastcat.timeline.transition.parameters')">
+        <TransitionParamFields
+          :fields="visibleParamFields"
+          :params="selectedParams"
+          @update:param="updateParam"
+        />
+      </UiFormField>
     </div>
 
     <UiModal
@@ -394,14 +381,14 @@ function handleSavePreset() {
       :title="t('fastcat.effects.savePresetTitle', 'Save Preset')"
     >
       <div class="flex flex-col gap-4">
-        <UFormField :label="t('common.name', 'Name')">
+        <UiFormField :label="t('common.name', 'Name')">
           <UiTextInput
             v-model="newPresetName"
             :placeholder="t('fastcat.effects.presetNamePlaceholder', 'My Custom Preset')"
             autofocus
             @keyup.enter="handleSavePreset"
           />
-        </UFormField>
+        </UiFormField>
         <div class="flex justify-end gap-2">
           <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">
             {{ t('common.cancel', 'Cancel') }}

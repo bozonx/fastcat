@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import UiModal from '~/components/ui/UiModal.vue';
+import UiFormField from '~/components/ui/UiFormField.vue';
+
 import { computed, ref } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
@@ -244,14 +246,14 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
     >
       <template #body>
         <div class="flex flex-col gap-4">
-          <UFormField :label="t('common.name', 'Name')">
+          <UiFormField :label="t('common.name', 'Name')">
             <UInput
               v-model="newPresetName"
               :placeholder="t('fastcat.effects.presetNamePlaceholder', 'My Custom Preset')"
               autofocus
               @keyup.enter="handleSavePreset"
             />
-          </UFormField>
+          </UiFormField>
           <div class="flex justify-end gap-2">
             <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">
               {{ t('common.cancel', 'Cancel') }}

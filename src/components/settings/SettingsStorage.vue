@@ -2,6 +2,8 @@
 import { computed, ref } from 'vue';
 import { open } from '@tauri-apps/plugin-dialog';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import UiFormField from '~/components/ui/UiFormField.vue';
+
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
@@ -154,7 +156,7 @@ function resetPathDefaults() {
       </UButton>
     </div>
 
-    <UFormField
+    <UiFormField
       v-if="isDesktopTauri"
       :label="t('videoEditor.settings.storageMode', 'Storage mode')"
       :help="
@@ -170,7 +172,7 @@ function resetPathDefaults() {
         value-key="value"
         full-width
       />
-    </UFormField>
+    </UiFormField>
 
     <div
       v-if="isBrowserWorkspaceMode || isDesktopPortableMode"
@@ -195,7 +197,7 @@ function resetPathDefaults() {
     </div>
 
     <div v-if="isDesktopSystemMode" class="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <UFormField
+      <UiFormField
         :label="t('videoEditor.settings.contentRootPath', 'Content root path')"
         :help="
           t(
@@ -213,9 +215,9 @@ function resetPathDefaults() {
             @click="pickDesktopPath('ephemeralTmp')"
           />
         </div>
-      </UFormField>
+      </UiFormField>
 
-      <UFormField
+      <UiFormField
         :label="t('videoEditor.settings.dataRootPath', 'Data root path')"
         :help="
           t(
@@ -233,9 +235,9 @@ function resetPathDefaults() {
             @click="pickDesktopPath('data')"
           />
         </div>
-      </UFormField>
+      </UiFormField>
 
-      <UFormField
+      <UiFormField
         :label="t('videoEditor.settings.tempRootPath', 'Temporary data path')"
         :help="
           t(
@@ -253,9 +255,9 @@ function resetPathDefaults() {
             @click="pickDesktopPath('temp')"
           />
         </div>
-      </UFormField>
+      </UiFormField>
 
-      <UFormField
+      <UiFormField
         :label="t('videoEditor.settings.proxiesRootPath', 'Proxy files path')"
         :help="
           t(
@@ -273,9 +275,9 @@ function resetPathDefaults() {
             @click="pickDesktopPath('proxies')"
           />
         </div>
-      </UFormField>
+      </UiFormField>
 
-      <UFormField
+      <UiFormField
         :label="t('videoEditor.settings.ephemeralTmpRootPath', 'Ephemeral tmp path')"
         :help="
           t(
@@ -293,11 +295,11 @@ function resetPathDefaults() {
             @click="pickDesktopPath('ephemeralTmp')"
           />
         </div>
-      </UFormField>
+      </UiFormField>
     </div>
 
     <div v-if="isDesktopPortableMode" class="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <UFormField
+      <UiFormField
         :label="t('videoEditor.settings.ephemeralTmpRootPath', 'Ephemeral tmp path')"
         :help="
           t(
@@ -315,11 +317,11 @@ function resetPathDefaults() {
             @click="pickDesktopPath('ephemeralTmp')"
           />
         </div>
-      </UFormField>
+      </UiFormField>
     </div>
 
     <div v-if="isBrowserWorkspaceMode" class="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <UFormField
+      <UiFormField
         :label="t('videoEditor.settings.ephemeralTmpRootPath', 'Ephemeral tmp path')"
         :help="
           t(
@@ -329,7 +331,7 @@ function resetPathDefaults() {
         "
       >
         <UiTextInput v-model="ephemeralTmpRootPath" full-width />
-      </UFormField>
+      </UiFormField>
     </div>
 
     <div

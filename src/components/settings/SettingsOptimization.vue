@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import UiFormField from '~/components/ui/UiFormField.vue';
+
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
@@ -51,7 +53,7 @@ function resetDefaults() {
     </div>
 
     <div class="grid grid-cols-2 gap-4">
-      <UFormField :label="t('videoEditor.settings.proxyVideoCodec')">
+      <UiFormField :label="t('videoEditor.settings.proxyVideoCodec')">
         <UiButtonGroup
           v-model="workspaceStore.userSettings.optimization.proxyVideoCodec"
           :options="[
@@ -60,9 +62,9 @@ function resetDefaults() {
           ]"
           fluid
         />
-      </UFormField>
+      </UiFormField>
 
-      <UFormField :label="t('videoEditor.settings.proxyMaxPixels')">
+      <UiFormField :label="t('videoEditor.settings.proxyMaxPixels')">
         <UiSelect
           v-model="workspaceStore.userSettings.optimization.proxyMaxPixels"
           :items="[
@@ -81,25 +83,25 @@ function resetDefaults() {
                 (v as { value: number })?.value ?? (v as number))
           "
         />
-      </UFormField>
+      </UiFormField>
 
-      <UFormField :label="t('videoEditor.settings.proxyVideoBitrate')">
+      <UiFormField :label="t('videoEditor.settings.proxyVideoBitrate')">
         <UiWheelNumberInput
           v-model="workspaceStore.userSettings.optimization.proxyVideoBitrateMbps"
           :min="0.1"
           :max="50"
           :step="0.1"
         />
-      </UFormField>
+      </UiFormField>
 
-      <UFormField :label="t('videoEditor.settings.proxyAudioBitrate')">
+      <UiFormField :label="t('videoEditor.settings.proxyAudioBitrate')">
         <UiWheelNumberInput
           v-model="workspaceStore.userSettings.optimization.proxyAudioBitrateKbps"
           :min="32"
           :max="512"
           :step="16"
         />
-      </UFormField>
+      </UiFormField>
     </div>
 
     <label

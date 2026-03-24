@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import UiModal from '~/components/ui/UiModal.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
+import UiFormField from '~/components/ui/UiFormField.vue';
+
 import { ref, watch, computed } from 'vue';
 import { getTransitionManifest, normalizeTransitionParams } from '~/transitions';
 import { usePresetsStore } from '~/stores/presets.store';
@@ -104,14 +106,14 @@ const actions = computed(() => {
     >
       <template #body>
         <div class="flex flex-col gap-4">
-          <UFormField :label="t('common.name', 'Name')">
+          <UiFormField :label="t('common.name', 'Name')">
             <UiTextInput
               v-model="newPresetName"
               :placeholder="t('fastcat.effects.presetNamePlaceholder', 'My Custom Preset')"
               autofocus
               @keyup.enter="handleSavePreset"
             />
-          </UFormField>
+          </UiFormField>
           <div class="flex justify-end gap-2">
             <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">
               {{ t('common.cancel', 'Cancel') }}

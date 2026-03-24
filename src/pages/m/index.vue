@@ -8,6 +8,8 @@ import UiSelect from '~/components/ui/UiSelect.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import ProjectThumbnail from '~/components/startup/ProjectThumbnail.vue';
 import EditorSettingsModal from '~/components/settings/EditorSettingsModal.vue';
+import UiFormField from '~/components/ui/UiFormField.vue';
+
 
 definePageMeta({
   layout: 'mobile',
@@ -220,17 +222,14 @@ const smartSortedProjects = computed(() => {
     :ui="{ content: 'sm:max-w-lg max-h-[90vh]', body: 'overflow-y-auto' }"
   >
     <div class="space-y-6">
-      <div class="space-y-2">
-        <label class="text-sm font-medium text-slate-200">
-          {{ t('fastcat.projects.projectNamePlaceholder') }}
-        </label>
+      <UiFormField :label="t('fastcat.projects.projectNamePlaceholder')">
         <UInput
           v-model="projectCreationSettings.name"
           :placeholder="t('fastcat.projects.projectNamePlaceholder')"
           autofocus
           @keyup.enter="createNewProject"
         />
-      </div>
+      </UiFormField>
 
       <div
         v-if="!projectCreationSettings.isAdvancedSettingsOpen"
@@ -261,7 +260,7 @@ const smartSortedProjects = computed(() => {
 
         <template #content>
           <div class="pt-4 border-t border-slate-800 mt-2">
-            <UFormField :label="t('videoEditor.export.presetLabel', 'Preset')" class="mb-4">
+            <UiFormField :label="t('videoEditor.export.presetLabel', 'Preset')" class="mb-4">
               <UiSelect
                 v-model="projectCreationSettings.presetId"
                 :items="projectPresetOptions"
@@ -275,7 +274,7 @@ const smartSortedProjects = computed(() => {
                     )
                 "
               />
-            </UFormField>
+            </UiFormField>
 
             <MediaResolutionSettings
               v-model:width="projectCreationSettings.width"

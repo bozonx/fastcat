@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import UiModal from '~/components/ui/UiModal.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
+import UiFormField from '~/components/ui/UiFormField.vue';
+
 import { computed, ref } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import SelectEffectModal from '~/components/effects/SelectEffectModal.vue';
@@ -203,14 +205,14 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
     >
       <template #body>
         <div class="flex flex-col gap-4">
-          <UFormField :label="t('common.name', 'Name')">
+          <UiFormField :label="t('common.name', 'Name')">
             <UiTextInput
               v-model="newPresetName"
               :placeholder="t('fastcat.effects.presetNamePlaceholder', 'My Custom Preset')"
               autofocus
               @keyup.enter="handleSavePreset"
             />
-          </UFormField>
+          </UiFormField>
           <div class="flex justify-end gap-2">
             <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">
               {{ t('common.cancel', 'Cancel') }}

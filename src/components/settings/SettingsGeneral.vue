@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import UiFormField from '~/components/ui/UiFormField.vue';
+
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
@@ -63,7 +65,7 @@ function clearCache() {
       </UButton>
     </div>
 
-    <UFormField :label="t('videoEditor.settings.uiLanguage', 'Interface language')">
+    <UiFormField :label="t('videoEditor.settings.uiLanguage', 'Interface language')">
       <UiSelect
         v-model="workspaceStore.userSettings.locale"
         :items="[
@@ -80,27 +82,27 @@ function clearCache() {
               | 'ru-RU')
         "
       />
-    </UFormField>
+    </UiFormField>
 
-    <UFormField :label="t('videoEditor.settings.uiInterfaceScale', 'Interface scale (px)')">
+    <UiFormField :label="t('videoEditor.settings.uiInterfaceScale', 'Interface scale (px)')">
       <UiWheelNumberInput
         v-model="workspaceStore.userSettings.ui.interfaceScale"
         :min="10"
         :max="24"
         :step="1"
       />
-    </UFormField>
+    </UiFormField>
 
-    <UFormField>
+    <UiFormField>
       <label class="flex items-center gap-2 cursor-pointer">
         <UCheckbox v-model="workspaceStore.userSettings.openLastProjectOnStart" />
         <span class="text-ui-text">
           {{ t('videoEditor.settings.openLastProjectOnStart', 'Open last project on start') }}
         </span>
       </label>
-    </UFormField>
+    </UiFormField>
 
-    <UFormField>
+    <UiFormField>
       <label class="flex items-center gap-2 cursor-pointer">
         <UCheckbox v-model="workspaceStore.userSettings.deleteWithoutConfirmation" />
         <span class="text-ui-text">
@@ -109,9 +111,9 @@ function clearCache() {
           }}
         </span>
       </label>
-    </UFormField>
+    </UiFormField>
 
-    <UFormField
+    <UiFormField
       :label="
         t('videoEditor.settings.defaultTransitionDuration', 'Default transition duration (s)')
       "
@@ -128,14 +130,14 @@ function clearCache() {
             ))
         "
       />
-    </UFormField>
+    </UiFormField>
 
     <div class="flex flex-col gap-6 pt-4 border-t border-ui-border">
       <div class="text-xs font-semibold text-ui-text-muted uppercase tracking-wide">
         {{ t('videoEditor.settings.advancedSection', 'Advanced') }}
       </div>
 
-      <UFormField
+      <UiFormField
         :label="
           t('videoEditor.settings.defaultStaticClipDuration', 'Default static clip duration (s)')
         "
@@ -153,9 +155,9 @@ function clearCache() {
               ))
           "
         />
-      </UFormField>
+      </UiFormField>
 
-      <UFormField
+      <UiFormField
         :label="t('videoEditor.settings.stopFramesQuality', 'Stop frame quality')"
         :help="t('videoEditor.settings.stopFramesQualityHint')"
       >
@@ -165,9 +167,9 @@ function clearCache() {
           :max="100"
           :step="1"
         />
-      </UFormField>
+      </UiFormField>
 
-      <UFormField
+      <UiFormField
         :label="t('videoEditor.settings.mediaTaskConcurrency', 'Media tasks concurrency')"
         :help="t('videoEditor.settings.mediaTaskConcurrencyHelp')"
       >
@@ -177,7 +179,7 @@ function clearCache() {
           :max="20"
           :step="1"
         />
-      </UFormField>
+      </UiFormField>
 
       <label class="flex items-center gap-3 cursor-pointer">
         <UCheckbox v-model="workspaceStore.userSettings.deleteWithoutConfirmation" />
@@ -186,7 +188,7 @@ function clearCache() {
         </span>
       </label>
 
-      <UFormField
+      <UiFormField
         :label="t('videoEditor.settings.defaultAudioFadeCurveTitle', 'Default Fade Curve')"
         :help="t('videoEditor.settings.defaultAudioFadeCurveHint')"
       >
@@ -226,7 +228,7 @@ function clearCache() {
             Linear
           </UButton>
         </div>
-      </UFormField>
+      </UiFormField>
 
       <div class="flex items-center justify-between gap-3 pt-2">
         <div class="flex flex-col gap-0.5">

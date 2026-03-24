@@ -2,6 +2,8 @@
 import { reactive, computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
+import UiFormField from '~/components/ui/UiFormField.vue';
+
 import {
   resolveExternalServiceConfig,
   runExternalHealthCheck,
@@ -125,15 +127,15 @@ function getHealthTone(status: typeof healthState.status) {
       </span>
     </label>
 
-    <UFormField :label="t('videoEditor.settings.integrationBaseUrl', 'Base URL')">
+    <UiFormField :label="t('videoEditor.settings.integrationBaseUrl', 'Base URL')">
       <UiTextInput
         v-model="workspaceStore.userSettings.integrations.manualSttApi.baseUrl"
         full-width
         placeholder="https://api.example.com/api/v1/external/stt"
       />
-    </UFormField>
+    </UiFormField>
 
-    <UFormField :label="t('videoEditor.settings.integrationBearerToken', 'Bearer token')">
+    <UiFormField :label="t('videoEditor.settings.integrationBearerToken', 'Bearer token')">
       <UiTextInput
         v-model="workspaceStore.userSettings.integrations.manualSttApi.bearerToken"
         full-width
@@ -141,19 +143,19 @@ function getHealthTone(status: typeof healthState.status) {
         autocomplete="off"
         placeholder="Bearer token"
       />
-    </UFormField>
+    </UiFormField>
 
-    <UFormField :label="t('videoEditor.settings.integrationSttProvider', 'Provider')">
+    <UiFormField :label="t('videoEditor.settings.integrationSttProvider', 'Provider')">
       <UiTextInput
         v-model="workspaceStore.userSettings.integrations.stt.provider"
         full-width
         placeholder="assemblyai"
       />
-    </UFormField>
+    </UiFormField>
 
-    <UFormField :label="t('videoEditor.settings.integrationSttModels', 'Models')">
+    <UiFormField :label="t('videoEditor.settings.integrationSttModels', 'Models')">
       <UiTextInput v-model="sttModelsText" full-width placeholder="universal-3-pro, universal-2" />
-    </UFormField>
+    </UiFormField>
 
     <label class="flex items-center gap-3 cursor-pointer">
       <UCheckbox v-model="workspaceStore.userSettings.integrations.stt.restorePunctuation" />
