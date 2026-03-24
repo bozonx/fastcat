@@ -6,6 +6,7 @@ import MediaEncodingSettings, {
   type FormatOption,
 } from '~/components/media/MediaEncodingSettings.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
+import UiFormField from '~/components/ui/UiFormField.vue';
 import { resolveExportPreset } from '~/utils/settings/presets';
 
 interface Props {
@@ -89,10 +90,7 @@ function applyPreset(presetId: string) {
 
 <template>
   <div class="flex flex-col gap-6">
-    <div v-if="props.showPresets" class="flex flex-col gap-2">
-      <label class="text-xs text-ui-text-muted font-medium">
-        {{ t('videoEditor.export.presetLabel', 'Preset') }}
-      </label>
+    <UiFormField v-if="props.showPresets" :label="t('videoEditor.export.presetLabel', 'Preset')">
       <div class="flex items-center gap-2">
         <UiSelect
           v-model="preset"
@@ -107,7 +105,7 @@ function applyPreset(presetId: string) {
           "
         />
       </div>
-    </div>
+    </UiFormField>
 
     <MediaEncodingSettings
       v-model:output-format="outputFormat"
