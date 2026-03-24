@@ -33,16 +33,38 @@ let clipResetTimeoutId: ReturnType<typeof setTimeout> | null = null;
 const levelPercent = computed(() => getAudioMeterPercent(props.levelDb, -60, 12));
 const levelColorClass = computed(() => getAudioMeterColorClass(props.levelDb));
 
+function handleOutsideClick(event: MouseEvent) {
+  if (props.isRenaming && renameInput.value) {
+    const inputEl = (renameInput.value as any).input || (renameInput.value as any).$el;
+    if (inputEl && !inputEl.contains(event.target as Node)) {
+      confirmRename();
+    }
+  }
+}
+
 watch(
   () => props.isRenaming,
   async (val) => {
     if (val) {
       renameValue.value = props.track.name;
       await nextTick();
-      renameInput.value?.input?.focus();
-      renameInput.value?.input?.select();
+      const input = renameInput.value?.input;
+      if (input) {
+        input.focus();
+        input.select();
+        // Ensure selection happens after focus events settle
+        setTimeout(() => {
+          input.focus();
+          input.select();
+        }, 50);
+      }
+      // Listen for outside clicks to handle blur correctly when clicking non-focusable areas
+      window.addEventListener('mousedown', handleOutsideClick);
+    } else {
+      window.removeEventListener('mousedown', handleOutsideClick);
     }
   },
+  { immediate: true },
 );
 
 watch(
@@ -103,6 +125,7 @@ function toggleTrackLock(e: MouseEvent) {
 }
 
 onBeforeUnmount(() => {
+  window.removeEventListener('mousedown', handleOutsideClick);
   if (clipResetTimeoutId) {
     clearTimeout(clipResetTimeoutId);
     clipResetTimeoutId = null;
@@ -152,8 +175,8 @@ onBeforeUnmount(() => {
 
     <div class="flex-1 min-w-0 flex items-center overflow-hidden pl-1.5 z-10 relative">
       <div
-        class="max-w-full px-1 py-0.5 rounded transition-colors overflow-hidden"
-        :class="[isRenaming ? 'bg-ui-bg-elevated ring-1 ring-ui-border-accent' : '']"
+        class="max-w-full px-1 py-px transition-colors overflow-hidden"
+        :class="[isRenaming ? 'bg-ui-bg-elevated border border-ui-border-accent rounded-none shadow-none' : 'rounded']"
         :style="{
           backgroundColor:
             !isRenaming && isSelected && track.color && track.color !== '#2a2a2a'
@@ -166,13 +189,14 @@ onBeforeUnmount(() => {
           v-if="isRenaming"
           ref="renameInput"
           v-model="renameValue"
-          size="xs"
+          variant="none"
           class="w-full"
-          :ui="{ base: 'bg-transparent border-none text-[10px] font-medium p-0' }"
+          :ui="{
+            root: 'p-0 h-auto',
+            base: 'p-0 bg-transparent border-none shadow-none ring-0 focus:ring-0 !text-[10px] leading-3 font-medium select-text',
+          }"
           :style="{
-            width: `${Math.max(4, renameValue.length + 2)}ch`,
             minWidth: '4ch',
-            maxWidth: '100%',
           }"
           @click.stop
           @keydown.enter.stop="confirmRename"

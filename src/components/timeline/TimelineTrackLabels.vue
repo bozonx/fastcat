@@ -291,7 +291,7 @@ function onDragVirtualEnd() {
               :has-audio="trackHasAudio(track, mediaStore.mediaMetadata)"
               :level-db="timelineStore.audioLevels?.[track.id]?.peakDb"
               @select="onSelectTrack(track.id)"
-              @rename="(name) => timelineStore.renameTrack(track.id, name)"
+              @rename="(name) => { timelineStore.renameTrack(track.id, name); timelineStore.renamingTrackId = null; }"
               @cancel-rename="timelineStore.renamingTrackId = null"
               @resize-start="(e) => onResizeStart(track.id, e)"
               @mouseenter="timelineStore.hoveredTrackId = track.id"
