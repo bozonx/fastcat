@@ -230,6 +230,7 @@ function clampNumber(value: number, min: number, max: number): number {
               :step="1"
               :wheel-step-multiplier="10"
               :default-value="100"
+              full-width
             />
 
             <div class="flex items-center justify-center">
@@ -250,6 +251,7 @@ function clampNumber(value: number, min: number, max: number): number {
                 :step="1"
                 :wheel-step-multiplier="10"
                 :default-value="100"
+                full-width
               />
             </div>
             <div v-else />
@@ -301,6 +303,7 @@ function clampNumber(value: number, min: number, max: number): number {
                 :step="1"
                 :wheel-step-multiplier="10"
                 :default-value="0"
+                full-width
               />
             </div>
             <div class="flex items-center gap-1.5">
@@ -314,6 +317,7 @@ function clampNumber(value: number, min: number, max: number): number {
                 :step="1"
                 :wheel-step-multiplier="10"
                 :default-value="0"
+                full-width
               />
             </div>
           </div>
@@ -343,6 +347,7 @@ function clampNumber(value: number, min: number, max: number): number {
                 :min="0"
                 :wheel-step-multiplier="10"
                 :default-value="0"
+                full-width
               />
             </div>
             <div class="flex flex-col gap-0.5">
@@ -356,6 +361,7 @@ function clampNumber(value: number, min: number, max: number): number {
                 :min="0"
                 :wheel-step-multiplier="10"
                 :default-value="0"
+                full-width
               />
             </div>
             <div class="flex flex-col gap-0.5">
@@ -369,6 +375,7 @@ function clampNumber(value: number, min: number, max: number): number {
                 :min="0"
                 :wheel-step-multiplier="10"
                 :default-value="0"
+                full-width
               />
             </div>
             <div class="flex flex-col gap-0.5">
@@ -382,6 +389,7 @@ function clampNumber(value: number, min: number, max: number): number {
                 :min="0"
                 :wheel-step-multiplier="10"
                 :default-value="0"
+                full-width
               />
             </div>
           </div>

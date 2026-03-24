@@ -35,6 +35,7 @@ function selectPreset(value: number) {
       :step="0.001"
       :disabled="disabled"
       class="flex-1"
+      full-width
       @update:model-value="(v) => emit('update:modelValue', v)"
     />
     <UDropdownMenu

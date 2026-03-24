@@ -61,6 +61,7 @@ const { t } = useI18n();
             size="sm"
             :step="1"
             :min="1"
+            full-width
             @update:model-value="(v: any) => emit('updateTextStyle', { fontSize: Number(v) })"
           />
         </PropertyField>
@@ -153,6 +154,7 @@ const { t } = useI18n();
             :model-value="Number(clip.style?.lineHeight ?? 1.2)"
             size="sm"
             :step="0.1"
+            full-width
             @update:model-value="(v: any) => emit('updateTextStyle', { lineHeight: Number(v) })"
           />
         </PropertyField>
@@ -161,6 +163,7 @@ const { t } = useI18n();
             :model-value="Number(clip.style?.letterSpacing ?? 0)"
             size="sm"
             :step="1"
+            full-width
             @update:model-value="(v: any) => emit('updateTextStyle', { letterSpacing: Number(v) })"
           />
         </PropertyField>

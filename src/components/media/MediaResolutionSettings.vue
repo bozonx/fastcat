@@ -194,6 +194,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
             :min="2"
             :step="2"
             :disabled="disabled"
+            full-width
           />
         </UiFormField>
         <UiFormField :label="t('videoEditor.export.height', 'Height')" class="flex-1">
@@ -202,6 +203,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
             :min="2"
             :step="2"
             :disabled="disabled"
+            full-width
           />
         </UiFormField>
       </div>

@@ -91,6 +91,7 @@ function resetDefaults() {
           :min="0.1"
           :max="50"
           :step="0.1"
+          full-width
         />
       </UiFormField>
 
@@ -100,6 +101,7 @@ function resetDefaults() {
           :min="32"
           :max="512"
           :step="16"
+          full-width
         />
       </UiFormField>
     </div>
