@@ -109,25 +109,35 @@ export class TimelineFixedClipBuilder {
           s.lastVideoFrame = null;
         }
         if (s.bitmap) {
-          try { s.bitmap.close(); } catch {}
+          try {
+            s.bitmap.close();
+          } catch {}
           s.bitmap = null;
         }
       });
     };
 
-    const loadState = async (path: string): Promise<HudMediaState | null> => {
+    const loadState = async (params: {
+      path: string;
+      sourceKind?: string;
+    }): Promise<HudMediaState | null> => {
+      const { path, sourceKind } = params;
       const fileHandle = await deps.getFileHandleByPath(path);
       if (!fileHandle) return null;
       const file = (await deps.getFileByPath?.(path)) ?? (await fileHandle.getFile());
-      
-      const isImage = (typeof file?.type === 'string' && file.type.startsWith('image/')) ||
-                      path.match(/\.(jpe?g|png|webp|gif|svg)$/i);
-      
-      if (isImage) {
-        return await this.context.hudMediaLoader.loadImageState({
-          sourcePath: path,
-          deps,
-        });
+
+      // For explicit timeline sources skip image detection and load as video
+      if (sourceKind !== 'timeline') {
+        const isImage =
+          (typeof file?.type === 'string' && file.type.startsWith('image/')) ||
+          path.match(/\.(jpe?g|png|webp|gif|svg)$/i);
+
+        if (isImage) {
+          return await this.context.hudMediaLoader.loadImageState({
+            sourcePath: path,
+            deps,
+          });
+        }
       }
 
       try {
@@ -140,7 +150,7 @@ export class TimelineFixedClipBuilder {
           requestedSourceRangeDurationUs: 0,
           startUs: clip.startUs,
         });
-        
+
         if (loadedVideo) {
           return {
             sourcePath: path,
@@ -172,7 +182,7 @@ export class TimelineFixedClipBuilder {
     } else if (clip.hudMediaStates?.background?.sourcePath !== bgPath) {
       resetState(clip.hudMediaStates?.background);
       try {
-        const state = await loadState(bgPath);
+        const state = await loadState({ path: bgPath, sourceKind: clip.background?.sourceKind });
         if (state && clip.hudMediaStates) clip.hudMediaStates.background = state;
       } catch (e) {
         console.error('[VideoCompositor] Failed to load HUD background', e);
@@ -186,7 +196,10 @@ export class TimelineFixedClipBuilder {
     } else if (clip.hudMediaStates?.content?.sourcePath !== contentPath) {
       resetState(clip.hudMediaStates?.content);
       try {
-        const state = await loadState(contentPath);
+        const state = await loadState({
+          path: contentPath,
+          sourceKind: clip.content?.sourceKind,
+        });
         if (state && clip.hudMediaStates) clip.hudMediaStates.content = state;
       } catch (e) {
         console.error('[VideoCompositor] Failed to load HUD content', e);
@@ -200,7 +213,7 @@ export class TimelineFixedClipBuilder {
     } else if (clip.hudMediaStates?.frame?.sourcePath !== framePath) {
       resetState(clip.hudMediaStates?.frame);
       try {
-        const state = await loadState(framePath);
+        const state = await loadState({ path: framePath, sourceKind: clip.frame?.sourceKind });
         if (state && clip.hudMediaStates) clip.hudMediaStates.frame = state;
       } catch (e) {
         console.error('[VideoCompositor] Failed to load HUD frame', e);
@@ -221,10 +234,11 @@ export class TimelineFixedClipBuilder {
       const fileHandle = await deps.getFileHandleByPath(maskPath);
       if (!fileHandle) return;
       const file = (await deps.getFileByPath?.(maskPath)) ?? (await fileHandle.getFile());
-      
-      const isImage = (typeof file?.type === 'string' && file.type.startsWith('image/')) ||
-                      maskPath.match(/\.(jpe?g|png|webp|gif|svg)$/i);
-      
+
+      const isImage =
+        (typeof file?.type === 'string' && file.type.startsWith('image/')) ||
+        maskPath.match(/\.(jpe?g|png|webp|gif|svg)$/i);
+
       if (isImage) {
         clip.maskState = await this.context.hudMediaLoader.loadImageState({
           sourcePath: maskPath,
@@ -240,7 +254,7 @@ export class TimelineFixedClipBuilder {
           requestedSourceRangeDurationUs: 0,
           startUs: clip.startUs,
         });
-        
+
         if (loadedVideo) {
           clip.maskState = {
             sourcePath: maskPath,

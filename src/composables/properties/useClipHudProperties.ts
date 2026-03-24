@@ -50,7 +50,18 @@ export function useClipHudProperties(options: UseClipHudPropertiesOptions) {
     }
 
     const layer = keys[0] as 'background' | 'content' | 'frame';
-    const current = JSON.parse(JSON.stringify((clip.value as any)[layer] || {}));
+
+    // Read from the store directly to get the latest committed state.
+    // clip.value is a Vue prop that updates asynchronously through re-renders,
+    // so rapid successive calls within the same tick would read stale data.
+    const liveTrack = timelineStore.timelineDoc?.tracks?.find(
+      (t: any) => t.id === clip.value.trackId,
+    );
+    const liveClip = liveTrack?.items?.find(
+      (it: any) => it.kind === 'clip' && it.id === clip.value.id,
+    );
+    const layerSource = liveClip ?? clip.value;
+    const current = JSON.parse(JSON.stringify((layerSource as any)[layer] ?? {}));
 
     let target = current;
     for (let i = 1; i < keys.length - 1; i++) {
@@ -58,7 +69,7 @@ export function useClipHudProperties(options: UseClipHudPropertiesOptions) {
       if (!target[k]) target[k] = {};
       target = target[k];
     }
-    
+
     // For paths (empty string -> undefined)
     const lastKey = keys[keys.length - 1] as string;
     if (lastKey === 'path' && typeof value === 'string' && !value.trim()) {

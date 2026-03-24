@@ -56,6 +56,7 @@ export interface ColorParamControl extends BaseParamControl {
 export interface FileParamControl extends BaseParamControl {
   kind: 'file';
   key: string;
+  kindKey?: string;
   emptyLabel?: string;
   emptyLabelKey?: string;
   icon?: string;

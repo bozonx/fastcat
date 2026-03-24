@@ -216,6 +216,7 @@
       "rays": "Rays",
       "rename": "Rename clip",
       "reversed": "Reverse Playback",
+      "speedMultiplier": "Speed",
       "showInFileManager": "Show in File Manager",
       "goToTimeline": "Go to timeline",
       "showThumbnails": "Show thumbnails",
@@ -241,6 +242,14 @@
         "scale": "Scale (%)",
         "scaleX": "Scale X (%)",
         "scaleY": "Scale Y (%)",
+        "crop": "Crop (px)",
+        "cropTop": "Top",
+        "cropBottom": "Bottom",
+        "cropLeft": "Left",
+        "cropRight": "Right",
+        "position": "Position (px)",
+        "reflect": "Reflect",
+        "resetAll": "Reset All",
         "title": "Transform"
       },
       "mask": {
@@ -262,6 +271,7 @@
     "effects": {
       "add": "Add",
       "audioTitle": "Audio effects",
+      "videoTitle": "Video effects",
       "addEffect": "Add effect",
       "clipTitle": "Clip effects",
       "presetNamePlaceholder": "My Custom Preset",

@@ -241,6 +241,7 @@ export type HudType = 'media_frame';
 
 export interface HudMediaParams {
   source?: TimelineSourceRef;
+  sourceKind?: 'media' | 'timeline';
   transitionIn?: ClipTransition;
   transitionOut?: ClipTransition;
   effects?: ClipEffect[];
