@@ -12,7 +12,7 @@ const props = defineProps<{
     <div class="text-xs text-ui-text-muted truncate">
       {{ props.label }}
     </div>
-    <div class="text-xs text-ui-text wrap-break-word min-w-0">
+    <div class="text-ui-text wrap-break-word min-w-0">
       <slot>
         {{ props.value ?? '-' }}
       </slot>

@@ -22,7 +22,7 @@ const props = defineProps<Props>();
     :ui="{
       label: 'text-ui-text-muted font-medium mb-0',
       help: 'text-ui-text-muted/70 mt-1 text-xs',
-      description: 'text-ui-text-muted/70 mb-1',
+      description: 'text-ui-text-muted/70 mb-1 text-xs',
       error: 'text-error-500 mt-1',
     }"
   >
