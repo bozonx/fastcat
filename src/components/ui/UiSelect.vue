@@ -12,6 +12,7 @@ interface UiSelectProps {
   multiple?: boolean;
   fullWidth?: boolean;
   searchInput?: any;
+  searchable?: boolean;
 }
 
 
@@ -25,6 +26,7 @@ const props = withDefaults(defineProps<UiSelectProps>(), {
   multiple: false,
   fullWidth: false,
   searchInput: undefined,
+  searchable: undefined,
 });
 
 
@@ -44,7 +46,8 @@ const emit = defineEmits<{ (e: 'update:modelValue', value: unknown): void }>();
     :multiple="props.multiple"
     :class="props.fullWidth ? 'w-full' : 'w-auto min-w-20'"
     :ui="{ content: 'min-w-48' }"
-    :search-input="props.searchInput"
+    :searchable="props.searchable"
+    :search-input="props.searchable !== false ? props.searchInput : undefined"
     @update:model-value="(val: unknown) => emit('update:modelValue', val)"
 
   >
