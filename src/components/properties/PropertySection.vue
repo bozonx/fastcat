@@ -2,17 +2,19 @@
 const props = defineProps<{
   title?: string;
 }>();
+
+import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
 </script>
 
 <template>
   <div class="space-y-1 bg-ui-bg-elevated p-2 rounded border border-ui-border w-full">
-    <div
+    <UiFormSectionHeader
       v-if="props.title || $slots['header-actions']"
-      class="flex items-center justify-between text-2xs font-bold text-ui-text-muted uppercase tracking-widest border-b border-ui-border pb-1"
+      :title="props.title ?? ''"
+      class="border-b border-ui-border pb-1 mt-0! mb-1!"
     >
-      <span>{{ props.title }}</span>
       <slot name="header-actions" />
-    </div>
+    </UiFormSectionHeader>
     <div class="flex flex-col">
       <slot />
     </div>

@@ -4,6 +4,7 @@ import type { ParamControl } from '~/components/properties/params';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
+import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -24,9 +25,7 @@ const { t } = useI18n();
 <template>
   <PropertySection :title="t('fastcat.hudClip.hud')">
     <div class="flex flex-col gap-1 pb-4 border-b border-ui-border mb-4">
-      <span class="text-2xs text-ui-text-muted uppercase tracking-wider font-semibold">
-        {{ t('fastcat.effects.presetsTitle') }}
-      </span>
+      <UiFormSectionHeader :title="t('fastcat.effects.presetsTitle')" />
       <div class="flex gap-2">
         <UiSelect
           v-if="props.presets.length > 0"

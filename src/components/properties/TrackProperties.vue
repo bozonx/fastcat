@@ -16,6 +16,7 @@ import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
+import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
 import GenerateCaptionsModal from '~/components/properties/GenerateCaptionsModal.vue';
 
 const props = defineProps<{
@@ -295,9 +296,7 @@ const extraActions = computed(() => {
       <div class="flex flex-col w-full gap-4 py-1">
         <!-- Color Selection (Shared) -->
         <div class="flex flex-col gap-2">
-          <span class="text-2xs text-ui-text-muted uppercase tracking-wider font-bold">
-            {{ t('fastcat.track.color', 'Color') }}
-          </span>
+          <UiFormSectionHeader :title="t('fastcat.track.color', 'Color')" />
           <UiColorPicker
             :model-value="trackColor"
             mode="track"

@@ -11,7 +11,10 @@ defineProps<{
 </script>
 
 <template>
-  <h3 class="text-xs text-ui-text-muted font-bold uppercase tracking-wider mb-2 mt-4 first:mt-0 select-none">
-    {{ title }}
-  </h3>
+  <div class="flex items-center justify-between mb-2 mt-4 first:mt-0 select-none">
+    <h3 class="text-xs text-ui-text-muted font-bold uppercase tracking-wider">
+      {{ title }}
+    </h3>
+    <slot />
+  </div>
 </template>

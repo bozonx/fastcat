@@ -4,6 +4,7 @@ import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyField from '~/components/properties/PropertyField.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
+import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
 
 const props = defineProps<{
   clip: any;
@@ -30,9 +31,7 @@ const { t } = useI18n();
         v-if="props.presets.length > 0 || true"
         class="flex flex-col gap-1 pb-2 border-b border-ui-border mb-1"
       >
-        <span class="text-2xs text-ui-text-muted uppercase tracking-wider font-semibold">
-          {{ t('fastcat.effects.presetsTitle', 'Presets') }}
-        </span>
+        <UiFormSectionHeader :title="t('fastcat.effects.presetsTitle', 'Presets')" />
         <div class="flex gap-2">
           <UiSelect
             v-if="props.presets.length > 0"

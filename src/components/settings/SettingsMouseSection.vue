@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
+
 interface Props {
   title: string;
   infoTitle?: string;
@@ -11,9 +13,7 @@ defineProps<Props>();
 
 <template>
   <div class="flex flex-col gap-3">
-    <div class="px-1 text-2xs font-bold uppercase tracking-widest text-ui-text-muted">
-      {{ title }}
-    </div>
+    <UiFormSectionHeader :title="title" class="px-1" />
 
     <div class="overflow-hidden rounded-lg border border-ui-border bg-ui-bg">
       <table class="w-full border-collapse">
@@ -27,13 +27,13 @@ defineProps<Props>();
       class="mt-2 rounded border border-ui-border/30 bg-ui-bg-accent/5 px-1 py-1.5"
       :class="{ 'text-ui-text-muted': !infoTitle }"
     >
-      <div
-        v-if="infoTitle"
-        class="mb-1.5 flex items-center gap-1.5 px-1 text-2xs font-bold uppercase tracking-widest text-ui-text-muted"
-      >
-        <UIcon name="i-heroicons-information-circle" class="h-3 w-3" />
-        {{ infoTitle }}
-      </div>
+      <UiFormSectionHeader v-if="infoTitle" :title="infoTitle" class="px-1 mt-0! mb-1.5!">
+        <template #default>
+          <div class="flex items-center gap-1.5">
+            <UIcon name="i-heroicons-information-circle" class="h-3 w-3" />
+          </div>
+        </template>
+      </UiFormSectionHeader>
 
       <ul
         class="px-1"
