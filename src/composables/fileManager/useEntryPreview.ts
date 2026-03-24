@@ -186,7 +186,7 @@ export function useEntryPreview(params: {
         if (entry.path && params.getDirectoryHandleByPath) {
           const handle = await params.getDirectoryHandleByPath(entry.path);
           if (handle) {
-            const stats = await computeDirectoryStats(handle);
+            const stats = await computeDirectoryStats(handle, { recursiveFilesCount: false });
             if (stats) {
               size = stats.size;
               filesCount = stats.filesCount;

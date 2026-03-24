@@ -162,6 +162,8 @@ export function useFileBrowserEntries({
       if (entry.kind === 'file') {
         totalSize += entry.size || 0;
         fileCount++;
+      } else if (entry.kind === 'directory' && entry.path) {
+        totalSize += folderSizes.value[entry.path] || 0;
       }
     }
     return { totalSize: formatBytes(totalSize), fileCount };

@@ -365,14 +365,6 @@ useFileManagerPanelBootstrap({
           class="flex items-center gap-1 px-2 py-1 bg-ui-bg-accent/30 border-b border-ui-border/50"
         >
           <UButton
-            icon="i-heroicons-arrow-up-tray"
-            variant="ghost"
-            color="neutral"
-            size="xs"
-            :title="`${t('videoEditor.fileManager.actions.uploadFiles')} (Auto-detect folder)`"
-            @click="triggerFileUpload"
-          />
-          <UButton
             icon="i-heroicons-document-plus"
             variant="ghost"
             color="neutral"
@@ -397,6 +389,14 @@ useFileManagerPanelBootstrap({
                 source: 'local',
               } as FsEntry)
             "
+          />
+          <UButton
+            icon="i-heroicons-arrow-up-tray"
+            variant="ghost"
+            color="neutral"
+            size="xs"
+            :title="`${t('videoEditor.fileManager.actions.uploadFiles')} (Auto-detect folder)`"
+            @click="triggerFileUpload"
           />
           <div class="ml-auto">
             <UDropdownMenu :items="toolbarMenuItems" :ui="{ content: 'w-56' }">

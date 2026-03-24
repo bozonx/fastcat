@@ -502,6 +502,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
         :track="track"
         :zoom="timelineStore.timelineZoom"
         :clip-width-px="clipWidthPx"
+        :track-height="trackHeight"
         :selected-transition="selectedTransition"
         :can-edit="canEditClipContent"
         @select="(e, payload) => emit('selectTransition', e, payload)"
