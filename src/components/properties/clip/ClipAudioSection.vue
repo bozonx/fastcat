@@ -83,7 +83,7 @@ const fadeCurveOptions = [
               <UiWheelNumberInput
                 :model-value="props.audioFadeInSec"
                 size="sm"
-                class="w-full"
+                full-width
                 :step="0.1"
                 :wheel-step-multiplier="10"
                 :min="0"
@@ -116,7 +116,7 @@ const fadeCurveOptions = [
               <UiWheelNumberInput
                 :model-value="props.audioFadeOutSec"
                 size="sm"
-                class="w-full"
+                full-width
                 :step="0.1"
                 :wheel-step-multiplier="10"
                 :min="0"

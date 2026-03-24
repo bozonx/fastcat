@@ -12,6 +12,7 @@ interface UiWheelNumberInputProps {
   size?: '2xs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   disabled?: boolean;
   defaultValue?: number;
+  fullWidth?: boolean;
 }
 
 const props = withDefaults(defineProps<UiWheelNumberInputProps>(), {
@@ -21,6 +22,7 @@ const props = withDefaults(defineProps<UiWheelNumberInputProps>(), {
   wheelStepMultiplier: 1,
   size: 'sm',
   disabled: false,
+  fullWidth: false,
 });
 
 const emit = defineEmits<{
@@ -75,7 +77,12 @@ function onPointerDown(e: PointerEvent) {
 </script>
 
 <template>
-  <div ref="wrapperRef" class="relative group max-w-24" @pointerdown.capture="onPointerDown">
+  <div
+    ref="wrapperRef"
+    class="relative group"
+    :class="fullWidth ? 'w-full' : 'max-w-24'"
+    @pointerdown.capture="onPointerDown"
+  >
     <UInput
       v-model="value"
       type="number"

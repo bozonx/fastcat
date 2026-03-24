@@ -20,9 +20,11 @@ const props = withDefaults(
     values: Record<string, unknown>;
     size?: 'xs' | 'sm' | 'md';
     asContents?: boolean;
+    forceFullWidth?: boolean;
   }>(),
   {
     asContents: false,
+    forceFullWidth: false,
     size: 'sm',
   },
 );
@@ -185,6 +187,7 @@ function handleArrayItemUpdate(
           :values="values"
           :size="size"
           as-contents
+          :force-full-width="!!(control.kind === 'row' && control.columns && control.columns > 1)"
           @update:value="(key, value) => updateValue(key, value)"
         />
       </div>
@@ -250,6 +253,7 @@ function handleArrayItemUpdate(
           :max="control.max"
           :step="control.step ?? 1"
           :disabled="control.disabled"
+          :full-width="props.forceFullWidth"
           @update:model-value="(value: number) => updateValue(control.key, Number(value))"
         />
       </div>
@@ -305,6 +309,7 @@ function handleArrayItemUpdate(
             :max="control.max"
             :step="control.step ?? 1"
             :disabled="control.disabled"
+            full-width
             @update:model-value="
               (value: number) => {
                 const numValue = Number(value);
@@ -358,6 +363,7 @@ function handleArrayItemUpdate(
             :max="control.max"
             :step="control.step ?? 1"
             :disabled="control.disabled"
+            full-width
             @update:model-value="
               (value: number) => {
                 const numValue = Number(value);
