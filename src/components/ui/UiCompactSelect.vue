@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, nextTick } from 'vue';
 
 defineOptions({ inheritAttrs: false });
 
@@ -36,6 +36,13 @@ const ui = computed(() => ({
   trailing: 'ps-0 pe-0.5',
   trailingIcon: 'w-3 h-3',
 }));
+
+function onUpdate(val: unknown) {
+  emit('update:modelValue', val);
+  nextTick(() => {
+    (document.activeElement as HTMLElement)?.blur();
+  });
+}
 </script>
 
 <template>
@@ -52,7 +59,7 @@ const ui = computed(() => ({
     :class="props.fullWidth ? 'w-full' : 'w-auto'"
     :ui="ui"
     :search-input="props.searchInput"
-    @update:model-value="(val: unknown) => emit('update:modelValue', val)"
+    @update:model-value="onUpdate"
   >
     <template v-for="(_, slot) in $slots" #[slot]="slotProps">
       <slot :name="slot" v-bind="slotProps" />

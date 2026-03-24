@@ -51,6 +51,7 @@ const emit = defineEmits<{
 }>();
 
 function onClick(event: MouseEvent) {
+  (event.currentTarget as HTMLElement).blur();
   emit('click', event);
   if (props.noToggle || props.disabled) return;
   emit('update:modelValue', !props.modelValue);

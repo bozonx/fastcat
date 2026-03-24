@@ -237,7 +237,10 @@ function onToolbarContextMenu(e: MouseEvent) {
             variant="solid"
             icon="i-heroicons-musical-note"
             class="h-6 text-2xs px-2 gap-1 font-bold animate-pulse hover:animate-none"
-            @click="timelineStore.unsoloAllTracks"
+            @click="(e) => {
+              timelineStore.unsoloAllTracks();
+              (e.currentTarget as HTMLElement).blur();
+            }"
           >
             {{ t('fastcat.timeline.soloActive', 'SOLO ACTIVE') }}
           </UButton>
@@ -260,7 +263,10 @@ function onToolbarContextMenu(e: MouseEvent) {
             class="hover:bg-ui-bg"
             @dragstart="onDragStart($event, 'adjustment')"
             @dragend="onDragEnd"
-            @click="timelineStore.addAdjustmentClipAtPlayhead()"
+            @click="(e) => {
+              timelineStore.addAdjustmentClipAtPlayhead();
+              (e.currentTarget as HTMLElement).blur();
+            }"
           />
         </UiTooltip>
         <UiTooltip
@@ -275,7 +281,10 @@ function onToolbarContextMenu(e: MouseEvent) {
             class="hover:bg-ui-bg"
             @dragstart="onDragStart($event, 'background')"
             @dragend="onDragEnd"
-            @click="timelineStore.addBackgroundClipAtPlayhead()"
+            @click="(e) => {
+              timelineStore.addBackgroundClipAtPlayhead();
+              (e.currentTarget as HTMLElement).blur();
+            }"
           />
         </UiTooltip>
         <UiTooltip
@@ -290,7 +299,10 @@ function onToolbarContextMenu(e: MouseEvent) {
             class="hover:bg-ui-bg"
             @dragstart="onDragStart($event, 'text')"
             @dragend="onDragEnd"
-            @click="timelineStore.addTextClipAtPlayhead()"
+            @click="(e) => {
+              timelineStore.addTextClipAtPlayhead();
+              (e.currentTarget as HTMLElement).blur();
+            }"
           />
         </UiTooltip>
       </div>

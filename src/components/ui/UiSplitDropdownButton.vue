@@ -45,6 +45,7 @@ function onMainClick() {
 function onMainButtonClick(event: MouseEvent) {
   event.preventDefault();
   event.stopPropagation();
+  (event.currentTarget as HTMLElement).blur();
   onMainClick();
 }
 </script>
