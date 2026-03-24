@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiFormField from '~/components/ui/UiFormField.vue';
 import SettingsSection from './SettingsSection.vue';
 
 const { t } = useI18n();
@@ -23,16 +24,14 @@ const audioDeclickDurationMs = computed({
     :title="t('videoEditor.projectSettings.advanced', 'Advanced')"
     :summary="t('videoEditor.projectSettings.advanced', 'Advanced')"
   >
-    <UFormField :label="t('videoEditor.settings.audioDeclickDuration', 'Audio De-click Duration') + ' (ms)'">
+    <UiFormField
+      :label="t('videoEditor.settings.audioDeclickDuration', 'Audio De-click Duration') + ' (ms)'"
+      :help="t(
+        'videoEditor.settings.audioDeclickDurationHelp',
+        'Micro-fades (linear) applied to edges of all clips to eliminate clicks. 0 disables it.',
+      )"
+    >
       <UiWheelNumberInput v-model="audioDeclickDurationMs" :min="0" :max="500" :step="1" />
-      <template #help>
-        {{
-          t(
-            'videoEditor.settings.audioDeclickDurationHelp',
-            'Micro-fades (linear) applied to edges of all clips to eliminate clicks. 0 disables it.',
-          )
-        }}
-      </template>
-    </UFormField>
+    </UiFormField>
   </SettingsSection>
 </template>

@@ -6,6 +6,7 @@ import { resolveProjectPreset } from '~/utils/settings';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import SettingsSection from './SettingsSection.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
+import UiFormField from '~/components/ui/UiFormField.vue';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
@@ -48,7 +49,7 @@ function applyProjectPreset(presetId: string) {
     :title="t('videoEditor.projectSettings.resolutionAndFps', 'Resolution & FPS')"
     :summary="resolutionSummary"
   >
-    <UFormField :label="t('videoEditor.export.presetLabel', 'Preset')">
+    <UiFormField :label="t('videoEditor.export.presetLabel', 'Preset')">
       <UiSelect
         v-model="workspaceStore.userSettings.projectPresets.selectedPresetId"
         :items="projectPresetOptions"
@@ -57,7 +58,7 @@ function applyProjectPreset(presetId: string) {
         full-width
         @update:model-value="(val) => applyProjectPreset(val as string)"
       />
-    </UFormField>
+    </UiFormField>
 
     <MediaResolutionSettings
       v-model:width="projectStore.projectSettings.project.width"
