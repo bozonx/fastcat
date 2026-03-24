@@ -10,6 +10,7 @@ import UiFormField from '~/components/ui/UiFormField.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import ProjectThumbnail from '~/components/startup/ProjectThumbnail.vue';
 import EditorSettingsModal from '~/components/settings/EditorSettingsModal.vue';
+import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -103,9 +104,10 @@ const smartSortedProjects = computed(() => {
 
       <div class="flex flex-col gap-4">
         <div class="flex items-center justify-between">
-          <h3 class="font-medium text-ui-text-muted uppercase text-xs tracking-wider">
-            {{ t('fastcat.projects.title') }} ({{ workspaceStore.projects.length }})
-          </h3>
+          <UiFormSectionHeader
+            :title="`${t('fastcat.projects.title')} (${workspaceStore.projects.length})`"
+            class="mt-0! mb-0!"
+          />
           <div class="w-64">
             <UiSearchInput
               v-model="searchQuery"

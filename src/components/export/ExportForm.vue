@@ -8,6 +8,7 @@ import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
+import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
 
 import {
   BASE_VIDEO_CODEC_OPTIONS,
@@ -304,11 +305,8 @@ async function onConfirm() {
 
         <div class="h-px bg-ui-border"></div>
 
-        <!-- Metadata Section -->
         <div class="space-y-4">
-          <div class="font-semibold text-ui-text text-sm">
-            {{ t('videoEditor.export.metadata', 'Metadata') }}
-          </div>
+          <UiFormSectionHeader :title="t('videoEditor.export.metadata', 'Metadata')" />
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <UiFormField :label="t('videoEditor.export.metadataTitle', 'Title')">

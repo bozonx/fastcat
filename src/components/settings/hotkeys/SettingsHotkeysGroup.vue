@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
+import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
 
 const props = defineProps<{
   groupId: string;
@@ -49,9 +50,7 @@ function getTitleParts(cmdId: HotkeyCommandId) {
 
 <template>
   <div class="flex flex-col gap-3">
-    <div class="text-2xs font-bold text-ui-text-muted uppercase tracking-widest px-1">
-      {{ title }}
-    </div>
+    <UiFormSectionHeader :title="title" class="px-1" />
 
     <div class="overflow-hidden rounded-lg border border-ui-border bg-ui-bg">
       <table class="w-full border-collapse">
