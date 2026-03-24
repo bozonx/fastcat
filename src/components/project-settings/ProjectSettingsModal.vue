@@ -75,7 +75,7 @@ async function resetToDefaults() {
   exportEncoding.exportAlpha = eDefaults.exportAlpha;
 
   // Reset advanced settings
-  projectStore.projectSettings.project.audioDeclickDurationUs = 10000;
+  projectStore.projectSettings.project.audioDeclickDurationUs = workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs;
 
   // Reset selected preset IDs to defaults
   workspaceStore.userSettings.projectPresets.selectedPresetId = DEFAULT_PROJECT_PRESET_ID;

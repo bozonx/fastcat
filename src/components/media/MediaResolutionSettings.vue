@@ -163,7 +163,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
             full-width
             value-key="value"
             label-key="label"
-            :searchable="false"
+            :search-input="false"
           />
         </div>
 
@@ -179,7 +179,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
             full-width
             value-key="value"
             label-key="label"
-            :searchable="false"
+            :search-input="false"
           />
         </div>
 
@@ -259,7 +259,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
             full-width
             value-key="value"
             label-key="label"
-            :searchable="false"
+            :search-input="false"
           />
         </div>
       </template>

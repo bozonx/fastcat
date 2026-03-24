@@ -12,7 +12,6 @@ interface UiSelectProps {
   multiple?: boolean;
   fullWidth?: boolean;
   searchInput?: any;
-  searchable?: boolean;
 }
 
 
@@ -26,7 +25,6 @@ const props = withDefaults(defineProps<UiSelectProps>(), {
   multiple: false,
   fullWidth: false,
   searchInput: undefined,
-  searchable: undefined,
 });
 
 
@@ -46,10 +44,8 @@ const emit = defineEmits<{ (e: 'update:modelValue', value: unknown): void }>();
     :multiple="props.multiple"
     :class="props.fullWidth ? 'w-full' : 'w-auto min-w-20'"
     :ui="{ content: 'min-w-48' }"
-    :searchable="props.searchable"
-    :search-input="props.searchable !== false ? props.searchInput : undefined"
+    :search-input="props.searchInput"
     @update:model-value="(val: unknown) => emit('update:modelValue', val)"
-
   >
     <template v-for="(_, slot) in $slots" #[slot]="slotProps">
       <slot :name="slot" v-bind="slotProps" />

@@ -151,9 +151,6 @@ watch(
 
 <template>
   <div class="flex flex-col gap-4">
-    <div class="text-sm font-semibold text-ui-text uppercase tracking-wider">
-      {{ t('videoEditor.export.encodingSettings', 'Encoding settings') }}
-    </div>
 
     <div class="flex flex-col gap-2">
       <label class="text-xs text-ui-text-muted font-medium">
@@ -189,7 +186,7 @@ watch(
           :disabled="props.disabled || props.isLoadingCodecSupport"
           size="sm"
           full-width
-          :searchable="false"
+          :search-input="false"
           @update:model-value="
             (v: unknown) => (videoCodec = (v as { value: string })?.value ?? (v as string))
           "
