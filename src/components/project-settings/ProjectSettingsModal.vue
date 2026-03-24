@@ -4,7 +4,7 @@ import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import { ref, computed } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { resolveExportPreset, resolveProjectPreset } from '~/utils/settings';
+import { resolveExportPreset, resolveProjectPreset, DEFAULT_PROJECT_PRESET_ID, DEFAULT_EXPORT_PRESET_ID } from '~/utils/settings';
 
 import ResolutionSettings from './ResolutionSettings.vue';
 import ExportSettings from './ExportSettings.vue';
@@ -73,6 +73,13 @@ async function resetToDefaults() {
   exportEncoding.bitrateMode = eDefaults.bitrateMode;
   exportEncoding.keyframeIntervalSec = eDefaults.keyframeIntervalSec;
   exportEncoding.exportAlpha = eDefaults.exportAlpha;
+
+  // Reset advanced settings
+  projectStore.projectSettings.project.audioDeclickDurationUs = 10000;
+
+  // Reset selected preset IDs to defaults
+  workspaceStore.userSettings.projectPresets.selectedPresetId = DEFAULT_PROJECT_PRESET_ID;
+  workspaceStore.userSettings.exportPresets.selectedPresetId = DEFAULT_EXPORT_PRESET_ID;
 
   await projectStore.saveProjectMeta({
     title: '',

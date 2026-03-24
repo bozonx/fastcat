@@ -189,6 +189,7 @@ watch(
           :disabled="props.disabled || props.isLoadingCodecSupport"
           size="sm"
           full-width
+          :searchable="false"
           @update:model-value="
             (v: unknown) => (videoCodec = (v as { value: string })?.value ?? (v as string))
           "

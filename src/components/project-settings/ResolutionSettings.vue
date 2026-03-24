@@ -55,6 +55,7 @@ function applyProjectPreset(presetId: string) {
         value-key="value"
         label-key="label"
         full-width
+        :searchable="false"
         @update:model-value="(val) => applyProjectPreset(val as string)"
       />
     </UFormField>
