@@ -29,6 +29,7 @@ export interface WorkerTimelineClip {
   hudType?: import('~/timeline/types').HudType;
   background?: import('~/timeline/types').HudMediaParams;
   content?: import('~/timeline/types').HudMediaParams;
+  frame?: import('~/timeline/types').HudMediaParams;
   freezeFrameSourceUs?: number;
   opacity?: number;
   blendMode?: import('~/timeline/types').TimelineBlendMode;
