@@ -32,19 +32,22 @@ export function isDynamicPanelFocus(
 }
 
 export function isPropertiesPanelFocus(panelId: string | null | undefined): boolean {
-  return panelId === 'properties' || String(panelId) === 'dynamic:properties';
+  if (!panelId) return false;
+  return panelId === 'properties' || String(panelId).startsWith('dynamic:properties:');
 }
 
 export function isPreviewPanelFocus(panelId: string | null | undefined): boolean {
   if (!panelId) return false;
-  if (panelId === 'monitor' || String(panelId).startsWith('dynamic:monitor')) return false;
+  if (panelId === 'monitor' || String(panelId).startsWith('dynamic:monitor:')) return false;
 
+  const id = String(panelId);
   return (
-    panelId === 'project' ||
-    panelId === 'left' ||
-    panelId === 'right' ||
-    isPropertiesPanelFocus(panelId) ||
-    isDynamicPanelFocus(panelId)
+    id === 'project' ||
+    id === 'left' ||
+    id === 'right' ||
+    isPropertiesPanelFocus(id) ||
+    (id.startsWith('dynamic:') &&
+      ['media', 'text', 'fileManager', 'library'].includes(id.split(':')[1] || ''))
   );
 }
 
@@ -53,7 +56,12 @@ export function isPlaybackPanelFocus(panelId: string | null | undefined): boolea
 }
 
 export function isTimelineHotkeyPanelFocus(panelId: string | null | undefined): boolean {
-  return panelId === 'timeline' || panelId === 'audioMixer';
+  if (!panelId) return false;
+  return (
+    panelId === 'timeline' ||
+    panelId === 'audioMixer' ||
+    String(panelId).startsWith('dynamic:fileManager:')
+  );
 }
 
 function toLegacyTempFocus(panelId: string | null | undefined): TempPanelFocus {

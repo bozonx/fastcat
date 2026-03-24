@@ -103,7 +103,9 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
   );
 
   function getDynamicPanelFocusId(panelId: string) {
-    return `dynamic:${panelId}` as const;
+    const panel = getPanelById(panelId);
+    if (!panel) return `dynamic:unknown:${panelId}` as const;
+    return `dynamic:${panel.type}:${panelId}` as const;
   }
 
   function focusDynamicPanel(panelId: string) {

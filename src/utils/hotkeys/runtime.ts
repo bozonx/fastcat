@@ -153,12 +153,22 @@ export function getMatchedHotkeyCommands(params: {
 }
 
 export function isPreviewLikeFocus(focusId: AnyPanelFocus): boolean {
-  return (
+  if (
     focusId === 'left' ||
     focusId === 'right' ||
     focusId === 'project' ||
-    String(focusId).startsWith('dynamic:')
-  );
+    focusId === 'filesBrowser'
+  ) {
+    return true;
+  }
+
+  if (String(focusId).startsWith('dynamic:')) {
+    const parts = String(focusId).split(':');
+    const type = parts[1];
+    return type === 'media' || type === 'text' || type === 'fileManager' || type === 'library';
+  }
+
+  return false;
 }
 
 export function isCommandMatched(params: {
