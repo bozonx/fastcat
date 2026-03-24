@@ -18,7 +18,7 @@ const props = defineProps<Props>();
 <template>
   <UFormField
     v-bind="props"
-    class="flex flex-col gap-1"
+    class="flex flex-col gap-1 text-base"
     :ui="{
       label: 'text-ui-text-muted font-medium mb-0',
       help: 'text-ui-text-muted/70 mt-1',
