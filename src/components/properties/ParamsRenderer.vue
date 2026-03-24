@@ -127,6 +127,10 @@ function handleFileDrop(event: DragEvent, control: FileParamControl) {
     const item = JSON.parse(raw);
     if (item && typeof item.path === 'string' && item.path) {
       updateValue(control.key, item.path);
+      if (control.kindKey) {
+        const sourceKind = item.kind === 'timeline' ? 'timeline' : 'media';
+        updateValue(control.kindKey, sourceKind);
+      }
     }
   } catch {
     return;
@@ -472,7 +476,7 @@ function handleArrayItemUpdate(
             size="2xs"
             color="gray"
             variant="ghost"
-            @click="updateValue(control.key, undefined)"
+            @click="() => { updateValue(control.key, undefined); if (control.kindKey) updateValue(control.kindKey, undefined); }"
           />
         </div>
       </div>

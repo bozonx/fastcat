@@ -34,6 +34,7 @@ registerHud({
     {
       kind: 'file',
       key: 'background.source.path',
+      kindKey: 'background.sourceKind',
       labelKey: 'fastcat.hudClip.background',
       emptyLabelKey: 'fastcat.hudClip.emptyLayer',
       icon: 'i-heroicons-photo',
@@ -101,6 +102,7 @@ registerHud({
     {
       kind: 'file',
       key: 'content.source.path',
+      kindKey: 'content.sourceKind',
       labelKey: 'fastcat.hudClip.content',
       emptyLabelKey: 'fastcat.hudClip.emptyLayer',
       icon: 'i-heroicons-video-camera',
@@ -210,6 +212,7 @@ registerHud({
     {
       kind: 'file',
       key: 'frame.source.path',
+      kindKey: 'frame.sourceKind',
       labelKey: 'fastcat.hudClip.frame',
       emptyLabelKey: 'fastcat.hudClip.emptyLayer',
       icon: 'i-heroicons-sparkles',

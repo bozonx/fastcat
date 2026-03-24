@@ -216,6 +216,7 @@
       "rays": "Лучи",
       "rename": "Переименовать клип",
       "reversed": "Обратное воспроизведение",
+      "speedMultiplier": "Скорость",
       "showInFileManager": "Показать в файловом менеджере",
       "goToTimeline": "Перейти к таймлайну",
       "showThumbnails": "Показать миниатюры",
@@ -241,6 +242,14 @@
         "scale": "Масштаб (%)",
         "scaleX": "Масштаб X (%)",
         "scaleY": "Масштаб Y (%)",
+        "crop": "Обрезка (px)",
+        "cropTop": "Сверху",
+        "cropBottom": "Снизу",
+        "cropLeft": "Слева",
+        "cropRight": "Справа",
+        "position": "Позиция (px)",
+        "reflect": "Отражение",
+        "resetAll": "Сбросить всё",
         "title": "Трансформация"
       },
       "mask": {
@@ -262,6 +271,7 @@
     "effects": {
       "add": "Добавить",
       "audioTitle": "Аудиоэффекты",
+      "videoTitle": "Видеоэффекты",
       "addEffect": "Добавить эфф.",
       "clipTitle": "Эффекты клипа",
       "presetNamePlaceholder": "Мой пресет",
