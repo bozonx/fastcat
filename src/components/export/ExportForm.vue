@@ -7,6 +7,8 @@ import { useFileManager } from '~/composables/fileManager/useFileManager';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
+import UiFormField from '~/components/ui/UiFormField.vue';
+
 import {
   BASE_VIDEO_CODEC_OPTIONS,
   BASE_AUDIO_CODEC_OPTIONS,
@@ -184,7 +186,7 @@ async function onConfirm() {
         </div>
 
         <div class="flex flex-col gap-1.5">
-          <UFormField
+          <UiFormField
             :label="t('videoEditor.export.filename', 'Filename')"
             :error="filenameError ?? undefined"
           >
@@ -194,7 +196,7 @@ async function onConfirm() {
               :disabled="isExporting"
               :placeholder="t('videoEditor.export.filenamePlaceholder', 'e.g. video.mp4')"
             />
-          </UFormField>
+          </UiFormField>
           <div class="text-sm text-ui-text-muted flex items-center gap-1.5 mt-1">
             <UIcon name="i-heroicons-information-circle" class="w-4 h-4 shrink-0" />
             <span class="leading-relaxed">
@@ -309,26 +311,26 @@ async function onConfirm() {
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <UFormField :label="t('videoEditor.export.metadataTitle', 'Title')">
+            <UiFormField :label="t('videoEditor.export.metadataTitle', 'Title')">
               <UiTextInput v-model="metadataTitle" :disabled="isExporting" full-width />
-            </UFormField>
-            <UFormField :label="t('videoEditor.export.metadataAuthor', 'Author')">
+            </UiFormField>
+            <UiFormField :label="t('videoEditor.export.metadataAuthor', 'Author')">
               <UiTextInput v-model="metadataAuthor" :disabled="isExporting" full-width />
-            </UFormField>
+            </UiFormField>
           </div>
 
-          <UFormField :label="t('videoEditor.export.metadataDescription', 'Description')">
+          <UiFormField :label="t('videoEditor.export.metadataDescription', 'Description')">
             <UTextarea
               v-model="metadataDescription"
               :disabled="isExporting"
               class="w-full"
               :rows="3"
             />
-          </UFormField>
+          </UiFormField>
 
-          <UFormField :label="t('videoEditor.export.metadataTags', 'Tags')">
+          <UiFormField :label="t('videoEditor.export.metadataTags', 'Tags')">
             <UiTextInput v-model="metadataTags" :disabled="isExporting" full-width />
-          </UFormField>
+          </UiFormField>
         </div>
 
         <div class="h-px bg-ui-border"></div>

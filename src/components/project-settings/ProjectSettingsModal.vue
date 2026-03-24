@@ -11,6 +11,7 @@ import ExportSettings from './ExportSettings.vue';
 import AdvancedSettings from './AdvancedSettings.vue';
 import MetadataSettings from './MetadataSettings.vue';
 import StorageSettings from './StorageSettings.vue';
+import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
 import SettingsSection from './SettingsSection.vue';
 
 const props = defineProps<{
@@ -165,19 +166,15 @@ async function resetToDefaults() {
 
       <div class="h-px bg-ui-border"></div>
 
-      <div class="space-y-4 pt-4 px-0">
-        <h3 class="text-lg font-semibold text-ui-text px-1">
-          {{ t('videoEditor.projectSettings.metadata', 'Metadata') }}
-        </h3>
+      <div class="space-y-2 pt-2 px-0">
+        <UiFormSectionHeader :title="t('videoEditor.projectSettings.metadata', 'Metadata')" />
         <MetadataSettings />
       </div>
 
       <div class="h-px bg-ui-border"></div>
 
-      <div class="space-y-4 pt-4 px-0">
-        <h3 class="text-lg font-semibold text-ui-text px-1">
-          {{ t('videoEditor.projectSettings.storage', 'Storage') }}
-        </h3>
+      <div class="space-y-2 pt-2 px-0">
+        <UiFormSectionHeader :title="t('videoEditor.projectSettings.storage', 'Storage')" />
         <StorageSettings
           @clear-temp="isClearProjectVardataConfirmOpen = true"
           @delete-project="isDeleteProjectConfirmOpen = true"

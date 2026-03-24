@@ -2,6 +2,8 @@
 import { reactive, computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
+import UiFormField from '~/components/ui/UiFormField.vue';
+
 import {
   resolveExternalServiceConfig,
   runExternalHealthCheck,
@@ -117,15 +119,15 @@ function getHealthTone(status: typeof healthState.status) {
       </span>
     </label>
 
-    <UFormField :label="t('videoEditor.settings.integrationBaseUrl', 'Base URL')">
+    <UiFormField :label="t('videoEditor.settings.integrationBaseUrl', 'Base URL')">
       <UiTextInput
         v-model="workspaceStore.userSettings.integrations.manualFilesApi.baseUrl"
         full-width
         placeholder="https://api.example.com/api/v1/external/vfs"
       />
-    </UFormField>
+    </UiFormField>
 
-    <UFormField :label="t('videoEditor.settings.integrationBearerToken', 'Bearer token')">
+    <UiFormField :label="t('videoEditor.settings.integrationBearerToken', 'Bearer token')">
       <UiTextInput
         v-model="workspaceStore.userSettings.integrations.manualFilesApi.bearerToken"
         full-width
@@ -133,7 +135,7 @@ function getHealthTone(status: typeof healthState.status) {
         autocomplete="off"
         placeholder="Bearer token"
       />
-    </UFormField>
+    </UiFormField>
 
     <div class="flex flex-wrap gap-2">
       <UButton color="neutral" variant="soft" :loading="healthState.loading" @click="runHealth">

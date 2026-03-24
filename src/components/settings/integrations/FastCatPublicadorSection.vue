@@ -2,6 +2,8 @@
 import { reactive, computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
+import UiFormField from '~/components/ui/UiFormField.vue';
+
 import { FASTCAT_PUBLICADOR_APP_NAME } from '~/utils/constants';
 import {
   getFastCatPublicadorConnectUrl,
@@ -133,7 +135,7 @@ function getHealthTone(status: typeof healthState.status) {
       {{ FASTCAT_PUBLICADOR_APP_NAME }}
     </div>
 
-    <UFormField :label="t('videoEditor.settings.integrationBearerToken', 'Bearer token')">
+    <UiFormField :label="t('videoEditor.settings.integrationBearerToken', 'Bearer token')">
       <UiTextInput
         v-model="workspaceStore.userSettings.integrations.fastcatPublicador.bearerToken"
         full-width
@@ -141,7 +143,7 @@ function getHealthTone(status: typeof healthState.status) {
         autocomplete="off"
         placeholder="gp_token_..."
       />
-    </UFormField>
+    </UiFormField>
 
     <div class="flex flex-wrap gap-2">
       <UButton

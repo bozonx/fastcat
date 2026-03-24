@@ -3,6 +3,8 @@ import { useProjectStore } from '~/stores/project.store';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
+import UiFormField from '~/components/ui/UiFormField.vue';
+
 import { computed, ref, onMounted } from 'vue';
 import { useExportForm } from '~/composables/timeline/export/useExportForm';
 
@@ -92,17 +94,17 @@ async function onStartExport() {
 
     <!-- Main Settings -->
     <div class="space-y-4">
-      <UFormField :label="$t('videoEditor.export.filename')" :error="filenameError ?? undefined">
+      <UiFormField :label="$t('videoEditor.export.filename')" :error="filenameError ?? undefined">
         <UiTextInput
           v-model="outputFilename"
           placeholder="video_name"
           :disabled="isExporting"
           full-width
         />
-      </UFormField>
+      </UiFormField>
 
       <div class="grid grid-cols-2 gap-4">
-        <UFormField :label="$t('videoEditor.export.outputFormat')">
+        <UiFormField :label="$t('videoEditor.export.outputFormat')">
           <UiSelect
             v-model="outputFormat"
             :items="formatOptions"
@@ -111,8 +113,8 @@ async function onStartExport() {
             full-width
             :disabled="isExporting"
           />
-        </UFormField>
-        <UFormField :label="$t('videoEditor.export.videoBitrate')">
+        </UiFormField>
+        <UiFormField :label="$t('videoEditor.export.videoBitrate')">
           <UiSelect
             :model-value="bitrateMbps"
             :items="qualityOptions"
@@ -124,7 +126,7 @@ async function onStartExport() {
               (v: unknown) => (bitrateMbps = Number((v as { value: number })?.value ?? v))
             "
           />
-        </UFormField>
+        </UiFormField>
       </div>
 
       <div class="space-y-3 rounded-xl border border-slate-800 bg-slate-900/50 p-3">
@@ -173,7 +175,7 @@ async function onStartExport() {
             {{ $t('common.audio') }}
           </p>
           <div class="grid grid-cols-2 gap-4">
-            <UFormField :label="$t('videoEditor.export.audioCodec')">
+            <UiFormField :label="$t('videoEditor.export.audioCodec')">
               <UiSelect
                 v-model="audioCodec"
                 :items="[
@@ -185,8 +187,8 @@ async function onStartExport() {
                 full-width
                 :disabled="isExporting"
               />
-            </UFormField>
-            <UFormField :label="$t('videoEditor.audio.sampleRate')">
+            </UiFormField>
+            <UiFormField :label="$t('videoEditor.audio.sampleRate')">
               <UiSelect
                 :model-value="audioSampleRate"
                 :items="[
@@ -201,9 +203,9 @@ async function onStartExport() {
                   (v: unknown) => (audioSampleRate = Number((v as { value: number })?.value ?? v))
                 "
               />
-            </UFormField>
+            </UiFormField>
           </div>
-          <UFormField :label="$t('videoEditor.export.audioBitrate')">
+          <UiFormField :label="$t('videoEditor.export.audioBitrate')">
             <UiWheelNumberInput
               v-model="audioBitrateKbps"
               :min="64"
@@ -216,7 +218,7 @@ async function onStartExport() {
                 <span class="text-xs text-slate-500">kbps</span>
               </template>
             </UiWheelNumberInput>
-          </UFormField>
+          </UiFormField>
         </div>
 
         <div class="space-y-4 rounded-xl border border-slate-800/80 bg-slate-900/40 p-3">
@@ -224,39 +226,39 @@ async function onStartExport() {
             {{ $t('videoEditor.export.metadata') }}
           </p>
           <div class="grid grid-cols-1 gap-4">
-            <UFormField :label="$t('videoEditor.export.metadataTitle')">
+            <UiFormField :label="$t('videoEditor.export.metadataTitle')">
               <UiTextInput
                 v-model="metadataTitle"
                 :placeholder="$t('videoEditor.export.metadataTitle')"
                 :disabled="isExporting"
                 full-width
               />
-            </UFormField>
-            <UFormField :label="$t('videoEditor.export.metadataDescription')">
+            </UiFormField>
+            <UiFormField :label="$t('videoEditor.export.metadataDescription')">
               <UiTextInput
                 v-model="metadataDescription"
                 :placeholder="$t('videoEditor.export.metadataDescription')"
                 :disabled="isExporting"
                 full-width
               />
-            </UFormField>
-            <UFormField :label="$t('videoEditor.export.metadataAuthor')">
+            </UiFormField>
+            <UiFormField :label="$t('videoEditor.export.metadataAuthor')">
               <UiTextInput
                 v-model="metadataAuthor"
                 :placeholder="$t('videoEditor.export.metadataAuthor')"
                 :disabled="isExporting"
                 full-width
               />
-            </UFormField>
+            </UiFormField>
           </div>
-          <UFormField :label="$t('videoEditor.export.metadataTags')">
+          <UiFormField :label="$t('videoEditor.export.metadataTags')">
             <UTextarea
               v-model="metadataTags"
               placeholder="tag1, tag2"
               :rows="2"
               :disabled="isExporting"
             />
-          </UFormField>
+          </UiFormField>
         </div>
       </div>
     </div>

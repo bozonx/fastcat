@@ -9,6 +9,8 @@ import {
 } from '~/utils/settings/videoDiagnostics';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiFormField from '~/components/ui/UiFormField.vue';
+
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -109,7 +111,7 @@ function resetDefaults() {
       </div>
 
       <div class="flex flex-col gap-4">
-        <UFormField
+        <UiFormField
           :label="t('videoEditor.settings.videoFrameCacheMb', 'Video frame cache (MB)')"
           :help="
             t(
@@ -125,7 +127,7 @@ function resetDefaults() {
             :step="16"
             class="max-w-xs"
           />
-        </UFormField>
+        </UiFormField>
       </div>
 
       <div
