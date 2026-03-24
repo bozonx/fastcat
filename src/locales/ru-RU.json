@@ -489,6 +489,7 @@
     "hudClip": {
       "background": "Фон",
       "content": "Содержимое",
+      "frame": "Рамка",
       "emptyLayer": "Пустой слой",
       "hud": "HUD",
       "type": "Тип",
@@ -555,6 +556,20 @@
       "switchToDesktop": "Переключиться на настольный вид",
       "switchToMobile": "Переключиться на мобильный вид",
       "title": "Проекты"
+    },
+    "properties": {
+      "blur": "Размытие",
+      "color": "Цвет",
+      "fadeIn": "Появление",
+      "fadeOut": "Затухание",
+      "offsetX": "Смещение X",
+      "offsetY": "Смещение Y",
+      "positionX": "Позиция X",
+      "positionY": "Позиция Y",
+      "scale": "Масштаб",
+      "scaleX": "Масштаб X",
+      "scaleY": "Масштаб Y",
+      "shadow": "Тень"
     },
     "selectionRange": {
       "actions": "Действия",
