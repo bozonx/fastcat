@@ -162,7 +162,7 @@ watch(
       />
       <div
         v-if="codecHint"
-        class="text-xs text-ui-text-muted bg-ui-bg-accent/30 px-3 py-2 rounded border border-ui-border"
+        class="text-xs text-ui-text-muted bg-ui-bg-accent/30 px-3 py-2 rounded border border-ui-border mt-2"
       >
         {{ codecHint }}
       </div>
