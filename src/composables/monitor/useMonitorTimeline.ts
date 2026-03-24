@@ -254,8 +254,20 @@ export function useMonitorTimeline() {
           if (hudItem.background?.source?.path) {
             hash = mixHash(hash, hashString(hudItem.background.source.path));
           }
+          if (hudItem.background?.sourceKind) {
+            hash = mixHash(hash, hashString(String(hudItem.background.sourceKind)));
+          }
           if (hudItem.content?.source?.path) {
             hash = mixHash(hash, hashString(hudItem.content.source.path));
+          }
+          if (hudItem.content?.sourceKind) {
+            hash = mixHash(hash, hashString(String(hudItem.content.sourceKind)));
+          }
+          if (hudItem.frame?.source?.path) {
+            hash = mixHash(hash, hashString(hudItem.frame.source.path));
+          }
+          if (hudItem.frame?.sourceKind) {
+            hash = mixHash(hash, hashString(String(hudItem.frame.sourceKind)));
           }
         }
       }
