@@ -23,7 +23,7 @@ const audioDeclickDurationMs = computed({
     :title="t('videoEditor.projectSettings.advanced', 'Advanced')"
     :summary="t('videoEditor.projectSettings.advanced', 'Advanced')"
   >
-    <UFormField :label="t('videoEditor.settings.audioDeclickDuration', 'Audio De-click Duration')">
+    <UFormField :label="t('videoEditor.settings.audioDeclickDuration', 'Audio De-click Duration') + ' (ms)'">
       <UiWheelNumberInput v-model="audioDeclickDurationMs" :min="0" :max="500" :step="1" />
       <template #help>
         {{

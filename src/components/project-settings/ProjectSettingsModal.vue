@@ -158,21 +158,24 @@ async function resetToDefaults() {
 
       <div class="h-px bg-ui-border"></div>
 
-      <SettingsSection
-        :title="t('videoEditor.projectSettings.metadata', 'Metadata')"
-        :summary="projectStore.projectMeta?.title || t('videoEditor.projectSettings.metadata', 'Metadata')"
-      >
+      <div class="space-y-4 pt-4 px-0">
+        <h3 class="text-lg font-semibold text-ui-text px-1">
+          {{ t('videoEditor.projectSettings.metadata', 'Metadata') }}
+        </h3>
         <MetadataSettings />
-      </SettingsSection>
+      </div>
 
       <div class="h-px bg-ui-border"></div>
 
-      <SettingsSection :title="t('videoEditor.projectSettings.storage', 'Storage')">
+      <div class="space-y-4 pt-4 px-0">
+        <h3 class="text-lg font-semibold text-ui-text px-1">
+          {{ t('videoEditor.projectSettings.storage', 'Storage') }}
+        </h3>
         <StorageSettings
           @clear-temp="isClearProjectVardataConfirmOpen = true"
           @delete-project="isDeleteProjectConfirmOpen = true"
         />
-      </SettingsSection>
+      </div>
     </div>
 
     <template #footer>
