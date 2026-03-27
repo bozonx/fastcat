@@ -125,10 +125,10 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'general.rename', groupId: 'general', title: 'Rename' },
     { id: 'general.undo', groupId: 'general', title: 'Undo' },
     { id: 'general.redo', groupId: 'general', title: 'Redo' },
-    { id: 'general.mute', groupId: 'general', title: 'Toggle Mute' },
+    { id: 'general.mute', groupId: 'general', title: 'Toggle Monitor Mute' },
     { id: 'general.addMarker', groupId: 'general', title: 'Create marker at playhead' },
-    { id: 'general.volumeUp', groupId: 'general', title: 'Volume Up' },
-    { id: 'general.volumeDown', groupId: 'general', title: 'Volume Down' },
+    { id: 'general.volumeUp', groupId: 'general', title: 'Increase Monitor Volume' },
+    { id: 'general.volumeDown', groupId: 'general', title: 'Decrease Monitor Volume' },
 
     { id: 'general.fullscreen', groupId: 'general', title: 'Fullscreen' },
     { id: 'general.zoomIn', groupId: 'general', title: 'Zoom in' },
