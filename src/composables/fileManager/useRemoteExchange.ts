@@ -12,12 +12,16 @@ import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import {
+  createRemoteCollection,
   createRemoteMediaFsEntry,
+  deleteRemoteCollection,
+  deleteRemoteItem,
   fetchRemoteVfsList,
   getRemoteEntryDisplayName,
   getRemoteFileDownloadUrl,
   getRemoteThumbnailUrl,
   getRemoteMediaKind,
+  searchRemoteVfs,
   toRemoteFsEntry,
   uploadFileToRemote,
 } from '~/utils/remote-vfs';
@@ -43,9 +47,9 @@ export function useRemoteExchange() {
     resolveExternalServiceConfig({
       service: 'files',
       integrations: workspaceStore.userSettings.integrations,
-      fastcatPublicadorBaseUrl:
-        typeof runtimeConfig.public.fastcatPublicadorBaseUrl === 'string'
-          ? runtimeConfig.public.fastcatPublicadorBaseUrl
+      bloggerDogApiUrl:
+        typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
+          ? runtimeConfig.public.bloggerDogApiUrl
           : '',
     }),
   );

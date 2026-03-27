@@ -15,7 +15,7 @@ interface UseFilePropertiesTranscriptionOptions {
   currentProjectId: Ref<string | null | undefined>;
   resolvedStorageTopology: Ref<ResolvedStorageTopology>;
   userSettings: Ref<FastCatUserSettings>;
-  fastcatPublicadorBaseUrl: Ref<string>;
+  bloggerDogApiUrl: Ref<string>;
   getFileByPath: (path: string) => Promise<File | null | undefined>;
   toast: { add: (payload: { title: string; description?: string; color?: string }) => void };
   t: (key: string, fallback?: string) => string;
@@ -135,12 +135,12 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
         fileName: selectedEntry.name,
         fileType: getMimeTypeFromFilename(selectedEntry.name),
         language: transcriptionLanguage.value,
-        fastcatPublicadorBaseUrl: options.fastcatPublicadorBaseUrl.value,
+        bloggerDogApiUrl: options.bloggerDogApiUrl.value,
         projectId: options.currentProjectId.value,
         userSettings: options.userSettings.value,
         workspaceHandle: options.workspaceHandle.value,
         resolvedStorageTopology: options.resolvedStorageTopology.value,
-      });
+      } as any);
 
       latestTranscriptionText.value = extractTranscriptionText(result.record.response);
       latestTranscriptionCacheKey.value = result.cacheKey;

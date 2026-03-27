@@ -62,24 +62,29 @@ vi.stubGlobal('useHead', () => {});
 vi.stubGlobal('useRuntimeConfig', () => ({
   public: {},
 }));
-vi.stubGlobal('useNuxtApp', () => ({
-  $notificationService: {
-    add: vi.fn(),
-  },
-  $i18nService: {
-    t: (key: string, fallback?: string) => fallback ?? key,
-  },
-}));
-vi.stubGlobal('useI18n', () => ({
-  t: (key: string, fallback?: string) => fallback ?? key,
-  locale: ref('en'),
-}));
-vi.stubGlobal('useToast', () => ({
-  add: vi.fn(),
-}));
 
 config.global.config.warnHandler = (msg) => {
   if (typeof msg === 'string' && msg.includes('<Suspense> is an experimental feature')) return;
+};
+
+// Global stubs for Nuxt UI components that rely on specific providers or contexts
+config.global.stubs = {
+  ...config.global.stubs,
+  UTooltip: {
+    template: '<span><slot /></span>',
+  },
+  UContextMenu: {
+    template: '<div><slot /></div>',
+  },
+  UIcon: {
+    template: '<span class="ui-icon-mock" />',
+  },
+  UButton: {
+    template: '<button><slot /></button>',
+  },
+  UTabs: {
+    template: '<div><slot /></div>',
+  },
 };
 
 function shouldIgnoreConsoleMessage(args: unknown[]) {

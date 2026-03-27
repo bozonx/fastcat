@@ -65,14 +65,14 @@ const {
 
 const fileInput = ref<HTMLInputElement | null>(null);
 
-const fastcatPublicadorBaseUrl =
-  typeof runtimeConfig.public.fastcatPublicadorBaseUrl === 'string'
-    ? runtimeConfig.public.fastcatPublicadorBaseUrl
+const bloggerDogApiUrl =
+  typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
+    ? runtimeConfig.public.bloggerDogApiUrl
     : '';
 
 const stt = useFileManagerPanelStt({
   vfs: { getFile: (path) => vfs.getFile(path) },
-  fastcatPublicadorBaseUrl,
+  bloggerDogApiUrl,
   onSuccess: ({ cached, mediaType }) => {
     toast.add({
       title: cached

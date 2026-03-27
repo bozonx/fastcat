@@ -43,7 +43,8 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      fastcatPublicadorBaseUrl: process.env.FASTCAT_PUBLICADOR_BASE_URL || '',
+      bloggerDogApiUrl: '',
+      bloggerDogUiUrl: '',
     },
   },
 
