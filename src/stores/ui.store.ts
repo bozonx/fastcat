@@ -133,7 +133,7 @@ export const useUiStore = defineStore('ui', () => {
   function triggerPreviewZoomReset() {
     previewZoomResetTrigger.value = Date.now();
   }
-  
+
   function triggerPreviewZoomFit() {
     previewZoomFitTrigger.value = Date.now();
   }
@@ -145,7 +145,7 @@ export const useUiStore = defineStore('ui', () => {
   function triggerMonitorZoomReset() {
     monitorZoomResetTrigger.value = Date.now();
   }
-  
+
   function triggerMonitorZoomFit() {
     monitorZoomFitTrigger.value = Date.now();
   }

@@ -1,9 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { formatAudioChannels } from '~/utils/audio';
-import {
-  getGainAtClipTime,
-  resolveEffectiveFadeDurationsSeconds,
-} from '~/utils/audio/envelope';
+import { getGainAtClipTime, resolveEffectiveFadeDurationsSeconds } from '~/utils/audio/envelope';
 
 describe('utils/audio', () => {
   it('formatAudioChannels formats channel count', () => {

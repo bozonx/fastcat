@@ -123,7 +123,10 @@ function getHealthTone(status: typeof healthState.status) {
         </span>
       </label>
 
-      <div v-show="isManualSttEnabled" class="flex flex-col gap-4 border-l-2 border-primary-500/30 pl-4 py-1">
+      <div
+        v-show="isManualSttEnabled"
+        class="flex flex-col gap-4 border-l-2 border-primary-500/30 pl-4 py-1"
+      >
         <UiFormField :label="t('videoEditor.settings.integrationBaseUrl', 'Base URL')">
           <UiTextInput
             v-model="workspaceStore.userSettings.integrations.manualSttApi.baseUrl"
@@ -151,14 +154,20 @@ function getHealthTone(status: typeof healthState.status) {
         </UiFormField>
 
         <UiFormField :label="t('videoEditor.settings.integrationSttModels', 'Models')">
-          <UiTextInput v-model="sttModelsText" full-width placeholder="universal-3-pro, universal-2" />
+          <UiTextInput
+            v-model="sttModelsText"
+            full-width
+            placeholder="universal-3-pro, universal-2"
+          />
         </UiFormField>
 
         <div class="flex flex-col gap-2">
           <label class="flex items-center gap-3 cursor-pointer">
             <UCheckbox v-model="workspaceStore.userSettings.integrations.stt.restorePunctuation" />
             <span class="text-sm text-ui-text">
-              {{ t('videoEditor.settings.integrationSttRestorePunctuation', 'Restore punctuation') }}
+              {{
+                t('videoEditor.settings.integrationSttRestorePunctuation', 'Restore punctuation')
+              }}
             </span>
           </label>
 

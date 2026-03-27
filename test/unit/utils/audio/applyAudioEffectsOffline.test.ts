@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { applyAudioEffects, applyAudioEffectsOffline } from '~/utils/audio/applyAudioEffectsOffline';
+import {
+  applyAudioEffects,
+  applyAudioEffectsOffline,
+} from '~/utils/audio/applyAudioEffectsOffline';
 import { buildAudioEffectGraph } from '~/utils/audio/effectGraph';
 
 vi.mock('~/utils/audio/effectGraph', () => ({
@@ -145,7 +148,7 @@ describe('applyAudioEffectsOffline', () => {
       expect(result).toBe(buffer);
       expect(consoleSpy).toHaveBeenCalledWith(
         '[applyAudioEffects] Failed to apply effects, using raw audio',
-        expect.any(Error)
+        expect.any(Error),
       );
       consoleSpy.mockRestore();
     });
@@ -216,7 +219,7 @@ describe('applyAudioEffectsOffline', () => {
       expect(result.frames).toBe(10);
       expect(consoleSpy).toHaveBeenCalledWith(
         '[applyAudioEffectsOffline] Failed to apply effects, using raw audio',
-        expect.any(Error)
+        expect.any(Error),
       );
       consoleSpy.mockRestore();
     });

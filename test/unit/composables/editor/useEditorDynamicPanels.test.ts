@@ -71,23 +71,24 @@ describe('useEditorDynamicPanels', () => {
     ];
   });
 
-  const createDragEvent = (overrides = {}): DragEvent => ({
-    preventDefault: vi.fn(),
-    dataTransfer: {
-      effectAllowed: 'uninitialized',
-      setData: vi.fn(),
-      getData: vi.fn(),
-      types: [],
-    },
-    currentTarget: {
-      getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }),
-      contains: vi.fn().mockReturnValue(false),
-    },
-    relatedTarget: null,
-    clientX: 10,
-    clientY: 10,
-    ...overrides,
-  } as unknown as DragEvent);
+  const createDragEvent = (overrides = {}): DragEvent =>
+    ({
+      preventDefault: vi.fn(),
+      dataTransfer: {
+        effectAllowed: 'uninitialized',
+        setData: vi.fn(),
+        getData: vi.fn(),
+        types: [],
+      },
+      currentTarget: {
+        getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }),
+        contains: vi.fn().mockReturnValue(false),
+      },
+      relatedTarget: null,
+      clientX: 10,
+      clientY: 10,
+      ...overrides,
+    }) as unknown as DragEvent;
 
   it('computes layout keys correctly', () => {
     const projectId = ref('test-proj');
@@ -157,7 +158,7 @@ describe('useEditorDynamicPanels', () => {
       { ...panelToMove },
       undefined,
       undefined,
-      'sound'
+      'sound',
     );
     expect(mockProjectStore.setView).toHaveBeenCalledWith('sound');
     expect(mockFocusStore.setPanelFocus).toHaveBeenCalledWith('dynamic:panel1');
@@ -176,7 +177,7 @@ describe('useEditorDynamicPanels', () => {
       expect(draggingPanelId.value).toBe('panel1');
       expect(event.dataTransfer?.setData).toHaveBeenCalledWith(
         'panel-drag',
-        JSON.stringify({ panelId: 'panel1', filePath: '/test.mp4', fileName: 'test.mp4' })
+        JSON.stringify({ panelId: 'panel1', filePath: '/test.mp4', fileName: 'test.mp4' }),
       );
     });
 
@@ -255,7 +256,9 @@ describe('useEditorDynamicPanels', () => {
       });
 
       // Mismatch
-      expect(getVerticalSize({ colId: 'col1', rowIndex: 0, totalRows: 3, view: 'sound' })).toBeUndefined();
+      expect(
+        getVerticalSize({ colId: 'col1', rowIndex: 0, totalRows: 3, view: 'sound' }),
+      ).toBeUndefined();
     });
   });
 });

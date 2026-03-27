@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue';
 import MediaPlayer from '~/components/media/MediaPlayer.vue';
 import ImageViewer from '~/components/preview/ImageViewer.vue';
 import TextEditor from '~/components/preview/TextEditor.vue';
 import { useUiStore } from '~/stores/ui.store';
 import type { PanelFocusId } from '~/stores/focus.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { computed } from 'vue';
 import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import {

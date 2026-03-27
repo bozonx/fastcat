@@ -167,7 +167,7 @@ function handleCurveChange(curve: TransitionCurve) {
     // Keep as is or remove params
   } else {
     // Reset to defaults for each type
-    let bulge = 0.8;
+    const bulge = 0.8;
     let offset = 0.5;
 
     if (curve === 'ease-in') offset = 1.0;
@@ -323,7 +323,10 @@ function handleSavePreset() {
     </UiFormField>
 
     <!-- Curve fine-tuning sliders -->
-    <div v-if="selectedCurve !== 'linear'" class="flex flex-col gap-2 p-2 bg-ui-bg/30 rounded border border-ui-border/50">
+    <div
+      v-if="selectedCurve !== 'linear'"
+      class="flex flex-col gap-2 p-2 bg-ui-bg/30 rounded border border-ui-border/50"
+    >
       <UiFormField :label="t('fastcat.timeline.transition.curveParamBulge')">
         <UiSliderInput
           :model-value="Number(selectedParams.curveBulge ?? 0.8)"
@@ -351,9 +354,27 @@ function handleSavePreset() {
           preserveAspectRatio="none"
         >
           <!-- Grid lines -->
-          <line x1="0" y1="50" x2="240" y2="50" stroke="currentColor" stroke-width="1" stroke-dasharray="4" opacity="0.1" />
-          <line x1="120" y1="0" x2="120" y2="100" stroke="currentColor" stroke-width="1" stroke-dasharray="4" opacity="0.1" />
-          
+          <line
+            x1="0"
+            y1="50"
+            x2="240"
+            y2="50"
+            stroke="currentColor"
+            stroke-width="1"
+            stroke-dasharray="4"
+            opacity="0.1"
+          />
+          <line
+            x1="120"
+            y1="0"
+            x2="120"
+            y2="100"
+            stroke="currentColor"
+            stroke-width="1"
+            stroke-dasharray="4"
+            opacity="0.1"
+          />
+
           <path
             :d="resultCurvePath"
             fill="none"

@@ -57,15 +57,11 @@ const trackAreaRef = ref<HTMLElement | null>(null);
 
 const { trackHeights } = storeToRefs(timelineStore);
 const timelineSplitKey = computed(() => `timeline-split-${currentView.value}`);
-const { 
-  sizes: timelineSplitSizes, 
+const {
+  sizes: timelineSplitSizes,
   onResized: onTimelineSplitResize,
-  reset: resetTimelineSplit 
-} = usePersistedSplitpanes(
-  timelineSplitKey.value,
-  currentProjectId,
-  [10, 90],
-);
+  reset: resetTimelineSplit,
+} = usePersistedSplitpanes(timelineSplitKey.value, currentProjectId, [10, 90]);
 
 const menuRef = ref<InstanceType<typeof UiContextMenuPortal> | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
@@ -101,7 +97,6 @@ const playheadPx = computed(() =>
 const playheadTransform = computed(
   () => `translate3d(${playheadPx.value}px, 0, 0) translateX(-50%)`,
 );
-
 
 const currentFrameHighlightStyle = computed(() => {
   const pxPerFrame = zoomToPxPerSecond(timelineStore.timelineZoom) / fps.value;
@@ -153,8 +148,8 @@ watch(
   },
 );
 
-const { onScroll, onLabelsScroll, startPan, onPanMove, stopPan, isPanning, hasPanned } = useTimelineScrollSync(
-  {
+const { onScroll, onLabelsScroll, startPan, onPanMove, stopPan, isPanning, hasPanned } =
+  useTimelineScrollSync({
     scrollEl,
     labelsScrollContainer: computed(
       () => timelineTrackLabelsRef.value?.labelsScrollContainer ?? null,
@@ -162,8 +157,7 @@ const { onScroll, onLabelsScroll, startPan, onPanMove, stopPan, isPanning, hasPa
     onScrollCallback: () => {
       if (scrollEl.value) scrollLeftRef.value = scrollEl.value.scrollLeft;
     },
-  },
-);
+  });
 
 const { handleZoomWheel, fitTimelineZoom } = useTimelineZoom({ scrollEl });
 const {
@@ -261,7 +255,9 @@ function onTimelineClick(e: MouseEvent) {
   }
 
   const isShift = isLayer1Active(e, workspaceStore.userSettings);
-  const action = isShift ? timelineMouseSettings.value.shiftClick : timelineMouseSettings.value.click;
+  const action = isShift
+    ? timelineMouseSettings.value.shiftClick
+    : timelineMouseSettings.value.click;
   handleTimelineClickAction(action, e);
 }
 
@@ -625,7 +621,10 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
             @pointerdown.capture="onTrackAreaPointerDownCapture"
             @auxclick="onTrackAreaAuxClick"
           >
-            <div ref="rulerContainerRef" class="relative shrink-0 z-10 timeline-ruler-container h-8">
+            <div
+              ref="rulerContainerRef"
+              class="relative shrink-0 z-10 timeline-ruler-container h-8"
+            >
               <TimelineRuler
                 class="h-full border-b border-ui-border bg-ui-bg-elevated cursor-pointer w-full"
                 :scroll-el="scrollEl"

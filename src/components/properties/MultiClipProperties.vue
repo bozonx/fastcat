@@ -615,24 +615,24 @@ const otherActions = computed(() => {
       <PropertyField :label="t('fastcat.timeline.durationShift', 'Duration Shift')" class="mt-2">
         <UiTimecode
           :model-value="durationShiftAccumulator"
-          @update:model-value="onDurationShiftChange"
           allow-negative
+          @update:model-value="onDurationShiftChange"
         />
       </PropertyField>
 
       <PropertyField :label="t('fastcat.timeline.startShift', 'Start Shift')" class="mt-2">
         <UiTimecode
           :model-value="startShiftAccumulator"
-          @update:model-value="onStartShiftChange"
           allow-negative
+          @update:model-value="onStartShiftChange"
         />
       </PropertyField>
 
       <PropertyField :label="t('fastcat.timeline.endShift', 'End Shift')" class="mt-2">
         <UiTimecode
           :model-value="endShiftAccumulator"
-          @update:model-value="onEndShiftChange"
           allow-negative
+          @update:model-value="onEndShiftChange"
         />
       </PropertyField>
     </PropertySection>

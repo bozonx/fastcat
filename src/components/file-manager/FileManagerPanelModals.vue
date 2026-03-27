@@ -5,7 +5,6 @@ import UiModal from '~/components/ui/UiModal.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 
-
 interface TimelineRef {
   timelineName: string;
   timelinePath: string;

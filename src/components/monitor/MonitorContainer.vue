@@ -404,30 +404,41 @@ onUnmounted(() => {
         @mouseenter="resetIdle"
       >
         <!-- Left cluster: utility buttons -->
-        <UiTooltip
-          :text="
-            getHotkeyTitle(t('fastcat.monitor.fullscreen', 'Fullscreen'), 'general.fullscreen')
-          "
-        >
-          <UiActionButton
-            v-if="effectiveFullscreen"
-            size="sm"
-            color="neutral"
-            variant="solid"
-            icon="i-heroicons-arrows-pointing-in"
-            :aria-label="t('common.back', 'Back')"
-            @click="exitBrowserFullscreen()"
-          />
-          <UiActionButton
-            v-else
-            size="xs"
-            color="neutral"
-            variant="ghost"
-            icon="i-heroicons-arrows-pointing-out"
-            :aria-label="t('fastcat.monitor.fullscreen', 'Fullscreen')"
-            @click="enterBrowserFullscreen()"
-          />
-        </UiTooltip>
+        <template v-if="effectiveFullscreen">
+          <UiTooltip
+            :text="
+              getHotkeyTitle(
+                t('fastcat.monitor.exitFullscreen', 'Exit fullscreen'),
+                'general.fullscreen',
+              )
+            "
+          >
+            <UiActionButton
+              size="sm"
+              color="neutral"
+              variant="solid"
+              icon="i-heroicons-arrows-pointing-in"
+              :aria-label="t('fastcat.monitor.exitFullscreen', 'Exit fullscreen')"
+              @click="exitBrowserFullscreen()"
+            />
+          </UiTooltip>
+        </template>
+        <template v-else>
+          <UiTooltip
+            :text="
+              getHotkeyTitle(t('fastcat.monitor.fullscreen', 'Fullscreen'), 'general.fullscreen')
+            "
+          >
+            <UiActionButton
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              icon="i-heroicons-arrows-pointing-out"
+              :aria-label="t('fastcat.monitor.fullscreen', 'Fullscreen')"
+              @click="enterBrowserFullscreen()"
+            />
+          </UiTooltip>
+        </template>
 
         <UiTooltip
           :text="
@@ -534,10 +545,10 @@ onUnmounted(() => {
         </UiCompactSelect>
 
         <!-- Playback buttons — right-click opens speed selector -->
-        <UiTooltip
-          :text="getHotkeyTitle(t('fastcat.monitor.rewind', 'Rewind'), 'playback.toStart')"
-        >
-          <UContextMenu :items="speedMenuItems">
+        <UContextMenu :items="speedMenuItems">
+          <UiTooltip
+            :text="getHotkeyTitle(t('fastcat.monitor.rewind', 'Rewind'), 'playback.toStart')"
+          >
             <UButton
               size="md"
               variant="ghost"
@@ -552,11 +563,11 @@ onUnmounted(() => {
                 }
               "
             />
-          </UContextMenu>
-        </UiTooltip>
+          </UiTooltip>
+        </UContextMenu>
 
-        <UiTooltip :text="t('fastcat.monitor.playBackward', 'Play backward') + ' (A)'">
-          <UContextMenu :items="speedMenuItems">
+        <UContextMenu :items="speedMenuItems">
+          <UiTooltip :text="t('fastcat.monitor.playBackward', 'Play backward') + ' (A)'">
             <UButton
               size="md"
               variant="ghost"
@@ -575,11 +586,11 @@ onUnmounted(() => {
               "
               @wheel.prevent="handleSpeedWheel"
             />
-          </UContextMenu>
-        </UiTooltip>
+          </UiTooltip>
+        </UContextMenu>
 
-        <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.play', 'Play'), 'playback.toggle')">
-          <UContextMenu :items="speedMenuItems">
+        <UContextMenu :items="speedMenuItems">
+          <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.play', 'Play'), 'playback.toggle')">
             <UButton
               size="md"
               variant="solid"
@@ -616,67 +627,7 @@ onUnmounted(() => {
                 </span>
               </div>
             </UButton>
-          </UContextMenu>
-        </UiTooltip>
-
-        <UContextMenu :items="speedMenuItems">
-          <UButton
-            size="md"
-            variant="ghost"
-            color="neutral"
-            icon="i-heroicons-backward"
-            :aria-label="t('fastcat.monitor.playBackward', 'Play backward')"
-            :disabled="!canInteractPlayback"
-            @click="
-              (e) => {
-                setPlayback({
-                  direction: 'backward',
-                  speed: selectedPlaybackSpeedOption?.value ?? 1,
-                });
-                (e.currentTarget as HTMLElement).blur();
-              }
-            "
-            @wheel.prevent="handleSpeedWheel"
-          />
-        </UContextMenu>
-
-        <UContextMenu :items="speedMenuItems">
-          <UButton
-            size="md"
-            variant="solid"
-            color="neutral"
-            class="relative overflow-hidden min-w-8 px-1.5"
-            :aria-label="t('fastcat.monitor.play', 'Play')"
-            :disabled="!canInteractPlayback"
-            @click="
-              (e) => {
-                setPlayback({
-                  direction: 'forward',
-                  speed: selectedPlaybackSpeedOption?.value ?? 1,
-                });
-                (e.currentTarget as HTMLElement).blur();
-              }
-            "
-            @wheel.prevent="handleSpeedWheel"
-          >
-            <div class="flex items-center justify-center">
-              <UIcon
-                :name="
-                  timelineStore.isPlaying
-                    ? 'i-heroicons-stop-20-solid'
-                    : 'i-heroicons-play-20-solid'
-                "
-                class="w-5 h-5"
-                :class="!timelineStore.isPlaying ? 'ml-0.5' : ''"
-              />
-              <span
-                class="absolute text-3xs font-mono leading-none opacity-90 pointer-events-none"
-                style="right: 4px; bottom: 0"
-              >
-                {{ selectedPlaybackSpeedOption?.label }}
-              </span>
-            </div>
-          </UButton>
+          </UiTooltip>
         </UContextMenu>
 
         <MonitorAudioControl :compact="toolbarPosition === 'left' || toolbarPosition === 'right'" />

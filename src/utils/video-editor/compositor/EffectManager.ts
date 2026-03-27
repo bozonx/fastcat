@@ -1,5 +1,4 @@
-import type { Filter, Container } from 'pixi.js';
-import type { TextureSource } from 'pixi.js';
+import type { Filter, Container, TextureSource } from 'pixi.js';
 import { getVideoEffectManifest } from '../../../effects';
 import type { VideoClipEffect } from '~/timeline/types';
 import type { CompositorClip, CompositorTrack } from './types';

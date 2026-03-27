@@ -5,11 +5,21 @@ import TimelineClip from '~/components/timeline/TimelineClip.vue';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 
 // Mock subcomponents
-vi.mock('~/components/timeline/ClipTransitions.vue', () => ({ default: { name: 'ClipTransitions', template: '<div></div>' } }));
-vi.mock('~/components/timeline/ClipAudioFades.vue', () => ({ default: { name: 'ClipAudioFades', template: '<div></div>' } }));
-vi.mock('~/components/timeline/ClipMetadata.vue', () => ({ default: { name: 'ClipMetadata', template: '<div></div>' } }));
-vi.mock('~/components/timeline/TimelineClipThumbnails.vue', () => ({ default: { name: 'TimelineClipThumbnails', template: '<div></div>' } }));
-vi.mock('~/components/timeline/audio/TimelineAudioWaveform.vue', () => ({ default: { name: 'TimelineAudioWaveform', template: '<div></div>' } }));
+vi.mock('~/components/timeline/ClipTransitions.vue', () => ({
+  default: { name: 'ClipTransitions', template: '<div></div>' },
+}));
+vi.mock('~/components/timeline/ClipAudioFades.vue', () => ({
+  default: { name: 'ClipAudioFades', template: '<div></div>' },
+}));
+vi.mock('~/components/timeline/ClipMetadata.vue', () => ({
+  default: { name: 'ClipMetadata', template: '<div></div>' },
+}));
+vi.mock('~/components/timeline/TimelineClipThumbnails.vue', () => ({
+  default: { name: 'TimelineClipThumbnails', template: '<div></div>' },
+}));
+vi.mock('~/components/timeline/audio/TimelineAudioWaveform.vue', () => ({
+  default: { name: 'TimelineAudioWaveform', template: '<div></div>' },
+}));
 
 const mockTimelineStore = reactive({
   timelineZoom: 1,
@@ -32,7 +42,7 @@ const mockTimelineStore = reactive({
 
 const mockMediaStore = reactive({
   mediaMetadata: {},
-  missingPaths: {}
+  missingPaths: {},
 });
 
 const mockSelectionStore = reactive({
@@ -44,9 +54,9 @@ const mockSelectionStore = reactive({
 const mockWorkspaceStore = reactive({
   userSettings: {
     timeline: {
-      defaultTransitionDurationUs: 1000000
-    }
-  }
+      defaultTransitionDurationUs: 1000000,
+    },
+  },
 });
 
 vi.mock('~/stores/timeline.store', () => ({ useTimelineStore: () => mockTimelineStore }));
@@ -54,7 +64,9 @@ vi.mock('~/stores/media.store', () => ({ useMediaStore: () => mockMediaStore }))
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelectionStore }));
 vi.mock('~/stores/ui.store', () => ({ useUiStore: () => ({ triggerScrollToEffects: vi.fn() }) }));
 vi.mock('~/stores/project.store', () => ({ useProjectStore: () => ({ projectSettings: {} }) }));
-vi.mock('~/stores/timeline-settings.store', () => ({ useTimelineSettingsStore: () => ({ toolbarDragModeEnabled: false, toolbarDragMode: 'move' }) }));
+vi.mock('~/stores/timeline-settings.store', () => ({
+  useTimelineSettingsStore: () => ({ toolbarDragModeEnabled: false, toolbarDragMode: 'move' }),
+}));
 vi.mock('~/stores/workspace.store', () => ({ useWorkspaceStore: () => mockWorkspaceStore }));
 vi.mock('~/stores/editor-view.store', () => ({ useEditorViewStore: () => ({}) }));
 vi.mock('~/stores/focus.store', () => ({ useFocusStore: () => ({}) }));
@@ -62,10 +74,10 @@ vi.mock('~/stores/files-page.store', () => ({ useFilesPageStore: () => ({}) }));
 vi.mock('~/stores/tabs.store', () => ({ useProjectTabsStore: () => ({ setActiveTab: vi.fn() }) }));
 
 vi.mock('~/composables/fileManager/useFileManager', () => ({
-  useFileManager: () => ({})
+  useFileManager: () => ({}),
 }));
 
-// We also need to mock useClipContextMenu to avoid errors with Vue Router or I18n internally, 
+// We also need to mock useClipContextMenu to avoid errors with Vue Router or I18n internally,
 // but wait, vitest.setup.ts already mocks vue-i18n. Let's see if it works without mocking useClipContextMenu.
 
 describe('TimelineClip', () => {
@@ -76,7 +88,13 @@ describe('TimelineClip', () => {
     mockTimelineStore.isTrimModeActive = false;
   });
 
-  const baseTrack = { id: 'track-1', kind: 'video', items: [], videoHidden: false, audioSolo: false };
+  const baseTrack = {
+    id: 'track-1',
+    kind: 'video',
+    items: [],
+    videoHidden: false,
+    audioSolo: false,
+  };
   const baseItem = {
     id: 'clip-1',
     kind: 'clip',
@@ -103,16 +121,16 @@ describe('TimelineClip', () => {
   };
 
   it('calculates position and width correctly based on time and zoom', async () => {
-    // Zoom 1 means timeUsToPx(us, 1) = us / 1000000 * 100 
-    mockTimelineStore.timelineZoom = 1; 
+    // Zoom 1 means timeUsToPx(us, 1) = us / 1000000 * 100
+    mockTimelineStore.timelineZoom = 1;
 
     const component = await mountSuspended(TimelineClip, {
       props: defaultProps,
       global: {
         stubs: {
-          UContextMenu: { template: '<div><slot /></div>' }
-        }
-      }
+          UContextMenu: { template: '<div><slot /></div>' },
+        },
+      },
     });
 
     const clipDiv = component.find('[data-clip-id="clip-1"]');
@@ -122,16 +140,19 @@ describe('TimelineClip', () => {
     // timeUsToPx calculation: startUs=1000000 -> 100px. durationUs=5000000 -> 500px
     const expectedLeft = timeUsToPx(1000000, 1);
     const expectedWidth = Math.max(2, timeUsToPx(5000000, 1));
-    
+
     expect(style).toContain(`left: ${expectedLeft}px`);
     expect(style).toContain(`width: ${expectedWidth}px`);
   });
 
   it('displays selected state correctly', async () => {
     mockTimelineStore.selectedItemIds = ['clip-1'];
-    const component = await mountSuspended(TimelineClip, { props: defaultProps, global: { stubs: { UContextMenu: { template: '<div><slot /></div>' } } } });
+    const component = await mountSuspended(TimelineClip, {
+      props: defaultProps,
+      global: { stubs: { UContextMenu: { template: '<div><slot /></div>' } } },
+    });
     const clipDiv = component.find('[data-clip-id="clip-1"]');
-    
+
     expect(clipDiv.classes()).toContain('outline-(--color-primary)');
     expect(clipDiv.classes()).toContain('z-10');
   });
@@ -140,16 +161,16 @@ describe('TimelineClip', () => {
     const component = await mountSuspended(TimelineClip, {
       props: {
         ...defaultProps,
-        item: { ...baseItem, disabled: true }
+        item: { ...baseItem, disabled: true },
       },
       global: {
         stubs: {
-          UContextMenu: { template: '<div><slot /></div>' }
-        }
-      }
+          UContextMenu: { template: '<div><slot /></div>' },
+        },
+      },
     });
     const clipDiv = component.find('[data-clip-id="clip-1"]');
-    
+
     expect(clipDiv.classes()).toContain('opacity-40');
   });
 
@@ -157,16 +178,16 @@ describe('TimelineClip', () => {
     const component = await mountSuspended(TimelineClip, {
       props: {
         ...defaultProps,
-        item: { ...baseItem, locked: true }
+        item: { ...baseItem, locked: true },
       },
       global: {
         stubs: {
-          UContextMenu: { template: '<div><slot /></div>' }
-        }
-      }
+          UContextMenu: { template: '<div><slot /></div>' },
+        },
+      },
     });
     const clipDiv = component.find('[data-clip-id="clip-1"]');
-    
+
     expect(clipDiv.classes()).toContain('cursor-not-allowed');
     // Also, trim handles should not exist if locked
     const trims = component.findAll('.cursor-ew-resize');
@@ -174,19 +195,22 @@ describe('TimelineClip', () => {
   });
 
   it('emits startTrimItem when a trim handle is pointer-down', async () => {
-    const component = await mountSuspended(TimelineClip, { props: defaultProps, global: { stubs: { UContextMenu: { template: '<div><slot /></div>' } } } });
-    
+    const component = await mountSuspended(TimelineClip, {
+      props: defaultProps,
+      global: { stubs: { UContextMenu: { template: '<div><slot /></div>' } } },
+    });
+
     const trims = component.findAll('.cursor-ew-resize');
     expect(trims.length).toBe(2); // start and end
 
     await trims[0].trigger('pointerdown', { button: 0 });
-    
+
     expect(component.emitted('startTrimItem')).toBeTruthy();
     expect(component.emitted('startTrimItem')![0][1]).toEqual({
       trackId: 'track-1',
       itemId: 'clip-1',
       edge: 'start',
-      startUs: 1000000
+      startUs: 1000000,
     });
 
     await trims[1].trigger('pointerdown', { button: 0 });
@@ -194,7 +218,7 @@ describe('TimelineClip', () => {
       trackId: 'track-1',
       itemId: 'clip-1',
       edge: 'end',
-      startUs: 1000000
+      startUs: 1000000,
     });
   });
 });

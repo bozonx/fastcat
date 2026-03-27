@@ -458,7 +458,6 @@ const {
       :format-duration-seconds="formatDurationSeconds"
     />
 
-
     <FileGeneralInfoSection
       v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'directory'"
       :title="generalInfoTitle"

@@ -1,9 +1,8 @@
 import type { Ref } from 'vue';
-import { ref, onBeforeUnmount } from 'vue';
+import { ref, onBeforeUnmount, computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { pxToTimeUs } from '~/utils/timeline/geometry';
-import { computed } from 'vue';
 import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import {

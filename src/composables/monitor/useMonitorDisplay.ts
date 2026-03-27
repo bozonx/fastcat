@@ -37,7 +37,7 @@ export function useMonitorDisplay() {
 
     // Interpret values <= 1 as scale factor relative to project height
     if (value <= 1) {
-      return Math.round(exportHeight.value * value / 2) * 2; // Keep even dimensions
+      return Math.round((exportHeight.value * value) / 2) * 2; // Keep even dimensions
     }
 
     return Math.round(value / 2) * 2; // Always keep even dimensions

@@ -11,7 +11,12 @@ export const DEFAULT_TRANSITION_MODE: TransitionMode = 'transparent';
 
 export const DEFAULT_TRANSITION_CURVE: TransitionCurve = 'linear';
 
-export const TRANSITION_CURVE_VALUES: TransitionCurve[] = ['linear', 'smooth', 'ease-in', 'ease-out'];
+export const TRANSITION_CURVE_VALUES: TransitionCurve[] = [
+  'linear',
+  'smooth',
+  'ease-in',
+  'ease-out',
+];
 
 export interface TransitionShaderContext {
   progress: number;
@@ -111,7 +116,8 @@ export function applyTransitionCurve(
 
   // Use provided params if available, otherwise use defaults based on curve type
   const bulge = params?.curveBulge ?? 0.8;
-  const offset = params?.curveOffset ?? (curve === 'ease-in' ? 1.0 : curve === 'ease-out' ? 0.0 : 0.5);
+  const offset =
+    params?.curveOffset ?? (curve === 'ease-in' ? 1.0 : curve === 'ease-out' ? 0.0 : 0.5);
 
   const x1 = offset * bulge;
   const x2 = 1 - (1 - offset) * bulge;

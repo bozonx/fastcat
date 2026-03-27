@@ -1,4 +1,4 @@
-import { onBeforeUnmount, ref } from 'vue';
+import { onBeforeUnmount, ref, computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
@@ -15,7 +15,6 @@ import { DEFAULT_TRANSITION_MODE } from '~/transitions';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelinePointerSession } from '~/composables/timeline/useTimelinePointerSession';
-import { computed } from 'vue';
 import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import {
@@ -188,7 +187,10 @@ export function useTimelineItemResize(
     function onPointerMove(ev: PointerEvent) {
       if (!resizeFade.value) return;
       const currentScrollLeft = getScrollLeft();
-      const dx = ev.clientX - resizeFade.value.startX + (currentScrollLeft - resizeFade.value.startScrollLeft);
+      const dx =
+        ev.clientX -
+        resizeFade.value.startX +
+        (currentScrollLeft - resizeFade.value.startScrollLeft);
       const sign = payload.edge === 'in' ? 1 : -1;
       const deltaPx = dx * sign;
       const deltaUs = pxToDeltaUs(deltaPx, timelineStore.timelineZoom);
@@ -478,7 +480,10 @@ export function useTimelineItemResize(
     function onPointerMove(ev: PointerEvent) {
       if (!resizeTransition.value) return;
       const currentScrollLeft = getScrollLeft();
-      const dx = ev.clientX - resizeTransition.value.startX + (currentScrollLeft - resizeTransition.value.startScrollLeft);
+      const dx =
+        ev.clientX -
+        resizeTransition.value.startX +
+        (currentScrollLeft - resizeTransition.value.startScrollLeft);
       const sign = payload.edge === 'in' ? 1 : -1;
       const deltaPx = dx * sign;
       const deltaUs = pxToDeltaUs(deltaPx, timelineStore.timelineZoom);

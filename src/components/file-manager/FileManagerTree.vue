@@ -13,7 +13,10 @@ import type { FsEntry } from '~/types/fs';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
-import { useClipboardPaths, useClipboardCopyPaths } from '~/composables/fileManager/useClipboardIndicator';
+import {
+  useClipboardPaths,
+  useClipboardCopyPaths,
+} from '~/composables/fileManager/useClipboardIndicator';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import FileManagerTreeRow from '~/components/file-manager/FileManagerTreeRow.vue';
 import {

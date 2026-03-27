@@ -1,10 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
 
-import {
-  computeMaxAudioDurationUs,
-  getClipRangesS,
-} from '~/workers/core/export-helpers';
+import { computeMaxAudioDurationUs, getClipRangesS } from '~/workers/core/export-helpers';
 
 describe('export-helpers', () => {
   describe('getClipRangesS', () => {

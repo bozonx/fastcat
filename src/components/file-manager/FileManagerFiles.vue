@@ -243,12 +243,14 @@ function onRequestDownload(params: { entry: RemoteFsEntry; targetDirPath: string
   uiStore.pendingRemoteDownloadRequest = params;
 }
 
-const { isRootDropOver, isRelevantDrag, onRootDragOver, onRootDragLeave, onRootDrop } = useFileDrop({
-  resolveEntryByPath: async (path: string) => props.findEntryByPath(path),
-  handleFiles: props.handleFiles,
-  moveEntry: props.moveEntry,
-  copyEntry: props.copyEntry,
-});
+const { isRootDropOver, isRelevantDrag, onRootDragOver, onRootDragLeave, onRootDrop } = useFileDrop(
+  {
+    resolveEntryByPath: async (path: string) => props.findEntryByPath(path),
+    handleFiles: props.handleFiles,
+    moveEntry: props.moveEntry,
+    copyEntry: props.copyEntry,
+  },
+);
 
 const rootContextMenuItems = computed(() => {
   if (!projectStore.currentProjectName) return [];

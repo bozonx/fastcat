@@ -30,8 +30,16 @@ export const colorGradientManifest: EffectManifest<ColorGradientParams> = {
       label: 'Type',
       labelKey: 'fastcat.effects.video.colorGradient.params.type',
       options: [
-        { label: 'Linear', labelKey: 'fastcat.effects.video.colorGradient.options.linear', value: 0 },
-        { label: 'Radial', labelKey: 'fastcat.effects.video.colorGradient.options.radial', value: 1 },
+        {
+          label: 'Linear',
+          labelKey: 'fastcat.effects.video.colorGradient.options.linear',
+          value: 0,
+        },
+        {
+          label: 'Radial',
+          labelKey: 'fastcat.effects.video.colorGradient.options.radial',
+          value: 1,
+        },
         { label: 'Conic', labelKey: 'fastcat.effects.video.colorGradient.options.conic', value: 2 },
       ],
     },

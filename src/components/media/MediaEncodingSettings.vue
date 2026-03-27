@@ -153,7 +153,6 @@ watch(
 
 <template>
   <div class="flex flex-col gap-4">
-
     <UiFormField :label="t('videoEditor.export.outputFormat', 'Output format')">
       <UiButtonGroup
         v-model="outputFormat"
@@ -168,7 +167,10 @@ watch(
       </div>
     </UiFormField>
 
-    <UiFormField v-if="outputFormat === 'mp4'" :label="t('videoEditor.export.videoCodec', 'Video codec')">
+    <UiFormField
+      v-if="outputFormat === 'mp4'"
+      :label="t('videoEditor.export.videoCodec', 'Video codec')"
+    >
       <div class="w-full">
         <UiSelect
           :model-value="
@@ -192,7 +194,9 @@ watch(
 
     <UiFormField
       :label="t('videoEditor.export.videoBitrate', 'Video bitrate (Mbps)')"
-      :help="t('videoEditor.export.videoBitrateHelp', 'Higher bitrate = better quality and larger file')"
+      :help="
+        t('videoEditor.export.videoBitrateHelp', 'Higher bitrate = better quality and larger file')
+      "
     >
       <UiWheelNumberInput
         v-model="bitrateMbps"
@@ -216,7 +220,9 @@ watch(
       />
     </UiFormField>
 
-    <UiFormField :label="t('videoEditor.export.keyframeInterval', 'Keyframe Interval (GOP Size, sec)')">
+    <UiFormField
+      :label="t('videoEditor.export.keyframeInterval', 'Keyframe Interval (GOP Size, sec)')"
+    >
       <UiWheelNumberInput
         v-model="keyframeIntervalSec"
         :min="1"
@@ -246,7 +252,10 @@ watch(
     />
 
     <div v-if="!excludeAudio && !props.hideAudioBitrate" class="flex flex-col gap-4">
-      <UiFormField v-if="outputFormat === 'mp4' && !props.showAudioAdvanced" :label="t('videoEditor.export.audioCodec', 'Audio codec')">
+      <UiFormField
+        v-if="outputFormat === 'mp4' && !props.showAudioAdvanced"
+        :label="t('videoEditor.export.audioCodec', 'Audio codec')"
+      >
         <div class="w-full">
           <UiButtonGroup
             v-model="audioCodec"
@@ -271,7 +280,12 @@ watch(
       <UiFormField
         v-else
         :label="t('videoEditor.export.audioBitrate', 'Audio bitrate (Kbps)')"
-        :help="t('videoEditor.export.audioBitrateHelp', 'Higher bitrate = better quality and larger file')"
+        :help="
+          t(
+            'videoEditor.export.audioBitrateHelp',
+            'Higher bitrate = better quality and larger file',
+          )
+        "
       >
         <UiWheelNumberInput
           v-model="audioBitrateKbps"

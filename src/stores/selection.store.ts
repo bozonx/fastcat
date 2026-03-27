@@ -110,7 +110,9 @@ export const useSelectionStore = defineStore('selection', () => {
     };
   }
 
-  function selectTimelineItems(items: { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[]) {
+  function selectTimelineItems(
+    items: { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[],
+  ) {
     if (items.length === 0) {
       selectedEntity.value = null;
     } else if (items.length === 1 && items[0]) {

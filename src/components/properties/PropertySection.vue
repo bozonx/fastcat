@@ -1,9 +1,9 @@
 <script setup lang="ts">
+import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
+
 const props = defineProps<{
   title?: string;
 }>();
-
-import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
 </script>
 
 <template>

@@ -1,9 +1,8 @@
-import { ref } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useFilesPageStore } from '~/stores/files-page.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { computed, onMounted, onUnmounted } from 'vue';
 import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import {

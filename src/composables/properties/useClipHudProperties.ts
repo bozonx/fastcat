@@ -15,7 +15,7 @@ export function useClipHudProperties(options: UseClipHudPropertiesOptions) {
   );
 
   function flattenObject(ob: any, prefix = ''): Record<string, any> {
-    let result: Record<string, any> = {};
+    const result: Record<string, any> = {};
     for (const i in ob) {
       if (!Object.prototype.hasOwnProperty.call(ob, i)) continue;
       if (typeof ob[i] === 'object' && ob[i] !== null && !Array.isArray(ob[i])) {

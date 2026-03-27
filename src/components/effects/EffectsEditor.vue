@@ -157,8 +157,8 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
           <USwitch
             :model-value="effect.enabled"
             size="sm"
-            @update:model-value="handleUpdateEffect(effect.id, { enabled: $event })"
             class="shrink-0"
+            @update:model-value="handleUpdateEffect(effect.id, { enabled: $event })"
           />
           <span class="font-medium flex-1 truncate">
             {{

@@ -81,7 +81,7 @@ export const dissolveManifest: TransitionManifest<DissolveParams> = {
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
   },
   computeOutOpacity: () => {
-    // Return 1 so the sprite is fully opaque, 
+    // Return 1 so the sprite is fully opaque,
     // allowing the shader to handle the cross-fade perfectly.
     return 1;
   },

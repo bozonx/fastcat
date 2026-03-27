@@ -11,7 +11,6 @@ import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 
-
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 

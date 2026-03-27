@@ -1,6 +1,10 @@
 import { onBeforeUnmount, watch, type Ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { computeAnchoredScrollLeft, pxToTimeUs, pxPerSecondToZoom } from '~/utils/timeline/geometry';
+import {
+  computeAnchoredScrollLeft,
+  pxToTimeUs,
+  pxPerSecondToZoom,
+} from '~/utils/timeline/geometry';
 
 export interface UseTimelineZoomOptions {
   scrollEl: Ref<HTMLElement | null>;

@@ -27,7 +27,12 @@ interface UseTimelineRulerMarkerDragOptions {
   markers: Ref<MarkerLike[]>;
   zoom: Ref<number>;
   fps: Ref<number>;
-  selectMarker: (markerId: string, e?: MouseEvent, part?: 'left' | 'right', movePlayhead?: boolean) => void;
+  selectMarker: (
+    markerId: string,
+    e?: MouseEvent,
+    part?: 'left' | 'right',
+    movePlayhead?: boolean,
+  ) => void;
   updateMarker: (markerId: string, patch: { timeUs?: number; durationUs?: number }) => void;
   computeSnapTargets?: () => number[];
   snapThresholdPx?: Ref<number>;
@@ -103,7 +108,10 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
   function onWindowPointerMove(event: PointerEvent) {
     if (!draggedMarkerId.value) return;
 
-    const dxPx = event.clientX - markerDragStartX.value + (options.scrollLeft.value - markerDragStartScrollLeft.value);
+    const dxPx =
+      event.clientX -
+      markerDragStartX.value +
+      (options.scrollLeft.value - markerDragStartScrollLeft.value);
     const currentZoom = options.zoom.value;
     const deltaUs = pxToDeltaUs(dxPx, currentZoom);
 

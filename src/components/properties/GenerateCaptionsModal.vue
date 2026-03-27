@@ -127,33 +127,21 @@ const handleAfterEnter = () => {
           <span class="text-xs text-ui-text-muted">
             {{ t('fastcat.captions.maxWordsPerClip', 'Max words per clip') }}
           </span>
-          <UiWheelNumberInput
-            v-model="settings.maxWordsPerClip"
-            :min="1"
-            :max="20"
-          />
+          <UiWheelNumberInput v-model="settings.maxWordsPerClip" :min="1" :max="20" />
         </div>
 
         <div class="flex flex-col gap-1.5">
           <span class="text-xs text-ui-text-muted">
             {{ t('fastcat.captions.maxDurationMs', 'Max clip duration, ms') }}
           </span>
-          <UiWheelNumberInput
-            v-model="settings.maxDurationMs"
-            :min="100"
-            :step="50"
-          />
+          <UiWheelNumberInput v-model="settings.maxDurationMs" :min="100" :step="50" />
         </div>
 
         <div class="flex flex-col gap-1.5">
           <span class="text-xs text-ui-text-muted">
             {{ t('fastcat.captions.silenceGapMs', 'Split on silence gap, ms') }}
           </span>
-          <UiWheelNumberInput
-            v-model="settings.silenceGapMs"
-            :min="0"
-            :step="10"
-          />
+          <UiWheelNumberInput v-model="settings.silenceGapMs" :min="0" :step="10" />
         </div>
 
         <div class="flex items-end">

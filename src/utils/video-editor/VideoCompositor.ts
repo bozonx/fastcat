@@ -38,7 +38,11 @@ import { TimelineLayoutOrchestrator } from './compositor/TimelineLayoutOrchestra
 import { TextRenderer } from './compositor/renderers/TextRenderer';
 import { ShapeRenderer } from './compositor/renderers/ShapeRenderer';
 import { CanvasFallbackRenderer } from './compositor/renderers/CanvasFallbackRenderer';
-import { buildPrevClipByIdIndex, buildNextClipByIdIndex, buildTrackRuntimeList } from './compositor/trackRuntime';
+import {
+  buildPrevClipByIdIndex,
+  buildNextClipByIdIndex,
+  buildTrackRuntimeList,
+} from './compositor/trackRuntime';
 import { RenderingEngine } from './compositor/RenderingEngine';
 import { FrameSampleOrchestrator } from './compositor/FrameSampleOrchestrator';
 import { StageManager } from './compositor/StageManager';
@@ -528,7 +532,9 @@ export class VideoCompositor {
             s.lastVideoFrame = null;
           }
           if (s.bitmap) {
-            try { s.bitmap.close(); } catch {}
+            try {
+              s.bitmap.close();
+            } catch {}
             s.bitmap = null;
           }
         };

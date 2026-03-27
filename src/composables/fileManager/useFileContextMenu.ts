@@ -176,8 +176,6 @@ export function useFileContextMenu(
         },
       ]);
 
-
-
       if (hasVideos) {
         if (deps.isGeneratingProxyInDirectory(entry)) {
           items.push([

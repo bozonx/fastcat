@@ -328,9 +328,9 @@ const extraActions = computed(() => {
             </div>
 
             <UiSliderInput
+              v-model="trackOpacity"
               :label="t('fastcat.track.opacity', 'Opacity')"
               unit="%"
-              v-model="trackOpacity"
               :min="0"
               :max="1"
               :step="0.01"
@@ -342,8 +342,8 @@ const extraActions = computed(() => {
 
           <div v-if="track.kind === 'audio' || track.kind === 'video'" class="flex flex-col gap-3">
             <UiSliderInput
-              :label="t('fastcat.track.audio.volume', 'Volume')"
               v-model="trackAudioGain"
+              :label="t('fastcat.track.audio.volume', 'Volume')"
               :min="0"
               :max="2"
               :step="0.001"
@@ -353,8 +353,8 @@ const extraActions = computed(() => {
             />
 
             <UiSliderInput
-              :label="t('fastcat.track.audio.balance', 'Balance')"
               v-model="trackAudioBalance"
+              :label="t('fastcat.track.audio.balance', 'Balance')"
               :min="-1"
               :max="1"
               :step="0.01"

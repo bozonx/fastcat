@@ -64,10 +64,7 @@ const activeSection = ref<SettingsSection>(getStoredSection());
 watch(activeSection, (section) => {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ section, timestamp: Date.now() }),
-    );
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ section, timestamp: Date.now() }));
   } catch {
     // ignore
   }

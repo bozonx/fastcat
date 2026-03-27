@@ -133,7 +133,10 @@ const { isMarqueeSelecting, marqueeStyle, startMarquee } = useTimelineMarquee(
 );
 
 const { resizeVolume, startResizeVolume, startResizeFade, startResizeTransition } =
-  useTimelineItemResize(() => props.scrollLeft ?? 0, () => props.tracks);
+  useTimelineItemResize(
+    () => props.scrollLeft ?? 0,
+    () => props.tracks,
+  );
 
 const timelineWidthPx = computed(() => {
   const maxUs = Math.max(timelineStore.duration, timelineStore.currentTime) + 30_000_000;
@@ -291,17 +294,19 @@ function selectTransition(
         @drop.prevent="emit('drop', $event, track.id)"
       >
         <!-- Selection Highlight -->
-        <div 
+        <div
           v-if="isTrackVisuallySelected(track.id)"
           class="absolute inset-0 z-0 pointer-events-none border-y-2 border-primary-500/30 bg-primary-500/5 transition-colors"
           :class="{
-            'border-y-2! border-primary-500/40 bg-primary-500/10': !track.color || track.color === '#2a2a2a'
+            'border-y-2! border-primary-500/40 bg-primary-500/10':
+              !track.color || track.color === '#2a2a2a',
           }"
           :style="{
             borderColor: track.color && track.color !== '#2a2a2a' ? `${track.color}4d` : undefined,
-            backgroundColor: track.color && track.color !== '#2a2a2a' ? `${track.color}1a` : undefined,
+            backgroundColor:
+              track.color && track.color !== '#2a2a2a' ? `${track.color}1a` : undefined,
             borderTopWidth: '2px',
-            borderBottomWidth: '2px'
+            borderBottomWidth: '2px',
           }"
         />
         <!-- Drop Previews inside track -->

@@ -69,7 +69,9 @@ export function useGeneralHotkeys(
         const entry =
           selected.kind === 'multiple' ? (selected.entries[0] as FsEntry) : selected.entry;
         if (entry) {
-          return entry.parentPath ?? (entry.path ? entry.path.split('/').slice(0, -1).join('/') : '');
+          return (
+            entry.parentPath ?? (entry.path ? entry.path.split('/').slice(0, -1).join('/') : '')
+          );
         }
       }
     }
@@ -87,11 +89,13 @@ export function useGeneralHotkeys(
     const fileManager = getFileManager();
 
     for (const item of payload.items) {
-      const source = fileManager.findEntryByPath(item.path) ?? ({
-        path: item.path,
-        kind: item.kind,
-        name: item.name,
-      } as FsEntry);
+      const source =
+        fileManager.findEntryByPath(item.path) ??
+        ({
+          path: item.path,
+          kind: item.kind,
+          name: item.name,
+        } as FsEntry);
 
       if (payload.operation === 'copy') {
         await fileManager.copyEntry({
@@ -167,7 +171,10 @@ export function useGeneralHotkeys(
       keyCode: params.keyCode,
       action: () => {
         if (params.dir === 'up' || params.dir === 'down') {
-          if (focusStore.effectiveFocus === 'filesBrowser' || focusStore.effectiveFocus === 'left') {
+          if (
+            focusStore.effectiveFocus === 'filesBrowser' ||
+            focusStore.effectiveFocus === 'left'
+          ) {
             uiStore.fileBrowserMoveSelectionTrigger = {
               dir: params.dir,
               timestamp: Date.now(),

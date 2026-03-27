@@ -10,7 +10,6 @@ import ProjectThumbnail from '~/components/startup/ProjectThumbnail.vue';
 import EditorSettingsModal from '~/components/settings/EditorSettingsModal.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 
-
 definePageMeta({
   layout: 'mobile',
 });

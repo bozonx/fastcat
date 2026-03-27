@@ -259,7 +259,10 @@ const volumeIndicatorPosition = computed(() => {
       ]"
       :style="{ top: `${volumeY}%` }"
       @pointerdown.stop.prevent="
-        canEdit && !clip.locked && !track.locked && emit('startResizeVolume', $event, clip.audioGain ?? 1)
+        canEdit &&
+        !clip.locked &&
+        !track.locked &&
+        emit('startResizeVolume', $event, clip.audioGain ?? 1)
       "
       @dblclick.stop.prevent="canEdit && !clip.locked && !track.locked && emit('resetVolume')"
     >
@@ -274,9 +277,7 @@ const volumeIndicatorPosition = computed(() => {
       <div
         v-if="isIndicatorVisible"
         class="absolute -translate-x-1/2 text-2xs font-mono text-yellow-400 leading-none py-0.5 bg-black/60 px-1 rounded pointer-events-none select-none transition-opacity opacity-100"
-        :class="[
-          (clip.audioGain ?? 1) > 1 ? 'top-full mt-0.5' : 'bottom-full mb-0.5',
-        ]"
+        :class="[(clip.audioGain ?? 1) > 1 ? 'top-full mt-0.5' : 'bottom-full mb-0.5']"
         :style="volumeIndicatorPosition"
       >
         {{ Math.round((clip.audioGain ?? 1) * 100) }}%

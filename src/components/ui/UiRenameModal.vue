@@ -2,7 +2,6 @@
 import UiModal from '~/components/ui/UiModal.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 
-
 const props = defineProps<{
   title?: string;
   initialName?: string;

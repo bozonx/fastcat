@@ -14,7 +14,7 @@ const mockTimelineStore = reactive({
   rippleTrimLeft: vi.fn(),
   rippleTrimRight: vi.fn(),
   selectedItemIds: [] as string[],
-  getHotkeyTargetClip: vi.fn((): any => null)
+  getHotkeyTargetClip: vi.fn((): any => null),
 });
 
 const mockSettingsStore = {
@@ -24,31 +24,31 @@ const mockSettingsStore = {
   selectToolbarSnapMode: vi.fn(),
   cycleToolbarSnapMode: vi.fn(),
   selectToolbarDragMode: vi.fn(),
-  toggleSelectedToolbarDragMode: vi.fn()
+  toggleSelectedToolbarDragMode: vi.fn(),
 };
 
 vi.mock('~/stores/timeline.store', () => ({
-  useTimelineStore: () => mockTimelineStore
+  useTimelineStore: () => mockTimelineStore,
 }));
 
 vi.mock('~/stores/timeline-settings.store', () => ({
-  useTimelineSettingsStore: () => mockSettingsStore
+  useTimelineSettingsStore: () => mockSettingsStore,
 }));
 
 vi.mock('~/components/ui/UiSplitDropdownButton.vue', () => ({
   default: {
     name: 'UiSplitDropdownButton',
     template: '<button class="mock-dropdown-btn" @click="$emit(\'click\')"><slot /></button>',
-    props: ['items', 'icon', 'ariaLabel']
-  }
+    props: ['items', 'icon', 'ariaLabel'],
+  },
 }));
 
 vi.mock('~/components/ui/UiTooltip.vue', () => ({
   default: {
     name: 'UiTooltip',
     template: '<div><slot /></div>',
-    props: ['text']
-  }
+    props: ['text'],
+  },
 }));
 
 describe('TimelineToolbar', () => {
@@ -78,34 +78,37 @@ describe('TimelineToolbar', () => {
 
   it('shows solo active button when a track is soloed', async () => {
     mockTimelineStore.isAnyTrackSoloed = true;
-    
+
     const component = await mountSuspended(TimelineToolbar);
-    
+
     expect(component.text()).toContain('SOLO ACTIVE');
-    
+
     const buttons = component.findAll('button');
-    const unsoloButton = buttons.find(b => b.text().includes('SOLO ACTIVE'));
+    const unsoloButton = buttons.find((b) => b.text().includes('SOLO ACTIVE'));
     await unsoloButton?.trigger('click');
     expect(mockTimelineStore.unsoloAllTracks).toHaveBeenCalled();
   });
 
   it('emits dragVirtualStart when dragging virtual clips', async () => {
     const component = await mountSuspended(TimelineToolbar);
-    
+
     const buttons = component.findAll('button');
-    const adjustBtn = buttons.find(b => b.attributes('draggable') === 'true');
+    const adjustBtn = buttons.find((b) => b.attributes('draggable') === 'true');
     expect(adjustBtn).toBeDefined();
 
     const dataTransfer = {
       setData: vi.fn(),
-      effectAllowed: 'uninitialized'
+      effectAllowed: 'uninitialized',
     };
-    
+
     await adjustBtn!.trigger('dragstart', { dataTransfer });
-    
+
     expect(component.emitted('dragVirtualStart')).toBeTruthy();
     expect(component.emitted('dragVirtualStart')![0][1]).toBe('adjustment');
-    expect(dataTransfer.setData).toHaveBeenCalledWith('application/fastcat-virtual-clip', 'adjustment');
+    expect(dataTransfer.setData).toHaveBeenCalledWith(
+      'application/fastcat-virtual-clip',
+      'adjustment',
+    );
   });
 
   it('disables ripple trim items when no clip is selected', async () => {

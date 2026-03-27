@@ -3,9 +3,7 @@ import { mountSuspended } from '@nuxt/test-utils/runtime';
 import UiSplitDropdownButton from '~/components/ui/UiSplitDropdownButton.vue';
 
 describe('UiSplitDropdownButton', () => {
-  const dummyItems = [
-    [{ label: 'Item 1' }, { label: 'Item 2' }]
-  ];
+  const dummyItems = [[{ label: 'Item 1' }, { label: 'Item 2' }]];
 
   it('renders correctly', async () => {
     const component = await mountSuspended(UiSplitDropdownButton, {

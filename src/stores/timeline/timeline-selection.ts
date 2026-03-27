@@ -83,7 +83,7 @@ export function createTimelineSelection(deps: TimelineSelectionDeps): TimelineSe
     if (options?.multi) {
       if (deps.selectedItemIds.value.includes(itemId)) {
         deps.selectedItemIds.value = deps.selectedItemIds.value.filter(
-          (id) => !groupIds.includes(id)
+          (id) => !groupIds.includes(id),
         );
       } else {
         const nextIds = new Set(deps.selectedItemIds.value);
@@ -95,7 +95,9 @@ export function createTimelineSelection(deps: TimelineSelectionDeps): TimelineSe
     }
   }
 
-  function selectTimelineItems(items: string[] | { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[]) {
+  function selectTimelineItems(
+    items: string[] | { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[],
+  ) {
     deps.selectedTransition.value = null;
     if (items.length === 0) {
       deps.selectedItemIds.value = [];
@@ -127,7 +129,7 @@ export function createTimelineSelection(deps: TimelineSelectionDeps): TimelineSe
       }
       deps.selectedItemIds.value = Array.from(nextIds);
 
-      const expandedObjects: {trackId: string; itemId: string; kind?: 'clip' | 'gap'}[] = [];
+      const expandedObjects: { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[] = [];
       for (const id of nextIds) {
         const trackId = itemToTrackMap.value.get(id);
         if (trackId) {
