@@ -206,7 +206,20 @@ const {
 });
 
 function isDynamicPanelFocused(panelId: string) {
-  return focusStore.isPanelFocused(getDynamicPanelFocusId(panelId));
+  if (focusStore.isPanelFocused(getDynamicPanelFocusId(panelId))) return true;
+
+  // When Tab switches focus to the 'monitor' main panel (activePanelId = 'monitor'),
+  // the monitor panel inside dynamic layout also needs to show its focus frame,
+  // since MonitorContainer uses useExternalFocus and delegates frame rendering here.
+  const activePanelId = focusStore.activePanelId;
+  if (activePanelId === 'monitor') {
+    const panel = [...projectStore.cutPanels, ...projectStore.soundPanels]
+      .flatMap((col) => col.panels)
+      .find((p) => p.id === panelId);
+    return panel?.type === 'monitor';
+  }
+
+  return false;
 }
 
 function getDynamicPanelVerticalSize(
