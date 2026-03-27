@@ -62,6 +62,21 @@ vi.stubGlobal('useHead', () => {});
 vi.stubGlobal('useRuntimeConfig', () => ({
   public: {},
 }));
+vi.stubGlobal('useNuxtApp', () => ({
+  $notificationService: {
+    add: vi.fn(),
+  },
+  $i18nService: {
+    t: (key: string, fallback?: string) => fallback ?? key,
+  },
+}));
+vi.stubGlobal('useI18n', () => ({
+  t: (key: string, fallback?: string) => fallback ?? key,
+  locale: ref('en'),
+}));
+vi.stubGlobal('useToast', () => ({
+  add: vi.fn(),
+}));
 
 config.global.config.warnHandler = (msg) => {
   if (typeof msg === 'string' && msg.includes('<Suspense> is an experimental feature')) return;
