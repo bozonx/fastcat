@@ -15,7 +15,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const toast = useToast();
 
-const inputRef = ref<{ input: HTMLInputElement } | null>(null);
+const inputRef = ref<HTMLInputElement | null>(null);
 const currentName = ref(props.initialName);
 
 const invalidCharsRegex = /[<>:"/\\|?*]/;
@@ -34,7 +34,7 @@ let isReady = false;
 let blurTimer: ReturnType<typeof setTimeout> | null = null;
 
 function focusAndSelectName() {
-  const input = inputRef.value?.input;
+  const input = inputRef.value;
   if (!input) return;
 
   input.focus({ preventScroll: true });
@@ -47,10 +47,9 @@ function focusAndSelectName() {
     } else {
       input.select();
     }
-    return;
+  } else {
+    input.select();
   }
-
-  input.select();
 }
 
 onMounted(() => {
@@ -62,7 +61,7 @@ onMounted(() => {
     setTimeout(() => {
       focusAndSelectName();
       isReady = true;
-    }, 200);
+    }, 100);
   });
 });
 
@@ -147,16 +146,16 @@ function cancel() {
 </script>
 
 <template>
-  <UInput
+  <input
     ref="inputRef"
     v-model="currentName"
-    size="xs"
-    class="w-full max-w-50"
-    :ui="{ base: 'font-mono' }"
+    class="bg-ui-bg-elevated border rounded px-1 min-w-10 max-w-full text-sm font-mono outline-none transition-shadow"
+    :class="[
+      isInvalid ? 'border-red-500 ring-1 ring-red-500' : 'border-primary-500',
+    ]"
     :style="{ width: `${Math.max(4, currentName.length + 2)}ch` }"
-    :class="isInvalid ? 'ring-2 ring-red-500' : 'ring-2 ring-primary-500'"
-    @keydown.enter="finish"
-    @keydown.esc="cancel"
+    @keydown.enter.stop="finish"
+    @keydown.esc.stop="cancel"
     @blur="onBlur"
     @focus="onFocus"
     @click.stop
