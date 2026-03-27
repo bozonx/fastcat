@@ -7,6 +7,7 @@ import { formatTime } from '~/utils/time';
 import UiVolumeControl from '~/components/ui/editor/UiVolumeControl.vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
+import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
 interface MediaPlaybackTransferState {
   currentTime: number;
@@ -19,6 +20,7 @@ const { t } = useI18n();
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
 const { volume, isMuted } = useMediaPlayerVolume();
+const { getHotkeyTitle } = useHotkeyLabel();
 
 const props = defineProps<{
   src: string;
@@ -420,13 +422,15 @@ onUnmounted(() => {
 
       <div class="flex items-center justify-between gap-3">
         <div class="flex items-center gap-3">
-          <UButton
-            size="sm"
-            variant="solid"
-            color="primary"
-            :icon="isPlaying ? 'i-heroicons-pause' : 'i-heroicons-play'"
-            @click="togglePlay"
-          />
+          <UTooltip :text="getHotkeyTitle(t('fastcat.preview.play', 'Play'), 'playback.toggle')">
+            <UButton
+              size="sm"
+              variant="solid"
+              color="primary"
+              :icon="isPlaying ? 'i-heroicons-pause' : 'i-heroicons-play'"
+              @click="togglePlay"
+            />
+          </UTooltip>
           <span class="text-xs text-ui-text-muted font-mono">
             {{ formatTime(currentTime) }} / {{ formatTime(duration) }}
           </span>
@@ -439,17 +443,6 @@ onUnmounted(() => {
         </div>
 
         <div class="flex items-center gap-2">
-          <UTooltip v-if="type === 'video'" :text="t('fastcat.preview.resetZoom')">
-            <UButton
-              size="sm"
-              variant="ghost"
-              color="neutral"
-              icon="i-heroicons-arrow-path"
-              class="hover:bg-ui-bg-accent"
-              @click="resetZoom"
-            />
-          </UTooltip>
-
           <UiVolumeControl
             v-model:volume="volume"
             v-model:is-muted="isMuted"
@@ -457,14 +450,20 @@ onUnmounted(() => {
             orientation="horizontal"
             :max="1"
           />
-          <UButton
-            v-if="type === 'video'"
-            size="sm"
-            variant="ghost"
-            color="neutral"
-            :icon="isModal ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'"
-            @click="isModal ? emit('close-modal') : emit('open-modal')"
-          />
+          <UTooltip
+            :text="
+              getHotkeyTitle(t('fastcat.preview.fullscreen', 'Fullscreen'), 'general.fullscreen')
+            "
+          >
+            <UButton
+              v-if="type === 'video'"
+              size="sm"
+              variant="ghost"
+              color="neutral"
+              :icon="isModal ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'"
+              @click="isModal ? emit('close-modal') : emit('open-modal')"
+            />
+          </UTooltip>
         </div>
       </div>
     </div>

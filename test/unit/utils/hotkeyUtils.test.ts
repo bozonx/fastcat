@@ -78,6 +78,10 @@ describe('hotkeyUtils', () => {
     it('returns null if cannot parse', () => {
       expect(normalizeHotkeyCombo('+')).toBeNull();
     });
+
+    it('normalizes Ctrl+ArrowUp for file manager navigate up (Control is not a valid mod token)', () => {
+      expect(normalizeHotkeyCombo('Ctrl+ArrowUp')).toBe('Ctrl+Arrowup');
+    });
   });
 
   describe('hotkeyFromKeyboardEvent', () => {

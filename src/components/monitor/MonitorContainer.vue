@@ -22,6 +22,7 @@ import MonitorTransformBox from './MonitorTransformBox.vue';
 import { registerMonitorActions } from '~/composables/editor/hotkeys/monitorActions';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
+import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -31,6 +32,7 @@ const timelineStore = useTimelineStore();
 const { timelineDoc } = storeToRefs(timelineStore);
 const fileManager = useFileManager();
 const { loadTimeline } = useProjectActions();
+const { getHotkeyTitle } = useHotkeyLabel();
 
 async function createNewTimeline() {
   const createdPath = await fileManager.createTimeline();
@@ -226,8 +228,6 @@ const monitorZoomLabel = computed(() => {
   return `x${zoom.toFixed(2)}`;
 });
 
-
-
 const activeMarkers = ref<TimelineMarker[]>([]);
 watchEffect(() => {
   const time = uiCurrentTimeUs.value;
@@ -243,7 +243,13 @@ watchEffect(() => {
   // DEBUG: remove after fix
   console.log('[MarkerDebug]', {
     time,
-    allMarkers: markers?.map((m) => ({ id: m.id.slice(-4), text: m.text, timeUs: m.timeUs, diff: Math.abs(time - m.timeUs), durationUs: m.durationUs })),
+    allMarkers: markers?.map((m) => ({
+      id: m.id.slice(-4),
+      text: m.text,
+      timeUs: m.timeUs,
+      diff: Math.abs(time - m.timeUs),
+      durationUs: m.durationUs,
+    })),
     filtered: filtered.length,
   });
   activeMarkers.value = filtered;
@@ -380,7 +386,9 @@ onUnmounted(() => {
                 toolbarPosition === 'right' ? 'right-8' : '',
               ]
             : [
-                toolbarPosition === 'left' || toolbarPosition === 'right' ? 'px-1.5 py-3' : 'px-4 py-3.5',
+                toolbarPosition === 'left' || toolbarPosition === 'right'
+                  ? 'px-1.5 py-3'
+                  : 'px-4 py-3.5',
                 'bg-ui-bg-elevated',
                 props.panelDragCursorClass,
               ],
@@ -396,13 +404,18 @@ onUnmounted(() => {
         @mouseenter="resetIdle"
       >
         <!-- Left cluster: utility buttons -->
+        <UiTooltip
+          :text="
+            getHotkeyTitle(t('fastcat.monitor.fullscreen', 'Fullscreen'), 'general.fullscreen')
+          "
+        >
           <UiActionButton
             v-if="effectiveFullscreen"
             size="sm"
             color="neutral"
             variant="solid"
-            icon="i-heroicons-arrow-left"
-            :label="t('common.back', 'Back')"
+            icon="i-heroicons-arrows-pointing-in"
+            :aria-label="t('common.back', 'Back')"
             @click="exitBrowserFullscreen()"
           />
           <UiActionButton
@@ -411,127 +424,200 @@ onUnmounted(() => {
             color="neutral"
             variant="ghost"
             icon="i-heroicons-arrows-pointing-out"
-            :title="t('fastcat.monitor.fullscreen', 'Fullscreen')"
+            :aria-label="t('fastcat.monitor.fullscreen', 'Fullscreen')"
             @click="enterBrowserFullscreen()"
           />
+        </UiTooltip>
 
-          <UiTooltip :text="t('fastcat.timeline.addMarkerAtPlayhead', 'Add marker at playhead')">
-            <UiActionButton
-              size="xs"
-              color="neutral"
-              variant="ghost"
-              icon="i-heroicons-bookmark"
-              @click="createMarkerAtPlayhead"
-            />
-          </UiTooltip>
+        <UiTooltip
+          :text="
+            getHotkeyTitle(
+              t('fastcat.timeline.addMarkerAtPlayhead', 'Add marker at playhead'),
+              'general.addMarker',
+            )
+          "
+        >
+          <UiActionButton
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            icon="i-heroicons-bookmark"
+            @click="createMarkerAtPlayhead"
+          />
+        </UiTooltip>
 
-          <UiTooltip :text="t('fastcat.monitor.center', 'Center')">
-            <UiActionButton
-              size="xs"
-              color="neutral"
-              variant="ghost"
-              icon="i-lucide-crosshair"
-              @click="centerMonitor"
-            />
-          </UiTooltip>
+        <UiTooltip :text="t('fastcat.monitor.center', 'Center')">
+          <UiActionButton
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            icon="i-lucide-crosshair"
+            @click="centerMonitor"
+          />
+        </UiTooltip>
 
-          <UiTooltip :text="t('fastcat.monitor.resetZoom', 'Reset zoom')">
-            <UiActionButton
-              size="xs"
-              color="neutral"
-              variant="ghost"
-              class="font-mono tabular-nums min-w-10 justify-center text-[10px] px-0! hover:bg-transparent! text-ui-text-muted hover:text-ui-text"
-              hover-class=""
-              :label="monitorZoomLabel"
-              @click="resetZoom"
-            />
+        <UiTooltip :text="t('fastcat.monitor.resetZoom', 'Reset zoom')">
+          <UiActionButton
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            class="font-mono tabular-nums min-w-10 justify-center text-[10px] px-0! hover:bg-transparent! text-ui-text-muted hover:text-ui-text"
+            hover-class=""
+            :label="monitorZoomLabel"
+            @click="resetZoom"
+          />
+        </UiTooltip>
 
-          </UiTooltip>
-
-          <UiTooltip :text="t('fastcat.monitor.useProxy', 'Use proxy')">
-            <UiToggleButton
-              v-if="projectStore.activeMonitor"
-              :model-value="useProxyInMonitor"
-              icon="i-heroicons-bolt"
-              inactive-color="neutral"
-              inactive-variant="ghost"
-              active-color="neutral"
-              active-variant="soft"
-              :active-bg="'rgba(59,130,246,0.12)'"
-              title="Use proxy"
-              no-toggle
-              @click="toggleProxyUsage"
-            />
-          </UiTooltip>
-
-          <UiTooltip
-            :text="
-              previewEffectsEnabled
-                ? t('fastcat.monitor.previewWithEffects', 'Preview with effects')
-                : t('fastcat.monitor.previewWithoutEffects', 'Preview without effects')
-            "
-          >
-            <UiToggleButton
-              v-if="projectStore.activeMonitor"
-              :model-value="previewEffectsEnabled"
-              icon="i-heroicons-sparkles"
-              inactive-color="neutral"
-              inactive-variant="ghost"
-              active-color="neutral"
-              active-variant="soft"
-              :active-bg="'rgba(59,130,246,0.12)'"
-              title="Preview effects"
-              no-toggle
-              @click="togglePreviewEffects"
-            />
-          </UiTooltip>
-
-          <UiCompactSelect
+        <UiTooltip :text="t('fastcat.monitor.useProxy', 'Use proxy')">
+          <UiToggleButton
             v-if="projectStore.activeMonitor"
-            :model-value="selectedPreviewResolution as any"
-            :items="previewResolutions"
-            value-key="value"
-            label-key="label"
-            :search-input="false"
-            @update:model-value="
-              (v: unknown) => {
-                if (v && projectStore.activeMonitor)
-                  projectStore.activeMonitor.previewResolution = ((v as { value: number })
-                    .value ?? v) as number;
-              }
-            "
-          >
-            <template #default="{ modelValue }">
-              <span>
-                {{ (modelValue as any)?.shortLabel || (modelValue as any)?.label }}
-              </span>
-            </template>
-            <template #item-label="{ item }">
-              <span
-                :class="[
-                  'truncate',
-                ]"
-              >
-                {{ item.label }}
-              </span>
-            </template>
-          </UiCompactSelect>
+            :model-value="useProxyInMonitor"
+            icon="i-heroicons-bolt"
+            inactive-color="neutral"
+            inactive-variant="ghost"
+            active-color="neutral"
+            active-variant="soft"
+            :active-bg="'rgba(59,130,246,0.12)'"
+            title="Use proxy"
+            no-toggle
+            @click="toggleProxyUsage"
+          />
+        </UiTooltip>
+
+        <UiTooltip
+          :text="
+            previewEffectsEnabled
+              ? t('fastcat.monitor.previewWithEffects', 'Preview with effects')
+              : t('fastcat.monitor.previewWithoutEffects', 'Preview without effects')
+          "
+        >
+          <UiToggleButton
+            v-if="projectStore.activeMonitor"
+            :model-value="previewEffectsEnabled"
+            icon="i-heroicons-sparkles"
+            inactive-color="neutral"
+            inactive-variant="ghost"
+            active-color="neutral"
+            active-variant="soft"
+            :active-bg="'rgba(59,130,246,0.12)'"
+            title="Preview effects"
+            no-toggle
+            @click="togglePreviewEffects"
+          />
+        </UiTooltip>
+
+        <UiCompactSelect
+          v-if="projectStore.activeMonitor"
+          :model-value="selectedPreviewResolution as any"
+          :items="previewResolutions"
+          value-key="value"
+          label-key="label"
+          :search-input="false"
+          @update:model-value="
+            (v: unknown) => {
+              if (v && projectStore.activeMonitor)
+                projectStore.activeMonitor.previewResolution = ((v as { value: number }).value ??
+                  v) as number;
+            }
+          "
+        >
+          <template #default="{ modelValue }">
+            <span>
+              {{ (modelValue as any)?.shortLabel || (modelValue as any)?.label }}
+            </span>
+          </template>
+          <template #item-label="{ item }">
+            <span :class="['truncate']">
+              {{ item.label }}
+            </span>
+          </template>
+        </UiCompactSelect>
 
         <!-- Playback buttons — right-click opens speed selector -->
-        <UContextMenu :items="speedMenuItems">
-          <UButton
-            size="md"
-            variant="ghost"
-            color="neutral"
-            icon="i-heroicons-arrow-uturn-left"
-            :aria-label="t('fastcat.monitor.rewind', 'Rewind')"
-            :disabled="!canInteractPlayback"
-            @click="(e) => {
-              rewindToStart();
-              (e.currentTarget as HTMLElement).blur();
-            }"
-          />
-        </UContextMenu>
+        <UiTooltip
+          :text="getHotkeyTitle(t('fastcat.monitor.rewind', 'Rewind'), 'playback.toStart')"
+        >
+          <UContextMenu :items="speedMenuItems">
+            <UButton
+              size="md"
+              variant="ghost"
+              color="neutral"
+              icon="i-heroicons-arrow-uturn-left"
+              :aria-label="t('fastcat.monitor.rewind', 'Rewind')"
+              :disabled="!canInteractPlayback"
+              @click="
+                (e) => {
+                  rewindToStart();
+                  (e.currentTarget as HTMLElement).blur();
+                }
+              "
+            />
+          </UContextMenu>
+        </UiTooltip>
+
+        <UiTooltip :text="t('fastcat.monitor.playBackward', 'Play backward') + ' (A)'">
+          <UContextMenu :items="speedMenuItems">
+            <UButton
+              size="md"
+              variant="ghost"
+              color="neutral"
+              icon="i-heroicons-backward"
+              :aria-label="t('fastcat.monitor.playBackward', 'Play backward')"
+              :disabled="!canInteractPlayback"
+              @click="
+                (e) => {
+                  setPlayback({
+                    direction: 'backward',
+                    speed: selectedPlaybackSpeedOption?.value ?? 1,
+                  });
+                  (e.currentTarget as HTMLElement).blur();
+                }
+              "
+              @wheel.prevent="handleSpeedWheel"
+            />
+          </UContextMenu>
+        </UiTooltip>
+
+        <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.play', 'Play'), 'playback.toggle')">
+          <UContextMenu :items="speedMenuItems">
+            <UButton
+              size="md"
+              variant="solid"
+              color="neutral"
+              class="relative overflow-hidden min-w-8 px-1.5"
+              :aria-label="t('fastcat.monitor.play', 'Play')"
+              :disabled="!canInteractPlayback"
+              @click="
+                (e) => {
+                  setPlayback({
+                    direction: 'forward',
+                    speed: selectedPlaybackSpeedOption?.value ?? 1,
+                  });
+                  (e.currentTarget as HTMLElement).blur();
+                }
+              "
+              @wheel.prevent="handleSpeedWheel"
+            >
+              <div class="flex items-center justify-center">
+                <UIcon
+                  :name="
+                    timelineStore.isPlaying
+                      ? 'i-heroicons-stop-20-solid'
+                      : 'i-heroicons-play-20-solid'
+                  "
+                  class="w-5 h-5"
+                  :class="!timelineStore.isPlaying ? 'ml-0.5' : ''"
+                />
+                <span
+                  class="absolute text-3xs font-mono leading-none opacity-90 pointer-events-none"
+                  style="right: 4px; bottom: 0"
+                >
+                  {{ selectedPlaybackSpeedOption?.label }}
+                </span>
+              </div>
+            </UButton>
+          </UContextMenu>
+        </UiTooltip>
 
         <UContextMenu :items="speedMenuItems">
           <UButton
@@ -541,10 +627,15 @@ onUnmounted(() => {
             icon="i-heroicons-backward"
             :aria-label="t('fastcat.monitor.playBackward', 'Play backward')"
             :disabled="!canInteractPlayback"
-            @click="(e) => {
-              setPlayback({ direction: 'backward', speed: selectedPlaybackSpeedOption?.value ?? 1 });
-              (e.currentTarget as HTMLElement).blur();
-            }"
+            @click="
+              (e) => {
+                setPlayback({
+                  direction: 'backward',
+                  speed: selectedPlaybackSpeedOption?.value ?? 1,
+                });
+                (e.currentTarget as HTMLElement).blur();
+              }
+            "
             @wheel.prevent="handleSpeedWheel"
           />
         </UContextMenu>
@@ -557,10 +648,15 @@ onUnmounted(() => {
             class="relative overflow-hidden min-w-8 px-1.5"
             :aria-label="t('fastcat.monitor.play', 'Play')"
             :disabled="!canInteractPlayback"
-            @click="(e) => {
-              setPlayback({ direction: 'forward', speed: selectedPlaybackSpeedOption?.value ?? 1 });
-              (e.currentTarget as HTMLElement).blur();
-            }"
+            @click="
+              (e) => {
+                setPlayback({
+                  direction: 'forward',
+                  speed: selectedPlaybackSpeedOption?.value ?? 1,
+                });
+                (e.currentTarget as HTMLElement).blur();
+              }
+            "
             @wheel.prevent="handleSpeedWheel"
           >
             <div class="flex items-center justify-center">

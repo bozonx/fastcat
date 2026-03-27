@@ -2,6 +2,7 @@
 import { useUiStore } from '~/stores/ui.store';
 import { storeToRefs } from 'pinia';
 import UiVolumeControl from '~/components/ui/editor/UiVolumeControl.vue';
+import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
 const props = defineProps<{
   compact?: boolean;
@@ -9,6 +10,8 @@ const props = defineProps<{
 
 const uiStore = useUiStore();
 const { monitorVolume, monitorMuted } = storeToRefs(uiStore);
+const { getHotkeyTitle } = useHotkeyLabel();
+const { t } = useI18n();
 </script>
 
 <template>
@@ -18,5 +21,12 @@ const { monitorVolume, monitorMuted } = storeToRefs(uiStore);
     :compact="compact"
     orientation="vertical"
     :max="2"
+    :mute-tooltip="getHotkeyTitle(t('fastcat.monitor.toggleMute', 'Toggle mute'), 'general.mute')"
+    :volume-up-tooltip="
+      getHotkeyTitle(t('fastcat.monitor.volumeUp', 'Volume up'), 'general.volumeUp')
+    "
+    :volume-down-tooltip="
+      getHotkeyTitle(t('fastcat.monitor.volumeDown', 'Volume down'), 'general.volumeDown')
+    "
   />
 </template>
