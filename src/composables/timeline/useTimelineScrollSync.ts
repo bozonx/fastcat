@@ -1,5 +1,6 @@
 import { ref, type Ref } from 'vue';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
+import { DRAG_DEADZONE_PX } from '~/utils/mouse';
 
 export interface UseTimelineScrollSyncOptions {
   scrollEl: Ref<HTMLElement | null>;
@@ -15,6 +16,7 @@ export function useTimelineScrollSync({
   const settingsStore = useTimelineSettingsStore();
 
   const isPanning = ref(false);
+  const hasPanned = ref(false);
   const panStart = ref({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
 
   function onScroll(e: Event) {
@@ -39,6 +41,7 @@ export function useTimelineScrollSync({
     if (!scrollEl.value) return;
     e.preventDefault();
     isPanning.value = true;
+    hasPanned.value = false;
     panStart.value = {
       x: e.clientX,
       y: e.clientY,
@@ -51,8 +54,14 @@ export function useTimelineScrollSync({
   function onPanMove(e: PointerEvent) {
     if (!isPanning.value || !scrollEl.value) return;
     e.preventDefault();
+
     const dx = e.clientX - panStart.value.x;
     const dy = e.clientY - panStart.value.y;
+
+    if (!hasPanned.value && (Math.abs(dx) > DRAG_DEADZONE_PX || Math.abs(dy) > DRAG_DEADZONE_PX)) {
+      hasPanned.value = true;
+    }
+
     scrollEl.value.scrollLeft = panStart.value.scrollLeft - dx;
     scrollEl.value.scrollTop = panStart.value.scrollTop - dy;
   }
@@ -66,6 +75,7 @@ export function useTimelineScrollSync({
 
   return {
     isPanning,
+    hasPanned,
     onScroll,
     onLabelsScroll,
     syncScrollFromExternal,

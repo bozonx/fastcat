@@ -213,9 +213,6 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
 
   function onRulerPointerUp() {
     pendingSelectAreaEvent.value = null;
-    if (!middlePointerDown.value?.moved) return;
-
-    middlePointerDown.value = null;
   }
 
   function onRulerPointerCancel() {
