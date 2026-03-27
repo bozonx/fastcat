@@ -8,9 +8,9 @@ import {
   MONITOR_DRAG_ACTIONS,
   MONITOR_WHEEL_ACTIONS,
   MOUSE_HORIZONTAL_MOVEMENT_ACTIONS,
-  RULER_CLICK_ACTIONS,
   RULER_WHEEL_ACTIONS,
   SHIFT_CLICK_ACTIONS,
+  TIMELINE_CLICK_ACTIONS,
   TIMELINE_WHEEL_ACTIONS,
   TRACK_HEADERS_WHEEL_ACTIONS,
 } from '~/utils/mouse';
@@ -85,7 +85,10 @@ export function useMouseSettings() {
     seek: t('videoEditor.settings.mouseActionSeek'),
     add_marker: t('videoEditor.settings.mouseActionAddMarker'),
     reset_zoom: t('videoEditor.settings.mouseActionResetZoom'),
+    fit_zoom: t('videoEditor.settings.mouseActionFitZoom'),
     clear_selection: t('videoEditor.settings.mouseActionClearSelection'),
+    select_item: t('videoEditor.settings.mouseActionSelectItem'),
+    select_multiple: t('videoEditor.settings.mouseActionSelectMultiple'),
     select_area: t('videoEditor.settings.mouseActionSelectArea'),
     none: t('videoEditor.settings.mouseActionNone'),
   }));
@@ -138,6 +141,9 @@ export function useMouseSettings() {
   );
   const shiftClickActionOptions = computed(() =>
     formatOptions(SHIFT_CLICK_ACTIONS, commonClickLabels.value),
+  );
+  const timelineClickActionOptions = computed(() =>
+    formatOptions(TIMELINE_CLICK_ACTIONS, commonClickLabels.value),
   );
   const dragOptions = computed(() => formatOptions(DRAG_ACTIONS, commonDragLabels.value));
   const mouseHorizontalMovementOptions = computed(() =>
@@ -272,9 +278,21 @@ export function useMouseSettings() {
               options: dragOptions.value,
             },
             {
+              key: 'click',
+              label: t('videoEditor.settings.mouseTimelineClick'),
+              options: timelineClickActionOptions.value,
+            },
+            {
+              key: 'shiftClick',
+              label: t('videoEditor.settings.mouseTimelineShiftClick', {
+                modifier1: modifier1Name.value,
+              }),
+              options: timelineClickActionOptions.value,
+            },
+            {
               key: 'middleClick',
               label: t('videoEditor.settings.mouseTimelineMiddleClick'),
-              options: clickActionOptions.value,
+              options: timelineClickActionOptions.value,
             },
             {
               key: 'clipDragShift',

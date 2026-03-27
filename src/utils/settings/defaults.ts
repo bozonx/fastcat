@@ -117,10 +117,10 @@ export interface FastCatUserSettings {
       wheelShift: string;
       wheelSecondary: string;
       wheelSecondaryShift: string;
-      click: 'seek' | 'add_marker' | 'reset_zoom' | 'clear_selection' | 'none';
-      middleClick: 'seek' | 'add_marker' | 'reset_zoom' | 'clear_selection' | 'none';
-      doubleClick: 'seek' | 'add_marker' | 'reset_zoom' | 'clear_selection' | 'none';
-      shiftClick: 'seek' | 'add_marker' | 'reset_zoom' | 'clear_selection' | 'none';
+      click: 'seek' | 'add_marker' | 'reset_zoom' | 'fit_zoom' | 'clear_selection' | 'none';
+      middleClick: 'seek' | 'add_marker' | 'reset_zoom' | 'fit_zoom' | 'clear_selection' | 'none';
+      doubleClick: 'seek' | 'add_marker' | 'reset_zoom' | 'fit_zoom' | 'clear_selection' | 'none';
+      shiftClick: 'seek' | 'add_marker' | 'reset_zoom' | 'fit_zoom' | 'clear_selection' | 'none';
       drag: 'pan' | 'move_playhead' | 'select_area' | 'none';
       middleDrag: 'pan' | 'move_playhead' | 'select_area' | 'none';
       dragShift: 'pan' | 'move_playhead' | 'select_area' | 'none';
@@ -131,7 +131,33 @@ export interface FastCatUserSettings {
       wheelShift: string;
       wheelSecondary: string;
       wheelSecondaryShift: string;
-      middleClick: 'seek' | 'add_marker' | 'reset_zoom' | 'clear_selection' | 'none';
+      click:
+        | 'seek'
+        | 'add_marker'
+        | 'reset_zoom'
+        | 'fit_zoom'
+        | 'clear_selection'
+        | 'select_item'
+        | 'select_multiple'
+        | 'none';
+      shiftClick:
+        | 'seek'
+        | 'add_marker'
+        | 'reset_zoom'
+        | 'fit_zoom'
+        | 'clear_selection'
+        | 'select_item'
+        | 'select_multiple'
+        | 'none';
+      middleClick:
+        | 'seek'
+        | 'add_marker'
+        | 'reset_zoom'
+        | 'fit_zoom'
+        | 'clear_selection'
+        | 'select_item'
+        | 'select_multiple'
+        | 'none';
       middleDrag: 'pan' | 'move_playhead' | 'select_area' | 'none';
       horizontalMovement: 'move_playhead' | 'none';
       clipDragShift:
@@ -266,7 +292,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       wheelSecondary: 'scroll_horizontal',
       wheelSecondaryShift: 'zoom_horizontal',
       click: 'seek',
-      middleClick: 'reset_zoom',
+      middleClick: 'fit_zoom',
       doubleClick: 'add_marker',
       shiftClick: 'clear_selection',
       drag: 'move_playhead',
@@ -279,7 +305,9 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       wheelShift: 'scroll_horizontal',
       wheelSecondary: 'scroll_horizontal',
       wheelSecondaryShift: 'zoom',
-      middleClick: 'reset_zoom',
+      click: 'select_item',
+      shiftClick: 'select_multiple',
+      middleClick: 'fit_zoom',
       middleDrag: 'pan',
       horizontalMovement: 'move_playhead',
       clipDragShift: 'toggle_clip_move_mode',
