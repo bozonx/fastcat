@@ -279,7 +279,7 @@ onUnmounted(() => {
     <!-- panelRef is always rendered unconditionally so useFullscreen keeps a stable DOM target -->
     <div
       ref="panelRef"
-      class="panel-focus-frame flex h-full min-w-0 min-h-0 transition-colors duration-300 relative"
+      class="panel-focus-frame flex h-full min-w-0 min-h-0 transition-colors duration-300 relative select-none"
       :class="[
         effectiveFullscreen ? 'bg-black flex-col' : 'bg-ui-bg-elevated',
         !effectiveFullscreen && toolbarPosition === 'bottom' ? 'flex-col' : '',
@@ -355,7 +355,7 @@ onUnmounted(() => {
 
           <span
             ref="timecodeEl"
-            class="absolute text-xs text-ui-text-muted font-mono tabular-nums bg-ui-bg-elevated/80 px-2 py-1 rounded transition-all duration-300"
+            class="absolute text-xs text-ui-text-muted font-mono tabular-nums bg-ui-bg-elevated/80 px-2 py-1 rounded transition-all duration-300 select-none"
             :class="[
               effectiveFullscreen ? 'bottom-24 right-8' : 'bottom-3 right-3',
               effectiveFullscreen && isIdle ? 'opacity-0' : 'opacity-100',
