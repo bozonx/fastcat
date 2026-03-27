@@ -69,6 +69,7 @@ function handleResetDefaults() {
           :items="LAYER_OPTIONS"
           value-key="value"
           full-width
+          :searchable="false"
           @update:model-value="(val) => updateLayer1(val as LayerKey)"
         />
       </div>
@@ -81,6 +82,7 @@ function handleResetDefaults() {
           :items="LAYER_OPTIONS"
           value-key="value"
           full-width
+          :searchable="false"
           @update:model-value="(val) => updateLayer2(val as LayerKey)"
         />
       </div>
