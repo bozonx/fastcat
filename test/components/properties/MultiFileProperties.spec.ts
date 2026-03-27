@@ -54,8 +54,9 @@ describe('MultiFileProperties.vue', () => {
     });
 
     expect(component.text()).toContain('Actions');
-    expect(component.text()).toContain('Copy');
-    expect(component.text()).toContain('Cut');
-    expect(component.text()).toContain('Delete');
+    // Primary actions have title but no label text
+    expect(component.find('button[title="Copy"]').exists()).toBe(true);
+    expect(component.find('button[title="Cut"]').exists()).toBe(true);
+    expect(component.find('button[title="Delete"]').exists()).toBe(true);
   });
 });

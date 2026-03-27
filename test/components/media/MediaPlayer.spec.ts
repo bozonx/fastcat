@@ -92,7 +92,7 @@ describe('MediaPlayer.vue', () => {
       },
     });
 
-    const playButton = component.find('button[class*="i-heroicons-play"]');
+    const playButton = component.find('button.i-heroicons-play, button.i-heroicons-pause');
     await playButton.trigger('click');
     
     const { useMediaPlayerPlayback } = await import('~/composables/preview/useMediaPlayerPlayback');
@@ -134,7 +134,7 @@ describe('MediaPlayer.vue', () => {
     });
 
     // Find fullscreen button
-    const fullscreenBtn = component.find('button[class*="i-heroicons-arrows-pointing-out"]');
+    const fullscreenBtn = component.find('button.i-heroicons-arrows-pointing-out, button.i-heroicons-arrows-pointing-in');
     await fullscreenBtn.trigger('click');
     expect(component.emitted('open-modal')).toBeTruthy();
   });
