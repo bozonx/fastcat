@@ -68,7 +68,6 @@ const emit = defineEmits<{
     role="treeitem"
     tabindex="0"
     @keydown.enter.prevent.stop="emit('keydown-enter', $event)"
-    @keydown.space.prevent.stop="emit('keydown-space', $event)"
     @dragstart="emit('dragstart', $event)"
     @dragend="emit('dragend')"
     @dragover.prevent="emit('dragover', $event)"

@@ -132,7 +132,6 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
         @click="emit('entryClick', $event, entry)"
         @dblclick="emit('entryDoubleClick', entry)"
         @keydown.enter.prevent.stop="emit('entryEnter', entry)"
-        @keydown.space.prevent.stop="emit('entryEnter', entry)"
       >
         <div
           class="relative mb-2 w-full aspect-square flex items-center justify-center bg-ui-bg rounded overflow-hidden"

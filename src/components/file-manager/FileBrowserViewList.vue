@@ -265,7 +265,6 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
               @click="emit('entryClick', $event, entry)"
               @dblclick="emit('entryDoubleClick', entry)"
               @keydown.enter.prevent.stop="emit('entryEnter', entry)"
-              @keydown.space.prevent.stop="emit('entryEnter', entry)"
             >
               <td class="py-2 px-3 flex items-center gap-2">
                 <div

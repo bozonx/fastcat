@@ -87,7 +87,15 @@ export type HotkeyCommandId =
   | 'playback.backward0_75'
   | 'playback.forward0_5'
   | 'playback.backward0_5'
-  | 'playback.backward1';
+  | 'playback.backward1'
+  | 'general.navigateBack'
+  | 'general.navigateUp'
+  | 'general.navigateSelectionUp'
+  | 'general.navigateSelectionDown'
+  | 'general.navigateSelectionLeft'
+  | 'general.navigateSelectionRight'
+  | 'general.monitorVolumeUp'
+  | 'general.monitorVolumeDown';
 
 export interface HotkeyCommandDefinition {
   id: HotkeyCommandId;
@@ -142,6 +150,14 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'general.selectAll', groupId: 'general', title: 'Select all' },
     { id: 'general.snapshot', groupId: 'general', title: 'Create snapshot from monitor' },
     { id: 'general.newTimeline', groupId: 'general', title: 'Create new timeline' },
+    { id: 'general.navigateBack', groupId: 'general', title: 'Navigate back (file manager)' },
+    { id: 'general.navigateUp', groupId: 'general', title: 'Navigate up (file manager)' },
+    { id: 'general.navigateSelectionUp', groupId: 'general', title: 'Navigate selection up' },
+    { id: 'general.navigateSelectionDown', groupId: 'general', title: 'Navigate selection down' },
+    { id: 'general.navigateSelectionLeft', groupId: 'general', title: 'Navigate selection left' },
+    { id: 'general.navigateSelectionRight', groupId: 'general', title: 'Navigate selection right' },
+    { id: 'general.monitorVolumeUp', groupId: 'general', title: 'Monitor Volume Up' },
+    { id: 'general.monitorVolumeDown', groupId: 'general', title: 'Monitor Volume Down' },
 
     { id: 'timeline.toggleSnap', groupId: 'timeline', title: 'Toggle snap' },
     {
@@ -311,6 +327,14 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
 
     'general.snapshot': ['H'],
     'general.newTimeline': ['N'],
+    'general.navigateBack': ['Backspace'],
+    'general.navigateUp': ['Control+ArrowUp'],
+    'general.navigateSelectionUp': ['ArrowUp'],
+    'general.navigateSelectionDown': ['ArrowDown'],
+    'general.navigateSelectionLeft': ['ArrowLeft'],
+    'general.navigateSelectionRight': ['ArrowRight'],
+    'general.monitorVolumeUp': ['ArrowUp'],
+    'general.monitorVolumeDown': ['ArrowDown'],
 
     'timeline.toggleSnap': ['T'],
     'timeline.selectClipsLeftOfPlayhead': [`${Mod}+S`],

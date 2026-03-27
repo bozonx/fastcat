@@ -146,9 +146,19 @@ watch(
   },
 );
 
-const { onKeyDown: onContainerKeyDown } = useFocusableListNavigation({
+const { onKeyDown: onContainerKeyDown, moveSelection } = useFocusableListNavigation({
   containerRef: scrollEl,
 });
+
+watch(
+  () => uiStore.fileBrowserMoveSelectionTrigger,
+  (trigger) => {
+    // Only handle if this is the sidebar and it's focused
+    if (!props.isFilesPage && focusStore.isPanelFocused('left')) {
+      moveSelection(trigger.dir);
+    }
+  },
+);
 
 const {
   onDragOver: autoScrollDragOver,
@@ -178,59 +188,6 @@ function onEntryFocus(_entry: FsEntry) {
 }
 
 function onTreeContainerKeyDown(e: KeyboardEvent) {
-  const isMod = e.ctrlKey || e.metaKey;
-  const key = e.key.toLowerCase();
-
-  if (isMod && key === 'a') {
-    e.preventDefault();
-    e.stopPropagation();
-    uiStore.fileTreeSelectAllTrigger++;
-    return;
-  }
-
-  if (isMod && key === 'v') {
-    e.preventDefault();
-    e.stopPropagation();
-    // Paste into selected entry (or root if nothing directory selected)
-    const entry =
-      props.findEntryByPath(selectedPath.value ?? '') ??
-      ({ kind: 'directory', path: '', name: 'root' } as FsEntry);
-    props.onPasteToEntry?.(entry);
-    return;
-  }
-
-  if (isMod && key === 'c') {
-    if (
-      (e.target as HTMLElement)?.tagName === 'INPUT' ||
-      (e.target as HTMLElement)?.tagName === 'TEXTAREA'
-    )
-      return;
-    const selected = selectionStore.selectedEntity;
-    if (selected?.source === 'fileManager') {
-      e.preventDefault();
-      e.stopPropagation();
-      const entries = selected.kind === 'multiple' ? selected.entries : [selected.entry];
-      props.onCopyEntries?.(entries);
-    }
-    return;
-  }
-
-  if (isMod && key === 'x') {
-    if (
-      (e.target as HTMLElement)?.tagName === 'INPUT' ||
-      (e.target as HTMLElement)?.tagName === 'TEXTAREA'
-    )
-      return;
-    const selected = selectionStore.selectedEntity;
-    if (selected?.source === 'fileManager') {
-      e.preventDefault();
-      e.stopPropagation();
-      const entries = selected.kind === 'multiple' ? selected.entries : [selected.entry];
-      props.onCutEntries?.(entries);
-    }
-    return;
-  }
-
   onContainerKeyDown(e);
 }
 
