@@ -92,8 +92,7 @@ describe('TimelineToolbar', () => {
   it('emits dragVirtualStart when dragging virtual clips', async () => {
     const component = await mountSuspended(TimelineToolbar);
 
-    const buttons = component.findAll('button');
-    const adjustBtn = buttons.find((b) => b.attributes('draggable') === 'true');
+    const adjustBtn = component.findAll('[draggable="true"]').at(0);
     expect(adjustBtn).toBeDefined();
 
     const dataTransfer = {

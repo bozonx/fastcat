@@ -18,6 +18,11 @@ export interface HistoryEntry<T = unknown> {
 
 let entryIdCounter = 0;
 
+/** Deep plain copy: Vue proxies are not always clonable with structuredClone (nested reactive objects). */
+function cloneHistorySnapshot<T>(snapshot: T): T {
+  return JSON.parse(JSON.stringify(toRaw(snapshot as object))) as T;
+}
+
 export const useHistoryStore = defineStore('history', () => {
   const workspaceStore = useWorkspaceStore();
   const maxEntries = computed(() => workspaceStore.userSettings.history.maxEntries);
@@ -69,7 +74,7 @@ export const useHistoryStore = defineStore('history', () => {
       labelKey,
       scope,
       commandType,
-      snapshot: isCommandScope(scope) ? snapshot : structuredClone(toRaw(snapshot)),
+      snapshot: isCommandScope(scope) ? snapshot : cloneHistorySnapshot(snapshot),
       timestamp: Date.now(),
     };
 
@@ -105,7 +110,7 @@ export const useHistoryStore = defineStore('history', () => {
     } else {
       future.value.unshift({
         ...entry,
-        snapshot: structuredClone(toRaw(currentDoc)),
+        snapshot: cloneHistorySnapshot(currentDoc),
       });
     }
 
@@ -133,7 +138,7 @@ export const useHistoryStore = defineStore('history', () => {
     } else {
       past.value.push({
         ...entry,
-        snapshot: structuredClone(toRaw(currentDoc)),
+        snapshot: cloneHistorySnapshot(currentDoc),
       });
     }
 

@@ -4,6 +4,13 @@ import { mountWithNuxt } from '../../utils/mount';
 
 import FileProperties from '~/components/properties/FileProperties.vue';
 
+vi.mock('~/stores/timeline-media-usage.store', () => ({
+  useTimelineMediaUsageStore: () => ({
+    mediaPathToTimelines: {},
+    setLiveUsage: vi.fn(),
+  }),
+}));
+
 vi.mock('~/composables/fileManager/useEntryPreview', () => {
   return {
     useEntryPreview: () => {
