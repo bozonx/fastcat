@@ -42,6 +42,7 @@ export function useTimelineInteraction(
 
   const {
     isDraggingPlayhead,
+    hasPlayheadMoved,
     onTimeRulerPointerDown,
     startPlayheadDrag,
     onGlobalPointerMove: onPlayheadGlobalPointerMove,
@@ -126,6 +127,7 @@ export function useTimelineInteraction(
 
   return {
     isDraggingPlayhead,
+    hasPlayheadMoved,
     draggingMode,
     draggingItemId,
     movePreview,

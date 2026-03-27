@@ -153,7 +153,7 @@ watch(
   },
 );
 
-const { onScroll, onLabelsScroll, startPan, onPanMove, stopPan, isPanning } = useTimelineScrollSync(
+const { onScroll, onLabelsScroll, startPan, onPanMove, stopPan, isPanning, hasPanned } = useTimelineScrollSync(
   {
     scrollEl,
     labelsScrollContainer: computed(
@@ -184,6 +184,7 @@ const {
   onTimeRulerPointerDown: onBaseTimeRulerPointerDown,
   startPlayheadDrag,
   isDraggingPlayhead,
+  hasPlayheadMoved,
   onGlobalPointerMove: onBaseGlobalPointerMove,
   onGlobalPointerUp: onBaseGlobalPointerUp,
   selectItem,
@@ -523,6 +524,8 @@ const onTrackAreaPointerDownCapture = (e: PointerEvent) => {
   if (isRuler) return;
 
   if (e.button === 1) {
+    hasPanned.value = false;
+    hasPlayheadMoved.value = false;
     const settings = timelineMouseSettings.value;
 
     if (settings.middleDrag === 'pan') {
@@ -545,6 +548,8 @@ const onTrackAreaAuxClick = (e: MouseEvent) => {
   if (e.button === 1) {
     const isRuler = (e.target as HTMLElement).closest('.timeline-ruler-container');
     if (!isRuler) {
+      if (hasPanned.value || hasPlayheadMoved.value) return;
+
       const settings = timelineMouseSettings.value;
       handleTimelineClickAction(settings.middleClick, e);
     }

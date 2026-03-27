@@ -11,12 +11,14 @@ import {
   createHotkeyLookup,
   isCommandMatched,
 } from '~/utils/hotkeys/runtime';
+import { DRAG_DEADZONE_PX } from '~/utils/mouse';
 
 export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
   const timelineStore = useTimelineStore();
   const isDraggingPlayhead = ref(false);
   const startDragTimeUs = ref<number | null>(null);
-  const hasMoved = ref(false);
+  const startDragPos = ref({ x: 0, y: 0 });
+  const hasPlayheadMoved = ref(false);
   const workspaceStore = useWorkspaceStore();
 
   const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
@@ -61,7 +63,8 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
 
   function startPlayheadDrag(e: PointerEvent) {
     isDraggingPlayhead.value = true;
-    hasMoved.value = false;
+    hasPlayheadMoved.value = false;
+    startDragPos.value = { x: e.clientX, y: e.clientY };
     (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
     window.addEventListener('keydown', onGlobalKeyDown);
   }
@@ -83,7 +86,14 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
       return true;
     }
 
-    hasMoved.value = true;
+    if (
+      !hasPlayheadMoved.value &&
+      (Math.abs(e.clientX - startDragPos.value.x) > DRAG_DEADZONE_PX ||
+        Math.abs(e.clientY - startDragPos.value.y) > DRAG_DEADZONE_PX)
+    ) {
+      hasPlayheadMoved.value = true;
+    }
+
     const scrollerRect = scrollEl.value?.getBoundingClientRect();
     if (!scrollerRect) return true;
     const scrollX = scrollEl.value?.scrollLeft ?? 0;
@@ -98,13 +108,12 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
       (e.currentTarget as HTMLElement | null)?.releasePointerCapture(e.pointerId);
     }
 
-    if (hasMoved.value && startDragTimeUs.value !== null) {
+    if (hasPlayheadMoved.value && startDragTimeUs.value !== null) {
       timelineStore.setCurrentTimeUs(startDragTimeUs.value);
     }
 
     isDraggingPlayhead.value = false;
     startDragTimeUs.value = null;
-    hasMoved.value = false;
     window.removeEventListener('keydown', onGlobalKeyDown);
   }
 
@@ -114,6 +123,7 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
 
   return {
     isDraggingPlayhead,
+    hasPlayheadMoved,
     onTimeRulerPointerDown,
     startPlayheadDrag,
     onGlobalPointerMove,
