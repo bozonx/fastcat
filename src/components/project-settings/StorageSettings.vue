@@ -12,7 +12,6 @@ const emit = defineEmits<{
 
 <template>
   <div v-if="projectStore.projectSettings" class="space-y-4 pt-1">
-
     <div class="space-y-3">
       <!-- Clear Vardata -->
       <div class="flex items-center justify-between gap-3 p-3 rounded border border-ui-border">

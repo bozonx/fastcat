@@ -4,7 +4,14 @@ import type {
   ReturnAudioToVideoCommand,
   TimelineCommandResult,
 } from '../commands';
-import { getTrackById, nextItemId, findClipById, rangesOverlap, nextTrackId, normalizeGaps } from './utils';
+import {
+  getTrackById,
+  nextItemId,
+  findClipById,
+  rangesOverlap,
+  nextTrackId,
+  normalizeGaps,
+} from './utils';
 
 export function extractAudioToTrack(
   doc: TimelineDocument,
@@ -75,11 +82,11 @@ export function extractAudioToTrack(
     let numAudioTracks = 0;
     let lastAudioTrackIndex = -1;
     for (let i = 0; i < nextTracks.length; i++) {
-        const tr = nextTracks[i];
-        if (tr?.kind === 'audio') {
-            numAudioTracks++;
-            lastAudioTrackIndex = i;
-        }
+      const tr = nextTracks[i];
+      if (tr?.kind === 'audio') {
+        numAudioTracks++;
+        lastAudioTrackIndex = i;
+      }
     }
     const newTrack: TimelineTrack = {
       id: targetAudioTrackId,
@@ -88,13 +95,13 @@ export function extractAudioToTrack(
       items: [],
     };
     if (lastAudioTrackIndex !== -1) {
-        nextTracks.splice(lastAudioTrackIndex + 1, 0, newTrack);
+      nextTracks.splice(lastAudioTrackIndex + 1, 0, newTrack);
     } else {
-        nextTracks.push(newTrack);
+      nextTracks.push(newTrack);
     }
   }
 
-  const targetAudioTrackIndex = nextTracks.findIndex(t => t.id === targetAudioTrackId);
+  const targetAudioTrackIndex = nextTracks.findIndex((t) => t.id === targetAudioTrackId);
   if (targetAudioTrackIndex === -1) throw new Error('Audio track not found');
 
   const audioClip: TimelineClipItem = {
@@ -158,7 +165,9 @@ export function returnAudioToVideo(
         Boolean(it.lockToLinkedVideo),
     ) as TimelineClipItem | undefined;
 
-  const audioEffectsToReturn = linkedAudio ? (linkedAudio.effects ?? []).filter((e) => e?.target === 'audio') : [];
+  const audioEffectsToReturn = linkedAudio
+    ? (linkedAudio.effects ?? []).filter((e) => e?.target === 'audio')
+    : [];
 
   const nextTracks = doc.tracks.map((t) => {
     if (linkedAudio && t.kind === 'audio') {

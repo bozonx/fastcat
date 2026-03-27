@@ -176,7 +176,11 @@ onBeforeUnmount(() => {
     <div class="flex-1 min-w-0 flex items-center overflow-hidden pl-1.5 z-10 relative">
       <div
         class="max-w-full px-1 py-px transition-colors overflow-hidden"
-        :class="[isRenaming ? 'bg-ui-bg-elevated border border-ui-border-accent rounded-none shadow-none' : 'rounded']"
+        :class="[
+          isRenaming
+            ? 'bg-ui-bg-elevated border border-ui-border-accent rounded-none shadow-none'
+            : 'rounded',
+        ]"
         :style="{
           backgroundColor:
             !isRenaming && isSelected && track.color && track.color !== '#2a2a2a'

@@ -192,7 +192,10 @@ const { clipItem, onClipClick } = useClipInteractions({
   canEditClipContent: computed(() => props.canEditClipContent),
   isTrimModeActive: computed(() => timelineStore.isTrimModeActive),
   userSettings: computed(() => workspaceStore.userSettings),
-  selectTimelineItems: (ids) => timelineStore.selectTimelineItems(ids.map(id => ({ trackId: props.track.id, itemId: id, kind: 'clip' }))),
+  selectTimelineItems: (ids) =>
+    timelineStore.selectTimelineItems(
+      ids.map((id) => ({ trackId: props.track.id, itemId: id, kind: 'clip' })),
+    ),
   trimToPlayheadLeftNoRipple: (target) => void timelineStore.trimToPlayheadLeftNoRipple(target),
   trimToPlayheadRightNoRipple: (target) => void timelineStore.trimToPlayheadRightNoRipple(target),
   splitClipAtPlayhead: (target) => void timelineStore.splitClipAtPlayhead(target),
@@ -376,7 +379,9 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
     timelineStore.updateClipTransition(
       props.track.id,
       props.item.id,
-      payload.edge === 'in' ? { transitionIn: transitionPatch } : { transitionOut: transitionPatch },
+      payload.edge === 'in'
+        ? { transitionIn: transitionPatch }
+        : { transitionOut: transitionPatch },
       { skipHistory: true, saveMode: 'none' },
     );
 
@@ -416,14 +421,19 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
     timelineStore.updateClipTransition(
       props.track.id,
       props.item.id,
-      payload.edge === 'in' ? { transitionIn: transitionPatch } : { transitionOut: transitionPatch },
+      payload.edge === 'in'
+        ? { transitionIn: transitionPatch }
+        : { transitionOut: transitionPatch },
     );
   }
 }
 </script>
 
 <template>
-  <UContextMenu :items="contextMenuItems" :disabled="rightClickPointerActive || rightClickDragTriggered">
+  <UContextMenu
+    :items="contextMenuItems"
+    :disabled="rightClickPointerActive || rightClickDragTriggered"
+  >
     <div
       :data-clip-id="item.kind === 'clip' ? item.id : undefined"
       :data-gap-id="item.kind === 'gap' ? item.id : undefined"

@@ -254,8 +254,16 @@ const addTrackActions = computed(() => [
           :primary-actions="fileActions.primary"
           :secondary-actions="fileActions.secondary"
         />
-        <div v-if="!finalIsReadOnly" :class="{ 'mt-1 pt-1 border-t border-ui-border/50': fileActions }">
-          <PropertyActionList :actions="addTrackActions" :vertical="false" justify="start" size="xs" />
+        <div
+          v-if="!finalIsReadOnly"
+          :class="{ 'mt-1 pt-1 border-t border-ui-border/50': fileActions }"
+        >
+          <PropertyActionList
+            :actions="addTrackActions"
+            :vertical="false"
+            justify="start"
+            size="xs"
+          />
         </div>
       </div>
     </PropertySection>
@@ -354,8 +362,8 @@ const addTrackActions = computed(() => [
         <div class="h-px bg-ui-border opacity-30 my-0.5" />
 
         <UiSliderInput
-          :label="t('fastcat.track.audio.volume', 'Volume')"
           v-model="masterGain"
+          :label="t('fastcat.track.audio.volume', 'Volume')"
           :min="0"
           :max="2"
           :step="0.001"

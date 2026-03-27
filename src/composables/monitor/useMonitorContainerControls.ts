@@ -79,10 +79,7 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
     const scales = [1, 0.5, 0.25, 0.125];
 
     return scales.map((scale) => {
-      const height = Math.max(
-        1,
-        Math.round((projectHeight * scale) / 2) * 2,
-      );
+      const height = Math.max(1, Math.round((projectHeight * scale) / 2) * 2);
 
       const shortLabel = scale === 1 ? '1/1' : `1/${1 / scale}`;
       let label = shortLabel;

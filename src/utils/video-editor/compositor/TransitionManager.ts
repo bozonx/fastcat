@@ -15,12 +15,17 @@ export class TransitionManager {
     previewEffectsEnabled: boolean,
   ) {
     const localTimeUs = timeUs - clip.startUs;
-    
+
     let transition = clip.transitionIn;
     let edge: 'in' | 'out' = 'in';
     let progress = 0;
-    
-    if (transition && transition.durationUs > 0 && localTimeUs >= 0 && localTimeUs < transition.durationUs) {
+
+    if (
+      transition &&
+      transition.durationUs > 0 &&
+      localTimeUs >= 0 &&
+      localTimeUs < transition.durationUs
+    ) {
       edge = 'in';
       progress = Math.max(0, Math.min(1, localTimeUs / transition.durationUs));
     } else {

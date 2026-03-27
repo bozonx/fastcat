@@ -190,7 +190,7 @@ function onToolbarContextMenu(e: MouseEvent) {
           variant="ghost"
           color="neutral"
           :icon="toolbarSnapModeIcon"
-          :ariaLabel="t('fastcat.timeline.snapMode', 'Snap Mode')"
+          :aria-label="t('fastcat.timeline.snapMode', 'Snap Mode')"
           :items="snapModeItems"
           button-class="hover:bg-ui-bg-hover/60"
           caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
@@ -205,7 +205,7 @@ function onToolbarContextMenu(e: MouseEvent) {
           :variant="toolbarDragModeVariant"
           :color="settingsStore.toolbarDragModeEnabled ? 'primary' : 'neutral'"
           :icon="toolbarDragModeIcon"
-          :ariaLabel="t('fastcat.timeline.moveMode', 'Clip Move Mode')"
+          :aria-label="t('fastcat.timeline.moveMode', 'Clip Move Mode')"
           :items="dragModeItems"
           button-class="hover:bg-ui-bg-hover/60"
           caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
@@ -220,7 +220,7 @@ function onToolbarContextMenu(e: MouseEvent) {
           :variant="timelineStore.isTrimModeActive ? 'solid' : 'ghost'"
           :color="timelineStore.isTrimModeActive ? 'primary' : 'neutral'"
           icon="i-heroicons-scissors"
-          :ariaLabel="t('fastcat.timeline.trim', 'Trim')"
+          :aria-label="t('fastcat.timeline.trim', 'Trim')"
           :items="trimMenuItems"
           button-class="hover:bg-ui-bg-hover/60"
           caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
@@ -237,10 +237,12 @@ function onToolbarContextMenu(e: MouseEvent) {
             variant="solid"
             icon="i-heroicons-musical-note"
             class="h-6 text-2xs px-2 gap-1 font-bold animate-pulse hover:animate-none"
-            @click="(e) => {
-              timelineStore.unsoloAllTracks();
-              (e.currentTarget as HTMLElement).blur();
-            }"
+            @click="
+              (e) => {
+                timelineStore.unsoloAllTracks();
+                (e.currentTarget as HTMLElement).blur();
+              }
+            "
           >
             {{ t('fastcat.timeline.soloActive', 'SOLO ACTIVE') }}
           </UButton>
@@ -263,10 +265,12 @@ function onToolbarContextMenu(e: MouseEvent) {
             class="hover:bg-ui-bg"
             @dragstart="onDragStart($event, 'adjustment')"
             @dragend="onDragEnd"
-            @click="(e) => {
-              timelineStore.addAdjustmentClipAtPlayhead();
-              (e.currentTarget as HTMLElement).blur();
-            }"
+            @click="
+              (e) => {
+                timelineStore.addAdjustmentClipAtPlayhead();
+                (e.currentTarget as HTMLElement).blur();
+              }
+            "
           />
         </UiTooltip>
         <UiTooltip
@@ -281,10 +285,12 @@ function onToolbarContextMenu(e: MouseEvent) {
             class="hover:bg-ui-bg"
             @dragstart="onDragStart($event, 'background')"
             @dragend="onDragEnd"
-            @click="(e) => {
-              timelineStore.addBackgroundClipAtPlayhead();
-              (e.currentTarget as HTMLElement).blur();
-            }"
+            @click="
+              (e) => {
+                timelineStore.addBackgroundClipAtPlayhead();
+                (e.currentTarget as HTMLElement).blur();
+              }
+            "
           />
         </UiTooltip>
         <UiTooltip
@@ -299,10 +305,12 @@ function onToolbarContextMenu(e: MouseEvent) {
             class="hover:bg-ui-bg"
             @dragstart="onDragStart($event, 'text')"
             @dragend="onDragEnd"
-            @click="(e) => {
-              timelineStore.addTextClipAtPlayhead();
-              (e.currentTarget as HTMLElement).blur();
-            }"
+            @click="
+              (e) => {
+                timelineStore.addTextClipAtPlayhead();
+                (e.currentTarget as HTMLElement).blur();
+              }
+            "
           />
         </UiTooltip>
       </div>

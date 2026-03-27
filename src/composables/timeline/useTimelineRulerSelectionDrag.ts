@@ -113,7 +113,10 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     const range = options.selectionRange.value;
     if (!range) return;
 
-    const dxPx = event.clientX - selectionDragStartX.value + (options.scrollLeft.value - selectionDragStartScrollLeft.value);
+    const dxPx =
+      event.clientX -
+      selectionDragStartX.value +
+      (options.scrollLeft.value - selectionDragStartScrollLeft.value);
     const mouseDeltaUs = Math.round((dxPx / zoomToPxPerSecond(options.zoom.value)) * 1e6);
     const minDurationUs = Math.max(
       getFrameDurationUs(),
@@ -205,7 +208,10 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
       const targets = options.computeSnapTargets();
       const snap = pickBestSnapCandidateUs({ rawUs: nextEndUs, thresholdUs, targetsUs: targets });
       if (snap.distUs < thresholdUs) {
-        nextEndUs = Math.max(selectionDragStartStartUs.value + minDurationUs, quantize(snap.snappedUs));
+        nextEndUs = Math.max(
+          selectionDragStartStartUs.value + minDurationUs,
+          quantize(snap.snappedUs),
+        );
       }
     }
 

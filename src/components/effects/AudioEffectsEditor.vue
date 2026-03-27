@@ -159,68 +159,68 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
     </template>
 
     <div class="space-y-2 py-1">
+      <div v-if="safeEffects.length === 0" class="text-xs text-ui-text-muted text-center py-2">
+        {{ t('fastcat.effects.empty', 'No effects') }}
+      </div>
 
-    <div v-if="safeEffects.length === 0" class="text-xs text-ui-text-muted text-center py-2">
-      {{ t('fastcat.effects.empty', 'No effects') }}
-    </div>
-
-    <VueDraggable
-      class="space-y-2"
-      :model-value="safeEffects"
-      handle=".drag-handle"
-      :animation="150"
-      @update:model-value="onUpdateOrder"
-    >
-      <div
-        v-for="effect in safeEffects"
-        :key="effect.id"
-        class="bg-ui-bg border border-ui-border rounded px-2 py-2"
+      <VueDraggable
+        class="space-y-2"
+        :model-value="safeEffects"
+        handle=".drag-handle"
+        :animation="150"
+        @update:model-value="onUpdateOrder"
       >
-        <div class="flex items-center w-full gap-2 mb-1">
-          <UIcon
-            name="i-heroicons-bars-2"
-            class="drag-handle w-4 h-4 text-ui-text-muted hover:text-ui-text cursor-grab active:cursor-grabbing shrink-0"
-          />
-          <USwitch
-            :model-value="effect.enabled"
-            size="sm"
-            @update:model-value="handleUpdateEffect(effect.id, { enabled: $event })"
-            class="shrink-0"
-          />
-          <span class="font-medium flex-1 truncate">
-            {{ getAudioEffectManifest(effect.type)?.name || effect.type }}
-          </span>
-          <div class="flex items-center gap-1 shrink-0">
-            <UButton
-              size="xs"
-              variant="ghost"
-              color="primary"
-              icon="i-heroicons-bookmark"
-              :title="t('fastcat.effects.saveAsPreset', 'Save as preset')"
-              @click="openSaveModal(effect.id)"
+        <div
+          v-for="effect in safeEffects"
+          :key="effect.id"
+          class="bg-ui-bg border border-ui-border rounded px-2 py-2"
+        >
+          <div class="flex items-center w-full gap-2 mb-1">
+            <UIcon
+              name="i-heroicons-bars-2"
+              class="drag-handle w-4 h-4 text-ui-text-muted hover:text-ui-text cursor-grab active:cursor-grabbing shrink-0"
             />
-            <UButton
-              size="xs"
-              variant="ghost"
-              color="neutral"
-              icon="i-heroicons-trash"
-              @click="handleRemoveEffect(effect.id)"
+            <USwitch
+              :model-value="effect.enabled"
+              size="sm"
+              class="shrink-0"
+              @update:model-value="handleUpdateEffect(effect.id, { enabled: $event })"
+            />
+            <span class="font-medium flex-1 truncate">
+              {{ getAudioEffectManifest(effect.type)?.name || effect.type }}
+            </span>
+            <div class="flex items-center gap-1 shrink-0">
+              <UButton
+                size="xs"
+                variant="ghost"
+                color="primary"
+                icon="i-heroicons-bookmark"
+                :title="t('fastcat.effects.saveAsPreset', 'Save as preset')"
+                @click="openSaveModal(effect.id)"
+              />
+              <UButton
+                size="xs"
+                variant="ghost"
+                color="neutral"
+                icon="i-heroicons-trash"
+                @click="handleRemoveEffect(effect.id)"
+              />
+            </div>
+          </div>
+
+          <div class="mt-1 pl-1">
+            <ParamsRenderer
+              v-if="getAudioEffectManifest(effect.type)?.controls"
+              :controls="getAudioEffectManifest(effect.type)?.controls ?? []"
+              :values="effect as any"
+              @update:value="
+                (key: any, value: any) => handleUpdateEffectValue(effect.id, key, value)
+              "
+              @action="(action: any, key: any) => handleAction(effect.id, action, key)"
             />
           </div>
         </div>
-
-        <div class="mt-1 pl-1">
-          <ParamsRenderer
-            v-if="getAudioEffectManifest(effect.type)?.controls"
-            :controls="getAudioEffectManifest(effect.type)?.controls ?? []"
-            :values="effect as any"
-            @update:value="(key: any, value: any) => handleUpdateEffectValue(effect.id, key, value)"
-            @action="(action: any, key: any) => handleAction(effect.id, action, key)"
-          />
-        </div>
-      </div>
-    </VueDraggable>
-
+      </VueDraggable>
     </div>
 
     <EffectSettingsModal

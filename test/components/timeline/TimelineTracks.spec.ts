@@ -3,9 +3,23 @@ import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { reactive } from 'vue';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
 
-vi.mock('~/components/timeline/TimelineClip.vue', () => ({ default: { name: 'TimelineClip', template: '<div class="mock-timeline-clip" :data-item-id="item.id"><slot /></div>', props: ['item', 'track'] } }));
-vi.mock('~/components/timeline/TimelineGap.vue', () => ({ default: { name: 'TimelineGap', template: '<div class="mock-timeline-gap" :data-item-id="item.id"><slot /></div>', props: ['item', 'trackId'] } }));
-vi.mock('~/components/timeline/TimelineSpeedModal.vue', () => ({ default: { name: 'TimelineSpeedModal', template: '<div></div>' } }));
+vi.mock('~/components/timeline/TimelineClip.vue', () => ({
+  default: {
+    name: 'TimelineClip',
+    template: '<div class="mock-timeline-clip" :data-item-id="item.id"><slot /></div>',
+    props: ['item', 'track'],
+  },
+}));
+vi.mock('~/components/timeline/TimelineGap.vue', () => ({
+  default: {
+    name: 'TimelineGap',
+    template: '<div class="mock-timeline-gap" :data-item-id="item.id"><slot /></div>',
+    props: ['item', 'trackId'],
+  },
+}));
+vi.mock('~/components/timeline/TimelineSpeedModal.vue', () => ({
+  default: { name: 'TimelineSpeedModal', template: '<div></div>' },
+}));
 
 const mockTimelineStore = reactive({
   timelineZoom: 1,
@@ -28,7 +42,7 @@ const mockSelectionStore = reactive({
 });
 
 const mockMediaStore = reactive({
-  mediaMetadata: {}
+  mediaMetadata: {},
 });
 
 vi.mock('~/stores/timeline.store', () => ({ useTimelineStore: () => mockTimelineStore }));
@@ -42,9 +56,9 @@ vi.mock('pinia', async (importOriginal) => {
     storeToRefs: (store) => {
       // Just return the store itself since it's already a reactive object or mock
       return {
-        selectedTransition: { value: null }
+        selectedTransition: { value: null },
       };
-    }
+    },
   };
 });
 
@@ -55,15 +69,15 @@ vi.mock('~/composables/timeline/useTimelineItemResize', () => ({
     startResizeVolume: vi.fn(),
     startResizeFade: vi.fn(),
     startResizeTransition: vi.fn(),
-  })
+  }),
 }));
 
 vi.mock('~/composables/timeline/useTimelineMarquee', () => ({
   useTimelineMarquee: () => ({
     isMarqueeSelecting: false,
     marqueeStyle: {},
-    startMarquee: vi.fn()
-  })
+    startMarquee: vi.fn(),
+  }),
 }));
 
 describe('TimelineTracks', () => {
@@ -77,16 +91,16 @@ describe('TimelineTracks', () => {
       kind: 'video',
       items: [
         { id: 'clip-1', kind: 'clip', timelineRange: { startUs: 0, durationUs: 5000000 } },
-        { id: 'gap-1', kind: 'gap', timelineRange: { startUs: 5000000, durationUs: 2000000 } }
-      ]
+        { id: 'gap-1', kind: 'gap', timelineRange: { startUs: 5000000, durationUs: 2000000 } },
+      ],
     },
     {
       id: 'track-2',
       kind: 'audio',
       items: [
-        { id: 'clip-2', kind: 'clip', timelineRange: { startUs: 1000000, durationUs: 3000000 } }
-      ]
-    }
+        { id: 'clip-2', kind: 'clip', timelineRange: { startUs: 1000000, durationUs: 3000000 } },
+      ],
+    },
   ];
 
   const defaultProps = {
@@ -97,7 +111,7 @@ describe('TimelineTracks', () => {
 
   it('renders tracks and items correctly', async () => {
     const component = await mountSuspended(TimelineTracks, {
-      props: defaultProps
+      props: defaultProps,
     });
 
     const track1 = component.find('[data-track-id="track-1"]');
@@ -118,7 +132,7 @@ describe('TimelineTracks', () => {
 
   it('handles track click selection', async () => {
     const component = await mountSuspended(TimelineTracks, {
-      props: defaultProps
+      props: defaultProps,
     });
 
     const track1 = component.find('[data-track-id="track-1"]');
@@ -135,8 +149,8 @@ describe('TimelineTracks', () => {
       props: {
         ...defaultProps,
         scrollLeft: 1000,
-        viewportWidth: 500
-      }
+        viewportWidth: 500,
+      },
     });
 
     // timeUsToPx zoom=1 calculation roughly:
@@ -158,9 +172,9 @@ describe('TimelineTracks', () => {
           startUs: 0,
           label: 'Dragging Clip',
           durationUs: 1000000,
-          kind: 'timeline-clip'
-        }
-      }
+          kind: 'timeline-clip',
+        },
+      },
     });
 
     const preview = component.find('[data-track-id="track-1"] .absolute.top-0\\.5');

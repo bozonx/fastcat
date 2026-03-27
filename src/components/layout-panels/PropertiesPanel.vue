@@ -77,9 +77,7 @@ const selectedTransitionClip = computed(() => {
 
 const selectedTransitionTrack = computed(() => {
   if (!selectedTransition.value) return undefined;
-  return timelineStore.timelineDoc?.tracks.find(
-    (t) => t.id === selectedTransition.value!.trackId,
-  );
+  return timelineStore.timelineDoc?.tracks.find((t) => t.id === selectedTransition.value!.trackId);
 });
 
 const selectedTrack = computed<TimelineTrack | null>(() => {

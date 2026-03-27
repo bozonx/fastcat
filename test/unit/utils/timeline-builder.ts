@@ -1,8 +1,4 @@
-import type {
-  TimelineDocument,
-  TimelineTrack,
-  TimelineClipItem,
-} from '~/timeline/types';
+import type { TimelineDocument, TimelineTrack, TimelineClipItem } from '~/timeline/types';
 
 export class TimelineBuilder {
   private doc: TimelineDocument;

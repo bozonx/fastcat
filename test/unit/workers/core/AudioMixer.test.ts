@@ -1,9 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import {
-  interleavedToPlanar,
-  normalizeSampleChannels,
-} from '~/workers/core/AudioMixer';
+import { interleavedToPlanar, normalizeSampleChannels } from '~/workers/core/AudioMixer';
 
 describe('AudioMixer interleavedToPlanar', () => {
   it('converts stereo interleaved to planar', () => {

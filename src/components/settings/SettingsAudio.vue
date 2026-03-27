@@ -50,7 +50,9 @@ function resetDefaults() {
 
     <UiFormField
       :label="t('videoEditor.settings.audioScrubbingTitle', 'Audio Scrubbing')"
-      :help="t('videoEditor.settings.audioScrubbingHint', 'Play audio while scrubbing the timeline.')"
+      :help="
+        t('videoEditor.settings.audioScrubbingHint', 'Play audio while scrubbing the timeline.')
+      "
     >
       <USwitch v-model="workspaceStore.userSettings.projectDefaults.audioScrubbingEnabled" />
     </UiFormField>
@@ -67,14 +69,19 @@ function resetDefaults() {
       <UiButtonGroup
         v-model="workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve"
         :options="[
-          { label: t('fastcat.clip.audioFade.curve.logarithmic', 'Logarithmic'), value: 'logarithmic' },
+          {
+            label: t('fastcat.clip.audioFade.curve.logarithmic', 'Logarithmic'),
+            value: 'logarithmic',
+          },
           { label: t('fastcat.clip.audioFade.curve.linear', 'Linear'), value: 'linear' },
         ]"
       />
     </UiFormField>
 
     <UiFormField
-      :label="t('videoEditor.settings.projectAudioDeclickTitle', 'Audio De-click Duration') + ' (ms)'"
+      :label="
+        t('videoEditor.settings.projectAudioDeclickTitle', 'Audio De-click Duration') + ' (ms)'
+      "
       :help="
         t(
           'videoEditor.settings.projectAudioDeclickHint',

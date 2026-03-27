@@ -148,7 +148,9 @@ export function buildMultiSelectionContextMenu(
   }
 
   mainGroup.push({
-    label: state.hasGroupedClip ? options.t('fastcat.timeline.ungroup') : options.t('fastcat.timeline.group'),
+    label: state.hasGroupedClip
+      ? options.t('fastcat.timeline.ungroup')
+      : options.t('fastcat.timeline.group'),
     icon: state.hasGroupedClip ? 'i-heroicons-rectangle-group' : 'i-heroicons-square-2-stack',
     onSelect: async () => {
       const isGrouping = !state.hasGroupedClip;

@@ -6,9 +6,9 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import { getDocFps } from '~/timeline/commands/utils';
 
-const AUDIO_MIXER_GAIN_STEP = 0.05;
+import type { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 
-import { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
+const AUDIO_MIXER_GAIN_STEP = 0.05;
 
 export function useTimelineHotkeys(
   navigationHoldRunner: ReturnType<typeof createHotkeyHoldRunner>,

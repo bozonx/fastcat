@@ -26,7 +26,7 @@ describe('useVideoCodecs', () => {
       template: '<div></div>',
       setup() {
         return useVideoCodecs();
-      }
+      },
     };
 
     const wrapper = mount(TestComponent);
@@ -39,14 +39,14 @@ describe('useVideoCodecs', () => {
   it('loads codec support on mount and updates state', async () => {
     vi.mocked(checkVideoCodecSupport).mockResolvedValue({ codec1: true });
     vi.mocked(resolveVideoCodecOptions).mockReturnValue([
-      { label: 'Codec 1', value: 'codec1', supported: true } as any
+      { label: 'Codec 1', value: 'codec1', supported: true } as any,
     ]);
 
     const TestComponent = {
       template: '<div></div>',
       setup() {
         return useVideoCodecs();
-      }
+      },
     };
 
     const wrapper = mount(TestComponent);
@@ -59,24 +59,25 @@ describe('useVideoCodecs', () => {
     expect(checkVideoCodecSupport).toHaveBeenCalledWith(BASE_VIDEO_CODEC_OPTIONS);
     expect(wrapper.vm.videoCodecSupport).toEqual({ codec1: true });
     expect(wrapper.vm.videoCodecOptions).toEqual([
-      { label: 'Codec 1', value: 'codec1', supported: true }
+      { label: 'Codec 1', value: 'codec1', supported: true },
     ]);
-    expect(resolveVideoCodecOptions).toHaveBeenCalledWith(
-      BASE_VIDEO_CODEC_OPTIONS,
-      { codec1: true }
-    );
+    expect(resolveVideoCodecOptions).toHaveBeenCalledWith(BASE_VIDEO_CODEC_OPTIONS, {
+      codec1: true,
+    });
   });
 
   it('does not load concurrently if already loading', async () => {
     let resolvePromise: (value: any) => void;
-    const promise = new Promise((res) => { resolvePromise = res; });
+    const promise = new Promise((res) => {
+      resolvePromise = res;
+    });
     vi.mocked(checkVideoCodecSupport).mockReturnValue(promise as any);
 
     const TestComponent = {
       template: '<div></div>',
       setup() {
         return useVideoCodecs();
-      }
+      },
     };
 
     const wrapper = mount(TestComponent);
@@ -104,7 +105,7 @@ describe('useVideoCodecs', () => {
       template: '<div></div>',
       setup() {
         return useVideoCodecs();
-      }
+      },
     };
 
     const wrapper = mount(TestComponent);

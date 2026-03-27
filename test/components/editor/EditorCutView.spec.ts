@@ -19,20 +19,29 @@ describe('EditorCutView', () => {
         dropPosition: null,
         getVerticalSize,
         isFocused,
-        getFocusId
+        getFocusId,
       },
       global: {
         stubs: {
           EditorDynamicPanelsView: {
             template: '<div class="mock-dynamic-panels"></div>',
             props: [
-              'view', 'columns', 'layoutKey', 'topSizes', 'draggingPanelId',
-              'dragOverPanelId', 'dropPosition', 'getVerticalSize', 'isFocused',
-              'getFocusId', 'leftPanelType', 'rightPanelType'
-            ]
-          }
-        }
-      }
+              'view',
+              'columns',
+              'layoutKey',
+              'topSizes',
+              'draggingPanelId',
+              'dragOverPanelId',
+              'dropPosition',
+              'getVerticalSize',
+              'isFocused',
+              'getFocusId',
+              'leftPanelType',
+              'rightPanelType',
+            ],
+          },
+        },
+      },
     });
 
     const child = component.findComponent(EditorDynamicPanelsView);

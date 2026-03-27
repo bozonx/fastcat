@@ -21,7 +21,7 @@ export function useFileManagerPanelBootstrap({
     () => projectStore.currentProjectId,
     async (id) => {
       const name = projectStore.currentProjectName;
-      
+
       if (id) {
         uiStore.restoreFileTreeStateOnce();
       }

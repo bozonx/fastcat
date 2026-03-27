@@ -2,10 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import {
-  createDefaultExportPresets,
-  createDefaultProjectPresets,
-} from '~/utils/settings';
+import { createDefaultExportPresets, createDefaultProjectPresets } from '~/utils/settings';
 
 vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: vi.fn(() => ({

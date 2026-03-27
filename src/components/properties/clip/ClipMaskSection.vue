@@ -63,10 +63,6 @@ function handleUpdate(key: string, value: unknown) {
 
 <template>
   <PropertySection :title="t('fastcat.clip.mask.title', 'Mask')">
-    <ParamsRenderer
-      :controls="maskControls"
-      :values="maskValues"
-      @update:value="handleUpdate"
-    />
+    <ParamsRenderer :controls="maskControls" :values="maskValues" @update:value="handleUpdate" />
   </PropertySection>
 </template>

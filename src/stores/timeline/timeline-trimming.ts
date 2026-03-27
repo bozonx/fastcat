@@ -259,11 +259,7 @@ export function createTimelineTrimming(deps: TimelineTrimmingDeps): TimelineTrim
       return !isLocked;
     });
 
-    const cmds = buildSplitSelectedClipsCommands(
-      doc,
-      deps.currentTime.value,
-      itemIdsToSplit,
-    );
+    const cmds = buildSplitSelectedClipsCommands(doc, deps.currentTime.value, itemIdsToSplit);
     if (cmds.length === 0) return;
 
     deps.batchApplyTimeline(cmds, {

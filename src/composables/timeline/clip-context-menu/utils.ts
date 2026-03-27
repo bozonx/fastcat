@@ -136,7 +136,9 @@ export function collectMultiSelectionState(
     hasLockedTrack: lockedTrackIds.size > 0,
     hasAudioOrVideoWithAudio,
     hasVideo,
-    hasGroupedClip: selectedClips.some((clip) => typeof clip.linkedGroupId === 'string' && clip.linkedGroupId.trim().length > 0),
+    hasGroupedClip: selectedClips.some(
+      (clip) => typeof clip.linkedGroupId === 'string' && clip.linkedGroupId.trim().length > 0,
+    ),
     allMuted,
     allShowWaveform,
     allShowThumbnails,

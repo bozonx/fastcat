@@ -129,7 +129,10 @@ export class CanvasFallbackRenderer {
       if (!params) return opacity;
       if (params.transitionIn?.durationUs && localTimeUs < params.transitionIn.durationUs) {
         opacity = Math.max(0, localTimeUs / params.transitionIn.durationUs);
-      } else if (params.transitionOut?.durationUs && localTimeUs > clipEndUs - params.transitionOut.durationUs) {
+      } else if (
+        params.transitionOut?.durationUs &&
+        localTimeUs > clipEndUs - params.transitionOut.durationUs
+      ) {
         opacity = Math.max(0, (clipEndUs - localTimeUs) / params.transitionOut.durationUs);
       }
       return opacity;

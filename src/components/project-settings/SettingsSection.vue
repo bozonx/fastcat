@@ -9,11 +9,7 @@ const props = defineProps<{
 </script>
 
 <template>
-  <UiAccordion
-    :title="title"
-    :summary="summary"
-    :default-open="defaultExpanded"
-  >
+  <UiAccordion :title="title" :summary="summary" :default-open="defaultExpanded">
     <div class="space-y-4 pt-1">
       <slot />
     </div>

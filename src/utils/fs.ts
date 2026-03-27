@@ -74,7 +74,7 @@ export async function computeDirectoryStats(
           const file = await (entryHandle as FileSystemFileHandle).getFile();
           totalSize += file.size;
           if (isRoot || recursiveFilesCount) {
-             totalFiles += 1;
+            totalFiles += 1;
           }
         } catch {
           // ignore

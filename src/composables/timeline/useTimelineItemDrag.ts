@@ -98,7 +98,9 @@ export function useTimelineItemDrag(
   } | null>(null);
 
   const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
-  const effectiveHotkeys = computed(() => getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys));
+  const effectiveHotkeys = computed(() =>
+    getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys),
+  );
   const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
   const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
 
@@ -408,7 +410,8 @@ export function useTimelineItemDrag(
       if (!item || item.kind !== 'clip') return;
 
       const currentScrollLeft = scrollEl.value?.scrollLeft ?? 0;
-      const dxPx = clientX - dragAnchorClientX.value + (currentScrollLeft - dragAnchorScrollLeft.value);
+      const dxPx =
+        clientX - dragAnchorClientX.value + (currentScrollLeft - dragAnchorScrollLeft.value);
       const rawDeltaUs = pxToDeltaUs(dxPx, zoom);
 
       const speed = typeof item.speed === 'number' && Number.isFinite(item.speed) ? item.speed : 1;
@@ -453,7 +456,8 @@ export function useTimelineItemDrag(
 
     if (mode === 'move') {
       const currentScrollLeft = scrollEl.value?.scrollLeft ?? 0;
-      const dxPx = clientX - dragAnchorClientX.value + (currentScrollLeft - dragAnchorScrollLeft.value);
+      const dxPx =
+        clientX - dragAnchorClientX.value + (currentScrollLeft - dragAnchorScrollLeft.value);
       const rawDeltaUs = pxToDeltaUs(dxPx, zoom);
       const rawStartUs = Math.max(0, dragAnchorStartUs.value + rawDeltaUs);
 
@@ -572,7 +576,8 @@ export function useTimelineItemDrag(
 
     // Trim modes
     const currentScrollLeft = scrollEl.value?.scrollLeft ?? 0;
-    const dxPx = clientX - dragAnchorClientX.value + (currentScrollLeft - dragAnchorScrollLeft.value);
+    const dxPx =
+      clientX - dragAnchorClientX.value + (currentScrollLeft - dragAnchorScrollLeft.value);
     const rawDeltaUs = pxToDeltaUs(dxPx, zoom);
 
     const thresholdUs = Math.round((snapThresholdPx / zoomToPxPerSecond(zoom)) * 1e6);

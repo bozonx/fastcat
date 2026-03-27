@@ -4,10 +4,21 @@ import { ref } from 'vue';
 import ClipTransitionPanel from '~/components/timeline/ClipTransitionPanel.vue';
 
 // Mock components
-vi.mock('~/components/ui/UiSliderInput.vue', () => ({ default: { template: '<div class="mock-slider"></div>', props: ['modelValue'] } }));
-vi.mock('~/components/ui/UiButtonGroup.vue', () => ({ default: { template: '<div class="mock-btn-group"></div>', props: ['modelValue', 'options'] } }));
-vi.mock('~/components/ui/UiModal.vue', () => ({ default: { template: '<div class="mock-modal"><slot name="body" /><slot /></div>', props: ['open', 'title'] } }));
-vi.mock('~/components/properties/TransitionParamFields.vue', () => ({ default: { template: '<div class="mock-params"></div>' } }));
+vi.mock('~/components/ui/UiSliderInput.vue', () => ({
+  default: { template: '<div class="mock-slider"></div>', props: ['modelValue'] },
+}));
+vi.mock('~/components/ui/UiButtonGroup.vue', () => ({
+  default: { template: '<div class="mock-btn-group"></div>', props: ['modelValue', 'options'] },
+}));
+vi.mock('~/components/ui/UiModal.vue', () => ({
+  default: {
+    template: '<div class="mock-modal"><slot name="body" /><slot /></div>',
+    props: ['open', 'title'],
+  },
+}));
+vi.mock('~/components/properties/TransitionParamFields.vue', () => ({
+  default: { template: '<div class="mock-params"></div>' },
+}));
 
 // Mock Composables
 vi.mock('~/composables/timeline/useClipTransitionPanel', () => ({
@@ -23,16 +34,16 @@ vi.mock('~/composables/timeline/useClipTransitionPanel', () => ({
     selectedMode: ref('adjacent'),
     selectedParams: ref({}),
     selectedType: ref('dissolve'),
-    updateParam: vi.fn()
-  })
+    updateParam: vi.fn(),
+  }),
 }));
 
 const mockPresetsStore = {
-  saveAsPreset: vi.fn()
+  saveAsPreset: vi.fn(),
 };
 
 vi.mock('~/stores/presets.store', () => ({
-  usePresetsStore: () => mockPresetsStore
+  usePresetsStore: () => mockPresetsStore,
 }));
 
 describe('ClipTransitionPanel', () => {
@@ -44,16 +55,16 @@ describe('ClipTransitionPanel', () => {
     edge: 'in' as const,
     trackId: 'track-1',
     itemId: 'clip-1',
-    transition: { type: 'dissolve', durationUs: 1000000, curve: 'linear', mode: 'adjacent' } as any
+    transition: { type: 'dissolve', durationUs: 1000000, curve: 'linear', mode: 'adjacent' } as any,
   };
 
   it('renders correctly', async () => {
     const component = await mountSuspended(ClipTransitionPanel, { props: defaultProps });
-    
+
     expect(component.text()).toContain('IN');
     // Fastcat translation keys
     expect(component.text()).toContain('fastcat.timeline.transition.title');
-    
+
     // Check if slider and button groups are rendered
     expect(component.find('.mock-slider').exists()).toBe(true);
     expect(component.findAll('.mock-btn-group').length).toBe(2); // Mode and Curve
@@ -61,12 +72,15 @@ describe('ClipTransitionPanel', () => {
 
   it('can open save preset modal', async () => {
     const component = await mountSuspended(ClipTransitionPanel, { props: defaultProps });
-    
+
     // The button that opens modal has the bookmark icon
     const buttons = component.findAll('button');
-    const saveBtn = buttons.find(b => b.html().includes('i-heroicons-bookmark') || b.attributes('title') === 'Save as preset');
+    const saveBtn = buttons.find(
+      (b) =>
+        b.html().includes('i-heroicons-bookmark') || b.attributes('title') === 'Save as preset',
+    );
     await saveBtn!.trigger('click');
-    
+
     const modal = component.find('.mock-modal');
     expect(modal.exists()).toBe(true);
   });

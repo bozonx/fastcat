@@ -148,15 +148,17 @@ const fadeCurveOptions = [
         class="w-20 shrink-0 flex flex-col gap-2 border-l border-ui-border/30 pl-3"
       >
         <div class="flex flex-col items-end px-1 h-8 justify-center">
-          <span class="text-[10px] uppercase font-bold text-ui-text-muted/70 leading-tight line-clamp-1">{{
-            t('fastcat.clip.audio.volume', 'Volume')
-          }}</span>
+          <span
+            class="text-[10px] uppercase font-bold text-ui-text-muted/70 leading-tight line-clamp-1"
+            >{{ t('fastcat.clip.audio.volume', 'Volume') }}</span
+          >
           <span
             class="text-xs font-mono text-ui-text-muted cursor-pointer hover:text-primary-400 tabular-nums whitespace-nowrap"
             :title="t('common.actions.reset')"
             @click="audioGainDb = 0"
           >
-            {{ audioGainDb <= -59.9 ? '-∞' : audioGainDb.toFixed(1) }}<span class="text-[10px] ml-0.5 opacity-50">dB</span>
+            {{ audioGainDb <= -59.9 ? '-∞' : audioGainDb.toFixed(1)
+            }}<span class="text-[10px] ml-0.5 opacity-50">dB</span>
           </span>
         </div>
         <div class="flex-1 min-h-[160px]">

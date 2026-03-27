@@ -153,7 +153,6 @@ function onPointerDownCapture(event: PointerEvent) {
     lastPointerDownTime.value = now;
   }
 }
-
 </script>
 
 <template>

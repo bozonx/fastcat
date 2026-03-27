@@ -84,11 +84,11 @@ const splitterMenuItems = computed(() => [
 
 <template>
   <div ref="containerRef" class="h-full">
-    <UiContextMenuPortal 
-      ref="menuRef" 
-      :items="splitterMenuItems" 
-      :target-el="containerRef" 
-      manual 
+    <UiContextMenuPortal
+      ref="menuRef"
+      :items="splitterMenuItems"
+      :target-el="containerRef"
+      manual
     />
     <Splitpanes
       :key="layoutKey"

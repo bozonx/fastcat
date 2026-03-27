@@ -4,26 +4,29 @@ import UiModal from '~/components/ui/UiModal.vue';
 // We define the specific colors supported by UButton to ensure type safety
 type ButtonColor = 'primary' | 'secondary' | 'neutral' | 'error' | 'warning' | 'success' | 'info';
 
-const props = withDefaults(defineProps<{
-  title: string;
-  description?: string;
-  confirmText?: string;
-  secondaryText?: string;
-  cancelText?: string;
-  color?: ButtonColor;
-  secondaryColor?: ButtonColor;
-  icon?: string;
-  loading?: boolean;
-}>(), {
-  description: undefined,
-  confirmText: undefined,
-  secondaryText: undefined,
-  cancelText: undefined,
-  color: 'primary',
-  secondaryColor: 'neutral',
-  icon: undefined,
-  loading: false,
-});
+const props = withDefaults(
+  defineProps<{
+    title: string;
+    description?: string;
+    confirmText?: string;
+    secondaryText?: string;
+    cancelText?: string;
+    color?: ButtonColor;
+    secondaryColor?: ButtonColor;
+    icon?: string;
+    loading?: boolean;
+  }>(),
+  {
+    description: undefined,
+    confirmText: undefined,
+    secondaryText: undefined,
+    cancelText: undefined,
+    color: 'primary',
+    secondaryColor: 'neutral',
+    icon: undefined,
+    loading: false,
+  },
+);
 
 const emit = defineEmits(['confirm', 'secondary']);
 
@@ -61,19 +64,11 @@ const handleClose = () => {
 </script>
 
 <template>
-  <UiModal
-    v-model:open="isOpen"
-    :title="props.title"
-    :ui="{ content: 'sm:max-w-lg' }"
-  >
+  <UiModal v-model:open="isOpen" :title="props.title" :ui="{ content: 'sm:max-w-lg' }">
     <div class="flex flex-col gap-4">
       <div v-if="props.icon || props.description" class="flex gap-4">
         <div v-if="props.icon" class="shrink-0">
-          <UIcon
-            :name="props.icon"
-            class="w-6 h-6"
-            :class="iconColorMap[props.color]"
-          />
+          <UIcon :name="props.icon" class="w-6 h-6" :class="iconColorMap[props.color]" />
         </div>
         <div v-if="props.description" class="flex-1">
           <p class="text-sm text-ui-text-muted">

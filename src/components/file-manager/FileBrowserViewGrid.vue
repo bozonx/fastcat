@@ -104,7 +104,8 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
         :data-entry-path="entry.path ?? null"
         class="flex flex-col items-center p-2 rounded-lg border border-transparent hover:border-ui-border hover:bg-ui-bg-elevated cursor-pointer group transition-all shrink-0 focus:outline-none"
         :class="{
-          'ring-1 ring-(--selection-ring) bg-(--selection-range-bg)': isSelected(entry) && editingEntryPath !== entry.path,
+          'ring-1 ring-(--selection-ring) bg-(--selection-range-bg)':
+            isSelected(entry) && editingEntryPath !== entry.path,
           'text-(--color-success)!':
             fileManager.mediaCache.hasProxy(entry.path || '') &&
             !proxyStore.generatingProxies.has(entry.path || ''),

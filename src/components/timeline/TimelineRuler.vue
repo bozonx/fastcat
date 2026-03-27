@@ -15,6 +15,7 @@ import { useTimelineRulerSelectionDrag } from '~/composables/timeline/useTimelin
 import { useTimelineRulerDraw } from '~/composables/timeline/useTimelineRulerDraw';
 import { useTimelineRulerInteractions } from '~/composables/timeline/useTimelineRulerInteractions';
 import { computeSnapTargetsUs } from '~/composables/timeline/timelineInteractionUtils';
+import { pxToTimeUs } from '~/utils/timeline/geometry';
 
 const { t } = useI18n();
 
@@ -54,6 +55,13 @@ const subTickWidth = 0.8;
 const fps = computed(() => projectStore.projectSettings.project.fps || 30);
 const zoom = computed(() => timelineStore.timelineZoom);
 const currentTime = computed(() => timelineStore.currentTime);
+
+function getTimeUsFromRulerClientEvent(event: MouseEvent | PointerEvent): number {
+  const rect = containerRef.value?.getBoundingClientRect();
+  if (!rect) return 0;
+  const x = event.clientX - rect.left;
+  return pxToTimeUs(scrollLeft.value + x, zoom.value);
+}
 
 const snapThresholdPx = computed(() => workspaceStore.userSettings.timeline.snapThresholdPx);
 
@@ -110,7 +118,12 @@ function deleteMarker(markerId: string) {
   timelineStore.removeMarker(markerId);
 }
 
-function selectMarker(markerId: string, e?: MouseEvent, part: 'left' | 'right' = 'left', movePlayhead = true) {
+function selectMarker(
+  markerId: string,
+  e?: MouseEvent,
+  part: 'left' | 'right' = 'left',
+  movePlayhead = true,
+) {
   if (e && isLayer1Active(e, workspaceStore.userSettings)) {
     executeRulerClickAction(workspaceStore.userSettings.mouse.ruler.shiftClick, e);
     return;
@@ -137,6 +150,9 @@ function selectSelectionRange(e?: MouseEvent) {
   }
   e?.stopPropagation();
   selectionStore.selectTimelineSelectionRange();
+  if (e) {
+    timelineStore.setCurrentTimeUs(getTimeUsFromRulerClientEvent(e));
+  }
 }
 
 const isSnappingEnabled = computed(() => timelineSettingsStore.toolbarSnapMode !== 'no_snap');

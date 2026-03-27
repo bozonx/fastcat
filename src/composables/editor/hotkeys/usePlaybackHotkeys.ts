@@ -5,7 +5,7 @@ import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import { getDocFps } from '~/timeline/commands/utils';
 import { isPreviewLikeFocus } from '~/utils/hotkeys/runtime';
 
-import { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
+import type { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 
 export function usePlaybackHotkeys(
   playbackStepHoldRunner: ReturnType<typeof createHotkeyHoldRunner>,
@@ -74,7 +74,8 @@ export function usePlaybackHotkeys(
     },
 
     'playback.stepForward': (e) => {
-      if (!canUsePlaybackOrTimelineFocus() || isPreviewLikeFocus(focusStore.effectiveFocus)) return false;
+      if (!canUsePlaybackOrTimelineFocus() || isPreviewLikeFocus(focusStore.effectiveFocus))
+        return false;
       playbackStepHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
@@ -85,7 +86,8 @@ export function usePlaybackHotkeys(
     },
 
     'playback.stepBackward': (e) => {
-      if (!canUsePlaybackOrTimelineFocus() || isPreviewLikeFocus(focusStore.effectiveFocus)) return false;
+      if (!canUsePlaybackOrTimelineFocus() || isPreviewLikeFocus(focusStore.effectiveFocus))
+        return false;
       playbackStepHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
@@ -96,7 +98,8 @@ export function usePlaybackHotkeys(
     },
 
     'playback.stepForwardLarge': (e) => {
-      if (!canUsePlaybackOrTimelineFocus() || isPreviewLikeFocus(focusStore.effectiveFocus)) return false;
+      if (!canUsePlaybackOrTimelineFocus() || isPreviewLikeFocus(focusStore.effectiveFocus))
+        return false;
       playbackStepHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
@@ -108,7 +111,8 @@ export function usePlaybackHotkeys(
     },
 
     'playback.stepBackwardLarge': (e) => {
-      if (!canUsePlaybackOrTimelineFocus() || isPreviewLikeFocus(focusStore.effectiveFocus)) return false;
+      if (!canUsePlaybackOrTimelineFocus() || isPreviewLikeFocus(focusStore.effectiveFocus))
+        return false;
       playbackStepHoldRunner.startHold({
         keyCode: e.code,
         action: () => {

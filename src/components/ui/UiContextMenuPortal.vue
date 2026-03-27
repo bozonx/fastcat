@@ -102,7 +102,10 @@ defineExpose({ open, close });
           :key="ii"
           class="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-ui-text hover:bg-ui-bg-elevated disabled:opacity-50 disabled:pointer-events-none"
           :disabled="item.disabled"
-          @click="item.onSelect?.(); close()"
+          @click="
+            item.onSelect?.();
+            close();
+          "
         >
           <UIcon v-if="item.icon" :name="item.icon" class="w-4 h-4 shrink-0 text-ui-text-muted" />
           <span>{{ item.label }}</span>

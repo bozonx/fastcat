@@ -482,7 +482,12 @@ function handleArrayItemUpdate(
             size="2xs"
             color="gray"
             variant="ghost"
-            @click="() => { updateValue(control.key, undefined); if (control.kindKey) updateValue(control.kindKey, undefined); }"
+            @click="
+              () => {
+                updateValue(control.key, undefined);
+                if (control.kindKey) updateValue(control.kindKey, undefined);
+              }
+            "
           />
         </div>
       </div>

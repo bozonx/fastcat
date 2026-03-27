@@ -459,11 +459,7 @@ defineExpose({
       />
     </div>
 
-    <ClipMaskSection
-      v-if="isVideoTrack"
-      :clip="clip"
-      @update-mask="handleUpdateMask"
-    />
+    <ClipMaskSection v-if="isVideoTrack" :clip="clip" @update-mask="handleUpdateMask" />
 
     <ClipAudioSection
       :can-edit-audio-fades="canEditAudioFades"

@@ -125,9 +125,7 @@ function clearCache() {
       />
     </UiFormField>
 
-    <UiAccordion
-      :title="t('videoEditor.settings.advancedSection', 'Advanced')"
-    >
+    <UiAccordion :title="t('videoEditor.settings.advancedSection', 'Advanced')">
       <div class="flex flex-col gap-6 pt-2">
         <UiFormField
           :label="
@@ -136,7 +134,9 @@ function clearCache() {
           :help="t('videoEditor.settings.defaultStaticClipDurationHint')"
         >
           <UiWheelNumberInput
-            :model-value="workspaceStore.userSettings.timeline.defaultStaticClipDurationUs / 1000000"
+            :model-value="
+              workspaceStore.userSettings.timeline.defaultStaticClipDurationUs / 1000000
+            "
             :min="0.1"
             :max="60"
             :step="0.1"

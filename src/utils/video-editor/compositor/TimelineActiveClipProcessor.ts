@@ -48,39 +48,52 @@ export class TimelineActiveClipProcessor {
       }
 
       if (clip.clipKind === 'hud') {
-        let dirty = !!clip.hudDirty;
+        const dirty = !!clip.hudDirty;
         const statePromises: Promise<void>[] = [];
 
-        const handleState = (state: import('./types').HudMediaState | undefined, suffix: string) => {
+        const handleState = (
+          state: import('./types').HudMediaState | undefined,
+          suffix: string,
+        ) => {
           if (!state || state.clipKind !== 'video' || !state.sink) return;
-          
+
           const localTimeUs = timeUs - clip.startUs;
           if (localTimeUs < 0 || localTimeUs >= clip.durationUs) return;
-          
+
           const speedRaw = typeof clip.speed === 'number' && clip.speed !== 0 ? clip.speed : 1;
           const speed = Math.abs(speedRaw);
           const reversed = speedRaw < 0;
-          
-          let sampleUs = reversed
+
+          const sampleUs = reversed
             ? Math.max(0, state.sourceDurationUs - Math.round(localTimeUs * speed))
             : Math.round(localTimeUs * speed);
-            
+
           let sampleTimeS = sampleUs / 1_000_000;
           if (!Number.isFinite(sampleTimeS) || Number.isNaN(sampleTimeS)) sampleTimeS = 0;
-          
-          const mockClip = { itemId: clip.itemId + suffix, sink: state.sink, firstTimestampS: state.firstTimestampS } as CompositorClip;
-          
-          statePromises.push(params.createPrimaryVideoSampleRequest(mockClip, sampleTimeS).then(res => {
-            if (res.sample) {
-              if (typeof res.sample.toVideoFrame === 'function') {
-                if (state.lastVideoFrame) {
-                  try { state.lastVideoFrame.close(); } catch {}
+
+          const mockClip = {
+            itemId: clip.itemId + suffix,
+            sink: state.sink,
+            firstTimestampS: state.firstTimestampS,
+          } as CompositorClip;
+
+          statePromises.push(
+            params.createPrimaryVideoSampleRequest(mockClip, sampleTimeS).then((res) => {
+              if (res.sample) {
+                if (typeof res.sample.toVideoFrame === 'function') {
+                  if (state.lastVideoFrame) {
+                    try {
+                      state.lastVideoFrame.close();
+                    } catch {}
+                  }
+                  state.lastVideoFrame = res.sample.toVideoFrame();
                 }
-                state.lastVideoFrame = res.sample.toVideoFrame();
+                try {
+                  res.sample.close?.();
+                } catch {}
               }
-              try { res.sample.close?.(); } catch {}
-            }
-          }));
+            }),
+          );
         };
 
         handleState(clip.hudMediaStates?.background, '_bg');
@@ -88,15 +101,17 @@ export class TimelineActiveClipProcessor {
         handleState(clip.hudMediaStates?.frame, '_fr');
 
         if (statePromises.length > 0) {
-          sampleRequests.push(Promise.all(statePromises).then(() => {
-            params.drawHudClip(clip, timeUs);
-            // Return a special object that tells applySampleResults not to hide the clip
-            return { clip, sample: { isHud: true, close: () => {} } as any };
-          }));
+          sampleRequests.push(
+            Promise.all(statePromises).then(() => {
+              params.drawHudClip(clip, timeUs);
+              // Return a special object that tells applySampleResults not to hide the clip
+              return { clip, sample: { isHud: true, close: () => {} } as any };
+            }),
+          );
         } else if (dirty) {
-           params.drawHudClip(clip, timeUs);
+          params.drawHudClip(clip, timeUs);
         }
-        
+
         clip.hudDirty = false;
         if (clip.sprite) clip.sprite.visible = true;
         continue;
@@ -156,20 +171,26 @@ export class TimelineActiveClipProcessor {
           sink: clip.maskState.sink,
           firstTimestampS: clip.maskState.firstTimestampS,
         } as CompositorClip;
-        
-        const maskPromise = params.createPrimaryVideoSampleRequest(mockClip, sampleTimeS).then(res => {
-          if (res.sample) {
-            const state = clip.maskState!;
-            if (typeof res.sample.toVideoFrame === 'function') {
-              if (state.lastVideoFrame) {
-                try { state.lastVideoFrame.close(); } catch {}
+
+        const maskPromise = params
+          .createPrimaryVideoSampleRequest(mockClip, sampleTimeS)
+          .then((res) => {
+            if (res.sample) {
+              const state = clip.maskState!;
+              if (typeof res.sample.toVideoFrame === 'function') {
+                if (state.lastVideoFrame) {
+                  try {
+                    state.lastVideoFrame.close();
+                  } catch {}
+                }
+                state.lastVideoFrame = res.sample.toVideoFrame();
               }
-              state.lastVideoFrame = res.sample.toVideoFrame();
+              try {
+                res.sample.close?.();
+              } catch {}
             }
-            try { res.sample.close?.(); } catch {}
-          }
-          return { clip, sample: { isMask: true, close: () => {} } as any };
-        });
+            return { clip, sample: { isMask: true, close: () => {} } as any };
+          });
         sampleRequests.push(maskPromise);
       }
     }

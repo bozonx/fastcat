@@ -54,11 +54,7 @@ function toggle() {
         class="flex flex-col gap-0.5 min-w-0 pr-4 transition-all duration-200"
         :class="[isCurrentlyOpen ? 'pl-3' : 'pl-0']"
       >
-        <h3
-          v-if="title"
-          v-show="isCurrentlyOpen"
-          class="text-lg font-semibold text-ui-text"
-        >
+        <h3 v-if="title" v-show="isCurrentlyOpen" class="text-lg font-semibold text-ui-text">
           {{ title }}
         </h3>
         <span

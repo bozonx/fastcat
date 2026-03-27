@@ -17,7 +17,7 @@ describe('useDraggedFile', () => {
   it('should set dragged file data', () => {
     const { draggedFile, setDraggedFile } = useDraggedFile();
     const mockData = { name: 'test.mp4', path: '/test.mp4', kind: 'file' as const };
-    
+
     setDraggedFile(mockData);
     expect(draggedFile.value).toEqual(mockData);
   });
@@ -25,10 +25,10 @@ describe('useDraggedFile', () => {
   it('should clear dragged file data', () => {
     const { draggedFile, setDraggedFile, clearDraggedFile } = useDraggedFile();
     const mockData = { name: 'test.mp4', path: '/test.mp4', kind: 'file' as const };
-    
+
     setDraggedFile(mockData);
     expect(draggedFile.value).toEqual(mockData);
-    
+
     clearDraggedFile();
     expect(draggedFile.value).toBeNull();
   });

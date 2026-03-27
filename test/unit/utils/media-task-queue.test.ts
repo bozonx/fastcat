@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getMediaTaskQueue, addMediaTask, addLatestMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
+import {
+  getMediaTaskQueue,
+  addMediaTask,
+  addLatestMediaTask,
+  MEDIA_TASK_PRIORITIES,
+} from '~/utils/media-task-queue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { ref } from 'vue';
 
@@ -25,25 +30,25 @@ describe('media-task-queue', () => {
       userSettings: {
         optimization: {
           mediaTaskConcurrency: 4,
-        }
-      }
+        },
+      },
     });
 
     const task = vi.fn().mockResolvedValue('result');
     const promise = addMediaTask(task);
-    
+
     // We expect the task to eventually run
     const result = await promise;
     expect(result).toBe('result');
     expect(task).toHaveBeenCalled();
   });
-  
+
   it('addLatestMediaTask can be called', async () => {
     const task = vi.fn().mockResolvedValue(undefined);
     addLatestMediaTask({ key: 'test', task });
-    
+
     // allow event loop to process
-    await new Promise(r => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
     expect(task).toHaveBeenCalled();
   });
 });

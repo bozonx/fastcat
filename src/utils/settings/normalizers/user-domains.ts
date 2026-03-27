@@ -326,7 +326,9 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
           ),
           click: z.enum(['select_track', 'select_all_clips', 'none']).catch('select_track'),
           middleClick: z.enum(['select_track', 'select_all_clips', 'none']).catch('none'),
-          doubleClick: z.enum(['select_track', 'select_all_clips', 'none']).catch('select_all_clips'),
+          doubleClick: z
+            .enum(['select_track', 'select_all_clips', 'none'])
+            .catch('select_all_clips'),
         })
         .catch(DEFAULT_USER_SETTINGS.mouse.trackHeaders),
 

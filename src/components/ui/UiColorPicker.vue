@@ -28,16 +28,10 @@ const COLORS = computed(() => {
 
   if (props.mode === 'track') {
     // For tracks, first is "transparent" (actually default dark grey)
-    return [
-      { value: '#2a2a2a', label: t('common.default', 'Default') },
-      ...list,
-    ];
+    return [{ value: '#2a2a2a', label: t('common.default', 'Default') }, ...list];
   } else {
     // For markers, first is white
-    return [
-      { value: '#ffffff', label: 'White' },
-      ...list,
-    ];
+    return [{ value: '#ffffff', label: 'White' }, ...list];
   }
 });
 
@@ -56,9 +50,9 @@ function selectColor(color: string) {
       :class="{
         'ring-2 ring-ui-primary ring-offset-2 ring-offset-ui-bg z-10': modelValue === c.value,
       }"
-      :style="{ 
+      :style="{
         backgroundColor: c.value === '#2a2a2a' ? '#3f3f3f' : c.value,
-        color: c.value === '#ffffff' ? '#000000' : '#ffffff' 
+        color: c.value === '#ffffff' ? '#000000' : '#ffffff',
       }"
       :title="c.label"
       @click.prevent="selectColor(c.value)"

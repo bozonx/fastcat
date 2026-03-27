@@ -80,9 +80,7 @@ function handleZoomOut() {
     </div>
 
     <div class="flex items-center gap-2">
-      <span class="text-2xs font-medium tabular-nums text-ui-text-muted"
-        >{{ timelineZoom }}%</span
-      >
+      <span class="text-2xs font-medium tabular-nums text-ui-text-muted">{{ timelineZoom }}%</span>
       <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1">
         <UiActionButton
           icon="lucide:zoom-out"

@@ -92,14 +92,18 @@ export class TransitionRenderer {
           fromTexture,
         );
       } else {
-        prevClip = state.edge === 'in' ? params.findPrevClipOnLayer(clip) : params.findNextClipOnLayer(clip);
-        
+        prevClip =
+          state.edge === 'in' ? params.findPrevClipOnLayer(clip) : params.findNextClipOnLayer(clip);
+
         if (!prevClip) {
           // If no adjacent clip is found (e.g., at the end of the track),
           // fallback to rendering lower layers so we can fade to/from background.
           params.stageTextureRenderer.renderLowerLayersToTexture(clip.layer, fromTexture);
         } else {
-          const transitionOffsetUs = Math.max(0, state.edge === 'in' ? timeUs - clip.startUs : clip.endUs - timeUs);
+          const transitionOffsetUs = Math.max(
+            0,
+            state.edge === 'in' ? timeUs - clip.startUs : clip.endUs - timeUs,
+          );
           const rendered = await this.renderTransitionClipToTexture(prevClip, fromTexture, {
             transitionOffsetUs,
             isNextClip: state.edge === 'out',
@@ -117,7 +121,7 @@ export class TransitionRenderer {
 
       let shaderToTexture = clip.transitionToTexture;
       let shaderFromTexture = fromTexture;
-      
+
       if (state.edge === 'out') {
         shaderToTexture = fromTexture;
         shaderFromTexture = clip.transitionToTexture;
@@ -126,7 +130,10 @@ export class TransitionRenderer {
       const transitionContext = {
         progress: state.progress,
         curve: state.curve,
-        elapsedUs: state.edge === 'in' ? timeUs - clip.startUs : timeUs - (clip.endUs - state.transition.durationUs),
+        elapsedUs:
+          state.edge === 'in'
+            ? timeUs - clip.startUs
+            : timeUs - (clip.endUs - state.transition.durationUs),
         durationUs: state.transition.durationUs,
         edge: state.edge as 'in' | 'out',
         params: state.transition.params,
@@ -245,13 +252,18 @@ export class TransitionRenderer {
     if (params.isNextClip) {
       const handleUs = Math.max(0, clip.sourceStartUs);
       if ((clip.speed || 1) < 0) {
-        sampleUs = handleUs < 1_000
-          ? Math.max(0, clip.sourceStartUs + clip.sourceRangeDurationUs - 1_000)
-          : Math.min(clip.sourceStartUs + clip.sourceRangeDurationUs + transitionOffsetUs, clip.sourceDurationUs - 1_000);
+        sampleUs =
+          handleUs < 1_000
+            ? Math.max(0, clip.sourceStartUs + clip.sourceRangeDurationUs - 1_000)
+            : Math.min(
+                clip.sourceStartUs + clip.sourceRangeDurationUs + transitionOffsetUs,
+                clip.sourceDurationUs - 1_000,
+              );
       } else {
-        sampleUs = handleUs < 1_000
-          ? Math.max(0, clip.sourceStartUs + 1_000)
-          : Math.max(0, clip.sourceStartUs - transitionOffsetUs);
+        sampleUs =
+          handleUs < 1_000
+            ? Math.max(0, clip.sourceStartUs + 1_000)
+            : Math.max(0, clip.sourceStartUs - transitionOffsetUs);
       }
     } else {
       const handleUs = Math.max(
@@ -261,11 +273,13 @@ export class TransitionRenderer {
       const sourceRangeEndUs = clip.sourceStartUs + clip.sourceRangeDurationUs;
 
       if ((clip.speed || 1) < 0) {
-        sampleUs = handleUs < 1_000
+        sampleUs =
+          handleUs < 1_000
             ? Math.max(0, clip.sourceStartUs + 1_000)
             : Math.max(0, clip.sourceStartUs - transitionOffsetUs);
       } else {
-        sampleUs = handleUs < 1_000
+        sampleUs =
+          handleUs < 1_000
             ? Math.max(0, clip.sourceStartUs + clip.sourceRangeDurationUs - 1_000)
             : Math.min(
                 sourceRangeEndUs + transitionOffsetUs,

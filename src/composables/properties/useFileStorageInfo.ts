@@ -26,7 +26,7 @@ export function useFileStorageInfo(options: UseFileStorageInfoOptions) {
       storageEstimate.value = null;
       projectStats.value = null;
       if (!isRoot) return;
-      
+
       const estimateFn = (navigator as any)?.storage?.estimate as undefined | (() => Promise<any>);
       if (typeof estimateFn === 'function') {
         try {

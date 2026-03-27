@@ -27,8 +27,10 @@ describe('indexedDB', () => {
     it('saves handle using storage', async () => {
       const mockHandle = {} as FileSystemDirectoryHandle;
       await indexedDB.saveWorkspaceHandleToIndexedDB(mockHandle);
-      
-      expect(repository.createIndexedDbWorkspaceHandleStorage).toHaveBeenCalledWith({ indexedDB: global.window.indexedDB });
+
+      expect(repository.createIndexedDbWorkspaceHandleStorage).toHaveBeenCalledWith({
+        indexedDB: global.window.indexedDB,
+      });
       expect(mockStorage.set).toHaveBeenCalledWith(mockHandle);
     });
   });
@@ -37,10 +39,12 @@ describe('indexedDB', () => {
     it('gets handle using storage', async () => {
       const mockHandle = {} as FileSystemDirectoryHandle;
       mockStorage.get.mockResolvedValueOnce(mockHandle);
-      
+
       const result = await indexedDB.getWorkspaceHandleFromIndexedDB();
-      
-      expect(repository.createIndexedDbWorkspaceHandleStorage).toHaveBeenCalledWith({ indexedDB: global.window.indexedDB });
+
+      expect(repository.createIndexedDbWorkspaceHandleStorage).toHaveBeenCalledWith({
+        indexedDB: global.window.indexedDB,
+      });
       expect(mockStorage.get).toHaveBeenCalled();
       expect(result).toBe(mockHandle);
     });
@@ -49,8 +53,10 @@ describe('indexedDB', () => {
   describe('clearWorkspaceHandleFromIndexedDB', () => {
     it('clears handle using storage', async () => {
       await indexedDB.clearWorkspaceHandleFromIndexedDB();
-      
-      expect(repository.createIndexedDbWorkspaceHandleStorage).toHaveBeenCalledWith({ indexedDB: global.window.indexedDB });
+
+      expect(repository.createIndexedDbWorkspaceHandleStorage).toHaveBeenCalledWith({
+        indexedDB: global.window.indexedDB,
+      });
       expect(mockStorage.clear).toHaveBeenCalled();
     });
   });

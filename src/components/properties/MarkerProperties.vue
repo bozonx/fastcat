@@ -21,7 +21,6 @@ const isZone = computed(() => {
   return typeof marker.value?.durationUs === 'number';
 });
 
-
 function handleUpdateText(val: string | undefined) {
   if (!marker.value) return;
   timelineStore.updateMarker(marker.value.id, {
