@@ -5,7 +5,11 @@ import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import { getDocFps } from '~/timeline/commands/utils';
 import { isPreviewLikeFocus } from '~/utils/hotkeys/runtime';
 
-export function usePlaybackHotkeys() {
+import { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
+
+export function usePlaybackHotkeys(
+  playbackStepHoldRunner: ReturnType<typeof createHotkeyHoldRunner>,
+) {
   const timelineStore = useTimelineStore();
   const focusStore = useFocusStore();
   const uiStore = useUiStore();
@@ -69,29 +73,49 @@ export function usePlaybackHotkeys() {
       return true;
     },
 
-    'playback.stepForward': () => {
+    'playback.stepForward': (e) => {
       if (!canUsePlaybackOrTimelineFocus() || isPreviewLikeFocus(focusStore.effectiveFocus)) return false;
-      timelineStore.seekFrames(1);
+      playbackStepHoldRunner.startHold({
+        keyCode: e.code,
+        action: () => {
+          timelineStore.seekFrames(1);
+        },
+      });
       return true;
     },
 
-    'playback.stepBackward': () => {
+    'playback.stepBackward': (e) => {
       if (!canUsePlaybackOrTimelineFocus() || isPreviewLikeFocus(focusStore.effectiveFocus)) return false;
-      timelineStore.seekFrames(-1);
+      playbackStepHoldRunner.startHold({
+        keyCode: e.code,
+        action: () => {
+          timelineStore.seekFrames(-1);
+        },
+      });
       return true;
     },
 
-    'playback.stepForwardLarge': () => {
+    'playback.stepForwardLarge': (e) => {
       if (!canUsePlaybackOrTimelineFocus() || isPreviewLikeFocus(focusStore.effectiveFocus)) return false;
-      const fps = getDocFps(timelineStore.timelineDoc || ({} as any));
-      timelineStore.seekFrames(fps);
+      playbackStepHoldRunner.startHold({
+        keyCode: e.code,
+        action: () => {
+          const fps = getDocFps(timelineStore.timelineDoc || ({} as any));
+          timelineStore.seekFrames(fps);
+        },
+      });
       return true;
     },
 
-    'playback.stepBackwardLarge': () => {
+    'playback.stepBackwardLarge': (e) => {
       if (!canUsePlaybackOrTimelineFocus() || isPreviewLikeFocus(focusStore.effectiveFocus)) return false;
-      const fps = getDocFps(timelineStore.timelineDoc || ({} as any));
-      timelineStore.seekFrames(-fps);
+      playbackStepHoldRunner.startHold({
+        keyCode: e.code,
+        action: () => {
+          const fps = getDocFps(timelineStore.timelineDoc || ({} as any));
+          timelineStore.seekFrames(-fps);
+        },
+      });
       return true;
     },
   };

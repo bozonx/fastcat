@@ -16,6 +16,7 @@ import type { FsEntry } from '~/types/fs';
 export function useGeneralHotkeys(
   zoomHoldRunner: ReturnType<typeof createHotkeyHoldRunner>,
   volumeHoldRunner: ReturnType<typeof createHotkeyHoldRunner>,
+  navigationHoldRunner: ReturnType<typeof createHotkeyHoldRunner>,
 ) {
   const timelineStore = useTimelineStore();
   const uiStore = useUiStore();
@@ -154,6 +155,32 @@ export function useGeneralHotkeys(
     });
   }
 
+  function startNavigationHotkeyHold(params: {
+    dir: 'up' | 'down' | 'left' | 'right';
+    keyCode: string;
+  }) {
+    navigationHoldRunner.startHold({
+      keyCode: params.keyCode,
+      action: () => {
+        if (params.dir === 'up' || params.dir === 'down') {
+          if (focusStore.effectiveFocus === 'filesBrowser' || focusStore.effectiveFocus === 'left') {
+            uiStore.fileBrowserMoveSelectionTrigger = {
+              dir: params.dir,
+              timestamp: Date.now(),
+            };
+          }
+        } else {
+          if (focusStore.effectiveFocus === 'filesBrowser') {
+            uiStore.fileBrowserMoveSelectionTrigger = {
+              dir: params.dir,
+              timestamp: Date.now(),
+            };
+          }
+        }
+      },
+    });
+  }
+
   function isPreviewFocus() {
     return focusStore.canUsePreviewHotkeys;
   }
@@ -288,20 +315,18 @@ export function useGeneralHotkeys(
         } else {
           uiStore.pendingFsEntryDelete = [selected.entry];
         }
-      } else if (timelineStore.getSelectionRange()) {
-        timelineStore.removeSelectionRange();
-      } else if (selected?.source === 'timeline') {
-        if (selected.kind === 'track') {
+      } else if (selected?.source === 'timeline' || timelineStore.selectedItemIds.length > 0) {
+        if (selected?.kind === 'track') {
           timelineStore.deleteTrack(selected.trackId, { allowNonEmpty: true });
           selectionStore.clearSelection();
-        } else if (selected.kind === 'marker') {
+        } else if (selected?.kind === 'marker') {
           timelineStore.removeMarker(selected.markerId);
           selectionStore.clearSelection();
         } else {
           timelineStore.deleteFirstSelectedItem();
         }
-      } else if (timelineStore.selectedItemIds.length > 0) {
-        timelineStore.deleteFirstSelectedItem();
+      } else if (timelineStore.getSelectionRange()) {
+        timelineStore.removeSelectionRange();
       }
       return true;
     },
@@ -373,45 +398,33 @@ export function useGeneralHotkeys(
       return false;
     },
 
-    'general.navigateSelectionUp': () => {
+    'general.navigateSelectionUp': (e) => {
       if (focusStore.effectiveFocus === 'filesBrowser' || focusStore.effectiveFocus === 'left') {
-        uiStore.fileBrowserMoveSelectionTrigger = {
-          dir: 'up',
-          timestamp: Date.now(),
-        };
+        startNavigationHotkeyHold({ dir: 'up', keyCode: e.code });
         return true;
       }
       return false;
     },
 
-    'general.navigateSelectionDown': () => {
+    'general.navigateSelectionDown': (e) => {
       if (focusStore.effectiveFocus === 'filesBrowser' || focusStore.effectiveFocus === 'left') {
-        uiStore.fileBrowserMoveSelectionTrigger = {
-          dir: 'down',
-          timestamp: Date.now(),
-        };
+        startNavigationHotkeyHold({ dir: 'down', keyCode: e.code });
         return true;
       }
       return false;
     },
 
-    'general.navigateSelectionLeft': () => {
+    'general.navigateSelectionLeft': (e) => {
       if (focusStore.effectiveFocus === 'filesBrowser') {
-        uiStore.fileBrowserMoveSelectionTrigger = {
-          dir: 'left',
-          timestamp: Date.now(),
-        };
+        startNavigationHotkeyHold({ dir: 'left', keyCode: e.code });
         return true;
       }
       return false;
     },
 
-    'general.navigateSelectionRight': () => {
+    'general.navigateSelectionRight': (e) => {
       if (focusStore.effectiveFocus === 'filesBrowser') {
-        uiStore.fileBrowserMoveSelectionTrigger = {
-          dir: 'right',
-          timestamp: Date.now(),
-        };
+        startNavigationHotkeyHold({ dir: 'right', keyCode: e.code });
         return true;
       }
       return false;

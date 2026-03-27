@@ -31,12 +31,14 @@ export function useEditorHotkeys() {
 
   const volumeHoldRunner = createHotkeyHoldRunner();
   const zoomHoldRunner = createHotkeyHoldRunner();
+  const navigationHoldRunner = createHotkeyHoldRunner();
+  const playbackStepHoldRunner = createHotkeyHoldRunner();
 
   const suppressedKeyupCodes = new Set<string>();
 
-  const generalHandlers = useGeneralHotkeys(zoomHoldRunner, volumeHoldRunner);
-  const timelineHandlers = useTimelineHotkeys();
-  const playbackHandlers = usePlaybackHotkeys();
+  const generalHandlers = useGeneralHotkeys(zoomHoldRunner, volumeHoldRunner, navigationHoldRunner);
+  const timelineHandlers = useTimelineHotkeys(navigationHoldRunner);
+  const playbackHandlers = usePlaybackHotkeys(playbackStepHoldRunner);
 
   // Combine handlers that overlap (copy, cut, paste)
   const registry: Partial<Record<HotkeyCommandId, (e: KeyboardEvent) => boolean>> = {
@@ -183,12 +185,16 @@ export function useEditorHotkeys() {
 
     volumeHoldRunner.handleKeyup(e.code);
     zoomHoldRunner.handleKeyup(e.code);
+    navigationHoldRunner.handleKeyup(e.code);
+    playbackStepHoldRunner.handleKeyup(e.code);
   }
 
   function onGlobalBlur() {
     suppressedKeyupCodes.clear();
     volumeHoldRunner.clearTimers();
     zoomHoldRunner.clearTimers();
+    navigationHoldRunner.clearTimers();
+    playbackStepHoldRunner.clearTimers();
   }
 
   // To prevent stuck keys if window loses focus while a key is pressed,
@@ -198,6 +204,8 @@ export function useEditorHotkeys() {
       suppressedKeyupCodes.clear();
       volumeHoldRunner.clearTimers();
       zoomHoldRunner.clearTimers();
+      navigationHoldRunner.clearTimers();
+      playbackStepHoldRunner.clearTimers();
     }
   }
 
@@ -215,5 +223,7 @@ export function useEditorHotkeys() {
     document.removeEventListener('visibilitychange', onVisibilityChange);
     volumeHoldRunner.clearTimers();
     zoomHoldRunner.clearTimers();
+    navigationHoldRunner.clearTimers();
+    playbackStepHoldRunner.clearTimers();
   });
 }
