@@ -41,6 +41,20 @@ const hudPresets = computed(() =>
     .map((p) => ({ label: p.name, value: p.id, params: p.params })),
 );
 
+const textPresets = computed(() =>
+  presetsStore.customPresets
+    .filter((p) => p.category === 'text')
+    .map((p) => ({ label: p.name, value: p.id, params: p.params })),
+);
+
+function handleLoadTextPreset(presetId: string) {
+  const preset = presetsStore.customPresets.find((p) => p.id === presetId);
+  if (!preset) return;
+
+  const p = preset.params;
+  if (p.style) emit('updateTextStyle', p.style);
+}
+
 function handleLoadShapePreset(presetId: string) {
   const preset = presetsStore.customPresets.find((p) => p.id === presetId);
   if (!preset) return;
@@ -70,6 +84,32 @@ function handleLoadHudPreset(presetId: string) {
     });
   }
 }
+
+function handleSavePreset() {
+  const name = prompt(t('fastcat.presets.enterName', 'Enter preset name'), props.clip.name);
+  if (!name) return;
+
+  if (props.clip.clipType === 'text') {
+    presetsStore.saveAsPreset('text', 'custom', name, {
+      style: (props.clip as any).style,
+    });
+  } else if (props.clip.clipType === 'shape') {
+    presetsStore.saveAsPreset('shape', (props.clip as any).shapeType, name, {
+      shapeType: (props.clip as any).shapeType,
+      fillColor: (props.clip as any).fillColor,
+      strokeColor: (props.clip as any).strokeColor,
+      strokeWidth: (props.clip as any).strokeWidth,
+      shapeConfig: (props.clip as any).shapeConfig,
+    });
+  } else if (props.clip.clipType === 'hud') {
+    presetsStore.saveAsPreset('hud', (props.clip as any).hudType, name, {
+      hudType: (props.clip as any).hudType,
+      background: (props.clip as any).background,
+      content: (props.clip as any).content,
+      params: (props.clip as any).params,
+    });
+  }
+}
 </script>
 
 <template>
@@ -82,8 +122,11 @@ function handleLoadHudPreset(presetId: string) {
   <ClipTextProperties
     v-else-if="props.clip.clipType === 'text'"
     :clip="props.clip as TimelineTextClipItem"
+    :presets="textPresets"
     @update-text="emit('updateText', $event)"
     @update-text-style="emit('updateTextStyle', $event)"
+    @load-preset="handleLoadTextPreset"
+    @save-preset="handleSavePreset"
   />
 
   <ClipShapeProperties
@@ -96,6 +139,7 @@ function handleLoadHudPreset(presetId: string) {
     @update-stroke-width="emit('updateStrokeWidth', $event)"
     @update-shape-config="emit('updateShapeConfig', $event)"
     @load-preset="handleLoadShapePreset"
+    @save-preset="handleSavePreset"
   />
 
   <ClipHudProperties
@@ -106,5 +150,6 @@ function handleLoadHudPreset(presetId: string) {
     :presets="hudPresets"
     @update-hud-control="(key: string, val: unknown) => emit('updateHudControl', key, val)"
     @load-preset="handleLoadHudPreset"
+    @save-preset="handleSavePreset"
   />
 </template>

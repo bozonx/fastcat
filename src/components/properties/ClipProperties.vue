@@ -98,32 +98,6 @@ function handleCutClip() {
   });
 }
 
-function handleSaveAsPreset() {
-  const name = prompt(t('fastcat.presets.enterName', 'Enter preset name'), props.clip.name);
-  if (!name) return;
-
-  if (props.clip.clipType === 'text') {
-    presetsStore.saveAsPreset('text', 'custom', name, {
-      style: props.clip.style,
-    });
-  } else if (props.clip.clipType === 'shape') {
-    presetsStore.saveAsPreset('shape', props.clip.shapeType, name, {
-      shapeType: props.clip.shapeType,
-      fillColor: props.clip.fillColor,
-      strokeColor: props.clip.strokeColor,
-      strokeWidth: props.clip.strokeWidth,
-      shapeConfig: props.clip.shapeConfig,
-    });
-  } else if (props.clip.clipType === 'hud') {
-    presetsStore.saveAsPreset('hud', props.clip.hudType, name, {
-      hudType: props.clip.hudType,
-      background: props.clip.background,
-      content: props.clip.content,
-      params: (props.clip as any).params,
-    });
-  }
-}
-
 const {
   isFreePosition,
   hasLockedLinkedAudio,
@@ -435,7 +409,6 @@ defineExpose({
       @reset-freeze-frame="handleResetFreezeFrame"
       @extract-audio="handleExtractAudio"
       @return-audio="handleReturnAudio"
-      @save-as-preset="handleSaveAsPreset"
     />
 
     <ClipInfoSection
