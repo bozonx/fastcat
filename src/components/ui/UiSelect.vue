@@ -13,6 +13,7 @@ interface UiSelectProps {
   labelKey?: string;
   multiple?: boolean;
   fullWidth?: boolean;
+  searchable?: boolean;
   searchInput?: any;
 }
 
@@ -25,6 +26,7 @@ const props = withDefaults(defineProps<UiSelectProps>(), {
   labelKey: 'label',
   multiple: false,
   fullWidth: false,
+  searchable: false,
   searchInput: undefined,
 });
 
@@ -49,6 +51,7 @@ function onUpdate(val: unknown) {
     :value-key="props.valueKey as never"
     :label-key="props.labelKey as never"
     :multiple="props.multiple"
+    :searchable="props.searchable"
     :class="props.fullWidth ? 'w-full' : 'w-auto min-w-20'"
     :ui="{ content: 'min-w-48' }"
     :search-input="props.searchInput"
