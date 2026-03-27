@@ -407,7 +407,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     const targetDirPath = params.targetDirPath ?? '';
     if (!sourcePath) return;
 
-    const sourceParentPath = sourcePath.split('/').slice(0, -1).join('/');
+    const sourceParentPath = getParentPath(sourcePath);
     if (sourceParentPath === targetDirPath) return;
 
     if (!isMoveAllowed({ sourcePath, targetDirPath })) return;
@@ -456,7 +456,6 @@ export function createFileManager(deps: FileManagerCreateDeps) {
           },
         );
 
-        const sourceParentPath = getParentPath(sourcePath);
 
         if (targetDirPath) {
           deps.setFileTreePathExpanded(targetDirPath, true);

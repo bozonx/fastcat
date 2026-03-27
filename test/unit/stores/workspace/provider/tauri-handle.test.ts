@@ -65,7 +65,7 @@ describe('TauriFileHandle', () => {
       const writable = await handle.createWritable();
       await writable.write('hello');
 
-      expect(writeFile).toHaveBeenCalledWith('/test/file.txt', expect.any(Uint8Array));
+      expect(writeFile).toHaveBeenCalledWith('/test/file.txt.tmp', expect.any(Uint8Array));
       // We know it converts string to Uint8Array
       const callArg = vi.mocked(writeFile).mock.calls[0][1] as Uint8Array;
       expect(new TextDecoder().decode(callArg)).toBe('hello');
@@ -77,7 +77,7 @@ describe('TauriFileHandle', () => {
       const data = new Uint8Array([1, 2, 3]);
       await writable.write(data);
 
-      expect(writeFile).toHaveBeenCalledWith('/test/file.txt', data);
+      expect(writeFile).toHaveBeenCalledWith('/test/file.txt.tmp', data);
     });
 
     it('writes other data types (Blob)', async () => {
@@ -86,7 +86,7 @@ describe('TauriFileHandle', () => {
       const blob = new Blob(['blob data']);
       await writable.write(blob);
 
-      expect(writeFile).toHaveBeenCalledWith('/test/file.txt', expect.any(Uint8Array));
+      expect(writeFile).toHaveBeenCalledWith('/test/file.txt.tmp', expect.any(Uint8Array));
       const callArg = vi.mocked(writeFile).mock.calls[0][1] as Uint8Array;
       expect(new TextDecoder().decode(callArg)).toBe('blob data');
     });

@@ -58,7 +58,7 @@ describe('useTimelineDropHandling', () => {
     mediaStore.mediaMetadata = {
       '_video/new.mp4': {
         source: { size: 1, lastModified: 1 },
-        duration: 1.5,
+        duration: 1_500_000,
         video: {
           width: 1920,
           height: 1080,

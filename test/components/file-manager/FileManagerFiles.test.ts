@@ -6,7 +6,7 @@ import { useEditorHotkeys } from '~/composables/editor/useEditorHotkeys';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
-import { ref, reactive } from 'vue';
+import { ref, reactive, nextTick } from 'vue';
 
 vi.mock('~/composables/useAppClipboard', () => ({
   useAppClipboard: () => ({
@@ -162,6 +162,7 @@ describe('FileManagerFiles', () => {
     const initialTrigger = uiStore.fileTreeSelectAllTrigger;
 
     useFocusStore().setPanelFocus('left');
+    await nextTick();
 
     window.dispatchEvent(
       new KeyboardEvent('keydown', {
