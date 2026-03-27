@@ -8,7 +8,11 @@ import { getDocFps } from '~/timeline/commands/utils';
 
 const AUDIO_MIXER_GAIN_STEP = 0.05;
 
-export function useTimelineHotkeys() {
+import { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
+
+export function useTimelineHotkeys(
+  navigationHoldRunner: ReturnType<typeof createHotkeyHoldRunner>,
+) {
   const timelineStore = useTimelineStore();
   const settingsStore = useTimelineSettingsStore();
   const focusStore = useFocusStore();
@@ -238,49 +242,77 @@ export function useTimelineHotkeys() {
       return true;
     },
 
-    'timeline.moveSelectedClipsLeft': () => {
+    'timeline.moveSelectedClipsLeft': (e) => {
       if (!focusStore.canUseTimelineHotkeys) return false;
       if (timelineStore.selectedItemIds.length === 0) return false;
-      timelineStore.moveSelectedClips(-1);
+      navigationHoldRunner.startHold({
+        keyCode: e.code,
+        action: () => {
+          timelineStore.moveSelectedClips(-1);
+        },
+      });
       return true;
     },
 
-    'timeline.moveSelectedClipsRight': () => {
+    'timeline.moveSelectedClipsRight': (e) => {
       if (!focusStore.canUseTimelineHotkeys) return false;
       if (timelineStore.selectedItemIds.length === 0) return false;
-      timelineStore.moveSelectedClips(1);
+      navigationHoldRunner.startHold({
+        keyCode: e.code,
+        action: () => {
+          timelineStore.moveSelectedClips(1);
+        },
+      });
       return true;
     },
 
-    'timeline.moveSelectedClipsLeftLarge': () => {
+    'timeline.moveSelectedClipsLeftLarge': (e) => {
       if (!focusStore.canUseTimelineHotkeys) return false;
       if (timelineStore.selectedItemIds.length === 0) return false;
-      // Move by 1 second (approx)
-      const fps = getDocFps(timelineStore.timelineDoc || ({} as any));
-      timelineStore.moveSelectedClips(-fps);
+      navigationHoldRunner.startHold({
+        keyCode: e.code,
+        action: () => {
+          const fps = getDocFps(timelineStore.timelineDoc || ({} as any));
+          timelineStore.moveSelectedClips(-fps);
+        },
+      });
       return true;
     },
 
-    'timeline.moveSelectedClipsRightLarge': () => {
+    'timeline.moveSelectedClipsRightLarge': (e) => {
       if (!focusStore.canUseTimelineHotkeys) return false;
       if (timelineStore.selectedItemIds.length === 0) return false;
-      // Move by 1 second (approx)
-      const fps = getDocFps(timelineStore.timelineDoc || ({} as any));
-      timelineStore.moveSelectedClips(fps);
+      navigationHoldRunner.startHold({
+        keyCode: e.code,
+        action: () => {
+          const fps = getDocFps(timelineStore.timelineDoc || ({} as any));
+          timelineStore.moveSelectedClips(fps);
+        },
+      });
       return true;
     },
 
-    'timeline.increaseSelectedClipsVolume': () => {
+    'timeline.increaseSelectedClipsVolume': (e) => {
       if (!focusStore.canUseTimelineHotkeys) return false;
-      if (adjustAudioMixerGain(AUDIO_MIXER_GAIN_STEP)) return true;
-      timelineStore.adjustSelectedClipsVolume(1);
+      navigationHoldRunner.startHold({
+        keyCode: e.code,
+        action: () => {
+          if (adjustAudioMixerGain(AUDIO_MIXER_GAIN_STEP)) return;
+          timelineStore.adjustSelectedClipsVolume(1);
+        },
+      });
       return true;
     },
 
-    'timeline.decreaseSelectedClipsVolume': () => {
+    'timeline.decreaseSelectedClipsVolume': (e) => {
       if (!focusStore.canUseTimelineHotkeys) return false;
-      if (adjustAudioMixerGain(-AUDIO_MIXER_GAIN_STEP)) return true;
-      timelineStore.adjustSelectedClipsVolume(-1);
+      navigationHoldRunner.startHold({
+        keyCode: e.code,
+        action: () => {
+          if (adjustAudioMixerGain(-AUDIO_MIXER_GAIN_STEP)) return;
+          timelineStore.adjustSelectedClipsVolume(-1);
+        },
+      });
       return true;
     },
 
