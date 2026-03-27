@@ -238,7 +238,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
               class="hover:bg-ui-bg-elevated cursor-pointer group border-b border-ui-border/50 transition-colors focus:outline-none"
               :class="{
                 'ring-1 ring-(--selection-ring) ring-inset z-10 relative bg-(--selection-range-bg)':
-                  isSelected(entry),
+                  isSelected(entry) && editingEntryPath !== entry.path,
                 'opacity-30': entry.name.startsWith('.'),
                 'opacity-50': isCutEntry(entry),
                 'text-(--color-success)!':
