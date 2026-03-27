@@ -28,12 +28,14 @@ interface UseTimelineRulerSelectionDragOptions {
   setPreviewSelectionRange?: (payload: { startUs: number; endUs: number } | null) => void;
   computeSnapTargets?: () => number[];
   snapThresholdPx?: Ref<number> | number;
+  isSnappingEnabled?: Ref<boolean>;
 }
 
 export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelectionDragOptions) {
   const isDraggingSelectionRange = ref(false);
   const selectionDragPart = ref<TimelineRulerSelectionDragPart>('move');
   const selectionDragStartX = ref(0);
+  const selectionDragStartMouseTimeUs = ref(0);
   const selectionDragStartStartUs = ref(0);
   const selectionDragStartEndUs = ref(0);
   const draggedSelectionPatch = ref<{ startUs: number; endUs: number } | null>(null);
@@ -101,12 +103,16 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
       : (options.snapThresholdPx?.value ?? 0);
   }
 
-  function updateSelectionRangeFromDrag(clientX: number) {
+  function getIsSnappingEnabled() {
+    return options.isSnappingEnabled?.value ?? true;
+  }
+
+  function updateSelectionRangeFromDrag(event: PointerEvent) {
     const range = options.selectionRange.value;
     if (!range) return;
 
-    const dx = clientX - selectionDragStartX.value;
-    const deltaUs = pxToTimeUs(Math.abs(dx), options.zoom.value) * (dx < 0 ? -1 : 1);
+    const currentTimeUs = options.getTimeUsFromPointerEvent(event);
+    const mouseDeltaUs = currentTimeUs - selectionDragStartMouseTimeUs.value;
     const minDurationUs = Math.max(
       getFrameDurationUs(),
       pxToTimeUs(TIMELINE_RULER_CONSTANTS.MIN_SELECTION_DURATION_PX, options.zoom.value),
@@ -114,10 +120,10 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
     if (selectionDragPart.value === 'move') {
       const durationUs = selectionDragStartEndUs.value - selectionDragStartStartUs.value;
-      let nextStartUs = Math.max(0, quantize(selectionDragStartStartUs.value + deltaUs));
+      let nextStartUs = Math.max(0, quantize(selectionDragStartStartUs.value + mouseDeltaUs));
       let nextEndUs = nextStartUs + durationUs;
 
-      if (options.computeSnapTargets && options.snapThresholdPx) {
+      if (getIsSnappingEnabled() && options.computeSnapTargets && options.snapThresholdPx) {
         const thresholdUs = Math.round(
           (getSnapThresholdPx() / zoomToPxPerSecond(options.zoom.value)) * 1e6,
         );
@@ -135,10 +141,10 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
         });
 
         if (snapStart.distUs < thresholdUs && snapStart.distUs <= snapEnd.distUs) {
-          nextStartUs = snapStart.snappedUs;
+          nextStartUs = quantize(snapStart.snappedUs);
           nextEndUs = nextStartUs + durationUs;
         } else if (snapEnd.distUs < thresholdUs) {
-          nextEndUs = snapEnd.snappedUs;
+          nextEndUs = quantize(snapEnd.snappedUs);
           nextStartUs = Math.max(0, nextEndUs - durationUs);
         }
       }
@@ -157,10 +163,10 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
       const maxStartUs = selectionDragStartEndUs.value - minDurationUs;
       let nextStartUs = Math.max(
         0,
-        Math.min(maxStartUs, quantize(selectionDragStartStartUs.value + deltaUs)),
+        Math.min(maxStartUs, quantize(selectionDragStartStartUs.value + mouseDeltaUs)),
       );
 
-      if (options.computeSnapTargets && options.snapThresholdPx) {
+      if (getIsSnappingEnabled() && options.computeSnapTargets && options.snapThresholdPx) {
         const thresholdUs = Math.round(
           (getSnapThresholdPx() / zoomToPxPerSecond(options.zoom.value)) * 1e6,
         );
@@ -171,7 +177,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
           targetsUs: targets,
         });
         if (snap.distUs < thresholdUs) {
-          nextStartUs = Math.max(0, Math.min(maxStartUs, snap.snappedUs));
+          nextStartUs = Math.max(0, Math.min(maxStartUs, quantize(snap.snappedUs)));
         }
       }
 
@@ -187,17 +193,17 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
     let nextEndUs = Math.max(
       selectionDragStartStartUs.value + minDurationUs,
-      quantize(selectionDragStartEndUs.value + deltaUs),
+      quantize(selectionDragStartEndUs.value + mouseDeltaUs),
     );
 
-    if (options.computeSnapTargets && options.snapThresholdPx) {
+    if (getIsSnappingEnabled() && options.computeSnapTargets && options.snapThresholdPx) {
       const thresholdUs = Math.round(
         (getSnapThresholdPx() / zoomToPxPerSecond(options.zoom.value)) * 1e6,
       );
       const targets = options.computeSnapTargets();
       const snap = pickBestSnapCandidateUs({ rawUs: nextEndUs, thresholdUs, targetsUs: targets });
       if (snap.distUs < thresholdUs) {
-        nextEndUs = Math.max(selectionDragStartStartUs.value + minDurationUs, snap.snappedUs);
+        nextEndUs = Math.max(selectionDragStartStartUs.value + minDurationUs, quantize(snap.snappedUs));
       }
     }
 
@@ -213,7 +219,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
   function onSelectionPointerMove(event: PointerEvent) {
     if (!isDraggingSelectionRange.value) return;
     suppressNextRulerClick.value = true;
-    updateSelectionRangeFromDrag(event.clientX);
+    updateSelectionRangeFromDrag(event);
   }
 
   function onSelectionPointerUp() {
@@ -262,6 +268,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     isDraggingSelectionRange.value = true;
     selectionDragPart.value = part;
     selectionDragStartX.value = event.clientX;
+    selectionDragStartMouseTimeUs.value = options.getTimeUsFromPointerEvent(event);
     selectionDragStartStartUs.value = options.selectionRange.value.startUs;
     selectionDragStartEndUs.value = options.selectionRange.value.endUs;
     draggedSelectionPatch.value = null;
@@ -282,7 +289,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     suppressNextRulerClick.value = true;
     let currentUs = quantize(options.getTimeUsFromPointerEvent(event));
 
-    if (options.computeSnapTargets && options.snapThresholdPx) {
+    if (getIsSnappingEnabled() && options.computeSnapTargets && options.snapThresholdPx) {
       const thresholdUs = Math.round(
         (getSnapThresholdPx() / zoomToPxPerSecond(options.zoom.value)) * 1e6,
       );

@@ -1,6 +1,7 @@
 import { onUnmounted, ref, type Ref, computed } from 'vue';
 import {
   pxToTimeUs,
+  pxToDeltaUs,
   timeUsToPx,
   pickBestSnapCandidateUs,
   zoomToPxPerSecond,
@@ -30,12 +31,14 @@ interface UseTimelineRulerMarkerDragOptions {
   updateMarker: (markerId: string, patch: { timeUs?: number; durationUs?: number }) => void;
   computeSnapTargets?: () => number[];
   snapThresholdPx?: Ref<number>;
+  isSnappingEnabled?: Ref<boolean>;
+  getTimeUsFromPointerEvent: (event: PointerEvent) => number;
 }
 
 export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOptions) {
   const draggedMarkerId = ref<string | null>(null);
   const draggedMarkerPart = ref<'left' | 'right'>('left');
-  const markerDragStartX = ref(0);
+  const markerDragStartMouseTimeUs = ref(0);
   const markerDragStartUs = ref(0);
   const markerDragStartDurationUs = ref(0);
   const draggedMarkerPatch = ref<{ timeUs?: number; durationUs?: number } | null>(null);
@@ -90,26 +93,29 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
     return quantizeTimeUsToFrames(timeUs, options.fps.value, 'round');
   }
 
+  function getIsSnappingEnabled() {
+    return options.isSnappingEnabled?.value ?? true;
+  }
+
   function onWindowPointerMove(event: PointerEvent) {
     if (!draggedMarkerId.value) return;
 
-    const dx = event.clientX - markerDragStartX.value;
+    const currentTimeUs = options.getTimeUsFromPointerEvent(event);
+    const deltaUs = currentTimeUs - markerDragStartMouseTimeUs.value;
     const currentZoom = options.zoom.value;
 
     if (draggedMarkerPart.value === 'left') {
-      const startPx = timeUsToPx(markerDragStartUs.value, currentZoom);
-      const newPx = Math.max(0, startPx + dx);
-      let newUs = Math.max(0, quantize(pxToTimeUs(newPx, currentZoom)));
+      let newUs = Math.max(0, quantize(markerDragStartUs.value + deltaUs));
       const marker = options.markers.value.find((item) => item.id === draggedMarkerId.value);
 
-      if (options.computeSnapTargets && options.snapThresholdPx) {
+      if (getIsSnappingEnabled() && options.computeSnapTargets && options.snapThresholdPx) {
         const thresholdUs = Math.round(
           (options.snapThresholdPx.value / zoomToPxPerSecond(currentZoom)) * 1e6,
         );
         const targets = options.computeSnapTargets();
         const snap = pickBestSnapCandidateUs({ rawUs: newUs, thresholdUs, targetsUs: targets });
         if (snap.distUs < thresholdUs) {
-          newUs = Math.max(0, snap.snappedUs);
+          newUs = Math.max(0, quantize(snap.snappedUs));
         }
       }
 
@@ -128,14 +134,9 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
       return;
     }
 
-    const durationPx = timeUsToPx(markerDragStartDurationUs.value, currentZoom);
-    const newDurationPx = Math.max(
-      TIMELINE_RULER_CONSTANTS.MIN_MARKER_DURATION_PX,
-      durationPx + dx,
-    );
-    let newDurationUs = Math.max(1, quantize(pxToTimeUs(newDurationPx, currentZoom)));
+    let newDurationUs = Math.max(1, quantize(markerDragStartDurationUs.value + deltaUs));
 
-    if (options.computeSnapTargets && options.snapThresholdPx) {
+    if (getIsSnappingEnabled() && options.computeSnapTargets && options.snapThresholdPx) {
       const endUs = markerDragStartUs.value + newDurationUs;
       const thresholdUs = Math.round(
         (options.snapThresholdPx.value / zoomToPxPerSecond(currentZoom)) * 1e6,
@@ -143,7 +144,7 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
       const targets = options.computeSnapTargets();
       const snap = pickBestSnapCandidateUs({ rawUs: endUs, thresholdUs, targetsUs: targets });
       if (snap.distUs < thresholdUs) {
-        newDurationUs = Math.max(1, snap.snappedUs - markerDragStartUs.value);
+        newDurationUs = Math.max(1, quantize(snap.snappedUs) - markerDragStartUs.value);
       }
     }
 
@@ -199,7 +200,7 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
 
     draggedMarkerId.value = markerId;
     draggedMarkerPart.value = part;
-    markerDragStartX.value = event.clientX;
+    markerDragStartMouseTimeUs.value = options.getTimeUsFromPointerEvent(event);
     markerDragStartUs.value = marker.timeUs;
     markerDragStartDurationUs.value = marker.durationUs ?? 0;
     draggedMarkerPatch.value = null;
