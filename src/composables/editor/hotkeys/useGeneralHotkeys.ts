@@ -37,7 +37,11 @@ export function useGeneralHotkeys(
   }
 
   function isFileManagerFocus() {
-    return focusStore.effectiveFocus === 'filesBrowser' || focusStore.effectiveFocus === 'left';
+    return (
+      focusStore.effectiveFocus === 'filesBrowser' ||
+      focusStore.effectiveFocus === 'left' ||
+      focusStore.effectiveFocus === 'project'
+    );
   }
 
   function getSelectedFsEntries() {
