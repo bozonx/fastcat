@@ -130,6 +130,7 @@ export function useImagePanZoom(containerRef: Ref<HTMLElement | null>) {
   function onWheel(e: WheelEvent) {
     if (!containerRef.value) return;
 
+    // Browser/trackpad pinch-to-zoom: Ctrl+wheel is a platform signal, not Modifier 2 layer.
     if (e.ctrlKey) {
       e.preventDefault();
       const pinchDelta = -e.deltaY;

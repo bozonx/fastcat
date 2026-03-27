@@ -1351,6 +1351,7 @@
       "hotkeysHardcodedHint": "Some keys remain hardcoded in specific contexts: Escape for closing some windows, and standard file manager shortcuts (Alt, Arrows, Enter) in file explorer panels.",
       "hotkeysLayer1": "Modifier 1 (for mouse actions and hotkeys)",
       "hotkeysLayer2": "Modifier 2 (for mouse actions and hotkeys)",
+      "hotkeysLayersHint": "These keys are the two modifier layers used across the editor: timeline, monitor, and file manager interactions (wheel, click, drag, copy-on-drag). For keyboard shortcuts, built-in combinations still written as Shift+… or Ctrl+… are matched using Modifier 1 instead of Shift and Modifier 2 instead of Ctrl until you assign a custom combo in this list.",
       "hotkeysResetAll": "Reset all",
       "hotkeysResetAllConfirmAction": "Reset",
       "hotkeysResetAllConfirmDesc": "This will remove all custom hotkeys and restore defaults. This action cannot be undone.",

@@ -13,6 +13,8 @@ import type { FsEntry } from '~/types/fs';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import {
   useClipboardPaths,
   useClipboardCopyPaths,
@@ -127,6 +129,7 @@ const emit = defineEmits<{
 const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 const proxyStore = useProxyStore();
 const selectionStore = useSelectionStore();
+const workspaceStore = useWorkspaceStore();
 const uiStore = useUiStore();
 
 const isDragOver = ref<string | null>(null);
@@ -369,7 +372,7 @@ function onDragStart(e: DragEvent, entry: FsEntry) {
     e.dataTransfer.effectAllowed = 'copyMove';
   }
 
-  const operation = e.shiftKey ? 'copy' : 'move';
+  const operation = isLayer1Active(e, workspaceStore.userSettings) ? 'copy' : 'move';
   dragOperation.value = operation;
   const movePayload = entriesToMove.map((e) => ({ name: e.name, kind: e.kind, path: e.path }));
   e.dataTransfer?.setData(
@@ -410,7 +413,9 @@ function onDragOverDir(e: DragEvent, entry: FsEntry) {
   if (types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) || types.includes(FILE_MANAGER_COPY_DRAG_TYPE)) {
     isDragOver.value = entry.path || null;
     dragOperation.value =
-      types.includes(FILE_MANAGER_COPY_DRAG_TYPE) || e.shiftKey ? 'copy' : 'move';
+      types.includes(FILE_MANAGER_COPY_DRAG_TYPE) || isLayer1Active(e, workspaceStore.userSettings)
+        ? 'copy'
+        : 'move';
     e.dataTransfer.dropEffect = dragOperation.value === 'copy' ? 'copy' : 'move';
     return;
   }
@@ -453,7 +458,8 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
   const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
   const internalRaw = copyRaw || moveRaw;
   if (internalRaw) {
-    const shouldCopy = !!copyRaw || e.shiftKey || operation === 'copy';
+    const shouldCopy =
+      !!copyRaw || isLayer1Active(e, workspaceStore.userSettings) || operation === 'copy';
     let parsed: any;
     try {
       parsed = JSON.parse(internalRaw);

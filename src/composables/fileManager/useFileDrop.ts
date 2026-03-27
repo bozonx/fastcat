@@ -1,4 +1,6 @@
 import { ref } from 'vue';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import type { FsEntry } from '~/types/fs';
 import {
   FILE_MANAGER_COPY_DRAG_TYPE,
@@ -13,8 +15,13 @@ export interface UseFileDropOptions {
 }
 
 export function useFileDrop(options: UseFileDropOptions) {
+  const workspaceStore = useWorkspaceStore();
   const isRootDropOver = ref(false);
   let rootDragEnterCount = 0;
+
+  function isCopyModifierActive(e: DragEvent): boolean {
+    return isLayer1Active(e, workspaceStore.userSettings);
+  }
 
   function isRelevantDrag(e: DragEvent): boolean {
     const types = e.dataTransfer?.types;
@@ -40,7 +47,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     e.dataTransfer!.dropEffect =
       e.dataTransfer?.types.includes('Files') ||
       e.dataTransfer?.types.includes(FILE_MANAGER_COPY_DRAG_TYPE) ||
-      e.shiftKey
+      isCopyModifierActive(e)
         ? 'copy'
         : 'move';
   }
@@ -73,7 +80,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     const internalRaw = copyRaw || moveRaw;
     if (!internalRaw) return;
 
-    const shouldCopy = !!copyRaw || e.shiftKey;
+    const shouldCopy = !!copyRaw || isCopyModifierActive(e);
 
     let parsed: unknown = null;
     try {

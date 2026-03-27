@@ -5,6 +5,8 @@ export interface UseWheelSupportOptions {
   disabled?: () => boolean;
   step?: () => number;
   wheelStepMultiplier?: () => number;
+  /** When true, applies wheelStepMultiplier (defaults to physical Shift if omitted). */
+  useWheelStepMultiplier?: (e: WheelEvent) => boolean;
   onWheelStep: (direction: 1 | -1, wheelStep: number, precision: number) => void;
 }
 
@@ -27,7 +29,10 @@ export function useWheelSupport(options: UseWheelSupportOptions) {
 
     const direction = delta < 0 ? 1 : -1;
     const baseStep = (options.step?.() ?? 1) > 0 ? (options.step?.() ?? 1) : 1;
-    const multiplier = e.shiftKey ? Math.max(1, options.wheelStepMultiplier?.() ?? 1) : 1;
+    const accelerated = options.useWheelStepMultiplier
+      ? options.useWheelStepMultiplier(e)
+      : e.shiftKey;
+    const multiplier = accelerated ? Math.max(1, options.wheelStepMultiplier?.() ?? 1) : 1;
     const wheelStep = baseStep * multiplier;
     const precision = getStepPrecision(baseStep);
 

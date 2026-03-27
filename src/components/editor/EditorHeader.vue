@@ -3,6 +3,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
+import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 import TimelineTabs from '~/components/timeline/TimelineTabs.vue';
 import BackgroundTasksButton from '~/components/file-manager/BackgroundTasksButton.vue';
 
@@ -11,6 +12,7 @@ const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
 const { loadTimeline } = useProjectActions();
+const { getHotkeyTitle } = useHotkeyLabel();
 
 const emit = defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal']);
 
@@ -77,7 +79,7 @@ const menuItems = computed(() => {
         color="neutral"
         icon="i-heroicons-arrow-uturn-left"
         :disabled="!timelineStore.historyStore.canUndo('timeline')"
-        :title="t('common.undo') + ' (Ctrl+Z)'"
+        :title="getHotkeyTitle(t('common.undo'), 'general.undo')"
         @click="timelineStore.undoTimeline()"
       />
       <UiActionButton
@@ -86,7 +88,7 @@ const menuItems = computed(() => {
         color="neutral"
         icon="i-heroicons-arrow-uturn-right"
         :disabled="!timelineStore.historyStore.canRedo('timeline')"
-        :title="t('common.redo') + ' (Ctrl+Shift+Z)'"
+        :title="getHotkeyTitle(t('common.redo'), 'general.redo')"
         @click="timelineStore.redoTimeline()"
       />
 
