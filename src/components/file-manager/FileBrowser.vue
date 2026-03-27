@@ -377,43 +377,8 @@ function handleContainerClick() {
   selectionStore.clearSelection();
 }
 
-// --- Keyboard shortcuts (copy/cut/paste) ---
-function onBrowserKeyDown(e: KeyboardEvent) {
-  const isMod = e.ctrlKey || e.metaKey;
-  if (!isMod) return;
-
-  const key = e.key.toLowerCase();
-  if (key !== 'c' && key !== 'x' && key !== 'v') return;
-
-  if (isEditableTarget(e.target)) return;
-
-  if (key === 'c' || key === 'x') {
-    const selected = selectionStore.selectedEntity;
-    if (selected?.source !== 'fileManager') return;
-    e.preventDefault();
-    e.stopPropagation();
-    const entries = selected.kind === 'multiple' ? selected.entries : [selected.entry];
-    void onFileActionBase(key === 'c' ? 'copy' : 'cut', entries);
-    return;
-  }
-
-  if (key === 'v') {
-    e.preventDefault();
-    e.stopPropagation();
-    const selected = selectionStore.selectedEntity;
-    const targetEntry =
-      (selected?.source === 'fileManager' && selected.kind === 'directory'
-        ? selected.entry
-        : null) ??
-      filesPageStore.selectedFolder ??
-      ({ kind: 'directory', path: '', name: 'root' } as FsEntry);
-    void onFileActionBase('paste', targetEntry);
-    return;
-  }
-}
-
 // --- Keyboard navigation ---
-const { onKeyDown: onContainerKeyDown } = useFocusableListNavigation({
+const { onKeyDown: onContainerKeyDown, moveSelection } = useFocusableListNavigation({
   containerRef: rootContainer,
   horizontal: true,
   getColumnCount: () => {
@@ -481,8 +446,10 @@ watch(
 watch(
   () => uiStore.fileBrowserSelectAllTrigger,
   () => {
+    if (!focusStore.isPanelFocused('filesBrowser')) return;
     if (isRemoteMode.value) return;
-    const entries = sortedEntries.value;
+
+    const visibleItems = sortedEntries.value;
     const selected = selectionStore.selectedEntity;
     const selectedPaths =
       selected?.source === 'fileManager'
@@ -490,16 +457,43 @@ watch(
           ? selected.entries.map((entry) => entry.path)
           : [selected.entry.path]
         : [];
-    const visiblePaths = entries.map((entry) => entry.path);
+    const visiblePaths = visibleItems.map((entry) => entry.path);
+
     const isAllSelected =
-      entries.length > 0 &&
+      visibleItems.length > 0 &&
       selectedPaths.length === visiblePaths.length &&
       visiblePaths.every((path) => selectedPaths.includes(path));
+
     if (isAllSelected) {
       selectionStore.clearSelection();
       return;
     }
-    selectionStore.selectFsEntries(entries);
+
+    selectionStore.selectFsEntries(visibleItems);
+  },
+);
+
+watch(
+  () => uiStore.fileBrowserNavigateBackTrigger,
+  () => {
+    if (!focusStore.isPanelFocused('filesBrowser')) return;
+    void navigateBack();
+  },
+);
+
+watch(
+  () => uiStore.fileBrowserNavigateUpTrigger,
+  () => {
+    if (!focusStore.isPanelFocused('filesBrowser')) return;
+    void navigateUp();
+  },
+);
+
+watch(
+  () => uiStore.fileBrowserMoveSelectionTrigger,
+  (trigger) => {
+    if (!focusStore.isPanelFocused('filesBrowser')) return;
+    moveSelection(trigger.dir);
   },
 );
 
@@ -556,7 +550,6 @@ async function onDirectoryUploadChange(e: Event) {
       'panel-focus-frame--active': focusStore.isPanelFocused('filesBrowser'),
     }"
     @pointerdown.capture="focusBrowserPanel"
-    @keydown="onBrowserKeyDown"
     @dragover.prevent="onPanelDragOver"
     @dragleave="onPanelDragLeave"
     @drop.prevent="onPanelDrop"

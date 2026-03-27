@@ -145,6 +145,15 @@ export function useGeneralHotkeys(
     });
   }
 
+  function startMonitorVolumeHotkeyHold(params: { step: number; keyCode: string }) {
+    volumeHoldRunner.startHold({
+      keyCode: params.keyCode,
+      action: () => {
+        uiStore.monitorVolume = Math.min(1, Math.max(0, uiStore.monitorVolume + params.step));
+      },
+    });
+  }
+
   function isPreviewFocus() {
     return focusStore.canUsePreviewHotkeys;
   }
@@ -315,13 +324,97 @@ export function useGeneralHotkeys(
     },
 
     'general.volumeUp': (e) => {
+      if (focusStore.effectiveFocus === 'monitor') {
+        startMonitorVolumeHotkeyHold({ step: 0.05, keyCode: e.code });
+        return true;
+      }
       startVolumeHotkeyHold({ step: 0.05, keyCode: e.code });
       return true;
     },
 
     'general.volumeDown': (e) => {
+      if (focusStore.effectiveFocus === 'monitor') {
+        startMonitorVolumeHotkeyHold({ step: -0.05, keyCode: e.code });
+        return true;
+      }
       startVolumeHotkeyHold({ step: -0.05, keyCode: e.code });
       return true;
+    },
+
+    'general.monitorVolumeUp': (e) => {
+      if (focusStore.effectiveFocus === 'monitor') {
+        startMonitorVolumeHotkeyHold({ step: 0.05, keyCode: e.code });
+        return true;
+      }
+      return false;
+    },
+
+    'general.monitorVolumeDown': (e) => {
+      if (focusStore.effectiveFocus === 'monitor') {
+        startMonitorVolumeHotkeyHold({ step: -0.05, keyCode: e.code });
+        return true;
+      }
+      return false;
+    },
+
+    'general.navigateBack': () => {
+      if (focusStore.effectiveFocus === 'filesBrowser') {
+        uiStore.fileBrowserNavigateBackTrigger++;
+        return true;
+      }
+      return false;
+    },
+
+    'general.navigateUp': () => {
+      if (focusStore.effectiveFocus === 'filesBrowser') {
+        uiStore.fileBrowserNavigateUpTrigger++;
+        return true;
+      }
+      return false;
+    },
+
+    'general.navigateSelectionUp': () => {
+      if (focusStore.effectiveFocus === 'filesBrowser' || focusStore.effectiveFocus === 'left') {
+        uiStore.fileBrowserMoveSelectionTrigger = {
+          dir: 'up',
+          timestamp: Date.now(),
+        };
+        return true;
+      }
+      return false;
+    },
+
+    'general.navigateSelectionDown': () => {
+      if (focusStore.effectiveFocus === 'filesBrowser' || focusStore.effectiveFocus === 'left') {
+        uiStore.fileBrowserMoveSelectionTrigger = {
+          dir: 'down',
+          timestamp: Date.now(),
+        };
+        return true;
+      }
+      return false;
+    },
+
+    'general.navigateSelectionLeft': () => {
+      if (focusStore.effectiveFocus === 'filesBrowser') {
+        uiStore.fileBrowserMoveSelectionTrigger = {
+          dir: 'left',
+          timestamp: Date.now(),
+        };
+        return true;
+      }
+      return false;
+    },
+
+    'general.navigateSelectionRight': () => {
+      if (focusStore.effectiveFocus === 'filesBrowser') {
+        uiStore.fileBrowserMoveSelectionTrigger = {
+          dir: 'right',
+          timestamp: Date.now(),
+        };
+        return true;
+      }
+      return false;
     },
 
     'general.zoomIn': (e) => {

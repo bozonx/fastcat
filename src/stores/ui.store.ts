@@ -110,6 +110,15 @@ export const useUiStore = defineStore('ui', () => {
   const previewFullscreenToggleTrigger = ref(0);
   const fileBrowserSelectAllTrigger = ref(0);
   const fileTreeSelectAllTrigger = ref(0);
+  const fileBrowserNavigateBackTrigger = ref(0);
+  const fileBrowserNavigateUpTrigger = ref(0);
+  const fileBrowserMoveSelectionTrigger = ref<{
+    dir: 'up' | 'down' | 'left' | 'right';
+    timestamp: number;
+  }>({
+    dir: 'up',
+    timestamp: 0,
+  });
 
   function setFsSidebarWidth(width: number) {
     fsSidebarWidth.value = width;
@@ -189,6 +198,9 @@ export const useUiStore = defineStore('ui', () => {
     previewFullscreenToggleTrigger,
     fileBrowserSelectAllTrigger,
     fileTreeSelectAllTrigger,
+    fileBrowserNavigateBackTrigger,
+    fileBrowserNavigateUpTrigger,
+    fileBrowserMoveSelectionTrigger,
 
     triggerPreviewZoom,
     triggerPreviewZoomReset,

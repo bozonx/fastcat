@@ -70,26 +70,26 @@ export function usePlaybackHotkeys() {
     },
 
     'playback.stepForward': () => {
-      if (!canUsePlaybackOrTimelineFocus()) return false;
+      if (!canUsePlaybackOrTimelineFocus() || isPreviewLikeFocus(focusStore.effectiveFocus)) return false;
       timelineStore.seekFrames(1);
       return true;
     },
 
     'playback.stepBackward': () => {
-      if (!canUsePlaybackOrTimelineFocus()) return false;
+      if (!canUsePlaybackOrTimelineFocus() || isPreviewLikeFocus(focusStore.effectiveFocus)) return false;
       timelineStore.seekFrames(-1);
       return true;
     },
 
     'playback.stepForwardLarge': () => {
-      if (!canUsePlaybackOrTimelineFocus()) return false;
+      if (!canUsePlaybackOrTimelineFocus() || isPreviewLikeFocus(focusStore.effectiveFocus)) return false;
       const fps = getDocFps(timelineStore.timelineDoc || ({} as any));
       timelineStore.seekFrames(fps);
       return true;
     },
 
     'playback.stepBackwardLarge': () => {
-      if (!canUsePlaybackOrTimelineFocus()) return false;
+      if (!canUsePlaybackOrTimelineFocus() || isPreviewLikeFocus(focusStore.effectiveFocus)) return false;
       const fps = getDocFps(timelineStore.timelineDoc || ({} as any));
       timelineStore.seekFrames(-fps);
       return true;

@@ -112,7 +112,7 @@ function getMarkerButtonClass(marker: MarkerPoint) {
           <UiTooltip :text="truncateTooltip(point.text)" :disabled="!point.text">
             <button
               type="button"
-              class="-translate-x-1 relative z-30"
+              class="-translate-x-1/2 relative z-30"
               :class="getMarkerButtonClass(point)"
               :style="point.color ? { color: point.color } : {}"
               :aria-label="point.isZone ? zoneMarkerStartLabel : markerLabel"
@@ -140,7 +140,7 @@ function getMarkerButtonClass(marker: MarkerPoint) {
           <UiTooltip :text="truncateTooltip(point.text)" :disabled="!point.text">
             <button
               type="button"
-              class="translate-x-1 relative z-30"
+              class="translate-x-1/2 relative z-30"
               :class="getMarkerButtonClass(point)"
               :style="point.color ? { color: point.color } : {}"
               :aria-label="zoneMarkerEndLabel"
@@ -175,13 +175,13 @@ function getMarkerButtonClass(marker: MarkerPoint) {
     >
       <button
         type="button"
-        class="absolute inset-y-0 left-0 w-2 -translate-x-1/2 cursor-ew-resize bg-selection-range/70 pointer-events-auto"
+        class="absolute inset-y-0 left-0 w-2 cursor-ew-resize bg-selection-range/70 pointer-events-auto"
         :aria-label="selectionStartHandleLabel"
         @pointerdown.stop="emit('selection-range-pointerdown', $event, 'left')"
       />
       <button
         type="button"
-        class="absolute inset-y-0 right-0 w-2 translate-x-1/2 cursor-ew-resize bg-selection-range/70 pointer-events-auto"
+        class="absolute inset-y-0 right-0 w-2 cursor-ew-resize bg-selection-range/70 pointer-events-auto"
         :aria-label="selectionEndHandleLabel"
         @pointerdown.stop="emit('selection-range-pointerdown', $event, 'right')"
       />

@@ -62,7 +62,21 @@ export function useFocusableListNavigation({
     }
   }
 
+  function moveSelection(dir: 'up' | 'down' | 'left' | 'right') {
+    const keyMap: Record<string, string> = {
+      up: 'ArrowUp',
+      down: 'ArrowDown',
+      left: 'ArrowLeft',
+      right: 'ArrowRight',
+    };
+    onKeyDown({
+      key: keyMap[dir],
+      preventDefault: () => {},
+    } as KeyboardEvent);
+  }
+
   return {
     onKeyDown,
+    moveSelection,
   };
 }
