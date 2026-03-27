@@ -34,6 +34,20 @@ export const HOTKEY_COMMAND_POLICIES: Readonly<
   'general.fullscreen': {
     allowWhenModalOpen: true,
   },
+  'general.zoomIn': {
+    allowWhenModalOpen: true,
+    repeatable: true,
+  },
+  'general.zoomOut': {
+    allowWhenModalOpen: true,
+    repeatable: true,
+  },
+  'general.zoomReset': {
+    allowWhenModalOpen: true,
+  },
+  'general.zoomFit': {
+    allowWhenModalOpen: true,
+  },
 };
 
 export function getHotkeyCommandPolicy(cmdId: HotkeyCommandId): HotkeyCommandPolicy {
