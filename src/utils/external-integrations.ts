@@ -125,6 +125,8 @@ export function resolveFastCatConnectScopes(params: {
     for (const scope of STT_SCOPES) {
       scopes.add(scope);
     }
+
+    scopes.add('llm:chat');
   }
 
   return Array.from(scopes);

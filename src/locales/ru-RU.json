@@ -1193,6 +1193,13 @@
         "exchangeDescription": "Введите токен с платформы FastCat для доступа к вашим удаленным файлам.",
         "loadFailed": "Не удалось загрузить удалённую библиотеку",
         "collectionUnavailable": "Удалённая коллекция недоступна",
+        "search": "Поиск в библиотеке...",
+        "createFolder": "Создать коллекцию",
+        "deleteEntry": "Удалить контент",
+        "renameEntry": "Переименовать",
+        "noSearchResults": "Ничего не найдено",
+        "tags": "Теги",
+        "searchFailed": "Ошибка поиска",
         "localFileUnavailable": "Не удалось получить доступ к локальному файлу",
         "uploadFailed": "Ошибка загрузки"
       },
