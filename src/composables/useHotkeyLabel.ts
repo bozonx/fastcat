@@ -1,4 +1,6 @@
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_HOTKEYS, type HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
+import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 
 const isMac =
   typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
@@ -21,8 +23,12 @@ function getDefaultBinding(commandId: HotkeyCommandId): string | null {
 }
 
 export function useHotkeyLabel() {
+  const workspaceStore = useWorkspaceStore();
+
   function getHotkeyLabel(commandId: HotkeyCommandId): string | null {
-    const binding = getDefaultBinding(commandId);
+    const effective = getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys);
+    const fromUser = effective[commandId]?.[0];
+    const binding = fromUser ?? getDefaultBinding(commandId);
     if (!binding) return null;
     return formatHotkey(binding);
   }

@@ -239,6 +239,10 @@ defineExpose({ finishCapture, isDuplicateConfirmOpen });
       </div>
     </div>
 
+    <p class="px-1 text-xs text-ui-text-muted leading-relaxed">
+      {{ t('videoEditor.settings.hotkeysLayersHint') }}
+    </p>
+
     <div class="px-1">
       <UiSearchInput
         v-model="searchQuery"

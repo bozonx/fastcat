@@ -2,6 +2,8 @@
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { clamp } from '../../utils/math';
 import { useWheelSupport } from '../../composables/useWheelSupport';
+import { useWorkspaceStore } from '../../stores/workspace.store';
+import { isLayer1Active } from '../../utils/hotkeys/layerUtils';
 
 interface UiWheelSliderProps {
   modelValue: number;
@@ -98,12 +100,14 @@ const value = computed({
 });
 
 const wrapperRef = ref<HTMLElement | null>(null);
+const workspaceStore = useWorkspaceStore();
 
 useWheelSupport({
   wrapperRef,
   disabled: () => props.disabled,
   step: () => props.step,
   wheelStepMultiplier: () => props.wheelStepMultiplier,
+  useWheelStepMultiplier: (e) => isLayer1Active(e, workspaceStore.userSettings),
   onWheelStep: (direction, wheelStep, precision) => {
     const current = Number(props.modelValue);
     const safeCurrent = Number.isFinite(current) ? current : props.min;
