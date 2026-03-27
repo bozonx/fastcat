@@ -123,14 +123,6 @@ function emitPlaybackState() {
   });
 }
 
-function zoomIn() {
-  onCustomZoom(new CustomEvent('fastcat-zoom', { detail: { dir: 1 } }));
-}
-
-function zoomOut() {
-  onCustomZoom(new CustomEvent('fastcat-zoom', { detail: { dir: -1 } }));
-}
-
 async function applyResumeState() {
   if (!props.resumeState || !mediaElement.value) return;
   if (props.resumeState.source === (props.instanceKey ?? 'inline')) return;
@@ -447,29 +439,16 @@ onUnmounted(() => {
         </div>
 
         <div class="flex items-center gap-2">
-          <UFieldGroup v-if="type === 'video'" size="sm" variant="ghost" color="neutral">
-            <UTooltip :text="t('fastcat.preview.zoomIn')">
-              <UButton
-                icon="i-heroicons-magnifying-glass-plus"
-                class="hover:bg-ui-bg-accent"
-                @click="zoomIn"
-              />
-            </UTooltip>
-            <UTooltip :text="t('fastcat.preview.zoomOut')">
-              <UButton
-                icon="i-heroicons-magnifying-glass-minus"
-                class="hover:bg-ui-bg-accent"
-                @click="zoomOut"
-              />
-            </UTooltip>
-            <UTooltip :text="t('fastcat.preview.resetZoom')">
-              <UButton
-                icon="i-heroicons-arrow-path"
-                class="hover:bg-ui-bg-accent"
-                @click="resetZoom"
-              />
-            </UTooltip>
-          </UFieldGroup>
+          <UTooltip v-if="type === 'video'" :text="t('fastcat.preview.resetZoom')">
+            <UButton
+              size="sm"
+              variant="ghost"
+              color="neutral"
+              icon="i-heroicons-arrow-path"
+              class="hover:bg-ui-bg-accent"
+              @click="resetZoom"
+            />
+          </UTooltip>
 
           <UiVolumeControl
             v-model:volume="volume"
