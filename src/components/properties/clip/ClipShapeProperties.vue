@@ -18,6 +18,7 @@ const emit = defineEmits<{
   (e: 'updateStrokeWidth', val: number): void;
   (e: 'updateShapeConfig', patch: Record<string, unknown>): void;
   (e: 'loadPreset', val: string): void;
+  (e: 'savePreset'): void;
 }>();
 
 const { t } = useI18n();
@@ -26,11 +27,21 @@ const { t } = useI18n();
 <template>
   <PropertySection :title="t('fastcat.shapeClip.shape', 'Shape')">
     <div class="flex flex-col gap-2">
-      <div
-        v-if="props.presets.length > 0"
-        class="flex flex-col gap-1 pb-2 border-b border-ui-border mb-1"
-      >
-        <UiFormSectionHeader :title="t('fastcat.effects.presetsTitle', 'Presets')" />
+      <div class="flex flex-col gap-1 pb-2 border-b border-ui-border mb-1">
+        <div class="flex items-center justify-between">
+          <div class="text-[10px] font-medium uppercase tracking-wider text-ui-text-muted opacity-70">
+            {{ t('fastcat.effects.presetsTitle', 'Presets') }}
+          </div>
+          <UButton
+            icon="i-heroicons-bookmark"
+            variant="ghost"
+            size="2xs"
+            color="white"
+            @click="emit('savePreset')"
+          >
+            {{ t('fastcat.presets.saveAsPreset', 'Save') }}
+          </UButton>
+        </div>
         <div class="flex gap-2">
           <UiSelect
             :items="props.presets"

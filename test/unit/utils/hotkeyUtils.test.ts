@@ -4,6 +4,7 @@ import {
   stringifyHotkey,
   normalizeHotkeyCombo,
   hotkeyFromKeyboardEvent,
+  isEditableTarget,
 } from '~/utils/hotkeys/hotkeyUtils';
 
 describe('hotkeyUtils', () => {
@@ -108,6 +109,86 @@ describe('hotkeyUtils', () => {
         key: ' ',
       });
       expect(hotkeyFromKeyboardEvent(event)).toBe('Space');
+    });
+
+    it('uses virtual layers if settings are provided', () => {
+      const settings = {
+        hotkeys: {
+          layer1: 'Alt',
+          layer2: 'Control',
+        },
+      } as any;
+
+      const event = new KeyboardEvent('keydown', {
+        key: 's',
+        altKey: true, // layer 1
+        ctrlKey: false,
+      });
+
+      // Layer 1 maps to Shift in the stringified hotkey
+      expect(hotkeyFromKeyboardEvent(event, settings)).toBe('Shift+S');
+
+      const event2 = new KeyboardEvent('keydown', {
+        key: 's',
+        altKey: false,
+        ctrlKey: true, // layer 2
+      });
+
+      // Layer 2 maps to Ctrl in the stringified hotkey
+      expect(hotkeyFromKeyboardEvent(event2, settings)).toBe('Ctrl+S');
+    });
+  });
+
+  describe('isEditableTarget', () => {
+    it('treats text inputs as editable', () => {
+      const input = document.createElement('input');
+      input.type = 'text';
+      expect(isEditableTarget(input)).toBe(true);
+    });
+
+    it('treats textarea as editable', () => {
+      const textarea = document.createElement('textarea');
+      expect(isEditableTarget(textarea)).toBe(true);
+    });
+
+    it('treats contenteditable as editable', () => {
+      const div = document.createElement('div');
+      div.contentEditable = 'true';
+      expect(isEditableTarget(div)).toBe(true);
+    });
+
+    it('treats select as editable', () => {
+      const select = document.createElement('select');
+      expect(isEditableTarget(select)).toBe(true);
+    });
+
+    it('treats range inputs (sliders) as editable', () => {
+      const input = document.createElement('input');
+      input.type = 'range';
+      expect(isEditableTarget(input)).toBe(true);
+    });
+
+    it('treats number inputs as editable', () => {
+      const input = document.createElement('input');
+      input.type = 'number';
+      expect(isEditableTarget(input)).toBe(true);
+    });
+
+    it('treats elements with role slider as editable', () => {
+      const div = document.createElement('div');
+      div.setAttribute('role', 'slider');
+      expect(isEditableTarget(div)).toBe(true);
+    });
+
+    it('does not treat buttons as editable', () => {
+      const button = document.createElement('button');
+      expect(isEditableTarget(button)).toBe(false);
+    });
+
+    it('does not treat checkbox input as editable', () => {
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      expect(isEditableTarget(input)).toBe(false);
     });
   });
 });
