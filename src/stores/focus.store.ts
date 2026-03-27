@@ -74,8 +74,8 @@ export const useFocusStore = defineStore('focus', () => {
   const activeTimelinePath = ref<string | null>(null);
 
   const mainFocusByTimeline = ref<Record<string, MainPanelFocus>>({});
-  const activePanelId = ref<PanelFocusId>('monitor');
-  const lastCutMainPanelId = ref<MainPanelFocus>('monitor');
+  const activePanelId = ref<PanelFocusId>('timeline');
+  const lastCutMainPanelId = ref<MainPanelFocus>('timeline');
   const lastNonMainPanelId = ref<Exclude<PanelFocusId, MainPanelFocus> | null>(null);
 
   const mainFocus = computed<MainPanelFocus>(() => {
@@ -118,7 +118,7 @@ export const useFocusStore = defineStore('focus', () => {
     }
 
     const saved = mainFocusByTimeline.value[nextPath];
-    const nextMainFocus = saved ?? 'monitor';
+    const nextMainFocus = saved ?? 'timeline';
     lastCutMainPanelId.value = nextMainFocus;
 
     if (isMainPanelFocus(activePanelId.value)) {

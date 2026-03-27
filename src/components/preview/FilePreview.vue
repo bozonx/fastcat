@@ -173,7 +173,7 @@ onUnmounted(() => {
     >
       <UIcon name="i-heroicons-document" class="w-16 h-16" />
       <p class="text-sm text-center">
-        {{ t('fastcat.preview.unsupported', 'Unsupported file format for visual preview') }}
+        {{ t('fastcat.preview.unsupported') }}
       </p>
     </div>
   </div>
