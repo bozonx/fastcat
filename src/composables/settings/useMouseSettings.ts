@@ -96,6 +96,7 @@ export function useMouseSettings() {
   const commonDragLabels = computed<Record<string, string>>(() => ({
     pan: t('videoEditor.settings.mouseActionPan'),
     move_playhead: t('videoEditor.settings.mouseActionMovePlayhead'),
+    move_clips: t('videoEditor.settings.mouseActionMoveClips'),
     select_area: t('videoEditor.settings.mouseActionSelectArea'),
     none: t('videoEditor.settings.mouseActionNone'),
   }));
@@ -255,6 +256,7 @@ export function useMouseSettings() {
           key: 'timeline',
           title: t('videoEditor.settings.mouseTimeline'),
           rows: [
+            // Wheels
             {
               key: 'wheel',
               label: t('videoEditor.settings.mouseTimelineWheel'),
@@ -278,6 +280,13 @@ export function useMouseSettings() {
                 modifier1: modifier1Name.value,
               }),
               options: timelineWheelOptions.value,
+            },
+
+            // Drags
+            {
+              key: 'drag',
+              label: t('videoEditor.settings.mouseTimelineDrag'),
+              options: dragOptions.value,
             },
             {
               key: 'middleDrag',
@@ -303,6 +312,8 @@ export function useMouseSettings() {
               label: t('videoEditor.settings.mouseTimelineClipDragRight'),
               options: clipDragOptions.value,
             },
+
+            // Clicks
             {
               key: 'click',
               label: t('videoEditor.settings.mouseTimelineClick'),
@@ -326,16 +337,7 @@ export function useMouseSettings() {
               options: mouseHorizontalMovementOptions.value,
             },
           ],
-          infoTitle: t('videoEditor.settings.mouseHardcodedTitle'),
-          infoColumns: true,
-          infoItems: [
-            t('videoEditor.settings.mouseHardcodedLeftDrag'),
-            t('videoEditor.settings.mouseHardcodedRazorClick'),
-            t('videoEditor.settings.mouseHardcodedRazorShiftClick', { modifier1: modifier1Name.value }),
-            t('videoEditor.settings.mouseHardcodedRazorCtrlClick', {
-              modifier2: modifier2Name.value,
-            }),
-          ],
+          infoItems: [],
         },
         {
           key: 'trackHeaders',

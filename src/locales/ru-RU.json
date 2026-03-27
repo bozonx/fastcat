@@ -1437,6 +1437,7 @@
       "mouseTrackHeadersClick": "Одиночный клик",
       "mouseTrackHeadersDoubleClick": "Двойной клик",
       "mouseTrackHeadersMiddleClick": "Одиночный клик средней кнопкой",
+      "mouseActionMoveClips": "Перемещение клипов",
       "mouseActionSelectTrack": "Выбрать дорожку",
       "mouseActionSelectAllClips": "Выбрать все клипы на дорожке",
       "openLastProjectOnStart": "Открывать последний проект при запуске",

@@ -67,7 +67,7 @@ export const TRACK_HEADERS_CLICK_ACTIONS = [
   'none',
 ] as const;
 
-export const DRAG_ACTIONS = ['pan', 'move_playhead', 'select_area', 'none'] as const;
+export const DRAG_ACTIONS = ['pan', 'move_playhead', 'move_clips', 'select_area', 'none'] as const;
 export const MOUSE_HORIZONTAL_MOVEMENT_ACTIONS = ['move_playhead', 'none'] as const;
 export type MouseHorizontalMovementAction = (typeof MOUSE_HORIZONTAL_MOVEMENT_ACTIONS)[number];
 

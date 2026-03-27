@@ -275,6 +275,7 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
           ),
           click: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.click as any),
           shiftClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.shiftClick as any),
+          drag: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.drag as any),
           middleClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.middleClick as any),
           middleDrag: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.middleDrag as any),
           horizontalMovement: horizEnum.catch(
