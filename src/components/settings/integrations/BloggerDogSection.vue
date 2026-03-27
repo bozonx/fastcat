@@ -23,9 +23,15 @@ const healthState = reactive({
   message: '',
 });
 
+const fastcat = computed(() => workspaceStore.userSettings?.integrations?.fastcatPublicador);
+
 const fastcatPublicadorBaseUrl = computed(() => {
   const value = runtimeConfig.public.fastcatPublicadorBaseUrl;
   return typeof value === 'string' ? value.trim() : '';
+});
+
+const effectiveBaseUrl = computed(() => {
+  return (fastcat.value?.baseUrl || '').trim() || fastcatPublicadorBaseUrl.value;
 });
 
 const redirectUri = computed(() => {
@@ -33,14 +39,15 @@ const redirectUri = computed(() => {
   return `${window.location.origin}${route.path}`;
 });
 
-const fastcatConnectUrl = computed(() =>
-  getFastCatPublicadorConnectUrl({
-    baseUrl: fastcatPublicadorBaseUrl.value,
+const fastcatConnectUrl = computed(() => {
+  if (!effectiveBaseUrl.value) return '';
+  return getFastCatPublicadorConnectUrl({
+    baseUrl: effectiveBaseUrl.value,
     name: FASTCAT_PUBLICADOR_APP_NAME,
     redirectUri: redirectUri.value,
     scopes: resolveFastCatConnectScopes({ integrations: workspaceStore.userSettings.integrations }),
-  }),
-);
+  });
+});
 
 const fastcatConnectScopesLabel = computed(() =>
   resolveFastCatConnectScopes({ integrations: workspaceStore.userSettings.integrations }).join(
@@ -61,14 +68,13 @@ function startFastCatConnect() {
 }
 
 async function runHealth() {
-  const fastcat = workspaceStore.userSettings.integrations.fastcatPublicador;
-  const healthUrl = getFastCatPublicadorHealthUrl(fastcatPublicadorBaseUrl.value);
+  const healthUrl = getFastCatPublicadorHealthUrl(effectiveBaseUrl.value);
 
-  if (!healthUrl || !fastcat.bearerToken.trim()) {
+  if (!healthUrl || !fastcat.value.bearerToken.trim()) {
     healthState.status = 'error';
     healthState.message = t(
       'videoEditor.settings.integrationHealthMissingConfig',
-      'Set FastCat base URL in env and bearer token first.',
+      'Set FastCat base URL and bearer token first.',
     );
     return;
   }
@@ -80,7 +86,7 @@ async function runHealth() {
   try {
     const result = await runExternalHealthCheck({
       url: healthUrl,
-      bearerToken: fastcat.bearerToken,
+      bearerToken: fastcat.value.bearerToken,
     });
     healthState.status = 'success';
     healthState.message = `${t('videoEditor.settings.integrationHealthOk', 'OK')} (${result.status})`;
@@ -105,81 +111,84 @@ function getHealthTone(status: typeof healthState.status) {
       <div class="min-w-0">
         <div class="text-sm font-medium text-ui-text">BloggerDog</div>
         <div class="text-xs text-ui-text-muted mt-1">
-          {{
-            t(
-              'videoEditor.settings.bloggerDogIntegrationHint',
-              'Connect via BloggerDog connect flow using the global BLOGGERDOG_BASE_URL or set token manually for the external API.',
-            )
-          }}
+          {{ t('videoEditor.settings.bloggerDogIntegrationHint') }}
         </div>
       </div>
-      <label class="flex items-center gap-2 shrink-0 cursor-pointer">
-        <UCheckbox v-model="workspaceStore.userSettings.integrations.fastcatPublicador.enabled" />
-        <span class="text-sm text-ui-text">
-          {{ t('common.enabled', 'Enabled') }}
-        </span>
-      </label>
-    </div>
-
-    <div class="text-xs text-ui-text-muted">
-      BLOGGERDOG_BASE_URL: {{ fastcatPublicadorBaseUrl || '—' }}
-    </div>
-
-    <div class="text-xs text-ui-text-muted">
-      {{ t('videoEditor.settings.integrationScopes', 'Requested scopes') }}:
-      {{ fastcatConnectScopesLabel }}
-    </div>
-
-    <div class="text-xs text-ui-text-muted">
-      {{ t('videoEditor.settings.integrationConnectName', 'Connect app name') }}:
-      {{ FASTCAT_PUBLICADOR_APP_NAME }}
-    </div>
-
-    <UiFormField :label="t('videoEditor.settings.integrationBearerToken', 'Bearer token')">
-      <UiTextInput
-        v-model="workspaceStore.userSettings.integrations.fastcatPublicador.bearerToken"
-        full-width
-        type="password"
-        autocomplete="off"
-        placeholder="bd_token_..."
-      />
-    </UiFormField>
-
-    <div class="flex flex-wrap items-center gap-3">
-      <UButton
-        color="primary"
-        variant="solid"
-        :disabled="!fastcatConnectUrl"
-        @click="startFastCatConnect"
+      <div
+        v-if="fastcat.bearerToken"
+        class="flex items-center gap-1.5 px-2 py-1 rounded-md bg-success-500/10 text-success-400 text-xs font-medium shrink-0"
       >
-        {{ t('videoEditor.settings.integrationConnectAction', 'Auto connect') }}
-      </UButton>
-      <UButton color="neutral" variant="soft" :loading="healthState.loading" @click="runHealth">
-        {{ t('videoEditor.settings.integrationHealthCheck', 'Check health') }}
-      </UButton>
+        <UIcon name="i-heroicons-check-circle" class="h-4 w-4" />
+        {{ t('videoEditor.settings.integrationHealthOk', 'Connected') }}
+      </div>
+    </div>
 
-      <a
-        v-if="fastcatPublicadorBaseUrl"
-        :href="fastcatPublicadorBaseUrl"
-        target="_blank"
-        class="text-xs text-primary-400 hover:underline flex items-center gap-1 ml-auto"
+    <!-- NOT CONNECTED STATE -->
+    <div v-if="!fastcat.bearerToken" class="flex flex-col gap-4 mt-2">
+      <UiFormField :label="t('videoEditor.settings.integrationBaseUrl', 'Instance URL')">
+        <UiTextInput
+          v-model="workspaceStore.userSettings.integrations.fastcatPublicador.baseUrl"
+          :placeholder="fastcatPublicadorBaseUrl || 'https://domain.com'"
+          full-width
+        />
+        <template #help>
+          <div class="text-2xs text-ui-text-muted mt-1">
+            {{ t('videoEditor.settings.integrationScopes', 'Requested scopes') }}:
+            {{ fastcatConnectScopesLabel }}
+          </div>
+        </template>
+      </UiFormField>
+
+      <div class="flex items-center gap-3">
+        <UButton
+          color="primary"
+          variant="solid"
+          :disabled="!effectiveBaseUrl"
+          @click="startFastCatConnect"
+        >
+          {{ t('videoEditor.settings.integrationConnectAction', 'Connect') }}
+        </UButton>
+
+        <a
+          v-if="effectiveBaseUrl"
+          :href="effectiveBaseUrl"
+          target="_blank"
+          class="text-xs text-primary-400 hover:underline flex items-center gap-1 ml-auto"
+        >
+          {{ t('videoEditor.settings.integrationManualLink', 'Open BloggerDog site') }}
+          <UIcon name="i-heroicons-arrow-top-right-on-square" class="h-3 w-3" />
+        </a>
+      </div>
+    </div>
+
+    <!-- CONNECTED STATE -->
+    <div v-else class="flex flex-col gap-5 mt-2">
+      <div class="flex flex-col gap-1.5 p-3 rounded-lg border border-ui-border bg-ui-bg">
+        <div class="text-2xs uppercase tracking-wider text-ui-text-muted font-bold">
+          {{ t('videoEditor.settings.integrationBaseUrl', 'Instance URL') }}
+        </div>
+        <div class="text-sm text-ui-text break-all">
+          {{ effectiveBaseUrl }}
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-4">
+        <UButton color="neutral" variant="soft" :loading="healthState.loading" @click="runHealth">
+          {{ t('videoEditor.settings.integrationHealthCheck', 'Check health') }}
+        </UButton>
+
+        <UButton color="error" variant="ghost" size="sm" @click="disconnectFastCat">
+          {{ t('videoEditor.settings.integrationBreakConnection', 'Break connection') }}
+        </UButton>
+      </div>
+
+      <div
+        v-if="healthState.status !== 'idle' || healthState.loading"
+        class="text-xs"
+        :class="getHealthTone(healthState.status)"
       >
-        {{ t('videoEditor.settings.integrationManualLink', 'Open BloggerDog site') }}
-        <UIcon name="i-heroicons-arrow-top-right-on-square" class="h-3 w-3" />
-      </a>
-    </div>
-
-    <div class="flex items-center gap-2">
-      <UButton color="neutral" variant="soft" size="xs" @click="disconnectFastCat">
-        {{ t('videoEditor.settings.integrationDisconnect', 'Disconnect') }}
-      </UButton>
-    </div>
-
-    <div class="text-xs" :class="getHealthTone(healthState.status)">
-      {{
-        healthState.message ||
-        t('videoEditor.settings.integrationStatusWaiting', 'Waiting for check')
-      }}
+        {{ healthState.message || t('common.loading', 'Loading...') }}
+      </div>
     </div>
   </div>
 </template>

@@ -7,6 +7,7 @@ import { createDefaultExportPresets, createDefaultProjectPresets } from './prese
 export interface FastCatPublicadorIntegrationSettings {
   enabled: boolean;
   bearerToken: string;
+  baseUrl: string;
 }
 
 export interface ManualExternalApiSettings {
@@ -252,6 +253,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
     fastcatPublicador: {
       enabled: false,
       bearerToken: '',
+      baseUrl: '',
     },
     manualFilesApi: {
       enabled: false,

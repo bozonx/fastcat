@@ -142,9 +142,11 @@ export function resolveExternalServiceConfig(params: {
   const manual = service === 'files' ? integrations.manualFilesApi : integrations.manualSttApi;
   const requiresBearerToken = service === 'files' || service === 'stt';
 
+  const actualBaseUrl = fastcat.baseUrl.trim() || fastcatPublicadorBaseUrl.trim();
+
   const canUseFastCat =
     fastcat.enabled &&
-    fastcatPublicadorBaseUrl.trim() &&
+    actualBaseUrl &&
     (!requiresBearerToken || Boolean(fastcat.bearerToken.trim()));
   const canUseManual =
     manual.enabled &&
@@ -162,8 +164,7 @@ export function resolveExternalServiceConfig(params: {
 
   if (!canUseFastCat) return null;
 
-  const fastcatExternalApiBaseUrl =
-    getFastCatPublicadorExternalApiBaseUrl(fastcatPublicadorBaseUrl);
+  const fastcatExternalApiBaseUrl = getFastCatPublicadorExternalApiBaseUrl(actualBaseUrl);
   const serviceBaseUrl =
     service === 'files'
       ? joinUrl(fastcatExternalApiBaseUrl, 'vfs')
@@ -173,7 +174,7 @@ export function resolveExternalServiceConfig(params: {
     source: 'fastcat_publicador',
     baseUrl: serviceBaseUrl,
     bearerToken: fastcat.bearerToken.trim(),
-    healthUrl: getFastCatPublicadorHealthUrl(fastcatPublicadorBaseUrl),
+    healthUrl: getFastCatPublicadorHealthUrl(actualBaseUrl),
   };
 }
 
