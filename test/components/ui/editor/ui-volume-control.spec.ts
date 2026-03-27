@@ -3,6 +3,8 @@ import { mountSuspended } from '@nuxt/test-utils/runtime';
 import UiVolumeControl from '~/components/ui/editor/UiVolumeControl.vue';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 
+const tooltipStub = { template: '<div><slot /></div>' };
+
 describe('UiVolumeControl', () => {
   it('renders correctly in normal mode', async () => {
     const component = await mountSuspended(UiVolumeControl, {
@@ -10,6 +12,7 @@ describe('UiVolumeControl', () => {
         volume: 1,
         isMuted: false,
       },
+      global: { stubs: { UiTooltip: tooltipStub } },
     });
 
     expect(component.exists()).toBe(true);
@@ -24,6 +27,7 @@ describe('UiVolumeControl', () => {
         isMuted: false,
         compact: true,
       },
+      global: { stubs: { UiTooltip: tooltipStub } },
     });
 
     expect(component.exists()).toBe(true);
@@ -38,6 +42,7 @@ describe('UiVolumeControl', () => {
         volume: 1,
         isMuted: true,
       },
+      global: { stubs: { UiTooltip: tooltipStub } },
     });
 
     expect(component.text()).toContain('0%');
@@ -49,6 +54,7 @@ describe('UiVolumeControl', () => {
         volume: 1,
         isMuted: false,
       },
+      global: { stubs: { UiTooltip: tooltipStub } },
     });
 
     const wheelSlider = component.findComponent(UiWheelSlider);
@@ -66,6 +72,7 @@ describe('UiVolumeControl', () => {
         isMuted: false,
         max: 2.0,
       },
+      global: { stubs: { UiTooltip: tooltipStub } },
     });
 
     const wheelSlider = component.findComponent(UiWheelSlider);
@@ -78,6 +85,7 @@ describe('UiVolumeControl', () => {
         volume: 1,
         isMuted: false,
       },
+      global: { stubs: { UiTooltip: tooltipStub } },
     });
 
     const buttons = component.findAll('button');
@@ -95,6 +103,7 @@ describe('UiVolumeControl', () => {
         isMuted: true,
         compact: true,
       },
+      global: { stubs: { UiTooltip: tooltipStub } },
     });
 
     // The span with the text acts as the trigger in compact mode

@@ -115,7 +115,9 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
   function getActiveDetachedPanel() {
     const focusId = focusStore.effectiveFocus;
     if (!String(focusId).startsWith('dynamic:')) return null;
-    const panelId = String(focusId).slice('dynamic:'.length);
+    const rest = String(focusId).slice('dynamic:'.length);
+    const sep = rest.indexOf(':');
+    const panelId = sep === -1 ? rest : rest.slice(sep + 1);
 
     return getPanelById(panelId);
   }

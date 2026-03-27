@@ -113,7 +113,7 @@ describe('useEditorDynamicPanels', () => {
     const projectId = ref('test-proj');
     const { getActiveDetachedPanel } = useEditorDynamicPanels({ currentProjectId: projectId });
 
-    mockFocusStore.effectiveFocus = 'dynamic:panel1';
+    mockFocusStore.effectiveFocus = 'dynamic:media:panel1';
     const panel = getActiveDetachedPanel();
     expect(panel).not.toBeNull();
     expect(panel?.id).toBe('panel1');
@@ -128,10 +128,10 @@ describe('useEditorDynamicPanels', () => {
       currentProjectId: projectId,
     });
 
-    expect(getDynamicPanelFocusId('panel1')).toBe('dynamic:panel1');
+    expect(getDynamicPanelFocusId('panel1')).toBe('dynamic:media:panel1');
 
     focusDynamicPanel('panel1');
-    expect(mockFocusStore.setPanelFocus).toHaveBeenCalledWith('dynamic:panel1');
+    expect(mockFocusStore.setPanelFocus).toHaveBeenCalledWith('dynamic:media:panel1');
   });
 
   it('closes panel and restores tab', () => {
@@ -161,7 +161,7 @@ describe('useEditorDynamicPanels', () => {
       'sound',
     );
     expect(mockProjectStore.setView).toHaveBeenCalledWith('sound');
-    expect(mockFocusStore.setPanelFocus).toHaveBeenCalledWith('dynamic:panel1');
+    expect(mockFocusStore.setPanelFocus).toHaveBeenCalledWith('dynamic:media:panel1');
   });
 
   describe('Drag and Drop', () => {

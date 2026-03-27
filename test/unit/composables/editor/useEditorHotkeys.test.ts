@@ -1,15 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { defineComponent, h } from 'vue';
-import { mount } from '@vue/test-utils';
+import { mount, type VueWrapper } from '@vue/test-utils';
 
 import { useEditorHotkeys } from '~/composables/editor/useEditorHotkeys';
+import { pressedKeyCodes } from '~/utils/hotkeys/pressedKeys';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useUiStore } from '~/stores/ui.store';
 
 const HotkeysHarness = defineComponent({
   setup() {
@@ -19,27 +19,36 @@ const HotkeysHarness = defineComponent({
 });
 
 describe('useEditorHotkeys', () => {
+  let wrapper: VueWrapper<InstanceType<typeof HotkeysHarness>> | undefined;
+
   beforeEach(() => {
     setActivePinia(createPinia());
     localStorage.clear();
+    pressedKeyCodes.clear();
+    wrapper = undefined;
+  });
+
+  afterEach(async () => {
+    await wrapper?.unmount();
+    wrapper = undefined;
+    pressedKeyCodes.clear();
   });
 
   it('toggles focus on Tab when editor is in cut view', async () => {
-    const wrapper = mount(HotkeysHarness);
+    wrapper = mount(HotkeysHarness);
     const focusStore = useFocusStore();
     const projectStore = useProjectStore();
 
     projectStore.setView('cut');
-    expect(focusStore.activePanelId).toBe('monitor');
+    expect(focusStore.activePanelId).toBe('timeline');
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', code: 'Tab', bubbles: true }));
 
-    expect(focusStore.activePanelId).toBe('timeline');
-    await wrapper.unmount();
+    expect(focusStore.activePanelId).toBe('monitor');
   });
 
   it('ignores non-repeatable commands on repeated keydown', async () => {
-    const wrapper = mount(HotkeysHarness);
+    wrapper = mount(HotkeysHarness);
     const focusStore = useFocusStore();
     const projectStore = useProjectStore();
 
@@ -49,12 +58,11 @@ describe('useEditorHotkeys', () => {
       new KeyboardEvent('keydown', { key: 'Tab', code: 'Tab', repeat: true, bubbles: true }),
     );
 
-    expect(focusStore.activePanelId).toBe('monitor');
-    await wrapper.unmount();
+    expect(focusStore.activePanelId).toBe('timeline');
   });
 
   it('blocks timeline hotkeys when editable element is active', async () => {
-    const wrapper = mount(HotkeysHarness, { attachTo: document.body });
+    wrapper = mount(HotkeysHarness, { attachTo: document.body });
     const focusStore = useFocusStore();
     const projectStore = useProjectStore();
     const timelineStore = useTimelineStore() as any;
@@ -73,11 +81,10 @@ describe('useEditorHotkeys', () => {
     expect(splitClipAtPlayheadSpy).not.toHaveBeenCalled();
 
     input.remove();
-    await wrapper.unmount();
   });
 
   it('allows Escape-based deselect even when editable element is active', async () => {
-    const wrapper = mount(HotkeysHarness, { attachTo: document.body });
+    wrapper = mount(HotkeysHarness, { attachTo: document.body });
     const projectStore = useProjectStore();
     const selectionStore = useSelectionStore();
     const timelineStore = useTimelineStore() as any;
@@ -100,29 +107,29 @@ describe('useEditorHotkeys', () => {
     expect(timelineStore.selectedTrackId).toBeNull();
 
     input.remove();
-    await wrapper.unmount();
   });
 
   it('blocks non-escape global hotkeys while modal state is active', async () => {
-    const wrapper = mount(HotkeysHarness);
+    wrapper = mount(HotkeysHarness);
     const focusStore = useFocusStore();
     const projectStore = useProjectStore();
-    const uiStore = useUiStore();
 
     projectStore.setView('cut');
     const dialog = document.createElement('dialog');
     dialog.setAttribute('open', '');
     document.body.appendChild(dialog);
 
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', code: 'Tab', bubbles: true }));
+    try {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', code: 'Tab', bubbles: true }));
 
-    expect(focusStore.activePanelId).toBe('monitor');
-    await wrapper.unmount();
-    if (typeof dialog !== 'undefined') dialog?.remove();
+      expect(focusStore.activePanelId).toBe('timeline');
+    } finally {
+      dialog.remove();
+    }
   });
 
   it('toggles current toolbar move mode with T when timeline hotkeys are active', async () => {
-    const wrapper = mount(HotkeysHarness, { attachTo: document.body });
+    wrapper = mount(HotkeysHarness, { attachTo: document.body });
     const focusStore = useFocusStore();
     const projectStore = useProjectStore();
     const settingsStore = useTimelineSettingsStore();
@@ -138,7 +145,5 @@ describe('useEditorHotkeys', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 't', code: 'KeyT', bubbles: true }));
     expect(settingsStore.toolbarDragMode).toBe('pseudo_overlap');
     expect(settingsStore.toolbarDragModeEnabled).toBe(false);
-
-    await wrapper.unmount();
   });
 });

@@ -136,8 +136,9 @@ export function hotkeyFromKeyboardEvent(
 }
 
 export function isEditableTarget(target: EventTarget | null): boolean {
-  const el = target as HTMLElement | null;
-  if (!el) return false;
+  if (!(target instanceof Element)) return false;
+
+  const el = target as HTMLElement;
 
   if (el.isContentEditable) return true;
 

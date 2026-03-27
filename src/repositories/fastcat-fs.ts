@@ -36,6 +36,9 @@ export async function writeJsonToFileHandle(input: {
   handle: FileHandleLike;
   data: unknown;
 }): Promise<void> {
+  if (input.data === undefined) {
+    throw new Error('Refusing to write undefined to JSON file');
+  }
   const writable = await input.handle.createWritable();
   await writable.write(`${JSON.stringify(input.data, null, 2)}\n`);
   await writable.close();
