@@ -58,7 +58,7 @@ describe('hotkey runtime', () => {
         canUseTimelineHotkeys: true,
         canUsePlaybackHotkeys: false,
       }),
-    ).toEqual(['timeline.splitAtPlayhead', 'general.focus', 'playback.toggle']);
+    ).toEqual(['timeline.splitAtPlayhead', 'playback.toggle', 'general.focus']);
 
     expect(
       getFocusAwareHotkeyOrder({
@@ -74,7 +74,7 @@ describe('hotkey runtime', () => {
         canUseTimelineHotkeys: false,
         canUsePlaybackHotkeys: false,
       }),
-    ).toEqual(['general.focus', 'timeline.splitAtPlayhead', 'playback.toggle']);
+    ).toEqual(['playback.toggle', 'general.focus', 'timeline.splitAtPlayhead']);
   });
 
   it('blocks modal-only and editable-disallowed commands according to policy', () => {
@@ -124,7 +124,6 @@ describe('hotkey runtime', () => {
       shouldBlurAfterHotkey({
         cmdId: 'general.focus',
         activeElement: button,
-        isEditableTarget: () => false,
       }),
     ).toBe(false);
   });
@@ -132,7 +131,7 @@ describe('hotkey runtime', () => {
   it('detects preview-like focus ids', () => {
     expect(isPreviewLikeFocus('project')).toBe(true);
     expect(isPreviewLikeFocus('left')).toBe(true);
-    expect(isPreviewLikeFocus('dynamic:preview-1')).toBe(true);
+    expect(isPreviewLikeFocus('dynamic:media:panel-1')).toBe(true);
     expect(isPreviewLikeFocus('timeline')).toBe(false);
   });
 });

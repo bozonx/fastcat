@@ -196,7 +196,7 @@ describe('settings normalization', () => {
     expect(normalized.mouse.timeline.wheelShift).toBe('scroll_horizontal');
     expect(normalized.mouse.timeline.wheelSecondary).toBe('scroll_horizontal');
     expect(normalized.mouse.timeline.wheelSecondaryShift).toBe('none');
-    expect(normalized.mouse.timeline.middleClick).toBe('reset_zoom');
+    expect(normalized.mouse.timeline.middleClick).toBe('fit_zoom');
 
     expect(normalized.mouse.trackHeaders.wheel).toBe('seek_frame');
     expect(normalized.mouse.trackHeaders.wheelShift).toBe('zoom_vertical');

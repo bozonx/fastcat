@@ -92,8 +92,22 @@ export function createTimelinePersistence(deps: TimelinePersistenceDeps): Timeli
         const handle = await deps.ensureTimelineFileHandle({ create: true });
         if (!handle) return false;
 
+        const serialized = deps.serializeTimelineToOtio(snapshot);
+
+        // Validation: prevent writing empty or corrupted data
+        if (!serialized || serialized.length < 10) {
+          throw new Error('Refusing to save: Serialized timeline data is suspiciously small or empty');
+        }
+
+        try {
+          JSON.parse(serialized);
+        } catch (e) {
+          console.error('Invalid timeline serialization', e, serialized.substring(0, 100));
+          throw new Error('Refusing to save: Invalid timeline JSON structure');
+        }
+
         const writable = await (handle as any).createWritable();
-        await writable.write(deps.serializeTimelineToOtio(snapshot));
+        await writable.write(serialized);
         await writable.close();
 
         deps.onSaveSuccess?.();

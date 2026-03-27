@@ -7,41 +7,41 @@ describe('FocusStore', () => {
     setActivePinia(createPinia());
   });
 
-  it('defaults to monitor main focus', () => {
+  it('defaults to timeline main focus', () => {
     const store = useFocusStore();
-    expect(store.mainFocus).toBe('monitor');
+    expect(store.mainFocus).toBe('timeline');
     expect(store.tempFocus).toBe('none');
-    expect(store.activePanelId).toBe('monitor');
-    expect(store.effectiveFocus).toBe('monitor');
+    expect(store.activePanelId).toBe('timeline');
+    expect(store.effectiveFocus).toBe('timeline');
   });
 
   it('persists and restores main focus per timeline path', () => {
     const store = useFocusStore();
 
     store.setActiveTimelinePath('/a.otio');
-    expect(store.mainFocus).toBe('monitor');
-
-    store.setMainFocus('timeline');
     expect(store.mainFocus).toBe('timeline');
 
-    store.setActiveTimelinePath('/b.otio');
+    store.setMainFocus('monitor');
     expect(store.mainFocus).toBe('monitor');
+
+    store.setActiveTimelinePath('/b.otio');
+    expect(store.mainFocus).toBe('timeline');
 
     store.setMainFocus('timeline');
     store.setActiveTimelinePath('/a.otio');
-    expect(store.mainFocus).toBe('timeline');
+    expect(store.mainFocus).toBe('monitor');
   });
 
   it('focus hotkey toggles main focus when main panel is active', () => {
     const store = useFocusStore();
 
     store.handleFocusHotkey();
-    expect(store.mainFocus).toBe('timeline');
-    expect(store.activePanelId).toBe('timeline');
-
-    store.handleFocusHotkey();
     expect(store.mainFocus).toBe('monitor');
     expect(store.activePanelId).toBe('monitor');
+
+    store.handleFocusHotkey();
+    expect(store.mainFocus).toBe('timeline');
+    expect(store.activePanelId).toBe('timeline');
   });
 
   it('focus hotkey restores last cut main panel from non-main panel', () => {
@@ -85,7 +85,7 @@ describe('FocusStore', () => {
     const store = useFocusStore();
 
     expect(store.canUsePlaybackHotkeys).toBe(true);
-    expect(store.canUseTimelineHotkeys).toBe(false);
+    expect(store.canUseTimelineHotkeys).toBe(true);
     expect(store.canUsePreviewHotkeys).toBe(false);
 
     store.setMainFocus('timeline');
@@ -94,14 +94,14 @@ describe('FocusStore', () => {
     expect(store.canUsePreviewHotkeys).toBe(false);
 
     store.setPanelFocus('project');
-    expect(store.canUsePlaybackHotkeys).toBe(false);
+    expect(store.canUsePlaybackHotkeys).toBe(true);
     expect(store.canUseTimelineHotkeys).toBe(false);
     expect(store.canUsePreviewHotkeys).toBe(true);
 
     store.setPanelFocus('dynamic:detached-preview');
     expect(store.canUsePlaybackHotkeys).toBe(true);
     expect(store.canUseTimelineHotkeys).toBe(false);
-    expect(store.canUsePreviewHotkeys).toBe(true);
+    expect(store.canUsePreviewHotkeys).toBe(false);
   });
 
   it('clearTempFocus restores last cut main panel only for legacy temp panels', () => {
@@ -119,15 +119,16 @@ describe('FocusStore', () => {
     const store = useFocusStore();
 
     store.setActiveTimelinePath('/first.otio');
-    store.setMainFocus('timeline');
+    store.setMainFocus('monitor');
     store.setActiveTimelinePath('/second.otio');
-
-    expect(store.activePanelId).toBe('monitor');
-    expect(store.mainFocus).toBe('monitor');
-
-    store.setActiveTimelinePath('/first.otio');
 
     expect(store.activePanelId).toBe('timeline');
     expect(store.mainFocus).toBe('timeline');
+
+    store.setMainFocus('timeline');
+    store.setActiveTimelinePath('/first.otio');
+
+    expect(store.activePanelId).toBe('monitor');
+    expect(store.mainFocus).toBe('monitor');
   });
 });

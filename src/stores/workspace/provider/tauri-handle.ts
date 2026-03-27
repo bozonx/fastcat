@@ -1,4 +1,4 @@
-import { mkdir, readDir, readFile, writeFile, remove, stat, exists } from '@tauri-apps/plugin-fs';
+import { mkdir, readDir, readFile, writeFile, remove, stat, exists, rename } from '@tauri-apps/plugin-fs';
 import { join } from '@tauri-apps/api/path';
 
 export class TauriFileHandle {
@@ -24,6 +24,8 @@ export class TauriFileHandle {
     write: (data: any) => Promise<void>;
     close: () => Promise<void>;
   }> {
+    const tempPath = `${this.path}.tmp`;
+    
     return {
       write: async (data: any) => {
         let bytes: Uint8Array;
@@ -34,9 +36,13 @@ export class TauriFileHandle {
         } else {
           bytes = new Uint8Array(await new Blob([data]).arrayBuffer());
         }
-        await writeFile(this.path, bytes);
+        await writeFile(tempPath, bytes);
       },
-      close: async () => {},
+      close: async () => {
+        if (await exists(tempPath)) {
+          await rename(tempPath, this.path);
+        }
+      },
     };
   }
 }

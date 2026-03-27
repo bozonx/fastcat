@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
+import { defineComponent, h } from 'vue';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import FileManagerFiles from '~/components/file-manager/FileManagerFiles.vue';
-import { setupTestPinia } from '../../utils/pinia';
-import { useUiStore } from '~/stores/ui.store';
+import { useEditorHotkeys } from '~/composables/editor/useEditorHotkeys';
+import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useUiStore } from '~/stores/ui.store';
 import { ref, reactive } from 'vue';
 
 vi.mock('~/composables/useAppClipboard', () => ({
@@ -19,15 +21,10 @@ vi.mock('~/stores/project.store', () => ({
   }),
 }));
 
-vi.mock('~/stores/focus.store', () => ({
-  useFocusStore: () => ({
-    setTempFocus: vi.fn(),
-  }),
-}));
-
 vi.mock('~/stores/timeline-media-usage.store', () => ({
   useTimelineMediaUsageStore: () => ({
     mediaPathToTimelines: {},
+    setLiveUsage: vi.fn(),
   }),
 }));
 
@@ -73,10 +70,33 @@ const mockUiStore = reactive({
 });
 vi.mock('~/stores/ui.store', () => ({
   useUiStore: () => {
-    // In some contexts, we might need to update the mock state
     return mockUiStore;
   },
 }));
+
+function createFmProps(params: {
+  rootEntries?: any[];
+  getProjectRootDirHandle?: () => Promise<FileSystemDirectoryHandle | null>;
+}) {
+  const getProjectRootDirHandle =
+    params.getProjectRootDirHandle ??
+    vi.fn(async () => ({}) as unknown as FileSystemDirectoryHandle);
+
+  return {
+    isDragging: false,
+    isLoading: false,
+    isApiSupported: true,
+    rootEntries: params.rootEntries ?? [],
+    getFileIcon: () => 'i-heroicons-document',
+    findEntryByPath: (path: string) =>
+      (params.rootEntries ?? []).find((e) => e.path === path) || null,
+    mediaCache: { hasProxy: () => false },
+    moveEntry: async () => {},
+    copyEntry: async () => {},
+    getProjectRootDirHandle,
+    handleFiles: async () => {},
+  };
+}
 
 async function createWrapper(params: {
   projectName: string;
@@ -87,25 +107,16 @@ async function createWrapper(params: {
   mockUiStore.fileTreeSelectAllTrigger = 0;
   mockSelectionStore.selectedEntity = null;
 
-  const getProjectRootDirHandle =
-    params.getProjectRootDirHandle ??
-    vi.fn(async () => ({}) as unknown as FileSystemDirectoryHandle);
+  const fmProps = createFmProps(params);
 
-  return await mountSuspended(FileManagerFiles, {
-    props: {
-      isDragging: false,
-      isLoading: false,
-      isApiSupported: true,
-      rootEntries: params.rootEntries ?? [],
-      getFileIcon: () => 'i-heroicons-document',
-      findEntryByPath: (path: string) =>
-        (params.rootEntries ?? []).find((e) => e.path === path) || null,
-      mediaCache: { hasProxy: () => false },
-      moveEntry: async () => {},
-      copyEntry: async () => {},
-      getProjectRootDirHandle,
-      handleFiles: async () => {},
+  const Harness = defineComponent({
+    setup() {
+      useEditorHotkeys();
+      return () => h(FileManagerFiles, fmProps as any);
     },
+  });
+
+  return await mountSuspended(Harness, {
     global: {
       stubs: {
         UContextMenu: { template: '<div><slot /></div>' },
@@ -150,10 +161,16 @@ describe('FileManagerFiles', () => {
     const uiStore = useUiStore();
     const initialTrigger = uiStore.fileTreeSelectAllTrigger;
 
-    await wrapper.get('.flex-1.overflow-auto.min-h-0.min-w-0.relative').trigger('keydown', {
-      key: 'a',
-      ctrlKey: true,
-    });
+    useFocusStore().setPanelFocus('left');
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'a',
+        code: 'KeyA',
+        ctrlKey: true,
+        bubbles: true,
+      }),
+    );
 
     expect(uiStore.fileTreeSelectAllTrigger).toBe(initialTrigger + 1);
   });
