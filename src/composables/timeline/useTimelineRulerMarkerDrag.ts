@@ -32,12 +32,15 @@ interface UseTimelineRulerMarkerDragOptions {
   computeSnapTargets?: () => number[];
   snapThresholdPx?: Ref<number>;
   isSnappingEnabled?: Ref<boolean>;
+  scrollLeft: Ref<number>;
   getTimeUsFromPointerEvent: (event: PointerEvent) => number;
 }
 
 export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOptions) {
   const draggedMarkerId = ref<string | null>(null);
   const draggedMarkerPart = ref<'left' | 'right'>('left');
+  const markerDragStartX = ref(0);
+  const markerDragStartScrollLeft = ref(0);
   const markerDragStartMouseTimeUs = ref(0);
   const markerDragStartUs = ref(0);
   const markerDragStartDurationUs = ref(0);
@@ -100,9 +103,9 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
   function onWindowPointerMove(event: PointerEvent) {
     if (!draggedMarkerId.value) return;
 
-    const currentTimeUs = options.getTimeUsFromPointerEvent(event);
-    const deltaUs = currentTimeUs - markerDragStartMouseTimeUs.value;
+    const dxPx = event.clientX - markerDragStartX.value + (options.scrollLeft.value - markerDragStartScrollLeft.value);
     const currentZoom = options.zoom.value;
+    const deltaUs = pxToDeltaUs(dxPx, currentZoom);
 
     if (draggedMarkerPart.value === 'left') {
       let newUs = Math.max(0, quantize(markerDragStartUs.value + deltaUs));
@@ -200,9 +203,11 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
 
     draggedMarkerId.value = markerId;
     draggedMarkerPart.value = part;
+    markerDragStartX.value = event.clientX;
+    markerDragStartScrollLeft.value = options.scrollLeft.value;
     markerDragStartMouseTimeUs.value = options.getTimeUsFromPointerEvent(event);
-    markerDragStartUs.value = marker.timeUs;
-    markerDragStartDurationUs.value = marker.durationUs ?? 0;
+    markerDragStartUs.value = quantize(marker.timeUs);
+    markerDragStartDurationUs.value = quantize(marker.durationUs ?? 0);
     draggedMarkerPatch.value = null;
 
     clearMarkerPointerListeners();

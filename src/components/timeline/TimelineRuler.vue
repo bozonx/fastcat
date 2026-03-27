@@ -71,7 +71,10 @@ function computeSnapTargets() {
     includeMarkers: snapSettings.markers,
     markers: timelineStore.markers,
     includeClips: snapSettings.clips,
-    selectionRangeUs: snapSettings.selection ? timelineStore.selectionRange : null,
+    selectionRangeUs:
+      snapSettings.selection && !isDraggingSelectionRange.value
+        ? timelineStore.selectionRange
+        : null,
   });
 }
 
@@ -147,6 +150,7 @@ const { onMarkerPointerDown, displayMarkers, draggedMarkerId } = useTimelineRule
   computeSnapTargets,
   snapThresholdPx: computed(() => snapThresholdPx.value),
   isSnappingEnabled,
+  scrollLeft,
   getTimeUsFromPointerEvent: (event) => getTimeUsFromMouseEvent(event as unknown as MouseEvent),
 });
 
@@ -161,6 +165,7 @@ const {
   selectionRange,
   zoom,
   fps,
+  scrollLeft,
   getTimeUsFromPointerEvent: (event) => getTimeUsFromMouseEvent(event as unknown as MouseEvent),
   selectSelectionRange,
   updateSelectionRange: timelineStore.updateSelectionRange,

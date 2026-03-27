@@ -21,6 +21,7 @@ interface UseTimelineRulerSelectionDragOptions {
   selectionRange: Ref<SelectionRangeLike | null | undefined>;
   zoom: Ref<number>;
   fps: Ref<number>;
+  scrollLeft: Ref<number>;
   getTimeUsFromPointerEvent: (event: PointerEvent) => number;
   selectSelectionRange: () => void;
   updateSelectionRange: (payload: { startUs: number; endUs: number } | null) => void;
@@ -35,6 +36,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
   const isDraggingSelectionRange = ref(false);
   const selectionDragPart = ref<TimelineRulerSelectionDragPart>('move');
   const selectionDragStartX = ref(0);
+  const selectionDragStartScrollLeft = ref(0);
   const selectionDragStartMouseTimeUs = ref(0);
   const selectionDragStartStartUs = ref(0);
   const selectionDragStartEndUs = ref(0);
@@ -111,8 +113,8 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     const range = options.selectionRange.value;
     if (!range) return;
 
-    const currentTimeUs = options.getTimeUsFromPointerEvent(event);
-    const mouseDeltaUs = currentTimeUs - selectionDragStartMouseTimeUs.value;
+    const dxPx = event.clientX - selectionDragStartX.value + (options.scrollLeft.value - selectionDragStartScrollLeft.value);
+    const mouseDeltaUs = Math.round((dxPx / zoomToPxPerSecond(options.zoom.value)) * 1e6);
     const minDurationUs = Math.max(
       getFrameDurationUs(),
       pxToTimeUs(TIMELINE_RULER_CONSTANTS.MIN_SELECTION_DURATION_PX, options.zoom.value),
@@ -142,16 +144,16 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
 
         if (snapStart.distUs < thresholdUs && snapStart.distUs <= snapEnd.distUs) {
           nextStartUs = quantize(snapStart.snappedUs);
-          nextEndUs = nextStartUs + durationUs;
+          nextEndUs = nextStartUs + quantize(durationUs);
         } else if (snapEnd.distUs < thresholdUs) {
           nextEndUs = quantize(snapEnd.snappedUs);
-          nextStartUs = Math.max(0, nextEndUs - durationUs);
+          nextStartUs = Math.max(0, nextEndUs - quantize(durationUs));
         }
       }
 
       draggedSelectionPatch.value = {
         startUs: nextStartUs,
-        endUs: nextEndUs,
+        endUs: nextStartUs + quantize(durationUs),
       };
       if (options.setPreviewSelectionRange) {
         options.setPreviewSelectionRange(draggedSelectionPatch.value);
@@ -268,9 +270,10 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
     isDraggingSelectionRange.value = true;
     selectionDragPart.value = part;
     selectionDragStartX.value = event.clientX;
+    selectionDragStartScrollLeft.value = options.scrollLeft.value;
     selectionDragStartMouseTimeUs.value = options.getTimeUsFromPointerEvent(event);
-    selectionDragStartStartUs.value = options.selectionRange.value.startUs;
-    selectionDragStartEndUs.value = options.selectionRange.value.endUs;
+    selectionDragStartStartUs.value = quantize(options.selectionRange.value.startUs);
+    selectionDragStartEndUs.value = quantize(options.selectionRange.value.endUs);
     draggedSelectionPatch.value = null;
     suppressNextRulerClick.value = part !== 'move';
 
