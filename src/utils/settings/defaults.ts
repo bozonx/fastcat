@@ -1,5 +1,6 @@
 import type { HotkeyCommandId, HotkeyCombo } from '../hotkeys/defaultHotkeys';
 import type { StoragePathRegistry } from '../storage-roots';
+import type { TimelineDragAction } from '../mouse';
 import type { UserExportPresetsSettings, UserProjectPresetsSettings } from './presets';
 import { createDefaultExportPresets, createDefaultProjectPresets } from './presets';
 
@@ -121,9 +122,9 @@ export interface FastCatUserSettings {
       middleClick: 'seek' | 'add_marker' | 'reset_zoom' | 'fit_zoom' | 'clear_selection' | 'none';
       doubleClick: 'seek' | 'add_marker' | 'reset_zoom' | 'fit_zoom' | 'clear_selection' | 'none';
       shiftClick: 'seek' | 'add_marker' | 'reset_zoom' | 'fit_zoom' | 'clear_selection' | 'none';
-      drag: 'pan' | 'move_playhead' | 'select_area' | 'none';
-      middleDrag: 'pan' | 'move_playhead' | 'select_area' | 'none';
-      dragShift: 'pan' | 'move_playhead' | 'select_area' | 'none';
+      drag: TimelineDragAction;
+      middleDrag: TimelineDragAction;
+      dragShift: TimelineDragAction;
       horizontalMovement: 'move_playhead' | 'none';
     };
     timeline: {
@@ -149,7 +150,7 @@ export interface FastCatUserSettings {
         | 'select_item'
         | 'select_multiple'
         | 'none';
-      drag: 'pan' | 'move_playhead' | 'move_clips' | 'select_area' | 'none';
+      drag: TimelineDragAction;
       middleClick:
         | 'seek'
         | 'add_marker'
@@ -159,29 +160,11 @@ export interface FastCatUserSettings {
         | 'select_item'
         | 'select_multiple'
         | 'none';
-      middleDrag: 'pan' | 'move_playhead' | 'move_clips' | 'select_area' | 'none';
+      middleDrag: TimelineDragAction;
       horizontalMovement: 'move_playhead' | 'none';
-      clipDragShift:
-        | 'pseudo_overlap'
-        | 'free_mode'
-        | 'copy'
-        | 'toggle_snap'
-        | 'toggle_clip_move_mode'
-        | 'none';
-      clipDragCtrl:
-        | 'pseudo_overlap'
-        | 'free_mode'
-        | 'copy'
-        | 'toggle_snap'
-        | 'toggle_clip_move_mode'
-        | 'none';
-      clipDragRight:
-        | 'pseudo_overlap'
-        | 'free_mode'
-        | 'copy'
-        | 'toggle_snap'
-        | 'toggle_clip_move_mode'
-        | 'none';
+      clipDragShift: TimelineDragAction;
+      clipDragCtrl: TimelineDragAction;
+      clipDragRight: TimelineDragAction;
     };
     trackHeaders: {
       wheel: string;

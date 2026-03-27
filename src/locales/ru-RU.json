@@ -263,10 +263,38 @@
       }
     },
     "dynamicPanels": {
-      "moveToCutWindow": "Переместить на окно монтаж",
-      "moveToSoundWindow": "Переместить на окно звук",
+      "moveToCutWindow": "Перенести в окно монтажа",
+      "moveToSoundWindow": "Перенести в окно звука",
       "projectFiles": "Файлы проекта",
-      "returnToProjectPanel": "Вернуть на панель проекта"
+      "returnToProjectPanel": "Вернуться к панели проекта"
+    },
+    "library": {
+      "tabs": {
+        "texts": "Тексты",
+        "shapes": "Фигуры",
+        "hud": "HUD"
+      },
+      "texts": {
+        "default": "Стандартный",
+        "title": "Заголовок",
+        "subtitle": "Подзаголовок"
+      },
+      "shapes": {
+        "square": "Квадрат",
+        "circle": "Круг",
+        "triangle": "Треугольник",
+        "star": "Звезда",
+        "bang": "Вспышка",
+        "cloud": "Облако",
+        "speech_bubble": "Облако диалога"
+      },
+      "huds": {
+        "media_frame": "Рамка медиа"
+      }
+    },
+    "presets": {
+      "enterName": "Введите название пресета",
+      "saveAsPreset": "Сохранить как пресет"
     },
     "effects": {
       "add": "Добавить",

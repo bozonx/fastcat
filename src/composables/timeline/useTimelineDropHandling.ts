@@ -280,6 +280,8 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
         clipType === 'hud' ? (item.presetParams?.hudType ?? resolveHudType(item.type)) : undefined,
       background: clipType === 'hud' ? item.presetParams?.background : undefined,
       content: clipType === 'hud' ? item.presetParams?.content : undefined,
+      text: clipType === 'text' ? item.presetParams?.text : undefined,
+      style: clipType === 'text' ? item.presetParams?.style : undefined,
       pseudo: context.pseudo,
     });
 

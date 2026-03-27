@@ -7,7 +7,7 @@ export interface CustomPreset {
   id: string; // Used as the type in registry
   baseType: string;
   name: string;
-  category: 'effect' | 'transition' | 'shape' | 'hud';
+  category: 'effect' | 'transition' | 'shape' | 'hud' | 'text';
   effectTarget?: 'video' | 'audio';
   params: Record<string, any>;
   order: number;
@@ -15,6 +15,8 @@ export interface CustomPreset {
 
 export const usePresetsStore = defineStore('presets', () => {
   const customPresets = ref<CustomPreset[]>([]);
+
+  const defaultTextPresetId = ref<string>('');
 
   const effectsStandardCollapsed = ref(false);
   const effectsCustomCollapsed = ref(false);
@@ -26,6 +28,8 @@ export const usePresetsStore = defineStore('presets', () => {
   const shapesCustomCollapsed = ref(false);
   const hudsStandardCollapsed = ref(false);
   const hudsCustomCollapsed = ref(false);
+  const textsStandardCollapsed = ref(false);
+  const textsCustomCollapsed = ref(false);
 
   // Load from localStorage
   function load() {
@@ -33,6 +37,11 @@ export const usePresetsStore = defineStore('presets', () => {
       const presetsJson = localStorage.getItem('fastcat:presets:custom');
       if (presetsJson) {
         customPresets.value = JSON.parse(presetsJson);
+      }
+
+      const defaultTextJson = localStorage.getItem('fastcat:presets:defaultText');
+      if (defaultTextJson) {
+        defaultTextPresetId.value = JSON.parse(defaultTextJson);
       }
 
       const collapsedJson = localStorage.getItem('fastcat:presets:collapsed');
@@ -48,6 +57,8 @@ export const usePresetsStore = defineStore('presets', () => {
         shapesCustomCollapsed.value = !!state.shapesCustomCollapsed;
         hudsStandardCollapsed.value = !!state.hudsStandardCollapsed;
         hudsCustomCollapsed.value = !!state.hudsCustomCollapsed;
+        textsStandardCollapsed.value = !!state.textsStandardCollapsed;
+        textsCustomCollapsed.value = !!state.textsCustomCollapsed;
       }
 
       // Register custom presets
@@ -62,6 +73,10 @@ export const usePresetsStore = defineStore('presets', () => {
     localStorage.setItem('fastcat:presets:custom', JSON.stringify(customPresets.value));
   }
 
+  watch(defaultTextPresetId, () => {
+    localStorage.setItem('fastcat:presets:defaultText', JSON.stringify(defaultTextPresetId.value));
+  });
+
   watch(
     [
       effectsStandardCollapsed,
@@ -74,6 +89,8 @@ export const usePresetsStore = defineStore('presets', () => {
       shapesCustomCollapsed,
       hudsStandardCollapsed,
       hudsCustomCollapsed,
+      textsStandardCollapsed,
+      textsCustomCollapsed,
     ],
     () => {
       localStorage.setItem(
@@ -89,6 +106,8 @@ export const usePresetsStore = defineStore('presets', () => {
           shapesCustomCollapsed: shapesCustomCollapsed.value,
           hudsStandardCollapsed: hudsStandardCollapsed.value,
           hudsCustomCollapsed: hudsCustomCollapsed.value,
+          textsStandardCollapsed: textsStandardCollapsed.value,
+          textsCustomCollapsed: textsCustomCollapsed.value,
         }),
       );
     },
@@ -141,7 +160,7 @@ export const usePresetsStore = defineStore('presets', () => {
   }
 
   function saveAsPreset(
-    category: 'effect' | 'transition' | 'shape' | 'hud',
+    category: 'effect' | 'transition' | 'shape' | 'hud' | 'text',
     baseType: string,
     name: string,
     params: Record<string, any>,
@@ -172,7 +191,7 @@ export const usePresetsStore = defineStore('presets', () => {
   }
 
   function updatePresetsOrder(
-    category: 'effect' | 'transition' | 'shape' | 'hud',
+    category: 'effect' | 'transition' | 'shape' | 'hud' | 'text',
     newOrderIds: string[],
   ) {
     const categoryPresets = customPresets.value.filter((p) => p.category === category);
@@ -200,6 +219,7 @@ export const usePresetsStore = defineStore('presets', () => {
 
   return {
     customPresets,
+    defaultTextPresetId,
     effectsStandardCollapsed,
     effectsCustomCollapsed,
     transitionsStandardCollapsed,
@@ -210,6 +230,8 @@ export const usePresetsStore = defineStore('presets', () => {
     shapesCustomCollapsed,
     hudsStandardCollapsed,
     hudsCustomCollapsed,
+    textsStandardCollapsed,
+    textsCustomCollapsed,
     load,
     saveAsPreset,
     updatePreset,

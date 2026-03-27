@@ -4,12 +4,14 @@ import type { ToolbarDragMode, ToolbarSnapMode } from '~/stores/timeline-setting
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useFocusStore } from '~/stores/focus.store';
+import { usePresetsStore } from '~/stores/presets.store';
 import UiSplitDropdownButton from '~/components/ui/UiSplitDropdownButton.vue';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const settingsStore = useTimelineSettingsStore();
 const focusStore = useFocusStore();
+const presetsStore = usePresetsStore();
 
 const emit = defineEmits<{
   (e: 'dragVirtualStart', event: DragEvent, type: 'adjustment' | 'background' | 'text'): void;
@@ -135,9 +137,79 @@ function toggleTrimMode(event?: MouseEvent) {
   timelineStore.isTrimModeActive = !timelineStore.isTrimModeActive;
 }
 
+const textPresetItems = computed(() => {
+  const standard = [
+    { id: 'default', label: t('fastcat.library.texts.default', 'Default') },
+    { id: 'title', label: t('fastcat.library.texts.title', 'Title') },
+    { id: 'subtitle', label: t('fastcat.library.texts.subtitle', 'Subtitle') },
+  ];
+
+  const custom = presetsStore.customPresets
+    .filter((p) => p.category === 'text')
+    .map((p) => ({
+      id: p.id,
+      label: p.name,
+    }));
+
+  return [...standard, ...custom];
+});
+
+function addTextClip() {
+  const presetId = presetsStore.defaultTextPresetId;
+  const standardPresets: Record<string, any> = {
+    default: {
+      text: t('fastcat.timeline.textClipDefaultText', 'Text'),
+      style: { fontSize: 64, color: '#ffffff', fontFamily: 'sans-serif' },
+    },
+    title: {
+      text: 'TITLE',
+      style: { fontSize: 96, fontWeight: '800', color: '#ffffff', fontFamily: 'sans-serif' },
+    },
+    subtitle: {
+      text: 'Subtitle',
+      style: { fontSize: 48, fontWeight: '400', color: '#aaaaaa', fontFamily: 'sans-serif' },
+    },
+  };
+
+  const preset =
+    standardPresets[presetId] ||
+    presetsStore.customPresets.find((p) => p.id === presetId)?.params;
+
+  if (preset) {
+    timelineStore.addTextClipAtPlayhead({
+      text: preset.text,
+      style: preset.style,
+    });
+  } else {
+    timelineStore.addTextClipAtPlayhead();
+  }
+}
+
 function onDragStart(event: DragEvent, type: 'adjustment' | 'background' | 'text') {
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'copy';
+
+    let presetParams = undefined;
+    if (type === 'text') {
+      const presetId = presetsStore.defaultTextPresetId;
+      const standardPresets: Record<string, any> = {
+        default: {
+          text: t('fastcat.timeline.textClipDefaultText', 'Text'),
+          style: { fontSize: 64, color: '#ffffff', fontFamily: 'sans-serif' },
+        },
+        title: {
+          text: 'TITLE',
+          style: { fontSize: 96, fontWeight: '800', color: '#ffffff', fontFamily: 'sans-serif' },
+        },
+        subtitle: {
+          text: 'Subtitle',
+          style: { fontSize: 48, fontWeight: '400', color: '#aaaaaa', fontFamily: 'sans-serif' },
+        },
+      };
+      presetParams =
+        standardPresets[presetId] ||
+        presetsStore.customPresets.find((p) => p.id === presetId)?.params;
+    }
 
     // Create a payload compatible with handleLibraryDrop
     const payload = {
@@ -147,6 +219,7 @@ function onDragStart(event: DragEvent, type: 'adjustment' | 'background' | 'text
         type.charAt(0).toUpperCase() + type.slice(1),
       ),
       path: '',
+      presetParams,
     };
 
     const json = JSON.stringify(payload);
@@ -296,22 +369,44 @@ function onToolbarContextMenu(e: MouseEvent) {
         <UiTooltip
           :text="`${t('fastcat.timeline.addText')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
         >
-          <UButton
-            draggable="true"
-            size="xs"
-            variant="ghost"
-            color="neutral"
-            icon="i-heroicons-chat-bubble-bottom-center-text"
-            class="hover:bg-ui-bg"
-            @dragstart="onDragStart($event, 'text')"
-            @dragend="onDragEnd"
-            @click="
-              (e) => {
-                timelineStore.addTextClipAtPlayhead();
-                (e.currentTarget as HTMLElement).blur();
-              }
-            "
-          />
+          <div class="flex items-center gap-0.5">
+            <USelectMenu
+              v-model="presetsStore.defaultTextPresetId"
+              :options="textPresetItems"
+              value-attribute="id"
+              class="w-24"
+              size="xs"
+              variant="ghost"
+              :placeholder="t('fastcat.library.tabs.texts', 'Texts')"
+              :ui="{
+                base: 'h-6 text-[10px]!',
+                trigger: 'h-6 px-1.5 gap-0.5!',
+              }"
+            >
+              <template #label>
+                <span class="truncate">{{
+                  textPresetItems.find((i) => i.id === presetsStore.defaultTextPresetId)?.label ||
+                  t('fastcat.library.tabs.texts', 'Texts')
+                }}</span>
+              </template>
+            </USelectMenu>
+            <UButton
+              draggable="true"
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              icon="i-heroicons-chat-bubble-bottom-center-text"
+              class="hover:bg-ui-bg"
+              @dragstart="onDragStart($event, 'text')"
+              @dragend="onDragEnd"
+              @click="
+                (e) => {
+                  addTextClip();
+                  (e.currentTarget as HTMLElement).blur();
+                }
+              "
+            />
+          </div>
         </UiTooltip>
       </div>
     </div>

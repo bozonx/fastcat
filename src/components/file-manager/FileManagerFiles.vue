@@ -154,7 +154,7 @@ watch(
   () => uiStore.fileBrowserMoveSelectionTrigger,
   (trigger) => {
     // Only handle if this is the sidebar and it's focused
-    if (!props.isFilesPage && focusStore.isPanelFocused('left')) {
+    if (!props.isFilesPage && (focusStore.isPanelFocused('left') || focusStore.isPanelFocused('project'))) {
       moveSelection(trigger.dir);
     }
   },

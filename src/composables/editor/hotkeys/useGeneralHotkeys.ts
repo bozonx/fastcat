@@ -171,10 +171,7 @@ export function useGeneralHotkeys(
       keyCode: params.keyCode,
       action: () => {
         if (params.dir === 'up' || params.dir === 'down') {
-          if (
-            focusStore.effectiveFocus === 'filesBrowser' ||
-            focusStore.effectiveFocus === 'left'
-          ) {
+          if (isFileManagerFocus()) {
             uiStore.fileBrowserMoveSelectionTrigger = {
               dir: params.dir,
               timestamp: Date.now(),
@@ -402,7 +399,7 @@ export function useGeneralHotkeys(
     },
 
     'general.navigateSelectionUp': (e) => {
-      if (focusStore.effectiveFocus === 'filesBrowser' || focusStore.effectiveFocus === 'left') {
+      if (isFileManagerFocus()) {
         startNavigationHotkeyHold({ dir: 'up', keyCode: e.code });
         return true;
       }
@@ -410,7 +407,7 @@ export function useGeneralHotkeys(
     },
 
     'general.navigateSelectionDown': (e) => {
-      if (focusStore.effectiveFocus === 'filesBrowser' || focusStore.effectiveFocus === 'left') {
+      if (isFileManagerFocus()) {
         startNavigationHotkeyHold({ dir: 'down', keyCode: e.code });
         return true;
       }
