@@ -15,7 +15,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'updateHudControl', key: string, value: unknown): void;
-  (e: 'openSavePresetModal'): void;
   (e: 'loadPreset', val: string): void;
 }>();
 
@@ -24,11 +23,13 @@ const { t } = useI18n();
 
 <template>
   <PropertySection :title="t('fastcat.hudClip.hud')">
-    <div class="flex flex-col gap-1 pb-4 border-b border-ui-border mb-4">
+    <div
+      v-if="props.presets.length > 0"
+      class="flex flex-col gap-1 pb-4 border-b border-ui-border mb-4"
+    >
       <UiFormSectionHeader :title="t('fastcat.effects.presetsTitle')" />
       <div class="flex gap-2">
         <UiSelect
-          v-if="props.presets.length > 0"
           :items="props.presets"
           :placeholder="t('fastcat.effects.loadPresetPlaceholder')"
           class="flex-1"
@@ -37,17 +38,6 @@ const { t } = useI18n();
           @update:model-value="
             (v: unknown) => emit('loadPreset', (v as { value: string })?.value ?? v)
           "
-        />
-        <div v-else class="flex-1 text-xs text-ui-text-muted italic flex items-center">
-          {{ t('fastcat.effects.noPresets') }}
-        </div>
-        <UButton
-          size="xs"
-          variant="ghost"
-          color="primary"
-          icon="i-heroicons-bookmark"
-          :title="t('fastcat.effects.saveAsPreset')"
-          @click="emit('openSavePresetModal')"
         />
       </div>
     </div>

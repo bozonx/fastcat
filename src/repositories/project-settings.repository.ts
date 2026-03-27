@@ -33,8 +33,8 @@ export function createProjectSettingsRepository(input: {
       });
       if (!handle) return;
 
-      // Strip UI session state from technical settings file
-      const { monitor, timelines, ...technicalData } = data as any;
+      // Strip UI session state from technical settings file (persisted in project.ui.json)
+      const { monitors, timelines, ...technicalData } = data as any;
       await writeJsonToFileHandle({ handle, data: technicalData });
     },
   };

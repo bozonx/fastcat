@@ -47,7 +47,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     const lastViewBeforeFullscreen = getLastViewBeforeFullscreen.value?.() ?? null;
     const targetView = view === 'fullscreen' ? lastViewBeforeFullscreen || 'cut' : view;
     const safeView = ['cut', 'sound', 'export'].includes(targetView) ? targetView : 'cut';
-    return projectSettings.value.monitors[safeView] || projectSettings.value.monitor;
+    return projectSettings.value.monitors[safeView] ?? projectSettings.value.monitors.cut;
   });
 
   const autoSave = createAutoSave({
@@ -163,10 +163,14 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
         const uiRaw = await repo.load();
         if (uiRaw) {
           if (uiRaw.monitors) {
-            settings.monitors = { ...settings.monitors, ...uiRaw.monitors };
-          } else if ((uiRaw as any).monitor) {
-            // Migration from legacy single monitor
-            settings.monitors.cut = { ...settings.monitors.cut, ...(uiRaw as any).monitor };
+            const next = { ...settings.monitors };
+            for (const key of Object.keys(uiRaw.monitors)) {
+              const patch = uiRaw.monitors[key];
+              if (!patch || typeof patch !== 'object') continue;
+              const base = next[key] ?? settings.monitors.cut;
+              next[key] = { ...base, ...patch };
+            }
+            settings.monitors = next;
           }
 
           if (uiRaw.timelines) settings.timelines = { ...settings.timelines, ...uiRaw.timelines };

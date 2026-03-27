@@ -37,12 +37,14 @@ describe('project settings normalization', () => {
             },
           },
         },
-        monitor: {
-          previewResolution: 99999,
-          useProxy: true,
-          previewEffectsEnabled: false,
-          panX: 0,
-          panY: 0,
+        monitors: {
+          cut: {
+            previewResolution: 99999,
+            useProxy: true,
+            previewEffectsEnabled: false,
+            panX: 0,
+            panY: 0,
+          },
         },
         timelines: {
           openPaths: [],
@@ -57,7 +59,7 @@ describe('project settings normalization', () => {
 
     expect(normalized.project.sampleRate).toBe(48000);
     expect(normalized.exportDefaults.encoding.keyframeIntervalSec).toBe(2);
-    expect(normalized.monitor.previewResolution).toBe(0.5);
-    expect(normalized.monitor.previewEffectsEnabled).toBe(false);
+    expect(normalized.monitors.cut.previewResolution).toBe(0.5);
+    expect(normalized.monitors.cut.previewEffectsEnabled).toBe(false);
   });
 });

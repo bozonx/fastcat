@@ -45,7 +45,9 @@ export const useProjectStore = defineStore('project', () => {
 
   const isReadOnly = ref(false);
 
-  const editorViewModule = createEditorViewModule(currentProjectId);
+  const editorViewModule = createEditorViewModule(currentProjectId, {
+    getProjectOrientation: () => projectSettingsStore.projectSettings.project.orientation,
+  });
 
   const fsModule = createProjectFsModule({
     workspaceHandle: computed(() => workspaceStore.workspaceHandle),

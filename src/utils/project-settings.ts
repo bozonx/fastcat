@@ -47,7 +47,6 @@ export interface FastCatProjectSettings {
       exportAlpha: boolean;
     };
   };
-  monitor: MonitorSettings;
   monitors: Record<string, MonitorSettings>;
   timelines: {
     openPaths: string[];
@@ -56,6 +55,17 @@ export interface FastCatProjectSettings {
     defaultDurationUs: number;
   };
 }
+
+export const DEFAULT_MONITOR_SETTINGS: MonitorSettings = {
+  previewResolution: 0.5,
+  useProxy: true,
+  previewEffectsEnabled: true,
+  panX: 0,
+  panY: 0,
+  zoom: 1,
+  showGrid: false,
+  toolbarPosition: 'bottom',
+};
 
 export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
   version: 1,
@@ -84,17 +94,11 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
       exportAlpha: false,
     },
   },
-  monitor: {
-    previewResolution: 0.5,
-    useProxy: true,
-    previewEffectsEnabled: true,
-    panX: 0,
-    panY: 0,
-    zoom: 1,
-    showGrid: false,
-    toolbarPosition: 'bottom',
+  monitors: {
+    cut: { ...DEFAULT_MONITOR_SETTINGS },
+    sound: { ...DEFAULT_MONITOR_SETTINGS },
+    export: { ...DEFAULT_MONITOR_SETTINGS },
   },
-  monitors: {},
   timelines: {
     openPaths: [],
   },
@@ -142,11 +146,10 @@ export function createDefaultProjectSettings(
   userSettings: ProjectSettingsUserDefaultsInput,
 ): FastCatProjectSettings {
   const base = getProjectSettingsFromUserDefaults(userSettings);
-  const monitorBase = { ...DEFAULT_PROJECT_SETTINGS.monitor };
+  const monitorBase = { ...DEFAULT_MONITOR_SETTINGS };
   return {
     ...base,
     version: 1,
-    monitor: { ...monitorBase },
     monitors: {
       cut: { ...monitorBase },
       sound: { ...monitorBase },
@@ -162,21 +165,16 @@ export function createDefaultProjectSettings(
 }
 
 function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
+  const dm = defaults.monitors.cut;
   const monitorSchema = z.object({
-    previewResolution: z.coerce
-      .number()
-      .min(0.01)
-      .max(4320)
-      .catch(defaults.monitor.previewResolution),
-    useProxy: z.coerce.boolean().catch(defaults.monitor.useProxy),
-    previewEffectsEnabled: z.coerce.boolean().catch(defaults.monitor.previewEffectsEnabled),
-    panX: z.coerce.number().catch(defaults.monitor.panX),
-    panY: z.coerce.number().catch(defaults.monitor.panY),
-    zoom: z.coerce.number().min(0.05).max(20).catch(defaults.monitor.zoom),
-    showGrid: z.coerce.boolean().catch(defaults.monitor.showGrid),
-    toolbarPosition: z
-      .enum(['top', 'bottom', 'left', 'right'])
-      .catch(defaults.monitor.toolbarPosition),
+    previewResolution: z.coerce.number().min(0.01).max(4320).catch(dm.previewResolution),
+    useProxy: z.coerce.boolean().catch(dm.useProxy),
+    previewEffectsEnabled: z.coerce.boolean().catch(dm.previewEffectsEnabled),
+    panX: z.coerce.number().catch(dm.panX),
+    panY: z.coerce.number().catch(dm.panY),
+    zoom: z.coerce.number().min(0.05).max(20).catch(dm.zoom),
+    showGrid: z.coerce.boolean().catch(dm.showGrid),
+    toolbarPosition: z.enum(['top', 'bottom', 'left', 'right']).catch(dm.toolbarPosition),
   });
 
   return z
@@ -249,7 +247,6 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
             .catch(defaults.exportDefaults.encoding),
         })
         .catch(defaults.exportDefaults),
-      monitor: monitorSchema.catch(defaults.monitor),
       monitors: z.record(z.string(), monitorSchema).catch({}),
       timelines: z
         .object({
@@ -292,17 +289,22 @@ export function normalizeProjectSettings(
     },
   };
 
-  // Handle monitors fallback logic
-  const monitorsInput = mappedInput.monitors ?? {};
-  const monitorInput = mappedInput.monitor ?? {};
-  const resolvedMonitors: Record<string, any> = {};
-
-  ['cut', 'sound', 'export'].forEach((view) => {
-    resolvedMonitors[view] = monitorsInput[view] || (view === 'cut' ? monitorInput : {});
-  });
-
-  mappedInput.monitors = resolvedMonitors;
+  mappedInput.monitors = mappedInput.monitors ?? {};
 
   const schema = createProjectSettingsSchema(defaults);
-  return schema.parse(mappedInput);
+  const parsed = schema.parse(mappedInput);
+
+  const mergedMonitors: Record<string, MonitorSettings> = {};
+  for (const view of ['cut', 'sound', 'export'] as const) {
+    mergedMonitors[view] = {
+      ...defaults.monitors[view],
+      ...(parsed.monitors[view] ?? {}),
+    };
+  }
+  for (const key of Object.keys(parsed.monitors)) {
+    if (key === 'cut' || key === 'sound' || key === 'export') continue;
+    mergedMonitors[key] = { ...defaults.monitors.cut, ...parsed.monitors[key]! };
+  }
+
+  return { ...parsed, monitors: mergedMonitors };
 }

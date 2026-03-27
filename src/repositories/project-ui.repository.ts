@@ -53,7 +53,7 @@ export function createProjectUiRepository(input: {
 
       const parsed = ProjectUiSettingsSchema.safeParse({
         ...raw,
-        monitors: raw.monitors || { cut: raw.monitor || {} },
+        monitors: raw.monitors ?? {},
       });
 
       if (!parsed.success) {

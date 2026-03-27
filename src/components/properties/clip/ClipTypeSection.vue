@@ -1,15 +1,9 @@
 <script setup lang="ts">
-import UiModal from '~/components/ui/UiModal.vue';
-import UiTextInput from '~/components/ui/UiTextInput.vue';
-import UiFormField from '~/components/ui/UiFormField.vue';
-
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import type {
   ShapeType,
   TimelineClipItem,
   TimelineTextClipItem,
-  TimelineShapeClipItem,
-  TimelineHudClipItem,
 } from '~/timeline/types';
 import type { ParamControl } from '~/components/properties/params';
 import { usePresetsStore } from '~/stores/presets.store';
@@ -38,41 +32,6 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const presetsStore = usePresetsStore();
-
-const isSaveModalOpen = ref(false);
-const newPresetName = ref('');
-
-function openSavePresetModal() {
-  newPresetName.value = '';
-  isSaveModalOpen.value = true;
-}
-
-function handleSavePreset() {
-  const name = newPresetName.value.trim();
-  if (!name) return;
-
-  if (props.clip.clipType === 'shape') {
-    const shapeClip = props.clip as TimelineShapeClipItem;
-    const params = {
-      shapeType: shapeClip.shapeType,
-      fillColor: shapeClip.fillColor,
-      strokeColor: shapeClip.strokeColor,
-      strokeWidth: shapeClip.strokeWidth,
-      shapeConfig: { ...(shapeClip.shapeConfig || {}) },
-    };
-    presetsStore.saveAsPreset('shape', params.shapeType ?? 'square', name, params);
-  } else if (props.clip.clipType === 'hud') {
-    const hudClip = props.clip as TimelineHudClipItem;
-    const params = {
-      hudType: hudClip.hudType,
-      background: { ...(hudClip.background || {}) },
-      content: { ...(hudClip.content || {}) },
-    };
-    presetsStore.saveAsPreset('hud', hudClip.hudType ?? 'media_frame', name, params);
-  }
-
-  isSaveModalOpen.value = false;
-}
 
 const shapePresets = computed(() =>
   presetsStore.customPresets
@@ -118,32 +77,6 @@ function handleLoadHudPreset(presetId: string) {
 </script>
 
 <template>
-  <UiModal
-    v-model:open="isSaveModalOpen"
-    :title="t('fastcat.effects.savePresetTitle', 'Save Preset')"
-  >
-    <template #body>
-      <div class="flex flex-col gap-4">
-        <UiFormField :label="t('common.name', 'Name')">
-          <UiTextInput
-            v-model="newPresetName"
-            :placeholder="t('fastcat.effects.presetNamePlaceholder', 'My Custom Preset')"
-            autofocus
-            @keyup.enter="handleSavePreset"
-          />
-        </UiFormField>
-        <div class="flex justify-end gap-2">
-          <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">
-            {{ t('common.cancel', 'Cancel') }}
-          </UButton>
-          <UButton color="primary" :disabled="!newPresetName.trim()" @click="handleSavePreset">
-            {{ t('common.save', 'Save') }}
-          </UButton>
-        </div>
-      </div>
-    </template>
-  </UiModal>
-
   <ClipBackgroundProperties
     v-if="props.clip.clipType === 'background'"
     :clip="props.clip"
@@ -166,7 +99,6 @@ function handleLoadHudPreset(presetId: string) {
     @update-stroke-color="emit('updateStrokeColor', $event)"
     @update-stroke-width="emit('updateStrokeWidth', $event)"
     @update-shape-config="emit('updateShapeConfig', $event)"
-    @open-save-preset-modal="openSavePresetModal"
     @load-preset="handleLoadShapePreset"
   />
 
@@ -177,7 +109,6 @@ function handleLoadHudPreset(presetId: string) {
     :hud-control-values="props.hudControlValues"
     :presets="hudPresets"
     @update-hud-control="(key: string, val: unknown) => emit('updateHudControl', key, val)"
-    @open-save-preset-modal="openSavePresetModal"
     @load-preset="handleLoadHudPreset"
   />
 </template>
