@@ -187,6 +187,9 @@ export interface FastCatUserSettings {
       wheelShift: string;
       wheelSecondary: string;
       wheelSecondaryShift: string;
+      click: 'select_track' | 'select_all_clips' | 'none';
+      middleClick: 'select_track' | 'select_all_clips' | 'none';
+      doubleClick: 'select_track' | 'select_all_clips' | 'none';
     };
     monitor: {
       wheel: string;
@@ -194,6 +197,7 @@ export interface FastCatUserSettings {
       wheelSecondary: string;
       wheelSecondaryShift: string;
       middleClick: 'fit' | 'reset_zoom' | 'reset_zoom_center' | 'center' | 'none';
+      doubleClick: 'fit' | 'reset_zoom' | 'reset_zoom_center' | 'center' | 'none';
       middleDrag: 'pan' | 'none';
     };
   };
@@ -319,6 +323,9 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       wheelShift: 'zoom_vertical',
       wheelSecondary: 'resize_track',
       wheelSecondaryShift: 'none',
+      click: 'select_track',
+      middleClick: 'none',
+      doubleClick: 'select_all_clips',
     },
     monitor: {
       wheel: 'zoom',
@@ -326,6 +333,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       wheelSecondary: 'scroll_horizontal',
       wheelSecondaryShift: 'none',
       middleClick: 'fit',
+      doubleClick: 'reset_zoom',
       middleDrag: 'pan',
     },
   },

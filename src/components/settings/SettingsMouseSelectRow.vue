@@ -44,14 +44,12 @@ function updateValue(value: unknown) {
         value-key="value"
         label-key="label"
         full-width
+        :searchable="false"
         @update:model-value="updateValue"
       >
         <template #item-label="{ item }">
           <span class="flex items-center gap-2">
             {{ item.label }}
-            <span v-if="props.isDefaultValue(item.value)" class="text-2xs italic opacity-50">
-              ({{ defaultLabel }})
-            </span>
           </span>
         </template>
       </UiSelect>

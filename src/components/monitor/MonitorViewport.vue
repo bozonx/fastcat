@@ -32,6 +32,7 @@ const {
   onViewportPointerDown,
   onViewportPointerMove,
   onViewportAuxClick,
+  onViewportDoubleClick,
   stopPan,
   onViewportWheel,
 } = useMonitorGestures({
@@ -62,7 +63,7 @@ defineExpose({
     @pointerup="stopPan"
     @pointercancel="stopPan"
     @auxclick="onViewportAuxClick"
-    @dblclick="resetView"
+    @dblclick="onViewportDoubleClick"
   >
     <div class="absolute inset-0">
       <!-- Transformed workspace: pan + zoom applied here -->

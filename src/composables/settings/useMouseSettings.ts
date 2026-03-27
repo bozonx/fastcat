@@ -165,6 +165,13 @@ export function useMouseSettings() {
       none: t('videoEditor.settings.mouseActionNone'),
     }),
   );
+  const trackHeadersClickOptions = computed(() =>
+    formatOptions(TRACK_HEADERS_CLICK_ACTIONS, {
+      select_track: t('videoEditor.settings.mouseActionSelectTrack'),
+      select_all_clips: t('videoEditor.settings.mouseActionSelectAllClips'),
+      none: t('videoEditor.settings.mouseActionNone'),
+    }),
+  );
 
   const sectionConfigs = computed(
     () =>
@@ -362,6 +369,21 @@ export function useMouseSettings() {
               }),
               options: trackHeadersWheelOptions.value,
             },
+            {
+              key: 'click',
+              label: t('videoEditor.settings.mouseTrackHeadersClick'),
+              options: trackHeadersClickOptions.value,
+            },
+            {
+              key: 'middleClick',
+              label: t('videoEditor.settings.mouseTrackHeadersMiddleClick'),
+              options: trackHeadersClickOptions.value,
+            },
+            {
+              key: 'doubleClick',
+              label: t('videoEditor.settings.mouseTrackHeadersDoubleClick'),
+              options: trackHeadersClickOptions.value,
+            },
           ],
           infoItems: [t('videoEditor.settings.mouseHardcodedDblClickTrackHeader')],
         },
@@ -401,6 +423,11 @@ export function useMouseSettings() {
             {
               key: 'middleClick',
               label: t('videoEditor.settings.mouseMonitorMiddleClick'),
+              options: monitorMiddleClickOptions.value,
+            },
+            {
+              key: 'doubleClick',
+              label: t('videoEditor.settings.mouseMonitorDoubleClick'),
               options: monitorMiddleClickOptions.value,
             },
           ],

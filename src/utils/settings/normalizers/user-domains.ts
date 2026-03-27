@@ -270,7 +270,11 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
           wheelSecondary: tWheelEnum.catch(
             DEFAULT_USER_SETTINGS.mouse.timeline.wheelSecondary as any,
           ),
-          wheelSecondaryShift: tWheelEnum.catch('none'),
+          wheelSecondaryShift: tWheelEnum.catch(
+            DEFAULT_USER_SETTINGS.mouse.timeline.wheelSecondaryShift as any,
+          ),
+          click: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.click as any),
+          shiftClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.shiftClick as any),
           middleClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.middleClick as any),
           middleDrag: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.middleDrag as any),
           horizontalMovement: horizEnum.catch(
@@ -311,7 +315,7 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
 
       trackHeaders: z
         .object({
-          wheel: thWheelEnum.catch('seek_frame'),
+          wheel: thWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.trackHeaders.wheel as any),
           wheelShift: thWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.trackHeaders.wheelShift as any),
           wheelSecondary: thWheelEnum.catch(
             DEFAULT_USER_SETTINGS.mouse.trackHeaders.wheelSecondary as any,
@@ -319,6 +323,9 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
           wheelSecondaryShift: thWheelEnum.catch(
             DEFAULT_USER_SETTINGS.mouse.trackHeaders.wheelSecondaryShift as any,
           ),
+          click: z.enum(['select_track', 'select_all_clips', 'none']).catch('select_track'),
+          middleClick: z.enum(['select_track', 'select_all_clips', 'none']).catch('none'),
+          doubleClick: z.enum(['select_track', 'select_all_clips', 'none']).catch('select_all_clips'),
         })
         .catch(DEFAULT_USER_SETTINGS.mouse.trackHeaders),
 
@@ -333,6 +340,7 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
             DEFAULT_USER_SETTINGS.mouse.monitor.wheelSecondaryShift as any,
           ),
           middleClick: mClickEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.middleClick as any),
+          doubleClick: mClickEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.doubleClick as any),
           middleDrag: mDragEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.middleDrag as any),
         })
         .catch(DEFAULT_USER_SETTINGS.mouse.monitor),
