@@ -529,6 +529,7 @@
       "previewWithoutEffects": "Preview without effects",
       "projectResolutionHint": "Project resolution",
       "resetZoom": "Reset zoom (100%)",
+      "fitZoom": "Fit to Window",
       "rewind": "Rewind",
       "showGrid": "Show grid",
       "snapshot": "Snapshot",

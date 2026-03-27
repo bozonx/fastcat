@@ -137,10 +137,10 @@ export function useGeneralHotkeys(
           timelineStore.setTimelineZoom(
             stepTimelineZoomPosition(timelineStore.timelineZoom, params.direction),
           );
-        } else if (isPreviewFocus()) {
-          uiStore.triggerPreviewZoom(params.direction);
         } else if (focusStore.effectiveFocus === 'monitor') {
           uiStore.triggerMonitorZoom(params.direction);
+        } else if (isPreviewFocus()) {
+          uiStore.triggerPreviewZoom(params.direction);
         }
       },
     });
@@ -435,10 +435,20 @@ export function useGeneralHotkeys(
     'general.zoomReset': () => {
       if (focusStore.effectiveFocus === 'timeline') {
         timelineStore.setTimelineZoom(DEFAULT_TIMELINE_ZOOM_POSITION);
-      } else if (isPreviewFocus()) {
-        uiStore.triggerPreviewZoomReset();
       } else if (focusStore.effectiveFocus === 'monitor') {
         uiStore.triggerMonitorZoomReset();
+      } else if (isPreviewFocus()) {
+        uiStore.triggerPreviewZoomReset();
+      }
+      return true;
+    },
+    'general.zoomFit': () => {
+      if (focusStore.effectiveFocus === 'timeline') {
+        timelineStore.fitTimelineZoom();
+      } else if (focusStore.effectiveFocus === 'monitor') {
+        uiStore.triggerMonitorZoomFit();
+      } else if (isPreviewFocus()) {
+        uiStore.triggerPreviewZoomFit();
       }
       return true;
     },

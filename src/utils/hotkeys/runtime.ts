@@ -129,16 +129,15 @@ export function shouldHandleRepeatForMatchedCommands(matched: HotkeyCommandId[])
 export function shouldBlurAfterHotkey(params: {
   cmdId: HotkeyCommandId;
   activeElement: Element | null;
-  isEditableTarget: (target: EventTarget | null) => boolean;
 }): boolean {
-  const { cmdId, activeElement, isEditableTarget } = params;
+  const { cmdId, activeElement } = params;
   const policy = getHotkeyCommandPolicy(cmdId);
 
   if (!policy.blurActiveElementOnExecute) {
     return false;
   }
 
-  return activeElement instanceof HTMLElement && !isEditableTarget(activeElement);
+  return activeElement instanceof HTMLElement;
 }
 
 export function getMatchedHotkeyCommands(params: {

@@ -115,11 +115,12 @@ export function useEditorHotkeys() {
 
     const allowsFullscreenExit = matched.includes('general.fullscreen');
     const isPlaybackCmd = matched.some((cmdId) => cmdId.startsWith('playback.'));
+    const isZoomCmd = matched.some((cmdId) => cmdId.includes('zoom'));
     const modalOpen = hasBlockingModalState();
     const fullscreen = isFullscreen();
 
-    if (modalOpen && !allowsFullscreenExit) return;
-    if (fullscreen && !allowsFullscreenExit && !isPlaybackCmd) return;
+    if (modalOpen && !allowsFullscreenExit && !isZoomCmd) return;
+    if (fullscreen && !allowsFullscreenExit && !isPlaybackCmd && !isZoomCmd) return;
 
     if (matched.includes('general.focus') && canHandleFocusTab()) {
       // Allow native tab navigation if we're in an editable target
@@ -160,7 +161,6 @@ export function useEditorHotkeys() {
             shouldBlurAfterHotkey({
               cmdId,
               activeElement: document.activeElement,
-              isEditableTarget,
             })
           ) {
             (document.activeElement as HTMLElement).blur();

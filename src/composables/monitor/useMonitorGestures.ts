@@ -306,6 +306,14 @@ export function useMonitorGestures(input: {
     },
   );
 
+  watch(
+    () => uiStore.monitorZoomFitTrigger,
+    (timestamp) => {
+      if (!timestamp) return;
+      fitMonitor();
+    },
+  );
+
   onMounted(() => {
     input.viewportEl.value?.addEventListener('wheel', onViewportWheel, { passive: false });
   });

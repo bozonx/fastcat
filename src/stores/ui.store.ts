@@ -99,8 +99,10 @@ export const useUiStore = defineStore('ui', () => {
   const fsSidebarWidth = ref(0);
   const previewZoomTrigger = ref({ dir: 0, timestamp: 0 });
   const previewZoomResetTrigger = ref(0);
+  const previewZoomFitTrigger = ref(0);
   const monitorZoomTrigger = ref({ dir: 0, timestamp: 0 });
   const monitorZoomResetTrigger = ref(0);
+  const monitorZoomFitTrigger = ref(0);
   const previewPlaybackTrigger = ref<{
     action: 'toggle' | 'toggle1' | 'toStart' | 'toEnd' | 'set' | '';
     speed?: number;
@@ -131,6 +133,10 @@ export const useUiStore = defineStore('ui', () => {
   function triggerPreviewZoomReset() {
     previewZoomResetTrigger.value = Date.now();
   }
+  
+  function triggerPreviewZoomFit() {
+    previewZoomFitTrigger.value = Date.now();
+  }
 
   function triggerMonitorZoom(dir: 1 | -1) {
     monitorZoomTrigger.value = { dir, timestamp: Date.now() };
@@ -138,6 +144,10 @@ export const useUiStore = defineStore('ui', () => {
 
   function triggerMonitorZoomReset() {
     monitorZoomResetTrigger.value = Date.now();
+  }
+  
+  function triggerMonitorZoomFit() {
+    monitorZoomFitTrigger.value = Date.now();
   }
 
   function triggerPreviewPlayback(
@@ -192,8 +202,10 @@ export const useUiStore = defineStore('ui', () => {
 
     previewZoomTrigger,
     previewZoomResetTrigger,
+    previewZoomFitTrigger,
     monitorZoomTrigger,
     monitorZoomResetTrigger,
+    monitorZoomFitTrigger,
     previewPlaybackTrigger,
     previewFullscreenToggleTrigger,
     fileBrowserSelectAllTrigger,
@@ -204,8 +216,10 @@ export const useUiStore = defineStore('ui', () => {
 
     triggerPreviewZoom,
     triggerPreviewZoomReset,
+    triggerPreviewZoomFit,
     triggerMonitorZoom,
     triggerMonitorZoomReset,
+    triggerMonitorZoomFit,
     triggerPreviewPlayback,
     togglePreviewFullscreen,
     timelineSaveTrigger,

@@ -230,18 +230,17 @@ watch(currentTime, () => {
   emitPlaybackState();
 });
 
-function shouldHandlePreviewPlaybackEvent() {
-  if (!playerRootEl.value || props.isModal) return false;
+function shouldHandlePreviewEvent() {
+  if (props.isModal) return true;
+  if (!playerRootEl.value) return false;
   if (!props.focusPanelId) return focusStore.canUsePreviewHotkeys;
-  return focusStore.effectiveFocus === props.focusPanelId;
+  return focusStore.isPanelFocused(props.focusPanelId as any);
 }
-
-// UI playback watch logic removed as it is now in useMediaPlayerPlayback composable
 
 watch(
   () => uiStore.previewZoomTrigger,
   (trigger) => {
-    if (!shouldHandlePreviewPlaybackEvent() || !trigger.timestamp) return;
+    if (!shouldHandlePreviewEvent() || !trigger.timestamp) return;
 
     onCustomZoom(
       new CustomEvent('fastcat-zoom', { detail: { dir: trigger.dir, target: 'preview' } }),
@@ -253,9 +252,18 @@ watch(
 watch(
   () => uiStore.previewZoomResetTrigger,
   (timestamp) => {
-    if (!shouldHandlePreviewPlaybackEvent() || !timestamp) return;
+    if (!shouldHandlePreviewEvent() || !timestamp) return;
 
     resetZoom();
+  },
+);
+
+watch(
+  () => uiStore.previewZoomFitTrigger,
+  (timestamp) => {
+    if (!shouldHandlePreviewEvent() || !timestamp) return;
+
+    fitToContainer();
   },
 );
 

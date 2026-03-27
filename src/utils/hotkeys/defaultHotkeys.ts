@@ -18,6 +18,7 @@ export type HotkeyCommandId =
   | 'general.zoomIn'
   | 'general.zoomOut'
   | 'general.zoomReset'
+  | 'general.zoomFit'
   | 'general.tab1'
   | 'general.tab2'
   | 'general.tab3'
@@ -134,6 +135,7 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'general.zoomIn', groupId: 'general', title: 'Zoom in' },
     { id: 'general.zoomOut', groupId: 'general', title: 'Zoom out' },
     { id: 'general.zoomReset', groupId: 'general', title: 'Reset zoom' },
+    { id: 'general.zoomFit', groupId: 'general', title: 'Fit zoom' },
     { id: 'general.tab1', groupId: 'general', title: 'Tab 1' },
     { id: 'general.tab2', groupId: 'general', title: 'Tab 2' },
     { id: 'general.tab3', groupId: 'general', title: 'Tab 3' },
@@ -307,9 +309,10 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'general.volumeDown': [`${Mod}+E`],
 
     'general.fullscreen': [`${Mod}+G`],
-    'general.zoomIn': ['='],
+    'general.zoomIn': ['=', '+'],
     'general.zoomOut': ['-'],
     'general.zoomReset': ['0', '.'],
+    'general.zoomFit': ['Shift+0'],
     'general.tab1': ['1'],
     'general.tab2': ['2'],
     'general.tab3': ['3'],
