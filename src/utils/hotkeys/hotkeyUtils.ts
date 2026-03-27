@@ -144,6 +144,10 @@ export function isEditableTarget(target: EventTarget | null): boolean {
   const tag = el.tagName;
   if (tag === 'TEXTAREA' || tag === 'SELECT') return true;
 
+  // Custom components (sliders, custom text inputs)
+  const role = el.getAttribute('role');
+  if (role === 'slider' || role === 'textbox' || role === 'spinbutton') return true;
+
   if (tag !== 'INPUT') return false;
 
   const input = el as HTMLInputElement;
@@ -161,9 +165,9 @@ export function isEditableTarget(target: EventTarget | null): boolean {
     'file',
     'image',
     'hidden',
-    'range',
+    // 'range', // We want range inputs (sliders) to be treated as editable so hotkeys (arrows) are ignored
   ];
   if (nonTextTypes.includes(type)) return false;
 
-  return true; // text, search, password, email, number, date, etc.
+  return true; // text, search, password, email, number, date, range, etc.
 }

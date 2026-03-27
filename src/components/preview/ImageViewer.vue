@@ -70,9 +70,9 @@ function onClick(e: MouseEvent) {
 }
 
 function shouldHandlePreviewZoom() {
-  if (props.isModal) return false;
+  if (props.isModal) return true;
   if (!props.focusPanelId) return focusStore.canUsePreviewHotkeys;
-  return focusStore.effectiveFocus === props.focusPanelId;
+  return focusStore.isPanelFocused(props.focusPanelId as any);
 }
 
 watch(
@@ -100,6 +100,15 @@ watch(
     if (!timestamp || !containerRef.value || !shouldHandlePreviewZoom()) return;
 
     reset();
+  },
+);
+
+watch(
+  () => uiStore.previewZoomFitTrigger,
+  (timestamp) => {
+    if (!timestamp || !containerRef.value || !shouldHandlePreviewZoom()) return;
+
+    fitToContainer();
   },
 );
 
