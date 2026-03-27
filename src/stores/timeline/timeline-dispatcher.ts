@@ -48,6 +48,7 @@ export interface TimelineDispatcherApi {
   ) => string[];
   undoTimeline: () => void;
   redoTimeline: () => void;
+  applyRestoredSnapshot: (snapshot: TimelineDocument) => void;
 }
 
 export function createTimelineDispatcher(deps: TimelineDispatcherDeps): TimelineDispatcherApi {
@@ -173,6 +174,17 @@ export function createTimelineDispatcher(deps: TimelineDispatcherDeps): Timeline
     return allCreatedItemIds;
   }
 
+  function applyRestoredSnapshot(snapshot: TimelineDocument) {
+    if (!snapshot) return;
+    deps.timelineDoc.value = snapshot;
+    deps.duration.value = selectTimelineDurationUs(snapshot);
+    deps.markTimelineAsDirty();
+    void deps.requestTimelineSave();
+    
+    // Clear selection if needed to avoid invalid refs?
+    // Usually undo/redo doesn't clear selection unless objects were deleted.
+  }
+
   function undoTimeline() {
     if (!deps.timelineDoc.value || !deps.historyStore.canUndo('timeline')) return;
 
@@ -181,10 +193,7 @@ export function createTimelineDispatcher(deps: TimelineDispatcherDeps): Timeline
 
     const restored = deps.historyStore.undo('timeline', deps.timelineDoc.value);
     if (!restored) return;
-    deps.timelineDoc.value = restored;
-    deps.duration.value = selectTimelineDurationUs(restored);
-    deps.markTimelineAsDirty();
-    void deps.requestTimelineSave();
+    applyRestoredSnapshot(restored);
   }
 
   function redoTimeline() {
@@ -195,10 +204,7 @@ export function createTimelineDispatcher(deps: TimelineDispatcherDeps): Timeline
 
     const restored = deps.historyStore.redo('timeline', deps.timelineDoc.value);
     if (!restored) return;
-    deps.timelineDoc.value = restored;
-    deps.duration.value = selectTimelineDurationUs(restored);
-    deps.markTimelineAsDirty();
-    void deps.requestTimelineSave();
+    applyRestoredSnapshot(restored);
   }
 
   return {
@@ -206,5 +212,6 @@ export function createTimelineDispatcher(deps: TimelineDispatcherDeps): Timeline
     batchApplyTimeline,
     undoTimeline,
     redoTimeline,
+    applyRestoredSnapshot,
   };
 }

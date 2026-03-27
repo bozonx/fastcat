@@ -63,6 +63,8 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   const historyDebounce = createTimelineHistoryDebounce({ historyStore });
 
+  historyStore.registerStateGetter('timeline', () => timelineDoc.value);
+
   const { currentProjectName, currentTimelinePath, mediaMetadata } = createTimelineExternalRefs({
     projectStore,
     mediaStore,
@@ -494,6 +496,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     resetTimelineState: lifecycle.resetTimelineState,
     undoTimeline,
     redoTimeline,
+    applyRestoredSnapshot: dispatcher.applyRestoredSnapshot,
     selectTimelineProperties: () => selectionStore.selectTimelineProperties(),
     batchApplyTimeline,
     historyStore,

@@ -48,8 +48,30 @@ function onDelete() {
   selectionStore.clearSelection();
 }
 
-function onPointerdown(e: PointerEvent) {
+import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+
+const workspaceStore = useWorkspaceStore();
+
+function resolveTimelineDragAction(e: PointerEvent): string {
+  const settings = workspaceStore.userSettings.mouse.timeline;
+  if (e.button === 1) return settings.middleDrag;
   if (e.button === 0) {
+    if (isLayer1Active(e, workspaceStore.userSettings)) return settings.clipDragShift;
+    if (isLayer2Active(e, workspaceStore.userSettings)) return settings.clipDragCtrl;
+    return settings.drag;
+  }
+  if (e.button === 2) return settings.clipDragRight;
+  return 'none';
+}
+
+function shouldStartMarquee(e: PointerEvent): boolean {
+  const action = resolveTimelineDragAction(e);
+  return action === 'move_clips' || action === 'select_area';
+}
+
+function onPointerdown(e: PointerEvent) {
+  if (shouldStartMarquee(e)) {
     e.stopPropagation();
     emit('marqueeStart', e);
   } else if (e.button !== 1) {

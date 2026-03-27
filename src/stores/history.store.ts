@@ -21,17 +21,25 @@ export const useHistoryStore = defineStore('history', () => {
   /** Future states available for redo, index 0 is the next redo */
   const future = ref<HistoryEntry<any>[]>([]);
 
+  const stateGetters = new Map<string, (entry: HistoryEntry<any>) => any>();
+
+  function registerStateGetter(scope: string, getter: (entry: HistoryEntry<any>) => any) {
+    stateGetters.set(scope, getter);
+  }
+
   // We can provide getters for specific scopes if needed
-  function canUndo(scope: string) {
+  function canUndo(scope?: string) {
+    if (!scope) return past.value.length > 0;
     return past.value.filter((e) => e.scope === scope).length > 0;
   }
 
-  function canRedo(scope: string) {
+  function canRedo(scope?: string) {
+    if (!scope) return future.value.length > 0;
     return future.value.filter((e) => e.scope === scope).length > 0;
   }
 
-  function lastEntry(scope: string) {
-    const entries = past.value.filter((e) => e.scope === scope);
+  function lastEntry(scope?: string) {
+    const entries = scope ? past.value.filter((e) => e.scope === scope) : past.value;
     return entries[entries.length - 1] ?? null;
   }
 
@@ -56,7 +64,8 @@ export const useHistoryStore = defineStore('history', () => {
     }
 
     // Branching: clear redo stack for this scope on new action
-    future.value = future.value.filter((e) => e.scope !== scope);
+    // Global history: clear ALL future for any new action to stay consistent
+    future.value = [];
   }
 
   /**
@@ -101,6 +110,36 @@ export const useHistoryStore = defineStore('history', () => {
     return entry.snapshot as T;
   }
 
+  function undoGlobal(): HistoryEntry<any> | null {
+    const entry = past.value[past.value.length - 1];
+    if (!entry) return null;
+
+    const currentDoc = stateGetters.get(entry.scope)?.(entry);
+    const snapshot = undo(entry.scope, currentDoc);
+    if (snapshot === null) return null;
+
+    // Return the entry with restored snapshot
+    return {
+      ...entry,
+      snapshot,
+    };
+  }
+
+  function redoGlobal(): HistoryEntry<any> | null {
+    const entry = future.value[0];
+    if (!entry) return null;
+
+    const currentDoc = stateGetters.get(entry.scope)?.(entry);
+    const snapshot = redo(entry.scope, currentDoc);
+    if (snapshot === null) return null;
+
+    return {
+      ...entry,
+      snapshot,
+    };
+  }
+
+
   /** Clears the entire history for a scope */
   function clear(scope: string) {
     past.value = past.value.filter((e) => e.scope !== scope);
@@ -122,6 +161,9 @@ export const useHistoryStore = defineStore('history', () => {
     push,
     undo,
     redo,
+    undoGlobal,
+    redoGlobal,
+    registerStateGetter,
     clear,
     clearAll,
   };

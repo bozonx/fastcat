@@ -20,7 +20,7 @@
     "color": "Color",
     "configure": "Configure",
     "confirm": "Confirm",
-    "confirmDelete": "Confirm Delete",
+    "confirmDelete": "Are you sure you want to delete this? This action cannot be undone.",
     "copy": "Copy",
     "copiedToClipboard": "Copied to clipboard",
     "cut": "Cut",
@@ -546,8 +546,6 @@
       "audioMute": "Mute",
       "audioUnmute": "Unmute",
       "audioVolume": "Audio volume",
-      "audioMute": "Mute",
-      "audioUnmute": "Unmute",
       "volumeUp": "Volume up",
       "volumeDown": "Volume down",
       "toggleMute": "Toggle mute",
@@ -1122,6 +1120,9 @@
       "history": {
         "empty": "No history yet. Start editing to record actions.",
         "entries": {
+          "createFolder": "Create folder",
+          "renameEntry": "Rename",
+          "moveEntry": "Move",
           "addClip": "Add clip",
           "removeItem": "Remove item",
           "deleteItems": "Delete items",

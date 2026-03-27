@@ -6,11 +6,11 @@ import { useHistoryStore } from '~/stores/history.store';
 const timelineStore = useTimelineStore();
 const historyStore = useHistoryStore();
 
-const past = computed(() => historyStore.past.filter((e) => e.scope === 'timeline'));
-const future = computed(() => historyStore.future.filter((e) => e.scope === 'timeline'));
+const past = computed(() => historyStore.past);
+const future = computed(() => historyStore.future);
 
-const canUndo = computed(() => historyStore.canUndo('timeline'));
-const canRedo = computed(() => historyStore.canRedo('timeline'));
+const canUndo = computed(() => historyStore.canUndo());
+const canRedo = computed(() => historyStore.canRedo());
 
 const history = computed(() => [...future.value, ...past.value]);
 
@@ -24,6 +24,34 @@ function formatTime(timestamp: number): string {
     second: '2-digit',
   }).format(new Date(timestamp));
 }
+
+function handleUndo() {
+  const entry = historyStore.undoGlobal();
+  if (!entry) return;
+  if (entry.scope === 'timeline') {
+    timelineStore.applyRestoredSnapshot(entry.snapshot);
+  } else if (entry.scope === 'fileManager') {
+    // We can use useFileManager() here
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    const { restoreHistory } = useFileManager();
+    void restoreHistory(entry.snapshot);
+  }
+}
+
+function handleRedo() {
+  const entry = historyStore.redoGlobal();
+  if (!entry) return;
+  if (entry.scope === 'timeline') {
+    timelineStore.applyRestoredSnapshot(entry.snapshot);
+  } else if (entry.scope === 'fileManager') {
+    const { restoreHistory } = useFileManager();
+    void restoreHistory(entry.snapshot);
+  }
+}
+
+// Import useFileManager here to avoid circular dependencies if any, 
+// though it should be fine as it's a composable.
+import { useFileManager } from '~/composables/fileManager/useFileManager';
 </script>
 
 <template>
@@ -37,7 +65,7 @@ function formatTime(timestamp: number): string {
           class="hover:text-white transition-colors disabled:opacity-30 disabled:hover:text-slate-400"
           :disabled="!canUndo"
           :title="$t('videoEditor.fileManager.history.actions.undo')"
-          @click="timelineStore.undoTimeline"
+          @click="handleUndo"
         >
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path
@@ -52,7 +80,7 @@ function formatTime(timestamp: number): string {
           class="hover:text-white transition-colors disabled:opacity-30 disabled:hover:text-slate-400"
           :disabled="!canRedo"
           :title="$t('videoEditor.fileManager.history.actions.redo')"
-          @click="timelineStore.redoTimeline"
+          @click="handleRedo"
         >
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path
