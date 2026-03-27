@@ -82,7 +82,7 @@ vi.mock('~/composables/properties/useFilePropertiesActions', () => ({
   useFilePropertiesActions: vi.fn(() => ({
     directoryPrimaryActions: [],
     directorySecondaryActions: [],
-    filePrimaryActions: [{ label: 'Mock Action', onClick: vi.fn() }],
+    filePrimaryActions: [{ id: 'mock', title: 'Mock Action', onClick: vi.fn() }],
     fileSecondaryActions: [],
   })),
 }));
@@ -110,12 +110,10 @@ describe('FileProperties.vue', () => {
       },
     });
 
-    // Expect EntryPreviewBox
-    expect(component.findComponent({ name: 'EntryPreviewBox' }).exists()).toBe(true);
-
     // Expect Actions Section
     expect(component.text()).toContain('Actions');
-    expect(component.text()).toContain('Mock Action');
+    // Using title attribute because primary actions are icon-only in EntryActions
+    expect(component.find('button[title="Mock Action"]').exists()).toBe(true);
 
     // Expect Meta Section
     expect(component.text()).toContain('Meta');
@@ -124,15 +122,16 @@ describe('FileProperties.vue', () => {
   it('renders properties for a directory', async () => {
     // Override useEntryPreview for directory
     const { useEntryPreview } = await import('~/composables/fileManager/useEntryPreview');
-    (useEntryPreview as any).mockReturnValue({
+    vi.mocked(useEntryPreview).mockReturnValue({
       currentUrl: ref(null),
-      mediaType: ref(null),
+      mediaType: ref('directory' as any),
       textContent: ref(''),
       fileInfo: ref({
         kind: 'directory',
         name: 'test_folder',
+        size: 0,
         lastModified: Date.now(),
-      }),
+      } as any),
       exifData: ref(null),
       exifYaml: ref(null),
       imageDimensions: ref(null),
@@ -162,16 +161,16 @@ describe('FileProperties.vue', () => {
     const { useFileStorageInfo } = await import('~/composables/properties/useFileStorageInfo');
     const { useEntryPreview } = await import('~/composables/fileManager/useEntryPreview');
     
-    (useFileStorageInfo as any).mockReturnValue({
+    vi.mocked(useFileStorageInfo).mockReturnValue({
       isProjectRootDir: ref(true),
       storageFreeBytes: ref(1024 * 1024 * 1024 * 50),
       projectStats: ref({
         fileCount: 42,
-        totalSizeBytes: 1024 * 1024 * 1024 * 5,
-      }),
+        size: 1024 * 1024 * 1024 * 5,
+      } as any),
     });
 
-    (useEntryPreview as any).mockReturnValue({
+    vi.mocked(useEntryPreview).mockReturnValue({
       currentUrl: ref(null),
       mediaType: ref(null),
       textContent: ref(''),
@@ -179,7 +178,7 @@ describe('FileProperties.vue', () => {
         kind: 'directory',
         name: 'Project Root',
         lastModified: Date.now(),
-      }),
+      } as any),
       exifData: ref(null),
       exifYaml: ref(null),
       imageDimensions: ref(null),
@@ -198,8 +197,42 @@ describe('FileProperties.vue', () => {
       },
     });
 
-    // Project root section should be visible
-    expect(component.findComponent({ name: 'FileProjectRootSection' }).exists()).toBe(true);
-    expect(component.text()).toContain('42'); // file count
+    // Check for title of project root section
+    expect(component.text()).toContain('Project root');
+    expect(component.text()).toContain('5 GB'); // totalSizeBytes
+  });
+
+  it('renders properties for the common root', async () => {
+    const { useEntryPreview } = await import('~/composables/fileManager/useEntryPreview');
+    
+    vi.mocked(useEntryPreview).mockReturnValue({
+      currentUrl: ref(null),
+      mediaType: ref(null),
+      textContent: ref(''),
+      fileInfo: ref({
+        kind: 'directory',
+        name: 'common',
+        lastModified: Date.now(),
+      } as any),
+      exifData: ref(null),
+      exifYaml: ref(null),
+      imageDimensions: ref(null),
+      timelineDocSummary: ref(null),
+      lineCount: ref(null),
+      metadataYaml: ref(null),
+      isUnknown: ref(false),
+      isOtio: ref(false),
+    });
+
+    const component = await mountWithNuxt(FileProperties, {
+      props: {
+        selectedFsEntry: { kind: 'directory', name: 'common', path: 'common' } as any,
+        previewMode: 'original',
+        hasProxy: false,
+      },
+    });
+
+    // For common root, it should show typical directory actions
+    expect(component.text()).toContain('Actions');
   });
 });

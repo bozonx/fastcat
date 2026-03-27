@@ -71,16 +71,18 @@ config.global.config.warnHandler = (msg) => {
 config.global.stubs = {
   ...config.global.stubs,
   UTooltip: {
-    template: '<span><slot /></span>',
+    template: '<span :title="$attrs.text"><slot /></span>',
   },
   UContextMenu: {
     template: '<div><slot /></div>',
   },
   UIcon: {
-    template: '<span class="ui-icon-mock" />',
+    props: ['name'],
+    template: '<span :class="[\'ui-icon-mock\', name]" />',
   },
   UButton: {
-    template: '<button><slot /></button>',
+    props: ['label', 'icon', 'title'],
+    template: '<button :class="icon" :title="title"><span v-if="label">{{ label }}</span><slot /></button>',
   },
   UTabs: {
     template: '<div><slot /></div>',

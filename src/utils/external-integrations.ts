@@ -43,7 +43,7 @@ export function getFastCatPublicadorInstanceBaseUrl(baseUrl: string): string {
 
 export function getFastCatPublicadorExternalApiBaseUrl(baseUrl: string): string {
   const instanceBaseUrl = getFastCatPublicadorInstanceBaseUrl(baseUrl);
-  return instanceBaseUrl ? joinUrl(instanceBaseUrl, 'api/v1/external') : '';
+  return instanceBaseUrl ? joinUrl(instanceBaseUrl, 'api/v1') : '';
 }
 
 export function getFastCatPublicadorConnectUrl(params: {
@@ -71,7 +71,7 @@ export function getFastCatPublicadorHealthUrl(baseUrl: string): string {
 
 export function getFastCatPublicadorSttStreamUrl(baseUrl: string): string {
   const externalApiBaseUrl = getFastCatPublicadorExternalApiBaseUrl(baseUrl);
-  return externalApiBaseUrl ? joinUrl(externalApiBaseUrl, 'api/v1/transcribe/stream') : '';
+  return externalApiBaseUrl ? joinUrl(externalApiBaseUrl, 'transcribe/stream') : '';
 }
 
 export function getManualServiceHealthUrl(baseUrl: string): string {
@@ -79,14 +79,14 @@ export function getManualServiceHealthUrl(baseUrl: string): string {
 
   if (!normalizedBaseUrl) return '';
   if (/\/health$/i.test(normalizedBaseUrl)) return normalizedBaseUrl;
-  if (/\/api\/v1\/external$/i.test(normalizedBaseUrl)) {
+  if (/\/api\/v1$/i.test(normalizedBaseUrl)) {
     return joinUrl(normalizedBaseUrl, 'health');
   }
-  if (/\/api\/v1\/external\/(vfs|stt|llm)$/i.test(normalizedBaseUrl)) {
+  if (/\/api\/v1\/(vfs|stt|llm)$/i.test(normalizedBaseUrl)) {
     return normalizedBaseUrl.replace(/\/(vfs|stt|llm)$/i, '/health');
   }
 
-  return joinUrl(normalizedBaseUrl, 'api/v1/external/health');
+  return joinUrl(normalizedBaseUrl, 'api/v1/health');
 }
 
 export function getManualSttStreamUrl(baseUrl: string): string {
@@ -94,8 +94,8 @@ export function getManualSttStreamUrl(baseUrl: string): string {
 
   if (!normalizedBaseUrl) return '';
   if (/\/api\/v1\/transcribe\/stream$/i.test(normalizedBaseUrl)) return normalizedBaseUrl;
-  if (/\/api\/v1\/external\/stt$/i.test(normalizedBaseUrl)) {
-    return normalizedBaseUrl.replace(/\/api\/v1\/external\/stt$/i, '/api/v1/transcribe/stream');
+  if (/\/api\/v1\/stt$/i.test(normalizedBaseUrl)) {
+    return normalizedBaseUrl.replace(/\/api\/v1\/stt$/i, '/api/v1/transcribe/stream');
   }
   if (/\/api\/v1$/i.test(normalizedBaseUrl)) {
     return joinUrl(normalizedBaseUrl, 'transcribe/stream');

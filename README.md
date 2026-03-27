@@ -138,7 +138,7 @@ Current implementation scope:
 - connect app name from a global constant
 - connect flow `scopes` generation based on active Files/STT overrides
 - provider override rules for `Files API` and `STT API`
-- `GET /api/v1/external/health` checks for FastCat Publicador and resolved manual services
+- `GET /api/v1/health` checks for FastCat Publicador and resolved manual services
 - audio file transcription from the properties panel via `POST .../api/v1/transcribe/stream`
 - shared STT request settings: `provider`, `models`, `restorePunctuation`, `formatText`, `includeWords`
 - transcription cache in `vardata/projects/<projectId>/cache/transcriptions`

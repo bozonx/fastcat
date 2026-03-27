@@ -64,14 +64,14 @@ describe('useMonitorTimeline', () => {
       ],
     } as any;
 
-    const { videoItems, rawWorkerAudioClips } = useMonitorTimeline();
+    withMonitorTimeline(({ videoItems, rawWorkerAudioClips }) => {
+      expect(videoItems.value.length).toBe(1);
+      expect(videoItems.value[0].id).toBe('item1');
 
-    expect(videoItems.value.length).toBe(1);
-    expect(videoItems.value[0].id).toBe('item1');
-
-    expect(rawWorkerAudioClips.value.length).toBe(2);
-    expect(rawWorkerAudioClips.value.map((clip) => clip.id)).toEqual(['audio1', 'item1__audio']);
-    expect(rawWorkerAudioClips.value.every((clip) => clip.clipType === 'media')).toBe(true);
+      expect(rawWorkerAudioClips.value.length).toBe(2);
+      expect(rawWorkerAudioClips.value.map((clip) => clip.id)).toEqual(['audio1', 'item1__audio']);
+      expect(rawWorkerAudioClips.value.every((clip) => clip.clipType === 'media')).toBe(true);
+    });
   });
 
   it('computes workerTimelineClips and workerAudioClips correctly', () => {
@@ -118,25 +118,25 @@ describe('useMonitorTimeline', () => {
       ],
     } as any;
 
-    const { rawWorkerTimelineClips, rawWorkerAudioClips } = useMonitorTimeline();
+    withMonitorTimeline(({ rawWorkerTimelineClips, rawWorkerAudioClips }) => {
+      expect(rawWorkerTimelineClips.value.length).toBe(1);
+      expect(rawWorkerTimelineClips.value[0].id).toBe('item1');
+      expect(rawWorkerTimelineClips.value[0].clipType).toBe('media');
+      expect(rawWorkerTimelineClips.value[0].source?.path).toBe('test1.mp4');
+      expect(rawWorkerTimelineClips.value[0].timelineRange.startUs).toBe(0);
+      // Single video track: layer should be 0 (trackCount - 1 - 0 = 0)
+      expect(rawWorkerTimelineClips.value[0].layer).toBe(0);
 
-    expect(rawWorkerTimelineClips.value.length).toBe(1);
-    expect(rawWorkerTimelineClips.value[0].id).toBe('item1');
-    expect(rawWorkerTimelineClips.value[0].clipType).toBe('media');
-    expect(rawWorkerTimelineClips.value[0].source?.path).toBe('test1.mp4');
-    expect(rawWorkerTimelineClips.value[0].timelineRange.startUs).toBe(0);
-    // Single video track: layer should be 0 (trackCount - 1 - 0 = 0)
-    expect(rawWorkerTimelineClips.value[0].layer).toBe(0);
-
-    expect(rawWorkerAudioClips.value.length).toBe(2);
-    expect(rawWorkerAudioClips.value.find((x: any) => x.id === 'audio1')?.source?.path).toBe(
-      'test1.mp3',
-    );
-    expect(rawWorkerAudioClips.value.find((x: any) => x.id === 'audio1')?.trackId).toBe('1');
-    expect(rawWorkerAudioClips.value.find((x: any) => x.id === 'item1__audio')?.source?.path).toBe(
-      'test1.mp4',
-    );
-    expect(rawWorkerAudioClips.value.find((x: any) => x.id === 'item1__audio')?.trackId).toBe('2');
+      expect(rawWorkerAudioClips.value.length).toBe(2);
+      expect(rawWorkerAudioClips.value.find((x: any) => x.id === 'audio1')?.source?.path).toBe(
+        'test1.mp3',
+      );
+      expect(rawWorkerAudioClips.value.find((x: any) => x.id === 'audio1')?.trackId).toBe('1');
+      expect(rawWorkerAudioClips.value.find((x: any) => x.id === 'item1__audio')?.source?.path).toBe(
+        'test1.mp4',
+      );
+      expect(rawWorkerAudioClips.value.find((x: any) => x.id === 'item1__audio')?.trackId).toBe('2');
+    });
   });
 
   it('assigns inverted layers so first track (top in UI) renders on top', () => {
@@ -174,14 +174,14 @@ describe('useMonitorTimeline', () => {
       ],
     } as any;
 
-    const { rawWorkerTimelineClips } = useMonitorTimeline();
+    withMonitorTimeline(({ rawWorkerTimelineClips }) => {
+      const clip1 = rawWorkerTimelineClips.value.find((c: any) => c.id === 'clip1');
+      const clip2 = rawWorkerTimelineClips.value.find((c: any) => c.id === 'clip2');
 
-    const clip1 = rawWorkerTimelineClips.value.find((c: any) => c.id === 'clip1');
-    const clip2 = rawWorkerTimelineClips.value.find((c: any) => c.id === 'clip2');
-
-    // rawWorkerTimelineClips still assigns initial layers (trackCount - 1 - trackIndex)
-    expect(clip1?.layer).toBe(1);
-    expect(clip2?.layer).toBe(0);
+      // rawWorkerTimelineClips still assigns initial layers (trackCount - 1 - trackIndex)
+      expect(clip1?.layer).toBe(1);
+      expect(clip2?.layer).toBe(0);
+    });
   });
 
   it('keeps raw worker video clip compositing separate from top-level track compositing', () => {
@@ -213,17 +213,18 @@ describe('useMonitorTimeline', () => {
       ],
     } as any;
 
-    const { rawWorkerTimelineClips } = useMonitorTimeline();
-    expect(rawWorkerTimelineClips.value).toHaveLength(1);
-    expect(rawWorkerTimelineClips.value[0]).toMatchObject({
-      id: 'clip1',
-      trackId: 'v1',
-      opacity: 0.5,
-      blendMode: 'multiply',
+    withMonitorTimeline(({ rawWorkerTimelineClips }) => {
+      expect(rawWorkerTimelineClips.value).toHaveLength(1);
+      expect(rawWorkerTimelineClips.value[0]).toMatchObject({
+        id: 'clip1',
+        trackId: 'v1',
+        opacity: 0.5,
+        blendMode: 'multiply',
+      });
+      expect(rawWorkerTimelineClips.value[0]?.effects).toEqual([
+        { id: 'clip-effect', type: 'blur', enabled: true, amount: 1 },
+      ]);
     });
-    expect(rawWorkerTimelineClips.value[0]?.effects).toEqual([
-      { id: 'clip-effect', type: 'blur', enabled: true, amount: 1 },
-    ]);
   });
 
   it('normalizes background clip color in raw worker timeline clips', () => {
@@ -249,12 +250,12 @@ describe('useMonitorTimeline', () => {
       ],
     } as any;
 
-    const { rawWorkerTimelineClips } = useMonitorTimeline();
-
-    expect(rawWorkerTimelineClips.value).toHaveLength(1);
-    expect(rawWorkerTimelineClips.value[0]).toMatchObject({
-      clipType: 'background',
-      backgroundColor: '#aabbcc',
+    withMonitorTimeline(({ rawWorkerTimelineClips }) => {
+      expect(rawWorkerTimelineClips.value).toHaveLength(1);
+      expect(rawWorkerTimelineClips.value[0]).toMatchObject({
+        clipType: 'background',
+        backgroundColor: '#aabbcc',
+      });
     });
   });
 
@@ -297,11 +298,11 @@ describe('useMonitorTimeline', () => {
       ],
     } as any;
 
-    const { rawWorkerTimelineClips } = useMonitorTimeline();
-
-    expect(
-      rawWorkerTimelineClips.value.filter((clip: any) => clip.clipType === 'adjustment'),
-    ).toHaveLength(2);
+    withMonitorTimeline(({ rawWorkerTimelineClips }) => {
+      expect(
+        rawWorkerTimelineClips.value.filter((clip: any) => clip.clipType === 'adjustment'),
+      ).toHaveLength(2);
+    });
   });
 
   it('mirrors adjacent transitionOut onto the next background clip in monitor payload', () => {
@@ -342,26 +343,27 @@ describe('useMonitorTimeline', () => {
       ],
     } as any;
 
-    const { rawWorkerTimelineClips } = useMonitorTimeline();
-    const adjustment = rawWorkerTimelineClips.value.find((clip: any) => clip.id === 'adj1');
-    const background = rawWorkerTimelineClips.value.find((clip: any) => clip.id === 'bg1');
+    withMonitorTimeline(({ rawWorkerTimelineClips }) => {
+      const adjustment = rawWorkerTimelineClips.value.find((clip: any) => clip.id === 'adj1');
+      const background = rawWorkerTimelineClips.value.find((clip: any) => clip.id === 'bg1');
 
-    expect(adjustment).toMatchObject({
-      clipType: 'adjustment',
-      transitionOut: {
-        type: 'dissolve',
-        durationUs: 500,
-        mode: 'adjacent',
-      },
-    });
-    expect(background).toMatchObject({
-      clipType: 'background',
-      backgroundColor: '#112233',
-      transitionIn: {
-        type: 'dissolve',
-        durationUs: 500,
-        mode: 'adjacent',
-      },
+      expect(adjustment).toMatchObject({
+        clipType: 'adjustment',
+        transitionOut: {
+          type: 'dissolve',
+          durationUs: 500,
+          mode: 'adjacent',
+        },
+      });
+      expect(background).toMatchObject({
+        clipType: 'background',
+        backgroundColor: '#112233',
+        transitionIn: {
+          type: 'dissolve',
+          durationUs: 500,
+          mode: 'adjacent',
+        },
+      });
     });
   });
 
@@ -409,12 +411,12 @@ describe('useMonitorTimeline', () => {
       ],
     } as any;
 
-    const { rawWorkerAudioClips } = useMonitorTimeline();
-
-    expect(rawWorkerAudioClips.value.length).toBe(2);
-    expect(rawWorkerAudioClips.value.find((c: any) => c.id === 'aclip1')).toBeDefined();
-    expect(rawWorkerAudioClips.value.find((c: any) => c.id === 'vclip1__audio')).toBeDefined();
-    expect(rawWorkerAudioClips.value.find((c: any) => c.id === 'vclip2__audio')).toBeUndefined();
+    withMonitorTimeline(({ rawWorkerAudioClips }) => {
+      expect(rawWorkerAudioClips.value.length).toBe(2);
+      expect(rawWorkerAudioClips.value.find((c: any) => c.id === 'aclip1')).toBeDefined();
+      expect(rawWorkerAudioClips.value.find((c: any) => c.id === 'vclip1__audio')).toBeDefined();
+      expect(rawWorkerAudioClips.value.find((c: any) => c.id === 'vclip2__audio')).toBeUndefined();
+    });
   });
 
   it('computes signatures correctly', () => {
@@ -453,33 +455,35 @@ describe('useMonitorTimeline', () => {
       ],
     } as any;
 
-    const {
-      clipSourceSignature,
-      clipLayoutSignature,
-      audioClipSourceSignature,
-      audioClipLayoutSignature,
-    } = useMonitorTimeline();
+    withMonitorTimeline((res) => {
+      const {
+        clipSourceSignature,
+        clipLayoutSignature,
+        audioClipSourceSignature,
+        audioClipLayoutSignature,
+      } = res;
 
-    const sig1 = clipSourceSignature.value;
-    const layout1 = clipLayoutSignature.value;
-    const audioSig1 = audioClipSourceSignature.value;
-    const audioLayout1 = audioClipLayoutSignature.value;
+      const sig1 = clipSourceSignature.value;
+      const layout1 = clipLayoutSignature.value;
+      const audioSig1 = audioClipSourceSignature.value;
+      const audioLayout1 = audioClipLayoutSignature.value;
 
-    expect(typeof sig1).toBe('number');
-    expect(typeof layout1).toBe('number');
-    expect(typeof audioSig1).toBe('number');
-    expect(typeof audioLayout1).toBe('number');
+      expect(typeof sig1).toBe('number');
+      expect(typeof layout1).toBe('number');
+      expect(typeof audioSig1).toBe('number');
+      expect(typeof audioLayout1).toBe('number');
 
-    // Changing layout should change layout signature but not source signature
-    timelineStore.timelineDoc.tracks[0].items[0].timelineRange.startUs = 500;
+      // Changing layout should change layout signature but not source signature
+      timelineStore.timelineDoc.tracks[0].items[0].timelineRange.startUs = 500;
 
-    expect(clipSourceSignature.value).toBe(sig1);
-    expect(clipLayoutSignature.value).not.toBe(layout1);
+      expect(clipSourceSignature.value).toBe(sig1);
+      expect(clipLayoutSignature.value).not.toBe(layout1);
 
-    timelineStore.timelineDoc.tracks[1].items[0].timelineRange.startUs = 500;
+      timelineStore.timelineDoc.tracks[1].items[0].timelineRange.startUs = 500;
 
-    expect(audioClipSourceSignature.value).toBe(audioSig1);
-    expect(audioClipLayoutSignature.value).not.toBe(audioLayout1);
+      expect(audioClipSourceSignature.value).toBe(audioSig1);
+      expect(audioClipLayoutSignature.value).not.toBe(audioLayout1);
+    });
   });
 
   it('updates clip layout signature when clip or track blendMode changes', () => {
@@ -509,23 +513,23 @@ describe('useMonitorTimeline', () => {
       ],
     } as any;
 
-    const { clipSourceSignature, clipLayoutSignature } = useMonitorTimeline();
+    withMonitorTimeline(({ clipSourceSignature, clipLayoutSignature }) => {
+      const sourceBeforeClipBlend = clipSourceSignature.value;
+      const layoutBeforeClipBlend = clipLayoutSignature.value;
 
-    const sourceBeforeClipBlend = clipSourceSignature.value;
-    const layoutBeforeClipBlend = clipLayoutSignature.value;
+      timelineStore.timelineDoc.tracks[0].items[0].blendMode = 'screen';
 
-    timelineStore.timelineDoc.tracks[0].items[0].blendMode = 'screen';
+      expect(clipSourceSignature.value).toBe(sourceBeforeClipBlend);
+      expect(clipLayoutSignature.value).not.toBe(layoutBeforeClipBlend);
 
-    expect(clipSourceSignature.value).toBe(sourceBeforeClipBlend);
-    expect(clipLayoutSignature.value).not.toBe(layoutBeforeClipBlend);
+      const sourceBeforeTrackBlend = clipSourceSignature.value;
+      const layoutBeforeTrackBlend = clipLayoutSignature.value;
 
-    const sourceBeforeTrackBlend = clipSourceSignature.value;
-    const layoutBeforeTrackBlend = clipLayoutSignature.value;
+      timelineStore.timelineDoc.tracks[0].blendMode = 'multiply';
 
-    timelineStore.timelineDoc.tracks[0].blendMode = 'multiply';
-
-    expect(clipSourceSignature.value).toBe(sourceBeforeTrackBlend);
-    expect(clipLayoutSignature.value).not.toBe(layoutBeforeTrackBlend);
+      expect(clipSourceSignature.value).toBe(sourceBeforeTrackBlend);
+      expect(clipLayoutSignature.value).not.toBe(layoutBeforeTrackBlend);
+    });
   });
 
   it('filters hidden video tracks from workerTimelineClips', () => {
@@ -549,8 +553,9 @@ describe('useMonitorTimeline', () => {
       ],
     } as any;
 
-    const { workerTimelineClips } = useMonitorTimeline();
-    expect(workerTimelineClips.value.length).toBe(0);
+    withMonitorTimeline(({ workerTimelineClips }) => {
+      expect(workerTimelineClips.value.length).toBe(0);
+    });
   });
 
   it('applies audio solo/mute when building workerAudioClips', () => {
@@ -590,9 +595,10 @@ describe('useMonitorTimeline', () => {
       ],
     } as any;
 
-    const { rawWorkerAudioClips } = useMonitorTimeline();
-    expect(rawWorkerAudioClips.value.length).toBe(1);
-    expect(rawWorkerAudioClips.value[0].id).toBe('aclip2');
+    withMonitorTimeline(({ rawWorkerAudioClips }) => {
+      expect(rawWorkerAudioClips.value.length).toBe(1);
+      expect(rawWorkerAudioClips.value[0].id).toBe('aclip2');
+    });
   });
 
   it('applies video track solo/mute to __audio clips extracted from video', () => {
@@ -634,9 +640,10 @@ describe('useMonitorTimeline', () => {
       ],
     } as any;
 
-    const { rawWorkerAudioClips } = useMonitorTimeline();
-    const ids = rawWorkerAudioClips.value.map((c: any) => c.id);
-    expect(ids).toContain('vclip2__audio');
-    expect(ids).not.toContain('vclip1__audio');
+    withMonitorTimeline(({ rawWorkerAudioClips }) => {
+      const ids = rawWorkerAudioClips.value.map((c: any) => c.id);
+      expect(ids).toContain('vclip2__audio');
+      expect(ids).not.toContain('vclip1__audio');
+    });
   });
 });

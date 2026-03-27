@@ -10,6 +10,8 @@ import {
   runExternalHealthCheck,
 } from '~/utils/external-integrations';
 
+import type { FastCatPublicadorIntegrationSettings } from '~/utils/settings';
+
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const route = useRoute();
@@ -21,7 +23,18 @@ const healthState = reactive({
   message: '',
 });
 
-const fastcat = computed(() => workspaceStore.userSettings?.integrations?.fastcatPublicador);
+const fastcat = computed<FastCatPublicadorIntegrationSettings | undefined>(() => {
+  const settings = workspaceStore.userSettings?.integrations?.fastcatPublicador;
+  const envToken = runtimeConfig.public.bloggerDogToken;
+
+  if (settings && !settings.bearerToken && typeof envToken === 'string' && envToken.trim()) {
+    return {
+      enabled: settings.enabled,
+      bearerToken: envToken.trim(),
+    };
+  }
+  return settings;
+});
 
 const bloggerDogApiUrl = computed(() => {
   const value = runtimeConfig.public.bloggerDogApiUrl;
@@ -85,7 +98,7 @@ async function runHealth() {
   try {
     const result = await runExternalHealthCheck({
       url: healthUrl,
-      bearerToken: fastcat.value.bearerToken,
+      bearerToken: fastcat.value?.bearerToken || '',
     });
     healthState.status = 'success';
     healthState.message = `${t('videoEditor.settings.integrationHealthOk', 'OK')} (${result.status})`;
