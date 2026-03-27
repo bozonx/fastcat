@@ -39,9 +39,18 @@ const emit = defineEmits<{
   resetFreezeFrame: [];
   extractAudio: [];
   returnAudio: [];
+  saveAsPreset: [];
 }>();
 
 const { t } = useI18n();
+
+const canSaveAsPreset = computed(() => {
+  return (
+    props.clip.clipType === 'text' ||
+    props.clip.clipType === 'shape' ||
+    props.clip.clipType === 'hud'
+  );
+});
 
 const hasAudio = computed(() => {
   return (
@@ -274,6 +283,15 @@ const otherActions = computed(() => {
       label: t('fastcat.timeline.returnAudio', 'Return Audio'),
       icon: 'i-heroicons-arrow-uturn-left',
       onClick: () => emit('returnAudio'),
+    });
+  }
+
+  if (canSaveAsPreset.value) {
+    list.push({
+      id: 'saveAsPreset',
+      label: t('fastcat.presets.saveAsPreset', 'Save as preset'),
+      icon: 'i-heroicons-bookmark',
+      onClick: () => emit('saveAsPreset'),
     });
   }
 

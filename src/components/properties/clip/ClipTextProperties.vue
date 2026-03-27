@@ -4,7 +4,6 @@ import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyField from '~/components/properties/PropertyField.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
-import { usePresetsStore } from '~/stores/presets.store';
 
 const props = defineProps<{
   clip: TimelineTextClipItem;
@@ -16,32 +15,10 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const presetsStore = usePresetsStore();
-
-function saveAsPreset() {
-  const name = prompt(t('fastcat.presets.enterName', 'Enter preset name'), 'My Text Preset');
-  if (!name) return;
-
-  presetsStore.saveAsPreset('text', 'custom', name, {
-    text: props.clip.text,
-    style: props.clip.style,
-  });
-}
 </script>
 
 <template>
   <PropertySection :title="t('fastcat.textClip.text', 'Text')">
-    <template #header-actions>
-      <UButton
-        icon="i-heroicons-plus-circle"
-        size="xs"
-        variant="ghost"
-        color="primary"
-        class="-my-1"
-        :title="t('fastcat.presets.saveAsPreset', 'Save as preset')"
-        @click="saveAsPreset"
-      />
-    </template>
     <div class="flex flex-col gap-2">
       <UTextarea
         :model-value="clip.text"

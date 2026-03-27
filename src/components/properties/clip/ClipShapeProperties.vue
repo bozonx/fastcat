@@ -17,7 +17,6 @@ const emit = defineEmits<{
   (e: 'updateStrokeColor', val: string): void;
   (e: 'updateStrokeWidth', val: number): void;
   (e: 'updateShapeConfig', patch: Record<string, unknown>): void;
-  (e: 'openSavePresetModal'): void;
   (e: 'loadPreset', val: string): void;
 }>();
 
@@ -28,13 +27,12 @@ const { t } = useI18n();
   <PropertySection :title="t('fastcat.shapeClip.shape', 'Shape')">
     <div class="flex flex-col gap-2">
       <div
-        v-if="props.presets.length > 0 || true"
+        v-if="props.presets.length > 0"
         class="flex flex-col gap-1 pb-2 border-b border-ui-border mb-1"
       >
         <UiFormSectionHeader :title="t('fastcat.effects.presetsTitle', 'Presets')" />
         <div class="flex gap-2">
           <UiSelect
-            v-if="props.presets.length > 0"
             :items="props.presets"
             :placeholder="t('fastcat.effects.loadPresetPlaceholder', 'Load preset...')"
             class="flex-1"
@@ -43,17 +41,6 @@ const { t } = useI18n();
             @update:model-value="
               (v: unknown) => emit('loadPreset', (v as { value: string })?.value ?? v)
             "
-          />
-          <div v-else class="flex-1 text-xs text-ui-text-muted italic flex items-center">
-            {{ t('fastcat.effects.noPresets', 'No presets saved') }}
-          </div>
-          <UButton
-            size="xs"
-            variant="ghost"
-            color="primary"
-            icon="i-heroicons-bookmark"
-            :title="t('fastcat.effects.saveAsPreset', 'Save as preset')"
-            @click="emit('openSavePresetModal')"
           />
         </div>
       </div>
