@@ -1,6 +1,8 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { createProjectSettingsRepository } from '~/repositories/project-settings.repository';
+import { createDefaultProjectSettings } from '~/utils/project-settings';
+import { createDefaultUserSettings } from '~/utils/settings/helpers';
 
 function createFileHandleMock(input: { text: string }) {
   let text = input.text;
@@ -67,58 +69,17 @@ describe('project-settings.repository', () => {
     expect(await repo.load()).toBeNull();
   });
 
-  it('saves and loads project settings', async () => {
+  it('saves technical settings without monitors or timelines', async () => {
     const projectDir = createDirMock();
     const repo = createProjectSettingsRepository({ projectDir: projectDir as any });
 
-    await repo.save({
-      project: {
-        width: 1920,
-        height: 1080,
-        fps: 25,
-        resolutionFormat: '1080p',
-        orientation: 'landscape',
-        aspectRatio: '16:9',
-        isCustomResolution: false,
-        sampleRate: 48000,
-      },
-      exportDefaults: {
-        encoding: {
-          format: 'mp4',
-          videoCodec: 'avc1.640032',
-          bitrateMbps: 5,
-          excludeAudio: false,
-          audioCodec: 'aac',
-          audioBitrateKbps: 128,
-          bitrateMode: 'variable',
-          keyframeIntervalSec: 2,
-          exportAlpha: false,
-          metadata: {
-            title: '',
-            author: '',
-            tags: '',
-          },
-        },
-      },
-      monitor: {
-        previewResolution: 480,
-        useProxy: true,
-        previewEffectsEnabled: true,
-        panX: 0,
-        panY: 0,
-      },
-      timelines: {
-        openPaths: [],
-        lastOpenedPath: null,
-      },
-      transitions: {
-        defaultDurationUs: 2_000_000,
-      },
-    });
+    const data = createDefaultProjectSettings(createDefaultUserSettings());
+    await repo.save(data);
 
     const raw = await repo.load();
     expect(raw).toBeTruthy();
-    expect((raw as any).project.width).toBe(1920);
-    expect((raw as any).exportDefaults.encoding.metadata).toBeTruthy();
+    expect((raw as any).project.width).toBe(data.project.width);
+    expect((raw as any).monitors).toBeUndefined();
+    expect((raw as any).timelines).toBeUndefined();
   });
 });

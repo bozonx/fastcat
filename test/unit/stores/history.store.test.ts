@@ -161,4 +161,111 @@ describe('HistoryStore', () => {
     expect(store.past).toHaveLength(1);
     expect(store.future).toHaveLength(1);
   });
+
+  describe('command-based scopes', () => {
+    it('preserves snapshot during undo for command scopes', () => {
+      const store = useHistoryStore();
+      store.registerCommandScope('fileManager');
+
+      const command = {
+        undo: { type: 'delete', path: '/folder' },
+        redo: { type: 'createFolder', parentPath: '', name: 'folder' },
+      };
+
+      store.push('fileManager', 'createFolder', command, 'Create folder');
+
+      const restored = store.undo('fileManager', 'current');
+
+      expect(restored).toStrictEqual(command);
+      expect(store.past).toHaveLength(0);
+      expect(store.future).toHaveLength(1);
+      // Snapshot should be preserved (not replaced with currentDoc)
+      expect(store.future[0]?.snapshot).toStrictEqual(command);
+    });
+
+    it('preserves snapshot during redo for command scopes', () => {
+      const store = useHistoryStore();
+      store.registerCommandScope('fileManager');
+
+      const command = {
+        undo: { type: 'delete', path: '/folder' },
+        redo: { type: 'createFolder', parentPath: '', name: 'folder' },
+      };
+
+      store.push('fileManager', 'createFolder', command, 'Create folder');
+      store.undo('fileManager', 'current');
+
+      const restored = store.redo('fileManager', 'another');
+
+      expect(restored).toStrictEqual(command);
+      expect(store.past).toHaveLength(1);
+      expect(store.future).toHaveLength(0);
+      // Snapshot should be preserved
+      expect(store.past[0]?.snapshot).toStrictEqual(command);
+    });
+
+    it('undoGlobal extracts undo command for command scopes', () => {
+      const store = useHistoryStore();
+      store.registerCommandScope('fileManager');
+
+      store.push(
+        'fileManager',
+        'createFolder',
+        {
+          undo: { type: 'delete', path: '/folder' },
+          redo: { type: 'createFolder', parentPath: '', name: 'folder' },
+        },
+        'Create folder',
+      );
+
+      const entry = store.undoGlobal();
+
+      expect(entry).not.toBeNull();
+      expect(entry?.scope).toBe('fileManager');
+      // Should return the undo command, not the full structure
+      expect(entry?.snapshot).toStrictEqual({ type: 'delete', path: '/folder' });
+    });
+
+    it('redoGlobal extracts redo command for command scopes', () => {
+      const store = useHistoryStore();
+      store.registerCommandScope('fileManager');
+
+      store.push(
+        'fileManager',
+        'createFolder',
+        {
+          undo: { type: 'delete', path: '/folder' },
+          redo: { type: 'createFolder', parentPath: '', name: 'folder' },
+        },
+        'Create folder',
+      );
+      store.undoGlobal();
+
+      const entry = store.redoGlobal();
+
+      expect(entry).not.toBeNull();
+      expect(entry?.scope).toBe('fileManager');
+      // Should return the redo command
+      expect(entry?.snapshot).toStrictEqual({
+        type: 'createFolder',
+        parentPath: '',
+        name: 'folder',
+      });
+    });
+
+    it('snapshot-based scopes replace snapshot with currentDoc during undo', () => {
+      const store = useHistoryStore();
+      // timeline is NOT a command scope
+
+      const doc1 = makeDoc('doc-1');
+      const doc2 = makeDoc('doc-2');
+
+      store.push('timeline', 'add_clip_to_track', doc1, 'Add clip');
+
+      store.undo('timeline', doc2);
+
+      // For snapshot-based scopes, currentDoc should be saved for redo
+      expect(store.future[0]?.snapshot).toStrictEqual(doc2);
+    });
+  });
 });

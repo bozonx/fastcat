@@ -35,6 +35,41 @@ export interface PanelColumn {
 
 export type PanelPosition = 'left' | 'right' | 'top' | 'bottom';
 
+/**
+ * Default Cut layout when no layout is stored yet: landscape — monitor below properties
+ * on the right stack; portrait — monitor in the right column.
+ */
+export function buildDefaultCutPanelsForOrientation(
+  orientation: 'landscape' | 'portrait',
+): PanelColumn[] {
+  if (orientation === 'portrait') {
+    return [
+      {
+        id: 'col-1',
+        panels: [
+          { id: 'fileManager', type: 'fileManager' },
+          { id: 'properties', type: 'properties' },
+        ],
+      },
+      { id: 'col-2', panels: [{ id: 'monitor', type: 'monitor' }] },
+    ];
+  }
+  return [
+    { id: 'col-1', panels: [{ id: 'fileManager', type: 'fileManager' }] },
+    {
+      id: 'col-2',
+      panels: [
+        { id: 'properties', type: 'properties' },
+        { id: 'monitor', type: 'monitor' },
+      ],
+    },
+  ];
+}
+
+export interface CreateEditorViewModuleOptions {
+  getProjectOrientation: () => 'landscape' | 'portrait';
+}
+
 const viewConfigs: Record<EditorView, ViewConfig> = {
   files: { timelineHeight: 30 },
   cut: { timelineHeight: 40 },
@@ -90,22 +125,26 @@ function sanitizePanelColumns(columns: unknown, fallback: PanelColumn[]): PanelC
   return fallback.map((col) => ({ id: col.id, panels: [...col.panels] }));
 }
 
-export function createEditorViewModule(projectIdRef: Ref<string | null>) {
-  const currentView = ref<EditorView>('cut');
+export function createEditorViewModule(
+  projectIdRef: Ref<string | null>,
+  options?: CreateEditorViewModuleOptions,
+) {
+  const getProjectOrientation =
+    options?.getProjectOrientation ?? (() => 'landscape' as 'landscape' | 'portrait');
 
-  // Dynamic panels for cut view, 2D structure
-  const defaultCutPanels: PanelColumn[] = [
-    { id: 'col-1', panels: [{ id: 'fileManager', type: 'fileManager' }] },
-    { id: 'col-2', panels: [{ id: 'monitor', type: 'monitor' }] },
-    { id: 'col-3', panels: [{ id: 'properties', type: 'properties' }] },
-  ];
+  function getDefaultCutLayout(): PanelColumn[] {
+    return buildDefaultCutPanelsForOrientation(getProjectOrientation()).map((col) => ({
+      id: col.id,
+      panels: col.panels.map((p) => ({ ...p })),
+    }));
+  }
+
+  const currentView = ref<EditorView>('cut');
 
   const cutPanelsKey = computed(
     () => `fastcat:layout:panels:${projectIdRef.value ?? 'no-project'}:cut`,
   );
-  const cutPanels = ref<PanelColumn[]>([
-    ...defaultCutPanels.map((col) => ({ id: col.id, panels: [...col.panels] })),
-  ]);
+  const cutPanels = ref<PanelColumn[]>(getDefaultCutLayout());
 
   // Dynamic panels for sound view
   const defaultSoundPanels: PanelColumn[] = [
@@ -119,28 +158,29 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
     ...defaultSoundPanels.map((col) => ({ id: col.id, panels: [...col.panels] })),
   ]);
 
-  // Load cut panels from local storage
+  // Load cut panels from local storage (re-apply orientation default when nothing stored)
   watch(
-    () => cutPanelsKey.value,
-    (key) => {
+    () => [cutPanelsKey.value, getProjectOrientation()] as const,
+    ([key]) => {
+      const orientation = getProjectOrientation();
+      const fallback = buildDefaultCutPanelsForOrientation(orientation);
       const stored = readLocalStorageJson<any[] | null>(key, null);
       if (stored && Array.isArray(stored) && stored.length > 0) {
-        // Migration from 1D to 2D columns
         if (!Array.isArray(stored[0]) && !stored[0].panels) {
           cutPanels.value = sanitizePanelColumns(
             stored.map((p) => ({ id: `col-${generateId()}`, panels: [p] })),
-            defaultCutPanels,
+            fallback,
           );
         } else if (Array.isArray(stored[0])) {
           cutPanels.value = sanitizePanelColumns(
             stored.map((col) => ({ id: `col-${generateId()}`, panels: col })),
-            defaultCutPanels,
+            fallback,
           );
         } else {
-          cutPanels.value = sanitizePanelColumns(stored, defaultCutPanels);
+          cutPanels.value = sanitizePanelColumns(stored, fallback);
         }
       } else {
-        cutPanels.value = sanitizePanelColumns(defaultCutPanels, defaultCutPanels);
+        cutPanels.value = sanitizePanelColumns(fallback, fallback);
       }
     },
     { immediate: true },
@@ -164,7 +204,7 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
   watch(
     cutPanels,
     (panels) => {
-      writeLocalStorageJson(cutPanelsKey.value, sanitizePanelColumns(panels, defaultCutPanels));
+      writeLocalStorageJson(cutPanelsKey.value, sanitizePanelColumns(panels, getDefaultCutLayout()));
     },
     { deep: true },
   );
@@ -185,7 +225,7 @@ export function createEditorViewModule(projectIdRef: Ref<string | null>) {
 
   function getActiveDefaultPanels(view?: 'cut' | 'sound') {
     const targetView = view ?? (currentView.value === 'sound' ? 'sound' : 'cut');
-    return targetView === 'sound' ? defaultSoundPanels : defaultCutPanels;
+    return targetView === 'sound' ? defaultSoundPanels : getDefaultCutLayout();
   }
 
   function insertPanelAt(

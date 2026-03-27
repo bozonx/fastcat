@@ -278,7 +278,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
 
         await createFolderCommand({ name, parentPath, vfs: deps.vfs });
         const createdPath = parentPath ? `${parentPath}/${name}` : name;
-        
+
         deps.historyStore.push(
           'fileManager',
           'createFolder',
@@ -583,7 +583,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     async restoreHistory(snapshot: any) {
       if (!snapshot || !snapshot.type) return;
       const op = snapshot;
-      
+
       await runWithUiFeedback({
         action: async () => {
           if (op.type === 'rename') {
@@ -730,7 +730,11 @@ export function useFileManager() {
         timelineStore.timelineDoc.tracks.forEach((track) => {
           track.items.forEach((item) => {
             if (item.kind === 'clip' && (item as any).source?.path === oldPath) {
-              affectedClips.push({ trackId: track.id, itemId: item.id, source: (item as any).source });
+              affectedClips.push({
+                trackId: track.id,
+                itemId: item.id,
+                source: (item as any).source,
+              });
             }
           });
         });
@@ -817,9 +821,7 @@ export function useFileManager() {
     },
   });
 
-  historyStore.registerStateGetter('fileManager', (entry) => {
-    return entry.snapshot.redo;
-  });
+  historyStore.registerCommandScope('fileManager');
 
   return api;
 }

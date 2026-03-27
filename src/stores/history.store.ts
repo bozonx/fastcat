@@ -8,7 +8,10 @@ export interface HistoryEntry<T = unknown> {
   labelKey: string;
   scope: string; // e.g. 'timeline', 'fileManager'
   commandType: string;
-  /** Snapshot of the document BEFORE the command was applied */
+  /** Snapshot of the document BEFORE the command was applied.
+   *  For snapshot-based scopes: the document state.
+   *  For command-based scopes: { undo: Command, redo: Command }
+   */
   snapshot: T;
   timestamp: number;
 }
@@ -21,13 +24,23 @@ export const useHistoryStore = defineStore('history', () => {
   /** Future states available for redo, index 0 is the next redo */
   const future = ref<HistoryEntry<any>[]>([]);
 
+  /** Scopes that use command-based history (store undo/redo commands instead of snapshots) */
+  const commandScopes = new Set<string>();
+
   const stateGetters = new Map<string, (entry: HistoryEntry<any>) => any>();
 
   function registerStateGetter(scope: string, getter: (entry: HistoryEntry<any>) => any) {
     stateGetters.set(scope, getter);
   }
 
-  // We can provide getters for specific scopes if needed
+  function registerCommandScope(scope: string) {
+    commandScopes.add(scope);
+  }
+
+  function isCommandScope(scope: string): boolean {
+    return commandScopes.has(scope);
+  }
+
   function canUndo(scope?: string) {
     if (!scope) return past.value.length > 0;
     return past.value.filter((e) => e.scope === scope).length > 0;
@@ -71,6 +84,7 @@ export const useHistoryStore = defineStore('history', () => {
   /**
    * Moves the top past entry for a scope into the future stack and returns the snapshot
    * that should be restored as the current document.
+   * For command-based scopes, returns the undo command.
    */
   function undo<T>(scope: string, currentDoc: T): T | null {
     const scopePast = past.value.filter((e) => e.scope === scope);
@@ -81,10 +95,16 @@ export const useHistoryStore = defineStore('history', () => {
     const idx = past.value.lastIndexOf(entry);
     past.value.splice(idx, 1);
 
-    future.value.unshift({
-      ...entry,
-      snapshot: currentDoc,
-    });
+    // For command-based scopes, preserve the full snapshot (undo/redo commands)
+    // For snapshot-based scopes, save currentDoc for redo
+    if (isCommandScope(scope)) {
+      future.value.unshift(entry);
+    } else {
+      future.value.unshift({
+        ...entry,
+        snapshot: currentDoc,
+      });
+    }
 
     return entry.snapshot as T;
   }
@@ -92,6 +112,7 @@ export const useHistoryStore = defineStore('history', () => {
   /**
    * Moves the first future entry for a scope into the past stack and returns the snapshot
    * to restore.
+   * For command-based scopes, returns the redo command.
    */
   function redo<T>(scope: string, currentDoc: T): T | null {
     const scopeFuture = future.value.filter((e) => e.scope === scope);
@@ -102,10 +123,16 @@ export const useHistoryStore = defineStore('history', () => {
     const idx = future.value.indexOf(entry);
     future.value.splice(idx, 1);
 
-    past.value.push({
-      ...entry,
-      snapshot: currentDoc,
-    });
+    // For command-based scopes, preserve the full snapshot (undo/redo commands)
+    // For snapshot-based scopes, save currentDoc for undo
+    if (isCommandScope(scope)) {
+      past.value.push(entry);
+    } else {
+      past.value.push({
+        ...entry,
+        snapshot: currentDoc,
+      });
+    }
 
     return entry.snapshot as T;
   }
@@ -114,11 +141,19 @@ export const useHistoryStore = defineStore('history', () => {
     const entry = past.value[past.value.length - 1];
     if (!entry) return null;
 
-    const currentDoc = stateGetters.get(entry.scope)?.(entry);
-    const snapshot = undo(entry.scope, currentDoc);
+    const scope = entry.scope;
+    const currentDoc = stateGetters.get(scope)?.(entry);
+    const snapshot = undo(scope, currentDoc);
     if (snapshot === null) return null;
 
-    // Return the entry with restored snapshot
+    // For command-based scopes, extract the appropriate command
+    if (isCommandScope(scope) && snapshot && typeof snapshot === 'object' && 'undo' in snapshot) {
+      return {
+        ...entry,
+        snapshot: (snapshot as { undo: unknown; redo: unknown }).undo,
+      };
+    }
+
     return {
       ...entry,
       snapshot,
@@ -129,16 +164,24 @@ export const useHistoryStore = defineStore('history', () => {
     const entry = future.value[0];
     if (!entry) return null;
 
-    const currentDoc = stateGetters.get(entry.scope)?.(entry);
-    const snapshot = redo(entry.scope, currentDoc);
+    const scope = entry.scope;
+    const currentDoc = stateGetters.get(scope)?.(entry);
+    const snapshot = redo(scope, currentDoc);
     if (snapshot === null) return null;
+
+    // For command-based scopes, extract the appropriate command
+    if (isCommandScope(scope) && snapshot && typeof snapshot === 'object' && 'redo' in snapshot) {
+      return {
+        ...entry,
+        snapshot: (snapshot as { undo: unknown; redo: unknown }).redo,
+      };
+    }
 
     return {
       ...entry,
       snapshot,
     };
   }
-
 
   /** Clears the entire history for a scope */
   function clear(scope: string) {
@@ -164,6 +207,8 @@ export const useHistoryStore = defineStore('history', () => {
     undoGlobal,
     redoGlobal,
     registerStateGetter,
+    registerCommandScope,
+    isCommandScope,
     clear,
     clearAll,
   };
