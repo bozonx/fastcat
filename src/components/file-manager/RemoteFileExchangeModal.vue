@@ -12,12 +12,18 @@ const {
   remoteFilesConfig,
   remoteCurrentPath,
   remoteLoading,
+  searchResults,
+  searchQuery,
+  searchLoading,
   selectedEntry,
   previewUrl,
   previewPoster,
   previewText,
   previewKind,
   previewLoading,
+  searchRemoteLibrary,
+  deleteRemoteEntry,
+  createRemoteDirectory,
   libraryDragOver,
   uploadProgressOpen,
   uploadProgress,
@@ -45,6 +51,13 @@ const {
   onMediaDragEnd,
   cancelUpload,
 } = useRemoteExchange();
+
+async function handleCreateFolder() {
+  const name = window.prompt(t('videoEditor.fileManager.actions.createFolder', 'New folder name'));
+  if (name && name.trim()) {
+    await createRemoteDirectory(name.trim());
+  }
+}
 </script>
 
 <template>
@@ -77,7 +90,7 @@ const {
             {{ t('videoEditor.settings.bloggerDogIntegrationHint') }}
           </div>
         </div>
-        <UButton color="primary" variant="soft" @click="uiStore.settingsModalOpen = true">
+        <UButton color="primary" variant="soft" @click="uiStore.isEditorSettingsOpen = true">
           {{ t('navigation.settings', 'Open Settings') }}
         </UButton>
       </div>
@@ -103,6 +116,21 @@ const {
               </button>
             </div>
             <div class="ml-auto flex items-center gap-2">
+              <UInput
+                v-model="searchQuery"
+                icon="i-heroicons-magnifying-glass"
+                size="xs"
+                :placeholder="t('videoEditor.fileManager.remote.search', 'Search...')"
+                class="w-40"
+                @update:model-value="searchRemoteLibrary($event)"
+              />
+              <UButton
+                icon="i-heroicons-folder-plus"
+                variant="ghost"
+                color="neutral"
+                size="xs"
+                @click="handleCreateFolder"
+              />
               <UButton
                 icon="i-heroicons-arrow-up"
                 variant="ghost"
@@ -116,7 +144,7 @@ const {
                 variant="ghost"
                 color="neutral"
                 size="xs"
-                :loading="remoteLoading"
+                :loading="remoteLoading || searchLoading"
                 @click="openRemoteRoot"
               />
             </div>
@@ -145,23 +173,45 @@ const {
 
             <div v-else class="flex min-h-full flex-col gap-4">
               <div
+                v-if="searchQuery && remoteDirectories.length === 0 && remoteItems.length === 0"
+                class="flex flex-1 flex-col items-center justify-center p-12 text-center text-sm text-ui-text-muted"
+              >
+                <UIcon name="i-heroicons-magnifying-glass-circle" class="mb-4 h-12 w-12 text-ui-text-muted/30" />
+                <div class="font-medium text-ui-text">
+                  {{ t('videoEditor.fileManager.remote.noSearchResults', 'Nothing found') }}
+                </div>
+                <div class="mt-1 max-w-xs">
+                  {{ t('videoEditor.fileManager.remote.tryAnotherQuery', 'Try adjusting your search query') }}
+                </div>
+              </div>
+
+              <div
                 v-if="remoteDirectories.length > 0"
                 class="grid grid-cols-2 gap-3 xl:grid-cols-3"
               >
-                <button
+                <div
                   v-for="directory in remoteDirectories"
                   :key="directory.id"
-                  class="flex min-h-28 flex-col rounded-xl border border-ui-border bg-ui-bg-elevated p-4 text-left transition hover:border-primary-500/40 hover:bg-ui-bg-hover"
-                  @click="navigateToDirectory(directory)"
+                  class="group relative flex min-h-28 flex-col rounded-xl border border-ui-border bg-ui-bg-elevated p-4 text-left transition hover:border-primary-500/40 hover:bg-ui-bg-hover"
                 >
-                  <UIcon name="i-heroicons-folder" class="mb-3 h-7 w-7 text-amber-400" />
-                  <div class="truncate text-sm font-medium text-ui-text">
-                    {{ getRemoteEntryDisplayName(directory) }}
-                  </div>
-                  <div class="mt-1 text-xs text-ui-text-muted">
-                    {{ directory.itemsCount ?? 0 }}
-                  </div>
-                </button>
+                  <button class="flex flex-1 flex-col text-left" @click="navigateToDirectory(directory)">
+                    <UIcon name="i-heroicons-folder" class="mb-3 h-7 w-7 text-amber-400" />
+                    <div class="truncate text-sm font-medium text-ui-text">
+                      {{ getRemoteEntryDisplayName(directory) }}
+                    </div>
+                    <div class="mt-1 text-xs text-ui-text-muted">
+                      {{ directory.itemsCount ?? 0 }}
+                    </div>
+                  </button>
+                  <UButton
+                    icon="i-heroicons-trash"
+                    color="error"
+                    variant="ghost"
+                    size="xs"
+                    class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    @click.stop="deleteRemoteEntry(directory)"
+                  />
+                </div>
               </div>
 
               <div
@@ -182,14 +232,24 @@ const {
                       : 'border-ui-border bg-ui-bg-elevated hover:border-primary-500/30'
                   "
                 >
-                  <button class="mb-3 block w-full text-left" @click="selectRemoteItem(item)">
-                    <div class="truncate text-sm font-semibold text-ui-text">
-                      {{ getRemoteEntryDisplayName(item) }}
-                    </div>
-                    <div class="mt-1 text-xs text-ui-text-muted">
-                      {{ item.media?.length ?? 0 }} media
-                    </div>
-                  </button>
+                  <div class="relative mb-3 flex items-start justify-between gap-2 group">
+                    <button class="truncate text-left" @click="selectRemoteItem(item)">
+                      <div class="truncate text-sm font-semibold text-ui-text">
+                        {{ getRemoteEntryDisplayName(item) }}
+                      </div>
+                      <div class="mt-1 text-xs text-ui-text-muted">
+                        {{ item.media?.length ?? 0 }} media
+                      </div>
+                    </button>
+                    <UButton
+                      icon="i-heroicons-trash"
+                      color="error"
+                      variant="ghost"
+                      size="xs"
+                      class="opacity-0 group-hover:opacity-100 transition-opacity"
+                      @click.stop="deleteRemoteEntry(item)"
+                    />
+                  </div>
 
                   <div class="overflow-x-auto pb-1">
                     <div class="flex gap-3">

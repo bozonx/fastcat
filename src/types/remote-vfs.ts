@@ -17,6 +17,7 @@ export interface RemoteVfsBaseEntry {
   title?: string;
   type: 'file' | 'directory';
   path: string;
+  parentId?: string;
 }
 
 export interface RemoteVfsDirectoryEntry extends RemoteVfsBaseEntry {

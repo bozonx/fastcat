@@ -1,5 +1,6 @@
 import type { FsEntry } from '~/types/fs';
 import type {
+  RemoteVfsDirectoryEntry,
   RemoteVfsEntry,
   RemoteVfsFileEntry,
   RemoteVfsHealthResponse,
@@ -324,4 +325,125 @@ export async function uploadFileToRemote(params: {
     formData.append('collectionId', params.collectionId);
     xhr.send(formData);
   });
+}
+
+export async function createRemoteCollection(params: {
+  config: RemoteVfsClientConfig;
+  name: string;
+  parentId?: string;
+}): Promise<RemoteVfsDirectoryEntry> {
+  const response = await fetch(joinPath(params.config.baseUrl, 'collections'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${params.config.bearerToken}`,
+    },
+    body: JSON.stringify({ name: params.name, parentId: params.parentId }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(body || `Failed to create collection (${response.status})`);
+  }
+
+  return (await response.json()) as RemoteVfsDirectoryEntry;
+}
+
+export async function renameRemoteCollection(params: {
+  config: RemoteVfsClientConfig;
+  id: string;
+  name: string;
+}): Promise<void> {
+  const response = await fetch(joinPath(params.config.baseUrl, `collections/${params.id}`), {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${params.config.bearerToken}`,
+    },
+    body: JSON.stringify({ name: params.name }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(body || `Failed to rename collection (${response.status})`);
+  }
+}
+
+export async function deleteRemoteCollection(params: {
+  config: RemoteVfsClientConfig;
+  id: string;
+}): Promise<void> {
+  const response = await fetch(joinPath(params.config.baseUrl, `collections/${params.id}`), {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${params.config.bearerToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(body || `Failed to delete collection (${response.status})`);
+  }
+}
+
+export async function renameRemoteItem(params: {
+  config: RemoteVfsClientConfig;
+  id: string;
+  name?: string;
+  tags?: string[];
+}): Promise<void> {
+  const response = await fetch(joinPath(params.config.baseUrl, `items/${params.id}`), {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${params.config.bearerToken}`,
+    },
+    body: JSON.stringify({ name: params.name, tags: params.tags }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(body || `Failed to update item (${response.status})`);
+  }
+}
+
+export async function deleteRemoteItem(params: {
+  config: RemoteVfsClientConfig;
+  id: string;
+}): Promise<void> {
+  const response = await fetch(joinPath(params.config.baseUrl, `items/${params.id}`), {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${params.config.bearerToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(body || `Failed to delete item (${response.status})`);
+  }
+}
+
+export async function searchRemoteVfs(params: {
+  config: RemoteVfsClientConfig;
+  query: string;
+  signal?: AbortSignal;
+}): Promise<RemoteVfsListResponse> {
+  const url = new URL(joinPath(params.config.baseUrl, 'search'));
+  url.searchParams.set('query', params.query);
+
+  const response = await fetch(url.toString(), {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${params.config.bearerToken}`,
+    },
+    signal: params.signal,
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(body || `Failed to search remote library (${response.status})`);
+  }
+
+  return (await response.json()) as RemoteVfsListResponse;
 }

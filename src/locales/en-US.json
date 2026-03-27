@@ -1189,6 +1189,13 @@
         "exchangeDescription": "Enter the token from the FastCat platform to access your remote files.",
         "loadFailed": "Failed to load remote library",
         "collectionUnavailable": "Remote collection is not available",
+        "search": "Search in library...",
+        "createFolder": "Create collection",
+        "deleteEntry": "Delete content",
+        "renameEntry": "Rename",
+        "noSearchResults": "No results found",
+        "tags": "Tags",
+        "searchFailed": "Search failed",
         "localFileUnavailable": "Failed to access local file",
         "uploadFailed": "Upload failed"
       },

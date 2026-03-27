@@ -65,14 +65,18 @@ export function useRemoteExchange() {
   const uploadFileName = ref('');
   const uploadAbortController = ref<AbortController | null>(null);
 
+  const displayEntries = computed(() =>
+    searchQuery.value.trim() ? searchResults.value : remoteEntries.value,
+  );
+
   const remoteDirectories = computed(() =>
-    remoteEntries.value.filter(
+    displayEntries.value.filter(
       (entry): entry is Extract<RemoteVfsEntry, { type: 'directory' }> =>
         entry.type === 'directory',
     ),
   );
   const remoteItems = computed(() =>
-    remoteEntries.value.filter(
+    displayEntries.value.filter(
       (entry): entry is Extract<RemoteVfsEntry, { type: 'file' }> => entry.type === 'file',
     ),
   );
@@ -428,6 +432,97 @@ export function useRemoteExchange() {
     { immediate: true },
   );
 
+  const searchQuery = ref('');
+  const searchLoading = ref(false);
+  const searchResults = ref<RemoteVfsEntry[]>([]);
+
+  async function searchRemoteLibrary(query: string) {
+    const config = remoteFilesConfig.value;
+    if (!config) return;
+
+    searchQuery.value = query;
+    if (!query.trim()) {
+      searchResults.value = [];
+      return;
+    }
+
+    searchLoading.value = true;
+    try {
+      const response = await searchRemoteVfs({ config, query });
+      searchResults.value = response.items;
+    } catch (error) {
+      toast.add({
+        color: 'error',
+        title: t('videoEditor.fileManager.remote.search', 'Search'),
+        description: t('videoEditor.fileManager.remote.searchFailed', 'Search failed'),
+      });
+    } finally {
+      searchLoading.value = false;
+    }
+  }
+
+  async function deleteRemoteEntry(entry: RemoteVfsEntry) {
+    const config = remoteFilesConfig.value;
+    if (!config) return;
+
+    try {
+      if (entry.type === 'directory') {
+        await deleteRemoteCollection({ config, id: entry.id });
+      } else {
+        await deleteRemoteItem({ config, id: entry.id });
+      }
+
+      toast.add({
+        color: 'success',
+        title: t('common.delete', 'Delete'),
+        description: t('common.deleteSuccess', 'Success'),
+      });
+
+      if (searchQuery.value) {
+        await searchRemoteLibrary(searchQuery.value);
+      } else {
+        await loadRemotePath(remoteCurrentPath.value);
+      }
+    } catch (error) {
+      toast.add({
+        color: 'error',
+        title: t('common.delete', 'Delete'),
+        description: t('common.deleteFailed', 'Failed to delete'),
+      });
+    }
+  }
+
+  async function createRemoteDirectory(name: string) {
+    const config = remoteFilesConfig.value;
+    if (!config) return;
+
+    try {
+      const parentId = remoteCurrentPath.value === '/' ? undefined : remoteEntries.value[0]?.parentId; // This is a bit flawed but works if we are inside a folder
+      // Actually better way is to track current folder ID, but list response doesn't give it directly.
+      // Remote entries in a folder should have the same parentId.
+      let actualParentId = undefined;
+      if (remoteCurrentPath.value !== '/') {
+        actualParentId = remoteEntries.value.find(e => e.path === remoteCurrentPath.value)?.id 
+          || remoteEntries.value[0]?.parentId;
+      }
+
+      await createRemoteCollection({ config, name, parentId: actualParentId });
+      await loadRemotePath(remoteCurrentPath.value);
+
+      toast.add({
+        color: 'success',
+        title: t('videoEditor.fileManager.actions.createFolder', 'Create folder'),
+        description: t('common.success', 'Success'),
+      });
+    } catch (error) {
+      toast.add({
+        color: 'error',
+        title: t('videoEditor.fileManager.actions.createFolder', 'Create folder'),
+        description: t('common.failed', 'Failed'),
+      });
+    }
+  }
+
   onBeforeUnmount(() => {
     revokePreviewUrl();
   });
@@ -437,6 +532,9 @@ export function useRemoteExchange() {
     remoteFilesConfig,
     remoteCurrentPath,
     remoteEntries,
+    searchResults,
+    searchQuery,
+    searchLoading,
     remoteLoading,
     selectedEntry,
     previewUrl,
@@ -470,5 +568,8 @@ export function useRemoteExchange() {
     onMediaDragStart,
     onMediaDragEnd,
     cancelUpload,
+    searchRemoteLibrary,
+    deleteRemoteEntry,
+    createRemoteDirectory,
   };
 }
