@@ -13,6 +13,8 @@ const historyStore = useHistoryStore();
 const past = computed(() => historyStore.past);
 const future = computed(() => historyStore.future);
 
+const { restoreHistory } = useFileManager();
+
 const canUndo = computed(() => historyStore.canUndo());
 const canRedo = computed(() => historyStore.canRedo());
 
@@ -35,9 +37,6 @@ function handleUndo() {
   if (entry.scope === 'timeline') {
     timelineStore.applyRestoredSnapshot(entry.snapshot);
   } else if (entry.scope === 'fileManager') {
-    // We can use useFileManager() here
-
-    const { restoreHistory } = useFileManager();
     void restoreHistory(entry.snapshot);
   }
 }
@@ -48,7 +47,6 @@ function handleRedo() {
   if (entry.scope === 'timeline') {
     timelineStore.applyRestoredSnapshot(entry.snapshot);
   } else if (entry.scope === 'fileManager') {
-    const { restoreHistory } = useFileManager();
     void restoreHistory(entry.snapshot);
   }
 }

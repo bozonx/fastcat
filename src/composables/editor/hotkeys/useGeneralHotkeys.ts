@@ -29,12 +29,7 @@ export function useGeneralHotkeys(
   const { clipboardPayload, setClipboardPayload } = useAppClipboard();
   const { loadTimeline } = useProjectActions();
 
-  let fileManager: ReturnType<typeof useFileManager> | null = null;
-
-  function getFileManager() {
-    fileManager ??= useFileManager();
-    return fileManager;
-  }
+  const fileManager = useFileManager();
 
   function isFileManagerFocus() {
     return (
@@ -86,7 +81,6 @@ export function useGeneralHotkeys(
     }
 
     const targetDirPath = getFileManagerPasteTargetDirPath();
-    const fileManager = getFileManager();
 
     for (const item of payload.items) {
       const source =
@@ -247,7 +241,7 @@ export function useGeneralHotkeys(
       if (entry.scope === 'timeline') {
         timelineStore.applyRestoredSnapshot(entry.snapshot);
       } else if (entry.scope === 'fileManager') {
-        void getFileManager().restoreHistory(entry.snapshot);
+        void fileManager.restoreHistory(entry.snapshot);
       }
       return true;
     },
@@ -259,7 +253,7 @@ export function useGeneralHotkeys(
       if (entry.scope === 'timeline') {
         timelineStore.applyRestoredSnapshot(entry.snapshot);
       } else if (entry.scope === 'fileManager') {
-        void getFileManager().restoreHistory(entry.snapshot);
+        void fileManager.restoreHistory(entry.snapshot);
       }
       return true;
     },
