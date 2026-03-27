@@ -547,8 +547,10 @@
       "renameClip": "Rename clip",
       "fitToWindow": "Fit to Window",
       "resetZoom": "Reset Zoom & Pan",
-      "unsupported": "Unsupported file format",
-      "usedInTimelines": "Used in timelines"
+      "unsupported": "Unsupported file format for visual preview",
+      "usedInTimelines": "Used in timelines",
+      "zoomIn": "Zoom In",
+      "zoomOut": "Zoom Out"
     },
     "projects": {
       "autoDetectHint": "Project resolution and framerate will be automatically detected from the first video added to the timeline.",

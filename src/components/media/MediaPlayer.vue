@@ -100,13 +100,13 @@ const mediaStyle = computed(() => ({
 const contextMenuItems = computed(() => [
   [
     {
-      label: t('fastcat.preview.fitToWindow', 'Fit to Window'),
+      label: t('fastcat.preview.fitToWindow'),
       icon: 'i-heroicons-arrows-pointing-in',
       onSelect: () => fitToContainer(),
       click: () => fitToContainer(),
     },
     {
-      label: t('fastcat.preview.resetZoom', 'Reset Zoom & Pan'),
+      label: t('fastcat.preview.resetZoom'),
       icon: 'i-heroicons-arrow-path',
       onSelect: () => resetZoom(),
       click: () => resetZoom(),
@@ -115,11 +115,20 @@ const contextMenuItems = computed(() => [
 ]);
 
 function emitPlaybackState() {
+  if (props.forcePaused) return;
   emit('sync-state', {
     currentTime: currentTime.value,
     isPlaying: isPlaying.value,
     source: props.instanceKey ?? 'inline',
   });
+}
+
+function zoomIn() {
+  onCustomZoom(new CustomEvent('fastcat-zoom', { detail: { dir: 1 } }));
+}
+
+function zoomOut() {
+  onCustomZoom(new CustomEvent('fastcat-zoom', { detail: { dir: -1 } }));
 }
 
 async function applyResumeState() {
@@ -374,7 +383,7 @@ onUnmounted(() => {
           <div
             class="mt-4 text-2xs sm:text-xs uppercase tracking-wider opacity-70 text-center font-medium"
           >
-            {{ t('fastcat.preview.audioTrack', 'Audio Track') }}
+            {{ t('fastcat.preview.audioTrack') }}
           </div>
         </div>
       </div>
@@ -438,6 +447,26 @@ onUnmounted(() => {
         </div>
 
         <div class="flex items-center gap-2">
+          <UButtonGroup v-if="type === 'video'" size="sm" variant="ghost" color="neutral">
+            <UTooltip :text="t('fastcat.preview.zoomIn')">
+              <UButton
+                icon="i-heroicons-magnifying-glass-plus"
+                class="hover:bg-ui-bg-accent"
+                @click="zoomIn"
+              />
+            </UTooltip>
+            <UTooltip :text="t('fastcat.preview.zoomOut')">
+              <UButton
+                icon="i-heroicons-magnifying-glass-minus"
+                class="hover:bg-ui-bg-accent"
+                @click="zoomOut"
+              />
+            </UTooltip>
+            <UTooltip :text="t('fastcat.preview.resetZoom')">
+              <UButton icon="i-heroicons-arrow-path" class="hover:bg-ui-bg-accent" @click="resetZoom" />
+            </UTooltip>
+          </UButtonGroup>
+
           <UiVolumeControl
             v-model:volume="volume"
             v-model:is-muted="isMuted"
