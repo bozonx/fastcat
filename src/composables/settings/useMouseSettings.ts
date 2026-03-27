@@ -2,8 +2,6 @@ import { computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import {
-  CLIP_DRAG_ACTIONS,
-  DRAG_ACTIONS,
   MONITOR_CLICK_ACTIONS,
   MONITOR_DRAG_ACTIONS,
   MONITOR_WHEEL_ACTIONS,
@@ -11,6 +9,7 @@ import {
   RULER_WHEEL_ACTIONS,
   SHIFT_CLICK_ACTIONS,
   TIMELINE_CLICK_ACTIONS,
+  TIMELINE_DRAG_ACTIONS,
   TIMELINE_WHEEL_ACTIONS,
   TRACK_HEADERS_WHEEL_ACTIONS,
 } from '~/utils/mouse';
@@ -98,20 +97,16 @@ export function useMouseSettings() {
     move_playhead: t('videoEditor.settings.mouseActionMovePlayhead'),
     move_clips: t('videoEditor.settings.mouseActionMoveClips'),
     select_area: t('videoEditor.settings.mouseActionSelectArea'),
-    none: t('videoEditor.settings.mouseActionNone'),
-  }));
-
-  const commonHorizontalMovementLabels = computed<Record<string, string>>(() => ({
-    move_playhead: t('videoEditor.settings.mouseActionMovePlayhead'),
-    none: t('videoEditor.settings.mouseActionNone'),
-  }));
-
-  const clipDragLabels = computed<Record<string, string>>(() => ({
     toggle_clip_move_mode: t('videoEditor.settings.mouseActionToggleClipMoveMode'),
     pseudo_overlap: t('videoEditor.settings.mouseActionPseudoOverlap'),
     free_mode: t('videoEditor.settings.mouseActionFreeMode'),
     copy: t('videoEditor.settings.mouseActionCopy'),
     toggle_snap: t('videoEditor.settings.mouseActionToggleSnap'),
+    none: t('videoEditor.settings.mouseActionNone'),
+  }));
+
+  const commonHorizontalMovementLabels = computed<Record<string, string>>(() => ({
+    move_playhead: t('videoEditor.settings.mouseActionMovePlayhead'),
     none: t('videoEditor.settings.mouseActionNone'),
   }));
 
@@ -146,11 +141,10 @@ export function useMouseSettings() {
   const timelineClickActionOptions = computed(() =>
     formatOptions(TIMELINE_CLICK_ACTIONS, commonClickLabels.value),
   );
-  const dragOptions = computed(() => formatOptions(DRAG_ACTIONS, commonDragLabels.value));
+  const dragOptions = computed(() => formatOptions(TIMELINE_DRAG_ACTIONS, commonDragLabels.value));
   const mouseHorizontalMovementOptions = computed(() =>
     formatOptions(MOUSE_HORIZONTAL_MOVEMENT_ACTIONS, commonHorizontalMovementLabels.value),
   );
-  const clipDragOptions = computed(() => formatOptions(CLIP_DRAG_ACTIONS, clipDragLabels.value));
   const monitorMiddleClickOptions = computed(() =>
     formatOptions(MONITOR_CLICK_ACTIONS, {
       fit: t('videoEditor.settings.mouseActionFit'),
@@ -174,7 +168,7 @@ export function useMouseSettings() {
     }),
   );
 
-  const sectionConfigs = computed(
+  const sectionConfigs = computed<MouseSectionConfig[]>(
     () =>
       [
         {
@@ -298,19 +292,19 @@ export function useMouseSettings() {
               label: t('videoEditor.settings.mouseTimelineClipDragShift', {
                 modifier1: modifier1Name.value,
               }),
-              options: clipDragOptions.value,
+              options: dragOptions.value,
             },
             {
               key: 'clipDragCtrl',
               label: t('videoEditor.settings.mouseTimelineClipDragCtrl', {
                 modifier2: modifier2Name.value,
               }),
-              options: clipDragOptions.value,
+              options: dragOptions.value,
             },
             {
               key: 'clipDragRight',
               label: t('videoEditor.settings.mouseTimelineClipDragRight'),
-              options: clipDragOptions.value,
+              options: dragOptions.value,
             },
 
             // Clicks

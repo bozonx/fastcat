@@ -268,6 +268,34 @@
       "projectFiles": "Project files",
       "returnToProjectPanel": "Return to project panel"
     },
+    "library": {
+      "tabs": {
+        "texts": "Texts",
+        "shapes": "Shapes",
+        "hud": "HUD"
+      },
+      "texts": {
+        "default": "Default",
+        "title": "Title",
+        "subtitle": "Subtitle"
+      },
+      "shapes": {
+        "square": "Square",
+        "circle": "Circle",
+        "triangle": "Triangle",
+        "star": "Star",
+        "bang": "Bang",
+        "cloud": "Cloud",
+        "speech_bubble": "Speech Bubble"
+      },
+      "huds": {
+        "media_frame": "Media Frame"
+      }
+    },
+    "presets": {
+      "enterName": "Enter preset name",
+      "saveAsPreset": "Save as preset"
+    },
     "effects": {
       "add": "Add",
       "audioTitle": "Audio effects",

@@ -10,7 +10,37 @@ const { t } = useI18n();
 const selectionStore = useSelectionStore();
 const presetsStore = usePresetsStore();
 
-const activeTab = ref<'shapes' | 'hud'>('shapes');
+const activeTab = ref<'texts' | 'shapes' | 'hud'>('texts');
+
+const standardTexts = [
+  {
+    type: 'default',
+    name: 'Default',
+    icon: 'i-heroicons-document-text',
+    params: {
+      text: t('fastcat.timeline.textClipDefaultText', 'Text'),
+      style: { fontSize: 64, color: '#ffffff', fontFamily: 'sans-serif' },
+    },
+  },
+  {
+    type: 'title',
+    name: 'Title',
+    icon: 'i-heroicons-h1',
+    params: {
+      text: 'TITLE',
+      style: { fontSize: 96, fontWeight: '800', color: '#ffffff', fontFamily: 'sans-serif' },
+    },
+  },
+  {
+    type: 'subtitle',
+    name: 'Subtitle',
+    icon: 'i-heroicons-h2',
+    params: {
+      text: 'Subtitle',
+      style: { fontSize: 48, fontWeight: '400', color: '#aaaaaa', fontFamily: 'sans-serif' },
+    },
+  },
+];
 
 const standardShapes = [
   { type: 'square' as ShapeType, name: 'Square', icon: 'i-heroicons-stop' },
@@ -30,6 +60,13 @@ const standardHuds = [
   { type: 'media_frame' as HudType, name: 'Media Frame', icon: 'i-heroicons-photo' },
 ];
 
+const customTexts = computed(() => {
+  return presetsStore.customPresets
+    .filter((p) => p.category === 'text')
+    .slice()
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+});
+
 const customShapes = computed(() => {
   return presetsStore.customPresets
     .filter((p) => p.category === 'shape')
@@ -47,7 +84,7 @@ const customHuds = computed(() => {
 function handleDragStart(
   event: DragEvent,
   type: string,
-  category: 'shape' | 'hud',
+  category: 'shape' | 'hud' | 'text',
   presetParams?: any,
 ) {
   if (!event.dataTransfer) return;
@@ -64,6 +101,13 @@ function handleDragStart(
   );
 
   event.dataTransfer.effectAllowed = 'copy';
+}
+
+function updateCustomTextsOrder(newCustomTexts: any[]) {
+  presetsStore.updatePresetsOrder(
+    'text',
+    newCustomTexts.map((s) => s.id),
+  );
 }
 
 function updateCustomShapesOrder(newCustomShapes: any[]) {
@@ -90,6 +134,17 @@ function updateCustomHudsOrder(newCustomHuds: any[]) {
       <button
         class="px-3 py-1.5 rounded-t-lg transition-colors border border-b-0 border-transparent font-medium"
         :class="
+          activeTab === 'texts'
+            ? 'bg-ui-bg text-primary-400 border-ui-border'
+            : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-hover'
+        "
+        @click="activeTab = 'texts'"
+      >
+        {{ t('fastcat.library.tabs.texts', 'Texts') }}
+      </button>
+      <button
+        class="px-3 py-1.5 rounded-t-lg transition-colors border border-b-0 border-transparent font-medium"
+        :class="
           activeTab === 'shapes'
             ? 'bg-ui-bg text-primary-400 border-ui-border'
             : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-hover'
@@ -113,6 +168,95 @@ function updateCustomHudsOrder(newCustomHuds: any[]) {
 
     <!-- Content -->
     <div class="flex-1 overflow-y-auto bg-ui-bg p-3">
+      <!-- Texts -->
+      <div v-show="activeTab === 'texts'" class="flex flex-col gap-4 pb-4">
+        <!-- Standard Texts -->
+        <CollapsibleEffectGroup
+          v-model:is-collapsed="presetsStore.textsStandardCollapsed"
+          :title="t('fastcat.effects.groups.standard')"
+        >
+          <div class="grid grid-cols-1 gap-2">
+            <div
+              v-for="text in standardTexts"
+              :key="text.type"
+              class="flex items-center gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated"
+              draggable="true"
+              @dragstart="handleDragStart($event, text.type, 'text', text.params)"
+            >
+              <UIcon :name="text.icon" class="w-8 h-8 text-primary shrink-0" />
+              <div class="flex-1 min-w-0">
+                <h4 class="text-sm font-medium text-ui-text">
+                  {{ t(`fastcat.library.texts.${text.type}`, text.name) }}
+                </h4>
+              </div>
+            </div>
+            <div
+              v-if="standardTexts.length === 0"
+              class="text-center text-ui-text-muted py-4 italic text-xs"
+            >
+              {{ t('common.noData') }}
+            </div>
+          </div>
+        </CollapsibleEffectGroup>
+
+        <!-- Custom Texts -->
+        <CollapsibleEffectGroup
+          v-model:is-collapsed="presetsStore.textsCustomCollapsed"
+          :title="t('fastcat.effects.groups.custom')"
+        >
+          <VueDraggable
+            :model-value="customTexts"
+            class="flex flex-col gap-2"
+            :animation="150"
+            ghost-class="opacity-50"
+            handle=".drag-handle"
+            filter=".external-drag"
+            :prevent-on-filter="false"
+            @update:model-value="updateCustomTextsOrder"
+          >
+            <div
+              v-for="text in customTexts"
+              :key="text.id"
+              class="flex items-center gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors group border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated"
+            >
+              <div class="cursor-grab hover:text-ui-text text-ui-text-muted drag-handle">
+                <UIcon name="i-heroicons-bars-2" class="w-5 h-5" />
+              </div>
+              <div
+                class="external-drag flex items-center gap-3 flex-1 min-w-0"
+                draggable="true"
+                @dragstart="handleDragStart($event, text.id, 'text', text.params)"
+              >
+                <UIcon
+                  :name="
+                    standardTexts.find((s) => s.type === text.baseType)?.icon ||
+                    'i-heroicons-document-text'
+                  "
+                  class="w-8 h-8 text-primary shrink-0"
+                />
+                <div class="flex-1 min-w-0 flex items-center justify-between">
+                  <h4 class="text-sm font-medium text-ui-text truncate">{{ text.name }}</h4>
+                  <UButton
+                    icon="i-heroicons-trash"
+                    color="red"
+                    variant="ghost"
+                    size="xs"
+                    class="opacity-0 group-hover:opacity-100"
+                    @click.stop="presetsStore.removePreset(text.id)"
+                  />
+                </div>
+              </div>
+            </div>
+          </VueDraggable>
+          <div
+            v-if="customTexts.length === 0"
+            class="text-center text-ui-text-muted py-4 italic text-xs"
+          >
+            {{ t('common.noData') }}
+          </div>
+        </CollapsibleEffectGroup>
+      </div>
+
       <!-- Shapes -->
       <div v-show="activeTab === 'shapes'" class="flex flex-col gap-4 pb-4">
         <!-- Standard Shapes -->

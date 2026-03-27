@@ -2,12 +2,12 @@ import { z } from 'zod';
 import { DEFAULT_USER_SETTINGS, type FastCatUserSettings } from '../defaults';
 import {
   CLICK_ACTIONS,
-  DRAG_ACTIONS,
   MONITOR_CLICK_ACTIONS,
   MONITOR_DRAG_ACTIONS,
   MONITOR_WHEEL_ACTIONS,
   MOUSE_HORIZONTAL_MOVEMENT_ACTIONS,
   RULER_WHEEL_ACTIONS,
+  TIMELINE_DRAG_ACTIONS,
   TIMELINE_WHEEL_ACTIONS,
   TRACK_HEADERS_WHEEL_ACTIONS,
 } from '~/utils/mouse';
@@ -228,7 +228,7 @@ export function normalizeProjectDefaults(raw: unknown): FastCatUserSettings['pro
 export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse'] {
   const rWheelEnum = z.enum(RULER_WHEEL_ACTIONS as any);
   const clickEnum = z.enum(CLICK_ACTIONS as any);
-  const dragEnum = z.enum(DRAG_ACTIONS as any);
+  const dragEnum = z.enum(TIMELINE_DRAG_ACTIONS as any);
   const horizEnum = z.enum(MOUSE_HORIZONTAL_MOVEMENT_ACTIONS as any);
   const tWheelEnum = z.enum(TIMELINE_WHEEL_ACTIONS as any);
   const thWheelEnum = z.enum(TRACK_HEADERS_WHEEL_ACTIONS as any);
@@ -281,36 +281,9 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
           horizontalMovement: horizEnum.catch(
             DEFAULT_USER_SETTINGS.mouse.timeline.horizontalMovement as any,
           ),
-          clipDragShift: z
-            .enum([
-              'pseudo_overlap',
-              'free_mode',
-              'copy',
-              'toggle_snap',
-              'toggle_clip_move_mode',
-              'none',
-            ])
-            .catch(DEFAULT_USER_SETTINGS.mouse.timeline.clipDragShift),
-          clipDragCtrl: z
-            .enum([
-              'pseudo_overlap',
-              'free_mode',
-              'copy',
-              'toggle_snap',
-              'toggle_clip_move_mode',
-              'none',
-            ])
-            .catch(DEFAULT_USER_SETTINGS.mouse.timeline.clipDragCtrl),
-          clipDragRight: z
-            .enum([
-              'pseudo_overlap',
-              'free_mode',
-              'copy',
-              'toggle_snap',
-              'toggle_clip_move_mode',
-              'none',
-            ])
-            .catch(DEFAULT_USER_SETTINGS.mouse.timeline.clipDragRight),
+          clipDragShift: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.clipDragShift as any),
+          clipDragCtrl: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.clipDragCtrl as any),
+          clipDragRight: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.clipDragRight as any),
         })
         .catch(DEFAULT_USER_SETTINGS.mouse.timeline),
 

@@ -63,11 +63,11 @@ export const MIDDLE_CLICK_ACTIONS = CLICK_ACTIONS;
 
 export const TRACK_HEADERS_CLICK_ACTIONS = ['select_track', 'select_all_clips', 'none'] as const;
 
-export const DRAG_ACTIONS = ['pan', 'move_playhead', 'move_clips', 'select_area', 'none'] as const;
-export const MOUSE_HORIZONTAL_MOVEMENT_ACTIONS = ['move_playhead', 'none'] as const;
-export type MouseHorizontalMovementAction = (typeof MOUSE_HORIZONTAL_MOVEMENT_ACTIONS)[number];
-
-export const CLIP_DRAG_ACTIONS = [
+export const TIMELINE_DRAG_ACTIONS = [
+  'pan',
+  'move_playhead',
+  'move_clips',
+  'select_area',
   'toggle_clip_move_mode',
   'pseudo_overlap',
   'free_mode',
@@ -76,7 +76,14 @@ export const CLIP_DRAG_ACTIONS = [
   'none',
 ] as const;
 
-export type ClipDragAction = (typeof CLIP_DRAG_ACTIONS)[number];
+export type TimelineDragAction = (typeof TIMELINE_DRAG_ACTIONS)[number];
+
+export const DRAG_ACTIONS = TIMELINE_DRAG_ACTIONS;
+
+export const CLIP_DRAG_ACTIONS = TIMELINE_DRAG_ACTIONS;
+
+export const MOUSE_HORIZONTAL_MOVEMENT_ACTIONS = ['move_playhead', 'none'] as const;
+export type MouseHorizontalMovementAction = (typeof MOUSE_HORIZONTAL_MOVEMENT_ACTIONS)[number];
 
 export const SHIFT_CLICK_ACTIONS = RULER_CLICK_ACTIONS;
 
