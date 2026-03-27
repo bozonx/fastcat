@@ -72,9 +72,9 @@ export function useFileBrowserRemote({
   const remoteTransferFileName = ref('');
   const remoteTransferAbortController = ref<AbortController | null>(null);
 
-  const fastcatBaseUrl = computed(() =>
-    typeof runtimeConfig.public.fastcatPublicadorBaseUrl === 'string'
-      ? runtimeConfig.public.fastcatPublicadorBaseUrl
+  const bloggerDogApiUrl = computed(() =>
+    typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
+      ? runtimeConfig.public.bloggerDogApiUrl
       : '',
   );
 
@@ -82,7 +82,7 @@ export function useFileBrowserRemote({
     resolveExternalServiceConfig({
       service: 'files',
       integrations: workspaceStore.userSettings.integrations,
-      fastcatPublicadorBaseUrl: fastcatBaseUrl.value,
+      bloggerDogApiUrl: bloggerDogApiUrl.value,
     }),
   );
 

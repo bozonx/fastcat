@@ -69,9 +69,9 @@ const remoteFilesConfig = computed(() =>
   resolveExternalServiceConfig({
     service: 'files',
     integrations: workspaceStore.userSettings.integrations,
-    fastcatPublicadorBaseUrl:
-      typeof runtimeConfig.public.fastcatPublicadorBaseUrl === 'string'
-        ? runtimeConfig.public.fastcatPublicadorBaseUrl
+    bloggerDogApiUrl:
+      typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
+        ? runtimeConfig.public.bloggerDogApiUrl
         : '',
   }),
 );
@@ -85,9 +85,9 @@ const sttConfig = computed(() =>
   resolveExternalServiceConfig({
     service: 'stt',
     integrations: workspaceStore.userSettings.integrations,
-    fastcatPublicadorBaseUrl:
-      typeof runtimeConfig.public.fastcatPublicadorBaseUrl === 'string'
-        ? runtimeConfig.public.fastcatPublicadorBaseUrl
+    bloggerDogApiUrl:
+      typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
+        ? runtimeConfig.public.bloggerDogApiUrl
         : '',
   }),
 );
@@ -249,9 +249,9 @@ const {
   currentProjectId: computed(() => projectStore.currentProjectId),
   resolvedStorageTopology: computed(() => workspaceStore.resolvedStorageTopology),
   userSettings: computed(() => workspaceStore.userSettings),
-  fastcatPublicadorBaseUrl: computed(() =>
-    typeof runtimeConfig.public.fastcatPublicadorBaseUrl === 'string'
-      ? runtimeConfig.public.fastcatPublicadorBaseUrl
+  bloggerDogApiUrl: computed(() =>
+    typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
+      ? runtimeConfig.public.bloggerDogApiUrl
       : '',
   ),
   getFileByPath: (path) => projectStore.getFileByPath(path),

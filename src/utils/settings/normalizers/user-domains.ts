@@ -146,7 +146,6 @@ export function normalizeIntegrationsSettings(raw: unknown): FastCatUserSettings
         .object({
           enabled: z.coerce.boolean().catch(false),
           bearerToken: z.string().transform(normalizeTokenValue).catch(''),
-          baseUrl: z.string().transform(normalizeUrlValue).catch(''),
         })
         .catch(DEFAULT_USER_SETTINGS.integrations.fastcatPublicador),
       manualFilesApi: z

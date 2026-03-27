@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { reactive, computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import UiTextInput from '~/components/ui/UiTextInput.vue';
-import UiFormField from '~/components/ui/UiFormField.vue';
 
 import { FASTCAT_PUBLICADOR_APP_NAME } from '~/utils/constants';
 import {
@@ -25,13 +23,14 @@ const healthState = reactive({
 
 const fastcat = computed(() => workspaceStore.userSettings?.integrations?.fastcatPublicador);
 
-const fastcatPublicadorBaseUrl = computed(() => {
-  const value = runtimeConfig.public.fastcatPublicadorBaseUrl;
+const bloggerDogApiUrl = computed(() => {
+  const value = runtimeConfig.public.bloggerDogApiUrl;
   return typeof value === 'string' ? value.trim() : '';
 });
 
-const effectiveBaseUrl = computed(() => {
-  return (fastcat.value?.baseUrl || '').trim() || fastcatPublicadorBaseUrl.value;
+const bloggerDogUiUrl = computed(() => {
+  const value = runtimeConfig.public.bloggerDogUiUrl;
+  return typeof value === 'string' ? value.trim() : '';
 });
 
 const redirectUri = computed(() => {
@@ -40,9 +39,9 @@ const redirectUri = computed(() => {
 });
 
 const fastcatConnectUrl = computed(() => {
-  if (!effectiveBaseUrl.value) return '';
+  if (!bloggerDogUiUrl.value) return '';
   return getFastCatPublicadorConnectUrl({
-    baseUrl: effectiveBaseUrl.value,
+    uiUrl: bloggerDogUiUrl.value,
     name: FASTCAT_PUBLICADOR_APP_NAME,
     redirectUri: redirectUri.value,
     scopes: resolveFastCatConnectScopes({ integrations: workspaceStore.userSettings.integrations }),
@@ -68,13 +67,13 @@ function startFastCatConnect() {
 }
 
 async function runHealth() {
-  const healthUrl = getFastCatPublicadorHealthUrl(effectiveBaseUrl.value);
+  const healthUrl = getFastCatPublicadorHealthUrl(bloggerDogApiUrl.value);
 
-  if (!healthUrl || !fastcat.value.bearerToken.trim()) {
+  if (!healthUrl || !fastcat.value?.bearerToken?.trim()) {
     healthState.status = 'error';
     healthState.message = t(
       'videoEditor.settings.integrationHealthMissingConfig',
-      'Set FastCat base URL and bearer token first.',
+      'BloggerDog API URL or token is missing.',
     );
     return;
   }
@@ -115,7 +114,7 @@ function getHealthTone(status: typeof healthState.status) {
         </div>
       </div>
       <div
-        v-if="fastcat.bearerToken"
+        v-if="fastcat?.bearerToken"
         class="flex items-center gap-1.5 px-2 py-1 rounded-md bg-success-500/10 text-success-400 text-xs font-medium shrink-0"
       >
         <UIcon name="i-heroicons-check-circle" class="h-4 w-4" />
@@ -124,34 +123,33 @@ function getHealthTone(status: typeof healthState.status) {
     </div>
 
     <!-- NOT CONNECTED STATE -->
-    <div v-if="!fastcat.bearerToken" class="flex flex-col gap-4 mt-2">
-      <UiFormField :label="t('videoEditor.settings.integrationBaseUrl', 'Instance URL')">
-        <UiTextInput
-          v-model="workspaceStore.userSettings.integrations.fastcatPublicador.baseUrl"
-          :placeholder="fastcatPublicadorBaseUrl || 'https://domain.com'"
-          full-width
-        />
-        <template #help>
-          <div class="text-2xs text-ui-text-muted mt-1">
-            {{ t('videoEditor.settings.integrationScopes', 'Requested scopes') }}:
-            {{ fastcatConnectScopesLabel }}
-          </div>
-        </template>
-      </UiFormField>
+    <div v-if="!fastcat?.bearerToken" class="flex flex-col gap-4 mt-2">
+      <div class="flex flex-col gap-1 p-2 rounded bg-ui-bg-muted/50 border border-ui-border/50">
+        <div class="text-2xs text-ui-text-muted">
+          API URL: <span class="text-ui-text">{{ bloggerDogApiUrl || '—' }}</span>
+        </div>
+        <div class="text-2xs text-ui-text-muted">
+          UI URL: <span class="text-ui-text">{{ bloggerDogUiUrl || '—' }}</span>
+        </div>
+        <div class="text-2xs text-ui-text-muted mt-1">
+          {{ t('videoEditor.settings.integrationScopes', 'Requested scopes') }}:
+          {{ fastcatConnectScopesLabel }}
+        </div>
+      </div>
 
       <div class="flex items-center gap-3">
         <UButton
           color="primary"
           variant="solid"
-          :disabled="!effectiveBaseUrl"
+          :disabled="!bloggerDogUiUrl"
           @click="startFastCatConnect"
         >
           {{ t('videoEditor.settings.integrationConnectAction', 'Connect') }}
         </UButton>
 
         <a
-          v-if="effectiveBaseUrl"
-          :href="effectiveBaseUrl"
+          v-if="bloggerDogUiUrl"
+          :href="bloggerDogUiUrl"
           target="_blank"
           class="text-xs text-primary-400 hover:underline flex items-center gap-1 ml-auto"
         >
@@ -165,10 +163,10 @@ function getHealthTone(status: typeof healthState.status) {
     <div v-else class="flex flex-col gap-5 mt-2">
       <div class="flex flex-col gap-1.5 p-3 rounded-lg border border-ui-border bg-ui-bg">
         <div class="text-2xs uppercase tracking-wider text-ui-text-muted font-bold">
-          {{ t('videoEditor.settings.integrationBaseUrl', 'Instance URL') }}
+          {{ t('videoEditor.settings.integrationBaseUrl', 'API URL') }}
         </div>
         <div class="text-sm text-ui-text break-all">
-          {{ effectiveBaseUrl }}
+          {{ bloggerDogApiUrl }}
         </div>
       </div>
 

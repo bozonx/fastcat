@@ -14,7 +14,7 @@ export interface SttTranscriptionRequest {
   fileName: string;
   fileType: string;
   language?: string;
-  fastcatPublicadorBaseUrl: string;
+  bloggerDogApiUrl: string;
   projectId: string;
   userSettings: FastCatUserSettings;
   workspaceHandle: FileSystemDirectoryHandle;
@@ -133,11 +133,11 @@ export async function transcribeProjectAudioFile(
   const resolvedConfig = resolveExternalServiceConfig({
     service: 'stt',
     integrations: input.userSettings.integrations,
-    fastcatPublicadorBaseUrl: input.fastcatPublicadorBaseUrl,
+    bloggerDogApiUrl: input.bloggerDogApiUrl,
   });
   const endpoint = resolveSttStreamUrl({
     userSettings: input.userSettings,
-    fastcatPublicadorBaseUrl: input.fastcatPublicadorBaseUrl,
+    bloggerDogApiUrl: input.bloggerDogApiUrl,
   });
 
   if (!resolvedConfig || !endpoint) {

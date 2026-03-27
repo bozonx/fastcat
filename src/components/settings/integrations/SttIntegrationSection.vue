@@ -31,8 +31,8 @@ const isManualSttEnabled = computed({
   },
 });
 
-const fastcatPublicadorBaseUrl = computed(() => {
-  const value = runtimeConfig.public.fastcatPublicadorBaseUrl;
+const bloggerDogApiUrl = computed(() => {
+  const value = runtimeConfig.public.bloggerDogApiUrl;
   return typeof value === 'string' ? value.trim() : '';
 });
 
@@ -40,7 +40,7 @@ const sttSourceLabel = computed(() => {
   const resolved = resolveExternalServiceConfig({
     service: 'stt',
     integrations: workspaceStore.userSettings.integrations,
-    fastcatPublicadorBaseUrl: fastcatPublicadorBaseUrl.value,
+    bloggerDogApiUrl: bloggerDogApiUrl.value,
   });
   if (!resolved) return t('videoEditor.settings.integrationInactive', 'Not connected');
   return resolved.source === 'fastcat_publicador'
@@ -62,7 +62,7 @@ async function runHealth() {
   const resolved = resolveExternalServiceConfig({
     service: 'stt',
     integrations: workspaceStore.userSettings.integrations,
-    fastcatPublicadorBaseUrl: fastcatPublicadorBaseUrl.value,
+    bloggerDogApiUrl: bloggerDogApiUrl.value,
   });
 
   if (!resolved) {

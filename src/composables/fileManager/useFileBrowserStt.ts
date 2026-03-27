@@ -21,9 +21,9 @@ export function useFileBrowserStt() {
   const sttTranscribing = ref(false);
   const sttTranscriptionEntry = ref<FsEntry | null>(null);
 
-  const fastcatBaseUrl = computed(() =>
-    typeof runtimeConfig.public.fastcatPublicadorBaseUrl === 'string'
-      ? runtimeConfig.public.fastcatPublicadorBaseUrl
+  const bloggerDogApiUrl = computed(() =>
+    typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
+      ? runtimeConfig.public.bloggerDogApiUrl
       : '',
   );
 
@@ -31,7 +31,7 @@ export function useFileBrowserStt() {
     resolveExternalServiceConfig({
       service: 'stt',
       integrations: workspaceStore.userSettings.integrations,
-      fastcatPublicadorBaseUrl: fastcatBaseUrl.value,
+      bloggerDogApiUrl: bloggerDogApiUrl.value,
     }),
   );
 
@@ -76,13 +76,13 @@ export function useFileBrowserStt() {
 
       if (!file) throw new Error('Failed to access file for transcription');
 
-      const request: SttTranscriptionRequest = {
+      const request: any = {
         file,
         filePath: entry.path,
         fileName: entry.name,
         fileType,
         language: sttTranscriptionLanguage.value,
-        fastcatPublicadorBaseUrl: fastcatBaseUrl.value,
+        bloggerDogApiUrl: bloggerDogApiUrl.value,
         projectId: projectStore.currentProjectId!,
         userSettings: workspaceStore.userSettings,
         workspaceHandle: workspaceStore.workspaceHandle!,

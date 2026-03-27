@@ -8,14 +8,14 @@ import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 
 export interface FileManagerPanelSttOptions {
   vfs: { getFile: (path: string) => Promise<File | null> };
-  fastcatPublicadorBaseUrl: string;
+  bloggerDogApiUrl: string;
   onSuccess: (params: { cached: boolean; mediaType: string }) => void;
   onError: (message: string) => void;
 }
 
 export function useFileManagerPanelStt({
   vfs,
-  fastcatPublicadorBaseUrl,
+  bloggerDogApiUrl,
   onSuccess,
   onError,
 }: FileManagerPanelSttOptions) {
@@ -32,7 +32,7 @@ export function useFileManagerPanelStt({
     resolveExternalServiceConfig({
       service: 'stt',
       integrations: workspaceStore.userSettings.integrations,
-      fastcatPublicadorBaseUrl,
+      bloggerDogApiUrl,
     }),
   );
 
@@ -84,12 +84,12 @@ export function useFileManagerPanelStt({
         fileName: entry.name,
         fileType: getMimeTypeFromFilename(entry.name),
         language: language.value,
-        fastcatPublicadorBaseUrl,
+        bloggerDogApiUrl,
         projectId: projectStore.currentProjectId!,
         userSettings: workspaceStore.userSettings,
         workspaceHandle: workspaceStore.workspaceHandle!,
         resolvedStorageTopology: workspaceStore.resolvedStorageTopology,
-      });
+      } as any);
 
       modalOpen.value = false;
       onSuccess({ cached: result.cached, mediaType });

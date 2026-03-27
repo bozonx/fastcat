@@ -3,6 +3,9 @@ import { setActivePinia, createPinia } from 'pinia';
 import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
 import { useTimelineStore } from '~/stores/timeline.store';
 
+import { mount } from '@vue/test-utils';
+import { defineComponent, h } from 'vue';
+
 describe('useMonitorTimeline', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
@@ -10,6 +13,19 @@ describe('useMonitorTimeline', () => {
 
   function getTimelineStore(): any {
     return useTimelineStore() as any;
+  }
+
+  // Helper to run useMonitorTimeline within a component context
+  function withMonitorTimeline<T>(fn: (res: ReturnType<typeof useMonitorTimeline>) => T): T {
+    let result: any;
+    const TestComp = defineComponent({
+      setup() {
+        result = useMonitorTimeline();
+        return () => h('div');
+      },
+    });
+    mount(TestComp);
+    return fn(result);
   }
 
   it('provides monitor timeline clip collections', () => {
