@@ -325,3 +325,16 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
 
   return schema.parse(raw ?? {});
 }
+
+export function normalizeHistorySettings(raw: unknown): FastCatUserSettings['history'] {
+  return z
+    .object({
+      maxEntries: z.coerce
+        .number()
+        .min(1)
+        .max(1000)
+        .catch(DEFAULT_USER_SETTINGS.history.maxEntries),
+    })
+    .catch(DEFAULT_USER_SETTINGS.history)
+    .parse((raw as any)?.history ?? {});
+}

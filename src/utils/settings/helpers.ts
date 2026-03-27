@@ -95,6 +95,7 @@ export function createDefaultUserSettings(): FastCatUserSettings {
       monitor: { ...DEFAULT_USER_SETTINGS.mouse.monitor },
       ruler: { ...DEFAULT_USER_SETTINGS.mouse.ruler },
     },
+    history: { ...DEFAULT_USER_SETTINGS.history },
   };
 }
 

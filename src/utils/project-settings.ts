@@ -165,7 +165,7 @@ export function createDefaultProjectSettings(
 }
 
 function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
-  const dm = defaults.monitors.cut;
+  const dm = defaults.monitors.cut ?? DEFAULT_MONITOR_SETTINGS;
   const monitorSchema = z.object({
     previewResolution: z.coerce.number().min(0.01).max(4320).catch(dm.previewResolution),
     useProxy: z.coerce.boolean().catch(dm.useProxy),
@@ -296,14 +296,17 @@ export function normalizeProjectSettings(
 
   const mergedMonitors: Record<string, MonitorSettings> = {};
   for (const view of ['cut', 'sound', 'export'] as const) {
+    const base = defaults.monitors[view] ?? DEFAULT_MONITOR_SETTINGS;
     mergedMonitors[view] = {
-      ...defaults.monitors[view],
+      ...base,
       ...(parsed.monitors[view] ?? {}),
-    };
+    } as MonitorSettings;
   }
   for (const key of Object.keys(parsed.monitors)) {
     if (key === 'cut' || key === 'sound' || key === 'export') continue;
-    mergedMonitors[key] = { ...defaults.monitors.cut, ...parsed.monitors[key]! };
+    const patch = parsed.monitors[key];
+    if (!patch) continue;
+    mergedMonitors[key] = { ...(defaults.monitors.cut ?? DEFAULT_MONITOR_SETTINGS), ...patch };
   }
 
   return { ...parsed, monitors: mergedMonitors };

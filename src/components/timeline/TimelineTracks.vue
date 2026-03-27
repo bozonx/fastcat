@@ -22,6 +22,9 @@ import TimelineClip from './TimelineClip.vue';
 import TimelineGap from './TimelineGap.vue';
 import TimelineSpeedModal from './TimelineSpeedModal.vue';
 
+import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+
 const { t } = useI18n();
 
 const timelineStore = useTimelineStore();
@@ -145,9 +148,6 @@ function resolveTimelineDragAction(e: PointerEvent): string {
   if (e.button === 2) return settings.clipDragRight;
   return 'none';
 }
-
-import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
-import { useWorkspaceStore } from '~/stores/workspace.store';
 
 function shouldStartMarquee(e: PointerEvent): boolean {
   if (e.target !== e.currentTarget && !(e.target as HTMLElement).hasAttribute('data-track-id')) {

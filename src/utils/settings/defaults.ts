@@ -189,6 +189,9 @@ export interface FastCatUserSettings {
   ui: {
     interfaceScale: number;
   };
+  history: {
+    maxEntries: number;
+  };
 }
 
 export interface FastCatAppSettings {
@@ -300,7 +303,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       middleDrag: 'pan',
       horizontalMovement: 'none',
       clipDragShift: 'toggle_clip_move_mode',
-      clipDragCtrl: 'copy',
+      clipDragCtrl: 'free_mode',
       clipDragRight: 'copy',
     },
     trackHeaders: {
@@ -325,6 +328,9 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
   deleteWithoutConfirmation: false,
   ui: {
     interfaceScale: 14,
+  },
+  history: {
+    maxEntries: 100,
   },
 };
 

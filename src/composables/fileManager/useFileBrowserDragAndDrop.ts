@@ -203,7 +203,9 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     }
     dragOverEntryPath.value = entry.path ?? null;
     e.dataTransfer!.dropEffect =
-      types.includes('Files') || types.includes(FILE_MANAGER_COPY_DRAG_TYPE) || isCopyModifierActive(e)
+      types.includes('Files') ||
+      types.includes(FILE_MANAGER_COPY_DRAG_TYPE) ||
+      isCopyModifierActive(e)
         ? 'copy'
         : 'move';
   }
@@ -316,7 +318,9 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
         setCurrentDragOperation(resolveDragOperation(e));
       }
       e.dataTransfer!.dropEffect =
-        types.includes('Files') || types.includes(FILE_MANAGER_COPY_DRAG_TYPE) || isCopyModifierActive(e)
+        types.includes('Files') ||
+        types.includes(FILE_MANAGER_COPY_DRAG_TYPE) ||
+        isCopyModifierActive(e)
           ? 'copy'
           : 'move';
     }

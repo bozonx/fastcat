@@ -3,6 +3,10 @@ import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useHistoryStore } from '~/stores/history.store';
 
+// Import useFileManager here to avoid circular dependencies if any,
+// though it should be fine as it's a composable.
+import { useFileManager } from '~/composables/fileManager/useFileManager';
+
 const timelineStore = useTimelineStore();
 const historyStore = useHistoryStore();
 
@@ -32,7 +36,7 @@ function handleUndo() {
     timelineStore.applyRestoredSnapshot(entry.snapshot);
   } else if (entry.scope === 'fileManager') {
     // We can use useFileManager() here
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+
     const { restoreHistory } = useFileManager();
     void restoreHistory(entry.snapshot);
   }
@@ -48,10 +52,6 @@ function handleRedo() {
     void restoreHistory(entry.snapshot);
   }
 }
-
-// Import useFileManager here to avoid circular dependencies if any, 
-// though it should be fine as it's a composable.
-import { useFileManager } from '~/composables/fileManager/useFileManager';
 </script>
 
 <template>

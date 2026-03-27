@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, toRaw } from 'vue';
 
-const MAX_HISTORY_SIZE = 100;
+import { useWorkspaceStore } from './workspace.store';
 
 export interface HistoryEntry<T = unknown> {
   id: number;
@@ -19,6 +19,9 @@ export interface HistoryEntry<T = unknown> {
 let entryIdCounter = 0;
 
 export const useHistoryStore = defineStore('history', () => {
+  const workspaceStore = useWorkspaceStore();
+  const maxEntries = computed(() => workspaceStore.userSettings.history.maxEntries);
+
   /** Past states: index 0 is the oldest, last is the most recent undo target */
   const past = ref<HistoryEntry<any>[]>([]);
   /** Future states available for redo, index 0 is the next redo */
@@ -66,14 +69,14 @@ export const useHistoryStore = defineStore('history', () => {
       labelKey,
       scope,
       commandType,
-      snapshot,
+      snapshot: isCommandScope(scope) ? snapshot : structuredClone(toRaw(snapshot)),
       timestamp: Date.now(),
     };
 
     past.value.push(entry);
 
-    if (past.value.length > MAX_HISTORY_SIZE) {
-      past.value.splice(0, past.value.length - MAX_HISTORY_SIZE);
+    if (past.value.length > maxEntries.value) {
+      past.value.splice(0, past.value.length - maxEntries.value);
     }
 
     // Branching: clear redo stack for this scope on new action
@@ -102,7 +105,7 @@ export const useHistoryStore = defineStore('history', () => {
     } else {
       future.value.unshift({
         ...entry,
-        snapshot: currentDoc,
+        snapshot: structuredClone(toRaw(currentDoc)),
       });
     }
 
@@ -130,7 +133,7 @@ export const useHistoryStore = defineStore('history', () => {
     } else {
       past.value.push({
         ...entry,
-        snapshot: currentDoc,
+        snapshot: structuredClone(toRaw(currentDoc)),
       });
     }
 
@@ -142,22 +145,27 @@ export const useHistoryStore = defineStore('history', () => {
     if (!entry) return null;
 
     const scope = entry.scope;
-    const currentDoc = stateGetters.get(scope)?.(entry);
-    const snapshot = undo(scope, currentDoc);
-    if (snapshot === null) return null;
+    try {
+      const currentDoc = stateGetters.get(scope)?.(entry);
+      const snapshot = undo(scope, currentDoc);
+      if (snapshot === null) return null;
 
-    // For command-based scopes, extract the appropriate command
-    if (isCommandScope(scope) && snapshot && typeof snapshot === 'object' && 'undo' in snapshot) {
+      // For command-based scopes, extract the appropriate command
+      if (isCommandScope(scope) && snapshot && typeof snapshot === 'object' && 'undo' in snapshot) {
+        return {
+          ...entry,
+          snapshot: (snapshot as { undo: unknown; redo: unknown }).undo,
+        };
+      }
+
       return {
         ...entry,
-        snapshot: (snapshot as { undo: unknown; redo: unknown }).undo,
+        snapshot,
       };
+    } catch (error) {
+      console.error(`Failed to undo global action for scope ${scope}:`, error);
+      return null;
     }
-
-    return {
-      ...entry,
-      snapshot,
-    };
   }
 
   function redoGlobal(): HistoryEntry<any> | null {
@@ -165,22 +173,27 @@ export const useHistoryStore = defineStore('history', () => {
     if (!entry) return null;
 
     const scope = entry.scope;
-    const currentDoc = stateGetters.get(scope)?.(entry);
-    const snapshot = redo(scope, currentDoc);
-    if (snapshot === null) return null;
+    try {
+      const currentDoc = stateGetters.get(scope)?.(entry);
+      const snapshot = redo(scope, currentDoc);
+      if (snapshot === null) return null;
 
-    // For command-based scopes, extract the appropriate command
-    if (isCommandScope(scope) && snapshot && typeof snapshot === 'object' && 'redo' in snapshot) {
+      // For command-based scopes, extract the appropriate command
+      if (isCommandScope(scope) && snapshot && typeof snapshot === 'object' && 'redo' in snapshot) {
+        return {
+          ...entry,
+          snapshot: (snapshot as { undo: unknown; redo: unknown }).redo,
+        };
+      }
+
       return {
         ...entry,
-        snapshot: (snapshot as { undo: unknown; redo: unknown }).redo,
+        snapshot,
       };
+    } catch (error) {
+      console.error(`Failed to redo global action for scope ${scope}:`, error);
+      return null;
     }
-
-    return {
-      ...entry,
-      snapshot,
-    };
   }
 
   /** Clears the entire history for a scope */

@@ -180,7 +180,7 @@ export function createTimelineDispatcher(deps: TimelineDispatcherDeps): Timeline
     deps.duration.value = selectTimelineDurationUs(snapshot);
     deps.markTimelineAsDirty();
     void deps.requestTimelineSave();
-    
+
     // Clear selection if needed to avoid invalid refs?
     // Usually undo/redo doesn't clear selection unless objects were deleted.
   }

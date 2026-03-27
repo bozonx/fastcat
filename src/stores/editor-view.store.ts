@@ -204,7 +204,10 @@ export function createEditorViewModule(
   watch(
     cutPanels,
     (panels) => {
-      writeLocalStorageJson(cutPanelsKey.value, sanitizePanelColumns(panels, getDefaultCutLayout()));
+      writeLocalStorageJson(
+        cutPanelsKey.value,
+        sanitizePanelColumns(panels, getDefaultCutLayout()),
+      );
     },
     { deep: true },
   );

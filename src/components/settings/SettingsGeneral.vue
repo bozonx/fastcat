@@ -35,6 +35,7 @@ function resetGeneralDefaults() {
     DEFAULT_USER_SETTINGS.optimization.mediaTaskConcurrency;
   workspaceStore.userSettings.deleteWithoutConfirmation =
     DEFAULT_USER_SETTINGS.deleteWithoutConfirmation;
+  workspaceStore.userSettings.history.maxEntries = DEFAULT_USER_SETTINGS.history.maxEntries;
 
   isResetConfirmOpen.value = false;
 }
@@ -173,6 +174,19 @@ function clearCache() {
             :max="20"
             :step="1"
             :wheel-step-multiplier="5"
+          />
+        </UiFormField>
+
+        <UiFormField
+          :label="t('videoEditor.settings.historyMaxEntries', 'Undo history limit')"
+          :help="t('videoEditor.settings.historyMaxEntriesHelp')"
+        >
+          <UiWheelNumberInput
+            v-model="workspaceStore.userSettings.history.maxEntries"
+            :min="1"
+            :max="1000"
+            :step="1"
+            :wheel-step-multiplier="10"
           />
         </UiFormField>
 

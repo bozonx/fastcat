@@ -13,6 +13,7 @@ import {
   normalizeTimelineSettings,
   normalizeVideoSettings,
   normalizeProjectDefaults,
+  normalizeHistorySettings,
 } from './normalizers/user-domains';
 import { normalizeLocale } from './normalizers/shared';
 
@@ -68,6 +69,7 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
     integrations: normalizeIntegrationsSettings(input),
     video: normalizeVideoSettings(input),
     mouse: normalizeMouseSettings(input.mouse),
+    history: normalizeHistorySettings(input),
   };
 }
 
