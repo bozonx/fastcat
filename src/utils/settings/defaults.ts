@@ -149,6 +149,7 @@ export interface FastCatUserSettings {
         | 'select_item'
         | 'select_multiple'
         | 'none';
+      drag: 'pan' | 'move_playhead' | 'move_clips' | 'select_area' | 'none';
       middleClick:
         | 'seek'
         | 'add_marker'
@@ -158,7 +159,7 @@ export interface FastCatUserSettings {
         | 'select_item'
         | 'select_multiple'
         | 'none';
-      middleDrag: 'pan' | 'move_playhead' | 'select_area' | 'none';
+      middleDrag: 'pan' | 'move_playhead' | 'move_clips' | 'select_area' | 'none';
       horizontalMovement: 'move_playhead' | 'none';
       clipDragShift:
         | 'pseudo_overlap'
@@ -311,6 +312,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       wheelSecondaryShift: 'zoom_vertical',
       click: 'select_item',
       shiftClick: 'select_multiple',
+      drag: 'move_clips',
       middleClick: 'fit_zoom',
       middleDrag: 'pan',
       horizontalMovement: 'none',
