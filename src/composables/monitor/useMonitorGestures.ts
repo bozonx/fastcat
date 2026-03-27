@@ -167,6 +167,21 @@ export function useMonitorGestures(input: {
     }
   }
 
+  function onViewportDoubleClick(event: MouseEvent) {
+    const settings = workspaceStore.userSettings.mouse.monitor;
+    const action = settings.doubleClick;
+
+    if (action === 'fit') {
+      fitMonitor();
+    } else if (action === 'center') {
+      centerMonitor();
+    } else if (action === 'reset_zoom') {
+      resetZoom();
+    } else if (action === 'reset_zoom_center') {
+      resetView();
+    }
+  }
+
   function onViewportContextMenu(event: MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
@@ -268,9 +283,6 @@ export function useMonitorGestures(input: {
     }
 
     if (action === 'scroll_horizontal') {
-      // Let native horizontal scroll happen if trackpad
-      if (isSecondaryWheel(e) && !isShift) return;
-
       e.preventDefault();
       panX.value -= delta;
       return;
@@ -317,6 +329,7 @@ export function useMonitorGestures(input: {
     onViewportPointerDown,
     onViewportPointerMove,
     onViewportAuxClick,
+    onViewportDoubleClick,
     stopPan,
     onViewportWheel,
     onViewportContextMenu,

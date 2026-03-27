@@ -61,6 +61,12 @@ export const RULER_DOUBLE_CLICK_ACTIONS = RULER_CLICK_ACTIONS;
 
 export const MIDDLE_CLICK_ACTIONS = CLICK_ACTIONS;
 
+export const TRACK_HEADERS_CLICK_ACTIONS = [
+  'select_track',
+  'select_all_clips',
+  'none',
+] as const;
+
 export const DRAG_ACTIONS = ['pan', 'move_playhead', 'select_area', 'none'] as const;
 export const MOUSE_HORIZONTAL_MOVEMENT_ACTIONS = ['move_playhead', 'none'] as const;
 export type MouseHorizontalMovementAction = (typeof MOUSE_HORIZONTAL_MOVEMENT_ACTIONS)[number];
