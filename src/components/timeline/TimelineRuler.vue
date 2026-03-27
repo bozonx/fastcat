@@ -35,6 +35,7 @@ const timelineStore = useTimelineStore();
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
 const workspaceStore = useWorkspaceStore();
+const timelineSettingsStore = useTimelineSettingsStore();
 
 const width = ref(0);
 const height = ref(0);
@@ -135,6 +136,8 @@ function selectSelectionRange(e?: MouseEvent) {
   selectionStore.selectTimelineSelectionRange();
 }
 
+const isSnappingEnabled = computed(() => timelineSettingsStore.toolbarSnapMode !== 'no_snap');
+
 const { onMarkerPointerDown, displayMarkers, draggedMarkerId } = useTimelineRulerMarkerDrag({
   markers,
   zoom,
@@ -143,6 +146,8 @@ const { onMarkerPointerDown, displayMarkers, draggedMarkerId } = useTimelineRule
   updateMarker: timelineStore.updateMarker,
   computeSnapTargets,
   snapThresholdPx: computed(() => snapThresholdPx.value),
+  isSnappingEnabled,
+  getTimeUsFromPointerEvent: (event) => getTimeUsFromMouseEvent(event as unknown as MouseEvent),
 });
 
 const {
@@ -163,6 +168,7 @@ const {
   setPreviewSelectionRange: timelineStore.setPreviewSelectionRange,
   computeSnapTargets,
   snapThresholdPx,
+  isSnappingEnabled,
 });
 
 const hoveredMarkerId = ref<string | null>(null);
