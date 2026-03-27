@@ -158,8 +158,6 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'general.navigateSelectionDown', groupId: 'general', title: 'Navigate selection down' },
     { id: 'general.navigateSelectionLeft', groupId: 'general', title: 'Navigate selection left' },
     { id: 'general.navigateSelectionRight', groupId: 'general', title: 'Navigate selection right' },
-    { id: 'general.monitorVolumeUp', groupId: 'general', title: 'Monitor Volume Up' },
-    { id: 'general.monitorVolumeDown', groupId: 'general', title: 'Monitor Volume Down' },
 
     { id: 'timeline.toggleSnap', groupId: 'timeline', title: 'Toggle snap' },
     {
@@ -292,6 +290,8 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'playback.forward0_5', groupId: 'playback', title: 'Forward x0.5' },
     { id: 'playback.backward0_5', groupId: 'playback', title: 'Backward x0.5 (Monitor only)' },
     { id: 'playback.backward1', groupId: 'playback', title: 'Backward x1 (Monitor only)' },
+    { id: 'general.monitorVolumeUp', groupId: 'playback', title: 'Monitor Volume Up' },
+    { id: 'general.monitorVolumeDown', groupId: 'playback', title: 'Monitor Volume Down' },
   ],
   bindings: {
     'general.focus': ['Tab'],
@@ -331,7 +331,7 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     'general.snapshot': ['H'],
     'general.newTimeline': ['N'],
     'general.navigateBack': ['Backspace'],
-    'general.navigateUp': ['Control+ArrowUp'],
+    'general.navigateUp': [`${Mod}+ArrowUp`],
     'general.navigateSelectionUp': ['ArrowUp'],
     'general.navigateSelectionDown': ['ArrowDown'],
     'general.navigateSelectionLeft': ['ArrowLeft'],

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
+import UiTooltip from '~/components/ui/UiTooltip.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -8,11 +9,17 @@ const props = withDefaults(
     isMuted: boolean;
     orientation?: 'horizontal' | 'vertical';
     max?: number;
+    muteTooltip?: string;
+    volumeUpTooltip?: string;
+    volumeDownTooltip?: string;
   }>(),
   {
     compact: false,
     orientation: 'vertical',
     max: 1,
+    muteTooltip: '',
+    volumeUpTooltip: '',
+    volumeDownTooltip: '',
   },
 );
 
@@ -118,24 +125,26 @@ onBeforeUnmount(() => {
 
 <template>
   <div v-if="!compact" class="flex items-center gap-2.5">
-    <UButton
-      size="sm"
-      variant="ghost"
-      color="neutral"
-      :icon="
-        isMuted || volume === 0
-          ? 'i-heroicons-speaker-x-mark'
-          : volume < 0.5
-            ? 'i-heroicons-speaker-wave'
-            : 'i-heroicons-speaker-wave'
-      "
-      :aria-label="
-        isMuted
-          ? t('fastcat.monitor.audioUnmute', 'Unmute')
-          : t('fastcat.monitor.audioMute', 'Mute')
-      "
-      @click="toggleMute"
-    />
+    <UiTooltip :text="muteTooltip" :disabled="!muteTooltip">
+      <UButton
+        size="sm"
+        variant="ghost"
+        color="neutral"
+        :icon="
+          isMuted || volume === 0
+            ? 'i-heroicons-speaker-x-mark'
+            : volume < 0.5
+              ? 'i-heroicons-speaker-wave'
+              : 'i-heroicons-speaker-wave'
+        "
+        :aria-label="
+          isMuted
+            ? t('fastcat.monitor.audioUnmute', 'Unmute')
+            : t('fastcat.monitor.audioMute', 'Mute')
+        "
+        @click="toggleMute"
+      />
+    </UiTooltip>
 
     <UiWheelSlider
       :min="0"
@@ -214,8 +223,6 @@ onBeforeUnmount(() => {
           @mouseleave="onPopupMouseLeave"
         >
           <div class="relative">
-
-
             <!-- Main panel with slider -->
             <div
               class="bg-ui-bg-elevated border border-ui-border rounded-lg shadow-xl px-3 py-2 flex items-center gap-2"
