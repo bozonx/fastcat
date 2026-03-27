@@ -33,9 +33,14 @@ export const CLICK_ACTIONS = [
 ] as const;
 
 export const TIMELINE_CLICK_ACTIONS = [
-  ...CLICK_ACTIONS,
+  'seek',
+  'add_marker',
+  'reset_zoom',
+  'fit_zoom',
+  'clear_selection',
   'select_item',
   'select_multiple',
+  'none',
 ] as const;
 
 export const MONITOR_CLICK_ACTIONS = [

@@ -278,23 +278,6 @@ export function useMouseSettings() {
               options: dragOptions.value,
             },
             {
-              key: 'click',
-              label: t('videoEditor.settings.mouseTimelineClick'),
-              options: timelineClickActionOptions.value,
-            },
-            {
-              key: 'shiftClick',
-              label: t('videoEditor.settings.mouseTimelineShiftClick', {
-                modifier1: modifier1Name.value,
-              }),
-              options: timelineClickActionOptions.value,
-            },
-            {
-              key: 'middleClick',
-              label: t('videoEditor.settings.mouseTimelineMiddleClick'),
-              options: timelineClickActionOptions.value,
-            },
-            {
               key: 'clipDragShift',
               label: t('videoEditor.settings.mouseTimelineClipDragShift', {
                 modifier1: modifier1Name.value,
@@ -312,6 +295,23 @@ export function useMouseSettings() {
               key: 'clipDragRight',
               label: t('videoEditor.settings.mouseTimelineClipDragRight'),
               options: clipDragOptions.value,
+            },
+            {
+              key: 'click',
+              label: t('videoEditor.settings.mouseTimelineClick'),
+              options: timelineClickActionOptions.value,
+            },
+            {
+              key: 'shiftClick',
+              label: t('videoEditor.settings.mouseTimelineShiftClick', {
+                modifier1: modifier1Name.value,
+              }),
+              options: timelineClickActionOptions.value,
+            },
+            {
+              key: 'middleClick',
+              label: t('videoEditor.settings.mouseTimelineMiddleClick'),
+              options: timelineClickActionOptions.value,
             },
             {
               key: 'horizontalMovement',
