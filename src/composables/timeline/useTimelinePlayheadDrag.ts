@@ -68,6 +68,7 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
 
   function onTimeRulerPointerDown(e: PointerEvent) {
     if (e.button !== 0) return;
+    e.preventDefault();
     startDragTimeUs.value = timelineStore.currentTime;
     seekByMouseEvent(e);
     startPlayheadDrag(e);
@@ -75,6 +76,7 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
 
   function onGlobalPointerMove(e: PointerEvent): boolean {
     if (!isDraggingPlayhead.value) return false;
+    e.preventDefault();
 
     if (e.buttons === 0) {
       onGlobalPointerUp(e);

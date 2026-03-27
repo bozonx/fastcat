@@ -168,6 +168,7 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
 
     const settings = rulerSettings.value;
     if (event.button === 1) {
+      event.preventDefault();
       middlePointerDown.value = { x: event.clientX, y: event.clientY, moved: false };
       (event.currentTarget as HTMLElement | null)?.setPointerCapture(event.pointerId);
       handleDragAction(settings.middleDrag, event);
@@ -175,6 +176,8 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
     }
 
     if (event.button !== 0) return;
+
+    event.preventDefault();
 
     const action = isLayer1Active(event, options.workspaceStore.userSettings)
       ? settings.dragShift
