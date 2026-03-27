@@ -129,10 +129,11 @@ const { isMarqueeSelecting, marqueeStyle, startMarquee } = useTimelineMarquee(
   containerRef,
   tracks,
   trackHeights,
+  () => props.scrollLeft ?? 0,
 );
 
 const { resizeVolume, startResizeVolume, startResizeFade, startResizeTransition } =
-  useTimelineItemResize(() => props.tracks);
+  useTimelineItemResize(() => props.scrollLeft ?? 0, () => props.tracks);
 
 const timelineWidthPx = computed(() => {
   const maxUs = Math.max(timelineStore.duration, timelineStore.currentTime) + 30_000_000;

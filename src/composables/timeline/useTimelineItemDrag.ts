@@ -73,6 +73,7 @@ export function useTimelineItemDrag(
   const dragOriginTrackId = ref<string | null>(null);
   const draggingMode = ref<'move' | 'slip' | 'trim_start' | 'trim_end' | null>(null);
   const dragAnchorClientX = ref(0);
+  const dragAnchorScrollLeft = ref(0);
   const dragAnchorStartUs = ref(0);
   const dragAnchorDurationUs = ref(0);
   const dragAnchorSourceStartUs = ref(0);
@@ -210,7 +211,7 @@ export function useTimelineItemDrag(
     const { trackId, itemId, startUs } = payload;
 
     if (e.button !== 0 && e.button !== 2) return;
-
+    e.preventDefault();
     e.stopPropagation();
 
     const track = tracks.value.find((t) => t.id === trackId);
@@ -241,6 +242,7 @@ export function useTimelineItemDrag(
     dragOriginTrackId.value = trackId;
     draggingItemId.value = itemId;
     dragAnchorClientX.value = e.clientX;
+    dragAnchorScrollLeft.value = scrollEl.value?.scrollLeft ?? 0;
     lastDragClientX.value = e.clientX;
     lastDragClientY.value = e.clientY;
     dragPointerButton.value = e.button as 0 | 2;
@@ -308,6 +310,7 @@ export function useTimelineItemDrag(
     draggingTrackId.value = input.trackId;
     draggingItemId.value = input.itemId;
     dragAnchorClientX.value = e.clientX;
+    dragAnchorScrollLeft.value = scrollEl.value?.scrollLeft ?? 0;
     lastDragClientX.value = e.clientX;
     lastDragClientY.value = e.clientY;
     dragPointerButton.value = e.button as 0 | 2;
@@ -404,7 +407,8 @@ export function useTimelineItemDrag(
       const item = track?.items.find((value) => value.id === itemId);
       if (!item || item.kind !== 'clip') return;
 
-      const dxPx = clientX - dragAnchorClientX.value;
+      const currentScrollLeft = scrollEl.value?.scrollLeft ?? 0;
+      const dxPx = clientX - dragAnchorClientX.value + (currentScrollLeft - dragAnchorScrollLeft.value);
       const rawDeltaUs = pxToDeltaUs(dxPx, zoom);
 
       const speed = typeof item.speed === 'number' && Number.isFinite(item.speed) ? item.speed : 1;
@@ -448,7 +452,8 @@ export function useTimelineItemDrag(
     }
 
     if (mode === 'move') {
-      const dxPx = clientX - dragAnchorClientX.value;
+      const currentScrollLeft = scrollEl.value?.scrollLeft ?? 0;
+      const dxPx = clientX - dragAnchorClientX.value + (currentScrollLeft - dragAnchorScrollLeft.value);
       const rawDeltaUs = pxToDeltaUs(dxPx, zoom);
       const rawStartUs = Math.max(0, dragAnchorStartUs.value + rawDeltaUs);
 
@@ -566,7 +571,8 @@ export function useTimelineItemDrag(
     }
 
     // Trim modes
-    const dxPx = clientX - dragAnchorClientX.value;
+    const currentScrollLeft = scrollEl.value?.scrollLeft ?? 0;
+    const dxPx = clientX - dragAnchorClientX.value + (currentScrollLeft - dragAnchorScrollLeft.value);
     const rawDeltaUs = pxToDeltaUs(dxPx, zoom);
 
     const thresholdUs = Math.round((snapThresholdPx / zoomToPxPerSecond(zoom)) * 1e6);

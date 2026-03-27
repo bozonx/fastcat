@@ -37,6 +37,7 @@ export function useTimelineScrollSync({
 
   function startPan(e: PointerEvent) {
     if (!scrollEl.value) return;
+    e.preventDefault();
     isPanning.value = true;
     panStart.value = {
       x: e.clientX,
@@ -49,6 +50,7 @@ export function useTimelineScrollSync({
 
   function onPanMove(e: PointerEvent) {
     if (!isPanning.value || !scrollEl.value) return;
+    e.preventDefault();
     const dx = e.clientX - panStart.value.x;
     const dy = e.clientY - panStart.value.y;
     scrollEl.value.scrollLeft = panStart.value.scrollLeft - dx;
@@ -57,6 +59,7 @@ export function useTimelineScrollSync({
 
   function stopPan(e: PointerEvent) {
     if (!isPanning.value || !scrollEl.value) return;
+    e.preventDefault();
     isPanning.value = false;
     scrollEl.value.releasePointerCapture(e.pointerId);
   }

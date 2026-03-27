@@ -32,7 +32,10 @@ interface ClipResizeFields {
   transitionOut?: ClipTransition | null;
 }
 
-export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
+export function useTimelineItemResize(
+  getScrollLeft: () => number,
+  tracksRef: () => TimelineTrack[],
+) {
   const timelineStore = useTimelineStore();
   const projectStore = useProjectStore();
   const timelineSettingsStore = useTimelineSettingsStore();
@@ -72,6 +75,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     hasMoved: boolean;
     isCreating: boolean;
     docBeforeDrag: TimelineDocument | null;
+    startScrollLeft: number;
   } | null>(null);
 
   const resizeFade = ref<{
@@ -82,6 +86,7 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
     startFadeUs: number;
     startCurve: 'linear' | 'logarithmic';
     activeCurve: 'linear' | 'logarithmic';
+    startScrollLeft: number;
   } | null>(null);
 
   const resizeVolume = ref<{
@@ -175,13 +180,15 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       startFadeUs: payload.durationUs,
       startCurve,
       activeCurve: startCurve,
+      startScrollLeft: getScrollLeft(),
     };
 
     clearSession();
 
     function onPointerMove(ev: PointerEvent) {
       if (!resizeFade.value) return;
-      const dx = ev.clientX - resizeFade.value.startX;
+      const currentScrollLeft = getScrollLeft();
+      const dx = ev.clientX - resizeFade.value.startX + (currentScrollLeft - resizeFade.value.startScrollLeft);
       const sign = payload.edge === 'in' ? 1 : -1;
       const deltaPx = dx * sign;
       const deltaUs = pxToDeltaUs(deltaPx, timelineStore.timelineZoom);
@@ -463,13 +470,15 @@ export function useTimelineItemResize(tracksRef: () => TimelineTrack[]) {
       hasMoved: false,
       isCreating,
       docBeforeDrag,
+      startScrollLeft: getScrollLeft(),
     };
 
     clearSession();
 
     function onPointerMove(ev: PointerEvent) {
       if (!resizeTransition.value) return;
-      const dx = ev.clientX - resizeTransition.value.startX;
+      const currentScrollLeft = getScrollLeft();
+      const dx = ev.clientX - resizeTransition.value.startX + (currentScrollLeft - resizeTransition.value.startScrollLeft);
       const sign = payload.edge === 'in' ? 1 : -1;
       const deltaPx = dx * sign;
       const deltaUs = pxToDeltaUs(deltaPx, timelineStore.timelineZoom);
