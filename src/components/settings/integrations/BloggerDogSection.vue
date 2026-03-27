@@ -145,19 +145,32 @@ function getHealthTone(status: typeof healthState.status) {
       />
     </UiFormField>
 
-    <div class="flex flex-wrap gap-2">
+    <div class="flex flex-wrap items-center gap-3">
       <UButton
         color="primary"
         variant="solid"
         :disabled="!fastcatConnectUrl"
         @click="startFastCatConnect"
       >
-        {{ t('videoEditor.settings.integrationAutoConnect', 'Auto connect') }}
+        {{ t('videoEditor.settings.integrationConnectAction', 'Auto connect') }}
       </UButton>
       <UButton color="neutral" variant="soft" :loading="healthState.loading" @click="runHealth">
         {{ t('videoEditor.settings.integrationHealthCheck', 'Check health') }}
       </UButton>
-      <UButton color="neutral" variant="ghost" @click="disconnectFastCat">
+
+      <a
+        v-if="fastcatPublicadorBaseUrl"
+        :href="fastcatPublicadorBaseUrl"
+        target="_blank"
+        class="text-xs text-primary-400 hover:underline flex items-center gap-1 ml-auto"
+      >
+        {{ t('videoEditor.settings.integrationManualLink', 'Open BloggerDog site') }}
+        <UIcon name="i-heroicons-arrow-top-right-on-square" class="h-3 w-3" />
+      </a>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <UButton color="neutral" variant="soft" size="xs" @click="disconnectFastCat">
         {{ t('videoEditor.settings.integrationDisconnect', 'Disconnect') }}
       </UButton>
     </div>

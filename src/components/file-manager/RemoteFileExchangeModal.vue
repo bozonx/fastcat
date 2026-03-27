@@ -2,9 +2,11 @@
 import UiModal from '~/components/ui/UiModal.vue';
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import RemoteTransferProgressModal from '~/components/file-manager/RemoteTransferProgressModal.vue';
+import { useUiStore } from '~/stores/ui.store';
 import { useRemoteExchange } from '~/composables/fileManager/useRemoteExchange';
 
 const { t } = useI18n();
+const uiStore = useUiStore();
 const {
   isOpen,
   remoteFilesConfig,
@@ -64,9 +66,20 @@ const {
     <div class="flex h-full min-h-0 flex-col">
       <div
         v-if="!remoteFilesConfig"
-        class="flex h-full items-center justify-center p-8 text-center text-sm text-ui-text-muted"
+        class="flex h-full flex-col items-center justify-center gap-4 p-8 text-center text-sm text-ui-text-muted"
       >
-        {{ t('videoEditor.settings.integrationInactive', 'Not configured') }}
+        <div class="flex flex-col items-center gap-2">
+          <UIcon name="i-heroicons-cloud-slash" class="h-10 w-10 text-ui-text-muted/50" />
+          <div class="font-medium text-ui-text">
+            {{ t('videoEditor.settings.integrationInactive', 'BloggerDog is not configured') }}
+          </div>
+          <div class="max-w-xs">
+            {{ t('videoEditor.settings.bloggerDogIntegrationHint') }}
+          </div>
+        </div>
+        <UButton color="primary" variant="soft" @click="uiStore.settingsModalOpen = true">
+          {{ t('navigation.settings', 'Open Settings') }}
+        </UButton>
       </div>
 
       <div
