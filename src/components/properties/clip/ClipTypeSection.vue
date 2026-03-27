@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type {
-  ShapeType,
-  TimelineClipItem,
-  TimelineTextClipItem,
-} from '~/timeline/types';
+import type { ShapeType, TimelineClipItem, TimelineTextClipItem } from '~/timeline/types';
 import type { ParamControl } from '~/components/properties/params';
 import { usePresetsStore } from '~/stores/presets.store';
 import ClipBackgroundProperties from './ClipBackgroundProperties.vue';

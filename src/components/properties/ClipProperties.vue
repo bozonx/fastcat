@@ -104,7 +104,6 @@ function handleSaveAsPreset() {
 
   if (props.clip.clipType === 'text') {
     presetsStore.saveAsPreset('text', 'custom', name, {
-      text: props.clip.text,
       style: props.clip.style,
     });
   } else if (props.clip.clipType === 'shape') {

@@ -37,7 +37,7 @@ export interface TimelineCommandServiceDeps {
       historyMode?: 'immediate' | 'debounced';
       historyDebounceMs?: number;
     },
-  ) => void;
+  ) => string[];
   getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
   getFileByPath: (path: string) => Promise<File | null>;
   getOrFetchMetadataByPath: (path: string) => Promise<TimelineMediaMetadata | null>;
@@ -303,7 +303,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
 
     deps.ensureTimelineDoc();
 
-    deps.applyTimeline(
+    const res = deps.applyTimeline(
       {
         type: 'add_clip_to_track',
         trackId: input.trackId,
@@ -320,7 +320,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       options,
     );
 
-    return { durationUs };
+    return { durationUs, itemId: res[0] };
   }
 
   async function moveItemToTrack(input: MoveItemToTrackInput) {
@@ -418,7 +418,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     const targetTrack = deps.getTrackById(input.trackId);
     if (!targetTrack) throw new Error('Track not found');
 
-    deps.applyTimeline(
+    const res = deps.applyTimeline(
       {
         type: 'add_clip_to_track',
         trackId: targetTrack.id,
@@ -433,7 +433,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       options,
     );
 
-    return { durationUs };
+    return { durationUs, itemId: res[0] };
   }
 
   return {

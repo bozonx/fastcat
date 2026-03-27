@@ -9,9 +9,11 @@ import { pxToTimeUs } from '~/utils/timeline/geometry';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { getWorkspacePathFileName } from '~/utils/workspace-common';
-import { pressedKeyCodes } from '~/utils/hotkeys/pressedKeys';
+import { isLayer1Pressed } from '~/utils/hotkeys/layerUtils';
 import type { HudType, ShapeType } from '~/timeline/types';
 import { useThrottleFn } from '@vueuse/core';
+import { selectTimelineDurationUs } from '~/timeline/selectors';
+import { useUiStore } from '~/stores/ui.store';
 
 export interface UseTimelineDropHandlingOptions {
   scrollEl: Ref<HTMLElement | null>;
@@ -31,6 +33,7 @@ interface TimelineDropItem {
   path?: string;
   type?: string;
   presetParams?: Record<string, any>;
+  isRightClick?: boolean;
 }
 
 interface TimelineDropContext {
@@ -42,6 +45,8 @@ interface TimelineDropContext {
 interface TimelineDropResult {
   nextStartUs: number;
   added: boolean;
+  trackId?: string;
+  itemId?: string;
 }
 
 interface TimelineDropStrategy {
@@ -49,99 +54,55 @@ interface TimelineDropStrategy {
   execute: (item: TimelineDropItem, context: TimelineDropContext) => Promise<TimelineDropResult>;
 }
 
-export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOptions) {
+export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions) {
+  const { scrollEl } = options;
   const timelineStore = useTimelineStore();
   const mediaStore = useMediaStore();
   const timelineSettingsStore = useTimelineSettingsStore();
   const workspaceStore = useWorkspaceStore();
-  const timelineMediaUsageStore = useTimelineMediaUsageStore();
   const fileManager = useFileManager();
-  const { draggedFile } = useDraggedFile();
-  const { t } = useI18n();
+  const timelineMediaUsageStore = useTimelineMediaUsageStore();
+  const draggedFile = useDraggedFile();
+  const uiStore = useUiStore();
   const toast = useToast();
+  const { t } = useI18n();
 
   const dragPreview = ref<DragPreview | null>(null);
-
-  function isLayer1Pressed(e: DragEvent) {
-    const layer1 = workspaceStore.userSettings.hotkeys.layer1 ?? 'Shift';
-
-    if (layer1 === 'Shift') return e.shiftKey;
-    if (layer1 === 'Control') return e.ctrlKey;
-    if (layer1 === 'Alt') return e.altKey;
-    if (layer1 === 'Meta') return e.metaKey;
-
-    return pressedKeyCodes.has(layer1);
-  }
 
   function clearDragPreview() {
     dragPreview.value = null;
   }
 
-  function getTrackById(trackId: string) {
-    return timelineStore.timelineDoc?.tracks.find((track) => track.id === trackId) ?? null;
-  }
-
   function getCompatibleTrackId(trackId: string, kind: 'video' | 'audio') {
-    const directTrack = getTrackById(trackId);
-    if (directTrack?.kind === kind) return directTrack.id;
+    const track = getTrackById(trackId);
+    if (track && track.kind === kind) {
+      return trackId;
+    }
 
-    return timelineStore.timelineDoc?.tracks.find((track) => track.kind === kind)?.id ?? null;
+    const firstCompatible = timelineStore.timelineDoc?.tracks.find((t) => t.kind === kind);
+    return firstCompatible?.id ?? null;
   }
 
-  const durationCache = new Map<string, Promise<number>>();
+  function getTrackById(trackId: string) {
+    return timelineStore.timelineDoc?.tracks.find((t) => t.id === trackId);
+  }
 
-  function getPreviewDurationUsAsync(params: {
-    path?: string;
+  async function getPreviewDurationUsAsync(params: {
     kind: 'file' | 'timeline' | 'adjustment' | 'background' | 'text' | 'shape' | 'hud';
-  }): Promise<number> {
-    const defaultDurationUs = workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
-    const path = params.path;
-
-    if (!path) return Promise.resolve(defaultDurationUs);
-
-    if (params.kind !== 'file' && params.kind !== 'timeline') {
-      return Promise.resolve(defaultDurationUs);
+    path?: string;
+  }) {
+    if (params.kind === 'file' && params.path) {
+      const meta = await mediaStore.getOrFetchMetadataByPath(params.path);
+      return meta?.duration || workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
     }
-
-    if (params.kind === 'file') {
-      const mediaType = getMediaTypeFromFilename(path);
-      if (mediaType === 'image' || mediaType === 'text') {
-        return Promise.resolve(defaultDurationUs);
+    if (params.kind === 'timeline' && params.path) {
+      const file = await fileManager.vfs.getFile(params.path);
+      if (file) {
+        const doc = JSON.parse(await file.text());
+        return selectTimelineDurationUs(doc);
       }
     }
-
-    if (durationCache.has(path)) {
-      return durationCache.get(path)!;
-    }
-
-    const promise = (async () => {
-      if (params.kind === 'timeline') {
-        try {
-          const file = await fileManager.vfs.getFile(path);
-          if (file) {
-            const text = await file.text();
-            const { parseTimelineFromOtio } = await import('~/timeline/otioSerializer');
-            const { selectTimelineDurationUs } = await import('~/timeline/selectors');
-            const doc = parseTimelineFromOtio(text, { id: 'preview', name: 'preview', fps: 25 });
-            const durationUs = selectTimelineDurationUs(doc);
-            if (durationUs > 0) return Math.max(1, Math.round(durationUs));
-          }
-        } catch {}
-        return defaultDurationUs;
-      }
-
-      try {
-        const metadata = await mediaStore.getOrFetchMetadataByPath(path);
-        if (metadata?.duration && Number.isFinite(metadata.duration) && metadata.duration > 0) {
-          return Math.max(1, Math.round(metadata.duration * 1_000_000));
-        }
-      } catch {}
-
-      return defaultDurationUs;
-    })();
-
-    durationCache.set(path, promise);
-    return promise;
+    return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
   }
 
   function resolveDropTrackId(params: {
@@ -263,7 +224,7 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
       pseudo: context.pseudo,
     });
 
-    await timelineStore.addVirtualClipToTrack({
+    const res = await timelineStore.addVirtualClipToTrack({
       trackId: targetTrackId,
       startUs: nextStartUs,
       clipType,
@@ -288,6 +249,8 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
     return {
       nextStartUs: nextStartUs + durationUs,
       added: true,
+      trackId: targetTrackId,
+      itemId: Array.isArray(res) ? res[0] : undefined,
     };
   }
 
@@ -325,8 +288,10 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
     });
 
     return {
-      nextStartUs: nextStartUs + res.durationUs,
+      nextStartUs: nextStartUs + (res.durationUs || 0),
       added: true,
+      trackId: targetTrackId,
+      itemId: (res as any).itemId,
     };
   }
 
@@ -359,7 +324,7 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
       pseudo: context.pseudo,
     });
 
-    await timelineStore.addVirtualClipToTrack({
+    const res = await timelineStore.addVirtualClipToTrack({
       trackId: targetTrackId,
       startUs: nextStartUs,
       clipType: 'text',
@@ -371,6 +336,8 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
     return {
       nextStartUs: nextStartUs + durationUs,
       added: true,
+      trackId: targetTrackId,
+      itemId: Array.isArray(res) ? res[0] : undefined,
     };
   }
 
@@ -408,8 +375,10 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
     });
 
     return {
-      nextStartUs: nextStartUs + res.durationUs,
+      nextStartUs: nextStartUs + (res.durationUs || 0),
       added: true,
+      trackId: targetTrackId,
+      itemId: (res as any).itemId,
     };
   }
 
@@ -443,7 +412,7 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
   }
 
   const buildDragPreview = useThrottleFn(async (e: DragEvent, trackId: string) => {
-    const payload = draggedFile.value;
+    const payload = draggedFile.draggedFile.value;
     if (!payload) {
       clearDragPreview();
       return null;
@@ -470,7 +439,9 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
       kind: payload.kind,
       path: payload.path,
     });
-    const pseudo = isLayer1Pressed(e) || timelineSettingsStore.overlapMode === 'pseudo';
+    const pseudo =
+      isLayer1Pressed(e, workspaceStore.userSettings) ||
+      timelineSettingsStore.overlapMode === 'pseudo';
     const startUs = resolveInsertStartUs({
       trackId: targetTrackId,
       startUs: dropPositionUs,
@@ -551,7 +522,7 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
     data: string,
     trackId: string,
     startUs: number,
-    options?: { pseudo?: boolean },
+    options?: { pseudo?: boolean; clientX?: number; clientY?: number },
   ) {
     try {
       const payload = JSON.parse(data) as unknown;
@@ -575,6 +546,15 @@ export function useTimelineDropHandling({ scrollEl }: UseTimelineDropHandlingOpt
         currentStartUs = result.nextStartUs;
         if (result.added) {
           addedCount++;
+
+          if (item.kind === 'text' && item.isRightClick && result.trackId && result.itemId) {
+            uiStore.triggerShowTextPresetMenu({
+              trackId: result.trackId,
+              itemId: result.itemId,
+              x: options?.clientX ?? 0,
+              y: options?.clientY ?? 0,
+            });
+          }
         }
       }
 

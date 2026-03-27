@@ -588,13 +588,16 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         action: async () => {
           if (op.type === 'rename') {
             const entry = findEntryByPath(op.from);
-            if (entry) await renameEntry(entry, op.to);
+            if (!entry) throw new Error(`Entry to rename not found: ${op.from}`);
+            await renameEntry(entry, op.to);
           } else if (op.type === 'move') {
             const entry = findEntryByPath(op.from);
-            if (entry) await moveEntry({ source: entry, targetDirPath: op.to });
+            if (!entry) throw new Error(`Entry to move not found: ${op.from}`);
+            await moveEntry({ source: entry, targetDirPath: op.to });
           } else if (op.type === 'delete') {
             const entry = findEntryByPath(op.path);
-            if (entry) await deleteEntry(entry);
+            if (!entry) throw new Error(`Entry to delete not found: ${op.path}`);
+            await deleteEntry(entry);
           } else if (op.type === 'createFolder') {
             await createFolder(op.name, op.parentPath);
           }

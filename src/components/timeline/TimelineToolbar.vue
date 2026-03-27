@@ -6,6 +6,7 @@ import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { usePresetsStore } from '~/stores/presets.store';
 import UiSplitDropdownButton from '~/components/ui/UiSplitDropdownButton.vue';
+import type { TextClipStyle } from '~/timeline/types';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
@@ -154,30 +155,26 @@ const textPresetItems = computed(() => {
   return [...standard, ...custom];
 });
 
+const standardTextPresets = computed<Record<string, { style: TextClipStyle }>>(() => ({
+  default: {
+    style: { fontSize: 64, color: '#ffffff', fontFamily: 'sans-serif' },
+  },
+  title: {
+    style: { fontSize: 96, fontWeight: '800', color: '#ffffff', fontFamily: 'sans-serif' },
+  },
+  subtitle: {
+    style: { fontSize: 48, fontWeight: '400', color: '#aaaaaa', fontFamily: 'sans-serif' },
+  },
+}));
+
 function addTextClip() {
   const presetId = presetsStore.defaultTextPresetId;
-  const standardPresets: Record<string, any> = {
-    default: {
-      text: t('fastcat.timeline.textClipDefaultText', 'Text'),
-      style: { fontSize: 64, color: '#ffffff', fontFamily: 'sans-serif' },
-    },
-    title: {
-      text: 'TITLE',
-      style: { fontSize: 96, fontWeight: '800', color: '#ffffff', fontFamily: 'sans-serif' },
-    },
-    subtitle: {
-      text: 'Subtitle',
-      style: { fontSize: 48, fontWeight: '400', color: '#aaaaaa', fontFamily: 'sans-serif' },
-    },
-  };
-
   const preset =
-    standardPresets[presetId] ||
+    standardTextPresets.value[presetId] ||
     presetsStore.customPresets.find((p) => p.id === presetId)?.params;
 
   if (preset) {
     timelineStore.addTextClipAtPlayhead({
-      text: preset.text,
       style: preset.style,
     });
   } else {
@@ -189,25 +186,13 @@ function onDragStart(event: DragEvent, type: 'adjustment' | 'background' | 'text
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'copy';
 
+    const isRightClick = (event.buttons & 2) !== 0;
+
     let presetParams = undefined;
     if (type === 'text') {
       const presetId = presetsStore.defaultTextPresetId;
-      const standardPresets: Record<string, any> = {
-        default: {
-          text: t('fastcat.timeline.textClipDefaultText', 'Text'),
-          style: { fontSize: 64, color: '#ffffff', fontFamily: 'sans-serif' },
-        },
-        title: {
-          text: 'TITLE',
-          style: { fontSize: 96, fontWeight: '800', color: '#ffffff', fontFamily: 'sans-serif' },
-        },
-        subtitle: {
-          text: 'Subtitle',
-          style: { fontSize: 48, fontWeight: '400', color: '#aaaaaa', fontFamily: 'sans-serif' },
-        },
-      };
       presetParams =
-        standardPresets[presetId] ||
+        standardTextPresets.value[presetId] ||
         presetsStore.customPresets.find((p) => p.id === presetId)?.params;
     }
 
@@ -220,6 +205,7 @@ function onDragStart(event: DragEvent, type: 'adjustment' | 'background' | 'text
       ),
       path: '',
       presetParams,
+      isRightClick,
     };
 
     const json = JSON.stringify(payload);
@@ -263,7 +249,7 @@ function onToolbarContextMenu(e: MouseEvent) {
           variant="ghost"
           color="neutral"
           :icon="toolbarSnapModeIcon"
-          :aria-label="t('fastcat.timeline.snapMode', 'Snap Mode')"
+          :ariaLabel="t('fastcat.timeline.snapMode', 'Snap Mode')"
           :items="snapModeItems"
           button-class="hover:bg-ui-bg-hover/60"
           caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
@@ -278,7 +264,7 @@ function onToolbarContextMenu(e: MouseEvent) {
           :variant="toolbarDragModeVariant"
           :color="settingsStore.toolbarDragModeEnabled ? 'primary' : 'neutral'"
           :icon="toolbarDragModeIcon"
-          :aria-label="t('fastcat.timeline.moveMode', 'Clip Move Mode')"
+          :ariaLabel="t('fastcat.timeline.moveMode', 'Clip Move Mode')"
           :items="dragModeItems"
           button-class="hover:bg-ui-bg-hover/60"
           caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
@@ -294,6 +280,7 @@ function onToolbarContextMenu(e: MouseEvent) {
           :color="timelineStore.isTrimModeActive ? 'primary' : 'neutral'"
           icon="i-heroicons-scissors"
           :aria-label="t('fastcat.timeline.trim', 'Trim')"
+          :ariaLabel="t('fastcat.timeline.trim', 'Trim')"
           :items="trimMenuItems"
           button-class="hover:bg-ui-bg-hover/60"
           caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
@@ -329,76 +316,64 @@ function onToolbarContextMenu(e: MouseEvent) {
         <UiTooltip
           :text="`${t('fastcat.timeline.addAdjustment')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
         >
-          <UButton
+          <div
             draggable="true"
-            size="xs"
-            variant="ghost"
-            color="neutral"
-            icon="i-heroicons-adjustments-horizontal"
-            class="hover:bg-ui-bg"
             @dragstart="onDragStart($event, 'adjustment')"
             @dragend="onDragEnd"
-            @click="
-              (e) => {
-                timelineStore.addAdjustmentClipAtPlayhead();
-                (e.currentTarget as HTMLElement).blur();
-              }
-            "
-          />
+          >
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              icon="i-heroicons-adjustments-horizontal"
+              class="hover:bg-ui-bg"
+              @click="
+                (e) => {
+                  timelineStore.addAdjustmentClipAtPlayhead();
+                  (e.currentTarget as HTMLElement).blur();
+                }
+              "
+            />
+          </div>
         </UiTooltip>
         <UiTooltip
           :text="`${t('fastcat.timeline.addBackground')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
         >
-          <UButton
+          <div
             draggable="true"
-            size="xs"
-            variant="ghost"
-            color="neutral"
-            icon="i-heroicons-swatch"
-            class="hover:bg-ui-bg"
             @dragstart="onDragStart($event, 'background')"
             @dragend="onDragEnd"
-            @click="
-              (e) => {
-                timelineStore.addBackgroundClipAtPlayhead();
-                (e.currentTarget as HTMLElement).blur();
-              }
-            "
-          />
+          >
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              icon="i-heroicons-swatch"
+              class="hover:bg-ui-bg"
+              @click="
+                (e) => {
+                  timelineStore.addBackgroundClipAtPlayhead();
+                  (e.currentTarget as HTMLElement).blur();
+                }
+              "
+            />
+          </div>
         </UiTooltip>
         <UiTooltip
           :text="`${t('fastcat.timeline.addText')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
         >
-          <div class="flex items-center gap-0.5">
-            <USelectMenu
-              v-model="presetsStore.defaultTextPresetId"
-              :options="textPresetItems"
-              value-attribute="id"
-              class="w-24"
-              size="xs"
-              variant="ghost"
-              :placeholder="t('fastcat.library.tabs.texts', 'Texts')"
-              :ui="{
-                base: 'h-6 text-[10px]!',
-                trigger: 'h-6 px-1.5 gap-0.5!',
-              }"
-            >
-              <template #label>
-                <span class="truncate">{{
-                  textPresetItems.find((i) => i.id === presetsStore.defaultTextPresetId)?.label ||
-                  t('fastcat.library.tabs.texts', 'Texts')
-                }}</span>
-              </template>
-            </USelectMenu>
+          <div
+            draggable="true"
+            @dragstart="onDragStart($event, 'text')"
+            @dragend="onDragEnd"
+            @contextmenu.prevent="() => {}"
+          >
             <UButton
-              draggable="true"
               size="xs"
               variant="ghost"
               color="neutral"
               icon="i-heroicons-chat-bubble-bottom-center-text"
               class="hover:bg-ui-bg"
-              @dragstart="onDragStart($event, 'text')"
-              @dragend="onDragEnd"
               @click="
                 (e) => {
                   addTextClip();

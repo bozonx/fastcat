@@ -1369,6 +1369,8 @@
       "deleteWithoutConfirmation": "Удалять без подтверждения",
       "ephemeralTmpRootPath": "Путь для ephemeral tmp",
       "ephemeralTmpRootPathHelp": "Короткоживущие временные файлы задач. Оставьте пустым, чтобы использовать системную временную папку.",
+      "historyMaxEntries": "Лимит истории отмены",
+      "historyMaxEntriesHelp": "Максимальное количество шагов undo/redo, хранящихся в памяти",
       "hotkeysCaptureHint": "Ожидание комбинации клавиш (Esc для отмены)",
       "hotkeysCapturing": "Запись...",
       "hotkeysDuplicateConfirm": "Всё равно добавить",

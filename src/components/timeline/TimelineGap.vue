@@ -5,6 +5,9 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 
+import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
@@ -47,9 +50,6 @@ function onDelete() {
   timelineStore.clearSelection();
   selectionStore.clearSelection();
 }
-
-import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
-import { useWorkspaceStore } from '~/stores/workspace.store';
 
 const workspaceStore = useWorkspaceStore();
 

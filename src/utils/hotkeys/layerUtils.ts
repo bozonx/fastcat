@@ -49,9 +49,30 @@ export function isLayer1Active(
   return isLayerActive(e, settings.hotkeys.layer1 ?? 'Shift');
 }
 
+export function isLayer1Pressed(
+  e: KeyboardEvent | MouseEvent | WheelEvent,
+  settings?: FastCatUserSettings,
+): boolean {
+  if (!settings) {
+    // If settings not provided, fallback to standard behavior
+    return isLayerActive(e, 'Shift');
+  }
+  return isLayer1Active(e, settings);
+}
+
 export function isLayer2Active(
   e: KeyboardEvent | MouseEvent | WheelEvent,
   settings: FastCatUserSettings,
 ): boolean {
   return isLayerActive(e, settings.hotkeys.layer2 ?? 'Control');
+}
+
+export function isLayer2Pressed(
+  e: KeyboardEvent | MouseEvent | WheelEvent,
+  settings?: FastCatUserSettings,
+): boolean {
+  if (!settings) {
+    return isLayerActive(e, 'Control');
+  }
+  return isLayer2Active(e, settings);
 }

@@ -739,7 +739,7 @@ export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
       deps.timelineDoc.value = deps.createFallbackTimelineDoc();
     }
 
-    deps.applyTimeline(
+    return deps.applyTimeline(
       {
         type: 'add_virtual_clip_to_track',
         trackId: input.trackId,

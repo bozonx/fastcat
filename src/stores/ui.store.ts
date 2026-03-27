@@ -176,6 +176,23 @@ export const useUiStore = defineStore('ui', () => {
     scrollToFileTreeEntryTrigger.value = Date.now();
   }
 
+  const showTextPresetMenuTrigger = ref<{
+    trackId: string;
+    itemId: string;
+    x: number;
+    y: number;
+    timestamp: number;
+  } | null>(null);
+
+  function triggerShowTextPresetMenu(params: {
+    trackId: string;
+    itemId: string;
+    x: number;
+    y: number;
+  }) {
+    showTextPresetMenuTrigger.value = { ...params, timestamp: Date.now() };
+  }
+
   const timelineSaveTrigger = ref(0);
 
   function notifyTimelineSave() {
@@ -239,6 +256,9 @@ export const useUiStore = defineStore('ui', () => {
     scrollToFileTreeEntryPath,
     scrollToFileTreeEntryTrigger,
     triggerScrollToFileTreeEntry,
+
+    showTextPresetMenuTrigger,
+    triggerShowTextPresetMenu,
 
     monitorVolume,
     monitorMuted,

@@ -14,6 +14,8 @@ import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store'
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useUiStore } from '~/stores/ui.store';
+import { usePresetsStore } from '~/stores/presets.store';
 
 import type { TimelineClipActionPayload, TimelineTrack } from '~/timeline/types';
 import { timeUsToPx, pxToTimeUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
@@ -44,6 +46,8 @@ const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const timelineSettingsStore = useTimelineSettingsStore();
 const projectStore = useProjectStore();
 const fileManager = useFileManager();
+const uiStore = useUiStore();
+const presetsStore = usePresetsStore();
 
 const { currentProjectId, currentView } = storeToRefs(projectStore);
 
@@ -64,6 +68,7 @@ const {
 } = usePersistedSplitpanes(timelineSplitKey.value, currentProjectId, [10, 90]);
 
 const menuRef = ref<InstanceType<typeof UiContextMenuPortal> | null>(null);
+const textPresetMenuRef = ref<InstanceType<typeof UiContextMenuPortal> | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
 
 const timelineMenuItems = computed(() => [
@@ -77,6 +82,69 @@ const timelineMenuItems = computed(() => [
     },
   ],
 ]);
+
+const textPresetMenuItems = computed(() => {
+  const standard = [
+    {
+      label: t('fastcat.library.texts.default', 'Default'),
+      onSelect: () => applyTextPreset('default'),
+    },
+    {
+      label: t('fastcat.library.texts.title', 'Title'),
+      onSelect: () => applyTextPreset('title'),
+    },
+    {
+      label: t('fastcat.library.texts.subtitle', 'Subtitle'),
+      onSelect: () => applyTextPreset('subtitle'),
+    },
+  ];
+
+  const custom = presetsStore.customPresets
+    .filter((p) => p.category === 'text')
+    .map((p) => ({
+      label: p.name,
+      onSelect: () => applyTextPreset(p.id),
+    }));
+
+  return [[...standard, ...custom]];
+});
+
+function applyTextPreset(presetId: string) {
+  const trigger = uiStore.showTextPresetMenuTrigger;
+  if (!trigger) return;
+
+  const standardPresets: Record<string, any> = {
+    default: {
+      style: { fontSize: 64, color: '#ffffff', fontFamily: 'sans-serif' },
+    },
+    title: {
+      style: { fontSize: 96, fontWeight: '800', color: '#ffffff', fontFamily: 'sans-serif' },
+    },
+    subtitle: {
+      style: { fontSize: 48, fontWeight: '400', color: '#aaaaaa', fontFamily: 'sans-serif' },
+    },
+  };
+
+  const preset =
+    standardPresets[presetId] || presetsStore.customPresets.find((p) => p.id === presetId)?.params;
+
+  if (preset) {
+    timelineStore.updateClipProperties(trigger.trackId, trigger.itemId, {
+      style: preset.style,
+    });
+  }
+}
+
+watch(
+  () => uiStore.showTextPresetMenuTrigger,
+  (val) => {
+    if (val) {
+      setTimeout(() => {
+        textPresetMenuRef.value?.open({ clientX: val.x, clientY: val.y } as unknown as MouseEvent);
+      }, 50);
+    }
+  },
+);
 
 function onContextMenu(e: MouseEvent) {
   const target = e.target as HTMLElement;
@@ -442,7 +510,11 @@ const onDrop = async (e: DragEvent, trackId: string) => {
       const parsed = JSON.parse(libraryItemData);
       // Only handle if it's our known internal drag objects
       if (parsed.kind || (Array.isArray(parsed) && parsed.length > 0 && parsed[0].kind)) {
-        await handleLibraryDrop(libraryItemData, trackId, startUs, { pseudo });
+        await handleLibraryDrop(libraryItemData, trackId, startUs, {
+          pseudo,
+          clientX: e.clientX,
+          clientY: e.clientY,
+        });
         return;
       }
     } catch {
@@ -588,6 +660,12 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
     <UiContextMenuPortal
       ref="menuRef"
       :items="timelineMenuItems"
+      :target-el="containerRef"
+      manual
+    />
+    <UiContextMenuPortal
+      ref="textPresetMenuRef"
+      :items="textPresetMenuItems"
       :target-el="containerRef"
       manual
     />
