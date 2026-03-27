@@ -11,7 +11,7 @@ export interface ResolvedExternalServiceConfig {
   healthUrl: string;
 }
 
-const FILES_SCOPES: FastCatIntegrationScope[] = ['vfs:read'];
+const FILES_SCOPES: FastCatIntegrationScope[] = ['vfs:read', 'vfs:write'];
 const STT_SCOPES: FastCatIntegrationScope[] = ['stt:transcribe'];
 
 function trimTrailingSlashes(value: string): string {
@@ -138,7 +138,7 @@ export function resolveExternalServiceConfig(params: {
   const { integrations, service, fastcatPublicadorBaseUrl } = params;
   const fastcat = integrations.fastcatPublicador;
   const manual = service === 'files' ? integrations.manualFilesApi : integrations.manualSttApi;
-  const requiresBearerToken = service === 'files';
+  const requiresBearerToken = service === 'files' || service === 'stt';
 
   const canUseFastCat =
     fastcat.enabled &&
