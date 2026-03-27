@@ -19,6 +19,7 @@ interface TimelineStoreLike {
   clearSelection: () => void;
   removeSelectionRange: () => void;
   resetTimelineZoom: () => void;
+  fitTimelineZoom: () => void;
   setCurrentTimeUs: (timeUs: number) => void;
 }
 
@@ -71,6 +72,11 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
 
     if (action === 'reset_zoom') {
       options.timelineStore.resetTimelineZoom();
+      return;
+    }
+
+    if (action === 'fit_zoom') {
+      options.timelineStore.fitTimelineZoom();
       return;
     }
 

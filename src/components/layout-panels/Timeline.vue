@@ -247,18 +247,21 @@ function onTimelineClick(e: MouseEvent) {
   if (!el) return;
 
   const rect = el.getBoundingClientRect();
-  const x = e.clientX - rect.left + el.scrollLeft;
   const y = e.clientY - rect.top + el.scrollTop;
 
   const totalTracksHeight = tracks.value.reduce(
     (sum, tr) => sum + (trackHeights.value[tr.id] ?? 40),
     0,
   );
+
   if (y > totalTracksHeight) {
     timelineStore.selectTimelineProperties();
-  } else {
-    timelineStore.setCurrentTimeUs(pxToTimeUs(x, timelineStore.timelineZoom));
+    return;
   }
+
+  const isShift = isLayer1Active(e, workspaceStore.userSettings);
+  const action = isShift ? timelineMouseSettings.value.shiftClick : timelineMouseSettings.value.click;
+  handleTimelineClickAction(action, e);
 }
 
 function onGlobalTimelineClick(e: MouseEvent) {
@@ -471,6 +474,18 @@ const handleTimelineClickAction = (action: string, e: PointerEvent | MouseEvent)
   if (action === 'none') return;
   if (action === 'reset_zoom') {
     timelineStore.resetTimelineZoom();
+    return;
+  }
+  if (action === 'fit_zoom') {
+    timelineStore.fitTimelineZoom();
+    return;
+  }
+  if (action === 'select_item') {
+    // TODO: выбрать клип (по умолчанию)
+    return;
+  }
+  if (action === 'select_multiple') {
+    // TODO: выделить несколько клипов (по умолчанию)
     return;
   }
   if (action === 'seek' || action === 'move_playhead') {
