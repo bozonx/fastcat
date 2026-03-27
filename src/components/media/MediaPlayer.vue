@@ -447,7 +447,7 @@ onUnmounted(() => {
         </div>
 
         <div class="flex items-center gap-2">
-          <UButtonGroup v-if="type === 'video'" size="sm" variant="ghost" color="neutral">
+          <UFieldGroup v-if="type === 'video'" size="sm" variant="ghost" color="neutral">
             <UTooltip :text="t('fastcat.preview.zoomIn')">
               <UButton
                 icon="i-heroicons-magnifying-glass-plus"
@@ -463,9 +463,13 @@ onUnmounted(() => {
               />
             </UTooltip>
             <UTooltip :text="t('fastcat.preview.resetZoom')">
-              <UButton icon="i-heroicons-arrow-path" class="hover:bg-ui-bg-accent" @click="resetZoom" />
+              <UButton
+                icon="i-heroicons-arrow-path"
+                class="hover:bg-ui-bg-accent"
+                @click="resetZoom"
+              />
             </UTooltip>
-          </UButtonGroup>
+          </UFieldGroup>
 
           <UiVolumeControl
             v-model:volume="volume"
