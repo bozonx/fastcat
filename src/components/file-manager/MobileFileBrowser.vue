@@ -4,6 +4,7 @@ import { useFilesPageStore } from '~/stores/files-page.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useUiStore } from '~/stores/ui.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { formatBytes } from '~/utils/format';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
@@ -18,6 +19,7 @@ import {
 const filesPageStore = useFilesPageStore();
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
+const uiStore = useUiStore();
 const proxyStore = useProxyStore();
 const timelineStore = useTimelineStore();
 const toast = useToast();
@@ -72,8 +74,8 @@ async function loadFolderContent() {
         ];
       }
     }
-    // Фильтруем скрытые файлы
-    entries.value = content.filter((e) => !e.name.startsWith('.'));
+    // Фильтруем скрытые файлы если настройка выключена
+    entries.value = content.filter((e) => uiStore.showHiddenFiles || !e.name.startsWith('.'));
   } catch (error) {
     console.error('Failed to load mobile folder content:', error);
   } finally {
