@@ -142,10 +142,11 @@ export function useEditorHotkeys() {
 
     for (const cmdId of focusAwareOrder) {
       const isPlayback = cmdId.startsWith('playback.');
+      const isZoom = cmdId.includes('zoom');
       if (
         !canExecuteHotkeyCommand({
           cmdId,
-          hasBlockingModalState: modalOpen || (fullscreen && !isPlayback),
+          hasBlockingModalState: modalOpen || (fullscreen && !isPlayback && !isZoom),
           isEditableEventTarget,
           isEditableActiveElement,
         })
