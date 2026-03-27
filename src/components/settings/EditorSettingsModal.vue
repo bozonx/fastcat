@@ -40,7 +40,38 @@ type SettingsSection =
   | 'user.audio'
   | 'workspace.storage';
 
-const activeSection = ref<SettingsSection>('user.general');
+const STORAGE_KEY = 'fastcat:settings:active-section';
+const EXPIRATION_MS = 24 * 60 * 60 * 1000;
+
+function getStoredSection(): SettingsSection {
+  if (typeof window === 'undefined') return 'user.general';
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return 'user.general';
+    const parsed = JSON.parse(raw);
+    if (Date.now() - parsed.timestamp > EXPIRATION_MS) {
+      window.localStorage.removeItem(STORAGE_KEY);
+      return 'user.general';
+    }
+    return parsed.section as SettingsSection;
+  } catch {
+    return 'user.general';
+  }
+}
+
+const activeSection = ref<SettingsSection>(getStoredSection());
+
+watch(activeSection, (section) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ section, timestamp: Date.now() }),
+    );
+  } catch {
+    // ignore
+  }
+});
 
 const isOpen = computed({
   get: () => props.open,

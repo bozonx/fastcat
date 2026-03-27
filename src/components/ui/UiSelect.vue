@@ -51,10 +51,10 @@ function onUpdate(val: unknown) {
     :value-key="props.valueKey as never"
     :label-key="props.labelKey as never"
     :multiple="props.multiple"
-    :searchable="props.searchable"
+    :searchable="props.searchable || false"
+    :search-input="props.searchable ? props.searchInput : undefined"
     :class="props.fullWidth ? 'w-full' : 'w-auto min-w-20'"
     :ui="{ content: 'min-w-48' }"
-    :search-input="props.searchInput"
     @update:model-value="onUpdate"
   >
     <template v-for="(_, slot) in $slots" #[slot]="slotProps">
