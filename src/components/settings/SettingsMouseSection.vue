@@ -24,6 +24,7 @@ defineProps<Props>();
     </div>
 
     <div
+      v-if="infoItems.length"
       class="mt-2 rounded border border-ui-border/30 bg-ui-bg-accent/5 px-1 py-1.5"
       :class="{ 'text-ui-text-muted': !infoTitle }"
     >

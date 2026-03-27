@@ -249,7 +249,7 @@ export function useMouseSettings() {
               options: mouseHorizontalMovementOptions.value,
             },
           ],
-          infoItems: [t('videoEditor.settings.mouseHardcodedLeftClick')],
+          infoItems: [],
         },
         {
           key: 'timeline',
@@ -330,12 +330,8 @@ export function useMouseSettings() {
           infoColumns: true,
           infoItems: [
             t('videoEditor.settings.mouseHardcodedLeftDrag'),
-            t('videoEditor.settings.mouseHardcodedLeftClick'),
-            t('videoEditor.settings.mouseHardcodedShiftClick', { modifier1: modifier1Name.value }),
             t('videoEditor.settings.mouseHardcodedRazorClick'),
-            t('videoEditor.settings.mouseHardcodedRazorShiftClick', {
-              modifier1: modifier1Name.value,
-            }),
+            t('videoEditor.settings.mouseHardcodedRazorShiftClick', { modifier1: modifier1Name.value }),
             t('videoEditor.settings.mouseHardcodedRazorCtrlClick', {
               modifier2: modifier2Name.value,
             }),
@@ -385,7 +381,7 @@ export function useMouseSettings() {
               options: trackHeadersClickOptions.value,
             },
           ],
-          infoItems: [t('videoEditor.settings.mouseHardcodedDblClickTrackHeader')],
+          infoItems: [],
         },
         {
           key: 'monitor',
@@ -431,7 +427,7 @@ export function useMouseSettings() {
               options: monitorMiddleClickOptions.value,
             },
           ],
-          infoItems: [t('videoEditor.settings.mouseHardcodedDblClickMonitor')],
+          infoItems: [],
         },
       ] satisfies MouseSectionConfig[],
   );
