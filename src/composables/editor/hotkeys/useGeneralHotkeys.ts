@@ -241,12 +241,26 @@ export function useGeneralHotkeys(
     },
 
     'general.undo': () => {
-      timelineStore.undoTimeline();
+      const entry = useHistoryStore().undoGlobal();
+      if (!entry) return true;
+
+      if (entry.scope === 'timeline') {
+        timelineStore.applyRestoredSnapshot(entry.snapshot);
+      } else if (entry.scope === 'fileManager') {
+        void getFileManager().restoreHistory(entry.snapshot);
+      }
       return true;
     },
 
     'general.redo': () => {
-      timelineStore.redoTimeline();
+      const entry = useHistoryStore().redoGlobal();
+      if (!entry) return true;
+
+      if (entry.scope === 'timeline') {
+        timelineStore.applyRestoredSnapshot(entry.snapshot);
+      } else if (entry.scope === 'fileManager') {
+        void getFileManager().restoreHistory(entry.snapshot);
+      }
       return true;
     },
 

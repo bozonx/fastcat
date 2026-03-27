@@ -206,6 +206,7 @@ export interface UpdateClipPropertiesCommand {
       | 'showThumbnails'
       | 'sourceRange'
       | 'sourceDurationUs'
+      | 'source'
     >
   > & {
     linkedGroupId?: string;

@@ -132,6 +132,31 @@ const { isMarqueeSelecting, marqueeStyle, startMarquee } = useTimelineMarquee(
   () => props.scrollLeft ?? 0,
 );
 
+const workspaceStore = useWorkspaceStore();
+
+function resolveTimelineDragAction(e: PointerEvent): string {
+  const settings = workspaceStore.userSettings.mouse.timeline;
+  if (e.button === 1) return settings.middleDrag;
+  if (e.button === 0) {
+    if (isLayer1Active(e, workspaceStore.userSettings)) return settings.clipDragShift;
+    if (isLayer2Active(e, workspaceStore.userSettings)) return settings.clipDragCtrl;
+    return settings.drag;
+  }
+  if (e.button === 2) return settings.clipDragRight;
+  return 'none';
+}
+
+import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+
+function shouldStartMarquee(e: PointerEvent): boolean {
+  if (e.target !== e.currentTarget && !(e.target as HTMLElement).hasAttribute('data-track-id')) {
+    return false;
+  }
+  const action = resolveTimelineDragAction(e);
+  return action === 'move_clips' || action === 'select_area';
+}
+
 const { resizeVolume, startResizeVolume, startResizeFade, startResizeTransition } =
   useTimelineItemResize(
     () => props.scrollLeft ?? 0,
@@ -225,7 +250,7 @@ function selectTransition(
       :style="{ minWidth: `max(100%, ${timelineWidthPx}px)` }"
       @pointerdown="
         focusStore.setPanelFocus('timeline');
-        if ($event.button === 0 && $event.target === $event.currentTarget) {
+        if (shouldStartMarquee($event)) {
           startMarquee($event);
         } else if ($event.button !== 1 && $event.target === $event.currentTarget) {
           timelineStore.clearSelection();
@@ -268,7 +293,7 @@ function selectTransition(
         :style="{ height: `${trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT}px` }"
         @pointerdown="
           focusStore.setPanelFocus('timeline');
-          if ($event.button === 0 && $event.target === $event.currentTarget) {
+          if (shouldStartMarquee($event)) {
             startMarquee($event, () => {
               if (timelineStore.selectedTrackId === track.id) {
                 const entity = selectionStore.selectedEntity;

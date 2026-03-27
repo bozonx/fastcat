@@ -72,6 +72,7 @@ export interface FileManagerCreateDeps {
   onDirectoryCopied?: (params: { oldPath: string; newPath: string }) => void | Promise<void>;
   onDirectoryLoaded?: () => void;
   mediaStore: ReturnType<typeof useMediaStore>;
+  historyStore: ReturnType<typeof useHistoryStore>;
 }
 
 export function createFileManager(deps: FileManagerCreateDeps) {
@@ -276,6 +277,18 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         }
 
         await createFolderCommand({ name, parentPath, vfs: deps.vfs });
+        const createdPath = parentPath ? `${parentPath}/${name}` : name;
+        
+        deps.historyStore.push(
+          'fileManager',
+          'createFolder',
+          {
+            undo: { type: 'delete', path: createdPath },
+            redo: { type: 'createFolder', parentPath, name },
+          },
+          'videoEditor.fileManager.history.entries.createFolder',
+        );
+
         await reloadDirectory(parentPath);
       },
       defaultErrorMessage: 'Failed to create folder',
@@ -364,6 +377,15 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         );
 
         if (oldPath && newPath) {
+          deps.historyStore.push(
+            'fileManager',
+            'rename',
+            {
+              undo: { type: 'rename', from: newPath, to: target.name },
+              redo: { type: 'rename', from: oldPath, to: newName },
+            },
+            'videoEditor.fileManager.history.entries.renameEntry',
+          );
           await deps.onEntryPathChanged?.({ oldPath, newPath });
         }
 
@@ -400,6 +422,15 @@ export function createFileManager(deps: FileManagerCreateDeps) {
           {
             vfs: deps.vfs,
             onFileMoved: async ({ oldPath, newPath }) => {
+              deps.historyStore.push(
+                'fileManager',
+                'move',
+                {
+                  undo: { type: 'move', from: newPath, to: sourceParentPath },
+                  redo: { type: 'move', from: oldPath, to: targetDirPath },
+                },
+                'videoEditor.fileManager.history.entries.moveEntry',
+              );
               await deps.onEntryPathChanged?.({ oldPath, newPath });
 
               if (oldPath.startsWith(`${VIDEO_DIR_NAME}/`)) {
@@ -549,6 +580,30 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     readDirectory: service.readDirectory,
     vfs: deps.vfs,
     reloadDirectory,
+    async restoreHistory(snapshot: any) {
+      if (!snapshot || !snapshot.type) return;
+      const op = snapshot;
+      
+      await runWithUiFeedback({
+        action: async () => {
+          if (op.type === 'rename') {
+            const entry = findEntryByPath(op.from);
+            if (entry) await renameEntry(entry, op.to);
+          } else if (op.type === 'move') {
+            const entry = findEntryByPath(op.from);
+            if (entry) await moveEntry({ source: entry, targetDirPath: op.to });
+          } else if (op.type === 'delete') {
+            const entry = findEntryByPath(op.path);
+            if (entry) await deleteEntry(entry);
+          } else if (op.type === 'createFolder') {
+            await createFolder(op.name, op.parentPath);
+          }
+        },
+        defaultErrorMessage: 'Failed to restore file operation',
+        toastTitle: 'History error',
+        ignoreError: () => false,
+      });
+    },
   };
 }
 
@@ -566,6 +621,9 @@ export function useFileManager() {
   const proxyStore = useProxyStore();
   const selectionStore = useSelectionStore();
   const focusStore = useFocusStore();
+
+  const timelineStore = useTimelineStore();
+  const historyStore = useHistoryStore();
 
   const isApiSupported = computed(() => workspaceStore.isApiSupported);
   const showHiddenFiles = computed(() => uiStore.showHiddenFiles);
@@ -606,6 +664,32 @@ export function useFileManager() {
     });
   }
 
+  const mediaCache = createProxyThumbnailService({
+    checkExistingProxies: async (paths) => await proxyStore.checkExistingProxies(paths),
+    hasProxy: (path) => proxyStore.existingProxies.has(path),
+    ensureProxy: async ({ file, projectRelativePath }) =>
+      await proxyStore.generateProxy(file, projectRelativePath),
+    cancelProxy: async (projectRelativePath) =>
+      await proxyStore.cancelProxyGeneration(projectRelativePath),
+    removeProxy: async (projectRelativePath) => await proxyStore.deleteProxy(projectRelativePath),
+    renameProxy: async (params) => await proxyStore.renameProxy(params),
+    renameProxyDir: async (params) => await proxyStore.renameProxyDir(params),
+    clearExistingProxies: () => proxyStore.existingProxies.clear(),
+    clearVideoThumbnails: async ({ projectId, projectRelativePath }) => {
+      await thumbnailGenerator.clearThumbnails({
+        projectId,
+        hash: getClipThumbnailsHash({ projectId, projectRelativePath }),
+      });
+      await fileThumbnailGenerator.clearThumbnail({
+        projectId,
+        projectRelativePath,
+      });
+    },
+    clearWaveforms: async ({ projectId, projectRelativePath }) => {
+      await mediaStore.removeMediaCache(projectRelativePath);
+    },
+  });
+
   const api = createFileManager({
     t,
     toast,
@@ -615,6 +699,8 @@ export function useFileManager() {
     sortMode: sharedSortMode,
     showHiddenFiles,
     mediaStore,
+    historyStore,
+    mediaCache,
     isFileTreePathExpanded: (path) => uiStore.isFileTreePathExpanded(path),
     setFileTreePathExpanded: function setFileTreePathExpanded(path: string, expanded: boolean) {
       uiStore.setFileTreePathExpanded(path, expanded);
@@ -630,37 +716,37 @@ export function useFileManager() {
     onMediaImported: ({ projectRelativePath }) => {
       void mediaStore.getOrFetchMetadataByPath(projectRelativePath);
     },
-    mediaCache: createProxyThumbnailService({
-      checkExistingProxies: async (paths) => await proxyStore.checkExistingProxies(paths),
-      hasProxy: (path) => proxyStore.existingProxies.has(path),
-      ensureProxy: async ({ file, projectRelativePath }) =>
-        await proxyStore.generateProxy(file, projectRelativePath),
-      cancelProxy: async (projectRelativePath) =>
-        await proxyStore.cancelProxyGeneration(projectRelativePath),
-      removeProxy: async (projectRelativePath) => await proxyStore.deleteProxy(projectRelativePath),
-      renameProxy: async (params) => await proxyStore.renameProxy(params),
-      renameProxyDir: async (params) => await proxyStore.renameProxyDir(params),
-      clearExistingProxies: () => proxyStore.existingProxies.clear(),
-      clearVideoThumbnails: async ({ projectId, projectRelativePath }) => {
-        await thumbnailGenerator.clearThumbnails({
-          projectId,
-          hash: getClipThumbnailsHash({ projectId, projectRelativePath }),
-        });
-        await fileThumbnailGenerator.clearThumbnail({
-          projectId,
-          projectRelativePath,
-        });
-      },
-      clearWaveforms: async ({ projectId, projectRelativePath }) => {
-        await mediaStore.removeMediaCache(projectRelativePath);
-      },
-    }),
     onEntryPathChanged: async ({ oldPath, newPath }) => {
+      // Update media state
       await mediaStore.removeMediaCache(oldPath);
       await mediaStore.removeMediaCache(newPath);
       await clearVectorCacheForPath(oldPath);
       await clearVectorCacheForPath(newPath);
       updateSelectionPath({ oldPath, newPath });
+
+      // Update Timeline References
+      if (timelineStore.timelineDoc) {
+        const affectedClips: { trackId: string; itemId: string; source: any }[] = [];
+        timelineStore.timelineDoc.tracks.forEach((track) => {
+          track.items.forEach((item) => {
+            if (item.kind === 'clip' && (item as any).source?.path === oldPath) {
+              affectedClips.push({ trackId: track.id, itemId: item.id, source: (item as any).source });
+            }
+          });
+        });
+
+        if (affectedClips.length > 0) {
+          const cmds = affectedClips.map((clip) => ({
+            type: 'update_clip_properties' as const,
+            trackId: clip.trackId,
+            itemId: clip.itemId,
+            properties: {
+              source: { ...clip.source, path: newPath },
+            },
+          }));
+          timelineStore.batchApplyTimeline(cmds, { skipHistory: true });
+        }
+      }
 
       if (oldPath.startsWith(`${VIDEO_DIR_NAME}/`)) {
         const projectId = projectStore.currentProjectId;
@@ -685,6 +771,38 @@ export function useFileManager() {
     },
     onDirectoryMoved: async ({ oldPath, newPath }: { oldPath: string; newPath: string }) => {
       mediaStore.resetMediaState();
+
+      // Update Timeline References (Recursive)
+      if (timelineStore.timelineDoc) {
+        const affectedClips: { trackId: string; itemId: string; source: any }[] = [];
+        timelineStore.timelineDoc.tracks.forEach((track) => {
+          track.items.forEach((item) => {
+            if (item.kind === 'clip' && (item as any).source?.path.startsWith(`${oldPath}/`)) {
+              affectedClips.push({
+                trackId: track.id,
+                itemId: item.id,
+                source: (item as any).source,
+              });
+            }
+          });
+        });
+
+        if (affectedClips.length > 0) {
+          const cmds = affectedClips.map((clip) => ({
+            type: 'update_clip_properties' as const,
+            trackId: clip.trackId,
+            itemId: clip.itemId,
+            properties: {
+              source: {
+                ...clip.source,
+                path: (clip.source.path as string).replace(oldPath, newPath),
+              },
+            },
+          }));
+          timelineStore.batchApplyTimeline(cmds, { skipHistory: true });
+        }
+      }
+
       if (oldPath && newPath) {
         await api.mediaCache.renameProxyDir({ oldPath, newPath });
       } else {
@@ -697,6 +815,10 @@ export function useFileManager() {
     onDirectoryLoaded: () => {
       uiStore.notifyFileManagerUpdate();
     },
+  });
+
+  historyStore.registerStateGetter('fileManager', (entry) => {
+    return entry.snapshot.redo;
   });
 
   return api;

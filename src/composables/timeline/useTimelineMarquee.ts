@@ -106,7 +106,6 @@ export function useTimelineMarquee(
   }
 
   function startMarquee(e: PointerEvent, onClick?: () => void) {
-    if (e.button !== 0) return;
     e.preventDefault();
     const coords = getPointerCoords(e);
     marqueeStart.value = coords;

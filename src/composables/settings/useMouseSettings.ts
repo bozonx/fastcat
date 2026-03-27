@@ -95,7 +95,7 @@ export function useMouseSettings() {
   const commonDragLabels = computed<Record<string, string>>(() => ({
     pan: t('videoEditor.settings.mouseActionPan'),
     move_playhead: t('videoEditor.settings.mouseActionMovePlayhead'),
-    move_clips: t('videoEditor.settings.mouseActionMoveClips'),
+    move_clips: `${t('videoEditor.settings.mouseActionMoveClips')} / ${t('videoEditor.settings.mouseActionSelectArea')}`,
     select_area: t('videoEditor.settings.mouseActionSelectArea'),
     toggle_clip_move_mode: t('videoEditor.settings.mouseActionToggleClipMoveMode'),
     pseudo_overlap: t('videoEditor.settings.mouseActionPseudoOverlap'),
