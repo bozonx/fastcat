@@ -339,7 +339,7 @@ export function useGeneralHotkeys(
     },
 
     'general.mute': () => {
-      timelineStore.toggleAudioMuted();
+      uiStore.monitorMuted = !uiStore.monitorMuted;
       return true;
     },
 
@@ -349,20 +349,12 @@ export function useGeneralHotkeys(
     },
 
     'general.volumeUp': (e) => {
-      if (focusStore.effectiveFocus === 'monitor') {
-        startMonitorVolumeHotkeyHold({ step: 0.05, keyCode: e.code });
-        return true;
-      }
-      startVolumeHotkeyHold({ step: 0.05, keyCode: e.code });
+      startMonitorVolumeHotkeyHold({ step: 0.05, keyCode: e.code });
       return true;
     },
 
     'general.volumeDown': (e) => {
-      if (focusStore.effectiveFocus === 'monitor') {
-        startMonitorVolumeHotkeyHold({ step: -0.05, keyCode: e.code });
-        return true;
-      }
-      startVolumeHotkeyHold({ step: -0.05, keyCode: e.code });
+      startMonitorVolumeHotkeyHold({ step: -0.05, keyCode: e.code });
       return true;
     },
 
