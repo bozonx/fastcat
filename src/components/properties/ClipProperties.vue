@@ -12,6 +12,7 @@ import { useEditorViewStore } from '~/stores/editor-view.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useFilesPageStore } from '~/stores/files-page.store';
+import { usePresetsStore } from '~/stores/presets.store';
 import { blendModeOptions as rawBlendModeOptions } from '~/utils/constants';
 import type {
   AudioClipEffect,
@@ -54,6 +55,7 @@ const workspaceStore = useWorkspaceStore();
 const focusStore = useFocusStore();
 const filesPageStore = useFilesPageStore();
 const clipboardStore = useAppClipboard();
+const presetsStore = usePresetsStore();
 
 const isUiRenameModalOpen = ref(false);
 
@@ -94,6 +96,33 @@ function handleCutClip() {
       clip: item.clip,
     })),
   });
+}
+
+function handleSaveAsPreset() {
+  const name = prompt(t('fastcat.presets.enterName', 'Enter preset name'), props.clip.name);
+  if (!name) return;
+
+  if (props.clip.clipType === 'text') {
+    presetsStore.saveAsPreset('text', 'custom', name, {
+      text: props.clip.text,
+      style: props.clip.style,
+    });
+  } else if (props.clip.clipType === 'shape') {
+    presetsStore.saveAsPreset('shape', props.clip.shapeType, name, {
+      shapeType: props.clip.shapeType,
+      fillColor: props.clip.fillColor,
+      strokeColor: props.clip.strokeColor,
+      strokeWidth: props.clip.strokeWidth,
+      shapeConfig: props.clip.shapeConfig,
+    });
+  } else if (props.clip.clipType === 'hud') {
+    presetsStore.saveAsPreset('hud', props.clip.hudType, name, {
+      hudType: props.clip.hudType,
+      background: props.clip.background,
+      content: props.clip.content,
+      params: (props.clip as any).params,
+    });
+  }
 }
 
 const {
@@ -407,6 +436,7 @@ defineExpose({
       @reset-freeze-frame="handleResetFreezeFrame"
       @extract-audio="handleExtractAudio"
       @return-audio="handleReturnAudio"
+      @save-as-preset="handleSaveAsPreset"
     />
 
     <ClipInfoSection
