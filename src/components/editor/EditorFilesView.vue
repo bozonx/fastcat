@@ -28,7 +28,6 @@ const emit = defineEmits<{
     <Pane :size="sizes[0]" min-size="10">
       <FileManagerPanel
         folders-only
-        disable-sort
         is-files-page
         class="h-full"
         @select="(entry) => emit('selectFolder', entry)"

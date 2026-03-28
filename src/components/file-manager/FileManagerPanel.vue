@@ -20,8 +20,8 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 
 const props = defineProps<{
   foldersOnly?: boolean;
-  disableSort?: boolean;
   isFilesPage?: boolean;
+  compact?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -58,8 +58,6 @@ const {
   copyEntry,
   createTimeline,
   getFileIcon,
-  sortMode,
-  setSortMode,
   vfs,
 } = fileManager;
 
@@ -215,47 +213,7 @@ const rootContextMenuItems = computed(() => {
   return menu;
 });
 
-const toolbarMenuItems = computed(() => [
-  [
-    {
-      label: t('videoEditor.fileManager.sort.name', 'Sort by name'),
-      color: sortMode.value === 'name' ? 'primary' : 'neutral',
-      onSelect: () => onSortModeChange('name'),
-    },
-    {
-      label: t('videoEditor.fileManager.sort.type', 'Sort by type'),
-      color: sortMode.value === 'type' ? 'primary' : 'neutral',
-      onSelect: () => onSortModeChange('type'),
-    },
-  ],
-  [
-    {
-      label: uiStore.showHiddenFiles
-        ? t('videoEditor.fileManager.actions.hideHiddenFiles', 'Hide hidden files')
-        : t('videoEditor.fileManager.actions.showHiddenFiles', 'Show hidden files'),
-      icon: uiStore.showHiddenFiles ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
-      onSelect: () => {
-        uiStore.showHiddenFiles = !uiStore.showHiddenFiles;
-        void loadProjectDirectory({ fullRefresh: true });
-        uiStore.notifyFileManagerUpdate();
-      },
-    },
-    {
-      label: t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree'),
-      icon: 'i-heroicons-arrow-path',
-      onSelect: () =>
-        onFileAction('refresh', {
-          kind: 'directory',
-          name: projectStore.currentProjectName ?? '',
-          path: '',
-          parentPath: '',
-          lastModified: 0,
-          size: 0,
-          source: 'local',
-        } as FsEntry),
-    },
-  ],
-]);
+// toolbarMenuItems removed
 
 async function onCreateTimeline() {
   const createdPath = await createTimeline();
@@ -279,16 +237,7 @@ function triggerFileUpload() {
   fileInput.value?.click();
 }
 
-function onSortModeChange(v: 'name' | 'type') {
-  setSortMode(v);
-  const selectedPath = uiStore.selectedFsEntry?.path;
-  void loadProjectDirectory({ fullRefresh: true }).then(() => {
-    uiStore.notifyFileManagerUpdate();
-    if (!selectedPath) return;
-    if (uiStore.selectedFsEntry?.path !== selectedPath) return;
-    focusStore.setTempFocus('left');
-  });
-}
+// onSortModeChange removed
 
 function onFileSelect(e: Event) {
   const target = e.target as HTMLInputElement;
@@ -399,14 +348,6 @@ useFileManagerPanelBootstrap({
             @click="triggerFileUpload"
           />
           <div class="ml-auto">
-            <UDropdownMenu :items="toolbarMenuItems" :ui="{ content: 'w-56' }">
-              <UButton
-                icon="i-heroicons-ellipsis-horizontal"
-                variant="ghost"
-                color="neutral"
-                size="xs"
-              />
-            </UDropdownMenu>
           </div>
         </div>
       </UContextMenu>

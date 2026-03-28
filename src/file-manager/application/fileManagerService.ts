@@ -44,25 +44,26 @@ export interface FileManagerService {
 
 export function createFileManagerService(deps: FileManagerServiceDeps): FileManagerService {
   function compareEntries(a: FsEntry, b: FsEntry): number {
+    // 1. Kind (directory first)
     if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
 
+    // 2. Hidden entries (starting with .) - ALWAYS at the very top of their kind
     const aIsHidden = a.name.startsWith('.');
     const bIsHidden = b.name.startsWith('.');
-
-    // Hidden entries should be at the top of their own group
     if (aIsHidden !== bIsHidden) {
       return aIsHidden ? -1 : 1;
     }
 
-    // Type sorting applies only for files; directories always sort by name
-    if (deps.sortMode.value === 'type' && a.kind === 'file' && b.kind === 'file') {
-      const aExt = a.name.includes('.') ? a.name.split('.').pop()?.toLowerCase() || '' : '';
-      const bExt = b.name.includes('.') ? b.name.split('.').pop()?.toLowerCase() || '' : '';
-      if (aExt !== bExt) {
-        return aExt.localeCompare(bExt, undefined, { numeric: true, sensitivity: 'base' });
-      }
+    // 3. Special characters (non-alphanumeric) - ABOVE letters/numbers but BELOW hidden
+    const isAlphanumeric = (name: string) => /^[a-zA-Z0-9\u0400-\u04FF]/.test(name.charAt(0));
+    const aIsAlpha = isAlphanumeric(a.name);
+    const bIsAlpha = isAlphanumeric(b.name);
+
+    if (aIsAlpha !== bIsAlpha) {
+      return aIsAlpha ? 1 : -1; // Special comes first
     }
 
+    // 4. Alphabetical sort
     return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
   }
 

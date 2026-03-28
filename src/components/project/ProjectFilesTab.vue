@@ -4,6 +4,9 @@ import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import { useFilesPageStore } from '~/stores/files-page.store';
 
+const props = defineProps<{
+  compact?: boolean;
+}>();
 const filesPageStore = useFilesPageStore();
 </script>
 
@@ -12,14 +15,14 @@ const filesPageStore = useFilesPageStore();
     <Pane size="30" min-size="15">
       <FileManagerPanel
         folders-only
-        disable-sort
         is-files-page
+        :compact="compact"
         class="h-full"
         @select="filesPageStore.selectFolder"
       />
     </Pane>
     <Pane size="70" min-size="20">
-      <FileBrowser class="h-full" />
+      <FileBrowser :compact="compact" class="h-full" />
     </Pane>
   </Splitpanes>
 </template>
