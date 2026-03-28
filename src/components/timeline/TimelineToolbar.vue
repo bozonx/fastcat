@@ -434,6 +434,7 @@ function onToolbarContextMenu(e: MouseEvent) {
             :max="MAX_TIMELINE_ZOOM_POSITION"
             :step="1"
             :default-value="DEFAULT_TIMELINE_ZOOM_POSITION"
+            wheel-without-focus
           />
         </div>
 

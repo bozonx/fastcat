@@ -88,6 +88,20 @@ config.global.stubs = {
     props: ['items'],
     template: '<div><slot v-for="(item, index) in items" :key="index" :item="item" :index="index" /></div>',
   },
+  UDropdownMenu: {
+    template: '<div><slot /></div>',
+  },
+  UFieldGroup: {
+    template: '<div><slot /></div>',
+  },
+  UiTabs: {
+    props: ['items'],
+    template: '<div><slot v-for="(item, index) in items" :key="index" :item="item" :index="index" /></div>',
+  },
+};
+
+config.global.config.errorHandler = (err, instance, info) => {
+    console.error(`[Vue Error] ${err} \nInfo: ${info}`);
 };
 
 function shouldIgnoreConsoleMessage(args: unknown[]) {

@@ -144,6 +144,7 @@ const menuItems = computed(() => {
         :min="0"
         :max="gridSizes.length - 1"
         :step="1"
+        wheel-without-focus
         class="flex-1 w-full"
         @update:model-value="(v: number) => filesPageStore.setGridCardSize(gridSizes[v] || 130)"
       />

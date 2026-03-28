@@ -128,6 +128,7 @@ function handleSelectEffect(type: string) {
         :step="0.01"
         :default-value="0"
         :wheel-step-multiplier="5"
+        wheel-without-focus
         class="w-full"
       />
     </div>
@@ -161,6 +162,7 @@ function handleSelectEffect(type: string) {
     <div class="flex-1 w-full flex justify-center relative my-2 min-h-25">
       <DbSlider
         v-model="volumeDb"
+        wheel-without-focus
         :level-db="timelineStore.audioLevels?.[props.track.id]?.peakDb"
       />
     </div>

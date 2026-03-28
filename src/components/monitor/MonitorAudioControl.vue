@@ -18,6 +18,7 @@ const { t } = useI18n();
   <UiVolumeControl
     v-model:volume="monitorVolume"
     v-model:is-muted="monitorMuted"
+    wheel-without-focus
     :compact="compact"
     orientation="vertical"
     :max="2"

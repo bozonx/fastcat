@@ -12,6 +12,7 @@ const props = withDefaults(
     muteTooltip?: string;
     volumeUpTooltip?: string;
     volumeDownTooltip?: string;
+    wheelWithoutFocus?: boolean;
   }>(),
   {
     compact: false,
@@ -20,6 +21,7 @@ const props = withDefaults(
     muteTooltip: '',
     volumeUpTooltip: '',
     volumeDownTooltip: '',
+    wheelWithoutFocus: false,
   },
 );
 
@@ -155,6 +157,7 @@ onBeforeUnmount(() => {
       :model-value="isMuted ? 0 : volume"
       slider-class="w-20"
       :aria-label="t('fastcat.monitor.audioVolume', 'Audio volume')"
+      :wheel-without-focus="wheelWithoutFocus"
       @update:model-value="onVolumeUpdate"
     />
 
@@ -259,6 +262,7 @@ onBeforeUnmount(() => {
                   :model-value="isMuted ? 0 : volume"
                   :orientation="orientation === 'vertical' ? 'horizontal' : 'vertical'"
                   :slider-class="orientation === 'vertical' ? 'w-full' : 'h-full'"
+                  :wheel-without-focus="wheelWithoutFocus"
                   @update:model-value="onVolumeUpdate"
                 />
               </div>
