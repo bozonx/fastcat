@@ -8,6 +8,8 @@ export interface UseWheelSupportOptions {
   /** When true, applies wheelStepMultiplier (defaults to physical Shift if omitted). */
   useWheelStepMultiplier?: (e: WheelEvent) => boolean;
   onWheelStep: (direction: 1 | -1, wheelStep: number, precision: number) => void;
+  /** If true, wheel events only fire when an element inside wrapperRef is focused. */
+  focusOnly?: boolean;
 }
 
 export function getStepPrecision(step: number): number {
@@ -20,6 +22,14 @@ export function getStepPrecision(step: number): number {
 export function useWheelSupport(options: UseWheelSupportOptions) {
   function onWheel(e: WheelEvent) {
     if (options.disabled?.()) return;
+
+    if (options.focusOnly) {
+      const activeElement = document.activeElement;
+      if (!activeElement || !options.wrapperRef.value?.contains(activeElement)) {
+        return;
+      }
+    }
+
     e.preventDefault();
 
     const deltaY = Number(e.deltaY ?? 0);

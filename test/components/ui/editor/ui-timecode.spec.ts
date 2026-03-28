@@ -126,4 +126,38 @@ describe('UiTimecode', () => {
 
     expect((input.element as HTMLInputElement).value).toBe('00:00:01:00');
   });
+
+  it('handles mouse wheel scrolling only when focused by default', async () => {
+    const component = await mountSuspended(UiTimecode, {
+      props: {
+        modelValue: 1_000_000,
+      },
+    });
+
+    const input = component.find('input');
+
+    // Scroll without focus - should NOT emit
+    await input.trigger('wheel', { deltaY: -100 });
+    expect(component.emitted('update:modelValue')).toBeFalsy();
+
+    // Focus and scroll - should emit
+    await input.trigger('focus');
+    await input.trigger('wheel', { deltaY: -100 });
+    expect(component.emitted('update:modelValue')).toBeTruthy();
+  });
+
+  it('handles mouse wheel scrolling without focus when wheelWithoutFocus is true', async () => {
+    const component = await mountSuspended(UiTimecode, {
+      props: {
+        modelValue: 1_000_000,
+        wheelWithoutFocus: true,
+      },
+    });
+
+    const input = component.find('input');
+
+    // Scroll without focus - should emit because of the prop
+    await input.trigger('wheel', { deltaY: -100 });
+    expect(component.emitted('update:modelValue')).toBeTruthy();
+  });
 });

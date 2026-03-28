@@ -343,6 +343,7 @@ function onDragVirtualEnd() {
         <div class="flex-1 flex items-center">
           <UiTimecode
             :model-value="timelineStore.currentTime"
+            wheel-without-focus
             @update:model-value="timelineStore.setCurrentTimeUs($event)"
           />
         </div>

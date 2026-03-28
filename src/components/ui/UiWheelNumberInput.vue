@@ -57,6 +57,7 @@ useWheelSupport({
   step: () => props.step,
   wheelStepMultiplier: () => props.wheelStepMultiplier,
   useWheelStepMultiplier: (e) => isLayer1Active(e, workspaceStore.userSettings),
+  focusOnly: true,
   onWheelStep: (direction, wheelStep, precision) => {
     const current = Number(props.modelValue);
     const safeCurrent = Number.isFinite(current) ? current : (props.min ?? 0);
