@@ -233,6 +233,18 @@ async function onCreateTimeline() {
   uiStore.triggerScrollToFileTreeEntry(createdPath);
 }
 
+async function onCreateMarkdown() {
+  await onFileAction('createMarkdown', {
+    kind: 'directory',
+    name: projectStore.currentProjectName ?? 'root',
+    path: '',
+    parentPath: '',
+    lastModified: 0,
+    size: 0,
+    source: 'local',
+  });
+}
+
 function triggerFileUpload() {
   fileInput.value?.click();
 }
@@ -320,6 +332,14 @@ useFileManagerPanelBootstrap({
             size="xs"
             :title="`${t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline')} (In _timelines folder)`"
             @click="onCreateTimeline"
+          />
+          <UButton
+            icon="i-heroicons-document-text"
+            variant="ghost"
+            color="neutral"
+            size="xs"
+            :title="`${t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document')} (In _documents folder)`"
+            @click="onCreateMarkdown"
           />
           <UButton
             icon="i-heroicons-arrow-up-tray"

@@ -855,20 +855,21 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
         ref="rulerContainerRef"
         class="flex-1 relative z-10 timeline-ruler-container overflow-hidden"
       >
+        <!-- Ruler is outside the scroll element for correct coordinate mapping (same as TimelineGrid) -->
+        <TimelineRuler
+          class="absolute inset-0 h-full border-b border-ui-border bg-ui-bg-elevated cursor-pointer"
+          :scroll-el="rulerScrollEl"
+          @pointerdown="onTimeRulerPointerDown"
+          @start-playhead-drag="startPlayheadDrag"
+          @start-pan="startPan"
+        />
+        <!-- Invisible scroll element for horizontal scroll position sync only -->
         <div
           ref="rulerScrollEl"
-          class="h-full w-full overflow-x-scroll overflow-y-hidden scroll-sync-hidden relative"
+          class="absolute inset-0 overflow-x-scroll overflow-y-hidden scroll-sync-hidden pointer-events-none"
           @scroll="onRulerScroll"
         >
-          <div :style="{ ...timelineWidthStyle, paddingRight: `${scrollbarHeight}px` }" class="h-full">
-            <TimelineRuler
-              class="h-full border-b border-ui-border bg-ui-bg-elevated cursor-pointer w-full"
-              :scroll-el="rulerScrollEl"
-              @pointerdown="onTimeRulerPointerDown"
-              @start-playhead-drag="startPlayheadDrag"
-              @start-pan="startPan"
-            />
-          </div>
+          <div :style="{ ...timelineWidthStyle, paddingRight: `${scrollbarHeight}px` }" class="h-full" />
         </div>
       </div>
     </div>

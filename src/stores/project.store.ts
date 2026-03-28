@@ -12,6 +12,7 @@ import {
   AUDIO_DIR_NAME,
   IMAGES_DIR_NAME,
   TIMELINES_DIR_NAME,
+  DOCUMENTS_DIR_NAME,
   EXPORT_DIR_NAME,
 } from '~/utils/constants';
 
@@ -183,6 +184,7 @@ export const useProjectStore = defineStore('project', () => {
       await projectDir.getDirectoryHandle(VIDEO_DIR_NAME, { create: true });
       await projectDir.getDirectoryHandle(AUDIO_DIR_NAME, { create: true });
       await projectDir.getDirectoryHandle(IMAGES_DIR_NAME, { create: true });
+      await projectDir.getDirectoryHandle(DOCUMENTS_DIR_NAME, { create: true });
       await projectDir.getDirectoryHandle(TIMELINES_DIR_NAME, { create: true });
       await projectDir.getDirectoryHandle(EXPORT_DIR_NAME, { create: true });
 
