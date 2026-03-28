@@ -21,24 +21,29 @@ const playheadTransform = computed(
   () => `translate3d(${playheadPx.value}px, 0, 0) translateX(-50%)`,
 );
 
-/** Lines to draw for the active marker (hovered > selected). Zone markers show both pins. */
+/** Lines to draw for active markers. Selected marker always shows; hovered adds on top. */
 const activeMarkerLines = computed(() => {
   const entity = selectionStore.selectedEntity;
   const selectedId =
     entity?.source === 'timeline' && entity?.kind === 'marker' ? entity.markerId : null;
 
-  const activeId = hoveredMarkerId.value ?? selectedId;
-  if (!activeId) return [];
-
-  const marker = timelineStore.markers.find((m) => m.id === activeId);
-  if (!marker) return [];
+  // Collect unique IDs: selected is always included, hovered is additional
+  const ids = new Set<string>();
+  if (selectedId) ids.add(selectedId);
+  if (hoveredMarkerId.value) ids.add(hoveredMarkerId.value);
+  if (ids.size === 0) return [];
 
   const zoom = timelineStore.timelineZoom;
-  const color = marker.color ?? '#eab308';
+  const lines: Array<{ px: number; color: string }> = [];
 
-  const lines = [{ px: timeUsToPx(marker.timeUs, zoom), color }];
-  if (marker.durationUs !== undefined) {
-    lines.push({ px: timeUsToPx(marker.timeUs + marker.durationUs, zoom), color });
+  for (const id of ids) {
+    const marker = timelineStore.markers.find((m) => m.id === id);
+    if (!marker) continue;
+    const color = marker.color ?? '#eab308';
+    lines.push({ px: timeUsToPx(marker.timeUs, zoom), color });
+    if (marker.durationUs !== undefined) {
+      lines.push({ px: timeUsToPx(marker.timeUs + marker.durationUs, zoom), color });
+    }
   }
   return lines;
 });

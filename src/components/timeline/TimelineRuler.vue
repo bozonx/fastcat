@@ -124,10 +124,7 @@ function selectMarker(
   e?: MouseEvent,
   part: 'left' | 'right' = 'left',
 ) {
-  if (e && isLayer1Active(e, workspaceStore.userSettings)) {
-    executeRulerClickAction(workspaceStore.userSettings.mouse.ruler.shiftClick, e);
-    return;
-  }
+  // Always stop propagation so the ruler's own click/pointerdown actions are not triggered
   e?.stopPropagation();
   selectionStore.selectTimelineMarker(markerId);
 
