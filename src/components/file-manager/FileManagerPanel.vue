@@ -321,34 +321,6 @@ useFileManagerPanelBootstrap({
             :title="`${t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline')} (In _timelines folder)`"
             @click="onCreateTimeline"
           />
-          <UButton
-            icon="i-heroicons-folder-plus"
-            variant="ghost"
-            color="neutral"
-            size="xs"
-            :title="`${t('videoEditor.fileManager.actions.createFolder')} (In root folder)`"
-            @click="
-              onFileAction('createFolder', {
-                kind: 'directory',
-                name: '',
-                path: '',
-                parentPath: '',
-                lastModified: 0,
-                size: 0,
-                source: 'local',
-              } as FsEntry)
-            "
-          />
-          <UButton
-            icon="i-heroicons-arrow-up-tray"
-            variant="ghost"
-            color="neutral"
-            size="xs"
-            :title="`${t('videoEditor.fileManager.actions.uploadFiles')} (Auto-detect folder)`"
-            @click="triggerFileUpload"
-          />
-          <div class="ml-auto">
-          </div>
         </div>
       </UContextMenu>
 

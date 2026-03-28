@@ -17,6 +17,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'refresh'): void;
   (e: 'openRemote'): void;
+  (e: 'createFolder'): void;
+  (e: 'upload'): void;
 }>();
 
 const { t } = useI18n();
@@ -65,16 +67,16 @@ const menuItems = computed(() => {
     }));
     items.push(fieldsGroup);
 
+    const isAsc = filesPageStore.sortOption.order === 'asc';
     const orderToggle = [
       {
-        label: filesPageStore.sortOption.order === 'asc'
-          ? t('common.sortAsc', 'Ascending')
-          : t('common.sortDesc', 'Descending'),
-        icon: filesPageStore.sortOption.order === 'asc' ? 'i-heroicons-bars-arrow-up' : 'i-heroicons-bars-arrow-down',
-        type: 'checkbox' as const,
-        checked: filesPageStore.sortOption.order === 'desc',
+        label: isAsc
+          ? t('common.toSortDesc', 'To descending')
+          : t('common.toSortAsc', 'To ascending'),
+        icon: isAsc ? 'i-heroicons-bars-arrow-down' : 'i-heroicons-bars-arrow-up',
+        color: 'primary',
         onSelect: () => {
-          filesPageStore.sortOption.order = filesPageStore.sortOption.order === 'asc' ? 'desc' : 'asc';
+          filesPageStore.sortOption.order = isAsc ? 'desc' : 'asc';
         },
       },
     ];
@@ -109,6 +111,25 @@ const menuItems = computed(() => {
         title="List view"
         no-toggle
         @click="filesPageStore.setViewMode('list')"
+      />
+
+      <div class="w-px h-4 bg-ui-border mx-2"></div>
+
+      <UiActionButton
+        icon="i-heroicons-folder-plus"
+        variant="ghost"
+        color="neutral"
+        size="sm"
+        :title="t('videoEditor.fileManager.actions.createFolder', 'Create Folder')"
+        @click="emit('createFolder')"
+      />
+      <UiActionButton
+        icon="i-heroicons-arrow-up-tray"
+        variant="ghost"
+        color="neutral"
+        size="sm"
+        :title="t('videoEditor.fileManager.actions.uploadFiles', 'Upload files')"
+        @click="emit('upload')"
       />
     </div>
 
