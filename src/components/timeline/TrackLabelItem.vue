@@ -303,7 +303,7 @@ onBeforeUnmount(() => {
             @keydown.esc.stop="emit('cancelRename')"
             @blur="confirmRename"
           />
-          <span v-else class="text-[10px] text-ui-text-muted leading-tight wrap-break-word block">
+          <span v-else class="text-[10px] text-ui-text-muted leading-tight wrap-break-word block whitespace-pre-wrap">
             {{ track.name }}
           </span>
         </div>
