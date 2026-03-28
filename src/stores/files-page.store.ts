@@ -24,7 +24,7 @@ export const useFilesPageStore = defineStore('filesPage', () => {
   const sortOption = ref<FileSortOption>(
     readLocalStorageJson(`${STORAGE_KEY}:sortOption`, { field: 'name', order: 'asc' }),
   );
-  const gridCardSize = ref<number>(readLocalStorageJson(`${STORAGE_KEY}:gridCardSize`, 120));
+  const gridCardSize = ref<number>(readLocalStorageJson(`${STORAGE_KEY}:gridCardSize`, 80));
   const columnWidths = ref<Record<string, number>>(
     readLocalStorageJson(`${STORAGE_KEY}:columnWidths`, {
       name: 200,

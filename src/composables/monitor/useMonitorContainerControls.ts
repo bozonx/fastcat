@@ -43,17 +43,32 @@ interface UseMonitorContainerControlsOptions {
   toggleGrid: () => void;
 }
 
+function formatSpeedLabel(speed: number): string {
+  const abs = Math.abs(speed);
+  const prefix = speed < 0 ? '-' : '';
+  // Show "x" suffix only for ±1
+  if (abs === 1) return `${prefix}1x`;
+  return `${prefix}${abs}`;
+}
+
 export function useMonitorContainerControls(options: UseMonitorContainerControlsOptions) {
-  const playbackSpeedOptions: PlaybackSpeedOption[] = [
-    { label: '0.5x', value: 0.5 },
-    { label: '0.75x', value: 0.75 },
-    { label: '1x', value: 1 },
-    { label: '1.25x', value: 1.25 },
-    { label: '1.5x', value: 1.5 },
-    { label: '1.75x', value: 1.75 },
-    { label: '2x', value: 2 },
-    { label: '3x', value: 3 },
-    { label: '5x', value: 5 },
+  const positiveSpeedValues = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 3, 5];
+
+  const playbackSpeedOptions: PlaybackSpeedOption[] = positiveSpeedValues.map((v) => ({
+    label: formatSpeedLabel(v),
+    value: v,
+  }));
+
+  // Negative speeds in descending order (fastest to slowest: -5 … -0.5)
+  const negativeSpeedOptions: PlaybackSpeedOption[] = positiveSpeedValues
+    .slice()
+    .reverse()
+    .map((v) => ({ label: formatSpeedLabel(-v), value: -v }));
+
+  // Full list used for mouse-wheel traversal: most-negative → most-positive
+  const wheelSpeedList: PlaybackSpeedOption[] = [
+    ...negativeSpeedOptions,
+    ...playbackSpeedOptions,
   ];
 
   const canInteractPlayback = computed(
@@ -63,11 +78,15 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
   );
 
   const selectedPlaybackSpeedOption = computed(() => {
-    const absSpeed = Math.abs(options.timelineStore.playbackSpeed);
+    const speed = options.timelineStore.playbackSpeed;
     return (
-      playbackSpeedOptions.find((option) => option.value === absSpeed) ?? playbackSpeedOptions[2]
+      wheelSpeedList.find((opt) => opt.value === speed) ??
+      playbackSpeedOptions.find((opt) => opt.value === 1)!
     );
   });
+
+  /** Label displayed on the play button badge (e.g. "1x", "-1x", "0.5", "-2") */
+  const speedButtonLabel = computed(() => formatSpeedLabel(options.timelineStore.playbackSpeed));
 
   const previewResolutions = computed<PreviewResolutionOption[]>(() => {
     const projectHeight = Math.max(
@@ -158,19 +177,23 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
     options.timelineStore.togglePlayback();
   }
 
-  function setPlayback(params: { direction: 'forward' | 'backward'; speed: number }) {
+  /**
+   * Start playback at the given signed speed, or stop if already playing at that speed.
+   * Negative speed = play backward.
+   */
+  function setPlayback(signedSpeed: number) {
     if (options.isLoading.value || !canInteractPlayback.value) {
       return;
     }
 
-    const finalSpeed = params.direction === 'backward' ? -params.speed : params.speed;
-    if (options.timelineStore.isPlaying && options.timelineStore.playbackSpeed === finalSpeed) {
+    const speed = signedSpeed || 1;
+    if (options.timelineStore.isPlaying && options.timelineStore.playbackSpeed === speed) {
       options.timelineStore.togglePlayback();
       blurActiveElement();
       return;
     }
 
-    options.timelineStore.setPlaybackSpeed(finalSpeed);
+    options.timelineStore.setPlaybackSpeed(speed);
     if (!options.timelineStore.isPlaying) {
       options.timelineStore.togglePlayback();
     }
@@ -183,14 +206,19 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
     blurActiveElement();
   }
 
+  function rewindToEnd() {
+    options.timelineStore.setCurrentTimeUs(options.safeDurationUs.value);
+    blurActiveElement();
+  }
+
   function onPlaybackSpeedChange(value: PlaybackSpeedOption | number | null | undefined) {
     if (!value) {
       return;
     }
 
+    // Value already carries the sign (negative = backward)
     const speed = Number(typeof value === 'number' ? value : value.value);
-    const direction = options.timelineStore.playbackSpeed < 0 ? -1 : 1;
-    options.timelineStore.setPlaybackSpeed(speed * direction);
+    options.timelineStore.setPlaybackSpeed(speed);
   }
 
   function handleSpeedWheel(event: WheelEvent) {
@@ -198,15 +226,15 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
       return;
     }
 
-    const currentAbsSpeed = Math.abs(options.timelineStore.playbackSpeed);
-    const currentIndex = playbackSpeedOptions.findIndex(
-      (option) => option.value === currentAbsSpeed,
-    );
-    const index = currentIndex >= 0 ? currentIndex : 2;
+    const currentSpeed = options.timelineStore.playbackSpeed;
+    const currentIndex = wheelSpeedList.findIndex((opt) => opt.value === currentSpeed);
+    // Default to 1x forward if not found
+    const defaultIndex = wheelSpeedList.findIndex((opt) => opt.value === 1);
+    const index = currentIndex >= 0 ? currentIndex : defaultIndex;
 
     let nextIndex = index;
     if (event.deltaY < 0) {
-      nextIndex = Math.min(playbackSpeedOptions.length - 1, index + 1);
+      nextIndex = Math.min(wheelSpeedList.length - 1, index + 1);
     } else if (event.deltaY > 0) {
       nextIndex = Math.max(0, index - 1);
     }
@@ -215,13 +243,12 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
       return;
     }
 
-    const nextSpeed = playbackSpeedOptions[nextIndex]?.value;
-    if (!nextSpeed) {
+    const nextOption = wheelSpeedList[nextIndex];
+    if (!nextOption) {
       return;
     }
 
-    const direction = options.timelineStore.playbackSpeed < 0 ? -1 : 1;
-    options.timelineStore.setPlaybackSpeed(nextSpeed * direction);
+    options.timelineStore.setPlaybackSpeed(nextOption.value);
   }
 
   function createMarkerAtPlayhead() {
@@ -301,13 +328,16 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
     contextMenuItems,
     createMarkerAtPlayhead,
     handleSpeedWheel,
+    negativeSpeedOptions,
     onPlaybackSpeedChange,
     playbackSpeedOptions,
     previewResolutions,
     resetZoom,
+    rewindToEnd,
     rewindToStart,
     selectedPlaybackSpeedOption,
     setPlayback,
+    speedButtonLabel,
     togglePlayback,
     togglePreviewEffects,
     toggleProxyUsage,
