@@ -321,6 +321,14 @@ useFileManagerPanelBootstrap({
             :title="`${t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline')} (In _timelines folder)`"
             @click="onCreateTimeline"
           />
+          <UButton
+            icon="i-heroicons-arrow-up-tray"
+            variant="ghost"
+            color="neutral"
+            size="xs"
+            :title="t('videoEditor.fileManager.actions.uploadFiles', 'Upload files')"
+            @click="triggerFileUpload"
+          />
         </div>
       </UContextMenu>
 
