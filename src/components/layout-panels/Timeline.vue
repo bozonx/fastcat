@@ -65,6 +65,11 @@ const canEditClipContent = computed(() => ['cut', 'files', 'sound'].includes(cur
 const timelineMouseSettings = computed(() => workspaceStore.userSettings.mouse.timeline);
 const rulerMouseSettings = computed(() => workspaceStore.userSettings.mouse.ruler);
 
+const anyMuted = computed(() => tracks.value.some((t) => t.audioMuted));
+const anyLocked = computed(() => tracks.value.some((t) => t.locked));
+const anyHidden = computed(() => tracks.value.some((t) => t.videoHidden));
+const { isAnyTrackSoloed } = storeToRefs(timelineStore);
+
 const timelineWidthStyle = computed(() => {
   const maxUs = Math.max(timelineStore.duration, timelineStore.currentTime) + 30_000_000;
   const widthPx = timeUsToPx(maxUs, timelineStore.timelineZoom);
@@ -332,13 +337,74 @@ function onDragVirtualEnd() {
       @pointercancel="onTimelinePointerUp"
     >
       <div
-        class="shrink-0 border-r border-ui-border bg-ui-bg-elevated flex items-center justify-center px-2"
+        class="shrink-0 border-r border-ui-border bg-ui-bg-elevated flex items-center px-2"
         style="width: 200px"
       >
-        <UiTimecode
-          :model-value="timelineStore.currentTime"
-          @update:model-value="timelineStore.setCurrentTimeUs($event)"
-        />
+        <div class="flex-1 flex items-center">
+          <UiTimecode
+            :model-value="timelineStore.currentTime"
+            @update:model-value="timelineStore.setCurrentTimeUs($event)"
+          />
+        </div>
+
+        <div class="flex items-center gap-1">
+          <UTooltip
+            v-if="anyHidden"
+            :text="t('fastcat.track.resetHidden', 'Show all hidden tracks')"
+            :shortcuts="['H']"
+          >
+            <UButton
+              icon="i-heroicons-eye-slash"
+              color="warning"
+              variant="soft"
+              size="xs"
+              class="w-5 h-5 p-0!"
+              @click="timelineStore.showAllTracks()"
+            />
+          </UTooltip>
+          <UTooltip
+            v-if="anyMuted"
+            :text="t('fastcat.track.resetMuted', 'Unmute all tracks')"
+            :shortcuts="['M']"
+          >
+            <UButton
+              icon="i-heroicons-speaker-x-mark"
+              color="error"
+              variant="soft"
+              size="xs"
+              class="w-5 h-5 p-0!"
+              @click="timelineStore.unmuteAllTracks()"
+            />
+          </UTooltip>
+          <UTooltip
+            v-if="isAnyTrackSoloed"
+            :text="t('fastcat.track.resetSolo', 'Unsolo all tracks')"
+            :shortcuts="['S']"
+          >
+            <UButton
+              icon="i-heroicons-musical-note"
+              color="warning"
+              variant="soft"
+              size="xs"
+              class="w-5 h-5 p-0!"
+              @click="timelineStore.unsoloAllTracks()"
+            />
+          </UTooltip>
+          <UTooltip
+            v-if="anyLocked"
+            :text="t('fastcat.track.resetLocked', 'Unlock all tracks')"
+            :shortcuts="['L']"
+          >
+            <UButton
+              icon="i-heroicons-lock-closed"
+              color="primary"
+              variant="soft"
+              size="xs"
+              class="w-5 h-5 p-0!"
+              @click="timelineStore.unlockAllTracks()"
+            />
+          </UTooltip>
+        </div>
       </div>
       <div ref="rulerContainerRef" class="flex-1 relative z-10 timeline-ruler-container overflow-hidden">
         <TimelineRuler

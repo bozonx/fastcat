@@ -903,7 +903,11 @@
       "unlocked": "Track is unlocked",
       "video": {
         "title": "Video tracks"
-      }
+      },
+      "resetHidden": "Show all hidden tracks",
+      "resetMuted": "Unmute all tracks",
+      "resetSolo": "Unsolo all tracks",
+      "resetLocked": "Unlock all tracks"
     },
     "welcome": {
       "openWorkspace": "Select Workspace Folder",
