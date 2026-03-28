@@ -155,8 +155,10 @@ onBeforeUnmount(() => {
     :style="{
       height: `${height}px`,
       backgroundColor:
-        isSelected && track.color && track.color !== '#2a2a2a'
-          ? `${track.color}1a`
+        track.color && track.color !== '#2a2a2a'
+          ? isSelected
+            ? `${track.color}33`
+            : `${track.color}1a`
           : isSelected
             ? 'rgba(var(--color-primary-500), 0.12)'
             : undefined,
@@ -177,8 +179,10 @@ onBeforeUnmount(() => {
       ]"
       :style="{
         backgroundColor:
-          (isSelected || isHovered) && track.color && track.color !== '#2a2a2a'
-            ? track.color
+          track.color && track.color !== '#2a2a2a'
+            ? isSelected
+              ? track.color
+              : `${track.color}b3`
             : undefined,
       }"
     />
@@ -191,7 +195,7 @@ onBeforeUnmount(() => {
           class="shrink-0 flex items-center justify-center min-w-[20px] pr-1 border-r border-ui-border text-[9px] font-black uppercase tracking-tight h-3 my-auto transition-colors"
           :style="{
             color:
-              track.color && track.color !== '#2a2a2a'
+              isSelected && track.color && track.color !== '#2a2a2a'
                 ? track.color
                 : isSelected
                   ? 'var(--color-primary-500)'

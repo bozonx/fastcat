@@ -179,6 +179,8 @@ export const TimelineTrackFastCatMetaSchema = z
     audioGain: z.number().min(0).max(10).optional(),
     audioBalance: z.number().min(-1).max(1).optional(),
     effects: z.array(z.any()).optional(),
+    color: z.string().optional(),
+    locked: z.boolean().optional(),
   })
   .catch({});
 

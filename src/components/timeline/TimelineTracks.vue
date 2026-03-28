@@ -290,7 +290,15 @@ function selectTransition(
             : '',
           track.locked ? 'hatching-diagonal-track bg-black/10' : '',
         ]"
-        :style="{ height: `${trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT}px` }"
+        :style="{
+          height: `${trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT}px`,
+          backgroundColor:
+            track.color && track.color !== '#2a2a2a'
+              ? isTrackVisuallySelected(track.id)
+                ? `${track.color}40`
+                : `${track.color}1a`
+              : undefined,
+        }"
         @pointerdown="
           focusStore.setPanelFocus('timeline');
           if (shouldStartMarquee($event)) {
@@ -327,9 +335,7 @@ function selectTransition(
               !track.color || track.color === '#2a2a2a',
           }"
           :style="{
-            borderColor: track.color && track.color !== '#2a2a2a' ? `${track.color}4d` : undefined,
-            backgroundColor:
-              track.color && track.color !== '#2a2a2a' ? `${track.color}1a` : undefined,
+            borderColor: track.color && track.color !== '#2a2a2a' ? `${track.color}80` : undefined,
             borderTopWidth: '2px',
             borderBottomWidth: '2px',
           }"
