@@ -85,7 +85,8 @@ config.global.stubs = {
     template: '<button :class="icon" :title="title"><span v-if="label">{{ label }}</span><slot /></button>',
   },
   UTabs: {
-    template: '<div><slot /></div>',
+    props: ['items'],
+    template: '<div><slot v-for="(item, index) in items" :key="index" :item="item" :index="index" /></div>',
   },
 };
 

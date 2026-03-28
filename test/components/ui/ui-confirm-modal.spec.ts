@@ -27,7 +27,7 @@ describe('UiConfirmModal', () => {
     const html = component.html();
     expect(html).toContain('Test Title');
     expect(html).toContain('Test Description');
-    expect(html).toContain('i-heroicons:information-circle');
+    expect(html).toContain('i-heroicons-information-circle');
     expect(html).toContain('Yes');
     expect(html).toContain('No');
     expect(html).toContain('Maybe');

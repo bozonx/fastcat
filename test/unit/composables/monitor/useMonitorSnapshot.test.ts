@@ -1,11 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
+import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { useMonitorSnapshot } from '~/composables/monitor/useMonitorSnapshot';
 
 // Separate mock objects to keep them stable
 const mockToast = {
   add: vi.fn(),
 };
+
+mockNuxtImport('useToast', () => {
+  return () => mockToast;
+});
 
 const mockUiStore = {
   notifyFileManagerUpdate: vi.fn(),
@@ -19,18 +24,15 @@ vi.mock('~/stores/ui.store', () => ({
   useUiStore: () => mockUiStore,
 }));
 
-// Mock both #imports and global useToast
-vi.mock('#imports', () => ({
-  useToast: () => mockToast,
-}));
-
-vi.stubGlobal('useToast', () => mockToast);
-
 vi.mock('~/utils/video-editor/worker-client', () => ({
   getThumbnailWorkerClient: () => ({
     client: mockWorkerClient
   }),
   setThumbnailHostApi: vi.fn(),
+}));
+
+vi.mock('~/utils/video-editor/createVideoCoreHostApi', () => ({
+  createVideoCoreHostApi: vi.fn().mockReturnValue({}),
 }));
 
 describe('useMonitorSnapshot', () => {
@@ -89,8 +91,9 @@ describe('useMonitorSnapshot', () => {
         .mockResolvedValueOnce(mockFileHandle); // Actual save
 
     await createStopFrameSnapshot();
-
+    
     expect(mockProjectStore.getProjectFileHandleByRelativePath).toHaveBeenCalled();
+    expect(mockWorkerClient.extractFrameToBlob).toHaveBeenCalled();
     expect(mockToast.add).toHaveBeenCalledWith(expect.objectContaining({
         title: 'Snapshot created',
         color: 'primary'

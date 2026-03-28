@@ -69,7 +69,7 @@ describe('useFileBrowserStt', () => {
     } as any);
 
     const config = useRuntimeConfig();
-    config.public.fastcatPublicadorBaseUrl = 'http://test-base.com';
+    config.public.bloggerDogApiUrl = 'http://test-base.com';
 
     vi.mocked(getMediaTypeFromFilename).mockImplementation((name) => {
       if (name.endsWith('.mp3')) return 'audio';
@@ -85,7 +85,7 @@ describe('useFileBrowserStt', () => {
     expect(resolveExternalServiceConfig).toHaveBeenCalledWith({
       service: 'stt',
       integrations: workspaceStoreMock.userSettings.integrations,
-      fastcatPublicadorBaseUrl: 'http://test-base.com',
+      bloggerDogApiUrl: 'http://test-base.com',
     });
   });
 
@@ -239,7 +239,7 @@ describe('useFileBrowserStt', () => {
           fileName: 'test.mp3',
           fileType: 'audio/mp3',
           language: 'en-US',
-          fastcatPublicadorBaseUrl: 'http://test-base.com',
+          bloggerDogApiUrl: 'http://test-base.com',
           projectId: 'test-project-id',
           userSettings: workspaceStoreMock.userSettings,
           workspaceHandle: workspaceStoreMock.workspaceHandle,
