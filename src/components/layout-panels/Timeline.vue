@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useDebounceFn, useEventListener, useLocalStorage, useResizeObserver } from '@vueuse/core';
+import { useEventListener, useLocalStorage, useResizeObserver } from '@vueuse/core';
 import type { FastCatUserSettings } from '~/utils/settings/defaults';
 
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -19,7 +19,6 @@ import type { TimelineClipActionPayload, TimelineTrack } from '~/timeline/types'
 import { timeUsToPx, pxToTimeUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { getWheelDelta, isSecondaryWheel } from '~/utils/mouse';
-import { formatZoomMultiplier, timelineZoomPositionToScale } from '~/utils/zoom';
 import { useDraggedFile } from '~/composables/useDraggedFile';
 
 import TimelineTrackLabels from '~/components/timeline/TimelineTrackLabels.vue';
@@ -278,22 +277,6 @@ const videoTracks = computed(() => tracks.value.filter((t) => t.kind === 'video'
 const audioTracks = computed(() => tracks.value.filter((t) => t.kind === 'audio'));
 
 const fps = computed(() => projectStore.projectSettings.project.fps || 30);
-
-const zoomFactor = computed(() =>
-  formatZoomMultiplier(timelineZoomPositionToScale(timelineStore.timelineZoom)),
-);
-const isZooming = ref(false);
-const hideZoomIndicator = useDebounceFn(() => {
-  isZooming.value = false;
-}, 2000);
-
-watch(
-  () => timelineStore.timelineZoom,
-  () => {
-    isZooming.value = true;
-    hideZoomIndicator();
-  },
-);
 
 // Track scrollbar height from audio section (only one with visible horizontal scrollbar)
 useResizeObserver(audioScrollEl, () => {
@@ -1014,23 +997,6 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
       </div>
     </div>
 
-    <!-- Zoom indicator -->
-    <Transition
-      enter-active-class="transition-opacity duration-150"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
-      leave-active-class="transition-opacity duration-500"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0"
-    >
-      <div
-        v-if="isZooming"
-        class="absolute bottom-2 right-3 px-2 py-1 text-xs font-mono font-semibold rounded-md bg-neutral-900/90 text-neutral-100 shadow-lg backdrop-blur-sm pointer-events-none select-none"
-        :style="{ zIndex: 60 }"
-      >
-        {{ zoomFactor }}
-      </div>
-    </Transition>
   </div>
 </template>
 

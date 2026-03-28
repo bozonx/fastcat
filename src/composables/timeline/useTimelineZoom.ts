@@ -5,6 +5,7 @@ import {
   pxToTimeUs,
   pxPerSecondToZoom,
 } from '~/utils/timeline/geometry';
+import { DEFAULT_TIMELINE_ZOOM_POSITION } from '~/utils/zoom';
 
 export interface UseTimelineZoomOptions {
   scrollEl: Ref<HTMLElement | null>;
@@ -56,7 +57,17 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
     const delta = pendingTimelineZoomDelta;
     pendingTimelineZoomDelta = 0;
 
-    const nextZoom = Math.min(110, Math.max(0, prevZoom + delta));
+    let nextZoom = Math.min(110, Math.max(0, prevZoom + delta));
+
+    // Snap to 100% when crossing into the snap zone while scrolling
+    const SNAP_THRESHOLD = 2.5;
+    if (
+      Math.abs(nextZoom - DEFAULT_TIMELINE_ZOOM_POSITION) < SNAP_THRESHOLD &&
+      Math.abs(prevZoom - DEFAULT_TIMELINE_ZOOM_POSITION) >= SNAP_THRESHOLD
+    ) {
+      nextZoom = DEFAULT_TIMELINE_ZOOM_POSITION;
+    }
+
     if (nextZoom === prevZoom) {
       timelineZoomFrameId = 0;
       pendingAnchor = null;

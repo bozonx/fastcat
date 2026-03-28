@@ -9,10 +9,9 @@ import UiSplitDropdownButton from '~/components/ui/UiSplitDropdownButton.vue';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import {
   DEFAULT_TIMELINE_ZOOM_POSITION,
-  formatZoomMultiplier,
+  formatZoomPercent,
   MAX_TIMELINE_ZOOM_POSITION,
   MIN_TIMELINE_ZOOM_POSITION,
-  TIMELINE_ZOOM_POSITIONS,
   timelineZoomPositionToScale,
   timelineZoomScaleToPosition,
 } from '~/utils/zoom';
@@ -92,12 +91,12 @@ const timelineZoom = computed({
 const timelineZoomScale = computed(() => timelineZoomPositionToScale(timelineZoom.value));
 
 const timelineZoomMultiplierInput = computed({
-  get: () => formatZoomMultiplier(timelineZoomScale.value),
+  get: () => formatZoomPercent(timelineZoomScale.value),
   set: (value: string | number) => {
-    const normalized = String(value).trim().toLowerCase().replace(',', '.').replace(/^x/, '');
+    const normalized = String(value).trim().replace(',', '.').replace(/%$/, '');
     const parsed = Number(normalized);
     if (!Number.isFinite(parsed) || parsed <= 0) return;
-    timelineStore.setTimelineZoomExact(timelineZoomScaleToPosition(parsed));
+    timelineStore.setTimelineZoomExact(timelineZoomScaleToPosition(parsed / 100));
   },
 });
 
@@ -227,21 +226,6 @@ function onToolbarContextMenu(e: MouseEvent) {
       <!-- Left column: Main actions -->
       <div class="flex-1 flex items-center justify-center gap-2">
         <UFieldGroup class="inline-flex">
-          <UiTooltip v-for="opt in moveModeOptions" :key="opt.value" :text="opt.tooltip">
-            <UButton
-              size="xs"
-              :variant="currentMoveMode === opt.value ? 'solid' : 'ghost'"
-              :color="currentMoveMode === opt.value ? 'primary' : 'neutral'"
-              :icon="opt.icon"
-              class="hover:bg-ui-bg-hover/60"
-              @click="currentMoveMode = opt.value"
-            />
-          </UiTooltip>
-        </UFieldGroup>
-
-        <div class="w-px h-4 bg-ui-border mx-1 opacity-50" />
-
-        <UFieldGroup class="inline-flex">
           <UiTooltip :text="t('fastcat.timeline.snapModeFullDescription')">
             <UButton
               size="xs"
@@ -270,6 +254,21 @@ function onToolbarContextMenu(e: MouseEvent) {
               icon="i-heroicons-arrows-pointing-out"
               class="hover:bg-ui-bg-hover/60"
               @click="selectToolbarSnapMode('free_mode')"
+            />
+          </UiTooltip>
+        </UFieldGroup>
+
+        <div class="w-px h-4 bg-ui-border mx-1 opacity-50" />
+
+        <UFieldGroup class="inline-flex">
+          <UiTooltip v-for="opt in moveModeOptions" :key="opt.value" :text="opt.tooltip">
+            <UButton
+              size="xs"
+              :variant="currentMoveMode === opt.value ? 'solid' : 'ghost'"
+              :color="currentMoveMode === opt.value ? 'primary' : 'neutral'"
+              :icon="opt.icon"
+              class="hover:bg-ui-bg-hover/60"
+              @click="currentMoveMode = opt.value"
             />
           </UiTooltip>
         </UFieldGroup>
@@ -424,7 +423,7 @@ function onToolbarContextMenu(e: MouseEvent) {
       </div>
 
       <!-- Right column: Zoom controls -->
-      <div class="w-[280px] flex items-center gap-2 pl-4 border-l border-ui-border/30">
+      <div class="w-[220px] flex items-center gap-2 pl-4 border-l border-ui-border/30">
         <UiTooltip :text="t('fastcat.timeline.zoomToFit', 'Fit to zoom')">
           <UButton
             size="xs"
@@ -441,13 +440,12 @@ function onToolbarContextMenu(e: MouseEvent) {
             v-model="timelineZoom"
             :min="MIN_TIMELINE_ZOOM_POSITION"
             :max="MAX_TIMELINE_ZOOM_POSITION"
-            :step="0.01"
-            :steps="TIMELINE_ZOOM_POSITIONS"
+            :step="1"
             :default-value="DEFAULT_TIMELINE_ZOOM_POSITION"
           />
         </div>
 
-        <div class="w-16 shrink-0">
+        <div class="w-14 shrink-0">
           <UInput
             v-model="timelineZoomMultiplierInput"
             size="xs"
