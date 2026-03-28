@@ -24,7 +24,60 @@ const proxyStore = useProxyStore();
 const timelineStore = useTimelineStore();
 const toast = useToast();
 const { t } = useI18n();
-const { readDirectory, getFileIcon, findEntryByPath, mediaCache, vfs } = useFileManager();
+const { readDirectory, getFileIcon, findEntryByPath, mediaCache, vfs, handleFiles, createFolder, reloadDirectory } = useFileManager();
+
+const fileInput = ref<HTMLInputElement | null>(null);
+
+async function onCreateFolder() {
+  const name = prompt(t('videoEditor.fileManager.actions.createFolder', 'Create Folder'));
+  if (name) {
+    const parentPath = filesPageStore.selectedFolder?.path || '';
+    await createFolder(name, parentPath);
+    await loadFolderContent();
+  }
+}
+
+function triggerFileUpload() {
+  fileInput.value?.click();
+}
+
+function onFileSelect(e: Event) {
+  const target = e.target as HTMLInputElement;
+  if (target.files) {
+    const files = Array.from(target.files);
+    target.value = '';
+    const parentPath = filesPageStore.selectedFolder?.path || '';
+    handleFiles(files, parentPath).then(() => {
+      loadFolderContent();
+    });
+  }
+}
+
+const menuItems = computed(() => [
+  [
+    {
+      label: t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),
+      icon: 'i-heroicons-arrow-up-tray',
+      onSelect: triggerFileUpload,
+    },
+    {
+      label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
+      icon: 'i-heroicons-folder-plus',
+      onSelect: onCreateFolder,
+    },
+  ],
+  [
+    {
+      label: t('common.refresh', 'Refresh'),
+      icon: 'i-heroicons-arrow-path',
+      onSelect: async () => {
+        const path = filesPageStore.selectedFolder?.path || '';
+        await reloadDirectory(path);
+        await loadFolderContent();
+      },
+    },
+  ]
+]);
 
 const entries = ref<FsEntry[]>([]);
 const isLoading = ref(false);
@@ -246,6 +299,8 @@ onMounted(() => {
 
 <template>
   <div class="flex flex-col h-full bg-slate-950 text-slate-200">
+    <input ref="fileInput" type="file" multiple class="hidden" @change="onFileSelect" />
+
     <!-- Навигация (Breadcrumbs/Back) -->
     <div class="flex items-center gap-2 border-b border-slate-800 bg-slate-900/50 px-3 py-2.5">
       <UButton
@@ -264,6 +319,16 @@ onMounted(() => {
             <span class="shrink-0 last:text-slate-100 last:font-medium">{{ bc.name }}</span>
           </template>
         </div>
+      </div>
+      <div class="shrink-0 flex items-center ml-2">
+        <UDropdownMenu :items="menuItems" :ui="{ content: 'w-56 min-w-max' }">
+          <UButton
+            icon="lucide:more-vertical"
+            variant="ghost"
+            color="neutral"
+            size="sm"
+          />
+        </UDropdownMenu>
       </div>
     </div>
 
