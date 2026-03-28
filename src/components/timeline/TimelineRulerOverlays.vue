@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import UiTooltip from '~/components/ui/UiTooltip.vue';
+import { useTimelineHoverState } from '~/composables/timeline/useTimelineHoverState';
+
+const { hoveredMarkerId } = useTimelineHoverState();
+
 interface MarkerPoint {
   id: string;
   x: number;
@@ -63,6 +67,8 @@ function getMarkerButtonClass(marker: MarkerPoint) {
       :key="`zone-bg-${point.id}`"
       class="absolute bottom-0 h-full pointer-events-auto z-10"
       :style="{ left: `${point.x}px`, width: `${point.width}px` }"
+      @mouseenter="hoveredMarkerId = point.id"
+      @mouseleave="hoveredMarkerId = null"
     >
       <div
         class="absolute inset-y-0 left-0 w-full bg-primary-500/20 border-l border-r border-primary-500/50 pointer-events-none"
@@ -86,8 +92,8 @@ function getMarkerButtonClass(marker: MarkerPoint) {
       >
         <button
           type="button"
-          class="absolute inset-y-0 left-0 right-0 border-l border-r bg-selection-range-bg border-selection-range-border shadow-[0_0_0_1px_rgba(var(--color-selection-range),0.25)]"
-          :class="isSelectionRangeSelected ? 'ring-2 ring-selection-range/80' : ''"
+          class="absolute inset-y-0 left-0 right-0 border-l border-r bg-selection-range-bg border-selection-range-border shadow-[0_0_0_1px_rgba(var(--color-selection-range),0.15)] opacity-60"
+          :class="isSelectionRangeSelected ? 'ring-2 ring-selection-range/60' : ''"
           @click="emit('select-selection-range', $event)"
           @pointerdown.stop="emit('selection-range-pointerdown', $event, 'move')"
         />
@@ -122,6 +128,8 @@ function getMarkerButtonClass(marker: MarkerPoint) {
               :class="getMarkerButtonClass(point)"
               :style="point.color ? { color: point.color } : {}"
               :aria-label="point.isZone ? zoneMarkerStartLabel : markerLabel"
+              @mouseenter="hoveredMarkerId = point.id"
+              @mouseleave="hoveredMarkerId = null"
               @dblclick.stop.prevent="emit('select-marker', point.id, undefined, 'left')"
               @pointerdown.stop="emit('marker-pointerdown', $event, point.id)"
               @contextmenu.stop
@@ -151,6 +159,8 @@ function getMarkerButtonClass(marker: MarkerPoint) {
               :class="getMarkerButtonClass(point)"
               :style="point.color ? { color: point.color } : {}"
               :aria-label="zoneMarkerEndLabel"
+              @mouseenter="hoveredMarkerId = point.id"
+              @mouseleave="hoveredMarkerId = null"
               @dblclick.stop.prevent="emit('select-marker', point.id, undefined, 'right')"
               @pointerdown.stop="emit('marker-pointerdown', $event, point.id, 'right')"
               @contextmenu.stop
@@ -182,13 +192,13 @@ function getMarkerButtonClass(marker: MarkerPoint) {
     >
       <button
         type="button"
-        class="absolute inset-y-0 left-0 w-2 cursor-ew-resize bg-selection-range/70 pointer-events-auto"
+        class="absolute inset-y-0 left-0 w-2 cursor-ew-resize bg-selection-range/30 pointer-events-auto"
         :aria-label="selectionStartHandleLabel"
         @pointerdown.stop="emit('selection-range-pointerdown', $event, 'left')"
       />
       <button
         type="button"
-        class="absolute inset-y-0 right-0 w-2 cursor-ew-resize bg-selection-range/70 pointer-events-auto"
+        class="absolute inset-y-0 right-0 w-2 cursor-ew-resize bg-selection-range/30 pointer-events-auto"
         :aria-label="selectionEndHandleLabel"
         @pointerdown.stop="emit('selection-range-pointerdown', $event, 'right')"
       />

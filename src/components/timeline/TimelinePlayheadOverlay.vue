@@ -3,11 +3,13 @@ import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useTimelineHoverState } from '~/composables/timeline/useTimelineHoverState';
 import { timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 
 const timelineStore = useTimelineStore();
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
+const { hoveredMarkerId } = useTimelineHoverState();
 
 const fps = computed(() => projectStore.projectSettings.project.fps || 30);
 
@@ -19,15 +21,26 @@ const playheadTransform = computed(
   () => `translate3d(${playheadPx.value}px, 0, 0) translateX(-50%)`,
 );
 
-const selectedMarker = computed(() => {
+/** Lines to draw for the active marker (hovered > selected). Zone markers show both pins. */
+const activeMarkerLines = computed(() => {
   const entity = selectionStore.selectedEntity;
-  if (entity?.source !== 'timeline' || entity?.kind !== 'marker') return null;
-  return timelineStore.markers.find((m) => m.id === entity.markerId) ?? null;
-});
+  const selectedId =
+    entity?.source === 'timeline' && entity?.kind === 'marker' ? entity.markerId : null;
 
-const selectedMarkerPx = computed(() => {
-  if (!selectedMarker.value) return null;
-  return timeUsToPx(selectedMarker.value.timeUs, timelineStore.timelineZoom);
+  const activeId = hoveredMarkerId.value ?? selectedId;
+  if (!activeId) return [];
+
+  const marker = timelineStore.markers.find((m) => m.id === activeId);
+  if (!marker) return [];
+
+  const zoom = timelineStore.timelineZoom;
+  const color = marker.color ?? '#eab308';
+
+  const lines = [{ px: timeUsToPx(marker.timeUs, zoom), color }];
+  if (marker.durationUs !== undefined) {
+    lines.push({ px: timeUsToPx(marker.timeUs + marker.durationUs, zoom), color });
+  }
+  return lines;
 });
 
 const currentFrameHighlightStyle = computed(() => {
@@ -51,14 +64,15 @@ const currentFrameHighlightStyle = computed(() => {
 
 <template>
   <div class="absolute inset-0 pointer-events-none z-50">
-    <!-- Selected marker line (full timeline height) -->
+    <!-- Active marker lines (hovered or selected; both pins for zone markers) -->
     <div
-      v-if="selectedMarkerPx !== null"
+      v-for="(line, i) in activeMarkerLines"
+      :key="i"
       class="absolute inset-y-0 w-px"
       :style="{
-        transform: `translate3d(${selectedMarkerPx}px, 0, 0) translateX(-50%)`,
+        transform: `translate3d(${line.px}px, 0, 0) translateX(-50%)`,
         willChange: 'transform',
-        backgroundColor: selectedMarker?.color ?? '#eab308',
+        backgroundColor: line.color,
         opacity: '0.8',
       }"
     />

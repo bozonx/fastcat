@@ -9,6 +9,7 @@ import {
   truncateRulerTooltip,
   useTimelineRulerPresentation,
 } from '~/composables/timeline/useTimelineRulerPresentation';
+import { useTimelineHoverState } from '~/composables/timeline/useTimelineHoverState';
 import { useTimelineRulerMenus } from '~/composables/timeline/useTimelineRulerMenus';
 import { useTimelineRulerMarkerDrag } from '~/composables/timeline/useTimelineRulerMarkerDrag';
 import { useTimelineRulerSelectionDrag } from '~/composables/timeline/useTimelineRulerSelectionDrag';
@@ -122,7 +123,6 @@ function selectMarker(
   markerId: string,
   e?: MouseEvent,
   part: 'left' | 'right' = 'left',
-  movePlayhead = true,
 ) {
   if (e && isLayer1Active(e, workspaceStore.userSettings)) {
     executeRulerClickAction(workspaceStore.userSettings.mouse.ruler.shiftClick, e);
@@ -131,7 +131,8 @@ function selectMarker(
   e?.stopPropagation();
   selectionStore.selectTimelineMarker(markerId);
 
-  if (!movePlayhead) return;
+  // Move playhead only on double-click (dblclick handler passes undefined for e)
+  if (e !== undefined) return;
 
   const marker = timelineStore.markers.find((m) => m.id === markerId);
   if (marker) {
@@ -192,7 +193,7 @@ const {
   isSnappingEnabled,
 });
 
-const hoveredMarkerId = ref<string | null>(null);
+const { hoveredMarkerId } = useTimelineHoverState();
 
 const { markerPoints, selectionRangePoint, currentFrameHighlightStyle, playheadStyle } =
   useTimelineRulerPresentation({
@@ -276,6 +277,7 @@ function isMarkerSelected(markerId: string) {
       @pointermove="onRulerPointerMove"
       @pointerup="onRulerPointerUp"
       @pointercancel="onRulerPointerCancel"
+      @mouseleave="hoveredMarkerId = null"
     >
       <canvas ref="canvasRef" class="absolute top-0 left-0 w-full h-full pointer-events-none" />
 

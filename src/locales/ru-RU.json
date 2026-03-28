@@ -753,6 +753,9 @@
       "snapModeFramesDescription": "Привязка только к границам кадров",
       "snapModeFreeDescription": "Свободное перемещение (без привязки)",
       "moveMode": "Режим перемещения",
+      "moveModeNormalDescription": "Обычное перемещение (без наложения)",
+      "moveModePseudoDescription": "Режим псевдо-наложения (обрезает нижние клипы)",
+      "moveModeSlipDescription": "Прокрутка содержимого (внутри клипа)",
       "transition": {
         "actionFall": "Падение",
         "actionRise": "Поднимается",

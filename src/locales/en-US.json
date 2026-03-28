@@ -753,6 +753,9 @@
       "snapModeFramesDescription": "Snap to frame boundaries only",
       "snapModeFreeDescription": "No snapping (sub-frame precision)",
       "moveMode": "Clip Move Mode",
+      "moveModeNormalDescription": "Normal move (no overlap)",
+      "moveModePseudoDescription": "Pseudo-overlap mode (cuts underlying clips)",
+      "moveModeSlipDescription": "Slip mode (moves content inside clip)",
       "transition": {
         "actionFall": "Falls",
         "actionRise": "Rises",
