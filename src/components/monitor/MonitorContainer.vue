@@ -241,18 +241,6 @@ watchEffect(() => {
         return Math.abs(time - m.timeUs) < 1000;
       })
     : [];
-  // DEBUG: remove after fix
-  console.log('[MarkerDebug]', {
-    time,
-    allMarkers: markers?.map((m) => ({
-      id: m.id.slice(-4),
-      text: m.text,
-      timeUs: m.timeUs,
-      diff: Math.abs(time - m.timeUs),
-      durationUs: m.durationUs,
-    })),
-    filtered: filtered.length,
-  });
   activeMarkers.value = filtered;
 });
 

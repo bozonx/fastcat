@@ -67,12 +67,11 @@ describe('TimelineToolbar', () => {
   it('toggles trim mode when clicking trim button', async () => {
     const component = await mountSuspended(TimelineToolbar);
     const dropdowns = component.findAllComponents({ name: 'UiSplitDropdownButton' });
-    expect(dropdowns.length).toBe(3);
+    expect(dropdowns.length).toBe(1);
 
-    const trimDropdown = dropdowns[2];
+    const trimDropdown = dropdowns[0];
     trimDropdown.vm.$emit('click');
 
-    // Due to the mock component emission, we can also check if the method in the component works
     expect(mockTimelineStore.isTrimModeActive).toBe(true);
   });
 
@@ -98,6 +97,7 @@ describe('TimelineToolbar', () => {
     const dataTransfer = {
       setData: vi.fn(),
       effectAllowed: 'uninitialized',
+      buttons: 0,
     };
 
     await adjustBtn!.trigger('dragstart', { dataTransfer });
@@ -114,7 +114,7 @@ describe('TimelineToolbar', () => {
     mockTimelineStore.getHotkeyTargetClip.mockReturnValue(null);
     const component = await mountSuspended(TimelineToolbar);
     const dropdowns = component.findAllComponents({ name: 'UiSplitDropdownButton' });
-    const trimDropdown = dropdowns[2];
+    const trimDropdown = dropdowns[0];
 
     const items = trimDropdown.props('items') as any[][];
     const rippleTrimLeft = items[0][0];
@@ -128,7 +128,7 @@ describe('TimelineToolbar', () => {
     mockTimelineStore.getHotkeyTargetClip.mockReturnValue({ trackId: 'track1', itemId: 'clip1' });
     const component = await mountSuspended(TimelineToolbar);
     const dropdowns = component.findAllComponents({ name: 'UiSplitDropdownButton' });
-    const trimDropdown = dropdowns[2];
+    const trimDropdown = dropdowns[0];
 
     const items = trimDropdown.props('items') as any[][];
     const rippleTrimLeft = items[0][0];
