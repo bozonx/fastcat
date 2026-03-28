@@ -90,15 +90,7 @@ const timelineZoom = computed({
 
 const timelineZoomScale = computed(() => timelineZoomPositionToScale(timelineZoom.value));
 
-const timelineZoomMultiplierInput = computed({
-  get: () => formatZoomPercent(timelineZoomScale.value),
-  set: (value: string | number) => {
-    const normalized = String(value).trim().replace(',', '.').replace(/%$/, '');
-    const parsed = Number(normalized);
-    if (!Number.isFinite(parsed) || parsed <= 0) return;
-    timelineStore.setTimelineZoomExact(timelineZoomScaleToPosition(parsed / 100));
-  },
-});
+const timelineZoomMultiplierInput = computed(() => formatZoomPercent(timelineZoomScale.value));
 
 
 
@@ -423,7 +415,7 @@ function onToolbarContextMenu(e: MouseEvent) {
       </div>
 
       <!-- Right column: Zoom controls -->
-      <div class="w-[220px] flex items-center gap-2 pl-4 border-l border-ui-border/30">
+      <div class="w-[180px] flex items-center gap-2 pl-4 border-l border-ui-border/30">
         <UiTooltip :text="t('fastcat.timeline.zoomToFit', 'Fit to zoom')">
           <UButton
             size="xs"
@@ -445,14 +437,11 @@ function onToolbarContextMenu(e: MouseEvent) {
           />
         </div>
 
-        <div class="w-14 shrink-0">
-          <UInput
-            v-model="timelineZoomMultiplierInput"
-            size="xs"
-            class="w-full font-mono text-center"
-            variant="none"
-          />
-        </div>
+        <span
+          class="text-2xs font-mono tabular-nums text-ui-text-muted select-none leading-none w-12 text-center shrink-0"
+        >
+          {{ timelineZoomMultiplierInput }}
+        </span>
       </div>
     </div>
   </UContextMenu>
