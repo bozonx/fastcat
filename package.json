@@ -49,6 +49,7 @@
     "@nuxt/icon": "^2.2.1",
     "@nuxt/test-utils": "^4.0.0",
     "@nuxtjs/device": "^4.0.0",
+    "@pinia/testing": "^1.0.3",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/vite": "^4.2.1",
     "@tauri-apps/api": "^2.10.1",

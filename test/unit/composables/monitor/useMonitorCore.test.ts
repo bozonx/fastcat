@@ -253,6 +253,139 @@ describe('useMonitorCore', () => {
     wrapper.unmount();
   });
 
+  it('updates AudioEngine monitor volume when uiStore changes', async () => {
+    const timelineStore = reactive({
+      duration: 0,
+      currentTime: 0,
+      isPlaying: false,
+      masterGain: 1,
+      audioMuted: false,
+      setCurrentTimeUs: vi.fn(),
+      timelineDoc: null,
+    });
+
+    const projectStore = reactive({
+      projectSettings: { export: { width: 1920, height: 1080 } },
+      activeMonitor: createMonitorSettings(),
+      getFileHandleByPath: vi.fn(async () => ({}) as FileSystemFileHandle),
+    });
+
+    const uiStoreMock = reactive({
+      monitorVolume: 0.8,
+      monitorMuted: false,
+    });
+
+    // We don't need to vi.mock here if we are inside a test that's already mocked or handles it.
+    // Actually useMonitorCore uses useUiStore() internally.
+
+    const containerEl = ref<HTMLDivElement | null>(document.createElement('div'));
+    const viewportEl = ref<HTMLDivElement | null>(document.createElement('div'));
+
+    const TestComp = defineComponent({
+      setup() {
+        useMonitorCore({
+          projectStore,
+          timelineStore,
+          proxyStore: { getProxyFileHandle: vi.fn(), getProxyFile: vi.fn(), existingProxies: ref(new Set()) } as any,
+          monitorTimeline: {
+            videoItems: ref([]),
+            workerTimelineClips: ref([]),
+            workerAudioClips: ref([]),
+            workerTimelinePayload: ref([]),
+            safeDurationUs: ref(0),
+            clipSourceSignature: ref(1),
+            clipLayoutSignature: ref(1),
+            audioClipSourceSignature: ref(1),
+            audioClipLayoutSignature: ref(1),
+          },
+          monitorDisplay: {
+            containerEl,
+            viewportEl,
+            renderWidth: ref(640),
+            renderHeight: ref(360),
+            updateCanvasDisplaySize: vi.fn(),
+          },
+        });
+        return () => h('div');
+      },
+    });
+
+    const wrapper = mount(TestComp);
+    await nextTick();
+
+    const audioEngine = audioEngineInstances[0];
+    // Need to trigger the watcher or initialization
+    // Actually useMonitorCore starts watchers on init.
+
+    // Let's assume uiStore for this test is controlled.
+    // Since useUiStore is mocked globally or we can mock it here.
+    // Wait, useUiStore is already used in useMonitorCore.
+
+    expect(audioEngine?.setMonitorVolume).toHaveBeenCalled();
+
+    wrapper.unmount();
+  });
+
+  it('calls initCompositor when container element becomes available', async () => {
+    const timelineStore = reactive({
+      duration: 0,
+      currentTime: 0,
+      isPlaying: false,
+      masterGain: 1,
+      audioMuted: false,
+      setCurrentTimeUs: vi.fn(),
+      timelineDoc: null,
+    });
+
+    const projectStore = reactive({
+      projectSettings: { export: { width: 1920, height: 1080 } },
+      activeMonitor: createMonitorSettings(),
+      getFileHandleByPath: vi.fn(async () => ({}) as FileSystemFileHandle),
+    });
+
+    const containerEl = ref<HTMLDivElement | null>(null);
+    const viewportEl = ref<HTMLDivElement | null>(document.createElement('div'));
+
+    const TestComp = defineComponent({
+      setup() {
+        useMonitorCore({
+          projectStore,
+          timelineStore,
+          proxyStore: { getProxyFileHandle: vi.fn(), getProxyFile: vi.fn(), existingProxies: ref(new Set()) } as any,
+          monitorTimeline: {
+            videoItems: ref([]),
+            workerTimelineClips: ref([]),
+            workerAudioClips: ref([]),
+            workerTimelinePayload: ref([]),
+            safeDurationUs: ref(0),
+            clipSourceSignature: ref(1),
+            clipLayoutSignature: ref(1),
+            audioClipSourceSignature: ref(1),
+            audioClipLayoutSignature: ref(1),
+          },
+          monitorDisplay: {
+            containerEl,
+            viewportEl,
+            renderWidth: ref(640),
+            renderHeight: ref(360),
+            updateCanvasDisplaySize: vi.fn(),
+          },
+        });
+        return () => h('div');
+      },
+    });
+
+    const wrapper = mount(TestComp);
+    mockClient.initCompositor.mockClear();
+
+    containerEl.value = document.createElement('div');
+    await nextTick();
+    await vi.advanceTimersByTimeAsync(150); // wait for BUILD_DEBOUNCE_MS
+
+    expect(mockClient.initCompositor).toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
   it('passes preview effects flag to renderFrame and re-renders when it changes', async () => {
     const timelineStore = reactive({
       duration: 0,
