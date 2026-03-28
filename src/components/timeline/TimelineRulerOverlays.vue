@@ -105,6 +105,12 @@ function getMarkerButtonClass(marker: MarkerPoint) {
         pointerEvents: 'none',
       }"
     >
+      <!-- 1px hairline from marker center going down through ruler -->
+      <div
+        class="absolute inset-y-0 left-0 w-px pointer-events-none opacity-50"
+        :style="{ backgroundColor: point.color ?? '#eab308' }"
+      />
+
       <div class="absolute bottom-0 left-0 pointer-events-auto">
         <UContextMenu
           :items="point.isZone ? getZoneMarkerMenuItems(point.id) : getMarkerMenuItems(point.id)"
@@ -121,14 +127,15 @@ function getMarkerButtonClass(marker: MarkerPoint) {
               @contextmenu.stop
               @click="emit('select-marker', point.id, $event, 'left')"
             >
+              <!-- 11px wide (odd) for precise centering; shorter + more open angle -->
               <svg
-                width="10"
-                height="14"
-                viewBox="0 0 10 14"
+                width="11"
+                height="10"
+                viewBox="0 0 11 10"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
               >
-                <path d="M0 0H10V9L5 14L0 9V0Z" :fill="point.color ?? '#3b82f6'" />
+                <path d="M0 0H11V6L5.5 10L0 6V0Z" :fill="point.color ?? '#3b82f6'" />
               </svg>
             </button>
           </UiTooltip>
@@ -150,13 +157,13 @@ function getMarkerButtonClass(marker: MarkerPoint) {
               @click="emit('select-marker', point.id, $event, 'right')"
             >
               <svg
-                width="10"
-                height="14"
-                viewBox="0 0 10 14"
+                width="11"
+                height="10"
+                viewBox="0 0 11 10"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
               >
-                <path d="M0 0H10V9L5 14L0 9V0Z" :fill="point.color ?? '#3b82f6'" />
+                <path d="M0 0H11V6L5.5 10L0 6V0Z" :fill="point.color ?? '#3b82f6'" />
               </svg>
             </button>
           </UiTooltip>

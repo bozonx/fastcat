@@ -749,6 +749,9 @@
       "soloActive": "СОЛО АКТИВНО",
       "clearSolos": "Сбросить соло",
       "snapMode": "Режим привязки",
+      "snapModeFullDescription": "Привязка к клипам, плейхеду и маркерам",
+      "snapModeFramesDescription": "Привязка только к границам кадров",
+      "snapModeFreeDescription": "Свободное перемещение (без привязки)",
       "moveMode": "Режим перемещения",
       "transition": {
         "actionFall": "Падение",
