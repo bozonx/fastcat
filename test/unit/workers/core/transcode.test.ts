@@ -3,12 +3,22 @@ import { runTranscode } from '~/workers/core/transcode';
 
 // Mock mediabunny dynamic import
 const mockMediabunny = {
-  Output: vi.fn().mockImplementation(function() { return {}; }),
-  Mp4OutputFormat: vi.fn().mockImplementation(function() { return {}; }),
-  WebMOutputFormat: vi.fn().mockImplementation(function() { return {}; }),
-  MkvOutputFormat: vi.fn().mockImplementation(function() { return {}; }),
-  StreamTarget: vi.fn().mockImplementation(function() { return {}; }),
-  Input: vi.fn().mockImplementation(function() {
+  Output: vi.fn().mockImplementation(function () {
+    return {};
+  }),
+  Mp4OutputFormat: vi.fn().mockImplementation(function () {
+    return {};
+  }),
+  WebMOutputFormat: vi.fn().mockImplementation(function () {
+    return {};
+  }),
+  MkvOutputFormat: vi.fn().mockImplementation(function () {
+    return {};
+  }),
+  StreamTarget: vi.fn().mockImplementation(function () {
+    return {};
+  }),
+  Input: vi.fn().mockImplementation(function () {
     return {
       getPrimaryVideoTrack: vi.fn().mockResolvedValue({
         getDecoderConfig: vi.fn().mockResolvedValue({ codedWidth: 1920, codedHeight: 1080 }),
@@ -16,7 +26,9 @@ const mockMediabunny = {
       getPrimaryAudioTrack: vi.fn().mockResolvedValue({}),
     };
   }),
-  BlobSource: vi.fn().mockImplementation(function() { return {}; }),
+  BlobSource: vi.fn().mockImplementation(function () {
+    return {};
+  }),
   Conversion: {
     init: vi.fn().mockResolvedValue({
       isValid: true,
@@ -27,7 +39,9 @@ const mockMediabunny = {
   ALL_FORMATS: [],
   getFirstEncodableVideoCodec: vi.fn().mockResolvedValue('h264'),
   getFirstEncodableAudioCodec: vi.fn().mockResolvedValue('aac'),
-  AudioSample: vi.fn().mockImplementation(function() { return {}; }),
+  AudioSample: vi.fn().mockImplementation(function () {
+    return {};
+  }),
 };
 
 vi.mock('mediabunny', () => mockMediabunny);
@@ -75,7 +89,7 @@ describe('runTranscode', () => {
       mockHostClient,
       reportExportWarning,
       checkCancel,
-      'task-1'
+      'task-1',
     );
 
     expect(mockMediabunny.Conversion.init).toHaveBeenCalled();
@@ -96,21 +110,25 @@ describe('runTranscode', () => {
         if (progressCallback) progressCallback(0.5);
         return undefined;
       }),
-      set onProgress(cb: any) { progressCallback = cb; },
+      set onProgress(cb: any) {
+        progressCallback = cb;
+      },
     });
 
     // Make checkCancel return true
     checkCancel.mockReturnValue(true);
 
-    await expect(runTranscode(
-      mockFile,
-      mockTargetHandle,
-      mockOptions,
-      mockHostClient,
-      reportExportWarning,
-      checkCancel,
-      'task-1'
-    )).rejects.toThrow('Export was cancelled');
+    await expect(
+      runTranscode(
+        mockFile,
+        mockTargetHandle,
+        mockOptions,
+        mockHostClient,
+        reportExportWarning,
+        checkCancel,
+        'task-1',
+      ),
+    ).rejects.toThrow('Export was cancelled');
   });
 
   it('throws error if conversion setup is invalid', async () => {
@@ -119,14 +137,16 @@ describe('runTranscode', () => {
       discardedTracks: [{ reason: 'Test Reason' }],
     });
 
-    await expect(runTranscode(
-      mockFile,
-      mockTargetHandle,
-      mockOptions,
-      mockHostClient,
-      reportExportWarning,
-      checkCancel
-    )).rejects.toThrow(/Conversion setup is invalid/);
+    await expect(
+      runTranscode(
+        mockFile,
+        mockTargetHandle,
+        mockOptions,
+        mockHostClient,
+        reportExportWarning,
+        checkCancel,
+      ),
+    ).rejects.toThrow(/Conversion setup is invalid/);
   });
 
   it('chooses correct output format class', async () => {
@@ -137,7 +157,7 @@ describe('runTranscode', () => {
       { ...mockOptions, format: 'webm' },
       mockHostClient,
       reportExportWarning,
-      checkCancel
+      checkCancel,
     );
     expect(mockMediabunny.WebMOutputFormat).toHaveBeenCalled();
 
@@ -148,7 +168,7 @@ describe('runTranscode', () => {
       { ...mockOptions, format: 'mkv' },
       mockHostClient,
       reportExportWarning,
-      checkCancel
+      checkCancel,
     );
     expect(mockMediabunny.MkvOutputFormat).toHaveBeenCalled();
   });

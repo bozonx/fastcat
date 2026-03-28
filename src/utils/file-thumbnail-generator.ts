@@ -1,7 +1,14 @@
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { FILE_MANAGER_THUMBNAILS, MARKER_THUMBNAILS, TIMELINE_MANAGER_THUMBNAILS } from '~/utils/constants';
-import { ensureResolvedProjectThumbnailsDir, ensureResolvedProjectTempDir } from '~/utils/storage-handles';
+import {
+  FILE_MANAGER_THUMBNAILS,
+  MARKER_THUMBNAILS,
+  TIMELINE_MANAGER_THUMBNAILS,
+} from '~/utils/constants';
+import {
+  ensureResolvedProjectThumbnailsDir,
+  ensureResolvedProjectTempDir,
+} from '~/utils/storage-handles';
 import {
   BaseThumbnailGenerator,
   type BaseThumbnailTask,
@@ -238,7 +245,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     if (!workspaceStore.workspaceHandle) return null;
 
     const cacheKey = `marker:${input.markerId}`;
-    
+
     try {
       const dir = await ensureThumbnailDir({
         projectId: input.projectId,
@@ -325,12 +332,12 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       });
 
       // Browser FileSystemDirectoryHandle doesn't support recursive delete of the handle itself
-      // if we don't have its parent handle. 
+      // if we don't have its parent handle.
       // But we can iterate and delete children.
       for await (const name of (projectThumbnailsDir as any).keys()) {
         await projectThumbnailsDir.removeEntry(name, { recursive: true }).catch(() => {});
       }
-      
+
       // Also clear project-level cache keys
       for (const key of this.cache.keys()) {
         if (key.startsWith(`marker:`) || key.startsWith(`file:${projectId}:`)) {

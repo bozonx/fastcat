@@ -49,7 +49,9 @@ const trimMenuItems = computed(() => {
   ];
 });
 
-const moveModeOptions = computed<{ value: 'none' | ToolbarDragMode; icon: string; tooltip: string }[]>(() => [
+const moveModeOptions = computed<
+  { value: 'none' | ToolbarDragMode; icon: string; tooltip: string }[]
+>(() => [
   {
     value: 'none',
     icon: 'i-heroicons-cursor-arrow-rays',
@@ -92,8 +94,6 @@ const timelineZoomScale = computed(() => timelineZoomPositionToScale(timelineZoo
 
 const timelineZoomMultiplierInput = computed(() => formatZoomPercent(timelineZoomScale.value));
 
-
-
 function selectToolbarSnapMode(mode: ToolbarSnapMode) {
   settingsStore.selectToolbarSnapMode(mode);
 }
@@ -101,8 +101,6 @@ function selectToolbarSnapMode(mode: ToolbarSnapMode) {
 function selectToolbarDragMode(mode: ToolbarDragMode) {
   settingsStore.selectToolbarDragMode(mode);
 }
-
-
 
 function toggleTrimMode(event?: MouseEvent) {
   event?.preventDefault();
@@ -271,7 +269,7 @@ function onToolbarContextMenu(e: MouseEvent) {
             :variant="timelineStore.isTrimModeActive ? 'solid' : 'ghost'"
             :color="timelineStore.isTrimModeActive ? 'primary' : 'neutral'"
             icon="i-heroicons-scissors"
-            :ariaLabel="t('fastcat.timeline.trim', 'Trim')"
+            :aria-label="t('fastcat.timeline.trim', 'Trim')"
             :items="trimMenuItems"
             button-class="hover:bg-ui-bg-hover/60"
             caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
@@ -299,16 +297,12 @@ function onToolbarContextMenu(e: MouseEvent) {
             </UButton>
           </UiTooltip>
         </div>
-<div class="w-px h-4 bg-ui-border mx-1 opacity-50" />
+        <div class="w-px h-4 bg-ui-border mx-1 opacity-50" />
 
         <UiTooltip
           :text="`${t('fastcat.timeline.addAdjustment')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
         >
-          <div
-            draggable="true"
-            @dragstart="onDragStart($event, 'adjustment')"
-            @dragend="onDragEnd"
-          >
+          <div draggable="true" @dragstart="onDragStart($event, 'adjustment')" @dragend="onDragEnd">
             <UButton
               size="xs"
               variant="ghost"
@@ -328,11 +322,7 @@ function onToolbarContextMenu(e: MouseEvent) {
         <UiTooltip
           :text="`${t('fastcat.timeline.addBackground')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
         >
-          <div
-            draggable="true"
-            @dragstart="onDragStart($event, 'background')"
-            @dragend="onDragEnd"
-          >
+          <div draggable="true" @dragstart="onDragStart($event, 'background')" @dragend="onDragEnd">
             <UButton
               size="xs"
               variant="ghost"

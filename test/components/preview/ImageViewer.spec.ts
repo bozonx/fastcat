@@ -30,7 +30,7 @@ describe('ImageViewer.vue', () => {
     const component = await mountWithNuxt(ImageViewer, {
       props: {
         src: 'http://example.com/test.jpg',
-        alt: 'test alt'
+        alt: 'test alt',
       },
     });
 
@@ -43,7 +43,7 @@ describe('ImageViewer.vue', () => {
     const component = await mountWithNuxt(ImageViewer, {
       props: {
         src: 'http://example.com/test.jpg',
-        isModal: false
+        isModal: false,
       },
     });
 
@@ -55,7 +55,7 @@ describe('ImageViewer.vue', () => {
     const component = await mountWithNuxt(ImageViewer, {
       props: {
         src: 'http://example.com/test.jpg',
-        isModal: true
+        isModal: true,
       },
     });
 
@@ -67,7 +67,7 @@ describe('ImageViewer.vue', () => {
     const component = await mountWithNuxt(ImageViewer, {
       props: {
         src: 'http://example.com/test.jpg',
-        isModal: true
+        isModal: true,
       },
     });
 

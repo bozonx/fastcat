@@ -9,9 +9,9 @@ import {
 import { applyAudioEffectsOffline } from '~/utils/audio/applyAudioEffectsOffline';
 
 vi.mock('~/utils/audio/applyAudioEffectsOffline', () => ({
-  applyAudioEffectsOffline: vi.fn().mockImplementation(({ planes, frames }) =>
-    Promise.resolve({ planes, frames })
-  ),
+  applyAudioEffectsOffline: vi
+    .fn()
+    .mockImplementation(({ planes, frames }) => Promise.resolve({ planes, frames })),
 }));
 
 const mockMediabunny = {
@@ -56,11 +56,7 @@ const mockHostClient = {
 
 describe('AudioMixer interleavedToPlanar', () => {
   it('converts stereo interleaved to planar', () => {
-    const interleaved = new Float32Array([
-      1, 10,
-      2, 20,
-      3, 30,
-    ]);
+    const interleaved = new Float32Array([1, 10, 2, 20, 3, 30]);
     const planar = interleavedToPlanar({ interleaved, frames: 3, numberOfChannels: 2 });
     expect(Array.from(planar)).toEqual([1, 2, 3, 10, 20, 30]);
   });
@@ -118,7 +114,7 @@ describe('resampleChannelsOfflineAudioContext', () => {
       startRendering: vi.fn().mockResolvedValue(mockRenderedBuffer),
     };
 
-    globalThis.OfflineAudioContext = vi.fn().mockImplementation(function() {
+    globalThis.OfflineAudioContext = vi.fn().mockImplementation(function () {
       return mockOfflineCtx;
     }) as any;
 

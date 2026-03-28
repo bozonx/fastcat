@@ -29,10 +29,18 @@ const proxyStore = useProxyStore();
 const timelineStore = useTimelineStore();
 const toast = useToast();
 const { t } = useI18n();
-const { readDirectory, getFileIcon, findEntryByPath, mediaCache, vfs, handleFiles, createFolder, reloadDirectory } = useFileManager();
+const {
+  readDirectory,
+  getFileIcon,
+  findEntryByPath,
+  mediaCache,
+  vfs,
+  handleFiles,
+  createFolder,
+  reloadDirectory,
+} = useFileManager();
 
 const fileInput = ref<HTMLInputElement | null>(null);
-const viewMode = ref<'grid' | 'list'>('grid');
 const isSelectionMode = ref(false);
 const isDrawerOpen = ref(false);
 
@@ -54,19 +62,19 @@ function handleLongPress(entry: FsEntry) {
   if (!isSelectionMode.value) {
     isSelectionMode.value = true;
     selectionStore.selectFsEntry(entry);
-    // При долгом нажатии шторку обычно не открываем сразу, 
+    // При долгом нажатии шторку обычно не открываем сразу,
     // чтобы пользователь мог продолжить выбор
   }
 }
 
 function handleToggleSelection(entry: FsEntry) {
   const current = selectedEntries.value;
-  const index = current.findIndex(e => e.path === entry.path);
-  
+  const index = current.findIndex((e) => e.path === entry.path);
+
   if (index === -1) {
     selectionStore.selectFsEntries([...current, entry]);
   } else {
-    const next = current.filter(e => e.path !== entry.path);
+    const next = current.filter((e) => e.path !== entry.path);
     if (next.length === 0) {
       isSelectionMode.value = false;
       selectionStore.clearSelection();
@@ -81,7 +89,7 @@ function handleEntryClick(entry: FsEntry) {
     filesPageStore.openFolder(entry);
     return;
   }
-  
+
   if (isSelectionMode.value) {
     handleToggleSelection(entry);
   } else {
@@ -118,14 +126,11 @@ function onFileSelect(e: Event) {
 const menuItems = computed(() => [
   [
     {
-      label: isSelectionMode.value ? t('common.cancelSelection', 'Cancel Selection') : t('common.selectItems', 'Select Items'),
+      label: isSelectionMode.value
+        ? t('common.cancelSelection', 'Cancel Selection')
+        : t('common.selectItems', 'Select Items'),
       icon: isSelectionMode.value ? 'lucide:x-circle' : 'lucide:check-square',
       onSelect: toggleSelectionMode,
-    },
-    {
-      label: viewMode.value === 'grid' ? t('common.listView', 'List View') : t('common.gridView', 'Grid View'),
-      icon: viewMode.value === 'grid' ? 'lucide:list' : 'lucide:layout-grid',
-      onSelect: () => viewMode.value = viewMode.value === 'grid' ? 'list' : 'grid',
     },
   ],
   [
@@ -150,7 +155,7 @@ const menuItems = computed(() => [
         await loadFolderContent();
       },
     },
-  ]
+  ],
 ]);
 
 interface ExtendedFsEntry extends FsEntry {
@@ -217,35 +222,38 @@ async function loadFolderContent() {
         ];
       }
     }
-    
+
     // Очищаем старые URL перед загрузкой новых
     cleanupObjectUrls();
 
     // Фильтруем скрытые файлы если настройка выключена и дополняем метаданными
-    const filteredContent = content.filter((e) => uiStore.showHiddenFiles || !e.name.startsWith('.'));
-    
+    const filteredContent = content.filter(
+      (e) => uiStore.showHiddenFiles || !e.name.startsWith('.'),
+    );
+
     // Добавляем objectUrl для картинок
-    entries.value = await Promise.all(filteredContent.map(async (entry) => {
-      if (entry.kind === 'file') {
-        const ext = entry.name.split('.').pop()?.toLowerCase();
-        if (ext && SUPPORTED_IMAGE_EXTS.includes(ext)) {
-          try {
-            const file = await vfs.getFile(entry.path);
-            if (file) {
-              return {
-                ...entry,
-                size: file.size,
-                objectUrl: URL.createObjectURL(file)
-              };
+    entries.value = await Promise.all(
+      filteredContent.map(async (entry) => {
+        if (entry.kind === 'file') {
+          const ext = entry.name.split('.').pop()?.toLowerCase();
+          if (ext && SUPPORTED_IMAGE_EXTS.includes(ext)) {
+            try {
+              const file = await vfs.getFile(entry.path);
+              if (file) {
+                return {
+                  ...entry,
+                  size: file.size,
+                  objectUrl: URL.createObjectURL(file),
+                };
+              }
+            } catch (e) {
+              console.warn('Failed to get file for preview:', entry.path, e);
             }
-          } catch (e) {
-            console.warn('Failed to get file for preview:', entry.path, e);
           }
         }
-      }
-      return entry as ExtendedFsEntry;
-    }));
-
+        return entry as ExtendedFsEntry;
+      }),
+    );
   } catch (error) {
     console.error('Failed to load mobile folder content:', error);
   } finally {
@@ -301,7 +309,7 @@ function isSelected(entry: FsEntry) {
   const selected = selectionStore.selectedEntity;
   if (!selected || selected.source !== 'fileManager') return false;
   if (selected.kind === 'multiple') {
-    return selected.entries.some(e => e.path === entry.path);
+    return selected.entries.some((e) => e.path === entry.path);
   }
   return selected.path === entry.path;
 }
@@ -427,12 +435,15 @@ onMounted(() => {
         size="sm"
         @click="toggleSelectionMode"
       />
-      
+
       <div class="flex-1 overflow-x-hidden">
         <div v-if="isSelectionMode" class="font-medium text-sm px-2">
           {{ selectedEntries.length }} {{ t('common.selected', 'Selected') }}
         </div>
-        <div v-else class="flex items-center gap-1 text-xs text-slate-400 overflow-x-auto no-scrollbar">
+        <div
+          v-else
+          class="flex items-center gap-1 text-xs text-slate-400 overflow-x-auto no-scrollbar"
+        >
           <span class="shrink-0">{{ projectStore.currentProjectName }}</span>
           <template v-for="bc in breadcrumbs" :key="bc.path">
             <Icon name="lucide:chevron-right" class="w-3 h-3 opacity-30 shrink-0" />
@@ -451,134 +462,30 @@ onMounted(() => {
           @click="isDrawerOpen = true"
         />
         <UDropdownMenu :items="menuItems" :ui="{ content: 'w-56 min-w-max' }">
-          <UButton
-            icon="lucide:more-vertical"
-            variant="ghost"
-            color="neutral"
-            size="sm"
-          />
+          <UButton icon="lucide:more-vertical" variant="ghost" color="neutral" size="sm" />
         </UDropdownMenu>
       </div>
     </div>
 
-    <!-- Список / Сетка файлов -->
+    <!-- Сетка файлов -->
     <div class="flex-1 overflow-y-auto min-h-0">
-      <!-- Grid View -->
       <MobileFileBrowserGrid
-        v-if="viewMode === 'grid'"
         :entries="entries"
         :thumbnails="thumbnails"
         :is-loading="isLoading"
         :is-selection-mode="isSelectionMode"
         :selected-entries="selectedEntries"
-        :selected-entry-path="(selectionStore.selectedEntity?.source === 'fileManager' && 'path' in selectionStore.selectedEntity ? selectionStore.selectedEntity.path : null) ?? null"
+        :selected-entry-path="
+          (selectionStore.selectedEntity?.source === 'fileManager' &&
+          'path' in selectionStore.selectedEntity
+            ? selectionStore.selectedEntity.path
+            : null) ?? null
+        "
         @entry-click="handleEntryClick"
         @entry-primary-action="handleEntryPrimaryAction"
         @long-press="handleLongPress"
         @toggle-selection="handleToggleSelection"
       />
-
-      <!-- List View (Fallback/Old view) -->
-      <div v-else-if="isLoading" class="flex h-32 items-center justify-center">
-        <Icon name="lucide:loader-2" class="w-6 h-6 animate-spin text-blue-500" />
-      </div>
-
-      <div
-        v-else-if="entries.length === 0"
-        class="flex flex-col items-center justify-center h-64 opacity-30"
-      >
-        <Icon name="lucide:folder-open" class="w-12 h-12 mb-2" />
-        <p class="text-sm">Empty folder</p>
-      </div>
-
-      <div v-else class="divide-y divide-slate-900/70 px-2 py-2">
-        <div v-for="entry in entries" :key="entry.path" class="overflow-hidden rounded-2xl">
-          <button
-            class="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors active:bg-slate-900"
-            :class="{ 'bg-blue-600/10 ring-1 ring-blue-500/30 inset': isSelected(entry) }"
-            @click="handleEntryClick(entry)"
-          >
-            <!-- Checkbox for selection mode in list view -->
-            <div 
-              v-if="isSelectionMode"
-              class="shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all"
-              :class="[
-                isSelected(entry) 
-                  ? 'bg-blue-500 border-blue-500' 
-                  : 'bg-black/20 border-white/40'
-              ]"
-            >
-              <Icon v-if="isSelected(entry)" name="lucide:check" class="w-4 h-4 text-white" />
-            </div>
-
-            <div
-              class="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-900"
-            >
-              <template v-if="entry.objectUrl || (entry.path && thumbnails[entry.path])">
-                <img :src="entry.objectUrl || thumbnails[entry.path!]" class="w-full h-full object-cover" />
-              </template>
-              <Icon
-                v-else
-                :name="getFileIcon(entry)"
-                class="w-6 h-6"
-                :class="[
-                  isWorkspaceCommonRoot(entry)
-                    ? 'text-violet-400'
-                    : entry.kind === 'directory'
-                      ? 'text-slate-400'
-                      : 'text-slate-400',
-                  getStatusColor(entry),
-                ]"
-              />
-
-              <div
-                v-if="entry.path && proxyStore.generatingProxies.has(entry.path)"
-                class="absolute inset-0 flex items-center justify-center bg-black/40"
-              >
-                <div
-                  class="h-3 w-3 rounded-full border-2 border-amber-400 border-t-transparent animate-spin"
-                ></div>
-              </div>
-            </div>
-
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center justify-between gap-2">
-                <span class="truncate text-sm font-medium" :class="getStatusColor(entry)">
-                  {{ entry.name }}
-                </span>
-                <span v-if="entry.kind === 'file'" class="text-2xs tabular-nums text-slate-500">
-                  {{ formatBytes(entry.size || 0) }}
-                </span>
-              </div>
-              <div class="flex items-center gap-2 text-2xs text-slate-500">
-                <span>{{
-                  entry.kind === 'directory' ? 'Folder' : getMediaTypeFromFilename(entry.name)
-                }}</span>
-                <span v-if="entry.lastModified"
-                  >• {{ new Date(entry.lastModified).toLocaleDateString() }}</span
-                >
-              </div>
-            </div>
-
-            <div class="flex items-center gap-2">
-              <UButton
-                v-if="entry.kind === 'file' && !isSelectionMode"
-                size="xs"
-                color="primary"
-                variant="soft"
-                icon="lucide:plus"
-                aria-label="Add file to project"
-                @click.stop="handleEntryPrimaryAction(entry)"
-              />
-              <Icon
-                v-if="entry.kind === 'directory' && !isSelectionMode"
-                name="lucide:chevron-right"
-                class="h-4 w-4 text-slate-700"
-              />
-            </div>
-          </button>
-        </div>
-      </div>
     </div>
 
     <!-- Инфо-панель (быстрые действия, когда что-то выбрано, но шторка закрыта) -->
@@ -590,7 +497,8 @@ onMounted(() => {
         <div class="flex-1 min-w-0" @click="isDrawerOpen = true">
           <p class="truncate text-xs font-semibold">{{ selectedFile.name }}</p>
           <p class="text-2xs text-slate-500">
-            {{ selectedFileTypeLabel }} • {{ t('common.tapToSeeProperties', 'tap to see properties') }}
+            {{ selectedFileTypeLabel }} •
+            {{ t('common.tapToSeeProperties', 'tap to see properties') }}
           </p>
         </div>
         <div class="flex gap-2">
@@ -606,10 +514,7 @@ onMounted(() => {
     </div>
 
     <!-- Properties Drawer -->
-    <MobileFileBrowserDrawer 
-      :is-open="isDrawerOpen" 
-      @close="isDrawerOpen = false" 
-    />
+    <MobileFileBrowserDrawer :is-open="isDrawerOpen" @close="isDrawerOpen = false" />
   </div>
 </template>
 

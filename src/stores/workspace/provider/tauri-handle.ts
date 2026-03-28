@@ -1,4 +1,13 @@
-import { mkdir, readDir, readFile, writeFile, remove, stat, exists, rename } from '@tauri-apps/plugin-fs';
+import {
+  mkdir,
+  readDir,
+  readFile,
+  writeFile,
+  remove,
+  stat,
+  exists,
+  rename,
+} from '@tauri-apps/plugin-fs';
 import { join } from '@tauri-apps/api/path';
 
 export class TauriFileHandle {
@@ -25,7 +34,7 @@ export class TauriFileHandle {
     close: () => Promise<void>;
   }> {
     const tempPath = `${this.path}.tmp`;
-    
+
     return {
       write: async (data: any) => {
         let bytes: Uint8Array;

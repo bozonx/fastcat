@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
@@ -12,6 +11,8 @@ import MobileTimeline from '~/components/timeline/MobileTimeline.vue';
 import MobileAudioMixer from '~/components/audio/MobileAudioMixer.vue';
 import ProjectSettingsModal from '~/components/project-settings/ProjectSettingsModal.vue';
 
+import { until } from '@vueuse/core';
+
 definePageMeta({
   layout: 'mobile',
 });
@@ -21,7 +22,7 @@ const workspaceStore = useWorkspaceStore();
 const uiStore = useUiStore();
 const route = useRoute();
 const router = useRouter();
-const { openProject } = useProjectActions();
+const { openProject, leaveProject } = useProjectActions();
 const isOpeningProject = ref(true);
 const projectOpenError = ref<string | null>(null);
 
@@ -40,50 +41,36 @@ const viewToTabMap = {
   fullscreen: 'edit',
 } as const;
 
-onMounted(() => {
+onMounted(async () => {
   const projectId = route.params.id as string;
   if (!projectId) {
     router.push('/m');
     return;
   }
 
-  const initProject = async () => {
-    if (!workspaceStore.workspaceHandle) {
-      router.push('/m');
-      return;
-    }
-
-    isOpeningProject.value = true;
-    projectOpenError.value = null;
-
-    try {
-      await openProject(decodeURIComponent(projectId));
-      if (!projectStore.currentProjectName) {
-        throw new Error('Project failed to open');
-      }
-    } catch (error: unknown) {
-      projectOpenError.value =
-        error instanceof Error ? error.message : 'Failed to open the project';
-    } finally {
-      isOpeningProject.value = false;
-    }
-  };
+  isOpeningProject.value = true;
+  projectOpenError.value = null;
 
   if (workspaceStore.isInitializing) {
-    const unwatch = watch(
-      () => workspaceStore.isInitializing,
-      async (isInit) => {
-        if (!isInit) {
-          unwatch();
-          await initProject();
-        }
-      },
-    );
-  } else {
-    void initProject();
+    await until(() => workspaceStore.isInitializing).toBe(false);
+  }
+
+  if (!workspaceStore.workspaceHandle) {
+    router.push('/m');
+    return;
+  }
+
+  try {
+    await openProject(decodeURIComponent(projectId));
+    if (!projectStore.currentProjectName) {
+      throw new Error('Project failed to open');
+    }
+  } catch (error: unknown) {
+    projectOpenError.value = error instanceof Error ? error.message : 'Failed to open the project';
+  } finally {
+    isOpeningProject.value = false;
   }
 });
-const { leaveProject } = useProjectActions();
 
 type TabId = 'files' | 'edit' | 'sound' | 'export';
 

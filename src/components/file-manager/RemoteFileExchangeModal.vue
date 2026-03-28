@@ -176,12 +176,20 @@ async function handleCreateFolder() {
                 v-if="searchQuery && remoteDirectories.length === 0 && remoteItems.length === 0"
                 class="flex flex-1 flex-col items-center justify-center p-12 text-center text-sm text-ui-text-muted"
               >
-                <UIcon name="i-heroicons-magnifying-glass-circle" class="mb-4 h-12 w-12 text-ui-text-muted/30" />
+                <UIcon
+                  name="i-heroicons-magnifying-glass-circle"
+                  class="mb-4 h-12 w-12 text-ui-text-muted/30"
+                />
                 <div class="font-medium text-ui-text">
                   {{ t('videoEditor.fileManager.remote.noSearchResults', 'Nothing found') }}
                 </div>
                 <div class="mt-1 max-w-xs">
-                  {{ t('videoEditor.fileManager.remote.tryAnotherQuery', 'Try adjusting your search query') }}
+                  {{
+                    t(
+                      'videoEditor.fileManager.remote.tryAnotherQuery',
+                      'Try adjusting your search query',
+                    )
+                  }}
                 </div>
               </div>
 
@@ -194,7 +202,10 @@ async function handleCreateFolder() {
                   :key="directory.id"
                   class="group relative flex min-h-28 flex-col rounded-xl border border-ui-border bg-ui-bg-elevated p-4 text-left transition hover:border-primary-500/40 hover:bg-ui-bg-hover"
                 >
-                  <button class="flex flex-1 flex-col text-left" @click="navigateToDirectory(directory)">
+                  <button
+                    class="flex flex-1 flex-col text-left"
+                    @click="navigateToDirectory(directory)"
+                  >
                     <UIcon name="i-heroicons-folder" class="mb-3 h-7 w-7 text-amber-400" />
                     <div class="truncate text-sm font-medium text-ui-text">
                       {{ getRemoteEntryDisplayName(directory) }}

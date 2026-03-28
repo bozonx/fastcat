@@ -10,7 +10,11 @@ describe('TimelineCommandService', () => {
       getTimelineDoc: vi.fn(),
       ensureTimelineDoc: vi.fn(),
       getCurrentTimelinePath: vi.fn(() => 'root.otio'),
-      getTrackById: vi.fn((id) => ({ id, kind: id.startsWith('v') ? 'video' : 'audio', items: [] })),
+      getTrackById: vi.fn((id) => ({
+        id,
+        kind: id.startsWith('v') ? 'video' : 'audio',
+        items: [],
+      })),
       applyTimeline: vi.fn(() => ['new-item-id']),
       getFileHandleByPath: vi.fn(),
       getFileByPath: vi.fn(),
@@ -56,7 +60,7 @@ describe('TimelineCommandService', () => {
           path: 'video/test.mp4',
           durationUs: 10_000_000,
         }),
-        undefined
+        undefined,
       );
 
       // Should show FPS warning
@@ -90,11 +94,13 @@ describe('TimelineCommandService', () => {
 
   describe('circular dependencies', () => {
     it('throws error when inserting current timeline into itself', async () => {
-      await expect(service.addTimelineClipFromPath({
-        trackId: 'v1',
-        name: 'Self',
-        path: 'root.otio', // Same as getCurrentTimelinePath
-      })).rejects.toThrow('Cannot insert the currently opened timeline into itself');
+      await expect(
+        service.addTimelineClipFromPath({
+          trackId: 'v1',
+          name: 'Self',
+          path: 'root.otio', // Same as getCurrentTimelinePath
+        }),
+      ).rejects.toThrow('Cannot insert the currently opened timeline into itself');
     });
   });
 });

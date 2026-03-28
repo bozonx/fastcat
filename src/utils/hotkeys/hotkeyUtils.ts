@@ -123,9 +123,21 @@ export function hotkeyFromKeyboardEvent(
 
     // We only pass through Meta as it's typically the global OS key.
     // Alt and Shift are only passed through if they are NOT assigned to either layer.
-    const isAltLayer = l1Phys?.startsWith('Alt') || l2Phys?.startsWith('Alt') || l1Phys === 'Alt' || l2Phys === 'Alt';
-    const isShiftLayer = l1Phys?.startsWith('Shift') || l2Phys?.startsWith('Shift') || l1Phys === 'Shift' || l2Phys === 'Shift';
-    const isCtrlLayer = l1Phys?.startsWith('Control') || l2Phys?.startsWith('Control') || l1Phys === 'Control' || l2Phys === 'Control';
+    const isAltLayer =
+      l1Phys?.startsWith('Alt') ||
+      l2Phys?.startsWith('Alt') ||
+      l1Phys === 'Alt' ||
+      l2Phys === 'Alt';
+    const isShiftLayer =
+      l1Phys?.startsWith('Shift') ||
+      l2Phys?.startsWith('Shift') ||
+      l1Phys === 'Shift' ||
+      l2Phys === 'Shift';
+    const isCtrlLayer =
+      l1Phys?.startsWith('Control') ||
+      l2Phys?.startsWith('Control') ||
+      l1Phys === 'Control' ||
+      l2Phys === 'Control';
 
     return stringifyHotkey({
       ctrl: isL2 || (!isCtrlLayer && e.ctrlKey),

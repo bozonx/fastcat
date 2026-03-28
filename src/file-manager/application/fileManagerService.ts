@@ -6,7 +6,13 @@ import {
   mergeEntries as mergeEntriesCore,
   updateEntryByPath,
 } from '~/file-manager/core/tree';
-import { AUDIO_DIR_NAME, DOCUMENTS_DIR_NAME, FILES_DIR_NAME, IMAGES_DIR_NAME, VIDEO_DIR_NAME } from '~/utils/constants';
+import {
+  AUDIO_DIR_NAME,
+  DOCUMENTS_DIR_NAME,
+  FILES_DIR_NAME,
+  IMAGES_DIR_NAME,
+  VIDEO_DIR_NAME,
+} from '~/utils/constants';
 
 export interface FileManagerServiceDeps {
   rootEntries: Ref<FsEntry[]>;

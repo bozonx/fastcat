@@ -191,8 +191,7 @@ function getTrackContextMenuItems(track: TimelineTrack) {
       {
         label: t('fastcat.track.moveDown', 'Move track down'),
         icon: 'i-heroicons-arrow-down',
-        disabled:
-          props.tracks.filter((t) => t.kind === track.kind).slice(-1)[0]?.id === track.id,
+        disabled: props.tracks.filter((t) => t.kind === track.kind).slice(-1)[0]?.id === track.id,
         onSelect: () => timelineStore.moveTrackDown(track.id),
       },
     ],
@@ -239,12 +238,10 @@ const propertiesContextMenuItems = [
     },
   ],
 ];
-
 </script>
 
 <template>
   <div class="h-full w-full shrink-0 flex flex-col bg-ui-bg">
-
     <UContextMenu :items="propertiesContextMenuItems">
       <div
         ref="labelsScrollContainer"

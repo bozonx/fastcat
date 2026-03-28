@@ -26,7 +26,7 @@ describe('FileBrowserModals', () => {
         sttTranscribing: false,
         sttTranscriptionError: '',
         sttTranscriptionEntry: null,
-        sttTranscriptionLanguage: 'en'
+        sttTranscriptionLanguage: 'en',
       },
       global: {
         stubs: {
@@ -34,9 +34,9 @@ describe('FileBrowserModals', () => {
           UiModal: true,
           UiTextInput: true,
           UiFormField: true,
-          RemoteTransferProgressModal: true
-        }
-      }
+          RemoteTransferProgressModal: true,
+        },
+      },
     });
 
     expect(wrapper.text()).toContain('test.mp4');
@@ -47,8 +47,8 @@ describe('FileBrowserModals', () => {
       props: {
         isDeleteConfirmModalOpen: true,
         deleteTargets: [
-           { name: '1.mp4', path: '1.mp4', kind: 'file' },
-           { name: '2.mp4', path: '2.mp4', kind: 'file' }
+          { name: '1.mp4', path: '1.mp4', kind: 'file' },
+          { name: '2.mp4', path: '2.mp4', kind: 'file' },
         ] as any,
         remoteTransferOpen: false,
         remoteTransferProgress: 0,
@@ -58,7 +58,7 @@ describe('FileBrowserModals', () => {
         sttTranscribing: false,
         sttTranscriptionError: '',
         sttTranscriptionEntry: null,
-        sttTranscriptionLanguage: 'en'
+        sttTranscriptionLanguage: 'en',
       },
       global: {
         stubs: {
@@ -66,9 +66,9 @@ describe('FileBrowserModals', () => {
           UiModal: true,
           UiTextInput: true,
           UiFormField: true,
-          RemoteTransferProgressModal: true
-        }
-      }
+          RemoteTransferProgressModal: true,
+        },
+      },
     });
 
     expect(wrapper.text()).toContain('2 items selected');

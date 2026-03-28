@@ -61,7 +61,7 @@ function handleClick(entry: FsEntry) {
     isLongPressActive.value = false;
     return;
   }
-  
+
   if (props.isSelectionMode) {
     emit('toggleSelection', entry);
   } else {
@@ -73,17 +73,22 @@ function getIcon(entry: FsEntry) {
   if (entry.kind === 'directory') return 'lucide:folder';
   const type = getMediaTypeFromFilename(entry.name);
   switch (type) {
-    case 'video': return 'lucide:video';
-    case 'audio': return 'lucide:music';
-    case 'image': return 'lucide:image';
-    case 'text': return 'lucide:file-text';
-    default: return 'lucide:file';
+    case 'video':
+      return 'lucide:video';
+    case 'audio':
+      return 'lucide:music';
+    case 'image':
+      return 'lucide:image';
+    case 'text':
+      return 'lucide:file-text';
+    default:
+      return 'lucide:file';
   }
 }
 
 function isSelected(entry: FsEntry) {
   if (props.isSelectionMode) {
-    return props.selectedEntries.some(e => e.path === entry.path);
+    return props.selectedEntries.some((e) => e.path === entry.path);
   }
   return props.selectedEntryPath === entry.path;
 }
@@ -111,17 +116,13 @@ onBeforeUnmount(clearLongPress);
     </div>
 
     <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-      <div
-        v-for="entry in entries"
-        :key="entry.path"
-        class="relative group"
-      >
+      <div v-for="entry in entries" :key="entry.path" class="relative group">
         <button
           class="flex flex-col w-full aspect-square rounded-2xl overflow-hidden bg-slate-900 border-2 transition-all active:scale-95 touch-none"
           :class="[
-            isSelected(entry) 
-              ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.3)]' 
-              : 'border-transparent hover:border-slate-700'
+            isSelected(entry)
+              ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.3)]'
+              : 'border-transparent hover:border-slate-700',
           ]"
           @touchstart="handleTouchStart(entry)"
           @touchend="handleTouchEnd(entry, $event)"
@@ -131,46 +132,51 @@ onBeforeUnmount(clearLongPress);
           @click="handleClick(entry)"
         >
           <!-- Thumbnail / Icon Area -->
-          <div class="relative flex-1 w-full bg-slate-950 flex items-center justify-center overflow-hidden">
+          <div
+            class="relative flex-1 w-full bg-slate-950 flex items-center justify-center overflow-hidden"
+          >
             <template v-if="getThumbnail(entry)">
-              <img 
-                :src="getThumbnail(entry)!" 
+              <img
+                :src="getThumbnail(entry)!"
                 class="w-full h-full object-cover transition-transform duration-300"
                 :class="{ 'scale-110 blur-[1px] opacity-70': isSelected(entry) && isSelectionMode }"
                 loading="lazy"
               />
             </template>
             <template v-else>
-              <Icon 
-                :name="getIcon(entry)" 
+              <Icon
+                :name="getIcon(entry)"
                 class="w-10 h-10 opacity-40 transition-transform"
                 :class="[
                   entry.kind === 'directory' ? 'text-blue-400' : '',
-                  isSelected(entry) ? 'scale-110' : ''
+                  isSelected(entry) ? 'scale-110' : '',
                 ]"
               />
             </template>
 
             <!-- Folder Overlay -->
-            <div v-if="entry.kind === 'directory'" class="absolute inset-0 bg-blue-500/5 flex items-end p-2">
-               <Icon name="lucide:folder" class="w-4 h-4 text-blue-400" />
+            <div
+              v-if="entry.kind === 'directory'"
+              class="absolute inset-0 bg-blue-500/5 flex items-end p-2"
+            >
+              <Icon name="lucide:folder" class="w-4 h-4 text-blue-400" />
             </div>
 
             <!-- Multi-Selection Checkbox -->
-            <div 
+            <div
               v-if="isSelectionMode"
               class="absolute top-2 left-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all"
               :class="[
-                isSelected(entry) 
-                  ? 'bg-blue-500 border-blue-500 shadow-lg' 
-                  : 'bg-black/20 border-white/40'
+                isSelected(entry)
+                  ? 'bg-blue-500 border-blue-500 shadow-lg'
+                  : 'bg-black/20 border-white/40',
               ]"
             >
               <Icon v-if="isSelected(entry)" name="lucide:check" class="w-4 h-4 text-white" />
             </div>
 
             <!-- Media Type Badge (hidden in selection mode to clean up UI) -->
-            <div 
+            <div
               v-if="entry.kind === 'file' && !isSelectionMode"
               class="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[10px] font-medium text-white/80"
             >
@@ -180,14 +186,18 @@ onBeforeUnmount(clearLongPress);
 
           <!-- Name & Size -->
           <div class="px-2.5 py-2 bg-slate-900/90 backdrop-blur-sm border-t border-slate-800/50">
-            <div 
+            <div
               class="truncate text-[11px] font-medium leading-tight mb-0.5 transition-colors"
               :class="{ 'text-blue-400': isSelected(entry) }"
             >
               {{ entry.name }}
             </div>
             <div class="flex items-center justify-between opacity-50 text-[9px] tabular-nums">
-              <span>{{ entry.kind === 'directory' ? t('common.folder', 'Folder') : formatBytes(entry.size || 0) }}</span>
+              <span>{{
+                entry.kind === 'directory'
+                  ? t('common.folder', 'Folder')
+                  : formatBytes(entry.size || 0)
+              }}</span>
             </div>
           </div>
         </button>

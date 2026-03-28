@@ -40,7 +40,7 @@ describe('MultiFileProperties.vue', () => {
 
     // Wait for watcher to finish async size calculation
     await component.vm.$nextTick();
-    await new Promise(resolve => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
     await component.vm.$nextTick();
 
     expect(component.text()).toContain('2 KB'); // 1024 + 1024 bytes (2 files)

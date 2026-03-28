@@ -204,7 +204,6 @@ const isReadonly = computed(
   () => projectStore.currentView === 'sound' || projectStore.currentView === 'export',
 );
 
-
 const speedMenuItems = computed(() => [
   negativeSpeedOptions.map((opt) => ({
     label: opt.label,
@@ -429,7 +428,6 @@ onUnmounted(() => {
           </UiTooltip>
         </template>
 
-
         <UiTooltip :text="t('fastcat.monitor.resetZoom', 'Reset zoom')">
           <UiActionButton
             size="xs"
@@ -479,7 +477,6 @@ onUnmounted(() => {
             @click="togglePreviewEffects"
           />
         </UiTooltip>
-
 
         <!-- Playback buttons — right-click / wheel opens speed selector -->
         <UContextMenu :items="speedMenuItems">
@@ -532,11 +529,7 @@ onUnmounted(() => {
                   name="i-heroicons-play-20-solid"
                   class="w-5 h-5 scale-x-[-1]"
                 />
-                <UIcon
-                  v-else
-                  name="i-heroicons-play-20-solid"
-                  class="w-5 h-5 ml-0.5"
-                />
+                <UIcon v-else name="i-heroicons-play-20-solid" class="w-5 h-5 ml-0.5" />
                 <span
                   class="absolute text-3xs font-mono leading-none opacity-90 pointer-events-none"
                   style="right: 4px; bottom: 0"

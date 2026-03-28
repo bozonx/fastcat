@@ -176,7 +176,11 @@ describe('FileProperties.vue', () => {
 
     const component = await mountWithNuxt(FileProperties, {
       props: {
-        selectedFsEntry: { kind: 'directory', name: 'test_folder', path: '/projects/test_folder' } as any,
+        selectedFsEntry: {
+          kind: 'directory',
+          name: 'test_folder',
+          path: '/projects/test_folder',
+        } as any,
         previewMode: 'original',
         hasProxy: false,
       },
@@ -192,7 +196,7 @@ describe('FileProperties.vue', () => {
   it('renders properties for the project root', async () => {
     const { useFileStorageInfo } = await import('~/composables/properties/useFileStorageInfo');
     const { useEntryPreview } = await import('~/composables/fileManager/useEntryPreview');
-    
+
     vi.mocked(useFileStorageInfo).mockReturnValue({
       isProjectRootDir: ref(true),
       storageFreeBytes: ref(1024 * 1024 * 1024 * 50),
@@ -236,7 +240,7 @@ describe('FileProperties.vue', () => {
 
   it('renders properties for the common root', async () => {
     const { useEntryPreview } = await import('~/composables/fileManager/useEntryPreview');
-    
+
     vi.mocked(useEntryPreview).mockReturnValue({
       currentUrl: ref(null),
       mediaType: ref(null),
@@ -316,7 +320,8 @@ describe('FileProperties.vue', () => {
 
   it('renders transcription section for audio/video files', async () => {
     const { useEntryPreview } = await import('~/composables/fileManager/useEntryPreview');
-    const { useFilePropertiesTranscription } = await import('~/composables/properties/useFilePropertiesTranscription');
+    const { useFilePropertiesTranscription } =
+      await import('~/composables/properties/useFilePropertiesTranscription');
 
     vi.mocked(useEntryPreview).mockReturnValue({
       currentUrl: ref('http://example.com/test.mp4'),
@@ -359,14 +364,18 @@ describe('FileProperties.vue', () => {
     });
 
     // UTextarea might not render its value as text(), so we check the component or the textarea element
-    expect(component.findComponent({ name: 'UTextarea' }).props('modelValue')).toBe('Transcribed text');
+    expect(component.findComponent({ name: 'UTextarea' }).props('modelValue')).toBe(
+      'Transcribed text',
+    );
   });
 
   it('renders timeline usage section', async () => {
     const { useFileTimelineUsage } = await import('~/composables/properties/useFileTimelineUsage');
 
     vi.mocked(useFileTimelineUsage).mockReturnValue({
-      timelinesUsingSelectedFile: ref([{ timelinePath: 'timeline1.otio', timelineName: 'Timeline 1' }]),
+      timelinesUsingSelectedFile: ref([
+        { timelinePath: 'timeline1.otio', timelineName: 'Timeline 1' },
+      ]),
       openTimelineFromUsage: vi.fn(),
     });
 

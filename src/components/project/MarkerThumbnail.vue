@@ -80,29 +80,28 @@ onMounted(() => {
 });
 
 // Reload if time changes (marker moved)
-watch(() => props.timeUs, () => {
-  void loadThumbnail();
-});
+watch(
+  () => props.timeUs,
+  () => {
+    void loadThumbnail();
+  },
+);
 </script>
 
 <template>
-  <div class="relative flex aspect-video w-20 shrink-0 items-center justify-center overflow-hidden rounded bg-black/20 ring-1 ring-inset ring-white/5">
+  <div
+    class="relative flex aspect-video w-20 shrink-0 items-center justify-center overflow-hidden rounded bg-black/20 ring-1 ring-inset ring-white/5"
+  >
     <img
       v-if="thumbnailUrl"
       :src="thumbnailUrl!"
       class="h-full w-full object-cover"
       alt="Marker Preview"
     />
-    <div
-      v-else-if="isLoading"
-      class="flex h-full w-full items-center justify-center"
-    >
+    <div v-else-if="isLoading" class="flex h-full w-full items-center justify-center">
       <div class="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />
     </div>
-    <div
-      v-else
-      class="flex h-full w-full items-center justify-center text-[10px] text-white/20"
-    >
+    <div v-else class="flex h-full w-full items-center justify-center text-[10px] text-white/20">
       No Preview
     </div>
   </div>

@@ -26,7 +26,7 @@ vi.mock('~/stores/ui.store', () => ({
 
 vi.mock('~/utils/video-editor/worker-client', () => ({
   getThumbnailWorkerClient: () => ({
-    client: mockWorkerClient
+    client: mockWorkerClient,
   }),
   setThumbnailHostApi: vi.fn(),
 }));
@@ -41,7 +41,7 @@ describe('useMonitorSnapshot', () => {
     currentTimelinePath: 'timeline.otio',
     currentFileName: 'test-video',
     projectSettings: {
-      project: { width: 1920, height: 1080, fps: 30 }
+      project: { width: 1920, height: 1080, fps: 30 },
     },
     getFileHandleByPath: vi.fn(),
     getFileByPath: vi.fn(),
@@ -52,8 +52,8 @@ describe('useMonitorSnapshot', () => {
     workspaceHandle: {},
     resolvedStorageTopology: {},
     userSettings: {
-      stopFrames: { qualityPercent: 90 }
-    }
+      stopFrames: { qualityPercent: 90 },
+    },
   };
 
   beforeEach(() => {
@@ -80,24 +80,26 @@ describe('useMonitorSnapshot', () => {
     });
 
     const mockFileHandle = {
-        createWritable: vi.fn().mockResolvedValue({
-            write: vi.fn().mockResolvedValue(undefined),
-            close: vi.fn().mockResolvedValue(undefined),
-        }),
+      createWritable: vi.fn().mockResolvedValue({
+        write: vi.fn().mockResolvedValue(undefined),
+        close: vi.fn().mockResolvedValue(undefined),
+      }),
     };
 
     mockProjectStore.getProjectFileHandleByRelativePath
-        .mockResolvedValueOnce(null) // Loop check
-        .mockResolvedValueOnce(mockFileHandle); // Actual save
+      .mockResolvedValueOnce(null) // Loop check
+      .mockResolvedValueOnce(mockFileHandle); // Actual save
 
     await createStopFrameSnapshot();
-    
+
     expect(mockProjectStore.getProjectFileHandleByRelativePath).toHaveBeenCalled();
     expect(mockWorkerClient.extractFrameToBlob).toHaveBeenCalled();
-    expect(mockToast.add).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mockToast.add).toHaveBeenCalledWith(
+      expect.objectContaining({
         title: 'Snapshot created',
-        color: 'primary'
-    }));
+        color: 'primary',
+      }),
+    );
   });
 
   it('handles name collisions', async () => {
@@ -114,9 +116,9 @@ describe('useMonitorSnapshot', () => {
     });
 
     mockProjectStore.getProjectFileHandleByRelativePath
-        .mockResolvedValueOnce({}) // original exists
-        .mockResolvedValueOnce(null) // _001 doesn't exist
-        .mockResolvedValueOnce({}); // Actual save (just mock something)
+      .mockResolvedValueOnce({}) // original exists
+      .mockResolvedValueOnce(null) // _001 doesn't exist
+      .mockResolvedValueOnce({}); // Actual save (just mock something)
 
     await createStopFrameSnapshot();
 

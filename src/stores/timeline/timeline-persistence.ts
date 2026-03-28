@@ -96,7 +96,9 @@ export function createTimelinePersistence(deps: TimelinePersistenceDeps): Timeli
 
         // Validation: prevent writing empty or corrupted data
         if (!serialized || serialized.length < 10) {
-          throw new Error('Refusing to save: Serialized timeline data is suspiciously small or empty');
+          throw new Error(
+            'Refusing to save: Serialized timeline data is suspiciously small or empty',
+          );
         }
 
         try {

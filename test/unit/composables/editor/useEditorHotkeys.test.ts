@@ -120,7 +120,9 @@ describe('useEditorHotkeys', () => {
     document.body.appendChild(dialog);
 
     try {
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', code: 'Tab', bubbles: true }));
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Tab', code: 'Tab', bubbles: true }),
+      );
 
       expect(focusStore.activePanelId).toBe('timeline');
     } finally {

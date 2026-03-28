@@ -11,8 +11,12 @@ const mockFilesPageStore = reactive({
   gridCardSize: 130,
   columnWidths: { name: 200, type: 100, size: 80, created: 140, modified: 140 },
   sortOption: { field: 'name', order: 'asc' },
-  setViewMode: vi.fn((v) => { mockFilesPageStore.viewMode = v; }),
-  setGridCardSize: vi.fn((v) => { mockFilesPageStore.gridCardSize = v; }),
+  setViewMode: vi.fn((v) => {
+    mockFilesPageStore.viewMode = v;
+  }),
+  setGridCardSize: vi.fn((v) => {
+    mockFilesPageStore.gridCardSize = v;
+  }),
 });
 
 const mockSelectionStore = reactive({
@@ -59,11 +63,19 @@ vi.mock('~/stores/files-page.store', () => ({ useFilesPageStore: () => mockFiles
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelectionStore }));
 vi.mock('~/stores/ui.store', () => ({ useUiStore: () => mockUiStore }));
 vi.mock('~/stores/focus.store', () => ({ useFocusStore: () => mockFocusStore }));
-vi.mock('~/stores/proxy.store', () => ({ useProxyStore: () => ({ generatingProxies: new Set() }) }));
-vi.mock('~/stores/file-conversion.store', () => ({ useFileConversionStore: () => ({ openConversionModal: vi.fn() }) }));
+vi.mock('~/stores/proxy.store', () => ({
+  useProxyStore: () => ({ generatingProxies: new Set() }),
+}));
+vi.mock('~/stores/file-conversion.store', () => ({
+  useFileConversionStore: () => ({ openConversionModal: vi.fn() }),
+}));
 
-vi.mock('~/composables/fileManager/useFileManager', () => ({ useFileManager: () => mockFileManager }));
-vi.mock('~/composables/useAppClipboard', () => ({ useAppClipboard: () => ({ hasFileManagerPayload: false }) }));
+vi.mock('~/composables/fileManager/useFileManager', () => ({
+  useFileManager: () => mockFileManager,
+}));
+vi.mock('~/composables/useAppClipboard', () => ({
+  useAppClipboard: () => ({ hasFileManagerPayload: false }),
+}));
 
 const mockFileBrowserEntries = {
   folderEntries: ref<any[]>([]),
@@ -77,8 +89,12 @@ const mockFileBrowserEntries = {
   cleanupObjectUrls: vi.fn(),
 };
 
-vi.mock('~/composables/fileManager/useFileBrowserEntries', () => ({ useFileBrowserEntries: () => mockFileBrowserEntries }));
-vi.mock('~/composables/fileManager/useFileBrowserRemote', () => ({ useFileBrowserRemote: () => ({ isRemoteAvailable: ref(true) }) }));
+vi.mock('~/composables/fileManager/useFileBrowserEntries', () => ({
+  useFileBrowserEntries: () => mockFileBrowserEntries,
+}));
+vi.mock('~/composables/fileManager/useFileBrowserRemote', () => ({
+  useFileBrowserRemote: () => ({ isRemoteAvailable: ref(true) }),
+}));
 vi.mock('~/composables/fileManager/useFileBrowserNavigation', () => ({
   useFileBrowserNavigation: () => ({
     parentFolders: ref([]),
@@ -88,15 +104,33 @@ vi.mock('~/composables/fileManager/useFileBrowserNavigation', () => ({
     navigateToFolder: vi.fn(),
   }),
 }));
-vi.mock('~/composables/fileManager/useFileBrowserStt', () => ({ useFileBrowserStt: () => ({ sttTranscribing: ref(false) }) }));
-vi.mock('~/composables/fileManager/useFileBrowserFileActions', () => ({ useFileBrowserFileActions: () => ({ onFileAction: vi.fn() }) }));
-vi.mock('~/composables/fileManager/useFocusableListNavigation', () => ({ useFocusableListNavigation: () => ({ onKeyDown: vi.fn(), moveSelection: vi.fn() }) }));
-vi.mock('~/composables/fileManager/useFileBrowserPendingActions', () => ({ useFileBrowserPendingActions: vi.fn() }));
-vi.mock('~/composables/fileManager/useFileBrowserCreateActions', () => ({ useFileBrowserCreateActions: () => ({}) }));
-vi.mock('~/composables/fileManager/useFileBrowserInteraction', () => ({ useFileBrowserInteraction: () => ({}) }));
-vi.mock('~/composables/fileManager/useFileBrowserDragAndDrop', () => ({ useFileBrowserDragAndDrop: () => ({}) }));
-vi.mock('~/composables/fileManager/useFileBrowserMarquee', () => ({ useFileBrowserMarquee: () => ({ marqueeStyle: ref(null) }) }));
-vi.mock('~/composables/fileManager/useFileContextMenu', () => ({ useFileContextMenu: () => ({ getContextMenuItems: vi.fn(() => []) }) }));
+vi.mock('~/composables/fileManager/useFileBrowserStt', () => ({
+  useFileBrowserStt: () => ({ sttTranscribing: ref(false) }),
+}));
+vi.mock('~/composables/fileManager/useFileBrowserFileActions', () => ({
+  useFileBrowserFileActions: () => ({ onFileAction: vi.fn() }),
+}));
+vi.mock('~/composables/fileManager/useFocusableListNavigation', () => ({
+  useFocusableListNavigation: () => ({ onKeyDown: vi.fn(), moveSelection: vi.fn() }),
+}));
+vi.mock('~/composables/fileManager/useFileBrowserPendingActions', () => ({
+  useFileBrowserPendingActions: vi.fn(),
+}));
+vi.mock('~/composables/fileManager/useFileBrowserCreateActions', () => ({
+  useFileBrowserCreateActions: () => ({}),
+}));
+vi.mock('~/composables/fileManager/useFileBrowserInteraction', () => ({
+  useFileBrowserInteraction: () => ({}),
+}));
+vi.mock('~/composables/fileManager/useFileBrowserDragAndDrop', () => ({
+  useFileBrowserDragAndDrop: () => ({}),
+}));
+vi.mock('~/composables/fileManager/useFileBrowserMarquee', () => ({
+  useFileBrowserMarquee: () => ({ marqueeStyle: ref(null) }),
+}));
+vi.mock('~/composables/fileManager/useFileContextMenu', () => ({
+  useFileContextMenu: () => ({ getContextMenuItems: vi.fn(() => []) }),
+}));
 
 describe('FileBrowser', () => {
   beforeEach(() => {
@@ -124,7 +158,7 @@ describe('FileBrowser', () => {
     const entry = { name: 'test.mp4', kind: 'file', path: 'test.mp4', size: 1024 };
     mockFileBrowserEntries.folderEntries.value = [entry];
     mockFileBrowserEntries.sortedEntries.value = [entry];
-    
+
     const wrapper = await mountSuspended(FileBrowser, {
       global: {
         stubs: {
@@ -134,19 +168,19 @@ describe('FileBrowser', () => {
           FileBrowserModals: true,
           FileBrowserViewGrid: {
             template: '<div data-test="grid-view"><slot /></div>',
-            props: ['entries']
+            props: ['entries'],
           },
           UContextMenu: { template: '<div><slot /></div>' },
-          UIcon: true
-        }
-      }
+          UIcon: true,
+        },
+      },
     });
 
     const gridView = wrapper.findComponent({ name: 'FileBrowserViewGrid' });
     if (!gridView.exists()) {
-        // Fallback for some test environments where name might be different
-        expect(wrapper.find('[data-test="grid-view"]').exists()).toBe(true);
-        return;
+      // Fallback for some test environments where name might be different
+      expect(wrapper.find('[data-test="grid-view"]').exists()).toBe(true);
+      return;
     }
     expect(gridView.props('entries')).toEqual([entry]);
   });
@@ -167,13 +201,13 @@ describe('FileBrowser', () => {
           FileBrowserViewGrid: { template: '<div data-test="grid-view" />' },
           FileBrowserViewList: { template: '<div data-test="list-view" />' },
           UContextMenu: { template: '<div><slot /></div>' },
-          UIcon: true
-        }
-      }
+          UIcon: true,
+        },
+      },
     });
 
     expect(wrapper.find('[data-test="grid-view"]').exists()).toBe(true);
-    
+
     mockFilesPageStore.viewMode = 'list';
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-test="list-view"]').exists()).toBe(true);

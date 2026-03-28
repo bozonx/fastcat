@@ -112,7 +112,7 @@ describe('useSelectionStore', () => {
 
   it('isTrackVisuallySelected correctly identifies selection', () => {
     const store = useSelectionStore();
-    
+
     // By track
     store.selectTimelineTrack('track-1');
     expect(store.isTrackVisuallySelected('track-1')).toBe(true);
@@ -124,8 +124,8 @@ describe('useSelectionStore', () => {
 
     // By multiple clips
     store.selectTimelineItems([
-        { trackId: 'track-1', itemId: 'clip-1' },
-        { trackId: 'track-2', itemId: 'clip-2' },
+      { trackId: 'track-1', itemId: 'clip-1' },
+      { trackId: 'track-2', itemId: 'clip-2' },
     ]);
     expect(store.isTrackVisuallySelected('track-1')).toBe(true);
     expect(store.isTrackVisuallySelected('track-2')).toBe(true);

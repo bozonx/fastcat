@@ -60,7 +60,7 @@ describe('MediaPlayer.vue', () => {
     const component = await mountWithNuxt(MediaPlayer, {
       props: {
         src: 'http://example.com/test.mp4',
-        type: 'video'
+        type: 'video',
       },
     });
 
@@ -73,14 +73,14 @@ describe('MediaPlayer.vue', () => {
     const component = await mountWithNuxt(MediaPlayer, {
       props: {
         src: 'http://example.com/test.mp3',
-        type: 'audio'
+        type: 'audio',
       },
     });
 
     const audio = component.find('audio');
     expect(audio.exists()).toBe(true);
     expect(audio.attributes('src')).toBe('http://example.com/test.mp3');
-    
+
     // Check if audio placeholder UI is visible
     expect(component.find('.i-heroicons-musical-note').exists()).toBe(true);
   });
@@ -89,13 +89,13 @@ describe('MediaPlayer.vue', () => {
     const component = await mountWithNuxt(MediaPlayer, {
       props: {
         src: 'http://example.com/test.mp4',
-        type: 'video'
+        type: 'video',
       },
     });
 
     const playButton = component.find('button.i-heroicons-play, button.i-heroicons-pause');
     await playButton.trigger('click');
-    
+
     const { useMediaPlayerPlayback } = await import('~/composables/preview/useMediaPlayerPlayback');
     const { togglePlay } = (useMediaPlayerPlayback as any).mock.results[0].value;
     expect(togglePlay).toHaveBeenCalled();
@@ -106,7 +106,7 @@ describe('MediaPlayer.vue', () => {
       props: {
         src: 'http://example.com/test.mp4',
         type: 'video',
-        isModal: true
+        isModal: true,
       },
     });
 
@@ -130,12 +130,14 @@ describe('MediaPlayer.vue', () => {
       props: {
         src: 'http://example.com/test.mp4',
         type: 'video',
-        isModal: false
+        isModal: false,
       },
     });
 
     // Find fullscreen button
-    const fullscreenBtn = component.find('button.i-heroicons-arrows-pointing-out, button.i-heroicons-arrows-pointing-in');
+    const fullscreenBtn = component.find(
+      'button.i-heroicons-arrows-pointing-out, button.i-heroicons-arrows-pointing-in',
+    );
     await fullscreenBtn.trigger('click');
     expect(component.emitted('open-modal')).toBeTruthy();
   });
@@ -144,16 +146,16 @@ describe('MediaPlayer.vue', () => {
     const component = await mountWithNuxt(MediaPlayer, {
       props: {
         src: 'http://example.com/test.mp4',
-        type: 'video'
+        type: 'video',
       },
     });
 
     const { useMediaPlayerVolume } = await import('~/composables/preview/useMediaPlayerVolume');
     const { volume } = (useMediaPlayerVolume as any).mock.results[0].value;
-    
+
     volume.value = 0.5;
     await component.vm.$nextTick();
-    
+
     const video = component.find('video').element as HTMLVideoElement;
     expect(video.volume).toBe(0.5);
   });
@@ -162,17 +164,17 @@ describe('MediaPlayer.vue', () => {
     const component = await mountWithNuxt(MediaPlayer, {
       props: {
         src: 'http://example.com/test.mp4',
-        type: 'video'
+        type: 'video',
       },
     });
 
     const { useMediaPlayerVolume } = await import('~/composables/preview/useMediaPlayerVolume');
     const { isMuted } = (useMediaPlayerVolume as any).mock.results[0].value;
-    
+
     // Check for UiVolumeControl and find its mute button or trigger change
     const volumeControl = component.findComponent(UiVolumeControl);
     await volumeControl.vm.$emit('update:isMuted', true);
-    
+
     expect(isMuted.value).toBe(true);
   });
 
@@ -180,12 +182,12 @@ describe('MediaPlayer.vue', () => {
     const component = await mountWithNuxt(MediaPlayer, {
       props: {
         src: 'http://example.com/test.mp4',
-        type: 'video'
+        type: 'video',
       },
     });
 
     const rangeInput = component.find('input[type="range"]');
-    
+
     // Seek start
     await rangeInput.trigger('mousedown');
     expect((component.vm as any).isDragging).toBe(true);
@@ -199,7 +201,7 @@ describe('MediaPlayer.vue', () => {
     const component = await mountWithNuxt(MediaPlayer, {
       props: {
         src: 'http://example.com/test.mp4',
-        type: 'video'
+        type: 'video',
       },
     });
 

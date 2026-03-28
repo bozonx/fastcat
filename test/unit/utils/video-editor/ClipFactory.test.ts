@@ -46,20 +46,23 @@ vi.mock('pixi.js', () => {
 });
 
 // Mock OffscreenCanvas
-vi.stubGlobal('OffscreenCanvas', class {
-  width: number;
-  height: number;
-  constructor(w: number, h: number) {
-    this.width = w;
-    this.height = h;
-  }
-  getContext(type: string) {
-    return {
-      drawImage: vi.fn(),
-      fillRect: vi.fn(),
-    };
-  }
-});
+vi.stubGlobal(
+  'OffscreenCanvas',
+  class {
+    width: number;
+    height: number;
+    constructor(w: number, h: number) {
+      this.width = w;
+      this.height = h;
+    }
+    getContext(type: string) {
+      return {
+        drawImage: vi.fn(),
+        fillRect: vi.fn(),
+      };
+    }
+  },
+);
 
 describe('ClipFactory', () => {
   const mockLayoutApplier = {

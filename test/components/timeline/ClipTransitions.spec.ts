@@ -41,7 +41,7 @@ describe('ClipTransitions', () => {
 
     const handles = component.findAll('.cursor-ew-resize');
     // They are hidden by default via opacity-0 in CSS, but present in DOM
-    expect(handles.length).toBe(2); 
+    expect(handles.length).toBe(2);
   });
 
   it('renders transition in when present', async () => {
@@ -57,7 +57,7 @@ describe('ClipTransitions', () => {
 
     const transitionIn = component.find('button');
     expect(transitionIn.exists()).toBe(true);
-    
+
     // Check width based on timeUsToPx(1_000_000, 100)
     // Factor for 100 is roughly 141, so 1s = 1410px (actually it's calculated in geometry.ts)
     // We can just check if it's defined and has a reasonable value or use the util.
@@ -78,7 +78,7 @@ describe('ClipTransitions', () => {
 
     const transitionIn = component.find('button');
     await transitionIn.trigger('click');
-    await new Promise(resolve => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(component.emitted('select')).toBeTruthy();
     expect(component.emitted('select')![0][1]).toEqual({
@@ -97,15 +97,15 @@ describe('ClipTransitions', () => {
     // Find the INNER div that has the @pointerdown listener
     const handle = component.find('.cursor-ew-resize div');
     expect(handle.exists()).toBe(true);
-    
+
     // Simulating pointerdown
     await handle.trigger('pointerdown', { clientX: 100, clientY: 100, button: 0 });
-    
+
     // Find and call pointerup listener manually
-    const pointerUpCall = addEventListenerSpy.mock.calls.find(c => c[0] === 'pointerup');
+    const pointerUpCall = addEventListenerSpy.mock.calls.find((c) => c[0] === 'pointerup');
     expect(pointerUpCall).toBeTruthy();
     const listener = pointerUpCall![1] as any;
-    
+
     listener(new (window as any).PointerEvent('pointerup', { clientX: 100, clientY: 100 }));
 
     expect(component.emitted('createTransition')).toBeTruthy();

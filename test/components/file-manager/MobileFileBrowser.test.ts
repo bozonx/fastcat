@@ -7,7 +7,9 @@ import MobileFileBrowser from '~/components/file-manager/MobileFileBrowser.vue';
 
 const mockFilesPageStore = reactive({
   selectedFolder: null as any,
-  selectFolder: vi.fn((f) => { mockFilesPageStore.selectedFolder = f; }),
+  selectFolder: vi.fn((f) => {
+    mockFilesPageStore.selectedFolder = f;
+  }),
   openFolder: vi.fn(),
   selectFile: vi.fn(),
 });
@@ -43,10 +45,14 @@ vi.mock('~/stores/files-page.store', () => ({ useFilesPageStore: () => mockFiles
 vi.mock('~/stores/project.store', () => ({ useProjectStore: () => mockProjectStore }));
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelectionStore }));
 vi.mock('~/stores/ui.store', () => ({ useUiStore: () => mockUiStore }));
-vi.mock('~/stores/proxy.store', () => ({ useProxyStore: () => ({ generatingProxies: new Set() }) }));
+vi.mock('~/stores/proxy.store', () => ({
+  useProxyStore: () => ({ generatingProxies: new Set() }),
+}));
 vi.mock('~/stores/timeline.store', () => ({ useTimelineStore: () => mockTimelineStore }));
 
-vi.mock('~/composables/fileManager/useFileManager', () => ({ useFileManager: () => mockFileManager }));
+vi.mock('~/composables/fileManager/useFileManager', () => ({
+  useFileManager: () => mockFileManager,
+}));
 
 describe('MobileFileBrowser', () => {
   beforeEach(() => {
@@ -58,12 +64,12 @@ describe('MobileFileBrowser', () => {
 
   it('renders project name and breadcrumbs', async () => {
     const wrapper = await mountSuspended(MobileFileBrowser, {
-        global: {
-            stubs: {
-                Icon: true,
-                UButton: true
-            }
-        }
+      global: {
+        stubs: {
+          Icon: true,
+          UButton: true,
+        },
+      },
     });
     expect(wrapper.text()).toContain('MyProject');
   });
@@ -71,18 +77,18 @@ describe('MobileFileBrowser', () => {
   it('loads and renders entries', async () => {
     const entry = { name: 'movie.mp4', kind: 'file', path: 'movie.mp4', size: 1024 } as any;
     mockFileManager.readDirectory.mockResolvedValue([entry]);
-    
+
     const wrapper = await mountSuspended(MobileFileBrowser, {
-        global: {
-            stubs: {
-                Icon: true,
-                UButton: true
-            }
-        }
+      global: {
+        stubs: {
+          Icon: true,
+          UButton: true,
+        },
+      },
     });
 
     // Wait for the mock promise to resolve in the component
-    await new Promise(resolve => setTimeout(resolve, 10));
+    await new Promise((resolve) => setTimeout(resolve, 10));
     await wrapper.vm.$nextTick();
 
     expect(wrapper.text()).toContain('movie.mp4');
@@ -91,17 +97,17 @@ describe('MobileFileBrowser', () => {
   it('navigates to folder on click', async () => {
     const folder = { name: 'Videos', kind: 'directory', path: 'videos' } as any;
     mockFileManager.readDirectory.mockResolvedValue([folder]);
-    
+
     const wrapper = await mountSuspended(MobileFileBrowser, {
-        global: {
-            stubs: {
-                Icon: true,
-                UButton: true
-            }
-        }
+      global: {
+        stubs: {
+          Icon: true,
+          UButton: true,
+        },
+      },
     });
 
-    await new Promise(resolve => setTimeout(resolve, 10));
+    await new Promise((resolve) => setTimeout(resolve, 10));
     await wrapper.vm.$nextTick();
 
     const folderButton = wrapper.find('button');

@@ -286,7 +286,11 @@ describe('useMonitorCore', () => {
         useMonitorCore({
           projectStore,
           timelineStore,
-          proxyStore: { getProxyFileHandle: vi.fn(), getProxyFile: vi.fn(), existingProxies: ref(new Set()) } as any,
+          proxyStore: {
+            getProxyFileHandle: vi.fn(),
+            getProxyFile: vi.fn(),
+            existingProxies: ref(new Set()),
+          } as any,
           monitorTimeline: {
             videoItems: ref([]),
             workerTimelineClips: ref([]),
@@ -351,7 +355,11 @@ describe('useMonitorCore', () => {
         useMonitorCore({
           projectStore,
           timelineStore,
-          proxyStore: { getProxyFileHandle: vi.fn(), getProxyFile: vi.fn(), existingProxies: ref(new Set()) } as any,
+          proxyStore: {
+            getProxyFileHandle: vi.fn(),
+            getProxyFile: vi.fn(),
+            existingProxies: ref(new Set()),
+          } as any,
           monitorTimeline: {
             videoItems: ref([]),
             workerTimelineClips: ref([]),

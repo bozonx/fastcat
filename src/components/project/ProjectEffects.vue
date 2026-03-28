@@ -1,9 +1,5 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-
-defineProps<{
-  compact?: boolean;
-}>();
 import { VueDraggable } from 'vue-draggable-plus';
 import {
   getAllVideoEffectManifests,
@@ -17,6 +13,10 @@ import { usePresetsStore } from '~/stores/presets.store';
 
 import CollapsibleEffectGroup from '~/components/effects/CollapsibleEffectGroup.vue';
 import EffectCard from '~/components/effects/EffectCard.vue';
+
+defineProps<{
+  compact?: boolean;
+}>();
 
 const { t } = useI18n();
 const selectionStore = useSelectionStore();

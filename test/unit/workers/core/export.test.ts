@@ -22,7 +22,7 @@ vi.mock('mediabunny', () => ({
     });
   },
   BlobSource: class {
-      constructor(public blob: Blob) {}
+    constructor(public blob: Blob) {}
   },
   ALL_FORMATS: {},
 }));
@@ -38,7 +38,9 @@ describe('extractMetadata', () => {
       displayHeight: 1080,
       rotation: 0,
       codec: 'avc1.640028',
-      computePacketStats: vi.fn().mockResolvedValue({ averagePacketRate: 30, averageBitrate: 5000000 }),
+      computePacketStats: vi
+        .fn()
+        .mockResolvedValue({ averagePacketRate: 30, averageBitrate: 5000000 }),
       getCodecParameterString: vi.fn().mockResolvedValue('avc1.640028'),
       getColorSpace: vi.fn().mockResolvedValue({}),
     });
@@ -60,13 +62,13 @@ describe('extractMetadata', () => {
     expect(meta.duration).toBe(10);
     expect(meta.container).toBe('mp4');
     expect(meta.video).toMatchObject({
-        width: 1920,
-        fps: 30,
-        codec: 'avc1.640028'
+      width: 1920,
+      fps: 30,
+      codec: 'avc1.640028',
     });
     expect(meta.audio).toMatchObject({
-        sampleRate: 48000,
-        channels: 2
+      sampleRate: 48000,
+      channels: 2,
     });
   });
 

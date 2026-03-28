@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-
-defineProps<{
-  compact?: boolean;
-}>();
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useHistoryStore } from '~/stores/history.store';
 
 // Import useFileManager here to avoid circular dependencies if any,
 // though it should be fine as it's a composable.
 import { useFileManager } from '~/composables/fileManager/useFileManager';
+
+defineProps<{
+  compact?: boolean;
+}>();
 
 const timelineStore = useTimelineStore();
 const historyStore = useHistoryStore();

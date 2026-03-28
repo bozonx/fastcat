@@ -315,7 +315,6 @@ const addTrackActions = computed(() => [
     <!-- Settings (No title, includes Master Volume) -->
     <PropertySection v-if="!finalIsReadOnly">
       <div class="flex flex-col gap-3 py-1">
-
         <PropertyRow :label="t('videoEditor.hotkeys.general.mute', 'Mute')">
           <div class="flex justify-end w-full">
             <USwitch

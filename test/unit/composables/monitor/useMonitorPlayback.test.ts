@@ -12,8 +12,14 @@ describe('useMonitorPlayback', () => {
     vi.restoreAllMocks();
     vi.spyOn(performance, 'now').mockReturnValue(100);
     // Explicitly mock requestAnimationFrame if needed, or use vi.useFakeTimers()
-    vi.stubGlobal('requestAnimationFrame', vi.fn((cb) => setTimeout(() => cb(performance.now()), 16)));
-    vi.stubGlobal('cancelAnimationFrame', vi.fn((id) => clearTimeout(id)));
+    vi.stubGlobal(
+      'requestAnimationFrame',
+      vi.fn((cb) => setTimeout(() => cb(performance.now()), 16)),
+    );
+    vi.stubGlobal(
+      'cancelAnimationFrame',
+      vi.fn((id) => clearTimeout(id)),
+    );
 
     pinia = createTestingPinia({
       createSpy: vi.fn,
@@ -163,10 +169,16 @@ describe('useMonitorPlayback', () => {
     const safeDurationUs = ref(500_000);
     const audioEngine = createAudioEngineMock();
     audioEngine.getCurrentTimeUs.mockReturnValue(600_000);
-    
+
     // We need to control RAF precisely
     let rafCb: any;
-    vi.stubGlobal('requestAnimationFrame', vi.fn((cb) => { rafCb = cb; return 1; }));
+    vi.stubGlobal(
+      'requestAnimationFrame',
+      vi.fn((cb) => {
+        rafCb = cb;
+        return 1;
+      }),
+    );
 
     const TestComp = defineComponent({
       setup() {
@@ -179,7 +191,9 @@ describe('useMonitorPlayback', () => {
           safeDurationUs,
           getFps: () => 30,
           clampToTimeline: (t: number) => Math.max(0, Math.min(t, safeDurationUs.value)),
-          updateStoreTime: (t: any) => { currentTime.value = t; },
+          updateStoreTime: (t: any) => {
+            currentTime.value = t;
+          },
           scheduleRender: vi.fn(),
           audioEngine,
         });

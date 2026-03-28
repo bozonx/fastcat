@@ -15,7 +15,9 @@ describe('useMonitorTimeline', () => {
     });
   });
 
-  function withMonitorTimeline(fn: (res: ReturnType<typeof useMonitorTimeline>, store: any) => void) {
+  function withMonitorTimeline(
+    fn: (res: ReturnType<typeof useMonitorTimeline>, store: any) => void,
+  ) {
     const TestComp = defineComponent({
       setup() {
         const store = useTimelineStore();
@@ -130,10 +132,12 @@ describe('useMonitorTimeline', () => {
         'test1.mp3',
       );
       expect(rawWorkerAudioClips.value.find((x: any) => x.id === 'audio1')?.trackId).toBe('1');
-      expect(rawWorkerAudioClips.value.find((x: any) => x.id === 'item1__audio')?.source?.path).toBe(
-        'test1.mp4',
+      expect(
+        rawWorkerAudioClips.value.find((x: any) => x.id === 'item1__audio')?.source?.path,
+      ).toBe('test1.mp4');
+      expect(rawWorkerAudioClips.value.find((x: any) => x.id === 'item1__audio')?.trackId).toBe(
+        '2',
       );
-      expect(rawWorkerAudioClips.value.find((x: any) => x.id === 'item1__audio')?.trackId).toBe('2');
     });
   });
 
@@ -380,8 +384,12 @@ describe('useMonitorTimeline', () => {
       } as any;
 
       expect(res.rawWorkerAudioClips.value.length).toBe(1);
-      expect(res.rawWorkerAudioClips.value.find((c: any) => c.id === 'vclip1__audio')).toBeDefined();
-      expect(res.rawWorkerAudioClips.value.find((c: any) => c.id === 'vclip2__audio')).toBeUndefined();
+      expect(
+        res.rawWorkerAudioClips.value.find((c: any) => c.id === 'vclip1__audio'),
+      ).toBeDefined();
+      expect(
+        res.rawWorkerAudioClips.value.find((c: any) => c.id === 'vclip2__audio'),
+      ).toBeUndefined();
     });
   });
 

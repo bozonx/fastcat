@@ -23,8 +23,8 @@ describe('InlineNameEditor', () => {
       props: {
         initialName: 'test.mp4',
         isFolder: false,
-        existingNames: []
-      }
+        existingNames: [],
+      },
     });
 
     const input = wrapper.find('input');
@@ -36,8 +36,8 @@ describe('InlineNameEditor', () => {
       props: {
         initialName: 'test.mp4',
         isFolder: false,
-        existingNames: []
-      }
+        existingNames: [],
+      },
     });
 
     const input = wrapper.find('input');
@@ -53,8 +53,8 @@ describe('InlineNameEditor', () => {
       props: {
         initialName: 'test.mp4',
         isFolder: false,
-        existingNames: []
-      }
+        existingNames: [],
+      },
     });
 
     const input = wrapper.find('input');
@@ -68,13 +68,13 @@ describe('InlineNameEditor', () => {
       props: {
         initialName: 'test.mp4',
         isFolder: false,
-        existingNames: ['duplicate.mp4']
-      }
+        existingNames: ['duplicate.mp4'],
+      },
     });
 
     const input = wrapper.find('input');
     await input.setValue('duplicate.mp4');
-    
+
     // Check computed if possible, or just the class
     expect(input.classes()).toContain('border-red-500');
   });

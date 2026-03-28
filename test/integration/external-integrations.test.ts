@@ -89,8 +89,7 @@ describe('external integrations', () => {
     userSettings.integrations.fastcatPublicador.enabled = true;
     userSettings.integrations.fastcatPublicador.bearerToken = 'gp_token';
     userSettings.integrations.manualFilesApi.enabled = true;
-    userSettings.integrations.manualFilesApi.baseUrl =
-      'https://files.example.com/api/v1/vfs';
+    userSettings.integrations.manualFilesApi.baseUrl = 'https://files.example.com/api/v1/vfs';
     userSettings.integrations.manualFilesApi.bearerToken = 'files_token';
     userSettings.integrations.manualFilesApi.overrideFastCat = false;
 
