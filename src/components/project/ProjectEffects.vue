@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+
+defineProps<{
+  compact?: boolean;
+}>();
 import { VueDraggable } from 'vue-draggable-plus';
 import {
   getAllVideoEffectManifests,

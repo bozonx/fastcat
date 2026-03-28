@@ -16,9 +16,11 @@ const focusStore = useFocusStore();
 const props = withDefaults(
   defineProps<{
     useExternalFocus?: boolean;
+    compact?: boolean;
   }>(),
   {
     useExternalFocus: false,
+    compact: false,
   },
 );
 
@@ -86,7 +88,7 @@ onMounted(() => {
         :media-type="activeFileTab.mediaType"
       />
 
-      <component :is="activeStaticComponent" v-else-if="activeStaticComponent" />
+      <component :is="activeStaticComponent" v-else-if="activeStaticComponent" :compact="compact" />
     </div>
   </div>
 </template>

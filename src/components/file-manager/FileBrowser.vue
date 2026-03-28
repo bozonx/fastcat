@@ -41,6 +41,7 @@ import FileBrowserModals from '~/components/file-manager/FileBrowserModals.vue';
 
 const props = defineProps<{
   isFilesPage?: boolean;
+  compact?: boolean;
 }>();
 
 const filesPageStore = useFilesPageStore();
@@ -573,6 +574,7 @@ async function onDirectoryUploadChange(e: Event) {
       :grid-sizes="GRID_SIZES"
       :current-grid-size-name="currentGridSizeName"
       :remote-available="isRemoteAvailable"
+      :compact="compact"
       @refresh="refreshFileTree"
       @open-remote="openRemoteExchangeModal"
     />
@@ -686,7 +688,7 @@ async function onDirectoryUploadChange(e: Event) {
     </div>
 
     <!-- Bottom Panel -->
-    <FileBrowserStatusBar :stats="stats" />
+    <FileBrowserStatusBar v-if="!compact" :stats="stats" />
 
     <!-- Hidden input for directory upload -->
     <input

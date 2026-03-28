@@ -208,7 +208,7 @@ const detachedStaticPanelContextMenuItems = computed(() => {
     class="h-full w-full bg-ui-bg-elevated flex flex-col relative border border-ui-border"
   >
     <div class="flex-1 overflow-hidden min-h-0">
-      <Project class="h-full pt-2" :use-external-focus="true" />
+      <Project class="h-full pt-2" :use-external-focus="true" :compact="view === 'cut'" />
     </div>
   </div>
 </template>

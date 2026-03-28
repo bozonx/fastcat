@@ -125,21 +125,6 @@ const emit = defineEmits<{
       {{ entry.name }}
     </span>
 
-    <!-- Actions button -->
-    <UDropdownMenu
-      v-if="menuItems?.length"
-      :items="menuItems"
-      :ui="{ content: 'bottom-end' }"
-      class="opacity-0 group-hover:opacity-100 transition-opacity"
-    >
-      <UButton
-        size="2xs"
-        color="neutral"
-        variant="ghost"
-        icon="i-heroicons-ellipsis-horizontal"
-        class="shrink-0 -mr-1"
-        @click.stop
-      />
-    </UDropdownMenu>
+    <!-- Actions button removed -->
   </div>
 </template>

@@ -1,13 +1,17 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useFilesPageStore, type FileSortField } from '~/stores/files-page.store';
 import { useUiStore } from '~/stores/ui.store';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
+import UiToggleButton from '~/components/ui/UiToggleButton.vue';
+import UiActionButton from '~/components/ui/UiActionButton.vue';
 
-defineProps<{
+const props = defineProps<{
   gridSizes: number[];
   currentGridSizeName: string;
   remoteAvailable?: boolean;
+  compact?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -26,6 +30,67 @@ const sortFields: { label: string; value: FileSortField }[] = [
   { label: t('common.created', 'Created'), value: 'created' },
   { label: t('common.modified', 'Modified'), value: 'modified' },
 ];
+
+const menuItems = computed(() => {
+  const items: any[][] = [];
+
+  // General actions (Both modes)
+  const commonActions = [
+    {
+      label: t('common.refresh', 'Refresh'),
+      icon: 'i-heroicons-arrow-path',
+      onSelect: () => emit('refresh'),
+    },
+    {
+      label: uiStore.showHiddenFiles
+        ? t('videoEditor.fileManager.actions.hideHiddenFiles', 'Hide hidden files')
+        : t('videoEditor.fileManager.actions.showHiddenFiles', 'Show hidden files'),
+      icon: uiStore.showHiddenFiles ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
+      onSelect: () => {
+        uiStore.showHiddenFiles = !uiStore.showHiddenFiles;
+      },
+    },
+  ];
+
+  items.push(commonActions);
+
+  // Sorting in compact mode
+  if (props.compact) {
+    const fieldsGroup = sortFields.map((f) => ({
+      label: f.label,
+      type: 'radio' as const,
+      checked: filesPageStore.sortOption.field === f.value,
+      onSelect: () => {
+        filesPageStore.sortOption.field = f.value;
+      },
+    }));
+    items.push(fieldsGroup);
+
+    const orderGroup = [
+      {
+        label: t('common.sortAsc', 'Ascending'),
+        icon: 'i-heroicons-bars-arrow-up',
+        type: 'radio' as const,
+        checked: filesPageStore.sortOption.order === 'asc',
+        onSelect: () => {
+          filesPageStore.sortOption.order = 'asc';
+        },
+      },
+      {
+        label: t('common.sortDesc', 'Descending'),
+        icon: 'i-heroicons-bars-arrow-down',
+        type: 'radio' as const,
+        checked: filesPageStore.sortOption.order === 'desc',
+        onSelect: () => {
+          filesPageStore.sortOption.order = 'desc';
+        },
+      },
+    ];
+    items.push(orderGroup);
+  }
+
+  return items;
+});
 </script>
 
 <template>
@@ -72,54 +137,48 @@ const sortFields: { label: string; value: FileSortField }[] = [
     </div>
 
     <div class="ml-auto flex items-center gap-2">
-      <UiActionButton
-        v-if="remoteAvailable"
-        color="neutral"
-        size="xs"
-        icon="i-heroicons-cloud"
-        label="Remote"
-        @click="emit('openRemote')"
-      />
-      <span class="text-xs text-ui-text-muted">{{ t('common.sortBy', 'Sort by') }}:</span>
-      <UiSelect
-        v-model="filesPageStore.sortOption.field"
-        :items="sortFields"
-        value-key="value"
-        size="xs"
-        class="w-32"
-      />
-      <UiToggleButton
-        :model-value="filesPageStore.sortOption.order === 'asc'"
-        icon="i-heroicons-bars-arrow-down"
-        active-icon="i-heroicons-bars-arrow-up"
-        inactive-color="neutral"
-        active-color="primary"
-        size="xs"
-        title="Sort order"
-        no-toggle
-        @click="
-          filesPageStore.sortOption.order =
-            filesPageStore.sortOption.order === 'asc' ? 'desc' : 'asc'
-        "
-      />
-      <div class="w-px h-4 bg-ui-border mx-1"></div>
-      <UiActionButton
-        icon="i-heroicons-arrow-path"
-        color="neutral"
-        size="xs"
-        title="Refresh"
-        @click="emit('refresh')"
-      />
-      <UiToggleButton
-        :model-value="uiStore.showHiddenFiles"
-        icon="i-heroicons-eye"
-        active-icon="i-heroicons-eye-slash"
-        inactive-color="neutral"
-        active-color="primary"
-        size="xs"
-        title="Show hidden files"
-        @click="uiStore.showHiddenFiles = !uiStore.showHiddenFiles"
-      />
+      <template v-if="!compact">
+        <UiActionButton
+          v-if="remoteAvailable"
+          color="neutral"
+          size="xs"
+          icon="i-heroicons-cloud"
+          label="Remote"
+          @click="emit('openRemote')"
+        />
+        <span class="text-xs text-ui-text-muted">{{ t('common.sortBy', 'Sort by') }}:</span>
+        <UiSelect
+          v-model="filesPageStore.sortOption.field"
+          :items="sortFields"
+          value-key="value"
+          size="xs"
+          class="w-32"
+        />
+        <UiToggleButton
+          :model-value="filesPageStore.sortOption.order === 'asc'"
+          icon="i-heroicons-bars-arrow-down"
+          active-icon="i-heroicons-bars-arrow-up"
+          inactive-color="neutral"
+          active-color="primary"
+          size="xs"
+          title="Sort order"
+          no-toggle
+          @click="
+            filesPageStore.sortOption.order =
+              filesPageStore.sortOption.order === 'asc' ? 'desc' : 'asc'
+          "
+        />
+        <div class="w-px h-4 bg-ui-border mx-1"></div>
+      </template>
+
+      <UDropdownMenu :items="menuItems" :ui="{ content: 'w-56' }">
+        <UiActionButton
+          icon="i-heroicons-ellipsis-horizontal"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+        />
+      </UDropdownMenu>
     </div>
   </div>
 </template>

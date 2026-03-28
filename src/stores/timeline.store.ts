@@ -487,17 +487,33 @@ export const useTimelineStore = defineStore('timeline', () => {
       return createdMarker;
     },
     goToNextMarker: () => {
-      const markers = markerService.getMarkers().sort((a, b) => a.timeUs - b.timeUs);
-      const next = markers.find((m) => m.timeUs > currentTime.value + 1000);
-      if (next) {
-        lifecycle.setCurrentTimeUs(next.timeUs);
+      const markers = markerService.getMarkers();
+      const points = markers
+        .flatMap((m) => {
+          const pts = [m.timeUs];
+          if (m.durationUs) pts.push(m.timeUs + m.durationUs);
+          return pts;
+        })
+        .sort((a, b) => a - b);
+
+      const next = points.find((p) => p > currentTime.value + 100);
+      if (next !== undefined) {
+        lifecycle.setCurrentTimeUs(next);
       }
     },
     goToPreviousMarker: () => {
-      const markers = markerService.getMarkers().sort((a, b) => b.timeUs - a.timeUs);
-      const prev = markers.find((m) => m.timeUs < currentTime.value - 1000);
-      if (prev) {
-        lifecycle.setCurrentTimeUs(prev.timeUs);
+      const markers = markerService.getMarkers();
+      const points = markers
+        .flatMap((m) => {
+          const pts = [m.timeUs];
+          if (m.durationUs) pts.push(m.timeUs + m.durationUs);
+          return pts;
+        })
+        .sort((a, b) => b - a);
+
+      const prev = points.find((p) => p < currentTime.value - 100);
+      if (prev !== undefined) {
+        lifecycle.setCurrentTimeUs(prev);
       }
     },
     addZoneMarkerAtPlayhead: markerService.addZoneMarkerAtPlayhead,
