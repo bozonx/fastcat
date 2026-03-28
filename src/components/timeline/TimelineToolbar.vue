@@ -6,6 +6,16 @@ import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { usePresetsStore } from '~/stores/presets.store';
 import UiSplitDropdownButton from '~/components/ui/UiSplitDropdownButton.vue';
+import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
+import {
+  DEFAULT_TIMELINE_ZOOM_POSITION,
+  formatZoomMultiplier,
+  MAX_TIMELINE_ZOOM_POSITION,
+  MIN_TIMELINE_ZOOM_POSITION,
+  TIMELINE_ZOOM_POSITIONS,
+  timelineZoomPositionToScale,
+  timelineZoomScaleToPosition,
+} from '~/utils/zoom';
 import type { TextClipStyle } from '~/timeline/types';
 
 const { t } = useI18n();
@@ -110,6 +120,25 @@ const toolbarDragModeIcon = computed(() => {
   }
 
   return 'i-heroicons-rectangle-stack';
+});
+
+const timelineZoom = computed({
+  get: () => timelineStore.timelineZoom,
+  set: (value: number) => {
+    timelineStore.setTimelineZoom(value);
+  },
+});
+
+const timelineZoomScale = computed(() => timelineZoomPositionToScale(timelineZoom.value));
+
+const timelineZoomMultiplierInput = computed({
+  get: () => formatZoomMultiplier(timelineZoomScale.value),
+  set: (value: string | number) => {
+    const normalized = String(value).trim().toLowerCase().replace(',', '.').replace(/^x/, '');
+    const parsed = Number(normalized);
+    if (!Number.isFinite(parsed) || parsed <= 0) return;
+    timelineStore.setTimelineZoomExact(timelineZoomScaleToPosition(parsed));
+  },
 });
 
 const toolbarDragModeVariant = computed(() => {
@@ -237,148 +266,225 @@ function onToolbarContextMenu(e: MouseEvent) {
 <template>
   <UContextMenu :items="toolbarEmptyAreaContextMenuItems">
     <div
-      class="h-12 w-full border-b border-ui-border bg-ui-bg-elevated flex items-center justify-center px-2 shrink-0 gap-1"
+      class="h-12 w-full border-b border-ui-border bg-ui-bg-elevated flex items-center px-4 shrink-0"
       data-timeline-toolbar
       @pointerdown.capture="focusStore.setPanelFocus('timeline')"
       @click.self="timelineStore.selectTimelineProperties()"
       @contextmenu="onToolbarContextMenu"
     >
-      <UiTooltip :text="t('fastcat.timeline.snapMode', 'Snap Mode')">
-        <UiSplitDropdownButton
-          size="xs"
-          variant="ghost"
-          color="neutral"
-          :icon="toolbarSnapModeIcon"
-          :ariaLabel="t('fastcat.timeline.snapMode', 'Snap Mode')"
-          :items="snapModeItems"
-          button-class="hover:bg-ui-bg-hover/60"
-          caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
-          caret-icon-class="size-2.5"
-          @click="cycleToolbarSnapMode"
-        />
-      </UiTooltip>
-
-      <UiTooltip :text="t('fastcat.timeline.moveMode', 'Clip Move Mode')">
-        <UiSplitDropdownButton
-          size="xs"
-          :variant="toolbarDragModeVariant"
-          :color="settingsStore.toolbarDragModeEnabled ? 'primary' : 'neutral'"
-          :icon="toolbarDragModeIcon"
-          :ariaLabel="t('fastcat.timeline.moveMode', 'Clip Move Mode')"
-          :items="dragModeItems"
-          button-class="hover:bg-ui-bg-hover/60"
-          caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
-          caret-icon-class="size-2.5"
-          @click="toggleToolbarDragMode"
-        />
-      </UiTooltip>
-
-      <UiTooltip :text="t('fastcat.timeline.trim', 'Trim')">
-        <UiSplitDropdownButton
-          size="xs"
-          :variant="timelineStore.isTrimModeActive ? 'solid' : 'ghost'"
-          :color="timelineStore.isTrimModeActive ? 'primary' : 'neutral'"
-          icon="i-heroicons-scissors"
-          :aria-label="t('fastcat.timeline.trim', 'Trim')"
-          :ariaLabel="t('fastcat.timeline.trim', 'Trim')"
-          :items="trimMenuItems"
-          button-class="hover:bg-ui-bg-hover/60"
-          caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
-          caret-icon-class="size-2.5"
-          @click="toggleTrimMode"
-        />
-      </UiTooltip>
-
-      <div v-if="timelineStore.isAnyTrackSoloed" class="ml-2 flex items-center">
-        <UiTooltip :text="t('fastcat.timeline.clearSolos', 'Clear all solos')">
-          <UButton
+      <!-- Left column: Main actions -->
+      <div class="flex-1 flex items-center justify-center gap-1">
+        <UiTooltip :text="t('fastcat.timeline.snapMode', 'Snap Mode')">
+          <UiSplitDropdownButton
             size="xs"
-            color="amber"
-            variant="solid"
-            icon="i-heroicons-musical-note"
-            class="h-6 text-2xs px-2 gap-1 font-bold animate-pulse hover:animate-none"
-            @click="
-              (e) => {
-                timelineStore.unsoloAllTracks();
-                (e.currentTarget as HTMLElement).blur();
-              }
-            "
-          >
-            {{ t('fastcat.timeline.soloActive', 'SOLO ACTIVE') }}
-          </UButton>
+            variant="ghost"
+            color="neutral"
+            :icon="toolbarSnapModeIcon"
+            :ariaLabel="t('fastcat.timeline.snapMode', 'Snap Mode')"
+            :items="snapModeItems"
+            button-class="hover:bg-ui-bg-hover/60"
+            caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
+            caret-icon-class="size-2.5"
+            @click="cycleToolbarSnapMode"
+          />
         </UiTooltip>
+
+        <UiTooltip :text="t('fastcat.timeline.moveMode', 'Clip Move Mode')">
+          <UiSplitDropdownButton
+            size="xs"
+            :variant="toolbarDragModeVariant"
+            :color="settingsStore.toolbarDragModeEnabled ? 'primary' : 'neutral'"
+            :icon="toolbarDragModeIcon"
+            :ariaLabel="t('fastcat.timeline.moveMode', 'Clip Move Mode')"
+            :items="dragModeItems"
+            button-class="hover:bg-ui-bg-hover/60"
+            caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
+            caret-icon-class="size-2.5"
+            @click="toggleToolbarDragMode"
+          />
+        </UiTooltip>
+
+        <UiTooltip :text="t('fastcat.timeline.trim', 'Trim')">
+          <UiSplitDropdownButton
+            size="xs"
+            :variant="timelineStore.isTrimModeActive ? 'solid' : 'ghost'"
+            :color="timelineStore.isTrimModeActive ? 'primary' : 'neutral'"
+            icon="i-heroicons-scissors"
+            :ariaLabel="t('fastcat.timeline.trim', 'Trim')"
+            :items="trimMenuItems"
+            button-class="hover:bg-ui-bg-hover/60"
+            caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
+            caret-icon-class="size-2.5"
+            @click="toggleTrimMode"
+          />
+        </UiTooltip>
+
+        <div v-if="timelineStore.isAnyTrackSoloed" class="ml-2 flex items-center">
+          <UiTooltip :text="t('fastcat.timeline.clearSolos', 'Clear all solos')">
+            <UButton
+              size="xs"
+              color="amber"
+              variant="solid"
+              icon="i-heroicons-musical-note"
+              class="h-6 text-2xs px-2 gap-1 font-bold animate-pulse hover:animate-none"
+              @click="
+                (e) => {
+                  timelineStore.unsoloAllTracks();
+                  (e.currentTarget as HTMLElement).blur();
+                }
+              "
+            >
+              {{ t('fastcat.timeline.soloActive', 'SOLO ACTIVE') }}
+            </UButton>
+          </UiTooltip>
+        </div>
+
+        <UiTooltip
+          :text="`${t('fastcat.timeline.addAdjustment')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
+        >
+          <div
+            draggable="true"
+            @dragstart="onDragStart($event, 'adjustment')"
+            @dragend="onDragEnd"
+          >
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              icon="i-heroicons-adjustments-horizontal"
+              class="hover:bg-ui-bg-hover/60"
+              @click="
+                (e) => {
+                  timelineStore.addAdjustmentClipAtPlayhead();
+                  (e.currentTarget as HTMLElement).blur();
+                }
+              "
+            />
+          </div>
+        </UiTooltip>
+
+        <UiTooltip
+          :text="`${t('fastcat.timeline.addBackground')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
+        >
+          <div
+            draggable="true"
+            @dragstart="onDragStart($event, 'background')"
+            @dragend="onDragEnd"
+          >
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              icon="i-heroicons-swatch"
+              class="hover:bg-ui-bg-hover/60"
+              @click="
+                (e) => {
+                  timelineStore.addBackgroundClipAtPlayhead();
+                  (e.currentTarget as HTMLElement).blur();
+                }
+              "
+            />
+          </div>
+        </UiTooltip>
+
+        <UiTooltip
+          :text="`${t('fastcat.timeline.addText')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
+        >
+          <div
+            draggable="true"
+            @dragstart="onDragStart($event, 'text')"
+            @dragend="onDragEnd"
+            @contextmenu.prevent="() => {}"
+          >
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              icon="i-heroicons-chat-bubble-bottom-center-text"
+              class="hover:bg-ui-bg-hover/60"
+              @click="
+                (e) => {
+                  addTextClip();
+                  (e.currentTarget as HTMLElement).blur();
+                }
+              "
+            />
+          </div>
+        </UiTooltip>
+
+        <!-- Separator -->
+        <div class="w-px h-4 bg-ui-border mx-2 opacity-50" />
+
+        <!-- Marker controls -->
+        <div class="flex items-center gap-1">
+          <UiTooltip :text="t('fastcat.timeline.previousMarker', 'Previous marker')">
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              icon="i-heroicons-chevron-left"
+              class="hover:bg-ui-bg-hover/60"
+              @click="timelineStore.goToPreviousMarker()"
+            />
+          </UiTooltip>
+
+          <UiTooltip :text="t('fastcat.timeline.addMarker', 'Add marker')">
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              icon="i-heroicons-bookmark"
+              class="hover:bg-ui-bg-hover/60"
+              @click="timelineStore.addMarkerAtPlayhead()"
+            />
+          </UiTooltip>
+
+          <UiTooltip :text="t('fastcat.timeline.nextMarker', 'Next marker')">
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              icon="i-heroicons-chevron-right"
+              class="hover:bg-ui-bg-hover/60"
+              @click="timelineStore.goToNextMarker()"
+            />
+          </UiTooltip>
+        </div>
       </div>
 
-      <UiTooltip
-        :text="`${t('fastcat.timeline.addAdjustment')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
-      >
-        <div
-          draggable="true"
-          @dragstart="onDragStart($event, 'adjustment')"
-          @dragend="onDragEnd"
-        >
+      <!-- Right column: Zoom controls -->
+      <div class="w-[280px] flex items-center gap-2 pl-4 border-l border-ui-border/30">
+        <UiTooltip :text="t('fastcat.timeline.zoomToFit', 'Fit to zoom')">
           <UButton
             size="xs"
-            variant="ghost"
             color="neutral"
-            icon="i-heroicons-adjustments-horizontal"
-            class="hover:bg-ui-bg"
-            @click="
-              (e) => {
-                timelineStore.addAdjustmentClipAtPlayhead();
-                (e.currentTarget as HTMLElement).blur();
-              }
-            "
+            variant="ghost"
+            icon="i-heroicons-arrows-pointing-out"
+            class="hover:bg-ui-bg-hover/60"
+            @click="timelineStore.fitTimelineZoom()"
+          />
+        </UiTooltip>
+
+        <div class="flex-1 min-w-0">
+          <UiWheelSlider
+            v-model="timelineZoom"
+            :min="MIN_TIMELINE_ZOOM_POSITION"
+            :max="MAX_TIMELINE_ZOOM_POSITION"
+            :step="0.01"
+            :steps="TIMELINE_ZOOM_POSITIONS"
+            :default-value="DEFAULT_TIMELINE_ZOOM_POSITION"
           />
         </div>
-      </UiTooltip>
-      <UiTooltip
-        :text="`${t('fastcat.timeline.addBackground')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
-      >
-        <div
-          draggable="true"
-          @dragstart="onDragStart($event, 'background')"
-          @dragend="onDragEnd"
-        >
-          <UButton
+
+        <div class="w-16 shrink-0">
+          <UInput
+            v-model="timelineZoomMultiplierInput"
             size="xs"
-            variant="ghost"
-            color="neutral"
-            icon="i-heroicons-swatch"
-            class="hover:bg-ui-bg"
-            @click="
-              (e) => {
-                timelineStore.addBackgroundClipAtPlayhead();
-                (e.currentTarget as HTMLElement).blur();
-              }
-            "
+            class="w-full font-mono text-center"
+            variant="none"
           />
         </div>
-      </UiTooltip>
-      <UiTooltip
-        :text="`${t('fastcat.timeline.addText')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
-      >
-        <div
-          draggable="true"
-          @dragstart="onDragStart($event, 'text')"
-          @dragend="onDragEnd"
-          @contextmenu.prevent="() => {}"
-        >
-          <UButton
-            size="xs"
-            variant="ghost"
-            color="neutral"
-            icon="i-heroicons-chat-bubble-bottom-center-text"
-            class="hover:bg-ui-bg"
-            @click="
-              (e) => {
-                addTextClip();
-                (e.currentTarget as HTMLElement).blur();
-              }
-            "
-          />
-        </div>
-      </UiTooltip>
+      </div>
     </div>
   </UContextMenu>
 </template>

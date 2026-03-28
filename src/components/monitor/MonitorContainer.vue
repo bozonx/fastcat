@@ -440,22 +440,6 @@ onUnmounted(() => {
           </UiTooltip>
         </template>
 
-        <UiTooltip
-          :text="
-            getHotkeyTitle(
-              t('fastcat.timeline.addMarkerAtPlayhead', 'Add marker at playhead'),
-              'general.addMarker',
-            )
-          "
-        >
-          <UiActionButton
-            size="xs"
-            color="neutral"
-            variant="ghost"
-            icon="i-heroicons-bookmark"
-            @click="createMarkerAtPlayhead"
-          />
-        </UiTooltip>
 
         <UiTooltip :text="t('fastcat.monitor.center', 'Center')">
           <UiActionButton
