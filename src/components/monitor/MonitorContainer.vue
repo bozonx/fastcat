@@ -204,17 +204,6 @@ const isReadonly = computed(
   () => projectStore.currentView === 'sound' || projectStore.currentView === 'export',
 );
 
-const selectedPreviewResolution = computed(() => {
-  const raw = Number(projectStore.activeMonitor?.previewResolution);
-  if (!Number.isFinite(raw) || raw <= 0) return null;
-  return (
-    previewResolutions.value.find((r) => Math.abs(r.value - raw) < 0.001) ?? {
-      label: `${raw}p`,
-      value: raw,
-      isProject: Math.abs(raw - projectStore.projectSettings.project.height) < 0.001,
-    }
-  );
-});
 
 const speedMenuItems = computed(() => [
   negativeSpeedOptions.map((opt) => ({
@@ -503,32 +492,6 @@ onUnmounted(() => {
           />
         </UiTooltip>
 
-        <UiCompactSelect
-          v-if="projectStore.activeMonitor"
-          :model-value="selectedPreviewResolution as any"
-          :items="previewResolutions"
-          value-key="value"
-          label-key="label"
-          :search-input="false"
-          @update:model-value="
-            (v: unknown) => {
-              if (v && projectStore.activeMonitor)
-                projectStore.activeMonitor.previewResolution = ((v as { value: number }).value ??
-                  v) as number;
-            }
-          "
-        >
-          <template #default="{ modelValue }">
-            <span>
-              {{ (modelValue as any)?.shortLabel || (modelValue as any)?.label }}
-            </span>
-          </template>
-          <template #item-label="{ item }">
-            <span :class="['truncate']">
-              {{ item.label }}
-            </span>
-          </template>
-        </UiCompactSelect>
 
         <!-- Playback buttons — right-click / wheel opens speed selector -->
         <UContextMenu :items="speedMenuItems">

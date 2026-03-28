@@ -334,6 +334,20 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
         onSelect: () => setToolbarPosition('left'),
       },
     ],
+    [
+      ...previewResolutions.value.map((res) => ({
+        label: res.label,
+        icon:
+          Math.abs((options.projectStore.activeMonitor?.previewResolution ?? 1) - res.value) < 0.001
+            ? 'i-heroicons-check'
+            : undefined,
+        onSelect: () => {
+          if (options.projectStore.activeMonitor) {
+            options.projectStore.activeMonitor.previewResolution = res.value;
+          }
+        },
+      })),
+    ],
   ]);
 
   return {
