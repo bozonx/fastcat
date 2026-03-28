@@ -473,7 +473,33 @@ export const useTimelineStore = defineStore('timeline', () => {
     ...tracks,
     ...trimming,
     ...clips,
-    addMarkerAtPlayhead: markerService.addMarkerAtPlayhead,
+    addMarkerAtPlayhead: (options?: Record<string, unknown>) => {
+      const existingMarkers = markerService.getMarkers();
+      markerService.addMarkerAtPlayhead(options);
+      const nextMarkers = markerService.getMarkers();
+      const createdMarker =
+        nextMarkers.find((marker) => !existingMarkers.some((item) => item.id === marker.id)) ??
+        nextMarkers[nextMarkers.length - 1];
+
+      if (createdMarker && options?.select !== false) {
+        selectionStore.selectTimelineMarker(createdMarker.id);
+      }
+      return createdMarker;
+    },
+    goToNextMarker: () => {
+      const markers = markerService.getMarkers().sort((a, b) => a.timeUs - b.timeUs);
+      const next = markers.find((m) => m.timeUs > currentTime.value + 1000);
+      if (next) {
+        lifecycle.setCurrentTimeUs(next.timeUs);
+      }
+    },
+    goToPreviousMarker: () => {
+      const markers = markerService.getMarkers().sort((a, b) => b.timeUs - a.timeUs);
+      const prev = markers.find((m) => m.timeUs < currentTime.value - 1000);
+      if (prev) {
+        lifecycle.setCurrentTimeUs(prev.timeUs);
+      }
+    },
     addZoneMarkerAtPlayhead: markerService.addZoneMarkerAtPlayhead,
     createSelectionRangeAtPlayhead: selectionRange.createSelectionRangeAtPlayhead,
     createSelectionRange: selectionRange.createSelectionRange,
