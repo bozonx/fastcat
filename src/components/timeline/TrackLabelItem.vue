@@ -241,15 +241,27 @@ onBeforeUnmount(() => {
         <!-- Track Buttons -->
         <div class="flex items-center gap-1.5 ml-auto" @dblclick.stop>
           <UiToggleButton
+            v-if="track.locked"
+            :model-value="true"
+            size="xs"
+            class="w-4 h-4 p-0! text-[10px]! rounded-full"
+            icon="i-heroicons-lock-closed"
+            :active-bg="'#3b82f6'"
+            :active-text="'#ffffff'"
+            title="Unlock Track"
+            @click="toggleTrackLock"
+          />
+
+          <UiToggleButton
             v-if="track.kind === 'video'"
             :model-value="track.videoHidden || false"
             size="xs"
-            class="w-4 h-4 p-0! text-[10px]!"
+            class="w-4 h-4 p-0! text-[10px]! rounded-full"
             icon="i-heroicons-eye"
             active-icon="i-heroicons-eye-slash"
             inactive-color="neutral"
-            active-color="warning"
-            :active-bg="'#facc15'"
+            active-color="primary"
+            :active-bg="'#ffffff'"
             :active-text="'#000000'"
             title="Hide/Show Track"
             @click="toggleVideoHidden"
@@ -258,13 +270,13 @@ onBeforeUnmount(() => {
           <UiToggleButton
             :model-value="track.audioMuted || false"
             size="xs"
-            class="w-4 h-4 p-0! text-[10px]!"
+            class="w-4 h-4 p-0! text-[10px]! rounded-full"
             icon="i-heroicons-speaker-wave"
             active-icon="i-heroicons-speaker-x-mark"
             inactive-color="neutral"
             active-color="error"
             :active-bg="'#ef4444'"
-            :active-text="'#000000'"
+            :active-text="'#ffffff'"
             title="Mute/Unmute Track"
             @click="toggleAudioMuted"
           />
@@ -272,26 +284,14 @@ onBeforeUnmount(() => {
           <UiToggleButton
             :model-value="track.audioSolo || false"
             size="xs"
-            class="w-4 h-4 p-0! text-[10px]!"
+            class="w-4 h-4 p-0! text-[10px]! rounded-full"
             icon="i-heroicons-musical-note"
             inactive-color="neutral"
-            active-color="warning"
-            :active-bg="'#fbbf24'"
-            :active-text="'#000000'"
+            active-color="success"
+            :active-bg="'#22c55e'"
+            :active-text="'#ffffff'"
             title="Solo Track"
             @click="toggleAudioSolo"
-          />
-
-          <UiToggleButton
-            v-if="track.locked"
-            :model-value="true"
-            size="xs"
-            class="w-4 h-4 p-0! text-[10px]!"
-            icon="i-heroicons-lock-closed"
-            :active-bg="'#3b82f6'"
-            :active-text="'#ffffff'"
-            title="Unlock Track"
-            @click="toggleTrackLock"
           />
         </div>
       </div>

@@ -50,4 +50,34 @@ describe('extractMetadata', () => {
     expect(meta.audio?.sampleRate).toBe(48000);
     expect(meta.audio?.channels).toBe(2);
   });
+
+  it('extracts metadata for audio-only file', async () => {
+    const file = new File([], 'test.mp3');
+    // Mock video track to null for this test
+    const InputMock = (await import('mediabunny')).Input;
+    const originalGetPrimaryVideoTrack = InputMock.prototype.getPrimaryVideoTrack;
+    InputMock.prototype.getPrimaryVideoTrack = vi.fn().mockResolvedValue(null);
+
+    try {
+      const meta = await extractMetadata(file);
+      expect(meta.video).toBeUndefined();
+      expect(meta.audio).toBeDefined();
+      expect(meta.duration).toBe(10);
+    } finally {
+      InputMock.prototype.getPrimaryVideoTrack = originalGetPrimaryVideoTrack;
+    }
+  });
+
+  it('handles mediabunny failure gracefully', async () => {
+    const file = new File([], 'error.mp4');
+    const InputMock = (await import('mediabunny')).Input;
+    const originalComputeDuration = InputMock.prototype.computeDuration;
+    InputMock.prototype.computeDuration = vi.fn().mockRejectedValue(new Error('Decode error'));
+
+    try {
+      await expect(extractMetadata(file)).rejects.toThrow('Decode error');
+    } finally {
+      InputMock.prototype.computeDuration = originalComputeDuration;
+    }
+  });
 });

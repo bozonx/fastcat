@@ -338,7 +338,7 @@ function onDragVirtualEnd() {
     >
       <div
         class="shrink-0 border-r border-ui-border bg-ui-bg-elevated flex items-center px-2"
-        style="width: 200px"
+        style="width: 220px"
       >
         <div class="flex-1 flex items-center">
           <UiTimecode
@@ -349,16 +349,32 @@ function onDragVirtualEnd() {
 
         <div class="flex items-center gap-1">
           <UTooltip
+            v-if="anyLocked"
+            :text="t('fastcat.track.resetLocked', 'Unlock all tracks')"
+            :shortcuts="['L']"
+          >
+            <UButton
+              icon="i-heroicons-lock-closed"
+              color="primary"
+              variant="solid"
+              size="xs"
+              class="w-5 h-5 p-0! rounded-full"
+              :style="{ backgroundColor: '#3b82f6', color: '#ffffff' }"
+              @click="timelineStore.unlockAllTracks()"
+            />
+          </UTooltip>
+          <UTooltip
             v-if="anyHidden"
             :text="t('fastcat.track.resetHidden', 'Show all hidden tracks')"
             :shortcuts="['H']"
           >
             <UButton
               icon="i-heroicons-eye-slash"
-              color="warning"
-              variant="soft"
+              color="white"
+              variant="solid"
               size="xs"
-              class="w-5 h-5 p-0!"
+              class="w-5 h-5 p-0! rounded-full ring-1 ring-ui-border"
+              :style="{ backgroundColor: '#ffffff', color: '#000000' }"
               @click="timelineStore.showAllTracks()"
             />
           </UTooltip>
@@ -370,9 +386,10 @@ function onDragVirtualEnd() {
             <UButton
               icon="i-heroicons-speaker-x-mark"
               color="error"
-              variant="soft"
+              variant="solid"
               size="xs"
-              class="w-5 h-5 p-0!"
+              class="w-5 h-5 p-0! rounded-full"
+              :style="{ backgroundColor: '#ef4444', color: '#ffffff' }"
               @click="timelineStore.unmuteAllTracks()"
             />
           </UTooltip>
@@ -383,25 +400,12 @@ function onDragVirtualEnd() {
           >
             <UButton
               icon="i-heroicons-musical-note"
-              color="warning"
-              variant="soft"
+              color="success"
+              variant="solid"
               size="xs"
-              class="w-5 h-5 p-0!"
+              class="w-5 h-5 p-0! rounded-full"
+              :style="{ backgroundColor: '#22c55e', color: '#ffffff' }"
               @click="timelineStore.unsoloAllTracks()"
-            />
-          </UTooltip>
-          <UTooltip
-            v-if="anyLocked"
-            :text="t('fastcat.track.resetLocked', 'Unlock all tracks')"
-            :shortcuts="['L']"
-          >
-            <UButton
-              icon="i-heroicons-lock-closed"
-              color="primary"
-              variant="soft"
-              size="xs"
-              class="w-5 h-5 p-0!"
-              @click="timelineStore.unlockAllTracks()"
             />
           </UTooltip>
         </div>
