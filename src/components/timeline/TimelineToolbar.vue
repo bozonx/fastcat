@@ -236,7 +236,7 @@ function onToolbarContextMenu(e: MouseEvent) {
       @contextmenu="onToolbarContextMenu"
     >
       <!-- Left column: Main actions -->
-      <div class="flex-1 flex items-center justify-center gap-1">
+      <div class="flex-1 flex items-center justify-center gap-2">
         <UFieldGroup class="inline-flex">
           <UiTooltip :text="t('fastcat.timeline.snapModeFullDescription')">
             <UButton
@@ -319,6 +319,7 @@ function onToolbarContextMenu(e: MouseEvent) {
             </UButton>
           </UiTooltip>
         </div>
+<div class="w-px h-4 bg-ui-border mx-1 opacity-50" />
 
         <UiTooltip
           :text="`${t('fastcat.timeline.addAdjustment')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
