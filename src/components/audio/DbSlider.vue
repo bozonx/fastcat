@@ -7,12 +7,14 @@ const props = defineProps<{
   maxDb?: number; // default: +12
   minDb?: number; // default: -60
   levelDb?: number; // current audio level in dB
+  wheelWithoutFocus?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: number): void;
 }>();
 
+const isFocused = ref(false);
 const maxDb = props.maxDb ?? 12;
 const minDb = props.minDb ?? -60;
 
@@ -129,6 +131,7 @@ function onPointerDown(event: PointerEvent) {
   event.stopPropagation();
   activePointerId.value = event.pointerId;
   sliderRef.value?.setPointerCapture?.(event.pointerId);
+  sliderRef.value?.focus(); // Make sure it gets focus on click
   updateFromY(event.clientY);
   document.addEventListener('pointermove', onDocPointerMove);
   document.addEventListener('pointerup', onDocPointerUp);
@@ -142,6 +145,8 @@ function onDoubleClick() {
 }
 
 function onWheel(e: WheelEvent) {
+  if (!isFocused.value && !props.wheelWithoutFocus) return;
+
   e.preventDefault();
   const direction = e.deltaY < 0 ? 1 : -1;
   const step = 1; // 1 dB per tick
@@ -224,9 +229,13 @@ const ticks = [12, 6, 0, -6, -12, -24, -36, -48, -60];
     <!-- Slider track -->
     <div
       ref="sliderRef"
-      class="relative w-4 h-full bg-ui-bg-muted border border-ui-border rounded-sm cursor-ns-resize"
+      class="relative w-4 h-full bg-ui-bg-muted border border-ui-border rounded-sm cursor-ns-resize outline-none transition-[box-shadow,border-color]"
+      :class="[isFocused ? 'ring-2 ring-primary-500/50' : '']"
+      tabindex="0"
       @pointerdown="onPointerDown"
       @dblclick="onDoubleClick"
+      @focus="isFocused = true"
+      @blur="isFocused = false"
     >
       <!-- Volume Set Fill -->
       <div

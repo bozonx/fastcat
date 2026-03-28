@@ -17,6 +17,8 @@ interface UiWheelSliderProps {
   defaultValue?: number;
   disabled?: boolean;
   orientation?: 'horizontal' | 'vertical';
+  /** If true, wheel events fire even when not in focus. */
+  wheelWithoutFocus?: boolean;
 }
 
 const props = withDefaults(defineProps<UiWheelSliderProps>(), {
@@ -27,11 +29,14 @@ const props = withDefaults(defineProps<UiWheelSliderProps>(), {
   defaultValue: undefined,
   disabled: false,
   orientation: 'horizontal',
+  wheelWithoutFocus: false,
 });
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: number): void;
 }>();
+
+const isFocused = ref(false);
 
 function clampValue(value: number): number {
   return clamp(value, props.min, props.max);
@@ -108,6 +113,7 @@ useWheelSupport({
   step: () => props.step,
   wheelStepMultiplier: () => props.wheelStepMultiplier,
   useWheelStepMultiplier: (e) => isLayer1Active(e, workspaceStore.userSettings),
+  focusOnly: computed(() => !props.wheelWithoutFocus).value,
   onWheelStep: (direction, wheelStep, precision) => {
     const current = Number(props.modelValue);
     const safeCurrent = Number.isFinite(current) ? current : props.min;
@@ -166,8 +172,11 @@ function onPointerDownCapture(event: PointerEvent) {
   -->
   <div
     ref="wrapperRef"
-    class="relative"
-    :class="orientation === 'horizontal' ? 'py-3 -my-3' : 'px-3 -mx-3 h-full'"
+    class="relative transition-opacity duration-200"
+    :class="[
+      orientation === 'horizontal' ? 'py-3 -my-3' : 'px-3 -mx-3 h-full',
+      disabled ? 'opacity-50 pointer-events-none' : 'opacity-100',
+    ]"
     @pointerdown.capture="onPointerDownCapture"
     @dblclick.capture="resetToDefault"
   >
@@ -177,8 +186,13 @@ function onPointerDownCapture(event: PointerEvent) {
       :max="max"
       :step="step"
       :orientation="orientation"
-      :class="sliderClass"
+      :class="[
+        sliderClass,
+        isFocused ? 'ring-2 ring-primary-500/50 rounded-full' : '',
+      ]"
       :disabled="disabled"
+      @focus="isFocused = true"
+      @blur="isFocused = false"
     />
   </div>
 </template>
