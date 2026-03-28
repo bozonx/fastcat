@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import Project from '~/components/project/Project.vue';
+import EditorFileManagerPanel from '~/components/editor/EditorFileManagerPanel.vue';
 import PropertiesPanel from '~/components/layout-panels/PropertiesPanel.vue';
 import MonitorContainer from '~/components/monitor/MonitorContainer.vue';
 import MediaPanelWrapper from '~/components/properties/file/MediaPanelWrapper.vue';
@@ -207,8 +208,6 @@ const detachedStaticPanelContextMenuItems = computed(() => {
     v-else-if="panel.type === 'fileManager'"
     class="h-full w-full bg-ui-bg-elevated flex flex-col relative border border-ui-border"
   >
-    <div class="flex-1 overflow-hidden min-h-0">
-      <Project class="h-full pt-2" :use-external-focus="true" />
-    </div>
+    <EditorFileManagerPanel class="flex-1 min-h-0" />
   </div>
 </template>
