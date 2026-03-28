@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { markRaw, onMounted } from 'vue';
-import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
+import ProjectFilesTab from '~/components/project/ProjectFilesTab.vue';
 import ProjectHistory from '~/components/project/ProjectHistory.vue';
 import ProjectEffects from '~/components/project/ProjectEffects.vue';
 import ProjectLibrary from '~/components/project/ProjectLibrary.vue';
@@ -37,7 +37,7 @@ onMounted(() => {
     id: 'files',
     label: t('videoEditor.fileManager.tabs.files', 'Files'),
     icon: 'i-heroicons-folder',
-    component: markRaw(FileManagerPanel),
+    component: markRaw(ProjectFilesTab),
   });
 
   registerProjectTab({
