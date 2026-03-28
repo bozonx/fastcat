@@ -116,11 +116,11 @@ export function useTimelineRulerPresentation(options: UseTimelineRulerPresentati
   });
 
   const playheadStyle = computed(() => {
-    const playheadX =
-      timeUsToPx(options.currentTime.value, options.zoom.value) - options.scrollLeft.value;
-
+    const playheadX = Math.round(
+      timeUsToPx(options.currentTime.value, options.zoom.value) - options.scrollLeft.value,
+    );
     return {
-      transform: `translate3d(${playheadX}px, 0, 0) translateX(-50%)`,
+      transform: `translate3d(${playheadX}px, 0, 0)`,
     };
   });
 
