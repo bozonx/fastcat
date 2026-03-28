@@ -12,6 +12,7 @@ const props = defineProps<{
   isRenaming: boolean;
   hasAudio?: boolean;
   levelDb?: number;
+  trackNumber: number;
 }>();
 
 const emit = defineEmits<{
@@ -135,7 +136,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div
-    class="flex items-center px-1 text-xs font-medium cursor-pointer select-none relative group border-b border-ui-border transition-colors"
+    class="flex items-start p-1.5 text-xs font-medium cursor-pointer select-none relative group border-b border-ui-border transition-colors overflow-hidden"
     :data-track-id="track.id"
     :class="[
       isSelected ? 'text-ui-text' : 'text-ui-text-muted',
@@ -156,6 +157,7 @@ onBeforeUnmount(() => {
     @dblclick="!track.locked && timelineStore.selectAllClipsOnTrack(track.id)"
     @contextmenu.stop="emit('select')"
   >
+    <!-- Left Accent/Track Color Indicator -->
     <div
       class="absolute left-0 top-0 bottom-0 w-1 transition-colors z-10"
       :class="[
@@ -173,87 +175,141 @@ onBeforeUnmount(() => {
       }"
     />
 
-    <div class="flex-1 min-w-0 flex items-center overflow-hidden pl-1.5 z-10 relative">
-      <div
-        class="max-w-full px-1 py-px transition-colors overflow-hidden"
-        :class="[
-          isRenaming
-            ? 'bg-ui-bg-elevated border border-ui-border-accent rounded-none shadow-none'
-            : 'rounded',
-        ]"
-        :style="{
-          backgroundColor:
-            !isRenaming && isSelected && track.color && track.color !== '#2a2a2a'
-              ? `${track.color}33`
-              : undefined,
-        }"
-        @click.stop="timelineStore.renamingTrackId = track.id"
-      >
-        <input
-          v-if="isRenaming"
-          ref="renameInput"
-          v-model="renameValue"
-          class="w-full bg-transparent border-none outline-none ring-0 p-0 text-[10px]! leading-3 font-medium select-text text-ui-text focus:outline-none"
-          @click.stop
-          @keydown.enter.stop="confirmRename"
-          @keydown.esc.stop="emit('cancelRename')"
-          @blur="confirmRename"
-        />
-        <span v-else class="truncate block text-[10px]" :title="track.name">{{ track.name }}</span>
+    <div class="flex-1 flex flex-col min-w-0 h-full overflow-hidden ml-1 z-10 relative">
+      <!-- Row 1: Track ID, Truncated Name (when height < 50), and Buttons -->
+      <div class="flex items-center gap-1.5 min-w-0 shrink-0 h-4.5">
+        <!-- Track Number Block (e.g., V1, A1) -->
+        <div
+          class="shrink-0 flex items-center justify-center px-1 rounded text-[9px] font-black uppercase tracking-tight"
+          :class="[
+            isSelected ? 'bg-primary-500 text-white' : 'bg-ui-bg-accent text-ui-text-muted',
+          ]"
+        >
+          {{ track.kind === 'video' ? 'V' : 'A' }}{{ trackNumber }}
+        </div>
+
+        <!-- Truncated Name in first row when height is small -->
+        <div
+          v-if="height < 52"
+          class="flex-1 min-w-0 flex items-center overflow-hidden"
+          :class="[
+            isRenaming
+              ? 'bg-ui-bg-elevated border border-ui-border-accent rounded-sm px-1'
+              : 'rounded px-0.5',
+          ]"
+          @click.stop="timelineStore.renamingTrackId = track.id"
+        >
+          <input
+            v-if="isRenaming"
+            ref="renameInput"
+            v-model="renameValue"
+            class="w-full bg-transparent border-none outline-none ring-0 p-0 text-[10px] leading-3 font-medium select-text text-ui-text focus:outline-none"
+            @click.stop
+            @keydown.enter.stop="confirmRename"
+            @keydown.esc.stop="emit('cancelRename')"
+            @blur="confirmRename"
+          />
+          <span
+            v-else
+            class="truncate block text-[10px] font-medium leading-tight"
+            :title="track.name"
+          >
+            {{ track.name }}
+          </span>
+        </div>
+
+        <div v-else class="flex-1" />
+
+        <!-- Track Buttons -->
+        <div class="flex items-center gap-0.5 ml-auto" @dblclick.stop>
+          <UiToggleButton
+            v-if="track.kind === 'video'"
+            :model-value="track.videoHidden || false"
+            size="xs"
+            class="w-4 h-4 p-0!"
+            icon="i-heroicons-eye"
+            active-icon="i-heroicons-eye-slash"
+            inactive-color="neutral"
+            active-color="warning"
+            :active-bg="'#facc15'"
+            :active-text="'#000000'"
+            title="Hide/Show Track"
+            @click="toggleVideoHidden"
+          />
+
+          <UiToggleButton
+            :model-value="track.audioMuted || false"
+            size="xs"
+            class="w-4 h-4 p-0!"
+            icon="i-heroicons-speaker-wave"
+            active-icon="i-heroicons-speaker-x-mark"
+            inactive-color="neutral"
+            active-color="error"
+            :active-bg="'#ef4444'"
+            :active-text="'#000000'"
+            title="Mute/Unmute Track"
+            @click="toggleAudioMuted"
+          />
+
+          <UiToggleButton
+            :model-value="track.audioSolo || false"
+            size="xs"
+            class="w-4 h-4 p-0!"
+            icon="i-heroicons-musical-note"
+            inactive-color="neutral"
+            active-color="warning"
+            :active-bg="'#fbbf24'"
+            :active-text="'#000000'"
+            title="Solo Track"
+            @click="toggleAudioSolo"
+          />
+
+          <UiToggleButton
+            v-if="track.locked"
+            :model-value="true"
+            size="xs"
+            class="w-4 h-4 p-0!"
+            icon="i-heroicons-lock-closed"
+            :active-bg="'#3b82f6'"
+            :active-text="'#ffffff'"
+            title="Unlock Track"
+            @click="toggleTrackLock"
+          />
+        </div>
+      </div>
+
+      <!-- Row 2: Multi-line Name / Description (when height >= 52) -->
+      <div v-if="height >= 52" class="mt-1 flex-1 min-w-0 overflow-hidden relative">
+        <div
+          class="w-full h-full"
+          :class="[
+            isRenaming
+              ? 'bg-ui-bg-elevated border border-ui-border-accent rounded-sm px-1 py-0.5'
+              : 'px-0.5',
+          ]"
+          @click.stop="timelineStore.renamingTrackId = track.id"
+        >
+          <textarea
+            v-if="isRenaming"
+            ref="renameInput"
+            v-model="renameValue"
+            class="w-full h-full bg-transparent border-none outline-none ring-0 p-0 text-[10px] leading-tight font-medium resize-none select-text text-ui-text focus:outline-none"
+            @click.stop
+            @keydown.enter.stop="confirmRename"
+            @keydown.esc.stop="emit('cancelRename')"
+            @blur="confirmRename"
+          />
+          <span v-else class="text-[10px] text-ui-text-muted leading-tight wrap-break-word block">
+            {{ track.name }}
+          </span>
+        </div>
       </div>
     </div>
 
-    <div class="ml-0 flex items-center gap-0.5 transition-opacity z-10 relative" @dblclick.stop>
-      <UiToggleButton
-        v-if="track.kind === 'video'"
-        :model-value="track.videoHidden || false"
-        icon="i-heroicons-eye"
-        active-icon="i-heroicons-eye-slash"
-        inactive-color="neutral"
-        active-color="warning"
-        :active-bg="'#facc15'"
-        :active-text="'#000000'"
-        title="Hide/Show Track"
-        @click="toggleVideoHidden"
-      />
-
-      <UiToggleButton
-        :model-value="track.audioMuted || false"
-        icon="i-heroicons-speaker-wave"
-        active-icon="i-heroicons-speaker-x-mark"
-        inactive-color="neutral"
-        active-color="error"
-        :active-bg="'#ef4444'"
-        :active-text="'#000000'"
-        title="Mute/Unmute Track"
-        @click="toggleAudioMuted"
-      />
-
-      <UiToggleButton
-        :model-value="track.audioSolo || false"
-        icon="i-heroicons-musical-note"
-        inactive-color="neutral"
-        active-color="warning"
-        :active-bg="'#fbbf24'"
-        :active-text="'#000000'"
-        title="Solo Track"
-        @click="toggleAudioSolo"
-      />
-
-      <UiToggleButton
-        v-if="track.locked"
-        :model-value="true"
-        icon="i-heroicons-lock-closed"
-        :active-bg="'#3b82f6'"
-        :active-text="'#ffffff'"
-        title="Unlock Track"
-        @click="toggleTrackLock"
-      />
-    </div>
-
+    <!-- Audio Meter (bottom alignment) -->
     <div
       v-if="hasAudio"
-      class="absolute left-1 right-1 bottom-1 h-1 flex items-center gap-1 pointer-events-none"
+      class="absolute left-1.5 right-1.5 bottom-1.5 h-1 flex items-center gap-1 pointer-events-none z-10"
     >
       <div class="relative flex-1 h-px bg-ui-border/70 overflow-hidden rounded-full">
         <div
