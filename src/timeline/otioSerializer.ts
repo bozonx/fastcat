@@ -219,6 +219,8 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
           audioSolo: Boolean(t.audioSolo),
           audioGain: t.audioGain,
           audioBalance: t.audioBalance,
+          color: t.color,
+          locked: t.locked ? true : undefined,
         },
       },
     };
@@ -393,6 +395,8 @@ export function parseTimelineFromOtio(
     const audioSolo = Boolean(trackFastCatMeta.audioSolo);
     const audioGain = trackFastCatMeta.audioGain;
     const audioBalance = trackFastCatMeta.audioBalance;
+    const color = trackFastCatMeta.color;
+    const locked = trackFastCatMeta.locked ? true : undefined;
 
     // Track effects: prefer OTIO standard, fallback to fastcat metadata.
     const effects =
@@ -419,6 +423,8 @@ export function parseTimelineFromOtio(
       audioSolo,
       audioGain,
       audioBalance,
+      color,
+      locked,
       effects,
       items,
       ...(trackMarkers && trackMarkers.length > 0 ? { markers: trackMarkers } : {}),
