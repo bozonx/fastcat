@@ -51,6 +51,8 @@ export interface TimelineTracksApi {
   toggleVisibilityTargetTrack: () => Promise<void>;
   toggleMuteTargetTrack: () => Promise<void>;
   toggleSoloTargetTrack: () => Promise<void>;
+  moveTrackUp: (trackId: string) => void;
+  moveTrackDown: (trackId: string) => void;
   isAnyTrackSoloed: ComputedRef<boolean>;
   unsoloAllTracks: () => void;
 }
@@ -178,6 +180,62 @@ export function createTimelineTracks(deps: TimelineTracksDeps): TimelineTracksAp
     await deps.requestTimelineSave({ immediate: true });
   }
 
+  function moveTrackUp(trackId: string) {
+    const doc = deps.timelineDoc.value;
+    if (!doc) return;
+    const track = doc.tracks.find((t) => t.id === trackId);
+    if (!track) return;
+
+    const kind = track.kind;
+    const sameKindTracks = doc.tracks.filter((t) => t.kind === kind);
+    const idx = sameKindTracks.findIndex((t) => t.id === trackId);
+    if (idx <= 0) return; // Already at the top of its kind
+
+    const nextIds = doc.tracks.map((t) => t.id);
+    const currentGlobalIdx = nextIds.indexOf(trackId);
+    const prevTrackId = sameKindTracks[idx - 1]!.id;
+    const prevGlobalIdx = nextIds.indexOf(prevTrackId);
+
+    if (currentGlobalIdx === -1 || prevGlobalIdx === -1) return;
+
+    // Swap
+    [nextIds[currentGlobalIdx], nextIds[prevGlobalIdx]] = [
+      nextIds[prevGlobalIdx]!,
+      nextIds[currentGlobalIdx]!,
+    ];
+
+    reorderTracks(nextIds);
+    deps.requestTimelineSave({ immediate: true });
+  }
+
+  function moveTrackDown(trackId: string) {
+    const doc = deps.timelineDoc.value;
+    if (!doc) return;
+    const track = doc.tracks.find((t) => t.id === trackId);
+    if (!track) return;
+
+    const kind = track.kind;
+    const sameKindTracks = doc.tracks.filter((t) => t.kind === kind);
+    const idx = sameKindTracks.findIndex((t) => t.id === trackId);
+    if (idx < 0 || idx >= sameKindTracks.length - 1) return; // Already at the bottom of its kind
+
+    const nextIds = doc.tracks.map((t) => t.id);
+    const currentGlobalIdx = nextIds.indexOf(trackId);
+    const nextTrackId = sameKindTracks[idx + 1]!.id;
+    const nextGlobalIdx = nextIds.indexOf(nextTrackId);
+
+    if (currentGlobalIdx === -1 || nextGlobalIdx === -1) return;
+
+    // Swap
+    [nextIds[currentGlobalIdx], nextIds[nextGlobalIdx]] = [
+      nextIds[nextGlobalIdx]!,
+      nextIds[currentGlobalIdx]!,
+    ];
+
+    reorderTracks(nextIds);
+    deps.requestTimelineSave({ immediate: true });
+  }
+
   const isAnyTrackSoloed = computed(
     () => deps.timelineDoc.value?.tracks.some((t) => t.audioSolo) ?? false,
   );
@@ -206,6 +264,8 @@ export function createTimelineTracks(deps: TimelineTracksDeps): TimelineTracksAp
     toggleTrackAudioSolo,
     deleteTrack,
     reorderTracks,
+    moveTrackUp,
+    moveTrackDown,
     toggleVisibilityTargetTrack,
     toggleMuteTargetTrack,
     toggleSoloTargetTrack,

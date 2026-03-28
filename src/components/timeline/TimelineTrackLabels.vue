@@ -181,6 +181,21 @@ function getTrackContextMenuItems(track: TimelineTrack) {
         onSelect: () => requestDeleteTrack(track),
       },
     ],
+    [
+      {
+        label: t('fastcat.track.moveUp', 'Move track up'),
+        icon: 'i-heroicons-arrow-up',
+        disabled: props.tracks.filter((t) => t.kind === track.kind)[0]?.id === track.id,
+        onSelect: () => timelineStore.moveTrackUp(track.id),
+      },
+      {
+        label: t('fastcat.track.moveDown', 'Move track down'),
+        icon: 'i-heroicons-arrow-down',
+        disabled:
+          props.tracks.filter((t) => t.kind === track.kind).slice(-1)[0]?.id === track.id,
+        onSelect: () => timelineStore.moveTrackDown(track.id),
+      },
+    ],
   ];
 }
 

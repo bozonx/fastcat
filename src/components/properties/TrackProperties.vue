@@ -204,6 +204,33 @@ const extraActions = computed(() => {
       onClick: () => (isGenerateCaptionsOpen.value = true),
     });
   }
+
+  // Track reordering actions
+  const isFirst =
+    timelineStore.timelineDoc?.tracks.filter((t) => t.kind === props.track.kind)[0]?.id ===
+    props.track.id;
+  const isLast =
+    timelineStore.timelineDoc?.tracks.filter((t) => t.kind === props.track.kind).slice(-1)[0]
+      ?.id === props.track.id;
+
+  if (!isFirst) {
+    list.push({
+      id: 'move-up',
+      label: t('fastcat.track.moveUp', 'Move track up'),
+      icon: 'i-heroicons-arrow-up',
+      onClick: () => timelineStore.moveTrackUp(props.track.id),
+    });
+  }
+
+  if (!isLast) {
+    list.push({
+      id: 'move-down',
+      label: t('fastcat.track.moveDown', 'Move track down'),
+      icon: 'i-heroicons-arrow-down',
+      onClick: () => timelineStore.moveTrackDown(props.track.id),
+    });
+  }
+
   return list;
 });
 
