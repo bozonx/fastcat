@@ -1,4 +1,4 @@
-import { AUDIO_DIR_NAME, FILES_DIR_NAME, IMAGES_DIR_NAME, VIDEO_DIR_NAME } from '~/utils/constants';
+import { AUDIO_DIR_NAME, DOCUMENTS_DIR_NAME, FILES_DIR_NAME, IMAGES_DIR_NAME, VIDEO_DIR_NAME } from '~/utils/constants';
 import type { FsEntry } from '~/types/fs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import PQueue from 'p-queue';
@@ -108,6 +108,11 @@ export async function resolveDefaultTargetDir(params: { file: File }): Promise<s
       return IMAGES_DIR_NAME;
     case 'video':
       return VIDEO_DIR_NAME;
+    case 'text': {
+      const ext = params.file.name.split('.').pop()?.toLowerCase();
+      if (ext === 'md' || ext === 'txt') return DOCUMENTS_DIR_NAME;
+      return FILES_DIR_NAME;
+    }
     default:
       return FILES_DIR_NAME;
   }
@@ -264,19 +269,23 @@ export async function createTimelineCommand(params: {
 
 export async function createMarkdownCommand(params: {
   vfs: IFileSystemAdapter;
-  dirPath: string;
+  documentsDirName: string;
   existingNames?: string[];
 }): Promise<string> {
+  const basePath = params.documentsDirName;
+  await params.vfs.createDirectory(basePath);
+
   const fileName = await generateUniqueFsEntryName({
     vfs: params.vfs,
-    dirPath: params.dirPath,
-    baseName: 'Document_',
+    dirPath: basePath,
+    baseName: 'document ',
     extension: '.md',
     existingNames: params.existingNames,
+    padWidth: 2,
   });
 
-  const fullPath = params.dirPath ? `${params.dirPath}/${fileName}` : fileName;
+  const fullPath = `${basePath}/${fileName}`;
   await params.vfs.writeFile(fullPath, '');
 
-  return fileName;
+  return fullPath;
 }

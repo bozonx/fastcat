@@ -6,7 +6,7 @@ import {
   mergeEntries as mergeEntriesCore,
   updateEntryByPath,
 } from '~/file-manager/core/tree';
-import { AUDIO_DIR_NAME, FILES_DIR_NAME, IMAGES_DIR_NAME, VIDEO_DIR_NAME } from '~/utils/constants';
+import { AUDIO_DIR_NAME, DOCUMENTS_DIR_NAME, FILES_DIR_NAME, IMAGES_DIR_NAME, VIDEO_DIR_NAME } from '~/utils/constants';
 
 export interface FileManagerServiceDeps {
   rootEntries: Ref<FsEntry[]>;
@@ -267,6 +267,7 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
         (entry.name === VIDEO_DIR_NAME ||
           entry.name === AUDIO_DIR_NAME ||
           entry.name === FILES_DIR_NAME ||
+          entry.name === DOCUMENTS_DIR_NAME ||
           entry.name === IMAGES_DIR_NAME)
       ) {
         if (!entry.expanded) {

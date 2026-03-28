@@ -9,6 +9,8 @@ import type { FsEntry } from '~/types/fs';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { generateUniqueFsEntryName } from '~/utils/fs';
 import { createMarkdownCommand } from '~/file-manager/application/fileManagerCommands';
+import { DOCUMENTS_DIR_NAME } from '~/utils/constants';
+import { useFilesPageStore } from '~/stores/files-page.store';
 import { useProjectTabsStore } from '~/stores/tabs.store';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
@@ -164,35 +166,42 @@ export function useFileManagerActions(actions: FileManagerActions) {
     }
   }
 
-  async function createMarkdownInDirectory(entry: FsEntry) {
-    if (entry.path) {
-      actions.setFileTreePathExpanded?.(entry.path, true);
-    }
+  async function createMarkdownInDirectory() {
+    const dirPath = DOCUMENTS_DIR_NAME;
+    await actions.vfs.createDirectory(dirPath);
+    actions.setFileTreePathExpanded?.(dirPath, true);
 
-    const existingInFolder = await actions.readDirectory(entry.path);
+    const existingInFolder = await actions.readDirectory(dirPath);
     const existingNames = existingInFolder.map((e) => e.name);
 
-    const createdFileName = await createMarkdownCommand({
+    const fullPath = await createMarkdownCommand({
       vfs: actions.vfs,
-      dirPath: entry.path,
+      documentsDirName: dirPath,
       existingNames,
     });
 
-    await actions.reloadDirectory(entry.path ?? '');
+    await actions.reloadDirectory(dirPath);
     actions.notifyFileManagerUpdate?.();
 
-    const newPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
-    const newEntry = actions.findEntryByPath(newPath);
+    const newEntry = actions.findEntryByPath(fullPath);
     if (newEntry) {
-      uiStore.selectedFsEntry = {
-        kind: newEntry.kind,
-        name: newEntry.name,
-        path: newEntry.path,
-      };
-      selectionStore.selectFsEntry(newEntry);
-      if (newEntry.kind === 'directory') {
-        actions.onFileSelect?.(newEntry);
+      // Expand and open documents folder
+      const dirEntry = actions.findEntryByPath(dirPath);
+      if (dirEntry) {
+        const filesPageStore = useFilesPageStore();
+        filesPageStore.openFolder(dirEntry);
       }
+
+      // Select and scroll to new file
+      setTimeout(() => {
+        uiStore.selectedFsEntry = {
+          kind: newEntry.kind,
+          name: newEntry.name,
+          path: newEntry.path,
+        };
+        selectionStore.selectFsEntry(newEntry);
+        uiStore.triggerScrollToFileTreeEntry(newEntry.path);
+      }, 50);
     }
   }
 
@@ -312,11 +321,8 @@ export function useFileManagerActions(actions: FileManagerActions) {
       const e = Array.isArray(entry) ? entry[0] : entry;
       if (e) await createOtioVersion(e);
     },
-    createMarkdown: async (entry) => {
-      const e = Array.isArray(entry) ? entry[0] : entry;
-      if (e && e.kind === 'directory') {
-        await createMarkdownInDirectory(e);
-      }
+    createMarkdown: async () => {
+      await createMarkdownInDirectory();
     },
     copy: (entry) => {
       const entries = Array.isArray(entry) ? entry : [entry];

@@ -12,20 +12,22 @@ export async function generateUniqueFsEntryName(params: {
   extension: string;
   existingNames?: string[];
   startIndex?: number;
+  padWidth?: number;
 }): Promise<string> {
   let index = params.startIndex ?? 1;
+  const padWidth = params.padWidth ?? 3;
   let fileName = '';
 
   if (params.existingNames) {
     const existing = new Set(params.existingNames);
     do {
-      fileName = `${params.baseName}${String(index).padStart(3, '0')}${params.extension}`;
+      fileName = `${params.baseName}${String(index).padStart(padWidth, '0')}${params.extension}`;
       index++;
     } while (existing.has(fileName));
   } else {
     let exists = true;
     while (exists) {
-      fileName = `${params.baseName}${String(index).padStart(3, '0')}${params.extension}`;
+      fileName = `${params.baseName}${String(index).padStart(padWidth, '0')}${params.extension}`;
       const nextPath = params.dirPath ? `${params.dirPath}/${fileName}` : fileName;
       if (await params.vfs.exists(nextPath)) {
         index += 1;

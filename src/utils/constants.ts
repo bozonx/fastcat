@@ -5,6 +5,8 @@ export const IMAGES_DIR_NAME = '_images';
 export const FILES_DIR_NAME = '_files';
 export const EXPORT_DIR_NAME = '_export';
 export const TIMELINES_DIR_NAME = '_timelines';
+export const DOCUMENTS_DIR_NAME = '_documents';
+
 
 export const FASTCAT_PUBLICADOR_APP_NAME = 'FastCat';
 
