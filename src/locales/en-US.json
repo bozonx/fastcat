@@ -886,6 +886,8 @@
     },
     "track": {
       "actions": "Actions",
+      "info": "Track Information",
+      "clipsCount": "Clips count",
       "audio": {
         "balance": "Balance",
         "title": "Track audio",

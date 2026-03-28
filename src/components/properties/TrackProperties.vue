@@ -17,6 +17,7 @@ import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
+import PropertyRow from '~/components/properties/PropertyRow.vue';
 import GenerateCaptionsModal from '~/components/properties/GenerateCaptionsModal.vue';
 
 const props = defineProps<{
@@ -205,6 +206,10 @@ const extraActions = computed(() => {
   }
   return list;
 });
+
+const clipCount = computed(
+  () => (props.track.items ?? []).filter((item) => item.kind === 'clip').length,
+);
 </script>
 
 <template>
@@ -290,6 +295,10 @@ const extraActions = computed(() => {
           <PropertyActionList :actions="extraActions" justify="start" size="xs" />
         </div>
       </div>
+    </PropertySection>
+
+    <PropertySection :title="t('fastcat.track.info', 'Track Information')">
+      <PropertyRow :label="t('fastcat.track.clipsCount', 'Clips count')" :value="clipCount" />
     </PropertySection>
 
     <PropertySection :title="t('common.properties', 'Properties')">
