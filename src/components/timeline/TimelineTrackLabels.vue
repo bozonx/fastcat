@@ -242,12 +242,18 @@ const propertiesContextMenuItems = [
       >
         <div class="flex flex-col min-h-full">
           <UContextMenu
-            v-for="track in tracks"
+            v-for="(track, index) in tracks"
             :key="track.id"
             :items="getTrackContextMenuItems(track)"
           >
             <TrackLabelItem
               :track="track"
+              :track-number="
+                track.kind === 'video'
+                  ? tracks.filter((t) => t.kind === 'video').length -
+                    tracks.filter((t, i) => t.kind === 'video' && i < index).length
+                  : tracks.filter((t, i) => t.kind === 'audio' && i < index).length + 1
+              "
               :height="trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT"
               :is-selected="isTrackVisuallySelected(track.id)"
               :is-hovered="timelineStore.hoveredTrackId === track.id"
