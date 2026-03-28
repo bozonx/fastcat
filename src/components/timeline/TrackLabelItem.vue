@@ -96,6 +96,12 @@ function resetClipIndicator(event: MouseEvent) {
   }
 }
 
+function startRenaming(event: MouseEvent) {
+  if (props.isSelected) {
+    timelineStore.renamingTrackId = props.track.id;
+  }
+}
+
 function confirmRename() {
   const next = renameValue.value.trim();
   if (next && next !== props.track.name) {
@@ -180,10 +186,10 @@ onBeforeUnmount(() => {
       <div class="flex items-center gap-1.5 min-w-0 shrink-0 h-4.5">
         <!-- Track Number Block (e.g., V1, A1) -->
         <div
-          class="shrink-0 flex items-center justify-center min-w-[20px] pr-1 border-r border-ui-border text-[9px] font-black uppercase tracking-tight h-3 my-auto"
+          class="shrink-0 flex items-center justify-center min-w-[20px] pr-1 border-r border-ui-border text-[9px] font-black uppercase tracking-tight h-3 my-auto transition-colors"
           :style="{
             color:
-              isSelected && track.color && track.color !== '#2a2a2a'
+              track.color && track.color !== '#2a2a2a'
                 ? track.color
                 : isSelected
                   ? 'var(--color-primary-500)'
@@ -193,22 +199,23 @@ onBeforeUnmount(() => {
           {{ track.kind === 'video' ? 'V' : 'A' }}{{ trackNumber }}
         </div>
 
-        <!-- Truncated Name in first row when height is small -->
+        <!-- Truncated Name / Rename Input in first row when height is small -->
         <div
           v-if="height < 52"
-          class="flex-1 min-w-0 flex items-center overflow-hidden"
+          class="min-w-[20px] flex items-center overflow-hidden"
           :class="[
             isRenaming
               ? 'bg-ui-bg-elevated border border-ui-border-accent rounded-sm px-1'
-              : 'rounded px-0.5',
+              : 'rounded px-0.5 hover:bg-ui-bg-accent/30',
           ]"
-          @click.stop="timelineStore.renamingTrackId = track.id"
+          @click.stop="startRenaming"
         >
           <input
             v-if="isRenaming"
             ref="renameInput"
             v-model="renameValue"
-            class="w-full bg-transparent border-none outline-none ring-0 p-0 text-[10px] leading-3 font-medium select-text text-ui-text focus:outline-none"
+            class="min-w-[20px] w-fit bg-transparent border-none outline-none ring-0 p-0 text-[10px] leading-3 font-medium select-text text-ui-text focus:outline-none"
+            :style="{ width: `${Math.max(20, renameValue.length * 6)}px` }"
             @click.stop
             @keydown.enter.stop="confirmRename"
             @keydown.esc.stop="emit('cancelRename')"
@@ -223,15 +230,15 @@ onBeforeUnmount(() => {
           </span>
         </div>
 
-        <div v-else class="flex-1" />
+        <div class="flex-1" />
 
         <!-- Track Buttons -->
-        <div class="flex items-center gap-0.5 ml-auto" @dblclick.stop>
+        <div class="flex items-center gap-1.5 ml-auto" @dblclick.stop>
           <UiToggleButton
             v-if="track.kind === 'video'"
             :model-value="track.videoHidden || false"
             size="xs"
-            class="w-4 h-4 p-0!"
+            class="w-4 h-4 p-0! text-[10px]!"
             icon="i-heroicons-eye"
             active-icon="i-heroicons-eye-slash"
             inactive-color="neutral"
@@ -245,7 +252,7 @@ onBeforeUnmount(() => {
           <UiToggleButton
             :model-value="track.audioMuted || false"
             size="xs"
-            class="w-4 h-4 p-0!"
+            class="w-4 h-4 p-0! text-[10px]!"
             icon="i-heroicons-speaker-wave"
             active-icon="i-heroicons-speaker-x-mark"
             inactive-color="neutral"
@@ -259,7 +266,7 @@ onBeforeUnmount(() => {
           <UiToggleButton
             :model-value="track.audioSolo || false"
             size="xs"
-            class="w-4 h-4 p-0!"
+            class="w-4 h-4 p-0! text-[10px]!"
             icon="i-heroicons-musical-note"
             inactive-color="neutral"
             active-color="warning"
@@ -273,7 +280,7 @@ onBeforeUnmount(() => {
             v-if="track.locked"
             :model-value="true"
             size="xs"
-            class="w-4 h-4 p-0!"
+            class="w-4 h-4 p-0! text-[10px]!"
             icon="i-heroicons-lock-closed"
             :active-bg="'#3b82f6'"
             :active-text="'#ffffff'"
@@ -290,9 +297,9 @@ onBeforeUnmount(() => {
           :class="[
             isRenaming
               ? 'bg-ui-bg-elevated border border-ui-border-accent rounded-sm px-1 py-0.5'
-              : 'px-0.5',
+              : 'px-0.5 pt-0.5 hover:bg-ui-bg-accent/30 rounded',
           ]"
-          @click.stop="timelineStore.renamingTrackId = track.id"
+          @click.stop="startRenaming"
         >
           <textarea
             v-if="isRenaming"
