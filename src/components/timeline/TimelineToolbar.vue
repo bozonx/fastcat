@@ -50,43 +50,36 @@ const trimMenuItems = computed(() => {
   ];
 });
 
-const dragModeItems = computed(() => [
-  [
-    {
-      label: t('videoEditor.settings.actionPseudoOverlap', 'Pseudo overlap'),
-      icon:
-        settingsStore.toolbarDragMode === 'pseudo_overlap'
-          ? 'i-heroicons-check'
-          : 'i-heroicons-none',
-      onSelect: () => selectToolbarDragMode('pseudo_overlap'),
-    },
-    {
-      label: t('fastcat.timeline.slipMode', 'Slip content'),
-      icon: settingsStore.toolbarDragMode === 'slip' ? 'i-heroicons-check' : 'i-heroicons-none',
-      onSelect: () => selectToolbarDragMode('slip'),
-    },
-    {
-      label: t('videoEditor.settings.actionCopy', 'Copy clip'),
-      icon: settingsStore.toolbarDragMode === 'copy' ? 'i-heroicons-check' : 'i-heroicons-none',
-      onSelect: () => selectToolbarDragMode('copy'),
-    },
-  ],
+const moveModeOptions = computed<{ value: 'none' | ToolbarDragMode; icon: string; tooltip: string }[]>(() => [
+  {
+    value: 'none',
+    icon: 'i-heroicons-cursor-arrow-rays',
+    tooltip: t('fastcat.timeline.moveModeNormalDescription'),
+  },
+  {
+    value: 'pseudo_overlap',
+    icon: 'i-heroicons-rectangle-stack',
+    tooltip: t('fastcat.timeline.moveModePseudoDescription'),
+  },
+  {
+    value: 'slip',
+    icon: 'i-heroicons-arrows-right-left',
+    tooltip: t('fastcat.timeline.moveModeSlipDescription'),
+  },
 ]);
 
-const toolbarDragModeIcon = computed(() => {
-  if (settingsStore.toolbarDragMode === 'pseudo_overlap') {
-    return 'i-heroicons-rectangle-stack';
-  }
-
-  if (settingsStore.toolbarDragMode === 'copy') {
-    return 'i-heroicons-document-duplicate';
-  }
-
-  if (settingsStore.toolbarDragMode === 'slip') {
-    return 'i-heroicons-arrows-right-left';
-  }
-
-  return 'i-heroicons-rectangle-stack';
+const currentMoveMode = computed({
+  get: () => {
+    if (!settingsStore.toolbarDragModeEnabled) return 'none';
+    return settingsStore.toolbarDragMode;
+  },
+  set: (val: 'none' | ToolbarDragMode) => {
+    if (val === 'none') {
+      settingsStore.toolbarDragModeEnabled = false;
+    } else {
+      settingsStore.selectToolbarDragMode(val);
+    }
+  },
 });
 
 const timelineZoom = computed({
@@ -108,9 +101,7 @@ const timelineZoomMultiplierInput = computed({
   },
 });
 
-const toolbarDragModeVariant = computed(() => {
-  return settingsStore.toolbarDragModeEnabled ? 'solid' : 'ghost';
-});
+
 
 function selectToolbarSnapMode(mode: ToolbarSnapMode) {
   settingsStore.selectToolbarSnapMode(mode);
@@ -120,9 +111,7 @@ function selectToolbarDragMode(mode: ToolbarDragMode) {
   settingsStore.selectToolbarDragMode(mode);
 }
 
-function toggleToolbarDragMode() {
-  settingsStore.toggleSelectedToolbarDragMode();
-}
+
 
 function toggleTrimMode(event?: MouseEvent) {
   event?.preventDefault();
@@ -238,6 +227,21 @@ function onToolbarContextMenu(e: MouseEvent) {
       <!-- Left column: Main actions -->
       <div class="flex-1 flex items-center justify-center gap-2">
         <UFieldGroup class="inline-flex">
+          <UiTooltip v-for="opt in moveModeOptions" :key="opt.value" :text="opt.tooltip">
+            <UButton
+              size="xs"
+              :variant="currentMoveMode === opt.value ? 'solid' : 'ghost'"
+              :color="currentMoveMode === opt.value ? 'primary' : 'neutral'"
+              :icon="opt.icon"
+              class="hover:bg-ui-bg-hover/60"
+              @click="currentMoveMode = opt.value"
+            />
+          </UiTooltip>
+        </UFieldGroup>
+
+        <div class="w-px h-4 bg-ui-border mx-1 opacity-50" />
+
+        <UFieldGroup class="inline-flex">
           <UiTooltip :text="t('fastcat.timeline.snapModeFullDescription')">
             <UButton
               size="xs"
@@ -269,21 +273,6 @@ function onToolbarContextMenu(e: MouseEvent) {
             />
           </UiTooltip>
         </UFieldGroup>
-
-        <UiTooltip :text="t('fastcat.timeline.moveMode', 'Clip Move Mode')">
-          <UiSplitDropdownButton
-            size="xs"
-            :variant="toolbarDragModeVariant"
-            :color="settingsStore.toolbarDragModeEnabled ? 'primary' : 'neutral'"
-            :icon="toolbarDragModeIcon"
-            :ariaLabel="t('fastcat.timeline.moveMode', 'Clip Move Mode')"
-            :items="dragModeItems"
-            button-class="hover:bg-ui-bg-hover/60"
-            caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
-            caret-icon-class="size-2.5"
-            @click="toggleToolbarDragMode"
-          />
-        </UiTooltip>
 
         <UiTooltip :text="t('fastcat.timeline.trim', 'Trim')">
           <UiSplitDropdownButton
