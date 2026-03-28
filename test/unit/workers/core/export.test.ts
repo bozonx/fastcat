@@ -1,12 +1,37 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { extractMetadata } from '~/workers/core/export';
+
+// Use variables that can be modified per test
+const mockFunctions = {
+  getPrimaryVideoTrack: vi.fn(),
+  computeDuration: vi.fn(),
+};
 
 vi.mock('mediabunny', () => ({
   Input: class {
     getMimeType = vi.fn().mockResolvedValue('video/mp4');
     getFormat = vi.fn().mockResolvedValue({ name: 'mp4' });
-    computeDuration = vi.fn().mockResolvedValue(10);
-    getPrimaryVideoTrack = vi.fn().mockResolvedValue({
+    computeDuration = (...args: any[]) => mockFunctions.computeDuration(...args);
+    getPrimaryVideoTrack = (...args: any[]) => mockFunctions.getPrimaryVideoTrack(...args);
+    getPrimaryAudioTrack = vi.fn().mockResolvedValue({
+      codec: 'mp4a.40.2',
+      sampleRate: 48000,
+      numberOfChannels: 2,
+      computePacketStats: vi.fn().mockResolvedValue({ averageBitrate: 192000 }),
+      getCodecParameterString: vi.fn().mockResolvedValue('mp4a.40.2'),
+    });
+  },
+  BlobSource: class {
+      constructor(public blob: Blob) {}
+  },
+  ALL_FORMATS: {},
+}));
+
+describe('extractMetadata', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockFunctions.computeDuration.mockResolvedValue(10);
+    mockFunctions.getPrimaryVideoTrack.mockResolvedValue({
       codedWidth: 1920,
       codedHeight: 1080,
       displayWidth: 1920,
@@ -17,19 +42,8 @@ vi.mock('mediabunny', () => ({
       getCodecParameterString: vi.fn().mockResolvedValue('avc1.640028'),
       getColorSpace: vi.fn().mockResolvedValue({}),
     });
-    getPrimaryAudioTrack = vi.fn().mockResolvedValue({
-      codec: 'mp4a.40.2',
-      sampleRate: 48000,
-      numberOfChannels: 2,
-      computePacketStats: vi.fn().mockResolvedValue({ averageBitrate: 192000 }),
-      getCodecParameterString: vi.fn().mockResolvedValue('mp4a.40.2'),
-    });
-  },
-  BlobSource: class {},
-  ALL_FORMATS: {},
-}));
+  });
 
-describe('extractMetadata', () => {
   it('extracts metadata for image file', async () => {
     const file = new File([], 'test.jpg');
     const meta = await extractMetadata(file);
@@ -45,39 +59,31 @@ describe('extractMetadata', () => {
 
     expect(meta.duration).toBe(10);
     expect(meta.container).toBe('mp4');
-    expect(meta.video?.width).toBe(1920);
-    expect(meta.video?.fps).toBe(30);
-    expect(meta.audio?.sampleRate).toBe(48000);
-    expect(meta.audio?.channels).toBe(2);
+    expect(meta.video).toMatchObject({
+        width: 1920,
+        fps: 30,
+        codec: 'avc1.640028'
+    });
+    expect(meta.audio).toMatchObject({
+        sampleRate: 48000,
+        channels: 2
+    });
   });
 
   it('extracts metadata for audio-only file', async () => {
     const file = new File([], 'test.mp3');
-    // Mock video track to null for this test
-    const InputMock = (await import('mediabunny')).Input;
-    const originalGetPrimaryVideoTrack = InputMock.prototype.getPrimaryVideoTrack;
-    InputMock.prototype.getPrimaryVideoTrack = vi.fn().mockResolvedValue(null);
+    mockFunctions.getPrimaryVideoTrack.mockResolvedValue(null);
 
-    try {
-      const meta = await extractMetadata(file);
-      expect(meta.video).toBeUndefined();
-      expect(meta.audio).toBeDefined();
-      expect(meta.duration).toBe(10);
-    } finally {
-      InputMock.prototype.getPrimaryVideoTrack = originalGetPrimaryVideoTrack;
-    }
+    const meta = await extractMetadata(file);
+    expect(meta.video).toBeUndefined();
+    expect(meta.audio).toBeDefined();
+    expect(meta.duration).toBe(10);
   });
 
   it('handles mediabunny failure gracefully', async () => {
     const file = new File([], 'error.mp4');
-    const InputMock = (await import('mediabunny')).Input;
-    const originalComputeDuration = InputMock.prototype.computeDuration;
-    InputMock.prototype.computeDuration = vi.fn().mockRejectedValue(new Error('Decode error'));
+    mockFunctions.computeDuration.mockRejectedValue(new Error('Decode error'));
 
-    try {
-      await expect(extractMetadata(file)).rejects.toThrow('Decode error');
-    } finally {
-      InputMock.prototype.computeDuration = originalComputeDuration;
-    }
+    await expect(extractMetadata(file)).rejects.toThrow('Decode error');
   });
 });
