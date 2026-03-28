@@ -67,12 +67,7 @@ export function getResolvedProjectThumbnailsSegments(
   topology: ResolvedStorageTopology,
   projectId: string,
 ): string[] {
-  return [
-    ...toStoragePathSegments(topology.tempRoot),
-    THUMBNAILS_ROOT_DIR_NAME,
-    PROJECTS_ROOT_DIR_NAME,
-    projectId,
-  ];
+  return [...getResolvedProjectTempSegments(topology, projectId), THUMBNAILS_ROOT_DIR_NAME];
 }
 
 export function getResolvedProjectWaveformsSegments(

@@ -109,22 +109,11 @@ export async function ensureResolvedProjectThumbnailsDir(input: {
   subDir?: string;
   create?: boolean;
 }): Promise<DirectoryHandleLike> {
-  const rootDir = await resolveStorageRootHandle({
+  return await ensureProjectStorageDir({
     workspaceHandle: input.workspaceHandle,
     rootPath: input.topology.tempRoot,
-    create: input.create,
-  });
-
-  const segments = [
-    THUMBNAILS_ROOT_DIR_NAME,
-    PROJECTS_ROOT_DIR_NAME,
-    input.projectId,
-    ...(input.subDir ? [input.subDir] : []),
-  ];
-
-  return await ensureDirectoryChain({
-    baseDir: rootDir,
-    segments,
+    projectId: input.projectId,
+    leafSegments: [THUMBNAILS_ROOT_DIR_NAME, ...(input.subDir ? [input.subDir] : [])],
     create: input.create,
   });
 }
