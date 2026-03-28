@@ -99,6 +99,8 @@ function resetClipIndicator(event: MouseEvent) {
 function startRenaming(event: MouseEvent) {
   if (props.isSelected) {
     timelineStore.renamingTrackId = props.track.id;
+  } else {
+    emit('select');
   }
 }
 
