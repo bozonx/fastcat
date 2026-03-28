@@ -577,6 +577,22 @@ async function onDirectoryUploadChange(e: Event) {
       :compact="compact"
       @refresh="refreshFileTree"
       @open-remote="openRemoteExchangeModal"
+      @create-folder="
+        () =>
+          onFileAction(
+            'createFolder',
+            filesPageStore.selectedFolder ||
+              ({ kind: 'directory', path: '', name: '' } as FsEntry),
+          )
+      "
+      @upload="
+        () =>
+          onFileAction(
+            'upload',
+            filesPageStore.selectedFolder ||
+              ({ kind: 'directory', path: '', name: '' } as FsEntry),
+          )
+      "
     />
 
     <!-- Main Content -->
