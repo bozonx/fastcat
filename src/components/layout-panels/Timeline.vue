@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
-import { Splitpanes, Pane } from 'splitpanes';
-import 'splitpanes/dist/splitpanes.css';
 import { useDebounceFn, useEventListener, useLocalStorage, useResizeObserver } from '@vueuse/core';
 import type { FastCatUserSettings } from '~/utils/settings/defaults';
 
@@ -22,18 +20,22 @@ import { timeUsToPx, pxToTimeUs, zoomToPxPerSecond } from '~/utils/timeline/geom
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { getWheelDelta, isSecondaryWheel } from '~/utils/mouse';
 import { formatZoomMultiplier, timelineZoomPositionToScale } from '~/utils/zoom';
-import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes';
+import { useDraggedFile } from '~/composables/useDraggedFile';
 
 import TimelineTrackLabels from '~/components/timeline/TimelineTrackLabels.vue';
+import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
 import TimelineRuler from '~/components/timeline/TimelineRuler.vue';
 import TimelineGrid from '~/components/timeline/TimelineGrid.vue';
 import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
+import UiTimecode from '~/components/ui/editor/UiTimecode.vue';
 
 import { useTimelineZoom } from '~/composables/timeline/useTimelineZoom';
 import { useTimelineScrollSync } from '~/composables/timeline/useTimelineScrollSync';
 import { useTimelineDropHandling } from '~/composables/timeline/useTimelineDropHandling';
 import { useTimelineInteraction } from '~/composables/timeline/useTimelineInteraction';
+
+const TRACK_LABELS_WIDTH = 200;
 
 const { t } = useI18n();
 const toast = useToast();
@@ -48,36 +50,149 @@ const projectStore = useProjectStore();
 const fileManager = useFileManager();
 const uiStore = useUiStore();
 const presetsStore = usePresetsStore();
+const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 
 const { currentProjectId, currentView } = storeToRefs(projectStore);
 
-const scrollEl = ref<HTMLElement | null>(null);
+// Scroll elements
+const videoScrollEl = ref<HTMLElement | null>(null);
+const audioScrollEl = ref<HTMLElement | null>(null);
+const rulerScrollEl = ref<HTMLElement | null>(null);
+const videoLabelsScrollEl = ref<HTMLElement | null>(null);
+const audioLabelsScrollEl = ref<HTMLElement | null>(null);
 const rulerContainerRef = ref<HTMLElement | null>(null);
-const timelineTrackLabelsRef = ref<InstanceType<typeof TimelineTrackLabels> | null>(null);
+
+// Use videoScrollEl as scrollEl for composables (they need any scroll element with synced scrollLeft)
+const scrollEl = videoScrollEl;
+
 const scrollLeftRef = ref(0);
 const scrollbarHeight = ref(0);
 const viewportWidth = ref(0);
 const trackAreaRef = ref<HTMLElement | null>(null);
+const containerRef = ref<HTMLElement | null>(null);
 
 const { trackHeights } = storeToRefs(timelineStore);
-const timelineSplitKey = computed(() => `timeline-split-${currentView.value}`);
-const {
-  sizes: timelineSplitSizes,
-  onResized: onTimelineSplitResize,
-  reset: resetTimelineSplit,
-} = usePersistedSplitpanes(timelineSplitKey.value, currentProjectId, [10, 90]);
 
 const menuRef = ref<InstanceType<typeof UiContextMenuPortal> | null>(null);
 const textPresetMenuRef = ref<InstanceType<typeof UiContextMenuPortal> | null>(null);
-const containerRef = ref<HTMLElement | null>(null);
 
+// Section resize state
+const DEFAULT_VIDEO_SECTION_PERCENT = 60;
+const MIN_SECTION_HEIGHT = 60;
+const videoSectionPercent = useLocalStorage(
+  `fastcat-timeline-video-section-${currentProjectId.value}`,
+  DEFAULT_VIDEO_SECTION_PERCENT,
+);
+const sectionContainerRef = ref<HTMLElement | null>(null);
+
+const isResizingSections = ref(false);
+const resizeSectionStartY = ref(0);
+const resizeSectionStartPercent = ref(0);
+
+function onSectionResizeStart(e: MouseEvent) {
+  e.preventDefault();
+  isResizingSections.value = true;
+  resizeSectionStartY.value = e.clientY;
+  resizeSectionStartPercent.value = videoSectionPercent.value;
+  window.addEventListener('mousemove', onSectionResizeMove);
+  window.addEventListener('mouseup', onSectionResizeEnd);
+}
+
+function onSectionResizeMove(e: MouseEvent) {
+  if (!isResizingSections.value || !sectionContainerRef.value) return;
+  const containerHeight = sectionContainerRef.value.offsetHeight;
+  if (containerHeight <= 0) return;
+  const dy = e.clientY - resizeSectionStartY.value;
+  const dpercent = (dy / containerHeight) * 100;
+  const next = Math.max(10, Math.min(90, resizeSectionStartPercent.value + dpercent));
+  videoSectionPercent.value = next;
+}
+
+function onSectionResizeEnd() {
+  isResizingSections.value = false;
+  window.removeEventListener('mousemove', onSectionResizeMove);
+  window.removeEventListener('mouseup', onSectionResizeEnd);
+}
+
+onBeforeUnmount(() => {
+  window.removeEventListener('mousemove', onSectionResizeMove);
+  window.removeEventListener('mouseup', onSectionResizeEnd);
+});
+
+const timelineWidthPx = computed(() => {
+  const maxUs = Math.max(timelineStore.duration, timelineStore.currentTime) + 30_000_000;
+  return timeUsToPx(maxUs, timelineStore.timelineZoom);
+});
+
+const timelineWidthStyle = computed(() => ({
+  width: `${timelineWidthPx.value}px`,
+  minWidth: '100%',
+}));
+
+// --- Horizontal scroll sync ---
+let isSyncingHorizontal = false;
+function syncHorizontal(source: HTMLElement) {
+  if (isSyncingHorizontal) return;
+  isSyncingHorizontal = true;
+  const sl = source.scrollLeft;
+  const targets = [videoScrollEl.value, audioScrollEl.value, rulerScrollEl.value];
+  for (const el of targets) {
+    if (el && el !== source) {
+      el.scrollLeft = sl;
+    }
+  }
+  scrollLeftRef.value = sl;
+  isSyncingHorizontal = false;
+}
+
+function onVideoScroll(e: Event) {
+  if (videoScrollEl.value) {
+    syncHorizontal(videoScrollEl.value);
+    if (videoLabelsScrollEl.value) {
+      videoLabelsScrollEl.value.scrollTop = videoScrollEl.value.scrollTop;
+    }
+  }
+}
+
+function onAudioScroll(e: Event) {
+  if (audioScrollEl.value) {
+    syncHorizontal(audioScrollEl.value);
+    if (audioLabelsScrollEl.value) {
+      audioLabelsScrollEl.value.scrollTop = audioScrollEl.value.scrollTop;
+    }
+  }
+}
+
+function onRulerScroll(e: Event) {
+  if (rulerScrollEl.value) {
+    syncHorizontal(rulerScrollEl.value);
+  }
+}
+
+function onVideoLabelsScroll() {
+  if (videoLabelsScrollEl.value && videoScrollEl.value) {
+    videoScrollEl.value.scrollTop = videoLabelsScrollEl.value.scrollTop;
+  }
+}
+
+function onAudioLabelsScroll() {
+  if (audioLabelsScrollEl.value && audioScrollEl.value) {
+    audioScrollEl.value.scrollTop = audioLabelsScrollEl.value.scrollTop;
+  }
+}
+
+// Video labels ref for scroll sync
+const videoTrackLabelsRef = ref<InstanceType<typeof TimelineTrackLabels> | null>(null);
+const audioTrackLabelsRef = ref<InstanceType<typeof TimelineTrackLabels> | null>(null);
+
+// Context menu items
 const timelineMenuItems = computed(() => [
   [
     {
       label: t('common.actions.reset'),
       icon: 'i-heroicons-arrow-path',
       onSelect: () => {
-        resetTimelineSplit();
+        videoSectionPercent.value = DEFAULT_VIDEO_SECTION_PERCENT;
       },
     },
   ],
@@ -148,7 +263,7 @@ watch(
 
 function onContextMenu(e: MouseEvent) {
   const target = e.target as HTMLElement;
-  if (target.classList.contains('splitpanes__splitter')) {
+  if (target.classList.contains('timeline-section-resize-handle')) {
     e.preventDefault();
     menuRef.value?.open(e);
   }
@@ -156,12 +271,13 @@ function onContextMenu(e: MouseEvent) {
 
 const canEditClipContent = computed(() => ['cut', 'files', 'sound'].includes(currentView.value));
 const tracks = computed(() => (timelineStore.timelineDoc?.tracks as TimelineTrack[]) ?? []);
+const videoTracks = computed(() => tracks.value.filter((t) => t.kind === 'video'));
+const audioTracks = computed(() => tracks.value.filter((t) => t.kind === 'audio'));
 
 const fps = computed(() => projectStore.projectSettings.project.fps || 30);
 const playheadPx = computed(() =>
   timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom),
 );
-// Честное центрирование 1px линии через CSS translateX(-50%), без подгонки пикселей
 const playheadTransform = computed(
   () => `translate3d(${playheadPx.value}px, 0, 0) translateX(-50%)`,
 );
@@ -170,8 +286,6 @@ const currentFrameHighlightStyle = computed(() => {
   const pxPerFrame = zoomToPxPerSecond(timelineStore.timelineZoom) / fps.value;
   if (pxPerFrame < 6) return null;
 
-  // Честная математика: currentTime округляется до целых микросекунд.
-  // Максимальная погрешность при таком округлении - 0.5 мкс. Добавляем её для точного определения кадра.
   const currentFrameIndex = Math.floor(((timelineStore.currentTime + 0.5) * fps.value) / 1_000_000);
   const currentFrameStartUs = Math.round((currentFrameIndex * 1_000_000) / fps.value);
   const nextFrameStartUs = Math.round(((currentFrameIndex + 1) * 1_000_000) / fps.value);
@@ -201,10 +315,11 @@ watch(
   },
 );
 
-useResizeObserver(scrollEl, () => {
-  if (scrollEl.value) {
-    scrollbarHeight.value = scrollEl.value.offsetHeight - scrollEl.value.clientHeight;
-    viewportWidth.value = scrollEl.value.clientWidth;
+// Track scrollbar height from audio section (only one with visible horizontal scrollbar)
+useResizeObserver(audioScrollEl, () => {
+  if (audioScrollEl.value) {
+    scrollbarHeight.value = audioScrollEl.value.offsetHeight - audioScrollEl.value.clientHeight;
+    viewportWidth.value = audioScrollEl.value.clientWidth;
     timelineStore.timelineViewportWidth = viewportWidth.value;
   }
 });
@@ -212,20 +327,60 @@ useResizeObserver(scrollEl, () => {
 watch(
   () => timelineStore.scrollResetTicket,
   () => {
-    if (scrollEl.value) scrollEl.value.scrollLeft = 0;
+    for (const el of [videoScrollEl.value, audioScrollEl.value, rulerScrollEl.value]) {
+      if (el) el.scrollLeft = 0;
+    }
   },
 );
 
-const { onScroll, onLabelsScroll, startPan, onPanMove, stopPan, isPanning, hasPanned } =
-  useTimelineScrollSync({
-    scrollEl,
-    labelsScrollContainer: computed(
-      () => timelineTrackLabelsRef.value?.labelsScrollContainer ?? null,
-    ),
-    onScrollCallback: () => {
-      if (scrollEl.value) scrollLeftRef.value = scrollEl.value.scrollLeft;
-    },
-  });
+// Panning logic (adapted from useTimelineScrollSync)
+const isPanning = ref(false);
+const hasPanned = ref(false);
+const panStart = ref({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0, el: null as HTMLElement | null });
+const DRAG_DEADZONE_PX = 5;
+
+function getActiveScrollEl(e: PointerEvent): HTMLElement | null {
+  const target = e.target as HTMLElement;
+  if (target.closest('.video-tracks-scroll')) return videoScrollEl.value;
+  if (target.closest('.audio-tracks-scroll')) return audioScrollEl.value;
+  return videoScrollEl.value;
+}
+
+function startPan(e: PointerEvent) {
+  const el = getActiveScrollEl(e);
+  if (!el) return;
+  e.preventDefault();
+  isPanning.value = true;
+  hasPanned.value = false;
+  panStart.value = {
+    x: e.clientX,
+    y: e.clientY,
+    scrollLeft: el.scrollLeft,
+    scrollTop: el.scrollTop,
+    el,
+  };
+  el.setPointerCapture(e.pointerId);
+}
+
+function onPanMove(e: PointerEvent) {
+  if (!isPanning.value || !panStart.value.el) return;
+  e.preventDefault();
+  const dx = e.clientX - panStart.value.x;
+  const dy = e.clientY - panStart.value.y;
+  if (!hasPanned.value && (Math.abs(dx) > DRAG_DEADZONE_PX || Math.abs(dy) > DRAG_DEADZONE_PX)) {
+    hasPanned.value = true;
+  }
+  // Horizontal pan syncs across all sections
+  panStart.value.el.scrollLeft = panStart.value.scrollLeft - dx;
+  panStart.value.el.scrollTop = panStart.value.scrollTop - dy;
+}
+
+function stopPan(e: PointerEvent) {
+  if (!isPanning.value || !panStart.value.el) return;
+  e.preventDefault();
+  isPanning.value = false;
+  panStart.value.el.releasePointerCapture(e.pointerId);
+}
 
 const { handleZoomWheel, fitTimelineZoom } = useTimelineZoom({ scrollEl });
 const {
@@ -256,7 +411,6 @@ const {
 
 const timelineMouseSettings = computed(() => workspaceStore.userSettings.mouse.timeline);
 const rulerMouseSettings = computed(() => workspaceStore.userSettings.mouse.ruler);
-const trackHeadersMouseSettings = computed(() => workspaceStore.userSettings.mouse.trackHeaders);
 
 function onTimelinePointerMove(e: PointerEvent) {
   const isRuler = (e.target as HTMLElement | null)?.closest('.timeline-ruler-container');
@@ -268,7 +422,7 @@ function onTimelinePointerMove(e: PointerEvent) {
     !isPanning.value &&
     !isDraggingPlayhead.value
   ) {
-    const el = scrollEl.value;
+    const el = getActiveScrollEl(e) || scrollEl.value;
     if (el) {
       const rect = el.getBoundingClientRect();
       const x = e.clientX - rect.left + el.scrollLeft;
@@ -306,13 +460,17 @@ function onTimelineClick(e: MouseEvent) {
   )
     return;
 
-  const el = scrollEl.value;
+  const el = getActiveScrollEl(e as unknown as PointerEvent) || scrollEl.value;
   if (!el) return;
 
   const rect = el.getBoundingClientRect();
   const y = e.clientY - rect.top + el.scrollTop;
 
-  const totalTracksHeight = tracks.value.reduce(
+  // Determine which tracks are in this scroll element
+  const isVideoSection = el === videoScrollEl.value;
+  const sectionTracks = isVideoSection ? videoTracks.value : audioTracks.value;
+
+  const totalTracksHeight = sectionTracks.reduce(
     (sum, tr) => sum + (trackHeights.value[tr.id] ?? 40),
     0,
   );
@@ -333,13 +491,25 @@ function onGlobalTimelineClick(e: MouseEvent) {
   if (!timelineStore.isTrimModeActive) return;
   const target = e.target as HTMLElement;
   if (target?.closest('[data-timeline-toolbar]')) return;
-  if (!target?.closest('.timeline-scroll-el') && !target?.closest('[data-clip-id]')) {
+  if (
+    !target?.closest('.video-tracks-scroll') &&
+    !target?.closest('.audio-tracks-scroll') &&
+    !target?.closest('[data-clip-id]')
+  ) {
     timelineStore.isTrimModeActive = false;
   }
 }
 
 useEventListener(window, 'click', onGlobalTimelineClick, { capture: true });
-useEventListener(scrollEl, 'wheel', onTimelineWheel, { passive: false });
+
+// Wheel handling for both sections
+function setupWheelHandler(el: Ref<HTMLElement | null>, category: keyof FastCatUserSettings['mouse'] = 'timeline') {
+  useEventListener(el, 'wheel', (e: WheelEvent) => onTimelineWheel(e, category), { passive: false });
+}
+
+setupWheelHandler(videoScrollEl, 'timeline');
+setupWheelHandler(audioScrollEl, 'timeline');
+setupWheelHandler(rulerContainerRef, 'ruler');
 
 function shouldUseNativeTimelineScroll(
   e: WheelEvent,
@@ -360,17 +530,23 @@ function shouldUseNativeTimelineScroll(
 }
 
 function onTimelineWheel(e: WheelEvent, category: keyof FastCatUserSettings['mouse'] = 'timeline') {
-  if (!scrollEl.value) return;
+  // Find which scroll element is being used
+  const target = e.target as HTMLElement;
+  const activeEl = target.closest('.audio-tracks-scroll')
+    ? audioScrollEl.value
+    : target.closest('.video-tracks-scroll')
+      ? videoScrollEl.value
+      : scrollEl.value;
+
+  if (!activeEl) return;
 
   let settings;
   if (category === 'timeline') {
     settings = timelineMouseSettings.value;
   } else if (category === 'ruler') {
     settings = rulerMouseSettings.value;
-  } else if (category === 'trackHeaders') {
-    settings = trackHeadersMouseSettings.value;
   } else {
-    settings = timelineMouseSettings.value; // Fallback
+    settings = timelineMouseSettings.value;
   }
 
   const isShift = isLayer1Active(e, workspaceStore.userSettings);
@@ -396,22 +572,22 @@ function onTimelineWheel(e: WheelEvent, category: keyof FastCatUserSettings['mou
 
   if (action === 'scroll_vertical') {
     e.preventDefault();
-    scrollEl.value.scrollTop += delta;
+    activeEl.scrollTop += delta;
     return;
   }
 
   if (action === 'scroll_horizontal') {
     e.preventDefault();
-    scrollEl.value.scrollLeft += delta;
+    activeEl.scrollLeft += delta;
     return;
   }
 
   if (action === 'zoom_horizontal') {
     e.preventDefault();
-    const rect = scrollEl.value.getBoundingClientRect();
+    const rect = activeEl.getBoundingClientRect();
     const anchorViewportX = e.clientX - rect.left;
     const anchorTimeUs = pxToTimeUs(
-      scrollEl.value.scrollLeft + anchorViewportX,
+      activeEl.scrollLeft + anchorViewportX,
       timelineStore.timelineZoom,
     );
     handleZoomWheel(delta > 0 ? -5 : 5, { anchorTimeUs, anchorViewportX });
@@ -449,8 +625,7 @@ function onTimelineWheel(e: WheelEvent, category: keyof FastCatUserSettings['mou
 
   if (action === 'resize_track') {
     e.preventDefault();
-    const target = e.target as Node;
-    const el = target.nodeType === 3 ? target.parentElement : (target as Element);
+    const el = (e.target as Node).nodeType === 3 ? (e.target as Node).parentElement : (e.target as Element);
     const trackEl = el?.closest?.('[data-track-id]');
     const trackId = trackEl?.getAttribute('data-track-id');
     if (trackId) {
@@ -508,7 +683,6 @@ const onDrop = async (e: DragEvent, trackId: string) => {
   if (libraryItemData) {
     try {
       const parsed = JSON.parse(libraryItemData);
-      // Only handle if it's our known internal drag objects
       if (parsed.kind || (Array.isArray(parsed) && parsed.length > 0 && parsed[0].kind)) {
         await handleLibraryDrop(libraryItemData, trackId, startUs, {
           pseudo,
@@ -518,7 +692,7 @@ const onDrop = async (e: DragEvent, trackId: string) => {
         return;
       }
     } catch {
-      // ignore JSON parse errors and fall through
+      // ignore
     }
   }
 
@@ -529,16 +703,26 @@ const onDrop = async (e: DragEvent, trackId: string) => {
 
   clearDragPreview();
 };
-const trackHeadersContainerRef = ref<HTMLElement | null>(null);
-useEventListener(
-  trackHeadersContainerRef,
-  'wheel',
-  (e: WheelEvent) => onTimelineWheel(e, 'trackHeaders'),
-  { passive: false },
-);
-useEventListener(rulerContainerRef, 'wheel', (e: WheelEvent) => onTimelineWheel(e, 'ruler'), {
-  passive: false,
-});
+
+function onDragVirtualStart(event: DragEvent, type: 'adjustment' | 'background' | 'text') {
+  setDraggedFile({
+    kind: type,
+    name: t(
+      `fastcat.timeline.${type}ClipDefaultName`,
+      type.charAt(0).toUpperCase() + type.slice(1),
+    ),
+    path: '',
+  });
+}
+
+function onDragVirtualEnd() {
+  clearDraggedFile();
+}
+
+function setPlayheadTime(timeUs: number) {
+  timelineStore.setCurrentTimeUs(timeUs);
+}
+
 const handleTimelineClickAction = (action: string, e: PointerEvent | MouseEvent) => {
   if (action === 'none') return;
   if (action === 'reset_zoom') {
@@ -550,15 +734,13 @@ const handleTimelineClickAction = (action: string, e: PointerEvent | MouseEvent)
     return;
   }
   if (action === 'select_item') {
-    // TODO: выбрать клип (по умолчанию)
     return;
   }
   if (action === 'select_multiple') {
-    // TODO: выделить несколько клипов (по умолчанию)
     return;
   }
   if (action === 'seek' || action === 'move_playhead') {
-    const el = scrollEl.value;
+    const el = getActiveScrollEl(e as PointerEvent) || scrollEl.value;
     if (!el) return;
     const rect = el.getBoundingClientRect();
     const x = e.clientX - rect.left + el.scrollLeft;
@@ -566,13 +748,10 @@ const handleTimelineClickAction = (action: string, e: PointerEvent | MouseEvent)
     return;
   }
   if (action === 'select_area') {
-    // Selection range logic in track area is usually handled by useTimelineInteraction
-    // for left click. For middle click we'd need to expose it if we want it here.
-    // For now we can use seek here.
     return;
   }
   if (action === 'add_marker') {
-    const el = scrollEl.value;
+    const el = getActiveScrollEl(e as PointerEvent) || scrollEl.value;
     if (!el) return;
     const rect = el.getBoundingClientRect();
     const x = e.clientX - rect.left + el.scrollLeft;
@@ -599,15 +778,12 @@ const onTrackAreaPointerDownCapture = (e: PointerEvent) => {
     if (settings.middleDrag === 'pan') {
       startPan(e);
     } else if (settings.middleDrag === 'move_playhead') {
-      const el = scrollEl.value;
+      const el = getActiveScrollEl(e) || scrollEl.value;
       if (!el) return;
       const rect = el.getBoundingClientRect();
       const x = e.clientX - rect.left + el.scrollLeft;
       timelineStore.setCurrentTimeUs(pxToTimeUs(x, timelineStore.timelineZoom));
       startPlayheadDrag(e);
-    } else if (settings.middleDrag === 'select_area') {
-      // Logic for select_area drag on timeline?
-      // Usually done with Left button + Shift. Implementation might be complex to port here.
     }
   }
 };
@@ -617,7 +793,6 @@ const onTrackAreaAuxClick = (e: MouseEvent) => {
     const isRuler = (e.target as HTMLElement).closest('.timeline-ruler-container');
     if (!isRuler) {
       if (hasPanned.value || hasPlayheadMoved.value) return;
-
       const settings = timelineMouseSettings.value;
       handleTimelineClickAction(settings.middleClick, e);
     }
@@ -627,9 +802,10 @@ const onTrackAreaAuxClick = (e: MouseEvent) => {
 function executeTimelineRulerAction(action: string, e: MouseEvent) {
   if (action === 'none') return;
 
-  const rect = trackAreaRef.value?.getBoundingClientRect();
-  if (!rect) return;
-  const x = e.clientX - rect.left + (scrollEl.value?.scrollLeft ?? 0);
+  const el = rulerScrollEl.value;
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  const x = e.clientX - rect.left + el.scrollLeft;
   const timeUs = pxToTimeUs(x, timelineStore.timelineZoom);
 
   if (action === 'seek') {
@@ -656,6 +832,7 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
       'panel-focus-frame--active': focusStore.isPanelFocused('timeline'),
     }"
     @pointerdown.capture="focusStore.setMainFocus('timeline')"
+    @contextmenu="onContextMenu"
   >
     <UiContextMenuPortal
       ref="menuRef"
@@ -669,137 +846,255 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
       :target-el="containerRef"
       manual
     />
-    <ClientOnly>
-      <Splitpanes
-        class="flex flex-1 min-h-0 overflow-hidden editor-splitpanes"
-        @resized="onTimelineSplitResize"
-        @contextmenu="onContextMenu"
+
+    <!-- Row 1: Timeline Toolbar -->
+    <TimelineToolbar
+      @drag-virtual-start="onDragVirtualStart"
+      @drag-virtual-end="onDragVirtualEnd"
+    />
+
+    <!-- Row 2: Ruler with playhead timecode -->
+    <div
+      class="flex shrink-0 h-8 border-b border-ui-border"
+      @pointermove="onTimelinePointerMove"
+      @pointerup="onTimelinePointerUp"
+      @pointercancel="onTimelinePointerUp"
+    >
+      <!-- Playhead timecode -->
+      <div
+        class="shrink-0 border-r border-ui-border bg-ui-bg-elevated flex items-center justify-center px-2"
+        :style="{ width: `${TRACK_LABELS_WIDTH}px` }"
       >
-        <Pane :size="timelineSplitSizes[0]" min-size="5" max-size="50">
-          <div ref="trackHeadersContainerRef" class="h-full">
-            <TimelineTrackLabels
-              ref="timelineTrackLabelsRef"
-              :tracks="tracks"
-              :track-heights="trackHeights"
-              :scrollbar-compensation="scrollbarHeight"
-              class="h-full border-r border-ui-border"
-              :on-zoom-to-fit="fitTimelineZoom"
-              @update:track-height="updateTrackHeight"
-              @scroll="onLabelsScroll"
+        <UiTimecode
+          :model-value="timelineStore.currentTime"
+          @update:model-value="setPlayheadTime"
+        />
+      </div>
+      <!-- Ruler -->
+      <div
+        ref="rulerContainerRef"
+        class="flex-1 relative z-10 timeline-ruler-container overflow-hidden"
+      >
+        <div
+          ref="rulerScrollEl"
+          class="h-full w-full overflow-x-scroll overflow-y-hidden scroll-sync-hidden relative"
+          @scroll="onRulerScroll"
+        >
+          <div :style="timelineWidthStyle" class="h-full">
+            <TimelineRuler
+              class="h-full border-b border-ui-border bg-ui-bg-elevated cursor-pointer w-full"
+              :scroll-el="rulerScrollEl"
+              @pointerdown="onTimeRulerPointerDown"
+              @start-playhead-drag="startPlayheadDrag"
+              @start-pan="startPan"
             />
           </div>
-        </Pane>
-        <Pane :size="timelineSplitSizes[1]" min-size="50">
+        </div>
+      </div>
+    </div>
+
+    <!-- Rows 3 & 4: Track sections -->
+    <div
+      ref="sectionContainerRef"
+      class="flex-1 flex flex-col min-h-0 relative"
+      @pointermove="onTimelinePointerMove"
+      @pointerup="onTimelinePointerUp"
+      @pointercancel="onTimelinePointerUp"
+      @pointerdown.capture="onTrackAreaPointerDownCapture"
+      @auxclick="onTrackAreaAuxClick"
+    >
+      <!-- Video Tracks Section -->
+      <div
+        class="flex shrink-0 min-h-[60px] relative border-b border-ui-border"
+        :style="{ height: `${videoSectionPercent}%` }"
+      >
+        <!-- Video Track Labels -->
+        <div
+          ref="videoLabelsScrollEl"
+          class="shrink-0 border-r border-ui-border overflow-y-auto overflow-x-hidden scroll-sync-hidden"
+          :style="{ width: `${TRACK_LABELS_WIDTH}px` }"
+          @scroll="onVideoLabelsScroll"
+        >
+          <TimelineTrackLabels
+            ref="videoTrackLabelsRef"
+            :tracks="videoTracks"
+            :track-heights="trackHeights"
+            :on-zoom-to-fit="fitTimelineZoom"
+            @update:track-height="updateTrackHeight"
+          />
+        </div>
+        <!-- Video Tracks Area -->
+        <div class="flex-1 relative min-h-0 min-w-0">
+          <!-- Grid behind tracks -->
+          <TimelineGrid
+            class="absolute inset-0 pointer-events-none z-0"
+            :scroll-el="videoScrollEl"
+          />
           <div
-            ref="trackAreaRef"
-            class="flex flex-col h-full w-full relative min-h-0"
-            @pointermove="onTimelinePointerMove"
-            @pointerup="onTimelinePointerUp"
-            @pointercancel="onTimelinePointerUp"
-            @pointerdown.capture="onTrackAreaPointerDownCapture"
-            @auxclick="onTrackAreaAuxClick"
+            ref="videoScrollEl"
+            class="w-full h-full overflow-y-auto overflow-x-scroll scroll-sync-hidden relative z-10 video-tracks-scroll"
+            @click="onTimelineClick"
+            @scroll="onVideoScroll"
           >
-            <div
-              ref="rulerContainerRef"
-              class="relative shrink-0 z-10 timeline-ruler-container h-8"
-            >
-              <TimelineRuler
-                class="h-full border-b border-ui-border bg-ui-bg-elevated cursor-pointer w-full"
-                :scroll-el="scrollEl"
-                @pointerdown="onTimeRulerPointerDown"
-                @start-playhead-drag="startPlayheadDrag"
-                @start-pan="startPan"
-              />
-            </div>
-
-            <!-- Grid lines overlaid on tracks area, below ruler, behind tracks -->
-            <TimelineGrid
-              class="absolute left-0 right-0 pointer-events-none z-0"
-              :style="{ top: '2rem', bottom: `${scrollbarHeight}px` }"
-              :scroll-el="scrollEl"
+            <TimelineTracks
+              :tracks="videoTracks"
+              :track-heights="trackHeights"
+              :can-edit-clip-content="canEditClipContent"
+              :drag-preview="dragPreview"
+              :move-preview="movePreview"
+              :slip-preview="slipPreview"
+              :dragging-mode="draggingMode"
+              :dragging-item-id="draggingItemId"
+              :scroll-left="scrollLeftRef"
+              :viewport-width="viewportWidth"
+              :on-zoom-to-fit="fitTimelineZoom"
+              @drop="onDrop"
+              @dragover="onTrackDragOver"
+              @dragleave="onTrackDragLeave"
+              @start-move-item="startMoveItem"
+              @select-item="selectItem"
+              @start-trim-item="startTrimItem"
+              @clip-action="onClipAction"
             />
-
+            <!-- Playhead line -->
             <div
-              ref="scrollEl"
-              class="w-full flex-1 overflow-auto relative timeline-scroll-el z-10"
-              @click="onTimelineClick"
-              @scroll="onScroll"
-            >
-              <!-- Tracks -->
-              <TimelineTracks
-                ref="timelineTracksRef"
-                :tracks="tracks"
-                :track-heights="trackHeights"
-                :can-edit-clip-content="canEditClipContent"
-                :drag-preview="dragPreview"
-                :move-preview="movePreview"
-                :slip-preview="slipPreview"
-                :dragging-mode="draggingMode"
-                :dragging-item-id="draggingItemId"
-                :scroll-left="scrollLeftRef"
-                :viewport-width="viewportWidth"
-                :on-zoom-to-fit="fitTimelineZoom"
-                @drop="onDrop"
-                @dragover="onTrackDragOver"
-                @dragleave="onTrackDragLeave"
-                @start-move-item="startMoveItem"
-                @select-item="selectItem"
-                @start-trim-item="startTrimItem"
-                @clip-action="onClipAction"
-              />
-
-              <div
-                class="absolute inset-y-0 w-px pointer-events-none"
-                :style="{
-                  transform: playheadTransform,
-                  willChange: 'transform',
-                  zIndex: 50,
-                  backgroundColor: '#ef4444',
-                }"
-              />
-
-              <div
-                v-if="currentFrameHighlightStyle"
-                class="absolute top-0 bottom-0 pointer-events-none"
-                :style="{
-                  ...currentFrameHighlightStyle,
-                  zIndex: 5,
-                  backgroundColor: '#ef4444',
-                  opacity: '0.12',
-                }"
-              />
-            </div>
-
-            <!-- Zoom indicator — absolute in bottom-right of visible track area -->
-            <Transition
-              enter-active-class="transition-opacity duration-150"
-              enter-from-class="opacity-0"
-              enter-to-class="opacity-100"
-              leave-active-class="transition-opacity duration-500"
-              leave-from-class="opacity-100"
-              leave-to-class="opacity-0"
-            >
-              <div
-                v-if="isZooming"
-                class="absolute bottom-2 right-3 px-2 py-1 text-xs font-mono font-semibold rounded-md bg-neutral-900/90 text-neutral-100 shadow-lg backdrop-blur-sm pointer-events-none select-none"
-                :style="{ zIndex: 60 }"
-              >
-                {{ zoomFactor }}
-              </div>
-            </Transition>
+              class="absolute inset-y-0 w-px pointer-events-none"
+              :style="{
+                transform: playheadTransform,
+                willChange: 'transform',
+                zIndex: 50,
+                backgroundColor: '#ef4444',
+              }"
+            />
+            <!-- Current frame highlight -->
+            <div
+              v-if="currentFrameHighlightStyle"
+              class="absolute top-0 bottom-0 pointer-events-none"
+              :style="{
+                ...currentFrameHighlightStyle,
+                zIndex: 5,
+                backgroundColor: '#ef4444',
+                opacity: '0.12',
+              }"
+            />
           </div>
-        </Pane>
-      </Splitpanes>
-    </ClientOnly>
+        </div>
+      </div>
+
+      <!-- Section resize handle -->
+      <div
+        class="timeline-section-resize-handle h-1.5 cursor-ns-resize bg-ui-bg hover:bg-primary-500/30 transition-colors z-20 shrink-0 flex items-center justify-center group"
+        @mousedown="onSectionResizeStart"
+      >
+        <div class="w-8 h-0.5 rounded bg-ui-border group-hover:bg-primary-500/60 transition-colors" />
+      </div>
+
+      <!-- Audio Tracks Section -->
+      <div class="flex flex-1 min-h-[60px] relative">
+        <!-- Audio Track Labels -->
+        <div
+          ref="audioLabelsScrollEl"
+          class="shrink-0 border-r border-ui-border overflow-y-auto overflow-x-hidden scroll-sync-hidden"
+          :style="{ width: `${TRACK_LABELS_WIDTH}px` }"
+          @scroll="onAudioLabelsScroll"
+        >
+          <TimelineTrackLabels
+            ref="audioTrackLabelsRef"
+            :tracks="audioTracks"
+            :track-heights="trackHeights"
+            :on-zoom-to-fit="fitTimelineZoom"
+            @update:track-height="updateTrackHeight"
+          />
+        </div>
+        <!-- Audio Tracks Area -->
+        <div class="flex-1 relative min-h-0 min-w-0">
+          <!-- Grid behind tracks -->
+          <TimelineGrid
+            class="absolute inset-0 pointer-events-none z-0"
+            :scroll-el="audioScrollEl"
+          />
+          <div
+            ref="audioScrollEl"
+            class="w-full h-full overflow-auto relative z-10 audio-tracks-scroll timeline-scroll-el"
+            @click="onTimelineClick"
+            @scroll="onAudioScroll"
+          >
+            <TimelineTracks
+              :tracks="audioTracks"
+              :track-heights="trackHeights"
+              :can-edit-clip-content="canEditClipContent"
+              :drag-preview="dragPreview"
+              :move-preview="movePreview"
+              :slip-preview="slipPreview"
+              :dragging-mode="draggingMode"
+              :dragging-item-id="draggingItemId"
+              :scroll-left="scrollLeftRef"
+              :viewport-width="viewportWidth"
+              :on-zoom-to-fit="fitTimelineZoom"
+              @drop="onDrop"
+              @dragover="onTrackDragOver"
+              @dragleave="onTrackDragLeave"
+              @start-move-item="startMoveItem"
+              @select-item="selectItem"
+              @start-trim-item="startTrimItem"
+              @clip-action="onClipAction"
+            />
+            <!-- Playhead line -->
+            <div
+              class="absolute inset-y-0 w-px pointer-events-none"
+              :style="{
+                transform: playheadTransform,
+                willChange: 'transform',
+                zIndex: 50,
+                backgroundColor: '#ef4444',
+              }"
+            />
+            <!-- Current frame highlight -->
+            <div
+              v-if="currentFrameHighlightStyle"
+              class="absolute top-0 bottom-0 pointer-events-none"
+              :style="{
+                ...currentFrameHighlightStyle,
+                zIndex: 5,
+                backgroundColor: '#ef4444',
+                opacity: '0.12',
+              }"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Zoom indicator -->
+    <Transition
+      enter-active-class="transition-opacity duration-150"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-500"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="isZooming"
+        class="absolute bottom-2 right-3 px-2 py-1 text-xs font-mono font-semibold rounded-md bg-neutral-900/90 text-neutral-100 shadow-lg backdrop-blur-sm pointer-events-none select-none"
+        :style="{ zIndex: 60 }"
+      >
+        {{ zoomFactor }}
+      </div>
+    </Transition>
   </div>
 </template>
 
 <style scoped>
-/*
-  Use overlay-style scrollbars (drawn on top of content) to keep clientHeight
-  consistent between tracks scroll-el and labels panel (which has no scrollbar).
-  Falls back gracefully in browsers that don't support overlay.
-*/
+/* Hide scrollbar while keeping scroll functionality for synced scroll elements */
+.scroll-sync-hidden {
+  scrollbar-width: none;
+}
+.scroll-sync-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+/* Audio section has the visible horizontal scrollbar */
 .timeline-scroll-el {
   scrollbar-width: thin;
   scrollbar-color: var(--ui-border-accent, #666) transparent;

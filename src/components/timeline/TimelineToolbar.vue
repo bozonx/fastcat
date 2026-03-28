@@ -237,7 +237,7 @@ function onToolbarContextMenu(e: MouseEvent) {
 <template>
   <UContextMenu :items="toolbarEmptyAreaContextMenuItems">
     <div
-      class="h-8 border-b border-ui-border bg-ui-bg-elevated flex items-center px-1 shrink-0 gap-0.5"
+      class="h-8 w-full border-b border-ui-border bg-ui-bg-elevated flex items-center justify-center px-1 shrink-0 gap-0.5"
       data-timeline-toolbar
       @pointerdown.capture="focusStore.setPanelFocus('timeline')"
       @click.self="timelineStore.selectTimelineProperties()"
@@ -309,81 +309,76 @@ function onToolbarContextMenu(e: MouseEvent) {
         </UiTooltip>
       </div>
 
-      <div
-        class="ml-auto flex items-center gap-0.5"
-        @click.self="timelineStore.selectTimelineProperties()"
+      <UiTooltip
+        :text="`${t('fastcat.timeline.addAdjustment')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
       >
-        <UiTooltip
-          :text="`${t('fastcat.timeline.addAdjustment')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
+        <div
+          draggable="true"
+          @dragstart="onDragStart($event, 'adjustment')"
+          @dragend="onDragEnd"
         >
-          <div
-            draggable="true"
-            @dragstart="onDragStart($event, 'adjustment')"
-            @dragend="onDragEnd"
-          >
-            <UButton
-              size="xs"
-              variant="ghost"
-              color="neutral"
-              icon="i-heroicons-adjustments-horizontal"
-              class="hover:bg-ui-bg"
-              @click="
-                (e) => {
-                  timelineStore.addAdjustmentClipAtPlayhead();
-                  (e.currentTarget as HTMLElement).blur();
-                }
-              "
-            />
-          </div>
-        </UiTooltip>
-        <UiTooltip
-          :text="`${t('fastcat.timeline.addBackground')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
+          <UButton
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            icon="i-heroicons-adjustments-horizontal"
+            class="hover:bg-ui-bg"
+            @click="
+              (e) => {
+                timelineStore.addAdjustmentClipAtPlayhead();
+                (e.currentTarget as HTMLElement).blur();
+              }
+            "
+          />
+        </div>
+      </UiTooltip>
+      <UiTooltip
+        :text="`${t('fastcat.timeline.addBackground')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
+      >
+        <div
+          draggable="true"
+          @dragstart="onDragStart($event, 'background')"
+          @dragend="onDragEnd"
         >
-          <div
-            draggable="true"
-            @dragstart="onDragStart($event, 'background')"
-            @dragend="onDragEnd"
-          >
-            <UButton
-              size="xs"
-              variant="ghost"
-              color="neutral"
-              icon="i-heroicons-swatch"
-              class="hover:bg-ui-bg"
-              @click="
-                (e) => {
-                  timelineStore.addBackgroundClipAtPlayhead();
-                  (e.currentTarget as HTMLElement).blur();
-                }
-              "
-            />
-          </div>
-        </UiTooltip>
-        <UiTooltip
-          :text="`${t('fastcat.timeline.addText')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
+          <UButton
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            icon="i-heroicons-swatch"
+            class="hover:bg-ui-bg"
+            @click="
+              (e) => {
+                timelineStore.addBackgroundClipAtPlayhead();
+                (e.currentTarget as HTMLElement).blur();
+              }
+            "
+          />
+        </div>
+      </UiTooltip>
+      <UiTooltip
+        :text="`${t('fastcat.timeline.addText')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
+      >
+        <div
+          draggable="true"
+          @dragstart="onDragStart($event, 'text')"
+          @dragend="onDragEnd"
+          @contextmenu.prevent="() => {}"
         >
-          <div
-            draggable="true"
-            @dragstart="onDragStart($event, 'text')"
-            @dragend="onDragEnd"
-            @contextmenu.prevent="() => {}"
-          >
-            <UButton
-              size="xs"
-              variant="ghost"
-              color="neutral"
-              icon="i-heroicons-chat-bubble-bottom-center-text"
-              class="hover:bg-ui-bg"
-              @click="
-                (e) => {
-                  addTextClip();
-                  (e.currentTarget as HTMLElement).blur();
-                }
-              "
-            />
-          </div>
-        </UiTooltip>
-      </div>
+          <UButton
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            icon="i-heroicons-chat-bubble-bottom-center-text"
+            class="hover:bg-ui-bg"
+            @click="
+              (e) => {
+                addTextClip();
+                (e.currentTarget as HTMLElement).blur();
+              }
+            "
+          />
+        </div>
+      </UiTooltip>
     </div>
   </UContextMenu>
 </template>

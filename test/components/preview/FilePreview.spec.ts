@@ -84,13 +84,24 @@ describe('FilePreview.vue', () => {
     // Simulate open-modal event from ImageViewer
     const imageViewer = component.findComponent({ name: 'ImageViewer' });
     await imageViewer.vm.$emit('open-modal');
-
-    // Teleport content is in document.body
     await component.vm.$nextTick();
-    // In vitest-nuxt, we might need to look for teleported content in body
-    // but often mountSuspended doesn't render teleports to global document easily.
-    // However, we can at least confirm it doesn't crash.
-    expect(true).toBe(true);
+
+    // Check if modal state is true
+    expect((component.vm as any).isMediaModalOpen).toBe(true);
+    
+    // Check if uiStore count is updated (this is a side effect in the watcher)
+    const uiStore = useUiStore();
+    expect(uiStore.activeModalsCount).toBe(1);
+
+    // Close modal
+    const closeBtn = component.findComponent({ name: 'UButton' }); 
+    // The button is inside the teleport, so we might need to find it differently if teleported to body.
+    // However, Vue Test Utils can often find components even if teleported if they are within the same tree.
+    // If not, we can trigger the close logic directly.
+    await (component.vm as any).closeMediaModal();
+    await component.vm.$nextTick();
+    expect((component.vm as any).isMediaModalOpen).toBe(false);
+    expect(uiStore.activeModalsCount).toBe(0);
   });
 
   it('synchronizes playback state between inline and modal MediaPlayer', async () => {
@@ -110,12 +121,45 @@ describe('FilePreview.vue', () => {
       source: 'inline'
     });
 
-    const uiStore = useUiStore();
-    uiStore.previewFullscreenToggleTrigger = Date.now();
-    await component.vm.$nextTick();
+    // Open modal
+    await mediaPlayer.vm.$emit('open-modal');
     await component.vm.$nextTick();
 
-    expect(true).toBe(true); 
+    expect((component.vm as any).mediaPlaybackState).toEqual(expect.objectContaining({
+      currentTime: 10,
+      isPlaying: true,
+      source: 'inline'
+    }));
+
+    // In modal, MediaPlayer should receive this state through resumeState prop
+    // We can't easily check props of a component inside a v-if inside a Teleport 
+    // without more complex setup, but we verified the state update.
+  });
+
+  it('closes modal on Esc key', async () => {
+    const component = await mountWithNuxt(FilePreview, {
+      props: {
+        url: 'http://example.com/test.jpg',
+        mediaType: 'image',
+      },
+    });
+
+    // Open modal
+    await (component.vm as any).openMediaModal();
+    await component.vm.$nextTick();
+    expect((component.vm as any).isMediaModalOpen).toBe(true);
+
+    // Mock window event listener trigger
+    // FilePreview adds listener to window on mounted.
+    // We can manually call the handler if we can access it, 
+    // or dispatch a keyboard event on window.
+    const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+    window.dispatchEvent(event);
+    
+    await component.vm.$nextTick();
+    // Note: isCommandMatched might need careful mocking if it fails in test.
+    // In our case, DEFAULT_HOTKEYS should have general.deselect as Escape.
+    expect((component.vm as any).isMediaModalOpen).toBe(false);
   });
 
   it('toggles fullscreen via uiStore trigger', async () => {
@@ -132,6 +176,6 @@ describe('FilePreview.vue', () => {
     await component.vm.$nextTick();
     await component.vm.$nextTick(); // Wait for watcher
 
-    expect(true).toBe(true);
+    expect((component.vm as any).isMediaModalOpen).toBe(true);
   });
 });

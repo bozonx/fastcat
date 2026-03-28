@@ -4,14 +4,11 @@ import { computed, ref, onBeforeUnmount } from 'vue';
 import { useMediaStore } from '~/stores/media.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import type { TimelineTrack } from '~/timeline/types';
 import { useSelectionStore } from '~/stores/selection.store';
 import { trackHasAudio } from '~/utils/audio';
 
 import TrackLabelItem from '~/components/timeline/TrackLabelItem.vue';
-import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
-import { useDraggedFile } from '~/composables/useDraggedFile';
 
 const { t } = useI18n();
 
@@ -31,8 +28,6 @@ const mediaStore = useMediaStore();
 const timelineStore = useTimelineStore();
 const workspaceStore = useWorkspaceStore();
 const selectionStore = useSelectionStore();
-const settingsStore = useTimelineSettingsStore();
-const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 
 const labelsScrollContainer = ref<HTMLElement | null>(null);
 
@@ -230,41 +225,10 @@ const propertiesContextMenuItems = [
   ],
 ];
 
-function addTextClip() {
-  timelineStore.addTextClipAtPlayhead({
-    name: t('fastcat.timeline.textClipDefaultName'),
-    text: t('fastcat.timeline.textClipDefaultText'),
-  });
-}
-
-function toggleClipSnapMode() {
-  settingsStore.setClipSnapMode(settingsStore.clipSnapMode === 'clips' ? 'none' : 'clips');
-}
-
-function onDragVirtualStart(event: DragEvent, type: 'adjustment' | 'background' | 'text') {
-  setDraggedFile({
-    kind: type,
-    name: t(
-      `fastcat.timeline.${type}ClipDefaultName`,
-      type.charAt(0).toUpperCase() + type.slice(1),
-    ),
-    path: '',
-  });
-}
-
-function onDragVirtualEnd() {
-  clearDraggedFile();
-}
 </script>
 
 <template>
-  <div class="h-full w-full shrink-0 border-r border-ui-border flex flex-col bg-ui-bg">
-    <TimelineToolbar
-      @select-properties="timelineStore.selectTimelineProperties()"
-      @split="timelineStore.splitClipsAtPlayhead()"
-      @drag-virtual-start="onDragVirtualStart"
-      @drag-virtual-end="onDragVirtualEnd"
-    />
+  <div class="h-full w-full shrink-0 flex flex-col bg-ui-bg">
 
     <UContextMenu :items="propertiesContextMenuItems">
       <div
