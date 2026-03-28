@@ -6,7 +6,7 @@ import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
 import TimelineGrid from '~/components/timeline/TimelineGrid.vue';
 import TimelinePlayheadOverlay from '~/components/timeline/TimelinePlayheadOverlay.vue';
 
-const TRACK_LABELS_WIDTH = 200;
+const TRACK_LABELS_WIDTH = 220;
 
 const props = defineProps<{
   kind: 'video' | 'audio';
