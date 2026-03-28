@@ -111,10 +111,10 @@ function getMarkerButtonClass(marker: MarkerPoint) {
         pointerEvents: 'none',
       }"
     >
-      <!-- 1px hairline from marker center going down through ruler -->
+      <!-- 1px hairline only in the tick/marker area (below timecode labels) -->
       <div
-        class="absolute inset-y-0 left-0 w-px pointer-events-none opacity-50"
-        :style="{ backgroundColor: point.color ?? '#eab308' }"
+        class="absolute bottom-0 left-0 w-px pointer-events-none opacity-50"
+        :style="{ top: '55%', backgroundColor: point.color ?? '#eab308' }"
       />
 
       <div class="absolute bottom-0 left-0 pointer-events-auto">

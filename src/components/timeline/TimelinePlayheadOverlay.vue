@@ -17,9 +17,12 @@ const playheadPx = computed(() =>
   timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom),
 );
 
-const playheadTransform = computed(
-  () => `translate3d(${playheadPx.value}px, 0, 0) translateX(-50%)`,
-);
+const playheadTransform = computed(() => {
+  // Round to integer pixel, then shift left by 1px so the 3px line is centered:
+  // pixels occupied: [px-1, px, px+1] → center pixel at exactly Math.round(playheadPx)
+  const px = Math.round(playheadPx.value);
+  return `translate3d(${px - 1}px, 0, 0)`;
+});
 
 /** Lines to draw for active markers. Selected marker always shows; hovered adds on top. */
 const activeMarkerLines = computed(() => {
@@ -81,9 +84,9 @@ const currentFrameHighlightStyle = computed(() => {
         opacity: '0.8',
       }"
     />
-    <!-- Playhead line -->
+    <!-- Playhead line: 3px, center pixel is pixel-aligned via Math.round offset -->
     <div
-      class="absolute inset-y-0 w-px"
+      class="absolute inset-y-0 w-[3px]"
       :style="{
         transform: playheadTransform,
         willChange: 'transform',
@@ -98,7 +101,7 @@ const currentFrameHighlightStyle = computed(() => {
         ...currentFrameHighlightStyle,
         zIndex: -1, /* Below the line */
         backgroundColor: '#888888',
-        opacity: '0.15',
+        opacity: '0.08',
       }"
     />
   </div>
