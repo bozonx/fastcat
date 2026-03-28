@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, computed, watch, onBeforeUnmount } from 'vue';
 import { useFilesPageStore } from '~/stores/files-page.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useProjectStore } from '~/stores/project.store';
@@ -9,12 +9,16 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { formatBytes } from '~/utils/format';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useFileManagerThumbnails } from '~/composables/fileManager/useFileManagerThumbnails';
+import MobileFileBrowserGrid from './MobileFileBrowserGrid.vue';
 import type { FsEntry } from '~/types/fs';
 import {
   getWorkspacePathParent,
   WORKSPACE_COMMON_DIR_NAME,
   WORKSPACE_COMMON_PATH_PREFIX,
 } from '~/utils/workspace-common';
+
+const SUPPORTED_IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp', 'svg'];
 
 const filesPageStore = useFilesPageStore();
 const projectStore = useProjectStore();
@@ -27,6 +31,7 @@ const { t } = useI18n();
 const { readDirectory, getFileIcon, findEntryByPath, mediaCache, vfs, handleFiles, createFolder, reloadDirectory } = useFileManager();
 
 const fileInput = ref<HTMLInputElement | null>(null);
+const viewMode = ref<'grid' | 'list'>('grid'); // По умолчанию сетка
 
 async function onCreateFolder() {
   const name = prompt(t('videoEditor.fileManager.actions.createFolder', 'Create Folder'));
@@ -56,6 +61,13 @@ function onFileSelect(e: Event) {
 const menuItems = computed(() => [
   [
     {
+      label: viewMode.value === 'grid' ? t('common.listView', 'List View') : t('common.gridView', 'Grid View'),
+      icon: viewMode.value === 'grid' ? 'lucide:list' : 'lucide:layout-grid',
+      onSelect: () => viewMode.value = viewMode.value === 'grid' ? 'list' : 'grid',
+    },
+  ],
+  [
+    {
       label: t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),
       icon: 'i-heroicons-arrow-up-tray',
       onSelect: triggerFileUpload,
@@ -79,8 +91,24 @@ const menuItems = computed(() => [
   ]
 ]);
 
-const entries = ref<FsEntry[]>([]);
+interface ExtendedFsEntry extends FsEntry {
+  objectUrl?: string;
+  size?: number;
+}
+
+const entries = ref<ExtendedFsEntry[]>([]);
 const isLoading = ref(false);
+
+const { thumbnails } = useFileManagerThumbnails(entries);
+
+// Очистка URL при размонтировании
+function cleanupObjectUrls() {
+  for (const entry of entries.value) {
+    if (entry.objectUrl) URL.revokeObjectURL(entry.objectUrl);
+  }
+}
+
+onBeforeUnmount(cleanupObjectUrls);
 
 // Генерируем "хлебные крошки" для навигации назад
 const breadcrumbs = computed(() => {
@@ -127,8 +155,35 @@ async function loadFolderContent() {
         ];
       }
     }
-    // Фильтруем скрытые файлы если настройка выключена
-    entries.value = content.filter((e) => uiStore.showHiddenFiles || !e.name.startsWith('.'));
+    
+    // Очищаем старые URL перед загрузкой новых
+    cleanupObjectUrls();
+
+    // Фильтруем скрытые файлы если настройка выключена и дополняем метаданными
+    const filteredContent = content.filter((e) => uiStore.showHiddenFiles || !e.name.startsWith('.'));
+    
+    // Добавляем objectUrl для картинок
+    entries.value = await Promise.all(filteredContent.map(async (entry) => {
+      if (entry.kind === 'file') {
+        const ext = entry.name.split('.').pop()?.toLowerCase();
+        if (ext && SUPPORTED_IMAGE_EXTS.includes(ext)) {
+          try {
+            const file = await vfs.getFile(entry.path);
+            if (file) {
+              return {
+                ...entry,
+                size: file.size,
+                objectUrl: URL.createObjectURL(file)
+              };
+            }
+          } catch (e) {
+            console.warn('Failed to get file for preview:', entry.path, e);
+          }
+        }
+      }
+      return entry as ExtendedFsEntry;
+    }));
+
   } catch (error) {
     console.error('Failed to load mobile folder content:', error);
   } finally {
@@ -332,9 +387,21 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Список файлов -->
+    <!-- Список / Сетка файлов -->
     <div class="flex-1 overflow-y-auto min-h-0">
-      <div v-if="isLoading" class="flex h-32 items-center justify-center">
+      <!-- Grid View -->
+      <MobileFileBrowserGrid
+        v-if="viewMode === 'grid'"
+        :entries="entries"
+        :thumbnails="thumbnails"
+        :is-loading="isLoading"
+        :selected-entry-path="selectionStore.selectedEntity?.source === 'fileManager' ? (selectionStore.selectedEntity as any).path : null"
+        @entry-click="handleEntryClick"
+        @entry-primary-action="handleEntryPrimaryAction"
+      />
+
+      <!-- List View (Fallback/Old view) -->
+      <div v-else-if="isLoading" class="flex h-32 items-center justify-center">
         <Icon name="lucide:loader-2" class="w-6 h-6 animate-spin text-blue-500" />
       </div>
 
@@ -356,7 +423,11 @@ onMounted(() => {
             <div
               class="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-900"
             >
+              <template v-if="entry.objectUrl || (entry.path && thumbnails[entry.path])">
+                <img :src="entry.objectUrl || thumbnails[entry.path!]" class="w-full h-full object-cover" />
+              </template>
               <Icon
+                v-else
                 :name="getFileIcon(entry)"
                 class="w-6 h-6"
                 :class="[
@@ -385,7 +456,7 @@ onMounted(() => {
                   {{ entry.name }}
                 </span>
                 <span v-if="entry.kind === 'file'" class="text-2xs tabular-nums text-slate-500">
-                  {{ formatBytes((entry as any).size || 0) }}
+                  {{ formatBytes(entry.size || 0) }}
                 </span>
               </div>
               <div class="flex items-center gap-2 text-2xs text-slate-500">
