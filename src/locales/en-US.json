@@ -886,6 +886,8 @@
     },
     "track": {
       "actions": "Actions",
+      "moveUp": "Move track up",
+      "moveDown": "Move track down",
       "info": "Track Information",
       "clipsCount": "Clips count",
       "audio": {
@@ -1220,7 +1222,8 @@
         "effects": "Effects",
         "files": "Files",
         "history": "History",
-        "library": "Library"
+        "library": "Library",
+        "markers": "Markers"
       },
       "unsupported": "File System Access API is not supported in this browser",
       "video": {
