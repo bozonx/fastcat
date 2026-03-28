@@ -8,9 +8,11 @@ const props = withDefaults(
   defineProps<{
     modelValue: number; // Time in microseconds
     allowNegative?: boolean;
+    wheelWithoutFocus?: boolean;
   }>(),
   {
     allowNegative: false,
+    wheelWithoutFocus: false,
   },
 );
 
@@ -139,6 +141,8 @@ function handleKeydown(e: KeyboardEvent) {
 }
 
 function handleWheel(e: WheelEvent) {
+  if (!isFocused.value && !props.wheelWithoutFocus) return;
+
   e.preventDefault();
   const direction = e.deltaY < 0 ? 1 : -1;
   const isShift = isLayer1Active(e, workspaceStore.userSettings);
