@@ -7,8 +7,12 @@ const mockFilesPageStore = reactive({
   viewMode: 'grid',
   gridCardSize: 130,
   sortOption: { field: 'name', order: 'asc' },
-  setViewMode: vi.fn((v) => { mockFilesPageStore.viewMode = v; }),
-  setGridCardSize: vi.fn((v) => { mockFilesPageStore.gridCardSize = v; }),
+  setViewMode: vi.fn((v) => {
+    mockFilesPageStore.viewMode = v;
+  }),
+  setGridCardSize: vi.fn((v) => {
+    mockFilesPageStore.gridCardSize = v;
+  }),
 });
 
 const mockUiStore = reactive({
@@ -33,16 +37,16 @@ describe('FileBrowserToolbar', () => {
     const wrapper = mount(FileBrowserToolbar, {
       props: {
         gridSizes: [100, 130, 160],
-        currentGridSizeName: 'm'
+        currentGridSizeName: 'm',
       },
       global: {
         stubs: {
           UiToggleButton: true,
           UiWheelSlider: true,
           UiSelect: true,
-          UiActionButton: true
-        }
-      }
+          UiActionButton: true,
+        },
+      },
     });
 
     const toggles = wrapper.findAllComponents({ name: 'UiToggleButton' });
@@ -50,10 +54,9 @@ describe('FileBrowserToolbar', () => {
   });
 
   it('calls setViewMode on toggle click', async () => {
-     // Since we are using stubs, we need to check if they receive correct props and emit events if possible,
-     // or just test the component logic if we don't stub it part-way.
-     // But UiToggleButton is a complex base component.
-     
-     // Let's just verify properties for now to ensure it's wired correctly.
+    // Since we are using stubs, we need to check if they receive correct props and emit events if possible,
+    // or just test the component logic if we don't stub it part-way.
+    // But UiToggleButton is a complex base component.
+    // Let's just verify properties for now to ensure it's wired correctly.
   });
 });

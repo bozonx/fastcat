@@ -48,7 +48,7 @@ describe('TimelineEditService', () => {
         // Simple mock implementation: Phase 1 sends splits, Phase 2 sends deletes
         for (const cmd of cmds) {
           if (cmd.type === 'delete_items') {
-            const track = (mockDoc.tracks as any[]).find(t => t.id === cmd.trackId);
+            const track = (mockDoc.tracks as any[]).find((t) => t.id === cmd.trackId);
             if (track) {
               track.items = track.items.filter((it: any) => !cmd.itemIds.includes(it.id));
             }
@@ -56,7 +56,7 @@ describe('TimelineEditService', () => {
           if (cmd.type === 'split_item') {
             // For split at endUs (15s), we need a clip that starts there to be moved in Phase 3
             if (cmd.atUs === 15_000_000) {
-              const track = (mockDoc.tracks as any[]).find(t => t.id === cmd.trackId);
+              const track = (mockDoc.tracks as any[]).find((t) => t.id === cmd.trackId);
               if (track) {
                 track.items.push({
                   id: 'c2_tail',
@@ -91,21 +91,21 @@ describe('TimelineEditService', () => {
       // Phase 1: Split
       // It calls batchApplyTimeline with split commands
       expect(deps.batchApplyTimeline).toHaveBeenCalled();
-      
-      const splitCalls = deps.batchApplyTimeline.mock.calls.filter(c => 
-        c[0].some((cmd: TimelineCommand) => cmd.type === 'split_item')
+
+      const splitCalls = deps.batchApplyTimeline.mock.calls.filter((c) =>
+        c[0].some((cmd: TimelineCommand) => cmd.type === 'split_item'),
       );
       expect(splitCalls.length).toBeGreaterThanOrEqual(1);
 
       // Phase 2: Delete
-      const deleteCalls = deps.batchApplyTimeline.mock.calls.filter(c => 
-        c[0].some((cmd: TimelineCommand) => cmd.type === 'delete_items')
+      const deleteCalls = deps.batchApplyTimeline.mock.calls.filter((c) =>
+        c[0].some((cmd: TimelineCommand) => cmd.type === 'delete_items'),
       );
       expect(deleteCalls.length).toBeGreaterThanOrEqual(1);
 
       // Phase 3: Move
-      const moveCalls = deps.batchApplyTimeline.mock.calls.filter(c => 
-        c[0].some((cmd: TimelineCommand) => cmd.type === 'move_item')
+      const moveCalls = deps.batchApplyTimeline.mock.calls.filter((c) =>
+        c[0].some((cmd: TimelineCommand) => cmd.type === 'move_item'),
       );
       expect(moveCalls.length).toBeGreaterThanOrEqual(1);
     });
@@ -126,7 +126,7 @@ describe('TimelineEditService', () => {
           edge: 'end',
           deltaUs: -5_000_000,
         }),
-        expect.anything()
+        expect.anything(),
       );
 
       // Subsequent clips should be moved left by 5s.
@@ -137,7 +137,7 @@ describe('TimelineEditService', () => {
           itemId: 'c2',
           startUs: 5_000_000,
         }),
-        expect.anything()
+        expect.anything(),
       );
     });
   });

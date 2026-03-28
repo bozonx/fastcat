@@ -69,13 +69,13 @@ const currentFrameHighlightStyle = computed(() => {
   const pxPerFrame = zoomToPxPerSecond(timelineStore.timelineZoom) / fps.value;
   if (pxPerFrame < 6) return null;
 
-  const currentFrameIndex = Math.floor(
-    ((timelineStore.currentTime + 0.5) * fps.value) / 1_000_000,
-  );
+  const currentFrameIndex = Math.floor(((timelineStore.currentTime + 0.5) * fps.value) / 1_000_000);
   const currentFrameStartUs = Math.round((currentFrameIndex * 1_000_000) / fps.value);
   const nextFrameStartUs = Math.round(((currentFrameIndex + 1) * 1_000_000) / fps.value);
 
-  const currentFrameStartPx = viewportX(timeUsToPx(currentFrameStartUs, timelineStore.timelineZoom));
+  const currentFrameStartPx = viewportX(
+    timeUsToPx(currentFrameStartUs, timelineStore.timelineZoom),
+  );
   const nextFrameStartPx = viewportX(timeUsToPx(nextFrameStartUs, timelineStore.timelineZoom));
 
   return {

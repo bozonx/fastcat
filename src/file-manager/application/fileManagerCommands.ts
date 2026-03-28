@@ -1,4 +1,10 @@
-import { AUDIO_DIR_NAME, DOCUMENTS_DIR_NAME, FILES_DIR_NAME, IMAGES_DIR_NAME, VIDEO_DIR_NAME } from '~/utils/constants';
+import {
+  AUDIO_DIR_NAME,
+  DOCUMENTS_DIR_NAME,
+  FILES_DIR_NAME,
+  IMAGES_DIR_NAME,
+  VIDEO_DIR_NAME,
+} from '~/utils/constants';
 import type { FsEntry } from '~/types/fs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import PQueue from 'p-queue';

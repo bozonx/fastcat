@@ -4,7 +4,12 @@ import { useClipInteractions } from '~/composables/timeline/useClipInteractions'
 
 describe('useClipInteractions', () => {
   const mockTrack = ref({ id: 'track-1', kind: 'video', locked: false });
-  const mockItem = ref({ id: 'clip-1', kind: 'clip', locked: false, timelineRange: { startUs: 0, durationUs: 5_000_000 } });
+  const mockItem = ref({
+    id: 'clip-1',
+    kind: 'clip',
+    locked: false,
+    timelineRange: { startUs: 0, durationUs: 5_000_000 },
+  });
   const mockSettings = ref({
     hotkeys: { layer1: 'Shift', layer2: 'Control' },
   });
@@ -34,9 +39,9 @@ describe('useClipInteractions', () => {
   it('handles click when NOT in trim mode', () => {
     const { onClipClick } = useClipInteractions(ctx);
     const event = new MouseEvent('click', { button: 0 });
-    
+
     onClipClick(event);
-    
+
     expect(ctx.emitSelectItem).toHaveBeenCalledWith(event, 'clip-1');
   });
 
@@ -58,7 +63,10 @@ describe('useClipInteractions', () => {
 
     onClipClick(event);
 
-    expect(ctx.trimToPlayheadLeftNoRipple).toHaveBeenCalledWith({ trackId: 'track-1', itemId: 'clip-1' });
+    expect(ctx.trimToPlayheadLeftNoRipple).toHaveBeenCalledWith({
+      trackId: 'track-1',
+      itemId: 'clip-1',
+    });
   });
 
   it('trims right in trim mode with Ctrl', () => {
@@ -68,7 +76,10 @@ describe('useClipInteractions', () => {
 
     onClipClick(event);
 
-    expect(ctx.trimToPlayheadRightNoRipple).toHaveBeenCalledWith({ trackId: 'track-1', itemId: 'clip-1' });
+    expect(ctx.trimToPlayheadRightNoRipple).toHaveBeenCalledWith({
+      trackId: 'track-1',
+      itemId: 'clip-1',
+    });
   });
 
   it('does nothing in trim mode if clip is locked', () => {

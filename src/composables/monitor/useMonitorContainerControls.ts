@@ -66,10 +66,7 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
     .map((v) => ({ label: formatSpeedLabel(-v), value: -v }));
 
   // Full list used for mouse-wheel traversal: most-negative → most-positive
-  const wheelSpeedList: PlaybackSpeedOption[] = [
-    ...negativeSpeedOptions,
-    ...playbackSpeedOptions,
-  ];
+  const wheelSpeedList: PlaybackSpeedOption[] = [...negativeSpeedOptions, ...playbackSpeedOptions];
 
   const canInteractPlayback = computed(
     () =>

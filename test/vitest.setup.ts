@@ -82,11 +82,13 @@ config.global.stubs = {
   },
   UButton: {
     props: ['label', 'icon', 'title'],
-    template: '<button :class="icon" :title="title"><span v-if="label">{{ label }}</span><slot /></button>',
+    template:
+      '<button :class="icon" :title="title"><span v-if="label">{{ label }}</span><slot /></button>',
   },
   UTabs: {
     props: ['items'],
-    template: '<div><slot v-for="(item, index) in items" :key="index" :item="item" :index="index" /></div>',
+    template:
+      '<div><slot v-for="(item, index) in items" :key="index" :item="item" :index="index" /></div>',
   },
   UDropdownMenu: {
     template: '<div><slot /></div>',
@@ -96,12 +98,13 @@ config.global.stubs = {
   },
   UiTabs: {
     props: ['items'],
-    template: '<div><slot v-for="(item, index) in items" :key="index" :item="item" :index="index" /></div>',
+    template:
+      '<div><slot v-for="(item, index) in items" :key="index" :item="item" :index="index" /></div>',
   },
 };
 
 config.global.config.errorHandler = (err, instance, info) => {
-    console.error(`[Vue Error] ${err} \nInfo: ${info}`);
+  console.error(`[Vue Error] ${err} \nInfo: ${info}`);
 };
 
 function shouldIgnoreConsoleMessage(args: unknown[]) {

@@ -65,13 +65,7 @@ describe('buildMixedAudioTrack', () => {
   it('returns null if no clips are prepared', async () => {
     (AudioMixer.prepareClips as any).mockResolvedValue([]);
 
-    const result = await buildMixedAudioTrack(
-      {},
-      [] as any,
-      10,
-      null,
-      vi.fn(),
-    );
+    const result = await buildMixedAudioTrack({}, [] as any, 10, null, vi.fn());
 
     expect(result).toBeNull();
   });

@@ -40,9 +40,9 @@ describe('useMouseSettings', () => {
 
   it('gets and updates mouse settings', () => {
     const { getSettingValue, updateSetting } = useMouseSettings();
-    
+
     expect(getSettingValue('ruler', 'click')).toBe(DEFAULT_USER_SETTINGS.mouse.ruler.click);
-    
+
     updateSetting('ruler', 'click', 'add_marker');
     expect(mockWorkspaceStore.userSettings.mouse.ruler.click).toBe('add_marker');
     expect(getSettingValue('ruler', 'click')).toBe('add_marker');
@@ -50,7 +50,7 @@ describe('useMouseSettings', () => {
 
   it('detects modifications and defaults', () => {
     const { isDefault, isModified, updateSetting } = useMouseSettings();
-    
+
     const category = 'ruler';
     const key = 'wheel';
     const defaultValue = DEFAULT_USER_SETTINGS.mouse[category][key];
@@ -64,10 +64,10 @@ describe('useMouseSettings', () => {
 
   it('resets to defaults', () => {
     const { resetDefaults, updateSetting, getSettingValue } = useMouseSettings();
-    
+
     updateSetting('ruler', 'wheel', 'none');
     resetDefaults();
-    
+
     expect(getSettingValue('ruler', 'wheel')).toBe(DEFAULT_USER_SETTINGS.mouse.ruler.wheel);
   });
 });

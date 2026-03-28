@@ -9,8 +9,8 @@ vi.mock('~/components/preview/ImageViewer.vue', () => ({
     name: 'ImageViewer',
     template: '<div class="image-viewer-mock" @click="$emit(\'open-modal\')">Image Viewer</div>',
     props: ['src', 'alt', 'isModal', 'focusPanelId'],
-    emits: ['open-modal', 'close-modal']
-  }
+    emits: ['open-modal', 'close-modal'],
+  },
 }));
 
 vi.mock('~/components/media/MediaPlayer.vue', () => ({
@@ -18,8 +18,8 @@ vi.mock('~/components/media/MediaPlayer.vue', () => ({
     name: 'MediaPlayer',
     template: '<div class="media-player-mock" @click="$emit(\'open-modal\')">Media Player</div>',
     props: ['src', 'type', 'isModal', 'focusPanelId', 'resumeState', 'instanceKey', 'forcePaused'],
-    emits: ['open-modal', 'close-modal', 'sync-state']
-  }
+    emits: ['open-modal', 'close-modal', 'sync-state'],
+  },
 }));
 
 vi.mock('~/components/preview/TextEditor.vue', () => ({
@@ -27,8 +27,8 @@ vi.mock('~/components/preview/TextEditor.vue', () => ({
     name: 'TextEditor',
     template: '<div class="text-editor-mock">Text Editor</div>',
     props: ['isModalOpen', 'filePath', 'fileName', 'initialContent', 'focusPanelId'],
-    emits: ['update:isModalOpen']
-  }
+    emits: ['update:isModalOpen'],
+  },
 }));
 
 describe('FilePreview.vue', () => {
@@ -88,13 +88,13 @@ describe('FilePreview.vue', () => {
 
     // Check if modal state is true
     expect((component.vm as any).isMediaModalOpen).toBe(true);
-    
+
     // Check if uiStore count is updated (this is a side effect in the watcher)
     const uiStore = useUiStore();
     expect(uiStore.activeModalsCount).toBe(1);
 
     // Close modal
-    const closeBtn = component.findComponent({ name: 'UButton' }); 
+    const closeBtn = component.findComponent({ name: 'UButton' });
     // The button is inside the teleport, so we might need to find it differently if teleported to body.
     // However, Vue Test Utils can often find components even if teleported if they are within the same tree.
     // If not, we can trigger the close logic directly.
@@ -113,26 +113,28 @@ describe('FilePreview.vue', () => {
     });
 
     const mediaPlayer = component.findComponent({ name: 'MediaPlayer' });
-    
+
     // Simulate sync-state from inline player
     await mediaPlayer.vm.$emit('sync-state', {
       currentTime: 10,
       isPlaying: true,
-      source: 'inline'
+      source: 'inline',
     });
 
     // Open modal
     await mediaPlayer.vm.$emit('open-modal');
     await component.vm.$nextTick();
 
-    expect((component.vm as any).mediaPlaybackState).toEqual(expect.objectContaining({
-      currentTime: 10,
-      isPlaying: true,
-      source: 'inline'
-    }));
+    expect((component.vm as any).mediaPlaybackState).toEqual(
+      expect.objectContaining({
+        currentTime: 10,
+        isPlaying: true,
+        source: 'inline',
+      }),
+    );
 
     // In modal, MediaPlayer should receive this state through resumeState prop
-    // We can't easily check props of a component inside a v-if inside a Teleport 
+    // We can't easily check props of a component inside a v-if inside a Teleport
     // without more complex setup, but we verified the state update.
   });
 
@@ -151,11 +153,11 @@ describe('FilePreview.vue', () => {
 
     // Mock window event listener trigger
     // FilePreview adds listener to window on mounted.
-    // We can manually call the handler if we can access it, 
+    // We can manually call the handler if we can access it,
     // or dispatch a keyboard event on window.
     const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
     window.dispatchEvent(event);
-    
+
     await component.vm.$nextTick();
     // Note: isCommandMatched might need careful mocking if it fails in test.
     // In our case, DEFAULT_HOTKEYS should have general.deselect as Escape.
@@ -169,10 +171,10 @@ describe('FilePreview.vue', () => {
         mediaType: 'image',
       },
     });
-    
+
     const uiStore = useUiStore();
     uiStore.previewFullscreenToggleTrigger = Date.now();
-    
+
     await component.vm.$nextTick();
     await component.vm.$nextTick(); // Wait for watcher
 

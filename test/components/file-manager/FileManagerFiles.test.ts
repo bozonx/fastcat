@@ -1,12 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, ref, reactive, nextTick } from 'vue';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import FileManagerFiles from '~/components/file-manager/FileManagerFiles.vue';
 import { useEditorHotkeys } from '~/composables/editor/useEditorHotkeys';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
-import { ref, reactive, nextTick } from 'vue';
 
 vi.mock('~/composables/useAppClipboard', () => ({
   useAppClipboard: () => ({

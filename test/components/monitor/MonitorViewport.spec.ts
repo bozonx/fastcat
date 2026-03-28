@@ -47,8 +47,11 @@ describe('MonitorViewport', () => {
   });
 
   it('applies workspaceStyle to the inner container', () => {
-    mockGestures.workspaceStyle.value = { transform: 'translate(10px, 20px) scale(2)', transformOrigin: '50% 50%' };
-    
+    mockGestures.workspaceStyle.value = {
+      transform: 'translate(10px, 20px) scale(2)',
+      transformOrigin: '50% 50%',
+    };
+
     const wrapper = mount(MonitorViewport, {
       props: {
         renderWidth: 100,

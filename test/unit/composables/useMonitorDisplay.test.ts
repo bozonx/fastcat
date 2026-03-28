@@ -15,7 +15,9 @@ describe('useMonitorDisplay', () => {
     });
   });
 
-  function withMonitorDisplay(fn: (res: ReturnType<typeof useMonitorDisplay>, projectStore: any) => void) {
+  function withMonitorDisplay(
+    fn: (res: ReturnType<typeof useMonitorDisplay>, projectStore: any) => void,
+  ) {
     const TestComp = defineComponent({
       setup() {
         const projectStore = useProjectStore();

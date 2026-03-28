@@ -186,10 +186,7 @@ function onPointerDownCapture(event: PointerEvent) {
       :max="max"
       :step="step"
       :orientation="orientation"
-      :class="[
-        sliderClass,
-        isFocused ? 'ring-2 ring-primary-500/50 rounded-full' : '',
-      ]"
+      :class="[sliderClass, isFocused ? 'ring-2 ring-primary-500/50 rounded-full' : '']"
       :disabled="disabled"
       @focus="isFocused = true"
       @blur="isFocused = false"

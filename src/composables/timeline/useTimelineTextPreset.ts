@@ -2,7 +2,7 @@ import { computed, ref, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { usePresetsStore } from '~/stores/presets.store';
 import { useUiStore } from '~/stores/ui.store';
-import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
+import type UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
 
 export function useTimelineTextPreset() {
   const { t } = useI18n();
@@ -70,7 +70,10 @@ export function useTimelineTextPreset() {
     (val) => {
       if (val) {
         setTimeout(() => {
-          textPresetMenuRef.value?.open({ clientX: val.x, clientY: val.y } as unknown as MouseEvent);
+          textPresetMenuRef.value?.open({
+            clientX: val.x,
+            clientY: val.y,
+          } as unknown as MouseEvent);
         }, 50);
       }
     },

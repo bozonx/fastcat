@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import type { TimelineTrack, TimelineClipActionPayload, TimelineMoveItemPayload, TimelineTrimItemPayload } from '~/timeline/types';
+import type {
+  TimelineTrack,
+  TimelineClipActionPayload,
+  TimelineMoveItemPayload,
+  TimelineTrimItemPayload,
+} from '~/timeline/types';
 import TimelineTrackLabels from '~/components/timeline/TimelineTrackLabels.vue';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
 import TimelineGrid from '~/components/timeline/TimelineGrid.vue';
@@ -71,10 +76,7 @@ defineExpose({ scrollEl, labelsScrollEl });
 
     <!-- Tracks Area -->
     <div class="flex-1 relative min-h-0 min-w-0">
-      <TimelineGrid
-        class="absolute inset-0 pointer-events-none z-0"
-        :scroll-el="scrollEl"
-      />
+      <TimelineGrid class="absolute inset-0 pointer-events-none z-0" :scroll-el="scrollEl" />
       <div
         ref="scrollEl"
         class="w-full h-full relative z-10"

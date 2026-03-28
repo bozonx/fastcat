@@ -119,11 +119,7 @@ function deleteMarker(markerId: string) {
   timelineStore.removeMarker(markerId);
 }
 
-function selectMarker(
-  markerId: string,
-  e?: MouseEvent,
-  part: 'left' | 'right' = 'left',
-) {
+function selectMarker(markerId: string, e?: MouseEvent, part: 'left' | 'right' = 'left') {
   // Always stop propagation so the ruler's own click/pointerdown actions are not triggered
   e?.stopPropagation();
   selectionStore.selectTimelineMarker(markerId);

@@ -49,7 +49,7 @@ describe('ClipAudioFades', () => {
     const component = await mountSuspended(ClipAudioFades, {
       props: {
         ...defaultProps,
-        clip: { ...baseItem, audioGain: 1 } // 100%
+        clip: { ...baseItem, audioGain: 1 }, // 100%
       },
     });
 
@@ -94,18 +94,20 @@ describe('ClipAudioFades', () => {
     const handle = handles[0].find('div');
     expect(handle.exists()).toBe(true);
     await handle.trigger('pointerdown', { clientX: 100, clientY: 100, button: 0 });
-    
+
     // Find and call pointermove listener manually
-    const moveCall = addEventListenerSpy.mock.calls.find(c => c[0] === 'pointermove');
+    const moveCall = addEventListenerSpy.mock.calls.find((c) => c[0] === 'pointermove');
     expect(moveCall).toBeTruthy();
-    (moveCall![1] as any)(new (window as any).PointerEvent('pointermove', { clientX: 120, clientY: 100 }));
+    (moveCall![1] as any)(
+      new (window as any).PointerEvent('pointermove', { clientX: 120, clientY: 100 }),
+    );
 
     expect(component.emitted('startResizeFade')).toBeTruthy();
     expect(component.emitted('startResizeFade')![0][1]).toEqual({
       edge: 'in',
       durationUs: 1_000_000,
     });
-    
+
     addEventListenerSpy.mockRestore();
   });
 
@@ -117,17 +119,19 @@ describe('ClipAudioFades', () => {
 
     const handles = component.findAll('.cursor-ew-resize');
     await handles[0].find('div').trigger('pointerdown', { clientX: 100, clientY: 100, button: 0 });
-    
+
     // Find and call pointerup listener manually
-    const upCall = addEventListenerSpy.mock.calls.find(c => c[0] === 'pointerup');
+    const upCall = addEventListenerSpy.mock.calls.find((c) => c[0] === 'pointerup');
     expect(upCall).toBeTruthy();
-    (upCall![1] as any)(new (window as any).PointerEvent('pointerup', { clientX: 100, clientY: 100 }));
+    (upCall![1] as any)(
+      new (window as any).PointerEvent('pointerup', { clientX: 100, clientY: 100 }),
+    );
 
     expect(component.emitted('toggleFadeCurve')).toBeTruthy();
     expect(component.emitted('toggleFadeCurve')![0][0]).toEqual({
       edge: 'in',
     });
-    
+
     addEventListenerSpy.mockRestore();
   });
 });

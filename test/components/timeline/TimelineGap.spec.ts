@@ -11,7 +11,15 @@ const mockTimelineStore = reactive({
 const mockSelectionStore = reactive({});
 const mockWorkspaceStore = reactive({
   userSettings: {
-    mouse: { timeline: { drag: 'move_clips', middleDrag: 'pan', clipDragShift: 'select_area', clipDragCtrl: 'copy_clips', clipDragRight: 'context_menu' } },
+    mouse: {
+      timeline: {
+        drag: 'move_clips',
+        middleDrag: 'pan',
+        clipDragShift: 'select_area',
+        clipDragCtrl: 'copy_clips',
+        clipDragRight: 'context_menu',
+      },
+    },
     hotkeys: { layer1: 'Shift', layer2: 'Control' },
   },
 });
@@ -54,7 +62,7 @@ describe('TimelineGap', () => {
 
   it('shows selected state', async () => {
     mockTimelineStore.selectedItemIds = ['gap-1'];
-    
+
     const component = await mountSuspended(TimelineGap, {
       props: { item, trackId: 'v1' },
     });

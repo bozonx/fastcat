@@ -35,13 +35,13 @@ describe('FileProjectRootSection.vue', () => {
 
     // Check title
     expect(component.text()).toContain('Project root');
-    
+
     // Check size
     expect(component.text()).toContain('500 MB');
-    
+
     // Check free space
     expect(component.text()).toContain('10 GB');
-    
+
     // Check parameters
     expect(component.text()).toContain('1920x1080, 30FPS, 48kHz');
   });

@@ -73,14 +73,14 @@ describe('MonitorTransformBox', () => {
     });
 
     const rect = wrapper.get('rect');
-    
+
     // Initial mode is scale (handles visible)
     expect(wrapper.findAll('circle').length).toBeGreaterThan(0);
 
     // Simulate click (down + up without move)
     await rect.trigger('pointerdown', { button: 0, clientX: 100, clientY: 100 });
     await window.dispatchEvent(new PointerEvent('pointerup', { clientX: 100, clientY: 100 }));
-    
+
     // Mode should toggle to rotate
     await wrapper.vm.$nextTick(); // wait for mode update
     expect(rect.attributes('cursor')).toBe('ew-resize');
@@ -102,13 +102,13 @@ describe('MonitorTransformBox', () => {
 
     // Start drag
     await rect.trigger('pointerdown', { button: 0, clientX: 100, clientY: 100 });
-    
+
     // Move
     await window.dispatchEvent(new PointerEvent('pointermove', { clientX: 110, clientY: 110 }));
-    
+
     // End drag
     await window.dispatchEvent(new PointerEvent('pointerup', { clientX: 110, clientY: 110 }));
-    
+
     // Check if updateClipProperties was called (through updateTransform)
     // Note: pendingTransform is flushed on endDrag
     expect(timelineStore.updateClipProperties).toHaveBeenCalledWith(

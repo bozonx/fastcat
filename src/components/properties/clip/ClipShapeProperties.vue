@@ -29,7 +29,9 @@ const { t } = useI18n();
     <div class="flex flex-col gap-2">
       <div class="flex flex-col gap-1 pb-2 border-b border-ui-border mb-1">
         <div class="flex items-center justify-between">
-          <div class="text-[10px] font-medium uppercase tracking-wider text-ui-text-muted opacity-70">
+          <div
+            class="text-[10px] font-medium uppercase tracking-wider text-ui-text-muted opacity-70"
+          >
             {{ t('fastcat.effects.presetsTitle', 'Presets') }}
           </div>
           <UButton

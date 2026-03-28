@@ -581,16 +581,14 @@ async function onDirectoryUploadChange(e: Event) {
         () =>
           onFileAction(
             'createFolder',
-            filesPageStore.selectedFolder ||
-              ({ kind: 'directory', path: '', name: '' } as FsEntry),
+            filesPageStore.selectedFolder || ({ kind: 'directory', path: '', name: '' } as FsEntry),
           )
       "
       @upload="
         () =>
           onFileAction(
             'upload',
-            filesPageStore.selectedFolder ||
-              ({ kind: 'directory', path: '', name: '' } as FsEntry),
+            filesPageStore.selectedFolder || ({ kind: 'directory', path: '', name: '' } as FsEntry),
           )
       "
     />

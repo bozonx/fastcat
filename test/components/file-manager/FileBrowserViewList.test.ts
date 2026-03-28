@@ -23,16 +23,24 @@ const mockTimelineMediaUsageStore = reactive({
 });
 
 const mockFileManager = {
-  getFileIcon: vi.fn((e) => e.kind === 'directory' ? 'i-heroicons-folder' : 'i-heroicons-document'),
+  getFileIcon: vi.fn((e) =>
+    e.kind === 'directory' ? 'i-heroicons-folder' : 'i-heroicons-document',
+  ),
   mediaCache: { hasProxy: vi.fn(() => false) },
 };
 
 vi.mock('~/stores/files-page.store', () => ({ useFilesPageStore: () => mockFilesPageStore }));
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelectionStore }));
 vi.mock('~/stores/proxy.store', () => ({ useProxyStore: () => mockProxyStore }));
-vi.mock('~/stores/timeline-media-usage.store', () => ({ useTimelineMediaUsageStore: () => mockTimelineMediaUsageStore }));
-vi.mock('~/composables/fileManager/useFileManager', () => ({ useFileManager: () => mockFileManager }));
-vi.mock('~/composables/fileManager/useClipboardIndicator', () => ({ useClipboardPaths: () => ({ value: new Set() }) }));
+vi.mock('~/stores/timeline-media-usage.store', () => ({
+  useTimelineMediaUsageStore: () => mockTimelineMediaUsageStore,
+}));
+vi.mock('~/composables/fileManager/useFileManager', () => ({
+  useFileManager: () => mockFileManager,
+}));
+vi.mock('~/composables/fileManager/useClipboardIndicator', () => ({
+  useClipboardPaths: () => ({ value: new Set() }),
+}));
 
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({
@@ -72,9 +80,9 @@ describe('FileBrowserViewList', () => {
           UContextMenu: { template: '<div><slot /></div>' },
           UIcon: true,
           UiProgressSpinner: true,
-          InlineNameEditor: true
-        }
-      }
+          InlineNameEditor: true,
+        },
+      },
     });
 
     expect(wrapper.text()).toContain('test.mp4');
@@ -84,7 +92,12 @@ describe('FileBrowserViewList', () => {
 
   it('highlights selected entry', () => {
     const entry = { name: 'test.mp4', kind: 'file', path: 'test.mp4', size: 1024 };
-    mockSelectionStore.selectedEntity = { source: 'fileManager', kind: 'file', path: 'test.mp4', entry };
+    mockSelectionStore.selectedEntity = {
+      source: 'fileManager',
+      kind: 'file',
+      path: 'test.mp4',
+      entry,
+    };
 
     const wrapper = mount(FileBrowserViewList, {
       props: {
@@ -104,9 +117,9 @@ describe('FileBrowserViewList', () => {
           UContextMenu: { template: '<div><slot /></div>' },
           UIcon: true,
           UiProgressSpinner: true,
-          InlineNameEditor: true
-        }
-      }
+          InlineNameEditor: true,
+        },
+      },
     });
 
     const tr = wrapper.find('tr[data-entry-path="test.mp4"]');

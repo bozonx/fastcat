@@ -10,7 +10,11 @@ import {
 
 describe('worker core utils', () => {
   it('normalizes RPC error from various data types', () => {
-    const err = normalizeRpcError({ message: 'Custom error', name: 'MyError', stack: 'stack trace' });
+    const err = normalizeRpcError({
+      message: 'Custom error',
+      name: 'MyError',
+      stack: 'stack trace',
+    });
     expect(err).toBeInstanceOf(Error);
     expect(err.message).toBe('Custom error');
     expect(err.name).toBe('MyError');

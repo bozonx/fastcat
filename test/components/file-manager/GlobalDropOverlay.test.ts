@@ -22,9 +22,9 @@ describe('GlobalDropOverlay', () => {
       global: {
         stubs: {
           UIcon: true,
-          GlobalDropOverlayTree: true
-        }
-      }
+          GlobalDropOverlayTree: true,
+        },
+      },
     });
 
     expect(wrapper.text()).toContain('Auto-sort upload');
@@ -39,21 +39,21 @@ describe('GlobalDropOverlay', () => {
       global: {
         stubs: {
           UIcon: true,
-          GlobalDropOverlayTree: true
-        }
-      }
+          GlobalDropOverlayTree: true,
+        },
+      },
     });
 
     const autoZone = wrapper.find('.flex-1.flex.flex-col.items-center.justify-center');
-    
+
     // Mock event with Files type
     const event = {
       preventDefault: vi.fn(),
       stopPropagation: vi.fn(),
       dataTransfer: {
         types: ['Files'],
-        dropEffect: ''
-      }
+        dropEffect: '',
+      },
     } as any;
 
     await autoZone.trigger('dragover', event);

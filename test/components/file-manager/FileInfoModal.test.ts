@@ -15,20 +15,20 @@ describe('FileInfoModal', () => {
       kind: 'file',
       size: 1048576 * 5, // 5 MB
       lastModified: new Date('2023-01-01').getTime(),
-      metadata: { codec: 'h264', resolution: '1920x1080' }
+      metadata: { codec: 'h264', resolution: '1920x1080' },
     };
 
     const wrapper = mount(FileInfoModal, {
       props: {
         open: true,
-        info: info as any
+        info: info as any,
       },
       global: {
         stubs: {
           UiModal: { template: '<div><slot /></div>' },
-          UButton: true
-        }
-      }
+          UButton: true,
+        },
+      },
     });
 
     expect(wrapper.text()).toContain('video.mp4');
@@ -40,14 +40,14 @@ describe('FileInfoModal', () => {
     const wrapper = mount(FileInfoModal, {
       props: {
         open: true,
-        info: null
+        info: null,
       },
       global: {
         stubs: {
           UiModal: { template: '<div><slot /></div>' },
-          UButton: true
-        }
-      }
+          UButton: true,
+        },
+      },
     });
 
     expect(wrapper.find('.space-y-4').exists()).toBe(false);

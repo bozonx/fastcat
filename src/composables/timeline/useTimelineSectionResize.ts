@@ -24,7 +24,10 @@ export function useTimelineSectionResize({ projectId }: UseTimelineSectionResize
     if (containerHeight <= 0) return;
     const dy = e.clientY - resizeSectionStartY.value;
     const dpercent = (dy / containerHeight) * 100;
-    videoSectionPercent.value = Math.max(10, Math.min(90, resizeSectionStartPercent.value + dpercent));
+    videoSectionPercent.value = Math.max(
+      10,
+      Math.min(90, resizeSectionStartPercent.value + dpercent),
+    );
   }
 
   function onSectionResizeEnd() {

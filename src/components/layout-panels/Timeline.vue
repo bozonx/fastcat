@@ -238,7 +238,10 @@ async function onClipAction(payload: TimelineClipActionPayload) {
         videoItemId: payload.itemId,
       });
     } else if (payload.action === 'freezeFrame') {
-      timelineStore.setClipFreezeFrameFromPlayhead({ trackId: payload.trackId, itemId: payload.itemId });
+      timelineStore.setClipFreezeFrameFromPlayhead({
+        trackId: payload.trackId,
+        itemId: payload.itemId,
+      });
     } else if (payload.action === 'resetFreezeFrame') {
       timelineStore.resetClipFreezeFrame({ trackId: payload.trackId, itemId: payload.itemId });
     } else {
@@ -315,7 +318,12 @@ function onDragVirtualEnd() {
     @pointerdown.capture="focusStore.setMainFocus('timeline')"
     @contextmenu="onContextMenu"
   >
-    <UiContextMenuPortal ref="menuRef" :items="timelineMenuItems" :target-el="containerRef" manual />
+    <UiContextMenuPortal
+      ref="menuRef"
+      :items="timelineMenuItems"
+      :target-el="containerRef"
+      manual
+    />
     <UiContextMenuPortal
       ref="textPresetMenuRef"
       :items="textPresetMenuItems"
@@ -411,7 +419,10 @@ function onDragVirtualEnd() {
           </UTooltip>
         </div>
       </div>
-      <div ref="rulerContainerRef" class="flex-1 relative z-10 timeline-ruler-container overflow-hidden">
+      <div
+        ref="rulerContainerRef"
+        class="flex-1 relative z-10 timeline-ruler-container overflow-hidden"
+      >
         <TimelineRuler
           class="absolute inset-0 h-full border-b border-ui-border bg-ui-bg-elevated cursor-pointer"
           :scroll-el="rulerScrollEl"
@@ -424,7 +435,10 @@ function onDragVirtualEnd() {
           class="absolute inset-0 overflow-x-scroll overflow-y-hidden scroll-sync-hidden pointer-events-none"
           @scroll="onRulerScroll"
         >
-          <div :style="{ ...timelineWidthStyle, paddingRight: `${scrollbarHeight}px` }" class="h-full" />
+          <div
+            :style="{ ...timelineWidthStyle, paddingRight: `${scrollbarHeight}px` }"
+            class="h-full"
+          />
         </div>
       </div>
     </div>
@@ -473,7 +487,9 @@ function onDragVirtualEnd() {
         class="timeline-section-resize-handle h-1.5 cursor-ns-resize bg-ui-bg hover:bg-primary-500/30 transition-colors z-20 shrink-0 flex items-center justify-center group"
         @mousedown="onSectionResizeStart"
       >
-        <div class="w-8 h-0.5 rounded bg-ui-border group-hover:bg-primary-500/60 transition-colors" />
+        <div
+          class="w-8 h-0.5 rounded bg-ui-border group-hover:bg-primary-500/60 transition-colors"
+        />
       </div>
 
       <!-- Audio Tracks Section -->

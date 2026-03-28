@@ -7,7 +7,6 @@ export const EXPORT_DIR_NAME = '_export';
 export const TIMELINES_DIR_NAME = '_timelines';
 export const DOCUMENTS_DIR_NAME = '_documents';
 
-
 export const FASTCAT_PUBLICADOR_APP_NAME = 'FastCat';
 
 export const MAX_AUDIO_FILE_BYTES = 200 * 1024 * 1024; // 200MB

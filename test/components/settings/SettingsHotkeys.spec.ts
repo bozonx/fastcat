@@ -25,7 +25,7 @@ vi.mock('vue-i18n', () => ({
 describe('SettingsHotkeys', () => {
   it('renders hotkey groups and search input', async () => {
     const wrapper = await mountSuspended(SettingsHotkeys);
-    
+
     expect(wrapper.find('input[type="text"]').exists()).toBe(true);
     // Should have some group titles
     expect(wrapper.text()).toContain('videoEditor.settings.hotkeysGroupGeneral');
@@ -34,14 +34,14 @@ describe('SettingsHotkeys', () => {
   it('filters results based on search query', async () => {
     const wrapper = await mountSuspended(SettingsHotkeys);
     const searchInput = wrapper.find('input[type="text"]');
-    
+
     // Type something that doesn't exist
     await searchInput.setValue('non-existent-command-xyz');
     expect(wrapper.text()).toContain('common.noResults');
-    
+
     // Type something that exists (all keys are mocked to be their translation key)
     // Part of the translation key for any command
-    await searchInput.setValue('toggle'); 
+    await searchInput.setValue('toggle');
     expect(wrapper.text()).not.toContain('common.noResults');
   });
 });

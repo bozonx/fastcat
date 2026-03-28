@@ -24,10 +24,10 @@ vi.mock('vue-i18n', () => ({
 describe('SettingsMouse', () => {
   it('renders mouse sections and reset button', async () => {
     const wrapper = await mountSuspended(SettingsMouse);
-    
+
     expect(wrapper.text()).toContain('videoEditor.settings.userMouse');
     expect(wrapper.text()).toContain('videoEditor.settings.resetDefaults');
-    
+
     // Check for some section titles
     expect(wrapper.text()).toContain('videoEditor.settings.mouseRuler');
     expect(wrapper.text()).toContain('videoEditor.settings.mouseTimeline');
@@ -35,11 +35,11 @@ describe('SettingsMouse', () => {
 
   it('updates layer 1 when selected', async () => {
     const wrapper = await mountSuspended(SettingsMouse);
-    
+
     // Find first UiSelect (layer 1)
     const selects = wrapper.findAllComponents({ name: 'UiSelect' });
     expect(selects.length).toBeGreaterThanOrEqual(2);
-    
+
     await selects[0].vm.$emit('update:model-value', 'Alt');
     // useMouseSettings.updateLayer1 calls batchUpdateUserSettings
     expect(mockWorkspaceStore.batchUpdateUserSettings).toHaveBeenCalled();

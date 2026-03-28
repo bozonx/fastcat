@@ -78,10 +78,10 @@ describe('useMonitorGestures', () => {
     const initialZoom = projectStore.activeMonitor.zoom;
     // We need to mock getBoundingClientRect for applyZoomAtPoint
     vi.spyOn(viewportEl.value, 'getBoundingClientRect').mockReturnValue({
-        width: 1000,
-        height: 500,
-        left: 0,
-        top: 0,
+      width: 1000,
+      height: 500,
+      left: 0,
+      top: 0,
     } as DOMRect);
 
     gestures.onViewportWheel({

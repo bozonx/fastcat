@@ -17,9 +17,9 @@ describe('FileBrowserBreadcrumbs', () => {
       global: {
         stubs: {
           UButton: true,
-          UIcon: true
-        }
-      }
+          UIcon: true,
+        },
+      },
     });
 
     expect(wrapper.text()).toContain('Root');
@@ -35,12 +35,12 @@ describe('FileBrowserBreadcrumbs', () => {
       global: {
         stubs: {
           UButton: true,
-          UIcon: true
-        }
-      }
+          UIcon: true,
+        },
+      },
     });
 
-    const rootBtn = wrapper.findAll('button').find(b => b.text().includes('Root'));
+    const rootBtn = wrapper.findAll('button').find((b) => b.text().includes('Root'));
     await rootBtn?.trigger('click');
 
     expect(wrapper.emitted('navigateToFolder')).toBeTruthy();

@@ -456,7 +456,6 @@ export function createFileManager(deps: FileManagerCreateDeps) {
           },
         );
 
-
         if (targetDirPath) {
           deps.setFileTreePathExpanded(targetDirPath, true);
         }

@@ -501,13 +501,15 @@ export function useRemoteExchange() {
     if (!config) return;
 
     try {
-      const parentId = remoteCurrentPath.value === '/' ? undefined : remoteEntries.value[0]?.parentId; // This is a bit flawed but works if we are inside a folder
+      const parentId =
+        remoteCurrentPath.value === '/' ? undefined : remoteEntries.value[0]?.parentId; // This is a bit flawed but works if we are inside a folder
       // Actually better way is to track current folder ID, but list response doesn't give it directly.
       // Remote entries in a folder should have the same parentId.
       let actualParentId = undefined;
       if (remoteCurrentPath.value !== '/') {
-        actualParentId = remoteEntries.value.find(e => e.path === remoteCurrentPath.value)?.id 
-          || remoteEntries.value[0]?.parentId;
+        actualParentId =
+          remoteEntries.value.find((e) => e.path === remoteCurrentPath.value)?.id ||
+          remoteEntries.value[0]?.parentId;
       }
 
       await createRemoteCollection({ config, name, parentId: actualParentId });
