@@ -50,27 +50,6 @@ const trimMenuItems = computed(() => {
   ];
 });
 
-const snapModeItems = computed(() => [
-  [
-    {
-      label: t('fastcat.timeline.clipSnapOn', 'Snap'),
-      icon: settingsStore.toolbarSnapMode === 'snap' ? 'i-heroicons-check' : 'i-heroicons-none',
-      onSelect: () => selectToolbarSnapMode('snap'),
-    },
-    {
-      label: t('fastcat.timeline.clipSnapOffFrames', 'No snap'),
-      icon: settingsStore.toolbarSnapMode === 'no_snap' ? 'i-heroicons-check' : 'i-heroicons-none',
-      onSelect: () => selectToolbarSnapMode('no_snap'),
-    },
-    {
-      label: t('videoEditor.settings.actionFreeMode', 'Free mode'),
-      icon:
-        settingsStore.toolbarSnapMode === 'free_mode' ? 'i-heroicons-check' : 'i-heroicons-none',
-      onSelect: () => selectToolbarSnapMode('free_mode'),
-    },
-  ],
-]);
-
 const dragModeItems = computed(() => [
   [
     {
@@ -93,18 +72,6 @@ const dragModeItems = computed(() => [
     },
   ],
 ]);
-
-const toolbarSnapModeIcon = computed(() => {
-  if (settingsStore.toolbarSnapMode === 'free_mode') {
-    return 'i-heroicons-arrows-pointing-out';
-  }
-
-  if (settingsStore.toolbarSnapMode === 'no_snap') {
-    return 'i-heroicons-link-slash';
-  }
-
-  return 'i-heroicons-link';
-});
 
 const toolbarDragModeIcon = computed(() => {
   if (settingsStore.toolbarDragMode === 'pseudo_overlap') {
@@ -147,10 +114,6 @@ const toolbarDragModeVariant = computed(() => {
 
 function selectToolbarSnapMode(mode: ToolbarSnapMode) {
   settingsStore.selectToolbarSnapMode(mode);
-}
-
-function cycleToolbarSnapMode() {
-  settingsStore.cycleToolbarSnapMode();
 }
 
 function selectToolbarDragMode(mode: ToolbarDragMode) {
@@ -274,20 +237,38 @@ function onToolbarContextMenu(e: MouseEvent) {
     >
       <!-- Left column: Main actions -->
       <div class="flex-1 flex items-center justify-center gap-1">
-        <UiTooltip :text="t('fastcat.timeline.snapMode', 'Snap Mode')">
-          <UiSplitDropdownButton
-            size="xs"
-            variant="ghost"
-            color="neutral"
-            :icon="toolbarSnapModeIcon"
-            :ariaLabel="t('fastcat.timeline.snapMode', 'Snap Mode')"
-            :items="snapModeItems"
-            button-class="hover:bg-ui-bg-hover/60"
-            caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
-            caret-icon-class="size-2.5"
-            @click="cycleToolbarSnapMode"
-          />
-        </UiTooltip>
+        <UFieldGroup class="inline-flex">
+          <UiTooltip :text="t('fastcat.timeline.snapModeFullDescription')">
+            <UButton
+              size="xs"
+              :variant="settingsStore.toolbarSnapMode === 'snap' ? 'solid' : 'ghost'"
+              :color="settingsStore.toolbarSnapMode === 'snap' ? 'primary' : 'neutral'"
+              icon="i-heroicons-link"
+              class="hover:bg-ui-bg-hover/60"
+              @click="selectToolbarSnapMode('snap')"
+            />
+          </UiTooltip>
+          <UiTooltip :text="t('fastcat.timeline.snapModeFramesDescription')">
+            <UButton
+              size="xs"
+              :variant="settingsStore.toolbarSnapMode === 'no_snap' ? 'solid' : 'ghost'"
+              :color="settingsStore.toolbarSnapMode === 'no_snap' ? 'primary' : 'neutral'"
+              icon="i-heroicons-link-slash"
+              class="hover:bg-ui-bg-hover/60"
+              @click="selectToolbarSnapMode('no_snap')"
+            />
+          </UiTooltip>
+          <UiTooltip :text="t('fastcat.timeline.snapModeFreeDescription')">
+            <UButton
+              size="xs"
+              :variant="settingsStore.toolbarSnapMode === 'free_mode' ? 'solid' : 'ghost'"
+              :color="settingsStore.toolbarSnapMode === 'free_mode' ? 'primary' : 'neutral'"
+              icon="i-heroicons-arrows-pointing-out"
+              class="hover:bg-ui-bg-hover/60"
+              @click="selectToolbarSnapMode('free_mode')"
+            />
+          </UiTooltip>
+        </UFieldGroup>
 
         <UiTooltip :text="t('fastcat.timeline.moveMode', 'Clip Move Mode')">
           <UiSplitDropdownButton

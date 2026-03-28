@@ -118,7 +118,7 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
     ctx.fillStyle = options.textColor;
     ctx.strokeStyle = options.tickColor;
     ctx.lineWidth = options.majorTickWidth;
-    ctx.font = `${10 * scale}px monospace`;
+    ctx.font = `${9 * scale}px monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
 
@@ -127,7 +127,7 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
 
     const majorTickHeight = 12 * scale;
     const subTickHeight = 5 * scale;
-    const textTopOffset = 4 * scale;
+    const textTopOffset = 2 * scale;
 
     ctx.beginPath();
     for (let s = startS; s <= endS; s += mainStepS) {

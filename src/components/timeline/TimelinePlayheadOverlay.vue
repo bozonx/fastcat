@@ -2,10 +2,12 @@
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import { timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 
 const timelineStore = useTimelineStore();
 const projectStore = useProjectStore();
+const selectionStore = useSelectionStore();
 
 const fps = computed(() => projectStore.projectSettings.project.fps || 30);
 
@@ -16,6 +18,17 @@ const playheadPx = computed(() =>
 const playheadTransform = computed(
   () => `translate3d(${playheadPx.value}px, 0, 0) translateX(-50%)`,
 );
+
+const selectedMarker = computed(() => {
+  const entity = selectionStore.selectedEntity;
+  if (entity?.source !== 'timeline' || entity?.kind !== 'marker') return null;
+  return timelineStore.markers.find((m) => m.id === entity.markerId) ?? null;
+});
+
+const selectedMarkerPx = computed(() => {
+  if (!selectedMarker.value) return null;
+  return timeUsToPx(selectedMarker.value.timeUs, timelineStore.timelineZoom);
+});
 
 const currentFrameHighlightStyle = computed(() => {
   const pxPerFrame = zoomToPxPerSecond(timelineStore.timelineZoom) / fps.value;
@@ -38,6 +51,17 @@ const currentFrameHighlightStyle = computed(() => {
 
 <template>
   <div class="absolute inset-0 pointer-events-none z-50">
+    <!-- Selected marker line (full timeline height) -->
+    <div
+      v-if="selectedMarkerPx !== null"
+      class="absolute inset-y-0 w-px"
+      :style="{
+        transform: `translate3d(${selectedMarkerPx}px, 0, 0) translateX(-50%)`,
+        willChange: 'transform',
+        backgroundColor: selectedMarker?.color ?? '#eab308',
+        opacity: '0.8',
+      }"
+    />
     <!-- Playhead line -->
     <div
       class="absolute inset-y-0 w-px"
@@ -54,8 +78,8 @@ const currentFrameHighlightStyle = computed(() => {
       :style="{
         ...currentFrameHighlightStyle,
         zIndex: -1, /* Below the line */
-        backgroundColor: '#ef4444',
-        opacity: '0.12',
+        backgroundColor: '#888888',
+        opacity: '0.15',
       }"
     />
   </div>

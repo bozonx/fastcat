@@ -749,6 +749,9 @@
       "soloActive": "SOLO ACTIVE",
       "clearSolos": "Clear all solos",
       "snapMode": "Snap Mode",
+      "snapModeFullDescription": "Snap to clips, playhead and markers",
+      "snapModeFramesDescription": "Snap to frame boundaries only",
+      "snapModeFreeDescription": "No snapping (sub-frame precision)",
       "moveMode": "Clip Move Mode",
       "transition": {
         "actionFall": "Falls",

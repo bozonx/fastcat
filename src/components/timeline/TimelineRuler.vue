@@ -285,8 +285,8 @@ function isMarkerSelected(markerId: string) {
         :style="{
           ...currentFrameHighlightStyle,
           willChange: 'transform',
-          backgroundColor: '#ef4444',
-          opacity: '0.12',
+          backgroundColor: '#888888',
+          opacity: '0.2',
         }"
       />
 
