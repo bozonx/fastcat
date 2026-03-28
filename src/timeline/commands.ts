@@ -239,6 +239,7 @@ export interface UpdateTrackPropertiesCommand {
       | 'effects'
       | 'audioGain'
       | 'audioBalance'
+      | 'locked'
     >
   >;
 }

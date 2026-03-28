@@ -55,6 +55,9 @@ export interface TimelineTracksApi {
   moveTrackDown: (trackId: string) => void;
   isAnyTrackSoloed: ComputedRef<boolean>;
   unsoloAllTracks: () => void;
+  unmuteAllTracks: () => void;
+  unlockAllTracks: () => void;
+  showAllTracks: () => void;
 }
 
 export function createTimelineTracks(deps: TimelineTracksDeps): TimelineTracksApi {
@@ -254,6 +257,48 @@ export function createTimelineTracks(deps: TimelineTracksDeps): TimelineTracksAp
     void deps.requestTimelineSave({ immediate: true });
   }
 
+  function unmuteAllTracks() {
+    const tracksWithMute = deps.timelineDoc.value?.tracks.filter((t) => t.audioMuted) ?? [];
+    if (tracksWithMute.length === 0) return;
+
+    const cmds = tracksWithMute.map((t) => ({
+      type: 'update_track_properties' as const,
+      trackId: t.id,
+      properties: { audioMuted: false },
+    }));
+
+    deps.batchApplyTimeline(cmds, { historyMode: 'debounced' });
+    void deps.requestTimelineSave({ immediate: true });
+  }
+
+  function unlockAllTracks() {
+    const tracksWithLock = deps.timelineDoc.value?.tracks.filter((t) => t.locked) ?? [];
+    if (tracksWithLock.length === 0) return;
+
+    const cmds = tracksWithLock.map((t) => ({
+      type: 'update_track_properties' as const,
+      trackId: t.id,
+      properties: { locked: false },
+    }));
+
+    deps.batchApplyTimeline(cmds, { historyMode: 'debounced' });
+    void deps.requestTimelineSave({ immediate: true });
+  }
+
+  function showAllTracks() {
+    const hiddenTracks = deps.timelineDoc.value?.tracks.filter((t) => t.videoHidden) ?? [];
+    if (hiddenTracks.length === 0) return;
+
+    const cmds = hiddenTracks.map((t) => ({
+      type: 'update_track_properties' as const,
+      trackId: t.id,
+      properties: { videoHidden: false },
+    }));
+
+    deps.batchApplyTimeline(cmds, { historyMode: 'debounced' });
+    void deps.requestTimelineSave({ immediate: true });
+  }
+
   return {
     addTrack,
     resolveTargetVideoTrackIdForInsert,
@@ -271,5 +316,8 @@ export function createTimelineTracks(deps: TimelineTracksDeps): TimelineTracksAp
     toggleSoloTargetTrack,
     isAnyTrackSoloed,
     unsoloAllTracks,
+    unmuteAllTracks,
+    unlockAllTracks,
+    showAllTracks,
   };
 }
