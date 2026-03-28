@@ -237,7 +237,7 @@ function onToolbarContextMenu(e: MouseEvent) {
 <template>
   <UContextMenu :items="toolbarEmptyAreaContextMenuItems">
     <div
-      class="h-8 w-full border-b border-ui-border bg-ui-bg-elevated flex items-center justify-center px-1 shrink-0 gap-0.5"
+      class="h-12 w-full border-b border-ui-border bg-ui-bg-elevated flex items-center justify-center px-2 shrink-0 gap-1"
       data-timeline-toolbar
       @pointerdown.capture="focusStore.setPanelFocus('timeline')"
       @click.self="timelineStore.selectTimelineProperties()"

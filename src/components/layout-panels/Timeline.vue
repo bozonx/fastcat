@@ -27,6 +27,7 @@ import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
 import TimelineRuler from '~/components/timeline/TimelineRuler.vue';
 import TimelineGrid from '~/components/timeline/TimelineGrid.vue';
+import TimelinePlayheadOverlay from '~/components/timeline/TimelinePlayheadOverlay.vue';
 import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
 import UiTimecode from '~/components/ui/editor/UiTimecode.vue';
 
@@ -134,15 +135,17 @@ let isSyncingHorizontal = false;
 function syncHorizontal(source: HTMLElement) {
   if (isSyncingHorizontal) return;
   isSyncingHorizontal = true;
-  const sl = source.scrollLeft;
-  const targets = [videoScrollEl.value, audioScrollEl.value, rulerScrollEl.value];
-  for (const el of targets) {
-    if (el && el !== source) {
-      el.scrollLeft = sl;
+  requestAnimationFrame(() => {
+    const sl = source.scrollLeft;
+    const targets = [videoScrollEl.value, audioScrollEl.value, rulerScrollEl.value];
+    for (const el of targets) {
+      if (el && el !== source && el.scrollLeft !== sl) {
+        el.scrollLeft = sl;
+      }
     }
-  }
-  scrollLeftRef.value = sl;
-  isSyncingHorizontal = false;
+    scrollLeftRef.value = sl;
+    isSyncingHorizontal = false;
+  });
 }
 
 function onVideoScroll(e: Event) {
@@ -275,29 +278,6 @@ const videoTracks = computed(() => tracks.value.filter((t) => t.kind === 'video'
 const audioTracks = computed(() => tracks.value.filter((t) => t.kind === 'audio'));
 
 const fps = computed(() => projectStore.projectSettings.project.fps || 30);
-const playheadPx = computed(() =>
-  timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom),
-);
-const playheadTransform = computed(
-  () => `translate3d(${playheadPx.value}px, 0, 0) translateX(-50%)`,
-);
-
-const currentFrameHighlightStyle = computed(() => {
-  const pxPerFrame = zoomToPxPerSecond(timelineStore.timelineZoom) / fps.value;
-  if (pxPerFrame < 6) return null;
-
-  const currentFrameIndex = Math.floor(((timelineStore.currentTime + 0.5) * fps.value) / 1_000_000);
-  const currentFrameStartUs = Math.round((currentFrameIndex * 1_000_000) / fps.value);
-  const nextFrameStartUs = Math.round(((currentFrameIndex + 1) * 1_000_000) / fps.value);
-
-  const currentFrameStartPx = timeUsToPx(currentFrameStartUs, timelineStore.timelineZoom);
-  const nextFrameStartPx = timeUsToPx(nextFrameStartUs, timelineStore.timelineZoom);
-
-  return {
-    transform: `translate3d(${currentFrameStartPx}px, 0, 0)`,
-    width: `${Math.max(1, nextFrameStartPx - currentFrameStartPx)}px`,
-  };
-});
 
 const zoomFactor = computed(() =>
   formatZoomMultiplier(timelineZoomPositionToScale(timelineStore.timelineZoom)),
@@ -880,7 +860,7 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
           class="h-full w-full overflow-x-scroll overflow-y-hidden scroll-sync-hidden relative"
           @scroll="onRulerScroll"
         >
-          <div :style="timelineWidthStyle" class="h-full">
+          <div :style="{ ...timelineWidthStyle, paddingRight: `${scrollbarHeight}px` }" class="h-full">
             <TimelineRuler
               class="h-full border-b border-ui-border bg-ui-bg-elevated cursor-pointer w-full"
               :scroll-el="rulerScrollEl"
@@ -956,27 +936,7 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
               @start-trim-item="startTrimItem"
               @clip-action="onClipAction"
             />
-            <!-- Playhead line -->
-            <div
-              class="absolute inset-y-0 w-px pointer-events-none"
-              :style="{
-                transform: playheadTransform,
-                willChange: 'transform',
-                zIndex: 50,
-                backgroundColor: '#ef4444',
-              }"
-            />
-            <!-- Current frame highlight -->
-            <div
-              v-if="currentFrameHighlightStyle"
-              class="absolute top-0 bottom-0 pointer-events-none"
-              :style="{
-                ...currentFrameHighlightStyle,
-                zIndex: 5,
-                backgroundColor: '#ef4444',
-                opacity: '0.12',
-              }"
-            />
+            <TimelinePlayheadOverlay />
           </div>
         </div>
       </div>
@@ -1039,27 +999,7 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
               @start-trim-item="startTrimItem"
               @clip-action="onClipAction"
             />
-            <!-- Playhead line -->
-            <div
-              class="absolute inset-y-0 w-px pointer-events-none"
-              :style="{
-                transform: playheadTransform,
-                willChange: 'transform',
-                zIndex: 50,
-                backgroundColor: '#ef4444',
-              }"
-            />
-            <!-- Current frame highlight -->
-            <div
-              v-if="currentFrameHighlightStyle"
-              class="absolute top-0 bottom-0 pointer-events-none"
-              :style="{
-                ...currentFrameHighlightStyle,
-                zIndex: 5,
-                backgroundColor: '#ef4444',
-                opacity: '0.12',
-              }"
-            />
+            <TimelinePlayheadOverlay />
           </div>
         </div>
       </div>
