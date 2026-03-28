@@ -284,7 +284,7 @@ async function onClipAction(payload: TimelineClipActionPayload) {
           class="sticky top-0 z-40 w-full h-8 bg-ui-bg/95 border-b border-ui-border shrink-0 select-none touch-none backdrop-blur shadow-sm"
         >
           <TimelineRuler
-            class="touch-none"
+            class="touch-none w-full h-full"
             :scroll-el="scrollEl"
             @pointerdown="onTimeRulerPointerDown"
           />

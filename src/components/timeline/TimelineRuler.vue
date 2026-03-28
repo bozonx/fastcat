@@ -256,12 +256,12 @@ function isMarkerSelected(markerId: string) {
 <template>
   <UContextMenu
     :items="rulerContextMenuItems"
-    class="w-full"
+    class="w-full h-full"
     @update:open="onContextMenuOpenChange"
   >
     <div
       ref="containerRef"
-      class="relative w-full overflow-hidden cursor-pointer"
+      class="relative w-full h-full overflow-hidden cursor-pointer"
       @contextmenu="onRulerContextMenu"
       @click="onRulerClick"
       @dblclick="onRulerDblClick"
