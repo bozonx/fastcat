@@ -937,8 +937,12 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
               @start-trim-item="startTrimItem"
               @clip-action="onClipAction"
             />
-            <TimelinePlayheadOverlay />
           </div>
+          <!-- Playhead/marker overlay: outside scroll container so it spans full viewport height -->
+          <TimelinePlayheadOverlay
+            class="absolute inset-0 pointer-events-none z-20"
+            :scroll-el="videoScrollEl"
+          />
         </div>
       </div>
 
@@ -1000,8 +1004,12 @@ function executeTimelineRulerAction(action: string, e: MouseEvent) {
               @start-trim-item="startTrimItem"
               @clip-action="onClipAction"
             />
-            <TimelinePlayheadOverlay />
           </div>
+          <!-- Playhead/marker overlay: outside scroll container so it spans full viewport height -->
+          <TimelinePlayheadOverlay
+            class="absolute inset-0 pointer-events-none z-20"
+            :scroll-el="audioScrollEl"
+          />
         </div>
       </div>
     </div>
