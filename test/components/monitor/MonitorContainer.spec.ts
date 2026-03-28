@@ -37,6 +37,7 @@ vi.mock('~/composables/monitor/useMonitorContainerControls', () => ({
     handleSpeedWheel: vi.fn(),
     onPlaybackSpeedChange: vi.fn(),
     playbackSpeedOptions: [{ label: '1x', value: 1 }],
+    negativeSpeedOptions: [{ label: '-1x', value: -1 }],
     previewResolutions: ref([{ label: '1080p', value: 1080 }]),
     resetZoom: vi.fn(),
     rewindToStart: vi.fn(),
