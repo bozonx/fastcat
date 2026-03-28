@@ -154,3 +154,10 @@ export function formatZoomMultiplier(value: number): string {
     .replace(/\.0+$/, '')
     .replace(/(\.\d*[1-9])0+$/, '$1')}`;
 }
+
+export function formatZoomPercent(scale: number): string {
+  const safeValue = Number.isFinite(scale) ? scale : 1;
+  const pct = safeValue * 100;
+  const rounded = pct >= 10 ? Math.round(pct) : Math.round(pct * 10) / 10;
+  return `${rounded}%`;
+}

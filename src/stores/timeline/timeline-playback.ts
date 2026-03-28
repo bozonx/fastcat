@@ -1,8 +1,8 @@
 import type { Ref } from 'vue';
 import {
+  DEFAULT_TIMELINE_ZOOM_POSITION,
   MAX_TIMELINE_ZOOM_POSITION,
   MIN_TIMELINE_ZOOM_POSITION,
-  snapTimelineZoomPosition,
 } from '~/utils/zoom';
 
 export interface TimelinePlaybackDeps {
@@ -63,7 +63,18 @@ export function createTimelinePlayback(deps: TimelinePlaybackDeps): TimelinePlay
       MAX_TIMELINE_ZOOM_POSITION,
       Math.max(MIN_TIMELINE_ZOOM_POSITION, parsed),
     );
-    deps.timelineZoom.value = snapTimelineZoomPosition(clamped);
+
+    // Snap to 100% (default zoom) when crossing into the snap zone
+    const SNAP_THRESHOLD = 2.5;
+    const prev = deps.timelineZoom.value;
+    if (
+      Math.abs(clamped - DEFAULT_TIMELINE_ZOOM_POSITION) < SNAP_THRESHOLD &&
+      Math.abs(prev - DEFAULT_TIMELINE_ZOOM_POSITION) >= SNAP_THRESHOLD
+    ) {
+      deps.timelineZoom.value = DEFAULT_TIMELINE_ZOOM_POSITION;
+    } else {
+      deps.timelineZoom.value = clamped;
+    }
   }
 
   function setAudioVolume(next: number) {
