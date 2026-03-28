@@ -211,6 +211,15 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
     blurActiveElement();
   }
 
+  function handleBoundaryWheel(event: WheelEvent) {
+    if (!canInteractPlayback.value) return;
+    if (event.deltaY < 0) {
+      options.timelineStore.jumpToNextClipBoundary();
+    } else if (event.deltaY > 0) {
+      options.timelineStore.jumpToPrevClipBoundary();
+    }
+  }
+
   function onPlaybackSpeedChange(value: PlaybackSpeedOption | number | null | undefined) {
     if (!value) {
       return;
@@ -327,6 +336,7 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
     centerMonitor,
     contextMenuItems,
     createMarkerAtPlayhead,
+    handleBoundaryWheel,
     handleSpeedWheel,
     negativeSpeedOptions,
     onPlaybackSpeedChange,
