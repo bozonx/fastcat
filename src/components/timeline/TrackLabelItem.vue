@@ -180,10 +180,15 @@ onBeforeUnmount(() => {
       <div class="flex items-center gap-1.5 min-w-0 shrink-0 h-4.5">
         <!-- Track Number Block (e.g., V1, A1) -->
         <div
-          class="shrink-0 flex items-center justify-center px-1 rounded text-[9px] font-black uppercase tracking-tight"
-          :class="[
-            isSelected ? 'bg-primary-500 text-white' : 'bg-ui-bg-accent text-ui-text-muted',
-          ]"
+          class="shrink-0 flex items-center justify-center min-w-[20px] pr-1 border-r border-ui-border text-[9px] font-black uppercase tracking-tight h-3 my-auto"
+          :style="{
+            color:
+              isSelected && track.color && track.color !== '#2a2a2a'
+                ? track.color
+                : isSelected
+                  ? 'var(--color-primary-500)'
+                  : undefined,
+          }"
         >
           {{ track.kind === 'video' ? 'V' : 'A' }}{{ trackNumber }}
         </div>
@@ -295,7 +300,6 @@ onBeforeUnmount(() => {
             v-model="renameValue"
             class="w-full h-full bg-transparent border-none outline-none ring-0 p-0 text-[10px] leading-tight font-medium resize-none select-text text-ui-text focus:outline-none"
             @click.stop
-            @keydown.enter.stop="confirmRename"
             @keydown.esc.stop="emit('cancelRename')"
             @blur="confirmRename"
           />
