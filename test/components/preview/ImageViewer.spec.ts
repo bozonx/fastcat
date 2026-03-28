@@ -90,4 +90,28 @@ describe('ImageViewer.vue', () => {
     await component.vm.$nextTick();
     expect(onCustomZoom).toHaveBeenCalled();
   });
+
+  it('calls fitToContainer on image load', async () => {
+    const component = await mountWithNuxt(ImageViewer, {
+      props: { src: 'http://example.com/test.jpg' },
+    });
+
+    const { useImagePanZoom } = await import('~/composables/preview/useImagePanZoom');
+    const { fitToContainer } = (useImagePanZoom as any).mock.results[0].value;
+
+    await component.find('img').trigger('load');
+    expect(fitToContainer).toHaveBeenCalled();
+  });
+
+  it('calls fitToContainer on source change', async () => {
+    const component = await mountWithNuxt(ImageViewer, {
+      props: { src: 'http://example.com/test.jpg' },
+    });
+
+    const { useImagePanZoom } = await import('~/composables/preview/useImagePanZoom');
+    const { fitToContainer } = (useImagePanZoom as any).mock.results[0].value;
+
+    await component.setProps({ src: 'http://example.com/new.jpg' });
+    expect(fitToContainer).toHaveBeenCalled();
+  });
 });
