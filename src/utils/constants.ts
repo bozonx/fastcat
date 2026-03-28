@@ -43,6 +43,13 @@ export const TIMELINE_MANAGER_THUMBNAILS = {
   DIR_NAME: 'timelines',
 } as const;
 
+export const MARKER_THUMBNAILS = {
+  DIR_NAME: 'markers',
+  WIDTH: 160,
+  HEIGHT: 90,
+  QUALITY: 0.6,
+} as const;
+
 export const TIMELINE_RULER_CONSTANTS = {
   DEFAULT_ZONE_DURATION_US: 5_000_000, // 5 seconds
   MIN_MARKER_DURATION_PX: 10,

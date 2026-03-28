@@ -1,4 +1,5 @@
 import type { DirectoryHandleLike } from '~/repositories/fastcat-fs';
+import { PROJECTS_ROOT_DIR_NAME, THUMBNAILS_ROOT_DIR_NAME } from './storage-roots';
 import { toStoragePathSegments, type ResolvedStorageTopology } from './storage-topology';
 
 function trimPath(path: string): string {
@@ -97,6 +98,33 @@ export async function ensureResolvedProjectTempDir(input: {
     rootPath: input.topology.tempRoot,
     projectId: input.projectId,
     leafSegments: input.leafSegments ?? [],
+    create: input.create,
+  });
+}
+
+export async function ensureResolvedProjectThumbnailsDir(input: {
+  workspaceHandle: DirectoryHandleLike;
+  topology: ResolvedStorageTopology;
+  projectId: string;
+  subDir?: string;
+  create?: boolean;
+}): Promise<DirectoryHandleLike> {
+  const rootDir = await resolveStorageRootHandle({
+    workspaceHandle: input.workspaceHandle,
+    rootPath: input.topology.tempRoot,
+    create: input.create,
+  });
+
+  const segments = [
+    THUMBNAILS_ROOT_DIR_NAME,
+    PROJECTS_ROOT_DIR_NAME,
+    input.projectId,
+    ...(input.subDir ? [input.subDir] : []),
+  ];
+
+  return await ensureDirectoryChain({
+    baseDir: rootDir,
+    segments,
     create: input.create,
   });
 }
