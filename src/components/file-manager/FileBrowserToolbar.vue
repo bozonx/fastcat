@@ -58,35 +58,27 @@ const menuItems = computed(() => {
   if (props.compact) {
     const fieldsGroup = sortFields.map((f) => ({
       label: f.label,
-      type: 'radio' as const,
-      checked: filesPageStore.sortOption.field === f.value,
+      color: filesPageStore.sortOption.field === f.value ? 'primary' : 'neutral',
       onSelect: () => {
         filesPageStore.sortOption.field = f.value;
       },
     }));
     items.push(fieldsGroup);
 
-    const orderGroup = [
+    const orderToggle = [
       {
-        label: t('common.sortAsc', 'Ascending'),
-        icon: 'i-heroicons-bars-arrow-up',
-        type: 'radio' as const,
-        checked: filesPageStore.sortOption.order === 'asc',
-        onSelect: () => {
-          filesPageStore.sortOption.order = 'asc';
-        },
-      },
-      {
-        label: t('common.sortDesc', 'Descending'),
-        icon: 'i-heroicons-bars-arrow-down',
-        type: 'radio' as const,
+        label: filesPageStore.sortOption.order === 'asc'
+          ? t('common.sortAsc', 'Ascending')
+          : t('common.sortDesc', 'Descending'),
+        icon: filesPageStore.sortOption.order === 'asc' ? 'i-heroicons-bars-arrow-up' : 'i-heroicons-bars-arrow-down',
+        type: 'checkbox' as const,
         checked: filesPageStore.sortOption.order === 'desc',
         onSelect: () => {
-          filesPageStore.sortOption.order = 'desc';
+          filesPageStore.sortOption.order = filesPageStore.sortOption.order === 'asc' ? 'desc' : 'asc';
         },
       },
     ];
-    items.push(orderGroup);
+    items.push(orderToggle);
   }
 
   return items;

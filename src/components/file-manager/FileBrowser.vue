@@ -395,7 +395,7 @@ const { onKeyDown: onContainerKeyDown, moveSelection } = useFocusableListNavigat
 
 // --- Grid size ---
 const GRID_SIZES = [80, 100, 130, 160, 200];
-const GRID_SIZE_NAMES = ['xs', 's', 'm', 'l', 'xl'];
+const GRID_SIZE_NAMES = ['XS', 'S', 'M', 'L', 'XL'];
 const currentGridSizeName = computed(() => {
   const index = GRID_SIZES.indexOf(filesPageStore.gridCardSize);
   return GRID_SIZE_NAMES[index] || 'm';
