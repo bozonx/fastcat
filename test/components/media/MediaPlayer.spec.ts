@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mountWithNuxt } from '../../utils/mount';
 import MediaPlayer from '~/components/media/MediaPlayer.vue';
+import UiVolumeControl from '~/components/ui/editor/UiVolumeControl.vue';
 import { useUiStore } from '~/stores/ui.store';
 import { ref } from 'vue';
 
@@ -155,5 +156,57 @@ describe('MediaPlayer.vue', () => {
     
     const video = component.find('video').element as HTMLVideoElement;
     expect(video.volume).toBe(0.5);
+  });
+
+  it('toggles mute on button click', async () => {
+    const component = await mountWithNuxt(MediaPlayer, {
+      props: {
+        src: 'http://example.com/test.mp4',
+        type: 'video'
+      },
+    });
+
+    const { useMediaPlayerVolume } = await import('~/composables/preview/useMediaPlayerVolume');
+    const { isMuted } = (useMediaPlayerVolume as any).mock.results[0].value;
+    
+    // Check for UiVolumeControl and find its mute button or trigger change
+    const volumeControl = component.findComponent(UiVolumeControl);
+    await volumeControl.vm.$emit('update:isMuted', true);
+    
+    expect(isMuted.value).toBe(true);
+  });
+
+  it('handles seek start and end', async () => {
+    const component = await mountWithNuxt(MediaPlayer, {
+      props: {
+        src: 'http://example.com/test.mp4',
+        type: 'video'
+      },
+    });
+
+    const rangeInput = component.find('input[type="range"]');
+    
+    // Seek start
+    await rangeInput.trigger('mousedown');
+    expect((component.vm as any).isDragging).toBe(true);
+
+    // Seek end
+    await rangeInput.trigger('mouseup');
+    expect((component.vm as any).isDragging).toBe(false);
+  });
+
+  it('resets state on source change', async () => {
+    const component = await mountWithNuxt(MediaPlayer, {
+      props: {
+        src: 'http://example.com/test.mp4',
+        type: 'video'
+      },
+    });
+
+    const { useMediaPlayerPlayback } = await import('~/composables/preview/useMediaPlayerPlayback');
+    const { resetState } = (useMediaPlayerPlayback as any).mock.results[0].value;
+
+    await component.setProps({ src: 'http://example.com/new.mp4' });
+    expect(resetState).toHaveBeenCalled();
   });
 });
