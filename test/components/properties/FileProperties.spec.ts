@@ -100,6 +100,38 @@ vi.mock('~/composables/fileManager/useFileManager', () => ({
   })),
 }));
 
+vi.mock('~/composables/properties/useImageExifInfo', () => ({
+  useImageExifInfo: vi.fn(() => ({
+    hasImageInfo: ref(false),
+    imageCameraMake: ref(null),
+    imageCreateDate: ref(null),
+    imageLocationLink: ref(null),
+    imageResolution: ref(null),
+  })),
+}));
+
+vi.mock('~/composables/properties/useFilePropertiesTranscription', () => ({
+  useFilePropertiesTranscription: vi.fn(() => ({
+    canTranscribeMedia: ref(false),
+    isTranscriptionModalOpen: ref(false),
+    transcriptionLanguage: ref('en'),
+    isTranscribingAudio: ref(false),
+    transcriptionError: ref(null),
+    latestTranscriptionText: ref(''),
+    latestTranscriptionCacheKey: ref(''),
+    latestTranscriptionWasCached: ref(false),
+    openTranscriptionModal: vi.fn(),
+    submitAudioTranscription: vi.fn(),
+  })),
+}));
+
+vi.mock('~/composables/properties/useFileTimelineUsage', () => ({
+  useFileTimelineUsage: vi.fn(() => ({
+    timelinesUsingSelectedFile: ref([]),
+    openTimelineFromUsage: vi.fn(),
+  })),
+}));
+
 describe('FileProperties.vue', () => {
   it('renders properties for a video file', async () => {
     const component = await mountWithNuxt(FileProperties, {
@@ -234,5 +266,118 @@ describe('FileProperties.vue', () => {
 
     // For common root, it should show typical directory actions
     expect(component.text()).toContain('Actions');
+  });
+
+  it('renders properties for an image file with EXIF', async () => {
+    const { useEntryPreview } = await import('~/composables/fileManager/useEntryPreview');
+    const { useImageExifInfo } = await import('~/composables/properties/useImageExifInfo');
+
+    vi.mocked(useEntryPreview).mockReturnValue({
+      currentUrl: ref('http://example.com/test.jpg'),
+      mediaType: ref('image'),
+      textContent: ref(''),
+      fileInfo: ref({
+        kind: 'file',
+        name: 'test.jpg',
+        size: 1024 * 500,
+        lastModified: Date.now(),
+      } as any),
+      exifData: ref({}),
+      exifYaml: ref('Camera: Sony\n'),
+      imageDimensions: ref({ width: 1920, height: 1080 }),
+      timelineDocSummary: ref(null),
+      lineCount: ref(null),
+      metadataYaml: ref(null),
+      isUnknown: ref(false),
+      isOtio: ref(false),
+    });
+
+    vi.mocked(useImageExifInfo).mockReturnValue({
+      hasImageInfo: ref(true),
+      imageCameraMake: ref('Sony'),
+      imageCreateDate: ref('2023-01-01'),
+      imageLocationLink: ref('https://maps.google.com'),
+      imageResolution: ref('1920x1080'),
+    });
+
+    const component = await mountWithNuxt(FileProperties, {
+      props: {
+        selectedFsEntry: { kind: 'file', name: 'test.jpg', path: '/projects/test.jpg' } as any,
+        previewMode: 'original',
+        hasProxy: false,
+      },
+    });
+
+    expect(component.text()).toContain('Resolution');
+    expect(component.text()).toContain('1920x1080');
+    expect(component.text()).toContain('Sony');
+    expect(component.text()).toContain('EXIF');
+  });
+
+  it('renders transcription section for audio/video files', async () => {
+    const { useEntryPreview } = await import('~/composables/fileManager/useEntryPreview');
+    const { useFilePropertiesTranscription } = await import('~/composables/properties/useFilePropertiesTranscription');
+
+    vi.mocked(useEntryPreview).mockReturnValue({
+      currentUrl: ref('http://example.com/test.mp4'),
+      mediaType: ref('video'),
+      textContent: ref(''),
+      fileInfo: ref({
+        kind: 'file',
+        name: 'test.mp4',
+        size: 1024 * 1024,
+      } as any),
+      exifData: ref(null),
+      exifYaml: ref(null),
+      imageDimensions: ref(null),
+      timelineDocSummary: ref(null),
+      lineCount: ref(null),
+      metadataYaml: ref(''),
+      isUnknown: ref(false),
+      isOtio: ref(false),
+    });
+
+    vi.mocked(useFilePropertiesTranscription).mockReturnValue({
+      canTranscribeMedia: ref(true),
+      isTranscriptionModalOpen: ref(false),
+      transcriptionLanguage: ref('en'),
+      isTranscribingAudio: ref(false),
+      transcriptionError: ref(null),
+      latestTranscriptionText: ref('Transcribed text'),
+      latestTranscriptionCacheKey: ref('cache-key'),
+      latestTranscriptionWasCached: ref(true),
+      openTranscriptionModal: vi.fn(),
+      submitAudioTranscription: vi.fn(),
+    });
+
+    const component = await mountWithNuxt(FileProperties, {
+      props: {
+        selectedFsEntry: { kind: 'file', name: 'test.mp4', path: '/projects/test.mp4' } as any,
+        previewMode: 'original',
+        hasProxy: false,
+      },
+    });
+
+    // UTextarea might not render its value as text(), so we check the component or the textarea element
+    expect(component.findComponent({ name: 'UTextarea' }).props('modelValue')).toBe('Transcribed text');
+  });
+
+  it('renders timeline usage section', async () => {
+    const { useFileTimelineUsage } = await import('~/composables/properties/useFileTimelineUsage');
+
+    vi.mocked(useFileTimelineUsage).mockReturnValue({
+      timelinesUsingSelectedFile: ref([{ timelinePath: 'timeline1.otio', timelineName: 'Timeline 1' }]),
+      openTimelineFromUsage: vi.fn(),
+    });
+
+    const component = await mountWithNuxt(FileProperties, {
+      props: {
+        selectedFsEntry: { kind: 'file', name: 'test.mp4', path: '/projects/test.mp4' } as any,
+        previewMode: 'original',
+        hasProxy: false,
+      },
+    });
+
+    expect(component.text()).toContain('Timeline 1');
   });
 });
