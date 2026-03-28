@@ -166,6 +166,7 @@ const {
   contextMenuItems,
   createMarkerAtPlayhead,
   handleBoundaryWheel,
+  handleEndBoundaryWheel,
   handleSpeedWheel,
   negativeSpeedOptions,
   onPlaybackSpeedChange,
@@ -611,7 +612,7 @@ onUnmounted(() => {
                   (e.currentTarget as HTMLElement).blur();
                 }
               "
-              @wheel.prevent="handleBoundaryWheel"
+              @wheel.prevent="handleEndBoundaryWheel"
             />
           </UiTooltip>
         </UContextMenu>

@@ -211,13 +211,18 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
     blurActiveElement();
   }
 
-  function handleBoundaryWheel(event: WheelEvent) {
+  function handleBoundaryWheel(event: WheelEvent, invertVertical = false) {
     if (!canInteractPlayback.value) return;
-    if (event.deltaY < 0) {
+    const dy = invertVertical ? -event.deltaY : event.deltaY;
+    if (dy < 0) {
       options.timelineStore.jumpToNextClipBoundary();
-    } else if (event.deltaY > 0) {
+    } else if (dy > 0) {
       options.timelineStore.jumpToPrevClipBoundary();
     }
+  }
+
+  function handleEndBoundaryWheel(event: WheelEvent) {
+    handleBoundaryWheel(event, true);
   }
 
   function onPlaybackSpeedChange(value: PlaybackSpeedOption | number | null | undefined) {
@@ -337,6 +342,7 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
     contextMenuItems,
     createMarkerAtPlayhead,
     handleBoundaryWheel,
+    handleEndBoundaryWheel,
     handleSpeedWheel,
     negativeSpeedOptions,
     onPlaybackSpeedChange,
