@@ -91,10 +91,10 @@ const currentViewLabel = computed(() => {
 });
 
 const navItems: Array<{ id: TabId; label: string; icon: string }> = [
-  { id: 'files', label: 'Files', icon: 'lucide:folder-open' },
-  { id: 'edit', label: 'Edit', icon: 'lucide:clapperboard' },
-  { id: 'sound', label: 'Sound', icon: 'lucide:sliders-horizontal' },
-  { id: 'export', label: 'Export', icon: 'lucide:download' },
+  { id: 'files', label: t('common.files', 'Files'), icon: 'lucide:folder-open' },
+  { id: 'edit', label: t('common.edit', 'Edit'), icon: 'lucide:clapperboard' },
+  { id: 'sound', label: t('common.sound', 'Sound'), icon: 'lucide:sliders-horizontal' },
+  { id: 'export', label: t('common.export', 'Export'), icon: 'lucide:download' },
 ];
 
 const showBottomNav = computed(() => !isOpeningProject.value && !projectOpenError.value);

@@ -125,10 +125,14 @@ export function useMobileFileBrowserNavigation({
     } else if (parentPath === WORKSPACE_COMMON_PATH_PREFIX) {
       navigateToWorkspaceCommonRoot();
     } else {
-      const parentEntry = findEntryByPath(parentPath);
-      if (parentEntry) {
-        filesPageStore.selectFolder(parentEntry);
-      }
+      // Construction of a parent entry is more reliable than findEntryByPath,
+      // as the tree might not be fully loaded on mobile.
+      const parentName = getWorkspacePathFileName(parentPath) || parentPath;
+      filesPageStore.selectFolder({
+        kind: 'directory',
+        name: parentName,
+        path: parentPath,
+      });
     }
   }
 
