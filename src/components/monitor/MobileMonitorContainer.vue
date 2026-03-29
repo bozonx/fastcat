@@ -100,6 +100,13 @@ watch(isFullscreen, () => {
 
 const isLandscape = useMediaQuery('(orientation: landscape)');
 
+const isVerticalProject = computed(() => {
+  const { width, height } = projectStore.projectSettings.project;
+  return width < height;
+});
+
+const showSideControls = computed(() => !isFullscreen.value && (isLandscape.value || isVerticalProject.value));
+
 const isReadonly = computed(
   () => projectStore.currentView === 'sound' || projectStore.currentView === 'export',
 );
@@ -148,7 +155,7 @@ const containerHeightClass = computed(() =>
     ref="containerRef"
     class="flex min-w-0 shrink-0 border-ui-border bg-ui-bg-elevated transition-colors duration-200"
     :class="[
-      isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen flex-col' : [containerHeightClass, isLandscape ? 'flex-row border-r' : 'flex-col border-b'],
+      isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen flex-col' : [containerHeightClass, showSideControls ? 'flex-row border-r' : 'flex-col border-b'],
     ]"
   >
     <!-- Video area -->
@@ -206,11 +213,10 @@ const containerHeightClass = computed(() =>
       </template>
     </MonitorViewport>
 
-    <!-- Playback controls -->
     <div
       class="shrink-0 bg-ui-bg"
       :class="[
-        isLandscape && !isFullscreen
+        showSideControls
           ? 'w-[72px] flex flex-col items-center py-4 border-l border-ui-border'
           : 'px-4 py-2 border-t border-ui-border',
       ]"
@@ -218,13 +224,12 @@ const containerHeightClass = computed(() =>
       <div
         class="flex gap-3"
         :class="[
-          isLandscape && !isFullscreen ? 'flex-col justify-between h-full items-center' : 'items-center justify-between',
+          showSideControls ? 'flex-col justify-between h-full items-center' : 'items-center justify-between',
         ]"
       >
-        <!-- Left/Top cluster: Fullscreen, Proxy, Effects, Zoom -->
         <div
           class="flex items-center gap-1.5 overflow-x-auto no-scrollbar"
-          :class="[isLandscape && !isFullscreen ? 'flex-col' : '']"
+          :class="[showSideControls ? 'flex-col' : '']"
         >
           <UButton
             size="xs"
@@ -267,7 +272,7 @@ const containerHeightClass = computed(() =>
         <!-- Right/Bottom cluster: Volume, Rewind, Play, Menu -->
         <div
           class="flex items-center gap-1"
-          :class="[isLandscape && !isFullscreen ? 'flex-col' : '']"
+          :class="[showSideControls ? 'flex-col' : '']"
         >
           <MonitorAudioControl :compact="true" />
 
