@@ -37,12 +37,15 @@ const {
   vfs,
   handleFiles,
   createFolder,
+  createTimeline,
+  createMarkdown,
   reloadDirectory,
 } = useFileManager();
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const isSelectionMode = ref(false);
 const isDrawerOpen = ref(false);
+const isCreateMenuOpen = ref(false);
 
 const selectedEntries = computed(() => {
   const entity = selectionStore.selectedEntity;
@@ -104,6 +107,33 @@ async function onCreateFolder() {
     const parentPath = filesPageStore.selectedFolder?.path || '';
     await createFolder(name, parentPath);
     await loadFolderContent();
+    isCreateMenuOpen.value = false;
+  }
+}
+
+async function onCreateTimeline() {
+  const path = await createTimeline();
+  if (path) {
+    await loadFolderContent();
+    isCreateMenuOpen.value = false;
+    toast.add({
+      title: t('common.success', 'Success'),
+      description: t('timelineCreation.successTitle', 'Timeline created'),
+      color: 'success',
+    });
+  }
+}
+
+async function onCreateTextFile() {
+  const path = await createMarkdown();
+  if (path) {
+    await loadFolderContent();
+    isCreateMenuOpen.value = false;
+    toast.add({
+      title: t('common.success', 'Success'),
+      description: t('common.saveSuccess', 'Saved successfully'),
+      color: 'success',
+    });
   }
 }
 
@@ -153,6 +183,17 @@ const menuItems = computed(() => [
         const path = filesPageStore.selectedFolder?.path || '';
         await reloadDirectory(path);
         await loadFolderContent();
+      },
+    },
+  ],
+  [
+    {
+      label: uiStore.showHiddenFiles
+        ? t('common.hideHiddenFiles', 'Hide Hidden Files')
+        : t('common.showHiddenFiles', 'Show Hidden Files'),
+      icon: uiStore.showHiddenFiles ? 'lucide:eye-off' : 'lucide:eye',
+      onSelect: () => {
+        uiStore.showHiddenFiles = !uiStore.showHiddenFiles;
       },
     },
   ],
@@ -404,6 +445,14 @@ watch(
   { immediate: true },
 );
 
+// Следим за изменением настройки скрытых файлов
+watch(
+  () => uiStore.showHiddenFiles,
+  () => {
+    void loadFolderContent();
+  },
+);
+
 onMounted(() => {
   if (!filesPageStore.selectedFolder) {
     void navigateToRoot();
@@ -444,14 +493,33 @@ onMounted(() => {
           v-else
           class="flex items-center gap-1 text-xs text-slate-400 overflow-x-auto no-scrollbar"
         >
-          <span class="shrink-0">{{ projectStore.currentProjectName }}</span>
+          <button
+            class="shrink-0 transition-colors py-1 px-1.5 -ml-1 rounded-md hover:bg-slate-800 hover:text-slate-100"
+            @click="navigateToRoot"
+          >
+            /
+          </button>
           <template v-for="bc in breadcrumbs" :key="bc.path">
-            <Icon name="lucide:chevron-right" class="w-3 h-3 opacity-30 shrink-0" />
-            <span class="shrink-0 last:text-slate-100 last:font-medium">{{ bc.name }}</span>
+            <Icon name="lucide:chevron-right" class="w-2.5 h-2.5 opacity-30 shrink-0" />
+            <button
+              class="shrink-0 transition-colors py-1 px-1.5 rounded-md hover:bg-slate-800 hover:text-slate-100 last:text-slate-100 last:font-medium"
+              @click="filesPageStore.selectFolder({ kind: 'directory', name: bc.name, path: bc.path })"
+            >
+              {{ bc.name }}
+            </button>
           </template>
         </div>
       </div>
       <div class="shrink-0 flex items-center ml-2">
+        <UButton
+          v-if="!isSelectionMode"
+          icon="lucide:folder-plus"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+          class="mr-1"
+          @click="onCreateFolder"
+        />
         <UButton
           v-if="isSelectionMode"
           icon="lucide:info"
@@ -515,6 +583,88 @@ onMounted(() => {
 
     <!-- Properties Drawer -->
     <MobileFileBrowserDrawer :is-open="isDrawerOpen" @close="isDrawerOpen = false" />
+
+    <!-- Action FAB -->
+    <Teleport to="body">
+      <div
+        v-if="!isSelectionMode"
+        class="fixed bottom-6 right-6 z-40 transition-all duration-300"
+        :class="[isCreateMenuOpen ? 'rotate-45 scale-90' : 'rotate-0 scale-100']"
+      >
+        <UButton
+          icon="lucide:plus"
+          size="xl"
+          class="rounded-full shadow-2xl w-14 h-14 flex items-center justify-center bg-primary-600 hover:bg-primary-500 text-white border-none"
+          ui="{ icon: 'w-7 h-7' }"
+          @click="isCreateMenuOpen = !isCreateMenuOpen"
+        />
+      </div>
+    </Teleport>
+
+    <!-- Create Menu Sheet -->
+    <Teleport to="body">
+      <div v-if="isCreateMenuOpen" class="fixed inset-0 z-50 flex items-end justify-center px-4">
+        <!-- Backdrop -->
+        <div
+          class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in"
+          @click="isCreateMenuOpen = false"
+        />
+
+        <!-- Menu Content -->
+        <div
+          class="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-t-3xl shadow-2xl p-6 mb-0 animate-in slide-in-from-bottom-full duration-300"
+        >
+          <div class="flex flex-col gap-5">
+            <div class="flex justify-between items-center mb-1">
+              <h3 class="text-lg font-bold text-white">{{ t('common.create', 'Create') }}</h3>
+              <UButton
+                icon="lucide:x"
+                variant="ghost"
+                color="neutral"
+                class="rounded-full"
+                @click="isCreateMenuOpen = false"
+              />
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <button
+                class="flex flex-col items-center gap-3 p-4 rounded-2xl bg-slate-800/50 border border-slate-700 hover:bg-slate-800 hover:border-primary-500/50 transition-all"
+                @click="onCreateTimeline"
+              >
+                <div class="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center">
+                  <Icon name="lucide:film" class="w-6 h-6 text-orange-500" />
+                </div>
+                <span class="text-sm font-medium">{{ t('common.timeline', 'Timeline') }}</span>
+              </button>
+
+              <button
+                class="flex flex-col items-center gap-3 p-4 rounded-2xl bg-slate-800/50 border border-slate-700 hover:bg-slate-800 hover:border-primary-500/50 transition-all"
+                @click="onCreateTextFile"
+              >
+                <div class="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                  <Icon name="lucide:file-text" class="w-6 h-6 text-blue-500" />
+                </div>
+                <span class="text-sm font-medium">{{
+                  t('common.textDocument', 'Text Document')
+                }}</span>
+              </button>
+
+              <button
+                class="flex flex-col items-center gap-3 p-4 rounded-2xl bg-slate-800/50 border border-slate-700 hover:bg-slate-800 hover:border-primary-500/50 transition-all"
+                @click="onCreateFolder"
+              >
+                <div class="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                  <Icon name="lucide:folder-plus" class="w-6 h-6 text-emerald-500" />
+                </div>
+                <span class="text-sm font-medium">{{
+                  t('videoEditor.fileManager.actions.createFolder', 'Folder')
+                }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 

@@ -35,6 +35,7 @@ import {
   copyEntryCommand,
   createFolderCommand,
   createTimelineCommand,
+  createMarkdownCommand,
   deleteEntryCommand,
   handleFilesCommand,
   moveEntryCommand,
@@ -533,6 +534,22 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     });
   }
 
+  async function createMarkdown(): Promise<string | null> {
+    return await runWithUiFeedback({
+      action: async () => {
+        const createdPath = await createMarkdownCommand({
+          vfs: deps.vfs,
+          documentsDirName: DOCUMENTS_DIR_NAME,
+        });
+        await reloadDirectory(DOCUMENTS_DIR_NAME);
+        return createdPath;
+      },
+      defaultErrorMessage: 'Failed to create document',
+      toastTitle: 'Document error',
+      toastDescription: () => error.value || 'Failed to create document',
+    });
+  }
+
   function getFileIcon(entry: FsEntry): string {
     if (entry.kind === 'directory') return 'i-heroicons-folder';
     if (entry.name.toLowerCase().endsWith('.otio')) return 'i-heroicons-queue-list';
@@ -574,6 +591,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     moveEntry,
     copyEntry,
     createTimeline,
+    createMarkdown,
     getFileIcon,
     readDirectory: service.readDirectory,
     vfs: deps.vfs,

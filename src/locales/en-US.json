@@ -140,7 +140,11 @@
       "invalidName": "Name contains invalid characters.",
       "required": "Name is required."
     },
+    "showHiddenFiles": "Show hidden files",
+    "hideHiddenFiles": "Hide hidden files",
     "video": "Video",
+    "timeline": "Timeline",
+    "textDocument": "Text document",
     "view": "View",
     "viewAll": "View all",
     "viewMode": {

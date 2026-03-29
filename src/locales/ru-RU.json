@@ -140,7 +140,11 @@
       "invalidName": "Имя содержит недопустимые символы",
       "required": "Имя обязательно"
     },
+    "showHiddenFiles": "Показать скрытые файлы",
+    "hideHiddenFiles": "Скрыть скрытые файлы",
     "video": "Видео",
+    "timeline": "Таймлайн",
+    "textDocument": "Текстовый документ",
     "view": "Просмотреть",
     "viewAll": "Смотреть все",
     "viewMode": {
