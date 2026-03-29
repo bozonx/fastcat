@@ -83,7 +83,7 @@ function handleAction(actionId: FileAction) {
     "
   >
     <template #content>
-      <div class="flex flex-col h-full max-h-[85dvh]">
+      <div class="flex flex-col h-full max-h-[50dvh]">
         <!-- Action Toolbar -->
         <div
           v-if="props.onAction"
