@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
-import { useFileManager, isMoveAllowed } from '~/composables/fileManager/useFileManager';
+import { useFileManager, isMoveAllowed } from '~/composables/file-manager/useFileManager';
 import type { FsEntry } from '~/types/fs';
 
 describe('useFileManager', () => {

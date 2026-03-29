@@ -10,7 +10,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useEditorViewStore } from '~/stores/editor-view.store';
 import { useFocusStore } from '~/stores/focus.store';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { usePresetsStore } from '~/stores/presets.store';
 import { BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS } from '~/utils/constants';

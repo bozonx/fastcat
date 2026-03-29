@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { readJsonFromFileHandle, writeJsonToFileHandle } from '~/repositories/fastcat-fs';
+import { readJsonFromFileHandle, writeJsonToFileHandle } from '~/repositories/fastcat-fs.repository';
 
 function createFileHandleMock(initialText: string) {
   let text = initialText;
@@ -26,7 +26,7 @@ function createFileHandleMock(initialText: string) {
   };
 }
 
-describe('fastcat-fs', () => {
+describe('fastcat-fs.repository', () => {
   it('readJsonFromFileHandle returns null on empty text', async () => {
     const handle = createFileHandleMock('   ');
     const value = await readJsonFromFileHandle(handle as any);

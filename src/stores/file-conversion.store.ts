@@ -2,8 +2,8 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
-import { useFileConversionSettings } from '~/composables/fileConversion/useFileConversionSettings';
-import { useFileConversionActions } from '~/composables/fileConversion/useFileConversionActions';
+import { useFileConversionSettings } from '~/composables/file-conversion/useFileConversionSettings';
+import { useFileConversionActions } from '~/composables/file-conversion/useFileConversionActions';
 
 export const useFileConversionStore = defineStore('file-conversion', () => {
   const isModalOpen = ref(false);

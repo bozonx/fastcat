@@ -21,7 +21,7 @@ vi.mock('~/stores/focus.store', () => ({
   }),
 }));
 
-vi.mock('~/composables/fileManager/useFileManager', () => ({
+vi.mock('~/composables/file-manager/useFileManager', () => ({
   useFileManager: () => ({
     findEntryByPath: vi.fn(),
     vfs: {},

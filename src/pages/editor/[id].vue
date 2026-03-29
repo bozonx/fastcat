@@ -13,7 +13,7 @@ import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { computed, ref } from 'vue';
 import { useEventListener, until } from '@vueuse/core';
 import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 import {
   getWorkspacePathParent,
   WORKSPACE_COMMON_DIR_NAME,

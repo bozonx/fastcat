@@ -4,7 +4,7 @@ import {
   readJsonFromFileHandle,
   writeJsonToFileHandle,
   type DirectoryHandleLike,
-} from './fastcat-fs';
+} from './fastcat-fs.repository';
 
 export interface ProjectSettingsRepository {
   load(): Promise<unknown | null>;

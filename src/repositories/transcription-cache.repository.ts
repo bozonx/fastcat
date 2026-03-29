@@ -2,7 +2,7 @@ import {
   readJsonFromFileHandle,
   writeJsonToFileHandle,
   type DirectoryHandleLike,
-} from './fastcat-fs';
+} from './fastcat-fs.repository';
 import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 import { ensureResolvedProjectTempDir } from '~/utils/storage-handles';
 import { z } from 'zod';

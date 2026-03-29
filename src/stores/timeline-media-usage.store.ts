@@ -3,9 +3,9 @@ import { computed, ref } from 'vue';
 
 import { useProjectStore } from './project.store';
 import { useWorkspaceStore } from './workspace.store';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 
-import { parseTimelineFromOtio } from '~/timeline/otioSerializer';
+import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { createTimelineDocId } from '~/timeline/id';
 
 import {

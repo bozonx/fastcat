@@ -3,7 +3,7 @@ import type { TimelineClipItem } from '~/timeline/types';
 import { useMediaStore } from '~/stores/media.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { isSvgFilename } from '~/utils/svg';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';

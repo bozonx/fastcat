@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { AppNotificationService } from '~/services/AppNotificationService';
-import type { I18nService } from '~/services/I18nService';
+import type { AppNotificationService } from '~/services/app-notification.service';
+import type { I18nService } from '~/services/i18n.service';
 
 describe('Services Interfaces', () => {
   it('defines AppNotificationService correctly', () => {

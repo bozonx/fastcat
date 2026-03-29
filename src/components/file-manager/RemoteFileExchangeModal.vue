@@ -3,7 +3,7 @@ import UiModal from '~/components/ui/UiModal.vue';
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import RemoteTransferProgressModal from '~/components/file-manager/RemoteTransferProgressModal.vue';
 import { useUiStore } from '~/stores/ui.store';
-import { useRemoteExchange } from '~/composables/fileManager/useRemoteExchange';
+import { useRemoteExchange } from '~/composables/file-manager/useRemoteExchange';
 
 const { t } = useI18n();
 const uiStore = useUiStore();

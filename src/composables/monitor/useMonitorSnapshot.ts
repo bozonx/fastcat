@@ -11,7 +11,7 @@ import { buildStopFrameBaseName } from '~/utils/stop-frames';
 import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { IMAGES_DIR_NAME } from '~/utils/constants';
-import { dispatchTimelineThumbnailGeneration } from '~/timeline/services/timelineThumbnailService';
+import { dispatchTimelineThumbnailGeneration } from '~/timeline/services/timeline-thumbnail.service';
 import { cloneValue } from '~/utils/clone';
 
 export function useMonitorSnapshot(input: {

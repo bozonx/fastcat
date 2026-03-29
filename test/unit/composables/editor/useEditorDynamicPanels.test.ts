@@ -42,7 +42,7 @@ vi.mock('~/stores/tabs.store', () => ({
   useProjectTabsStore: () => mockTabsStore,
 }));
 
-vi.mock('~/composables/fileManager/useFileManager', () => ({
+vi.mock('~/composables/file-manager/useFileManager', () => ({
   useFileManager: () => mockFileManager,
 }));
 

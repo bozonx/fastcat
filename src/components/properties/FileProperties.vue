@@ -19,7 +19,7 @@ import OtioPropertiesSection from '~/components/properties/file/OtioPropertiesSe
 import FileProjectRootSection from '~/components/properties/file/FileProjectRootSection.vue';
 import FileTranscriptionModal from '~/components/properties/file/FileTranscriptionModal.vue';
 import EntryActions from '~/components/properties/file/EntryActions.vue';
-import { useEntryPreview } from '~/composables/fileManager/useEntryPreview';
+import { useEntryPreview } from '~/composables/file-manager/useEntryPreview';
 import { useImageExifInfo } from '~/composables/properties/useImageExifInfo';
 import { useFileTimelineUsage } from '~/composables/properties/useFileTimelineUsage';
 import { useFileProxyFolder } from '~/composables/properties/useFileProxyFolder';
@@ -28,8 +28,8 @@ import { useFilePropertiesActions } from '~/composables/properties/useFileProper
 import { useFilePropertiesTranscription } from '~/composables/properties/useFilePropertiesTranscription';
 import { useFileStorageInfo } from '~/composables/properties/useFileStorageInfo';
 import { useFilePropertiesHandlers } from '~/composables/properties/useFilePropertiesHandlers';
-import { useAudioExtraction } from '~/composables/fileManager/useAudioExtraction';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import { useWorkspaceStore } from '~/stores/workspace.store';

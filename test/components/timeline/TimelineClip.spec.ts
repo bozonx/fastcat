@@ -83,7 +83,7 @@ vi.mock('~/stores/focus.store', () => ({
 vi.mock('~/stores/files-page.store', () => ({ useFilesPageStore: () => ({}) }));
 vi.mock('~/stores/tabs.store', () => ({ useProjectTabsStore: () => ({ setActiveTab: vi.fn() }) }));
 
-vi.mock('~/composables/fileManager/useFileManager', () => ({
+vi.mock('~/composables/file-manager/useFileManager', () => ({
   useFileManager: () => ({
     loadProjectDirectory: vi.fn(async () => {}),
     findEntryByPath: vi.fn(() => ({})),

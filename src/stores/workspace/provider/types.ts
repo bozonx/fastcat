@@ -1,6 +1,6 @@
-import type { DirectoryHandleLike } from '~/repositories/fastcat-fs';
+import type { DirectoryHandleLike } from '~/repositories/fastcat-fs.repository';
 
-export interface WorkspaceProvider {
+export interface WorkspaceStorageProvider {
   id: string;
   isSupported: boolean;
   openWorkspace(): Promise<DirectoryHandleLike | null>;

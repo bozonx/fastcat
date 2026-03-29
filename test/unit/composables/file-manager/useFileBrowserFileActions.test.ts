@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 
-import { useFileBrowserFileActions } from '~/composables/fileManager/useFileBrowserFileActions';
+import { useFileBrowserFileActions } from '~/composables/file-manager/useFileBrowserFileActions';
 import type { FsEntry } from '~/types/fs';
 
 const projectStore = {
@@ -38,7 +38,7 @@ vi.mock('~/stores/project.store', () => ({ useProjectStore: () => projectStore }
 vi.mock('~/stores/ui.store', () => ({ useUiStore: () => uiStore }));
 vi.mock('~/stores/proxy.store', () => ({ useProxyStore: () => proxyStore }));
 vi.mock('~/composables/project/useProjectTabs', () => ({ useProjectTabs: () => projectTabs }));
-vi.mock('~/composables/fileManager/useAudioExtraction', () => ({
+vi.mock('~/composables/file-manager/useAudioExtraction', () => ({
   useAudioExtraction: () => audioExtraction,
 }));
 vi.mock('~/utils/media-types', () => ({

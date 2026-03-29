@@ -18,7 +18,7 @@ import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import {
   useClipboardPaths,
   useClipboardCopyPaths,
-} from '~/composables/fileManager/useClipboardIndicator';
+} from '~/composables/file-manager/useClipboardIndicator';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import FileManagerTreeRow from '~/components/file-manager/FileManagerTreeRow.vue';
 import {
@@ -30,7 +30,7 @@ import {
   TEXT_EXTENSIONS,
   TIMELINE_EXTENSIONS,
 } from '~/utils/media-types';
-import { useFileContextMenu } from '~/composables/fileManager/useFileContextMenu';
+import { useFileContextMenu } from '~/composables/file-manager/useFileContextMenu';
 import { isRemoteFsEntry, type RemoteFsEntry } from '~/utils/remote-vfs';
 import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import { isGeneratingProxyInDirectory, folderHasVideos } from '~/utils/fs-entry-utils';

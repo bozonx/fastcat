@@ -4,7 +4,7 @@ import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { useProjectStore } from '~/stores/project.store';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import { useUiStore } from '~/stores/ui.store';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { getExportWorkerClient, restartExportWorker } from '~/utils/video-editor/worker-client';
 import type { ConversionRequest } from '~/types/conversion';
 import { dirname } from '~/utils/path';

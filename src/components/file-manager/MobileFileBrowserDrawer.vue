@@ -5,7 +5,7 @@ import { useWindowSize } from '@vueuse/core';
 import FileProperties from '~/components/properties/FileProperties.vue';
 import MultiFileProperties from '~/components/properties/MultiFileProperties.vue';
 import { isOpenableProjectFileName } from '~/utils/media-types';
-import type { FileAction } from '~/composables/fileManager/useFileManagerActions';
+import type { FileAction } from '~/composables/file-manager/useFileManagerActions';
 import type { SelectedFsEntry, SelectedFsEntries } from '~/stores/selection.store';
 import type { FsEntry } from '~/types/fs';
 

@@ -13,14 +13,14 @@ import { useMonitorContainerControls } from '~/composables/monitor/useMonitorCon
 import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
 import { useMonitorRuntime } from '~/composables/monitor/useMonitorRuntime';
 import { TIMELINES_DIR_NAME } from '~/utils/constants';
-import { serializeTimelineToOtio } from '~/timeline/otioSerializer';
+import { serializeTimelineToOtio } from '~/timeline/otio-serializer';
 import type { TimelineMarker } from '~/timeline/types';
 import MonitorAudioControl from './MonitorAudioControl.vue';
 import MonitorTextTransformBox from './MonitorTextTransformBox.vue';
 import MonitorViewport from './MonitorViewport.vue';
 import MonitorTransformBox from './MonitorTransformBox.vue';
 import { registerMonitorActions } from '~/composables/editor/hotkeys/monitorActions';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 

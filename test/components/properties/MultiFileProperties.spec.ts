@@ -3,7 +3,7 @@ import { mountWithNuxt } from '../../utils/mount';
 import MultiFileProperties from '~/components/properties/MultiFileProperties.vue';
 import { ref } from 'vue';
 
-vi.mock('~/composables/fileManager/useFileManager', () => ({
+vi.mock('~/composables/file-manager/useFileManager', () => ({
   useFileManager: vi.fn(() => ({
     vfs: {
       getFile: vi.fn(async (path) => ({ size: 1024 })),

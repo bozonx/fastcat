@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { useRuntimeConfig } from '#imports';
-import { useFileBrowserStt } from '~/composables/fileManager/useFileBrowserStt';
+import { useFileBrowserStt } from '~/composables/file-manager/useFileBrowserStt';
 import { transcribeProjectAudioFile } from '~/utils/stt';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import { getMediaTypeFromFilename } from '~/utils/media-types';

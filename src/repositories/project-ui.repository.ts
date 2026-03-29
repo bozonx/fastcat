@@ -3,7 +3,7 @@ import {
   readJsonFromFileHandle,
   writeJsonToFileHandle,
   type DirectoryHandleLike,
-} from './fastcat-fs';
+} from './fastcat-fs.repository';
 
 import type { MonitorSettings } from '~/utils/project-settings';
 

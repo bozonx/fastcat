@@ -1,7 +1,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 import {
   useDraggedFile,
   FILE_MANAGER_MOVE_DRAG_TYPE,

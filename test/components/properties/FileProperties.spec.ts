@@ -4,7 +4,7 @@ import { mountWithNuxt } from '../../utils/mount';
 import FileProperties from '~/components/properties/FileProperties.vue';
 
 // Mock all internal composables used by FileProperties.vue
-vi.mock('~/composables/fileManager/useEntryPreview', () => ({
+vi.mock('~/composables/file-manager/useEntryPreview', () => ({
   useEntryPreview: vi.fn(() => ({
     currentUrl: ref('http://example.com/test.mp4'),
     mediaType: ref('video'),
@@ -87,7 +87,7 @@ vi.mock('~/composables/properties/useFilePropertiesActions', () => ({
   })),
 }));
 
-vi.mock('~/composables/fileManager/useFileManager', () => ({
+vi.mock('~/composables/file-manager/useFileManager', () => ({
   useFileManager: vi.fn(() => ({
     vfs: {
       getFile: vi.fn(),
@@ -153,7 +153,7 @@ describe('FileProperties.vue', () => {
 
   it('renders properties for a directory', async () => {
     // Override useEntryPreview for directory
-    const { useEntryPreview } = await import('~/composables/fileManager/useEntryPreview');
+    const { useEntryPreview } = await import('~/composables/file-manager/useEntryPreview');
     vi.mocked(useEntryPreview).mockReturnValue({
       currentUrl: ref(null),
       mediaType: ref('directory' as any),
@@ -195,7 +195,7 @@ describe('FileProperties.vue', () => {
 
   it('renders properties for the project root', async () => {
     const { useFileStorageInfo } = await import('~/composables/properties/useFileStorageInfo');
-    const { useEntryPreview } = await import('~/composables/fileManager/useEntryPreview');
+    const { useEntryPreview } = await import('~/composables/file-manager/useEntryPreview');
 
     vi.mocked(useFileStorageInfo).mockReturnValue({
       isProjectRootDir: ref(true),
@@ -239,7 +239,7 @@ describe('FileProperties.vue', () => {
   });
 
   it('renders properties for the common root', async () => {
-    const { useEntryPreview } = await import('~/composables/fileManager/useEntryPreview');
+    const { useEntryPreview } = await import('~/composables/file-manager/useEntryPreview');
 
     vi.mocked(useEntryPreview).mockReturnValue({
       currentUrl: ref(null),
@@ -273,7 +273,7 @@ describe('FileProperties.vue', () => {
   });
 
   it('renders properties for an image file with EXIF', async () => {
-    const { useEntryPreview } = await import('~/composables/fileManager/useEntryPreview');
+    const { useEntryPreview } = await import('~/composables/file-manager/useEntryPreview');
     const { useImageExifInfo } = await import('~/composables/properties/useImageExifInfo');
 
     vi.mocked(useEntryPreview).mockReturnValue({
@@ -319,7 +319,7 @@ describe('FileProperties.vue', () => {
   });
 
   it('renders transcription section for audio/video files', async () => {
-    const { useEntryPreview } = await import('~/composables/fileManager/useEntryPreview');
+    const { useEntryPreview } = await import('~/composables/file-manager/useEntryPreview');
     const { useFilePropertiesTranscription } =
       await import('~/composables/properties/useFilePropertiesTranscription');
 

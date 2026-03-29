@@ -2,20 +2,20 @@
 import { ref } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 import type { FsEntry } from '~/types/fs';
 import FileManagerFiles from '~/components/file-manager/FileManagerFiles.vue';
 import FileManagerPanelModals from '~/components/file-manager/FileManagerPanelModals.vue';
 import { useFocusStore } from '~/stores/focus.store';
-import { useFileManagerActions } from '~/composables/fileManager/useFileManagerActions';
+import { useFileManagerActions } from '~/composables/file-manager/useFileManagerActions';
 import { useProjectTabsStore } from '~/stores/tabs.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
-import { useAudioExtraction } from '~/composables/fileManager/useAudioExtraction';
-import { useFileManagerPanelPendingActions } from '~/composables/fileManager/useFileManagerPanelPendingActions';
-import { useFileManagerPanelBootstrap } from '~/composables/fileManager/useFileManagerPanelBootstrap';
-import { useFileManagerPanelStt } from '~/composables/fileManager/useFileManagerPanelStt';
-import { useFileManagerPanelActions } from '~/composables/fileManager/useFileManagerPanelActions';
+import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
+import { useFileManagerPanelPendingActions } from '~/composables/file-manager/useFileManagerPanelPendingActions';
+import { useFileManagerPanelBootstrap } from '~/composables/file-manager/useFileManagerPanelBootstrap';
+import { useFileManagerPanelStt } from '~/composables/file-manager/useFileManagerPanelStt';
+import { useFileManagerPanelActions } from '~/composables/file-manager/useFileManagerPanelActions';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 
 const props = defineProps<{

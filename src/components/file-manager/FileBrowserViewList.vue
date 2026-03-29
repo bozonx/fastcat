@@ -3,8 +3,8 @@ import { useFileManagerStore, type FileSortField } from '~/stores/file-manager.s
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useProxyStore } from '~/stores/proxy.store';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
-import { useClipboardPaths } from '~/composables/fileManager/useClipboardIndicator';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
+import { useClipboardPaths } from '~/composables/file-manager/useClipboardIndicator';
 import type { FsEntry } from '~/types/fs';
 import { formatBytes } from '~/utils/format';
 import { WORKSPACE_COMMON_PATH_PREFIX, isWorkspaceCommonPath } from '~/utils/workspace-common';

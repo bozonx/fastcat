@@ -8,7 +8,7 @@ import {
   readJsonFromFileHandle,
   writeJsonToFileHandle,
   type DirectoryHandleLike,
-} from './fastcat-fs';
+} from './fastcat-fs.repository';
 import { FASTCAT_CONFIG_DIR_NAME, LEGACY_WORKSPACE_CONFIG_DIR_NAME } from '~/utils/storage-roots';
 
 export interface WorkspaceSettingsRepository {

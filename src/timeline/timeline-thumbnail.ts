@@ -2,7 +2,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { TimelineDocument } from '~/timeline/types';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
-import { dispatchTimelineThumbnailGeneration } from '~/timeline/services/timelineThumbnailService';
+import { dispatchTimelineThumbnailGeneration } from '~/timeline/services/timeline-thumbnail.service';
 
 export function generateTimelineThumbnail(params: {
   timelinePath: string;

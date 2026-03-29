@@ -2,7 +2,7 @@
 import { ref, computed, watch, onUnmounted } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useProxyStore } from '~/stores/proxy.store';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 import FilePreview from '~/components/preview/FilePreview.vue';
 
 const props = defineProps<{

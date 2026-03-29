@@ -2,7 +2,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 
-import { useFileConversionActions } from '~/composables/fileConversion/useFileConversionActions';
+import { useFileConversionActions } from '~/composables/file-conversion/useFileConversionActions';
 import { executeMediaConversion } from '~/utils/conversion/media-conversion';
 
 const mockProjectStore = {
@@ -43,7 +43,7 @@ vi.mock('~/stores/ui.store', () => ({
   useUiStore: () => mockUiStore,
 }));
 
-vi.mock('~/composables/fileManager/useFileManager', () => ({
+vi.mock('~/composables/file-manager/useFileManager', () => ({
   useFileManager: () => mockFileManager,
 }));
 

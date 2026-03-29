@@ -3,7 +3,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useDraggedFile } from '~/composables/useDraggedFile';
 import { pxToTimeUs } from '~/utils/timeline/geometry';
 import { getMediaTypeFromFilename } from '~/utils/media-types';

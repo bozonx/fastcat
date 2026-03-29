@@ -6,7 +6,7 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { useUiStore } from '~/stores/ui.store';
 import { createTimelineCommand } from '~/file-manager/application/fileManagerCommands';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
-import type { FileAction as FileActionBase } from '~/composables/fileManager/useFileManagerActions';
+import type { FileAction as FileActionBase } from '~/composables/file-manager/useFileManagerActions';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
 export interface FileManagerPanelActionsOptions {

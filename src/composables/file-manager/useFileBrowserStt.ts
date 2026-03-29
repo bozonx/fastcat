@@ -6,7 +6,7 @@ import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import { transcribeProjectAudioFile } from '~/utils/stt';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import type { FsEntry } from '~/types/fs';
-import type { ExtendedFsEntry } from '~/composables/fileManager/useFileBrowserEntries';
+import type { ExtendedFsEntry } from '~/composables/file-manager/useFileBrowserEntries';
 
 export function useFileBrowserStt() {
   const workspaceStore = useWorkspaceStore();

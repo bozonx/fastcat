@@ -1,4 +1,4 @@
-import type { DirectoryHandleLike } from '~/repositories/fastcat-fs';
+import type { DirectoryHandleLike } from '~/repositories/fastcat-fs.repository';
 import { PROJECTS_ROOT_DIR_NAME, THUMBNAILS_ROOT_DIR_NAME } from './storage-roots';
 import { toStoragePathSegments, type ResolvedStorageTopology } from './storage-topology';
 

@@ -3,7 +3,7 @@ import { onMounted, onUnmounted, ref, watch } from 'vue';
 import TextEditorModal from '~/components/preview/TextEditorModal.vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 
 const props = defineProps<{
   filePath: string;

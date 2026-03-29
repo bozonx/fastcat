@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 
-import { useFileBrowserInteraction } from '~/composables/fileManager/useFileBrowserInteraction';
+import { useFileBrowserInteraction } from '~/composables/file-manager/useFileBrowserInteraction';
 import type { FsEntry } from '~/types/fs';
 
 const filesPageStore = {
@@ -30,7 +30,7 @@ vi.mock('~/stores/timeline.store', () => ({ useTimelineStore: () => timelineStor
 vi.mock('~/utils/media-types', () => ({
   isOpenableProjectFileName: vi.fn((name: string) => name.endsWith('.txt')),
 }));
-vi.mock('~/composables/fileManager/useFileManagerSelection', () => ({
+vi.mock('~/composables/file-manager/useFileManagerSelection', () => ({
   useFileManagerSelection: ({ onSingleSelect }: any) => ({
     handleEntryClick: (e: any, entry: any) => onSingleSelect(entry),
   }),

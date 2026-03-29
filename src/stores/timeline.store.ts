@@ -12,7 +12,7 @@ import type { TimelineCommand } from '~/timeline/commands';
 import { applyTimelineCommand } from '~/timeline/commands';
 import { createTimelineCommandService } from '~/timeline/application/timelineCommandService';
 import { createTimelineEditService } from '~/timeline/application/timelineEditService';
-import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otioSerializer';
+import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otio-serializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import { pxPerSecondToZoom } from '~/utils/timeline/geometry';
 
@@ -45,8 +45,8 @@ import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumb
 import { MAX_TIMELINE_ZOOM_POSITION, MIN_TIMELINE_ZOOM_POSITION } from '~/utils/zoom';
 import { useTimelineMediaUsageStore } from './timeline-media-usage.store';
 
-import type { AppNotificationService } from '~/services/AppNotificationService';
-import type { I18nService } from '~/services/I18nService';
+import type { AppNotificationService } from '~/services/app-notification.service';
+import type { I18nService } from '~/services/i18n.service';
 
 export const useTimelineStore = defineStore('timeline', () => {
   const projectStore = useProjectStore();

@@ -8,7 +8,7 @@ const mockFileManager = {
   getFileIcon: vi.fn(() => 'i-heroicons-document'),
 };
 
-vi.mock('~/composables/fileManager/useFileManager', () => ({
+vi.mock('~/composables/file-manager/useFileManager', () => ({
   useFileManager: () => mockFileManager,
 }));
 

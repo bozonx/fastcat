@@ -40,7 +40,7 @@ vi.mock('~/stores/ui.store', () => ({ useUiStore: () => mockUiStore }));
 vi.mock('~/stores/clipboard.store', () => ({ useClipboardStore: () => mockClipboardStore }));
 
 // Mock composables to avoid side effects and complex setup
-vi.mock('~/composables/fileManager/useFileManager', () => ({
+vi.mock('~/composables/file-manager/useFileManager', () => ({
   useFileManager: () => ({
     readDirectory: vi.fn(async () => []),
     getFileIcon: vi.fn(() => 'icon'),
@@ -50,7 +50,7 @@ vi.mock('~/composables/fileManager/useFileManager', () => ({
   }),
 }));
 
-vi.mock('~/composables/fileManager/useMobileFileBrowserNavigation', () => ({
+vi.mock('~/composables/file-manager/useMobileFileBrowserNavigation', () => ({
   useMobileFileBrowserNavigation: () => ({
     entries: ref([]),
     isLoading: ref(false),
@@ -61,7 +61,7 @@ vi.mock('~/composables/fileManager/useMobileFileBrowserNavigation', () => ({
   }),
 }));
 
-vi.mock('~/composables/fileManager/useMobileFileBrowserSelection', () => ({
+vi.mock('~/composables/file-manager/useMobileFileBrowserSelection', () => ({
   useMobileFileBrowserSelection: () => ({
     isSelectionMode: ref(false),
     isDrawerOpen: ref(false),
@@ -77,7 +77,7 @@ vi.mock('~/composables/fileManager/useMobileFileBrowserSelection', () => ({
   }),
 }));
 
-vi.mock('~/composables/fileManager/useMobileFileBrowserCreate', () => ({
+vi.mock('~/composables/file-manager/useMobileFileBrowserCreate', () => ({
   useMobileFileBrowserCreate: () => ({
     fileInput: ref(null),
     isCreateMenuOpen: ref(false),
@@ -89,7 +89,7 @@ vi.mock('~/composables/fileManager/useMobileFileBrowserCreate', () => ({
   }),
 }));
 
-vi.mock('~/composables/fileManager/useFileManagerActions', () => ({
+vi.mock('~/composables/file-manager/useFileManagerActions', () => ({
   useFileManagerActions: () => ({
     onFileAction: vi.fn(),
     isDeleteConfirmModalOpen: ref(false),
@@ -98,7 +98,7 @@ vi.mock('~/composables/fileManager/useFileManagerActions', () => ({
   }),
 }));
 
-vi.mock('~/composables/fileManager/useFileBrowserStt', () => ({
+vi.mock('~/composables/file-manager/useFileBrowserStt', () => ({
   useFileBrowserStt: () => ({
     sttTranscriptionModalOpen: ref(false),
     sttTranscriptionLanguage: ref('en'),

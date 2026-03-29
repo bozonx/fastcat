@@ -11,7 +11,7 @@ vi.mock('~/stores/timeline-media-usage.store', () => ({
   }),
 }));
 
-vi.mock('~/composables/fileManager/useEntryPreview', () => {
+vi.mock('~/composables/file-manager/useEntryPreview', () => {
   return {
     useEntryPreview: () => {
       return {

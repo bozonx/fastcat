@@ -2,7 +2,7 @@ import type { Ref } from 'vue';
 import type { TimelineDocument } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 import { createTimelineCommandService } from '~/timeline/application/timelineCommandService';
-import { parseTimelineFromOtio } from '~/timeline/otioSerializer';
+import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 

@@ -3,7 +3,7 @@ import { ref, onBeforeUnmount } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { formatBytes } from '~/utils/format';
 import { getMediaTypeFromFilename, getMimeTypeFromFilename } from '~/utils/media-types';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 
 interface ExtendedFsEntry extends FsEntry {
   objectUrl?: string;

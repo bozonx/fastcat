@@ -7,7 +7,7 @@ import { isOpenableProjectFileName } from '~/utils/media-types';
 import { useFileManagerStore, type FileSortField } from '~/stores/file-manager.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useFileManagerSelection } from '~/composables/fileManager/useFileManagerSelection';
+import { useFileManagerSelection } from '~/composables/file-manager/useFileManagerSelection';
 
 export interface FileBrowserInteractionOptions {
   isRemoteMode: Ref<boolean>;

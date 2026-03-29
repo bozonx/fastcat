@@ -3,7 +3,7 @@ import { watch, type Ref } from 'vue';
 import type { TimelineDocument } from '~/timeline/types';
 import type { MediaPathToTimelinesMap } from '~/utils/timeline-media-usage';
 import { computeMediaUsageByTimelineDocs } from '~/utils/timeline-media-usage';
-import { generateTimelineThumbnail } from '~/timeline/timelineThumbnail';
+import { generateTimelineThumbnail } from '~/timeline/timeline-thumbnail';
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
 
 interface TimelineSelectionApi {

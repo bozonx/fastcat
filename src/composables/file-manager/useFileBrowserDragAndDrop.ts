@@ -10,7 +10,7 @@ import {
   createHotkeyLookup,
   isCommandMatched,
 } from '~/utils/hotkeys/runtime';
-import { useFileDrop } from '~/composables/fileManager/useFileDrop';
+import { useFileDrop } from '~/composables/file-manager/useFileDrop';
 import {
   FILE_MANAGER_COPY_DRAG_TYPE,
   useDraggedFile,
@@ -19,7 +19,7 @@ import {
 } from '~/composables/useDraggedFile';
 import type { FsEntry } from '~/types/fs';
 import type { DraggedFileData } from '~/composables/useDraggedFile';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 

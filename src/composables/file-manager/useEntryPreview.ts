@@ -5,7 +5,7 @@ import {
   getMediaTypeFromFilename,
   getMimeTypeFromFilename,
 } from '~/utils/media-types';
-import { parseTimelineFromOtio } from '~/timeline/otioSerializer';
+import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import { computeDirectoryStats } from '~/utils/fs';
 import type { TimelineDocument } from '~/timeline/types';

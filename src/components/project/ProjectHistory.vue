@@ -5,7 +5,7 @@ import { useHistoryStore } from '~/stores/history.store';
 
 // Import useFileManager here to avoid circular dependencies if any,
 // though it should be fine as it's a composable.
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 
 defineProps<{
   compact?: boolean;
