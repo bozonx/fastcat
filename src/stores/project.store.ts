@@ -22,7 +22,7 @@ import { createEditorViewModule } from './editor-view.store';
 import { useMediaStore } from './media.store';
 import { useTimelineStore } from './timeline.store';
 import { useSelectionStore } from './selection.store';
-import { useFilesPageStore } from './files-page.store';
+import { useFileManagerStore } from './file-manager.store';
 import { useHistoryStore } from './history.store';
 
 import { createProjectFsModule } from '~/stores/project/projectFs';
@@ -86,13 +86,13 @@ export const useProjectStore = defineStore('project', () => {
     const mediaStore = useMediaStore();
     const timelineStore = useTimelineStore();
     const selectionStore = useSelectionStore();
-    const filesPageStore = useFilesPageStore();
+    const fileManagerStore = useFileManagerStore();
     const historyStore = useHistoryStore();
 
     mediaStore.resetMediaState();
     timelineStore.resetTimelineState();
     selectionStore.clearSelection();
-    filesPageStore.resetFilesPageState();
+    fileManagerStore.resetFileManagerState();
     historyStore.clear('timeline');
   }
 

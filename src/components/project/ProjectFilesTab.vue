@@ -2,12 +2,12 @@
 import { Pane, Splitpanes } from 'splitpanes';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
-import { useFilesPageStore } from '~/stores/files-page.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 
 const props = defineProps<{
   compact?: boolean;
 }>();
-const filesPageStore = useFilesPageStore();
+const fileManagerStore = useFileManagerStore();
 </script>
 
 <template>
@@ -18,7 +18,7 @@ const filesPageStore = useFilesPageStore();
         is-files-page
         :compact="compact"
         class="h-full"
-        @select="filesPageStore.selectFolder"
+        @select="fileManagerStore.openFolder"
       />
     </Pane>
     <Pane size="70" min-size="20">

@@ -1,7 +1,7 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import type { FsEntry } from '~/types/fs';
-import { useFilesPageStore } from '~/stores/files-page.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import {
@@ -22,7 +22,7 @@ export function useMobileFileBrowserNavigation({
   vfs,
   findEntryByPath,
 }: NavigationDeps) {
-  const filesPageStore = useFilesPageStore();
+  const fileManagerStore = useFileManagerStore();
   const projectStore = useProjectStore();
   const uiStore = useUiStore();
 
@@ -30,7 +30,7 @@ export function useMobileFileBrowserNavigation({
   const isLoading = ref(false);
 
   function navigateToRoot() {
-    filesPageStore.selectFolder({
+    fileManagerStore.openFolder({
       kind: 'directory',
       name: projectStore.currentProjectName || 'Root',
       path: '',
@@ -38,7 +38,7 @@ export function useMobileFileBrowserNavigation({
   }
 
   function navigateToWorkspaceCommonRoot() {
-    filesPageStore.selectFolder({
+    fileManagerStore.openFolder({
       kind: 'directory',
       name: WORKSPACE_COMMON_DIR_NAME,
       path: WORKSPACE_COMMON_PATH_PREFIX,
@@ -46,7 +46,7 @@ export function useMobileFileBrowserNavigation({
   }
 
   async function loadFolderContent() {
-    const folder = filesPageStore.selectedFolder;
+    const folder = fileManagerStore.selectedFolder;
     if (!folder) {
       navigateToRoot();
       return;
@@ -97,7 +97,7 @@ export function useMobileFileBrowserNavigation({
   }
 
   const breadcrumbs = computed(() => {
-    const folder = filesPageStore.selectedFolder;
+    const folder = fileManagerStore.selectedFolder;
     if (!folder || !folder.path) return [];
 
     const parts = folder.path.split('/').filter(Boolean);
@@ -116,7 +116,7 @@ export function useMobileFileBrowserNavigation({
   });
 
   async function goBack() {
-    const folder = filesPageStore.selectedFolder;
+    const folder = fileManagerStore.selectedFolder;
     if (!folder || !folder.path) return;
 
     const parentPath = getWorkspacePathParent(folder.path);
@@ -129,7 +129,7 @@ export function useMobileFileBrowserNavigation({
       // Construction of a parent entry is more reliable than findEntryByPath,
       // as the tree might not be fully loaded on mobile.
       const parentName = getWorkspacePathFileName(parentPath) || parentPath;
-      filesPageStore.selectFolder({
+      fileManagerStore.openFolder({
         kind: 'directory',
         name: parentName,
         path: parentPath,
@@ -138,7 +138,7 @@ export function useMobileFileBrowserNavigation({
   }
 
   watch(
-    () => filesPageStore.selectedFolder?.path,
+    () => fileManagerStore.selectedFolder?.path,
     () => {
       void loadFolderContent();
     },
@@ -153,7 +153,7 @@ export function useMobileFileBrowserNavigation({
   );
 
   onMounted(() => {
-    if (!filesPageStore.selectedFolder) {
+    if (!fileManagerStore.selectedFolder) {
       void navigateToRoot();
     } else {
       void loadFolderContent();

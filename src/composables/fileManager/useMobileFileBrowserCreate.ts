@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import { useFilesPageStore } from '~/stores/files-page.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useProjectStore } from '~/stores/project.store';
 
 interface CreateDeps {
@@ -17,7 +17,7 @@ export function useMobileFileBrowserCreate({
   handleFiles,
   loadFolderContent,
 }: CreateDeps) {
-  const filesPageStore = useFilesPageStore();
+  const fileManagerStore = useFileManagerStore();
   const projectStore = useProjectStore();
   const { t } = useI18n();
   const toast = useToast();
@@ -36,7 +36,7 @@ export function useMobileFileBrowserCreate({
     if (target.files) {
       const files = Array.from(target.files);
       target.value = '';
-      const targetPath = pendingUploadPath.value ?? filesPageStore.selectedFolder?.path ?? '';
+      const targetPath = pendingUploadPath.value ?? fileManagerStore.selectedFolder?.path ?? '';
       handleFiles(files, targetPath).then(() => {
         loadFolderContent();
         isCreateMenuOpen.value = false;
@@ -46,7 +46,7 @@ export function useMobileFileBrowserCreate({
 
   async function onCreateFolder(name: string) {
     if (name) {
-      const parentPath = filesPageStore.selectedFolder?.path || '';
+      const parentPath = fileManagerStore.selectedFolder?.path || '';
       await createFolder(name, parentPath);
       await loadFolderContent();
       isCreateMenuOpen.value = false;

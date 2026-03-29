@@ -31,13 +31,13 @@ import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useClipDrop } from '~/composables/timeline/useClipDrop';
 import { useClipInteractions } from '~/composables/timeline/useClipInteractions';
-import { isClipFreePosition } from '~/utils/timeline/clipChecks';
+import { isClipFreePosition } from '~/utils/timeline/clip-checks';
 import { useClickOrDrag } from '~/composables/timeline/useClickOrDrag';
 import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useFocusStore } from '~/stores/focus.store';
 import { useEditorViewStore } from '~/stores/editor-view.store';
-import { useFilesPageStore } from '~/stores/files-page.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useProjectTabsStore } from '~/stores/tabs.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 
@@ -205,7 +205,7 @@ const { clipItem, onClipClick } = useClipInteractions({
 
 const editorViewStore = useEditorViewStore();
 const focusStore = useFocusStore();
-const filesPageStore = useFilesPageStore();
+const fileManagerStore = useFileManagerStore();
 const projectTabsStore = useProjectTabsStore();
 const fileManager = useFileManager();
 
@@ -216,7 +216,7 @@ const { handleSelectInFileManager, handleOpenNestedTimeline } = useClipPropertie
   projectStore,
   uiStore,
   editorViewStore,
-  filesPageStore,
+  fileManagerStore,
   selectionStore,
   focusStore,
   fileManager,

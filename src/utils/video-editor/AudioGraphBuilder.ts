@@ -1,4 +1,4 @@
-import { buildAudioEffectGraph } from '~/utils/audio/effectGraph';
+import { buildAudioEffectGraph } from '~/utils/audio/effect-graph';
 
 import type { AudioClipEffect } from '~/timeline/types';
 

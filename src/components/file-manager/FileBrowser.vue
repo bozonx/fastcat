@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted, nextTick } from 'vue';
-import { useFilesPageStore } from '~/stores/files-page.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
@@ -31,7 +31,7 @@ import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/med
 import {
   isGeneratingProxyInDirectory as hasGeneratingProxyInDirectory,
   folderHasVideos,
-} from '~/utils/fsEntryUtils';
+} from '~/utils/fs-entry-utils';
 import FileBrowserToolbar from '~/components/file-manager/FileBrowserToolbar.vue';
 import FileBrowserBreadcrumbs from '~/components/file-manager/FileBrowserBreadcrumbs.vue';
 import FileBrowserStatusBar from '~/components/file-manager/FileBrowserStatusBar.vue';
@@ -44,7 +44,7 @@ const props = defineProps<{
   compact?: boolean;
 }>();
 
-const filesPageStore = useFilesPageStore();
+const fileManagerStore = useFileManagerStore();
 const selectionStore = useSelectionStore();
 
 const uiStore = useUiStore();
@@ -353,8 +353,8 @@ const emptySpaceContextMenuItems = computed(() => {
     if (!first) return [];
     return getContextMenuItems(first);
   }
-  if (!filesPageStore.selectedFolder) return [];
-  return getContextMenuItems(filesPageStore.selectedFolder);
+  if (!fileManagerStore.selectedFolder) return [];
+  return getContextMenuItems(fileManagerStore.selectedFolder);
 });
 
 // --- Marquee selection ---
@@ -381,7 +381,7 @@ const { onKeyDown: onContainerKeyDown, moveSelection } = useFocusableListNavigat
   containerRef: rootContainer,
   horizontal: true,
   getColumnCount: () => {
-    if (filesPageStore.viewMode !== 'grid' || !rootContainer.value) return 1;
+    if (fileManagerStore.viewMode !== 'grid' || !rootContainer.value) return 1;
     const items = Array.from(rootContainer.value.querySelectorAll<HTMLElement>('[tabindex="0"]'));
     if (items.length === 0) return 1;
     const firstTop = items[0]?.offsetTop;
@@ -395,7 +395,7 @@ const { onKeyDown: onContainerKeyDown, moveSelection } = useFocusableListNavigat
 const GRID_SIZES = [80, 100, 130, 160, 200];
 const GRID_SIZE_NAMES = ['XS', 'S', 'M', 'L', 'XL'];
 const currentGridSizeName = computed(() => {
-  const index = GRID_SIZES.indexOf(filesPageStore.gridCardSize);
+  const index = GRID_SIZES.indexOf(fileManagerStore.gridCardSize);
   return GRID_SIZE_NAMES[index] || 'm';
 });
 
@@ -556,8 +556,8 @@ async function onDirectoryUploadChange(e: Event) {
       v-if="
         (isRemoteMode && parentFolders.length > 0) ||
         (!isRemoteMode &&
-          filesPageStore.selectedFolder &&
-          filesPageStore.selectedFolder.path !== '')
+          fileManagerStore.selectedFolder &&
+          fileManagerStore.selectedFolder.path !== '')
       "
       :parent-folders="parentFolders"
       @navigate-back="navigateBack"
@@ -577,14 +577,14 @@ async function onDirectoryUploadChange(e: Event) {
         () =>
           onFileAction(
             'createFolder',
-            filesPageStore.selectedFolder || ({ kind: 'directory', path: '', name: '' } as FsEntry),
+            fileManagerStore.selectedFolder || ({ kind: 'directory', path: '', name: '' } as FsEntry),
           )
       "
       @upload="
         () =>
           onFileAction(
             'upload',
-            filesPageStore.selectedFolder || ({ kind: 'directory', path: '', name: '' } as FsEntry),
+            fileManagerStore.selectedFolder || ({ kind: 'directory', path: '', name: '' } as FsEntry),
           )
       "
     />
@@ -609,7 +609,7 @@ async function onDirectoryUploadChange(e: Event) {
       <UContextMenu :items="emptySpaceContextMenuItems" class="min-h-full">
         <div class="min-h-full flex flex-col">
           <div
-            v-if="!isRemoteMode && !filesPageStore.selectedFolder"
+            v-if="!isRemoteMode && !fileManagerStore.selectedFolder"
             class="flex flex-col items-center justify-center flex-1 text-ui-text-muted gap-2"
           >
             <UIcon name="i-heroicons-folder-open" class="w-12 h-12 opacity-20" />
@@ -631,7 +631,7 @@ async function onDirectoryUploadChange(e: Event) {
 
           <!-- Grid View -->
           <FileBrowserViewGrid
-            v-else-if="filesPageStore.viewMode === 'grid'"
+            v-else-if="fileManagerStore.viewMode === 'grid'"
             :entries="sortedEntries as ExtendedFsEntry[]"
             :is-root-drop-over="isRootDropOver"
             :drag-over-entry-path="dragOverEntryPath"

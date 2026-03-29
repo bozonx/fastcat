@@ -18,7 +18,7 @@ import { useMediaStore } from '~/stores/media.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
-import { blendModeOptions as rawBlendModeOptions } from '~/utils/constants';
+import { BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS } from '~/utils/constants';
 import { DEFAULT_TRANSITION_CURVE, DEFAULT_TRANSITION_MODE } from '~/transitions';
 import type { TimelineBlendMode, TimelineClipItem, ClipTransform } from '~/timeline/types';
 
@@ -108,7 +108,7 @@ const selectedCountLabel = computed(() => {
 });
 
 const blendModeOptions = computed<Array<{ value: TimelineBlendMode; label: string }>>(() =>
-  rawBlendModeOptions.map((opt) => ({
+  RAW_BLEND_MODE_OPTIONS.map((opt) => ({
     value: opt.value as TimelineBlendMode,
     label: t(opt.labelKey),
   })),

@@ -1,16 +1,16 @@
 import { computed, type Ref, toRaw } from 'vue';
 import type { FsEntry } from '~/types/fs';
-import { useFilesPageStore } from '~/stores/files-page.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 
 export function useFileSorting(entries: Ref<FsEntry[]>) {
-  const filesPageStore = useFilesPageStore();
+  const fileManagerStore = useFileManagerStore();
 
   const sortedEntries = computed(() => {
     const rawEntries = toRaw(entries.value);
     if (rawEntries.length === 0) return [];
 
     const arr = [...rawEntries];
-    const { field, order } = filesPageStore.sortOption;
+    const { field, order } = fileManagerStore.sortOption;
     const modifier = order === 'asc' ? 1 : -1;
 
     const compare = (a: any, b: any) => {

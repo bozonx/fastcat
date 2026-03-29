@@ -55,7 +55,7 @@ export const TIMELINE_RULER_CONSTANTS = {
   MIN_SELECTION_DURATION_PX: 6,
 } as const;
 
-export const blendModeOptions = [
+export const BLEND_MODE_OPTIONS = [
   { value: 'normal', labelKey: 'fastcat.clip.blendMode.normal' },
   { value: 'add', labelKey: 'fastcat.clip.blendMode.add' },
   { value: 'multiply', labelKey: 'fastcat.clip.blendMode.multiply' },
@@ -64,7 +64,7 @@ export const blendModeOptions = [
   { value: 'lighten', labelKey: 'fastcat.clip.blendMode.lighten' },
 ];
 
-export const trackColorPresets = [
+export const TRACK_COLOR_PRESETS = [
   '#2a2a2a', // Default
   '#4a90e2', // Blue
   '#50e3c2', // Teal

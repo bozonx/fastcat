@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { useFilesPageStore, type FileSortField } from '~/stores/files-page.store';
+import { useFileManagerStore, type FileSortField } from '~/stores/file-manager.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -28,7 +28,7 @@ import FileSttTranscriptionModal from './modals/FileSttTranscriptionModal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import { useFileBrowserStt } from '~/composables/fileManager/useFileBrowserStt';
 
-const filesPageStore = useFilesPageStore();
+const fileManagerStore = useFileManagerStore();
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
 const uiStore = useUiStore();
@@ -186,7 +186,7 @@ function onAddedToTimeline() {
 }
 
 async function handlePaste() {
-  const target = filesPageStore.selectedFolder;
+  const target = fileManagerStore.selectedFolder;
   if (!target) return;
   await onFileAction('paste', target);
   await loadFolderContent();
@@ -260,11 +260,11 @@ async function wrappedHandleDeleteConfirm() {
 
 
 const sortItems = computed(() =>
-  filesPageStore.sortFields.map((f) => ({
+  fileManagerStore.sortFields.map((f) => ({
     label: t(f.labelKey),
-    icon: filesPageStore.sortOption.field === f.value ? 'lucide:check' : undefined,
+    icon: fileManagerStore.sortOption.field === f.value ? 'lucide:check' : undefined,
     onSelect: () => {
-      filesPageStore.sortOption.field = f.value;
+      fileManagerStore.sortOption.field = f.value;
     },
   })),
 );
@@ -297,13 +297,13 @@ const menuItems = computed(() => [
   [
     {
       label:
-        filesPageStore.sortOption.order === 'asc'
+        fileManagerStore.sortOption.order === 'asc'
           ? t('common.sortOrder.asc', 'Ascending')
           : t('common.sortOrder.desc', 'Descending'),
-      icon: filesPageStore.sortOption.order === 'asc' ? 'lucide:sort-asc' : 'lucide:sort-desc',
+      icon: fileManagerStore.sortOption.order === 'asc' ? 'lucide:sort-asc' : 'lucide:sort-desc',
       onSelect: () => {
-        filesPageStore.sortOption.order =
-          filesPageStore.sortOption.order === 'asc' ? 'desc' : 'asc';
+        fileManagerStore.sortOption.order =
+          fileManagerStore.sortOption.order === 'asc' ? 'desc' : 'asc';
       },
     },
   ],
@@ -312,7 +312,7 @@ const menuItems = computed(() => [
       label: t('common.refresh', 'Refresh'),
       icon: 'i-heroicons-arrow-path',
       onSelect: async () => {
-        const path = filesPageStore.selectedFolder?.path || '';
+        const path = fileManagerStore.selectedFolder?.path || '';
         await reloadDirectory(path);
         await loadFolderContent();
       },
@@ -342,12 +342,12 @@ const menuItems = computed(() => [
       :selected-count="selectedEntries.length"
       :total-selected-size="totalSelectedSize"
       :breadcrumbs="breadcrumbs"
-      :has-folder-path="!!filesPageStore.selectedFolder?.path"
+      :has-folder-path="!!fileManagerStore.selectedFolder?.path"
       :menu-items="menuItems"
       @back="goBack"
       @cancel-selection="toggleSelectionMode"
       @navigate-root="navigateToRoot"
-      @navigate-breadcrumb="(name, path) => filesPageStore.selectFolder({ kind: 'directory', name, path })"
+      @navigate-breadcrumb="(name, path) => fileManagerStore.openFolder({ kind: 'directory', name, path })"
     />
 
     <!-- File Grid -->
@@ -416,8 +416,8 @@ const menuItems = computed(() => [
     <!-- Create Menu Sheet -->
     <MobileFileBrowserCreateSheet
       v-model="isCreateMenuOpen"
-      :selected-folder-name="filesPageStore.selectedFolder?.name || '/'"
-      :selected-folder-path="filesPageStore.selectedFolder?.path || ''"
+      :selected-folder-name="fileManagerStore.selectedFolder?.name || '/'"
+      :selected-folder-path="fileManagerStore.selectedFolder?.path || ''"
       @upload="triggerFileUpload"
       @create-folder="handleCreateFolderRequest"
       @create-timeline="onCreateTimeline"

@@ -1,6 +1,6 @@
 import { ref, watch, nextTick } from 'vue';
 import type { Ref } from 'vue';
-import { useFilesPageStore } from '~/stores/files-page.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import type { FsEntry } from '~/types/fs';
@@ -44,7 +44,7 @@ export function useFileBrowserNavigation({
   };
   readDirectory: (path: string | undefined) => Promise<FsEntry[]>;
 }) {
-  const filesPageStore = useFilesPageStore();
+  const fileManagerStore = useFileManagerStore();
   const projectStore = useProjectStore();
   const uiStore = useUiStore();
 
@@ -59,13 +59,13 @@ export function useFileBrowserNavigation({
       return;
     }
 
-    if (!filesPageStore.selectedFolder) {
+    if (!fileManagerStore.selectedFolder) {
       folderEntries.value = [];
       return;
     }
 
     try {
-      const path = filesPageStore.selectedFolder.path || '';
+      const path = fileManagerStore.selectedFolder.path || '';
       let entries = await readDirectory(path);
 
       if (!path) {
@@ -105,7 +105,7 @@ export function useFileBrowserNavigation({
 
     if (loadRemoteParentFolders(parentFolders)) return;
 
-    const selectedFolderPath = filesPageStore.selectedFolder?.path;
+    const selectedFolderPath = fileManagerStore.selectedFolder?.path;
     if (!selectedFolderPath) return;
 
     if (selectedFolderPath === WORKSPACE_COMMON_PATH_PREFIX) {
@@ -153,7 +153,7 @@ export function useFileBrowserNavigation({
       return;
     }
 
-    filesPageStore.selectFolder(target as FsEntry);
+    fileManagerStore.openFolder(target as FsEntry);
   }
 
   async function navigateToRoot() {
@@ -168,7 +168,7 @@ export function useFileBrowserNavigation({
       name: projectStore.currentProjectName || '',
       path: '',
     };
-    filesPageStore.selectFolder(rootEntry);
+    fileManagerStore.openFolder(rootEntry);
   }
 
   function navigateBack(): void {
@@ -198,7 +198,7 @@ export function useFileBrowserNavigation({
       return;
     }
 
-    filesPageStore.selectFolder(targetFolder as FsEntry);
+    fileManagerStore.openFolder(targetFolder as FsEntry);
   }
 
   function tryScrollToPendingEntry() {
@@ -219,7 +219,7 @@ export function useFileBrowserNavigation({
 
   // Reload on folder selection change
   watch(
-    () => filesPageStore.selectedFolder,
+    () => fileManagerStore.selectedFolder,
     async () => {
       if (isRemoteMode.value) return;
       await loadFolderContent();
@@ -228,7 +228,7 @@ export function useFileBrowserNavigation({
       if (!pendingScrollToEntryPath.value) return;
 
       const targetPath = pendingScrollToEntryPath.value;
-      const selectedFolderPath = filesPageStore.selectedFolder?.path ?? '';
+      const selectedFolderPath = fileManagerStore.selectedFolder?.path ?? '';
       const targetParentPath = targetPath.split('/').slice(0, -1).join('/');
 
       if (targetParentPath !== selectedFolderPath) return;
@@ -257,7 +257,7 @@ export function useFileBrowserNavigation({
       if (entry?.kind === 'file' && entry.path) {
         pendingScrollToEntryPath.value = entry.path;
 
-        const selectedFolderPath = filesPageStore.selectedFolder?.path ?? '';
+        const selectedFolderPath = fileManagerStore.selectedFolder?.path ?? '';
         const targetParentPath = entry.path.split('/').slice(0, -1).join('/');
         if (targetParentPath === selectedFolderPath) {
           requestAnimationFrame(() => {

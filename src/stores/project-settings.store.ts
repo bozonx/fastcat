@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 
-import { createAutoSave } from '~/utils/autoSave';
+import { createAutoSave } from '~/utils/auto-save';
 import {
   createDefaultProjectSettings,
   normalizeProjectSettings,

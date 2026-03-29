@@ -74,7 +74,7 @@ const mainSplitterMenuItems = computed(() => [
 const route = useRoute();
 const router = useRouter();
 const { currentProjectId } = storeToRefs(projectStore);
-const filesPageStore = useFilesPageStore();
+const fileManagerStore = useFileManagerStore();
 const selectionStore = useSelectionStore();
 const focusStore = useFocusStore();
 
@@ -138,7 +138,7 @@ function getFileManager() {
 }
 
 function selectRootFolder() {
-  filesPageStore.selectFolder({
+  fileManagerStore.openFolder({
     kind: 'directory',
     name: projectStore.currentProjectName || '',
     path: '',
@@ -146,7 +146,7 @@ function selectRootFolder() {
 }
 
 function selectWorkspaceCommonFolder() {
-  filesPageStore.selectFolder({
+  fileManagerStore.openFolder({
     kind: 'directory',
     name: WORKSPACE_COMMON_DIR_NAME,
     path: WORKSPACE_COMMON_PATH_PREFIX,
@@ -167,12 +167,12 @@ function selectFolderByPath(path: string) {
   const { findEntryByPath } = getFileManager();
   const entry = findEntryByPath(path);
   if (entry && entry.kind === 'directory') {
-    filesPageStore.selectFolder(entry);
+    fileManagerStore.openFolder(entry);
   }
 }
 
 async function navigateToParentFolder() {
-  const folder = filesPageStore.selectedFolder;
+  const folder = fileManagerStore.selectedFolder;
   if (!folder) return;
 
   const currentPath = folder.path ?? '';
@@ -320,7 +320,7 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
             :sizes="filesSizes"
             :selected-entity="selectionStore.selectedEntity"
             @resized="onFilesResize"
-            @select-folder="filesPageStore.selectFolder"
+            @select-folder="fileManagerStore.openFolder"
             @clear-selection="selectionStore.clearSelection"
           />
 

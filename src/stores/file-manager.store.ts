@@ -13,9 +13,9 @@ export interface FileSortOption {
   order: SortOrder;
 }
 
-const STORAGE_KEY = 'fastcat:files-page';
+const STORAGE_KEY = 'fastcat:file-manager';
 
-export const useFilesPageStore = defineStore('filesPage', () => {
+export const useFileManagerStore = defineStore('fileManager', () => {
   const selectionStore = useSelectionStore();
 
   const selectedFolder = ref<FsEntry | null>(null);
@@ -66,15 +66,6 @@ export const useFilesPageStore = defineStore('filesPage', () => {
     }
   }
 
-  // Legacy wrappers for backward compatibility if needed, but we will replace them
-  function selectFolder(entry: FsEntry | null) {
-    openFolder(entry);
-  }
-
-  function selectFile(entry: FsEntry | null) {
-    selectItem(entry);
-  }
-
   function setViewMode(mode: FileViewMode) {
     viewMode.value = mode;
   }
@@ -93,12 +84,12 @@ export const useFilesPageStore = defineStore('filesPage', () => {
 
   function clearSelection() {
     const selected = selectionStore.selectedEntity;
-    if (selected?.source === 'fileManager' && selected.kind === 'file') {
+    if (selected?.source === 'fileManager' && (selected.kind === 'file' || selected.kind === 'directory')) {
       selectionStore.clearSelection();
     }
   }
 
-  function resetFilesPageState() {
+  function resetFileManagerState() {
     selectedFolder.value = null;
     // We don't reset viewMode, sortOption, etc. as they are persisted user preferences
   }
@@ -121,13 +112,11 @@ export const useFilesPageStore = defineStore('filesPage', () => {
     sortFields,
     openFolder,
     selectItem,
-    selectFolder,
-    selectFile,
     clearSelection,
     setViewMode,
     setSortOption,
     setGridCardSize,
     setColumnWidth,
-    resetFilesPageState,
+    resetFileManagerState,
   };
 });

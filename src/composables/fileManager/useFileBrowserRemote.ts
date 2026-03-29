@@ -156,14 +156,14 @@ export function useFileBrowserRemote({
     uiStore.remoteExchangeModalOpen = true;
   }
 
-  async function toggleRemoteMode(filesPageStore: {
+  async function toggleRemoteMode(fileManagerStore: {
     selectedFolder: FsEntry | null;
     selectFolder: (e: FsEntry) => void;
   }) {
     if (!isRemoteAvailable.value) return;
 
     if (!isRemoteMode.value) {
-      lastLocalFolder.value = filesPageStore.selectedFolder;
+      lastLocalFolder.value = fileManagerStore.selectedFolder;
       isRemoteMode.value = true;
       remoteCurrentFolder.value = buildRemoteDirectoryEntry('/');
       await loadFolderContent();
@@ -176,7 +176,7 @@ export function useFileBrowserRemote({
     remoteCurrentFolder.value = null;
     await loadParentFolders();
     if (lastLocalFolder.value) {
-      filesPageStore.selectFolder(lastLocalFolder.value);
+      fileManagerStore.openFolder(lastLocalFolder.value);
     } else {
       await navigateToRoot();
     }

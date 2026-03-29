@@ -33,7 +33,7 @@ import {
 import { useFileContextMenu } from '~/composables/fileManager/useFileContextMenu';
 import { isRemoteFsEntry, type RemoteFsEntry } from '~/utils/remote-vfs';
 import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
-import { isGeneratingProxyInDirectory, folderHasVideos } from '~/utils/fsEntryUtils';
+import { isGeneratingProxyInDirectory, folderHasVideos } from '~/utils/fs-entry-utils';
 
 interface Props {
   editingEntryPath?: string | null;

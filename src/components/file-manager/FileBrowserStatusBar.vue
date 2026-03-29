@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useFilesPageStore } from '~/stores/files-page.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 
 defineProps<{
   stats: {
@@ -9,14 +9,14 @@ defineProps<{
 }>();
 
 const { t } = useI18n();
-const filesPageStore = useFilesPageStore();
+const fileManagerStore = useFileManagerStore();
 </script>
 
 <template>
   <div
     class="px-4 py-2 border-t border-ui-border shrink-0 bg-ui-bg-elevated/50 flex items-center justify-end text-2xs uppercase font-bold tracking-wider text-ui-text-muted"
   >
-    <div v-if="filesPageStore.selectedFolder" class="flex items-center gap-4">
+    <div v-if="fileManagerStore.selectedFolder" class="flex items-center gap-4">
       <span>
         {{ t('common.totalSize', 'Total Size') }}:
         <span class="text-ui-text">{{ stats.totalSize }}</span>

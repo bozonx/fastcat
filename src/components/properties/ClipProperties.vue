@@ -11,9 +11,9 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useEditorViewStore } from '~/stores/editor-view.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
-import { useFilesPageStore } from '~/stores/files-page.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import { usePresetsStore } from '~/stores/presets.store';
-import { blendModeOptions as rawBlendModeOptions } from '~/utils/constants';
+import { BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS } from '~/utils/constants';
 import type {
   AudioClipEffect,
   TimelineBlendMode,
@@ -53,7 +53,7 @@ const fileManager = useFileManager();
 const uiStore = useUiStore();
 const workspaceStore = useWorkspaceStore();
 const focusStore = useFocusStore();
-const filesPageStore = useFilesPageStore();
+const fileManagerStore = useFileManagerStore();
 const clipboardStore = useAppClipboard();
 const presetsStore = usePresetsStore();
 
@@ -68,7 +68,7 @@ const clipTrack = computed<TimelineTrack | undefined>(() =>
 const clipTrackKind = computed<TrackKind>(() => clipTrack.value?.kind ?? 'video');
 
 const blendModeOptions = computed<Array<{ value: TimelineBlendMode; label: string }>>(() =>
-  rawBlendModeOptions.map((opt) => ({
+  RAW_BLEND_MODE_OPTIONS.map((opt) => ({
     value: opt.value as TimelineBlendMode,
     label: t(opt.labelKey),
   })),
@@ -123,7 +123,7 @@ const {
   projectStore,
   uiStore,
   editorViewStore,
-  filesPageStore,
+  fileManagerStore,
   selectionStore,
   focusStore,
   fileManager,

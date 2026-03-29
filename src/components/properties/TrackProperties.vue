@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { blendModeOptions as rawBlendModeOptions } from '~/utils/constants';
+import { BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS } from '~/utils/constants';
 import type {
   TimelineBlendMode,
   TimelineTrack,
@@ -34,7 +34,7 @@ const isGenerateCaptionsOpen = ref(false);
 const canDeleteWithoutConfirm = computed(() => (props.track.items?.length ?? 0) === 0);
 
 const blendModeOptions = computed<Array<{ value: TimelineBlendMode; label: string }>>(() =>
-  rawBlendModeOptions.map((opt) => ({
+  RAW_BLEND_MODE_OPTIONS.map((opt) => ({
     value: opt.value as TimelineBlendMode,
     label: t(opt.labelKey),
   })),

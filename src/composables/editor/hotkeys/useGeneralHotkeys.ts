@@ -4,7 +4,7 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
-import { useFilesPageStore } from '~/stores/files-page.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useFileManager } from '~/composables/fileManager/useFileManager';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useMonitorActions } from '~/composables/editor/hotkeys/monitorActions';
@@ -25,7 +25,7 @@ export function useGeneralHotkeys(
   const projectStore = useProjectStore();
 
   const { createStopFrameSnapshot, createNewTimeline } = useMonitorActions();
-  const filesPageStore = useFilesPageStore();
+  const fileManagerStore = useFileManagerStore();
   const { clipboardPayload, setClipboardPayload } = useAppClipboard();
   const { loadTimeline } = useProjectActions();
 
@@ -52,7 +52,7 @@ export function useGeneralHotkeys(
       if (selected?.source === 'fileManager' && selected.kind === 'directory') {
         return selected.entry.path ?? '';
       }
-      return filesPageStore.selectedFolder?.path ?? '';
+      return fileManagerStore.selectedFolder?.path ?? '';
     }
 
     const selected = selectionStore.selectedEntity;
