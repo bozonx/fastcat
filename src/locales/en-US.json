@@ -142,6 +142,8 @@
     },
     "showHiddenFiles": "Show hidden files",
     "hideHiddenFiles": "Hide hidden files",
+    "createInFolder": "Create in folder",
+    "quickCreateDefault": "Quick create",
     "video": "Video",
     "timeline": "Timeline",
     "textDocument": "Text document",

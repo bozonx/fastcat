@@ -279,7 +279,9 @@ export async function createMarkdownCommand(params: {
   existingNames?: string[];
 }): Promise<string> {
   const basePath = params.documentsDirName;
-  await params.vfs.createDirectory(basePath);
+  if (basePath) {
+    await params.vfs.createDirectory(basePath);
+  }
 
   const fileName = await generateUniqueFsEntryName({
     vfs: params.vfs,

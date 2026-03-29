@@ -95,6 +95,8 @@ export function useFileManagerActions(actions: FileManagerActions) {
     }
 
     await actions.renameEntry(entry, trimmed);
+    const parentPath = entry.parentPath ?? entry.path?.split('/').slice(0, -1).join('') ?? '';
+    await actions.reloadDirectory(parentPath);
     stopRename();
     actions.onAfterRename?.();
   }
@@ -385,6 +387,12 @@ export function useFileManagerActions(actions: FileManagerActions) {
 
       if (payload.operation === 'cut') {
         clipboardStore.setClipboardPayload(null);
+      }
+
+      if (targetDirPath !== undefined) {
+        await actions.reloadDirectory(targetDirPath);
+      } else {
+        await actions.loadProjectDirectory();
       }
 
       actions.notifyFileManagerUpdate?.();
