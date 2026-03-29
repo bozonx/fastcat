@@ -9,6 +9,7 @@ import MonitorVolumeHUD from './MonitorVolumeHUD.vue';
 import { toRef, ref, watchEffect, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useMonitorGestures } from '~/composables/monitor/useMonitorGestures';
+import { useMonitorSettings } from '~/composables/monitor/useMonitorSettings';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import type { TimelineMarker } from '~/timeline/types';
@@ -33,6 +34,7 @@ const props = withDefaults(defineProps<{
 
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
+const { showTimecode } = useMonitorSettings();
 const { timelineDoc } = storeToRefs(timelineStore);
 
 const viewportEl = ref<HTMLElement | null>(null);
@@ -150,6 +152,7 @@ defineExpose({
 
         <!-- Timecode -->
         <span
+          v-if="showTimecode"
           ref="timecodeEl"
           class="absolute text-xs text-ui-text-muted font-mono tabular-nums bg-ui-bg-elevated/85 backdrop-blur-sm px-2 py-1 rounded transition-all duration-300 select-none"
           :class="[

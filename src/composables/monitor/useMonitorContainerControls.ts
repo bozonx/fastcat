@@ -1,4 +1,5 @@
 import { computed, type Ref } from 'vue';
+import { useMonitorSettings } from '~/composables/monitor/useMonitorSettings';
 import type { useProjectStore } from '~/stores/project.store';
 import type { useTimelineStore } from '~/stores/timeline.store';
 import type { useSelectionStore } from '~/stores/selection.store';
@@ -53,6 +54,7 @@ function formatSpeedLabel(speed: number): string {
 }
 
 export function useMonitorContainerControls(options: UseMonitorContainerControlsOptions) {
+  const { showTimecode } = useMonitorSettings();
   const positiveSpeedValues = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 3, 5];
 
   const playbackSpeedOptions: PlaybackSpeedOption[] = positiveSpeedValues.map((v) => ({
@@ -322,6 +324,15 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
           options.isSavingStopFrame.value ||
           options.isLoading.value ||
           Boolean(options.loadError.value),
+      },
+      {
+        label: showTimecode.value
+          ? options.t('fastcat.monitor.hideTimecode', 'Hide Timecode')
+          : options.t('fastcat.monitor.showTimecode', 'Show Timecode'),
+        icon: 'i-heroicons-clock',
+        onSelect: () => {
+          showTimecode.value = !showTimecode.value;
+        },
       },
     ],
     ...(options.isMobile

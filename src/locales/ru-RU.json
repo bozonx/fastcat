@@ -585,6 +585,8 @@
       "useProxy": "Использовать прокси",
       "enableProxy": "Включить прокси",
       "disableProxy": "Выключить прокси",
+      "showTimecode": "Показать таймкод",
+      "hideTimecode": "Скрыть таймкод",
       "withEffects": "С эффектами",
       "withoutEffects": "Без эффектов"
     },

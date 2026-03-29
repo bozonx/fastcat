@@ -587,6 +587,8 @@
       "useProxy": "Use proxy",
       "enableProxy": "Enable Proxy",
       "disableProxy": "Disable Proxy",
+      "showTimecode": "Show Timecode",
+      "hideTimecode": "Hide Timecode",
       "withEffects": "With effects",
       "withoutEffects": "Without effects"
     },
