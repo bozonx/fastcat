@@ -99,7 +99,6 @@ const {
   stats,
   calculateFolderSize,
   supplementEntries,
-  cleanupObjectUrls,
 } = entries;
 
 // --- Scroll helper (used by navigation) ---
@@ -222,7 +221,6 @@ const navigation = useFileBrowserNavigation({
   remoteCurrentFolder,
   folderEntries,
   supplementEntries,
-  cleanupObjectUrls,
   buildRemoteDirectoryEntry,
   loadRemoteFolderContent,
   loadRemoteParentFolders,
@@ -403,9 +401,7 @@ const currentGridSizeName = computed(() => {
 
 // --- Column resize ---
 
-onUnmounted(() => {
-  cleanupObjectUrls();
-});
+onUnmounted(() => {});
 
 useFileBrowserPendingActions({
   folderEntries,

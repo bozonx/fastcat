@@ -8,8 +8,9 @@ import { useUiStore } from '~/stores/ui.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { formatBytes } from '~/utils/format';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
-import { useTimelineStore } from '~/stores/timeline.store';
 import { useFileManagerThumbnails } from '~/composables/fileManager/useFileManagerThumbnails';
+import { useAddMediaToTimeline } from '~/composables/timeline/useAddMediaToTimeline';
+import { useFileSorting } from '~/composables/fileManager/useFileSorting';
 import MobileFileBrowserGrid from './MobileFileBrowserGrid.vue';
 import MobileFileBrowserDrawer from './MobileFileBrowserDrawer.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
@@ -27,14 +28,12 @@ import {
 } from '~/utils/workspace-common';
 import { computeDirectoryStats } from '~/utils/fs';
 
-const SUPPORTED_IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp', 'svg'];
-
 const filesPageStore = useFilesPageStore();
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
 const uiStore = useUiStore();
 const proxyStore = useProxyStore();
-const timelineStore = useTimelineStore();
+const { addMediaToTimeline } = useAddMediaToTimeline();
 const toast = useToast();
 const { t } = useI18n();
 const {
@@ -74,8 +73,6 @@ const { onFileAction, isDeleteConfirmModalOpen, deleteTargets, handleDeleteConfi
     moveEntry,
   });
 
-
-
 const canAddSelectionToTimeline = computed(() => {
   return (
     isSelectionMode.value &&
@@ -90,49 +87,17 @@ async function handleAddSelectionToTimeline() {
   if (supportedEntries.length === 0) return;
 
   try {
-    const startUs = timelineStore.currentTime;
+    const success = await addMediaToTimeline(supportedEntries);
 
-    for (const entry of supportedEntries) {
-      if (!entry.path) continue;
-      const mediaType = getMediaTypeFromFilename(entry.name);
-      const targetTrackKind = mediaType === 'audio' ? 'audio' : 'video';
-      const tracks = timelineStore.timelineDoc?.tracks || [];
-      const trackId = tracks.find((t) => t.kind === targetTrackKind)?.id;
-
-      if (!trackId) continue;
-
-      if (mediaType === 'text') {
-        const file = await vfs.getFile(entry.path);
-        if (file) {
-          const text = await file.text();
-          await timelineStore.addVirtualClipToTrack({
-            trackId,
-            startUs,
-            clipType: 'text',
-            name: entry.name,
-            text,
-          });
-        }
-      } else {
-        await timelineStore.addClipToTimelineFromPath({
-          trackId,
-          name: entry.name,
-          path: entry.path,
-          startUs,
-        });
-      }
+    if (success) {
+      toast.add({
+        title: t('common.success', 'Success'),
+        description: t('common.addedToTimeline', 'Added to timeline'),
+        color: 'success',
+      });
+      isSelectionMode.value = false;
+      selectionStore.clearSelection();
     }
-
-    await timelineStore.requestTimelineSave({ immediate: true });
-
-    toast.add({
-      title: t('common.success', 'Success'),
-      description: t('common.addedToTimeline', 'Added to timeline'),
-      color: 'success',
-    });
-
-    isSelectionMode.value = false;
-    selectionStore.clearSelection();
   } catch (err: any) {
     toast.add({
       title: t('common.error', 'Error'),
@@ -415,8 +380,7 @@ const menuItems = computed(() => [
         filesPageStore.sortOption.order === 'asc'
           ? t('common.sortOrder.asc', 'Ascending')
           : t('common.sortOrder.desc', 'Descending'),
-      icon:
-        filesPageStore.sortOption.order === 'asc' ? 'lucide:sort-asc' : 'lucide:sort-desc',
+      icon: filesPageStore.sortOption.order === 'asc' ? 'lucide:sort-asc' : 'lucide:sort-desc',
       onSelect: () => {
         filesPageStore.sortOption.order =
           filesPageStore.sortOption.order === 'asc' ? 'desc' : 'asc';
@@ -447,62 +411,12 @@ const menuItems = computed(() => [
   ],
 ]);
 
-interface ExtendedFsEntry extends FsEntry {
-  objectUrl?: string;
-  size?: number;
-}
-
-const entries = ref<ExtendedFsEntry[]>([]);
+const entries = ref<FsEntry[]>([]);
 const isLoading = ref(false);
 
-const sortedEntries = computed(() => {
-  const arr = [...entries.value];
-  const { field, order } = filesPageStore.sortOption;
-  const modifier = order === 'asc' ? 1 : -1;
+const { sortedEntries } = useFileSorting(entries);
 
-  const compare = (a: any, b: any) => {
-    if (a === b) return 0;
-    return a > b ? modifier : -modifier;
-  };
-
-  const getSortValue = (entry: ExtendedFsEntry): string | number => {
-    switch (field) {
-      case 'name':
-        return entry.name.toLowerCase();
-      case 'type':
-        const ext = entry.name.split('.').pop()?.toLowerCase() || '';
-        return entry.kind === 'directory' ? 'folder' : ext;
-      case 'size':
-        return entry.size ?? 0;
-      case 'modified':
-        return entry.lastModified ?? 0;
-      case 'created':
-        return entry.lastModified ?? 0;
-      default:
-        return entry.name.toLowerCase();
-    }
-  };
-
-  return arr.sort((a, b) => {
-    if (a.kind !== b.kind) {
-      return a.kind === 'directory' ? -1 : 1;
-    }
-    const result = compare(getSortValue(a), getSortValue(b));
-    if (result !== 0) return result;
-    return compare(a.name.toLowerCase(), b.name.toLowerCase());
-  });
-});
-
-const { thumbnails } = useFileManagerThumbnails(sortedEntries);
-
-// Очистка URL при размонтировании
-function cleanupObjectUrls() {
-  for (const entry of entries.value) {
-    if (entry.objectUrl) URL.revokeObjectURL(entry.objectUrl);
-  }
-}
-
-onBeforeUnmount(cleanupObjectUrls);
+const { thumbnails } = useFileManagerThumbnails(sortedEntries, vfs);
 
 // Генерируем "хлебные крошки" для навигации назад
 const breadcrumbs = computed(() => {
@@ -550,35 +464,29 @@ async function loadFolderContent() {
       }
     }
 
-    // Очищаем старые URL перед загрузкой новых
-    cleanupObjectUrls();
-
     // Фильтруем скрытые файлы если настройка выключена и дополняем метаданными
     const filteredContent = content.filter(
       (e) => uiStore.showHiddenFiles || !e.name.startsWith('.'),
     );
 
-    // Добавляем objectUrl для картинок
+    // Наполняем записи базовыми метаданными
     entries.value = await Promise.all(
       filteredContent.map(async (entry) => {
         if (entry.kind === 'file') {
           try {
-            const file = await vfs.getFile(entry.path);
-            if (file) {
-              const ext = entry.name.split('.').pop()?.toLowerCase();
-              const objectUrl =
-                ext && SUPPORTED_IMAGE_EXTS.includes(ext) ? URL.createObjectURL(file) : undefined;
+            const metadata = await vfs.getMetadata(entry.path);
+            if (metadata && metadata.kind === 'file') {
               return {
                 ...entry,
-                size: file.size,
-                objectUrl,
+                size: metadata.size,
+                lastModified: metadata.lastModified,
               };
             }
           } catch (e) {
-            console.warn('Failed to get file for metadata:', entry.path, e);
+            console.warn('Failed to get metadata for:', entry.path, e);
           }
         }
-        return entry as ExtendedFsEntry;
+        return entry;
       }),
     );
   } catch (error) {
@@ -679,53 +587,15 @@ async function handleAddToProject() {
   const entity = selectionStore.selectedEntity;
   if (!entity || entity.source !== 'fileManager' || entity.kind !== 'file' || !entity.path) return;
 
-  const mediaType = getMediaTypeFromFilename(entity.name);
-  if (mediaType === 'unknown') {
-    toast.add({
-      title: t('common.error', 'Error'),
-      description: t('mobileFiles.unknownFileType', 'Unknown file type'),
-      color: 'error',
-    });
-    return;
-  }
-
   try {
-    const startUs = timelineStore.currentTime;
-    const targetTrackKind = mediaType === 'audio' ? 'audio' : 'video';
-    const tracks = timelineStore.timelineDoc?.tracks || [];
-    const trackId = tracks.find((t) => t.kind === targetTrackKind)?.id;
-
-    if (!trackId) {
+    const success = await addMediaToTimeline([entity]);
+    if (!success) {
       toast.add({
         title: t('common.error', 'Error'),
-        description: t('mobileFiles.noSuitableTrack', 'No suitable track found'),
+        description: t('mobileFiles.unknownFileType', 'Unknown file type'),
         color: 'error',
       });
-      return;
     }
-
-    if (mediaType === 'text') {
-      const file = await vfs.getFile(entity.path);
-      if (file) {
-        const text = await file.text();
-        await timelineStore.addVirtualClipToTrack({
-          trackId,
-          startUs,
-          clipType: 'text',
-          name: entity.name,
-          text,
-        });
-      }
-    } else {
-      await timelineStore.addClipToTimelineFromPath({
-        trackId,
-        name: entity.name,
-        path: entity.path,
-        startUs,
-      });
-    }
-
-    await timelineStore.requestTimelineSave({ immediate: true });
   } catch (err: any) {
     toast.add({
       title: t('common.error', 'Error'),
@@ -815,7 +685,11 @@ onMounted(() => {
         </div>
       </div>
       <div class="shrink-0 flex items-center ml-2">
-        <UDropdownMenu v-if="!isSelectionMode" :items="menuItems" :ui="{ content: 'w-56 min-w-max' }">
+        <UDropdownMenu
+          v-if="!isSelectionMode"
+          :items="menuItems"
+          :ui="{ content: 'w-56 min-w-max' }"
+        >
           <UButton icon="lucide:more-vertical" variant="ghost" color="neutral" size="sm" />
         </UDropdownMenu>
       </div>
@@ -872,52 +746,52 @@ onMounted(() => {
 
       <div class="flex items-center justify-around">
         <div class="flex flex-col items-center gap-1">
-        <UButton
-          icon="lucide:trash-2"
-          size="xl"
-          variant="soft"
-          color="red"
-          class="rounded-2xl w-14 h-14"
-          @click="handleDrawerAction('delete', selectedEntries)"
-        />
-        <span class="text-xs font-medium text-red-400">{{ t('common.delete', 'Delete') }}</span>
-      </div>
+          <UButton
+            icon="lucide:trash-2"
+            size="xl"
+            variant="soft"
+            color="red"
+            class="rounded-2xl w-14 h-14"
+            @click="handleDrawerAction('delete', selectedEntries)"
+          />
+          <span class="text-xs font-medium text-red-400">{{ t('common.delete', 'Delete') }}</span>
+        </div>
 
-      <div v-if="selectedEntries.length === 1" class="flex flex-col items-center gap-1">
-        <UButton
-          icon="lucide:pen-line"
-          size="xl"
-          variant="soft"
-          color="neutral"
-          class="rounded-2xl w-14 h-14"
-          @click="handleDrawerAction('rename', selectedEntries[0])"
-        />
-        <span class="text-xs font-medium text-slate-400">{{ t('common.rename', 'Rename') }}</span>
-      </div>
+        <div v-if="selectedEntries.length === 1" class="flex flex-col items-center gap-1">
+          <UButton
+            icon="lucide:pen-line"
+            size="xl"
+            variant="soft"
+            color="neutral"
+            class="rounded-2xl w-14 h-14"
+            @click="handleDrawerAction('rename', selectedEntries[0])"
+          />
+          <span class="text-xs font-medium text-slate-400">{{ t('common.rename', 'Rename') }}</span>
+        </div>
 
-      <div class="flex flex-col items-center gap-1">
-        <UButton
-          icon="lucide:copy"
-          size="xl"
-          variant="soft"
-          color="neutral"
-          class="rounded-2xl w-14 h-14"
-          @click="handleDrawerAction('copy', selectedEntries)"
-        />
-        <span class="text-xs font-medium text-slate-400">{{ t('common.copy', 'Copy') }}</span>
-      </div>
+        <div class="flex flex-col items-center gap-1">
+          <UButton
+            icon="lucide:copy"
+            size="xl"
+            variant="soft"
+            color="neutral"
+            class="rounded-2xl w-14 h-14"
+            @click="handleDrawerAction('copy', selectedEntries)"
+          />
+          <span class="text-xs font-medium text-slate-400">{{ t('common.copy', 'Copy') }}</span>
+        </div>
 
-      <div class="flex flex-col items-center gap-1">
-        <UButton
-          icon="lucide:scissors"
-          size="xl"
-          variant="soft"
-          color="neutral"
-          class="rounded-2xl w-14 h-14"
-          @click="handleDrawerAction('cut', selectedEntries)"
-        />
-        <span class="text-xs font-medium text-slate-400">{{ t('common.cut', 'Cut') }}</span>
-      </div>
+        <div class="flex flex-col items-center gap-1">
+          <UButton
+            icon="lucide:scissors"
+            size="xl"
+            variant="soft"
+            color="neutral"
+            class="rounded-2xl w-14 h-14"
+            @click="handleDrawerAction('cut', selectedEntries)"
+          />
+          <span class="text-xs font-medium text-slate-400">{{ t('common.cut', 'Cut') }}</span>
+        </div>
       </div>
     </div>
 
@@ -953,7 +827,12 @@ onMounted(() => {
     <!-- Action FAB -->
     <Teleport to="body">
       <div
-        v-if="!isSelectionMode && !isDrawerOpen && !isCreateMenuOpen && !clipboardStore.hasFileManagerPayload"
+        v-if="
+          !isSelectionMode &&
+          !isDrawerOpen &&
+          !isCreateMenuOpen &&
+          !clipboardStore.hasFileManagerPayload
+        "
         class="fixed bottom-20 right-6 z-40 transition-all duration-300"
         :class="[isCreateMenuOpen ? 'rotate-45 scale-90' : 'rotate-0 scale-100']"
       >

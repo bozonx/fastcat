@@ -4,6 +4,7 @@ import { useFilesPageStore } from '~/stores/files-page.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useFileManagerThumbnails } from '~/composables/fileManager/useFileManagerThumbnails';
+import { useFileSorting } from '~/composables/fileManager/useFileSorting';
 import type { FsEntry } from '~/types/fs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { formatBytes } from '~/utils/format';
@@ -14,10 +15,7 @@ export interface ExtendedFsEntry extends FsEntry {
   size?: number;
   mimeType?: string;
   created?: number;
-  objectUrl?: string;
 }
-
-const SUPPORTED_IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp', 'svg'];
 
 export function useFileBrowserEntries({
   isRemoteMode,
@@ -71,31 +69,20 @@ export function useFileBrowserEntries({
     });
   }
 
-  async function createPreviewUrl(name: string, file: File): Promise<string | undefined> {
-    const ext = name.split('.').pop()?.toLowerCase();
-    if (!ext || !SUPPORTED_IMAGE_EXTS.includes(ext)) return undefined;
-    try {
-      return URL.createObjectURL(file);
-    } catch {
-      return undefined;
-    }
-  }
-
   async function supplementEntries(entries: FsEntry[]): Promise<ExtendedFsEntry[]> {
     return Promise.all(
       entries.map(async (entry) => {
         if (entry.kind === 'file') {
           try {
-            const file = entry.path ? await vfs.getFile(entry.path) : null;
-            if (!file) return { ...entry, size: 0, mimeType: 'unknown' };
-            const objectUrl = await createPreviewUrl(entry.name, file);
+            const metadata = await vfs.getMetadata(entry.path);
+            if (!metadata || metadata.kind !== 'file')
+              return { ...entry, size: 0, mimeType: 'unknown' };
             return {
               ...entry,
-              size: file.size,
+              size: metadata.size,
               mimeType: getMimeTypeFromFilename(entry.name),
-              lastModified: file.lastModified,
-              created: file.lastModified,
-              objectUrl,
+              lastModified: metadata.lastModified,
+              created: metadata.lastModified,
             };
           } catch {
             return { ...entry, size: 0, mimeType: 'unknown' };
@@ -106,54 +93,9 @@ export function useFileBrowserEntries({
     );
   }
 
-  function cleanupObjectUrls() {
-    for (const entry of folderEntries.value as ExtendedFsEntry[]) {
-      if (entry.objectUrl) URL.revokeObjectURL(entry.objectUrl);
-    }
-  }
+  const { sortedEntries } = useFileSorting(folderEntries);
 
-  const sortedEntries = computed(() => {
-    const arr = [...folderEntries.value] as ExtendedFsEntry[];
-    const { field, order } = filesPageStore.sortOption;
-    const modifier = order === 'asc' ? 1 : -1;
-
-    const compare = (a: string | number, b: string | number) => {
-      if (a === b) return 0;
-      return a > b ? modifier : -modifier;
-    };
-
-    const getSortValue = (entry: ExtendedFsEntry): string | number => {
-      switch (field) {
-        case 'name':
-          return entry.name.toLowerCase();
-        case 'type':
-          return entry.kind === 'directory' ? 'folder' : (entry.mimeType ?? '');
-        case 'size':
-          return entry.size ?? 0;
-        case 'modified':
-          return entry.lastModified ?? 0;
-        case 'created':
-          return entry.created ?? 0;
-        default:
-          return entry.name.toLowerCase();
-      }
-    };
-
-    return arr.sort((a, b) => {
-      if (a.kind !== b.kind) {
-        return a.kind === 'directory' ? -1 : 1;
-      }
-
-      const result = compare(getSortValue(a), getSortValue(b));
-      if (result !== 0) {
-        return result;
-      }
-
-      return compare(a.name.toLowerCase(), b.name.toLowerCase());
-    });
-  });
-
-  const { thumbnails: videoThumbnails } = useFileManagerThumbnails(sortedEntries);
+  const { thumbnails: videoThumbnails } = useFileManagerThumbnails(sortedEntries, vfs);
 
   const stats = computed(() => {
     let totalSize = 0;
@@ -199,6 +141,5 @@ export function useFileBrowserEntries({
     stats,
     calculateFolderSize,
     supplementEntries,
-    cleanupObjectUrls,
   };
 }
