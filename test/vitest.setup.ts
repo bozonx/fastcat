@@ -102,7 +102,11 @@ config.global.stubs = {
       '<div><slot v-for="(item, index) in items" :key="index" :item="item" :index="index" /></div>',
   },
 };
-
+config.global.mocks = {
+  ...config.global.mocks,
+  $t: (msg: string) => msg,
+  t: (msg: string) => msg,
+};
 config.global.config.errorHandler = (err, instance, info) => {
   console.error(`[Vue Error] ${err} \nInfo: ${info}`);
 };
