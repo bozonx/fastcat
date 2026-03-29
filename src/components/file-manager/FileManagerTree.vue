@@ -150,8 +150,8 @@ watch(
           : (selected.entry as FsEntry);
     }
 
-    // Если нет выбранного через selectionStore (например, просто кликнули по папке,
-    // и она стала активной в uiStore), используем uiStore.selectedFsEntry
+    // If nothing is selected through selectionStore (e.g., just clicked a folder
+    // and it became active in uiStore), use uiStore.selectedFsEntry
     if (!anchorEntry && uiStore.selectedFsEntry) {
       anchorEntry = uiStore.selectedFsEntry as FsEntry;
     }

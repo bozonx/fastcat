@@ -6,6 +6,7 @@ import FileProperties from '~/components/properties/FileProperties.vue';
 import MultiFileProperties from '~/components/properties/MultiFileProperties.vue';
 import { isOpenableProjectFileName } from '~/utils/media-types';
 import type { FileAction } from '~/composables/fileManager/useFileManagerActions';
+import type { SelectedFsEntry, SelectedFsEntries } from '~/stores/selection.store';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -43,6 +44,21 @@ const isFileOrDirectory = computed(() => {
 
 const isMultiple = computed(() => {
   return selectedEntity.value?.source === 'fileManager' && selectedEntity.value.kind === 'multiple';
+});
+
+const selectedFsEntry = computed(() => {
+  if (selectedEntity.value?.source === 'fileManager' && 
+      (selectedEntity.value.kind === 'file' || selectedEntity.value.kind === 'directory')) {
+    return selectedEntity.value as SelectedFsEntry;
+  }
+  return null;
+});
+
+const selectedFsMultiple = computed(() => {
+  if (selectedEntity.value?.source === 'fileManager' && selectedEntity.value.kind === 'multiple') {
+    return selectedEntity.value as SelectedFsEntries;
+  }
+  return null;
 });
 
 const selectedEntriesList = computed(() => {
@@ -121,15 +137,15 @@ function handleAction(actionId: FileAction) {
 
         <!-- Scrollable content -->
         <div class="flex-1 overflow-y-auto px-4 pb-24 custom-scrollbar">
-          <div v-if="isFileOrDirectory" class="py-2">
+          <div v-if="selectedFsEntry" class="py-2">
             <FileProperties
-              :selected-fs-entry="(selectedEntity as any).entry"
+              :selected-fs-entry="selectedFsEntry.entry"
               preview-mode="original"
               :has-proxy="false"
             />
           </div>
-          <div v-else-if="isMultiple" class="py-2">
-            <MultiFileProperties :entries="(selectedEntity as any).entries" />
+          <div v-else-if="selectedFsMultiple" class="py-2">
+            <MultiFileProperties :entries="selectedFsMultiple.entries" />
           </div>
         </div>
 

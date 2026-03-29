@@ -38,7 +38,7 @@ function startLongPress(entry: FsEntry) {
   longPressTimer.value = setTimeout(() => {
     isLongPressActive.value = true;
     emit('longPress', entry);
-  }, 600); // 600ms для лонг-пресса
+  }, 600); // 600ms for long-press
 }
 
 function clearLongPress() {
