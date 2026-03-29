@@ -13,6 +13,7 @@ import { useAddMediaToTimeline } from '~/composables/timeline/useAddMediaToTimel
 import { useFileSorting } from '~/composables/fileManager/useFileSorting';
 import MobileFileBrowserGrid from './MobileFileBrowserGrid.vue';
 import MobileFileBrowserDrawer from './MobileFileBrowserDrawer.vue';
+import MobileAddToTimelineModal from '../timeline/MobileAddToTimelineModal.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import { useClipboardStore } from '~/stores/clipboard.store';
 import { isOpenableProjectFileName } from '~/utils/media-types';
@@ -80,31 +81,28 @@ const canAddSelectionToTimeline = computed(() => {
   );
 });
 
+const isAddToTimelineModalOpen = ref(false);
+const addToTimelineEntries = ref<FsEntry[]>([]);
+
 async function handleAddSelectionToTimeline() {
   const supportedEntries = selectedEntries.value.filter(
     (e) => e.kind === 'file' && isOpenableProjectFileName(e.name),
   );
   if (supportedEntries.length === 0) return;
 
-  try {
-    const success = await addMediaToTimeline(supportedEntries);
+  addToTimelineEntries.value = supportedEntries;
+  isAddToTimelineModalOpen.value = true;
+}
 
-    if (success) {
-      toast.add({
-        title: t('common.success', 'Success'),
-        description: t('common.addedToTimeline', 'Added to timeline'),
-        color: 'success',
-      });
-      isSelectionMode.value = false;
-      selectionStore.clearSelection();
-    }
-  } catch (err: any) {
-    toast.add({
-      title: t('common.error', 'Error'),
-      description: String(err?.message || err),
-      color: 'error',
-    });
-  }
+function onAddedToTimeline() {
+  toast.add({
+    title: t('common.success', 'Success'),
+    description: t('common.addedToTimeline', 'Added to timeline'),
+    color: 'success',
+  });
+  isSelectionMode.value = false;
+  selectionStore.clearSelection();
+  isDrawerOpen.value = false;
 }
 
 async function handlePaste() {
@@ -587,22 +585,8 @@ async function handleAddToProject() {
   const entity = selectionStore.selectedEntity;
   if (!entity || entity.source !== 'fileManager' || entity.kind !== 'file' || !entity.path) return;
 
-  try {
-    const success = await addMediaToTimeline([entity]);
-    if (!success) {
-      toast.add({
-        title: t('common.error', 'Error'),
-        description: t('mobileFiles.unknownFileType', 'Unknown file type'),
-        color: 'error',
-      });
-    }
-  } catch (err: any) {
-    toast.add({
-      title: t('common.error', 'Error'),
-      description: String(err?.message || err),
-      color: 'error',
-    });
-  }
+  addToTimelineEntries.value = [entity.entry];
+  isAddToTimelineModalOpen.value = true;
 }
 
 // Следим за изменением выбранной папки
@@ -731,6 +715,8 @@ onMounted(() => {
       v-if="isSelectionMode"
       class="border-t border-slate-800 bg-slate-900 px-4 py-4 flex flex-col gap-4 z-40 shrink-0"
     >
+      <!-- Selection Tool Buttons -->
+
       <!-- Add to Timeline Button -->
       <div v-if="canAddSelectionToTimeline" class="flex justify-center px-2">
         <UButton
@@ -1009,6 +995,13 @@ onMounted(() => {
         </div>
       </div>
     </UiConfirmModal>
+
+    <!-- Add to Timeline Modal (Global) -->
+    <MobileAddToTimelineModal
+      v-model:open="isAddToTimelineModalOpen"
+      :entries="addToTimelineEntries"
+      @added="onAddedToTimeline"
+    />
   </div>
 </template>
 
