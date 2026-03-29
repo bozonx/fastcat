@@ -19,6 +19,7 @@ export const useFilesPageStore = defineStore('filesPage', () => {
   const selectionStore = useSelectionStore();
 
   const selectedFolder = ref<FsEntry | null>(null);
+  const folderSizes = ref<Record<string, number>>({});
 
   const viewMode = ref<FileViewMode>(readLocalStorageJson(`${STORAGE_KEY}:viewMode`, 'grid'));
   const sortOption = ref<FileSortOption>(
@@ -108,6 +109,7 @@ export const useFilesPageStore = defineStore('filesPage', () => {
     sortOption,
     gridCardSize,
     columnWidths,
+    folderSizes,
     openFolder,
     selectItem,
     selectFolder,

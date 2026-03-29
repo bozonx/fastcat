@@ -24,6 +24,7 @@ import MobileFileBrowserSelectionToolbar from './MobileFileBrowserSelectionToolb
 import MobileFileBrowserPasteToolbar from './MobileFileBrowserPasteToolbar.vue';
 import MobileFileBrowserCreateSheet from './MobileFileBrowserCreateSheet.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
+import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 
 const filesPageStore = useFilesPageStore();
 const projectStore = useProjectStore();
@@ -56,7 +57,11 @@ const {
   loadFolderContent,
   navigateToRoot,
   goBack,
-} = useMobileFileBrowserNavigation({ readDirectory, vfs, findEntryByPath });
+} = useMobileFileBrowserNavigation({
+  readDirectory,
+  vfs,
+  findEntryByPath: (path: string) => findEntryByPath(path) || undefined,
+});
 
 const {
   isSelectionMode,
@@ -76,7 +81,7 @@ const {
   isCreateMenuOpen,
   triggerFileUpload,
   onFileSelect,
-  onCreateFolder,
+  onCreateFolder: runCreateFolder,
   onCreateTimeline,
   onCreateTextFile,
 } = useMobileFileBrowserCreate({
@@ -108,7 +113,7 @@ const { onFileAction, isDeleteConfirmModalOpen, deleteTargets, handleDeleteConfi
 const { sortedEntries } = useFileSorting(entries);
 const { thumbnails } = useFileManagerThumbnails(sortedEntries, vfs);
 
-// Считаем размеры всех папок в текущей директории лениво
+// Lazily calculate sizes of all folders in current directory
 watch(
   entries,
   (newEntries) => {
@@ -123,6 +128,11 @@ watch(
 
 const isAddToTimelineModalOpen = ref(false);
 const addToTimelineEntries = ref<FsEntry[]>([]);
+
+const isRenameModalOpen = ref(false);
+const entryToRename = ref<FsEntry | null>(null);
+
+const isCreateFolderModalOpen = ref(false);
 
 const canAddSelectionToTimeline = computed(() =>
   isSelectionMode.value &&
@@ -168,23 +178,37 @@ async function handlePaste() {
 }
 
 async function handleRename(entry: FsEntry) {
-  const newName = prompt(t('videoEditor.fileManager.actions.rename', 'Rename'), entry.name);
-  if (newName && newName !== entry.name) {
-    try {
-      await renameEntry(entry, newName);
-      await loadFolderContent();
-      toast.add({
-        title: t('common.success', 'Success'),
-        description: t('common.saveSuccess', 'Saved successfully'),
-        color: 'success',
-      });
-    } catch (err: any) {
-      toast.add({
-        title: t('common.error', 'Error'),
-        description: String(err?.message || err),
-        color: 'error',
-      });
-    }
+  entryToRename.value = entry;
+  isRenameModalOpen.value = true;
+}
+
+function handleCreateFolderRequest() {
+  isCreateFolderModalOpen.value = true;
+}
+
+async function onCreateFolderConfirm(name: string) {
+  await runCreateFolder(name);
+}
+
+async function onRenameConfirm(newName: string) {
+  if (!entryToRename.value || newName === entryToRename.value.name) return;
+
+  try {
+    await renameEntry(entryToRename.value, newName);
+    await loadFolderContent();
+    toast.add({
+      title: t('common.success', 'Success'),
+      description: t('common.saveSuccess', 'Saved successfully'),
+      color: 'success',
+    });
+  } catch (err: any) {
+    toast.add({
+      title: t('common.error', 'Error'),
+      description: String(err?.message || err),
+      color: 'error',
+    });
+  } finally {
+    entryToRename.value = null;
   }
 }
 
@@ -250,7 +274,7 @@ const menuItems = computed(() => [
     {
       label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
       icon: 'i-heroicons-folder-plus',
-      onSelect: onCreateFolder,
+      onSelect: handleCreateFolderRequest,
     },
   ],
   [
@@ -304,7 +328,7 @@ const menuItems = computed(() => [
   <div class="flex flex-col h-full bg-slate-950 text-slate-200">
     <input ref="fileInput" type="file" multiple class="hidden" @change="onFileSelect" />
 
-    <!-- Навигация (Breadcrumbs/Back) -->
+    <!-- Navigation (Breadcrumbs/Back) -->
     <MobileFileBrowserNavbar
       :is-selection-mode="isSelectionMode"
       :selected-count="selectedEntries.length"
@@ -318,7 +342,7 @@ const menuItems = computed(() => [
       @navigate-breadcrumb="(name, path) => filesPageStore.selectFolder({ kind: 'directory', name, path })"
     />
 
-    <!-- Сетка файлов -->
+    <!-- File Grid -->
     <div class="flex-1 overflow-y-auto min-h-0">
       <MobileFileBrowserGrid
         :entries="sortedEntries"
@@ -387,7 +411,7 @@ const menuItems = computed(() => [
       :selected-folder-name="filesPageStore.selectedFolder?.name || '/'"
       :selected-folder-path="filesPageStore.selectedFolder?.path || ''"
       @upload="triggerFileUpload"
-      @create-folder="onCreateFolder"
+      @create-folder="handleCreateFolderRequest"
       @create-timeline="onCreateTimeline"
       @create-text-file="onCreateTextFile"
     />
@@ -411,6 +435,20 @@ const menuItems = computed(() => [
         </div>
       </div>
     </UiConfirmModal>
+
+    <!-- Rename Modal -->
+    <UiRenameModal
+      v-model:open="isRenameModalOpen"
+      :initial-name="entryToRename?.name"
+      @rename="onRenameConfirm"
+    />
+
+    <!-- Create Folder Modal -->
+    <UiRenameModal
+      v-model:open="isCreateFolderModalOpen"
+      :title="t('videoEditor.fileManager.actions.createFolder', 'Create Folder')"
+      @rename="onCreateFolderConfirm"
+    />
 
     <!-- Add to Timeline Modal (Global) -->
     <TimelineMobileAddToTimelineModal

@@ -44,8 +44,7 @@ export function useMobileFileBrowserCreate({
     }
   }
 
-  async function onCreateFolder() {
-    const name = prompt(t('videoEditor.fileManager.actions.createFolder', 'Create Folder'));
+  async function onCreateFolder(name: string) {
     if (name) {
       const parentPath = filesPageStore.selectedFolder?.path || '';
       await createFolder(name, parentPath);

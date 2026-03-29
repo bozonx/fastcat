@@ -13,7 +13,7 @@ export function useMobileFileBrowserSelection() {
 
   const isSelectionMode = ref(false);
   const isDrawerOpen = ref(false);
-  const folderSizes = ref<Record<string, number>>({});
+  const folderSizes = computed(() => filesPageStore.folderSizes);
 
   const selectedEntries = computed(() => {
     const entity = selectionStore.selectedEntity;
@@ -42,7 +42,7 @@ export function useMobileFileBrowserSelection() {
       if (!handle) return;
       const stats = await computeDirectoryStats(handle);
       if (stats) {
-        folderSizes.value[path] = stats.size;
+        filesPageStore.folderSizes[path] = stats.size;
       }
     } catch (err) {
       console.warn('Failed to calculate folder size:', path, err);
@@ -111,14 +111,14 @@ export function useMobileFileBrowserSelection() {
     return selected.path === entry.path;
   }
 
-  // Сбрасываем выделение при закрытии шторки вне режима выделения
+  // Reset selection when closing the drawer while not in selection mode
   watch(isDrawerOpen, (val) => {
     if (!val && !isSelectionMode.value) {
       selectionStore.clearSelection();
     }
   });
 
-  // Считаем размеры выделенных папок
+  // Calculate sizes of selected folders
   watch(
     selectedEntries,
     (entries) => {
