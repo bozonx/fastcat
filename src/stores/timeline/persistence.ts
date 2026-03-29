@@ -1,5 +1,5 @@
 import type { Ref } from 'vue';
-import { createAutoSave } from '~/utils/autoSave';
+import { createAutoSave } from '~/utils/auto-save';
 
 import type { TimelineDocument } from '~/timeline/types';
 

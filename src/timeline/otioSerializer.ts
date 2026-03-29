@@ -32,7 +32,7 @@ import {
   parseOtioMarkers,
   buildOtioTransition,
   parseOtioTransition,
-} from './otio/components';
+} from './otio/serialization';
 import { parseGapItem, parseClipItem, parseItemSequenceDurationUs } from './otio/items';
 import { TimelineDocFastCatMetaSchema, TimelineTrackFastCatMetaSchema } from './otio/schemas';
 

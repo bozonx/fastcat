@@ -15,7 +15,7 @@ import { useHistoryStore } from '~/stores/history.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
-import { TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY } from '~/stores/timeline/timeline-history-labels';
+import { TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY } from '~/stores/timeline/history-labels';
 
 import {
   DEFAULT_HOTKEYS,

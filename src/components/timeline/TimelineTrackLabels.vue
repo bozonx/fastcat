@@ -8,7 +8,7 @@ import type { TimelineTrack } from '~/timeline/types';
 import { useSelectionStore } from '~/stores/selection.store';
 import { trackHasAudio } from '~/utils/audio';
 
-import TrackLabelItem from '~/components/timeline/TrackLabelItem.vue';
+import TimelineTrackLabelItem from '~/components/timeline/TimelineTrackLabelItem.vue';
 
 const { t } = useI18n();
 
@@ -258,7 +258,7 @@ const propertiesContextMenuItems = [
             :key="track.id"
             :items="getTrackContextMenuItems(track)"
           >
-            <TrackLabelItem
+            <TimelineTrackLabelItem
               :track="track"
               :track-number="
                 track.kind === 'video'
@@ -274,13 +274,13 @@ const propertiesContextMenuItems = [
               :level-db="timelineStore.audioLevels?.[track.id]?.peakDb"
               @select="onSelectTrack(track.id)"
               @rename="
-                (name) => {
+                (name: string) => {
                   timelineStore.renameTrack(track.id, name);
                   timelineStore.renamingTrackId = null;
                 }
               "
               @cancel-rename="timelineStore.renamingTrackId = null"
-              @resize-start="(e) => onResizeStart(track.id, e)"
+              @resize-start="(e: MouseEvent) => onResizeStart(track.id, e)"
               @mouseenter="timelineStore.hoveredTrackId = track.id"
               @mouseleave="timelineStore.hoveredTrackId = null"
             />

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useFilesPageStore } from '~/stores/files-page.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useProxyStore } from '~/stores/proxy.store';
@@ -51,7 +51,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const filesPageStore = useFilesPageStore();
+const fileManagerStore = useFileManagerStore();
 const selectionStore = useSelectionStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const proxyStore = useProxyStore();
@@ -121,7 +121,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
           'ring-2 ring-emerald-500 bg-emerald-500/15':
             dragOverEntryPath === (entry.path ?? null) && props.currentDragOperation === 'copy',
         }"
-        :style="{ width: `${filesPageStore.gridCardSize}px` }"
+        :style="{ width: `${fileManagerStore.gridCardSize}px` }"
         :draggable="true"
         tabindex="0"
         @dragstart="emit('entryDragStart', $event, entry)"

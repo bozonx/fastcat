@@ -1,19 +1,19 @@
 import { ref, computed, watch } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { useSelectionStore } from '~/stores/selection.store';
-import { useFilesPageStore } from '~/stores/files-page.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useProjectStore } from '~/stores/project.store';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { computeDirectoryStats } from '~/utils/fs';
 
 export function useMobileFileBrowserSelection() {
   const selectionStore = useSelectionStore();
-  const filesPageStore = useFilesPageStore();
+  const fileManagerStore = useFileManagerStore();
   const projectStore = useProjectStore();
 
   const isSelectionMode = ref(false);
   const isDrawerOpen = ref(false);
-  const folderSizes = computed(() => filesPageStore.folderSizes);
+  const folderSizes = computed(() => fileManagerStore.folderSizes);
 
   const selectedEntries = computed(() => {
     const entity = selectionStore.selectedEntity;
@@ -42,7 +42,7 @@ export function useMobileFileBrowserSelection() {
       if (!handle) return;
       const stats = await computeDirectoryStats(handle);
       if (stats) {
-        filesPageStore.folderSizes[path] = stats.size;
+        fileManagerStore.folderSizes[path] = stats.size;
       }
     } catch (err) {
       console.warn('Failed to calculate folder size:', path, err);
@@ -84,7 +84,7 @@ export function useMobileFileBrowserSelection() {
 
   function handleEntryClick(entry: FsEntry) {
     if (entry.kind === 'directory' && !isSelectionMode.value) {
-      filesPageStore.openFolder(entry);
+      fileManagerStore.openFolder(entry);
       return;
     }
 

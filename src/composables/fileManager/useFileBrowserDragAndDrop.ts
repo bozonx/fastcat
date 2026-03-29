@@ -1,6 +1,6 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
-import { useFilesPageStore } from '~/stores/files-page.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
@@ -36,7 +36,7 @@ interface UseFileBrowserDragAndDropOptions {
 export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOptions) {
   const uiStore = useUiStore();
   const workspaceStore = useWorkspaceStore();
-  const filesPageStore = useFilesPageStore();
+  const fileManagerStore = useFileManagerStore();
   const fileManager = useFileManager();
 
   const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
@@ -346,7 +346,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     panelDragEnterCount = 0;
     isDragOverPanel.value = false;
 
-    const targetFolder = filesPageStore.selectedFolder;
+    const targetFolder = fileManagerStore.selectedFolder;
     const targetPath = targetFolder?.path ?? '';
 
     const copyRaw = e.dataTransfer?.getData(FILE_MANAGER_COPY_DRAG_TYPE);

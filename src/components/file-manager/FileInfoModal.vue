@@ -2,7 +2,7 @@
 import yaml from 'js-yaml';
 import UiModal from '~/components/ui/UiModal.vue';
 
-import type { FileInfo } from '~/types/fileManager';
+import type { FileInfo } from '~/types/file-manager';
 
 import { formatMegabytes } from '~/utils/format';
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useFilesPageStore, type FileSortField } from '~/stores/files-page.store';
+import { useFileManagerStore, type FileSortField } from '~/stores/file-manager.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useProxyStore } from '~/stores/proxy.store';
@@ -54,7 +54,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const filesPageStore = useFilesPageStore();
+const fileManagerStore = useFileManagerStore();
 const selectionStore = useSelectionStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const proxyStore = useProxyStore();
@@ -112,15 +112,15 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
         <tr class="text-ui-text-muted border-b border-ui-border">
           <th
             class="py-2 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
-            :style="{ width: `${filesPageStore.columnWidths.name}px`, minWidth: '60px' }"
+            :style="{ width: `${fileManagerStore.columnWidths.name}px`, minWidth: '60px' }"
             @click="emit('sort', 'name')"
           >
             <div class="flex items-center gap-1">
               {{ t('common.name', 'Name') }}
               <UIcon
-                v-if="filesPageStore.sortOption.field === 'name'"
+                v-if="fileManagerStore.sortOption.field === 'name'"
                 :name="
-                  filesPageStore.sortOption.order === 'asc'
+                  fileManagerStore.sortOption.order === 'asc'
                     ? 'i-heroicons-bars-arrow-up'
                     : 'i-heroicons-bars-arrow-down'
                 "
@@ -135,15 +135,15 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
 
           <th
             class="py-2 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
-            :style="{ width: `${filesPageStore.columnWidths.type}px`, minWidth: '60px' }"
+            :style="{ width: `${fileManagerStore.columnWidths.type}px`, minWidth: '60px' }"
             @click="emit('sort', 'type')"
           >
             <div class="flex items-center gap-1">
               {{ t('common.type', 'Type') }}
               <UIcon
-                v-if="filesPageStore.sortOption.field === 'type'"
+                v-if="fileManagerStore.sortOption.field === 'type'"
                 :name="
-                  filesPageStore.sortOption.order === 'asc'
+                  fileManagerStore.sortOption.order === 'asc'
                     ? 'i-heroicons-bars-arrow-up'
                     : 'i-heroicons-bars-arrow-down'
                 "
@@ -158,15 +158,15 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
 
           <th
             class="py-2 px-3 font-medium text-right cursor-pointer hover:text-ui-text transition-colors select-none relative"
-            :style="{ width: `${filesPageStore.columnWidths.size}px`, minWidth: '60px' }"
+            :style="{ width: `${fileManagerStore.columnWidths.size}px`, minWidth: '60px' }"
             @click="emit('sort', 'size')"
           >
             <div class="flex items-center justify-end gap-1">
               {{ t('common.size', 'Size') }}
               <UIcon
-                v-if="filesPageStore.sortOption.field === 'size'"
+                v-if="fileManagerStore.sortOption.field === 'size'"
                 :name="
-                  filesPageStore.sortOption.order === 'asc'
+                  fileManagerStore.sortOption.order === 'asc'
                     ? 'i-heroicons-bars-arrow-up'
                     : 'i-heroicons-bars-arrow-down'
                 "
@@ -181,15 +181,15 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
 
           <th
             class="py-2 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
-            :style="{ width: `${filesPageStore.columnWidths.created}px`, minWidth: '60px' }"
+            :style="{ width: `${fileManagerStore.columnWidths.created}px`, minWidth: '60px' }"
             @click="emit('sort', 'created')"
           >
             <div class="flex items-center gap-1">
               {{ t('common.created', 'Created') }}
               <UIcon
-                v-if="filesPageStore.sortOption.field === 'created'"
+                v-if="fileManagerStore.sortOption.field === 'created'"
                 :name="
-                  filesPageStore.sortOption.order === 'asc'
+                  fileManagerStore.sortOption.order === 'asc'
                     ? 'i-heroicons-bars-arrow-up'
                     : 'i-heroicons-bars-arrow-down'
                 "
@@ -205,7 +205,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
           <th
             class="py-2 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
             :style="{
-              width: `${filesPageStore.columnWidths.modified}px`,
+              width: `${fileManagerStore.columnWidths.modified}px`,
               minWidth: '60px',
             }"
             @click="emit('sort', 'modified')"
@@ -213,9 +213,9 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
             <div class="flex items-center gap-1">
               {{ t('common.modified', 'Modified') }}
               <UIcon
-                v-if="filesPageStore.sortOption.field === 'modified'"
+                v-if="fileManagerStore.sortOption.field === 'modified'"
                 :name="
-                  filesPageStore.sortOption.order === 'asc'
+                  fileManagerStore.sortOption.order === 'asc'
                     ? 'i-heroicons-bars-arrow-up'
                     : 'i-heroicons-bars-arrow-down'
                 "

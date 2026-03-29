@@ -1,4 +1,4 @@
-import { buildAudioEffectGraph } from '~/utils/audio/effectGraph';
+import { buildAudioEffectGraph } from '~/utils/audio/effect-graph';
 
 /**
  * Audio effects processing via native Web Audio API.

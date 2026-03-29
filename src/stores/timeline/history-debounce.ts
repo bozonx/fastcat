@@ -2,7 +2,7 @@ import { ref, type Ref } from 'vue';
 
 import type { TimelineDocument } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
-import { getTimelineCommandLabelKey } from './timeline-history-labels';
+import { getTimelineCommandLabelKey } from './history-labels';
 
 export interface TimelineHistoryDebounceDeps {
   historyStore: {

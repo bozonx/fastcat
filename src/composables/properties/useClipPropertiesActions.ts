@@ -47,7 +47,7 @@ interface EditorViewStoreActions {
 }
 
 interface FilesPageStoreActions {
-  selectFolder: (entry: FsEntry) => void;
+  openFolder: (entry: FsEntry) => void;
 }
 
 interface SelectionStoreActions {
@@ -71,7 +71,7 @@ interface UseClipPropertiesActionsOptions {
   projectStore: ProjectStoreActions;
   uiStore: UiStoreActions;
   editorViewStore: EditorViewStoreActions;
-  filesPageStore: FilesPageStoreActions;
+  fileManagerStore: FilesPageStoreActions;
   selectionStore: SelectionStoreActions;
   focusStore: FocusStoreActions;
   fileManager: FileManagerActions;
@@ -85,7 +85,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     fileManager,
     uiStore,
     selectionStore,
-    filesPageStore,
+    fileManagerStore,
     focusStore,
     editorViewStore,
     setActiveTab,
@@ -334,7 +334,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     if (parentPath) {
       const parentEntry = fileManager.findEntryByPath(parentPath);
       if (parentEntry && parentEntry.kind === 'directory') {
-        filesPageStore.selectFolder(parentEntry);
+        fileManagerStore.openFolder(parentEntry);
       }
     }
 

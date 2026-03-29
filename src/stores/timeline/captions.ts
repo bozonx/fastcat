@@ -14,7 +14,7 @@ import {
 } from '~/repositories/transcription-cache.repository';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
-import type { createTimelineClips } from './timeline-clips';
+import type { createTimelineClips } from './clips';
 
 export interface TimelineCaptionsDeps {
   timelineDoc: Ref<TimelineDocument | null>;

@@ -1,6 +1,6 @@
 import { ref, computed, watch } from 'vue';
 import type { Ref } from 'vue';
-import { useFilesPageStore } from '~/stores/files-page.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useFileManagerThumbnails } from '~/composables/fileManager/useFileManagerThumbnails';
@@ -24,7 +24,7 @@ export function useFileBrowserEntries({
   isRemoteMode: Ref<boolean>;
   vfs: IFileSystemAdapter;
 }) {
-  const filesPageStore = useFilesPageStore();
+  const fileManagerStore = useFileManagerStore();
   const uiStore = useUiStore();
   const projectStore = useProjectStore();
 
@@ -113,10 +113,10 @@ export function useFileBrowserEntries({
 
   // Calculate size for directories in list view
   watch(
-    () => [folderEntries.value, filesPageStore.viewMode],
+    () => [folderEntries.value, fileManagerStore.viewMode],
     () => {
       if (isRemoteMode.value) return;
-      if (filesPageStore.viewMode === 'list' && folderEntries.value.length > 0) {
+      if (fileManagerStore.viewMode === 'list' && folderEntries.value.length > 0) {
         for (const entry of folderEntries.value) {
           if (
             entry.kind === 'directory' &&

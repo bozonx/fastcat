@@ -9,7 +9,7 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
-import { useFilesPageStore } from '~/stores/files-page.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useFocusableListNavigation } from '~/composables/fileManager/useFocusableListNavigation';
 import FileManagerTree from './FileManagerTree.vue';
 import type { FsEntry } from '~/types/fs';
@@ -88,13 +88,13 @@ const selectionStore = useSelectionStore();
 const clipboardStore = useAppClipboard();
 const { currentDragOperation } = clipboardStore;
 const { loadTimeline } = useProjectActions();
-const filesPageStore = useFilesPageStore();
+const fileManagerStore = useFileManagerStore();
 
 const scrollEl = ref<HTMLElement | null>(null);
 
 const selectedPath = computed(() => {
   if (props.isFilesPage) {
-    return filesPageStore.selectedFolder?.path ?? projectStore.currentProjectName ?? null;
+    return fileManagerStore.selectedFolder?.path ?? projectStore.currentProjectName ?? null;
   }
   return uiStore.selectedFsEntry?.path ?? null;
 });

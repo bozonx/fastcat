@@ -4,7 +4,7 @@ import type { FsEntry } from '~/types/fs';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
 import { isRemoteFsEntry } from '~/utils/remote-vfs';
 import { isOpenableProjectFileName } from '~/utils/media-types';
-import { useFilesPageStore, type FileSortField } from '~/stores/files-page.store';
+import { useFileManagerStore, type FileSortField } from '~/stores/file-manager.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFileManagerSelection } from '~/composables/fileManager/useFileManagerSelection';
@@ -28,14 +28,14 @@ export function useFileBrowserInteraction({
   setSelectedFsEntry,
   onFileAction,
 }: FileBrowserInteractionOptions) {
-  const filesPageStore = useFilesPageStore();
+  const fileManagerStore = useFileManagerStore();
   const projectStore = useProjectStore();
   const timelineStore = useTimelineStore();
 
   const { handleEntryClick: handleSelectionClick } = useFileManagerSelection({
     getVisibleEntries: () => sortedEntries.value,
     enforceSameLevel: false,
-    onSingleSelect: (entry) => filesPageStore.selectFile(entry),
+    onSingleSelect: (entry) => fileManagerStore.selectItem(entry),
   });
 
   function handleEntryClick(event: MouseEvent, entry: FsEntry) {
@@ -58,7 +58,7 @@ export function useFileBrowserInteraction({
     }
 
     if (entry.kind === 'directory') {
-      filesPageStore.openFolder(entry);
+      fileManagerStore.openFolder(entry);
     } else {
       if (entry.name.toLowerCase().endsWith('.otio')) {
         const entryPath = entry.path;
@@ -77,7 +77,7 @@ export function useFileBrowserInteraction({
 
   function handleEntryEnter(entry: FsEntry) {
     if (!isRemoteMode.value) {
-      filesPageStore.selectFile(entry);
+      fileManagerStore.selectItem(entry);
     } else {
       setSelectedFsEntry(entry);
     }
@@ -85,13 +85,13 @@ export function useFileBrowserInteraction({
   }
 
   function handleSort(field: FileSortField) {
-    if (filesPageStore.sortOption.field === field) {
-      filesPageStore.setSortOption({
+    if (fileManagerStore.sortOption.field === field) {
+      fileManagerStore.setSortOption({
         field,
-        order: filesPageStore.sortOption.order === 'asc' ? 'desc' : 'asc',
+        order: fileManagerStore.sortOption.order === 'asc' ? 'desc' : 'asc',
       });
     } else {
-      filesPageStore.setSortOption({ field, order: 'asc' });
+      fileManagerStore.setSortOption({ field, order: 'asc' });
     }
   }
 
@@ -102,7 +102,7 @@ export function useFileBrowserInteraction({
   function onResizeStart(e: MouseEvent, column: string) {
     resizingColumn.value = column;
     resizeStartX.value = e.clientX;
-    resizeStartWidth.value = filesPageStore.columnWidths[column] || 100;
+    resizeStartWidth.value = fileManagerStore.columnWidths[column] || 100;
     document.addEventListener('mousemove', onResizeMove);
     document.addEventListener('mouseup', onResizeEnd);
   }
@@ -111,7 +111,7 @@ export function useFileBrowserInteraction({
     if (!resizingColumn.value) return;
     const diff = e.clientX - resizeStartX.value;
     const newWidth = Math.max(60, resizeStartWidth.value + diff);
-    filesPageStore.setColumnWidth(resizingColumn.value, newWidth);
+    fileManagerStore.setColumnWidth(resizingColumn.value, newWidth);
   }
 
   function onResizeEnd() {

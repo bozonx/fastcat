@@ -1,6 +1,6 @@
 import { ref, watch, type Ref } from 'vue';
 
-import { createAutoSave } from '~/utils/autoSave';
+import { createAutoSave } from '~/utils/auto-save';
 import { getErrorMessage } from '~/utils/errors';
 import {
   type FastCatAppSettings,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useFilesPageStore, type FileSortField } from '~/stores/files-page.store';
+import { useFileManagerStore, type FileSortField } from '~/stores/file-manager.store';
 import { useUiStore } from '~/stores/ui.store';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
@@ -22,7 +22,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const filesPageStore = useFilesPageStore();
+const fileManagerStore = useFileManagerStore();
 const uiStore = useUiStore();
 
 const sortFields: { label: string; value: FileSortField }[] = [
@@ -60,14 +60,14 @@ const menuItems = computed(() => {
   if (props.compact) {
     const fieldsGroup = sortFields.map((f) => ({
       label: f.label,
-      color: filesPageStore.sortOption.field === f.value ? 'primary' : 'neutral',
+      color: fileManagerStore.sortOption.field === f.value ? 'primary' : 'neutral',
       onSelect: () => {
-        filesPageStore.sortOption.field = f.value;
+        fileManagerStore.sortOption.field = f.value;
       },
     }));
     items.push(fieldsGroup);
 
-    const isAsc = filesPageStore.sortOption.order === 'asc';
+    const isAsc = fileManagerStore.sortOption.order === 'asc';
     const orderToggle = [
       {
         label: isAsc
@@ -76,7 +76,7 @@ const menuItems = computed(() => {
         icon: isAsc ? 'i-heroicons-bars-arrow-down' : 'i-heroicons-bars-arrow-up',
         color: 'primary',
         onSelect: () => {
-          filesPageStore.sortOption.order = isAsc ? 'desc' : 'asc';
+          fileManagerStore.sortOption.order = isAsc ? 'desc' : 'asc';
         },
       },
     ];
@@ -93,24 +93,24 @@ const menuItems = computed(() => {
   >
     <div class="flex items-center gap-1">
       <UiToggleButton
-        :model-value="filesPageStore.viewMode === 'grid'"
+        :model-value="fileManagerStore.viewMode === 'grid'"
         icon="i-heroicons-squares-2x2"
         inactive-color="neutral"
         active-color="primary"
         size="sm"
         title="Grid view"
         no-toggle
-        @click="filesPageStore.setViewMode('grid')"
+        @click="fileManagerStore.setViewMode('grid')"
       />
       <UiToggleButton
-        :model-value="filesPageStore.viewMode === 'list'"
+        :model-value="fileManagerStore.viewMode === 'list'"
         icon="i-heroicons-list-bullet"
         inactive-color="neutral"
         active-color="primary"
         size="sm"
         title="List view"
         no-toggle
-        @click="filesPageStore.setViewMode('list')"
+        @click="fileManagerStore.setViewMode('list')"
       />
 
       <div class="w-px h-4 bg-ui-border mx-2"></div>
@@ -135,18 +135,18 @@ const menuItems = computed(() => {
 
     <!-- Card size slider (only in grid view) -->
     <div
-      v-if="filesPageStore.viewMode === 'grid'"
+      v-if="fileManagerStore.viewMode === 'grid'"
       class="flex items-center gap-2 ml-2 w-24"
       :title="`${t('videoEditor.fileManager.cardScale', 'Card scale')}: ${currentGridSizeName}`"
     >
       <UiWheelSlider
-        :model-value="gridSizes.indexOf(filesPageStore.gridCardSize)"
+        :model-value="gridSizes.indexOf(fileManagerStore.gridCardSize)"
         :min="0"
         :max="gridSizes.length - 1"
         :step="1"
         wheel-without-focus
         class="flex-1 w-full"
-        @update:model-value="(v: number) => filesPageStore.setGridCardSize(gridSizes[v] || 130)"
+        @update:model-value="(v: number) => fileManagerStore.setGridCardSize(gridSizes[v] || 130)"
       />
     </div>
 
@@ -162,14 +162,14 @@ const menuItems = computed(() => {
         />
         <span class="text-xs text-ui-text-muted">{{ t('common.sortBy', 'Sort by') }}:</span>
         <UiSelect
-          v-model="filesPageStore.sortOption.field"
+          v-model="fileManagerStore.sortOption.field"
           :items="sortFields"
           value-key="value"
           size="xs"
           class="w-32"
         />
         <UiToggleButton
-          :model-value="filesPageStore.sortOption.order === 'asc'"
+          :model-value="fileManagerStore.sortOption.order === 'asc'"
           icon="i-heroicons-bars-arrow-down"
           active-icon="i-heroicons-bars-arrow-up"
           inactive-color="neutral"
@@ -178,8 +178,8 @@ const menuItems = computed(() => {
           title="Sort order"
           no-toggle
           @click="
-            filesPageStore.sortOption.order =
-              filesPageStore.sortOption.order === 'asc' ? 'desc' : 'asc'
+            fileManagerStore.sortOption.order =
+              fileManagerStore.sortOption.order === 'asc' ? 'desc' : 'asc'
           "
         />
         <div class="w-px h-4 bg-ui-border mx-1"></div>

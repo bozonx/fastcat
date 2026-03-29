@@ -10,7 +10,7 @@ import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumb
 import { generateUniqueFsEntryName } from '~/utils/fs';
 import { createMarkdownCommand } from '~/file-manager/application/fileManagerCommands';
 import { DOCUMENTS_DIR_NAME } from '~/utils/constants';
-import { useFilesPageStore } from '~/stores/files-page.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useProjectTabsStore } from '~/stores/tabs.store';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
@@ -191,8 +191,8 @@ export function useFileManagerActions(actions: FileManagerActions) {
       // Expand and open documents folder
       const dirEntry = actions.findEntryByPath(dirPath);
       if (dirEntry) {
-        const filesPageStore = useFilesPageStore();
-        filesPageStore.openFolder(dirEntry);
+        const fileManagerStore = useFileManagerStore();
+        fileManagerStore.openFolder(dirEntry);
       }
 
       // Select and scroll to new file

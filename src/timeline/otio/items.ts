@@ -10,7 +10,7 @@ import {
   coerceTransform,
   coerceBlendMode,
 } from './utils';
-import { parseEffects, parseFastCatTransition } from './components';
+import { parseEffects, parseFastCatTransition } from './serialization';
 import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
 import { TimelineClipFastCatMetaSchema } from './schemas';
 

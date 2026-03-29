@@ -11,7 +11,7 @@ import {
 import {
   applyAudioEffectsOffline,
   type AudioEffectData,
-} from '../../utils/audio/applyAudioEffectsOffline';
+} from '../../utils/audio/apply-audio-effects-offline';
 import { clampFloat32 } from './utils';
 import { usToS } from './time';
 
