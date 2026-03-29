@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, nextTick, watch } from 'vue';
+import { computed, ref, nextTick, watch, watchEffect } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useFullscreen } from '@vueuse/core';
 import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
 import { useMonitorRuntime } from '~/composables/monitor/useMonitorRuntime';
@@ -8,6 +9,7 @@ import MonitorViewport from './MonitorViewport.vue';
 import MonitorTransformBox from './MonitorTransformBox.vue';
 import MonitorAudioControl from './MonitorAudioControl.vue';
 import { useMonitorContainerControls } from '~/composables/monitor/useMonitorContainerControls';
+import type { TimelineMarker } from '~/timeline/types';
 
 const props = withDefaults(
   defineProps<{
@@ -38,7 +40,25 @@ const {
   isSavingStopFrame,
   createStopFrameSnapshot,
   timecodeEl,
+  uiCurrentTimeUs,
 } = useMonitorRuntime();
+
+const { timelineDoc } = storeToRefs(timelineStore);
+
+const activeMarkers = ref<TimelineMarker[]>([]);
+watchEffect(() => {
+  const time = uiCurrentTimeUs.value;
+  const markers = timelineDoc.value?.metadata?.fastcat?.markers;
+  const filtered = Array.isArray(markers)
+    ? (markers as TimelineMarker[]).filter((m) => {
+        if (!m.text.trim()) return false;
+        if (m.durationUs != null) return time >= m.timeUs && time < m.timeUs + m.durationUs;
+        // Threshold of 1ms to match point markers during playback/scrubbing
+        return Math.abs(time - m.timeUs) < 1000;
+      })
+    : [];
+  activeMarkers.value = filtered;
+});
 
 const canInteractPlayback = computed(
   () => !isLoading.value && (safeDurationUs.value > 0 || videoItems.value.length > 0),
@@ -177,89 +197,118 @@ const containerHeightClass = computed(() =>
           <p class="text-sm font-medium">{{ statusText }}</p>
           <p class="text-xs text-red-200/80">{{ loadError }}</p>
         </div>
+
+        <!-- Overlays (Timecode & Markers) -->
+        <div
+          v-if="videoItems.length > 0 && !loadError"
+          class="absolute inset-0 pointer-events-none select-none"
+        >
+          <!-- Active Markers -->
+          <div
+            v-if="activeMarkers.length"
+            class="absolute bottom-10 right-3 flex flex-col items-end gap-1 transition-all duration-300 z-10"
+            :class="[isFullscreen ? 'bottom-16 right-6' : 'bottom-10 right-3']"
+          >
+            <div
+              v-for="marker in activeMarkers"
+              :key="marker.id"
+              class="text-[10px] text-ui-text-muted bg-ui-bg-elevated/85 backdrop-blur-sm px-2 py-0.5 rounded max-w-[200px] truncate shadow-sm border border-white/5"
+            >
+              {{ marker.text }}
+            </div>
+          </div>
+
+          <!-- Timecode -->
+          <div
+            ref="timecodeEl"
+            class="absolute bottom-3 right-3 text-xs text-ui-text-muted font-mono tabular-nums bg-ui-bg-elevated/85 backdrop-blur-sm px-2 py-0.5 rounded transition-all duration-300"
+            :class="[isFullscreen ? 'bottom-8 right-6' : 'bottom-3 right-3']"
+          >
+            00:00:00:00 / 00:00:00:00
+          </div>
+        </div>
       </template>
     </MonitorViewport>
 
     <!-- Playback controls -->
     <div class="shrink-0 border-t border-ui-border bg-ui-bg px-4 py-2">
-      <!-- Row 1: Timecode, Zoom, Menu -->
-      <div class="flex items-center justify-between gap-3 mb-1.5">
-        <div class="flex items-center gap-3">
-          <span ref="timecodeEl" class="min-w-0 text-xs font-mono tabular-nums text-ui-text">
-            00:00:00:00 / 00:00:00:00
-          </span>
+      <div class="flex items-center justify-between gap-3">
+        <!-- Left: Volume, Zoom, Proxy, Effects -->
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          <MonitorAudioControl :compact="true" />
+
           <UButton
             size="xs"
             variant="ghost"
             color="neutral"
-            class="font-mono tabular-nums text-[10px] min-w-10 justify-center h-6 px-1 hover:bg-transparent! text-ui-text-muted hover:text-ui-text"
+            class="font-mono tabular-nums text-[10px] min-w-10 justify-center h-6 px-1 text-ui-text-muted hover:text-ui-text"
             :label="monitorZoomLabel"
             @click="resetZoom"
           />
-        </div>
-        <div class="flex items-center gap-1">
-          <UButton
-            size="xs"
-            variant="ghost"
-            color="neutral"
-            :icon="isFullscreen ? 'lucide:minimize' : 'lucide:maximize'"
-            :aria-label="t('fastcat.monitor.fullscreen', 'Fullscreen')"
-            @click="toggleFullscreen"
-          />
-          <UDropdownMenu :items="contextMenuItems">
-            <UButton
-              size="xs"
-              variant="ghost"
-              color="neutral"
-              icon="lucide:ellipsis"
-              :aria-label="t('common.more', 'More')"
-            />
-          </UDropdownMenu>
-        </div>
-      </div>
 
-      <!-- Row 2: Volume, Proxy, Effects, Home, Play -->
-      <div class="flex items-center justify-between gap-3">
-        <div class="flex items-center gap-1.5">
-          <MonitorAudioControl :compact="true" />
           <UButton
             size="xs"
             variant="ghost"
             :color="useProxyInMonitor ? 'primary' : 'neutral'"
             icon="lucide:bolt"
             class="p-1.5"
-            :aria-label="t('fastcat.monitor.useProxy', 'Use proxy')"
             @click="toggleProxyUsage"
           />
+
           <UButton
             size="xs"
             variant="ghost"
             :color="previewEffectsEnabled ? 'primary' : 'neutral'"
             icon="lucide:sparkles"
             class="p-1.5"
-            :aria-label="previewEffectsEnabled ? t('fastcat.monitor.previewWithEffects', 'Preview with effects') : t('fastcat.monitor.previewWithoutEffects', 'Preview without effects')"
             @click="togglePreviewEffects"
           />
         </div>
-        <div class="flex items-center gap-2">
+
+        <!-- Right: Rewind, Play, Fullscreen, Menu -->
+        <div class="flex items-center gap-1">
           <UButton
             size="md"
             variant="ghost"
             color="neutral"
             icon="lucide:skip-back"
+            class="p-1"
             :aria-label="t('fastcat.monitor.rewind', 'Home')"
             :disabled="!canInteractPlayback"
             @click="rewindToStart"
           />
+
           <UButton
             size="md"
-            variant="solid"
+            variant="ghost"
             color="primary"
             :icon="timelineStore.isPlaying ? 'lucide:pause' : 'lucide:play'"
+            class="p-1"
             :aria-label="t('fastcat.monitor.play', 'Play')"
             :disabled="!canInteractPlayback"
             @click="togglePlayback"
           />
+
+          <UButton
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            :icon="isFullscreen ? 'lucide:minimize' : 'lucide:maximize'"
+            class="p-1.5"
+            :aria-label="t('fastcat.monitor.fullscreen', 'Fullscreen')"
+            @click="toggleFullscreen"
+          />
+
+          <UDropdownMenu :items="contextMenuItems">
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              icon="lucide:ellipsis"
+              class="p-1.5"
+              :aria-label="t('common.more', 'More')"
+            />
+          </UDropdownMenu>
         </div>
       </div>
     </div>
