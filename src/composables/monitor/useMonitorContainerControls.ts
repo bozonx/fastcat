@@ -41,6 +41,7 @@ interface UseMonitorContainerControlsOptions {
   createStopFrameSnapshot: () => Promise<void>;
   scheduleBuild: () => void;
   toggleGrid: () => void;
+  isMobile?: boolean;
 }
 
 function formatSpeedLabel(speed: number): string {
@@ -309,28 +310,32 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
           Boolean(options.loadError.value),
       },
     ],
-    [
-      {
-        label: options.t('fastcat.monitor.toolbarTop'),
-        icon: toolbarPosition.value === 'top' ? 'i-heroicons-check' : undefined,
-        onSelect: () => setToolbarPosition('top'),
-      },
-      {
-        label: options.t('fastcat.monitor.toolbarRight'),
-        icon: toolbarPosition.value === 'right' ? 'i-heroicons-check' : undefined,
-        onSelect: () => setToolbarPosition('right'),
-      },
-      {
-        label: options.t('fastcat.monitor.toolbarBottom'),
-        icon: toolbarPosition.value === 'bottom' ? 'i-heroicons-check' : undefined,
-        onSelect: () => setToolbarPosition('bottom'),
-      },
-      {
-        label: options.t('fastcat.monitor.toolbarLeft'),
-        icon: toolbarPosition.value === 'left' ? 'i-heroicons-check' : undefined,
-        onSelect: () => setToolbarPosition('left'),
-      },
-    ],
+    ...(options.isMobile
+      ? []
+      : [
+          [
+            {
+              label: options.t('fastcat.monitor.toolbarTop'),
+              icon: toolbarPosition.value === 'top' ? 'i-heroicons-check' : undefined,
+              onSelect: () => setToolbarPosition('top'),
+            },
+            {
+              label: options.t('fastcat.monitor.toolbarRight'),
+              icon: toolbarPosition.value === 'right' ? 'i-heroicons-check' : undefined,
+              onSelect: () => setToolbarPosition('right'),
+            },
+            {
+              label: options.t('fastcat.monitor.toolbarBottom'),
+              icon: toolbarPosition.value === 'bottom' ? 'i-heroicons-check' : undefined,
+              onSelect: () => setToolbarPosition('bottom'),
+            },
+            {
+              label: options.t('fastcat.monitor.toolbarLeft'),
+              icon: toolbarPosition.value === 'left' ? 'i-heroicons-check' : undefined,
+              onSelect: () => setToolbarPosition('left'),
+            },
+          ],
+        ]),
     [
       ...previewResolutions.value.map((res) => ({
         label: res.label,
