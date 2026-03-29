@@ -5,6 +5,8 @@ import { useMonitorRuntime } from '~/composables/monitor/useMonitorRuntime';
 import MonitorTextTransformBox from './MonitorTextTransformBox.vue';
 import MonitorViewport from './MonitorViewport.vue';
 import MonitorTransformBox from './MonitorTransformBox.vue';
+import MonitorAudioControl from './MonitorAudioControl.vue';
+import { useMonitorContainerControls } from '~/composables/monitor/useMonitorContainerControls';
 
 const props = withDefaults(
   defineProps<{
@@ -19,6 +21,7 @@ const { t } = useI18n();
 const {
   projectStore,
   timelineStore,
+  selectionStore,
   videoItems,
   safeDurationUs,
   isTextClipSelected,
@@ -28,7 +31,11 @@ const {
   viewportRef,
   isLoading,
   loadError,
+  previewEffectsEnabled,
   scheduleBuild,
+  useProxyInMonitor,
+  isSavingStopFrame,
+  createStopFrameSnapshot,
   timecodeEl,
 } = useMonitorRuntime();
 
@@ -43,7 +50,36 @@ const statusText = computed(() => {
   return props.mode === 'sound' ? 'Sound view' : 'Preview';
 });
 
-const { showGrid, getGridLines } = useMonitorGrid({ projectStore });
+const { showGrid, toggleGrid, getGridLines } = useMonitorGrid({ projectStore });
+
+const {
+  contextMenuItems,
+  toggleProxyUsage,
+  togglePreviewEffects,
+  resetZoom,
+} = useMonitorContainerControls({
+  t,
+  projectStore,
+  timelineStore,
+  selectionStore,
+  viewportRef,
+  videoItems,
+  isLoading,
+  loadError,
+  safeDurationUs,
+  previewEffectsEnabled,
+  useProxyInMonitor,
+  showGrid,
+  isSavingStopFrame,
+  createStopFrameSnapshot,
+  scheduleBuild,
+  toggleGrid,
+});
+
+const monitorZoomLabel = computed(() => {
+  const zoom = projectStore.activeMonitor?.zoom ?? 1;
+  return `x${zoom.toFixed(2)}`;
+});
 const isReadonly = computed(
   () => projectStore.currentView === 'sound' || projectStore.currentView === 'export',
 );
@@ -134,24 +170,63 @@ const containerHeightClass = computed(() =>
     </MonitorViewport>
 
     <!-- Playback controls -->
-    <div class="shrink-0 border-t border-ui-border bg-ui-bg px-4 py-2.5">
-      <div class="mb-2 flex items-center justify-between gap-3 text-2xs text-ui-text-muted">
-        <span class="uppercase tracking-[0.18em]">{{
-          props.mode === 'sound' ? 'Monitor' : 'Preview'
-        }}</span>
-        <span class="truncate">{{ statusText }}</span>
+    <div class="shrink-0 border-t border-ui-border bg-ui-bg px-4 py-2">
+      <!-- Row 1: Timecode, Zoom, Menu -->
+      <div class="flex items-center justify-between gap-3 mb-1.5">
+        <div class="flex items-center gap-3">
+          <span ref="timecodeEl" class="min-w-0 text-xs font-mono tabular-nums text-ui-text">
+            00:00:00:00 / 00:00:00:00
+          </span>
+          <UButton
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            class="font-mono tabular-nums text-[10px] min-w-10 justify-center h-6 px-1 hover:bg-transparent! text-ui-text-muted hover:text-ui-text"
+            :label="monitorZoomLabel"
+            @click="resetZoom"
+          />
+        </div>
+        <UDropdownMenu :items="contextMenuItems">
+          <UButton
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            icon="lucide:ellipsis"
+            :aria-label="t('common.more', 'More')"
+          />
+        </UDropdownMenu>
       </div>
+
+      <!-- Row 2: Volume, Proxy, Effects, Home, Play -->
       <div class="flex items-center justify-between gap-3">
-        <span ref="timecodeEl" class="min-w-0 text-xs font-mono tabular-nums text-ui-text">
-          00:00:00:00 / 00:00:00:00
-        </span>
+        <div class="flex items-center gap-1.5">
+          <MonitorAudioControl :compact="true" />
+          <UButton
+            size="xs"
+            variant="ghost"
+            :color="useProxyInMonitor ? 'primary' : 'neutral'"
+            icon="lucide:bolt"
+            class="p-1.5"
+            :aria-label="t('fastcat.monitor.useProxy', 'Use proxy')"
+            @click="toggleProxyUsage"
+          />
+          <UButton
+            size="xs"
+            variant="ghost"
+            :color="previewEffectsEnabled ? 'primary' : 'neutral'"
+            icon="lucide:sparkles"
+            class="p-1.5"
+            :aria-label="previewEffectsEnabled ? t('fastcat.monitor.previewWithEffects', 'Preview with effects') : t('fastcat.monitor.previewWithoutEffects', 'Preview without effects')"
+            @click="togglePreviewEffects"
+          />
+        </div>
         <div class="flex items-center gap-2">
           <UButton
             size="md"
             variant="ghost"
             color="neutral"
             icon="lucide:skip-back"
-            :aria-label="t('fastcat.monitor.rewind', 'Rewind')"
+            :aria-label="t('fastcat.monitor.rewind', 'Home')"
             :disabled="!canInteractPlayback"
             @click="rewindToStart"
           />
