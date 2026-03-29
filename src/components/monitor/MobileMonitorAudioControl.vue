@@ -3,7 +3,6 @@ import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { onClickOutside } from '@vueuse/core';
 import { useUiStore } from '~/stores/ui.store';
 import { storeToRefs } from 'pinia';
-import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 
 const uiStore = useUiStore();
 const { monitorVolume, monitorMuted } = storeToRefs(uiStore);
@@ -36,9 +35,10 @@ const volumeIcon = computed(() => {
   return 'i-heroicons-speaker-wave';
 });
 
-function onVolumeUpdate(v: number) {
-  monitorVolume.value = v;
-  if (monitorMuted.value && v > 0) {
+function onVolumeUpdate(v: number | undefined) {
+  const val = Number(v ?? 1);
+  monitorVolume.value = val;
+  if (monitorMuted.value && val > 0) {
     monitorMuted.value = false;
   }
 }
@@ -80,21 +80,19 @@ function onClickOutsideHandler() {
       >
         <div
           v-if="isPopupOpen"
-          class="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 pointer-events-auto"
+          class="fixed bottom-[80px] left-1/2 -translate-x-1/2 z-50 pointer-events-auto"
         >
           <div
-            class="bg-ui-bg-elevated/95 backdrop-blur-md border border-ui-border rounded-xl shadow-2xl px-5 py-4 flex items-center gap-4 w-[320px] max-w-[90vw]"
+            class="bg-ui-bg-elevated/95 backdrop-blur-md border border-ui-border rounded-xl shadow-2xl px-5 py-4 flex items-center gap-4 w-[85vw] max-w-[340px]"
           >
             <div class="flex-1 w-full flex items-center justify-center">
-              <UiWheelSlider
+              <USlider
                 :min="0"
                 :max="2"
                 :step="0.05"
-                :wheel-step-multiplier="1"
-                :default-value="1"
                 :model-value="monitorMuted ? 0 : monitorVolume"
                 orientation="horizontal"
-                slider-class="w-full"
+                class="w-full"
                 @update:model-value="onVolumeUpdate"
               />
             </div>

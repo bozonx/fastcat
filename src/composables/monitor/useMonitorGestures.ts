@@ -36,6 +36,7 @@ export function useMonitorGestures(input: {
   let initialPinchPan = { x: 0, y: 0 };
 
   const isVolumeAdjusting = ref(false);
+  const volumeTrackerId = ref<number | null>(null);
   const volumeStartY = ref(0);
   const initialVolume = ref(1);
 
@@ -132,6 +133,7 @@ export function useMonitorGestures(input: {
 
       if (isRightZone && activePointers.size === 1) {
         isVolumeAdjusting.value = true;
+        volumeTrackerId.value = event.pointerId;
         volumeStartY.value = event.clientY;
         initialVolume.value = uiStore.monitorVolume;
       } else if (activePointers.size === 1) {
@@ -244,8 +246,10 @@ export function useMonitorGestures(input: {
     }
 
     if (activePointers.size >= 2) {
-      isVolumeAdjusting.value = false;
-      isPanning.value = false;
+      if (!isVolumeAdjusting.value) {
+        // Only cancel pan if we are panning. Keep volume adjusting intact if a second finger touches briefly.
+        isPanning.value = false;
+      }
     }
 
     if (activePointers.size === 2) {
@@ -318,7 +322,10 @@ export function useMonitorGestures(input: {
       activePointers.clear();
     }
 
-    isVolumeAdjusting.value = false;
+    if (!event || event.pointerId === volumeTrackerId.value || activePointers.size === 0) {
+      isVolumeAdjusting.value = false;
+      volumeTrackerId.value = null;
+    }
 
     if (activePointers.size < 2) {
       initialPinchDistance = 0;
