@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useWindowSize } from '@vueuse/core';
 import FileProperties from '~/components/properties/FileProperties.vue';
 import MultiFileProperties from '~/components/properties/MultiFileProperties.vue';
 import { isOpenableProjectFileName } from '~/utils/media-types';
 import type { FileAction } from '~/composables/fileManager/useFileManagerActions';
 
 const props = defineProps<{
-  isOpen: boolean;    
-  isSelectionMode: boolean; 
+  isOpen: boolean;
+  isSelectionMode: boolean;
   onAction?: (action: FileAction, entry: any) => Promise<void>;
 }>();
 
@@ -20,6 +21,9 @@ const emit = defineEmits<{
 const selectionStore = useSelectionStore();
 const selectedEntity = computed(() => selectionStore.selectedEntity);
 
+const { width, height } = useWindowSize();
+const isLandscape = computed(() => width.value > height.value);
+
 // Sync prop with UDrawer's v-model:open
 const isOpenLocal = computed({
   get: () => props.isOpen,
@@ -27,7 +31,7 @@ const isOpenLocal = computed({
     if (!val) {
       emit('close');
     }
-  }
+  },
 });
 
 const isFileOrDirectory = computed(() => {
@@ -66,19 +70,50 @@ function handleAction(actionId: FileAction) {
 </script>
 
 <template>
-  <UDrawer 
-    v-model:open="isOpenLocal" 
-    :title="isMultiple ? $t('common.selectedItems', 'Selected items') : $t('common.properties', 'Properties')"
-    :description="isMultiple ? `${selectedEntriesList.length} ${$t('common.items', 'items')}` : undefined"
+  <UDrawer
+    v-model:open="isOpenLocal"
+    :direction="isLandscape ? 'right' : 'bottom'"
+    :title="
+      isMultiple
+        ? $t('common.selectedItems', 'Selected items')
+        : $t('common.properties', 'Properties')
+    "
+    :description="
+      isMultiple ? `${selectedEntriesList.length} ${$t('common.items', 'items')}` : undefined
+    "
   >
     <template #content>
       <div class="flex flex-col h-full max-h-[85dvh]">
         <!-- Action Toolbar -->
-        <div v-if="props.onAction" class="px-2 pt-2 pb-3 flex gap-2 justify-around border-b border-slate-800 shrink-0 bg-slate-900/50">
-          <UButton icon="lucide:trash-2" variant="ghost" color="red" @click="handleAction('delete')" />
-          <UButton v-if="selectedEntriesList.length === 1" icon="lucide:pen-line" variant="ghost" color="neutral" @click="handleAction('rename')" />
-          <UButton icon="lucide:copy" variant="ghost" color="neutral" @click="handleAction('copy')" />
-          <UButton icon="lucide:scissors" variant="ghost" color="neutral" @click="handleAction('cut')" />
+        <div
+          v-if="props.onAction"
+          class="px-2 pt-2 pb-3 flex gap-2 justify-around border-b border-slate-800 shrink-0 bg-slate-900/50"
+        >
+          <UButton
+            icon="lucide:trash-2"
+            variant="ghost"
+            color="red"
+            @click="handleAction('delete')"
+          />
+          <UButton
+            v-if="selectedEntriesList.length === 1"
+            icon="lucide:pen-line"
+            variant="ghost"
+            color="neutral"
+            @click="handleAction('rename')"
+          />
+          <UButton
+            icon="lucide:copy"
+            variant="ghost"
+            color="neutral"
+            @click="handleAction('copy')"
+          />
+          <UButton
+            icon="lucide:scissors"
+            variant="ghost"
+            color="neutral"
+            @click="handleAction('cut')"
+          />
         </div>
 
         <!-- Scrollable content -->
@@ -96,8 +131,8 @@ function handleAction(actionId: FileAction) {
         </div>
 
         <!-- Add to Timeline Button -->
-        <div 
-          v-if="canAddToTimeline" 
+        <div
+          v-if="canAddToTimeline"
           class="absolute bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-5 duration-300"
         >
           <UButton
