@@ -7,11 +7,12 @@ import MultiFileProperties from '~/components/properties/MultiFileProperties.vue
 import { isOpenableProjectFileName } from '~/utils/media-types';
 import type { FileAction } from '~/composables/fileManager/useFileManagerActions';
 import type { SelectedFsEntry, SelectedFsEntries } from '~/stores/selection.store';
+import type { FsEntry } from '~/types/fs';
 
 const props = defineProps<{
   isOpen: boolean;
   isSelectionMode: boolean;
-  onAction?: (action: FileAction, entry: any) => Promise<void>;
+  onAction?: (action: FileAction, entry: FsEntry | FsEntry[]) => Promise<void>;
 }>();
 
 const emit = defineEmits<{
@@ -76,9 +77,9 @@ const canAddToTimeline = computed(() => {
 function handleAction(actionId: FileAction) {
   if (props.onAction) {
     const list = selectedEntriesList.value;
-    if (actionId === 'rename' && list.length === 1) {
+    if (actionId === 'rename' && list.length === 1 && list[0]) {
       void props.onAction(actionId, list[0]);
-    } else {
+    } else if (list.length > 0) {
       void props.onAction(actionId, list);
     }
   }

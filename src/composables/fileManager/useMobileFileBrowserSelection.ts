@@ -135,6 +135,12 @@ export function useMobileFileBrowserSelection() {
     { deep: true },
   );
 
+  function closeAllUI() {
+    isSelectionMode.value = false;
+    isDrawerOpen.value = false;
+    selectionStore.clearSelection();
+  }
+
   return {
     isSelectionMode,
     isDrawerOpen,
@@ -146,5 +152,6 @@ export function useMobileFileBrowserSelection() {
     handleLongPress,
     handleToggleSelection,
     handleEntryClick,
+    closeAllUI,
   };
 }

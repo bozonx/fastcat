@@ -103,6 +103,14 @@ export const useFilesPageStore = defineStore('filesPage', () => {
     // We don't reset viewMode, sortOption, etc. as they are persisted user preferences
   }
 
+  const sortFields: { labelKey: string; value: FileSortField }[] = [
+    { labelKey: 'common.name', value: 'name' },
+    { labelKey: 'common.type', value: 'type' },
+    { labelKey: 'common.size', value: 'size' },
+    { labelKey: 'common.created', value: 'created' },
+    { labelKey: 'common.modified', value: 'modified' },
+  ];
+
   return {
     selectedFolder,
     viewMode,
@@ -110,6 +118,7 @@ export const useFilesPageStore = defineStore('filesPage', () => {
     gridCardSize,
     columnWidths,
     folderSizes,
+    sortFields,
     openFolder,
     selectItem,
     selectFolder,
