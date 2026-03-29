@@ -1,18 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mountSuspended, mockComponent } from '@nuxt/test-utils/runtime';
+import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { reactive, ref } from 'vue';
 import MobileFileBrowser from '~/components/file-manager/MobileFileBrowser.vue';
 
-mockComponent('MobileFileBrowserNavbar', () => ({ template: '<div />' }));
-mockComponent('MobileFileBrowserGrid', () => ({ template: '<div />' }));
-mockComponent('MobileFileBrowserDrawer', () => ({ template: '<div />' }));
-mockComponent('MobileFileBrowserCreateSheet', () => ({ template: '<div />' }));
-mockComponent('MobileFileBrowserSelectionToolbar', () => ({ template: '<div />' }));
-mockComponent('MobileFileBrowserPasteToolbar', () => ({ template: '<div />' }));
-mockComponent('FileDeleteConfirmModal', () => ({ template: '<div />' }));
-mockComponent('FileSttTranscriptionModal', () => ({ template: '<div />' }));
-mockComponent('UiRenameModal', () => ({ template: '<div />' }));
-mockComponent('TimelineMobileAddToTimelineModal', () => ({ template: '<div />' }));
+// --- Mocks ---
 
 // --- Mocks ---
 
@@ -129,14 +120,15 @@ describe('MobileFileBrowser', () => {
     const wrapper = await mountSuspended(MobileFileBrowser, {
       global: {
         stubs: {
+          MobileFileBrowserNavbar: { template: '<div id="navbar-mock" />' },
+          MobileFileBrowserGrid: { template: '<div id="grid-mock" />' },
           Teleport: true,
         },
       },
     });
     
-    // Check for presence by component tags in HTML if findComponent fails
-    expect(wrapper.html()).toContain('mobile-file-browser-navbar');
-    expect(wrapper.html()).toContain('mobile-file-browser-grid');
+    expect(wrapper.find('#navbar-mock').exists()).toBe(true);
+    expect(wrapper.find('#grid-mock').exists()).toBe(true);
   });
 
   it('shows selection toolbar when in selection mode', async () => {

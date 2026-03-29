@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, nextTick, watch } from 'vue';
+import { useFullscreen } from '@vueuse/core';
 import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
 import { useMonitorRuntime } from '~/composables/monitor/useMonitorRuntime';
 import MonitorTextTransformBox from './MonitorTextTransformBox.vue';
@@ -80,6 +81,15 @@ const monitorZoomLabel = computed(() => {
   const zoom = projectStore.activeMonitor?.zoom ?? 1;
   return `x${zoom.toFixed(2)}`;
 });
+
+const containerRef = ref<HTMLElement | null>(null);
+const { isFullscreen, toggle: toggleFullscreen } = useFullscreen(containerRef);
+
+watch(isFullscreen, () => {
+  void nextTick(() => {
+    (viewportRef.value as any)?.fitMonitor?.();
+  });
+});
 const isReadonly = computed(
   () => projectStore.currentView === 'sound' || projectStore.currentView === 'export',
 );
@@ -113,8 +123,9 @@ const containerHeightClass = computed(() =>
 
 <template>
   <div
-    class="flex min-w-0 shrink-0 flex-col border-b border-ui-border bg-ui-bg-elevated"
-    :class="containerHeightClass"
+    ref="containerRef"
+    class="flex min-w-0 shrink-0 flex-col border-b border-ui-border bg-ui-bg-elevated transition-colors duration-200"
+    :class="[isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen' : containerHeightClass]"
   >
     <!-- Video area -->
     <MonitorViewport
@@ -186,15 +197,25 @@ const containerHeightClass = computed(() =>
             @click="resetZoom"
           />
         </div>
-        <UDropdownMenu :items="contextMenuItems">
+        <div class="flex items-center gap-1">
           <UButton
             size="xs"
             variant="ghost"
             color="neutral"
-            icon="lucide:ellipsis"
-            :aria-label="t('common.more', 'More')"
+            :icon="isFullscreen ? 'lucide:minimize' : 'lucide:maximize'"
+            :aria-label="t('fastcat.monitor.fullscreen', 'Fullscreen')"
+            @click="toggleFullscreen"
           />
-        </UDropdownMenu>
+          <UDropdownMenu :items="contextMenuItems">
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              icon="lucide:ellipsis"
+              :aria-label="t('common.more', 'More')"
+            />
+          </UDropdownMenu>
+        </div>
       </div>
 
       <!-- Row 2: Volume, Proxy, Effects, Home, Play -->

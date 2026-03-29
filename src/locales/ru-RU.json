@@ -161,7 +161,11 @@
     "panCenter": "Центр",
     "panLeft": "Слева {value}%",
     "panRight": "Справа {value}%",
-    "addToTimeline": "Добавить на таймлайн"
+    "addToTimeline": "Добавить на таймлайн",
+    "files": "Файлы",
+    "sound": "Звук",
+    "export": "Экспорт",
+    "settings": "Настройки"
   },
   "errors": {
     "notFound": "Не найдено"
