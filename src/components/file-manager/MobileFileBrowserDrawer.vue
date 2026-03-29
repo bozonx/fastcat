@@ -102,9 +102,9 @@ function handleAction(actionId: FileAction) {
         >
           <UButton
             size="xl"
-            color="success"
+            variant="solid"
             icon="lucide:plus"
-            class="rounded-2xl shadow-2xl px-6 py-4 font-bold active:scale-95 transition-all text-white border-none"
+            class="rounded-2xl shadow-2xl px-6 py-4 font-bold active:scale-95 transition-all text-white border-none bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/40"
             @click="emit('add-to-timeline')"
           >
             {{ $t('common.addToTimeline', 'Add to timeline') }}

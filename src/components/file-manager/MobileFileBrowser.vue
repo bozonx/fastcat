@@ -566,15 +566,6 @@ onMounted(() => {
       </div>
       <div class="shrink-0 flex items-center ml-2">
         <UButton
-          v-if="!isSelectionMode"
-          icon="lucide:folder-plus"
-          variant="ghost"
-          color="neutral"
-          size="xs"
-          class="mr-1"
-          @click="onCreateFolder"
-        />
-        <UButton
           v-if="isSelectionMode"
           icon="lucide:info"
           variant="ghost"
