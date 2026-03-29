@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import type { FsEntry } from '~/types/fs';
-import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
-import UiModal from '~/components/ui/UiModal.vue';
-import UiTextInput from '~/components/ui/UiTextInput.vue';
-import UiFormField from '~/components/ui/UiFormField.vue';
-
+import FileDeleteConfirmModal from '~/components/file-manager/modals/FileDeleteConfirmModal.vue';
+import FileSttTranscriptionModal from '~/components/file-manager/modals/FileSttTranscriptionModal.vue';
 import RemoteTransferProgressModal from '~/components/file-manager/RemoteTransferProgressModal.vue';
 
 interface Props {
@@ -36,40 +33,12 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <UiConfirmModal
+  <FileDeleteConfirmModal
     :open="props.isDeleteConfirmModalOpen"
-    :title="t('common.delete', 'Delete')"
-    :description="
-      t(
-        'common.confirmDelete',
-        'Are you sure you want to delete this? This action cannot be undone.',
-      )
-    "
-    color="error"
-    icon="i-heroicons-exclamation-triangle"
+    :delete-targets="props.deleteTargets"
     @update:open="emit('update:isDeleteConfirmModalOpen', $event)"
     @confirm="emit('deleteConfirm')"
-  >
-    <div>
-      <div v-if="props.deleteTargets.length === 1" class="mt-2 text-sm font-medium text-ui-text">
-        {{ props.deleteTargets[0]?.name }}
-      </div>
-      <div v-else-if="props.deleteTargets.length > 1" class="mt-2 text-sm font-medium text-ui-text">
-        {{ props.deleteTargets.length }} {{ t('common.itemsSelected', 'items selected') }}
-      </div>
-      <div
-        v-if="props.deleteTargets.length === 1 && props.deleteTargets[0]?.path"
-        class="mt-1 text-xs text-ui-text-muted break-all"
-      >
-        {{
-          props.deleteTargets[0].kind === 'directory'
-            ? t('common.folder', 'Folder')
-            : t('common.file', 'File')
-        }}:
-        {{ props.deleteTargets[0].path }}
-      </div>
-    </div>
-  </UiConfirmModal>
+  />
 
   <RemoteTransferProgressModal
     :open="props.remoteTransferOpen"
@@ -81,62 +50,15 @@ const { t } = useI18n();
     @cancel="emit('cancelRemoteTransfer')"
   />
 
-  <UiModal
+  <FileSttTranscriptionModal
     :open="props.sttTranscriptionModalOpen"
-    :title="t('videoEditor.fileManager.actions.transcribe', 'Transcribe')"
-    :close-button="!props.sttTranscribing"
-    :prevent-close="props.sttTranscribing"
-    :ui="{ content: 'sm:max-w-lg', body: 'overflow-y-auto' }"
+    :stt-transcribing="props.sttTranscribing"
+    :stt-transcription-error="props.sttTranscriptionError"
+    :stt-transcription-entry="props.sttTranscriptionEntry"
+    :stt-transcription-language="props.sttTranscriptionLanguage"
     @update:open="emit('update:sttTranscriptionModalOpen', $event)"
-  >
-    <div class="flex flex-col gap-4">
-      <div class="text-sm text-ui-text-muted">
-        {{
-          t(
-            'videoEditor.fileManager.audio.transcriptionHint',
-            'Send the current audio file to the configured STT service. Language is optional.',
-          )
-        }}
-      </div>
-
-      <div v-if="props.sttTranscriptionEntry" class="text-xs text-ui-text-muted break-all">
-        {{ props.sttTranscriptionEntry.name }}
-      </div>
-
-      <UiFormField :label="t('videoEditor.fileManager.audio.transcriptionLanguage', 'Language')">
-        <UiTextInput
-          :model-value="props.sttTranscriptionLanguage"
-          :disabled="props.sttTranscribing"
-          placeholder="en"
-          full-width
-          @update:model-value="emit('update:sttTranscriptionLanguage', $event)"
-        />
-      </UiFormField>
-
-      <div v-if="props.sttTranscriptionError" class="text-sm text-error-400">
-        {{ props.sttTranscriptionError }}
-      </div>
-    </div>
-
-    <template #footer>
-      <div class="flex justify-end gap-2 w-full">
-        <UButton
-          color="neutral"
-          variant="ghost"
-          :disabled="props.sttTranscribing"
-          @click="emit('update:sttTranscriptionModalOpen', false)"
-        >
-          {{ t('common.cancel', 'Cancel') }}
-        </UButton>
-        <UButton
-          color="primary"
-          :loading="props.sttTranscribing"
-          autofocus
-          @click="emit('submitTranscription')"
-        >
-          {{ t('videoEditor.fileManager.actions.transcribe', 'Transcribe') }}
-        </UButton>
-      </div>
-    </template>
-  </UiModal>
+    @update:stt-transcription-language="emit('update:sttTranscriptionLanguage', $event)"
+    @submit="emit('submitTranscription')"
+  />
 </template>
+

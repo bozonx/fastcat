@@ -12,6 +12,7 @@ import type { FsEntry } from '~/types/fs';
 const props = defineProps<{
   isOpen: boolean;
   isSelectionMode: boolean;
+  isTranscribable?: boolean;
   onAction?: (action: FileAction, entry: FsEntry | FsEntry[]) => Promise<void>;
 }>();
 
@@ -133,6 +134,13 @@ function handleAction(actionId: FileAction) {
             variant="ghost"
             color="neutral"
             @click="handleAction('cut')"
+          />
+          <UButton
+            v-if="props.isTranscribable"
+            icon="lucide:languages"
+            variant="ghost"
+            color="primary"
+            @click="handleAction('transcribe')"
           />
         </div>
 
