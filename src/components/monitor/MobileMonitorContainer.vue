@@ -228,10 +228,10 @@ const containerHeightClass = computed(() =>
           showSideControls ? 'flex-col justify-between h-full items-center' : 'items-center justify-between h-full',
         ]"
       >
-        <div
-          class="flex items-center gap-1.5 overflow-x-auto no-scrollbar"
-          :class="[showSideControls ? 'flex-col' : '']"
-        >
+      <div
+        class="flex items-center gap-4 overflow-x-auto no-scrollbar"
+        :class="[showSideControls ? 'flex-col' : '']"
+      >
           <UButton
             size="xs"
             variant="ghost"
@@ -242,14 +242,7 @@ const containerHeightClass = computed(() =>
             @click="toggleFullscreen"
           />
 
-          <UButton
-            size="xs"
-            variant="ghost"
-            :color="useProxyInMonitor ? 'primary' : 'neutral'"
-            icon="i-heroicons-bolt"
-            class="p-1.5"
-            @click="toggleProxyUsage"
-          />
+
 
           <UButton
             size="xs"
@@ -271,7 +264,7 @@ const containerHeightClass = computed(() =>
         </div>
 
         <div
-          class="flex items-center gap-1"
+          class="flex items-center gap-4"
           :class="[showSideControls ? 'flex-col' : 'h-full']"
         >
           <MobileMonitorAudioControl />
