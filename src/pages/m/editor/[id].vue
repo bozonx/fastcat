@@ -196,18 +196,24 @@ const topbarMenuItems = computed(() => [
 
       <div
         v-else-if="activeTab === 'edit'"
-        class="flex h-full flex-col overflow-hidden bg-slate-950"
+        class="flex h-full flex-col overflow-hidden bg-slate-950 landscape:flex-row"
       >
-        <MobileMonitorContainer mode="edit" />
-        <MobileTimeline />
+        <MobileMonitorContainer
+          mode="edit"
+          class="order-1 landscape:order-2 landscape:w-[42%] landscape:border-l landscape:border-slate-800 landscape:h-full! landscape:max-h-none!"
+        />
+        <MobileTimeline class="flex-1 order-2 landscape:order-1" />
       </div>
 
       <div
         v-else-if="activeTab === 'sound'"
-        class="flex h-full flex-col overflow-hidden bg-slate-950"
+        class="flex h-full flex-col overflow-hidden bg-slate-950 landscape:flex-row"
       >
-        <MobileMonitorContainer mode="sound" />
-        <MobileAudioMixer />
+        <MobileMonitorContainer
+          mode="sound"
+          class="order-1 landscape:order-2 landscape:w-[42%] landscape:border-l landscape:border-slate-800 landscape:h-full! landscape:max-h-none!"
+        />
+        <MobileAudioMixer class="flex-1 order-2 landscape:order-1" />
       </div>
 
       <div v-else class="h-full">
