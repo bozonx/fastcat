@@ -1,9 +1,9 @@
 import {
-  ensureFastCatFileHandle,
+  ensureAppFileHandle,
   readJsonFromFileHandle,
   writeJsonToFileHandle,
   type DirectoryHandleLike,
-} from './fastcat-fs.repository';
+} from './app-fs.repository';
 
 import { z } from 'zod';
 
@@ -49,7 +49,7 @@ export function createProjectMetaRepository(input: {
     },
 
     async save(data) {
-      const handle = await ensureFastCatFileHandle({
+      const handle = await ensureAppFileHandle({
         baseDir: input.projectDir,
         filename: 'project.meta.json',
         create: true,

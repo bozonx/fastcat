@@ -18,7 +18,7 @@ import {
 } from '~/composables/file-manager/useFileBrowserEntries';
 import { useFileBrowserRemote } from '~/composables/file-manager/useFileBrowserRemote';
 import { useFileBrowserNavigation } from '~/composables/file-manager/useFileBrowserNavigation';
-import { useFileBrowserStt } from '~/composables/file-manager/useFileBrowserStt';
+import { useFileBrowserTranscription } from '~/composables/file-manager/useFileBrowserTranscription';
 import { useFileBrowserFileActions } from '~/composables/file-manager/useFileBrowserFileActions';
 import { useFocusableListNavigation } from '~/composables/file-manager/useFocusableListNavigation';
 import { useFileBrowserPendingActions } from '~/composables/file-manager/useFileBrowserPendingActions';
@@ -72,13 +72,13 @@ const {
 const conversionStore = useFileConversionStore();
 
 // --- STT ---
-const stt = useFileBrowserStt();
+const stt = useFileBrowserTranscription();
 const {
-  sttTranscriptionModalOpen,
-  sttTranscriptionLanguage,
-  sttTranscriptionError,
-  sttTranscribing,
-  sttTranscriptionEntry,
+  transcriptionModalOpen,
+  transcriptionLanguage,
+  transcriptionError,
+  isTranscribing,
+  transcriptionEntry,
   isTranscribableMediaFile,
   openTranscriptionModal,
   submitTranscription,
@@ -717,14 +717,14 @@ async function onDirectoryUploadChange(e: Event) {
       :remote-transfer-progress="remoteTransferProgress"
       :remote-transfer-phase="remoteTransferPhase"
       :remote-transfer-file-name="remoteTransferFileName"
-      :stt-transcription-modal-open="sttTranscriptionModalOpen"
-      :stt-transcribing="sttTranscribing"
-      :stt-transcription-error="sttTranscriptionError"
-      :stt-transcription-entry="sttTranscriptionEntry"
-      :stt-transcription-language="sttTranscriptionLanguage"
+      :transcription-modal-open="transcriptionModalOpen"
+      :is-transcribing="isTranscribing"
+      :transcription-error="transcriptionError"
+      :transcription-entry="transcriptionEntry"
+      :transcription-language="transcriptionLanguage"
       @update:is-delete-confirm-modal-open="isDeleteConfirmModalOpen = $event"
-      @update:stt-transcription-modal-open="sttTranscriptionModalOpen = $event"
-      @update:stt-transcription-language="sttTranscriptionLanguage = $event"
+      @update:transcription-modal-open="transcriptionModalOpen = $event"
+      @update:transcription-language="transcriptionLanguage = $event"
       @delete-confirm="handleDeleteConfirm"
       @cancel-remote-transfer="() => {}"
       @submit-transcription="submitTranscription"

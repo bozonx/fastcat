@@ -6,15 +6,15 @@ import { applyTimelineCommand } from '~/timeline/commands';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import { TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY } from './history-labels';
 
-import type { TimelineHydrationApi } from './hydration';
-import type { TimelineHistoryDebounceApi } from './history-debounce';
+import type { TimelineHydrationModule } from './hydration';
+import type { TimelineHistoryDebounceModule } from './history-debounce';
 
 export interface TimelineDispatcherDeps {
   timelineDoc: Ref<TimelineDocument | null>;
   duration: Ref<number>;
   createFallbackTimelineDoc: () => TimelineDocument;
-  hydration: TimelineHydrationApi;
-  historyDebounce: TimelineHistoryDebounceApi;
+  hydration: TimelineHydrationModule;
+  historyDebounce: TimelineHistoryDebounceModule;
   historyStore: {
     canUndo: (scope: string) => boolean;
     canRedo: (scope: string) => boolean;
@@ -27,7 +27,7 @@ export interface TimelineDispatcherDeps {
   selectGlobalTimelineItems: (itemIds: string[], doc: TimelineDocument) => void;
 }
 
-export interface TimelineDispatcherApi {
+export interface TimelineDispatcherModule {
   applyTimeline: (
     cmd: TimelineCommand,
     options?: {
@@ -51,7 +51,9 @@ export interface TimelineDispatcherApi {
   applyRestoredSnapshot: (snapshot: TimelineDocument) => void;
 }
 
-export function createTimelineDispatcher(deps: TimelineDispatcherDeps): TimelineDispatcherApi {
+export function createTimelineDispatcherModule(
+  deps: TimelineDispatcherDeps,
+): TimelineDispatcherModule {
   function applyTimeline(
     cmd: TimelineCommand,
     options?: {

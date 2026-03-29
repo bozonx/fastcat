@@ -18,7 +18,7 @@ export interface TimelinePlaybackDeps {
   setCurrentTimeUs: (nextTimeUs: number) => void;
 }
 
-export interface TimelinePlaybackApi {
+export interface TimelinePlaybackModule {
   setPlaybackSpeed: (speed: number) => void;
   goToStart: () => void;
   goToEnd: () => void;
@@ -32,7 +32,7 @@ export interface TimelinePlaybackApi {
   seekFrames: (deltaFrames: number) => void;
 }
 
-export function createTimelinePlayback(deps: TimelinePlaybackDeps): TimelinePlaybackApi {
+export function createTimelinePlaybackModule(deps: TimelinePlaybackDeps): TimelinePlaybackModule {
   function setPlaybackSpeed(speed: number) {
     const parsed = Number(speed);
     if (!Number.isFinite(parsed)) return;

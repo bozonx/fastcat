@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { useRuntimeConfig } from '#imports';
-import { useFileBrowserStt } from '~/composables/file-manager/useFileBrowserStt';
-import { transcribeProjectAudioFile } from '~/utils/stt';
+import { useFileBrowserTranscription } from '~/composables/file-manager/useFileBrowserTranscription';
+import { transcribeAudioFile } from '~/utils/transcription/engine';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -21,8 +21,8 @@ vi.mock('~/utils/external-integrations', () => ({
   resolveExternalServiceConfig: vi.fn(),
 }));
 
-vi.mock('~/utils/stt', () => ({
-  transcribeProjectAudioFile: vi.fn(),
+vi.mock('~/utils/transcription/engine', () => ({
+  transcribeAudioFile: vi.fn(),
 }));
 
 vi.mock('~/utils/media-types', () => ({
@@ -43,7 +43,7 @@ mockNuxtImport('useI18n', () => {
   });
 });
 
-describe('useFileBrowserStt', () => {
+describe('useFileBrowserTranscription', () => {
   let workspaceStoreMock: any;
   let projectStoreMock: any;
 
@@ -80,7 +80,7 @@ describe('useFileBrowserStt', () => {
   });
 
   it('computes sttConfig correctly', () => {
-    const { sttConfig } = useFileBrowserStt();
+    const { sttConfig } = useFileBrowserTranscription();
     expect(sttConfig.value).toEqual({ provider: 'test-provider', bearerToken: 'token' });
     expect(resolveExternalServiceConfig).toHaveBeenCalledWith({
       service: 'stt',
@@ -91,7 +91,7 @@ describe('useFileBrowserStt', () => {
 
   describe('isTranscribableMediaFile', () => {
     it('returns false if entry is not a file or is remote', () => {
-      const { isTranscribableMediaFile } = useFileBrowserStt();
+      const { isTranscribableMediaFile } = useFileBrowserTranscription();
       expect(
         isTranscribableMediaFile({
           kind: 'directory',
@@ -111,7 +111,7 @@ describe('useFileBrowserStt', () => {
     });
 
     it('returns false if media type is not audio or video', () => {
-      const { isTranscribableMediaFile } = useFileBrowserStt();
+      const { isTranscribableMediaFile } = useFileBrowserTranscription();
       expect(
         isTranscribableMediaFile({
           kind: 'file',
@@ -123,7 +123,7 @@ describe('useFileBrowserStt', () => {
     });
 
     it('returns false if config, workspaceHandle, or projectId is missing', () => {
-      const { isTranscribableMediaFile } = useFileBrowserStt();
+      const { isTranscribableMediaFile } = useFileBrowserTranscription();
       const validEntry = { kind: 'file', name: 'file.mp3', path: '/file.mp3', source: 'local' };
 
       vi.mocked(resolveExternalServiceConfig).mockReturnValue(null);
@@ -139,7 +139,7 @@ describe('useFileBrowserStt', () => {
     });
 
     it('returns true for valid audio/video local files when setup is complete', () => {
-      const { isTranscribableMediaFile } = useFileBrowserStt();
+      const { isTranscribableMediaFile } = useFileBrowserTranscription();
       expect(
         isTranscribableMediaFile({
           kind: 'file',
@@ -163,31 +163,31 @@ describe('useFileBrowserStt', () => {
     it('resets state and opens modal', () => {
       const {
         openTranscriptionModal,
-        sttTranscriptionModalOpen,
-        sttTranscriptionLanguage,
-        sttTranscriptionError,
-        sttTranscriptionEntry,
-      } = useFileBrowserStt();
+        transcriptionModalOpen,
+        transcriptionLanguage,
+        transcriptionError,
+        transcriptionEntry,
+      } = useFileBrowserTranscription();
 
-      sttTranscriptionLanguage.value = 'en';
-      sttTranscriptionError.value = 'some error';
+      transcriptionLanguage.value = 'en';
+      transcriptionError.value = 'some error';
 
       const entry = { kind: 'file', name: 'test.mp3', path: '/test.mp3', source: 'local' } as any;
       openTranscriptionModal(entry);
 
-      expect(sttTranscriptionLanguage.value).toBe('');
-      expect(sttTranscriptionError.value).toBe('');
-      expect(sttTranscriptionModalOpen.value).toBe(true);
-      expect(sttTranscriptionEntry.value).toStrictEqual(entry);
+      expect(transcriptionLanguage.value).toBe('');
+      expect(transcriptionError.value).toBe('');
+      expect(transcriptionModalOpen.value).toBe(true);
+      expect(transcriptionEntry.value).toStrictEqual(entry);
     });
   });
 
   describe('submitTranscription', () => {
     it('does nothing if no entry or missing project requirements', async () => {
-      const { submitTranscription, sttTranscribing } = useFileBrowserStt();
+      const { submitTranscription, isTranscribing } = useFileBrowserTranscription();
       await submitTranscription();
-      expect(sttTranscribing.value).toBe(false);
-      expect(transcribeProjectAudioFile).not.toHaveBeenCalled();
+      expect(isTranscribing.value).toBe(false);
+      expect(transcribeAudioFile).not.toHaveBeenCalled();
     });
 
     it('sets error if file cannot be accessed', async () => {
@@ -196,9 +196,9 @@ describe('useFileBrowserStt', () => {
       const {
         submitTranscription,
         openTranscriptionModal,
-        sttTranscriptionError,
-        sttTranscribing,
-      } = useFileBrowserStt();
+        transcriptionError,
+        isTranscribing,
+      } = useFileBrowserTranscription();
       openTranscriptionModal({
         kind: 'file',
         name: 'test.mp3',
@@ -208,31 +208,31 @@ describe('useFileBrowserStt', () => {
 
       await submitTranscription();
 
-      expect(sttTranscriptionError.value).toBe('Failed to access file for transcription');
-      expect(sttTranscribing.value).toBe(false);
+      expect(transcriptionError.value).toBe('Failed to access file for transcription');
+      expect(isTranscribing.value).toBe(false);
     });
 
     it('handles transcription failure', async () => {
-      vi.mocked(transcribeProjectAudioFile).mockRejectedValue(new Error('Network error'));
+      vi.mocked(transcribeAudioFile).mockRejectedValue(new Error('Network error'));
 
       const {
         submitTranscription,
         openTranscriptionModal,
-        sttTranscriptionError,
-        sttTranscribing,
-        sttTranscriptionLanguage,
-      } = useFileBrowserStt();
+        transcriptionError,
+        isTranscribing,
+        transcriptionLanguage,
+      } = useFileBrowserTranscription();
       openTranscriptionModal({
         kind: 'file',
         name: 'test.mp3',
         path: '/test.mp3',
         source: 'local',
       } as any);
-      sttTranscriptionLanguage.value = 'en-US';
+      transcriptionLanguage.value = 'en-US';
 
       await submitTranscription();
 
-      expect(transcribeProjectAudioFile).toHaveBeenCalledWith(
+      expect(transcribeAudioFile).toHaveBeenCalledWith(
         expect.objectContaining({
           file: expect.any(File),
           filePath: '/test.mp3',
@@ -247,19 +247,19 @@ describe('useFileBrowserStt', () => {
         }),
       );
 
-      expect(sttTranscriptionError.value).toBe('Network error');
-      expect(sttTranscribing.value).toBe(false);
+      expect(transcriptionError.value).toBe('Network error');
+      expect(isTranscribing.value).toBe(false);
     });
 
     it('handles transcription success (uncached, audio)', async () => {
-      vi.mocked(transcribeProjectAudioFile).mockResolvedValue({ cached: false } as any);
+      vi.mocked(transcribeAudioFile).mockResolvedValue({ cached: false } as any);
 
       const {
         submitTranscription,
         openTranscriptionModal,
-        sttTranscriptionModalOpen,
-        sttTranscribing,
-      } = useFileBrowserStt();
+        transcriptionModalOpen,
+        isTranscribing,
+      } = useFileBrowserTranscription();
       openTranscriptionModal({
         kind: 'file',
         name: 'test.mp3',
@@ -269,8 +269,8 @@ describe('useFileBrowserStt', () => {
 
       await submitTranscription();
 
-      expect(sttTranscriptionModalOpen.value).toBe(false);
-      expect(sttTranscribing.value).toBe(false);
+      expect(transcriptionModalOpen.value).toBe(false);
+      expect(isTranscribing.value).toBe(false);
       expect(mockToastAdd).toHaveBeenCalledWith({
         title: 'Transcription completed',
         description: 'Transcription was saved to vardata cache.',
@@ -279,9 +279,9 @@ describe('useFileBrowserStt', () => {
     });
 
     it('handles transcription success (cached, video)', async () => {
-      vi.mocked(transcribeProjectAudioFile).mockResolvedValue({ cached: true } as any);
+      vi.mocked(transcribeAudioFile).mockResolvedValue({ cached: true } as any);
 
-      const { submitTranscription, openTranscriptionModal } = useFileBrowserStt();
+      const { submitTranscription, openTranscriptionModal } = useFileBrowserTranscription();
       openTranscriptionModal({
         kind: 'file',
         name: 'test.mp4',
@@ -299,9 +299,9 @@ describe('useFileBrowserStt', () => {
     });
 
     it('handles transcription success (uncached, video)', async () => {
-      vi.mocked(transcribeProjectAudioFile).mockResolvedValue({ cached: false } as any);
+      vi.mocked(transcribeAudioFile).mockResolvedValue({ cached: false } as any);
 
-      const { submitTranscription, openTranscriptionModal } = useFileBrowserStt();
+      const { submitTranscription, openTranscriptionModal } = useFileBrowserTranscription();
       openTranscriptionModal({
         kind: 'file',
         name: 'test.mp4',

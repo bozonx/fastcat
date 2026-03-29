@@ -1,10 +1,10 @@
 import type { FastCatProjectSettings } from '~/utils/project-settings';
 import {
-  ensureFastCatFileHandle,
+  ensureAppFileHandle,
   readJsonFromFileHandle,
   writeJsonToFileHandle,
   type DirectoryHandleLike,
-} from './fastcat-fs.repository';
+} from './app-fs.repository';
 
 export interface ProjectSettingsRepository {
   load(): Promise<unknown | null>;
@@ -16,7 +16,7 @@ export function createProjectSettingsRepository(input: {
 }): ProjectSettingsRepository {
   return {
     async load() {
-      const handle = await ensureFastCatFileHandle({
+      const handle = await ensureAppFileHandle({
         baseDir: input.projectDir,
         filename: 'project.settings.json',
         create: false,
@@ -26,7 +26,7 @@ export function createProjectSettingsRepository(input: {
     },
 
     async save(data) {
-      const handle = await ensureFastCatFileHandle({
+      const handle = await ensureAppFileHandle({
         baseDir: input.projectDir,
         filename: 'project.settings.json',
         create: true,

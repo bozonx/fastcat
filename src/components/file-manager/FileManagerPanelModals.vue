@@ -14,19 +14,19 @@ interface Props {
   deleteTargets: FsEntry[];
   timelinesUsingDeleteTarget: TimelineRef[];
   isDeleteConfirmModalOpen: boolean;
-  sttTranscriptionModalOpen: boolean;
-  sttTranscribing: boolean;
-  sttTranscriptionError: string;
-  sttTranscriptionEntry: FsEntry | null;
-  sttTranscriptionLanguage: string;
+  transcriptionModalOpen: boolean;
+  isTranscribing: boolean;
+  transcriptionError: string;
+  transcriptionEntry: FsEntry | null;
+  transcriptionLanguage: string;
 }
 
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
   (e: 'update:isDeleteConfirmModalOpen', value: boolean): void;
-  (e: 'update:sttTranscriptionModalOpen', value: boolean): void;
-  (e: 'update:sttTranscriptionLanguage', value: string): void;
+  (e: 'update:transcriptionModalOpen', value: boolean): void;
+  (e: 'update:transcriptionLanguage', value: string): void;
   (e: 'deleteConfirm'): void;
   (e: 'submitTranscription'): void;
 }>();
@@ -91,12 +91,12 @@ const { t } = useI18n();
   </UiConfirmModal>
 
   <UiModal
-    :open="props.sttTranscriptionModalOpen"
+    :open="props.transcriptionModalOpen"
     :title="t('videoEditor.fileManager.actions.transcribe', 'Transcribe')"
-    :close-button="!props.sttTranscribing"
-    :prevent-close="props.sttTranscribing"
+    :close-button="!props.isTranscribing"
+    :prevent-close="props.isTranscribing"
     :ui="{ content: 'sm:max-w-lg', body: 'overflow-y-auto' }"
-    @update:open="emit('update:sttTranscriptionModalOpen', $event)"
+    @update:open="emit('update:transcriptionModalOpen', $event)"
   >
     <div class="flex flex-col gap-4">
       <div class="text-sm text-ui-text-muted">
@@ -108,22 +108,22 @@ const { t } = useI18n();
         }}
       </div>
 
-      <div v-if="props.sttTranscriptionEntry" class="text-xs text-ui-text-muted break-all">
-        {{ props.sttTranscriptionEntry.name }}
+      <div v-if="props.transcriptionEntry" class="text-xs text-ui-text-muted break-all">
+        {{ props.transcriptionEntry.name }}
       </div>
 
       <UiFormField :label="t('videoEditor.fileManager.audio.transcriptionLanguage', 'Language')">
         <UiTextInput
-          :model-value="props.sttTranscriptionLanguage"
-          :disabled="props.sttTranscribing"
+          :model-value="props.transcriptionLanguage"
+          :disabled="props.isTranscribing"
           placeholder="en"
           full-width
-          @update:model-value="emit('update:sttTranscriptionLanguage', $event)"
+          @update:model-value="emit('update:transcriptionLanguage', $event)"
         />
       </UiFormField>
 
-      <div v-if="props.sttTranscriptionError" class="text-sm text-error-400">
-        {{ props.sttTranscriptionError }}
+      <div v-if="props.transcriptionError" class="text-sm text-error-400">
+        {{ props.transcriptionError }}
       </div>
     </div>
 
@@ -132,14 +132,14 @@ const { t } = useI18n();
         <UButton
           color="neutral"
           variant="ghost"
-          :disabled="props.sttTranscribing"
-          @click="emit('update:sttTranscriptionModalOpen', false)"
+          :disabled="props.isTranscribing"
+          @click="emit('update:transcriptionModalOpen', false)"
         >
           {{ t('common.cancel', 'Cancel') }}
         </UButton>
         <UButton
           color="primary"
-          :loading="props.sttTranscribing"
+          :loading="props.isTranscribing"
           @click="emit('submitTranscription')"
         >
           {{ t('videoEditor.fileManager.actions.transcribe', 'Transcribe') }}

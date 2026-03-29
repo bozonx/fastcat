@@ -41,7 +41,7 @@ export interface TimelineTrimmingDeps {
   };
 }
 
-export interface TimelineTrimmingApi {
+export interface TimelineTrimmingModule {
   trimToPlayheadLeftNoRipple: (
     targetOverride?: { trackId: string; itemId: string } | null,
   ) => Promise<void>;
@@ -65,7 +65,7 @@ export interface TimelineTrimmingApi {
   splitClipsAtPlayhead: () => Promise<void>;
 }
 
-export function createTimelineTrimming(deps: TimelineTrimmingDeps): TimelineTrimmingApi {
+export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): TimelineTrimmingModule {
   async function trimToPlayheadLeftNoRipple(
     targetOverride?: { trackId: string; itemId: string } | null,
   ) {

@@ -17,7 +17,7 @@ export interface TimelineTracksDeps {
   getSelectedOrActiveTrackId: () => string | null;
 }
 
-export interface TimelineTracksApi {
+export interface TimelineTracksModule {
   addTrack: (
     kind: 'video' | 'audio',
     name: string,
@@ -60,7 +60,7 @@ export interface TimelineTracksApi {
   showAllTracks: () => void;
 }
 
-export function createTimelineTracks(deps: TimelineTracksDeps): TimelineTracksApi {
+export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTracksModule {
   function addTrack(
     kind: 'video' | 'audio',
     name: string,

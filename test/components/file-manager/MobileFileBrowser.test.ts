@@ -98,13 +98,13 @@ vi.mock('~/composables/file-manager/useFileManagerActions', () => ({
   }),
 }));
 
-vi.mock('~/composables/file-manager/useFileBrowserStt', () => ({
-  useFileBrowserStt: () => ({
-    sttTranscriptionModalOpen: ref(false),
-    sttTranscriptionLanguage: ref('en'),
-    sttTranscriptionError: ref(null),
-    sttTranscribing: ref(false),
-    sttTranscriptionEntry: ref(null),
+vi.mock('~/composables/file-manager/useFileBrowserTranscription', () => ({
+  useFileBrowserTranscription: () => ({
+    transcriptionModalOpen: ref(false),
+    transcriptionLanguage: ref('en'),
+    transcriptionError: ref(null),
+    isTranscribing: ref(false),
+    transcriptionEntry: ref(null),
     isTranscribableMediaFile: vi.fn(() => false),
     openTranscriptionModal: vi.fn(),
     submitTranscription: vi.fn(),

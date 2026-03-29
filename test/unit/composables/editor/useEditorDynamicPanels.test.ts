@@ -38,7 +38,7 @@ vi.mock('~/stores/focus.store', () => ({
   useFocusStore: () => mockFocusStore,
 }));
 
-vi.mock('~/stores/tabs.store', () => ({
+vi.mock('~/stores/project-tabs.store', () => ({
   useProjectTabsStore: () => mockTabsStore,
 }));
 

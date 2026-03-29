@@ -4,11 +4,11 @@ import type {
   FastCatWorkspaceSettings,
 } from '~/utils/settings';
 import {
-  ensureFastCatFileHandle,
+  ensureAppFileHandle,
   readJsonFromFileHandle,
   writeJsonToFileHandle,
   type DirectoryHandleLike,
-} from './fastcat-fs.repository';
+} from './app-fs.repository';
 import { FASTCAT_CONFIG_DIR_NAME, LEGACY_WORKSPACE_CONFIG_DIR_NAME } from '~/utils/storage-roots';
 
 export interface WorkspaceSettingsRepository {
@@ -25,7 +25,7 @@ async function readWorkspaceJson(input: {
   filename: string;
   folderName: string;
 }): Promise<unknown | null> {
-  const handle = await ensureFastCatFileHandle({
+  const handle = await ensureAppFileHandle({
     baseDir: input.workspaceDir,
     filename: input.filename,
     create: false,
@@ -41,7 +41,7 @@ async function writeWorkspaceJson(input: {
   folderName: string;
   data: unknown;
 }): Promise<void> {
-  const handle = await ensureFastCatFileHandle({
+  const handle = await ensureAppFileHandle({
     baseDir: input.workspaceDir,
     filename: input.filename,
     create: true,

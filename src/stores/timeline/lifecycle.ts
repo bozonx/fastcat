@@ -6,12 +6,12 @@ import { computeMediaUsageByTimelineDocs } from '~/utils/timeline-media-usage';
 import { generateTimelineThumbnail } from '~/timeline/timeline-thumbnail';
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
 
-interface TimelineSelectionApi {
+interface TimelineSelectionModule {
   clearSelection: () => void;
   selectTrack: (trackId: string | null) => void;
 }
 
-interface TimelinePersistenceApi {
+interface TimelinePersistenceModule {
   resetPersistenceState: () => void;
   markCleanForCurrentRevision: () => void;
   markDirty: () => void;
@@ -21,11 +21,11 @@ interface TimelinePersistenceApi {
   getLoadRequestId: () => number;
 }
 
-interface TimelineHistoryDebounceApi {
+interface TimelineHistoryDebounceModule {
   clearPendingDebouncedHistory: () => void;
 }
 
-interface TimelineMediaUsageStoreApi {
+interface TimelineMediaUsageStoreModule {
   setLiveUsage: (timelinePath: string | null, usage: MediaPathToTimelinesMap) => void;
   refreshUsage: () => Promise<void>;
 }
@@ -46,17 +46,32 @@ interface TimelineLifecycleDeps {
   historyStore: {
     clear: (scope: string) => void;
   };
-  historyDebounce: TimelineHistoryDebounceApi;
-  selection: TimelineSelectionApi;
-  persistence: TimelinePersistenceApi;
-  timelineMediaUsageStore: TimelineMediaUsageStoreApi;
+  historyDebounce: TimelineHistoryDebounceModule;
+  selection: TimelineSelectionModule;
+  persistence: TimelinePersistenceModule;
+  timelineMediaUsageStore: TimelineMediaUsageStoreModule;
   getOrFetchMetadataByPath: (path: string) => Promise<unknown>;
   uiStore: {
     notifyTimelineSave: () => void;
   };
 }
 
-export function createTimelineLifecycle(deps: TimelineLifecycleDeps) {
+export interface TimelineLifecycleModule {
+  handleSaveSuccess: () => Promise<void>;
+  loadTimeline: () => Promise<void>;
+  loadTimelineMetadata: () => Promise<void>;
+  markTimelineAsCleanForCurrentRevision: () => void;
+  markTimelineAsDirty: () => void;
+  requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
+  resetTimelineState: () => void;
+  resetTimelineZoom: () => void;
+  saveTimeline: () => Promise<void>;
+  setCurrentTimeUs: (nextTimeUs: number) => void;
+}
+
+export function createTimelineLifecycleModule(
+  deps: TimelineLifecycleDeps,
+): TimelineLifecycleModule {
   watch(
     [() => deps.timelineDoc.value, () => deps.currentTimelinePath.value],
     ([doc, path]) => {

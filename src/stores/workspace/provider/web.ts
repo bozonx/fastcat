@@ -1,5 +1,5 @@
 import type { WorkspaceProvider } from './types';
-import type { DirectoryHandleLike } from '~/repositories/fastcat-fs.repository';
+import type { DirectoryHandleLike } from '~/repositories/app-fs.repository';
 import type { WorkspaceHandleStorage } from '~/repositories/workspace-handle.repository';
 
 export class WebWorkspaceProvider implements WorkspaceProvider {

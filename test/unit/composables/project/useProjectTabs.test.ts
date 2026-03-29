@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
-import { isFileTab, type AnyProjectTab, useProjectTabsStore } from '~/stores/tabs.store';
+import { isFileTab, type AnyProjectTab, useProjectTabsStore } from '~/stores/project-tabs.store';
 import { defineComponent } from 'vue';
 
 const DummyComponent = defineComponent({ template: '<div>Dummy</div>' });

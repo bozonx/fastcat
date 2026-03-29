@@ -22,11 +22,11 @@ describe('FileBrowserModals', () => {
         remoteTransferProgress: 0,
         remoteTransferPhase: '',
         remoteTransferFileName: '',
-        sttTranscriptionModalOpen: false,
-        sttTranscribing: false,
-        sttTranscriptionError: '',
-        sttTranscriptionEntry: null,
-        sttTranscriptionLanguage: 'en',
+        transcriptionModalOpen: false,
+        isTranscribing: false,
+        transcriptionError: '',
+        transcriptionEntry: null,
+        transcriptionLanguage: 'en',
       },
       global: {
         stubs: {
@@ -54,11 +54,11 @@ describe('FileBrowserModals', () => {
         remoteTransferProgress: 0,
         remoteTransferPhase: '',
         remoteTransferFileName: '',
-        sttTranscriptionModalOpen: false,
-        sttTranscribing: false,
-        sttTranscriptionError: '',
-        sttTranscriptionEntry: null,
-        sttTranscriptionLanguage: 'en',
+        transcriptionModalOpen: false,
+        isTranscribing: false,
+        transcriptionError: '',
+        transcriptionEntry: null,
+        transcriptionLanguage: 'en',
       },
       global: {
         stubs: {

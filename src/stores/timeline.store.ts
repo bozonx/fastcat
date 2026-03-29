@@ -16,21 +16,21 @@ import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otio-
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import { pxPerSecondToZoom } from '~/utils/timeline/geometry';
 
-import { createTimelinePersistence } from '~/stores/timeline/persistence';
+import { createTimelinePersistenceModule } from '~/stores/timeline/persistence';
 import { createTimelineMarkerService } from '~/timeline/application/timelineMarkerService';
-import { createTimelineSelection } from '~/stores/timeline/selection';
-import { createTimelinePlayback } from '~/stores/timeline/playback';
-import { createTimelineTracks } from '~/stores/timeline/tracks';
-import { createTimelineClips } from '~/stores/timeline/clips';
-import { createTimelineTrimming } from '~/stores/timeline/trimming';
-import { createTimelineHydration } from '~/stores/timeline/hydration';
-import { createTimelineExternalRefs } from '~/stores/timeline/external-refs';
-import { createTimelineHistoryDebounce } from '~/stores/timeline/history-debounce';
-import { createTimelineDispatcher } from '~/stores/timeline/dispatcher';
-import { createTimelineSelectionRange } from '~/stores/timeline/selection-range';
-import { createTimelineCaptions } from '~/stores/timeline/captions';
-import { createTimelineCommands } from '~/stores/timeline/commands';
-import { createTimelineLifecycle } from '~/stores/timeline/lifecycle';
+import { createTimelineSelectionModule } from '~/stores/timeline/selection';
+import { createTimelinePlaybackModule } from '~/stores/timeline/playback';
+import { createTimelineTracksModule } from '~/stores/timeline/tracks';
+import { createTimelineClipsModule } from '~/stores/timeline/clips';
+import { createTimelineTrimmingModule } from '~/stores/timeline/trimming';
+import { createTimelineHydrationModule } from '~/stores/timeline/hydration';
+import { createTimelineExternalRefsModule } from '~/stores/timeline/external-refs';
+import { createTimelineHistoryDebounceModule } from '~/stores/timeline/history-debounce';
+import { createTimelineDispatcherModule } from '~/stores/timeline/dispatcher';
+import { createTimelineSelectionRangeModule } from '~/stores/timeline/selection-range';
+import { createTimelineCaptionsModule } from '~/stores/timeline/captions';
+import { createTimelineCommandsModule } from '~/stores/timeline/commands';
+import { createTimelineLifecycleModule } from '~/stores/timeline/lifecycle';
 
 import { getDocFps } from '~/timeline/commands/utils';
 
@@ -61,11 +61,11 @@ export const useTimelineStore = defineStore('timeline', () => {
   const { t } = nuxtApp.$i18nService as I18nService;
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
 
-  const historyDebounce = createTimelineHistoryDebounce({ historyStore });
+  const historyDebounce = createTimelineHistoryDebounceModule({ historyStore });
 
   historyStore.registerStateGetter('timeline', () => timelineDoc.value);
 
-  const { currentProjectName, currentTimelinePath, mediaMetadata } = createTimelineExternalRefs({
+  const { currentProjectName, currentTimelinePath, mediaMetadata } = createTimelineExternalRefsModule({
     projectStore,
     mediaStore,
   });
@@ -139,7 +139,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     return dispatcher.batchApplyTimeline(cmds, options);
   }
 
-  const selection = createTimelineSelection({
+  const selection = createTimelineSelectionModule({
     timelineDoc,
     currentTime,
     selectedItemIds,
@@ -158,7 +158,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     requestTimelineSave,
   });
 
-  const playback = createTimelinePlayback({
+  const playback = createTimelinePlaybackModule({
     currentTime,
     isPlaying,
     playbackSpeed,
@@ -178,7 +178,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     applyTimeline({ type: 'update_master_muted', muted });
   }
 
-  const tracks = createTimelineTracks({
+  const tracks = createTimelineTracksModule({
     timelineDoc,
     selectedTrackId,
     applyTimeline,
@@ -187,7 +187,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     getSelectedOrActiveTrackId: () => selection.getSelectedOrActiveTrackId(),
   });
 
-  const trimming = createTimelineTrimming({
+  const trimming = createTimelineTrimmingModule({
     timelineDoc,
     currentTime,
     duration,
@@ -200,7 +200,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     editService,
   });
 
-  const clips = createTimelineClips({
+  const clips = createTimelineClipsModule({
     timelineDoc,
     selectedItemIds,
     selectedTrackId,
@@ -234,7 +234,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     },
   });
 
-  const hydration = createTimelineHydration({
+  const hydration = createTimelineHydrationModule({
     mediaMetadata,
   });
 
@@ -263,7 +263,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     await lifecycle.saveTimeline();
   }
 
-  let lifecycle!: ReturnType<typeof createTimelineLifecycle>;
+  let lifecycle!: ReturnType<typeof createTimelineLifecycleModule>;
 
   async function ensureTimelineFileHandle(options?: {
     create?: boolean;
@@ -275,7 +275,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     });
   }
 
-  const persistence = createTimelinePersistence({
+  const persistence = createTimelinePersistenceModule({
     timelineDoc,
     currentTime,
     duration,
@@ -310,7 +310,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     },
   });
 
-  lifecycle = createTimelineLifecycle({
+  lifecycle = createTimelineLifecycleModule({
     timelineDoc,
     currentTimelinePath,
     isTimelineDirty,
@@ -332,7 +332,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     uiStore,
   });
 
-  const dispatcher = createTimelineDispatcher({
+  const dispatcher = createTimelineDispatcherModule({
     timelineDoc,
     duration,
     createFallbackTimelineDoc: () => projectStore.createFallbackTimelineDoc(),
@@ -359,7 +359,7 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   const { undoTimeline, redoTimeline } = dispatcher;
 
-  const commands = createTimelineCommands({
+  const commands = createTimelineCommandsModule({
     timelineDoc,
     currentTimelinePath,
     mediaMetadata,
@@ -392,7 +392,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     t,
   });
 
-  const selectionRange = createTimelineSelectionRange({
+  const selectionRange = createTimelineSelectionRangeModule({
     timelineDoc,
     currentTime,
     isSelectionRangeSelected: () =>
@@ -408,7 +408,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     },
   });
 
-  const captions = createTimelineCaptions({
+  const captions = createTimelineCaptionsModule({
     timelineDoc,
     clips,
     requestTimelineSave,

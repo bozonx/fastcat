@@ -28,7 +28,51 @@ export interface TimelineCommandsDeps {
   t: any;
 }
 
-export function createTimelineCommands(params: TimelineCommandsDeps) {
+export interface TimelineCommandsModule {
+  commandService: ReturnType<typeof createTimelineCommandService>;
+  moveItemToTrack: (input: {
+    fromTrackId: string;
+    toTrackId: string;
+    itemId: string;
+    startUs: number;
+  }) => Promise<void>;
+  extractAudioToTrack: (input: { videoTrackId: string; videoItemId: string }) => Promise<void>;
+  returnAudioToVideo: (input: { videoItemId: string }) => void;
+  addClipToTimelineFromPath: (
+    input: {
+      trackId: string;
+      name: string;
+      path: string;
+      startUs?: number;
+      pseudo?: boolean;
+    },
+    options?: {
+      historyMode?: 'immediate' | 'debounced';
+      historyDebounceMs?: number;
+      labelKey?: string;
+      skipHistory?: boolean;
+      saveMode?: 'none' | 'debounced' | 'immediate';
+    },
+  ) => Promise<string[]>;
+  addTimelineClipToTimelineFromPath: (
+    input: {
+      trackId: string;
+      name: string;
+      path: string;
+      startUs?: number;
+      pseudo?: boolean;
+    },
+    options?: {
+      historyMode?: 'immediate' | 'debounced';
+      historyDebounceMs?: number;
+      labelKey?: string;
+      skipHistory?: boolean;
+      saveMode?: 'none' | 'debounced' | 'immediate';
+    },
+  ) => Promise<string[]>;
+}
+
+export function createTimelineCommandsModule(params: TimelineCommandsDeps): TimelineCommandsModule {
   const {
     timelineDoc,
     currentTimelinePath,

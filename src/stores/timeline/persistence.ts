@@ -36,7 +36,7 @@ export interface TimelinePersistenceDeps {
   onSaveError?: (error: unknown) => void;
 }
 
-export interface TimelinePersistence {
+export interface TimelinePersistenceModule {
   resetPersistenceState: () => void;
   getLoadRequestId: () => number;
 
@@ -48,7 +48,7 @@ export interface TimelinePersistence {
   saveTimeline: () => Promise<void>;
 }
 
-export function createTimelinePersistence(deps: TimelinePersistenceDeps): TimelinePersistence {
+export function createTimelinePersistenceModule(deps: TimelinePersistenceDeps): TimelinePersistenceModule {
   let loadTimelineRequestId = 0;
 
   const autoSave = createAutoSave({
