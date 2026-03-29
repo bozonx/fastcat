@@ -144,6 +144,9 @@
     "hideHiddenFiles": "Скрыть скрытые файлы",
     "createInFolder": "Создать в папке",
     "quickCreateDefault": "Быстрое создание",
+    "autoRecognition": "Авто распознавание по типу",
+    "inDirTimelines": "В _timelines/",
+    "inDirDocuments": "В _documents/",
     "video": "Видео",
     "timeline": "Таймлайн",
     "textDocument": "Текстовый документ",
@@ -1609,6 +1612,7 @@
   },
   "timelineCreation": {
     "errorTitle": "Ошибка таймлайна",
-    "failed": "Не удалось создать таймлайн"
+    "failed": "Не удалось создать таймлайн",
+    "successTitle": "Таймлайн создан"
   }
 }

@@ -144,6 +144,9 @@
     "hideHiddenFiles": "Hide hidden files",
     "createInFolder": "Create in folder",
     "quickCreateDefault": "Quick create",
+    "autoRecognition": "Auto recognition by type",
+    "inDirTimelines": "In _timelines/",
+    "inDirDocuments": "In _documents/",
     "video": "Video",
     "timeline": "Timeline",
     "textDocument": "Text document",
@@ -1595,6 +1598,7 @@
   },
   "timelineCreation": {
     "errorTitle": "Timeline error",
-    "failed": "Failed to create timeline"
+    "failed": "Failed to create timeline",
+    "successTitle": "Timeline created"
   }
 }
