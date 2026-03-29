@@ -2,7 +2,8 @@
 import { ref, onBeforeUnmount } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { formatBytes } from '~/utils/format';
-import { getMediaTypeFromFilename } from '~/utils/media-types';
+import { getMediaTypeFromFilename, getMimeTypeFromFilename } from '~/utils/media-types';
+import { useFileManager } from '~/composables/fileManager/useFileManager';
 
 interface ExtendedFsEntry extends FsEntry {
   objectUrl?: string;
@@ -26,6 +27,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const { getFileIcon } = useFileManager();
 
 const longPressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const isLongPressActive = ref(false);
@@ -70,20 +72,12 @@ function handleClick(entry: FsEntry) {
 }
 
 function getIcon(entry: FsEntry) {
-  if (entry.kind === 'directory') return 'lucide:folder';
-  const type = getMediaTypeFromFilename(entry.name);
-  switch (type) {
-    case 'video':
-      return 'lucide:video';
-    case 'audio':
-      return 'lucide:music';
-    case 'image':
-      return 'lucide:image';
-    case 'text':
-      return 'lucide:file-text';
-    default:
-      return 'lucide:file';
-  }
+  return getFileIcon(entry);
+}
+
+function getFileTypeLabel(entry: FsEntry) {
+  if (entry.name.toLowerCase().endsWith('.otio')) return 'timeline/otio';
+  return getMimeTypeFromFilename(entry.name);
 }
 
 function isSelected(entry: FsEntry) {
@@ -144,23 +138,15 @@ onBeforeUnmount(clearLongPress);
               />
             </template>
             <template v-else>
-              <Icon
+              <UIcon
                 :name="getIcon(entry)"
-                class="w-10 h-10 opacity-40 transition-transform"
+                class="opacity-40 transition-transform"
                 :class="[
-                  entry.kind === 'directory' ? 'text-blue-400' : '',
+                  entry.kind === 'directory' ? 'w-32 h-32 text-blue-400' : 'w-10 h-10',
                   isSelected(entry) ? 'scale-110' : '',
                 ]"
               />
             </template>
-
-            <!-- Folder Overlay -->
-            <div
-              v-if="entry.kind === 'directory'"
-              class="absolute inset-0 bg-blue-500/5 flex items-end p-2"
-            >
-              <Icon name="lucide:folder" class="w-4 h-4 text-blue-400" />
-            </div>
 
             <!-- Multi-Selection Checkbox -->
             <div
@@ -180,7 +166,7 @@ onBeforeUnmount(clearLongPress);
               v-if="entry.kind === 'file' && !isSelectionMode"
               class="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[10px] font-medium text-white/80"
             >
-              {{ getMediaTypeFromFilename(entry.name) }}
+              {{ getFileTypeLabel(entry) }}
             </div>
           </div>
 
@@ -202,15 +188,6 @@ onBeforeUnmount(clearLongPress);
           </div>
         </button>
 
-        <!-- Quick Add Action (hidden in selection mode) -->
-        <UButton
-          v-if="entry.kind === 'file' && !isSelectionMode"
-          icon="lucide:plus"
-          size="xs"
-          color="primary"
-          class="absolute -top-1 -right-1 rounded-full shadow-lg transition-opacity"
-          @click.stop="emit('entryPrimaryAction', entry)"
-        />
       </div>
     </div>
   </div>
