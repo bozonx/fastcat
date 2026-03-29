@@ -1226,7 +1226,30 @@
         "tags": "Теги",
         "searchFailed": "Ошибка поиска",
         "localFileUnavailable": "Не удалось получить доступ к локальному файлу",
-        "uploadFailed": "Ошибка загрузки"
+        "uploadFailed": "Ошибка загрузки",
+        "successTitle": "Загрузка завершена",
+        "autoUploadTitle": "Автоматическая сортировка завершена",
+        "summary": "{count} {type} в {folder}",
+        "types": {
+          "video": "видео",
+          "audio": "аудио",
+          "image": "изображений",
+          "document": "документов",
+          "file": "файлов"
+        }
+      },
+      "upload": {
+        "autoUploadTitle": "Автоматическая загрузка завершена",
+        "successTitle": "Загрузка завершена",
+        "summary": "{count} {type} в папку {folder}",
+        "types": {
+          "video": "видео",
+          "audio": "аудио",
+          "image": "изображений",
+          "text": "документов",
+          "timeline": "таймлайнов",
+          "unknown": "файлов"
+        }
       },
       "skipOtio": {
         "title": "Пропущенные файлы проекта",

@@ -1222,7 +1222,30 @@
         "tags": "Tags",
         "searchFailed": "Search failed",
         "localFileUnavailable": "Failed to access local file",
-        "uploadFailed": "Upload failed"
+        "uploadFailed": "Upload failed",
+        "successTitle": "Upload successful",
+        "autoUploadTitle": "Auto-sort upload complete",
+        "summary": "{count} {type} to {folder}",
+        "types": {
+          "video": "video",
+          "audio": "audio",
+          "image": "image",
+          "document": "document",
+          "file": "file"
+        }
+      },
+      "upload": {
+        "autoUploadTitle": "Auto-sort upload complete",
+        "successTitle": "Upload successful",
+        "summary": "{count} {type} to {folder}",
+        "types": {
+          "video": "video",
+          "audio": "audio",
+          "image": "image",
+          "text": "document",
+          "timeline": "timeline",
+          "unknown": "file"
+        }
       },
       "skipOtio": {
         "title": "Project files skipped",

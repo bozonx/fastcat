@@ -104,6 +104,10 @@
   --z-popover: 1060;
   --z-tooltip: 1070;
   --z-max: 99999;
+
+  /* Theme Action Color */
+  --color-ui-action: #22c55e;
+  --color-ui-action-hover: #4ade80;
 }
 
  .panel-focus-frame {

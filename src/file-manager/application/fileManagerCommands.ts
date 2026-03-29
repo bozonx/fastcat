@@ -50,6 +50,12 @@ async function generateUniqueEntryNameWithSuffix(params: {
   }
 }
 
+export interface UploadResult {
+  fileName: string;
+  targetPath: string;
+  targetDir: string;
+}
+
 export interface HandleFilesDeps {
   vfs: IFileSystemAdapter;
   getTargetDirPath: (params: { file: File }) => Promise<string | null>;
@@ -63,7 +69,7 @@ export async function handleFilesCommand(
     targetDirPath?: string;
   },
   deps: HandleFilesDeps,
-): Promise<void> {
+): Promise<UploadResult[]> {
   const queue = new PQueue({ concurrency: 3 });
 
   const tasks = Array.from(files).map((inputFile) =>
@@ -96,10 +102,17 @@ export async function handleFilesCommand(
       if (mediaType === 'video' || mediaType === 'audio') {
         deps.onMediaImported({ projectRelativePath: targetPath, file });
       }
+
+      return {
+        fileName: file.name,
+        targetPath,
+        targetDir: finalRelativePathBase,
+      };
     }),
   );
 
-  await Promise.all(tasks);
+  const results = await Promise.all(tasks);
+  return results.filter((r): r is UploadResult => r !== undefined);
 }
 
 export async function resolveDefaultTargetDir(params: { file: File }): Promise<string | null> {

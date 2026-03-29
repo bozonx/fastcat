@@ -32,15 +32,16 @@ import { isMoveAllowed as isMoveAllowedCore } from '~/file-manager/core/rules';
 import { findEntryByPath as findEntryByPathCore } from '~/file-manager/core/tree';
 import { createFileManagerService } from '~/file-manager/application/fileManagerService';
 import {
-  copyEntryCommand,
-  createFolderCommand,
-  createTimelineCommand,
-  createMarkdownCommand,
-  deleteEntryCommand,
   handleFilesCommand,
   moveEntryCommand,
   renameEntryCommand,
   resolveDefaultTargetDir,
+  createFolderCommand,
+  deleteEntryCommand,
+  copyEntryCommand,
+  createTimelineCommand,
+  createMarkdownCommand,
+  type UploadResult,
 } from '~/file-manager/application/fileManagerCommands';
 import { useVfs } from '~/composables/useVfs';
 import { createUiActionRunner } from './useUiActionRunner';
@@ -230,9 +231,9 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     const projectName = deps.getProjectName();
     if (!projectName) return;
 
-    await runWithUiFeedback({
+    const uploadResults = await runWithUiFeedback({
       action: async () => {
-        await handleFilesCommand(
+        const results = await handleFilesCommand(
           files,
           {
             targetDirPath,
@@ -260,11 +261,42 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         } else {
           await loadProjectDirectory({ fullRefresh: true });
         }
+        return results;
       },
       defaultErrorMessage: 'Failed to upload files',
       toastTitle: 'Upload error',
       toastDescription: () => error.value || 'Failed to upload files',
     });
+
+    if (uploadResults && uploadResults.length > 0) {
+      const grouped = new Map<string, { count: number; type: string; folder: string }>();
+      uploadResults.forEach((r: UploadResult) => {
+        const type = getMediaTypeFromFilename(r.fileName) || 'file';
+        const key = `${r.targetDir}:${type}`;
+        const existing = grouped.get(key) || { count: 0, type, folder: r.targetDir };
+        grouped.set(key, { ...existing, count: existing.count + 1 });
+      });
+
+      const summaries: string[] = [];
+      grouped.forEach((val) => {
+        const typeLabel = deps.t(`videoEditor.fileManager.upload.types.${val.type}`, val.type);
+        summaries.push(
+          deps.t('videoEditor.fileManager.upload.summary', {
+            count: val.count,
+            type: typeLabel,
+            folder: val.folder || '/',
+          }),
+        );
+      });
+
+      deps.toast.add({
+        color: 'success',
+        title: !targetDirPath
+          ? deps.t('videoEditor.fileManager.upload.autoUploadTitle')
+          : deps.t('videoEditor.fileManager.upload.successTitle'),
+        description: summaries.join(', '),
+      });
+    }
   }
 
   async function createFolder(name: string, parentPath: string = '') {
