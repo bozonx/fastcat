@@ -8,6 +8,7 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { formatBytes } from '~/utils/format';
+import { computeDirectoryStats } from '~/utils/fs';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import EntryActions from '~/components/properties/file/EntryActions.vue';
 
@@ -33,6 +34,18 @@ watch(
         const file = await fileManager.vfs.getFile(e.path);
         if (file) {
           size += file.size;
+        }
+      } else if (e.kind === 'directory' && e.path) {
+        try {
+          const handle = await projectStore.getDirectoryHandleByPath(e.path);
+          if (handle) {
+            const stats = await computeDirectoryStats(handle);
+            if (stats) {
+              size += stats.size;
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to calculate directory size for properties:', e.path, err);
         }
       }
     }
