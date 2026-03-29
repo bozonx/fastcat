@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, nextTick, watch, watchEffect } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useFullscreen } from '@vueuse/core';
+import { useFullscreen, useMediaQuery } from '@vueuse/core';
 import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
 import { useMonitorRuntime } from '~/composables/monitor/useMonitorRuntime';
 import MonitorTextTransformBox from './MonitorTextTransformBox.vue';
@@ -81,6 +81,7 @@ const {
   createStopFrameSnapshot,
   scheduleBuild,
   toggleGrid,
+  isMobile: true,
 });
 
 const monitorZoomLabel = computed(() => {
@@ -96,6 +97,9 @@ watch(isFullscreen, () => {
     (viewportRef.value as any)?.fitMonitor?.();
   });
 });
+
+const isLandscape = useMediaQuery('(orientation: landscape)');
+
 const isReadonly = computed(
   () => projectStore.currentView === 'sound' || projectStore.currentView === 'export',
 );
@@ -142,8 +146,10 @@ const containerHeightClass = computed(() =>
 <template>
   <div
     ref="containerRef"
-    class="flex min-w-0 shrink-0 flex-col border-b border-ui-border bg-ui-bg-elevated transition-colors duration-200"
-    :class="[isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen' : containerHeightClass]"
+    class="flex min-w-0 shrink-0 border-ui-border bg-ui-bg-elevated transition-colors duration-200"
+    :class="[
+      isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen flex-col' : [containerHeightClass, isLandscape ? 'flex-row border-r' : 'flex-col border-b'],
+    ]"
   >
     <!-- Video area -->
     <MonitorViewport
@@ -201,11 +207,52 @@ const containerHeightClass = computed(() =>
     </MonitorViewport>
 
     <!-- Playback controls -->
-    <div class="shrink-0 border-t border-ui-border bg-ui-bg px-4 py-2">
-      <div class="flex items-center justify-between gap-3">
-        <!-- Left: Volume, Zoom, Proxy, Effects -->
-        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-          <MonitorAudioControl :compact="true" />
+    <div
+      class="shrink-0 bg-ui-bg"
+      :class="[
+        isLandscape && !isFullscreen
+          ? 'w-[72px] flex flex-col items-center py-4 border-l border-ui-border'
+          : 'px-4 py-2 border-t border-ui-border',
+      ]"
+    >
+      <div
+        class="flex gap-3"
+        :class="[
+          isLandscape && !isFullscreen ? 'flex-col justify-between h-full items-center' : 'items-center justify-between',
+        ]"
+      >
+        <!-- Left/Top cluster: Fullscreen, Proxy, Effects, Zoom -->
+        <div
+          class="flex items-center gap-1.5 overflow-x-auto no-scrollbar"
+          :class="[isLandscape && !isFullscreen ? 'flex-col' : '']"
+        >
+          <UButton
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            :icon="isFullscreen ? 'lucide:minimize' : 'lucide:maximize'"
+            class="p-1.5"
+            :aria-label="t('fastcat.monitor.fullscreen', 'Fullscreen')"
+            @click="toggleFullscreen"
+          />
+
+          <UButton
+            size="xs"
+            variant="ghost"
+            :color="useProxyInMonitor ? 'primary' : 'neutral'"
+            icon="i-heroicons-bolt"
+            class="p-1.5"
+            @click="toggleProxyUsage"
+          />
+
+          <UButton
+            size="xs"
+            variant="ghost"
+            :color="previewEffectsEnabled ? 'primary' : 'neutral'"
+            icon="i-heroicons-sparkles"
+            class="p-1.5"
+            @click="togglePreviewEffects"
+          />
 
           <UButton
             size="xs"
@@ -215,28 +262,15 @@ const containerHeightClass = computed(() =>
             :label="monitorZoomLabel"
             @click="resetZoom"
           />
-
-          <UButton
-            size="xs"
-            variant="ghost"
-            :color="useProxyInMonitor ? 'primary' : 'neutral'"
-            icon="lucide:bolt"
-            class="p-1.5"
-            @click="toggleProxyUsage"
-          />
-
-          <UButton
-            size="xs"
-            variant="ghost"
-            :color="previewEffectsEnabled ? 'primary' : 'neutral'"
-            icon="lucide:sparkles"
-            class="p-1.5"
-            @click="togglePreviewEffects"
-          />
         </div>
 
-        <!-- Right: Rewind, Play, Fullscreen, Menu -->
-        <div class="flex items-center gap-1">
+        <!-- Right/Bottom cluster: Volume, Rewind, Play, Menu -->
+        <div
+          class="flex items-center gap-1"
+          :class="[isLandscape && !isFullscreen ? 'flex-col' : '']"
+        >
+          <MonitorAudioControl :compact="true" />
+
           <UButton
             size="md"
             variant="ghost"
@@ -257,16 +291,6 @@ const containerHeightClass = computed(() =>
             :aria-label="t('fastcat.monitor.play', 'Play')"
             :disabled="!canInteractPlayback"
             @click="togglePlayback"
-          />
-
-          <UButton
-            size="xs"
-            variant="ghost"
-            color="neutral"
-            :icon="isFullscreen ? 'lucide:minimize' : 'lucide:maximize'"
-            class="p-1.5"
-            :aria-label="t('fastcat.monitor.fullscreen', 'Fullscreen')"
-            @click="toggleFullscreen"
           />
 
           <UDropdownMenu :items="contextMenuItems">

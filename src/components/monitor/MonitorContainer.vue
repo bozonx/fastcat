@@ -382,7 +382,7 @@ watch(viewportRef, (vp) => {
               size="sm"
               color="neutral"
               variant="solid"
-              icon="i-heroicons-arrows-pointing-in"
+              icon="lucide:minimize"
               :aria-label="t('fastcat.monitor.exitFullscreen', 'Exit fullscreen')"
               @click="exitBrowserFullscreen()"
             />
@@ -398,7 +398,7 @@ watch(viewportRef, (vp) => {
               size="xs"
               color="neutral"
               variant="ghost"
-              icon="i-heroicons-arrows-pointing-out"
+              icon="lucide:maximize"
               :aria-label="t('fastcat.monitor.fullscreen', 'Fullscreen')"
               @click="enterBrowserFullscreen()"
             />
