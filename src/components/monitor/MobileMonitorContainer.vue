@@ -7,7 +7,7 @@ import { useMonitorRuntime } from '~/composables/monitor/useMonitorRuntime';
 import MonitorTextTransformBox from './MonitorTextTransformBox.vue';
 import MonitorViewport from './MonitorViewport.vue';
 import MonitorTransformBox from './MonitorTransformBox.vue';
-import MonitorAudioControl from './MonitorAudioControl.vue';
+import MobileMonitorAudioControl from './MobileMonitorAudioControl.vue';
 import { useMonitorContainerControls } from '~/composables/monitor/useMonitorContainerControls';
 import type { TimelineMarker } from '~/timeline/types';
 
@@ -165,6 +165,7 @@ const containerHeightClass = computed(() =>
       :render-height="renderHeight"
       :effective-fullscreen="isFullscreen"
       :ui-current-time-us="uiCurrentTimeUs"
+      :is-mobile="true"
       class="bg-black/80"
     >
       <template #canvas>
@@ -273,7 +274,7 @@ const containerHeightClass = computed(() =>
           class="flex items-center gap-1"
           :class="[showSideControls ? 'flex-col' : 'h-full']"
         >
-          <MonitorAudioControl :compact="true" />
+          <MobileMonitorAudioControl />
 
           <UButton
             size="md"
