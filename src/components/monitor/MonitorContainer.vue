@@ -228,20 +228,6 @@ const monitorZoomLabel = computed(() => {
   return `x${zoom.toFixed(2)}`;
 });
 
-const activeMarkers = ref<TimelineMarker[]>([]);
-watchEffect(() => {
-  const time = uiCurrentTimeUs.value;
-  const markers = timelineDoc.value?.metadata?.fastcat?.markers;
-  const filtered = Array.isArray(markers)
-    ? markers.filter((m) => {
-        if (!m.text.trim()) return false;
-        if (m.durationUs != null) return time >= m.timeUs && time < m.timeUs + m.durationUs;
-        // Threshold of 1ms to match point markers during playback/scrubbing
-        return Math.abs(time - m.timeUs) < 1000;
-      })
-    : [];
-  activeMarkers.value = filtered;
-});
 
 const isIdle = ref(false);
 let idleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -254,10 +240,23 @@ function resetIdle() {
   }, 2000);
 }
 
-onMounted(() => window.addEventListener('mousemove', resetIdle));
+onMounted(() => {
+  window.addEventListener('mousemove', resetIdle);
+  // Synchronize timecode transition target
+  if (viewportRef.value) {
+    timecodeEl.value = (viewportRef.value as any).timecodeEl;
+  }
+});
+
 onUnmounted(() => {
   window.removeEventListener('mousemove', resetIdle);
   clearTimeout(idleTimer);
+});
+
+watch(viewportRef, (vp) => {
+  if (vp) {
+    timecodeEl.value = (vp as any).timecodeEl;
+  }
 });
 </script>
 
@@ -289,7 +288,14 @@ onUnmounted(() => {
       @pointerdown.capture="!props.useExternalFocus && focusStore.setMainFocus('monitor')"
     >
       <!-- Video area -->
-      <MonitorViewport ref="viewportRef" :render-width="renderWidth" :render-height="renderHeight">
+      <MonitorViewport
+        ref="viewportRef"
+        :render-width="renderWidth"
+        :render-height="renderHeight"
+        :is-idle="isIdle"
+        :effective-fullscreen="effectiveFullscreen"
+        :ui-current-time-us="uiCurrentTimeUs"
+      >
         <template #canvas>
           <div ref="containerEl" class="absolute inset-0" style="pointer-events: none" />
         </template>
@@ -328,35 +334,6 @@ onUnmounted(() => {
           >
             {{ loadError }}
           </div>
-
-          <!-- Active Markers -->
-          <div
-            v-if="activeMarkers.length"
-            class="absolute flex flex-col items-end gap-1 pointer-events-none transition-all duration-300 z-10"
-            :class="[
-              effectiveFullscreen ? 'bottom-32 right-8' : 'bottom-11 right-3',
-              effectiveFullscreen && isIdle ? 'opacity-0' : 'opacity-100',
-            ]"
-          >
-            <div
-              v-for="marker in activeMarkers"
-              :key="marker.id"
-              class="text-[10px] text-ui-text-muted bg-ui-bg-elevated/80 px-2 py-0.5 rounded max-w-[240px] truncate shadow-sm border border-white/5"
-            >
-              {{ marker.text }}
-            </div>
-          </div>
-
-          <span
-            ref="timecodeEl"
-            class="absolute text-xs text-ui-text-muted font-mono tabular-nums bg-ui-bg-elevated/80 px-2 py-1 rounded transition-all duration-300 select-none"
-            :class="[
-              effectiveFullscreen ? 'bottom-24 right-8' : 'bottom-3 right-3',
-              effectiveFullscreen && isIdle ? 'opacity-0' : 'opacity-100',
-            ]"
-          >
-            00:00:00:00 / 00:00:00:00
-          </span>
         </template>
       </MonitorViewport>
 
