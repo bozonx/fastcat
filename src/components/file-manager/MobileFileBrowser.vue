@@ -74,25 +74,7 @@ const { onFileAction, isDeleteConfirmModalOpen, deleteTargets, handleDeleteConfi
     moveEntry,
   });
 
-async function handleDrawerAction(action: FileAction, entry: any) {
-  if (['copy', 'cut'].includes(action)) {
-    isSelectionMode.value = false;
-    selectionStore.clearSelection();
-    isDrawerOpen.value = false;
-  }
-  await onFileAction(action, entry);
 
-  if (action === 'rename') {
-    isSelectionMode.value = false;
-    selectionStore.clearSelection();
-  }
-}
-
-async function wrappedHandleDeleteConfirm() {
-  await handleDeleteConfirm();
-  isSelectionMode.value = false;
-  selectionStore.clearSelection();
-}
 
 const canAddSelectionToTimeline = computed(() => {
   return (
@@ -181,6 +163,52 @@ const selectedEntries = computed(() => {
 
 const folderSizes = ref<Record<string, number>>({});
 
+async function handleDrawerAction(action: FileAction, entry: any) {
+  if (['copy', 'cut'].includes(action)) {
+    isSelectionMode.value = false;
+    selectionStore.clearSelection();
+    isDrawerOpen.value = false;
+  }
+
+  if (action === 'rename') {
+    await handleRename(entry);
+    isSelectionMode.value = false;
+    selectionStore.clearSelection();
+    isDrawerOpen.value = false;
+    return;
+  }
+
+  await onFileAction(action, entry);
+}
+
+async function wrappedHandleDeleteConfirm() {
+  await handleDeleteConfirm();
+  isSelectionMode.value = false;
+  selectionStore.clearSelection();
+  isDrawerOpen.value = false;
+}
+
+async function handleRename(entry: FsEntry) {
+  const newName = prompt(t('videoEditor.fileManager.actions.rename', 'Rename'), entry.name);
+  if (newName && newName !== entry.name) {
+    try {
+      await renameEntry(entry, newName);
+      await loadFolderContent();
+      toast.add({
+        title: t('common.success', 'Success'),
+        description: t('common.saveSuccess', 'Saved successfully'),
+        color: 'success',
+      });
+    } catch (err: any) {
+      toast.add({
+        title: t('common.error', 'Error'),
+        description: String(err?.message || err),
+        color: 'error',
+      });
+    }
+  }
+}
+
 async function calculateFolderSize(path: string) {
   if (folderSizes.value[path] !== undefined) return;
 
@@ -239,8 +267,7 @@ function handleLongPress(entry: FsEntry) {
   if (!isSelectionMode.value) {
     isSelectionMode.value = true;
     selectionStore.selectFsEntry(entry);
-    // При долгом нажатии шторку обычно не открываем сразу,
-    // чтобы пользователь мог продолжить выбор
+    isDrawerOpen.value = false;
   }
 }
 
