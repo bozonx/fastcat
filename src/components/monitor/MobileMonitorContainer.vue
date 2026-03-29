@@ -288,11 +288,11 @@ const containerHeightClass = computed(() =>
           />
 
           <UButton
-            size="md"
-            variant="ghost"
+            size="xl"
+            variant="solid"
             color="primary"
             :icon="timelineStore.isPlaying ? 'lucide:pause' : 'lucide:play'"
-            class="p-1"
+            class="rounded-full shadow-lg mx-2"
             :aria-label="t('fastcat.monitor.play', 'Play')"
             :disabled="!canInteractPlayback"
             @click="togglePlayback"
