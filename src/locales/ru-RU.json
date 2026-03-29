@@ -160,7 +160,8 @@
     "yes": "Да",
     "panCenter": "Центр",
     "panLeft": "Слева {value}%",
-    "panRight": "Справа {value}%"
+    "panRight": "Справа {value}%",
+    "addToTimeline": "Добавить на таймлайн"
   },
   "errors": {
     "notFound": "Не найдено"

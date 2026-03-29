@@ -96,8 +96,16 @@ function toggleSelectionMode() {
   isSelectionMode.value = !isSelectionMode.value;
   if (!isSelectionMode.value) {
     selectionStore.clearSelection();
+    isDrawerOpen.value = false;
   }
 }
+
+// Следим за закрытием шторки, чтобы сбросить выделение
+watch(isDrawerOpen, (val) => {
+  if (!val && !isSelectionMode.value) {
+    selectionStore.clearSelection();
+  }
+});
 
 function handleLongPress(entry: FsEntry) {
   if (!isSelectionMode.value) {
@@ -602,30 +610,6 @@ onMounted(() => {
       />
     </div>
 
-    <!-- Инфо-панель (быстрые действия, когда что-то выбрано, но шторка закрыта) -->
-    <div
-      v-if="selectedFile && !isDrawerOpen"
-      class="border-t border-slate-800 bg-slate-900 p-3 animate-in slide-in-from-bottom-5"
-    >
-      <div class="flex items-center justify-between gap-4">
-        <div class="flex-1 min-w-0" @click="isDrawerOpen = true">
-          <p class="truncate text-xs font-semibold">{{ selectedFile.name }}</p>
-          <p class="text-2xs text-slate-500">
-            {{ selectedFileTypeLabel }} •
-            {{ t('common.tapToSeeProperties', 'tap to see properties') }}
-          </p>
-        </div>
-        <div class="flex gap-2">
-          <UButton
-            size="xs"
-            color="primary"
-            icon="lucide:plus"
-            label="Add"
-            @click="handleAddToProject"
-          />
-        </div>
-      </div>
-    </div>
 
     <!-- Properties Drawer / Action Bar -->
     <MobileFileBrowserDrawer 
@@ -633,6 +617,7 @@ onMounted(() => {
       :is-selection-mode="isSelectionMode"
       @close="isDrawerOpen = false" 
       :on-action="handleDrawerAction"
+      @add-to-timeline="handleAddToProject"
     />
 
     <!-- Paste Mode Toolbar -->
@@ -663,8 +648,8 @@ onMounted(() => {
     <!-- Action FAB -->
     <Teleport to="body">
       <div
-        v-if="!isSelectionMode"
-        class="fixed bottom-6 right-6 z-40 transition-all duration-300"
+        v-if="!isSelectionMode && !isDrawerOpen && !isCreateMenuOpen"
+        class="fixed bottom-20 right-6 z-40 transition-all duration-300"
         :class="[isCreateMenuOpen ? 'rotate-45 scale-90' : 'rotate-0 scale-100']"
       >
         <UButton
@@ -678,133 +663,110 @@ onMounted(() => {
     </Teleport>
 
     <!-- Create Menu Sheet -->
-    <Teleport to="body">
-      <div v-if="isCreateMenuOpen" class="fixed inset-0 z-50 flex items-end justify-center px-4">
-        <!-- Backdrop -->
-        <div
-          class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in"
-          @click="isCreateMenuOpen = false"
-        />
-
-        <!-- Menu Content -->
-        <div
-          class="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-t-3xl shadow-2xl p-6 mb-0 animate-in slide-in-from-bottom-full duration-300"
-        >
-          <div class="flex flex-col gap-6">
-            <!-- Header -->
-            <div class="flex justify-between items-center px-1">
-              <h3 class="text-xl font-bold text-white tracking-tight">{{ t('common.create', 'Create') }}</h3>
-              <UButton
-                icon="lucide:x"
-                variant="ghost"
-                color="neutral"
-                class="rounded-full bg-slate-800/50 hover:bg-slate-700/50"
-                @click="isCreateMenuOpen = false"
-              />
+    <UDrawer v-model:open="isCreateMenuOpen" :title="t('common.create', 'Create')">
+      <template #content>
+        <div class="flex flex-col gap-6 px-4 pt-2 pb-10">
+          <!-- Block 1: Create in selected folder -->
+          <div class="flex flex-col gap-3">
+            <div class="flex items-center gap-2 px-1 opacity-60">
+              <Icon name="lucide:folder" class="w-4 h-4" />
+              <span class="text-xs font-semibold uppercase tracking-wider truncate">
+                {{ t('common.createInFolder') }}: {{ filesPageStore.selectedFolder?.name || '/' }}
+              </span>
             </div>
+            
+            <div class="flex flex-col gap-1 bg-slate-800/30 rounded-2xl overflow-hidden border border-slate-800/50 p-1">
+              <button 
+                class="flex items-center gap-4 w-full p-3.5 rounded-xl hover:bg-slate-700/40 transition-colors group text-left"
+                @click="() => triggerFileUpload()"
+              >
+                <div class="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center group-active:scale-95 transition-transform">
+                  <Icon name="lucide:upload-cloud" class="w-5 h-5 text-indigo-400" />
+                </div>
+                <span class="text-sm font-medium text-slate-200">{{ t('videoEditor.fileManager.actions.uploadFiles', 'Upload Files') }}</span>
+                <Icon name="lucide:chevron-right" class="w-4 h-4 ml-auto opacity-20" />
+              </button>
 
-            <!-- Block 1: Create in selected folder -->
-            <div class="flex flex-col gap-3">
-              <div class="flex items-center gap-2 px-1 opacity-60">
-                <Icon name="lucide:folder" class="w-4 h-4" />
-                <span class="text-xs font-semibold uppercase tracking-wider truncate">
-                  {{ t('common.createInFolder') }}: {{ filesPageStore.selectedFolder?.name || '/' }}
-                </span>
-              </div>
-              
-              <div class="flex flex-col gap-1 bg-slate-800/30 rounded-2xl overflow-hidden border border-slate-800/50 p-1">
-                <button 
-                  class="flex items-center gap-4 w-full p-3.5 rounded-xl hover:bg-slate-700/40 transition-colors group text-left"
-                  @click="() => triggerFileUpload()"
-                >
-                  <div class="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center group-active:scale-95 transition-transform">
-                    <Icon name="lucide:upload-cloud" class="w-5 h-5 text-indigo-400" />
-                  </div>
-                  <span class="text-sm font-medium text-slate-200">{{ t('videoEditor.fileManager.actions.uploadFiles', 'Upload Files') }}</span>
-                  <Icon name="lucide:chevron-right" class="w-4 h-4 ml-auto opacity-20" />
-                </button>
+              <button 
+                class="flex items-center gap-4 w-full p-3.5 rounded-xl hover:bg-slate-700/40 transition-colors group text-left"
+                @click="onCreateFolder"
+              >
+                <div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center group-active:scale-95 transition-transform">
+                  <Icon name="lucide:folder-plus" class="w-5 h-5 text-emerald-400" />
+                </div>
+                <span class="text-sm font-medium text-slate-200">{{ t('videoEditor.fileManager.actions.createFolder', 'Create Folder') }}</span>
+                <Icon name="lucide:chevron-right" class="w-4 h-4 ml-auto opacity-20" />
+              </button>
 
-                <button 
-                  class="flex items-center gap-4 w-full p-3.5 rounded-xl hover:bg-slate-700/40 transition-colors group text-left"
-                  @click="onCreateFolder"
-                >
-                  <div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center group-active:scale-95 transition-transform">
-                    <Icon name="lucide:folder-plus" class="w-5 h-5 text-emerald-400" />
-                  </div>
-                  <span class="text-sm font-medium text-slate-200">{{ t('videoEditor.fileManager.actions.createFolder', 'Create Folder') }}</span>
-                  <Icon name="lucide:chevron-right" class="w-4 h-4 ml-auto opacity-20" />
-                </button>
+              <button 
+                class="flex items-center gap-4 w-full p-3.5 rounded-xl hover:bg-slate-700/40 transition-colors group text-left"
+                @click="() => onCreateTextFile(filesPageStore.selectedFolder?.path)"
+              >
+                <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center group-active:scale-95 transition-transform">
+                  <Icon name="lucide:file-text" class="w-5 h-5 text-blue-400" />
+                </div>
+                <span class="text-sm font-medium text-slate-200">{{ t('common.textDocument', 'Text Document') }}</span>
+                <Icon name="lucide:chevron-right" class="w-4 h-4 ml-auto opacity-20" />
+              </button>
 
-                <button 
-                  class="flex items-center gap-4 w-full p-3.5 rounded-xl hover:bg-slate-700/40 transition-colors group text-left"
-                  @click="() => onCreateTextFile(filesPageStore.selectedFolder?.path)"
-                >
-                  <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center group-active:scale-95 transition-transform">
-                    <Icon name="lucide:file-text" class="w-5 h-5 text-blue-400" />
-                  </div>
-                  <span class="text-sm font-medium text-slate-200">{{ t('common.textDocument', 'Text Document') }}</span>
-                  <Icon name="lucide:chevron-right" class="w-4 h-4 ml-auto opacity-20" />
-                </button>
-
-                <button 
-                  class="flex items-center gap-4 w-full p-3.5 rounded-xl hover:bg-slate-700/40 transition-colors group text-left"
-                  @click="() => onCreateTimeline(filesPageStore.selectedFolder?.path)"
-                >
-                  <div class="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center group-active:scale-95 transition-transform">
-                    <Icon name="lucide:film" class="w-5 h-5 text-orange-400" />
-                  </div>
-                  <span class="text-sm font-medium text-slate-200">{{ t('common.timeline', 'Timeline') }}</span>
-                  <Icon name="lucide:chevron-right" class="w-4 h-4 ml-auto opacity-20" />
-                </button>
-              </div>
-            </div>
-
-            <!-- Block 2: Global Actions (Default folders) -->
-            <div class="flex flex-col gap-4 pt-2">
-               <div class="flex items-center gap-2 px-1 opacity-60">
-                <Icon name="lucide:layers" class="w-4 h-4" />
-                <span class="text-xs font-semibold uppercase tracking-wider">{{ t('common.quickCreateDefault') }}</span>
-              </div>
-
-               <div class="grid grid-cols-2 gap-3">
-                <button 
-                  class="col-span-2 flex items-center justify-center gap-4 p-4 rounded-2xl bg-primary-600/10 border border-primary-500/20 hover:bg-primary-600/20 active:scale-[0.98] transition-all group"
-                  @click="() => triggerFileUpload('')"
-                >
-                   <Icon name="lucide:upload" class="w-6 h-6 text-primary-400" />
-                   <div class="flex flex-col items-start">
-                     <span class="font-bold text-primary-100 text-base leading-tight">{{ t('videoEditor.fileManager.actions.uploadFiles', 'Upload Files') }}</span>
-                     <span class="text-[10px] text-primary-400/80 font-medium tracking-tight uppercase">{{ t('common.autoRecognition', 'Auto recognition') }}</span>
-                   </div>
-                </button>
-
-                <button 
-                  class="flex flex-col items-center gap-1.5 p-5 rounded-2xl bg-slate-800/40 border border-slate-700/50 hover:bg-slate-700 active:scale-95 transition-all text-center group"
-                  @click="() => onCreateTimeline()"
-                >
-                   <div class="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center mb-0.5 transition-transform group-active:scale-90">
-                    <Icon name="lucide:film" class="w-6 h-6 text-orange-500" />
-                  </div>
-                  <span class="text-xs font-bold text-slate-200 uppercase tracking-tight">{{ t('common.timeline', 'Timeline') }}</span>
-                  <span class="text-[10px] text-orange-400/60 font-medium leading-none">{{ t('common.inDirTimelines') }}</span>
-                </button>
-
-                <button 
-                  class="flex flex-col items-center gap-1.5 p-5 rounded-2xl bg-slate-800/40 border border-slate-700/50 hover:bg-slate-700 active:scale-95 transition-all text-center group"
-                  @click="() => onCreateTextFile()"
-                >
-                   <div class="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mb-0.5 transition-transform group-active:scale-90">
-                    <Icon name="lucide:file-text" class="w-6 h-6 text-blue-500" />
-                  </div>
-                  <span class="text-xs font-bold text-slate-200 uppercase tracking-tight text-nowrap whitespace-nowrap overflow-hidden text-ellipsis w-full px-1">{{ t('common.textDocument', 'Text Doc') }}</span>
-                  <span class="text-[10px] text-blue-400/60 font-medium leading-none">{{ t('common.inDirDocuments') }}</span>
-                </button>
-               </div>
+              <button 
+                class="flex items-center gap-4 w-full p-3.5 rounded-xl hover:bg-slate-700/40 transition-colors group text-left"
+                @click="() => onCreateTimeline(filesPageStore.selectedFolder?.path)"
+              >
+                <div class="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center group-active:scale-95 transition-transform">
+                  <Icon name="lucide:film" class="w-5 h-5 text-orange-400" />
+                </div>
+                <span class="text-sm font-medium text-slate-200">{{ t('common.timeline', 'Timeline') }}</span>
+                <Icon name="lucide:chevron-right" class="w-4 h-4 ml-auto opacity-20" />
+              </button>
             </div>
           </div>
+
+          <!-- Block 2: Global Actions (Default folders) -->
+          <div class="flex flex-col gap-4 pt-2">
+              <div class="flex items-center gap-2 px-1 opacity-60">
+              <Icon name="lucide:layers" class="w-4 h-4" />
+              <span class="text-xs font-semibold uppercase tracking-wider">{{ t('common.quickCreateDefault') }}</span>
+            </div>
+
+              <div class="grid grid-cols-2 gap-3">
+              <button 
+                class="col-span-2 flex items-center justify-center gap-4 p-4 rounded-2xl bg-primary-600/10 border border-primary-500/20 hover:bg-primary-600/20 active:scale-[0.98] transition-all group"
+                @click="() => triggerFileUpload('')"
+              >
+                  <Icon name="lucide:upload" class="w-6 h-6 text-primary-400" />
+                  <div class="flex flex-col items-start">
+                    <span class="font-bold text-primary-100 text-base leading-tight">{{ t('videoEditor.fileManager.actions.uploadFiles', 'Upload Files') }}</span>
+                    <span class="text-[10px] text-primary-400/80 font-medium tracking-tight uppercase">{{ t('common.autoRecognition', 'Auto recognition') }}</span>
+                  </div>
+              </button>
+
+              <button 
+                class="flex flex-col items-center gap-1.5 p-5 rounded-2xl bg-slate-800/40 border border-slate-700/50 hover:bg-slate-700 active:scale-95 transition-all text-center group"
+                @click="() => onCreateTimeline()"
+              >
+                  <div class="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center mb-0.5 transition-transform group-active:scale-90">
+                  <Icon name="lucide:film" class="w-6 h-6 text-orange-500" />
+                </div>
+                <span class="text-xs font-bold text-slate-200 uppercase tracking-tight">{{ t('common.timeline', 'Timeline') }}</span>
+                <span class="text-[10px] text-orange-400/60 font-medium leading-none">{{ t('common.inDirTimelines') }}</span>
+              </button>
+
+              <button 
+                class="flex flex-col items-center gap-1.5 p-5 rounded-2xl bg-slate-800/40 border border-slate-700/50 hover:bg-slate-700 active:scale-95 transition-all text-center group"
+                @click="() => onCreateTextFile()"
+              >
+                  <div class="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mb-0.5 transition-transform group-active:scale-90">
+                  <Icon name="lucide:file-text" class="w-6 h-6 text-blue-500" />
+                </div>
+                <span class="text-xs font-bold text-slate-200 uppercase tracking-tight text-nowrap whitespace-nowrap overflow-hidden text-ellipsis w-full px-1">{{ t('common.textDocument', 'Text Doc') }}</span>
+                <span class="text-[10px] text-blue-400/60 font-medium leading-none">{{ t('common.inDirDocuments') }}</span>
+              </button>
+              </div>
+          </div>
         </div>
-      </div>
-    </Teleport>
+      </template>
+    </UDrawer>
 
     <!-- Delete Confirmation Modal -->
     <UiConfirmModal
