@@ -173,6 +173,11 @@ async function onCreateTimeline(targetPath?: string) {
   if (path) {
     await loadFolderContent();
     isCreateMenuOpen.value = false;
+    
+    // Автоматически открываем созданный таймлайн и переключаемся в режим редактирования
+    await projectStore.openTimelineFile(path);
+    projectStore.setView('cut');
+
     toast.add({
       title: t('common.success', 'Success'),
       description: t('timelineCreation.successTitle', 'Timeline created'),
@@ -763,31 +768,36 @@ onMounted(() => {
 
                <div class="grid grid-cols-2 gap-3">
                 <button 
-                  class="col-span-2 flex items-center justify-center gap-3 p-4 rounded-2xl bg-primary-600/10 border border-primary-500/20 hover:bg-primary-600/20 active:scale-[0.98] transition-all group"
+                  class="col-span-2 flex items-center justify-center gap-4 p-4 rounded-2xl bg-primary-600/10 border border-primary-500/20 hover:bg-primary-600/20 active:scale-[0.98] transition-all group"
                   @click="() => triggerFileUpload('')"
                 >
-                   <Icon name="lucide:upload" class="w-5 h-5 text-primary-400" />
-                  <span class="font-bold text-primary-100">{{ t('videoEditor.fileManager.actions.uploadFiles', 'Upload Files') }}</span>
+                   <Icon name="lucide:upload" class="w-6 h-6 text-primary-400" />
+                   <div class="flex flex-col items-start">
+                     <span class="font-bold text-primary-100 text-base leading-tight">{{ t('videoEditor.fileManager.actions.uploadFiles', 'Upload Files') }}</span>
+                     <span class="text-[10px] text-primary-400/80 font-medium tracking-tight uppercase">{{ t('common.autoRecognition', 'Auto recognition') }}</span>
+                   </div>
                 </button>
 
                 <button 
-                  class="flex flex-col items-center gap-2 p-5 rounded-2xl bg-slate-800/40 border border-slate-700/50 hover:bg-slate-700 active:scale-95 transition-all text-center"
+                  class="flex flex-col items-center gap-1.5 p-5 rounded-2xl bg-slate-800/40 border border-slate-700/50 hover:bg-slate-700 active:scale-95 transition-all text-center group"
                   @click="() => onCreateTimeline()"
                 >
-                   <div class="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center mb-1 transition-transform group-active:scale-90">
+                   <div class="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center mb-0.5 transition-transform group-active:scale-90">
                     <Icon name="lucide:film" class="w-6 h-6 text-orange-500" />
                   </div>
-                  <span class="text-xs font-bold text-slate-300 uppercase tracking-tight">{{ t('common.timeline', 'Timeline') }}</span>
+                  <span class="text-xs font-bold text-slate-200 uppercase tracking-tight">{{ t('common.timeline', 'Timeline') }}</span>
+                  <span class="text-[10px] text-orange-400/60 font-medium leading-none">{{ t('common.inDirTimelines') }}</span>
                 </button>
 
                 <button 
-                  class="flex flex-col items-center gap-2 p-5 rounded-2xl bg-slate-800/40 border border-slate-700/50 hover:bg-slate-700 active:scale-95 transition-all text-center"
+                  class="flex flex-col items-center gap-1.5 p-5 rounded-2xl bg-slate-800/40 border border-slate-700/50 hover:bg-slate-700 active:scale-95 transition-all text-center group"
                   @click="() => onCreateTextFile()"
                 >
-                   <div class="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mb-1 transition-transform group-active:scale-90">
+                   <div class="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mb-0.5 transition-transform group-active:scale-90">
                     <Icon name="lucide:file-text" class="w-6 h-6 text-blue-500" />
                   </div>
-                  <span class="text-xs font-bold text-slate-300 uppercase tracking-tight">{{ t('common.textDocument', 'Text Doc') }}</span>
+                  <span class="text-xs font-bold text-slate-200 uppercase tracking-tight text-nowrap whitespace-nowrap overflow-hidden text-ellipsis w-full px-1">{{ t('common.textDocument', 'Text Doc') }}</span>
+                  <span class="text-[10px] text-blue-400/60 font-medium leading-none">{{ t('common.inDirDocuments') }}</span>
                 </button>
                </div>
             </div>
