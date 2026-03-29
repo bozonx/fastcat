@@ -14,6 +14,7 @@ import MobileFileBrowserGrid from './MobileFileBrowserGrid.vue';
 import MobileFileBrowserDrawer from './MobileFileBrowserDrawer.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import { useClipboardStore } from '~/stores/clipboard.store';
+import { isOpenableProjectFileName } from '~/utils/media-types';
 import {
   useFileManagerActions,
   type FileAction,
@@ -80,6 +81,90 @@ async function handleDrawerAction(action: FileAction, entry: any) {
     isDrawerOpen.value = false;
   }
   await onFileAction(action, entry);
+
+  if (action === 'rename') {
+    isSelectionMode.value = false;
+    selectionStore.clearSelection();
+  }
+}
+
+async function wrappedHandleDeleteConfirm() {
+  await handleDeleteConfirm();
+  isSelectionMode.value = false;
+  selectionStore.clearSelection();
+}
+
+const canAddSelectionToTimeline = computed(() => {
+  return (
+    isSelectionMode.value &&
+    selectedEntries.value.some((e) => e.kind === 'file' && isOpenableProjectFileName(e.name))
+  );
+});
+
+async function handleAddSelectionToTimeline() {
+  const supportedEntries = selectedEntries.value.filter(
+    (e) => e.kind === 'file' && isOpenableProjectFileName(e.name),
+  );
+  if (supportedEntries.length === 0) return;
+
+  try {
+    const startUs = timelineStore.currentTime;
+
+    for (const entry of supportedEntries) {
+      if (!entry.path) continue;
+      const mediaType = getMediaTypeFromFilename(entry.name);
+      const targetTrackKind = mediaType === 'audio' ? 'audio' : 'video';
+      const tracks = timelineStore.timelineDoc?.tracks || [];
+      const trackId = tracks.find((t) => t.kind === targetTrackKind)?.id;
+
+      if (!trackId) continue;
+
+      if (mediaType === 'text') {
+        const file = await vfs.getFile(entry.path);
+        if (file) {
+          const text = await file.text();
+          await timelineStore.addVirtualClipToTrack({
+            trackId,
+            startUs,
+            clipType: 'text',
+            name: entry.name,
+            text,
+          });
+        }
+      } else {
+        await timelineStore.addClipToTimelineFromPath({
+          trackId,
+          name: entry.name,
+          path: entry.path,
+          startUs,
+        });
+      }
+    }
+
+    await timelineStore.requestTimelineSave({ immediate: true });
+
+    toast.add({
+      title: t('common.success', 'Success'),
+      description: t('common.addedToTimeline', 'Added to timeline'),
+      color: 'success',
+    });
+
+    isSelectionMode.value = false;
+    selectionStore.clearSelection();
+  } catch (err: any) {
+    toast.add({
+      title: t('common.error', 'Error'),
+      description: String(err?.message || err),
+      color: 'error',
+    });
+  }
+}
+
+async function handlePaste() {
+  const target = filesPageStore.selectedFolder;
+  if (!target) return;
+  await onFileAction('paste', target);
+  await loadFolderContent();
 }
 
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -442,20 +527,20 @@ async function loadFolderContent() {
     entries.value = await Promise.all(
       filteredContent.map(async (entry) => {
         if (entry.kind === 'file') {
-          const ext = entry.name.split('.').pop()?.toLowerCase();
-          if (ext && SUPPORTED_IMAGE_EXTS.includes(ext)) {
-            try {
-              const file = await vfs.getFile(entry.path);
-              if (file) {
-                return {
-                  ...entry,
-                  size: file.size,
-                  objectUrl: URL.createObjectURL(file),
-                };
-              }
-            } catch (e) {
-              console.warn('Failed to get file for preview:', entry.path, e);
+          try {
+            const file = await vfs.getFile(entry.path);
+            if (file) {
+              const ext = entry.name.split('.').pop()?.toLowerCase();
+              const objectUrl =
+                ext && SUPPORTED_IMAGE_EXTS.includes(ext) ? URL.createObjectURL(file) : undefined;
+              return {
+                ...entry,
+                size: file.size,
+                objectUrl,
+              };
             }
+          } catch (e) {
+            console.warn('Failed to get file for metadata:', entry.path, e);
           }
         }
         return entry as ExtendedFsEntry;
@@ -652,10 +737,10 @@ onMounted(() => {
       />
 
       <div class="flex-1 overflow-x-hidden">
-        <div v-if="isSelectionMode" class="font-medium text-sm px-2 flex flex-col items-start">
-          <span>{{ selectedEntries.length }} {{ t('common.selected', 'Selected') }}</span>
-          <span v-if="totalSelectedSize > 0" class="text-xs text-slate-400 font-normal">
-            {{ formatBytes(totalSelectedSize) }}
+        <div v-if="isSelectionMode" class="font-medium text-sm px-2 truncate">
+          {{ selectedEntries.length }} {{ t('common.selected', 'Selected') }}
+          <span v-if="totalSelectedSize > 0" class="ml-1 text-slate-400 font-normal">
+            ({{ formatBytes(totalSelectedSize) }})
           </span>
         </div>
         <div
@@ -682,16 +767,7 @@ onMounted(() => {
         </div>
       </div>
       <div class="shrink-0 flex items-center ml-2">
-        <UButton
-          v-if="isSelectionMode"
-          icon="lucide:info"
-          variant="ghost"
-          color="neutral"
-          size="sm"
-          class="mr-1"
-          @click="isDrawerOpen = true"
-        />
-        <UDropdownMenu :items="menuItems" :ui="{ content: 'w-56 min-w-max' }">
+        <UDropdownMenu v-if="!isSelectionMode" :items="menuItems" :ui="{ content: 'w-56 min-w-max' }">
           <UButton icon="lucide:more-vertical" variant="ghost" color="neutral" size="sm" />
         </UDropdownMenu>
       </div>
@@ -730,9 +806,23 @@ onMounted(() => {
     <!-- Selection Mode Toolbar -->
     <div
       v-if="isSelectionMode"
-      class="border-t border-slate-800 bg-slate-900 px-4 py-4 flex items-center justify-around z-40 shrink-0"
+      class="border-t border-slate-800 bg-slate-900 px-4 py-4 flex flex-col gap-4 z-40 shrink-0"
     >
-      <div class="flex flex-col items-center gap-1">
+      <!-- Add to Timeline Button -->
+      <div v-if="canAddSelectionToTimeline" class="flex justify-center px-2">
+        <UButton
+          size="xl"
+          variant="solid"
+          icon="lucide:plus"
+          class="w-full rounded-2xl shadow-xl font-bold active:scale-95 transition-all text-white border-none bg-ui-action hover:bg-ui-action-hover shadow-ui-action/20"
+          @click="handleAddSelectionToTimeline"
+        >
+          {{ t('common.addToTimeline', 'Add to timeline') }}
+        </UButton>
+      </div>
+
+      <div class="flex items-center justify-around">
+        <div class="flex flex-col items-center gap-1">
         <UButton
           icon="lucide:trash-2"
           size="xl"
@@ -779,6 +869,7 @@ onMounted(() => {
         />
         <span class="text-xs font-medium text-slate-400">{{ t('common.cut', 'Cut') }}</span>
       </div>
+      </div>
     </div>
 
     <!-- Paste Mode Toolbar -->
@@ -805,7 +896,7 @@ onMounted(() => {
           size="sm"
           color="primary"
           :label="t('common.paste', 'Paste')"
-          @click="onFileAction('paste', filesPageStore.selectedFolder!)"
+          @click="handlePaste"
         />
       </div>
     </div>
@@ -973,18 +1064,13 @@ onMounted(() => {
 
     <!-- Delete Confirmation Modal -->
     <UiConfirmModal
-      :open="isDeleteConfirmModalOpen"
-      :title="t('common.delete', 'Delete')"
+      v-model:open="isDeleteConfirmModalOpen"
+      :title="t('videoEditor.fileManager.delete.confirmTitle', 'Delete Files')"
       :description="
-        t(
-          'common.confirmDelete',
-          'Are you sure you want to delete this? This action cannot be undone.',
-        )
+        t('videoEditor.fileManager.delete.confirmDescription', 'Are you sure you want to delete?')
       "
-      color="error"
-      icon="i-heroicons-exclamation-triangle"
-      @update:open="isDeleteConfirmModalOpen = $event"
-      @confirm="handleDeleteConfirm"
+      :color="'error'"
+      @confirm="wrappedHandleDeleteConfirm"
     >
       <div>
         <div v-if="deleteTargets.length === 1" class="mt-2 text-sm font-medium text-ui-text">
