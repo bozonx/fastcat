@@ -301,6 +301,13 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
         onSelect: options.toggleGrid,
       },
       {
+        label: options.useProxyInMonitor.value
+          ? options.t('fastcat.monitor.disableProxy', 'Disable Proxy')
+          : options.t('fastcat.monitor.enableProxy', 'Enable Proxy'),
+        icon: options.useProxyInMonitor.value ? 'i-heroicons-bolt' : 'i-heroicons-bolt-slash',
+        onSelect: toggleProxyUsage,
+      },
+      {
         label: options.t('fastcat.monitor.snapshot'),
         icon: 'i-heroicons-camera',
         onSelect: options.createStopFrameSnapshot,

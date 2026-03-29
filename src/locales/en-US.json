@@ -585,6 +585,8 @@
       "toolbarRight": "Toolbar Right",
       "toolbarTop": "Toolbar Top",
       "useProxy": "Use proxy",
+      "enableProxy": "Enable Proxy",
+      "disableProxy": "Disable Proxy",
       "withEffects": "With effects",
       "withoutEffects": "Without effects"
     },

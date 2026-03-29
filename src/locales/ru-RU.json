@@ -581,10 +581,10 @@
       "showGrid": "Показать сетку",
       "snapshot": "Снимок",
       "toolbarBottom": "Панель снизу",
-      "toolbarLeft": "Панель слева",
-      "toolbarRight": "Панель справа",
       "toolbarTop": "Панель сверху",
       "useProxy": "Использовать прокси",
+      "enableProxy": "Включить прокси",
+      "disableProxy": "Выключить прокси",
       "withEffects": "С эффектами",
       "withoutEffects": "Без эффектов"
     },
