@@ -5,7 +5,7 @@ import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useUiStore } from '~/stores/ui.store';
 
 import MobileFileBrowser from '~/components/file-manager/MobileFileBrowser.vue';
-import MobileExportForm from '~/components/export/MobileExportForm.vue';
+import ExportForm from '~/components/export/ExportForm.vue';
 import MobileMonitorContainer from '~/components/monitor/MobileMonitorContainer.vue';
 import MobileTimeline from '~/components/timeline/MobileTimeline.vue';
 import MobileAudioMixer from '~/components/audio/MobileAudioMixer.vue';
@@ -211,7 +211,7 @@ const topbarMenuItems = computed(() => [
       </div>
 
       <div v-else class="h-full">
-        <MobileExportForm />
+        <ExportForm />
       </div>
     </main>
 

@@ -149,7 +149,7 @@ async function onConfirm() {
     }"
     @pointerdown.capture="focusExportForm"
   >
-    <div class="flex-1 overflow-y-auto custom-scrollbar p-6 flex flex-col min-h-0">
+    <div class="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 flex flex-col min-h-0">
       <div class="mb-6 flex items-center justify-between shrink-0">
         <h2 class="text-xl font-semibold text-ui-text">
           {{ t('videoEditor.export.title', 'Export') }}
@@ -356,7 +356,7 @@ async function onConfirm() {
     <!-- Close scrollable container -->
 
     <!-- Fixed Footer -->
-    <div class="mt-auto pt-6 border-t border-ui-border p-6 bg-ui-bg-elevated shrink-0">
+    <div class="mt-auto pt-4 md:pt-6 border-t border-ui-border p-4 md:p-6 bg-ui-bg-elevated shrink-0">
       <div class="flex flex-col gap-3 w-full">
         <div v-if="isExporting" class="flex flex-col gap-2">
           <div class="flex justify-between text-sm text-ui-text-muted">
@@ -373,7 +373,7 @@ async function onConfirm() {
             }}
           </p>
         </div>
-        <div class="flex justify-end gap-2" :class="{ 'mt-2': isExporting }">
+        <div class="flex flex-wrap justify-end gap-2" :class="{ 'mt-2': isExporting }">
           <UButton
             v-if="isSettingsDirty && !isExporting"
             color="neutral"
