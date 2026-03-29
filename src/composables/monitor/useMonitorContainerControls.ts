@@ -301,6 +301,13 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
         onSelect: options.toggleGrid,
       },
       {
+        label: options.previewEffectsEnabled.value
+          ? options.t('fastcat.monitor.previewWithoutEffects', 'Disable Effects')
+          : options.t('fastcat.monitor.previewWithEffects', 'Enable Effects'),
+        icon: 'i-heroicons-sparkles',
+        onSelect: togglePreviewEffects,
+      },
+      {
         label: options.useProxyInMonitor.value
           ? options.t('fastcat.monitor.disableProxy', 'Disable Proxy')
           : options.t('fastcat.monitor.enableProxy', 'Enable Proxy'),

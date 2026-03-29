@@ -105,7 +105,12 @@ const isVerticalProject = computed(() => {
   return width < height;
 });
 
-const showSideControls = computed(() => !isFullscreen.value && (isLandscape.value || isVerticalProject.value));
+const showSideControls = computed(() => {
+  if (isFullscreen.value) {
+    return isLandscape.value;
+  }
+  return isLandscape.value || isVerticalProject.value;
+});
 
 const isReadonly = computed(
   () => projectStore.currentView === 'sound' || projectStore.currentView === 'export',
@@ -155,7 +160,8 @@ const containerHeightClass = computed(() =>
     ref="containerRef"
     class="flex min-w-0 shrink-0 border-ui-border bg-ui-bg-elevated transition-colors duration-200"
     :class="[
-      isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen flex-col' : [containerHeightClass, showSideControls ? 'flex-row border-r' : 'flex-col border-b'],
+      isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen' : [containerHeightClass],
+      showSideControls ? 'flex-row border-r' : 'flex-col border-b',
     ]"
   >
     <!-- Video area -->
@@ -244,14 +250,7 @@ const containerHeightClass = computed(() =>
 
 
 
-          <UButton
-            size="xs"
-            variant="ghost"
-            :color="previewEffectsEnabled ? 'primary' : 'neutral'"
-            icon="i-heroicons-sparkles"
-            class="p-1.5"
-            @click="togglePreviewEffects"
-          />
+
 
           <UButton
             size="xs"
