@@ -21,6 +21,8 @@ import MobileFileBrowserGrid from './MobileFileBrowserGrid.vue';
 import MobileFileBrowserDrawer from './MobileFileBrowserDrawer.vue';
 import MobileFileBrowserNavbar from './MobileFileBrowserNavbar.vue';
 import MobileFileBrowserCreateSheet from './MobileFileBrowserCreateSheet.vue';
+import MobileFileBrowserSelectionToolbar from './MobileFileBrowserSelectionToolbar.vue';
+import MobileFileBrowserPasteToolbar from './MobileFileBrowserPasteToolbar.vue';
 import FileDeleteConfirmModal from './modals/FileDeleteConfirmModal.vue';
 import FileSttTranscriptionModal from './modals/FileSttTranscriptionModal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
