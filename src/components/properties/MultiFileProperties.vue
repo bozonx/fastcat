@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useProjectStore } from '~/stores/project.store';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';

@@ -34,10 +34,10 @@ vi.mock('~/stores/proxy.store', () => ({ useProxyStore: () => mockProxyStore }))
 vi.mock('~/stores/timeline-media-usage.store', () => ({
   useTimelineMediaUsageStore: () => mockTimelineMediaUsageStore,
 }));
-vi.mock('~/composables/fileManager/useFileManager', () => ({
+vi.mock('~/composables/file-manager/useFileManager', () => ({
   useFileManager: () => mockFileManager,
 }));
-vi.mock('~/composables/fileManager/useClipboardIndicator', () => ({
+vi.mock('~/composables/file-manager/useClipboardIndicator', () => ({
   useClipboardPaths: () => ({ value: new Set() }),
 }));
 

@@ -10,12 +10,12 @@ import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store'
 import { useProxyStore } from '~/stores/proxy.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useFileManagerStore } from '~/stores/file-manager.store';
-import { useFocusableListNavigation } from '~/composables/fileManager/useFocusableListNavigation';
+import { useFocusableListNavigation } from '~/composables/file-manager/useFocusableListNavigation';
 import FileManagerTree from './FileManagerTree.vue';
 import type { FsEntry } from '~/types/fs';
-import { useFileDrop } from '~/composables/fileManager/useFileDrop';
+import { useFileDrop } from '~/composables/file-manager/useFileDrop';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
-import { useFileManagerSelection } from '~/composables/fileManager/useFileManagerSelection';
+import { useFileManagerSelection } from '~/composables/file-manager/useFileManagerSelection';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
 
 const props = defineProps<{

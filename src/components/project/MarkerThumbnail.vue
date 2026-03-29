@@ -4,7 +4,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
-import { dispatchMarkerThumbnailGeneration } from '~/timeline/services/markerThumbnailService';
+import { dispatchMarkerThumbnailGeneration } from '~/timeline/services/marker-thumbnail.service';
 import { buildVideoWorkerPayloadFromTracks } from '~/composables/timeline/export';
 
 const props = defineProps<{

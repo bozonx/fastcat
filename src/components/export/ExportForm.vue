@@ -3,7 +3,7 @@ import { computed, watch, ref } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';

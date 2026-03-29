@@ -11,7 +11,7 @@ import {
   WORKSPACE_COMMON_DIR_NAME,
   WORKSPACE_COMMON_PATH_PREFIX,
 } from '~/utils/workspace-common';
-import type { ExtendedFsEntry } from '~/composables/fileManager/useFileBrowserEntries';
+import type { ExtendedFsEntry } from '~/composables/file-manager/useFileBrowserEntries';
 
 export function useFileBrowserNavigation({
   rootContainer,

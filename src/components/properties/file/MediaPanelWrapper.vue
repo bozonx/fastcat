@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { watch, ref, computed, onUnmounted } from 'vue';
 import EntryPreviewBox from '~/components/properties/file/EntryPreviewBox.vue';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 import type { PanelFocusId } from '~/stores/focus.store';
 
 const props = defineProps<{

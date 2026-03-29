@@ -6,7 +6,7 @@ import type {
   TimelineClipItem,
   AudioFadeCurve,
 } from '~/timeline/types';
-import type { parseTimelineFromOtio } from '~/timeline/otioSerializer';
+import type { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import type { selectTimelineDurationUs } from '~/timeline/selectors';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { ensureProxyCommand } from '~/media-cache/application/proxyThumbnailCommands';

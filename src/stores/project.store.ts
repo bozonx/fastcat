@@ -3,7 +3,7 @@ import { ref, computed } from 'vue';
 
 import { createTimelineDocId } from '~/timeline/id';
 import type { TimelineDocument } from '~/timeline/types';
-import { createDefaultTimelineDocument } from '~/timeline/otioSerializer';
+import { createDefaultTimelineDocument } from '~/timeline/otio-serializer';
 
 import { createDefaultProjectSettings } from '~/utils/project-settings';
 
@@ -25,9 +25,9 @@ import { useSelectionStore } from './selection.store';
 import { useFileManagerStore } from './file-manager.store';
 import { useHistoryStore } from './history.store';
 
-import { createProjectFsModule } from '~/stores/project/projectFs';
-import { createProjectMetaModule } from '~/stores/project/projectMeta';
-import { createProjectTimelinesModule } from '~/stores/project/projectTimelines';
+import { createProjectFsModule } from '~/stores/project/project-fs';
+import { createProjectMetaModule } from '~/stores/project/project-meta';
+import { createProjectTimelinesModule } from '~/stores/project/project-timelines';
 import { useProjectLock } from '~/composables/editor/useProjectLock';
 import { getErrorMessage } from '~/utils/errors';
 

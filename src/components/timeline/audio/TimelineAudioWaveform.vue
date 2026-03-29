@@ -3,11 +3,11 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 import { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import type { TimelineClipItem, TimelineDocument, TimelineTrackItem } from '~/timeline/types';
-import { parseTimelineFromOtio } from '~/timeline/otioSerializer';
+import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 
 const props = defineProps<{

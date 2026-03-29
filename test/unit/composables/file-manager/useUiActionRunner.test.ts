@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ref } from 'vue';
-import { createUiActionRunner } from '~/composables/fileManager/useUiActionRunner';
+import { createUiActionRunner } from '~/composables/file-manager/useUiActionRunner';
 
 describe('useUiActionRunner', () => {
   it('should run action successfully, managing isLoading state', async () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { serializeTimelineToOtio, parseTimelineFromOtio } from '~/timeline/otioSerializer';
+import { serializeTimelineToOtio, parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import type { TimelineDocument } from '~/timeline/types';
 
 function makeDoc(): TimelineDocument {
@@ -52,7 +52,7 @@ function makeDoc(): TimelineDocument {
   };
 }
 
-describe('timeline/otioSerializer: transitions', () => {
+describe('timeline/otio-serializer: transitions', () => {
   it('serializes transitions as OTIO Transition.1 in Track.children', () => {
     const doc = makeDoc();
     const raw = JSON.parse(serializeTimelineToOtio(doc));

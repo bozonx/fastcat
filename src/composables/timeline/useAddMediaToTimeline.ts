@@ -1,5 +1,5 @@
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 
 export function useAddMediaToTimeline() {

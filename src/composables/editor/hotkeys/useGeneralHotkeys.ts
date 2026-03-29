@@ -5,7 +5,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useFileManagerStore } from '~/stores/file-manager.store';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useMonitorActions } from '~/composables/editor/hotkeys/monitorActions';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';

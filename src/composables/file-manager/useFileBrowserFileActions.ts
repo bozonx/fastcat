@@ -2,12 +2,12 @@ import type { Ref } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useProjectTabsStore } from '~/stores/tabs.store';
-import { useAudioExtraction } from '~/composables/fileManager/useAudioExtraction';
+import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
 import type { FsEntry } from '~/types/fs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
-import type { FileAction as ContextMenuFileAction } from '~/composables/fileManager/useFileContextMenu';
-import type { FileAction as FmFileAction } from '~/composables/fileManager/useFileManagerActions';
+import type { FileAction as ContextMenuFileAction } from '~/composables/file-manager/useFileContextMenu';
+import type { FileAction as FmFileAction } from '~/composables/file-manager/useFileManagerActions';
 
 export function useFileBrowserFileActions({
   folderEntries,

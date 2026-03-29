@@ -4,8 +4,8 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { TimelineBuilder } from '../utils/timeline-builder';
 
 // Mock dependencies if needed
-vi.mock('~/services/AppNotificationService', () => ({}));
-vi.mock('~/services/I18nService', () => ({}));
+vi.mock('~/services/app-notification.service', () => ({}));
+vi.mock('~/services/i18n.service', () => ({}));
 
 describe('TimelineStore Copy/Paste', () => {
   beforeEach(() => {

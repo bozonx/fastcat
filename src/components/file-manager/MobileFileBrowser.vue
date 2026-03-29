@@ -1,21 +1,21 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useFileManagerStore, type FileSortField } from '~/stores/file-manager.store';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
-import { useFileManagerThumbnails } from '~/composables/fileManager/useFileManagerThumbnails';
-import { useFileSorting } from '~/composables/fileManager/useFileSorting';
+import { useFileManagerThumbnails } from '~/composables/file-manager/useFileManagerThumbnails';
+import { useFileSorting } from '~/composables/file-manager/useFileSorting';
 import { useClipboardStore } from '~/stores/clipboard.store';
 import { isOpenableProjectFileName } from '~/utils/media-types';
 import {
   useFileManagerActions,
   type FileAction,
-} from '~/composables/fileManager/useFileManagerActions';
-import { useMobileFileBrowserNavigation } from '~/composables/fileManager/useMobileFileBrowserNavigation';
-import { useMobileFileBrowserSelection } from '~/composables/fileManager/useMobileFileBrowserSelection';
-import { useMobileFileBrowserCreate } from '~/composables/fileManager/useMobileFileBrowserCreate';
+} from '~/composables/file-manager/useFileManagerActions';
+import { useMobileFileBrowserNavigation } from '~/composables/file-manager/useMobileFileBrowserNavigation';
+import { useMobileFileBrowserSelection } from '~/composables/file-manager/useMobileFileBrowserSelection';
+import { useMobileFileBrowserCreate } from '~/composables/file-manager/useMobileFileBrowserCreate';
 import type { FsEntry } from '~/types/fs';
 import MobileFileBrowserGrid from './MobileFileBrowserGrid.vue';
 import MobileFileBrowserDrawer from './MobileFileBrowserDrawer.vue';
@@ -26,7 +26,7 @@ import MobileFileBrowserPasteToolbar from './MobileFileBrowserPasteToolbar.vue';
 import FileDeleteConfirmModal from './modals/FileDeleteConfirmModal.vue';
 import FileSttTranscriptionModal from './modals/FileSttTranscriptionModal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
-import { useFileBrowserStt } from '~/composables/fileManager/useFileBrowserStt';
+import { useFileBrowserStt } from '~/composables/file-manager/useFileBrowserStt';
 
 const fileManagerStore = useFileManagerStore();
 const projectStore = useProjectStore();

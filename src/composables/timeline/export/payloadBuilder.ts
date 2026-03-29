@@ -1,6 +1,6 @@
 import type { useProjectStore } from '~/stores/project.store';
 import type { useWorkspaceStore } from '~/stores/workspace.store';
-import { parseTimelineFromOtio } from '~/timeline/otioSerializer';
+import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import type {
   TimelineTrack,
   TimelineTrackItem,

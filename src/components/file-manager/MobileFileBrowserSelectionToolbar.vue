@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { FsEntry } from '~/types/fs';
-import type { FileAction } from '~/composables/fileManager/useFileManagerActions';
+import type { FileAction } from '~/composables/file-manager/useFileManagerActions';
 
 const props = defineProps<{
   selectedEntries: FsEntry[];

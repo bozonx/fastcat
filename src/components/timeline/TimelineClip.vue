@@ -34,7 +34,7 @@ import { useClipInteractions } from '~/composables/timeline/useClipInteractions'
 import { isClipFreePosition } from '~/utils/timeline/clip-checks';
 import { useClickOrDrag } from '~/composables/timeline/useClickOrDrag';
 import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useFocusStore } from '~/stores/focus.store';
 import { useEditorViewStore } from '~/stores/editor-view.store';
 import { useFileManagerStore } from '~/stores/file-manager.store';

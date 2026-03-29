@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { reactive, ref } from 'vue';
-import { useMobileFileBrowserCreate } from '~/composables/fileManager/useMobileFileBrowserCreate';
+import { useMobileFileBrowserCreate } from '~/composables/file-manager/useMobileFileBrowserCreate';
 
 // --- Mocks ---
 

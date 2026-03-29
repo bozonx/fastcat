@@ -25,7 +25,7 @@ import EditorSettingsModal from '~/components/settings/EditorSettingsModal.vue';
 import ProjectSettingsModal from '~/components/project-settings/ProjectSettingsModal.vue';
 import FileConversionModal from '~/components/file-manager/FileConversionModal.vue';
 import GlobalDropOverlay from '~/components/file-manager/GlobalDropOverlay.vue';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();

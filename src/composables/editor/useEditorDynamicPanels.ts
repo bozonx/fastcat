@@ -1,5 +1,5 @@
 import { computed, ref, watch, type Ref } from 'vue';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useProjectTabsStore } from '~/stores/tabs.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';

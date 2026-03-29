@@ -5,7 +5,7 @@ import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHost
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
-import { useFileManager } from '~/composables/fileManager/useFileManager';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 
 export function useAudioExtraction() {
   const { t } = useI18n();

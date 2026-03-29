@@ -70,7 +70,7 @@ vi.mock('~/stores/file-conversion.store', () => ({
   useFileConversionStore: () => ({ openConversionModal: vi.fn() }),
 }));
 
-vi.mock('~/composables/fileManager/useFileManager', () => ({
+vi.mock('~/composables/file-manager/useFileManager', () => ({
   useFileManager: () => mockFileManager,
 }));
 vi.mock('~/composables/useAppClipboard', () => ({
@@ -89,13 +89,13 @@ const mockFileBrowserEntries = {
   cleanupObjectUrls: vi.fn(),
 };
 
-vi.mock('~/composables/fileManager/useFileBrowserEntries', () => ({
+vi.mock('~/composables/file-manager/useFileBrowserEntries', () => ({
   useFileBrowserEntries: () => mockFileBrowserEntries,
 }));
-vi.mock('~/composables/fileManager/useFileBrowserRemote', () => ({
+vi.mock('~/composables/file-manager/useFileBrowserRemote', () => ({
   useFileBrowserRemote: () => ({ isRemoteAvailable: ref(true) }),
 }));
-vi.mock('~/composables/fileManager/useFileBrowserNavigation', () => ({
+vi.mock('~/composables/file-manager/useFileBrowserNavigation', () => ({
   useFileBrowserNavigation: () => ({
     parentFolders: ref([]),
     loadFolderContent: vi.fn(),
@@ -104,31 +104,31 @@ vi.mock('~/composables/fileManager/useFileBrowserNavigation', () => ({
     navigateToFolder: vi.fn(),
   }),
 }));
-vi.mock('~/composables/fileManager/useFileBrowserStt', () => ({
+vi.mock('~/composables/file-manager/useFileBrowserStt', () => ({
   useFileBrowserStt: () => ({ sttTranscribing: ref(false) }),
 }));
-vi.mock('~/composables/fileManager/useFileBrowserFileActions', () => ({
+vi.mock('~/composables/file-manager/useFileBrowserFileActions', () => ({
   useFileBrowserFileActions: () => ({ onFileAction: vi.fn() }),
 }));
-vi.mock('~/composables/fileManager/useFocusableListNavigation', () => ({
+vi.mock('~/composables/file-manager/useFocusableListNavigation', () => ({
   useFocusableListNavigation: () => ({ onKeyDown: vi.fn(), moveSelection: vi.fn() }),
 }));
-vi.mock('~/composables/fileManager/useFileBrowserPendingActions', () => ({
+vi.mock('~/composables/file-manager/useFileBrowserPendingActions', () => ({
   useFileBrowserPendingActions: vi.fn(),
 }));
-vi.mock('~/composables/fileManager/useFileBrowserCreateActions', () => ({
+vi.mock('~/composables/file-manager/useFileBrowserCreateActions', () => ({
   useFileBrowserCreateActions: () => ({}),
 }));
-vi.mock('~/composables/fileManager/useFileBrowserInteraction', () => ({
+vi.mock('~/composables/file-manager/useFileBrowserInteraction', () => ({
   useFileBrowserInteraction: () => ({}),
 }));
-vi.mock('~/composables/fileManager/useFileBrowserDragAndDrop', () => ({
+vi.mock('~/composables/file-manager/useFileBrowserDragAndDrop', () => ({
   useFileBrowserDragAndDrop: () => ({}),
 }));
-vi.mock('~/composables/fileManager/useFileBrowserMarquee', () => ({
+vi.mock('~/composables/file-manager/useFileBrowserMarquee', () => ({
   useFileBrowserMarquee: () => ({ marqueeStyle: ref(null) }),
 }));
-vi.mock('~/composables/fileManager/useFileContextMenu', () => ({
+vi.mock('~/composables/file-manager/useFileContextMenu', () => ({
   useFileContextMenu: () => ({ getContextMenuItems: vi.fn(() => []) }),
 }));
 

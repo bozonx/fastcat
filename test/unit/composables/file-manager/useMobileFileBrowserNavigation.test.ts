@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { reactive, ref } from 'vue';
-import { useMobileFileBrowserNavigation } from '~/composables/fileManager/useMobileFileBrowserNavigation';
+import { useMobileFileBrowserNavigation } from '~/composables/file-manager/useMobileFileBrowserNavigation';
 import { WORKSPACE_COMMON_DIR_NAME, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 
 // --- Mocks ---
