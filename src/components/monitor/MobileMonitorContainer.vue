@@ -218,13 +218,13 @@ const containerHeightClass = computed(() =>
       :class="[
         showSideControls
           ? 'w-[72px] flex flex-col items-center py-4 border-l border-ui-border'
-          : 'px-4 py-2 border-t border-ui-border',
+          : 'px-4 py-1.5 border-t border-ui-border h-[64px]',
       ]"
     >
       <div
         class="flex gap-3"
         :class="[
-          showSideControls ? 'flex-col justify-between h-full items-center' : 'items-center justify-between',
+          showSideControls ? 'flex-col justify-between h-full items-center' : 'items-center justify-between h-full',
         ]"
       >
         <div
@@ -269,10 +269,9 @@ const containerHeightClass = computed(() =>
           />
         </div>
 
-        <!-- Right/Bottom cluster: Volume, Rewind, Play, Menu -->
         <div
           class="flex items-center gap-1"
-          :class="[showSideControls ? 'flex-col' : '']"
+          :class="[showSideControls ? 'flex-col' : 'h-full']"
         >
           <MonitorAudioControl :compact="true" />
 
@@ -288,11 +287,16 @@ const containerHeightClass = computed(() =>
           />
 
           <UButton
-            size="xl"
             variant="solid"
             color="primary"
             :icon="timelineStore.isPlaying ? 'lucide:pause' : 'lucide:play'"
-            class="rounded-full shadow-lg mx-2"
+            class="shadow-lg mx-2 flex items-center justify-center p-0!"
+            :class="[
+              showSideControls
+                ? 'w-full aspect-square rounded-full'
+                : 'h-full aspect-square rounded-full'
+            ]"
+            :ui="{ icon: 'w-8 h-8' }"
             :aria-label="t('fastcat.monitor.play', 'Play')"
             :disabled="!canInteractPlayback"
             @click="togglePlayback"
