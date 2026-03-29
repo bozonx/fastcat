@@ -104,10 +104,12 @@ onBeforeUnmount(clearLongPress);
 
     <div
       v-else-if="entries.length === 0"
-      class="flex flex-col items-center justify-center h-64 opacity-30"
+      class="flex flex-col items-center justify-center h-64 opacity-30 px-6 text-center"
     >
       <Icon name="lucide:folder-open" class="w-12 h-12 mb-2" />
-      <p class="text-sm">Empty folder</p>
+      <p class="text-sm">
+        {{ t('videoEditor.fileManager.empty', 'No files in this project') }}
+      </p>
     </div>
 
     <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -165,12 +167,12 @@ onBeforeUnmount(clearLongPress);
           <!-- Name & Size -->
           <div class="px-2.5 py-2 bg-slate-900/90 backdrop-blur-sm border-t border-slate-800/50">
             <div
-              class="truncate text-[11px] font-medium leading-tight mb-0.5 transition-colors"
+              class="truncate text-[12px] font-medium leading-tight mb-0.5 transition-colors"
               :class="{ 'text-blue-400': isSelected(entry) }"
             >
               {{ entry.name }}
             </div>
-            <div class="flex items-center justify-between opacity-80 text-[9px] tabular-nums mt-0.5 font-medium">
+            <div class="flex items-center justify-between opacity-80 text-[10px] tabular-nums mt-0.5 font-medium">
               <span class="truncate pr-2 text-slate-400">
                 {{ entry.kind === 'directory' ? t('common.folder', 'Folder') : getFileTypeLabel(entry) }}
               </span>

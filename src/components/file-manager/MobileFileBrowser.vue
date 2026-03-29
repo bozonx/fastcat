@@ -256,15 +256,6 @@ async function wrappedHandleDeleteConfirm() {
   closeAllUI();
 }
 
-async function handleEntryPrimaryAction(entry: FsEntry) {
-  if (entry.kind === 'directory') {
-    filesPageStore.openFolder(entry);
-    return;
-  }
-
-  selectionStore.selectFsEntry(entry);
-  await handleAddToProject();
-}
 
 const sortItems = computed(() =>
   filesPageStore.sortFields.map((f) => ({
@@ -373,7 +364,6 @@ const menuItems = computed(() => [
         :is-loading="isLoading"
         :folder-sizes="folderSizes"
         @entry-click="handleEntryClick"
-        @entry-primary-action="handleEntryPrimaryAction"
         @long-press="handleLongPress"
         @toggle-selection="handleToggleSelection"
       />
