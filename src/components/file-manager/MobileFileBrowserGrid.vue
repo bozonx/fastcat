@@ -17,6 +17,7 @@ const props = defineProps<{
   selectedEntries: FsEntry[];
   isSelectionMode: boolean;
   isLoading?: boolean;
+  folderSizes: Record<string, number>;
 }>();
 
 const emit = defineEmits<{
@@ -148,7 +149,6 @@ onBeforeUnmount(clearLongPress);
               />
             </template>
 
-            <!-- Multi-Selection Checkbox -->
             <div
               v-if="isSelectionMode"
               class="absolute top-2 left-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all"
@@ -160,14 +160,6 @@ onBeforeUnmount(clearLongPress);
             >
               <Icon v-if="isSelected(entry)" name="lucide:check" class="w-4 h-4 text-white" />
             </div>
-
-            <!-- Media Type Badge (hidden in selection mode to clean up UI) -->
-            <div
-              v-if="entry.kind === 'file' && !isSelectionMode"
-              class="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[10px] font-medium text-white/80"
-            >
-              {{ getFileTypeLabel(entry) }}
-            </div>
           </div>
 
           <!-- Name & Size -->
@@ -178,12 +170,19 @@ onBeforeUnmount(clearLongPress);
             >
               {{ entry.name }}
             </div>
-            <div class="flex items-center justify-between opacity-50 text-[9px] tabular-nums">
-              <span>{{
-                entry.kind === 'directory'
-                  ? t('common.folder', 'Folder')
-                  : formatBytes(entry.size || 0)
-              }}</span>
+            <div class="flex items-center justify-between opacity-80 text-[9px] tabular-nums mt-0.5 font-medium">
+              <span class="truncate pr-2 text-slate-400">
+                {{ entry.kind === 'directory' ? t('common.folder', 'Folder') : getFileTypeLabel(entry) }}
+              </span>
+              <span class="shrink-0 text-slate-500">
+                {{
+                  entry.kind === 'directory'
+                    ? props.folderSizes[entry.path] !== undefined
+                      ? formatBytes(props.folderSizes[entry.path]!)
+                      : '...'
+                    : formatBytes(entry.size || 0)
+                }}
+              </span>
             </div>
           </div>
         </button>
