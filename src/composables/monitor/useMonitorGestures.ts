@@ -35,6 +35,10 @@ export function useMonitorGestures(input: {
   let initialPinchCenter = { x: 0, y: 0 };
   let initialPinchPan = { x: 0, y: 0 };
 
+  const isVolumeAdjusting = ref(false);
+  const volumeStartY = ref(0);
+  const initialVolume = ref(1);
+
   const panX = computed({
     get: () => input.projectStore.activeMonitor?.panX ?? 0,
     set: (v: number) => {
@@ -109,7 +113,11 @@ export function useMonitorGestures(input: {
   function onPreviewPointerDown(event: PointerEvent) {
     if (event.button !== 0) return;
     isPreviewSelected.value = true;
-    event.stopPropagation();
+    
+    // Allow touch gestures for volume/zoom to pass through to viewport
+    if (event.pointerType !== 'touch') {
+      event.stopPropagation();
+    }
   }
 
   function onViewportPointerDown(event: PointerEvent) {
@@ -118,7 +126,15 @@ export function useMonitorGestures(input: {
     activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
     if (event.pointerType === 'touch' || event.button === 0) {
-      if (activePointers.size === 1) {
+      const rect = input.viewportEl.value?.getBoundingClientRect();
+      // Allow gestures on the right half (60% and more) for volume
+      const isRightZone = rect && event.clientX > rect.left + rect.width * 0.6;
+
+      if (isRightZone && activePointers.size === 1) {
+        isVolumeAdjusting.value = true;
+        volumeStartY.value = event.clientY;
+        initialVolume.value = uiStore.monitorVolume;
+      } else if (activePointers.size === 1) {
         isPanning.value = true;
         panStart.value = { x: event.clientX, y: event.clientY };
         panOrigin.value = { x: panX.value, y: panY.value };
@@ -227,6 +243,11 @@ export function useMonitorGestures(input: {
       }
     }
 
+    if (activePointers.size >= 2) {
+      isVolumeAdjusting.value = false;
+      isPanning.value = false;
+    }
+
     if (activePointers.size === 2) {
       // Handle pinch to zoom
       const ids = Array.from(activePointers.keys());
@@ -260,6 +281,24 @@ export function useMonitorGestures(input: {
       return;
     }
 
+    if (isVolumeAdjusting.value) {
+      if (event.pointerType === 'touch') {
+        event.preventDefault();
+      }
+      const rect = input.viewportEl.value?.getBoundingClientRect();
+      if (rect) {
+        const dy = volumeStartY.value - event.clientY;
+        // Adjust sensitivity: 150px = 100% volume change
+        const delta = dy / 150;
+        const nextVolume = Math.min(2, Math.max(0, initialVolume.value + delta));
+        uiStore.monitorVolume = nextVolume;
+        if (uiStore.monitorMuted && delta > 0) {
+          uiStore.monitorMuted = false;
+        }
+      }
+      return;
+    }
+
     if (!isPanning.value) return;
     const dx = event.clientX - panStart.value.x;
     const dy = event.clientY - panStart.value.y;
@@ -278,6 +317,8 @@ export function useMonitorGestures(input: {
     } else {
       activePointers.clear();
     }
+
+    isVolumeAdjusting.value = false;
 
     if (activePointers.size < 2) {
       initialPinchDistance = 0;
