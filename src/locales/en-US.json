@@ -160,7 +160,8 @@
     "yes": "Yes",
     "panCenter": "Center",
     "panLeft": "Left {value}%",
-    "panRight": "Right {value}%"
+    "panRight": "Right {value}%",
+    "addToTimeline": "Add to Timeline"
   },
   "errors": {
     "notFound": "Not found"

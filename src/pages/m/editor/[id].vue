@@ -10,6 +10,7 @@ import MobileMonitorContainer from '~/components/monitor/MobileMonitorContainer.
 import MobileTimeline from '~/components/timeline/MobileTimeline.vue';
 import MobileAudioMixer from '~/components/audio/MobileAudioMixer.vue';
 import ProjectSettingsModal from '~/components/project-settings/ProjectSettingsModal.vue';
+import EditorSettingsModal from '~/components/settings/EditorSettingsModal.vue';
 
 import { until } from '@vueuse/core';
 
@@ -17,6 +18,7 @@ definePageMeta({
   layout: 'mobile',
 });
 
+const { t } = useI18n();
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 const uiStore = useUiStore();
@@ -100,6 +102,27 @@ const showBottomNav = computed(() => !isOpeningProject.value && !projectOpenErro
 async function handleBack() {
   await leaveProject('/m');
 }
+
+const isAppSettingsOpen = ref(false);
+
+const topbarMenuItems = computed(() => [
+  [
+    {
+      label: t('videoEditor.projectSettings.title', 'Project Settings'),
+      icon: 'lucide:settings',
+      onSelect: () => {
+        uiStore.isProjectSettingsOpen = true;
+      },
+    },
+    {
+      label: t('common.settings', 'App Settings'),
+      icon: 'lucide:sliders',
+      onSelect: () => {
+        isAppSettingsOpen.value = true;
+      },
+    },
+  ],
+]);
 </script>
 
 <template>
@@ -108,36 +131,32 @@ async function handleBack() {
     <header
       class="shrink-0 flex items-center justify-between gap-3 border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur"
     >
-      <div class="flex min-w-0 items-center gap-2">
+      <div class="flex min-w-0 items-center gap-4">
         <UButton
           size="sm"
           variant="ghost"
           color="neutral"
-          icon="lucide:arrow-left"
+          icon="lucide:home"
           aria-label="Back to projects"
           @click="handleBack"
         />
-        <button
-          class="flex min-w-0 items-center gap-2 rounded-lg px-2 py-1 transition-colors active:bg-slate-900"
-          @click="uiStore.isProjectSettingsOpen = true"
-        >
-          <div class="min-w-0 text-left">
-            <p class="truncate text-sm font-medium text-white">
-              {{ projectStore.currentProjectName || 'Opening project' }}
-            </p>
-            <p class="text-2xs uppercase tracking-[0.18em] text-slate-500">
-              {{ currentViewLabel }}
-            </p>
-          </div>
-          <Icon name="ix:project-configuration" class="h-4 w-4 shrink-0 text-slate-400" />
-        </button>
+        <div class="flex min-w-0 items-center gap-2">
+          <p class="truncate text-base font-semibold text-white">
+            {{ projectStore.currentProjectName || 'Opening project' }}
+          </p>
+        </div>
       </div>
 
-      <div
-        v-if="projectStore.isReadOnly"
-        class="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-2xs font-medium text-amber-300"
-      >
-        Read only
+      <div class="flex items-center gap-2 shrink-0">
+        <div
+          v-if="projectStore.isReadOnly"
+          class="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-2xs font-medium text-amber-300"
+        >
+          Read only
+        </div>
+        <UDropdownMenu :items="topbarMenuItems" :content="{ align: 'end' }" :ui="{ content: 'w-48' }">
+          <UButton icon="lucide:more-vertical" variant="ghost" color="neutral" size="sm" />
+        </UDropdownMenu>
       </div>
     </header>
 
@@ -222,6 +241,7 @@ async function handleBack() {
 
     <!-- Modals -->
     <ProjectSettingsModal v-model:open="uiStore.isProjectSettingsOpen" />
+    <EditorSettingsModal v-model:open="isAppSettingsOpen" />
   </div>
 </template>
 
