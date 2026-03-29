@@ -161,7 +161,11 @@
     "panCenter": "Center",
     "panLeft": "Left {value}%",
     "panRight": "Right {value}%",
-    "addToTimeline": "Add to Timeline"
+    "addToTimeline": "Add to Timeline",
+    "files": "Files",
+    "sound": "Sound",
+    "export": "Export",
+    "settings": "Settings"
   },
   "errors": {
     "notFound": "Not found"
