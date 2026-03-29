@@ -118,7 +118,7 @@ onBeforeUnmount(clearLongPress);
     <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
       <div v-for="entry in entries" :key="entry.path" class="relative group">
         <button
-          class="flex flex-col w-full aspect-square rounded-2xl overflow-hidden bg-slate-900 border-2 transition-all active:scale-95 touch-none"
+          class="flex flex-col w-full aspect-square rounded-2xl overflow-hidden bg-slate-900 border-2 transition-all active:scale-95"
           :class="[
             isSelected(entry)
               ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.3)]'
