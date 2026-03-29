@@ -9,7 +9,7 @@ import ProjectMarkers from '~/components/project/ProjectMarkers.vue';
 import ProjectTabFileViewer from '~/components/project/ProjectTabFileViewer.vue';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import { useFocusStore } from '~/stores/focus.store';
-import { useProjectTabsStore } from '~/stores/tabs.store';
+import { useProjectTabsStore } from '~/stores/project-tabs.store';
 
 const { t } = useI18n();
 const focusStore = useFocusStore();

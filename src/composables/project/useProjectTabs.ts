@@ -8,7 +8,7 @@ import {
   type ProjectFileTab,
   type ProjectTab,
   useProjectTabsStore,
-} from '~/stores/tabs.store';
+} from '~/stores/project-tabs.store';
 import { isOpenableProjectFileName } from '~/utils/media-types';
 
 const TAB_ID_TO_PANEL_TYPE: Record<

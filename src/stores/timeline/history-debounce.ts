@@ -10,7 +10,7 @@ export interface TimelineHistoryDebounceDeps {
   };
 }
 
-export interface TimelineHistoryDebounceApi {
+export interface TimelineHistoryDebounceModule {
   pendingDebouncedHistory: Ref<{
     snapshot: TimelineDocument;
     cmd: TimelineCommand;
@@ -29,9 +29,9 @@ export interface TimelineHistoryDebounceApi {
   ) => void;
 }
 
-export function createTimelineHistoryDebounce(
+export function createTimelineHistoryDebounceModule(
   deps: TimelineHistoryDebounceDeps,
-): TimelineHistoryDebounceApi {
+): TimelineHistoryDebounceModule {
   const pendingDebouncedHistory = ref<{
     snapshot: TimelineDocument;
     cmd: TimelineCommand;

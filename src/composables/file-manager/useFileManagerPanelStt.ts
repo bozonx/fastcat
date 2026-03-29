@@ -3,7 +3,7 @@ import type { FsEntry } from '~/types/fs';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { getMediaTypeFromFilename, getMimeTypeFromFilename } from '~/utils/media-types';
-import { transcribeProjectAudioFile } from '~/utils/stt';
+import { transcribeAudioFile } from '~/utils/transcription/engine';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 
 export interface FileManagerPanelSttOptions {
@@ -78,7 +78,7 @@ export function useFileManagerPanelStt({
       const file = await vfs.getFile(entry.path);
       if (!file) throw new Error('Failed to access file');
 
-      const result = await transcribeProjectAudioFile({
+      const result = await transcribeAudioFile({
         file,
         filePath: entry.path,
         fileName: entry.name,

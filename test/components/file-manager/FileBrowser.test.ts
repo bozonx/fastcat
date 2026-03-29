@@ -104,8 +104,8 @@ vi.mock('~/composables/file-manager/useFileBrowserNavigation', () => ({
     navigateToFolder: vi.fn(),
   }),
 }));
-vi.mock('~/composables/file-manager/useFileBrowserStt', () => ({
-  useFileBrowserStt: () => ({ sttTranscribing: ref(false) }),
+vi.mock('~/composables/file-manager/useFileBrowserTranscription', () => ({
+  useFileBrowserTranscription: () => ({ isTranscribing: ref(false) }),
 }));
 vi.mock('~/composables/file-manager/useFileBrowserFileActions', () => ({
   useFileBrowserFileActions: () => ({ onFileAction: vi.fn() }),

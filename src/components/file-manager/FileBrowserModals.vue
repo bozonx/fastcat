@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { FsEntry } from '~/types/fs';
 import FileDeleteConfirmModal from '~/components/file-manager/modals/FileDeleteConfirmModal.vue';
-import FileSttTranscriptionModal from '~/components/file-manager/modals/FileSttTranscriptionModal.vue';
+import FileSttTranscriptionModal from '~/components/file-manager/modals/FileTranscriptionModal.vue';
 import RemoteTransferProgressModal from '~/components/file-manager/RemoteTransferProgressModal.vue';
 
 interface Props {
@@ -11,19 +11,19 @@ interface Props {
   remoteTransferProgress: number;
   remoteTransferPhase: string;
   remoteTransferFileName: string;
-  sttTranscriptionModalOpen: boolean;
-  sttTranscribing: boolean;
-  sttTranscriptionError: string;
-  sttTranscriptionEntry: FsEntry | null;
-  sttTranscriptionLanguage: string;
+  transcriptionModalOpen: boolean;
+  isTranscribing: boolean;
+  transcriptionError: string;
+  transcriptionEntry: FsEntry | null;
+  transcriptionLanguage: string;
 }
 
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
   (e: 'update:isDeleteConfirmModalOpen', value: boolean): void;
-  (e: 'update:sttTranscriptionModalOpen', value: boolean): void;
-  (e: 'update:sttTranscriptionLanguage', value: string): void;
+  (e: 'update:transcriptionModalOpen', value: boolean): void;
+  (e: 'update:transcriptionLanguage', value: string): void;
   (e: 'deleteConfirm'): void;
   (e: 'cancelRemoteTransfer'): void;
   (e: 'submitTranscription'): void;
@@ -51,13 +51,13 @@ const { t } = useI18n();
   />
 
   <FileSttTranscriptionModal
-    :open="props.sttTranscriptionModalOpen"
-    :stt-transcribing="props.sttTranscribing"
-    :stt-transcription-error="props.sttTranscriptionError"
-    :stt-transcription-entry="props.sttTranscriptionEntry"
-    :stt-transcription-language="props.sttTranscriptionLanguage"
-    @update:open="emit('update:sttTranscriptionModalOpen', $event)"
-    @update:stt-transcription-language="emit('update:sttTranscriptionLanguage', $event)"
+    :open="props.transcriptionModalOpen"
+    :is-transcribing="props.isTranscribing"
+    :transcription-error="props.transcriptionError"
+    :transcription-entry="props.transcriptionEntry"
+    :transcription-language="props.transcriptionLanguage"
+    @update:open="emit('update:transcriptionModalOpen', $event)"
+    @update:transcription-language="emit('update:transcriptionLanguage', $event)"
     @submit="emit('submitTranscription')"
   />
 </template>

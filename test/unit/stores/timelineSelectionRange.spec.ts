@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
-import { createTimelineSelectionRange } from '~/stores/timeline/timeline-selection-range';
+import { createTimelineSelectionRangeModule } from '~/stores/timeline/selection-range';
 import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types';
 
 describe('timeline-selection-range', () => {
@@ -33,7 +33,7 @@ describe('timeline-selection-range', () => {
     };
     applyTimeline = vi.fn();
 
-    selectionRange = createTimelineSelectionRange({
+    selectionRange = createTimelineSelectionRangeModule({
       timelineDoc,
       currentTime,
       isSelectionRangeSelected,

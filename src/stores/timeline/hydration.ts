@@ -7,12 +7,12 @@ export interface TimelineHydrationDeps {
   mediaMetadata: Ref<Record<string, { duration: number; video?: unknown; audio?: unknown }>>;
 }
 
-export interface TimelineHydrationApi {
+export interface TimelineHydrationModule {
   hydrateClipSourceDuration: (doc: TimelineDocument, cmd: TimelineCommand) => TimelineDocument;
   hydrateAllClips: (doc: TimelineDocument) => TimelineDocument;
 }
 
-export function createTimelineHydration(deps: TimelineHydrationDeps): TimelineHydrationApi {
+export function createTimelineHydrationModule(deps: TimelineHydrationDeps): TimelineHydrationModule {
   function hydrateAllClips(doc: TimelineDocument): TimelineDocument {
     let changed = false;
     const nextTracks = doc.tracks.map((t) => {

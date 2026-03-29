@@ -38,7 +38,7 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useFocusStore } from '~/stores/focus.store';
 import { useEditorViewStore } from '~/stores/editor-view.store';
 import { useFileManagerStore } from '~/stores/file-manager.store';
-import { useProjectTabsStore } from '~/stores/tabs.store';
+import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 
 import ClipTransitions from './ClipTransitions.vue';

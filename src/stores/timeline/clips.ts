@@ -58,7 +58,7 @@ export interface TimelineClipsDeps {
   defaultAudioFadeCurve: import('~/timeline/types').AudioFadeCurve;
 }
 
-export interface TimelineClipsApi {
+export interface TimelineClipsModule {
   renameItem: (trackId: string, itemId: string, name: string) => void;
   updateClipProperties: (
     trackId: string,
@@ -186,7 +186,7 @@ export interface TimelineClipsApi {
   ) => { trackId: string; itemId: string }[];
 }
 
-export function createTimelineClips(deps: TimelineClipsDeps): TimelineClipsApi {
+export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClipsModule {
   function cloneClip<T>(value: T): T {
     return cloneValue(value);
   }

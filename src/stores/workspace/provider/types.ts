@@ -1,4 +1,4 @@
-import type { DirectoryHandleLike } from '~/repositories/fastcat-fs.repository';
+import type { DirectoryHandleLike } from '~/repositories/app-fs.repository';
 
 export interface WorkspaceStorageProvider {
   id: string;

@@ -14,18 +14,26 @@ import {
 } from '~/repositories/transcription-cache.repository';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
-import type { createTimelineClips } from './clips';
+import type { createTimelineClipsModule } from './clips';
 
 export interface TimelineCaptionsDeps {
   timelineDoc: Ref<TimelineDocument | null>;
-  clips: ReturnType<typeof createTimelineClips>;
+  clips: ReturnType<typeof createTimelineClipsModule>;
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
   getWorkspaceHandle: () => FileSystemDirectoryHandle | null;
   getResolvedStorageTopology: () => any;
   getCurrentProjectId: () => string | null;
 }
 
-export function createTimelineCaptions(params: TimelineCaptionsDeps) {
+export interface TimelineCaptionsModule {
+  listCachedTranscriptions: () => Promise<TranscriptionCacheRecord[]>;
+  generateCaptionsFromTimeline: (options: {
+    trackId: string;
+    settings: CaptionGenerationSettings;
+  }) => Promise<{ addedCount: number; sourceCount: number }>;
+}
+
+export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): TimelineCaptionsModule {
   const {
     timelineDoc,
     clips,

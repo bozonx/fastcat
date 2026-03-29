@@ -1,9 +1,9 @@
 import {
-  ensureFastCatFileHandle,
+  ensureAppFileHandle,
   readJsonFromFileHandle,
   writeJsonToFileHandle,
   type DirectoryHandleLike,
-} from './fastcat-fs.repository';
+} from './app-fs.repository';
 
 import type { MonitorSettings } from '~/utils/project-settings';
 
@@ -42,7 +42,7 @@ export function createProjectUiRepository(input: {
 }): ProjectUiRepository {
   return {
     async load() {
-      const handle = await ensureFastCatFileHandle({
+      const handle = await ensureAppFileHandle({
         baseDir: input.projectDir,
         filename: 'project.ui.json',
         create: false,
@@ -64,7 +64,7 @@ export function createProjectUiRepository(input: {
     },
 
     async save(data) {
-      const handle = await ensureFastCatFileHandle({
+      const handle = await ensureAppFileHandle({
         baseDir: input.projectDir,
         filename: 'project.ui.json',
         create: true,

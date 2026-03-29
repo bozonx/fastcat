@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
-import { useProjectTabsStore } from '~/stores/tabs.store';
+import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useUiStore } from '~/stores/ui.store';

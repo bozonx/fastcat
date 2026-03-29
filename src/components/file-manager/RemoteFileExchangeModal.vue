@@ -5,7 +5,8 @@ import RemoteTransferProgressModal from '~/components/file-manager/RemoteTransfe
 import { useUiStore } from '~/stores/ui.store';
 import { useRemoteExchange } from '~/composables/file-manager/useRemoteExchange';
 
-const { t } = useI18n();
+const { $i18nService } = useNuxtApp();
+const { t } = $i18nService;
 const uiStore = useUiStore();
 const {
   isOpen,

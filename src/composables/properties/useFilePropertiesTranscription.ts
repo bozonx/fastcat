@@ -1,7 +1,7 @@
 import { computed, ref, watch, type Ref } from 'vue';
 import { createTranscriptionCacheRepository } from '~/repositories/transcription-cache.repository';
 import { getMimeTypeFromFilename } from '~/utils/media-types';
-import { transcribeProjectAudioFile } from '~/utils/stt';
+import { transcribeAudioFile } from '~/utils/transcription/engine';
 import type { FastCatUserSettings } from '~/utils/settings';
 import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 import type { FsEntry } from '~/types/fs';
@@ -129,7 +129,7 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
       const file = await options.getFileByPath(selectedEntry.path);
       if (!file) throw new Error('Failed to access file');
 
-      const result = await transcribeProjectAudioFile({
+      const result = await transcribeAudioFile({
         file,
         filePath: selectedEntry.path,
         fileName: selectedEntry.name,

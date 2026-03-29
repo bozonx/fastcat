@@ -1,7 +1,7 @@
 import { computed, type Ref, type ComputedRef } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
-import { useProjectTabsStore } from '~/stores/tabs.store';
+import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
 import type { FsEntry } from '~/types/fs';
 

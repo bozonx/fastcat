@@ -24,9 +24,9 @@ import MobileFileBrowserCreateSheet from './MobileFileBrowserCreateSheet.vue';
 import MobileFileBrowserSelectionToolbar from './MobileFileBrowserSelectionToolbar.vue';
 import MobileFileBrowserPasteToolbar from './MobileFileBrowserPasteToolbar.vue';
 import FileDeleteConfirmModal from './modals/FileDeleteConfirmModal.vue';
-import FileSttTranscriptionModal from './modals/FileSttTranscriptionModal.vue';
+import FileSttTranscriptionModal from './modals/FileTranscriptionModal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
-import { useFileBrowserStt } from '~/composables/file-manager/useFileBrowserStt';
+import { useFileBrowserTranscription } from '~/composables/file-manager/useFileBrowserTranscription';
 
 const fileManagerStore = useFileManagerStore();
 const projectStore = useProjectStore();
@@ -121,15 +121,15 @@ const { sortedEntries } = useFileSorting(entries);
 const { thumbnails } = useFileManagerThumbnails(sortedEntries, vfs);
 
 const {
-  sttTranscriptionModalOpen,
-  sttTranscriptionLanguage,
-  sttTranscriptionError,
-  sttTranscribing,
-  sttTranscriptionEntry,
+  transcriptionModalOpen,
+  transcriptionLanguage,
+  transcriptionError,
+  isTranscribing,
+  transcriptionEntry,
   isTranscribableMediaFile,
   openTranscriptionModal,
   submitTranscription,
-} = useFileBrowserStt();
+} = useFileBrowserTranscription();
 
 // Lazily calculate sizes of all folders in current directory
 watch(
@@ -433,12 +433,12 @@ const menuItems = computed(() => [
 
     <!-- STT Transcription Modal -->
     <FileSttTranscriptionModal
-      v-model:open="sttTranscriptionModalOpen"
-      :stt-transcribing="sttTranscribing"
-      :stt-transcription-error="sttTranscriptionError"
-      :stt-transcription-entry="sttTranscriptionEntry"
-      :stt-transcription-language="sttTranscriptionLanguage"
-      @update:stt-transcription-language="sttTranscriptionLanguage = $event"
+      v-model:open="transcriptionModalOpen"
+      :is-transcribing="isTranscribing"
+      :transcription-error="transcriptionError"
+      :transcription-entry="transcriptionEntry"
+      :transcription-language="transcriptionLanguage"
+      @update:transcription-language="transcriptionLanguage = $event"
       @submit="submitTranscription"
     />
 

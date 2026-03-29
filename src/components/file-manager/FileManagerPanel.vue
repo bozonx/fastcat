@@ -8,7 +8,7 @@ import FileManagerFiles from '~/components/file-manager/FileManagerFiles.vue';
 import FileManagerPanelModals from '~/components/file-manager/FileManagerPanelModals.vue';
 import { useFocusStore } from '~/stores/focus.store';
 import { useFileManagerActions } from '~/composables/file-manager/useFileManagerActions';
-import { useProjectTabsStore } from '~/stores/tabs.store';
+import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
@@ -97,11 +97,11 @@ const stt = useFileManagerPanelStt({
 });
 const {
   sttConfig,
-  modalOpen: sttTranscriptionModalOpen,
-  language: sttTranscriptionLanguage,
-  errorMessage: sttTranscriptionError,
-  isTranscribing: sttTranscribing,
-  pendingEntry: sttTranscriptionEntry,
+  modalOpen: transcriptionModalOpen,
+  language: transcriptionLanguage,
+  errorMessage: transcriptionError,
+  isTranscribing: isTranscribing,
+  pendingEntry: transcriptionEntry,
   isTranscribableMediaFile,
   openModal: openTranscriptionModal,
   submitTranscription,
@@ -383,14 +383,14 @@ useFileManagerPanelBootstrap({
       :delete-targets="deleteTargets"
       :timelines-using-delete-target="timelinesUsingDeleteTarget"
       :is-delete-confirm-modal-open="isDeleteConfirmModalOpen"
-      :stt-transcription-modal-open="sttTranscriptionModalOpen"
-      :stt-transcribing="sttTranscribing"
-      :stt-transcription-error="sttTranscriptionError"
-      :stt-transcription-entry="sttTranscriptionEntry"
-      :stt-transcription-language="sttTranscriptionLanguage"
+      :transcription-modal-open="transcriptionModalOpen"
+      :is-transcribing="isTranscribing"
+      :transcription-error="transcriptionError"
+      :transcription-entry="transcriptionEntry"
+      :transcription-language="transcriptionLanguage"
       @update:is-delete-confirm-modal-open="isDeleteConfirmModalOpen = $event"
-      @update:stt-transcription-modal-open="sttTranscriptionModalOpen = $event"
-      @update:stt-transcription-language="sttTranscriptionLanguage = $event"
+      @update:transcription-modal-open="transcriptionModalOpen = $event"
+      @update:transcription-language="transcriptionLanguage = $event"
       @delete-confirm="handleDeleteConfirm"
       @submit-transcription="submitTranscription"
     />

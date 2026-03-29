@@ -11,7 +11,7 @@ import { generateUniqueFsEntryName } from '~/utils/fs';
 import { createMarkdownCommand } from '~/file-manager/application/fileManagerCommands';
 import { DOCUMENTS_DIR_NAME } from '~/utils/constants';
 import { useFileManagerStore } from '~/stores/file-manager.store';
-import { useProjectTabsStore } from '~/stores/tabs.store';
+import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
 export type FileAction =

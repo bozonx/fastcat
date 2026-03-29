@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useFileManagerPanelStt } from '~/composables/file-manager/useFileManagerPanelStt';
 import type { FsEntry } from '~/types/fs';
 
-const { transcribeProjectAudioFile } = vi.hoisted(() => ({
-  transcribeProjectAudioFile: vi.fn(),
+const { transcribeAudioFile } = vi.hoisted(() => ({
+  transcribeAudioFile: vi.fn(),
 }));
 
 const projectStore = {
@@ -34,15 +34,15 @@ vi.mock('~/utils/external-integrations', () => ({
   resolveExternalServiceConfig: vi.fn(() => ({ provider: 'stub' })),
 }));
 
-vi.mock('~/utils/stt', () => ({
-  transcribeProjectAudioFile,
+vi.mock('~/utils/transcription/engine', () => ({
+  transcribeAudioFile,
 }));
 
 describe('useFileManagerPanelStt', () => {
   beforeEach(() => {
     projectStore.currentProjectId = 'project-1';
     workspaceStore.workspaceHandle = { kind: 'directory' } as any;
-    transcribeProjectAudioFile.mockReset();
+    transcribeAudioFile.mockReset();
   });
 
   it('recognizes supported media files when STT dependencies are available', () => {
@@ -65,7 +65,7 @@ describe('useFileManagerPanelStt', () => {
 
   it('submits transcription and reports success', async () => {
     const file = new File(['demo'], 'clip.mp4', { type: 'video/mp4' });
-    transcribeProjectAudioFile.mockResolvedValue({ cached: true });
+    transcribeAudioFile.mockResolvedValue({ cached: true });
     const onSuccess = vi.fn();
     const onError = vi.fn();
 
@@ -86,7 +86,7 @@ describe('useFileManagerPanelStt', () => {
 
     await stt.submitTranscription();
 
-    expect(transcribeProjectAudioFile).toHaveBeenCalledTimes(1);
+    expect(transcribeAudioFile).toHaveBeenCalledTimes(1);
     expect(onSuccess).toHaveBeenCalledWith({ cached: true, mediaType: 'video' });
     expect(onError).not.toHaveBeenCalled();
     expect(stt.modalOpen.value).toBe(false);

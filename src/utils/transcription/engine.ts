@@ -8,7 +8,7 @@ import { getMimeTypeFromFilename } from '~/utils/media-types';
 
 import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 
-export interface SttTranscriptionRequest {
+export interface TranscriptionRequest {
   file: File | FileSystemFileHandle;
   filePath: string;
   fileName: string;
@@ -21,7 +21,7 @@ export interface SttTranscriptionRequest {
   resolvedStorageTopology: ResolvedStorageTopology;
 }
 
-export interface SttTranscriptionResult {
+export interface TranscriptionResult {
   cacheKey: string;
   cached: boolean;
   record: TranscriptionCacheRecord;
@@ -127,9 +127,9 @@ function createRequestHeaders(params: {
   return headers;
 }
 
-export async function transcribeProjectAudioFile(
-  input: SttTranscriptionRequest,
-): Promise<SttTranscriptionResult> {
+export async function transcribeAudioFile(
+  input: TranscriptionRequest,
+): Promise<TranscriptionResult> {
   const resolvedConfig = resolveExternalServiceConfig({
     service: 'stt',
     integrations: input.userSettings.integrations,

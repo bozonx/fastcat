@@ -3,23 +3,23 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
-import { transcribeProjectAudioFile } from '~/utils/stt';
+import { transcribeAudioFile } from '~/utils/transcription/engine';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import type { FsEntry } from '~/types/fs';
 import type { ExtendedFsEntry } from '~/composables/file-manager/useFileBrowserEntries';
 
-export function useFileBrowserStt() {
+export function useFileBrowserTranscription() {
   const workspaceStore = useWorkspaceStore();
   const projectStore = useProjectStore();
   const runtimeConfig = useRuntimeConfig();
   const toast = useToast();
   const { t } = useI18n();
 
-  const sttTranscriptionModalOpen = ref(false);
-  const sttTranscriptionLanguage = ref('');
-  const sttTranscriptionError = ref('');
-  const sttTranscribing = ref(false);
-  const sttTranscriptionEntry = ref<FsEntry | null>(null);
+  const transcriptionModalOpen = ref(false);
+  const transcriptionLanguage = ref('');
+  const transcriptionError = ref('');
+  const isTranscribing = ref(false);
+  const transcriptionEntry = ref<FsEntry | null>(null);
 
   const bloggerDogApiUrl = computed(() =>
     typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
@@ -48,14 +48,14 @@ export function useFileBrowserStt() {
   }
 
   function openTranscriptionModal(entry: FsEntry) {
-    sttTranscriptionLanguage.value = '';
-    sttTranscriptionError.value = '';
-    sttTranscriptionModalOpen.value = true;
-    sttTranscriptionEntry.value = entry;
+    transcriptionLanguage.value = '';
+    transcriptionError.value = '';
+    transcriptionModalOpen.value = true;
+    transcriptionEntry.value = entry;
   }
 
   async function submitTranscription() {
-    const entry = sttTranscriptionEntry.value;
+    const entry = transcriptionEntry.value;
     if (
       !entry ||
       entry.kind !== 'file' ||
@@ -65,8 +65,8 @@ export function useFileBrowserStt() {
       return;
     }
 
-    sttTranscribing.value = true;
-    sttTranscriptionError.value = '';
+    isTranscribing.value = true;
+    transcriptionError.value = '';
 
     try {
       const mediaType = getMediaTypeFromFilename(entry.name);
@@ -81,7 +81,7 @@ export function useFileBrowserStt() {
         filePath: entry.path,
         fileName: entry.name,
         fileType,
-        language: sttTranscriptionLanguage.value,
+        language: transcriptionLanguage.value,
         bloggerDogApiUrl: bloggerDogApiUrl.value,
         projectId: projectStore.currentProjectId!,
         userSettings: workspaceStore.userSettings,
@@ -89,8 +89,8 @@ export function useFileBrowserStt() {
         resolvedStorageTopology: workspaceStore.resolvedStorageTopology,
       };
 
-      const result = await transcribeProjectAudioFile(request);
-      sttTranscriptionModalOpen.value = false;
+      const result = await transcribeAudioFile(request);
+      transcriptionModalOpen.value = false;
 
       toast.add({
         title: result.cached
@@ -113,22 +113,22 @@ export function useFileBrowserStt() {
         color: 'success',
       });
     } catch (error: unknown) {
-      sttTranscriptionError.value =
+      transcriptionError.value =
         error instanceof Error
           ? error.message
           : t('videoEditor.fileManager.audio.transcriptionFailed', 'Failed to transcribe media');
     } finally {
-      sttTranscribing.value = false;
+      isTranscribing.value = false;
     }
   }
 
   return {
     sttConfig,
-    sttTranscriptionModalOpen,
-    sttTranscriptionLanguage,
-    sttTranscriptionError,
-    sttTranscribing,
-    sttTranscriptionEntry,
+    transcriptionModalOpen,
+    transcriptionLanguage,
+    transcriptionError,
+    isTranscribing,
+    transcriptionEntry,
     isTranscribableMediaFile,
     openTranscriptionModal,
     submitTranscription,

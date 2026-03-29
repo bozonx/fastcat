@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { VueDraggable } from 'vue-draggable-plus';
-import type { AnyProjectTab } from '~/stores/tabs.store';
+import type { AnyProjectTab } from '~/stores/project-tabs.store';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
 
 const emit = defineEmits<{

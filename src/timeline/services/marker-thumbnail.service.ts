@@ -5,7 +5,7 @@ import { MARKER_THUMBNAILS } from '~/utils/constants';
 import { addLatestMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 import type { WorkerVideoPayloadItem } from '~/composables/timeline/export/types';
-import type { DirectoryHandleLike } from '~/repositories/fastcat-fs.repository';
+import type { DirectoryHandleLike } from '~/repositories/app-fs.repository';
 
 export interface MarkerThumbnailParams {
   projectId: string;

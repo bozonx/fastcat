@@ -4,8 +4,8 @@ import { ref } from 'vue';
 import { useWorkspaceStore } from './workspace.store';
 import { useProjectStore } from './project.store';
 
-import { createMediaCacheFsModule } from '~/stores/media/mediaCacheFs';
-import { createMediaWorkerModule } from '~/stores/media/mediaWorker';
+import { createMediaCacheFsModule } from '~/stores/media/media-cache-fs';
+import { createMediaWorkerModule } from '~/stores/media/media-worker';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 
 interface VideoColorSpaceInit {

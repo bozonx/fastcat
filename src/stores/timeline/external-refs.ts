@@ -3,7 +3,7 @@ import { ref, type Ref } from 'vue';
 
 import type { MediaMetadata } from '~/stores/media.store';
 
-export interface TimelineExternalRefs {
+export interface TimelineExternalRefsModule {
   currentProjectName: Ref<string | null>;
   currentTimelinePath: Ref<string | null>;
   mediaMetadata: Ref<Record<string, MediaMetadata>>;
@@ -13,10 +13,10 @@ function isRefLike<T>(value: unknown): value is Ref<T> {
   return Boolean(value) && typeof value === 'object' && 'value' in (value as any);
 }
 
-export function createTimelineExternalRefs(deps: {
+export function createTimelineExternalRefsModule(deps: {
   projectStore: unknown;
   mediaStore: unknown;
-}): TimelineExternalRefs {
+}): TimelineExternalRefsModule {
   const projectStoreAny = deps.projectStore as any;
   const mediaStoreAny = deps.mediaStore as any;
 

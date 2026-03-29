@@ -17,7 +17,7 @@ export interface TimelineSelectionDeps {
   selectionStore?: any;
 }
 
-export interface TimelineSelectionApi {
+export interface TimelineSelectionModule {
   clearSelection: () => void;
   clearSelectedTransition: () => void;
   selectTransition: (input: { trackId: string; itemId: string; edge: 'in' | 'out' } | null) => void;
@@ -35,7 +35,7 @@ export interface TimelineSelectionApi {
   getSelectedOrActiveTrackId: () => string | null;
 }
 
-export function createTimelineSelection(deps: TimelineSelectionDeps): TimelineSelectionApi {
+export function createTimelineSelectionModule(deps: TimelineSelectionDeps): TimelineSelectionModule {
   const itemToTrackMap = computed(() => {
     const map = new Map<string, string>();
     const doc = deps.timelineDoc.value;

@@ -1,7 +1,7 @@
 import { ref, type Ref } from 'vue';
 import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types';
 import type { createTimelineMarkerService } from '~/timeline/application/timelineMarkerService';
-import type { createTimelineTrimming } from './trimming';
+import type { createTimelineTrimmingModule } from './trimming';
 import { TIMELINE_RULER_CONSTANTS } from '~/utils/constants';
 import type { TimelineCommand } from '~/timeline/commands';
 
@@ -12,12 +12,26 @@ export interface TimelineSelectionRangeDeps {
   selectTimelineSelectionRange: () => void;
   clearSelection: () => void;
   markerService: ReturnType<typeof createTimelineMarkerService>;
-  trimming: ReturnType<typeof createTimelineTrimming>;
+  trimming: ReturnType<typeof createTimelineTrimmingModule>;
   applyTimeline: (cmd: TimelineCommand, options?: any) => void;
   defaultStaticClipDurationUs: number;
 }
 
-export function createTimelineSelectionRange(params: TimelineSelectionRangeDeps) {
+export interface TimelineSelectionRangeModule {
+  getSelectionRange: () => TimelineSelectionRange | null;
+  setPreviewSelectionRange: (range: TimelineSelectionRange | null) => void;
+  updateSelectionRange: (range: TimelineSelectionRange | null, options?: any) => void;
+  createSelectionRangeAtPlayhead: (durationUs?: number) => void;
+  createSelectionRange: (input: TimelineSelectionRange) => void;
+  removeSelectionRange: (options?: any) => void;
+  convertMarkerToSelectionRange: (markerId: string) => void;
+  createSelectionRangeFromMarker: (markerId: string) => void;
+  isSelectionRangeSelected: () => boolean;
+  convertSelectionRangeToMarker: () => void;
+  rippleTrimSelectionRange: () => void;
+}
+
+export function createTimelineSelectionRangeModule(params: TimelineSelectionRangeDeps): TimelineSelectionRangeModule {
   const {
     timelineDoc,
     currentTime,

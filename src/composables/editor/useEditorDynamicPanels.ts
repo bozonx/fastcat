@@ -1,6 +1,6 @@
 import { computed, ref, watch, type Ref } from 'vue';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
-import { useProjectTabsStore } from '~/stores/tabs.store';
+import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
 import { readLocalStorageJson, writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
