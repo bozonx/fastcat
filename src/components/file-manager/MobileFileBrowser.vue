@@ -24,6 +24,7 @@ import {
   WORKSPACE_COMMON_DIR_NAME,
   WORKSPACE_COMMON_PATH_PREFIX,
 } from '~/utils/workspace-common';
+import { computeDirectoryStats } from '~/utils/fs';
 
 const SUPPORTED_IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp', 'svg'];
 
@@ -92,6 +93,47 @@ const selectedEntries = computed(() => {
   if (entity.kind === 'multiple') return entity.entries;
   return [entity.entry];
 });
+
+const folderSizes = ref<Record<string, number>>({});
+
+async function calculateFolderSize(path: string) {
+  if (folderSizes.value[path] !== undefined) return;
+
+  try {
+    const handle = await projectStore.getDirectoryHandleByPath(path);
+    if (!handle) return;
+    const stats = await computeDirectoryStats(handle);
+    if (stats) {
+      folderSizes.value[path] = stats.size;
+    }
+  } catch (err) {
+    console.warn('Failed to calculate folder size:', path, err);
+  }
+}
+
+const totalSelectedSize = computed(() => {
+  let size = 0;
+  for (const entry of selectedEntries.value) {
+    if (entry.kind === 'file') {
+      size += entry.size ?? 0;
+    } else if (entry.kind === 'directory' && entry.path) {
+      size += folderSizes.value[entry.path] ?? 0;
+    }
+  }
+  return size;
+});
+
+watch(
+  selectedEntries,
+  (entries) => {
+    for (const entry of entries) {
+      if (entry.kind === 'directory' && entry.path && folderSizes.value[entry.path] === undefined) {
+        void calculateFolderSize(entry.path);
+      }
+    }
+  },
+  { deep: true },
+);
 
 function toggleSelectionMode() {
   isSelectionMode.value = !isSelectionMode.value;
@@ -610,8 +652,11 @@ onMounted(() => {
       />
 
       <div class="flex-1 overflow-x-hidden">
-        <div v-if="isSelectionMode" class="font-medium text-sm px-2">
-          {{ selectedEntries.length }} {{ t('common.selected', 'Selected') }}
+        <div v-if="isSelectionMode" class="font-medium text-sm px-2 flex flex-col items-start">
+          <span>{{ selectedEntries.length }} {{ t('common.selected', 'Selected') }}</span>
+          <span v-if="totalSelectedSize > 0" class="text-xs text-slate-400 font-normal">
+            {{ formatBytes(totalSelectedSize) }}
+          </span>
         </div>
         <div
           v-else
@@ -768,7 +813,7 @@ onMounted(() => {
     <!-- Action FAB -->
     <Teleport to="body">
       <div
-        v-if="!isSelectionMode && !isDrawerOpen && !isCreateMenuOpen"
+        v-if="!isSelectionMode && !isDrawerOpen && !isCreateMenuOpen && !clipboardStore.hasFileManagerPayload"
         class="fixed bottom-20 right-6 z-40 transition-all duration-300"
         :class="[isCreateMenuOpen ? 'rotate-45 scale-90' : 'rotate-0 scale-100']"
       >
