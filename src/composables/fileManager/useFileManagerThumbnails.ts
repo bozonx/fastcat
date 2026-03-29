@@ -2,6 +2,7 @@ import { ref, watch, onBeforeUnmount, type Ref } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { useProjectStore } from '~/stores/project.store';
 import { fileThumbnailGenerator, getFileThumbnailHash } from '~/utils/file-thumbnail-generator';
+import { getMediaTypeFromFilename } from '~/utils/media-types';
 
 export function useFileManagerThumbnails(entries: Ref<FsEntry[]>) {
   const projectStore = useProjectStore();
@@ -89,16 +90,4 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>) {
   return {
     thumbnails,
   };
-}
-
-// Simple helper to guess type. In real world we might want to use something robust or just check if it's in our video extensions.
-function getMediaTypeFromFilename(
-  filename: string,
-): 'video' | 'audio' | 'image' | 'text' | 'unknown' {
-  const ext = filename.split('.').pop()?.toLowerCase();
-  if (['mp4', 'webm', 'mov', 'mkv', 'avi'].includes(ext || '')) return 'video';
-  if (['mp3', 'wav', 'ogg', 'm4a'].includes(ext || '')) return 'audio';
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(ext || '')) return 'image';
-  if (['txt', 'md', 'json', 'csv', 'xml', 'log'].includes(ext || '')) return 'text';
-  return 'unknown';
 }
