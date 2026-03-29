@@ -12,6 +12,9 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useFileManagerThumbnails } from '~/composables/fileManager/useFileManagerThumbnails';
 import MobileFileBrowserGrid from './MobileFileBrowserGrid.vue';
 import MobileFileBrowserDrawer from './MobileFileBrowserDrawer.vue';
+import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
+import { useClipboardStore } from '~/stores/clipboard.store';
+import { useFileManagerActions, type FileAction } from '~/composables/fileManager/useFileManagerActions';
 import type { FsEntry } from '~/types/fs';
 import {
   getWorkspacePathParent,
@@ -40,7 +43,42 @@ const {
   createTimeline,
   createMarkdown,
   reloadDirectory,
+  deleteEntry,
+  renameEntry,
+  copyEntry,
+  moveEntry,
 } = useFileManager();
+
+const clipboardStore = useClipboardStore();
+
+const { 
+  onFileAction, 
+  isDeleteConfirmModalOpen, 
+  deleteTargets, 
+  handleDeleteConfirm 
+} = useFileManagerActions({
+  createFolder,
+  renameEntry,
+  deleteEntry,
+  loadProjectDirectory: async () => { await loadFolderContent(); },
+  handleFiles,
+  mediaCache,
+  vfs,
+  findEntryByPath,
+  readDirectory,
+  reloadDirectory,
+  copyEntry,
+  moveEntry,
+});
+
+async function handleDrawerAction(action: FileAction, entry: any) {
+  if (['copy', 'cut'].includes(action)) {
+    isSelectionMode.value = false;
+    selectionStore.clearSelection();
+    isDrawerOpen.value = false;
+  }
+  await onFileAction(action, entry);
+}
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const isSelectionMode = ref(false);
@@ -581,8 +619,38 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Properties Drawer -->
-    <MobileFileBrowserDrawer :is-open="isDrawerOpen" @close="isDrawerOpen = false" />
+    <!-- Properties Drawer / Action Bar -->
+    <MobileFileBrowserDrawer 
+      :is-open="isDrawerOpen" 
+      :is-selection-mode="isSelectionMode"
+      @close="isDrawerOpen = false" 
+      :on-action="handleDrawerAction"
+    />
+
+    <!-- Paste Mode Toolbar -->
+    <div
+      v-if="!isSelectionMode && clipboardStore.hasFileManagerPayload"
+      class="border-t border-slate-800 bg-slate-900 p-3 flex items-center justify-between z-40"
+    >
+      <div class="text-sm font-medium">
+        {{ clipboardStore.clipboardPayload?.operation === 'cut' ? t('common.cut', 'Cut') : t('common.copied', 'Copied') }}: {{ clipboardStore.clipboardPayload?.items.length }} 
+      </div>
+      <div class="flex gap-2">
+        <UButton
+          size="sm"
+          color="neutral"
+          variant="soft"
+          :label="t('common.cancel', 'Cancel')"
+          @click="clipboardStore.clearClipboardPayload()"
+        />
+        <UButton
+          size="sm"
+          color="primary"
+          :label="t('common.paste', 'Paste')"
+          @click="onFileAction('paste', filesPageStore.selectedFolder!)"
+        />
+      </div>
+    </div>
 
     <!-- Action FAB -->
     <Teleport to="body">
@@ -595,7 +663,7 @@ onMounted(() => {
           icon="lucide:plus"
           size="xl"
           class="rounded-full shadow-2xl w-14 h-14 flex items-center justify-center bg-primary-600 hover:bg-primary-500 text-white border-none"
-          ui="{ icon: 'w-7 h-7' }"
+          :ui="{ icon: 'w-7 h-7' }"
           @click="isCreateMenuOpen = !isCreateMenuOpen"
         />
       </div>
@@ -665,6 +733,26 @@ onMounted(() => {
         </div>
       </div>
     </Teleport>
+
+    <!-- Delete Confirmation Modal -->
+    <UiConfirmModal
+      :open="isDeleteConfirmModalOpen"
+      :title="t('common.delete', 'Delete')"
+      :description="t('common.confirmDelete', 'Are you sure you want to delete this? This action cannot be undone.')"
+      color="error"
+      icon="i-heroicons-exclamation-triangle"
+      @update:open="isDeleteConfirmModalOpen = $event"
+      @confirm="handleDeleteConfirm"
+    >
+      <div>
+        <div v-if="deleteTargets.length === 1" class="mt-2 text-sm font-medium text-ui-text">
+          {{ deleteTargets[0]?.name }}
+        </div>
+        <div v-else-if="deleteTargets.length > 1" class="mt-2 text-sm font-medium text-ui-text">
+          {{ deleteTargets.length }} {{ t('common.itemsSelected', 'items selected') }}
+        </div>
+      </div>
+    </UiConfirmModal>
   </div>
 </template>
 
