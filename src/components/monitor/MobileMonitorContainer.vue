@@ -45,20 +45,6 @@ const {
 
 const { timelineDoc } = storeToRefs(timelineStore);
 
-const activeMarkers = ref<TimelineMarker[]>([]);
-watchEffect(() => {
-  const time = uiCurrentTimeUs.value;
-  const markers = timelineDoc.value?.metadata?.fastcat?.markers;
-  const filtered = Array.isArray(markers)
-    ? (markers as TimelineMarker[]).filter((m) => {
-        if (!m.text.trim()) return false;
-        if (m.durationUs != null) return time >= m.timeUs && time < m.timeUs + m.durationUs;
-        // Threshold of 1ms to match point markers during playback/scrubbing
-        return Math.abs(time - m.timeUs) < 1000;
-      })
-    : [];
-  activeMarkers.value = filtered;
-});
 
 const canInteractPlayback = computed(
   () => !isLoading.value && (safeDurationUs.value > 0 || videoItems.value.length > 0),
@@ -114,6 +100,18 @@ const isReadonly = computed(
   () => projectStore.currentView === 'sound' || projectStore.currentView === 'export',
 );
 
+onMounted(() => {
+  if (viewportRef.value) {
+    timecodeEl.value = (viewportRef.value as any).timecodeEl;
+  }
+});
+
+watch(viewportRef, (vp) => {
+  if (vp) {
+    timecodeEl.value = (vp as any).timecodeEl;
+  }
+});
+
 function blurActiveElement() {
   (document.activeElement as HTMLElement | null)?.blur?.();
 }
@@ -152,6 +150,8 @@ const containerHeightClass = computed(() =>
       ref="viewportRef"
       :render-width="renderWidth"
       :render-height="renderHeight"
+      :effective-fullscreen="isFullscreen"
+      :ui-current-time-us="uiCurrentTimeUs"
       class="bg-black/80"
     >
       <template #canvas>
@@ -196,36 +196,6 @@ const containerHeightClass = computed(() =>
           <UIcon name="lucide:triangle-alert" class="w-7 h-7" />
           <p class="text-sm font-medium">{{ statusText }}</p>
           <p class="text-xs text-red-200/80">{{ loadError }}</p>
-        </div>
-
-        <!-- Overlays (Timecode & Markers) -->
-        <div
-          v-if="videoItems.length > 0 && !loadError"
-          class="absolute inset-0 pointer-events-none select-none"
-        >
-          <!-- Active Markers -->
-          <div
-            v-if="activeMarkers.length"
-            class="absolute bottom-10 right-3 flex flex-col items-end gap-1 transition-all duration-300 z-10"
-            :class="[isFullscreen ? 'bottom-16 right-6' : 'bottom-10 right-3']"
-          >
-            <div
-              v-for="marker in activeMarkers"
-              :key="marker.id"
-              class="text-[10px] text-ui-text-muted bg-ui-bg-elevated/85 backdrop-blur-sm px-2 py-0.5 rounded max-w-[200px] truncate shadow-sm border border-white/5"
-            >
-              {{ marker.text }}
-            </div>
-          </div>
-
-          <!-- Timecode -->
-          <div
-            ref="timecodeEl"
-            class="absolute bottom-3 right-3 text-xs text-ui-text-muted font-mono tabular-nums bg-ui-bg-elevated/85 backdrop-blur-sm px-2 py-0.5 rounded transition-all duration-300"
-            :class="[isFullscreen ? 'bottom-8 right-6' : 'bottom-3 right-3']"
-          >
-            00:00:00:00 / 00:00:00:00
-          </div>
         </div>
       </template>
     </MonitorViewport>

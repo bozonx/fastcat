@@ -29,6 +29,12 @@ export function useMonitorGestures(input: {
   const panOrigin = ref({ x: 0, y: 0 });
   const middlePointerDown = ref<{ x: number; y: number; moved: boolean } | null>(null);
 
+  const activePointers = new Map<number, { x: number; y: number }>();
+  let initialPinchDistance = 0;
+  let initialPinchZoom = 1;
+  let initialPinchCenter = { x: 0, y: 0 };
+  let initialPinchPan = { x: 0, y: 0 };
+
   const panX = computed({
     get: () => input.projectStore.activeMonitor?.panX ?? 0,
     set: (v: number) => {
@@ -109,6 +115,28 @@ export function useMonitorGestures(input: {
   function onViewportPointerDown(event: PointerEvent) {
     const settings = workspaceStore.userSettings.mouse.monitor;
 
+    activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    if (event.pointerType === 'touch' || event.button === 0) {
+      if (activePointers.size === 1) {
+        isPanning.value = true;
+        panStart.value = { x: event.clientX, y: event.clientY };
+        panOrigin.value = { x: panX.value, y: panY.value };
+      } else if (activePointers.size === 2) {
+        // Start pinch
+        const ids = Array.from(activePointers.keys());
+        const p1 = activePointers.get(ids[0]!);
+        const p2 = activePointers.get(ids[1]!);
+        if (p1 && p2) {
+          initialPinchDistance = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+          initialPinchZoom = zoom.value;
+          initialPinchCenter = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+          initialPinchPan = { x: panX.value, y: panY.value };
+        }
+      }
+      (event.currentTarget as HTMLElement | null)?.setPointerCapture(event.pointerId);
+    }
+
     if (event.button === 1) {
       middlePointerDown.value = { x: event.clientX, y: event.clientY, moved: false };
 
@@ -188,12 +216,48 @@ export function useMonitorGestures(input: {
   }
 
   function onViewportPointerMove(event: PointerEvent) {
+    if (!activePointers.has(event.pointerId)) return;
+    activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
     if (middlePointerDown.value) {
       const dx = event.clientX - middlePointerDown.value.x;
       const dy = event.clientY - middlePointerDown.value.y;
       if (Math.abs(dx) > DRAG_DEADZONE_PX || Math.abs(dy) > DRAG_DEADZONE_PX) {
         middlePointerDown.value.moved = true;
       }
+    }
+
+    if (activePointers.size === 2) {
+      // Handle pinch to zoom
+      const ids = Array.from(activePointers.keys());
+      const p1 = activePointers.get(ids[0]!);
+      const p2 = activePointers.get(ids[1]!);
+      if (p1 && p2) {
+        const currentDistance = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+        if (initialPinchDistance > 0) {
+          const ratio = currentDistance / initialPinchDistance;
+          const newZoom = Math.min(
+            MAX_MONITOR_ZOOM,
+            Math.max(MIN_MONITOR_ZOOM, initialPinchZoom * ratio),
+          );
+
+          // Adjust pan to zoom into the center of the pinch
+          const el = input.viewportEl.value;
+          if (el) {
+            const rect = el.getBoundingClientRect();
+            const vpCx = rect.width / 2;
+            const vpCy = rect.height / 2;
+            const cx = initialPinchCenter.x - rect.left - vpCx;
+            const cy = initialPinchCenter.y - rect.top - vpCy;
+
+            const scale = newZoom / initialPinchZoom;
+            panX.value = cx + (initialPinchPan.x - cx) * scale;
+            panY.value = cy + (initialPinchPan.y - cy) * scale;
+            zoom.value = newZoom;
+          }
+        }
+      }
+      return;
     }
 
     if (!isPanning.value) return;
@@ -204,13 +268,32 @@ export function useMonitorGestures(input: {
   }
 
   function stopPan(event?: PointerEvent) {
-    if (!isPanning.value) return;
-    isPanning.value = false;
     if (event) {
+      activePointers.delete(event.pointerId);
       try {
         (event.currentTarget as HTMLElement | null)?.releasePointerCapture(event.pointerId);
       } catch {
         // ignore
+      }
+    } else {
+      activePointers.clear();
+    }
+
+    if (activePointers.size < 2) {
+      initialPinchDistance = 0;
+    }
+
+    if (activePointers.size === 0) {
+      isPanning.value = false;
+    } else if (activePointers.size === 1) {
+      // Resume panning with the remaining pointer
+      const remainingId = Array.from(activePointers.keys())[0];
+      if (remainingId !== undefined) {
+        const p = activePointers.get(remainingId);
+        if (p) {
+          panStart.value = { x: p.x, y: p.y };
+          panOrigin.value = { x: panX.value, y: panY.value };
+        }
       }
     }
   }
