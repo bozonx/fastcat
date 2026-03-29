@@ -74,6 +74,7 @@ const {
   handleLongPress,
   handleToggleSelection,
   handleEntryClick,
+  closeAllUI,
 } = useMobileFileBrowserSelection();
 
 const {
@@ -163,10 +164,7 @@ function onAddedToTimeline() {
     description: t('common.addedToTimeline', 'Added to timeline'),
     color: 'success',
   });
-  isSelectionMode.value = false;
-  selectionStore.clearSelection();
-  isDrawerOpen.value = false;
-
+  closeAllUI();
   projectStore.setView('cut');
 }
 
@@ -212,18 +210,17 @@ async function onRenameConfirm(newName: string) {
   }
 }
 
-async function handleDrawerAction(action: FileAction, entry: any) {
+async function handleDrawerAction(action: FileAction, entry: FsEntry | FsEntry[]) {
   if (['copy', 'cut'].includes(action)) {
-    isSelectionMode.value = false;
-    selectionStore.clearSelection();
-    isDrawerOpen.value = false;
+    closeAllUI();
   }
 
   if (action === 'rename') {
-    await handleRename(entry);
-    isSelectionMode.value = false;
-    selectionStore.clearSelection();
-    isDrawerOpen.value = false;
+    const entryToProcess = Array.isArray(entry) ? entry[0] : entry;
+    if (entryToProcess) {
+      await handleRename(entryToProcess);
+    }
+    closeAllUI();
     return;
   }
 
@@ -232,9 +229,7 @@ async function handleDrawerAction(action: FileAction, entry: any) {
 
 async function wrappedHandleDeleteConfirm() {
   await handleDeleteConfirm();
-  isSelectionMode.value = false;
-  selectionStore.clearSelection();
-  isDrawerOpen.value = false;
+  closeAllUI();
 }
 
 async function handleEntryPrimaryAction(entry: FsEntry) {
@@ -247,13 +242,15 @@ async function handleEntryPrimaryAction(entry: FsEntry) {
   await handleAddToProject();
 }
 
-const sortFields: { label: string; value: FileSortField }[] = [
-  { label: t('common.name', 'Name'), value: 'name' },
-  { label: t('common.type', 'Type'), value: 'type' },
-  { label: t('common.size', 'Size'), value: 'size' },
-  { label: t('common.created', 'Created'), value: 'created' },
-  { label: t('common.modified', 'Modified'), value: 'modified' },
-];
+const sortItems = computed(() =>
+  filesPageStore.sortFields.map((f) => ({
+    label: t(f.labelKey),
+    icon: filesPageStore.sortOption.field === f.value ? 'lucide:check' : undefined,
+    onSelect: () => {
+      filesPageStore.sortOption.field = f.value;
+    },
+  })),
+);
 
 const menuItems = computed(() => [
   [
@@ -278,13 +275,7 @@ const menuItems = computed(() => [
     },
   ],
   [
-    ...sortFields.map((f) => ({
-      label: f.label,
-      icon: filesPageStore.sortOption.field === f.value ? 'lucide:check' : undefined,
-      onSelect: () => {
-        filesPageStore.sortOption.field = f.value;
-      },
-    })),
+    ...sortItems.value,
   ],
   [
     {
