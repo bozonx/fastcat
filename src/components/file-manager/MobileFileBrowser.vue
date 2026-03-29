@@ -20,11 +20,11 @@ import type { FsEntry } from '~/types/fs';
 import MobileFileBrowserGrid from './MobileFileBrowserGrid.vue';
 import MobileFileBrowserDrawer from './MobileFileBrowserDrawer.vue';
 import MobileFileBrowserNavbar from './MobileFileBrowserNavbar.vue';
-import MobileFileBrowserSelectionToolbar from './MobileFileBrowserSelectionToolbar.vue';
-import MobileFileBrowserPasteToolbar from './MobileFileBrowserPasteToolbar.vue';
 import MobileFileBrowserCreateSheet from './MobileFileBrowserCreateSheet.vue';
-import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
+import FileDeleteConfirmModal from './modals/FileDeleteConfirmModal.vue';
+import FileSttTranscriptionModal from './modals/FileSttTranscriptionModal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
+import { useFileBrowserStt } from '~/composables/fileManager/useFileBrowserStt';
 
 const filesPageStore = useFilesPageStore();
 const projectStore = useProjectStore();
@@ -111,8 +111,23 @@ const { onFileAction, isDeleteConfirmModalOpen, deleteTargets, handleDeleteConfi
     moveEntry,
   });
 
+const selectedEntry = computed(() =>
+  selectedEntries.value.length === 1 ? selectedEntries.value[0] : null,
+);
+
 const { sortedEntries } = useFileSorting(entries);
 const { thumbnails } = useFileManagerThumbnails(sortedEntries, vfs);
+
+const {
+  sttTranscriptionModalOpen,
+  sttTranscriptionLanguage,
+  sttTranscriptionError,
+  sttTranscribing,
+  sttTranscriptionEntry,
+  isTranscribableMediaFile,
+  openTranscriptionModal,
+  submitTranscription,
+} = useFileBrowserStt();
 
 // Lazily calculate sizes of all folders in current directory
 watch(
@@ -219,6 +234,15 @@ async function handleDrawerAction(action: FileAction, entry: FsEntry | FsEntry[]
     const entryToProcess = Array.isArray(entry) ? entry[0] : entry;
     if (entryToProcess) {
       await handleRename(entryToProcess);
+    }
+    closeAllUI();
+    return;
+  }
+
+  if (action === 'transcribe') {
+    const entryToProcess = Array.isArray(entry) ? entry[0] : entry;
+    if (entryToProcess) {
+      openTranscriptionModal(entryToProcess);
     }
     closeAllUI();
     return;
@@ -359,6 +383,7 @@ const menuItems = computed(() => [
     <MobileFileBrowserDrawer
       :is-open="isDrawerOpen"
       :is-selection-mode="isSelectionMode"
+      :is-transcribable="selectedEntry ? isTranscribableMediaFile(selectedEntry) : false"
       :on-action="handleDrawerAction"
       @close="isDrawerOpen = false"
       @add-to-timeline="handleAddToProject"
@@ -408,24 +433,22 @@ const menuItems = computed(() => [
     />
 
     <!-- Delete Confirmation Modal -->
-    <UiConfirmModal
+    <FileDeleteConfirmModal
       v-model:open="isDeleteConfirmModalOpen"
-      :title="t('videoEditor.fileManager.delete.confirmTitle', 'Delete Files')"
-      :description="
-        t('videoEditor.fileManager.delete.confirmDescription', 'Are you sure you want to delete?')
-      "
-      :color="'error'"
+      :delete-targets="deleteTargets"
       @confirm="wrappedHandleDeleteConfirm"
-    >
-      <div>
-        <div v-if="deleteTargets.length === 1" class="mt-2 text-sm font-medium text-ui-text">
-          {{ deleteTargets[0]?.name }}
-        </div>
-        <div v-else-if="deleteTargets.length > 1" class="mt-2 text-sm font-medium text-ui-text">
-          {{ deleteTargets.length }} {{ t('common.itemsSelected', 'items selected') }}
-        </div>
-      </div>
-    </UiConfirmModal>
+    />
+
+    <!-- STT Transcription Modal -->
+    <FileSttTranscriptionModal
+      v-model:open="sttTranscriptionModalOpen"
+      :stt-transcribing="sttTranscribing"
+      :stt-transcription-error="sttTranscriptionError"
+      :stt-transcription-entry="sttTranscriptionEntry"
+      :stt-transcription-language="sttTranscriptionLanguage"
+      @update:stt-transcription-language="sttTranscriptionLanguage = $event"
+      @submit="submitTranscription"
+    />
 
     <!-- Rename Modal -->
     <UiRenameModal

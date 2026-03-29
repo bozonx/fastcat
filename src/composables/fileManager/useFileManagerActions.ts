@@ -32,7 +32,8 @@ export type FileAction =
   | 'openAsProjectTab'
   | 'copy'
   | 'cut'
-  | 'paste';
+  | 'paste'
+  | 'transcribe';
 
 interface FileManagerActions {
   createFolder: (name: string, parentPath?: string) => Promise<void>;
