@@ -13,7 +13,6 @@ import { useAddMediaToTimeline } from '~/composables/timeline/useAddMediaToTimel
 import { useFileSorting } from '~/composables/fileManager/useFileSorting';
 import MobileFileBrowserGrid from './MobileFileBrowserGrid.vue';
 import MobileFileBrowserDrawer from './MobileFileBrowserDrawer.vue';
-import MobileAddToTimelineModal from '../timeline/MobileAddToTimelineModal.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import { useClipboardStore } from '~/stores/clipboard.store';
 import { isOpenableProjectFileName } from '~/utils/media-types';
@@ -103,6 +102,9 @@ function onAddedToTimeline() {
   isSelectionMode.value = false;
   selectionStore.clearSelection();
   isDrawerOpen.value = false;
+
+  // Switch to edit (cut) view after addition
+  projectStore.setView('cut');
 }
 
 async function handlePaste() {
@@ -997,7 +999,7 @@ onMounted(() => {
     </UiConfirmModal>
 
     <!-- Add to Timeline Modal (Global) -->
-    <MobileAddToTimelineModal
+    <TimelineMobileAddToTimelineModal
       v-model:open="isAddToTimelineModalOpen"
       :entries="addToTimelineEntries"
       @added="onAddedToTimeline"
