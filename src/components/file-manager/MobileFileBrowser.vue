@@ -236,6 +236,7 @@ const totalSelectedSize = computed(() => {
   return size;
 });
 
+// Следим за выделенными папками для подсчета размера
 watch(
   selectedEntries,
   (entries) => {
@@ -297,6 +298,13 @@ function handleEntryClick(entry: FsEntry) {
   if (isSelectionMode.value) {
     handleToggleSelection(entry);
   } else {
+    // Если это таймлайн, открываем его сразу в режиме монтажа
+    if (getMediaTypeFromFilename(entry.name) === 'timeline' && entry.path) {
+      projectStore.openTimelineFile(entry.path);
+      projectStore.setView('cut');
+      return;
+    }
+
     selectionStore.selectFsEntry(entry);
     isDrawerOpen.value = true;
   }
@@ -580,6 +588,19 @@ async function loadFolderContent() {
   }
 }
 
+// Следим за всеми записями для ленивого подсчета размера папок
+watch(
+  entries,
+  (newEntries) => {
+    for (const entry of newEntries) {
+      if (entry.kind === 'directory' && entry.path && folderSizes.value[entry.path] === undefined) {
+        void calculateFolderSize(entry.path);
+      }
+    }
+  },
+  { deep: true },
+);
+
 async function navigateToRoot() {
   filesPageStore.selectFolder({
     kind: 'directory',
@@ -805,15 +826,16 @@ onMounted(() => {
       <MobileFileBrowserGrid
         :entries="sortedEntries"
         :thumbnails="thumbnails"
-        :is-loading="isLoading"
-        :is-selection-mode="isSelectionMode"
-        :selected-entries="selectedEntries"
         :selected-entry-path="
           (selectionStore.selectedEntity?.source === 'fileManager' &&
           'path' in selectionStore.selectedEntity
-            ? selectionStore.selectedEntity.path
+            ? (selectionStore.selectedEntity.path as string | null)
             : null) ?? null
         "
+        :selected-entries="selectedEntries"
+        :is-selection-mode="isSelectionMode"
+        :is-loading="isLoading"
+        :folder-sizes="folderSizes"
         @entry-click="handleEntryClick"
         @entry-primary-action="handleEntryPrimaryAction"
         @long-press="handleLongPress"
