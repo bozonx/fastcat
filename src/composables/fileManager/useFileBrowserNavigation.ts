@@ -19,7 +19,6 @@ export function useFileBrowserNavigation({
   remoteCurrentFolder,
   folderEntries,
   supplementEntries,
-  cleanupObjectUrls,
   buildRemoteDirectoryEntry,
   loadRemoteFolderContent,
   loadRemoteParentFolders,
@@ -34,7 +33,6 @@ export function useFileBrowserNavigation({
   remoteCurrentFolder: Ref<RemoteFsEntry | null>;
   folderEntries: Ref<FsEntry[]>;
   supplementEntries: (entries: FsEntry[]) => Promise<ExtendedFsEntry[]>;
-  cleanupObjectUrls: () => void;
   buildRemoteDirectoryEntry: (path: string) => RemoteFsEntry;
   loadRemoteFolderContent: () => Promise<boolean>;
   loadRemoteParentFolders: (parentFolders: Ref<FsEntry[]>) => boolean;
@@ -62,7 +60,6 @@ export function useFileBrowserNavigation({
     }
 
     if (!filesPageStore.selectedFolder) {
-      cleanupObjectUrls();
       folderEntries.value = [];
       return;
     }
@@ -89,11 +86,9 @@ export function useFileBrowserNavigation({
       const filteredEntries = entries.filter(
         (e) => uiStore.showHiddenFiles || !e.name.startsWith('.'),
       );
-      cleanupObjectUrls();
       folderEntries.value = await supplementEntries(filteredEntries);
     } catch (error) {
       console.error('Failed to load folder content:', error);
-      cleanupObjectUrls();
       folderEntries.value = [];
     }
 
