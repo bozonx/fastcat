@@ -7,7 +7,7 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
-import { VIDEO_DIR_NAME, AUDIO_DIR_NAME, TIMELINES_DIR_NAME } from '~/utils/constants';
+import { VIDEO_DIR_NAME, AUDIO_DIR_NAME, TIMELINES_DIR_NAME, DOCUMENTS_DIR_NAME } from '~/utils/constants';
 import {
   getWorkspacePathFileName,
   getWorkspacePathParent,
@@ -518,14 +518,14 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     return true;
   }
 
-  async function createTimeline(): Promise<string | null> {
+  async function createTimeline(parentPath?: string): Promise<string | null> {
     return await runWithUiFeedback({
       action: async () => {
         const createdPath = await createTimelineCommand({
           vfs: deps.vfs,
-          timelinesDirName: TIMELINES_DIR_NAME,
+          timelinesDirName: parentPath ?? TIMELINES_DIR_NAME,
         });
-        await reloadDirectory(TIMELINES_DIR_NAME);
+        await reloadDirectory(parentPath ?? TIMELINES_DIR_NAME);
         return createdPath;
       },
       defaultErrorMessage: t('timelineCreation.failed'),
@@ -534,14 +534,14 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     });
   }
 
-  async function createMarkdown(): Promise<string | null> {
+  async function createMarkdown(parentPath?: string): Promise<string | null> {
     return await runWithUiFeedback({
       action: async () => {
         const createdPath = await createMarkdownCommand({
           vfs: deps.vfs,
-          documentsDirName: DOCUMENTS_DIR_NAME,
+          documentsDirName: parentPath ?? DOCUMENTS_DIR_NAME,
         });
-        await reloadDirectory(DOCUMENTS_DIR_NAME);
+        await reloadDirectory(parentPath ?? DOCUMENTS_DIR_NAME);
         return createdPath;
       },
       defaultErrorMessage: 'Failed to create document',

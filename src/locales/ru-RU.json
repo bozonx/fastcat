@@ -142,6 +142,8 @@
     },
     "showHiddenFiles": "Показать скрытые файлы",
     "hideHiddenFiles": "Скрыть скрытые файлы",
+    "createInFolder": "Создать в папке",
+    "quickCreateDefault": "Быстрое создание",
     "video": "Видео",
     "timeline": "Таймлайн",
     "textDocument": "Текстовый документ",
