@@ -5,16 +5,8 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import MobileClipActionsDrawer from './MobileClipActionsDrawer.vue';
-import MobileTrackManagerDrawer from './MobileTrackManagerDrawer.vue';
+import MobileTrackMixerDrawer from './MobileTrackMixerDrawer.vue';
 import TimelineSpeedModal from './TimelineSpeedModal.vue';
-
-const props = defineProps<{
-  isLabelsOpen: boolean;
-}>();
-
-const emit = defineEmits<{
-  (e: 'toggleTrackLabels'): void;
-}>();
 
 const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
@@ -24,7 +16,7 @@ const { selectedItemIds, timelineZoom } = storeToRefs(timelineStore);
 const hasSelection = computed(() => selectedItemIds.value.length > 0);
 
 const isClipActionsDrawerOpen = ref(false);
-const isTrackManagerDrawerOpen = ref(false);
+const isTrackMixerDrawerOpen = ref(false);
 
 function handleSplit() {
   if (hasSelection.value) {
@@ -136,20 +128,13 @@ const speedModalTargetHasAudio = computed(() => {
       </div>
     </div>
 
-    <div class="flex items-center gap-2 shrink-0 border-l border-ui-border pl-2 ml-1">
+    <div class="flex items-center shrink-0 border-l border-ui-border pl-2 ml-1">
       <UiActionButton
-        icon="lucide:panel-left"
-        :color="props.isLabelsOpen ? 'primary' : 'neutral'"
-        size="sm"
-        title="Track Labels"
-        @click="emit('toggleTrackLabels')"
-      />
-      <UiActionButton
-        icon="lucide:layers"
+        icon="lucide:sliders"
         color="neutral"
         size="sm"
-        title="Manage Tracks"
-        @click="isTrackManagerDrawerOpen = true"
+        title="Mixer & Tracks"
+        @click="isTrackMixerDrawerOpen = true"
       />
     </div>
   </div>
@@ -160,9 +145,9 @@ const speedModalTargetHasAudio = computed(() => {
     @open-speed-modal="handleOpenSpeedModal"
   />
 
-  <MobileTrackManagerDrawer
-    :is-open="isTrackManagerDrawerOpen"
-    @close="isTrackManagerDrawerOpen = false"
+  <MobileTrackMixerDrawer
+    :is-open="isTrackMixerDrawerOpen"
+    @close="isTrackMixerDrawerOpen = false"
   />
 
   <TimelineSpeedModal
