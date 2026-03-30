@@ -8,7 +8,6 @@ import MobileFileBrowser from '~/components/file-manager/MobileFileBrowser.vue';
 import ExportForm from '~/components/export/ExportForm.vue';
 import MobileMonitorContainer from '~/components/monitor/MobileMonitorContainer.vue';
 import MobileTimeline from '~/components/timeline/MobileTimeline.vue';
-import MobileAudioMixer from '~/components/audio/MobileAudioMixer.vue';
 import ProjectSettingsModal from '~/components/project-settings/ProjectSettingsModal.vue';
 import EditorSettingsModal from '~/components/settings/EditorSettingsModal.vue';
 
@@ -31,17 +30,16 @@ const projectOpenError = ref<string | null>(null);
 const tabToViewMap = {
   files: 'files',
   edit: 'cut',
-  sound: 'sound',
   export: 'export',
 } as const;
 
-const viewToTabMap = {
+const viewToTabMap: Record<string, 'files' | 'edit' | 'export'> = {
   files: 'files',
   cut: 'edit',
-  sound: 'sound',
+  sound: 'edit',
   export: 'export',
   fullscreen: 'edit',
-} as const;
+};
 
 onMounted(async () => {
   const projectId = route.params.id as string;
@@ -74,18 +72,17 @@ onMounted(async () => {
   }
 });
 
-type TabId = 'files' | 'edit' | 'sound' | 'export';
+type TabId = 'files' | 'edit' | 'export';
 
 const activeTab = computed<TabId>({
-  get: () => viewToTabMap[projectStore.currentView],
-  set: (tab) => {
-    projectStore.setView(tabToViewMap[tab]);
+  get: () => (viewToTabMap[projectStore.currentView as string] ?? 'edit') as TabId,
+  set: (tab: TabId) => {
+    projectStore.setView(tabToViewMap[tab] as any);
   },
 });
 
 const currentViewLabel = computed(() => {
   if (activeTab.value === 'files') return 'Project files';
-  if (activeTab.value === 'sound') return 'Sound mix';
   if (activeTab.value === 'export') return 'Export';
   return 'Edit timeline';
 });
@@ -93,7 +90,6 @@ const currentViewLabel = computed(() => {
 const navItems: Array<{ id: TabId; label: string; icon: string }> = [
   { id: 'files', label: t('common.files', 'Files'), icon: 'lucide:folder-open' },
   { id: 'edit', label: t('common.edit', 'Edit'), icon: 'lucide:clapperboard' },
-  { id: 'sound', label: t('common.sound', 'Sound'), icon: 'lucide:sliders-horizontal' },
   { id: 'export', label: t('common.export', 'Export'), icon: 'lucide:download' },
 ];
 
@@ -205,16 +201,7 @@ const topbarMenuItems = computed(() => [
         <MobileTimeline class="flex-1 order-2 landscape:order-1" />
       </div>
 
-      <div
-        v-else-if="activeTab === 'sound'"
-        class="flex h-full flex-col overflow-hidden bg-slate-950 landscape:flex-row"
-      >
-        <MobileMonitorContainer
-          mode="sound"
-          class="order-1 landscape:order-2 landscape:w-[42%] landscape:border-l landscape:border-slate-800 landscape:h-full! landscape:max-h-none!"
-        />
-        <MobileAudioMixer class="flex-1 order-2 landscape:order-1" />
-      </div>
+
 
       <div v-else class="h-full">
         <ExportForm />
@@ -226,7 +213,7 @@ const topbarMenuItems = computed(() => [
       v-if="showBottomNav"
       class="shrink-0 border-t border-slate-800 bg-slate-950/95 pb-safe backdrop-blur"
     >
-      <div class="grid h-16 grid-cols-4 items-center gap-1 px-2">
+      <div class="grid h-16 grid-cols-3 items-center gap-1 px-2">
         <button
           v-for="item in navItems"
           :key="item.id"

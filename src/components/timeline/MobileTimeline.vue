@@ -23,8 +23,7 @@ import TimelineTracks from './TimelineTracks.vue';
 import TimelineRuler from './TimelineRuler.vue';
 import TimelineGrid from './TimelineGrid.vue';
 import MobileTimelineToolbar from './MobileTimelineToolbar.vue';
-import TimelineTrackLabels from './TimelineTrackLabels.vue';
-import { useTrackLabelsPanel } from '~/composables/timeline/useTrackLabelsPanel';
+
 
 const { t } = useI18n();
 const toast = useToast();
@@ -46,16 +45,7 @@ const tracks = computed(
   () => (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [],
 );
 
-const {
-  isOpen: isTrackLabelsOpen,
-  panelStyle: labelsPanelStyle,
-  backdropStyle: labelsBackdropStyle,
-  toggle: toggleTrackLabels,
-  close: closeTrackLabels,
-  onTouchStart: onLabelsTouchStart,
-  onTouchMove: onLabelsTouchMove,
-  onTouchEnd: onLabelsTouchEnd,
-} = useTrackLabelsPanel();
+
 
 const scrollEl = ref<HTMLElement | null>(null);
 
@@ -281,36 +271,12 @@ async function onClipAction(payload: TimelineClipActionPayload) {
     class="flex flex-col h-full bg-ui-bg-elevated relative overflow-hidden"
     @pointerdown="focusStore.setMainFocus('timeline')"
   >
-    <MobileTimelineToolbar
-      :is-labels-open="isTrackLabelsOpen"
-      @toggle-track-labels="toggleTrackLabels"
-    />
+    <MobileTimelineToolbar />
 
-    <!-- Tracks area: holds scroll view + labels panel overlay -->
+    <!-- Tracks area: holds scroll view -->
     <div
       class="flex-1 relative overflow-hidden"
-      @touchstart.capture="onLabelsTouchStart"
-      @touchmove.capture="onLabelsTouchMove"
-      @touchend.capture="onLabelsTouchEnd"
-      @touchcancel.capture="onLabelsTouchEnd"
     >
-      <!-- Backdrop overlay: dims tracks when labels open -->
-      <div
-        class="absolute inset-0 z-20"
-        :style="labelsBackdropStyle"
-        @click="closeTrackLabels"
-      />
-
-      <!-- Sliding track labels panel -->
-      <div
-        class="absolute top-0 left-0 bottom-0 z-30 bg-ui-bg border-r border-ui-border shadow-xl overflow-hidden"
-        :style="labelsPanelStyle"
-      >
-        <TimelineTrackLabels
-          :tracks="tracks"
-          :track-heights="trackHeights"
-        />
-      </div>
 
       <!-- Main scrollable tracks area -->
       <div
