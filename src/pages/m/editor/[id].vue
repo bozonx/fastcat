@@ -8,9 +8,9 @@ import MobileFileBrowser from '~/components/file-manager/MobileFileBrowser.vue';
 import ExportForm from '~/components/export/ExportForm.vue';
 import MobileMonitorContainer from '~/components/monitor/MobileMonitorContainer.vue';
 import MobileTimeline from '~/components/timeline/MobileTimeline.vue';
-import ProjectSettingsModal from '~/components/project-settings/ProjectSettingsModal.vue';
-import EditorSettingsModal from '~/components/settings/EditorSettingsModal.vue';
+import MobileSettingsView from '~/components/settings/MobileSettingsView.vue';
 
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import { until } from '@vueuse/core';
 
 definePageMeta({
@@ -31,13 +31,15 @@ const tabToViewMap = {
   files: 'files',
   edit: 'cut',
   export: 'export',
+  settings: 'settings',
 } as const;
 
-const viewToTabMap: Record<string, 'files' | 'edit' | 'export'> = {
+const viewToTabMap: Record<string, 'files' | 'edit' | 'export' | 'settings'> = {
   files: 'files',
   cut: 'edit',
   sound: 'edit',
   export: 'export',
+  settings: 'settings',
   fullscreen: 'edit',
 };
 
@@ -52,7 +54,7 @@ onMounted(async () => {
   projectOpenError.value = null;
 
   if (workspaceStore.isInitializing) {
-    await until(() => workspaceStore.isInitializing).toBe(false);
+    await until(computed(() => workspaceStore.isInitializing)).toBeFalsy();
   }
 
   if (!workspaceStore.workspaceHandle) {
@@ -72,7 +74,7 @@ onMounted(async () => {
   }
 });
 
-type TabId = 'files' | 'edit' | 'export';
+type TabId = 'files' | 'edit' | 'export' | 'settings';
 
 const activeTab = computed<TabId>({
   get: () => (viewToTabMap[projectStore.currentView as string] ?? 'edit') as TabId,
@@ -87,11 +89,23 @@ const currentViewLabel = computed(() => {
   return 'Edit timeline';
 });
 
-const navItems: Array<{ id: TabId; label: string; icon: string }> = [
-  { id: 'files', label: t('common.files', 'Files'), icon: 'lucide:folder-open' },
-  { id: 'edit', label: t('common.edit', 'Edit'), icon: 'lucide:clapperboard' },
-  { id: 'export', label: t('common.export', 'Export'), icon: 'lucide:download' },
-];
+const navItems = computed(() => [
+  { id: 'home', label: t('common.toHome'), icon: 'lucide:home', action: handleBack },
+  { id: 'files', label: t('common.files'), icon: 'lucide:folder-open' },
+  { id: 'edit', label: t('common.edit'), icon: 'lucide:clapperboard' },
+  { id: 'export', label: t('common.export'), icon: 'lucide:download' },
+  { id: 'settings', label: t('common.settings'), icon: 'lucide:settings' },
+]);
+
+const fileManagerStore = useFileManagerStore();
+
+function handleTabClick(tabId: TabId) {
+  if (activeTab.value === tabId && tabId === 'files') {
+    fileManagerStore.selectedFolder = null;
+  } else {
+    activeTab.value = tabId;
+  }
+}
 
 const showBottomNav = computed(() => !isOpeningProject.value && !projectOpenError.value);
 
@@ -99,62 +113,11 @@ async function handleBack() {
   await leaveProject('/m');
 }
 
-const isAppSettingsOpen = ref(false);
 
-const topbarMenuItems = computed(() => [
-  [
-    {
-      label: t('videoEditor.projectSettings.title', 'Project Settings'),
-      icon: 'lucide:settings',
-      onSelect: () => {
-        uiStore.isProjectSettingsOpen = true;
-      },
-    },
-    {
-      label: t('common.settings', 'App Settings'),
-      icon: 'lucide:sliders',
-      onSelect: () => {
-        isAppSettingsOpen.value = true;
-      },
-    },
-  ],
-]);
 </script>
 
 <template>
   <div class="flex h-full w-full flex-col">
-    <!-- Header -->
-    <header
-      class="shrink-0 flex items-center justify-between gap-3 border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur"
-    >
-      <div class="flex min-w-0 items-center gap-4">
-        <UButton
-          size="sm"
-          variant="ghost"
-          color="neutral"
-          icon="lucide:home"
-          aria-label="Back to projects"
-          @click="handleBack"
-        />
-        <div class="flex min-w-0 items-center gap-2">
-          <p class="truncate text-base font-semibold text-white">
-            {{ projectStore.currentProjectName || 'Opening project' }}
-          </p>
-        </div>
-      </div>
-
-      <div class="flex items-center gap-2 shrink-0">
-        <div
-          v-if="projectStore.isReadOnly"
-          class="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-2xs font-medium text-amber-300"
-        >
-          Read only
-        </div>
-        <UDropdownMenu :items="topbarMenuItems" :content="{ align: 'end' }" :ui="{ content: 'w-48' }">
-          <UButton icon="lucide:more-vertical" variant="ghost" color="neutral" size="sm" />
-        </UDropdownMenu>
-      </div>
-    </header>
 
     <!-- Main Content Area (Virtual Tabs) -->
     <main class="relative flex-1 min-h-0 overflow-hidden bg-slate-950">
@@ -203,8 +166,12 @@ const topbarMenuItems = computed(() => [
 
 
 
-      <div v-else class="h-full">
+      <div v-else-if="activeTab === 'export'" class="h-full">
         <ExportForm />
+      </div>
+
+      <div v-else class="h-full">
+        <MobileSettingsView />
       </div>
     </main>
 
@@ -213,28 +180,25 @@ const topbarMenuItems = computed(() => [
       v-if="showBottomNav"
       class="shrink-0 border-t border-slate-800 bg-slate-950/95 pb-safe backdrop-blur"
     >
-      <div class="grid h-16 grid-cols-3 items-center gap-1 px-2">
+      <div class="grid h-16 grid-cols-5 items-center gap-1 px-1">
         <button
           v-for="item in navItems"
           :key="item.id"
           class="flex h-full min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-center transition-colors outline-none"
           :class="
-            activeTab === item.id
+            (activeTab === item.id && !('action' in item))
               ? 'bg-primary-500/12 text-primary-400'
               : 'text-slate-400 active:bg-slate-900'
           "
-          :aria-pressed="activeTab === item.id"
-          @click="activeTab = item.id"
+          :aria-pressed="activeTab === item.id && !('action' in item)"
+          @click="'action' in item ? (item as any).action() : handleTabClick(item.id as any)"
         >
-          <Icon :name="item.icon" class="w-6 h-6" />
-          <span class="text-2xs font-medium">{{ item.label }}</span>
+          <Icon :name="item.icon" class="w-6 h-6 shrink-0" />
+          <span class="text-[10px] font-medium truncate w-full px-0.5">{{ item.label }}</span>
         </button>
       </div>
     </nav>
 
-    <!-- Modals -->
-    <ProjectSettingsModal v-model:open="uiStore.isProjectSettingsOpen" />
-    <EditorSettingsModal v-model:open="isAppSettingsOpen" />
   </div>
 </template>
 

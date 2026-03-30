@@ -49,6 +49,7 @@ vi.mock('~/composables/file-manager/useFileManager', () => ({
 let mockLocalStorage: Record<string, any> = {};
 
 vi.mock('~/stores/ui/uiLocalStorage', () => ({
+  getPlatformSuffix: vi.fn(() => ''),
   readLocalStorageJson: vi.fn((key, def) => mockLocalStorage[key] ?? def),
   writeLocalStorageJson: vi.fn((key, val) => {
     mockLocalStorage[key] = val;
