@@ -43,6 +43,7 @@ function onClick(event: MouseEvent) {
 
 <template>
   <UButton
+    v-bind="$attrs"
     :size="size"
     :variant="variant"
     :color="color"
