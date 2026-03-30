@@ -10,6 +10,7 @@ import MobileMonitorContainer from '~/components/monitor/MobileMonitorContainer.
 import MobileTimeline from '~/components/timeline/MobileTimeline.vue';
 import MobileSettingsView from '~/components/settings/MobileSettingsView.vue';
 
+import MobileBottomNav from '~/components/layout/MobileBottomNav.vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { until } from '@vueuse/core';
 
@@ -54,7 +55,7 @@ onMounted(async () => {
   projectOpenError.value = null;
 
   if (workspaceStore.isInitializing) {
-    await until(() => workspaceStore.isInitializing).toBe(false);
+    await until(() => !workspaceStore.isInitializing).toBeTruthy();
   }
 
   if (!workspaceStore.workspaceHandle) {
@@ -66,6 +67,12 @@ onMounted(async () => {
     await openProject(decodeURIComponent(projectId));
     if (!projectStore.currentProjectName) {
       throw new Error('Project failed to open');
+    }
+
+    // Handle view query parameter
+    const viewParam = route.query.view as string;
+    if (viewParam && ['files', 'edit', 'export', 'settings'].includes(viewParam)) {
+      activeTab.value = viewParam as TabId;
     }
   } catch (error: unknown) {
     projectOpenError.value = error instanceof Error ? error.message : 'Failed to open the project';
@@ -88,14 +95,6 @@ const currentViewLabel = computed(() => {
   if (activeTab.value === 'export') return 'Export';
   return 'Edit timeline';
 });
-
-const navItems = computed(() => [
-  { id: 'home', label: t('common.toHome'), icon: 'lucide:home', action: handleBack },
-  { id: 'files', label: t('common.files'), icon: 'lucide:folder-open' },
-  { id: 'edit', label: t('common.edit'), icon: 'lucide:clapperboard' },
-  { id: 'export', label: t('common.export'), icon: 'lucide:download' },
-  { id: 'settings', label: t('common.settings'), icon: 'lucide:settings' },
-]);
 
 const fileManagerStore = useFileManagerStore();
 
@@ -176,28 +175,10 @@ async function handleBack() {
     </main>
 
     <!-- Bottom Navigation Bar -->
-    <nav
+    <MobileBottomNav
       v-if="showBottomNav"
-      class="shrink-0 border-t border-slate-800 bg-slate-950/95 pb-safe backdrop-blur"
-    >
-      <div class="grid h-16 grid-cols-5 items-center gap-1 px-1">
-        <button
-          v-for="item in navItems"
-          :key="item.id"
-          class="flex h-full min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-center transition-colors outline-none"
-          :class="
-            (activeTab === item.id && !('action' in item))
-              ? 'bg-primary-500/12 text-primary-400'
-              : 'text-slate-400 active:bg-slate-900'
-          "
-          :aria-pressed="activeTab === item.id && !('action' in item)"
-          @click="'action' in item ? (item as any).action() : handleTabClick(item.id as any)"
-        >
-          <Icon :name="item.icon" class="w-6 h-6 shrink-0" />
-          <span class="text-[10px] font-medium truncate w-full px-0.5">{{ item.label }}</span>
-        </button>
-      </div>
-    </nav>
+      v-model:active-tab="activeTab"
+    />
 
   </div>
 </template>
