@@ -145,7 +145,7 @@ export function createEditorViewModule(
     return window.matchMedia('(max-width: 768px)').matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   });
 
-  const layoutPlatformSuffix = computed(() => (isMobile.value ? ':mobile' : ':desktop'));
+  const layoutPlatformSuffix = computed(() => (isMobile.value ? ':mobile' : ''));
 
   const currentView = ref<EditorView>('cut');
 
