@@ -8,6 +8,14 @@ import MobileClipActionsDrawer from './MobileClipActionsDrawer.vue';
 import MobileTrackManagerDrawer from './MobileTrackManagerDrawer.vue';
 import TimelineSpeedModal from './TimelineSpeedModal.vue';
 
+const props = defineProps<{
+  isLabelsOpen: boolean;
+}>();
+
+const emit = defineEmits<{
+  (e: 'toggleTrackLabels'): void;
+}>();
+
 const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
 
@@ -129,6 +137,13 @@ const speedModalTargetHasAudio = computed(() => {
     </div>
 
     <div class="flex items-center gap-2 shrink-0 border-l border-ui-border pl-2 ml-1">
+      <UiActionButton
+        icon="lucide:panel-left"
+        :color="props.isLabelsOpen ? 'primary' : 'neutral'"
+        size="sm"
+        title="Track Labels"
+        @click="emit('toggleTrackLabels')"
+      />
       <UiActionButton
         icon="lucide:layers"
         color="neutral"

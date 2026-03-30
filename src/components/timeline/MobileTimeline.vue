@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import type {
   TimelineClipActionPayload,
@@ -23,6 +23,8 @@ import TimelineTracks from './TimelineTracks.vue';
 import TimelineRuler from './TimelineRuler.vue';
 import TimelineGrid from './TimelineGrid.vue';
 import MobileTimelineToolbar from './MobileTimelineToolbar.vue';
+import TimelineTrackLabels from './TimelineTrackLabels.vue';
+import { useTrackLabelsPanel } from '~/composables/timeline/useTrackLabelsPanel';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -43,6 +45,17 @@ const canEditClipContent = computed(
 const tracks = computed(
   () => (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [],
 );
+
+const {
+  isOpen: isTrackLabelsOpen,
+  panelStyle: labelsPanelStyle,
+  backdropStyle: labelsBackdropStyle,
+  toggle: toggleTrackLabels,
+  close: closeTrackLabels,
+  onTouchStart: onLabelsTouchStart,
+  onTouchMove: onLabelsTouchMove,
+  onTouchEnd: onLabelsTouchEnd,
+} = useTrackLabelsPanel();
 
 const scrollEl = ref<HTMLElement | null>(null);
 
@@ -268,65 +281,96 @@ async function onClipAction(payload: TimelineClipActionPayload) {
     class="flex flex-col h-full bg-ui-bg-elevated relative overflow-hidden"
     @pointerdown="focusStore.setMainFocus('timeline')"
   >
-    <MobileTimelineToolbar />
+    <MobileTimelineToolbar
+      :is-labels-open="isTrackLabelsOpen"
+      @toggle-track-labels="toggleTrackLabels"
+    />
 
+    <!-- Tracks area: holds scroll view + labels panel overlay -->
     <div
-      ref="scrollEl"
-      class="flex-1 w-full overflow-auto relative overscroll-none touch-pan-x touch-pan-y no-scrollbar"
-      @scroll.passive="onScroll"
-      @touchstart.passive="onTouchStart"
-      @touchmove="onTouchMove"
-      @pointerdown.capture="onTimelinePointerDownCapture"
-      @click="onTimelineClick"
+      class="flex-1 relative overflow-hidden"
+      @touchstart.capture="onLabelsTouchStart"
+      @touchmove.capture="onLabelsTouchMove"
+      @touchend.capture="onLabelsTouchEnd"
+      @touchcancel.capture="onLabelsTouchEnd"
     >
-      <div class="relative min-w-max h-full">
-        <div
-          class="sticky top-0 z-40 w-full h-8 bg-ui-bg/95 border-b border-ui-border shrink-0 select-none touch-none backdrop-blur shadow-sm"
-        >
-          <TimelineRuler
-            class="touch-none w-full h-full"
-            :scroll-el="scrollEl"
-            @pointerdown="onTimeRulerPointerDown"
-          />
-        </div>
+      <!-- Backdrop overlay: dims tracks when labels open -->
+      <div
+        class="absolute inset-0 z-20"
+        :style="labelsBackdropStyle"
+        @click="closeTrackLabels"
+      />
 
-        <TimelineTracks
-          class="min-w-full"
+      <!-- Sliding track labels panel -->
+      <div
+        class="absolute top-0 left-0 bottom-0 z-30 bg-ui-bg border-r border-ui-border shadow-xl overflow-hidden"
+        :style="labelsPanelStyle"
+      >
+        <TimelineTrackLabels
           :tracks="tracks"
           :track-heights="trackHeights"
-          :can-edit-clip-content="canEditClipContent"
-          :dragging-mode="draggingMode"
-          :dragging-item-id="draggingItemId"
-          :move-preview="movePreview"
-          is-mobile
-          @select-item="selectItem"
-          @start-move-item="onStartMoveItem"
-          @start-trim-item="onStartTrimItem"
-          @clip-action="onClipAction"
         />
+      </div>
 
-        <TimelineGrid
-          class="absolute left-0 right-0 bottom-0 pointer-events-none"
-          :style="{ top: '32px', height: `${tracksHeightPx}px` }"
-          :scroll-el="scrollEl"
-        />
-
-        <div
-          class="absolute bottom-0 z-30 pointer-events-none timeline-playhead"
-          :style="{
-            top: '0px',
-            left: `${playheadLeft}px`,
-          }"
-        >
-          <div class="w-px h-full bg-red-500 shadow-[0_0_2px_rgba(239,68,68,0.5)]"></div>
+      <!-- Main scrollable tracks area -->
+      <div
+        ref="scrollEl"
+        class="absolute inset-0 overflow-auto overscroll-none touch-pan-x touch-pan-y no-scrollbar"
+        @scroll.passive="onScroll"
+        @touchstart.passive="onTouchStart"
+        @touchmove="onTouchMove"
+        @pointerdown.capture="onTimelinePointerDownCapture"
+        @click="onTimelineClick"
+      >
+        <div class="relative min-w-max h-full">
           <div
-            class="absolute top-0 -translate-x-[50%] w-6 h-6 flex items-center justify-center pointer-events-auto touch-none"
-            @pointerdown.stop.prevent="startPlayheadDrag"
+            class="sticky top-0 z-40 w-full h-8 bg-ui-bg/95 border-b border-ui-border shrink-0 select-none touch-none backdrop-blur shadow-sm"
           >
+            <TimelineRuler
+              class="touch-none w-full h-full"
+              :scroll-el="scrollEl"
+              @pointerdown="onTimeRulerPointerDown"
+            />
+          </div>
+
+          <TimelineTracks
+            class="min-w-full"
+            :tracks="tracks"
+            :track-heights="trackHeights"
+            :can-edit-clip-content="canEditClipContent"
+            :dragging-mode="draggingMode"
+            :dragging-item-id="draggingItemId"
+            :move-preview="movePreview"
+            is-mobile
+            @select-item="selectItem"
+            @start-move-item="onStartMoveItem"
+            @start-trim-item="onStartTrimItem"
+            @clip-action="onClipAction"
+          />
+
+          <TimelineGrid
+            class="absolute left-0 right-0 bottom-0 pointer-events-none"
+            :style="{ top: '32px', height: `${tracksHeightPx}px` }"
+            :scroll-el="scrollEl"
+          />
+
+          <div
+            class="absolute bottom-0 z-30 pointer-events-none timeline-playhead"
+            :style="{
+              top: '0px',
+              left: `${playheadLeft}px`,
+            }"
+          >
+            <div class="w-px h-full bg-red-500 shadow-[0_0_2px_rgba(239,68,68,0.5)]"></div>
             <div
-              class="w-4 h-4 bg-red-500 shadow-sm rounded-b-sm"
-              style="clip-path: polygon(0 0, 100% 0, 100% 60%, 50% 100%, 0 60%)"
-            ></div>
+              class="absolute top-0 -translate-x-[50%] w-6 h-6 flex items-center justify-center pointer-events-auto touch-none"
+              @pointerdown.stop.prevent="startPlayheadDrag"
+            >
+              <div
+                class="w-4 h-4 bg-red-500 shadow-sm rounded-b-sm"
+                style="clip-path: polygon(0 0, 100% 0, 100% 60%, 50% 100%, 0 60%)"
+              ></div>
+            </div>
           </div>
         </div>
       </div>

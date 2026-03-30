@@ -1,6 +1,6 @@
 # FastCat
 
-Standalone video editor project extracted from FastCat Publicador.
+Standalone video editor project extracted from FastCat.
 
 ## Features
 
@@ -10,11 +10,11 @@ Standalone video editor project extracted from FastCat Publicador.
 - Audio clip effects with live preview and export support (`Reverb`, `Distortion`)
 - Focus-aware panel hotkeys with routing to the currently active editor panel
 - File system access API integration for local file editing
-- FastCat Publicador integration settings with connect flow and manual API override support
-- Remote file browser mode backed by FastCat Publicador VFS in the middle file manager panel
+- FastCat integration settings with connect flow and manual API override support
+- Remote file browser mode backed by FastCat VFS in the middle file manager panel
 - Remote-to-local download by drag-and-drop from remote files into the local folder tree
 - Local-to-remote upload action with remote folder picker and cancelable transfer progress modal
-- External service health checks for FastCat Publicador, Files API and STT API
+- External service health checks for FastCat, Files API and STT API
 - OTIO (OpenTimelineIO) support for timeline serialization
 - High-performance rendering with Web Workers
 
