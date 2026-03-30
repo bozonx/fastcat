@@ -31,7 +31,7 @@ export function createProjectMetaRepository(input: {
 }): ProjectMetaRepository {
   return {
     async load() {
-      const handle = await ensureFastCatFileHandle({
+      const handle = await ensureAppFileHandle({
         baseDir: input.projectDir,
         filename: 'project.meta.json',
         create: false,
