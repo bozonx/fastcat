@@ -23,6 +23,7 @@ import TimelineTracks from './TimelineTracks.vue';
 import TimelineRuler from './TimelineRuler.vue';
 import TimelineGrid from './TimelineGrid.vue';
 import MobileTimelineToolbar from './MobileTimelineToolbar.vue';
+import TrackProperties from '~/components/properties/TrackProperties.vue';
 
 
 const { t } = useI18n();
@@ -45,6 +46,32 @@ const tracks = computed(
   () => (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [],
 );
 
+const selectedTrack = computed(() => {
+  if (!timelineStore.selectedTrackId) return null;
+  return tracks.value.find((t) => t.id === timelineStore.selectedTrackId) || null;
+});
+
+const selectedTrackNumber = computed(() => {
+  if (!selectedTrack.value) return 1;
+  const filtered = tracks.value.filter((t) => t.kind === selectedTrack.value!.kind);
+  return filtered.indexOf(selectedTrack.value) + 1;
+});
+
+const isTrackPropertiesDrawerOpen = ref(false);
+
+watch(
+  () => !!timelineStore.selectedTrackId && timelineStore.selectedItemIds.length === 0,
+  (val) => {
+    isTrackPropertiesDrawerOpen.value = val;
+  },
+  { immediate: true }
+);
+
+function onUpdateDrawerOpen(val: boolean) {
+  if (!val && timelineStore.selectedTrackId) {
+    timelineStore.selectTrack(null);
+  }
+}
 
 
 const scrollEl = ref<HTMLElement | null>(null);
@@ -272,6 +299,44 @@ async function onClipAction(payload: TimelineClipActionPayload) {
     @pointerdown="focusStore.setMainFocus('timeline')"
   >
     <MobileTimelineToolbar />
+    
+    <!-- Track Properties Drawer -->
+    <UDrawer
+      :open="isTrackPropertiesDrawerOpen"
+      @update:open="onUpdateDrawerOpen"
+      direction="bottom"
+      :snap-points="[0.12, 0.85]"
+      dismissible
+      :title="selectedTrack?.name || selectedTrack?.id || ''"
+      should-scale-background
+    >
+      <template #content>
+        <div class="flex flex-col w-full min-h-24 max-h-[85vh]">
+          <!-- Track Label Header (Mobile Title) -->
+          <div class="shrink-0 pt-6 pb-4 px-4 flex items-center gap-2">
+            <div
+              v-if="selectedTrack"
+              class="w-6 h-6 rounded shrink-0 flex items-center justify-center font-black text-[10px]"
+              :style="{ 
+                backgroundColor: selectedTrack.color && selectedTrack.color !== '#2a2a2a' ? `${selectedTrack.color}33` : '#1e293b',
+                color: selectedTrack.color && selectedTrack.color !== '#2a2a2a' ? selectedTrack.color : '#94a3b8'
+              }"
+            >
+              {{ selectedTrack.kind === 'video' ? 'V' : 'A' }}{{ selectedTrackNumber }}
+            </div>
+            
+            <span v-if="selectedTrack" class="text-sm font-medium text-slate-200 truncate flex-1 leading-none">
+              {{ selectedTrack.name || selectedTrack.id }}
+            </span>
+          </div>
+          
+          <!-- Track Properties Content -->
+          <div class="flex-1 overflow-y-auto no-scrollbar pb-[env(safe-area-inset-bottom,24px)] px-4">
+            <TrackProperties v-if="selectedTrack" :track="selectedTrack" />
+          </div>
+        </div>
+      </template>
+    </UDrawer>
 
     <!-- Tracks area: holds scroll view -->
     <div

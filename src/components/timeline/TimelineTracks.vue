@@ -318,6 +318,10 @@ function selectTransition(
               }
               timelineStore.clearSelection();
             });
+          } else if (isMobile) {
+            timelineStore.selectTrack(track.id);
+            selectionStore.selectTimelineTrack(track.id);
+            timelineStore.clearSelection();
           }
         "
         @mouseenter="timelineStore.hoveredTrackId = track.id"
@@ -381,7 +385,17 @@ function selectTransition(
             v-if="item.kind === 'gap'"
             :item="item"
             :track-id="track.id"
-            @select="(e) => emit('selectItem', e, item.id)"
+            @select="
+              (e) => {
+                if (isMobile) {
+                  timelineStore.selectTrack(track.id);
+                  selectionStore.selectTimelineTrack(track.id);
+                  timelineStore.clearSelection();
+                } else {
+                  emit('selectItem', e, item.id);
+                }
+              }
+            "
             @marquee-start="(e) => startMarquee(e, () => emit('selectItem', e, item.id))"
           />
           <TimelineClip
