@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useSelectionStore } from '~/stores/selection.store';
 import FileProperties from '~/components/properties/FileProperties.vue';
 import MultiFileProperties from '~/components/properties/MultiFileProperties.vue';
-import { isOpenableProjectFileName } from '~/utils/media-types';
+import { isOpenableProjectFileName, getMediaTypeFromFilename } from '~/utils/media-types';
 import type { FileAction } from '~/composables/file-manager/useFileManagerActions';
 import type { SelectedFsEntry, SelectedFsEntries } from '~/stores/selection.store';
 import type { FsEntry } from '~/types/fs';
@@ -42,6 +42,12 @@ const selectedFsEntry = computed(() => {
     return selectedEntity.value as SelectedFsEntry;
   }
   return null;
+});
+
+const isTextDocument = computed(() => {
+  if (!selectedFsEntry.value || selectedFsEntry.value.entry.kind !== 'file') return false;
+  const type = getMediaTypeFromFilename(selectedFsEntry.value.entry.name);
+  return type === 'text' || type === 'timeline';
 });
 
 const selectedFsMultiple = computed(() => {
@@ -87,7 +93,7 @@ function handleAction(actionId: FileAction) {
       isMultiple ? `${selectedEntriesList.length} ${$t('common.items', 'items')}` : undefined
     "
   >
-    <div class="flex flex-col h-full relative">
+    <div class="flex flex-col h-full relative overflow-hidden">
       <!-- Action Toolbar -->
       <div
         v-if="props.onAction"
@@ -128,12 +134,16 @@ function handleAction(actionId: FileAction) {
       </div>
 
       <!-- Scrollable content -->
-      <div class="flex-1 px-4 pb-24">
-        <div v-if="selectedFsEntry" class="py-2">
+      <div 
+        class="flex-1"
+        :class="isTextDocument ? 'overflow-hidden p-0 pb-16' : 'overflow-y-auto px-4 pb-24'"
+      >
+        <div v-if="selectedFsEntry" class="h-full" :class="!isTextDocument && 'py-2'">
           <FileProperties
             :selected-fs-entry="selectedFsEntry.entry"
             preview-mode="original"
             :has-proxy="false"
+            :mobile-text-mode="isTextDocument"
           />
         </div>
         <div v-else-if="selectedFsMultiple" class="py-2">
@@ -143,7 +153,7 @@ function handleAction(actionId: FileAction) {
 
       <!-- Add to Timeline Button -->
       <div
-        v-if="canAddToTimeline"
+        v-if="canAddToTimeline && !isTextDocument"
         class="absolute bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-5 duration-300"
       >
         <UButton
