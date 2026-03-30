@@ -12,7 +12,7 @@ import MobileSettingsView from '~/components/settings/MobileSettingsView.vue';
 
 import MobileBottomNav from '~/components/layout/MobileBottomNav.vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
-import { until, useMediaQuery } from '@vueuse/core';
+import { until, useLocalStorage, useMediaQuery } from '@vueuse/core';
 
 definePageMeta({
   layout: 'mobile',
@@ -114,15 +114,50 @@ async function handleBack() {
 
 const isLandscapeMode = useMediaQuery('(orientation: landscape)');
 
-const isLandscapeProject = computed(() => {
-  const s = projectStore.projectSettings?.project;
-  if (!s) return true;
-  return (s.width ?? 1920) >= (s.height ?? 1080);
-});
+// Persisted panel sizes (percent of container)
+const portraitMonitorHeight = useLocalStorage('mobile_monitor_size_portrait', 38);
+const landscapeMonitorWidth = useLocalStorage('mobile_monitor_size_landscape', 42);
 
-/** Monitor goes to top only in landscape device + landscape project */
-const monitorAtTop = computed(() => isLandscapeMode.value && isLandscapeProject.value);
+const monitorStyle = computed(() =>
+  isLandscapeMode.value
+    ? { width: `${landscapeMonitorWidth.value}%` }
+    : { height: `${portraitMonitorHeight.value}%` },
+);
 
+const containerRef = ref<HTMLElement | null>(null);
+
+function onDividerPointerDown(e: PointerEvent) {
+  const el = containerRef.value;
+  const handle = e.currentTarget as HTMLElement;
+  if (!el || !handle) return;
+
+  e.preventDefault();
+  handle.setPointerCapture(e.pointerId);
+
+  const rect = el.getBoundingClientRect();
+
+  const onMove = (ev: PointerEvent) => {
+    if (isLandscapeMode.value) {
+      const pct = ((ev.clientX - rect.left) / rect.width) * 100;
+      landscapeMonitorWidth.value = Math.min(Math.max(pct, 20), 70);
+    } else {
+      const pct = ((ev.clientY - rect.top) / rect.height) * 100;
+      portraitMonitorHeight.value = Math.min(Math.max(pct, 20), 65);
+    }
+  };
+
+  const cleanup = () => {
+    handle.removeEventListener('pointermove', onMove);
+    handle.removeEventListener('pointerup', cleanup);
+    handle.removeEventListener('pointercancel', cleanup);
+    handle.removeEventListener('lostpointercapture', cleanup);
+  };
+
+  handle.addEventListener('pointermove', onMove);
+  handle.addEventListener('pointerup', cleanup);
+  handle.addEventListener('pointercancel', cleanup);
+  handle.addEventListener('lostpointercapture', cleanup);
+}
 
 </script>
 
@@ -165,19 +200,32 @@ const monitorAtTop = computed(() => isLandscapeMode.value && isLandscapeProject.
 
       <div
         v-else-if="activeTab === 'edit'"
+        ref="containerRef"
         class="flex h-full overflow-hidden bg-slate-950"
-        :class="isLandscapeMode && !isLandscapeProject ? 'flex-row' : 'flex-col'"
+        :class="isLandscapeMode ? 'flex-row' : 'flex-col'"
       >
         <MobileMonitorContainer
           mode="edit"
-          :monitor-at-top="monitorAtTop"
-          :class="
-            isLandscapeMode && !isLandscapeProject
-              ? 'order-1 w-[42%] border-r border-slate-800 h-full! max-h-none!'
-              : 'order-1'
-          "
+          flexible
+          :style="monitorStyle"
+          :class="isLandscapeMode ? 'shrink-0' : 'shrink-0'"
         />
-        <MobileTimeline class="flex-1 order-2" />
+
+        <!-- Draggable divider -->
+        <div
+          class="relative flex shrink-0 items-center justify-center touch-none select-none z-10 bg-slate-900"
+          :class="isLandscapeMode
+            ? 'w-3 cursor-col-resize border-x border-slate-800/60'
+            : 'h-3 cursor-row-resize border-y border-slate-800/60'"
+          @pointerdown="onDividerPointerDown"
+        >
+          <div
+            class="rounded-full bg-slate-600 pointer-events-none"
+            :class="isLandscapeMode ? 'w-1 h-9' : 'h-1 w-10'"
+          />
+        </div>
+
+        <MobileTimeline class="flex-1 min-h-0 min-w-0" />
       </div>
 
 
