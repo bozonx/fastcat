@@ -1,23 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { onClickOutside } from '@vueuse/core';
+import { computed } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { storeToRefs } from 'pinia';
 
 const uiStore = useUiStore();
 const { monitorVolume, monitorMuted } = storeToRefs(uiStore);
 const { t } = useI18n();
-
-const isPopupOpen = ref(false);
-
-function togglePopup() {
-  if (isPopupOpen.value) {
-    isPopupOpen.value = false;
-  } else {
-    isPopupOpen.value = true;
-  }
-}
-
 
 function resetVolume() {
   monitorVolume.value = 1;
@@ -42,70 +30,57 @@ function onVolumeUpdate(v: number | undefined) {
     monitorMuted.value = false;
   }
 }
-
-const containerRef = ref<HTMLElement | null>(null);
-onClickOutside(containerRef, onClickOutsideHandler);
-
-function onClickOutsideHandler() {
-  isPopupOpen.value = false;
-}
-
-// Ensure the popup scales for mobile appropriately
 </script>
 
 <template>
-  <div ref="containerRef" class="relative flex items-center shrink-0">
-    <UButton
-      size="md"
-      variant="ghost"
-      color="neutral"
-      :icon="volumeIcon"
-      class="p-1 h-full aspect-square rounded-full shadow-md m-0 flex items-center justify-center bg-ui-bg-elevated/50"
-      :aria-label="
-        monitorMuted
-          ? t('fastcat.monitor.audioUnmute', 'Unmute')
-          : t('fastcat.monitor.audioMute', 'Mute')
-      "
-      @click="togglePopup"
-    />
-
-    <Transition
-      enter-active-class="transition duration-150 ease-out"
-      enter-from-class="opacity-0 translate-y-2"
-      enter-to-class="opacity-100 translate-y-0"
-      leave-active-class="transition duration-150 ease-in"
-      leave-from-class="opacity-100 translate-y-0"
-      leave-to-class="opacity-0 translate-y-2"
+  <div class="relative flex items-center shrink-0">
+    <UPopover
+      :popper="{ placement: 'top', offsetDistance: 12 }"
+      :ui="{
+        content: 'p-0',
+        width: 'max-w-none'
+      }"
     >
-      <div
-        v-if="isPopupOpen"
-        class="fixed bottom-[80px] left-1/2 -translate-x-1/2 z-[100] pointer-events-auto"
-      >
-          <div
-            class="bg-ui-bg-elevated/95 backdrop-blur-md border border-ui-border rounded-xl shadow-2xl px-5 py-4 flex items-center gap-4 w-[85vw] max-w-[340px]"
-          >
-            <div class="flex-1 w-full flex items-center justify-center">
-              <USlider
-                :min="0"
-                :max="2"
-                :step="0.05"
-                :model-value="monitorMuted ? 0 : monitorVolume"
-                orientation="horizontal"
-                class="w-full"
-                @update:model-value="onVolumeUpdate"
-              />
-            </div>
-            <UButton
-              size="sm"
-              variant="soft"
-              color="neutral"
-              class="font-mono tabular-nums min-w-[56px] justify-center ml-1 border border-ui-border shrink-0"
-              :label="volumePercent + '%'"
-              title="Reset volume to 100%"
-              @click.stop="resetVolume"
+      <UButton
+        size="md"
+        variant="ghost"
+        color="neutral"
+        :icon="volumeIcon"
+        class="p-1 h-full aspect-square rounded-full shadow-md m-0 flex items-center justify-center bg-ui-bg-elevated/50"
+        :aria-label="
+          monitorMuted
+            ? t('fastcat.monitor.audioUnmute', 'Unmute')
+            : t('fastcat.monitor.audioMute', 'Mute')
+        "
+      />
+
+      <template #content>
+        <div
+          class="bg-ui-bg-elevated border border-ui-border rounded-xl shadow-2xl px-5 py-4 flex items-center gap-4 w-[85vw] max-w-[340px]"
+          @click.stop
+        >
+          <div class="flex-1 w-full flex items-center justify-center">
+            <USlider
+              :min="0"
+              :max="2"
+              :step="0.05"
+              :model-value="monitorMuted ? 0 : monitorVolume"
+              orientation="horizontal"
+              class="w-full"
+              @update:model-value="onVolumeUpdate"
             />
           </div>
-      </div>
-    </Transition>
+          <UButton
+            size="sm"
+            variant="soft"
+            color="neutral"
+            class="font-mono tabular-nums min-w-[56px] justify-center ml-1 border border-ui-border shrink-0"
+            :label="volumePercent + '%'"
+            title="Reset volume to 100%"
+            @click.stop="resetVolume"
+          />
+        </div>
+      </template>
+    </UPopover>
   </div>
 </template>

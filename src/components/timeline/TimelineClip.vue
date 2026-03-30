@@ -36,7 +36,6 @@ import { useClickOrDrag } from '~/composables/timeline/useClickOrDrag';
 import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useFocusStore } from '~/stores/focus.store';
-import { useEditorViewStore } from '~/stores/editor-view.store';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
@@ -203,7 +202,6 @@ const { clipItem, onClipClick } = useClipInteractions({
   didStartDrag,
 });
 
-const editorViewStore = useEditorViewStore();
 const focusStore = useFocusStore();
 const fileManagerStore = useFileManagerStore();
 const projectTabsStore = useProjectTabsStore();
@@ -215,7 +213,6 @@ const { handleSelectInFileManager, handleOpenNestedTimeline } = useClipPropertie
   timelineStore,
   projectStore,
   uiStore,
-  editorViewStore,
   fileManagerStore,
   selectionStore,
   focusStore,
@@ -274,10 +271,10 @@ const { contextMenuItems } = useClipContextMenu({
   applyTimelineCommand: (cmd) => timelineStore.applyTimeline(cmd),
   batchApplyTimeline: (cmds) => timelineStore.batchApplyTimeline(cmds),
   updateClipProperties: (trackId, itemId, p) =>
-    timelineStore.updateClipProperties(trackId, itemId, p),
+    void timelineStore.updateClipProperties(trackId, itemId, p),
   updateClipTransition: (trackId, itemId, p) =>
-    timelineStore.updateClipTransition(trackId, itemId, p),
-  requestTimelineSave: (opts) => timelineStore.requestTimelineSave(opts),
+    void timelineStore.updateClipTransition(trackId, itemId, p),
+  requestTimelineSave: (opts) => void timelineStore.requestTimelineSave(opts),
   selectTransition: (p) => timelineStore.selectTransition(p),
   clearSelection: () => selectionStore.clearSelection(),
   selectTimelineTransition: (trackId, itemId, edge) =>
@@ -306,9 +303,10 @@ const { contextMenuItems } = useClipContextMenu({
   },
   pasteClips: (insertStartUs?: number) => {
     const payload = clipboardStore.clipboardPayload;
-    if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
-    timelineStore.pasteClips(payload.items, { insertStartUs });
+    if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return [];
+    const items = timelineStore.pasteClips(payload.items, { insertStartUs });
     if (payload.operation === 'cut') clipboardStore.setClipboardPayload(null);
+    return items.map(it => it.itemId);
   },
   get hasTimelineClipboard() {
     return clipboardStore.hasTimelinePayload;
