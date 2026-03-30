@@ -17,6 +17,10 @@ import {
 } from '~/utils/webcodecs';
 import { useExportForm } from '~/composables/timeline/export/useExportForm';
 
+const props = defineProps<{
+  disableFocusFrame?: boolean;
+}>();
+
 const emit = defineEmits<{
   exported: [];
 }>();
@@ -104,6 +108,7 @@ const encodingSummary = computed(() => {
 });
 
 function focusExportForm() {
+  if (props.disableFocusFrame) return;
   focusStore.setPanelFocus('exportForm');
 }
 
@@ -143,9 +148,10 @@ async function onConfirm() {
 
 <template>
   <div
-    class="panel-focus-frame flex flex-col h-full bg-ui-bg-elevated relative overflow-hidden"
+    class="flex flex-col h-full bg-ui-bg-elevated relative overflow-hidden"
     :class="{
-      'panel-focus-frame--active': focusStore.isPanelFocused('exportForm'),
+      'panel-focus-frame': !props.disableFocusFrame,
+      'panel-focus-frame--active': !props.disableFocusFrame && focusStore.isPanelFocused('exportForm'),
     }"
     @pointerdown.capture="focusExportForm"
   >

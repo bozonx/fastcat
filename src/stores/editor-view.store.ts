@@ -239,6 +239,8 @@ export function createEditorViewModule(
   );
 
   // Save cut panels to local storage
+  // flush: 'sync' guarantees the callback runs in the same call stack as the mutation,
+  // so internalLoadCount is still > 0 during loads and 0 during user-driven changes.
   watch(
     cutPanels,
     (panels) => {
@@ -248,7 +250,7 @@ export function createEditorViewModule(
         sanitizePanelColumns(panels, getDefaultCutLayout()),
       );
     },
-    { deep: true },
+    { deep: true, flush: 'sync' },
   );
 
   // Save sound panels to local storage
@@ -258,7 +260,7 @@ export function createEditorViewModule(
       if (internalLoadCount > 0 || !isInitialized.value || !projectIdRef.value) return;
       writeLocalStorageJson(soundPanelsKey.value, sanitizePanelColumns(panels, defaultSoundPanels));
     },
-    { deep: true },
+    { deep: true, flush: 'sync' },
   );
 
   function getActivePanelsState(view?: 'cut' | 'sound') {
@@ -460,10 +462,14 @@ export function createEditorViewModule(
     { immediate: true },
   );
 
-  watch(timelineHeight, (newVal) => {
-    if (internalLoadCount > 0) return;
-    writeLocalStorageJson(timelineHeightKey.value, newVal);
-  });
+  watch(
+    timelineHeight,
+    (newVal) => {
+      if (internalLoadCount > 0) return;
+      writeLocalStorageJson(timelineHeightKey.value, newVal);
+    },
+    { flush: 'sync' },
+  );
 
   function resetTimelineHeight() {
     timelineHeight.value = viewConfigs[currentView.value].timelineHeight;

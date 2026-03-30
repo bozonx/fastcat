@@ -6,9 +6,12 @@ import {
   buildDefaultCutPanelsForOrientation,
   createEditorViewModule,
 } from '~/stores/editor-view.store';
+import { writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
 
-// Mock localStorage utils
-vi.mock('./ui/uiLocalStorage', () => ({
+// Mock localStorage utils — path must use tilde alias so Vitest resolves to the same
+// absolute path that the store resolves when it imports './ui/uiLocalStorage'.
+vi.mock('~/stores/ui/uiLocalStorage', () => ({
+  getPlatformSuffix: vi.fn(() => ''),
   readLocalStorageJson: vi.fn().mockReturnValue(null),
   writeLocalStorageJson: vi.fn(),
 }));
@@ -126,5 +129,21 @@ describe('useEditorViewStore module', () => {
     store.goToFullscreen();
     expect(store.currentView.value).toBe('fullscreen');
     expect(store.lastViewBeforeFullscreen.value).toBe('cut');
+  });
+
+  it('saves cut panels synchronously after movePanel (flush: sync)', () => {
+    vi.useFakeTimers();
+    const store = createEditorViewModule(mockProjectId);
+    // Advance past the 50ms internalLoadCount reset so the save guard is cleared
+    vi.runAllTimers();
+    vi.clearAllMocks();
+    // Move monitor into fileManager's column — triggers cutPanels mutation
+    store.movePanel('monitor', 'fileManager', 'bottom');
+    // With flush:'sync' the save watch runs in the same call stack as the mutation
+    expect(writeLocalStorageJson).toHaveBeenCalledWith(
+      expect.stringContaining('test-project'),
+      expect.any(Array),
+    );
+    vi.useRealTimers();
   });
 });

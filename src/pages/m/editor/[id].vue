@@ -167,7 +167,7 @@ async function handleBack() {
 
 
       <div v-else-if="activeTab === 'export'" class="h-full">
-        <ExportForm />
+        <ExportForm disable-focus-frame />
       </div>
 
       <div v-else class="h-full">

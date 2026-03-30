@@ -85,21 +85,11 @@ const trackHeights = computed(() => {
   return heights;
 });
 
-const scrollLeftRef = ref(0);
-
 const playheadPx = computed(() =>
-  timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom),
+  Math.round(timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom)),
 );
 
-const playheadLeft = computed(() => Math.round(playheadPx.value - scrollLeftRef.value));
-
 const tracksHeightPx = computed(() => Object.values(trackHeights.value).reduce((a, b) => a + b, 0));
-
-function onScroll() {
-  const el = scrollEl.value;
-  if (!el) return;
-  scrollLeftRef.value = el.scrollLeft;
-}
 
 const pendingZoomAnchor = ref<TimelineZoomAnchor | null>(null);
 
@@ -256,7 +246,6 @@ watch(
       anchor,
     });
     el.scrollLeft = nextScrollLeft;
-    scrollLeftRef.value = nextScrollLeft;
   },
   { flush: 'post' },
 );
@@ -305,7 +294,6 @@ async function onClipAction(payload: TimelineClipActionPayload) {
       v-model:open="isTrackPropertiesDrawerOpen"
       :title="selectedTrack?.name || selectedTrack?.id || ''"
       :snap-points="[0.12, 0.85]"
-      should-scale-background
       direction="bottom"
       @update:open="onUpdateDrawerOpen"
     >
@@ -342,7 +330,6 @@ async function onClipAction(payload: TimelineClipActionPayload) {
       <div
         ref="scrollEl"
         class="absolute inset-0 overflow-auto overscroll-none touch-pan-x touch-pan-y no-scrollbar"
-        @scroll.passive="onScroll"
         @touchstart.passive="onTouchStart"
         @touchmove="onTouchMove"
         @pointerdown.capture="onTimelinePointerDownCapture"
@@ -384,7 +371,7 @@ async function onClipAction(payload: TimelineClipActionPayload) {
             class="absolute bottom-0 z-30 pointer-events-none timeline-playhead"
             :style="{
               top: '0px',
-              left: `${playheadLeft}px`,
+              left: `${playheadPx}px`,
             }"
           >
             <div class="w-px h-full bg-red-500 shadow-[0_0_2px_rgba(239,68,68,0.5)]"></div>

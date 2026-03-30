@@ -52,9 +52,11 @@ const currentMoveMode = computed({
 <template>
   <div class="flex flex-col h-full overflow-hidden bg-ui-bg">
     <!-- Header with Tabs -->
-    <div class="px-4 border-b border-ui-border shrink-0 bg-ui-bg-elevated pt-2">
-      <div class="flex items-center justify-between mb-2">
-        <h2 class="text-lg font-bold text-ui-text">{{ t('navigation.settings') }}</h2>
+    <div class="px-4 border-b border-ui-border shrink-0 bg-ui-bg-elevated">
+      <div class="flex items-center pt-3 pb-2">
+        <h2 class="text-sm font-medium text-ui-text-muted truncate">
+          {{ projectStore.currentProjectName || t('navigation.settings') }}
+        </h2>
       </div>
       <UiTabs v-model="activeTab" :options="tabOptions" />
     </div>
