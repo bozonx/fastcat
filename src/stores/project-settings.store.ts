@@ -42,23 +42,12 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
   const getCurrentEditorView = ref<(() => EditorView) | null>(null);
   const getLastViewBeforeFullscreen = ref<(() => EditorView | null) | null>(null);
 
-  const isMobile = computed(() => {
-    if (typeof window === 'undefined') return false;
-    return window.matchMedia('(max-width: 768px)').matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  });
-
   const activeMonitor = computed(() => {
     const view = getCurrentEditorView.value?.() ?? 'cut';
     const lastViewBeforeFullscreen = getLastViewBeforeFullscreen.value?.() ?? null;
     const targetView = view === 'fullscreen' ? lastViewBeforeFullscreen || 'cut' : view;
     const safeView = ['cut', 'sound', 'export'].includes(targetView) ? targetView : 'cut';
-
-    const platformKey = isMobile.value ? `${safeView}:mobile` : safeView;
-    return (
-      projectSettings.value.monitors[platformKey] ??
-      projectSettings.value.monitors[safeView] ??
-      projectSettings.value.monitors.cut
-    );
+    return projectSettings.value.monitors[safeView] ?? projectSettings.value.monitors.cut;
   });
 
   const autoSave = createAutoSave({
