@@ -39,7 +39,23 @@ export function useTimelineItemSelection(tracks: ComputedRef<TimelineTrack[]>) {
       nextSelectedIds = [...nextSelectedIdSet];
       timelineStore.selectTimelineItems(nextSelectedIds);
     } else {
+      const trackId = tracks.value.find((t) => t.items.some((i) => i.id === itemId))?.id;
+
+      const isClipCurrentlySelected = 
+        timelineStore.selectedItemIds.length === groupedIds.length &&
+        groupedIds.every((id) => timelineStore.selectedItemIds.includes(id)) &&
+        selectionStore.selectedEntity?.source === 'timeline' &&
+        selectionStore.selectedEntity?.kind === 'clip';
+
+      if (trackId && isClipCurrentlySelected) {
+        timelineStore.clearSelection();
+        timelineStore.selectTrack(trackId);
+        selectionStore.selectTimelineTrack(trackId);
+        return;
+      }
+
       nextSelectedIds = groupedIds;
+      timelineStore.selectTrack(null);
       timelineStore.selectTimelineItems(groupedIds);
     }
 
