@@ -14,10 +14,12 @@ vi.mock('./ui/uiLocalStorage', () => ({
 }));
 
 describe('EditorViewStore Helper', () => {
-  it('puts monitor below properties on the right stack in landscape', () => {
+  it('puts monitor as the central column in landscape (3-column layout)', () => {
     const cols = buildDefaultCutPanelsForOrientation('landscape');
-    const withMonitor = cols.find((c) => c.panels.some((p) => p.type === 'monitor'));
-    expect(withMonitor?.panels.map((p) => p.type)).toEqual(['properties', 'monitor']);
+    expect(cols).toHaveLength(3);
+    expect(cols[0]?.panels.map((p) => p.type)).toEqual(['fileManager']);
+    expect(cols[1]?.panels.map((p) => p.type)).toEqual(['monitor']);
+    expect(cols[2]?.panels.map((p) => p.type)).toEqual(['properties']);
   });
 
   it('puts monitor in the right column in portrait', () => {
@@ -85,21 +87,37 @@ describe('useEditorViewStore module', () => {
     ).toBe(false);
   });
 
-  it('moves a panel within columns', () => {
+  it('repositions a panel to the left of another (column count unchanged)', () => {
     const store = createEditorViewModule(mockProjectId);
-    // For landscape: col-1=[fileManager], col-2=[properties, monitor]
-    // Move monitor above properties
-    store.movePanel('monitor', 'properties', 'top');
-    const col2 = store.cutPanels.value.find((c) => c.panels.some((p) => p.id === 'monitor'));
-    expect(col2?.panels.map((p) => p.id)).toEqual(['monitor', 'properties']);
+    // For landscape: col-1=[fileManager], col-2=[monitor], col-3=[properties]
+    // Moving properties to the left of fileManager: source col removed, new col prepended
+    const originalCols = store.cutPanels.value.length;
+    store.movePanel('properties', 'fileManager', 'left');
+    // count stays the same: source col (was col-3) removed, new col-0 added
+    expect(store.cutPanels.value.length).toBe(originalCols);
+    expect(store.cutPanels.value[0]?.panels[0]?.id).toBe('properties');
   });
 
-  it('moves a panel to a new column on the left', () => {
+  it('merges a panel into another column on top', () => {
     const store = createEditorViewModule(mockProjectId);
-    const originalCols = store.cutPanels.value.length;
-    store.movePanel('monitor', 'fileManager', 'left');
-    expect(store.cutPanels.value.length).toBe(originalCols + 1);
-    expect(store.cutPanels.value[0]?.panels[0]?.id).toBe('monitor');
+    // Move monitor into fileManager's column at top position
+    store.movePanel('monitor', 'fileManager', 'top');
+    // Source col (monitor) is removed; monitor is prepended into fileManager's col
+    const col = store.cutPanels.value.find((c) => c.panels.some((p) => p.id === 'fileManager'));
+    expect(col?.panels.map((p) => p.id)).toEqual(['monitor', 'fileManager']);
+  });
+
+  it('increases column count when extracting from a shared column', () => {
+    const store = createEditorViewModule(mockProjectId);
+    // First merge monitor into fileManager's column → 2 columns
+    store.movePanel('monitor', 'fileManager', 'bottom');
+    const colsAfterMerge = store.cutPanels.value.length;
+    expect(colsAfterMerge).toBe(2);
+    // Now extract monitor to a new column on the right of properties
+    store.movePanel('monitor', 'properties', 'right');
+    expect(store.cutPanels.value.length).toBe(colsAfterMerge + 1);
+    const lastCol = store.cutPanels.value[store.cutPanels.value.length - 1];
+    expect(lastCol?.panels[0]?.id).toBe('monitor');
   });
 
   it('handles fullscreen transition', () => {

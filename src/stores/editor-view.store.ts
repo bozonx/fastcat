@@ -8,7 +8,7 @@ import {
 import { getPanelSizesKey } from '~/composables/ui/usePersistedSplitpanes';
 import type { FsEntry } from '~/types/fs';
 
-export type EditorView = 'files' | 'cut' | 'sound' | 'export' | 'fullscreen';
+export type EditorView = 'files' | 'cut' | 'sound' | 'export' | 'fullscreen' | 'settings';
 
 export interface ViewConfig {
   timelineHeight: number;
@@ -40,8 +40,9 @@ export interface PanelColumn {
 export type PanelPosition = 'left' | 'right' | 'top' | 'bottom';
 
 /**
- * Default Cut layout when no layout is stored yet: landscape — monitor below properties
- * on the right stack; portrait — monitor in the right column.
+ * Default Cut layout when no layout is stored yet.
+ * Landscape: 3-column — files | monitor (central) | properties.
+ * Portrait: 2-column — files+properties | monitor.
  */
 export function buildDefaultCutPanelsForOrientation(
   orientation: 'landscape' | 'portrait',
@@ -60,13 +61,8 @@ export function buildDefaultCutPanelsForOrientation(
   }
   return [
     { id: 'col-1', panels: [{ id: 'fileManager', type: 'fileManager' }] },
-    {
-      id: 'col-2',
-      panels: [
-        { id: 'properties', type: 'properties' },
-        { id: 'monitor', type: 'monitor' },
-      ],
-    },
+    { id: 'col-2', panels: [{ id: 'monitor', type: 'monitor' }] },
+    { id: 'col-3', panels: [{ id: 'properties', type: 'properties' }] },
   ];
 }
 
@@ -80,6 +76,7 @@ const viewConfigs: Record<EditorView, ViewConfig> = {
   sound: { timelineHeight: 60 },
   export: { timelineHeight: 30 },
   fullscreen: { timelineHeight: 0 },
+  settings: { timelineHeight: 0 },
 };
 
 function generateId() {
@@ -146,7 +143,8 @@ export function createEditorViewModule(
   const layoutPlatformSuffix = computed(() => getPlatformSuffix());
   const currentView = ref<EditorView>('cut');
   const isInitialized = ref(false);
-  let isInternalLoading = false;
+  // Counter instead of boolean so that overlapping loads don't prematurely clear the flag.
+  let internalLoadCount = 0;
 
   const cutPanelsKey = computed(
     () =>
@@ -171,14 +169,18 @@ export function createEditorViewModule(
   watch(
     () => [projectIdRef.value, cutPanelsKey.value, getProjectOrientation()] as const,
     ([projectId, key, orientation]) => {
-      // Don't initialize if we don't have a specific project yet
-      if (!projectId) return;
+      if (!projectId) {
+        // Reset so that the next project open applies defaults when no stored data exists.
+        isInitialized.value = false;
+        return;
+      }
 
-      isInternalLoading = true;
+      internalLoadCount++;
+      const loadId = internalLoadCount;
       try {
         const fallback = buildDefaultCutPanelsForOrientation(orientation);
         const stored = readLocalStorageJson<any[] | null>(key, null);
-        
+
         if (stored && Array.isArray(stored) && stored.length > 0) {
           if (!Array.isArray(stored[0]) && !stored[0].panels) {
             cutPanels.value = sanitizePanelColumns(
@@ -194,16 +196,15 @@ export function createEditorViewModule(
             cutPanels.value = sanitizePanelColumns(stored, fallback);
           }
         } else {
-          // If already initialized by a previous load, don't overwrite with defaults
-          // unless it's a completely new project layout request
           if (!isInitialized.value) {
-              cutPanels.value = sanitizePanelColumns(fallback, fallback);
+            cutPanels.value = sanitizePanelColumns(fallback, fallback);
           }
         }
         isInitialized.value = true;
       } finally {
         setTimeout(() => {
-          isInternalLoading = false;
+          if (internalLoadCount === loadId) internalLoadCount = 0;
+          else internalLoadCount = Math.max(0, internalLoadCount - 1);
         }, 50);
       }
     },
@@ -216,20 +217,21 @@ export function createEditorViewModule(
     ([projectId, key]) => {
       if (!projectId) return;
 
-      isInternalLoading = true;
+      internalLoadCount++;
+      const loadId = internalLoadCount;
       try {
         const stored = readLocalStorageJson<any[] | null>(key, null);
         if (stored && Array.isArray(stored) && stored.length > 0) {
           soundPanels.value = sanitizePanelColumns(stored, defaultSoundPanels);
         } else {
-          // If already initialized by a previous load, don't overwrite with defaults
           if (!isInitialized.value) {
             soundPanels.value = sanitizePanelColumns(defaultSoundPanels, defaultSoundPanels);
           }
         }
       } finally {
         setTimeout(() => {
-          isInternalLoading = false;
+          if (internalLoadCount === loadId) internalLoadCount = 0;
+          else internalLoadCount = Math.max(0, internalLoadCount - 1);
         }, 50);
       }
     },
@@ -240,7 +242,7 @@ export function createEditorViewModule(
   watch(
     cutPanels,
     (panels) => {
-      if (isInternalLoading || !isInitialized.value || !projectIdRef.value) return;
+      if (internalLoadCount > 0 || !isInitialized.value || !projectIdRef.value) return;
       writeLocalStorageJson(
         cutPanelsKey.value,
         sanitizePanelColumns(panels, getDefaultCutLayout()),
@@ -253,7 +255,7 @@ export function createEditorViewModule(
   watch(
     soundPanels,
     (panels) => {
-      if (isInternalLoading || !isInitialized.value || !projectIdRef.value) return;
+      if (internalLoadCount > 0 || !isInitialized.value || !projectIdRef.value) return;
       writeLocalStorageJson(soundPanelsKey.value, sanitizePanelColumns(panels, defaultSoundPanels));
     },
     { deep: true },
@@ -459,7 +461,7 @@ export function createEditorViewModule(
   );
 
   watch(timelineHeight, (newVal) => {
-    if (isInternalLoading) return;
+    if (internalLoadCount > 0) return;
     writeLocalStorageJson(timelineHeightKey.value, newVal);
   });
 
@@ -489,6 +491,10 @@ export function createEditorViewModule(
     currentView.value = 'export';
   }
 
+  function goToSettings() {
+    currentView.value = 'settings';
+  }
+
   function goToFullscreen() {
     if (currentView.value !== 'fullscreen') {
       lastViewBeforeFullscreen.value = currentView.value;
@@ -511,11 +517,12 @@ export function createEditorViewModule(
     goToCut,
     goToSound,
     goToExport,
+    goToSettings,
     goToFullscreen,
     resetTimelineHeight,
     lastViewBeforeFullscreen,
   };
 }
 
- // No standalone defineStore here to avoid double-instances.
- // Layout state is managed within the ProjectStore which calls createEditorViewModule.
+// No standalone defineStore here to avoid double-instances.
+// Layout state is managed within the ProjectStore which calls createEditorViewModule.

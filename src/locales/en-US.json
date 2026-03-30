@@ -1410,6 +1410,10 @@
       }
     },
     "settings": {
+      "quick": "Quick",
+      "timeline": "Timeline",
+      "project": "Project",
+      "app": "App",
       "actionCopy": "Copy clip",
       "actionFreeMode": "Free mode",
       "actionPseudoOverlap": "Pseudo overlap",

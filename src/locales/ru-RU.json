@@ -1412,6 +1412,10 @@
       }
     },
     "settings": {
+      "quick": "Быстрые",
+      "timeline": "Таймлайн",
+      "project": "Проект",
+      "app": "Приложение",
       "actionCopy": "Копировать клип",
       "actionFreeMode": "Свободный режим",
       "actionPseudoOverlap": "Псевдо-наложение",
