@@ -10,13 +10,17 @@ import MonitorTransformBox from './MonitorTransformBox.vue';
 import MobileMonitorAudioControl from './MobileMonitorAudioControl.vue';
 import { useMonitorContainerControls } from '~/composables/monitor/useMonitorContainerControls';
 import type { TimelineMarker } from '~/timeline/types';
+import ProjectMarkers from '~/components/project/ProjectMarkers.vue';
 
 const props = withDefaults(
   defineProps<{
     mode?: 'edit' | 'sound';
+    /** When true the monitor is positioned at the top (landscape + landscape project) */
+    monitorAtTop?: boolean;
   }>(),
   {
     mode: 'edit',
+    monitorAtTop: false,
   },
 );
 
@@ -182,11 +186,40 @@ const isVerticalProject = computed(() => {
 });
 
 const showSideControls = computed(() => {
-  if (isFullscreen.value) {
-    return isLandscape.value;
-  }
+  if (isFullscreen.value) return isLandscape.value;
+  // When monitor is at top in landscape mode, controls should be horizontal
+  if (props.monitorAtTop) return false;
   return isLandscape.value || isVerticalProject.value;
 });
+
+// --- Marker button logic ---
+const isMarkersDrawerOpen = ref(false);
+const markerLongPressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
+const wasMarkerLongPress = ref(false);
+const MARKER_LONG_PRESS_MS = 500;
+
+function startMarkerLongPress() {
+  wasMarkerLongPress.value = false;
+  if (markerLongPressTimer.value) clearTimeout(markerLongPressTimer.value);
+  markerLongPressTimer.value = setTimeout(() => {
+    isMarkersDrawerOpen.value = true;
+    wasMarkerLongPress.value = true;
+    markerLongPressTimer.value = null;
+    if (navigator.vibrate) navigator.vibrate(50);
+  }, MARKER_LONG_PRESS_MS);
+}
+
+function stopMarkerLongPress() {
+  if (markerLongPressTimer.value) {
+    clearTimeout(markerLongPressTimer.value);
+    markerLongPressTimer.value = null;
+  }
+}
+
+function handleMarkerClick() {
+  if (wasMarkerLongPress.value) return;
+  timelineStore.addMarkerAtPlayhead();
+}
 
 const isReadonly = computed(
   () => projectStore.currentView === 'sound' || projectStore.currentView === 'export',
@@ -333,6 +366,19 @@ const containerHeightClass = computed(() =>
             @click="toggleFullscreen"
           />
 
+          <UButton
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            icon="i-heroicons-bookmark"
+            class="p-1.5"
+            :aria-label="t('fastcat.timeline.addMarker', 'Add marker')"
+            @click="handleMarkerClick"
+            @pointerdown="startMarkerLongPress"
+            @pointerup="stopMarkerLongPress"
+            @pointerleave="stopMarkerLongPress"
+          />
+
 
 
 
@@ -405,4 +451,16 @@ const containerHeightClass = computed(() =>
       </div>
     </div>
   </div>
+
+  <!-- Markers drawer (long-press on marker button) -->
+  <UiMobileDrawer
+    v-model:open="isMarkersDrawerOpen"
+    :title="t('videoEditor.fileManager.tabs.markers', 'Markers')"
+    :snap-points="[0.4, 0.85]"
+    direction="bottom"
+  >
+    <div class="px-4 pb-4 h-full overflow-hidden">
+      <ProjectMarkers class="h-full" />
+    </div>
+  </UiMobileDrawer>
 </template>

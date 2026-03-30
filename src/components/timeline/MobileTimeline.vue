@@ -765,9 +765,8 @@ async function onClipAction(payload: TimelineClipActionPayload) {
       </div>
 
     </div>
-  </div>
 
-  <!-- FAB: add content -->
+  <!-- FAB: add content — Teleport renders to body, no DOM flow impact -->
   <Teleport to="body">
     <div
       v-if="!isAddContentDrawerOpen && !isVirtualClipPresetDrawerOpen"
@@ -783,6 +782,7 @@ async function onClipAction(payload: TimelineClipActionPayload) {
       />
     </div>
   </Teleport>
+  </div>
 </template>
 
 <style scoped>

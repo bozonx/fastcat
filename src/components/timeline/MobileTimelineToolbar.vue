@@ -8,7 +8,6 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import MobileTrackMixerDrawer from './MobileTrackMixerDrawer.vue';
 import MobileHistoryDrawer from './MobileHistoryDrawer.vue';
-import ProjectMarkers from '~/components/project/ProjectMarkers.vue';
 
 const timelineStore = useTimelineStore();
 const settingsStore = useTimelineSettingsStore();
@@ -21,11 +20,9 @@ const hasSelection = computed(() => selectedItemIds.value.length > 0);
 
 const isTrackMixerDrawerOpen = ref(false);
 const isHistoryDrawerOpen = ref(false);
-const isMarkersDrawerOpen = ref(false);
 const isSnapDrawerOpen = ref(false);
 
 const longPressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
-const markerLongPressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const IS_LONG_PRESS_MS = 500;
 const wasLastPressLong = ref(false);
 
@@ -62,7 +59,7 @@ const snapModeOptions = computed<SnapOption[]>(() => [
 const currentSnapOption = computed(
   () =>
     snapModeOptions.value.find((o) => o.value === settingsStore.toolbarSnapMode) ??
-    snapModeOptions.value[0],
+    snapModeOptions.value[0]!,
 );
 
 // Snap detail settings (same as SettingsSnapping.vue)
@@ -129,29 +126,6 @@ function stopLongPress() {
   }
 }
 
-function startMarkerLongPress() {
-  wasLastPressLong.value = false;
-  if (markerLongPressTimer.value) clearTimeout(markerLongPressTimer.value);
-  markerLongPressTimer.value = setTimeout(() => {
-    isMarkersDrawerOpen.value = true;
-    wasLastPressLong.value = true;
-    markerLongPressTimer.value = null;
-    if (navigator.vibrate) navigator.vibrate(50);
-  }, IS_LONG_PRESS_MS);
-}
-
-function stopMarkerLongPress() {
-  if (markerLongPressTimer.value) {
-    clearTimeout(markerLongPressTimer.value);
-    markerLongPressTimer.value = null;
-  }
-}
-
-function handleMarkerClick() {
-  if (wasLastPressLong.value) return;
-  timelineStore.addMarkerAtPlayhead();
-}
-
 function handleSplit() {
   if (hasSelection.value) {
     timelineStore.splitClipsAtPlayhead();
@@ -190,6 +164,7 @@ function handleRippleTrimRight() {
           color="neutral"
           size="sm"
           title="Undo"
+          :disabled="!timelineStore.historyStore.canUndo('timeline')"
           @click="handleUndo"
           @pointerdown="startLongPress"
           @pointerup="stopLongPress"
@@ -200,23 +175,11 @@ function handleRippleTrimRight() {
           color="neutral"
           size="sm"
           title="Redo"
+          :disabled="!timelineStore.historyStore.canRedo('timeline')"
           @click="handleRedo"
           @pointerdown="startLongPress"
           @pointerup="stopLongPress"
           @pointerleave="stopLongPress"
-        />
-      </div>
-
-      <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1 shrink-0">
-        <UiActionButton
-          icon="i-heroicons-bookmark"
-          color="neutral"
-          size="sm"
-          title="Add Marker"
-          @click="handleMarkerClick"
-          @pointerdown="startMarkerLongPress"
-          @pointerup="stopMarkerLongPress"
-          @pointerleave="stopMarkerLongPress"
         />
       </div>
 
@@ -299,7 +262,10 @@ function handleRippleTrimRight() {
               ? 'bg-primary-500/15 text-primary-500'
               : 'bg-ui-bg text-ui-text hover:bg-ui-bg-hover'
           "
-          @click="settingsStore.selectToolbarSnapMode(opt.value); isSnapDrawerOpen = false"
+          @click="
+            settingsStore.selectToolbarSnapMode(opt.value);
+            isSnapDrawerOpen = false;
+          "
         >
           <UIcon :name="opt.icon" class="size-5 shrink-0" />
           <span class="text-sm font-medium leading-snug">{{ opt.description }}</span>
@@ -356,17 +322,6 @@ function handleRippleTrimRight() {
   />
 
   <MobileHistoryDrawer :is-open="isHistoryDrawerOpen" @close="isHistoryDrawerOpen = false" />
-
-  <UiMobileDrawer
-    v-model:open="isMarkersDrawerOpen"
-    :title="t('videoEditor.fileManager.tabs.markers', 'Markers')"
-    :snap-points="[0.4, 0.85]"
-    direction="bottom"
-  >
-    <div class="px-4 pb-4 h-full overflow-hidden">
-      <ProjectMarkers class="h-full" />
-    </div>
-  </UiMobileDrawer>
 </template>
 
 <style scoped>

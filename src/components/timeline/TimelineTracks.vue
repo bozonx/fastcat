@@ -150,6 +150,7 @@ function resolveTimelineDragAction(e: PointerEvent): string {
 }
 
 function shouldStartMarquee(e: PointerEvent): boolean {
+  if (props.isMobile) return false;
   if (e.target !== e.currentTarget && !(e.target as HTMLElement).hasAttribute('data-track-id')) {
     return false;
   }
