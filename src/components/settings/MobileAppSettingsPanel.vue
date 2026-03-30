@@ -1,10 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, watch, onBeforeUnmount } from 'vue';
+import { computed, watch, onBeforeUnmount } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import SettingsGeneral from './SettingsGeneral.vue';
-import SettingsHotkeys from './SettingsHotkeys.vue';
-import SettingsMouse from './SettingsMouse.vue';
-import SettingsSnapping from './SettingsSnapping.vue';
 import SettingsOptimization from './SettingsOptimization.vue';
 import SettingsProjectDefaults from './SettingsProjectDefaults.vue';
 import SettingsExportDefaults from './SettingsExportDefaults.vue';
@@ -15,9 +12,6 @@ import SettingsStorage from './SettingsStorage.vue';
 
 type SettingsSection =
   | 'user.general'
-  | 'user.hotkeys'
-  | 'user.mouse'
-  | 'user.snapping'
   | 'user.proxy'
   | 'user.project'
   | 'user.export'
@@ -61,9 +55,6 @@ watch(activeSection, (section) => {
 
 const sections = computed(() => [
   { value: 'user.general', label: t('videoEditor.settings.userGeneral') },
-  { value: 'user.hotkeys', label: t('videoEditor.settings.userHotkeys') },
-  { value: 'user.mouse', label: t('videoEditor.settings.userMouse') },
-  { value: 'user.snapping', label: t('videoEditor.settings.snappingTitle') },
   { value: 'user.proxy', label: t('videoEditor.settings.userProxy') },
   { value: 'user.project', label: t('videoEditor.settings.userProject') },
   { value: 'user.export', label: t('videoEditor.settings.userExport') },
@@ -73,13 +64,7 @@ const sections = computed(() => [
   { value: 'workspace.storage', label: t('videoEditor.settings.workspaceStorage') },
 ]);
 
-const hotkeysRef = ref<InstanceType<typeof SettingsHotkeys> | null>(null);
-
 onBeforeUnmount(() => {
-  if (hotkeysRef.value) {
-    hotkeysRef.value.isDuplicateConfirmOpen = false;
-    hotkeysRef.value.finishCapture();
-  }
   workspaceStore.flushSettingsSaves();
 });
 </script>
@@ -100,9 +85,6 @@ onBeforeUnmount(() => {
     <!-- Section content -->
     <div class="flex-1 overflow-y-auto p-4 custom-scrollbar lg:p-6">
       <SettingsGeneral v-if="activeSection === 'user.general'" />
-      <SettingsHotkeys v-else-if="activeSection === 'user.hotkeys'" ref="hotkeysRef" />
-      <SettingsMouse v-else-if="activeSection === 'user.mouse'" />
-      <SettingsSnapping v-else-if="activeSection === 'user.snapping'" />
       <SettingsOptimization v-else-if="activeSection === 'user.proxy'" />
       <SettingsProjectDefaults v-else-if="activeSection === 'user.project'" />
       <SettingsExportDefaults
