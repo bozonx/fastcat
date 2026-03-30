@@ -6,6 +6,7 @@ import { useMediaStore } from '~/stores/media.store';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import MobileClipActionsDrawer from './MobileClipActionsDrawer.vue';
 import MobileTrackMixerDrawer from './MobileTrackMixerDrawer.vue';
+import MobileHistoryDrawer from './MobileHistoryDrawer.vue';
 import TimelineSpeedModal from './TimelineSpeedModal.vue';
 
 const timelineStore = useTimelineStore();
@@ -17,6 +18,30 @@ const hasSelection = computed(() => selectedItemIds.value.length > 0);
 
 const isClipActionsDrawerOpen = ref(false);
 const isTrackMixerDrawerOpen = ref(false);
+const isHistoryDrawerOpen = ref(false);
+
+const longPressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
+const IS_LONG_PRESS_MS = 500;
+const wasLastPressLong = ref(false);
+
+function startLongPress() {
+  wasLastPressLong.value = false;
+  if (longPressTimer.value) clearTimeout(longPressTimer.value);
+  longPressTimer.value = setTimeout(() => {
+    isHistoryDrawerOpen.value = true;
+    wasLastPressLong.value = true;
+    longPressTimer.value = null;
+    // Vibrational feedback if supported
+    if (navigator.vibrate) navigator.vibrate(50);
+  }, IS_LONG_PRESS_MS);
+}
+
+function stopLongPress() {
+  if (longPressTimer.value) {
+    clearTimeout(longPressTimer.value);
+    longPressTimer.value = null;
+  }
+}
 
 function handleSplit() {
   if (hasSelection.value) {
@@ -32,10 +57,12 @@ function handleDelete() {
 }
 
 function handleUndo() {
+  if (wasLastPressLong.value) return;
   timelineStore.undoTimeline();
 }
 
 function handleRedo() {
+  if (wasLastPressLong.value) return;
   timelineStore.redoTimeline();
 }
 
@@ -91,6 +118,9 @@ const speedModalTargetHasAudio = computed(() => {
           size="sm"
           title="Undo"
           @click="handleUndo"
+          @pointerdown="startLongPress"
+          @pointerup="stopLongPress"
+          @pointerleave="stopLongPress"
         />
         <UiActionButton
           icon="lucide:redo"
@@ -98,6 +128,9 @@ const speedModalTargetHasAudio = computed(() => {
           size="sm"
           title="Redo"
           @click="handleRedo"
+          @pointerdown="startLongPress"
+          @pointerup="stopLongPress"
+          @pointerleave="stopLongPress"
         />
       </div>
 
@@ -148,6 +181,11 @@ const speedModalTargetHasAudio = computed(() => {
   <MobileTrackMixerDrawer
     :is-open="isTrackMixerDrawerOpen"
     @close="isTrackMixerDrawerOpen = false"
+  />
+
+  <MobileHistoryDrawer
+    :is-open="isHistoryDrawerOpen"
+    @close="isHistoryDrawerOpen = false"
   />
 
   <TimelineSpeedModal

@@ -54,7 +54,7 @@ onMounted(async () => {
   projectOpenError.value = null;
 
   if (workspaceStore.isInitializing) {
-    await until(computed(() => workspaceStore.isInitializing)).toBeFalsy();
+    await until(() => workspaceStore.isInitializing).toBe(false);
   }
 
   if (!workspaceStore.workspaceHandle) {
