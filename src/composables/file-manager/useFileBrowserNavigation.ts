@@ -106,6 +106,17 @@ export function useFileBrowserNavigation({
     if (loadRemoteParentFolders(parentFolders)) return;
 
     const selectedFolderPath = fileManagerStore.selectedFolder?.path;
+
+    // Add project root as the first breadcrumb if not in remote mode and not in common workspace
+    const isInCommon = selectedFolderPath?.startsWith(WORKSPACE_COMMON_PATH_PREFIX);
+    if (!isRemoteMode.value && !isInCommon) {
+      parentFolders.value.push({
+        kind: 'directory',
+        name: projectStore.currentProjectName || 'Project',
+        path: '',
+      });
+    }
+
     if (!selectedFolderPath) return;
 
     if (selectedFolderPath === WORKSPACE_COMMON_PATH_PREFIX) {

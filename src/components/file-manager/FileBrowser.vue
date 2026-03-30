@@ -555,9 +555,7 @@ async function onDirectoryUploadChange(e: Event) {
     <FileBrowserBreadcrumbs
       v-if="
         (isRemoteMode && parentFolders.length > 0) ||
-        (!isRemoteMode &&
-          fileManagerStore.selectedFolder &&
-          fileManagerStore.selectedFolder.path !== '')
+        (!isRemoteMode && fileManagerStore.selectedFolder)
       "
       :parent-folders="parentFolders"
       @navigate-back="navigateBack"

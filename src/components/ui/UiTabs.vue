@@ -23,24 +23,12 @@ const items = computed(() =>
     slot: opt.value,
   })),
 );
-
-const selectedIndex = computed({
-  get: () => {
-    const idx = props.options.findIndex((opt) => opt.value === modelValue.value);
-    return idx === -1 ? 0 : idx;
-  },
-  set: (idx: number) => {
-    if (props.options[idx]) {
-      modelValue.value = props.options[idx].value;
-    }
-  },
-});
 </script>
 
 <template>
   <div :class="{ 'border-b border-ui-border': border }">
     <UTabs
-      v-model="selectedIndex"
+      v-model="modelValue"
       :items="items"
       :ui="{
         root: 'gap-4',

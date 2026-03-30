@@ -33,7 +33,7 @@ const emit = defineEmits<{
     <div class="flex items-center gap-1 ml-2 overflow-x-auto">
       <template v-for="(folder, index) in parentFolders" :key="folder.path">
         <button
-          class="text-xs text-ui-text-muted hover:text-ui-text transition-colors shrink-0"
+          class="text-xs text-ui-text-muted hover:text-ui-text transition-colors shrink-0 truncate max-w-[120px]"
           :class="{ 'text-ui-text font-medium': index === parentFolders.length - 1 }"
           @click="emit('navigateToFolder', index)"
         >
