@@ -8,10 +8,16 @@ interface Props {
   /** Optional description text below the title */
   description?: string;
   /** Snap points for the drawer (mostly for bottom direction) */
-  snapPoints?: number[];
+  snapPoints?: (number | string)[];
   /** Whether to scale the background when the drawer is open (iOS-style) */
   shouldScaleBackground?: boolean;
-  /** Whether the drawer can be dismissed by clicking outside or swiping */
+  /** Whether the drawer is modal (blocks background interaction) */
+  modal?: boolean;
+  /** Whether to show the dark overlay backdrop */
+  overlay?: boolean;
+  /** Whether to show the visual handle at the top */
+  withHandle?: boolean;
+  /** Whether the drawer can be dismissed by clicking outside or swiping down */
   dismissible?: boolean;
   /** Custom direction override, otherwise auto-detected by orientation */
   direction?: 'bottom' | 'top' | 'left' | 'right';
@@ -34,6 +40,9 @@ const props = withDefaults(defineProps<Props>(), {
   dismissible: true,
   direction: undefined,
   isFullHeight: false,
+  modal: true,
+  overlay: true,
+  withHandle: true,
   ui: () => ({}),
 });
 
@@ -78,12 +87,14 @@ const containerClasses = computed(() => {
     :snap-points="props.snapPoints"
     :dismissible="props.dismissible"
     :should-scale-background="props.shouldScaleBackground"
+    :modal="props.modal"
+    :overlay="props.overlay"
   >
     <template #content>
       <div :class="containerClasses">
         <!-- Visual handle for bottom sheets -->
         <div
-          v-if="effectiveDirection === 'bottom'"
+          v-if="effectiveDirection === 'bottom' && props.withHandle"
           class="shrink-0 flex justify-center py-2 relative z-10"
         >
           <div class="w-12 h-1.5 rounded-full bg-slate-700/50"></div>

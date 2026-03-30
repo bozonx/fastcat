@@ -476,26 +476,49 @@ async function onClipAction(payload: TimelineClipActionPayload) {
     <!-- Track Properties Drawer -->
     <UiMobileDrawer
       v-model:open="isTrackPropertiesDrawerOpen"
-      :snap-points="[0.46, 0.88]"
+      :snap-points="['200px', 0.88]"
       direction="bottom"
+      :modal="false"
+      :overlay="false"
+      :dismissible="false"
+      :with-handle="false"
+      :ui="{
+        container: 'border-t border-slate-800/80 bg-slate-900/90 backdrop-blur-2xl ring-1 ring-white/5',
+        header: 'p-0 px-4 pt-2 pb-1'
+      }"
       @update:open="onUpdateDrawerOpen"
     >
       <template #header>
-        <div class="flex items-center gap-2">
-          <div
-            v-if="selectedTrack"
-            class="w-6 h-6 rounded shrink-0 flex items-center justify-center font-black text-[10px]"
-            :style="{
-              backgroundColor: selectedTrack.color && selectedTrack.color !== '#2a2a2a' ? `${selectedTrack.color}33` : '#1e293b',
-              color: selectedTrack.color && selectedTrack.color !== '#2a2a2a' ? selectedTrack.color : '#94a3b8'
-            }"
-          >
-            {{ selectedTrack.kind === 'video' ? 'V' : 'A' }}{{ selectedTrackNumber }}
+        <div class="flex items-center justify-between gap-4 py-1.5 px-0.5">
+          <div class="flex items-center gap-2 min-w-0">
+            <div
+              v-if="selectedTrack"
+              class="w-6 h-6 rounded shrink-0 flex items-center justify-center font-black text-[10px]"
+              :style="{
+                backgroundColor: selectedTrack.color && selectedTrack.color !== '#2a2a2a' ? `${selectedTrack.color}33` : '#334155',
+                color: selectedTrack.color && selectedTrack.color !== '#2a2a2a' ? selectedTrack.color : '#94a3b8'
+              }"
+            >
+              {{ selectedTrack.kind === 'video' ? 'V' : 'A' }}{{ selectedTrackNumber }}
+            </div>
+
+            <span v-if="selectedTrack" class="text-xs font-bold text-slate-200 truncate flex-1 leading-none">
+              {{ selectedTrack.name || selectedTrack.id }}
+            </span>
           </div>
 
-          <span v-if="selectedTrack" class="text-sm font-bold text-slate-200 truncate flex-1 leading-none">
-            {{ selectedTrack.name || selectedTrack.id }}
-          </span>
+          <!-- Toolbar controls -->
+          <div class="flex items-center gap-1 shrink-0">
+            <div class="w-8 h-1 rounded-full bg-slate-800/80 mx-1" />
+            <UButton
+              variant="ghost"
+              color="neutral"
+              size="sm"
+              icon="lucide:maximize-2"
+              class="text-slate-400"
+              :ui="{ icon: 'w-4 h-4' }"
+            />
+          </div>
         </div>
       </template>
 
