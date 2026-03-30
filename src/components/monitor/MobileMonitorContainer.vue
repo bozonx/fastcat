@@ -450,17 +450,16 @@ const containerHeightClass = computed(() =>
         </div>
       </div>
     </div>
+    <!-- Markers drawer (long-press on marker button) -->
+    <UiMobileDrawer
+      v-model:open="isMarkersDrawerOpen"
+      :title="t('videoEditor.fileManager.tabs.markers', 'Markers')"
+      :snap-points="[0.4, 0.85]"
+      direction="bottom"
+    >
+      <div class="px-4 pb-4 h-full overflow-hidden">
+        <ProjectMarkers class="h-full" />
+      </div>
+    </UiMobileDrawer>
   </div>
-
-  <!-- Markers drawer (long-press on marker button) -->
-  <UiMobileDrawer
-    v-model:open="isMarkersDrawerOpen"
-    :title="t('videoEditor.fileManager.tabs.markers', 'Markers')"
-    :snap-points="[0.4, 0.85]"
-    direction="bottom"
-  >
-    <div class="px-4 pb-4 h-full overflow-hidden">
-      <ProjectMarkers class="h-full" />
-    </div>
-  </UiMobileDrawer>
 </template>
