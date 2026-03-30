@@ -2,17 +2,35 @@
 import { ref, computed } from 'vue';
 import SettingsSnapping from './SettingsSnapping.vue';
 import MobileAppSettingsPanel from './MobileAppSettingsPanel.vue';
+import TimelineProperties from '~/components/properties/TimelineProperties.vue';
 import ResolutionSettings from '~/components/project-settings/ResolutionSettings.vue';
 import ExportSettings from '~/components/project-settings/ExportSettings.vue';
 import AdvancedSettings from '~/components/project-settings/AdvancedSettings.vue';
 import MetadataSettings from '~/components/project-settings/MetadataSettings.vue';
 import StorageSettings from '~/components/project-settings/StorageSettings.vue';
 import { useProjectStore } from '~/stores/project.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineSettingsStore, type ToolbarDragMode } from '~/stores/timeline-settings.store';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
+const workspaceStore = useWorkspaceStore();
 const timelineSettingsStore = useTimelineSettingsStore();
+const fileManager = useFileManager();
+
+const currentTimelineFsEntry = computed(() => {
+  const path = projectStore.currentTimelinePath;
+  if (!path) return null;
+  const entry = fileManager.findEntryByPath(path);
+  if (entry && entry.kind === 'file') return entry;
+  return {
+    name: path.split('/').pop() || 'Timeline.otio',
+    path,
+    kind: 'file' as const,
+    source: 'local' as const,
+  };
+});
 
 const activeTab = ref('timeline');
 
@@ -89,6 +107,53 @@ const currentMoveMode = computed({
         <div class="h-px bg-ui-border"></div>
 
         <SettingsSnapping />
+
+        <div class="h-px bg-ui-border"></div>
+
+        <section class="space-y-4">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-ui-text-muted mb-4 px-1">
+            {{ t('videoEditor.settings.advancedSection') }}
+          </h4>
+          <UiFormField
+            :label="t('videoEditor.settings.defaultTransitionDuration')"
+          >
+            <UiWheelNumberInput
+              :model-value="workspaceStore.userSettings.timeline.defaultTransitionDurationUs / 1_000_000"
+              :min="0.1"
+              :max="10"
+              :step="0.1"
+              :wheel-step-multiplier="10"
+              @update:model-value="
+                (v: number) =>
+                  (workspaceStore.userSettings.timeline.defaultTransitionDurationUs = Math.round(
+                    v * 1_000_000,
+                  ))
+              "
+            />
+          </UiFormField>
+          <UiFormField
+            :label="t('videoEditor.settings.defaultStaticClipDuration')"
+            :help="t('videoEditor.settings.defaultStaticClipDurationHint')"
+          >
+            <UiWheelNumberInput
+              :model-value="workspaceStore.userSettings.timeline.defaultStaticClipDurationUs / 1_000_000"
+              :min="0.1"
+              :max="60"
+              :step="0.1"
+              :wheel-step-multiplier="10"
+              @update:model-value="
+                (v: number) =>
+                  (workspaceStore.userSettings.timeline.defaultStaticClipDurationUs = Math.round(
+                    v * 1_000_000,
+                  ))
+              "
+            />
+          </UiFormField>
+        </section>
+
+        <div class="h-px bg-ui-border"></div>
+
+        <TimelineProperties :fs-entry="currentTimelineFsEntry" />
       </div>
 
       <!-- Project Settings -->
