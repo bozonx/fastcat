@@ -1,33 +1,139 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { storeToRefs } from 'pinia';
+import type { ToolbarDragMode, ToolbarSnapMode } from '~/stores/timeline-settings.store';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useMediaStore } from '~/stores/media.store';
-import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
-import MobileClipActionsDrawer from './MobileClipActionsDrawer.vue';
+import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import MobileTrackMixerDrawer from './MobileTrackMixerDrawer.vue';
 import MobileHistoryDrawer from './MobileHistoryDrawer.vue';
-import TimelineSpeedModal from './TimelineSpeedModal.vue';
-
 import ProjectMarkers from '~/components/project/ProjectMarkers.vue';
 
 const timelineStore = useTimelineStore();
-const mediaStore = useMediaStore();
+const settingsStore = useTimelineSettingsStore();
+const workspaceStore = useWorkspaceStore();
 const { t } = useI18n();
 
-const { selectedItemIds, timelineZoom } = storeToRefs(timelineStore);
+const { selectedItemIds } = storeToRefs(timelineStore);
 
 const hasSelection = computed(() => selectedItemIds.value.length > 0);
 
-const isClipActionsDrawerOpen = ref(false);
 const isTrackMixerDrawerOpen = ref(false);
 const isHistoryDrawerOpen = ref(false);
 const isMarkersDrawerOpen = ref(false);
+const isSnapDrawerOpen = ref(false);
 
 const longPressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const markerLongPressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const IS_LONG_PRESS_MS = 500;
 const wasLastPressLong = ref(false);
+
+// Snap mode options
+
+interface SnapOption {
+  value: ToolbarSnapMode;
+  icon: string;
+  label: string;
+  description: string;
+}
+
+const snapModeOptions = computed<SnapOption[]>(() => [
+  {
+    value: 'snap',
+    icon: 'i-heroicons-link',
+    label: t('fastcat.timeline.snapMode', 'Snap mode'),
+    description: t('fastcat.timeline.snapModeFullDescription'),
+  },
+  {
+    value: 'no_snap',
+    icon: 'i-heroicons-link-slash',
+    label: t('fastcat.timeline.snapModeFramesDescription'),
+    description: t('fastcat.timeline.snapModeFramesDescription'),
+  },
+  {
+    value: 'free_mode',
+    icon: 'i-heroicons-arrows-pointing-out',
+    label: t('fastcat.timeline.snapModeFreeDescription'),
+    description: t('fastcat.timeline.snapModeFreeDescription'),
+  },
+]);
+
+const currentSnapOption = computed(
+  () =>
+    snapModeOptions.value.find((o) => o.value === settingsStore.toolbarSnapMode) ??
+    snapModeOptions.value[0],
+);
+
+// Snap detail settings (same as SettingsSnapping.vue)
+
+const snapThresholdPx = computed({
+  get: () => workspaceStore.userSettings.timeline.snapThresholdPx,
+  set: (val: number) => settingsStore.setGlobalSnapThresholdPx(val),
+});
+
+const snapToTimelineEdges = computed({
+  get: () => workspaceStore.userSettings.timeline.snapping.timelineEdges,
+  set: (val: boolean) => (workspaceStore.userSettings.timeline.snapping.timelineEdges = val),
+});
+
+const snapToClips = computed({
+  get: () => workspaceStore.userSettings.timeline.snapping.clips,
+  set: (val: boolean) => (workspaceStore.userSettings.timeline.snapping.clips = val),
+});
+
+const snapToMarkers = computed({
+  get: () => workspaceStore.userSettings.timeline.snapping.markers,
+  set: (val: boolean) => (workspaceStore.userSettings.timeline.snapping.markers = val),
+});
+
+const snapToSelection = computed({
+  get: () => workspaceStore.userSettings.timeline.snapping.selection,
+  set: (val: boolean) => (workspaceStore.userSettings.timeline.snapping.selection = val),
+});
+
+const snapToPlayhead = computed({
+  get: () => workspaceStore.userSettings.timeline.snapping.playhead,
+  set: (val: boolean) => (workspaceStore.userSettings.timeline.snapping.playhead = val),
+});
+
+// Move mode options
+
+const moveModeOptions = computed<
+  { value: 'none' | ToolbarDragMode; icon: string; title: string }[]
+>(() => [
+  {
+    value: 'none',
+    icon: 'i-heroicons-cursor-arrow-rays',
+    title: t('fastcat.timeline.moveModeNormalDescription'),
+  },
+  {
+    value: 'pseudo_overlap',
+    icon: 'i-heroicons-rectangle-stack',
+    title: t('fastcat.timeline.moveModePseudoDescription'),
+  },
+  {
+    value: 'slip',
+    icon: 'i-heroicons-arrows-right-left',
+    title: t('fastcat.timeline.moveModeSlipDescription'),
+  },
+]);
+
+const currentMoveMode = computed({
+  get: () => {
+    if (!settingsStore.toolbarDragModeEnabled) return 'none';
+    return settingsStore.toolbarDragMode;
+  },
+  set: (val: 'none' | ToolbarDragMode) => {
+    if (val === 'none') {
+      settingsStore.toolbarDragModeEnabled = false;
+    } else {
+      settingsStore.selectToolbarDragMode(val);
+    }
+  },
+});
+
+const rippleTrimDisabled = computed(() => timelineStore.getHotkeyTargetClip() === null);
 
 function startLongPress() {
   wasLastPressLong.value = false;
@@ -36,7 +142,6 @@ function startLongPress() {
     isHistoryDrawerOpen.value = true;
     wasLastPressLong.value = true;
     longPressTimer.value = null;
-    // Vibrational feedback if supported
     if (navigator.vibrate) navigator.vibrate(50);
   }, IS_LONG_PRESS_MS);
 }
@@ -79,11 +184,6 @@ function handleSplit() {
   }
 }
 
-function handleDelete() {
-  timelineStore.deleteFirstSelectedItem();
-  isClipActionsDrawerOpen.value = false;
-}
-
 function handleUndo() {
   if (wasLastPressLong.value) return;
   timelineStore.undoTimeline();
@@ -94,44 +194,13 @@ function handleRedo() {
   timelineStore.redoTimeline();
 }
 
-function handleZoomIn() {
-  timelineStore.setTimelineZoomExact(timelineZoom.value + 10);
+function handleRippleTrimLeft() {
+  void timelineStore.rippleTrimLeft();
 }
 
-function handleZoomOut() {
-  timelineStore.setTimelineZoomExact(timelineZoom.value - 10);
+function handleRippleTrimRight() {
+  void timelineStore.rippleTrimRight();
 }
-
-const speedModal = ref<{ open: boolean; trackId: string; itemId: string; speed: number } | null>(null);
-
-function handleOpenSpeedModal(payload: { trackId: string; itemId: string; speed: number }) {
-  speedModal.value = {
-    open: true,
-    trackId: payload.trackId,
-    itemId: payload.itemId,
-    speed: payload.speed,
-  };
-}
-
-async function saveSpeedModal() {
-  if (!speedModal.value) return;
-  const { trackId, itemId, speed } = speedModal.value;
-  if (Math.abs(speed) < 0.1) return;
-  timelineStore.updateClipProperties(trackId, itemId, { speed });
-  speedModal.value.open = false;
-  await timelineStore.requestTimelineSave({ immediate: true });
-}
-
-const speedModalTargetHasAudio = computed(() => {
-  if (!speedModal.value) return false;
-  const track = (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined)?.find((t) => t.id === speedModal.value!.trackId);
-  const clip = track?.items.find(
-    (it): it is TimelineClipItem => it.id === speedModal.value!.itemId && it.kind === 'clip',
-  );
-  if (!clip || (track?.kind === 'video' && clip.audioFromVideoDisabled)) return false;
-  if (track?.kind === 'audio') return true;
-  return Boolean(clip.source?.path && mediaStore.mediaMetadata[clip.source.path]?.audio);
-});
 </script>
 
 <template>
@@ -175,6 +244,31 @@ const speedModalTargetHasAudio = computed(() => {
         />
       </div>
 
+      <!-- Snap mode: single button shows active icon, opens settings drawer -->
+      <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1 shrink-0">
+        <UiActionButton
+          :icon="currentSnapOption.icon"
+          color="primary"
+          variant="soft"
+          size="sm"
+          :title="currentSnapOption.label"
+          @click="isSnapDrawerOpen = true"
+        />
+      </div>
+
+      <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1 shrink-0">
+        <UiActionButton
+          v-for="opt in moveModeOptions"
+          :key="opt.value"
+          :icon="opt.icon"
+          :variant="currentMoveMode === opt.value ? 'solid' : 'ghost'"
+          :color="currentMoveMode === opt.value ? 'primary' : 'neutral'"
+          size="sm"
+          :title="opt.title"
+          @click="currentMoveMode = opt.value"
+        />
+      </div>
+
       <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1 shrink-0">
         <UiActionButton
           icon="i-lucide-scissors"
@@ -184,20 +278,20 @@ const speedModalTargetHasAudio = computed(() => {
           @click="handleSplit"
         />
         <UiActionButton
-          icon="lucide:trash-2"
+          icon="i-heroicons-arrow-left"
           color="neutral"
           size="sm"
-          :disabled="!hasSelection"
-          title="Delete selection"
-          @click="handleDelete"
+          :disabled="rippleTrimDisabled"
+          :title="t('fastcat.timeline.rippleTrimLeft', 'Ripple trim left')"
+          @click="handleRippleTrimLeft"
         />
         <UiActionButton
-          icon="lucide:sliders-horizontal"
-          color="primary"
+          icon="i-heroicons-arrow-right"
+          color="neutral"
           size="sm"
-          :disabled="!hasSelection"
-          title="Clip Actions"
-          @click="isClipActionsDrawerOpen = true"
+          :disabled="rippleTrimDisabled"
+          :title="t('fastcat.timeline.rippleTrimRight', 'Ripple trim right')"
+          @click="handleRippleTrimRight"
         />
       </div>
     </div>
@@ -213,21 +307,81 @@ const speedModalTargetHasAudio = computed(() => {
     </div>
   </div>
 
-  <MobileClipActionsDrawer
-    :is-open="isClipActionsDrawerOpen"
-    @close="isClipActionsDrawerOpen = false"
-    @open-speed-modal="handleOpenSpeedModal"
-  />
+  <!-- Snap mode drawer -->
+  <UiMobileDrawer
+    v-model:open="isSnapDrawerOpen"
+    :title="t('fastcat.timeline.snapMode', 'Snap mode')"
+    direction="bottom"
+  >
+    <div class="px-4 pb-6 flex flex-col gap-5">
+      <!-- Snap mode selector -->
+      <div class="flex flex-col gap-2">
+        <button
+          v-for="opt in snapModeOptions"
+          :key="opt.value"
+          class="flex items-center gap-3 rounded-xl px-4 py-3 transition-colors"
+          :class="
+            settingsStore.toolbarSnapMode === opt.value
+              ? 'bg-primary-500/15 text-primary-500'
+              : 'bg-ui-bg text-ui-text hover:bg-ui-bg-hover'
+          "
+          @click="settingsStore.selectToolbarSnapMode(opt.value)"
+        >
+          <UIcon :name="opt.icon" class="size-5 shrink-0" />
+          <span class="text-sm font-medium leading-snug">{{ opt.description }}</span>
+          <UIcon
+            v-if="settingsStore.toolbarSnapMode === opt.value"
+            name="i-heroicons-check"
+            class="size-4 ml-auto shrink-0"
+          />
+        </button>
+      </div>
+
+      <div class="h-px bg-ui-border" />
+
+      <!-- Snap threshold -->
+      <UiSliderInput
+        v-model="snapThresholdPx"
+        :label="t('videoEditor.settings.snapThresholdDefault', 'Snap threshold')"
+        :min="1"
+        :max="100"
+        :step="1"
+        :default-value="8"
+        unit="px"
+      />
+
+      <!-- Snap targets -->
+      <div class="flex flex-col gap-3">
+        <p class="text-sm font-medium text-ui-text">
+          {{ t('videoEditor.settings.snapToTargets', 'Snap to') }}
+        </p>
+        <UCheckbox
+          v-model="snapToTimelineEdges"
+          :label="t('videoEditor.settings.snapToTimelineEdges', 'Timeline start and end')"
+        />
+        <UCheckbox v-model="snapToClips" :label="t('videoEditor.settings.snapToClips', 'Clips')" />
+        <UCheckbox
+          v-model="snapToMarkers"
+          :label="t('videoEditor.settings.snapToMarkers', 'Markers')"
+        />
+        <UCheckbox
+          v-model="snapToSelection"
+          :label="t('videoEditor.settings.snapToSelection', 'Selection')"
+        />
+        <UCheckbox
+          v-model="snapToPlayhead"
+          :label="t('videoEditor.settings.snapToPlayhead', 'Playhead')"
+        />
+      </div>
+    </div>
+  </UiMobileDrawer>
 
   <MobileTrackMixerDrawer
     :is-open="isTrackMixerDrawerOpen"
     @close="isTrackMixerDrawerOpen = false"
   />
 
-  <MobileHistoryDrawer
-    :is-open="isHistoryDrawerOpen"
-    @close="isHistoryDrawerOpen = false"
-  />
+  <MobileHistoryDrawer :is-open="isHistoryDrawerOpen" @close="isHistoryDrawerOpen = false" />
 
   <UiMobileDrawer
     v-model:open="isMarkersDrawerOpen"
@@ -239,14 +393,6 @@ const speedModalTargetHasAudio = computed(() => {
       <ProjectMarkers class="h-full" />
     </div>
   </UiMobileDrawer>
-
-  <TimelineSpeedModal
-    v-if="speedModal"
-    v-model:open="speedModal.open"
-    v-model:speed="speedModal.speed"
-    :has-audio="speedModalTargetHasAudio"
-    @save="saveSpeedModal"
-  />
 </template>
 
 <style scoped>
