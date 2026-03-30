@@ -3,7 +3,11 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
-import { readLocalStorageJson, writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
+import {
+  readLocalStorageJson,
+  writeLocalStorageJson,
+  getPlatformSuffix,
+} from '~/stores/ui/uiLocalStorage';
 import type { DynamicPanel } from '~/stores/editor-view.store';
 import { isOpenableProjectFileName } from '~/utils/media-types';
 
@@ -76,14 +80,14 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
   );
 
   const verticalSplitSizesKey = computed(
-    () => `fastcat-cut-vertical-splits-${currentProjectId.value ?? 'no-project'}`,
+    () => `fastcat-cut-vertical-splits-${currentProjectId.value ?? 'no-project'}${getPlatformSuffix()}`,
   );
   const verticalSplitSizes = ref<Record<string, number[]>>(
     readLocalStorageJson<Record<string, number[]>>(verticalSplitSizesKey.value, {}),
   );
 
   const soundVerticalSplitSizesKey = computed(
-    () => `fastcat-sound-vertical-splits-${currentProjectId.value ?? 'no-project'}`,
+    () => `fastcat-sound-vertical-splits-${currentProjectId.value ?? 'no-project'}${getPlatformSuffix()}`,
   );
   const soundVerticalSplitSizes = ref<Record<string, number[]>>(
     readLocalStorageJson<Record<string, number[]>>(soundVerticalSplitSizesKey.value, {}),

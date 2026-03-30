@@ -1,5 +1,6 @@
 import type { Ref } from 'vue';
 import { createAutoSave } from '~/utils/auto-save';
+import { getPlatformSuffix } from '~/stores/ui/uiLocalStorage';
 
 import type { TimelineDocument } from '~/timeline/types';
 
@@ -64,7 +65,8 @@ export function createTimelinePersistenceModule(deps: TimelinePersistenceDeps): 
 
       deps.isSavingTimeline.value = true;
       deps.timelineSaveError.value = null;
-
+ 
+      const suffix = getPlatformSuffix();
       const snapshot: TimelineDocument = {
         ...doc,
         metadata: {
@@ -75,6 +77,10 @@ export function createTimelinePersistenceModule(deps: TimelinePersistenceDeps): 
             masterGain: deps.masterGain.value,
             zoom: deps.timelineZoom.value,
             trackHeights: { ...deps.trackHeights.value },
+            ...(suffix ? { [`zoom${suffix}`]: deps.timelineZoom.value } : {}),
+            ...(suffix
+              ? { [`trackHeights${suffix}`]: { ...deps.trackHeights.value } }
+              : {}),
             ...(deps.audioMuted ? { masterMuted: deps.audioMuted.value } : {}),
           },
         },
@@ -204,17 +210,23 @@ export function createTimelinePersistenceModule(deps: TimelinePersistenceDeps): 
       if (deps.audioMuted) {
         deps.audioMuted.value = Boolean(parsed.metadata?.fastcat?.masterMuted);
       }
-      if (
-        typeof parsed.metadata?.fastcat?.zoom === 'number' &&
-        Number.isFinite(parsed.metadata.fastcat.zoom)
-      ) {
-        deps.timelineZoom.value = parsed.metadata.fastcat.zoom;
+
+      const suffix = getPlatformSuffix();
+      const zoomKey = suffix ? `zoom${suffix}` : 'zoom';
+      const storedZoom =
+        (parsed.metadata?.fastcat as any)?.[zoomKey] ?? parsed.metadata?.fastcat?.zoom;
+
+      if (typeof storedZoom === 'number' && Number.isFinite(storedZoom)) {
+        deps.timelineZoom.value = storedZoom;
       }
-      if (
-        parsed.metadata?.fastcat?.trackHeights &&
-        typeof parsed.metadata.fastcat.trackHeights === 'object'
-      ) {
-        deps.trackHeights.value = { ...parsed.metadata.fastcat.trackHeights };
+
+      const trackHeightsKey = suffix ? `trackHeights${suffix}` : 'trackHeights';
+      const storedTrackHeights =
+        (parsed.metadata?.fastcat as any)?.[trackHeightsKey] ??
+        parsed.metadata?.fastcat?.trackHeights;
+
+      if (storedTrackHeights && typeof storedTrackHeights === 'object') {
+        deps.trackHeights.value = { ...storedTrackHeights };
       }
     } catch (e: unknown) {
       console.warn('Failed to load timeline file, fallback to default', e);
