@@ -5,7 +5,6 @@
  * Additional SVG elements (grid, transform handles, etc.) should be added inside the svg-overlay slot.
  * Canvas content is placed via the default slot inside the canvas wrapper.
  */
-import MonitorVolumeHUD from './MonitorVolumeHUD.vue';
 import { toRef, ref, watchEffect, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useMonitorGestures } from '~/composables/monitor/useMonitorGestures';
@@ -163,9 +162,6 @@ defineExpose({
         >
           00:00:00:00 / 00:00:00:00
         </span>
-
-        <!-- Volume HUD -->
-        <MonitorVolumeHUD v-if="isMobile" />
 
         <!-- Slot for absolute-positioned overlays above the transformed workspace (empty state, loading) -->
         <slot />
