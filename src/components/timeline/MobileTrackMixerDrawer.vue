@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useWindowSize } from '@vueuse/core';
 import type { TimelineTrack } from '~/timeline/types';
+import TrackProperties from '~/components/properties/TrackProperties.vue';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -28,6 +29,17 @@ const isOpenLocal = computed({
 });
 
 const tracks = computed(() => (timelineStore.timelineDoc?.tracks as TimelineTrack[]) ?? []);
+
+const selectedTrackForPropertiesId = ref<string | null>(null);
+const selectedTrackForProperties = computed(() => tracks.value.find((t) => t.id === selectedTrackForPropertiesId.value));
+
+watch(isOpenLocal, (val) => {
+  if (!val) {
+    setTimeout(() => {
+      selectedTrackForPropertiesId.value = null;
+    }, 300);
+  }
+});
 
 function toggleLock(trackId: string) {
   const t = tracks.value.find((x) => x.id === trackId);
@@ -188,14 +200,24 @@ function getTrackMenuItems(track: TimelineTrack) {
   <UDrawer
     v-model:open="isOpenLocal"
     :direction="isLandscape ? 'right' : 'bottom'"
-    :title="$t('fastcat.audioMixer.title', 'Mixer & Tracks')"
+    :title="selectedTrackForProperties ? $t('common.properties', 'Properties') : $t('fastcat.audioMixer.title', 'Mixer & Tracks')"
   >
     <template #content>
       <div
         class="flex flex-col mx-auto w-full relative"
         :class="isLandscape ? 'max-h-dvh w-[50vw]' : 'max-h-[85dvh] w-full'"
       >
-        <div class="flex-1 overflow-y-auto pb-safe px-4 py-4 scrollbar-hide">
+        <div v-if="selectedTrackForProperties" class="flex-1 overflow-y-auto pb-safe flex flex-col scrollbar-hide animate-in fade-in slide-in-from-right-4 duration-200">
+          <div class="sticky top-0 z-20 bg-ui-bg-elevated/95 backdrop-blur border-b border-ui-border p-2 flex items-center gap-2 mb-2">
+            <UButton icon="i-heroicons-chevron-left" variant="ghost" color="neutral" size="sm" @click="selectedTrackForPropertiesId = null" />
+            <span class="font-medium text-sm text-ui-text line-clamp-1">{{ selectedTrackForProperties.name || selectedTrackForProperties.id }}</span>
+          </div>
+          <div class="px-4 pb-4">
+            <TrackProperties :track="selectedTrackForProperties" />
+          </div>
+        </div>
+        
+        <div v-else class="flex-1 overflow-y-auto pb-safe px-4 py-4 scrollbar-hide animate-in fade-in slide-in-from-left-4 duration-200">
           
           <!-- Master Volume -->
           <div class="mb-5 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm relative overflow-hidden shrink-0">
@@ -298,6 +320,15 @@ function getTrackMenuItems(track: TimelineTrack) {
                       class="p-1"
                     />
                   </UDropdownMenu>
+                  <UButton
+                    icon="lucide:settings"
+                    color="neutral"
+                    variant="ghost"
+                    size="xs"
+                    class="p-1"
+                    title="Track Properties"
+                    @click="selectedTrackForPropertiesId = track.id"
+                  />
                 </div>
               </div>
 
