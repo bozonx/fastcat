@@ -2,6 +2,7 @@
 import { ref, computed, watch, onUnmounted, nextTick } from 'vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProxyStore } from '~/stores/proxy.store';
@@ -46,6 +47,7 @@ const props = defineProps<{
 
 const fileManagerStore = useFileManagerStore();
 const selectionStore = useSelectionStore();
+const projectStore = useProjectStore();
 
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
@@ -373,7 +375,25 @@ const {
 function handleContainerClick() {
   focusBrowserPanel();
   if (preventClickClear.value) return;
-  selectionStore.clearSelection();
+
+  if (isRemoteMode.value) {
+    if (remoteCurrentFolder.value) {
+      setSelectedFsEntry(remoteCurrentFolder.value as unknown as FsEntry);
+    } else {
+      selectionStore.clearSelection();
+    }
+  } else {
+    const currentFolder = fileManagerStore.selectedFolder;
+    if (currentFolder) {
+      setSelectedFsEntry(currentFolder);
+    } else {
+      setSelectedFsEntry({
+        kind: 'directory',
+        path: '',
+        name: projectStore.currentProjectName || 'Project',
+      } as FsEntry);
+    }
+  }
 }
 
 // --- Keyboard navigation ---
@@ -605,7 +625,7 @@ async function onDirectoryUploadChange(e: Event) {
         :style="marqueeStyle"
       />
       <UContextMenu :items="emptySpaceContextMenuItems" class="min-h-full">
-        <div class="min-h-full flex flex-col">
+        <div class="min-h-full flex flex-col" @click.self="handleContainerClick">
           <div
             v-if="!isRemoteMode && !fileManagerStore.selectedFolder"
             class="flex flex-col items-center justify-center flex-1 text-ui-text-muted gap-2"
