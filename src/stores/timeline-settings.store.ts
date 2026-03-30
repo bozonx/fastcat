@@ -39,6 +39,11 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
     false,
   );
 
+  const landscapeDrawerPosition = useLocalStorage<'right' | 'bottom'>(
+    'fastcat:timeline:landscape-drawer-position',
+    'bottom',
+  );
+
   const legacyToolbarMoveMode = useLocalStorage<string>(
     'fastcat:timeline:toolbar-move-mode',
     'snap',
@@ -183,6 +188,7 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
     cycleToolbarSnapMode,
     selectToolbarDragMode,
     toggleSelectedToolbarDragMode,
+    landscapeDrawerPosition,
     toggleToolbarPseudoOverlapMode,
   };
 });

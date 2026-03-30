@@ -13,6 +13,7 @@ defineEmits<{ click: [] }>();
 
 <template>
   <button
+    data-vaul-no-drag
     class="flex flex-col items-center justify-center gap-0.5 rounded-xl px-3 py-2 min-w-[52px] shrink-0 transition-all outline-none"
     :class="[
       danger

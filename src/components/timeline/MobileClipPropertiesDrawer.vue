@@ -108,7 +108,7 @@ function toggleLocked() {
 </script>
 
 <template>
-  <MobileTimelineDrawer v-model:open="isOpenLocal">
+  <MobileTimelineDrawer v-model:open="isOpenLocal" force-landscape-direction="bottom">
     <template #toolbar>
       <MobileDrawerToolbar>
         <MobileDrawerToolbarButton
