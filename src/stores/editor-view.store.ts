@@ -145,6 +145,7 @@ export function createEditorViewModule(
 
   const layoutPlatformSuffix = computed(() => getPlatformSuffix());
   const currentView = ref<EditorView>('cut');
+  const isInitialized = ref(false);
   let isInternalLoading = false;
 
   const cutPanelsKey = computed(
@@ -168,13 +169,16 @@ export function createEditorViewModule(
 
   // Load cut panels from local storage (re-apply orientation default when nothing stored)
   watch(
-    () => [cutPanelsKey.value, getProjectOrientation()] as const,
-    ([key]) => {
+    () => [projectIdRef.value, cutPanelsKey.value, getProjectOrientation()] as const,
+    ([projectId, key, orientation]) => {
+      // Don't initialize if we don't have a specific project yet
+      if (!projectId) return;
+
       isInternalLoading = true;
       try {
-        const orientation = getProjectOrientation();
         const fallback = buildDefaultCutPanelsForOrientation(orientation);
         const stored = readLocalStorageJson<any[] | null>(key, null);
+        
         if (stored && Array.isArray(stored) && stored.length > 0) {
           if (!Array.isArray(stored[0]) && !stored[0].panels) {
             cutPanels.value = sanitizePanelColumns(
@@ -190,13 +194,17 @@ export function createEditorViewModule(
             cutPanels.value = sanitizePanelColumns(stored, fallback);
           }
         } else {
-          cutPanels.value = sanitizePanelColumns(fallback, fallback);
+          // If already initialized by a previous load, don't overwrite with defaults
+          // unless it's a completely new project layout request
+          if (!isInitialized.value) {
+              cutPanels.value = sanitizePanelColumns(fallback, fallback);
+          }
         }
+        isInitialized.value = true;
       } finally {
-        // Delay resetting the flag to ensure any microtask watch triggers are ignored
         setTimeout(() => {
           isInternalLoading = false;
-        }, 0);
+        }, 50);
       }
     },
     { immediate: true },
@@ -204,20 +212,25 @@ export function createEditorViewModule(
 
   // Load sound panels from local storage
   watch(
-    () => soundPanelsKey.value,
-    (key) => {
+    () => [projectIdRef.value, soundPanelsKey.value] as const,
+    ([projectId, key]) => {
+      if (!projectId) return;
+
       isInternalLoading = true;
       try {
         const stored = readLocalStorageJson<any[] | null>(key, null);
         if (stored && Array.isArray(stored) && stored.length > 0) {
           soundPanels.value = sanitizePanelColumns(stored, defaultSoundPanels);
         } else {
-          soundPanels.value = sanitizePanelColumns(defaultSoundPanels, defaultSoundPanels);
+          // If already initialized by a previous load, don't overwrite with defaults
+          if (!isInitialized.value) {
+            soundPanels.value = sanitizePanelColumns(defaultSoundPanels, defaultSoundPanels);
+          }
         }
       } finally {
         setTimeout(() => {
           isInternalLoading = false;
-        }, 0);
+        }, 50);
       }
     },
     { immediate: true },
@@ -227,7 +240,7 @@ export function createEditorViewModule(
   watch(
     cutPanels,
     (panels) => {
-      if (isInternalLoading) return;
+      if (isInternalLoading || !isInitialized.value || !projectIdRef.value) return;
       writeLocalStorageJson(
         cutPanelsKey.value,
         sanitizePanelColumns(panels, getDefaultCutLayout()),
@@ -240,7 +253,7 @@ export function createEditorViewModule(
   watch(
     soundPanels,
     (panels) => {
-      if (isInternalLoading) return;
+      if (isInternalLoading || !isInitialized.value || !projectIdRef.value) return;
       writeLocalStorageJson(soundPanelsKey.value, sanitizePanelColumns(panels, defaultSoundPanels));
     },
     { deep: true },
@@ -504,13 +517,5 @@ export function createEditorViewModule(
   };
 }
 
-import { useProjectStore } from './project.store';
-
-export const useEditorViewStore = defineStore('editorView', () => {
-  const projectStore = useProjectStore();
-  const { currentProjectId } = storeToRefs(projectStore);
-
-  return createEditorViewModule(currentProjectId, {
-    getProjectOrientation: () => projectStore.projectSettings.project.orientation,
-  });
-});
+ // No standalone defineStore here to avoid double-instances.
+ // Layout state is managed within the ProjectStore which calls createEditorViewModule.

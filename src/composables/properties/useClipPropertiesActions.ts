@@ -14,15 +14,15 @@ interface TimelineStoreActions {
   timelineDoc: TimelineDocument | null;
   selectedItemIds: string[];
   fps: number;
-  applyTimeline: (cmd: TimelineCommand, options?: any) => void | Promise<void>;
-  batchApplyTimeline: (cmds: TimelineCommand[], options?: any) => void | Promise<void>;
+  applyTimeline: (cmd: TimelineCommand, options?: any) => string[] | Promise<string[]>;
+  batchApplyTimeline: (cmds: TimelineCommand[], options?: any) => string[] | Promise<string[]>;
   loadTimeline: () => Promise<void>;
   loadTimelineMetadata: () => Promise<void> | void;
   updateClipProperties: (
     trackId: string,
     itemId: string,
-    patch: Record<string, unknown>,
-  ) => void | Promise<void>;
+    patch: Record<string, any>,
+  ) => any;
   renameItem: (trackId: string, itemId: string, name: string) => void;
   selectTimelineItems: (items: { trackId: string; itemId: string }[]) => void;
 }
@@ -35,15 +35,12 @@ interface ProjectStoreActions {
     };
   };
   openTimelineFile: (path: string) => Promise<void>;
+  goToFiles: () => void;
+  goToCut: () => void;
 }
 
 interface UiStoreActions {
   selectedFsEntry: Partial<FsEntry> | null;
-}
-
-interface EditorViewStoreActions {
-  goToFiles: () => void;
-  goToCut: () => void;
 }
 
 interface FilesPageStoreActions {
@@ -70,7 +67,6 @@ interface UseClipPropertiesActionsOptions {
   timelineStore: TimelineStoreActions;
   projectStore: ProjectStoreActions;
   uiStore: UiStoreActions;
-  editorViewStore: EditorViewStoreActions;
   fileManagerStore: FilesPageStoreActions;
   selectionStore: SelectionStoreActions;
   focusStore: FocusStoreActions;
@@ -87,7 +83,6 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     selectionStore,
     fileManagerStore,
     focusStore,
-    editorViewStore,
     setActiveTab,
   } = options;
 
@@ -311,7 +306,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     if (projectStore.currentView && projectStore.currentView !== 'files') {
       setActiveTab('files');
     } else {
-      editorViewStore.goToFiles();
+      projectStore.goToFiles();
     }
 
     await fileManager.loadProjectDirectory();
@@ -363,7 +358,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     await projectStore.openTimelineFile(timelinePath);
     await timelineStore.loadTimeline();
     void timelineStore.loadTimelineMetadata();
-    editorViewStore.goToCut();
+    projectStore.goToCut();
   }
 
   return {

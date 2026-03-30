@@ -87,7 +87,7 @@ const {
   isMobile: true,
 });
 
-const MOBILE_SPEED_VALUES = [1, 1.5, 2];
+const MOBILE_SPEED_VALUES = [0.5, 1, 1.5, 2];
 
 const mobileSpeedMenuItems = computed(() => [
   MOBILE_SPEED_VALUES.map((v) => ({

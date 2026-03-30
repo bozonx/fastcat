@@ -281,6 +281,11 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
   const contextMenuItems = computed(() => [
     [
       {
+        label: options.t('fastcat.timeline.addMarkerAtPlayhead'),
+        icon: 'i-heroicons-tag',
+        onSelect: createMarkerAtPlayhead,
+      },
+      {
         label: options.t('fastcat.preview.fitToWindow'),
         icon: 'i-heroicons-arrows-pointing-in',
         onSelect: fitMonitor,

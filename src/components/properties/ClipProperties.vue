@@ -8,7 +8,6 @@ import { useMediaStore } from '~/stores/media.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
-import { useEditorViewStore } from '~/stores/editor-view.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useFileManagerStore } from '~/stores/file-manager.store';
@@ -48,7 +47,6 @@ const projectStore = useProjectStore();
 const { setActiveTab } = useProjectTabsStore();
 const mediaStore = useMediaStore();
 const selectionStore = useSelectionStore();
-const editorViewStore = useEditorViewStore();
 const fileManager = useFileManager();
 const uiStore = useUiStore();
 const workspaceStore = useWorkspaceStore();
@@ -122,7 +120,6 @@ const {
   timelineStore,
   projectStore,
   uiStore,
-  editorViewStore,
   fileManagerStore,
   selectionStore,
   focusStore,
@@ -186,7 +183,7 @@ function handleUpdateBlendMode(val: TimelineBlendMode | string) {
 }
 
 function handleUpdateMask(mask: any) {
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { mask });
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { mask } as any);
 }
 
 function handleUpdateClipEffects(effects: VideoClipEffect[]) {
