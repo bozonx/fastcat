@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useWindowSize } from '@vueuse/core';
 import type { TimelineTrack } from '~/timeline/types';
 
@@ -14,6 +15,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
+const workspaceStore = useWorkspaceStore();
 
 const { width, height } = useWindowSize();
 const isLandscape = computed(() => width.value > height.value);
@@ -103,6 +105,83 @@ function addAudioTrack() {
   const audioCount = tracks.value.filter(t => t.kind === 'audio').length;
   timelineStore.addTrack('audio', `Audio ${audioCount + 1}`);
 }
+
+const isConfirmDeleteOpen = ref(false);
+const trackToDeleteId = ref<string | null>(null);
+const selectedTrackForDelete = computed(() => tracks.value.find((t) => t.id === trackToDeleteId.value));
+
+function confirmDelete() {
+  if (trackToDeleteId.value) {
+    timelineStore.deleteTrack(trackToDeleteId.value, { allowNonEmpty: true });
+    trackToDeleteId.value = null;
+  }
+}
+
+function requestDeleteTrack(track: TimelineTrack) {
+  const skipConfirm = workspaceStore.userSettings.deleteWithoutConfirmation;
+  if (track.items.length > 0 && !skipConfirm) {
+    trackToDeleteId.value = track.id;
+    isConfirmDeleteOpen.value = true;
+  } else {
+    timelineStore.deleteTrack(track.id);
+  }
+}
+
+const renamingTrackId = ref<string | null>(null);
+const renameValue = ref('');
+
+function startRename(track: TimelineTrack) {
+  renamingTrackId.value = track.id;
+  renameValue.value = track.name || track.id;
+}
+
+function confirmRename() {
+  if (renamingTrackId.value) {
+    const next = renameValue.value.trim();
+    const track = tracks.value.find(t => t.id === renamingTrackId.value);
+    if (track && next && next !== track.name) {
+      timelineStore.renameTrack(renamingTrackId.value, next);
+    }
+  }
+  renamingTrackId.value = null;
+}
+
+function getTrackMenuItems(track: TimelineTrack) {
+  return [
+    [
+      {
+        label: t('fastcat.timeline.renameTrack', 'Rename Track'),
+        icon: 'lucide:pencil',
+        onSelect: () => startRename(track),
+      },
+      {
+        label: track.locked ? t('fastcat.track.unlock', 'Unlock track') : t('fastcat.track.lock', 'Lock track'),
+        icon: track.locked ? 'lucide:lock-open' : 'lucide:lock',
+        onSelect: () => toggleLock(track.id),
+      },
+      {
+        label: t('fastcat.timeline.deleteTrack', 'Delete Track'),
+        icon: 'lucide:trash-2',
+        iconClass: 'text-error-500',
+        onSelect: () => requestDeleteTrack(track),
+      },
+    ],
+    [
+      {
+        label: t('fastcat.track.moveUp', 'Move track up'),
+        icon: 'lucide:arrow-up',
+        disabled: tracks.value.filter(t => t.kind === track.kind)[0]?.id === track.id,
+        onSelect: () => timelineStore.moveTrackUp(track.id),
+      },
+      {
+        label: t('fastcat.track.moveDown', 'Move track down'),
+        icon: 'lucide:arrow-down',
+        disabled: tracks.value.filter(t => t.kind === track.kind).slice(-1)[0]?.id === track.id,
+        onSelect: () => timelineStore.moveTrackDown(track.id),
+      },
+    ],
+  ];
+}
 </script>
 
 <template>
@@ -178,7 +257,18 @@ function addAudioTrack() {
                         : tracks.filter(t => t.kind === 'audio').indexOf(track) + 1
                     }}
                   </div>
-                  <span class="text-sm font-medium text-slate-200 truncate pr-2">{{ track.name || track.id }}</span>
+                  
+                  <div v-if="renamingTrackId === track.id" class="flex-1 min-w-0 pr-2">
+                    <input
+                      v-model="renameValue"
+                      class="w-full bg-slate-950 border border-primary-500 text-slate-100 rounded px-2 py-0.5 text-sm font-medium focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      autofocus
+                      @blur="confirmRename"
+                      @keydown.enter="confirmRename"
+                      @keydown.esc="renamingTrackId = null"
+                    />
+                  </div>
+                  <span v-else class="text-sm font-medium text-slate-200 truncate pr-2 flex-1" @dblclick="startRename(track)">{{ track.name || track.id }}</span>
                 </div>
 
                 <div class="flex items-center gap-0.5 shrink-0 bg-slate-950/50 rounded-lg p-0.5 border border-slate-800/50">
@@ -199,6 +289,15 @@ function addAudioTrack() {
                     class="p-1"
                     @click="toggleLock(track.id)"
                   />
+                  <UDropdownMenu :items="getTrackMenuItems(track)" :content="{ align: 'end' }">
+                    <UButton
+                      icon="lucide:more-vertical"
+                      color="neutral"
+                      variant="ghost"
+                      size="xs"
+                      class="p-1"
+                    />
+                  </UDropdownMenu>
                 </div>
               </div>
 
@@ -270,6 +369,17 @@ function addAudioTrack() {
           </div>
         </div>
       </div>
+      
+      <UiConfirmModal
+        v-if="selectedTrackForDelete"
+        v-model:open="isConfirmDeleteOpen"
+        :title="t('fastcat.timeline.deleteTrackTitle', 'Delete track?')"
+        :description="t('fastcat.timeline.deleteTrackDescription', 'Track is not empty. This action cannot be undone.')"
+        color="error"
+        icon="i-heroicons-exclamation-triangle"
+        :confirm-text="t('common.delete', 'Delete')"
+        @confirm="confirmDelete"
+      />
     </template>
   </UDrawer>
 </template>
