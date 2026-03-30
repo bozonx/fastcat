@@ -73,6 +73,16 @@ export function useMobileFileBrowserCreate({
   async function onCreateTextFile(targetPath?: string) {
     const path = await createMarkdown(targetPath);
     if (path) {
+      const parentPath = path.includes('/') ? path.split('/').slice(0, -1).join('/') : '';
+      if (fileManagerStore.selectedFolder?.path !== parentPath) {
+        const folderName = parentPath.split('/').pop() || 'Documents';
+        fileManagerStore.openFolder({
+          kind: 'directory',
+          name: folderName,
+          path: parentPath,
+        });
+      }
+
       await loadFolderContent();
       isCreateMenuOpen.value = false;
       toast.add({
@@ -80,7 +90,9 @@ export function useMobileFileBrowserCreate({
         description: t('common.saveSuccess', 'Saved successfully'),
         color: 'success',
       });
+      return path;
     }
+    return null;
   }
 
   return {

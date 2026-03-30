@@ -86,7 +86,7 @@ const {
   onFileSelect,
   onCreateFolder: runCreateFolder,
   onCreateTimeline,
-  onCreateTextFile,
+  onCreateTextFile: runCreateTextFile,
 } = useMobileFileBrowserCreate({
   createFolder,
   createTimeline,
@@ -94,6 +94,27 @@ const {
   handleFiles,
   loadFolderContent,
 });
+
+async function onCreateTextFile(targetPath?: string) {
+  const path = await runCreateTextFile(targetPath);
+  if (path) {
+    // Wait for the next tick for entries to be updated
+    await nextTick();
+    // Sometimes VFS needs a moment to reflect changes even after reload
+    const entry = entries.value.find((e) => e.path === path);
+    if (entry) {
+      handleEntryClick(entry);
+    } else {
+      // Fallback: try one more time after a short delay
+      setTimeout(() => {
+        const retryEntry = entries.value.find((e) => e.path === path);
+        if (retryEntry) {
+          handleEntryClick(retryEntry);
+        }
+      }, 300);
+    }
+  }
+}
 
 const { onFileAction, isDeleteConfirmModalOpen, deleteTargets, handleDeleteConfirm } =
   useFileManagerActions({

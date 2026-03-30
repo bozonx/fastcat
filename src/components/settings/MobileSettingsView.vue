@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import UiTabs from '~/components/ui/UiTabs.vue';
 import SettingsSnapping from './SettingsSnapping.vue';
 import ResolutionSettings from '~/components/project-settings/ResolutionSettings.vue';
 import ExportSettings from '~/components/project-settings/ExportSettings.vue';
@@ -11,7 +10,6 @@ import SettingsGeneral from './SettingsGeneral.vue';
 import SettingsVideo from './SettingsVideo.vue';
 import SettingsAudio from './SettingsAudio.vue';
 import SettingsStorage from './SettingsStorage.vue';
-import SettingsOptimization from './SettingsOptimization.vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineSettingsStore, type ToolbarDragMode } from '~/stores/timeline-settings.store';
 
@@ -19,10 +17,9 @@ const { t } = useI18n();
 const projectStore = useProjectStore();
 const timelineSettingsStore = useTimelineSettingsStore();
 
-const activeTab = ref('quick');
+const activeTab = ref('timeline');
 
 const tabOptions = computed(() => [
-  { value: 'quick', label: t('videoEditor.settings.quick') },
   { value: 'timeline', label: t('videoEditor.settings.timeline') },
   { value: 'project', label: t('videoEditor.settings.project') },
   { value: 'app', label: t('videoEditor.settings.app') },
@@ -52,20 +49,25 @@ const currentMoveMode = computed({
 <template>
   <div class="flex flex-col h-full overflow-hidden bg-ui-bg">
     <!-- Header with Tabs -->
-    <div class="px-4 border-b border-ui-border shrink-0 bg-ui-bg-elevated">
-      <div class="flex items-center pt-3 pb-2">
+    <div class="px-4 shrink-0 bg-ui-bg-elevated">
+      <div class="flex items-center py-4">
         <h2 class="text-sm font-medium text-ui-text-muted truncate">
           {{ projectStore.currentProjectName || t('navigation.settings') }}
         </h2>
       </div>
-      <UiTabs v-model="activeTab" :options="tabOptions" />
+      <UTabs
+        v-model="activeTab"
+        :items="tabOptions"
+        variant="link"
+        :content="false"
+      />
     </div>
 
     <!-- Active Tab Content -->
     <div class="flex-1 overflow-y-auto p-4 custom-scrollbar lg:p-6 bg-ui-bg">
-      <!-- Quick Settings -->
-      <div v-if="activeTab === 'quick'" class="space-y-8 animate-in fade-in duration-200">
-         <section>
+      <!-- Timeline Settings -->
+      <div v-if="activeTab === 'timeline'" class="space-y-8 animate-in fade-in duration-200">
+        <section>
           <h4 class="text-xs font-bold uppercase tracking-wider text-ui-text-muted mb-4 px-1">
             {{ t('fastcat.timeline.moveMode') }}
           </h4>
@@ -87,11 +89,6 @@ const currentMoveMode = computed({
         <div class="h-px bg-ui-border"></div>
 
         <SettingsSnapping />
-      </div>
-
-      <!-- Timeline Settings -->
-      <div v-else-if="activeTab === 'timeline'" class="space-y-8 animate-in fade-in duration-200">
-        <SettingsOptimization />
       </div>
 
       <!-- Project Settings -->
