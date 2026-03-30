@@ -22,10 +22,11 @@ const { t } = useI18n();
 
 const props = defineProps<{
   scrollEl: HTMLElement | null;
+  isMobile?: boolean;
 }>();
 
 const emit = defineEmits<{
-  (e: 'pointerdown' | 'start-playhead-drag' | 'start-pan', event: PointerEvent): void;
+  (e: 'pointerdown' | 'start-pan', event: PointerEvent): void;
   (e: 'wheel', event: WheelEvent): void;
   (e: 'dblclick-ruler', timeUs: number): void;
 }>();
@@ -251,6 +252,46 @@ function isMarkerSelected(markerId: string) {
     selectionStore.selectedEntity.markerId === markerId
   );
 }
+
+const mobileScrubActive = ref(false);
+
+/**
+ * Mobile-specific pointer handler for the ruler.
+ * - If a marker is selected and the touch lands within 40px of it: starts marker drag.
+ * - Otherwise: captures pointer and scrubs playhead continuously.
+ */
+function onMobilePointerDown(event: PointerEvent) {
+  if (event.button !== 0) return;
+  event.preventDefault();
+
+  const sel = selectionStore.selectedEntity;
+  if (sel?.source === 'timeline' && sel.kind === 'marker') {
+    const mp = markerPoints.value.find((p) => p.id === sel.markerId);
+    if (mp) {
+      const rect = containerRef.value?.getBoundingClientRect();
+      if (rect) {
+        const touchX = event.clientX - rect.left;
+        if (Math.abs(touchX - mp.x) < 40) {
+          onMarkerPointerDown(event, sel.markerId);
+          return;
+        }
+      }
+    }
+  }
+
+  mobileScrubActive.value = true;
+  containerRef.value?.setPointerCapture(event.pointerId);
+  timelineStore.setCurrentTimeUs(getTimeUsFromMouseEvent(event));
+}
+
+function onMobilePointerMove(event: PointerEvent) {
+  if (!mobileScrubActive.value) return;
+  timelineStore.setCurrentTimeUs(getTimeUsFromMouseEvent(event));
+}
+
+function onMobilePointerUp() {
+  mobileScrubActive.value = false;
+}
 </script>
 
 <template>
@@ -266,10 +307,10 @@ function isMarkerSelected(markerId: string) {
       @click="onRulerClick"
       @dblclick="onRulerDblClick"
       @auxclick="onRulerAuxClick"
-      @pointerdown="onRulerPointerDown"
-      @pointermove="onRulerPointerMove"
-      @pointerup="onRulerPointerUp"
-      @pointercancel="onRulerPointerCancel"
+      @pointerdown="isMobile ? onMobilePointerDown($event) : onRulerPointerDown($event)"
+      @pointermove="isMobile ? onMobilePointerMove($event) : onRulerPointerMove($event)"
+      @pointerup="isMobile ? onMobilePointerUp() : onRulerPointerUp()"
+      @pointercancel="isMobile ? onMobilePointerUp() : onRulerPointerCancel()"
       @mouseleave="hoveredMarkerId = null"
     >
       <canvas ref="canvasRef" class="absolute top-0 left-0 w-full h-full pointer-events-none" />

@@ -108,6 +108,66 @@ const monitorZoomLabel = computed(() => {
 const containerRef = ref<HTMLElement | null>(null);
 const { isFullscreen, toggle: toggleFullscreen } = useFullscreen(containerRef);
 
+const isContextMenuOpen = ref(false);
+
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_MOVE_THRESHOLD = 10;
+let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+let longPressStartX = 0;
+let longPressStartY = 0;
+
+const DOUBLE_TAP_MS = 280;
+let viewportTapTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearLongPressTimer() {
+  if (longPressTimer !== null) {
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+  }
+}
+
+function onLongPressPointerDown(e: PointerEvent) {
+  const target = e.target as HTMLElement;
+  if (
+    target.closest('button') ||
+    target.closest('input') ||
+    target.closest('[role="slider"]') ||
+    target.closest('[role="menuitem"]')
+  )
+    return;
+  longPressStartX = e.clientX;
+  longPressStartY = e.clientY;
+  longPressTimer = setTimeout(() => {
+    longPressTimer = null;
+    isContextMenuOpen.value = true;
+    if (navigator.vibrate) navigator.vibrate(30);
+  }, LONG_PRESS_MS);
+}
+
+function onLongPressPointerMove(e: PointerEvent) {
+  if (longPressTimer === null) return;
+  const dx = Math.abs(e.clientX - longPressStartX);
+  const dy = Math.abs(e.clientY - longPressStartY);
+  if (dx > LONG_PRESS_MOVE_THRESHOLD || dy > LONG_PRESS_MOVE_THRESHOLD) {
+    clearLongPressTimer();
+  }
+}
+
+function handleViewportClick(e: MouseEvent) {
+  const target = e.target as HTMLElement;
+  if (target.closest('button') || target.closest('[role="slider"]')) return;
+
+  if (viewportTapTimer !== null) {
+    clearTimeout(viewportTapTimer);
+    viewportTapTimer = null;
+    (viewportRef.value as any)?.fitMonitor?.();
+  } else {
+    viewportTapTimer = setTimeout(() => {
+      viewportTapTimer = null;
+    }, DOUBLE_TAP_MS);
+  }
+}
+
 watch(isFullscreen, () => {
   void nextTick(() => {
     (viewportRef.value as any)?.fitMonitor?.();
@@ -189,6 +249,11 @@ const containerHeightClass = computed(() =>
       :ui-current-time-us="uiCurrentTimeUs"
       :is-mobile="true"
       class="bg-black/80"
+      @click="handleViewportClick"
+      @pointerdown="onLongPressPointerDown"
+      @pointermove="onLongPressPointerMove"
+      @pointerup="clearLongPressTimer"
+      @pointercancel="clearLongPressTimer"
     >
       <template #canvas>
         <div ref="containerEl" class="absolute inset-0" style="pointer-events: none" />
@@ -243,6 +308,10 @@ const containerHeightClass = computed(() =>
           ? 'w-[72px] flex flex-col items-center py-4 border-l border-ui-border'
           : 'px-4 py-1.5 border-t border-ui-border h-[64px]',
       ]"
+      @pointerdown="onLongPressPointerDown"
+      @pointermove="onLongPressPointerMove"
+      @pointerup="clearLongPressTimer"
+      @pointercancel="clearLongPressTimer"
     >
       <div
         class="flex gap-3"
@@ -322,7 +391,7 @@ const containerHeightClass = computed(() =>
             @click="togglePlayback"
           />
 
-          <UDropdownMenu :items="contextMenuItems">
+          <UDropdownMenu v-model:open="isContextMenuOpen" :items="contextMenuItems">
             <UButton
               size="xs"
               variant="ghost"
