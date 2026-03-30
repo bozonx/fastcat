@@ -5,7 +5,12 @@ const PANEL_SIZES_PREFIX = 'fastcat:layout:split-sizes';
 
 export function getPanelSizesKey(pageKey: string, projectId: string | null): string {
   const id = projectId ?? 'no-project';
-  return `${PANEL_SIZES_PREFIX}:${pageKey}:${id}`;
+  const isMobile =
+    typeof window !== 'undefined' &&
+    (window.matchMedia('(max-width: 768px)').matches ||
+      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+  const suffix = isMobile ? ':mobile' : '';
+  return `${PANEL_SIZES_PREFIX}:${pageKey}:${id}${suffix}`;
 }
 
 /**
