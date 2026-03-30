@@ -12,7 +12,7 @@ import MobileSettingsView from '~/components/settings/MobileSettingsView.vue';
 
 import MobileBottomNav from '~/components/layout/MobileBottomNav.vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
-import { until } from '@vueuse/core';
+import { until, useMediaQuery } from '@vueuse/core';
 
 definePageMeta({
   layout: 'mobile',
@@ -112,6 +112,17 @@ async function handleBack() {
   await leaveProject('/m');
 }
 
+const isLandscapeMode = useMediaQuery('(orientation: landscape)');
+
+const isLandscapeProject = computed(() => {
+  const s = projectStore.projectSettings?.project;
+  if (!s) return true;
+  return (s.width ?? 1920) >= (s.height ?? 1080);
+});
+
+/** Monitor goes to top only in landscape device + landscape project */
+const monitorAtTop = computed(() => isLandscapeMode.value && isLandscapeProject.value);
+
 
 </script>
 
@@ -154,13 +165,19 @@ async function handleBack() {
 
       <div
         v-else-if="activeTab === 'edit'"
-        class="flex h-full flex-col overflow-hidden bg-slate-950 landscape:flex-row"
+        class="flex h-full overflow-hidden bg-slate-950"
+        :class="isLandscapeMode && !isLandscapeProject ? 'flex-row' : 'flex-col'"
       >
         <MobileMonitorContainer
           mode="edit"
-          class="order-1 landscape:order-2 landscape:w-[42%] landscape:border-l landscape:border-slate-800 landscape:h-full! landscape:max-h-none!"
+          :monitor-at-top="monitorAtTop"
+          :class="
+            isLandscapeMode && !isLandscapeProject
+              ? 'order-1 w-[42%] border-r border-slate-800 h-full! max-h-none!'
+              : 'order-1'
+          "
         />
-        <MobileTimeline class="flex-1 order-2 landscape:order-1" />
+        <MobileTimeline class="flex-1 order-2" />
       </div>
 
 
