@@ -39,6 +39,13 @@ const props = withDefaults(defineProps<Props>(), {
 
 const isOpen = defineModel<boolean>('open', { default: false });
 
+/**
+ * UDrawer (vaul-vue / Reka Dialog) requires DrawerTitle and DrawerDescription inside DrawerContent.
+ * With the #content slot, Nuxt UI only injects them when title/description slots or props are set.
+ */
+const drawerTitleForA11y = computed(() => props.title?.trim() || 'Panel');
+const drawerDescriptionForA11y = computed(() => props.description?.trim() || '\u00A0');
+
 const { width, height } = useWindowSize();
 const isLandscape = computed(() => width.value > height.value);
 
@@ -66,8 +73,8 @@ const containerClasses = computed(() => {
   <UDrawer
     v-model:open="isOpen"
     :direction="effectiveDirection"
-    :title="props.title"
-    :description="props.description"
+    :title="drawerTitleForA11y"
+    :description="drawerDescriptionForA11y"
     :snap-points="props.snapPoints"
     :dismissible="props.dismissible"
     :should-scale-background="props.shouldScaleBackground"

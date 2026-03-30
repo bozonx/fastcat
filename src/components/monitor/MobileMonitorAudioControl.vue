@@ -35,11 +35,7 @@ function onVolumeUpdate(v: number | undefined) {
 <template>
   <div class="relative flex items-center shrink-0">
     <UPopover
-      :popper="{ placement: 'top', offsetDistance: 12 }"
-      :ui="{
-        content: 'p-0',
-        width: 'max-w-none'
-      }"
+      :content="{ side: 'top', sideOffset: 12, class: 'p-0 max-w-none' }"
     >
       <UButton
         size="md"
@@ -63,7 +59,7 @@ function onVolumeUpdate(v: number | undefined) {
             <USlider
               :min="0"
               :max="2"
-              :step="0.05"
+              :step="0.01"
               :model-value="monitorMuted ? 0 : monitorVolume"
               orientation="horizontal"
               class="w-full"

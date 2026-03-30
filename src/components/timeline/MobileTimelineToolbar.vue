@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { storeToRefs } from 'pinia';
-import type { ToolbarDragMode, ToolbarSnapMode } from '~/stores/timeline-settings.store';
+import type { ToolbarSnapMode } from '~/stores/timeline-settings.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -97,41 +97,17 @@ const snapToPlayhead = computed({
   set: (val: boolean) => (workspaceStore.userSettings.timeline.snapping.playhead = val),
 });
 
-// Move mode options
+const isPseudoOverlapMode = computed(
+  () => settingsStore.toolbarDragModeEnabled && settingsStore.toolbarDragMode === 'pseudo_overlap',
+);
 
-const moveModeOptions = computed<
-  { value: 'none' | ToolbarDragMode; icon: string; title: string }[]
->(() => [
-  {
-    value: 'none',
-    icon: 'i-heroicons-cursor-arrow-rays',
-    title: t('fastcat.timeline.moveModeNormalDescription'),
-  },
-  {
-    value: 'pseudo_overlap',
-    icon: 'i-heroicons-rectangle-stack',
-    title: t('fastcat.timeline.moveModePseudoDescription'),
-  },
-  {
-    value: 'slip',
-    icon: 'i-heroicons-arrows-right-left',
-    title: t('fastcat.timeline.moveModeSlipDescription'),
-  },
-]);
-
-const currentMoveMode = computed({
-  get: () => {
-    if (!settingsStore.toolbarDragModeEnabled) return 'none';
-    return settingsStore.toolbarDragMode;
-  },
-  set: (val: 'none' | ToolbarDragMode) => {
-    if (val === 'none') {
-      settingsStore.toolbarDragModeEnabled = false;
-    } else {
-      settingsStore.selectToolbarDragMode(val);
-    }
-  },
-});
+function togglePseudoOverlapMode() {
+  if (isPseudoOverlapMode.value) {
+    settingsStore.toolbarDragModeEnabled = false;
+  } else {
+    settingsStore.selectToolbarDragMode('pseudo_overlap');
+  }
+}
 
 const rippleTrimDisabled = computed(() => timelineStore.getHotkeyTargetClip() === null);
 
@@ -258,14 +234,12 @@ function handleRippleTrimRight() {
 
       <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1 shrink-0">
         <UiActionButton
-          v-for="opt in moveModeOptions"
-          :key="opt.value"
-          :icon="opt.icon"
-          :variant="currentMoveMode === opt.value ? 'solid' : 'ghost'"
-          :color="currentMoveMode === opt.value ? 'primary' : 'neutral'"
+          icon="i-heroicons-rectangle-stack"
+          :variant="isPseudoOverlapMode ? 'solid' : 'ghost'"
+          :color="isPseudoOverlapMode ? 'primary' : 'neutral'"
           size="sm"
-          :title="opt.title"
-          @click="currentMoveMode = opt.value"
+          :title="t('fastcat.timeline.moveModePseudoDescription')"
+          @click="togglePseudoOverlapMode"
         />
       </div>
 
@@ -325,7 +299,7 @@ function handleRippleTrimRight() {
               ? 'bg-primary-500/15 text-primary-500'
               : 'bg-ui-bg text-ui-text hover:bg-ui-bg-hover'
           "
-          @click="settingsStore.selectToolbarSnapMode(opt.value)"
+          @click="settingsStore.selectToolbarSnapMode(opt.value); isSnapDrawerOpen = false"
         >
           <UIcon :name="opt.icon" class="size-5 shrink-0" />
           <span class="text-sm font-medium leading-snug">{{ opt.description }}</span>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import type {
   TimelineClipActionPayload,
@@ -27,6 +27,10 @@ import MobileTimelineToolbar from './MobileTimelineToolbar.vue';
 import MobileClipPropertiesDrawer from './MobileClipPropertiesDrawer.vue';
 import TrackProperties from '~/components/properties/TrackProperties.vue';
 import MarkerProperties from '~/components/properties/MarkerProperties.vue';
+import SelectionRangeProperties from '~/components/properties/SelectionRangeProperties.vue';
+import TransitionProperties from '~/components/properties/TransitionProperties.vue';
+import MobileAddContentDrawer from './MobileAddContentDrawer.vue';
+import MobileVirtualClipPresetDrawer from './MobileVirtualClipPresetDrawer.vue';
 
 
 const { t } = useI18n();
@@ -65,6 +69,18 @@ const selectedTrackNumber = computed(() => {
 const isTrackPropertiesDrawerOpen = ref(false);
 const isClipPropertiesDrawerOpen = ref(false);
 const isMarkerPropertiesDrawerOpen = ref(false);
+const isSelectionRangeDrawerOpen = ref(false);
+const isTransitionDrawerOpen = ref(false);
+const isAddContentDrawerOpen = ref(false);
+const isVirtualClipPresetDrawerOpen = ref(false);
+const virtualClipPresetType = ref<'text' | 'shape' | 'hud'>('text');
+
+function onOpenVirtualClipPreset(type: 'text' | 'shape' | 'hud') {
+  virtualClipPresetType.value = type;
+  nextTick(() => {
+    isVirtualClipPresetDrawerOpen.value = true;
+  });
+}
 
 const selectedMarkerId = computed(() => {
   if (selectedEntity.value?.source === 'timeline' && selectedEntity.value.kind === 'marker') {
@@ -74,6 +90,18 @@ const selectedMarkerId = computed(() => {
     }
   }
   return null;
+});
+
+const selectedTransitionContext = computed(() => {
+  const sel = timelineStore.selectedTransition;
+  if (!sel) return null;
+  const track = (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined)?.find(
+    (tr) => tr.id === sel.trackId,
+  );
+  if (!track) return null;
+  const clip = track.items.find((i) => i.id === sel.itemId);
+  if (!clip || clip.kind !== 'clip') return null;
+  return { track, clip };
 });
 
 watch(
@@ -100,6 +128,24 @@ watch(
   { immediate: true },
 );
 
+watch(
+  () =>
+    selectionStore.selectedEntity?.source === 'timeline' &&
+    selectionStore.selectedEntity.kind === 'selection-range',
+  (val) => {
+    isSelectionRangeDrawerOpen.value = val;
+  },
+  { immediate: true },
+);
+
+watch(
+  () => timelineStore.selectedTransition,
+  (val) => {
+    isTransitionDrawerOpen.value = !!val;
+  },
+  { immediate: true },
+);
+
 function onUpdateDrawerOpen(val: boolean) {
   if (!val && timelineStore.selectedTrackId) {
     timelineStore.selectTrack(null);
@@ -114,6 +160,16 @@ function onClipPropertiesDrawerClose() {
 function onMarkerPropertiesDrawerClose() {
   isMarkerPropertiesDrawerOpen.value = false;
   selectionStore.clearSelection();
+}
+
+function onSelectionRangeDrawerClose() {
+  isSelectionRangeDrawerOpen.value = false;
+  selectionStore.clearSelection();
+}
+
+function onTransitionDrawerClose() {
+  isTransitionDrawerOpen.value = false;
+  timelineStore.clearSelectedTransition();
 }
 
 // --- Track quick actions ---
@@ -608,6 +664,51 @@ async function onClipAction(payload: TimelineClipActionPayload) {
       </div>
     </UiMobileDrawer>
 
+    <!-- Selection Range Properties Drawer -->
+    <UiMobileDrawer
+      v-model:open="isSelectionRangeDrawerOpen"
+      :title="t('fastcat.timeline.selectionRange', 'Selection Range')"
+      :snap-points="[0.4, 0.85]"
+      direction="bottom"
+      @update:open="(val) => !val && onSelectionRangeDrawerClose()"
+    >
+      <div class="px-4 pb-6 overflow-y-auto">
+        <SelectionRangeProperties />
+      </div>
+    </UiMobileDrawer>
+
+    <!-- Transition Properties Drawer -->
+    <UiMobileDrawer
+      v-model:open="isTransitionDrawerOpen"
+      :title="t('fastcat.timeline.transition.title', 'Transition')"
+      :snap-points="[0.45, 0.88]"
+      direction="bottom"
+      @update:open="(val) => !val && onTransitionDrawerClose()"
+    >
+      <div class="px-4 pb-6 overflow-y-auto">
+        <TransitionProperties
+          v-if="timelineStore.selectedTransition && selectedTransitionContext"
+          :transition-selection="timelineStore.selectedTransition"
+          :clip="selectedTransitionContext.clip"
+          :track="selectedTransitionContext.track"
+        />
+      </div>
+    </UiMobileDrawer>
+
+    <!-- Add content drawer -->
+    <MobileAddContentDrawer
+      :is-open="isAddContentDrawerOpen"
+      @close="isAddContentDrawerOpen = false"
+      @open-virtual-clip-preset="onOpenVirtualClipPreset"
+    />
+
+    <!-- Virtual clip preset drawer (text / shape / hud) -->
+    <MobileVirtualClipPresetDrawer
+      :is-open="isVirtualClipPresetDrawerOpen"
+      :type="virtualClipPresetType"
+      @close="isVirtualClipPresetDrawerOpen = false"
+    />
+
     <!-- Tracks area -->
     <div class="flex-1 relative overflow-hidden">
 
@@ -618,6 +719,7 @@ async function onClipAction(payload: TimelineClipActionPayload) {
         <TimelineRuler
           class="touch-none w-full h-full"
           :scroll-el="scrollEl"
+          :is-mobile="true"
           @pointerdown="onTimeRulerPointerDown"
         />
       </div>
@@ -661,8 +763,26 @@ async function onClipAction(payload: TimelineClipActionPayload) {
           />
         </div>
       </div>
+
     </div>
   </div>
+
+  <!-- FAB: add content -->
+  <Teleport to="body">
+    <div
+      v-if="!isAddContentDrawerOpen && !isVirtualClipPresetDrawerOpen"
+      class="fixed bottom-20 right-6 z-40 transition-all duration-300"
+    >
+      <UButton
+        icon="lucide:plus"
+        size="xl"
+        class="rounded-full shadow-2xl w-14 h-14 flex items-center justify-center bg-ui-action hover:bg-ui-action-hover text-white border-none shadow-ui-action/20"
+        :ui="{ icon: 'w-7 h-7' }"
+        :aria-label="t('fastcat.timeline.addContent', 'Add content')"
+        @click="isAddContentDrawerOpen = true"
+      />
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
