@@ -25,7 +25,7 @@ import TimelineRuler from './TimelineRuler.vue';
 import TimelineGrid from './TimelineGrid.vue';
 import MobileTimelineToolbar from './MobileTimelineToolbar.vue';
 import MobileClipPropertiesDrawer from './MobileClipPropertiesDrawer.vue';
-import TrackProperties from '~/components/properties/TrackProperties.vue';
+import MobileTrackPropertiesDrawer from './MobileTrackPropertiesDrawer.vue';
 import MarkerProperties from '~/components/properties/MarkerProperties.vue';
 import SelectionRangeProperties from '~/components/properties/SelectionRangeProperties.vue';
 import TransitionProperties from '~/components/properties/TransitionProperties.vue';
@@ -37,8 +37,6 @@ const { t } = useI18n();
 const toast = useToast();
 
 const timelineStore = useTimelineStore();
-const workspaceStore = useWorkspaceStore();
-const mediaStore = useMediaStore();
 const focusStore = useFocusStore();
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
@@ -54,17 +52,6 @@ const canEditClipContent = computed(
 const tracks = computed(
   () => (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [],
 );
-
-const selectedTrack = computed(() => {
-  if (!timelineStore.selectedTrackId) return null;
-  return tracks.value.find((t) => t.id === timelineStore.selectedTrackId) || null;
-});
-
-const selectedTrackNumber = computed(() => {
-  if (!selectedTrack.value) return 1;
-  const filtered = tracks.value.filter((t) => t.kind === selectedTrack.value!.kind);
-  return filtered.indexOf(selectedTrack.value) + 1;
-});
 
 const isTrackPropertiesDrawerOpen = ref(false);
 const isClipPropertiesDrawerOpen = ref(false);
@@ -171,89 +158,6 @@ function onTransitionDrawerClose() {
   isTransitionDrawerOpen.value = false;
   timelineStore.clearSelectedTransition();
 }
-
-// --- Track quick actions ---
-
-const isTrackDeleteConfirmOpen = ref(false);
-const isTrackRenameOpen = ref(false);
-
-const isTrackFirstOfKind = computed(() => {
-  if (!selectedTrack.value) return true;
-  return tracks.value.filter((t) => t.kind === selectedTrack.value!.kind)[0]?.id === selectedTrack.value.id;
-});
-
-const isTrackLastOfKind = computed(() => {
-  if (!selectedTrack.value) return true;
-  const kindTracks = tracks.value.filter((t) => t.kind === selectedTrack.value!.kind);
-  return kindTracks[kindTracks.length - 1]?.id === selectedTrack.value.id;
-});
-
-const trackGain = computed(() => {
-  if (!selectedTrack.value) return 100;
-  const gain = typeof selectedTrack.value.audioGain === 'number' ? selectedTrack.value.audioGain : 1;
-  return Math.round(Math.max(0, Math.min(4, gain)) * 100);
-});
-
-function handleTrackGainInput(event: Event) {
-  if (!selectedTrack.value) return;
-  const val = (event.target as HTMLInputElement).valueAsNumber;
-  timelineStore.updateTrackProperties(selectedTrack.value.id, {
-    audioGain: Math.max(0, Math.min(4, val / 100)),
-  });
-}
-
-function toggleTrackLock() {
-  if (!selectedTrack.value) return;
-  timelineStore.updateTrackProperties(selectedTrack.value.id, { locked: !selectedTrack.value.locked });
-  timelineStore.requestTimelineSave({ immediate: true });
-}
-
-function toggleTrackVideoHidden() {
-  if (!selectedTrack.value) return;
-  timelineStore.updateTrackProperties(selectedTrack.value.id, {
-    videoHidden: !selectedTrack.value.videoHidden,
-  });
-  timelineStore.requestTimelineSave({ immediate: true });
-}
-
-function toggleTrackMute() {
-  if (!selectedTrack.value) return;
-  timelineStore.toggleTrackAudioMuted(selectedTrack.value.id);
-  timelineStore.requestTimelineSave({ immediate: true });
-}
-
-function toggleTrackSolo() {
-  if (!selectedTrack.value) return;
-  timelineStore.toggleTrackAudioSolo(selectedTrack.value.id);
-  timelineStore.requestTimelineSave({ immediate: true });
-}
-
-function moveSelectedTrackUp() {
-  if (!selectedTrack.value) return;
-  timelineStore.moveTrackUp(selectedTrack.value.id);
-}
-
-function moveSelectedTrackDown() {
-  if (!selectedTrack.value) return;
-  timelineStore.moveTrackDown(selectedTrack.value.id);
-}
-
-function requestDeleteTrack() {
-  if (!selectedTrack.value) return;
-  const skipConfirm = workspaceStore.userSettings.deleteWithoutConfirmation;
-  if (selectedTrack.value.items.length === 0 || skipConfirm) {
-    timelineStore.deleteTrack(selectedTrack.value.id);
-  } else {
-    isTrackDeleteConfirmOpen.value = true;
-  }
-}
-
-function confirmDeleteTrack() {
-  if (!selectedTrack.value) return;
-  timelineStore.deleteTrack(selectedTrack.value.id, { allowNonEmpty: true });
-  isTrackDeleteConfirmOpen.value = false;
-}
-
 
 const scrollEl = ref<HTMLElement | null>(null);
 
@@ -385,9 +289,7 @@ function onTimelineClick(e: MouseEvent) {
   const el = scrollEl.value;
   if (!el) return;
 
-  const docTracks = (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [];
   const tracksHeight = Object.values(trackHeights.value).reduce((a, b) => a + b, 0);
-
   const scrollerRectY = el.getBoundingClientRect();
   const y = e.clientY - scrollerRectY.top + el.scrollTop;
   if (y > tracksHeight + 32) {
@@ -395,10 +297,12 @@ function onTimelineClick(e: MouseEvent) {
     return;
   }
 
-  const scrollerRect = el.getBoundingClientRect();
-  const scrollX = el.scrollLeft;
-  const x = e.clientX - scrollerRect.left + scrollX;
+  // Tapping empty space clears selection (closes property drawers)
+  timelineStore.clearSelection();
+  timelineStore.selectTrack(null);
 
+  const scrollX = el.scrollLeft;
+  const x = e.clientX - scrollerRectY.left + scrollX;
   timelineStore.setCurrentTimeUs(pxToTimeUs(x, timelineStore.timelineZoom));
 }
 
@@ -474,206 +378,10 @@ async function onClipAction(payload: TimelineClipActionPayload) {
     />
 
     <!-- Track Properties Drawer -->
-    <UiMobileDrawer
-      v-model:open="isTrackPropertiesDrawerOpen"
-      :snap-points="['200px', 0.88]"
-      direction="bottom"
-      :modal="false"
-      :overlay="false"
-      :dismissible="false"
-      :with-handle="false"
-      :ui="{
-        container: 'border-t border-slate-800/80 bg-slate-900/90 backdrop-blur-2xl ring-1 ring-white/5',
-        header: 'p-0 px-4 pt-2 pb-1'
-      }"
-      @update:open="onUpdateDrawerOpen"
-    >
-      <template #header>
-        <div class="flex items-center justify-between gap-4 py-1.5 px-0.5">
-          <div class="flex items-center gap-2 min-w-0">
-            <div
-              v-if="selectedTrack"
-              class="w-6 h-6 rounded shrink-0 flex items-center justify-center font-black text-[10px]"
-              :style="{
-                backgroundColor: selectedTrack.color && selectedTrack.color !== '#2a2a2a' ? `${selectedTrack.color}33` : '#334155',
-                color: selectedTrack.color && selectedTrack.color !== '#2a2a2a' ? selectedTrack.color : '#94a3b8'
-              }"
-            >
-              {{ selectedTrack.kind === 'video' ? 'V' : 'A' }}{{ selectedTrackNumber }}
-            </div>
-
-            <span v-if="selectedTrack" class="text-xs font-bold text-slate-200 truncate flex-1 leading-none">
-              {{ selectedTrack.name || selectedTrack.id }}
-            </span>
-          </div>
-
-          <!-- Toolbar controls -->
-          <div class="flex items-center gap-1 shrink-0">
-            <div class="w-8 h-1 rounded-full bg-slate-800/80 mx-1" />
-            <UButton
-              variant="ghost"
-              color="neutral"
-              size="sm"
-              icon="lucide:maximize-2"
-              class="text-slate-400"
-              :ui="{ icon: 'w-4 h-4' }"
-            />
-          </div>
-        </div>
-      </template>
-
-      <div v-if="selectedTrack" class="pb-6">
-        <!-- Quick action buttons grid -->
-        <div class="px-4 pt-3 pb-4">
-          <div class="grid grid-cols-4 gap-2 mb-3">
-            <!-- Rename -->
-            <button
-              class="flex flex-col items-center justify-center gap-1.5 rounded-xl p-2.5 text-center transition-all outline-none active:scale-95 bg-slate-900/80 border border-slate-800 text-slate-200 min-h-[62px]"
-              @click="isTrackRenameOpen = true"
-            >
-              <UIcon name="lucide:pencil" class="w-5 h-5 shrink-0" />
-              <span class="text-[10px] font-medium leading-tight">{{ $t('common.rename', 'Rename') }}</span>
-            </button>
-
-            <!-- Delete -->
-            <button
-              class="flex flex-col items-center justify-center gap-1.5 rounded-xl p-2.5 text-center transition-all outline-none active:scale-95 text-red-400 bg-red-500/10 min-h-[62px]"
-              @click="requestDeleteTrack"
-            >
-              <UIcon name="lucide:trash-2" class="w-5 h-5 shrink-0" />
-              <span class="text-[10px] font-medium leading-tight">{{ $t('common.delete', 'Delete') }}</span>
-            </button>
-
-            <!-- Lock / Unlock -->
-            <button
-              class="flex flex-col items-center justify-center gap-1.5 rounded-xl p-2.5 text-center transition-all outline-none active:scale-95 min-h-[62px]"
-              :class="selectedTrack.locked
-                ? 'text-primary-400 bg-primary-500/10 border border-primary-500/30'
-                : 'text-slate-200 bg-slate-900/80 border border-slate-800'"
-              @click="toggleTrackLock"
-            >
-              <UIcon :name="selectedTrack.locked ? 'lucide:lock-open' : 'lucide:lock'" class="w-5 h-5 shrink-0" />
-              <span class="text-[10px] font-medium leading-tight">
-                {{ selectedTrack.locked ? $t('fastcat.track.unlock', 'Unlock') : $t('fastcat.track.lock', 'Lock') }}
-              </span>
-            </button>
-
-            <!-- Hide / Show (video) -->
-            <button
-              v-if="selectedTrack.kind === 'video'"
-              class="flex flex-col items-center justify-center gap-1.5 rounded-xl p-2.5 text-center transition-all outline-none active:scale-95 min-h-[62px]"
-              :class="selectedTrack.videoHidden
-                ? 'text-amber-400 bg-amber-500/10 border border-amber-500/30'
-                : 'text-slate-200 bg-slate-900/80 border border-slate-800'"
-              @click="toggleTrackVideoHidden"
-            >
-              <UIcon :name="selectedTrack.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'" class="w-5 h-5 shrink-0" />
-              <span class="text-[10px] font-medium leading-tight">
-                {{ selectedTrack.videoHidden ? $t('fastcat.timeline.showTrack', 'Show') : $t('fastcat.timeline.hideTrack', 'Hide') }}
-              </span>
-            </button>
-            <!-- Placeholder for audio tracks to keep grid alignment -->
-            <div v-else class="min-h-[62px]" />
-
-            <!-- Mute / Unmute -->
-            <button
-              class="flex flex-col items-center justify-center gap-1.5 rounded-xl p-2.5 text-center transition-all outline-none active:scale-95 min-h-[62px]"
-              :class="selectedTrack.audioMuted
-                ? 'text-amber-400 bg-amber-500/10 border border-amber-500/30'
-                : 'text-slate-200 bg-slate-900/80 border border-slate-800'"
-              @click="toggleTrackMute"
-            >
-              <UIcon :name="selectedTrack.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'" class="w-5 h-5 shrink-0" />
-              <span class="text-[10px] font-medium leading-tight">
-                {{ selectedTrack.audioMuted ? $t('fastcat.track.unmute', 'Unmute') : $t('fastcat.track.mute', 'Mute') }}
-              </span>
-            </button>
-
-            <!-- Solo -->
-            <button
-              class="flex flex-col items-center justify-center gap-1.5 rounded-xl p-2.5 text-center transition-all outline-none active:scale-95 min-h-[62px]"
-              :class="selectedTrack.audioSolo
-                ? 'text-primary-400 bg-primary-500/10 border border-primary-500/30'
-                : 'text-slate-200 bg-slate-900/80 border border-slate-800'"
-              @click="toggleTrackSolo"
-            >
-              <UIcon name="i-heroicons-musical-note" class="w-5 h-5 shrink-0" />
-              <span class="text-[10px] font-medium leading-tight">{{ $t('fastcat.track.solo', 'Solo') }}</span>
-            </button>
-
-            <!-- Move Up -->
-            <button
-              class="flex flex-col items-center justify-center gap-1.5 rounded-xl p-2.5 text-center transition-all outline-none min-h-[62px]"
-              :class="isTrackFirstOfKind
-                ? 'opacity-35 pointer-events-none text-slate-200 bg-slate-900/80 border border-slate-800'
-                : 'active:scale-95 text-slate-200 bg-slate-900/80 border border-slate-800'"
-              @click="moveSelectedTrackUp"
-            >
-              <UIcon name="lucide:arrow-up" class="w-5 h-5 shrink-0" />
-              <span class="text-[10px] font-medium leading-tight">{{ $t('fastcat.track.moveUp', 'Move up') }}</span>
-            </button>
-
-            <!-- Move Down -->
-            <button
-              class="flex flex-col items-center justify-center gap-1.5 rounded-xl p-2.5 text-center transition-all outline-none min-h-[62px]"
-              :class="isTrackLastOfKind
-                ? 'opacity-35 pointer-events-none text-slate-200 bg-slate-900/80 border border-slate-800'
-                : 'active:scale-95 text-slate-200 bg-slate-900/80 border border-slate-800'"
-              @click="moveSelectedTrackDown"
-            >
-              <UIcon name="lucide:arrow-down" class="w-5 h-5 shrink-0" />
-              <span class="text-[10px] font-medium leading-tight">{{ $t('fastcat.track.moveDown', 'Move down') }}</span>
-            </button>
-          </div>
-
-          <!-- Track volume slider -->
-          <div class="flex items-center gap-3 rounded-xl bg-slate-900/80 border border-slate-800 px-3 py-2.5">
-            <UIcon name="i-heroicons-speaker-wave" class="w-4 h-4 text-slate-400 shrink-0" />
-            <span class="text-xs text-slate-400 font-mono w-8 tabular-nums text-right shrink-0">{{ trackGain }}</span>
-            <input
-              :value="trackGain"
-              type="range"
-              min="0"
-              max="400"
-              step="1"
-              class="flex-1 accent-primary-500"
-              :disabled="Boolean(selectedTrack.audioMuted)"
-              :class="{ 'opacity-40 pointer-events-none': selectedTrack.audioMuted }"
-              @input="handleTrackGainInput"
-            />
-          </div>
-        </div>
-
-        <!-- Separator before full properties -->
-        <div class="mx-4 border-t border-slate-800/60 mb-4" />
-
-        <!-- Full track properties -->
-        <div class="px-4">
-          <TrackProperties :track="selectedTrack" />
-        </div>
-      </div>
-
-      <UiConfirmModal
-        v-model:open="isTrackDeleteConfirmOpen"
-        :title="$t('fastcat.timeline.deleteTrackTitle', 'Delete track?')"
-        :description="$t('fastcat.timeline.deleteTrackDescription', 'Track is not empty. This action cannot be undone.')"
-        color="error"
-        icon="i-heroicons-exclamation-triangle"
-        :confirm-text="$t('common.delete', 'Delete')"
-        @confirm="confirmDeleteTrack"
-      />
-
-      <UiRenameModal
-        :open="isTrackRenameOpen"
-        :current-name="selectedTrack?.name || ''"
-        :title="$t('fastcat.timeline.renameTrack', 'Rename track')"
-        @update:open="isTrackRenameOpen = $event"
-        @rename="(name) => {
-          if (selectedTrack) timelineStore.renameTrack(selectedTrack.id, name);
-          isTrackRenameOpen = false;
-        }"
-      />
-    </UiMobileDrawer>
+    <MobileTrackPropertiesDrawer
+      :is-open="isTrackPropertiesDrawerOpen"
+      @close="onUpdateDrawerOpen(false)"
+    />
 
     <UiMobileDrawer
       v-model:open="isMarkerPropertiesDrawerOpen"
@@ -789,10 +497,10 @@ async function onClipAction(payload: TimelineClipActionPayload) {
 
     </div>
 
-  <!-- FAB: add content — Teleport renders to body, no DOM flow impact -->
+  <!-- FAB: add content — hidden whenever any property drawer is open -->
   <Teleport to="body">
     <div
-      v-if="!isAddContentDrawerOpen && !isVirtualClipPresetDrawerOpen"
+      v-if="!isAddContentDrawerOpen && !isVirtualClipPresetDrawerOpen && !isClipPropertiesDrawerOpen && !isTrackPropertiesDrawerOpen && !isMarkerPropertiesDrawerOpen && !isSelectionRangeDrawerOpen && !isTransitionDrawerOpen"
       class="fixed bottom-20 right-6 z-40 transition-all duration-300"
     >
       <UButton

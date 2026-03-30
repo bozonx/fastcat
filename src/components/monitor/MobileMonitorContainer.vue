@@ -17,10 +17,13 @@ const props = withDefaults(
     mode?: 'edit' | 'sound';
     /** When true the monitor is positioned at the top (landscape + landscape project) */
     monitorAtTop?: boolean;
+    /** When true removes fixed height/width constraints so the parent can control sizing */
+    flexible?: boolean;
   }>(),
   {
     mode: 'edit',
     monitorAtTop: false,
+    flexible: false,
   },
 );
 
@@ -257,11 +260,12 @@ function rewindToStart() {
   blurActiveElement();
 }
 
-const containerHeightClass = computed(() =>
-  props.mode === 'sound'
+const containerHeightClass = computed(() => {
+  if (props.flexible) return 'h-full w-full';
+  return props.mode === 'sound'
     ? 'h-[30vh] min-h-[220px] max-h-[340px]'
-    : 'h-[34vh] min-h-[240px] max-h-[420px]',
-);
+    : 'h-[34vh] min-h-[240px] max-h-[420px]';
+});
 </script>
 
 <template>
