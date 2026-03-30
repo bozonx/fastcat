@@ -7,7 +7,7 @@ import UiModal from '~/components/ui/UiModal.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import ProjectThumbnail from '~/components/startup/ProjectThumbnail.vue';
-import EditorSettingsModal from '~/components/settings/EditorSettingsModal.vue';
+import MobileAppSettingsPanel from '~/components/settings/MobileAppSettingsPanel.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 import MobileBottomNav from '~/components/layout/MobileBottomNav.vue';
 
@@ -325,5 +325,14 @@ const smartSortedProjects = computed(() => {
     </template>
   </UiModal>
 
-  <EditorSettingsModal v-model:open="isSettingsOpen" />
+  <UiModal
+    v-model:open="isSettingsOpen"
+    :title="t('videoEditor.settings.title')"
+    :ui="{
+      content: 'sm:max-w-2xl h-[95dvh]',
+      body: '!p-0 !overflow-hidden flex flex-col',
+    }"
+  >
+    <MobileAppSettingsPanel class="h-full" />
+  </UiModal>
 </template>

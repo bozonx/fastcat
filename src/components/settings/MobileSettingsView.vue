@@ -1,15 +1,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import SettingsSnapping from './SettingsSnapping.vue';
+import MobileAppSettingsPanel from './MobileAppSettingsPanel.vue';
 import ResolutionSettings from '~/components/project-settings/ResolutionSettings.vue';
 import ExportSettings from '~/components/project-settings/ExportSettings.vue';
 import AdvancedSettings from '~/components/project-settings/AdvancedSettings.vue';
 import MetadataSettings from '~/components/project-settings/MetadataSettings.vue';
 import StorageSettings from '~/components/project-settings/StorageSettings.vue';
-import SettingsGeneral from './SettingsGeneral.vue';
-import SettingsVideo from './SettingsVideo.vue';
-import SettingsAudio from './SettingsAudio.vue';
-import SettingsStorage from './SettingsStorage.vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineSettingsStore, type ToolbarDragMode } from '~/stores/timeline-settings.store';
 
@@ -63,8 +60,11 @@ const currentMoveMode = computed({
       />
     </div>
 
-    <!-- Active Tab Content -->
-    <div class="flex-1 overflow-y-auto p-4 custom-scrollbar lg:p-6 bg-ui-bg">
+    <!-- Tab Content: timeline and project use a shared scrollable container -->
+    <div
+      v-if="activeTab !== 'app'"
+      class="flex-1 overflow-y-auto p-4 custom-scrollbar lg:p-6 bg-ui-bg"
+    >
       <!-- Timeline Settings -->
       <div v-if="activeTab === 'timeline'" class="space-y-8 animate-in fade-in duration-200">
         <section>
@@ -105,21 +105,13 @@ const currentMoveMode = computed({
           <StorageSettings />
         </div>
         <div v-else class="flex flex-col items-center justify-center py-20 text-ui-text-muted gap-3">
-           <UIcon name="lucide:folder-off" class="w-10 h-10 opacity-20" />
-           <p class="text-sm">Settings not available</p>
+          <UIcon name="lucide:folder-off" class="w-10 h-10 opacity-20" />
+          <p class="text-sm">Settings not available</p>
         </div>
       </div>
-
-      <!-- App Settings -->
-      <div v-else-if="activeTab === 'app'" class="space-y-8 pb-10 animate-in fade-in duration-200">
-        <SettingsGeneral />
-        <div class="h-px bg-ui-border"></div>
-        <SettingsVideo />
-        <div class="h-px bg-ui-border"></div>
-        <SettingsAudio />
-        <div class="h-px bg-ui-border"></div>
-        <SettingsStorage />
-      </div>
     </div>
+
+    <!-- App Settings: full-height panel with its own internal tab navigation -->
+    <MobileAppSettingsPanel v-else class="flex-1 min-h-0 animate-in fade-in duration-200" />
   </div>
 </template>

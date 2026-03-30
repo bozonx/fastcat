@@ -41,6 +41,7 @@ const props = defineProps<{
   previewMode: 'original' | 'proxy';
   hasProxy: boolean;
   isFilesPage?: boolean;
+  mobileTextMode?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -399,7 +400,7 @@ const {
 </script>
 
 <template>
-  <div class="w-full flex flex-col gap-4">
+  <div class="w-full flex flex-col" :class="mobileTextMode ? 'h-full gap-0' : 'gap-4'">
     <input
       ref="uploadInputRef"
       type="file"
@@ -418,112 +419,115 @@ const {
       :file-path="selectedFsEntry?.path"
       :file-name="selectedFsEntry?.name"
       :is-otio="isOtio"
+      :class="mobileTextMode && mediaType === 'text' ? 'flex-1 border-none' : ''"
     />
 
-    <ImageFilePropertiesSection
-      v-if="fileInfo?.kind === 'file' && mediaType === 'image' && hasImageInfo"
-      :image-resolution="imageResolution"
-      :image-create-date="imageCreateDate"
-      :image-location-link="imageLocationLink"
-      :image-camera-make="imageCameraMake"
-    />
-
-    <MediaPropertiesSection
-      v-if="fileInfo?.kind === 'file' && (isVideoFile || mediaType === 'audio')"
-      :media-meta="mediaMeta"
-      :format-duration-seconds="formatDurationSeconds"
-      :format-bitrate="formatBitrate"
-      :latest-transcription-cache-key="latestTranscriptionCacheKey"
-      :latest-transcription-was-cached="latestTranscriptionWasCached"
-      :latest-transcription-text="latestTranscriptionText"
-    />
-
-    <FileProjectRootSection
-      v-if="fileInfo?.kind === 'directory' && isProjectRootDir"
-      :is-project-root-dir="isProjectRootDir"
-      :project-name="projectStore.currentProjectName"
-      :storage-free-bytes="storageFreeBytes"
-      :project-stats="projectStats"
-    />
-
-    <FileTimelineUsageSection
-      v-if="fileInfo?.kind === 'file'"
-      :usages="timelinesUsingSelectedFile"
-      :open-timeline-from-usage="openTimelineFromUsage"
-    />
-
-    <OtioPropertiesSection
-      v-if="fileInfo?.kind === 'file' && isOtio"
-      :summary="timelineDocSummary"
-      :format-duration-seconds="formatDurationSeconds"
-    />
-
-    <FileGeneralInfoSection
-      v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'directory'"
-      :title="generalInfoTitle"
-      :file-info="fileInfo"
-      :selected-path="selectedPath"
-      :is-hidden="isHidden"
-      :format-bytes="formatBytes"
-    />
-
-    <PropertySection
-      v-if="fileInfo?.kind === 'directory'"
-      :title="t('videoEditor.fileManager.actions.title', 'Actions')"
-    >
-      <EntryActions
-        :primary-actions="directoryPrimaryActions"
-        :secondary-actions="directorySecondaryActions"
+    <template v-if="!mobileTextMode || mediaType !== 'text'">
+      <ImageFilePropertiesSection
+        v-if="fileInfo?.kind === 'file' && mediaType === 'image' && hasImageInfo"
+        :image-resolution="imageResolution"
+        :image-create-date="imageCreateDate"
+        :image-location-link="imageLocationLink"
+        :image-camera-make="imageCameraMake"
       />
-    </PropertySection>
 
-    <PropertySection
-      v-else-if="fileInfo?.kind === 'file'"
-      :title="t('videoEditor.fileManager.actions.title', 'Actions')"
-    >
-      <EntryActions
-        :primary-actions="filePrimaryActions"
-        :secondary-actions="fileSecondaryActions"
+      <MediaPropertiesSection
+        v-if="fileInfo?.kind === 'file' && (isVideoFile || mediaType === 'audio')"
+        :media-meta="mediaMeta"
+        :format-duration-seconds="formatDurationSeconds"
+        :format-bitrate="formatBitrate"
+        :latest-transcription-cache-key="latestTranscriptionCacheKey"
+        :latest-transcription-was-cached="latestTranscriptionWasCached"
+        :latest-transcription-text="latestTranscriptionText"
       />
-    </PropertySection>
 
-    <FileGeneralInfoSection
-      v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'file'"
-      :title="generalInfoTitle"
-      :file-info="fileInfo"
-      :selected-path="selectedPath"
-      :is-hidden="isHidden"
-      :format-bytes="formatBytes"
-    >
-      <template v-if="mediaType === 'text' && lineCount !== null">
-        <PropertyRow :label="t('fastcat.file.lineCount', 'Line Count')" :value="lineCount" />
-      </template>
-    </FileGeneralInfoSection>
+      <FileProjectRootSection
+        v-if="fileInfo?.kind === 'directory' && isProjectRootDir"
+        :is-project-root-dir="isProjectRootDir"
+        :project-name="projectStore.currentProjectName"
+        :storage-free-bytes="storageFreeBytes"
+        :project-stats="projectStats"
+      />
 
-    <ExpandableYamlSection
-      v-if="fileInfo?.kind === 'file' && (isVideoFile || isAudioFile) && metadataYaml"
-      :title="t('common.meta', 'Meta')"
-      :content="metadataYaml"
-      :expanded="isMetaExpanded"
-      :on-toggle="() => (isMetaExpanded = !isMetaExpanded)"
-      :on-copy="copyToClipboard"
-    />
+      <FileTimelineUsageSection
+        v-if="fileInfo?.kind === 'file'"
+        :usages="timelinesUsingSelectedFile"
+        :open-timeline-from-usage="openTimelineFromUsage"
+      />
 
-    <ExpandableYamlSection
-      v-if="fileInfo?.kind === 'file' && mediaType === 'image' && exifYaml"
-      title="EXIF"
-      :content="exifYaml"
-      :expanded="isExifExpanded"
-      :on-toggle="() => (isExifExpanded = !isExifExpanded)"
-      :on-copy="copyToClipboard"
-    />
+      <OtioPropertiesSection
+        v-if="fileInfo?.kind === 'file' && isOtio"
+        :summary="timelineDocSummary"
+        :format-duration-seconds="formatDurationSeconds"
+      />
 
-    <FileTranscriptionModal
-      v-model:is-transcription-modal-open="isTranscriptionModalOpen"
-      v-model:transcription-language="transcriptionLanguage"
-      :is-transcribing-audio="isTranscribingAudio"
-      :transcription-error="transcriptionError"
-      @submit="submitAudioTranscription"
-    />
+      <FileGeneralInfoSection
+        v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'directory'"
+        :title="generalInfoTitle"
+        :file-info="fileInfo"
+        :selected-path="selectedPath"
+        :is-hidden="isHidden"
+        :format-bytes="formatBytes"
+      />
+
+      <PropertySection
+        v-if="fileInfo?.kind === 'directory'"
+        :title="t('videoEditor.fileManager.actions.title', 'Actions')"
+      >
+        <EntryActions
+          :primary-actions="directoryPrimaryActions"
+          :secondary-actions="directorySecondaryActions"
+        />
+      </PropertySection>
+
+      <PropertySection
+        v-else-if="fileInfo?.kind === 'file'"
+        :title="t('videoEditor.fileManager.actions.title', 'Actions')"
+      >
+        <EntryActions
+          :primary-actions="filePrimaryActions"
+          :secondary-actions="fileSecondaryActions"
+        />
+      </PropertySection>
+
+      <FileGeneralInfoSection
+        v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'file'"
+        :title="generalInfoTitle"
+        :file-info="fileInfo"
+        :selected-path="selectedPath"
+        :is-hidden="isHidden"
+        :format-bytes="formatBytes"
+      >
+        <template v-if="mediaType === 'text' && lineCount !== null">
+          <PropertyRow :label="t('fastcat.file.lineCount', 'Line Count')" :value="lineCount" />
+        </template>
+      </FileGeneralInfoSection>
+
+      <ExpandableYamlSection
+        v-if="fileInfo?.kind === 'file' && (isVideoFile || isAudioFile) && metadataYaml"
+        :title="t('common.meta', 'Meta')"
+        :content="metadataYaml"
+        :expanded="isMetaExpanded"
+        :on-toggle="() => (isMetaExpanded = !isMetaExpanded)"
+        :on-copy="copyToClipboard"
+      />
+
+      <ExpandableYamlSection
+        v-if="fileInfo?.kind === 'file' && mediaType === 'image' && exifYaml"
+        title="EXIF"
+        :content="exifYaml"
+        :expanded="isExifExpanded"
+        :on-toggle="() => (isExifExpanded = !isExifExpanded)"
+        :on-copy="copyToClipboard"
+      />
+
+      <FileTranscriptionModal
+        v-model:is-transcription-modal-open="isTranscriptionModalOpen"
+        v-model:transcription-language="transcriptionLanguage"
+        :is-transcribing-audio="isTranscribingAudio"
+        :transcription-error="transcriptionError"
+        @submit="submitAudioTranscription"
+      />
+    </template>
   </div>
 </template>

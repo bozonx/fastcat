@@ -20,12 +20,13 @@ const props = defineProps<{
 <template>
   <div
     v-if="props.selectedEntryKind === 'file' || props.selectedEntryKind === 'directory'"
-    class="w-full bg-ui-bg rounded border border-ui-border flex flex-col min-h-50 overflow-hidden shrink-0"
-    :class="
+    class="w-full bg-ui-bg rounded border border-ui-border flex flex-col min-h-12 overflow-hidden"
+    :class="[
       props.mediaType === 'text' && !props.isOtio
         ? 'justify-start items-start text-left'
-        : 'items-center justify-center'
-    "
+        : 'items-center justify-center',
+      $attrs.class?.includes('flex-1') ? 'flex-1' : 'shrink-0'
+    ]"
   >
     <div
       v-if="props.selectedEntryKind === 'directory'"
@@ -57,7 +58,7 @@ const props = defineProps<{
       </p>
     </div>
 
-    <div v-else class="w-full h-64">
+    <div v-else class="w-full h-64" :class="$attrs.class?.includes('flex-1') ? 'flex-1 h-full' : 'h-64'">
       <FilePreview
         :url="props.currentUrl"
         :media-type="props.mediaType"
