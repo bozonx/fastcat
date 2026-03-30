@@ -2,9 +2,7 @@
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import { useWindowSize } from '@vueuse/core';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
-import { isClipFreePosition } from '~/composables/timeline/clip-context-menu/utils';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -18,9 +16,6 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
-
-const { width, height } = useWindowSize();
-const isLandscape = computed(() => width.value > height.value);
 
 const isOpenLocal = computed({
   get: () => props.isOpen,
@@ -133,48 +128,28 @@ const actions = computed(() => {
 </script>
 
 <template>
-  <UDrawer
+  <UiMobileDrawer
     v-model:open="isOpenLocal"
-    :direction="isLandscape ? 'right' : 'bottom'"
     :title="$t('fastcat.timeline.clipActions', 'Clip Actions')"
   >
-    <template #content>
-      <div 
-        class="flex flex-col ml-auto"
-        :class="isLandscape ? 'max-h-dvh w-[50vw]' : 'max-h-[85dvh] w-full'"
+    <div class="px-4 py-4 grid grid-cols-3 gap-3">
+      <button
+        v-for="(action, idx) in actions"
+        :key="idx"
+        class="flex flex-col items-center justify-center gap-2 rounded-xl p-3 text-center transition-colors outline-none"
+        :class="[
+          action.disabled ? 'opacity-50 pointer-events-none grayscale' : 'active:bg-slate-800',
+          action.color === 'error' ? 'text-red-400 bg-red-500/10' : 'text-slate-200 bg-slate-900/80 border border-slate-800'
+        ]"
+        @click="action.action"
       >
-        <div class="px-4 py-4 grid grid-cols-3 gap-3 overflow-y-auto pb-safe custom-scrollbar">
-          <button
-            v-for="(action, idx) in actions"
-            :key="idx"
-            class="flex flex-col items-center justify-center gap-2 rounded-xl p-3 text-center transition-colors outline-none"
-            :class="[
-              action.disabled ? 'opacity-50 pointer-events-none grayscale' : 'active:bg-slate-800',
-              action.color === 'error' ? 'text-red-400 bg-red-500/10' : 'text-slate-200 bg-slate-900/80 border border-slate-800'
-            ]"
-            @click="action.action"
-          >
-            <UIcon :name="action.icon" class="w-6 h-6" />
-            <span class="text-xs font-medium">{{ action.label }}</span>
-          </button>
-        </div>
-      </div>
-    </template>
-  </UDrawer>
+        <UIcon :name="action.icon" class="w-6 h-6" />
+        <span class="text-xs font-medium">{{ action.label }}</span>
+      </button>
+    </div>
+  </UiMobileDrawer>
 </template>
 
 <style scoped>
-.pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 24px);
-}
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 10px;
-}
+/* No extra styles needed as they're now in UiMobileDrawer */
 </style>

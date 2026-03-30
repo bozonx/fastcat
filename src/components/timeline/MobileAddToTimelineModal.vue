@@ -133,123 +133,125 @@ async function handleAdd() {
 </script>
 
 <template>
-  <UDrawer v-model:open="isOpen" :title="t('common.addToTimeline', 'Add to timeline')">
-    <template #content>
-      <div class="px-4 pt-2 pb-8 space-y-6">
-        <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-inner">
-          <p class="text-xs font-medium text-slate-500 uppercase tracking-widest">
-            {{ t('mobileFiles.insertAfter', 'Insert after playhead') }}
+  <UiMobileDrawer v-model:open="isOpen" :title="t('common.addToTimeline', 'Add to timeline')">
+    <div class="px-4 pt-2 pb-8 space-y-6">
+      <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-inner">
+        <p class="text-xs font-medium text-slate-500 uppercase tracking-widest">
+          {{ t('mobileFiles.insertAfter', 'Insert after playhead') }}
+        </p>
+        <p class="text-2xl font-mono font-bold text-primary-400 mt-1">
+          {{ currentTimeLabel }}
+        </p>
+        <p class="text-[10px] text-slate-500 mt-2 leading-relaxed">
+          {{ t('mobileFiles.addToTimelineDisclaimer', 'Выбранные файлы будут добавлены на таймлайн начиная с этой позиции.') }}
+        </p>
+      </div>
+
+      <div class="space-y-3">
+        <div class="flex items-center justify-between px-1">
+          <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            {{ t('mobileFiles.chooseTargetTrack', 'Target Track') }}
           </p>
-          <p class="text-2xl font-mono font-bold text-primary-400 mt-1">
-            {{ currentTimeLabel }}
-          </p>
-          <p class="text-[10px] text-slate-500 mt-2 leading-relaxed">
-            {{ t('mobileFiles.addToTimelineDisclaimer', 'Выбранные файлы будут добавлены на таймлайн начиная с этой позиции.') }}
-          </p>
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-500 font-medium">
+            {{ entries.length }} {{ t('common.items', 'items') }}
+          </span>
         </div>
-
-        <div class="space-y-3">
-          <div class="flex items-center justify-between px-1">
-            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              {{ t('mobileFiles.chooseTargetTrack', 'Target Track') }}
-            </p>
-            <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-500 font-medium">
-              {{ entries.length }} {{ t('common.items', 'items') }}
-            </span>
-          </div>
-          
-          <div class="grid gap-2 overflow-y-auto max-h-[40dvh] pr-1 custom-scrollbar">
-            <button
-              v-for="track in filteredTracks"
-              :key="track.id"
-              class="group relative flex items-center justify-between p-4 rounded-2xl border-2 transition-all duration-200"
-              :class="[
-                selectedTrackId === track.id 
-                  ? 'border-primary-500 bg-primary-500/10 scale-[1.02] z-10' 
-                  : 'border-slate-800/50 bg-slate-900/40 text-slate-400 hover:border-slate-700 hover:bg-slate-900/60'
-              ]"
-              @click="selectedTrackId = track.id"
-            >
-              <div class="flex items-center gap-4">
-                <div 
-                  class="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
-                  :class="selectedTrackId === track.id ? 'bg-primary-500/20 text-primary-400' : 'bg-slate-800 text-slate-500 shadow-sm'"
-                >
-                  <Icon 
-                    :name="track.kind === 'video' ? 'lucide:film' : 'lucide:music'" 
-                    class="w-5 h-5"
-                  />
-                </div>
-                <div>
-                  <p class="font-bold text-sm" :class="selectedTrackId === track.id ? 'text-white' : 'text-slate-200'">{{ track.name }}</p>
-                  <p class="text-[10px] font-medium opacity-60 uppercase tracking-tighter">
-                    {{ track.kind === 'video' ? t('common.video', 'Video Track') : t('common.audio', 'Audio Track') }}
-                  </p>
-                </div>
-              </div>
-              <div 
-                class="w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200"
-                :class="selectedTrackId === track.id ? 'bg-primary-500 scale-100' : 'bg-slate-800 scale-75 opacity-0'"
-              >
-                <Icon name="lucide:check" class="w-4 h-4 text-white" />
-              </div>
-            </button>
-
-            <button
-              class="group relative flex items-center justify-between p-4 rounded-2xl border-2 transition-all duration-200"
-              :class="[
-                selectedTrackId === 'new' 
-                  ? 'border-primary-500 bg-primary-500/10 scale-[1.02] z-10' 
-                  : 'border-slate-800/50 bg-slate-900/40 text-slate-400 hover:border-slate-700 hover:bg-slate-900/60'
-              ]"
-              @click="selectedTrackId = 'new'"
-            >
-              <div class="flex items-center gap-4">
-                <div 
-                  class="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
-                  :class="selectedTrackId === 'new' ? 'bg-primary-500/20 text-primary-400' : 'bg-slate-800 text-slate-500 shadow-sm'"
-                >
-                  <Icon 
-                    name="lucide:plus-circle" 
-                    class="w-5 h-5"
-                  />
-                </div>
-                <div>
-                  <p class="font-bold text-sm" :class="selectedTrackId === 'new' ? 'text-white' : 'text-slate-200'">
-                    {{ t('mobileFiles.createNewTrack', 'Create New Track') }}
-                  </p>
-                  <p class="text-[10px] font-medium opacity-60 uppercase tracking-tighter">
-                    {{ t('mobileFiles.newTrackHint', 'Create and add here') }}
-                  </p>
-                </div>
-              </div>
-              <div 
-                class="w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200"
-                :class="selectedTrackId === 'new' ? 'bg-primary-500 scale-100' : 'bg-slate-800 scale-75 opacity-0'"
-              >
-                <Icon name="lucide:check" class="w-4 h-4 text-white" />
-              </div>
-            </button>
-          </div>
-        </div>
-
-        <div class="pt-4">
-          <UButton
-            block
-            size="xl"
-            color="primary"
-            :loading="isAdding"
-            icon="lucide:plus"
-            class="rounded-2xl h-14 font-bold shadow-lg shadow-primary-500/20 active:scale-[0.98] transition-all"
-            @click="handleAdd"
+        
+        <div class="grid gap-2 overflow-y-auto max-h-[40dvh] pr-1">
+          <button
+            v-for="track in filteredTracks"
+            :key="track.id"
+            class="group relative flex items-center justify-between p-4 rounded-2xl border-2 transition-all duration-200"
+            :class="[
+              selectedTrackId === track.id 
+                ? 'border-primary-500 bg-primary-500/10 scale-[1.02] z-10' 
+                : 'border-slate-800/50 bg-slate-900/40 text-slate-400 hover:border-slate-700 hover:bg-slate-900/60'
+            ]"
+            @click="selectedTrackId = track.id"
           >
-            {{ t('common.add', 'Add to Timeline') }}
-          </UButton>
+            <div class="flex items-center gap-4">
+              <div 
+                class="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
+                :class="selectedTrackId === track.id ? 'bg-primary-500/20 text-primary-400' : 'bg-slate-800 text-slate-500 shadow-sm'"
+              >
+                <Icon 
+                  :name="track.kind === 'video' ? 'lucide:film' : 'lucide:music'" 
+                  class="w-5 h-5"
+                />
+              </div>
+              <div>
+                <p class="font-bold text-sm" :class="selectedTrackId === track.id ? 'text-white' : 'text-slate-200'">{{ track.name }}</p>
+                <p class="text-[10px] font-medium opacity-60 uppercase tracking-tighter">
+                  {{ track.kind === 'video' ? t('common.video', 'Video Track') : t('common.audio', 'Audio Track') }}
+                </p>
+              </div>
+            </div>
+            <div 
+              class="w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200"
+              :class="selectedTrackId === track.id ? 'bg-primary-500 scale-100' : 'bg-slate-800 scale-75 opacity-0'"
+            >
+              <Icon name="lucide:check" class="w-4 h-4 text-white" />
+            </div>
+          </button>
+
+          <button
+            class="group relative flex items-center justify-between p-4 rounded-2xl border-2 transition-all duration-200"
+            :class="[
+              selectedTrackId === 'new' 
+                ? 'border-primary-500 bg-primary-500/10 scale-[1.02] z-10' 
+                : 'border-slate-800/50 bg-slate-900/40 text-slate-400 hover:border-slate-700 hover:bg-slate-900/60'
+            ]"
+            @click="selectedTrackId = 'new'"
+          >
+            <div class="flex items-center gap-4">
+              <div 
+                class="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
+                :class="selectedTrackId === 'new' ? 'bg-primary-500/20 text-primary-400' : 'bg-slate-800 text-slate-500 shadow-sm'"
+              >
+                <Icon 
+                  name="lucide:plus-circle" 
+                  class="w-5 h-5"
+                />
+              </div>
+              <div>
+                <p class="font-bold text-sm" :class="selectedTrackId === 'new' ? 'text-white' : 'text-slate-200'">
+                  {{ t('mobileFiles.createNewTrack', 'Create New Track') }}
+                </p>
+                <p class="text-[10px] font-medium opacity-60 uppercase tracking-tighter">
+                  {{ t('mobileFiles.newTrackHint', 'Create and add here') }}
+                </p>
+              </div>
+            </div>
+            <div 
+              class="w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200"
+              :class="selectedTrackId === 'new' ? 'bg-primary-500 scale-100' : 'bg-slate-800 scale-75 opacity-0'"
+            >
+              <Icon name="lucide:check" class="w-4 h-4 text-white" />
+            </div>
+          </button>
         </div>
       </div>
-    </template>
-  </UDrawer>
+
+      <div class="pt-4">
+        <UButton
+          block
+          size="xl"
+          color="primary"
+          :loading="isAdding"
+          icon="lucide:plus"
+          class="rounded-2xl h-14 font-bold shadow-lg shadow-primary-500/20 active:scale-[0.98] transition-all"
+          @click="handleAdd"
+        >
+          {{ t('common.add', 'Add to Timeline') }}
+        </UButton>
+      </div>
+    </div>
+  </UiMobileDrawer>
 </template>
+
+<style scoped>
+/* Scrollbar handled by UiMobileDrawer body class or custom if needed */
+</style>
 
 <style scoped>
 .custom-scrollbar::-webkit-scrollbar {

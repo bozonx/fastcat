@@ -301,42 +301,37 @@ async function onClipAction(payload: TimelineClipActionPayload) {
     <MobileTimelineToolbar />
     
     <!-- Track Properties Drawer -->
-    <UDrawer
-      :open="isTrackPropertiesDrawerOpen"
-      @update:open="onUpdateDrawerOpen"
-      direction="bottom"
-      :snap-points="[0.12, 0.85]"
-      dismissible
+    <UiMobileDrawer
+      v-model:open="isTrackPropertiesDrawerOpen"
       :title="selectedTrack?.name || selectedTrack?.id || ''"
+      :snap-points="[0.12, 0.85]"
       should-scale-background
+      direction="bottom"
+      @update:open="onUpdateDrawerOpen"
     >
-      <template #content>
-        <div class="flex flex-col w-full min-h-24 max-h-[85vh]">
-          <!-- Track Label Header (Mobile Title) -->
-          <div class="shrink-0 pt-6 pb-4 px-4 flex items-center gap-2">
-            <div
-              v-if="selectedTrack"
-              class="w-6 h-6 rounded shrink-0 flex items-center justify-center font-black text-[10px]"
-              :style="{ 
-                backgroundColor: selectedTrack.color && selectedTrack.color !== '#2a2a2a' ? `${selectedTrack.color}33` : '#1e293b',
-                color: selectedTrack.color && selectedTrack.color !== '#2a2a2a' ? selectedTrack.color : '#94a3b8'
-              }"
-            >
-              {{ selectedTrack.kind === 'video' ? 'V' : 'A' }}{{ selectedTrackNumber }}
-            </div>
-            
-            <span v-if="selectedTrack" class="text-sm font-medium text-slate-200 truncate flex-1 leading-none">
-              {{ selectedTrack.name || selectedTrack.id }}
-            </span>
+      <template #header>
+        <div class="flex items-center gap-2">
+          <div
+            v-if="selectedTrack"
+            class="w-6 h-6 rounded shrink-0 flex items-center justify-center font-black text-[10px]"
+            :style="{ 
+              backgroundColor: selectedTrack.color && selectedTrack.color !== '#2a2a2a' ? `${selectedTrack.color}33` : '#1e293b',
+              color: selectedTrack.color && selectedTrack.color !== '#2a2a2a' ? selectedTrack.color : '#94a3b8'
+            }"
+          >
+            {{ selectedTrack.kind === 'video' ? 'V' : 'A' }}{{ selectedTrackNumber }}
           </div>
           
-          <!-- Track Properties Content -->
-          <div class="flex-1 overflow-y-auto no-scrollbar pb-[env(safe-area-inset-bottom,24px)] px-4">
-            <TrackProperties v-if="selectedTrack" :track="selectedTrack" />
-          </div>
+          <span v-if="selectedTrack" class="text-sm font-bold text-slate-200 truncate flex-1 leading-none">
+            {{ selectedTrack.name || selectedTrack.id }}
+          </span>
         </div>
       </template>
-    </UDrawer>
+
+      <div class="px-4 pb-4">
+        <TrackProperties v-if="selectedTrack" :track="selectedTrack" />
+      </div>
+    </UiMobileDrawer>
 
     <!-- Tracks area: holds scroll view -->
     <div

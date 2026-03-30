@@ -11,6 +11,7 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useFocusableListNavigation } from '~/composables/file-manager/useFocusableListNavigation';
+import FileManagerTree from './FileManagerTree.vue';
 import type { FsEntry } from '~/types/fs';
 import { useFileDrop } from '~/composables/file-manager/useFileDrop';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
@@ -384,11 +385,25 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
           </p>
         </div>
 
-        <!-- File manager tree removed as legacy (moved to _old) -->
-        <div v-else class="flex flex-col flex-1 p-4 text-center text-ui-text-disabled">
-          <p class="text-sm">
-            {{ t('videoEditor.fileManager.treeLegacy', 'Tree view is no longer supported') }}
-          </p>
+        <!-- File tree -->
+        <div v-else class="flex flex-col flex-1">
+          <FileManagerTree
+            :editing-entry-path="editingEntryPath"
+            :entries="rootEntries"
+            :depth="0"
+            :folders-only="foldersOnly"
+            :is-files-page="isFilesPage"
+            @commit-rename="(entry, name) => emit('commitRename', entry, name)"
+            @stop-rename="emit('stopRename')"
+            @toggle="emit('toggle', $event)"
+            @select="onEntrySelect"
+            @focus="onEntryFocus"
+            @action="(action, entry) => emit('action', action as any, entry)"
+            @request-move="onRequestMove"
+            @request-copy="onRequestCopy"
+            @request-upload="onRequestUpload"
+            @request-download="onRequestDownload"
+          />
         </div>
 
         <div
