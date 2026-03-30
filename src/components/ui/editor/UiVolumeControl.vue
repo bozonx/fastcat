@@ -84,7 +84,7 @@ function updatePopupPosition() {
     };
   } else {
     popupPosition.value = {
-      top: rect.top,
+      top: rect.top + rect.height / 2,
       left: rect.left + rect.width / 2,
     };
   }
@@ -218,7 +218,7 @@ onBeforeUnmount(() => {
           class="fixed z-(--z-max) pointer-events-auto"
           :class="
             orientation === 'vertical'
-              ? 'origin-bottom -translate-x-1/2 -translate-y-full'
+              ? 'origin-right -translate-x-1/2 -translate-y-1/2'
               : '-translate-x-1/2 -translate-y-1/2'
           "
           :style="{ top: `${popupPosition.top}px`, left: `${popupPosition.left}px` }"
