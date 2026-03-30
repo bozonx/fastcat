@@ -92,6 +92,7 @@ function handleAction(actionId: FileAction) {
     :description="
       isMultiple ? `${selectedEntriesList.length} ${$t('common.items', 'items')}` : undefined
     "
+    :is-full-height="isTextDocument"
   >
     <div class="flex flex-col h-full relative overflow-hidden">
       <!-- Action Toolbar -->

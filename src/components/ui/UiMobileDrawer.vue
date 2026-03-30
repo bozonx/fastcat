@@ -15,6 +15,8 @@ interface Props {
   dismissible?: boolean;
   /** Custom direction override, otherwise auto-detected by orientation */
   direction?: 'bottom' | 'top' | 'left' | 'right';
+  /** Whether to take almost full screen height in portrait mode (95dvh) */
+  isFullHeight?: boolean;
   /** Custom UI classes for the container */
   ui?: {
     container?: string;
@@ -31,6 +33,7 @@ const props = withDefaults(defineProps<Props>(), {
   shouldScaleBackground: false,
   dismissible: true,
   direction: undefined,
+  isFullHeight: false,
   ui: () => ({}),
 });
 
@@ -54,7 +57,8 @@ const containerClasses = computed(() => {
   if (effectiveDirection.value === 'right' || effectiveDirection.value === 'left') {
     return `${base} max-h-dvh h-screen w-[50vw] sm:w-[40vw] ml-auto border-l border-ui-border bg-ui-bg-elevated/95 backdrop-blur-xl ${props.ui.container || ''}`;
   }
-  return `${base} max-h-[85dvh] w-full border-t border-ui-border bg-ui-bg-elevated/95 backdrop-blur-xl rounded-t-[var(--radius-ui-xl)] ${props.ui.container || ''}`;
+  const heightClass = props.isFullHeight ? 'h-[95dvh]' : 'max-h-[85dvh]';
+  return `${base} ${heightClass} w-full border-t border-ui-border bg-ui-bg-elevated/95 backdrop-blur-xl rounded-t-[var(--radius-ui-xl)] ${props.ui.container || ''}`;
 });
 </script>
 

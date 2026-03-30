@@ -1,6 +1,7 @@
 import { ref } from 'vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useProjectStore } from '~/stores/project.store';
+import { DOCUMENTS_DIR_NAME } from '~/utils/constants';
 
 interface CreateDeps {
   createFolder: (name: string, parentPath: string) => Promise<void>;
@@ -73,7 +74,10 @@ export function useMobileFileBrowserCreate({
   async function onCreateTextFile(targetPath?: string) {
     const path = await createMarkdown(targetPath);
     if (path) {
-      const parentPath = path.includes('/') ? path.split('/').slice(0, -1).join('/') : '';
+      // If targetPath was not provided, use the parent folder of the created file
+      // which createMarkdownCommand defaults to DOCUMENTS_DIR_NAME
+      const parentPath = targetPath ?? (path.includes('/') ? path.split('/').slice(0, -1).join('/') : DOCUMENTS_DIR_NAME);
+
       if (fileManagerStore.selectedFolder?.path !== parentPath) {
         const folderName = parentPath.split('/').pop() || 'Documents';
         fileManagerStore.openFolder({
@@ -85,11 +89,6 @@ export function useMobileFileBrowserCreate({
 
       await loadFolderContent();
       isCreateMenuOpen.value = false;
-      toast.add({
-        title: t('common.success', 'Success'),
-        description: t('common.saveSuccess', 'Saved successfully'),
-        color: 'success',
-      });
       return path;
     }
     return null;
