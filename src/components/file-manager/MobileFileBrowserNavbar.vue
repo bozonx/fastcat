@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { formatBytes } from '~/utils/format';
+import { useProjectStore } from '~/stores/project.store';
 
 interface Breadcrumb {
   name: string;
@@ -23,6 +24,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const projectStore = useProjectStore();
 </script>
 
 <template>
@@ -56,15 +58,15 @@ const { t } = useI18n();
         class="flex items-center gap-1 text-xs text-slate-400 overflow-x-auto no-scrollbar"
       >
         <button
-          class="shrink-0 transition-colors py-1 px-1.5 -ml-1 rounded-md hover:bg-slate-800 hover:text-slate-100"
+          class="shrink-0 transition-colors py-1 px-1.5 -ml-1 rounded-md hover:bg-slate-800 hover:text-slate-100 truncate max-w-[100px]"
           @click="emit('navigate-root')"
         >
-          /
+          {{ projectStore.currentProjectName || '/' }}
         </button>
         <template v-for="bc in breadcrumbs" :key="bc.path">
           <Icon name="lucide:chevron-right" class="w-2.5 h-2.5 opacity-30 shrink-0" />
           <button
-            class="shrink-0 transition-colors py-1 px-1.5 rounded-md hover:bg-slate-800 hover:text-slate-100 last:text-slate-100 last:font-medium"
+            class="shrink-0 transition-colors py-1 px-1.5 rounded-md hover:bg-slate-800 hover:text-slate-100 last:text-slate-100 last:font-medium truncate max-w-[100px]"
             @click="emit('navigate-breadcrumb', bc.name, bc.path)"
           >
             {{ bc.name }}

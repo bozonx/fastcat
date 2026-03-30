@@ -89,8 +89,6 @@ const playheadPx = computed(() =>
   Math.round(timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom)),
 );
 
-const tracksHeightPx = computed(() => Object.values(trackHeights.value).reduce((a, b) => a + b, 0));
-
 const pendingZoomAnchor = ref<TimelineZoomAnchor | null>(null);
 
 const {
@@ -98,7 +96,6 @@ const {
   draggingItemId,
   movePreview,
   onTimeRulerPointerDown,
-  startPlayheadDrag,
   selectItem,
   startMoveItem,
   startTrimItem,
@@ -321,31 +318,37 @@ async function onClipAction(payload: TimelineClipActionPayload) {
       </div>
     </UiMobileDrawer>
 
-    <!-- Tracks area: holds scroll view -->
-    <div
-      class="flex-1 relative overflow-hidden"
-    >
+    <!-- Tracks area -->
+    <div class="flex-1 relative overflow-hidden">
 
-      <!-- Main scrollable tracks area -->
+      <!-- Ruler: outside scrollEl — not scrolled, draws based on scrollEl.scrollLeft -->
+      <div
+        class="absolute top-0 left-0 right-0 h-8 z-40 bg-ui-bg/95 border-b border-ui-border select-none touch-none backdrop-blur shadow-sm"
+      >
+        <TimelineRuler
+          class="touch-none w-full h-full"
+          :scroll-el="scrollEl"
+          @pointerdown="onTimeRulerPointerDown"
+        />
+      </div>
+
+      <!-- Grid: outside scrollEl — covers tracks area, draws based on scrollEl.scrollLeft -->
+      <TimelineGrid
+        class="absolute left-0 right-0 bottom-0 pointer-events-none z-0"
+        style="top: 32px"
+        :scroll-el="scrollEl"
+      />
+
+      <!-- Main scrollable tracks area: starts below ruler (top-8 = 32px) -->
       <div
         ref="scrollEl"
-        class="absolute inset-0 overflow-auto overscroll-none touch-pan-x touch-pan-y no-scrollbar"
+        class="absolute top-8 left-0 right-0 bottom-0 overflow-auto overscroll-none touch-pan-x touch-pan-y no-scrollbar"
         @touchstart.passive="onTouchStart"
         @touchmove="onTouchMove"
         @pointerdown.capture="onTimelinePointerDownCapture"
         @click="onTimelineClick"
       >
         <div class="relative min-w-max h-full">
-          <div
-            class="sticky top-0 z-40 w-full h-8 bg-ui-bg/95 border-b border-ui-border shrink-0 select-none touch-none backdrop-blur shadow-sm"
-          >
-            <TimelineRuler
-              class="touch-none w-full h-full"
-              :scroll-el="scrollEl"
-              @pointerdown="onTimeRulerPointerDown"
-            />
-          </div>
-
           <TimelineTracks
             class="min-w-full"
             :tracks="tracks"
@@ -361,30 +364,11 @@ async function onClipAction(payload: TimelineClipActionPayload) {
             @clip-action="onClipAction"
           />
 
-          <TimelineGrid
-            class="absolute left-0 right-0 bottom-0 pointer-events-none"
-            :style="{ top: '32px', height: `${tracksHeightPx}px` }"
-            :scroll-el="scrollEl"
-          />
-
+          <!-- Playhead line (ruler renders its own triangle marker) -->
           <div
-            class="absolute bottom-0 z-30 pointer-events-none timeline-playhead"
-            :style="{
-              top: '0px',
-              left: `${playheadPx}px`,
-            }"
-          >
-            <div class="w-px h-full bg-red-500 shadow-[0_0_2px_rgba(239,68,68,0.5)]"></div>
-            <div
-              class="absolute top-0 -translate-x-[50%] w-6 h-6 flex items-center justify-center pointer-events-auto touch-none"
-              @pointerdown.stop.prevent="startPlayheadDrag"
-            >
-              <div
-                class="w-4 h-4 bg-red-500 shadow-sm rounded-b-sm"
-                style="clip-path: polygon(0 0, 100% 0, 100% 60%, 50% 100%, 0 60%)"
-              ></div>
-            </div>
-          </div>
+            class="absolute inset-y-0 w-px bg-red-500 shadow-[0_0_2px_rgba(239,68,68,0.5)] z-30 pointer-events-none timeline-playhead"
+            :style="{ left: `${playheadPx}px` }"
+          />
         </div>
       </div>
     </div>
