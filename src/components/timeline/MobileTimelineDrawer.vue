@@ -3,12 +3,12 @@ import { computed, ref, watch } from 'vue';
 import { useWindowSize } from '@vueuse/core';
 
 interface Props {
-  /** Height of the drawer in toolbar (collapsed) mode — portrait only */
+  /** Snap height showing only the toolbar (portrait mode) */
   toolbarSnapHeight?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  toolbarSnapHeight: '96px',
+  toolbarSnapHeight: '116px',
 });
 
 defineSlots<{
@@ -24,14 +24,13 @@ const isLandscape = computed(() => width.value > height.value);
 
 const SNAP_FULL = 0.88;
 
-/** Snap points only in portrait; landscape uses a full side panel without snapping */
 const snapPoints = computed(() =>
   isLandscape.value ? undefined : [props.toolbarSnapHeight, SNAP_FULL],
 );
 
 /**
- * null = uncontrolled (vaul opens at first snap point naturally).
- * Setting to SNAP_FULL triggers programmatic expansion.
+ * null = uncontrolled — vaul opens at the first snap point naturally.
+ * Setting to SNAP_FULL triggers a programmatic snap to full mode.
  */
 const activeSnapPoint = ref<string | number | null>(null);
 
@@ -40,11 +39,6 @@ const isExpanded = computed(() => {
   return activeSnapPoint.value === SNAP_FULL;
 });
 
-/**
- * Portrait container fills the snap height with overflow-hidden so that content
- * below the toolbar is clipped in toolbar mode and revealed in full mode.
- * Landscape container fills the full side panel.
- */
 const containerClass = computed(() => {
   const base = 'h-full flex flex-col overflow-hidden bg-slate-900/95 backdrop-blur-2xl ring-1 ring-white/5';
   if (isLandscape.value) {
@@ -75,43 +69,59 @@ function onSnapPointChange(val: string | number) {
 </script>
 
 <template>
+  <!--
+    Backdrop is mounted immediately (before the drawer portal) so its z-index:auto
+    is below the drawer portal in DOM stacking order.
+    pointer-events-none keeps the timeline fully interactive through it.
+  -->
+  <Teleport to="body">
+    <div
+      class="fixed inset-0 bg-black/55 pointer-events-none transition-opacity duration-200"
+      :class="isOpen && isExpanded ? 'opacity-100' : 'opacity-0'"
+    />
+  </Teleport>
+
+  <!--
+    modal=false / overlay=false are NEVER changed — prevents Reka from
+    remounting DrawerContent and replaying the open animation.
+    The backdrop above provides visual dimming in full mode.
+  -->
   <UDrawer
     :open="isOpen"
     :snap-points="snapPoints"
     :active-snap-point="activeSnapPoint ?? undefined"
     :direction="isLandscape ? 'right' : 'bottom'"
     :handle="false"
-    :modal="isExpanded"
-    :overlay="isExpanded"
+    :modal="false"
+    :overlay="false"
     :dismissible="true"
     @update:open="(val) => (isOpen = val)"
     @update:active-snap-point="onSnapPointChange"
   >
     <template #content>
       <!--
-        Content is always fully rendered.
-        Portrait toolbar mode: vaul sets DrawerContent to toolbar snap height;
-        h-full + overflow-hidden clips everything below the toolbar.
-        Portrait full / landscape: entire panel is visible and scrollable.
+        h-full fills the DrawerContent height (set by vaul to the snap value).
+        overflow-hidden clips everything below the toolbar in toolbar mode.
+        All content is always rendered — no v-if — so dragging is smooth.
       -->
       <div :class="containerClass">
-        <!-- Portrait drag handle (tap to expand / close) -->
+        <!-- Portrait drag handle: tap to expand or close -->
         <div
           v-if="!isLandscape"
-          class="shrink-0 flex justify-center py-2.5 cursor-pointer touch-none select-none"
+          class="shrink-0 flex justify-center py-2 cursor-pointer touch-none select-none"
           @click.stop="onHandleTap"
         >
           <div class="w-10 h-1 rounded-full bg-slate-700/60" />
         </div>
 
-        <!-- Toolbar: visible in all modes -->
-        <div class="shrink-0">
+        <!-- Toolbar row: visible in toolbar mode and full mode -->
+        <div class="shrink-0 pb-1">
           <slot name="toolbar" />
         </div>
 
-        <!-- Content below is clipped by overflow-hidden in portrait toolbar mode -->
+        <!-- Everything below is hidden by overflow-hidden in toolbar mode -->
 
-        <!-- Header: clip / track name shown only in expanded state -->
+        <!-- Header: entity name/label -->
         <div
           v-if="$slots.header"
           class="shrink-0 px-4 pt-3 pb-2 border-t border-slate-800/60"
@@ -119,7 +129,7 @@ function onSnapPointChange(val: string | number) {
           <slot name="header" />
         </div>
 
-        <!-- Scrollable full properties -->
+        <!-- Scrollable properties content -->
         <div
           class="flex-1 min-h-0 overflow-y-auto custom-scrollbar"
           style="padding-bottom: env(safe-area-inset-bottom, 24px)"
@@ -127,7 +137,7 @@ function onSnapPointChange(val: string | number) {
           <slot />
         </div>
 
-        <!-- Landscape: vertical handle pill on the left edge, tap to close -->
+        <!-- Landscape: vertical pill handle on the left edge to close -->
         <div
           v-if="isLandscape"
           class="absolute left-0 top-0 bottom-0 w-5 flex items-center justify-center cursor-pointer"
