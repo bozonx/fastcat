@@ -9,8 +9,11 @@ import MobileTrackMixerDrawer from './MobileTrackMixerDrawer.vue';
 import MobileHistoryDrawer from './MobileHistoryDrawer.vue';
 import TimelineSpeedModal from './TimelineSpeedModal.vue';
 
+import ProjectMarkers from '~/components/project/ProjectMarkers.vue';
+
 const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
+const { t } = useI18n();
 
 const { selectedItemIds, timelineZoom } = storeToRefs(timelineStore);
 
@@ -19,8 +22,10 @@ const hasSelection = computed(() => selectedItemIds.value.length > 0);
 const isClipActionsDrawerOpen = ref(false);
 const isTrackMixerDrawerOpen = ref(false);
 const isHistoryDrawerOpen = ref(false);
+const isMarkersDrawerOpen = ref(false);
 
 const longPressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
+const markerLongPressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const IS_LONG_PRESS_MS = 500;
 const wasLastPressLong = ref(false);
 
@@ -41,6 +46,29 @@ function stopLongPress() {
     clearTimeout(longPressTimer.value);
     longPressTimer.value = null;
   }
+}
+
+function startMarkerLongPress() {
+  wasLastPressLong.value = false;
+  if (markerLongPressTimer.value) clearTimeout(markerLongPressTimer.value);
+  markerLongPressTimer.value = setTimeout(() => {
+    isMarkersDrawerOpen.value = true;
+    wasLastPressLong.value = true;
+    markerLongPressTimer.value = null;
+    if (navigator.vibrate) navigator.vibrate(50);
+  }, IS_LONG_PRESS_MS);
+}
+
+function stopMarkerLongPress() {
+  if (markerLongPressTimer.value) {
+    clearTimeout(markerLongPressTimer.value);
+    markerLongPressTimer.value = null;
+  }
+}
+
+function handleMarkerClick() {
+  if (wasLastPressLong.value) return;
+  timelineStore.addMarkerAtPlayhead();
 }
 
 function handleSplit() {
@@ -136,6 +164,19 @@ const speedModalTargetHasAudio = computed(() => {
 
       <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1 shrink-0">
         <UiActionButton
+          icon="i-heroicons-bookmark"
+          color="neutral"
+          size="sm"
+          title="Add Marker"
+          @click="handleMarkerClick"
+          @pointerdown="startMarkerLongPress"
+          @pointerup="stopMarkerLongPress"
+          @pointerleave="stopMarkerLongPress"
+        />
+      </div>
+
+      <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1 shrink-0">
+        <UiActionButton
           icon="i-lucide-scissors"
           color="neutral"
           size="sm"
@@ -187,6 +228,17 @@ const speedModalTargetHasAudio = computed(() => {
     :is-open="isHistoryDrawerOpen"
     @close="isHistoryDrawerOpen = false"
   />
+
+  <UiMobileDrawer
+    v-model:open="isMarkersDrawerOpen"
+    :title="t('videoEditor.fileManager.tabs.markers', 'Markers')"
+    :snap-points="[0.4, 0.85]"
+    direction="bottom"
+  >
+    <div class="px-4 pb-4 h-full overflow-hidden">
+      <ProjectMarkers class="h-full" />
+    </div>
+  </UiMobileDrawer>
 
   <TimelineSpeedModal
     v-if="speedModal"

@@ -75,6 +75,8 @@ export interface FileManagerCreateDeps {
   onDirectoryLoaded?: () => void;
   mediaStore: ReturnType<typeof useMediaStore>;
   historyStore: ReturnType<typeof useHistoryStore>;
+  /** When false, file-manager undo entries are not pushed (e.g. on `/m/` mobile app routes). */
+  shouldRecordFileManagerHistory: () => boolean;
 }
 
 export function createFileManager(deps: FileManagerCreateDeps) {
@@ -312,15 +314,17 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         await createFolderCommand({ name, parentPath, vfs: deps.vfs });
         const createdPath = parentPath ? `${parentPath}/${name}` : name;
 
-        deps.historyStore.push(
-          'fileManager',
-          'createFolder',
-          {
-            undo: { type: 'delete', path: createdPath },
-            redo: { type: 'createFolder', parentPath, name },
-          },
-          'videoEditor.fileManager.history.entries.createFolder',
-        );
+        if (deps.shouldRecordFileManagerHistory()) {
+          deps.historyStore.push(
+            'fileManager',
+            'createFolder',
+            {
+              undo: { type: 'delete', path: createdPath },
+              redo: { type: 'createFolder', parentPath, name },
+            },
+            'videoEditor.fileManager.history.entries.createFolder',
+          );
+        }
 
         await reloadDirectory(parentPath);
       },
@@ -410,15 +414,17 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         );
 
         if (oldPath && newPath) {
-          deps.historyStore.push(
-            'fileManager',
-            'rename',
-            {
-              undo: { type: 'rename', from: newPath, to: target.name },
-              redo: { type: 'rename', from: oldPath, to: newName },
-            },
-            'videoEditor.fileManager.history.entries.renameEntry',
-          );
+          if (deps.shouldRecordFileManagerHistory()) {
+            deps.historyStore.push(
+              'fileManager',
+              'rename',
+              {
+                undo: { type: 'rename', from: newPath, to: target.name },
+                redo: { type: 'rename', from: oldPath, to: newName },
+              },
+              'videoEditor.fileManager.history.entries.renameEntry',
+            );
+          }
           await deps.onEntryPathChanged?.({ oldPath, newPath });
         }
 
@@ -455,15 +461,17 @@ export function createFileManager(deps: FileManagerCreateDeps) {
           {
             vfs: deps.vfs,
             onFileMoved: async ({ oldPath, newPath }) => {
-              deps.historyStore.push(
-                'fileManager',
-                'move',
-                {
-                  undo: { type: 'move', from: newPath, to: sourceParentPath },
-                  redo: { type: 'move', from: oldPath, to: targetDirPath },
-                },
-                'videoEditor.fileManager.history.entries.moveEntry',
-              );
+              if (deps.shouldRecordFileManagerHistory()) {
+                deps.historyStore.push(
+                  'fileManager',
+                  'move',
+                  {
+                    undo: { type: 'move', from: newPath, to: sourceParentPath },
+                    redo: { type: 'move', from: oldPath, to: targetDirPath },
+                  },
+                  'videoEditor.fileManager.history.entries.moveEntry',
+                );
+              }
               await deps.onEntryPathChanged?.({ oldPath, newPath });
 
               if (oldPath.startsWith(`${VIDEO_DIR_NAME}/`)) {
@@ -675,6 +683,7 @@ export function useFileManager() {
 
   const timelineStore = useTimelineStore();
   const historyStore = useHistoryStore();
+  const route = useRoute();
 
   const isApiSupported = computed(() => workspaceStore.isApiSupported);
   const showHiddenFiles = computed(() => uiStore.showHiddenFiles);
@@ -751,6 +760,8 @@ export function useFileManager() {
     showHiddenFiles,
     mediaStore,
     historyStore,
+    shouldRecordFileManagerHistory: () =>
+      !(route.path === '/m' || route.path.startsWith('/m/')),
     mediaCache,
     isFileTreePathExpanded: (path) => uiStore.isFileTreePathExpanded(path),
     setFileTreePathExpanded: function setFileTreePathExpanded(path: string, expanded: boolean) {
