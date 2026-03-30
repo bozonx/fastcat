@@ -5,6 +5,7 @@ import { createAutoSave } from '~/utils/auto-save';
 import {
   createDefaultProjectSettings,
   normalizeProjectSettings,
+  DEFAULT_MONITOR_SETTINGS,
   type FastCatProjectSettings,
 } from '~/utils/project-settings';
 import { createProjectSettingsRepository } from '~/repositories/project-settings.repository';
@@ -13,6 +14,7 @@ import {
   type ProjectUiRepository,
 } from '~/repositories/project-ui.repository';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { getPlatformSuffix } from '~/stores/ui/uiLocalStorage';
 import type { ProjectMeta } from '~/repositories/project-meta.repository';
 import type { EditorView } from '~/stores/editor-view.store';
 
@@ -47,7 +49,15 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     const lastViewBeforeFullscreen = getLastViewBeforeFullscreen.value?.() ?? null;
     const targetView = view === 'fullscreen' ? lastViewBeforeFullscreen || 'cut' : view;
     const safeView = ['cut', 'sound', 'export'].includes(targetView) ? targetView : 'cut';
-    return projectSettings.value.monitors[safeView] ?? projectSettings.value.monitors.cut;
+
+    const platformSuffix = getPlatformSuffix();
+    const platformViewKey = `${safeView}${platformSuffix}`;
+
+    return (
+      projectSettings.value.monitors[platformViewKey] ??
+      projectSettings.value.monitors[safeView] ??
+      projectSettings.value.monitors.cut
+    );
   });
 
   const autoSave = createAutoSave({
@@ -233,6 +243,32 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
       void requestProjectSettingsSave();
     },
     { deep: true, flush: 'sync' },
+  );
+
+  // Ensure platform-specific monitor exists
+  watch(
+    [
+      () => getPlatformSuffix(),
+      () => getCurrentEditorView.value?.(),
+      () => isLoadingProjectSettings.value,
+    ],
+    ([suffix, view, loading]) => {
+      if (loading || !suffix) return;
+      const targetView = view ?? 'cut';
+      const safeView = ['cut', 'sound', 'export'].includes(targetView) ? targetView : 'cut';
+      const key = `${safeView}${suffix}`;
+      if (!projectSettings.value.monitors[key]) {
+        const base =
+          projectSettings.value.monitors[safeView] ??
+          projectSettings.value.monitors.cut ??
+          DEFAULT_MONITOR_SETTINGS;
+        projectSettings.value.monitors[key] = {
+          ...DEFAULT_MONITOR_SETTINGS,
+          ...base,
+        };
+      }
+    },
+    { immediate: true },
   );
 
   return {

@@ -1,3 +1,11 @@
+export function getPlatformSuffix(): string {
+  if (typeof window === 'undefined') return '';
+  const isMobile =
+    window.matchMedia('(max-width: 768px)').matches ||
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  return isMobile ? ':mobile' : '';
+}
+
 export function hasLocalStorageKey(key: string): boolean {
   if (typeof window === 'undefined') return false;
   try {

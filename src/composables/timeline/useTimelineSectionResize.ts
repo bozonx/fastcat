@@ -1,5 +1,6 @@
 import { ref, onBeforeUnmount, type Ref } from 'vue';
 import { useLocalStorage } from '@vueuse/core';
+import { getPlatformSuffix } from '~/stores/ui/uiLocalStorage';
 
 const DEFAULT_VIDEO_SECTION_PERCENT = 60;
 
@@ -9,7 +10,7 @@ export interface UseTimelineSectionResizeOptions {
 
 export function useTimelineSectionResize({ projectId }: UseTimelineSectionResizeOptions) {
   const videoSectionPercent = useLocalStorage(
-    () => `fastcat-timeline-video-section-${projectId.value}`,
+    () => `fastcat-timeline-video-section-${projectId.value}${getPlatformSuffix()}`,
     DEFAULT_VIDEO_SECTION_PERCENT,
   );
 
