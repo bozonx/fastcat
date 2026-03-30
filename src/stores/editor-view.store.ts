@@ -1,9 +1,12 @@
-import { defineStore } from 'pinia';
-import { ref, computed, watch } from 'vue';
-import { readLocalStorageJson, writeLocalStorageJson } from './ui/uiLocalStorage';
+import { defineStore, storeToRefs } from 'pinia';
+import { ref, computed, watch, type Ref } from 'vue';
+import {
+  readLocalStorageJson,
+  writeLocalStorageJson,
+  getPlatformSuffix,
+} from './ui/uiLocalStorage';
 import { getPanelSizesKey } from '~/composables/ui/usePersistedSplitpanes';
 import type { FsEntry } from '~/types/fs';
-import type { Ref } from 'vue';
 
 export type EditorView = 'files' | 'cut' | 'sound' | 'export' | 'fullscreen';
 
@@ -140,14 +143,9 @@ export function createEditorViewModule(
     }));
   }
 
-  const isMobile = computed(() => {
-    if (typeof window === 'undefined') return false;
-    return window.matchMedia('(max-width: 768px)').matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  });
-
-  const layoutPlatformSuffix = computed(() => (isMobile.value ? ':mobile' : ''));
-
+  const layoutPlatformSuffix = computed(() => getPlatformSuffix());
   const currentView = ref<EditorView>('cut');
+  let isInternalLoading = false;
 
   const cutPanelsKey = computed(
     () =>
@@ -172,25 +170,33 @@ export function createEditorViewModule(
   watch(
     () => [cutPanelsKey.value, getProjectOrientation()] as const,
     ([key]) => {
-      const orientation = getProjectOrientation();
-      const fallback = buildDefaultCutPanelsForOrientation(orientation);
-      const stored = readLocalStorageJson<any[] | null>(key, null);
-      if (stored && Array.isArray(stored) && stored.length > 0) {
-        if (!Array.isArray(stored[0]) && !stored[0].panels) {
-          cutPanels.value = sanitizePanelColumns(
-            stored.map((p) => ({ id: `col-${generateId()}`, panels: [p] })),
-            fallback,
-          );
-        } else if (Array.isArray(stored[0])) {
-          cutPanels.value = sanitizePanelColumns(
-            stored.map((col) => ({ id: `col-${generateId()}`, panels: col })),
-            fallback,
-          );
+      isInternalLoading = true;
+      try {
+        const orientation = getProjectOrientation();
+        const fallback = buildDefaultCutPanelsForOrientation(orientation);
+        const stored = readLocalStorageJson<any[] | null>(key, null);
+        if (stored && Array.isArray(stored) && stored.length > 0) {
+          if (!Array.isArray(stored[0]) && !stored[0].panels) {
+            cutPanels.value = sanitizePanelColumns(
+              stored.map((p) => ({ id: `col-${generateId()}`, panels: [p] })),
+              fallback,
+            );
+          } else if (Array.isArray(stored[0])) {
+            cutPanels.value = sanitizePanelColumns(
+              stored.map((col) => ({ id: `col-${generateId()}`, panels: col })),
+              fallback,
+            );
+          } else {
+            cutPanels.value = sanitizePanelColumns(stored, fallback);
+          }
         } else {
-          cutPanels.value = sanitizePanelColumns(stored, fallback);
+          cutPanels.value = sanitizePanelColumns(fallback, fallback);
         }
-      } else {
-        cutPanels.value = sanitizePanelColumns(fallback, fallback);
+      } finally {
+        // Delay resetting the flag to ensure any microtask watch triggers are ignored
+        setTimeout(() => {
+          isInternalLoading = false;
+        }, 0);
       }
     },
     { immediate: true },
@@ -200,11 +206,18 @@ export function createEditorViewModule(
   watch(
     () => soundPanelsKey.value,
     (key) => {
-      const stored = readLocalStorageJson<any[] | null>(key, null);
-      if (stored && Array.isArray(stored) && stored.length > 0) {
-        soundPanels.value = sanitizePanelColumns(stored, defaultSoundPanels);
-      } else {
-        soundPanels.value = sanitizePanelColumns(defaultSoundPanels, defaultSoundPanels);
+      isInternalLoading = true;
+      try {
+        const stored = readLocalStorageJson<any[] | null>(key, null);
+        if (stored && Array.isArray(stored) && stored.length > 0) {
+          soundPanels.value = sanitizePanelColumns(stored, defaultSoundPanels);
+        } else {
+          soundPanels.value = sanitizePanelColumns(defaultSoundPanels, defaultSoundPanels);
+        }
+      } finally {
+        setTimeout(() => {
+          isInternalLoading = false;
+        }, 0);
       }
     },
     { immediate: true },
@@ -214,6 +227,7 @@ export function createEditorViewModule(
   watch(
     cutPanels,
     (panels) => {
+      if (isInternalLoading) return;
       writeLocalStorageJson(
         cutPanelsKey.value,
         sanitizePanelColumns(panels, getDefaultCutLayout()),
@@ -226,6 +240,7 @@ export function createEditorViewModule(
   watch(
     soundPanels,
     (panels) => {
+      if (isInternalLoading) return;
       writeLocalStorageJson(soundPanelsKey.value, sanitizePanelColumns(panels, defaultSoundPanels));
     },
     { deep: true },
@@ -431,6 +446,7 @@ export function createEditorViewModule(
   );
 
   watch(timelineHeight, (newVal) => {
+    if (isInternalLoading) return;
     writeLocalStorageJson(timelineHeightKey.value, newVal);
   });
 
@@ -488,6 +504,13 @@ export function createEditorViewModule(
   };
 }
 
+import { useProjectStore } from './project.store';
+
 export const useEditorViewStore = defineStore('editorView', () => {
-  return createEditorViewModule(ref(null));
+  const projectStore = useProjectStore();
+  const { currentProjectId } = storeToRefs(projectStore);
+
+  return createEditorViewModule(currentProjectId, {
+    getProjectOrientation: () => projectStore.projectSettings.project.orientation,
+  });
 });
