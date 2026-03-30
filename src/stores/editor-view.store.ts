@@ -140,10 +140,18 @@ export function createEditorViewModule(
     }));
   }
 
+  const isMobile = computed(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 768px)').matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  });
+
+  const layoutPlatformSuffix = computed(() => (isMobile.value ? ':mobile' : ':desktop'));
+
   const currentView = ref<EditorView>('cut');
 
   const cutPanelsKey = computed(
-    () => `fastcat:layout:panels:${projectIdRef.value ?? 'no-project'}:cut`,
+    () =>
+      `fastcat:layout:panels:${projectIdRef.value ?? 'no-project'}:cut${layoutPlatformSuffix.value}`,
   );
   const cutPanels = ref<PanelColumn[]>(getDefaultCutLayout());
 
@@ -153,7 +161,8 @@ export function createEditorViewModule(
   ];
 
   const soundPanelsKey = computed(
-    () => `fastcat:layout:panels:${projectIdRef.value ?? 'no-project'}:sound`,
+    () =>
+      `fastcat:layout:panels:${projectIdRef.value ?? 'no-project'}:sound${layoutPlatformSuffix.value}`,
   );
   const soundPanels = ref<PanelColumn[]>([
     ...defaultSoundPanels.map((col) => ({ id: col.id, panels: [...col.panels] })),
