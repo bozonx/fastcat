@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
+import { computed, ref } from 'vue';
 import { onClickOutside } from '@vueuse/core';
 import { useUiStore } from '~/stores/ui.store';
 import { storeToRefs } from 'pinia';
@@ -69,19 +69,18 @@ function onClickOutsideHandler() {
       @click="togglePopup"
     />
 
-    <Teleport to="body">
-      <Transition
-        enter-active-class="transition duration-150 ease-out"
-        enter-from-class="opacity-0 translate-y-4"
-        enter-to-class="opacity-100 translate-y-0"
-        leave-active-class="transition duration-150 ease-in"
-        leave-from-class="opacity-100 translate-y-0"
-        leave-to-class="opacity-0 translate-y-4"
+    <Transition
+      enter-active-class="transition duration-150 ease-out"
+      enter-from-class="opacity-0 translate-y-2"
+      enter-to-class="opacity-100 translate-y-0"
+      leave-active-class="transition duration-150 ease-in"
+      leave-from-class="opacity-100 translate-y-0"
+      leave-to-class="opacity-0 translate-y-2"
+    >
+      <div
+        v-if="isPopupOpen"
+        class="fixed bottom-[80px] left-1/2 -translate-x-1/2 z-[100] pointer-events-auto"
       >
-        <div
-          v-if="isPopupOpen"
-          class="fixed bottom-[80px] left-1/2 -translate-x-1/2 z-50 pointer-events-auto"
-        >
           <div
             class="bg-ui-bg-elevated/95 backdrop-blur-md border border-ui-border rounded-xl shadow-2xl px-5 py-4 flex items-center gap-4 w-[85vw] max-w-[340px]"
           >
@@ -106,8 +105,7 @@ function onClickOutsideHandler() {
               @click.stop="resetVolume"
             />
           </div>
-        </div>
-      </Transition>
-    </Teleport>
+      </div>
+    </Transition>
   </div>
 </template>

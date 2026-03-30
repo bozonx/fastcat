@@ -64,6 +64,9 @@ const {
   toggleProxyUsage,
   togglePreviewEffects,
   resetZoom,
+  onPlaybackSpeedChange,
+  selectedPlaybackSpeedOption,
+  speedButtonLabel,
 } = useMonitorContainerControls({
   t,
   projectStore,
@@ -83,6 +86,19 @@ const {
   toggleGrid,
   isMobile: true,
 });
+
+const MOBILE_SPEED_VALUES = [1, 1.5, 2];
+
+const mobileSpeedMenuItems = computed(() => [
+  MOBILE_SPEED_VALUES.map((v) => ({
+    label: `x${v}`,
+    onSelect: () => onPlaybackSpeedChange(v),
+    icon:
+      selectedPlaybackSpeedOption.value?.value === v
+        ? 'i-heroicons-check-20-solid'
+        : undefined,
+  })),
+]);
 
 const monitorZoomLabel = computed(() => {
   const zoom = projectStore.activeMonitor?.zoom ?? 1;
@@ -260,6 +276,17 @@ const containerHeightClass = computed(() =>
             :label="monitorZoomLabel"
             @click="resetZoom"
           />
+
+          <UDropdownMenu :items="mobileSpeedMenuItems">
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              class="font-mono tabular-nums text-[10px] min-w-10 justify-center h-6 px-1 text-ui-text-muted hover:text-ui-text"
+              :label="speedButtonLabel"
+              :aria-label="t('fastcat.monitor.playbackSpeed', 'Playback speed')"
+            />
+          </UDropdownMenu>
         </div>
 
         <div
