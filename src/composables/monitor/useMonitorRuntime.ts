@@ -27,7 +27,10 @@ export function useMonitorRuntime() {
   const workspaceStore = useWorkspaceStore();
   const selectionStore = useSelectionStore();
   const uiStore = useUiStore();
+  const route = useRoute();
   const { isPlaying, currentTime, duration } = storeToRefs(timelineStore);
+
+  const isMobile = computed(() => route.path.startsWith('/m'));
 
   const {
     videoItems,
@@ -115,6 +118,7 @@ export function useMonitorRuntime() {
     updateStoreTime,
     scheduleRender,
     audioEngine,
+    isMobile: isMobile.value,
   });
 
   setCurrentTimeProvider(getLocalCurrentTimeUs);
