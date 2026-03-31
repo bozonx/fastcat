@@ -292,7 +292,8 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
                       entry.kind === 'file' &&
                       videoThumbnails &&
                       entry.path &&
-                      videoThumbnails[entry.path]
+                      videoThumbnails[entry.path] &&
+                      getCompatibilityStatus(entry) === 'ok'
                     "
                     :src="videoThumbnails[entry.path]"
                     :alt="entry.name"

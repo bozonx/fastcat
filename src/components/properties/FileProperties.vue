@@ -219,8 +219,12 @@ const isAudioCodecUnsupported = computed(
   () => mediaMeta.value?.audio?.canDecode === false,
 );
 
+const isImageUnsupported = computed(
+  () => mediaType.value === 'image' && mediaMeta.value?.image?.canDisplay === false,
+);
+
 const isMediaFullyUnsupported = computed(
-  () => isFormatUnsupported.value || isVideoCodecUnsupported.value,
+  () => isFormatUnsupported.value || isVideoCodecUnsupported.value || isImageUnsupported.value,
 );
 
 const showVideoProxyActions = computed(() => {
@@ -434,6 +438,9 @@ const {
         <span>{{ t('videoEditor.fileManager.compatibility.unsupportedTitle') }}</span>
       </div>
       <ul class="flex flex-col gap-1 pl-6 text-red-300/80">
+        <li v-if="isImageUnsupported">
+          {{ t('videoEditor.fileManager.compatibility.imageFormatUnsupported') }}
+        </li>
         <li v-if="isFormatUnsupported">
           {{ t('videoEditor.fileManager.compatibility.formatUnsupported') }}
         </li>

@@ -7,7 +7,11 @@ import { computeMaxAudioDurationUs, getClipRangesS } from './export-helpers';
 import { usToS } from './time';
 import { initEffects } from '../../effects';
 import { initTransitions } from '../../transitions';
-import { getMediaTypeFromFilename, getMimeTypeFromFilename } from '../../utils/media-types';
+import {
+  getMediaTypeFromFilename,
+  getMimeTypeFromFilename,
+  BROWSER_NATIVE_IMAGE_EXTENSIONS,
+} from '../../utils/media-types';
 import type { ExportOptions, WorkerTimelineClip } from '~/composables/timeline/export/types';
 import type { MediaMetadata } from '~/stores/media.store';
 
@@ -22,6 +26,21 @@ export async function extractMetadata(
   const isImage = getMediaTypeFromFilename(file.name) === 'image';
 
   if (isImage) {
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+    let canDisplay: boolean;
+
+    if (!BROWSER_NATIVE_IMAGE_EXTENSIONS.includes(ext)) {
+      canDisplay = false;
+    } else {
+      try {
+        const bitmap = await createImageBitmap(file);
+        bitmap.close();
+        canDisplay = true;
+      } catch {
+        canDisplay = false;
+      }
+    }
+
     return {
       source: {
         size: file.size,
@@ -30,6 +49,7 @@ export async function extractMetadata(
       mimeType: getMimeTypeFromFilename(file.name),
       container: 'image',
       duration: 0,
+      image: { canDisplay },
     };
   }
 
