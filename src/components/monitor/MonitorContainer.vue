@@ -228,7 +228,6 @@ const monitorZoomLabel = computed(() => {
   return `x${zoom.toFixed(2)}`;
 });
 
-
 const isIdle = ref(false);
 let idleTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -426,7 +425,8 @@ watch(viewportRef, (vp) => {
             inactive-variant="ghost"
             active-color="neutral"
             active-variant="soft"
-            :active-bg="'rgba(59,130,246,0.12)'"
+            :active-bg="'color-mix(in srgb, var(--selection-accent-500) 12%, transparent)'"
+            :active-text="'var(--selection-accent-400)'"
             title="Use proxy"
             no-toggle
             @click="toggleProxyUsage"
@@ -448,7 +448,8 @@ watch(viewportRef, (vp) => {
             inactive-variant="ghost"
             active-color="neutral"
             active-variant="soft"
-            :active-bg="'rgba(59,130,246,0.12)'"
+            :active-bg="'color-mix(in srgb, var(--selection-accent-500) 12%, transparent)'"
+            :active-text="'var(--selection-accent-400)'"
             title="Preview effects"
             no-toggle
             @click="togglePreviewEffects"

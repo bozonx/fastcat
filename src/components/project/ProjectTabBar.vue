@@ -62,7 +62,7 @@ function handleStaticTabDragStart(event: DragEvent, tab: AnyProjectTab) {
             class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0"
             :class="
               tabsStore.activeTabId === tab.id
-                ? 'bg-primary-500/15 text-primary-400'
+                ? 'bg-selection-accent-500/15 text-selection-accent-400'
                 : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
             "
             :title="tab.label"
@@ -75,7 +75,11 @@ function handleStaticTabDragStart(event: DragEvent, tab: AnyProjectTab) {
             <UIcon
               :name="tab.icon ?? 'i-heroicons-rectangle-stack'"
               class="w-3.5 h-3.5 shrink-0"
-              :class="tabsStore.activeTabId === tab.id ? 'text-primary-400' : 'text-ui-text-muted'"
+              :class="
+                tabsStore.activeTabId === tab.id
+                  ? 'text-selection-accent-400'
+                  : 'text-ui-text-muted'
+              "
             />
             <span class="text-2xs font-semibold uppercase tracking-wider">
               {{ tab.label }}
@@ -105,7 +109,7 @@ function handleStaticTabDragStart(event: DragEvent, tab: AnyProjectTab) {
             class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0"
             :class="
               tabsStore.activeTabId === tab.id
-                ? 'bg-primary-500/15 text-primary-400'
+                ? 'bg-selection-accent-500/15 text-selection-accent-400'
                 : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
             "
             :title="tab.fileName"
@@ -122,7 +126,9 @@ function handleStaticTabDragStart(event: DragEvent, tab: AnyProjectTab) {
                 :name="tab.icon"
                 class="w-3.5 h-3.5 shrink-0"
                 :class="
-                  tabsStore.activeTabId === tab.id ? 'text-primary-400' : 'text-ui-text-muted'
+                  tabsStore.activeTabId === tab.id
+                    ? 'text-selection-accent-400'
+                    : 'text-ui-text-muted'
                 "
               />
               <span class="text-2xs font-semibold tracking-wide truncate max-w-[140px]">

@@ -118,7 +118,7 @@ onBeforeUnmount(clearLongPress);
           class="flex flex-col w-full aspect-square rounded-2xl overflow-hidden bg-slate-900 border-2 transition-all active:scale-95"
           :class="[
             isSelected(entry)
-              ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.3)]'
+              ? 'border-selection-accent-500 ring-2 ring-selection-accent-500/20 shadow-[0_0_15px_rgba(59,130,246,0.3)]'
               : 'border-transparent hover:border-slate-700',
           ]"
           @touchstart="handleTouchStart(entry)"
@@ -156,7 +156,7 @@ onBeforeUnmount(clearLongPress);
               class="absolute top-2 left-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all"
               :class="[
                 isSelected(entry)
-                  ? 'bg-blue-500 border-blue-500 shadow-lg'
+                  ? 'bg-selection-accent-500 border-selection-accent-500 shadow-lg'
                   : 'bg-black/20 border-white/40',
               ]"
             >
@@ -168,13 +168,19 @@ onBeforeUnmount(clearLongPress);
           <div class="px-2.5 py-2 bg-slate-900/90 backdrop-blur-sm border-t border-slate-800/50">
             <div
               class="truncate text-[12px] font-medium leading-tight mb-0.5 transition-colors"
-              :class="{ 'text-blue-400': isSelected(entry) }"
+              :class="{ 'text-selection-accent-400': isSelected(entry) }"
             >
               {{ entry.name }}
             </div>
-            <div class="flex items-center justify-between opacity-80 text-[10px] tabular-nums mt-0.5 font-medium">
+            <div
+              class="flex items-center justify-between opacity-80 text-[10px] tabular-nums mt-0.5 font-medium"
+            >
               <span class="truncate pr-2 text-slate-400">
-                {{ entry.kind === 'directory' ? t('common.folder', 'Folder') : getFileTypeLabel(entry) }}
+                {{
+                  entry.kind === 'directory'
+                    ? t('common.folder', 'Folder')
+                    : getFileTypeLabel(entry)
+                }}
               </span>
               <span class="shrink-0 text-slate-500">
                 {{
@@ -188,7 +194,6 @@ onBeforeUnmount(clearLongPress);
             </div>
           </div>
         </button>
-
       </div>
     </div>
   </div>

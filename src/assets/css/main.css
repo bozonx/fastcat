@@ -1,7 +1,7 @@
-@import "tailwindcss";
-@import "@nuxt/ui";
-@import "./themes/dark.css";
-@import "./components/splitpanes.css";
+@import 'tailwindcss';
+@import '@nuxt/ui';
+@import './themes/dark.css';
+@import './components/splitpanes.css';
 
 @theme {
   --text-3xs: 0.57rem;
@@ -110,12 +110,12 @@
   --color-ui-action-hover: #4ade80;
 }
 
- .panel-focus-frame {
+.panel-focus-frame {
   position: relative;
   isolation: isolate;
- }
+}
 
- .panel-focus-frame::after {
+.panel-focus-frame::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -123,11 +123,11 @@
   z-index: 60;
   box-shadow: inset 0 0 0 0 transparent;
   transition: box-shadow 0.15s ease;
- }
+}
 
- .panel-focus-frame--active::after {
+.panel-focus-frame--active::after {
   box-shadow: inset 0 0 0 1px var(--color-primary-500);
- }
+}
 
 .ui-panel {
   border: 1px solid var(--ui-border);
@@ -192,7 +192,7 @@ summary:not(:disabled) {
 }
 
 /* Range inputs */
-input[type="range"] {
+input[type='range'] {
   -webkit-appearance: none;
   appearance: none;
   background: transparent;
@@ -200,19 +200,19 @@ input[type="range"] {
   height: 1rem; /* 16px */
 }
 
-input[type="range"]::-webkit-slider-track {
+input[type='range']::-webkit-slider-track {
   background: var(--range-track-bg);
   height: 0.1875rem; /* 3px */
   border-radius: 0.09375rem; /* 1.5px */
 }
 
-input[type="range"]::-moz-range-track {
+input[type='range']::-moz-range-track {
   background: var(--range-track-bg);
   height: 0.1875rem;
   border-radius: 0.09375rem;
 }
 
-input[type="range"]::-webkit-slider-thumb {
+input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   background: var(--color-primary-500);
@@ -224,7 +224,7 @@ input[type="range"]::-webkit-slider-thumb {
   border: 1px solid var(--ui-bg);
 }
 
-input[type="range"]::-moz-range-thumb {
+input[type='range']::-moz-range-thumb {
   background: var(--color-primary-500);
   height: 0.75rem;
   width: 0.75rem;
@@ -240,22 +240,22 @@ input[type="range"]::-moz-range-thumb {
   cursor: move !important;
 }
 
-input[type="range"]::-webkit-slider-thumb:hover {
+input[type='range']::-webkit-slider-thumb:hover {
   background: var(--color-primary-400);
   transform: scale(1.15);
 }
 
-input[type="range"]::-moz-range-thumb:hover {
+input[type='range']::-moz-range-thumb:hover {
   background: var(--color-primary-400);
   transform: scale(1.15);
 }
 
-input[type="range"]::-webkit-slider-thumb:active {
+input[type='range']::-webkit-slider-thumb:active {
   background: var(--color-primary-600);
   transform: scale(1.25);
 }
 
-input[type="range"]::-moz-range-thumb:active {
+input[type='range']::-moz-range-thumb:active {
   background: var(--color-primary-600);
   transform: scale(1.25);
 }
@@ -315,10 +315,20 @@ select {
   background-color: var(--color-primary-500) !important;
 }
 
+/* Override USelectMenu selected item color to use selection-accent */
+[role='option'][aria-selected='true'],
+[role='option'][data-selected] {
+  color: var(--selection-accent-400) !important;
+}
+
+[role='option'][aria-selected='true'] [data-part='item-indicator'],
+[role='option'][data-selected] [data-part='item-indicator'] {
+  color: var(--selection-accent-400) !important;
+}
+
 [data-slider-track] {
   background-color: var(--range-track-bg) !important;
 }
-
 
 /* Hatching patterns for locked state */
 .hatching-diagonal {

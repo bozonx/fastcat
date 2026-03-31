@@ -130,7 +130,9 @@ const smartSortedProjects = computed(() => {
             @click="startCreateProject"
           >
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-primary-500/10 flex items-center justify-center">
+              <div
+                class="w-10 h-10 rounded-full bg-primary-500/10 flex items-center justify-center"
+              >
                 <UIcon name="i-heroicons-plus" class="w-5 h-5 text-primary-400" />
               </div>
               <h3 class="font-medium text-slate-200">
@@ -153,9 +155,14 @@ const smartSortedProjects = computed(() => {
 
           <div v-if="filteredProjects.length > 0" class="flex flex-col gap-3">
             <div
-              v-for="project in smartSortedProjects"
+              v-for="(project, index) in smartSortedProjects"
               :key="project.projectName"
-              class="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden flex items-center active:bg-slate-800 active:scale-[0.98] transition-all shadow-sm"
+              class="bg-slate-900/60 rounded-xl overflow-hidden flex items-center active:bg-slate-800 active:scale-[0.98] transition-all shadow-sm"
+              :class="
+                index === 0 && project.projectId
+                  ? 'border-2 border-selection-accent-500/60 hover:border-selection-accent-500'
+                  : 'border border-slate-800'
+              "
               @click="
                 isRenaming === project.projectName ? null : handleOpenProject(project.projectName)
               "
