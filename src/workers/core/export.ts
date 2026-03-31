@@ -97,7 +97,10 @@ export async function extractMetadata(
       safeDispose(input);
     }
   } catch (err) {
-    console.error('[Worker Export] Failed to extract metadata:', err);
+    console.warn(
+      '[Worker Export] Failed to extract metadata (unsupported format):',
+      (err as Error)?.message,
+    );
     throw err;
   }
 }

@@ -207,6 +207,22 @@ async function copyToClipboard(text: string) {
 
 const isVideoFile = computed(() => mediaType.value === 'video');
 
+const isFormatUnsupported = computed(
+  () => Boolean(selectedPath.value && mediaStore.metadataLoadFailed[selectedPath.value]),
+);
+
+const isVideoCodecUnsupported = computed(
+  () => mediaMeta.value?.video?.canDecode === false,
+);
+
+const isAudioCodecUnsupported = computed(
+  () => mediaMeta.value?.audio?.canDecode === false,
+);
+
+const isMediaFullyUnsupported = computed(
+  () => isFormatUnsupported.value || isVideoCodecUnsupported.value,
+);
+
 const showVideoProxyActions = computed(() => {
   if (isProjectRootDir.value) return false;
   if (!isVideoFile.value) return false;
@@ -409,8 +425,34 @@ const {
       @change="onDirectoryFileSelect"
     />
 
+    <div
+      v-if="fileInfo?.kind !== 'directory' && isMediaFullyUnsupported"
+      class="flex flex-col gap-2 p-3 rounded-lg bg-red-950/40 border border-red-800/50 text-sm"
+    >
+      <div class="flex items-center gap-2 text-red-400 font-medium">
+        <UIcon name="i-heroicons-exclamation-triangle" class="w-4 h-4 shrink-0" />
+        <span>{{ t('videoEditor.fileManager.compatibility.unsupportedTitle') }}</span>
+      </div>
+      <ul class="flex flex-col gap-1 pl-6 text-red-300/80">
+        <li v-if="isFormatUnsupported">
+          {{ t('videoEditor.fileManager.compatibility.formatUnsupported') }}
+        </li>
+        <li v-if="isVideoCodecUnsupported">
+          {{ t('videoEditor.fileManager.compatibility.videoCodecUnsupported') }}
+          <span v-if="mediaMeta?.video" class="opacity-60">
+            ({{ mediaMeta.video.parsedCodec || mediaMeta.video.codec }})
+          </span>
+        </li>
+        <li v-if="isAudioCodecUnsupported">
+          {{ t('videoEditor.fileManager.compatibility.audioCodecUnsupported') }}
+          <span v-if="mediaMeta?.audio" class="opacity-60">
+            ({{ mediaMeta.audio.parsedCodec || mediaMeta.audio.codec }})
+          </span>
+        </li>
+      </ul>
+    </div>
     <EntryPreviewBox
-      v-if="fileInfo?.kind !== 'directory'"
+      v-else-if="fileInfo?.kind !== 'directory'"
       :selected-entry-kind="selectedFsEntry?.kind ?? null"
       :is-unknown="isUnknown"
       :current-url="currentUrl"

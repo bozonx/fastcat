@@ -160,7 +160,7 @@ export const useMediaStore = defineStore('media', () => {
       }
       return null;
     } catch (e) {
-      console.error('Failed to fetch metadata for', projectRelativePath, e);
+      console.warn('Failed to fetch metadata for', projectRelativePath, (e as Error)?.message);
       metadataLoadFailed.value[projectRelativePath] = true;
       return null;
     }

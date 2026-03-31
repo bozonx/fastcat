@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 
 const props = defineProps<{
@@ -21,6 +22,15 @@ const fpsPresets = [
   { label: '60', value: 60 },
 ];
 
+const fpsMenuItems = computed(() => [
+  fpsPresets.map((p) => ({
+    label: p.label,
+    type: 'checkbox' as const,
+    checked: Math.abs(props.modelValue - p.value) < 0.001,
+    onSelect: () => selectPreset(p.value),
+  })),
+]);
+
 function selectPreset(value: number) {
   emit('update:modelValue', value);
 }
@@ -39,9 +49,10 @@ function selectPreset(value: number) {
       @update:model-value="(v) => emit('update:modelValue', v)"
     />
     <UDropdownMenu
-      :items="fpsPresets.map((p) => ({ label: p.label, onSelect: () => selectPreset(p.value) }))"
+      :items="fpsMenuItems"
       :disabled="disabled"
       :content="{ align: 'end' }"
+      :ui="{ content: 'min-w-24' }"
     >
       <UButton
         color="neutral"

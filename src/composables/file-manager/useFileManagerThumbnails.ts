@@ -1,6 +1,7 @@
 import { ref, watch, onBeforeUnmount, type Ref } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { useProjectStore } from '~/stores/project.store';
+import { useMediaStore } from '~/stores/media.store';
 import { fileThumbnailGenerator, getFileThumbnailHash } from '~/utils/file-thumbnail-generator';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import type { FileSystemAdapter } from '~/file-manager/core/vfs/types';
@@ -9,6 +10,7 @@ const SUPPORTED_IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp'
 
 export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: FileSystemAdapter) {
   const projectStore = useProjectStore();
+  const mediaStore = useMediaStore();
   const thumbnails = ref<Record<string, string>>({}); // projectRelativePath -> objectUrl
   let isUnmounted = false;
   const activeHashes = new Set<string>();
@@ -58,6 +60,8 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: FileSyst
           const isTimeline = entry.name.toLowerCase().endsWith('.otio');
 
           if (type === 'video' || isTimeline) {
+            if (mediaStore.metadataLoadFailed[path]) continue;
+
             const hash = getFileThumbnailHash({
               projectId,
               projectRelativePath: path,

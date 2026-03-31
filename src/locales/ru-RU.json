@@ -1283,9 +1283,11 @@
       },
       "unsupported": "API доступа к файловой системе не поддерживается в этом браузере",
       "compatibility": {
-        "audioCodecUnsupported": "кодек не поддерживается",
+        "audioCodecUnsupported": "Аудио кодек не поддерживается",
+        "formatUnsupported": "Формат файла не распознан или не поддерживается",
         "unsupported": "Не поддерживается",
-        "videoCodecUnsupported": "кодек не поддерживается"
+        "unsupportedTitle": "Этот файл невозможно воспроизвести",
+        "videoCodecUnsupported": "Видео кодек не поддерживается"
       },
       "video": {
         "audioCodec": "Аудио кодек",

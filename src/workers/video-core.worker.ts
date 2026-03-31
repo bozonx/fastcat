@@ -555,8 +555,14 @@ self.addEventListener('message', async (e: MessageEvent<VideoCoreWorkerRpcMessag
       self.postMessage({ type: 'rpc-response', id: data.id, method: data.method, result });
     } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error(String(err));
+      const isUnsupportedFormat =
+        error.message?.includes('unsupported') || error.message?.includes('unrecognizable');
       if (error?.name !== 'AbortError') {
-        console.error(`[Worker] Error in method ${data.method}:`, err);
+        if (isUnsupportedFormat) {
+          console.warn(`[Worker] Unsupported format in method ${data.method}:`, error.message);
+        } else {
+          console.error(`[Worker] Error in method ${data.method}:`, err);
+        }
       }
       self.postMessage({
         type: 'rpc-response',
