@@ -33,58 +33,6 @@ const sortFields: { label: string; value: FileSortField }[] = [
   { label: t('common.modified', 'Modified'), value: 'modified' },
 ];
 
-const menuItems = computed(() => {
-  const items: any[][] = [];
-
-  // General actions (Both modes)
-  const commonActions = [
-    {
-      label: t('common.refresh', 'Refresh'),
-      icon: 'i-heroicons-arrow-path',
-      onSelect: () => emit('refresh'),
-    },
-    {
-      label: uiStore.showHiddenFiles
-        ? t('videoEditor.fileManager.actions.hideHiddenFiles', 'Hide hidden files')
-        : t('videoEditor.fileManager.actions.showHiddenFiles', 'Show hidden files'),
-      icon: uiStore.showHiddenFiles ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
-      onSelect: () => {
-        uiStore.showHiddenFiles = !uiStore.showHiddenFiles;
-      },
-    },
-  ];
-
-  items.push(commonActions);
-
-  // Sorting in compact mode
-  if (props.compact) {
-    const fieldsGroup = sortFields.map((f) => ({
-      label: f.label,
-      color: fileManagerStore.sortOption.field === f.value ? 'primary' : 'neutral',
-      onSelect: () => {
-        fileManagerStore.sortOption.field = f.value;
-      },
-    }));
-    items.push(fieldsGroup);
-
-    const isAsc = fileManagerStore.sortOption.order === 'asc';
-    const orderToggle = [
-      {
-        label: isAsc
-          ? t('common.toSortDesc', 'To descending')
-          : t('common.toSortAsc', 'To ascending'),
-        icon: isAsc ? 'i-heroicons-bars-arrow-down' : 'i-heroicons-bars-arrow-up',
-        color: 'primary',
-        onSelect: () => {
-          fileManagerStore.sortOption.order = isAsc ? 'desc' : 'asc';
-        },
-      },
-    ];
-    items.push(orderToggle);
-  }
-
-  return items;
-});
 </script>
 
 <template>
@@ -185,14 +133,6 @@ const menuItems = computed(() => {
         <div class="w-px h-4 bg-ui-border mx-1"></div>
       </template>
 
-      <UDropdownMenu :items="menuItems" :ui="{ content: 'w-56' }">
-        <UiActionButton
-          icon="i-heroicons-ellipsis-horizontal"
-          variant="ghost"
-          color="neutral"
-          size="xs"
-        />
-      </UDropdownMenu>
     </div>
   </div>
 </template>

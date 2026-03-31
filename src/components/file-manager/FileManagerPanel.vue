@@ -17,6 +17,8 @@ import { useFileManagerPanelBootstrap } from '~/composables/file-manager/useFile
 import { useFileManagerPanelStt } from '~/composables/file-manager/useFileManagerPanelStt';
 import { useFileManagerPanelActions } from '~/composables/file-manager/useFileManagerPanelActions';
 import { useAppClipboard } from '~/composables/useAppClipboard';
+import UiActionButton from '~/components/ui/UiActionButton.vue';
+import { useFileManagerStore, type FileSortField } from '~/stores/file-manager.store';
 
 const props = defineProps<{
   foldersOnly?: boolean;
@@ -33,6 +35,7 @@ const toast = useToast();
 
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
+const fileManagerStore = useFileManagerStore();
 const focusStore = useFocusStore();
 const uiStore = useUiStore();
 const conversionStore = useFileConversionStore();
@@ -214,6 +217,64 @@ const rootContextMenuItems = computed(() => {
 });
 
 // toolbarMenuItems removed
+const sortFields: { label: string; value: FileSortField }[] = [
+  { label: t('common.name', 'Name'), value: 'name' },
+  { label: t('common.type', 'Type'), value: 'type' },
+  { label: t('common.size', 'Size'), value: 'size' },
+  { label: t('common.created', 'Created'), value: 'created' },
+  { label: t('common.modified', 'Modified'), value: 'modified' },
+];
+
+const menuItems = computed(() => {
+  const items: any[][] = [];
+
+  const commonActions = [
+    {
+      label: t('common.refresh', 'Refresh'),
+      icon: 'i-heroicons-arrow-path',
+      disabled: isLoading.value,
+      onSelect: () => loadProjectDirectory({ fullRefresh: true }),
+    },
+    {
+      label: uiStore.showHiddenFiles
+        ? t('videoEditor.fileManager.actions.hideHiddenFiles', 'Hide hidden files')
+        : t('videoEditor.fileManager.actions.showHiddenFiles', 'Show hidden files'),
+      icon: uiStore.showHiddenFiles ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
+      onSelect: () => {
+        uiStore.showHiddenFiles = !uiStore.showHiddenFiles;
+      },
+    },
+  ];
+  items.push(commonActions);
+
+  if (props.compact) {
+    const fieldsGroup = sortFields.map((f) => ({
+      label: f.label,
+      color: fileManagerStore.sortOption.field === f.value ? 'primary' : 'neutral',
+      onSelect: () => {
+        fileManagerStore.sortOption.field = f.value;
+      },
+    }));
+    items.push(fieldsGroup);
+
+    const isAsc = fileManagerStore.sortOption.order === 'asc';
+    const orderToggle = [
+      {
+        label: isAsc
+          ? t('common.toSortDesc', 'To descending')
+          : t('common.toSortAsc', 'To ascending'),
+        icon: isAsc ? 'i-heroicons-bars-arrow-down' : 'i-heroicons-bars-arrow-up',
+        color: 'primary',
+        onSelect: () => {
+          fileManagerStore.sortOption.order = isAsc ? 'desc' : 'asc';
+        },
+      },
+    ];
+    items.push(orderToggle);
+  }
+
+  return items;
+});
 
 async function onCreateTimeline() {
   const createdPath = await createTimeline();
@@ -349,6 +410,17 @@ useFileManagerPanelBootstrap({
             :title="t('videoEditor.fileManager.actions.uploadFiles', 'Upload files')"
             @click="triggerFileUpload"
           />
+
+          <div class="ml-auto flex items-center">
+            <UDropdownMenu :items="menuItems" :ui="{ content: 'w-56' }">
+              <UiActionButton
+                icon="i-heroicons-ellipsis-horizontal"
+                variant="ghost"
+                color="neutral"
+                size="xs"
+              />
+            </UDropdownMenu>
+          </div>
         </div>
       </UContextMenu>
 
