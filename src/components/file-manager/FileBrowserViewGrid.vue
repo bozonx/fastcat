@@ -7,6 +7,7 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useClipboardPaths } from '~/composables/file-manager/useClipboardIndicator';
 import type { FsEntry } from '~/types/fs';
 import { WORKSPACE_COMMON_PATH_PREFIX, isWorkspaceCommonPath } from '~/utils/workspace-common';
+import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
 import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
 import UiProgressSpinner from '~/components/ui/UiProgressSpinner.vue';
 
@@ -29,6 +30,7 @@ const props = defineProps<{
   getContextMenuItems: (entry: FsEntry) => any[];
   isGeneratingProxyInDirectory: (entry: FsEntry) => boolean;
   videoThumbnails?: Record<string, string>;
+  fileCompatibility?: Record<string, FileCompatibility>;
 }>();
 
 const emit = defineEmits<{
@@ -57,6 +59,11 @@ const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const proxyStore = useProxyStore();
 const fileManager = useFileManager();
 const clipboardPaths = useClipboardPaths();
+
+function getCompatibilityStatus(entry: FsEntry) {
+  if (!entry.path || !props.fileCompatibility) return 'ok';
+  return props.fileCompatibility[entry.path]?.status ?? 'ok';
+}
 
 function isCutEntry(entry: FsEntry): boolean {
   return entry.path ? clipboardPaths.value.has(entry.path) : false;
@@ -137,8 +144,18 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
         <div
           class="relative mb-2 w-full aspect-square flex items-center justify-center bg-ui-bg rounded overflow-hidden"
         >
+          <!-- Fully unsupported: red placeholder instead of thumbnail -->
+          <div
+            v-if="entry.kind === 'file' && getCompatibilityStatus(entry) === 'fully_unsupported'"
+            class="w-full h-full flex flex-col items-center justify-center bg-red-950/60 text-red-400 gap-1 p-1"
+          >
+            <UIcon name="i-heroicons-exclamation-triangle" class="w-6 h-6 shrink-0" />
+            <span class="text-xs text-center leading-tight">{{
+              t('videoEditor.fileManager.compatibility.unsupported', 'Not supported')
+            }}</span>
+          </div>
           <img
-            v-if="entry.kind === 'file' && entry.objectUrl"
+            v-else-if="entry.kind === 'file' && entry.objectUrl"
             :src="entry.objectUrl"
             :alt="entry.name"
             class="max-w-full max-h-full object-contain"
@@ -213,6 +230,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
             isGeneratingProxyInDirectory(entry)
               ? 'text-amber-400!'
               : '',
+            getCompatibilityStatus(entry) !== 'ok' ? 'text-red-400!' : '',
             {
               'text-xs':
                 currentGridSizeName === 'xs' ||

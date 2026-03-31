@@ -34,6 +34,7 @@ export interface MediaMetadata {
     fps: number;
     bitrate?: number;
     colorSpace?: VideoColorSpaceInit;
+    canDecode?: boolean;
   };
   audio?: {
     codec: string;
@@ -41,6 +42,7 @@ export interface MediaMetadata {
     sampleRate: number;
     channels: number;
     bitrate?: number;
+    canDecode?: boolean;
   };
   audioPeaks?: number[][];
 }
@@ -59,10 +61,12 @@ export const useMediaStore = defineStore('media', () => {
 
   const mediaMetadata = ref<Record<string, MediaMetadata>>({});
   const missingPaths = ref<Record<string, boolean>>({});
+  const metadataLoadFailed = ref<Record<string, boolean>>({});
 
   function resetMediaState() {
     mediaMetadata.value = {};
     missingPaths.value = {};
+    metadataLoadFailed.value = {};
   }
 
   async function getOrFetchMetadataByPath(path: string, options?: { forceRefresh?: boolean }) {
@@ -157,6 +161,7 @@ export const useMediaStore = defineStore('media', () => {
       return null;
     } catch (e) {
       console.error('Failed to fetch metadata for', projectRelativePath, e);
+      metadataLoadFailed.value[projectRelativePath] = true;
       return null;
     }
   }
@@ -203,12 +208,14 @@ export const useMediaStore = defineStore('media', () => {
   async function removeMediaCache(projectRelativePath: string) {
     delete mediaMetadata.value[projectRelativePath];
     delete missingPaths.value[projectRelativePath];
+    delete metadataLoadFailed.value[projectRelativePath];
     await fsModule.removeCacheFiles(projectRelativePath);
   }
 
   return {
     mediaMetadata,
     missingPaths,
+    metadataLoadFailed,
     getOrFetchMetadataByPath,
     getOrFetchMetadata,
     resetMediaState,

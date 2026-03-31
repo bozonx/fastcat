@@ -4,6 +4,7 @@ import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useFileManagerThumbnails } from '~/composables/file-manager/useFileManagerThumbnails';
+import { useFileManagerCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
 import { useFileSorting } from '~/composables/file-manager/useFileSorting';
 import type { FsEntry } from '~/types/fs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
@@ -96,6 +97,7 @@ export function useFileBrowserEntries({
   const { sortedEntries } = useFileSorting(folderEntries);
 
   const { thumbnails: videoThumbnails } = useFileManagerThumbnails(sortedEntries, vfs);
+  const { compatibility: fileCompatibility } = useFileManagerCompatibility(sortedEntries);
 
   const stats = computed(() => {
     let totalSize = 0;
@@ -138,6 +140,7 @@ export function useFileBrowserEntries({
     folderSizesLoading,
     sortedEntries,
     videoThumbnails,
+    fileCompatibility,
     stats,
     calculateFolderSize,
     supplementEntries,

@@ -63,6 +63,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   let layoutUpdateFromQueue = false;
   const audioHandleCache = new Map<string, FileSystemFileHandle>();
   let resizeScheduled = false;
+  let wasPlayingBeforeUnmount = false;
 
   const audioEngine = new AudioEngine();
   const { client } = getPreviewWorkerClient();
@@ -244,6 +245,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       const audioClips = flattenedAudio;
 
       if (clips.length === 0 && audioClips.length === 0) {
+        wasPlayingBeforeUnmount = false;
         await client.clearClips();
         await audioEngine.loadClips([]);
         timelineStore.duration = 0;
@@ -293,6 +295,13 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       // Render at current time without clamping — the dispatchers already
       // keep duration including disabled clips.
       scheduleRender(getRenderTimeForLayoutUpdate());
+
+      // Resume playback if it was active when this monitor instance was last unmounted
+      // (e.g. user switched internal editor views while playing).
+      if (wasPlayingBeforeUnmount) {
+        wasPlayingBeforeUnmount = false;
+        timelineStore.isPlaying = true;
+      }
     } catch (e: any) {
       console.error('Failed to build timeline components', e);
       if (requestId === buildRequestId) {
@@ -370,6 +379,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   });
 
   onBeforeUnmount(() => {
+    wasPlayingBeforeUnmount = timelineStore.isPlaying;
     disposeMonitorCoreRuntime({
       setUnmounted: (value) => {
         isUnmounted = value;
