@@ -4,6 +4,7 @@ import type { FsEntry } from '~/types/fs';
 import { formatBytes } from '~/utils/format';
 import { getMediaTypeFromFilename, getMimeTypeFromFilename } from '~/utils/media-types';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
+import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
 
 interface ExtendedFsEntry extends FsEntry {
   objectUrl?: string;
@@ -13,6 +14,7 @@ interface ExtendedFsEntry extends FsEntry {
 const props = defineProps<{
   entries: ExtendedFsEntry[];
   thumbnails: Record<string, string>;
+  fileCompatibility?: Record<string, FileCompatibility>;
   selectedEntryPath: string | null;
   selectedEntries: FsEntry[];
   isSelectionMode: boolean;
@@ -88,8 +90,14 @@ function isSelected(entry: FsEntry) {
   return props.selectedEntryPath === entry.path;
 }
 
+function getCompatibilityStatus(entry: FsEntry) {
+  if (!entry.path || !props.fileCompatibility) return 'ok';
+  return props.fileCompatibility[entry.path]?.status ?? 'ok';
+}
+
 function getThumbnail(entry: FsEntry) {
   if (entry.kind === 'directory') return null;
+  if (getCompatibilityStatus(entry) === 'fully_unsupported') return null;
   return (entry as ExtendedFsEntry).objectUrl || (entry.path ? props.thumbnails[entry.path] : null);
 }
 
@@ -132,7 +140,13 @@ onBeforeUnmount(clearLongPress);
           <div
             class="relative flex-1 w-full bg-slate-950 flex items-center justify-center overflow-hidden"
           >
-            <template v-if="getThumbnail(entry)">
+            <template v-if="getCompatibilityStatus(entry) === 'fully_unsupported'">
+              <div class="w-full h-full flex flex-col items-center justify-center bg-red-950/60 text-red-400 gap-1 p-1">
+                <UIcon name="i-heroicons-exclamation-triangle" class="w-6 h-6 shrink-0" />
+                <span class="text-xs text-center leading-tight">{{ t('videoEditor.fileManager.compatibility.unsupported') }}</span>
+              </div>
+            </template>
+            <template v-else-if="getThumbnail(entry)">
               <img
                 :src="getThumbnail(entry)!"
                 class="w-full h-full object-cover transition-transform duration-300"
@@ -168,7 +182,10 @@ onBeforeUnmount(clearLongPress);
           <div class="px-2.5 py-2 bg-slate-900/90 backdrop-blur-sm border-t border-slate-800/50">
             <div
               class="truncate text-[12px] font-medium leading-tight mb-0.5 transition-colors"
-              :class="{ 'text-selection-accent-400': isSelected(entry) }"
+              :class="[
+                isSelected(entry) ? 'text-selection-accent-400' : '',
+                getCompatibilityStatus(entry) !== 'ok' ? 'text-red-400!' : '',
+              ]"
             >
               {{ entry.name }}
             </div>

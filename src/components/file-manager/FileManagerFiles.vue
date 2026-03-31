@@ -94,6 +94,21 @@ const { loadTimeline } = useProjectActions();
 const fileManagerStore = useFileManagerStore();
 const mediaStore = useMediaStore();
 
+watch(
+  () => props.rootEntries,
+  (entries) => {
+    for (const entry of entries) {
+      if (entry.kind !== 'file' || !entry.path) continue;
+      const mediaType = getMediaTypeFromFilename(entry.name);
+      if (mediaType !== 'video' && mediaType !== 'audio' && mediaType !== 'image') continue;
+      if (!mediaStore.mediaMetadata[entry.path] && !mediaStore.metadataLoadFailed[entry.path]) {
+        void mediaStore.getOrFetchMetadataByPath(entry.path);
+      }
+    }
+  },
+  { immediate: true },
+);
+
 const scrollEl = ref<HTMLElement | null>(null);
 
 const selectedPath = computed(() => {

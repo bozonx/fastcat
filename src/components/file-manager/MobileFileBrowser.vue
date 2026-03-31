@@ -6,6 +6,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFileManagerThumbnails } from '~/composables/file-manager/useFileManagerThumbnails';
+import { useFileManagerCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
 import { useFileSorting } from '~/composables/file-manager/useFileSorting';
 import { useClipboardStore } from '~/stores/clipboard.store';
 import { isOpenableProjectFileName } from '~/utils/media-types';
@@ -140,6 +141,7 @@ const selectedEntry = computed(() =>
 
 const { sortedEntries } = useFileSorting(entries);
 const { thumbnails } = useFileManagerThumbnails(sortedEntries, vfs);
+const { compatibility: fileCompatibility } = useFileManagerCompatibility(sortedEntries);
 
 const {
   transcriptionModalOpen,
@@ -376,6 +378,7 @@ const menuItems = computed(() => [
       <MobileFileBrowserGrid
         :entries="sortedEntries"
         :thumbnails="thumbnails"
+        :file-compatibility="fileCompatibility"
         :selected-entry-path="
           (selectionStore.selectedEntity?.source === 'fileManager' &&
           'path' in selectionStore.selectedEntity
