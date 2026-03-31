@@ -135,7 +135,7 @@ onBeforeUnmount(() => {
             class="group relative flex items-center h-full px-4 gap-2 border-r border-ui-border cursor-pointer min-w-[120px] max-w-[220px] transition-all duration-200 border-b"
             :class="[
               isActive(path)
-                ? 'active-tab text-primary-400 border-b-transparent'
+                ? 'active-tab text-selection-accent-400 border-b-transparent'
                 : 'text-ui-text-muted bg-black/10 hover:bg-black/5 hover:text-ui-text border-b-ui-border',
             ]"
             :title="path"

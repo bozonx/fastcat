@@ -128,7 +128,7 @@ const activeTab = ref('all');
           class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group"
           :class="[
             activeTab === item.id
-              ? 'bg-primary-500/10 text-primary-400 border border-primary-500/20'
+              ? 'bg-selection-accent-500/10 text-selection-accent-400 border border-selection-accent-500/20'
               : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent border border-transparent',
           ]"
           @click="activeTab = item.id"
@@ -210,9 +210,14 @@ const activeTab = ref('all');
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div
-                v-for="project in recentProjects.slice(0, 3)"
+                v-for="(project, index) in recentProjects.slice(0, 3)"
                 :key="project.projectName"
-                class="group relative bg-ui-bg-elevated border border-ui-border rounded-2xl overflow-hidden hover:border-primary-500/50 transition-all cursor-pointer shadow-xl hover:shadow-primary-500/5 hover:-translate-y-1"
+                class="group relative bg-ui-bg-elevated rounded-2xl overflow-hidden transition-all cursor-pointer shadow-xl hover:-translate-y-1"
+                :class="
+                  index === 0
+                    ? 'border-2 border-selection-accent-500/60 hover:border-selection-accent-500 shadow-selection-accent-500/10'
+                    : 'border border-ui-border hover:border-selection-accent-500/50 hover:shadow-selection-accent-500/5'
+                "
                 @click="handleOpenProject(project.projectName)"
               >
                 <div class="aspect-video relative overflow-hidden">

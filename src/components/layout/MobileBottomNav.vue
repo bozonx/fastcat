@@ -74,7 +74,7 @@ async function handleItemClick(itemId: string) {
         class="flex h-full min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-center transition-colors outline-none"
         :class="
           activeTab === item.id || (item.id === 'home' && !isEditorPage)
-            ? 'bg-primary-500/12 text-primary-400'
+            ? 'bg-selection-accent-500/12 text-selection-accent-400'
             : 'text-slate-400 active:bg-slate-900'
         "
         :aria-pressed="activeTab === item.id || (item.id === 'home' && !isEditorPage)"

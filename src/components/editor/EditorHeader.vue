@@ -100,7 +100,7 @@ const menuItems = computed(() => {
           class="px-3 py-1 rounded text-sm font-medium transition-colors"
           :class="
             projectStore.currentView === 'files'
-              ? 'bg-ui-bg-elevated text-primary-500 shadow-sm'
+              ? 'bg-ui-bg-elevated text-selection-accent-500 shadow-sm'
               : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50'
           "
           @click="projectStore.goToFiles()"
@@ -111,7 +111,7 @@ const menuItems = computed(() => {
           class="px-3 py-1 rounded text-sm font-medium transition-colors"
           :class="
             projectStore.currentView === 'cut'
-              ? 'bg-ui-bg-elevated text-primary-500 shadow-sm'
+              ? 'bg-ui-bg-elevated text-selection-accent-500 shadow-sm'
               : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50'
           "
           @click="projectStore.goToCut()"
@@ -122,7 +122,7 @@ const menuItems = computed(() => {
           class="px-3 py-1 rounded text-sm font-medium transition-colors"
           :class="
             projectStore.currentView === 'sound'
-              ? 'bg-ui-bg-elevated text-primary-500 shadow-sm'
+              ? 'bg-ui-bg-elevated text-selection-accent-500 shadow-sm'
               : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50'
           "
           @click="projectStore.goToSound()"
@@ -133,7 +133,7 @@ const menuItems = computed(() => {
           class="px-3 py-1 rounded text-sm font-medium transition-colors"
           :class="
             projectStore.currentView === 'export'
-              ? 'bg-ui-bg-elevated text-primary-500 shadow-sm'
+              ? 'bg-ui-bg-elevated text-selection-accent-500 shadow-sm'
               : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50'
           "
           @click="projectStore.goToExport()"
