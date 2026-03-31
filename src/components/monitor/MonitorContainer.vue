@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import UiTooltip from '~/components/ui/UiTooltip.vue';
-import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useFullscreen } from '@vueuse/core';
@@ -236,31 +235,25 @@ watch(viewportRef, (vp) => {
 
 <template>
   <div class="h-full">
-    <!--
-      UiContextMenuPortal attaches a contextmenu listener directly to panelRef via addEventListener.
-      Using only this (no UContextMenu wrapper) avoids double context menu.
-      It works in both normal mode and browser fullscreen because it teleports inside panelRef.
-    -->
-    <UiContextMenuPortal :items="contextMenuItems" :target-el="panelRef" />
-
     <!-- panelRef is always rendered unconditionally so useFullscreen keeps a stable DOM target -->
-    <div
-      ref="panelRef"
-      class="panel-focus-frame flex h-full min-w-0 min-h-0 transition-colors duration-300 relative select-none"
-      :class="[
-        effectiveFullscreen ? 'bg-black flex-col' : 'bg-ui-bg-elevated',
-        !effectiveFullscreen && toolbarPosition === 'bottom' ? 'flex-col' : '',
-        !effectiveFullscreen && toolbarPosition === 'top' ? 'flex-col-reverse' : '',
-        !effectiveFullscreen && toolbarPosition === 'right' ? 'flex-row' : '',
-        !effectiveFullscreen && toolbarPosition === 'left' ? 'flex-row-reverse' : '',
-        {
-          'panel-focus-frame--active':
-            !props.useExternalFocus && !effectiveFullscreen && focusStore.isPanelFocused('monitor'),
-          'border-r border-ui-border': !effectiveFullscreen,
-        },
-      ]"
-      @pointerdown.capture="!props.useExternalFocus && focusStore.setMainFocus('monitor')"
-    >
+    <UContextMenu :items="contextMenuItems">
+      <div
+        ref="panelRef"
+        class="panel-focus-frame flex h-full min-w-0 min-h-0 transition-colors duration-300 relative select-none"
+        :class="[
+          effectiveFullscreen ? 'bg-black flex-col' : 'bg-ui-bg-elevated',
+          !effectiveFullscreen && toolbarPosition === 'bottom' ? 'flex-col' : '',
+          !effectiveFullscreen && toolbarPosition === 'top' ? 'flex-col-reverse' : '',
+          !effectiveFullscreen && toolbarPosition === 'right' ? 'flex-row' : '',
+          !effectiveFullscreen && toolbarPosition === 'left' ? 'flex-row-reverse' : '',
+          {
+            'panel-focus-frame--active':
+              !props.useExternalFocus && !effectiveFullscreen && focusStore.isPanelFocused('monitor'),
+            'border-r border-ui-border': !effectiveFullscreen,
+          },
+        ]"
+        @pointerdown.capture="!props.useExternalFocus && focusStore.setMainFocus('monitor')"
+      >
       <!-- Video area -->
       <MonitorViewport
         ref="viewportRef"
@@ -521,6 +514,7 @@ watch(viewportRef, (vp) => {
           />
         </UDropdownMenu>
       </div>
-    </div>
+      </div>
+    </UContextMenu>
   </div>
 </template>
