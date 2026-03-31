@@ -1281,9 +1281,11 @@
       },
       "unsupported": "File System Access API is not supported in this browser",
       "compatibility": {
-        "audioCodecUnsupported": "codec not supported",
+        "audioCodecUnsupported": "Audio codec not supported",
+        "formatUnsupported": "File format is not recognized or not supported",
         "unsupported": "Not supported",
-        "videoCodecUnsupported": "codec not supported"
+        "unsupportedTitle": "This file cannot be played",
+        "videoCodecUnsupported": "Video codec not supported"
       },
       "video": {
         "audioCodec": "Audio codec",
