@@ -258,6 +258,26 @@ const isMediaMissing = computed(() => {
   return mediaStore.missingPaths[clipItem.value.source.path] === true;
 });
 
+const isUnsupported = computed(() => {
+  if (!clipItem.value || clipItem.value.clipType !== 'media') return false;
+  const path = clipItem.value.source.path;
+  const meta = mediaStore.mediaMetadata[path];
+  if (!meta) return false;
+
+  const isVideoType = isVideo(props.item, props.track);
+  if (isVideoType) {
+    if (meta.video?.canDecode === false) return true;
+    if (meta.audio?.canDecode === false) return true;
+    return false;
+  }
+
+  if (isAudio(props.item, props.track)) {
+    if (meta.audio?.canDecode === false) return true;
+  }
+
+  return false;
+});
+
 const { contextMenuItems } = useClipContextMenu({
   track: computed(() => props.track),
   item: computed(() => props.item),
@@ -462,6 +482,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
           ? 'opacity-40'
           : '',
         isMediaMissing ? 'bg-red-600! border-red-800! text-white!' : '',
+        !isMediaMissing && isUnsupported ? 'bg-amber-600/50! border-amber-700!' : '',
         (clipItem && Boolean(clipItem.locked)) || track.locked ? 'cursor-not-allowed' : '',
         isMobile ? 'touch-manipulation' : '',
       ]"
@@ -500,6 +521,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
         :item="item"
         :track="track"
         :is-media-missing="isMediaMissing"
+        :is-unsupported="isUnsupported"
         :clip-width-px="clipWidthPx"
       />
 

@@ -63,6 +63,8 @@ export const useMediaStore = defineStore('media', () => {
   const missingPaths = ref<Record<string, boolean>>({});
   const metadataLoadFailed = ref<Record<string, boolean>>({});
 
+  const pendingRequests = new Map<string, Promise<MediaMetadata | null>>();
+
   function resetMediaState() {
     mediaMetadata.value = {};
     missingPaths.value = {};
@@ -94,12 +96,38 @@ export const useMediaStore = defineStore('media', () => {
 
     if (!isKnownMedia) return null;
 
-    if (!options?.forceRefresh && mediaMetadata.value[cacheKey]) {
-      const cached = mediaMetadata.value[cacheKey]!;
-      if (cached.source.size === file.size && cached.source.lastModified === file.lastModified) {
-        return cached;
+    if (!options?.forceRefresh) {
+      if (mediaMetadata.value[cacheKey]) {
+        const cached = mediaMetadata.value[cacheKey]!;
+        if (cached.source.size === file.size && cached.source.lastModified === file.lastModified) {
+          return cached;
+        }
+      }
+
+      if (pendingRequests.has(cacheKey)) {
+        return pendingRequests.get(cacheKey)!;
       }
     }
+
+    const requestPromise = (async () => {
+      try {
+        const result = await fetchMetadataInternal(file, projectRelativePath, options);
+        return result;
+      } finally {
+        pendingRequests.delete(cacheKey);
+      }
+    })();
+
+    pendingRequests.set(cacheKey, requestPromise);
+    return requestPromise;
+  }
+
+  async function fetchMetadataInternal(
+    file: File,
+    projectRelativePath: string,
+    options?: { forceRefresh?: boolean },
+  ): Promise<MediaMetadata | null> {
+    const cacheKey = projectRelativePath;
 
     const metaDir = await fsModule.ensureFilesMetaDir();
     const cacheFileName = fsModule.getCacheFileName(projectRelativePath);

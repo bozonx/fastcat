@@ -6,6 +6,7 @@ const props = defineProps<{
   item: TimelineTrackItem;
   track: TimelineTrack;
   isMediaMissing?: boolean;
+  isUnsupported?: boolean;
   clipWidthPx: number;
 }>();
 
@@ -29,9 +30,23 @@ const clipItem = computed(() =>
       </span>
     </div>
 
+    <!-- Unsupported Media Overlay -->
+    <div
+      v-else-if="isUnsupported"
+      class="absolute inset-0 flex flex-col items-center justify-center z-30 bg-amber-600/10"
+    >
+      <UIcon name="i-heroicons-exclamation-circle" class="w-5 h-5 text-amber-200 mb-0.5" />
+      <span
+        v-if="clipWidthPx > 60"
+        class="text-[10px] leading-tight font-bold uppercase tracking-wider text-amber-100 text-center px-1"
+      >
+        {{ t('videoEditor.fileManager.compatibility.unsupported') }}
+      </span>
+    </div>
+
     <!-- Muted / Disabled Overlay -->
     <div
-      v-if="clipItem && (clipItem.disabled || clipItem.audioMuted) && !isMediaMissing"
+      v-if="clipItem && (clipItem.disabled || clipItem.audioMuted) && !isMediaMissing && !isUnsupported"
       class="absolute inset-0 flex items-center justify-center z-30"
     >
       <div v-if="clipItem.audioMuted" class="bg-black/30 rounded-full p-1.5">
