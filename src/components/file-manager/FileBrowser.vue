@@ -571,18 +571,6 @@ async function onDirectoryUploadChange(e: Event) {
     @dragleave="onPanelDragLeave"
     @drop.prevent="onPanelDrop"
   >
-    <!-- Navigation bar -->
-    <FileBrowserBreadcrumbs
-      v-if="
-        (isRemoteMode && parentFolders.length > 0) ||
-        (!isRemoteMode && fileManagerStore.selectedFolder)
-      "
-      :parent-folders="parentFolders"
-      @navigate-back="navigateBack"
-      @navigate-up="navigateUp"
-      @navigate-to-folder="navigateToFolder"
-    />
-
     <!-- Toolbar -->
     <FileBrowserToolbar
       :grid-sizes="GRID_SIZES"
@@ -605,6 +593,18 @@ async function onDirectoryUploadChange(e: Event) {
             fileManagerStore.selectedFolder || ({ kind: 'directory', path: '', name: '' } as FsEntry),
           )
       "
+    />
+
+    <!-- Navigation bar (Breadcrumbs) -->
+    <FileBrowserBreadcrumbs
+      v-if="
+        (isRemoteMode && parentFolders.length > 0) ||
+        (!isRemoteMode && fileManagerStore.selectedFolder)
+      "
+      :parent-folders="parentFolders"
+      @navigate-back="navigateBack"
+      @navigate-up="navigateUp"
+      @navigate-to-folder="navigateToFolder"
     />
 
     <!-- Main Content -->

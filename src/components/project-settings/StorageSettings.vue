@@ -1,31 +1,124 @@
 <script setup lang="ts">
+import { ref, onMounted, watch } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { computeDirectoryStats, type DirectoryStats } from '~/utils/fs';
+import { formatBytes } from '~/utils/format';
+import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
+import { resolveStorageRootHandle, ensureDirectoryChain } from '~/utils/storage-handles';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
+const workspaceStore = useWorkspaceStore();
 
 const emit = defineEmits<{
   clearTemp: [];
   deleteProject: [];
 }>();
+
+const projectStats = ref<DirectoryStats | null>(null);
+const vardataStats = ref<DirectoryStats | null>(null);
+const isLoadingStats = ref(false);
+
+async function updateStats() {
+  if (!projectStore.currentProjectId) return;
+  isLoadingStats.value = true;
+
+  try {
+    // 1. Calculate project main directory stats
+    const projectDir = await projectStore.getProjectDirHandle();
+    if (projectDir) {
+      projectStats.value = (await computeDirectoryStats(projectDir)) ?? null;
+    }
+
+    // 2. Calculate project vardata stats
+    if (workspaceStore.workspaceHandle) {
+      const workspaceTopology = getWorkspaceStorageTopology();
+      const tempRootDir = await resolveStorageRootHandle({
+        workspaceHandle: workspaceStore.workspaceHandle,
+        rootPath: workspaceStore.resolvedStorageTopology.tempRoot,
+      });
+      const projectsDir = await ensureDirectoryChain({
+        baseDir: tempRootDir,
+        segments: [workspaceTopology.tempProjectsDirName],
+      });
+
+      try {
+        const projectVardataDir = await projectsDir.getDirectoryHandle(
+          projectStore.currentProjectId,
+        );
+        vardataStats.value = (await computeDirectoryStats(projectVardataDir)) ?? null;
+      } catch {
+        vardataStats.value = { size: 0, filesCount: 0 };
+      }
+    }
+  } catch (e) {
+    console.error('Failed to update storage stats', e);
+  } finally {
+    isLoadingStats.value = false;
+  }
+}
+
+onMounted(() => {
+  updateStats();
+});
+
+watch(
+  () => projectStore.currentProjectId,
+  () => {
+    updateStats();
+  },
+);
+
 </script>
 
 <template>
   <div v-if="projectStore.projectSettings" class="space-y-4 pt-1">
     <div class="space-y-3">
+      <!-- Project Size Info -->
+      <div class="p-3 rounded border border-ui-border bg-ui-surface">
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex flex-col gap-1 min-w-0">
+            <div class="font-medium text-ui-text">
+              {{ t('videoEditor.projectSettings.projectStorage', 'Project files') }}
+            </div>
+            <div class="text-sm text-ui-text-muted">
+              {{ t('common.size', 'Size') }}:
+              <span v-if="projectStats" class="text-ui-text font-medium">
+                {{ formatBytes(projectStats.size) }}
+              </span>
+              <span v-else-if="isLoadingStats" class="opacity-50">...</span>
+              <span v-else class="opacity-50">—</span>
+            </div>
+          </div>
+          <UIcon
+            name="i-heroicons-folder"
+            class="w-5 h-5 text-ui-text-muted shrink-0"
+          />
+        </div>
+      </div>
+
       <!-- Clear Vardata -->
       <div class="flex items-center justify-between gap-3 p-3 rounded border border-ui-border">
         <div class="flex flex-col gap-1 min-w-0">
           <div class="font-medium text-ui-text">
             {{ t('videoEditor.projectSettings.clearTemp', 'Clear temporary files') }}
           </div>
-          <div class="text-sm text-ui-text-muted">
+          <div class="text-sm text-ui-text-muted mb-1">
             {{
               t(
                 'videoEditor.projectSettings.clearTempHint',
                 'Removes all files from vardata for this project',
               )
             }}
+          </div>
+          <div class="text-xs flex items-center gap-1.5">
+            <span class="text-ui-text-muted">{{ t('common.size', 'Size') }}:</span>
+            <span v-if="vardataStats" class="text-ui-text font-medium">
+              {{ formatBytes(vardataStats.size) }}
+            </span>
+            <span v-else-if="isLoadingStats" class="opacity-50">...</span>
+            <span v-else class="opacity-50">—</span>
           </div>
         </div>
 
