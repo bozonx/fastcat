@@ -154,6 +154,12 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       scheduleRender(getRenderTimeForLayoutUpdate());
     } catch (error) {
       console.error('[Monitor] Failed to update timeline layout', error);
+      const toast = useToast();
+      toast.add({
+        color: 'error',
+        title: t('fastcat.monitor.playbackStopped', 'Playback Stopped'),
+        description: t('fastcat.monitor.layoutError', 'Failed to update timeline layout.'),
+      });
       timelineStore.isPlaying = false;
       scheduleBuild();
     }
@@ -292,6 +298,12 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       if (requestId === buildRequestId) {
         loadError.value = e.message || t('fastcat.monitor.loadError');
       }
+      const toast = useToast();
+      toast.add({
+        color: 'error',
+        title: t('fastcat.monitor.previewError', 'Preview Error'),
+        description: e.message || t('fastcat.monitor.loadError'),
+      });
     } finally {
       if (requestId === buildRequestId) {
         isLoading.value = false;

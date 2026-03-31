@@ -26,6 +26,7 @@ export interface UseMonitorPlaybackOptions {
   updateStoreTime: (timeUs: number) => void;
   scheduleRender: (timeUs: number) => void;
   audioEngine: AudioEngine;
+  isMobile: boolean;
 }
 
 export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
@@ -41,8 +42,11 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
     updateStoreTime,
     scheduleRender,
     audioEngine,
+    isMobile,
   } = options;
 
+  const { t } = useI18n();
+  const toast = useToast();
   const timelineStore = useTimelineStore();
   const workspaceStore = useWorkspaceStore();
 
@@ -70,6 +74,10 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
   let suppressStoreSeekWatch = false;
   let timecodeEl: HTMLElement | null = null;
   let visibilityHandler: (() => void) | null = null;
+
+  // Track hidden/visible stats to detect browser throttling
+  let hiddenAtMs = 0;
+  let hiddenAtAudioUs = 0;
 
   function getLocalCurrentTimeUs() {
     return localCurrentTimeUs;
@@ -282,20 +290,50 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
     setLocalTimeFromStore();
 
     visibilityHandler = () => {
+      const wasHidden = document.hidden;
+
       syncMonitorPlaybackVisibility({
         isPlaying: isPlaying.value,
+        isMobile,
         clampToTimeline,
         audioEngine,
         onPauseHiddenPlayback: () => {
           isPlaying.value = false;
         },
         onRestoreVisiblePlayback: (timeUs) => {
+          if (!isMobile && hiddenAtMs > 0 && isPlaying.value) {
+            const elapsedMs = performance.now() - hiddenAtMs;
+            const audioDeltaUs = timeUs - hiddenAtAudioUs;
+            const audioDeltaMs = audioDeltaUs / 1000;
+
+            // If audio delta is significantly less than real elapsed time, browser throttled us.
+            // Check for at least 300ms gap to avoid false positives on short task switches.
+            if (elapsedMs > 500 && audioDeltaMs < elapsedMs * 0.7) {
+              toast.add({
+                color: 'warning',
+                title: t('fastcat.monitor.playbackThrottled', 'Playback Throttled'),
+                description: t(
+                  'fastcat.monitor.playbackThrottledDetail',
+                  'The browser slowed down background playback. Return to this tab for smooth editing.',
+                ),
+              });
+            }
+          }
+
+          hiddenAtMs = 0;
+          hiddenAtAudioUs = 0;
+
           localCurrentTimeUs = timeUs;
           uiCurrentTimeUs.value = timeUs;
           updateTimecodeUi(timeUs);
           scheduleRender(timeUs);
         },
       });
+
+      if (document.hidden && !isMobile && isPlaying.value) {
+        hiddenAtMs = performance.now();
+        hiddenAtAudioUs = audioEngine.getCurrentTimeUs();
+      }
     };
     document.addEventListener('visibilitychange', visibilityHandler);
   });
