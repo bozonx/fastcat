@@ -180,10 +180,11 @@ const activeTab = ref('all');
             {{ workspaceStore.error }}
           </div>
           <UButton
-            color="primary"
+            color="neutral"
+            variant="solid"
             icon="i-heroicons-plus"
             :label="t('fastcat.projects.newProject')"
-            class="px-6 shadow-lg shadow-primary-500/20"
+            class="px-6 shadow-lg !bg-ui-action hover:!bg-ui-action-hover !text-white shadow-ui-action/20 border-none"
             @click="startCreateProject"
           />
         </div>
@@ -270,18 +271,18 @@ const activeTab = ref('all');
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               <!-- Create Card inside grid -->
               <div
-                class="aspect-[4/5] bg-ui-bg-elevated/30 border border-dashed border-ui-border rounded-xl flex flex-col items-center justify-center gap-3 hover:border-primary-500/50 hover:bg-primary-500/5 transition-all cursor-pointer group"
+                class="aspect-[4/5] bg-ui-bg-elevated/30 border border-dashed border-ui-border rounded-xl flex flex-col items-center justify-center gap-3 hover:border-ui-action/50 hover:bg-ui-action/5 transition-all cursor-pointer group"
                 @click="startCreateProject"
               >
                 <div
-                  class="w-10 h-10 rounded-full bg-ui-bg-accent flex items-center justify-center group-hover:bg-primary-500/20 transition-colors"
+                  class="w-10 h-10 rounded-full bg-ui-bg-accent flex items-center justify-center group-hover:bg-ui-action/20 transition-colors"
                 >
                   <UIcon
                     name="i-heroicons-plus"
-                    class="w-5 h-5 text-ui-text-muted group-hover:text-primary-400"
+                    class="w-5 h-5 text-ui-text-muted group-hover:text-ui-action"
                   />
                 </div>
-                <span class="text-sm font-medium text-ui-text-muted group-hover:text-primary-400">{{
+                <span class="text-sm font-medium text-ui-text-muted group-hover:text-ui-action">{{
                   t('fastcat.projects.newProject')
                 }}</span>
               </div>
