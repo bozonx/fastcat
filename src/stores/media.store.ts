@@ -144,7 +144,20 @@ export const useMediaStore = defineStore('media', () => {
         const text = await cacheFile.text();
         const parsed = JSON.parse(text) as MediaMetadata;
         if (parsed.source.size === file.size && parsed.source.lastModified === file.lastModified) {
-          parsedMeta = parsed;
+          const mediaType = getMediaTypeFromFilename(projectRelativePath);
+          const lacksVideoCompat =
+            mediaType === 'video' &&
+            parsed.video !== undefined &&
+            parsed.video.canDecode === undefined;
+          const lacksAudioCompat =
+            (mediaType === 'video' || mediaType === 'audio') &&
+            parsed.audio !== undefined &&
+            parsed.audio.canDecode === undefined;
+          const lacksImageCompat = mediaType === 'image' && parsed.image === undefined;
+
+          if (!lacksVideoCompat && !lacksAudioCompat && !lacksImageCompat) {
+            parsedMeta = parsed;
+          }
         }
       } catch {
         // Cache miss
