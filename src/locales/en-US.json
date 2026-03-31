@@ -87,6 +87,7 @@
     "prev": "Prev",
     "preview": "Preview",
     "properties": "Properties",
+    "recent": "Recent",
     "redo": "Redo",
     "remove": "Remove",
     "rename": "Rename",
@@ -1192,7 +1193,8 @@
           "updateTimelineProperties": "Update timeline properties",
           "multipleActions": "Multiple actions"
         },
-        "redo": "Redo",
+        "recent": "Recent",
+    "redo": "Redo",
         "undo": "Undo"
       },
       "image": {
@@ -1294,7 +1296,8 @@
         "focus": "Focus",
         "fullscreen": "Fullscreen",
         "mute": "Toggle Monitor Mute",
-        "redo": "Redo",
+        "recent": "Recent",
+    "redo": "Redo",
         "rename": "Rename",
         "tab1": "Tab 1",
         "tab2": "Tab 2",
