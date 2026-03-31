@@ -3,6 +3,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiFormField from '~/components/ui/UiFormField.vue';
 
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
+import UiScaleSlider from '~/components/ui/UiScaleSlider.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
@@ -88,13 +89,7 @@ function clearCache() {
     </UiFormField>
 
     <UiFormField :label="t('videoEditor.settings.uiInterfaceScale', 'Interface scale (px)')">
-      <UiWheelNumberInput
-        v-model="workspaceStore.userSettings.ui.interfaceScale"
-        :min="10"
-        :max="24"
-        :step="1"
-        :wheel-step-multiplier="10"
-      />
+      <UiScaleSlider v-model="workspaceStore.userSettings.ui.interfaceScale" :min="10" :max="20" />
     </UiFormField>
 
     <UiFormField>
