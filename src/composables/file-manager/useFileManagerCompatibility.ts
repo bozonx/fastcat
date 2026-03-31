@@ -3,10 +3,7 @@ import { useMediaStore } from '~/stores/media.store';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import type { FsEntry } from '~/types/fs';
 
-export type FileCompatibilityStatus =
-  | 'ok'
-  | 'fully_unsupported'
-  | 'audio_unsupported';
+export type FileCompatibilityStatus = 'ok' | 'fully_unsupported' | 'audio_unsupported';
 
 export interface FileCompatibility {
   status: FileCompatibilityStatus;
@@ -14,7 +11,7 @@ export interface FileCompatibility {
 
 function computeStatus(
   path: string,
-  mediaType: 'video' | 'audio',
+  mediaType: 'video' | 'audio' | 'image',
   mediaMetadata: Record<string, any>,
   metadataLoadFailed: Record<string, boolean>,
 ): FileCompatibilityStatus {
@@ -22,6 +19,11 @@ function computeStatus(
 
   const meta = mediaMetadata[path];
   if (!meta) return 'ok';
+
+  if (mediaType === 'image') {
+    if (meta.image?.canDisplay === false) return 'fully_unsupported';
+    return 'ok';
+  }
 
   if (mediaType === 'video') {
     const videoCanDecode = meta.video?.canDecode;
@@ -51,7 +53,7 @@ export function useFileManagerCompatibility(entries: Ref<FsEntry[]>) {
       if (entry.kind !== 'file' || !entry.path) continue;
 
       const mediaType = getMediaTypeFromFilename(entry.name);
-      if (mediaType !== 'video' && mediaType !== 'audio') continue;
+      if (mediaType !== 'video' && mediaType !== 'audio' && mediaType !== 'image') continue;
 
       const status = computeStatus(
         entry.path,
@@ -68,7 +70,7 @@ export function useFileManagerCompatibility(entries: Ref<FsEntry[]>) {
     return result;
   });
 
-  // Trigger metadata loading for visible video/audio files that aren't cached yet
+  // Trigger metadata loading for visible media files that aren't cached yet
   watch(
     entries,
     (currentEntries) => {
@@ -76,7 +78,7 @@ export function useFileManagerCompatibility(entries: Ref<FsEntry[]>) {
         if (entry.kind !== 'file' || !entry.path) continue;
 
         const mediaType = getMediaTypeFromFilename(entry.name);
-        if (mediaType !== 'video' && mediaType !== 'audio') continue;
+        if (mediaType !== 'video' && mediaType !== 'audio' && mediaType !== 'image') continue;
 
         const path = entry.path;
         if (!mediaStore.mediaMetadata[path] && !mediaStore.metadataLoadFailed[path]) {

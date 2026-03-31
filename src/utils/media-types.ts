@@ -1,5 +1,18 @@
 export const VIDEO_EXTENSIONS = ['mp4', 'mov', 'avi', 'mkv', 'webm', 'm4v'];
 export const AUDIO_EXTENSIONS = ['mp3', 'wav', 'aac', 'flac', 'ogg', 'opus', 'm4a', 'weba'];
+
+/** Image formats natively supported by all modern browsers (Chromium, Firefox, Safari). */
+export const BROWSER_NATIVE_IMAGE_EXTENSIONS = [
+  'jpg',
+  'jpeg',
+  'png',
+  'gif',
+  'webp',
+  'avif',
+  'bmp',
+  'svg',
+];
+
 export const IMAGE_EXTENSIONS = [
   'jpg',
   'jpeg',

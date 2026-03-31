@@ -44,6 +44,9 @@ export interface MediaMetadata {
     bitrate?: number;
     canDecode?: boolean;
   };
+  image?: {
+    canDisplay?: boolean;
+  };
   audioPeaks?: number[][];
 }
 

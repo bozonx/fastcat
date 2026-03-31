@@ -209,7 +209,7 @@ function getFileCompatibilityStatus(entry: FsEntry): FileCompatibilityStatus {
   if (entry.kind !== 'file' || !entry.path) return 'ok';
 
   const mediaType = getMediaTypeFromFilename(entry.name);
-  if (mediaType !== 'video' && mediaType !== 'audio') return 'ok';
+  if (mediaType !== 'video' && mediaType !== 'audio' && mediaType !== 'image') return 'ok';
 
   const path = entry.path;
 
@@ -217,6 +217,11 @@ function getFileCompatibilityStatus(entry: FsEntry): FileCompatibilityStatus {
 
   const meta = mediaStore.mediaMetadata[path];
   if (!meta) return 'ok';
+
+  if (mediaType === 'image') {
+    if (meta.image?.canDisplay === false) return 'fully_unsupported';
+    return 'ok';
+  }
 
   if (mediaType === 'video') {
     if (meta.video?.canDecode === false) return 'fully_unsupported';
