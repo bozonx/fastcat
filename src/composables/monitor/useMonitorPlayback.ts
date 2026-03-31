@@ -178,7 +178,10 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
 
     if (playbackLoopState.renderAccumulatorMs >= frameIntervalMs) {
       playbackLoopState.renderAccumulatorMs %= frameIntervalMs;
-      scheduleRender(newTimeUs);
+      // Only schedule render if document is visible to save resources in background (Desktop)
+      if (!document.hidden) {
+        scheduleRender(newTimeUs);
+      }
     }
 
     if (isPlaying.value) {
@@ -326,6 +329,8 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
           localCurrentTimeUs = timeUs;
           uiCurrentTimeUs.value = timeUs;
           updateTimecodeUi(timeUs);
+
+          // Force a render command immediately upon returning to the tab
           scheduleRender(timeUs);
         },
       });
