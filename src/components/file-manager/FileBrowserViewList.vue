@@ -8,6 +8,7 @@ import { useClipboardPaths } from '~/composables/file-manager/useClipboardIndica
 import type { FsEntry } from '~/types/fs';
 import { formatBytes } from '~/utils/format';
 import { WORKSPACE_COMMON_PATH_PREFIX, isWorkspaceCommonPath } from '~/utils/workspace-common';
+import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
 import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
 import UiProgressSpinner from '~/components/ui/UiProgressSpinner.vue';
 
@@ -30,6 +31,7 @@ const props = defineProps<{
   getContextMenuItems: (entry: FsEntry) => any[];
   isGeneratingProxyInDirectory: (entry: FsEntry) => boolean;
   videoThumbnails?: Record<string, string>;
+  fileCompatibility?: Record<string, FileCompatibility>;
 }>();
 
 const emit = defineEmits<{
@@ -81,6 +83,11 @@ function isSelected(entry: FsEntry): boolean {
 
 function isWorkspaceCommonRoot(entry: FsEntry): boolean {
   return entry.kind === 'directory' && entry.path === WORKSPACE_COMMON_PATH_PREFIX;
+}
+
+function getCompatibilityStatus(entry: FsEntry) {
+  if (!entry.path || !props.fileCompatibility) return 'ok';
+  return props.fileCompatibility[entry.path]?.status ?? 'ok';
 }
 
 let renameTimer: ReturnType<typeof setTimeout> | null = null;
@@ -310,6 +317,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
                       isGeneratingProxyInDirectory(entry)
                         ? 'text-amber-400/90'
                         : '',
+                      getCompatibilityStatus(entry) !== 'ok' ? 'text-red-400!' : '',
                     ]"
                   />
                 </div>
@@ -335,6 +343,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
                     isGeneratingProxyInDirectory(entry)
                       ? 'text-amber-400!'
                       : '',
+                    getCompatibilityStatus(entry) !== 'ok' ? 'text-red-400!' : '',
                     isSelected(entry)
                       ? 'hover:border-(--selection-accent-500)/50 border-(--selection-accent-500)/35 cursor-text'
                       : '',

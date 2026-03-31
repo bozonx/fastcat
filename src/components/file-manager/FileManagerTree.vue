@@ -30,6 +30,7 @@ import {
   TEXT_EXTENSIONS,
   TIMELINE_EXTENSIONS,
 } from '~/utils/media-types';
+import type { FileCompatibilityStatus } from '~/composables/file-manager/useFileManagerCompatibility';
 import { useFileContextMenu } from '~/composables/file-manager/useFileContextMenu';
 import { isRemoteFsEntry, type RemoteFsEntry } from '~/utils/remote-vfs';
 import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
@@ -52,6 +53,7 @@ interface TreeContext {
     proxyProgress?: number;
     isUsedInTimeline?: boolean;
   };
+  getFileCompatibilityStatus?: (entry: FsEntry) => FileCompatibilityStatus;
 }
 
 const props = defineProps<Props>();
@@ -63,6 +65,7 @@ const ctx = inject<TreeContext>('fileManagerTreeCtx', {
   getFileIcon: () => 'i-heroicons-document',
   selectedPath: ref(null) as any,
   getEntryMeta: () => ({ hasProxy: false, generatingProxy: false }),
+  getFileCompatibilityStatus: () => 'ok',
 });
 
 const emit = defineEmits<{
@@ -279,6 +282,8 @@ function getEntryViewModel(entry: FsEntry): EntryViewModel {
     .filter(Boolean)
     .join(' ');
 
+  const compatibilityStatus = ctx.getFileCompatibilityStatus?.(entry) ?? 'ok';
+
   const nameClass = [
     selected
       ? 'font-medium text-ui-text group-hover:text-ui-text'
@@ -289,6 +294,7 @@ function getEntryViewModel(entry: FsEntry): EntryViewModel {
     meta.generatingProxy || generatingDir ? 'text-amber-400!' : '',
     isCut ? 'opacity-40 line-through decoration-dotted' : '',
     isCopy ? 'text-primary-300!' : '',
+    compatibilityStatus !== 'ok' ? 'text-red-400!' : '',
   ]
     .filter(Boolean)
     .join(' ');

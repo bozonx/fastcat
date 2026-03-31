@@ -8,6 +8,9 @@ import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useProxyStore } from '~/stores/proxy.store';
+import { useMediaStore } from '~/stores/media.store';
+import { getMediaTypeFromFilename } from '~/utils/media-types';
+import type { FileCompatibilityStatus } from '~/composables/file-manager/useFileManagerCompatibility';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useFocusableListNavigation } from '~/composables/file-manager/useFocusableListNavigation';
@@ -89,6 +92,7 @@ const clipboardStore = useAppClipboard();
 const { currentDragOperation } = clipboardStore;
 const { loadTimeline } = useProjectActions();
 const fileManagerStore = useFileManagerStore();
+const mediaStore = useMediaStore();
 
 const scrollEl = ref<HTMLElement | null>(null);
 
@@ -198,7 +202,31 @@ provide('fileManagerTreeCtx', {
   getFileIcon: props.getFileIcon,
   selectedPath,
   getEntryMeta,
+  getFileCompatibilityStatus,
 });
+
+function getFileCompatibilityStatus(entry: FsEntry): FileCompatibilityStatus {
+  if (entry.kind !== 'file' || !entry.path) return 'ok';
+
+  const mediaType = getMediaTypeFromFilename(entry.name);
+  if (mediaType !== 'video' && mediaType !== 'audio') return 'ok';
+
+  const path = entry.path;
+
+  if (mediaStore.metadataLoadFailed[path]) return 'fully_unsupported';
+
+  const meta = mediaStore.mediaMetadata[path];
+  if (!meta) return 'ok';
+
+  if (mediaType === 'video') {
+    if (meta.video?.canDecode === false) return 'fully_unsupported';
+    if (meta.audio?.canDecode === false) return 'audio_unsupported';
+    return 'ok';
+  }
+
+  if (meta.audio?.canDecode === false) return 'fully_unsupported';
+  return 'ok';
+}
 
 function getEntryMeta(entry: FsEntry): {
   hasProxy: boolean;

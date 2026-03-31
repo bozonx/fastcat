@@ -36,6 +36,9 @@ const { t } = useI18n();
       <span v-if="props.mediaMeta?.video?.bitrate">
         , {{ props.formatBitrate(props.mediaMeta.video.bitrate) }}
       </span>
+      <span v-if="props.mediaMeta?.video?.canDecode === false" class="text-red-400 ml-1">
+        — {{ t('videoEditor.fileManager.compatibility.videoCodecUnsupported', 'codec not supported') }}
+      </span>
     </PropertyRow>
     <PropertyRow
       v-if="props.mediaMeta?.audio"
@@ -44,6 +47,9 @@ const { t } = useI18n();
       {{ props.mediaMeta?.audio?.parsedCodec ?? props.mediaMeta?.audio?.codec ?? '-' }}
       <span v-if="props.mediaMeta?.audio?.bitrate">
         , {{ props.formatBitrate(props.mediaMeta.audio.bitrate) }}
+      </span>
+      <span v-if="props.mediaMeta?.audio?.canDecode === false" class="text-red-400 ml-1">
+        — {{ t('videoEditor.fileManager.compatibility.audioCodecUnsupported', 'codec not supported') }}
       </span>
     </PropertyRow>
 
