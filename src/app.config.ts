@@ -10,6 +10,27 @@ export default defineAppConfig({
       check: 'i-lucide-check',
       chevronDown: 'i-lucide-chevron-down',
     },
+    dropdownMenu: {
+      slots: {
+        content: 'min-w-44',
+        item: 'text-sm',
+        itemLeadingIcon: 'size-4',
+      },
+    },
+    contextMenu: {
+      slots: {
+        content: 'min-w-44',
+        item: 'text-sm',
+        itemLeadingIcon: 'size-4',
+      },
+    },
+    selectMenu: {
+      slots: {
+        content: 'min-w-44',
+        item: 'text-sm',
+        itemLeadingIcon: 'size-4',
+      },
+    },
     button: {
       slots: {
         base: 'font-medium rounded-[var(--radius-ui-md)]',

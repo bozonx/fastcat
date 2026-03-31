@@ -319,11 +319,33 @@ select {
 [role='option'][aria-selected='true'],
 [role='option'][data-selected] {
   color: var(--selection-accent-400) !important;
+  background-color: color-mix(in srgb, var(--selection-accent-500) 10%, transparent) !important;
 }
 
 [role='option'][aria-selected='true'] [data-part='item-indicator'],
 [role='option'][data-selected] [data-part='item-indicator'] {
   color: var(--selection-accent-400) !important;
+}
+
+/* UDropdownMenu / UContextMenu: highlight checked items with selection-accent */
+[role='menuitemcheckbox'][data-state='checked'],
+[role='menuitemradio'][data-state='checked'] {
+  color: var(--selection-accent-400) !important;
+  background-color: color-mix(in srgb, var(--selection-accent-500) 10%, transparent) !important;
+}
+
+[role='menuitemcheckbox'][data-state='checked'] [data-part='item-indicator'],
+[role='menuitemradio'][data-state='checked'] [data-part='item-indicator'] {
+  color: var(--selection-accent-400) !important;
+}
+
+/* Compact dropdown/context menu items on desktop (non-touch devices) */
+@media (pointer: fine) {
+  [role='menu'] [role^='menuitem'],
+  [role='listbox'] [role='option'] {
+    padding-top: 0.3rem !important;
+    padding-bottom: 0.3rem !important;
+  }
 }
 
 [data-slider-track] {

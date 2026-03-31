@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import UiTooltip from '~/components/ui/UiTooltip.vue';
 import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
-import UiSelect from '~/components/ui/UiSelect.vue';
-import UiCompactSelect from '~/components/ui/UiCompactSelect.vue';
-import { computed, nextTick, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useFullscreen } from '@vueuse/core';
 import { useFocusStore } from '~/stores/focus.store';
@@ -168,10 +166,6 @@ const {
   handleBoundaryWheel,
   handleEndBoundaryWheel,
   handleSpeedWheel,
-  negativeSpeedOptions,
-  onPlaybackSpeedChange,
-  playbackSpeedOptions,
-  previewResolutions,
   resetZoom,
   rewindToEnd,
   rewindToStart,
@@ -203,25 +197,6 @@ const {
 const isReadonly = computed(
   () => projectStore.currentView === 'sound' || projectStore.currentView === 'export',
 );
-
-const speedMenuItems = computed(() => [
-  negativeSpeedOptions.map((opt) => ({
-    label: opt.label,
-    onSelect: () => onPlaybackSpeedChange(opt),
-    icon:
-      selectedPlaybackSpeedOption.value?.value === opt.value
-        ? 'i-heroicons-check-20-solid'
-        : undefined,
-  })),
-  playbackSpeedOptions.map((opt) => ({
-    label: opt.label,
-    onSelect: () => onPlaybackSpeedChange(opt),
-    icon:
-      selectedPlaybackSpeedOption.value?.value === opt.value
-        ? 'i-heroicons-check-20-solid'
-        : undefined,
-  })),
-]);
 
 const monitorZoomLabel = computed(() => {
   const zoom = projectStore.activeMonitor?.zoom ?? 1;
@@ -456,88 +431,82 @@ watch(viewportRef, (vp) => {
           />
         </UiTooltip>
 
-        <!-- Playback buttons — right-click / wheel opens speed selector -->
-        <UContextMenu :items="speedMenuItems">
-          <UiTooltip
-            :text="getHotkeyTitle(t('fastcat.monitor.rewind', 'Rewind'), 'playback.toStart')"
+        <!-- Playback buttons — wheel on play button changes speed -->
+        <UiTooltip
+          :text="getHotkeyTitle(t('fastcat.monitor.rewind', 'Rewind'), 'playback.toStart')"
+        >
+          <UButton
+            size="md"
+            variant="ghost"
+            color="neutral"
+            icon="i-lucide-skip-back"
+            :aria-label="t('fastcat.monitor.rewind', 'Rewind')"
+            :disabled="!canInteractPlayback"
+            @click="
+              (e) => {
+                rewindToStart();
+                (e.currentTarget as HTMLElement).blur();
+              }
+            "
+            @wheel.prevent="handleBoundaryWheel"
+          />
+        </UiTooltip>
+
+        <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.play', 'Play'), 'playback.toggle')">
+          <UButton
+            size="md"
+            variant="solid"
+            color="neutral"
+            class="relative overflow-hidden min-w-8 px-1.5"
+            :aria-label="t('fastcat.monitor.play', 'Play')"
+            :disabled="!canInteractPlayback"
+            @click="
+              (e) => {
+                setPlayback(selectedPlaybackSpeedOption?.value ?? 1);
+                (e.currentTarget as HTMLElement).blur();
+              }
+            "
+            @wheel.prevent="handleSpeedWheel"
           >
-            <UButton
-              size="md"
-              variant="ghost"
-              color="neutral"
-              icon="i-lucide-skip-back"
-              :aria-label="t('fastcat.monitor.rewind', 'Rewind')"
-              :disabled="!canInteractPlayback"
-              @click="
-                (e) => {
-                  rewindToStart();
-                  (e.currentTarget as HTMLElement).blur();
-                }
-              "
-              @wheel.prevent="handleBoundaryWheel"
-            />
-          </UiTooltip>
-        </UContextMenu>
+            <div class="flex items-center justify-center">
+              <UIcon
+                v-if="timelineStore.isPlaying"
+                name="i-heroicons-stop-20-solid"
+                class="w-5 h-5"
+              />
+              <UIcon
+                v-else-if="(selectedPlaybackSpeedOption?.value ?? 1) < 0"
+                name="i-heroicons-play-20-solid"
+                class="w-5 h-5 scale-x-[-1]"
+              />
+              <UIcon v-else name="i-heroicons-play-20-solid" class="w-5 h-5 ml-0.5" />
+              <span
+                class="absolute text-3xs font-mono leading-none opacity-90 pointer-events-none"
+                style="right: 4px; bottom: 0"
+              >
+                {{ speedButtonLabel }}
+              </span>
+            </div>
+          </UButton>
+        </UiTooltip>
 
-        <UContextMenu :items="speedMenuItems">
-          <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.play', 'Play'), 'playback.toggle')">
-            <UButton
-              size="md"
-              variant="solid"
-              color="neutral"
-              class="relative overflow-hidden min-w-8 px-1.5"
-              :aria-label="t('fastcat.monitor.play', 'Play')"
-              :disabled="!canInteractPlayback"
-              @click="
-                (e) => {
-                  setPlayback(selectedPlaybackSpeedOption?.value ?? 1);
-                  (e.currentTarget as HTMLElement).blur();
-                }
-              "
-              @wheel.prevent="handleSpeedWheel"
-            >
-              <div class="flex items-center justify-center">
-                <UIcon
-                  v-if="timelineStore.isPlaying"
-                  name="i-heroicons-stop-20-solid"
-                  class="w-5 h-5"
-                />
-                <UIcon
-                  v-else-if="(selectedPlaybackSpeedOption?.value ?? 1) < 0"
-                  name="i-heroicons-play-20-solid"
-                  class="w-5 h-5 scale-x-[-1]"
-                />
-                <UIcon v-else name="i-heroicons-play-20-solid" class="w-5 h-5 ml-0.5" />
-                <span
-                  class="absolute text-3xs font-mono leading-none opacity-90 pointer-events-none"
-                  style="right: 4px; bottom: 0"
-                >
-                  {{ speedButtonLabel }}
-                </span>
-              </div>
-            </UButton>
-          </UiTooltip>
-        </UContextMenu>
-
-        <UContextMenu :items="speedMenuItems">
-          <UiTooltip :text="t('fastcat.monitor.end', 'End')">
-            <UButton
-              size="md"
-              variant="ghost"
-              color="neutral"
-              icon="i-lucide-skip-forward"
-              :aria-label="t('fastcat.monitor.end', 'End')"
-              :disabled="!canInteractPlayback"
-              @click="
-                (e) => {
-                  rewindToEnd();
-                  (e.currentTarget as HTMLElement).blur();
-                }
-              "
-              @wheel.prevent="handleEndBoundaryWheel"
-            />
-          </UiTooltip>
-        </UContextMenu>
+        <UiTooltip :text="t('fastcat.monitor.end', 'End')">
+          <UButton
+            size="md"
+            variant="ghost"
+            color="neutral"
+            icon="i-lucide-skip-forward"
+            :aria-label="t('fastcat.monitor.end', 'End')"
+            :disabled="!canInteractPlayback"
+            @click="
+              (e) => {
+                rewindToEnd();
+                (e.currentTarget as HTMLElement).blur();
+              }
+            "
+            @wheel.prevent="handleEndBoundaryWheel"
+          />
+        </UiTooltip>
 
         <MonitorAudioControl :compact="toolbarPosition === 'left' || toolbarPosition === 'right'" />
 

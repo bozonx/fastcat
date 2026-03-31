@@ -99,11 +99,9 @@ const MOBILE_SPEED_VALUES = [0.5, 1, 1.5, 2];
 const mobileSpeedMenuItems = computed(() => [
   MOBILE_SPEED_VALUES.map((v) => ({
     label: `x${v}`,
+    type: 'checkbox' as const,
+    checked: selectedPlaybackSpeedOption.value?.value === v,
     onSelect: () => onPlaybackSpeedChange(v),
-    icon:
-      selectedPlaybackSpeedOption.value?.value === v
-        ? 'i-heroicons-check-20-solid'
-        : undefined,
   })),
 ]);
 
@@ -396,7 +394,7 @@ const containerHeightClass = computed(() => {
             @click="resetZoom"
           />
 
-          <UDropdownMenu :items="mobileSpeedMenuItems">
+          <UDropdownMenu :items="mobileSpeedMenuItems" :ui="{ content: 'min-w-20' }">
             <UButton
               size="xs"
               variant="ghost"

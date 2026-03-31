@@ -151,7 +151,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
           >
             <UIcon name="i-heroicons-exclamation-triangle" class="w-6 h-6 shrink-0" />
             <span class="text-xs text-center leading-tight">{{
-              t('videoEditor.fileManager.compatibility.unsupported', 'Not supported')
+              t('videoEditor.fileManager.compatibility.unsupported')
             }}</span>
           </div>
           <img
