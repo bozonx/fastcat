@@ -98,6 +98,7 @@ const {
   folderSizesLoading,
   sortedEntries,
   videoThumbnails,
+  fileCompatibility,
   stats,
   calculateFolderSize,
   supplementEntries,
@@ -660,6 +661,7 @@ async function onDirectoryUploadChange(e: Event) {
             :get-context-menu-items="getContextMenuItems"
             :is-generating-proxy-in-directory="isDirectoryGeneratingProxy"
             :video-thumbnails="videoThumbnails"
+            :file-compatibility="fileCompatibility"
             @entry-drag-start="onEntryDragStart"
             @entry-drag-end="onEntryDragEnd"
             @entry-drag-enter="onEntryDragEnter"
@@ -692,6 +694,7 @@ async function onDirectoryUploadChange(e: Event) {
             :get-context-menu-items="getContextMenuItems"
             :is-generating-proxy-in-directory="isDirectoryGeneratingProxy"
             :video-thumbnails="videoThumbnails"
+            :file-compatibility="fileCompatibility"
             @entry-drag-start="onEntryDragStart"
             @entry-drag-end="onEntryDragEnd"
             @entry-drag-enter="onEntryDragEnter"

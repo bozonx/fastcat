@@ -61,6 +61,7 @@ export async function extractMetadata(
         const codecParam = await vTrack.getCodecParameterString();
         const colorSpace =
           typeof vTrack.getColorSpace === 'function' ? await vTrack.getColorSpace() : undefined;
+        const canDecodeVideo = await vTrack.canDecode();
 
         meta.video = {
           width: vTrack.codedWidth,
@@ -73,18 +74,21 @@ export async function extractMetadata(
           fps: stats.averagePacketRate,
           bitrate: stats.averageBitrate,
           colorSpace: colorSpace as any,
+          canDecode: canDecodeVideo,
         };
       }
 
       if (aTrack) {
         const stats = await aTrack.computePacketStats(250);
         const codecParam = await aTrack.getCodecParameterString();
+        const canDecodeAudio = await aTrack.canDecode();
         meta.audio = {
           codec: codecParam || aTrack.codec || '',
           parsedCodec: parseAudioCodec(codecParam || aTrack.codec || ''),
           sampleRate: aTrack.sampleRate,
           channels: aTrack.numberOfChannels,
           bitrate: stats.averageBitrate,
+          canDecode: canDecodeAudio,
         };
       }
 
