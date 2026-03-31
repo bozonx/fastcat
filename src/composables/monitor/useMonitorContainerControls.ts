@@ -286,6 +286,17 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
         onSelect: createMarkerAtPlayhead,
       },
       {
+        label: options.t('fastcat.monitor.snapshot'),
+        icon: 'i-heroicons-camera',
+        onSelect: options.createStopFrameSnapshot,
+        disabled:
+          options.isSavingStopFrame.value ||
+          options.isLoading.value ||
+          Boolean(options.loadError.value),
+      },
+    ],
+    [
+      {
         label: options.t('fastcat.preview.fitToWindow'),
         icon: 'i-heroicons-arrows-pointing-in',
         onSelect: fitMonitor,
@@ -300,45 +311,42 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
         icon: 'i-heroicons-arrow-path',
         onSelect: resetView,
       },
+    ],
+    [
       {
-        label: options.showGrid.value
-          ? options.t('fastcat.monitor.hideGrid')
-          : options.t('fastcat.monitor.showGrid'),
-        icon: options.showGrid.value ? 'i-heroicons-check' : 'i-heroicons-squares-2x2',
+        label: options.t('fastcat.monitor.showGrid'),
+        icon: 'i-heroicons-squares-2x2',
+        type: 'checkbox' as const,
+        checked: options.showGrid.value,
         onSelect: options.toggleGrid,
       },
       {
-        label: options.previewEffectsEnabled.value
-          ? options.t('fastcat.monitor.previewWithoutEffects', 'Disable Effects')
-          : options.t('fastcat.monitor.previewWithEffects', 'Enable Effects'),
-        icon: 'i-heroicons-sparkles',
-        onSelect: togglePreviewEffects,
-      },
-      {
-        label: options.useProxyInMonitor.value
-          ? options.t('fastcat.monitor.disableProxy', 'Disable Proxy')
-          : options.t('fastcat.monitor.enableProxy', 'Enable Proxy'),
-        icon: options.useProxyInMonitor.value ? 'i-heroicons-bolt' : 'i-heroicons-bolt-slash',
-        onSelect: toggleProxyUsage,
-      },
-      {
-        label: options.t('fastcat.monitor.snapshot'),
-        icon: 'i-heroicons-camera',
-        onSelect: options.createStopFrameSnapshot,
-        disabled:
-          options.isSavingStopFrame.value ||
-          options.isLoading.value ||
-          Boolean(options.loadError.value),
-      },
-      {
-        label: showTimecode.value
-          ? options.t('fastcat.monitor.hideTimecode', 'Hide Timecode')
-          : options.t('fastcat.monitor.showTimecode', 'Show Timecode'),
+        label: options.t('fastcat.monitor.showTimecode', 'Show Timecode'),
         icon: 'i-heroicons-clock',
+        type: 'checkbox' as const,
+        checked: showTimecode.value,
         onSelect: () => {
           showTimecode.value = !showTimecode.value;
         },
       },
+      ...(options.isMobile
+        ? [
+            {
+              label: options.t('fastcat.monitor.previewWithEffects', 'Preview Effects'),
+              icon: 'i-heroicons-sparkles',
+              type: 'checkbox' as const,
+              checked: options.previewEffectsEnabled.value,
+              onSelect: togglePreviewEffects,
+            },
+            {
+              label: options.t('fastcat.monitor.useProxy', 'Use Proxy'),
+              icon: 'i-heroicons-bolt',
+              type: 'checkbox' as const,
+              checked: options.useProxyInMonitor.value,
+              onSelect: toggleProxyUsage,
+            },
+          ]
+        : []),
     ],
     ...(options.isMobile
       ? []
@@ -346,40 +354,46 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
           [
             {
               label: options.t('fastcat.monitor.toolbarTop'),
-              icon: toolbarPosition.value === 'top' ? 'i-heroicons-check' : undefined,
+              icon: 'i-lucide-panel-top',
+              type: 'checkbox' as const,
+              checked: toolbarPosition.value === 'top',
               onSelect: () => setToolbarPosition('top'),
             },
             {
               label: options.t('fastcat.monitor.toolbarRight'),
-              icon: toolbarPosition.value === 'right' ? 'i-heroicons-check' : undefined,
+              icon: 'i-lucide-panel-right',
+              type: 'checkbox' as const,
+              checked: toolbarPosition.value === 'right',
               onSelect: () => setToolbarPosition('right'),
             },
             {
               label: options.t('fastcat.monitor.toolbarBottom'),
-              icon: toolbarPosition.value === 'bottom' ? 'i-heroicons-check' : undefined,
+              icon: 'i-lucide-panel-bottom',
+              type: 'checkbox' as const,
+              checked: toolbarPosition.value === 'bottom',
               onSelect: () => setToolbarPosition('bottom'),
             },
             {
               label: options.t('fastcat.monitor.toolbarLeft'),
-              icon: toolbarPosition.value === 'left' ? 'i-heroicons-check' : undefined,
+              icon: 'i-lucide-panel-left',
+              type: 'checkbox' as const,
+              checked: toolbarPosition.value === 'left',
               onSelect: () => setToolbarPosition('left'),
             },
           ],
         ]),
-    [
-      ...previewResolutions.value.map((res) => ({
-        label: res.label,
-        icon:
-          Math.abs((options.projectStore.activeMonitor?.previewResolution ?? 1) - res.value) < 0.001
-            ? 'i-heroicons-check'
-            : undefined,
-        onSelect: () => {
-          if (options.projectStore.activeMonitor) {
-            options.projectStore.activeMonitor.previewResolution = res.value;
-          }
-        },
-      })),
-    ],
+    previewResolutions.value.map((res) => ({
+      label: res.label,
+      icon: 'i-lucide-monitor',
+      type: 'checkbox' as const,
+      checked:
+        Math.abs((options.projectStore.activeMonitor?.previewResolution ?? 1) - res.value) < 0.001,
+      onSelect: () => {
+        if (options.projectStore.activeMonitor) {
+          options.projectStore.activeMonitor.previewResolution = res.value;
+        }
+      },
+    })),
   ]);
 
   return {

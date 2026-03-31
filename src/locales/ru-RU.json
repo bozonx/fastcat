@@ -1282,6 +1282,11 @@
         "markers": "Маркеры"
       },
       "unsupported": "API доступа к файловой системе не поддерживается в этом браузере",
+      "compatibility": {
+        "audioCodecUnsupported": "кодек не поддерживается",
+        "unsupported": "Не поддерживается",
+        "videoCodecUnsupported": "кодек не поддерживается"
+      },
       "video": {
         "audioCodec": "Аудио кодек",
         "container": "Контейнер",
