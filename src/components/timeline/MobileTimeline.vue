@@ -246,6 +246,8 @@ const {
   selectItem,
   startMoveItem,
   startTrimItem,
+  onGlobalPointerMove,
+  onGlobalPointerUp,
 } = useTimelineInteraction(scrollEl, tracks);
 
 function onStartMoveItem(event: PointerEvent, payload: TimelineMoveItemPayload) {
@@ -464,6 +466,9 @@ async function onClipAction(payload: TimelineClipActionPayload) {
   <div
     class="flex flex-col h-full bg-ui-bg-elevated relative overflow-hidden"
     @pointerdown="focusStore.setMainFocus('timeline')"
+    @pointermove="onGlobalPointerMove"
+    @pointerup="onGlobalPointerUp"
+    @pointercancel="onGlobalPointerUp"
   >
     <MobileTimelineToolbar />
 

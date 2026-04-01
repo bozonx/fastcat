@@ -136,6 +136,8 @@ const { didStartDrag, rightClickDragTriggered, rightClickPointerActive, onPointe
   useClickOrDrag({
     onDragStart: (e) => {
       if (clipItem.value?.locked || props.track.locked) return;
+      // On mobile, dragging is only allowed when the clip is already selected
+      if (props.isMobile && !timelineStore.selectedItemIds.includes(props.item.id)) return;
       emit('startMoveItem', e, {
         trackId: props.track.id,
         itemId: props.item.id,
@@ -175,6 +177,15 @@ function onClipPointerdown(e: PointerEvent) {
   if (!props.canEditClipContent || !clipItem.value) return;
 
   focusStore.setPanelFocus('timeline');
+
+  // On mobile, prevent browser scroll capture so the drag session can track pointer movement
+  if (
+    props.isMobile &&
+    e.pointerType === 'touch' &&
+    timelineStore.selectedItemIds.includes(props.item.id)
+  ) {
+    e.preventDefault();
+  }
 
   e.stopPropagation();
   onPointerDown(e);

@@ -106,7 +106,7 @@ function onPointerdown(e: PointerEvent) {
   } else if (e.button !== 1) {
     e.stopPropagation();
     handlePointerDown(e);
-    if (e.button === 0 && !props.isMobile) {
+    if (e.button === 0) {
       emit('select', e);
     }
   }
