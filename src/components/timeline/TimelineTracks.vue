@@ -387,7 +387,11 @@ function onTrackPointerDown(e: PointerEvent, trackId: string) {
           />
           <div
             v-else-if="isTrackVisuallySelected(track.id)"
-            class="absolute inset-0 z-0 pointer-events-none border-y border-ui-border/70 transition-colors"
+            class="absolute inset-0 z-0 pointer-events-none border-y transition-colors"
+            :class="[!track.color || track.color === '#2a2a2a' ? 'border-ui-border/70' : '']"
+            :style="{
+              borderColor: track.color && track.color !== '#2a2a2a' ? `${track.color}50` : undefined,
+            }"
           />
           <!-- Drop Previews inside track -->
           <div
