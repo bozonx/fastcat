@@ -158,10 +158,10 @@ onBeforeUnmount(() => {
       height: `${height}px`,
       backgroundColor:
         track.color && track.color !== '#2a2a2a'
-          ? isSelected
+          ? isDirectlySelected
             ? `${track.color}33`
             : `${track.color}1a`
-          : isSelected
+          : isDirectlySelected
             ? 'rgba(var(--color-primary-500), 0.12)'
             : undefined,
     }"
@@ -169,11 +169,11 @@ onBeforeUnmount(() => {
     @dblclick="!track.locked && timelineStore.selectAllClipsOnTrack(track.id)"
     @contextmenu.stop="emit('select')"
   >
-    <!-- Left Accent/Track Color Indicator — only shown when track is directly selected -->
+    <!-- Left Accent/Track Color Indicator — shown when track is selected directly or has active clip/gap -->
     <div
       class="absolute left-0 top-0 bottom-0 w-1 transition-colors z-10"
       :class="[
-        isDirectlySelected && (!track.color || track.color === '#2a2a2a')
+        isSelected && (!track.color || track.color === '#2a2a2a')
           ? 'bg-(--selection-accent-500)'
           : isHovered && (!track.color || track.color === '#2a2a2a')
             ? 'bg-ui-border/50'
@@ -182,7 +182,7 @@ onBeforeUnmount(() => {
       :style="{
         backgroundColor:
           track.color && track.color !== '#2a2a2a'
-            ? isDirectlySelected
+            ? isSelected
               ? track.color
               : isHovered
                 ? `${track.color}80`
@@ -195,14 +195,14 @@ onBeforeUnmount(() => {
       <!-- Row 1: Track ID, Truncated Name (when height < 50), and Buttons -->
       <div class="flex items-center gap-1.5 min-w-0 shrink-0 h-4.5">
         <!-- Track Number Block (e.g., V1, A1) -->
-        <!-- Color matches left border only when directly selected; otherwise inherits text color -->
+        <!-- Color matches left border whenever track or any item on it is selected -->
         <div
           class="shrink-0 flex items-center justify-center min-w-[20px] pr-1 border-r border-ui-border text-[9px] font-black uppercase tracking-tight h-3 my-auto transition-colors"
           :style="{
             color:
-              isDirectlySelected && track.color && track.color !== '#2a2a2a'
+              isSelected && track.color && track.color !== '#2a2a2a'
                 ? track.color
-                : isDirectlySelected
+                : isSelected
                   ? 'var(--color-primary-500)'
                   : undefined,
           }"

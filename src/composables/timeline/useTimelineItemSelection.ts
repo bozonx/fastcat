@@ -41,11 +41,12 @@ export function useTimelineItemSelection(tracks: ComputedRef<TimelineTrack[]>) {
     } else {
       const trackId = tracks.value.find((t) => t.items.some((i) => i.id === itemId))?.id;
 
-      const isClipCurrentlySelected = 
+      const isClipCurrentlySelected =
         timelineStore.selectedItemIds.length === groupedIds.length &&
         groupedIds.every((id) => timelineStore.selectedItemIds.includes(id)) &&
         selectionStore.selectedEntity?.source === 'timeline' &&
-        selectionStore.selectedEntity?.kind === 'clip';
+        (selectionStore.selectedEntity?.kind === 'clip' ||
+          selectionStore.selectedEntity?.kind === 'gap');
 
       if (trackId && isClipCurrentlySelected) {
         timelineStore.clearSelection();
