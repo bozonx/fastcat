@@ -15,6 +15,7 @@ export interface TimelineTracksDeps {
   ) => void;
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
   getSelectedOrActiveTrackId: () => string | null;
+  selectedItemIds: Ref<string[]>;
 }
 
 export interface TimelineTracksModule {
@@ -24,6 +25,7 @@ export interface TimelineTracksModule {
     options?: { insertBeforeId?: string; insertAfterId?: string },
   ) => void;
   resolveTargetVideoTrackIdForInsert: () => string;
+  resolveMobileTargetTrackId: (kind: 'video' | 'audio') => string;
   renameTrack: (trackId: string, name: string) => void;
   updateTrackProperties: (
     trackId: string,
@@ -89,6 +91,43 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
     const topVideo = doc.tracks.find((t) => t.kind === 'video') ?? null;
     if (!topVideo) throw new Error('No video tracks');
     return topVideo.id;
+  }
+
+  function resolveMobileTargetTrackId(kind: 'video' | 'audio'): string {
+    const doc = deps.timelineDoc.value;
+    if (!doc) throw new Error('Timeline not loaded');
+
+    // 1. If a clip or gap is selected, use its track (if kind matches)
+    if (deps.selectedItemIds.value.length > 0) {
+      const selectedId = deps.selectedItemIds.value[0];
+      const track = doc.tracks.find((t) => t.items.some((it) => it.id === selectedId));
+      if (track && track.kind === kind) return track.id;
+    }
+
+    // 2. If a track is selected and its type matches, use it
+    if (deps.selectedTrackId.value) {
+      const selectedTrack = doc.tracks.find((t) => t.id === deps.selectedTrackId.value);
+      if (selectedTrack && selectedTrack.kind === kind) return selectedTrack.id;
+    }
+
+    // 3. Search backwards for an empty track (no clips)
+    const sameKindTracks = doc.tracks.filter((t) => t.kind === kind);
+    for (let i = sameKindTracks.length - 1; i >= 0; i--) {
+      const t = sameKindTracks[i]!;
+      const hasClips = t.items.some((it) => it.kind === 'clip');
+      if (!hasClips) return t.id;
+    }
+
+    // 4. If no empty track found or no tracks exist, create a new one
+    const count = sameKindTracks.length + 1;
+    const name = kind === 'video' ? `Video ${count}` : `Audio ${count}`;
+    addTrack(kind, name);
+
+    const created = deps.timelineDoc.value?.tracks
+      ?.filter((tr) => tr.kind === kind)
+      .pop();
+
+    return created?.id ?? (kind === 'video' ? 'v1' : 'a1');
   }
 
   function renameTrack(trackId: string, name: string) {
@@ -302,6 +341,7 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
   return {
     addTrack,
     resolveTargetVideoTrackIdForInsert,
+    resolveMobileTargetTrackId,
     renameTrack,
     updateTrackProperties,
     toggleVideoHidden,

@@ -25,12 +25,14 @@ const isMediaPickerOpen = ref(false);
 const fileInputRef = ref<HTMLInputElement | null>(null);
 
 function addAdjustment() {
-  timelineStore.addAdjustmentClipAtPlayhead();
+  const trackId = timelineStore.resolveMobileTargetTrackId('video');
+  timelineStore.addAdjustmentClipAtPlayhead({ pseudo: true, trackId });
   emit('close');
 }
 
 function addBackground() {
-  timelineStore.addBackgroundClipAtPlayhead();
+  const trackId = timelineStore.resolveMobileTargetTrackId('video');
+  timelineStore.addBackgroundClipAtPlayhead({ pseudo: true, trackId });
   emit('close');
 }
 

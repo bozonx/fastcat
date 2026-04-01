@@ -41,17 +41,22 @@ const textStandard: PresetItem[] = [
     id: 'default',
     name: t('fastcat.library.texts.default', 'Default'),
     icon: 'i-heroicons-document-text',
-    apply: () =>
+    apply: () => {
+      const trackId = timelineStore.resolveMobileTargetTrackId('video');
       timelineStore.addTextClipAtPlayhead({
         text: t('fastcat.timeline.textClipDefaultText', 'Text'),
         style: { fontSize: 64, color: '#ffffff', fontFamily: 'sans-serif' } as TextClipStyle,
-      }),
+        pseudo: true,
+        trackId,
+      });
+    },
   },
   {
     id: 'title',
     name: t('fastcat.library.texts.title', 'Title'),
     icon: 'i-heroicons-h1',
-    apply: () =>
+    apply: () => {
+      const trackId = timelineStore.resolveMobileTargetTrackId('video');
       timelineStore.addTextClipAtPlayhead({
         text: 'TITLE',
         style: {
@@ -60,13 +65,17 @@ const textStandard: PresetItem[] = [
           color: '#ffffff',
           fontFamily: 'sans-serif',
         } as TextClipStyle,
-      }),
+        pseudo: true,
+        trackId,
+      });
+    },
   },
   {
     id: 'subtitle',
     name: t('fastcat.library.texts.subtitle', 'Subtitle'),
     icon: 'i-heroicons-h2',
-    apply: () =>
+    apply: () => {
+      const trackId = timelineStore.resolveMobileTargetTrackId('video');
       timelineStore.addTextClipAtPlayhead({
         text: 'Subtitle',
         style: {
@@ -75,7 +84,10 @@ const textStandard: PresetItem[] = [
           color: '#aaaaaa',
           fontFamily: 'sans-serif',
         } as TextClipStyle,
-      }),
+        pseudo: true,
+        trackId,
+      });
+    },
   },
 ];
 
@@ -84,78 +96,106 @@ const shapeStandard: PresetItem[] = [
     id: 'square',
     name: t('fastcat.library.shapes.square', 'Square'),
     icon: 'i-heroicons-stop',
-    apply: () =>
+    apply: () => {
+      const trackId = timelineStore.resolveMobileTargetTrackId('video');
       timelineStore.addVirtualClipAtPlayhead({
         clipType: 'shape',
         name: 'Square',
         shapeType: 'square' as ShapeType,
-      }),
+        pseudo: true,
+        trackId,
+      });
+    },
   },
   {
     id: 'circle',
     name: t('fastcat.library.shapes.circle', 'Circle'),
     icon: 'i-ph-circle',
-    apply: () =>
+    apply: () => {
+      const trackId = timelineStore.resolveMobileTargetTrackId('video');
       timelineStore.addVirtualClipAtPlayhead({
         clipType: 'shape',
         name: 'Circle',
         shapeType: 'circle' as ShapeType,
-      }),
+        pseudo: true,
+        trackId,
+      });
+    },
   },
   {
     id: 'triangle',
     name: t('fastcat.library.shapes.triangle', 'Triangle'),
     icon: 'i-ph-triangle',
-    apply: () =>
+    apply: () => {
+      const trackId = timelineStore.resolveMobileTargetTrackId('video');
       timelineStore.addVirtualClipAtPlayhead({
         clipType: 'shape',
         name: 'Triangle',
         shapeType: 'triangle' as ShapeType,
-      }),
+        pseudo: true,
+        trackId,
+      });
+    },
   },
   {
     id: 'star',
     name: t('fastcat.library.shapes.star', 'Star'),
     icon: 'i-heroicons-star',
-    apply: () =>
+    apply: () => {
+      const trackId = timelineStore.resolveMobileTargetTrackId('video');
       timelineStore.addVirtualClipAtPlayhead({
         clipType: 'shape',
         name: 'Star',
         shapeType: 'star' as ShapeType,
-      }),
+        pseudo: true,
+        trackId,
+      });
+    },
   },
   {
     id: 'cloud',
     name: t('fastcat.library.shapes.cloud', 'Cloud'),
     icon: 'i-heroicons-cloud',
-    apply: () =>
+    apply: () => {
+      const trackId = timelineStore.resolveMobileTargetTrackId('video');
       timelineStore.addVirtualClipAtPlayhead({
         clipType: 'shape',
         name: 'Cloud',
         shapeType: 'cloud' as ShapeType,
-      }),
+        pseudo: true,
+        trackId,
+      });
+    },
   },
   {
     id: 'speech_bubble',
     name: t('fastcat.library.shapes.speechBubble', 'Speech Bubble'),
     icon: 'i-heroicons-chat-bubble-left',
-    apply: () =>
+    apply: () => {
+      const trackId = timelineStore.resolveMobileTargetTrackId('video');
       timelineStore.addVirtualClipAtPlayhead({
         clipType: 'shape',
         name: 'Speech Bubble',
         shapeType: 'speech_bubble' as ShapeType,
-      }),
+        pseudo: true,
+        trackId,
+      });
+    },
   },
   {
     id: 'bang',
     name: t('fastcat.library.shapes.bang', 'Bang'),
     icon: 'i-heroicons-bolt',
-    apply: () =>
+    apply: () => {
+      const trackId = timelineStore.resolveMobileTargetTrackId('video');
       timelineStore.addVirtualClipAtPlayhead({
         clipType: 'shape',
         name: 'Bang',
         shapeType: 'bang' as ShapeType,
-      }),
+        pseudo: true,
+        trackId,
+      });
+    },
   },
 ];
 
@@ -164,12 +204,16 @@ const hudStandard: PresetItem[] = [
     id: 'media_frame',
     name: t('fastcat.library.huds.mediaFrame', 'Media Frame'),
     icon: 'i-heroicons-photo',
-    apply: () =>
+    apply: () => {
+      const trackId = timelineStore.resolveMobileTargetTrackId('video');
       timelineStore.addVirtualClipAtPlayhead({
         clipType: 'hud',
         name: 'Media Frame',
         hudType: 'media_frame' as HudType,
-      }),
+        pseudo: true,
+        trackId,
+      });
+    },
   },
 ];
 
@@ -197,22 +241,29 @@ const customItems = computed<PresetItem[]>(() =>
         icon: standardIcon,
         isCustom: true,
         apply: () => {
+          const trackId = timelineStore.resolveMobileTargetTrackId('video');
           if (props.type === 'text') {
             timelineStore.addTextClipAtPlayhead({
               text: p.params?.text,
               style: p.params?.style,
+              pseudo: true,
+              trackId,
             });
           } else if (props.type === 'shape') {
             timelineStore.addVirtualClipAtPlayhead({
               clipType: 'shape',
               name: p.name,
               shapeType: p.baseType as ShapeType,
+              pseudo: true,
+              trackId,
             });
           } else {
             timelineStore.addVirtualClipAtPlayhead({
               clipType: 'hud',
               name: p.name,
               hudType: p.baseType as HudType,
+              pseudo: true,
+              trackId,
             });
           }
         },

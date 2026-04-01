@@ -128,6 +128,8 @@ export interface TimelineClipsModule {
     style?: TextClipStyle;
     shapeType?: import('~/timeline/types').ShapeType;
     hudType?: import('~/timeline/types').HudType;
+    pseudo?: boolean;
+    trackId?: string;
   }) => void;
   addVirtualClipToTrack: (
     input: {
@@ -160,17 +162,26 @@ export interface TimelineClipsModule {
       labelKey?: string;
     },
   ) => void;
-  addAdjustmentClipAtPlayhead: (options?: { durationUs?: number; name?: string }) => void;
+  addAdjustmentClipAtPlayhead: (options?: {
+    durationUs?: number;
+    name?: string;
+    pseudo?: boolean;
+    trackId?: string;
+  }) => void;
   addBackgroundClipAtPlayhead: (options?: {
     durationUs?: number;
     name?: string;
     backgroundColor?: string;
+    pseudo?: boolean;
+    trackId?: string;
   }) => void;
   addTextClipAtPlayhead: (options?: {
     durationUs?: number;
     name?: string;
     text?: string;
     style?: TextClipStyle;
+    pseudo?: boolean;
+    trackId?: string;
   }) => void;
   setClipFreezeFrameFromPlayhead: (input: { trackId: string; itemId: string }) => void;
   resetClipFreezeFrame: (input: { trackId: string; itemId: string }) => void;
@@ -653,12 +664,14 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     style?: TextClipStyle;
     shapeType?: import('~/timeline/types').ShapeType;
     hudType?: import('~/timeline/types').HudType;
+    pseudo?: boolean;
+    trackId?: string;
   }) {
     if (!deps.timelineDoc.value) {
       deps.timelineDoc.value = deps.createFallbackTimelineDoc();
     }
 
-    const trackId = deps.resolveTargetVideoTrackIdForInsert();
+    const trackId = input.trackId ?? deps.resolveTargetVideoTrackIdForInsert();
     deps.applyTimeline({
       type: 'add_virtual_clip_to_track',
       trackId,
@@ -673,6 +686,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       startUs: deps.currentTime.value,
       audioFadeInCurve: deps.defaultAudioFadeCurve,
       audioFadeOutCurve: deps.defaultAudioFadeCurve,
+      pseudo: input.pseudo,
     });
   }
 
@@ -760,11 +774,18 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     );
   }
 
-  function addAdjustmentClipAtPlayhead(options?: { durationUs?: number; name?: string }) {
+  function addAdjustmentClipAtPlayhead(options?: {
+    durationUs?: number;
+    name?: string;
+    pseudo?: boolean;
+    trackId?: string;
+  }) {
     addVirtualClipAtPlayhead({
       clipType: 'adjustment',
       name: options?.name ?? 'Adjustment',
       durationUs: options?.durationUs,
+      pseudo: options?.pseudo,
+      trackId: options?.trackId,
     });
   }
 
@@ -772,12 +793,16 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     durationUs?: number;
     name?: string;
     backgroundColor?: string;
+    pseudo?: boolean;
+    trackId?: string;
   }) {
     addVirtualClipAtPlayhead({
       clipType: 'background',
       name: options?.name ?? 'Background',
       durationUs: options?.durationUs,
       backgroundColor: options?.backgroundColor,
+      pseudo: options?.pseudo,
+      trackId: options?.trackId,
     });
   }
 
@@ -786,6 +811,8 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     name?: string;
     text?: string;
     style?: TextClipStyle;
+    pseudo?: boolean;
+    trackId?: string;
   }) {
     addVirtualClipAtPlayhead({
       clipType: 'text',
@@ -793,6 +820,8 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       durationUs: options?.durationUs,
       text: options?.text,
       style: options?.style,
+      pseudo: options?.pseudo,
+      trackId: options?.trackId,
     });
   }
 

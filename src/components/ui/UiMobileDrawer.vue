@@ -138,10 +138,10 @@ function onBackdropTouchEnd(e: TouchEvent) {
     return;
   }
 
-  // Swipe down to collapse
-  if (dy > 50 && dy > adx * 1.5 && props.snapPoints && props.snapPoints.length > 0) {
+  // Swipe down to close
+  if (dy > 50 && dy > adx * 1.5) {
     e.preventDefault();
-    activeSnapPoint.value = props.snapPoints[0] as string | number;
+    isOpen.value = false;
     return;
   }
 }
@@ -158,6 +158,55 @@ function onHandleTap() {
   }
 }
 
+// --- Handle & Header Swipe Logic ---
+
+const dragStartY = ref(0);
+const dragDy = ref(0);
+const bodyRef = ref<HTMLElement | null>(null);
+
+function onDragStart(e: TouchEvent) {
+  const t = e.touches[0];
+  if (!t) return;
+  dragStartY.value = t.clientY;
+  dragDy.value = 0;
+}
+
+function onDragMove(e: TouchEvent) {
+  const t = e.touches[0];
+  if (!t) return;
+  dragDy.value = t.clientY - dragStartY.value;
+}
+
+function onBodyDragStart(e: TouchEvent) {
+  const t = e.touches[0];
+  if (!t) return;
+  dragStartY.value = t.clientY;
+  dragDy.value = 0;
+}
+
+function onBodyDragMove(e: TouchEvent) {
+  const t = e.touches[0];
+  if (!t) return;
+  dragDy.value = t.clientY - dragStartY.value;
+}
+
+function onBodyDragEnd() {
+  if (bodyRef.value && bodyRef.value.scrollTop > 0) return;
+  if (dragDy.value > 50) {
+    isOpen.value = false;
+    activeSnapPoint.value = null;
+  }
+  dragDy.value = 0;
+}
+
+function onDragEnd() {
+  if (dragDy.value > 50) {
+    isOpen.value = false;
+    activeSnapPoint.value = null;
+  }
+  dragDy.value = 0;
+}
+
 function onSnapPointChange(val: string | number) {
   activeSnapPoint.value = val;
 }
@@ -168,7 +217,7 @@ watch(isOpen, (val) => {
 </script>
 
 <template>
-  <Teleport to="body" v-if="!props.modal">
+  <Teleport v-if="!props.modal" to="body">
     <div
       class="fixed inset-0 bg-black/55 transition-opacity duration-200 z-[30]"
       :class="[
@@ -207,6 +256,9 @@ watch(isOpen, (val) => {
           "
           class="shrink-0 flex justify-center py-2 relative z-10 cursor-pointer touch-none"
           @click.stop="onHandleTap"
+          @touchstart.passive="onDragStart"
+          @touchmove.passive="onDragMove"
+          @touchend="onDragEnd"
         >
           <div class="w-10 h-1 rounded-full bg-slate-700/60"></div>
         </div>
@@ -226,7 +278,14 @@ watch(isOpen, (val) => {
         </div>
 
         <!-- Optional Toolbar (stays visible at first snap point) -->
-        <div v-if="$slots.toolbar" class="shrink-0" :class="props.ui.toolbar">
+        <div
+          v-if="$slots.toolbar"
+          class="shrink-0"
+          :class="props.ui.toolbar"
+          @touchstart.passive="onDragStart"
+          @touchmove.passive="onDragMove"
+          @touchend="onDragEnd"
+        >
           <slot name="toolbar" />
         </div>
 
@@ -235,6 +294,9 @@ watch(isOpen, (val) => {
           v-if="props.title || $slots.header"
           class="shrink-0 pt-4 pb-3 px-5 border-t border-slate-800/60"
           :class="props.ui.header"
+          @touchstart.passive="onDragStart"
+          @touchmove.passive="onDragMove"
+          @touchend="onDragEnd"
         >
           <slot name="header">
             <h3
@@ -250,7 +312,14 @@ watch(isOpen, (val) => {
         </div>
 
         <!-- Main Body -->
-        <div class="flex-1 overflow-y-auto pb-safe custom-scrollbar" :class="props.ui.body">
+        <div
+          ref="bodyRef"
+          class="flex-1 overflow-y-auto pb-safe custom-scrollbar"
+          :class="props.ui.body"
+          @touchstart.passive="onBodyDragStart"
+          @touchmove.passive="onBodyDragMove"
+          @touchend="onBodyDragEnd"
+        >
           <slot />
         </div>
 
