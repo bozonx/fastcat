@@ -213,16 +213,16 @@ const formatDate = (dateStr?: string) => {
                   <div class="px-4 flex items-center justify-between flex-1 min-w-0 h-full">
                     <div
                       v-if="isRenaming === project.projectName"
-                      class="flex items-center gap-3 w-full"
+                      class="flex items-center gap-2 w-full pr-1"
                     >
                       <UInput
                         v-model="renameValue"
-                        size="sm"
+                        size="md"
                         class="flex-1 min-w-0"
                         autofocus
                         variant="none"
                         :ui="{
-                          base: 'h-10 px-4 bg-slate-950/50 rounded-xl border border-white/10 focus:border-primary-500/50 transition-all font-bold text-sm text-white',
+                          base: 'h-11 px-4 bg-slate-900 border border-white/10 rounded-2xl focus:border-primary-500/50 transition-all font-bold text-sm text-white focus:ring-0',
                         }"
                         @keyup.enter="renameProject(project.projectName)"
                         @keyup.esc="isRenaming = null"
@@ -230,19 +230,19 @@ const formatDate = (dateStr?: string) => {
                       />
                       <div class="flex items-center gap-1 shrink-0">
                         <UButton
-                          size="sm"
+                          size="md"
                           variant="ghost"
                           color="neutral"
-                          icon="lucide:x"
-                          class="rounded-full w-10 h-10 p-0 text-slate-500 active:text-white active:bg-white/5 transition-colors"
+                          icon="i-heroicons-x-mark-20-solid"
+                          class="rounded-2xl w-11 h-11 p-0 text-slate-500 hover:text-white hover:bg-white/5 active:scale-90 transition-all"
                           @click.stop="isRenaming = null"
                         />
                         <UButton
-                          size="sm"
+                          size="md"
                           variant="solid"
                           color="primary"
-                          icon="lucide:check"
-                          class="rounded-full w-10 h-10 p-0 bg-ui-action! text-white shadow-lg shadow-ui-action/20 border-none active:scale-90 transition-transform"
+                          icon="i-heroicons-check-20-solid"
+                          class="rounded-2xl w-11 h-11 p-0 bg-ui-action! text-white shadow-lg shadow-ui-action/20 border-none active:scale-95 transition-all flex items-center justify-center"
                           @click.stop="renameProject(project.projectName)"
                         />
                       </div>

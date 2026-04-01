@@ -22,29 +22,36 @@ const { t } = useI18n();
     v-model="modelValue"
     :placeholder="placeholder ?? t('common.search', 'Search')"
     :disabled="disabled"
-    icon="i-heroicons-magnifying-glass"
-    class="w-full"
+    class="w-full group"
     :class="{
-      'h-12 rounded-2xl! transition-all duration-300': isMobile,
+      'h-12 transition-all duration-300': isMobile,
       'bg-slate-900/40 border-white/5 focus-within:bg-slate-900 focus-within:border-primary-500/30': isMobile,
     }"
     :ui="{
-      base: isMobile ? 'h-full px-5 text-sm font-medium' : '',
-      rounded: isMobile ? 'rounded-2xl' : 'rounded-lg',
-      leading: isMobile ? 'ps-12' : 'ps-10',
+      base: [
+        'bg-ui-bg-elevated/50 border-ui-border hover:border-ui-border-accent focus:border-primary-500/50 transition-all duration-200',
+        isMobile ? 'h-full px-5 text-sm font-medium rounded-2xl!' : 'h-10 px-4 text-sm rounded-xl',
+      ],
+      leading: 'hidden',
       trailing: isMobile ? 'pe-4' : 'pe-3',
     }"
   >
     <template #trailing>
-      <UButton
-        v-if="modelValue"
-        color="neutral"
-        variant="link"
-        icon="i-heroicons-x-mark-20-solid"
-        :padded="false"
-        class="text-slate-500 hover:text-white"
-        @click="modelValue = ''"
-      />
+      <div class="flex items-center gap-2">
+        <UButton
+          v-if="modelValue"
+          color="neutral"
+          variant="link"
+          icon="i-heroicons-x-mark-20-solid"
+          :padded="false"
+          class="text-ui-text-muted hover:text-ui-text transition-colors"
+          @click="modelValue = ''"
+        />
+        <UIcon
+          name="i-heroicons-magnifying-glass"
+          class="w-4 h-4 text-ui-text-muted group-focus-within:text-primary-400 transition-colors"
+        />
+      </div>
     </template>
   </UInput>
 </template>
