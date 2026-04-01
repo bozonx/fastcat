@@ -214,7 +214,7 @@ export function useTimelineItemResize(
       let newFadeUs = resizeFade.value.startFadeUs + deltaUs;
       newFadeUs = Math.max(0, Math.min(maxUs, newFadeUs));
 
-      if (timelineSettingsStore.clipSnapMode === 'clips') {
+      if (timelineSettingsStore.toolbarSnapMode === 'snap') {
         const thresholdUs = Math.round(
           (timelineSettingsStore.snapThresholdPx / zoomToPxPerSecond(timelineStore.timelineZoom)) *
             1e6,
@@ -522,7 +522,7 @@ export function useTimelineItemResize(
         hardMaxUs,
       );
 
-      if (timelineSettingsStore.clipSnapMode === 'clips') {
+      if (timelineSettingsStore.toolbarSnapMode === 'snap') {
         const snapThresholdUs = Math.round(
           (timelineSettingsStore.snapThresholdPx / zoomToPxPerSecond(timelineStore.timelineZoom)) *
             1e6,

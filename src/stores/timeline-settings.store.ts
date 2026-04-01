@@ -153,6 +153,14 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
     toolbarSnapMode.value = 'snap';
   }
 
+  function toggleToolbarSnapMode() {
+    if (toolbarSnapMode.value === 'snap') {
+      toolbarSnapMode.value = 'no_snap';
+    } else {
+      toolbarSnapMode.value = 'snap';
+    }
+  }
+
   function selectToolbarDragMode(mode: ToolbarDragMode) {
     toolbarDragMode.value = mode;
     toolbarDragModeEnabled.value = true;
@@ -188,6 +196,7 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
     setGlobalSnapThresholdPx,
     selectToolbarSnapMode,
     cycleToolbarSnapMode,
+    toggleToolbarSnapMode,
     selectToolbarDragMode,
     toggleSelectedToolbarDragMode,
     landscapeDrawerPosition,
