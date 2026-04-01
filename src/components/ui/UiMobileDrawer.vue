@@ -77,21 +77,22 @@ const isExpanded = computed(() => {
   if (!props.snapPoints || props.snapPoints.length === 0) return true;
   if (effectiveDirection.value === 'right' || effectiveDirection.value === 'left') return true;
   if (activeSnapPoint.value === null) return false;
-  
+
   const lastPoint = props.snapPoints[props.snapPoints.length - 1];
   return activeSnapPoint.value === lastPoint;
 });
 
 /** Responsive container logic */
 const containerClasses = computed(() => {
-  const base = 'flex flex-col relative overflow-hidden shadow-2xl transition-all duration-300 pointer-events-auto';
+  const base =
+    'flex flex-col relative overflow-hidden shadow-2xl transition-all duration-300 pointer-events-auto z-50';
   const bgColor = 'bg-slate-900/95 backdrop-blur-2xl ring-1 ring-white/5';
-  
+
   if (effectiveDirection.value === 'right' || effectiveDirection.value === 'left') {
     const sideBorder = effectiveDirection.value === 'right' ? 'border-l' : 'border-r';
     return `${base} max-h-dvh h-screen w-[50vw] sm:w-[40vw] ml-auto ${sideBorder} border-slate-800/80 ${bgColor} ${props.ui.container || ''}`;
   }
-  
+
   const heightClass = props.isFullHeight ? 'h-[95dvh]' : 'max-h-[85dvh]';
   return `${base} ${heightClass} w-full border-t border-slate-800/80 ${bgColor} rounded-t-2xl ${props.ui.container || ''}`;
 });
@@ -104,7 +105,11 @@ const bdDy = ref(0);
 const bdDx = ref(0);
 
 const isBackdropInteractive = computed(
-  () => !props.modal && isOpen.value && isExpanded.value && (effectiveDirection.value === 'bottom' || effectiveDirection.value === 'top')
+  () =>
+    !props.modal &&
+    isOpen.value &&
+    isExpanded.value &&
+    (effectiveDirection.value === 'bottom' || effectiveDirection.value === 'top'),
 );
 
 function onBackdropTouchStart(e: TouchEvent) {
@@ -165,7 +170,7 @@ watch(isOpen, (val) => {
 <template>
   <Teleport to="body" v-if="!props.modal">
     <div
-      class="fixed inset-0 bg-black/55 transition-opacity duration-200 z-49"
+      class="fixed inset-0 bg-black/55 transition-opacity duration-200 z-[30]"
       :class="[
         isOpen && isExpanded ? 'opacity-100' : 'opacity-0',
         isBackdropInteractive ? 'pointer-events-auto' : 'pointer-events-none',
@@ -190,13 +195,16 @@ watch(isOpen, (val) => {
     :modal="props.modal"
     :overlay="props.modal && props.overlay"
     :handle="false"
+    :ui="{ content: 'z-50' }"
     @update:active-snap-point="onSnapPointChange"
   >
     <template #content>
       <div :class="containerClasses">
         <!-- Vertical mode: drag handle -->
         <div
-          v-if="(effectiveDirection === 'bottom' || effectiveDirection === 'top') && props.withHandle"
+          v-if="
+            (effectiveDirection === 'bottom' || effectiveDirection === 'top') && props.withHandle
+          "
           class="shrink-0 flex justify-center py-2 relative z-10 cursor-pointer touch-none"
           @click.stop="onHandleTap"
         >
@@ -205,11 +213,13 @@ watch(isOpen, (val) => {
 
         <!-- Side mode: lateral handle -->
         <div
-          v-if="(effectiveDirection === 'right' || effectiveDirection === 'left') && props.withHandle"
+          v-if="
+            (effectiveDirection === 'right' || effectiveDirection === 'left') && props.withHandle
+          "
           class="absolute top-0 bottom-0 flex flex-col items-center justify-center pointer-events-none"
           :class="effectiveDirection === 'right' ? 'left-0 w-6' : 'right-0 w-6'"
         >
-          <div 
+          <div
             class="w-1 h-12 rounded-full bg-slate-700/60 cursor-pointer pointer-events-auto"
             @click.stop="onHandleTap"
           />
@@ -227,7 +237,10 @@ watch(isOpen, (val) => {
           :class="props.ui.header"
         >
           <slot name="header">
-            <h3 v-if="props.title" class="text-base font-bold text-slate-100 leading-tight truncate">
+            <h3
+              v-if="props.title"
+              class="text-base font-bold text-slate-100 leading-tight truncate"
+            >
               {{ props.title }}
             </h3>
             <p v-if="props.description" class="mt-1 text-xs text-slate-400 line-clamp-2">
@@ -270,4 +283,3 @@ watch(isOpen, (val) => {
   border-radius: 10px;
 }
 </style>
-

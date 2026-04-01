@@ -12,7 +12,6 @@ import SettingsIntegrations from '~/components/settings/SettingsIntegrations.vue
 import SettingsVideo from '~/components/settings/SettingsVideo.vue';
 import SettingsAudio from '~/components/settings/SettingsAudio.vue';
 import SettingsStorage from '~/components/settings/SettingsStorage.vue';
-import SettingsSnapping from '~/components/settings/SettingsSnapping.vue';
 
 interface Props {
   open: boolean;
@@ -31,7 +30,6 @@ type SettingsSection =
   | 'user.general'
   | 'user.hotkeys'
   | 'user.mouse'
-  | 'user.snapping'
   | 'user.proxy'
   | 'user.project'
   | 'user.export'
@@ -148,19 +146,6 @@ watch(
               @click="activeSection = 'user.mouse'"
             />
             <UiToggleButton
-              :model-value="activeSection === 'user.snapping'"
-              label="Snapping"
-              inactive-color="neutral"
-              active-color="neutral"
-              :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'" 
-              :active-text="'var(--selection-accent-400)'"
-              inactive-variant="ghost"
-              active-variant="soft"
-              no-toggle
-              class="justify-start"
-              @click="activeSection = 'user.snapping'"
-            />
-            <UiToggleButton
               :model-value="activeSection === 'user.project'"
               label="Project presets"
               inactive-color="neutral"
@@ -265,7 +250,6 @@ watch(
         <SettingsGeneral v-if="activeSection === 'user.general'" />
         <SettingsHotkeys v-else-if="activeSection === 'user.hotkeys'" ref="hotkeysRef" />
         <SettingsMouse v-else-if="activeSection === 'user.mouse'" />
-        <SettingsSnapping v-else-if="activeSection === 'user.snapping'" />
         <SettingsOptimization v-else-if="activeSection === 'user.proxy'" />
         <SettingsProjectDefaults v-else-if="activeSection === 'user.project'" />
         <SettingsExportDefaults

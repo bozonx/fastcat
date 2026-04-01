@@ -1608,8 +1608,6 @@
       "resetVideoSettingsConfirmDesc": "Это вернет настройки производительности видео к значениям по умолчанию.",
       "resetVideoSettingsConfirmTitle": "Сбросить настройки видео?",
       "selectWorkspaceFolder": "Выбрать папку",
-      "snapThreshold": "Величина привязки (px)",
-      "snapThresholdDefault": "Величина привязки по умолчанию (px)",
       "stopFramesQuality": "Качество снимка кадра",
       "stopFramesQualityHint": "Качество WebP (1-100)",
       "storageMode": "Режим хранения",
@@ -1656,7 +1654,16 @@
       "workspaceSection": "Настройки приложения",
       "workspaceStorage": "Хранилище",
       "uiInterfaceScale": "Масштаб интерфейса (px)",
-      "uiLanguage": "Язык интерфейса"
+      "uiLanguage": "Язык интерфейса",
+      "snappingTitle": "Привязка",
+      "snappingDescription": "Настройка поведения привязки на таймлайне.",
+      "snapThresholdDefault": "Порог привязки (px)",
+      "snapToTargets": "Привязываться к",
+      "snapToTimelineEdges": "Началу и концу таймлайна",
+      "snapToClips": "Клипам",
+      "snapToMarkers": "Маркерам",
+      "snapToSelection": "Выделению",
+      "snapToPlayhead": "Плейхеду"
     }
   },
   "mobileFiles": {

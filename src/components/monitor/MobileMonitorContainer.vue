@@ -186,12 +186,19 @@ const isVerticalProject = computed(() => {
   return width < height;
 });
 
-const showSideControls = computed(() => {
-  if (isFullscreen.value) return isLandscape.value;
-  // When monitor is at top in landscape mode, controls should be horizontal
-  if (props.monitorAtTop) return false;
-  return isLandscape.value || isVerticalProject.value;
+const internalLayout = computed<'left' | 'right' | 'top' | 'bottom'>(() => {
+  if (isFullscreen.value) return isLandscape.value ? 'right' : 'bottom';
+
+  if (isVerticalProject.value) {
+    // Left panel for portrait projects as requested
+    return 'left';
+  }
+
+  /** For landscape projects: landscape browser -> top, portrait browser -> bottom */
+  return isLandscape.value ? 'top' : 'bottom';
 });
+
+const showSideControls = computed(() => internalLayout.value === 'left' || internalLayout.value === 'right');
 
 // --- Marker button logic ---
 const isMarkersDrawerOpen = ref(false);
@@ -272,7 +279,12 @@ const containerHeightClass = computed(() => {
     class="flex min-w-0 shrink-0 border-ui-border bg-ui-bg-elevated transition-colors duration-200"
     :class="[
       isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen' : [containerHeightClass],
-      showSideControls ? 'flex-row border-r' : 'flex-col border-b',
+      {
+        'flex-row-reverse border-l': internalLayout === 'left',
+        'flex-row border-r': internalLayout === 'right',
+        'flex-col-reverse border-t': internalLayout === 'top',
+        'flex-col border-b': internalLayout === 'bottom',
+      },
     ]"
   >
     <!-- Video area -->
@@ -340,8 +352,14 @@ const containerHeightClass = computed(() => {
       class="shrink-0 bg-ui-bg"
       :class="[
         showSideControls
-          ? 'w-[72px] flex flex-col items-center py-4 border-l border-ui-border'
-          : 'px-4 py-1.5 border-t border-ui-border h-[64px]',
+          ? 'w-[72px] flex flex-col items-center py-4 border-ui-border'
+          : 'px-4 py-1.5 border-ui-border h-[64px]',
+        {
+          'border-r': internalLayout === 'left',
+          'border-l': internalLayout === 'right',
+          'border-b': internalLayout === 'top',
+          'border-t': internalLayout === 'bottom',
+        },
       ]"
       @pointerdown="onLongPressPointerDown"
       @pointermove="onLongPressPointerMove"
