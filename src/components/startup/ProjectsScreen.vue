@@ -97,6 +97,20 @@ const formatDate = (dateStr?: string) => {
         </div>
       </div>
 
+      <!-- Primary Action -->
+      <div class="p-4 space-y-4">
+        <UButton
+          block
+          size="xl"
+          color="primary"
+          icon="i-heroicons-plus"
+          class="shadow-lg shadow-ui-action/20 py-4 rounded-2xl font-bold uppercase tracking-wide bg-ui-action! hover:bg-ui-action-hover! text-white! border-none transition-all hover:scale-[1.02] active:scale-[0.98]"
+          @click="startCreateProject"
+        >
+          {{ t('fastcat.projects.newProject') }}
+        </UButton>
+      </div>
+
       <!-- Bottom Actions -->
       <div class="mt-auto p-4 border-t border-ui-border space-y-4">
         <!-- Workspace Info -->
@@ -163,14 +177,6 @@ const formatDate = (dateStr?: string) => {
           <div v-if="workspaceStore.error" class="text-error-400 text-xs font-medium">
             {{ workspaceStore.error }}
           </div>
-          <UButton
-            color="neutral"
-            variant="solid"
-            icon="i-heroicons-plus"
-            :label="t('fastcat.projects.newProject')"
-            class="px-6 shadow-lg bg-ui-action! hover:bg-ui-action-hover! text-white! shadow-ui-action/20 border-none"
-            @click="startCreateProject"
-          />
         </div>
       </header>
 

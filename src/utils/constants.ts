@@ -40,6 +40,8 @@ export const FILE_MANAGER_THUMBNAILS = {
 
 export const TIMELINE_MANAGER_THUMBNAILS = {
   DIR_NAME: 'timelines',
+  MAX_SIZE: 1280,
+  QUALITY: 0.8,
 } as const;
 
 export const MARKER_THUMBNAILS = {

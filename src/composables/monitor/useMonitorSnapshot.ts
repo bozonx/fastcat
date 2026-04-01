@@ -45,6 +45,25 @@ export function useMonitorSnapshot(input: {
     if (!input.projectStore.currentProjectId || !input.projectStore.currentTimelinePath) return;
     if (!input.workspaceStore.workspaceHandle) return;
 
+    const projectWidth = Number(input.projectStore.projectSettings?.project?.width || 1280);
+    const projectHeight = Number(input.projectStore.projectSettings?.project?.height || 720);
+    const maxSide = 1280;
+    
+    let targetWidth = projectWidth;
+    let targetHeight = projectHeight;
+
+    if (projectWidth > projectHeight) {
+      if (projectWidth > maxSide) {
+        targetWidth = maxSide;
+        targetHeight = Math.round((projectHeight * maxSide) / projectWidth);
+      }
+    } else {
+      if (projectHeight > maxSide) {
+        targetHeight = maxSide;
+        targetWidth = Math.round((projectWidth * maxSide) / projectHeight);
+      }
+    }
+
     dispatchTimelineThumbnailGeneration({
       projectId: input.projectStore.currentProjectId,
       timelinePath: input.projectStore.currentTimelinePath,
@@ -54,9 +73,9 @@ export function useMonitorSnapshot(input: {
       resolvedStorageTopology: input.workspaceStore.resolvedStorageTopology,
       getFileHandleByPath: async (path: string) => input.projectStore.getFileHandleByPath(path),
       getFileByPath: async (path: string) => input.projectStore.getFileByPath(path),
-      width: 400,
-      height: 225,
-      quality: 0.7,
+      width: targetWidth,
+      height: targetHeight,
+      quality: 0.8,
       notifyUi: true,
     });
   }

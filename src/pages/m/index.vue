@@ -159,12 +159,13 @@ const formatDate = (dateStr?: string) => {
                   @click="handleOpenProject(project.projectName)"
                 >
                   <div
-                    class="aspect-video rounded-3xl overflow-hidden border border-white/10 shadow-2xl relative bg-slate-900"
+                    class="aspect-3/4 rounded-3xl overflow-hidden border border-white/10 shadow-2xl relative bg-slate-900"
                   >
                     <ProjectThumbnail
                       :project-id="project.projectId"
                       :project-relative-path="project.lastTimelinePath"
                       :project-name="project.projectName"
+                      variant="mobile"
                     />
                     <div
                       class="absolute inset-0 bg-linear-to-t from-black/90 via-black/20 to-transparent pointer-events-none"
@@ -209,11 +210,12 @@ const formatDate = (dateStr?: string) => {
                       : handleOpenProject(project.projectName)
                   "
                 >
-                  <div class="w-24 h-full relative shrink-0">
+                  <div class="w-20 h-full relative shrink-0">
                     <ProjectThumbnail
                       :project-id="project.projectId"
                       :project-relative-path="project.lastTimelinePath"
                       :project-name="project.projectName"
+                      variant="mobile"
                     />
                     <div class="absolute inset-0 bg-black/20" />
                   </div>

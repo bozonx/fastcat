@@ -2,11 +2,14 @@
 import { ref, watch, onMounted } from 'vue';
 import { getFileThumbnailHash, fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   projectId?: string;
   projectRelativePath?: string;
   projectName?: string;
-}>();
+  variant?: 'desktop' | 'mobile';
+}>(), {
+  variant: 'desktop'
+});
 
 const { t } = useI18n();
 const url = ref<string | null>(null);
@@ -41,24 +44,29 @@ watch(() => [props.projectId, props.projectRelativePath], load);
 
 <template>
   <div
-    class="relative w-full h-full bg-ui-bg-accent flex items-center justify-center overflow-hidden rounded-lg group"
+    class="relative w-full h-full bg-slate-900 flex items-center justify-center overflow-hidden group"
+    :class="[
+      variant === 'desktop' ? 'aspect-video' : 'aspect-3/4'
+    ]"
   >
     <img
       v-if="url"
       :src="url"
-      class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+      class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
       :alt="t('fastcat.startup.projectThumbnail')"
     />
     <div
       v-else
-      class="flex flex-col items-center justify-center text-ui-text-muted gap-2 opacity-40"
+      class="flex flex-col items-center justify-center text-ui-text-muted gap-3 opacity-30 group-hover:opacity-50 transition-opacity"
     >
-      <UIcon name="i-heroicons-film" class="w-10 h-10" />
+      <div class="p-3 rounded-2xl bg-white/5 border border-white/5">
+        <UIcon name="i-heroicons-film" class="w-8 h-8 md:w-10 md:h-10" />
+      </div>
     </div>
 
-    <!-- Overlay Gradient -->
+    <!-- Overlay Gradient for better text readability -->
     <div
-      class="absolute inset-0 bg-linear-to-t from-ui-bg/60 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
+      class="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent pointer-events-none opacity-60 group-hover:opacity-40 transition-opacity"
     />
   </div>
 </template>
