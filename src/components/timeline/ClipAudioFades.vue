@@ -98,7 +98,7 @@ function onFadeHandlePointerDown(
   const onPointerUp = () => {
     cleanup();
 
-    if (!didStartDrag) {
+    if (!didStartDrag && !props.isMobile) {
       emit('toggleFadeCurve', { edge: payload.edge });
     }
   };
