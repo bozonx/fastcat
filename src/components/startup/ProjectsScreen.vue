@@ -14,6 +14,7 @@ import EditorSettingsModal from '~/components/settings/EditorSettingsModal.vue';
 const { t, locale } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const isSettingsOpen = ref(false);
+const isRecentExpanded = ref(false);
 
 const {
   searchQuery,
@@ -31,7 +32,7 @@ const {
 } = useProjectManagement();
 
 const projectPresetOptions = computed(() =>
-  workspaceStore.userSettings.projectPresets.items.map((preset) => ({
+  workspaceStore.userSettings.projectPresets.items.map((preset: { id: string; name: string }) => ({
     value: preset.id,
     label: preset.name,
   })),
@@ -42,14 +43,16 @@ const recentProjects = computed(() => workspaceStore.recentProjects);
 
 // Умная сортировка: сначала недавние (по дате), потом остальные (по алфавиту)
 const smartSortedProjects = computed(() => {
-  const recentNames = recentProjects.value.map((p) => p.projectName);
+  const recentNames = recentProjects.value.map((p: { projectName: string }) => p.projectName);
   const others = filteredProjects.value
-    .filter((p) => !recentNames.includes(p))
-    .sort((a, b) => a.localeCompare(b));
+    .filter((p: string) => !recentNames.includes(p))
+    .sort((a: string, b: string) => a.localeCompare(b));
 
   return [
-    ...recentProjects.value.filter((p) => filteredProjects.value.includes(p.projectName)),
-    ...others.map((p) => ({
+    ...recentProjects.value.filter((p: { projectName: string }) =>
+      filteredProjects.value.includes(p.projectName),
+    ),
+    ...others.map((p: string) => ({
       projectName: p,
       projectId: undefined,
       lastTimelinePath: undefined,
@@ -69,13 +72,6 @@ const formatDate = (dateStr?: string) => {
     minute: '2-digit',
   }).format(date);
 };
-
-const navItems = [
-  { id: 'all', label: t('fastcat.projects.title'), icon: 'i-heroicons-squares-2x2' },
-  { id: 'recent', label: t('common.recent'), icon: 'i-heroicons-clock' },
-];
-
-const activeTab = ref('all');
 </script>
 
 <template>
@@ -120,23 +116,6 @@ const activeTab = ref('all');
         </div>
       </div>
 
-      <!-- Navigation -->
-      <nav class="flex-1 p-4 space-y-1">
-        <button
-          v-for="item in navItems"
-          :key="item.id"
-          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group"
-          :class="[
-            activeTab === item.id
-              ? 'bg-selection-accent-500/10 text-selection-accent-400 border border-selection-accent-500/20'
-              : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent border border-transparent',
-          ]"
-          @click="activeTab = item.id"
-        >
-          <UIcon :name="item.icon" class="w-5 h-5" />
-          {{ item.label }}
-        </button>
-      </nav>
 
       <!-- Bottom Actions -->
       <div class="p-4 border-t border-ui-border space-y-2">
@@ -184,7 +163,7 @@ const activeTab = ref('all');
             variant="solid"
             icon="i-heroicons-plus"
             :label="t('fastcat.projects.newProject')"
-            class="px-6 shadow-lg !bg-ui-action hover:!bg-ui-action-hover !text-white shadow-ui-action/20 border-none"
+            class="px-6 shadow-lg bg-ui-action! hover:bg-ui-action-hover! text-white! shadow-ui-action/20 border-none"
             @click="startCreateProject"
           />
         </div>
@@ -194,7 +173,7 @@ const activeTab = ref('all');
       <div class="flex-1 overflow-y-auto custom-scrollbar">
         <div class="max-w-7xl mx-auto p-8 space-y-12">
           <!-- Recent Projects Section -->
-          <section v-if="recentProjects.length > 0 && activeTab !== 'recent'">
+          <section v-if="recentProjects.length > 0">
             <div class="flex items-center justify-between mb-6">
               <h2 class="text-lg font-bold text-ui-text flex items-center gap-2">
                 <UIcon name="i-heroicons-clock" class="text-primary-400" />
@@ -204,21 +183,31 @@ const activeTab = ref('all');
                 variant="ghost"
                 color="neutral"
                 size="sm"
-                :label="t('common.viewAll')"
-                @click="activeTab = 'recent'"
+                :icon="isRecentExpanded ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'"
+                :label="isRecentExpanded ? t('common.collapse') : t('common.expand')"
+                class="hover:bg-ui-bg-accent rounded-lg"
+                @click="isRecentExpanded = !isRecentExpanded"
               />
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div
+              class="transition-all duration-300 ease-in-out"
+              :class="
+                isRecentExpanded
+                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
+                  : 'flex gap-6 overflow-x-auto pb-4 custom-scrollbar snap-x'
+              "
+            >
               <div
-                v-for="(project, index) in recentProjects.slice(0, 3)"
+                v-for="(project, index) in isRecentExpanded ? recentProjects : recentProjects.slice(0, 10)"
                 :key="project.projectName"
-                class="group relative bg-ui-bg-elevated rounded-2xl overflow-hidden transition-all cursor-pointer shadow-xl hover:-translate-y-1"
-                :class="
-                  index === 0
+                class="group relative bg-ui-bg-elevated rounded-2xl overflow-hidden transition-all cursor-pointer shadow-xl hover:-translate-y-1 snap-start"
+                :class="[
+                  index === 0 && !isRecentExpanded
                     ? 'border-2 border-selection-accent-500/60 hover:border-selection-accent-500 shadow-selection-accent-500/10'
-                    : 'border border-ui-border hover:border-selection-accent-500/50 hover:shadow-selection-accent-500/5'
-                "
+                    : 'border border-ui-border hover:border-selection-accent-500/50 hover:shadow-selection-accent-500/5',
+                  !isRecentExpanded ? 'w-[400px] shrink-0' : 'w-full',
+                ]"
                 @click="handleOpenProject(project.projectName)"
               >
                 <div class="aspect-video relative overflow-hidden">
@@ -257,11 +246,8 @@ const activeTab = ref('all');
           <section>
             <div class="flex items-center justify-between mb-6">
               <h2 class="text-lg font-bold text-ui-text flex items-center gap-2">
-                <UIcon
-                  :name="activeTab === 'recent' ? 'i-heroicons-clock' : 'i-heroicons-squares-2x2'"
-                  class="text-primary-400"
-                />
-                {{ activeTab === 'recent' ? t('common.recent') : t('fastcat.projects.title') }}
+                <UIcon name="lucide:box" class="text-primary-400" />
+                {{ t('fastcat.projects.title') }}
                 <span class="text-ui-text-muted font-normal text-sm ml-2"
                   >({{ smartSortedProjects.length }})</span
                 >
@@ -269,27 +255,9 @@ const activeTab = ref('all');
             </div>
 
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              <!-- Create Card inside grid -->
-              <div
-                class="aspect-[4/5] bg-ui-bg-elevated/30 border border-dashed border-ui-border rounded-xl flex flex-col items-center justify-center gap-3 hover:border-ui-action/50 hover:bg-ui-action/5 transition-all cursor-pointer group"
-                @click="startCreateProject"
-              >
-                <div
-                  class="w-10 h-10 rounded-full bg-ui-bg-accent flex items-center justify-center group-hover:bg-ui-action/20 transition-colors"
-                >
-                  <UIcon
-                    name="i-heroicons-plus"
-                    class="w-5 h-5 text-ui-text-muted group-hover:text-ui-action"
-                  />
-                </div>
-                <span class="text-sm font-medium text-ui-text-muted group-hover:text-ui-action">{{
-                  t('fastcat.projects.newProject')
-                }}</span>
-              </div>
-
               <!-- Projects -->
               <div
-                v-for="project in activeTab === 'recent' ? recentProjects : smartSortedProjects"
+                v-for="project in smartSortedProjects"
                 :key="project.projectName"
                 class="flex flex-col group bg-ui-bg-elevated/50 border border-ui-border rounded-xl overflow-hidden hover:border-primary-500/50 hover:bg-ui-bg-accent transition-all cursor-pointer"
                 @click="
@@ -350,6 +318,24 @@ const activeTab = ref('all');
                     />
                   </div>
                 </div>
+              </div>
+
+              <!-- Create Card inside grid - Moved to the end -->
+              <div
+                class="aspect-4/5 bg-ui-bg-elevated/30 border border-dashed border-ui-border rounded-xl flex flex-col items-center justify-center gap-3 hover:border-ui-action/50 hover:bg-ui-action/5 transition-all cursor-pointer group"
+                @click="startCreateProject"
+              >
+                <div
+                  class="w-10 h-10 rounded-full bg-ui-bg-accent flex items-center justify-center group-hover:bg-ui-action/20 transition-colors"
+                >
+                  <UIcon
+                    name="i-heroicons-plus"
+                    class="w-5 h-5 text-ui-text-muted group-hover:text-ui-action"
+                  />
+                </div>
+                <span class="text-sm font-medium text-ui-text-muted group-hover:text-ui-action">{{
+                  t('fastcat.projects.newProject')
+                }}</span>
               </div>
             </div>
           </section>
