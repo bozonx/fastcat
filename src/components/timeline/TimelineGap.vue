@@ -4,9 +4,11 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { timeUsToPx } from '~/utils/timeline/geometry';
+import { useClickOrDrag } from '~/composables/timeline/useClickOrDrag';
 
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useTrackContextMenu } from '~/composables/timeline/useTrackContextMenu';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
@@ -24,9 +26,21 @@ function onPaste() {
   if (payload.operation === 'cut') clipboardStore.setClipboardPayload(null);
 }
 
+const { getTrackContextMenuItems } = useTrackContextMenu({
+  onRequestDelete: (track) => timelineStore.deleteTrack(track.id, { allowNonEmpty: true }),
+});
+
+const trackContextMenuItems = computed(() => {
+  const tracks = (timelineStore.timelineDoc?.tracks as any[]) || [];
+  const track = tracks.find(t => t.id === props.trackId);
+  if (!track) return [];
+  return getTrackContextMenuItems(track, tracks);
+});
+
 const props = defineProps<{
   item: TimelineTrackItem;
   trackId: string;
+  isMobile?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -70,13 +84,29 @@ function shouldStartMarquee(e: PointerEvent): boolean {
   return action === 'move_clips' || action === 'select_area';
 }
 
+const { onPointerDown: handlePointerDown } = useClickOrDrag({
+  onDragStart: (e) => {
+    emit('marqueeStart', e);
+  },
+  onLongPress: (e) => {
+    if (props.isMobile) {
+      timelineStore.selectTrack(props.trackId);
+      selectionStore.selectTimelineTrack(props.trackId);
+      timelineStore.clearSelection();
+    }
+  },
+});
+
 function onPointerdown(e: PointerEvent) {
   if (shouldStartMarquee(e)) {
     e.stopPropagation();
-    emit('marqueeStart', e);
+    handlePointerDown(e);
   } else if (e.button !== 1) {
     e.stopPropagation();
-    emit('select', e);
+    handlePointerDown(e);
+    if (e.button === 0 && !props.isMobile) {
+       emit('select', e);
+    }
   }
 }
 </script>
@@ -86,17 +116,18 @@ function onPointerdown(e: PointerEvent) {
     :items="[
       [
         {
+          label: t('fastcat.timeline.delete'),
+          icon: 'i-heroicons-trash',
+          onSelect: onDelete,
+        },
+        {
           label: t('common.paste'),
           icon: 'i-heroicons-clipboard',
           disabled: !hasTimelineClipboard,
           onSelect: onPaste,
         },
-        {
-          label: t('fastcat.timeline.delete'),
-          icon: 'i-heroicons-trash',
-          onSelect: onDelete,
-        },
       ],
+      ...trackContextMenuItems,
     ]"
   >
     <div

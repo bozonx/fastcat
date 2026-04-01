@@ -159,6 +159,11 @@ const { didStartDrag, rightClickDragTriggered, rightClickPointerActive, onPointe
         );
       });
     },
+    onLongPress: () => {
+      if (props.isMobile) {
+        emit('clipAction', { action: 'longPress' as any, trackId: props.track.id, itemId: props.item.id });
+      }
+    },
   });
 
 function onClipPointerdown(e: PointerEvent) {
@@ -305,7 +310,7 @@ const { contextMenuItems } = useClipContextMenu({
     clipboardStore.setClipboardPayload({
       source: 'timeline',
       operation: 'copy',
-      items: timelineStore.copySelectedClips().map((item) => ({
+      items: (timelineStore.copySelectedClips() || []).map((item) => ({
         sourceTrackId: item.sourceTrackId,
         clip: item.clip,
       })),
@@ -315,7 +320,7 @@ const { contextMenuItems } = useClipContextMenu({
     clipboardStore.setClipboardPayload({
       source: 'timeline',
       operation: 'cut',
-      items: timelineStore.cutSelectedClips().map((item) => ({
+      items: (timelineStore.cutSelectedClips() || []).map((item) => ({
         sourceTrackId: item.sourceTrackId,
         clip: item.clip,
       })),
@@ -324,9 +329,9 @@ const { contextMenuItems } = useClipContextMenu({
   pasteClips: (insertStartUs?: number) => {
     const payload = clipboardStore.clipboardPayload;
     if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return [];
-    const items = timelineStore.pasteClips(payload.items, { insertStartUs });
+    const items = (timelineStore.pasteClips(payload.items, { insertStartUs }) || []);
     if (payload.operation === 'cut') clipboardStore.setClipboardPayload(null);
-    return items.map(it => it.itemId);
+    return items.map((it: any) => it.itemId);
   },
   get hasTimelineClipboard() {
     return clipboardStore.hasTimelinePayload;

@@ -10,6 +10,7 @@ import { trackHasAudio } from '~/utils/audio';
 
 import TimelineTrackLabelItem from '~/components/timeline/TimelineTrackLabelItem.vue';
 import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
+import { useTrackContextMenu } from '~/composables/timeline/useTrackContextMenu';
 
 const { t } = useI18n();
 
@@ -121,83 +122,13 @@ function isTrackVisuallySelected(trackId: string) {
 }
 
 function onSelectTrack(trackId: string) {
-  if (timelineStore.selectedTrackId === trackId) {
-    const entity = selectionStore.selectedEntity;
-    if (entity?.source === 'timeline' && entity.kind === 'timeline-properties') {
-      timelineStore.selectTrack(trackId);
-      selectionStore.selectTimelineTrack(trackId);
-    } else {
-      timelineStore.selectTimelineProperties();
-      selectionStore.selectTimelineProperties();
-    }
-  } else {
-    timelineStore.selectTrack(trackId);
-    selectionStore.selectTimelineTrack(trackId);
-  }
+  timelineStore.selectTrack(trackId);
+  selectionStore.selectTimelineTrack(trackId);
 }
 
-function getTrackContextMenuItems(track: TimelineTrack) {
-  const kind = track.kind;
-  const otherIdx = props.tracks.filter((tr) => tr.kind === kind).length + 1;
-
-  return [
-    [
-      {
-        label: t(`fastcat.timeline.add${kind === 'video' ? 'Video' : 'Audio'}TrackAbove`),
-        icon: kind === 'video' ? 'i-heroicons-video-camera' : 'i-heroicons-musical-note',
-        onSelect: () =>
-          timelineStore.addTrack(kind, `${kind === 'video' ? 'Video' : 'Audio'} ${otherIdx}`, {
-            insertBeforeId: track.id,
-          }),
-      },
-      {
-        label: t(`fastcat.timeline.add${kind === 'video' ? 'Video' : 'Audio'}TrackBelow`),
-        icon: kind === 'video' ? 'i-heroicons-video-camera' : 'i-heroicons-musical-note',
-        onSelect: () =>
-          timelineStore.addTrack(kind, `${kind === 'video' ? 'Video' : 'Audio'} ${otherIdx}`, {
-            insertAfterId: track.id,
-          }),
-      },
-    ],
-    [
-      {
-        label: t('fastcat.timeline.renameTrack'),
-        icon: 'i-heroicons-pencil',
-        onSelect: () => {
-          timelineStore.renamingTrackId = track.id;
-        },
-      },
-      {
-        label: track.locked
-          ? t('fastcat.track.unlock', 'Unlock track')
-          : t('fastcat.track.lock', 'Lock track'),
-        icon: track.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
-        onSelect: () => {
-          timelineStore.updateTrackProperties(track.id, { locked: !track.locked });
-        },
-      },
-      {
-        label: t('fastcat.timeline.deleteTrack'),
-        icon: 'i-heroicons-trash',
-        onSelect: () => requestDeleteTrack(track),
-      },
-    ],
-    [
-      {
-        label: t('fastcat.track.moveUp', 'Move track up'),
-        icon: 'i-heroicons-arrow-up',
-        disabled: props.tracks.filter((t) => t.kind === track.kind)[0]?.id === track.id,
-        onSelect: () => timelineStore.moveTrackUp(track.id),
-      },
-      {
-        label: t('fastcat.track.moveDown', 'Move track down'),
-        icon: 'i-heroicons-arrow-down',
-        disabled: props.tracks.filter((t) => t.kind === track.kind).slice(-1)[0]?.id === track.id,
-        onSelect: () => timelineStore.moveTrackDown(track.id),
-      },
-    ],
-  ];
-}
+const { getTrackContextMenuItems } = useTrackContextMenu({
+  onRequestDelete: (track) => requestDeleteTrack(track),
+});
 
 const { emptyAreaContextMenuItems: propertiesContextMenuItems } = useTimelineEmptyAreaContextMenu({
   onZoomToFit: () => props.onZoomToFit?.(),
@@ -220,7 +151,7 @@ const { emptyAreaContextMenuItems: propertiesContextMenuItems } = useTimelineEmp
           <UContextMenu
             v-for="(track, index) in tracks"
             :key="track.id"
-            :items="getTrackContextMenuItems(track)"
+            :items="getTrackContextMenuItems(track, tracks)"
           >
             <TimelineTrackLabelItem
               :track="track"

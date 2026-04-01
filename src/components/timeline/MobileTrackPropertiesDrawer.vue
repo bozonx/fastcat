@@ -12,6 +12,8 @@ const props = defineProps<{
   isOpen: boolean;
 }>();
 
+const activeSnapPoint = defineModel<string | number | null>('activeSnapPoint', { default: null });
+
 const emit = defineEmits<{
   (e: 'close'): void;
 }>();
@@ -126,7 +128,11 @@ function confirmDeleteTrack() {
 </script>
 
 <template>
-  <MobileTimelineDrawer v-model:open="isOpenLocal" force-landscape-direction="bottom">
+  <MobileTimelineDrawer
+    v-model:open="isOpenLocal"
+    v-model:active-snap-point="activeSnapPoint"
+    force-landscape-direction="bottom"
+  >
     <template #toolbar>
       <MobileDrawerToolbar>
         <!-- Rename -->
