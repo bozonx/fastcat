@@ -136,6 +136,15 @@ function onSelectTrack(trackId: string) {
   selectionStore.selectTimelineTrack(trackId);
 }
 
+function onMiddleClickTrack(trackId: string) {
+  const action = workspaceStore.userSettings.mouse.trackHeaders.middleClick;
+  if (action === 'select_all_clips') {
+    timelineStore.selectAllClipsOnTrack(trackId);
+  } else if (action === 'select_track') {
+    onSelectTrack(trackId);
+  }
+}
+
 const { getTrackContextMenuItems } = useTrackContextMenu({
   onRequestDelete: (track) => requestDeleteTrack(track),
 });
@@ -179,6 +188,7 @@ const { emptyAreaContextMenuItems: propertiesContextMenuItems } = useTimelineEmp
               :has-audio="trackHasAudio(track, mediaStore.mediaMetadata)"
               :level-db="timelineStore.audioLevels?.[track.id]?.peakDb"
               @select="onSelectTrack(track.id)"
+              @middle-click="onMiddleClickTrack(track.id)"
               @rename="
                 (name: string) => {
                   timelineStore.renameTrack(track.id, name);
