@@ -428,11 +428,12 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
         clipWidthPx >= 30 && trackHeight >= 40 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
         isMobile ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100',
       ]"
+      @pointerdown.stop="handleTransitionCreatePointerDown($event, 'in')"
+      @click.stop
     >
       <div
         class="w-[9px] h-[12px] bg-white border border-black/30 hover:bg-yellow-400 transition-colors"
         style="clip-path: polygon(0 0, 100% 50%, 0 100%)"
-        @pointerdown="handleTransitionCreatePointerDown($event, 'in')"
       ></div>
     </div>
 
@@ -450,11 +451,12 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
         clipWidthPx >= 30 && trackHeight >= 40 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
         isMobile ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100',
       ]"
+      @pointerdown.stop="handleTransitionCreatePointerDown($event, 'out')"
+      @click.stop
     >
       <div
         class="w-[9px] h-[12px] bg-white border border-black/30 hover:bg-yellow-400 transition-colors"
         style="clip-path: polygon(0 50%, 100% 0, 100% 100%)"
-        @pointerdown="handleTransitionCreatePointerDown($event, 'out')"
       ></div>
     </div>
   </div>
