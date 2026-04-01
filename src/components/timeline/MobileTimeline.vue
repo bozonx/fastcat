@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import type {
   TimelineClipActionPayload,
@@ -18,7 +18,12 @@ import {
   pxToTimeUs,
   type TimelineZoomAnchor,
 } from '~/utils/timeline/geometry';
-import { timelineZoomPositionToScale, timelineZoomScaleToPosition } from '~/utils/zoom';
+import {
+  MIN_TIMELINE_ZOOM_POSITION,
+  MAX_TIMELINE_ZOOM_POSITION,
+  timelineZoomPositionToScale,
+  timelineZoomScaleToPosition,
+} from '~/utils/zoom';
 
 import TimelineTracks from './TimelineTracks.vue';
 import TimelineRuler from './TimelineRuler.vue';
@@ -320,6 +325,36 @@ function onTouchMove(e: TouchEvent) {
   }
 }
 
+// Handles trackpad pinch and Chrome DevTools Shift+drag (both fire wheel with ctrlKey=true).
+// deltaY < 0 = pinch out = zoom in; deltaY > 0 = pinch in = zoom out.
+function onScrollElWheel(e: WheelEvent) {
+  if (!e.ctrlKey) return;
+  e.preventDefault();
+
+  const el = scrollEl.value;
+  if (!el) return;
+
+  const rect = el.getBoundingClientRect();
+  const anchorViewportX = e.clientX - rect.left;
+  const anchorTimeUs = pxToTimeUs(el.scrollLeft + anchorViewportX, timelineStore.timelineZoom);
+
+  const step = e.deltaY > 0 ? -5 : 5;
+  const nextZoom = Math.min(
+    MAX_TIMELINE_ZOOM_POSITION,
+    Math.max(MIN_TIMELINE_ZOOM_POSITION, timelineStore.timelineZoom + step),
+  );
+
+  applyZoomWithAnchor({ nextZoom, anchor: { anchorTimeUs, anchorViewportX } });
+}
+
+onMounted(() => {
+  scrollEl.value?.addEventListener('wheel', onScrollElWheel, { passive: false });
+});
+
+onBeforeUnmount(() => {
+  scrollEl.value?.removeEventListener('wheel', onScrollElWheel);
+});
+
 const clickStartX = ref(0);
 const clickStartY = ref(0);
 
@@ -579,9 +614,7 @@ async function onClipAction(payload: TimelineClipActionPayload) {
 
     <!-- FAB: add content -->
     <Teleport to="body">
-      <div
-        class="fixed bottom-20 right-6 z-40 transition-all duration-300"
-      >
+      <div class="fixed bottom-20 right-6 z-40 transition-all duration-300">
         <UButton
           icon="lucide:plus"
           size="xl"

@@ -337,8 +337,8 @@ export function useMonitorGestures(input: {
     // Native trackpad pinch-to-zoom always sets ctrlKey to true
     if (e.ctrlKey) {
       e.preventDefault();
-      // Trackpad pinch delta usually maps to deltaY. Adjust scale factor based on standard browser behavior
-      const pinchDelta = -e.deltaY;
+      // deltaY < 0 = pinch out (zoom in), deltaY > 0 = pinch in (zoom out) — standard browser convention
+      const pinchDelta = e.deltaY;
       applyZoomAtPoint({ delta: pinchDelta, clientX: e.clientX, clientY: e.clientY });
       return;
     }
