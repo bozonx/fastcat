@@ -114,6 +114,11 @@ async function handleBack() {
 
 const isLandscapeMode = useMediaQuery('(orientation: landscape)');
 
+const isVerticalProject = computed(() => {
+  const { width, height } = projectStore.projectSettings.project;
+  return width < height;
+});
+
 // Persisted panel sizes (percent of container)
 const portraitMonitorHeight = useLocalStorage('mobile_monitor_size_portrait', 38);
 const landscapeMonitorWidth = useLocalStorage('mobile_monitor_size_landscape', 42);
@@ -138,7 +143,8 @@ function onDividerPointerDown(e: PointerEvent) {
 
   const onMove = (ev: PointerEvent) => {
     if (isLandscapeMode.value) {
-      const pct = ((ev.clientX - rect.left) / rect.width) * 100;
+      // In flex-row-reverse, the monitor is on the right
+      const pct = ((rect.right - ev.clientX) / rect.width) * 100;
       landscapeMonitorWidth.value = Math.min(Math.max(pct, 20), 70);
     } else {
       const pct = ((ev.clientY - rect.top) / rect.height) * 100;
@@ -202,13 +208,15 @@ function onDividerPointerDown(e: PointerEvent) {
         v-else-if="activeTab === 'edit'"
         ref="containerRef"
         class="flex h-full overflow-hidden bg-slate-950"
-        :class="isLandscapeMode ? 'flex-row' : 'flex-col'"
+        :class="[
+          isLandscapeMode ? 'flex-row-reverse' : 'flex-col'
+        ]"
       >
         <MobileMonitorContainer
           mode="edit"
           flexible
           :style="monitorStyle"
-          :class="isLandscapeMode ? 'shrink-0' : 'shrink-0'"
+          class="shrink-0"
         />
 
         <!-- Draggable divider -->

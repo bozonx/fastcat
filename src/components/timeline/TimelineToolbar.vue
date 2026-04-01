@@ -16,12 +16,15 @@ import {
   timelineZoomScaleToPosition,
 } from '~/utils/zoom';
 import type { TextClipStyle } from '~/timeline/types';
+import TimelineSnapSettingsModal from './TimelineSnapSettingsModal.vue';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const settingsStore = useTimelineSettingsStore();
 const focusStore = useFocusStore();
 const presetsStore = usePresetsStore();
+
+const isSnapSettingsModalOpen = ref(false);
 
 const emit = defineEmits<{
   (e: 'dragVirtualStart', event: DragEvent, type: 'adjustment' | 'background' | 'text'): void;
@@ -248,6 +251,17 @@ function onToolbarContextMenu(e: MouseEvent) {
           </UiTooltip>
         </UFieldGroup>
 
+        <UiTooltip :text="t('videoEditor.settings.snappingTitle', 'Snapping settings')">
+          <UButton
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            icon="i-heroicons-cog-6-tooth"
+            class="hover:bg-ui-bg-hover/60"
+            @click="isSnapSettingsModalOpen = true"
+          />
+        </UiTooltip>
+
         <div class="w-px h-4 bg-ui-border mx-1 opacity-50" />
 
         <UFieldGroup class="inline-flex">
@@ -435,5 +449,7 @@ function onToolbarContextMenu(e: MouseEvent) {
         </span>
       </div>
     </div>
+
+    <TimelineSnapSettingsModal v-model:open="isSnapSettingsModalOpen" />
   </UContextMenu>
 </template>

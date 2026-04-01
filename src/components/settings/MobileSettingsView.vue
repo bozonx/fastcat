@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import SettingsSnapping from './SettingsSnapping.vue';
+import SettingsSnapping from '~/components/timeline/TimelineSnapSettings.vue';
 import MobileAppSettingsPanel from './MobileAppSettingsPanel.vue';
 import TimelineProperties from '~/components/properties/TimelineProperties.vue';
 import ResolutionSettings from '~/components/project-settings/ResolutionSettings.vue';
