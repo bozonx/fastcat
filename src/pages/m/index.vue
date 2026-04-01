@@ -118,14 +118,7 @@ const formatDate = (dateStr?: string) => {
                 class="rounded-full w-10 h-10 p-0 flex items-center justify-center bg-white/5"
                 @click="isSettingsOpen = true"
               />
-              <UButton
-                size="sm"
-                variant="ghost"
-                color="neutral"
-                icon="i-heroicons-plus"
-                class="rounded-full h-10 px-4 !bg-ui-action hover:!bg-ui-action-hover text-white font-bold shadow-lg shadow-ui-action/20 border-none"
-                @click="startCreateProject"
-              />
+
             </div>
           </div>
         </header>
@@ -134,11 +127,11 @@ const formatDate = (dateStr?: string) => {
         <main class="flex-1 overflow-y-auto bg-slate-950 custom-scrollbar relative">
           <!-- Search Bar Sticky below header -->
           <div class="px-5 py-4 sticky top-0 z-10 bg-slate-950/80 backdrop-blur-md">
-            <UiSearchInput
-              v-model="searchQuery"
-              :placeholder="t('fastcat.projects.searchPlaceholder')"
-              class="!bg-slate-900/50 border-white/5"
-            />
+              <UiSearchInput
+                v-model="searchQuery"
+                :placeholder="t('fastcat.projects.searchPlaceholder')"
+                is-mobile
+              />
           </div>
 
           <div class="flex flex-col gap-8 pb-24">
@@ -148,11 +141,6 @@ const formatDate = (dateStr?: string) => {
                 <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">
                   {{ t('common.recent') }}
                 </h2>
-                <span
-                  class="text-[10px] font-bold text-primary-500 bg-primary-500/10 px-2 py-0.5 rounded-full uppercase"
-                >
-                  {{ recentProjects.length }}
-                </span>
               </div>
 
               <div class="flex overflow-x-auto gap-4 px-5 pb-2 no-scrollbar scroll-smooth">
@@ -195,6 +183,11 @@ const formatDate = (dateStr?: string) => {
                 <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">
                   {{ searchQuery ? t('common.found') : t('fastcat.projects.title') }}
                 </h2>
+                <span
+                  class="text-[10px] font-bold text-primary-500 bg-primary-500/10 px-2 py-0.5 rounded-full uppercase"
+                >
+                  {{ filteredProjects.length }}
+                </span>
               </div>
 
               <div v-if="filteredProjects.length > 0" class="flex flex-col gap-3">
@@ -264,11 +257,6 @@ const formatDate = (dateStr?: string) => {
                         class="rounded-full w-9 h-9 p-0 text-slate-600 active:text-white active:bg-white/5 transition-colors"
                         @click.stop="startRename(project.projectName)"
                       />
-                      <UIcon
-                        v-if="isRenaming !== project.projectName"
-                        name="i-heroicons-chevron-right"
-                        class="w-5 h-5 text-slate-700"
-                      />
                     </div>
                   </div>
                 </div>
@@ -293,7 +281,7 @@ const formatDate = (dateStr?: string) => {
                     variant="solid"
                     color="neutral"
                     size="sm"
-                    class="rounded-full px-6 !bg-ui-action hover:!bg-ui-action-hover !text-white border-none shadow-ui-action/20"
+                    class="rounded-full px-6 bg-ui-action! hover:bg-ui-action-hover! text-white! border-none shadow-ui-action/20"
                     :label="t('fastcat.projects.newProject')"
                     @click="startCreateProject"
                   />
@@ -381,7 +369,7 @@ const formatDate = (dateStr?: string) => {
                     value-key="value"
                     label-key="label"
                     full-width
-                    class="!bg-slate-900/50 !rounded-2xl !h-12"
+                    class="bg-slate-900/50! rounded-2xl! h-12!"
                     @update:model-value="
                       (value: unknown) =>
                         applyProjectCreationPreset(
@@ -417,7 +405,7 @@ const formatDate = (dateStr?: string) => {
             />
             <UButton
               color="primary"
-              class="flex-[2] h-16 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-xs shadow-2xl shadow-primary-500/20 active:scale-95 transition-transform"
+              class="flex-2 h-16 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-xs shadow-2xl shadow-primary-500/20 active:scale-95 transition-transform"
               :disabled="!projectCreationSettings.name.trim()"
               :loading="workspaceStore.isLoading"
               :label="t('common.create')"
@@ -440,6 +428,20 @@ const formatDate = (dateStr?: string) => {
       >
         <MobileAppSettingsPanel class="flex-1" />
       </UiModal>
+
+      <!-- FAB -->
+      <Teleport to="body">
+        <div class="fixed bottom-24 right-6 z-40 transition-all duration-300">
+          <UButton
+            icon="lucide:plus"
+            size="xl"
+            class="rounded-full shadow-2xl w-14 h-14 flex items-center justify-center bg-ui-action hover:bg-ui-action-hover text-white border-none shadow-ui-action/20"
+            :ui="{ icon: 'w-7 h-7' }"
+            :aria-label="t('fastcat.projects.newProject')"
+            @click="startCreateProject"
+          />
+        </div>
+      </Teleport>
     </template>
   </div>
 </template>
