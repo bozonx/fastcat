@@ -211,29 +211,45 @@ const formatDate = (dateStr?: string) => {
                   </div>
 
                   <div class="px-4 flex items-center justify-between flex-1 min-w-0 h-full">
-                    <div class="flex flex-col min-w-0">
-                      <div
-                        v-if="isRenaming === project.projectName"
-                        class="flex items-center gap-2"
-                      >
-                        <UInput
-                          v-model="renameValue"
+                    <div
+                      v-if="isRenaming === project.projectName"
+                      class="flex items-center gap-3 w-full"
+                    >
+                      <UInput
+                        v-model="renameValue"
+                        size="sm"
+                        class="flex-1 min-w-0"
+                        autofocus
+                        variant="none"
+                        :ui="{
+                          base: 'h-10 px-4 bg-slate-950/50 rounded-xl border border-white/10 focus:border-primary-500/50 transition-all font-bold text-sm text-white',
+                        }"
+                        @keyup.enter="renameProject(project.projectName)"
+                        @keyup.esc="isRenaming = null"
+                        @click.stop
+                      />
+                      <div class="flex items-center gap-1 shrink-0">
+                        <UButton
                           size="sm"
-                          class="w-32"
-                          autofocus
-                          @keyup.enter="renameProject(project.projectName)"
-                          @keyup.esc="isRenaming = null"
-                          @click.stop
+                          variant="ghost"
+                          color="neutral"
+                          icon="lucide:x"
+                          class="rounded-full w-10 h-10 p-0 text-slate-500 active:text-white active:bg-white/5 transition-colors"
+                          @click.stop="isRenaming = null"
                         />
                         <UButton
-                          size="xs"
+                          size="sm"
+                          variant="solid"
                           color="primary"
                           icon="lucide:check"
-                          class="rounded-full h-8 w-8 p-0"
+                          class="rounded-full w-10 h-10 p-0 bg-ui-action! text-white shadow-lg shadow-ui-action/20 border-none active:scale-90 transition-transform"
                           @click.stop="renameProject(project.projectName)"
                         />
                       </div>
-                      <template v-else>
+                    </div>
+
+                    <template v-else>
+                      <div class="flex flex-col min-w-0">
                         <span
                           class="font-bold text-slate-100 truncate text-sm tracking-tight leading-tight"
                           >{{ project.projectName }}</span
@@ -244,20 +260,19 @@ const formatDate = (dateStr?: string) => {
                           <UIcon name="i-heroicons-clock" class="w-3 h-3" />
                           {{ project.updatedAt ? formatDate(project.updatedAt) : '---' }}
                         </span>
-                      </template>
-                    </div>
+                      </div>
 
-                    <div class="flex items-center gap-2 shrink-0">
-                      <UButton
-                        v-if="isRenaming !== project.projectName"
-                        size="sm"
-                        variant="ghost"
-                        color="neutral"
-                        icon="lucide:edit-2"
-                        class="rounded-full w-9 h-9 p-0 text-slate-600 active:text-white active:bg-white/5 transition-colors"
-                        @click.stop="startRename(project.projectName)"
-                      />
-                    </div>
+                      <div class="flex items-center gap-2 shrink-0">
+                        <UButton
+                          size="sm"
+                          variant="ghost"
+                          color="neutral"
+                          icon="lucide:edit-2"
+                          class="rounded-full w-9 h-9 p-0 text-slate-600 active:text-white active:bg-white/5 transition-colors"
+                          @click.stop="startRename(project.projectName)"
+                        />
+                      </div>
+                    </template>
                   </div>
                 </div>
               </div>
