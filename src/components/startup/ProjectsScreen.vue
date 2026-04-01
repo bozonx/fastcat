@@ -80,9 +80,9 @@ const formatDate = (dateStr?: string) => {
     <div
       class="w-64 border-r border-ui-border bg-ui-bg-elevated/50 flex flex-col shrink-0 backdrop-blur-md"
     >
-      <!-- Logo/Workspace -->
+      <!-- Logo -->
       <div class="p-6 border-b border-ui-border">
-        <div class="flex items-center gap-3 mb-6">
+        <div class="flex items-center gap-3">
           <div
             class="w-10 h-10 rounded-xl bg-primary-500 flex items-center justify-center shadow-lg shadow-primary-500/20"
           >
@@ -95,9 +95,13 @@ const formatDate = (dateStr?: string) => {
             </p>
           </div>
         </div>
+      </div>
 
+      <!-- Bottom Actions -->
+      <div class="mt-auto p-4 border-t border-ui-border space-y-4">
+        <!-- Workspace Info -->
         <div class="bg-ui-bg/50 rounded-xl p-3 border border-ui-border">
-          <div class="flex items-center justify-between gap-2 mb-1">
+          <div class="flex items-center justify-between gap-2 mb-2">
             <span class="text-[10px] font-bold text-ui-text-muted uppercase tracking-wider">{{
               t('fastcat.projects.changeWorkspace')
             }}</span>
@@ -110,33 +114,34 @@ const formatDate = (dateStr?: string) => {
               @click="workspaceStore.resetWorkspace"
             />
           </div>
-          <p class="text-sm font-medium text-ui-text truncate">
-            {{ workspaceStore.workspaceHandle?.name }}
-          </p>
+          <div class="flex items-center gap-2 overflow-hidden">
+            <UIcon name="i-heroicons-folder" class="w-4 h-4 text-primary-400 shrink-0" />
+            <p class="text-xs font-medium text-ui-text truncate">
+              {{ workspaceStore.workspaceHandle?.name }}
+            </p>
+          </div>
         </div>
-      </div>
 
-
-      <!-- Bottom Actions -->
-      <div class="p-4 border-t border-ui-border space-y-2">
-        <UButton
-          block
-          variant="ghost"
-          color="neutral"
-          icon="i-heroicons-cog-6-tooth"
-          :label="t('videoEditor.settings.title')"
-          class="justify-start px-3"
-          @click="isSettingsOpen = true"
-        />
-        <UButton
-          block
-          variant="ghost"
-          color="primary"
-          icon="lucide:smartphone"
-          to="/m"
-          :label="t('fastcat.projects.switchToMobile')"
-          class="justify-start px-3"
-        />
+        <div class="space-y-1">
+          <UButton
+            block
+            variant="ghost"
+            color="neutral"
+            icon="i-heroicons-cog-6-tooth"
+            :label="t('videoEditor.settings.title')"
+            class="justify-start px-3"
+            @click="isSettingsOpen = true"
+          />
+          <UButton
+            block
+            variant="ghost"
+            color="primary"
+            icon="lucide:smartphone"
+            to="/m"
+            :label="t('fastcat.projects.switchToMobile')"
+            class="justify-start px-3"
+          />
+        </div>
       </div>
     </div>
 
