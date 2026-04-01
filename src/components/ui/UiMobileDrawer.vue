@@ -23,6 +23,8 @@ interface Props {
   direction?: 'bottom' | 'top' | 'left' | 'right';
   /** Whether to take almost full screen height in portrait mode (95dvh) */
   isFullHeight?: boolean;
+  /** Whether to show an explicit close button */
+  showClose?: boolean;
   /** Custom UI classes for the container */
   ui?: {
     container?: string;
@@ -30,6 +32,7 @@ interface Props {
     header?: string;
     footer?: string;
     toolbar?: string;
+    close?: string;
   };
 }
 
@@ -44,6 +47,7 @@ const props = withDefaults(defineProps<Props>(), {
   modal: true,
   overlay: true,
   withHandle: true,
+  showClose: true,
   ui: () => ({}),
 });
 
@@ -150,6 +154,10 @@ function onBackdropClick() {
   if (!props.modal) isOpen.value = false;
 }
 
+function onClose() {
+  isOpen.value = false;
+}
+
 function onHandleTap() {
   if (isExpanded.value) {
     isOpen.value = false;
@@ -219,9 +227,9 @@ watch(isOpen, (val) => {
 <template>
   <Teleport v-if="!props.modal" to="body">
     <div
-      class="fixed inset-0 bg-black/55 transition-opacity duration-200 z-[30]"
+      class="fixed inset-0 bg-slate-950/40 backdrop-blur-[2px] transition-all duration-300 z-40"
       :class="[
-        isOpen && isExpanded ? 'opacity-100' : 'opacity-0',
+        isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none',
         isBackdropInteractive ? 'pointer-events-auto' : 'pointer-events-none',
       ]"
       :style="{ touchAction: isBackdropInteractive ? 'none' : 'auto' }"
@@ -244,7 +252,7 @@ watch(isOpen, (val) => {
     :modal="props.modal"
     :overlay="props.modal && props.overlay"
     :handle="false"
-    :ui="{ content: 'z-50' }"
+    :ui="{ content: 'z-50 shadow-none ring-0' }"
     @update:active-snap-point="onSnapPointChange"
   >
     <template #content>
@@ -254,13 +262,13 @@ watch(isOpen, (val) => {
           v-if="
             (effectiveDirection === 'bottom' || effectiveDirection === 'top') && props.withHandle
           "
-          class="shrink-0 flex justify-center py-2 relative z-10 cursor-pointer touch-none"
+          class="shrink-0 flex justify-center py-2.5 relative z-10 cursor-pointer touch-none group"
           @click.stop="onHandleTap"
           @touchstart.passive="onDragStart"
           @touchmove.passive="onDragMove"
           @touchend="onDragEnd"
         >
-          <div class="w-10 h-1 rounded-full bg-slate-700/60"></div>
+          <div class="w-12 h-1.5 rounded-full bg-slate-700/40 group-hover:bg-slate-600/60 transition-colors"></div>
         </div>
 
         <!-- Side mode: lateral handle -->
@@ -291,24 +299,35 @@ watch(isOpen, (val) => {
 
         <!-- Header -->
         <div
-          v-if="props.title || $slots.header"
-          class="shrink-0 pt-4 pb-3 px-5 border-t border-slate-800/60"
+          v-if="props.title || $slots.header || props.showClose"
+          class="shrink-0 pt-3 pb-3 px-5 border-b border-white/5 flex items-center justify-between gap-4"
           :class="props.ui.header"
           @touchstart.passive="onDragStart"
           @touchmove.passive="onDragMove"
           @touchend="onDragEnd"
         >
-          <slot name="header">
-            <h3
-              v-if="props.title"
-              class="text-base font-bold text-slate-100 leading-tight truncate"
-            >
-              {{ props.title }}
-            </h3>
-            <p v-if="props.description" class="mt-1 text-xs text-slate-400 line-clamp-2">
-              {{ props.description }}
-            </p>
-          </slot>
+          <div class="flex-1 min-w-0">
+            <slot name="header">
+              <h3
+                v-if="props.title"
+                class="text-base font-bold text-slate-100 leading-tight truncate"
+              >
+                {{ props.title }}
+              </h3>
+              <p v-if="props.description" class="mt-0.5 text-xs text-slate-400 line-clamp-2">
+                {{ props.description }}
+              </p>
+            </slot>
+          </div>
+
+          <button
+            v-if="props.showClose"
+            class="shrink-0 p-2 -mr-2 rounded-full text-slate-400 hover:text-slate-100 hover:bg-white/10 transition-colors"
+            :class="props.ui.close"
+            @click="onClose"
+          >
+            <UIcon name="i-heroicons-x-mark" class="w-5 h-5" />
+          </button>
         </div>
 
         <!-- Main Body -->

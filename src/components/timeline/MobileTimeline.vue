@@ -427,7 +427,7 @@ async function onClipAction(payload: TimelineClipActionPayload) {
       direction="bottom"
       @update:open="(val) => !val && onMarkerPropertiesDrawerClose()"
     >
-      <div class="px-4 pb-4 overflow-y-auto max-h-[70vh]">
+      <div class="px-4 pb-4">
         <MarkerProperties v-if="selectedMarkerId" :marker-id="selectedMarkerId" />
       </div>
     </UiMobileDrawer>
@@ -440,7 +440,7 @@ async function onClipAction(payload: TimelineClipActionPayload) {
       direction="bottom"
       @update:open="(val) => !val && onSelectionRangeDrawerClose()"
     >
-      <div class="px-4 pb-6 overflow-y-auto">
+      <div class="px-4 pb-6">
         <SelectionRangeProperties />
       </div>
     </UiMobileDrawer>
@@ -453,7 +453,7 @@ async function onClipAction(payload: TimelineClipActionPayload) {
       direction="bottom"
       @update:open="(val) => !val && onTransitionDrawerClose()"
     >
-      <div class="px-4 pb-6 overflow-y-auto">
+      <div class="px-4 pb-6">
         <TransitionProperties
           v-if="timelineStore.selectedTransition && selectedTransitionContext"
           :transition-selection="timelineStore.selectedTransition"
