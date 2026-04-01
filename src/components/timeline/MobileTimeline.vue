@@ -26,11 +26,12 @@ import TimelineGrid from './TimelineGrid.vue';
 import MobileTimelineToolbar from './MobileTimelineToolbar.vue';
 import MobileClipPropertiesDrawer from './MobileClipPropertiesDrawer.vue';
 import MobileTrackPropertiesDrawer from './MobileTrackPropertiesDrawer.vue';
-import MarkerProperties from '~/components/properties/MarkerProperties.vue';
-import SelectionRangeProperties from '~/components/properties/SelectionRangeProperties.vue';
-import TransitionProperties from '~/components/properties/TransitionProperties.vue';
 import MobileAddContentDrawer from './MobileAddContentDrawer.vue';
 import MobileVirtualClipPresetDrawer from './MobileVirtualClipPresetDrawer.vue';
+import MobileMarkerPropertiesDrawer from './MobileMarkerPropertiesDrawer.vue';
+import MobileTransitionPropertiesDrawer from './MobileTransitionPropertiesDrawer.vue';
+import MobileGapPropertiesDrawer from './MobileGapPropertiesDrawer.vue';
+import SelectionRangeProperties from '~/components/properties/SelectionRangeProperties.vue';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -57,6 +58,7 @@ const isClipPropertiesDrawerOpen = ref(false);
 const isMarkerPropertiesDrawerOpen = ref(false);
 const isSelectionRangeDrawerOpen = ref(false);
 const isTransitionDrawerOpen = ref(false);
+const isGapPropertiesDrawerOpen = ref(false);
 const isAddContentDrawerOpen = ref(false);
 const isVirtualClipPresetDrawerOpen = ref(false);
 const virtualClipPresetType = ref<'text' | 'shape' | 'hud'>('text');
@@ -92,12 +94,19 @@ const selectedTransitionContext = computed(() => {
   return { track, clip };
 });
 
+const selectedGap = computed(() => {
+  const entity = selectionStore.selectedEntity;
+  if (entity?.source !== 'timeline' || entity.kind !== 'gap') return null;
+  return { trackId: entity.trackId, itemId: entity.itemId };
+});
+
 function closeAllDrawers() {
   isTrackPropertiesDrawerOpen.value = false;
   isClipPropertiesDrawerOpen.value = false;
   isMarkerPropertiesDrawerOpen.value = false;
   isSelectionRangeDrawerOpen.value = false;
   isTransitionDrawerOpen.value = false;
+  isGapPropertiesDrawerOpen.value = false;
   drawerActiveSnapPoint.value = null;
 }
 
@@ -158,6 +167,17 @@ watch(
   { immediate: true },
 );
 
+watch(
+  () => !!selectedGap.value,
+  (val) => {
+    if (val) {
+      closeAllDrawers();
+      isGapPropertiesDrawerOpen.value = true;
+    }
+  },
+  { immediate: true },
+);
+
 function onUpdateDrawerOpen(val: boolean) {
   if (!val) {
     if (timelineStore.selectedTrackId) {
@@ -188,6 +208,12 @@ function onSelectionRangeDrawerClose() {
 function onTransitionDrawerClose() {
   isTransitionDrawerOpen.value = false;
   timelineStore.selectTransition(null);
+}
+
+function onGapPropertiesDrawerClose() {
+  isGapPropertiesDrawerOpen.value = false;
+  timelineStore.clearSelection();
+  selectionStore.clearSelection();
 }
 
 const scrollEl = ref<HTMLElement | null>(null);
@@ -420,17 +446,14 @@ async function onClipAction(payload: TimelineClipActionPayload) {
       @close="onUpdateDrawerOpen(false)"
     />
 
-    <UiMobileDrawer
-      v-model:open="isMarkerPropertiesDrawerOpen"
-      :title="t('fastcat.timeline.marker', 'Marker')"
-      :snap-points="[0.4, 0.85]"
-      direction="bottom"
-      @update:open="(val) => !val && onMarkerPropertiesDrawerClose()"
-    >
-      <div class="px-4 pb-4">
-        <MarkerProperties v-if="selectedMarkerId" :marker-id="selectedMarkerId" />
-      </div>
-    </UiMobileDrawer>
+    <!-- Marker Properties Drawer -->
+    <MobileMarkerPropertiesDrawer
+      v-if="selectedMarkerId"
+      v-model:active-snap-point="drawerActiveSnapPoint"
+      :is-open="isMarkerPropertiesDrawerOpen"
+      :marker-id="selectedMarkerId"
+      @close="onMarkerPropertiesDrawerClose"
+    />
 
     <!-- Selection Range Properties Drawer -->
     <UiMobileDrawer
@@ -446,22 +469,25 @@ async function onClipAction(payload: TimelineClipActionPayload) {
     </UiMobileDrawer>
 
     <!-- Transition Properties Drawer -->
-    <UiMobileDrawer
-      v-model:open="isTransitionDrawerOpen"
-      :title="t('fastcat.timeline.transition.title', 'Transition')"
-      :snap-points="[0.45, 0.88]"
-      direction="bottom"
-      @update:open="(val) => !val && onTransitionDrawerClose()"
-    >
-      <div class="px-4 pb-6">
-        <TransitionProperties
-          v-if="timelineStore.selectedTransition && selectedTransitionContext"
-          :transition-selection="timelineStore.selectedTransition"
-          :clip="selectedTransitionContext.clip"
-          :track="selectedTransitionContext.track"
-        />
-      </div>
-    </UiMobileDrawer>
+    <MobileTransitionPropertiesDrawer
+      v-if="timelineStore.selectedTransition && selectedTransitionContext"
+      v-model:active-snap-point="drawerActiveSnapPoint"
+      :is-open="isTransitionDrawerOpen"
+      :transition-selection="timelineStore.selectedTransition"
+      :clip="selectedTransitionContext.clip"
+      :track="selectedTransitionContext.track"
+      @close="onTransitionDrawerClose"
+    />
+
+    <!-- Gap Properties Drawer -->
+    <MobileGapPropertiesDrawer
+      v-if="selectedGap"
+      v-model:active-snap-point="drawerActiveSnapPoint"
+      :is-open="isGapPropertiesDrawerOpen"
+      :track-id="selectedGap.trackId"
+      :item-id="selectedGap.itemId"
+      @close="onGapPropertiesDrawerClose"
+    />
 
     <!-- Add content drawer -->
     <MobileAddContentDrawer
