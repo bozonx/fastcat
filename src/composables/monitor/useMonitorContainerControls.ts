@@ -283,6 +283,27 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
   const contextMenuItems = computed(() => [
     [
       {
+        label: options.t('fastcat.monitor.playbackSpeed', 'Playback Speed'),
+        icon: 'i-heroicons-forward',
+        children: [
+          ...negativeSpeedOptions.map((opt) => ({
+            label: opt.label,
+            type: 'checkbox' as const,
+            checked: options.timelineStore.playbackSpeed === opt.value,
+            onSelect: () => options.timelineStore.setPlaybackSpeed(opt.value),
+          })),
+          { label: '', type: 'divider' as const },
+          ...playbackSpeedOptions.map((opt) => ({
+            label: opt.label,
+            type: 'checkbox' as const,
+            checked: options.timelineStore.playbackSpeed === opt.value,
+            onSelect: () => options.timelineStore.setPlaybackSpeed(opt.value),
+          })),
+        ],
+      },
+    ],
+    [
+      {
         label: options.t('fastcat.timeline.addMarkerAtPlayhead'),
         icon: 'i-heroicons-tag',
         onSelect: createMarkerAtPlayhead,

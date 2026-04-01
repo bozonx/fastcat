@@ -572,6 +572,7 @@
       "loadError": "Error loading timeline",
       "play": "Play",
       "playBackward": "Play backward",
+      "playbackSpeed": "Playback Speed",
       "previewWithEffects": "Preview with effects",
       "previewWithoutEffects": "Preview without effects",
       "projectResolutionHint": "Project resolution",
