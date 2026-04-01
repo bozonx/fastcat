@@ -295,11 +295,9 @@ const { contextMenuItems } = useClipContextMenu({
   selectedItemIds: computed(() => timelineStore.selectedItemIds),
   applyTimelineCommand: (cmd) => timelineStore.applyTimeline(cmd),
   batchApplyTimeline: (cmds) => timelineStore.batchApplyTimeline(cmds),
-  updateClipProperties: (trackId, itemId, p) =>
-    void timelineStore.updateClipProperties(trackId, itemId, p),
-  updateClipTransition: (trackId, itemId, p) =>
-    void timelineStore.updateClipTransition(trackId, itemId, p),
-  requestTimelineSave: (opts) => void timelineStore.requestTimelineSave(opts),
+  updateClipProperties: (trackId, itemId, p) => timelineStore.updateClipProperties(trackId, itemId, p),
+  updateClipTransition: (trackId, itemId, p) => timelineStore.updateClipTransition(trackId, itemId, p),
+  requestTimelineSave: (opts) => timelineStore.requestTimelineSave(opts),
   selectTransition: (p) => timelineStore.selectTransition(p),
   clearSelection: () => selectionStore.clearSelection(),
   selectTimelineTransition: (trackId, itemId, edge) =>
@@ -565,6 +563,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
         :is-dragging="isDraggingCurrentItem || isMovePreviewCurrentItem"
         :is-resizing-volume="resizeVolume?.itemId === item.id"
         :is-mobile="isMobile"
+        :is-hovered="isHovered"
         :scroll-left="scrollLeft"
         :viewport-width="viewportWidth"
         @start-resize-fade="

@@ -103,7 +103,7 @@ export interface TimelineClipsModule {
       background?: import('~/timeline/types').HudMediaParams;
       content?: import('~/timeline/types').HudMediaParams;
     },
-  ) => void;
+  ) => string[];
   updateClipTransition: (
     trackId: string,
     itemId: string,
@@ -115,7 +115,7 @@ export interface TimelineClipsModule {
       skipHistory?: boolean;
       saveMode?: 'debounced' | 'immediate' | 'none';
     },
-  ) => void;
+  ) => string[];
   deleteSelectedItems: (trackId: string) => void;
   deleteFirstSelectedItem: () => void;
   rippleDeleteFirstSelectedItem: () => void;
@@ -266,7 +266,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       content?: import('~/timeline/types').HudMediaParams;
       frame?: import('~/timeline/types').HudMediaParams;
     },
-  ) {
+  ): string[] {
     const validatedProperties = { ...properties };
 
     if (typeof validatedProperties.opacity === 'number') {
@@ -294,7 +294,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       }
     }
 
-    deps.applyTimeline(
+    return deps.applyTimeline(
       {
         type: 'update_clip_properties',
         trackId,
@@ -316,8 +316,8 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       skipHistory?: boolean;
       saveMode?: 'debounced' | 'immediate' | 'none';
     },
-  ) {
-    deps.applyTimeline(
+  ): string[] {
+    return deps.applyTimeline(
       {
         type: 'update_clip_transition',
         trackId,

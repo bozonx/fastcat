@@ -439,7 +439,8 @@ function onToolbarContextMenu(e: MouseEvent) {
         </div>
 
         <span
-          class="text-2xs font-mono tabular-nums text-ui-text-muted select-none leading-none w-12 text-center shrink-0"
+          class="text-2xs font-mono tabular-nums text-ui-text-muted select-none leading-none w-12 text-center shrink-0 cursor-pointer hover:text-ui-text transition-colors"
+          @click="timelineZoom = DEFAULT_TIMELINE_ZOOM_POSITION"
         >
           {{ timelineZoomMultiplierInput }}
         </span>

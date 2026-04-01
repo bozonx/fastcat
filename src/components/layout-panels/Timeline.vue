@@ -377,81 +377,83 @@ function onDragVirtualEnd() {
       @pointerup="onTimelinePointerUp"
       @pointercancel="onTimelinePointerUp"
     >
-      <div
-        class="shrink-0 border-r border-ui-border bg-ui-bg-elevated flex items-center px-2"
-        style="width: 220px"
-      >
-        <div class="flex-1 flex items-center">
-          <UiTimecode
-            :model-value="timelineStore.currentTime"
-            wheel-without-focus
-            @update:model-value="timelineStore.setCurrentTimeUs($event)"
-          />
-        </div>
+      <UContextMenu :items="emptyAreaContextMenuItems">
+        <div
+          class="shrink-0 border-r border-ui-border bg-ui-bg-elevated flex items-center px-2"
+          style="width: 220px"
+        >
+          <div class="flex-1 flex items-center">
+            <UiTimecode
+              :model-value="timelineStore.currentTime"
+              wheel-without-focus
+              @update:model-value="timelineStore.setCurrentTimeUs($event)"
+            />
+          </div>
 
-        <div class="flex items-center gap-1">
-          <UTooltip
-            v-if="anyLocked"
-            :text="t('fastcat.track.resetLocked', 'Unlock all tracks')"
-            :shortcuts="['L']"
-          >
-            <UButton
-              icon="i-heroicons-lock-closed"
-              color="primary"
-              variant="solid"
-              size="xs"
-              class="w-5 h-5 p-0! rounded-full"
-              :style="{ backgroundColor: '#3b82f6', color: '#ffffff' }"
-              @click="timelineStore.unlockAllTracks()"
-            />
-          </UTooltip>
-          <UTooltip
-            v-if="anyHidden"
-            :text="t('fastcat.track.resetHidden', 'Show all hidden tracks')"
-            :shortcuts="['H']"
-          >
-            <UButton
-              icon="i-heroicons-eye-slash"
-              color="white"
-              variant="solid"
-              size="xs"
-              class="w-5 h-5 p-0! rounded-full ring-1 ring-ui-border"
-              :style="{ backgroundColor: '#ffffff', color: '#000000' }"
-              @click="timelineStore.showAllTracks()"
-            />
-          </UTooltip>
-          <UTooltip
-            v-if="anyMuted"
-            :text="t('fastcat.track.resetMuted', 'Unmute all tracks')"
-            :shortcuts="['M']"
-          >
-            <UButton
-              icon="i-heroicons-speaker-x-mark"
-              color="error"
-              variant="solid"
-              size="xs"
-              class="w-5 h-5 p-0! rounded-full"
-              :style="{ backgroundColor: '#ef4444', color: '#ffffff' }"
-              @click="timelineStore.unmuteAllTracks()"
-            />
-          </UTooltip>
-          <UTooltip
-            v-if="isAnyTrackSoloed"
-            :text="t('fastcat.track.resetSolo', 'Unsolo all tracks')"
-            :shortcuts="['S']"
-          >
-            <UButton
-              icon="i-heroicons-musical-note"
-              color="success"
-              variant="solid"
-              size="xs"
-              class="w-5 h-5 p-0! rounded-full"
-              :style="{ backgroundColor: '#22c55e', color: '#ffffff' }"
-              @click="timelineStore.unsoloAllTracks()"
-            />
-          </UTooltip>
+          <div class="flex items-center gap-1">
+            <UTooltip
+              v-if="anyLocked"
+              :text="t('fastcat.track.resetLocked', 'Unlock all tracks')"
+              :shortcuts="['L']"
+            >
+              <UButton
+                icon="i-heroicons-lock-closed"
+                color="primary"
+                variant="solid"
+                size="xs"
+                class="w-5 h-5 p-0! rounded-full"
+                :style="{ backgroundColor: '#3b82f6', color: '#ffffff' }"
+                @click="timelineStore.unlockAllTracks()"
+              />
+            </UTooltip>
+            <UTooltip
+              v-if="anyHidden"
+              :text="t('fastcat.track.resetHidden', 'Show all hidden tracks')"
+              :shortcuts="['H']"
+            >
+              <UButton
+                icon="i-heroicons-eye-slash"
+                color="white"
+                variant="solid"
+                size="xs"
+                class="w-5 h-5 p-0! rounded-full ring-1 ring-ui-border"
+                :style="{ backgroundColor: '#ffffff', color: '#000000' }"
+                @click="timelineStore.showAllTracks()"
+              />
+            </UTooltip>
+            <UTooltip
+              v-if="anyMuted"
+              :text="t('fastcat.track.resetMuted', 'Unmute all tracks')"
+              :shortcuts="['M']"
+            >
+              <UButton
+                icon="i-heroicons-speaker-x-mark"
+                color="error"
+                variant="solid"
+                size="xs"
+                class="w-5 h-5 p-0! rounded-full"
+                :style="{ backgroundColor: '#ef4444', color: '#ffffff' }"
+                @click="timelineStore.unmuteAllTracks()"
+              />
+            </UTooltip>
+            <UTooltip
+              v-if="isAnyTrackSoloed"
+              :text="t('fastcat.track.resetSolo', 'Unsolo all tracks')"
+              :shortcuts="['S']"
+            >
+              <UButton
+                icon="i-heroicons-musical-note"
+                color="success"
+                variant="solid"
+                size="xs"
+                class="w-5 h-5 p-0! rounded-full"
+                :style="{ backgroundColor: '#22c55e', color: '#ffffff' }"
+                @click="timelineStore.unsoloAllTracks()"
+              />
+            </UTooltip>
+          </div>
         </div>
-      </div>
+      </UContextMenu>
       <div
         ref="rulerContainerRef"
         class="flex-1 relative z-10 timeline-ruler-container overflow-hidden"

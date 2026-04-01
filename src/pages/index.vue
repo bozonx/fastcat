@@ -10,10 +10,18 @@ const { isMobile } = useDevice();
 // Принудительно сбрасываем состояние проекта в Pinia при попадании на корень
 resetProjectState();
 
-// Если мобильное устройство и не выбран принудительный десктопный режим
-if (isMobile && route.query.mode !== 'desktop') {
-  router.replace('/m');
-}
+onMounted(() => {
+  const ALREADY_LAUNCHED_KEY = 'fastcat:app:already-launched';
+  const alreadyLaunched = localStorage.getItem(ALREADY_LAUNCHED_KEY) === 'true';
+
+  if (!alreadyLaunched) {
+    localStorage.setItem(ALREADY_LAUNCHED_KEY, 'true');
+    // Если мобильное устройство и не выбран принудительный десктопный режим
+    if (isMobile && route.query.mode !== 'desktop') {
+      router.replace('/m');
+    }
+  }
+});
 </script>
 
 <template>
