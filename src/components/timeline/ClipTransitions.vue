@@ -274,7 +274,6 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
           "
           :title="getTransitionButtonTitle('in')"
           @click.stop="
-            !isMobile &&
             canEdit &&
             emit('select', $event as PointerEvent, {
               trackId: clip.trackId,
@@ -354,7 +353,6 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
           "
           :title="getTransitionButtonTitle('out')"
           @click.stop="
-            !isMobile &&
             canEdit &&
             emit('select', $event as PointerEvent, {
               trackId: clip.trackId,

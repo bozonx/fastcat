@@ -456,17 +456,7 @@ function onTrackPointerDown(e: PointerEvent, trackId: string) {
               :item="item"
               :track-id="track.id"
               :is-mobile="isMobile"
-              @select="
-                (e) => {
-                  if (isMobile) {
-                    timelineStore.selectTrack(track.id);
-                    selectionStore.selectTimelineTrack(track.id);
-                    timelineStore.clearSelection();
-                  } else {
-                    emit('selectItem', e, item.id);
-                  }
-                }
-              "
+              @select="(e) => emit('selectItem', e, item.id)"
               @marquee-start="
                 (e) => !isMobile && startMarquee(e, () => emit('selectItem', e, item.id))
               "
