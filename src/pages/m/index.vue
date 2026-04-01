@@ -17,6 +17,7 @@ definePageMeta({
 });
 
 const { t, locale } = useI18n();
+const router = useRouter();
 const workspaceStore = useWorkspaceStore();
 const { resetProjectState } = useProjectActions();
 
@@ -114,11 +115,18 @@ const formatDate = (dateStr?: string) => {
                 size="sm"
                 variant="ghost"
                 color="neutral"
+                icon="i-heroicons-computer-desktop"
+                class="rounded-full w-10 h-10 p-0 flex items-center justify-center bg-white/5 text-slate-400"
+                @click="router.push('/')"
+              />
+              <UButton
+                size="sm"
+                variant="ghost"
+                color="neutral"
                 icon="i-heroicons-cog-6-tooth"
                 class="rounded-full w-10 h-10 p-0 flex items-center justify-center bg-white/5"
                 @click="isSettingsOpen = true"
               />
-
             </div>
           </div>
         </header>
