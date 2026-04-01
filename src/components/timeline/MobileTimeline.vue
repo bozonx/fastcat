@@ -61,6 +61,8 @@ const isTransitionDrawerOpen = ref(false);
 const isAddContentDrawerOpen = ref(false);
 const isVirtualClipPresetDrawerOpen = ref(false);
 const virtualClipPresetType = ref<'text' | 'shape' | 'hud'>('text');
+const drawerActiveSnapPoint = ref<string | number | null>(null);
+const isLongPress = ref(false);
 
 function onOpenVirtualClipPreset(type: 'text' | 'shape' | 'hud') {
   virtualClipPresetType.value = type;
@@ -134,13 +136,19 @@ watch(
 );
 
 function onUpdateDrawerOpen(val: boolean) {
-  if (!val && timelineStore.selectedTrackId) {
-    timelineStore.selectTrack(null);
+  if (!val) {
+    if (timelineStore.selectedTrackId) {
+      timelineStore.selectTrack(null);
+    }
+    drawerActiveSnapPoint.value = null;
+    isLongPress.value = false;
   }
 }
 
 function onClipPropertiesDrawerClose() {
   isClipPropertiesDrawerOpen.value = false;
+  drawerActiveSnapPoint.value = null;
+  isLongPress.value = false;
   timelineStore.clearSelection();
 }
 
@@ -156,7 +164,7 @@ function onSelectionRangeDrawerClose() {
 
 function onTransitionDrawerClose() {
   isTransitionDrawerOpen.value = false;
-  timelineStore.clearSelectedTransition();
+  timelineStore.selectTransition(null);
 }
 
 const scrollEl = ref<HTMLElement | null>(null);
@@ -277,7 +285,10 @@ function onTimelineClick(e: MouseEvent) {
   if (e.button !== 0) return;
   const dx = Math.abs(e.clientX - clickStartX.value);
   const dy = Math.abs(e.clientY - clickStartY.value);
-  if (dx > 3 || dy > 3) return;
+  if (dx > 3 || dy > 3 || isLongPress.value) {
+    isLongPress.value = false;
+    return;
+  }
 
   const target = e.target as HTMLElement | null;
   if (target?.closest('button')) return;
@@ -373,12 +384,14 @@ async function onClipAction(payload: TimelineClipActionPayload) {
     
     <!-- Clip Properties Drawer -->
     <MobileClipPropertiesDrawer
+      v-model:active-snap-point="drawerActiveSnapPoint"
       :is-open="isClipPropertiesDrawerOpen"
       @close="onClipPropertiesDrawerClose"
     />
 
     <!-- Track Properties Drawer -->
     <MobileTrackPropertiesDrawer
+      v-model:active-snap-point="drawerActiveSnapPoint"
       :is-open="isTrackPropertiesDrawerOpen"
       @close="onUpdateDrawerOpen(false)"
     />
@@ -481,10 +494,29 @@ async function onClipAction(payload: TimelineClipActionPayload) {
             :dragging-item-id="draggingItemId"
             :move-preview="movePreview"
             is-mobile
-            @select-item="selectItem"
+            @select-item="(ev, id) => {
+              if (ev.pointerType === 'touch') {
+                // Long press is handled in TimelineClip via emit. 
+                // But for short tap, we want to ensure it's NOT expanded.
+                drawerActiveSnapPoint = null;
+              }
+              selectItem(ev, id);
+            }"
             @start-move-item="onStartMoveItem"
             @start-trim-item="onStartTrimItem"
             @clip-action="onClipAction"
+            @long-press-item="(id: string) => {
+              isLongPress = true;
+              drawerActiveSnapPoint = 0.92;
+              timelineStore.selectTimelineItems([{ itemId: id, trackId: '' }]);
+            }"
+            @long-press-track="(trackId: string) => {
+              isLongPress = true;
+              drawerActiveSnapPoint = 0.92;
+              timelineStore.selectTrack(trackId);
+              selectionStore.selectTimelineTrack(trackId);
+              timelineStore.clearSelection();
+            }"
           />
 
           <!-- Playhead line (ruler renders its own triangle marker) -->

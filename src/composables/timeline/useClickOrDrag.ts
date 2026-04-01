@@ -3,6 +3,7 @@ import { ref } from 'vue';
 export interface UseClickOrDragOptions {
   onDragStart: (e: PointerEvent) => void;
   onShortRightClick?: (e: PointerEvent) => void;
+  onLongPress?: (e: PointerEvent) => void;
 }
 
 export function useClickOrDrag(options: UseClickOrDragOptions) {
@@ -11,6 +12,9 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
   const rightClickPointerActive = ref(false);
   let rightClickDragTimer: number | null = null;
   const RIGHT_CLICK_DRAG_DELAY_MS = 300;
+
+  let longPressTimer: number | null = null;
+  const LONG_PRESS_DELAY_MS = 500;
 
   function onPointerDown(e: PointerEvent) {
     if (e.button !== 0 && e.button !== 2) return;
@@ -33,10 +37,18 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
         window.clearTimeout(rightClickDragTimer);
         rightClickDragTimer = null;
       }
+      if (longPressTimer !== null) {
+        window.clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
     };
 
     const startDrag = () => {
       if (didStartDrag.value) return;
+      if (longPressTimer !== null) {
+        window.clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
       didStartDrag.value = true;
       if (e.button === 2) {
         rightClickDragTriggered.value = true;
@@ -48,7 +60,7 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
     };
 
     const onMove = (ev: PointerEvent) => {
-      if (Math.abs(ev.clientX - startX) > 3 || Math.abs(ev.clientY - startY) > 3) {
+      if (Math.abs(ev.clientX - startX) > 5 || Math.abs(ev.clientY - startY) > 5) {
         startDrag();
       }
     };
@@ -69,7 +81,21 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
     };
 
     if (e.button !== 2) {
-      e.preventDefault();
+      // Don't preventDefault for touch to allow scrolling if needed, but we handle it in timeline
+      if (e.pointerType !== 'touch') {
+        e.preventDefault();
+      }
+      
+      // Start long press timer
+      if (options.onLongPress) {
+        longPressTimer = window.setTimeout(() => {
+          longPressTimer = null;
+          if (!didStartDrag.value) {
+            cleanup();
+            options.onLongPress?.(e);
+          }
+        }, LONG_PRESS_DELAY_MS);
+      }
     } else {
       rightClickDragTimer = window.setTimeout(() => {
         rightClickDragTimer = null;

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ref } from 'vue';
+
 interface ContextMenuItem {
   label: string;
   icon?: string;
@@ -24,18 +26,25 @@ const emit = defineEmits<{
   close: [];
 }>();
 
+const isMenuOpen = ref(false);
+
 function onContextMenu(event: MouseEvent) {
   event.stopPropagation();
+}
+
+function onDragStart(event: DragEvent) {
+  isMenuOpen.value = false;
+  emit('dragStart', event);
 }
 </script>
 
 <template>
-  <UContextMenu :items="contextMenuItems">
+  <UContextMenu v-model:open="isMenuOpen" :items="contextMenuItems">
     <div
       class="flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm bg-ui-bg-elevated shrink-0"
       :class="[isAbsolute ? 'absolute top-0 left-0 right-0 z-20' : '', draggableCursorClass]"
       draggable="true"
-      @dragstart="emit('dragStart', $event)"
+      @dragstart="onDragStart"
       @dblclick="emit('close')"
       @contextmenu="onContextMenu"
     >

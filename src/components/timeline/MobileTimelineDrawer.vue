@@ -23,6 +23,7 @@ defineSlots<{
 }>();
 
 const isOpen = defineModel<boolean>('open', { default: false });
+const activeSnapPoint = defineModel<string | number | null>('activeSnapPoint', { default: null });
 
 const settingsStore = useTimelineSettingsStore();
 const { width, height } = useWindowSize();
@@ -51,7 +52,6 @@ const snapPoints = computed(() =>
     : undefined,
 );
 
-const activeSnapPoint = ref<string | number | null>(null);
 
 const showPositionToggle = computed(
   () => isLandscape.value && !props.forceLandscapeDirection,

@@ -22,6 +22,8 @@ import TimelineClip from './TimelineClip.vue';
 import TimelineGap from './TimelineGap.vue';
 import TimelineSpeedModal from './TimelineSpeedModal.vue';
 import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
+import { useTrackContextMenu } from '~/composables/timeline/useTrackContextMenu';
+import { useAppClipboard } from '~/composables/useAppClipboard';
 
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -67,6 +69,8 @@ const emit = defineEmits<{
   (e: 'selectItem', event: PointerEvent, itemId: string): void;
   (e: 'clipAction', payload: TimelineClipActionPayload): void;
   (e: 'startTrimItem', event: PointerEvent, payload: TimelineTrimItemPayload): void;
+  (e: 'long-press-item', itemId: string): void;
+  (e: 'long-press-track', trackId: string): void;
 }>();
 
 const DEFAULT_TRACK_HEIGHT = 40;
@@ -217,6 +221,19 @@ const { emptyAreaContextMenuItems: timelineEmptyAreaContextMenuItems } = useTime
   onZoomToFit: () => props.onZoomToFit?.(),
 });
 
+const clipboardStore = useAppClipboard();
+const { getTrackContextMenuItems } = useTrackContextMenu({
+  onRequestDelete: (track) => timelineStore.deleteTrack(track.id, { allowNonEmpty: true }),
+  onPaste: (trackId) => {
+    const payload = clipboardStore.clipboardPayload;
+    if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
+    timelineStore.pasteClips(payload.items, {
+      insertStartUs: timelineStore.currentTime,
+    });
+    if (payload.operation === 'cut') clipboardStore.setClipboardPayload(null);
+  },
+});
+
 const movePreviewItem = computed(() =>
   props.tracks
     .flatMap((track) => track.items)
@@ -230,6 +247,39 @@ function selectTransition(
   e.stopPropagation();
   timelineStore.selectTransition(payload);
   selectionStore.selectTimelineTransition(payload.trackId, payload.itemId, payload.edge);
+}
+function onTrackPointerDown(e: PointerEvent, trackId: string) {
+  focusStore.setPanelFocus('timeline');
+  if (shouldStartMarquee(e)) {
+    startMarquee(e);
+  } else if (props.isMobile) {
+    timelineStore.selectTrack(trackId);
+    selectionStore.selectTimelineTrack(trackId);
+    timelineStore.clearSelection();
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let moved = false;
+    const timer = window.setTimeout(() => {
+      if (!moved) {
+        emit('long-press-track', trackId);
+      }
+    }, 500);
+
+    const onMove = (ev: PointerEvent) => {
+      if (Math.abs(ev.clientX - startX) > 5 || Math.abs(ev.clientY - startY) > 5) {
+        moved = true;
+        window.clearTimeout(timer);
+      }
+    };
+    const onUp = () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }
 }
 </script>
 
@@ -270,17 +320,20 @@ function selectTransition(
         @save="saveSpeedModal"
       />
 
-      <div
+      <UContextMenu
         v-for="track in tracks"
         :key="track.id"
-        :data-track-id="track.id"
-        class="flex items-center relative transition-colors border-b border-ui-border"
-        :class="[
-          timelineStore.hoveredTrackId === track.id && !isTrackVisuallySelected(track.id)
-            ? 'bg-ui-bg-elevated/50'
-            : '',
-          track.locked ? 'hatching-diagonal-track bg-black/10' : '',
-        ]"
+        :items="getTrackContextMenuItems(track, tracks)"
+      >
+        <div
+          :data-track-id="track.id"
+          class="flex items-center relative transition-colors border-b border-ui-border"
+          :class="[
+            timelineStore.hoveredTrackId === track.id && !isTrackVisuallySelected(track.id)
+              ? 'bg-ui-bg-elevated/50'
+              : '',
+            track.locked ? 'hatching-diagonal-track bg-black/10' : '',
+          ]"
         :style="{
           height: `${trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT}px`,
           backgroundColor:
@@ -290,31 +343,7 @@ function selectTransition(
                 : `${track.color}1a`
               : undefined,
         }"
-        @pointerdown="
-          focusStore.setPanelFocus('timeline');
-          if (shouldStartMarquee($event)) {
-            startMarquee($event, () => {
-              if (timelineStore.selectedTrackId === track.id) {
-                const entity = selectionStore.selectedEntity;
-                if (entity?.source === 'timeline' && entity.kind === 'timeline-properties') {
-                  timelineStore.selectTrack(track.id);
-                  selectionStore.selectTimelineTrack(track.id);
-                } else {
-                  timelineStore.selectTimelineProperties();
-                  selectionStore.selectTimelineProperties();
-                }
-              } else {
-                timelineStore.selectTrack(track.id);
-                selectionStore.selectTimelineTrack(track.id);
-              }
-              timelineStore.clearSelection();
-            });
-          } else if (isMobile) {
-            timelineStore.selectTrack(track.id);
-            selectionStore.selectTimelineTrack(track.id);
-            timelineStore.clearSelection();
-          }
-        "
+        @pointerdown="onTrackPointerDown($event, track.id)"
         @mouseenter="timelineStore.hoveredTrackId = track.id"
         @mouseleave="timelineStore.hoveredTrackId = null"
         @dragover.prevent="emit('dragover', $event, track.id)"
@@ -376,6 +405,7 @@ function selectTransition(
             v-if="item.kind === 'gap'"
             :item="item"
             :track-id="track.id"
+            :is-mobile="isMobile"
             @select="
               (e) => {
                 if (isMobile) {
@@ -409,7 +439,13 @@ function selectTransition(
             @start-resize-fade="startResizeFade"
             @start-resize-transition="startResizeTransition"
             @select-transition="selectTransition"
-            @clip-action="(p) => emit('clipAction', p)"
+            @clip-action="(p) => {
+              if (p.action === ('longPress' as any)) {
+                emit('long-press-item', p.itemId);
+              } else {
+                emit('clipAction', p);
+              }
+            }"
             @open-speed-modal="
               (p: TimelineOpenSpeedModalPayload) => openSpeedModal(track.id, p.itemId, p.speed)
             "
@@ -422,6 +458,7 @@ function selectTransition(
           />
         </template>
       </div>
+    </UContextMenu>
       <div class="w-full flex-1 min-h-7" @click="timelineStore.selectTrack(null)" />
       <div class="h-16 shrink-0" />
     </div>

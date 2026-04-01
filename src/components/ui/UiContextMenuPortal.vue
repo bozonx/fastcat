@@ -62,6 +62,18 @@ function onGlobalPointerDown(e: PointerEvent) {
   }
 }
 
+function onWindowBlur() {
+  close();
+}
+
+function onKeyDown(e: KeyboardEvent) {
+  if (e.key === 'Escape') close();
+}
+
+function onScroll() {
+  close();
+}
+
 function onContextMenu(e: MouseEvent) {
   open(e);
 }
@@ -79,10 +91,16 @@ watch(
 onUnmounted(() => {
   props.targetEl?.removeEventListener('contextmenu', onContextMenu);
   window.removeEventListener('pointerdown', onGlobalPointerDown, { capture: true });
+  window.removeEventListener('blur', onWindowBlur);
+  window.removeEventListener('keydown', onKeyDown, { capture: true });
+  window.removeEventListener('scroll', onScroll, { capture: true });
 });
 
 onMounted(() => {
   window.addEventListener('pointerdown', onGlobalPointerDown, { capture: true });
+  window.addEventListener('blur', onWindowBlur);
+  window.addEventListener('keydown', onKeyDown, { capture: true });
+  window.addEventListener('scroll', onScroll, { capture: true });
 });
 
 defineExpose({ open, close });
@@ -92,7 +110,7 @@ defineExpose({ open, close });
   <Teleport v-if="targetEl && isOpen" :to="targetEl">
     <div
       ref="menuEl"
-      class="absolute z-99999 min-w-[160px] rounded-md border border-ui-border bg-ui-bg shadow-lg py-1 select-none"
+      class="absolute z-99999 min-w-40 rounded-md border border-ui-border bg-ui-bg shadow-lg py-1 select-none"
       :style="{ left: `${menuX}px`, top: `${menuY}px` }"
     >
       <template v-for="(group, gi) in items" :key="gi">
