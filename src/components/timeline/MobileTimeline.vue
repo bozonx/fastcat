@@ -31,7 +31,7 @@ import MobileVirtualClipPresetDrawer from './MobileVirtualClipPresetDrawer.vue';
 import MobileMarkerPropertiesDrawer from './MobileMarkerPropertiesDrawer.vue';
 import MobileTransitionPropertiesDrawer from './MobileTransitionPropertiesDrawer.vue';
 import MobileGapPropertiesDrawer from './MobileGapPropertiesDrawer.vue';
-import SelectionRangeProperties from '~/components/properties/SelectionRangeProperties.vue';
+import MobileSelectionRangePropertiesDrawer from './MobileSelectionRangePropertiesDrawer.vue';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -456,17 +456,11 @@ async function onClipAction(payload: TimelineClipActionPayload) {
     />
 
     <!-- Selection Range Properties Drawer -->
-    <UiMobileDrawer
-      v-model:open="isSelectionRangeDrawerOpen"
-      :title="t('fastcat.timeline.selectionRange', 'Selection Range')"
-      :snap-points="[0.4, 0.85]"
-      direction="bottom"
-      @update:open="(val) => !val && onSelectionRangeDrawerClose()"
-    >
-      <div class="px-4 pb-6">
-        <SelectionRangeProperties />
-      </div>
-    </UiMobileDrawer>
+    <MobileSelectionRangePropertiesDrawer
+      v-model:active-snap-point="drawerActiveSnapPoint"
+      :is-open="isSelectionRangeDrawerOpen"
+      @close="onSelectionRangeDrawerClose"
+    />
 
     <!-- Transition Properties Drawer -->
     <MobileTransitionPropertiesDrawer
