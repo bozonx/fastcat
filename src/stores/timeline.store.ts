@@ -65,10 +65,11 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   historyStore.registerStateGetter('timeline', () => timelineDoc.value);
 
-  const { currentProjectName, currentTimelinePath, mediaMetadata } = createTimelineExternalRefsModule({
-    projectStore,
-    mediaStore,
-  });
+  const { currentProjectName, currentTimelinePath, mediaMetadata } =
+    createTimelineExternalRefsModule({
+      projectStore,
+      mediaStore,
+    });
 
   const DEFAULT_IMAGE_DURATION_US = 5_000_000;
   const DEFAULT_IMAGE_SOURCE_DURATION_US = DEFAULT_IMAGE_DURATION_US;
@@ -93,6 +94,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   const timelineZoom = ref(50);
   const timelineViewportWidth = ref(0);
   const scrollResetTicket = ref(0);
+  const scrollToPlayheadRequest = ref(0);
   const trackHeights = ref<Record<string, number>>({});
 
   const fps = computed(() => {
@@ -436,6 +438,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     setPreviewSelectionRange: selectionRange.setPreviewSelectionRange,
     timelineViewportWidth,
     scrollResetTicket,
+    scrollToPlayheadRequest,
+    requestScrollToPlayhead: () => {
+      scrollToPlayheadRequest.value++;
+    },
     fps,
     isTimelineDirty,
     isSavingTimeline,

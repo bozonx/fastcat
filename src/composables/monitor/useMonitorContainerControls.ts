@@ -203,11 +203,13 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
 
   function rewindToStart() {
     options.timelineStore.setCurrentTimeUs(0);
+    options.timelineStore.requestScrollToPlayhead?.();
     blurActiveElement();
   }
 
   function rewindToEnd() {
     options.timelineStore.setCurrentTimeUs(options.safeDurationUs.value);
+    options.timelineStore.requestScrollToPlayhead?.();
     blurActiveElement();
   }
 

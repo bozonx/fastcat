@@ -311,7 +311,7 @@ const clipCount = computed(
             <UiActionButton
               icon="i-heroicons-trash"
               size="sm"
-              color="error"
+              color="neutral"
               :title="t('common.delete', 'Delete')"
               @click="requestDeleteTrack"
             />

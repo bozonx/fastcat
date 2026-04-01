@@ -62,7 +62,7 @@ defineExpose({ scrollEl, labelsScrollEl });
     <!-- Track Labels -->
     <div
       ref="labelsScrollEl"
-      class="shrink-0 border-r border-ui-border overflow-y-auto overflow-x-hidden scroll-sync-hidden"
+      class="shrink-0 border-r border-ui-border overflow-y-auto overflow-x-hidden scroll-sync-hidden timeline-labels-container"
       :style="{ width: `${TRACK_LABELS_WIDTH}px` }"
       @scroll="emit('labelsScroll')"
     >
@@ -75,7 +75,7 @@ defineExpose({ scrollEl, labelsScrollEl });
     </div>
 
     <!-- Tracks Area -->
-    <div class="flex-1 relative min-h-0 min-w-0">
+    <div class="flex-1 relative min-h-0 min-w-0 overflow-hidden">
       <TimelineGrid class="absolute inset-0 pointer-events-none z-0" :scroll-el="scrollEl" />
       <div
         ref="scrollEl"
