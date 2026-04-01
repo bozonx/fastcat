@@ -572,6 +572,7 @@
       "loadError": "Ошибка загрузки таймлайна",
       "play": "Воспроизвести",
       "playBackward": "Воспроизведение назад",
+      "playbackSpeed": "Скорость воспроизведения",
       "previewWithEffects": "Предпросмотр с эффектами",
       "previewWithoutEffects": "Предпросмотр без эффектов",
       "projectResolutionHint": "Разрешение проекта",
