@@ -210,12 +210,12 @@ const volumeIndicatorPosition = computed(() => {
     </div>
 
     <!-- Fade Handles -->
-    <template v-if="canEdit && !clip.locked && !track.locked">
+    <template v-if="canEdit && !clip.locked && !track.locked && !isMobile">
       <div
         class="absolute top-0 w-4 h-4 -translate-x-1/2 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto"
         :class="[
           clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
-          isMobile ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100',
+          'opacity-0 group-hover/clip:opacity-100',
         ]"
         :style="{
           left: `${getFadeHandlePositionPx('in')}px`,
@@ -235,7 +235,7 @@ const volumeIndicatorPosition = computed(() => {
         class="absolute top-0 w-4 h-4 -translate-x-1/2 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto"
         :class="[
           clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
-          isMobile ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100',
+          'opacity-0 group-hover/clip:opacity-100',
         ]"
         :style="{
           left: `${getFadeHandlePositionPx('out')}px`,
@@ -254,9 +254,11 @@ const volumeIndicatorPosition = computed(() => {
 
     <!-- Volume Control Line -->
     <div
-      class="absolute left-0 right-0 z-45 h-3 -mt-1.5 flex flex-col justify-center transition-opacity pointer-events-auto"
+      class="absolute left-0 right-0 z-45 h-3 -mt-1.5 flex flex-col justify-center transition-opacity"
       :class="[
-        canEdit && !clip.locked && !track.locked ? 'cursor-ns-resize' : '',
+        canEdit && !clip.locked && !track.locked && !isMobile
+          ? 'cursor-ns-resize pointer-events-auto'
+          : 'pointer-events-none',
         clip.audioMuted || (clip.audioGain === 1 && !isHovered && !isResizingVolume)
           ? 'opacity-0'
           : 'opacity-100',
@@ -267,9 +269,12 @@ const volumeIndicatorPosition = computed(() => {
         canEdit &&
         !clip.locked &&
         !track.locked &&
+        !isMobile &&
         emit('startResizeVolume', $event, clip.audioGain ?? 1)
       "
-      @dblclick.stop.prevent="canEdit && !clip.locked && !track.locked && emit('resetVolume')"
+      @dblclick.stop.prevent="
+        canEdit && !clip.locked && !track.locked && !isMobile && emit('resetVolume')
+      "
     >
       <div
         class="w-full bg-yellow-400 opacity-80"
