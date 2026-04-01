@@ -21,6 +21,7 @@ import { useFocusStore } from '~/stores/focus.store';
 import TimelineClip from './TimelineClip.vue';
 import TimelineGap from './TimelineGap.vue';
 import TimelineSpeedModal from './TimelineSpeedModal.vue';
+import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
 
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -212,20 +213,9 @@ const speedModalTargetHasAudio = computed(() => {
   return Boolean(clip.source?.path && mediaStore.mediaMetadata[clip.source.path]?.audio);
 });
 
-const timelineEmptyAreaContextMenuItems = [
-  [
-    {
-      label: t('fastcat.timeline.zoomToFit'),
-      icon: 'i-heroicons-arrows-pointing-out',
-      onSelect: () => props.onZoomToFit?.(),
-    },
-    {
-      label: t('fastcat.timeline.properties.title'),
-      icon: 'i-heroicons-cog-6-tooth',
-      onSelect: () => timelineStore.selectTimelineProperties(),
-    },
-  ],
-];
+const { emptyAreaContextMenuItems: timelineEmptyAreaContextMenuItems } = useTimelineEmptyAreaContextMenu({
+  onZoomToFit: () => props.onZoomToFit?.(),
+});
 
 const movePreviewItem = computed(() =>
   props.tracks

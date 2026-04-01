@@ -172,6 +172,8 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
     toolbarDragModeEnabled.value = !toolbarDragModeEnabled.value;
   }
 
+  const isSnapSettingsModalOpen = ref(false);
+
   return {
     overlapMode,
     frameSnapMode,
@@ -190,5 +192,6 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
     toggleSelectedToolbarDragMode,
     landscapeDrawerPosition,
     toggleToolbarPseudoOverlapMode,
+    isSnapSettingsModalOpen,
   };
 });

@@ -27,6 +27,7 @@ import { useTimelineClickActions } from '~/composables/timeline/useTimelineClick
 import { useTimelineTextPreset } from '~/composables/timeline/useTimelineTextPreset';
 import { useTimelineDropHandling } from '~/composables/timeline/useTimelineDropHandling';
 import { useTimelineInteraction } from '~/composables/timeline/useTimelineInteraction';
+import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -149,7 +150,12 @@ const {
 } = useTimelineInteraction(scrollEl, tracks);
 
 // --- Context menu ---
+const { emptyAreaContextMenuItems } = useTimelineEmptyAreaContextMenu({
+  onZoomToFit: () => fitTimelineZoom(),
+});
+
 const timelineMenuItems = computed(() => [
+  ...emptyAreaContextMenuItems.value,
   [
     {
       label: t('common.actions.reset'),
@@ -423,13 +429,15 @@ function onDragVirtualEnd() {
         ref="rulerContainerRef"
         class="flex-1 relative z-10 timeline-ruler-container overflow-hidden"
       >
-        <TimelineRuler
-          class="absolute inset-0 h-full border-b border-ui-border bg-ui-bg-elevated cursor-pointer"
-          :scroll-el="rulerScrollEl"
-          @pointerdown="onTimeRulerPointerDown"
-          @start-playhead-drag="startPlayheadDrag"
-          @start-pan="startPan"
-        />
+        <UContextMenu :items="emptyAreaContextMenuItems">
+          <TimelineRuler
+            class="absolute inset-0 h-full border-b border-ui-border bg-ui-bg-elevated cursor-pointer"
+            :scroll-el="rulerScrollEl"
+            @pointerdown="onTimeRulerPointerDown"
+            @start-playhead-drag="startPlayheadDrag"
+            @start-pan="startPan"
+          />
+        </UContextMenu>
         <div
           ref="rulerScrollEl"
           class="absolute inset-0 overflow-x-scroll overflow-y-hidden scroll-sync-hidden pointer-events-none"
