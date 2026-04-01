@@ -185,30 +185,10 @@ function onDragMove(e: TouchEvent) {
   dragDy.value = t.clientY - dragStartY.value;
 }
 
-function onBodyDragStart(e: TouchEvent) {
-  const t = e.touches[0];
-  if (!t) return;
-  dragStartY.value = t.clientY;
-  dragDy.value = 0;
-}
-
-function onBodyDragMove(e: TouchEvent) {
-  const t = e.touches[0];
-  if (!t) return;
-  dragDy.value = t.clientY - dragStartY.value;
-}
-
-function onBodyDragEnd() {
-  if (bodyRef.value && bodyRef.value.scrollTop > 0) return;
-  if (dragDy.value > 50) {
-    isOpen.value = false;
-    activeSnapPoint.value = null;
-  }
-  dragDy.value = 0;
-}
 
 function onDragEnd() {
-  if (dragDy.value > 50) {
+  // Only close via manual drag if we moved enough
+  if (dragDy.value > 100) {
     isOpen.value = false;
     activeSnapPoint.value = null;
   }
@@ -229,8 +209,8 @@ watch(isOpen, (val) => {
     <div
       class="fixed inset-0 bg-slate-950/40 backdrop-blur-[2px] transition-all duration-300 z-40"
       :class="[
-        isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none',
-        isBackdropInteractive ? 'pointer-events-auto' : 'pointer-events-none',
+        isOpen && (props.modal || isExpanded) ? 'opacity-100' : 'opacity-0 pointer-events-none',
+        props.modal || isBackdropInteractive ? 'pointer-events-auto' : 'pointer-events-none',
       ]"
       :style="{ touchAction: isBackdropInteractive ? 'none' : 'auto' }"
       @touchstart.passive="onBackdropTouchStart"
@@ -335,9 +315,6 @@ watch(isOpen, (val) => {
           ref="bodyRef"
           class="flex-1 overflow-y-auto pb-safe custom-scrollbar"
           :class="props.ui.body"
-          @touchstart.passive="onBodyDragStart"
-          @touchmove.passive="onBodyDragMove"
-          @touchend="onBodyDragEnd"
         >
           <slot />
         </div>
