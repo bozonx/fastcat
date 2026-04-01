@@ -249,14 +249,31 @@ function selectTransition(
   timelineStore.selectTransition(payload);
   selectionStore.selectTimelineTransition(payload.trackId, payload.itemId, payload.edge);
 }
+function selectTrackById(trackId: string) {
+  timelineStore.selectTrack(trackId);
+  selectionStore.selectTimelineTrack(trackId);
+}
+
+/** True only when the track header itself is selected (not a clip/gap/transition on it). */
+function isTrackDirectlySelected(trackId: string): boolean {
+  const entity = selectionStore.selectedEntity;
+  return entity?.source === 'timeline' && entity.kind === 'track' && entity.trackId === trackId;
+}
+
 function onTrackPointerDown(e: PointerEvent, trackId: string) {
   focusStore.setPanelFocus('timeline');
   if (shouldStartMarquee(e)) {
-    startMarquee(e);
+    // Stop propagation so the outer container doesn't call startMarquee without onClick and
+    // override our callback. On click (no drag) → select the track; on drag → marquee.
+    e.stopPropagation();
+    if (!props.isMobile && e.button === 0) {
+      startMarquee(e, () => selectTrackById(trackId));
+    } else {
+      startMarquee(e);
+    }
   } else if (!props.isMobile && e.button === 0) {
-    // LMB on empty track area (clips/gaps stop propagation) → select the track
-    timelineStore.selectTrack(trackId);
-    selectionStore.selectTimelineTrack(trackId);
+    // Non-marquee mode LMB on empty track area → select the track
+    selectTrackById(trackId);
   } else if (props.isMobile) {
     timelineStore.selectTrack(trackId);
     selectionStore.selectTimelineTrack(trackId);
@@ -343,10 +360,12 @@ function onTrackPointerDown(e: PointerEvent, trackId: string) {
             height: `${trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT}px`,
             backgroundColor:
               track.color && track.color !== '#2a2a2a'
-                ? isTrackVisuallySelected(track.id)
+                ? isTrackDirectlySelected(track.id)
                   ? `${track.color}40`
                   : `${track.color}1a`
-                : undefined,
+                : isTrackDirectlySelected(track.id)
+                  ? 'rgba(var(--color-primary-500), 0.08)'
+                  : undefined,
           }"
           @pointerdown="onTrackPointerDown($event, track.id)"
           @mouseenter="timelineStore.hoveredTrackId = track.id"
@@ -355,20 +374,20 @@ function onTrackPointerDown(e: PointerEvent, trackId: string) {
           @dragleave.prevent="emit('dragleave', $event, track.id)"
           @drop.prevent="emit('drop', $event, track.id)"
         >
-          <!-- Selection Highlight -->
+          <!-- Selection Highlight: bright borders+bg when track directly selected; subtle when clip/gap active -->
           <div
-            v-if="isTrackVisuallySelected(track.id)"
-            class="absolute inset-0 z-0 pointer-events-none border-y-2 border-primary-500/30 bg-primary-500/5 transition-colors"
-            :class="{
-              'border-y-2! border-primary-500/40 bg-primary-500/10':
-                !track.color || track.color === '#2a2a2a',
-            }"
+            v-if="isTrackDirectlySelected(track.id)"
+            class="absolute inset-0 z-0 pointer-events-none border-y-2 border-primary-500/40 bg-primary-500/10 transition-colors"
             :style="{
               borderColor:
                 track.color && track.color !== '#2a2a2a' ? `${track.color}80` : undefined,
               borderTopWidth: '2px',
               borderBottomWidth: '2px',
             }"
+          />
+          <div
+            v-else-if="isTrackVisuallySelected(track.id)"
+            class="absolute inset-0 z-0 pointer-events-none border-y border-ui-border/70 transition-colors"
           />
           <!-- Drop Previews inside track -->
           <div
