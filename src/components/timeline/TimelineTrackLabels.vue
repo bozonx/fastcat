@@ -94,6 +94,7 @@ const selectedTrackId = computed(() => {
   if (entity?.source === 'timeline') {
     if (entity.kind === 'track') return entity.trackId;
     if (entity.kind === 'clip') return entity.trackId;
+    if (entity.kind === 'gap') return entity.trackId;
     if (entity.kind === 'transition') return entity.trackId;
     if (entity.kind === 'clips') {
       const clips = entity as any;
@@ -103,13 +104,16 @@ const selectedTrackId = computed(() => {
   return null;
 });
 
-// A helper to determine if a specific track is "visually selected".
-// A track is visually selected if the track itself is selected OR if any clips/transitions on it are selected.
+/**
+ * Track is "visually active" when the track itself OR any item (clip/gap/transition) on it is selected.
+ * Used for background highlight and border brightness.
+ */
 function isTrackVisuallySelected(trackId: string) {
   const entity = selectionStore.selectedEntity;
   if (entity?.source === 'timeline') {
     if (entity.kind === 'track') return entity.trackId === trackId;
     if (entity.kind === 'clip') return entity.trackId === trackId;
+    if (entity.kind === 'gap') return entity.trackId === trackId;
     if (entity.kind === 'transition') return entity.trackId === trackId;
     if (entity.kind === 'clips') {
       const clips = entity as any;
@@ -119,6 +123,12 @@ function isTrackVisuallySelected(trackId: string) {
     }
   }
   return false;
+}
+
+/** Track is "directly selected" only when the track header itself was clicked (not a clip/gap/transition on it). */
+function isTrackDirectlySelected(trackId: string) {
+  const entity = selectionStore.selectedEntity;
+  return entity?.source === 'timeline' && entity.kind === 'track' && entity.trackId === trackId;
 }
 
 function onSelectTrack(trackId: string) {
@@ -163,6 +173,7 @@ const { emptyAreaContextMenuItems: propertiesContextMenuItems } = useTimelineEmp
               "
               :height="trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT"
               :is-selected="isTrackVisuallySelected(track.id)"
+              :is-directly-selected="isTrackDirectlySelected(track.id)"
               :is-hovered="timelineStore.hoveredTrackId === track.id"
               :is-renaming="timelineStore.renamingTrackId === track.id"
               :has-audio="trackHasAudio(track, mediaStore.mediaMetadata)"

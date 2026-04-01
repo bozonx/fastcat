@@ -12,6 +12,7 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 
 import ClipProperties from '~/components/properties/ClipProperties.vue';
 import TrackProperties from '~/components/properties/TrackProperties.vue';
+import GapProperties from '~/components/properties/GapProperties.vue';
 import TransitionProperties from '~/components/properties/TransitionProperties.vue';
 import FileProperties from '~/components/properties/FileProperties.vue';
 import RemoteFileProperties from '~/components/properties/RemoteFileProperties.vue';
@@ -87,6 +88,12 @@ const selectedTrack = computed<TimelineTrack | null>(() => {
   return tracks.find((t) => t.id === entity.trackId) ?? null;
 });
 
+const selectedGap = computed<{ trackId: string; itemId: string } | null>(() => {
+  const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
+  if (entity?.source !== 'timeline' || entity.kind !== 'gap') return null;
+  return { trackId: entity.trackId, itemId: entity.itemId };
+});
+
 const selectedProjectEffectType = computed<string | null>(() => {
   const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
   if (entity?.source === 'project' && entity.kind === 'effect') return entity.effectType;
@@ -128,6 +135,7 @@ const displayMode = computed<
   | 'transition'
   | 'clip'
   | 'clips'
+  | 'gap'
   | 'track'
   | 'file'
   | 'files'
@@ -141,6 +149,7 @@ const displayMode = computed<
   if (selectedTransition.value && selectedTransitionClip.value) return 'transition';
   if (selectedClips.value) return 'clips';
   if (selectedClip.value) return 'clip';
+  if (selectedGap.value) return 'gap';
   if (selectedTrack.value) return 'track';
   if (hasSelectionRange.value) return 'selection-range';
 
@@ -259,6 +268,12 @@ function onPanelFocusOut() {
             {{ selectedFsEntry.name }}
           </span>
           <span
+            v-else-if="displayMode === 'gap'"
+            class="ml-2 text-xs text-ui-text-muted font-mono truncate"
+          >
+            {{ t('fastcat.timeline.gap', 'Gap') }}
+          </span>
+          <span
             v-else-if="displayMode === 'track' && selectedTrack"
             class="ml-2 text-xs text-ui-text-muted font-mono truncate"
           >
@@ -352,6 +367,12 @@ function onPanelFocusOut() {
             v-else-if="displayMode === 'clip' && selectedClip"
             ref="clipRef"
             :clip="selectedClip"
+          />
+
+          <GapProperties
+            v-else-if="displayMode === 'gap' && selectedGap"
+            :track-id="selectedGap.trackId"
+            :item-id="selectedGap.itemId"
           />
 
           <TrackProperties
