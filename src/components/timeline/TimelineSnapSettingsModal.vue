@@ -1,21 +1,13 @@
 <script setup lang="ts">
 import UiModal from '~/components/ui/UiModal.vue';
+import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
+import { storeToRefs } from 'pinia';
 import TimelineSnapSettings from './TimelineSnapSettings.vue';
 
-const props = defineProps<{
-  open: boolean;
-}>();
-
-const emit = defineEmits<{
-  'update:open': [value: boolean];
-}>();
+const settingsStore = useTimelineSettingsStore();
+const { isSnapSettingsModalOpen: isOpen } = storeToRefs(settingsStore);
 
 const { t } = useI18n();
-
-const isOpen = computed({
-  get: () => props.open,
-  set: (v) => emit('update:open', v),
-});
 </script>
 
 <template>

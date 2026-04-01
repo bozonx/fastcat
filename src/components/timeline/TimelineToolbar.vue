@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed, ref } from 'vue';
+import { storeToRefs } from 'pinia';
 import UiTooltip from '~/components/ui/UiTooltip.vue';
 import type { ToolbarDragMode, ToolbarSnapMode } from '~/stores/timeline-settings.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -24,7 +26,7 @@ const settingsStore = useTimelineSettingsStore();
 const focusStore = useFocusStore();
 const presetsStore = usePresetsStore();
 
-const isSnapSettingsModalOpen = ref(false);
+const { isSnapSettingsModalOpen } = storeToRefs(settingsStore);
 
 const emit = defineEmits<{
   (e: 'dragVirtualStart', event: DragEvent, type: 'adjustment' | 'background' | 'text'): void;
@@ -192,15 +194,9 @@ function onDragEnd() {
   emit('dragVirtualEnd');
 }
 
-const toolbarEmptyAreaContextMenuItems = [
-  [
-    {
-      label: t('fastcat.timeline.properties.title'),
-      icon: 'i-heroicons-cog-6-tooth',
-      onSelect: () => timelineStore.selectTimelineProperties(),
-    },
-  ],
-];
+import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
+
+const { emptyAreaContextMenuItems: toolbarEmptyAreaContextMenuItems } = useTimelineEmptyAreaContextMenu();
 
 function onToolbarContextMenu(e: MouseEvent) {
   e.stopPropagation();
@@ -419,7 +415,7 @@ function onToolbarContextMenu(e: MouseEvent) {
       </div>
 
       <!-- Right column: Zoom controls -->
-      <div class="w-[180px] flex items-center gap-2 pl-4 border-l border-ui-border/30">
+      <div class="w-[240px] flex items-center gap-2 pl-4 border-l border-ui-border/30">
         <UiTooltip :text="t('fastcat.timeline.zoomToFit', 'Fit to zoom')">
           <UButton
             size="xs"
@@ -447,9 +443,22 @@ function onToolbarContextMenu(e: MouseEvent) {
         >
           {{ timelineZoomMultiplierInput }}
         </span>
+
+        <div class="w-px h-4 bg-ui-border mx-1 opacity-50" />
+
+        <UiTooltip :text="t('fastcat.timeline.properties.title')">
+          <UButton
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            icon="i-heroicons-cog-6-tooth"
+            class="hover:bg-ui-bg-hover/60"
+            @click="timelineStore.selectTimelineProperties()"
+          />
+        </UiTooltip>
       </div>
     </div>
 
-    <TimelineSnapSettingsModal v-model:open="isSnapSettingsModalOpen" />
+    <TimelineSnapSettingsModal />
   </UContextMenu>
 </template>

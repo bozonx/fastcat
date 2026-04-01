@@ -9,6 +9,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { trackHasAudio } from '~/utils/audio';
 
 import TimelineTrackLabelItem from '~/components/timeline/TimelineTrackLabelItem.vue';
+import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
 
 const { t } = useI18n();
 
@@ -198,46 +199,9 @@ function getTrackContextMenuItems(track: TimelineTrack) {
   ];
 }
 
-const emptyAreaContextMenuItems = [
-  [
-    {
-      label: t('fastcat.timeline.addVideoTrack'),
-      icon: 'i-heroicons-video-camera',
-      onSelect: () =>
-        timelineStore.addTrack(
-          'video',
-          `Video ${props.tracks.filter((t) => t.kind === 'video').length + 1}`,
-        ),
-    },
-    {
-      label: t('fastcat.timeline.addAudioTrack'),
-      icon: 'i-heroicons-musical-note',
-      onSelect: () =>
-        timelineStore.addTrack(
-          'audio',
-          `Audio ${props.tracks.filter((t) => t.kind === 'audio').length + 1}`,
-        ),
-    },
-  ],
-];
-
-const propertiesContextMenuItems = [
-  [
-    {
-      label: t('fastcat.timeline.zoomToFit'),
-      icon: 'i-heroicons-arrows-pointing-out',
-      onSelect: () => props.onZoomToFit?.(),
-    },
-    {
-      label: t('fastcat.timeline.properties.title'),
-      icon: 'i-heroicons-cog-6-tooth',
-      onSelect: () => {
-        timelineStore.selectTimelineProperties();
-        selectionStore.selectTimelineProperties();
-      },
-    },
-  ],
-];
+const { emptyAreaContextMenuItems: propertiesContextMenuItems } = useTimelineEmptyAreaContextMenu({
+  onZoomToFit: () => props.onZoomToFit?.(),
+});
 </script>
 
 <template>

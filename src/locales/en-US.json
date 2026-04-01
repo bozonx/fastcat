@@ -738,6 +738,7 @@
         "overlapMode": "Overlap Mode",
         "snapToClips": "Snap to clips",
         "snapToFrames": "Snap to frames",
+        "snapSettings": "Snapping settings",
         "title": "Timeline settings",
         "zoom": "Zoom"
       },
