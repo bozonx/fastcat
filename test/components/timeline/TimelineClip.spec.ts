@@ -23,7 +23,7 @@ vi.mock('~/components/timeline/audio/TimelineAudioWaveform.vue', () => ({
 
 const mockTimelineStore = reactive({
   timelineZoom: 1,
-  selectedItemIds: [],
+  selectedItemIds: [] as string[],
   isTrimModeActive: false,
   timelineDoc: { tracks: [] },
   fps: 30,
@@ -64,7 +64,12 @@ vi.mock('~/stores/timeline.store', () => ({ useTimelineStore: () => mockTimeline
 vi.mock('~/stores/media.store', () => ({ useMediaStore: () => mockMediaStore }));
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelectionStore }));
 vi.mock('~/stores/ui.store', () => ({ useUiStore: () => ({ triggerScrollToEffects: vi.fn() }) }));
-vi.mock('~/stores/project.store', () => ({ useProjectStore: () => ({ projectSettings: {} }) }));
+vi.mock('~/stores/project.store', () => ({
+  useProjectStore: () => ({
+    projectSettings: {},
+    goToFiles: vi.fn(),
+  }),
+}));
 vi.mock('~/stores/timeline-settings.store', () => ({
   useTimelineSettingsStore: () => ({ toolbarDragModeEnabled: false, toolbarDragMode: 'move' }),
 }));
@@ -81,7 +86,9 @@ vi.mock('~/stores/focus.store', () => ({
   }),
 }));
 vi.mock('~/stores/files-page.store', () => ({ useFilesPageStore: () => ({}) }));
-vi.mock('~/stores/project-tabs.store', () => ({ useProjectTabsStore: () => ({ setActiveTab: vi.fn() }) }));
+vi.mock('~/stores/project-tabs.store', () => ({
+  useProjectTabsStore: () => ({ setActiveTab: vi.fn() }),
+}));
 
 vi.mock('~/composables/file-manager/useFileManager', () => ({
   useFileManager: () => ({
@@ -247,6 +254,23 @@ describe('TimelineClip', () => {
     await clipDiv.trigger('click', { button: 0 });
 
     // useClipInteractions should handle the click and emit selectItem
+    expect(component.emitted('selectItem')).toBeTruthy();
+    expect(component.emitted('selectItem')![0][1]).toBe('clip-1');
+  });
+
+  it('selects clip on mobile tap before drag is allowed', async () => {
+    const component = await mountSuspended(TimelineClip, {
+      props: {
+        ...defaultProps,
+        isMobile: true,
+      },
+      global: { stubs: { UContextMenu: { template: '<div><slot /></div>' } } },
+    });
+    const clipDiv = component.find('[data-clip-id="clip-1"]');
+
+    await clipDiv.trigger('pointerdown', { button: 0, pointerType: 'touch' });
+    await clipDiv.trigger('click', { button: 0, pointerType: 'touch' });
+
     expect(component.emitted('selectItem')).toBeTruthy();
     expect(component.emitted('selectItem')![0][1]).toBe('clip-1');
   });

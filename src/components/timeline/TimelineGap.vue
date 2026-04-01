@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { TimelineTrackItem } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -80,6 +81,8 @@ function resolveTimelineDragAction(e: PointerEvent): string {
 }
 
 function shouldStartMarquee(e: PointerEvent): boolean {
+  if (props.isMobile) return false;
+
   const action = resolveTimelineDragAction(e);
   return action === 'move_clips' || action === 'select_area';
 }
@@ -103,12 +106,22 @@ function onPointerdown(e: PointerEvent) {
     // on click → onClick callback selects the gap; on drag → starts marquee selection
     e.stopPropagation();
     emit('marqueeStart', e);
-  } else if (e.button !== 1) {
-    e.stopPropagation();
+    return;
+  }
+
+  if (e.button === 1) return;
+
+  e.stopPropagation();
+
+  if (props.isMobile && e.pointerType === 'touch' && e.button === 0) {
+    emit('select', e);
     handlePointerDown(e);
-    if (e.button === 0) {
-      emit('select', e);
-    }
+    return;
+  }
+
+  handlePointerDown(e);
+  if (e.button === 0) {
+    emit('select', e);
   }
 }
 </script>

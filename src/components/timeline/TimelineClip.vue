@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import type {
   TimelineTrack,
   TimelineTrackItem,
@@ -188,11 +188,8 @@ function onClipPointerdown(e: PointerEvent) {
     }
 
     e.preventDefault();
-    onPointerDown(e);
-    return;
   }
 
-  e.stopPropagation();
   onPointerDown(e);
 }
 
@@ -218,7 +215,7 @@ const { clipItem, onClipClick } = useClipInteractions({
   userSettings: computed(() => workspaceStore.userSettings),
   selectTimelineItems: (ids) =>
     timelineStore.selectTimelineItems(
-      ids.map((id) => ({ trackId: props.track.id, itemId: id, kind: 'clip' })),
+      ids.map((id) => ({ trackId: props.track.id, itemId: id, kind: 'clip' as const })),
     ),
   trimToPlayheadLeftNoRipple: (target) => void timelineStore.trimToPlayheadLeftNoRipple(target),
   trimToPlayheadRightNoRipple: (target) => void timelineStore.trimToPlayheadRightNoRipple(target),
