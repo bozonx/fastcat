@@ -23,7 +23,9 @@ export interface TimelineSelectionModule {
   selectTransition: (input: { trackId: string; itemId: string; edge: 'in' | 'out' } | null) => void;
   selectTrack: (trackId: string | null) => void;
   toggleSelection: (itemId: string, options?: { multi?: boolean }) => void;
-  selectTimelineItems: (itemIds: string[] | { trackId: string; itemId: string }[]) => void;
+  selectTimelineItems: (
+    itemIds: string[] | { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[],
+  ) => void;
   selectAllClipsOnTrack: (trackId: string) => void;
   selectAllClips: () => void;
   selectClipsRelativeToPlayhead: (params: {

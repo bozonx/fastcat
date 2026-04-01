@@ -221,12 +221,13 @@ const volumeIndicatorPosition = computed(() => {
           left: `${getFadeHandlePositionPx('in')}px`,
           zIndex: 'var(--z-clip-handles)',
         }"
+        @pointerdown.stop="
+          onFadeHandlePointerDown($event, { edge: 'in', durationUs: clip.audioFadeInUs || 0 })
+        "
+        @click.stop
       >
         <div
           class="w-2.5 h-2.5 rounded-full bg-white border border-black/30 hover:bg-yellow-400 transition-colors"
-          @pointerdown="
-            onFadeHandlePointerDown($event, { edge: 'in', durationUs: clip.audioFadeInUs || 0 })
-          "
         ></div>
       </div>
 
@@ -240,12 +241,13 @@ const volumeIndicatorPosition = computed(() => {
           left: `${getFadeHandlePositionPx('out')}px`,
           zIndex: 'var(--z-clip-handles)',
         }"
+        @pointerdown.stop="
+          onFadeHandlePointerDown($event, { edge: 'out', durationUs: clip.audioFadeOutUs || 0 })
+        "
+        @click.stop
       >
         <div
           class="w-2.5 h-2.5 rounded-full bg-white border border-black/30 hover:bg-yellow-400 transition-colors"
-          @pointerdown="
-            onFadeHandlePointerDown($event, { edge: 'out', durationUs: clip.audioFadeOutUs || 0 })
-          "
         ></div>
       </div>
     </template>

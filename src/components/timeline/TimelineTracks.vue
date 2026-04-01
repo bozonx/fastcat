@@ -246,6 +246,21 @@ function selectTransition(
   payload: { trackId: string; itemId: string; edge: 'in' | 'out' },
 ) {
   e.stopPropagation();
+
+  // If this transition is already selected, toggle selection back to the clip
+  const current = selectionStore.selectedEntity;
+  if (
+    current?.source === 'timeline' &&
+    current.kind === 'transition' &&
+    current.trackId === payload.trackId &&
+    current.itemId === payload.itemId &&
+    current.edge === payload.edge
+  ) {
+    timelineStore.selectTransition(null);
+    timelineStore.selectTimelineItems([{ trackId: payload.trackId, itemId: payload.itemId, kind: 'clip' }]);
+    return;
+  }
+
   timelineStore.selectTransition(payload);
   selectionStore.selectTimelineTransition(payload.trackId, payload.itemId, payload.edge);
 }
