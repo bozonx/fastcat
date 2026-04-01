@@ -32,7 +32,6 @@ import TransitionProperties from '~/components/properties/TransitionProperties.v
 import MobileAddContentDrawer from './MobileAddContentDrawer.vue';
 import MobileVirtualClipPresetDrawer from './MobileVirtualClipPresetDrawer.vue';
 
-
 const { t } = useI18n();
 const toast = useToast();
 
@@ -93,10 +92,22 @@ const selectedTransitionContext = computed(() => {
   return { track, clip };
 });
 
+function closeAllDrawers() {
+  isTrackPropertiesDrawerOpen.value = false;
+  isClipPropertiesDrawerOpen.value = false;
+  isMarkerPropertiesDrawerOpen.value = false;
+  isSelectionRangeDrawerOpen.value = false;
+  isTransitionDrawerOpen.value = false;
+  drawerActiveSnapPoint.value = null;
+}
+
 watch(
   () => !!timelineStore.selectedTrackId && timelineStore.selectedItemIds.length === 0,
   (val) => {
-    isTrackPropertiesDrawerOpen.value = val;
+    if (val) {
+      closeAllDrawers();
+      isTrackPropertiesDrawerOpen.value = true;
+    }
   },
   { immediate: true },
 );
@@ -104,7 +115,10 @@ watch(
 watch(
   () => timelineStore.selectedItemIds.length > 0,
   (val) => {
-    isClipPropertiesDrawerOpen.value = val;
+    if (val) {
+      closeAllDrawers();
+      isClipPropertiesDrawerOpen.value = true;
+    }
   },
   { immediate: true },
 );
@@ -112,7 +126,10 @@ watch(
 watch(
   () => !!selectedMarkerId.value,
   (val) => {
-    isMarkerPropertiesDrawerOpen.value = val;
+    if (val) {
+      closeAllDrawers();
+      isMarkerPropertiesDrawerOpen.value = true;
+    }
   },
   { immediate: true },
 );
@@ -122,7 +139,10 @@ watch(
     selectionStore.selectedEntity?.source === 'timeline' &&
     selectionStore.selectedEntity.kind === 'selection-range',
   (val) => {
-    isSelectionRangeDrawerOpen.value = val;
+    if (val) {
+      closeAllDrawers();
+      isSelectionRangeDrawerOpen.value = true;
+    }
   },
   { immediate: true },
 );
@@ -130,7 +150,10 @@ watch(
 watch(
   () => timelineStore.selectedTransition,
   (val) => {
-    isTransitionDrawerOpen.value = !!val;
+    if (val) {
+      closeAllDrawers();
+      isTransitionDrawerOpen.value = true;
+    }
   },
   { immediate: true },
 );
@@ -296,6 +319,7 @@ function onTimelineClick(e: MouseEvent) {
   if (target?.closest('.cursor-ns-resize')) return;
   if (target?.closest('[data-clip-id]')) return;
   if (target?.closest('[data-gap-id]')) return;
+  if (target?.closest('[data-track-id]')) return;
 
   const el = scrollEl.value;
   if (!el) return;
@@ -381,7 +405,7 @@ async function onClipAction(payload: TimelineClipActionPayload) {
     @pointerdown="focusStore.setMainFocus('timeline')"
   >
     <MobileTimelineToolbar />
-    
+
     <!-- Clip Properties Drawer -->
     <MobileClipPropertiesDrawer
       v-model:active-snap-point="drawerActiveSnapPoint"
@@ -455,7 +479,6 @@ async function onClipAction(payload: TimelineClipActionPayload) {
 
     <!-- Tracks area -->
     <div class="flex-1 relative overflow-hidden">
-
       <!-- Ruler: outside scrollEl — not scrolled, draws based on scrollEl.scrollLeft -->
       <div
         class="absolute top-0 left-0 right-0 h-8 z-40 bg-ui-bg/95 border-b border-ui-border select-none touch-none backdrop-blur shadow-sm"
@@ -494,29 +517,35 @@ async function onClipAction(payload: TimelineClipActionPayload) {
             :dragging-item-id="draggingItemId"
             :move-preview="movePreview"
             is-mobile
-            @select-item="(ev, id) => {
-              if (ev.pointerType === 'touch') {
-                // Long press is handled in TimelineClip via emit. 
-                // But for short tap, we want to ensure it's NOT expanded.
-                drawerActiveSnapPoint = null;
+            @select-item="
+              (ev, id) => {
+                if (ev.pointerType === 'touch') {
+                  // Long press is handled in TimelineClip via emit.
+                  // But for short tap, we want to ensure it's NOT expanded.
+                  drawerActiveSnapPoint = null;
+                }
+                selectItem(ev, id);
               }
-              selectItem(ev, id);
-            }"
+            "
             @start-move-item="onStartMoveItem"
             @start-trim-item="onStartTrimItem"
             @clip-action="onClipAction"
-            @long-press-item="(id: string) => {
-              isLongPress = true;
-              drawerActiveSnapPoint = 0.92;
-              timelineStore.selectTimelineItems([{ itemId: id, trackId: '' }]);
-            }"
-            @long-press-track="(trackId: string) => {
-              isLongPress = true;
-              drawerActiveSnapPoint = 0.92;
-              timelineStore.selectTrack(trackId);
-              selectionStore.selectTimelineTrack(trackId);
-              timelineStore.clearSelection();
-            }"
+            @long-press-item="
+              (id: string) => {
+                isLongPress = true;
+                drawerActiveSnapPoint = 0.92;
+                timelineStore.selectTimelineItems([{ itemId: id, trackId: '' }]);
+              }
+            "
+            @long-press-track="
+              (trackId: string) => {
+                isLongPress = true;
+                drawerActiveSnapPoint = 0.92;
+                timelineStore.selectTrack(trackId);
+                selectionStore.selectTimelineTrack(trackId);
+                timelineStore.clearSelection();
+              }
+            "
           />
 
           <!-- Playhead line (ruler renders its own triangle marker) -->
@@ -526,25 +555,23 @@ async function onClipAction(payload: TimelineClipActionPayload) {
           />
         </div>
       </div>
-
     </div>
 
-  <!-- FAB: add content — hidden whenever any property drawer is open -->
-  <Teleport to="body">
-    <div
-      v-if="!isAddContentDrawerOpen && !isVirtualClipPresetDrawerOpen && !isClipPropertiesDrawerOpen && !isTrackPropertiesDrawerOpen && !isMarkerPropertiesDrawerOpen && !isSelectionRangeDrawerOpen && !isTransitionDrawerOpen"
-      class="fixed bottom-20 right-6 z-40 transition-all duration-300"
-    >
-      <UButton
-        icon="lucide:plus"
-        size="xl"
-        class="rounded-full shadow-2xl w-14 h-14 flex items-center justify-center bg-ui-action hover:bg-ui-action-hover text-white border-none shadow-ui-action/20"
-        :ui="{ icon: 'w-7 h-7' }"
-        :aria-label="t('fastcat.timeline.addContent', 'Add content')"
-        @click="isAddContentDrawerOpen = true"
-      />
-    </div>
-  </Teleport>
+    <!-- FAB: add content -->
+    <Teleport to="body">
+      <div
+        class="fixed bottom-20 right-6 z-40 transition-all duration-300"
+      >
+        <UButton
+          icon="lucide:plus"
+          size="xl"
+          class="rounded-full shadow-2xl w-14 h-14 flex items-center justify-center bg-ui-action hover:bg-ui-action-hover text-white border-none shadow-ui-action/20"
+          :ui="{ icon: 'w-7 h-7' }"
+          :aria-label="t('fastcat.timeline.addContent', 'Add content')"
+          @click="isAddContentDrawerOpen = true"
+        />
+      </div>
+    </Teleport>
   </div>
 </template>
 

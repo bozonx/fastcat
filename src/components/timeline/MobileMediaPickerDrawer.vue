@@ -79,21 +79,6 @@ function goBack() {
   currentPath.value = parts.join('/');
 }
 
-/** Resolves or creates a track of the given kind, returns its id. */
-function ensureTrack(kind: 'video' | 'audio'): string | null {
-  const tracks = timelineStore.timelineDoc?.tracks;
-  const existing = tracks?.find((tr) => tr.kind === kind && !tr.locked);
-  if (existing) return existing.id;
-
-  const count = (tracks?.filter((tr) => tr.kind === kind).length ?? 0) + 1;
-  const name = kind === 'video' ? `Video ${count}` : `Audio ${count}`;
-  timelineStore.addTrack(kind, name);
-
-  const created = timelineStore.timelineDoc?.tracks
-    ?.filter((tr) => tr.kind === kind)
-    .pop();
-  return created?.id ?? null;
-}
 
 async function addToTimeline() {
   if (!selectedFiles.value.length || isAdding.value) return;
@@ -103,14 +88,14 @@ async function addToTimeline() {
       if (!entry.path) continue;
       const mediaType = getMediaTypeFromFilename(entry.name);
       const kind = mediaType === 'audio' ? 'audio' : 'video';
-      const trackId = ensureTrack(kind);
-      if (!trackId) continue;
+      const trackId = timelineStore.resolveMobileTargetTrackId(kind);
 
       await timelineStore.addClipToTimelineFromPath({
         trackId,
         name: entry.name,
         path: entry.path,
         startUs: timelineStore.currentTime,
+        pseudo: true,
       });
     }
     selectedFiles.value = [];

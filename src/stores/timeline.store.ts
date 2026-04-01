@@ -187,6 +187,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     batchApplyTimeline,
     requestTimelineSave,
     getSelectedOrActiveTrackId: () => selection.getSelectedOrActiveTrackId(),
+    selectedItemIds,
   });
 
   const trimming = createTimelineTrimmingModule({
