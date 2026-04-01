@@ -294,7 +294,7 @@ const formatDate = (dateStr?: string) => {
                   </div>
                 </div>
 
-                <div class="p-3 flex flex-col flex-1">
+                <div class="p-3 flex flex-col flex-1 min-h-[74px]">
                   <div v-if="isRenaming === project.projectName" class="mb-2">
                     <UiTextInput
                       v-model="renameValue"
@@ -313,7 +313,7 @@ const formatDate = (dateStr?: string) => {
                   </h3>
 
                   <div
-                    class="flex items-center justify-between mt-auto pt-2 border-t border-ui-border/50"
+                    class="flex items-center justify-between mt-auto pt-2 border-t border-ui-border/50 h-8"
                   >
                     <span class="text-[10px] text-ui-text-muted font-medium truncate">
                       {{ project.updatedAt ? formatDate(project.updatedAt) : '' }}
@@ -331,22 +331,33 @@ const formatDate = (dateStr?: string) => {
                 </div>
               </div>
 
-              <!-- Create Card inside grid - Moved to the end -->
+              <!-- Create Card inside grid -->
               <div
-                class="aspect-4/5 bg-ui-bg-elevated/30 border border-dashed border-ui-border rounded-xl flex flex-col items-center justify-center gap-3 hover:border-ui-action/50 hover:bg-ui-action/5 transition-all cursor-pointer group"
+                class="flex flex-col group bg-ui-bg-elevated/30 border border-dashed border-ui-border rounded-xl overflow-hidden hover:border-ui-action/50 hover:bg-ui-action/5 transition-all cursor-pointer"
                 @click="startCreateProject"
               >
                 <div
-                  class="w-10 h-10 rounded-full bg-ui-bg-accent flex items-center justify-center group-hover:bg-ui-action/20 transition-colors"
+                  class="aspect-video relative bg-ui-bg-accent/50 flex items-center justify-center shrink-0"
                 >
-                  <UIcon
-                    name="i-heroicons-plus"
-                    class="w-5 h-5 text-ui-text-muted group-hover:text-ui-action"
-                  />
+                  <div
+                    class="w-10 h-10 rounded-full bg-ui-bg-accent flex items-center justify-center group-hover:bg-ui-action/20 transition-colors"
+                  >
+                    <UIcon
+                      name="i-heroicons-plus"
+                      class="w-5 h-5 text-ui-text-muted group-hover:text-ui-action"
+                    />
+                  </div>
                 </div>
-                <span class="text-sm font-medium text-ui-text-muted group-hover:text-ui-action">{{
-                  t('fastcat.projects.newProject')
-                }}</span>
+                <div class="p-3 flex flex-col flex-1 min-h-[74px]">
+                  <h3
+                    class="text-sm font-semibold text-ui-text-muted group-hover:text-ui-action truncate"
+                  >
+                    {{ t('fastcat.projects.newProject') }}
+                  </h3>
+                  <div class="flex items-center justify-between mt-auto pt-2 border-t border-transparent h-8">
+                    <!-- Spacer to match project card layout -->
+                  </div>
+                </div>
               </div>
             </div>
           </section>
