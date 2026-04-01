@@ -364,7 +364,7 @@ function onTrackPointerDown(e: PointerEvent, trackId: string) {
                   ? `${track.color}40`
                   : `${track.color}1a`
                 : isTrackDirectlySelected(track.id)
-                  ? 'rgba(var(--color-primary-500), 0.08)'
+                  ? 'color-mix(in srgb, var(--selection-accent-500) 8%, transparent)'
                   : undefined,
           }"
           @pointerdown="onTrackPointerDown($event, track.id)"
