@@ -14,6 +14,8 @@ import type { TimelineTrack } from '~/timeline/types';
 export interface UseTimelineWheelHandlerOptions {
   videoScrollEl: Ref<HTMLElement | null>;
   audioScrollEl: Ref<HTMLElement | null>;
+  videoLabelsScrollEl?: Ref<HTMLElement | null>;
+  audioLabelsScrollEl?: Ref<HTMLElement | null>;
   rulerContainerRef: Ref<HTMLElement | null>;
   scrollEl: Ref<HTMLElement | null>;
   tracks: Ref<TimelineTrack[]> | { value: TimelineTrack[] };
@@ -22,6 +24,8 @@ export interface UseTimelineWheelHandlerOptions {
 export function useTimelineWheelHandler({
   videoScrollEl,
   audioScrollEl,
+  videoLabelsScrollEl,
+  audioLabelsScrollEl,
   rulerContainerRef,
   scrollEl,
   tracks,
@@ -35,12 +39,16 @@ export function useTimelineWheelHandler({
   const fps = computed(() => projectStore.projectSettings.project.fps || 30);
   const timelineMouseSettings = computed(() => workspaceStore.userSettings.mouse.timeline);
   const rulerMouseSettings = computed(() => workspaceStore.userSettings.mouse.ruler);
+  const trackHeadersMouseSettings = computed(() => workspaceStore.userSettings.mouse.trackHeaders);
   const { trackHeights } = storeToRefs(timelineStore);
 
   function getActiveScrollEl(e: WheelEvent): HTMLElement | null {
     const target = e.target as HTMLElement;
     if (target.closest('.audio-tracks-scroll')) return audioScrollEl.value;
     if (target.closest('.video-tracks-scroll')) return videoScrollEl.value;
+    // For track labels, return the labels scrollable container for vertical scrolling
+    const labelsContainer = target.closest('.timeline-labels-container');
+    if (labelsContainer) return labelsContainer as HTMLElement;
     return scrollEl.value;
   }
 
@@ -68,7 +76,12 @@ export function useTimelineWheelHandler({
     const activeEl = getActiveScrollEl(e);
     if (!activeEl) return;
 
-    const settings = category === 'ruler' ? rulerMouseSettings.value : timelineMouseSettings.value;
+    const settings =
+      category === 'ruler'
+        ? rulerMouseSettings.value
+        : category === 'trackHeaders'
+          ? trackHeadersMouseSettings.value
+          : timelineMouseSettings.value;
 
     const isShift = isLayer1Active(e, workspaceStore.userSettings);
     const secondary = isSecondaryWheel(e);
@@ -169,6 +182,9 @@ export function useTimelineWheelHandler({
   setupWheelHandler(videoScrollEl, 'timeline');
   setupWheelHandler(audioScrollEl, 'timeline');
   setupWheelHandler(rulerContainerRef, 'ruler');
+
+  if (videoLabelsScrollEl) setupWheelHandler(videoLabelsScrollEl, 'trackHeaders');
+  if (audioLabelsScrollEl) setupWheelHandler(audioLabelsScrollEl, 'trackHeaders');
 
   return { fitTimelineZoom };
 }

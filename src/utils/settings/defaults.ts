@@ -292,8 +292,8 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       horizontalMovement: 'none',
     },
     timeline: {
-      wheel: 'zoom_horizontal',
-      wheelShift: 'scroll_horizontal',
+      wheel: 'scroll_horizontal',
+      wheelShift: 'zoom_horizontal',
       wheelSecondary: 'scroll_horizontal',
       wheelSecondaryShift: 'zoom_vertical',
       click: 'select_item',

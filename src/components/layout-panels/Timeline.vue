@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch, nextTick } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -106,6 +106,8 @@ const { isPanning, hasPanned, getActiveScrollEl, startPan, onPanMove, stopPan } 
 const { fitTimelineZoom } = useTimelineWheelHandler({
   videoScrollEl,
   audioScrollEl,
+  videoLabelsScrollEl,
+  audioLabelsScrollEl,
   rulerContainerRef,
   scrollEl,
   tracks,
@@ -210,9 +212,16 @@ function onTrackAreaPointerDownCapture(e: PointerEvent) {
   const isRuler = (e.target as HTMLElement | null)?.closest('.timeline-ruler-container');
   if (isRuler) return;
 
+  const isLabels = (e.target as HTMLElement | null)?.closest('.timeline-labels-container');
+
   if (e.button === 1) {
     hasPanned.value = false;
     hasPlayheadMoved.value = false;
+
+    if (isLabels) {
+      // Middle click/drag on track labels — use trackHeaders settings, no pan/seek
+      return;
+    }
 
     if (timelineMouseSettings.value.middleDrag === 'pan') {
       startPan(e);
@@ -230,8 +239,10 @@ function onTrackAreaPointerDownCapture(e: PointerEvent) {
 function onTrackAreaAuxClick(e: MouseEvent) {
   if (e.button !== 1) return;
   const isRuler = (e.target as HTMLElement).closest('.timeline-ruler-container');
+  const isLabels = (e.target as HTMLElement).closest('.timeline-labels-container');
   if (!isRuler) {
     if (hasPanned.value || hasPlayheadMoved.value) return;
+    if (isLabels) return;
     handleTimelineClickAction(timelineMouseSettings.value.middleClick, e);
   }
 }
@@ -262,6 +273,22 @@ async function onClipAction(payload: TimelineClipActionPayload) {
     });
   }
 }
+
+// Scroll the timeline so the playhead is visible (used after rewind to start/end)
+watch(
+  () => timelineStore.scrollToPlayheadRequest,
+  () => {
+    nextTick(() => {
+      const el = scrollEl.value;
+      if (!el) return;
+      const playheadPx = timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom);
+      const vw = el.clientWidth;
+      if (playheadPx < el.scrollLeft || playheadPx > el.scrollLeft + vw) {
+        el.scrollLeft = Math.max(0, playheadPx - vw / 2);
+      }
+    });
+  },
+);
 
 function updateTrackHeight(trackId: string, height: number) {
   trackHeights.value[trackId] = height;

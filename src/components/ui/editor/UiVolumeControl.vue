@@ -43,6 +43,11 @@ function onVolumeUpdate(v: number | string | undefined | null) {
   emit('update:volume', Number(v ?? 1));
 }
 
+function resetVolume() {
+  emit('update:volume', 1);
+  emit('update:isMuted', false);
+}
+
 // Popup logic for compact mode
 interface PopupPosition {
   top: number;
@@ -162,8 +167,8 @@ onBeforeUnmount(() => {
     />
 
     <span
-      class="text-2xs font-mono tabular-nums text-ui-text-muted select-none leading-none w-8 text-center"
-      @click.stop="toggleMute"
+      class="text-2xs font-mono tabular-nums text-ui-text-muted select-none leading-none w-8 text-center cursor-pointer"
+      @click.stop="resetVolume"
     >
       {{ volumePercent }}%
     </span>
@@ -198,8 +203,8 @@ onBeforeUnmount(() => {
       />
     </div>
     <span
-      class="text-2xs font-mono tabular-nums text-ui-text-muted select-none leading-none w-8 text-center"
-      @click.stop="toggleMute"
+      class="text-2xs font-mono tabular-nums text-ui-text-muted select-none leading-none w-8 text-center cursor-pointer"
+      @click.stop="resetVolume"
     >
       {{ volumePercent }}%
     </span>
@@ -267,7 +272,8 @@ onBeforeUnmount(() => {
                 />
               </div>
               <span
-                class="text-2xs text-ui-text-muted font-mono tabular-nums select-none leading-none w-8 text-center"
+                class="text-2xs text-ui-text-muted font-mono tabular-nums select-none leading-none w-8 text-center cursor-pointer"
+                @click.stop="resetVolume"
               >
                 {{ volumePercent }}%
               </span>
