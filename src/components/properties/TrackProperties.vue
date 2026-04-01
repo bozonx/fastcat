@@ -319,7 +319,7 @@ const clipCount = computed(
         </div>
 
         <div v-if="extraActions.length > 0" class="pt-1">
-          <PropertyActionList :actions="extraActions" justify="start" size="xs" />
+          <PropertyActionList :actions="extraActions" justify="start" size="sm" />
         </div>
       </div>
     </PropertySection>

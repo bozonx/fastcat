@@ -46,21 +46,19 @@ function openProjectSettings() {
       :value="formatBytes(props.storageFreeBytes)"
     />
 
-    <div class="flex items-center justify-between text-xs px-2 py-1">
-      <div class="flex flex-col gap-0.5">
-        <span class="text-neutral-500">{{
-          t('videoEditor.fileManager.projectRoot.parameters', 'Parameters')
-        }}</span>
-        <span class="text-neutral-200">{{ projectParams }}</span>
+    <PropertyRow :label="t('videoEditor.fileManager.projectRoot.parameters', 'Parameters')">
+      <div class="flex items-center gap-2">
+        <span>{{ projectParams }}</span>
+        <UButton
+          icon="i-heroicons-pencil"
+          color="gray"
+          variant="ghost"
+          size="xs"
+          :title="t('common.edit', 'Edit')"
+          class="opacity-60 hover:opacity-100"
+          @click="openProjectSettings"
+        />
       </div>
-      <UButton
-        icon="i-heroicons-pencil"
-        color="gray"
-        variant="ghost"
-        size="sm"
-        :title="t('common.edit', 'Edit')"
-        @click="openProjectSettings"
-      />
-    </div>
+    </PropertyRow>
   </PropertySection>
 </template>

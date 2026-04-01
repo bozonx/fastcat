@@ -48,10 +48,10 @@ const mappedSecondary = computed(() =>
       :actions="mappedPrimary"
       :vertical="false"
       variant="ghost"
-      size="xs"
+      size="sm"
     />
 
     <!-- Secondary Actions (Vertical Text Buttons) -->
-    <PropertyActionList v-if="mappedSecondary.length > 0" :actions="mappedSecondary" size="xs" />
+    <PropertyActionList v-if="mappedSecondary.length > 0" :actions="mappedSecondary" size="sm" />
   </div>
 </template>

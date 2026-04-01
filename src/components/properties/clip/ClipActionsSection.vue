@@ -289,11 +289,11 @@ const otherActions = computed(() => {
         :vertical="false"
         justify="start"
         variant="ghost"
-        size="xs"
+        size="sm"
         class="mb-2"
       />
 
-      <PropertyActionList :actions="otherActions" justify="start" size="xs" />
+      <PropertyActionList :actions="otherActions" justify="start" size="sm" />
     </div>
   </PropertySection>
 </template>

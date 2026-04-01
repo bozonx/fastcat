@@ -32,7 +32,7 @@ const { getTrackContextMenuItems } = useTrackContextMenu({
 
 const trackContextMenuItems = computed(() => {
   const tracks = (timelineStore.timelineDoc?.tracks as any[]) || [];
-  const track = tracks.find(t => t.id === props.trackId);
+  const track = tracks.find((t) => t.id === props.trackId);
   if (!track) return [];
   return getTrackContextMenuItems(track, tracks);
 });
@@ -99,13 +99,15 @@ const { onPointerDown: handlePointerDown } = useClickOrDrag({
 
 function onPointerdown(e: PointerEvent) {
   if (shouldStartMarquee(e)) {
+    // Emit marqueeStart directly so startMarquee handles click vs drag distinction:
+    // on click → onClick callback selects the gap; on drag → starts marquee selection
     e.stopPropagation();
-    handlePointerDown(e);
+    emit('marqueeStart', e);
   } else if (e.button !== 1) {
     e.stopPropagation();
     handlePointerDown(e);
     if (e.button === 0 && !props.isMobile) {
-       emit('select', e);
+      emit('select', e);
     }
   }
 }

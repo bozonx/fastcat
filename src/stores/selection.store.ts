@@ -222,6 +222,7 @@ export const useSelectionStore = defineStore('selection', () => {
       const entity = selectedEntity.value;
       if (entity.kind === 'track') return entity.trackId === trackId;
       if (entity.kind === 'clip') return entity.trackId === trackId;
+      if (entity.kind === 'gap') return entity.trackId === trackId;
       if (entity.kind === 'transition') return entity.trackId === trackId;
       if (entity.kind === 'clips' && entity.items) {
         return entity.items.some((item) => item.trackId === trackId);

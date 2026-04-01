@@ -8,6 +8,8 @@ const props = defineProps<{
   track: TimelineTrack;
   height: number;
   isSelected: boolean;
+  /** True only when the track header itself is selected, not just a clip/gap/transition on it. */
+  isDirectlySelected: boolean;
   isHovered: boolean;
   isRenaming: boolean;
   hasAudio?: boolean;
@@ -167,11 +169,11 @@ onBeforeUnmount(() => {
     @dblclick="!track.locked && timelineStore.selectAllClipsOnTrack(track.id)"
     @contextmenu.stop="emit('select')"
   >
-    <!-- Left Accent/Track Color Indicator -->
+    <!-- Left Accent/Track Color Indicator — only shown when track is directly selected -->
     <div
       class="absolute left-0 top-0 bottom-0 w-1 transition-colors z-10"
       :class="[
-        isSelected && (!track.color || track.color === '#2a2a2a')
+        isDirectlySelected && (!track.color || track.color === '#2a2a2a')
           ? 'bg-(--selection-accent-500)'
           : isHovered && (!track.color || track.color === '#2a2a2a')
             ? 'bg-ui-border/50'
@@ -180,9 +182,11 @@ onBeforeUnmount(() => {
       :style="{
         backgroundColor:
           track.color && track.color !== '#2a2a2a'
-            ? isSelected
+            ? isDirectlySelected
               ? track.color
-              : `${track.color}b3`
+              : isHovered
+                ? `${track.color}80`
+                : undefined
             : undefined,
       }"
     />
@@ -191,13 +195,14 @@ onBeforeUnmount(() => {
       <!-- Row 1: Track ID, Truncated Name (when height < 50), and Buttons -->
       <div class="flex items-center gap-1.5 min-w-0 shrink-0 h-4.5">
         <!-- Track Number Block (e.g., V1, A1) -->
+        <!-- Color matches left border only when directly selected; otherwise inherits text color -->
         <div
           class="shrink-0 flex items-center justify-center min-w-[20px] pr-1 border-r border-ui-border text-[9px] font-black uppercase tracking-tight h-3 my-auto transition-colors"
           :style="{
             color:
-              isSelected && track.color && track.color !== '#2a2a2a'
+              isDirectlySelected && track.color && track.color !== '#2a2a2a'
                 ? track.color
-                : isSelected
+                : isDirectlySelected
                   ? 'var(--color-primary-500)'
                   : undefined,
           }"

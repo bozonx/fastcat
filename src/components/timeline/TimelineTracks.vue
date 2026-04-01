@@ -217,9 +217,10 @@ const speedModalTargetHasAudio = computed(() => {
   return Boolean(clip.source?.path && mediaStore.mediaMetadata[clip.source.path]?.audio);
 });
 
-const { emptyAreaContextMenuItems: timelineEmptyAreaContextMenuItems } = useTimelineEmptyAreaContextMenu({
-  onZoomToFit: () => props.onZoomToFit?.(),
-});
+const { emptyAreaContextMenuItems: timelineEmptyAreaContextMenuItems } =
+  useTimelineEmptyAreaContextMenu({
+    onZoomToFit: () => props.onZoomToFit?.(),
+  });
 
 const clipboardStore = useAppClipboard();
 const { getTrackContextMenuItems } = useTrackContextMenu({
@@ -252,6 +253,10 @@ function onTrackPointerDown(e: PointerEvent, trackId: string) {
   focusStore.setPanelFocus('timeline');
   if (shouldStartMarquee(e)) {
     startMarquee(e);
+  } else if (!props.isMobile && e.button === 0) {
+    // LMB on empty track area (clips/gaps stop propagation) → select the track
+    timelineStore.selectTrack(trackId);
+    selectionStore.selectTimelineTrack(trackId);
   } else if (props.isMobile) {
     timelineStore.selectTrack(trackId);
     selectionStore.selectTimelineTrack(trackId);
@@ -334,131 +339,134 @@ function onTrackPointerDown(e: PointerEvent, trackId: string) {
               : '',
             track.locked ? 'hatching-diagonal-track bg-black/10' : '',
           ]"
-        :style="{
-          height: `${trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT}px`,
-          backgroundColor:
-            track.color && track.color !== '#2a2a2a'
-              ? isTrackVisuallySelected(track.id)
-                ? `${track.color}40`
-                : `${track.color}1a`
-              : undefined,
-        }"
-        @pointerdown="onTrackPointerDown($event, track.id)"
-        @mouseenter="timelineStore.hoveredTrackId = track.id"
-        @mouseleave="timelineStore.hoveredTrackId = null"
-        @dragover.prevent="emit('dragover', $event, track.id)"
-        @dragleave.prevent="emit('dragleave', $event, track.id)"
-        @drop.prevent="emit('drop', $event, track.id)"
-      >
-        <!-- Selection Highlight -->
-        <div
-          v-if="isTrackVisuallySelected(track.id)"
-          class="absolute inset-0 z-0 pointer-events-none border-y-2 border-primary-500/30 bg-primary-500/5 transition-colors"
-          :class="{
-            'border-y-2! border-primary-500/40 bg-primary-500/10':
-              !track.color || track.color === '#2a2a2a',
-          }"
           :style="{
-            borderColor: track.color && track.color !== '#2a2a2a' ? `${track.color}80` : undefined,
-            borderTopWidth: '2px',
-            borderBottomWidth: '2px',
+            height: `${trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT}px`,
+            backgroundColor:
+              track.color && track.color !== '#2a2a2a'
+                ? isTrackVisuallySelected(track.id)
+                  ? `${track.color}40`
+                  : `${track.color}1a`
+                : undefined,
           }"
-        />
-        <!-- Drop Previews inside track -->
-        <div
-          v-if="dragPreview && dragPreview.trackId === track.id"
-          class="absolute top-0.5 bottom-0.5 rounded px-2 flex items-center text-xs text-(--clip-text) z-30 pointer-events-none opacity-80"
-          :class="
-            dragPreview.kind === 'file'
-              ? 'bg-primary-600 border border-primary-400'
-              : 'bg-ui-bg-accent border border-ui-border'
-          "
-          :style="{
-            left: `${timeUsToPx(dragPreview.startUs, timelineStore.timelineZoom)}px`,
-            width: `${Math.max(2, timeUsToPx(dragPreview.durationUs, timelineStore.timelineZoom))}px`,
-          }"
+          @pointerdown="onTrackPointerDown($event, track.id)"
+          @mouseenter="timelineStore.hoveredTrackId = track.id"
+          @mouseleave="timelineStore.hoveredTrackId = null"
+          @dragover.prevent="emit('dragover', $event, track.id)"
+          @dragleave.prevent="emit('dragleave', $event, track.id)"
+          @drop.prevent="emit('drop', $event, track.id)"
         >
-          <span class="truncate" :title="dragPreview.label">{{ dragPreview.label }}</span>
-        </div>
-
-        <TimelineClip
-          v-if="movePreview && movePreview.trackId === track.id && movePreviewItem"
-          class="opacity-60 pointer-events-none z-40!"
-          :track="track"
-          :item="
-            {
-              ...movePreviewItem,
-              id: 'preview-' + movePreviewItem.id,
-              timelineRange: { ...movePreviewItem.timelineRange, startUs: movePreview.startUs },
-            } as any
-          "
-          :track-height="trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT"
-          :can-edit-clip-content="false"
-          :is-dragging-current-item="false"
-          :is-move-preview-current-item="true"
-          :selected-transition="null"
-          :resize-volume="null"
-        />
-
-        <template v-for="item in visibleItemsByTrack[track.id]" :key="item.id">
-          <TimelineGap
-            v-if="item.kind === 'gap'"
-            :item="item"
-            :track-id="track.id"
-            :is-mobile="isMobile"
-            @select="
-              (e) => {
-                if (isMobile) {
-                  timelineStore.selectTrack(track.id);
-                  selectionStore.selectTimelineTrack(track.id);
-                  timelineStore.clearSelection();
-                } else {
-                  emit('selectItem', e, item.id);
-                }
-              }
-            "
-            @marquee-start="(e) => startMarquee(e, () => emit('selectItem', e, item.id))"
-          />
-          <TimelineClip
-            v-else
-            :track="track"
-            :item="item"
-            :track-height="trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT"
-            :can-edit-clip-content="canEditClipContent"
-            :is-dragging-current-item="draggingItemId === item.id"
-            :is-move-preview-current-item="movePreview?.itemId === item.id"
-            :selected-transition="selectedTransition"
-            :resize-volume="resizeVolume"
-            :scroll-left="scrollLeft"
-            :viewport-width="viewportWidth"
-            :slip-preview="slipPreview?.itemId === item.id ? slipPreview : null"
-            @select-item="(ev, id) => emit('selectItem', ev, id)"
-            @start-move-item="(ev, payload) => emit('startMoveItem', ev, payload)"
-            @start-trim-item="(ev, payload) => emit('startTrimItem', ev, payload)"
-            @start-resize-volume="startResizeVolume"
-            @start-resize-fade="startResizeFade"
-            @start-resize-transition="startResizeTransition"
-            @select-transition="selectTransition"
-            @clip-action="(p) => {
-              if (p.action === ('longPress' as any)) {
-                emit('long-press-item', p.itemId);
-              } else {
-                emit('clipAction', p);
-              }
+          <!-- Selection Highlight -->
+          <div
+            v-if="isTrackVisuallySelected(track.id)"
+            class="absolute inset-0 z-0 pointer-events-none border-y-2 border-primary-500/30 bg-primary-500/5 transition-colors"
+            :class="{
+              'border-y-2! border-primary-500/40 bg-primary-500/10':
+                !track.color || track.color === '#2a2a2a',
             }"
-            @open-speed-modal="
-              (p: TimelineOpenSpeedModalPayload) => openSpeedModal(track.id, p.itemId, p.speed)
-            "
-            @reset-volume="
-              (payload) =>
-                timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
-                  audioGain: 1,
-                })
-            "
+            :style="{
+              borderColor:
+                track.color && track.color !== '#2a2a2a' ? `${track.color}80` : undefined,
+              borderTopWidth: '2px',
+              borderBottomWidth: '2px',
+            }"
           />
-        </template>
-      </div>
-    </UContextMenu>
+          <!-- Drop Previews inside track -->
+          <div
+            v-if="dragPreview && dragPreview.trackId === track.id"
+            class="absolute top-0.5 bottom-0.5 rounded px-2 flex items-center text-xs text-(--clip-text) z-30 pointer-events-none opacity-80"
+            :class="
+              dragPreview.kind === 'file'
+                ? 'bg-primary-600 border border-primary-400'
+                : 'bg-ui-bg-accent border border-ui-border'
+            "
+            :style="{
+              left: `${timeUsToPx(dragPreview.startUs, timelineStore.timelineZoom)}px`,
+              width: `${Math.max(2, timeUsToPx(dragPreview.durationUs, timelineStore.timelineZoom))}px`,
+            }"
+          >
+            <span class="truncate" :title="dragPreview.label">{{ dragPreview.label }}</span>
+          </div>
+
+          <TimelineClip
+            v-if="movePreview && movePreview.trackId === track.id && movePreviewItem"
+            class="opacity-60 pointer-events-none z-40!"
+            :track="track"
+            :item="
+              {
+                ...movePreviewItem,
+                id: 'preview-' + movePreviewItem.id,
+                timelineRange: { ...movePreviewItem.timelineRange, startUs: movePreview.startUs },
+              } as any
+            "
+            :track-height="trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT"
+            :can-edit-clip-content="false"
+            :is-dragging-current-item="false"
+            :is-move-preview-current-item="true"
+            :selected-transition="null"
+            :resize-volume="null"
+          />
+
+          <template v-for="item in visibleItemsByTrack[track.id]" :key="item.id">
+            <TimelineGap
+              v-if="item.kind === 'gap'"
+              :item="item"
+              :track-id="track.id"
+              :is-mobile="isMobile"
+              @select="
+                (e) => {
+                  if (isMobile) {
+                    timelineStore.selectTrack(track.id);
+                    selectionStore.selectTimelineTrack(track.id);
+                    timelineStore.clearSelection();
+                  } else {
+                    emit('selectItem', e, item.id);
+                  }
+                }
+              "
+              @marquee-start="(e) => startMarquee(e, () => emit('selectItem', e, item.id))"
+            />
+            <TimelineClip
+              v-else
+              :track="track"
+              :item="item"
+              :track-height="trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT"
+              :can-edit-clip-content="canEditClipContent"
+              :is-dragging-current-item="draggingItemId === item.id"
+              :is-move-preview-current-item="movePreview?.itemId === item.id"
+              :selected-transition="selectedTransition"
+              :resize-volume="resizeVolume"
+              :scroll-left="scrollLeft"
+              :viewport-width="viewportWidth"
+              :slip-preview="slipPreview?.itemId === item.id ? slipPreview : null"
+              @select-item="(ev, id) => emit('selectItem', ev, id)"
+              @start-move-item="(ev, payload) => emit('startMoveItem', ev, payload)"
+              @start-trim-item="(ev, payload) => emit('startTrimItem', ev, payload)"
+              @start-resize-volume="startResizeVolume"
+              @start-resize-fade="startResizeFade"
+              @start-resize-transition="startResizeTransition"
+              @select-transition="selectTransition"
+              @clip-action="
+                (p) => {
+                  if (p.action === ('longPress' as any)) {
+                    emit('long-press-item', p.itemId);
+                  } else {
+                    emit('clipAction', p);
+                  }
+                }
+              "
+              @open-speed-modal="
+                (p: TimelineOpenSpeedModalPayload) => openSpeedModal(track.id, p.itemId, p.speed)
+              "
+              @reset-volume="
+                (payload) =>
+                  timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
+                    audioGain: 1,
+                  })
+              "
+            />
+          </template>
+        </div>
+      </UContextMenu>
       <div class="w-full flex-1 min-h-7" @click="timelineStore.selectTrack(null)" />
       <div class="h-16 shrink-0" />
     </div>
