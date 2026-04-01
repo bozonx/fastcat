@@ -23,6 +23,7 @@ const emit = defineEmits<{
   (e: 'cancelRename'): void;
   (e: 'resizeStart', event: MouseEvent): void;
   (e: 'contextMenu'): void;
+  (e: 'middleClick', event: MouseEvent): void;
 }>();
 
 const { t } = useI18n();
@@ -162,10 +163,11 @@ onBeforeUnmount(() => {
             ? `${track.color}33`
             : `${track.color}1a`
           : isDirectlySelected
-            ? 'rgba(var(--color-primary-500), 0.12)'
+            ? 'color-mix(in srgb, var(--selection-accent-500) 12%, transparent)'
             : undefined,
     }"
     @click.stop="emit('select')"
+    @auxclick.stop="(e) => e.button === 1 && emit('middleClick', e)"
     @dblclick="!track.locked && timelineStore.selectAllClipsOnTrack(track.id)"
     @contextmenu.stop="emit('select')"
   >
@@ -173,7 +175,7 @@ onBeforeUnmount(() => {
     <div
       class="absolute left-0 top-0 bottom-0 w-1 transition-colors z-10"
       :class="[
-        isSelected && (!track.color || track.color === '#2a2a2a')
+        isDirectlySelected && (!track.color || track.color === '#2a2a2a')
           ? 'bg-(--selection-accent-500)'
           : isHovered && (!track.color || track.color === '#2a2a2a')
             ? 'bg-ui-border/50'
@@ -182,7 +184,7 @@ onBeforeUnmount(() => {
       :style="{
         backgroundColor:
           track.color && track.color !== '#2a2a2a'
-            ? isSelected
+            ? isDirectlySelected
               ? track.color
               : isHovered
                 ? `${track.color}80`
@@ -200,10 +202,10 @@ onBeforeUnmount(() => {
           class="shrink-0 flex items-center justify-center min-w-[20px] pr-1 border-r border-ui-border text-[9px] font-black uppercase tracking-tight h-3 my-auto transition-colors"
           :style="{
             color:
-              isSelected && track.color && track.color !== '#2a2a2a'
+              isDirectlySelected && track.color && track.color !== '#2a2a2a'
                 ? track.color
-                : isSelected
-                  ? 'var(--color-primary-500)'
+                : isDirectlySelected
+                  ? 'var(--color-selection-accent-500)'
                   : undefined,
           }"
         >
