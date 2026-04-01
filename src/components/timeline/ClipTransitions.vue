@@ -216,6 +216,7 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
 }
 
 function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') {
+  if (props.isMobile) return;
   if (!props.canEdit || props.clip.locked || props.track.locked) return;
   e.stopPropagation();
   e.preventDefault();
@@ -273,6 +274,7 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
           "
           :title="getTransitionButtonTitle('in')"
           @click.stop="
+            !isMobile &&
             canEdit &&
             emit('select', $event as PointerEvent, {
               trackId: clip.trackId,
@@ -352,6 +354,7 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
           "
           :title="getTransitionButtonTitle('out')"
           @click.stop="
+            !isMobile &&
             canEdit &&
             emit('select', $event as PointerEvent, {
               trackId: clip.trackId,
@@ -426,7 +429,7 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
       }"
       :class="[
         clipWidthPx >= 30 && trackHeight >= 40 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
-        isMobile ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100',
+        isMobile ? 'hidden pointer-events-none' : 'opacity-0 group-hover/clip:opacity-100',
       ]"
       @pointerdown.stop="handleTransitionCreatePointerDown($event, 'in')"
       @click.stop
@@ -449,7 +452,7 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
       }"
       :class="[
         clipWidthPx >= 30 && trackHeight >= 40 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
-        isMobile ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-100',
+        isMobile ? 'hidden pointer-events-none' : 'opacity-0 group-hover/clip:opacity-100',
       ]"
       @pointerdown.stop="handleTransitionCreatePointerDown($event, 'out')"
       @click.stop

@@ -247,18 +247,23 @@ function selectTransition(
 ) {
   e.stopPropagation();
 
-  // If this transition is already selected, toggle selection back to the clip
-  const current = selectionStore.selectedEntity;
-  if (
-    current?.source === 'timeline' &&
-    current.kind === 'transition' &&
-    current.trackId === payload.trackId &&
-    current.itemId === payload.itemId &&
-    current.edge === payload.edge
-  ) {
-    timelineStore.selectTransition(null);
-    timelineStore.selectTimelineItems([{ trackId: payload.trackId, itemId: payload.itemId, kind: 'clip' }]);
-    return;
+  // On mobile, skip the cycle logic — repeated tap just re-selects the same transition
+  if (!props.isMobile) {
+    // If this transition is already selected, toggle selection back to the clip
+    const current = selectionStore.selectedEntity;
+    if (
+      current?.source === 'timeline' &&
+      current.kind === 'transition' &&
+      current.trackId === payload.trackId &&
+      current.itemId === payload.itemId &&
+      current.edge === payload.edge
+    ) {
+      timelineStore.selectTransition(null);
+      timelineStore.selectTimelineItems([
+        { trackId: payload.trackId, itemId: payload.itemId, kind: 'clip' },
+      ]);
+      return;
+    }
   }
 
   timelineStore.selectTransition(payload);
@@ -405,7 +410,8 @@ function onTrackPointerDown(e: PointerEvent, trackId: string) {
             class="absolute inset-0 z-0 pointer-events-none border-y border-solid transition-colors"
             :class="[!track.color || track.color === '#2a2a2a' ? 'border-primary-500/40' : '']"
             :style="{
-              borderColor: track.color && track.color !== '#2a2a2a' ? `${track.color}80` : undefined,
+              borderColor:
+                track.color && track.color !== '#2a2a2a' ? `${track.color}80` : undefined,
             }"
           />
           <!-- Drop Previews inside track -->
@@ -461,7 +467,9 @@ function onTrackPointerDown(e: PointerEvent, trackId: string) {
                   }
                 }
               "
-              @marquee-start="(e) => startMarquee(e, () => emit('selectItem', e, item.id))"
+              @marquee-start="
+                (e) => !isMobile && startMarquee(e, () => emit('selectItem', e, item.id))
+              "
             />
             <TimelineClip
               v-else
@@ -476,6 +484,7 @@ function onTrackPointerDown(e: PointerEvent, trackId: string) {
               :scroll-left="scrollLeft"
               :viewport-width="viewportWidth"
               :slip-preview="slipPreview?.itemId === item.id ? slipPreview : null"
+              :is-mobile="isMobile"
               @select-item="(ev, id) => emit('selectItem', ev, id)"
               @start-move-item="(ev, payload) => emit('startMoveItem', ev, payload)"
               @start-trim-item="(ev, payload) => emit('startTrimItem', ev, payload)"

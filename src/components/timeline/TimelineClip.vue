@@ -161,7 +161,11 @@ const { didStartDrag, rightClickDragTriggered, rightClickPointerActive, onPointe
     },
     onLongPress: () => {
       if (props.isMobile) {
-        emit('clipAction', { action: 'longPress' as any, trackId: props.track.id, itemId: props.item.id });
+        emit('clipAction', {
+          action: 'longPress' as any,
+          trackId: props.track.id,
+          itemId: props.item.id,
+        });
       }
     },
   });
@@ -295,8 +299,10 @@ const { contextMenuItems } = useClipContextMenu({
   selectedItemIds: computed(() => timelineStore.selectedItemIds),
   applyTimelineCommand: (cmd) => timelineStore.applyTimeline(cmd),
   batchApplyTimeline: (cmds) => timelineStore.batchApplyTimeline(cmds),
-  updateClipProperties: (trackId, itemId, p) => timelineStore.updateClipProperties(trackId, itemId, p),
-  updateClipTransition: (trackId, itemId, p) => timelineStore.updateClipTransition(trackId, itemId, p),
+  updateClipProperties: (trackId, itemId, p) =>
+    timelineStore.updateClipProperties(trackId, itemId, p),
+  updateClipTransition: (trackId, itemId, p) =>
+    timelineStore.updateClipTransition(trackId, itemId, p),
   requestTimelineSave: (opts) => timelineStore.requestTimelineSave(opts),
   selectTransition: (p) => timelineStore.selectTransition(p),
   clearSelection: () => selectionStore.clearSelection(),
@@ -327,7 +333,7 @@ const { contextMenuItems } = useClipContextMenu({
   pasteClips: (insertStartUs?: number) => {
     const payload = clipboardStore.clipboardPayload;
     if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return [];
-    const items = (timelineStore.pasteClips(payload.items, { insertStartUs }) || []);
+    const items = timelineStore.pasteClips(payload.items, { insertStartUs }) || [];
     if (payload.operation === 'cut') clipboardStore.setClipboardPayload(null);
     return items.map((it: any) => it.itemId);
   },
@@ -538,6 +544,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
         :track-height="trackHeight"
         :selected-transition="selectedTransition"
         :can-edit="canEditClipContent"
+        :is-mobile="isMobile"
         @select="(e, payload) => emit('selectTransition', e, payload)"
         @resize="
           (e, payload) =>
