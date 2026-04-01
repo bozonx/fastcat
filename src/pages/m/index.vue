@@ -228,15 +228,7 @@ const formatDate = (dateStr?: string) => {
                         @keyup.esc="isRenaming = null"
                         @click.stop
                       />
-                      <div class="flex items-center gap-1 shrink-0">
-                        <UButton
-                          size="md"
-                          variant="ghost"
-                          color="neutral"
-                          icon="i-heroicons-x-mark-20-solid"
-                          class="rounded-2xl w-11 h-11 p-0 text-slate-500 hover:text-white hover:bg-white/5 active:scale-90 transition-all"
-                          @click.stop="isRenaming = null"
-                        />
+                      <div class="flex items-center gap-1.5 shrink-0">
                         <UButton
                           size="md"
                           variant="solid"
@@ -244,6 +236,14 @@ const formatDate = (dateStr?: string) => {
                           icon="i-heroicons-check-20-solid"
                           class="rounded-2xl w-11 h-11 p-0 bg-ui-action! text-white shadow-lg shadow-ui-action/20 border-none active:scale-95 transition-all flex items-center justify-center"
                           @click.stop="renameProject(project.projectName)"
+                        />
+                        <UButton
+                          size="md"
+                          variant="solid"
+                          color="neutral"
+                          icon="i-heroicons-x-mark-20-solid"
+                          class="rounded-2xl w-11 h-11 p-0 bg-white/5 border border-white/5 text-slate-400 hover:text-white active:scale-90 transition-all flex items-center justify-center"
+                          @click.stop="isRenaming = null"
                         />
                       </div>
                     </div>
