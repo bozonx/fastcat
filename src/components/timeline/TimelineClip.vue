@@ -178,13 +178,18 @@ function onClipPointerdown(e: PointerEvent) {
 
   focusStore.setPanelFocus('timeline');
 
-  // On mobile, prevent browser scroll capture so the drag session can track pointer movement
-  if (
-    props.isMobile &&
-    e.pointerType === 'touch' &&
-    timelineStore.selectedItemIds.includes(props.item.id)
-  ) {
+  if (props.isMobile && e.pointerType === 'touch') {
+    const isSelected = timelineStore.selectedItemIds.includes(props.item.id);
+
+    e.stopPropagation();
+
+    if (!isSelected) {
+      return;
+    }
+
     e.preventDefault();
+    onPointerDown(e);
+    return;
   }
 
   e.stopPropagation();
@@ -504,7 +509,10 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
         isMediaMissing ? 'bg-red-600! border-red-800! text-white!' : '',
         !isMediaMissing && isUnsupported ? 'bg-amber-600/50! border-amber-700!' : '',
         (clipItem && Boolean(clipItem.locked)) || track.locked ? 'cursor-not-allowed' : '',
-        isMobile ? 'touch-manipulation' : '',
+        isMobile && timelineStore.selectedItemIds.includes(item.id) ? 'touch-none' : '',
+        isMobile && !timelineStore.selectedItemIds.includes(item.id)
+          ? 'touch-pan-x touch-pan-y'
+          : '',
       ]"
       @pointerdown="onClipPointerdown"
       @click="onClipClick"
@@ -658,7 +666,9 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
       </div>
 
       <!-- Trim Handles -->
-      <template v-if="clipItem && canEditClipContent && !clipItem.locked && !track.locked">
+      <template
+        v-if="clipItem && canEditClipContent && !clipItem.locked && !track.locked && !isMobile"
+      >
         <div
           class="absolute left-0 top-0 bottom-0 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors group/trim"
           :style="{ zIndex: 'var(--z-clip-trim)' }"

@@ -943,5 +943,6 @@ export function useTimelineItemDrag(
     startTrimItem,
     onGlobalPointerMove,
     onGlobalPointerUp,
+    scheduleDragReapply: scheduleDragReapplyFromLastPointerPosition,
   };
 }

@@ -60,6 +60,7 @@ export function useTimelineInteraction(
     startTrimItem: onDragStartTrimItem,
     onGlobalPointerMove: onItemDragGlobalPointerMove,
     onGlobalPointerUp: onItemDragGlobalPointerUp,
+    scheduleDragReapply,
   } = useTimelineItemDrag(scrollEl, tracks);
 
   const canEditClipContent = computed(
@@ -139,5 +140,6 @@ export function useTimelineInteraction(
     selectItem,
     startMoveItem,
     startTrimItem,
+    scheduleDragReapply,
   };
 }
