@@ -143,8 +143,8 @@ function onDividerPointerDown(e: PointerEvent) {
 
   const onMove = (ev: PointerEvent) => {
     if (isLandscapeMode.value) {
-      // In flex-row-reverse, the monitor is on the right
-      const pct = ((rect.right - ev.clientX) / rect.width) * 100;
+      // In flex-row, the monitor is on the left
+      const pct = ((ev.clientX - rect.left) / rect.width) * 100;
       landscapeMonitorWidth.value = Math.min(Math.max(pct, 20), 70);
     } else {
       const pct = ((ev.clientY - rect.top) / rect.height) * 100;
@@ -209,7 +209,7 @@ function onDividerPointerDown(e: PointerEvent) {
         ref="containerRef"
         class="flex h-full overflow-hidden bg-slate-950"
         :class="[
-          isLandscapeMode ? 'flex-row-reverse' : 'flex-col'
+          isLandscapeMode ? 'flex-row' : 'flex-col'
         ]"
       >
         <MobileMonitorContainer
