@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fastcat Editor Integration Demo</title>
+    <!-- We need to provide COOP/COEP headers for SharedArrayBuffer (FFmpeg) -->
+    <!-- Usually this is done via server headers, but for local testing you might need a proxy or a special server -->
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #09090b;
+            color: white;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            padding: 1rem;
+            background: #18181b;
+            border-bottom: 1px solid #27272a;
+            display: flex;
+            justify-content: space-between;
+            items-center: center;
+        }
+        #editor-container {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        .btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn:hover {
+            background: #1d4ed8;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div>
+            <h1 style="margin:0; font-size: 1.25rem;">Host Application</h1>
+            <p style="margin:0; font-size: 0.75rem; color: #a1a1aa;">Integration Example</p>
+        </div>
+        <button id="load-editor" class="btn">Launch Editor</button>
+    </header>
+
+    <div id="editor-container">
+        <div style="padding: 2rem; text-align: center; color: #71717a;">
+            Click "Launch Editor" to initialize the Fastcat SDK
+        </div>
+    </div>
+
+    <!-- Load the built SDK -->
+    <script type="module">
+        import FastcatEditor from '../../dist-lib/fastcat-editor.es.js';
+
+        const loadBtn = document.getElementById('load-editor');
+        const container = document.getElementById('editor-container');
+        let editor = null;
+
+        loadBtn.addEventListener('click', () => {
+            if (editor) return;
+
+            container.innerHTML = '';
+            
+            // Initialize the SDK
+            editor = new FastcatEditor('#editor-container');
+            
+            // Example assets to load
+            const assets = [
+                {
+                    id: 'sample-video',
+                    url: 'https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4',
+                    type: 'video',
+                    filename: 'bunny.mp4'
+                }
+            ];
+
+            // Start the editor
+            const el = editor.init({ assets });
+
+            // Listen for editor events
+            el.addEventListener('fastcat:exported', () => {
+                alert('Video exported successfully!');
+            });
+
+            loadBtn.textContent = 'Editor Loaded';
+            loadBtn.disabled = true;
+        });
+    </script>
+</body>
+</html>
