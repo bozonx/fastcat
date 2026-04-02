@@ -22,7 +22,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  exported: [];
+  exported: [data: { file: File, filename: string }];
 }>();
 
 const { t } = useI18n();
@@ -138,10 +138,10 @@ watch(outputFilename, async () => {
 });
 
 async function onConfirm() {
-  await handleStartExport(async () => {
+  await handleStartExport(async (file: File) => {
     await fileManager.reloadDirectory('_export');
     uiStore.notifyFileManagerUpdate();
-    emit('exported');
+    emit('exported', { file, filename: outputFilename.value });
   });
 }
 </script>

@@ -174,7 +174,7 @@ export function useExportForm() {
     }
   }
 
-  async function handleStartExport(onSuccess?: () => void) {
+  async function handleStartExport(onSuccess?: (file: File) => void | Promise<void>) {
     if (isExporting.value) return;
 
     isExporting.value = true;
@@ -275,7 +275,8 @@ export function useExportForm() {
         });
 
         if (onSuccess) {
-          onSuccess();
+          const file = await fileHandle.getFile();
+          await onSuccess(file);
         }
       } finally {
         if (!exportSuccess) {

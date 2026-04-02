@@ -1,3 +1,4 @@
+/** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { TauriWorkspaceProvider } from '~/stores/workspace/provider/tauri';
 import { open } from '@tauri-apps/plugin-dialog';
