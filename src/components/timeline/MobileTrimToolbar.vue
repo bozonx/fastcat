@@ -2,6 +2,14 @@
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import {
+  pickBestSnapCandidateUs,
+  zoomToPxPerSecond,
+  quantizeDeltaUsToFrames,
+} from '~/utils/timeline/geometry';
+import { computeSnapTargetsUs } from '~/composables/timeline/timelineInteractionUtils';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 
 const emit = defineEmits<{
@@ -11,7 +19,9 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
+const settingsStore = useTimelineSettingsStore();
 const selectionStore = useSelectionStore();
+const workspaceStore = useWorkspaceStore();
 
 const currentClipAndTrack = computed(() => {
   const entity = selectionStore.selectedEntity;
@@ -32,23 +42,37 @@ const startX = ref(0);
 const activeEdge = ref<'start' | 'end' | null>(null);
 const accumulatedDeltaUs = ref(0);
 const lastAppliedDeltaUs = ref(0);
+const anchorEdgeUs = ref(0);
+const snapTargetsUs = ref<number[]>([]);
 
 function onStart(edge: 'start' | 'end', e: TouchEvent) {
   const touch = e.touches[0];
-  if (!touch) return;
+  if (!touch || !currentClipAndTrack.value) return;
+
+  const clip = currentClipAndTrack.value.item;
   startX.value = touch.clientX;
   activeEdge.value = edge;
   accumulatedDeltaUs.value = 0;
   lastAppliedDeltaUs.value = 0;
+  anchorEdgeUs.value =
+    edge === 'start'
+      ? clip.timelineRange.startUs
+      : clip.timelineRange.startUs + clip.timelineRange.durationUs;
 
-  if (currentClipAndTrack.value?.item) {
-    const clip = currentClipAndTrack.value.item;
-    const timeUs =
-      edge === 'start'
-        ? clip.timelineRange.startUs
-        : clip.timelineRange.startUs + clip.timelineRange.durationUs;
-    timelineStore.setCurrentTimeUs(timeUs);
-  }
+  // Compute snap targets
+  const snapSettings = workspaceStore.userSettings.timeline.snapping;
+  snapTargetsUs.value = computeSnapTargetsUs({
+    tracks: timelineStore.timelineDoc?.tracks || [],
+    excludeItemId: clip.id,
+    includeTimelineStart: snapSettings.timelineEdges,
+    includeTimelineEndUs: snapSettings.timelineEdges ? timelineStore.duration : null,
+    includePlayheadUs: snapSettings.playhead ? timelineStore.currentTime : null,
+    includeMarkers: snapSettings.markers,
+    markers: timelineStore.getMarkers(),
+    includeClips: snapSettings.clips,
+  });
+
+  timelineStore.setCurrentTimeUs(anchorEdgeUs.value);
 }
 
 function onMove(e: TouchEvent) {
@@ -57,23 +81,46 @@ function onMove(e: TouchEvent) {
   if (!touch) return;
 
   const dx = touch.clientX - startX.value;
-  const zoomFactor = Math.max(1, (100 - timelineStore.timelineZoom) / 10);
-  const deltaUs = dx * 8000 * zoomFactor;
+  const zoom = timelineStore.timelineZoom;
+  const pps = zoomToPxPerSecond(zoom);
+  const rawDeltaUs = (dx / pps) * 1e6;
 
-  accumulatedDeltaUs.value = deltaUs;
-  const diffUs = accumulatedDeltaUs.value - lastAppliedDeltaUs.value;
+  let targetUs = anchorEdgeUs.value + rawDeltaUs;
 
-  if (Math.abs(diffUs) > 1000) {
+  // Snapping logic
+  if (settingsStore.toolbarSnapMode === 'snap') {
+    const thresholdUs = (settingsStore.snapThresholdPx / pps) * 1e6;
+    const snap = pickBestSnapCandidateUs({
+      rawUs: targetUs,
+      thresholdUs,
+      targetsUs: snapTargetsUs.value,
+    });
+    if (snap.distUs < thresholdUs) {
+      targetUs = snap.snappedUs;
+    }
+  }
+
+  // Frame quantization
+  const fps = timelineStore.timelineDoc?.timebase?.fps || 30;
+  if (settingsStore.frameSnapMode === 'frames') {
+    const frames = Math.round((targetUs * fps) / 1e6);
+    targetUs = Math.round((frames * 1e6) / fps);
+  }
+
+  const desiredTotalDeltaUs = targetUs - anchorEdgeUs.value;
+  const diffUs = desiredTotalDeltaUs - lastAppliedDeltaUs.value;
+
+  if (Math.abs(diffUs) >= 1) {
     try {
       timelineStore.trimItem({
         trackId: currentClipAndTrack.value.track.id,
         itemId: currentClipAndTrack.value.item.id,
         edge: activeEdge.value,
         deltaUs: diffUs,
-        quantizeToFrames: true,
+        quantizeToFrames: settingsStore.frameSnapMode === 'frames',
       });
 
-      lastAppliedDeltaUs.value = accumulatedDeltaUs.value;
+      lastAppliedDeltaUs.value += diffUs;
 
       const clip = currentClipAndTrack.value.item;
       const nextTimeUs =
@@ -82,7 +129,7 @@ function onMove(e: TouchEvent) {
           : clip.timelineRange.startUs + clip.timelineRange.durationUs;
       timelineStore.setCurrentTimeUs(nextTimeUs);
     } catch (err) {
-      // Ignore trim errors during drag
+      // Ignore
     }
   }
 }
@@ -111,10 +158,14 @@ function onEnd() {
 
       <!-- Duration visual -->
       <div v-if="currentClipAndTrack" class="flex-1 flex flex-col justify-center items-center py-1">
-        <div class="text-[10px] text-zinc-500 font-mono tracking-tighter uppercase font-black leading-none mb-0.5">
+        <div
+          class="text-[10px] text-zinc-500 font-mono tracking-tighter uppercase font-black leading-none mb-0.5"
+        >
           {{ (currentClipAndTrack.item.timelineRange.durationUs / 1e6).toFixed(3) }}s
         </div>
-        <div class="text-[8px] text-zinc-600 uppercase font-black tracking-widest truncate max-w-[140px]">
+        <div
+          class="text-[8px] text-zinc-600 uppercase font-black tracking-widest truncate max-w-[140px]"
+        >
           {{ currentClipAndTrack.item.name }}
         </div>
       </div>
