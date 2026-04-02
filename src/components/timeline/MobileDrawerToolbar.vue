@@ -1,6 +1,8 @@
 <template>
-  <div class="flex items-center gap-1 px-2 py-1.5 overflow-x-auto no-scrollbar">
-    <slot />
+  <div data-vaul-no-drag class="overflow-x-auto no-scrollbar">
+    <div class="flex items-center gap-1 px-2 py-1.5 w-max min-w-full">
+      <slot />
+    </div>
   </div>
 </template>
 

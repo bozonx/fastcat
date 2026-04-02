@@ -37,8 +37,10 @@ const isMultiple = computed(() => {
 });
 
 const selectedFsEntry = computed(() => {
-  if (selectedEntity.value?.source === 'fileManager' && 
-      (selectedEntity.value.kind === 'file' || selectedEntity.value.kind === 'directory')) {
+  if (
+    selectedEntity.value?.source === 'fileManager' &&
+    (selectedEntity.value.kind === 'file' || selectedEntity.value.kind === 'directory')
+  ) {
     return selectedEntity.value as SelectedFsEntry;
   }
   return null;
@@ -113,12 +115,7 @@ function handleAction(actionId: FileAction) {
           color="neutral"
           @click="handleAction('rename')"
         />
-        <UButton
-          icon="lucide:copy"
-          variant="ghost"
-          color="neutral"
-          @click="handleAction('copy')"
-        />
+        <UButton icon="lucide:copy" variant="ghost" color="neutral" @click="handleAction('copy')" />
         <UButton
           icon="lucide:scissors"
           variant="ghost"
@@ -135,8 +132,9 @@ function handleAction(actionId: FileAction) {
       </div>
 
       <!-- Scrollable content -->
-      <div 
+      <div
         class="flex-1"
+        data-vaul-no-drag
         :class="isTextDocument ? 'overflow-hidden p-0 pb-16' : 'overflow-y-auto px-4 pb-24'"
       >
         <div v-if="selectedFsEntry" class="h-full" :class="!isTextDocument && 'py-2'">

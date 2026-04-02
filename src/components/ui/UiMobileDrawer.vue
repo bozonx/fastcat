@@ -158,7 +158,10 @@ function onClose() {
 }
 
 function onHandleTap() {
-  if (isExpanded.value) return;
+  if (isExpanded.value) {
+    isOpen.value = false;
+    return;
+  }
 
   if (props.snapPoints && props.snapPoints.length > 0) {
     activeSnapPoint.value = props.snapPoints[props.snapPoints.length - 1] as string | number;
