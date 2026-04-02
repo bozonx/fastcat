@@ -42,36 +42,65 @@ vi.mock('#i18n', () => ({
   useLocaleRoute: vi.fn(() => (route: any) => route),
   useRouteBaseName: vi.fn(() => () => ''),
   useLocalePath: vi.fn(() => (path: string) => path),
-  useSwitchLocalePath: vi.fn(() => (locale: string) => locale),
+const { createNuxtMock } = vi.hoisted(() => ({
+  createNuxtMock: vi.fn(() => ({
+    $notificationService: { add: vi.fn() },
+    $i18nService: { t: (key: string, fallback?: string) => fallback ?? key },
+    _route: {
+      path: '/',
+      fullPath: '/',
+      query: {},
+      params: {},
+      hash: '',
+      sync: true,
+    },
+    runWithContext: (fn: any) => fn(),
+  })),
 }));
 
-vi.stubGlobal('useColorMode', () => ({
-  preference: 'dark',
-  value: 'dark',
+vi.mock('#app', () => ({
+  useNuxtApp: vi.fn(createNuxtMock),
+  useRuntimeConfig: vi.fn(() => ({ public: {} })),
+  useId: vi.fn(() => 'id'),
 }));
 
-vi.stubGlobal('useHead', () => {});
-vi.stubGlobal('useRuntimeConfig', () => ({
-  public: {},
-}));
-vi.stubGlobal('useId', () => `id-${Math.random().toString(36).substring(2, 9)}`);
-vi.stubGlobal('useAsyncData', () => ({ data: ref(null), pending: ref(false), error: ref(null) }));
-
-vi.stubGlobal('useNuxtApp', () => ({
-  $notificationService: { add: vi.fn() },
-  $i18nService: { t: (key: string, fallback?: string) => fallback ?? key },
-  _route: { path: '/', fullPath: '/', query: {}, params: {}, hash: '', sync: true },
-  runWithContext: (fn: any) => fn(),
+vi.mock('nuxt/app', () => ({
+  useNuxtApp: vi.fn(createNuxtMock),
+  useRuntimeConfig: vi.fn(() => ({ public: {} })),
+  useId: vi.fn(() => 'id'),
 }));
 
-vi.stubGlobal('useI18n', () => ({
+vi.mock('#imports', () => ({
+  useNuxtApp: vi.fn(createNuxtMock),
+  useI18n: vi.fn(() => ({
+    t: (key: string, fallback?: string) => fallback ?? key,
+    locale: ref('en-US'),
+  })),
+  useRuntimeConfig: vi.fn(() => ({ public: {} })),
+  useId: vi.fn(() => 'id'),
+  useDevice: vi.fn(() => ({ isMobile: false, isDesktop: true })),
+  useRouter: vi.fn(() => ({ push: vi.fn(), replace: vi.fn() })),
+  useRoute: vi.fn(() => ({ path: '/', query: {}, params: {} })),
+}));
+
+// Global stubs for non-aliased/auto-imported usage
+(globalThis as any).useNuxtApp = createNuxtMock;
+(globalThis as any).useRuntimeConfig = () => ({ public: {} });
+(globalThis as any).useId = () => `id-${Math.random().toString(36).substring(2, 9)}`;
+(globalThis as any).useAsyncData = () => ({ data: ref(null), pending: ref(false), error: ref(null) });
+(globalThis as any).useI18n = () => ({
   t: (key: string, fallback?: string) => fallback ?? key,
   locale: ref('en-US'),
-}));
-
-vi.stubGlobal('useToast', () => ({
+});
+(globalThis as any).useToast = () => ({
   add: vi.fn(),
-}));
+});
+(globalThis as any).useDevice = () => ({ isMobile: false, isDesktop: true });
+(globalThis as any).useColorMode = () => ({
+  preference: 'dark',
+  value: 'dark',
+});
+(globalThis as any).useHead = () => {};
 
 config.global.config.warnHandler = (msg) => {
   if (typeof msg === 'string' && msg.includes('<Suspense> is an experimental feature')) return;

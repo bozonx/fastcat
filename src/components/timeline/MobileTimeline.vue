@@ -43,6 +43,7 @@ import MobileGapPropertiesDrawer from './MobileGapPropertiesDrawer.vue';
 import MobileSelectionRangePropertiesDrawer from './MobileSelectionRangePropertiesDrawer.vue';
 import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
+import MobileClipTrimDrawer from './MobileClipTrimDrawer.vue';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -74,6 +75,7 @@ const isTransitionDrawerOpen = ref(false);
 const isGapPropertiesDrawerOpen = ref(false);
 const isMultiSelectionDrawerOpen = ref(false);
 const isAddContentDrawerOpen = ref(false);
+const isTrimDrawerOpen = ref(false);
 const isVirtualClipPresetDrawerOpen = ref(false);
 const virtualClipPresetType = ref<'text' | 'shape' | 'hud'>('text');
 const drawerActiveSnapPoint = ref<string | number | null>(null);
@@ -146,6 +148,10 @@ const {
   toggleMuted,
   allDisabled,
   allMuted,
+  allLocked,
+  allSoloed,
+  toggleLocked,
+  toggleSolo,
   hasAudioOrVideoWithAudio,
   hasVideoOrImage,
 } = useClipBatchActions(
@@ -226,6 +232,7 @@ function closeAllDrawers() {
   isTransitionDrawerOpen.value = false;
   isGapPropertiesDrawerOpen.value = false;
   isMultiSelectionDrawerOpen.value = false;
+  isTrimDrawerOpen.value = false;
   drawerActiveSnapPoint.value = null;
 }
 
@@ -323,6 +330,11 @@ function onClipPropertiesDrawerClose() {
   isLongPress.value = false;
   timelineStore.clearSelection();
   selectionStore.clearSelection();
+}
+
+function onClipTrimDrawerClose() {
+  isTrimDrawerOpen.value = false;
+  isClipPropertiesDrawerOpen.value = true;
 }
 
 function onMultiSelectionDrawerClose() {
@@ -695,11 +707,17 @@ async function onClipAction(payload: TimelineClipActionPayload) {
   >
     <MobileTimelineToolbar />
 
-    <!-- Clip Properties Drawer -->
     <MobileClipPropertiesDrawer
       v-model:active-snap-point="drawerActiveSnapPoint"
       :is-open="isClipPropertiesDrawerOpen"
       @close="onClipPropertiesDrawerClose"
+      @open-trim-drawer="isTrimDrawerOpen = true; isClipPropertiesDrawerOpen = false"
+    />
+
+    <!-- Clip Trim Drawer -->
+    <MobileClipTrimDrawer
+      :is-open="isTrimDrawerOpen"
+      @close="onClipTrimDrawerClose"
     />
 
     <!-- Multi Selection Drawer -->
