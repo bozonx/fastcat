@@ -25,6 +25,8 @@ import {
   timelineZoomScaleToPosition,
 } from '~/utils/zoom';
 import MultiClipProperties from '~/components/properties/MultiClipProperties.vue';
+import { useClipBatchActions } from '~/composables/timeline/useClipBatchActions';
+import { useMediaStore } from '~/stores/media.store';
 import MobileTimelineDrawer from './MobileTimelineDrawer.vue';
 
 import TimelineTracks from './TimelineTracks.vue';
@@ -49,6 +51,8 @@ const timelineStore = useTimelineStore();
 const focusStore = useFocusStore();
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
+const mediaStore = useMediaStore();
+const clipboardStore = useAppClipboard();
 
 const { currentView } = storeToRefs(projectStore);
 const { selectedEntity } = storeToRefs(selectionStore);
@@ -111,9 +115,11 @@ const selectedGap = computed(() => {
 });
 
 const selectedClips = computed(() => {
-  const entity = selectionStore.selectedEntity;
-  if (entity?.source !== 'timeline' || entity.kind !== 'clips') return null;
-  return entity.items;
+  const items = timelineStore.selectedItemIds.map((itemId) => {
+    const track = tracks.value.find((t) => t.items.some((it) => it.id === itemId));
+    return { trackId: track?.id ?? '', itemId };
+  });
+  return items.length > 0 ? items : null;
 });
 
 const isMultiSelectionMode = computed(() => Boolean(selectedClips.value?.length));
@@ -134,28 +140,79 @@ function syncSelectionStoreFromItemIds() {
   selectionStore.selectTimelineItems(items);
 }
 
+const {
+  handleDelete,
+  toggleDisabled,
+  toggleMuted,
+  allDisabled,
+  allMuted,
+  hasAudioOrVideoWithAudio,
+  hasVideoOrImage,
+} = useClipBatchActions(computed(() => selectedClips.value ?? []), {
+  timelineDoc: computed(() => timelineStore.timelineDoc),
+  mediaMetadata: computed(() => mediaStore.mediaMetadata),
+  batchApplyTimeline: (cmds) => timelineStore.batchApplyTimeline(cmds),
+  clearSelection: () => timelineStore.clearSelection(),
+});
+
+function handleCopyClips() {
+  clipboardStore.setClipboardPayload({
+    source: 'timeline',
+    operation: 'copy',
+    items: timelineStore.copySelectedClips().map((item) => ({
+      sourceTrackId: item.sourceTrackId,
+      clip: item.clip,
+    })),
+  });
+}
+
+function handleCutClips() {
+  clipboardStore.setClipboardPayload({
+    source: 'timeline',
+    operation: 'cut',
+    items: timelineStore.cutSelectedClips().map((item) => ({
+      sourceTrackId: item.sourceTrackId,
+      clip: item.clip,
+    })),
+  });
+}
+
 function toggleMobileClipSelection(itemId: string) {
   timelineStore.toggleSelection(itemId, { multi: true });
   timelineStore.selectTrack(null);
   timelineStore.selectTransition(null);
   syncSelectionStoreFromItemIds();
 
-  if (timelineStore.selectedItemIds.length <= 1) {
-    isMultiSelectionDrawerOpen.value = false;
-    isClipPropertiesDrawerOpen.value = timelineStore.selectedItemIds.length === 1;
+  const count = timelineStore.selectedItemIds.length;
+  if (count === 0) {
+    closeAllDrawers();
     return;
   }
 
-  isClipPropertiesDrawerOpen.value = false;
-  isMultiSelectionDrawerOpen.value = true;
+  // Once in multi-selection mode, we stay there unless we clear selection
+  if (isMultiSelectionDrawerOpen.value || isLongPress.value || count > 1) {
+    isClipPropertiesDrawerOpen.value = false;
+    isMultiSelectionDrawerOpen.value = true;
+  } else {
+    isClipPropertiesDrawerOpen.value = true;
+    isMultiSelectionDrawerOpen.value = false;
+  }
 }
 
 function enterMobileMultiSelection(itemId: string) {
   timelineStore.selectTrack(null);
   timelineStore.selectTransition(null);
-  timelineStore.selectTimelineItems([]);
-  selectionStore.clearSelection();
-  toggleMobileClipSelection(itemId);
+
+  const isSelected = timelineStore.selectedItemIds.includes(itemId);
+
+  if (!isSelected) {
+    timelineStore.clearSelection();
+    toggleMobileClipSelection(itemId);
+  } else {
+    // If already selected, just make sure we go to multi-selection mode
+    isClipPropertiesDrawerOpen.value = false;
+    isMultiSelectionDrawerOpen.value = true;
+  }
 }
 
 function closeAllDrawers() {
@@ -184,10 +241,14 @@ watch(
   () => timelineStore.selectedItemIds.length,
   (count) => {
     if (!count) return;
+    if (isLongPress.value) return;
+
+    // If multi-selection drawer is already open, don't flip back to single clip drawer
+    if (isMultiSelectionDrawerOpen.value) return;
 
     closeAllDrawers();
 
-    if (selectedClips.value && selectedClips.value.length > 1) {
+    if (count > 1) {
       isMultiSelectionDrawerOpen.value = true;
       return;
     }
@@ -520,6 +581,7 @@ function onTimelinePointerDownCapture(e: PointerEvent) {
   if (e.button === 0) {
     clickStartX.value = e.clientX;
     clickStartY.value = e.clientY;
+    isLongPress.value = false;
   }
 }
 
@@ -646,6 +708,35 @@ async function onClipAction(payload: TimelineClipActionPayload) {
     >
       <template #toolbar>
         <MobileDrawerToolbar>
+          <MobileDrawerToolbarButton
+            icon="i-heroicons-trash"
+            :label="t('common.delete', 'Delete')"
+            color="error"
+            @click="handleDelete"
+          />
+          <MobileDrawerToolbarButton
+            icon="i-heroicons-document-duplicate"
+            :label="t('common.copy', 'Copy')"
+            @click="handleCopyClips"
+          />
+          <MobileDrawerToolbarButton
+            icon="i-heroicons-scissors"
+            :label="t('common.cut', 'Cut')"
+            @click="handleCutClips"
+          />
+          <MobileDrawerToolbarButton
+            v-if="hasVideoOrImage"
+            :icon="allDisabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
+            :label="allDisabled ? t('fastcat.timeline.enable', 'Enable') : t('fastcat.timeline.disable', 'Disable')"
+            @click="toggleDisabled"
+          />
+          <MobileDrawerToolbarButton
+            v-if="hasAudioOrVideoWithAudio"
+            :icon="allMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
+            :label="allMuted ? t('fastcat.timeline.unmute', 'Unmute') : t('fastcat.timeline.mute', 'Mute')"
+            @click="toggleMuted"
+          />
+          <div class="w-px h-6 bg-ui-border mx-1 shrink-0" />
           <MobileDrawerToolbarButton
             icon="i-heroicons-x-mark"
             :label="t('common.clearSelection', 'Clear')"
@@ -777,6 +868,11 @@ async function onClipAction(payload: TimelineClipActionPayload) {
             @select-item="
               (ev, id) => {
                 if (ev.pointerType === 'touch') {
+                  if (isLongPress) {
+                    isLongPress = false;
+                    return;
+                  }
+
                   drawerActiveSnapPoint = null;
 
                   const entity = selectionStore.selectedEntity;
@@ -799,7 +895,7 @@ async function onClipAction(payload: TimelineClipActionPayload) {
             @long-press-item="
               (id: string) => {
                 isLongPress = true;
-                drawerActiveSnapPoint = 0.92;
+                drawerActiveSnapPoint = '116px';
                 enterMobileMultiSelection(id);
               }
             "

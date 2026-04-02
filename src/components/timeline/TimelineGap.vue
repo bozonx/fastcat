@@ -152,6 +152,7 @@ function onPointerdown(e: PointerEvent) {
       "
       :style="style"
       @pointerdown="onPointerdown"
+      @contextmenu.prevent.stop
     />
   </UContextMenu>
 </template>

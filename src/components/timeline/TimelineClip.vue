@@ -132,7 +132,7 @@ function onContextMenu(e: MouseEvent) {
   }
 }
 
-const { didStartDrag, rightClickDragTriggered, rightClickPointerActive, onPointerDown } =
+const { didStartDrag, rightClickDragTriggered, rightClickPointerActive, longPressTriggered, onPointerDown } =
   useClickOrDrag({
     onDragStart: (e) => {
       if (clipItem.value?.locked || props.track.locked) return;
@@ -179,16 +179,9 @@ function onClipPointerdown(e: PointerEvent) {
   focusStore.setPanelFocus('timeline');
 
   if (props.isMobile && e.pointerType === 'touch') {
-    const isSelected = timelineStore.selectedItemIds.includes(props.item.id);
-
     e.stopPropagation();
-
-    if (!isSelected) {
-      didStartDrag.value = false;
-      return;
-    }
-
-    e.preventDefault();
+    onPointerDown(e);
+    return;
   }
 
   onPointerDown(e);
@@ -208,7 +201,7 @@ function onTrimHandlePointerDown(e: PointerEvent, edge: 'start' | 'end') {
   });
 }
 
-const { clipItem, onClipClick } = useClipInteractions({
+const { clipItem, onClipClick: onClipClickInteraction } = useClipInteractions({
   track: computed(() => props.track),
   item: computed(() => props.item),
   canEditClipContent: computed(() => props.canEditClipContent),
@@ -224,6 +217,15 @@ const { clipItem, onClipClick } = useClipInteractions({
   emitSelectItem: (e, itemId) => emit('selectItem', e, itemId),
   didStartDrag,
 });
+
+function onClipClick(e: MouseEvent) {
+  if (longPressTriggered.value) {
+    e.preventDefault();
+    e.stopPropagation();
+    return;
+  }
+  onClipClickInteraction(e);
+}
 
 const focusStore = useFocusStore();
 const fileManagerStore = useFileManagerStore();
@@ -515,8 +517,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
       @pointerdown="onClipPointerdown"
       @click="onClipClick"
       @dblclick="onClipDblClick"
-      @contextmenu.capture="onContextMenu"
-      @contextmenu.stop
+      @contextmenu.prevent.stop
       @dragleave="handleDragLeave"
       @drop="handleDrop"
       @pointerenter="isHovered = true"
