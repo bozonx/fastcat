@@ -25,7 +25,7 @@ onMounted(async () => {
     <!-- Debug info overlay (optional, can be hidden) -->
     <div 
       v-if="workspaceStore.error" 
-      class="fixed top-4 left-4 right-4 p-4 rounded-xl bg-red-950 border border-red-500/30 text-red-200 z-[100] shadow-2xl backdrop-blur-md animate-in slide-in-from-top duration-300"
+      class="fixed top-4 left-4 right-4 p-4 rounded-xl bg-red-950 border border-red-500/30 text-red-200 z-100 shadow-2xl backdrop-blur-md animate-in slide-in-from-top duration-300"
     >
       <div class="flex items-center gap-3">
         <UIcon name="i-heroicons-exclamation-triangle" class="w-6 h-6 text-red-400" />

@@ -7,6 +7,11 @@ import MobileMonitorContainer from '~/components/monitor/MobileMonitorContainer.
 import MobileTimeline from '~/components/timeline/MobileTimeline.vue';
 import ExportForm from '~/components/export/ExportForm.vue';
 import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
+import { loadExternalAssets, type ExternalAsset } from '~/utils/external-assets.service';
+
+const props = defineProps<{
+  assets?: ExternalAsset[];
+}>();
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -25,7 +30,7 @@ async function initEmbedded() {
   }
 
   // Create or open a default project for the embedded session
-  if (workspaceStore.workspaceHandle && !projectStore.currentProject) {
+  if (workspaceStore.workspaceHandle && !projectStore.currentProjectName) {
     const defaultProjectName = 'embedded_project';
     
     // Check if project already exists, otherwise create it
@@ -34,6 +39,17 @@ async function initEmbedded() {
     } else {
       await projectStore.openProject(defaultProjectName);
     }
+  }
+
+  // Load external assets if provided
+  if (props.assets && props.assets.length > 0) {
+    const results = await loadExternalAssets({
+      assets: props.assets,
+      getProjectFileHandle: (path, options) => projectStore.getProjectFileHandleByRelativePath({ relativePath: path, ...options })
+    });
+    
+    // Add assets to timeline automatically if needed, or just let them stay in file manager
+    // For now we just load them into the file system.
   }
   
   isReady.value = true;

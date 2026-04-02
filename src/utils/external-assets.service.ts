@@ -1,0 +1,69 @@
+import { 
+  VIDEO_DIR_NAME, 
+  AUDIO_DIR_NAME, 
+  IMAGES_DIR_NAME, 
+} from '~/utils/constants';
+
+export interface ExternalAsset {
+  id: string;
+  url: string;
+  type: 'video' | 'audio' | 'image';
+  filename?: string;
+}
+
+export interface AssetLoadResult {
+  asset: ExternalAsset;
+  path: string;
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * Service to load external assets into the project's OPFS storage.
+ */
+export async function loadExternalAssets(params: {
+  assets: ExternalAsset[];
+  getProjectFileHandle: (path: string, options: { create: boolean }) => Promise<FileSystemFileHandle | null>;
+}): Promise<AssetLoadResult[]> {
+  const results: AssetLoadResult[] = [];
+
+  for (const asset of params.assets) {
+    try {
+      const response = await fetch(asset.url);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      
+      const blob = await response.blob();
+      
+      // Determine target folder and filename
+      const folder = asset.type === 'video' ? VIDEO_DIR_NAME : 
+                     asset.type === 'audio' ? AUDIO_DIR_NAME : 
+                     IMAGES_DIR_NAME;
+      
+      const filename = asset.filename || asset.url.split('/').pop()?.split('?')[0] || `${asset.id}.${asset.type === 'image' ? 'png' : asset.type === 'video' ? 'mp4' : 'mp3'}`;
+      const relativePath = `${folder}/${filename}`;
+
+      const handle = await params.getProjectFileHandle(relativePath, { create: true });
+      if (!handle) throw new Error(`Failed to get file handle for ${relativePath}`);
+
+      const writable = await (handle as any).createWritable();
+      await writable.write(blob);
+      await writable.close();
+
+      results.push({
+        asset,
+        path: relativePath,
+        success: true
+      });
+    } catch (e) {
+      console.error(`Failed to load asset ${asset.id}:`, e);
+      results.push({
+        asset,
+        path: '',
+        success: false,
+        error: e instanceof Error ? e.message : String(e)
+      });
+    }
+  }
+
+  return results;
+}
