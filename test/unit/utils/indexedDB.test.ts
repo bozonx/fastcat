@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import * as indexedDB from '~/utils/indexedDB';
+import * as indexedDb from '~/utils/indexed-db';
 import * as repository from '~/repositories/workspace-handle.repository';
 
 vi.mock('~/repositories/workspace-handle.repository', () => ({
   createIndexedDbWorkspaceHandleStorage: vi.fn(),
 }));
 
-describe('indexedDB', () => {
+describe('indexed-db', () => {
   const mockStorage = {
     get: vi.fn(),
     set: vi.fn(),
@@ -26,7 +26,7 @@ describe('indexedDB', () => {
   describe('saveWorkspaceHandleToIndexedDB', () => {
     it('saves handle using storage', async () => {
       const mockHandle = {} as FileSystemDirectoryHandle;
-      await indexedDB.saveWorkspaceHandleToIndexedDB(mockHandle);
+      await indexedDb.saveWorkspaceHandleToIndexedDB(mockHandle);
 
       expect(repository.createIndexedDbWorkspaceHandleStorage).toHaveBeenCalledWith({
         indexedDB: global.window.indexedDB,
@@ -40,7 +40,7 @@ describe('indexedDB', () => {
       const mockHandle = {} as FileSystemDirectoryHandle;
       mockStorage.get.mockResolvedValueOnce(mockHandle);
 
-      const result = await indexedDB.getWorkspaceHandleFromIndexedDB();
+      const result = await indexedDb.getWorkspaceHandleFromIndexedDB();
 
       expect(repository.createIndexedDbWorkspaceHandleStorage).toHaveBeenCalledWith({
         indexedDB: global.window.indexedDB,
@@ -52,7 +52,7 @@ describe('indexedDB', () => {
 
   describe('clearWorkspaceHandleFromIndexedDB', () => {
     it('clears handle using storage', async () => {
-      await indexedDB.clearWorkspaceHandleFromIndexedDB();
+      await indexedDb.clearWorkspaceHandleFromIndexedDB();
 
       expect(repository.createIndexedDbWorkspaceHandleStorage).toHaveBeenCalledWith({
         indexedDB: global.window.indexedDB,

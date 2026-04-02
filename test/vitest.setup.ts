@@ -72,6 +72,9 @@ vi.mock('#app', () => ({
   useId: vi.fn(() => 'id'),
   useToast: vi.fn(() => ({ add: vi.fn() })),
   useRoute: vi.fn(() => ({ path: '/', query: {}, params: {} })),
+  useState: vi.fn((key: string, init?: () => any) => (init ? ref(init()) : ref(null))),
+  defineNuxtPlugin: (plugin: any) => plugin,
+  defineAppConfig: (config: any) => config,
 }));
 
 vi.mock('nuxt/app', () => ({
@@ -80,6 +83,9 @@ vi.mock('nuxt/app', () => ({
   useId: vi.fn(() => 'id'),
   useToast: vi.fn(() => ({ add: vi.fn() })),
   useRoute: vi.fn(() => ({ path: '/', query: {}, params: {} })),
+  useState: vi.fn((key: string, init?: () => any) => (init ? ref(init()) : ref(null))),
+  defineNuxtPlugin: (plugin: any) => plugin,
+  defineAppConfig: (config: any) => config,
 }));
 
 vi.mock('#imports', () => ({
@@ -93,6 +99,18 @@ vi.mock('#imports', () => ({
   useDevice: vi.fn(() => ({ isMobile: false, isDesktop: true })),
   useRouter: vi.fn(() => ({ push: vi.fn(), replace: vi.fn() })),
   useRoute: vi.fn(() => ({ path: '/', query: {}, params: {} })),
+  useToast: vi.fn(() => ({ add: vi.fn() })),
+  useState: vi.fn((key: string, init?: () => any) => (init ? ref(init()) : ref(null))),
+}));
+
+vi.mock('#ui/composables/useToast', () => ({
+  useToast: vi.fn(() => ({ add: vi.fn() })),
+}));
+
+vi.mock('#ui/utils', () => ({
+  get: vi.fn(),
+  omit: vi.fn(),
+  mergeConfig: vi.fn(),
 }));
 
 // Global stubs for non-aliased/auto-imported usage
@@ -164,4 +182,8 @@ if (typeof window !== 'undefined') {
   }
 } else {
   (globalThis as any).localStorage = new LocalStorageMock();
+  // Mock window for code that explicitly uses window.setTimeout etc.
+  (globalThis as any).window = globalThis;
+  (globalThis as any).addEventListener = vi.fn();
+  (globalThis as any).removeEventListener = vi.fn();
 }

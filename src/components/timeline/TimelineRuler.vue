@@ -102,6 +102,7 @@ const { scheduleDraw } = useTimelineRulerDraw({
   majorTickWidth,
   subTickWidth,
   interfaceScale: computed(() => workspaceStore.userSettings.ui.interfaceScale),
+  isMobile: computed(() => props.isMobile),
 });
 
 watch([fps, zoom, () => workspaceStore.userSettings.ui.interfaceScale], () => {

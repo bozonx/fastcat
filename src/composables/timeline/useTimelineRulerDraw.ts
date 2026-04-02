@@ -17,6 +17,7 @@ interface TimelineRulerDrawOptions {
   majorTickWidth: number;
   subTickWidth: number;
   interfaceScale: Ref<number>;
+  isMobile?: Ref<boolean | undefined>;
 }
 
 export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
@@ -99,6 +100,7 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
     const pxPerFrame = pxPerSec / currentFps;
 
     const scale = options.interfaceScale.value / 14;
+    const isMobile = options.isMobile?.value;
 
     const startPx = options.scrollLeft.value;
     const endPx = startPx + w;
@@ -127,7 +129,7 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
 
     const majorTickHeight = 12 * scale;
     const subTickHeight = 5 * scale;
-    const textTopOffset = 2 * scale;
+    const textTopOffset = (isMobile ? 6 : 2) * scale;
 
     ctx.beginPath();
     for (let s = startS; s <= endS; s += mainStepS) {
