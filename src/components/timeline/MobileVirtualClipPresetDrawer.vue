@@ -169,7 +169,7 @@ const shapeStandard: PresetItem[] = [
   },
   {
     id: 'speech_bubble',
-    name: t('fastcat.library.shapes.speechBubble', 'Speech Bubble'),
+    name: t('fastcat.library.shapes.speech_bubble', 'Speech Bubble'),
     icon: 'i-heroicons-chat-bubble-left',
     apply: () => {
       const trackId = timelineStore.resolveMobileTargetTrackId('video');
@@ -202,7 +202,7 @@ const shapeStandard: PresetItem[] = [
 const hudStandard: PresetItem[] = [
   {
     id: 'media_frame',
-    name: t('fastcat.library.huds.mediaFrame', 'Media Frame'),
+    name: t('fastcat.library.huds.media_frame', 'Media Frame'),
     icon: 'i-heroicons-photo',
     apply: () => {
       const trackId = timelineStore.resolveMobileTargetTrackId('video');
