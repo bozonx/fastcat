@@ -11,6 +11,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'open-speed-modal', payload: { trackId: string; itemId: string; speed: number }): void;
+  (e: 'open-trim-drawer', payload: { trackId: string; itemId: string }): void;
 }>();
 
 const { t } = useI18n();
@@ -71,6 +72,17 @@ const actions = computed(() => {
     action: async () => {
       timelineStore.updateClipProperties(track.value!.id, clip.value!.id, { locked: !clip.value!.locked });
       await timelineStore.requestTimelineSave({ immediate: true });
+    },
+  });
+
+  // Trim/Duration
+  list.push({
+    label: t('fastcat.timeline.trimMode', 'Trim'),
+    icon: 'i-heroicons-arrows-right-left',
+    disabled: isLocked.value,
+    action: () => {
+      emit('open-trim-drawer', { trackId: track.value!.id, itemId: clip.value!.id });
+      emit('close');
     },
   });
 

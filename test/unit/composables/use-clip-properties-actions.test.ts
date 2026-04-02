@@ -45,11 +45,12 @@ function createOptions(clip: TimelineClipItem) {
   const projectStore = {
     currentView: 'cut',
     openTimelineFile: vi.fn(),
+    goToFiles: vi.fn(),
+    goToCut: vi.fn(),
   };
   const uiStore = { selectedFsEntry: null as Partial<FsEntry> | null };
-  const editorViewStore = { goToFiles: vi.fn(), goToCut: vi.fn() };
-  const filesPageStore = { selectFolder: vi.fn() };
   const selectionStore = { selectFsEntry: vi.fn() };
+  const fileManagerStore = { openFolder: vi.fn() };
   const focusStore = { setTempFocus: vi.fn() };
   const fileManager = {
     loadProjectDirectory: vi.fn(),
@@ -64,8 +65,7 @@ function createOptions(clip: TimelineClipItem) {
     timelineStore,
     projectStore,
     uiStore,
-    editorViewStore,
-    filesPageStore,
+    fileManagerStore,
     selectionStore,
     focusStore,
     fileManager,
@@ -78,8 +78,7 @@ function createOptions(clip: TimelineClipItem) {
     appliedCommands,
     projectStore,
     uiStore,
-    editorViewStore,
-    filesPageStore,
+    fileManagerStore,
     selectionStore,
     focusStore,
     fileManager,
@@ -139,7 +138,7 @@ describe('useClipPropertiesActions', () => {
 
   it('opens parent folder but keeps the file selected in file manager', async () => {
     const clip = makeClip({ source: { path: ' media / nested / clip.mp4 ' } });
-    const { api, fileManager, filesPageStore, selectionStore, uiStore, setActiveTab, focusStore } =
+    const { api, fileManager, fileManagerStore, selectionStore, uiStore, setActiveTab, focusStore } =
       createOptions(clip);
 
     const parentEntry = {
@@ -178,7 +177,7 @@ describe('useClipPropertiesActions', () => {
     await api.handleSelectInFileManager();
 
     expect(setActiveTab).toHaveBeenCalledWith('files');
-    expect(filesPageStore.selectFolder).toHaveBeenCalledWith(parentEntry);
+    expect(fileManagerStore.openFolder).toHaveBeenCalledWith(parentEntry);
     expect(selectionStore.selectFsEntry).toHaveBeenCalledWith(fileEntry);
     expect(uiStore.selectedFsEntry).toEqual({
       kind: 'file',
@@ -200,13 +199,13 @@ describe('useClipPropertiesActions', () => {
       clipType: 'timeline',
       source: { path: ' timelines / nested_001.otio ' },
     });
-    const { api, projectStore, timelineStore, editorViewStore } = createOptions(clip);
+    const { api, projectStore, timelineStore } = createOptions(clip);
 
     await api.handleOpenNestedTimeline();
 
     expect(projectStore.openTimelineFile).toHaveBeenCalledWith('timelines/nested_001.otio');
     expect(timelineStore.loadTimeline).toHaveBeenCalledTimes(1);
     expect(timelineStore.loadTimelineMetadata).toHaveBeenCalledTimes(1);
-    expect(editorViewStore.goToCut).toHaveBeenCalledTimes(1);
+    expect(projectStore.goToCut).toHaveBeenCalledTimes(1);
   });
 });
