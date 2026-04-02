@@ -42,10 +42,18 @@ vi.mock('#i18n', () => ({
   useLocaleRoute: vi.fn(() => (route: any) => route),
   useRouteBaseName: vi.fn(() => () => ''),
   useLocalePath: vi.fn(() => (path: string) => path),
+  useSwitchLocalePath: vi.fn(() => (locale: string) => locale),
+}));
+
 const { createNuxtMock } = vi.hoisted(() => ({
   createNuxtMock: vi.fn(() => ({
     $notificationService: { add: vi.fn() },
     $i18nService: { t: (key: string, fallback?: string) => fallback ?? key },
+    $vfs: {
+      getMetadata: vi.fn(),
+      getFile: vi.fn(),
+      readDirectory: vi.fn(),
+    },
     _route: {
       path: '/',
       fullPath: '/',
@@ -62,12 +70,16 @@ vi.mock('#app', () => ({
   useNuxtApp: vi.fn(createNuxtMock),
   useRuntimeConfig: vi.fn(() => ({ public: {} })),
   useId: vi.fn(() => 'id'),
+  useToast: vi.fn(() => ({ add: vi.fn() })),
+  useRoute: vi.fn(() => ({ path: '/', query: {}, params: {} })),
 }));
 
 vi.mock('nuxt/app', () => ({
   useNuxtApp: vi.fn(createNuxtMock),
   useRuntimeConfig: vi.fn(() => ({ public: {} })),
   useId: vi.fn(() => 'id'),
+  useToast: vi.fn(() => ({ add: vi.fn() })),
+  useRoute: vi.fn(() => ({ path: '/', query: {}, params: {} })),
 }));
 
 vi.mock('#imports', () => ({

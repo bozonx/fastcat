@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 
 import { useProjectStore } from './project.store';
 import { useWorkspaceStore } from './workspace.store';
+import { useNuxtApp } from '#app';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';

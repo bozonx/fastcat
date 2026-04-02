@@ -138,9 +138,10 @@ function getMarkerButtonClass(marker: MarkerPoint) {
             >
               <!-- 11px wide (odd) for precise centering; shorter + more open angle -->
               <svg
-                :width="isMobile ? 22 : 11"
+                width="11"
                 :height="isMobile ? 20 : 10"
                 viewBox="0 0 11 10"
+                preserveAspectRatio="none"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
               >
@@ -168,9 +169,10 @@ function getMarkerButtonClass(marker: MarkerPoint) {
               @click="emit('select-marker', point.id, $event, 'right')"
             >
               <svg
-                :width="isMobile ? 22 : 11"
+                width="11"
                 :height="isMobile ? 20 : 10"
                 viewBox="0 0 11 10"
+                preserveAspectRatio="none"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
               >

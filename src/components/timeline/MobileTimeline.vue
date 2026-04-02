@@ -873,7 +873,7 @@ async function onClipAction(payload: TimelineClipActionPayload) {
     <div class="flex-1 relative overflow-hidden">
       <!-- Ruler: outside scrollEl — not scrolled, draws based on scrollEl.scrollLeft -->
       <div
-        class="absolute top-0 left-0 right-0 h-8 z-40 bg-ui-bg/95 border-b border-ui-border select-none touch-none backdrop-blur shadow-sm"
+        class="absolute top-0 left-0 right-0 h-16 z-40 bg-ui-bg/95 border-b border-ui-border select-none touch-none backdrop-blur shadow-sm"
       >
         <TimelineRuler
           class="touch-none w-full h-full"
@@ -886,14 +886,14 @@ async function onClipAction(payload: TimelineClipActionPayload) {
       <!-- Grid: outside scrollEl — covers tracks area, draws based on scrollEl.scrollLeft -->
       <TimelineGrid
         class="absolute left-0 right-0 bottom-0 pointer-events-none z-0"
-        style="top: 32px"
+        style="top: 64px"
         :scroll-el="scrollEl"
       />
 
       <!-- Main scrollable tracks area: starts below ruler (top-8 = 32px) -->
       <div
         ref="scrollEl"
-        class="absolute top-8 left-0 right-0 bottom-0 overflow-auto overscroll-none no-scrollbar"
+        class="absolute top-16 left-0 right-0 bottom-0 overflow-auto overscroll-none no-scrollbar"
         :class="draggingMode ? 'touch-none' : 'touch-pan-x touch-pan-y'"
         @touchstart.passive="onTouchStart"
         @touchmove="onTouchMove"
