@@ -473,7 +473,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
 <template>
   <UContextMenu
     :items="contextMenuItems"
-    :disabled="rightClickPointerActive || rightClickDragTriggered"
+    :disabled="props.isMobile || rightClickPointerActive || rightClickDragTriggered"
   >
     <div
       :data-clip-id="item.kind === 'clip' ? item.id : undefined"

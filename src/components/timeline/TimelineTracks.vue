@@ -70,13 +70,10 @@ const emit = defineEmits<{
   (e: 'clipAction', payload: TimelineClipActionPayload): void;
   (e: 'startTrimItem', event: PointerEvent, payload: TimelineTrimItemPayload): void;
   (e: 'long-press-item', itemId: string): void;
-  (e: 'long-press-track', trackId: string): void;
 }>();
 
 const DEFAULT_TRACK_HEIGHT = 40;
 const containerRef = ref<HTMLElement | null>(null);
-
-let mobileTrackLongPressCleanup: (() => void) | null = null;
 
 const { tracks, trackHeights } = toRefs(props);
 
@@ -293,50 +290,11 @@ function onTrackPointerDown(e: PointerEvent, trackId: string) {
     } else {
       startMarquee(e);
     }
-  } else if (!props.isMobile && e.button === 0) {
-    // Non-marquee mode LMB on empty track area → select the track
+  } else if (e.button === 0) {
     selectTrackById(trackId);
-  } else if (props.isMobile) {
-    const startX = e.clientX;
-    const startY = e.clientY;
-    let moved = false;
-    const timer = window.setTimeout(() => {
-      if (!moved) {
-        moved = true;
-        timelineStore.selectTrack(trackId);
-        selectionStore.selectTimelineTrack(trackId);
-        timelineStore.clearSelection();
-        emit('long-press-track', trackId);
-      }
-    }, 500);
-
-    const onMove = (ev: PointerEvent) => {
-      if (Math.abs(ev.clientX - startX) > 5 || Math.abs(ev.clientY - startY) > 5) {
-        moved = true;
-        window.clearTimeout(timer);
-      }
-    };
-    const onUp = () => {
-      window.clearTimeout(timer);
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-      mobileTrackLongPressCleanup = null;
-
-      if (!moved) {
-        timelineStore.selectTrack(trackId);
-        selectionStore.selectTimelineTrack(trackId);
-        timelineStore.clearSelection();
-      }
-    };
-    mobileTrackLongPressCleanup = onUp;
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
+    timelineStore.clearSelection();
   }
 }
-
-onBeforeUnmount(() => {
-  if (mobileTrackLongPressCleanup) mobileTrackLongPressCleanup();
-});
 </script>
 
 <template>

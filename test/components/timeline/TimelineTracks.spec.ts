@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { reactive, nextTick } from 'vue';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
@@ -85,6 +85,10 @@ describe('TimelineTracks', () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   const baseTracks = [
     {
       id: 'track-1',
@@ -144,9 +148,7 @@ describe('TimelineTracks', () => {
     expect(mockTimelineStore.selectTrack).toHaveBeenCalledWith(null);
   });
 
-  it('selects mobile track on pointerup after tap', async () => {
-    vi.useFakeTimers();
-
+  it('selects mobile track on tap without long press flow', async () => {
     const component = await mountSuspended(TimelineTracks, {
       props: {
         ...defaultProps,
@@ -162,29 +164,15 @@ describe('TimelineTracks', () => {
       clientY: 12,
       pointerType: 'touch',
     });
-
-    window.dispatchEvent(
-      new PointerEvent('pointerup', {
-        bubbles: true,
-        clientX: 24,
-        clientY: 12,
-        pointerType: 'touch',
-      }),
-    );
 
     await nextTick();
 
     expect(mockTimelineStore.selectTrack).toHaveBeenCalledWith('track-1');
     expect(mockSelectionStore.selectTimelineTrack).toHaveBeenCalledWith('track-1');
     expect(mockTimelineStore.clearSelection).toHaveBeenCalled();
-
-    vi.runOnlyPendingTimers();
-    vi.useRealTimers();
   });
 
-  it('does not emit long press for mobile track after tap', async () => {
-    vi.useFakeTimers();
-
+  it('does not emit mobile track long press event', async () => {
     const component = await mountSuspended(TimelineTracks, {
       props: {
         ...defaultProps,
@@ -201,14 +189,9 @@ describe('TimelineTracks', () => {
       pointerType: 'touch',
     });
 
-    window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
-
     await nextTick();
 
     expect(component.emitted('long-press-track')).toBeFalsy();
-
-    vi.runOnlyPendingTimers();
-    vi.useRealTimers();
   });
 
   it('filters visible items by viewport to improve performance', async () => {
