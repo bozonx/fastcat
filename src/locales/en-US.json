@@ -649,13 +649,27 @@
     "shapeClip": {
       "baseLength": "Base Length (%)",
       "cornerRadius": "Corner Radius (%)",
+      "fillColor": "Fill Color",
       "height": "Height (%)",
       "innerRadius": "Inner Radius (%)",
       "pointerAngle": "Pointer Angle (%)",
       "pointerSharpness": "Pointer Sharpness (%)",
       "pointerX": "Pointer Position X (%)",
+      "shape": "Shape",
       "squashX": "Squash X (%)",
       "squashY": "Squash Y (%)",
+      "strokeColor": "Stroke Color",
+      "strokeWidth": "Stroke Width",
+      "type": "Type",
+      "types": {
+        "bang": "Bang",
+        "circle": "Circle",
+        "cloud": "Cloud",
+        "speechBubble": "Speech Bubble",
+        "square": "Square",
+        "star": "Star",
+        "triangle": "Triangle"
+      },
       "vertexOffset": "Vertex Offset (%)",
       "width": "Width (%)"
     },
