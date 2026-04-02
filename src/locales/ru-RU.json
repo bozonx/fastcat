@@ -148,6 +148,9 @@
     "autoRecognition": "Авто распознавание по типу",
     "inDirTimelines": "В _timelines/",
     "inDirDocuments": "В _documents/",
+    "refresh": "Обновить",
+    "toSortDesc": "По убыванию",
+    "toSortAsc": "По возрастанию",
     "video": "Видео",
     "timeline": "Таймлайн",
     "textDocument": "Текстовый документ",
@@ -582,13 +585,15 @@
       "rewind": "В начало",
       "showGrid": "Показать сетку",
       "snapshot": "Снимок",
-      "toolbarBottom": "Панель снизу",
-      "toolbarTop": "Панель сверху",
       "useProxy": "Использовать прокси",
       "enableProxy": "Включить прокси",
       "disableProxy": "Выключить прокси",
       "showTimecode": "Показать таймкод",
       "hideTimecode": "Скрыть таймкод",
+      "toolbarTop": "Панель сверху",
+      "toolbarRight": "Панель справа",
+      "toolbarBottom": "Панель снизу",
+      "toolbarLeft": "Панель слева",
       "withEffects": "С эффектами",
       "withoutEffects": "Без эффектов"
     },
@@ -772,6 +777,9 @@
       "soloActive": "СОЛО АКТИВНО",
       "clearSolos": "Сбросить соло",
       "snapMode": "Режим привязки",
+      "previousMarker": "Предыдущий маркер",
+      "addMarker": "Добавить маркер",
+      "nextMarker": "Следующий маркер",
       "snapModeFullDescription": "Привязка к клипам, плейхеду и маркерам",
       "snapModeFramesDescription": "Привязка только к границам кадров",
       "snapModeFreeDescription": "Свободное перемещение (без привязки)",
@@ -1138,6 +1146,7 @@
         "title": "Конвертация файла"
       },
       "delete": {
+        "confirmTitle": "Удаление элементов",
         "usedWarning": "Этот файл используется в таймлайнах:"
       },
       "dropOverlay": {

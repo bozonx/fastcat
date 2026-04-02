@@ -116,11 +116,18 @@ export class ResourceManager {
           return;
         }
 
-        const queueItem = { resolve, signal };
+        let onAbort: (() => void) | undefined;
+        const queueItem = {
+          resolve: () => {
+            if (onAbort && signal) signal.removeEventListener('abort', onAbort);
+            resolve();
+          },
+          signal,
+        };
 
         if (signal) {
-          const onAbort = () => {
-            signal.removeEventListener('abort', onAbort);
+          onAbort = () => {
+            if (onAbort) signal.removeEventListener('abort', onAbort);
             const index = this.sampleRequestQueue.indexOf(queueItem);
             if (index !== -1) {
               this.sampleRequestQueue.splice(index, 1);

@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { onScopeDispose, ref } from 'vue';
 
 export interface UseClickOrDragOptions {
   onDragStart: (e: PointerEvent) => void;
@@ -16,7 +16,11 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
   let longPressTimer: number | null = null;
   const LONG_PRESS_DELAY_MS = 500;
 
+  let activeCleanup: (() => void) | null = null;
+
   function onPointerDown(e: PointerEvent) {
+    if (activeCleanup) activeCleanup();
+
     if (e.button !== 0 && e.button !== 2) return;
 
     didStartDrag.value = false;
@@ -41,7 +45,9 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
         window.clearTimeout(longPressTimer);
         longPressTimer = null;
       }
+      activeCleanup = null;
     };
+    activeCleanup = cleanup;
 
     const startDrag = () => {
       if (didStartDrag.value) return;
@@ -107,6 +113,10 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
     window.addEventListener('pointerup', onPointerUp, { once: true });
     window.addEventListener('pointercancel', onPointerCancel, { once: true });
   }
+
+  onScopeDispose(() => {
+    if (activeCleanup) activeCleanup();
+  });
 
   return {
     didStartDrag,

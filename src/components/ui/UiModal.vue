@@ -112,6 +112,7 @@ function handleClose() {
     :dismissible="!props.preventClose"
     :title="props.title"
     :description="props.description"
+    :aria-describedby="!props.description ? (null as any) : undefined"
     :close="props.closeButton"
     :ui="modalUi as any"
     @after:enter="handleAfterEnter"

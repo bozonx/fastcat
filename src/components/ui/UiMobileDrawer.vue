@@ -116,6 +116,8 @@ const isBackdropInteractive = computed(
     (effectiveDirection.value === 'bottom' || effectiveDirection.value === 'top'),
 );
 
+const bodyRef = ref<HTMLElement | null>(null);
+
 function onBackdropTouchStart(e: TouchEvent) {
   const t = e.touches[0];
   if (!t) return;
@@ -136,17 +138,14 @@ function onBackdropTouchEnd(e: TouchEvent) {
   const dy = bdDy.value;
   const adx = Math.abs(bdDx.value);
 
-  // Simple tap
   if (Math.abs(dy) < 10 && adx < 10) {
     isOpen.value = false;
     return;
   }
 
-  // Swipe down to close
   if (dy > 50 && dy > adx * 1.5) {
     e.preventDefault();
     isOpen.value = false;
-    return;
   }
 }
 
@@ -159,40 +158,14 @@ function onClose() {
 }
 
 function onHandleTap() {
-  if (isExpanded.value) {
-    isOpen.value = false;
-  } else if (props.snapPoints && props.snapPoints.length > 0) {
+  if (isExpanded.value) return;
+
+  if (props.snapPoints && props.snapPoints.length > 0) {
     activeSnapPoint.value = props.snapPoints[props.snapPoints.length - 1] as string | number;
+    return;
   }
-}
 
-// --- Handle & Header Swipe Logic ---
-
-const dragStartY = ref(0);
-const dragDy = ref(0);
-const bodyRef = ref<HTMLElement | null>(null);
-
-function onDragStart(e: TouchEvent) {
-  const t = e.touches[0];
-  if (!t) return;
-  dragStartY.value = t.clientY;
-  dragDy.value = 0;
-}
-
-function onDragMove(e: TouchEvent) {
-  const t = e.touches[0];
-  if (!t) return;
-  dragDy.value = t.clientY - dragStartY.value;
-}
-
-
-function onDragEnd() {
-  // Only close via manual drag if we moved enough
-  if (dragDy.value > 100) {
-    isOpen.value = false;
-    activeSnapPoint.value = null;
-  }
-  dragDy.value = 0;
+  isOpen.value = true;
 }
 
 function onSnapPointChange(val: string | number) {
@@ -242,13 +215,14 @@ watch(isOpen, (val) => {
           v-if="
             (effectiveDirection === 'bottom' || effectiveDirection === 'top') && props.withHandle
           "
-          class="shrink-0 flex justify-center py-2.5 relative z-10 cursor-pointer touch-none group"
+          class="shrink-0 relative z-10 cursor-pointer group"
           @click.stop="onHandleTap"
-          @touchstart.passive="onDragStart"
-          @touchmove.passive="onDragMove"
-          @touchend="onDragEnd"
         >
-          <div class="w-12 h-1.5 rounded-full bg-slate-700/40 group-hover:bg-slate-600/60 transition-colors"></div>
+          <div class="flex justify-center py-2.5">
+            <div
+              class="w-12 h-1.5 rounded-full bg-slate-700/40 group-hover:bg-slate-600/60 transition-colors"
+            ></div>
+          </div>
         </div>
 
         <!-- Side mode: lateral handle -->
@@ -266,14 +240,7 @@ watch(isOpen, (val) => {
         </div>
 
         <!-- Optional Toolbar (stays visible at first snap point) -->
-        <div
-          v-if="$slots.toolbar"
-          class="shrink-0"
-          :class="props.ui.toolbar"
-          @touchstart.passive="onDragStart"
-          @touchmove.passive="onDragMove"
-          @touchend="onDragEnd"
-        >
+        <div v-if="$slots.toolbar" class="shrink-0" :class="props.ui.toolbar">
           <slot name="toolbar" />
         </div>
 
@@ -282,9 +249,6 @@ watch(isOpen, (val) => {
           v-if="props.title || $slots.header || props.showClose"
           class="shrink-0 pt-3 pb-3 px-5 border-b border-white/5 flex items-center justify-between gap-4"
           :class="props.ui.header"
-          @touchstart.passive="onDragStart"
-          @touchmove.passive="onDragMove"
-          @touchend="onDragEnd"
         >
           <div class="flex-1 min-w-0">
             <slot name="header">
