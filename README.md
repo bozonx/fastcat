@@ -260,13 +260,14 @@ import FastcatEditor from './dist-lib/fastcat-editor.es.js';
 
 const editor = new FastcatEditor('#editor-container');
 
-// Prepare assets to be preloaded into the editor's workspace
+// Assets to be preloaded into the editor's workspace.
+// Only 'url' is mandatory.
 const assets = [
   { 
-    id: 'intro-video', 
-    url: 'https://example.com/assets/intro.mp4', 
-    type: 'video', 
-    filename: 'intro.mp4' 
+    url: 'https://example.com/assets/intro.mp4',
+    id: 'intro-video',        // Optional: Unique ID. Auto-generated if omitted.
+    type: 'video',            // Optional: 'video', 'audio', or 'image'. Auto-detected via Content-Type or extension if omitted.
+    filename: 'intro.mp4'     // Optional: Target filename in the workspace. Extracted from URL if omitted.
   }
 ];
 
@@ -275,7 +276,18 @@ const el = editor.init({ assets });
 
 // Handle events
 el.addEventListener('fastcat:exported', (event) => {
-  console.log('Video exported successfully');
+  // The event detail contains the exported file data
+  const { file, filename } = event.detail;
+  
+  console.log(`Exported file: ${filename}`, file);
+  
+  // Example: Dynamic download link
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 });
 ```
 

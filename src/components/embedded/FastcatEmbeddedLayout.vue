@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { onMounted, onUnmounted, ref, watch, getCurrentInstance } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -17,6 +17,10 @@ const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
+
+const emit = defineEmits<{
+  (e: 'exported', data: any): void;
+}>();
 
 const isExportDrawerOpen = ref(false);
 const isReady = ref(false);
@@ -65,9 +69,21 @@ onUnmounted(async () => {
   await workspaceStore.wipeWorkspace();
 });
 
-function handleExported() {
+function handleExported(data: any) {
   isExportDrawerOpen.value = false;
-  // Here we will eventually emit a custom event to the host application
+  
+  // Emit event for both Vue component and custom element consumers
+  emit('exported', data);
+  
+  // Extra: Dispatch a standard DOM event for non-Vue hosts
+  const host = getCurrentInstance()?.vnode.el?.parentElement;
+  if (host) {
+    host.dispatchEvent(new CustomEvent('fastcat:exported', { 
+      detail: data,
+      bubbles: true,
+      composed: true
+    }));
+  }
 }
 </script>
 

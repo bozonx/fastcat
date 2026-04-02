@@ -1,3 +1,4 @@
+/** @vitest-environment node */
 import { describe, it, expect, vi } from 'vitest';
 import { buildMixedAudioTrack } from '~/workers/core/audio';
 import { AudioMixer } from '~/workers/core/AudioMixer';
