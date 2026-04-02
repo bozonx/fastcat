@@ -22,8 +22,8 @@ export default defineConfig({
     alias: {
       '~': fileURLToPath(new URL('./src', import.meta.url)),
       '@': fileURLToPath(new URL('./src', import.meta.url)),
-      '#app': fileURLToPath(new URL('./src/utils/lib-compat.ts', import.meta.url)),
-      '#imports': fileURLToPath(new URL('./src/utils/lib-compat.ts', import.meta.url)),
+      '#app': fileURLToPath(new URL('./src/lib-standalone/lib-compat.ts', import.meta.url)),
+      '#imports': fileURLToPath(new URL('./src/lib-standalone/lib-compat.ts', import.meta.url)),
       '#i18n': 'vue-i18n',
     },
   },

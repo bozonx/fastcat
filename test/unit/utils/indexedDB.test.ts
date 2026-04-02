@@ -1,3 +1,4 @@
+/** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as indexedDb from '~/utils/indexed-db';
 import * as repository from '~/repositories/workspace-handle.repository';

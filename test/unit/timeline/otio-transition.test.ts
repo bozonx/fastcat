@@ -1,3 +1,4 @@
+/** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
 import { serializeTimelineToOtio, parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import type { TimelineDocument } from '~/timeline/types';

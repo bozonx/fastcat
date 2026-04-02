@@ -1,3 +1,4 @@
+/** @vitest-environment node */
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { nextTick, ref, reactive, effectScope, type EffectScope } from 'vue';
 

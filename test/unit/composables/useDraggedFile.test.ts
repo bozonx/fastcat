@@ -1,3 +1,4 @@
+/** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useDraggedFile } from '~/composables/useDraggedFile';
 import { nextTick } from 'vue';
