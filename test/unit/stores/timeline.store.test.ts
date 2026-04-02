@@ -1,17 +1,5 @@
 /** @vitest-environment node */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-
-vi.mock('#app', () => ({
-  useNuxtApp: vi.fn(() => ({
-    $notificationService: { add: vi.fn() },
-    $i18nService: { t: (key: string) => key },
-    _route: { sync: true },
-    runWithContext: (fn: any) => fn(),
-  })),
-  useRuntimeConfig: vi.fn(() => ({ public: {} })),
-  useId: vi.fn(() => 'id'),
-}));
-
 import { setActivePinia, createPinia } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useHistoryStore } from '~/stores/history.store';

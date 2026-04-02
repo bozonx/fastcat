@@ -43,6 +43,7 @@ import { useSelectionStore } from './selection.store';
 import { useUiStore } from './ui.store';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { MAX_TIMELINE_ZOOM_POSITION, MIN_TIMELINE_ZOOM_POSITION } from '~/utils/zoom';
+import { useNuxtApp } from '#app';
 import { useTimelineMediaUsageStore } from './timeline-media-usage.store';
 
 import type { AppNotificationService } from '~/services/app-notification.service';

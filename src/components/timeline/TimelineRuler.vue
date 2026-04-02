@@ -349,13 +349,13 @@ function onMobilePointerUp() {
         }"
       />
 
-      <!-- z-50: above markers (z-30/z-40) and all other ruler overlays -->
       <div
         class="absolute inset-y-0 w-0 pointer-events-none z-50"
         :style="{ ...playheadStyle, willChange: 'transform' }"
       >
         <div
-          class="absolute left-0 bottom-0 -translate-x-1/2 w-0 h-0 border-l-[5px] border-r-[5px] border-b-0 border-t-10 border-l-transparent border-r-transparent"
+          class="absolute left-0 bottom-0 -translate-x-1/2 w-0 h-0 border-l-[5px] border-r-[5px] border-b-0 border-l-transparent border-r-transparent"
+          :class="isMobile ? 'border-t-[20px]' : 'border-t-10'"
           :style="{ borderTopColor: '#ef4444' }"
         />
       </div>
