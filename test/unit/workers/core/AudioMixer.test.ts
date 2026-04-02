@@ -6,10 +6,10 @@ import {
   resampleChannelsOfflineAudioContext,
   type PreparedClip,
 } from '~/workers/core/AudioMixer';
-import { applyAudioEffectsOffline } from '~/utils/audio/applyAudioEffectsOffline';
+import { apply-audio-effects-offline } from '~/utils/audio/apply-audio-effects-offline';
 
-vi.mock('~/utils/audio/applyAudioEffectsOffline', () => ({
-  applyAudioEffectsOffline: vi
+vi.mock('~/utils/audio/apply-audio-effects-offline', () => ({
+  apply-audio-effects-offline: vi
     .fn()
     .mockImplementation(({ planes, frames }) => Promise.resolve({ planes, frames })),
 }));
@@ -484,7 +484,7 @@ describe('AudioMixer.writeMixedToSource', () => {
       },
     ];
 
-    (applyAudioEffectsOffline as any).mockImplementation(({ planes, frames }: any) => {
+    (apply-audio-effects-offline as any).mockImplementation(({ planes, frames }: any) => {
       const newPlanes = planes.map((p: Float32Array) => {
         const out = new Float32Array(p.length);
         for (let i = 0; i < p.length; i++) out[i] = p[i]! * 2;
@@ -504,7 +504,7 @@ describe('AudioMixer.writeMixedToSource', () => {
       AudioSample: mockMediabunny.AudioSample as any,
     });
 
-    expect(applyAudioEffectsOffline).toHaveBeenCalled();
+    expect(apply-audio-effects-offline).toHaveBeenCalled();
     const resultInstance = audioSource.add.mock.calls[0][0];
     const mixedData = resultInstance.data.data;
     expect(mixedData[0]).toBeCloseTo(1.0);

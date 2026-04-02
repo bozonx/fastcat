@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isTimelineTextDropFileName } from '~/utils/timeline/textDrop';
+import { isTimelineTextDropFileName } from '~/utils/timeline/text-drop';
 
 describe('isTimelineTextDropFileName', () => {
   it('returns true for txt and md (case-insensitive)', () => {
