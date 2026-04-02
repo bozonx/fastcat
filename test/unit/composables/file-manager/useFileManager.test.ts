@@ -1,3 +1,4 @@
+/** @vitest-environment happy-dom */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useFileManager, isMoveAllowed } from '~/composables/file-manager/useFileManager';
