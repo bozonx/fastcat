@@ -297,15 +297,15 @@ function onTrackPointerDown(e: PointerEvent, trackId: string) {
     // Non-marquee mode LMB on empty track area → select the track
     selectTrackById(trackId);
   } else if (props.isMobile) {
-    timelineStore.selectTrack(trackId);
-    selectionStore.selectTimelineTrack(trackId);
-    timelineStore.clearSelection();
-
     const startX = e.clientX;
     const startY = e.clientY;
     let moved = false;
     const timer = window.setTimeout(() => {
       if (!moved) {
+        moved = true;
+        timelineStore.selectTrack(trackId);
+        selectionStore.selectTimelineTrack(trackId);
+        timelineStore.clearSelection();
         emit('long-press-track', trackId);
       }
     }, 500);
@@ -321,6 +321,12 @@ function onTrackPointerDown(e: PointerEvent, trackId: string) {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       mobileTrackLongPressCleanup = null;
+
+      if (!moved) {
+        timelineStore.selectTrack(trackId);
+        selectionStore.selectTimelineTrack(trackId);
+        timelineStore.clearSelection();
+      }
     };
     mobileTrackLongPressCleanup = onUp;
     window.addEventListener('pointermove', onMove);
