@@ -18,6 +18,7 @@ const activeSnapPoint = defineModel<string | number | null>('activeSnapPoint', {
 
 const emit = defineEmits<{
   (e: 'close'): void;
+  (e: 'open-trim-drawer'): void;
 }>();
 
 const { t } = useI18n();
@@ -136,6 +137,13 @@ function toggleLocked() {
           danger
           :disabled="isLocked"
           @click="requestDelete"
+        />
+
+        <MobileDrawerToolbarButton
+          icon="i-heroicons-arrows-right-left"
+          :label="t('fastcat.timeline.trimMode', 'Trim')"
+          :disabled="isLocked"
+          @click="$emit('open-trim-drawer')"
         />
 
         <MobileDrawerToolbarButton

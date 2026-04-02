@@ -195,6 +195,13 @@ export interface TimelineClipsModule {
     items: TimelineClipClipboardItem[],
     options?: { targetTrackId?: string | null; insertStartUs?: number },
   ) => { trackId: string; itemId: string }[];
+  trimItem: (params: {
+    trackId: string;
+    itemId: string;
+    edge: 'start' | 'end';
+    deltaUs: number;
+    quantizeToFrames?: boolean;
+  }) => void;
 }
 
 export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClipsModule {
@@ -616,6 +623,22 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     return pasteDescriptor;
   }
 
+  function trimItem(params: {
+    trackId: string;
+    itemId: string;
+    edge: 'start' | 'end';
+    deltaUs: number;
+    quantizeToFrames?: boolean;
+  }) {
+    deps.applyTimeline(
+      {
+        type: 'trim_item',
+        ...params,
+      },
+      { historyMode: 'debounced' },
+    );
+  }
+
   function rippleDeleteFirstSelectedItem() {
     const doc = deps.timelineDoc.value;
     if (!doc) return;
@@ -957,5 +980,6 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     copySelectedClips,
     cutSelectedClips,
     pasteClips,
+    trimItem,
   };
 }

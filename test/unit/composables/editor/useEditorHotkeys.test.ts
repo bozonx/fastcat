@@ -130,7 +130,7 @@ describe('useEditorHotkeys', () => {
     }
   });
 
-  it('toggles current toolbar move mode with T when timeline hotkeys are active', async () => {
+  it('toggles current toolbar snap mode with T when timeline hotkeys are active', async () => {
     wrapper = mount(HotkeysHarness, { attachTo: document.body });
     const focusStore = useFocusStore();
     const projectStore = useProjectStore();
@@ -138,14 +138,12 @@ describe('useEditorHotkeys', () => {
 
     projectStore.setView('cut');
     focusStore.setMainFocus('timeline');
-    settingsStore.selectToolbarDragMode('slip');
+    settingsStore.selectToolbarSnapMode('snap');
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 't', code: 'KeyT', bubbles: true }));
-    expect(settingsStore.toolbarDragMode).toBe('pseudo_overlap');
-    expect(settingsStore.toolbarDragModeEnabled).toBe(true);
+    expect(settingsStore.toolbarSnapMode).toBe('no_snap');
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 't', code: 'KeyT', bubbles: true }));
-    expect(settingsStore.toolbarDragMode).toBe('pseudo_overlap');
-    expect(settingsStore.toolbarDragModeEnabled).toBe(false);
+    expect(settingsStore.toolbarSnapMode).toBe('snap');
   });
 });
