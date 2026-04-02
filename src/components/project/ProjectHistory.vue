@@ -128,14 +128,14 @@ function handleRedo() {
           class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200"
           :class="[
             index === 0
-              ? 'bg-blue-500/10 text-blue-400'
+              ? 'bg-slate-700/30 text-slate-200'
               : 'text-slate-300 hover:bg-slate-800/50 cursor-pointer',
           ]"
         >
           <div
             class="w-2 h-2 rounded-full"
             :class="[
-              index === 0 ? 'bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.5)]' : 'bg-slate-600',
+              index === 0 ? 'bg-slate-400 shadow-[0_0_6px_rgba(148,163,184,0.4)]' : 'bg-slate-600',
             ]"
           ></div>
           <div class="flex-1 truncate" :class="[index === 0 ? 'font-medium' : '']">
@@ -144,7 +144,7 @@ function handleRedo() {
           <div
             class="text-xs transition-opacity"
             :class="[
-              index === 0 ? 'text-blue-400/70' : 'text-slate-500 opacity-0 group-hover:opacity-100',
+              index === 0 ? 'text-slate-400' : 'text-slate-500 opacity-0 group-hover:opacity-100',
             ]"
           >
             {{ formatTime(entry.timestamp) }}

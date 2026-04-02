@@ -4,7 +4,7 @@ import { useMobileFileBrowserCreate } from '~/composables/file-manager/useMobile
 
 // --- Mocks ---
 
-const mockFilesPageStore = reactive({
+const mockFileManagerStore = reactive({
   selectedFolder: { path: 'test' } as any,
 });
 
@@ -17,7 +17,7 @@ const mockToast = {
   add: vi.fn(),
 };
 
-vi.mock('~/stores/files-page.store', () => ({ useFilesPageStore: () => mockFilesPageStore }));
+vi.mock('~/stores/file-manager.store', () => ({ useFileManagerStore: () => mockFileManagerStore }));
 vi.mock('~/stores/project.store', () => ({ useProjectStore: () => mockProjectStore }));
 vi.mock('#imports', () => ({
   useI18n: () => ({ t: (k: string) => k }),

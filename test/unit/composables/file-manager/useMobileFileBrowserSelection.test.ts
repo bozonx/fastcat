@@ -33,7 +33,7 @@ const mockSelectionStore = reactive({
   }),
 });
 
-const mockFilesPageStore = reactive({
+const mockFileManagerStore = reactive({
   folderSizes: {} as Record<string, number>,
   openFolder: vi.fn(),
 });
@@ -45,14 +45,14 @@ const mockProjectStore = reactive({
 });
 
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelectionStore }));
-vi.mock('~/stores/files-page.store', () => ({ useFilesPageStore: () => mockFilesPageStore }));
+vi.mock('~/stores/file-manager.store', () => ({ useFileManagerStore: () => mockFileManagerStore }));
 vi.mock('~/stores/project.store', () => ({ useProjectStore: () => mockProjectStore }));
 
 describe('useMobileFileBrowserSelection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSelectionStore.selectedEntity = null;
-    mockFilesPageStore.folderSizes = {};
+    mockFileManagerStore.folderSizes = {};
   });
 
   it('toggles selection mode', () => {
@@ -102,7 +102,7 @@ describe('useMobileFileBrowserSelection', () => {
       entries: [file1, folder],
     } as any;
     
-    mockFilesPageStore.folderSizes['dir'] = 500;
+    mockFileManagerStore.folderSizes['dir'] = 500;
     
     expect(totalSelectedSize.value).toBe(600);
   });
@@ -112,7 +112,7 @@ describe('useMobileFileBrowserSelection', () => {
     const folder = { name: 'Videos', kind: 'directory', path: 'videos' } as any;
 
     handleEntryClick(folder);
-    expect(mockFilesPageStore.openFolder).toHaveBeenCalledWith(folder);
+    expect(mockFileManagerStore.openFolder).toHaveBeenCalledWith(folder);
   });
 
   it('handles entry click correctly in selection mode', () => {

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { FastCatUserSettings } from './settings/defaults';
+import { DEFAULT_USER_SETTINGS } from './settings/defaults';
 import { getResolutionPreset } from './settings/helpers';
 import { resolveExportPreset, resolveProjectPreset } from './settings/presets';
 
@@ -108,10 +109,11 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
 };
 
 function getProjectSettingsFromUserDefaults(
-  userSettings: ProjectSettingsUserDefaultsInput,
+  userSettings: ProjectSettingsUserDefaultsInput | undefined | null,
 ): Pick<FastCatProjectSettings, 'project' | 'exportDefaults'> {
-  const projectPreset = resolveProjectPreset(userSettings.projectPresets);
-  const exportPreset = resolveExportPreset(userSettings.exportPresets);
+  const settings = userSettings || DEFAULT_USER_SETTINGS;
+  const projectPreset = resolveProjectPreset(settings.projectPresets || DEFAULT_USER_SETTINGS.projectPresets);
+  const exportPreset = resolveExportPreset(settings.exportPresets || DEFAULT_USER_SETTINGS.exportPresets);
 
   return {
     project: {
@@ -123,7 +125,7 @@ function getProjectSettingsFromUserDefaults(
       aspectRatio: projectPreset.aspectRatio,
       isCustomResolution: projectPreset.isCustomResolution,
       sampleRate: projectPreset.sampleRate,
-      audioDeclickDurationUs: userSettings.projectDefaults.audioDeclickDurationUs,
+      audioDeclickDurationUs: (settings.projectDefaults || DEFAULT_USER_SETTINGS.projectDefaults).audioDeclickDurationUs,
       isAutoSettings: true,
     },
     exportDefaults: {

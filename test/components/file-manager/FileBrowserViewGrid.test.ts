@@ -41,11 +41,6 @@ vi.mock('~/composables/file-manager/useClipboardIndicator', () => ({
   useClipboardPaths: () => ({ value: new Set() }),
 }));
 
-vi.mock('vue-i18n', () => ({
-  useI18n: () => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
-  }),
-}));
 
 describe('FileBrowserViewGrid', () => {
   beforeEach(() => {

@@ -22,11 +22,6 @@ const mockUiStore = reactive({
 vi.mock('~/stores/files-page.store', () => ({ useFilesPageStore: () => mockFilesPageStore }));
 vi.mock('~/stores/ui.store', () => ({ useUiStore: () => mockUiStore }));
 
-vi.mock('vue-i18n', () => ({
-  useI18n: () => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
-  }),
-}));
 
 describe('FileBrowserToolbar', () => {
   beforeEach(() => {

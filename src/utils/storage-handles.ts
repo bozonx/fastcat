@@ -2,8 +2,8 @@ import type { DirectoryHandleLike } from '~/repositories/app-fs.repository';
 import { PROJECTS_ROOT_DIR_NAME, THUMBNAILS_ROOT_DIR_NAME } from './storage-roots';
 import { toStoragePathSegments, type ResolvedStorageTopology } from './storage-topology';
 
-function trimPath(path: string): string {
-  return path.trim();
+function trimPath(path: string | undefined | null): string {
+  return (path ?? '').trim();
 }
 
 function isAbsoluteStoragePath(path: string): boolean {
@@ -95,7 +95,7 @@ export async function ensureResolvedProjectTempDir(input: {
 }): Promise<DirectoryHandleLike> {
   return await ensureProjectStorageDir({
     workspaceHandle: input.workspaceHandle,
-    rootPath: input.topology.tempRoot,
+    rootPath: input.topology?.tempRoot ?? '',
     projectId: input.projectId,
     leafSegments: input.leafSegments ?? [],
     create: input.create,
@@ -111,7 +111,7 @@ export async function ensureResolvedProjectThumbnailsDir(input: {
 }): Promise<DirectoryHandleLike> {
   return await ensureProjectStorageDir({
     workspaceHandle: input.workspaceHandle,
-    rootPath: input.topology.tempRoot,
+    rootPath: input.topology?.tempRoot ?? '',
     projectId: input.projectId,
     leafSegments: [THUMBNAILS_ROOT_DIR_NAME, ...(input.subDir ? [input.subDir] : [])],
     create: input.create,
@@ -124,7 +124,7 @@ export async function ensureResolvedProjectProxiesDir(input: {
   projectId: string;
   create?: boolean;
 }): Promise<DirectoryHandleLike> {
-  if (!trimPath(input.topology.proxiesRoot)) {
+  if (!trimPath(input.topology?.proxiesRoot)) {
     return await ensureResolvedProjectTempDir({
       workspaceHandle: input.workspaceHandle,
       topology: input.topology,
@@ -136,7 +136,7 @@ export async function ensureResolvedProjectProxiesDir(input: {
 
   return await ensureProjectStorageDir({
     workspaceHandle: input.workspaceHandle,
-    rootPath: input.topology.proxiesRoot,
+    rootPath: input.topology?.proxiesRoot ?? '',
     projectId: input.projectId,
     leafSegments: [],
     create: input.create,

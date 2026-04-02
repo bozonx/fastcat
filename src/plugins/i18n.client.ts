@@ -13,7 +13,11 @@ export default defineNuxtPlugin((nuxtApp) => {
   };
 
   watch(
-    () => [workspaceStore.isInitializing, workspaceStore.userSettings.locale] as const,
+    () =>
+      [
+        workspaceStore?.isInitializing ?? false,
+        workspaceStore?.userSettings?.locale ?? 'en',
+      ] as const,
     async ([isInitializing, userLocale]) => {
       if (isInitializing) return;
       await applyLocale(userLocale);
