@@ -312,6 +312,17 @@ Cross-Origin-Opener-Policy: same-origin
 Cross-Origin-Embedder-Policy: require-corp
 ```
 
+### Developer Notes
+
+To develop and test the embedded editor layout:
+
+1. **Start the dev server**: `pnpm dev`
+2. **Access the test page**: Open `http://localhost:3000/test/embedded`.
+   - This page uses `FastcatEmbeddedLayout.vue` directly in a Nuxt context.
+   - It preloads a sample asset to verify the loading logic.
+3. **Core Component**: The main entry point for the embedded UI is `src/components/embedded/FastcatEmbeddedLayout.vue`.
+4. **Library Build**: The library entry point is `src/index.lib.ts`.
+
 ## License
 
 MIT
