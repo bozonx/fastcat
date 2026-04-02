@@ -31,7 +31,7 @@ vi.mock('~/composables/file-manager/useFileManager', () => ({
 describe('useProjectTabs', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    const { tabsStore } = useProjectTabs();
+    const { tabsStore } = useProjectTabs({ enableUiEffects: false });
     const { unregisterProjectTab } = tabsStore;
     tabsStore.tabs.forEach((t: AnyProjectTab) => {
       if (!isFileTab(t)) {
@@ -42,7 +42,7 @@ describe('useProjectTabs', () => {
   });
 
   it('registers and retrieves static tabs', () => {
-    const { tabsStore } = useProjectTabs();
+    const { tabsStore } = useProjectTabs({ enableUiEffects: false });
     const { registerProjectTab } = tabsStore;
 
     registerProjectTab({
@@ -56,7 +56,7 @@ describe('useProjectTabs', () => {
   });
 
   it('adds and removes file tabs', () => {
-    const { tabsStore } = useProjectTabs();
+    const { tabsStore } = useProjectTabs({ enableUiEffects: false });
     const { addFileTab, removeFileTab } = tabsStore;
 
     const tabId = addFileTab({ filePath: '/test.mp4', fileName: 'test.mp4' });

@@ -8,6 +8,7 @@ const projectStoreMock = {
   currentProjectName: 'test',
   currentTimelinePath: 'timeline.otio',
   getFileHandleByPath: vi.fn(),
+  getProjectFileHandleByRelativePath: vi.fn(),
   getFileByPath: vi.fn(),
   createFallbackTimelineDoc: () => ({
     OTIO_SCHEMA: 'Timeline.1',

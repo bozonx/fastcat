@@ -5,17 +5,17 @@ import { nextTick } from 'vue';
 describe('useDraggedFile', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    const { clearDraggedFile } = useDraggedFile();
+    const { clearDraggedFile } = useDraggedFile({ enableUiEffects: false });
     clearDraggedFile();
   });
 
   it('should initialize with null', () => {
-    const { draggedFile } = useDraggedFile();
+    const { draggedFile } = useDraggedFile({ enableUiEffects: false });
     expect(draggedFile.value).toBeNull();
   });
 
   it('should set dragged file data', () => {
-    const { draggedFile, setDraggedFile } = useDraggedFile();
+    const { draggedFile, setDraggedFile } = useDraggedFile({ enableUiEffects: false });
     const mockData = { name: 'test.mp4', path: '/test.mp4', kind: 'file' as const };
 
     setDraggedFile(mockData);
@@ -23,7 +23,7 @@ describe('useDraggedFile', () => {
   });
 
   it('should clear dragged file data', () => {
-    const { draggedFile, setDraggedFile, clearDraggedFile } = useDraggedFile();
+    const { draggedFile, setDraggedFile, clearDraggedFile } = useDraggedFile({ enableUiEffects: false });
     const mockData = { name: 'test.mp4', path: '/test.mp4', kind: 'file' as const };
 
     setDraggedFile(mockData);
