@@ -1,15 +1,15 @@
-import { readLocalStorageJson, writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
+import {
+  readLocalStorageJson,
+  writeLocalStorageJson,
+  getPlatformSuffix,
+} from '~/stores/ui/uiLocalStorage';
 import { type Ref, isRef } from 'vue';
 
 const PANEL_SIZES_PREFIX = 'fastcat:layout:split-sizes';
 
 export function getPanelSizesKey(pageKey: string, projectId: string | null): string {
   const id = projectId ?? 'no-project';
-  const isMobile =
-    typeof window !== 'undefined' &&
-    (window.matchMedia('(max-width: 768px)').matches ||
-      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
-  const suffix = isMobile ? ':mobile' : '';
+  const suffix = getPlatformSuffix();
   return `${PANEL_SIZES_PREFIX}:${pageKey}:${id}${suffix}`;
 }
 

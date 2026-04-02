@@ -120,7 +120,7 @@ onBeforeUnmount(clearLongPress);
       </p>
     </div>
 
-    <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+    <div v-else class="grid grid-cols-2 gap-3">
       <div v-for="entry in entries" :key="entry.path" class="relative group">
         <button
           class="flex flex-col w-full aspect-square rounded-2xl overflow-hidden bg-zinc-900 border-2 transition-all active:scale-95"

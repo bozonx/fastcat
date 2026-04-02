@@ -1,13 +1,9 @@
 export function isMobilePlatform(): boolean {
   if (typeof window === 'undefined') return false;
-  return (
-    window.matchMedia('(max-width: 768px)').matches ||
-    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-  );
+  return window.location.pathname.startsWith('/m');
 }
 
 export function getPlatformSuffix(): string {
-  if (typeof window === 'undefined') return '';
   return isMobilePlatform() ? ':mobile' : '';
 }
 
