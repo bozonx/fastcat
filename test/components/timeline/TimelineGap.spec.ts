@@ -87,7 +87,7 @@ describe('TimelineGap', () => {
     expect(component.emitted('marqueeStart')).toBeTruthy();
   });
 
-  it('emits select for mobile tap without starting marquee', async () => {
+  it('emits select for mobile touch tap on pointerup without starting marquee', async () => {
     class MockPointerEvent extends Event {
       button: number;
       clientX: number;
@@ -122,10 +122,67 @@ describe('TimelineGap', () => {
     });
 
     gap.element.dispatchEvent(event);
+    window.dispatchEvent(new MockPointerEvent('pointerup', { button: 0, pointerType: 'touch' }));
     await component.vm.$nextTick();
 
     expect(component.emitted('select')).toBeTruthy();
     expect(component.emitted('marqueeStart')).toBeFalsy();
+  });
+
+  it('does not emit select for mobile swipe on gap', async () => {
+    class MockPointerEvent extends Event {
+      button: number;
+      clientX: number;
+      clientY: number;
+      pointerType: string;
+
+      constructor(type: string, init: Record<string, unknown> = {}) {
+        super(type, { bubbles: true, cancelable: true });
+        this.button = (init.button as number) ?? 0;
+        this.clientX = (init.clientX as number) ?? 0;
+        this.clientY = (init.clientY as number) ?? 0;
+        this.pointerType = (init.pointerType as string) ?? 'touch';
+      }
+    }
+
+    Object.defineProperty(globalThis, 'PointerEvent', {
+      value: MockPointerEvent,
+      configurable: true,
+      writable: true,
+    });
+
+    const component = await mountSuspended(TimelineGap, {
+      props: { item, trackId: 'v1', isMobile: true },
+    });
+
+    const gap = component.find('div.absolute');
+    const downEvent = new MockPointerEvent('pointerdown', {
+      button: 0,
+      clientX: 24,
+      clientY: 12,
+      pointerType: 'touch',
+    });
+
+    gap.element.dispatchEvent(downEvent);
+    window.dispatchEvent(
+      new MockPointerEvent('pointermove', {
+        button: 0,
+        clientX: 40,
+        clientY: 12,
+        pointerType: 'touch',
+      }),
+    );
+    window.dispatchEvent(
+      new MockPointerEvent('pointerup', {
+        button: 0,
+        clientX: 40,
+        clientY: 12,
+        pointerType: 'touch',
+      }),
+    );
+    await component.vm.$nextTick();
+
+    expect(component.emitted('select')).toBeFalsy();
   });
 
   it('shows selected state', async () => {

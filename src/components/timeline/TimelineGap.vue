@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 import type { TimelineTrackItem } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -48,6 +48,13 @@ const emit = defineEmits<{
   (e: 'select', event: PointerEvent): void;
   (e: 'marqueeStart', event: PointerEvent): void;
 }>();
+
+let touchSelectionCleanup: (() => void) | null = null;
+const didLongPress = ref(false);
+
+onBeforeUnmount(() => {
+  touchSelectionCleanup?.();
+});
 
 const style = computed(() => ({
   left: `${timeUsToPx(props.item.timelineRange.startUs, timelineStore.timelineZoom)}px`,
@@ -103,8 +110,9 @@ const { onPointerDown: handlePointerDown } = useClickOrDrag({
   onDragStart: (e) => {
     emit('marqueeStart', e);
   },
-  onLongPress: (e) => {
+  onLongPress: () => {
     if (props.isMobile) {
+      didLongPress.value = true;
       timelineStore.selectTrack(props.trackId);
       selectionStore.selectTimelineTrack(props.trackId);
       timelineStore.clearSelection();
@@ -126,13 +134,54 @@ function onPointerdown(e: PointerEvent) {
   e.stopPropagation();
 
   if (props.isMobile && e.pointerType === 'touch' && e.button === 0) {
-    emit('select', e);
+    if (touchSelectionCleanup) {
+      touchSelectionCleanup();
+    }
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let moved = false;
+
+    const cleanup = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onCancel);
+      touchSelectionCleanup = null;
+    };
+
+    const onMove = (event: PointerEvent) => {
+      if (Math.abs(event.clientX - startX) > 5 || Math.abs(event.clientY - startY) > 5) {
+        moved = true;
+        cleanup();
+      }
+    };
+
+    const onUp = () => {
+      cleanup();
+      if (!moved && !didLongPress.value) {
+        emit('select', e);
+      }
+      didLongPress.value = false;
+    };
+
+    const onCancel = () => {
+      cleanup();
+      didLongPress.value = false;
+    };
+
+    touchSelectionCleanup = cleanup;
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp, { once: true });
+    window.addEventListener('pointercancel', onCancel, { once: true });
+
     handlePointerDown(e);
     return;
   }
 
   handlePointerDown(e);
   if (e.button === 0) {
+    didLongPress.value = false;
     emit('select', e);
   }
 }
