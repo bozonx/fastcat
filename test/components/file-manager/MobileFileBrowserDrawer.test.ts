@@ -11,19 +11,19 @@ const mockSelectionStore = reactive({
 
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelectionStore }));
 vi.mock('@vueuse/core', async () => {
-    const actual = await vi.importActual('@vueuse/core');
-    return {
-        ...actual as any,
-        useWindowSize: () => ({ width: ref(1000), height: ref(500) }) // Landscape by default
-    };
+  const actual = await vi.importActual('@vueuse/core');
+  return {
+    ...(actual as any),
+    useWindowSize: () => ({ width: ref(1000), height: ref(500) }), // Landscape by default
+  };
 });
 
 // Stub sub-components to avoid complex i18n/store dependencies
 vi.mock('~/components/properties/FileProperties.vue', () => ({
-  default: { template: '<div id="file-properties" />' }
+  default: { template: '<div id="file-properties" />' },
 }));
 vi.mock('~/components/properties/MultiFileProperties.vue', () => ({
-  default: { template: '<div id="multi-file-properties" />' }
+  default: { template: '<div id="multi-file-properties" />' },
 }));
 
 describe('MobileFileBrowserDrawer', () => {
@@ -44,7 +44,7 @@ describe('MobileFileBrowserDrawer', () => {
       kind: 'file',
       path: 'test.mp4',
       name: 'test.mp4',
-      entry: { kind: 'file', path: 'test.mp4', name: 'test.mp4' }
+      entry: { kind: 'file', path: 'test.mp4', name: 'test.mp4' },
     };
 
     const wrapper = await mountSuspended(MobileFileBrowserDrawer, {
@@ -53,9 +53,9 @@ describe('MobileFileBrowserDrawer', () => {
         stubs: {
           UDrawer: { template: '<div><slot name="content" /></div>' },
           UButton: true,
-          Icon: true
-        }
-      }
+          Icon: true,
+        },
+      },
     });
 
     expect(wrapper.find('#file-properties').exists()).toBe(true);
@@ -65,7 +65,10 @@ describe('MobileFileBrowserDrawer', () => {
     mockSelectionStore.selectedEntity = {
       source: 'fileManager',
       kind: 'multiple',
-      entries: [{ kind: 'file', path: '1.mp4' }, { kind: 'file', path: '2.mp4' }]
+      entries: [
+        { kind: 'file', path: '1.mp4' },
+        { kind: 'file', path: '2.mp4' },
+      ],
     };
 
     const wrapper = await mountSuspended(MobileFileBrowserDrawer, {
@@ -74,9 +77,9 @@ describe('MobileFileBrowserDrawer', () => {
         stubs: {
           UDrawer: { template: '<div><slot name="content" /></div>' },
           UButton: true,
-          Icon: true
-        }
-      }
+          Icon: true,
+        },
+      },
     });
 
     expect(wrapper.find('#multi-file-properties').exists()).toBe(true);
@@ -89,7 +92,7 @@ describe('MobileFileBrowserDrawer', () => {
       kind: 'file',
       path: 'test.mp4',
       name: 'test.mp4',
-      entry: { kind: 'file', path: 'test.mp4', name: 'test.mp4' }
+      entry: { kind: 'file', path: 'test.mp4', name: 'test.mp4' },
     };
 
     const wrapper = await mountSuspended(MobileFileBrowserDrawer, {
@@ -97,13 +100,16 @@ describe('MobileFileBrowserDrawer', () => {
       global: {
         stubs: {
           UDrawer: { template: '<div><slot name="content" /></div>' },
-          UButton: { template: '<button @click="$emit(\'click\')"><slot /></button>' },
-          Icon: true
-        }
-      }
+          UButton: {
+            template: '<button :data-icon="icon" @click="$emit(\'click\')"><slot /></button>',
+            props: ['icon'],
+          },
+          Icon: true,
+        },
+      },
     });
 
-    const deleteButton = wrapper.find('button'); // First button is usually delete
+    const deleteButton = wrapper.find('button[data-icon="lucide:trash-2"]');
     await deleteButton.trigger('click');
 
     expect(onAction).toHaveBeenCalledWith('delete', expect.anything());

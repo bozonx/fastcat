@@ -71,7 +71,7 @@ describe('UiMobileDrawer', () => {
     expect(wrapper.emitted('update:open')).toBeFalsy();
   });
 
-  it('does not close when tapping the handle in expanded mode', async () => {
+  it('closes when tapping the handle in expanded mode', async () => {
     const wrapper = await mountSuspended(UiMobileDrawer, {
       props: {
         open: true,
@@ -113,11 +113,12 @@ describe('UiMobileDrawer', () => {
 
     await handle.trigger('click');
 
-    expect(wrapper.emitted('update:open')).toBeFalsy();
-    expect(wrapper.emitted('update:activeSnapPoint')).toBeFalsy();
+    expect(wrapper.emitted('update:open')).toBeTruthy();
+    expect(wrapper.emitted('update:open')?.at(-1)).toEqual([false]);
+    expect(wrapper.emitted('update:activeSnapPoint')?.at(-1)).toEqual([null]);
   });
 
-  it('does not close from handle tap without snap points when the drawer is already open', async () => {
+  it('closes from handle tap without snap points when the drawer is already open', async () => {
     const wrapper = await mountSuspended(UiMobileDrawer, {
       props: {
         open: true,
@@ -156,6 +157,94 @@ describe('UiMobileDrawer', () => {
 
     await handle.trigger('click');
 
+    expect(wrapper.emitted('update:open')).toBeTruthy();
+    expect(wrapper.emitted('update:open')?.at(-1)).toEqual([false]);
+    expect(wrapper.emitted('update:activeSnapPoint')).toBeFalsy();
+  });
+
+  it('renders toolbar content for horizontal scrolling scenarios', async () => {
+    const wrapper = await mountSuspended(UiMobileDrawer, {
+      props: {
+        open: true,
+        snapPoints: ['116px', 0.92],
+        activeSnapPoint: 0.92,
+        direction: 'bottom',
+      },
+      slots: {
+        toolbar:
+          '<div class="toolbar-slot overflow-x-auto whitespace-nowrap"><div style="width: 1200px">Toolbar</div></div>',
+        default: '<div class="body-slot">Body</div>',
+      },
+      global: {
+        stubs: {
+          UDrawer: {
+            props: [
+              'open',
+              'direction',
+              'title',
+              'description',
+              'snapPoints',
+              'activeSnapPoint',
+              'dismissible',
+              'shouldScaleBackground',
+              'modal',
+              'overlay',
+              'handle',
+              'handleOnly',
+              'ui',
+            ],
+            emits: ['update:open', 'update:active-snap-point'],
+            template: '<div class="udrawer-stub"><slot name="content" /></div>',
+          },
+        },
+      },
+    });
+
+    expect(wrapper.find('.toolbar-slot').exists()).toBe(true);
+    expect(wrapper.find('.overflow-x-auto').exists()).toBe(true);
+    expect(wrapper.emitted('update:open')).toBeFalsy();
+    expect(wrapper.emitted('update:activeSnapPoint')).toBeFalsy();
+  });
+
+  it('renders body content for scroll-blocking scenarios', async () => {
+    const wrapper = await mountSuspended(UiMobileDrawer, {
+      props: {
+        open: true,
+        snapPoints: ['116px', 0.92],
+        activeSnapPoint: 0.92,
+        direction: 'bottom',
+      },
+      slots: {
+        default:
+          '<div class="body-slot overflow-y-auto" style="height: 200px"><div style="height: 1200px">Body</div></div>',
+      },
+      global: {
+        stubs: {
+          UDrawer: {
+            props: [
+              'open',
+              'direction',
+              'title',
+              'description',
+              'snapPoints',
+              'activeSnapPoint',
+              'dismissible',
+              'shouldScaleBackground',
+              'modal',
+              'overlay',
+              'handle',
+              'handleOnly',
+              'ui',
+            ],
+            emits: ['update:open', 'update:active-snap-point'],
+            template: '<div class="udrawer-stub"><slot name="content" /></div>',
+          },
+        },
+      },
+    });
+
+    expect(wrapper.find('.body-slot').exists()).toBe(true);
+    expect(wrapper.find('.overflow-y-auto').exists()).toBe(true);
     expect(wrapper.emitted('update:open')).toBeFalsy();
     expect(wrapper.emitted('update:activeSnapPoint')).toBeFalsy();
   });
