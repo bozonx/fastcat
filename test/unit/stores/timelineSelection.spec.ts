@@ -1,7 +1,8 @@
+/** @vitest-environment node */
 import { describe, it, expect, vi } from 'vitest';
 import { ref } from 'vue';
 
-import { createTimelineSelection } from '~/stores/timeline/timeline-selection';
+import { createTimelineSelectionModule as createTimelineSelection } from '~/stores/timeline/selection';
 import type { TimelineDocument } from '~/timeline/types';
 
 describe('timeline-selection', () => {

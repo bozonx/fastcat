@@ -1,3 +1,4 @@
+/** @vitest-environment happy-dom */
 import { describe, it, expect, vi } from 'vitest';
 import { ref } from 'vue';
 import { mountWithNuxt } from '../../utils/mount';

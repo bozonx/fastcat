@@ -8,6 +8,7 @@ import MobileTimeline from '~/components/timeline/MobileTimeline.vue';
 import ExportForm from '~/components/export/ExportForm.vue';
 import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 import { loadExternalAssets, type ExternalAsset } from '~/utils/external-assets.service';
+import { useMediaStore } from '~/stores/media.store';
 
 const props = defineProps<{
   assets?: ExternalAsset[];
@@ -17,6 +18,7 @@ const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
+const mediaStore = useMediaStore();
 
 const emit = defineEmits<{
   (e: 'exported', data: any): void;
@@ -45,6 +47,9 @@ async function initEmbedded() {
     } else {
       await projectStore.openProject(defaultProjectName);
     }
+    
+    // Give some time for stores to settle
+    await new Promise(resolve => setTimeout(resolve, 100));
   }
 
   // Load external assets if provided
@@ -54,29 +59,51 @@ async function initEmbedded() {
       getProjectFileHandle: (path, options) => projectStore.getProjectFileHandleByRelativePath({ relativePath: path, ...options })
     });
     
-    // Auto-add assets to timeline if it's empty
-    const isTimelineEmpty = (timelineStore.timelineDoc?.tracks.reduce((acc, t) => acc + t.items.length, 0) || 0) === 0;
-    
-    if (isTimelineEmpty) {
-      let currentOffsetUs = 0;
+    // 3. Prepare timeline (Create 3 dedicated tracks: V1 for Images, V2 for Videos, A1 for Audio)
+    if (!timelineStore.timelineDoc || timelineStore.timelineDoc.tracks.length === 0) {
+      timelineStore.addTrack('video', 'Images');
+      timelineStore.addTrack('video', 'Videos');
+      timelineStore.addTrack('audio', 'Audio');
       
+      // Wait for tracks to settle
+      await new Promise(resolve => setTimeout(resolve, 150));
+    }
+
+    // Auto-add assets to timeline if empty
+    const itemsCount = timelineStore.timelineDoc?.tracks.reduce((acc, t) => acc + t.items.length, 0) || 0;
+    
+    if (itemsCount === 0) {
+      const trackOffsetsUs: Record<string, number> = {
+        v1: 0,
+        v2: 0,
+        a1: 0
+      };
+
       for (const res of results) {
         if (!res.success) continue;
         
-        // Resolve kind for the track selection
-        const kind = res.asset.type === 'video' || res.asset.type === 'image' ? 'video' : 'audio';
-        const trackId = timelineStore.resolveMobileTargetTrackId(kind);
+        // Determine target track based on asset type
+        let trackId = 'v1'; // Default to Images
+        if (res.asset.type === 'video') trackId = 'v2';
+        else if (res.asset.type === 'audio') trackId = 'a1';
         
+        // Fetch metadata to know duration
+        const metadata = await mediaStore.getOrFetchMetadataByPath(res.path);
+        const durationUs = metadata?.durationUs || 3000000; // Default to 3s for images
+        
+        const startUs = trackOffsetsUs[trackId] || 0;
+
         // Add to timeline
         await timelineStore.addClipToTimelineFromPath({
           trackId,
           name: res.asset.filename || 'Clip',
           path: res.path,
-          startUs: currentOffsetUs,
-          pseudo: true // Automatically handle gaps and overlaps
+          startUs,
+          pseudo: true
         });
         
-        currentOffsetUs += 5000000; // 5 seconds offset for next clip
+        // Update offset for this track
+        trackOffsetsUs[trackId] = startUs + durationUs;
       }
     }
   }

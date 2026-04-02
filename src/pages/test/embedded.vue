@@ -9,7 +9,7 @@ definePageMeta({
 const workspaceStore = useWorkspaceStore();
 
 const assets = [
-  { url: 'https://www.w3schools.com/html/mov_bbb.mp4' },
+  { url: 'https://raw.githubusercontent.com/intel-iot-devkit/sample-videos/master/person-bicycle-car-detection.mp4' },
   { url: 'https://raw.githubusercontent.com/mdn/webaudio-examples/master/audio-analyser/viper.mp3' },
   { url: 'https://picsum.photos/seed/fastcat/1280/720.jpg' }
 ];

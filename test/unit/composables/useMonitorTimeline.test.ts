@@ -1,4 +1,4 @@
-/** @vitest-environment node */
+/** @vitest-environment happy-dom */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
 import { useTimelineStore } from '~/stores/timeline.store';
