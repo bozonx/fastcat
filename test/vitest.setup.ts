@@ -3,6 +3,10 @@
 import { vi } from 'vitest';
 import { config } from '@vue/test-utils';
 import { ref } from 'vue';
+import { createPinia, setActivePinia } from 'pinia';
+
+// Initialize Pinia for all tests
+setActivePinia(createPinia());
 
 // i18n mock factory
 const createI18nMock = () => ({
@@ -180,10 +184,27 @@ if (typeof window !== 'undefined') {
       writable: true,
     });
   }
+  if (!window.sessionStorage) {
+    Object.defineProperty(window, 'sessionStorage', {
+      value: new LocalStorageMock(),
+      writable: true,
+    });
+  }
 } else {
   (globalThis as any).localStorage = new LocalStorageMock();
-  // Mock window for code that explicitly uses window.setTimeout etc.
+  (globalThis as any).sessionStorage = new LocalStorageMock();
+  // Mock window for code that explicitly uses window.setTimeout etc. in node environment
   (globalThis as any).window = globalThis;
+  (globalThis as any).location = {
+    pathname: '/',
+    search: '',
+    hash: '',
+    origin: 'http://localhost',
+    href: 'http://localhost/',
+    assign: vi.fn(),
+    replace: vi.fn(),
+    reload: vi.fn(),
+  };
   (globalThis as any).addEventListener = vi.fn();
   (globalThis as any).removeEventListener = vi.fn();
 }
