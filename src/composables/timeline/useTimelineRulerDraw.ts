@@ -129,7 +129,7 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
 
     const majorTickHeight = 12 * scale;
     const subTickHeight = 5 * scale;
-    const textTopOffset = (isMobile ? 6 : 2) * scale;
+    const textTopOffset = (isMobile ? 4 : 2) * scale;
 
     ctx.beginPath();
     for (let s = startS; s <= endS; s += mainStepS) {
