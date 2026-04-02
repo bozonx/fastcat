@@ -70,47 +70,7 @@ const { createNuxtMock } = vi.hoisted(() => ({
   })),
 }));
 
-vi.mock('#app', () => ({
-  useNuxtApp: vi.fn(createNuxtMock),
-  useRuntimeConfig: vi.fn(() => ({ public: {} })),
-  useId: vi.fn(() => 'id'),
-  useToast: vi.fn(() => ({ add: vi.fn() })),
-  useRoute: vi.fn(() => ({ path: '/', query: {}, params: {} })),
-  useState: vi.fn((key: string, init?: () => any) => (init ? ref(init()) : ref(null))),
-  defineNuxtPlugin: (plugin: any) => plugin,
-  defineAppConfig: (config: any) => config,
-}));
-
-vi.mock('nuxt/app', () => ({
-  useNuxtApp: vi.fn(createNuxtMock),
-  useRuntimeConfig: vi.fn(() => ({ public: {} })),
-  useId: vi.fn(() => 'id'),
-  useToast: vi.fn(() => ({ add: vi.fn() })),
-  useRoute: vi.fn(() => ({ path: '/', query: {}, params: {} })),
-  useState: vi.fn((key: string, init?: () => any) => (init ? ref(init()) : ref(null))),
-  defineNuxtPlugin: (plugin: any) => plugin,
-  defineAppConfig: (config: any) => config,
-}));
-
-vi.mock('#imports', () => ({
-  useNuxtApp: vi.fn(createNuxtMock),
-  useI18n: vi.fn(() => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
-    locale: ref('en-US'),
-  })),
-  useRuntimeConfig: vi.fn(() => ({ public: {} })),
-  useId: vi.fn(() => 'id'),
-  useDevice: vi.fn(() => ({ isMobile: false, isDesktop: true })),
-  useRouter: vi.fn(() => ({ 
-    push: vi.fn(), 
-    replace: vi.fn(), 
-    afterEach: vi.fn(() => vi.fn()), 
-    beforeEach: vi.fn(() => vi.fn()) 
-  })),
-  useRoute: vi.fn(() => ({ path: '/', query: {}, params: {} })),
-  useToast: vi.fn(() => ({ add: vi.fn() })),
-  useState: vi.fn((key: string, init?: () => any) => (init ? ref(init()) : ref(null))),
-}));
+// module mocks removed to prevent breaking Nuxt environment
 
 vi.mock('#ui/composables/useToast', () => ({
   useToast: vi.fn(() => ({ add: vi.fn() })),
@@ -139,6 +99,8 @@ vi.mock('#ui/utils', () => ({
   preference: 'dark',
   value: 'dark',
 });
+(globalThis as any).defineNuxtPlugin = (plugin: any) => plugin;
+(globalThis as any).defineAppConfig = (config: any) => config;
 (globalThis as any).useHead = () => {};
 
 config.global.config.warnHandler = (msg) => {

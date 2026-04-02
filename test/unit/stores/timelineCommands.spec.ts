@@ -1,6 +1,7 @@
+/** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
-import { createTimelineCommands } from '~/stores/timeline/timeline-commands';
+import { createTimelineCommandsModule as createTimelineCommands } from '~/stores/timeline/commands';
 import type { TimelineDocument } from '~/timeline/types';
 
 describe('timelineCommands', () => {
