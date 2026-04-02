@@ -7,7 +7,6 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import {
   pickBestSnapCandidateUs,
   zoomToPxPerSecond,
-  quantizeDeltaUsToFrames,
 } from '~/utils/timeline/geometry';
 import { computeSnapTargetsUs } from '~/composables/timeline/timelineInteractionUtils';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
@@ -38,6 +37,33 @@ const currentClipAndTrack = computed(() => {
   return { track, item };
 });
 
+const fps = computed(() => timelineStore.timelineDoc?.timebase?.fps || 30);
+
+function formatTC(us: number) {
+  const absUs = Math.abs(us);
+  const totalFrames = Math.round((absUs / 1_000_000) * fps.value);
+  const ff = totalFrames % fps.value;
+  const totalSeconds = Math.floor(absUs / 1_000_000);
+  const ss = totalSeconds % 60;
+  const mm = Math.floor(totalSeconds / 60) % 60;
+  const hh = Math.floor(totalSeconds / 3600);
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(hh)}:${pad(mm)}:${pad(ss)}:${pad(ff)}`;
+}
+
+const timeData = computed(() => {
+  if (!currentClipAndTrack.value) return null;
+  const clip = currentClipAndTrack.value.item;
+  const s = clip.timelineRange.startUs;
+  const d = clip.timelineRange.durationUs;
+  return {
+    start: formatTC(s),
+    duration: formatTC(d),
+    end: formatTC(s + d),
+  };
+});
+
 const startX = ref(0);
 const activeEdge = ref<'start' | 'end' | null>(null);
 const accumulatedDeltaUs = ref(0);
@@ -59,7 +85,6 @@ function onStart(edge: 'start' | 'end', e: TouchEvent) {
       ? clip.timelineRange.startUs
       : clip.timelineRange.startUs + clip.timelineRange.durationUs;
 
-  // Compute snap targets
   const snapSettings = workspaceStore.userSettings.timeline.snapping;
   snapTargetsUs.value = computeSnapTargetsUs({
     tracks: timelineStore.timelineDoc?.tracks || [],
@@ -87,7 +112,6 @@ function onMove(e: TouchEvent) {
 
   let targetUs = anchorEdgeUs.value + rawDeltaUs;
 
-  // Snapping logic
   if (settingsStore.toolbarSnapMode === 'snap') {
     const thresholdUs = (settingsStore.snapThresholdPx / pps) * 1e6;
     const snap = pickBestSnapCandidateUs({
@@ -100,11 +124,9 @@ function onMove(e: TouchEvent) {
     }
   }
 
-  // Frame quantization
-  const fps = timelineStore.timelineDoc?.timebase?.fps || 30;
   if (settingsStore.frameSnapMode === 'frames') {
-    const frames = Math.round((targetUs * fps) / 1e6);
-    targetUs = Math.round((frames * 1e6) / fps);
+    const frameSizeUs = 1_000_000 / fps.value;
+    targetUs = Math.round(targetUs / frameSizeUs) * frameSizeUs;
   }
 
   const desiredTotalDeltaUs = targetUs - anchorEdgeUs.value;
@@ -142,31 +164,51 @@ function onEnd() {
 
 <template>
   <div
-    class="fixed bottom-0 left-0 right-0 z-60 bg-zinc-950/95 backdrop-blur border-t border-zinc-900 px-3 pt-3 pb-safe select-none shadow-2xl rounded-t-2xl slide-up outline outline-white/5"
+    class="fixed bottom-0 left-0 right-0 z-60 bg-zinc-950/95 backdrop-blur border-t border-zinc-900 px-2 pt-3 pb-safe select-none shadow-2xl rounded-t-2xl slide-up outline outline-white/5"
   >
     <!-- Combined control area -->
-    <div class="flex items-center gap-2 mb-3">
-      <!-- Back to clip properties -->
+    <div class="flex items-center gap-1 mb-3 px-1">
+      <!-- Back button -->
       <UButton
         icon="i-heroicons-chevron-left"
         variant="ghost"
         color="gray"
-        size="md"
+        size="sm"
         class="shrink-0 bg-white/5 active:bg-white/10"
         @click="emit('back')"
       />
 
-      <!-- Duration visual -->
-      <div v-if="currentClipAndTrack" class="flex-1 flex flex-col justify-center items-center py-1">
-        <div
-          class="text-[10px] text-zinc-500 font-mono tracking-tighter uppercase font-black leading-none mb-0.5"
-        >
-          {{ (currentClipAndTrack.item.timelineRange.durationUs / 1e6).toFixed(3) }}s
+      <!-- Triple Info View -->
+      <div v-if="timeData" class="flex-1 flex justify-between items-center px-2">
+        <div class="flex flex-col items-center">
+          <span class="text-[7px] text-zinc-500 uppercase font-black leading-none mb-1 tracking-tighter">
+             {{ t('fastcat.timeline.start') }}
+          </span>
+          <span class="text-[10px] font-mono font-bold text-zinc-400 tabular-nums leading-none">
+            {{ timeData.start }}
+          </span>
         </div>
-        <div
-          class="text-[8px] text-zinc-600 uppercase font-black tracking-widest truncate max-w-[140px]"
-        >
-          {{ currentClipAndTrack.item.name }}
+
+        <div class="w-px h-6 bg-zinc-800/60"></div>
+
+        <div class="flex flex-col items-center">
+          <span class="text-[7px] text-zinc-500 uppercase font-black leading-none mb-1 tracking-tighter">
+             {{ t('fastcat.timeline.duration') }}
+          </span>
+          <span class="text-[10px] font-mono font-bold text-blue-400 tabular-nums leading-none">
+            {{ timeData.duration }}
+          </span>
+        </div>
+
+        <div class="w-px h-6 bg-zinc-800/60"></div>
+
+        <div class="flex flex-col items-center">
+          <span class="text-[7px] text-zinc-500 uppercase font-black leading-none mb-1 tracking-tighter">
+             {{ t('fastcat.timeline.end') }}
+          </span>
+          <span class="text-[10px] font-mono font-bold text-zinc-400 tabular-nums leading-none">
+            {{ timeData.end }}
+          </span>
         </div>
       </div>
 
@@ -175,7 +217,7 @@ function onEnd() {
         icon="i-heroicons-x-mark"
         variant="ghost"
         color="gray"
-        size="md"
+        size="sm"
         class="shrink-0 bg-white/5 active:bg-white/10"
         @click="emit('close')"
       />
@@ -183,7 +225,7 @@ function onEnd() {
 
     <!-- Main controls -->
     <div
-      class="flex h-20 bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden divide-x divide-zinc-800 shadow-inner mb-2"
+      class="flex h-20 bg-zinc-900/60 rounded-xl border border-zinc-800/80 overflow-hidden divide-x divide-zinc-800 shadow-inner mb-2"
     >
       <!-- Left side area -->
       <div
@@ -195,17 +237,17 @@ function onEnd() {
         <span class="text-[9px] uppercase font-black text-zinc-600 mb-1 leading-none">
           {{ t('fastcat.timeline.trimStart') }}
         </span>
-        <div class="bg-zinc-800 p-1.5 rounded-lg border border-zinc-700/50">
+        <div class="bg-zinc-800 p-1.5 rounded-lg border border-zinc-700/50 shadow-sm">
           <UIcon
             name="i-heroicons-arrow-left"
             class="w-5 h-5 block"
-            :class="activeEdge === 'start' ? 'text-blue-400' : 'text-zinc-500'"
+            :class="activeEdge === 'start' ? 'text-blue-400 scale-110' : 'text-zinc-500'"
           />
         </div>
       </div>
 
       <!-- Center divider marker -->
-      <div class="w-px h-8 self-center bg-zinc-800/10"></div>
+      <div class="w-px h-10 self-center bg-zinc-800/20"></div>
 
       <!-- Right side area -->
       <div
@@ -217,14 +259,21 @@ function onEnd() {
         <span class="text-[9px] uppercase font-black text-zinc-600 mb-1 leading-none">
           {{ t('fastcat.timeline.trimEnd') }}
         </span>
-        <div class="bg-zinc-800 p-1.5 rounded-lg border border-zinc-700/50">
+        <div class="bg-zinc-800 p-1.5 rounded-lg border border-zinc-700/50 shadow-sm">
           <UIcon
             name="i-heroicons-arrow-right"
             class="w-5 h-5 block"
-            :class="activeEdge === 'end' ? 'text-blue-400' : 'text-zinc-500'"
+            :class="activeEdge === 'end' ? 'text-blue-400 scale-110' : 'text-zinc-500'"
           />
         </div>
       </div>
+    </div>
+
+    <!-- Hidden Hint: Clip name at the very bottom -->
+    <div v-if="currentClipAndTrack" class="px-2 pb-1 flex justify-center">
+       <span class="text-[8px] text-zinc-700 uppercase font-bold tracking-[0.2em] truncate">
+         {{ currentClipAndTrack.item.name }}
+       </span>
     </div>
   </div>
 </template>
@@ -243,5 +292,8 @@ function onEnd() {
 }
 .touch-none {
   touch-action: none;
+}
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 </style>
