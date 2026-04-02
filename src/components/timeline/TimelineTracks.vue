@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, toRefs, type CSSProperties } from 'vue';
+import { ref, computed, toRefs, type CSSProperties, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -75,6 +75,8 @@ const emit = defineEmits<{
 
 const DEFAULT_TRACK_HEIGHT = 40;
 const containerRef = ref<HTMLElement | null>(null);
+
+let mobileTrackLongPressCleanup: (() => void) | null = null;
 
 const { tracks, trackHeights } = toRefs(props);
 
@@ -318,11 +320,17 @@ function onTrackPointerDown(e: PointerEvent, trackId: string) {
       window.clearTimeout(timer);
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
+      mobileTrackLongPressCleanup = null;
     };
+    mobileTrackLongPressCleanup = onUp;
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
   }
 }
+
+onBeforeUnmount(() => {
+  if (mobileTrackLongPressCleanup) mobileTrackLongPressCleanup();
+});
 </script>
 
 <template>

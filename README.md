@@ -5,6 +5,7 @@ Standalone video editor project extracted from FastCat.
 ## Features
 
 - Timeline editing with multi-track composition
+- Mobile drawers support toolbar snap mode, full-height expansion, and gesture-aware drag/scroll interactions
 - SVG images are rasterized to PNG on import for reliable worker rendering
 - Monitor playback with volume/mute controls for audio
 - Audio clip effects with live preview and export support (`Reverb`, `Distortion`)

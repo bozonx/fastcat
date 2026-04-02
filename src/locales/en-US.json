@@ -148,6 +148,9 @@
     "autoRecognition": "Auto recognition by type",
     "inDirTimelines": "In _timelines/",
     "inDirDocuments": "In _documents/",
+    "refresh": "Refresh",
+    "toSortDesc": "Descending",
+    "toSortAsc": "Ascending",
     "video": "Video",
     "timeline": "Timeline",
     "textDocument": "Text document",
@@ -774,6 +777,9 @@
       "soloActive": "SOLO ACTIVE",
       "clearSolos": "Clear all solos",
       "snapMode": "Snap Mode",
+      "previousMarker": "Previous marker",
+      "addMarker": "Add marker",
+      "nextMarker": "Next marker",
       "snapModeFullDescription": "Snap to clips, playhead and markers",
       "snapModeFramesDescription": "Snap to frame boundaries only",
       "snapModeFreeDescription": "No snapping (sub-frame precision)",
@@ -1140,6 +1146,7 @@
         "title": "Convert file"
       },
       "delete": {
+        "confirmTitle": "Delete Items",
         "usedWarning": "This file is used in timelines:"
       },
       "dropOverlay": {
