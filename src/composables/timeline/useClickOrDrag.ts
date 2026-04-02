@@ -10,6 +10,7 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
   const didStartDrag = ref(false);
   const rightClickDragTriggered = ref(false);
   const rightClickPointerActive = ref(false);
+  const longPressTriggered = ref(false);
   let rightClickDragTimer: number | null = null;
   const RIGHT_CLICK_DRAG_DELAY_MS = 300;
 
@@ -25,6 +26,7 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
 
     didStartDrag.value = false;
     rightClickDragTriggered.value = false;
+    longPressTriggered.value = false;
 
     if (e.button === 2) {
       rightClickPointerActive.value = true;
@@ -97,7 +99,7 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
         longPressTimer = window.setTimeout(() => {
           longPressTimer = null;
           if (!didStartDrag.value) {
-            cleanup();
+            longPressTriggered.value = true;
             options.onLongPress?.(e);
           }
         }, LONG_PRESS_DELAY_MS);
@@ -122,6 +124,7 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
     didStartDrag,
     rightClickDragTriggered,
     rightClickPointerActive,
+    longPressTriggered,
     onPointerDown,
   };
 }

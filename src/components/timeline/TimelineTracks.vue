@@ -298,7 +298,7 @@ function onTrackPointerDown(e: PointerEvent, trackId: string) {
 </script>
 
 <template>
-  <UContextMenu :items="timelineEmptyAreaContextMenuItems">
+  <UContextMenu :items="timelineEmptyAreaContextMenuItems" :disabled="isMobile">
     <div
       ref="containerRef"
       class="flex flex-col min-h-full relative"
@@ -313,6 +313,7 @@ function onTrackPointerDown(e: PointerEvent, trackId: string) {
           timelineStore.selectTrack(null);
         }
       "
+      @contextmenu.prevent.stop
     >
       <div
         v-if="selectionRangeStyle"
@@ -338,6 +339,7 @@ function onTrackPointerDown(e: PointerEvent, trackId: string) {
         v-for="track in tracks"
         :key="track.id"
         :items="getTrackContextMenuItems(track, tracks)"
+        :disabled="isMobile"
       >
         <div
           :data-track-id="track.id"
@@ -365,6 +367,7 @@ function onTrackPointerDown(e: PointerEvent, trackId: string) {
           @dragover.prevent="emit('dragover', $event, track.id)"
           @dragleave.prevent="emit('dragleave', $event, track.id)"
           @drop.prevent="emit('drop', $event, track.id)"
+          @contextmenu.prevent.stop
         >
           <!-- Selection Highlight: bright borders+bg when track directly selected; subtle when clip/gap active -->
           <div
