@@ -441,5 +441,6 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     moveItemToTrack,
     extractAudioToTrack,
     addTimelineClipFromPath,
+    ensureTimelineDoc: () => deps.ensureTimelineDoc(),
   };
 }

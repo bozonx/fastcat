@@ -201,6 +201,7 @@ export function createTimelineCommandsModule(params: TimelineCommandsDeps): Time
 
   return {
     commandService,
+    ensureTimelineDoc: () => commandService.ensureTimelineDoc(),
     moveItemToTrack,
     extractAudioToTrack,
     returnAudioToVideo,
