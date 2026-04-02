@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 
+import { createPinia, setActivePinia } from 'pinia';
 import { useFileBrowserFileActions } from '~/composables/file-manager/useFileBrowserFileActions';
 import type { FsEntry } from '~/types/fs';
 
@@ -25,7 +26,7 @@ const proxyStore = {
   cancelProxyGeneration: vi.fn(),
 };
 
-const projectTabs = {
+const projectTabsStore = {
   addFileTab: vi.fn().mockReturnValue('tab-1'),
   setActiveTab: vi.fn(),
 };
@@ -37,7 +38,9 @@ const audioExtraction = {
 vi.mock('~/stores/project.store', () => ({ useProjectStore: () => projectStore }));
 vi.mock('~/stores/ui.store', () => ({ useUiStore: () => uiStore }));
 vi.mock('~/stores/proxy.store', () => ({ useProxyStore: () => proxyStore }));
-vi.mock('~/composables/project/useProjectTabs', () => ({ useProjectTabs: () => projectTabs }));
+vi.mock('~/stores/project-tabs.store', () => ({
+  useProjectTabsStore: () => projectTabsStore,
+}));
 vi.mock('~/composables/file-manager/useAudioExtraction', () => ({
   useAudioExtraction: () => audioExtraction,
 }));
