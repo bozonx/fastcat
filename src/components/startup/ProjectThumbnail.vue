@@ -2,14 +2,17 @@
 import { ref, watch, onMounted } from 'vue';
 import { getFileThumbnailHash, fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
 
-const props = withDefaults(defineProps<{
-  projectId?: string;
-  projectRelativePath?: string;
-  projectName?: string;
-  variant?: 'desktop' | 'mobile';
-}>(), {
-  variant: 'desktop'
-});
+const props = withDefaults(
+  defineProps<{
+    projectId?: string;
+    projectRelativePath?: string;
+    projectName?: string;
+    variant?: 'desktop' | 'mobile';
+  }>(),
+  {
+    variant: 'desktop',
+  },
+);
 
 const { t } = useI18n();
 const url = ref<string | null>(null);
@@ -44,10 +47,8 @@ watch(() => [props.projectId, props.projectRelativePath], load);
 
 <template>
   <div
-    class="relative w-full h-full bg-slate-900 flex items-center justify-center overflow-hidden group"
-    :class="[
-      variant === 'desktop' ? 'aspect-video' : 'aspect-3/4'
-    ]"
+    class="relative w-full h-full bg-zinc-900 flex items-center justify-center overflow-hidden group"
+    :class="[variant === 'desktop' ? 'aspect-video' : 'aspect-3/4']"
   >
     <img
       v-if="url"

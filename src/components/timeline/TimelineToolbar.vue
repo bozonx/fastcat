@@ -20,6 +20,8 @@ import {
 import type { TextClipStyle } from '~/timeline/types';
 import TimelineSnapSettingsModal from './TimelineSnapSettingsModal.vue';
 
+import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
+
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const settingsStore = useTimelineSettingsStore();
@@ -194,9 +196,8 @@ function onDragEnd() {
   emit('dragVirtualEnd');
 }
 
-import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
-
-const { emptyAreaContextMenuItems: toolbarEmptyAreaContextMenuItems } = useTimelineEmptyAreaContextMenu();
+const { emptyAreaContextMenuItems: toolbarEmptyAreaContextMenuItems } =
+  useTimelineEmptyAreaContextMenu();
 
 function onToolbarContextMenu(e: MouseEvent) {
   e.stopPropagation();
@@ -279,7 +280,7 @@ function onToolbarContextMenu(e: MouseEvent) {
             :variant="timelineStore.isTrimModeActive ? 'solid' : 'ghost'"
             :color="timelineStore.isTrimModeActive ? 'primary' : 'neutral'"
             icon="i-heroicons-scissors"
-            :ariaLabel="t('fastcat.timeline.trim', 'Trim')"
+            :aria-label="t('fastcat.timeline.trim', 'Trim')"
             :items="trimMenuItems"
             button-class="hover:bg-ui-bg-hover/60"
             caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"

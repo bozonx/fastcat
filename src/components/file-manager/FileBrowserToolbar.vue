@@ -32,7 +32,6 @@ const sortFields: { label: string; value: FileSortField }[] = [
   { label: t('common.created', 'Created'), value: 'created' },
   { label: t('common.modified', 'Modified'), value: 'modified' },
 ];
-
 </script>
 
 <template>
@@ -132,7 +131,6 @@ const sortFields: { label: string; value: FileSortField }[] = [
         />
         <div class="w-px h-4 bg-ui-border mx-1"></div>
       </template>
-
     </div>
   </div>
 </template>

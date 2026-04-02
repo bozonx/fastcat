@@ -218,8 +218,5 @@ function addAudioTrack() {
     @change="onFilesSelected"
   />
 
-  <MobileMediaPickerDrawer
-    :is-open="isMediaPickerOpen"
-    @close="isMediaPickerOpen = false"
-  />
+  <MobileMediaPickerDrawer :is-open="isMediaPickerOpen" @close="isMediaPickerOpen = false" />
 </template>

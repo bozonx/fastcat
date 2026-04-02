@@ -48,7 +48,7 @@ export function useMonitorSnapshot(input: {
     const projectWidth = Number(input.projectStore.projectSettings?.project?.width || 1280);
     const projectHeight = Number(input.projectStore.projectSettings?.project?.height || 720);
     const maxSide = 1280;
-    
+
     let targetWidth = projectWidth;
     let targetHeight = projectHeight;
 

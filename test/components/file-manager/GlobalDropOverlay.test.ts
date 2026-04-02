@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import GlobalDropOverlay from '~/components/file-manager/GlobalDropOverlay.vue';
 
-
 describe('GlobalDropOverlay', () => {
   const rootEntries = [
     { name: 'Videos', kind: 'directory', path: '_video', children: [] },

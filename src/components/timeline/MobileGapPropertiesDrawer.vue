@@ -34,9 +34,10 @@ const isOpenLocal = computed({
 });
 
 const track = computed<TimelineTrack | null>(
-  () => (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined)?.find(
-    (tr) => tr.id === props.trackId,
-  ) ?? null,
+  () =>
+    (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined)?.find(
+      (tr) => tr.id === props.trackId,
+    ) ?? null,
 );
 
 function deleteGap() {
@@ -70,10 +71,10 @@ function deleteGap() {
 
     <template #header>
       <div class="flex items-center gap-2 min-w-0">
-        <div class="w-7 h-7 rounded bg-slate-800 flex items-center justify-center shrink-0">
-          <UIcon name="i-heroicons-stop" class="w-4 h-4 text-slate-400" />
+        <div class="w-7 h-7 rounded bg-zinc-800 flex items-center justify-center shrink-0">
+          <UIcon name="i-heroicons-stop" class="w-4 h-4 text-zinc-400" />
         </div>
-        <span class="text-sm font-bold text-slate-200 truncate leading-none">
+        <span class="text-sm font-bold text-zinc-200 truncate leading-none">
           {{ t('fastcat.timeline.gap', 'Gap') }}
         </span>
       </div>
@@ -85,7 +86,7 @@ function deleteGap() {
           {{ t('fastcat.timeline.gapDescription', 'An empty gap in the track timeline.') }}
         </p>
       </div>
-      
+
       <div v-if="track">
         <div class="mb-2 text-xs font-bold text-ui-text-muted uppercase tracking-wider">
           {{ t('fastcat.timeline.trackProperties', 'Track Properties') }}

@@ -37,9 +37,9 @@ const isOpenLocal = computed({
 const currentClipAndTrack = computed(() => {
   const entity = selectionStore.selectedEntity;
   if (entity?.source !== 'timeline' || entity.kind !== 'clip') return null;
-  const track = timelineStore.timelineDoc?.tracks?.find(
-    (tr) => tr.id === entity.trackId,
-  ) as TimelineTrack | undefined;
+  const track = timelineStore.timelineDoc?.tracks?.find((tr) => tr.id === entity.trackId) as
+    | TimelineTrack
+    | undefined;
   if (!track) return null;
   const item = track.items.find((i) => i.id === entity.itemId) as TimelineClipItem | undefined;
   if (!item || item.kind !== 'clip') return null;
@@ -148,14 +148,22 @@ function toggleLocked() {
 
         <MobileDrawerToolbarButton
           :icon="clip?.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
-          :label="clip?.disabled ? t('fastcat.timeline.enableClip', 'Enable') : t('fastcat.timeline.disableClip', 'Disable')"
+          :label="
+            clip?.disabled
+              ? t('fastcat.timeline.enableClip', 'Enable')
+              : t('fastcat.timeline.disableClip', 'Disable')
+          "
           :active="clip?.disabled"
           @click="toggleDisabled"
         />
 
         <MobileDrawerToolbarButton
           :icon="clip?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
-          :label="clip?.locked ? t('fastcat.timeline.unlockClip', 'Unlock') : t('fastcat.timeline.lockClip', 'Lock')"
+          :label="
+            clip?.locked
+              ? t('fastcat.timeline.unlockClip', 'Unlock')
+              : t('fastcat.timeline.lockClip', 'Lock')
+          "
           :active="clip?.locked"
           @click="toggleLocked"
         />
@@ -164,10 +172,10 @@ function toggleLocked() {
 
     <template #header>
       <div class="flex items-center gap-2 min-w-0">
-        <div class="w-7 h-7 rounded bg-slate-800 flex items-center justify-center shrink-0">
-          <UIcon name="i-heroicons-film" class="w-4 h-4 text-slate-400" />
+        <div class="w-7 h-7 rounded bg-zinc-800 flex items-center justify-center shrink-0">
+          <UIcon name="i-heroicons-film" class="w-4 h-4 text-zinc-400" />
         </div>
-        <span class="text-sm font-bold text-slate-200 truncate leading-none">
+        <span class="text-sm font-bold text-zinc-200 truncate leading-none">
           {{ clip?.name || t('fastcat.timeline.clipActions', 'Clip') }}
         </span>
       </div>

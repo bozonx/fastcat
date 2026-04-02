@@ -193,12 +193,8 @@ describe('useFileBrowserTranscription', () => {
     it('sets error if file cannot be accessed', async () => {
       projectStoreMock.getFileByPath.mockResolvedValue(null);
 
-      const {
-        submitTranscription,
-        openTranscriptionModal,
-        transcriptionError,
-        isTranscribing,
-      } = useFileBrowserTranscription();
+      const { submitTranscription, openTranscriptionModal, transcriptionError, isTranscribing } =
+        useFileBrowserTranscription();
       openTranscriptionModal({
         kind: 'file',
         name: 'test.mp3',

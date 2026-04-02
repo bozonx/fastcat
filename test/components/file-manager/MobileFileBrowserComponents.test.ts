@@ -18,12 +18,12 @@ describe('MobileFileBrowserNavbar', () => {
     const wrapper = await mountSuspended(MobileFileBrowserNavbar, {
       props: defaultProps,
       global: {
-        stubs: { 
-            UButton: { template: '<button class="u-button-stub" v-bind="$attrs"><slot /></button>' }, 
-            Icon: true, 
-            UDropdownMenu: true 
-        }
-      }
+        stubs: {
+          UButton: { template: '<button class="u-button-stub" v-bind="$attrs"><slot /></button>' },
+          Icon: true,
+          UDropdownMenu: true,
+        },
+      },
     });
 
     expect(wrapper.text()).toContain('foo');
@@ -35,8 +35,8 @@ describe('MobileFileBrowserNavbar', () => {
     const wrapper = await mountSuspended(MobileFileBrowserNavbar, {
       props: { ...defaultProps, isSelectionMode: true, selectedCount: 5, totalSelectedSize: 1024 },
       global: {
-        stubs: { UButton: true, Icon: true, UDropdownMenu: true }
-      }
+        stubs: { UButton: true, Icon: true, UDropdownMenu: true },
+      },
     });
 
     expect(wrapper.text()).toContain('5');
@@ -50,9 +50,9 @@ describe('MobileFileBrowserNavbar', () => {
         stubs: {
           UButton: { template: '<button @click="$emit(\'click\')"><slot /></button>' },
           Icon: true,
-          UDropdownMenu: true
-        }
-      }
+          UDropdownMenu: true,
+        },
+      },
     });
 
     await wrapper.find('button').trigger('click');
@@ -71,8 +71,8 @@ describe('MobileFileBrowserCreateSheet', () => {
     const wrapper = await mountSuspended(MobileFileBrowserCreateSheet, {
       props: defaultProps,
       global: {
-        stubs: { UDrawer: { template: '<div><slot name="content" /></div>' }, Icon: true }
-      }
+        stubs: { UDrawer: { template: '<div><slot name="content" /></div>' }, Icon: true },
+      },
     });
 
     expect(wrapper.text()).toContain('Music');
@@ -82,8 +82,8 @@ describe('MobileFileBrowserCreateSheet', () => {
     const wrapper = await mountSuspended(MobileFileBrowserCreateSheet, {
       props: defaultProps,
       global: {
-        stubs: { UDrawer: { template: '<div><slot name="content" /></div>' }, Icon: true }
-      }
+        stubs: { UDrawer: { template: '<div><slot name="content" /></div>' }, Icon: true },
+      },
     });
 
     const buttons = wrapper.findAll('button');
@@ -94,13 +94,13 @@ describe('MobileFileBrowserCreateSheet', () => {
 
 describe('MobileFileBrowserSelectionToolbar', () => {
   const entries = [{ name: 'f1', kind: 'file', path: 'f1' }] as any[];
-  
+
   it('renders action buttons', async () => {
     const wrapper = await mountSuspended(MobileFileBrowserSelectionToolbar, {
       props: { selectedEntries: entries, canAddToTimeline: true },
       global: {
-        stubs: { UButton: { template: '<button><slot /></button>' }, Icon: true }
-      }
+        stubs: { UButton: { template: '<button><slot /></button>' }, Icon: true },
+      },
     });
 
     expect(wrapper.text()).toContain('common.delete');
@@ -114,9 +114,9 @@ describe('MobileFileBrowserSelectionToolbar', () => {
       global: {
         stubs: {
           UButton: { template: '<button @click="$emit(\'click\')"><slot /></button>' },
-          Icon: true
-        }
-      }
+          Icon: true,
+        },
+      },
     });
 
     await wrapper.find('button').trigger('click'); // First button is delete

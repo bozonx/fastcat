@@ -57,11 +57,11 @@ describe('useMobileFileBrowserSelection', () => {
 
   it('toggles selection mode', () => {
     const { isSelectionMode, toggleSelectionMode } = useMobileFileBrowserSelection();
-    
+
     expect(isSelectionMode.value).toBe(false);
     toggleSelectionMode();
     expect(isSelectionMode.value).toBe(true);
-    
+
     toggleSelectionMode();
     expect(isSelectionMode.value).toBe(false);
     expect(mockSelectionStore.clearSelection).toHaveBeenCalled();
@@ -83,10 +83,14 @@ describe('useMobileFileBrowserSelection', () => {
 
     handleToggleSelection(entry1);
     expect(mockSelectionStore.selectFsEntries).toHaveBeenCalledWith([entry1]);
-    
+
     // Simulate store update
-    mockSelectionStore.selectedEntity = { source: 'fileManager', kind: 'file', entry: entry1 } as any;
-    
+    mockSelectionStore.selectedEntity = {
+      source: 'fileManager',
+      kind: 'file',
+      entry: entry1,
+    } as any;
+
     handleToggleSelection(entry2);
     expect(mockSelectionStore.selectFsEntries).toHaveBeenCalledWith([entry1, entry2]);
   });
@@ -95,15 +99,15 @@ describe('useMobileFileBrowserSelection', () => {
     const { totalSelectedSize } = useMobileFileBrowserSelection();
     const file1 = { name: '1.txt', kind: 'file', path: '1.txt', size: 100 } as any;
     const folder = { name: 'dir', kind: 'directory', path: 'dir' } as any;
-    
+
     mockSelectionStore.selectedEntity = {
       source: 'fileManager',
       kind: 'multiple',
       entries: [file1, folder],
     } as any;
-    
+
     mockFileManagerStore.folderSizes['dir'] = 500;
-    
+
     expect(totalSelectedSize.value).toBe(600);
   });
 
@@ -118,10 +122,10 @@ describe('useMobileFileBrowserSelection', () => {
   it('handles entry click correctly in selection mode', () => {
     const { handleEntryClick, isSelectionMode } = useMobileFileBrowserSelection();
     const file = { name: 'file.txt', kind: 'file', path: 'file.txt' } as any;
-    
+
     isSelectionMode.value = true;
     handleEntryClick(file);
-    
+
     expect(mockSelectionStore.selectFsEntries).toHaveBeenCalledWith([file]);
   });
 });

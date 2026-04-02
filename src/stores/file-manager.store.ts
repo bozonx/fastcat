@@ -84,7 +84,10 @@ export const useFileManagerStore = defineStore('fileManager', () => {
 
   function clearSelection() {
     const selected = selectionStore.selectedEntity;
-    if (selected?.source === 'fileManager' && (selected.kind === 'file' || selected.kind === 'directory')) {
+    if (
+      selected?.source === 'fileManager' &&
+      (selected.kind === 'file' || selected.kind === 'directory')
+    ) {
       selectionStore.clearSelection();
     }
   }

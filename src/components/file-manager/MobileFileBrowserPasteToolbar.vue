@@ -11,7 +11,7 @@ const clipboardStore = useClipboardStore();
 </script>
 
 <template>
-  <div class="border-t border-slate-800 bg-slate-900 p-3 flex items-center justify-between z-40">
+  <div class="border-t border-zinc-800 bg-zinc-900 p-3 flex items-center justify-between z-40">
     <div class="text-sm font-medium">
       {{
         clipboardStore.clipboardPayload?.operation === 'cut'

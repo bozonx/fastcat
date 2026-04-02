@@ -2,10 +2,14 @@
 import { computed, ref, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useMediaStore } from '~/stores/media.store';
 import type { TimelineTrack } from '~/timeline/types';
 import TrackProperties from '~/components/properties/TrackProperties.vue';
-import { linearToDb, dbToLinear } from '~/utils/audio';
+import { linearToDb, dbToLinear, trackHasAudio } from '~/utils/audio';
 import DbSlider from '~/components/audio/DbSlider.vue';
+import SelectEffectModal from '~/components/effects/SelectEffectModal.vue';
+import TrackAudioEffectsModal from '~/components/audio/TrackAudioEffectsModal.vue';
+import { getAudioEffectManifest } from '~/effects';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -18,6 +22,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const workspaceStore = useWorkspaceStore();
+const mediaStore = useMediaStore();
 
 const isOpenLocal = computed({
   get: () => props.isOpen,
@@ -28,9 +33,25 @@ const isOpenLocal = computed({
 
 const tracks = computed(() => (timelineStore.timelineDoc?.tracks as TimelineTrack[]) ?? []);
 
+const filteredTracks = computed(() => {
+  return tracks.value.filter((track) => {
+    if (track.kind === 'audio') {
+      return track.items.length > 0;
+    }
+    if (track.kind === 'video') {
+      return track.items.length > 0 && trackHasAudio(track, mediaStore.mediaMetadata);
+    }
+    return false;
+  });
+});
+
 const selectedTrackForPropertiesId = ref<string | null>(null);
 const selectedTrackForProperties = computed(() =>
   tracks.value.find((t) => t.id === selectedTrackForPropertiesId.value),
+);
+
+const selectedTrackForEffects = computed(() =>
+  tracks.value.find((t) => t.id === selectedTrackIdForEffects.value),
 );
 
 watch(isOpenLocal, (val) => {
@@ -40,14 +61,6 @@ watch(isOpenLocal, (val) => {
     }, 300);
   }
 });
-
-function toggleLock(trackId: string) {
-  const t = tracks.value.find((x) => x.id === trackId);
-  if (t) {
-    timelineStore.updateTrackProperties(trackId, { locked: !t.locked });
-    timelineStore.requestTimelineSave({ immediate: true });
-  }
-}
 
 function toggleMute(trackId: string) {
   const t = tracks.value.find((x) => x.id === trackId);
@@ -65,14 +78,6 @@ function toggleSolo(trackId: string) {
   }
 }
 
-function toggleHide(trackId: string) {
-  const t = tracks.value.find((x) => x.id === trackId);
-  if (t) {
-    timelineStore.updateTrackProperties(trackId, { videoHidden: !t.videoHidden });
-    timelineStore.requestTimelineSave({ immediate: true });
-  }
-}
-
 function handleTrackGainDbInput(trackId: string, dbVal: number) {
   timelineStore.updateTrackProperties(trackId, {
     audioGain: dbToLinear(dbVal),
@@ -81,6 +86,51 @@ function handleTrackGainDbInput(trackId: string, dbVal: number) {
 
 function getTrackGain(track: TimelineTrack) {
   return typeof track.audioGain === 'number' ? track.audioGain : 1;
+}
+
+const isSelectEffectModalOpen = ref(false);
+const isEffectsModalOpen = ref(false);
+const selectedTrackIdForEffects = ref<string | null>(null);
+
+function openSelectEffect(trackId: string) {
+  selectedTrackIdForEffects.value = trackId;
+  isSelectEffectModalOpen.value = true;
+}
+
+function openEffectsEditor(trackId: string) {
+  selectedTrackIdForEffects.value = trackId;
+  isEffectsModalOpen.value = true;
+}
+
+function handleSelectEffect(type: string) {
+  const trackId = selectedTrackIdForEffects.value;
+  if (!trackId) return;
+
+  const manifest = getAudioEffectManifest(type);
+  if (!manifest) return;
+
+  const track = tracks.value.find((t) => t.id === trackId);
+  if (!track) return;
+
+  const newEffect = {
+    id: `audio_effect_${Date.now()}`,
+    type,
+    enabled: true,
+    target: 'audio',
+    ...(manifest.defaultValues || {}),
+  };
+
+  const currentEffects = track.effects ?? [];
+  timelineStore.updateTrackProperties(trackId, {
+    effects: [...currentEffects, newEffect] as any,
+  });
+
+  isSelectEffectModalOpen.value = false;
+  isEffectsModalOpen.value = true;
+}
+
+function getAudioEffectsCount(track: TimelineTrack) {
+  return (track.effects ?? []).filter((e) => e?.target === 'audio').length;
 }
 
 const masterVolumeDb = computed({
@@ -101,37 +151,9 @@ function formatDb(value: number | undefined): string {
   return `${value.toFixed(1)} dB`;
 }
 
-function addVideoTrack() {
-  const videoCount = tracks.value.filter((t) => t.kind === 'video').length;
-  timelineStore.addTrack('video', `Video ${videoCount + 1}`);
-}
-
 function addAudioTrack() {
   const audioCount = tracks.value.filter((t) => t.kind === 'audio').length;
   timelineStore.addTrack('audio', `Audio ${audioCount + 1}`);
-}
-
-const isConfirmDeleteOpen = ref(false);
-const trackToDeleteId = ref<string | null>(null);
-const selectedTrackForDelete = computed(() =>
-  tracks.value.find((t) => t.id === trackToDeleteId.value),
-);
-
-function confirmDelete() {
-  if (trackToDeleteId.value) {
-    timelineStore.deleteTrack(trackToDeleteId.value, { allowNonEmpty: true });
-    trackToDeleteId.value = null;
-  }
-}
-
-function requestDeleteTrack(track: TimelineTrack) {
-  const skipConfirm = workspaceStore.userSettings.deleteWithoutConfirmation;
-  if (track.items.length > 0 && !skipConfirm) {
-    trackToDeleteId.value = track.id;
-    isConfirmDeleteOpen.value = true;
-  } else {
-    timelineStore.deleteTrack(track.id);
-  }
 }
 
 const renamingTrackId = ref<string | null>(null);
@@ -151,45 +173,6 @@ function confirmRename() {
     }
   }
   renamingTrackId.value = null;
-}
-
-function getTrackMenuItems(track: TimelineTrack) {
-  return [
-    [
-      {
-        label: t('fastcat.timeline.renameTrack', 'Rename Track'),
-        icon: 'lucide:pencil',
-        onSelect: () => startRename(track),
-      },
-      {
-        label: track.locked
-          ? t('fastcat.track.unlock', 'Unlock track')
-          : t('fastcat.track.lock', 'Lock track'),
-        icon: track.locked ? 'lucide:lock-open' : 'lucide:lock',
-        onSelect: () => toggleLock(track.id),
-      },
-      {
-        label: t('fastcat.timeline.deleteTrack', 'Delete Track'),
-        icon: 'lucide:trash-2',
-        iconClass: 'text-error-500',
-        onSelect: () => requestDeleteTrack(track),
-      },
-    ],
-    [
-      {
-        label: t('fastcat.track.moveUp', 'Move track up'),
-        icon: 'lucide:arrow-up',
-        disabled: tracks.value.filter((t) => t.kind === track.kind)[0]?.id === track.id,
-        onSelect: () => timelineStore.moveTrackUp(track.id),
-      },
-      {
-        label: t('fastcat.track.moveDown', 'Move track down'),
-        icon: 'lucide:arrow-down',
-        disabled: tracks.value.filter((t) => t.kind === track.kind).slice(-1)[0]?.id === track.id,
-        onSelect: () => timelineStore.moveTrackDown(track.id),
-      },
-    ],
-  ];
 }
 </script>
 
@@ -234,11 +217,55 @@ function getTrackMenuItems(track: TimelineTrack) {
       <div
         class="flex gap-4 overflow-x-auto pb-4 no-scrollbar items-stretch flex-1 hide-scrollbar snap-x snap-mandatory"
       >
+        <!-- Master Volume (First item) -->
+        <div
+          class="shrink-0 w-32 rounded-xl border border-zinc-800 bg-zinc-900/60 p-3 shadow-sm relative overflow-hidden flex flex-col snap-start"
+        >
+          <div
+            class="absolute inset-0 bg-linear-to-br from-primary-500/5 to-transparent pointer-events-none"
+          ></div>
+
+          <div class="flex flex-col items-center mb-3 relative z-10">
+            <span
+              class="text-xs font-bold text-zinc-100 uppercase tracking-widest mb-1 text-center w-full truncate"
+            >
+              {{ $t('fastcat.audioMixer.master', 'Master') }}
+            </span>
+            <span class="text-[10px] text-zinc-500 font-mono">{{
+              formatDb(timelineStore.audioLevels?.master?.peakDb)
+            }}</span>
+          </div>
+
+          <div class="flex-1 w-full min-h-[200px] flex justify-center py-2 relative z-10">
+            <DbSlider
+              v-model="masterVolumeDb"
+              :level-db="timelineStore.audioLevels?.master?.peakDb"
+            />
+          </div>
+
+          <div
+            class="flex justify-center gap-2 mt-3 pt-3 border-t border-zinc-800/50 relative z-10"
+          >
+            <UiToggleButton
+              :model-value="isMasterMuted"
+              size="xs"
+              label="M"
+              active-color="error"
+              inactive-color="neutral"
+              inactive-variant="ghost"
+              active-variant="soft"
+              title="Mute master"
+              class="w-8 h-8"
+              @click="toggleMasterMute"
+            />
+          </div>
+        </div>
+
         <!-- Individual Tracks -->
         <div
-          v-for="track in tracks"
+          v-for="track in filteredTracks"
           :key="track.id"
-          class="shrink-0 w-32 rounded-xl border border-slate-800/80 bg-slate-900/40 p-3 flex flex-col transition-colors group snap-start relative"
+          class="shrink-0 w-32 rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-3 flex flex-col transition-colors group snap-start relative"
         >
           <!-- Top: Info & Display row -->
           <div class="flex flex-col items-center mb-3 gap-2">
@@ -261,7 +288,7 @@ function getTrackMenuItems(track: TimelineTrack) {
             <div v-if="renamingTrackId === track.id" class="w-full">
               <input
                 v-model="renameValue"
-                class="w-full bg-slate-950 border border-primary-500 text-slate-100 rounded px-1 py-0.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-primary-500 text-center"
+                class="w-full bg-zinc-950 border border-primary-500 text-zinc-100 rounded px-1 py-0.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-primary-500 text-center"
                 autofocus
                 @blur="confirmRename"
                 @keydown.enter="confirmRename"
@@ -270,50 +297,34 @@ function getTrackMenuItems(track: TimelineTrack) {
             </div>
             <span
               v-else
-              class="text-xs font-medium text-slate-200 truncate w-full text-center px-1 cursor-text"
+              class="text-xs font-medium text-zinc-200 truncate w-full text-center px-1 cursor-text"
               @dblclick="startRename(track)"
             >
               {{ track.name || track.id }}
             </span>
 
-            <div
-              class="flex flex-wrap justify-center gap-0.5 mt-1 bg-slate-950/50 rounded-lg p-0.5 border border-slate-800/50 w-full"
-            >
-              <UButton
-                v-if="track.kind === 'video'"
-                :icon="track.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
-                :color="track.videoHidden ? 'primary' : 'neutral'"
-                variant="ghost"
-                size="xs"
-                class="p-1"
-                @click="toggleHide(track.id)"
-              />
-              <UButton
-                :icon="track.locked ? 'i-heroicons-lock-closed' : 'i-heroicons-lock-open'"
-                :color="track.locked ? 'primary' : 'neutral'"
-                variant="ghost"
-                size="xs"
-                class="p-1"
-                @click="toggleLock(track.id)"
-              />
-              <UDropdownMenu :items="getTrackMenuItems(track)" :content="{ align: 'end' }">
+            <div class="w-full px-1.5 mb-1.5 shrink-0">
+              <div v-if="getAudioEffectsCount(track) === 0" class="flex justify-center">
                 <UButton
-                  icon="lucide:more-vertical"
-                  color="neutral"
-                  variant="ghost"
                   size="xs"
-                  class="p-1"
-                />
-              </UDropdownMenu>
-              <UButton
-                icon="lucide:settings"
-                color="neutral"
-                variant="ghost"
-                size="xs"
-                class="p-1"
-                title="Track Properties"
-                @click="selectedTrackForPropertiesId = track.id"
-              />
+                  variant="ghost"
+                  color="neutral"
+                  icon="i-heroicons-plus-circle"
+                  class="w-full h-6 text-3xs px-1 py-0 justify-center whitespace-nowrap overflow-hidden hover:bg-primary-500/10 hover:text-primary-400 border border-transparent hover:border-primary-500/30"
+                  @click="openSelectEffect(track.id)"
+                >
+                  {{ $t('fastcat.effects.addEffect') }}
+                </UButton>
+              </div>
+              <div
+                v-else
+                class="w-full h-6 bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 border border-primary-500/30 rounded flex items-center justify-center cursor-pointer transition-colors"
+                @click="openEffectsEditor(track.id)"
+              >
+                <span class="text-3xs font-bold uppercase truncate px-1">
+                  {{ $t('fastcat.effects.effectsCount', { count: getAudioEffectsCount(track) }) }}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -330,7 +341,7 @@ function getTrackMenuItems(track: TimelineTrack) {
           </div>
 
           <!-- Bottom: Solo & Mute -->
-          <div class="flex justify-center gap-2 mt-3 pt-3 border-t border-slate-800/50">
+          <div class="flex justify-center gap-2 mt-3 pt-3 border-t border-zinc-800/50">
             <UiToggleButton
               :model-value="Boolean(track.audioSolo)"
               size="xs"
@@ -355,64 +366,10 @@ function getTrackMenuItems(track: TimelineTrack) {
             />
           </div>
         </div>
-
-        <!-- Master Volume (Horizontal scroll item) -->
-        <div
-          class="shrink-0 w-32 rounded-xl border border-slate-800 bg-slate-900/60 p-3 shadow-sm relative overflow-hidden flex flex-col snap-start"
-        >
-          <div
-            class="absolute inset-0 bg-linear-to-br from-primary-500/5 to-transparent pointer-events-none"
-          ></div>
-
-          <div class="flex flex-col items-center mb-3 relative z-10">
-            <span
-              class="text-xs font-bold text-slate-100 uppercase tracking-widest mb-1 text-center w-full truncate"
-            >
-              {{ $t('fastcat.audioMixer.master', 'Master') }}
-            </span>
-            <span class="text-[10px] text-slate-500 font-mono">{{
-              formatDb(timelineStore.audioLevels?.master?.peakDb)
-            }}</span>
-          </div>
-
-          <!-- Middle: Vertical Master Slider -->
-          <div class="flex-1 w-full min-h-[200px] flex justify-center py-2 relative z-10">
-            <DbSlider
-              v-model="masterVolumeDb"
-              :level-db="timelineStore.audioLevels?.master?.peakDb"
-            />
-          </div>
-
-          <div
-            class="flex justify-center gap-2 mt-3 pt-3 border-t border-slate-800/50 relative z-10"
-          >
-            <UiToggleButton
-              :model-value="isMasterMuted"
-              size="xs"
-              label="M"
-              active-color="error"
-              inactive-color="neutral"
-              inactive-variant="ghost"
-              active-variant="soft"
-              title="Mute master"
-              class="w-8 h-8"
-              @click="toggleMasterMute"
-            />
-          </div>
-        </div>
       </div>
 
       <!-- Action Buttons -->
-      <div class="flex gap-2 pt-4 mt-1 border-t border-slate-800/50 shrink-0">
-        <UButton
-          icon="i-heroicons-video-camera"
-          :label="$t('fastcat.timeline.addVideoTrack', 'Add Video Track')"
-          variant="soft"
-          color="neutral"
-          size="sm"
-          class="flex-1 justify-center whitespace-normal h-auto py-2"
-          @click="addVideoTrack"
-        />
+      <div class="flex gap-2 pt-4 mt-1 border-t border-zinc-800/50 shrink-0">
         <UButton
           icon="i-heroicons-musical-note"
           :label="$t('fastcat.timeline.addAudioTrack', 'Add Audio Track')"
@@ -425,20 +382,16 @@ function getTrackMenuItems(track: TimelineTrack) {
       </div>
     </div>
 
-    <UiConfirmModal
-      v-if="selectedTrackForDelete"
-      v-model:open="isConfirmDeleteOpen"
-      :title="t('fastcat.timeline.deleteTrackTitle', 'Delete track?')"
-      :description="
-        t(
-          'fastcat.timeline.deleteTrackDescription',
-          'Track is not empty. This action cannot be undone.',
-        )
-      "
-      color="error"
-      icon="i-heroicons-exclamation-triangle"
-      :confirm-text="t('common.delete', 'Delete')"
-      @confirm="confirmDelete"
+    <SelectEffectModal
+      v-model:open="isSelectEffectModalOpen"
+      target="audio"
+      @select="handleSelectEffect"
+    />
+
+    <TrackAudioEffectsModal
+      v-if="selectedTrackForEffects"
+      v-model:open="isEffectsModalOpen"
+      :track-id="selectedTrackForEffects.id"
     />
   </UiMobileDrawer>
 </template>

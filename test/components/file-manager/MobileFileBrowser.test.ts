@@ -126,7 +126,7 @@ describe('MobileFileBrowser', () => {
         },
       },
     });
-    
+
     expect(wrapper.find('#navbar-mock').exists()).toBe(true);
     expect(wrapper.find('#grid-mock').exists()).toBe(true);
   });
@@ -135,9 +135,9 @@ describe('MobileFileBrowser', () => {
     // We need to re-mock or use a reactive ref that we can control
     // For simplicity in this test, we can use the default mock which returns a ref
     const wrapper = await mountSuspended(MobileFileBrowser);
-    
+
     // Since we mocked the composable to return a ref, we can't easily change it from outside
-    // without returning the same ref object. 
+    // without returning the same ref object.
     // In a real scenario, we might want to export the refs from the mock.
   });
 

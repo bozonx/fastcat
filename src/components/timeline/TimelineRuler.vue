@@ -273,7 +273,11 @@ function onMobilePointerDown(event: PointerEvent) {
   const dx = Math.abs(event.clientX - lastTapPos.value.x);
   const dy = Math.abs(event.clientY - lastTapPos.value.y);
 
-  if (now - lastTapTime.value < DOUBLE_TAP_TIMEOUT_MS && dx < DOUBLE_TAP_DISTANCE_PX && dy < DOUBLE_TAP_DISTANCE_PX) {
+  if (
+    now - lastTapTime.value < DOUBLE_TAP_TIMEOUT_MS &&
+    dx < DOUBLE_TAP_DISTANCE_PX &&
+    dy < DOUBLE_TAP_DISTANCE_PX
+  ) {
     timelineStore.addMarkerAtPlayhead();
     lastTapTime.value = 0;
     mobileScrubActive.value = false;

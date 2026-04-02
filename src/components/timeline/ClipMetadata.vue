@@ -46,7 +46,9 @@ const clipItem = computed(() =>
 
     <!-- Muted / Disabled Overlay -->
     <div
-      v-if="clipItem && (clipItem.disabled || clipItem.audioMuted) && !isMediaMissing && !isUnsupported"
+      v-if="
+        clipItem && (clipItem.disabled || clipItem.audioMuted) && !isMediaMissing && !isUnsupported
+      "
       class="absolute inset-0 flex items-center justify-center z-30"
     >
       <div v-if="clipItem.audioMuted" class="bg-black/30 rounded-full p-1.5">

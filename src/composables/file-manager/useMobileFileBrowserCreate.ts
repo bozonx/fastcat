@@ -76,7 +76,9 @@ export function useMobileFileBrowserCreate({
     if (path) {
       // If targetPath was not provided, use the parent folder of the created file
       // which createMarkdownCommand defaults to DOCUMENTS_DIR_NAME
-      const parentPath = targetPath ?? (path.includes('/') ? path.split('/').slice(0, -1).join('/') : DOCUMENTS_DIR_NAME);
+      const parentPath =
+        targetPath ??
+        (path.includes('/') ? path.split('/').slice(0, -1).join('/') : DOCUMENTS_DIR_NAME);
 
       if (fileManagerStore.selectedFolder?.path !== parentPath) {
         const folderName = parentPath.split('/').pop() || 'Documents';

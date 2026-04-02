@@ -16,7 +16,7 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <div class="border-t border-slate-800 bg-slate-900 px-4 py-4 flex flex-col gap-4 z-40 shrink-0">
+  <div class="border-t border-zinc-800 bg-zinc-900 px-4 py-4 flex flex-col gap-4 z-40 shrink-0">
     <div v-if="canAddToTimeline" class="flex justify-center px-2">
       <UButton
         size="xl"
@@ -51,7 +51,7 @@ const { t } = useI18n();
           class="rounded-2xl w-14 h-14"
           @click="emit('action', 'rename', props.selectedEntries[0]!)"
         />
-        <span class="text-xs font-medium text-slate-400">{{ t('common.rename', 'Rename') }}</span>
+        <span class="text-xs font-medium text-zinc-400">{{ t('common.rename', 'Rename') }}</span>
       </div>
 
       <div class="flex flex-col items-center gap-1">
@@ -63,7 +63,7 @@ const { t } = useI18n();
           class="rounded-2xl w-14 h-14"
           @click="emit('action', 'copy', props.selectedEntries)"
         />
-        <span class="text-xs font-medium text-slate-400">{{ t('common.copy', 'Copy') }}</span>
+        <span class="text-xs font-medium text-zinc-400">{{ t('common.copy', 'Copy') }}</span>
       </div>
 
       <div class="flex flex-col items-center gap-1">
@@ -75,7 +75,7 @@ const { t } = useI18n();
           class="rounded-2xl w-14 h-14"
           @click="emit('action', 'cut', props.selectedEntries)"
         />
-        <span class="text-xs font-medium text-slate-400">{{ t('common.cut', 'Cut') }}</span>
+        <span class="text-xs font-medium text-zinc-400">{{ t('common.cut', 'Cut') }}</span>
       </div>
     </div>
   </div>

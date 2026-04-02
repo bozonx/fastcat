@@ -312,10 +312,10 @@ onBeforeUnmount(() => {
     <div v-if="settingsControls.length > 0" class="max-h-[60vh] overflow-y-auto pr-2 space-y-4">
       <div
         v-if="isParametricEq"
-        class="rounded-lg border border-white/10 bg-slate-950/90 p-3 space-y-3"
+        class="rounded-lg border border-white/10 bg-zinc-950/90 p-3 space-y-3"
         data-testid="parametric-eq-visualization"
       >
-        <div class="flex items-center justify-between gap-3 text-xs text-slate-300">
+        <div class="flex items-center justify-between gap-3 text-xs text-zinc-300">
           <span>20 Hz</span>
           <span>-24 dB ... +24 dB</span>
           <span>20 kHz</span>
@@ -324,7 +324,7 @@ onBeforeUnmount(() => {
           ref="curveCanvas"
           :width="canvasWidth"
           :height="canvasHeight"
-          class="h-44 w-full rounded-md border border-white/8 bg-slate-900"
+          class="h-44 w-full rounded-md border border-white/8 bg-zinc-900"
         />
       </div>
       <ParamsRenderer

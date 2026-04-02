@@ -94,17 +94,32 @@ config.global.mocks = {
 // LocalStorage mock
 class LocalStorageMock {
   private store: Record<string, string> = {};
-  get length() { return Object.keys(this.store).length; }
-  getItem(key: string) { return this.store[key] || null; }
-  setItem(key: string, value: string) { this.store[key] = String(value); }
-  removeItem(key: string) { delete this.store[key]; }
-  clear() { this.store = {}; }
-  key(index: number) { return Object.keys(this.store)[index] || null; }
+  get length() {
+    return Object.keys(this.store).length;
+  }
+  getItem(key: string) {
+    return this.store[key] || null;
+  }
+  setItem(key: string, value: string) {
+    this.store[key] = String(value);
+  }
+  removeItem(key: string) {
+    delete this.store[key];
+  }
+  clear() {
+    this.store = {};
+  }
+  key(index: number) {
+    return Object.keys(this.store)[index] || null;
+  }
 }
 
 if (typeof window !== 'undefined') {
   if (!window.localStorage) {
-    Object.defineProperty(window, 'localStorage', { value: new LocalStorageMock(), writable: true });
+    Object.defineProperty(window, 'localStorage', {
+      value: new LocalStorageMock(),
+      writable: true,
+    });
   }
 } else {
   (globalThis as any).localStorage = new LocalStorageMock();

@@ -151,7 +151,8 @@ async function onConfirm() {
     class="flex flex-col h-full bg-ui-bg-elevated relative overflow-hidden"
     :class="{
       'panel-focus-frame': !props.disableFocusFrame,
-      'panel-focus-frame--active': !props.disableFocusFrame && focusStore.isPanelFocused('exportForm'),
+      'panel-focus-frame--active':
+        !props.disableFocusFrame && focusStore.isPanelFocused('exportForm'),
     }"
     @pointerdown.capture="focusExportForm"
   >
@@ -362,7 +363,9 @@ async function onConfirm() {
     <!-- Close scrollable container -->
 
     <!-- Fixed Footer -->
-    <div class="mt-auto pt-4 md:pt-6 border-t border-ui-border p-4 md:p-6 bg-ui-bg-elevated shrink-0">
+    <div
+      class="mt-auto pt-4 md:pt-6 border-t border-ui-border p-4 md:p-6 bg-ui-bg-elevated shrink-0"
+    >
       <div class="flex flex-col gap-3 w-full">
         <div v-if="isExporting" class="flex flex-col gap-2">
           <div class="flex justify-between text-sm text-ui-text-muted">

@@ -41,7 +41,6 @@ vi.mock('~/composables/file-manager/useClipboardIndicator', () => ({
   useClipboardPaths: () => ({ value: new Set() }),
 }));
 
-
 describe('FileBrowserViewGrid', () => {
   beforeEach(() => {
     vi.clearAllMocks();

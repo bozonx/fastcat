@@ -44,7 +44,7 @@ describe('MobileMonitorAudioControl', () => {
     });
 
     const uiStore = useUiStore();
-    
+
     // Initial 0.5 volume -> speaker-wave
     expect(wrapper.find('.i-heroicons-speaker-wave').exists()).toBe(true);
 
@@ -67,7 +67,7 @@ describe('MobileMonitorAudioControl', () => {
 
     const uiStore = useUiStore();
     const slider = wrapper.find('.slider-stub');
-    
+
     await slider.trigger('click');
     expect(uiStore.monitorVolume).toBe(0.8);
   });
@@ -83,7 +83,7 @@ describe('MobileMonitorAudioControl', () => {
 
     const slider = wrapper.find('.slider-stub');
     await slider.trigger('click'); // mocks update to 0.8
-    
+
     expect(uiStore.monitorVolume).toBe(0.8);
     expect(uiStore.monitorMuted).toBe(false);
   });
@@ -99,8 +99,8 @@ describe('MobileMonitorAudioControl', () => {
 
     // Find the reset button (it has a label with percentage)
     const buttons = wrapper.findAll('.button-stub');
-    const resetButton = buttons.find(b => b.text().includes('%'));
-    
+    const resetButton = buttons.find((b) => b.text().includes('%'));
+
     expect(resetButton?.exists()).toBe(true);
     await resetButton?.trigger('click');
 

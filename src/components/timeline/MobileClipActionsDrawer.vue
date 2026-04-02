@@ -30,11 +30,14 @@ const isOpenLocal = computed({
 const selectedEntity = computed(() => selectionStore.selectedEntity);
 
 const currentClipAndTrack = computed(() => {
-  if (selectedEntity.value?.source !== 'timeline' || selectedEntity.value.kind !== 'clip') return null;
+  if (selectedEntity.value?.source !== 'timeline' || selectedEntity.value.kind !== 'clip')
+    return null;
   const trackId = selectedEntity.value.trackId;
   const itemId = selectedEntity.value.itemId;
 
-  const track = timelineStore.timelineDoc?.tracks?.find((t) => t.id === trackId) as TimelineTrack | undefined;
+  const track = timelineStore.timelineDoc?.tracks?.find((t) => t.id === trackId) as
+    | TimelineTrack
+    | undefined;
   if (!track) return null;
   const item = track.items.find((i) => i.id === itemId) as TimelineClipItem | undefined;
   if (!item || item.kind !== 'clip') return null;
@@ -50,16 +53,29 @@ const isLocked = computed(() => Boolean(clip.value?.locked || track.value?.locke
 const actions = computed(() => {
   if (!clip.value || !track.value) return [];
 
-  const list: Array<{ label: string; icon: string; action: () => void | Promise<void>; disabled?: boolean; color?: string }> = [];
+  const list: Array<{
+    label: string;
+    icon: string;
+    action: () => void | Promise<void>;
+    disabled?: boolean;
+    color?: string;
+  }> = [];
 
   // Mute/Unmute
-  const hasAudio = track.value.kind === 'audio' || clip.value.clipType === 'media' || clip.value.clipType === 'timeline';
+  const hasAudio =
+    track.value.kind === 'audio' ||
+    clip.value.clipType === 'media' ||
+    clip.value.clipType === 'timeline';
   if (hasAudio) {
     list.push({
-      label: clip.value.audioMuted ? t('fastcat.timeline.unmuteClip', 'Unmute') : t('fastcat.timeline.muteClip', 'Mute'),
+      label: clip.value.audioMuted
+        ? t('fastcat.timeline.unmuteClip', 'Unmute')
+        : t('fastcat.timeline.muteClip', 'Mute'),
       icon: clip.value.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark',
       action: async () => {
-        timelineStore.updateClipProperties(track.value!.id, clip.value!.id, { audioMuted: !clip.value!.audioMuted });
+        timelineStore.updateClipProperties(track.value!.id, clip.value!.id, {
+          audioMuted: !clip.value!.audioMuted,
+        });
         await timelineStore.requestTimelineSave({ immediate: true });
       },
     });
@@ -67,10 +83,14 @@ const actions = computed(() => {
 
   // Lock/Unlock
   list.push({
-    label: clip.value.locked ? t('fastcat.timeline.unlockClip', 'Unlock') : t('fastcat.timeline.lockClip', 'Lock'),
+    label: clip.value.locked
+      ? t('fastcat.timeline.unlockClip', 'Unlock')
+      : t('fastcat.timeline.lockClip', 'Lock'),
     icon: clip.value.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
     action: async () => {
-      timelineStore.updateClipProperties(track.value!.id, clip.value!.id, { locked: !clip.value!.locked });
+      timelineStore.updateClipProperties(track.value!.id, clip.value!.id, {
+        locked: !clip.value!.locked,
+      });
       await timelineStore.requestTimelineSave({ immediate: true });
     },
   });
@@ -93,20 +113,30 @@ const actions = computed(() => {
     icon: 'i-heroicons-forward',
     disabled: isLocked.value,
     action: () => {
-      emit('open-speed-modal', { trackId: track.value!.id, itemId: clip.value!.id, speed: currentSpeed });
+      emit('open-speed-modal', {
+        trackId: track.value!.id,
+        itemId: clip.value!.id,
+        speed: currentSpeed,
+      });
       emit('close');
     },
   });
 
   // Extract Audio
-  const canExtract = track.value.kind === 'video' && clip.value.clipType === 'media' && !(clip.value as any).audioFromVideoDisabled;
+  const canExtract =
+    track.value.kind === 'video' &&
+    clip.value.clipType === 'media' &&
+    !(clip.value as any).audioFromVideoDisabled;
   if (canExtract) {
     list.push({
       label: t('fastcat.timeline.extractAudio', 'Extract Audio'),
       icon: 'i-heroicons-musical-note',
       disabled: isLocked.value,
       action: async () => {
-        await timelineStore.extractAudioToTrack({ videoTrackId: track.value!.id, videoItemId: clip.value!.id });
+        await timelineStore.extractAudioToTrack({
+          videoTrackId: track.value!.id,
+          videoItemId: clip.value!.id,
+        });
         await timelineStore.requestTimelineSave({ immediate: true });
         emit('close');
       },
@@ -115,10 +145,14 @@ const actions = computed(() => {
 
   // Disable/Enable
   list.push({
-    label: clip.value.disabled ? t('fastcat.timeline.enableClip', 'Enable') : t('fastcat.timeline.disableClip', 'Disable'),
+    label: clip.value.disabled
+      ? t('fastcat.timeline.enableClip', 'Enable')
+      : t('fastcat.timeline.disableClip', 'Disable'),
     icon: clip.value.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
     action: async () => {
-      timelineStore.updateClipProperties(track.value!.id, clip.value!.id, { disabled: !clip.value!.disabled });
+      timelineStore.updateClipProperties(track.value!.id, clip.value!.id, {
+        disabled: !clip.value!.disabled,
+      });
       await timelineStore.requestTimelineSave({ immediate: true });
     },
   });
@@ -150,8 +184,10 @@ const actions = computed(() => {
         :key="idx"
         class="flex flex-col items-center justify-center gap-2 rounded-xl p-3 text-center transition-colors outline-none"
         :class="[
-          action.disabled ? 'opacity-50 pointer-events-none grayscale' : 'active:bg-slate-800',
-          action.color === 'error' ? 'text-red-400 bg-red-500/10' : 'text-slate-200 bg-slate-900/80 border border-slate-800'
+          action.disabled ? 'opacity-50 pointer-events-none grayscale' : 'active:bg-zinc-800',
+          action.color === 'error'
+            ? 'text-red-400 bg-red-500/10'
+            : 'text-zinc-200 bg-zinc-900/80 border border-zinc-800',
         ]"
         @click="action.action"
       >

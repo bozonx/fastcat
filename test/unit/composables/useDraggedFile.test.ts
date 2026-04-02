@@ -23,7 +23,9 @@ describe('useDraggedFile', () => {
   });
 
   it('should clear dragged file data', () => {
-    const { draggedFile, setDraggedFile, clearDraggedFile } = useDraggedFile({ enableUiEffects: false });
+    const { draggedFile, setDraggedFile, clearDraggedFile } = useDraggedFile({
+      enableUiEffects: false,
+    });
     const mockData = { name: 'test.mp4', path: '/test.mp4', kind: 'file' as const };
 
     setDraggedFile(mockData);

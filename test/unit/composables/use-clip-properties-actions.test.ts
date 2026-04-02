@@ -138,8 +138,15 @@ describe('useClipPropertiesActions', () => {
 
   it('opens parent folder but keeps the file selected in file manager', async () => {
     const clip = makeClip({ source: { path: ' media / nested / clip.mp4 ' } });
-    const { api, fileManager, fileManagerStore, selectionStore, uiStore, setActiveTab, focusStore } =
-      createOptions(clip);
+    const {
+      api,
+      fileManager,
+      fileManagerStore,
+      selectionStore,
+      uiStore,
+      setActiveTab,
+      focusStore,
+    } = createOptions(clip);
 
     const parentEntry = {
       kind: 'directory',

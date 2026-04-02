@@ -3,7 +3,6 @@ import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
 
-
 vi.stubGlobal('useToast', () => ({
   add: vi.fn(),
 }));

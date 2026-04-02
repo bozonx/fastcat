@@ -68,12 +68,7 @@ const { t } = useI18n();
         >
           {{ t('common.cancel', 'Cancel') }}
         </UButton>
-        <UButton
-          color="primary"
-          :loading="props.isTranscribing"
-          autofocus
-          @click="emit('submit')"
-        >
+        <UButton color="primary" :loading="props.isTranscribing" autofocus @click="emit('submit')">
           {{ t('videoEditor.fileManager.actions.transcribe', 'Transcribe') }}
         </UButton>
       </div>

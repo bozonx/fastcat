@@ -20,7 +20,7 @@ defineEmits<{ click: [] }>();
         ? 'text-red-400 bg-red-400/10'
         : active
           ? 'text-primary-400 bg-primary-400/15 border border-primary-500/30'
-          : 'text-slate-200 bg-slate-800/50',
+          : 'text-zinc-200 bg-zinc-800/50',
       disabled ? 'opacity-40 pointer-events-none' : 'active:scale-95',
     ]"
     :disabled="disabled"

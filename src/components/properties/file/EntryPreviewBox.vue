@@ -25,7 +25,7 @@ const props = defineProps<{
       props.mediaType === 'text' && !props.isOtio
         ? 'justify-start items-start text-left'
         : 'items-center justify-center',
-      $attrs.class?.includes('flex-1') ? 'flex-1' : 'shrink-0'
+      $attrs.class?.includes('flex-1') ? 'flex-1' : 'shrink-0',
     ]"
   >
     <div
@@ -58,7 +58,11 @@ const props = defineProps<{
       </p>
     </div>
 
-    <div v-else class="w-full h-64" :class="$attrs.class?.includes('flex-1') ? 'flex-1 h-full' : 'h-64'">
+    <div
+      v-else
+      class="w-full h-64"
+      :class="$attrs.class?.includes('flex-1') ? 'flex-1 h-full' : 'h-64'"
+    >
       <FilePreview
         :url="props.currentUrl"
         :media-type="props.mediaType"

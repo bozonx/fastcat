@@ -93,7 +93,7 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
       if (e.pointerType !== 'touch') {
         e.preventDefault();
       }
-      
+
       // Start long press timer
       if (options.onLongPress) {
         longPressTimer = window.setTimeout(() => {

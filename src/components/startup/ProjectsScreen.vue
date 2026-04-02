@@ -210,7 +210,9 @@ const formatDate = (dateStr?: string) => {
               "
             >
               <div
-                v-for="(project, index) in isRecentExpanded ? recentProjects : recentProjects.slice(0, 10)"
+                v-for="(project, index) in isRecentExpanded
+                  ? recentProjects
+                  : recentProjects.slice(0, 10)"
                 :key="project.projectName"
                 class="group relative bg-ui-bg-elevated rounded-2xl overflow-hidden transition-all cursor-pointer shadow-xl hover:-translate-y-1 snap-start"
                 :class="[
@@ -354,7 +356,9 @@ const formatDate = (dateStr?: string) => {
                   >
                     {{ t('fastcat.projects.newProject') }}
                   </h3>
-                  <div class="flex items-center justify-between mt-auto pt-2 border-t border-transparent h-8">
+                  <div
+                    class="flex items-center justify-between mt-auto pt-2 border-t border-transparent h-8"
+                  >
                     <!-- Spacer to match project card layout -->
                   </div>
                 </div>

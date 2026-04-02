@@ -123,9 +123,7 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
     const name = kind === 'video' ? `Video ${count}` : `Audio ${count}`;
     addTrack(kind, name);
 
-    const created = deps.timelineDoc.value?.tracks
-      ?.filter((tr) => tr.kind === kind)
-      .pop();
+    const created = deps.timelineDoc.value?.tracks?.filter((tr) => tr.kind === kind).pop();
 
     return created?.id ?? (kind === 'video' ? 'v1' : 'a1');
   }

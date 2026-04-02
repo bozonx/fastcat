@@ -123,11 +123,11 @@ onBeforeUnmount(clearLongPress);
     <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
       <div v-for="entry in entries" :key="entry.path" class="relative group">
         <button
-          class="flex flex-col w-full aspect-square rounded-2xl overflow-hidden bg-slate-900 border-2 transition-all active:scale-95"
+          class="flex flex-col w-full aspect-square rounded-2xl overflow-hidden bg-zinc-900 border-2 transition-all active:scale-95"
           :class="[
             isSelected(entry)
               ? 'border-selection-accent-500 ring-2 ring-selection-accent-500/20 shadow-[0_0_15px_rgba(59,130,246,0.3)]'
-              : 'border-transparent hover:border-slate-700',
+              : 'border-transparent hover:border-zinc-700',
           ]"
           @touchstart="handleTouchStart(entry)"
           @touchend="handleTouchEnd(entry, $event)"
@@ -138,12 +138,16 @@ onBeforeUnmount(clearLongPress);
         >
           <!-- Thumbnail / Icon Area -->
           <div
-            class="relative flex-1 w-full bg-slate-950 flex items-center justify-center overflow-hidden"
+            class="relative flex-1 w-full bg-zinc-950 flex items-center justify-center overflow-hidden"
           >
             <template v-if="getCompatibilityStatus(entry) === 'fully_unsupported'">
-              <div class="w-full h-full flex flex-col items-center justify-center bg-red-950/60 text-red-400 gap-1 p-1">
+              <div
+                class="w-full h-full flex flex-col items-center justify-center bg-red-950/60 text-red-400 gap-1 p-1"
+              >
                 <UIcon name="i-heroicons-exclamation-triangle" class="w-6 h-6 shrink-0" />
-                <span class="text-xs text-center leading-tight">{{ t('videoEditor.fileManager.compatibility.unsupported') }}</span>
+                <span class="text-xs text-center leading-tight">{{
+                  t('videoEditor.fileManager.compatibility.unsupported')
+                }}</span>
               </div>
             </template>
             <template v-else-if="getThumbnail(entry)">
@@ -179,7 +183,7 @@ onBeforeUnmount(clearLongPress);
           </div>
 
           <!-- Name & Size -->
-          <div class="px-2.5 py-2 bg-slate-900/90 backdrop-blur-sm border-t border-slate-800/50">
+          <div class="px-2.5 py-2 bg-zinc-900/90 backdrop-blur-sm border-t border-zinc-800/50">
             <div
               class="truncate text-[12px] font-medium leading-tight mb-0.5 transition-colors"
               :class="[
@@ -192,14 +196,14 @@ onBeforeUnmount(clearLongPress);
             <div
               class="flex items-center justify-between opacity-80 text-[10px] tabular-nums mt-0.5 font-medium"
             >
-              <span class="truncate pr-2 text-slate-400">
+              <span class="truncate pr-2 text-zinc-400">
                 {{
                   entry.kind === 'directory'
                     ? t('common.folder', 'Folder')
                     : getFileTypeLabel(entry)
                 }}
               </span>
-              <span class="shrink-0 text-slate-500">
+              <span class="shrink-0 text-zinc-500">
                 {{
                   entry.kind === 'directory'
                     ? props.folderSizes[entry.path] !== undefined
