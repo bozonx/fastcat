@@ -101,7 +101,12 @@ vi.mock('#imports', () => ({
   useRuntimeConfig: vi.fn(() => ({ public: {} })),
   useId: vi.fn(() => 'id'),
   useDevice: vi.fn(() => ({ isMobile: false, isDesktop: true })),
-  useRouter: vi.fn(() => ({ push: vi.fn(), replace: vi.fn() })),
+  useRouter: vi.fn(() => ({ 
+    push: vi.fn(), 
+    replace: vi.fn(), 
+    afterEach: vi.fn(() => vi.fn()), 
+    beforeEach: vi.fn(() => vi.fn()) 
+  })),
   useRoute: vi.fn(() => ({ path: '/', query: {}, params: {} })),
   useToast: vi.fn(() => ({ add: vi.fn() })),
   useState: vi.fn((key: string, init?: () => any) => (init ? ref(init()) : ref(null))),

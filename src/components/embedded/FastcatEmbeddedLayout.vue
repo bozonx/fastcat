@@ -29,6 +29,8 @@ const isReady = ref(false);
  * Initializes the workspace and project for embedded use.
  */
 async function initEmbedded() {
+  workspaceStore.isEphemeral = true;
+
   if (!workspaceStore.workspaceHandle) {
     await workspaceStore.initAutomaticWorkspace();
   }

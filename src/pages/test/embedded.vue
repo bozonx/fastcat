@@ -1,16 +1,15 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
-import { useWorkspaceStore } from '~/stores/workspace.store';
 import FastcatEmbeddedLayout from '~/components/embedded/FastcatEmbeddedLayout.vue';
 
 definePageMeta({
-  layout: 'empty',
+  layout: 'embedded',
 });
+
 
 const workspaceStore = useWorkspaceStore();
 
 const assets = [
-  { url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4' },
+  { url: 'https://www.w3schools.com/html/mov_bbb.mp4' },
   { url: 'https://raw.githubusercontent.com/mdn/webaudio-examples/master/audio-analyser/viper.mp3' },
   { url: 'https://picsum.photos/seed/fastcat/1280/720.jpg' }
 ];

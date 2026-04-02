@@ -192,6 +192,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     isLoading,
     error,
     isInitializing,
+    isEphemeral,
     loadProjects,
     loadAppSettingsFromDisk,
     loadWorkspaceSettingsFromDisk,

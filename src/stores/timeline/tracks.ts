@@ -99,7 +99,7 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
 
     // 1. If a clip or gap is selected, use its track (if kind matches)
     if (deps.selectedItemIds.value.length > 0) {
-      const selectedId = deps.selectedItemIds.value[0];
+      const selectedId = deps.selectedItemIds.value[0]!;
       const track = doc.tracks.find((t) => t.items.some((it) => it.id === selectedId));
       if (track && track.kind === kind) return track.id;
     }
@@ -118,14 +118,13 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
       if (!hasClips) return t.id;
     }
 
-    // 4. If no empty track found or no tracks exist, create a new one
+    // 4. Create a new track
     const count = sameKindTracks.length + 1;
+    const trackId = kind === 'video' ? `v${count}` : `a${count}`;
     const name = kind === 'video' ? `Video ${count}` : `Audio ${count}`;
+    
     addTrack(kind, name);
-
-    const created = deps.timelineDoc.value?.tracks?.filter((tr) => tr.kind === kind).pop();
-
-    return created?.id ?? (kind === 'video' ? 'v1' : 'a1');
+    return trackId;
   }
 
   function renameTrack(trackId: string, name: string) {
