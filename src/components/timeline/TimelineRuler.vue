@@ -254,15 +254,34 @@ function isMarkerSelected(markerId: string) {
 }
 
 const mobileScrubActive = ref(false);
+const lastTapTime = ref(0);
+const lastTapPos = ref({ x: 0, y: 0 });
+const DOUBLE_TAP_TIMEOUT_MS = 300;
+const DOUBLE_TAP_DISTANCE_PX = 30;
 
 /**
  * Mobile-specific pointer handler for the ruler.
+ * - Detects double-tap to create a marker at the playhead position.
  * - If a marker is selected and the touch lands within 40px of it: starts marker drag.
  * - Otherwise: captures pointer and scrubs playhead continuously.
  */
 function onMobilePointerDown(event: PointerEvent) {
   if (event.button !== 0) return;
   event.preventDefault();
+
+  const now = Date.now();
+  const dx = Math.abs(event.clientX - lastTapPos.value.x);
+  const dy = Math.abs(event.clientY - lastTapPos.value.y);
+
+  if (now - lastTapTime.value < DOUBLE_TAP_TIMEOUT_MS && dx < DOUBLE_TAP_DISTANCE_PX && dy < DOUBLE_TAP_DISTANCE_PX) {
+    timelineStore.addMarkerAtPlayhead();
+    lastTapTime.value = 0;
+    mobileScrubActive.value = false;
+    return;
+  }
+
+  lastTapTime.value = now;
+  lastTapPos.value = { x: event.clientX, y: event.clientY };
 
   const sel = selectionStore.selectedEntity;
   if (sel?.source === 'timeline' && sel.kind === 'marker') {
