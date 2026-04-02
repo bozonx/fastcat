@@ -233,6 +233,73 @@ The project uses a structured testing approach:
 - **Integration Tests** (`test/integration/`): Complex interactions between modules. Run via `pnpm test:unit`.
 - **E2E Tests** (`test/e2e/`): Full application flows in the browser. Run via `pnpm test:e2e`.
 
+## Embedded Editor SDK
+
+Fastcat can be integrated into other web applications as a portable video editor component using Shadow DOM for style isolation and OPFS for high-performance sandboxed storage.
+
+### Build the Library
+
+To generate a standalone bundle, run:
+
+```bash
+pnpm build:lib
+```
+
+The output will be located in the `dist-lib/` directory:
+- `fastcat-editor.es.js` — ESM module (recommended)
+- `fastcat-editor.umd.js` — UMD bundle for global use
+- `assets/` — Web Worker binaries and other assets
+
+### Integration Example
+
+1. **Include the SDK**:
+   Import the ESM module and initialize the editor in a container.
+
+```javascript
+import FastcatEditor from './dist-lib/fastcat-editor.es.js';
+
+const editor = new FastcatEditor('#editor-container');
+
+// Prepare assets to be preloaded into the editor's workspace
+const assets = [
+  { 
+    id: 'intro-video', 
+    url: 'https://example.com/assets/intro.mp4', 
+    type: 'video', 
+    filename: 'intro.mp4' 
+  }
+];
+
+// Start the editor
+const el = editor.init({ assets });
+
+// Handle events
+el.addEventListener('fastcat:exported', (event) => {
+  console.log('Video exported successfully');
+});
+```
+
+2. **Web Component**: 
+   Alternatively, you can use the `<fastcat-editor>` custom element directly after importing the library.
+
+```html
+<fastcat-editor id="my-editor"></fastcat-editor>
+<script type="module">
+  import './dist-lib/fastcat-editor.es.js';
+  const el = document.getElementById('my-editor');
+  el.assets = [...];
+</script>
+```
+
+### Security Requirements
+
+The editor requires `SharedArrayBuffer` for high-performance video processing. For this to work, your host web server **must** provide the following security headers:
+
+```http
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: require-corp
+```
+
 ## License
 
 MIT
