@@ -716,6 +716,7 @@ async function onClipAction(payload: TimelineClipActionPayload) {
 
     <MobileTrimToolbar
       v-if="isTrimDrawerOpen"
+      @back="isTrimDrawerOpen = false; isClipPropertiesDrawerOpen = true"
       @close="onClipTrimDrawerClose"
     />
 
@@ -956,7 +957,10 @@ async function onClipAction(payload: TimelineClipActionPayload) {
 
     <!-- FAB: add content -->
     <Teleport to="body">
-      <div class="fixed bottom-20 right-6 z-40 transition-all duration-300">
+      <div
+        v-if="!isTrimDrawerOpen"
+        class="fixed bottom-20 right-6 z-40 transition-all duration-300"
+      >
         <UButton
           icon="lucide:plus"
           size="xl"

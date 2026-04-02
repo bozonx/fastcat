@@ -6,6 +6,7 @@ import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 
 const emit = defineEmits<{
   (e: 'close'): void;
+  (e: 'back'): void;
 }>();
 
 const { t } = useI18n();
@@ -94,36 +95,44 @@ function onEnd() {
 
 <template>
   <div
-    class="fixed bottom-0 left-0 right-0 z-60 bg-zinc-950 border-t border-zinc-800 px-4 pt-3 pb-safe select-none shadow-2xl rounded-t-2xl slide-up outline outline-white/5"
+    class="fixed bottom-0 left-0 right-0 z-60 bg-zinc-950/95 backdrop-blur border-t border-zinc-900 px-3 pt-3 pb-safe select-none shadow-2xl rounded-t-2xl slide-up outline outline-white/5"
   >
-    <!-- Header/Title -->
-    <div class="flex items-center justify-between mb-3 px-1">
-      <div class="flex items-center gap-2">
-        <div class="bg-blue-500/20 p-1.5 rounded-lg">
-          <UIcon name="i-heroicons-arrows-right-left" class="text-blue-400 w-4 h-4 block" />
+    <!-- Combined control area -->
+    <div class="flex items-center gap-2 mb-3">
+      <!-- Back to clip properties -->
+      <UButton
+        icon="i-heroicons-chevron-left"
+        variant="ghost"
+        color="gray"
+        size="md"
+        class="shrink-0 bg-white/5 active:bg-white/10"
+        @click="emit('back')"
+      />
+
+      <!-- Duration visual -->
+      <div v-if="currentClipAndTrack" class="flex-1 flex flex-col justify-center items-center py-1">
+        <div class="text-[10px] text-zinc-500 font-mono tracking-tighter uppercase font-black leading-none mb-0.5">
+          {{ (currentClipAndTrack.item.timelineRange.durationUs / 1e6).toFixed(3) }}s
         </div>
-        <div>
-          <div class="text-[10px] uppercase tracking-widest text-zinc-500 font-black leading-none">
-            {{ t('fastcat.timeline.trimMode') }}
-          </div>
-          <div v-if="currentClipAndTrack" class="text-xs text-zinc-200 font-bold mt-0.5 truncate max-w-[200px]">
-             {{ currentClipAndTrack.item.name }}
-          </div>
+        <div class="text-[8px] text-zinc-600 uppercase font-black tracking-widest truncate max-w-[140px]">
+          {{ currentClipAndTrack.item.name }}
         </div>
       </div>
 
+      <!-- Close and deselect -->
       <UButton
         icon="i-heroicons-x-mark"
         variant="ghost"
         color="gray"
-        size="sm"
+        size="md"
+        class="shrink-0 bg-white/5 active:bg-white/10"
         @click="emit('close')"
       />
     </div>
 
     <!-- Main controls -->
     <div
-      class="flex h-20 bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden divide-x divide-zinc-800 shadow-inner"
+      class="flex h-20 bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden divide-x divide-zinc-800 shadow-inner mb-2"
     >
       <!-- Left side area -->
       <div
@@ -132,27 +141,20 @@ function onEnd() {
         @touchmove="onMove"
         @touchend="onEnd"
       >
-        <span class="text-[9px] uppercase font-black text-zinc-500 mb-1 leading-none">
+        <span class="text-[9px] uppercase font-black text-zinc-600 mb-1 leading-none">
           {{ t('fastcat.timeline.trimStart') }}
         </span>
-        <UIcon
-          name="i-heroicons-chevron-left"
-          class="w-6 h-6"
-          :class="activeEdge === 'start' ? 'text-blue-400 scale-125' : 'text-zinc-600'"
-        />
-      </div>
-
-      <!-- Center info -->
-      <div class="px-5 flex flex-col justify-center items-center bg-zinc-950/40 min-w-[100px]">
-        <div class="text-[10px] text-zinc-500 uppercase font-black mb-1 leading-none">Duration</div>
-        <div class="text-sm text-blue-400 font-mono font-bold tracking-tighter">
-          {{
-            currentClipAndTrack
-              ? (currentClipAndTrack.item.timelineRange.durationUs / 1e6).toFixed(3) + 's'
-              : '-'
-          }}
+        <div class="bg-zinc-800 p-1.5 rounded-lg border border-zinc-700/50">
+          <UIcon
+            name="i-heroicons-arrow-left"
+            class="w-5 h-5 block"
+            :class="activeEdge === 'start' ? 'text-blue-400' : 'text-zinc-500'"
+          />
         </div>
       </div>
+
+      <!-- Center divider marker -->
+      <div class="w-px h-8 self-center bg-zinc-800/10"></div>
 
       <!-- Right side area -->
       <div
@@ -161,19 +163,18 @@ function onEnd() {
         @touchmove="onMove"
         @touchend="onEnd"
       >
-        <span class="text-[9px] uppercase font-black text-zinc-500 mb-1 leading-none">
+        <span class="text-[9px] uppercase font-black text-zinc-600 mb-1 leading-none">
           {{ t('fastcat.timeline.trimEnd') }}
         </span>
-        <UIcon
-          name="i-heroicons-chevron-right"
-          class="w-6 h-6"
-          :class="activeEdge === 'end' ? 'text-blue-400 scale-125' : 'text-zinc-600'"
-        />
+        <div class="bg-zinc-800 p-1.5 rounded-lg border border-zinc-700/50">
+          <UIcon
+            name="i-heroicons-arrow-right"
+            class="w-5 h-5 block"
+            :class="activeEdge === 'end' ? 'text-blue-400' : 'text-zinc-500'"
+          />
+        </div>
       </div>
     </div>
-
-    <!-- Bottom spacing for safe area -->
-    <div class="h-2"></div>
   </div>
 </template>
 
