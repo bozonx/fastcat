@@ -1,9 +1,12 @@
+/** @vitest-environment node */
 import { describe, it, expect, vi } from 'vitest';
 import { ref } from 'vue';
 import { useClipTransitionPanel } from '~/composables/timeline/useClipTransitionPanel';
 import type { ClipTransition } from '~/timeline/types';
+import { initTransitions } from '~/transitions';
 
 describe('useClipTransitionPanel', () => {
+  initTransitions();
   it('emits update when selectedType changes', async () => {
     const onUpdate = vi.fn();
 

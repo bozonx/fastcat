@@ -1,6 +1,8 @@
+/** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
-import { useRuntimeConfig } from '#imports';
+import { createPinia, setActivePinia } from 'pinia';
+import { useRuntimeConfig } from '#app';
 import { useFileBrowserTranscription } from '~/composables/file-manager/useFileBrowserTranscription';
 import { transcribeAudioFile } from '~/utils/transcription/engine';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
@@ -33,21 +35,21 @@ const { mockToastAdd } = vi.hoisted(() => ({
   mockToastAdd: vi.fn(),
 }));
 
-mockNuxtImport('useToast', () => {
-  return () => ({ add: mockToastAdd });
-});
-
-mockNuxtImport('useI18n', () => {
-  return () => ({
-    t: (key: string, fallback: string) => fallback,
-  });
-});
+// Provide globals for Nuxt auto-imports in Node environment
+(globalThis as any).useRuntimeConfig = vi.fn(() => ({
+  public: { bloggerDogApiUrl: 'http://test-base.com' },
+}));
+(globalThis as any).useToast = vi.fn(() => ({ add: mockToastAdd }));
+(globalThis as any).useI18n = vi.fn(() => ({
+  t: (key: string, fallback: string) => fallback,
+}));
 
 describe('useFileBrowserTranscription', () => {
   let workspaceStoreMock: any;
   let projectStoreMock: any;
 
   beforeEach(() => {
+    setActivePinia(createPinia());
     vi.clearAllMocks();
 
     workspaceStoreMock = {

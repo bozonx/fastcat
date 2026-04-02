@@ -13,6 +13,8 @@ import { createWorkspaceProvider } from '~/stores/workspace/provider';
 import { useProjectStore } from './project.store';
 import { useProxyStore } from './proxy.store';
 
+import { getErrorMessage } from '~/utils/errors';
+
 function readLocalStorageString(key: string): string | null {
   if (typeof window === 'undefined') return null;
   try {
@@ -228,6 +230,46 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     proxyStore.activeWorkerPaths.clear();
   }
 
+  async function initAutomaticWorkspace() {
+    if (typeof window === 'undefined' || !navigator.storage?.getDirectory) {
+      error.value = 'OPFS is not supported';
+      isInitializing.value = false;
+      return;
+    }
+
+    isLoading.value = true;
+    error.value = null;
+    try {
+      const root = await navigator.storage.getDirectory();
+      // Use a dedicated subfolder for the embedded editor to avoid conflicts
+      const embeddedHandle = await root.getDirectoryHandle('embedded-editor', { create: true });
+      await setupWorkspace(embeddedHandle);
+    } catch (e) {
+      error.value = getErrorMessage(e, 'Failed to initialize automatic workspace');
+    } finally {
+      isLoading.value = false;
+      isInitializing.value = false;
+    }
+  }
+
+  async function wipeWorkspace() {
+    if (!workspaceHandle.value) return;
+    const handle = workspaceHandle.value;
+    isLoading.value = true;
+    try {
+      // Clear all entries in the workspace handle
+      const entries = (handle as any).values();
+      for await (const entry of entries) {
+        await handle.removeEntry(entry.name, { recursive: entry.kind === 'directory' });
+      }
+      resetWorkspace();
+    } catch (e) {
+      console.warn('Failed to wipe workspace:', e);
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   return {
     workspaceHandle,
     projectsHandle,
@@ -253,6 +295,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     flushSettingsSaves,
     init,
     openWorkspace,
+    initAutomaticWorkspace,
+    wipeWorkspace,
     resetWorkspace,
     setupWorkspace,
     loadProjects,
