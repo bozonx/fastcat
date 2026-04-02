@@ -334,6 +334,7 @@ function onClipPropertiesDrawerClose() {
 
 function onClipTrimDrawerClose() {
   isTrimDrawerOpen.value = false;
+  timelineStore.clearSelection();
   selectionStore.clearSelection();
 }
 

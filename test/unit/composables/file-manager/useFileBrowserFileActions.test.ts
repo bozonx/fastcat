@@ -51,6 +51,7 @@ vi.mock('~/utils/media-types', () => ({
 
 describe('useFileBrowserFileActions', () => {
   beforeEach(() => {
+    setActivePinia(createPinia());
     vi.clearAllMocks();
     uiStore.pendingFsEntryCreateTimeline = null;
     uiStore.pendingFsEntryCreateMarkdown = null;
