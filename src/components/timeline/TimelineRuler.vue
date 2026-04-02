@@ -374,6 +374,7 @@ function onMobilePointerUp() {
         :marker-label="t('fastcat.timeline.marker')"
         :zone-marker-start-label="t('fastcat.timeline.zoneMarkerStart')"
         :zone-marker-end-label="t('fastcat.timeline.zoneMarkerEnd')"
+        :is-mobile="isMobile"
         @select-marker="selectMarker"
         @marker-pointerdown="onMarkerPointerDown"
         @select-selection-range="selectSelectionRange"

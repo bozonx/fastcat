@@ -86,10 +86,7 @@ const currentMoveMode = computed({
     </div>
 
     <!-- Tab Content: timeline and project use a shared scrollable container -->
-    <div
-      v-if="activeTab !== 'app'"
-      class="flex-1 overflow-y-auto p-4 custom-scrollbar lg:p-6 bg-ui-bg"
-    >
+    <div v-if="activeTab !== 'app'" class="flex-1 overflow-y-auto p-4 custom-scrollbar bg-ui-bg">
       <!-- Timeline Settings -->
       <div v-if="activeTab === 'timeline'" class="space-y-8 animate-in fade-in duration-200">
         <section>

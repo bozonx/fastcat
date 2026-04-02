@@ -85,7 +85,7 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- Section content -->
-    <div class="flex-1 overflow-y-auto p-4 custom-scrollbar lg:p-6">
+    <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
       <SettingsGeneral v-if="activeSection === 'user.general'" />
       <SettingsOptimization v-else-if="activeSection === 'user.proxy'" />
       <SettingsProjectDefaults v-else-if="activeSection === 'user.project'" />
