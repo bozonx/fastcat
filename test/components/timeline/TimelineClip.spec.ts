@@ -275,6 +275,36 @@ describe('TimelineClip', () => {
     expect(component.emitted('selectItem')![0][1]).toBe('clip-1');
   });
 
+  it('re-selects clip on mobile tap after drag attempt', async () => {
+    mockTimelineStore.selectedItemIds = ['clip-1'];
+
+    const component = await mountSuspended(TimelineClip, {
+      props: {
+        ...defaultProps,
+        isMobile: true,
+      },
+      global: { stubs: { UContextMenu: { template: '<div><slot /></div>' } } },
+    });
+    const clipDiv = component.find('[data-clip-id="clip-1"]');
+
+    await clipDiv.trigger('pointerdown', {
+      button: 0,
+      pointerType: 'touch',
+      clientX: 10,
+      clientY: 10,
+    });
+    window.dispatchEvent(new Event('pointermove'));
+    window.dispatchEvent(new Event('pointerup'));
+
+    await clipDiv.trigger('click', { button: 0, pointerType: 'touch' });
+
+    await clipDiv.trigger('pointerdown', { button: 0, pointerType: 'touch' });
+    await clipDiv.trigger('click', { button: 0, pointerType: 'touch' });
+
+    expect(component.emitted('selectItem')).toBeTruthy();
+    expect(component.emitted('selectItem')!.at(-1)![1]).toBe('clip-1');
+  });
+
   it('triggers handleSelectInFileManager on double click for media clip', async () => {
     const component = await mountSuspended(TimelineClip, {
       props: defaultProps,

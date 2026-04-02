@@ -184,6 +184,7 @@ function onClipPointerdown(e: PointerEvent) {
     e.stopPropagation();
 
     if (!isSelected) {
+      didStartDrag.value = false;
       return;
     }
 
