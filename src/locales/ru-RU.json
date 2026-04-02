@@ -649,13 +649,27 @@
     "shapeClip": {
       "baseLength": "Длина основания (%)",
       "cornerRadius": "Радиус углов (%)",
+      "fillColor": "Цвет заливки",
       "height": "Высота (%)",
       "innerRadius": "Внутренний радиус (%)",
       "pointerAngle": "Угол указателя (%)",
       "pointerSharpness": "Острота указателя (%)",
       "pointerX": "Позиция указателя X (%)",
+      "shape": "Фигура",
       "squashX": "Сжатие X (%)",
       "squashY": "Сжатие Y (%)",
+      "strokeColor": "Цвет контура",
+      "strokeWidth": "Толщина контура",
+      "type": "Тип",
+      "types": {
+        "bang": "Вспышка",
+        "circle": "Круг",
+        "cloud": "Облако",
+        "speechBubble": "Облако диалога",
+        "square": "Квадрат",
+        "star": "Звезда",
+        "triangle": "Треугольник"
+      },
       "vertexOffset": "Смещение вершины (%)",
       "width": "Ширина (%)"
     },
