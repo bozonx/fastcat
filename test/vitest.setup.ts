@@ -70,7 +70,20 @@ const { createNuxtMock } = vi.hoisted(() => ({
   })),
 }));
 
-// module mocks removed to prevent breaking Nuxt environment
+vi.mock('#app', () => ({
+  useNuxtApp: createNuxtMock,
+  defineNuxtComponent: vi.fn((options) => options),
+  definePageMeta: vi.fn(),
+  defineEmits: vi.fn(() => vi.fn()),
+  defineProps: vi.fn(() => ({})),
+  useRoute: vi.fn(() => ({ path: '/', fullPath: '/', query: {}, params: {}, hash: '' })),
+  useRouter: vi.fn(() => ({ push: vi.fn(), replace: vi.fn(), go: vi.fn(), back: vi.fn() })),
+  useAsyncData: vi.fn(() => ({ data: ref(null), pending: ref(false), error: ref(null) })),
+  useState: vi.fn((key: string, init?: () => any) => ref(init ? init() : null)),
+  useHead: vi.fn(),
+  useFetch: vi.fn(() => ({ data: ref(null), pending: ref(false), error: ref(null) })),
+  refresh: vi.fn(),
+}));
 
 vi.mock('#ui/composables/useToast', () => ({
   useToast: vi.fn(() => ({ add: vi.fn() })),
@@ -86,7 +99,11 @@ vi.mock('#ui/utils', () => ({
 (globalThis as any).useNuxtApp = createNuxtMock;
 (globalThis as any).useRuntimeConfig = () => ({ public: {} });
 (globalThis as any).useId = () => `id-${Math.random().toString(36).substring(2, 9)}`;
-(globalThis as any).useAsyncData = () => ({ data: ref(null), pending: ref(false), error: ref(null) });
+(globalThis as any).useAsyncData = () => ({
+  data: ref(null),
+  pending: ref(false),
+  error: ref(null),
+});
 (globalThis as any).useI18n = () => ({
   t: (key: string, fallback?: string) => fallback ?? key,
   locale: ref('en-US'),

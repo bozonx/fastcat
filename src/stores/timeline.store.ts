@@ -466,6 +466,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     isTrimModeActive,
     trackHeights,
     loadTimeline,
+    ensureTimelineDoc: () => commands.ensureTimelineDoc(),
     saveTimeline: lifecycle.saveTimeline,
     requestTimelineSave: lifecycle.requestTimelineSave,
     applyTimeline,

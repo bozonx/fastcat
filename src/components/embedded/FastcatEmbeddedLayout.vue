@@ -59,11 +59,9 @@ async function initEmbedded() {
       getProjectFileHandle: (path, options) => projectStore.getProjectFileHandleByRelativePath({ relativePath: path, ...options })
     });
     
-    // 3. Prepare timeline (Create 3 dedicated tracks: V1 for Images, V2 for Videos, A1 for Audio)
+    // 3. Prepare timeline (Ensure we have default tracks instead of blindly adding new ones)
     if (!timelineStore.timelineDoc || timelineStore.timelineDoc.tracks.length === 0) {
-      timelineStore.addTrack('video', 'Images');
-      timelineStore.addTrack('video', 'Videos');
-      timelineStore.addTrack('audio', 'Audio');
+      timelineStore.ensureTimelineDoc();
       
       // Wait for tracks to settle
       await new Promise(resolve => setTimeout(resolve, 150));
@@ -73,19 +71,26 @@ async function initEmbedded() {
     const itemsCount = timelineStore.timelineDoc?.tracks.reduce((acc, t) => acc + t.items.length, 0) || 0;
     
     if (itemsCount === 0) {
-      const trackOffsetsUs: Record<string, number> = {
-        v1: 0,
-        v2: 0,
-        a1: 0
-      };
+      const trackOffsetsUs: Record<string, number> = {};
 
       for (const res of results) {
         if (!res.success) continue;
         
         // Determine target track based on asset type
-        let trackId = 'v1'; // Default to Images
-        if (res.asset.type === 'video') trackId = 'v2';
-        else if (res.asset.type === 'audio') trackId = 'a1';
+        const kind = res.asset.type === 'audio' ? 'audio' : 'video';
+        const tracks = timelineStore.timelineDoc?.tracks || [];
+        
+        // Try to find an empty track of this kind first
+        let track = tracks.find(t => t.kind === kind && !trackOffsetsUs[t.id]);
+        
+        // Fallback to the first track of this kind
+        if (!track) {
+          track = tracks.find(t => t.kind === kind);
+        }
+        
+        if (!track) continue; // Should not happen
+        
+        const trackId = track.id;
         
         // Fetch metadata to know duration
         const metadata = await mediaStore.getOrFetchMetadataByPath(res.path);
