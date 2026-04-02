@@ -24,7 +24,7 @@ const timelineStore = {
   loadTimelineMetadata: vi.fn(),
 };
 
-vi.mock('~/stores/files-page.store', () => ({ useFilesPageStore: () => filesPageStore }));
+vi.mock('~/stores/file-manager.store', () => ({ useFileManagerStore: () => filesPageStore }));
 vi.mock('~/stores/project.store', () => ({ useProjectStore: () => projectStore }));
 vi.mock('~/stores/timeline.store', () => ({ useTimelineStore: () => timelineStore }));
 vi.mock('~/utils/media-types', () => ({

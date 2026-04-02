@@ -9,17 +9,22 @@ vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: vi.fn(() => ({
     workspaceHandle: (() => {
       const mockDir: any = {
-        getFileHandle: vi.fn().mockResolvedValue({
-          createWritable: vi.fn().mockResolvedValue({
-            write: vi.fn(),
-            close: vi.fn(),
-          }),
-        }),
+        getFileHandle: vi.fn(),
       };
+      mockDir.getFileHandle.mockResolvedValue({
+        createWritable: vi.fn().mockResolvedValue({
+          write: vi.fn().mockResolvedValue(undefined),
+          close: vi.fn().mockResolvedValue(undefined),
+        }),
+        getFile: vi.fn().mockResolvedValue({
+          text: vi.fn().mockResolvedValue('{}'),
+        }),
+      });
       mockDir.getDirectoryHandle = vi.fn().mockResolvedValue(mockDir);
       return mockDir;
     })(),
     userSettings: { optimization: { proxyConcurrency: 2 } },
+    resolvedStorageTopology: { tempRoot: '' },
   })),
 }));
 

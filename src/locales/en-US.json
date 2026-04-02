@@ -798,6 +798,9 @@
       "previousMarker": "Previous marker",
       "addMarker": "Add marker",
       "nextMarker": "Next marker",
+      "gap": "Gap",
+      "gapDescription": "An empty gap in the track timeline.",
+      "trackProperties": "Track Properties",
       "snapModeFullDescription": "Snap to clips, playhead and markers",
       "snapModeFramesDescription": "Snap to frame boundaries only",
       "snapModeFreeDescription": "No snapping (sub-frame precision)",
@@ -935,6 +938,7 @@
     },
     "track": {
       "actions": "Actions",
+      "color": "Color",
       "moveUp": "Move track up",
       "moveDown": "Move track down",
       "info": "Track Information",

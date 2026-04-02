@@ -1,56 +1,48 @@
 // Vitest setup for Nuxt test environment
 
-// @nuxtjs/color-mode expects a global helper object at window[globalName].
-// In unit tests (jsdom/happy-dom), that helper may be missing or incomplete.
-// Provide a minimal implementation to avoid unhandled rejections during mount.
-
 import { vi } from 'vitest';
 import { config } from '@vue/test-utils';
 import { ref } from 'vue';
 
-const globalName = '__NUXT_COLOR_MODE__';
-
-const w = globalThis as unknown as { window?: any };
-if (w.window) {
-  const helper = (w.window[globalName] ??= {});
-
-  helper.preference ??= 'dark';
-  helper.value ??= 'dark';
-
-  helper.getColorScheme ??= () => 'dark';
-  helper.addColorScheme ??= () => {};
-  helper.removeColorScheme ??= () => {};
-}
-
-vi.mock('vue-i18n', () => ({
-  useI18n: () => ({
+// i18n mock factory
+const createI18nMock = () => ({
+  mode: 'composition',
+  locale: ref('en-US'),
+  fallbackLocale: ref('en-US'),
+  t: (key: string, fallback?: string) => fallback ?? key,
+  mergeLocaleMessage: vi.fn(),
+  setLocaleMessage: vi.fn(),
+  global: {
     t: (key: string, fallback?: string) => fallback ?? key,
-    locale: ref('en'),
-  }),
-  createI18n: () => ({
-    mode: 'composition',
-    mergeLocaleMessage: () => {},
-    setLocaleMessage: () => {},
-    locale: ref('en'),
-    global: {
-      t: (key: string, fallback?: string) => fallback ?? key,
-      locale: ref('en'),
-      mergeLocaleMessage: () => {},
-      setLocaleMessage: () => {},
-    },
-    install: () => {},
-  }),
-}));
+    locale: ref('en-US'),
+    fallbackLocale: ref('en-US'),
+    mergeLocaleMessage: vi.fn(),
+    setLocaleMessage: vi.fn(),
+  },
+  install: vi.fn(),
+});
+
+// Explicitly define named exports via a separate object to ensure Vitest sees them
+const vueI18nMock = {
+  useI18n: vi.fn(() => ({
+    t: (key: string, fallback?: string) => fallback ?? key,
+    locale: ref('en-US'),
+  })),
+  createI18n: vi.fn(createI18nMock),
+  __esModule: true,
+};
+
+vi.mock('vue-i18n', () => vueI18nMock);
 
 vi.mock('#i18n', () => ({
-  useI18n: () => ({
+  useI18n: vi.fn(() => ({
     t: (key: string, fallback?: string) => fallback ?? key,
-    locale: ref('en'),
-  }),
-  useLocaleRoute: () => (route: any) => route,
-  useRouteBaseName: () => () => '',
-  useLocalePath: () => (path: string) => path,
-  useSwitchLocalePath: () => (locale: string) => locale,
+    locale: ref('en-US'),
+  })),
+  useLocaleRoute: vi.fn(() => (route: any) => route),
+  useRouteBaseName: vi.fn(() => () => ''),
+  useLocalePath: vi.fn(() => (path: string) => path),
+  useSwitchLocalePath: vi.fn(() => (locale: string) => locale),
 }));
 
 vi.stubGlobal('useColorMode', () => ({
@@ -67,124 +59,35 @@ config.global.config.warnHandler = (msg) => {
   if (typeof msg === 'string' && msg.includes('<Suspense> is an experimental feature')) return;
 };
 
-// Global stubs for Nuxt UI components that rely on specific providers or contexts
+// Global stubs for Nuxt UI components
 config.global.stubs = {
   ...config.global.stubs,
-  UTooltip: {
-    template: '<span :title="$attrs.text"><slot /></span>',
-  },
-  UContextMenu: {
-    template: '<div><slot /></div>',
-  },
-  UIcon: {
-    props: ['name'],
-    template: '<span :class="[\'ui-icon-mock\', name]" />',
-  },
-  UButton: {
-    props: ['label', 'icon', 'title'],
-    template:
-      '<button :class="icon" :title="title"><span v-if="label">{{ label }}</span><slot /></button>',
-  },
-  UTabs: {
-    props: ['items'],
-    template:
-      '<div><slot v-for="(item, index) in items" :key="index" :item="item" :index="index" /></div>',
-  },
-  UDropdownMenu: {
-    template: '<div><slot /></div>',
-  },
-  UFieldGroup: {
-    template: '<div><slot /></div>',
-  },
-  UiTabs: {
-    props: ['items'],
-    template:
-      '<div><slot v-for="(item, index) in items" :key="index" :item="item" :index="index" /></div>',
-  },
+  UTooltip: { template: '<span><slot /></span>' },
+  UContextMenu: { template: '<div><slot /></div>' },
+  UIcon: { props: ['name'], template: '<span class="icon-mock" />' },
+  UButton: { props: ['label'], template: '<button>{{ label }}<slot /></button>' },
 };
+
 config.global.mocks = {
   ...config.global.mocks,
   $t: (key: string, fallback?: string) => fallback ?? key,
-  t: (key: string, fallback?: string) => fallback ?? key,
-};
-config.global.config.errorHandler = (err, instance, info) => {
-  console.error(`[Vue Error] ${err} \nInfo: ${info}`);
 };
 
-function shouldIgnoreConsoleMessage(args: unknown[]) {
-  const parts = args.map((a) => {
-    if (typeof a === 'string') return a;
-    if (a instanceof Error) return a.message;
-    return '';
-  });
-
-  const msg = parts.join(' ');
-
-  if (msg.includes('i18n.mergeLocaleMessage is not a function')) return true;
-  if (msg.includes('<Suspense> is an experimental feature')) return true;
-  return false;
-}
-
-const originalWarn = console.warn.bind(console);
-const originalError = console.error.bind(console);
-const originalLog = console.log.bind(console);
-const originalInfo = console.info.bind(console);
-
+// LocalStorage mock
 class LocalStorageMock {
   private store: Record<string, string> = {};
-
-  get length() {
-    return Object.keys(this.store).length;
-  }
-
-  getItem(key: string) {
-    return this.store[key] || null;
-  }
-
-  setItem(key: string, value: string) {
-    this.store[key] = String(value);
-  }
-
-  removeItem(key: string) {
-    delete this.store[key];
-  }
-
-  clear() {
-    this.store = {};
-  }
-
-  key(index: number) {
-    return Object.keys(this.store)[index] || null;
-  }
+  get length() { return Object.keys(this.store).length; }
+  getItem(key: string) { return this.store[key] || null; }
+  setItem(key: string, value: string) { this.store[key] = String(value); }
+  removeItem(key: string) { delete this.store[key]; }
+  clear() { this.store = {}; }
+  key(index: number) { return Object.keys(this.store)[index] || null; }
 }
 
 if (typeof window !== 'undefined') {
-  if (!window.localStorage || typeof window.localStorage.clear !== 'function') {
-    Object.defineProperty(window, 'localStorage', {
-      value: new LocalStorageMock(),
-      writable: true,
-    });
+  if (!window.localStorage) {
+    Object.defineProperty(window, 'localStorage', { value: new LocalStorageMock(), writable: true });
   }
 } else {
   (globalThis as any).localStorage = new LocalStorageMock();
 }
-
-vi.spyOn(console, 'warn').mockImplementation((...args: any[]) => {
-  if (shouldIgnoreConsoleMessage(args)) return;
-  originalWarn(...args);
-});
-
-vi.spyOn(console, 'error').mockImplementation((...args: any[]) => {
-  if (shouldIgnoreConsoleMessage(args)) return;
-  originalError(...args);
-});
-
-vi.spyOn(console, 'log').mockImplementation((...args: any[]) => {
-  if (shouldIgnoreConsoleMessage(args)) return;
-  originalLog(...args);
-});
-
-vi.spyOn(console, 'info').mockImplementation((...args: any[]) => {
-  if (shouldIgnoreConsoleMessage(args)) return;
-  originalInfo(...args);
-});

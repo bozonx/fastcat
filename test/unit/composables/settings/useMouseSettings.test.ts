@@ -4,12 +4,6 @@ import { useMouseSettings } from '~/composables/settings/useMouseSettings';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 
 // Mock useI18n
-vi.mock('vue-i18n', () => ({
-  useI18n: () => ({
-    t: (key: string) => key,
-  }),
-  createI18n: vi.fn(),
-}));
 
 // Mock useWorkspaceStore
 const mockWorkspaceStore = {

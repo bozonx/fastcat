@@ -14,10 +14,10 @@ vi.mock('vue', async () => {
   };
 });
 
-const mockFilesPageStore = reactive({
+const mockFileManagerStore = reactive({
   selectedFolder: null as any,
-  selectFolder: vi.fn((f) => {
-    mockFilesPageStore.selectedFolder = f;
+  openFolder: vi.fn((f) => {
+    mockFileManagerStore.selectedFolder = f;
   }),
 });
 
@@ -29,7 +29,7 @@ const mockUiStore = reactive({
   showHiddenFiles: false,
 });
 
-vi.mock('~/stores/files-page.store', () => ({ useFilesPageStore: () => mockFilesPageStore }));
+vi.mock('~/stores/file-manager.store', () => ({ useFileManagerStore: () => mockFileManagerStore }));
 vi.mock('~/stores/project.store', () => ({ useProjectStore: () => mockProjectStore }));
 vi.mock('~/stores/ui.store', () => ({ useUiStore: () => mockUiStore }));
 
@@ -48,7 +48,7 @@ describe('useMobileFileBrowserNavigation', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockFilesPageStore.selectedFolder = null;
+    mockFileManagerStore.selectedFolder = null;
     mockProjectStore.currentProjectName = 'TestProject';
     mockUiStore.showHiddenFiles = false;
   });
@@ -57,7 +57,7 @@ describe('useMobileFileBrowserNavigation', () => {
     const { navigateToRoot } = useMobileFileBrowserNavigation(deps);
     navigateToRoot();
 
-    expect(mockFilesPageStore.selectFolder).toHaveBeenCalledWith({
+    expect(mockFileManagerStore.openFolder).toHaveBeenCalledWith({
       kind: 'directory',
       name: 'TestProject',
       path: '',
@@ -68,7 +68,7 @@ describe('useMobileFileBrowserNavigation', () => {
     const { navigateToWorkspaceCommonRoot } = useMobileFileBrowserNavigation(deps);
     navigateToWorkspaceCommonRoot();
 
-    expect(mockFilesPageStore.selectFolder).toHaveBeenCalledWith({
+    expect(mockFileManagerStore.openFolder).toHaveBeenCalledWith({
       kind: 'directory',
       name: WORKSPACE_COMMON_DIR_NAME,
       path: WORKSPACE_COMMON_PATH_PREFIX,
@@ -76,13 +76,13 @@ describe('useMobileFileBrowserNavigation', () => {
   });
 
   it('generates breadcrumbs correctly for root', () => {
-    mockFilesPageStore.selectedFolder = { name: 'Root', kind: 'directory', path: '' };
+    mockFileManagerStore.selectedFolder = { name: 'Root', kind: 'directory', path: '' };
     const { breadcrumbs } = useMobileFileBrowserNavigation(deps);
     expect(breadcrumbs.value).toEqual([]);
   });
 
   it('generates breadcrumbs correctly for deep path', () => {
-    mockFilesPageStore.selectedFolder = { name: 'bar', kind: 'directory', path: 'foo/bar' };
+    mockFileManagerStore.selectedFolder = { name: 'bar', kind: 'directory', path: 'foo/bar' };
     const { breadcrumbs } = useMobileFileBrowserNavigation(deps);
     expect(breadcrumbs.value).toEqual([
       { name: 'foo', path: 'foo' },
@@ -91,7 +91,7 @@ describe('useMobileFileBrowserNavigation', () => {
   });
 
   it('loads folder content and filters hidden files', async () => {
-    mockFilesPageStore.selectedFolder = { name: 'Root', kind: 'directory', path: '' };
+    mockFileManagerStore.selectedFolder = { name: 'Root', kind: 'directory', path: '' };
     mockReadDirectory.mockResolvedValue([
       { name: 'visible.txt', kind: 'file', path: 'visible.txt' },
       { name: '.hidden', kind: 'file', path: '.hidden' },
@@ -107,7 +107,7 @@ describe('useMobileFileBrowserNavigation', () => {
   });
 
   it('shows hidden files when enabled', async () => {
-    mockFilesPageStore.selectedFolder = { name: 'Root', kind: 'directory', path: '' };
+    mockFileManagerStore.selectedFolder = { name: 'Root', kind: 'directory', path: '' };
     mockUiStore.showHiddenFiles = true;
     mockReadDirectory.mockResolvedValue([
       { name: 'visible.txt', kind: 'file', path: 'visible.txt' },
@@ -122,11 +122,11 @@ describe('useMobileFileBrowserNavigation', () => {
   });
 
   it('handles goBack correctly from subfolder', () => {
-    mockFilesPageStore.selectedFolder = { name: 'bar', kind: 'directory', path: 'foo/bar' };
+    mockFileManagerStore.selectedFolder = { name: 'bar', kind: 'directory', path: 'foo/bar' };
     const { goBack } = useMobileFileBrowserNavigation(deps);
     goBack();
 
-    expect(mockFilesPageStore.selectFolder).toHaveBeenCalledWith({
+    expect(mockFileManagerStore.openFolder).toHaveBeenCalledWith({
       kind: 'directory',
       name: 'foo',
       path: 'foo',
@@ -134,11 +134,11 @@ describe('useMobileFileBrowserNavigation', () => {
   });
 
   it('handles goBack to root correctly', () => {
-    mockFilesPageStore.selectedFolder = { name: 'foo', kind: 'directory', path: 'foo' };
+    mockFileManagerStore.selectedFolder = { name: 'foo', kind: 'directory', path: 'foo' };
     const { goBack } = useMobileFileBrowserNavigation(deps);
     goBack();
 
-    expect(mockFilesPageStore.selectFolder).toHaveBeenCalledWith({
+    expect(mockFileManagerStore.openFolder).toHaveBeenCalledWith({
       kind: 'directory',
       name: 'TestProject',
       path: '',

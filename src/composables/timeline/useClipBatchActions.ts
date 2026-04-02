@@ -115,6 +115,15 @@ export function useClipBatchActions(
 
   const allLocked = computed(() => selectedClips.value.every((c) => c.locked));
 
+  const allSoloed = computed(() => {
+    const doc = ctx.timelineDoc.value;
+    if (!doc) return false;
+    const trackIds = new Set(items.value.map((x) => x.trackId));
+    const tracks = doc.tracks.filter((t) => trackIds.has(t.id));
+    if (tracks.length === 0) return false;
+    return tracks.every((t) => t.audioSolo);
+  });
+
   const firstWaveformClip = computed(() => {
     const doc = ctx.timelineDoc.value;
     if (!doc) return undefined;
@@ -233,6 +242,19 @@ export function useClipBatchActions(
       trackId,
       itemId,
       properties: { locked: nextVal },
+    }));
+    ctx.batchApplyTimeline(cmds);
+  }
+
+  function toggleSolo() {
+    const doc = ctx.timelineDoc.value;
+    if (!doc) return;
+    const nextVal = !allSoloed.value;
+    const trackIds = new Set(items.value.map((x) => x.trackId));
+    const cmds = Array.from(trackIds).map((trackId) => ({
+      type: 'update_track_properties' as const,
+      trackId,
+      properties: { audioSolo: nextVal },
     }));
     ctx.batchApplyTimeline(cmds);
   }

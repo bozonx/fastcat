@@ -798,6 +798,9 @@
       "previousMarker": "Предыдущий маркер",
       "addMarker": "Добавить маркер",
       "nextMarker": "Следующий маркер",
+      "gap": "Промежуток",
+      "gapDescription": "Пустой промежуток на временной шкале.",
+      "trackProperties": "Свойства дорожки",
       "snapModeFullDescription": "Привязка к клипам, плейхеду и маркерам",
       "snapModeFramesDescription": "Привязка только к границам кадров",
       "snapModeFreeDescription": "Свободное перемещение (без привязки)",
@@ -935,6 +938,7 @@
     },
     "track": {
       "actions": "Действия",
+      "color": "Цвет",
       "moveUp": "Переместить выше",
       "moveDown": "Переместить ниже",
       "info": "Инфо дорожки",

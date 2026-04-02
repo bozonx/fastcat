@@ -3,11 +3,6 @@ import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
 
-vi.mock('vue-i18n', () => ({
-  useI18n: () => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
-  }),
-}));
 
 vi.stubGlobal('useToast', () => ({
   add: vi.fn(),

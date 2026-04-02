@@ -14,12 +14,6 @@ vi.mock('~/stores/workspace.store', () => ({
 }));
 
 // Mock i18n
-vi.mock('vue-i18n', () => ({
-  useI18n: () => ({
-    t: (key: string) => key,
-  }),
-  createI18n: vi.fn(),
-}));
 
 describe('SettingsMouse', () => {
   it('renders mouse sections and reset button', async () => {

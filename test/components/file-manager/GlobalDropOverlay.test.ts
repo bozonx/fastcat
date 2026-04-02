@@ -2,11 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import GlobalDropOverlay from '~/components/file-manager/GlobalDropOverlay.vue';
 
-vi.mock('vue-i18n', () => ({
-  useI18n: () => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
-  }),
-}));
 
 describe('GlobalDropOverlay', () => {
   const rootEntries = [

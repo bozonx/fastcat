@@ -736,6 +736,16 @@ async function onClipAction(payload: TimelineClipActionPayload) {
             :label="allMuted ? t('fastcat.timeline.unmute', 'Unmute') : t('fastcat.timeline.mute', 'Mute')"
             @click="toggleMuted"
           />
+          <MobileDrawerToolbarButton
+            :icon="allSoloed ? 'i-heroicons-star-solid' : 'i-heroicons-star'"
+            :label="allSoloed ? t('fastcat.timeline.unsolo', 'Unsolo') : t('fastcat.timeline.solo', 'Solo')"
+            @click="toggleSolo"
+          />
+          <MobileDrawerToolbarButton
+            :icon="allLocked ? 'i-heroicons-lock-closed' : 'i-heroicons-lock-open'"
+            :label="allLocked ? t('fastcat.timeline.unlock', 'Unlock') : t('fastcat.timeline.lock', 'Lock')"
+            @click="toggleLocked"
+          />
           <div class="w-px h-6 bg-ui-border mx-1 shrink-0" />
           <MobileDrawerToolbarButton
             icon="i-heroicons-x-mark"

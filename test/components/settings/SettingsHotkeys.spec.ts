@@ -15,12 +15,6 @@ vi.mock('~/stores/workspace.store', () => ({
 }));
 
 // Mock i18n
-vi.mock('vue-i18n', () => ({
-  useI18n: () => ({
-    t: (key: string) => key,
-  }),
-  createI18n: vi.fn(),
-}));
 
 describe('SettingsHotkeys', () => {
   it('renders hotkey groups and search input', async () => {

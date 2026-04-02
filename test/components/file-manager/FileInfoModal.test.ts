@@ -2,11 +2,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import FileInfoModal from '~/components/file-manager/FileInfoModal.vue';
 
-vi.mock('vue-i18n', () => ({
-  useI18n: () => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
-  }),
-}));
 
 describe('FileInfoModal', () => {
   it('renders file information correctly', () => {

@@ -1,3 +1,4 @@
+/** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -25,10 +26,15 @@ describe('Thumbnail Generators', () => {
     vi.clearAllMocks();
 
     (useWorkspaceStore as any).mockReturnValue({
-      workspaceHandle: {
-        getDirectoryHandle: vi.fn(),
+      workspaceHandle: (function () {
+        const h = { getDirectoryHandle: vi.fn(), removeEntry: vi.fn() };
+        h.getDirectoryHandle.mockResolvedValue(h);
+        return h;
+      })(),
+      resolvedStorageTopology: {
+        tempRoot: '',
+        proxiesRoot: '',
       },
-      resolvedStorageTopology: {},
     });
 
     (useProjectStore as any).mockReturnValue({
