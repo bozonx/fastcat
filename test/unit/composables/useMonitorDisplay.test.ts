@@ -1,3 +1,4 @@
+/** @vitest-environment happy-dom */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useMonitorDisplay } from '~/composables/monitor/useMonitorDisplay';
 import { useProjectStore } from '~/stores/project.store';

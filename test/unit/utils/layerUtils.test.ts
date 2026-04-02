@@ -1,3 +1,4 @@
+/** @vitest-environment happy-dom */
 import { describe, expect, it } from 'vitest';
 import { isLayerActive, isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { DEFAULT_USER_SETTINGS, type FastCatUserSettings } from '~/utils/settings/defaults';
