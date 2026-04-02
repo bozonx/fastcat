@@ -8,7 +8,14 @@ const mockTimelineStore = reactive({
   selectedItemIds: [] as string[],
 });
 
-const mockSelectionStore = reactive({});
+const mockSelectionStore = reactive({
+  selectedEntity: null as null | {
+    source: 'timeline';
+    kind: 'gap';
+    trackId: string;
+    itemId: string;
+  },
+});
 const mockWorkspaceStore = reactive({
   userSettings: {
     mouse: {
@@ -38,6 +45,7 @@ describe('TimelineGap', () => {
 
   beforeEach(() => {
     mockTimelineStore.selectedItemIds = [];
+    mockSelectionStore.selectedEntity = null;
   });
 
   afterEach(() => {
@@ -122,6 +130,22 @@ describe('TimelineGap', () => {
 
   it('shows selected state', async () => {
     mockTimelineStore.selectedItemIds = ['gap-1'];
+
+    const component = await mountSuspended(TimelineGap, {
+      props: { item, trackId: 'v1' },
+    });
+
+    const div = component.find('div.absolute');
+    expect(div.classes()).toContain('border-primary-500');
+  });
+
+  it('shows selected state from selection store for gap drawer sync', async () => {
+    mockSelectionStore.selectedEntity = {
+      source: 'timeline',
+      kind: 'gap',
+      trackId: 'v1',
+      itemId: 'gap-1',
+    };
 
     const component = await mountSuspended(TimelineGap, {
       props: { item, trackId: 'v1' },

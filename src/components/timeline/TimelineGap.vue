@@ -54,7 +54,19 @@ const style = computed(() => ({
   width: `${Math.max(2, timeUsToPx(props.item.timelineRange.durationUs, timelineStore.timelineZoom))}px`,
 }));
 
-const isSelected = computed(() => timelineStore.selectedItemIds.includes(props.item.id));
+const isSelected = computed(() => {
+  if (timelineStore.selectedItemIds.includes(props.item.id)) {
+    return true;
+  }
+
+  const selectedEntity = selectionStore.selectedEntity;
+  return (
+    selectedEntity?.source === 'timeline' &&
+    selectedEntity.kind === 'gap' &&
+    selectedEntity.trackId === props.trackId &&
+    selectedEntity.itemId === props.item.id
+  );
+});
 
 function onDelete() {
   timelineStore.applyTimeline({
