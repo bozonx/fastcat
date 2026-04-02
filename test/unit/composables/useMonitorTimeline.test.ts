@@ -1,3 +1,4 @@
+/** @vitest-environment node */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
 import { useTimelineStore } from '~/stores/timeline.store';

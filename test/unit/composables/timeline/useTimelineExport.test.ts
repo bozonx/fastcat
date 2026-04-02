@@ -1,3 +1,4 @@
+/** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
 import {
   buildVideoWorkerPayloadFromTracks,
@@ -272,7 +273,6 @@ describe('useTimelineExport pure functions', () => {
     } as any;
 
     const result = await buildVideoWorkerPayloadFromTracks({
-      workspaceStore: wsMock,
       tracks: [
         {
           id: 'v1',
@@ -382,7 +382,6 @@ describe('useTimelineExport pure functions', () => {
     } as any;
 
     const result = await buildVideoWorkerPayloadFromTracks({
-      workspaceStore: wsMock,
       tracks: [
         {
           id: 'v1',
@@ -572,7 +571,6 @@ describe('useTimelineExport pure functions', () => {
     } as any;
 
     const result = await buildVideoWorkerPayloadFromTracks({
-      workspaceStore: wsMock,
       tracks: [
         {
           id: 'v1',

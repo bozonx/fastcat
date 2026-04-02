@@ -1,8 +1,9 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { createPinia, setActivePinia } from 'pinia';
-import { useRuntimeConfig } from '#app';
+
+
+// Removed lib-compat import since mocked #app should cover it
 import { useFileBrowserTranscription } from '~/composables/file-manager/useFileBrowserTranscription';
 import { transcribeAudioFile } from '~/utils/transcription/engine';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';

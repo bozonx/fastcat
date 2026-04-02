@@ -1,3 +1,5 @@
+/** @vitest-environment node */
+import { createPinia, setActivePinia } from "pinia";
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import { isFileTab, type AnyProjectTab, useProjectTabsStore } from '~/stores/project-tabs.store';
@@ -30,6 +32,7 @@ vi.mock('~/composables/file-manager/useFileManager', () => ({
 
 describe('useProjectTabs', () => {
   beforeEach(() => {
+    setActivePinia(createPinia());
     vi.clearAllMocks();
     const { tabsStore } = useProjectTabs({ enableUiEffects: false });
     const { unregisterProjectTab } = tabsStore;
