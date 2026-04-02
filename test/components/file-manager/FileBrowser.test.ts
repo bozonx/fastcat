@@ -5,17 +5,20 @@ import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 
 // --- Mocks ---
 
-const mockFilesPageStore = reactive({
+const mockFileManagerStore = reactive({
   selectedFolder: null as any,
   viewMode: 'grid',
   gridCardSize: 130,
   columnWidths: { name: 200, type: 100, size: 80, created: 140, modified: 140 },
   sortOption: { field: 'name', order: 'asc' },
   setViewMode: vi.fn((v) => {
-    mockFilesPageStore.viewMode = v;
+    mockFileManagerStore.viewMode = v;
   }),
   setGridCardSize: vi.fn((v) => {
-    mockFilesPageStore.gridCardSize = v;
+    mockFileManagerStore.gridCardSize = v;
+  }),
+  openFolder: vi.fn((f) => {
+    mockFileManagerStore.selectedFolder = f;
   }),
 });
 
@@ -59,7 +62,7 @@ const mockFileManager = {
   mediaCache: { hasProxy: vi.fn(() => false) },
 };
 
-vi.mock('~/stores/files-page.store', () => ({ useFilesPageStore: () => mockFilesPageStore }));
+vi.mock('~/stores/file-manager.store', () => ({ useFileManagerStore: () => mockFileManagerStore }));
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelectionStore }));
 vi.mock('~/stores/ui.store', () => ({ useUiStore: () => mockUiStore }));
 vi.mock('~/stores/focus.store', () => ({ useFocusStore: () => mockFocusStore }));
@@ -135,8 +138,8 @@ vi.mock('~/composables/file-manager/useFileContextMenu', () => ({
 describe('FileBrowser', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockFilesPageStore.selectedFolder = null;
-    mockFilesPageStore.viewMode = 'grid';
+    mockFileManagerStore.selectedFolder = null;
+    mockFileManagerStore.viewMode = 'grid';
     mockUiStore.fileBrowserSelectAllTrigger = 0;
     mockFileBrowserEntries.folderEntries.value = [];
     mockFileBrowserEntries.sortedEntries.value = [];
@@ -148,13 +151,13 @@ describe('FileBrowser', () => {
   });
 
   it('renders "Folder is empty" when an empty folder is selected', async () => {
-    mockFilesPageStore.selectedFolder = { name: 'Empty', kind: 'directory', path: 'empty' };
+    mockFileManagerStore.selectedFolder = { name: 'Empty', kind: 'directory', path: 'empty' };
     const wrapper = await mountSuspended(FileBrowser);
     expect(wrapper.text()).toContain('Folder is empty');
   });
 
   it('renders entries and toolbars when folder is selected', async () => {
-    mockFilesPageStore.selectedFolder = { name: 'Root', kind: 'directory', path: '' };
+    mockFileManagerStore.selectedFolder = { name: 'Root', kind: 'directory', path: '' };
     const entry = { name: 'test.mp4', kind: 'file', path: 'test.mp4', size: 1024 };
     mockFileBrowserEntries.folderEntries.value = [entry];
     mockFileBrowserEntries.sortedEntries.value = [entry];
@@ -186,7 +189,7 @@ describe('FileBrowser', () => {
   });
 
   it('switches between grid and list view', async () => {
-    mockFilesPageStore.selectedFolder = { name: 'Root', kind: 'directory', path: '' };
+    mockFileManagerStore.selectedFolder = { name: 'Root', kind: 'directory', path: '' };
     const entry = { name: 'test.mp4', kind: 'file', path: 'test.mp4' };
     mockFileBrowserEntries.folderEntries.value = [entry];
     mockFileBrowserEntries.sortedEntries.value = [entry];
@@ -208,7 +211,7 @@ describe('FileBrowser', () => {
 
     expect(wrapper.find('[data-test="grid-view"]').exists()).toBe(true);
 
-    mockFilesPageStore.viewMode = 'list';
+    mockFileManagerStore.viewMode = 'list';
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-test="list-view"]').exists()).toBe(true);
   });

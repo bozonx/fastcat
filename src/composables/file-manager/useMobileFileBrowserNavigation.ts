@@ -54,7 +54,7 @@ export function useMobileFileBrowserNavigation({
 
     isLoading.value = true;
     try {
-      let content = await readDirectory(folder.path);
+      let content = (await readDirectory(folder.path)) || [];
       if (!folder.path) {
         const commonMetadata = await vfs.getMetadata(WORKSPACE_COMMON_PATH_PREFIX);
         if (commonMetadata?.kind === 'directory') {
@@ -65,7 +65,7 @@ export function useMobileFileBrowserNavigation({
           };
           content = [
             commonEntry,
-            ...content.filter((entry) => entry.path !== WORKSPACE_COMMON_PATH_PREFIX),
+            ...content.filter((entry: FsEntry) => entry.path !== WORKSPACE_COMMON_PATH_PREFIX),
           ];
         }
       }

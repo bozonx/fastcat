@@ -19,6 +19,7 @@ vi.mock('mediabunny', () => ({
       numberOfChannels: 2,
       computePacketStats: vi.fn().mockResolvedValue({ averageBitrate: 192000 }),
       getCodecParameterString: vi.fn().mockResolvedValue('mp4a.40.2'),
+      canDecode: vi.fn().mockResolvedValue(true),
     });
   },
   BlobSource: class {
@@ -43,6 +44,7 @@ describe('extractMetadata', () => {
         .mockResolvedValue({ averagePacketRate: 30, averageBitrate: 5000000 }),
       getCodecParameterString: vi.fn().mockResolvedValue('avc1.640028'),
       getColorSpace: vi.fn().mockResolvedValue({}),
+      canDecode: vi.fn().mockResolvedValue(true),
     });
   });
 

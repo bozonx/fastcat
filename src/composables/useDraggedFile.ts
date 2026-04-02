@@ -19,7 +19,9 @@ export const FILE_MANAGER_COPY_DRAG_TYPE = 'application/fastcat-file-manager-cop
 
 export const REMOTE_FILE_DRAG_TYPE = 'application/fastcat-remote-file';
 
-export function useDraggedFile() {
+export function useDraggedFile(options: { enableUiEffects?: boolean } = {}) {
+  const { enableUiEffects = true } = options;
+
   function setDraggedFile(data: DraggedFileData) {
     draggedFile.value = data;
   }
@@ -28,15 +30,17 @@ export function useDraggedFile() {
     draggedFile.value = null;
   }
 
-  onMounted(() => {
-    window.addEventListener('dragend', clearDraggedFile);
-    window.addEventListener('drop', clearDraggedFile);
-  });
+  if (enableUiEffects) {
+    onMounted(() => {
+      window.addEventListener('dragend', clearDraggedFile);
+      window.addEventListener('drop', clearDraggedFile);
+    });
 
-  onUnmounted(() => {
-    window.removeEventListener('dragend', clearDraggedFile);
-    window.removeEventListener('drop', clearDraggedFile);
-  });
+    onUnmounted(() => {
+      window.removeEventListener('dragend', clearDraggedFile);
+      window.removeEventListener('drop', clearDraggedFile);
+    });
+  }
 
   return {
     draggedFile,

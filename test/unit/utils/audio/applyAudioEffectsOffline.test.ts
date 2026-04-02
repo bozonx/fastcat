@@ -1,11 +1,12 @@
+// @vitest-environment node
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   applyAudioEffects,
   applyAudioEffectsOffline,
-} from '~/utils/audio/applyAudioEffectsOffline';
-import { buildAudioEffectGraph } from '~/utils/audio/effectGraph';
+} from '~/utils/audio/apply-audio-effects-offline';
+import { buildAudioEffectGraph } from '~/utils/audio/effect-graph';
 
-vi.mock('~/utils/audio/effectGraph', () => ({
+vi.mock('~/utils/audio/effect-graph', () => ({
   buildAudioEffectGraph: vi.fn(),
 }));
 

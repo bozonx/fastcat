@@ -33,7 +33,7 @@ vi.mock('vue-i18n', () => ({
     setLocaleMessage: () => {},
     locale: ref('en'),
     global: {
-      t: (key: string) => key,
+      t: (key: string, fallback?: string) => fallback ?? key,
       locale: ref('en'),
       mergeLocaleMessage: () => {},
       setLocaleMessage: () => {},
@@ -104,8 +104,8 @@ config.global.stubs = {
 };
 config.global.mocks = {
   ...config.global.mocks,
-  $t: (msg: string) => msg,
-  t: (msg: string) => msg,
+  $t: (key: string, fallback?: string) => fallback ?? key,
+  t: (key: string, fallback?: string) => fallback ?? key,
 };
 config.global.config.errorHandler = (err, instance, info) => {
   console.error(`[Vue Error] ${err} \nInfo: ${info}`);
