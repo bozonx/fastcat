@@ -18,11 +18,7 @@ interface TimelineStoreActions {
   batchApplyTimeline: (cmds: TimelineCommand[], options?: any) => string[] | Promise<string[]>;
   loadTimeline: () => Promise<void>;
   loadTimelineMetadata: () => Promise<void> | void;
-  updateClipProperties: (
-    trackId: string,
-    itemId: string,
-    patch: Record<string, any>,
-  ) => any;
+  updateClipProperties: (trackId: string, itemId: string, patch: Record<string, any>) => any;
   renameItem: (trackId: string, itemId: string, name: string) => void;
   selectTimelineItems: (items: { trackId: string; itemId: string }[]) => void;
 }

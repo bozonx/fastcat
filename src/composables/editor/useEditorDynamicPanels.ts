@@ -80,14 +80,16 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
   );
 
   const verticalSplitSizesKey = computed(
-    () => `fastcat-cut-vertical-splits-${currentProjectId.value ?? 'no-project'}${getPlatformSuffix()}`,
+    () =>
+      `fastcat-cut-vertical-splits-${currentProjectId.value ?? 'no-project'}${getPlatformSuffix()}`,
   );
   const verticalSplitSizes = ref<Record<string, number[]>>(
     readLocalStorageJson<Record<string, number[]>>(verticalSplitSizesKey.value, {}),
   );
 
   const soundVerticalSplitSizesKey = computed(
-    () => `fastcat-sound-vertical-splits-${currentProjectId.value ?? 'no-project'}${getPlatformSuffix()}`,
+    () =>
+      `fastcat-sound-vertical-splits-${currentProjectId.value ?? 'no-project'}${getPlatformSuffix()}`,
   );
   const soundVerticalSplitSizes = ref<Record<string, number[]>>(
     readLocalStorageJson<Record<string, number[]>>(soundVerticalSplitSizesKey.value, {}),

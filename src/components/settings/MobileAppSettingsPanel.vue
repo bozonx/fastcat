@@ -72,7 +72,9 @@ onBeforeUnmount(() => {
 <template>
   <div class="flex flex-col h-full overflow-hidden bg-ui-bg">
     <!-- Horizontal scrollable tab navigation -->
-    <div class="shrink-0 overflow-x-auto bg-ui-bg-elevated border-b border-ui-border [scrollbar-width:none]">
+    <div
+      class="shrink-0 overflow-x-auto bg-ui-bg-elevated border-b border-ui-border [scrollbar-width:none]"
+    >
       <UTabs
         v-model="activeSection"
         :items="sections"

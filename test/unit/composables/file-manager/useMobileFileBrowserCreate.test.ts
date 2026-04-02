@@ -40,9 +40,9 @@ describe('useMobileFileBrowserCreate', () => {
   it('triggers folder creation', async () => {
     const { onCreateFolder, isCreateMenuOpen } = useMobileFileBrowserCreate(deps);
     isCreateMenuOpen.value = true;
-    
+
     await onCreateFolder('New Folder');
-    
+
     expect(deps.createFolder).toHaveBeenCalledWith('New Folder', 'test');
     expect(deps.loadFolderContent).toHaveBeenCalled();
     expect(isCreateMenuOpen.value).toBe(false);
@@ -67,7 +67,7 @@ describe('useMobileFileBrowserCreate', () => {
     fileInput.value = mockInput;
 
     triggerFileUpload('upload-path');
-    
+
     expect(pendingUploadPath.value).toBe('upload-path');
     expect(mockInput.click).toHaveBeenCalled();
   });

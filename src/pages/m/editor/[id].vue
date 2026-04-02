@@ -164,22 +164,20 @@ function onDividerPointerDown(e: PointerEvent) {
   handle.addEventListener('pointercancel', cleanup);
   handle.addEventListener('lostpointercapture', cleanup);
 }
-
 </script>
 
 <template>
   <div class="flex h-full w-full flex-col">
-
     <!-- Main Content Area (Virtual Tabs) -->
-    <main class="relative flex-1 min-h-0 overflow-hidden bg-slate-950">
+    <main class="relative flex-1 min-h-0 overflow-hidden bg-zinc-950">
       <div
         v-if="isOpeningProject"
-        class="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-slate-400"
+        class="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-zinc-400"
       >
         <Icon name="lucide:loader-circle" class="h-8 w-8 animate-spin text-primary-400" />
         <div>
-          <p class="text-sm font-medium text-slate-100">Opening project</p>
-          <p class="text-xs text-slate-500">Preparing timeline, media, and mobile workspace</p>
+          <p class="text-sm font-medium text-zinc-100">Opening project</p>
+          <p class="text-xs text-zinc-500">Preparing timeline, media, and mobile workspace</p>
         </div>
       </div>
 
@@ -207,36 +205,29 @@ function onDividerPointerDown(e: PointerEvent) {
       <div
         v-else-if="activeTab === 'edit'"
         ref="containerRef"
-        class="flex h-full overflow-hidden bg-slate-950"
-        :class="[
-          isLandscapeMode ? 'flex-row' : 'flex-col'
-        ]"
+        class="flex h-full overflow-hidden bg-zinc-950"
+        :class="[isLandscapeMode ? 'flex-row' : 'flex-col']"
       >
-        <MobileMonitorContainer
-          mode="edit"
-          flexible
-          :style="monitorStyle"
-          class="shrink-0"
-        />
+        <MobileMonitorContainer mode="edit" flexible :style="monitorStyle" class="shrink-0" />
 
         <!-- Draggable divider -->
         <div
-          class="relative flex shrink-0 items-center justify-center touch-none select-none z-10 bg-slate-900"
-          :class="isLandscapeMode
-            ? 'w-3 cursor-col-resize border-x border-slate-800/60'
-            : 'h-3 cursor-row-resize border-y border-slate-800/60'"
+          class="relative flex shrink-0 items-center justify-center touch-none select-none z-10 bg-zinc-900"
+          :class="
+            isLandscapeMode
+              ? 'w-3 cursor-col-resize border-x border-zinc-800/60'
+              : 'h-3 cursor-row-resize border-y border-zinc-800/60'
+          "
           @pointerdown="onDividerPointerDown"
         >
           <div
-            class="rounded-full bg-slate-600 pointer-events-none"
+            class="rounded-full bg-zinc-600 pointer-events-none"
             :class="isLandscapeMode ? 'w-1 h-9' : 'h-1 w-10'"
           />
         </div>
 
         <MobileTimeline class="flex-1 min-h-0 min-w-0" />
       </div>
-
-
 
       <div v-else-if="activeTab === 'export'" class="h-full">
         <ExportForm disable-focus-frame />
@@ -248,11 +239,7 @@ function onDividerPointerDown(e: PointerEvent) {
     </main>
 
     <!-- Bottom Navigation Bar -->
-    <MobileBottomNav
-      v-if="showBottomNav"
-      v-model:active-tab="activeTab"
-    />
-
+    <MobileBottomNav v-if="showBottomNav" v-model:active-tab="activeTab" />
   </div>
 </template>
 

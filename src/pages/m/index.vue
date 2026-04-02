@@ -90,11 +90,11 @@ const formatDate = (dateStr?: string) => {
 
     <template v-else>
       <div
-        class="flex h-screen w-full flex-col bg-slate-950 overflow-hidden text-slate-200 font-sans"
+        class="flex h-screen w-full flex-col bg-zinc-950 overflow-hidden text-zinc-200 font-sans"
       >
         <!-- Sticky Header with Glass Effect -->
         <header
-          class="shrink-0 pt-safe px-5 pb-4 bg-slate-950/80 backdrop-blur-xl border-b border-white/5 z-20"
+          class="shrink-0 pt-safe px-5 pb-4 bg-zinc-950/80 backdrop-blur-xl border-b border-white/5 z-20"
         >
           <div class="flex items-center justify-between h-14">
             <div class="flex flex-col min-w-0">
@@ -102,7 +102,7 @@ const formatDate = (dateStr?: string) => {
                 FastCat <span class="text-primary-500 not-italic">Editor</span>
               </h1>
               <div
-                class="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase tracking-widest"
+                class="flex items-center gap-1 text-[10px] text-zinc-500 font-bold uppercase tracking-widest"
               >
                 <UIcon name="i-heroicons-folder" class="w-3 h-3" />
                 <span class="truncate max-w-[120px]">{{
@@ -116,7 +116,7 @@ const formatDate = (dateStr?: string) => {
                 variant="ghost"
                 color="neutral"
                 icon="i-heroicons-computer-desktop"
-                class="rounded-full w-10 h-10 p-0 flex items-center justify-center bg-white/5 text-slate-400"
+                class="rounded-full w-10 h-10 p-0 flex items-center justify-center bg-white/5 text-zinc-400"
                 @click="router.push('/')"
               />
               <UButton
@@ -132,21 +132,21 @@ const formatDate = (dateStr?: string) => {
         </header>
 
         <!-- Main Content -->
-        <main class="flex-1 overflow-y-auto bg-slate-950 custom-scrollbar relative">
+        <main class="flex-1 overflow-y-auto bg-zinc-950 custom-scrollbar relative">
           <!-- Search Bar Sticky below header -->
-          <div class="px-5 py-4 sticky top-0 z-10 bg-slate-950/80 backdrop-blur-md">
-              <UiSearchInput
-                v-model="searchQuery"
-                :placeholder="t('fastcat.projects.searchPlaceholder')"
-                is-mobile
-              />
+          <div class="px-5 py-4 sticky top-0 z-10 bg-zinc-950/80 backdrop-blur-md">
+            <UiSearchInput
+              v-model="searchQuery"
+              :placeholder="t('fastcat.projects.searchPlaceholder')"
+              is-mobile
+            />
           </div>
 
           <div class="flex flex-col gap-8 pb-24">
             <!-- Recent Projects Horizontal Scroll -->
             <section v-if="recentProjects.length > 0 && !searchQuery" class="space-y-4">
               <div class="px-5 flex items-center justify-between">
-                <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">
+                <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500">
                   {{ t('common.recent') }}
                 </h2>
               </div>
@@ -159,7 +159,7 @@ const formatDate = (dateStr?: string) => {
                   @click="handleOpenProject(project.projectName)"
                 >
                   <div
-                    class="aspect-3/4 rounded-3xl overflow-hidden border border-white/10 shadow-2xl relative bg-slate-900"
+                    class="aspect-3/4 rounded-3xl overflow-hidden border border-white/10 shadow-2xl relative bg-zinc-900"
                   >
                     <ProjectThumbnail
                       :project-id="project.projectId"
@@ -174,9 +174,7 @@ const formatDate = (dateStr?: string) => {
                       <h3 class="font-bold text-white text-sm truncate">
                         {{ project.projectName }}
                       </h3>
-                      <p
-                        class="text-[10px] text-slate-400 font-medium mt-1 flex items-center gap-1"
-                      >
+                      <p class="text-[10px] text-zinc-400 font-medium mt-1 flex items-center gap-1">
                         <UIcon name="i-heroicons-calendar" class="w-3 h-3" />
                         {{ formatDate(project.updatedAt) }}
                       </p>
@@ -189,7 +187,7 @@ const formatDate = (dateStr?: string) => {
             <!-- All Projects List -->
             <section class="space-y-4 px-5">
               <div class="flex items-center justify-between">
-                <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">
+                <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500">
                   {{ searchQuery ? t('common.found') : t('fastcat.projects.title') }}
                 </h2>
                 <span
@@ -203,7 +201,7 @@ const formatDate = (dateStr?: string) => {
                 <div
                   v-for="project in smartSortedProjects"
                   :key="project.projectName"
-                  class="group bg-slate-900/40 border border-white/5 rounded-2xl overflow-hidden flex items-center active:bg-slate-800 transition-all shadow-sm h-20"
+                  class="group bg-zinc-900/40 border border-white/5 rounded-2xl overflow-hidden flex items-center active:bg-zinc-800 transition-all shadow-sm h-20"
                   @click="
                     isRenaming === project.projectName
                       ? null
@@ -232,7 +230,7 @@ const formatDate = (dateStr?: string) => {
                         autofocus
                         variant="none"
                         :ui="{
-                          base: 'h-11 px-4 bg-slate-900 border border-white/10 rounded-2xl focus:border-primary-500/50 transition-all font-bold text-sm text-white focus:ring-0',
+                          base: 'h-11 px-4 bg-zinc-900 border border-white/10 rounded-2xl focus:border-primary-500/50 transition-all font-bold text-sm text-white focus:ring-0',
                         }"
                         @keyup.enter="renameProject(project.projectName)"
                         @keyup.esc="isRenaming = null"
@@ -252,7 +250,7 @@ const formatDate = (dateStr?: string) => {
                           variant="solid"
                           color="neutral"
                           icon="i-heroicons-x-mark-20-solid"
-                          class="rounded-2xl w-11 h-11 p-0 bg-white/5 border border-white/5 text-slate-400 hover:text-white active:scale-90 transition-all flex items-center justify-center"
+                          class="rounded-2xl w-11 h-11 p-0 bg-white/5 border border-white/5 text-zinc-400 hover:text-white active:scale-90 transition-all flex items-center justify-center"
                           @click.stop="isRenaming = null"
                         />
                       </div>
@@ -261,11 +259,11 @@ const formatDate = (dateStr?: string) => {
                     <template v-else>
                       <div class="flex flex-col min-w-0">
                         <span
-                          class="font-bold text-slate-100 truncate text-sm tracking-tight leading-tight"
+                          class="font-bold text-zinc-100 truncate text-sm tracking-tight leading-tight"
                           >{{ project.projectName }}</span
                         >
                         <span
-                          class="text-[10px] text-slate-500 font-medium flex items-center gap-1 mt-1"
+                          class="text-[10px] text-zinc-500 font-medium flex items-center gap-1 mt-1"
                         >
                           <UIcon name="i-heroicons-clock" class="w-3 h-3" />
                           {{ project.updatedAt ? formatDate(project.updatedAt) : '---' }}
@@ -278,7 +276,7 @@ const formatDate = (dateStr?: string) => {
                           variant="ghost"
                           color="neutral"
                           icon="lucide:edit-2"
-                          class="rounded-full w-9 h-9 p-0 text-slate-600 active:text-white active:bg-white/5 transition-colors"
+                          class="rounded-full w-9 h-9 p-0 text-zinc-600 active:text-white active:bg-white/5 transition-colors"
                           @click.stop="startRename(project.projectName)"
                         />
                       </div>
@@ -290,16 +288,16 @@ const formatDate = (dateStr?: string) => {
               <!-- Empty State -->
               <div
                 v-else
-                class="flex flex-col items-center justify-center py-24 text-slate-600 gap-8"
+                class="flex flex-col items-center justify-center py-24 text-zinc-600 gap-8"
               >
                 <div
-                  class="w-28 h-28 rounded-full bg-slate-900/50 flex items-center justify-center border border-white/5 relative"
+                  class="w-28 h-28 rounded-full bg-zinc-900/50 flex items-center justify-center border border-white/5 relative"
                 >
                   <UIcon name="i-heroicons-folder-open" class="w-12 h-12 opacity-10" />
                   <div class="absolute inset-0 bg-primary-500/5 rounded-full animate-pulse" />
                 </div>
                 <div class="text-center space-y-3">
-                  <p class="font-black uppercase tracking-[0.2em] text-[10px] text-slate-500">
+                  <p class="font-black uppercase tracking-[0.2em] text-[10px] text-zinc-500">
                     {{ t('fastcat.projects.noProjectsFound') }}
                   </p>
                   <UButton
@@ -336,7 +334,7 @@ const formatDate = (dateStr?: string) => {
         :title="t('fastcat.projects.newProject')"
         :ui="{
           content:
-            'max-w-full m-0 rounded-t-[2.5rem] rounded-b-none fixed bottom-0 top-auto h-auto min-h-[50vh] bg-slate-950 border-t border-white/10 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]',
+            'max-w-full m-0 rounded-t-[2.5rem] rounded-b-none fixed bottom-0 top-auto h-auto min-h-[50vh] bg-zinc-950 border-t border-white/10 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]',
           body: 'pb-12 pt-8 px-6',
           header: 'pt-6 px-6 border-none',
         }"
@@ -347,7 +345,7 @@ const formatDate = (dateStr?: string) => {
               v-model="projectCreationSettings.name"
               :placeholder="t('fastcat.projects.projectNamePlaceholder')"
               variant="none"
-              class="bg-slate-900/50 border border-white/5 rounded-3xl h-16 text-xl font-bold px-6 focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-slate-700"
+              class="bg-zinc-900/50 border border-white/5 rounded-3xl h-16 text-xl font-bold px-6 focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-zinc-700"
               autofocus
               @keyup.enter="createNewProject"
             />
@@ -355,7 +353,7 @@ const formatDate = (dateStr?: string) => {
 
           <div
             v-if="!projectCreationSettings.isAdvancedSettingsOpen"
-            class="text-[11px] text-slate-500 bg-slate-900/30 p-5 rounded-3xl flex gap-4 border border-white/5 leading-relaxed"
+            class="text-[11px] text-zinc-500 bg-zinc-900/30 p-5 rounded-3xl flex gap-4 border border-white/5 leading-relaxed"
           >
             <UIcon
               name="i-heroicons-information-circle"
@@ -376,7 +374,7 @@ const formatDate = (dateStr?: string) => {
               color="neutral"
               variant="ghost"
               size="sm"
-              class="p-0 hover:bg-transparent text-slate-500 font-black uppercase tracking-[0.2em] text-[10px]"
+              class="p-0 hover:bg-transparent text-zinc-500 font-black uppercase tracking-[0.2em] text-[10px]"
               :icon="
                 projectCreationSettings.isAdvancedSettingsOpen
                   ? 'i-heroicons-chevron-down-20-solid'
@@ -394,7 +392,7 @@ const formatDate = (dateStr?: string) => {
                     value-key="value"
                     label-key="label"
                     full-width
-                    class="bg-slate-900/50! rounded-2xl! h-12!"
+                    class="bg-zinc-900/50! rounded-2xl! h-12!"
                     @update:model-value="
                       (value: unknown) =>
                         applyProjectCreationPreset(
@@ -424,7 +422,7 @@ const formatDate = (dateStr?: string) => {
             <UButton
               variant="ghost"
               color="neutral"
-              class="flex-1 h-16 rounded-[1.5rem] font-bold text-slate-500 active:bg-white/5"
+              class="flex-1 h-16 rounded-[1.5rem] font-bold text-zinc-500 active:bg-white/5"
               :label="t('common.cancel')"
               @click="isCreateModalOpen = false"
             />
@@ -445,9 +443,9 @@ const formatDate = (dateStr?: string) => {
         v-model:open="isSettingsOpen"
         :title="t('videoEditor.settings.title')"
         :ui="{
-          content: 'max-w-full m-0 h-full rounded-none bg-slate-950',
+          content: 'max-w-full m-0 h-full rounded-none bg-zinc-950',
           body: '!p-0 !overflow-hidden flex flex-col h-full',
-          header: 'shrink-0 pt-safe bg-slate-950 border-b border-white/5',
+          header: 'shrink-0 pt-safe bg-zinc-950 border-b border-white/5',
           footer: 'hidden',
         }"
       >

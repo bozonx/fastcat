@@ -20,8 +20,9 @@ const emit = defineEmits<{
 }>();
 
 const variantClasses = computed(() => {
-  if (props.disabled) return 'opacity-40 pointer-events-none bg-slate-800/40 border border-slate-700/50 text-slate-400';
-  
+  if (props.disabled)
+    return 'opacity-40 pointer-events-none bg-zinc-800/40 border border-zinc-700/50 text-zinc-400';
+
   switch (props.variant) {
     case 'danger':
       return 'text-red-400 bg-red-400/10 border border-red-400/20 active:bg-red-400/20';
@@ -30,9 +31,9 @@ const variantClasses = computed(() => {
     case 'warning':
       return 'text-amber-400 bg-amber-400/10 border border-amber-400/30 active:bg-amber-400/20';
     default:
-      return props.active 
-        ? 'text-primary-400 bg-primary-400/10 border border-primary-400/30' 
-        : 'text-slate-200 bg-slate-800/40 border border-slate-700/50 active:bg-slate-800/60';
+      return props.active
+        ? 'text-primary-400 bg-primary-400/10 border border-primary-400/30'
+        : 'text-zinc-200 bg-zinc-800/40 border border-zinc-700/50 active:bg-zinc-800/60';
   }
 });
 </script>

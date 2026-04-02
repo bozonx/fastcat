@@ -12,7 +12,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex h-dvh w-full flex-col bg-slate-950 text-slate-200">
+  <div class="flex h-dvh w-full flex-col bg-zinc-950 text-zinc-200">
     <!-- Main Content Area -->
     <main class="flex-1 min-h-0 overflow-y-auto relative">
       <slot />

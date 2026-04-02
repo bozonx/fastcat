@@ -584,14 +584,16 @@ async function onDirectoryUploadChange(e: Event) {
         () =>
           onFileAction(
             'createFolder',
-            fileManagerStore.selectedFolder || ({ kind: 'directory', path: '', name: '' } as FsEntry),
+            fileManagerStore.selectedFolder ||
+              ({ kind: 'directory', path: '', name: '' } as FsEntry),
           )
       "
       @upload="
         () =>
           onFileAction(
             'upload',
-            fileManagerStore.selectedFolder || ({ kind: 'directory', path: '', name: '' } as FsEntry),
+            fileManagerStore.selectedFolder ||
+              ({ kind: 'directory', path: '', name: '' } as FsEntry),
           )
       "
     />

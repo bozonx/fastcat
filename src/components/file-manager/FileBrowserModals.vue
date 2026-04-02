@@ -61,4 +61,3 @@ const { t } = useI18n();
     @submit="emit('submitTranscription')"
   />
 </template>
-

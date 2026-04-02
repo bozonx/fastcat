@@ -4,10 +4,12 @@ import type { TimelineTrack } from '~/timeline/types';
 
 import { useAppClipboard } from '~/composables/useAppClipboard';
 
-export function useTrackContextMenu(options: { 
-  onRequestDelete?: (track: TimelineTrack) => void,
-  onPaste?: (trackId: string) => void
-} = {}) {
+export function useTrackContextMenu(
+  options: {
+    onRequestDelete?: (track: TimelineTrack) => void;
+    onPaste?: (trackId: string) => void;
+  } = {},
+) {
   const { t } = useI18n();
   const timelineStore = useTimelineStore();
   const clipboardStore = useAppClipboard();

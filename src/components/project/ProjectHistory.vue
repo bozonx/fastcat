@@ -57,14 +57,14 @@ function handleRedo() {
 </script>
 
 <template>
-  <div class="h-full flex flex-col w-full bg-slate-900 border-l border-slate-800">
+  <div class="h-full flex flex-col w-full bg-zinc-900 border-l border-zinc-800">
     <div
-      class="px-4 py-3 border-b border-slate-800 flex items-center justify-between text-xs text-slate-400 font-medium tracking-wide uppercase"
+      class="px-4 py-3 border-b border-zinc-800 flex items-center justify-between text-xs text-zinc-400 font-medium tracking-wide uppercase"
     >
       <span>{{ $t('videoEditor.fileManager.history.title') }}</span>
       <div class="flex items-center gap-2">
         <button
-          class="hover:text-white transition-colors disabled:opacity-30 disabled:hover:text-slate-400"
+          class="hover:text-white transition-colors disabled:opacity-30 disabled:hover:text-zinc-400"
           :disabled="!canUndo"
           :title="$t('videoEditor.fileManager.history.actions.undo')"
           @click="handleUndo"
@@ -79,7 +79,7 @@ function handleRedo() {
           </svg>
         </button>
         <button
-          class="hover:text-white transition-colors disabled:opacity-30 disabled:hover:text-slate-400"
+          class="hover:text-white transition-colors disabled:opacity-30 disabled:hover:text-zinc-400"
           :disabled="!canRedo"
           :title="$t('videoEditor.fileManager.history.actions.redo')"
           @click="handleRedo"
@@ -98,9 +98,7 @@ function handleRedo() {
 
     <div class="flex-1 overflow-y-auto min-h-0 relative">
       <div v-if="history.length === 0" class="absolute inset-0 flex items-center justify-center">
-        <span class="text-sm text-slate-500">{{
-          $t('videoEditor.fileManager.history.empty')
-        }}</span>
+        <span class="text-sm text-zinc-500">{{ $t('videoEditor.fileManager.history.empty') }}</span>
       </div>
 
       <div v-else class="py-2 px-3 space-y-1">
@@ -108,18 +106,18 @@ function handleRedo() {
         <div
           v-for="entry in reversedFuture"
           :key="`future-${entry.id}`"
-          class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 cursor-pointer opacity-50 hover:opacity-100 hover:bg-slate-800/50"
+          class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 cursor-pointer opacity-50 hover:opacity-100 hover:bg-zinc-800/50"
         >
-          <div class="w-2 h-2 rounded-full bg-slate-700"></div>
-          <div class="flex-1 truncate text-slate-400">
+          <div class="w-2 h-2 rounded-full bg-zinc-700"></div>
+          <div class="flex-1 truncate text-zinc-400">
             {{ $t(entry.labelKey) }}
           </div>
-          <div class="text-xs text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div class="text-xs text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity">
             {{ formatTime(entry.timestamp) }}
           </div>
         </div>
 
-        <div v-if="future.length > 0" class="h-px bg-slate-800/50 my-2 mx-2"></div>
+        <div v-if="future.length > 0" class="h-px bg-zinc-800/50 my-2 mx-2"></div>
 
         <!-- Current/Past states (Undo) -->
         <div
@@ -128,14 +126,14 @@ function handleRedo() {
           class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200"
           :class="[
             index === 0
-              ? 'bg-slate-700/30 text-slate-200'
-              : 'text-slate-300 hover:bg-slate-800/50 cursor-pointer',
+              ? 'bg-zinc-700/30 text-zinc-200'
+              : 'text-zinc-300 hover:bg-zinc-800/50 cursor-pointer',
           ]"
         >
           <div
             class="w-2 h-2 rounded-full"
             :class="[
-              index === 0 ? 'bg-slate-400 shadow-[0_0_6px_rgba(148,163,184,0.4)]' : 'bg-slate-600',
+              index === 0 ? 'bg-zinc-400 shadow-[0_0_6px_rgba(148,163,184,0.4)]' : 'bg-zinc-600',
             ]"
           ></div>
           <div class="flex-1 truncate" :class="[index === 0 ? 'font-medium' : '']">
@@ -144,7 +142,7 @@ function handleRedo() {
           <div
             class="text-xs transition-opacity"
             :class="[
-              index === 0 ? 'text-slate-400' : 'text-slate-500 opacity-0 group-hover:opacity-100',
+              index === 0 ? 'text-zinc-400' : 'text-zinc-500 opacity-0 group-hover:opacity-100',
             ]"
           >
             {{ formatTime(entry.timestamp) }}

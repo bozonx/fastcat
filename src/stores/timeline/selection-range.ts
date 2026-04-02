@@ -31,7 +31,9 @@ export interface TimelineSelectionRangeModule {
   rippleTrimSelectionRange: () => void;
 }
 
-export function createTimelineSelectionRangeModule(params: TimelineSelectionRangeDeps): TimelineSelectionRangeModule {
+export function createTimelineSelectionRangeModule(
+  params: TimelineSelectionRangeDeps,
+): TimelineSelectionRangeModule {
   const {
     timelineDoc,
     currentTime,

@@ -7,7 +7,12 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
-import { VIDEO_DIR_NAME, AUDIO_DIR_NAME, TIMELINES_DIR_NAME, DOCUMENTS_DIR_NAME } from '~/utils/constants';
+import {
+  VIDEO_DIR_NAME,
+  AUDIO_DIR_NAME,
+  TIMELINES_DIR_NAME,
+  DOCUMENTS_DIR_NAME,
+} from '~/utils/constants';
 import {
   getWorkspacePathFileName,
   getWorkspacePathParent,
@@ -760,8 +765,7 @@ export function useFileManager() {
     showHiddenFiles,
     mediaStore,
     historyStore,
-    shouldRecordFileManagerHistory: () =>
-      !(route.path === '/m' || route.path.startsWith('/m/')),
+    shouldRecordFileManagerHistory: () => !(route.path === '/m' || route.path.startsWith('/m/')),
     mediaCache,
     isFileTreePathExpanded: (path) => uiStore.isFileTreePathExpanded(path),
     setFileTreePathExpanded: function setFileTreePathExpanded(path: string, expanded: boolean) {

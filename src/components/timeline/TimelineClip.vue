@@ -132,45 +132,50 @@ function onContextMenu(e: MouseEvent) {
   }
 }
 
-const { didStartDrag, rightClickDragTriggered, rightClickPointerActive, longPressTriggered, onPointerDown } =
-  useClickOrDrag({
-    onDragStart: (e) => {
-      if (clipItem.value?.locked || props.track.locked) return;
-      // On mobile, dragging is only allowed when the clip is already selected
-      if (props.isMobile && !timelineStore.selectedItemIds.includes(props.item.id)) return;
-      emit('startMoveItem', e, {
+const {
+  didStartDrag,
+  rightClickDragTriggered,
+  rightClickPointerActive,
+  longPressTriggered,
+  onPointerDown,
+} = useClickOrDrag({
+  onDragStart: (e) => {
+    if (clipItem.value?.locked || props.track.locked) return;
+    // On mobile, dragging is only allowed when the clip is already selected
+    if (props.isMobile && !timelineStore.selectedItemIds.includes(props.item.id)) return;
+    emit('startMoveItem', e, {
+      trackId: props.track.id,
+      itemId: props.item.id,
+      startUs: props.item.timelineRange.startUs,
+      mode:
+        settingsStore.toolbarDragModeEnabled && settingsStore.toolbarDragMode === 'slip'
+          ? 'slip'
+          : 'move',
+    });
+  },
+  onShortRightClick: (e) => {
+    const target = e.target as HTMLElement | null;
+    void nextTick().then(() => {
+      target?.dispatchEvent(
+        new MouseEvent('contextmenu', {
+          bubbles: true,
+          cancelable: true,
+          clientX: e.clientX,
+          clientY: e.clientY,
+        }),
+      );
+    });
+  },
+  onLongPress: () => {
+    if (props.isMobile) {
+      emit('clipAction', {
+        action: 'longPress' as any,
         trackId: props.track.id,
         itemId: props.item.id,
-        startUs: props.item.timelineRange.startUs,
-        mode:
-          settingsStore.toolbarDragModeEnabled && settingsStore.toolbarDragMode === 'slip'
-            ? 'slip'
-            : 'move',
       });
-    },
-    onShortRightClick: (e) => {
-      const target = e.target as HTMLElement | null;
-      void nextTick().then(() => {
-        target?.dispatchEvent(
-          new MouseEvent('contextmenu', {
-            bubbles: true,
-            cancelable: true,
-            clientX: e.clientX,
-            clientY: e.clientY,
-          }),
-        );
-      });
-    },
-    onLongPress: () => {
-      if (props.isMobile) {
-        emit('clipAction', {
-          action: 'longPress' as any,
-          trackId: props.track.id,
-          itemId: props.item.id,
-        });
-      }
-    },
-  });
+    }
+  },
+});
 
 function onClipPointerdown(e: PointerEvent) {
   if (timelineStore.isTrimModeActive) return;

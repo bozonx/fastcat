@@ -46,7 +46,10 @@ const selectedTrackNumber = computed(() => {
 
 const isTrackFirstOfKind = computed(() => {
   if (!selectedTrack.value) return true;
-  return tracks.value.filter((t) => t.kind === selectedTrack.value!.kind)[0]?.id === selectedTrack.value.id;
+  return (
+    tracks.value.filter((t) => t.kind === selectedTrack.value!.kind)[0]?.id ===
+    selectedTrack.value.id
+  );
 });
 
 const isTrackLastOfKind = computed(() => {
@@ -57,7 +60,8 @@ const isTrackLastOfKind = computed(() => {
 
 const trackGain = computed(() => {
   if (!selectedTrack.value) return 100;
-  const gain = typeof selectedTrack.value.audioGain === 'number' ? selectedTrack.value.audioGain : 1;
+  const gain =
+    typeof selectedTrack.value.audioGain === 'number' ? selectedTrack.value.audioGain : 1;
   return Math.round(Math.max(0, Math.min(4, gain)) * 100);
 });
 
@@ -74,7 +78,9 @@ function handleTrackGainInput(event: Event) {
 
 function toggleTrackLock() {
   if (!selectedTrack.value) return;
-  timelineStore.updateTrackProperties(selectedTrack.value.id, { locked: !selectedTrack.value.locked });
+  timelineStore.updateTrackProperties(selectedTrack.value.id, {
+    locked: !selectedTrack.value.locked,
+  });
   timelineStore.requestTimelineSave({ immediate: true });
 }
 
@@ -153,7 +159,11 @@ function confirmDeleteTrack() {
         <!-- Lock / Unlock -->
         <MobileDrawerToolbarButton
           :icon="selectedTrack?.locked ? 'lucide:lock-open' : 'lucide:lock'"
-          :label="selectedTrack?.locked ? t('fastcat.track.unlock', 'Unlock') : t('fastcat.track.lock', 'Lock')"
+          :label="
+            selectedTrack?.locked
+              ? t('fastcat.track.unlock', 'Unlock')
+              : t('fastcat.track.lock', 'Lock')
+          "
           :active="selectedTrack?.locked"
           @click="toggleTrackLock"
         />
@@ -162,15 +172,25 @@ function confirmDeleteTrack() {
         <MobileDrawerToolbarButton
           v-if="selectedTrack?.kind === 'video'"
           :icon="selectedTrack?.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
-          :label="selectedTrack?.videoHidden ? t('fastcat.timeline.showTrack', 'Show') : t('fastcat.timeline.hideTrack', 'Hide')"
+          :label="
+            selectedTrack?.videoHidden
+              ? t('fastcat.timeline.showTrack', 'Show')
+              : t('fastcat.timeline.hideTrack', 'Hide')
+          "
           :active="selectedTrack?.videoHidden"
           @click="toggleTrackVideoHidden"
         />
 
         <!-- Mute / Unmute -->
         <MobileDrawerToolbarButton
-          :icon="selectedTrack?.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
-          :label="selectedTrack?.audioMuted ? t('fastcat.track.unmute', 'Unmute') : t('fastcat.track.mute', 'Mute')"
+          :icon="
+            selectedTrack?.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'
+          "
+          :label="
+            selectedTrack?.audioMuted
+              ? t('fastcat.track.unmute', 'Unmute')
+              : t('fastcat.track.mute', 'Mute')
+          "
           :active="selectedTrack?.audioMuted"
           @click="toggleTrackMute"
         />
@@ -219,7 +239,7 @@ function confirmDeleteTrack() {
         >
           {{ selectedTrack.kind === 'video' ? 'V' : 'A' }}{{ selectedTrackNumber }}
         </div>
-        <span class="text-sm font-bold text-slate-200 truncate leading-none">
+        <span class="text-sm font-bold text-zinc-200 truncate leading-none">
           {{ selectedTrack?.name || selectedTrack?.id }}
         </span>
       </div>
@@ -228,9 +248,11 @@ function confirmDeleteTrack() {
     <!-- Volume slider + full properties -->
     <div v-if="selectedTrack" class="px-4 pt-3 pb-8 flex flex-col gap-4">
       <!-- Track volume slider -->
-      <div class="flex items-center gap-3 rounded-xl bg-slate-900/80 border border-slate-800 px-3 py-2.5">
-        <UIcon name="i-heroicons-speaker-wave" class="w-4 h-4 text-slate-400 shrink-0" />
-        <span class="text-xs text-slate-400 font-mono w-8 tabular-nums text-right shrink-0">
+      <div
+        class="flex items-center gap-3 rounded-xl bg-zinc-900/80 border border-zinc-800 px-3 py-2.5"
+      >
+        <UIcon name="i-heroicons-speaker-wave" class="w-4 h-4 text-zinc-400 shrink-0" />
+        <span class="text-xs text-zinc-400 font-mono w-8 tabular-nums text-right shrink-0">
           {{ trackGain }}
         </span>
         <input
@@ -252,7 +274,12 @@ function confirmDeleteTrack() {
     <UiConfirmModal
       v-model:open="isTrackDeleteConfirmOpen"
       :title="t('fastcat.timeline.deleteTrackTitle', 'Delete track?')"
-      :description="t('fastcat.timeline.deleteTrackDescription', 'Track is not empty. This action cannot be undone.')"
+      :description="
+        t(
+          'fastcat.timeline.deleteTrackDescription',
+          'Track is not empty. This action cannot be undone.',
+        )
+      "
       color="error"
       icon="i-heroicons-exclamation-triangle"
       :confirm-text="t('common.delete', 'Delete')"

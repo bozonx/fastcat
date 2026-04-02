@@ -16,9 +16,10 @@ const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
 
 const track = computed<TimelineTrack | null>(
-  () => (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined)?.find(
-    (tr) => tr.id === props.trackId,
-  ) ?? null,
+  () =>
+    (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined)?.find(
+      (tr) => tr.id === props.trackId,
+    ) ?? null,
 );
 
 function deleteGap() {

@@ -49,7 +49,9 @@ export interface TimelinePersistenceModule {
   saveTimeline: () => Promise<void>;
 }
 
-export function createTimelinePersistenceModule(deps: TimelinePersistenceDeps): TimelinePersistenceModule {
+export function createTimelinePersistenceModule(
+  deps: TimelinePersistenceDeps,
+): TimelinePersistenceModule {
   let loadTimelineRequestId = 0;
 
   const autoSave = createAutoSave({
@@ -65,7 +67,7 @@ export function createTimelinePersistenceModule(deps: TimelinePersistenceDeps): 
 
       deps.isSavingTimeline.value = true;
       deps.timelineSaveError.value = null;
- 
+
       const suffix = getPlatformSuffix();
       const snapshot: TimelineDocument = {
         ...doc,
@@ -78,9 +80,7 @@ export function createTimelinePersistenceModule(deps: TimelinePersistenceDeps): 
             zoom: deps.timelineZoom.value,
             trackHeights: { ...deps.trackHeights.value },
             ...(suffix ? { [`zoom${suffix}`]: deps.timelineZoom.value } : {}),
-            ...(suffix
-              ? { [`trackHeights${suffix}`]: { ...deps.trackHeights.value } }
-              : {}),
+            ...(suffix ? { [`trackHeights${suffix}`]: { ...deps.trackHeights.value } } : {}),
             ...(deps.audioMuted ? { masterMuted: deps.audioMuted.value } : {}),
           },
         },

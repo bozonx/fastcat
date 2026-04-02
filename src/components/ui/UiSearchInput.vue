@@ -25,7 +25,8 @@ const { t } = useI18n();
     class="w-full group"
     :class="{
       'h-12 transition-all duration-300': isMobile,
-      'bg-slate-900/40 border-white/5 focus-within:bg-slate-900 focus-within:border-primary-500/30': isMobile,
+      'bg-zinc-900/40 border-white/5 focus-within:bg-zinc-900 focus-within:border-primary-500/30':
+        isMobile,
     }"
     :ui="{
       base: [

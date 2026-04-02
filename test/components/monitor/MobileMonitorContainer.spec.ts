@@ -19,11 +19,11 @@ vi.mock('~/composables/monitor/useMonitorRuntime', () => ({
   useMonitorRuntime: () => ({
     projectStore: {
       projectSettings: {
-        project: { width: 1920, height: 1080 }
+        project: { width: 1920, height: 1080 },
       },
-      activeMonitor: { zoom: 1 }
+      activeMonitor: { zoom: 1 },
     },
-    timelineStore: { 
+    timelineStore: {
       togglePlayback: vi.fn(),
       setCurrentTimeUs: vi.fn(),
     },
@@ -34,9 +34,9 @@ vi.mock('~/composables/monitor/useMonitorRuntime', () => ({
     containerEl: ref(null),
     renderWidth: ref(1920),
     renderHeight: ref(1080),
-    viewportRef: ref({ 
-      fitMonitor: vi.fn(), 
-      timecodeEl: ref(null) 
+    viewportRef: ref({
+      fitMonitor: vi.fn(),
+      timecodeEl: ref(null),
     }),
     isLoading: sharedIsLoading,
     loadError: sharedLoadError,
@@ -122,7 +122,7 @@ describe('MobileMonitorContainer', () => {
         '<div class="viewport-stub"><slot name="canvas" /><slot name="svg-overlay" /><slot /></div>',
     },
     MobileMonitorAudioControl: {
-      template: '<div class="audio-control-stub"></div>'
+      template: '<div class="audio-control-stub"></div>',
     },
     MonitorTextTransformBox: true,
     MonitorTransformBox: true,
@@ -148,11 +148,11 @@ describe('MobileMonitorContainer', () => {
 
     expect(wrapper.find('.viewport-stub').exists()).toBe(true);
     expect(wrapper.find('.audio-control-stub').exists()).toBe(true);
-    
+
     // Check playback buttons
     const playPauseBtn = wrapper.find('[aria-label="fastcat.monitor.play"]');
     expect(playPauseBtn.exists()).toBe(true);
-    
+
     const rewindBtn = wrapper.find('[aria-label="fastcat.monitor.rewind"]');
     expect(rewindBtn.exists()).toBe(true);
   });
@@ -172,7 +172,7 @@ describe('MobileMonitorContainer', () => {
 
   it('shows status text when no media is present', async () => {
     sharedVideoItems.value = []; // NO MEDIA
-    
+
     const wrapper = mount(MobileMonitorContainer, {
       global: {
         plugins: [pinia],
@@ -214,7 +214,7 @@ describe('MobileMonitorContainer', () => {
     // Change to landscape
     sharedIsLandscape.value = true;
     await wrapper.vm.$nextTick();
-    
+
     // In landscape, should have flex-row
     expect(wrapper.classes()).toContain('flex-row');
   });

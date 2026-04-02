@@ -37,7 +37,9 @@ export interface TimelineSelectionModule {
   getSelectedOrActiveTrackId: () => string | null;
 }
 
-export function createTimelineSelectionModule(deps: TimelineSelectionDeps): TimelineSelectionModule {
+export function createTimelineSelectionModule(
+  deps: TimelineSelectionDeps,
+): TimelineSelectionModule {
   const itemToTrackMap = computed(() => {
     const map = new Map<string, string>();
     const doc = deps.timelineDoc.value;

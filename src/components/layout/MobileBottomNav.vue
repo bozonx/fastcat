@@ -65,7 +65,7 @@ async function handleItemClick(itemId: string) {
 <template>
   <nav
     v-if="showNav"
-    class="shrink-0 border-t border-slate-800 bg-slate-950/95 pb-safe backdrop-blur"
+    class="shrink-0 border-t border-zinc-800 bg-zinc-950/95 pb-safe backdrop-blur"
   >
     <div class="grid h-16 grid-cols-5 items-center gap-1 px-1">
       <button
@@ -75,7 +75,7 @@ async function handleItemClick(itemId: string) {
         :class="
           activeTab === item.id || (item.id === 'home' && !isEditorPage)
             ? 'bg-selection-accent-500/12 text-selection-accent-400'
-            : 'text-slate-400 active:bg-slate-900'
+            : 'text-zinc-400 active:bg-zinc-900'
         "
         :aria-pressed="activeTab === item.id || (item.id === 'home' && !isEditorPage)"
         @click="handleItemClick(item.id)"

@@ -148,12 +148,15 @@ const {
   allMuted,
   hasAudioOrVideoWithAudio,
   hasVideoOrImage,
-} = useClipBatchActions(computed(() => selectedClips.value ?? []), {
-  timelineDoc: computed(() => timelineStore.timelineDoc),
-  mediaMetadata: computed(() => mediaStore.mediaMetadata),
-  batchApplyTimeline: (cmds) => timelineStore.batchApplyTimeline(cmds),
-  clearSelection: () => timelineStore.clearSelection(),
-});
+} = useClipBatchActions(
+  computed(() => selectedClips.value ?? []),
+  {
+    timelineDoc: computed(() => timelineStore.timelineDoc),
+    mediaMetadata: computed(() => mediaStore.mediaMetadata),
+    batchApplyTimeline: (cmds) => timelineStore.batchApplyTimeline(cmds),
+    clearSelection: () => timelineStore.clearSelection(),
+  },
+);
 
 function handleCopyClips() {
   clipboardStore.setClipboardPayload({
@@ -727,23 +730,37 @@ async function onClipAction(payload: TimelineClipActionPayload) {
           <MobileDrawerToolbarButton
             v-if="hasVideoOrImage"
             :icon="allDisabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
-            :label="allDisabled ? t('fastcat.timeline.enable', 'Enable') : t('fastcat.timeline.disable', 'Disable')"
+            :label="
+              allDisabled
+                ? t('fastcat.timeline.enable', 'Enable')
+                : t('fastcat.timeline.disable', 'Disable')
+            "
             @click="toggleDisabled"
           />
           <MobileDrawerToolbarButton
             v-if="hasAudioOrVideoWithAudio"
             :icon="allMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
-            :label="allMuted ? t('fastcat.timeline.unmute', 'Unmute') : t('fastcat.timeline.mute', 'Mute')"
+            :label="
+              allMuted ? t('fastcat.timeline.unmute', 'Unmute') : t('fastcat.timeline.mute', 'Mute')
+            "
             @click="toggleMuted"
           />
           <MobileDrawerToolbarButton
             :icon="allSoloed ? 'i-heroicons-star-solid' : 'i-heroicons-star'"
-            :label="allSoloed ? t('fastcat.timeline.unsolo', 'Unsolo') : t('fastcat.timeline.solo', 'Solo')"
+            :label="
+              allSoloed
+                ? t('fastcat.timeline.unsolo', 'Unsolo')
+                : t('fastcat.timeline.solo', 'Solo')
+            "
             @click="toggleSolo"
           />
           <MobileDrawerToolbarButton
             :icon="allLocked ? 'i-heroicons-lock-closed' : 'i-heroicons-lock-open'"
-            :label="allLocked ? t('fastcat.timeline.unlock', 'Unlock') : t('fastcat.timeline.lock', 'Lock')"
+            :label="
+              allLocked
+                ? t('fastcat.timeline.unlock', 'Unlock')
+                : t('fastcat.timeline.lock', 'Lock')
+            "
             @click="toggleLocked"
           />
           <div class="w-px h-6 bg-ui-border mx-1 shrink-0" />
@@ -757,10 +774,10 @@ async function onClipAction(payload: TimelineClipActionPayload) {
 
       <template #header>
         <div class="flex items-center gap-2 min-w-0">
-          <div class="w-7 h-7 rounded bg-slate-800 flex items-center justify-center shrink-0">
-            <UIcon name="i-heroicons-squares-2x2" class="w-4 h-4 text-slate-400" />
+          <div class="w-7 h-7 rounded bg-zinc-800 flex items-center justify-center shrink-0">
+            <UIcon name="i-heroicons-squares-2x2" class="w-4 h-4 text-zinc-400" />
           </div>
-          <span class="text-sm font-bold text-slate-200 truncate leading-none">
+          <span class="text-sm font-bold text-zinc-200 truncate leading-none">
             {{ t('fastcat.timeline.selectedClipsCount', { count: selectedClips?.length ?? 0 }) }}
           </span>
         </div>

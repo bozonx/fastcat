@@ -67,9 +67,9 @@ function jumpToState(entryId: number, isFuture: boolean) {
 <template>
   <UiMobileDrawer
     :open="isOpen"
-    @update:open="$emit('close')"
     :title="$t('videoEditor.fileManager.history.title')"
     :ui="{ body: 'pb-8' }"
+    @update:open="$emit('close')"
   >
     <template #header>
       <div class="flex items-center justify-between w-full">
@@ -96,7 +96,10 @@ function jumpToState(entryId: number, isFuture: boolean) {
     </template>
 
     <div class="px-4 py-2 space-y-1">
-      <div v-if="past.length === 0 && future.length === 0" class="py-20 flex flex-col items-center justify-center gap-4 text-ui-text-muted">
+      <div
+        v-if="past.length === 0 && future.length === 0"
+        class="py-20 flex flex-col items-center justify-center gap-4 text-ui-text-muted"
+      >
         <div class="p-4 rounded-full bg-ui-bg-muted">
           <UIcon name="lucide:history" class="w-8 h-8 opacity-40" />
         </div>
@@ -138,16 +141,12 @@ function jumpToState(entryId: number, isFuture: boolean) {
         >
           <div
             class="w-2 h-2 rounded-full shadow-[0_0_8px_currentColor]"
-            :class="[
-              index === 0 ? 'bg-primary-500' : 'bg-ui-text-muted',
-            ]"
+            :class="[index === 0 ? 'bg-primary-500' : 'bg-ui-text-muted']"
           ></div>
           <div class="flex-1 truncate" :class="[index === 0 ? 'font-semibold' : '']">
             {{ $t(entry.labelKey) }}
           </div>
-          <div
-            class="text-[10px] transition-opacity font-mono opacity-50"
-          >
+          <div class="text-[10px] transition-opacity font-mono opacity-50">
             {{ formatTime(entry.timestamp) }}
           </div>
         </div>

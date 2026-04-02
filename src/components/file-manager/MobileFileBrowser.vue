@@ -53,18 +53,12 @@ const {
   readDirectory,
 } = useFileManager();
 
-const {
-  entries,
-  isLoading,
-  breadcrumbs,
-  loadFolderContent,
-  navigateToRoot,
-  goBack,
-} = useMobileFileBrowserNavigation({
-  readDirectory,
-  vfs,
-  findEntryByPath: (path: string) => findEntryByPath(path) || undefined,
-});
+const { entries, isLoading, breadcrumbs, loadFolderContent, navigateToRoot, goBack } =
+  useMobileFileBrowserNavigation({
+    readDirectory,
+    vfs,
+    findEntryByPath: (path: string) => findEntryByPath(path) || undefined,
+  });
 
 const {
   isSelectionMode,
@@ -175,9 +169,10 @@ const entryToRename = ref<FsEntry | null>(null);
 
 const isCreateFolderModalOpen = ref(false);
 
-const canAddSelectionToTimeline = computed(() =>
-  isSelectionMode.value &&
-  selectedEntries.value.some((e) => e.kind === 'file' && isOpenableProjectFileName(e.name)),
+const canAddSelectionToTimeline = computed(
+  () =>
+    isSelectionMode.value &&
+    selectedEntries.value.some((e) => e.kind === 'file' && isOpenableProjectFileName(e.name)),
 );
 
 async function handleAddToProject() {
@@ -281,7 +276,6 @@ async function wrappedHandleDeleteConfirm() {
   closeAllUI();
 }
 
-
 const sortItems = computed(() =>
   fileManagerStore.sortFields.map((f) => ({
     label: t(f.labelKey),
@@ -314,9 +308,7 @@ const menuItems = computed(() => [
       onSelect: handleCreateFolderRequest,
     },
   ],
-  [
-    ...sortItems.value,
-  ],
+  [...sortItems.value],
   [
     {
       label:
@@ -356,7 +348,7 @@ const menuItems = computed(() => [
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-slate-950 text-slate-200">
+  <div class="flex flex-col h-full bg-zinc-950 text-zinc-200">
     <input ref="fileInput" type="file" multiple class="hidden" @change="onFileSelect" />
 
     <!-- Navigation (Breadcrumbs/Back) -->
@@ -370,7 +362,9 @@ const menuItems = computed(() => [
       @back="goBack"
       @cancel-selection="toggleSelectionMode"
       @navigate-root="navigateToRoot"
-      @navigate-breadcrumb="(name, path) => fileManagerStore.openFolder({ kind: 'directory', name, path })"
+      @navigate-breadcrumb="
+        (name, path) => fileManagerStore.openFolder({ kind: 'directory', name, path })
+      "
     />
 
     <!-- File Grid -->
@@ -424,7 +418,12 @@ const menuItems = computed(() => [
     <!-- Action FAB -->
     <Teleport to="body">
       <div
-        v-if="!isSelectionMode && !isDrawerOpen && !isCreateMenuOpen && !clipboardStore.hasFileManagerPayload"
+        v-if="
+          !isSelectionMode &&
+          !isDrawerOpen &&
+          !isCreateMenuOpen &&
+          !clipboardStore.hasFileManagerPayload
+        "
         class="fixed bottom-20 right-6 z-40 transition-all duration-300"
       >
         <UButton

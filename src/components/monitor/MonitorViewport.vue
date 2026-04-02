@@ -13,23 +13,26 @@ import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import type { TimelineMarker } from '~/timeline/types';
 
-const props = withDefaults(defineProps<{
-  renderWidth: number;
-  renderHeight: number;
-  isIdle?: boolean;
-  effectiveFullscreen?: boolean;
-  uiCurrentTimeUs?: number;
-  timecodeOffsetClass?: string;
-  markersOffsetClass?: string;
-  isMobile?: boolean;
-}>(), {
-  isIdle: false,
-  effectiveFullscreen: false,
-  uiCurrentTimeUs: 0,
-  timecodeOffsetClass: '',
-  markersOffsetClass: '',
-  isMobile: false,
-});
+const props = withDefaults(
+  defineProps<{
+    renderWidth: number;
+    renderHeight: number;
+    isIdle?: boolean;
+    effectiveFullscreen?: boolean;
+    uiCurrentTimeUs?: number;
+    timecodeOffsetClass?: string;
+    markersOffsetClass?: string;
+    isMobile?: boolean;
+  }>(),
+  {
+    isIdle: false,
+    effectiveFullscreen: false,
+    uiCurrentTimeUs: 0,
+    timecodeOffsetClass: '',
+    markersOffsetClass: '',
+    isMobile: false,
+  },
+);
 
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
@@ -137,7 +140,7 @@ defineExpose({
           :class="[
             effectiveFullscreen ? 'bottom-32 right-8' : 'bottom-11 right-3',
             effectiveFullscreen && isIdle ? 'opacity-0' : 'opacity-100',
-            markersOffsetClass
+            markersOffsetClass,
           ]"
         >
           <div
@@ -157,7 +160,7 @@ defineExpose({
           :class="[
             effectiveFullscreen ? 'bottom-24 right-8' : 'bottom-3 right-3',
             effectiveFullscreen && isIdle ? 'opacity-0' : 'opacity-100',
-            timecodeOffsetClass
+            timecodeOffsetClass,
           ]"
         >
           00:00:00:00 / 00:00:00:00

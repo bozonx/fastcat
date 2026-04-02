@@ -33,7 +33,9 @@ const mediaTypes = computed(() => {
 
 const needsAudioTracks = computed(() => mediaTypes.value.has('audio'));
 const needsVideoTracks = computed(() =>
-  Array.from(mediaTypes.value).some((type) => ['video', 'image', 'text', 'timeline'].includes(type)),
+  Array.from(mediaTypes.value).some((type) =>
+    ['video', 'image', 'text', 'timeline'].includes(type),
+  ),
 );
 
 const filteredTracks = computed(() => {
@@ -48,15 +50,22 @@ const filteredTracks = computed(() => {
 const selectedTrackId = ref<string | 'new'>('new');
 
 // Initialize selected track when modal opens or tracks change
-watch(() => props.open, (val) => {
-  if (val) {
-    if (timelineStore.selectedTrackId && filteredTracks.value.some(t => t.id === timelineStore.selectedTrackId)) {
-      selectedTrackId.value = timelineStore.selectedTrackId;
-    } else {
-      selectedTrackId.value = 'new';
+watch(
+  () => props.open,
+  (val) => {
+    if (val) {
+      if (
+        timelineStore.selectedTrackId &&
+        filteredTracks.value.some((t) => t.id === timelineStore.selectedTrackId)
+      ) {
+        selectedTrackId.value = timelineStore.selectedTrackId;
+      } else {
+        selectedTrackId.value = 'new';
+      }
     }
-  }
-}, { immediate: true });
+  },
+  { immediate: true },
+);
 
 const currentTimeLabel = computed(() => {
   return formatDurationSeconds(timelineStore.currentTime / 1e6);
@@ -76,15 +85,18 @@ async function handleAdd() {
     // Handle "new" track creation
     if (targetTrackId === 'new') {
       const kind = needsVideoTracks.value ? 'video' : 'audio';
-      const name = kind === 'video' ? `Video ${filteredTracks.value.filter(t => t.kind === 'video').length + 1}` : `Audio ${filteredTracks.value.filter(t => t.kind === 'audio').length + 1}`;
-      
+      const name =
+        kind === 'video'
+          ? `Video ${filteredTracks.value.filter((t) => t.kind === 'video').length + 1}`
+          : `Audio ${filteredTracks.value.filter((t) => t.kind === 'audio').length + 1}`;
+
       // We need to wait for the track to be added to the doc to get its ID
       // addTrack is synchronous in store but the doc update might be processed next tick or immediate
       timelineStore.addTrack(kind, name);
-      
+
       // Find the last added track of this kind
       const tracks = timelineStore.timelineDoc?.tracks || [];
-      const newTrack = tracks.filter(t => t.kind === kind).pop();
+      const newTrack = tracks.filter((t) => t.kind === kind).pop();
       if (newTrack) {
         targetTrackId = newTrack.id;
       }
@@ -95,22 +107,22 @@ async function handleAdd() {
       const mediaType = getMediaTypeFromFilename(entry.name);
       const isAudio = mediaType === 'audio';
       const requiredKind = isAudio ? 'audio' : 'video';
-      
+
       // Determine track for this specific entry
       let trackIdForThisEntry = targetTrackId;
-      const targetTrack = timelineStore.timelineDoc?.tracks.find(t => t.id === targetTrackId);
-      
+      const targetTrack = timelineStore.timelineDoc?.tracks.find((t) => t.id === targetTrackId);
+
       if (!targetTrack || targetTrack.kind !== requiredKind) {
-          // Find first compatible track or create one
-          const compatible = timelineStore.timelineDoc?.tracks.find(t => t.kind === requiredKind);
-          if (compatible) {
-              trackIdForThisEntry = compatible.id;
-          } else {
-              const name = requiredKind === 'video' ? 'Video' : 'Audio';
-              timelineStore.addTrack(requiredKind, name);
-              const nt = timelineStore.timelineDoc?.tracks.filter(t => t.kind === requiredKind).pop();
-              if (nt) trackIdForThisEntry = nt.id;
-          }
+        // Find first compatible track or create one
+        const compatible = timelineStore.timelineDoc?.tracks.find((t) => t.kind === requiredKind);
+        if (compatible) {
+          trackIdForThisEntry = compatible.id;
+        } else {
+          const name = requiredKind === 'video' ? 'Video' : 'Audio';
+          timelineStore.addTrack(requiredKind, name);
+          const nt = timelineStore.timelineDoc?.tracks.filter((t) => t.kind === requiredKind).pop();
+          if (nt) trackIdForThisEntry = nt.id;
+        }
       }
 
       await timelineStore.addClipToTimelineFromPath({
@@ -135,60 +147,82 @@ async function handleAdd() {
 <template>
   <UiMobileDrawer v-model:open="isOpen" :title="t('common.addToTimeline', 'Add to timeline')">
     <div class="px-4 pt-2 pb-8 space-y-6">
-      <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-inner">
-        <p class="text-xs font-medium text-slate-500 uppercase tracking-widest">
+      <div class="p-4 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-inner">
+        <p class="text-xs font-medium text-zinc-500 uppercase tracking-widest">
           {{ t('mobileFiles.insertAfter', 'Insert after playhead') }}
         </p>
         <p class="text-2xl font-mono font-bold text-primary-400 mt-1">
           {{ currentTimeLabel }}
         </p>
-        <p class="text-[10px] text-slate-500 mt-2 leading-relaxed">
-          {{ t('mobileFiles.addToTimelineDisclaimer', 'Выбранные файлы будут добавлены на таймлайн начиная с этой позиции.') }}
+        <p class="text-[10px] text-zinc-500 mt-2 leading-relaxed">
+          {{
+            t(
+              'mobileFiles.addToTimelineDisclaimer',
+              'Выбранные файлы будут добавлены на таймлайн начиная с этой позиции.',
+            )
+          }}
         </p>
       </div>
 
       <div class="space-y-3">
         <div class="flex items-center justify-between px-1">
-          <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">
+          <p class="text-xs font-bold text-zinc-400 uppercase tracking-wider">
             {{ t('mobileFiles.chooseTargetTrack', 'Target Track') }}
           </p>
-          <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-500 font-medium">
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-500 font-medium">
             {{ entries.length }} {{ t('common.items', 'items') }}
           </span>
         </div>
-        
+
         <div class="grid gap-2 overflow-y-auto max-h-[40dvh] pr-1">
           <button
             v-for="track in filteredTracks"
             :key="track.id"
             class="group relative flex items-center justify-between p-4 rounded-2xl border-2 transition-all duration-200"
             :class="[
-              selectedTrackId === track.id 
-                ? 'border-primary-500 bg-primary-500/10 scale-[1.02] z-10' 
-                : 'border-slate-800/50 bg-slate-900/40 text-slate-400 hover:border-slate-700 hover:bg-slate-900/60'
+              selectedTrackId === track.id
+                ? 'border-primary-500 bg-primary-500/10 scale-[1.02] z-10'
+                : 'border-zinc-800/50 bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:bg-zinc-900/60',
             ]"
             @click="selectedTrackId = track.id"
           >
             <div class="flex items-center gap-4">
-              <div 
+              <div
                 class="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
-                :class="selectedTrackId === track.id ? 'bg-primary-500/20 text-primary-400' : 'bg-slate-800 text-slate-500 shadow-sm'"
+                :class="
+                  selectedTrackId === track.id
+                    ? 'bg-primary-500/20 text-primary-400'
+                    : 'bg-zinc-800 text-zinc-500 shadow-sm'
+                "
               >
-                <Icon 
-                  :name="track.kind === 'video' ? 'lucide:film' : 'lucide:music'" 
+                <Icon
+                  :name="track.kind === 'video' ? 'lucide:film' : 'lucide:music'"
                   class="w-5 h-5"
                 />
               </div>
               <div>
-                <p class="font-bold text-sm" :class="selectedTrackId === track.id ? 'text-white' : 'text-slate-200'">{{ track.name }}</p>
+                <p
+                  class="font-bold text-sm"
+                  :class="selectedTrackId === track.id ? 'text-white' : 'text-zinc-200'"
+                >
+                  {{ track.name }}
+                </p>
                 <p class="text-[10px] font-medium opacity-60 uppercase tracking-tighter">
-                  {{ track.kind === 'video' ? t('common.video', 'Video Track') : t('common.audio', 'Audio Track') }}
+                  {{
+                    track.kind === 'video'
+                      ? t('common.video', 'Video Track')
+                      : t('common.audio', 'Audio Track')
+                  }}
                 </p>
               </div>
             </div>
-            <div 
+            <div
               class="w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200"
-              :class="selectedTrackId === track.id ? 'bg-primary-500 scale-100' : 'bg-slate-800 scale-75 opacity-0'"
+              :class="
+                selectedTrackId === track.id
+                  ? 'bg-primary-500 scale-100'
+                  : 'bg-zinc-800 scale-75 opacity-0'
+              "
             >
               <Icon name="lucide:check" class="w-4 h-4 text-white" />
             </div>
@@ -197,24 +231,28 @@ async function handleAdd() {
           <button
             class="group relative flex items-center justify-between p-4 rounded-2xl border-2 transition-all duration-200"
             :class="[
-              selectedTrackId === 'new' 
-                ? 'border-primary-500 bg-primary-500/10 scale-[1.02] z-10' 
-                : 'border-slate-800/50 bg-slate-900/40 text-slate-400 hover:border-slate-700 hover:bg-slate-900/60'
+              selectedTrackId === 'new'
+                ? 'border-primary-500 bg-primary-500/10 scale-[1.02] z-10'
+                : 'border-zinc-800/50 bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:bg-zinc-900/60',
             ]"
             @click="selectedTrackId = 'new'"
           >
             <div class="flex items-center gap-4">
-              <div 
+              <div
                 class="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
-                :class="selectedTrackId === 'new' ? 'bg-primary-500/20 text-primary-400' : 'bg-slate-800 text-slate-500 shadow-sm'"
+                :class="
+                  selectedTrackId === 'new'
+                    ? 'bg-primary-500/20 text-primary-400'
+                    : 'bg-zinc-800 text-zinc-500 shadow-sm'
+                "
               >
-                <Icon 
-                  name="lucide:plus-circle" 
-                  class="w-5 h-5"
-                />
+                <Icon name="lucide:plus-circle" class="w-5 h-5" />
               </div>
               <div>
-                <p class="font-bold text-sm" :class="selectedTrackId === 'new' ? 'text-white' : 'text-slate-200'">
+                <p
+                  class="font-bold text-sm"
+                  :class="selectedTrackId === 'new' ? 'text-white' : 'text-zinc-200'"
+                >
                   {{ t('mobileFiles.createNewTrack', 'Create New Track') }}
                 </p>
                 <p class="text-[10px] font-medium opacity-60 uppercase tracking-tighter">
@@ -222,9 +260,13 @@ async function handleAdd() {
                 </p>
               </div>
             </div>
-            <div 
+            <div
               class="w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200"
-              :class="selectedTrackId === 'new' ? 'bg-primary-500 scale-100' : 'bg-slate-800 scale-75 opacity-0'"
+              :class="
+                selectedTrackId === 'new'
+                  ? 'bg-primary-500 scale-100'
+                  : 'bg-zinc-800 scale-75 opacity-0'
+              "
             >
               <Icon name="lucide:check" class="w-4 h-4 text-white" />
             </div>

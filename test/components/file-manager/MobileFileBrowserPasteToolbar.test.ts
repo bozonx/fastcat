@@ -24,8 +24,8 @@ describe('MobileFileBrowserPasteToolbar', () => {
 
     const wrapper = await mountSuspended(MobileFileBrowserPasteToolbar, {
       global: {
-        stubs: { UButton: true }
-      }
+        stubs: { UButton: true },
+      },
     });
 
     expect(wrapper.text()).toContain('common.copied');
@@ -40,8 +40,8 @@ describe('MobileFileBrowserPasteToolbar', () => {
 
     const wrapper = await mountSuspended(MobileFileBrowserPasteToolbar, {
       global: {
-        stubs: { UButton: true }
-      }
+        stubs: { UButton: true },
+      },
     });
 
     expect(wrapper.text()).toContain('common.cut');
@@ -52,9 +52,9 @@ describe('MobileFileBrowserPasteToolbar', () => {
     const wrapper = await mountSuspended(MobileFileBrowserPasteToolbar, {
       global: {
         stubs: {
-          UButton: { template: '<button @click="$emit(\'click\')"><slot /></button>' }
-        }
-      }
+          UButton: { template: '<button @click="$emit(\'click\')"><slot /></button>' },
+        },
+      },
     });
 
     const buttons = wrapper.findAll('button');

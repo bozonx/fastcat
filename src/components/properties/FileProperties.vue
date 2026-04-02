@@ -207,17 +207,13 @@ async function copyToClipboard(text: string) {
 
 const isVideoFile = computed(() => mediaType.value === 'video');
 
-const isFormatUnsupported = computed(
-  () => Boolean(selectedPath.value && mediaStore.metadataLoadFailed[selectedPath.value]),
+const isFormatUnsupported = computed(() =>
+  Boolean(selectedPath.value && mediaStore.metadataLoadFailed[selectedPath.value]),
 );
 
-const isVideoCodecUnsupported = computed(
-  () => mediaMeta.value?.video?.canDecode === false,
-);
+const isVideoCodecUnsupported = computed(() => mediaMeta.value?.video?.canDecode === false);
 
-const isAudioCodecUnsupported = computed(
-  () => mediaMeta.value?.audio?.canDecode === false,
-);
+const isAudioCodecUnsupported = computed(() => mediaMeta.value?.audio?.canDecode === false);
 
 const isImageUnsupported = computed(
   () => mediaType.value === 'image' && mediaMeta.value?.image?.canDisplay === false,

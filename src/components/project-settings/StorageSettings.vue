@@ -69,7 +69,6 @@ watch(
     updateStats();
   },
 );
-
 </script>
 
 <template>
@@ -91,10 +90,7 @@ watch(
               <span v-else class="opacity-50">—</span>
             </div>
           </div>
-          <UIcon
-            name="i-heroicons-folder"
-            class="w-5 h-5 text-ui-text-muted shrink-0"
-          />
+          <UIcon name="i-heroicons-folder" class="w-5 h-5 text-ui-text-muted shrink-0" />
         </div>
       </div>
 

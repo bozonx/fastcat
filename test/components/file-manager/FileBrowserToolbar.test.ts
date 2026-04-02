@@ -22,7 +22,6 @@ const mockUiStore = reactive({
 vi.mock('~/stores/files-page.store', () => ({ useFilesPageStore: () => mockFilesPageStore }));
 vi.mock('~/stores/ui.store', () => ({ useUiStore: () => mockUiStore }));
 
-
 describe('FileBrowserToolbar', () => {
   beforeEach(() => {
     vi.clearAllMocks();

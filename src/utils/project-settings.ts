@@ -112,8 +112,12 @@ function getProjectSettingsFromUserDefaults(
   userSettings: ProjectSettingsUserDefaultsInput | undefined | null,
 ): Pick<FastCatProjectSettings, 'project' | 'exportDefaults'> {
   const settings = userSettings || DEFAULT_USER_SETTINGS;
-  const projectPreset = resolveProjectPreset(settings.projectPresets || DEFAULT_USER_SETTINGS.projectPresets);
-  const exportPreset = resolveExportPreset(settings.exportPresets || DEFAULT_USER_SETTINGS.exportPresets);
+  const projectPreset = resolveProjectPreset(
+    settings.projectPresets || DEFAULT_USER_SETTINGS.projectPresets,
+  );
+  const exportPreset = resolveExportPreset(
+    settings.exportPresets || DEFAULT_USER_SETTINGS.exportPresets,
+  );
 
   return {
     project: {
@@ -125,7 +129,8 @@ function getProjectSettingsFromUserDefaults(
       aspectRatio: projectPreset.aspectRatio,
       isCustomResolution: projectPreset.isCustomResolution,
       sampleRate: projectPreset.sampleRate,
-      audioDeclickDurationUs: (settings.projectDefaults || DEFAULT_USER_SETTINGS.projectDefaults).audioDeclickDurationUs,
+      audioDeclickDurationUs: (settings.projectDefaults || DEFAULT_USER_SETTINGS.projectDefaults)
+        .audioDeclickDurationUs,
       isAutoSettings: true,
     },
     exportDefaults: {

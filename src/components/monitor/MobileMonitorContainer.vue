@@ -52,7 +52,6 @@ const {
 
 const { timelineDoc } = storeToRefs(timelineStore);
 
-
 const canInteractPlayback = computed(
   () => !isLoading.value && (safeDurationUs.value > 0 || videoItems.value.length > 0),
 );
@@ -198,7 +197,9 @@ const internalLayout = computed<'left' | 'right' | 'top' | 'bottom'>(() => {
   return isLandscape.value ? 'top' : 'bottom';
 });
 
-const showSideControls = computed(() => internalLayout.value === 'left' || internalLayout.value === 'right');
+const showSideControls = computed(
+  () => internalLayout.value === 'left' || internalLayout.value === 'right',
+);
 
 // --- Marker button logic ---
 const isMarkersDrawerOpen = ref(false);
@@ -369,13 +370,15 @@ const containerHeightClass = computed(() => {
       <div
         class="flex gap-3"
         :class="[
-          showSideControls ? 'flex-col justify-between h-full items-center' : 'items-center justify-between h-full',
+          showSideControls
+            ? 'flex-col justify-between h-full items-center'
+            : 'items-center justify-between h-full',
         ]"
       >
-      <div
-        class="flex items-center gap-4 overflow-x-auto no-scrollbar"
-        :class="[showSideControls ? 'flex-col' : '']"
-      >
+        <div
+          class="flex items-center gap-4 overflow-x-auto no-scrollbar"
+          :class="[showSideControls ? 'flex-col' : '']"
+        >
           <UButton
             size="xs"
             variant="ghost"
@@ -399,10 +402,6 @@ const containerHeightClass = computed(() => {
             @pointerleave="stopMarkerLongPress"
           />
 
-
-
-
-
           <UButton
             size="xs"
             variant="ghost"
@@ -424,10 +423,7 @@ const containerHeightClass = computed(() => {
           </UDropdownMenu>
         </div>
 
-        <div
-          class="flex items-center gap-4"
-          :class="[showSideControls ? 'flex-col' : 'h-full']"
-        >
+        <div class="flex items-center gap-4" :class="[showSideControls ? 'flex-col' : 'h-full']">
           <MobileMonitorAudioControl />
 
           <UButton
@@ -449,7 +445,7 @@ const containerHeightClass = computed(() => {
             :class="[
               showSideControls
                 ? 'w-full aspect-square rounded-full'
-                : 'h-full aspect-square rounded-full'
+                : 'h-full aspect-square rounded-full',
             ]"
             :ui="{ icon: 'w-8 h-8' }"
             :aria-label="t('fastcat.monitor.play', 'Play')"

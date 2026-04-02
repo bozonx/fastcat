@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import FileBrowserModals from '~/components/file-manager/FileBrowserModals.vue';
 
-
 describe('FileBrowserModals', () => {
   beforeEach(() => {
     vi.clearAllMocks();

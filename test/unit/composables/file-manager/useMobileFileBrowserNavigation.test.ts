@@ -8,7 +8,7 @@ import { WORKSPACE_COMMON_DIR_NAME, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils
 vi.mock('vue', async () => {
   const actual = await vi.importActual('vue');
   return {
-    ...actual as any,
+    ...(actual as any),
     onMounted: vi.fn(),
     onBeforeUnmount: vi.fn(),
   };

@@ -34,9 +34,7 @@ function onVolumeUpdate(v: number | undefined) {
 
 <template>
   <div class="relative flex items-center shrink-0">
-    <UPopover
-      :content="{ side: 'top', sideOffset: 12, class: 'p-0 max-w-none' }"
-    >
+    <UPopover :content="{ side: 'top', sideOffset: 12, class: 'p-0 max-w-none' }">
       <UButton
         size="md"
         variant="ghost"

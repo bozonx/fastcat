@@ -90,15 +90,15 @@ const isExpanded = computed(() => {
 const containerClasses = computed(() => {
   const base =
     'flex flex-col relative overflow-hidden shadow-2xl transition-all duration-300 pointer-events-auto z-50';
-  const bgColor = 'bg-slate-900/95 backdrop-blur-2xl ring-1 ring-white/5';
+  const bgColor = 'bg-zinc-900/95 backdrop-blur-2xl ring-1 ring-white/5';
 
   if (effectiveDirection.value === 'right' || effectiveDirection.value === 'left') {
     const sideBorder = effectiveDirection.value === 'right' ? 'border-l' : 'border-r';
-    return `${base} max-h-dvh h-screen w-[50vw] sm:w-[40vw] ml-auto ${sideBorder} border-slate-800/80 ${bgColor} ${props.ui.container || ''}`;
+    return `${base} max-h-dvh h-screen w-[50vw] sm:w-[40vw] ml-auto ${sideBorder} border-zinc-800/80 ${bgColor} ${props.ui.container || ''}`;
   }
 
   const heightClass = props.isFullHeight ? 'h-[95dvh]' : 'max-h-[85dvh]';
-  return `${base} ${heightClass} w-full border-t border-slate-800/80 ${bgColor} rounded-t-2xl ${props.ui.container || ''}`;
+  return `${base} ${heightClass} w-full border-t border-zinc-800/80 ${bgColor} rounded-t-2xl ${props.ui.container || ''}`;
 });
 
 // --- Non-modal Backdrop Logic (for interactive drawers like timeline) ---
@@ -183,7 +183,7 @@ watch(isOpen, (val) => {
 <template>
   <Teleport v-if="!props.modal" to="body">
     <div
-      class="fixed inset-0 bg-slate-950/40 backdrop-blur-[2px] transition-all duration-300 z-40"
+      class="fixed inset-0 bg-zinc-950/40 backdrop-blur-[2px] transition-all duration-300 z-40"
       :class="[
         isOpen && (props.modal || isExpanded) ? 'opacity-100' : 'opacity-0 pointer-events-none',
         props.modal || isBackdropInteractive ? 'pointer-events-auto' : 'pointer-events-none',
@@ -223,7 +223,7 @@ watch(isOpen, (val) => {
         >
           <div class="flex justify-center py-2.5">
             <div
-              class="w-12 h-1.5 rounded-full bg-slate-700/40 group-hover:bg-slate-600/60 transition-colors"
+              class="w-12 h-1.5 rounded-full bg-zinc-700/40 group-hover:bg-zinc-600/60 transition-colors"
             ></div>
           </div>
         </div>
@@ -237,7 +237,7 @@ watch(isOpen, (val) => {
           :class="effectiveDirection === 'right' ? 'left-0 w-6' : 'right-0 w-6'"
         >
           <div
-            class="w-1 h-12 rounded-full bg-slate-700/60 cursor-pointer pointer-events-auto"
+            class="w-1 h-12 rounded-full bg-zinc-700/60 cursor-pointer pointer-events-auto"
             @click.stop="onHandleTap"
           />
         </div>
@@ -257,11 +257,11 @@ watch(isOpen, (val) => {
             <slot name="header">
               <h3
                 v-if="props.title"
-                class="text-base font-bold text-slate-100 leading-tight truncate"
+                class="text-base font-bold text-zinc-100 leading-tight truncate"
               >
                 {{ props.title }}
               </h3>
-              <p v-if="props.description" class="mt-0.5 text-xs text-slate-400 line-clamp-2">
+              <p v-if="props.description" class="mt-0.5 text-xs text-zinc-400 line-clamp-2">
                 {{ props.description }}
               </p>
             </slot>
@@ -269,7 +269,7 @@ watch(isOpen, (val) => {
 
           <button
             v-if="props.showClose"
-            class="shrink-0 p-2 -mr-2 rounded-full text-slate-400 hover:text-slate-100 hover:bg-white/10 transition-colors"
+            class="shrink-0 p-2 -mr-2 rounded-full text-zinc-400 hover:text-zinc-100 hover:bg-white/10 transition-colors"
             :class="props.ui.close"
             @click="onClose"
           >
@@ -289,7 +289,7 @@ watch(isOpen, (val) => {
         <!-- Footer -->
         <div
           v-if="$slots.footer"
-          class="shrink-0 px-5 py-4 border-t border-slate-800/60"
+          class="shrink-0 px-5 py-4 border-t border-zinc-800/60"
           :class="props.ui.footer"
         >
           <slot name="footer" />

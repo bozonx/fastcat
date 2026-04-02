@@ -47,15 +47,10 @@ const snapFull = computed(() =>
 );
 
 const snapPoints = computed(() =>
-  effectiveDirection.value === 'bottom'
-    ? [props.toolbarSnapHeight, snapFull.value]
-    : undefined,
+  effectiveDirection.value === 'bottom' ? [props.toolbarSnapHeight, snapFull.value] : undefined,
 );
 
-
-const showPositionToggle = computed(
-  () => isLandscape.value && !props.forceLandscapeDirection,
-);
+const showPositionToggle = computed(() => isLandscape.value && !props.forceLandscapeDirection);
 
 function toggleLandscapePosition() {
   settingsStore.landscapeDrawerPosition =
@@ -78,20 +73,20 @@ function toggleLandscapePosition() {
   >
     <template #toolbar>
       <slot name="toolbar" />
-      
+
       <!-- Landscape position toggle (Bottom mode) -->
       <button
         v-if="showPositionToggle && !isRightMode"
-        class="absolute right-3 top-2 p-1.5 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 transition-colors z-20"
+        class="absolute right-3 top-2 p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 transition-colors z-20"
         @click.stop="toggleLandscapePosition"
       >
         <UIcon name="lucide:panel-right" class="w-4 h-4" />
       </button>
-      
+
       <!-- Landscape position toggle (Right mode) -->
       <button
         v-if="showPositionToggle && isRightMode"
-        class="absolute left-1 top-1/2 -translate-y-10 p-1 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 transition-colors z-20"
+        class="absolute left-1 top-1/2 -translate-y-10 p-1 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 transition-colors z-20"
         @click.stop="toggleLandscapePosition"
       >
         <UIcon name="lucide:panel-bottom" class="w-4 h-4" />
@@ -105,4 +100,3 @@ function toggleLandscapePosition() {
     <slot />
   </UiMobileDrawer>
 </template>
-
