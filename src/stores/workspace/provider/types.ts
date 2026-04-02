@@ -1,6 +1,6 @@
 import type { DirectoryHandleLike } from '~/repositories/app-fs.repository';
 
-export interface WorkspaceStorageProvider {
+export interface WorkspaceProvider {
   id: string;
   isSupported: boolean;
   openWorkspace(): Promise<DirectoryHandleLike | null>;

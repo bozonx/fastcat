@@ -1,3 +1,4 @@
+/** @vitest-environment node */
 import { describe, it, expect, vi } from 'vitest';
 import type { AppNotificationService } from '~/services/app-notification.service';
 import type { I18nService } from '~/services/i18n.service';

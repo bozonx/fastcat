@@ -14,6 +14,7 @@ export interface WorkspaceInitDeps {
   isLoading: Ref<boolean>;
   error: Ref<string | null>;
   isInitializing: Ref<boolean>;
+  isEphemeral: Ref<boolean>;
 
   loadProjects: () => Promise<void>;
   loadAppSettingsFromDisk: () => Promise<void>;
@@ -101,6 +102,11 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
   }
 
   async function init() {
+    if (deps.isEphemeral.value) {
+      deps.isInitializing.value = false;
+      return;
+    }
+
     if (!deps.workspaceProvider.isSupported) {
       deps.isInitializing.value = false;
       return;

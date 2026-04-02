@@ -1,7 +1,12 @@
 /** @vitest-environment node */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { applyTimelineCommand } from '~/timeline/commands';
 import type { TimelineDocument, TimelineTrack } from '~/timeline/types';
+import { initTransitions } from '~/transitions';
+
+beforeAll(() => {
+  initTransitions();
+});
 
 function makeDoc(track: TimelineTrack): TimelineDocument {
   return {
