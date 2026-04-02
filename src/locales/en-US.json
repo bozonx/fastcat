@@ -675,6 +675,7 @@
     },
     "timeline": {
       "addAdjustment": "Add adjustment clip",
+      "addContent": "Add content",
       "addAdjustmentClip": "Add adjustment clip",
       "addAudioTrack": "Add audio track",
       "addAudioTrackAbove": "Add audio track above",
@@ -1168,6 +1169,7 @@
         "filesCount": "Files Count"
       },
       "history": {
+        "title": "History",
         "empty": "No history yet. Start editing to record actions.",
         "entries": {
           "createFolder": "Create folder",
