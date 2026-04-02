@@ -43,6 +43,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const isLoading = ref(false);
   const error = ref<string | null>(null);
   const isInitializing = ref(true);
+  const isEphemeral = ref(false);
   const lastProjectName = ref<string | null>(
     readLocalStorageString('fastcat:workspace:last-opened-project'),
   );
@@ -97,7 +98,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     projectsModule;
 
   watch(lastProjectName, (v) => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || isEphemeral.value) return;
     try {
       if (v === null) {
         window.localStorage.removeItem('fastcat:workspace:last-opened-project');
@@ -112,7 +113,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   watch(
     recentProjects,
     (v) => {
-      if (typeof window === 'undefined') return;
+      if (typeof window === 'undefined' || isEphemeral.value) return;
       try {
         window.localStorage.setItem('fastcat:workspace:recent-projects', JSON.stringify(v));
       } catch {
@@ -239,6 +240,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
     isLoading.value = true;
     error.value = null;
+    isEphemeral.value = true;
     try {
       const root = await navigator.storage.getDirectory();
       // Use a dedicated subfolder for the embedded editor to avoid conflicts
@@ -301,6 +303,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     setupWorkspace,
     loadProjects,
     isInitializing,
+    isEphemeral,
     clearVardata,
     clearProjectVardata,
     deleteProject,

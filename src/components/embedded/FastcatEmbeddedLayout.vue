@@ -52,8 +52,42 @@ async function initEmbedded() {
       getProjectFileHandle: (path, options) => projectStore.getProjectFileHandleByRelativePath({ relativePath: path, ...options })
     });
     
-    // Add assets to timeline automatically if needed, or just let them stay in file manager
-    // For now we just load them into the file system.
+    // Auto-add assets to timeline if it's empty
+    const isTimelineEmpty = (timelineStore.timelineDoc?.tracks.reduce((acc, t) => acc + t.items.length, 0) || 0) === 0;
+    
+    if (isTimelineEmpty) {
+      let currentOffsetUs = 0;
+      
+      for (const res of results) {
+        if (!res.success) continue;
+        
+        // Resolve kind for the track selection
+        const kind = res.asset.type === 'video' || res.asset.type === 'image' ? 'video' : 'audio';
+        const trackId = timelineStore.resolveMobileTargetTrackId(kind);
+        
+        // Add to timeline
+        await timelineStore.addClipToTimelineFromPath({
+          trackId,
+          name: res.asset.filename || 'Clip',
+          path: res.path,
+          startUs: currentOffsetUs,
+          pseudo: true // Automatically handle gaps and overlaps
+        });
+        
+        currentOffsetUs += 5000000; // 5 seconds offset for next clip
+      }
+    }
+  }
+  
+  // Wait for timeline to be loaded
+  let retries = 0;
+  while (!timelineStore.timelineDoc && retries < 100) {
+    await new Promise(resolve => setTimeout(resolve, 50));
+    retries++;
+  }
+  
+  if (!timelineStore.timelineDoc) {
+    console.warn('[Embedded] Timeline failed to load within timeout');
   }
   
   isReady.value = true;

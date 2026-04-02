@@ -9,9 +9,28 @@ definePageMeta({
 
 const workspaceStore = useWorkspaceStore();
 
+const assets = [
+  { url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4' },
+  { url: 'https://raw.githubusercontent.com/mdn/webaudio-examples/master/audio-analyser/viper.mp3' },
+  { url: 'https://picsum.photos/seed/fastcat/1280/720.jpg' }
+];
+
+function onExported(data: any) {
+  console.log('[TestPage] Exported successfully:', data);
+  const { file, filename } = data;
+  
+  // Create download link for testing
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 onMounted(async () => {
   // Ensure we are in a clean state for testing
-  await workspaceStore.resetWorkspace();
+  await workspaceStore.initAutomaticWorkspace();
 });
 </script>
 
@@ -19,7 +38,7 @@ onMounted(async () => {
   <div class="fixed inset-0 w-screen h-screen overflow-hidden bg-black flex flex-col items-stretch justify-items-stretch">
     <!-- Fastcat Embedded Editor Root -->
     <client-only>
-      <FastcatEmbeddedLayout />
+      <FastcatEmbeddedLayout :assets="assets" @exported="onExported" />
     </client-only>
 
     <!-- Debug info overlay (optional, can be hidden) -->

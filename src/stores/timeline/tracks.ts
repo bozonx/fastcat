@@ -79,7 +79,7 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
 
   function resolveTargetVideoTrackIdForInsert(): string {
     const doc = deps.timelineDoc.value;
-    if (!doc) throw new Error('Timeline not loaded');
+    if (!doc) return 'v1';
 
     const selected =
       typeof deps.selectedTrackId.value === 'string'
@@ -95,7 +95,7 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
 
   function resolveMobileTargetTrackId(kind: 'video' | 'audio'): string {
     const doc = deps.timelineDoc.value;
-    if (!doc) throw new Error('Timeline not loaded');
+    if (!doc) return kind === 'video' ? 'v1' : 'a1';
 
     // 1. If a clip or gap is selected, use its track (if kind matches)
     if (deps.selectedItemIds.value.length > 0) {

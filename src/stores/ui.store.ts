@@ -27,6 +27,7 @@ export interface PendingRemoteDownloadRequest {
 }
 
 export const useUiStore = defineStore('ui', () => {
+  const workspaceStore = useWorkspaceStore();
   const selectedFsEntry = ref<FsEntrySelection | null>(null);
   const showHiddenFiles = ref(readLocalStorageJson('fastcat:ui:show-hidden-files', false));
   const monitorVolume = ref(readLocalStorageJson('fastcat:ui:monitor-volume', 1));
@@ -34,17 +35,26 @@ export const useUiStore = defineStore('ui', () => {
 
   watch(
     () => showHiddenFiles.value,
-    (val) => writeLocalStorageJson('fastcat:ui:show-hidden-files', val),
+    (val) => {
+      if (workspaceStore.isEphemeral) return;
+      writeLocalStorageJson('fastcat:ui:show-hidden-files', val);
+    },
   );
 
   watch(
     () => monitorVolume.value,
-    (val) => writeLocalStorageJson('fastcat:ui:monitor-volume', val),
+    (val) => {
+      if (workspaceStore.isEphemeral) return;
+      writeLocalStorageJson('fastcat:ui:monitor-volume', val);
+    },
   );
 
   watch(
     () => monitorMuted.value,
-    (val) => writeLocalStorageJson('fastcat:ui:monitor-muted', val),
+    (val) => {
+      if (workspaceStore.isEphemeral) return;
+      writeLocalStorageJson('fastcat:ui:monitor-muted', val);
+    },
   );
 
   const isGlobalDragging = ref(false);
