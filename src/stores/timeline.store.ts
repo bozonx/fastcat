@@ -337,31 +337,41 @@ export const useTimelineStore = defineStore('timeline', () => {
 
       const baseName = fileName.replace(/\.otio$/, '');
       const dirPath = pathParts.length > 0 ? pathParts.join('/') + '/' : '';
-      
+
       const backupDirStr = `.fastcat/backups/${dirPath}`;
-      
-      const backupDirHandle = await projectStore.getDirectoryHandleByPath(backupDirStr, { create: true });
+
+      const backupDirHandle = await projectStore.getDirectoryHandleByPath(backupDirStr, {
+        create: true,
+      });
       if (!backupDirHandle) return;
 
       const existingBackups: { name: string; num: number; handle: FileSystemFileHandle }[] = [];
       // @ts-expect-error entries() exists on FileSystemDirectoryHandle
       for await (const [name, handle] of backupDirHandle.entries()) {
-        if (handle.kind === 'file' && name.startsWith(baseName + '__bak') && name.endsWith('.otio')) {
+        if (
+          handle.kind === 'file' &&
+          name.startsWith(baseName + '__bak') &&
+          name.endsWith('.otio')
+        ) {
           const match = name.match(/__bak(\d{3})\.otio$/);
           if (match) {
-            existingBackups.push({ name, num: parseInt(match[1]!, 10), handle: handle as FileSystemFileHandle });
+            existingBackups.push({
+              name,
+              num: parseInt(match[1]!, 10),
+              handle: handle as FileSystemFileHandle,
+            });
           }
         }
       }
 
       existingBackups.sort((a, b) => a.num - b.num);
 
-      const nextNum = existingBackups.length > 0 ? existingBackups[existingBackups.length - 1]!.num + 1 : 1;
+      const nextNum =
+        existingBackups.length > 0 ? existingBackups[existingBackups.length - 1]!.num + 1 : 1;
       const nextName = `${baseName}__bak${nextNum.toString().padStart(3, '0')}.otio`;
 
       const newHandle = await backupDirHandle.getFileHandle(nextName, { create: true });
-      // @ts-expect-error createWritable exists
-      const writable = await newHandle.createWritable();
+      const writable = await (newHandle as any).createWritable();
       await writable.write(serialized);
       await writable.close();
 
@@ -377,7 +387,15 @@ export const useTimelineStore = defineStore('timeline', () => {
         }
       }
     } catch (e) {
-      console.warn('Failed to create timeline backup', e);
+      console.error('Failed to create timeline backup', e);
+      toast.add({
+        title: t('videoEditor.timeline.backupError', 'Failed to create timeline backup'),
+        description: t(
+          'videoEditor.timeline.backupErrorDesc',
+          'Your data is safe, butautomatic backup failed',
+        ),
+        color: 'warning',
+      });
     }
   }
 
@@ -505,12 +523,28 @@ export const useTimelineStore = defineStore('timeline', () => {
     const fileName = parts.pop();
     if (!fileName) return;
 
-    await lifecycle.saveTimeline();
+    const docSnapshot = timelineDoc.value;
+    const { serializeTimelineToOtio } = await import('~/timeline/otio-serializer');
+    const snapshotSerialized = serializeTimelineToOtio(docSnapshot);
+
+    try {
+      await lifecycle.saveTimeline();
+    } catch (e) {
+      console.error('Failed to save timeline before creating version', e);
+      toast.add({
+        title: t(
+          'videoEditor.timeline.versionSaveError',
+          'Failed to save current timeline before creating version',
+        ),
+        color: 'error',
+      });
+      return;
+    }
 
     const baseName = fileName.replace(/\.otio$/, '');
     const match = baseName.match(/^(.*)_v(\d{1,3})$/);
     const prefix = match ? match[1]! : baseName;
-    
+
     const parentPath = parts.join('/');
     const dirHandle = await projectStore.getDirectoryHandleByPath(parentPath, { create: true });
     if (!dirHandle) return;
@@ -523,32 +557,30 @@ export const useTimelineStore = defineStore('timeline', () => {
         if (vMatch) {
           existingVersions.push(parseInt(vMatch[1]!, 10));
         } else if (name === prefix + '.otio') {
-          existingVersions.push(0); // The original file without _v
+          existingVersions.push(0);
         }
       }
     }
 
     existingVersions.sort((a, b) => a - b);
-    const nextNum = existingVersions.length > 0 ? existingVersions[existingVersions.length - 1]! + 1 : 1;
+    const nextNum =
+      existingVersions.length > 0 ? existingVersions[existingVersions.length - 1]! + 1 : 1;
     const nextName = `${prefix}_v${nextNum.toString().padStart(2, '0')}.otio`;
 
     try {
       const newHandle = await dirHandle.getFileHandle(nextName, { create: true });
-      
-      const { serializeTimelineToOtio } = await import('~/timeline/otio-serializer');
-      // For immediate creation we can just use synchronous serialize to guarantee consistency before opening
-      const serialized = serializeTimelineToOtio(timelineDoc.value);
-      
-      // @ts-expect-error createWritable
-      const writable = await newHandle.createWritable();
-      await writable.write(serialized);
+
+      const writable = await (newHandle as any).createWritable();
+      await writable.write(snapshotSerialized);
       await writable.close();
 
       toast.add({
-        title: t('videoEditor.timeline.versionCreated', 'Version created: {name}', { name: nextName }),
+        title: t('videoEditor.timeline.versionCreated', 'Version created: {name}', {
+          name: nextName,
+        }),
         color: 'success',
       });
-      
+
       const newRelativePath = parentPath ? `${parentPath}/${nextName}` : nextName;
       await projectStore.openTimelineFile(newRelativePath);
       focusStore.setActiveTimelinePath(newRelativePath);

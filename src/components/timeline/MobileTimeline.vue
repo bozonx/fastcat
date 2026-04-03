@@ -44,6 +44,7 @@ import MobileSelectionRangePropertiesDrawer from './MobileSelectionRangeProperti
 import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
 import MobileTrimToolbar from './MobileTrimToolbar.vue';
+import MobileTimelineSettingsDrawer from './MobileTimelineSettingsDrawer.vue';
 import { useTeleportTarget } from '~/composables/ui/useTeleportTarget';
 
 const { target: teleportTarget } = useTeleportTarget();
@@ -80,6 +81,7 @@ const isMultiSelectionDrawerOpen = ref(false);
 const isAddContentDrawerOpen = ref(false);
 const isTrimDrawerOpen = ref(false);
 const isVirtualClipPresetDrawerOpen = ref(false);
+const isSettingsDrawerOpen = ref(false);
 const virtualClipPresetType = ref<'text' | 'shape' | 'hud'>('text');
 const drawerActiveSnapPoint = ref<string | number | null>(null);
 const isLongPress = ref(false);
@@ -239,6 +241,7 @@ function closeAllDrawers() {
   isGapPropertiesDrawerOpen.value = false;
   isMultiSelectionDrawerOpen.value = false;
   isTrimDrawerOpen.value = false;
+  isSettingsDrawerOpen.value = false;
   drawerActiveSnapPoint.value = null;
 }
 
@@ -266,6 +269,13 @@ watch(
     if (transition) {
       closeAllDrawers();
       isTransitionDrawerOpen.value = true;
+      return;
+    }
+
+    // Timeline Properties selected
+    if (entity?.kind === 'timeline-properties' && entity.source === 'timeline') {
+      closeAllDrawers();
+      isSettingsDrawerOpen.value = true;
       return;
     }
 
@@ -844,6 +854,17 @@ async function onClipAction(payload: TimelineClipActionPayload) {
       :track-id="selectedGap.trackId"
       :item-id="selectedGap.itemId"
       @close="onGapPropertiesDrawerClose"
+    />
+
+    <!-- Timeline Settings Drawer -->
+    <MobileTimelineSettingsDrawer
+      :is-open="isSettingsDrawerOpen"
+      @close="
+        () => {
+          isSettingsDrawerOpen = false;
+          selectionStore.clearSelection();
+        }
+      "
     />
 
     <!-- Add content drawer -->

@@ -8,11 +8,11 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import MobileTrackMixerDrawer from './MobileTrackMixerDrawer.vue';
 import MobileHistoryDrawer from './MobileHistoryDrawer.vue';
-import MobileTimelineSettingsDrawer from './MobileTimelineSettingsDrawer.vue';
 import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 
 const timelineStore = useTimelineStore();
 const settingsStore = useTimelineSettingsStore();
+const workspaceStore = useWorkspaceStore();
 
 const { t } = useI18n();
 
@@ -23,7 +23,6 @@ const hasSelection = computed(() => selectedItemIds.value.length > 0);
 const isTrackMixerDrawerOpen = ref(false);
 const isHistoryDrawerOpen = ref(false);
 const isSnapDrawerOpen = ref(false);
-const isSettingsDrawerOpen = ref(false);
 
 const longPressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const IS_LONG_PRESS_MS = 500;
@@ -250,7 +249,7 @@ function handleRippleTrimRight() {
         size="sm"
         title="Timeline settings"
         class="ml-1"
-        @click="isSettingsDrawerOpen = true"
+        @click="timelineStore.selectTimelineProperties()"
       />
     </div>
   </div>
@@ -334,5 +333,3 @@ function handleRippleTrimRight() {
 
   <MobileHistoryDrawer :is-open="isHistoryDrawerOpen" @close="isHistoryDrawerOpen = false" />
 </template>
-
-
