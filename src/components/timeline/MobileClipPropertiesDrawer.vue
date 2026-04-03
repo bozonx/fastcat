@@ -410,97 +410,97 @@ const otherActions = computed(() => {
     v-model:active-snap-point="activeSnapPoint"
     force-landscape-direction="bottom"
   >
-    <template #toolbar>
-      <MobileDrawerToolbar>
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-trash"
-          :label="t('common.delete', 'Delete')"
-          :disabled="isLocked"
-          @click="requestDelete"
-        />
-
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-pencil"
-          :label="t('common.rename', 'Rename')"
-          :disabled="isLocked"
-          @click="isRenameModalOpen = true"
-        />
-
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-document-duplicate"
-          :label="t('common.copy', 'Copy')"
-          @click="handleCopy"
-        />
-
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-scissors"
-          :label="t('common.cut', 'Cut')"
-          :disabled="isLocked"
-          @click="handleCut"
-        />
-
-        <MobileDrawerToolbarButton
-          primary
-          icon="i-heroicons-arrows-right-left"
-          :label="t('fastcat.timeline.trimMode', 'Trim')"
-          :disabled="isLocked"
-          @click="$emit('open-trim-drawer')"
-        />
-
-        <MobileDrawerToolbarButton
-          :icon="clip?.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
-          :label="
-            clip?.disabled
-              ? t('fastcat.timeline.enableClip', 'Enable')
-              : t('fastcat.timeline.disableClip', 'Disable')
-          "
-          :active="clip?.disabled"
-          @click="toggleDisabled"
-        />
-
-        <template v-if="hasAudio">
+    <div v-if="clip" class="px-4 pb-8">
+      <div class="mb-4 pt-1">
+        <MobileDrawerToolbar class="-mx-4 mb-2">
           <MobileDrawerToolbarButton
-            :icon="clip?.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
+            icon="i-heroicons-trash"
+            :label="t('common.delete', 'Delete')"
+            :disabled="isLocked"
+            @click="requestDelete"
+          />
+
+          <MobileDrawerToolbarButton
+            icon="i-heroicons-pencil"
+            :label="t('common.rename', 'Rename')"
+            :disabled="isLocked"
+            @click="isRenameModalOpen = true"
+          />
+
+          <MobileDrawerToolbarButton
+            icon="i-heroicons-document-duplicate"
+            :label="t('common.copy', 'Copy')"
+            @click="handleCopy"
+          />
+
+          <MobileDrawerToolbarButton
+            icon="i-heroicons-scissors"
+            :label="t('common.cut', 'Cut')"
+            :disabled="isLocked"
+            @click="handleCut"
+          />
+
+          <MobileDrawerToolbarButton
+            primary
+            icon="i-heroicons-arrows-right-left"
+            :label="t('fastcat.timeline.trimMode', 'Trim')"
+            :disabled="isLocked"
+            @click="$emit('open-trim-drawer')"
+          />
+
+          <MobileDrawerToolbarButton
+            :icon="clip?.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
             :label="
-              clip?.audioMuted
-                ? t('fastcat.timeline.unmuteClip', 'Unmute')
-                : t('fastcat.timeline.muteClip', 'Mute')
+              clip?.disabled
+                ? t('fastcat.timeline.enableClip', 'Enable')
+                : t('fastcat.timeline.disableClip', 'Disable')
             "
-            :active="clip?.audioMuted"
-            @click="toggleMuted"
+            :active="clip?.disabled"
+            @click="toggleDisabled"
           />
+
+          <template v-if="hasAudio">
+            <MobileDrawerToolbarButton
+              :icon="clip?.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
+              :label="
+                clip?.audioMuted
+                  ? t('fastcat.timeline.unmuteClip', 'Unmute')
+                  : t('fastcat.timeline.muteClip', 'Mute')
+              "
+              :active="clip?.audioMuted"
+              @click="toggleMuted"
+            />
+
+            <MobileDrawerToolbarButton
+              :icon="isSoloed ? 'i-heroicons-star-solid' : 'i-heroicons-star'"
+              :label="isSoloed ? t('fastcat.timeline.unsolo', 'Unsolo') : t('fastcat.timeline.solo', 'Solo')"
+              :active="isSoloed"
+              @click="toggleSolo"
+            />
+          </template>
 
           <MobileDrawerToolbarButton
-            :icon="isSoloed ? 'i-heroicons-star-solid' : 'i-heroicons-star'"
-            :label="isSoloed ? t('fastcat.timeline.unsolo', 'Unsolo') : t('fastcat.timeline.solo', 'Solo')"
-            :active="isSoloed"
-            @click="toggleSolo"
+            :icon="clip?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
+            :label="
+              clip?.locked
+                ? t('fastcat.timeline.unlockClip', 'Unlock')
+                : t('fastcat.timeline.lockClip', 'Lock')
+            "
+            :active="clip?.locked"
+            @click="toggleLocked"
           />
-        </template>
+        </MobileDrawerToolbar>
 
-        <MobileDrawerToolbarButton
-          :icon="clip?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
-          :label="
-            clip?.locked
-              ? t('fastcat.timeline.unlockClip', 'Unlock')
-              : t('fastcat.timeline.lockClip', 'Lock')
-          "
-          :active="clip?.locked"
-          @click="toggleLocked"
-        />
-      </MobileDrawerToolbar>
-
-      <div v-if="otherActions.length > 0" class="py-2 px-4 border-b border-ui-border shrink-0">
-        <PropertyActionList
-          :actions="otherActions"
-          vertical
-          variant="ghost"
-          size="md"
-        />
+        <div v-if="otherActions.length > 0" class="py-1 px-3 border border-ui-border rounded-xl bg-zinc-900/40">
+          <PropertyActionList
+            :actions="otherActions"
+            vertical
+            variant="ghost"
+            size="md"
+          />
+        </div>
       </div>
-    </template>
 
-    <div v-if="clip" class="px-4 pt-4 pb-8">
       <ClipProperties :clip="clip" hide-actions />
     </div>
 
