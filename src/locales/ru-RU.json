@@ -166,6 +166,7 @@
     "panLeft": "Слева {value}%",
     "panRight": "Справа {value}%",
     "addToTimeline": "Добавить на таймлайн",
+    "toTimeline": "На таймлайн",
     "files": "Файлы",
     "sound": "Звук",
     "export": "Экспорт",

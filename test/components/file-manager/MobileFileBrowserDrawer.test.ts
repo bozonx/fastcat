@@ -154,11 +154,11 @@ describe('MobileFileBrowserDrawer', () => {
 
     const actionList = wrapper.find('#property-action-list');
     expect(actionList.exists()).toBe(true);
-    // Actions: Add to timeline, Convert, Transcribe, Proxy, Extract Audio
-    expect(actionList.attributes('data-count')).toBe('5');
+    // Actions: Convert, Transcribe, Proxy, Extract Audio
+    expect(actionList.attributes('data-count')).toBe('4');
   });
 
-  it('renders top actions for image files', async () => {
+  it('renders correctly for image files', async () => {
     mockSelectionStore.selectedEntity = {
       source: 'fileManager',
       kind: 'file',
@@ -180,8 +180,8 @@ describe('MobileFileBrowserDrawer', () => {
 
     const actionList = wrapper.find('#property-action-list');
     expect(actionList.exists()).toBe(true);
-    // Actions: Add to timeline, Convert
-    expect(actionList.attributes('data-count')).toBe('2');
+    // Actions: Convert
+    expect(actionList.attributes('data-count')).toBe('1');
   });
 
   it('renders top actions for audio files', async () => {
@@ -206,7 +206,7 @@ describe('MobileFileBrowserDrawer', () => {
 
     const actionList = wrapper.find('#property-action-list');
     expect(actionList.exists()).toBe(true);
-    // Actions: Add to timeline, Convert, Transcribe
-    expect(actionList.attributes('data-count')).toBe('3');
+    // Actions: Convert, Transcribe
+    expect(actionList.attributes('data-count')).toBe('2');
   });
 });
