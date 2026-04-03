@@ -9,6 +9,15 @@ import ClipProperties from '~/components/properties/ClipProperties.vue';
 import MobileTimelineDrawer from './MobileTimelineDrawer.vue';
 import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
+import PropertyActionList from '~/components/properties/PropertyActionList.vue';
+import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
+import { useMediaStore } from '~/stores/media.store';
+import { useUiStore } from '~/stores/ui.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
+import { useFocusStore } from '~/stores/focus.store';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
+import { useProjectTabsStore } from '~/stores/project-tabs.store';
+import { useProjectStore } from '~/stores/project.store';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -26,6 +35,13 @@ const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
 const workspaceStore = useWorkspaceStore();
 const clipboardStore = useAppClipboard();
+const mediaStore = useMediaStore();
+const uiStore = useUiStore();
+const fileManagerStore = useFileManagerStore();
+const focusStore = useFocusStore();
+const fileManager = useFileManager();
+const { setActiveTab } = useProjectTabsStore();
+const projectStore = useProjectStore();
 
 const isOpenLocal = computed({
   get: () => props.isOpen,
@@ -48,6 +64,7 @@ const currentClipAndTrack = computed(() => {
 
 const clip = computed(() => currentClipAndTrack.value?.item ?? null);
 const clipTrack = computed(() => currentClipAndTrack.value?.track ?? null);
+const clipTrackKind = computed(() => clipTrack.value?.kind ?? 'video');
 const isLocked = computed(() => Boolean(clip.value?.locked || clipTrack.value?.locked));
 
 const isDeleteConfirmOpen = ref(false);
@@ -145,6 +162,246 @@ const hasAudio = computed(() => {
     clip.value.clipType === 'timeline'
   );
 });
+
+const {
+  isFreePosition,
+  hasLockedLinkedAudio,
+  isLockedLinkedAudioClip,
+  isInLinkedGroup,
+  handleDeleteClip,
+  handleUnlinkAudio,
+  handleQuantizeClip,
+  handleRemoveFromGroup,
+  toggleAudioWaveformMode,
+  toggleShowWaveform,
+  toggleShowThumbnails,
+  handleSelectInFileManager,
+  handleOpenNestedTimeline,
+  goToLinkedAudio,
+  goToLinkedVideo,
+  linkedAudioClip,
+  linkedVideoClip,
+} = useClipPropertiesActions({
+  clip: clip as any,
+  trackKind: clipTrackKind as any,
+  timelineStore: timelineStore as any,
+  projectStore: projectStore as any,
+  uiStore: uiStore as any,
+  fileManagerStore: fileManagerStore as any,
+  selectionStore: selectionStore as any,
+  focusStore: focusStore as any,
+  fileManager: fileManager as any,
+  setActiveTab,
+});
+
+const isMediaVideoClip = computed(() => {
+  return clipTrackKind.value === 'video' && clip.value?.clipType === 'media';
+});
+
+const hasFreezeFrame = computed(() => {
+  return typeof clip.value?.freezeFrameSourceUs === 'number';
+});
+
+const canExtractAudio = computed(() => {
+  return (
+    clipTrackKind.value === 'video' &&
+    clip.value?.clipType === 'media' &&
+    !(clip.value as any).audioFromVideoDisabled
+  );
+});
+
+const hasReturnFromVideoClip = computed(() => {
+  return clipTrackKind.value === 'video' && Boolean(clip.value?.audioFromVideoDisabled);
+});
+
+const hasReturnFromLockedAudioClip = computed(() => {
+  return (
+    clipTrackKind.value === 'audio' &&
+    Boolean(clip.value?.linkedVideoClipId) &&
+    Boolean(clip.value?.lockToLinkedVideo)
+  );
+});
+
+async function handleExtractAudio() {
+  if (!clip.value || !clipTrack.value) return;
+  await timelineStore.extractAudioToTrack({
+    videoTrackId: clipTrack.value.id,
+    videoItemId: clip.value.id,
+  });
+  await timelineStore.requestTimelineSave({ immediate: true });
+}
+
+function handleReturnAudio() {
+  if (!clip.value) return;
+  if (clip.value.linkedVideoClipId) {
+    timelineStore.returnAudioToVideo({ videoItemId: clip.value.linkedVideoClipId });
+  } else {
+    timelineStore.returnAudioToVideo({ videoItemId: clip.value.id });
+  }
+  timelineStore.requestTimelineSave({ immediate: true });
+}
+
+function handleFreezeFrame() {
+  if (!clip.value || !clipTrack.value) return;
+  const playheadUs = timelineStore.currentTime;
+  const clipStartUs = clip.value.timelineRange.startUs;
+  const relativeUs = playheadUs - clipStartUs;
+  const clampedUs = Math.max(0, Math.min(relativeUs, clip.value.timelineRange.durationUs));
+  timelineStore.updateClipProperties(clipTrack.value.id, clip.value.id, {
+    freezeFrameSourceUs: Math.round(clampedUs),
+  });
+}
+
+function handleResetFreezeFrame() {
+  if (!clip.value || !clipTrack.value) return;
+  timelineStore.updateClipProperties(clipTrack.value.id, clip.value.id, {
+    freezeFrameSourceUs: undefined,
+  });
+}
+
+const otherActions = computed(() => {
+  const list: any[] = [];
+  if (!clip.value) return list;
+
+  if (isFreePosition.value) {
+    list.push({
+      id: 'quantize',
+      label: t('fastcat.timeline.quantize', 'Quantize to frames'),
+      icon: 'i-heroicons-squares-2x2',
+      onClick: handleQuantizeClip,
+    });
+  }
+
+  if (linkedAudioClip.value) {
+    list.push({
+      id: 'goToLinkedAudio',
+      label: t('fastcat.clip.goToLinkedAudio', 'Go to linked audio'),
+      icon: 'i-heroicons-speaker-wave',
+      color: 'primary',
+      onClick: goToLinkedAudio,
+    });
+  }
+
+  if (linkedVideoClip.value) {
+    list.push({
+      id: 'goToLinkedVideo',
+      label: t('fastcat.clip.goToLinkedVideo', 'Go to linked video'),
+      icon: 'i-heroicons-film',
+      color: 'primary',
+      onClick: goToLinkedVideo,
+    });
+  }
+
+  if (hasLockedLinkedAudio.value || isLockedLinkedAudioClip.value) {
+    list.push({
+      id: 'unlinkAudio',
+      label: t('fastcat.timeline.unlinkAudio', 'Unlink audio'),
+      icon: 'i-heroicons-link-slash',
+      onClick: handleUnlinkAudio,
+    });
+  }
+
+  if (isInLinkedGroup.value) {
+    list.push({
+      id: 'removeFromGroup',
+      label: t('fastcat.timeline.removeFromGroup', 'Remove from group'),
+      icon: 'i-heroicons-link-slash',
+      onClick: handleRemoveFromGroup,
+    });
+  }
+
+  if (clip.value.clipType === 'media') {
+    list.push({
+      id: 'showInFileManager',
+      label: t('fastcat.clip.showInFileManager', 'Show in File Manager'),
+      icon: 'i-heroicons-folder-open',
+      onClick: handleSelectInFileManager,
+    });
+  }
+
+  if (clip.value.clipType === 'timeline') {
+    list.push({
+      id: 'goToTimeline',
+      label: t('fastcat.clip.goToTimeline', 'Go to timeline'),
+      icon: 'i-heroicons-arrow-right-circle',
+      onClick: handleOpenNestedTimeline,
+    });
+  }
+
+  if (hasAudio.value) {
+    list.push({
+      id: 'toggleAudioWaveformMode',
+      label:
+        (clip.value.audioWaveformMode || 'half') === 'full'
+          ? t('fastcat.clip.halfWaveform', 'Half Waveform')
+          : t('fastcat.clip.fullWaveform', 'Full Waveform'),
+      icon: 'i-heroicons-chart-bar',
+      onClick: toggleAudioWaveformMode,
+    });
+  }
+
+  if (clipTrackKind.value === 'video' || clipTrackKind.value === 'audio') {
+    list.push({
+      id: 'toggleShowWaveform',
+      label:
+        clip.value.showWaveform === false
+          ? t('fastcat.clip.showWaveform', 'Show Waveform')
+          : t('fastcat.clip.hideWaveform', 'Hide Waveform'),
+      icon: 'i-heroicons-eye',
+      onClick: toggleShowWaveform,
+    });
+  }
+
+  if (clipTrackKind.value === 'video') {
+    list.push({
+      id: 'toggleShowThumbnails',
+      label:
+        clip.value.showThumbnails === false
+          ? t('fastcat.clip.showThumbnails', 'Show Thumbnails')
+          : t('fastcat.clip.hideThumbnails', 'Hide Thumbnails'),
+      icon: 'i-heroicons-photo',
+      onClick: toggleShowThumbnails,
+    });
+  }
+
+  if (isMediaVideoClip.value && !hasFreezeFrame.value) {
+    list.push({
+      id: 'freezeFrame',
+      label: t('fastcat.timeline.freezeFrame', 'Freeze Frame'),
+      icon: 'i-heroicons-pause-circle',
+      onClick: handleFreezeFrame,
+    });
+  }
+
+  if (isMediaVideoClip.value && hasFreezeFrame.value) {
+    list.push({
+      id: 'resetFreezeFrame',
+      label: t('fastcat.timeline.resetFreezeFrame', 'Reset Freeze Frame'),
+      icon: 'i-heroicons-play-circle',
+      onClick: handleResetFreezeFrame,
+    });
+  }
+
+  if (canExtractAudio.value) {
+    list.push({
+      id: 'extractAudio',
+      label: t('fastcat.timeline.extractAudio', 'Extract Audio'),
+      icon: 'i-heroicons-musical-note',
+      onClick: handleExtractAudio,
+    });
+  }
+
+  if (hasReturnFromVideoClip.value || hasReturnFromLockedAudioClip.value) {
+    list.push({
+      id: 'returnAudio',
+      label: t('fastcat.timeline.returnAudio', 'Return Audio'),
+      icon: 'i-heroicons-arrow-uturn-left',
+      onClick: handleReturnAudio,
+    });
+  }
+
+  return list;
+});
 </script>
 
 <template>
@@ -232,10 +489,19 @@ const hasAudio = computed(() => {
           @click="toggleLocked"
         />
       </MobileDrawerToolbar>
+
+      <div v-if="otherActions.length > 0" class="py-2 px-4 border-b border-ui-border shrink-0">
+        <PropertyActionList
+          :actions="otherActions"
+          vertical
+          variant="ghost"
+          size="md"
+        />
+      </div>
     </template>
 
     <div v-if="clip" class="px-4 pt-4 pb-8">
-      <ClipProperties :clip="clip" />
+      <ClipProperties :clip="clip" hide-actions />
     </div>
 
     <UiConfirmModal

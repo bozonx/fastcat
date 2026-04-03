@@ -6,6 +6,7 @@ import SelectionRangeProperties from '~/components/properties/SelectionRangeProp
 import MobileTimelineDrawer from './MobileTimelineDrawer.vue';
 import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
+import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 
 interface Props {
   isOpen: boolean;
@@ -37,6 +38,33 @@ function handleDelete() {
   selectionStore.clearSelection();
   emit('close');
 }
+
+function handleConvertToMarker() {
+  timelineStore.convertSelectionRangeToMarker();
+}
+
+function handleRippleTrim() {
+  timelineStore.rippleTrimSelectionRange();
+}
+
+const mainActions = computed(() => {
+  if (!selectionRange.value) return [];
+  return [
+    {
+      id: 'convert',
+      label: t('fastcat.timeline.convertSelectionToZoneMarker', 'Convert to zone marker'),
+      icon: 'i-heroicons-bookmark-square',
+      onClick: handleConvertToMarker,
+    },
+    {
+      id: 'ripple-trim',
+      label: t('fastcat.timeline.rippleTrimSelection', 'Ripple trim selection'),
+      icon: 'i-heroicons-scissors',
+      color: 'warning' as const,
+      onClick: handleRippleTrim,
+    },
+  ];
+});
 </script>
 
 <template>
@@ -53,10 +81,19 @@ function handleDelete() {
           @click="handleDelete"
         />
       </MobileDrawerToolbar>
+
+      <div v-if="mainActions.length > 0" class="py-2 px-4 border-b border-ui-border shrink-0">
+        <PropertyActionList
+          :actions="mainActions"
+          vertical
+          variant="ghost"
+          size="md"
+        />
+      </div>
     </template>
 
     <div v-if="selectionRange" class="px-4 pt-4 pb-8">
-      <SelectionRangeProperties />
+      <SelectionRangeProperties hide-actions />
     </div>
   </MobileTimelineDrawer>
 </template>

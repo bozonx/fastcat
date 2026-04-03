@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import ClipTransitionPanel from '~/components/timeline/ClipTransitionPanel.vue';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
@@ -12,6 +12,7 @@ const props = defineProps<{
   };
   clip?: TimelineClipItem;
   track?: TimelineTrack;
+  hideActions?: boolean;
 }>();
 
 const timelineStore = useTimelineStore();
@@ -50,12 +51,21 @@ function handleTransitionUpdate(payload: {
     });
   }
 }
+
+const panelRef = ref<any>(null);
+
+defineExpose({
+  openSaveModal: () => {
+    panelRef.value?.openSaveModal();
+  },
+});
 </script>
 
 <template>
   <div class="w-full flex flex-col gap-2 text-ui-text">
     <ClipTransitionPanel
       v-if="clip"
+      ref="panelRef"
       :edge="transitionSelection.edge"
       :track-id="transitionSelection.trackId"
       :item-id="transitionSelection.itemId"
@@ -63,6 +73,7 @@ function handleTransitionUpdate(payload: {
       :clip="clip"
       :transition="transitionValue"
       :max-duration="maxDurationSec"
+      :hide-actions="hideActions"
       @update="handleTransitionUpdate"
     />
   </div>

@@ -8,6 +8,7 @@ import UiTimecode from '~/components/ui/editor/UiTimecode.vue';
 
 const props = defineProps<{
   markerId: string;
+  hideActions?: boolean;
 }>();
 
 const { t } = useI18n();
@@ -137,7 +138,7 @@ const mainActions = computed<any[]>(() => {
 
 <template>
   <div v-if="marker" class="w-full flex flex-col gap-2 text-ui-text">
-    <PropertySection :title="t('fastcat.marker.actions', 'Actions')">
+    <PropertySection v-if="!hideActions" :title="t('fastcat.marker.actions', 'Actions')">
       <div class="flex flex-col w-full">
         <PropertyActionList
           :actions="commonActions"

@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import TrackProperties from '~/components/properties/TrackProperties.vue';
 import MobileTimelineDrawer from './MobileTimelineDrawer.vue';
 import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
+import PropertyActionList from '~/components/properties/PropertyActionList.vue';
+import GenerateCaptionsModal from '~/components/properties/GenerateCaptionsModal.vue';
 import type { TimelineTrack } from '~/timeline/types';
 
 interface Props {
@@ -50,6 +52,22 @@ function deleteGap() {
   selectionStore.clearSelection();
   emit('close');
 }
+
+const isGenerateCaptionsOpen = ref(false);
+
+const trackExtraActions = computed(() => {
+  if (!track.value) return [];
+  const list: any[] = [];
+  if (track.value.kind === 'video') {
+    list.push({
+      id: 'generate-captions',
+      label: t('fastcat.captions.generate', 'Generate captions'),
+      icon: 'i-heroicons-chat-bubble-bottom-center-text',
+      onClick: () => (isGenerateCaptionsOpen.value = true),
+    });
+  }
+  return list;
+});
 </script>
 
 <template>
@@ -66,6 +84,15 @@ function deleteGap() {
           @click="deleteGap"
         />
       </MobileDrawerToolbar>
+
+      <div v-if="trackExtraActions.length > 0" class="py-2 px-4 border-b border-ui-border shrink-0">
+        <PropertyActionList
+          :actions="trackExtraActions"
+          vertical
+          variant="ghost"
+          size="md"
+        />
+      </div>
     </template>
 
     <div class="px-4 pt-4 pb-8">
@@ -79,8 +106,14 @@ function deleteGap() {
         <div class="mb-2 text-xs font-bold text-ui-text-muted uppercase tracking-wider">
           {{ t('fastcat.timeline.trackProperties', 'Track Properties') }}
         </div>
-        <TrackProperties :track="track" />
+        <TrackProperties :track="track" hide-actions />
       </div>
+
+      <GenerateCaptionsModal
+        v-if="track?.kind === 'video'"
+        v-model:open="isGenerateCaptionsOpen"
+        :track-id="track.id"
+      />
     </div>
   </MobileTimelineDrawer>
 </template>

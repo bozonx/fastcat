@@ -157,7 +157,7 @@ function handleRippleTrimRight() {
   <div
     class="flex items-center justify-between gap-2 border-b border-ui-border bg-ui-bg-elevated px-2 py-2 shadow-sm"
   >
-    <div class="flex items-center gap-2 overflow-x-auto no-scrollbar">
+    <MobileDrawerToolbar variant="toolbar" content-class="gap-2 py-0">
       <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1 shrink-0">
         <UiActionButton
           icon="lucide:undo"
@@ -231,7 +231,7 @@ function handleRippleTrimRight() {
           @click="handleRippleTrimRight"
         />
       </div>
-    </div>
+    </MobileDrawerToolbar>
 
     <div class="flex items-center shrink-0 border-l border-ui-border pl-2 ml-1">
       <UiActionButton
@@ -324,12 +324,4 @@ function handleRippleTrimRight() {
   <MobileHistoryDrawer :is-open="isHistoryDrawerOpen" @close="isHistoryDrawerOpen = false" />
 </template>
 
-<style scoped>
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-</style>
+
