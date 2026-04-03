@@ -61,8 +61,6 @@ describe('fileManagerCommands', () => {
     const onMediaImported = vi.fn(async () => undefined);
 
     const vfs = {
-      // In the new handleFilesCommand logic, if the file already exists, it throws an error immediately.
-      // So to make it save, vfs.exists must return false.
       exists: vi.fn(async () => false),
       writeFile: vi.fn(async () => undefined),
     };
@@ -79,7 +77,7 @@ describe('fileManagerCommands', () => {
     );
 
     expect(vfs.writeFile).toHaveBeenCalledWith('images/logo.svg', file);
-    expect(onMediaImported).not.toHaveBeenCalled();
+    expect(onMediaImported).toHaveBeenCalledWith({ projectRelativePath: 'images/logo.svg', file });
   });
 
   it('deleteEntryCommand calls removeEntry and onFileDeleted for files with path', async () => {
