@@ -279,6 +279,11 @@
         "modeAlpha": "Alpha (Прозрачность)",
         "modeLuma": "Luma (Яркость)",
         "invert": "Инвертировать"
+      },
+      "tabs": {
+        "clip": "Клип",
+        "video": "Видео",
+        "audio": "Аудио"
       }
     },
     "dynamicPanels": {

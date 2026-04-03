@@ -279,6 +279,11 @@
         "modeAlpha": "Alpha (Transparency)",
         "modeLuma": "Luma (Brightness)",
         "invert": "Invert"
+      },
+      "tabs": {
+        "clip": "Clip",
+        "video": "Video",
+        "audio": "Audio"
       }
     },
     "dynamicPanels": {
