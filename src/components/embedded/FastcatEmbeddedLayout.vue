@@ -72,23 +72,35 @@ async function initEmbedded() {
     
     if (itemsCount === 0) {
       const trackOffsetsUs: Record<string, number> = {};
+      
+      const hasVideos = results.some(res => res.success && res.asset.type === 'video');
+      const hasImages = results.some(res => res.success && res.asset.type === 'image');
 
       for (const res of results) {
         if (!res.success) continue;
         
-        // Determine target track based on asset type
-        const kind = res.asset.type === 'audio' ? 'audio' : 'video';
+        const assetType = res.asset.type;
+        let targetTrackId = '';
+        
+        if (assetType === 'audio') {
+          targetTrackId = 'a1';
+        } else if (assetType === 'video') {
+          targetTrackId = 'v1';
+        } else if (assetType === 'image') {
+          targetTrackId = (hasVideos && hasImages) ? 'v2' : 'v1';
+        } else {
+          targetTrackId = 'v1';
+        }
+        
+        // Ensure track exists, fallback to first of kind if target not found
         const tracks = timelineStore.timelineDoc?.tracks || [];
-        
-        // Try to find an empty track of this kind first
-        let track = tracks.find(t => t.kind === kind && !trackOffsetsUs[t.id]);
-        
-        // Fallback to the first track of this kind
+        let track = tracks.find(t => t.id === targetTrackId);
         if (!track) {
+          const kind = assetType === 'audio' ? 'audio' : 'video';
           track = tracks.find(t => t.kind === kind);
         }
         
-        if (!track) continue; // Should not happen
+        if (!track) continue;
         
         const trackId = track.id;
         
