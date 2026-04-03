@@ -9,6 +9,7 @@ import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
 const props = defineProps<{
   clip: any;
   presets: Array<{ label: string; value: string }>;
+  hidePresets?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -27,7 +28,7 @@ const { t } = useI18n();
 <template>
   <PropertySection :title="t('fastcat.shapeClip.shape', 'Shape')">
     <div class="flex flex-col gap-2">
-      <div class="flex flex-col gap-1 pb-2 border-b border-ui-border mb-1">
+      <div v-if="!hidePresets" class="flex flex-col gap-1 pb-2 border-b border-ui-border mb-1">
         <div class="flex items-center justify-between">
           <div
             class="text-[10px] font-medium uppercase tracking-wider text-ui-text-muted opacity-70"

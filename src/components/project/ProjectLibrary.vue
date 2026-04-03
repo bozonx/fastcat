@@ -131,6 +131,19 @@ function updateCustomHudsOrder(newCustomHuds: any[]) {
     newCustomHuds.map((h) => h.id),
   );
 }
+
+function selectItem(kind: 'text' | 'shape' | 'hud', id: string, presetParams?: any) {
+  selectionStore.selectProjectLibraryItem(kind, id, presetParams);
+}
+
+function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
+  return (
+    selectionStore.selectedEntity?.source === 'project' &&
+    selectionStore.selectedEntity.kind === 'library-item' &&
+    selectionStore.selectedEntity.itemKind === kind &&
+    selectionStore.selectedEntity.itemId === id
+  );
+}
 </script>
 
 <template>
@@ -187,9 +200,15 @@ function updateCustomHudsOrder(newCustomHuds: any[]) {
             <div
               v-for="text in standardTexts"
               :key="text.type"
-              class="flex items-center gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated"
+              class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer active:cursor-grabbing transition-colors"
+              :class="
+                isSelected('text', text.type)
+                  ? 'border-primary-500 bg-primary-500/10'
+                  : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
+              "
               draggable="true"
               @dragstart="handleDragStart($event, text.type, 'text', text.params)"
+              @click="selectItem('text', text.type, text.params)"
             >
               <UIcon :name="text.icon" class="w-8 h-8 text-primary shrink-0" />
               <div class="flex-1 min-w-0">
@@ -233,7 +252,13 @@ function updateCustomHudsOrder(newCustomHuds: any[]) {
             <div
               v-for="text in customTexts"
               :key="text.id"
-              class="flex items-center gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors group border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated"
+              class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer active:cursor-grabbing transition-colors group"
+              :class="
+                isSelected('text', text.id)
+                  ? 'border-primary-500 bg-primary-500/10'
+                  : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
+              "
+              @click="selectItem('text', text.id, text.params)"
             >
               <div class="cursor-grab hover:text-ui-text text-ui-text-muted drag-handle">
                 <UIcon name="i-heroicons-bars-2" class="w-5 h-5" />
@@ -293,9 +318,15 @@ function updateCustomHudsOrder(newCustomHuds: any[]) {
             <div
               v-for="shape in standardShapes"
               :key="shape.type"
-              class="flex items-center gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated"
+              class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer active:cursor-grabbing transition-colors"
+              :class="
+                isSelected('shape', shape.type)
+                  ? 'border-primary-500 bg-primary-500/10'
+                  : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
+              "
               draggable="true"
               @dragstart="handleDragStart($event, shape.type, 'shape')"
+              @click="selectItem('shape', shape.type)"
             >
               <UIcon :name="shape.icon" class="w-8 h-8 text-primary shrink-0" />
               <div class="flex-1 min-w-0">
@@ -331,7 +362,13 @@ function updateCustomHudsOrder(newCustomHuds: any[]) {
             <div
               v-for="shape in customShapes"
               :key="shape.id"
-              class="flex items-center gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors group border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated"
+              class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer active:cursor-grabbing transition-colors group"
+              :class="
+                isSelected('shape', shape.id)
+                  ? 'border-primary-500 bg-primary-500/10'
+                  : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
+              "
+              @click="selectItem('shape', shape.id, shape.params)"
             >
               <div class="cursor-grab hover:text-ui-text text-ui-text-muted drag-handle">
                 <UIcon name="i-heroicons-bars-2" class="w-5 h-5" />
@@ -382,9 +419,15 @@ function updateCustomHudsOrder(newCustomHuds: any[]) {
             <div
               v-for="hud in standardHuds"
               :key="hud.type"
-              class="flex items-center gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated"
+              class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer active:cursor-grabbing transition-colors"
+              :class="
+                isSelected('hud', hud.type)
+                  ? 'border-primary-500 bg-primary-500/10'
+                  : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
+              "
               draggable="true"
               @dragstart="handleDragStart($event, hud.type, 'hud')"
+              @click="selectItem('hud', hud.type)"
             >
               <UIcon :name="hud.icon" class="w-8 h-8 text-primary shrink-0" />
               <div class="flex-1 min-w-0">
@@ -420,7 +463,13 @@ function updateCustomHudsOrder(newCustomHuds: any[]) {
             <div
               v-for="hud in customHuds"
               :key="hud.id"
-              class="flex items-center gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors group border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated"
+              class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer active:cursor-grabbing transition-colors group"
+              :class="
+                isSelected('hud', hud.id)
+                  ? 'border-primary-500 bg-primary-500/10'
+                  : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
+              "
+              @click="selectItem('hud', hud.id, hud.params)"
             >
               <div class="cursor-grab hover:text-ui-text text-ui-text-muted drag-handle">
                 <UIcon name="i-heroicons-bars-2" class="w-5 h-5" />

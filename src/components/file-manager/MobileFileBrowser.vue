@@ -284,6 +284,10 @@ async function handleDrawerAction(action: FileAction, entry: FsEntry | FsEntry[]
     return;
   }
 
+  if (action === 'delete') {
+    closeAllUI();
+  }
+
   await onFileAction(action, entry);
 }
 
