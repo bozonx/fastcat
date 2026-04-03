@@ -1,23 +1,17 @@
 import { ref } from 'vue';
 
-const TAB_ID_SESSION_KEY = 'fastcat_project_lock_tab_id';
 const LOCK_CHANNEL_NAME = 'fastcat_project_locks';
 
 /**
- * Get or create a unique ID for this session (tab)
+ * Create a unique ID for this instance (tab load)
  */
-function getOrCreateTabId(): string {
+function createInstanceId(): string {
   if (typeof window === 'undefined') return 'server';
-  let id = sessionStorage.getItem(TAB_ID_SESSION_KEY);
-  if (!id) {
-    id = crypto.randomUUID();
-    sessionStorage.setItem(TAB_ID_SESSION_KEY, id);
-  }
-  return id;
+  return crypto.randomUUID();
 }
 
 export function useProjectLock() {
-  const tabId = ref(getOrCreateTabId());
+  const tabId = ref(createInstanceId());
   const lockedProjectId = ref<string | null>(null);
   const isLockLost = ref(false);
 
@@ -38,7 +32,7 @@ export function useProjectLock() {
       if (requesterTabId === tabId.value) return;
 
       if (type === 'lock:steal' && lockedProjectId.value === projectId) {
-        console.log(`[ProjectLock] Another tab (${requesterTabId}) is stealing the lock for project: ${projectId}`);
+        console.log(`[ProjectLock] Received steal request for project: ${projectId} from tab: ${requesterTabId}`);
         await releaseLock();
         isLockLost.value = true;
       }
@@ -60,12 +54,10 @@ export function useProjectLock() {
     const lockName = getLockName(projectId);
     isLockLost.value = false;
     
-    console.log(`[ProjectLock] Attempting to acquire lock for project: ${projectId}`, {
-      tabId: tabId.value,
-    });
+    console.log(`[ProjectLock] Attempting to acquire lock: ${projectId} (Tab: ${tabId.value})`);
 
     if (typeof navigator === 'undefined' || !navigator.locks) {
-      console.warn('[ProjectLock] Web Locks API not supported in this environment');
+      console.warn('[ProjectLock] Web Locks API not supported');
       lockedProjectId.value = projectId;
       return true;
     }
@@ -78,21 +70,21 @@ export function useProjectLock() {
       navigator.locks
         .request(lockName, { mode: 'exclusive', ifAvailable: true }, async (lock) => {
           if (!lock) {
-            console.warn(`[ProjectLock] Project is already locked by another active tab`);
+            console.warn(`[ProjectLock] Lock ${lockName} is unavailable`);
             resolveAcquire(false);
             return;
           }
 
           lockedProjectId.value = projectId;
           resolveAcquire(true);
-          console.log(`[ProjectLock] Lock successfully acquired for project: ${projectId}`);
+          console.log(`[ProjectLock] Lock acquired for project: ${projectId}`);
 
           return new Promise<void>((resolveRelease) => {
             lockReleaseFn = resolveRelease;
           });
         })
         .catch((error) => {
-          console.error('[ProjectLock] Error during lock acquisition:', error);
+          console.error('[ProjectLock] Lock acquisition error:', error);
           resolveAcquire(false);
         });
     });
@@ -103,17 +95,19 @@ export function useProjectLock() {
    */
   async function stealLock(projectId: string) {
     if (broadcastChannel) {
-      console.log(`[ProjectLock] Sending steal request for project: ${projectId}`);
+      console.log(`[ProjectLock] Sending lock:steal to others for project: ${projectId}`);
       broadcastChannel.postMessage({
         type: 'lock:steal',
         projectId,
         requesterTabId: tabId.value,
       });
       
-      // Give bit of time for other tab to release
-      await new Promise(r => setTimeout(r, 200));
+      // Give more time for other tab to release and browser to register it
+      await new Promise(r => setTimeout(r, 500));
     }
-    return acquireLock(projectId);
+    const result = await acquireLock(projectId);
+    console.log(`[ProjectLock] Steal attempt result for ${projectId}: ${result ? 'SUCCESS' : 'FAILED'}`);
+    return result;
   }
 
   async function releaseLock() {
