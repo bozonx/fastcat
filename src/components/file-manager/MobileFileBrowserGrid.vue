@@ -43,6 +43,8 @@ function isEntryUsed(entry: FsEntry) {
 
 const longPressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const isLongPressActive = ref(false);
+const touchStartPos = ref({ x: 0, y: 0 });
+const isMoving = ref(false);
 
 function startLongPress(entry: FsEntry) {
   isLongPressActive.value = false;
@@ -59,8 +61,28 @@ function clearLongPress() {
   }
 }
 
-function handleTouchStart(entry: FsEntry) {
+function handleTouchStart(entry: FsEntry, event: TouchEvent) {
+  const touch = event.touches[0];
+  if (!touch) return;
+
+  touchStartPos.value = { x: touch.clientX, y: touch.clientY };
+  isMoving.value = false;
   startLongPress(entry);
+}
+
+function handleTouchMove(event: TouchEvent) {
+  if (isLongPressActive.value) return;
+
+  const touch = event.touches[0];
+  if (!touch) return;
+
+  const deltaX = Math.abs(touch.clientX - touchStartPos.value.x);
+  const deltaY = Math.abs(touch.clientY - touchStartPos.value.y);
+
+  if (deltaX > 10 || deltaY > 10) {
+    isMoving.value = true;
+    clearLongPress();
+  }
 }
 
 function handleTouchEnd(entry: FsEntry, event: TouchEvent) {
@@ -71,8 +93,9 @@ function handleTouchEnd(entry: FsEntry, event: TouchEvent) {
 }
 
 function handleClick(entry: FsEntry) {
-  if (isLongPressActive.value) {
+  if (isLongPressActive.value || isMoving.value) {
     isLongPressActive.value = false;
+    isMoving.value = false;
     return;
   }
 
@@ -138,8 +161,10 @@ onBeforeUnmount(clearLongPress);
               ? 'border-selection-accent-500 ring-2 ring-selection-accent-500/20 shadow-[0_0_15px_rgba(59,130,246,0.3)]'
               : 'border-transparent hover:border-zinc-700',
           ]"
-          @touchstart="handleTouchStart(entry)"
+          @touchstart="handleTouchStart(entry, $event)"
+          @touchmove="handleTouchMove($event)"
           @touchend="handleTouchEnd(entry, $event)"
+          @touchcancel="clearLongPress"
           @mousedown="startLongPress(entry)"
           @mouseup="clearLongPress"
           @mouseleave="clearLongPress"
