@@ -5,12 +5,29 @@ import UiModal from '~/components/ui/UiModal.vue';
 
 const projectStore = useProjectStore();
 const { t } = useI18n();
+const route = useRoute();
+
+const isMobile = computed(() => route.path.startsWith('/m'));
 
 const isOpen = ref(false);
 const isStealing = ref(false);
 
+const modalUi = computed(() => {
+  if (isMobile.value) {
+    return {
+      content:
+        'max-w-full m-0 rounded-t-[2.5rem] rounded-b-none fixed bottom-0 top-auto h-auto min-h-[40vh] bg-zinc-950 border-t border-white/10 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]',
+      body: 'pb-12 pt-8 px-6',
+      header: 'pt-6 px-6 border-none text-xl font-bold',
+      footer: 'px-6 pb-12 pt-0 bg-transparent border-none',
+    };
+  }
+  return {};
+});
+
 watch(
   () => projectStore.isReadOnly,
+
   (isReadOnly) => {
     if (isReadOnly) {
       isOpen.value = true;
@@ -52,6 +69,7 @@ async function handleStealLock() {
     :title="t('videoEditor.project.lockedTitle', 'Project Open in Another Tab')"
     :prevent-close="true"
     :close-button="false"
+    :ui="modalUi"
   >
     <div class="space-y-4">
       <div class="flex items-center gap-3 text-amber-500 mb-2">
@@ -80,11 +98,23 @@ async function handleStealLock() {
     </div>
 
     <template #footer>
-      <div class="flex justify-end gap-3 w-full">
-        <UButton color="neutral" variant="ghost" :disabled="isStealing" @click="handleClose">
+      <div class="flex flex-col sm:flex-row justify-end gap-3 w-full">
+        <UButton
+          color="neutral"
+          variant="ghost"
+          :class="isMobile ? 'h-14 rounded-2xl order-2 sm:order-1' : ''"
+          :disabled="isStealing"
+          @click="handleClose"
+        >
           {{ t('videoEditor.project.lockedAcknowledge', 'View Mode') }}
         </UButton>
-        <UButton color="primary" variant="solid" :loading="isStealing" @click="handleStealLock">
+        <UButton
+          color="primary"
+          variant="solid"
+          :class="isMobile ? 'h-14 rounded-2xl order-1 sm:order-2' : ''"
+          :loading="isStealing"
+          @click="handleStealLock"
+        >
           {{ t('videoEditor.project.takeControl', 'Take Control Here') }}
         </UButton>
       </div>
