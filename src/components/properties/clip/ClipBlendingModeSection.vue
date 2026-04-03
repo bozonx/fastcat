@@ -25,20 +25,33 @@ const isEnabled = defineModel<boolean>('enabled', { default: true });
     :title="t('fastcat.clip.blendMode.title', 'Blend mode')"
     has-toggle
   >
-    <UiSelect
-      :model-value="props.blendMode"
-      :items="props.blendModeOptions"
-      value-key="value"
-      label-key="label"
-      size="sm"
-      :disabled="!isEnabled"
-      @update:model-value="
-        (v: unknown) =>
-          emit(
-            'updateBlendMode',
-            ((v as { value: TimelineBlendMode })?.value ?? v) as TimelineBlendMode | string,
-          )
-      "
-    />
+    <template #header-actions>
+      <button
+        class="flex items-center gap-1 text-2xs text-ui-text-muted hover:text-ui-text disabled:opacity-50"
+        :title="t('common.actions.reset', 'Reset')"
+        :disabled="!isEnabled"
+        @click="emit('updateBlendMode', 'normal')"
+      >
+        <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
+      </button>
+    </template>
+    
+    <div :class="{ 'opacity-50 pointer-events-none': !isEnabled }">
+      <UiSelect
+        :model-value="props.blendMode"
+        :items="props.blendModeOptions"
+        value-key="value"
+        label-key="label"
+        size="sm"
+        :disabled="!isEnabled"
+        @update:model-value="
+          (v: unknown) =>
+            emit(
+              'updateBlendMode',
+              ((v as { value: TimelineBlendMode })?.value ?? v) as TimelineBlendMode | string,
+            )
+        "
+      />
+    </div>
   </PropertySection>
 </template>

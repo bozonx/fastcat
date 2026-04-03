@@ -19,7 +19,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   updateTransform: [next: ClipTransform];
   toggleReversed: [];
-  updateSpeed: [speed: number];
 }>();
 
 const { t } = useI18n();
@@ -57,17 +56,6 @@ const {
   clip: clipRef as Ref<import('~/timeline/types').TimelineClipItem>,
   trackKind: trackKindRef,
   updateTransform: (next) => emit('updateTransform', next),
-});
-
-const speedMultiplier = computed({
-  get: () => {
-    return Number((props.clip.speed ?? 1).toFixed(2));
-  },
-  set: (val: number) => {
-    const num = Number(val);
-    if (!Number.isFinite(num)) return;
-    emit('updateSpeed', num);
-  },
 });
 
 const mediaWidth = computed(
@@ -124,32 +112,13 @@ function clampNumber(value: number, min: number, max: number): number {
         class="flex items-center gap-1 text-2xs text-ui-text-muted hover:text-ui-text disabled:opacity-50"
         :title="t('fastcat.clip.transform.resetAll', 'Reset All')"
         :disabled="!isEnabled"
-        @click="
-          () => {
-            resetAll();
-            emit('updateSpeed', 1);
-          }
-        "
+        @click="resetAll"
       >
         <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
       </button>
     </template>
 
     <div class="flex flex-col gap-4" :class="{ 'opacity-50 pointer-events-none': !isEnabled }">
-      <div v-if="props.canEditReversed" class="space-y-4">
-        <UiSliderInput
-          v-model="speedMultiplier"
-          :label="t('fastcat.clip.speedMultiplier', 'Speed')"
-          :min="-50"
-          :max="50"
-          :step="0.01"
-          :wheel-step-multiplier="10"
-          :default-value="1"
-          :disabled="!isEnabled"
-          unit="x"
-        />
-      </div>
-
       <div v-if="canEditTransform" class="space-y-4">
         <!-- Anchor -->
         <div class="space-y-1">

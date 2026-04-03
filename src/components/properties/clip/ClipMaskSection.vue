@@ -69,11 +69,24 @@ function handleUpdate(key: string, value: unknown) {
     :title="t('fastcat.clip.mask.title', 'Mask')"
     has-toggle
   >
-    <ParamsRenderer
-      :controls="maskControls"
-      :values="maskValues"
-      :disabled="!isEnabled"
-      @update:value="handleUpdate"
-    />
+    <template #header-actions>
+      <button
+        class="flex items-center gap-1 text-2xs text-ui-text-muted hover:text-ui-text disabled:opacity-50"
+        :title="t('common.actions.reset', 'Reset')"
+        :disabled="!isEnabled"
+        @click="emit('updateMask', undefined)"
+      >
+        <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
+      </button>
+    </template>
+    
+    <div :class="{ 'opacity-50 pointer-events-none': !isEnabled }">
+      <ParamsRenderer
+        :controls="maskControls"
+        :values="maskValues"
+        :disabled="!isEnabled"
+        @update:value="handleUpdate"
+      />
+    </div>
   </PropertySection>
 </template>
