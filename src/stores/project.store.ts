@@ -152,6 +152,12 @@ export const useProjectStore = defineStore('project', () => {
     if (!currentProjectId.value) return;
     const lockAcquired = await projectLock.stealLock(currentProjectId.value);
     isReadOnly.value = !lockAcquired;
+
+    if (lockAcquired) {
+      // Reload timeline to get latest changes from the previous tab
+      const timelineStore = useTimelineStore();
+      await timelineStore.loadTimeline();
+    }
   }
 
   async function loadProjectSettings() {

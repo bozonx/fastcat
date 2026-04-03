@@ -7,6 +7,7 @@ const projectStore = useProjectStore();
 const { t } = useI18n();
 
 const isOpen = ref(false);
+const isStealing = ref(false);
 
 watch(
   () => projectStore.isReadOnly,
@@ -15,6 +16,7 @@ watch(
       isOpen.value = true;
     } else {
       isOpen.value = false;
+      isStealing.value = false;
     }
   },
   { immediate: true },
@@ -25,7 +27,22 @@ function handleClose() {
 }
 
 async function handleStealLock() {
-  await projectStore.stealProjectLock();
+  if (!projectStore.currentProjectId || isStealing.value) return;
+
+  isStealing.value = true;
+  try {
+    console.log('[ProjectLockedModal] Initiating steal lock sequence...');
+    await projectStore.stealProjectLock();
+    console.log('[ProjectLockedModal] Steal sequence finished.');
+  } catch (e) {
+    console.error('[ProjectLockedModal] Error steal lock:', e);
+  } finally {
+    // If stealing failed or took too long, we must allow the user to try again
+    // If it succeeded, the isReadOnly watcher will close the modal anyway
+    setTimeout(() => {
+      isStealing.value = false;
+    }, 1000);
+  }
 }
 </script>
 
@@ -64,10 +81,10 @@ async function handleStealLock() {
 
     <template #footer>
       <div class="flex justify-end gap-3 w-full">
-        <UButton color="neutral" variant="ghost" @click="handleClose">
+        <UButton color="neutral" variant="ghost" :disabled="isStealing" @click="handleClose">
           {{ t('videoEditor.project.lockedAcknowledge', 'View Mode') }}
         </UButton>
-        <UButton color="primary" variant="solid" @click="handleStealLock">
+        <UButton color="primary" variant="solid" :loading="isStealing" @click="handleStealLock">
           {{ t('videoEditor.project.takeControl', 'Take Control Here') }}
         </UButton>
       </div>
