@@ -11,6 +11,22 @@ const props = defineProps<{
   hideActions?: boolean;
 }>();
 
+const textareaRef = ref<any>(null);
+
+function focusInput() {
+  nextTick(() => {
+    // UTextarea is a wrapper, we need to find the native textarea
+    const el = textareaRef.value?.$el || textareaRef.value;
+    const input = el?.querySelector('textarea');
+    if (input) {
+      input.focus();
+    }
+  });
+}
+
+onMounted(focusInput);
+watch(() => props.markerId, focusInput);
+
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 
@@ -157,6 +173,7 @@ const mainActions = computed<any[]>(() => {
       <div class="flex flex-col gap-0.5 mt-2">
         <span class="text-xs text-ui-text-muted">{{ t('fastcat.marker.text', 'Text') }}</span>
         <UTextarea
+          ref="textareaRef"
           :model-value="marker.text"
           size="sm"
           :rows="4"

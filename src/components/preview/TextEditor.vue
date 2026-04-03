@@ -25,12 +25,17 @@ const isLoading = ref(true);
 
 let saveTimer: number | undefined;
 
-onMounted(async () => {
+const textareaRef = ref<HTMLTextAreaElement | null>(null);
+
+async function loadContent() {
   if (!props.filePath) {
     isLoading.value = false;
     return;
   }
 
+  isLoading.value = true;
+  saveError.value = null;
+  
   try {
     const blob = await fm.vfs.readFile(props.filePath);
     const text = await blob.text();
@@ -41,6 +46,21 @@ onMounted(async () => {
     saveError.value = 'Failed to read file';
   } finally {
     isLoading.value = false;
+    // Manual focus after loading for desktop version
+    nextTick(() => {
+      textareaRef.value?.focus();
+    });
+  }
+}
+
+onMounted(loadContent);
+watch(() => props.filePath, loadContent);
+
+watch(isLoading, (loading) => {
+  if (!loading) {
+    nextTick(() => {
+      textareaRef.value?.focus();
+    });
   }
 });
 
@@ -117,6 +137,7 @@ function focusPanel() {
   >
     <textarea
       v-if="!isLoading"
+      ref="textareaRef"
       v-model="content"
       class="flex-1 w-full resize-none font-mono text-sm text-ui-text bg-ui-bg focus:outline-none p-4"
       spellcheck="false"
