@@ -8,6 +8,7 @@ import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { usePresetsStore } from '~/stores/presets.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiSplitDropdownButton from '~/components/ui/UiSplitDropdownButton.vue';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import {
@@ -18,6 +19,7 @@ import {
   timelineZoomPositionToScale,
   timelineZoomScaleToPosition,
 } from '~/utils/zoom';
+import { LAYER_OPTIONS } from '~/utils/hotkeys/layerUtils';
 import type { TextClipStyle } from '~/timeline/types';
 import { useTimelineTextPreset } from '~/composables/timeline/useTimelineTextPreset';
 import { useUiStore } from '~/stores/ui.store';
@@ -33,6 +35,15 @@ const presetsStore = usePresetsStore();
 const projectStore = useProjectStore();
 
 const uiStore = useUiStore();
+const workspaceStore = useWorkspaceStore();
+
+const layer1Label = computed(() => {
+  const key = workspaceStore.userSettings.hotkeys.layer1 || 'Shift';
+  return (
+    LAYER_OPTIONS.find((o) => o.value === key)?.label ||
+    (key === 'Shift' ? 'Shift (Any)' : key)
+  );
+});
 const { isSnapSettingsModalOpen } = storeToRefs(settingsStore);
 const { showPresetModal } = useTimelineTextPreset();
 
@@ -387,7 +398,7 @@ function onToolbarContextMenu(e: MouseEvent) {
         </UiTooltip>
 
         <UiTooltip
-          :text="`${t('fastcat.timeline.addText')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')}). ${t('fastcat.timeline.shiftForPresets', 'Hold Shift to choose preset after insertion')}`"
+          :text="`${t('fastcat.timeline.addText')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')}). ${t('fastcat.timeline.shiftForPresets', 'Hold {key} to choose preset after insertion').replace('{key}', layer1Label)}`"
         >
           <UContextMenu :items="textContextMenuItems">
             <div

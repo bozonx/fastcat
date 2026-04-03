@@ -8,6 +8,7 @@ const props = defineProps<{
   selectedEntryKind?: 'file' | 'directory' | null;
   isOtio: boolean;
   isUnknown: boolean;
+  isCorrupt?: boolean;
   currentUrl: string | null;
   mediaType: 'image' | 'video' | 'audio' | 'text' | 'unknown' | null;
   textContent: string;
@@ -49,12 +50,20 @@ const props = defineProps<{
     </div>
 
     <div
-      v-else-if="props.isUnknown"
+      v-else-if="props.isUnknown || props.isCorrupt"
       class="flex flex-col items-center gap-3 text-ui-text-muted p-8 w-full h-full justify-center"
     >
-      <UIcon name="i-heroicons-document" class="w-16 h-16" />
-      <p class="text-sm text-center">
-        {{ t('fastcat.preview.unsupported', 'Unsupported file format for visual preview') }}
+      <UIcon
+        :name="props.isCorrupt ? 'i-heroicons-exclamation-triangle' : 'i-heroicons-document'"
+        class="w-16 h-16"
+        :class="props.isCorrupt ? 'text-red-400' : ''"
+      />
+      <p class="text-sm text-center font-medium" :class="props.isCorrupt ? 'text-red-400' : ''">
+        {{
+          props.isCorrupt
+            ? t('videoEditor.fileManager.compatibility.corruptTitle')
+            : t('fastcat.preview.unsupported', 'Unsupported file format for visual preview')
+        }}
       </p>
     </div>
 

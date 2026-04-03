@@ -317,12 +317,14 @@ const { getContextMenuItems } = useFileContextMenu(
     folderHasVideos,
     isOpenableMediaFile: (entry: FsEntry) => {
       if (entry.kind !== 'file' || !entry.path) return false;
-      if (fileCompatibility.value[entry.path]?.status === 'fully_unsupported') return false;
+      const status = fileCompatibility.value[entry.path]?.status;
+      if (status === 'fully_unsupported' || status === 'corrupt') return false;
       return isOpenableProjectFileName(entry.name);
     },
     isConvertibleMediaFile: (entry: FsEntry) => {
       if (entry.kind !== 'file' || !entry.path) return false;
-      if (fileCompatibility.value[entry.path]?.status === 'fully_unsupported') return false;
+      const status = fileCompatibility.value[entry.path]?.status;
+      if (status === 'fully_unsupported' || status === 'corrupt') return false;
       const type = getMediaTypeFromFilename(entry.name);
       return type === 'video' || type === 'audio' || type === 'image';
     },

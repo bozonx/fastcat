@@ -129,7 +129,8 @@ function getCompatibilityStatus(entry: FsEntry) {
 
 function getThumbnail(entry: FsEntry) {
   if (entry.kind === 'directory') return null;
-  if (getCompatibilityStatus(entry) === 'fully_unsupported') return null;
+  const status = getCompatibilityStatus(entry);
+  if (status === 'fully_unsupported' || status === 'corrupt') return null;
   return (entry as ExtendedFsEntry).objectUrl || (entry.path ? props.thumbnails[entry.path] : null);
 }
 
@@ -180,13 +181,20 @@ onBeforeUnmount(clearLongPress);
           <div
             class="relative flex-1 w-full bg-zinc-950 flex items-center justify-center overflow-hidden"
           >
-            <template v-if="getCompatibilityStatus(entry) === 'fully_unsupported'">
+            <template
+              v-if="
+                getCompatibilityStatus(entry) === 'fully_unsupported' ||
+                getCompatibilityStatus(entry) === 'corrupt'
+              "
+            >
               <div
                 class="w-full h-full flex flex-col items-center justify-center bg-red-950/60 text-red-400 gap-1 p-1"
               >
                 <UIcon name="i-heroicons-exclamation-triangle" class="w-6 h-6 shrink-0" />
-                <span class="text-xs text-center leading-tight">{{
-                  t('videoEditor.fileManager.compatibility.unsupported')
+                <span class="text-xs text-center font-bold leading-tight uppercase">{{
+                  getCompatibilityStatus(entry) === 'corrupt'
+                    ? t('videoEditor.fileManager.compatibility.corrupt')
+                    : t('videoEditor.fileManager.compatibility.unsupported')
                 }}</span>
               </div>
             </template>

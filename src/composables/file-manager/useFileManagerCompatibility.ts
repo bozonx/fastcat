@@ -3,7 +3,7 @@ import { useMediaStore } from '~/stores/media.store';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import type { FsEntry } from '~/types/fs';
 
-export type FileCompatibilityStatus = 'ok' | 'fully_unsupported' | 'audio_unsupported';
+export type FileCompatibilityStatus = 'ok' | 'fully_unsupported' | 'audio_unsupported' | 'corrupt';
 
 export interface FileCompatibility {
   status: FileCompatibilityStatus;
@@ -15,13 +15,12 @@ function computeStatus(
   mediaMetadata: Record<string, any>,
   metadataLoadFailed: Record<string, boolean>,
 ): FileCompatibilityStatus {
-  if (metadataLoadFailed[path]) return 'fully_unsupported';
-
   const meta = mediaMetadata[path];
+  if (meta?.error || metadataLoadFailed[path]) return 'corrupt';
   if (!meta) return 'ok';
 
   if (mediaType === 'image') {
-    if (meta.image?.canDisplay === false) return 'fully_unsupported';
+    if (meta.image?.canDisplay === false) return 'corrupt';
     return 'ok';
   }
 

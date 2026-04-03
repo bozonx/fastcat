@@ -151,14 +151,20 @@ function handleImageError(entry: ExtendedFsEntry) {
         <div
           class="relative mb-2 w-full aspect-square flex items-center justify-center bg-ui-bg rounded overflow-hidden"
         >
-          <!-- Fully unsupported: red placeholder instead of thumbnail -->
+          <!-- Fully unsupported / Corrupt: red placeholder instead of thumbnail -->
           <div
-            v-if="entry.kind === 'file' && getCompatibilityStatus(entry) === 'fully_unsupported'"
+            v-if="
+              entry.kind === 'file' &&
+              (getCompatibilityStatus(entry) === 'fully_unsupported' ||
+                getCompatibilityStatus(entry) === 'corrupt')
+            "
             class="w-full h-full flex flex-col items-center justify-center bg-red-950/60 text-red-400 gap-1 p-1"
           >
             <UIcon name="i-heroicons-exclamation-triangle" class="w-6 h-6 shrink-0" />
-            <span class="text-xs text-center leading-tight">{{
-              t('videoEditor.fileManager.compatibility.unsupported')
+            <span class="text-xs text-center font-bold leading-tight uppercase">{{
+              getCompatibilityStatus(entry) === 'corrupt'
+                ? t('videoEditor.fileManager.compatibility.corrupt')
+                : t('videoEditor.fileManager.compatibility.unsupported')
             }}</span>
           </div>
           <img

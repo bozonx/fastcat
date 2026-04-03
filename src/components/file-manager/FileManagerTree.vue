@@ -318,6 +318,7 @@ function isFullyUnsupported(entry: FsEntry): boolean {
   if (mediaStore.metadataLoadFailed[entry.path]) return true;
   const meta = mediaStore.mediaMetadata[entry.path];
   if (!meta) return false;
+  if (meta.error) return true;
   const type = getMediaTypeFromFilename(entry.name);
   if (type === 'image' && meta.image?.canDisplay === false) return true;
   if (type === 'video' && meta.video?.canDecode === false) return true;

@@ -11,7 +11,7 @@ import { useDraggedFile } from '~/composables/useDraggedFile';
 
 import type { TimelineClipActionPayload, TimelineTrack } from '~/timeline/types';
 import { timeUsToPx, pxToTimeUs } from '~/utils/timeline/geometry';
-import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
+import { isLayer1Active, isLayer1Pressed } from '~/utils/hotkeys/layerUtils';
 
 import TimelineTrackSection from '~/components/timeline/TimelineTrackSection.vue';
 import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
@@ -308,7 +308,7 @@ async function onDrop(e: DragEvent, trackId: string) {
   if (startUs === null) return;
 
   const pseudo =
-    isLayer1Active(e as unknown as MouseEvent, workspaceStore.userSettings) ||
+    isLayer1Pressed(e as DragEvent, workspaceStore.userSettings) ||
     timelineSettingsStore.overlapMode === 'pseudo';
 
   const libraryItemData =
@@ -317,7 +317,7 @@ async function onDrop(e: DragEvent, trackId: string) {
     try {
       const parsed = JSON.parse(libraryItemData);
       if (parsed.kind || (Array.isArray(parsed) && parsed.length > 0 && parsed[0].kind)) {
-        const showPresets = isLayer1Active(e as unknown as MouseEvent, workspaceStore.userSettings);
+        const showPresets = isLayer1Pressed(e as DragEvent, workspaceStore.userSettings);
         await handleLibraryDrop(libraryItemData, trackId, startUs, {
           pseudo,
           clientX: e.clientX,

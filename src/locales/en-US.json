@@ -1331,6 +1331,8 @@
         "audioCodecUnsupported": "Audio codec not supported",
         "formatUnsupported": "File format is not recognized or not supported",
         "imageFormatUnsupported": "Image format is not supported by this browser",
+        "corrupt": "Corrupt file",
+        "corruptTitle": "This file is corrupt or unsupported",
         "unsupported": "Not supported",
         "unsupportedTitle": "This file cannot be displayed",
         "videoCodecUnsupported": "Video codec not supported"
