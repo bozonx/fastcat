@@ -81,8 +81,8 @@ describe('MediaPlayer.vue', () => {
     expect(audio.exists()).toBe(true);
     expect(audio.attributes('src')).toBe('http://example.com/test.mp3');
 
-    // Check if audio placeholder UI is visible
-    expect(component.find('.i-heroicons-musical-note').exists()).toBe(true);
+    // Check if audio placeholder UI is visible (UIcon renders as icon-mock in tests)
+    expect(component.find('.icon-mock').exists()).toBe(true);
   });
 
   it('toggles playback on button click', async () => {
@@ -93,7 +93,8 @@ describe('MediaPlayer.vue', () => {
       },
     });
 
-    const playButton = component.find('button.i-heroicons-play, button.i-heroicons-pause');
+    // Find play button (UButton with icon)
+    const playButton = component.find('button');
     await playButton.trigger('click');
 
     const { useMediaPlayerPlayback } = await import('~/composables/preview/useMediaPlayerPlayback');
@@ -134,10 +135,10 @@ describe('MediaPlayer.vue', () => {
       },
     });
 
-    // Find fullscreen button
-    const fullscreenBtn = component.find(
-      'button.i-heroicons-arrows-pointing-out, button.i-heroicons-arrows-pointing-in',
-    );
+    // Find fullscreen button (UTooltip contains UButton)
+    const buttons = component.findAll('button');
+    // Last button should be fullscreen for video type
+    const fullscreenBtn = buttons[buttons.length - 1];
     await fullscreenBtn.trigger('click');
     expect(component.emitted('open-modal')).toBeTruthy();
   });

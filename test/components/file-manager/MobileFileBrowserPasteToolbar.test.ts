@@ -28,7 +28,7 @@ describe('MobileFileBrowserPasteToolbar', () => {
       },
     });
 
-    expect(wrapper.text()).toContain('common.copied');
+    expect(wrapper.text()).toContain('Copied');
     expect(wrapper.text()).toContain('2');
   });
 
@@ -44,7 +44,7 @@ describe('MobileFileBrowserPasteToolbar', () => {
       },
     });
 
-    expect(wrapper.text()).toContain('common.cut');
+    expect(wrapper.text()).toContain('Cut');
     expect(wrapper.text()).toContain('3');
   });
 
