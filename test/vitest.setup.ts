@@ -95,11 +95,19 @@ vi.mock('#app', () => ({
   navigateTo: vi.fn(),
   useCookie: vi.fn(() => ({ value: null })),
   useRequestURL: vi.fn(() => ({ href: 'http://localhost', origin: 'http://localhost' })),
+  useRuntimeConfig: vi.fn(() => ({
+    public: {},
+    app: { baseURL: '/' },
+  })),
 }));
 
-vi.mock('#ui/composables/useToast', () => ({
-  useToast: vi.fn(() => ({ add: vi.fn() })),
-}));
+vi.mock('#ui/composables/useToast', () => {
+  const toastMaxInjectionKey = Symbol('toastMaxInjectionKey');
+  return {
+    useToast: vi.fn(() => ({ add: vi.fn(), remove: vi.fn() })),
+    toastMaxInjectionKey,
+  };
+});
 
 vi.mock('#ui/utils', () => ({
   get: vi.fn(),

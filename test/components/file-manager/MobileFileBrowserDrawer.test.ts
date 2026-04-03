@@ -86,7 +86,10 @@ describe('MobileFileBrowserDrawer', () => {
           UButton: true,
           Icon: true,
           MobileDrawerToolbar: { template: '<div><slot /></div>' },
-          MobileDrawerToolbarButton: { template: '<button><slot /></button>' },
+          MobileDrawerToolbarButton: {
+            template: '<button :data-icon="icon"><slot /></button>',
+            props: ['icon'],
+          },
         },
       },
     });
@@ -112,7 +115,10 @@ describe('MobileFileBrowserDrawer', () => {
           UButton: true,
           Icon: true,
           MobileDrawerToolbar: { template: '<div><slot /></div>' },
-          MobileDrawerToolbarButton: { template: '<button><slot /></button>' },
+          MobileDrawerToolbarButton: {
+            template: '<button :data-icon="icon"><slot /></button>',
+            props: ['icon'],
+          },
         },
       },
     });
@@ -141,7 +147,10 @@ describe('MobileFileBrowserDrawer', () => {
           },
           Icon: true,
           MobileDrawerToolbar: { template: '<div><slot /></div>' },
-          MobileDrawerToolbarButton: { template: '<button><slot /></button>' },
+          MobileDrawerToolbarButton: {
+            template: '<button :data-icon="icon"><slot /></button>',
+            props: ['icon'],
+          },
         },
       },
     });
@@ -169,7 +178,10 @@ describe('MobileFileBrowserDrawer', () => {
           UButton: true,
           Icon: true,
           MobileDrawerToolbar: { template: '<div><slot /></div>' },
-          MobileDrawerToolbarButton: { template: '<button><slot /></button>' },
+          MobileDrawerToolbarButton: {
+            template: '<button :data-icon="icon"><slot /></button>',
+            props: ['icon'],
+          },
         },
       },
     });
@@ -197,7 +209,10 @@ describe('MobileFileBrowserDrawer', () => {
           UButton: true,
           Icon: true,
           MobileDrawerToolbar: { template: '<div><slot /></div>' },
-          MobileDrawerToolbarButton: { template: '<button><slot /></button>' },
+          MobileDrawerToolbarButton: {
+            template: '<button :data-icon="icon"><slot /></button>',
+            props: ['icon'],
+          },
         },
       },
     });
@@ -225,7 +240,10 @@ describe('MobileFileBrowserDrawer', () => {
           UButton: true,
           Icon: true,
           MobileDrawerToolbar: { template: '<div><slot /></div>' },
-          MobileDrawerToolbarButton: { template: '<button><slot /></button>' },
+          MobileDrawerToolbarButton: {
+            template: '<button :data-icon="icon"><slot /></button>',
+            props: ['icon'],
+          },
         },
       },
     });

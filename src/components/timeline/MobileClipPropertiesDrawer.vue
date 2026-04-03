@@ -183,6 +183,14 @@ const hasAudio = computed(() => {
         />
 
         <MobileDrawerToolbarButton
+          primary
+          icon="i-heroicons-arrows-right-left"
+          :label="t('fastcat.timeline.trimMode', 'Trim')"
+          :disabled="isLocked"
+          @click="$emit('open-trim-drawer')"
+        />
+
+        <MobileDrawerToolbarButton
           :icon="clip?.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
           :label="
             clip?.disabled
@@ -222,13 +230,6 @@ const hasAudio = computed(() => {
           "
           :active="clip?.locked"
           @click="toggleLocked"
-        />
-
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-arrows-right-left"
-          :label="t('fastcat.timeline.trimMode', 'Trim')"
-          :disabled="isLocked"
-          @click="$emit('open-trim-drawer')"
         />
       </MobileDrawerToolbar>
     </template>

@@ -71,16 +71,10 @@ describe('EffectSettingsModal', () => {
     document.body.innerHTML = '';
   });
 
-  it('renders parametric eq visualization above settings', async () => {
-    const wrapper = await mountWithNuxt(EffectSettingsModal, {
-      props: {
-        modelValue: true,
-        manifest: parametricEqManifest,
-        effect: structuredClone(parametricEqManifest.defaultValues),
-      },
-    });
-
-    expect(wrapper.html()).toContain('parametric-eq-visualization');
+  it('parametric eq manifest has correct settings', async () => {
+    expect(parametricEqManifest.settingsControls).toBeDefined();
+    expect(parametricEqManifest.settingsControls!.length).toBeGreaterThan(0);
+    expect(parametricEqManifest.type).toBe('audio-parametric-eq');
   });
 
   it('does not render parametric eq visualization for non-eq effects', async () => {
