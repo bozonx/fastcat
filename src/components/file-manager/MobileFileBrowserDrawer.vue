@@ -204,6 +204,7 @@ function handleAction(actionId: FileAction) {
   <UiMobileDrawer
     v-model:open="isOpenLocal"
     :show-close="false"
+    :ui="{ container: 'h-[85dvh]' }"
   >
     <template #toolbar>
       <div class="flex flex-col bg-ui-bg/50">
@@ -252,7 +253,7 @@ function handleAction(actionId: FileAction) {
     <div class="flex flex-col h-full relative overflow-hidden">
       <!-- Scrollable content -->
       <div
-        class="flex-1 overflow-y-auto px-4 pb-24"
+        class="flex-1 min-h-0 overflow-y-auto px-4 pb-24"
         data-vaul-no-drag
       >
         <div v-if="selectedFsEntry" class="h-full py-2">
