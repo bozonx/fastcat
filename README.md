@@ -239,7 +239,6 @@ Fastcat can be integrated into other web applications as a portable video editor
 
 ### Features
 
-- **Fast & Parallel Loading**: Assets are downloaded and saved to the local workspace in parallel.
 - **Automatic Isolation**: Each editor instance uses a unique, isolated workspace folder (unless `workspaceId` is provided).
 - **Auto Cleanup**: Temporary files and folders are automatically deleted when the editor is unmounted.
 - **Multilingual Support**: Built-in support for multiple languages (`en-US`, `ru-RU`).
