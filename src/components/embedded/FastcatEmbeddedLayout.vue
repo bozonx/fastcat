@@ -13,9 +13,10 @@ import { useMediaStore } from '~/stores/media.store';
 const props = defineProps<{
   assets?: ExternalAsset[];
   workspaceId?: string;
+  locale?: string;
 }>();
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
@@ -28,8 +29,13 @@ const emit = defineEmits<{
 const isExportDrawerOpen = ref(false);
 const isReady = ref(false);
 const teleportTarget = ref<HTMLElement | null>(null);
+const internalWorkspaceId = ref('');
 
 provide('teleportTarget', teleportTarget);
+
+watch(() => props.locale, (newLocale) => {
+  if (newLocale) locale.value = newLocale;
+}, { immediate: true });
 
 /**
  * Initializes the workspace and project for embedded use.
@@ -38,8 +44,8 @@ async function initEmbedded() {
   workspaceStore.isEphemeral = true;
 
   if (!workspaceStore.workspaceHandle) {
-    const folderName = props.workspaceId ? `embedded-${props.workspaceId}` : 'embedded-editor';
-    await workspaceStore.initAutomaticWorkspace(folderName);
+    internalWorkspaceId.value = props.workspaceId || `embedded-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    await workspaceStore.initAutomaticWorkspace(internalWorkspaceId.value);
   }
 
   // Create or open a default project for the embedded session
@@ -52,9 +58,13 @@ async function initEmbedded() {
     } else {
       await projectStore.openProject(defaultProjectName);
     }
-    
-    // Give some time for stores to settle
-    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+
+  // Wait for the project to be fully initialized
+  let retries = 0;
+  while (projectStore.currentProjectName !== 'embedded_project' && retries < 100) {
+    await new Promise(resolve => setTimeout(resolve, 50));
+    retries++;
   }
 
   // Load external assets if provided
@@ -67,9 +77,6 @@ async function initEmbedded() {
     // 3. Prepare timeline (Ensure we have default tracks instead of blindly adding new ones)
     if (!timelineStore.timelineDoc || timelineStore.timelineDoc.tracks.length === 0) {
       timelineStore.ensureTimelineDoc();
-      
-      // Wait for tracks to settle
-      await new Promise(resolve => setTimeout(resolve, 150));
     }
 
     // Auto-add assets to timeline if empty
@@ -130,17 +137,6 @@ async function initEmbedded() {
     }
   }
   
-  // Wait for timeline to be loaded
-  let retries = 0;
-  while (!timelineStore.timelineDoc && retries < 100) {
-    await new Promise(resolve => setTimeout(resolve, 50));
-    retries++;
-  }
-  
-  if (!timelineStore.timelineDoc) {
-    console.warn('[Embedded] Timeline failed to load within timeout');
-  }
-  
   isReady.value = true;
 }
 
@@ -152,6 +148,16 @@ onUnmounted(async () => {
   // Wipe workspace only if it was an automatic one (opfs-based)
   // For now, we assume this layout is only used in automatic mode
   await workspaceStore.wipeWorkspace();
+  
+  // Try to remove the isolated folder itself if we created one
+  if (internalWorkspaceId.value && navigator.storage?.getDirectory) {
+    try {
+      const root = await navigator.storage.getDirectory();
+      await root.removeEntry(internalWorkspaceId.value, { recursive: true });
+    } catch (e) {
+      // Ignore if not found or busy
+    }
+  }
 });
 
 function handleExported(data: any) {

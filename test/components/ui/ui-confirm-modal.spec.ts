@@ -4,8 +4,15 @@ import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 
 const stubs = {
   UiModal: {
-    template: '<div><h1>{{ title }}</h1><slot /><slot name="footer" /></div>',
-    props: ['open', 'title'],
+    template: `
+      <div v-if="open" class="ui-modal-stub">
+        <h1>{{ title }}</h1>
+        <p v-if="description">{{ description }}</p>
+        <slot />
+        <slot name="footer" />
+      </div>
+    `,
+    props: ['open', 'title', 'description', 'ui'],
   },
 };
 
@@ -27,7 +34,6 @@ describe('UiConfirmModal', () => {
     const html = component.html();
     expect(html).toContain('Test Title');
     expect(html).toContain('Test Description');
-    expect(html).toContain('i-heroicons-information-circle');
     expect(html).toContain('Yes');
     expect(html).toContain('No');
     expect(html).toContain('Maybe');

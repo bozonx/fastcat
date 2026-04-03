@@ -24,7 +24,8 @@ const i18n = createI18n({
 const FastcatElement = defineCustomElement({
   props: {
     assets: { type: Array, default: () => [] },
-    workspaceId: { type: String, default: '' }
+    workspaceId: { type: String, default: '' },
+    locale: { type: String, default: 'en-US' }
   },
   setup(props, { emit }) {
     const pinia = createPinia();
@@ -51,6 +52,7 @@ const FastcatElement = defineCustomElement({
     return () => h(FastcatEmbeddedLayout, {
       assets: props.assets as any,
       workspaceId: props.workspaceId,
+      locale: props.locale,
       onExported: (data: any) => emit('fastcat:exported', data)
     });
   },
@@ -71,7 +73,7 @@ export class FastcatEditor {
 
   constructor(private container: HTMLElement | string) {}
 
-  public init(options: { assets: any[], workspaceId?: string }) {
+  public init(options: { assets: any[], workspaceId?: string, locale?: string }) {
     const target = typeof this.container === 'string' 
       ? document.querySelector(this.container) 
       : this.container;
@@ -82,6 +84,9 @@ export class FastcatEditor {
     (this.element as any).assets = options.assets;
     if (options.workspaceId) {
       (this.element as any).workspaceId = options.workspaceId;
+    }
+    if (options.locale) {
+      (this.element as any).locale = options.locale;
     }
     
     target.appendChild(this.element);

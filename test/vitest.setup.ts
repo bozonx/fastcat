@@ -106,35 +106,18 @@ vi.mock('#ui/utils', () => ({
     const item = items.find((i: any) => i[options?.valueKey || 'value'] === value);
     return item ? item[options?.labelKey || 'label'] : '';
   }),
+  isArrayOfArray: vi.fn(
+    (arr: any) => Array.isArray(arr) && arr.length > 0 && Array.isArray(arr[0]),
+  ),
 }));
 
-// Global stubs for non-aliased/auto-imported usage
-(globalThis as any).useNuxtApp = createNuxtMock;
-(globalThis as any).useRuntimeConfig = () => ({ public: {} });
-(globalThis as any).useId = () => `id-${Math.random().toString(36).substring(2, 9)}`;
-(globalThis as any).useAsyncData = () => ({
-  data: ref(null),
-  pending: ref(false),
-  error: ref(null),
-});
-(globalThis as any).useI18n = () => ({
-  t: (key: string, fallback?: string) => fallback ?? key,
-  locale: ref('en-US'),
-});
-(globalThis as any).useToast = () => ({
-  add: vi.fn(),
-});
-(globalThis as any).useDevice = () => ({ isMobile: false, isDesktop: true });
-(globalThis as any).useColorMode = () => ({
-  preference: 'dark',
-  value: 'dark',
-});
-(globalThis as any).defineNuxtPlugin = (plugin: any) => plugin;
-(globalThis as any).defineAppConfig = (config: any) => config;
-(globalThis as any).useHead = () => {};
-
-config.global.config.warnHandler = (msg) => {
-  if (typeof msg === 'string' && msg.includes('<Suspense> is an experimental feature')) return;
+// Global stubs for Nuxt UI components
+config.global.stubs = {
+  ...config.global.stubs,
+  UTooltip: { template: '<span><slot /></span>' },
+  UContextMenu: { template: '<div><slot /></div>' },
+  UIcon: { props: ['name'], template: '<span class="icon-mock" />' },
+  UButton: { props: ['label'], template: '<button>{{ label }}<slot /></button>' },
 };
 
 // Global stubs for Nuxt UI components
@@ -144,6 +127,21 @@ config.global.stubs = {
   UContextMenu: { template: '<div><slot /></div>' },
   UIcon: { props: ['name'], template: '<span class="icon-mock" />' },
   UButton: { props: ['label'], template: '<button>{{ label }}<slot /></button>' },
+  UModal: {
+    props: ['open', 'title', 'description', 'close', 'ui', 'dismissible', 'content'],
+    template: `
+      <div v-if="open" class="modal-mock" role="dialog">
+        <div class="modal-header">
+          <h2>{{ title }}</h2>
+          <p v-if="description">{{ description }}</p>
+          <slot name="header" />
+        </div>
+        <div class="modal-body"><slot /></div>
+        <div class="modal-footer"><slot name="footer" /></div>
+        <button v-if="close" class="modal-close" @click="$emit('update:open', false)">×</button>
+      </div>
+    `,
+  },
 };
 
 config.global.mocks = {

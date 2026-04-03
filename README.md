@@ -237,6 +237,13 @@ The project uses a structured testing approach:
 
 Fastcat can be integrated into other web applications as a portable video editor component using Shadow DOM for style isolation and OPFS for high-performance sandboxed storage.
 
+### Features
+
+- **Fast & Parallel Loading**: Assets are downloaded and saved to the local workspace in parallel.
+- **Automatic Isolation**: Each editor instance uses a unique, isolated workspace folder (unless `workspaceId` is provided).
+- **Auto Cleanup**: Temporary files and folders are automatically deleted when the editor is unmounted.
+- **Multilingual Support**: Built-in support for multiple languages (`en-US`, `ru-RU`).
+
 ### Build the Library
 
 To generate a standalone bundle, run:
@@ -261,48 +268,39 @@ import FastcatEditor from './dist-lib/fastcat-editor.es.js';
 const editor = new FastcatEditor('#editor-container');
 
 // Assets to be preloaded into the editor's workspace.
-// Only 'url' is mandatory.
 const assets = [
   { 
     url: 'https://example.com/assets/intro.mp4',
     id: 'intro-video',        // Optional: Unique ID. Auto-generated if omitted.
-    type: 'video',            // Optional: 'video', 'audio', or 'image'. Auto-detected via Content-Type or extension if omitted.
-    filename: 'intro.mp4'     // Optional: Target filename in the workspace. Extracted from URL if omitted.
+    type: 'video',            // Optional: 'video', 'audio', or 'image'.
+    filename: 'intro.mp4'     // Optional: Target filename.
   }
 ];
 
 // Start the editor
 const el = editor.init({ 
   assets,
-  workspaceId: 'unique-session-id' // Optional: isoloate storage for multiple editors on one page
+  locale: 'en-US',                // Optional: 'en-US' (default) or 'ru-RU'.
+  workspaceId: 'unique-session-id' // Optional: isolate storage. Auto-generated if omitted.
 });
 
 // Handle events
 el.addEventListener('fastcat:exported', (event) => {
-  // The event detail contains the exported file data
   const { file, filename } = event.detail;
-  
   console.log(`Exported file: ${filename}`, file);
-  
-  // Example: Dynamic download link
-  const url = URL.createObjectURL(file);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  // ... Handle the file (download, upload, etc.)
 });
 ```
 
 2. **Web Component**: 
-   Alternatively, you can use the `<fastcat-editor>` custom element directly after importing the library.
+   Alternatively, use the `<fastcat-editor>` custom element.
 
 ```html
-<fastcat-editor id="my-editor"></fastcat-editor>
+<fastcat-editor id="my-editor" locale="ru-RU"></fastcat-editor>
 <script type="module">
   import './dist-lib/fastcat-editor.es.js';
   const el = document.getElementById('my-editor');
-  el.assets = [...];
+  el.assets = [...]; // Assets should be set via property
 </script>
 ```
 

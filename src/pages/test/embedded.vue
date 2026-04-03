@@ -27,17 +27,14 @@ function onExported(data: any) {
   URL.revokeObjectURL(url);
 }
 
-onMounted(async () => {
-  // Ensure we are in a clean state for testing
-  await workspaceStore.initAutomaticWorkspace();
-});
+// We no longer call initAutomaticWorkspace here, as FastcatEmbeddedLayout handles it.
 </script>
 
 <template>
   <div class="fixed inset-0 w-screen h-screen overflow-hidden bg-black flex flex-col items-stretch justify-items-stretch">
     <!-- Fastcat Embedded Editor Root -->
     <client-only>
-      <FastcatEmbeddedLayout :assets="assets" @exported="onExported" />
+      <FastcatEmbeddedLayout :assets="assets" locale="en-US" @exported="onExported" />
     </client-only>
 
     <!-- Debug info overlay (optional, can be hidden) -->
