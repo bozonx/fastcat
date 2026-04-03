@@ -1335,6 +1335,8 @@
         "audioCodecUnsupported": "Аудио кодек не поддерживается",
         "formatUnsupported": "Формат файла не распознан или не поддерживается",
         "imageFormatUnsupported": "Формат изображения не поддерживается браузером",
+        "corrupt": "Файл испорчен",
+        "corruptTitle": "Этот файл поврежден или не поддерживается",
         "unsupported": "Не поддерживается",
         "unsupportedTitle": "Этот файл невозможно отобразить",
         "videoCodecUnsupported": "Видео кодек не поддерживается"

@@ -99,7 +99,7 @@ export async function handleFilesCommand(
       await deps.vfs.writeFile(targetPath, file);
 
       const mediaType = getMediaTypeFromFilename(file.name);
-      if (mediaType === 'video' || mediaType === 'audio') {
+      if (mediaType === 'video' || mediaType === 'audio' || mediaType === 'image') {
         deps.onMediaImported({ projectRelativePath: targetPath, file });
       }
 

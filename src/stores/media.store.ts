@@ -46,8 +46,11 @@ export interface MediaMetadata {
   };
   image?: {
     canDisplay?: boolean;
+    width?: number;
+    height?: number;
   };
   audioPeaks?: number[][];
+  error?: boolean;
 }
 
 export const useMediaStore = defineStore('media', () => {
@@ -157,6 +160,9 @@ export const useMediaStore = defineStore('media', () => {
 
           if (!lacksVideoCompat && !lacksAudioCompat && !lacksImageCompat) {
             parsedMeta = parsed;
+            if (parsed.error) {
+              metadataLoadFailed.value[cacheKey] = true;
+            }
           }
         }
       } catch {
@@ -166,16 +172,18 @@ export const useMediaStore = defineStore('media', () => {
 
     if (parsedMeta) {
       // Try to load cached peaks
-      const waveformsDir = await fsModule.ensureWaveformsDir();
-      if (waveformsDir) {
-        try {
-          const peaksHandle = await waveformsDir.getFileHandle(cacheFileName);
-          const peaksFile = await peaksHandle.getFile();
-          const peaksText = await peaksFile.text();
-          const peaksData = JSON.parse(peaksText) as number[][];
-          parsedMeta.audioPeaks = peaksData;
-        } catch {
-          // No cached peaks
+      if (!parsedMeta.error) {
+        const waveformsDir = await fsModule.ensureWaveformsDir();
+        if (waveformsDir) {
+          try {
+            const peaksHandle = await waveformsDir.getFileHandle(cacheFileName);
+            const peaksFile = await peaksHandle.getFile();
+            const peaksText = await peaksFile.text();
+            const peaksData = JSON.parse(peaksText) as number[][];
+            parsedMeta.audioPeaks = peaksData;
+          } catch {
+            // No cached peaks
+          }
         }
       }
 
@@ -202,11 +210,32 @@ export const useMediaStore = defineStore('media', () => {
 
         return meta;
       }
-      metadataLoadFailed.value[projectRelativePath] = true;
-      return null;
+
+      // If meta is null but worker didn't throw (e.g. unknown media)
+      throw new Error('Worker returned null metadata');
     } catch (e) {
       console.warn('Failed to fetch metadata for', projectRelativePath, (e as Error)?.message);
       metadataLoadFailed.value[projectRelativePath] = true;
+
+      // Persist failure state so we don't try again until file changes
+      const errorMeta: MediaMetadata = {
+        source: { size: file.size, lastModified: file.lastModified },
+        duration: 0,
+        error: true,
+      };
+      mediaMetadata.value[cacheKey] = errorMeta;
+
+      if (metaDir) {
+        try {
+          const cacheHandle = await metaDir.getFileHandle(cacheFileName, { create: true });
+          const writable = await (cacheHandle as any).createWritable();
+          await writable.write(JSON.stringify(errorMeta, null, 2));
+          await writable.close();
+        } catch {
+          // Ignore OPFS write error
+        }
+      }
+
       return null;
     }
   }

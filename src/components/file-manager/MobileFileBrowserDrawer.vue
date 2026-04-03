@@ -16,6 +16,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
+import { useMediaStore } from '~/stores/media.store';
 import { useI18n } from 'vue-i18n';
 
 import { useRuntimeConfig } from 'nuxt/app';
@@ -108,6 +109,7 @@ const isFullyUnsupported = computed(() => {
   if (mediaStore.metadataLoadFailed[entry.path]) return true;
   const meta = mediaStore.mediaMetadata[entry.path];
   if (!meta) return false;
+  if (meta.error) return true;
   const type = getMediaTypeFromFilename(entry.name);
   if (type === 'image' && meta.image?.canDisplay === false) return true;
   if (type === 'video' && meta.video?.canDecode === false) return true;

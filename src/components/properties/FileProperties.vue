@@ -465,6 +465,7 @@ const {
       v-else-if="fileInfo?.kind !== 'directory'"
       :selected-entry-kind="selectedFsEntry?.kind ?? null"
       :is-unknown="isUnknown"
+      :is-corrupt="isMediaFullyUnsupported"
       :current-url="currentUrl"
       :media-type="mediaType"
       :text-content="textContent"

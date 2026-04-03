@@ -197,9 +197,11 @@ async function handleAddToProject() {
 }
 
 async function handleAddSelectionToTimeline() {
-  const supportedEntries = selectedEntries.value.filter(
-    (e) => e.kind === 'file' && isOpenableProjectFileName(e.name),
-  );
+  const supportedEntries = selectedEntries.value.filter((e) => {
+    if (e.kind !== 'file' || !e.path) return false;
+    if (fileCompatibility.value[e.path]?.status === 'fully_unsupported') return false;
+    return isOpenableProjectFileName(e.name);
+  });
   if (supportedEntries.length === 0) return;
 
   addToTimelineEntries.value = supportedEntries;
