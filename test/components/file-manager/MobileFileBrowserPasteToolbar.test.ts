@@ -49,16 +49,24 @@ describe('MobileFileBrowserPasteToolbar', () => {
   });
 
   it('emits paste event', async () => {
+    mockClipboardStore.clipboardPayload = {
+      operation: 'copy',
+      items: [{}, {}],
+    };
+
     const wrapper = await mountSuspended(MobileFileBrowserPasteToolbar, {
       global: {
         stubs: {
-          UButton: { template: '<button @click="$emit(\'click\')"><slot /></button>' },
+          MobileDrawerToolbar: { template: '<div><slot /></div>' },
+          MobileDrawerToolbarButton: {
+            template: '<button @click="$emit(\'click\')"><slot /></button>',
+          },
         },
       },
     });
 
     const buttons = wrapper.findAll('button');
-    await buttons[1].trigger('click'); // Paste button
+    await buttons[0].trigger('click');
 
     expect(wrapper.emitted('paste')).toBeTruthy();
   });
