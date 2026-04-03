@@ -179,11 +179,7 @@ function confirmRename() {
 <template>
   <UiMobileDrawer
     v-model:open="isOpenLocal"
-    :title="
-      selectedTrackForProperties
-        ? $t('common.properties', 'Properties')
-        : $t('fastcat.audioMixer.title', 'Mixer & Tracks')
-    "
+    :show-close="false"
     :ui="{ body: 'no-scrollbar' }"
   >
     <div

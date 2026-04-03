@@ -67,34 +67,10 @@ function jumpToState(entryId: number, isFuture: boolean) {
 <template>
   <UiMobileDrawer
     :open="isOpen"
-    :title="$t('videoEditor.fileManager.history.title')"
+    :show-close="false"
     :ui="{ body: 'pb-8' }"
     @update:open="$emit('close')"
   >
-    <template #header>
-      <div class="flex items-center justify-between w-full">
-        <h3 class="text-base font-bold text-ui-text">
-          {{ $t('videoEditor.fileManager.history.title') }}
-        </h3>
-        <div class="flex items-center gap-2">
-          <UiActionButton
-            icon="lucide:undo"
-            color="neutral"
-            size="sm"
-            :disabled="!canUndo"
-            @click="handleUndo"
-          />
-          <UiActionButton
-            icon="lucide:redo"
-            color="neutral"
-            size="sm"
-            :disabled="!canRedo"
-            @click="handleRedo"
-          />
-        </div>
-      </div>
-    </template>
-
     <div class="px-4 py-2 space-y-1">
       <div
         v-if="past.length === 0 && future.length === 0"

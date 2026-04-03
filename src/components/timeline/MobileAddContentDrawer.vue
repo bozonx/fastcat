@@ -74,7 +74,7 @@ function addAudioTrack() {
 <template>
   <UiMobileDrawer
     v-model:open="isOpenLocal"
-    :title="t('fastcat.timeline.addContent', 'Add content')"
+    :show-close="false"
     direction="bottom"
   >
     <div class="px-4 pb-8 flex flex-col gap-3">

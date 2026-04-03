@@ -247,7 +247,7 @@ function handleRippleTrimRight() {
   <!-- Snap mode drawer -->
   <UiMobileDrawer
     v-model:open="isSnapDrawerOpen"
-    :title="t('fastcat.timeline.snapMode', 'Snap mode')"
+    :show-close="false"
     direction="bottom"
   >
     <div class="px-4 pb-6 flex flex-col gap-5">

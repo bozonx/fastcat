@@ -123,7 +123,7 @@ watch(currentPath, (path) => {
 </script>
 
 <template>
-  <UiMobileDrawer v-model:open="isOpenLocal" :snap-points="[0.85]" direction="bottom">
+  <UiMobileDrawer v-model:open="isOpenLocal" :show-close="false" :snap-points="[0.85]" direction="bottom">
     <template #header>
       <div class="flex items-center gap-2 min-w-0">
         <button

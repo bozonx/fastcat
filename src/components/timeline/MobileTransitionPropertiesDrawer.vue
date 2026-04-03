@@ -74,19 +74,6 @@ function handleDeleteTransition() {
       </MobileDrawerToolbar>
     </template>
 
-    <template #header>
-      <div class="flex items-center gap-2 min-w-0">
-        <div class="w-7 h-7 rounded bg-zinc-800 flex items-center justify-center shrink-0">
-          <UIcon name="i-heroicons-arrows-right-left" class="w-4 h-4 text-blue-400" />
-        </div>
-        <span class="text-sm font-bold text-zinc-200 truncate leading-none">
-          {{ t('fastcat.timeline.transition.title', 'Transition') }} ({{
-            transitionSelection.edge === 'in' ? 'In' : 'Out'
-          }})
-        </span>
-      </div>
-    </template>
-
     <div class="px-4 pt-4 pb-8">
       <TransitionProperties
         v-if="isOpen"

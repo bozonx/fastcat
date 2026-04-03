@@ -88,14 +88,7 @@ function handleAction(actionId: FileAction) {
 <template>
   <UiMobileDrawer
     v-model:open="isOpenLocal"
-    :title="
-      isMultiple
-        ? $t('common.selectedItems', 'Selected items')
-        : $t('common.properties', 'Properties')
-    "
-    :description="
-      isMultiple ? `${selectedEntriesList.length} ${$t('common.items', 'items')}` : undefined
-    "
+    :show-close="false"
     :is-full-height="isTextDocument"
   >
     <template #toolbar>

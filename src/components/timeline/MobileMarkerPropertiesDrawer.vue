@@ -72,18 +72,7 @@ function confirmDelete() {
       </MobileDrawerToolbar>
     </template>
 
-    <template #header>
-      <div class="flex items-center gap-2 min-w-0">
-        <div class="w-7 h-7 rounded bg-zinc-800 flex items-center justify-center shrink-0">
-          <UIcon name="i-heroicons-map-pin" class="w-4 h-4 text-yellow-500" />
-        </div>
-        <span class="text-sm font-bold text-zinc-200 truncate leading-none">
-          {{ marker?.text || t('fastcat.marker.title', 'Marker') }}
-        </span>
-      </div>
-    </template>
-
-    <div v-if="marker" class="px-4 pt-4 pb-8">
+    <div class="px-4 pt-4 pb-8 flex flex-col gap-5">
       <MarkerProperties :marker-id="markerId" />
     </div>
 

@@ -9,11 +9,14 @@ interface Props {
   toolbarSnapHeight?: string;
   /** Force specific direction in landscape (overrides user preference) */
   forceLandscapeDirection?: 'bottom' | 'right';
+  /** Show close button */
+  showClose?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   toolbarSnapHeight: '116px',
   forceLandscapeDirection: undefined,
+  showClose: false,
 });
 
 defineSlots<{
@@ -67,6 +70,7 @@ function toggleLandscapePosition() {
     :modal="false"
     :overlay="false"
     :with-handle="true"
+    :show-close="props.showClose"
     :ui="{
       toolbar: 'pb-1 relative',
     }"
