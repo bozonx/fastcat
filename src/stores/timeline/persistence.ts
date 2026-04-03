@@ -1,4 +1,4 @@
-import type { Ref } from 'vue';
+import { toRaw, type Ref } from 'vue';
 import { createAutoSave } from '~/utils/auto-save';
 import { getPlatformSuffix } from '~/stores/ui/uiLocalStorage';
 
@@ -51,9 +51,12 @@ export interface TimelinePersistenceModule {
 
 function serializeInWorker(doc: TimelineDocument): Promise<string> {
   return new Promise((resolve, reject) => {
-    const worker = new Worker(new URL('../../workers/timeline-serializer.worker.ts', import.meta.url), {
-      type: 'module',
-    });
+    const worker = new Worker(
+      new URL('../../workers/timeline-serializer.worker.ts', import.meta.url),
+      {
+        type: 'module',
+      },
+    );
     worker.onmessage = (e) => {
       if (e.data.success) {
         resolve(e.data.serialized);
@@ -66,7 +69,7 @@ function serializeInWorker(doc: TimelineDocument): Promise<string> {
       reject(e);
       worker.terminate();
     };
-    worker.postMessage(JSON.parse(JSON.stringify(doc)));
+    worker.postMessage(toRaw(doc));
   });
 }
 
@@ -120,7 +123,7 @@ export function createTimelinePersistenceModule(
         const handle = await deps.ensureTimelineFileHandle({ create: true });
         if (!handle) return false;
 
-        const serialized = deps.serializeTimelineToOtio(snapshot);
+        const serialized = await serializeInWorker(snapshot);
 
         // Validation: prevent writing empty or corrupted data
         if (!serialized || serialized.length < 10) {
@@ -140,7 +143,7 @@ export function createTimelinePersistenceModule(
         await writable.write(serialized);
         await writable.close();
 
-        deps.onSaveSuccess?.();
+        deps.onSaveSuccess?.(serialized);
       } catch (e: unknown) {
         deps.timelineSaveError.value =
           e instanceof Error ? e.message : 'Failed to save timeline file';
