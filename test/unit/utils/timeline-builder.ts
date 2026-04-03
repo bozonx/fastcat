@@ -21,16 +21,7 @@ export class TimelineBuilder {
       items: [],
     } as unknown as TimelineTrack;
 
-    if (kind === 'video') {
-      const firstAudioIdx = this.doc.tracks.findIndex((t) => t.kind === 'audio');
-      if (firstAudioIdx === -1) {
-        this.doc.tracks.unshift(track);
-      } else {
-        this.doc.tracks.splice(firstAudioIdx, 0, track);
-      }
-    } else {
-      this.doc.tracks.push(track);
-    }
+    this.doc.tracks.push(track);
 
     return this;
   }

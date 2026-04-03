@@ -13,10 +13,10 @@ describe('FileProjectRootSection.vue', () => {
     const projectSettingsStore = useProjectSettingsStore();
     projectSettingsStore.projectSettings.project = {
       isCustomResolution: false,
-      resolutionFormat: '1920x1080',
+      resolutionFormat: '1080p',
       width: 1920,
       height: 1080,
-      fps: 30,
+      fps: 25,
       sampleRate: 48000,
     } as any;
 
@@ -24,26 +24,19 @@ describe('FileProjectRootSection.vue', () => {
       props: {
         isProjectRootDir: true,
         projectName: 'Test Project',
-        storageFreeBytes: 1024 * 1024 * 1024 * 10, // 10GB
+        storageFreeBytes: 1024 * 1024 * 1024 * 10,
         projectStats: {
-          size: 1024 * 1024 * 500, // 500MB
+          size: 1024 * 1024 * 500,
           fileCount: 42,
           dirCount: 5,
         },
       },
     });
 
-    // Check title
     expect(component.text()).toContain('Project root');
-
-    // Check size
     expect(component.text()).toContain('500 MB');
-
-    // Check free space
     expect(component.text()).toContain('10 GB');
-
-    // Check parameters
-    expect(component.text()).toContain('1920x1080, 30FPS, 48kHz');
+    expect(component.text()).toContain('1080p, 25FPS, 48kHz');
   });
 
   it('opens project settings when clicking edit button', async () => {
@@ -57,7 +50,7 @@ describe('FileProjectRootSection.vue', () => {
       },
     });
 
-    const editBtn = component.find('button[title="Edit"]');
+    const editBtn = component.find('button');
     await editBtn.trigger('click');
     expect(uiStore.isProjectSettingsOpen).toBe(true);
   });

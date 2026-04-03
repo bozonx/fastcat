@@ -111,6 +111,14 @@ vi.mock('~/composables/file-manager/useFileBrowserTranscription', () => ({
   }),
 }));
 
+vi.mock('~/components/file-manager/MobileFileBrowserSelectionToolbar.vue', () => ({
+  default: { template: '<div id="selection-toolbar" />' },
+}));
+
+vi.mock('~/components/file-manager/MobileFileBrowserPasteToolbar.vue', () => ({
+  default: { template: '<div id="paste-toolbar" />' },
+}));
+
 describe('MobileFileBrowser', () => {
   beforeEach(() => {
     vi.clearAllMocks();

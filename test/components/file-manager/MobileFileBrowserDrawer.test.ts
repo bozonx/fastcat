@@ -27,20 +27,34 @@ vi.mock('~/components/properties/MultiFileProperties.vue', () => ({
 }));
 vi.mock('~/components/timeline/MobileDrawerToolbarButton.vue', () => ({
   default: {
-    template: '<button :data-icon="icon" :data-label="label" @click="$emit(\'click\')"><slot /></button>',
-    props: ['icon', 'label']
-  }
+    template:
+      '<button :data-icon="icon" :data-label="label" @click="$emit(\'click\')"><slot /></button>',
+    props: ['icon', 'label'],
+  },
 }));
 vi.mock('~/components/properties/PropertyActionList.vue', () => ({
   default: {
     template: '<div id="property-action-list" :data-count="actions.length"><slot /></div>',
-    props: ['actions']
-  }
+    props: ['actions'],
+  },
+}));
+vi.mock('~/components/timeline/MobileDrawerToolbar.vue', () => ({
+  default: {
+    template: '<div class="mobile-drawer-toolbar"><slot /></div>',
+    props: ['class'],
+  },
+}));
+vi.mock('~/components/timeline/MobileDrawerToolbarButton.vue', () => ({
+  default: {
+    template:
+      '<button :data-icon="icon" :data-label="label" @click="$emit(\'click\')"><slot /></button>',
+    props: ['icon', 'label'],
+  },
 }));
 vi.mock('~/stores/file-conversion.store', () => ({
   useFileConversionStore: () => ({
     openConversionModal: vi.fn(),
-  })
+  }),
 }));
 
 describe('MobileFileBrowserDrawer', () => {
@@ -68,9 +82,11 @@ describe('MobileFileBrowserDrawer', () => {
       props: defaultProps,
       global: {
         stubs: {
-          UDrawer: { template: '<div><slot name="content" /></div>' },
+          UiMobileDrawer: { template: '<div><slot name="toolbar" /><slot /></div>' },
           UButton: true,
           Icon: true,
+          MobileDrawerToolbar: { template: '<div><slot /></div>' },
+          MobileDrawerToolbarButton: { template: '<button><slot /></button>' },
         },
       },
     });
@@ -92,9 +108,11 @@ describe('MobileFileBrowserDrawer', () => {
       props: defaultProps,
       global: {
         stubs: {
-          UDrawer: { template: '<div><slot name="content" /></div>' },
+          UiMobileDrawer: { template: '<div><slot name="toolbar" /><slot /></div>' },
           UButton: true,
           Icon: true,
+          MobileDrawerToolbar: { template: '<div><slot /></div>' },
+          MobileDrawerToolbarButton: { template: '<button><slot /></button>' },
         },
       },
     });
@@ -116,12 +134,14 @@ describe('MobileFileBrowserDrawer', () => {
       props: { ...defaultProps, onAction },
       global: {
         stubs: {
-          UDrawer: { template: '<div><slot name="content" /></div>' },
+          UiMobileDrawer: { template: '<div><slot name="toolbar" /><slot /></div>' },
           UButton: {
             template: '<button :data-icon="icon" @click="$emit(\'click\')"><slot /></button>',
             props: ['icon'],
           },
           Icon: true,
+          MobileDrawerToolbar: { template: '<div><slot /></div>' },
+          MobileDrawerToolbarButton: { template: '<button><slot /></button>' },
         },
       },
     });
@@ -145,9 +165,11 @@ describe('MobileFileBrowserDrawer', () => {
       props: defaultProps,
       global: {
         stubs: {
-          UDrawer: { template: '<div><slot name="content" /></div>' },
+          UiMobileDrawer: { template: '<div><slot name="toolbar" /><slot /></div>' },
           UButton: true,
           Icon: true,
+          MobileDrawerToolbar: { template: '<div><slot /></div>' },
+          MobileDrawerToolbarButton: { template: '<button><slot /></button>' },
         },
       },
     });
@@ -171,9 +193,11 @@ describe('MobileFileBrowserDrawer', () => {
       props: defaultProps,
       global: {
         stubs: {
-          UDrawer: { template: '<div><slot name="content" /></div>' },
+          UiMobileDrawer: { template: '<div><slot name="toolbar" /><slot /></div>' },
           UButton: true,
           Icon: true,
+          MobileDrawerToolbar: { template: '<div><slot /></div>' },
+          MobileDrawerToolbarButton: { template: '<button><slot /></button>' },
         },
       },
     });
@@ -197,9 +221,11 @@ describe('MobileFileBrowserDrawer', () => {
       props: defaultProps,
       global: {
         stubs: {
-          UDrawer: { template: '<div><slot name="content" /></div>' },
+          UiMobileDrawer: { template: '<div><slot name="toolbar" /><slot /></div>' },
           UButton: true,
           Icon: true,
+          MobileDrawerToolbar: { template: '<div><slot /></div>' },
+          MobileDrawerToolbarButton: { template: '<button><slot /></button>' },
         },
       },
     });

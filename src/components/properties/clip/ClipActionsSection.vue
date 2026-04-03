@@ -15,6 +15,7 @@ const props = defineProps<{
   canShowThumbnailsToggle: boolean;
   linkedAudioClip?: TimelineClipItem | null;
   linkedVideoClip?: TimelineClipItem | null;
+  isSoloed?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -35,6 +36,7 @@ const emit = defineEmits<{
   toggleDisabled: [];
   toggleLocked: [];
   toggleMuted: [];
+  toggleSolo: [];
   freezeFrame: [];
   resetFreezeFrame: [];
   extractAudio: [];
@@ -82,6 +84,12 @@ const hasReturnFromLockedAudioClip = computed(() => {
 const commonActions = computed(() => {
   const actions = [
     {
+      id: 'delete',
+      title: t('common.delete', 'Delete'),
+      icon: 'i-heroicons-trash',
+      onClick: () => emit('delete'),
+    },
+    {
       id: 'rename',
       title: t('common.rename', 'Rename'),
       icon: 'i-heroicons-pencil',
@@ -100,26 +108,12 @@ const commonActions = computed(() => {
       onClick: () => emit('cut'),
     },
     {
-      id: 'delete',
-      title: t('common.delete', 'Delete'),
-      icon: 'i-heroicons-trash',
-      onClick: () => emit('delete'),
-    },
-    {
       id: 'toggle-disabled',
       title: props.clip.disabled
         ? t('fastcat.timeline.enableClip', 'Enable clip')
         : t('fastcat.timeline.disableClip', 'Disable clip'),
       icon: props.clip.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
       onClick: () => emit('toggleDisabled'),
-    },
-    {
-      id: 'toggle-locked',
-      title: props.clip.locked
-        ? t('fastcat.timeline.unlockClip', 'Unlock clip')
-        : t('fastcat.timeline.lockClip', 'Lock clip'),
-      icon: props.clip.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
-      onClick: () => emit('toggleLocked'),
     },
   ];
 
@@ -132,7 +126,25 @@ const commonActions = computed(() => {
       icon: props.clip.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark',
       onClick: () => emit('toggleMuted'),
     });
+
+    actions.push({
+      id: 'toggle-solo',
+      title: props.isSoloed
+        ? t('fastcat.timeline.unsolo', 'Unsolo')
+        : t('fastcat.timeline.solo', 'Solo'),
+      icon: props.isSoloed ? 'i-heroicons-star-solid' : 'i-heroicons-star',
+      onClick: () => emit('toggleSolo'),
+    });
   }
+
+  actions.push({
+    id: 'toggle-locked',
+    title: props.clip.locked
+      ? t('fastcat.timeline.unlockClip', 'Unlock clip')
+      : t('fastcat.timeline.lockClip', 'Lock clip'),
+    icon: props.clip.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
+    onClick: () => emit('toggleLocked'),
+  });
 
   return actions;
 });

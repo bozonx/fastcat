@@ -26,6 +26,11 @@ vi.mock('#app', () => ({
     go: vi.fn(),
     back: vi.fn(),
   }),
+  useRoute: () => ({
+    path: '/',
+    params: {},
+    query: {},
+  }),
   useNuxtApp: () => ({
     $notificationService: { add: vi.fn() },
     $i18nService: { t: (key: string) => key },

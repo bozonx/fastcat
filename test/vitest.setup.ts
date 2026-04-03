@@ -13,11 +13,13 @@ const createI18nMock = () => ({
   mode: 'composition',
   locale: ref('en-US'),
   fallbackLocale: ref('en-US'),
-  t: (key: string, fallback?: string) => fallback ?? key,
+  t: (key: string, params?: string | Record<string, unknown>) =>
+    typeof params === 'string' ? params : key,
   mergeLocaleMessage: vi.fn(),
   setLocaleMessage: vi.fn(),
   global: {
-    t: (key: string, fallback?: string) => fallback ?? key,
+    t: (key: string, params?: string | Record<string, unknown>) =>
+      typeof params === 'string' ? params : key,
     locale: ref('en-US'),
     fallbackLocale: ref('en-US'),
     mergeLocaleMessage: vi.fn(),
@@ -29,7 +31,8 @@ const createI18nMock = () => ({
 // Explicitly define named exports via a separate object to ensure Vitest sees them
 const vueI18nMock = {
   useI18n: vi.fn(() => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
+    t: (key: string, params?: string | Record<string, unknown>) =>
+      typeof params === 'string' ? params : key,
     locale: ref('en-US'),
   })),
   createI18n: vi.fn(createI18nMock),
@@ -40,7 +43,8 @@ vi.mock('vue-i18n', () => vueI18nMock);
 
 vi.mock('#i18n', () => ({
   useI18n: vi.fn(() => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
+    t: (key: string, params?: string | Record<string, unknown>) =>
+      typeof params === 'string' ? params : key,
     locale: ref('en-US'),
   })),
   useLocaleRoute: vi.fn(() => (route: any) => route),
@@ -146,7 +150,8 @@ config.global.stubs = {
 
 config.global.mocks = {
   ...config.global.mocks,
-  $t: (key: string, fallback?: string) => fallback ?? key,
+  $t: (key: string, params?: string | Record<string, unknown>) =>
+    typeof params === 'string' ? params : key,
 };
 
 // LocalStorage mock

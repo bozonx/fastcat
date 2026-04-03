@@ -19,10 +19,8 @@ describe('SettingsMouse', () => {
   it('renders mouse sections and reset button', async () => {
     const wrapper = await mountSuspended(SettingsMouse);
 
-    expect(wrapper.text()).toContain('videoEditor.settings.userMouse');
-    expect(wrapper.text()).toContain('videoEditor.settings.resetDefaults');
-
-    // Check for some section titles
+    expect(wrapper.text()).toContain('Mouse');
+    expect(wrapper.text()).toContain('Reset to defaults');
     expect(wrapper.text()).toContain('videoEditor.settings.mouseRuler');
     expect(wrapper.text()).toContain('videoEditor.settings.mouseTimeline');
   });
