@@ -46,8 +46,7 @@ export async function atomicWriteFile(
 }
 
 async function writeDirectly(handle: FileSystemFileHandle, content: string | Blob): Promise<void> {
-  // @ts-expect-error createWritable exists
-  const writable = await handle.createWritable();
+  const writable = await (handle as any).createWritable();
   await writable.write(content);
   await writable.close();
 }
@@ -63,7 +62,7 @@ export function validateSerializedContent(serialized: string): { valid: boolean;
 
   try {
     const parsed = JSON.parse(serialized);
-    if (!parsed || typeof parsed !== 'object') {
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
       return { valid: false, error: 'Content is not a valid object' };
     }
 
