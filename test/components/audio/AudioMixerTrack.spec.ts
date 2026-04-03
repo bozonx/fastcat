@@ -71,7 +71,7 @@ describe('AudioMixerTrack', () => {
 
     const buttons = component.findAll('button');
     const muteBtn = buttons.find((b) => b.text().trim() === 'M');
-    const soloBtn = buttons.find((b) => b.text().trim() === 'S');
+    const soloBtn = buttons.find((b) => b.attributes('title') === 'Solo');
 
     await muteBtn?.trigger('click');
     expect(mockTimelineStore.toggleTrackAudioMuted).toHaveBeenCalledWith('track-1');
