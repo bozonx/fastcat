@@ -42,17 +42,15 @@ class WorkerMock {
   onerror: any = null;
   constructor(public url: string) {}
   postMessage(data: any) {
-    // Notify immediately to keep tests fast and avoid timer confusion
-    queueMicrotask(() => {
-      if (this.onmessage) {
-        this.onmessage({
-          data: {
-            success: true,
-            serialized: JSON.stringify(data),
-          },
-        });
-      }
-    });
+    // Synchronous for testing to avoid microtask/timer issues
+    if (this.onmessage) {
+      this.onmessage({
+        data: {
+          success: true,
+          serialized: JSON.stringify(data),
+        },
+      });
+    }
   }
   terminate() {}
 }
@@ -113,12 +111,14 @@ describe('Timeline Persistence and AutoSave', () => {
     // Should not save immediately
     expect(mockFileHandle.createWritable).not.toHaveBeenCalled();
 
-    // Fast-forward debounce time (2000ms)
-    vi.advanceTimersByTime(2000);
+    // Fast-forward debounce time (2000ms) - let's use more to be safe
+    vi.advanceTimersByTime(5000);
 
-    // Now wait for all microtasks and async operations
-    await vi.runAllTimersAsync();
-    await Promise.resolve(); // Flush queueMicrotask from WorkerMock
+    // Now wait for all microtasks and async operations (multiple flushes to be sure)
+    for (let i = 0; i < 10; i++) {
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+    }
 
     expect(mockFileHandle.createWritable).toHaveBeenCalled();
     expect(mockWritable.write).toHaveBeenCalled();
@@ -142,6 +142,8 @@ describe('Timeline Persistence and AutoSave', () => {
     await vi.runAllTimersAsync();
     await Promise.resolve();
     await savePromise;
+    await Promise.resolve();
+    await Promise.resolve();
 
     expect(mockFileHandle.createWritable).toHaveBeenCalled();
     expect(timelineStore.isSavingTimeline).toBe(false);

@@ -8,7 +8,8 @@ import UiSelect from '~/components/ui/UiSelect.vue';
 import UiSearchInput from '~/components/ui/UiSearchInput.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import ProjectThumbnail from '~/components/startup/ProjectThumbnail.vue';
-import MobileAppSettingsPanel from '~/components/settings/MobileAppSettingsPanel.vue';
+import MobileSettingsView from '~/components/settings/MobileSettingsView.vue';
+import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 import MobileBottomNav from '~/components/layout/MobileBottomNav.vue';
 import { useTeleportTarget } from '~/composables/ui/useTeleportTarget';
@@ -441,19 +442,13 @@ const formatDate = (dateStr?: string) => {
         </template>
       </UiModal>
 
-      <!-- Fullscreen Settings -->
-      <UiModal
+      <!-- Settings Drawer -->
+      <UiMobileDrawer
         v-model:open="isSettingsOpen"
         :title="t('videoEditor.settings.title')"
-        :ui="{
-          content: 'max-w-full m-0 h-full rounded-none bg-zinc-950',
-          body: '!p-0 !overflow-hidden flex flex-col h-full',
-          header: 'shrink-0 pt-safe bg-zinc-950 border-b border-white/5',
-          footer: 'hidden',
-        }"
       >
-        <MobileAppSettingsPanel class="flex-1" />
-      </UiModal>
+        <MobileSettingsView hide-title />
+      </UiMobileDrawer>
 
       <!-- FAB -->
       <Teleport :to="teleportTarget">
