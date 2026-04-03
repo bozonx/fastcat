@@ -8,6 +8,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import MobileTrackMixerDrawer from './MobileTrackMixerDrawer.vue';
 import MobileHistoryDrawer from './MobileHistoryDrawer.vue';
+import MobileMarkersDrawer from './MobileMarkersDrawer.vue';
 import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 
 const timelineStore = useTimelineStore();
@@ -22,6 +23,7 @@ const hasSelection = computed(() => selectedItemIds.value.length > 0);
 
 const isTrackMixerDrawerOpen = ref(false);
 const isHistoryDrawerOpen = ref(false);
+const isMarkersDrawerOpen = ref(false);
 const isSnapDrawerOpen = ref(false);
 
 const longPressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
@@ -233,6 +235,23 @@ function handleRippleTrimRight() {
           @click="handleRippleTrimRight"
         />
       </div>
+
+      <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1 shrink-0">
+        <UiActionButton
+          icon="lucide:history"
+          color="neutral"
+          size="sm"
+          :title="t('common.history', 'History')"
+          @click="isHistoryDrawerOpen = true"
+        />
+        <UiActionButton
+          icon="lucide:map-pin"
+          color="neutral"
+          size="sm"
+          :title="t('common.markers', 'Markers')"
+          @click="isMarkersDrawerOpen = true"
+        />
+      </div>
     </MobileDrawerToolbar>
 
     <div class="flex items-center shrink-0 border-l border-ui-border pl-2 ml-1">
@@ -332,4 +351,6 @@ function handleRippleTrimRight() {
   />
 
   <MobileHistoryDrawer :is-open="isHistoryDrawerOpen" @close="isHistoryDrawerOpen = false" />
+
+  <MobileMarkersDrawer :is-open="isMarkersDrawerOpen" @close="isMarkersDrawerOpen = false" />
 </template>

@@ -11,12 +11,21 @@ import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 
 vi.mock('~/composables/editor/useProjectActions', () => ({
   useProjectActions: () => ({
     openProjectTab: vi.fn(),
     closeCurrentProjectTab: vi.fn(),
   }),
+}));
+
+vi.mock('~/stores/workspace.store', () => ({
+  useWorkspaceStore: vi.fn(() => ({
+    userSettings: {
+      hotkeys: { layer1: 'Shift', layer2: 'Control' },
+    },
+  })),
 }));
 
 vi.mock('#app', () => ({
