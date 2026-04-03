@@ -18,20 +18,16 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <div class="border-t border-zinc-800 bg-zinc-900 flex flex-col z-40 shrink-0">
-    <div v-if="canAddToTimeline" class="px-4 pt-4 pb-2">
-      <UButton
-        size="xl"
-        variant="solid"
-        icon="lucide:plus"
-        class="w-full rounded-2xl shadow-xl font-bold active:scale-95 transition-all text-white border-none bg-ui-action hover:bg-ui-action-hover shadow-ui-action/20"
-        @click="emit('add-to-timeline')"
-      >
-        {{ t('common.addToTimeline', 'Add to timeline') }}
-      </UButton>
-    </div>
-
+  <div class="border-t border-zinc-800 bg-zinc-900 flex flex-col z-40 shrink-0 pb-safe container-safe">
     <MobileDrawerToolbar>
+      <MobileDrawerToolbarButton
+        v-if="canAddToTimeline"
+        success
+        icon="lucide:plus"
+        :label="t('common.toTimeline', 'To timeline')"
+        @click="emit('add-to-timeline')"
+      />
+
       <MobileDrawerToolbarButton
         icon="i-heroicons-trash"
         :label="t('common.delete', 'Delete')"
@@ -59,3 +55,9 @@ const { t } = useI18n();
     </MobileDrawerToolbar>
   </div>
 </template>
+
+<style scoped>
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+</style>

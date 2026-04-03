@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onUnmounted } from 'vue';
 import { useFileManagerStore, type FileSortField } from '~/stores/file-manager.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useProjectStore } from '~/stores/project.store';
@@ -163,6 +163,12 @@ watch(
   { deep: true },
 );
 
+onUnmounted(() => {
+  if (clipboardStore.hasFileManagerPayload) {
+    clipboardStore.clearClipboardPayload();
+  }
+});
+
 const isAddToTimelineModalOpen = ref(false);
 const addToTimelineEntries = ref<FsEntry[]>([]);
 
@@ -182,6 +188,7 @@ async function handleAddToProject() {
   if (!entity || entity.source !== 'fileManager' || entity.kind !== 'file' || !entity.path) return;
 
   addToTimelineEntries.value = [entity.entry];
+  isDrawerOpen.value = false;
   isAddToTimelineModalOpen.value = true;
 }
 
@@ -192,6 +199,7 @@ async function handleAddSelectionToTimeline() {
   if (supportedEntries.length === 0) return;
 
   addToTimelineEntries.value = supportedEntries;
+  isDrawerOpen.value = false;
   isAddToTimelineModalOpen.value = true;
 }
 
