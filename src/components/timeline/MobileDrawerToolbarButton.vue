@@ -23,9 +23,9 @@ defineEmits<{ click: [] }>();
         : success
           ? 'text-white bg-ui-action border-none shadow-lg shadow-ui-action/20'
           : primary
-            ? 'text-white bg-primary-500 border-none shadow-lg shadow-primary-500/20'
+            ? 'text-white bg-blue-500 border-none shadow-lg shadow-blue-500/20'
             : active
-              ? 'text-primary-400 bg-primary-400/15 border border-primary-500/30'
+              ? 'text-blue-400 bg-blue-400/15 border border-blue-500/30'
               : 'text-zinc-200 bg-zinc-800/50',
       disabled ? 'opacity-40 pointer-events-none' : 'active:scale-95',
     ]"
