@@ -11,7 +11,6 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useFocusStore } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useFileManagerStore } from '~/stores/file-manager.store';
-import { usePresetsStore } from '~/stores/presets.store';
 import { BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS } from '~/utils/constants';
 import type {
   AudioClipEffect,
@@ -27,6 +26,7 @@ import ClipTransitionsSection from '~/components/properties/clip/ClipTransitions
 import ClipActionsSection from '~/components/properties/clip/ClipActionsSection.vue';
 import ClipInfoSection from '~/components/properties/clip/ClipInfoSection.vue';
 import ClipEffectsSection from '~/components/properties/clip/ClipEffectsSection.vue';
+import ClipBlendingSection from '~/components/properties/clip/ClipBlendingSection.vue';
 import ClipTransformSection from '~/components/properties/clip/ClipTransformSection.vue';
 import ClipTypeSection from '~/components/properties/clip/ClipTypeSection.vue';
 import ClipMaskSection from '~/components/properties/clip/ClipMaskSection.vue';
@@ -54,7 +54,6 @@ const workspaceStore = useWorkspaceStore();
 const focusStore = useFocusStore();
 const fileManagerStore = useFileManagerStore();
 const clipboardStore = useAppClipboard();
-const presetsStore = usePresetsStore();
 
 const isUiRenameModalOpen = ref(false);
 
@@ -417,6 +416,7 @@ defineExpose({
     <ClipInfoSection
       :clip="clip"
       :media-meta="mediaMeta"
+      :show-source="false"
       @update-start-time="handleUpdateStartTime"
       @update-end-time="handleUpdateEndTime"
       @update-duration="handleUpdateDuration"
@@ -437,32 +437,29 @@ defineExpose({
       @update-hud-control="handleUpdateHudControl"
     />
 
-    <ClipTransitionsSection
-      :is-video-track="isVideoTrack"
-      :transition-in="clip.transitionIn ?? null"
-      :transition-out="clip.transitionOut ?? null"
-      :clip-duration-us="clip.timelineRange.durationUs"
-      @select-edge="selectTransitionEdge"
-      @toggle="toggleTransition"
-      @update-duration="({ edge, durationSec }) => updateTransitionDuration(edge, durationSec)"
-      @update-type="({ edge, type }) => updateTransitionType(edge, type)"
+    <ClipTransformSection
+      :clip="clip"
+      :track-kind="clipTrackKind"
+      :can-edit-reversed="canEditReversed"
+      :is-reversed="isReversed"
+      :media-meta="mediaMeta"
+      @update-transform="
+        (next) => timelineStore.updateClipProperties(clip.trackId, clip.id, { transform: next })
+      "
+      @toggle-reversed="toggleReversed"
+      @update-speed="
+        (speed) => timelineStore.updateClipProperties(clip.trackId, clip.id, { speed })
+      "
     />
 
-    <div ref="effectsSectionRef">
-      <ClipEffectsSection
-        :clip-type="clip.clipType"
-        :opacity="clip.opacity ?? 1"
-        :blend-mode="(clip.blendMode ?? 'normal') as TimelineBlendMode"
-        :video-effects="clipVideoEffects"
-        :audio-effects="clipAudioEffects"
-        :can-edit-audio-effects="canEditAudioEffects"
-        :blend-mode-options="blendModeOptions"
-        @update-opacity="handleUpdateOpacity"
-        @update-blend-mode="handleUpdateBlendMode"
-        @update-video-effects="handleUpdateClipEffects"
-        @update-audio-effects="handleUpdateClipAudioEffects"
-      />
-    </div>
+    <ClipBlendingSection
+      :clip-type="clip.clipType"
+      :opacity="clip.opacity ?? 1"
+      :blend-mode="(clip.blendMode ?? 'normal') as TimelineBlendMode"
+      :blend-mode-options="blendModeOptions"
+      @update-opacity="handleUpdateOpacity"
+      @update-blend-mode="handleUpdateBlendMode"
+    />
 
     <ClipMaskSection v-if="isVideoTrack" :clip="clip" @update-mask="handleUpdateMask" />
 
@@ -487,20 +484,29 @@ defineExpose({
       @update-audio-fade-out-sec="updateAudioFadeOutSec"
     />
 
-    <ClipTransformSection
-      :clip="clip"
-      :track-kind="clipTrackKind"
-      :can-edit-reversed="canEditReversed"
-      :is-reversed="isReversed"
-      :media-meta="mediaMeta"
-      @update-transform="
-        (next) => timelineStore.updateClipProperties(clip.trackId, clip.id, { transform: next })
-      "
-      @toggle-reversed="toggleReversed"
-      @update-speed="
-        (speed) => timelineStore.updateClipProperties(clip.trackId, clip.id, { speed })
-      "
+    <ClipTransitionsSection
+      :is-video-track="isVideoTrack"
+      :transition-in="clip.transitionIn ?? null"
+      :transition-out="clip.transitionOut ?? null"
+      :clip-duration-us="clip.timelineRange.durationUs"
+      @select-edge="selectTransitionEdge"
+      @toggle="toggleTransition"
+      @update-duration="({ edge, durationSec }) => updateTransitionDuration(edge, durationSec)"
+      @update-type="({ edge, type }) => updateTransitionType(edge, type)"
     />
+
+    <div ref="effectsSectionRef">
+      <ClipEffectsSection
+        :clip-type="clip.clipType"
+        :video-effects="clipVideoEffects"
+        :audio-effects="clipAudioEffects"
+        :can-edit-audio-effects="canEditAudioEffects"
+        @update-video-effects="handleUpdateClipEffects"
+        @update-audio-effects="handleUpdateClipAudioEffects"
+      />
+    </div>
+
+    <ClipInfoSection :clip="clip" :media-meta="mediaMeta" :show-info="false" />
 
     <UiRenameModal
       :open="isUiRenameModalOpen"
