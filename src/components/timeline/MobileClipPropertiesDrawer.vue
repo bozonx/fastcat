@@ -67,8 +67,6 @@ const clipTrack = computed(() => currentClipAndTrack.value?.track ?? null);
 const clipTrackKind = computed(() => clipTrack.value?.kind ?? 'video');
 const isLocked = computed(() => Boolean(clip.value?.locked || clipTrack.value?.locked));
 
-const isDeleteConfirmOpen = ref(false);
-
 function handleCopy() {
   if (!clip.value) return;
   clipboardStore.setClipboardPayload({
@@ -96,35 +94,13 @@ function handleCut() {
 
 function requestDelete() {
   if (!clip.value || isLocked.value) return;
-  if (workspaceStore.userSettings.deleteWithoutConfirmation) {
-    timelineStore.deleteFirstSelectedItem();
-    emit('close');
-  } else {
-    isDeleteConfirmOpen.value = true;
-  }
-}
-
-function confirmDelete() {
   timelineStore.deleteFirstSelectedItem();
-  isDeleteConfirmOpen.value = false;
   emit('close');
 }
 
-const isRippleDeleteConfirmOpen = ref(false);
-
 function requestRippleDelete() {
   if (!clip.value || isLocked.value) return;
-  if (workspaceStore.userSettings.deleteWithoutConfirmation) {
-    timelineStore.rippleDeleteFirstSelectedItem();
-    emit('close');
-  } else {
-    isRippleDeleteConfirmOpen.value = true;
-  }
-}
-
-function confirmRippleDelete() {
   timelineStore.rippleDeleteFirstSelectedItem();
-  isRippleDeleteConfirmOpen.value = false;
   emit('close');
 }
 
@@ -528,26 +504,6 @@ const otherActions = computed(() => {
 
       <ClipProperties :clip="clip" hide-actions />
     </div>
-
-    <UiConfirmModal
-      v-model:open="isDeleteConfirmOpen"
-      :title="t('fastcat.timeline.deleteClipTitle', 'Delete clip?')"
-      :description="t('fastcat.timeline.deleteClipDescription', 'This action cannot be undone.')"
-      color="primary"
-      icon="i-heroicons-exclamation-triangle"
-      :confirm-text="t('common.delete', 'Delete')"
-      @confirm="confirmDelete"
-    />
-
-    <UiConfirmModal
-      v-model:open="isRippleDeleteConfirmOpen"
-      :title="t('fastcat.timeline.rippleDeleteTitle', 'Ripple delete clip?')"
-      :description="t('fastcat.timeline.rippleDeleteDescription', 'This action will delete the clip and shift all following content.')"
-      color="primary"
-      icon="i-heroicons-backspace"
-      :confirm-text="t('fastcat.timeline.rippleDelete', 'Ripple delete')"
-      @confirm="confirmRippleDelete"
-    />
 
     <UiRenameModal
       :open="isRenameModalOpen"
