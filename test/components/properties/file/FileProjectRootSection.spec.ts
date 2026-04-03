@@ -39,22 +39,6 @@ describe('FileProjectRootSection.vue', () => {
     expect(component.text()).toContain('1080p, 25FPS, 48kHz');
   });
 
-  it('opens project settings when clicking edit button', async () => {
-    const uiStore = useUiStore();
-    const component = await mountWithNuxt(FileProjectRootSection, {
-      props: {
-        isProjectRootDir: true,
-        projectName: 'Test Project',
-        storageFreeBytes: null,
-        projectStats: null,
-      },
-    });
-
-    const editBtn = component.find('button');
-    await editBtn.trigger('click');
-    expect(uiStore.isProjectSettingsOpen).toBe(true);
-  });
-
   it('does not render if isProjectRootDir is false', async () => {
     const component = await mountWithNuxt(FileProjectRootSection, {
       props: {

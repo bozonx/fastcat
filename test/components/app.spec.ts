@@ -10,10 +10,6 @@ vi.mock('#imports', () => ({
   useHead: vi.fn(),
 }));
 
-vi.mock('#ui/composables/useToast', () => ({
-  toastMaxInjectionKey: Symbol('toastMaxInjectionKey'),
-}));
-
 describe('App Smoke Test', () => {
   it('can mount the app root component', async () => {
     const component = await mountWithNuxt(App);

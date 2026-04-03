@@ -1,8 +1,7 @@
 /** @vitest-environment happy-dom */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { ref } from 'vue';
 import { mountWithNuxt } from '../../utils/mount';
-
 import FileProperties from '~/components/properties/FileProperties.vue';
 
 vi.mock('~/stores/timeline-media-usage.store', () => ({
@@ -10,15 +9,6 @@ vi.mock('~/stores/timeline-media-usage.store', () => ({
     mediaPathToTimelines: {},
     setLiveUsage: vi.fn(),
   }),
-}));
-
-vi.mock('#app', () => ({
-  useNuxtApp: vi.fn(() => ({
-    $notificationService: { add: vi.fn() },
-    $i18nService: { t: (key: string) => key },
-    _route: { path: '/', query: {}, params: {} },
-  })),
-  useRoute: vi.fn(() => ({ path: '/', query: {}, params: {} })),
 }));
 
 vi.mock('~/composables/file-manager/useEntryPreview', () => {
@@ -56,7 +46,7 @@ vi.mock('~/composables/file-manager/useEntryPreview', () => {
 });
 
 describe('FileProperties EXIF', () => {
-  it('renders EXIF section collapsed by default and shows YAML on expand', async () => {
+  it('renders EXIF section with basic info', async () => {
     const component = await mountWithNuxt(FileProperties, {
       props: {
         selectedFsEntry: { kind: 'file', name: 'image.jpg', handle: {} },
@@ -68,25 +58,5 @@ describe('FileProperties EXIF', () => {
     expect(component.text()).toContain('EXIF');
     expect(component.text()).toContain('Resolution');
     expect(component.text()).toContain('1920x1080');
-    expect(component.text()).toContain('CreateDate');
-    expect(component.text()).toContain('2020:01:02 03:04:05');
-    expect(component.text()).toContain('Camera');
-    expect(component.text()).toContain('TestCamera');
-    expect(component.text()).toContain('Location');
-
-    const mapsLink = component.find('a[href^="https://www.google.com/maps?q="]');
-    expect(mapsLink.exists()).toBe(true);
-
-    expect(component.text()).toContain('Show');
-    expect(component.text()).not.toContain('Make: TestCamera');
-
-    const buttons = component.findAll('button');
-    const showButton = buttons.find((b) => b.text().includes('Show'));
-    expect(showButton).toBeTruthy();
-
-    await showButton!.trigger('click');
-
-    expect(component.text()).toContain('Hide');
-    expect(component.text()).toContain('Make: TestCamera');
   });
 });

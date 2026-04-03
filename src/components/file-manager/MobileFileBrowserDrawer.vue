@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, toRefs } from 'vue';
 import { useSelectionStore } from '~/stores/selection.store';
 import FileProperties from '~/components/properties/FileProperties.vue';
 import MultiFileProperties from '~/components/properties/MultiFileProperties.vue';
@@ -14,6 +14,9 @@ import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useAppClipboard } from '~/composables/useAppClipboard';
+import { useI18n } from 'vue-i18n';
 
 import { useRuntimeConfig } from 'nuxt/app';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
@@ -23,6 +26,8 @@ const props = defineProps<{
   isSelectionMode: boolean;
   onAction?: (action: FileAction, entry: FsEntry | FsEntry[]) => Promise<void>;
 }>();
+
+const { isOpen, isSelectionMode, onAction } = toRefs(props);
 
 const emit = defineEmits<{
   (e: 'close'): void;
@@ -36,13 +41,18 @@ const proxyStore = useProxyStore();
 const projectStore = useProjectStore();
 const { extractAudio } = useAudioExtraction();
 const runtimeConfig = useRuntimeConfig();
+const workspaceStore = useWorkspaceStore();
 
 const isBloggerdogConnected = computed(() => {
   const cfg = resolveExternalServiceConfig({
-    publicConfig: runtimeConfig.public,
-    service: 'bloggerdog',
+    service: 'files',
+    integrations: workspaceStore.userSettings.integrations,
+    bloggerDogApiUrl:
+      typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
+        ? runtimeConfig.public.bloggerDogApiUrl
+        : '',
   });
-  return cfg?.enabled !== false && cfg?.baseUrl;
+  return Boolean(cfg);
 });
 
 const clipboardStore = useAppClipboard();
@@ -50,7 +60,7 @@ const clipboardStore = useAppClipboard();
 const selectedEntity = computed(() => selectionStore.selectedEntity);
 
 const isOpenLocal = computed({
-  get: () => props.isOpen,
+  get: () => isOpen.value,
   set: (val) => {
     if (!val) {
       emit('close');
@@ -92,7 +102,7 @@ const selectedEntriesList = computed(() => {
 });
 
 const canAddToTimeline = computed(() => {
-  if (props.isSelectionMode) return false;
+  if (isSelectionMode.value) return false;
   if (!selectedEntity.value || selectedEntity.value.kind !== 'file') return false;
   return isOpenableProjectFileName(selectedEntity.value.name);
 });
@@ -203,12 +213,12 @@ const topActions = computed(() => {
 });
 
 function handleAction(actionId: FileAction) {
-  if (props.onAction) {
+  if (onAction?.value) {
     const list = selectedEntriesList.value;
     if (actionId === 'rename' && list.length === 1 && list[0]) {
-      void props.onAction(actionId, list[0]);
+      void onAction.value(actionId, list[0]);
     } else if (list.length > 0) {
-      void props.onAction(actionId, list);
+      void onAction.value(actionId, list);
     }
   }
 }
@@ -222,7 +232,7 @@ function handleAction(actionId: FileAction) {
   >
     <template #toolbar>
       <div class="flex flex-col bg-ui-bg/50">
-        <MobileDrawerToolbar v-if="props.onAction" class="border-b border-ui-border">
+        <MobileDrawerToolbar v-if="selectedEntriesList.length > 0" class="border-b border-ui-border">
           <MobileDrawerToolbarButton
             icon="i-heroicons-trash"
             :label="$t('common.delete', 'Delete')"
