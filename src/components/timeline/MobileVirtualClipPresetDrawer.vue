@@ -280,7 +280,7 @@ function selectPreset(item: PresetItem) {
 <template>
   <UiMobileDrawer
     v-model:open="isOpenLocal"
-    :title="drawerTitle"
+    :show-close="false"
     :snap-points="[1]"
     direction="bottom"
   >

@@ -55,17 +55,6 @@ function handleDelete() {
       </MobileDrawerToolbar>
     </template>
 
-    <template #header>
-      <div class="flex items-center gap-2 min-w-0">
-        <div class="w-7 h-7 rounded bg-zinc-800 flex items-center justify-center shrink-0">
-          <UIcon name="i-heroicons-rectangle-group" class="w-4 h-4 text-orange-400" />
-        </div>
-        <span class="text-sm font-bold text-zinc-200 truncate leading-none">
-          {{ t('fastcat.timeline.selectionRange', 'Selection Range') }}
-        </span>
-      </div>
-    </template>
-
     <div v-if="selectionRange" class="px-4 pt-4 pb-8">
       <SelectionRangeProperties />
     </div>

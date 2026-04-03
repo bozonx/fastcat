@@ -220,32 +220,7 @@ function confirmDeleteTrack() {
       </MobileDrawerToolbar>
     </template>
 
-    <template #header>
-      <div class="flex items-center gap-2 min-w-0">
-        <div
-          v-if="selectedTrack"
-          class="w-7 h-7 rounded shrink-0 flex items-center justify-center font-black text-xs"
-          :style="{
-            backgroundColor:
-              selectedTrack.color && selectedTrack.color !== '#2a2a2a'
-                ? `${selectedTrack.color}33`
-                : '#334155',
-            color:
-              selectedTrack.color && selectedTrack.color !== '#2a2a2a'
-                ? selectedTrack.color
-                : '#94a3b8',
-          }"
-        >
-          {{ selectedTrack.kind === 'video' ? 'V' : 'A' }}{{ selectedTrackNumber }}
-        </div>
-        <span class="text-sm font-bold text-zinc-200 truncate leading-none">
-          {{ selectedTrack?.name || selectedTrack?.id }}
-        </span>
-      </div>
-    </template>
-
-    <!-- Volume slider + full properties -->
-    <div v-if="selectedTrack" class="px-4 pt-3 pb-8 flex flex-col gap-4">
+    <div v-if="selectedTrack" class="px-4 pt-4 pb-8 flex flex-col gap-4">
       <!-- Track volume slider -->
       <div
         class="flex items-center gap-3 rounded-xl bg-zinc-900/80 border border-zinc-800 px-3 py-2.5"

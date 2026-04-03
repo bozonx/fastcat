@@ -169,17 +169,6 @@ function toggleLocked() {
       </MobileDrawerToolbar>
     </template>
 
-    <template #header>
-      <div class="flex items-center gap-2 min-w-0">
-        <div class="w-7 h-7 rounded bg-zinc-800 flex items-center justify-center shrink-0">
-          <UIcon name="i-heroicons-film" class="w-4 h-4 text-zinc-400" />
-        </div>
-        <span class="text-sm font-bold text-zinc-200 truncate leading-none">
-          {{ clip?.name || t('fastcat.timeline.clipActions', 'Clip') }}
-        </span>
-      </div>
-    </template>
-
     <div v-if="clip" class="px-4 pt-4 pb-8">
       <ClipProperties :clip="clip" />
     </div>
