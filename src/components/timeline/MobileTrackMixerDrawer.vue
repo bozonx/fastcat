@@ -341,7 +341,7 @@ function confirmRename() {
             <UiToggleButton
               :model-value="Boolean(track.audioSolo)"
               size="xs"
-              label="S"
+              icon="i-heroicons-musical-note"
               active-color="primary"
               inactive-color="neutral"
               inactive-variant="ghost"

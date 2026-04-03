@@ -789,7 +789,7 @@ async function onClipAction(payload: TimelineClipActionPayload) {
               @click="toggleMuted"
             />
             <MobileDrawerToolbarButton
-              :icon="allSoloed ? 'i-heroicons-star-solid' : 'i-heroicons-star'"
+              :icon="allSoloed ? 'i-heroicons-musical-note-solid' : 'i-heroicons-musical-note'"
               :label="
                 allSoloed
                   ? t('fastcat.timeline.unsolo', 'Unsolo')
