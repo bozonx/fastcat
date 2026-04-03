@@ -21,14 +21,6 @@ const { t } = useI18n();
   <div class="border-t border-zinc-800 bg-zinc-900 flex flex-col z-40 shrink-0 pb-safe container-safe">
     <MobileDrawerToolbar>
       <MobileDrawerToolbarButton
-        v-if="canAddToTimeline"
-        success
-        icon="lucide:plus"
-        :label="t('common.toTimeline', 'To timeline')"
-        @click="emit('add-to-timeline')"
-      />
-
-      <MobileDrawerToolbarButton
         icon="i-heroicons-trash"
         :label="t('common.delete', 'Delete')"
         @click="emit('action', 'delete', props.selectedEntries)"
@@ -51,6 +43,14 @@ const { t } = useI18n();
         icon="i-heroicons-scissors"
         :label="t('common.cut', 'Cut')"
         @click="emit('action', 'cut', props.selectedEntries)"
+      />
+
+      <MobileDrawerToolbarButton
+        v-if="canAddToTimeline"
+        success
+        icon="lucide:plus"
+        :label="t('common.toTimeline', 'To timeline')"
+        @click="emit('add-to-timeline')"
       />
     </MobileDrawerToolbar>
   </div>
