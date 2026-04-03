@@ -15,6 +15,7 @@ export interface ClipInteractionsContext {
   splitClipAtPlayhead: (target: { trackId: string; itemId: string }) => void;
   emitSelectItem: (e: PointerEvent, itemId: string) => void;
   didStartDrag: Ref<boolean>;
+  longPressTriggered: Ref<boolean>;
 }
 
 export function useClipInteractions(ctx: ClipInteractionsContext) {
@@ -23,7 +24,7 @@ export function useClipInteractions(ctx: ClipInteractionsContext) {
   );
 
   function onClipClick(e: MouseEvent) {
-    if (ctx.didStartDrag.value) return;
+    if (ctx.didStartDrag.value || ctx.longPressTriggered?.value) return;
 
     if (ctx.isTrimModeActive.value) {
       if (

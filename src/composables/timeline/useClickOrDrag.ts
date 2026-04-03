@@ -75,8 +75,10 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
     const onMove = (ev: PointerEvent) => {
       const dx = Math.abs(ev.clientX - startX);
       const dy = Math.abs(ev.clientY - startY);
-      // Cancel long press if finger moved too much (allow more jitter than drag threshold)
-      if ((dx > LONG_PRESS_CANCEL_THRESHOLD_PX || dy > LONG_PRESS_CANCEL_THRESHOLD_PX) && longPressTimer !== null) {
+      
+      const jitterThreshold = e.pointerType === 'touch' ? 20 : LONG_PRESS_CANCEL_THRESHOLD_PX;
+
+      if ((dx > jitterThreshold || dy > jitterThreshold) && longPressTimer !== null) {
         window.clearTimeout(longPressTimer);
         longPressTimer = null;
       }

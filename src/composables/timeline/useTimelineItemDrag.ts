@@ -566,10 +566,12 @@ export function useTimelineItemDrag(
         quantizeToFrames: enableFrameSnap,
         ignoreLinks: isShiftPressed,
       } as const;
-      timelineStore.applyTimeline(cmd, { saveMode: 'none', skipHistory: true });
-      lastDragAppliedCmd.value = cmd as any;
-      draggingTrackId.value = targetTrackId;
-      hasPendingTimelinePersist.value = true;
+      const appliedIds = timelineStore.applyTimeline(cmd, { saveMode: 'none', skipHistory: true });
+      if (appliedIds && appliedIds.length > 0) {
+        lastDragAppliedCmd.value = cmd as any;
+        draggingTrackId.value = targetTrackId;
+        hasPendingTimelinePersist.value = true;
+      }
 
       return;
     }

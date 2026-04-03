@@ -231,6 +231,7 @@ const { clipItem, onClipClick: onClipClickInteraction } = useClipInteractions({
   splitClipAtPlayhead: (target) => void timelineStore.splitClipAtPlayhead(target),
   emitSelectItem: (e, itemId) => emit('selectItem', e, itemId),
   didStartDrag,
+  longPressTriggered,
 });
 
 function onClipClick(e: MouseEvent) {

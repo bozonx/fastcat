@@ -130,6 +130,7 @@ const {
   isPresetModalOpen,
   pendingClipInfo,
   applyTextPreset,
+  cancelTextPreset,
 } = useTimelineTextPreset();
 
 const {
@@ -378,6 +379,7 @@ function onDragVirtualEnd() {
       :track-id="pendingClipInfo.trackId"
       :item-id="pendingClipInfo.itemId"
       @select="(id) => applyTextPreset(id, pendingClipInfo!)"
+      @close="cancelTextPreset"
     />
 
     <!-- Row 1: Toolbar -->
