@@ -125,12 +125,21 @@ async function handleAdd() {
         }
       }
 
-      await timelineStore.addClipToTimelineFromPath({
-        trackId: trackIdForThisEntry,
-        name: entry.name,
-        path: entry.path,
-        startUs,
-      });
+      if (mediaType === 'timeline') {
+        await timelineStore.addTimelineClipToTimelineFromPath({
+          trackId: trackIdForThisEntry,
+          name: entry.name,
+          path: entry.path,
+          startUs,
+        });
+      } else {
+        await timelineStore.addClipToTimelineFromPath({
+          trackId: trackIdForThisEntry,
+          name: entry.name,
+          path: entry.path,
+          startUs,
+        });
+      }
     }
 
     await timelineStore.requestTimelineSave({ immediate: true });
