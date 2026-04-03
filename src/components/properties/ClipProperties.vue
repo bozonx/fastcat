@@ -437,21 +437,6 @@ defineExpose({
       @update-hud-control="handleUpdateHudControl"
     />
 
-    <ClipTransformSection
-      :clip="clip"
-      :track-kind="clipTrackKind"
-      :can-edit-reversed="canEditReversed"
-      :is-reversed="isReversed"
-      :media-meta="mediaMeta"
-      @update-transform="
-        (next) => timelineStore.updateClipProperties(clip.trackId, clip.id, { transform: next })
-      "
-      @toggle-reversed="toggleReversed"
-      @update-speed="
-        (speed) => timelineStore.updateClipProperties(clip.trackId, clip.id, { speed })
-      "
-    />
-
     <ClipBlendingSection
       :clip-type="clip.clipType"
       :opacity="clip.opacity ?? 1"
@@ -506,7 +491,26 @@ defineExpose({
       />
     </div>
 
-    <ClipInfoSection :clip="clip" :media-meta="mediaMeta" :show-info="false" />
+    <ClipTransformSection
+      :clip="clip"
+      :track-kind="clipTrackKind"
+      :can-edit-reversed="canEditReversed"
+      :is-reversed="isReversed"
+      :media-meta="mediaMeta"
+      @update-transform="
+        (next) => timelineStore.updateClipProperties(clip.trackId, clip.id, { transform: next })
+      "
+      @toggle-reversed="toggleReversed"
+      @update-speed="
+        (speed) => timelineStore.updateClipProperties(clip.trackId, clip.id, { speed })
+      "
+    />
+
+    <ClipInfoSection
+      :clip="clip"
+      :media-meta="mediaMeta"
+      :show-info="false"
+    />
 
     <UiRenameModal
       :open="isUiRenameModalOpen"
