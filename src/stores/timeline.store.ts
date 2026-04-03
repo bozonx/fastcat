@@ -40,6 +40,7 @@ import { useHistoryStore } from './history.store';
 import { useWorkspaceStore } from './workspace.store';
 import { useProxyStore } from './proxy.store';
 import { useSelectionStore } from './selection.store';
+import { useFocusStore } from './focus.store';
 import { useUiStore } from './ui.store';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { MAX_TIMELINE_ZOOM_POSITION, MIN_TIMELINE_ZOOM_POSITION } from '~/utils/zoom';
@@ -56,6 +57,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   const workspaceStore = useWorkspaceStore();
   const proxyStore = useProxyStore();
   const selectionStore = useSelectionStore();
+  const focusStore = useFocusStore();
   const uiStore = useUiStore();
   const nuxtApp = useNuxtApp();
   const toast = nuxtApp.$notificationService as AppNotificationService;
@@ -549,6 +551,9 @@ export const useTimelineStore = defineStore('timeline', () => {
       
       const newRelativePath = parentPath ? `${parentPath}/${nextName}` : nextName;
       await projectStore.openTimelineFile(newRelativePath);
+      focusStore.setActiveTimelinePath(newRelativePath);
+      await loadTimeline();
+      void lifecycle.loadTimelineMetadata();
     } catch (e) {
       console.error('Failed to duplicate timeline', e);
       toast.add({

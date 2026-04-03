@@ -336,7 +336,3 @@ function handleRippleTrimRight() {
 </template>
 
 
-ryDrawerOpen = false" />
-</template>
-
-
