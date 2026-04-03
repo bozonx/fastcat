@@ -1,5 +1,13 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+}
 @import './themes/dark.css';
 @import './components/splitpanes.css';
 

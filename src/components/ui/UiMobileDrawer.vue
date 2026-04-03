@@ -91,8 +91,8 @@ const isExpanded = computed(() => {
 /** Responsive container logic */
 const containerClasses = computed(() => {
   const base =
-    'flex flex-col relative overflow-hidden shadow-2xl transition-all duration-300 pointer-events-auto z-50';
-  const bgColor = 'bg-zinc-900/95 backdrop-blur-2xl ring-1 ring-white/5';
+    'flex flex-col relative overflow-hidden shadow-2xl transition-all duration-300 pointer-events-auto z-50 antialiased transform-gpu';
+  const bgColor = 'bg-zinc-900/98 backdrop-blur-xl ring-1 ring-white/10';
 
   if (effectiveDirection.value === 'right' || effectiveDirection.value === 'left') {
     const sideBorder = effectiveDirection.value === 'right' ? 'border-l' : 'border-r';
