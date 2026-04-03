@@ -15,11 +15,15 @@ import { usePresetsStore } from '~/stores/presets.store';
 
 const props = defineProps<{
   effects?: AudioClipEffect[];
+  hasToggle?: boolean;
+  disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
   'update:effects': [effects: AudioClipEffect[]];
 }>();
+
+const modelValue = defineModel<boolean>('toggleValue');
 
 const { t } = useI18n();
 const presetsStore = usePresetsStore();
@@ -143,6 +147,8 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
   <PropertySection
     :title="t('fastcat.effects.audioTitle', 'Audio effects')"
     class="mt-2"
+    :has-toggle="props.hasToggle"
+    v-model:toggle-value="modelValue"
     @dragover="onDragOver"
     @drop="onDrop"
   >
@@ -152,6 +158,7 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
         variant="soft"
         color="primary"
         icon="i-heroicons-plus"
+        :disabled="props.disabled"
         @click="isSelectModalOpen = true"
       >
         {{ t('fastcat.effects.add', 'Add') }}
@@ -159,7 +166,11 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
     </template>
 
     <div class="space-y-2 py-1">
-      <div v-if="safeEffects.length === 0" class="text-xs text-ui-text-muted text-center py-2">
+      <div
+        v-if="safeEffects.length === 0"
+        class="text-xs text-ui-text-muted text-center py-2"
+        :class="{ 'opacity-50': props.disabled }"
+      >
         {{ t('fastcat.effects.empty', 'No effects') }}
       </div>
 
@@ -168,12 +179,14 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
         :model-value="safeEffects"
         handle=".drag-handle"
         :animation="150"
+        :disabled="props.disabled"
         @update:model-value="onUpdateOrder"
       >
         <div
           v-for="effect in safeEffects"
           :key="effect.id"
           class="bg-ui-bg border border-ui-border rounded px-2 py-2"
+          :class="{ 'opacity-50 pointer-events-none': props.disabled }"
         >
           <div class="flex items-center w-full gap-2 mb-1">
             <UIcon
@@ -184,6 +197,7 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
               :model-value="effect.enabled"
               size="sm"
               class="shrink-0"
+              :disabled="props.disabled"
               @update:model-value="handleUpdateEffect(effect.id, { enabled: $event })"
             />
             <span class="font-medium flex-1 truncate">
@@ -196,6 +210,7 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
                 color="primary"
                 icon="i-heroicons-bookmark"
                 :title="t('fastcat.effects.saveAsPreset', 'Save as preset')"
+                :disabled="props.disabled"
                 @click="openSaveModal(effect.id)"
               />
               <UButton
@@ -203,6 +218,7 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
                 variant="ghost"
                 color="neutral"
                 icon="i-heroicons-trash"
+                :disabled="props.disabled"
                 @click="handleRemoveEffect(effect.id)"
               />
             </div>
@@ -213,6 +229,7 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
               v-if="getAudioEffectManifest(effect.type)?.controls"
               :controls="getAudioEffectManifest(effect.type)?.controls ?? []"
               :values="effect as any"
+              :disabled="props.disabled || !effect.enabled"
               @update:value="
                 (key: any, value: any) => handleUpdateEffectValue(effect.id, key, value)
               "

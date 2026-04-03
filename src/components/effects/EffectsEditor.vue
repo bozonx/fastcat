@@ -17,11 +17,15 @@ const props = defineProps<{
   title?: string;
   addLabel?: string;
   emptyLabel?: string;
+  hasToggle?: boolean;
+  disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
   'update:effects': [effects: VideoClipEffect[]];
 }>();
+
+const modelValue = defineModel<boolean>('toggleValue');
 
 const { t } = useI18n();
 const presetsStore = usePresetsStore();
@@ -120,20 +124,32 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
 </script>
 
 <template>
-  <PropertySection :title="safeTitle" class="mt-2" @dragover="onDragOver" @drop="onDrop">
+  <PropertySection
+    :title="safeTitle"
+    class="mt-2"
+    :has-toggle="props.hasToggle"
+    v-model:toggle-value="modelValue"
+    @dragover="onDragOver"
+    @drop="onDrop"
+  >
     <template #header-actions>
       <UButton
         size="xs"
         variant="soft"
         color="primary"
         icon="i-heroicons-plus"
+        :disabled="props.disabled"
         @click="isEffectModalOpen = true"
       >
         {{ safeAddLabel }}
       </UButton>
     </template>
 
-    <div v-if="safeEffects.length === 0" class="text-xs text-ui-text-muted text-center py-2">
+    <div
+      v-if="safeEffects.length === 0"
+      class="text-xs text-ui-text-muted text-center py-2"
+      :class="{ 'opacity-50': props.disabled }"
+    >
       {{ safeEmptyLabel }}
     </div>
 
@@ -142,12 +158,14 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
       :model-value="safeEffects"
       handle=".drag-handle"
       :animation="150"
+      :disabled="props.disabled"
       @update:model-value="onUpdateOrder"
     >
       <div
         v-for="effect in safeEffects"
         :key="effect.id"
         class="bg-ui-bg border border-ui-border rounded px-2 py-2"
+        :class="{ 'opacity-50 pointer-events-none': props.disabled }"
       >
         <div class="flex items-center w-full gap-2 mb-1">
           <UIcon
@@ -158,6 +176,7 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
             :model-value="effect.enabled"
             size="sm"
             class="shrink-0"
+            :disabled="props.disabled"
             @update:model-value="handleUpdateEffect(effect.id, { enabled: $event })"
           />
           <span class="font-medium flex-1 truncate">
@@ -174,6 +193,7 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
               color="primary"
               icon="i-heroicons-bookmark"
               :title="t('fastcat.effects.saveAsPreset', 'Save as preset')"
+              :disabled="props.disabled"
               @click="openSaveModal(effect.id)"
             />
             <UButton
@@ -181,6 +201,7 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
               variant="ghost"
               color="neutral"
               icon="i-heroicons-trash"
+              :disabled="props.disabled"
               @click="handleRemoveEffect(effect.id)"
             />
           </div>
@@ -191,6 +212,7 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
             v-if="getVideoEffectManifest(effect.type)?.controls"
             :controls="getVideoEffectManifest(effect.type)?.controls ?? []"
             :values="effect as any"
+            :disabled="props.disabled || !effect.enabled"
             @update:value="(key, value) => handleUpdateEffectValue(effect.id, key, value)"
           />
         </div>

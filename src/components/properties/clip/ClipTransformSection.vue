@@ -24,6 +24,8 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
+const isEnabled = defineModel<boolean>('enabled', { default: true });
+
 const clipRef = computed(() => props.clip);
 const trackKindRef = computed(() => props.trackKind);
 
@@ -112,13 +114,16 @@ function clampNumber(value: number, min: number, max: number): number {
 <template>
   <PropertySection
     v-if="canEditTransform || props.canEditReversed"
+    v-model:toggle-value="isEnabled"
     :title="t('fastcat.clip.transform.title', 'Transform')"
+    has-toggle
   >
     <template #header-actions>
       <button
         v-if="canEditTransform"
-        class="flex items-center gap-1 text-2xs text-ui-text-muted hover:text-ui-text"
+        class="flex items-center gap-1 text-2xs text-ui-text-muted hover:text-ui-text disabled:opacity-50"
         :title="t('fastcat.clip.transform.resetAll', 'Reset All')"
+        :disabled="!isEnabled"
         @click="
           () => {
             resetAll();
@@ -130,7 +135,7 @@ function clampNumber(value: number, min: number, max: number): number {
       </button>
     </template>
 
-    <div class="flex flex-col gap-4">
+    <div class="flex flex-col gap-4" :class="{ 'opacity-50 pointer-events-none': !isEnabled }">
       <div v-if="props.canEditReversed" class="space-y-4">
         <UiSliderInput
           v-model="speedMultiplier"
@@ -140,6 +145,7 @@ function clampNumber(value: number, min: number, max: number): number {
           :step="0.01"
           :wheel-step-multiplier="10"
           :default-value="1"
+          :disabled="!isEnabled"
           unit="x"
         />
       </div>
@@ -152,7 +158,8 @@ function clampNumber(value: number, min: number, max: number): number {
               t('fastcat.clip.transform.anchor', 'Anchor')
             }}</span>
             <button
-              class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text"
+              class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text disabled:opacity-50"
+              :disabled="!isEnabled"
               @click="resetAnchor"
             >
               <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
@@ -165,6 +172,7 @@ function clampNumber(value: number, min: number, max: number): number {
             label-key="label"
             size="sm"
             full-width
+            :disabled="!isEnabled"
           />
           <div v-if="transformAnchorPreset === 'custom'" class="flex items-center gap-2 mt-2">
             <span class="text-2xs text-ui-text-muted uppercase tracking-tight">X</span>
@@ -173,6 +181,7 @@ function clampNumber(value: number, min: number, max: number): number {
               size="sm"
               :step="0.01"
               :default-value="0.5"
+              :disabled="!isEnabled"
             />
             <span class="text-2xs text-ui-text-muted uppercase tracking-tight ml-2">Y</span>
             <UiWheelNumberInput
@@ -180,6 +189,7 @@ function clampNumber(value: number, min: number, max: number): number {
               size="sm"
               :step="0.01"
               :default-value="0.5"
+              :disabled="!isEnabled"
             />
           </div>
         </div>
@@ -196,6 +206,7 @@ function clampNumber(value: number, min: number, max: number): number {
             variant="ghost"
             class="text-ui-text-muted hover:text-ui-text"
             :title="t('fastcat.clip.transform.flipHorizontal', 'Flip Horizontal')"
+            :disabled="!isEnabled"
             @click="toggleFlipHorizontal"
           />
           <UButton
@@ -205,6 +216,7 @@ function clampNumber(value: number, min: number, max: number): number {
             variant="ghost"
             class="text-ui-text-muted hover:text-ui-text"
             :title="t('fastcat.clip.transform.flipVertical', 'Flip Vertical')"
+            :disabled="!isEnabled"
             @click="toggleFlipVertical"
           />
         </div>
@@ -217,7 +229,8 @@ function clampNumber(value: number, min: number, max: number): number {
                 : t('fastcat.clip.transform.scaleX', 'Scale X (%)')
             }}</span>
             <button
-              class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text"
+              class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text disabled:opacity-50"
+              :disabled="!isEnabled"
               @click="resetScale"
             >
               <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
@@ -231,6 +244,7 @@ function clampNumber(value: number, min: number, max: number): number {
               :wheel-step-multiplier="10"
               :default-value="100"
               full-width
+              :disabled="!isEnabled"
             />
 
             <div class="flex items-center justify-center">
@@ -240,6 +254,7 @@ function clampNumber(value: number, min: number, max: number): number {
                 color="neutral"
                 variant="ghost"
                 :class="[transformScaleLinked ? 'text-ui-primary' : 'text-ui-text-muted']"
+                :disabled="!isEnabled"
                 @click="transformScaleLinked = !transformScaleLinked"
               />
             </div>
@@ -252,6 +267,7 @@ function clampNumber(value: number, min: number, max: number): number {
                 :wheel-step-multiplier="10"
                 :default-value="100"
                 full-width
+                :disabled="!isEnabled"
               />
             </div>
             <div v-else />
@@ -264,7 +280,8 @@ function clampNumber(value: number, min: number, max: number): number {
               t('fastcat.clip.transform.rotation', 'Rotation (deg)')
             }}</span>
             <button
-              class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text"
+              class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text disabled:opacity-50"
+              :disabled="!isEnabled"
               @click="resetRotation"
             >
               <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
@@ -276,6 +293,7 @@ function clampNumber(value: number, min: number, max: number): number {
             :step="1"
             :wheel-step-multiplier="10"
             :default-value="0"
+            :disabled="!isEnabled"
           />
         </div>
 
@@ -285,7 +303,8 @@ function clampNumber(value: number, min: number, max: number): number {
               t('fastcat.clip.transform.position', 'Position (px)')
             }}</span>
             <button
-              class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text"
+              class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text disabled:opacity-50"
+              :disabled="!isEnabled"
               @click="resetPosition"
             >
               <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
@@ -304,6 +323,7 @@ function clampNumber(value: number, min: number, max: number): number {
                 :wheel-step-multiplier="10"
                 :default-value="0"
                 full-width
+                :disabled="!isEnabled"
               />
             </div>
             <div class="flex items-center gap-1.5">
@@ -318,6 +338,7 @@ function clampNumber(value: number, min: number, max: number): number {
                 :wheel-step-multiplier="10"
                 :default-value="0"
                 full-width
+                :disabled="!isEnabled"
               />
             </div>
           </div>
@@ -329,7 +350,8 @@ function clampNumber(value: number, min: number, max: number): number {
               {{ t('fastcat.clip.transform.crop', 'Crop (px)') }}
             </span>
             <button
-              class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text"
+              class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text disabled:opacity-50"
+              :disabled="!isEnabled"
               @click="resetCrop"
             >
               <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
@@ -348,6 +370,7 @@ function clampNumber(value: number, min: number, max: number): number {
                 :wheel-step-multiplier="10"
                 :default-value="0"
                 full-width
+                :disabled="!isEnabled"
               />
             </div>
             <div class="flex flex-col gap-0.5">
@@ -362,6 +385,7 @@ function clampNumber(value: number, min: number, max: number): number {
                 :wheel-step-multiplier="10"
                 :default-value="0"
                 full-width
+                :disabled="!isEnabled"
               />
             </div>
             <div class="flex flex-col gap-0.5">
@@ -376,6 +400,7 @@ function clampNumber(value: number, min: number, max: number): number {
                 :wheel-step-multiplier="10"
                 :default-value="0"
                 full-width
+                :disabled="!isEnabled"
               />
             </div>
             <div class="flex flex-col gap-0.5">
@@ -390,6 +415,7 @@ function clampNumber(value: number, min: number, max: number): number {
                 :wheel-step-multiplier="10"
                 :default-value="0"
                 full-width
+                :disabled="!isEnabled"
               />
             </div>
           </div>

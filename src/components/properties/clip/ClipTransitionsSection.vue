@@ -20,6 +20,9 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+const isEnabled = defineModel<boolean>('enabled', { default: true });
+
 const transitionOptions = computed(() =>
   getAllTransitionManifests().map((manifest) => ({
     label: manifest.name,
@@ -32,14 +35,17 @@ const transitionOptions = computed(() =>
 <template>
   <PropertySection
     v-if="props.isVideoTrack"
+    v-model:toggle-value="isEnabled"
     :title="t('fastcat.timeline.transitions', 'Transitions')"
+    has-toggle
   >
-    <div class="grid grid-cols-2 gap-2">
+    <div class="grid grid-cols-2 gap-2" :class="{ 'opacity-50 pointer-events-none': !isEnabled }">
       <div class="flex flex-col gap-1">
         <div class="flex items-center justify-between">
           <button
             v-if="props.transitionIn"
             class="p-0 h-auto font-mono text-2xs font-medium uppercase text-blue-500 hover:text-blue-400"
+            :disabled="!isEnabled"
             @click="emit('selectEdge', 'in')"
           >
             IN {{ props.transitionIn.type }}
@@ -48,6 +54,7 @@ const transitionOptions = computed(() =>
             v-else
             type="button"
             class="text-2xs font-medium text-ui-text-muted uppercase text-left"
+            :disabled="!isEnabled"
             @click="emit('selectEdge', 'in')"
           >
             IN
@@ -57,6 +64,7 @@ const transitionOptions = computed(() =>
             :color="props.transitionIn ? 'red' : 'primary'"
             variant="ghost"
             :icon="props.transitionIn ? 'i-heroicons-trash' : 'i-heroicons-plus-circle'"
+            :disabled="!isEnabled"
             @click="emit('toggle', 'in')"
           />
         </div>
@@ -69,6 +77,7 @@ const transitionOptions = computed(() =>
             label-key="label"
             size="xs"
             class="mb-2"
+            :disabled="!isEnabled"
             @update:model-value="
               (value: unknown) =>
                 value &&
@@ -89,6 +98,7 @@ const transitionOptions = computed(() =>
             "
             :step="0.1"
             :wheel-step-multiplier="10"
+            :disabled="!isEnabled"
             @update:model-value="
               (v: any) => emit('updateDuration', { edge: 'in', durationSec: Number(v) })
             "
@@ -101,6 +111,7 @@ const transitionOptions = computed(() =>
           <button
             v-if="props.transitionOut"
             class="p-0 h-auto font-mono text-2xs font-medium uppercase text-blue-500 hover:text-blue-400"
+            :disabled="!isEnabled"
             @click="emit('selectEdge', 'out')"
           >
             OUT {{ props.transitionOut.type }}
@@ -109,6 +120,7 @@ const transitionOptions = computed(() =>
             v-else
             type="button"
             class="text-2xs font-medium text-ui-text-muted uppercase text-left"
+            :disabled="!isEnabled"
             @click="emit('selectEdge', 'out')"
           >
             OUT
@@ -118,6 +130,7 @@ const transitionOptions = computed(() =>
             :color="props.transitionOut ? 'red' : 'primary'"
             variant="ghost"
             :icon="props.transitionOut ? 'i-heroicons-trash' : 'i-heroicons-plus-circle'"
+            :disabled="!isEnabled"
             @click="emit('toggle', 'out')"
           />
         </div>
@@ -130,6 +143,7 @@ const transitionOptions = computed(() =>
             label-key="label"
             size="xs"
             class="mb-2"
+            :disabled="!isEnabled"
             @update:model-value="
               (value: unknown) =>
                 value &&
@@ -150,6 +164,7 @@ const transitionOptions = computed(() =>
             "
             :step="0.1"
             :wheel-step-multiplier="10"
+            :disabled="!isEnabled"
             @update:model-value="
               (v: any) => emit('updateDuration', { edge: 'out', durationSec: Number(v) })
             "

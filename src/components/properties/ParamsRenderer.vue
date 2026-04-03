@@ -21,10 +21,12 @@ const props = withDefaults(
     size?: 'xs' | 'sm' | 'md';
     asContents?: boolean;
     forceFullWidth?: boolean;
+    disabled?: boolean;
   }>(),
   {
     asContents: false,
     forceFullWidth: false,
+    disabled: false,
     size: 'sm',
   },
 );
@@ -211,7 +213,7 @@ function handleArrayItemUpdate(
           :max="control.max"
           :step="control.step"
           :default-value="control.defaultValue"
-          :disabled="control.disabled"
+          :disabled="control.disabled || props.disabled"
           @update:model-value="(value: number) => updateValue(control.key, value)"
         />
       </div>
@@ -226,7 +228,7 @@ function handleArrayItemUpdate(
           :max="control.max"
           :step="control.step"
           :default-value="control.defaultValue"
-          :disabled="control.disabled"
+          :disabled="control.disabled || props.disabled"
           size="md"
           @update:model-value="(value: number) => updateValue(control.key, value)"
         />
@@ -252,7 +254,7 @@ function handleArrayItemUpdate(
           :min="control.min"
           :max="control.max"
           :step="control.step ?? 1"
-          :disabled="control.disabled"
+          :disabled="control.disabled || props.disabled"
           :full-width="props.forceFullWidth"
           @update:model-value="(value: number) => updateValue(control.key, Number(value))"
         />
@@ -308,7 +310,7 @@ function handleArrayItemUpdate(
             :min="control.min"
             :max="control.max"
             :step="control.step ?? 1"
-            :disabled="control.disabled"
+            :disabled="control.disabled || props.disabled"
             full-width
             @update:model-value="
               (value: number) => {
@@ -362,7 +364,7 @@ function handleArrayItemUpdate(
             :min="control.min"
             :max="control.max"
             :step="control.step ?? 1"
-            :disabled="control.disabled"
+            :disabled="control.disabled || props.disabled"
             full-width
             @update:model-value="
               (value: number) => {
@@ -387,7 +389,7 @@ function handleArrayItemUpdate(
         <USwitch
           :model-value="Boolean(getValue(control.key))"
           size="sm"
-          :disabled="control.disabled"
+          :disabled="control.disabled || props.disabled"
           @update:model-value="(value: boolean) => updateValue(control.key, value)"
         />
       </div>
@@ -400,7 +402,7 @@ function handleArrayItemUpdate(
           value-key="value"
           label-key="label"
           :size="size"
-          :disabled="control.disabled"
+          :disabled="control.disabled || props.disabled"
           @update:model-value="
             (value: unknown) => updateValue(control.key, normalizeSelectValue(value))
           "
@@ -413,7 +415,7 @@ function handleArrayItemUpdate(
           :model-value="getValue(control.key)"
           :options="getSelectItems(control)"
           size="xs"
-          :disabled="control.disabled"
+          :disabled="control.disabled || props.disabled"
           fluid
           @update:model-value="
             (value: unknown) => updateValue(control.key, normalizeSelectValue(value))
@@ -427,7 +429,7 @@ function handleArrayItemUpdate(
           :model-value="String(getValue(control.key) ?? '#000000')"
           format="hex"
           :size="size"
-          :disabled="control.disabled"
+          :disabled="control.disabled || props.disabled"
           @update:model-value="(value: unknown) => updateValue(control.key, String(value ?? ''))"
         />
       </div>
@@ -440,7 +442,7 @@ function handleArrayItemUpdate(
           :rows="control.rows ?? 4"
           :placeholder="control.placeholder"
           :size="size"
-          :disabled="control.disabled"
+          :disabled="control.disabled || props.disabled"
           @update:model-value="
             (value: string | number) => updateValue(control.key, String(value ?? ''))
           "
@@ -450,7 +452,7 @@ function handleArrayItemUpdate(
           :model-value="String(getValue(control.key) ?? '')"
           :placeholder="control.placeholder"
           :size="size"
-          :disabled="control.disabled"
+          :disabled="control.disabled || props.disabled"
           full-width
           @update:model-value="(value: string) => updateValue(control.key, String(value ?? ''))"
         />
@@ -495,7 +497,7 @@ function handleArrayItemUpdate(
       <div v-else-if="control.kind === 'action'" class="flex flex-col gap-1">
         <UButton
           :icon="control.icon"
-          :disabled="control.disabled"
+          :disabled="control.disabled || props.disabled"
           :size="size"
           color="white"
           variant="solid"
@@ -518,7 +520,7 @@ function handleArrayItemUpdate(
             size="2xs"
             color="primary"
             variant="soft"
-            :disabled="control.disabled"
+            :disabled="control.disabled || props.disabled"
             @click="handleArrayAdd(control)"
           >
             {{ control.addLabelKey ? t(control.addLabelKey) : (control.addLabel ?? 'Add') }}
@@ -561,7 +563,7 @@ function handleArrayItemUpdate(
                 size="2xs"
                 color="red"
                 variant="ghost"
-                :disabled="control.disabled"
+                :disabled="control.disabled || props.disabled"
                 class="opacity-0 group-hover:opacity-100 transition-opacity"
                 @click="handleArrayRemove(control, Number(index))"
               />

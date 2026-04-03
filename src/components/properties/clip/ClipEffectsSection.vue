@@ -16,20 +16,29 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+const isVideoEnabled = defineModel<boolean>('videoEnabled', { default: true });
+const isAudioEnabled = defineModel<boolean>('audioEnabled', { default: true });
 </script>
 
 <template>
   <EffectsEditor
+    v-model:toggle-value="isVideoEnabled"
     :effects="props.videoEffects"
     :title="t('fastcat.effects.videoTitle', 'Video effects')"
     :add-label="t('fastcat.effects.add', 'Add')"
     :empty-label="t('fastcat.effects.empty', 'No effects')"
+    :has-toggle="true"
+    :disabled="!isVideoEnabled"
     @update:effects="emit('updateVideoEffects', $event)"
   />
 
   <AudioEffectsEditor
     v-if="props.canEditAudioEffects"
+    v-model:toggle-value="isAudioEnabled"
     :effects="props.audioEffects"
+    :has-toggle="true"
+    :disabled="!isAudioEnabled"
     @update:effects="emit('updateAudioEffects', $event)"
   />
 </template>

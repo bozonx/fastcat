@@ -26,7 +26,8 @@ import ClipTransitionsSection from '~/components/properties/clip/ClipTransitions
 import ClipActionsSection from '~/components/properties/clip/ClipActionsSection.vue';
 import ClipInfoSection from '~/components/properties/clip/ClipInfoSection.vue';
 import ClipEffectsSection from '~/components/properties/clip/ClipEffectsSection.vue';
-import ClipBlendingSection from '~/components/properties/clip/ClipBlendingSection.vue';
+import ClipBlendingModeSection from '~/components/properties/clip/ClipBlendingModeSection.vue';
+import ClipOpacitySection from '~/components/properties/clip/ClipOpacitySection.vue';
 import ClipTransformSection from '~/components/properties/clip/ClipTransformSection.vue';
 import ClipTypeSection from '~/components/properties/clip/ClipTypeSection.vue';
 import ClipMaskSection from '~/components/properties/clip/ClipMaskSection.vue';
@@ -56,6 +57,15 @@ const fileManagerStore = useFileManagerStore();
 const clipboardStore = useAppClipboard();
 
 const isUiRenameModalOpen = ref(false);
+
+const isOpacityEnabled = ref(true);
+const isBlendingEnabled = ref(true);
+const isMaskEnabled = ref(true);
+const isAudioFadesEnabled = ref(true);
+const isTransitionsEnabled = ref(true);
+const isVideoEffectsEnabled = ref(true);
+const isAudioEffectsEnabled = ref(true);
+const isTransformEnabled = ref(true);
 
 const clipRef = computed(() => props.clip);
 
@@ -437,18 +447,30 @@ defineExpose({
       @update-hud-control="handleUpdateHudControl"
     />
 
-    <ClipBlendingSection
+    <ClipBlendingModeSection
+      v-model:enabled="isBlendingEnabled"
       :clip-type="clip.clipType"
-      :opacity="clip.opacity ?? 1"
       :blend-mode="(clip.blendMode ?? 'normal') as TimelineBlendMode"
       :blend-mode-options="blendModeOptions"
-      @update-opacity="handleUpdateOpacity"
       @update-blend-mode="handleUpdateBlendMode"
     />
 
-    <ClipMaskSection v-if="isVideoTrack" :clip="clip" @update-mask="handleUpdateMask" />
+    <ClipOpacitySection
+      v-model:enabled="isOpacityEnabled"
+      :clip-type="clip.clipType"
+      :opacity="clip.opacity ?? 1"
+      @update-opacity="handleUpdateOpacity"
+    />
+
+    <ClipMaskSection
+      v-if="isVideoTrack"
+      v-model:enabled="isMaskEnabled"
+      :clip="clip"
+      @update-mask="handleUpdateMask"
+    />
 
     <ClipAudioSection
+      v-model:enabled="isAudioFadesEnabled"
       :can-edit-audio-fades="canEditAudioFades"
       :can-edit-audio-balance="canEditAudioBalance"
       :can-edit-audio-gain="canEditAudioGain"
@@ -470,6 +492,7 @@ defineExpose({
     />
 
     <ClipTransitionsSection
+      v-model:enabled="isTransitionsEnabled"
       :is-video-track="isVideoTrack"
       :transition-in="clip.transitionIn ?? null"
       :transition-out="clip.transitionOut ?? null"
@@ -482,6 +505,8 @@ defineExpose({
 
     <div ref="effectsSectionRef">
       <ClipEffectsSection
+        v-model:video-enabled="isVideoEffectsEnabled"
+        v-model:audio-enabled="isAudioEffectsEnabled"
         :clip-type="clip.clipType"
         :video-effects="clipVideoEffects"
         :audio-effects="clipAudioEffects"
@@ -492,6 +517,7 @@ defineExpose({
     </div>
 
     <ClipTransformSection
+      v-model:enabled="isTransformEnabled"
       :clip="clip"
       :track-kind="clipTrackKind"
       :can-edit-reversed="canEditReversed"
@@ -506,11 +532,7 @@ defineExpose({
       "
     />
 
-    <ClipInfoSection
-      :clip="clip"
-      :media-meta="mediaMeta"
-      :show-info="false"
-    />
+    <ClipInfoSection :clip="clip" :media-meta="mediaMeta" :show-info="false" />
 
     <UiRenameModal
       :open="isUiRenameModalOpen"
