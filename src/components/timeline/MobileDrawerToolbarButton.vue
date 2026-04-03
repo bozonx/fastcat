@@ -33,6 +33,6 @@ defineEmits<{ click: [] }>();
     @click="$emit('click')"
   >
     <UIcon :name="icon" class="w-5 h-5 shrink-0" />
-    <span v-if="label" class="text-[9px] font-medium leading-tight">{{ label }}</span>
+    <span v-if="label" class="text-[10px] font-medium leading-tight antialiased">{{ label }}</span>
   </button>
 </template>
