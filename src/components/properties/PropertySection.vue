@@ -23,8 +23,6 @@ const model = defineModel<boolean>('toggleValue');
           v-model="model"
           size="xs"
           color="red"
-          checked-icon="i-heroicons-check-20-solid"
-          unchecked-icon="i-heroicons-x-mark-20-solid"
         />
       </div>
     </UiFormSectionHeader>

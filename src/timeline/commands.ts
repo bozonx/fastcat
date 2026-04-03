@@ -193,13 +193,16 @@ export interface UpdateClipPropertiesCommand {
       | 'effects'
       | 'freezeFrameSourceUs'
       | 'speed'
+      | 'speedActive'
       | 'transform'
+      | 'transformActive'
       | 'audioGain'
       | 'audioBalance'
       | 'audioFadeInUs'
       | 'audioFadeOutUs'
       | 'audioFadeInCurve'
       | 'audioFadeOutCurve'
+      | 'audioFadesActive'
       | 'audioMuted'
       | 'audioWaveformMode'
       | 'showWaveform'
@@ -207,6 +210,10 @@ export interface UpdateClipPropertiesCommand {
       | 'sourceRange'
       | 'sourceDurationUs'
       | 'source'
+      | 'opacityActive'
+      | 'blendModeActive'
+      | 'mask'
+      | 'maskActive'
     >
   > & {
     linkedGroupId?: string;

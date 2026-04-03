@@ -17,6 +17,7 @@ const props = withDefaults(
     inputClass?: string;
     sliderClass?: string;
     wheelWithoutFocus?: boolean;
+    disabled?: boolean;
   }>(),
   {
     label: undefined,
@@ -29,6 +30,7 @@ const props = withDefaults(
     inputClass: 'w-16!',
     sliderClass: '',
     wheelWithoutFocus: false,
+    disabled: false,
   },
 );
 
@@ -78,6 +80,7 @@ function onInputUpdate(value: unknown) {
           :wheel-step-multiplier="wheelStepMultiplier"
           :slider-class="sliderClass"
           :wheel-without-focus="wheelWithoutFocus"
+          :disabled="disabled"
         />
       </div>
 
@@ -91,6 +94,7 @@ function onInputUpdate(value: unknown) {
           :class="inputClass"
           :default-value="defaultValue"
           :wheel-step-multiplier="wheelStepMultiplier"
+          :disabled="disabled"
           @update:model-value="onInputUpdate"
         />
       </div>

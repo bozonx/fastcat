@@ -30,6 +30,7 @@ import ClipBlendingModeSection from '~/components/properties/clip/ClipBlendingMo
 import ClipOpacitySection from '~/components/properties/clip/ClipOpacitySection.vue';
 import ClipTransformSection from '~/components/properties/clip/ClipTransformSection.vue';
 import ClipTypeSection from '~/components/properties/clip/ClipTypeSection.vue';
+import ClipSpeedSection from '~/components/properties/clip/ClipSpeedSection.vue';
 import ClipMaskSection from '~/components/properties/clip/ClipMaskSection.vue';
 import { useClipAudio } from '~/composables/properties/useClipAudio';
 import { useClipTransitions } from '~/composables/properties/useClipTransitions';
@@ -58,14 +59,33 @@ const clipboardStore = useAppClipboard();
 
 const isUiRenameModalOpen = ref(false);
 
-const isOpacityEnabled = ref(true);
-const isBlendingEnabled = ref(true);
-const isMaskEnabled = ref(true);
-const isAudioFadesEnabled = ref(true);
-const isTransitionsEnabled = ref(true);
-const isVideoEffectsEnabled = ref(true);
-const isAudioEffectsEnabled = ref(true);
-const isTransformEnabled = ref(true);
+const isOpacityEnabled = computed({
+  get: () => props.clip.opacityActive !== false,
+  set: (val) => timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { opacityActive: val })
+});
+const isBlendingEnabled = computed({
+  get: () => props.clip.blendModeActive !== false,
+  set: (val) => timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { blendModeActive: val })
+});
+const isMaskEnabled = computed({
+  get: () => props.clip.maskActive !== false,
+  set: (val) => timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { maskActive: val })
+});
+const isAudioFadesEnabled = computed({
+  get: () => props.clip.audioFadesActive !== false,
+  set: (val) => timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { audioFadesActive: val })
+});
+const isTransitionsEnabled = ref(true); // Transitions logic not explicitly requested to change
+const isVideoEffectsEnabled = ref(true); // effects not explicitly requested
+const isAudioEffectsEnabled = ref(true); // effects not explicitly requested
+const isTransformEnabled = computed({
+  get: () => props.clip.transformActive !== false,
+  set: (val) => timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { transformActive: val })
+});
+const isSpeedEnabled = computed({
+  get: () => props.clip.speedActive !== false,
+  set: (val) => timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { speedActive: val })
+});
 
 const clipRef = computed(() => props.clip);
 
@@ -432,6 +452,13 @@ defineExpose({
       @update-duration="handleUpdateDuration"
     />
 
+    <ClipSpeedSection
+      v-model:enabled="isSpeedEnabled"
+      :clip="clip"
+      :can-edit-reversed="canEditReversed"
+      @update-speed="(speed: number) => timelineStore.updateClipProperties(clip.trackId, clip.id, { speed })"
+    />
+
     <ClipTypeSection
       :clip="clip"
       :hud-manifest="hudManifest"
@@ -527,9 +554,6 @@ defineExpose({
         (next) => timelineStore.updateClipProperties(clip.trackId, clip.id, { transform: next })
       "
       @toggle-reversed="toggleReversed"
-      @update-speed="
-        (speed) => timelineStore.updateClipProperties(clip.trackId, clip.id, { speed })
-      "
     />
 
     <ClipInfoSection :clip="clip" :media-meta="mediaMeta" :show-info="false" />

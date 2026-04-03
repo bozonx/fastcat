@@ -160,13 +160,24 @@ interface TimelineClipBase {
   lockToLinkedVideo?: boolean;
   freezeFrameSourceUs?: number;
   isImage?: boolean;
+
   opacity?: number;
+  opacityActive?: boolean;
+
   blendMode?: TimelineBlendMode;
+  blendModeActive?: boolean;
+
   mask?: ClipMask;
+  maskActive?: boolean;
+
   effects?: ClipEffect[];
   transitionIn?: ClipTransition;
   transitionOut?: ClipTransition;
   transform?: ClipTransform;
+  transformActive?: boolean;
+
+  speedActive?: boolean;
+  audioFadesActive?: boolean;
 }
 
 export interface TimelineMediaClipItem extends TimelineClipBase {
