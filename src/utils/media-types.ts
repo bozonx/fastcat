@@ -115,6 +115,6 @@ export function isOpenableProjectTextFilename(filename: string): boolean {
 
 export function isOpenableProjectFileName(filename: string): boolean {
   const type = getMediaTypeFromFilename(filename);
-  if (type === 'video' || type === 'audio' || type === 'image') return true;
+  if (type === 'video' || type === 'audio' || type === 'image' || type === 'timeline') return true;
   return isOpenableProjectTextFilename(filename);
 }
