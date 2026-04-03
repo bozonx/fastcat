@@ -183,4 +183,30 @@ describe('MobileFileBrowserDrawer', () => {
     // Actions: Add to timeline, Convert
     expect(actionList.attributes('data-count')).toBe('2');
   });
+
+  it('renders top actions for audio files', async () => {
+    mockSelectionStore.selectedEntity = {
+      source: 'fileManager',
+      kind: 'file',
+      path: 'test.mp3',
+      name: 'test.mp3',
+      entry: { kind: 'file', path: 'test.mp3', name: 'test.mp3' },
+    };
+
+    const wrapper = await mountSuspended(MobileFileBrowserDrawer, {
+      props: defaultProps,
+      global: {
+        stubs: {
+          UDrawer: { template: '<div><slot name="content" /></div>' },
+          UButton: true,
+          Icon: true,
+        },
+      },
+    });
+
+    const actionList = wrapper.find('#property-action-list');
+    expect(actionList.exists()).toBe(true);
+    // Actions: Add to timeline, Convert, Transcribe
+    expect(actionList.attributes('data-count')).toBe('3');
+  });
 });

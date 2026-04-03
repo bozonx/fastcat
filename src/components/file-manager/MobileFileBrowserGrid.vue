@@ -193,7 +193,7 @@ onBeforeUnmount(clearLongPress);
             <!-- Used State Indicator -->
             <div
               v-if="isEntryUsed(entry)"
-              class="absolute bottom-0 left-0 right-0 h-[3px] bg-red-500 z-10"
+              class="absolute bottom-0 left-0 right-0 h-[2px] bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.5)] z-10"
               aria-hidden="true"
             />
           </div>

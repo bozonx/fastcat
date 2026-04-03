@@ -2,6 +2,7 @@ import { ref, computed, watch, onMounted } from 'vue';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import type { FsEntry } from '~/types/fs';
 import { useFileManagerStore } from '~/stores/file-manager.store';
+import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import {
@@ -23,6 +24,7 @@ export function useMobileFileBrowserNavigation({
   findEntryByPath,
 }: NavigationDeps) {
   const fileManagerStore = useFileManagerStore();
+  const timelineMediaUsageStore = useTimelineMediaUsageStore();
   const projectStore = useProjectStore();
   const uiStore = useUiStore();
 
@@ -153,6 +155,7 @@ export function useMobileFileBrowserNavigation({
   );
 
   onMounted(() => {
+    void timelineMediaUsageStore.refreshUsage();
     if (!fileManagerStore.selectedFolder) {
       void navigateToRoot();
     } else {
