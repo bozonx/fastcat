@@ -120,16 +120,6 @@ const topActions = computed(() => {
 
   const actions: any[] = [];
 
-  // Add to timeline
-  if (canAddToTimeline.value) {
-    actions.push({
-      id: 'add-to-timeline',
-      label: t('common.addToTimeline', 'Add to timeline'),
-      icon: 'lucide:plus',
-      onClick: () => emit('add-to-timeline'),
-    });
-  }
-
   // Convert
   if (canConvert.value) {
     actions.push({
@@ -241,6 +231,13 @@ function handleAction(actionId: FileAction) {
             :label="$t('common.cut', 'Cut')"
             @click="handleAction('cut')"
           />
+          <MobileDrawerToolbarButton
+            v-if="canAddToTimeline"
+            success
+            icon="lucide:plus"
+            :label="$t('common.toTimeline', 'To timeline')"
+            @click="emit('add-to-timeline')"
+          />
         </MobileDrawerToolbar>
 
         <div v-if="topActions.length > 0 && !isTextDocument" class="py-2 px-4 border-b border-ui-border shrink-0">
@@ -267,7 +264,7 @@ function handleAction(actionId: FileAction) {
             preview-mode="original"
             :has-proxy="false"
             :mobile-text-mode="isTextDocument"
-            :hide-actions="isImage || isVideo || isAudio"
+            :hide-actions="isImage || isVideo || isAudio || isTextDocument"
           />
         </div>
         <div v-else-if="selectedFsMultiple" class="py-2">
