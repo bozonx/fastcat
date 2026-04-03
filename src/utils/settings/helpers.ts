@@ -96,6 +96,7 @@ export function createDefaultUserSettings(): FastCatUserSettings {
       ruler: { ...DEFAULT_USER_SETTINGS.mouse.ruler },
     },
     history: { ...DEFAULT_USER_SETTINGS.history },
+    backup: { ...DEFAULT_USER_SETTINGS.backup },
   };
 }
 

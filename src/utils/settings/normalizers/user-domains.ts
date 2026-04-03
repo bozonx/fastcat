@@ -338,3 +338,17 @@ export function normalizeHistorySettings(raw: unknown): FastCatUserSettings['his
     .catch(DEFAULT_USER_SETTINGS.history)
     .parse((raw as any)?.history ?? {});
 }
+
+export function normalizeBackupSettings(raw: unknown): FastCatUserSettings['backup'] {
+  return z
+    .object({
+      intervalMinutes: z.coerce
+        .number()
+        .min(0)
+        .max(120)
+        .catch(DEFAULT_USER_SETTINGS.backup.intervalMinutes),
+      count: z.coerce.number().min(1).max(50).catch(DEFAULT_USER_SETTINGS.backup.count),
+    })
+    .catch(DEFAULT_USER_SETTINGS.backup)
+    .parse((raw as any)?.backup ?? {});
+}

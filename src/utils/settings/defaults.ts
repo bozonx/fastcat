@@ -192,6 +192,10 @@ export interface FastCatUserSettings {
   history: {
     maxEntries: number;
   };
+  backup: {
+    intervalMinutes: number;
+    count: number;
+  };
 }
 
 export interface FastCatAppSettings {
