@@ -44,6 +44,9 @@ import MobileSelectionRangePropertiesDrawer from './MobileSelectionRangeProperti
 import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
 import MobileTrimToolbar from './MobileTrimToolbar.vue';
+import { useTeleportTarget } from '~/composables/ui/useTeleportTarget';
+
+const { target: teleportTarget } = useTeleportTarget();
 
 const { t } = useI18n();
 const toast = useToast();
@@ -957,7 +960,7 @@ async function onClipAction(payload: TimelineClipActionPayload) {
     </div>
 
     <!-- FAB: add content -->
-    <Teleport to="body">
+    <Teleport :to="teleportTarget">
       <div
         v-if="!isTrimDrawerOpen"
         class="fixed bottom-20 right-6 z-40 transition-all duration-300"

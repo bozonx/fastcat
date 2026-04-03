@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch, getCurrentInstance } from 'vue';
+import { onMounted, onUnmounted, ref, watch, getCurrentInstance, provide } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -12,6 +12,7 @@ import { useMediaStore } from '~/stores/media.store';
 
 const props = defineProps<{
   assets?: ExternalAsset[];
+  workspaceId?: string;
 }>();
 
 const { t } = useI18n();
@@ -26,6 +27,9 @@ const emit = defineEmits<{
 
 const isExportDrawerOpen = ref(false);
 const isReady = ref(false);
+const teleportTarget = ref<HTMLElement | null>(null);
+
+provide('teleportTarget', teleportTarget);
 
 /**
  * Initializes the workspace and project for embedded use.
@@ -34,7 +38,8 @@ async function initEmbedded() {
   workspaceStore.isEphemeral = true;
 
   if (!workspaceStore.workspaceHandle) {
-    await workspaceStore.initAutomaticWorkspace();
+    const folderName = props.workspaceId ? `embedded-${props.workspaceId}` : 'embedded-editor';
+    await workspaceStore.initAutomaticWorkspace(folderName);
   }
 
   // Create or open a default project for the embedded session
@@ -168,7 +173,10 @@ function handleExported(data: any) {
 </script>
 
 <template>
-  <div v-if="isReady" class="flex flex-col h-full bg-zinc-950 text-white overflow-hidden selection:bg-primary/30">
+  <div v-if="isReady" class="flex flex-col h-full bg-zinc-950 text-white overflow-hidden selection:bg-primary/30 relative">
+    <!-- Teleport Target for internal components (stays inside Shadow DOM) -->
+    <div ref="teleportTarget" class="absolute inset-0 pointer-events-none z-[1000]"></div>
+
     <!-- Simple Header -->
     <header class="h-12 shrink-0 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-900/50 backdrop-blur-md z-10">
       <div class="flex items-center gap-2">

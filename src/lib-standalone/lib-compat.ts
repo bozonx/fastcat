@@ -6,6 +6,7 @@ import { inject } from 'vue';
 export function useNuxtApp() {
   // In a real app, these would be provided by the host or initialized in index.lib.ts
   return {
+    $isEmbedded: inject('isEmbedded', false),
     $notificationService: inject('notificationService', { 
       add: (msg: any) => console.log('Notification:', msg) 
     }),

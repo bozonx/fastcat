@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import UiTooltip from '~/components/ui/UiTooltip.vue';
+import { useTeleportTarget } from '~/composables/ui/useTeleportTarget';
 
 const props = withDefaults(
   defineProps<{
@@ -31,6 +32,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const { target: teleportTarget } = useTeleportTarget();
 
 const volumePercent = computed(() => Math.round((props.isMuted ? 0 : props.volume) * 100));
 
@@ -209,7 +211,7 @@ onBeforeUnmount(() => {
       {{ volumePercent }}%
     </span>
 
-    <Teleport to="body">
+    <Teleport :to="teleportTarget">
       <Transition
         enter-active-class="transition duration-150 ease-out"
         enter-from-class="opacity-0 scale-95"

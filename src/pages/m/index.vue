@@ -11,6 +11,9 @@ import ProjectThumbnail from '~/components/startup/ProjectThumbnail.vue';
 import MobileAppSettingsPanel from '~/components/settings/MobileAppSettingsPanel.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 import MobileBottomNav from '~/components/layout/MobileBottomNav.vue';
+import { useTeleportTarget } from '~/composables/ui/useTeleportTarget';
+
+const { target: teleportTarget } = useTeleportTarget();
 
 definePageMeta({
   layout: 'mobile',
@@ -453,7 +456,7 @@ const formatDate = (dateStr?: string) => {
       </UiModal>
 
       <!-- FAB -->
-      <Teleport to="body">
+      <Teleport :to="teleportTarget">
         <div class="fixed bottom-24 right-6 z-40 transition-all duration-300">
           <UButton
             icon="lucide:plus"
