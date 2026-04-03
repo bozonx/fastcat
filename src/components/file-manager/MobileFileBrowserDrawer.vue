@@ -18,7 +18,6 @@ import { useAudioExtraction } from '~/composables/file-manager/useAudioExtractio
 const props = defineProps<{
   isOpen: boolean;
   isSelectionMode: boolean;
-  isTranscribable?: boolean;
   onAction?: (action: FileAction, entry: FsEntry | FsEntry[]) => Promise<void>;
 }>();
 
@@ -205,7 +204,6 @@ function handleAction(actionId: FileAction) {
   <UiMobileDrawer
     v-model:open="isOpenLocal"
     :show-close="false"
-    :is-full-height="isTextDocument"
   >
     <template #toolbar>
       <div class="flex flex-col bg-ui-bg/50">
@@ -240,7 +238,7 @@ function handleAction(actionId: FileAction) {
           />
         </MobileDrawerToolbar>
 
-        <div v-if="topActions.length > 0 && !isTextDocument" class="py-2 px-4 border-b border-ui-border shrink-0">
+        <div v-if="topActions.length > 0" class="py-2 px-4 border-b border-ui-border shrink-0">
           <PropertyActionList
             :actions="topActions"
             vertical
@@ -254,17 +252,16 @@ function handleAction(actionId: FileAction) {
     <div class="flex flex-col h-full relative overflow-hidden">
       <!-- Scrollable content -->
       <div
-        class="flex-1"
+        class="flex-1 overflow-y-auto px-4 pb-24"
         data-vaul-no-drag
-        :class="isTextDocument ? 'overflow-hidden p-0 pb-16' : 'overflow-y-auto px-4 pb-24'"
       >
-        <div v-if="selectedFsEntry" class="h-full" :class="!isTextDocument && 'py-2'">
+        <div v-if="selectedFsEntry" class="h-full py-2">
           <FileProperties
             :selected-fs-entry="selectedFsEntry.entry"
             preview-mode="original"
             :has-proxy="false"
             :mobile-text-mode="isTextDocument"
-            :hide-actions="isImage || isVideo || isAudio || isTextDocument"
+            :hide-actions="selectedFsEntry.entry.kind === 'file'"
           />
         </div>
         <div v-else-if="selectedFsMultiple" class="py-2">

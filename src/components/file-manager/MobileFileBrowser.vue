@@ -395,7 +395,6 @@ const menuItems = computed(() => [
     <MobileFileBrowserDrawer
       :is-open="isDrawerOpen"
       :is-selection-mode="isSelectionMode"
-      :is-transcribable="selectedEntry ? isTranscribableMediaFile(selectedEntry) : false"
       :on-action="handleDrawerAction"
       @close="isDrawerOpen = false"
       @add-to-timeline="handleAddToProject"
