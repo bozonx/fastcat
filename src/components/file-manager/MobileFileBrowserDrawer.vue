@@ -7,6 +7,8 @@ import { isOpenableProjectFileName, getMediaTypeFromFilename } from '~/utils/med
 import type { FileAction } from '~/composables/file-manager/useFileManagerActions';
 import type { SelectedFsEntry, SelectedFsEntries } from '~/stores/selection.store';
 import type { FsEntry } from '~/types/fs';
+import MobileDrawerToolbar from '~/components/timeline/MobileDrawerToolbar.vue';
+import MobileDrawerToolbarButton from '~/components/timeline/MobileDrawerToolbarButton.vue';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -96,40 +98,40 @@ function handleAction(actionId: FileAction) {
     "
     :is-full-height="isTextDocument"
   >
-    <div class="flex flex-col h-full relative overflow-hidden">
-      <!-- Action Toolbar -->
-      <div
-        v-if="props.onAction"
-        class="px-2 pt-2 pb-3 flex gap-2 justify-around border-b border-ui-border shrink-0 bg-ui-bg/50"
-      >
-        <UButton
-          icon="lucide:trash-2"
-          variant="ghost"
-          color="red"
+    <template #toolbar>
+      <MobileDrawerToolbar v-if="props.onAction" class="border-b border-ui-border bg-ui-bg/50">
+        <MobileDrawerToolbarButton
+          icon="i-heroicons-trash"
+          danger
+          :label="$t('common.delete', 'Delete')"
           @click="handleAction('delete')"
         />
-        <UButton
+        <MobileDrawerToolbarButton
           v-if="selectedEntriesList.length === 1"
-          icon="lucide:pen-line"
-          variant="ghost"
-          color="neutral"
+          icon="i-heroicons-pencil-square"
+          :label="$t('common.rename', 'Rename')"
           @click="handleAction('rename')"
         />
-        <UButton icon="lucide:copy" variant="ghost" color="neutral" @click="handleAction('copy')" />
-        <UButton
-          icon="lucide:scissors"
-          variant="ghost"
-          color="neutral"
+        <MobileDrawerToolbarButton
+          icon="i-heroicons-document-duplicate"
+          :label="$t('common.copy', 'Copy')"
+          @click="handleAction('copy')"
+        />
+        <MobileDrawerToolbarButton
+          icon="i-heroicons-scissors"
+          :label="$t('common.cut', 'Cut')"
           @click="handleAction('cut')"
         />
-        <UButton
+        <MobileDrawerToolbarButton
           v-if="props.isTranscribable"
-          icon="lucide:languages"
-          variant="ghost"
-          color="primary"
+          icon="i-heroicons-language"
+          :label="$t('videoEditor.fileManager.actions.transcribe', 'Transcribe')"
           @click="handleAction('transcribe')"
         />
-      </div>
+      </MobileDrawerToolbar>
+    </template>
+
+    <div class="flex flex-col h-full relative overflow-hidden">
 
       <!-- Scrollable content -->
       <div
