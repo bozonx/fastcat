@@ -138,8 +138,12 @@ function syncSelectionStoreFromItemIds() {
   const selectedIdSet = new Set(timelineStore.selectedItemIds);
   const items = tracks.value.flatMap((track) =>
     track.items
-      .filter((item) => item.kind === 'clip' && selectedIdSet.has(item.id))
-      .map((item) => ({ trackId: track.id, itemId: item.id, kind: 'clip' as const })),
+      .filter((item) => selectedIdSet.has(item.id))
+      .map((item) => ({ 
+        trackId: track.id, 
+        itemId: item.id, 
+        kind: item.kind as 'clip' | 'gap' 
+      })),
   );
 
   if (items.length === 0) {
@@ -340,8 +344,11 @@ function onClipPropertiesDrawerClose() {
   isClipPropertiesDrawerOpen.value = false;
   drawerActiveSnapPoint.value = null;
   isLongPress.value = false;
-  timelineStore.clearSelection();
-  selectionStore.clearSelection();
+  
+  if (selectionStore.selectedEntity?.kind === 'clip') {
+    timelineStore.clearSelection();
+    selectionStore.clearSelection();
+  }
 }
 
 function onClipTrimDrawerClose() {
@@ -354,8 +361,11 @@ function onMultiSelectionDrawerClose() {
   isMultiSelectionDrawerOpen.value = false;
   drawerActiveSnapPoint.value = null;
   isLongPress.value = false;
-  timelineStore.clearSelection();
-  selectionStore.clearSelection();
+  
+  if (selectionStore.selectedEntity?.kind === 'clips') {
+    timelineStore.clearSelection();
+    selectionStore.clearSelection();
+  }
 }
 
 function onMarkerPropertiesDrawerClose() {
@@ -376,8 +386,10 @@ function onTransitionDrawerClose() {
 
 function onGapPropertiesDrawerClose() {
   isGapPropertiesDrawerOpen.value = false;
-  timelineStore.clearSelection();
-  selectionStore.clearSelection();
+  if (selectionStore.selectedEntity?.kind === 'gap') {
+    timelineStore.clearSelection();
+    selectionStore.clearSelection();
+  }
 }
 
 const scrollEl = ref<HTMLElement | null>(null);
@@ -814,7 +826,9 @@ async function onClipAction(payload: TimelineClipActionPayload) {
       @close="
         () => {
           onUpdateDrawerOpen(false);
-          selectionStore.clearSelection();
+          if (selectionStore.selectedEntity?.kind === 'track') {
+            selectionStore.clearSelection();
+          }
         }
       "
     />
@@ -853,7 +867,14 @@ async function onClipAction(payload: TimelineClipActionPayload) {
       :is-open="isGapPropertiesDrawerOpen"
       :track-id="selectedGap.trackId"
       :item-id="selectedGap.itemId"
-      @close="onGapPropertiesDrawerClose"
+      @close="
+        () => {
+          onGapPropertiesDrawerClose();
+          if (selectionStore.selectedEntity?.kind === 'gap') {
+            selectionStore.clearSelection();
+          }
+        }
+      "
     />
 
     <!-- Timeline Settings Drawer -->
@@ -862,7 +883,9 @@ async function onClipAction(payload: TimelineClipActionPayload) {
       @close="
         () => {
           isSettingsDrawerOpen = false;
-          selectionStore.clearSelection();
+          if (selectionStore.selectedEntity?.kind === 'timeline-properties') {
+            selectionStore.clearSelection();
+          }
         }
       "
     />
@@ -925,8 +948,10 @@ async function onClipAction(payload: TimelineClipActionPayload) {
             @select-item="
               (ev, id) => {
                 if (ev.pointerType === 'touch') {
-                  if (isLongPress) {
-                    isLongPress = false;
+                  const wasLongPress = isLongPress;
+                  isLongPress = false; 
+
+                  if (wasLongPress) {
                     return;
                   }
 

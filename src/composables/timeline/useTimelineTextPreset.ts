@@ -17,13 +17,15 @@ export function useTimelineTextPreset() {
 
   const standardPresets: Record<string, { style: Record<string, unknown>; text?: string }> = {
     default: {
-      style: { fontSize: 64, color: '#ffffff', fontFamily: 'sans-serif' },
+      style: { fontSize: 64, color: '#ffffff', fontFamily: 'sans-serif', width: 1280 },
     },
     title: {
-      style: { fontSize: 96, fontWeight: '800', color: '#ffffff', fontFamily: 'sans-serif' },
+      style: { fontSize: 96, fontWeight: '800', color: '#ffffff', fontFamily: 'sans-serif', width: 1280 },
+      text: t('videoEditor.library.texts.title'),
     },
     subtitle: {
-      style: { fontSize: 48, fontWeight: '400', color: '#aaaaaa', fontFamily: 'sans-serif' },
+      style: { fontSize: 48, fontWeight: '400', color: '#aaaaaa', fontFamily: 'sans-serif', width: 1280 },
+      text: t('videoEditor.library.texts.subtitle'),
     },
   };
 
@@ -36,16 +38,37 @@ export function useTimelineTextPreset() {
       presetsStore.customPresets.find((p) => p.id === presetId)?.params;
 
     if (preset) {
-      timelineStore.updateClipProperties(trigger.trackId, trigger.itemId, {
-        style: preset.style,
-        text: preset.text, // Also apply text if it exists in the preset
-      });
+      const update: any = {
+        style: JSON.parse(JSON.stringify(toRaw(preset.style))),
+      };
+      if (preset.text) {
+        update.text = preset.text;
+      }
+      timelineStore.updateClipProperties(trigger.trackId, trigger.itemId, update);
+    }
+
+    if (target === pendingClipInfo.value) {
+      pendingClipInfo.value = null;
+      isPresetModalOpen.value = false;
     }
   }
 
   function showPresetModal(trackId: string, itemId: string) {
     pendingClipInfo.value = { trackId, itemId };
     isPresetModalOpen.value = true;
+  }
+
+  function cancelTextPreset() {
+    const info = pendingClipInfo.value;
+    if (info) {
+      // Remove the pending clip — user cancelled preset selection
+      timelineStore.applyTimeline(
+        { type: 'delete_items', trackId: info.trackId, itemIds: [info.itemId] },
+        { saveMode: 'none', skipHistory: true },
+      );
+    }
+    pendingClipInfo.value = null;
+    isPresetModalOpen.value = false;
   }
 
   const textPresetMenuItems = computed(() => {
@@ -94,6 +117,7 @@ export function useTimelineTextPreset() {
     isPresetModalOpen,
     pendingClipInfo,
     showPresetModal,
+    cancelTextPreset,
     applyTextPreset,
   };
 }

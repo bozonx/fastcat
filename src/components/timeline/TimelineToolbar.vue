@@ -7,7 +7,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { usePresetsStore } from '~/stores/presets.store';
-import { useProjectStore } from '~/stores/project.store';
+import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiSplitDropdownButton from '~/components/ui/UiSplitDropdownButton.vue';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
@@ -32,7 +32,7 @@ const timelineStore = useTimelineStore();
 const settingsStore = useTimelineSettingsStore();
 const focusStore = useFocusStore();
 const presetsStore = usePresetsStore();
-const projectStore = useProjectStore();
+const projectTabsStore = useProjectTabsStore();
 
 const uiStore = useUiStore();
 const workspaceStore = useWorkspaceStore();
@@ -151,41 +151,47 @@ const textPresetItems = computed(() => {
 
 const standardTextPresets = computed<Record<string, { style: TextClipStyle; text?: string }>>(() => ({
   default: {
-    style: { fontSize: 64, color: '#ffffff', fontFamily: 'sans-serif' },
+    style: { fontSize: 64, color: '#ffffff', fontFamily: 'sans-serif', width: 1280 },
   },
   title: {
-    style: { fontSize: 96, fontWeight: '800', color: '#ffffff', fontFamily: 'sans-serif' },
-    text: 'Title',
+    style: { fontSize: 96, fontWeight: '800', color: '#ffffff', fontFamily: 'sans-serif', width: 1280 },
+    text: t('videoEditor.library.texts.title'),
   },
   subtitle: {
-    style: { fontSize: 48, fontWeight: '400', color: '#aaaaaa', fontFamily: 'sans-serif' },
-    text: 'Subtitle',
+    style: { fontSize: 48, fontWeight: '400', color: '#aaaaaa', fontFamily: 'sans-serif', width: 1280 },
+    text: t('videoEditor.library.texts.subtitle'),
   },
 }));
 
 function addTextClip(event?: MouseEvent) {
   const isShift = event?.shiftKey || false;
 
+  if (isShift) {
+    // Create clip without any preset style — preset will be applied after selection
+    const clipIds = timelineStore.addTextClipAtPlayhead();
+    if (clipIds.length > 0) {
+      const trackId = timelineStore.timelineDoc?.tracks.find((t: any) =>
+        t.items.some((it: any) => it.id === clipIds[0]),
+      )?.id;
+      if (trackId && clipIds[0]) {
+        showPresetModal(trackId, clipIds[0]);
+      }
+    }
+    return;
+  }
+
   const presetId = presetsStore.defaultTextPresetId;
   const preset =
     standardTextPresets.value[presetId] ||
     presetsStore.customPresets.find((p) => p.id === presetId)?.params;
 
-  const clipIds = preset
-    ? timelineStore.addTextClipAtPlayhead({
-        style: JSON.parse(JSON.stringify(toRaw(preset.style))),
-        text: preset.text, // Assume preset might have text
-      })
-    : timelineStore.addTextClipAtPlayhead();
-
-  if (isShift && clipIds.length > 0) {
-    // Show modal for the first created clip (usually there's only one)
-    const trackId = timelineStore.timelineDoc?.tracks.find((t: any) =>
-      t.items.some((it: any) => it.id === clipIds[0]),
-    )?.id;
-    if (trackId && clipIds[0]) {
-      showPresetModal(trackId, clipIds[0]);
-    }
+  if (preset) {
+    timelineStore.addTextClipAtPlayhead({
+      style: JSON.parse(JSON.stringify(toRaw(preset.style))),
+      text: preset.text,
+    });
+  } else {
+    timelineStore.addTextClipAtPlayhead();
   }
 }
 
@@ -196,11 +202,7 @@ const textContextMenuItems = computed(() => [
       icon: 'i-heroicons-sparkles',
       onSelect: () => {
         uiStore.activeLibraryTab = 'texts';
-        if (projectStore.currentView !== 'cut') {
-          projectStore.setView('cut');
-        }
-        const panelId = projectStore.ensurePanelVisible('library');
-        focusStore.setPanelFocus(`dynamic:library:${panelId}`);
+        projectTabsStore.setActiveTab('library');
       },
     },
   ],
