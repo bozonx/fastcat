@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import ProjectLockedModal from '~/components/editor/ProjectLockedModal.vue';
 
 const workspaceStore = useWorkspaceStore();
 
@@ -17,5 +18,7 @@ onMounted(async () => {
     <main class="flex-1 min-h-0 overflow-y-auto relative">
       <slot />
     </main>
+
+    <ProjectLockedModal />
   </div>
 </template>
