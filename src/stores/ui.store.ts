@@ -78,6 +78,9 @@ export const useUiStore = defineStore('ui', () => {
   const activeModalsCount = ref(0);
   const activeLibraryTab = ref<'texts' | 'shapes' | 'hud'>('texts');
 
+  const isTextPresetModalOpen = ref(false);
+  const pendingTextPresetClipInfo = ref<{ trackId: string; itemId: string } | null>(null);
+
   function notifyFileManagerUpdate() {
     fileManagerUpdateCounter.value++;
   }
@@ -277,5 +280,7 @@ export const useUiStore = defineStore('ui', () => {
     isEditorSettingsOpen,
     activeModalsCount,
     activeLibraryTab,
+    isTextPresetModalOpen,
+    pendingTextPresetClipInfo,
   };
 });

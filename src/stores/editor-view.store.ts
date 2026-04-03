@@ -527,6 +527,32 @@ export function createEditorViewModule(
     goToFullscreen,
     resetTimelineHeight,
     lastViewBeforeFullscreen,
+    ensurePanelVisible: (type: DynamicPanel['type'], view?: 'cut' | 'sound') => {
+      const panelsRef = getActivePanelsState(view);
+      const defaults = getActiveDefaultPanels(view);
+
+      // Check if it already exists
+      for (const col of panelsRef.value) {
+        const panel = col.panels.find((p) => p.type === type);
+        if (panel) {
+          return panel.id;
+        }
+      }
+
+      // Doesn't exist, create it in the first column
+      const newId = `${type}-${generateId()}`;
+      const newPanel: DynamicPanel = { id: newId, type };
+
+      const cols = panelsRef.value.map((col) => ({ id: col.id, panels: [...col.panels] }));
+      if (cols.length > 0) {
+        cols[0]!.panels.unshift(newPanel);
+      } else {
+        cols.push({ id: `col-${generateId()}`, panels: [newPanel] });
+      }
+
+      panelsRef.value = sanitizePanelColumns(cols, defaults);
+      return newId;
+    },
   };
 }
 

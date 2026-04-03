@@ -27,15 +27,17 @@ export async function extractMetadata(
 
   if (isImage) {
     const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
-    let canDisplay: boolean;
+    let canDisplay = false;
+    let width = 0;
+    let height = 0;
 
-    if (!BROWSER_NATIVE_IMAGE_EXTENSIONS.includes(ext)) {
-      canDisplay = false;
-    } else {
+    if (BROWSER_NATIVE_IMAGE_EXTENSIONS.includes(ext)) {
       try {
         const bitmap = await createImageBitmap(file);
+        width = bitmap.width;
+        height = bitmap.height;
         bitmap.close();
-        canDisplay = true;
+        canDisplay = width > 0 && height > 0;
       } catch {
         canDisplay = false;
       }
@@ -49,7 +51,7 @@ export async function extractMetadata(
       mimeType: getMimeTypeFromFilename(file.name),
       container: 'image',
       duration: 0,
-      image: { canDisplay },
+      image: { canDisplay, width, height },
     };
   }
 
