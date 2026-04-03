@@ -272,7 +272,10 @@ const assets = [
 ];
 
 // Start the editor
-const el = editor.init({ assets });
+const el = editor.init({ 
+  assets,
+  workspaceId: 'unique-session-id' // Optional: isoloate storage for multiple editors on one page
+});
 
 // Handle events
 el.addEventListener('fastcat:exported', (event) => {

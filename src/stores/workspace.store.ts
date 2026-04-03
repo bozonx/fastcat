@@ -232,7 +232,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     proxyStore.activeWorkerPaths.clear();
   }
 
-  async function initAutomaticWorkspace() {
+  async function initAutomaticWorkspace(folderName: string = 'embedded-editor') {
     if (typeof window === 'undefined' || !navigator.storage?.getDirectory) {
       error.value = 'OPFS is not supported';
       isInitializing.value = false;
@@ -245,7 +245,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     try {
       const root = await navigator.storage.getDirectory();
       // Use a dedicated subfolder for the embedded editor to avoid conflicts
-      const embeddedHandle = await root.getDirectoryHandle('embedded-editor', { create: true });
+      const embeddedHandle = await root.getDirectoryHandle(folderName, { create: true });
       await setupWorkspace(embeddedHandle);
     } catch (e) {
       error.value = getErrorMessage(e, 'Failed to initialize automatic workspace');

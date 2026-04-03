@@ -4,6 +4,7 @@ import MediaPlayer from '~/components/media/MediaPlayer.vue';
 import ImageViewer from '~/components/preview/ImageViewer.vue';
 import TextEditor from '~/components/preview/TextEditor.vue';
 import { useUiStore } from '~/stores/ui.store';
+import { useTeleportTarget } from '~/composables/ui/useTeleportTarget';
 import type { PanelFocusId } from '~/stores/focus.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
@@ -24,6 +25,7 @@ interface MediaPlaybackTransferState {
 const { t } = useI18n();
 const uiStore = useUiStore();
 const workspaceStore = useWorkspaceStore();
+const { target: teleportTarget } = useTeleportTarget();
 
 const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
 const effectiveHotkeys = computed(() =>
@@ -178,7 +180,7 @@ onUnmounted(() => {
   </div>
 
   <!-- Full-screen modal teleported to body to escape any stacking context -->
-  <Teleport to="body">
+  <Teleport :to="teleportTarget">
     <Transition
       enter-active-class="transition duration-200 ease-out"
       enter-from-class="opacity-0 scale-95"

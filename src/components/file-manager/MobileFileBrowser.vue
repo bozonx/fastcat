@@ -9,6 +9,7 @@ import { useFileManagerThumbnails } from '~/composables/file-manager/useFileMana
 import { useFileManagerCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
 import { useFileSorting } from '~/composables/file-manager/useFileSorting';
 import { useClipboardStore } from '~/stores/clipboard.store';
+import { useTeleportTarget } from '~/composables/ui/useTeleportTarget';
 import { isOpenableProjectFileName } from '~/utils/media-types';
 import {
   useFileManagerActions,
@@ -36,6 +37,7 @@ const uiStore = useUiStore();
 const clipboardStore = useClipboardStore();
 const toast = useToast();
 const { t } = useI18n();
+const { target: teleportTarget } = useTeleportTarget();
 
 const {
   findEntryByPath,
@@ -416,7 +418,7 @@ const menuItems = computed(() => [
     />
 
     <!-- Action FAB -->
-    <Teleport to="body">
+    <Teleport :to="teleportTarget">
       <div
         v-if="
           !isSelectionMode &&

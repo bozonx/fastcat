@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useWindowSize } from '@vueuse/core';
+import { useTeleportTarget } from '~/composables/ui/useTeleportTarget';
 
 interface Props {
   /** Title of the drawer */
@@ -50,9 +51,10 @@ const props = withDefaults(defineProps<Props>(), {
   showClose: true,
   ui: () => ({}),
 });
-
 const isOpen = defineModel<boolean>('open', { default: false });
 const activeSnapPoint = defineModel<string | number | null>('activeSnapPoint', { default: null });
+
+const { target: effectiveTeleportTarget } = useTeleportTarget();
 
 /**
  * UDrawer (vaul-vue / Reka Dialog) requires DrawerTitle and DrawerDescription inside DrawerContent.
@@ -181,7 +183,7 @@ watch(isOpen, (val) => {
 </script>
 
 <template>
-  <Teleport v-if="!props.modal" to="body">
+  <Teleport v-if="!props.modal" :to="effectiveTeleportTarget">
     <div
       class="fixed inset-0 bg-zinc-950/40 backdrop-blur-[2px] transition-all duration-300 z-40"
       :class="[

@@ -1,6 +1,6 @@
 import { defineCustomElement, h, provide } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
-import { createI18n } from 'vue-i18n';
+import { createI18n, I18nInjectionKey } from 'vue-i18n';
 import FastcatEmbeddedLayout from '~/components/embedded/FastcatEmbeddedLayout.vue';
 import mainCss from '~/assets/css/main.css?inline';
 
@@ -23,21 +23,35 @@ const i18n = createI18n({
  */
 const FastcatElement = defineCustomElement({
   props: {
-    assets: { type: Array, default: () => [] }
+    assets: { type: Array, default: () => [] },
+    workspaceId: { type: String, default: '' }
   },
   setup(props, { emit }) {
     const pinia = createPinia();
     setActivePinia(pinia);
 
     // Provide Pinia and i18n to the context of the Shadow DOM components
+    // Note: Pinia 2.0+ uses a symbol internally, but setActivePinia is often sufficient
+    // for useStore() calls within setup() and its synchronous sub-calls.
     provide('pinia', pinia);
     
-    // In Vue 3 setup, we might need a more complex way to provide i18n for useI18n()
-    // but for most common cases, providing it directly or wrapping with a provider works.
+    // Provide i18n using the official injection key so useI18n() works
+    provide(I18nInjectionKey, i18n);
+
+    // Provide Nuxt-like services that are expected by components via useNuxtApp()
+    provide('isEmbedded', true);
+    provide('notificationService', { 
+      add: (msg: any) => console.log('[Embedded Editor] Notification:', msg) 
+    });
+    provide('i18nService', { 
+      t: (key: string, defaultValue?: string) => i18n.global.t(key) || defaultValue || key 
+    });
+    provide('i18n', i18n.global);
     
     return () => h(FastcatEmbeddedLayout, {
       assets: props.assets as any,
-      onExported: () => emit('fastcat:exported')
+      workspaceId: props.workspaceId,
+      onExported: (data: any) => emit('fastcat:exported', data)
     });
   },
   // Inject our global Tailwind CSS into the Shadow DOM
@@ -57,7 +71,7 @@ export class FastcatEditor {
 
   constructor(private container: HTMLElement | string) {}
 
-  public init(options: { assets: any[] }) {
+  public init(options: { assets: any[], workspaceId?: string }) {
     const target = typeof this.container === 'string' 
       ? document.querySelector(this.container) 
       : this.container;
@@ -66,6 +80,9 @@ export class FastcatEditor {
 
     this.element = document.createElement('fastcat-editor');
     (this.element as any).assets = options.assets;
+    if (options.workspaceId) {
+      (this.element as any).workspaceId = options.workspaceId;
+    }
     
     target.appendChild(this.element);
     return this.element;
