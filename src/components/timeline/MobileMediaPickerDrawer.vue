@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useFileManagerThumbnails } from '~/composables/file-manager/useFileManagerThumbnails';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useProjectStore } from '~/stores/project.store';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import type { FsEntry } from '~/types/fs';
 import MobileFileBrowserGrid from '~/components/file-manager/MobileFileBrowserGrid.vue';
@@ -12,6 +13,7 @@ const emit = defineEmits<{ (e: 'close'): void }>();
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
+const projectStore = useProjectStore();
 const { readDirectory, vfs } = useFileManager();
 
 const isOpenLocal = computed({
@@ -43,14 +45,17 @@ const breadcrumbs = computed(() => {
 function isMediaEntry(entry: FsEntry) {
   if (entry.kind === 'directory') return true;
   const type = getMediaTypeFromFilename(entry.name);
-  return ['video', 'audio', 'image'].includes(type);
+  return ['video', 'audio', 'image', 'timeline'].includes(type);
 }
 
 async function loadEntries(path: string) {
   isLoading.value = true;
   try {
     const raw = await readDirectory(path);
-    entries.value = raw.filter((e) => !e.name.startsWith('.') && isMediaEntry(e));
+    entries.value = raw.filter((e) => {
+      const isCurrentTimeline = e.kind === 'file' && e.path === projectStore.currentTimelinePath;
+      return !e.name.startsWith('.') && isMediaEntry(e) && !isCurrentTimeline;
+    });
   } catch (err) {
     console.error('MobileMediaPickerDrawer: failed to load', path, err);
     entries.value = [];
@@ -86,16 +91,26 @@ async function addToTimeline() {
     for (const entry of selectedFiles.value) {
       if (!entry.path) continue;
       const mediaType = getMediaTypeFromFilename(entry.name);
-      const kind = mediaType === 'audio' ? 'audio' : 'video';
-      const trackId = timelineStore.resolveMobileTargetTrackId(kind);
+      if (mediaType === 'timeline') {
+        await timelineStore.addTimelineClipToTimelineFromPath({
+          trackId: timelineStore.resolveMobileTargetTrackId('video'),
+          name: entry.name,
+          path: entry.path,
+          startUs: timelineStore.currentTime,
+          pseudo: true,
+        });
+      } else {
+        const kind = mediaType === 'audio' ? 'audio' : 'video';
+        const trackId = timelineStore.resolveMobileTargetTrackId(kind);
 
-      await timelineStore.addClipToTimelineFromPath({
-        trackId,
-        name: entry.name,
-        path: entry.path,
-        startUs: timelineStore.currentTime,
-        pseudo: true,
-      });
+        await timelineStore.addClipToTimelineFromPath({
+          trackId,
+          name: entry.name,
+          path: entry.path,
+          startUs: timelineStore.currentTime,
+          pseudo: true,
+        });
+      }
     }
     selectedFiles.value = [];
     emit('close');
