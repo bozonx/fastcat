@@ -77,11 +77,16 @@ describe('TimelineGap', () => {
       props: { item, trackId: 'v1', isMobile: true },
     });
 
-    await component.find('div.absolute').trigger('pointerdown', {
+    const gapElement = component.find('div.absolute');
+    await gapElement.trigger('pointerdown', {
       button: 0,
       clientX: 24,
       clientY: 12,
       pointerType: 'touch',
+    });
+    await gapElement.trigger('click', {
+      clientX: 24,
+      clientY: 12,
     });
 
     expect(component.emitted('select')).toBeTruthy();

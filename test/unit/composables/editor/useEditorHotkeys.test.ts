@@ -23,7 +23,16 @@ vi.mock('~/composables/editor/useProjectActions', () => ({
 vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: vi.fn(() => ({
     userSettings: {
-      hotkeys: { layer1: 'Shift', layer2: 'Control' },
+      hotkeys: {
+        layer1: 'Shift',
+        layer2: 'Control',
+        bindings: {
+          'general.focus': ['Tab'],
+        },
+      },
+      timeline: {
+        defaultStaticClipDurationUs: 5000000,
+      },
     },
   })),
 }));

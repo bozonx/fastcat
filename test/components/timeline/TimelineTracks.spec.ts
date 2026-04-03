@@ -164,6 +164,10 @@ describe('TimelineTracks', () => {
       clientY: 12,
       pointerType: 'touch',
     });
+    await track.trigger('click', {
+      clientX: 24,
+      clientY: 12,
+    });
 
     await nextTick();
 
