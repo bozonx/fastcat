@@ -76,26 +76,26 @@ const trackExtraActions = computed(() => {
     v-model:active-snap-point="activeSnapPoint"
     force-landscape-direction="bottom"
   >
-    <template #toolbar>
-      <MobileDrawerToolbar>
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-trash"
-          :label="t('common.delete', 'Delete')"
-          @click="deleteGap"
-        />
-      </MobileDrawerToolbar>
+    <div class="px-4 pb-8">
+      <div class="mb-4 pt-1">
+        <MobileDrawerToolbar class="-mx-4 mb-2">
+          <MobileDrawerToolbarButton
+            icon="i-heroicons-trash"
+            :label="t('common.delete', 'Delete')"
+            @click="deleteGap"
+          />
+        </MobileDrawerToolbar>
 
-      <div v-if="trackExtraActions.length > 0" class="py-2 px-4 border-b border-ui-border shrink-0">
-        <PropertyActionList
-          :actions="trackExtraActions"
-          vertical
-          variant="ghost"
-          size="md"
-        />
+        <div v-if="trackExtraActions.length > 0" class="py-1 px-3 border border-ui-border rounded-xl bg-zinc-900/40">
+          <PropertyActionList
+            :actions="trackExtraActions"
+            vertical
+            variant="ghost"
+            size="md"
+          />
+        </div>
       </div>
-    </template>
 
-    <div class="px-4 pt-4 pb-8">
       <div class="mb-6">
         <p class="text-xs text-ui-text-muted">
           {{ t('fastcat.timeline.gapDescription', 'An empty gap in the track timeline.') }}

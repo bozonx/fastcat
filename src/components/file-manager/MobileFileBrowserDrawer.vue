@@ -230,68 +230,66 @@ function handleAction(actionId: FileAction) {
     :show-close="false"
     :ui="{ container: 'h-[85dvh]' }"
   >
-    <template #toolbar>
-      <div class="flex flex-col bg-ui-bg/50">
-        <MobileDrawerToolbar v-if="selectedEntriesList.length > 0" class="border-b border-ui-border">
-          <MobileDrawerToolbarButton
-            icon="i-heroicons-trash"
-            :label="$t('common.delete', 'Delete')"
-            @click="handleAction('delete')"
-          />
-          <MobileDrawerToolbarButton
-            v-if="selectedEntriesList.length === 1"
-            icon="i-heroicons-pencil-square"
-            :label="$t('common.rename', 'Rename')"
-            @click="handleAction('rename')"
-          />
-          <MobileDrawerToolbarButton
-            icon="i-heroicons-document-duplicate"
-            :label="$t('common.copy', 'Copy')"
-            @click="handleAction('copy')"
-          />
-          <MobileDrawerToolbarButton
-            icon="i-heroicons-scissors"
-            :label="$t('common.cut', 'Cut')"
-            @click="handleAction('cut')"
-          />
-          <MobileDrawerToolbarButton
-            v-if="clipboardStore.hasFileManagerPayload && selectedFsEntry?.entry.kind === 'directory'"
-            icon="i-heroicons-clipboard"
-            :label="$t('common.paste', 'Paste')"
-            @click="handleAction('paste')"
-          />
-          <MobileDrawerToolbarButton
-            v-if="canAddToTimeline"
-            success
-            icon="lucide:plus"
-            :label="$t('common.toTimeline', 'To timeline')"
-            @click="emit('add-to-timeline')"
-          />
-          <MobileDrawerToolbarButton
-            v-if="isBloggerdogConnected && selectedFsEntry?.entry.kind === 'file'"
-            icon="i-heroicons-cloud-arrow-up"
-            :label="$t('videoEditor.fileManager.actions.uploadRemote', 'Upload')"
-            @click="handleAction('uploadRemote')"
-          />
-        </MobileDrawerToolbar>
-
-        <div v-if="topActions.length > 0" class="py-2 px-4 border-b border-ui-border shrink-0">
-          <PropertyActionList
-            :actions="topActions"
-            vertical
-            variant="ghost"
-            size="md"
-          />
-        </div>
-      </div>
-    </template>
-
     <div class="flex flex-col h-full relative overflow-hidden">
       <!-- Scrollable content -->
       <div
         class="flex-1 min-h-0 overflow-y-auto px-4 pb-24"
         data-vaul-no-drag
       >
+        <div class="mb-4 pt-1">
+          <MobileDrawerToolbar v-if="selectedEntriesList.length > 0" class="-mx-4 border-b border-ui-border mb-2">
+            <MobileDrawerToolbarButton
+              icon="i-heroicons-trash"
+              :label="$t('common.delete', 'Delete')"
+              @click="handleAction('delete')"
+            />
+            <MobileDrawerToolbarButton
+              v-if="selectedEntriesList.length === 1"
+              icon="i-heroicons-pencil-square"
+              :label="$t('common.rename', 'Rename')"
+              @click="handleAction('rename')"
+            />
+            <MobileDrawerToolbarButton
+              icon="i-heroicons-document-duplicate"
+              :label="$t('common.copy', 'Copy')"
+              @click="handleAction('copy')"
+            />
+            <MobileDrawerToolbarButton
+              icon="i-heroicons-scissors"
+              :label="$t('common.cut', 'Cut')"
+              @click="handleAction('cut')"
+            />
+            <MobileDrawerToolbarButton
+              v-if="clipboardStore.hasFileManagerPayload && selectedFsEntry?.entry.kind === 'directory'"
+              icon="i-heroicons-clipboard"
+              :label="$t('common.paste', 'Paste')"
+              @click="handleAction('paste')"
+            />
+            <MobileDrawerToolbarButton
+              v-if="canAddToTimeline"
+              success
+              icon="lucide:plus"
+              :label="$t('common.toTimeline', 'To timeline')"
+              @click="emit('add-to-timeline')"
+            />
+            <MobileDrawerToolbarButton
+              v-if="isBloggerdogConnected && selectedFsEntry?.entry.kind === 'file'"
+              icon="i-heroicons-cloud-arrow-up"
+              :label="$t('videoEditor.fileManager.actions.uploadRemote', 'Upload')"
+              @click="handleAction('uploadRemote')"
+            />
+          </MobileDrawerToolbar>
+
+          <div v-if="topActions.length > 0" class="py-1 px-3 border border-ui-border rounded-xl bg-zinc-900/40">
+            <PropertyActionList
+              :actions="topActions"
+              vertical
+              variant="ghost"
+              size="md"
+            />
+          </div>
+        </div>
+
         <div v-if="selectedFsEntry" class="h-full py-2">
           <FileProperties
             :selected-fs-entry="selectedFsEntry.entry"

@@ -119,26 +119,26 @@ const mainActions = computed<any[]>(() => {
     v-model:active-snap-point="activeSnapPoint"
     force-landscape-direction="bottom"
   >
-    <template #toolbar>
-      <MobileDrawerToolbar>
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-trash"
-          :label="t('common.delete', 'Delete')"
-          @click="requestDelete"
-        />
-      </MobileDrawerToolbar>
+    <div class="px-4 pb-8 flex flex-col gap-5">
+      <div class="pt-1">
+        <MobileDrawerToolbar class="-mx-4 mb-2">
+          <MobileDrawerToolbarButton
+            icon="i-heroicons-trash"
+            :label="t('common.delete', 'Delete')"
+            @click="requestDelete"
+          />
+        </MobileDrawerToolbar>
 
-      <div v-if="mainActions.length > 0" class="py-2 px-4 border-b border-ui-border shrink-0">
-        <PropertyActionList
-          :actions="mainActions"
-          vertical
-          variant="ghost"
-          size="md"
-        />
+        <div v-if="mainActions.length > 0" class="py-1 px-3 border border-ui-border rounded-xl bg-zinc-900/40">
+          <PropertyActionList
+            :actions="mainActions"
+            vertical
+            variant="ghost"
+            size="md"
+          />
+        </div>
       </div>
-    </template>
 
-    <div class="px-4 pt-4 pb-8 flex flex-col gap-5">
       <MarkerProperties :marker-id="markerId" hide-actions />
     </div>
 

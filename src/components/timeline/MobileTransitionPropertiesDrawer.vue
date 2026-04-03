@@ -84,26 +84,26 @@ const extraActions = computed(() => {
     v-model:active-snap-point="activeSnapPoint"
     force-landscape-direction="bottom"
   >
-    <template #toolbar>
-      <MobileDrawerToolbar>
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-trash"
-          :label="t('common.delete', 'Delete')"
-          @click="handleDeleteTransition"
-        />
-      </MobileDrawerToolbar>
+    <div class="px-4 pb-8">
+      <div class="mb-4 pt-1">
+        <MobileDrawerToolbar class="-mx-4 mb-2">
+          <MobileDrawerToolbarButton
+            icon="i-heroicons-trash"
+            :label="t('common.delete', 'Delete')"
+            @click="handleDeleteTransition"
+          />
+        </MobileDrawerToolbar>
 
-      <div v-if="extraActions.length > 0" class="py-2 px-4 border-b border-ui-border shrink-0">
-        <PropertyActionList
-          :actions="extraActions"
-          vertical
-          variant="ghost"
-          size="md"
-        />
+        <div v-if="extraActions.length > 0" class="py-1 px-3 border border-ui-border rounded-xl bg-zinc-900/40">
+          <PropertyActionList
+            :actions="extraActions"
+            vertical
+            variant="ghost"
+            size="md"
+          />
+        </div>
       </div>
-    </template>
 
-    <div class="px-4 pt-4 pb-8">
       <TransitionProperties
         v-if="isOpen"
         ref="transitionPropertiesRef"
