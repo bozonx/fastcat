@@ -22,6 +22,7 @@ function normalizeKeyLabel(rawKey: string): string {
 
   const lower = key.toLowerCase();
 
+  if (lower === 'control') return 'Ctrl';
   if (lower === 'spacebar') return 'Space';
   if (lower === 'esc') return 'Escape';
   if (lower === 'del') return 'Delete';
@@ -107,7 +108,7 @@ export function hotkeyFromKeyboardEvent(
   const key = normalizeKeyLabel(useCode ? e.code : e.key);
   if (!key) return null;
 
-  if (key === 'Control' || key === 'Shift' || key === 'Alt' || key === 'Meta') {
+  if (key === 'Ctrl' || key === 'Control' || key === 'Shift' || key === 'Alt' || key === 'Meta') {
     return null;
   }
 

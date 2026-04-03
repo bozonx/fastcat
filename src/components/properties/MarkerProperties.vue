@@ -160,6 +160,7 @@ const mainActions = computed<any[]>(() => {
           :model-value="marker.text"
           size="sm"
           :rows="4"
+          data-primary-focus="true"
           @update:model-value="handleUpdateText"
         />
       </div>

@@ -120,6 +120,7 @@ function focusPanel() {
       v-model="content"
       class="flex-1 w-full resize-none font-mono text-sm text-ui-text bg-ui-bg focus:outline-none p-4"
       spellcheck="false"
+      data-primary-focus="true"
       @focus="focusPanel"
     />
     <div v-else class="flex-1 flex items-center justify-center text-ui-text-muted text-sm">

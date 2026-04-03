@@ -40,6 +40,21 @@ vi.mock('~/composables/editor/useProjectActions', () => ({
   }),
 }));
 
+vi.mock('~/stores/workspace.store', () => ({
+  useWorkspaceStore: vi.fn(() => ({
+    userSettings: {
+      hotkeys: {
+        layer1: 'Shift',
+        layer2: 'Control',
+        bindings: {},
+      },
+      timeline: {
+        defaultStaticClipDurationUs: 5000000,
+      },
+    },
+  })),
+}));
+
 const mockSelectionStore = reactive({
   selectedEntity: null as any,
   selectFsEntry: vi.fn((entry) => {
@@ -158,9 +173,11 @@ describe('FileManagerFiles', () => {
     });
 
     const uiStore = useUiStore();
+    const focusStore = useFocusStore();
     const initialTrigger = uiStore.fileTreeSelectAllTrigger;
 
-    useFocusStore().setPanelFocus('left');
+    focusStore.setPanelFocus('left');
+    await nextTick();
     await nextTick();
 
     window.dispatchEvent(
@@ -171,6 +188,7 @@ describe('FileManagerFiles', () => {
         bubbles: true,
       }),
     );
+    await nextTick();
 
     expect(uiStore.fileTreeSelectAllTrigger).toBe(initialTrigger + 1);
   });

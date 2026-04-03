@@ -24,6 +24,7 @@ const content = defineModel<string>('content', { default: '' });
         v-model="content"
         class="flex-1 w-full resize-none font-mono text-sm text-ui-text bg-ui-bg focus:outline-none p-4 rounded border border-ui-border"
         spellcheck="false"
+        data-primary-focus="true"
       />
     </div>
   </UiModal>

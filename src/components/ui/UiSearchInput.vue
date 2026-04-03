@@ -20,6 +20,7 @@ const { t } = useI18n();
 <template>
   <UInput
     v-model="modelValue"
+    data-primary-focus="true"
     :placeholder="placeholder ?? t('common.search', 'Search')"
     :disabled="disabled"
     class="w-full group"

@@ -178,7 +178,22 @@ function onSnapPointChange(val: string | number) {
 }
 
 watch(isOpen, (val) => {
-  if (!val) activeSnapPoint.value = null;
+  if (!val) {
+    activeSnapPoint.value = null;
+  } else {
+    // Focus management
+    nextTick(() => {
+      setTimeout(() => {
+        if (!bodyRef.value) return;
+        const target = bodyRef.value.querySelector<HTMLElement>(
+          '[data-primary-focus="true"], [autofocus]',
+        );
+        if (target) {
+          target.focus();
+        }
+      }, 400); // Wait for transition completion
+    });
+  }
 });
 </script>
 
