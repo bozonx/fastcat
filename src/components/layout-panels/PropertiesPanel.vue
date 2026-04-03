@@ -23,6 +23,7 @@ import SelectionRangeProperties from '~/components/properties/SelectionRangeProp
 import TimelineProperties from '~/components/properties/TimelineProperties.vue';
 import ProjectEffectProperties from '~/components/properties/ProjectEffectProperties.vue';
 import ProjectTransitionProperties from '~/components/properties/ProjectTransitionProperties.vue';
+import ProjectLibraryProperties from '~/components/properties/ProjectLibraryProperties.vue';
 import type { SelectedEntity } from '~/stores/selection.store';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
 
@@ -106,6 +107,12 @@ const selectedProjectTransitionType = computed<string | null>(() => {
   return null;
 });
 
+const selectedProjectLibraryItem = computed(() => {
+  const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
+  if (entity?.source === 'project' && entity.kind === 'library-item') return entity;
+  return null;
+});
+
 const selectedMarkerId = computed<string | null>(() => {
   const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
   if (entity?.source === 'timeline' && entity.kind === 'marker') return entity.markerId;
@@ -144,6 +151,7 @@ const displayMode = computed<
   | 'timeline'
   | 'project-effect'
   | 'project-transition'
+  | 'project-library-item'
   | 'empty'
 >(() => {
   if (selectedTransition.value && selectedTransitionClip.value) return 'transition';
@@ -156,6 +164,7 @@ const displayMode = computed<
   const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
   if (entity?.source === 'project' && entity.kind === 'effect') return 'project-effect';
   if (entity?.source === 'project' && entity.kind === 'transition') return 'project-transition';
+  if (entity?.source === 'project' && entity.kind === 'library-item') return 'project-library-item';
   if (entity?.source === 'timeline' && entity.kind === 'marker') return 'marker';
   // .otio file → same timeline mode as top bar
   if (
@@ -321,6 +330,18 @@ function onPanelFocusOut() {
             {{ t('fastcat.transitions.title', 'Transition') }}
           </span>
           <span
+            v-else-if="displayMode === 'project-library-item'"
+            class="ml-2 text-xs text-ui-text-muted font-mono truncate"
+          >
+            {{
+              selectedProjectLibraryItem?.itemKind === 'text'
+                ? t('fastcat.library.tabs.texts', 'Text')
+                : selectedProjectLibraryItem?.itemKind === 'shape'
+                  ? t('fastcat.library.tabs.shapes', 'Shape')
+                  : t('fastcat.library.tabs.hud', 'HUD')
+            }}
+          </span>
+          <span
             v-else-if="displayMode === 'marker'"
             class="ml-2 text-xs text-ui-text-muted font-mono truncate"
           >
@@ -434,6 +455,12 @@ function onPanelFocusOut() {
           <ProjectTransitionProperties
             v-else-if="displayMode === 'project-transition' && selectedProjectTransitionType"
             :transition-type="selectedProjectTransitionType"
+          />
+          <ProjectLibraryProperties
+            v-else-if="displayMode === 'project-library-item' && selectedProjectLibraryItem"
+            :item-kind="selectedProjectLibraryItem.itemKind"
+            :item-id="selectedProjectLibraryItem.itemId"
+            :preset-params="selectedProjectLibraryItem.presetParams"
           />
           <div
             v-else

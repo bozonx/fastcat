@@ -20,6 +20,14 @@ export interface SelectedProjectTransition extends SelectedEntityBase {
   transitionType: string;
 }
 
+export interface SelectedProjectLibraryItem extends SelectedEntityBase {
+  source: 'project';
+  kind: 'library-item';
+  itemKind: 'text' | 'shape' | 'hud';
+  itemId: string;
+  presetParams?: any;
+}
+
 export interface SelectedTimelineClip extends SelectedEntityBase {
   source: 'timeline';
   kind: 'clip';
@@ -96,7 +104,8 @@ export type SelectedEntity =
   | SelectedFsEntry
   | SelectedFsEntries
   | SelectedProjectEffect
-  | SelectedProjectTransition;
+  | SelectedProjectTransition
+  | SelectedProjectLibraryItem;
 
 export const useSelectionStore = defineStore('selection', () => {
   const selectedEntity = ref<SelectedEntity | null>(null);
@@ -213,6 +222,20 @@ export const useSelectionStore = defineStore('selection', () => {
     };
   }
 
+  function selectProjectLibraryItem(
+    itemKind: 'text' | 'shape' | 'hud',
+    itemId: string,
+    presetParams?: any,
+  ) {
+    selectedEntity.value = {
+      source: 'project',
+      kind: 'library-item',
+      itemKind,
+      itemId,
+      presetParams,
+    };
+  }
+
   function clearSelection() {
     selectedEntity.value = null;
   }
@@ -244,6 +267,7 @@ export const useSelectionStore = defineStore('selection', () => {
     selectTimelineProperties,
     selectProjectEffect,
     selectProjectTransition,
+    selectProjectLibraryItem,
     clearSelection,
     isTrackVisuallySelected,
   };

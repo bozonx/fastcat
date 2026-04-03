@@ -7,6 +7,9 @@ import ClipBackgroundProperties from './ClipBackgroundProperties.vue';
 import ClipTextProperties from './ClipTextProperties.vue';
 import ClipShapeProperties from './ClipShapeProperties.vue';
 import ClipHudProperties from './ClipHudProperties.vue';
+import UiModal from '~/components/ui/UiModal.vue';
+import UiTextInput from '~/components/ui/UiTextInput.vue';
+import UiFormField from '~/components/ui/UiFormField.vue';
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -28,6 +31,9 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const presetsStore = usePresetsStore();
+
+const isSaveModalOpen = ref(false);
+const newPresetName = ref('');
 
 const shapePresets = computed(() =>
   presetsStore.customPresets
@@ -86,12 +92,18 @@ function handleLoadHudPreset(presetId: string) {
 }
 
 function handleSavePreset() {
-  const name = prompt(t('fastcat.presets.enterName', 'Enter preset name'), props.clip.name);
+  newPresetName.value = props.clip.name || '';
+  isSaveModalOpen.value = true;
+}
+
+function confirmSavePreset() {
+  const name = newPresetName.value.trim();
   if (!name) return;
 
   if (props.clip.clipType === 'text') {
     presetsStore.saveAsPreset('text', 'custom', name, {
-      style: (props.clip as any).style,
+      style: (props.clip as any).style || {},
+      text: (props.clip as any).text,
     });
   } else if (props.clip.clipType === 'shape') {
     presetsStore.saveAsPreset('shape', (props.clip as any).shapeType, name, {
@@ -106,9 +118,12 @@ function handleSavePreset() {
       hudType: (props.clip as any).hudType,
       background: (props.clip as any).background,
       content: (props.clip as any).content,
-      params: (props.clip as any).params,
+      frame: (props.clip as any).frame,
     });
   }
+
+  isSaveModalOpen.value = false;
+  newPresetName.value = '';
 }
 </script>
 
@@ -152,4 +167,28 @@ function handleSavePreset() {
     @load-preset="handleLoadHudPreset"
     @save-preset="handleSavePreset"
   />
+
+  <UiModal
+    v-model:open="isSaveModalOpen"
+    :title="t('fastcat.effects.savePresetTitle', 'Save Preset')"
+  >
+    <div class="flex flex-col gap-4">
+      <UiFormField :label="t('common.name', 'Name')">
+        <UiTextInput
+          v-model="newPresetName"
+          :placeholder="t('fastcat.effects.presetNamePlaceholder', 'My Custom Preset')"
+          autofocus
+          @keyup.enter="confirmSavePreset"
+        />
+      </UiFormField>
+    </div>
+    <template #footer>
+      <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">
+        {{ t('common.cancel', 'Cancel') }}
+      </UButton>
+      <UButton color="primary" :disabled="!newPresetName.trim()" @click="confirmSavePreset">
+        {{ t('common.save', 'Save') }}
+      </UButton>
+    </template>
+  </UiModal>
 </template>

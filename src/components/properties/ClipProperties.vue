@@ -481,6 +481,21 @@ defineExpose({
         @update-duration="handleUpdateDuration"
       />
 
+      <ClipTypeSection
+        :clip="clip"
+        :hud-manifest="hudManifest"
+        :hud-control-values="hudControlValues"
+        @update-background-color="handleUpdateBackgroundColor"
+        @update-text="handleUpdateText"
+        @update-text-style="handleUpdateTextStyle"
+        @update-shape-type="handleUpdateShapeType"
+        @update-fill-color="handleUpdateFillColor"
+        @update-stroke-color="handleUpdateStrokeColor"
+        @update-stroke-width="handleUpdateStrokeWidth"
+        @update-shape-config="handleUpdateShapeConfig"
+        @update-hud-control="handleUpdateHudControl"
+      />
+
       <ClipSpeedSection
         v-model:enabled="isSpeedEnabled"
         :clip="clip"
@@ -506,21 +521,6 @@ defineExpose({
 
     <!-- Tab: Video -->
     <div v-else-if="activeTab === 'video'" class="flex flex-col gap-2">
-      <ClipTypeSection
-        :clip="clip"
-        :hud-manifest="hudManifest"
-        :hud-control-values="hudControlValues"
-        @update-background-color="handleUpdateBackgroundColor"
-        @update-text="handleUpdateText"
-        @update-text-style="handleUpdateTextStyle"
-        @update-shape-type="handleUpdateShapeType"
-        @update-fill-color="handleUpdateFillColor"
-        @update-stroke-color="handleUpdateStrokeColor"
-        @update-stroke-width="handleUpdateStrokeWidth"
-        @update-shape-config="handleUpdateShapeConfig"
-        @update-hud-control="handleUpdateHudControl"
-      />
-
       <ClipBlendingModeSection
         v-model:enabled="isBlendingEnabled"
         :clip-type="clip.clipType"

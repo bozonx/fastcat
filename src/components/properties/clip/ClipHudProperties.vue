@@ -11,6 +11,7 @@ const props = defineProps<{
   hudManifest: { controls: ParamControl[] } | null | undefined;
   hudControlValues: Record<string, unknown>;
   presets: Array<{ label: string; value: string }>;
+  hidePresets?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -24,7 +25,7 @@ const { t } = useI18n();
 
 <template>
   <PropertySection :title="t('fastcat.hudClip.hud')">
-    <div class="flex flex-col gap-1 pb-2 border-b border-ui-border mb-4">
+    <div v-if="!hidePresets" class="flex flex-col gap-1 pb-2 border-b border-ui-border mb-4">
       <div class="flex items-center justify-between">
         <div class="text-[10px] font-medium uppercase tracking-wider text-ui-text-muted opacity-70">
           {{ t('fastcat.effects.presetsTitle', 'Presets') }}
