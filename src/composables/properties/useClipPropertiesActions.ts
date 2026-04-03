@@ -21,6 +21,7 @@ interface TimelineStoreActions {
   updateClipProperties: (trackId: string, itemId: string, patch: Record<string, any>) => any;
   renameItem: (trackId: string, itemId: string, name: string) => void;
   selectTimelineItems: (items: { trackId: string; itemId: string }[]) => void;
+  updateTrackProperties: (trackId: string, patch: Record<string, any>) => any;
 }
 
 interface ProjectStoreActions {
@@ -266,6 +267,19 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     });
   }
 
+  const isSoloed = computed(() => {
+    const doc = timelineStore.timelineDoc;
+    if (!doc) return false;
+    const track = doc.tracks.find((t) => t.id === options.clip.value.trackId);
+    return track?.audioSolo === true;
+  });
+
+  function toggleSolo() {
+    timelineStore.updateTrackProperties(options.clip.value.trackId, {
+      audioSolo: !isSoloed.value,
+    });
+  }
+
   function toggleAudioWaveformMode() {
     const current = options.clip.value.audioWaveformMode || 'half';
     timelineStore.updateClipProperties(options.clip.value.trackId, options.clip.value.id, {
@@ -376,5 +390,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     goToLinkedVideo,
     linkedAudioClip,
     linkedVideoClip,
+    isSoloed,
+    toggleSolo,
   };
 }

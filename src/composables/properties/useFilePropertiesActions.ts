@@ -64,6 +64,20 @@ interface UseFilePropertiesActionsOptions {
 export function useFilePropertiesActions(options: UseFilePropertiesActionsOptions) {
   const directoryPrimaryActions = computed<PrimaryEntryAction[]>(() => [
     {
+      id: 'delete',
+      title: options.t('common.delete'),
+      icon: 'i-heroicons-trash',
+      hidden: options.isProjectRootDir.value || options.isCommonDir.value,
+      onClick: options.onDelete,
+    },
+    {
+      id: 'rename',
+      title: options.t('common.rename'),
+      icon: 'i-heroicons-pencil',
+      hidden: options.isProjectRootDir.value || options.isCommonDir.value,
+      onClick: options.onRename,
+    },
+    {
       id: 'copy',
       title: options.t('common.copy'),
       icon: 'i-heroicons-document-duplicate',
@@ -83,20 +97,6 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       icon: 'i-heroicons-clipboard',
       disabled: !options.hasClipboardItems.value,
       onClick: options.onPaste,
-    },
-    {
-      id: 'rename',
-      title: options.t('common.rename'),
-      icon: 'i-heroicons-pencil',
-      hidden: options.isProjectRootDir.value || options.isCommonDir.value,
-      onClick: options.onRename,
-    },
-    {
-      id: 'delete',
-      title: options.t('common.delete'),
-      icon: 'i-heroicons-trash',
-      hidden: options.isProjectRootDir.value || options.isCommonDir.value,
-      onClick: options.onDelete,
     },
   ]);
 
@@ -144,6 +144,20 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
 
   const filePrimaryActions = computed<PrimaryEntryAction[]>(() => [
     {
+      id: 'delete',
+      title: options.t('common.delete'),
+      icon: 'i-heroicons-trash',
+      hidden: false,
+      onClick: options.onDelete,
+    },
+    {
+      id: 'rename',
+      title: options.t('common.rename'),
+      icon: 'i-heroicons-pencil',
+      hidden: false, // Root project or common root are already checked by isCommonDir for folders
+      onClick: options.onRename,
+    },
+    {
       id: 'copy',
       title: options.t('common.copy'),
       icon: 'i-heroicons-document-duplicate',
@@ -156,20 +170,6 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       icon: 'i-heroicons-scissors',
       hidden: !options.canCopyOrCut.value,
       onClick: options.onCut,
-    },
-    {
-      id: 'rename',
-      title: options.t('common.rename'),
-      icon: 'i-heroicons-pencil',
-      hidden: false, // Root project or common root are already checked by isCommonDir for folders
-      onClick: options.onRename,
-    },
-    {
-      id: 'delete',
-      title: options.t('common.delete'),
-      icon: 'i-heroicons-trash',
-      hidden: false,
-      onClick: options.onDelete,
     },
     {
       id: 'uploadRemote',

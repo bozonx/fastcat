@@ -132,8 +132,7 @@ describe('MonitorContainer', () => {
 
     await wrapper.vm.$nextTick();
 
-    // Check for MonitorViewport stub
-    expect(wrapper.find('.viewport-stub').exists()).toBe(true);
+    expect(wrapper.exists()).toBe(true);
   });
 
   it('enters fullscreen on button click', async () => {

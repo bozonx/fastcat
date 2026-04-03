@@ -114,6 +114,8 @@ const {
   goToLinkedVideo,
   linkedAudioClip,
   linkedVideoClip,
+  isSoloed,
+  toggleSolo,
 } = useClipPropertiesActions({
   clip: clipRef,
   trackKind: clipTrackKind,
@@ -385,6 +387,7 @@ defineExpose({
       :can-show-thumbnails-toggle="canEditAudioGain"
       :linked-audio-clip="linkedAudioClip"
       :linked-video-clip="linkedVideoClip"
+      :is-soloed="isSoloed"
       @rename="isUiRenameModalOpen = true"
       @copy="handleCopyClip"
       @cut="handleCutClip"
@@ -402,6 +405,7 @@ defineExpose({
       @toggle-disabled="handleToggleDisabled"
       @toggle-locked="handleToggleLocked"
       @toggle-muted="handleToggleMuted"
+      @toggle-solo="toggleSolo"
       @freeze-frame="handleFreezeFrame"
       @reset-freeze-frame="handleResetFreezeFrame"
       @extract-audio="handleExtractAudio"

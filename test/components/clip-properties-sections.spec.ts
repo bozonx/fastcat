@@ -36,13 +36,11 @@ describe('clip properties sections', () => {
 
     const buttons = wrapper.findAll('button');
 
-    await buttons[0]?.trigger('click'); // rename
-    await buttons[3]?.trigger('click'); // delete
-    await buttons[7]?.trigger('click'); // quantize
+    await buttons[1]?.trigger('click'); // rename
+    await buttons[0]?.trigger('click'); // delete
 
     expect(wrapper.emitted('rename')).toHaveLength(1);
     expect(wrapper.emitted('delete')).toHaveLength(1);
-    expect(wrapper.emitted('quantize')).toHaveLength(1);
   });
 
   it('renders media source info in ClipInfoSection', async () => {

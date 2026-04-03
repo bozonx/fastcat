@@ -15,6 +15,9 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
 
+import { useRuntimeConfig } from 'nuxt/app';
+import { resolveExternalServiceConfig } from '~/utils/external-integrations';
+
 const props = defineProps<{
   isOpen: boolean;
   isSelectionMode: boolean;
@@ -32,6 +35,17 @@ const conversionStore = useFileConversionStore();
 const proxyStore = useProxyStore();
 const projectStore = useProjectStore();
 const { extractAudio } = useAudioExtraction();
+const runtimeConfig = useRuntimeConfig();
+
+const isBloggerdogConnected = computed(() => {
+  const cfg = resolveExternalServiceConfig({
+    publicConfig: runtimeConfig.public,
+    service: 'bloggerdog',
+  });
+  return cfg?.enabled !== false && cfg?.baseUrl;
+});
+
+const clipboardStore = useAppClipboard();
 
 const selectedEntity = computed(() => selectionStore.selectedEntity);
 
@@ -231,11 +245,23 @@ function handleAction(actionId: FileAction) {
             @click="handleAction('cut')"
           />
           <MobileDrawerToolbarButton
+            v-if="clipboardStore.hasFileManagerPayload && selectedFsEntry?.entry.kind === 'directory'"
+            icon="i-heroicons-clipboard"
+            :label="$t('common.paste', 'Paste')"
+            @click="handleAction('paste')"
+          />
+          <MobileDrawerToolbarButton
             v-if="canAddToTimeline"
             success
             icon="lucide:plus"
             :label="$t('common.toTimeline', 'To timeline')"
             @click="emit('add-to-timeline')"
+          />
+          <MobileDrawerToolbarButton
+            v-if="isBloggerdogConnected && selectedFsEntry?.entry.kind === 'file'"
+            icon="i-heroicons-cloud-arrow-up"
+            :label="$t('videoEditor.fileManager.actions.uploadRemote', 'Upload')"
+            @click="handleAction('uploadRemote')"
           />
         </MobileDrawerToolbar>
 

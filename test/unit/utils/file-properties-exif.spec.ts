@@ -1,5 +1,5 @@
 /** @vitest-environment happy-dom */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 import { mountWithNuxt } from '../../utils/mount';
 
@@ -10,6 +10,15 @@ vi.mock('~/stores/timeline-media-usage.store', () => ({
     mediaPathToTimelines: {},
     setLiveUsage: vi.fn(),
   }),
+}));
+
+vi.mock('#app', () => ({
+  useNuxtApp: vi.fn(() => ({
+    $notificationService: { add: vi.fn() },
+    $i18nService: { t: (key: string) => key },
+    _route: { path: '/', query: {}, params: {} },
+  })),
+  useRoute: vi.fn(() => ({ path: '/', query: {}, params: {} })),
 }));
 
 vi.mock('~/composables/file-manager/useEntryPreview', () => {

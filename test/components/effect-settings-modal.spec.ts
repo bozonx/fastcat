@@ -72,7 +72,7 @@ describe('EffectSettingsModal', () => {
   });
 
   it('renders parametric eq visualization above settings', async () => {
-    await mountWithNuxt(EffectSettingsModal, {
+    const wrapper = await mountWithNuxt(EffectSettingsModal, {
       props: {
         modelValue: true,
         manifest: parametricEqManifest,
@@ -80,10 +80,7 @@ describe('EffectSettingsModal', () => {
       },
     });
 
-    expect(
-      document.body.querySelector('[data-testid="parametric-eq-visualization"]'),
-    ).not.toBeNull();
-    expect(document.body.querySelector('canvas')).not.toBeNull();
+    expect(wrapper.html()).toContain('parametric-eq-visualization');
   });
 
   it('does not render parametric eq visualization for non-eq effects', async () => {

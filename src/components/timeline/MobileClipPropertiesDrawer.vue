@@ -108,6 +108,43 @@ function toggleLocked() {
   });
   timelineStore.requestTimelineSave({ immediate: true });
 }
+
+function toggleMuted() {
+  if (!clip.value || !clipTrack.value) return;
+  timelineStore.updateClipProperties(clipTrack.value.id, clip.value.id, {
+    audioMuted: !clip.value.audioMuted,
+  });
+  timelineStore.requestTimelineSave({ immediate: true });
+}
+
+const isSoloed = computed(() => {
+  if (!clipTrack.value) return false;
+  return clipTrack.value.audioSolo === true;
+});
+
+function toggleSolo() {
+  if (!clipTrack.value) return;
+  timelineStore.updateTrackProperties(clipTrack.value.id, {
+    audioSolo: !isSoloed.value,
+  });
+}
+
+const isRenameModalOpen = ref(false);
+
+function handleRename(newName: string) {
+  if (!clip.value || !clipTrack.value) return;
+  timelineStore.renameItem(clipTrack.value.id, clip.value.id, newName);
+  isRenameModalOpen.value = false;
+}
+
+const hasAudio = computed(() => {
+  if (!clip.value) return false;
+  return (
+    clipTrack.value?.kind === 'audio' ||
+    clip.value.clipType === 'media' ||
+    clip.value.clipType === 'timeline'
+  );
+});
 </script>
 
 <template>
@@ -126,6 +163,13 @@ function toggleLocked() {
         />
 
         <MobileDrawerToolbarButton
+          icon="i-heroicons-pencil"
+          :label="t('common.rename', 'Rename')"
+          :disabled="isLocked"
+          @click="isRenameModalOpen = true"
+        />
+
+        <MobileDrawerToolbarButton
           icon="i-heroicons-document-duplicate"
           :label="t('common.copy', 'Copy')"
           @click="handleCopy"
@@ -139,13 +183,6 @@ function toggleLocked() {
         />
 
         <MobileDrawerToolbarButton
-          icon="i-heroicons-arrows-right-left"
-          :label="t('fastcat.timeline.trimMode', 'Trim')"
-          :disabled="isLocked"
-          @click="$emit('open-trim-drawer')"
-        />
-
-        <MobileDrawerToolbarButton
           :icon="clip?.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
           :label="
             clip?.disabled
@@ -156,6 +193,26 @@ function toggleLocked() {
           @click="toggleDisabled"
         />
 
+        <template v-if="hasAudio">
+          <MobileDrawerToolbarButton
+            :icon="clip?.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
+            :label="
+              clip?.audioMuted
+                ? t('fastcat.timeline.unmuteClip', 'Unmute')
+                : t('fastcat.timeline.muteClip', 'Mute')
+            "
+            :active="clip?.audioMuted"
+            @click="toggleMuted"
+          />
+
+          <MobileDrawerToolbarButton
+            :icon="isSoloed ? 'i-heroicons-star-solid' : 'i-heroicons-star'"
+            :label="isSoloed ? t('fastcat.timeline.unsolo', 'Unsolo') : t('fastcat.timeline.solo', 'Solo')"
+            :active="isSoloed"
+            @click="toggleSolo"
+          />
+        </template>
+
         <MobileDrawerToolbarButton
           :icon="clip?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
           :label="
@@ -165,6 +222,13 @@ function toggleLocked() {
           "
           :active="clip?.locked"
           @click="toggleLocked"
+        />
+
+        <MobileDrawerToolbarButton
+          icon="i-heroicons-arrows-right-left"
+          :label="t('fastcat.timeline.trimMode', 'Trim')"
+          :disabled="isLocked"
+          @click="$emit('open-trim-drawer')"
         />
       </MobileDrawerToolbar>
     </template>
@@ -181,6 +245,14 @@ function toggleLocked() {
       icon="i-heroicons-exclamation-triangle"
       :confirm-text="t('common.delete', 'Delete')"
       @confirm="confirmDelete"
+    />
+
+    <UiRenameModal
+      :open="isRenameModalOpen"
+      :current-name="clip?.name ?? ''"
+      :title="t('fastcat.clip.rename', 'Rename clip')"
+      @update:open="isRenameModalOpen = $event"
+      @rename="handleRename"
     />
   </MobileTimelineDrawer>
 </template>
