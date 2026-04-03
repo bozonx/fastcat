@@ -63,7 +63,7 @@ onMounted(async () => {
       workspaceStore.lastProjectName &&
       workspaceStore.projects.includes(workspaceStore.lastProjectName)
     ) {
-      await openProject(workspaceStore.lastProjectName);
+      await navigateTo(`/editor/${encodeURIComponent(workspaceStore.lastProjectName)}`);
     }
   } finally {
     isStartingUp.value = false;
