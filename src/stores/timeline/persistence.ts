@@ -80,6 +80,9 @@ export function createTimelinePersistenceModule(
 
   const autoSave = createAutoSave({
     debounceMs: 2000,
+    onStateChange: (state) => {
+      deps.isTimelineDirty.value = state.isDirty;
+    },
     doSave: async () => {
       const doc = deps.timelineDoc.value;
       if (!doc || !deps.isTimelineDirty.value) return false;
@@ -158,9 +161,6 @@ export function createTimelinePersistenceModule(
           currentTimelinePath === deps.currentTimelinePath.value
         ) {
           deps.isSavingTimeline.value = false;
-          queueMicrotask(() => {
-            deps.isTimelineDirty.value = autoSave.isDirty();
-          });
         }
       }
     },
@@ -181,12 +181,11 @@ export function createTimelinePersistenceModule(
 
   function markCleanForCurrentRevision() {
     autoSave.markCleanForCurrentRevision();
-    deps.isTimelineDirty.value = false;
   }
 
   function markDirty() {
     autoSave.markDirty();
-    deps.isTimelineDirty.value = true;
+    void autoSave.requestSave();
   }
 
   async function requestTimelineSave(options?: { immediate?: boolean }) {

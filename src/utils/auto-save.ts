@@ -2,6 +2,7 @@ import PQueue from 'p-queue';
 
 export interface AutoSaveOptions {
   /**
+  /**
    * The actual save function.
    * Return `false` to indicate that the save was skipped (e.g. preconditions not met),
    * so the revision is not marked as saved.
@@ -11,6 +12,10 @@ export interface AutoSaveOptions {
    * Optional error handler.
    */
   onError?: (e: unknown) => void;
+  /**
+   * Optional callback called when dirty state may have changed.
+   */
+  onStateChange?: (state: { isDirty: boolean }) => void;
   /**
    * Debounce time in milliseconds. Default is 500.
    */
@@ -33,16 +38,19 @@ export function createAutoSave(options: AutoSaveOptions) {
 
   function markDirty() {
     currentRevision += 1;
+    options.onStateChange?.({ isDirty: isDirty() });
   }
 
   function markCleanForCurrentRevision() {
     savedRevision = currentRevision;
+    options.onStateChange?.({ isDirty: isDirty() });
   }
 
   function reset() {
     clearPersistTimeout();
     currentRevision = 0;
     savedRevision = 0;
+    options.onStateChange?.({ isDirty: isDirty() });
   }
 
   function isDirty() {
@@ -59,6 +67,7 @@ export function createAutoSave(options: AutoSaveOptions) {
       if (success !== false) {
         if (savedRevision < revisionToSave) {
           savedRevision = revisionToSave;
+          options.onStateChange?.({ isDirty: isDirty() });
         }
       }
     } catch (e) {

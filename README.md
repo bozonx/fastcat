@@ -18,6 +18,8 @@ Standalone video editor project extracted from FastCat.
 - Local-to-remote upload action with remote folder picker and cancelable transfer progress modal
 - External service health checks for FastCat, Files API and STT API
 - OTIO (OpenTimelineIO) support for timeline serialization
+- Automatic timeline backups with rotating versioning (default 5 versions) to prevent data loss
+- Offloaded timeline serialization to Web Workers to ensure smooth UI during periodic auto-saves
 - High-performance rendering with Web Workers
 
 ## Tech Stack
@@ -72,7 +74,8 @@ pnpm tauri:build
 - Clip transform `position` values are stored in 1920x1080 design-space units and are scaled to the active preview/export resolution during layout.
 - Text clip style sizing (`width`, `fontSize`, `padding`, `letterSpacing`) is normalized before persistence and scaled from the same design-space baseline during rendering.
 - `src/utils/dev-logger.ts`: Dev-only logger for verbose diagnostics (disabled in production).
-- `src/workers`: Web Workers for heavy lifting (video decoding/encoding).
+- `src/workers/timeline-serializer.worker.ts`: Dedicated worker for background timeline serialization.
+- `src/workers/`: Web Workers for heavy lifting (video decoding/encoding).
 
 ## Workspace data
 
