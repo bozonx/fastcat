@@ -332,6 +332,10 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
   history: {
     maxEntries: 100,
   },
+  backup: {
+    intervalMinutes: 5,
+    count: 2,
+  },
 };
 
 export const DEFAULT_APP_SETTINGS: FastCatAppSettings = {
@@ -346,3 +350,4 @@ export const DEFAULT_APP_SETTINGS: FastCatAppSettings = {
 };
 
 export const DEFAULT_WORKSPACE_SETTINGS: FastCatWorkspaceSettings = DEFAULT_APP_SETTINGS;
+

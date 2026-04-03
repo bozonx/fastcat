@@ -37,6 +37,7 @@ function resetGeneralDefaults() {
   workspaceStore.userSettings.deleteWithoutConfirmation =
     DEFAULT_USER_SETTINGS.deleteWithoutConfirmation;
   workspaceStore.userSettings.history.maxEntries = DEFAULT_USER_SETTINGS.history.maxEntries;
+  workspaceStore.userSettings.backup = { ...DEFAULT_USER_SETTINGS.backup };
 
   isResetConfirmOpen.value = false;
 }
@@ -182,6 +183,32 @@ function clearCache() {
             :max="1000"
             :step="1"
             :wheel-step-multiplier="10"
+          />
+        </UiFormField>
+
+        <UiFormField
+          :label="t('videoEditor.settings.backupInterval', 'Auto-backup interval (minutes)')"
+          :help="t('videoEditor.settings.backupIntervalHelp', '0 to disable auto-backup')"
+        >
+          <UiWheelNumberInput
+            v-model="workspaceStore.userSettings.backup.intervalMinutes"
+            :min="0"
+            :max="120"
+            :step="1"
+            :wheel-step-multiplier="5"
+          />
+        </UiFormField>
+
+        <UiFormField
+          :label="t('videoEditor.settings.backupCount', 'Number of backups to keep')"
+          :help="t('videoEditor.settings.backupCountHelp', 'Maximum number of auto-backups retained per timeline')"
+        >
+          <UiWheelNumberInput
+            v-model="workspaceStore.userSettings.backup.count"
+            :min="1"
+            :max="50"
+            :step="1"
+            :wheel-step-multiplier="5"
           />
         </UiFormField>
 

@@ -33,7 +33,7 @@ export interface TimelinePersistenceDeps {
   serializeTimelineToOtio: (doc: TimelineDocument) => string;
   selectTimelineDurationUs: (doc: TimelineDocument) => number;
 
-  onSaveSuccess?: () => void;
+  onSaveSuccess?: (serialized: string) => void;
   onSaveError?: (error: unknown) => void;
 }
 
@@ -49,12 +49,34 @@ export interface TimelinePersistenceModule {
   saveTimeline: () => Promise<void>;
 }
 
+function serializeInWorker(doc: TimelineDocument): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(new URL('../../workers/timeline-serializer.worker.ts', import.meta.url), {
+      type: 'module',
+    });
+    worker.onmessage = (e) => {
+      if (e.data.success) {
+        resolve(e.data.serialized);
+      } else {
+        reject(new Error(e.data.error));
+      }
+      worker.terminate();
+    };
+    worker.onerror = (e) => {
+      reject(e);
+      worker.terminate();
+    };
+    worker.postMessage(JSON.parse(JSON.stringify(doc)));
+  });
+}
+
 export function createTimelinePersistenceModule(
   deps: TimelinePersistenceDeps,
 ): TimelinePersistenceModule {
   let loadTimelineRequestId = 0;
 
   const autoSave = createAutoSave({
+    debounceMs: 2000,
     doSave: async () => {
       const doc = deps.timelineDoc.value;
       if (!doc || !deps.isTimelineDirty.value) return false;

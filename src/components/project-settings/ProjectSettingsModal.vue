@@ -37,6 +37,7 @@ const isOpen = computed({
 });
 
 const isClearProjectVardataConfirmOpen = ref(false);
+const isClearBackupsConfirmOpen = ref(false);
 const isDeleteProjectConfirmOpen = ref(false);
 const isResetConfirmOpen = ref(false);
 
@@ -44,6 +45,21 @@ async function confirmClearProjectVardata() {
   isClearProjectVardataConfirmOpen.value = false;
   if (!projectStore.currentProjectId) return;
   await workspaceStore.clearProjectVardata(projectStore.currentProjectId);
+}
+
+async function confirmClearBackups() {
+  isClearBackupsConfirmOpen.value = false;
+  try {
+    const backupDir = await projectStore.getDirectoryHandleByPath('.fastcat/backups', { create: false });
+    if (backupDir) {
+      const parent = await projectStore.getDirectoryHandleByPath('.fastcat', { create: false });
+      if (parent) {
+        await parent.removeEntry('backups', { recursive: true });
+      }
+    }
+  } catch (e) {
+    console.error('Failed to clear backups', e);
+  }
 }
 
 async function confirmDeleteProject() {
@@ -126,6 +142,22 @@ async function resetToDefaults() {
     />
 
     <UiConfirmModal
+      v-model:open="isClearBackupsConfirmOpen"
+      :title="t('videoEditor.projectSettings.clearBackupsTitle', 'Clear timeline backups')"
+      :description="
+        t(
+          'videoEditor.projectSettings.clearBackupsDescription',
+          'This will delete all auto-saved timeline backups for this project. This action cannot be undone.',
+        )
+      "
+      :confirm-text="t('videoEditor.projectSettings.clearTempConfirm', 'Clear')"
+      :cancel-text="t('common.cancel', 'Cancel')"
+      color="warning"
+      icon="i-heroicons-trash"
+      @confirm="confirmClearBackups"
+    />
+
+    <UiConfirmModal
       v-model:open="isDeleteProjectConfirmOpen"
       :title="t('videoEditor.projectSettings.deleteProjectConfirmTitle', 'Delete Project?')"
       :description="
@@ -183,6 +215,7 @@ async function resetToDefaults() {
         <UiFormSectionHeader :title="t('videoEditor.projectSettings.storage', 'Storage')" />
         <StorageSettings
           @clear-temp="isClearProjectVardataConfirmOpen = true"
+          @clear-backups="isClearBackupsConfirmOpen = true"
           @delete-project="isDeleteProjectConfirmOpen = true"
         />
       </div>
