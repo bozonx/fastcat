@@ -110,6 +110,24 @@ function confirmDelete() {
   emit('close');
 }
 
+const isRippleDeleteConfirmOpen = ref(false);
+
+function requestRippleDelete() {
+  if (!clip.value || isLocked.value) return;
+  if (workspaceStore.userSettings.deleteWithoutConfirmation) {
+    timelineStore.rippleDeleteFirstSelectedItem();
+    emit('close');
+  } else {
+    isRippleDeleteConfirmOpen.value = true;
+  }
+}
+
+function confirmRippleDelete() {
+  timelineStore.rippleDeleteFirstSelectedItem();
+  isRippleDeleteConfirmOpen.value = false;
+  emit('close');
+}
+
 function toggleDisabled() {
   if (!clip.value || !clipTrack.value) return;
   timelineStore.updateClipProperties(clipTrack.value.id, clip.value.id, {
@@ -472,7 +490,7 @@ const otherActions = computed(() => {
             />
 
             <MobileDrawerToolbarButton
-              :icon="isSoloed ? 'i-heroicons-star-solid' : 'i-heroicons-star'"
+              :icon="isSoloed ? 'i-heroicons-musical-note-solid' : 'i-heroicons-musical-note'"
               :label="isSoloed ? t('fastcat.timeline.unsolo', 'Unsolo') : t('fastcat.timeline.solo', 'Solo')"
               :active="isSoloed"
               @click="toggleSolo"
@@ -488,6 +506,13 @@ const otherActions = computed(() => {
             "
             :active="clip?.locked"
             @click="toggleLocked"
+          />
+
+          <MobileDrawerToolbarButton
+            icon="i-heroicons-backspace"
+            :label="t('fastcat.timeline.rippleDelete', 'Ripple delete')"
+            :disabled="isLocked"
+            @click="requestRippleDelete"
           />
         </MobileDrawerToolbar>
 
@@ -512,6 +537,16 @@ const otherActions = computed(() => {
       icon="i-heroicons-exclamation-triangle"
       :confirm-text="t('common.delete', 'Delete')"
       @confirm="confirmDelete"
+    />
+
+    <UiConfirmModal
+      v-model:open="isRippleDeleteConfirmOpen"
+      :title="t('fastcat.timeline.rippleDeleteTitle', 'Ripple delete clip?')"
+      :description="t('fastcat.timeline.rippleDeleteDescription', 'This action will delete the clip and shift all following content.')"
+      color="primary"
+      icon="i-heroicons-backspace"
+      :confirm-text="t('fastcat.timeline.rippleDelete', 'Ripple delete')"
+      @confirm="confirmRippleDelete"
     />
 
     <UiRenameModal

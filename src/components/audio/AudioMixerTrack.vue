@@ -193,7 +193,7 @@ function handleSelectEffect(type: string) {
       <UiToggleButton
         :model-value="isSolo"
         size="xs"
-        label="S"
+        icon="i-heroicons-musical-note"
         active-color="primary"
         inactive-color="neutral"
         inactive-variant="soft"
