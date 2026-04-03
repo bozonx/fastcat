@@ -33,6 +33,12 @@ const mockUiStore = reactive({
 vi.mock('~/stores/file-manager.store', () => ({ useFileManagerStore: () => mockFileManagerStore }));
 vi.mock('~/stores/project.store', () => ({ useProjectStore: () => mockProjectStore }));
 vi.mock('~/stores/ui.store', () => ({ useUiStore: () => mockUiStore }));
+vi.mock('~/stores/timeline-media-usage.store', () => ({
+  useTimelineMediaUsageStore: () => ({
+    refreshUsage: vi.fn(),
+    setLiveUsage: vi.fn(),
+  }),
+}));
 
 describe('useMobileFileBrowserNavigation', () => {
   const mockReadDirectory = vi.fn();

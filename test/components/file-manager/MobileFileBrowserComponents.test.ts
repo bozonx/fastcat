@@ -71,7 +71,7 @@ describe('MobileFileBrowserCreateSheet', () => {
     const wrapper = await mountSuspended(MobileFileBrowserCreateSheet, {
       props: defaultProps,
       global: {
-        stubs: { UDrawer: { template: '<div><slot name="content" /></div>' }, Icon: true },
+        stubs: { UiMobileDrawer: { template: '<div><slot /></div>' }, Icon: true },
       },
     });
 
@@ -82,12 +82,12 @@ describe('MobileFileBrowserCreateSheet', () => {
     const wrapper = await mountSuspended(MobileFileBrowserCreateSheet, {
       props: defaultProps,
       global: {
-        stubs: { UDrawer: { template: '<div><slot name="content" /></div>' }, Icon: true },
+        stubs: { UiMobileDrawer: { template: '<div><slot /></div>' }, Icon: true },
       },
     });
 
     const buttons = wrapper.findAll('button');
-    await buttons[0].trigger('click'); // First button is usually upload
+    await buttons[0].trigger('click');
     expect(wrapper.emitted('upload')).toBeTruthy();
   });
 });
@@ -105,7 +105,7 @@ describe('MobileFileBrowserSelectionToolbar', () => {
 
     expect(wrapper.text()).toContain('Delete');
     expect(wrapper.text()).toContain('Copy');
-    expect(wrapper.text()).toContain('Add to timeline');
+    expect(wrapper.text()).toContain('To timeline');
   });
 
   it('emits action event when buttons are clicked', async () => {
@@ -113,13 +113,16 @@ describe('MobileFileBrowserSelectionToolbar', () => {
       props: { selectedEntries: entries, canAddToTimeline: false },
       global: {
         stubs: {
-          UButton: { template: '<button @click="$emit(\'click\')"><slot /></button>' },
+          MobileDrawerToolbar: { template: '<div><slot /></div>' },
+          MobileDrawerToolbarButton: {
+            template: '<button @click="$emit(\'click\')"><slot /></button>',
+          },
           Icon: true,
         },
       },
     });
 
-    await wrapper.find('button').trigger('click'); // First button is delete
+    await wrapper.find('button').trigger('click');
     expect(wrapper.emitted('action')).toBeTruthy();
     expect(wrapper.emitted('action')?.[0]).toEqual(['delete', entries]);
   });
