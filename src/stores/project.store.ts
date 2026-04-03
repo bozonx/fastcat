@@ -142,6 +142,18 @@ export const useProjectStore = defineStore('project', () => {
     getLastViewBeforeFullscreen: () => editorViewModule.lastViewBeforeFullscreen.value,
   });
 
+  watch(projectLock.isLockLost, (isLost) => {
+    if (isLost) {
+      isReadOnly.value = true;
+    }
+  });
+
+  async function stealProjectLock() {
+    if (!currentProjectId.value) return;
+    const lockAcquired = await projectLock.stealLock(currentProjectId.value);
+    isReadOnly.value = !lockAcquired;
+  }
+
   async function loadProjectSettings() {
     await projectSettingsStore.loadProjectSettings();
   }
@@ -380,6 +392,7 @@ export const useProjectStore = defineStore('project', () => {
     loadProjectSettings,
     saveProjectSettings,
     deleteCurrentProject,
+    stealProjectLock,
     projectMeta: metaModule.projectMeta,
     saveProjectMeta: metaModule.saveProjectMeta,
     loadProjectMeta: metaModule.loadProjectMeta,
