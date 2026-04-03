@@ -67,7 +67,6 @@ function confirmDelete() {
         <MobileDrawerToolbarButton
           icon="i-heroicons-trash"
           :label="t('common.delete', 'Delete')"
-          danger
           @click="requestDelete"
         />
       </MobileDrawerToolbar>
@@ -92,7 +91,7 @@ function confirmDelete() {
       v-model:open="isDeleteConfirmOpen"
       :title="t('fastcat.marker.deleteTitle', 'Delete marker?')"
       :description="t('fastcat.marker.deleteDescription', 'This action cannot be undone.')"
-      color="error"
+      color="primary"
       icon="i-heroicons-exclamation-triangle"
       :confirm-text="t('common.delete', 'Delete')"
       @confirm="confirmDelete"

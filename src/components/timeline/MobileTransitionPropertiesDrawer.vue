@@ -69,7 +69,6 @@ function handleDeleteTransition() {
         <MobileDrawerToolbarButton
           icon="i-heroicons-trash"
           :label="t('common.delete', 'Delete')"
-          danger
           @click="handleDeleteTransition"
         />
       </MobileDrawerToolbar>

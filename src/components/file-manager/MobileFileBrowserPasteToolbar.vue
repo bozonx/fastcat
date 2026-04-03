@@ -11,28 +11,27 @@ const clipboardStore = useClipboardStore();
 </script>
 
 <template>
-  <div class="border-t border-zinc-800 bg-zinc-900 p-3 flex items-center justify-between z-40">
-    <div class="text-sm font-medium">
-      {{
-        clipboardStore.clipboardPayload?.operation === 'cut'
-          ? t('common.cut', 'Cut')
-          : t('common.copied', 'Copied')
-      }}: {{ clipboardStore.clipboardPayload?.items.length }}
-    </div>
-    <div class="flex gap-2">
-      <UButton
-        size="sm"
-        color="neutral"
-        variant="soft"
-        :label="t('common.cancel', 'Cancel')"
-        @click="emit('cancel')"
-      />
-      <UButton
-        size="sm"
-        color="primary"
-        :label="t('common.paste', 'Paste')"
-        @click="emit('paste')"
-      />
+  <div class="border-t border-zinc-800 bg-zinc-900 z-40 container-safe">
+    <div class="flex flex-col">
+      <div class="px-4 py-2 text-xs font-medium text-zinc-400 border-b border-zinc-800/50">
+        {{
+          clipboardStore.clipboardPayload?.operation === 'cut'
+            ? t('common.cut', 'Cut')
+            : t('common.copied', 'Copied')
+        }}: {{ clipboardStore.clipboardPayload?.items.length }}
+      </div>
+      <MobileDrawerToolbar>
+        <MobileDrawerToolbarButton
+          icon="i-heroicons-clipboard-document-check"
+          :label="t('common.paste', 'Paste')"
+          @click="emit('paste')"
+        />
+        <MobileDrawerToolbarButton
+          icon="i-heroicons-x-mark"
+          :label="t('common.cancel', 'Cancel')"
+          @click="emit('cancel')"
+        />
+      </MobileDrawerToolbar>
     </div>
   </div>
 </template>

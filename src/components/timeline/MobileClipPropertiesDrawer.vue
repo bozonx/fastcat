@@ -119,6 +119,13 @@ function toggleLocked() {
     <template #toolbar>
       <MobileDrawerToolbar>
         <MobileDrawerToolbarButton
+          icon="i-heroicons-trash"
+          :label="t('common.delete', 'Delete')"
+          :disabled="isLocked"
+          @click="requestDelete"
+        />
+
+        <MobileDrawerToolbarButton
           icon="i-heroicons-document-duplicate"
           :label="t('common.copy', 'Copy')"
           @click="handleCopy"
@@ -129,14 +136,6 @@ function toggleLocked() {
           :label="t('common.cut', 'Cut')"
           :disabled="isLocked"
           @click="handleCut"
-        />
-
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-trash"
-          :label="t('common.delete', 'Delete')"
-          danger
-          :disabled="isLocked"
-          @click="requestDelete"
         />
 
         <MobileDrawerToolbarButton
@@ -189,7 +188,7 @@ function toggleLocked() {
       v-model:open="isDeleteConfirmOpen"
       :title="t('fastcat.timeline.deleteClipTitle', 'Delete clip?')"
       :description="t('fastcat.timeline.deleteClipDescription', 'This action cannot be undone.')"
-      color="error"
+      color="primary"
       icon="i-heroicons-exclamation-triangle"
       :confirm-text="t('common.delete', 'Delete')"
       @confirm="confirmDelete"

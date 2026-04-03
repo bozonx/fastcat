@@ -34,7 +34,6 @@ const { t } = useI18n();
     <MobileDrawerToolbar>
       <MobileDrawerToolbarButton
         icon="i-heroicons-trash"
-        danger
         :label="t('common.delete', 'Delete')"
         @click="emit('action', 'delete', props.selectedEntries)"
       />

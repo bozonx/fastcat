@@ -102,7 +102,6 @@ function handleAction(actionId: FileAction) {
       <MobileDrawerToolbar v-if="props.onAction" class="border-b border-ui-border bg-ui-bg/50">
         <MobileDrawerToolbarButton
           icon="i-heroicons-trash"
-          danger
           :label="$t('common.delete', 'Delete')"
           @click="handleAction('delete')"
         />

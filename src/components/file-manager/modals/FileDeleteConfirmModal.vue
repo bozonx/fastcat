@@ -25,7 +25,7 @@ const { t } = useI18n();
         'Are you sure you want to delete this? This action cannot be undone.',
       )
     "
-    color="error"
+    color="primary"
     icon="i-heroicons-exclamation-triangle"
     @confirm="emit('confirm')"
   >
