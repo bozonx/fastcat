@@ -129,6 +129,16 @@ function onContextMenu(e: MouseEvent) {
   if (e.isTrusted) {
     e.preventDefault();
     e.stopPropagation();
+    // On mobile, contextmenu fires on long press (before pointercancel).
+    // Use it as a fallback trigger for long press if our pointer-based timer was cancelled.
+    if (props.isMobile && !longPressTriggered.value && !didStartDrag.value) {
+      longPressTriggered.value = true;
+      emit('clipAction', {
+        action: 'longPress' as any,
+        trackId: props.track.id,
+        itemId: props.item.id,
+      });
+    }
   }
 }
 
@@ -496,6 +506,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
             : isDraggingOver
               ? 'var(--z-clip-dragging-over)'
               : 'var(--z-clip-normal)',
+        WebkitTouchCallout: isMobile ? 'none' : undefined,
       }"
       :class="[
         getClipClass(item, track),
@@ -515,6 +526,8 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
         !isMediaMissing && isUnsupported ? 'bg-amber-600/50! border-amber-700!' : '',
         (clipItem && Boolean(clipItem.locked)) || track.locked ? 'cursor-not-allowed' : '',
         isMobile && timelineStore.selectedItemIds.includes(item.id) ? 'touch-none' : '',
+        // On mobile, unselected clips allow pan gestures to pass through for timeline scroll;
+        // selected clips use touch-none so drag works without pointercancel interruption.
         isMobile && !timelineStore.selectedItemIds.includes(item.id)
           ? 'touch-pan-x touch-pan-y'
           : '',
@@ -522,7 +535,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
       @pointerdown="onClipPointerdown"
       @click="onClipClick"
       @dblclick="onClipDblClick"
-      @contextmenu.prevent.stop
+      @contextmenu="onContextMenu"
       @dragleave="handleDragLeave"
       @drop="handleDrop"
       @pointerenter="isHovered = true"

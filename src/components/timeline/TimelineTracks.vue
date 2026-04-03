@@ -279,6 +279,9 @@ function isTrackDirectlySelected(trackId: string): boolean {
   return entity?.source === 'timeline' && entity.kind === 'track' && entity.trackId === trackId;
 }
 
+let trackPointerStartX = 0;
+let trackPointerStartY = 0;
+
 function onTrackPointerDown(e: PointerEvent, trackId: string) {
   focusStore.setPanelFocus('timeline');
   if (shouldStartMarquee(e)) {
@@ -291,9 +294,28 @@ function onTrackPointerDown(e: PointerEvent, trackId: string) {
       startMarquee(e);
     }
   } else if (e.button === 0) {
-    selectTrackById(trackId);
-    timelineStore.clearSelection();
+    if (props.isMobile) {
+      // On mobile, record start position for movement check in click handler
+      trackPointerStartX = e.clientX;
+      trackPointerStartY = e.clientY;
+    } else {
+      selectTrackById(trackId);
+      timelineStore.clearSelection();
+    }
   }
+}
+
+function onTrackClick(e: MouseEvent, trackId: string) {
+  if (!props.isMobile) return;
+  // Skip if this was a scroll gesture (significant pointer movement)
+  const dx = Math.abs(e.clientX - trackPointerStartX);
+  const dy = Math.abs(e.clientY - trackPointerStartY);
+  if (dx > 5 || dy > 5) return;
+  // Skip if click originated from a clip or gap child element
+  const target = e.target as HTMLElement | null;
+  if (target?.closest('[data-clip-id]') || target?.closest('[data-gap-id]')) return;
+  selectTrackById(trackId);
+  timelineStore.clearSelection();
 }
 </script>
 
@@ -362,6 +384,7 @@ function onTrackPointerDown(e: PointerEvent, trackId: string) {
                   : undefined,
           }"
           @pointerdown="onTrackPointerDown($event, track.id)"
+          @click="onTrackClick($event, track.id)"
           @mouseenter="timelineStore.hoveredTrackId = track.id"
           @mouseleave="timelineStore.hoveredTrackId = null"
           @dragover.prevent="emit('dragover', $event, track.id)"

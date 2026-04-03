@@ -91,10 +91,17 @@ export function resolveMoveTargetTrackId(params: {
   draggingTrackId: string;
   tracks: TimelineTrack[];
 }): string {
-  const trackEl = document
-    .elementFromPoint(params.clientX, params.clientY)
-    ?.closest('[data-track-id]');
-  const hoverTrackId = trackEl?.getAttribute('data-track-id');
+  // Use elementsFromPoint to find the track element even when covered by a dragged clip
+  const elements = document.elementsFromPoint(params.clientX, params.clientY);
+  let hoverTrackId: string | null = null;
+  for (const el of elements) {
+    const trackId = (el as HTMLElement).dataset?.trackId ?? el.closest('[data-track-id]')?.getAttribute('data-track-id') ?? null;
+    if (trackId) {
+      hoverTrackId = trackId;
+      break;
+    }
+  }
+
   if (!hoverTrackId || hoverTrackId === params.draggingTrackId) {
     return params.draggingTrackId;
   }
