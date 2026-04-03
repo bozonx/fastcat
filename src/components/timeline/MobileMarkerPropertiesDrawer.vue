@@ -5,6 +5,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import MarkerProperties from '~/components/properties/MarkerProperties.vue';
 import MobileTimelineDrawer from './MobileTimelineDrawer.vue';
+import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 

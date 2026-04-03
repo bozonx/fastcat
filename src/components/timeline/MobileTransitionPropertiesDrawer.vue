@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import TransitionProperties from '~/components/properties/TransitionProperties.vue';
 import MobileTimelineDrawer from './MobileTimelineDrawer.vue';
+import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';

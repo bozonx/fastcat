@@ -8,6 +8,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import MobileTrackMixerDrawer from './MobileTrackMixerDrawer.vue';
 import MobileHistoryDrawer from './MobileHistoryDrawer.vue';
+import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 
 const timelineStore = useTimelineStore();
 const settingsStore = useTimelineSettingsStore();
