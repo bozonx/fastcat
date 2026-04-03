@@ -4,6 +4,8 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useTimelineStore } from '~/stores/timeline.store';
+import { useFocusStore } from '~/stores/focus.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import type { FsEntry } from '~/types/fs';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
@@ -58,11 +60,14 @@ interface FileManagerActions {
 
 export function useFileManagerActions(actions: FileManagerActions) {
   const { t } = useI18n();
+  const toast = useToast();
   const uiStore = useUiStore();
   const selectionStore = useSelectionStore();
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
   const projectStore = useProjectStore();
+  const timelineStore = useTimelineStore();
   const workspaceStore = useWorkspaceStore();
+  const focusStore = useFocusStore();
   const { removeFileTabByPath } = useProjectTabsStore();
   const clipboardStore = useAppClipboard();
 
@@ -167,6 +172,17 @@ export function useFileManagerActions(actions: FileManagerActions) {
         path: newEntry.path,
       };
       selectionStore.selectFsEntry(newEntry);
+
+      // Open the newly created version
+      await projectStore.openTimelineFile(newEntry.path);
+      focusStore.setActiveTimelinePath(newEntry.path);
+      await timelineStore.loadTimeline();
+      void timelineStore.loadTimelineMetadata();
+
+      toast.add({
+        title: t('videoEditor.timeline.versionCreated', 'Version created: {name}', { name: nextName }),
+        color: 'success',
+      });
     }
   }
 
