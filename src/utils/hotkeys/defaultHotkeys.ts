@@ -35,6 +35,7 @@ export type HotkeyCommandId =
   | 'general.selectAll'
   | 'general.snapshot'
   | 'general.newTimeline'
+  | 'timeline.duplicate'
   | 'timeline.toggleSnap'
   | 'timeline.selectClipsLeftOfPlayhead'
   | 'timeline.selectClipsRightOfPlayhead'
@@ -98,27 +99,25 @@ export type HotkeyCommandId =
   | 'general.monitorVolumeUp'
   | 'general.monitorVolumeDown';
 
-export interface HotkeyCommandDefinition {
+export type HotkeyCombo = string;
+
+const Mod = 'Control'; // Placeholder for actual mod detection logic if used here, or handled by a composable
+
+export interface HotkeyCommand {
   id: HotkeyCommandId;
   groupId: HotkeyGroupId;
   title: string;
 }
 
-export type HotkeyCombo = string;
-
-export interface DefaultHotkeysConfig {
-  commands: readonly HotkeyCommandDefinition[];
-  bindings: Record<HotkeyCommandId, HotkeyCombo[]>;
+export interface HotkeyRegistry {
+  commands: HotkeyCommand[];
+  bindings: Partial<Record<HotkeyCommandId, HotkeyCombo[]>>;
 }
 
-const isMac =
-  typeof navigator !== 'undefined' ? navigator.platform.toUpperCase().indexOf('MAC') >= 0 : false;
-const Mod = isMac ? 'Meta' : 'Ctrl';
-
-export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
+export const DEFAULT_HOTKEYS: HotkeyRegistry = {
   commands: [
-    { id: 'general.focus', groupId: 'general', title: 'Focus' },
-    { id: 'general.deselect', groupId: 'general', title: 'Deselect' },
+    { id: 'general.focus', groupId: 'general', title: 'Focus / Search' },
+    { id: 'general.deselect', groupId: 'general', title: 'Deselect all' },
     { id: 'general.copy', groupId: 'general', title: 'Copy' },
     { id: 'general.cut', groupId: 'general', title: 'Cut' },
     { id: 'general.paste', groupId: 'general', title: 'Paste' },
@@ -126,25 +125,24 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'general.rename', groupId: 'general', title: 'Rename' },
     { id: 'general.undo', groupId: 'general', title: 'Undo' },
     { id: 'general.redo', groupId: 'general', title: 'Redo' },
-    { id: 'general.mute', groupId: 'general', title: 'Toggle Monitor Mute' },
-    { id: 'general.addMarker', groupId: 'general', title: 'Create marker at playhead' },
-    { id: 'general.volumeUp', groupId: 'general', title: 'Increase Monitor Volume' },
-    { id: 'general.volumeDown', groupId: 'general', title: 'Decrease Monitor Volume' },
-
-    { id: 'general.fullscreen', groupId: 'general', title: 'Fullscreen' },
+    { id: 'general.mute', groupId: 'general', title: 'Mute / Unmute' },
+    { id: 'general.addMarker', groupId: 'general', title: 'Add marker' },
+    { id: 'general.volumeUp', groupId: 'general', title: 'Volume up' },
+    { id: 'general.volumeDown', groupId: 'general', title: 'Volume down' },
+    { id: 'general.fullscreen', groupId: 'general', title: 'Toggle fullscreen' },
     { id: 'general.zoomIn', groupId: 'general', title: 'Zoom in' },
     { id: 'general.zoomOut', groupId: 'general', title: 'Zoom out' },
     { id: 'general.zoomReset', groupId: 'general', title: 'Reset zoom' },
-    { id: 'general.zoomFit', groupId: 'general', title: 'Fit zoom' },
-    { id: 'general.tab1', groupId: 'general', title: 'Tab 1' },
-    { id: 'general.tab2', groupId: 'general', title: 'Tab 2' },
-    { id: 'general.tab3', groupId: 'general', title: 'Tab 3' },
-    { id: 'general.tab4', groupId: 'general', title: 'Tab 4' },
-    { id: 'general.tab5', groupId: 'general', title: 'Tab 5' },
-    { id: 'general.tab6', groupId: 'general', title: 'Tab 6' },
-    { id: 'general.tab7', groupId: 'general', title: 'Tab 7' },
-    { id: 'general.tab8', groupId: 'general', title: 'Tab 8' },
-    { id: 'general.tab9', groupId: 'general', title: 'Tab 9' },
+    { id: 'general.zoomFit', groupId: 'general', title: 'Fit to window' },
+    { id: 'general.tab1', groupId: 'general', title: 'Switch to tab 1' },
+    { id: 'general.tab2', groupId: 'general', title: 'Switch to tab 2' },
+    { id: 'general.tab3', groupId: 'general', title: 'Switch to tab 3' },
+    { id: 'general.tab4', groupId: 'general', title: 'Switch to tab 4' },
+    { id: 'general.tab5', groupId: 'general', title: 'Switch to tab 5' },
+    { id: 'general.tab6', groupId: 'general', title: 'Switch to tab 6' },
+    { id: 'general.tab7', groupId: 'general', title: 'Switch to tab 7' },
+    { id: 'general.tab8', groupId: 'general', title: 'Switch to tab 8' },
+    { id: 'general.tab9', groupId: 'general', title: 'Switch to tab 9' },
     { id: 'general.switchViewFiles', groupId: 'general', title: 'Switch to Files' },
     { id: 'general.switchViewCut', groupId: 'general', title: 'Switch to Cut' },
     { id: 'general.switchViewSound', groupId: 'general', title: 'Switch to Sound' },
@@ -152,6 +150,7 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
     { id: 'general.selectAll', groupId: 'general', title: 'Select all' },
     { id: 'general.snapshot', groupId: 'general', title: 'Create snapshot from monitor' },
     { id: 'general.newTimeline', groupId: 'general', title: 'Create new timeline' },
+    { id: 'timeline.duplicate', groupId: 'timeline', title: 'Duplicate timeline / Create version' },
     { id: 'general.navigateBack', groupId: 'general', title: 'Navigate back (file manager)' },
     { id: 'general.navigateUp', groupId: 'general', title: 'Navigate up (file manager)' },
     { id: 'general.navigateSelectionUp', groupId: 'general', title: 'Navigate selection up' },
@@ -170,158 +169,115 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
       groupId: 'timeline',
       title: 'Select clips right of playhead',
     },
-    {
-      id: 'timeline.trimToPlayheadLeft',
-      groupId: 'timeline',
-      title: 'Trim clip to playhead (remove right part, no ripple)',
-    },
-    {
-      id: 'timeline.trimToPlayheadRight',
-      groupId: 'timeline',
-      title: 'Trim clip to playhead (remove left part, no ripple)',
-    },
-    {
-      id: 'timeline.rippleTrimLeft',
-      groupId: 'timeline',
-      title: 'Ripple trim to playhead (remove left part)',
-    },
-    {
-      id: 'timeline.rippleTrimRight',
-      groupId: 'timeline',
-      title: 'Ripple trim to playhead (remove right part)',
-    },
-    {
-      id: 'timeline.advancedRippleTrimLeft',
-      groupId: 'timeline',
-      title: 'Advanced ripple trim to playhead (remove left part, all tracks)',
-    },
-    {
-      id: 'timeline.advancedRippleTrimRight',
-      groupId: 'timeline',
-      title: 'Advanced ripple trim to playhead (remove right part, all tracks)',
-    },
-    {
-      id: 'timeline.rippleDelete',
-      groupId: 'timeline',
-      title: 'Ripple delete selected clip(s)',
-    },
-    {
-      id: 'timeline.jumpPrevBoundary',
-      groupId: 'timeline',
-      title: 'Jump to previous clip boundary',
-    },
-    { id: 'timeline.jumpNextBoundary', groupId: 'timeline', title: 'Jump to next clip boundary' },
+    { id: 'timeline.trimToPlayheadLeft', groupId: 'timeline', title: 'Trim clip start to playhead' },
+    { id: 'timeline.trimToPlayheadRight', groupId: 'timeline', title: 'Trim clip end to playhead' },
+    { id: 'timeline.rippleTrimLeft', groupId: 'timeline', title: 'Ripple trim clip start to playhead' },
+    { id: 'timeline.rippleTrimRight', groupId: 'timeline', title: 'Ripple trim clip end to playhead' },
+    { id: 'timeline.advancedRippleTrimLeft', groupId: 'timeline', title: 'Advanced ripple trim start' },
+    { id: 'timeline.advancedRippleTrimRight', groupId: 'timeline', title: 'Advanced ripple trim end' },
+    { id: 'timeline.rippleDelete', groupId: 'timeline', title: 'Ripple delete' },
+    { id: 'timeline.jumpPrevBoundary', groupId: 'timeline', title: 'Jump to previous edit point' },
+    { id: 'timeline.jumpNextBoundary', groupId: 'timeline', title: 'Jump to next edit point' },
     {
       id: 'timeline.jumpPrevBoundaryTrack',
       groupId: 'timeline',
-      title: 'Jump to previous clip boundary (current track)',
+      title: 'Jump to previous edit point on track',
     },
     {
       id: 'timeline.jumpNextBoundaryTrack',
       groupId: 'timeline',
-      title: 'Jump to next clip boundary (current track)',
+      title: 'Jump to next edit point on track',
     },
-    { id: 'timeline.splitAtPlayhead', groupId: 'timeline', title: 'Split clip at playhead' },
+    { id: 'timeline.splitAtPlayhead', groupId: 'timeline', title: 'Split at playhead' },
+    { id: 'timeline.splitAllAtPlayhead', groupId: 'timeline', title: 'Split all at playhead' },
+    { id: 'timeline.toggleDisableClip', groupId: 'timeline', title: 'Disable / Enable clip' },
+    { id: 'timeline.toggleMuteClip', groupId: 'timeline', title: 'Mute / Unmute clip' },
     {
-      id: 'timeline.splitAllAtPlayhead',
+      id: 'timeline.toggleVisibilityTrack',
       groupId: 'timeline',
-      title: 'Split all clips at playhead',
+      title: 'Hide / Show video track',
     },
-    { id: 'timeline.toggleDisableClip', groupId: 'timeline', title: 'Disable / enable clip' },
-    { id: 'timeline.toggleMuteClip', groupId: 'timeline', title: 'Mute / unmute clip' },
-    { id: 'timeline.toggleVisibilityTrack', groupId: 'timeline', title: 'Toggle track visibility' },
-    { id: 'timeline.toggleMuteTrack', groupId: 'timeline', title: 'Toggle track mute' },
-    { id: 'timeline.toggleSoloTrack', groupId: 'timeline', title: 'Toggle track solo' },
-    {
-      id: 'timeline.moveSelectedClipsLeft',
-      groupId: 'timeline',
-      title: 'Move selected clip(s) left (1 frame)',
-    },
-    {
-      id: 'timeline.moveSelectedClipsRight',
-      groupId: 'timeline',
-      title: 'Move selected clip(s) right (1 frame)',
-    },
+    { id: 'timeline.toggleMuteTrack', groupId: 'timeline', title: 'Mute / Unmute audio track' },
+    { id: 'timeline.toggleSoloTrack', groupId: 'timeline', title: 'Solo / Unsolo audio track' },
+    { id: 'timeline.moveSelectedClipsLeft', groupId: 'timeline', title: 'Move selected clips left' },
+    { id: 'timeline.moveSelectedClipsRight', groupId: 'timeline', title: 'Move selected clips right' },
     {
       id: 'timeline.moveSelectedClipsLeftLarge',
       groupId: 'timeline',
-      title: 'Move selected clip(s) left (1 second)',
+      title: 'Move selected clips left (large step)',
     },
     {
       id: 'timeline.moveSelectedClipsRightLarge',
       groupId: 'timeline',
-      title: 'Move selected clip(s) right (1 second)',
+      title: 'Move selected clips right (large step)',
     },
     {
       id: 'timeline.increaseSelectedClipsVolume',
       groupId: 'timeline',
-      title: 'Increase selected clip(s) volume',
+      title: 'Increase selected clips volume',
     },
     {
       id: 'timeline.decreaseSelectedClipsVolume',
       groupId: 'timeline',
-      title: 'Decrease selected clip(s) volume',
+      title: 'Decrease selected clips volume',
     },
-    { id: 'timeline.setSelectionIn', groupId: 'timeline', title: 'Set selection in point' },
-    { id: 'timeline.setSelectionOut', groupId: 'timeline', title: 'Set selection out point' },
+    { id: 'timeline.setSelectionIn', groupId: 'timeline', title: 'Set selection In' },
+    { id: 'timeline.setSelectionOut', groupId: 'timeline', title: 'Set selection Out' },
 
-    { id: 'playback.toggle', groupId: 'playback', title: 'Play / Pause (keeps current speed)' },
-    { id: 'playback.toggle1', groupId: 'playback', title: 'Play / pause (1x)' },
+    { id: 'playback.toggle', groupId: 'playback', title: 'Toggle playback' },
+    { id: 'playback.toggle1', groupId: 'playback', title: 'Toggle playback (secondary)' },
     { id: 'playback.toStart', groupId: 'playback', title: 'Go to start' },
     { id: 'playback.toEnd', groupId: 'playback', title: 'Go to end' },
-    { id: 'playback.stepForward', groupId: 'playback', title: 'Step forward (1 frame)' },
-    { id: 'playback.stepBackward', groupId: 'playback', title: 'Step backward (1 frame)' },
-    { id: 'playback.stepForwardLarge', groupId: 'playback', title: 'Step forward (1 second)' },
-    { id: 'playback.stepBackwardLarge', groupId: 'playback', title: 'Step backward (1 second)' },
-    { id: 'playback.forward1_25', groupId: 'playback', title: 'Forward x1.25' },
-    { id: 'playback.backward1_25', groupId: 'playback', title: 'Backward x1.25 (Monitor only)' },
-    { id: 'playback.forward1_5', groupId: 'playback', title: 'Forward x1.5' },
-    { id: 'playback.backward1_5', groupId: 'playback', title: 'Backward x1.5 (Monitor only)' },
-    { id: 'playback.forward1_75', groupId: 'playback', title: 'Forward x1.75' },
-    { id: 'playback.backward1_75', groupId: 'playback', title: 'Backward x1.75 (Monitor only)' },
-    { id: 'playback.forward2', groupId: 'playback', title: 'Forward x2' },
-    { id: 'playback.backward2', groupId: 'playback', title: 'Backward x2 (Monitor only)' },
-    { id: 'playback.forward3', groupId: 'playback', title: 'Forward x3' },
-    { id: 'playback.backward3', groupId: 'playback', title: 'Backward x3 (Monitor only)' },
-    { id: 'playback.forward5', groupId: 'playback', title: 'Forward x5' },
-    { id: 'playback.backward5', groupId: 'playback', title: 'Backward x5 (Monitor only)' },
-    { id: 'playback.forward0_75', groupId: 'playback', title: 'Forward x0.75' },
-    { id: 'playback.backward0_75', groupId: 'playback', title: 'Backward x0.75 (Monitor only)' },
-    { id: 'playback.forward0_5', groupId: 'playback', title: 'Forward x0.5' },
-    { id: 'playback.backward0_5', groupId: 'playback', title: 'Backward x0.5 (Monitor only)' },
-    { id: 'playback.backward1', groupId: 'playback', title: 'Backward x1 (Monitor only)' },
-    { id: 'general.monitorVolumeUp', groupId: 'playback', title: 'Monitor Volume Up' },
-    { id: 'general.monitorVolumeDown', groupId: 'playback', title: 'Monitor Volume Down' },
+    { id: 'playback.stepForward', groupId: 'playback', title: 'Step forward' },
+    { id: 'playback.stepBackward', groupId: 'playback', title: 'Step backward' },
+    { id: 'playback.stepForwardLarge', groupId: 'playback', title: 'Step forward (large)' },
+    { id: 'playback.stepBackwardLarge', groupId: 'playback', title: 'Step backward (large)' },
+    { id: 'playback.forward1_25', groupId: 'playback', title: 'Forward 1.25x' },
+    { id: 'playback.backward1_25', groupId: 'playback', title: 'Backward 1.25x' },
+    { id: 'playback.forward1_5', groupId: 'playback', title: 'Forward 1.5x' },
+    { id: 'playback.backward1_5', groupId: 'playback', title: 'Backward 1.5x' },
+    { id: 'playback.forward1_75', groupId: 'playback', title: 'Forward 1.75x' },
+    { id: 'playback.backward1_75', groupId: 'playback', title: 'Backward 1.75x' },
+    { id: 'playback.forward2', groupId: 'playback', title: 'Forward 2x' },
+    { id: 'playback.backward2', groupId: 'playback', title: 'Backward 2x' },
+    { id: 'playback.forward3', groupId: 'playback', title: 'Forward 3x' },
+    { id: 'playback.backward3', groupId: 'playback', title: 'Backward 3x' },
+    { id: 'playback.forward5', groupId: 'playback', title: 'Forward 5x' },
+    { id: 'playback.backward5', groupId: 'playback', title: 'Backward 5x' },
+    { id: 'playback.forward0_75', groupId: 'playback', title: 'Forward 0.75x' },
+    { id: 'playback.backward0_75', groupId: 'playback', title: 'Backward 0.75x' },
+    { id: 'playback.forward0_5', groupId: 'playback', title: 'Forward 0.5x' },
+    { id: 'playback.backward0_5', groupId: 'playback', title: 'Backward 0.5x' },
+    { id: 'playback.backward1', groupId: 'playback', title: 'Backward 1x' },
   ],
   bindings: {
-    'general.focus': ['Tab'],
+    'general.focus': ['/'],
     'general.deselect': ['Escape'],
     'general.copy': [`${Mod}+C`],
     'general.cut': [`${Mod}+X`],
     'general.paste': [`${Mod}+V`],
-    'general.delete': ['Delete', 'X'],
+    'general.delete': ['Delete'],
     'general.rename': ['F2'],
     'general.undo': [`${Mod}+Z`],
-    'general.redo': [`${Mod}+Shift+Z`],
-    'general.mute': [`${Mod}+Q`],
-    'general.addMarker': ['M'],
-    'general.volumeUp': [`${Mod}+R`],
-    'general.volumeDown': [`${Mod}+E`],
-
-    'general.fullscreen': [`${Mod}+G`],
-    'general.zoomIn': ['=', '+'],
-    'general.zoomOut': ['-'],
-    'general.zoomReset': ['0', '.'],
-    'general.zoomFit': ['Shift+0'],
-    'general.tab1': ['1'],
-    'general.tab2': ['2'],
-    'general.tab3': ['3'],
-    'general.tab4': ['4'],
-    'general.tab5': ['5'],
-    'general.tab6': ['6'],
-    'general.tab7': ['7'],
-    'general.tab8': ['8'],
-    'general.tab9': ['9'],
+    'general.redo': [`${Mod}+Y`, `${Mod}+Shift+Z`],
+    'general.mute': ['M'],
+    'general.addMarker': ['K'],
+    'general.volumeUp': ['='],
+    'general.volumeDown': ['-'],
+    'general.fullscreen': [`${Mod}+F`],
+    'general.zoomIn': [`${Mod}+=`],
+    'general.zoomOut': [`${Mod}+-`],
+    'general.zoomReset': [`${Mod}+0`],
+    'general.zoomFit': [`${Mod}+9`],
+    'general.tab1': [`${Mod}+1`],
+    'general.tab2': [`${Mod}+2`],
+    'general.tab3': [`${Mod}+3`],
+    'general.tab4': [`${Mod}+4`],
+    'general.tab5': [`${Mod}+5`],
+    'general.tab6': [`${Mod}+6`],
+    'general.tab7': [`${Mod}+7`],
+    'general.tab8': [`${Mod}+8`],
+    'general.tab9': [`${Mod}+9`],
     'general.switchViewFiles': ['Shift+1'],
     'general.switchViewCut': ['Shift+2'],
     'general.switchViewSound': ['Shift+3'],
@@ -330,6 +286,7 @@ export const DEFAULT_HOTKEYS: DefaultHotkeysConfig = {
 
     'general.snapshot': ['H'],
     'general.newTimeline': ['N'],
+    'timeline.duplicate': [`${Mod}+Shift+S`],
     'general.navigateBack': ['Backspace'],
     'general.navigateUp': [`${Mod}+ArrowUp`],
     'general.navigateSelectionUp': ['ArrowUp'],

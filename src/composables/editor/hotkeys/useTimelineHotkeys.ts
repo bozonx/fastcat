@@ -109,6 +109,11 @@ export function useTimelineHotkeys(
       return true;
     },
 
+    'timeline.duplicate': () => {
+      void timelineStore.duplicateCurrentTimeline();
+      return true;
+    },
+
     'timeline.selectClipsLeftOfPlayhead': () => {
       if (!focusStore.canUseTimelineHotkeys) return false;
       timelineStore.selectClipsRelativeToPlayhead({
