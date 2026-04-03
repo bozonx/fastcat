@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { useClipboardStore } from '~/stores/clipboard.store';
+import MobileDrawerToolbar from '~/components/timeline/MobileDrawerToolbar.vue';
+import MobileDrawerToolbarButton from '~/components/timeline/MobileDrawerToolbarButton.vue';
 
 const emit = defineEmits<{
   (e: 'paste'): void;
