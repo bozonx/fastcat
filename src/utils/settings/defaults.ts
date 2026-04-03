@@ -338,7 +338,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
   },
   backup: {
     intervalMinutes: 5,
-    count: 2,
+    count: 5,
   },
 };
 
