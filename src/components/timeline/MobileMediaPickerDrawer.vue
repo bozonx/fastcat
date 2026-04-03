@@ -4,6 +4,7 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useFileManagerThumbnails } from '~/composables/file-manager/useFileManagerThumbnails';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useMediaStore } from '~/stores/media.store';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import type { FsEntry } from '~/types/fs';
 import MobileFileBrowserGrid from '~/components/file-manager/MobileFileBrowserGrid.vue';
@@ -69,6 +70,20 @@ function handleToggleSelection(entry: FsEntry) {
     currentPath.value = entry.path;
     return;
   }
+
+  // Block selection of fully unsupported files
+  const mediaStore = useMediaStore();
+  if (entry.path) {
+    if (mediaStore.metadataLoadFailed[entry.path]) return;
+    const meta = mediaStore.mediaMetadata[entry.path];
+    if (meta) {
+      const type = getMediaTypeFromFilename(entry.name);
+      if (type === 'image' && meta.image?.canDisplay === false) return;
+      if (type === 'video' && meta.video?.canDecode === false) return;
+      if (type === 'audio' && meta.audio?.canDecode === false) return;
+    }
+  }
+
   const idx = selectedFiles.value.findIndex((f) => f.path === entry.path);
   if (idx === -1) {
     selectedFiles.value.push(entry);

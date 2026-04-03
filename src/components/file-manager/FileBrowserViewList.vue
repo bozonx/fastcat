@@ -62,6 +62,13 @@ const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const proxyStore = useProxyStore();
 const fileManager = useFileManager();
 const clipboardPaths = useClipboardPaths();
+const mediaStore = useMediaStore();
+
+function handleImageError(entry: FsEntry) {
+  if (entry.path) {
+    mediaStore.metadataLoadFailed[entry.path] = true;
+  }
+}
 
 function isCutEntry(entry: FsEntry): boolean {
   return entry.path ? clipboardPaths.value.has(entry.path) : false;
@@ -298,6 +305,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
                     :src="videoThumbnails[entry.path]"
                     :alt="entry.name"
                     class="w-4 h-4 object-cover rounded-sm"
+                    @error="handleImageError(entry)"
                   />
                   <UIcon
                     v-else
@@ -418,3 +426,4 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
     </table>
   </div>
 </template>
+

@@ -10,7 +10,7 @@ export interface TimelineCommandsDeps {
   timelineDoc: Ref<TimelineDocument | null>;
   currentTimelinePath: Ref<string | null>;
   mediaMetadata: Ref<Record<string, any>>;
-  applyTimeline: (cmd: TimelineCommand, options?: any) => void;
+  applyTimeline: (cmd: TimelineCommand, options?: any) => string[];
   createFallbackTimelineDoc: () => TimelineDocument;
   getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
   getFileByPath: (path: string) => Promise<File | null>;
@@ -30,6 +30,7 @@ export interface TimelineCommandsDeps {
 
 export interface TimelineCommandsModule {
   commandService: ReturnType<typeof createTimelineCommandService>;
+  ensureTimelineDoc: () => TimelineDocument;
   moveItemToTrack: (input: {
     fromTrackId: string;
     toTrackId: string;
@@ -53,7 +54,7 @@ export interface TimelineCommandsModule {
       skipHistory?: boolean;
       saveMode?: 'none' | 'debounced' | 'immediate';
     },
-  ) => Promise<string[]>;
+  ) => Promise<{ durationUs: number; itemId?: string }>;
   addTimelineClipToTimelineFromPath: (
     input: {
       trackId: string;
@@ -69,7 +70,7 @@ export interface TimelineCommandsModule {
       skipHistory?: boolean;
       saveMode?: 'none' | 'debounced' | 'immediate';
     },
-  ) => Promise<string[]>;
+  ) => Promise<{ durationUs: number; itemId?: string }>;
 }
 
 export function createTimelineCommandsModule(params: TimelineCommandsDeps): TimelineCommandsModule {

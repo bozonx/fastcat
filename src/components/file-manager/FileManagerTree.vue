@@ -312,13 +312,28 @@ function isVideo(entry: FsEntry): boolean {
   return getMediaTypeFromFilename(entry.name) === 'video';
 }
 
+function isFullyUnsupported(entry: FsEntry): boolean {
+  if (entry.kind !== 'file' || !entry.path) return false;
+  const mediaStore = useMediaStore();
+  if (mediaStore.metadataLoadFailed[entry.path]) return true;
+  const meta = mediaStore.mediaMetadata[entry.path];
+  if (!meta) return false;
+  const type = getMediaTypeFromFilename(entry.name);
+  if (type === 'image' && meta.image?.canDisplay === false) return true;
+  if (type === 'video' && meta.video?.canDecode === false) return true;
+  if (type === 'audio' && meta.audio?.canDecode === false) return true;
+  return false;
+}
+
 function isOpenableMediaFile(entry: FsEntry): boolean {
   if (entry.kind !== 'file') return false;
+  if (isFullyUnsupported(entry)) return false;
   return isOpenableProjectFileName(entry.name);
 }
 
 function isConvertibleMediaFile(entry: FsEntry): boolean {
   if (entry.kind !== 'file') return false;
+  if (isFullyUnsupported(entry)) return false;
   const type = getMediaTypeFromFilename(entry.name);
   return type === 'video' || type === 'audio' || type === 'image';
 }

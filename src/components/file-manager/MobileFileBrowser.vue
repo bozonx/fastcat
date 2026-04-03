@@ -180,7 +180,11 @@ const isCreateFolderModalOpen = ref(false);
 const canAddSelectionToTimeline = computed(
   () =>
     isSelectionMode.value &&
-    selectedEntries.value.some((e) => e.kind === 'file' && isOpenableProjectFileName(e.name)),
+    selectedEntries.value.some((e) => {
+      if (e.kind !== 'file' || !e.path) return false;
+      if (fileCompatibility.value[e.path]?.status === 'fully_unsupported') return false;
+      return isOpenableProjectFileName(e.name);
+    }),
 );
 
 async function handleAddToProject() {

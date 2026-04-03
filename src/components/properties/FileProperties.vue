@@ -244,6 +244,7 @@ const hasExistingProxyForFile = computed(() => {
 });
 
 const canConvertFile = computed(() => {
+  if (isMediaFullyUnsupported.value) return false;
   return mediaType.value === 'video' || mediaType.value === 'audio' || mediaType.value === 'image';
 });
 

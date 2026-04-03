@@ -97,12 +97,14 @@ export function createTimelinePersistenceModule(
       deps.timelineSaveError.value = null;
 
       const suffix = getPlatformSuffix();
+      const docRaw = JSON.parse(JSON.stringify(toRaw(doc)));
+
       const snapshot: TimelineDocument = {
-        ...doc,
+        ...docRaw,
         metadata: {
-          ...(doc.metadata ?? {}),
+          ...(docRaw.metadata ?? {}),
           fastcat: {
-            ...(doc.metadata?.fastcat ?? {}),
+            ...(docRaw.metadata?.fastcat ?? {}),
             playheadUs: deps.currentTime.value,
             masterGain: deps.masterGain.value,
             zoom: deps.timelineZoom.value,
