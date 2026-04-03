@@ -4,6 +4,7 @@ import type { FsEntry } from '~/types/fs';
 import { formatBytes } from '~/utils/format';
 import { getMediaTypeFromFilename, getMimeTypeFromFilename } from '~/utils/media-types';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
+import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
 
 interface ExtendedFsEntry extends FsEntry {
@@ -31,6 +32,14 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const { getFileIcon } = useFileManager();
+const timelineMediaUsageStore = useTimelineMediaUsageStore();
+
+const mediaUsageMap = computed(() => timelineMediaUsageStore.mediaPathToTimelines);
+
+function isEntryUsed(entry: FsEntry) {
+  if (entry.kind !== 'file' || !entry.path) return false;
+  return Boolean(mediaUsageMap.value[entry.path]?.length);
+}
 
 const longPressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const isLongPressActive = ref(false);
@@ -180,6 +189,13 @@ onBeforeUnmount(clearLongPress);
             >
               <Icon v-if="isSelected(entry)" name="lucide:check" class="w-4 h-4 text-white" />
             </div>
+
+            <!-- Used State Indicator -->
+            <div
+              v-if="isEntryUsed(entry)"
+              class="absolute bottom-0 left-0 right-0 h-[3px] bg-red-500 z-10"
+              aria-hidden="true"
+            />
           </div>
 
           <!-- Name & Size -->

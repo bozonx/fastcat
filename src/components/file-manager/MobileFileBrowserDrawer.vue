@@ -11,6 +11,9 @@ import MobileDrawerToolbar from '~/components/timeline/MobileDrawerToolbar.vue';
 import MobileDrawerToolbarButton from '~/components/timeline/MobileDrawerToolbarButton.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
+import { useProxyStore } from '~/stores/proxy.store';
+import { useProjectStore } from '~/stores/project.store';
+import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -27,6 +30,10 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const selectionStore = useSelectionStore();
 const conversionStore = useFileConversionStore();
+const proxyStore = useProxyStore();
+const projectStore = useProjectStore();
+const { extractAudio } = useAudioExtraction();
+
 const selectedEntity = computed(() => selectionStore.selectedEntity);
 
 const isOpenLocal = computed({
@@ -89,8 +96,31 @@ const isImage = computed(() => {
   return type === 'image';
 });
 
+const isVideo = computed(() => {
+  if (!selectedFsEntry.value || selectedFsEntry.value.entry.kind !== 'file') return false;
+  const type = getMediaTypeFromFilename(selectedFsEntry.value.entry.name);
+  return type === 'video';
+});
+
+const isAudio = computed(() => {
+  if (!selectedFsEntry.value || selectedFsEntry.value.entry.kind !== 'file') return false;
+  const type = getMediaTypeFromFilename(selectedFsEntry.value.entry.name);
+  return type === 'audio';
+});
+
+const hasExistingProxy = computed(() => {
+  if (!selectedFsEntry.value || !selectedFsEntry.value.path) return false;
+  return proxyStore.existingProxies.has(selectedFsEntry.value.path);
+});
+
 const topActions = computed(() => {
-  const actions = [];
+  const entry = selectedFsEntry.value?.entry;
+  const path = selectedFsEntry.value?.path;
+  if (!entry || !path) return [];
+
+  const actions: any[] = [];
+
+  // Add to timeline
   if (canAddToTimeline.value) {
     actions.push({
       id: 'add-to-timeline',
@@ -99,18 +129,73 @@ const topActions = computed(() => {
       onClick: () => emit('add-to-timeline'),
     });
   }
+
+  // Convert
   if (canConvert.value) {
     actions.push({
       id: 'convert',
       label: t('videoEditor.fileManager.actions.convertFile', 'Convert'),
       icon: 'lucide:replace',
       onClick: () => {
-        if (selectedFsEntry.value) {
-          conversionStore.openConversionModal(selectedFsEntry.value.entry);
-        }
+        conversionStore.openConversionModal(entry);
       },
     });
   }
+
+  // Transcribe (Video or Audio)
+  if (isVideo.value || isAudio.value) {
+    actions.push({
+      id: 'transcribe',
+      label: t('videoEditor.fileManager.actions.transcribe', 'Transcribe'),
+      icon: 'i-heroicons-language',
+      onClick: () => handleAction('transcribe'),
+    });
+  }
+
+  // Proxy (Video only)
+  if (isVideo.value) {
+    const isGenerating = proxyStore.generatingProxies.has(path);
+    const hasProxy = proxyStore.existingProxies.has(path);
+
+    if (isGenerating) {
+      actions.push({
+        id: 'cancelProxy',
+        label: t('videoEditor.fileManager.actions.cancelProxyGeneration', 'Cancel Proxy'),
+        icon: 'i-heroicons-no-symbol',
+        onClick: () => proxyStore.cancelProxyGeneration(path),
+      });
+    } else if (hasProxy) {
+      actions.push({
+        id: 'deleteProxy',
+        label: t('videoEditor.fileManager.actions.deleteProxy', 'Delete Proxy'),
+        icon: 'i-heroicons-trash',
+        onClick: () => proxyStore.deleteProxy(path),
+      });
+    } else {
+      actions.push({
+        id: 'createProxy',
+        label: t('videoEditor.fileManager.actions.createProxy', 'Create Proxy'),
+        icon: 'i-heroicons-video-camera',
+        onClick: async () => {
+          const handle = await projectStore.getFileHandleByPath(path);
+          if (handle) {
+            await proxyStore.generateProxy(handle, path);
+          }
+        },
+      });
+    }
+  }
+
+  // Extract Audio (Video only)
+  if (isVideo.value) {
+    actions.push({
+      id: 'extract-audio',
+      label: t('videoEditor.fileManager.actions.extractAudio', 'Extract audio'),
+      icon: 'i-heroicons-musical-note',
+      onClick: () => extractAudio(entry),
+    });
+  }
+
   return actions;
 });
 
@@ -156,12 +241,6 @@ function handleAction(actionId: FileAction) {
             :label="$t('common.cut', 'Cut')"
             @click="handleAction('cut')"
           />
-          <MobileDrawerToolbarButton
-            v-if="props.isTranscribable"
-            icon="i-heroicons-language"
-            :label="$t('videoEditor.fileManager.actions.transcribe', 'Transcribe')"
-            @click="handleAction('transcribe')"
-          />
         </MobileDrawerToolbar>
 
         <div v-if="topActions.length > 0 && !isTextDocument" class="py-2 px-4 border-b border-ui-border shrink-0">
@@ -188,7 +267,7 @@ function handleAction(actionId: FileAction) {
             preview-mode="original"
             :has-proxy="false"
             :mobile-text-mode="isTextDocument"
-            :hide-actions="isImage"
+            :hide-actions="isImage || isVideo || isAudio"
           />
         </div>
         <div v-else-if="selectedFsMultiple" class="py-2">

@@ -132,7 +132,7 @@ describe('MobileFileBrowserDrawer', () => {
     expect(onAction).toHaveBeenCalledWith('delete', expect.anything());
   });
 
-  it('renders top actions for supported files', async () => {
+  it('renders top actions for video files', async () => {
     mockSelectionStore.selectedEntity = {
       source: 'fileManager',
       kind: 'file',
@@ -154,6 +154,33 @@ describe('MobileFileBrowserDrawer', () => {
 
     const actionList = wrapper.find('#property-action-list');
     expect(actionList.exists()).toBe(true);
-    expect(actionList.attributes('data-count')).toBe('2'); // Add to timeline, Convert
+    // Actions: Add to timeline, Convert, Transcribe, Proxy, Extract Audio
+    expect(actionList.attributes('data-count')).toBe('5');
+  });
+
+  it('renders top actions for image files', async () => {
+    mockSelectionStore.selectedEntity = {
+      source: 'fileManager',
+      kind: 'file',
+      path: 'test.jpg',
+      name: 'test.jpg',
+      entry: { kind: 'file', path: 'test.jpg', name: 'test.jpg' },
+    };
+
+    const wrapper = await mountSuspended(MobileFileBrowserDrawer, {
+      props: defaultProps,
+      global: {
+        stubs: {
+          UDrawer: { template: '<div><slot name="content" /></div>' },
+          UButton: true,
+          Icon: true,
+        },
+      },
+    });
+
+    const actionList = wrapper.find('#property-action-list');
+    expect(actionList.exists()).toBe(true);
+    // Actions: Add to timeline, Convert
+    expect(actionList.attributes('data-count')).toBe('2');
   });
 });
