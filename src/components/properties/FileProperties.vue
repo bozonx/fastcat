@@ -216,9 +216,14 @@ const isVideoCodecUnsupported = computed(() => mediaMeta.value?.video?.canDecode
 
 const isAudioCodecUnsupported = computed(() => mediaMeta.value?.audio?.canDecode === false);
 
-const isImageUnsupported = computed(
-  () => mediaType.value === 'image' && mediaMeta.value?.image?.canDisplay === false,
-);
+const isImageUnsupported = computed(() => {
+  if (mediaType.value !== 'image') return false;
+  // If we have metadata and it explicitly says it's not displayable
+  if (mediaMeta.value?.image?.canDisplay === false) return true;
+  // If we have metadata but no image info at all (rare, but possible if corrupted)
+  if (mediaMeta.value && !mediaMeta.value.image) return true;
+  return false;
+});
 
 const isMediaFullyUnsupported = computed(
   () => isFormatUnsupported.value || isVideoCodecUnsupported.value || isImageUnsupported.value,

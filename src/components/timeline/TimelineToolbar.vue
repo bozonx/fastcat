@@ -7,6 +7,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { usePresetsStore } from '~/stores/presets.store';
+import { useProjectStore } from '~/stores/project.store';
 import UiSplitDropdownButton from '~/components/ui/UiSplitDropdownButton.vue';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import {
@@ -29,6 +30,7 @@ const timelineStore = useTimelineStore();
 const settingsStore = useTimelineSettingsStore();
 const focusStore = useFocusStore();
 const presetsStore = usePresetsStore();
+const projectStore = useProjectStore();
 
 const uiStore = useUiStore();
 const { isSnapSettingsModalOpen } = storeToRefs(settingsStore);
@@ -183,7 +185,11 @@ const textContextMenuItems = computed(() => [
       icon: 'i-heroicons-sparkles',
       onSelect: () => {
         uiStore.activeLibraryTab = 'texts';
-        focusStore.setPanelFocus('left'); // Focus left panel (Library)
+        if (projectStore.currentView !== 'cut') {
+          projectStore.setView('cut');
+        }
+        const panelId = projectStore.ensurePanelVisible('library');
+        focusStore.setPanelFocus(`dynamic:library:${panelId}`);
       },
     },
   ],

@@ -90,15 +90,24 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: FileSyst
               try {
                 const file = await vfs.getFile(path);
                 if (file && !isUnmounted) {
-                  const url = URL.createObjectURL(file);
-                  activeImageUrls.set(path, url);
-                  thumbnails.value = {
-                    ...thumbnails.value,
-                    [path]: url,
-                  };
+                  // Verify if the image can actually be displayed
+                  try {
+                    const bitmap = await createImageBitmap(file);
+                    bitmap.close();
+
+                    const url = URL.createObjectURL(file);
+                    activeImageUrls.set(path, url);
+                    thumbnails.value = {
+                      ...thumbnails.value,
+                      [path]: url,
+                    };
+                  } catch {
+                    // Not a valid or supported image, don't generate thumbnail
+                    console.warn('Image file is corrupt or not displayable:', path);
+                  }
                 }
               } catch (e) {
-                console.warn('Failed to generate image thumbnail for:', path, e);
+                console.warn('Failed to get image file for thumbnail:', path, e);
               }
             }
           }

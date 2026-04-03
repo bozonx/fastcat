@@ -1,4 +1,5 @@
 import { computed, ref, watch } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { usePresetsStore } from '~/stores/presets.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -11,8 +12,8 @@ export function useTimelineTextPreset() {
   const uiStore = useUiStore();
 
   const textPresetMenuRef = ref<InstanceType<typeof UiContextMenuPortal> | null>(null);
-  const isPresetModalOpen = ref(false);
-  const pendingClipInfo = ref<{ trackId: string; itemId: string } | null>(null);
+  const { isTextPresetModalOpen: isPresetModalOpen, pendingTextPresetClipInfo: pendingClipInfo } =
+    storeToRefs(uiStore);
 
   const standardPresets: Record<string, { style: Record<string, unknown>; text?: string }> = {
     default: {

@@ -129,9 +129,9 @@ export function useEntryPreview(params: {
       }
 
       if (
-        mediaType.value === 'image' ||
         mediaType.value === 'video' ||
-        mediaType.value === 'audio'
+        mediaType.value === 'audio' ||
+        (mediaType.value === 'image' && fileInfo.value?.metadata?.image?.canDisplay !== false)
       ) {
         currentUrl.value = URL.createObjectURL(fileToPlay);
       }
