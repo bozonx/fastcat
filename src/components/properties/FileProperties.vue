@@ -42,6 +42,7 @@ const props = defineProps<{
   hasProxy: boolean;
   isFilesPage?: boolean;
   mobileTextMode?: boolean;
+  hideActions?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -516,7 +517,7 @@ const {
       />
 
       <PropertySection
-        v-if="fileInfo?.kind === 'directory'"
+        v-if="!hideActions && fileInfo?.kind === 'directory'"
         :title="t('videoEditor.fileManager.actions.title', 'Actions')"
       >
         <EntryActions
@@ -526,7 +527,7 @@ const {
       </PropertySection>
 
       <PropertySection
-        v-else-if="fileInfo?.kind === 'file'"
+        v-else-if="!hideActions && fileInfo?.kind === 'file'"
         :title="t('videoEditor.fileManager.actions.title', 'Actions')"
       >
         <EntryActions

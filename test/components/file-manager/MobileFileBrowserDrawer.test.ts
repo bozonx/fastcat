@@ -25,6 +25,23 @@ vi.mock('~/components/properties/FileProperties.vue', () => ({
 vi.mock('~/components/properties/MultiFileProperties.vue', () => ({
   default: { template: '<div id="multi-file-properties" />' },
 }));
+vi.mock('~/components/timeline/MobileDrawerToolbarButton.vue', () => ({
+  default: {
+    template: '<button :data-icon="icon" :data-label="label" @click="$emit(\'click\')"><slot /></button>',
+    props: ['icon', 'label']
+  }
+}));
+vi.mock('~/components/properties/PropertyActionList.vue', () => ({
+  default: {
+    template: '<div id="property-action-list" :data-count="actions.length"><slot /></div>',
+    props: ['actions']
+  }
+}));
+vi.mock('~/stores/file-conversion.store', () => ({
+  useFileConversionStore: () => ({
+    openConversionModal: vi.fn(),
+  })
+}));
 
 describe('MobileFileBrowserDrawer', () => {
   const defaultProps = {
@@ -109,9 +126,34 @@ describe('MobileFileBrowserDrawer', () => {
       },
     });
 
-    const deleteButton = wrapper.find('button[data-icon="lucide:trash-2"]');
+    const deleteButton = wrapper.find('button[data-icon="i-heroicons-trash"]');
     await deleteButton.trigger('click');
 
     expect(onAction).toHaveBeenCalledWith('delete', expect.anything());
+  });
+
+  it('renders top actions for supported files', async () => {
+    mockSelectionStore.selectedEntity = {
+      source: 'fileManager',
+      kind: 'file',
+      path: 'test.mp4',
+      name: 'test.mp4',
+      entry: { kind: 'file', path: 'test.mp4', name: 'test.mp4' },
+    };
+
+    const wrapper = await mountSuspended(MobileFileBrowserDrawer, {
+      props: defaultProps,
+      global: {
+        stubs: {
+          UDrawer: { template: '<div><slot name="content" /></div>' },
+          UButton: true,
+          Icon: true,
+        },
+      },
+    });
+
+    const actionList = wrapper.find('#property-action-list');
+    expect(actionList.exists()).toBe(true);
+    expect(actionList.attributes('data-count')).toBe('2'); // Add to timeline, Convert
   });
 });

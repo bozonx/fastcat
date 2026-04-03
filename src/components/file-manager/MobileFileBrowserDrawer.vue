@@ -9,6 +9,8 @@ import type { SelectedFsEntry, SelectedFsEntries } from '~/stores/selection.stor
 import type { FsEntry } from '~/types/fs';
 import MobileDrawerToolbar from '~/components/timeline/MobileDrawerToolbar.vue';
 import MobileDrawerToolbarButton from '~/components/timeline/MobileDrawerToolbarButton.vue';
+import PropertyActionList from '~/components/properties/PropertyActionList.vue';
+import { useFileConversionStore } from '~/stores/file-conversion.store';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -22,7 +24,9 @@ const emit = defineEmits<{
   (e: 'add-to-timeline'): void;
 }>();
 
+const { t } = useI18n();
 const selectionStore = useSelectionStore();
+const conversionStore = useFileConversionStore();
 const selectedEntity = computed(() => selectionStore.selectedEntity);
 
 const isOpenLocal = computed({
@@ -71,6 +75,43 @@ const canAddToTimeline = computed(() => {
   if (props.isSelectionMode) return false;
   if (!selectedEntity.value || selectedEntity.value.kind !== 'file') return false;
   return isOpenableProjectFileName(selectedEntity.value.name);
+});
+
+const canConvert = computed(() => {
+  if (!selectedFsEntry.value || selectedFsEntry.value.entry.kind !== 'file') return false;
+  const type = getMediaTypeFromFilename(selectedFsEntry.value.entry.name);
+  return ['video', 'audio', 'image'].includes(type);
+});
+
+const isImage = computed(() => {
+  if (!selectedFsEntry.value || selectedFsEntry.value.entry.kind !== 'file') return false;
+  const type = getMediaTypeFromFilename(selectedFsEntry.value.entry.name);
+  return type === 'image';
+});
+
+const topActions = computed(() => {
+  const actions = [];
+  if (canAddToTimeline.value) {
+    actions.push({
+      id: 'add-to-timeline',
+      label: t('common.addToTimeline', 'Add to timeline'),
+      icon: 'lucide:plus',
+      onClick: () => emit('add-to-timeline'),
+    });
+  }
+  if (canConvert.value) {
+    actions.push({
+      id: 'convert',
+      label: t('videoEditor.fileManager.actions.convertFile', 'Convert'),
+      icon: 'lucide:replace',
+      onClick: () => {
+        if (selectedFsEntry.value) {
+          conversionStore.openConversionModal(selectedFsEntry.value.entry);
+        }
+      },
+    });
+  }
+  return actions;
 });
 
 function handleAction(actionId: FileAction) {
@@ -125,6 +166,15 @@ function handleAction(actionId: FileAction) {
 
     <div class="flex flex-col h-full relative overflow-hidden">
 
+      <div v-if="topActions.length > 0 && !isTextDocument" class="py-2 px-4 border-b border-ui-border shrink-0">
+        <PropertyActionList
+          :actions="topActions"
+          vertical
+          variant="ghost"
+          size="md"
+        />
+      </div>
+
       <!-- Scrollable content -->
       <div
         class="flex-1"
@@ -137,6 +187,7 @@ function handleAction(actionId: FileAction) {
             preview-mode="original"
             :has-proxy="false"
             :mobile-text-mode="isTextDocument"
+            :hide-actions="isImage"
           />
         </div>
         <div v-else-if="selectedFsMultiple" class="py-2">
@@ -144,21 +195,6 @@ function handleAction(actionId: FileAction) {
         </div>
       </div>
 
-      <!-- Add to Timeline Button -->
-      <div
-        v-if="canAddToTimeline && !isTextDocument"
-        class="absolute bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-5 duration-300"
-      >
-        <UButton
-          size="xl"
-          variant="solid"
-          icon="lucide:plus"
-          class="rounded-2xl shadow-2xl px-6 py-4 font-bold active:scale-95 transition-all text-white border-none bg-ui-action hover:bg-ui-action-hover shadow-ui-action/20"
-          @click="emit('add-to-timeline')"
-        >
-          {{ $t('common.addToTimeline', 'Add to timeline') }}
-        </UButton>
-      </div>
     </div>
   </UiMobileDrawer>
 </template>
