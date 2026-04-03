@@ -15,6 +15,8 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
+const isEnabled = defineModel<boolean>('enabled', { default: true });
+
 const maskControls = computed<ParamControl[]>(() => [
   {
     kind: 'file',
@@ -62,7 +64,16 @@ function handleUpdate(key: string, value: unknown) {
 </script>
 
 <template>
-  <PropertySection :title="t('fastcat.clip.mask.title', 'Mask')">
-    <ParamsRenderer :controls="maskControls" :values="maskValues" @update:value="handleUpdate" />
+  <PropertySection
+    v-model:toggle-value="isEnabled"
+    :title="t('fastcat.clip.mask.title', 'Mask')"
+    has-toggle
+  >
+    <ParamsRenderer
+      :controls="maskControls"
+      :values="maskValues"
+      :disabled="!isEnabled"
+      @update:value="handleUpdate"
+    />
   </PropertySection>
 </template>

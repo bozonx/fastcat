@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import DbSlider from '~/components/audio/DbSlider.vue';
@@ -34,6 +35,8 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
+const isEnabled = defineModel<boolean>('enabled', { default: true });
+
 const audioGainDb = computed({
   get: () => linearToDb(props.audioGain),
   set: (db: number) => emit('updateAudioGain', dbToLinear(db)),
@@ -57,9 +60,11 @@ const fadeCurveOptions = [
       props.canEditAudioFades &&
       (props.selectedTrackKind === 'audio' || props.selectedTrackKind === 'video')
     "
+    v-model:toggle-value="isEnabled"
     :title="t('fastcat.clip.audioFade.title', 'Audio fades')"
+    has-toggle
   >
-    <div class="flex gap-4">
+    <div class="flex gap-4" :class="{ 'opacity-50 pointer-events-none': !isEnabled }">
       <!-- Left column: Balance and Fades -->
       <div class="flex-1 flex flex-col gap-4">
         <UiSliderInput
@@ -70,6 +75,7 @@ const fadeCurveOptions = [
           :max="1"
           :step="0.01"
           :default-value="0"
+          :disabled="!isEnabled"
           @update:model-value="(v: number) => emit('updateAudioBalance', v)"
         />
 
@@ -88,6 +94,7 @@ const fadeCurveOptions = [
                 :wheel-step-multiplier="10"
                 :min="0"
                 :max="props.audioFadeInMaxSec"
+                :disabled="!isEnabled"
                 @update:model-value="(v: any) => emit('updateAudioFadeInSec', Number(v))"
               />
               <UiSelect
@@ -96,6 +103,7 @@ const fadeCurveOptions = [
                 value-key="value"
                 label-key="label"
                 size="xs"
+                :disabled="!isEnabled"
                 @update:model-value="
                   (v: unknown) =>
                     emit(
@@ -121,6 +129,7 @@ const fadeCurveOptions = [
                 :wheel-step-multiplier="10"
                 :min="0"
                 :max="props.audioFadeOutMaxSec"
+                :disabled="!isEnabled"
                 @update:model-value="(v: any) => emit('updateAudioFadeOutSec', Number(v))"
               />
               <UiSelect
@@ -129,6 +138,7 @@ const fadeCurveOptions = [
                 value-key="value"
                 label-key="label"
                 size="xs"
+                :disabled="!isEnabled"
                 @update:model-value="
                   (v: unknown) =>
                     emit(
@@ -155,14 +165,14 @@ const fadeCurveOptions = [
           <span
             class="text-xs font-mono text-ui-text-muted cursor-pointer hover:text-primary-400 tabular-nums whitespace-nowrap"
             :title="t('common.actions.reset')"
-            @click="audioGainDb = 0"
+            @click="if (isEnabled) audioGainDb = 0;"
           >
             {{ audioGainDb <= -59.9 ? '-∞' : audioGainDb.toFixed(1)
             }}<span class="text-[10px] ml-0.5 opacity-50">dB</span>
           </span>
         </div>
         <div class="flex-1 min-h-[160px]">
-          <DbSlider v-model="audioGainDb" :level-db="props.audioLevelDb" />
+          <DbSlider v-model="audioGainDb" :level-db="props.audioLevelDb" :disabled="!isEnabled" />
         </div>
       </div>
     </div>
