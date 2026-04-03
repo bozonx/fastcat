@@ -120,9 +120,12 @@ const selectedGap = computed(() => {
 });
 
 const selectedClips = computed(() => {
-  const items = timelineStore.selectedItemIds.map((itemId) => {
+  const items = timelineStore.selectedItemIds.flatMap((itemId) => {
     const track = tracks.value.find((t) => t.items.some((it) => it.id === itemId));
-    return { trackId: track?.id ?? '', itemId };
+    // Only include clips, not gaps — gaps are handled via selectedGap
+    const item = track?.items.find((it) => it.id === itemId);
+    if (!item || item.kind !== 'clip') return [];
+    return [{ trackId: track?.id ?? '', itemId }];
   });
   return items.length > 0 ? items : null;
 });
@@ -239,82 +242,78 @@ function closeAllDrawers() {
   drawerActiveSnapPoint.value = null;
 }
 
+// Unified selection watcher — opens the correct drawer based on what is selected.
+// Replaces separate per-entity watchers to avoid drawer-flicker when switching between
+// different entity types (e.g. track → clip, gap → clip, etc.).
 watch(
-  () => !!timelineStore.selectedTrackId && timelineStore.selectedItemIds.length === 0,
-  (val) => {
-    if (val) {
-      closeAllDrawers();
-      isTrackPropertiesDrawerOpen.value = true;
-    }
-  },
-  { immediate: true },
-);
+  () => ({
+    trackId: timelineStore.selectedTrackId,
+    itemIds: timelineStore.selectedItemIds,
+    entity: selectionStore.selectedEntity,
+    transition: timelineStore.selectedTransition,
+    markerId: selectedMarkerId.value,
+    gap: selectedGap.value,
+  }),
+  (state) => {
+    const { trackId, itemIds, entity, transition, markerId, gap } = state;
 
-watch(
-  () => timelineStore.selectedItemIds.length,
-  (count) => {
-    if (!count) return;
     if (isLongPress.value) return;
 
-    // If multi-selection drawer is already open, don't flip back to single clip drawer
-    if (isMultiSelectionDrawerOpen.value) return;
+    // Prioritize: long-press multi-select already handled via enterMobileMultiSelection
+    if (isMultiSelectionDrawerOpen.value && itemIds.length > 0) return;
 
-    closeAllDrawers();
-
-    if (count > 1) {
-      isMultiSelectionDrawerOpen.value = true;
+    // Transition selected
+    if (transition) {
+      closeAllDrawers();
+      isTransitionDrawerOpen.value = true;
       return;
     }
 
-    isClipPropertiesDrawerOpen.value = true;
-  },
-  { immediate: true },
-);
-
-watch(
-  () => !!selectedMarkerId.value,
-  (val) => {
-    if (val) {
+    // Marker selected
+    if (markerId) {
       closeAllDrawers();
       isMarkerPropertiesDrawerOpen.value = true;
+      return;
     }
-  },
-  { immediate: true },
-);
 
-watch(
-  () =>
-    selectionStore.selectedEntity?.source === 'timeline' &&
-    selectionStore.selectedEntity.kind === 'selection-range',
-  (val) => {
-    if (val) {
+    // Selection range
+    if (entity?.source === 'timeline' && entity.kind === 'selection-range') {
       closeAllDrawers();
       isSelectionRangeDrawerOpen.value = true;
+      return;
     }
-  },
-  { immediate: true },
-);
 
-watch(
-  () => timelineStore.selectedTransition,
-  (val) => {
-    if (val) {
-      closeAllDrawers();
-      isTransitionDrawerOpen.value = true;
-    }
-  },
-  { immediate: true },
-);
-
-watch(
-  () => !!selectedGap.value,
-  (val) => {
-    if (val) {
+    // Gap selected — use the selectedGap computed to avoid TS narrowing issues
+    if (gap) {
       closeAllDrawers();
       isGapPropertiesDrawerOpen.value = true;
+      return;
+    }
+
+    // Clip(s) selected: only if no gap is active
+    if (itemIds.length > 0 && !gap) {
+      closeAllDrawers();
+      if (itemIds.length > 1) {
+        isMultiSelectionDrawerOpen.value = true;
+      } else {
+        isClipPropertiesDrawerOpen.value = true;
+      }
+      return;
+    }
+
+    // Track selected (and no clips/gaps)
+    if (trackId && itemIds.length === 0 && !gap) {
+      closeAllDrawers();
+      isTrackPropertiesDrawerOpen.value = true;
+      return;
+    }
+
+    // Nothing selected — close all
+    if (!trackId && itemIds.length === 0 && !entity && !transition && !markerId) {
+      closeAllDrawers();
     }
   },
-  { immediate: true },
+  { immediate: true, deep: false },
 );
 
 function onUpdateDrawerOpen(val: boolean) {
@@ -608,7 +607,7 @@ function onTimelineClick(e: MouseEvent) {
   if (e.button !== 0) return;
   const dx = Math.abs(e.clientX - clickStartX.value);
   const dy = Math.abs(e.clientY - clickStartY.value);
-  if (dx > 3 || dy > 3 || isLongPress.value) {
+  if (dx > 8 || dy > 8 || isLongPress.value) {
     isLongPress.value = false;
     return;
   }

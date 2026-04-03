@@ -48,6 +48,9 @@ const emit = defineEmits<{
   (e: 'marqueeStart', event: PointerEvent): void;
 }>();
 
+let pointerStartX = 0;
+let pointerStartY = 0;
+
 const style = computed(() => ({
   left: `${timeUsToPx(props.item.timelineRange.startUs, timelineStore.timelineZoom)}px`,
   width: `${Math.max(2, timeUsToPx(props.item.timelineRange.durationUs, timelineStore.timelineZoom))}px`,
@@ -112,13 +115,24 @@ function onPointerdown(e: PointerEvent) {
   e.stopPropagation();
 
   if (props.isMobile && e.pointerType === 'touch' && e.button === 0) {
-    emit('select', e);
+    // On mobile, record position for movement check — actual selection happens in onClick
+    pointerStartX = e.clientX;
+    pointerStartY = e.clientY;
     return;
   }
 
   if (e.button === 0) {
     emit('select', e);
   }
+}
+
+function onClick(e: MouseEvent) {
+  if (!props.isMobile) return;
+  // Skip if this was a scroll gesture (significant pointer movement)
+  const dx = Math.abs(e.clientX - pointerStartX);
+  const dy = Math.abs(e.clientY - pointerStartY);
+  if (dx > 5 || dy > 5) return;
+  emit('select', e as unknown as PointerEvent);
 }
 </script>
 
@@ -152,6 +166,7 @@ function onPointerdown(e: PointerEvent) {
       "
       :style="style"
       @pointerdown="onPointerdown"
+      @click.stop="onClick"
       @contextmenu.prevent.stop
     />
   </UContextMenu>

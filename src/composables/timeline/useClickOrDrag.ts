@@ -13,6 +13,9 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
   const longPressTriggered = ref(false);
   let rightClickDragTimer: number | null = null;
   const RIGHT_CLICK_DRAG_DELAY_MS = 300;
+  // Separate thresholds: drag needs less movement, long press allows more jitter
+  const DRAG_MOVE_THRESHOLD_PX = 5;
+  const LONG_PRESS_CANCEL_THRESHOLD_PX = 10;
 
   let longPressTimer: number | null = null;
   const LONG_PRESS_DELAY_MS = 500;
@@ -53,6 +56,8 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
 
     const startDrag = () => {
       if (didStartDrag.value) return;
+      // If long press already triggered, don't start drag — long press takes priority
+      if (longPressTriggered.value) return;
       if (longPressTimer !== null) {
         window.clearTimeout(longPressTimer);
         longPressTimer = null;
@@ -68,7 +73,14 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
     };
 
     const onMove = (ev: PointerEvent) => {
-      if (Math.abs(ev.clientX - startX) > 5 || Math.abs(ev.clientY - startY) > 5) {
+      const dx = Math.abs(ev.clientX - startX);
+      const dy = Math.abs(ev.clientY - startY);
+      // Cancel long press if finger moved too much (allow more jitter than drag threshold)
+      if ((dx > LONG_PRESS_CANCEL_THRESHOLD_PX || dy > LONG_PRESS_CANCEL_THRESHOLD_PX) && longPressTimer !== null) {
+        window.clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+      if (dx > DRAG_MOVE_THRESHOLD_PX || dy > DRAG_MOVE_THRESHOLD_PX) {
         startDrag();
       }
     };
