@@ -14,6 +14,7 @@ import {
   normalizeVideoSettings,
   normalizeProjectDefaults,
   normalizeHistorySettings,
+  normalizeBackupSettings,
 } from './normalizers/user-domains';
 import { normalizeLocale } from './normalizers/shared';
 
@@ -70,6 +71,7 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
     video: normalizeVideoSettings(input),
     mouse: normalizeMouseSettings(input.mouse),
     history: normalizeHistorySettings(input),
+    backup: normalizeBackupSettings(input),
   };
 }
 
