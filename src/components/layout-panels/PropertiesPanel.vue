@@ -220,6 +220,27 @@ const hasProxy = computed(() => {
 });
 
 const clipRef = ref<InstanceType<typeof ClipProperties> | null>(null);
+const contentRef = ref<HTMLElement | null>(null);
+
+function focusPrimaryElement() {
+  nextTick(() => {
+    setTimeout(() => {
+      if (!contentRef.value) return;
+      const target = contentRef.value.querySelector<HTMLElement>(
+        '[data-primary-focus="true"], [autofocus]',
+      );
+      if (target) {
+        target.focus();
+      }
+    }, 100); // Small delay for rendering completion
+  });
+}
+
+watch(displayMode, (val) => {
+  if (val !== 'empty') {
+    focusPrimaryElement();
+  }
+});
 
 function onPanelFocusIn(e: FocusEvent) {
   if (!isEditableTarget(e.target)) return;
@@ -339,7 +360,7 @@ function onPanelFocusOut() {
 
     <!-- Content Area -->
     <div class="flex-1 min-h-0 bg-ui-bg relative">
-      <div class="absolute inset-0 overflow-auto">
+      <div ref="contentRef" class="absolute inset-0 overflow-auto">
         <div class="flex flex-col p-2 items-start w-full">
           <div
             v-if="displayMode === 'empty'"
