@@ -64,9 +64,13 @@ const { createNuxtMock } = vi.hoisted(() => ({
       query: {},
       params: {},
       hash: '',
-      sync: true,
+      sync: vi.fn(() => Promise.resolve()),
     },
     runWithContext: (fn: any) => fn(),
+    vueApp: {
+      component: vi.fn(),
+      config: { globalProperties: {} },
+    },
   })),
 }));
 
@@ -76,6 +80,7 @@ vi.mock('#app', () => ({
   definePageMeta: vi.fn(),
   defineEmits: vi.fn(() => vi.fn()),
   defineProps: vi.fn(() => ({})),
+  defineNuxtPlugin: vi.fn((plugin) => plugin),
   useRoute: vi.fn(() => ({ path: '/', fullPath: '/', query: {}, params: {}, hash: '' })),
   useRouter: vi.fn(() => ({ push: vi.fn(), replace: vi.fn(), go: vi.fn(), back: vi.fn() })),
   useAsyncData: vi.fn(() => ({ data: ref(null), pending: ref(false), error: ref(null) })),
@@ -83,6 +88,9 @@ vi.mock('#app', () => ({
   useHead: vi.fn(),
   useFetch: vi.fn(() => ({ data: ref(null), pending: ref(false), error: ref(null) })),
   refresh: vi.fn(),
+  navigateTo: vi.fn(),
+  useCookie: vi.fn(() => ({ value: null })),
+  useRequestURL: vi.fn(() => ({ href: 'http://localhost', origin: 'http://localhost' })),
 }));
 
 vi.mock('#ui/composables/useToast', () => ({

@@ -12,6 +12,26 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 
+vi.mock('~/composables/editor/useProjectActions', () => ({
+  useProjectActions: () => ({
+    openProjectTab: vi.fn(),
+    closeCurrentProjectTab: vi.fn(),
+  }),
+}));
+
+vi.mock('#app', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    go: vi.fn(),
+    back: vi.fn(),
+  }),
+  useNuxtApp: () => ({
+    $notificationService: { add: vi.fn() },
+    $i18nService: { t: (key: string) => key },
+  }),
+}));
+
 const HotkeysHarness = defineComponent({
   setup() {
     useEditorHotkeys();
