@@ -141,24 +141,23 @@ function confirmDeleteTrack() {
   >
     <template #toolbar>
       <MobileDrawerToolbar>
+        <!-- Delete -->
+        <MobileDrawerToolbarButton
+          icon="i-heroicons-trash"
+          :label="t('common.delete', 'Delete')"
+          @click="requestDeleteTrack"
+        />
+
         <!-- Rename -->
         <MobileDrawerToolbarButton
-          icon="lucide:pencil"
+          icon="i-heroicons-pencil-square"
           :label="t('common.rename', 'Rename')"
           @click="isTrackRenameOpen = true"
         />
 
-        <!-- Delete -->
-        <MobileDrawerToolbarButton
-          icon="lucide:trash-2"
-          :label="t('common.delete', 'Delete')"
-          danger
-          @click="requestDeleteTrack"
-        />
-
         <!-- Lock / Unlock -->
         <MobileDrawerToolbarButton
-          :icon="selectedTrack?.locked ? 'lucide:lock-open' : 'lucide:lock'"
+          :icon="selectedTrack?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
           :label="
             selectedTrack?.locked
               ? t('fastcat.track.unlock', 'Unlock')
@@ -205,7 +204,7 @@ function confirmDeleteTrack() {
 
         <!-- Move Up -->
         <MobileDrawerToolbarButton
-          icon="lucide:arrow-up"
+          icon="i-heroicons-arrow-up"
           :label="t('fastcat.track.moveUp', 'Move up')"
           :disabled="isTrackFirstOfKind"
           @click="moveSelectedTrackUp"
@@ -213,7 +212,7 @@ function confirmDeleteTrack() {
 
         <!-- Move Down -->
         <MobileDrawerToolbarButton
-          icon="lucide:arrow-down"
+          icon="i-heroicons-arrow-down"
           :label="t('fastcat.track.moveDown', 'Move down')"
           :disabled="isTrackLastOfKind"
           @click="moveSelectedTrackDown"
@@ -280,7 +279,7 @@ function confirmDeleteTrack() {
           'Track is not empty. This action cannot be undone.',
         )
       "
-      color="error"
+      color="primary"
       icon="i-heroicons-exclamation-triangle"
       :confirm-text="t('common.delete', 'Delete')"
       @confirm="confirmDeleteTrack"

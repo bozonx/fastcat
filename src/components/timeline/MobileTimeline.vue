@@ -736,7 +736,6 @@ async function onClipAction(payload: TimelineClipActionPayload) {
           <MobileDrawerToolbarButton
             icon="i-heroicons-trash"
             :label="t('common.delete', 'Delete')"
-            color="error"
             @click="handleDelete"
           />
           <MobileDrawerToolbarButton

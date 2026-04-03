@@ -50,7 +50,6 @@ function handleDelete() {
         <MobileDrawerToolbarButton
           icon="i-heroicons-trash"
           :label="t('common.delete', 'Delete')"
-          danger
           @click="handleDelete"
         />
       </MobileDrawerToolbar>

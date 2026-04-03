@@ -63,7 +63,6 @@ function deleteGap() {
         <MobileDrawerToolbarButton
           icon="i-heroicons-trash"
           :label="t('common.delete', 'Delete')"
-          danger
           @click="deleteGap"
         />
       </MobileDrawerToolbar>
