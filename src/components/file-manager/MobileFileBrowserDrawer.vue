@@ -133,48 +133,49 @@ function handleAction(actionId: FileAction) {
     :is-full-height="isTextDocument"
   >
     <template #toolbar>
-      <MobileDrawerToolbar v-if="props.onAction" class="border-b border-ui-border bg-ui-bg/50">
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-trash"
-          :label="$t('common.delete', 'Delete')"
-          @click="handleAction('delete')"
-        />
-        <MobileDrawerToolbarButton
-          v-if="selectedEntriesList.length === 1"
-          icon="i-heroicons-pencil-square"
-          :label="$t('common.rename', 'Rename')"
-          @click="handleAction('rename')"
-        />
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-document-duplicate"
-          :label="$t('common.copy', 'Copy')"
-          @click="handleAction('copy')"
-        />
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-scissors"
-          :label="$t('common.cut', 'Cut')"
-          @click="handleAction('cut')"
-        />
-        <MobileDrawerToolbarButton
-          v-if="props.isTranscribable"
-          icon="i-heroicons-language"
-          :label="$t('videoEditor.fileManager.actions.transcribe', 'Transcribe')"
-          @click="handleAction('transcribe')"
-        />
-      </MobileDrawerToolbar>
+      <div class="flex flex-col bg-ui-bg/50">
+        <MobileDrawerToolbar v-if="props.onAction" class="border-b border-ui-border">
+          <MobileDrawerToolbarButton
+            icon="i-heroicons-trash"
+            :label="$t('common.delete', 'Delete')"
+            @click="handleAction('delete')"
+          />
+          <MobileDrawerToolbarButton
+            v-if="selectedEntriesList.length === 1"
+            icon="i-heroicons-pencil-square"
+            :label="$t('common.rename', 'Rename')"
+            @click="handleAction('rename')"
+          />
+          <MobileDrawerToolbarButton
+            icon="i-heroicons-document-duplicate"
+            :label="$t('common.copy', 'Copy')"
+            @click="handleAction('copy')"
+          />
+          <MobileDrawerToolbarButton
+            icon="i-heroicons-scissors"
+            :label="$t('common.cut', 'Cut')"
+            @click="handleAction('cut')"
+          />
+          <MobileDrawerToolbarButton
+            v-if="props.isTranscribable"
+            icon="i-heroicons-language"
+            :label="$t('videoEditor.fileManager.actions.transcribe', 'Transcribe')"
+            @click="handleAction('transcribe')"
+          />
+        </MobileDrawerToolbar>
+
+        <div v-if="topActions.length > 0 && !isTextDocument" class="py-2 px-4 border-b border-ui-border shrink-0">
+          <PropertyActionList
+            :actions="topActions"
+            vertical
+            variant="ghost"
+            size="md"
+          />
+        </div>
+      </div>
     </template>
 
     <div class="flex flex-col h-full relative overflow-hidden">
-
-      <div v-if="topActions.length > 0 && !isTextDocument" class="py-2 px-4 border-b border-ui-border shrink-0">
-        <PropertyActionList
-          :actions="topActions"
-          vertical
-          variant="ghost"
-          size="md"
-        />
-      </div>
-
       <!-- Scrollable content -->
       <div
         class="flex-1"
@@ -194,7 +195,6 @@ function handleAction(actionId: FileAction) {
           <MultiFileProperties :entries="selectedFsMultiple.entries" />
         </div>
       </div>
-
     </div>
   </UiMobileDrawer>
 </template>
