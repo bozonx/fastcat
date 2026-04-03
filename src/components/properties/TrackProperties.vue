@@ -22,6 +22,7 @@ import GenerateCaptionsModal from '~/components/properties/GenerateCaptionsModal
 
 const props = defineProps<{
   track: TimelineTrack;
+  hideActions?: boolean;
 }>();
 
 const { t } = useI18n();
@@ -241,7 +242,7 @@ const clipCount = computed(
 
 <template>
   <div class="w-full flex flex-col gap-2">
-    <PropertySection :title="t('fastcat.track.actions', 'Actions')">
+    <PropertySection v-if="!hideActions" :title="t('fastcat.track.actions', 'Actions')">
       <div class="flex flex-col w-full gap-3">
         <!-- Direct Actions Row (Matched with Header style) -->
         <div class="flex items-center gap-1.5 py-1">

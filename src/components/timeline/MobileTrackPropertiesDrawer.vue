@@ -4,9 +4,11 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { TimelineTrack } from '~/timeline/types';
 import TrackProperties from '~/components/properties/TrackProperties.vue';
+import GenerateCaptionsModal from '~/components/properties/GenerateCaptionsModal.vue';
 import MobileTimelineDrawer from './MobileTimelineDrawer.vue';
 import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
+import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -131,6 +133,22 @@ function confirmDeleteTrack() {
   isTrackDeleteConfirmOpen.value = false;
   emit('close');
 }
+
+const isGenerateCaptionsOpen = ref(false);
+
+const extraActions = computed(() => {
+  if (!selectedTrack.value) return [];
+  const list: any[] = [];
+  if (selectedTrack.value.kind === 'video') {
+    list.push({
+      id: 'generate-captions',
+      label: t('fastcat.captions.generate', 'Generate captions'),
+      icon: 'i-heroicons-chat-bubble-bottom-center-text',
+      onClick: () => (isGenerateCaptionsOpen.value = true),
+    });
+  }
+  return list;
+});
 </script>
 
 <template>
@@ -218,6 +236,15 @@ function confirmDeleteTrack() {
           @click="moveSelectedTrackDown"
         />
       </MobileDrawerToolbar>
+
+      <div v-if="extraActions.length > 0" class="py-2 px-4 border-b border-ui-border shrink-0">
+        <PropertyActionList
+          :actions="extraActions"
+          vertical
+          variant="ghost"
+          size="md"
+        />
+      </div>
     </template>
 
     <div v-if="selectedTrack" class="px-4 pt-4 pb-8 flex flex-col gap-4">
@@ -242,8 +269,14 @@ function confirmDeleteTrack() {
         />
       </div>
 
-      <TrackProperties :track="selectedTrack" />
+      <TrackProperties :track="selectedTrack" hide-actions />
     </div>
+
+    <GenerateCaptionsModal
+      v-if="selectedTrack?.kind === 'video'"
+      v-model:open="isGenerateCaptionsOpen"
+      :track-id="selectedTrack.id"
+    />
 
     <UiConfirmModal
       v-model:open="isTrackDeleteConfirmOpen"

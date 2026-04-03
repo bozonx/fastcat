@@ -6,6 +6,10 @@ import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 import PropertyTimecode from '~/components/properties/PropertyTimecode.vue';
 
+const props = defineProps<{
+  hideActions?: boolean;
+}>();
+
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
@@ -84,7 +88,7 @@ const mainActions = computed(() => [
 
 <template>
   <div v-if="selectionRange" class="w-full flex flex-col gap-2 text-ui-text">
-    <PropertySection :title="t('fastcat.selectionRange.actions', 'Actions')">
+    <PropertySection v-if="!hideActions" :title="t('fastcat.selectionRange.actions', 'Actions')">
       <div class="flex flex-col w-full">
         <PropertyActionList
           :actions="commonActions"

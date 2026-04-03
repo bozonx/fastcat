@@ -35,6 +35,7 @@ const props = defineProps<{
   track?: TimelineTrack;
   transition: ClipTransition | undefined;
   maxDuration?: number;
+  hideActions?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -218,6 +219,12 @@ function handleSavePreset() {
   isSaveModalOpen.value = false;
   newPresetName.value = '';
 }
+
+defineExpose({
+  openSaveModal: () => {
+    isSaveModalOpen.value = true;
+  },
+});
 </script>
 
 <template>
@@ -225,7 +232,7 @@ function handleSavePreset() {
     class="flex flex-col gap-3 p-3 bg-ui-bg-elevated border border-ui-border rounded-lg text-xs text-ui-text min-w-56 shadow-lg"
   >
     <!-- Header with edge icon -->
-    <div class="flex items-center justify-between">
+    <div v-if="!hideActions" class="flex items-center justify-between">
       <div class="flex items-center gap-2 font-semibold uppercase tracking-wide">
         <UIcon :name="edgeIcon" class="w-4 h-4 shrink-0 text-primary-400" />
         <span>{{ edge === 'in' ? 'IN' : 'OUT' }} {{ t('fastcat.timeline.transition.title') }}</span>

@@ -9,6 +9,7 @@ import PropertySection from '~/components/properties/PropertySection.vue';
 const props = defineProps<{
   trackId: string;
   itemId: string;
+  hideActions?: boolean;
 }>();
 
 const { t } = useI18n();
@@ -36,7 +37,7 @@ function deleteGap() {
 <template>
   <div class="w-full flex flex-col gap-2 text-ui-text">
     <!-- Gap actions panel -->
-    <PropertySection :title="t('fastcat.timeline.gap', 'Gap')">
+    <PropertySection v-if="!hideActions" :title="t('fastcat.timeline.gap', 'Gap')">
       <div class="px-3 pb-3">
         <p class="text-xs text-ui-text-muted mb-3">
           {{ t('fastcat.timeline.gapDescription', 'An empty gap in the track timeline.') }}
@@ -55,6 +56,6 @@ function deleteGap() {
     </PropertySection>
 
     <!-- Track properties below -->
-    <TrackProperties v-if="track" :track="track" />
+    <TrackProperties v-if="track" :track="track" :hide-actions="hideActions" />
   </div>
 </template>

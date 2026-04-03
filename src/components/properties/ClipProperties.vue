@@ -39,6 +39,7 @@ import { useClipHudProperties } from '~/composables/properties/useClipHudPropert
 
 const props = defineProps<{
   clip: TimelineClipItem;
+  hideActions?: boolean;
 }>();
 
 const { t } = useI18n();
@@ -377,6 +378,7 @@ defineExpose({
 <template>
   <div class="w-full flex flex-col gap-2 text-ui-text">
     <ClipActionsSection
+      v-if="!hideActions"
       :clip="clip"
       :track-kind="clipTrackKind"
       :is-free-position="isFreePosition"
