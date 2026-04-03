@@ -51,8 +51,8 @@ export function createDefaultTimelineDocument(params: {
     name: params.name,
     timebase: { fps: params.fps },
     tracks: [
-      { id: 'v1', kind: 'video', name: 'Video 1', videoHidden: false, items: [] },
       { id: 'v2', kind: 'video', name: 'Video 2', videoHidden: false, items: [] },
+      { id: 'v1', kind: 'video', name: 'Video 1', videoHidden: false, items: [] },
       { id: 'a1', kind: 'audio', name: 'Audio 1', audioMuted: false, audioSolo: false, items: [] },
       { id: 'a2', kind: 'audio', name: 'Audio 2', audioMuted: false, audioSolo: false, items: [] },
     ],
@@ -431,6 +431,30 @@ export function parseTimelineFromOtio(
     };
   });
 
+  const video = tracks.filter((t) => t.kind === 'video');
+  const audio = tracks.filter((t) => t.kind === 'audio');
+
+  const getTrackIndex = (id: string) => {
+    const m = id.match(/^(?:v|a)(\d+)$/);
+    return m ? parseInt(m[1], 10) : null;
+  };
+
+  video.sort((a, b) => {
+    const ia = getTrackIndex(a.id);
+    const ib = getTrackIndex(b.id);
+    if (ia !== null && ib !== null) return ib - ia;
+    return 0;
+  });
+
+  audio.sort((a, b) => {
+    const ia = getTrackIndex(a.id);
+    const ib = getTrackIndex(b.id);
+    if (ia !== null && ib !== null) return ia - ib;
+    return 0;
+  });
+
+  const normalizedTracks = [...video, ...audio];
+
   const docId = coerceId(fastcatMeta.docId, fallback.id);
   const version = typeof fastcatMeta.version === 'number' ? fastcatMeta.version : 0;
   const name = coerceName(parsed.name, fallback.name);
@@ -462,7 +486,7 @@ export function parseTimelineFromOtio(
         })
       : undefined;
 
-  if (tracks.length === 0) {
+  if (normalizedTracks.length === 0) {
     const base = createDefaultTimelineDocument({ id: docId, name, fps: timebase.fps });
     base.metadata = {
       ...(base.metadata ?? {}),
@@ -490,7 +514,7 @@ export function parseTimelineFromOtio(
     id: docId,
     name,
     timebase,
-    tracks,
+    tracks: normalizedTracks,
     metadata: {
       fastcat: {
         version,
