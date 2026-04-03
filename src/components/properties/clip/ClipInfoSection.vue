@@ -2,17 +2,24 @@
 import type { TimelineClipItem } from '~/timeline/types';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
-import UiTimecode from '~/components/ui/editor/UiTimecode.vue';
 import PropertyTimecode from '~/components/properties/PropertyTimecode.vue';
 import MediaMetadataList from '~/components/properties/MediaMetadataList.vue';
 
-const props = defineProps<{
-  clip: TimelineClipItem;
-  mediaMeta: {
-    video?: { displayWidth?: number; displayHeight?: number; fps?: number } | null;
-    audio?: { channels?: number; sampleRate?: number } | null;
-  } | null;
-}>();
+const props = withDefaults(
+  defineProps<{
+    clip: TimelineClipItem;
+    mediaMeta: {
+      video?: { displayWidth?: number; displayHeight?: number; fps?: number } | null;
+      audio?: { channels?: number; sampleRate?: number } | null;
+    } | null;
+    showSource?: boolean;
+    showInfo?: boolean;
+  }>(),
+  {
+    showSource: true,
+    showInfo: true,
+  },
+);
 
 const emit = defineEmits<{
   updateStartTime: [val: number];
@@ -25,14 +32,14 @@ const { t } = useI18n();
 
 <template>
   <PropertySection
-    v-if="props.clip.clipType === 'media'"
+    v-if="props.showSource && props.clip.clipType === 'media'"
     :title="t('common.source', 'Source File')"
   >
     <PropertyRow :label="t('common.path', 'Path')" :value="props.clip.source.path" />
     <MediaMetadataList :media-meta="props.mediaMeta as any" />
   </PropertySection>
 
-  <PropertySection :title="t('fastcat.clip.info', 'Clip Info')">
+  <PropertySection v-if="props.showInfo" class="hidden md:block">
     <PropertyTimecode
       :label="t('common.duration', 'Duration')"
       :model-value="props.clip.timelineRange.durationUs"
