@@ -66,7 +66,7 @@ describe('MobileFileBrowserGrid', () => {
     });
 
     // We can't easily check for blue-500 class in text mode, but we can find the indicators
-    expect(wrapper.find('.bg-blue-500').exists()).toBe(true);
+    expect(wrapper.find('.bg-selection-accent-500').exists()).toBe(true);
   });
 
   it('emits toggleSelection in selection mode on click', async () => {

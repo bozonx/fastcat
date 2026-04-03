@@ -101,6 +101,11 @@ vi.mock('#ui/utils', () => ({
   get: vi.fn(),
   omit: vi.fn(),
   mergeConfig: vi.fn(),
+  getDisplayValue: vi.fn((items: any[], value: any, options: any) => {
+    if (!items || items.length === 0) return '';
+    const item = items.find((i: any) => i[options?.valueKey || 'value'] === value);
+    return item ? item[options?.labelKey || 'label'] : '';
+  }),
 }));
 
 // Global stubs for non-aliased/auto-imported usage
