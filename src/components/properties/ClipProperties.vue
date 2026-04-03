@@ -38,6 +38,8 @@ import { useClipPropertiesActions } from '~/composables/properties/useClipProper
 import { useClipTextProperties } from '~/composables/properties/useClipTextProperties';
 import { useClipShapeProperties } from '~/composables/properties/useClipShapeProperties';
 import { useClipHudProperties } from '~/composables/properties/useClipHudProperties';
+import EffectsEditor from '~/components/effects/EffectsEditor.vue';
+import AudioEffectsEditor from '~/components/effects/AudioEffectsEditor.vue';
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -57,7 +59,29 @@ const focusStore = useFocusStore();
 const fileManagerStore = useFileManagerStore();
 const clipboardStore = useAppClipboard();
 
+const { isMobile } = useDevice();
+
 const isUiRenameModalOpen = ref(false);
+
+const activeTab = ref('clip');
+
+const tabs = computed(() => [
+  {
+    label: t('fastcat.clip.tabs.clip', 'Clip'),
+    value: 'clip',
+    icon: 'i-heroicons-film',
+  },
+  {
+    label: t('fastcat.clip.tabs.video', 'Video'),
+    value: 'video',
+    icon: 'i-heroicons-sparkles',
+  },
+  {
+    label: t('fastcat.clip.tabs.audio', 'Audio'),
+    value: 'audio',
+    icon: 'i-heroicons-speaker-wave',
+  },
+]);
 
 const isOpacityEnabled = computed({
   get: () => props.clip.opacityActive !== false,
@@ -443,120 +467,141 @@ defineExpose({
       @return-audio="handleReturnAudio"
     />
 
-    <ClipInfoSection
-      :clip="clip"
-      :media-meta="mediaMeta"
-      :show-source="false"
-      @update-start-time="handleUpdateStartTime"
-      @update-end-time="handleUpdateEndTime"
-      @update-duration="handleUpdateDuration"
-    />
+    <UTabs v-model="activeTab" :items="tabs" variant="link" :content="false" class="mb-2" />
 
-    <ClipSpeedSection
-      v-model:enabled="isSpeedEnabled"
-      :clip="clip"
-      :can-edit-reversed="canEditReversed"
-      @update-speed="(speed: number) => timelineStore.updateClipProperties(clip.trackId, clip.id, { speed })"
-    />
-
-    <ClipTypeSection
-      :clip="clip"
-      :hud-manifest="hudManifest"
-      :hud-control-values="hudControlValues"
-      @update-background-color="handleUpdateBackgroundColor"
-      @update-text="handleUpdateText"
-      @update-text-style="handleUpdateTextStyle"
-      @update-shape-type="handleUpdateShapeType"
-      @update-fill-color="handleUpdateFillColor"
-      @update-stroke-color="handleUpdateStrokeColor"
-      @update-stroke-width="handleUpdateStrokeWidth"
-      @update-shape-config="handleUpdateShapeConfig"
-      @update-hud-control="handleUpdateHudControl"
-    />
-
-    <ClipBlendingModeSection
-      v-model:enabled="isBlendingEnabled"
-      :clip-type="clip.clipType"
-      :blend-mode="(clip.blendMode ?? 'normal') as TimelineBlendMode"
-      :blend-mode-options="blendModeOptions"
-      @update-blend-mode="handleUpdateBlendMode"
-    />
-
-    <ClipOpacitySection
-      v-model:enabled="isOpacityEnabled"
-      :clip-type="clip.clipType"
-      :opacity="clip.opacity ?? 1"
-      @update-opacity="handleUpdateOpacity"
-    />
-
-    <ClipMaskSection
-      v-if="isVideoTrack"
-      v-model:enabled="isMaskEnabled"
-      :clip="clip"
-      @update-mask="handleUpdateMask"
-    />
-
-    <ClipAudioSection
-      v-model:enabled="isAudioFadesEnabled"
-      :can-edit-audio-fades="canEditAudioFades"
-      :can-edit-audio-balance="canEditAudioBalance"
-      :can-edit-audio-gain="canEditAudioGain"
-      :selected-track-kind="selectedClipTrack?.kind ?? null"
-      :audio-gain="audioGain"
-      :audio-balance="audioBalance"
-      :audio-fade-in-sec="audioFadeInSec"
-      :audio-fade-out-sec="audioFadeOutSec"
-      :audio-fade-in-max-sec="audioFadeInMaxSec"
-      :audio-fade-out-max-sec="audioFadeOutMaxSec"
-      :audio-fade-in-curve="audioFadeInCurve"
-      :audio-fade-out-curve="audioFadeOutCurve"
-      @update-audio-gain="updateAudioGain"
-      @update-audio-balance="updateAudioBalance"
-      @update-audio-fade-in-curve="updateAudioFadeInCurve"
-      @update-audio-fade-in-sec="updateAudioFadeInSec"
-      @update-audio-fade-out-curve="updateAudioFadeOutCurve"
-      @update-audio-fade-out-sec="updateAudioFadeOutSec"
-    />
-
-    <ClipTransitionsSection
-      v-model:enabled="isTransitionsEnabled"
-      :is-video-track="isVideoTrack"
-      :transition-in="clip.transitionIn ?? null"
-      :transition-out="clip.transitionOut ?? null"
-      :clip-duration-us="clip.timelineRange.durationUs"
-      @select-edge="selectTransitionEdge"
-      @toggle="toggleTransition"
-      @update-duration="({ edge, durationSec }) => updateTransitionDuration(edge, durationSec)"
-      @update-type="({ edge, type }) => updateTransitionType(edge, type)"
-    />
-
-    <div ref="effectsSectionRef">
-      <ClipEffectsSection
-        v-model:video-enabled="isVideoEffectsEnabled"
-        v-model:audio-enabled="isAudioEffectsEnabled"
-        :clip-type="clip.clipType"
-        :video-effects="clipVideoEffects"
-        :audio-effects="clipAudioEffects"
-        :can-edit-audio-effects="canEditAudioEffects"
-        @update-video-effects="handleUpdateClipEffects"
-        @update-audio-effects="handleUpdateClipAudioEffects"
+    <!-- Tab: Clip -->
+    <div v-if="activeTab === 'clip'" class="flex flex-col gap-2">
+      <ClipInfoSection
+        v-if="!isMobile"
+        :clip="clip"
+        :media-meta="mediaMeta"
+        :show-source="false"
+        @update-start-time="handleUpdateStartTime"
+        @update-end-time="handleUpdateEndTime"
+        @update-duration="handleUpdateDuration"
       />
+
+      <ClipSpeedSection
+        v-model:enabled="isSpeedEnabled"
+        :clip="clip"
+        :can-edit-reversed="canEditReversed"
+        @update-speed="(speed: number) => timelineStore.updateClipProperties(clip.trackId, clip.id, { speed })"
+      />
+
+      <ClipTransformSection
+        v-model:enabled="isTransformEnabled"
+        :clip="clip"
+        :track-kind="clipTrackKind"
+        :can-edit-reversed="canEditReversed"
+        :is-reversed="isReversed"
+        :media-meta="mediaMeta"
+        @update-transform="
+          (next) => timelineStore.updateClipProperties(clip.trackId, clip.id, { transform: next })
+        "
+        @toggle-reversed="toggleReversed"
+      />
+
+      <ClipInfoSection :clip="clip" :media-meta="mediaMeta" :show-info="false" />
     </div>
 
-    <ClipTransformSection
-      v-model:enabled="isTransformEnabled"
-      :clip="clip"
-      :track-kind="clipTrackKind"
-      :can-edit-reversed="canEditReversed"
-      :is-reversed="isReversed"
-      :media-meta="mediaMeta"
-      @update-transform="
-        (next) => timelineStore.updateClipProperties(clip.trackId, clip.id, { transform: next })
-      "
-      @toggle-reversed="toggleReversed"
-    />
+    <!-- Tab: Video -->
+    <div v-else-if="activeTab === 'video'" class="flex flex-col gap-2">
+      <ClipTypeSection
+        :clip="clip"
+        :hud-manifest="hudManifest"
+        :hud-control-values="hudControlValues"
+        @update-background-color="handleUpdateBackgroundColor"
+        @update-text="handleUpdateText"
+        @update-text-style="handleUpdateTextStyle"
+        @update-shape-type="handleUpdateShapeType"
+        @update-fill-color="handleUpdateFillColor"
+        @update-stroke-color="handleUpdateStrokeColor"
+        @update-stroke-width="handleUpdateStrokeWidth"
+        @update-shape-config="handleUpdateShapeConfig"
+        @update-hud-control="handleUpdateHudControl"
+      />
 
-    <ClipInfoSection :clip="clip" :media-meta="mediaMeta" :show-info="false" />
+      <ClipBlendingModeSection
+        v-model:enabled="isBlendingEnabled"
+        :clip-type="clip.clipType"
+        :blend-mode="(clip.blendMode ?? 'normal') as TimelineBlendMode"
+        :blend-mode-options="blendModeOptions"
+        @update-blend-mode="handleUpdateBlendMode"
+      />
+
+      <ClipOpacitySection
+        v-model:enabled="isOpacityEnabled"
+        :clip-type="clip.clipType"
+        :opacity="clip.opacity ?? 1"
+        @update-opacity="handleUpdateOpacity"
+      />
+
+      <ClipMaskSection
+        v-if="isVideoTrack"
+        v-model:enabled="isMaskEnabled"
+        :clip="clip"
+        @update-mask="handleUpdateMask"
+      />
+
+      <ClipTransitionsSection
+        v-model:enabled="isTransitionsEnabled"
+        :is-video-track="isVideoTrack"
+        :transition-in="clip.transitionIn ?? null"
+        :transition-out="clip.transitionOut ?? null"
+        :clip-duration-us="clip.timelineRange.durationUs"
+        @select-edge="selectTransitionEdge"
+        @toggle="toggleTransition"
+        @update-duration="({ edge, durationSec }) => updateTransitionDuration(edge, durationSec)"
+        @update-type="({ edge, type }) => updateTransitionType(edge, type)"
+      />
+
+      <div ref="effectsSectionRef">
+        <EffectsEditor
+          v-model:toggle-value="isVideoEffectsEnabled"
+          :effects="clipVideoEffects"
+          :title="t('fastcat.effects.videoTitle', 'Video effects')"
+          :add-label="t('fastcat.effects.add', 'Add')"
+          :empty-label="t('fastcat.effects.empty', 'No effects')"
+          :has-toggle="true"
+          :disabled="!isVideoEffectsEnabled"
+          @update:effects="handleUpdateClipEffects"
+        />
+      </div>
+    </div>
+
+    <!-- Tab: Audio -->
+    <div v-else-if="activeTab === 'audio'" class="flex flex-col gap-2">
+      <ClipAudioSection
+        v-model:enabled="isAudioFadesEnabled"
+        :can-edit-audio-fades="canEditAudioFades"
+        :can-edit-audio-balance="canEditAudioBalance"
+        :can-edit-audio-gain="canEditAudioGain"
+        :selected-track-kind="selectedClipTrack?.kind ?? null"
+        :audio-gain="audioGain"
+        :audio-balance="audioBalance"
+        :audio-fade-in-sec="audioFadeInSec"
+        :audio-fade-out-sec="audioFadeOutSec"
+        :audio-fade-in-max-sec="audioFadeInMaxSec"
+        :audio-fade-out-max-sec="audioFadeOutMaxSec"
+        :audio-fade-in-curve="audioFadeInCurve"
+        :audio-fade-out-curve="audioFadeOutCurve"
+        @update-audio-gain="updateAudioGain"
+        @update-audio-balance="updateAudioBalance"
+        @update-audio-fade-in-curve="updateAudioFadeInCurve"
+        @update-audio-fade-in-sec="updateAudioFadeInSec"
+        @update-audio-fade-out-curve="updateAudioFadeOutCurve"
+        @update-audio-fade-out-sec="updateAudioFadeOutSec"
+      />
+
+      <AudioEffectsEditor
+        v-if="canEditAudioEffects"
+        v-model:toggle-value="isAudioEffectsEnabled"
+        :effects="clipAudioEffects"
+        :has-toggle="true"
+        :disabled="!isAudioEffectsEnabled"
+        @update:effects="handleUpdateClipAudioEffects"
+      />
+    </div>
 
     <UiRenameModal
       :open="isUiRenameModalOpen"
@@ -572,3 +617,9 @@ defineExpose({
     />
   </div>
 </template>
+
+<style scoped>
+:deep([data-state='active']) {
+  color: var(--selection-accent-400) !important;
+}
+</style>

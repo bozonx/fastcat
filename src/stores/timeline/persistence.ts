@@ -144,6 +144,7 @@ export function createTimelinePersistenceModule(
         await writable.close();
 
         deps.onSaveSuccess?.(serialized);
+        return true;
       } catch (e: unknown) {
         deps.timelineSaveError.value =
           e instanceof Error ? e.message : 'Failed to save timeline file';
@@ -157,7 +158,9 @@ export function createTimelinePersistenceModule(
           currentTimelinePath === deps.currentTimelinePath.value
         ) {
           deps.isSavingTimeline.value = false;
-          deps.isTimelineDirty.value = autoSave.isDirty();
+          queueMicrotask(() => {
+            deps.isTimelineDirty.value = autoSave.isDirty();
+          });
         }
       }
     },
