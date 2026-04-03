@@ -278,7 +278,10 @@ export function useEntryPreview(params: {
           mimeType: getMimeTypeFromFilename(file.name),
           ext: fileExt,
           metadata:
-            entry.path && (mediaType.value === 'video' || mediaType.value === 'audio')
+            entry.path &&
+            (mediaType.value === 'video' ||
+              mediaType.value === 'audio' ||
+              mediaType.value === 'image')
               ? await params.mediaStore.getOrFetchMetadataByPath(entry.path, {
                   forceRefresh: true,
                 })

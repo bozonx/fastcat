@@ -301,7 +301,10 @@
       "texts": {
         "default": "Стандартный",
         "title": "Заголовок",
-        "subtitle": "Подзаголовок"
+        "subtitle": "Подзаголовок",
+        "setAsDefault": "Сделать стандартным",
+        "selectPreset": "Выберите текстовый пресет",
+        "watchPresets": "Смотреть пресеты"
       },
       "shapes": {
         "square": "Квадрат",
@@ -797,6 +800,7 @@
       "splitClips": "Разрезать клипы по курсору",
       "textClipDefaultName": "Текст",
       "textClipDefaultText": "Текст",
+      "shiftForPresets": "Удерживайте Shift при вставке для выбора пресета",
       "toggleTrackMute": "Вкл/выкл звук дорожки",
       "toggleTrackSolo": "Соло дорожки",
       "toggleTrackVisibility": "Показать/скрыть дорожку",

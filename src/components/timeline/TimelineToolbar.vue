@@ -18,6 +18,8 @@ import {
   timelineZoomScaleToPosition,
 } from '~/utils/zoom';
 import type { TextClipStyle } from '~/timeline/types';
+import { useTimelineTextPreset } from '~/composables/timeline/useTimelineTextPreset';
+import { useUiStore } from '~/stores/ui.store';
 import TimelineSnapSettingsModal from './TimelineSnapSettingsModal.vue';
 
 import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
@@ -28,7 +30,9 @@ const settingsStore = useTimelineSettingsStore();
 const focusStore = useFocusStore();
 const presetsStore = usePresetsStore();
 
+const uiStore = useUiStore();
 const { isSnapSettingsModalOpen } = storeToRefs(settingsStore);
+const { showPresetModal } = useTimelineTextPreset();
 
 const emit = defineEmits<{
   (e: 'dragVirtualStart', event: DragEvent, type: 'adjustment' | 'background' | 'text'): void;
@@ -132,32 +136,58 @@ const textPresetItems = computed(() => {
   return [...standard, ...custom];
 });
 
-const standardTextPresets = computed<Record<string, { style: TextClipStyle }>>(() => ({
+const standardTextPresets = computed<Record<string, { style: TextClipStyle; text?: string }>>(() => ({
   default: {
     style: { fontSize: 64, color: '#ffffff', fontFamily: 'sans-serif' },
   },
   title: {
     style: { fontSize: 96, fontWeight: '800', color: '#ffffff', fontFamily: 'sans-serif' },
+    text: 'Title',
   },
   subtitle: {
     style: { fontSize: 48, fontWeight: '400', color: '#aaaaaa', fontFamily: 'sans-serif' },
+    text: 'Subtitle',
   },
 }));
 
-function addTextClip() {
+function addTextClip(event?: MouseEvent) {
+  const isShift = event?.shiftKey || false;
+
   const presetId = presetsStore.defaultTextPresetId;
   const preset =
     standardTextPresets.value[presetId] ||
     presetsStore.customPresets.find((p) => p.id === presetId)?.params;
 
-  if (preset) {
-    timelineStore.addTextClipAtPlayhead({
-      style: preset.style,
-    });
-  } else {
-    timelineStore.addTextClipAtPlayhead();
+  const clipIds = preset
+    ? timelineStore.addTextClipAtPlayhead({
+        style: JSON.parse(JSON.stringify(toRaw(preset.style))),
+        text: preset.text, // Assume preset might have text
+      })
+    : timelineStore.addTextClipAtPlayhead();
+
+  if (isShift && clipIds.length > 0) {
+    // Show modal for the first created clip (usually there's only one)
+    const trackId = timelineStore.timelineDoc?.tracks.find((t: any) =>
+      t.items.some((it: any) => it.id === clipIds[0]),
+    )?.id;
+    if (trackId && clipIds[0]) {
+      showPresetModal(trackId, clipIds[0]);
+    }
   }
 }
+
+const textContextMenuItems = computed(() => [
+  [
+    {
+      label: t('fastcat.library.texts.watchPresets', 'View presets'),
+      icon: 'i-heroicons-sparkles',
+      onSelect: () => {
+        uiStore.activeLibraryTab = 'texts';
+        focusStore.setPanelFocus('left'); // Focus left panel (Library)
+      },
+    },
+  ],
+]);
 
 function onDragStart(event: DragEvent, type: 'adjustment' | 'background' | 'text') {
   if (event.dataTransfer) {
@@ -280,7 +310,7 @@ function onToolbarContextMenu(e: MouseEvent) {
             :variant="timelineStore.isTrimModeActive ? 'solid' : 'ghost'"
             :color="timelineStore.isTrimModeActive ? 'primary' : 'neutral'"
             icon="i-heroicons-scissors"
-            :aria-label="t('fastcat.timeline.trim', 'Trim')"
+            :ariaLabel="t('fastcat.timeline.trim', 'Trim')"
             :items="trimMenuItems"
             button-class="hover:bg-ui-bg-hover/60"
             caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
@@ -351,28 +381,29 @@ function onToolbarContextMenu(e: MouseEvent) {
         </UiTooltip>
 
         <UiTooltip
-          :text="`${t('fastcat.timeline.addText')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
+          :text="`${t('fastcat.timeline.addText')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')}). ${t('fastcat.timeline.shiftForPresets', 'Hold Shift to choose preset after insertion')}`"
         >
-          <div
-            draggable="true"
-            @dragstart="onDragStart($event, 'text')"
-            @dragend="onDragEnd"
-            @contextmenu.prevent="() => {}"
-          >
-            <UButton
-              size="xs"
-              variant="ghost"
-              color="neutral"
-              icon="i-heroicons-chat-bubble-bottom-center-text"
-              class="hover:bg-ui-bg-hover/60"
-              @click="
-                (e) => {
-                  addTextClip();
-                  (e.currentTarget as HTMLElement).blur();
-                }
-              "
-            />
-          </div>
+          <UContextMenu :items="textContextMenuItems">
+            <div
+              draggable="true"
+              @dragstart="onDragStart($event, 'text')"
+              @dragend="onDragEnd"
+            >
+              <UButton
+                size="xs"
+                variant="ghost"
+                color="neutral"
+                icon="i-heroicons-chat-bubble-bottom-center-text"
+                class="hover:bg-ui-bg-hover/60"
+                @click="
+                  (e) => {
+                    addTextClip(e);
+                    (e.currentTarget as HTMLElement).blur();
+                  }
+                "
+              />
+            </div>
+          </UContextMenu>
         </UiTooltip>
 
         <!-- Separator -->

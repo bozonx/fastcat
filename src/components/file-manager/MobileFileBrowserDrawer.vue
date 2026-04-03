@@ -101,14 +101,30 @@ const selectedEntriesList = computed(() => {
   return [selectedEntity.value.entry];
 });
 
+const isFullyUnsupported = computed(() => {
+  const entry = selectedFsEntry.value?.entry;
+  if (!entry || entry.kind !== 'file' || !entry.path) return false;
+  const mediaStore = useMediaStore();
+  if (mediaStore.metadataLoadFailed[entry.path]) return true;
+  const meta = mediaStore.mediaMetadata[entry.path];
+  if (!meta) return false;
+  const type = getMediaTypeFromFilename(entry.name);
+  if (type === 'image' && meta.image?.canDisplay === false) return true;
+  if (type === 'video' && meta.video?.canDecode === false) return true;
+  if (type === 'audio' && meta.audio?.canDecode === false) return true;
+  return false;
+});
+
 const canAddToTimeline = computed(() => {
   if (isSelectionMode.value) return false;
   if (!selectedEntity.value || selectedEntity.value.kind !== 'file') return false;
+  if (isFullyUnsupported.value) return false;
   return isOpenableProjectFileName(selectedEntity.value.name);
 });
 
 const canConvert = computed(() => {
   if (!selectedFsEntry.value || selectedFsEntry.value.entry.kind !== 'file') return false;
+  if (isFullyUnsupported.value) return false;
   const type = getMediaTypeFromFilename(selectedFsEntry.value.entry.name);
   return ['video', 'audio', 'image'].includes(type);
 });

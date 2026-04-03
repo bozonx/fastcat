@@ -315,10 +315,14 @@ const { getContextMenuItems } = useFileContextMenu(
   {
     isGeneratingProxyInDirectory: isDirectoryGeneratingProxy,
     folderHasVideos,
-    isOpenableMediaFile: (entry: FsEntry) =>
-      entry.kind === 'file' && isOpenableProjectFileName(entry.name),
+    isOpenableMediaFile: (entry: FsEntry) => {
+      if (entry.kind !== 'file' || !entry.path) return false;
+      if (fileCompatibility.value[entry.path]?.status === 'fully_unsupported') return false;
+      return isOpenableProjectFileName(entry.name);
+    },
     isConvertibleMediaFile: (entry: FsEntry) => {
-      if (entry.kind !== 'file') return false;
+      if (entry.kind !== 'file' || !entry.path) return false;
+      if (fileCompatibility.value[entry.path]?.status === 'fully_unsupported') return false;
       const type = getMediaTypeFromFilename(entry.name);
       return type === 'video' || type === 'audio' || type === 'image';
     },

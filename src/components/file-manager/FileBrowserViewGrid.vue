@@ -8,6 +8,7 @@ import { useClipboardPaths } from '~/composables/file-manager/useClipboardIndica
 import type { FsEntry } from '~/types/fs';
 import { WORKSPACE_COMMON_PATH_PREFIX, isWorkspaceCommonPath } from '~/utils/workspace-common';
 import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
+import { useMediaStore } from '~/stores/media.store';
 import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
 import UiProgressSpinner from '~/components/ui/UiProgressSpinner.vue';
 
@@ -102,6 +103,12 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
     renameTimer = null;
   }
 }
+
+function handleImageError(entry: ExtendedFsEntry) {
+  if (entry.objectUrl) {
+    entry.objectUrl = undefined;
+  }
+}
 </script>
 
 <template>
@@ -159,6 +166,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
             :src="entry.objectUrl"
             :alt="entry.name"
             class="max-w-full max-h-full object-contain"
+            @error="handleImageError(entry)"
           />
           <img
             v-else-if="
@@ -167,6 +175,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
             :src="videoThumbnails[entry.path]"
             :alt="entry.name"
             class="max-w-full max-h-full object-contain"
+            @error="handleImageError(entry)"
           />
           <div
             v-else-if="proxyStore.generatingProxies.has(entry.path || '')"

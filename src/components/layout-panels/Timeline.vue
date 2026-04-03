@@ -28,6 +28,7 @@ import { useTimelineTextPreset } from '~/composables/timeline/useTimelineTextPre
 import { useTimelineDropHandling } from '~/composables/timeline/useTimelineDropHandling';
 import { useTimelineInteraction } from '~/composables/timeline/useTimelineInteraction';
 import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
+import TextPresetSelectionModal from '~/components/timeline/TextPresetSelectionModal.vue';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -123,7 +124,13 @@ const { onTimelineClick, handleTimelineClickAction } = useTimelineClickActions({
   getActiveScrollEl,
 });
 
-const { textPresetMenuRef, textPresetMenuItems } = useTimelineTextPreset();
+const {
+  textPresetMenuRef,
+  textPresetMenuItems,
+  isPresetModalOpen,
+  pendingClipInfo,
+  applyTextPreset,
+} = useTimelineTextPreset();
 
 const {
   dragPreview,
@@ -310,10 +317,12 @@ async function onDrop(e: DragEvent, trackId: string) {
     try {
       const parsed = JSON.parse(libraryItemData);
       if (parsed.kind || (Array.isArray(parsed) && parsed.length > 0 && parsed[0].kind)) {
+        const showPresets = isLayer1Active(e as unknown as MouseEvent, workspaceStore.userSettings);
         await handleLibraryDrop(libraryItemData, trackId, startUs, {
           pseudo,
           clientX: e.clientX,
           clientY: e.clientY,
+          showPresets,
         });
         return;
       }
@@ -362,6 +371,13 @@ function onDragVirtualEnd() {
       :items="textPresetMenuItems"
       :target-el="containerRef"
       manual
+    />
+    <TextPresetSelectionModal
+      v-if="pendingClipInfo"
+      v-model:open="isPresetModalOpen"
+      :track-id="pendingClipInfo.trackId"
+      :item-id="pendingClipInfo.itemId"
+      @select="(id) => applyTextPreset(id, pendingClipInfo!)"
     />
 
     <!-- Row 1: Toolbar -->

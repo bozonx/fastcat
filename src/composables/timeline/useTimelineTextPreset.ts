@@ -11,8 +11,10 @@ export function useTimelineTextPreset() {
   const uiStore = useUiStore();
 
   const textPresetMenuRef = ref<InstanceType<typeof UiContextMenuPortal> | null>(null);
+  const isPresetModalOpen = ref(false);
+  const pendingClipInfo = ref<{ trackId: string; itemId: string } | null>(null);
 
-  const standardPresets: Record<string, { style: Record<string, unknown> }> = {
+  const standardPresets: Record<string, { style: Record<string, unknown>; text?: string }> = {
     default: {
       style: { fontSize: 64, color: '#ffffff', fontFamily: 'sans-serif' },
     },
@@ -24,8 +26,8 @@ export function useTimelineTextPreset() {
     },
   };
 
-  function applyTextPreset(presetId: string) {
-    const trigger = uiStore.showTextPresetMenuTrigger;
+  function applyTextPreset(presetId: string, target?: { trackId: string; itemId: string }) {
+    const trigger = target || uiStore.showTextPresetMenuTrigger;
     if (!trigger) return;
 
     const preset =
@@ -35,8 +37,14 @@ export function useTimelineTextPreset() {
     if (preset) {
       timelineStore.updateClipProperties(trigger.trackId, trigger.itemId, {
         style: preset.style,
+        text: preset.text, // Also apply text if it exists in the preset
       });
     }
+  }
+
+  function showPresetModal(trackId: string, itemId: string) {
+    pendingClipInfo.value = { trackId, itemId };
+    isPresetModalOpen.value = true;
   }
 
   const textPresetMenuItems = computed(() => {
@@ -79,5 +87,12 @@ export function useTimelineTextPreset() {
     },
   );
 
-  return { textPresetMenuRef, textPresetMenuItems };
+  return {
+    textPresetMenuRef,
+    textPresetMenuItems,
+    isPresetModalOpen,
+    pendingClipInfo,
+    showPresetModal,
+    applyTextPreset,
+  };
 }

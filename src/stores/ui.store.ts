@@ -76,6 +76,7 @@ export const useUiStore = defineStore('ui', () => {
   const isProjectSettingsOpen = ref(false);
   const isEditorSettingsOpen = ref(false);
   const activeModalsCount = ref(0);
+  const activeLibraryTab = ref<'texts' | 'shapes' | 'hud'>('texts');
 
   function notifyFileManagerUpdate() {
     fileManagerUpdateCounter.value++;
@@ -275,5 +276,6 @@ export const useUiStore = defineStore('ui', () => {
     isProjectSettingsOpen,
     isEditorSettingsOpen,
     activeModalsCount,
+    activeLibraryTab,
   };
 });

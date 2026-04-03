@@ -14,7 +14,11 @@ const { t } = useI18n();
 const selectionStore = useSelectionStore();
 const presetsStore = usePresetsStore();
 
-const activeTab = ref<'texts' | 'shapes' | 'hud'>('texts');
+const uiStore = useUiStore();
+const activeTab = computed({
+  get: () => uiStore.activeLibraryTab,
+  set: (val) => (uiStore.activeLibraryTab = val),
+});
 
 const standardTexts = [
   {
@@ -193,6 +197,14 @@ function updateCustomHudsOrder(newCustomHuds: any[]) {
                   {{ t(`fastcat.library.texts.${text.type}`, text.name) }}
                 </h4>
               </div>
+              <UButton
+                :icon="presetsStore.defaultTextPresetId === text.type ? 'i-heroicons-star-solid' : 'i-heroicons-star'"
+                :color="presetsStore.defaultTextPresetId === text.type ? 'yellow' : 'neutral'"
+                variant="ghost"
+                size="xs"
+                :title="t('fastcat.library.texts.setAsDefault', 'Set as default')"
+                @click.stop="presetsStore.defaultTextPresetId = text.type"
+              />
             </div>
             <div
               v-if="standardTexts.length === 0"
@@ -240,14 +252,23 @@ function updateCustomHudsOrder(newCustomHuds: any[]) {
                 />
                 <div class="flex-1 min-w-0 flex items-center justify-between">
                   <h4 class="text-sm font-medium text-ui-text truncate">{{ text.name }}</h4>
-                  <UButton
-                    icon="i-heroicons-trash"
-                    color="red"
-                    variant="ghost"
-                    size="xs"
-                    class="opacity-0 group-hover:opacity-100"
-                    @click.stop="presetsStore.removePreset(text.id)"
-                  />
+                  <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <UButton
+                      :icon="presetsStore.defaultTextPresetId === text.id ? 'i-heroicons-star-solid' : 'i-heroicons-star'"
+                      :color="presetsStore.defaultTextPresetId === text.id ? 'yellow' : 'neutral'"
+                      variant="ghost"
+                      size="xs"
+                      :title="t('fastcat.library.texts.setAsDefault', 'Set as default')"
+                      @click.stop="presetsStore.defaultTextPresetId = text.id"
+                    />
+                    <UButton
+                      icon="i-heroicons-trash"
+                      color="red"
+                      variant="ghost"
+                      size="xs"
+                      @click.stop="presetsStore.removePreset(text.id)"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

@@ -133,6 +133,12 @@ function getThumbnail(entry: FsEntry) {
   return (entry as ExtendedFsEntry).objectUrl || (entry.path ? props.thumbnails[entry.path] : null);
 }
 
+function handleImageError(entry: ExtendedFsEntry) {
+  if (entry.objectUrl) {
+    entry.objectUrl = undefined;
+  }
+}
+
 onBeforeUnmount(clearLongPress);
 </script>
 
@@ -190,6 +196,7 @@ onBeforeUnmount(clearLongPress);
                 class="w-full h-full object-cover transition-transform duration-300"
                 :class="{ 'scale-110 blur-[1px] opacity-70': isSelected(entry) && isSelectionMode }"
                 loading="lazy"
+                @error="handleImageError(entry)"
               />
             </template>
             <template v-else>

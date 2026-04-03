@@ -138,7 +138,7 @@ export interface TimelineClipsModule {
     hudType?: import('~/timeline/types').HudType;
     pseudo?: boolean;
     trackId?: string;
-  }) => void;
+  }) => string[];
   addVirtualClipToTrack: (
     input: {
       trackId: string;
@@ -169,20 +169,20 @@ export interface TimelineClipsModule {
       historyDebounceMs?: number;
       labelKey?: string;
     },
-  ) => void;
+  ) => string[];
   addAdjustmentClipAtPlayhead: (options?: {
     durationUs?: number;
     name?: string;
     pseudo?: boolean;
     trackId?: string;
-  }) => void;
+  }) => string[];
   addBackgroundClipAtPlayhead: (options?: {
     durationUs?: number;
     name?: string;
     backgroundColor?: string;
     pseudo?: boolean;
     trackId?: string;
-  }) => void;
+  }) => string[];
   addTextClipAtPlayhead: (options?: {
     durationUs?: number;
     name?: string;
@@ -190,7 +190,7 @@ export interface TimelineClipsModule {
     style?: TextClipStyle;
     pseudo?: boolean;
     trackId?: string;
-  }) => void;
+  }) => string[];
   setClipFreezeFrameFromPlayhead: (input: { trackId: string; itemId: string }) => void;
   resetClipFreezeFrame: (input: { trackId: string; itemId: string }) => void;
   toggleDisableTargetClip: () => Promise<void>;
@@ -711,7 +711,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     }
 
     const trackId = input.trackId ?? deps.resolveTargetVideoTrackIdForInsert();
-    deps.applyTimeline({
+    return deps.applyTimeline({
       type: 'add_virtual_clip_to_track',
       trackId,
       clipType: input.clipType,
@@ -819,7 +819,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     pseudo?: boolean;
     trackId?: string;
   }) {
-    addVirtualClipAtPlayhead({
+    return addVirtualClipAtPlayhead({
       clipType: 'adjustment',
       name: options?.name ?? 'Adjustment',
       durationUs: options?.durationUs,
@@ -835,7 +835,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     pseudo?: boolean;
     trackId?: string;
   }) {
-    addVirtualClipAtPlayhead({
+    return addVirtualClipAtPlayhead({
       clipType: 'background',
       name: options?.name ?? 'Background',
       durationUs: options?.durationUs,
@@ -853,7 +853,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     pseudo?: boolean;
     trackId?: string;
   }) {
-    addVirtualClipAtPlayhead({
+    return addVirtualClipAtPlayhead({
       clipType: 'text',
       name: options?.name ?? 'Text',
       durationUs: options?.durationUs,

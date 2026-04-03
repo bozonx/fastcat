@@ -14,6 +14,7 @@ import type { HudType, ShapeType } from '~/timeline/types';
 import { useThrottleFn } from '@vueuse/core';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import { useUiStore } from '~/stores/ui.store';
+import { useTimelineTextPreset } from './useTimelineTextPreset';
 
 export interface UseTimelineDropHandlingOptions {
   scrollEl: Ref<HTMLElement | null>;
@@ -66,6 +67,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
   const uiStore = useUiStore();
   const toast = useToast();
   const { t } = useI18n();
+  const { showPresetModal } = useTimelineTextPreset();
 
   const dragPreview = ref<DragPreview | null>(null);
 
@@ -522,7 +524,12 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     data: string,
     trackId: string,
     startUs: number,
-    options?: { pseudo?: boolean; clientX?: number; clientY?: number },
+    options?: {
+      pseudo?: boolean;
+      clientX?: number;
+      clientY?: number;
+      showPresets?: boolean;
+    },
   ) {
     try {
       const payload = JSON.parse(data) as unknown;
@@ -547,13 +554,17 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
         if (result.added) {
           addedCount++;
 
-          if (item.kind === 'text' && item.isRightClick && result.trackId && result.itemId) {
-            uiStore.triggerShowTextPresetMenu({
-              trackId: result.trackId,
-              itemId: result.itemId,
-              x: options?.clientX ?? 0,
-              y: options?.clientY ?? 0,
-            });
+          if (item.kind === 'text') {
+            if (item.isRightClick && result.trackId && result.itemId) {
+              uiStore.triggerShowTextPresetMenu({
+                trackId: result.trackId,
+                itemId: result.itemId,
+                x: options?.clientX ?? 0,
+                y: options?.clientY ?? 0,
+              });
+            } else if (options?.showPresets && result.trackId && result.itemId) {
+              showPresetModal(result.trackId, result.itemId);
+            }
           }
         }
       }
