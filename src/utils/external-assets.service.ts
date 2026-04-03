@@ -25,9 +25,7 @@ export async function loadExternalAssets(params: {
   assets: ExternalAsset[];
   getProjectFileHandle: (path: string, options: { create: boolean }) => Promise<FileSystemFileHandle | null>;
 }): Promise<AssetLoadResult[]> {
-  const results: AssetLoadResult[] = [];
-
-  for (const asset of params.assets) {
+  const promises = params.assets.map(async (asset) => {
     try {
       const response = await fetch(asset.url);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -58,7 +56,7 @@ export async function loadExternalAssets(params: {
                      IMAGES_DIR_NAME;
       
       if (!filename) {
-        filename = `asset-${Date.now()}.${resolvedType === 'image' ? 'png' : resolvedType === 'video' ? 'mp4' : 'mp3'}`;
+        filename = `asset-${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${resolvedType === 'image' ? 'png' : resolvedType === 'video' ? 'mp4' : 'mp3'}`;
       }
 
       const relativePath = `${folder}/${filename}`;
@@ -70,21 +68,21 @@ export async function loadExternalAssets(params: {
       await writable.write(blob);
       await writable.close();
 
-      results.push({
+      return {
         asset: { ...asset, id: asset.id || filename, type: resolvedType, filename },
         path: relativePath,
         success: true
-      });
+      };
     } catch (e) {
       console.error(`Failed to load asset ${asset.url}:`, e);
-      results.push({
+      return {
         asset,
         path: '',
         success: false,
         error: e instanceof Error ? e.message : String(e)
-      });
+      };
     }
-  }
+  });
 
-  return results;
+  return Promise.all(promises);
 }
