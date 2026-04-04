@@ -102,7 +102,10 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     })) as FileSystemDirectoryHandle | null;
   }
 
-  async readDirectory(path: string): Promise<VfsEntry[]> {
+  async readDirectory(
+    path: string,
+    _options?: { sortBy?: string; sortOrder?: 'asc' | 'desc' },
+  ): Promise<VfsEntry[]> {
     const handle = (await this.getHandleByPath(path, {
       isFile: false,
     })) as FileSystemDirectoryHandle | null;

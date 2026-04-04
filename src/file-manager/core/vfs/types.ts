@@ -22,7 +22,10 @@ export interface IFileSystemAdapter {
   /**
    * Reads a directory and returns its children entries
    */
-  readDirectory(path: string): Promise<VfsEntry[]>;
+  readDirectory(
+    path: string,
+    options?: { sortBy?: string; sortOrder?: 'asc' | 'desc' },
+  ): Promise<VfsEntry[]>;
 
   /**
    * Creates a directory at the given path

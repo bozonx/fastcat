@@ -59,7 +59,10 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     return cached;
   }
 
-  async readDirectory(path: string): Promise<VfsEntry[]> {
+  async readDirectory(
+    path: string,
+    options?: { sortBy?: string; sortOrder?: 'asc' | 'desc' },
+  ): Promise<VfsEntry[]> {
     const config = this.resolveConfig();
 
     // Ensure path is in cache and we know its type
@@ -108,7 +111,12 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       return entries;
     }
 
-    const response = await fetchRemoteVfsList({ config, path });
+    const response = await fetchRemoteVfsList({
+      config,
+      path,
+      sortBy: options?.sortBy,
+      sortOrder: options?.sortOrder,
+    });
     
     // Update cache
     this.idCache.set(path, { id: path === '/' ? 'virtual-all' : this.idCache.get(path)?.id || '', type: 'directory' });

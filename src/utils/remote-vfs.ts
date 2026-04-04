@@ -207,10 +207,22 @@ export function getRemoteThumbnailUrl(params: { baseUrl: string; media: RemoteVf
 export async function fetchRemoteVfsList(params: {
   config: RemoteVfsClientConfig;
   path: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
   signal?: AbortSignal;
 }): Promise<RemoteVfsListResponse> {
   const url = new URL(joinPath(params.config.baseUrl, 'list'));
   url.searchParams.set('path', params.path || '/');
+
+  if (params.sortBy) {
+    // Map internal fields to API fields
+    const apiSortBy = params.sortBy === 'name' ? 'title' : 'createdAt';
+    url.searchParams.set('sortBy', apiSortBy);
+  }
+
+  if (params.sortOrder) {
+    url.searchParams.set('sortOrder', params.sortOrder);
+  }
 
   const response = await fetch(url.toString(), {
     method: 'GET',

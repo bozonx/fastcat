@@ -60,6 +60,7 @@ export function useFileBrowserRemote({
   onRootDrop,
   handleFiles,
 }: UseFileBrowserRemoteOptions) {
+  const fileManagerStore = useFileManagerStore();
   const workspaceStore = useWorkspaceStore();
   const uiStore = useUiStore();
   const runtimeConfig = useRuntimeConfig();
@@ -128,7 +129,10 @@ export function useFileBrowserRemote({
     try {
       // Use VFS instead of direct API call to benefit from BloggerDogVfsAdapter logic (like Content Item-as-folder)
       const path = remoteCurrentFolder.value.remotePath || '/';
-      const items = await vfs.readDirectory(path);
+      const items = await vfs.readDirectory(path, {
+        sortBy: fileManagerStore.sortOption.field,
+        sortOrder: fileManagerStore.sortOption.order,
+      });
       
       folderEntries.value = items.map((entry: any) => {
         // Ensure entrance into Content Items works by marking them as remote
