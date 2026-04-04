@@ -40,10 +40,13 @@ import FileBrowserViewGrid from '~/components/file-manager/FileBrowserViewGrid.v
 import FileBrowserViewList from '~/components/file-manager/FileBrowserViewList.vue';
 import FileBrowserModals from '~/components/file-manager/FileBrowserModals.vue';
 
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
+
 const props = defineProps<{
   isFilesPage?: boolean;
   compact?: boolean;
   remoteModeOnly?: boolean;
+  vfs?: IFileSystemAdapter;
 }>();
 
 const fileManagerStore = useFileManagerStore();
@@ -69,8 +72,9 @@ const {
   findEntryByPath,
   resolveEntryByPath,
   reloadDirectory,
-  vfs,
 } = fileManager;
+
+const vfs = props.vfs || fileManager.vfs;
 
 const conversionStore = useFileConversionStore();
 
