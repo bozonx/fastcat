@@ -26,34 +26,41 @@ const fileManagerStore = useFileManagerStore();
 
 <template>
   <Splitpanes
+    :key="fileManagerStore.isBloggerDogPanelVisible"
     class="editor-splitpanes"
-    @resized="(event: { panes: Array<{ size: number }> }) => emit('resized', event)"
   >
     <Pane
       v-if="fileManagerStore.isBloggerDogPanelVisible"
-      :size="20"
+      :size="25"
       min-size="10"
       class="border-r border-ui-border"
     >
       <FileBrowser :remote-mode-only="true" class="h-full" />
     </Pane>
-    <Pane :size="sizes[0]" min-size="10">
-      <FileManagerPanel
-        folders-only
-        is-files-page
+    <Pane :size="fileManagerStore.isBloggerDogPanelVisible ? 75 : 100">
+      <Splitpanes
         class="h-full"
-        @select="(entry) => emit('selectFolder', entry)"
-      />
-    </Pane>
-    <Pane :size="sizes[1]" min-size="10">
-      <FileBrowser class="h-full" />
-    </Pane>
-    <Pane :size="sizes[2]" min-size="10">
-      <PropertiesPanel
-        :entity="selectedEntity"
-        class="h-full"
-        @clear-selection="emit('clearSelection')"
-      />
+        @resized="(event: { panes: Array<{ size: number }> }) => emit('resized', event)"
+      >
+        <Pane :size="sizes[0]" min-size="10">
+          <FileManagerPanel
+            folders-only
+            is-files-page
+            class="h-full"
+            @select="(entry) => emit('selectFolder', entry)"
+          />
+        </Pane>
+        <Pane :size="sizes[1]" min-size="10">
+          <FileBrowser class="h-full" />
+        </Pane>
+        <Pane :size="sizes[2]" min-size="10">
+          <PropertiesPanel
+            :entity="selectedEntity"
+            class="h-full"
+            @clear-selection="emit('clearSelection')"
+          />
+        </Pane>
+      </Splitpanes>
     </Pane>
   </Splitpanes>
 </template>
