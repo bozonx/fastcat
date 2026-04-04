@@ -59,7 +59,7 @@ interface FileManagerActions {
 }
 
 export function useFileManagerActions(actions: FileManagerActions) {
-  const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
+  const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
   const { t } = useI18n();
   const toast = useToast();
   const uiStore = useUiStore();

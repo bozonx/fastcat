@@ -40,7 +40,7 @@ const toast = useToast();
 
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
-const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
+const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
 const focusStore = useFocusStore();
 const uiStore = useUiStore();
 const conversionStore = useFileConversionStore();

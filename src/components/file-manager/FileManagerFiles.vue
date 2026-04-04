@@ -91,7 +91,7 @@ const selectionStore = useSelectionStore();
 const clipboardStore = useAppClipboard();
 const { currentDragOperation } = clipboardStore;
 const { loadTimeline } = useProjectActions();
-const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
+const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
 const mediaStore = useMediaStore();
 
 watch(
@@ -258,7 +258,7 @@ function getEntryMeta(entry: FsEntry): {
     return { hasProxy: false, generatingProxy: false };
   }
 
-  const hasProxy = props.mediaCache.hasProxy(entry.path);
+  const hasProxy = props.mediaCache?.hasProxy?.(entry.path) ?? false;
   const generatingProxy = proxyStore.generatingProxies.has(entry.path);
   const proxyProgress = proxyStore.proxyProgress.get(entry.path) ?? 0;
   const isUsedInTimeline = Boolean(mediaUsageMap.value[entry.path]?.length);

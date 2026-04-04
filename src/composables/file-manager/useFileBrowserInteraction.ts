@@ -28,7 +28,7 @@ export function useFileBrowserInteraction({
   setSelectedFsEntry,
   onFileAction,
 }: FileBrowserInteractionOptions) {
-  const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
+  const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
   const projectStore = useProjectStore();
   const timelineStore = useTimelineStore();
 

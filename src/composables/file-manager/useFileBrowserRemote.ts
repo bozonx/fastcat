@@ -60,7 +60,7 @@ export function useFileBrowserRemote({
   onRootDrop,
   handleFiles,
 }: UseFileBrowserRemoteOptions) {
-  const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
+  const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
   const workspaceStore = useWorkspaceStore();
   const uiStore = useUiStore();
   const runtimeConfig = useRuntimeConfig();

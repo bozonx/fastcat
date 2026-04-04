@@ -56,7 +56,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
+const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
 const selectionStore = useSelectionStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const proxyStore = useProxyStore();
@@ -123,7 +123,7 @@ function handleImageError(entry: ExtendedFsEntry) {
           'ring-1 ring-(--selection-ring) bg-(--selection-range-bg)':
             isSelected(entry) && editingEntryPath !== entry.path,
           'text-(--color-success)!':
-            fileManager.mediaCache.hasProxy(entry.path || '') &&
+            fileManager.mediaCache?.hasProxy?.(entry.path || '') &&
             !proxyStore.generatingProxies.has(entry.path || ''),
           'text-amber-400!':
             proxyStore.generatingProxies.has(entry.path || '') ||
@@ -203,7 +203,7 @@ function handleImageError(entry: ExtendedFsEntry) {
                 : entry.kind === 'directory'
                   ? 'text-ui-text-muted/80'
                   : 'text-ui-text-muted',
-              fileManager.mediaCache.hasProxy(entry.path || '') &&
+              fileManager.mediaCache?.hasProxy?.(entry.path || '') &&
               !proxyStore.generatingProxies.has(entry.path || '')
                 ? 'text-(--color-success)!'
                 : '',
@@ -239,7 +239,7 @@ function handleImageError(entry: ExtendedFsEntry) {
                 : 'font-medium text-ui-text group-hover:text-primary-400'
               : 'text-ui-text',
             entry.name.startsWith('.') ? 'opacity-50' : '',
-            fileManager.mediaCache.hasProxy(entry.path || '') &&
+            fileManager.mediaCache?.hasProxy?.(entry.path || '') &&
             !proxyStore.generatingProxies.has(entry.path || '')
               ? 'text-(--color-success)!'
               : '',

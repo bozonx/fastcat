@@ -24,7 +24,7 @@ export function useFileBrowserEntries({
   isRemoteMode: Ref<boolean>;
   vfs: IFileSystemAdapter;
 }) {
-  const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
+  const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
   const uiStore = useUiStore();
   const projectStore = useProjectStore();
 

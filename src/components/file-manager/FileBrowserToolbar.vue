@@ -27,7 +27,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
+const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
 const uiStore = useUiStore();
 
 
