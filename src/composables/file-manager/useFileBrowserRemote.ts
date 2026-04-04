@@ -11,7 +11,6 @@ import {
   getRemoteThumbnailUrl,
   isRemoteFsEntry,
   type RemoteFsEntry,
-  toRemoteFsEntry,
 } from '~/utils/remote-vfs';
 import type { RemoteVfsEntry, RemoteVfsFileEntry } from '~/types/remote-vfs';
 import type { FsEntry } from '~/types/fs';
@@ -132,17 +131,24 @@ export function useFileBrowserRemote({
       const items = await vfs.readDirectory(path);
       
       folderEntries.value = items.map((entry: any) => {
+        // Ensure entrance into Content Items works by marking them as remote
+        const extendedEntry = {
+          ...entry,
+          source: 'remote',
+          remotePath: entry.path,
+          remoteId: entry.id || entry.path,
+        };
+
         // Resolve thumbnail for content items or media
-        if (entry.remoteThumbnailUrl || entry.objectUrl) {
-          // If objectUrl is already set, it's likely from the adapter or already resolved
-          if (!entry.objectUrl && entry.remoteThumbnailUrl) {
-             entry.objectUrl = getRemoteThumbnailUrl({
+        if (extendedEntry.remoteThumbnailUrl || extendedEntry.objectUrl) {
+          if (!extendedEntry.objectUrl && extendedEntry.remoteThumbnailUrl) {
+             extendedEntry.objectUrl = getRemoteThumbnailUrl({
                 baseUrl: remoteFilesConfig.value!.baseUrl,
-                media: { thumbnailUrl: entry.remoteThumbnailUrl } as any,
+                media: { thumbnailUrl: extendedEntry.remoteThumbnailUrl } as any,
               });
           }
         }
-        return entry;
+        return extendedEntry;
       });
     } catch (error) {
       console.error('Failed to load remote folder content:', error);

@@ -62,10 +62,15 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
   async readDirectory(path: string): Promise<VfsEntry[]> {
     const config = this.resolveConfig();
 
-    const cached = this.idCache.get(path);
+    // Ensure path is in cache and we know its type
+    const cached = await this.getIdForPath(path);
+    
+    // If it's a file (Content Item), we list its media files or text content as a folder
     if (cached && cached.type === 'file' && cached.item) {
       const entries: VfsEntry[] = [];
       const item = cached.item as RemoteVfsFileEntry;
+      
+      // Add media files
       if (item.media && Array.isArray(item.media)) {
         item.media.forEach((media: any, index: number) => {
           const name = getRemoteMediaDisplayName({ entry: item, media, mediaIndex: index });
