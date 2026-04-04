@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { ref, inject } from 'vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useProjectStore } from '~/stores/project.store';
 import { DOCUMENTS_DIR_NAME } from '~/utils/constants';
@@ -18,7 +18,7 @@ export function useMobileFileBrowserCreate({
   handleFiles,
   loadFolderContent,
 }: CreateDeps) {
-  const fileManagerStore = useFileManagerStore();
+  const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
   const projectStore = useProjectStore();
   const { t } = useI18n();
   const toast = useToast();

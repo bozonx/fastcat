@@ -1,4 +1,4 @@
-import { ref, watch, nextTick } from 'vue';
+import { ref, watch, nextTick, inject } from 'vue';
 import type { Ref } from 'vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -44,7 +44,7 @@ export function useFileBrowserNavigation({
   };
   readDirectory: (path: string | undefined) => Promise<FsEntry[]>;
 }) {
-  const fileManagerStore = useFileManagerStore();
+  const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
   const projectStore = useProjectStore();
   const uiStore = useUiStore();
 

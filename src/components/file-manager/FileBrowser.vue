@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted, onMounted, nextTick } from 'vue';
+import { ref, computed, watch, onUnmounted, onMounted, nextTick, inject } from 'vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -49,7 +49,7 @@ const props = defineProps<{
   vfs?: IFileSystemAdapter;
 }>();
 
-const fileManagerStore = useFileManagerStore();
+const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
 const selectionStore = useSelectionStore();
 const projectStore = useProjectStore();
 
@@ -436,8 +436,7 @@ const GRID_SIZE_NAMES = ['xs', 's', 'm', 'l', 'xl'];
 
 const effectiveGridCardSize = computed(() => {
   if (props.remoteModeOnly) return fileManagerStore.bloggerDogGridCardSize;
-  if (props.isFilesPage) return fileManagerStore.filesPageGridCardSize;
-  return fileManagerStore.editorGridCardSize;
+  return fileManagerStore.gridCardSize;
 });
 
 const currentGridSizeName = computed(() => {

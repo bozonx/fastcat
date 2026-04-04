@@ -1,4 +1,4 @@
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, inject } from 'vue';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import type { FsEntry } from '~/types/fs';
 import { useFileManagerStore } from '~/stores/file-manager.store';
@@ -23,7 +23,7 @@ export function useMobileFileBrowserNavigation({
   vfs,
   findEntryByPath,
 }: NavigationDeps) {
-  const fileManagerStore = useFileManagerStore();
+  const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
   const projectStore = useProjectStore();
   const uiStore = useUiStore();

@@ -1,4 +1,4 @@
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, inject } from 'vue';
 import type { Ref } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useFileManagerStore } from '~/stores/file-manager.store';
@@ -60,7 +60,7 @@ export function useFileBrowserRemote({
   onRootDrop,
   handleFiles,
 }: UseFileBrowserRemoteOptions) {
-  const fileManagerStore = useFileManagerStore();
+  const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
   const workspaceStore = useWorkspaceStore();
   const uiStore = useUiStore();
   const runtimeConfig = useRuntimeConfig();

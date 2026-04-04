@@ -1,4 +1,4 @@
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, inject } from 'vue';
 import type { Ref } from 'vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -25,7 +25,7 @@ export function useFileBrowserEntries({
   isRemoteMode: Ref<boolean>;
   vfs: IFileSystemAdapter;
 }) {
-  const fileManagerStore = useFileManagerStore();
+  const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
   const uiStore = useUiStore();
   const projectStore = useProjectStore();
 

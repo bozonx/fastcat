@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
 import { useFileManagerStore, type FileSortField } from '~/stores/file-manager.store';
 import { useUiStore } from '~/stores/ui.store';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
@@ -13,7 +13,6 @@ const props = defineProps<{
   gridCardSize: number;
   remoteAvailable?: boolean;
   isRemotePanel?: boolean;
-  isFilesPage?: boolean;
   compact?: boolean;
 }>();
 
@@ -26,7 +25,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const fileManagerStore = useFileManagerStore();
+const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
 const uiStore = useUiStore();
 
 
@@ -181,10 +180,8 @@ const toolbarMenuItems = computed(() => {
             const size = gridSizes[v] || 80;
             if (props.isRemotePanel) {
               fileManagerStore.setBloggerDogGridCardSize(size);
-            } else if (props.isFilesPage) {
-              fileManagerStore.setFilesPageGridCardSize(size);
             } else {
-              fileManagerStore.setEditorGridCardSize(size);
+              fileManagerStore.setGridCardSize(size);
             }
           }
         "

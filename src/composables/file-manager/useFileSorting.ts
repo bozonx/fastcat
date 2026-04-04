@@ -1,9 +1,9 @@
-import { computed, type Ref, toRaw } from 'vue';
+import { computed, type Ref, toRaw, inject } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 
 export function useFileSorting(entries: Ref<FsEntry[]>) {
-  const fileManagerStore = useFileManagerStore();
+  const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
 
   const sortedEntries = computed(() => {
     const rawEntries = toRaw(entries.value);
