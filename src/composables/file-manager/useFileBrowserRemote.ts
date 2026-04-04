@@ -156,21 +156,6 @@ export function useFileBrowserRemote({
     return true;
   }
 
-  // Auto-open logic for first-time connection
-  const hasAutoOpened = ref(false);
-  watch(
-    isRemoteAvailable,
-    (available) => {
-      if (available && !hasAutoOpened.value) {
-        const fileManagerStore = useFileManagerStore();
-        if (!fileManagerStore.isBloggerDogPanelVisible) {
-          fileManagerStore.isBloggerDogPanelVisible = true;
-        }
-        hasAutoOpened.value = true;
-      }
-    },
-    { immediate: true },
-  );
 
   function loadRemoteParentFolders(parentFolders: Ref<FsEntry[]>): boolean {
     if (!isRemoteMode.value) return false;

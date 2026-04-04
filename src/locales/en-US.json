@@ -1279,6 +1279,7 @@
       "remote": {
         "exchange": "Authentication token",
         "exchangeDescription": "Enter the token from the FastCat platform to access your remote files.",
+        "not_configured": "BloggerDog not configured",
         "loadFailed": "Failed to load remote library",
         "collectionUnavailable": "Remote collection is not available",
         "search": "Search in library...",
