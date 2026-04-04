@@ -14,6 +14,7 @@ import { computed, ref } from 'vue';
 import { useEventListener, until } from '@vueuse/core';
 import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
+import { useFileManagerStore, useFilesPageFileManagerStore } from '~/stores/file-manager.store';
 import {
   getWorkspacePathParent,
   WORKSPACE_COMMON_DIR_NAME,

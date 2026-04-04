@@ -8,7 +8,6 @@ import { useFileManagerCompatibility } from '~/composables/file-manager/useFileM
 import { useFileSorting } from '~/composables/file-manager/useFileSorting';
 import type { FsEntry } from '~/types/fs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
-import { formatBytes } from '~/utils/format';
 import { getMimeTypeFromFilename } from '~/utils/media-types';
 import PQueue from 'p-queue';
 
@@ -99,20 +98,6 @@ export function useFileBrowserEntries({
   const { thumbnails: videoThumbnails } = useFileManagerThumbnails(sortedEntries, vfs);
   const { compatibility: fileCompatibility } = useFileManagerCompatibility(sortedEntries);
 
-  const stats = computed(() => {
-    let totalSize = 0;
-    let fileCount = 0;
-    for (const entry of folderEntries.value as ExtendedFsEntry[]) {
-      if (entry.kind === 'file') {
-        totalSize += entry.size || 0;
-        fileCount++;
-      } else if (entry.kind === 'directory' && entry.path) {
-        totalSize += folderSizes.value[entry.path] || 0;
-      }
-    }
-    return { totalSize: formatBytes(totalSize), fileCount };
-  });
-
   // Calculate size for directories in list view
   watch(
     () => [folderEntries.value, fileManagerStore.viewMode],
@@ -141,7 +126,6 @@ export function useFileBrowserEntries({
     sortedEntries,
     videoThumbnails,
     fileCompatibility,
-    stats,
     calculateFolderSize,
     supplementEntries,
   };
