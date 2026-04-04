@@ -10,8 +10,10 @@ import UiActionButton from '~/components/ui/UiActionButton.vue';
 const props = defineProps<{
   gridSizes: number[];
   currentGridSizeName: string;
+  gridCardSize: number;
   remoteAvailable?: boolean;
   isRemotePanel?: boolean;
+  isFilesPage?: boolean;
   compact?: boolean;
 }>();
 
@@ -168,13 +170,24 @@ const toolbarMenuItems = computed(() => {
       :title="`${t('videoEditor.fileManager.cardScale', 'Card scale')}: ${currentGridSizeName}`"
     >
       <UiWheelSlider
-        :model-value="gridSizes.indexOf(fileManagerStore.gridCardSize)"
+        :model-value="gridSizes.indexOf(props.gridCardSize)"
         :min="0"
         :max="gridSizes.length - 1"
         :step="1"
         wheel-without-focus
         class="flex-1 w-full"
-        @update:model-value="(v: number) => fileManagerStore.setGridCardSize(gridSizes[v] || 130)"
+        @update:model-value="
+          (v: number) => {
+            const size = gridSizes[v] || 80;
+            if (props.isRemotePanel) {
+              fileManagerStore.setBloggerDogGridCardSize(size);
+            } else if (props.isFilesPage) {
+              fileManagerStore.setFilesPageGridCardSize(size);
+            } else {
+              fileManagerStore.setEditorGridCardSize(size);
+            }
+          }
+        "
       />
     </div>
 

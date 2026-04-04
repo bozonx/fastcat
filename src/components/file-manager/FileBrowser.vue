@@ -432,9 +432,16 @@ const { onKeyDown: onContainerKeyDown, moveSelection } = useFocusableListNavigat
 
 // --- Grid size ---
 const GRID_SIZES = [80, 100, 130, 160, 200];
-const GRID_SIZE_NAMES = ['XS', 'S', 'M', 'L', 'XL'];
+const GRID_SIZE_NAMES = ['xs', 's', 'm', 'l', 'xl'];
+
+const effectiveGridCardSize = computed(() => {
+  if (props.remoteModeOnly) return fileManagerStore.bloggerDogGridCardSize;
+  if (props.isFilesPage) return fileManagerStore.filesPageGridCardSize;
+  return fileManagerStore.editorGridCardSize;
+});
+
 const currentGridSizeName = computed(() => {
-  const index = GRID_SIZES.indexOf(fileManagerStore.gridCardSize);
+  const index = GRID_SIZES.indexOf(effectiveGridCardSize.value);
   return GRID_SIZE_NAMES[index] || 'm';
 });
 
@@ -602,6 +609,7 @@ async function onDirectoryUploadChange(e: Event) {
     <FileBrowserToolbar
       :grid-sizes="GRID_SIZES"
       :current-grid-size-name="currentGridSizeName"
+      :grid-card-size="effectiveGridCardSize"
       :remote-available="isRemoteAvailable"
       :is-remote-panel="props.remoteModeOnly"
       :compact="compact"
@@ -685,6 +693,7 @@ async function onDirectoryUploadChange(e: Event) {
             :drag-over-entry-path="dragOverEntryPath"
             :current-drag-operation="currentDragOperation"
             :current-grid-size-name="currentGridSizeName"
+            :current-grid-card-size="effectiveGridCardSize"
             :editing-entry-path="editingEntryPath"
             :folder-entries-names="folderEntries.map((e) => e.name)"
             :get-context-menu-items="getContextMenuItems"

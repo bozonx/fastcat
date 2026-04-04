@@ -26,6 +26,7 @@ const props = defineProps<{
   dragOverEntryPath: string | null;
   currentDragOperation: 'copy' | 'move' | null;
   currentGridSizeName: string;
+  currentGridCardSize: number;
   editingEntryPath: string | null;
   folderEntriesNames: string[];
   getContextMenuItems: (entry: FsEntry) => any[];
@@ -135,7 +136,7 @@ function handleImageError(entry: ExtendedFsEntry) {
           'ring-2 ring-emerald-500 bg-emerald-500/15':
             dragOverEntryPath === (entry.path ?? null) && props.currentDragOperation === 'copy',
         }"
-        :style="{ width: `${fileManagerStore.gridCardSize}px` }"
+        :style="{ width: `${props.currentGridCardSize}px` }"
         :draggable="true"
         tabindex="0"
         @dragstart="emit('entryDragStart', $event, entry)"
@@ -210,11 +211,11 @@ function handleImageError(entry: ExtendedFsEntry) {
                 ? 'text-amber-400/90'
                 : '',
               {
-                'w-8 h-8': currentGridSizeName === 'xs',
-                'w-10 h-10': currentGridSizeName === 's',
-                'w-12 h-12': currentGridSizeName === 'm',
-                'w-16 h-16': currentGridSizeName === 'l',
-                'w-20 h-20': currentGridSizeName === 'xl',
+                'w-10 h-10': currentGridSizeName.toLowerCase() === 'xs',
+                'w-12 h-12': currentGridSizeName.toLowerCase() === 's',
+                'w-16 h-16': currentGridSizeName.toLowerCase() === 'm',
+                'w-24 h-24': currentGridSizeName.toLowerCase() === 'l',
+                'w-32 h-32': currentGridSizeName.toLowerCase() === 'xl',
               },
             ]"
           />
@@ -248,10 +249,12 @@ function handleImageError(entry: ExtendedFsEntry) {
             getCompatibilityStatus(entry) !== 'ok' ? 'text-red-400!' : '',
             {
               'text-xs':
-                currentGridSizeName === 'xs' ||
-                currentGridSizeName === 's' ||
-                currentGridSizeName === 'm',
-              'text-sm': currentGridSizeName === 'l' || currentGridSizeName === 'xl',
+                currentGridSizeName.toLowerCase() === 'xs' ||
+                currentGridSizeName.toLowerCase() === 's' ||
+                currentGridSizeName.toLowerCase() === 'm',
+              'text-sm':
+                currentGridSizeName.toLowerCase() === 'l' ||
+                currentGridSizeName.toLowerCase() === 'xl',
             },
             isSelected(entry)
               ? 'hover:border-(--selection-accent-500)/50 border-(--selection-accent-500)/35 cursor-text'
