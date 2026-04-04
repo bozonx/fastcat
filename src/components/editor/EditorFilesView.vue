@@ -1,8 +1,14 @@
 <script setup lang="ts">
+import { ref, computed, shallowRef, watch, provide, onMounted } from 'vue';
 import { Pane, Splitpanes } from 'splitpanes';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import PropertiesPanel from '~/components/layout-panels/PropertiesPanel.vue';
+import { useFilesPageFileManagerStore } from '~/stores/file-manager.store';
+import { useProjectStore } from '~/stores/project.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { BloggerDogVfsAdapter } from '~/file-manager/core/vfs/bloggerdog.adapter';
+import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import type { FsEntry } from '~/types/fs';
 import type { SelectedEntity } from '~/stores/selection.store';
 
@@ -13,9 +19,6 @@ interface Props {
 
 defineProps<Props>();
 
-import { useFilesPageFileManagerStore } from '~/stores/file-manager.store';
-import { provide } from 'vue';
-
 const emit = defineEmits<{
   (e: 'resized', event: { panes: Array<{ size: number }> }): void;
   (e: 'selectFolder', entry: FsEntry | null): void;
@@ -23,16 +26,12 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const fileManagerStore = useFilesPageFileManagerStore();
-provide('fileManagerStore', fileManagerStore);
-
-import { BloggerDogVfsAdapter } from '~/file-manager/core/vfs/bloggerdog.adapter';
-import { useWorkspaceStore } from '~/stores/workspace.store';
-import { resolveExternalServiceConfig } from '~/utils/external-integrations';
-import { computed, shallowRef, watch } from 'vue';
-
+const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 const runtimeConfig = useRuntimeConfig();
+const fileManagerStore = useFilesPageFileManagerStore();
+
+provide('fileManagerStore', fileManagerStore);
 
 const bloggerDogVfs = computed(() => {
   const bloggerDogApiUrl = typeof runtimeConfig.public.bloggerDogApiUrl === 'string' 
@@ -46,14 +45,22 @@ const bloggerDogVfs = computed(() => {
   });
   
   if (!config) return null;
-  
+
   return new BloggerDogVfsAdapter(() => ({
     baseUrl: config.baseUrl,
     bearerToken: config.bearerToken
   }));
 });
 
-
+onMounted(() => {
+  if (!fileManagerStore.selectedFolder) {
+    fileManagerStore.openFolder({
+        name: projectStore.currentProjectName || 'Project',
+        path: '',
+        kind: 'directory',
+    });
+  }
+});
 </script>
 
 <template>

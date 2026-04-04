@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { inject } from 'vue';
 import { Pane, Splitpanes } from 'splitpanes';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
@@ -7,7 +8,8 @@ import { useFileManagerStore } from '~/stores/file-manager.store';
 const props = defineProps<{
   compact?: boolean;
 }>();
-const fileManagerStore = useFileManagerStore();
+
+const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
 </script>
 
 <template>
