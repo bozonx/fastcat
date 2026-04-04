@@ -117,7 +117,10 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     return new Uint8Array(await data.arrayBuffer());
   }
 
-  async readDirectory(path: string): Promise<VfsEntry[]> {
+  async readDirectory(
+    path: string,
+    _options?: { sortBy?: string; sortOrder?: 'asc' | 'desc' },
+  ): Promise<VfsEntry[]> {
     const { tauriPath, options } = await this.getTauriFsArgs(path);
     const entries = await readDir(tauriPath, options);
 

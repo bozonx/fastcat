@@ -37,22 +37,74 @@ const sortFields: { label: string; value: FileSortField }[] = [
   { label: t('common.modified', 'Modified'), value: 'modified' },
 ];
 
-const bloggerDogMenuItems = computed(() => [
-  [
-    {
-      label: t('common.close', 'Close'),
-      icon: 'i-heroicons-x-mark',
+const toolbarMenuItems = computed(() => {
+  const items = [];
+
+  // Sort Fields Section (Only for Remote Panel as per user request)
+  if (props.isRemotePanel) {
+    const remoteSortFields = sortFields.filter((f) => ['name', 'created'].includes(f.value));
+
+    const sortSection = remoteSortFields.map((field) => ({
+      label: field.label,
+      icon:
+        fileManagerStore.sortOption.field === field.value
+          ? 'i-heroicons-check'
+          : undefined,
       onSelect: () => {
-        fileManagerStore.isBloggerDogPanelVisible = false;
+        fileManagerStore.sortOption.field = field.value;
+        emit('refresh');
       },
-    },
-    {
-      label: t('common.refresh', 'Refresh'),
-      icon: 'i-heroicons-arrow-path',
-      onSelect: () => emit('refresh'),
-    },
-  ],
-]);
+    }));
+
+    items.push(sortSection);
+
+    // Sort Order Section
+    items.push([
+      {
+        label: t('common.sortOrder.asc', 'Ascending'),
+        icon:
+          fileManagerStore.sortOption.order === 'asc'
+            ? 'i-heroicons-check'
+            : undefined,
+        onSelect: () => {
+          fileManagerStore.sortOption.order = 'asc';
+          emit('refresh');
+        },
+      },
+      {
+        label: t('common.sortOrder.desc', 'Descending'),
+        icon:
+          fileManagerStore.sortOption.order === 'desc'
+            ? 'i-heroicons-check'
+            : undefined,
+        onSelect: () => {
+          fileManagerStore.sortOption.order = 'desc';
+          emit('refresh');
+        },
+      },
+    ]);
+  }
+
+  // Panel Actions Section (for BloggerDog)
+  if (props.isRemotePanel) {
+    items.push([
+      {
+        label: t('common.refresh', 'Refresh'),
+        icon: 'i-heroicons-arrow-path',
+        onSelect: () => emit('refresh'),
+      },
+      {
+        label: t('common.close', 'Close'),
+        icon: 'i-heroicons-x-mark',
+        onSelect: () => {
+          fileManagerStore.isBloggerDogPanelVisible = false;
+        },
+      },
+    ]);
+  }
+
+  return items;
+});
 </script>
 
 <template>
@@ -152,30 +204,33 @@ const bloggerDogMenuItems = computed(() => [
 
     <div class="ml-auto flex items-center gap-2">
       <template v-if="!compact">
-        <span class="text-xs text-ui-text-muted">{{ t('common.sortBy', 'Sort by') }}:</span>
-        <UiSelect
-          v-model="fileManagerStore.sortOption.field"
-          :items="sortFields"
-          value-key="value"
-          size="xs"
-          class="w-32"
-        />
-        <UiToggleButton
-          :model-value="fileManagerStore.sortOption.order === 'asc'"
-          icon="i-heroicons-bars-arrow-down"
-          active-icon="i-heroicons-bars-arrow-up"
-          inactive-color="neutral"
-          active-color="primary"
-          size="xs"
-          title="Sort order"
-          no-toggle
-          @click="
-            fileManagerStore.sortOption.order =
-              fileManagerStore.sortOption.order === 'asc' ? 'desc' : 'asc'
-          "
-        />
         <div class="w-px h-4 bg-ui-border mx-1"></div>
-        <UDropdownMenu v-if="isRemotePanel" :items="bloggerDogMenuItems" :ui="{ content: 'w-40' }">
+        
+        <!-- View mode toggles -->
+        <div class="flex items-center gap-1 mr-2">
+          <UiToggleButton
+            :model-value="fileManagerStore.viewMode === 'grid'"
+            icon="i-heroicons-squares-2x2"
+            inactive-color="neutral"
+            active-color="primary"
+            size="xs"
+            :title="t('common.viewMode.cards', 'Grid view')"
+            no-toggle
+            @click="fileManagerStore.setViewMode('grid')"
+          />
+          <UiToggleButton
+            :model-value="fileManagerStore.viewMode === 'list'"
+            icon="i-heroicons-list-bullet"
+            inactive-color="neutral"
+            active-color="primary"
+            size="xs"
+            :title="t('common.viewMode.list', 'List view')"
+            no-toggle
+            @click="fileManagerStore.setViewMode('list')"
+          />
+        </div>
+
+        <UDropdownMenu v-if="toolbarMenuItems.length > 0" :items="toolbarMenuItems" :ui="{ content: 'w-56' }">
           <UiActionButton
             icon="i-heroicons-ellipsis-horizontal"
             variant="ghost"

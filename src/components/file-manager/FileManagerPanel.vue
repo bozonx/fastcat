@@ -274,31 +274,28 @@ const menuItems = computed(() => {
   ];
   items.push(commonActions);
 
-  if (props.compact) {
-    const fieldsGroup = sortFields.map((f) => ({
-      label: f.label,
-      color: fileManagerStore.sortOption.field === f.value ? 'primary' : 'neutral',
-      onSelect: () => {
-        fileManagerStore.sortOption.field = f.value;
-      },
-    }));
-    items.push(fieldsGroup);
+  const fieldsGroup = sortFields.map((f) => ({
+    label: f.label,
+    icon: fileManagerStore.sortOption.field === f.value ? 'i-heroicons-check' : 'i-heroicons-stop',
+    onSelect: () => {
+      fileManagerStore.sortOption.field = f.value;
+    },
+  }));
+  items.push(fieldsGroup);
 
-    const isAsc = fileManagerStore.sortOption.order === 'asc';
-    const orderToggle = [
-      {
-        label: isAsc
-          ? t('common.toSortDesc', 'To descending')
-          : t('common.toSortAsc', 'To ascending'),
-        icon: isAsc ? 'i-heroicons-bars-arrow-down' : 'i-heroicons-bars-arrow-up',
-        color: 'primary',
-        onSelect: () => {
-          fileManagerStore.sortOption.order = isAsc ? 'desc' : 'asc';
-        },
+  const isAsc = fileManagerStore.sortOption.order === 'asc';
+  const orderToggle = [
+    {
+      label: isAsc
+        ? t('common.toSortDesc', 'To descending')
+        : t('common.toSortAsc', 'To ascending'),
+      icon: isAsc ? 'i-heroicons-bars-arrow-down' : 'i-heroicons-bars-arrow-up',
+      onSelect: () => {
+        fileManagerStore.sortOption.order = isAsc ? 'desc' : 'asc';
       },
-    ];
-    items.push(orderToggle);
-  }
+    },
+  ];
+  items.push(orderToggle);
 
   return items;
 });

@@ -30,9 +30,12 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
     }
   }
 
-  async readDirectory(path: string): Promise<VfsEntry[]> {
+  async readDirectory(
+    path: string,
+    options?: { sortBy?: string; sortOrder?: 'asc' | 'desc' },
+  ): Promise<VfsEntry[]> {
     const { adapter, mappedPath } = this.getRoute(path);
-    const entries = await adapter.readDirectory(mappedPath);
+    const entries = await adapter.readDirectory(mappedPath, options);
     // Map paths back to routed paths
     return entries.map((entry) => ({
       ...entry,
