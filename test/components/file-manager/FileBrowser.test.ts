@@ -86,7 +86,6 @@ const mockFileBrowserEntries = {
   folderSizesLoading: ref({}),
   sortedEntries: ref<any[]>([]),
   videoThumbnails: ref({}),
-  stats: ref({ totalSize: '0 B', fileCount: 0 }),
   calculateFolderSize: vi.fn(),
   supplementEntries: vi.fn(async (e) => e),
   cleanupObjectUrls: vi.fn(),
@@ -167,7 +166,6 @@ describe('FileBrowser', () => {
         stubs: {
           FileBrowserToolbar: true,
           FileBrowserBreadcrumbs: true,
-          FileBrowserStatusBar: true,
           FileBrowserModals: true,
           FileBrowserViewGrid: {
             template: '<div data-test="grid-view"><slot /></div>',
@@ -199,7 +197,6 @@ describe('FileBrowser', () => {
         stubs: {
           FileBrowserToolbar: true,
           FileBrowserBreadcrumbs: true,
-          FileBrowserStatusBar: true,
           FileBrowserModals: true,
           FileBrowserViewGrid: { template: '<div data-test="grid-view" />' },
           FileBrowserViewList: { template: '<div data-test="list-view" />' },

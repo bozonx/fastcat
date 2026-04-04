@@ -35,7 +35,6 @@ import {
 } from '~/utils/fs-entry-utils';
 import FileBrowserToolbar from '~/components/file-manager/FileBrowserToolbar.vue';
 import FileBrowserBreadcrumbs from '~/components/file-manager/FileBrowserBreadcrumbs.vue';
-import FileBrowserStatusBar from '~/components/file-manager/FileBrowserStatusBar.vue';
 import FileBrowserViewGrid from '~/components/file-manager/FileBrowserViewGrid.vue';
 import FileBrowserViewList from '~/components/file-manager/FileBrowserViewList.vue';
 import FileBrowserModals from '~/components/file-manager/FileBrowserModals.vue';
@@ -103,7 +102,6 @@ const {
   sortedEntries,
   videoThumbnails,
   fileCompatibility,
-  stats,
   calculateFolderSize,
   supplementEntries,
 } = entries;
@@ -754,9 +752,6 @@ async function onDirectoryUploadChange(e: Event) {
         </div>
       </UContextMenu>
     </div>
-
-    <!-- Bottom Panel -->
-    <FileBrowserStatusBar v-if="!compact" :stats="stats" />
 
     <!-- Hidden input for directory upload -->
     <input
