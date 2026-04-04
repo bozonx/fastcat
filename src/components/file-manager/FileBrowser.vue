@@ -204,6 +204,7 @@ const remote = useFileBrowserRemote({
   onRootDragLeave,
   onRootDrop,
   handleFiles,
+  vfs,
 });
 const {
   remoteTransferOpen,
@@ -598,6 +599,7 @@ async function onDirectoryUploadChange(e: Event) {
       :grid-sizes="GRID_SIZES"
       :current-grid-size-name="currentGridSizeName"
       :remote-available="isRemoteAvailable"
+      :is-remote-panel="props.remoteModeOnly"
       :compact="compact"
       @refresh="refreshFileTree"
       @open-remote="toggleBloggerDogPanel"

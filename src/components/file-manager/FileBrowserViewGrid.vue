@@ -168,7 +168,7 @@ function handleImageError(entry: ExtendedFsEntry) {
             }}</span>
           </div>
           <img
-            v-else-if="entry.kind === 'file' && entry.objectUrl"
+            v-else-if="(entry.kind === 'file' || (entry as any).isContentItem) && entry.objectUrl"
             :src="entry.objectUrl"
             :alt="entry.name"
             class="max-w-full max-h-full object-contain"

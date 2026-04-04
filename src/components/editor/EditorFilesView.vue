@@ -29,6 +29,14 @@ const fileManagerStore = useFileManagerStore();
     class="editor-splitpanes"
     @resized="(event: { panes: Array<{ size: number }> }) => emit('resized', event)"
   >
+    <Pane
+      v-if="fileManagerStore.isBloggerDogPanelVisible"
+      :size="20"
+      min-size="10"
+      class="border-r border-ui-border"
+    >
+      <FileBrowser :remote-mode-only="true" class="h-full" />
+    </Pane>
     <Pane :size="sizes[0]" min-size="10">
       <FileManagerPanel
         folders-only
@@ -38,15 +46,7 @@ const fileManagerStore = useFileManagerStore();
       />
     </Pane>
     <Pane :size="sizes[1]" min-size="10">
-      <Splitpanes v-if="fileManagerStore.isBloggerDogPanelVisible" class="h-full flex divide-x divide-ui-border">
-        <Pane size="50">
-          <FileBrowser :remote-mode-only="true" class="h-full" />
-        </Pane>
-        <Pane size="50">
-          <FileBrowser class="h-full" />
-        </Pane>
-      </Splitpanes>
-      <FileBrowser v-else class="h-full" />
+      <FileBrowser class="h-full" />
     </Pane>
     <Pane :size="sizes[2]" min-size="10">
       <PropertiesPanel
