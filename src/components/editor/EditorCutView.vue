@@ -44,6 +44,11 @@ const emit = defineEmits<{
   topReset: [view: 'cut' | 'sound'];
   verticalReset: [colId: string, view: 'cut' | 'sound'];
 }>();
+
+import { useFileManagerStore } from '~/stores/file-manager.store';
+import { provide } from 'vue';
+
+provide('fileManagerStore', useFileManagerStore());
 </script>
 
 <template>
