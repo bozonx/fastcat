@@ -20,6 +20,7 @@ export const useFileManagerStore = defineStore('fileManager', () => {
 
   const selectedFolder = ref<FsEntry | null>(null);
   const folderSizes = ref<Record<string, number>>({});
+  const isBloggerDogPanelVisible = ref(false);
 
   const viewMode = ref<FileViewMode>(readLocalStorageJson(`${STORAGE_KEY}:viewMode`, 'grid'));
   const sortOption = ref<FileSortOption>(
@@ -107,6 +108,7 @@ export const useFileManagerStore = defineStore('fileManager', () => {
 
   return {
     selectedFolder,
+    isBloggerDogPanelVisible,
     viewMode,
     sortOption,
     gridCardSize,

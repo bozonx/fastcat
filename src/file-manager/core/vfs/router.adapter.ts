@@ -126,8 +126,51 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
     }
 
     // Cross-adapter copy using streams
+    const meta = await sourceRoute.adapter.getMetadata(sourceRoute.mappedPath);
+    const size = meta?.size ?? 0;
+
     const readStream = await sourceRoute.adapter.readStream(sourceRoute.mappedPath);
     const writeStream = await targetRoute.adapter.writeStream(targetRoute.mappedPath);
+
+    if (size > 10 * 1024 * 1024) { // > 10MB
+      // Import store dynamically to avoid circular dependencies and ensure it's accessed in setup/client Context
+      const { useBackgroundTasksStore } = await import('~/stores/background-tasks.store');
+      const { useUiStore } = await import('~/stores/ui.store');
+      const tasksStore = useBackgroundTasksStore();
+      const uiStore = useUiStore();
+
+      let loaded = 0;
+      const progressStream = new TransformStream<Uint8Array, Uint8Array>({
+        transform(chunk, controller) {
+          loaded += chunk.length;
+          tasksStore.updateTaskProgress(taskId, loaded / size);
+          controller.enqueue(chunk);
+        },
+      });
+
+      const fileName = sourcePath.split('/').pop() || sourcePath;
+      const taskId = tasksStore.addTask({
+        title: `Copying ${fileName}...`,
+        type: 'file-operation',
+        status: 'running',
+        progress: 0,
+      });
+
+      // Do NOT await, let it run in background so UI isn't blocked completely
+      readStream.pipeTo(progressStream.writable).then(() => {
+        progressStream.readable.pipeTo(writeStream).then(() => {
+          tasksStore.updateTaskStatus(taskId, 'completed');
+          uiStore.notifyFileManagerUpdate(); // Tell UI to refresh file list
+        }).catch((e) => {
+          tasksStore.updateTaskStatus(taskId, 'failed', e instanceof Error ? e.message : String(e));
+        });
+      }).catch((e) => {
+        tasksStore.updateTaskStatus(taskId, 'failed', e instanceof Error ? e.message : String(e));
+      });
+
+      return; // Return immediately to unblock UI interaction
+    }
+
     await readStream.pipeTo(writeStream);
   }
 

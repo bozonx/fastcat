@@ -69,8 +69,6 @@ export const useUiStore = defineStore('ui', () => {
   const pendingFsEntryCreateMarkdown = ref<FsEntry | null>(null);
   const pendingOtioCreateVersion = ref<FsEntry | null>(null);
   const pendingRemoteDownloadRequest = ref<PendingRemoteDownloadRequest | null>(null);
-  const remoteExchangeModalOpen = ref(false);
-  const remoteExchangeLocalEntry = ref<FsEntry | null>(null);
 
   const fileManagerUpdateCounter = ref(0);
   const isProjectSettingsOpen = ref(false);
@@ -225,8 +223,6 @@ export const useUiStore = defineStore('ui', () => {
     pendingFsEntryCreateTimeline,
     pendingOtioCreateVersion,
     pendingRemoteDownloadRequest,
-    remoteExchangeModalOpen,
-    remoteExchangeLocalEntry,
 
     fsSidebarWidth,
     setFsSidebarWidth,
