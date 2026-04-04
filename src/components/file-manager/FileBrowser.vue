@@ -679,7 +679,7 @@ async function onDirectoryUploadChange(e: Event) {
 
           <!-- Grid View -->
           <FileBrowserViewGrid
-            v-else-if="fileManagerStore.viewMode === 'grid'"
+            v-else-if="props.remoteModeOnly || fileManagerStore.viewMode === 'grid'"
             :entries="sortedEntries as ExtendedFsEntry[]"
             :is-root-drop-over="isRootDropOver"
             :drag-over-entry-path="dragOverEntryPath"
