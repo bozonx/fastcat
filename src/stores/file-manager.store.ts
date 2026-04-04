@@ -26,7 +26,15 @@ export const useFileManagerStore = defineStore('fileManager', () => {
   const sortOption = ref<FileSortOption>(
     readLocalStorageJson(`${STORAGE_KEY}:sortOption`, { field: 'name', order: 'asc' }),
   );
-  const gridCardSize = ref<number>(readLocalStorageJson(`${STORAGE_KEY}:gridCardSize`, 80));
+  const filesPageGridCardSize = ref<number>(
+    readLocalStorageJson(`${STORAGE_KEY}:filesPageGridCardSize`, 80),
+  );
+  const editorGridCardSize = ref<number>(
+    readLocalStorageJson(`${STORAGE_KEY}:editorGridCardSize`, 100),
+  );
+  const bloggerDogGridCardSize = ref<number>(
+    readLocalStorageJson(`${STORAGE_KEY}:bloggerDogGridCardSize`, 100),
+  );
   const columnWidths = ref<Record<string, number>>(
     readLocalStorageJson(`${STORAGE_KEY}:columnWidths`, {
       name: 200,
@@ -42,7 +50,13 @@ export const useFileManagerStore = defineStore('fileManager', () => {
   watch(sortOption, (val) => writeLocalStorageJson(`${STORAGE_KEY}:sortOption`, val), {
     deep: true,
   });
-  watch(gridCardSize, (val) => writeLocalStorageJson(`${STORAGE_KEY}:gridCardSize`, val));
+  watch(filesPageGridCardSize, (val) =>
+    writeLocalStorageJson(`${STORAGE_KEY}:filesPageGridCardSize`, val),
+  );
+  watch(editorGridCardSize, (val) => writeLocalStorageJson(`${STORAGE_KEY}:editorGridCardSize`, val));
+  watch(bloggerDogGridCardSize, (val) =>
+    writeLocalStorageJson(`${STORAGE_KEY}:bloggerDogGridCardSize`, val),
+  );
   watch(isBloggerDogPanelVisible, (val) =>
     writeLocalStorageJson(`${STORAGE_KEY}:isBloggerDogPanelVisible`, val),
   );
@@ -78,8 +92,16 @@ export const useFileManagerStore = defineStore('fileManager', () => {
     sortOption.value = option;
   }
 
-  function setGridCardSize(size: number) {
-    gridCardSize.value = size;
+  function setFilesPageGridCardSize(size: number) {
+    filesPageGridCardSize.value = size;
+  }
+
+  function setEditorGridCardSize(size: number) {
+    editorGridCardSize.value = size;
+  }
+
+  function setBloggerDogGridCardSize(size: number) {
+    bloggerDogGridCardSize.value = size;
   }
 
   function setColumnWidth(column: string, width: number) {
@@ -114,7 +136,9 @@ export const useFileManagerStore = defineStore('fileManager', () => {
     isBloggerDogPanelVisible,
     viewMode,
     sortOption,
-    gridCardSize,
+    filesPageGridCardSize,
+    editorGridCardSize,
+    bloggerDogGridCardSize,
     columnWidths,
     folderSizes,
     sortFields,
@@ -123,7 +147,9 @@ export const useFileManagerStore = defineStore('fileManager', () => {
     clearSelection,
     setViewMode,
     setSortOption,
-    setGridCardSize,
+    setFilesPageGridCardSize,
+    setEditorGridCardSize,
+    setBloggerDogGridCardSize,
     setColumnWidth,
     resetFileManagerState,
   };
