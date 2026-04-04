@@ -85,7 +85,7 @@ const bloggerDogVfs = computed(() => {
               folders-only
               is-files-page
               class="h-full"
-              @select="(entry) => emit('selectFolder', entry)"
+              @select="(entry) => fileManagerStore.openFolder(entry)"
             />
           </Pane>
           <Pane :size="sizes[1]" min-size="10">
@@ -113,7 +113,7 @@ const bloggerDogVfs = computed(() => {
           folders-only
           is-files-page
           class="h-full"
-          @select="(entry) => emit('selectFolder', entry)"
+          @select="(entry) => fileManagerStore.openFolder(entry)"
         />
       </Pane>
       <Pane :size="sizes[1]" min-size="10">
