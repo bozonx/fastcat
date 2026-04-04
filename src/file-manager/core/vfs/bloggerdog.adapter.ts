@@ -1,19 +1,20 @@
 import type { IFileSystemAdapter, VfsEntry } from './types';
 import {
   fetchRemoteVfsList,
-  RemoteVfsClientConfig,
   getRemoteEntryDisplayName,
   createRemoteCollection,
   deleteRemoteCollection,
   deleteRemoteItem,
   uploadFileToRemote,
   getRemoteFileDownloadUrl,
+  type RemoteVfsClientConfig,
 } from '~/utils/remote-vfs';
+import type { RemoteVfsFileEntry } from '~/types/remote-vfs';
 
 export class BloggerDogVfsAdapter implements IFileSystemAdapter {
   id = 'bloggerdog';
 
-  private idCache = new Map<string, { id: string; type: 'file' | 'directory' }>();
+  private idCache = new Map<string, { id: string; type: 'file' | 'directory' | 'media'; item?: any; mediaIndex?: number }>();
 
   constructor(private getConfig: () => RemoteVfsClientConfig | null) {}
 
@@ -38,21 +39,21 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       return;
     }
     const parentPath = '/' + parts.slice(0, -1).join('/');
+    if (!this.idCache.has(parentPath)) {
+      await this.ensureParentCache(parentPath);
+    }
     await this.readDirectory(parentPath);
   }
 
-  private async getIdForPath(path: string): Promise<{ id: string; type: 'file' | 'directory' }> {
+  private async getIdForPath(path: string): Promise<{ id: string; type: 'file' | 'directory' | 'media'; item?: any; mediaIndex?: number }> {
     if (path === '/' || path === '') return { id: 'virtual-all', type: 'directory' };
     
     if (!this.idCache.has(path)) {
       await this.ensureParentCache(path);
-      // Wait for cache to be refreshed
     }
 
     const cached = this.idCache.get(path);
     if (!cached) {
-      // If it's a new directory that we didn't list yet, maybe wait?
-      // For now, if we can't find it, we throw
       throw new Error(`Path not found or not cached: ${path}`);
     }
     return cached;
@@ -60,6 +61,48 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
 
   async readDirectory(path: string): Promise<VfsEntry[]> {
     const config = this.resolveConfig();
+
+    const cached = this.idCache.get(path);
+    if (cached && cached.type === 'file' && cached.item) {
+      const entries: VfsEntry[] = [];
+      const item = cached.item as RemoteVfsFileEntry;
+      if (item.media && Array.isArray(item.media)) {
+        item.media.forEach((media: any, index: number) => {
+          const name = getRemoteMediaDisplayName({ entry: item, media, mediaIndex: index });
+          const mediaPath = `${path}/${name}`;
+          this.idCache.set(mediaPath, { id: item.id, type: 'media', item, mediaIndex: index });
+          
+          entries.push({
+            name,
+            kind: 'file',
+            path: mediaPath,
+            parentPath: path,
+            size: media.size || 0,
+            lastModified: item.meta?.updatedAt ? new Date(item.meta.updatedAt as string).getTime() : undefined,
+          });
+        });
+      }
+      
+      // Simulate text content as a text file
+      if (item.text?.trim()) {
+        const textName = `${item.title || item.name || 'document'}.txt`;
+        const textPath = `${path}/${textName}`;
+        this.idCache.set(textPath, { id: item.id, type: 'media', item, mediaIndex: -1 });
+
+        const blob = new Blob([item.text], { type: 'text/plain' });
+        entries.push({
+          name: textName,
+          kind: 'file',
+          path: textPath,
+          parentPath: path,
+          size: blob.size,
+          lastModified: item.meta?.updatedAt ? new Date(item.meta.updatedAt as string).getTime() : undefined,
+        });
+      }
+
+      return entries;
+    }
+
     const response = await fetchRemoteVfsList({ config, path });
     
     // Update cache
@@ -68,16 +111,17 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     const entries: VfsEntry[] = [];
     for (const item of response.items) {
       const entryPath = item.path || (path === '/' ? `/${item.name}` : `${path}/${item.name}`);
-      this.idCache.set(entryPath, { id: item.id, type: item.type });
+      this.idCache.set(entryPath, { id: item.id, type: item.type, item });
       
       entries.push({
         name: getRemoteEntryDisplayName(item),
-        kind: item.type,
+        kind: item.type === 'file' ? 'directory' : item.type,
         path: entryPath,
         parentPath: path,
-        size: item.type === 'file' ? item.media?.[0]?.size : 0,
-        lastModified: item.meta?.updatedAt ? new Date(item.meta.updatedAt).getTime() : undefined,
-      });
+        size: 0,
+        lastModified: (item as any).meta?.updatedAt ? new Date((item as any).meta.updatedAt).getTime() : undefined,
+        ...(item.type === 'file' ? { isContentItem: true } : {})
+      } as VfsEntry);
     }
     
     return entries;
@@ -110,21 +154,17 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     const config = this.resolveConfig();
     const entry = await this.getIdForPath(path);
     
-    // We need the media URL to download it.
-    // Fetch parent list to get media metadata because we don't have separate GET /items/:id API in remote-vfs here.
-    const parts = path.split('/').filter(Boolean);
-    const parentPath = '/' + parts.slice(0, -1).join('/');
-    
-    const response = await fetchRemoteVfsList({ config, path: parentPath });
-    const remoteItem = response.items.find(i => i.id === entry.id);
-    
-    if (!remoteItem || remoteItem.type !== 'file' || !remoteItem.media?.[0]) {
-      throw new Error(`File not found or has no media: ${path}`);
+    let downloadUrl = '';
+    if (entry.type === 'media' && entry.item) {
+      if (entry.mediaIndex === -1) {
+        const textData = (entry.item as RemoteVfsFileEntry).text || '';
+        return new Blob([textData], { type: 'text/plain' });
+      }
+
+      downloadUrl = getRemoteFileDownloadUrl({ baseUrl: config.baseUrl, entry: entry.item, mediaIndex: entry.mediaIndex });
+    } else {
+      throw new Error(`Cannot download a collection or item folder directly: ${path}`);
     }
-    
-    // Need to implement download or use existing download feature.
-    // remote-vfs provides downloadRemoteFile, let's use standard fetch for Blob
-    const downloadUrl = getRemoteFileDownloadUrl({ baseUrl: config.baseUrl, entry: remoteItem, mediaIndex: 0 });
     
     const res = await fetch(downloadUrl);
     if (!res.ok) throw new Error(`Failed to download file from remote: ${res.status}`);
@@ -141,16 +181,19 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     let parentId = 'virtual-all';
     if (parentPath !== '/') {
       const parent = await this.getIdForPath(parentPath);
+      if (parent.type === 'file' || parent.type === 'media') {
+        throw new Error('Cannot upload a file directly inside a Content Item folder.');
+      }
       parentId = parent.id;
     }
     
     let fileToUpload: File;
     if (data instanceof Blob) {
       fileToUpload = new File([data], name, { type: data.type });
-    } else if (data instanceof Uint8Array) {
-      fileToUpload = new File([data], name, { type: 'application/octet-stream' });
+    } else if (data instanceof Uint8Array || ArrayBuffer.isView(data)) {
+      fileToUpload = new File([data as any], name, { type: 'application/octet-stream' });
     } else {
-      fileToUpload = new File([data], name, { type: 'text/plain' });
+      fileToUpload = new File([data as BlobPart], name, { type: 'text/plain' });
     }
     
     await uploadFileToRemote({
@@ -213,7 +256,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     return {
       size: 0,
       lastModified: Date.now(),
-      kind: cache.type
+      kind: cache.type === 'directory' ? 'directory' : 'file'
     };
   }
 
@@ -221,17 +264,16 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     const config = this.resolveConfig();
     const entry = await this.getIdForPath(path);
     
-    const parts = path.split('/').filter(Boolean);
-    const parentPath = '/' + parts.slice(0, -1).join('/');
-    
-    const response = await fetchRemoteVfsList({ config, path: parentPath });
-    const remoteItem = response.items.find(i => i.id === entry.id);
-    
-    if (!remoteItem || remoteItem.type !== 'file' || !remoteItem.media?.[0]) {
-      throw new Error(`File not found or has no media: ${path}`);
+    if (entry.type === 'media' && entry.item) {
+      if (entry.mediaIndex === -1) {
+        const textData = (entry.item as RemoteVfsFileEntry).text || '';
+        const blob = new Blob([textData], { type: 'text/plain' });
+        return URL.createObjectURL(blob);
+      }
+      return getRemoteFileDownloadUrl({ baseUrl: config.baseUrl, entry: entry.item, mediaIndex: entry.mediaIndex });
     }
     
-    return getRemoteFileDownloadUrl({ baseUrl: config.baseUrl, entry: remoteItem, mediaIndex: 0 });
+    throw new Error(`Path is not a valid media file: ${path}`);
   }
 
   async getFile(path: string): Promise<File | null> {
