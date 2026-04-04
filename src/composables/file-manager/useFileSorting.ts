@@ -3,7 +3,7 @@ import type { FsEntry } from '~/types/fs';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 
 export function useFileSorting(entries: Ref<FsEntry[]>) {
-  const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
+  const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
 
   const sortedEntries = computed(() => {
     const rawEntries = toRaw(entries.value);

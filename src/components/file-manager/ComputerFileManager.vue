@@ -3,7 +3,7 @@ import { ref, computed, provide, onMounted, shallowRef } from 'vue';
 import { Pane, Splitpanes } from 'splitpanes';
 import { useFilesPageFileManagerStore } from '~/stores/file-manager.store';
 import { useComputerVfs } from '~/composables/file-manager/useComputerVfs';
-import { createFileManager } from '~/composables/file-manager/useFileManager';
+import { createFileManager, FILE_MANAGER_INJECTION_KEY } from '~/composables/file-manager/useFileManager';
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import type { FsEntry } from '~/types/fs';
@@ -36,9 +36,25 @@ const fileManager = createFileManager({
   getProjectId: () => 'computer',
   getProjectSize: () => ({ width: 1920, height: 1080 }),
   onMediaImported: () => {},
-  mediaCache: {} as any, // Not used for computer browsing for now
-  mediaStore: {} as any,
-  historyStore: {} as any,
+  mediaCache: {
+    hasProxy: () => false,
+    checkExistingProxies: async () => [],
+    ensureProxy: async () => {},
+    cancelProxy: async () => {},
+    removeProxy: async () => {},
+    renameProxy: async () => {},
+    renameProxyDir: async () => {},
+    clearExistingProxies: () => {},
+    clearVideoThumbnails: async () => {},
+    clearWaveforms: async () => {},
+  } as any,
+  mediaStore: {
+    revalidateMissingMedia: async () => {},
+    removeMediaCache: async () => {},
+  } as any,
+  historyStore: {
+    push: () => {},
+  } as any,
   shouldRecordFileManagerHistory: () => false,
   hideCommonRoot: true,
 });
@@ -69,6 +85,7 @@ const computerStoreWrapper = computed(() => {
 });
 
 provide('fileManagerStore', computerStoreWrapper.value);
+provide(FILE_MANAGER_INJECTION_KEY, fileManager);
 
 onMounted(async () => {
   if (fileManagerStore.computerLastFolder) {

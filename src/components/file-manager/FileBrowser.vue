@@ -50,7 +50,7 @@ const props = defineProps<{
 }>();
 
 
-const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
+const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
 const selectionStore = useSelectionStore();
 const projectStore = useProjectStore();
 

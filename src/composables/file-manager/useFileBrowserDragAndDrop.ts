@@ -36,7 +36,7 @@ interface UseFileBrowserDragAndDropOptions {
 export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOptions) {
   const uiStore = useUiStore();
   const workspaceStore = useWorkspaceStore();
-  const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
+  const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
   const fileManager = useFileManager();
 
   const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);

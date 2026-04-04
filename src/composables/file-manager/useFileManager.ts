@@ -1,4 +1,4 @@
-import { ref, shallowRef, computed, toRaw, markRaw, watch, type Ref } from 'vue';
+import { ref, shallowRef, computed, toRaw, markRaw, watch, type Ref, inject, type InjectionKey } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -684,11 +684,18 @@ export function createFileManager(deps: FileManagerCreateDeps) {
 const sharedRootEntries = shallowRef<FsEntry[]>([]);
 const sharedSortMode = ref<FileTreeSortMode>('name');
 
+export const FILE_MANAGER_INJECTION_KEY: InjectionKey<ReturnType<typeof createFileManager>> = Symbol('FileManager');
+
 export function useFileManager(options?: {
   rootEntries?: Ref<FsEntry[]>;
   sortMode?: Ref<FileTreeSortMode>;
   vfs?: IFileSystemAdapter;
 }) {
+  const injected = inject(FILE_MANAGER_INJECTION_KEY, null);
+  if (injected && !options?.vfs && !options?.rootEntries) {
+    return injected;
+  }
+
   const { t } = useI18n();
   const toast = useToast();
   const defaultVfs = useVfs();

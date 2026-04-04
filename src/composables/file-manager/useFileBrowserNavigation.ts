@@ -44,7 +44,7 @@ export function useFileBrowserNavigation({
   };
   readDirectory: (path: string | undefined) => Promise<FsEntry[]>;
 }) {
-  const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
+  const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
   const projectStore = useProjectStore();
   const uiStore = useUiStore();
 

@@ -549,7 +549,11 @@
       }
     },
     "fileManager": {
-      "unsupported": "File System Access API is not supported in this browser"
+      "unsupported": "File System Access API is not supported in this browser",
+      "tabs": {
+        "computer": "Computer",
+        "workspace": "Workspace"
+      }
     },
     "hudClip": {
       "background": "Background",

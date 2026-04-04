@@ -23,7 +23,7 @@ export function useMobileFileBrowserNavigation({
   vfs,
   findEntryByPath,
 }: NavigationDeps) {
-  const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
+  const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
   const projectStore = useProjectStore();
   const uiStore = useUiStore();

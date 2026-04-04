@@ -551,7 +551,8 @@
     "fileManager": {
       "unsupported": "API доступа к файловой системе не поддерживается в этом браузере",
       "tabs": {
-        "computer": "Компьютер"
+        "computer": "Компьютер",
+        "workspace": "Воркспейс"
       },
       "remote": {
         "not_configured_title": "BloggerDog не настроен",
