@@ -13,11 +13,15 @@ interface Props {
 
 defineProps<Props>();
 
+import { useFileManagerStore } from '~/stores/file-manager.store';
+
 const emit = defineEmits<{
-  resized: [event: { panes: Array<{ size: number }> }];
-  selectFolder: [entry: FsEntry | null];
-  clearSelection: [];
+  (e: 'resized', event: { panes: Array<{ size: number }> }): void;
+  (e: 'selectFolder', entry: FsEntry | null): void;
+  (e: 'clearSelection'): void;
 }>();
+
+const fileManagerStore = useFileManagerStore();
 </script>
 
 <template>
@@ -34,7 +38,15 @@ const emit = defineEmits<{
       />
     </Pane>
     <Pane :size="sizes[1]" min-size="10">
-      <FileBrowser class="h-full" />
+      <Splitpanes v-if="fileManagerStore.isBloggerDogPanelVisible" class="h-full flex divide-x divide-ui-border">
+        <Pane size="50">
+          <FileBrowser :remote-mode-only="true" class="h-full" />
+        </Pane>
+        <Pane size="50">
+          <FileBrowser class="h-full" />
+        </Pane>
+      </Splitpanes>
+      <FileBrowser v-else class="h-full" />
     </Pane>
     <Pane :size="sizes[2]" min-size="10">
       <PropertiesPanel

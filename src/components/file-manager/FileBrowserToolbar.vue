@@ -100,11 +100,11 @@ const sortFields: { label: string; value: FileSortField }[] = [
     <div class="ml-auto flex items-center gap-2">
       <template v-if="!compact">
         <UiActionButton
-          v-if="remoteAvailable"
           color="neutral"
           size="xs"
           icon="i-heroicons-cloud"
-          label="Remote"
+          label="BloggerDog"
+          :class="{'text-primary-400 bg-primary-500/10 hover:bg-primary-500/20': fileManagerStore.isBloggerDogPanelVisible}"
           @click="emit('openRemote')"
         />
         <span class="text-xs text-ui-text-muted">{{ t('common.sortBy', 'Sort by') }}:</span>

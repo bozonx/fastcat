@@ -96,7 +96,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   });
 
   function isCopyModifierActive(event: DragEvent): boolean {
-    return isLayer1Active(event, workspaceStore.userSettings);
+    return !isLayer1Active(event, workspaceStore.userSettings);
   }
 
   function resolveDragOperation(event: DragEvent): 'copy' | 'move' {

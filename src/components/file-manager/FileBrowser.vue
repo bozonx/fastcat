@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted, nextTick } from 'vue';
+import { ref, computed, watch, onUnmounted, onMounted, nextTick } from 'vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -43,6 +43,7 @@ import FileBrowserModals from '~/components/file-manager/FileBrowserModals.vue';
 const props = defineProps<{
   isFilesPage?: boolean;
   compact?: boolean;
+  remoteModeOnly?: boolean;
 }>();
 
 const fileManagerStore = useFileManagerStore();
@@ -86,8 +87,7 @@ const {
   submitTranscription,
 } = stt;
 
-// --- State (shared between components) ---
-const isRemoteMode = ref(false);
+const isRemoteMode = ref(!!props.remoteModeOnly);
 const remoteCurrentFolder = ref<RemoteFsEntry | null>(null);
 
 // --- Entries (folderEntries, sortedEntries, sizes, stats) ---
@@ -214,8 +214,15 @@ const {
   buildRemoteDirectoryEntry,
   loadRemoteFolderContent,
   loadRemoteParentFolders,
-  openRemoteExchangeModal,
 } = remote;
+
+function toggleBloggerDogPanel() {
+  if (!isRemoteAvailable.value) {
+    uiStore.isEditorSettingsOpen = true;
+  } else {
+    fileManagerStore.isBloggerDogPanelVisible = !fileManagerStore.isBloggerDogPanelVisible;
+  }
+}
 
 // --- Navigation ---
 const navigation = useFileBrowserNavigation({
@@ -430,6 +437,14 @@ const currentGridSizeName = computed(() => {
 
 onUnmounted(() => {});
 
+onMounted(async () => {
+  if (props.remoteModeOnly) {
+    remoteCurrentFolder.value = buildRemoteDirectoryEntry('/');
+    await loadFolderContent();
+    await loadRemoteParentFolders(parentFolders);
+  }
+});
+
 useFileBrowserPendingActions({
   folderEntries,
   startRename,
@@ -585,7 +600,7 @@ async function onDirectoryUploadChange(e: Event) {
       :remote-available="isRemoteAvailable"
       :compact="compact"
       @refresh="refreshFileTree"
-      @open-remote="openRemoteExchangeModal"
+      @open-remote="toggleBloggerDogPanel"
       @create-folder="
         () =>
           onFileAction(
