@@ -161,33 +161,9 @@ const toolbarMenuItems = computed(() => {
       />
     </div>
 
-    <!-- BloggerDog specific tools if needed, but for now we keep common ones -->
-    <div v-if="isRemotePanel" class="flex items-center gap-1">
-      <UiToggleButton
-        :model-value="fileManagerStore.viewMode === 'grid'"
-        icon="i-heroicons-squares-2x2"
-        inactive-color="neutral"
-        active-color="primary"
-        size="sm"
-        title="Grid view"
-        no-toggle
-        @click="fileManagerStore.setViewMode('grid')"
-      />
-      <UiToggleButton
-        :model-value="fileManagerStore.viewMode === 'list'"
-        icon="i-heroicons-list-bullet"
-        inactive-color="neutral"
-        active-color="primary"
-        size="sm"
-        title="List view"
-        no-toggle
-        @click="fileManagerStore.setViewMode('list')"
-      />
-    </div>
-
     <!-- Card size slider (only in grid view) -->
     <div
-      v-if="fileManagerStore.viewMode === 'grid'"
+      v-if="props.isRemotePanel || fileManagerStore.viewMode === 'grid'"
       class="flex items-center gap-2 ml-2 w-24"
       :title="`${t('videoEditor.fileManager.cardScale', 'Card scale')}: ${currentGridSizeName}`"
     >
@@ -206,29 +182,7 @@ const toolbarMenuItems = computed(() => {
       <template v-if="!compact">
         <div class="w-px h-4 bg-ui-border mx-1"></div>
         
-        <!-- View mode toggles -->
-        <div class="flex items-center gap-1 mr-2">
-          <UiToggleButton
-            :model-value="fileManagerStore.viewMode === 'grid'"
-            icon="i-heroicons-squares-2x2"
-            inactive-color="neutral"
-            active-color="primary"
-            size="xs"
-            :title="t('common.viewMode.cards', 'Grid view')"
-            no-toggle
-            @click="fileManagerStore.setViewMode('grid')"
-          />
-          <UiToggleButton
-            :model-value="fileManagerStore.viewMode === 'list'"
-            icon="i-heroicons-list-bullet"
-            inactive-color="neutral"
-            active-color="primary"
-            size="xs"
-            :title="t('common.viewMode.list', 'List view')"
-            no-toggle
-            @click="fileManagerStore.setViewMode('list')"
-          />
-        </div>
+
 
         <UDropdownMenu v-if="toolbarMenuItems.length > 0" :items="toolbarMenuItems" :ui="{ content: 'w-56' }">
           <UiActionButton
