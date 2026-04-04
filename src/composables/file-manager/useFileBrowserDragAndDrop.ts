@@ -1,4 +1,4 @@
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, inject } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -36,7 +36,7 @@ interface UseFileBrowserDragAndDropOptions {
 export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOptions) {
   const uiStore = useUiStore();
   const workspaceStore = useWorkspaceStore();
-  const fileManagerStore = useFileManagerStore();
+  const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
   const fileManager = useFileManager();
 
   const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);

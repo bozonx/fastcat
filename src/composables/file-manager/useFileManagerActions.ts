@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue';
+import { ref, computed, inject } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -59,6 +59,7 @@ interface FileManagerActions {
 }
 
 export function useFileManagerActions(actions: FileManagerActions) {
+  const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
   const { t } = useI18n();
   const toast = useToast();
   const uiStore = useUiStore();
@@ -180,7 +181,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
       void timelineStore.loadTimelineMetadata();
 
       toast.add({
-        title: t('videoEditor.timeline.versionCreated', 'Version created: {name}', { name: nextName }),
+        title: t('videoEditor.timeline.versionCreated', { name: nextName }),
         color: 'success',
       });
     }
@@ -208,7 +209,6 @@ export function useFileManagerActions(actions: FileManagerActions) {
       // Expand and open documents folder
       const dirEntry = actions.findEntryByPath(dirPath);
       if (dirEntry) {
-        const fileManagerStore = useFileManagerStore();
         fileManagerStore.openFolder(dirEntry);
       }
 

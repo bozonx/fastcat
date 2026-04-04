@@ -1,4 +1,4 @@
-import { ref, onUnmounted } from 'vue';
+import { ref, onUnmounted, inject } from 'vue';
 import type { Ref } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
@@ -28,7 +28,7 @@ export function useFileBrowserInteraction({
   setSelectedFsEntry,
   onFileAction,
 }: FileBrowserInteractionOptions) {
-  const fileManagerStore = useFileManagerStore();
+  const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
   const projectStore = useProjectStore();
   const timelineStore = useTimelineStore();
 

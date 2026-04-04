@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, provide, watch, nextTick } from 'vue';
+import { ref, computed, provide, watch, nextTick, inject } from 'vue';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useAutoScroll } from '~/composables/ui/useAutoScroll';
@@ -91,7 +91,7 @@ const selectionStore = useSelectionStore();
 const clipboardStore = useAppClipboard();
 const { currentDragOperation } = clipboardStore;
 const { loadTimeline } = useProjectActions();
-const fileManagerStore = useFileManagerStore();
+const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
 const mediaStore = useMediaStore();
 
 watch(

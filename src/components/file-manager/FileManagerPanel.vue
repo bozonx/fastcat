@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, inject } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
@@ -38,7 +38,7 @@ const toast = useToast();
 
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
-const fileManagerStore = useFileManagerStore();
+const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
 const focusStore = useFocusStore();
 const uiStore = useUiStore();
 const conversionStore = useFileConversionStore();

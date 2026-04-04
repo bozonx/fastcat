@@ -13,7 +13,8 @@ interface Props {
 
 defineProps<Props>();
 
-import { useFileManagerStore } from '~/stores/file-manager.store';
+import { useFilesPageFileManagerStore } from '~/stores/file-manager.store';
+import { provide } from 'vue';
 
 const emit = defineEmits<{
   (e: 'resized', event: { panes: Array<{ size: number }> }): void;
@@ -22,7 +23,8 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const fileManagerStore = useFileManagerStore();
+const fileManagerStore = useFilesPageFileManagerStore();
+provide('fileManagerStore', fileManagerStore);
 
 import { BloggerDogVfsAdapter } from '~/file-manager/core/vfs/bloggerdog.adapter';
 import { useWorkspaceStore } from '~/stores/workspace.store';

@@ -1,4 +1,4 @@
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, inject } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useFileManagerStore } from '~/stores/file-manager.store';
@@ -8,7 +8,7 @@ import { computeDirectoryStats } from '~/utils/fs';
 
 export function useMobileFileBrowserSelection() {
   const selectionStore = useSelectionStore();
-  const fileManagerStore = useFileManagerStore();
+  const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
   const projectStore = useProjectStore();
 
   const isSelectionMode = ref(false);

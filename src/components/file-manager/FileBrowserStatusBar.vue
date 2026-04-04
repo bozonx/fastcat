@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { inject } from 'vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 
 defineProps<{
@@ -9,7 +10,7 @@ defineProps<{
 }>();
 
 const { t } = useI18n();
-const fileManagerStore = useFileManagerStore();
+const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
 </script>
 
 <template>
