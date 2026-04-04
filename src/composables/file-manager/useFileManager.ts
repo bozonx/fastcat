@@ -598,6 +598,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
   }
 
   function getFileIcon(entry: FsEntry): string {
+    if ((entry as any).isTextContent) return 'i-heroicons-document-text';
     if (entry.kind === 'directory') return 'i-heroicons-folder';
     if (entry.name.toLowerCase().endsWith('.otio')) return 'i-heroicons-queue-list';
     const type = getMediaTypeFromFilename(entry.name);

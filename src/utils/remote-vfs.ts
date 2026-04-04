@@ -109,9 +109,14 @@ export function toRemoteFsEntry(entry: RemoteVfsEntry): RemoteFsEntry {
   const lastModified = getRemoteEntryUpdatedAt(entry);
   const displayName = getRemoteEntryDisplayName(entry);
 
-  return {
+  const isBloggerDogContentItem = entry.type === 'file';
+
+  // For BloggerDog Content Items, we treat them as directories so they can be entered to see media files
+  const entryKind = isBloggerDogContentItem ? 'directory' : entry.type;
+
+  const result: RemoteFsEntry = {
     name: displayName,
-    kind: entry.type,
+    kind: entryKind,
     path: entry.path,
     lastModified,
     source: 'remote',
@@ -122,7 +127,24 @@ export function toRemoteFsEntry(entry: RemoteVfsEntry): RemoteFsEntry {
     size,
     created: lastModified,
     mimeType: entry.type === 'directory' ? 'folder' : resolveMediaMimeType(entry.media),
+    ...(isBloggerDogContentItem ? { isContentItem: true } : {}),
   };
+
+  // For content items, expose the first media's thumbnail if available
+  if (isBloggerDogContentItem && entry.media?.length) {
+    const firstMediaWithThumbnail = entry.media.find((m) => m.thumbnailUrl) || entry.media[0];
+    if (firstMediaWithThumbnail?.thumbnailUrl) {
+      (result as any).remoteThumbnailUrl = firstMediaWithThumbnail.thumbnailUrl;
+    }
+    // Also mark if it's primarily text
+    if (!entry.media.length && (entry as any).text?.trim()) {
+      (result as any).isTextContent = true;
+    }
+  } else if (isBloggerDogContentItem && (entry as any).text?.trim()) {
+    (result as any).isTextContent = true;
+  }
+
+  return result;
 }
 
 export function createRemoteMediaFsEntry(params: {

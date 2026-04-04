@@ -11,12 +11,14 @@ const props = defineProps<{
   gridSizes: number[];
   currentGridSizeName: string;
   remoteAvailable?: boolean;
+  isRemotePanel?: boolean;
   compact?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: 'refresh'): void;
   (e: 'openRemote'): void;
+  (e: 'closeRemote'): void;
   (e: 'createFolder'): void;
   (e: 'upload'): void;
 }>();
@@ -24,6 +26,8 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const fileManagerStore = useFileManagerStore();
 const uiStore = useUiStore();
+
+const isBloggerDogOpen = computed(() => fileManagerStore.isBloggerDogPanelVisible);
 
 const sortFields: { label: string; value: FileSortField }[] = [
   { label: t('common.name', 'Name'), value: 'name' },
@@ -38,7 +42,22 @@ const sortFields: { label: string; value: FileSortField }[] = [
   <div
     class="flex items-center gap-4 px-4 py-2 border-b border-ui-border shrink-0 bg-ui-bg-elevated/50"
   >
-    <div class="flex items-center gap-1">
+    <div v-if="isRemotePanel" class="flex items-center gap-2">
+      <div class="flex items-center gap-2 px-2 py-1 rounded bg-primary-500/10 text-primary-400">
+        <UIcon name="i-heroicons-cloud" class="w-4 h-4" />
+        <span class="text-xs font-bold uppercase tracking-wider">BloggerDog</span>
+      </div>
+      <div class="w-px h-4 bg-ui-border mx-1"></div>
+      <UiActionButton
+        color="neutral"
+        size="xs"
+        icon="i-heroicons-x-mark"
+        :label="t('common.close', 'Close')"
+        @click="fileManagerStore.isBloggerDogPanelVisible = false"
+      />
+    </div>
+
+    <div v-if="!isRemotePanel" class="flex items-center gap-1">
       <UiToggleButton
         :model-value="fileManagerStore.viewMode === 'grid'"
         icon="i-heroicons-squares-2x2"
@@ -100,11 +119,11 @@ const sortFields: { label: string; value: FileSortField }[] = [
     <div class="ml-auto flex items-center gap-2">
       <template v-if="!compact">
         <UiActionButton
+          v-if="!isRemotePanel && remoteAvailable && !isBloggerDogOpen"
           color="neutral"
           size="xs"
           icon="i-heroicons-cloud"
           label="BloggerDog"
-          :class="{'text-primary-400 bg-primary-500/10 hover:bg-primary-500/20': fileManagerStore.isBloggerDogPanelVisible}"
           @click="emit('openRemote')"
         />
         <span class="text-xs text-ui-text-muted">{{ t('common.sortBy', 'Sort by') }}:</span>

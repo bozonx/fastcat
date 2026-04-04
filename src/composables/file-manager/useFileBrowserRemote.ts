@@ -1,12 +1,14 @@
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import type { Ref } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useUiStore } from '~/stores/ui.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import {
   downloadRemoteFile,
   fetchRemoteVfsList,
   getRemoteFileDownloadUrl,
+  getRemoteThumbnailUrl,
   isRemoteFsEntry,
   type RemoteFsEntry,
   toRemoteFsEntry,
@@ -24,6 +26,7 @@ export interface UseFileBrowserRemoteOptions {
   loadParentFolders: () => Promise<void>;
   navigateToRoot: () => Promise<void>;
   setSelectedFsEntry: (entry: FsEntry | null) => void;
+  vfs: any; // Using any for VFS adapter to avoid generic type complexities here
   onEntryDragStart: (e: DragEvent, entry: FsEntry) => void;
   onEntryDragEnd: () => void;
   onEntryDragEnter: (e: DragEvent, entry: FsEntry) => void;
@@ -45,6 +48,7 @@ export function useFileBrowserRemote({
   loadParentFolders,
   navigateToRoot,
   setSelectedFsEntry,
+  vfs,
   onEntryDragStart,
   onEntryDragEnd,
   onEntryDragEnter,
@@ -123,11 +127,23 @@ export function useFileBrowserRemote({
     }
 
     try {
-      const response = await fetchRemoteVfsList({
-        config: remoteFilesConfig.value,
-        path: remoteCurrentFolder.value.remotePath || '/',
+      // Use VFS instead of direct API call to benefit from BloggerDogVfsAdapter logic (like Content Item-as-folder)
+      const path = remoteCurrentFolder.value.remotePath || '/';
+      const items = await vfs.readDirectory(path);
+      
+      folderEntries.value = items.map((entry: any) => {
+        // Resolve thumbnail for content items or media
+        if (entry.remoteThumbnailUrl || entry.objectUrl) {
+          // If objectUrl is already set, it's likely from the adapter or already resolved
+          if (!entry.objectUrl && entry.remoteThumbnailUrl) {
+             entry.objectUrl = getRemoteThumbnailUrl({
+                baseUrl: remoteFilesConfig.value!.baseUrl,
+                media: { thumbnailUrl: entry.remoteThumbnailUrl } as any,
+              });
+          }
+        }
+        return entry;
       });
-      folderEntries.value = response.items.map((entry) => toRemoteFsEntry(entry));
     } catch (error) {
       console.error('Failed to load remote folder content:', error);
       folderEntries.value = [];
@@ -140,25 +156,39 @@ export function useFileBrowserRemote({
     return true;
   }
 
+  // Auto-open logic for first-time connection
+  const hasAutoOpened = ref(false);
+  watch(
+    isRemoteAvailable,
+    (available) => {
+      if (available && !hasAutoOpened.value) {
+        const fileManagerStore = useFileManagerStore();
+        if (!fileManagerStore.isBloggerDogPanelVisible) {
+          fileManagerStore.isBloggerDogPanelVisible = true;
+        }
+        hasAutoOpened.value = true;
+      }
+    },
+    { immediate: true },
+  );
+
   function loadRemoteParentFolders(parentFolders: Ref<FsEntry[]>): boolean {
     if (!isRemoteMode.value) return false;
     const currentPath = remoteCurrentFolder.value?.remotePath || '/';
     const parts = currentPath.split('/').filter(Boolean);
     let accum = '';
+    const result: FsEntry[] = [];
     for (const part of parts) {
       accum = `${accum}/${part}`;
-      parentFolders.value.push(buildRemoteDirectoryEntry(accum));
+      result.push(buildRemoteDirectoryEntry(accum));
     }
+    parentFolders.value = result;
     return true;
-  }
-
-  function openRemoteExchangeModal() {
-    uiStore.remoteExchangeModalOpen = true;
   }
 
   async function toggleRemoteMode(fileManagerStore: {
     selectedFolder: FsEntry | null;
-    selectFolder: (e: FsEntry) => void;
+    openFolder: (e: FsEntry) => void;
   }) {
     if (!isRemoteAvailable.value) return;
 
@@ -231,7 +261,7 @@ export function useFileBrowserRemote({
   }
 
   function onBrowserEntryDragStart(e: DragEvent, entry: FsEntry) {
-    if (isRemoteMode.value && isRemoteFsEntry(entry)) {
+    if (isRemoteMode.value && (isRemoteFsEntry(entry) || entry.source === 'remote')) {
       if (entry.kind !== 'file' || !e.dataTransfer) return;
 
       e.dataTransfer.effectAllowed = 'copy';
@@ -292,7 +322,6 @@ export function useFileBrowserRemote({
     buildRemoteDirectoryEntry,
     loadRemoteFolderContent,
     loadRemoteParentFolders,
-    openRemoteExchangeModal,
     toggleRemoteMode,
     performRemoteDownload,
     cancelRemoteTransfer,
