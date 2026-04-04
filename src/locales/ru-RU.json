@@ -549,8 +549,17 @@
       }
     },
     "fileManager": {
-      "unsupported": "API доступа к файловой системе не поддерживается в этом браузере"
+      "unsupported": "API доступа к файловой системе не поддерживается в этом браузере",
+      "tabs": {
+        "computer": "Компьютер"
+      },
+      "remote": {
+        "not_configured_title": "BloggerDog не настроен",
+        "not_configured_desc": "Интеграция с BloggerDog позволяет управлять вашим удаленным контентом.",
+        "configure_action": "Настроить интеграцию"
+      }
     },
+
     "hudClip": {
       "background": "Фон",
       "content": "Содержимое",
