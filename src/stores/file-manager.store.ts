@@ -13,6 +13,9 @@ export interface FileSortOption {
   order: SortOrder;
 }
 
+export type FilesPageTab = 'computer' | 'bloggerdog';
+
+
 function createFileManagerStoreSetup(contextId: 'editor' | 'filesPage') {
   return () => {
     const STORAGE_KEY = `fastcat:file-manager-${contextId}`;
@@ -32,6 +35,16 @@ function createFileManagerStoreSetup(contextId: 'editor' | 'filesPage') {
     const bloggerDogGridCardSize = ref<number>(
       readLocalStorageJson(`fastcat:file-manager:bloggerDogGridCardSize`, 100),
     );
+    const computerGridCardSize = ref<number>(
+      readLocalStorageJson(`fastcat:file-manager:computerGridCardSize`, 100),
+    );
+    const computerLastFolder = ref<FsEntry | null>(
+      readLocalStorageJson(`fastcat:file-manager:computerLastFolder`, null),
+    );
+    const filesPageActiveTab = ref<FilesPageTab>(
+      readLocalStorageJson(`fastcat:file-manager:filesPageActiveTab`, 'computer'),
+    );
+
     const columnWidths = ref<Record<string, number>>(
       readLocalStorageJson(`${STORAGE_KEY}:columnWidths`, {
         name: 200,
@@ -56,6 +69,16 @@ function createFileManagerStoreSetup(contextId: 'editor' | 'filesPage') {
   watch(isBloggerDogPanelVisible, (val) =>
     writeLocalStorageJson(`${STORAGE_KEY}:isBloggerDogPanelVisible`, val),
   );
+  watch(computerGridCardSize, (val) =>
+    writeLocalStorageJson(`fastcat:file-manager:computerGridCardSize`, val),
+  );
+  watch(computerLastFolder, (val) =>
+    writeLocalStorageJson(`fastcat:file-manager:computerLastFolder`, val),
+  );
+  watch(filesPageActiveTab, (val) =>
+    writeLocalStorageJson(`fastcat:file-manager:filesPageActiveTab`, val),
+  );
+
   watch(columnWidths, (val) => writeLocalStorageJson(`${STORAGE_KEY}:columnWidths`, val), {
     deep: true,
   });
@@ -96,6 +119,19 @@ function createFileManagerStoreSetup(contextId: 'editor' | 'filesPage') {
     bloggerDogGridCardSize.value = size;
   }
 
+  function setComputerGridCardSize(size: number) {
+    computerGridCardSize.value = size;
+  }
+
+  function setComputerLastFolder(entry: FsEntry | null) {
+    computerLastFolder.value = entry;
+  }
+
+  function setFilesPageActiveTab(tab: FilesPageTab) {
+    filesPageActiveTab.value = tab;
+  }
+
+
   function setColumnWidth(column: string, width: number) {
     columnWidths.value = { ...columnWidths.value, [column]: width };
   }
@@ -130,6 +166,9 @@ function createFileManagerStoreSetup(contextId: 'editor' | 'filesPage') {
       sortOption,
       gridCardSize,
       bloggerDogGridCardSize,
+      computerGridCardSize,
+      computerLastFolder,
+      filesPageActiveTab,
       columnWidths,
       folderSizes,
       sortFields,
@@ -140,8 +179,12 @@ function createFileManagerStoreSetup(contextId: 'editor' | 'filesPage') {
       setSortOption,
       setGridCardSize,
       setBloggerDogGridCardSize,
+      setComputerGridCardSize,
+      setComputerLastFolder,
+      setFilesPageActiveTab,
       setColumnWidth,
       resetFileManagerState,
+
     };
   };
 }

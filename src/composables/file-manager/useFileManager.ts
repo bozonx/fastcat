@@ -677,11 +677,20 @@ export function createFileManager(deps: FileManagerCreateDeps) {
 const sharedRootEntries = shallowRef<FsEntry[]>([]);
 const sharedSortMode = ref<FileTreeSortMode>('name');
 
-export function useFileManager() {
+export function useFileManager(options?: {
+  rootEntries?: Ref<FsEntry[]>;
+  sortMode?: Ref<FileTreeSortMode>;
+  vfs?: IFileSystemAdapter;
+}) {
   const { t } = useI18n();
   const toast = useToast();
-  const vfs = useVfs();
+  const defaultVfs = useVfs();
+  const vfs = options?.vfs || defaultVfs;
+  const rootEntries = options?.rootEntries || sharedRootEntries;
+  const sortMode = options?.sortMode || sharedSortMode;
+
   const workspaceStore = useWorkspaceStore();
+
   const projectStore = useProjectStore();
   const uiStore = useUiStore();
   const mediaStore = useMediaStore();
@@ -712,12 +721,13 @@ export function useFileManager() {
       'path' in selectionStore.selectedEntity &&
       selectionStore.selectedEntity.path === params.oldPath
     ) {
-      const updatedEntry = findEntryByPathCore(sharedRootEntries.value, params.newPath);
+      const updatedEntry = findEntryByPathCore(rootEntries.value, params.newPath);
       if (updatedEntry) {
         selectionStore.selectFsEntry(updatedEntry);
       }
     }
   }
+
 
   async function clearVectorCacheForPath(path: string) {
     const projectId = projectStore.currentProjectId;
@@ -763,9 +773,10 @@ export function useFileManager() {
     toast,
     vfs,
     isApiSupported,
-    rootEntries: sharedRootEntries,
-    sortMode: sharedSortMode,
+    rootEntries,
+    sortMode,
     showHiddenFiles,
+
     mediaStore,
     historyStore,
     shouldRecordFileManagerHistory: () => !(route.path === '/m' || route.path.startsWith('/m/')),

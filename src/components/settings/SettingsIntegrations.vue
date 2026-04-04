@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useFilesPageFileManagerStore } from '~/stores/file-manager.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
+
 
 import BloggerDogSection from './integrations/BloggerDogSection.vue';
 import SttIntegrationSection from './integrations/SttIntegrationSection.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
+const fileManagerStore = useFilesPageFileManagerStore();
 const route = useRoute();
 const router = useRouter();
+
 
 const isResetConfirmOpen = ref(false);
 
@@ -43,6 +47,17 @@ watch(
   },
   { immediate: true },
 );
+
+// Switch to bloggerdog tab when integrated
+watch(
+  () => workspaceStore.userSettings.integrations.fastcatPublicador.bearerToken,
+  (token) => {
+    if (token && token.trim().length > 0) {
+      fileManagerStore.setFilesPageActiveTab('bloggerdog');
+    }
+  }
+);
+
 </script>
 
 <template>
