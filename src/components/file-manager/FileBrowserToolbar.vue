@@ -14,7 +14,9 @@ const props = defineProps<{
   remoteAvailable?: boolean;
   isRemotePanel?: boolean;
   compact?: boolean;
+  hideActions?: boolean;
 }>();
+
 
 const emit = defineEmits<{
   (e: 'refresh'): void;
@@ -112,13 +114,7 @@ const toolbarMenuItems = computed(() => {
   <div
     class="flex items-center gap-4 px-4 py-2 border-b border-ui-border shrink-0 bg-ui-bg-elevated/50"
   >
-    <div v-if="isRemotePanel" class="flex items-center gap-2">
-      <div class="flex items-center gap-2 px-2 py-1 rounded bg-amber-500/10 text-amber-500">
-        <UIcon name="i-heroicons-cloud" class="w-4 h-4" />
-        <span class="text-xs font-bold uppercase tracking-wider">BloggerDog</span>
-      </div>
-      <div class="w-px h-4 bg-ui-border mx-1"></div>
-    </div>
+
 
     <div v-if="!isRemotePanel" class="flex items-center gap-1">
       <UiToggleButton
@@ -145,6 +141,7 @@ const toolbarMenuItems = computed(() => {
       <div class="w-px h-4 bg-ui-border mx-2"></div>
 
       <UiActionButton
+        v-if="!hideActions"
         icon="i-heroicons-folder-plus"
         variant="ghost"
         color="neutral"
@@ -153,6 +150,7 @@ const toolbarMenuItems = computed(() => {
         @click="emit('createFolder')"
       />
       <UiActionButton
+        v-if="!hideActions"
         icon="i-heroicons-arrow-up-tray"
         variant="ghost"
         color="neutral"
@@ -160,6 +158,7 @@ const toolbarMenuItems = computed(() => {
         :title="t('videoEditor.fileManager.actions.uploadFiles', 'Upload files')"
         @click="emit('upload')"
       />
+
     </div>
 
     <!-- Card size slider (only in grid view) -->

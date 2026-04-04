@@ -46,7 +46,9 @@ const props = defineProps<{
   compact?: boolean;
   remoteModeOnly?: boolean;
   vfs?: IFileSystemAdapter;
+  hideActions?: boolean;
 }>();
+
 
 const fileManagerStore = inject('fileManagerStore') as ReturnType<typeof useFileManagerStore> || useFileManagerStore();
 const selectionStore = useSelectionStore();
@@ -610,7 +612,9 @@ async function onDirectoryUploadChange(e: Event) {
       :remote-available="isRemoteAvailable"
       :is-remote-panel="props.remoteModeOnly"
       :compact="compact"
+      :hide-actions="hideActions"
       @refresh="refreshFileTree"
+
       @open-remote="toggleBloggerDogPanel"
       @create-folder="
         () =>
