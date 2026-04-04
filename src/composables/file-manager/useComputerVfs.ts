@@ -15,18 +15,13 @@ export function useComputerVfs() {
   if (isTauri) {
     const isWindows = typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('win');
     
-    if (isWindows) {
-      // In Tauri Windows, readdir('/') might not work to list drives.
-      // We'll use a blank-base adapter and start at C:/. 
-      // A more complex implementation could loop through A-Z to find active drives.
-      vfs.value = new TauriFileSystemAdapter('');
-      rootPath.value = 'C:/'; 
-    } else {
-      // Unix: Root is /
-      vfs.value = new TauriFileSystemAdapter('/');
-      rootPath.value = '/';
-    }
+    // In Tauri, the workspace root is the path of the current workspace handle
+    const workspacePath = (workspaceStore.workspaceHandle as any)?.path || '';
+    
+    vfs.value = new TauriFileSystemAdapter(workspacePath);
+    rootPath.value = ''; 
   } else {
+
     // OPFS: Root of the origin
     vfs.value = new OpfsFileSystemAdapter(async () => {
       if (typeof navigator !== 'undefined' && navigator.storage?.getDirectory) {

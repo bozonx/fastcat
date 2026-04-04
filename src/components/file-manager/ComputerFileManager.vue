@@ -40,7 +40,9 @@ const fileManager = createFileManager({
   mediaStore: {} as any,
   historyStore: {} as any,
   shouldRecordFileManagerHistory: () => false,
+  hideCommonRoot: true,
 });
+
 
 const expandedPaths = ref(new Set<string>());
 
@@ -98,6 +100,7 @@ function onSelect(entry: FsEntry) {
         <FileManagerPanel
           folders-only
           compact
+          hide-actions
           class="h-full"
           @select="onSelect"
         />
@@ -105,9 +108,11 @@ function onSelect(entry: FsEntry) {
       <Pane size="70">
         <FileBrowser 
             :vfs="vfs!" 
+            hide-actions
             class="h-full"
         />
       </Pane>
+
     </Splitpanes>
   </div>
 </template>

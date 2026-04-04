@@ -27,7 +27,9 @@ const props = defineProps<{
   foldersOnly?: boolean;
   isFilesPage?: boolean;
   compact?: boolean;
+  hideActions?: boolean;
 }>();
+
 
 const emit = defineEmits<{
   (e: 'select', entry: FsEntry): void;
@@ -163,7 +165,8 @@ const { handleFileAction: onFileAction, createTimelineInDirectory } = useFileMan
 });
 
 const rootContextMenuItems = computed(() => {
-  if (!projectStore.currentProjectName) return [];
+  if (!projectStore.currentProjectName || props.hideActions) return [];
+
   const rootEntry: FsEntry = {
     kind: 'directory',
     name: projectStore.currentProjectName,
@@ -391,6 +394,7 @@ useFileManagerPanelBootstrap({
 
 
           <UButton
+            v-if="!props.hideActions"
             icon="i-heroicons-document-plus"
             variant="ghost"
             color="neutral"
@@ -399,6 +403,7 @@ useFileManagerPanelBootstrap({
             @click="onCreateTimeline"
           />
           <UButton
+            v-if="!props.hideActions"
             icon="i-heroicons-document-text"
             variant="ghost"
             color="neutral"
@@ -407,6 +412,7 @@ useFileManagerPanelBootstrap({
             @click="onCreateMarkdown"
           />
           <UButton
+            v-if="!props.hideActions"
             icon="i-heroicons-arrow-up-tray"
             variant="ghost"
             color="neutral"
@@ -414,6 +420,7 @@ useFileManagerPanelBootstrap({
             :title="t('videoEditor.fileManager.actions.uploadFiles', 'Upload files')"
             @click="triggerFileUpload"
           />
+
 
           <div class="ml-auto flex items-center">
             <UDropdownMenu :items="menuItems" :ui="{ content: 'w-56' }">

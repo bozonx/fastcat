@@ -82,9 +82,12 @@ export interface FileManagerCreateDeps {
   onDirectoryLoaded?: () => void;
   mediaStore: ReturnType<typeof useMediaStore>;
   historyStore: ReturnType<typeof useHistoryStore>;
+
   /** When false, file-manager undo entries are not pushed (e.g. on `/m/` mobile app routes). */
   shouldRecordFileManagerHistory: () => boolean;
+  hideCommonRoot?: boolean;
 }
+
 
 export function createFileManager(deps: FileManagerCreateDeps) {
   const isLoading = ref(false);
@@ -225,8 +228,11 @@ export function createFileManager(deps: FileManagerCreateDeps) {
           expandPersistedDirectories: true,
           autoExpandMediaDirs: true,
         });
-        deps.rootEntries.value = await withWorkspaceCommonRoot(deps.rootEntries.value);
+        if (!deps.hideCommonRoot) {
+            deps.rootEntries.value = await withWorkspaceCommonRoot(deps.rootEntries.value);
+        }
       },
+
       defaultErrorMessage: 'Failed to open project folder',
       toastTitle: 'Project error',
       toastDescription: () => error.value || 'Failed to open project folder',
@@ -611,10 +617,11 @@ export function createFileManager(deps: FileManagerCreateDeps) {
 
   async function reloadDirectory(path: string) {
     await service.reloadDirectory(path);
-    if (!path) {
+    if (!path && !deps.hideCommonRoot) {
       deps.rootEntries.value = await withWorkspaceCommonRoot([...deps.rootEntries.value]);
     }
     deps.onDirectoryLoaded?.();
+
   }
 
   return {
