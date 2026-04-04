@@ -1127,6 +1127,7 @@
       }
     },
     "fileManager": {
+      "bloggerDogIntegration": "BloggerDog Integration",
       "selectFolderHint": "Select a folder in the sidebar to view its contents",
       "actions": {
         "cancelProxyGeneration": "Cancel proxy generation",

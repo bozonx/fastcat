@@ -51,16 +51,7 @@ const bloggerDogVfs = computed(() => {
   }));
 });
 
-// Auto-open panel when integration becomes available
-watch(
-  () => !!bloggerDogVfs.value,
-  (available) => {
-    if (available && !fileManagerStore.isBloggerDogPanelVisible) {
-      fileManagerStore.isBloggerDogPanelVisible = true;
-    }
-  },
-  { immediate: true }
-);
+
 </script>
 
 <template>

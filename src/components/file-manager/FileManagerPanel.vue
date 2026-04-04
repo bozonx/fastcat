@@ -19,6 +19,9 @@ import { useFileManagerPanelActions } from '~/composables/file-manager/useFileMa
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import UiActionButton from '~/components/ui/UiActionButton.vue';
 import { useFileManagerStore, type FileSortField } from '~/stores/file-manager.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { resolveExternalServiceConfig } from '~/utils/external-integrations';
+import { computed } from 'vue';
 
 const props = defineProps<{
   foldersOnly?: boolean;
@@ -42,6 +45,30 @@ const conversionStore = useFileConversionStore();
 const { extractAudio } = useAudioExtraction();
 const { addFileTab, setActiveTab } = useProjectTabsStore();
 const runtimeConfig = useRuntimeConfig();
+const workspaceStore = useWorkspaceStore();
+
+const isBloggerDogConfigured = computed(() => {
+  const bloggerDogApiUrl =
+    typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
+      ? runtimeConfig.public.bloggerDogApiUrl
+      : '';
+
+  const config = resolveExternalServiceConfig({
+    service: 'files',
+    integrations: workspaceStore.userSettings.integrations,
+    bloggerDogApiUrl,
+  });
+
+  return !!config;
+});
+
+function toggleBloggerDog() {
+  if (!isBloggerDogConfigured.value) {
+    uiStore.isEditorSettingsOpen = true;
+    return;
+  }
+  fileManagerStore.isBloggerDogPanelVisible = !fileManagerStore.isBloggerDogPanelVisible;
+}
 
 const fileManager = useFileManager();
 const {
@@ -386,6 +413,18 @@ useFileManagerPanelBootstrap({
           v-if="projectStore.currentProjectName"
           class="flex items-center gap-1 px-2 py-1 bg-ui-bg-accent/30 border-b border-ui-border/50"
         >
+          <UButton
+            v-if="!props.compact"
+            :color="fileManagerStore.isBloggerDogPanelVisible ? 'neutral' : 'amber'"
+            class="font-black h-5 w-5 flex items-center justify-center p-0 text-[10px] min-h-0"
+            :variant="fileManagerStore.isBloggerDogPanelVisible ? 'ghost' : 'solid'"
+            :icon="fileManagerStore.isBloggerDogPanelVisible ? 'i-heroicons-x-mark' : undefined"
+            :title="t('fastcat.fileManager.bloggerDogIntegration', 'BloggerDog Integration')"
+            @click="toggleBloggerDog"
+          >
+            <template v-if="!fileManagerStore.isBloggerDogPanelVisible">B</template>
+          </UButton>
+
           <UButton
             icon="i-heroicons-document-plus"
             variant="ghost"

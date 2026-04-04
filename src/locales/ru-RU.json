@@ -1127,6 +1127,7 @@
       }
     },
     "fileManager": {
+      "bloggerDogIntegration": "Интеграция BloggerDog",
       "selectFolderHint": "Выберите папку в боковой панели, чтобы просмотреть её содержимое",
       "actions": {
         "cancelProxyGeneration": "Отменить генерацию прокси",

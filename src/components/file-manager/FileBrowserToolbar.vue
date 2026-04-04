@@ -27,7 +27,7 @@ const { t } = useI18n();
 const fileManagerStore = useFileManagerStore();
 const uiStore = useUiStore();
 
-const isBloggerDogOpen = computed(() => fileManagerStore.isBloggerDogPanelVisible);
+
 
 const sortFields: { label: string; value: FileSortField }[] = [
   { label: t('common.name', 'Name'), value: 'name' },
@@ -36,6 +36,23 @@ const sortFields: { label: string; value: FileSortField }[] = [
   { label: t('common.created', 'Created'), value: 'created' },
   { label: t('common.modified', 'Modified'), value: 'modified' },
 ];
+
+const bloggerDogMenuItems = computed(() => [
+  [
+    {
+      label: t('common.close', 'Close'),
+      icon: 'i-heroicons-x-mark',
+      onSelect: () => {
+        fileManagerStore.isBloggerDogPanelVisible = false;
+      },
+    },
+    {
+      label: t('common.refresh', 'Refresh'),
+      icon: 'i-heroicons-arrow-path',
+      onSelect: () => emit('refresh'),
+    },
+  ],
+]);
 </script>
 
 <template>
@@ -43,18 +60,11 @@ const sortFields: { label: string; value: FileSortField }[] = [
     class="flex items-center gap-4 px-4 py-2 border-b border-ui-border shrink-0 bg-ui-bg-elevated/50"
   >
     <div v-if="isRemotePanel" class="flex items-center gap-2">
-      <div class="flex items-center gap-2 px-2 py-1 rounded bg-primary-500/10 text-primary-400">
+      <div class="flex items-center gap-2 px-2 py-1 rounded bg-amber-500/10 text-amber-500">
         <UIcon name="i-heroicons-cloud" class="w-4 h-4" />
         <span class="text-xs font-bold uppercase tracking-wider">BloggerDog</span>
       </div>
       <div class="w-px h-4 bg-ui-border mx-1"></div>
-      <UiActionButton
-        color="neutral"
-        size="xs"
-        icon="i-heroicons-x-mark"
-        :label="t('common.close', 'Close')"
-        @click="fileManagerStore.isBloggerDogPanelVisible = false"
-      />
     </div>
 
     <div v-if="!isRemotePanel" class="flex items-center gap-1">
@@ -99,6 +109,30 @@ const sortFields: { label: string; value: FileSortField }[] = [
       />
     </div>
 
+    <!-- BloggerDog specific tools if needed, but for now we keep common ones -->
+    <div v-if="isRemotePanel" class="flex items-center gap-1">
+      <UiToggleButton
+        :model-value="fileManagerStore.viewMode === 'grid'"
+        icon="i-heroicons-squares-2x2"
+        inactive-color="neutral"
+        active-color="primary"
+        size="sm"
+        title="Grid view"
+        no-toggle
+        @click="fileManagerStore.setViewMode('grid')"
+      />
+      <UiToggleButton
+        :model-value="fileManagerStore.viewMode === 'list'"
+        icon="i-heroicons-list-bullet"
+        inactive-color="neutral"
+        active-color="primary"
+        size="sm"
+        title="List view"
+        no-toggle
+        @click="fileManagerStore.setViewMode('list')"
+      />
+    </div>
+
     <!-- Card size slider (only in grid view) -->
     <div
       v-if="fileManagerStore.viewMode === 'grid'"
@@ -118,14 +152,6 @@ const sortFields: { label: string; value: FileSortField }[] = [
 
     <div class="ml-auto flex items-center gap-2">
       <template v-if="!compact">
-        <UiActionButton
-          v-if="!isRemotePanel && remoteAvailable && !isBloggerDogOpen"
-          color="neutral"
-          size="xs"
-          icon="i-heroicons-cloud"
-          label="BloggerDog"
-          @click="emit('openRemote')"
-        />
         <span class="text-xs text-ui-text-muted">{{ t('common.sortBy', 'Sort by') }}:</span>
         <UiSelect
           v-model="fileManagerStore.sortOption.field"
@@ -149,6 +175,14 @@ const sortFields: { label: string; value: FileSortField }[] = [
           "
         />
         <div class="w-px h-4 bg-ui-border mx-1"></div>
+        <UDropdownMenu v-if="isRemotePanel" :items="bloggerDogMenuItems" :ui="{ content: 'w-40' }">
+          <UiActionButton
+            icon="i-heroicons-ellipsis-horizontal"
+            variant="ghost"
+            color="neutral"
+            size="xs"
+          />
+        </UDropdownMenu>
       </template>
     </div>
   </div>
