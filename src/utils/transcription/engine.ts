@@ -91,7 +91,7 @@ function createRequestHeaders(params: {
   // Note: We don't manually set Content-Length because it's a forbidden header in browsers.
   // The browser's fetch API will automatically set it correctly for File/Blob bodies.
 
-  headers.set('X-File-Name', params.fileName);
+  headers.set('X-File-Name', encodeURIComponent(params.fileName));
   headers.set('X-STT-Restore-Punctuation', String(params.settings.restorePunctuation));
   headers.set('X-STT-Format-Text', String(params.settings.formatText));
   headers.set('X-STT-Include-Words', String(params.settings.includeWords));
