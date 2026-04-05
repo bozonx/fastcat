@@ -52,6 +52,7 @@ const props = defineProps<{
   hideActions?: boolean;
   hideUpload?: boolean;
   hideFocusFrame?: boolean;
+  rootName?: string;
 }>();
 
 const instanceId = props.instanceId || 'default';
@@ -252,6 +253,7 @@ const navigation = useFileBrowserNavigation({
   scrollToEntryPath,
   vfs,
   readDirectory,
+  rootName: props.rootName || projectStore.currentProjectName || 'Project',
 });
 const {
   parentFolders,
@@ -417,7 +419,7 @@ function handleContainerClick() {
       setSelectedFsEntry({
         kind: 'directory',
         path: '',
-        name: projectStore.currentProjectName || 'Project',
+        name: props.rootName || projectStore.currentProjectName || 'Project',
       } as FsEntry);
     }
   }

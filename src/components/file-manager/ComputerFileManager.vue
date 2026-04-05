@@ -3,6 +3,7 @@ import { ref, computed, provide, onMounted, shallowRef } from 'vue';
 import { Pane, Splitpanes } from 'splitpanes';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useComputerVfs } from '~/composables/file-manager/useComputerVfs';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { createFileManager, FILE_MANAGER_INJECTION_KEY } from '~/composables/file-manager/useFileManager';
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
@@ -15,6 +16,8 @@ const props = defineProps<{
 
 const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
 const instanceId = props.instanceId || 'computer';
+const workspaceStore = useWorkspaceStore();
+const { t } = useI18n();
 
 // Create independent state for this instance
 const rootEntries = shallowRef<FsEntry[]>([]);
@@ -150,6 +153,7 @@ function onSelect(entry: FsEntry) {
             :vfs="vfs!" 
             :instance-id="instanceId"
             :hide-focus-frame="props.hideFocusFrame"
+            :root-name="workspaceStore.workspaceProviderId === 'tauri' ? t('fastcat.fileManager.tabs.computer') : t('fastcat.fileManager.tabs.workspace')"
             hide-upload
             class="h-full"
         />
