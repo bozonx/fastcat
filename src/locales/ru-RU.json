@@ -557,7 +557,8 @@
       "remote": {
         "not_configured_title": "BloggerDog не настроен",
         "not_configured_desc": "Интеграция с BloggerDog позволяет управлять вашим удаленным контентом.",
-        "configure_action": "Настроить интеграцию"
+        "configure_action": "Настроить интеграцию",
+        "load_error_title": "Ошибка подключения"
       }
     },
 

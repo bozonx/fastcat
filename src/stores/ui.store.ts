@@ -211,6 +211,10 @@ export const useUiStore = defineStore('ui', () => {
     timelineSaveTrigger.value++;
   }
 
+  function showIntegrationSettings() {
+    isEditorSettingsOpen.value = true;
+  }
+
   return {
     selectedFsEntry,
     isGlobalDragging,
@@ -278,5 +282,6 @@ export const useUiStore = defineStore('ui', () => {
     activeLibraryTab,
     isTextPresetModalOpen,
     pendingTextPresetClipInfo,
+    showIntegrationSettings,
   };
 });

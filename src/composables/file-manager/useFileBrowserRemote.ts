@@ -75,6 +75,7 @@ export function useFileBrowserRemote({
   const remoteTransferPhase = ref('');
   const remoteTransferFileName = ref('');
   const remoteTransferAbortController = ref<AbortController | null>(null);
+  const remoteError = ref<string | null>(null);
 
   const bloggerDogApiUrl = computed(() =>
     typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
@@ -155,13 +156,8 @@ export function useFileBrowserRemote({
         return extendedEntry;
       });
     } catch (error) {
-      console.error('Failed to load remote folder content:', error);
+      remoteError.value = error instanceof Error ? error.message : 'Failed to load remote folder';
       folderEntries.value = [];
-      toast.add({
-        color: 'error',
-        title: t('common.error', 'Error'),
-        description: error instanceof Error ? error.message : 'Failed to load remote folder',
-      });
     }
     return true;
   }
@@ -312,6 +308,7 @@ export function useFileBrowserRemote({
     remoteTransferProgress,
     remoteTransferPhase,
     remoteTransferFileName,
+    remoteError,
     remoteFilesConfig,
     isRemoteAvailable,
     buildRemoteDirectoryEntry,
