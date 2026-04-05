@@ -99,13 +99,13 @@ function createRequestHeaders(params: {
 
   if (params.bearerToken) {
     const token = params.bearerToken.trim();
-    const hasBearerPrefix = /^bearer\s+/i.test(token);
+    const rawToken = token.replace(/^bearer\s+/i, '');
 
-    // Set standard Authorization header
-    headers.set('Authorization', hasBearerPrefix ? token : `Bearer ${token}`);
+    // Set standard Authorization header with Bearer prefix
+    headers.set('Authorization', `Bearer ${rawToken}`);
 
-    // Set microservice-specific API Key header (usually expects raw token)
-    headers.set('X-STT-Api-Key', hasBearerPrefix ? token.replace(/^bearer\s+/i, '') : token);
+    // Set microservice-specific API Key header with ONLY the raw token
+    //headers.set('X-STT-Api-Key', rawToken);
   }
 
   if (params.provider) {
@@ -176,7 +176,7 @@ export async function transcribeAudioFile(
   // Modern STT services (e.g. Whisper) can extract audio from video containers natively.
   // This avoids OOM crashes, UI freezes, and 'failed to fetch' caused by chunked requests or giant Blobs.
   const body: BodyInit = file;
-  
+
   // Use 'application/octet-stream' for video files as recommended for streaming uploads.
   // For audio files, keep original MIME if it's 'audio/*', otherwise fallback to octet-stream.
   const contentType = normalizedFileType.startsWith('video/')
@@ -195,6 +195,16 @@ export async function transcribeAudioFile(
     settings: input.userSettings.integrations.stt,
     contentType,
   });
+
+  if (import.meta.dev) {
+    console.debug('[STT] Upload request:', {
+      endpoint,
+      contentType: headers.get('Content-Type'),
+      fileName: headers.get('X-File-Name'),
+      fileSize: file.size,
+      provider: headers.get('X-STT-Provider'),
+    });
+  }
 
   const response = await fetch(endpoint, {
     method: 'POST',
