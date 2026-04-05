@@ -87,6 +87,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
             parentPath: path,
             size: media.size || 0,
             lastModified: item.meta?.updatedAt ? new Date(item.meta.updatedAt as string).getTime() : undefined,
+            remoteData: item,
           });
         });
       }
@@ -105,6 +106,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
           parentPath: path,
           size: blob.size,
           lastModified: item.meta?.updatedAt ? new Date(item.meta.updatedAt as string).getTime() : undefined,
+          remoteData: item,
         });
       }
 
@@ -133,7 +135,8 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
         parentPath: path,
         size: 0,
         lastModified: (item as any).meta?.updatedAt ? new Date((item as any).meta.updatedAt).getTime() : undefined,
-        ...(item.type === 'file' ? { isContentItem: true } : {})
+        isContentItem: item.type === 'file',
+        remoteData: item,
       } as VfsEntry);
     }
     
