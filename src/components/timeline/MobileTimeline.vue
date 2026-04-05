@@ -85,6 +85,7 @@ const isSettingsDrawerOpen = ref(false);
 const virtualClipPresetType = ref<'text' | 'shape' | 'hud'>('text');
 const drawerActiveSnapPoint = ref<string | number | null>(null);
 const isLongPress = ref(false);
+const lastPointerType = ref('');
 const suppressDrawerSelectionClear = ref(false);
 let suppressDrawerSelectionClearResetTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -425,7 +426,10 @@ function suppressDrawerSelectionClearTemporarily(callback: () => void) {
 }
 
 function handleMobileTimelineItemSelect(ev: PointerEvent, id: string) {
-  if (ev.pointerType === 'touch') {
+  // Click events (MouseEvent) don't carry pointerType, so use the value
+  // captured during the preceding pointerdown (capture phase).
+  const pointerType = ev.pointerType || lastPointerType.value;
+  if (pointerType === 'touch') {
     const wasLongPress = isLongPress.value;
     isLongPress.value = false;
 
@@ -570,6 +574,15 @@ function onMobilePointerUp(e: PointerEvent) {
   onGlobalPointerUp(e);
 }
 
+function onMobilePointerCancel(e: PointerEvent) {
+  stopEdgeScroll();
+  // During active drag, pointercancel may fire when Vue destroys the
+  // captured clip element on cross-track moves.  Don't end the drag —
+  // pointermove events still arrive on this root div without capture.
+  if (draggingMode.value) return;
+  onGlobalPointerUp(e);
+}
+
 watch(
   () => draggingMode.value,
   (val) => {
@@ -694,6 +707,7 @@ function onTimelinePointerDownCapture(e: PointerEvent) {
     clickStartX.value = e.clientX;
     clickStartY.value = e.clientY;
     isLongPress.value = false;
+    lastPointerType.value = e.pointerType;
   }
 }
 
@@ -807,7 +821,7 @@ onBeforeUnmount(() => {
     @pointerdown="focusStore.setMainFocus('timeline')"
     @pointermove="onMobilePointerMove"
     @pointerup="onMobilePointerUp"
-    @pointercancel="onMobilePointerUp"
+    @pointercancel="onMobilePointerCancel"
   >
     <MobileTimelineToolbar />
 
