@@ -61,5 +61,8 @@ const { t } = useI18n();
       :value="new Date(props.fileInfo.lastModified).toLocaleString()"
     />
     <PropertyRow v-if="props.isHidden" :label="t('common.hidden', 'Hidden')" value="Yes" />
+    <div v-if="$slots['after-content']" class="mt-4 pt-2 border-t border-ui-border">
+      <slot name="after-content" />
+    </div>
   </PropertySection>
 </template>

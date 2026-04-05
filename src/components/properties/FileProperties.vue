@@ -217,6 +217,12 @@ const isBloggerDogItem = computed(() => {
   return props.selectedFsEntry?.source === 'remote' && (props.selectedFsEntry as any).isContentItem;
 });
 
+const isBloggerDogGroup = computed(() => {
+  return props.selectedFsEntry?.source === 'remote' && !(props.selectedFsEntry as any).isContentItem && !isRemoteRoot.value;
+});
+
+const isRemoteContent = computed(() => isBloggerDogItem.value || isBloggerDogGroup.value);
+
 const isFormatUnsupported = computed(() =>
   Boolean(selectedPath.value && mediaStore.metadataLoadFailed[selectedPath.value]),
 );
@@ -499,9 +505,9 @@ const {
         :item="(selectedFsEntry.remoteData as RemoteVfsFileEntry)"
       >
         <template #after-content>
-          <div class="px-2">
+          <div class="px-0 pb-1">
             <EntryActions
-              :primary-actions="filePrimaryActions"
+              :primary-actions="fileInfo?.kind === 'directory' ? directoryPrimaryActions : filePrimaryActions"
               :secondary-actions="[]"
             />
           </div>
@@ -545,10 +551,19 @@ const {
         :selected-path="selectedPath"
         :is-hidden="isHidden"
         :format-bytes="formatBytes"
-      />
+      >
+        <template v-if="isBloggerDogGroup" #after-content>
+          <div class="px-0 pb-1">
+            <EntryActions
+              :primary-actions="directoryPrimaryActions"
+              :secondary-actions="[]"
+            />
+          </div>
+        </template>
+      </FileGeneralInfoSection>
 
       <PropertySection
-        v-if="!hideActions && fileInfo?.kind === 'directory'"
+        v-if="!hideActions && fileInfo?.kind === 'directory' && !isRemoteContent"
         :title="t('videoEditor.fileManager.actions.title', 'Actions')"
       >
         <EntryActions
@@ -558,7 +573,7 @@ const {
       </PropertySection>
 
       <PropertySection
-        v-else-if="!hideActions && fileInfo?.kind === 'file' && !isBloggerDogItem"
+        v-else-if="!hideActions && fileInfo?.kind === 'file' && !isRemoteContent"
         :title="t('videoEditor.fileManager.actions.title', 'Actions')"
       >
         <EntryActions

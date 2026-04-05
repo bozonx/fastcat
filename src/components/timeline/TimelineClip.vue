@@ -53,6 +53,7 @@ interface Props {
   canEditClipContent: boolean;
   isDraggingCurrentItem: boolean;
   isMovePreviewCurrentItem: boolean;
+  isMovePreviewCollision?: boolean;
   slipPreview?: {
     itemId: string;
     trackId: string;
@@ -528,6 +529,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
         !isMediaMissing && isUnsupported ? 'bg-amber-600/50! border-amber-700!' : '',
         (clipItem && Boolean(clipItem.locked)) || track.locked ? 'cursor-not-allowed' : '',
         isMobile ? 'touch-none' : '',
+        isMovePreviewCollision ? 'bg-red-600/80! border-red-500! border-2! text-white! z-50!' : '',
       ]"
       @pointerdown="onClipPointerdown"
       @click.stop="onClipClick"
