@@ -96,13 +96,6 @@ const toolbarMenuItems = computed(() => {
         icon: 'i-heroicons-arrow-path',
         onSelect: () => emit('refresh'),
       },
-      {
-        label: t('common.close', 'Close'),
-        icon: 'i-heroicons-x-mark',
-        onSelect: () => {
-          fileManagerStore.isBloggerDogPanelVisible = false;
-        },
-      },
     ]);
   }
 
@@ -189,7 +182,7 @@ const toolbarMenuItems = computed(() => {
 
     <div class="ml-auto flex items-center gap-2">
       <template v-if="!compact">
-        <div class="w-px h-4 bg-ui-border mx-1"></div>
+        <div v-if="toolbarMenuItems.length > 0" class="w-px h-4 bg-ui-border mx-1"></div>
         
 
 

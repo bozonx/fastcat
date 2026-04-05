@@ -612,6 +612,7 @@ async function onDirectoryUploadChange(e: Event) {
   >
     <!-- Toolbar -->
     <FileBrowserToolbar
+      v-if="!(props.remoteModeOnly && (!isRemoteAvailable || remoteError))"
       :grid-sizes="GRID_SIZES"
       :current-grid-size-name="currentGridSizeName"
       :grid-card-size="effectiveGridCardSize"
