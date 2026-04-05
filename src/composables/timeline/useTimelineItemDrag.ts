@@ -113,6 +113,7 @@ export function useTimelineItemDrag(
   const dragIsCopyOverride = ref(false);
   const dragToggleSnapOverride = ref(false);
   const dragPointerButton = ref<0 | 2>(0);
+  const dragIsMobileTouch = ref(false);
 
   function getToolbarSnapAction(): 'snap' | 'no_snap' | 'free_mode' {
     return settingsStore.toolbarSnapMode;
@@ -251,6 +252,7 @@ export function useTimelineItemDrag(
     applyDragAction(resolveDragAction(e, dragPointerButton.value));
 
     dragAnchorStartUs.value = startUs;
+    dragIsMobileTouch.value = e.pointerType === 'touch';
     dragAnchorDurationUs.value =
       tracks.value.find((t) => t.id === trackId)?.items.find((it) => it.id === itemId)
         ?.timelineRange.durationUs ?? 0;
@@ -290,16 +292,7 @@ export function useTimelineItemDrag(
     pendingMoveCommit.value = null;
     slipPreview.value = null;
 
-    // Skip pointer capture on the clip element for touch — Vue may destroy the clip element
-    // during cross-track moves, which releases capture and fires pointercancel.
-    // Instead, capture on the scroll container which persists during the entire drag.
-    if (e.pointerType === 'touch') {
-      if (scrollEl.value) {
-        scrollEl.value.setPointerCapture(e.pointerId);
-      }
-    } else {
-      (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
-    }
+    (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
     bindDragSession();
   }
 
@@ -499,6 +492,7 @@ export function useTimelineItemDrag(
       const isMulti = selectedMovableItemIds.includes(itemId) && selectedMovableItemIds.length > 1;
 
       if (isMulti && dragStartSnapshot.value) {
+        // Fallback for multi-item drag — just let it mutate (less common on mobile anyway)
         const deltaUs = startUs - dragAnchorStartUs.value;
         const moves = buildMultiItemMoves({
           currentTracks: tracks.value,
@@ -545,7 +539,7 @@ export function useTimelineItemDrag(
         return;
       }
 
-      if (overlapMode === 'pseudo') {
+      if (overlapMode === 'pseudo' || dragIsMobileTouch.value) {
         if (lastDragAppliedCmd.value && dragStartSnapshot.value) {
           timelineStore.timelineDoc = dragStartSnapshot.value as any;
           timelineStore.duration = selectTimelineDurationUs(dragStartSnapshot.value as any) as any;
@@ -749,11 +743,7 @@ export function useTimelineItemDrag(
     if (!draggingMode.value) return;
 
     if (e) {
-      if (e.pointerType === 'touch' && scrollEl.value) {
-        scrollEl.value.releasePointerCapture(e.pointerId);
-      } else {
-        (e.currentTarget as HTMLElement | null)?.releasePointerCapture(e.pointerId);
-      }
+      (e.currentTarget as HTMLElement | null)?.releasePointerCapture(e.pointerId);
     }
 
     const cancel = dragCancelRequested.value;
@@ -872,25 +862,43 @@ export function useTimelineItemDrag(
     if (!cancel && draggingMode.value === 'move') {
       const usePseudoOverlap = dragUsePseudoOverlapOverride.value;
       const overlapMode = usePseudoOverlap ? 'pseudo' : settingsStore.overlapMode;
+      const isVisualPseudo = overlapMode === 'pseudo' || dragIsMobileTouch.value;
 
-      if (overlapMode === 'pseudo') {
+      if (isVisualPseudo) {
         const commit = pendingMoveCommit.value;
         if (commit) {
           const enableFrameSnap =
             settingsStore.frameSnapMode === 'frames' &&
             !dragIsFreeOverride.value &&
             !dragDisableFrameSnapOverride.value;
-          const cmd = {
-            type: 'overlay_place_item',
-            fromTrackId: commit.fromTrackId,
-            toTrackId: commit.toTrackId,
-            itemId: commit.itemId,
-            startUs: commit.startUs,
-            quantizeToFrames: enableFrameSnap,
-            ignoreLinks: usePseudoOverlap,
-          } as const;
-          timelineStore.applyTimeline(cmd as any, { saveMode: 'none', skipHistory: true });
-          lastDragAppliedCmd.value = cmd as any;
+
+          // If the actual requested mode is pseudo, place it over.
+          // Otherwise (e.g. mobile touch visual workaround), do a normal track move.
+          if (overlapMode === 'pseudo') {
+            const cmd = {
+              type: 'overlay_place_item',
+              fromTrackId: commit.fromTrackId,
+              toTrackId: commit.toTrackId,
+              itemId: commit.itemId,
+              startUs: commit.startUs,
+              quantizeToFrames: enableFrameSnap,
+              ignoreLinks: usePseudoOverlap,
+            } as const;
+            timelineStore.applyTimeline(cmd as any, { saveMode: 'none', skipHistory: true });
+            lastDragAppliedCmd.value = cmd as any;
+          } else {
+            const cmd = {
+              type: 'move_item_to_track',
+              fromTrackId: commit.fromTrackId,
+              toTrackId: commit.toTrackId,
+              itemId: commit.itemId,
+              startUs: commit.startUs,
+              quantizeToFrames: enableFrameSnap,
+              ignoreLinks: usePseudoOverlap,
+            } as const;
+            timelineStore.applyTimeline(cmd as any, { saveMode: 'none', skipHistory: true });
+            lastDragAppliedCmd.value = cmd as any;
+          }
           hasPendingTimelinePersist.value = true;
         }
       }
@@ -945,6 +953,7 @@ export function useTimelineItemDrag(
     dragDisableFrameSnapOverride.value = false;
     dragIsCopyOverride.value = false;
     dragToggleSnapOverride.value = false;
+    dragIsMobileTouch.value = false;
   }
 
   onBeforeUnmount(() => {

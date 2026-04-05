@@ -18,6 +18,8 @@ const hasTags = computed(() => tags.value.length > 0);
 const language = computed(() => props.item.language || '');
 const text = computed(() => props.item.text || '');
 const hasText = computed(() => text.value.trim().length > 0);
+const note = computed(() => props.item.note || '');
+const hasNote = computed(() => note.value.trim().length > 0);
 
 const duration = computed(() => {
   const dur = props.item.meta?.duration;
@@ -31,7 +33,7 @@ const isMetaExpanded = ref(false);
 const rawMetaYaml = computed(() => {
   if (!props.item.meta) return null;
   // Exclude fields we already display to avoid duplication
-  const { duration, updatedAt, ...rest } = props.item.meta as any;
+  const { duration, updatedAt, note, ...rest } = props.item.meta as any;
   if (Object.keys(rest).length === 0) return null;
   try {
     return yaml.dump(rest, { indent: 2 });
@@ -43,6 +45,9 @@ const rawMetaYaml = computed(() => {
 
 <template>
   <PropertySection title="BloggerDog">
+    <template #header-actions>
+      <slot name="header-actions" />
+    </template>
     <PropertyRow 
       v-if="language" 
       :label="t('common.language', 'Language')" 
@@ -76,6 +81,15 @@ const rawMetaYaml = computed(() => {
       </div>
     </div>
 
+    <div v-if="hasNote" class="mt-2 flex flex-col gap-1.5 px-2 -mx-2 py-2 rounded bg-white/5 border border-white/10">
+      <div class="text-2xs text-ui-text-muted flex items-center justify-between">
+        <span>{{ t('common.note', 'Note') }}</span>
+      </div>
+      <div class="text-xs text-ui-text-muted line-clamp-6 leading-relaxed wrap-break-word">
+        {{ note }}
+      </div>
+    </div>
+
     <!-- Metadata Section (Excluding displayed fields) -->
     <ExpandableYamlSection
       v-if="rawMetaYaml"
@@ -85,5 +99,9 @@ const rawMetaYaml = computed(() => {
       :on-toggle="() => (isMetaExpanded = !isMetaExpanded)"
       :on-copy="() => {}"
     />
+
+    <div v-if="$slots['after-content']" class="mt-4 pt-2 border-t border-ui-border">
+      <slot name="after-content" />
+    </div>
   </PropertySection>
 </template>

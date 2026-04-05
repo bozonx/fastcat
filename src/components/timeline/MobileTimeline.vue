@@ -142,10 +142,10 @@ function syncSelectionStoreFromItemIds() {
   const items = tracks.value.flatMap((track) =>
     track.items
       .filter((item) => selectedIdSet.has(item.id))
-      .map((item) => ({ 
-        trackId: track.id, 
-        itemId: item.id, 
-        kind: item.kind as 'clip' | 'gap' 
+      .map((item) => ({
+        trackId: track.id,
+        itemId: item.id,
+        kind: item.kind as 'clip' | 'gap',
       })),
   );
 
@@ -347,11 +347,11 @@ function onClipPropertiesDrawerClose() {
   isClipPropertiesDrawerOpen.value = false;
   drawerActiveSnapPoint.value = null;
   isLongPress.value = false;
-  
+
   if (suppressDrawerSelectionClear.value) {
     return;
   }
-  
+
   if (selectionStore.selectedEntity?.kind === 'clip') {
     timelineStore.clearSelection();
     selectionStore.clearSelection();
@@ -368,11 +368,11 @@ function onMultiSelectionDrawerClose() {
   isMultiSelectionDrawerOpen.value = false;
   drawerActiveSnapPoint.value = null;
   isLongPress.value = false;
-  
+
   if (suppressDrawerSelectionClear.value) {
     return;
   }
-  
+
   if (selectionStore.selectedEntity?.kind === 'clips') {
     timelineStore.clearSelection();
     selectionStore.clearSelection();
@@ -397,18 +397,18 @@ function onTransitionDrawerClose() {
 
 function onGapPropertiesDrawerClose() {
   isGapPropertiesDrawerOpen.value = false;
-  
+
   if (suppressDrawerSelectionClear.value) {
     return;
   }
-  
+
   if (selectionStore.selectedEntity?.kind === 'gap') {
     timelineStore.clearSelection();
     selectionStore.clearSelection();
   }
 }
 
-function suppressDrawerSelectionClearTemporarily(callback: () => void) {
+function suppressDrawerSelectionClearTemporarily(callback?: () => void) {
   suppressDrawerSelectionClear.value = true;
 
   if (suppressDrawerSelectionClearResetTimer !== null) {
@@ -416,7 +416,7 @@ function suppressDrawerSelectionClearTemporarily(callback: () => void) {
   }
 
   try {
-    callback();
+    callback?.();
   } finally {
     suppressDrawerSelectionClearResetTimer = setTimeout(() => {
       suppressDrawerSelectionClear.value = false;
@@ -572,6 +572,12 @@ function onMobilePointerMove(e: PointerEvent) {
 function onMobilePointerUp(e: PointerEvent) {
   stopEdgeScroll();
   onGlobalPointerUp(e);
+
+  // Clear isLongPress after a short delay so it doesn't permanently block taps
+  // if a long press was initiated but the UI state got out of sync.
+  setTimeout(() => {
+    isLongPress.value = false;
+  }, 100);
 }
 
 function onMobilePointerCancel(e: PointerEvent) {
@@ -708,6 +714,11 @@ function onTimelinePointerDownCapture(e: PointerEvent) {
     clickStartY.value = e.clientY;
     isLongPress.value = false;
     lastPointerType.value = e.pointerType;
+
+    // Crucial: any touch on the timeline (clip, track, gap) should temporarily
+    // suppress drawer close handlers from clearing the selection, as the user
+    // might be selecting a new item, which forces the old drawer to close.
+    suppressDrawerSelectionClearTemporarily();
   }
 }
 
@@ -812,7 +823,6 @@ onBeforeUnmount(() => {
     clearTimeout(suppressDrawerSelectionClearResetTimer);
   }
 });
-
 </script>
 
 <template>
@@ -829,12 +839,18 @@ onBeforeUnmount(() => {
       v-model:active-snap-point="drawerActiveSnapPoint"
       :is-open="isClipPropertiesDrawerOpen"
       @close="onClipPropertiesDrawerClose"
-      @open-trim-drawer="isTrimDrawerOpen = true; isClipPropertiesDrawerOpen = false"
+      @open-trim-drawer="
+        isTrimDrawerOpen = true;
+        isClipPropertiesDrawerOpen = false;
+      "
     />
 
     <MobileTrimToolbar
       v-if="isTrimDrawerOpen"
-      @back="isTrimDrawerOpen = false; isClipPropertiesDrawerOpen = true"
+      @back="
+        isTrimDrawerOpen = false;
+        isClipPropertiesDrawerOpen = true;
+      "
       @close="onClipTrimDrawerClose"
     />
 
@@ -877,7 +893,9 @@ onBeforeUnmount(() => {
               v-if="hasAudioOrVideoWithAudio"
               :icon="allMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
               :label="
-                allMuted ? t('fastcat.timeline.unmute', 'Unmute') : t('fastcat.timeline.mute', 'Mute')
+                allMuted
+                  ? t('fastcat.timeline.unmute', 'Unmute')
+                  : t('fastcat.timeline.mute', 'Mute')
               "
               @click="toggleMuted"
             />
