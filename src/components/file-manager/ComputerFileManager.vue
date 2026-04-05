@@ -144,6 +144,8 @@ function onSelect(entry: FsEntry) {
           folders-only
           compact
           hide-actions
+          :instance-id="instanceId"
+          hide-focus-frame
           class="h-full"
           @select="onSelect"
         />
