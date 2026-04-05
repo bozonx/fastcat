@@ -165,7 +165,7 @@ export function resolveExternalServiceConfig(params: {
   const fastcatExternalApiBaseUrl = getFastCatPublicadorExternalApiBaseUrl(bloggerDogApiUrl);
   const serviceBaseUrl =
     service === 'files'
-      ? joinUrl(fastcatExternalApiBaseUrl, 'external/vfs')
+      ? joinUrl(fastcatExternalApiBaseUrl, 'external/content-library')
       : joinUrl(fastcatExternalApiBaseUrl, 'external/stt');
 
   return {
