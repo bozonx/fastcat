@@ -15,6 +15,7 @@ const props = defineProps<{
   isRemotePanel?: boolean;
   compact?: boolean;
   hideActions?: boolean;
+  hideUpload?: boolean;
 }>();
 
 
@@ -143,7 +144,7 @@ const toolbarMenuItems = computed(() => {
         @click="emit('createFolder')"
       />
       <UiActionButton
-        v-if="!hideActions"
+        v-if="!hideActions && !hideUpload"
         icon="i-heroicons-arrow-up-tray"
         variant="ghost"
         color="neutral"

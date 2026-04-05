@@ -134,6 +134,7 @@ export function useFileBrowserRemote({
         sortBy: fileManagerStore.sortOption.field,
         sortOrder: fileManagerStore.sortOption.order,
       });
+      remoteError.value = null;
       
       folderEntries.value = items.map((entry: any) => {
         // Ensure entrance into Content Items works by marking them as remote

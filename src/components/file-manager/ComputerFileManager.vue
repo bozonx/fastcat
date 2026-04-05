@@ -150,6 +150,7 @@ function onSelect(entry: FsEntry) {
             :vfs="vfs!" 
             :instance-id="instanceId"
             :hide-focus-frame="props.hideFocusFrame"
+            hide-upload
             class="h-full"
         />
       </Pane>
