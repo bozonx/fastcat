@@ -3,7 +3,6 @@ import { reactive, computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
-import UiAccordion from '~/components/ui/UiAccordion.vue';
 
 import {
   resolveExternalServiceConfig,
@@ -24,34 +23,15 @@ const isManualSttEnabled = computed({
   get: () => workspaceStore.userSettings.integrations.manualSttApi.enabled,
   set: (val: boolean) => {
     workspaceStore.userSettings.integrations.manualSttApi.enabled = val;
-    // If enabled, we probably also want to override BloggerDog by default
     if (val) {
       workspaceStore.userSettings.integrations.manualSttApi.overrideFastCat = true;
     }
   },
 });
 
-const bloggerDogApiUrl = computed(() => {
-  const value = runtimeConfig.public.bloggerDogApiUrl;
-  return typeof value === 'string' ? value.trim() : '';
-});
-
-const sttSourceLabel = computed(() => {
-  const resolved = resolveExternalServiceConfig({
-    service: 'stt',
-    integrations: workspaceStore.userSettings.integrations,
-    bloggerDogApiUrl: bloggerDogApiUrl.value,
-    fastcatAccountApiUrl: runtimeConfig.public.fastcatAccountApiUrl as string,
-  });
-  if (!resolved) return t('videoEditor.settings.integrationInactive', 'Not connected');
-  if (resolved.source === 'fastcat_publicador') {
-    const isAccount = workspaceStore.userSettings.integrations.fastcatAccount.enabled && 
-                      workspaceStore.userSettings.integrations.fastcatAccount.bearerToken === resolved.bearerToken;
-    return isAccount
-      ? t('videoEditor.settings.fastcatAccountSource', 'Through Fastcat Account')
-      : t('videoEditor.settings.integrationSourceBloggerDog', 'Through BloggerDog');
-  }
-  return t('videoEditor.settings.integrationSourceManual', 'Manual API');
+const isFastcatConnected = computed(() => {
+  const acc = workspaceStore.userSettings.integrations.fastcatAccount;
+  return acc.enabled && acc.bearerToken.trim() !== '';
 });
 
 const sttModelsText = computed({
@@ -68,7 +48,7 @@ async function runHealth() {
   const resolved = resolveExternalServiceConfig({
     service: 'stt',
     integrations: workspaceStore.userSettings.integrations,
-    bloggerDogApiUrl: bloggerDogApiUrl.value,
+    bloggerDogApiUrl: '', // BloggerDog removed for STT
     fastcatAccountApiUrl: runtimeConfig.public.fastcatAccountApiUrl as string,
   });
 
@@ -108,50 +88,69 @@ function getHealthTone(status: typeof healthState.status) {
 </script>
 
 <template>
-  <UiAccordion
-    :title="t('videoEditor.settings.integrationSttApi', 'STT API')"
-    :summary="sttSourceLabel"
-    :force-open="isManualSttEnabled"
-  >
-    <div class="flex flex-col gap-4 pt-2">
-      <div class="text-xs text-ui-text-muted">
-        {{
-          t(
-            'videoEditor.settings.integrationSttHint',
-            'Manual STT API can work standalone or override Fastcat Account / BloggerDog for speech recognition.',
-          )
-        }}
+  <div class="flex flex-col gap-4 border border-ui-border rounded-lg p-4">
+    <div class="flex items-center justify-between gap-4">
+      <div class="text-sm font-medium text-ui-text">
+        {{ t('videoEditor.settings.integrationSttApi', 'STT API') }}
       </div>
 
-      <label class="flex items-center gap-3 cursor-pointer">
-        <UCheckbox v-model="isManualSttEnabled" />
-        <span class="text-sm text-ui-text">
-          {{ t('videoEditor.settings.integrationSttUseOwn', 'Use own API') }}
-        </span>
-      </label>
+      <div class="flex p-0.5 bg-ui-bg-muted rounded-lg shrink-0">
+        <button
+          type="button"
+          :class="[
+            !isManualSttEnabled
+              ? 'bg-ui-bg shadow-sm text-ui-text'
+              : 'text-ui-text-muted hover:text-ui-text',
+            !isFastcatConnected && !isManualSttEnabled ? 'opacity-50 grayscale cursor-not-allowed' : '',
+          ]"
+          class="px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-2"
+          @click="isManualSttEnabled = false"
+        >
+          <UIcon v-if="!isFastcatConnected" name="i-heroicons-link-slash" class="w-3.5 h-3.5" />
+          {{ t('videoEditor.settings.sttFastcat', 'FASTCAT STT') }}
+        </button>
+        <button
+          type="button"
+          :class="[
+            isManualSttEnabled
+              ? 'bg-ui-bg shadow-sm text-ui-text'
+              : 'text-ui-text-muted hover:text-ui-text',
+          ]"
+          class="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+          @click="isManualSttEnabled = true"
+        >
+          {{ t('videoEditor.settings.sttCustom', 'Custom STT') }}
+        </button>
+      </div>
+    </div>
 
-      <div
-        v-show="isManualSttEnabled"
-        class="flex flex-col gap-4 border-l-2 border-primary-500/30 pl-4 py-1"
-      >
-        <UiFormField :label="t('videoEditor.settings.integrationBaseUrl', 'Base URL')">
-          <UiTextInput
-            v-model="workspaceStore.userSettings.integrations.manualSttApi.baseUrl"
-            full-width
-            placeholder="https://api.example.com/api/v1/external/stt"
-          />
-        </UiFormField>
+    <!-- Manual STT Form -->
+    <div
+      v-if="isManualSttEnabled"
+      class="flex flex-col gap-4 border border-ui-border rounded-lg p-4 bg-ui-bg-muted/30"
+    >
+      <UiFormField :label="t('videoEditor.settings.integrationBaseUrl', 'Base URL')">
+        <UiTextInput
+          v-model="workspaceStore.userSettings.integrations.manualSttApi.baseUrl"
+          full-width
+          placeholder="https://api.example.com/api/v1/external/stt"
+        />
+      </UiFormField>
 
-        <UiFormField :label="t('videoEditor.settings.integrationBearerToken', 'Bearer token')">
-          <UiTextInput
-            v-model="workspaceStore.userSettings.integrations.manualSttApi.bearerToken"
-            full-width
-            type="password"
-            autocomplete="off"
-            placeholder="Bearer token"
-          />
-        </UiFormField>
+      <UiFormField :label="t('videoEditor.settings.integrationBearerToken', 'Bearer token')">
+        <UiTextInput
+          v-model="workspaceStore.userSettings.integrations.manualSttApi.bearerToken"
+          full-width
+          type="password"
+          autocomplete="off"
+          placeholder="Bearer token"
+        />
+      </UiFormField>
+    </div>
 
+    <!-- Shared STT Settings -->
+    <div class="flex flex-col gap-4 pl-1">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <UiFormField :label="t('videoEditor.settings.integrationSttProvider', 'Provider')">
           <UiTextInput
             v-model="workspaceStore.userSettings.integrations.stt.provider"
@@ -167,45 +166,49 @@ function getHealthTone(status: typeof healthState.status) {
             placeholder="universal-3-pro, universal-2"
           />
         </UiFormField>
+      </div>
 
-        <div class="flex flex-col gap-2">
-          <label class="flex items-center gap-3 cursor-pointer">
-            <UCheckbox v-model="workspaceStore.userSettings.integrations.stt.restorePunctuation" />
-            <span class="text-sm text-ui-text">
-              {{
-                t('videoEditor.settings.integrationSttRestorePunctuation', 'Restore punctuation')
-              }}
-            </span>
-          </label>
+      <div class="flex flex-col gap-2">
+        <label class="flex items-center gap-3 cursor-pointer">
+          <UCheckbox v-model="workspaceStore.userSettings.integrations.stt.restorePunctuation" />
+          <span class="text-sm text-ui-text">
+            {{ t('videoEditor.settings.integrationSttRestorePunctuation', 'Restore punctuation') }}
+          </span>
+        </label>
 
-          <label class="flex items-center gap-3 cursor-pointer">
-            <UCheckbox v-model="workspaceStore.userSettings.integrations.stt.formatText" />
-            <span class="text-sm text-ui-text">
-              {{ t('videoEditor.settings.integrationSttFormatText', 'Format text') }}
-            </span>
-          </label>
+        <label class="flex items-center gap-3 cursor-pointer">
+          <UCheckbox v-model="workspaceStore.userSettings.integrations.stt.formatText" />
+          <span class="text-sm text-ui-text">
+            {{ t('videoEditor.settings.integrationSttFormatText', 'Format text') }}
+          </span>
+        </label>
 
-          <label class="flex items-center gap-3 cursor-pointer">
-            <UCheckbox v-model="workspaceStore.userSettings.integrations.stt.includeWords" />
-            <span class="text-sm text-ui-text">
-              {{ t('videoEditor.settings.integrationSttIncludeWords', 'Include word timestamps') }}
-            </span>
-          </label>
-        </div>
+        <label class="flex items-center gap-3 cursor-pointer">
+          <UCheckbox v-model="workspaceStore.userSettings.integrations.stt.includeWords" />
+          <span class="text-sm text-ui-text">
+            {{ t('videoEditor.settings.integrationSttIncludeWords', 'Include word timestamps') }}
+          </span>
+        </label>
+      </div>
 
-        <div class="flex flex-wrap gap-2">
-          <UButton color="neutral" variant="soft" :loading="healthState.loading" @click="runHealth">
-            {{ t('videoEditor.settings.integrationHealthCheck', 'Check health') }}
-          </UButton>
-        </div>
-
-        <div class="text-xs" :class="getHealthTone(healthState.status)">
-          {{
-            healthState.message ||
-            t('videoEditor.settings.integrationStatusWaiting', 'Waiting for check')
-          }}
+      <div class="flex flex-wrap items-center gap-3 mt-2 border-t border-ui-border pt-4">
+        <UButton
+          color="neutral"
+          variant="soft"
+          size="sm"
+          :loading="healthState.loading"
+          @click="runHealth"
+        >
+          {{ t('videoEditor.settings.integrationHealthCheck', 'Check health') }}
+        </UButton>
+        <div
+          v-if="healthState.status !== 'idle' || healthState.loading"
+          class="text-xs"
+          :class="getHealthTone(healthState.status)"
+        >
+          {{ healthState.message || t('videoEditor.settings.integrationStatusWaiting', 'Waiting for check') }}
         </div>
       </div>
     </div>
-  </UiAccordion>
+  </div>
 </template>

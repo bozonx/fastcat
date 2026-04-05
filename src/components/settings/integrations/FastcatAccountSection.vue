@@ -48,15 +48,19 @@ const fastcatConnectUrl = computed(() => {
     uiUrl: fastcatAccountUiUrl.value,
     name: FASTCAT_PUBLICADOR_APP_NAME,
     redirectUri: redirectUri.value,
-    scopes: resolveFastCatConnectScopes({ integrations: workspaceStore.userSettings.integrations }),
+    scopes: resolveFastCatConnectScopes({ 
+      integrations: workspaceStore.userSettings.integrations,
+      includeStt: true,
+    }),
     state: 'fastcat',
   });
 });
 
 const fastcatConnectScopesLabel = computed(() =>
-  resolveFastCatConnectScopes({ integrations: workspaceStore.userSettings.integrations }).join(
-    ', ',
-  ),
+  resolveFastCatConnectScopes({ 
+    integrations: workspaceStore.userSettings.integrations,
+    includeStt: true,
+  }).join(', '),
 );
 
 function disconnectFastCat() {

@@ -87,10 +87,7 @@ const sttConfig = computed(() =>
   resolveExternalServiceConfig({
     service: 'stt',
     integrations: workspaceStore.userSettings.integrations,
-    bloggerDogApiUrl:
-      typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
-        ? runtimeConfig.public.bloggerDogApiUrl
-        : '',
+    bloggerDogApiUrl: '', // BloggerDog removed for STT
     fastcatAccountApiUrl: runtimeConfig.public.fastcatAccountApiUrl as string,
   }),
 );
@@ -274,11 +271,6 @@ const {
   currentProjectId: computed(() => projectStore.currentProjectId),
   resolvedStorageTopology: computed(() => workspaceStore.resolvedStorageTopology),
   userSettings: computed(() => workspaceStore.userSettings),
-  bloggerDogApiUrl: computed(() =>
-    typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
-      ? runtimeConfig.public.bloggerDogApiUrl
-      : '',
-  ),
   fastcatAccountApiUrl: computed(() =>
     typeof runtimeConfig.public.fastcatAccountApiUrl === 'string'
       ? runtimeConfig.public.fastcatAccountApiUrl

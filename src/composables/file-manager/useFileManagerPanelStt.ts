@@ -8,7 +8,6 @@ import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 
 export interface FileManagerPanelSttOptions {
   vfs: { getFile: (path: string) => Promise<File | null> };
-  bloggerDogApiUrl: string;
   fastcatAccountApiUrl: string;
   onSuccess: (params: { cached: boolean; mediaType: string }) => void;
   onError: (message: string) => void;
@@ -16,7 +15,6 @@ export interface FileManagerPanelSttOptions {
 
 export function useFileManagerPanelStt({
   vfs,
-  bloggerDogApiUrl,
   fastcatAccountApiUrl,
   onSuccess,
   onError,
@@ -34,7 +32,7 @@ export function useFileManagerPanelStt({
     resolveExternalServiceConfig({
       service: 'stt',
       integrations: workspaceStore.userSettings.integrations,
-      bloggerDogApiUrl,
+      bloggerDogApiUrl: '', // BloggerDog removed for STT
       fastcatAccountApiUrl,
     }),
   );
@@ -87,7 +85,6 @@ export function useFileManagerPanelStt({
         fileName: entry.name,
         fileType: getMimeTypeFromFilename(entry.name),
         language: language.value,
-        bloggerDogApiUrl,
         fastcatAccountApiUrl,
         projectId: projectStore.currentProjectId!,
         userSettings: workspaceStore.userSettings,

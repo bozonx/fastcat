@@ -77,14 +77,8 @@ const {
 
 const fileInput = ref<HTMLInputElement | null>(null);
 
-const bloggerDogApiUrl =
-  typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
-    ? runtimeConfig.public.bloggerDogApiUrl
-    : '';
-
 const stt = useFileManagerPanelStt({
   vfs: { getFile: (path) => vfs.getFile(path) },
-  bloggerDogApiUrl,
   fastcatAccountApiUrl: runtimeConfig.public.fastcatAccountApiUrl as string,
   onSuccess: ({ cached, mediaType }) => {
     toast.add({
