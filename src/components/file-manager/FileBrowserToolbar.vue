@@ -189,20 +189,16 @@ const toolbarMenuItems = computed(() => {
     </div>
 
     <div class="ml-auto flex items-center gap-2">
-      <template v-if="!compact">
-        <div v-if="toolbarMenuItems.length > 0" class="w-px h-4 bg-ui-border mx-1"></div>
-        
+      <div v-if="toolbarMenuItems.length > 0" class="w-px h-4 bg-ui-border mx-1"></div>
 
-
-        <UDropdownMenu v-if="toolbarMenuItems.length > 0" :items="toolbarMenuItems" :ui="{ content: 'w-56' }">
-          <UiActionButton
-            icon="i-heroicons-ellipsis-horizontal"
-            variant="ghost"
-            color="neutral"
-            size="xs"
-          />
-        </UDropdownMenu>
-      </template>
+      <UDropdownMenu v-if="toolbarMenuItems.length > 0" :items="toolbarMenuItems" :ui="{ content: 'w-56' }">
+        <UiActionButton
+          icon="i-heroicons-ellipsis-horizontal"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+        />
+      </UDropdownMenu>
     </div>
   </div>
 </template>

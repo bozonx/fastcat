@@ -163,18 +163,18 @@ const { handleFileAction: onFileAction, createTimelineInDirectory } = useFileMan
   },
 });
 
+const rootEntry: FsEntry = {
+  kind: 'directory',
+  name: '/',
+  path: '',
+  parentPath: '',
+  lastModified: 0,
+  size: 0,
+  source: 'local',
+};
+
 const rootContextMenuItems = computed(() => {
   if (!projectStore.currentProjectName || props.hideActions) return [];
-
-  const rootEntry: FsEntry = {
-    kind: 'directory',
-    name: '/',
-    path: '',
-    parentPath: '',
-    lastModified: 0,
-    size: 0,
-    source: 'local',
-  };
 
   const menu: any[][] = [
     [
@@ -386,6 +386,47 @@ useFileManagerPanelBootstrap({
     />
 
     <div class="flex flex-col flex-1 min-h-0">
+      <!-- Actions Toolbar -->
+      <UContextMenu :items="rootContextMenuItems">
+        <div
+          v-if="projectStore.currentProjectName && !props.hideActions"
+          class="flex items-center gap-1 px-2 py-1 bg-ui-bg-accent/30 border-b border-ui-border/50"
+        >
+          <UButton
+            icon="i-heroicons-folder-plus"
+            variant="ghost"
+            color="neutral"
+            size="xs"
+            :title="t('videoEditor.fileManager.actions.createFolder', 'Create Folder')"
+            @click="onFileAction('createFolder', rootEntry)"
+          />
+          <UButton
+            icon="i-heroicons-document-plus"
+            variant="ghost"
+            color="neutral"
+            size="xs"
+            :title="`${t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline')} (In _timelines folder)`"
+            @click="onCreateTimeline"
+          />
+          <UButton
+            icon="i-heroicons-document-text"
+            variant="ghost"
+            color="neutral"
+            size="xs"
+            :title="`${t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document')} (In _documents folder)`"
+            @click="onCreateMarkdown"
+          />
+          <UButton
+            icon="i-heroicons-arrow-up-tray"
+            variant="ghost"
+            color="neutral"
+            size="xs"
+            :title="t('videoEditor.fileManager.actions.uploadFiles', 'Upload files')"
+            @click="triggerFileUpload"
+          />
+        </div>
+      </UContextMenu>
+
       <!-- File List -->
       <FileManagerFiles
         :editing-entry-path="editingEntryPath"
