@@ -20,6 +20,7 @@ interface SecondaryEntryAction extends EntryAction {
 interface UseFilePropertiesActionsOptions {
   t: ReturnType<typeof useI18n>['t'];
   isProjectRootDir: Ref<boolean>;
+  isRemoteRoot: Ref<boolean>;
   isFolderWithVideo: Ref<boolean>;
   isGeneratingProxyForFolder: Ref<boolean>;
   canConvertFile: Ref<boolean>;
@@ -67,14 +68,14 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'delete',
       title: options.t('common.delete'),
       icon: 'i-heroicons-trash',
-      hidden: options.isProjectRootDir.value || options.isCommonDir.value,
+      hidden: options.isProjectRootDir.value || options.isCommonDir.value || options.isRemoteRoot.value,
       onClick: options.onDelete,
     },
     {
       id: 'rename',
       title: options.t('common.rename'),
       icon: 'i-heroicons-pencil',
-      hidden: options.isProjectRootDir.value || options.isCommonDir.value,
+      hidden: options.isProjectRootDir.value || options.isCommonDir.value || options.isRemoteRoot.value,
       onClick: options.onRename,
     },
     {

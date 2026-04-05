@@ -117,6 +117,11 @@ const isCommonRoot = computed(() => {
 // isCommonPath matches all items within common, used for visual indicators but not for blocking actions anymore
 const isCommonPath = computed(() => isWorkspaceCommonPath(props.selectedFsEntry?.path));
 
+const isRemoteRoot = computed(() => {
+  const entry = props.selectedFsEntry;
+  return entry?.source === 'remote' && (entry.path === '' || entry.path === '/');
+});
+
 function triggerDirectoryUpload() {
   uploadInputRef.value?.click();
 }
@@ -377,6 +382,7 @@ const {
 } = useFilePropertiesActions({
   t,
   isProjectRootDir,
+  isRemoteRoot,
   isFolderWithVideo,
   isGeneratingProxyForFolder,
   canConvertFile,

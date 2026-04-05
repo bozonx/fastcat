@@ -159,11 +159,12 @@ function onClick(e: MouseEvent) {
     <div
       :data-gap-id="item.id"
       class="absolute top-0.5 bottom-0.5 rounded border border-dashed transition-colors z-10 cursor-pointer select-none"
-      :class="
+      :class="[
         isSelected
           ? 'border-primary-500 bg-primary-500/15 hover:bg-primary-500/25'
-          : 'border-ui-border/50 bg-ui-bg-elevated/20 hover:bg-ui-bg-elevated/40'
-      "
+          : 'border-ui-border/50 bg-ui-bg-elevated/20 hover:bg-ui-bg-elevated/40',
+        isMobile ? 'touch-none' : '',
+      ]"
       :style="style"
       @pointerdown="onPointerdown"
       @click.stop="onClick"

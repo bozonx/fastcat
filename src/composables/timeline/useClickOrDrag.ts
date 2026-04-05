@@ -1,7 +1,7 @@
 import { onScopeDispose, ref } from 'vue';
 
 export interface UseClickOrDragOptions {
-  onDragStart: (e: PointerEvent) => void;
+  onDragStart: (e: PointerEvent) => boolean | void;
   onShortRightClick?: (e: PointerEvent) => void;
   onLongPress?: (e: PointerEvent) => void;
 }
@@ -58,11 +58,11 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
       if (didStartDrag.value) return;
       // If long press already triggered, don't start drag — long press takes priority
       if (longPressTriggered.value) return;
-      e.preventDefault();
       const dragStarted = options.onDragStart(e);
       if (dragStarted === false) {
         return;
       }
+      e.preventDefault();
       if (longPressTimer !== null) {
         window.clearTimeout(longPressTimer);
         longPressTimer = null;

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { RemoteVfsFileEntry } from '~/types/remote-vfs';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
+import ExpandableYamlSection from '~/components/properties/file/ExpandableYamlSection.vue';
 import { formatDurationSeconds } from '~/utils/format';
 
 const props = defineProps<{
@@ -23,6 +24,20 @@ const duration = computed(() => {
     return formatDurationSeconds(dur);
   }
   return null;
+});
+
+import yaml from 'js-yaml';
+const isMetaExpanded = ref(false);
+const rawMetaYaml = computed(() => {
+  if (!props.item.meta) return null;
+  // Exclude fields we already display to avoid duplication
+  const { duration, updatedAt, ...rest } = props.item.meta as any;
+  if (Object.keys(rest).length === 0) return null;
+  try {
+    return yaml.dump(rest, { indent: 2 });
+  } catch {
+    return String(rest);
+  }
 });
 </script>
 
@@ -60,5 +75,15 @@ const duration = computed(() => {
         "{{ text }}"
       </div>
     </div>
+
+    <!-- Metadata Section (Excluding displayed fields) -->
+    <ExpandableYamlSection
+      v-if="rawMetaYaml"
+      :title="t('common.meta', 'Meta (YAML)')"
+      :content="rawMetaYaml"
+      :expanded="isMetaExpanded"
+      :on-toggle="() => (isMetaExpanded = !isMetaExpanded)"
+      :on-copy="undefined"
+    />
   </PropertySection>
 </template>

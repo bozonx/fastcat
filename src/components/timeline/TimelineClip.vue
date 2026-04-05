@@ -527,12 +527,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
         isMediaMissing ? 'bg-red-600! border-red-800! text-white!' : '',
         !isMediaMissing && isUnsupported ? 'bg-amber-600/50! border-amber-700!' : '',
         (clipItem && Boolean(clipItem.locked)) || track.locked ? 'cursor-not-allowed' : '',
-        isMobile && timelineStore.selectedItemIds.includes(item.id) ? 'touch-none' : '',
-        // On mobile, unselected clips allow pan gestures to pass through for timeline scroll;
-        // selected clips use touch-none so drag works without pointercancel interruption.
-        isMobile && !timelineStore.selectedItemIds.includes(item.id)
-          ? 'touch-pan-x touch-pan-y'
-          : '',
+        isMobile ? 'touch-none' : '',
       ]"
       @pointerdown="onClipPointerdown"
       @click="onClipClick"

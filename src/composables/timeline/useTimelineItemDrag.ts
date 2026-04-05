@@ -290,7 +290,12 @@ export function useTimelineItemDrag(
     pendingMoveCommit.value = null;
     slipPreview.value = null;
 
-    (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
+    // Skip pointer capture for touch — Vue may destroy the clip element
+    // during cross-track moves, which releases capture and fires pointercancel.
+    // Mobile timeline handles pointermove on the root div so capture is unnecessary.
+    if (e.pointerType !== 'touch') {
+      (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
+    }
     bindDragSession();
   }
 
@@ -347,7 +352,9 @@ export function useTimelineItemDrag(
     lastDragAppliedCmd.value = null;
     dragCancelRequested.value = false;
 
-    (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
+    if (e.pointerType !== 'touch') {
+      (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
+    }
     bindDragSession();
   }
 

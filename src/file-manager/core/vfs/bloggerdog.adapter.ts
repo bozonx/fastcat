@@ -236,7 +236,31 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
   }
 
   async moveEntry(sourcePath: string, targetPath: string): Promise<void> {
-    throw new Error('Move is not fully supported by BloggerDog API directly, use copy+delete or backend patch.');
+    const config = this.resolveConfig();
+    const sourceParts = sourcePath.split('/').filter(Boolean);
+    const targetParts = targetPath.split('/').filter(Boolean);
+    
+    const sourceParent = sourceParts.slice(0, -1).join('/');
+    const targetParent = targetParts.slice(0, -1).join('/');
+    
+    if (sourceParent !== targetParent) {
+      throw new Error('Moving between directories is not fully supported by BloggerDog API directly, only renaming is supported.');
+    }
+    
+    const newName = targetParts.pop();
+    if (!newName) throw new Error('Invalid target name');
+    
+    const entry = await this.getIdForPath(sourcePath);
+    
+    const { renameRemoteCollection, renameRemoteItem } = await import('~/utils/remote-vfs');
+    if (entry.type === 'directory') {
+      await renameRemoteCollection({ config, id: entry.id, name: newName });
+    } else {
+      await renameRemoteItem({ config, id: entry.id, name: newName });
+    }
+    
+    this.idCache.delete(sourcePath);
+    this.idCache.delete('/' + sourceParent);
   }
 
   async copyFile(sourcePath: string, targetPath: string): Promise<void> {

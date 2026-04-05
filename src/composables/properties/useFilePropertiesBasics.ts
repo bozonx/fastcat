@@ -26,10 +26,24 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
     return value && value !== name.toLowerCase() ? value : value;
   });
 
+  const isBloggerDogGroup = computed(() => {
+    const entry = options.selectedFsEntry.value;
+    return entry?.source === 'remote' && entry?.kind === 'directory' && !entry?.isContentItem;
+  });
+
+  const isBloggerDogContentItem = computed(() => {
+    const entry = options.selectedFsEntry.value;
+    return entry?.source === 'remote' && entry?.isContentItem;
+  });
+
   const { t } = useI18n();
   const generalInfoTitle = computed(() => {
     const info = options.fileInfo.value;
     if (!info) return '';
+    
+    if (isBloggerDogGroup.value) return t('fastcat.file.bloggerDogGroup', 'Группа');
+    if (isBloggerDogContentItem.value) return t('fastcat.file.bloggerDogItem', 'Элемент контента');
+    
     if (info.kind === 'directory') return t('common.folder', 'Folder');
     if (options.isOtio.value) return 'OTIO';
 
@@ -57,5 +71,7 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
     isVideoOrAudio,
     mediaMeta,
     selectedPath,
+    isBloggerDogGroup,
+    isBloggerDogContentItem,
   };
 }
