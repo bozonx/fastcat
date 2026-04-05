@@ -34,6 +34,7 @@ const props = defineProps<{
   isGeneratingProxyInDirectory: (entry: FsEntry) => boolean;
   videoThumbnails?: Record<string, string>;
   fileCompatibility?: Record<string, FileCompatibility>;
+  instanceId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -75,6 +76,8 @@ function isCutEntry(entry: FsEntry): boolean {
 function isSelected(entry: FsEntry): boolean {
   const selected = selectionStore.selectedEntity;
   if (!selected || selected.source !== 'fileManager') return false;
+  if (selected.instanceId && selected.instanceId !== props.instanceId) return false;
+  
   if (selected.kind === 'multiple') {
     return selected.entries.some((e) => e.path === entry.path);
   }

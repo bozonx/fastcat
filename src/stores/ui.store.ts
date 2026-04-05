@@ -73,6 +73,7 @@ export const useUiStore = defineStore('ui', () => {
   const fileManagerUpdateCounter = ref(0);
   const isProjectSettingsOpen = ref(false);
   const isEditorSettingsOpen = ref(false);
+  const editorSettingsActiveSection = ref<string>('user.general');
   const activeModalsCount = ref(0);
   const activeLibraryTab = ref<'texts' | 'shapes' | 'hud'>('texts');
 
@@ -212,6 +213,7 @@ export const useUiStore = defineStore('ui', () => {
   }
 
   function showIntegrationSettings() {
+    editorSettingsActiveSection.value = 'user.integrations';
     isEditorSettingsOpen.value = true;
   }
 
@@ -282,6 +284,7 @@ export const useUiStore = defineStore('ui', () => {
     activeLibraryTab,
     isTextPresetModalOpen,
     pendingTextPresetClipInfo,
+    editorSettingsActiveSection,
     showIntegrationSettings,
   };
 });

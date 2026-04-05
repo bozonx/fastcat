@@ -5,7 +5,8 @@ import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import ComputerFileManager from '~/components/file-manager/ComputerFileManager.vue';
 import PropertiesPanel from '~/components/layout-panels/PropertiesPanel.vue';
-import { useFilesPageFileManagerStore } from '~/stores/file-manager.store';
+import { useFilesPageFileManagerStore, useFilesPageSidebarFileManagerStore } from '~/stores/file-manager.store';
+import FileManagerStoreProvider from '~/components/file-manager/FileManagerStoreProvider.vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -33,10 +34,10 @@ const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 const uiStore = useUiStore();
 const runtimeConfig = useRuntimeConfig();
-const fileManagerStore = useFilesPageFileManagerStore();
+const mainStore = useFilesPageFileManagerStore();
+const sidebarStore = useFilesPageSidebarFileManagerStore();
 
-
-provide('fileManagerStore', fileManagerStore);
+provide('fileManagerStore', mainStore);
 
 const bloggerDogVfs = computed(() => {
   const bloggerDogApiUrl = typeof runtimeConfig.public.bloggerDogApiUrl === 'string' 
@@ -63,8 +64,8 @@ function openIntegrationsSettings() {
 
 
 onMounted(() => {
-  if (!fileManagerStore.selectedFolder) {
-    fileManagerStore.openFolder({
+  if (!mainStore.selectedFolder) {
+    mainStore.openFolder({
         name: projectStore.currentProjectName || 'Project',
         path: '',
         kind: 'directory',
@@ -80,58 +81,61 @@ onMounted(() => {
       <Pane :size="25" min-size="10" class="border-r border-ui-border bg-ui-bg-elevated flex flex-col min-w-0 overflow-hidden">
         <div class="flex items-center gap-1 p-2 border-b border-ui-border bg-ui-bg-accent/10">
           <UButton
-            :color="fileManagerStore.filesPageActiveTab === 'computer' ? 'primary' : 'neutral'"
-            :variant="fileManagerStore.filesPageActiveTab === 'computer' ? 'soft' : 'ghost'"
+            :color="sidebarStore.filesPageActiveTab === 'computer' ? 'primary' : 'neutral'"
+            :variant="sidebarStore.filesPageActiveTab === 'computer' ? 'soft' : 'ghost'"
             size="xs"
             class="flex-1 justify-center truncate"
-            @click="fileManagerStore.setFilesPageActiveTab('computer')"
+            @click="sidebarStore.setFilesPageActiveTab('computer')"
           >
             {{ workspaceStore.workspaceProviderId === 'tauri' ? t('fastcat.fileManager.tabs.computer') : t('fastcat.fileManager.tabs.workspace') }}
           </UButton>
           <UButton
-            :color="fileManagerStore.filesPageActiveTab === 'bloggerdog' ? 'primary' : 'neutral'"
-            :variant="fileManagerStore.filesPageActiveTab === 'bloggerdog' ? 'soft' : 'ghost'"
+            :color="sidebarStore.filesPageActiveTab === 'bloggerdog' ? 'primary' : 'neutral'"
+            :variant="sidebarStore.filesPageActiveTab === 'bloggerdog' ? 'soft' : 'ghost'"
             size="xs"
             class="flex-1 justify-center truncate"
-            @click="fileManagerStore.setFilesPageActiveTab('bloggerdog')"
+            @click="sidebarStore.setFilesPageActiveTab('bloggerdog')"
           >
             Bloggerdog
           </UButton>
         </div>
 
         <div class="flex-1 min-h-0">
-          <template v-if="fileManagerStore.filesPageActiveTab === 'computer'">
-            <ComputerFileManager />
-          </template>
-          <template v-else>
-            <div v-if="!bloggerDogVfs" class="h-full flex flex-col items-center justify-center p-6 text-center gap-4">
-              <div class="p-4 rounded-full bg-ui-bg-accent/20">
-                <UIcon name="i-heroicons-cloud-slash" class="w-12 h-12 text-ui-text-dim opacity-50" />
+          <FileManagerStoreProvider :store="sidebarStore">
+            <template v-if="sidebarStore.filesPageActiveTab === 'computer'">
+              <ComputerFileManager instance-id="files-sidebar-computer" />
+            </template>
+            <template v-else>
+              <div v-if="!bloggerDogVfs" class="h-full flex flex-col items-center justify-center p-6 text-center gap-4">
+                <div class="p-4 rounded-full bg-ui-bg-accent/20">
+                  <UIcon name="i-heroicons-cloud-slash" class="w-12 h-12 text-ui-text-dim opacity-50" />
+                </div>
+                <div class="space-y-1">
+                  <h3 class="font-medium text-ui-text">
+                    {{ t('fastcat.fileManager.remote.not_configured_title', 'BloggerDog not configured') }}
+                  </h3>
+                  <p class="text-sm text-ui-text-dim">
+                    {{ t('fastcat.fileManager.remote.not_configured_desc', 'Integrate with BloggerDog to manage your remote content.') }}
+                  </p>
+                </div>
+                <UButton 
+                  color="primary" 
+                  size="sm" 
+                  icon="i-heroicons-cog-6-tooth"
+                  @click="openIntegrationsSettings"
+                >
+                  {{ t('fastcat.fileManager.remote.configure_action', 'Configure Integration') }}
+                </UButton>
               </div>
-              <div class="space-y-1">
-                <h3 class="font-medium text-ui-text">
-                  {{ t('fastcat.fileManager.remote.not_configured_title', 'BloggerDog not configured') }}
-                </h3>
-                <p class="text-sm text-ui-text-dim">
-                  {{ t('fastcat.fileManager.remote.not_configured_desc', 'Integrate with BloggerDog to manage your remote content.') }}
-                </p>
-              </div>
-              <UButton 
-                color="primary" 
-                size="sm" 
-                icon="i-heroicons-cog-6-tooth"
-                @click="openIntegrationsSettings"
-              >
-                {{ t('fastcat.fileManager.remote.configure_action', 'Configure Integration') }}
-              </UButton>
-            </div>
-            <FileBrowser 
-              v-else
-              :remote-mode-only="true" 
-              :vfs="bloggerDogVfs"
-              class="h-full" 
-            />
-          </template>
+              <FileBrowser 
+                v-else
+                :remote-mode-only="true" 
+                :vfs="bloggerDogVfs"
+                instance-id="files-sidebar-bloggerdog"
+                class="h-full" 
+              />
+            </template>
+          </FileManagerStoreProvider>
         </div>
       </Pane>
 
@@ -146,11 +150,12 @@ onMounted(() => {
               folders-only
               is-files-page
               class="h-full"
-              @select="(entry) => fileManagerStore.openFolder(entry)"
+              instance-id="files-main"
+              @select="(entry) => mainStore.openFolder(entry)"
             />
           </Pane>
           <Pane :size="sizes[1]" min-size="10">
-            <FileBrowser class="h-full" />
+            <FileBrowser class="h-full" instance-id="files-main" />
           </Pane>
           <Pane :size="sizes[2]" min-size="10">
             <PropertiesPanel

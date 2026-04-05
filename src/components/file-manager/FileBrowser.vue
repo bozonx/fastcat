@@ -42,12 +42,17 @@ import FileBrowserModals from '~/components/file-manager/FileBrowserModals.vue';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
 const props = defineProps<{
+  // Unique identifier for this file manager instance. 
+  // Used for independent focus, state, and selection.
+  instanceId?: string;
   isFilesPage?: boolean;
   compact?: boolean;
   remoteModeOnly?: boolean;
   vfs?: IFileSystemAdapter;
   hideActions?: boolean;
 }>();
+
+const instanceId = props.instanceId || 'default';
 
 
 const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
@@ -142,7 +147,7 @@ function setSelectedFsEntry(entry: FsEntry | null) {
     remotePath: entry.remotePath,
     remoteData: entry.remoteData,
   };
-  selectionStore.selectFsEntry(entry);
+  selectionStore.selectFsEntry(entry, instanceId);
 }
 
 // --- DragAndDrop (needs loadFolderContent forward-ref) ---
@@ -381,7 +386,7 @@ const emptySpaceContextMenuItems = computed(() => {
 
 // --- Marquee selection ---
 function focusBrowserPanel() {
-  focusStore.setPanelFocus('filesBrowser');
+  focusStore.setPanelFocus(`dynamic:file-manager:${instanceId}`);
 }
 
 const {
@@ -497,7 +502,7 @@ watch(
 watch(
   () => uiStore.fileBrowserSelectAllTrigger,
   () => {
-    if (!focusStore.isPanelFocused('filesBrowser')) return;
+    if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return;
     if (isRemoteMode.value) return;
 
     const visibleItems = sortedEntries.value;
@@ -520,14 +525,14 @@ watch(
       return;
     }
 
-    selectionStore.selectFsEntries(visibleItems);
+    selectionStore.selectFsEntries(visibleItems, instanceId);
   },
 );
 
 watch(
   () => uiStore.fileBrowserNavigateBackTrigger,
   () => {
-    if (!focusStore.isPanelFocused('filesBrowser')) return;
+    if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return;
     void navigateBack();
   },
 );
@@ -535,7 +540,7 @@ watch(
 watch(
   () => uiStore.fileBrowserNavigateUpTrigger,
   () => {
-    if (!focusStore.isPanelFocused('filesBrowser')) return;
+    if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return;
     void navigateUp();
   },
 );
@@ -543,7 +548,7 @@ watch(
 watch(
   () => uiStore.fileBrowserMoveSelectionTrigger,
   (trigger) => {
-    if (!focusStore.isPanelFocused('filesBrowser')) return;
+    if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return;
     moveSelection(trigger.dir);
   },
 );
@@ -598,7 +603,7 @@ async function onDirectoryUploadChange(e: Event) {
     class="panel-focus-frame flex flex-col h-full bg-ui-bg relative overflow-hidden transition-colors duration-150"
     :class="{
       'bg-primary-500/5': isDragOverPanel,
-      'panel-focus-frame--active': focusStore.isPanelFocused('filesBrowser'),
+      'panel-focus-frame--active': focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`),
     }"
     @pointerdown.capture="focusBrowserPanel"
     @dragover.prevent="onPanelDragOver"
@@ -699,17 +704,9 @@ async function onDirectoryUploadChange(e: Event) {
                 color="primary"
                 variant="solid"
                 icon="i-heroicons-arrow-path"
-                @click="loadFolderContent"
+                @click.stop="loadFolderContent"
               >
                 {{ t('common.retry', 'Retry') }}
-              </UButton>
-              <UButton
-                color="neutral"
-                variant="soft"
-                icon="i-heroicons-cog-6-tooth"
-                @click="uiStore.showIntegrationSettings()"
-              >
-                {{ t('fastcat.fileManager.remote.configure_action', 'Settings') }}
               </UButton>
             </div>
           </div>
@@ -737,6 +734,7 @@ async function onDirectoryUploadChange(e: Event) {
             :is-generating-proxy-in-directory="isDirectoryGeneratingProxy"
             :video-thumbnails="videoThumbnails"
             :file-compatibility="fileCompatibility"
+            :instance-id="instanceId"
             @entry-drag-start="onEntryDragStart"
             @entry-drag-end="onEntryDragEnd"
             @entry-drag-enter="onEntryDragEnter"
@@ -770,6 +768,7 @@ async function onDirectoryUploadChange(e: Event) {
             :is-generating-proxy-in-directory="isDirectoryGeneratingProxy"
             :video-thumbnails="videoThumbnails"
             :file-compatibility="fileCompatibility"
+            :instance-id="instanceId"
             @entry-drag-start="onEntryDragStart"
             @entry-drag-end="onEntryDragEnd"
             @entry-drag-enter="onEntryDragEnter"

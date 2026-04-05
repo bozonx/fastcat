@@ -16,7 +16,7 @@ export interface FileSortOption {
 export type FilesPageTab = 'computer' | 'bloggerdog';
 
 
-function createFileManagerStoreSetup(contextId: 'editor' | 'filesPage') {
+function createFileManagerStoreSetup(contextId: string) {
   return () => {
     const STORAGE_KEY = `fastcat:file-manager-${contextId}`;
     const selectionStore = useSelectionStore();
@@ -189,5 +189,8 @@ function createFileManagerStoreSetup(contextId: 'editor' | 'filesPage') {
   };
 }
 
+export type FileManagerStore = ReturnType<ReturnType<typeof createFileManagerStoreSetup>>;
+
 export const useFileManagerStore = defineStore('fileManager', createFileManagerStoreSetup('editor'));
 export const useFilesPageFileManagerStore = defineStore('filesPageFileManager', createFileManagerStoreSetup('filesPage'));
+export const useFilesPageSidebarFileManagerStore = defineStore('filesPageSidebarFileManager', createFileManagerStoreSetup('filesPage-sidebar'));

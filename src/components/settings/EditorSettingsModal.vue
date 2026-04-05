@@ -12,6 +12,7 @@ import SettingsIntegrations from '~/components/settings/SettingsIntegrations.vue
 import SettingsVideo from '~/components/settings/SettingsVideo.vue';
 import SettingsAudio from '~/components/settings/SettingsAudio.vue';
 import SettingsStorage from '~/components/settings/SettingsStorage.vue';
+import { useUiStore } from '~/stores/ui.store';
 
 interface Props {
   open: boolean;
@@ -25,6 +26,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
+const uiStore = useUiStore();
 
 type SettingsSection =
   | 'user.general'
@@ -60,6 +62,7 @@ function getStoredSection(): SettingsSection {
 const activeSection = ref<SettingsSection>(getStoredSection());
 
 watch(activeSection, (section) => {
+  uiStore.editorSettingsActiveSection = section;
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ section, timestamp: Date.now() }));
@@ -67,6 +70,15 @@ watch(activeSection, (section) => {
     // ignore
   }
 });
+
+watch(
+  () => uiStore.editorSettingsActiveSection,
+  (section) => {
+    if (section && section !== activeSection.value) {
+      activeSection.value = section as SettingsSection;
+    }
+  },
+);
 
 const isOpen = computed({
   get: () => props.open,

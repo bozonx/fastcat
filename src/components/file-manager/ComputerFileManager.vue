@@ -1,14 +1,19 @@
 <script setup lang="ts">
 import { ref, computed, provide, onMounted, shallowRef } from 'vue';
 import { Pane, Splitpanes } from 'splitpanes';
-import { useFilesPageFileManagerStore } from '~/stores/file-manager.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useComputerVfs } from '~/composables/file-manager/useComputerVfs';
 import { createFileManager, FILE_MANAGER_INJECTION_KEY } from '~/composables/file-manager/useFileManager';
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import type { FsEntry } from '~/types/fs';
 
-const fileManagerStore = useFilesPageFileManagerStore();
+const props = defineProps<{
+    instanceId?: string;
+}>();
+
+const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
+const instanceId = props.instanceId || 'computer';
 
 // Create independent state for this instance
 const rootEntries = shallowRef<FsEntry[]>([]);
@@ -126,6 +131,7 @@ function onSelect(entry: FsEntry) {
         <FileBrowser 
             :vfs="vfs!" 
             hide-actions
+            :instance-id="instanceId"
             class="h-full"
         />
       </Pane>

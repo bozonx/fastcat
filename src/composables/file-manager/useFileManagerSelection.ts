@@ -12,12 +12,14 @@ export interface FileManagerSelectionOptions {
   getVisibleEntries: () => FsEntry[];
   enforceSameLevel?: boolean;
   onSingleSelect?: (entry: FsEntry) => void;
+  instanceId?: string;
 }
 
 export function useFileManagerSelection({
   getVisibleEntries,
   enforceSameLevel = true,
   onSingleSelect,
+  instanceId,
 }: FileManagerSelectionOptions) {
   const selectionStore = useSelectionStore();
   const uiStore = useUiStore();
@@ -36,7 +38,7 @@ export function useFileManagerSelection({
 
   function selectSingle(entry: FsEntry) {
     setUiEntry(entry);
-    selectionStore.selectFsEntry(entry);
+    selectionStore.selectFsEntry(entry, instanceId);
     onSingleSelect?.(entry);
   }
 
@@ -47,7 +49,7 @@ export function useFileManagerSelection({
   function handleToggleSelect(entry: FsEntry) {
     const selected = selectionStore.selectedEntity;
     if (!selected || selected.source !== 'fileManager') {
-      selectionStore.selectFsEntries([entry]);
+      selectionStore.selectFsEntries([entry], instanceId);
       return;
     }
 
@@ -61,7 +63,7 @@ export function useFileManagerSelection({
     const existingIndex = currentEntries.findIndex((e) => e.path === entry.path);
     if (existingIndex >= 0) {
       currentEntries.splice(existingIndex, 1);
-      selectionStore.selectFsEntries(currentEntries);
+      selectionStore.selectFsEntries(currentEntries, instanceId);
       return;
     }
 
@@ -74,7 +76,7 @@ export function useFileManagerSelection({
       }
     }
 
-    selectionStore.selectFsEntries([...currentEntries, entry]);
+    selectionStore.selectFsEntries([...currentEntries, entry], instanceId);
   }
 
   /**
@@ -108,7 +110,7 @@ export function useFileManagerSelection({
       ? visibleEntries.slice(start, end + 1).filter((e) => getParentPath(e) === entryParent)
       : visibleEntries.slice(start, end + 1);
 
-    selectionStore.selectFsEntries(range);
+    selectionStore.selectFsEntries(range, instanceId);
   }
 
   /**
