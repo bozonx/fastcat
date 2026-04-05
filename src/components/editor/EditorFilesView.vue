@@ -22,7 +22,7 @@ interface Props {
   selectedEntity: SelectedEntity | null;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
   (e: 'resized', event: { panes: Array<{ size: number }> }): void;
@@ -74,11 +74,58 @@ onMounted(() => {
     });
   }
 });
+
+const browserTotalSize = computed(() => props.sizes[0] + props.sizes[1]);
+const treeRelSize = computed(() => {
+  const total = browserTotalSize.value;
+  if (total === 0) return 30;
+  return (props.sizes[0] / total) * 100;
+});
+const listRelSize = computed(() => {
+  const total = browserTotalSize.value;
+  if (total === 0) return 70;
+  return (props.sizes[1] / total) * 100;
+});
+
+function onOuterResized(_event: { panes: Array<{ size: number }> }) {
+  // Sidebar size is currently not persisted for this view
+}
+
+function onMainResized(event: { panes: Array<{ size: number }> }) {
+  const browserSize = event.panes[0]?.size ?? 0;
+  const propertiesSize = event.panes[1]?.size ?? 0;
+
+  const currentBrowserTotalRaw = props.sizes[0] + props.sizes[1];
+  const treeRatio = currentBrowserTotalRaw === 0 ? 0.3 : props.sizes[0] / currentBrowserTotalRaw;
+  const listRatio = 1 - treeRatio;
+
+  const newSizes = [
+    browserSize * treeRatio,
+    browserSize * listRatio,
+    propertiesSize
+  ];
+  
+  emit('resized', { panes: newSizes.map(s => ({ size: s })) });
+}
+
+function onBrowserResized(event: { panes: Array<{ size: number }> }) {
+  const treeRel = event.panes[0]?.size ?? 0;
+  const listRel = event.panes[1]?.size ?? 0;
+  
+  const browserTotal = browserTotalSize.value;
+  const newSizes = [
+    (treeRel / 100) * browserTotal,
+    (listRel / 100) * browserTotal,
+    props.sizes[2]
+  ];
+  
+  emit('resized', { panes: newSizes.map(s => ({ size: s })) });
+}
 </script>
 
 <template>
   <div class="h-full w-full">
-    <Splitpanes class="editor-splitpanes">
+    <Splitpanes class="editor-splitpanes" @resized="onOuterResized">
       <!-- Left Sidebar: Computer | BloggerDog -->
       <Pane :size="25" min-size="10" class="border-r border-ui-border flex flex-col min-w-0 overflow-hidden">
         <div 
@@ -152,41 +199,55 @@ onMounted(() => {
 
       <!-- Main Project Panels -->
       <Pane :size="75">
-        <div 
-          class="h-full flex flex-col min-h-0 relative panel-focus-frame"
-          :class="{
-            'panel-focus-frame--active': focusStore.isPanelFocused('dynamic:file-manager:main'),
-          }"
-          @pointerdown.capture="focusStore.setPanelFocus('dynamic:file-manager:main')"
-        >
-          <Splitpanes
-            class="editor-splitpanes h-full"
-            @resized="(event: { panes: Array<{ size: number }> }) => emit('resized', event)"
-          >
-            <Pane :size="sizes[0]" min-size="10">
-              <FileManagerPanel
-                folders-only
-                is-files-page
-                class="h-full"
-                instance-id="main"
-                hide-focus-frame
-                @select="(entry) => mainStore.openFolder(entry)"
-              />
-            </Pane>
-            <Pane :size="sizes[1]" min-size="10">
-              <FileBrowser class="h-full" instance-id="main" hide-focus-frame />
-            </Pane>
-            <Pane :size="sizes[2]" min-size="10">
+        <Splitpanes class="editor-splitpanes h-full" @resized="onMainResized">
+          <!-- File Manager (Tree + Browser) -->
+          <Pane :size="sizes[0] + sizes[1]" min-size="20">
+            <div 
+              class="h-full flex flex-col min-h-0 relative panel-focus-frame"
+              :class="{
+                'panel-focus-frame--active': focusStore.isPanelFocused('dynamic:file-manager:main'),
+              }"
+              @pointerdown.capture="focusStore.setPanelFocus('dynamic:file-manager:main')"
+            >
+              <Splitpanes class="editor-splitpanes h-full" @resized="onBrowserResized">
+                <Pane :size="treeRelSize" min-size="10">
+                  <FileManagerPanel
+                    folders-only
+                    is-files-page
+                    class="h-full"
+                    instance-id="main"
+                    hide-focus-frame
+                    @select="(entry) => mainStore.openFolder(entry)"
+                  />
+                </Pane>
+                <Pane :size="listRelSize" min-size="10">
+                  <FileBrowser class="h-full" instance-id="main" hide-focus-frame />
+                </Pane>
+              </Splitpanes>
+            </div>
+          </Pane>
+
+          <!-- Properties -->
+          <Pane :size="sizes[2]" min-size="10">
+            <div 
+              class="h-full flex flex-col min-h-0 relative panel-focus-frame"
+              :class="{
+                'panel-focus-frame--active': focusStore.isPanelFocused('dynamic:properties:files-main'),
+              }"
+              @pointerdown.capture="focusStore.setPanelFocus('dynamic:properties:files-main')"
+            >
               <PropertiesPanel
                 :entity="selectedEntity"
+                :use-external-focus="true"
                 class="h-full"
                 @clear-selection="emit('clearSelection')"
               />
-            </Pane>
-          </Splitpanes>
-        </div>
+            </div>
+          </Pane>
+        </Splitpanes>
       </Pane>
     </Splitpanes>
+
   </div>
 
 </template>
