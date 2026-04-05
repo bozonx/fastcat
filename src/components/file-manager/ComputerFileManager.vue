@@ -147,7 +147,6 @@ function onSelect(entry: FsEntry) {
       <Pane size="70">
         <FileBrowser 
             :vfs="vfs!" 
-            hide-actions
             :instance-id="instanceId"
             class="h-full"
         />
