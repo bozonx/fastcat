@@ -293,7 +293,7 @@ function onRequestDownload(params: { entry: RemoteFsEntry; targetDirPath: string
   uiStore.pendingRemoteDownloadRequest = params;
 }
 
-const { isRootDropOver, isRelevantDrag, onRootDragOver, onRootDragLeave, onRootDrop } = useFileDrop(
+const { isRootDropOver, isRelevantDrag, onRootDragEnter, onRootDragOver, onRootDragLeave, onRootDrop } = useFileDrop(
   {
     resolveEntryByPath: async (path: string) => props.findEntryByPath(path),
     handleFiles: props.handleFiles,
@@ -418,7 +418,17 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
       <div class="min-w-full w-max min-h-full flex flex-col" @pointerdown.self="selectProjectRoot">
         <div
           v-if="rootEntries.length === 0"
-          class="flex flex-col items-center justify-center flex-1 w-full gap-3 text-ui-text-disabled px-4 text-center min-h-50"
+          class="flex flex-col items-center justify-center flex-1 w-full gap-3 text-ui-text-disabled px-4 text-center min-h-50 relative"
+          :class="{
+            'bg-primary-500/10 outline outline-primary-500/40 -outline-offset-1':
+              isRootDropOver && currentDragOperation !== 'copy',
+            'bg-emerald-500/10 outline outline-emerald-500/40 -outline-offset-1':
+              isRootDropOver && currentDragOperation === 'copy',
+          }"
+          @dragenter.prevent="onRootDragEnter"
+          @dragover.prevent="onRootDragOver"
+          @dragleave.prevent="onRootDragLeave"
+          @drop.prevent="onRootDrop"
         >
           <UIcon name="i-heroicons-folder-open" class="w-10 h-10" />
           <p class="text-sm">
@@ -431,10 +441,27 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
                   )
             }}
           </p>
+          <p
+            v-if="isRootDropOver"
+            class="text-xs font-medium text-center absolute bottom-4"
+            :class="currentDragOperation === 'copy' ? 'text-emerald-400' : 'text-primary-400'"
+          >
+            {{
+              currentDragOperation === 'copy'
+                ? t(
+                    'videoEditor.fileManager.actions.dropToRootCopyHint',
+                    'Release to copy into the project root',
+                  )
+                : t(
+                    'videoEditor.fileManager.actions.dropToRootHint',
+                    'Release to upload into the project root',
+                  )
+            }}
+          </p>
         </div>
 
         <!-- File tree -->
-        <div v-else class="flex flex-col flex-1">
+        <div v-else class="flex flex-col">
           <FileManagerTree
             :editing-entry-path="editingEntryPath"
             :entries="rootEntries"
@@ -455,13 +482,14 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
         </div>
 
         <div
-          class="flex-1 w-full min-w-full flex items-center justify-center min-h-12"
+          class="flex-1 w-full min-w-full flex items-center justify-center min-h-12 relative"
           :class="{
             'bg-primary-500/10 outline outline-primary-500/40 -outline-offset-1':
               isRootDropOver && currentDragOperation !== 'copy',
             'bg-emerald-500/10 outline outline-emerald-500/40 -outline-offset-1':
               isRootDropOver && currentDragOperation === 'copy',
           }"
+          @dragenter.prevent="onRootDragEnter"
           @dragover.prevent="onRootDragOver"
           @dragleave.prevent="onRootDragLeave"
           @drop.prevent="onRootDrop"
