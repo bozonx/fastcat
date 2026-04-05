@@ -47,6 +47,7 @@ export interface TimelineMovePreview {
   itemId: string;
   trackId: string;
   startUs: number;
+  isCollision?: boolean;
 }
 
 export interface TimelineSlipPreview {
@@ -547,7 +548,25 @@ export function useTimelineItemDrag(
           draggingTrackId.value = dragOriginTrackId.value ?? trackId;
         }
 
-        movePreview.value = { itemId, trackId: targetTrackId, startUs };
+        let isCollision = false;
+        if (overlapMode !== 'pseudo' && dragStartSnapshot.value) {
+          const targetTrack = dragStartSnapshot.value.tracks.find((t) => t.id === targetTrackId);
+          if (targetTrack) {
+            const endUs = startUs + dragAnchorDurationUs.value;
+            for (const it of targetTrack.items) {
+              if (it.id === itemId) continue;
+              if (it.kind !== 'clip') continue;
+              const itStart = it.timelineRange.startUs;
+              const itEnd = itStart + it.timelineRange.durationUs;
+              if (startUs < itEnd && itStart < endUs) {
+                isCollision = true;
+                break;
+              }
+            }
+          }
+        }
+
+        movePreview.value = { itemId, trackId: targetTrackId, startUs, isCollision };
         pendingMoveCommit.value = {
           fromTrackId: dragOriginTrackId.value ?? trackId,
           toTrackId: targetTrackId,

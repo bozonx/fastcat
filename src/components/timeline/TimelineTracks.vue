@@ -444,6 +444,7 @@ function onTrackClick(e: MouseEvent, trackId: string) {
             :can-edit-clip-content="false"
             :is-dragging-current-item="false"
             :is-move-preview-current-item="true"
+            :is-move-preview-collision="movePreview.isCollision"
             :selected-transition="null"
             :resize-volume="null"
           />
