@@ -143,6 +143,8 @@ export function useFileBrowserRemote({
           source: 'remote',
           remotePath: entry.path,
           remoteId: entry.id || entry.path,
+          remoteData: entry.remoteData,
+          isContentItem: entry.isContentItem,
         };
 
         // Resolve thumbnail for content items or media

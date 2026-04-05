@@ -2,7 +2,7 @@ import type { ExternalIntegrationsSettings, FastCatUserSettings } from '~/utils/
 
 export type ExternalServiceKind = 'files' | 'stt';
 export type ExternalServiceSource = 'fastcat_publicador' | 'manual';
-export type FastCatIntegrationScope = 'vfs:read' | 'vfs:write' | 'stt:transcribe' | 'llm:chat';
+export type FastCatIntegrationScope = 'content-library:read' | 'content-library:write' | 'stt:transcribe' | 'llm:chat';
 
 export interface ResolvedExternalServiceConfig {
   source: ExternalServiceSource;
@@ -11,7 +11,7 @@ export interface ResolvedExternalServiceConfig {
   healthUrl: string;
 }
 
-const FILES_SCOPES: FastCatIntegrationScope[] = ['vfs:read', 'vfs:write'];
+const FILES_SCOPES: FastCatIntegrationScope[] = ['content-library:read', 'content-library:write'];
 const STT_SCOPES: FastCatIntegrationScope[] = ['stt:transcribe'];
 
 function trimTrailingSlashes(value: string): string {
@@ -70,7 +70,7 @@ export function getFastCatPublicadorConnectUrl(params: {
 
 export function getFastCatPublicadorHealthUrl(baseUrl: string): string {
   const externalApiBaseUrl = getFastCatPublicadorExternalApiBaseUrl(baseUrl);
-  return externalApiBaseUrl ? joinUrl(externalApiBaseUrl, 'health') : '';
+  return externalApiBaseUrl ? joinUrl(externalApiBaseUrl, 'external/health') : '';
 }
 
 export function getFastCatPublicadorSttStreamUrl(baseUrl: string): string {

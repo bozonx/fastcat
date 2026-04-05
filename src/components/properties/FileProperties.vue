@@ -19,6 +19,7 @@ import OtioPropertiesSection from '~/components/properties/file/OtioPropertiesSe
 import FileProjectRootSection from '~/components/properties/file/FileProjectRootSection.vue';
 import FileTranscriptionModal from '~/components/properties/file/FileTranscriptionModal.vue';
 import EntryActions from '~/components/properties/file/EntryActions.vue';
+import BloggerDogItemPropertiesSection from '~/components/properties/file/BloggerDogItemPropertiesSection.vue';
 import { useEntryPreview } from '~/composables/file-manager/useEntryPreview';
 import { useImageExifInfo } from '~/composables/properties/useImageExifInfo';
 import { useFileTimelineUsage } from '~/composables/properties/useFileTimelineUsage';
@@ -205,6 +206,10 @@ async function copyToClipboard(text: string) {
 }
 
 const isVideoFile = computed(() => mediaType.value === 'video');
+
+const isBloggerDogItem = computed(() => {
+  return props.selectedFsEntry?.source === 'remote' && (props.selectedFsEntry as any).isContentItem;
+});
 
 const isFormatUnsupported = computed(() =>
   Boolean(selectedPath.value && mediaStore.metadataLoadFailed[selectedPath.value]),
@@ -480,6 +485,11 @@ const {
         :image-create-date="imageCreateDate"
         :image-location-link="imageLocationLink"
         :image-camera-make="imageCameraMake"
+      />
+
+      <BloggerDogItemPropertiesSection
+        v-if="isBloggerDogItem && selectedFsEntry?.remoteData"
+        :item="selectedFsEntry.remoteData"
       />
 
       <MediaPropertiesSection

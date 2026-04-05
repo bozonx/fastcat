@@ -9,6 +9,8 @@ export interface VfsEntry {
   expanded?: boolean;
   hasChildren?: boolean;
   hasDirectories?: boolean;
+  remoteData?: any;
+  isContentItem?: boolean;
 }
 
 export interface IFileSystemAdapter {
