@@ -406,6 +406,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
             'bg-primary-500/10': isRootDropOver && props.currentDragOperation !== 'copy',
             'bg-emerald-500/10': isRootDropOver && props.currentDragOperation === 'copy',
           }"
+          @dragenter.prevent.stop="emit('rootDragEnter', $event)"
           @dragover.prevent="emit('rootDragOver', $event)"
           @dragleave.prevent="emit('rootDragLeave', $event)"
           @drop.prevent="emit('rootDrop', $event)"
