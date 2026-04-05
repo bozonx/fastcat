@@ -530,7 +530,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
         isMobile ? 'touch-none' : '',
       ]"
       @pointerdown="onClipPointerdown"
-      @click="onClipClick"
+      @click.stop="onClipClick"
       @dblclick="onClipDblClick"
       @contextmenu="onContextMenu"
       @dragleave="handleDragLeave"

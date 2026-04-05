@@ -41,7 +41,7 @@ const { t } = useI18n();
       <PropertyRow
         v-if="props.fileInfo.size === undefined || props.fileInfo.size === 0"
         :label="t('common.type', 'Type')"
-        :value="t('common.folder', 'Folder')"
+        :value="props.title === t('fastcat.file.bloggerDogGroup', 'Группа') ? t('fastcat.file.bloggerDogGroup', 'Группа') : props.title === t('fastcat.file.bloggerDogItem', 'Элемент контента') ? t('fastcat.file.bloggerDogItem', 'Элемент контента') : t('common.folder', 'Folder')"
       />
     </template>
     <PropertyRow

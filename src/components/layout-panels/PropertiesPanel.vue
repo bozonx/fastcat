@@ -15,7 +15,7 @@ import TrackProperties from '~/components/properties/TrackProperties.vue';
 import GapProperties from '~/components/properties/GapProperties.vue';
 import TransitionProperties from '~/components/properties/TransitionProperties.vue';
 import FileProperties from '~/components/properties/FileProperties.vue';
-import RemoteFileProperties from '~/components/properties/RemoteFileProperties.vue';
+
 import MultiFileProperties from '~/components/properties/MultiFileProperties.vue';
 import MultiClipProperties from '~/components/properties/MultiClipProperties.vue';
 import MarkerProperties from '~/components/properties/MarkerProperties.vue';
@@ -424,19 +424,13 @@ function onPanelFocusOut() {
 
           <FileProperties
             v-else-if="
-              displayMode === 'file' && selectedFsEntry && selectedFsEntry.source !== 'remote'
+              displayMode === 'file' && selectedFsEntry
             "
             :selected-fs-entry="selectedFsEntry"
             :has-proxy="hasProxy"
             :preview-mode="previewMode"
             @update:preview-mode="(m) => (previewMode = m)"
             @convert="(entry) => conversionStore.openConversionModal(entry)"
-          />
-          <RemoteFileProperties
-            v-else-if="
-              displayMode === 'file' && selectedFsEntry && selectedFsEntry.source === 'remote'
-            "
-            :selected-fs-entry="selectedFsEntry"
           />
           <MultiFileProperties
             v-else-if="displayMode === 'files' && selectedFsEntries"
