@@ -5,7 +5,7 @@ import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import ComputerFileManager from '~/components/file-manager/ComputerFileManager.vue';
 import PropertiesPanel from '~/components/layout-panels/PropertiesPanel.vue';
-import { useFilesPageFileManagerStore, useFilesPageSidebarFileManagerStore } from '~/stores/file-manager.store';
+import { useFilesPageFileManagerStore, useFilesPageSidebarFileManagerStore, useFileBrowserPersistenceStore } from '~/stores/file-manager.store';
 import FileManagerStoreProvider from '~/components/file-manager/FileManagerStoreProvider.vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -37,7 +37,7 @@ const uiStore = useUiStore();
 const runtimeConfig = useRuntimeConfig();
 const mainStore = useFilesPageFileManagerStore();
 const sidebarStore = useFilesPageSidebarFileManagerStore();
-
+const persistenceStore = useFileBrowserPersistenceStore();
 const focusStore = useFocusStore();
 provide('fileManagerStore', mainStore);
 
@@ -75,16 +75,16 @@ onMounted(() => {
   }
 });
 
-const browserTotalSize = computed(() => props.sizes[0] + props.sizes[1]);
+const browserTotalSize = computed(() => (props.sizes?.[0] ?? 0) + (props.sizes?.[1] ?? 0));
 const treeRelSize = computed(() => {
   const total = browserTotalSize.value;
   if (total === 0) return 30;
-  return (props.sizes[0] / total) * 100;
+  return ((props.sizes?.[0] ?? 0) / total) * 100;
 });
 const listRelSize = computed(() => {
   const total = browserTotalSize.value;
   if (total === 0) return 70;
-  return (props.sizes[1] / total) * 100;
+  return ((props.sizes?.[1] ?? 0) / total) * 100;
 });
 
 function onOuterResized(_event: { panes: Array<{ size: number }> }) {
@@ -95,8 +95,8 @@ function onMainResized(event: { panes: Array<{ size: number }> }) {
   const browserSize = event.panes[0]?.size ?? 0;
   const propertiesSize = event.panes[1]?.size ?? 0;
 
-  const currentBrowserTotalRaw = props.sizes[0] + props.sizes[1];
-  const treeRatio = currentBrowserTotalRaw === 0 ? 0.3 : props.sizes[0] / currentBrowserTotalRaw;
+  const currentBrowserTotalRaw = (props.sizes?.[0] ?? 0) + (props.sizes?.[1] ?? 0);
+  const treeRatio = currentBrowserTotalRaw === 0 ? 0.3 : (props.sizes?.[0] ?? 0) / currentBrowserTotalRaw;
   const listRatio = 1 - treeRatio;
 
   const newSizes = [
@@ -105,7 +105,7 @@ function onMainResized(event: { panes: Array<{ size: number }> }) {
     propertiesSize
   ];
   
-  emit('resized', { panes: newSizes.map(s => ({ size: s })) });
+  emit('resized', { panes: newSizes.map(s => ({ size: s ?? 0 })) });
 }
 
 function onBrowserResized(event: { panes: Array<{ size: number }> }) {
@@ -116,10 +116,12 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
   const newSizes = [
     (treeRel / 100) * browserTotal,
     (listRel / 100) * browserTotal,
-    props.sizes[2]
+    props.sizes?.[2] ?? 0
   ];
   
-  emit('resized', { panes: newSizes.map(s => ({ size: s })) });
+  emit('resized', { 
+    panes: newSizes.map(s => ({ size: Number(s ?? 0) })) 
+  });
 }
 </script>
 
@@ -137,20 +139,20 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
         >
           <div class="flex items-center gap-1 p-2 border-b border-ui-border bg-ui-bg-accent/10">
             <UButton
-              :color="sidebarStore.filesPageActiveTab === 'computer' ? 'primary' : 'neutral'"
-              :variant="sidebarStore.filesPageActiveTab === 'computer' ? 'soft' : 'ghost'"
+              :color="persistenceStore.filesPageActiveTab === 'computer' ? 'primary' : 'neutral'"
+              :variant="persistenceStore.filesPageActiveTab === 'computer' ? 'soft' : 'ghost'"
               size="xs"
               class="flex-1 justify-center truncate"
-              @click="sidebarStore.setFilesPageActiveTab('computer')"
+              @click="persistenceStore.setFilesPageActiveTab('computer')"
             >
               {{ workspaceStore.workspaceProviderId === 'tauri' ? t('fastcat.fileManager.tabs.computer') : t('fastcat.fileManager.tabs.workspace') }}
             </UButton>
             <UButton
-              :color="sidebarStore.filesPageActiveTab === 'bloggerdog' ? 'primary' : 'neutral'"
-              :variant="sidebarStore.filesPageActiveTab === 'bloggerdog' ? 'soft' : 'ghost'"
+              :color="persistenceStore.filesPageActiveTab === 'bloggerdog' ? 'primary' : 'neutral'"
+              :variant="persistenceStore.filesPageActiveTab === 'bloggerdog' ? 'soft' : 'ghost'"
               size="xs"
               class="flex-1 justify-center truncate"
-              @click="sidebarStore.setFilesPageActiveTab('bloggerdog')"
+              @click="persistenceStore.setFilesPageActiveTab('bloggerdog')"
             >
               Bloggerdog
             </UButton>
@@ -158,7 +160,7 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
   
           <div class="flex-1 min-h-0">
             <FileManagerStoreProvider :store="sidebarStore">
-              <template v-if="sidebarStore.filesPageActiveTab === 'computer'">
+              <template v-if="persistenceStore.filesPageActiveTab === 'computer'">
                 <ComputerFileManager instance-id="sidebar" hide-focus-frame />
               </template>
               <template v-else>
@@ -201,7 +203,7 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
       <Pane :size="75">
         <Splitpanes class="editor-splitpanes h-full" @resized="onMainResized">
           <!-- File Manager (Tree + Browser) -->
-          <Pane :size="sizes[0] + sizes[1]" min-size="20">
+          <Pane :size="(sizes?.[0] ?? 0) + (sizes?.[1] ?? 0)" min-size="20">
             <div 
               class="h-full flex flex-col min-h-0 relative panel-focus-frame"
               :class="{

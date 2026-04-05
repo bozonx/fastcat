@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, inject } from 'vue';
-import { useFileManagerStore, type FileSortField } from '~/stores/file-manager.store';
+import { useFileManagerStore, useFileBrowserPersistenceStore, type FileSortField } from '~/stores/file-manager.store';
 import { useUiStore } from '~/stores/ui.store';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
@@ -29,6 +29,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
+const persistenceStore = useFileBrowserPersistenceStore();
 const uiStore = useUiStore();
 
 
@@ -44,22 +45,26 @@ const sortFields: { label: string; value: FileSortField }[] = [
 const toolbarMenuItems = computed(() => {
   const items = [];
 
-  // Sort Fields Section (Only for Remote Panel as per user request)
-  if (props.isRemotePanel) {
-    const remoteSortFields = sortFields.filter((f) => ['name', 'created'].includes(f.value));
+  // Sort Fields Section
+  const allowedFields = props.isRemotePanel 
+    ? ['name', 'created'] 
+    : ['name', 'type', 'size', 'created', 'modified'];
+    
+  const filteredSortFields = sortFields.filter((f) => allowedFields.includes(f.value));
 
-    const sortSection = remoteSortFields.map((field) => ({
-      label: field.label,
-      icon:
-        fileManagerStore.sortOption.field === field.value
-          ? 'i-heroicons-check'
-          : undefined,
-      onSelect: () => {
-        fileManagerStore.sortOption.field = field.value;
-        emit('refresh');
-      },
-    }));
+  const sortSection = filteredSortFields.map((field) => ({
+    label: field.label,
+    icon:
+      fileManagerStore.sortOption.field === field.value
+        ? 'i-heroicons-check'
+        : undefined,
+    onSelect: () => {
+      fileManagerStore.sortOption.field = field.value;
+      emit('refresh');
+    },
+  }));
 
+  if (sortSection.length > 0) {
     items.push(sortSection);
 
     // Sort Order Section
@@ -89,7 +94,7 @@ const toolbarMenuItems = computed(() => {
     ]);
   }
 
-  // Panel Actions Section (for BloggerDog)
+  // Panel Actions Section
   if (props.isRemotePanel) {
     items.push([
       {
@@ -155,7 +160,6 @@ const toolbarMenuItems = computed(() => {
 
     </div>
 
-    <!-- Card size slider (only in grid view) -->
     <div
       v-if="props.isRemotePanel || fileManagerStore.viewMode === 'grid'"
       class="flex items-center gap-2 ml-2 w-24"
@@ -172,7 +176,7 @@ const toolbarMenuItems = computed(() => {
           (v: number) => {
             const size = gridSizes[v] || 80;
             if (props.isRemotePanel) {
-              fileManagerStore.setBloggerDogGridCardSize(size);
+              persistenceStore.setBloggerDogGridCardSize(size);
             } else {
               fileManagerStore.setGridCardSize(size);
             }
