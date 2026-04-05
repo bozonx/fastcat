@@ -50,6 +50,7 @@ const props = defineProps<{
   remoteModeOnly?: boolean;
   vfs?: IFileSystemAdapter;
   hideActions?: boolean;
+  hideFocusFrame?: boolean;
 }>();
 
 const instanceId = props.instanceId || 'default';
@@ -600,10 +601,11 @@ async function onDirectoryUploadChange(e: Event) {
 
 <template>
   <div
-    class="panel-focus-frame flex flex-col h-full bg-ui-bg relative overflow-hidden transition-colors duration-150"
+    class="flex flex-col h-full bg-ui-bg relative overflow-hidden transition-colors duration-150"
     :class="{
+      'panel-focus-frame': !props.hideFocusFrame,
       'bg-primary-500/5': isDragOverPanel,
-      'panel-focus-frame--active': focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`),
+      'panel-focus-frame--active': !props.hideFocusFrame && focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`),
     }"
     @pointerdown.capture="focusBrowserPanel"
     @dragover.prevent="onPanelDragOver"

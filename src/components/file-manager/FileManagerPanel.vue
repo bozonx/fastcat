@@ -29,6 +29,7 @@ const props = defineProps<{
   compact?: boolean;
   hideActions?: boolean;
   instanceId?: string;
+  hideFocusFrame?: boolean;
 }>();
 
 const instanceId = props.instanceId || 'left';
@@ -371,9 +372,10 @@ useFileManagerPanelBootstrap({
 
 <template>
   <div
-    class="panel-focus-frame flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border transition-colors duration-200 min-w-0 overflow-hidden relative"
+    class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border transition-colors duration-200 min-w-0 overflow-hidden relative"
     :class="{
-      'panel-focus-frame--active': focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`),
+      'panel-focus-frame': !props.hideFocusFrame,
+      'panel-focus-frame--active': !props.hideFocusFrame && focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`),
     }"
     @pointerdown.capture="focusStore.setPanelFocus(`dynamic:file-manager:${instanceId}`)"
   >
