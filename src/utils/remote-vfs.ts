@@ -192,16 +192,24 @@ export function getRemoteFileDownloadUrl(params: {
   if (!media?.url) return '';
   if (/^https?:\/\//i.test(media.url)) return media.url;
 
-  const rootBaseUrl = normalizeBaseUrl(params.baseUrl).replace(/\/api\/v1\/external\/vfs$/i, '');
-  return joinPath(rootBaseUrl, media.url);
+  try {
+    const rootBaseUrl = new URL(params.baseUrl).origin;
+    return joinPath(rootBaseUrl, media.url);
+  } catch {
+    return media.url;
+  }
 }
 
 export function getRemoteThumbnailUrl(params: { baseUrl: string; media: RemoteVfsMedia }): string {
   if (!params.media.thumbnailUrl) return '';
   if (/^https?:\/\//i.test(params.media.thumbnailUrl)) return params.media.thumbnailUrl;
 
-  const rootBaseUrl = normalizeBaseUrl(params.baseUrl).replace(/\/api\/v1\/external\/vfs$/i, '');
-  return joinPath(rootBaseUrl, params.media.thumbnailUrl);
+  try {
+    const rootBaseUrl = new URL(params.baseUrl).origin;
+    return joinPath(rootBaseUrl, params.media.thumbnailUrl);
+  } catch {
+    return params.media.thumbnailUrl;
+  }
 }
 
 export async function fetchRemoteVfsList(params: {
