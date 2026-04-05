@@ -58,6 +58,11 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
       if (didStartDrag.value) return;
       // If long press already triggered, don't start drag — long press takes priority
       if (longPressTriggered.value) return;
+      e.preventDefault();
+      const dragStarted = options.onDragStart(e);
+      if (dragStarted === false) {
+        return;
+      }
       if (longPressTimer !== null) {
         window.clearTimeout(longPressTimer);
         longPressTimer = null;
@@ -68,14 +73,12 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
         rightClickPointerActive.value = false;
       }
       cleanup();
-      e.preventDefault();
-      options.onDragStart(e);
     };
 
     const onMove = (ev: PointerEvent) => {
       const dx = Math.abs(ev.clientX - startX);
       const dy = Math.abs(ev.clientY - startY);
-      
+
       const jitterThreshold = e.pointerType === 'touch' ? 20 : LONG_PRESS_CANCEL_THRESHOLD_PX;
 
       if ((dx > jitterThreshold || dy > jitterThreshold) && longPressTimer !== null) {

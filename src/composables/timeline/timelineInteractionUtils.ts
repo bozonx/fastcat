@@ -91,14 +91,34 @@ export function resolveMoveTargetTrackId(params: {
   draggingTrackId: string;
   tracks: TimelineTrack[];
 }): string {
-  // Use elementsFromPoint to find the track element even when covered by a dragged clip
-  const elements = document.elementsFromPoint(params.clientX, params.clientY);
   let hoverTrackId: string | null = null;
-  for (const el of elements) {
-    const trackId = (el as HTMLElement).dataset?.trackId ?? el.closest('[data-track-id]')?.getAttribute('data-track-id') ?? null;
-    if (trackId) {
-      hoverTrackId = trackId;
-      break;
+
+  const trackElements = Array.from(document.querySelectorAll<HTMLElement>('[data-track-id]'));
+  const sortedTrackElements = trackElements.sort((left, right) => {
+    return left.getBoundingClientRect().top - right.getBoundingClientRect().top;
+  });
+
+  for (const element of sortedTrackElements) {
+    const rect = element.getBoundingClientRect();
+    if (params.clientY >= rect.top && params.clientY <= rect.bottom) {
+      hoverTrackId = element.dataset.trackId ?? null;
+      if (hoverTrackId) {
+        break;
+      }
+    }
+  }
+
+  if (!hoverTrackId) {
+    const elements = document.elementsFromPoint(params.clientX, params.clientY);
+    for (const el of elements) {
+      const trackId =
+        (el as HTMLElement).dataset?.trackId ??
+        el.closest('[data-track-id]')?.getAttribute('data-track-id') ??
+        null;
+      if (trackId) {
+        hoverTrackId = trackId;
+        break;
+      }
     }
   }
 
