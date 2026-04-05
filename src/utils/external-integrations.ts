@@ -51,6 +51,7 @@ export function getFastCatPublicadorConnectUrl(params: {
   name: string;
   redirectUri: string;
   scopes?: FastCatIntegrationScope[];
+  state?: string;
 }): string {
   const instanceBaseUrl = getFastCatPublicadorInstanceBaseUrl(params.uiUrl);
   if (!instanceBaseUrl) return '';
@@ -60,6 +61,9 @@ export function getFastCatPublicadorConnectUrl(params: {
   url.searchParams.set('redirect_uri', params.redirectUri);
   if (params.scopes?.length) {
     url.searchParams.set('scopes', params.scopes.join(','));
+  }
+  if (params.state) {
+    url.searchParams.set('state', params.state);
   }
   return url.toString();
 }
@@ -136,22 +140,31 @@ export function resolveExternalServiceConfig(params: {
   service: ExternalServiceKind;
   integrations: ExternalIntegrationsSettings;
   bloggerDogApiUrl: string;
+  fastcatAccountApiUrl?: string;
 }): ResolvedExternalServiceConfig | null {
-  const { integrations, service, bloggerDogApiUrl } = params;
-  const fastcat = integrations.fastcatPublicador;
+  const { integrations, service, bloggerDogApiUrl, fastcatAccountApiUrl } = params;
+  const fastcatAcc = integrations.fastcatAccount;
+  const fastcatPub = integrations.fastcatPublicador;
   const manual = service === 'files' ? integrations.manualFilesApi : integrations.manualSttApi;
   const requiresBearerToken = service === 'files' || service === 'stt';
 
-  const canUseFastCat =
-    fastcat.enabled &&
-    bloggerDogApiUrl.trim() &&
-    (!requiresBearerToken || Boolean(fastcat.bearerToken.trim()));
   const canUseManual =
     manual.enabled &&
     manual.baseUrl.trim() &&
     (!requiresBearerToken || Boolean(manual.bearerToken.trim()));
 
-  if (canUseManual && (!canUseFastCat || manual.overrideFastCat)) {
+  const canUseFastCatAccount =
+    fastcatAcc.enabled &&
+    fastcatAccountApiUrl?.trim() &&
+    (!requiresBearerToken || Boolean(fastcatAcc.bearerToken.trim()));
+
+  const canUseFastCatPublicador =
+    fastcatPub.enabled &&
+    bloggerDogApiUrl.trim() &&
+    (!requiresBearerToken || Boolean(fastcatPub.bearerToken.trim()));
+
+  // 1. Manual always wins if enabled and manual.overrideFastCat is set
+  if (canUseManual && manual.overrideFastCat) {
     return {
       source: 'manual',
       baseUrl: manual.baseUrl.trim(),
@@ -160,25 +173,50 @@ export function resolveExternalServiceConfig(params: {
     };
   }
 
-  if (!canUseFastCat) return null;
+  // 2. Fastcat Account wins next for STT if enabled (proxi stt)
+  if (canUseFastCatAccount && service === 'stt') {
+    const fastcatExternalApiBaseUrl = getFastCatPublicadorExternalApiBaseUrl(fastcatAccountApiUrl!);
+    return {
+      source: 'fastcat_publicador',
+      baseUrl: joinUrl(fastcatExternalApiBaseUrl, 'external/stt'),
+      bearerToken: fastcatAcc.bearerToken.trim(),
+      healthUrl: getFastCatPublicadorHealthUrl(fastcatAccountApiUrl!),
+    };
+  }
 
-  const fastcatExternalApiBaseUrl = getFastCatPublicadorExternalApiBaseUrl(bloggerDogApiUrl);
-  const serviceBaseUrl =
-    service === 'files'
-      ? joinUrl(fastcatExternalApiBaseUrl, 'external/content-library')
-      : joinUrl(fastcatExternalApiBaseUrl, 'external/stt');
+  // 3. Fastcat Publicador (BloggerDog) next
+  if (canUseFastCatPublicador) {
+    const fastcatExternalApiBaseUrl = getFastCatPublicadorExternalApiBaseUrl(bloggerDogApiUrl);
+    const serviceBaseUrl =
+      service === 'files'
+        ? joinUrl(fastcatExternalApiBaseUrl, 'external/content-library')
+        : joinUrl(fastcatExternalApiBaseUrl, 'external/stt');
 
-  return {
-    source: 'fastcat_publicador',
-    baseUrl: serviceBaseUrl,
-    bearerToken: fastcat.bearerToken.trim(),
-    healthUrl: getFastCatPublicadorHealthUrl(bloggerDogApiUrl),
-  };
+    return {
+      source: 'fastcat_publicador',
+      baseUrl: serviceBaseUrl,
+      bearerToken: fastcatPub.bearerToken.trim(),
+      healthUrl: getFastCatPublicadorHealthUrl(bloggerDogApiUrl),
+    };
+  }
+
+  // 4. Manual as fallback if no fastcat configs
+  if (canUseManual) {
+    return {
+      source: 'manual',
+      baseUrl: manual.baseUrl.trim(),
+      bearerToken: manual.bearerToken.trim(),
+      healthUrl: getManualServiceHealthUrl(manual.baseUrl),
+    };
+  }
+
+  return null;
 }
 
 export function resolveExternalIntegrations(params: {
   userSettings: FastCatUserSettings;
   bloggerDogApiUrl: string;
+  fastcatAccountApiUrl: string;
 }) {
   const { integrations } = params.userSettings;
 
@@ -187,11 +225,13 @@ export function resolveExternalIntegrations(params: {
       service: 'files',
       integrations,
       bloggerDogApiUrl: params.bloggerDogApiUrl,
+      fastcatAccountApiUrl: params.fastcatAccountApiUrl,
     }),
     stt: resolveExternalServiceConfig({
       service: 'stt',
       integrations,
       bloggerDogApiUrl: params.bloggerDogApiUrl,
+      fastcatAccountApiUrl: params.fastcatAccountApiUrl,
     }),
   };
 }
@@ -199,18 +239,26 @@ export function resolveExternalIntegrations(params: {
 export function resolveSttStreamUrl(params: {
   userSettings: FastCatUserSettings;
   bloggerDogApiUrl: string;
+  fastcatAccountApiUrl: string;
 }): string {
   const resolved = resolveExternalServiceConfig({
     service: 'stt',
     integrations: params.userSettings.integrations,
     bloggerDogApiUrl: params.bloggerDogApiUrl,
+    fastcatAccountApiUrl: params.fastcatAccountApiUrl,
   });
 
   if (!resolved) return '';
 
-  return resolved.source === 'fastcat_publicador'
-    ? getFastCatPublicadorSttStreamUrl(params.bloggerDogApiUrl)
-    : getManualSttStreamUrl(resolved.baseUrl);
+  if (resolved.source === 'manual') {
+    return getManualSttStreamUrl(resolved.baseUrl);
+  }
+
+  // Choose correct fastcat instance for STT stream
+  const isAccount = params.userSettings.integrations.fastcatAccount.enabled && 
+                    params.userSettings.integrations.fastcatAccount.bearerToken === resolved.bearerToken;
+  
+  return getFastCatPublicadorSttStreamUrl(isAccount ? params.fastcatAccountApiUrl : params.bloggerDogApiUrl);
 }
 
 export async function runExternalHealthCheck(params: {

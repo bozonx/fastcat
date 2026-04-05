@@ -24,32 +24,32 @@ const healthState = reactive({
 });
 
 const fastcat = computed<FastCatPublicadorIntegrationSettings | undefined>(() => {
-  return workspaceStore.userSettings?.integrations?.fastcatPublicador;
+  return workspaceStore.userSettings?.integrations?.fastcatAccount;
 });
 
-const bloggerDogApiUrl = computed(() => {
-  const value = runtimeConfig.public.bloggerDogApiUrl;
+const fastcatAccountApiUrl = computed(() => {
+  const value = runtimeConfig.public.fastcatAccountApiUrl;
   return typeof value === 'string' ? value.trim() : '';
 });
 
-const bloggerDogUiUrl = computed(() => {
-  const value = runtimeConfig.public.bloggerDogUiUrl;
+const fastcatAccountUiUrl = computed(() => {
+  const value = runtimeConfig.public.fastcatAccountUiUrl;
   return typeof value === 'string' ? value.trim() : '';
 });
 
 const redirectUri = computed(() => {
   if (typeof window === 'undefined') return '';
-  return `${window.location.origin}${route.path}?target=bloggerdog`;
+  return `${window.location.origin}${route.path}?target=fastcat`;
 });
 
 const fastcatConnectUrl = computed(() => {
-  if (!bloggerDogUiUrl.value) return '';
+  if (!fastcatAccountUiUrl.value) return '';
   return getFastCatPublicadorConnectUrl({
-    uiUrl: bloggerDogUiUrl.value,
+    uiUrl: fastcatAccountUiUrl.value,
     name: FASTCAT_PUBLICADOR_APP_NAME,
     redirectUri: redirectUri.value,
     scopes: resolveFastCatConnectScopes({ integrations: workspaceStore.userSettings.integrations }),
-    state: 'bloggerdog',
+    state: 'fastcat',
   });
 });
 
@@ -60,8 +60,8 @@ const fastcatConnectScopesLabel = computed(() =>
 );
 
 function disconnectFastCat() {
-  workspaceStore.userSettings.integrations.fastcatPublicador.enabled = false;
-  workspaceStore.userSettings.integrations.fastcatPublicador.bearerToken = '';
+  workspaceStore.userSettings.integrations.fastcatAccount.enabled = false;
+  workspaceStore.userSettings.integrations.fastcatAccount.bearerToken = '';
   healthState.status = 'idle';
   healthState.message = '';
 }
@@ -72,13 +72,13 @@ function startFastCatConnect() {
 }
 
 async function runHealth() {
-  const healthUrl = getFastCatPublicadorHealthUrl(bloggerDogApiUrl.value);
+  const healthUrl = getFastCatPublicadorHealthUrl(fastcatAccountApiUrl.value);
 
   if (!healthUrl || !fastcat.value?.bearerToken?.trim()) {
     healthState.status = 'error';
     healthState.message = t(
       'videoEditor.settings.integrationHealthMissingConfig',
-      'BloggerDog API URL or token is missing.',
+      'Fastcat Account API URL or token is missing.',
     );
     return;
   }
@@ -119,9 +119,9 @@ function getHealthTone(status: typeof healthState.status) {
   <div class="rounded-lg border border-ui-border p-4 flex flex-col gap-4">
     <div class="flex items-start justify-between gap-4">
       <div class="min-w-0">
-        <div class="text-sm font-medium text-ui-text">BloggerDog</div>
+        <div class="text-sm font-medium text-ui-text">Fastcat Account</div>
         <div class="text-xs text-ui-text-muted mt-1">
-          {{ t('videoEditor.settings.bloggerDogIntegrationHint') }}
+          {{ t('videoEditor.settings.fastcatAccountIntegrationHint') }}
         </div>
       </div>
       <div v-if="fastcat?.bearerToken" class="flex items-center gap-1 shrink-0">
@@ -179,19 +179,19 @@ function getHealthTone(status: typeof healthState.status) {
         <UButton
           color="primary"
           variant="solid"
-          :disabled="!bloggerDogUiUrl"
+          :disabled="!fastcatAccountUiUrl"
           @click="startFastCatConnect"
         >
-          {{ t('videoEditor.settings.bloggerDogConnectAction', 'Connect to BloggerDog') }}
+          {{ t('videoEditor.settings.fastcatAccountConnectAction', 'Connect Fastcat Account') }}
         </UButton>
 
         <a
-          v-if="bloggerDogUiUrl"
-          :href="bloggerDogUiUrl"
+          v-if="fastcatAccountUiUrl"
+          :href="fastcatAccountUiUrl"
           target="_blank"
           class="text-xs text-primary-400 hover:underline flex items-center gap-1 ml-auto"
         >
-          {{ t('videoEditor.settings.integrationManualLink', 'Open BloggerDog site') }}
+          {{ t('videoEditor.settings.integrationManualLink', 'Open Fastcat site') }}
           <UIcon name="i-heroicons-arrow-top-right-on-square" class="h-3 w-3" />
         </a>
       </div>

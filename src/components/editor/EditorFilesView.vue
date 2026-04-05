@@ -49,7 +49,8 @@ const bloggerDogVfs = computed(() => {
   const config = resolveExternalServiceConfig({
     service: 'files',
     integrations: workspaceStore.userSettings.integrations,
-    bloggerDogApiUrl
+    bloggerDogApiUrl,
+    fastcatAccountApiUrl: runtimeConfig.public.fastcatAccountApiUrl as string,
   });
   
   if (!config) return null;
@@ -194,6 +195,7 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
                   class="h-full" 
                 />
               </template>
+
             </FileManagerStoreProvider>
           </div>
         </div>

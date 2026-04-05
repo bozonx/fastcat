@@ -142,6 +142,12 @@ export function normalizeOptimizationSettings(raw: unknown): FastCatUserSettings
 export function normalizeIntegrationsSettings(raw: unknown): FastCatUserSettings['integrations'] {
   const schema = z
     .object({
+      fastcatAccount: z
+        .object({
+          enabled: z.coerce.boolean().catch(false),
+          bearerToken: z.string().transform(normalizeTokenValue).catch(''),
+        })
+        .catch(DEFAULT_USER_SETTINGS.integrations.fastcatAccount),
       fastcatPublicador: z
         .object({
           enabled: z.coerce.boolean().catch(false),

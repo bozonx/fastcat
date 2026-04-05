@@ -45,7 +45,8 @@ export default defineNuxtConfig({
     public: {
       bloggerDogApiUrl: '',
       bloggerDogUiUrl: '',
-      bloggerDogToken: '',
+      fastcatAccountApiUrl: '',
+      fastcatAccountUiUrl: '',
     },
   },
 

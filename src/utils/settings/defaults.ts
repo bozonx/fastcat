@@ -29,6 +29,7 @@ export interface VideoSettings {
 }
 
 export interface ExternalIntegrationsSettings {
+  fastcatAccount: FastCatPublicadorIntegrationSettings;
   fastcatPublicador: FastCatPublicadorIntegrationSettings;
   manualFilesApi: ManualExternalApiSettings;
   manualSttApi: ManualExternalApiSettings;
@@ -253,6 +254,10 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
     audioScrubbingEnabled: true,
   },
   integrations: {
+    fastcatAccount: {
+      enabled: false,
+      bearerToken: '',
+    },
     fastcatPublicador: {
       enabled: false,
       bearerToken: '',

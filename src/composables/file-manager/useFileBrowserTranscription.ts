@@ -27,11 +27,18 @@ export function useFileBrowserTranscription() {
       : '',
   );
 
+  const fastcatAccountApiUrl = computed(() =>
+    typeof runtimeConfig.public.fastcatAccountApiUrl === 'string'
+      ? runtimeConfig.public.fastcatAccountApiUrl
+      : '',
+  );
+
   const sttConfig = computed(() =>
     resolveExternalServiceConfig({
       service: 'stt',
       integrations: workspaceStore.userSettings.integrations,
       bloggerDogApiUrl: bloggerDogApiUrl.value,
+      fastcatAccountApiUrl: fastcatAccountApiUrl.value,
     }),
   );
 
@@ -83,6 +90,7 @@ export function useFileBrowserTranscription() {
         fileType,
         language: transcriptionLanguage.value,
         bloggerDogApiUrl: bloggerDogApiUrl.value,
+        fastcatAccountApiUrl: fastcatAccountApiUrl.value,
         projectId: projectStore.currentProjectId!,
         userSettings: workspaceStore.userSettings,
         workspaceHandle: workspaceStore.workspaceHandle!,

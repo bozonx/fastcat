@@ -13,7 +13,7 @@ export interface FileSortOption {
   order: SortOrder;
 }
 
-export type FilesPageTab = 'computer' | 'bloggerdog';
+export type FilesPageTab = 'computer' | 'bloggerdog' | 'fastcat';
 
 
 function createFileManagerStoreSetup(contextId: string) {
