@@ -11,8 +11,21 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
 
   constructor(
     private defaultAdapter: IFileSystemAdapter,
-    private routes: VfsRoute[],
+    protected routes: VfsRoute[],
   ) {}
+
+  registerRoute(route: VfsRoute) {
+    const index = this.routes.findIndex((r) => r.prefix === route.prefix);
+    if (index !== -1) {
+      this.routes[index] = route;
+    } else {
+      this.routes.push(route);
+    }
+  }
+
+  unregisterRoute(prefix: string) {
+    this.routes = this.routes.filter((r) => r.prefix !== prefix);
+  }
 
   private getRoute(path: string) {
     for (const route of this.routes) {

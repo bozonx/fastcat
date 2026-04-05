@@ -94,9 +94,12 @@ export function useFileBrowserRemote({
   const isRemoteAvailable = computed(() => Boolean(remoteFilesConfig.value));
 
   function buildRemoteDirectoryEntry(path: string): RemoteFsEntry {
-    const normalizedPath = path || '/';
+    let normalizedPath = path || '/';
+    if (!normalizedPath.startsWith('/remote')) {
+      normalizedPath = `/remote${normalizedPath.startsWith('/') ? '' : '/'}${normalizedPath}`;
+    }
     const name =
-      normalizedPath === '/'
+      normalizedPath === '/remote'
         ? 'Remote'
         : normalizedPath.split('/').filter(Boolean).at(-1) || 'Remote';
     const remoteData: RemoteVfsEntry = {
@@ -129,7 +132,7 @@ export function useFileBrowserRemote({
 
     try {
       // Use VFS instead of direct API call to benefit from BloggerDogVfsAdapter logic (like Content Item-as-folder)
-      const path = remoteCurrentFolder.value.remotePath || '/';
+      const path = remoteCurrentFolder.value.remotePath || '/remote';
       const items = await vfs.readDirectory(path, {
         sortBy: fileManagerStore.sortOption.field,
         sortOrder: fileManagerStore.sortOption.order,
@@ -168,12 +171,15 @@ export function useFileBrowserRemote({
 
   function loadRemoteParentFolders(parentFolders: Ref<FsEntry[]>): boolean {
     if (!isRemoteMode.value) return false;
-    const currentPath = remoteCurrentFolder.value?.remotePath || '/';
+    const currentPath = remoteCurrentFolder.value?.remotePath || '/remote';
     const parts = currentPath.split('/').filter(Boolean);
+    // Parts: ['remote', 'collectionId', ...]
     let accum = '';
     const result: FsEntry[] = [];
-    for (const part of parts) {
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
       accum = `${accum}/${part}`;
+      if (i === 0) continue; // Skip single '/remote' for breadcrumbs if needed, or include it
       result.push(buildRemoteDirectoryEntry(accum));
     }
     parentFolders.value = result;
@@ -189,7 +195,7 @@ export function useFileBrowserRemote({
     if (!isRemoteMode.value) {
       lastLocalFolder.value = fileManagerStore.selectedFolder;
       isRemoteMode.value = true;
-      remoteCurrentFolder.value = buildRemoteDirectoryEntry('/');
+      remoteCurrentFolder.value = buildRemoteDirectoryEntry('/remote');
       await loadFolderContent();
       await loadParentFolders();
       setSelectedFsEntry(remoteCurrentFolder.value);

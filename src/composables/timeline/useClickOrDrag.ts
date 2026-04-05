@@ -104,6 +104,21 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
     const onPointerCancel = () => {
       rightClickPointerActive.value = false;
       rightClickDragTriggered.value = false;
+      // On touch devices the browser may fire pointercancel during a long
+      // press (e.g. before showing the native context menu).  Keep the long
+      // press timer alive so the gesture still registers.
+      if (e.pointerType === 'touch' && longPressTimer !== null) {
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onPointerUp);
+        window.removeEventListener('pointercancel', onPointerCancel);
+        activeCleanup = () => {
+          if (longPressTimer !== null) {
+            window.clearTimeout(longPressTimer);
+            longPressTimer = null;
+          }
+        };
+        return;
+      }
       cleanup();
     };
 
