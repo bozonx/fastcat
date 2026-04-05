@@ -41,6 +41,9 @@ function createFileManagerStoreSetup(contextId: string) {
     const computerLastFolder = ref<FsEntry | null>(
       readLocalStorageJson(`fastcat:file-manager:computerLastFolder`, null),
     );
+    const computerViewMode = ref<FileViewMode>(
+      readLocalStorageJson(`fastcat:file-manager:computerViewMode`, 'list'),
+    );
     const filesPageActiveTab = ref<FilesPageTab>(
       readLocalStorageJson(`fastcat:file-manager:filesPageActiveTab`, 'computer'),
     );
@@ -74,6 +77,9 @@ function createFileManagerStoreSetup(contextId: string) {
   );
   watch(computerLastFolder, (val) =>
     writeLocalStorageJson(`fastcat:file-manager:computerLastFolder`, val),
+  );
+  watch(computerViewMode, (val) =>
+    writeLocalStorageJson(`fastcat:file-manager:computerViewMode`, val),
   );
   watch(filesPageActiveTab, (val) =>
     writeLocalStorageJson(`fastcat:file-manager:filesPageActiveTab`, val),
@@ -127,6 +133,10 @@ function createFileManagerStoreSetup(contextId: string) {
     computerLastFolder.value = entry;
   }
 
+  function setComputerViewMode(mode: FileViewMode) {
+    computerViewMode.value = mode;
+  }
+
   function setFilesPageActiveTab(tab: FilesPageTab) {
     filesPageActiveTab.value = tab;
   }
@@ -168,6 +178,7 @@ function createFileManagerStoreSetup(contextId: string) {
       bloggerDogGridCardSize,
       computerGridCardSize,
       computerLastFolder,
+      computerViewMode,
       filesPageActiveTab,
       columnWidths,
       folderSizes,
@@ -181,6 +192,7 @@ function createFileManagerStoreSetup(contextId: string) {
       setBloggerDogGridCardSize,
       setComputerGridCardSize,
       setComputerLastFolder,
+      setComputerViewMode,
       setFilesPageActiveTab,
       setColumnWidth,
       resetFileManagerState,

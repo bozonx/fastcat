@@ -73,6 +73,19 @@ const computerStoreWrapper = computed(() => {
     get(target, prop, receiver) {
       if (prop === 'selectedFolder') return target.computerLastFolder;
       if (prop === 'gridCardSize') return target.computerGridCardSize;
+      if (prop === 'viewMode') return target.computerViewMode;
+      
+      if (prop === 'openFolder') {
+        return (entry: FsEntry | null) => {
+          target.setComputerLastFolder(entry);
+          return target.openFolder(entry);
+        };
+      }
+
+      if (prop === 'setViewMode') {
+        return (mode: FileViewMode) => target.setComputerViewMode(mode);
+      }
+
       return Reflect.get(target, prop, receiver);
     },
     set(target, prop, value, receiver) {
@@ -82,6 +95,10 @@ const computerStoreWrapper = computed(() => {
       }
       if (prop === 'gridCardSize') {
         target.setComputerGridCardSize(value);
+        return true;
+      }
+      if (prop === 'viewMode') {
+        target.setComputerViewMode(value);
         return true;
       }
       return Reflect.set(target, prop, value, receiver);
