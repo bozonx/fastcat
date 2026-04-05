@@ -504,11 +504,6 @@ const {
         :image-camera-make="imageCameraMake"
       />
 
-      <BloggerDogItemPropertiesSection
-        v-if="isBloggerDogContentItem && castedRemoteRecord"
-        :item="castedRemoteRecord"
-      />
-
       <MediaPropertiesSection
         v-if="fileInfo?.kind === 'file' && (isVideoFile || mediaType === 'audio')"
         :media-meta="mediaMeta"
@@ -517,6 +512,11 @@ const {
         :latest-transcription-cache-key="latestTranscriptionCacheKey"
         :latest-transcription-was-cached="latestTranscriptionWasCached"
         :latest-transcription-text="latestTranscriptionText"
+      />
+
+      <BloggerDogItemPropertiesSection
+        v-if="isBloggerDogContentItem && castedRemoteRecord"
+        :item="castedRemoteRecord"
       />
 
       <FileProjectRootSection
@@ -537,15 +537,6 @@ const {
         v-if="fileInfo?.kind === 'file' && isOtio"
         :summary="timelineDocSummary"
         :format-duration-seconds="formatDurationSeconds"
-      />
-
-      <FileGeneralInfoSection
-        v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'directory'"
-        :title="generalInfoTitle"
-        :file-info="fileInfo"
-        :selected-path="selectedPath"
-        :is-hidden="isHidden"
-        :format-bytes="formatBytes"
       />
 
       <PropertySection
@@ -569,6 +560,16 @@ const {
           :secondary-actions="isRemoteContent ? [] : fileSecondaryActions"
         />
       </PropertySection>
+
+      <FileGeneralInfoSection
+        v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'directory'"
+        :title="generalInfoTitle"
+        :file-info="fileInfo"
+        :selected-path="selectedPath"
+        :is-hidden="isHidden"
+        :format-bytes="formatBytes"
+      />
+
 
       <FileGeneralInfoSection
         v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'file'"
