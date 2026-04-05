@@ -102,7 +102,14 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
         await deps.checkExistingProxies(videoPaths);
       }
 
-      return normalizedEntries.sort(compareEntries);
+      const seenPaths = new Set<string>();
+      const uniqueEntries = normalizedEntries.filter((e) => {
+        if (seenPaths.has(e.path)) return false;
+        seenPaths.add(e.path);
+        return true;
+      });
+
+      return uniqueEntries.sort(compareEntries);
     } catch (e) {
       deps.onError?.({
         title: 'File manager error',

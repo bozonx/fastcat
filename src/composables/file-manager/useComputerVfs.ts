@@ -22,8 +22,11 @@ export function useComputerVfs() {
     rootPath.value = ''; 
   } else {
 
-    // OPFS: Root of the origin
+    // OPFS: Root of the actual workspace (embedded-editor folder)
     vfs.value = new OpfsFileSystemAdapter(async () => {
+      if (workspaceStore.workspaceHandle) {
+        return workspaceStore.workspaceHandle as FileSystemDirectoryHandle;
+      }
       if (typeof navigator !== 'undefined' && navigator.storage?.getDirectory) {
         return await navigator.storage.getDirectory();
       }
