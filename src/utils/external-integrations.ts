@@ -110,6 +110,7 @@ export function getManualSttStreamUrl(baseUrl: string): string {
 
 export function resolveFastCatConnectScopes(params: {
   integrations: ExternalIntegrationsSettings;
+  includeStt?: boolean;
 }): FastCatIntegrationScope[] {
   const scopes = new Set<FastCatIntegrationScope>();
 
@@ -122,15 +123,16 @@ export function resolveFastCatConnectScopes(params: {
     }
   }
 
-  if (
-    !params.integrations.manualSttApi.enabled ||
-    !params.integrations.manualSttApi.overrideFastCat
-  ) {
-    for (const scope of STT_SCOPES) {
-      scopes.add(scope);
+  if (params.includeStt) {
+    if (
+      !params.integrations.manualSttApi.enabled ||
+      !params.integrations.manualSttApi.overrideFastCat
+    ) {
+      for (const scope of STT_SCOPES) {
+        scopes.add(scope);
+      }
+      scopes.add('llm:chat');
     }
-
-    scopes.add('llm:chat');
   }
 
   return Array.from(scopes);
@@ -184,17 +186,12 @@ export function resolveExternalServiceConfig(params: {
     };
   }
 
-  // 3. Fastcat Publicador (BloggerDog) next
-  if (canUseFastCatPublicador) {
+  // 3. Fastcat Publicador (BloggerDog) next (only for files, not for stt)
+  if (canUseFastCatPublicador && service === 'files') {
     const fastcatExternalApiBaseUrl = getFastCatPublicadorExternalApiBaseUrl(bloggerDogApiUrl);
-    const serviceBaseUrl =
-      service === 'files'
-        ? joinUrl(fastcatExternalApiBaseUrl, 'external/content-library')
-        : joinUrl(fastcatExternalApiBaseUrl, 'external/stt');
-
     return {
       source: 'fastcat_publicador',
-      baseUrl: serviceBaseUrl,
+      baseUrl: joinUrl(fastcatExternalApiBaseUrl, 'external/content-library'),
       bearerToken: fastcatPub.bearerToken.trim(),
       healthUrl: getFastCatPublicadorHealthUrl(bloggerDogApiUrl),
     };
@@ -230,7 +227,7 @@ export function resolveExternalIntegrations(params: {
     stt: resolveExternalServiceConfig({
       service: 'stt',
       integrations,
-      bloggerDogApiUrl: params.bloggerDogApiUrl,
+      bloggerDogApiUrl: '', // BloggerDog removed for STT
       fastcatAccountApiUrl: params.fastcatAccountApiUrl,
     }),
   };
@@ -238,13 +235,12 @@ export function resolveExternalIntegrations(params: {
 
 export function resolveSttStreamUrl(params: {
   userSettings: FastCatUserSettings;
-  bloggerDogApiUrl: string;
   fastcatAccountApiUrl: string;
 }): string {
   const resolved = resolveExternalServiceConfig({
     service: 'stt',
     integrations: params.userSettings.integrations,
-    bloggerDogApiUrl: params.bloggerDogApiUrl,
+    bloggerDogApiUrl: '', // BloggerDog removed for STT
     fastcatAccountApiUrl: params.fastcatAccountApiUrl,
   });
 
@@ -254,11 +250,8 @@ export function resolveSttStreamUrl(params: {
     return getManualSttStreamUrl(resolved.baseUrl);
   }
 
-  // Choose correct fastcat instance for STT stream
-  const isAccount = params.userSettings.integrations.fastcatAccount.enabled && 
-                    params.userSettings.integrations.fastcatAccount.bearerToken === resolved.bearerToken;
-  
-  return getFastCatPublicadorSttStreamUrl(isAccount ? params.fastcatAccountApiUrl : params.bloggerDogApiUrl);
+  // If not manual, it must be from Fastcat Account (since we removed BloggerDog for STT)
+  return getFastCatPublicadorSttStreamUrl(params.fastcatAccountApiUrl);
 }
 
 export async function runExternalHealthCheck(params: {

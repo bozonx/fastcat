@@ -21,12 +21,6 @@ export function useFileBrowserTranscription() {
   const isTranscribing = ref(false);
   const transcriptionEntry = ref<FsEntry | null>(null);
 
-  const bloggerDogApiUrl = computed(() =>
-    typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
-      ? runtimeConfig.public.bloggerDogApiUrl
-      : '',
-  );
-
   const fastcatAccountApiUrl = computed(() =>
     typeof runtimeConfig.public.fastcatAccountApiUrl === 'string'
       ? runtimeConfig.public.fastcatAccountApiUrl
@@ -37,7 +31,7 @@ export function useFileBrowserTranscription() {
     resolveExternalServiceConfig({
       service: 'stt',
       integrations: workspaceStore.userSettings.integrations,
-      bloggerDogApiUrl: bloggerDogApiUrl.value,
+      bloggerDogApiUrl: '', // BloggerDog removed for STT
       fastcatAccountApiUrl: fastcatAccountApiUrl.value,
     }),
   );
@@ -89,7 +83,6 @@ export function useFileBrowserTranscription() {
         fileName: entry.name,
         fileType,
         language: transcriptionLanguage.value,
-        bloggerDogApiUrl: bloggerDogApiUrl.value,
         fastcatAccountApiUrl: fastcatAccountApiUrl.value,
         projectId: projectStore.currentProjectId!,
         userSettings: workspaceStore.userSettings,

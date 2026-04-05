@@ -15,7 +15,6 @@ interface UseFilePropertiesTranscriptionOptions {
   currentProjectId: Ref<string | null | undefined>;
   resolvedStorageTopology: Ref<ResolvedStorageTopology>;
   userSettings: Ref<FastCatUserSettings>;
-  bloggerDogApiUrl: Ref<string>;
   fastcatAccountApiUrl: Ref<string>;
   getFileByPath: (path: string) => Promise<File | null | undefined>;
   toast: { add: (payload: { title: string; description?: string; color?: string }) => void };
@@ -136,7 +135,6 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
         fileName: selectedEntry.name,
         fileType: getMimeTypeFromFilename(selectedEntry.name),
         language: transcriptionLanguage.value,
-        bloggerDogApiUrl: options.bloggerDogApiUrl.value,
         fastcatAccountApiUrl: options.fastcatAccountApiUrl.value,
         projectId: options.currentProjectId.value,
         userSettings: options.userSettings.value,

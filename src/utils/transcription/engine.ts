@@ -14,7 +14,6 @@ export interface TranscriptionRequest {
   fileName: string;
   fileType: string;
   language?: string;
-  bloggerDogApiUrl: string;
   fastcatAccountApiUrl: string;
   projectId: string;
   userSettings: FastCatUserSettings;
@@ -134,12 +133,11 @@ export async function transcribeAudioFile(
   const resolvedConfig = resolveExternalServiceConfig({
     service: 'stt',
     integrations: input.userSettings.integrations,
-    bloggerDogApiUrl: input.bloggerDogApiUrl,
+    bloggerDogApiUrl: '', // BloggerDog removed for STT
     fastcatAccountApiUrl: input.fastcatAccountApiUrl,
   });
   const endpoint = resolveSttStreamUrl({
     userSettings: input.userSettings,
-    bloggerDogApiUrl: input.bloggerDogApiUrl,
     fastcatAccountApiUrl: input.fastcatAccountApiUrl,
   });
 
