@@ -103,13 +103,20 @@ function createRequestHeaders(params: {
     'Content-Type',
     params.contentType || params.file?.type || 'application/octet-stream',
   );
+
+  if (params.file?.size) {
+    headers.set('Content-Length', String(params.file.size));
+  }
+
   headers.set('X-File-Name', params.fileName);
   headers.set('X-STT-Restore-Punctuation', String(params.settings.restorePunctuation));
   headers.set('X-STT-Format-Text', String(params.settings.formatText));
   headers.set('X-STT-Include-Words', String(params.settings.includeWords));
+  headers.set('X-STT-Max-Wait-Minutes', '3'); // Default from microservice docs
 
   if (params.bearerToken) {
     headers.set('Authorization', `Bearer ${params.bearerToken}`);
+    headers.set('X-STT-Api-Key', params.bearerToken);
   }
 
   if (params.provider) {

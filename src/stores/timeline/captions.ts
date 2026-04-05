@@ -1,5 +1,6 @@
 import type { Ref } from 'vue';
 import type { TimelineDocument, TimelineTrackItem, TimelineMediaClipItem } from '~/timeline/types';
+import type { MediaMetadata } from '~/stores/media.store';
 import type { TimelineCommand } from '~/timeline/commands';
 import {
   createDefaultCaptionStylePreset,
@@ -14,11 +15,18 @@ import {
 } from '~/repositories/transcription-cache.repository';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
-import type { createTimelineClipsModule } from './clips';
 
 export interface TimelineCaptionsDeps {
   timelineDoc: Ref<TimelineDocument | null>;
-  clips: ReturnType<typeof createTimelineClipsModule>;
+  mediaMetadata: Ref<Record<string, MediaMetadata>>;
+  batchApplyTimeline: (
+    cmds: TimelineCommand[],
+    options?: {
+      saveMode?: 'debounced' | 'immediate' | 'none';
+      skipHistory?: boolean;
+      labelKey?: string;
+    },
+  ) => string[];
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
   getWorkspaceHandle: () => FileSystemDirectoryHandle | null;
   getResolvedStorageTopology: () => any;
@@ -36,7 +44,8 @@ export interface TimelineCaptionsModule {
 export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): TimelineCaptionsModule {
   const {
     timelineDoc,
-    clips,
+    mediaMetadata,
+    batchApplyTimeline,
     requestTimelineSave,
     getWorkspaceHandle,
     getResolvedStorageTopology,
@@ -67,8 +76,30 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
   function findMatchingTranscriptionRecord(options: {
     records: TranscriptionCacheRecord[];
     sourcePath: string;
+    language?: string;
   }): TranscriptionCacheRecord | null {
-    return options.records.find((record) => record.sourcePath === options.sourcePath) ?? null;
+    const meta = mediaMetadata.value[options.sourcePath] ?? null;
+
+    return (
+      options.records.find((record) => {
+        if (record.sourcePath !== options.sourcePath) return false;
+
+        // If we have metadata, verify size and last modified to avoid stale cache
+        if (meta) {
+          if (record.sourceSize !== meta.source.size) return false;
+          if (record.sourceLastModified !== meta.source.lastModified) return false;
+        }
+
+        // If language is requested, it must match (case-insensitive)
+        if (options.language && options.language.trim()) {
+          if (record.language.toLowerCase() !== options.language.trim().toLowerCase()) {
+            return false;
+          }
+        }
+
+        return true;
+      }) ?? null
+    );
   }
 
   function projectClipWordsToTimeline(options: {
@@ -173,7 +204,9 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
     return await repository.list();
   }
 
-  async function collectTimelineCaptionWords(): Promise<TimelineCaptionWord[]> {
+  async function collectTimelineCaptionWords(options?: {
+    language?: string;
+  }): Promise<TimelineCaptionWord[]> {
     const doc = timelineDoc.value;
     if (!doc) {
       throw new Error('Timeline not loaded');
@@ -205,7 +238,11 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
         const mediaType = getMediaTypeFromFilename(sourcePath);
         if (mediaType !== 'video' && mediaType !== 'audio') continue;
 
-        const record = findMatchingTranscriptionRecord({ records, sourcePath });
+        const record = findMatchingTranscriptionRecord({
+          records,
+          sourcePath,
+          language: options?.language,
+        });
         if (!record) continue;
 
         const words = extractTranscriptionWords(record);
@@ -283,7 +320,7 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
       throw new Error('Select an empty video track for generated captions');
     }
 
-    const words = await collectTimelineCaptionWords();
+    const words = await collectTimelineCaptionWords({ language: options.settings.language });
     const chunks = buildCaptionChunksFromWords({
       words,
       settings: options.settings,
@@ -291,7 +328,7 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
     const stylePreset = createDefaultCaptionStylePreset();
 
     const fps = sanitizeFps(doc.timebase?.fps ?? 30);
-    let addedCount = 0;
+    const commands: TimelineCommand[] = [];
     let lastEndUs = 0;
 
     for (const chunk of chunks) {
@@ -303,34 +340,32 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
 
       if (durationUs <= 0) continue;
 
-      clips.addVirtualClipToTrack(
-        {
-          trackId: options.trackId,
-          startUs,
-          clipType: 'text',
-          name: 'Generated captions',
-          durationUs,
-          text: chunk.text,
-          style: stylePreset.textStyle,
-        },
-        {
-          skipHistory: addedCount > 0,
-          saveMode: 'none',
-          historyMode: 'immediate',
-        },
-      );
+      commands.push({
+        type: 'add_virtual_clip_to_track',
+        trackId: options.trackId,
+        startUs,
+        clipType: 'text',
+        name: 'Generated captions',
+        durationUs,
+        text: chunk.text,
+        style: stylePreset.textStyle,
+      });
       lastEndUs = startUs + durationUs;
-      addedCount += 1;
     }
 
-    if (addedCount === 0) {
+    if (commands.length === 0) {
       throw new Error('No caption clips were generated from transcription cache');
     }
+
+    batchApplyTimeline(commands, {
+      labelKey: 'fastcat.captions.generated',
+      saveMode: 'none',
+    });
 
     await requestTimelineSave({ immediate: true });
 
     return {
-      addedCount,
+      addedCount: commands.length,
       sourceCount: new Set(words.map((word) => word.sourcePath)).size,
     };
   }

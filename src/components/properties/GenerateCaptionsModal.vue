@@ -2,6 +2,7 @@
 import { computed, ref, watch, nextTick } from 'vue';
 
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiModal from '~/components/ui/UiModal.vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import {
@@ -45,6 +46,7 @@ async function generateCaptions() {
         maxDurationMs: Math.max(100, Math.round(settings.value.maxDurationMs)),
         silenceGapMs: Math.max(0, Math.round(settings.value.silenceGapMs)),
         splitOnPunctuation: Boolean(settings.value.splitOnPunctuation),
+        language: settings.value.language,
       },
     });
 
@@ -142,6 +144,18 @@ const handleAfterEnter = () => {
             {{ t('fastcat.captions.silenceGapMs', 'Split on silence gap, ms') }}
           </span>
           <UiWheelNumberInput v-model="settings.silenceGapMs" :min="0" :step="10" />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <span class="text-xs text-ui-text-muted">
+            {{ t('videoEditor.fileManager.audio.transcriptionLanguage', 'Language') }}
+          </span>
+          <UiTextInput
+            v-model="settings.language"
+            placeholder="en"
+            full-width
+            :disabled="isGenerating"
+          />
         </div>
 
         <div class="flex items-end">

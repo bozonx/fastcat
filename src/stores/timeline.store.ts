@@ -499,7 +499,8 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   const captions = createTimelineCaptionsModule({
     timelineDoc,
-    clips,
+    mediaMetadata,
+    batchApplyTimeline,
     requestTimelineSave,
     getWorkspaceHandle: () => workspaceStore.workspaceHandle,
     getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,

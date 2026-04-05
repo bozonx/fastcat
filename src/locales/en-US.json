@@ -1174,6 +1174,7 @@
         "format": "Format",
         "transcriptionCached": "Using cached transcription",
         "transcriptionCompleted": "Transcription completed",
+        "transcriptionHint": "Send the current audio file to the configured STT service. Language is optional.",
         "transcriptionCachedDescription": "Cached transcription was loaded from vardata.",
         "transcriptionLanguage": "Language",
         "transcriptionSavedDescription": "Transcription was saved to vardata cache.",
