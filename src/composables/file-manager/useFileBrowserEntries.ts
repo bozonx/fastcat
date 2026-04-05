@@ -93,7 +93,7 @@ export function useFileBrowserEntries({
     );
   }
 
-  const { sortedEntries } = useFileSorting(folderEntries);
+  const { sortedEntries } = useFileSorting(folderEntries, folderSizes);
 
   const { thumbnails: videoThumbnails } = useFileManagerThumbnails(sortedEntries, vfs);
   const { compatibility: fileCompatibility } = useFileManagerCompatibility(sortedEntries);

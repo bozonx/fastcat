@@ -287,6 +287,7 @@ const {
   deleteTargets,
   directoryUploadTarget,
   directoryUploadInput,
+  openDeleteConfirmModal,
   handleDeleteConfirm,
   onFileAction: onFileActionBase,
 } = useFileManagerActions({
@@ -471,6 +472,8 @@ useFileBrowserPendingActions({
   startRename,
   createTimelineInDirectory,
   createMarkdownInDirectory,
+  openDeleteConfirmModal,
+  instanceId,
   handlePendingRemoteDownloadRequest: async () => {
     const request = uiStore.pendingRemoteDownloadRequest;
     if (!request) return;
