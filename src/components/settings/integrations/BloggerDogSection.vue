@@ -127,58 +127,80 @@ function getHealthTone(status: typeof healthState.status) {
         <div class="text-xs text-ui-text-muted mt-1">
           {{ t('videoEditor.settings.bloggerDogIntegrationHint') }}
         </div>
+        <div class="mt-2">
+          <a
+            v-if="bloggerDogUiUrl"
+            :href="bloggerDogUiUrl"
+            target="_blank"
+            class="text-xs text-primary-400 hover:underline inline-flex items-center gap-1"
+          >
+            {{ t('videoEditor.settings.integrationManualLink', 'Open BloggerDog site') }}
+            <UIcon name="i-heroicons-arrow-top-right-on-square" class="h-3 w-3" />
+          </a>
+        </div>
       </div>
-      <div v-if="fastcat?.bearerToken" class="flex items-center gap-1 shrink-0">
-        <div
-          class="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium"
-          :class="[
-            healthState.status === 'success'
-              ? 'bg-success-500/10 text-success-400'
-              : healthState.status === 'error'
-                ? 'bg-error-500/10 text-error-400'
-                : 'bg-ui-bg-muted/50 text-ui-text-muted',
-          ]"
-        >
-          <UIcon
-            v-if="healthState.status === 'success'"
-            name="i-heroicons-check-circle"
-            class="h-4 w-4"
+
+      <div class="flex flex-col items-end gap-2 shrink-0">
+        <div v-if="fastcat?.bearerToken" class="flex items-center gap-1">
+          <div
+            class="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium"
+            :class="[
+              healthState.status === 'success'
+                ? 'bg-success-500/10 text-success-400'
+                : healthState.status === 'error'
+                  ? 'bg-error-500/10 text-error-400'
+                  : 'bg-ui-bg-muted/50 text-ui-text-muted',
+            ]"
+          >
+            <UIcon
+              v-if="healthState.status === 'success'"
+              name="i-heroicons-check-circle"
+              class="h-4 w-4"
+            />
+            <UIcon
+              v-else-if="healthState.status === 'error'"
+              name="i-heroicons-exclamation-circle"
+              class="h-4 w-4"
+            />
+            <span v-if="healthState.loading">
+              {{ t('common.loading', 'Checking...') }}
+            </span>
+            <span v-else-if="healthState.status === 'success'">
+              {{ t('videoEditor.settings.integrationHealthOk', 'Connected') }}
+            </span>
+            <span v-else-if="healthState.status === 'error'">
+              {{ t('common.error', 'Error') }}
+            </span>
+            <span v-else>
+              {{ t('videoEditor.settings.integrationStatusWaiting', 'Waiting') }}
+            </span>
+          </div>
+
+          <UButton
+            color="neutral"
+            variant="ghost"
+            size="xs"
+            square
+            :loading="healthState.loading"
+            icon="i-heroicons-arrow-path"
+            @click="runHealth"
           />
-          <UIcon
-            v-else-if="healthState.status === 'error'"
-            name="i-heroicons-exclamation-circle"
-            class="h-4 w-4"
-          />
-          <span v-if="healthState.loading">
-            {{ t('common.loading', 'Checking...') }}
-          </span>
-          <span v-else-if="healthState.status === 'success'">
-            {{ t('videoEditor.settings.integrationHealthOk', 'Connected') }}
-          </span>
-          <span v-else-if="healthState.status === 'error'">
-            {{ t('common.error', 'Error') }}
-          </span>
-          <span v-else>
-            {{ t('videoEditor.settings.integrationStatusWaiting', 'Waiting') }}
-          </span>
         </div>
 
         <UButton
-          color="neutral"
+          v-if="fastcat?.bearerToken"
+          color="error"
           variant="ghost"
           size="xs"
-          square
-          :loading="healthState.loading"
-          icon="i-heroicons-arrow-path"
-          @click="runHealth"
-        />
+          @click="disconnectFastCat"
+        >
+          {{ t('videoEditor.settings.integrationBreakConnection', 'Break connection') }}
+        </UButton>
       </div>
     </div>
 
     <!-- NOT CONNECTED STATE -->
-    <div v-if="!fastcat?.bearerToken" class="flex flex-col gap-4 mt-2">
-
-
+    <div v-if="!fastcat?.bearerToken" class="flex flex-col gap-4">
       <div class="flex items-center gap-3">
         <UButton
           color="primary"
@@ -188,34 +210,16 @@ function getHealthTone(status: typeof healthState.status) {
         >
           {{ t('videoEditor.settings.bloggerDogConnectAction', 'Connect to BloggerDog') }}
         </UButton>
-
-        <a
-          v-if="bloggerDogUiUrl"
-          :href="bloggerDogUiUrl"
-          target="_blank"
-          class="text-xs text-primary-400 hover:underline flex items-center gap-1 ml-auto"
-        >
-          {{ t('videoEditor.settings.integrationManualLink', 'Open BloggerDog site') }}
-          <UIcon name="i-heroicons-arrow-top-right-on-square" class="h-3 w-3" />
-        </a>
       </div>
     </div>
 
-    <!-- CONNECTED STATE -->
-    <div v-else class="flex flex-col gap-5 mt-2">
-      <div class="flex flex-wrap items-center gap-4">
-        <UButton color="error" variant="ghost" size="sm" @click="disconnectFastCat">
-          {{ t('videoEditor.settings.integrationBreakConnection', 'Break connection') }}
-        </UButton>
-      </div>
-
-      <div
-        v-if="healthState.status !== 'idle' || healthState.loading"
-        class="text-xs"
-        :class="getHealthTone(healthState.status)"
-      >
-        {{ healthState.message || t('common.loading', 'Loading...') }}
-      </div>
+    <!-- ERRORS -->
+    <div
+      v-if="healthState.status === 'error'"
+      class="text-xs"
+      :class="getHealthTone(healthState.status)"
+    >
+      {{ healthState.message }}
     </div>
   </div>
 </template>

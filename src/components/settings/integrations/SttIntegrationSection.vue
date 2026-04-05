@@ -89,39 +89,45 @@ function getHealthTone(status: typeof healthState.status) {
 
 <template>
   <div class="flex flex-col gap-4 border border-ui-border rounded-lg p-4">
-    <div class="flex items-center justify-between gap-4">
+    <div class="flex flex-col gap-1">
       <div class="text-sm font-medium text-ui-text">
-        {{ t('videoEditor.settings.integrationSttApi', 'STT API') }}
+        {{ t('videoEditor.settings.sttTranscriptionSettings', 'Transcription settings') }}
       </div>
+      <div class="text-xs text-ui-text-muted">
+        {{ t('videoEditor.settings.sttTranscriptionDescription', 'Configure speech-to-text integration and defaults.') }}
+      </div>
+    </div>
 
-      <div class="flex p-0.5 bg-ui-bg-muted rounded-lg shrink-0">
-        <button
-          type="button"
-          :class="[
-            !isManualSttEnabled
-              ? 'bg-ui-bg shadow-sm text-ui-text'
-              : 'text-ui-text-muted hover:text-ui-text',
-            !isFastcatConnected && !isManualSttEnabled ? 'opacity-50 grayscale cursor-not-allowed' : '',
-          ]"
-          class="px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-2"
-          @click="isManualSttEnabled = false"
-        >
-          <UIcon v-if="!isFastcatConnected" name="i-heroicons-link-slash" class="w-3.5 h-3.5" />
-          {{ t('videoEditor.settings.sttFastcat', 'FASTCAT STT') }}
-        </button>
-        <button
-          type="button"
-          :class="[
-            isManualSttEnabled
-              ? 'bg-ui-bg shadow-sm text-ui-text'
-              : 'text-ui-text-muted hover:text-ui-text',
-          ]"
-          class="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
-          @click="isManualSttEnabled = true"
-        >
-          {{ t('videoEditor.settings.sttCustom', 'Custom STT') }}
-        </button>
-      </div>
+    <div class="flex p-0.5 bg-ui-bg-muted rounded-lg w-full">
+      <button
+        type="button"
+        :class="[
+          !isManualSttEnabled
+            ? isFastcatConnected 
+              ? 'bg-primary-500 text-white shadow-sm' 
+              : 'bg-error-500 text-white shadow-sm'
+            : 'text-ui-text-muted hover:text-ui-text',
+        ]"
+        class="flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-2"
+        @click="isManualSttEnabled = false"
+      >
+        <UIcon v-if="!isFastcatConnected" name="i-heroicons-link-slash" class="w-3.5 h-3.5" />
+        {{ t('videoEditor.settings.sttFastcat', 'FASTCAT STT') }}
+      </button>
+      <button
+        type="button"
+        :class="[
+          isManualSttEnabled
+            ? healthState.status === 'error'
+              ? 'bg-error-500 text-white shadow-sm'
+              : 'bg-primary-500 text-white shadow-sm'
+            : 'text-ui-text-muted hover:text-ui-text',
+        ]"
+        class="flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+        @click="isManualSttEnabled = true"
+      >
+        {{ t('videoEditor.settings.sttCustom', 'Custom STT') }}
+      </button>
     </div>
 
     <!-- Manual STT Form -->
@@ -146,6 +152,30 @@ function getHealthTone(status: typeof healthState.status) {
           placeholder="Bearer token"
         />
       </UiFormField>
+
+      <div class="flex flex-wrap items-center gap-3 mt-2 border-t border-ui-border pt-4">
+        <UButton
+          color="neutral"
+          variant="soft"
+          size="sm"
+          :loading="healthState.loading"
+          @click="runHealth"
+        >
+          {{ t('videoEditor.settings.integrationHealthCheck', 'Check health') }}
+        </UButton>
+        <div
+          v-if="healthState.status === 'error'"
+          class="text-xs text-error-400"
+        >
+          {{ healthState.message }}
+        </div>
+        <div
+          v-else-if="healthState.status === 'success'"
+          class="text-xs text-success-400"
+        >
+          {{ t('videoEditor.settings.integrationHealthOk', 'Connected') }}
+        </div>
+      </div>
     </div>
 
     <!-- Shared STT Settings -->
@@ -166,48 +196,6 @@ function getHealthTone(status: typeof healthState.status) {
             placeholder="universal-3-pro, universal-2"
           />
         </UiFormField>
-      </div>
-
-      <div class="flex flex-col gap-2">
-        <label class="flex items-center gap-3 cursor-pointer">
-          <UCheckbox v-model="workspaceStore.userSettings.integrations.stt.restorePunctuation" />
-          <span class="text-sm text-ui-text">
-            {{ t('videoEditor.settings.integrationSttRestorePunctuation', 'Restore punctuation') }}
-          </span>
-        </label>
-
-        <label class="flex items-center gap-3 cursor-pointer">
-          <UCheckbox v-model="workspaceStore.userSettings.integrations.stt.formatText" />
-          <span class="text-sm text-ui-text">
-            {{ t('videoEditor.settings.integrationSttFormatText', 'Format text') }}
-          </span>
-        </label>
-
-        <label class="flex items-center gap-3 cursor-pointer">
-          <UCheckbox v-model="workspaceStore.userSettings.integrations.stt.includeWords" />
-          <span class="text-sm text-ui-text">
-            {{ t('videoEditor.settings.integrationSttIncludeWords', 'Include word timestamps') }}
-          </span>
-        </label>
-      </div>
-
-      <div class="flex flex-wrap items-center gap-3 mt-2 border-t border-ui-border pt-4">
-        <UButton
-          color="neutral"
-          variant="soft"
-          size="sm"
-          :loading="healthState.loading"
-          @click="runHealth"
-        >
-          {{ t('videoEditor.settings.integrationHealthCheck', 'Check health') }}
-        </UButton>
-        <div
-          v-if="healthState.status !== 'idle' || healthState.loading"
-          class="text-xs"
-          :class="getHealthTone(healthState.status)"
-        >
-          {{ healthState.message || t('videoEditor.settings.integrationStatusWaiting', 'Waiting for check') }}
-        </div>
       </div>
     </div>
   </div>
