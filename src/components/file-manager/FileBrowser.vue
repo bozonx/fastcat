@@ -219,6 +219,7 @@ const {
   buildRemoteDirectoryEntry,
   loadRemoteFolderContent,
   loadRemoteParentFolders,
+  remoteError,
 } = remote;
 
 function toggleBloggerDogPanel() {
@@ -676,6 +677,41 @@ async function onDirectoryUploadChange(e: Event) {
                 'Select a folder in the sidebar to view its contents',
               )
             }}</span>
+          </div>
+
+          <div
+            v-else-if="isRemoteMode && remoteError"
+            class="flex flex-col items-center justify-center flex-1 text-ui-text-dim text-center p-6 gap-6"
+          >
+            <div class="p-6 rounded-full bg-error-500/10">
+              <UIcon name="i-heroicons-exclamation-circle" class="w-16 h-16 text-error-500 opacity-80" />
+            </div>
+            <div class="space-y-2 max-w-[320px]">
+              <h3 class="text-xl font-semibold text-ui-text">
+                {{ t('fastcat.fileManager.remote.load_error_title', 'Connection Error') }}
+              </h3>
+              <p class="text-sm text-ui-text-dim leading-relaxed">
+                {{ remoteError }}
+              </p>
+            </div>
+            <div class="flex gap-3">
+              <UButton
+                color="primary"
+                variant="solid"
+                icon="i-heroicons-arrow-path"
+                @click="loadFolderContent"
+              >
+                {{ t('common.retry', 'Retry') }}
+              </UButton>
+              <UButton
+                color="neutral"
+                variant="soft"
+                icon="i-heroicons-cog-6-tooth"
+                @click="uiStore.showIntegrationSettings()"
+              >
+                {{ t('fastcat.fileManager.remote.configure_action', 'Settings') }}
+              </UButton>
+            </div>
           </div>
 
           <div

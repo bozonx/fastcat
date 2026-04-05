@@ -553,6 +553,12 @@
       "tabs": {
         "computer": "Computer",
         "workspace": "Workspace"
+      },
+      "remote": {
+        "not_configured_title": "BloggerDog not configured",
+        "not_configured_desc": "Integrate with BloggerDog to manage your remote content.",
+        "configure_action": "Configure Integration",
+        "load_error_title": "Connection Error"
       }
     },
     "hudClip": {

@@ -58,8 +58,7 @@ const bloggerDogVfs = computed(() => {
 });
 
 function openIntegrationsSettings() {
-  uiStore.isEditorSettingsOpen = true;
-  // TODO: Add logic to switch to Integrations tab in settings if possible
+  uiStore.showIntegrationSettings();
 }
 
 
