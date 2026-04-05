@@ -80,12 +80,14 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
       const dy = Math.abs(ev.clientY - startY);
 
       const jitterThreshold = e.pointerType === 'touch' ? 20 : LONG_PRESS_CANCEL_THRESHOLD_PX;
+      const dragThreshold =
+        e.pointerType === 'touch' && options.onLongPress ? jitterThreshold : DRAG_MOVE_THRESHOLD_PX;
 
       if ((dx > jitterThreshold || dy > jitterThreshold) && longPressTimer !== null) {
         window.clearTimeout(longPressTimer);
         longPressTimer = null;
       }
-      if (dx > DRAG_MOVE_THRESHOLD_PX || dy > DRAG_MOVE_THRESHOLD_PX) {
+      if (dx > dragThreshold || dy > dragThreshold) {
         startDrag();
       }
     };

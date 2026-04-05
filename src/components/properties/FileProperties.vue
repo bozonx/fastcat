@@ -169,7 +169,14 @@ const {
   onResetPreviewMode: (mode) => emit('update:previewMode', mode),
 });
 
-const { generalInfoTitle, isHidden, mediaMeta, selectedPath } = useFilePropertiesBasics({
+const { 
+  generalInfoTitle, 
+  isHidden, 
+  mediaMeta, 
+  selectedPath,
+  isBloggerDogGroup,
+  isBloggerDogContentItem
+} = useFilePropertiesBasics({
   selectedFsEntry: selectedFsEntryRef,
   fileInfo,
   isOtio,
@@ -213,16 +220,6 @@ async function copyToClipboard(text: string) {
 
 const isVideoFile = computed(() => mediaType.value === 'video');
 
-const isBloggerDogItem = computed(() => {
-  return props.selectedFsEntry?.source === 'remote' && (props.selectedFsEntry as any).isContentItem;
-});
-
-const isBloggerDogGroup = computed(() => {
-  return props.selectedFsEntry?.source === 'remote' && !(props.selectedFsEntry as any).isContentItem && !isRemoteRoot.value;
-});
-
-const isRemoteContent = computed(() => isBloggerDogItem.value || isBloggerDogGroup.value);
-
 const isFormatUnsupported = computed(() =>
   Boolean(selectedPath.value && mediaStore.metadataLoadFailed[selectedPath.value]),
 );
@@ -243,6 +240,13 @@ const isImageUnsupported = computed(() => {
 const isMediaFullyUnsupported = computed(
   () => isFormatUnsupported.value || isVideoCodecUnsupported.value || isImageUnsupported.value,
 );
+
+const isRemoteContent = computed(() => isBloggerDogContentItem.value || isBloggerDogGroup.value);
+
+const castedRemoteRecord = computed(() => {
+  if (!isRemoteContent.value || !props.selectedFsEntry?.remoteData) return null;
+  return props.selectedFsEntry.remoteData as RemoteVfsFileEntry;
+});
 
 const showVideoProxyActions = computed(() => {
   if (isProjectRootDir.value) return false;
@@ -501,18 +505,9 @@ const {
       />
 
       <BloggerDogItemPropertiesSection
-        v-if="isBloggerDogItem && selectedFsEntry?.remoteData"
-        :item="(selectedFsEntry.remoteData as RemoteVfsFileEntry)"
-      >
-        <template #after-content>
-          <div class="px-0 pb-1">
-            <EntryActions
-              :primary-actions="fileInfo?.kind === 'directory' ? directoryPrimaryActions : filePrimaryActions"
-              :secondary-actions="[]"
-            />
-          </div>
-        </template>
-      </BloggerDogItemPropertiesSection>
+        v-if="isBloggerDogContentItem && castedRemoteRecord"
+        :item="castedRemoteRecord"
+      />
 
       <MediaPropertiesSection
         v-if="fileInfo?.kind === 'file' && (isVideoFile || mediaType === 'audio')"
@@ -551,34 +546,27 @@ const {
         :selected-path="selectedPath"
         :is-hidden="isHidden"
         :format-bytes="formatBytes"
-      >
-        <template v-if="isBloggerDogGroup" #after-content>
-          <div class="px-0 pb-1">
-            <EntryActions
-              :primary-actions="directoryPrimaryActions"
-              :secondary-actions="[]"
-            />
-          </div>
-        </template>
-      </FileGeneralInfoSection>
+      />
 
       <PropertySection
-        v-if="!hideActions && fileInfo?.kind === 'directory' && !isRemoteContent"
+        v-if="!hideActions && fileInfo?.kind === 'directory'"
+        key="actions-directory"
         :title="t('videoEditor.fileManager.actions.title', 'Actions')"
       >
         <EntryActions
           :primary-actions="directoryPrimaryActions"
-          :secondary-actions="directorySecondaryActions"
+          :secondary-actions="isRemoteContent ? [] : directorySecondaryActions"
         />
       </PropertySection>
 
       <PropertySection
-        v-else-if="!hideActions && fileInfo?.kind === 'file' && !isRemoteContent"
+        v-else-if="!hideActions && fileInfo?.kind === 'file'"
+        key="actions-file"
         :title="t('videoEditor.fileManager.actions.title', 'Actions')"
       >
         <EntryActions
           :primary-actions="filePrimaryActions"
-          :secondary-actions="fileSecondaryActions"
+          :secondary-actions="isRemoteContent ? [] : fileSecondaryActions"
         />
       </PropertySection>
 
