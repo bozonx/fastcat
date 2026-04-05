@@ -173,7 +173,7 @@ const rootContextMenuItems = computed(() => {
 
   const rootEntry: FsEntry = {
     kind: 'directory',
-    name: projectStore.currentProjectName,
+    name: '/',
     path: '',
     parentPath: '',
     lastModified: 0,
@@ -306,7 +306,7 @@ async function onCreateTimeline() {
 async function onCreateMarkdown() {
   await onFileAction('createMarkdown', {
     kind: 'directory',
-    name: projectStore.currentProjectName ?? 'root',
+    name: '/',
     path: '',
     parentPath: '',
     lastModified: 0,

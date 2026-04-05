@@ -27,6 +27,7 @@ export function useFileBrowserNavigation({
   scrollToEntryPath,
   vfs,
   readDirectory,
+  rootName,
 }: {
   rootContainer: Ref<HTMLElement | null>;
   isRemoteMode: Ref<boolean>;
@@ -43,6 +44,7 @@ export function useFileBrowserNavigation({
     getMetadata: (path: string) => Promise<{ kind: string } | null | undefined>;
   };
   readDirectory: (path: string | undefined) => Promise<FsEntry[]>;
+  rootName: string;
 }) {
   const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
   const projectStore = useProjectStore();
@@ -112,7 +114,7 @@ export function useFileBrowserNavigation({
     if (!isRemoteMode.value && !isInCommon) {
       parentFolders.value.push({
         kind: 'directory',
-        name: projectStore.currentProjectName || 'Project',
+        name: rootName,
         path: '',
       });
     }
@@ -176,7 +178,7 @@ export function useFileBrowserNavigation({
     }
     const rootEntry: FsEntry = {
       kind: 'directory',
-      name: projectStore.currentProjectName || '',
+      name: '/',
       path: '',
     };
     fileManagerStore.openFolder(rootEntry);

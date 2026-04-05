@@ -306,7 +306,7 @@ const rootContextMenuItems = computed(() => {
   if (!projectStore.currentProjectName) return [];
   const rootEntry: FsEntry = {
     kind: 'directory',
-    name: projectStore.currentProjectName,
+    name: '/',
     path: '',
   };
 
@@ -362,7 +362,7 @@ function selectProjectRoot() {
 
   const rootEntry: FsEntry = {
     kind: 'directory',
-    name,
+    name: '/',
     path: '',
   };
 
