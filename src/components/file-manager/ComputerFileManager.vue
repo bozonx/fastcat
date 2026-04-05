@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, provide, onMounted, shallowRef } from 'vue';
 import { Pane, Splitpanes } from 'splitpanes';
-import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useComputerVfs } from '~/composables/file-manager/useComputerVfs';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { createFileManager, FILE_MANAGER_INJECTION_KEY } from '~/composables/file-manager/useFileManager';
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import type { FsEntry } from '~/types/fs';
+import { useFileManagerStore, useFileBrowserPersistenceStore, type FileViewMode } from '~/stores/file-manager.store';
 
 const props = defineProps<{
     instanceId?: string;
@@ -15,6 +15,7 @@ const props = defineProps<{
 }>();
 
 const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
+const persistenceStore = useFileBrowserPersistenceStore();
 const instanceId = props.instanceId || 'computer';
 const workspaceStore = useWorkspaceStore();
 const { t } = useI18n();
@@ -34,8 +35,8 @@ const fileManager = createFileManager({
   rootEntries,
   sortMode,
   showHiddenFiles: ref(true),
-  isFileTreePathExpanded: (path) => !!expandedPaths.value.has(path),
-  setFileTreePathExpanded: (path, expanded) => {
+  isFileTreePathExpanded: (path: string) => !!expandedPaths.value.has(path),
+  setFileTreePathExpanded: (path: string, expanded: boolean) => {
     if (expanded) expandedPaths.value.add(path);
     else expandedPaths.value.delete(path);
   },
@@ -71,38 +72,38 @@ const fileManager = createFileManager({
 
 const expandedPaths = ref(new Set<string>());
 
-// Wrap the store to use "computer" specific persisted values
+// Decouple computer-specific settings from the main store instance using persistence store
 const computerStoreWrapper = computed(() => {
   return new Proxy(fileManagerStore, {
     get(target, prop, receiver) {
-      if (prop === 'selectedFolder') return target.computerLastFolder;
-      if (prop === 'gridCardSize') return target.computerGridCardSize;
-      if (prop === 'viewMode') return target.computerViewMode;
+      if (prop === 'selectedFolder') return persistenceStore.computerLastFolder;
+      if (prop === 'gridCardSize') return persistenceStore.computerGridCardSize;
+      if (prop === 'viewMode') return persistenceStore.computerViewMode;
       
       if (prop === 'openFolder') {
         return (entry: FsEntry | null) => {
-          target.setComputerLastFolder(entry);
+          persistenceStore.setComputerLastFolder(entry);
           return target.openFolder(entry);
         };
       }
 
       if (prop === 'setViewMode') {
-        return (mode: FileViewMode) => target.setComputerViewMode(mode);
+        return (mode: FileViewMode) => persistenceStore.setComputerViewMode(mode);
       }
 
       return Reflect.get(target, prop, receiver);
     },
     set(target, prop, value, receiver) {
       if (prop === 'selectedFolder') {
-        target.setComputerLastFolder(value);
+        persistenceStore.setComputerLastFolder(value);
         return true;
       }
       if (prop === 'gridCardSize') {
-        target.setComputerGridCardSize(value);
+        persistenceStore.setComputerGridCardSize(value);
         return true;
       }
       if (prop === 'viewMode') {
-        target.setComputerViewMode(value);
+        persistenceStore.setComputerViewMode(value);
         return true;
       }
       return Reflect.set(target, prop, value, receiver);
@@ -114,14 +115,23 @@ provide('fileManagerStore', computerStoreWrapper.value);
 provide(FILE_MANAGER_INJECTION_KEY, fileManager);
 
 onMounted(async () => {
-  if (fileManagerStore.computerLastFolder) {
-      // Ensure we don't try to open a folder that doesn't exist anymore or is from another adapter
+  if (persistenceStore.computerLastFolder) {
+    try {
+      // Validate that the folder still exists before trying to open it
+      const exists = await vfs.value?.exists(persistenceStore.computerLastFolder.path);
+      if (!exists) {
+        persistenceStore.setComputerLastFolder(null);
+      }
+    } catch (e) {
+      console.warn('Failed to validate last computer folder', e);
+      persistenceStore.setComputerLastFolder(null);
+    }
   }
   
   await fileManager.loadProjectDirectory();
   
-  // If no folder selected, open root
-  if (!fileManagerStore.computerLastFolder) {
+  // If no folder selected or previous one was invalid, open root
+  if (!persistenceStore.computerLastFolder) {
       computerStoreWrapper.value.openFolder({
           name: rootPath.value || 'Root',
           path: rootPath.value,
@@ -132,7 +142,7 @@ onMounted(async () => {
 
 
 function onSelect(entry: FsEntry) {
-    fileManagerStore.setComputerLastFolder(entry);
+    persistenceStore.setComputerLastFolder(entry);
 }
 </script>
 

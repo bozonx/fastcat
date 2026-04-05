@@ -32,21 +32,6 @@ function createFileManagerStoreSetup(contextId: string) {
     const gridCardSize = ref<number>(
       readLocalStorageJson(`${STORAGE_KEY}:gridCardSize`, 80),
     );
-    const bloggerDogGridCardSize = ref<number>(
-      readLocalStorageJson(`fastcat:file-manager:bloggerDogGridCardSize`, 100),
-    );
-    const computerGridCardSize = ref<number>(
-      readLocalStorageJson(`fastcat:file-manager:computerGridCardSize`, 100),
-    );
-    const computerLastFolder = ref<FsEntry | null>(
-      readLocalStorageJson(`fastcat:file-manager:computerLastFolder`, null),
-    );
-    const computerViewMode = ref<FileViewMode>(
-      readLocalStorageJson(`fastcat:file-manager:computerViewMode`, 'list'),
-    );
-    const filesPageActiveTab = ref<FilesPageTab>(
-      readLocalStorageJson(`fastcat:file-manager:filesPageActiveTab`, 'computer'),
-    );
 
     const columnWidths = ref<Record<string, number>>(
       readLocalStorageJson(`${STORAGE_KEY}:columnWidths`, {
@@ -58,19 +43,127 @@ function createFileManagerStoreSetup(contextId: string) {
       }),
     );
 
-  // Persist settings to localStorage
-  watch(viewMode, (val) => writeLocalStorageJson(`${STORAGE_KEY}:viewMode`, val));
-  watch(sortOption, (val) => writeLocalStorageJson(`${STORAGE_KEY}:sortOption`, val), {
-    deep: true,
-  });
-  watch(gridCardSize, (val) =>
-    writeLocalStorageJson(`${STORAGE_KEY}:gridCardSize`, val),
+    // Persist settings to localStorage
+    watch(viewMode, (val) => writeLocalStorageJson(`${STORAGE_KEY}:viewMode`, val));
+    watch(
+      sortOption,
+      (val) => writeLocalStorageJson(`${STORAGE_KEY}:sortOption`, val),
+      {
+        deep: true,
+      },
+    );
+    watch(gridCardSize, (val) => writeLocalStorageJson(`${STORAGE_KEY}:gridCardSize`, val));
+    watch(isBloggerDogPanelVisible, (val) =>
+      writeLocalStorageJson(`${STORAGE_KEY}:isBloggerDogPanelVisible`, val),
+    );
+
+    watch(
+      columnWidths,
+      (val) => writeLocalStorageJson(`${STORAGE_KEY}:columnWidths`, val),
+      {
+        deep: true,
+      },
+    );
+
+    function openFolder(entry: FsEntry | null) {
+      if (entry && entry.kind === 'directory') {
+        selectedFolder.value = entry;
+        selectionStore.selectFsEntry(entry);
+      } else {
+        selectedFolder.value = null;
+      }
+    }
+
+    function selectItem(entry: FsEntry | null) {
+      if (entry) {
+        selectionStore.selectFsEntry(entry);
+      } else {
+        const selected = selectionStore.selectedEntity;
+        if (selected?.source === 'fileManager') {
+          selectionStore.clearSelection();
+        }
+      }
+    }
+
+    function setViewMode(mode: FileViewMode) {
+      viewMode.value = mode;
+    }
+
+    function setSortOption(option: FileSortOption) {
+      sortOption.value = option;
+    }
+
+    function setGridCardSize(size: number) {
+      gridCardSize.value = size;
+    }
+
+    function setColumnWidth(column: string, width: number) {
+      columnWidths.value = { ...columnWidths.value, [column]: width };
+    }
+
+    function clearSelection() {
+      const selected = selectionStore.selectedEntity;
+      if (
+        selected?.source === 'fileManager' &&
+        (selected.kind === 'file' || selected.kind === 'directory')
+      ) {
+        selectionStore.clearSelection();
+      }
+    }
+
+    function resetFileManagerState() {
+      selectedFolder.value = null;
+      // We don't reset viewMode, sortOption, etc. as they are persisted user preferences
+    }
+
+    const sortFields: { labelKey: string; value: FileSortField }[] = [
+      { labelKey: 'common.name', value: 'name' },
+      { labelKey: 'common.type', value: 'type' },
+      { labelKey: 'common.size', value: 'size' },
+      { labelKey: 'common.created', value: 'created' },
+      { labelKey: 'common.modified', value: 'modified' },
+    ];
+
+    return {
+      selectedFolder,
+      isBloggerDogPanelVisible,
+      viewMode,
+      sortOption,
+      gridCardSize,
+      columnWidths,
+      folderSizes,
+      sortFields,
+      openFolder,
+      selectItem,
+      clearSelection,
+      setViewMode,
+      setSortOption,
+      setGridCardSize,
+      setColumnWidth,
+      resetFileManagerState,
+    };
+  };
+}
+
+export const useFileBrowserPersistenceStore = defineStore('fileBrowserPersistence', () => {
+  const bloggerDogGridCardSize = ref<number>(
+    readLocalStorageJson(`fastcat:file-manager:bloggerDogGridCardSize`, 100),
   );
+  const computerGridCardSize = ref<number>(
+    readLocalStorageJson(`fastcat:file-manager:computerGridCardSize`, 100),
+  );
+  const computerLastFolder = ref<FsEntry | null>(
+    readLocalStorageJson(`fastcat:file-manager:computerLastFolder`, null),
+  );
+  const computerViewMode = ref<FileViewMode>(
+    readLocalStorageJson(`fastcat:file-manager:computerViewMode`, 'list'),
+  );
+  const filesPageActiveTab = ref<FilesPageTab>(
+    readLocalStorageJson(`fastcat:file-manager:filesPageActiveTab`, 'computer'),
+  );
+
   watch(bloggerDogGridCardSize, (val) =>
     writeLocalStorageJson(`fastcat:file-manager:bloggerDogGridCardSize`, val),
-  );
-  watch(isBloggerDogPanelVisible, (val) =>
-    writeLocalStorageJson(`${STORAGE_KEY}:isBloggerDogPanelVisible`, val),
   );
   watch(computerGridCardSize, (val) =>
     writeLocalStorageJson(`fastcat:file-manager:computerGridCardSize`, val),
@@ -78,48 +171,8 @@ function createFileManagerStoreSetup(contextId: string) {
   watch(computerLastFolder, (val) =>
     writeLocalStorageJson(`fastcat:file-manager:computerLastFolder`, val),
   );
-  watch(computerViewMode, (val) =>
-    writeLocalStorageJson(`fastcat:file-manager:computerViewMode`, val),
-  );
-  watch(filesPageActiveTab, (val) =>
-    writeLocalStorageJson(`fastcat:file-manager:filesPageActiveTab`, val),
-  );
-
-  watch(columnWidths, (val) => writeLocalStorageJson(`${STORAGE_KEY}:columnWidths`, val), {
-    deep: true,
-  });
-
-  function openFolder(entry: FsEntry | null) {
-    if (entry && entry.kind === 'directory') {
-      selectedFolder.value = entry;
-      selectionStore.selectFsEntry(entry);
-    } else {
-      selectedFolder.value = null;
-    }
-  }
-
-  function selectItem(entry: FsEntry | null) {
-    if (entry) {
-      selectionStore.selectFsEntry(entry);
-    } else {
-      const selected = selectionStore.selectedEntity;
-      if (selected?.source === 'fileManager') {
-        selectionStore.clearSelection();
-      }
-    }
-  }
-
-  function setViewMode(mode: FileViewMode) {
-    viewMode.value = mode;
-  }
-
-  function setSortOption(option: FileSortOption) {
-    sortOption.value = option;
-  }
-
-  function setGridCardSize(size: number) {
-    gridCardSize.value = size;
-  }
+  watch(computerViewMode, (val) => writeLocalStorageJson(`fastcat:file-manager:computerViewMode`, val));
+  watch(filesPageActiveTab, (val) => writeLocalStorageJson(`fastcat:file-manager:filesPageActiveTab`, val));
 
   function setBloggerDogGridCardSize(size: number) {
     bloggerDogGridCardSize.value = size;
@@ -141,68 +194,28 @@ function createFileManagerStoreSetup(contextId: string) {
     filesPageActiveTab.value = tab;
   }
 
-
-  function setColumnWidth(column: string, width: number) {
-    columnWidths.value = { ...columnWidths.value, [column]: width };
-  }
-
-  function clearSelection() {
-    const selected = selectionStore.selectedEntity;
-    if (
-      selected?.source === 'fileManager' &&
-      (selected.kind === 'file' || selected.kind === 'directory')
-    ) {
-      selectionStore.clearSelection();
-    }
-  }
-
-  function resetFileManagerState() {
-    selectedFolder.value = null;
-    // We don't reset viewMode, sortOption, etc. as they are persisted user preferences
-  }
-
-  const sortFields: { labelKey: string; value: FileSortField }[] = [
-    { labelKey: 'common.name', value: 'name' },
-    { labelKey: 'common.type', value: 'type' },
-    { labelKey: 'common.size', value: 'size' },
-    { labelKey: 'common.created', value: 'created' },
-    { labelKey: 'common.modified', value: 'modified' },
-  ];
-
-    return {
-      selectedFolder,
-      isBloggerDogPanelVisible,
-      viewMode,
-      sortOption,
-      gridCardSize,
-      bloggerDogGridCardSize,
-      computerGridCardSize,
-      computerLastFolder,
-      computerViewMode,
-      filesPageActiveTab,
-      columnWidths,
-      folderSizes,
-      sortFields,
-      openFolder,
-      selectItem,
-      clearSelection,
-      setViewMode,
-      setSortOption,
-      setGridCardSize,
-      setBloggerDogGridCardSize,
-      setComputerGridCardSize,
-      setComputerLastFolder,
-      setComputerViewMode,
-      setFilesPageActiveTab,
-      setColumnWidth,
-      resetFileManagerState,
-
-    };
+  return {
+    bloggerDogGridCardSize,
+    computerGridCardSize,
+    computerLastFolder,
+    computerViewMode,
+    filesPageActiveTab,
+    setBloggerDogGridCardSize,
+    setComputerGridCardSize,
+    setComputerLastFolder,
+    setComputerViewMode,
+    setFilesPageActiveTab,
   };
-}
+});
 
 export type FileManagerStore = ReturnType<ReturnType<typeof createFileManagerStoreSetup>>;
 
 export const useFileManagerStore = defineStore('fileManager', createFileManagerStoreSetup('editor'));
-export const useFilesPageFileManagerStore = defineStore('filesPageFileManager', createFileManagerStoreSetup('filesPage'));
-export const useFilesPageSidebarFileManagerStore = defineStore('filesPageSidebarFileManager', createFileManagerStoreSetup('filesPage-sidebar'));
+export const useFilesPageFileManagerStore = defineStore(
+  'filesPageFileManager',
+  createFileManagerStoreSetup('filesPage'),
+);
+export const useFilesPageSidebarFileManagerStore = defineStore(
+  'filesPageSidebarFileManager',
+  createFileManagerStoreSetup('filesPage-sidebar'),
+);
