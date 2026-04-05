@@ -1175,6 +1175,7 @@
         "format": "Формат",
         "transcriptionCached": "Используется кэшированная транскрипция",
         "transcriptionCompleted": "Транскрибация завершена",
+        "transcriptionHint": "Отправьте текущий аудиофайл в настроенный сервис STT. Язык указывать необязательно.",
         "transcriptionCachedDescription": "Кэшированная транскрипция была загружена из vardata.",
         "transcriptionLanguage": "Язык",
         "transcriptionSavedDescription": "Транскрипция была сохранена в кэш vardata.",

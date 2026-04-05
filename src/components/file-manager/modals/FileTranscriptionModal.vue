@@ -8,7 +8,7 @@ const isOpen = defineModel<boolean>('open', { required: true });
 
 const props = defineProps<{
   isTranscribing: boolean;
-  transcriptionError: string;
+  transcriptionError: string | null;
   transcriptionEntry: FsEntry | null;
   transcriptionLanguage: string;
 }>();

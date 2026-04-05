@@ -9,7 +9,7 @@ const props = defineProps<{
   isTranscriptionModalOpen: boolean;
   transcriptionLanguage: string;
   isTranscribingAudio: boolean;
-  transcriptionError: string;
+  transcriptionError: string | null;
 }>();
 
 const emit = defineEmits<{

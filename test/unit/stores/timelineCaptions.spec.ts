@@ -6,7 +6,8 @@ import type { TimelineDocument } from '~/timeline/types';
 
 describe('timelineCaptions', () => {
   let timelineDoc: any;
-  let clips: any;
+  let mediaMetadata: any;
+  let batchApplyTimeline: ReturnType<typeof vi.fn>;
   let requestTimelineSave: ReturnType<typeof vi.fn>;
   let getWorkspaceHandle: ReturnType<typeof vi.fn>;
   let getResolvedStorageTopology: ReturnType<typeof vi.fn>;
@@ -26,10 +27,8 @@ describe('timelineCaptions', () => {
       ],
     } as any);
 
-    clips = {
-      addVirtualClipToTrack: vi.fn(),
-    };
-
+    mediaMetadata = ref({});
+    batchApplyTimeline = vi.fn();
     requestTimelineSave = vi.fn().mockResolvedValue(undefined);
     getWorkspaceHandle = vi.fn().mockReturnValue({});
     getResolvedStorageTopology = vi.fn().mockReturnValue({});
@@ -37,7 +36,8 @@ describe('timelineCaptions', () => {
 
     captions = createTimelineCaptions({
       timelineDoc,
-      clips,
+      mediaMetadata,
+      batchApplyTimeline,
       requestTimelineSave,
       getWorkspaceHandle,
       getResolvedStorageTopology,
