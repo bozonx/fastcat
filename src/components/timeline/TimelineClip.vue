@@ -150,9 +150,9 @@ const {
   onPointerDown,
 } = useClickOrDrag({
   onDragStart: (e) => {
-    if (clipItem.value?.locked || props.track.locked) return;
+    if (clipItem.value?.locked || props.track.locked) return false;
     // On mobile, dragging is only allowed when the clip is already selected
-    if (props.isMobile && !timelineStore.selectedItemIds.includes(props.item.id)) return;
+    if (props.isMobile && !timelineStore.selectedItemIds.includes(props.item.id)) return false;
     emit('startMoveItem', e, {
       trackId: props.track.id,
       itemId: props.item.id,
@@ -162,6 +162,7 @@ const {
           ? 'slip'
           : 'move',
     });
+    return true;
   },
   onShortRightClick: (e) => {
     const target = e.target as HTMLElement | null;

@@ -45,19 +45,39 @@ const sortFields: { label: string; value: FileSortField }[] = [
 const toolbarMenuItems = computed(() => {
   const items = [];
 
-  // Sort Fields Section
-  const allowedFields = props.isRemotePanel 
-    ? ['name', 'created'] 
+  // 1. Actions group
+  const actions = [
+    {
+      label: t('common.refresh', 'Refresh'),
+      icon: 'i-heroicons-arrow-path',
+      onSelect: () => emit('refresh'),
+    },
+  ];
+
+  if (!props.isRemotePanel) {
+    actions.push({
+      label: uiStore.showHiddenFiles
+        ? t('videoEditor.fileManager.actions.hideHiddenFiles', 'Hide hidden files')
+        : t('videoEditor.fileManager.actions.showHiddenFiles', 'Show hidden files'),
+      icon: uiStore.showHiddenFiles ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
+      onSelect: () => {
+        uiStore.showHiddenFiles = !uiStore.showHiddenFiles;
+      },
+    });
+  }
+
+  items.push(actions);
+
+  // 2. Sort Fields Section
+  const allowedFields = props.isRemotePanel
+    ? ['name', 'created']
     : ['name', 'type', 'size', 'created', 'modified'];
-    
+
   const filteredSortFields = sortFields.filter((f) => allowedFields.includes(f.value));
 
   const sortSection = filteredSortFields.map((field) => ({
     label: field.label,
-    icon:
-      fileManagerStore.sortOption.field === field.value
-        ? 'i-heroicons-check'
-        : undefined,
+    icon: fileManagerStore.sortOption.field === field.value ? 'i-heroicons-check' : undefined,
     onSelect: () => {
       fileManagerStore.sortOption.field = field.value;
       emit('refresh');
@@ -67,14 +87,11 @@ const toolbarMenuItems = computed(() => {
   if (sortSection.length > 0) {
     items.push(sortSection);
 
-    // Sort Order Section
+    // 3. Sort Order Section
     items.push([
       {
         label: t('common.sortOrder.asc', 'Ascending'),
-        icon:
-          fileManagerStore.sortOption.order === 'asc'
-            ? 'i-heroicons-check'
-            : undefined,
+        icon: fileManagerStore.sortOption.order === 'asc' ? 'i-heroicons-check' : undefined,
         onSelect: () => {
           fileManagerStore.sortOption.order = 'asc';
           emit('refresh');
@@ -82,25 +99,11 @@ const toolbarMenuItems = computed(() => {
       },
       {
         label: t('common.sortOrder.desc', 'Descending'),
-        icon:
-          fileManagerStore.sortOption.order === 'desc'
-            ? 'i-heroicons-check'
-            : undefined,
+        icon: fileManagerStore.sortOption.order === 'desc' ? 'i-heroicons-check' : undefined,
         onSelect: () => {
           fileManagerStore.sortOption.order = 'desc';
           emit('refresh');
         },
-      },
-    ]);
-  }
-
-  // Panel Actions Section
-  if (props.isRemotePanel) {
-    items.push([
-      {
-        label: t('common.refresh', 'Refresh'),
-        icon: 'i-heroicons-arrow-path',
-        onSelect: () => emit('refresh'),
       },
     ]);
   }

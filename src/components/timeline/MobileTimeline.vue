@@ -85,6 +85,8 @@ const isSettingsDrawerOpen = ref(false);
 const virtualClipPresetType = ref<'text' | 'shape' | 'hud'>('text');
 const drawerActiveSnapPoint = ref<string | number | null>(null);
 const isLongPress = ref(false);
+const suppressDrawerSelectionClear = ref(false);
+let suppressDrawerSelectionClearResetTimer: ReturnType<typeof setTimeout> | null = null;
 
 function onOpenVirtualClipPreset(type: 'text' | 'shape' | 'hud') {
   virtualClipPresetType.value = type;
@@ -345,6 +347,10 @@ function onClipPropertiesDrawerClose() {
   drawerActiveSnapPoint.value = null;
   isLongPress.value = false;
   
+  if (suppressDrawerSelectionClear.value) {
+    return;
+  }
+  
   if (selectionStore.selectedEntity?.kind === 'clip') {
     timelineStore.clearSelection();
     selectionStore.clearSelection();
@@ -361,6 +367,10 @@ function onMultiSelectionDrawerClose() {
   isMultiSelectionDrawerOpen.value = false;
   drawerActiveSnapPoint.value = null;
   isLongPress.value = false;
+  
+  if (suppressDrawerSelectionClear.value) {
+    return;
+  }
   
   if (selectionStore.selectedEntity?.kind === 'clips') {
     timelineStore.clearSelection();
@@ -386,10 +396,72 @@ function onTransitionDrawerClose() {
 
 function onGapPropertiesDrawerClose() {
   isGapPropertiesDrawerOpen.value = false;
+  
+  if (suppressDrawerSelectionClear.value) {
+    return;
+  }
+  
   if (selectionStore.selectedEntity?.kind === 'gap') {
     timelineStore.clearSelection();
     selectionStore.clearSelection();
   }
+}
+
+function suppressDrawerSelectionClearTemporarily(callback: () => void) {
+  suppressDrawerSelectionClear.value = true;
+
+  if (suppressDrawerSelectionClearResetTimer !== null) {
+    clearTimeout(suppressDrawerSelectionClearResetTimer);
+  }
+
+  try {
+    callback();
+  } finally {
+    suppressDrawerSelectionClearResetTimer = setTimeout(() => {
+      suppressDrawerSelectionClear.value = false;
+      suppressDrawerSelectionClearResetTimer = null;
+    }, 0);
+  }
+}
+
+function handleMobileTimelineItemSelect(ev: PointerEvent, id: string) {
+  if (ev.pointerType === 'touch') {
+    const wasLongPress = isLongPress.value;
+    isLongPress.value = false;
+
+    if (wasLongPress) {
+      return;
+    }
+
+    drawerActiveSnapPoint.value = null;
+
+    const entity = selectionStore.selectedEntity;
+    const isGapSelected =
+      entity?.source === 'timeline' && entity.kind === 'gap' && entity.itemId === id;
+    const isTrackSelected = entity?.source === 'timeline' && entity.kind === 'track';
+
+    if (isMultiSelectionMode.value && !isGapSelected && !isTrackSelected) {
+      suppressDrawerSelectionClearTemporarily(() => {
+        toggleMobileClipSelection(id);
+      });
+      return;
+    }
+
+    suppressDrawerSelectionClearTemporarily(() => {
+      selectItem(ev, id);
+    });
+    return;
+  }
+
+  selectItem(ev, id);
+}
+
+function handleMobileTimelineItemLongPress(id: string) {
+  suppressDrawerSelectionClearTemporarily(() => {
+    isLongPress.value = true;
+    drawerActiveSnapPoint.value = '116px';
+    enterMobileMultiSelection(id);
+  });
 }
 
 const scrollEl = ref<HTMLElement | null>(null);
@@ -720,6 +792,13 @@ async function onClipAction(payload: TimelineClipActionPayload) {
     });
   }
 }
+
+onBeforeUnmount(() => {
+  if (suppressDrawerSelectionClearResetTimer !== null) {
+    clearTimeout(suppressDrawerSelectionClearResetTimer);
+  }
+});
+
 </script>
 
 <template>
@@ -867,14 +946,7 @@ async function onClipAction(payload: TimelineClipActionPayload) {
       :is-open="isGapPropertiesDrawerOpen"
       :track-id="selectedGap.trackId"
       :item-id="selectedGap.itemId"
-      @close="
-        () => {
-          onGapPropertiesDrawerClose();
-          if (selectionStore.selectedEntity?.kind === 'gap') {
-            selectionStore.clearSelection();
-          }
-        }
-      "
+      @close="onGapPropertiesDrawerClose"
     />
 
     <!-- Timeline Settings Drawer -->
@@ -945,42 +1017,11 @@ async function onClipAction(payload: TimelineClipActionPayload) {
             :dragging-item-id="draggingItemId"
             :move-preview="movePreview"
             is-mobile
-            @select-item="
-              (ev, id) => {
-                if (ev.pointerType === 'touch') {
-                  const wasLongPress = isLongPress;
-                  isLongPress = false; 
-
-                  if (wasLongPress) {
-                    return;
-                  }
-
-                  drawerActiveSnapPoint = null;
-
-                  const entity = selectionStore.selectedEntity;
-                  const isGapSelected =
-                    entity?.source === 'timeline' && entity.kind === 'gap' && entity.itemId === id;
-                  const isTrackSelected = entity?.source === 'timeline' && entity.kind === 'track';
-
-                  if (isMultiSelectionMode && !isGapSelected && !isTrackSelected) {
-                    toggleMobileClipSelection(id);
-                    return;
-                  }
-                }
-
-                selectItem(ev, id);
-              }
-            "
+            @select-item="handleMobileTimelineItemSelect"
             @start-move-item="onStartMoveItem"
             @start-trim-item="onStartTrimItem"
             @clip-action="onClipAction"
-            @long-press-item="
-              (id: string) => {
-                isLongPress = true;
-                drawerActiveSnapPoint = '116px';
-                enterMobileMultiSelection(id);
-              }
-            "
+            @long-press-item="handleMobileTimelineItemLongPress"
           />
 
           <!-- Playhead line (ruler renders its own triangle marker) -->

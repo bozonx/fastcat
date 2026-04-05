@@ -386,56 +386,6 @@ useFileManagerPanelBootstrap({
     />
 
     <div class="flex flex-col flex-1 min-h-0">
-      <!-- Actions Toolbar -->
-      <UContextMenu :items="rootContextMenuItems">
-        <div
-          v-if="projectStore.currentProjectName"
-          class="flex items-center gap-1 px-2 py-1 bg-ui-bg-accent/30 border-b border-ui-border/50"
-        >
-
-
-          <UButton
-            v-if="!props.hideActions"
-            icon="i-heroicons-document-plus"
-            variant="ghost"
-            color="neutral"
-            size="xs"
-            :title="`${t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline')} (In _timelines folder)`"
-            @click="onCreateTimeline"
-          />
-          <UButton
-            v-if="!props.hideActions"
-            icon="i-heroicons-document-text"
-            variant="ghost"
-            color="neutral"
-            size="xs"
-            :title="`${t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document')} (In _documents folder)`"
-            @click="onCreateMarkdown"
-          />
-          <UButton
-            v-if="!props.hideActions"
-            icon="i-heroicons-arrow-up-tray"
-            variant="ghost"
-            color="neutral"
-            size="xs"
-            :title="t('videoEditor.fileManager.actions.uploadFiles', 'Upload files')"
-            @click="triggerFileUpload"
-          />
-
-
-          <div class="ml-auto flex items-center">
-            <UDropdownMenu :items="menuItems" :ui="{ content: 'w-56' }">
-              <UiActionButton
-                icon="i-heroicons-ellipsis-horizontal"
-                variant="ghost"
-                color="neutral"
-                size="xs"
-              />
-            </UDropdownMenu>
-          </div>
-        </div>
-      </UContextMenu>
-
       <!-- File List -->
       <FileManagerFiles
         :editing-entry-path="editingEntryPath"

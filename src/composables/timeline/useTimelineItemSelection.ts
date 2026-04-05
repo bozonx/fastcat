@@ -40,6 +40,7 @@ export function useTimelineItemSelection(tracks: ComputedRef<TimelineTrack[]>) {
       timelineStore.selectTimelineItems(nextSelectedIds);
     } else {
       const trackId = tracks.value.find((t) => t.items.some((i) => i.id === itemId))?.id;
+      const isTouchPointer = e.pointerType === 'touch';
 
       const isClipCurrentlySelected =
         timelineStore.selectedItemIds.length === groupedIds.length &&
@@ -48,7 +49,7 @@ export function useTimelineItemSelection(tracks: ComputedRef<TimelineTrack[]>) {
         (selectionStore.selectedEntity?.kind === 'clip' ||
           selectionStore.selectedEntity?.kind === 'gap');
 
-      if (trackId && isClipCurrentlySelected) {
+      if (trackId && isClipCurrentlySelected && !isTouchPointer) {
         timelineStore.clearSelection();
         timelineStore.selectTrack(trackId);
         selectionStore.selectTimelineTrack(trackId);
