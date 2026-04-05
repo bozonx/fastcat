@@ -5,6 +5,7 @@ import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import ExpandableYamlSection from '~/components/properties/file/ExpandableYamlSection.vue';
 import { formatDurationSeconds } from '~/utils/format';
+import yaml from 'js-yaml';
 
 const props = defineProps<{
   item: RemoteVfsFileEntry;
@@ -26,7 +27,6 @@ const duration = computed(() => {
   return null;
 });
 
-import yaml from 'js-yaml';
 const isMetaExpanded = ref(false);
 const rawMetaYaml = computed(() => {
   if (!props.item.meta) return null;
@@ -83,7 +83,7 @@ const rawMetaYaml = computed(() => {
       :content="rawMetaYaml"
       :expanded="isMetaExpanded"
       :on-toggle="() => (isMetaExpanded = !isMetaExpanded)"
-      :on-copy="undefined"
+      :on-copy="() => {}"
     />
   </PropertySection>
 </template>

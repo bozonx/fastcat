@@ -133,7 +133,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
         kind: item.type === 'file' ? 'directory' : item.type,
         path: entryPath,
         parentPath: path,
-        size: 0,
+        size: item.type === 'file' ? ((item as RemoteVfsFileEntry).media?.[0]?.size ?? 0) : 0,
         lastModified: (item as any).meta?.updatedAt ? new Date((item as any).meta.updatedAt).getTime() : undefined,
         isContentItem: item.type === 'file',
         remoteData: item,
