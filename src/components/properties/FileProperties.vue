@@ -36,6 +36,7 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
+import type { PrimaryEntryAction } from '~/composables/properties/useFilePropertiesActions';
 import type { FsEntry } from '~/types/fs';
 
 const props = defineProps<{
@@ -436,9 +437,18 @@ const {
     uiStore.pendingOtioCreateVersion = props.selectedFsEntry;
   },
   extractAudio: () => extractAudio(props.selectedFsEntry),
-  onCopy,
   onCut,
   onPaste,
+});
+
+const filteredDirectoryPrimaryActions = computed(() => {
+  if (!isRemoteContent.value) return directoryPrimaryActions.value;
+  return directoryPrimaryActions.value.filter((a: PrimaryEntryAction) => ['rename', 'delete'].includes(a.id));
+});
+
+const filteredFilePrimaryActions = computed(() => {
+  if (!isRemoteContent.value) return filePrimaryActions.value;
+  return filePrimaryActions.value.filter((a: PrimaryEntryAction) => ['rename', 'delete'].includes(a.id));
 });
 </script>
 
@@ -520,7 +530,7 @@ const {
         :title="t('videoEditor.fileManager.actions.title', 'Actions')"
       >
         <EntryActions
-          :primary-actions="directoryPrimaryActions"
+          :primary-actions="filteredDirectoryPrimaryActions"
           :secondary-actions="isRemoteContent ? [] : directorySecondaryActions"
         />
       </PropertySection>
@@ -531,7 +541,7 @@ const {
         :title="t('videoEditor.fileManager.actions.title', 'Actions')"
       >
         <EntryActions
-          :primary-actions="filePrimaryActions"
+          :primary-actions="filteredFilePrimaryActions"
           :secondary-actions="isRemoteContent ? [] : fileSecondaryActions"
         />
       </PropertySection>
