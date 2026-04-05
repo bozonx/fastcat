@@ -19,12 +19,13 @@ const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof 
         folders-only
         is-files-page
         :compact="compact"
+        instance-id="editor-main"
         class="h-full"
         @select="fileManagerStore.openFolder"
       />
     </Pane>
     <Pane size="70" min-size="20">
-      <FileBrowser :compact="compact" class="h-full" />
+      <FileBrowser :compact="compact" instance-id="editor-main" class="h-full" />
     </Pane>
   </Splitpanes>
 </template>

@@ -28,7 +28,10 @@ const props = defineProps<{
   isFilesPage?: boolean;
   compact?: boolean;
   hideActions?: boolean;
+  instanceId?: string;
 }>();
+
+const instanceId = props.instanceId || 'left';
 
 
 const emit = defineEmits<{
@@ -370,9 +373,9 @@ useFileManagerPanelBootstrap({
   <div
     class="panel-focus-frame flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border transition-colors duration-200 min-w-0 overflow-hidden relative"
     :class="{
-      'panel-focus-frame--active': focusStore.isPanelFocused('left'),
+      'panel-focus-frame--active': focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`),
     }"
-    @pointerdown.capture="focusStore.setTempFocus('left')"
+    @pointerdown.capture="focusStore.setPanelFocus(`dynamic:file-manager:${instanceId}`)"
   >
     <!-- Hidden inputs -->
     <input ref="fileInput" type="file" multiple class="hidden" @change="onFileSelect" />
@@ -440,6 +443,7 @@ useFileManagerPanelBootstrap({
         :editing-entry-path="editingEntryPath"
         :folders-only="foldersOnly"
         :is-files-page="isFilesPage"
+        :instance-id="instanceId"
         :is-dragging="false"
         :is-loading="isLoading"
         :is-api-supported="isApiSupported"

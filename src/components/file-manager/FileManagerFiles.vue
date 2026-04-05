@@ -5,7 +5,7 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useAutoScroll } from '~/composables/ui/useAutoScroll';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
-import { useFocusStore } from '~/stores/focus.store';
+import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useMediaStore } from '~/stores/media.store';
@@ -38,6 +38,7 @@ const props = defineProps<{
   onCopyEntries?: (entries: FsEntry[]) => void;
   onCutEntries?: (entries: FsEntry[]) => void;
   onPasteToEntry?: (entry: FsEntry) => void;
+  instanceId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -173,9 +174,10 @@ watch(
   () => uiStore.fileBrowserMoveSelectionTrigger,
   (trigger) => {
     // Only handle if this is the sidebar and it's focused
+    const focusId = `dynamic:file-manager:${props.instanceId || 'left'}` as PanelFocusId;
     if (
       !props.isFilesPage &&
-      (focusStore.isPanelFocused('left') || focusStore.isPanelFocused('project'))
+      (focusStore.isPanelFocused(focusId) || focusStore.isPanelFocused('project'))
     ) {
       moveSelection(trigger.dir);
     }
@@ -202,11 +204,8 @@ function onContainerDragLeave(e: DragEvent) {
 }
 
 function onEntryFocus(_entry: FsEntry) {
-  if (props.isFilesPage) {
-    focusStore.setPanelFocus('filesBrowser');
-  } else {
-    focusStore.setTempFocus('left');
-  }
+  const focusId = `dynamic:file-manager:${props.instanceId || (props.isFilesPage ? 'filesBrowser' : 'left')}` as PanelFocusId;
+  focusStore.setPanelFocus(focusId);
 }
 
 function onTreeContainerKeyDown(e: KeyboardEvent) {
@@ -384,6 +383,7 @@ function getVisibleEntries(entries: FsEntry[]): FsEntry[] {
 const { handleEntryClick: handleSelectionClick, selectSingle } = useFileManagerSelection({
   getVisibleEntries: () => getVisibleEntries(props.rootEntries),
   onSingleSelect: (entry) => emit('select', entry),
+  instanceId: props.instanceId,
 });
 
 async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
