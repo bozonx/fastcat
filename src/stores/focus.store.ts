@@ -12,6 +12,8 @@ export type PanelFocusId =
   | 'properties'
   | 'audioMixer'
   | 'exportForm'
+  | 'files-sidebar'
+  | 'files-main'
   | `dynamic:${string}`;
 export type AnyPanelFocus = PanelFocusId;
 

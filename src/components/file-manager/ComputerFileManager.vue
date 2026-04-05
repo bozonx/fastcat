@@ -10,6 +10,7 @@ import type { FsEntry } from '~/types/fs';
 
 const props = defineProps<{
     instanceId?: string;
+    hideFocusFrame?: boolean;
 }>();
 
 const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
@@ -148,6 +149,7 @@ function onSelect(entry: FsEntry) {
         <FileBrowser 
             :vfs="vfs!" 
             :instance-id="instanceId"
+            :hide-focus-frame="props.hideFocusFrame"
             class="h-full"
         />
       </Pane>

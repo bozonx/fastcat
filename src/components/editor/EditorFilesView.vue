@@ -10,6 +10,7 @@ import FileManagerStoreProvider from '~/components/file-manager/FileManagerStore
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useUiStore } from '~/stores/ui.store';
+import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
 import { BloggerDogVfsAdapter } from '~/file-manager/core/vfs/bloggerdog.adapter';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import type { FsEntry } from '~/types/fs';
@@ -37,6 +38,7 @@ const runtimeConfig = useRuntimeConfig();
 const mainStore = useFilesPageFileManagerStore();
 const sidebarStore = useFilesPageSidebarFileManagerStore();
 
+const focusStore = useFocusStore();
 provide('fileManagerStore', mainStore);
 
 const bloggerDogVfs = computed(() => {
@@ -78,7 +80,16 @@ onMounted(() => {
   <div class="h-full w-full">
     <Splitpanes class="editor-splitpanes">
       <!-- Left Sidebar: Computer | BloggerDog -->
-      <Pane :size="25" min-size="10" class="border-r border-ui-border bg-ui-bg-elevated flex flex-col min-w-0 overflow-hidden">
+      <Pane 
+        :size="25" 
+        min-size="10" 
+        class="border-r border-ui-border bg-ui-bg-elevated flex flex-col min-w-0 overflow-hidden"
+        :class="{
+          'panel-focus-frame': true,
+          'panel-focus-frame--active': focusStore.isPanelFocused('dynamic:file-manager:sidebar'),
+        }"
+        @pointerdown.capture="focusStore.setPanelFocus('dynamic:file-manager:sidebar')"
+      >
         <div class="flex items-center gap-1 p-2 border-b border-ui-border bg-ui-bg-accent/10">
           <UButton
             :color="sidebarStore.filesPageActiveTab === 'computer' ? 'primary' : 'neutral'"
@@ -103,7 +114,7 @@ onMounted(() => {
         <div class="flex-1 min-h-0">
           <FileManagerStoreProvider :store="sidebarStore">
             <template v-if="sidebarStore.filesPageActiveTab === 'computer'">
-              <ComputerFileManager instance-id="files-sidebar-computer" />
+              <ComputerFileManager instance-id="sidebar" hide-focus-frame />
             </template>
             <template v-else>
               <div v-if="!bloggerDogVfs" class="h-full flex flex-col items-center justify-center p-6 text-center gap-4">
@@ -131,7 +142,8 @@ onMounted(() => {
                 v-else
                 :remote-mode-only="true" 
                 :vfs="bloggerDogVfs"
-                instance-id="files-sidebar-bloggerdog"
+                instance-id="sidebar"
+                hide-focus-frame
                 class="h-full" 
               />
             </template>
@@ -140,7 +152,14 @@ onMounted(() => {
       </Pane>
 
       <!-- Main Project Panels -->
-      <Pane :size="75">
+      <Pane 
+        :size="75"
+        class="panel-focus-frame"
+        :class="{
+          'panel-focus-frame--active': focusStore.isPanelFocused('dynamic:file-manager:main'),
+        }"
+        @pointerdown.capture="focusStore.setPanelFocus('dynamic:file-manager:main')"
+      >
         <Splitpanes
           class="editor-splitpanes h-full"
           @resized="(event: { panes: Array<{ size: number }> }) => emit('resized', event)"
@@ -150,12 +169,13 @@ onMounted(() => {
               folders-only
               is-files-page
               class="h-full"
-              instance-id="files-main"
+              instance-id="main"
+              hide-focus-frame
               @select="(entry) => mainStore.openFolder(entry)"
             />
           </Pane>
           <Pane :size="sizes[1]" min-size="10">
-            <FileBrowser class="h-full" instance-id="files-main" />
+            <FileBrowser class="h-full" instance-id="main" hide-focus-frame />
           </Pane>
           <Pane :size="sizes[2]" min-size="10">
             <PropertiesPanel
