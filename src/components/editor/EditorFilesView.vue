@@ -87,7 +87,7 @@ onMounted(() => {
             class="flex-1 justify-center truncate"
             @click="fileManagerStore.setFilesPageActiveTab('computer')"
           >
-            {{ workspaceStore.workspaceProviderId === 'opfs' ? t('fastcat.fileManager.tabs.workspace', 'Workspace') : t('fastcat.fileManager.tabs.computer', 'Computer') }}
+            {{ workspaceStore.workspaceProviderId === 'tauri' ? t('fastcat.fileManager.tabs.computer') : t('fastcat.fileManager.tabs.workspace') }}
           </UButton>
           <UButton
             :color="fileManagerStore.filesPageActiveTab === 'bloggerdog' ? 'primary' : 'neutral'"
