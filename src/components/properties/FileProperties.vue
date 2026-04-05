@@ -514,6 +514,28 @@ const {
         :latest-transcription-text="latestTranscriptionText"
       />
 
+      <PropertySection
+        v-if="!hideActions && fileInfo?.kind === 'directory'"
+        key="actions-directory"
+        :title="t('videoEditor.fileManager.actions.title', 'Actions')"
+      >
+        <EntryActions
+          :primary-actions="directoryPrimaryActions"
+          :secondary-actions="isRemoteContent ? [] : directorySecondaryActions"
+        />
+      </PropertySection>
+
+      <PropertySection
+        v-else-if="!hideActions && fileInfo?.kind === 'file'"
+        key="actions-file"
+        :title="t('videoEditor.fileManager.actions.title', 'Actions')"
+      >
+        <EntryActions
+          :primary-actions="filePrimaryActions"
+          :secondary-actions="isRemoteContent ? [] : fileSecondaryActions"
+        />
+      </PropertySection>
+
       <BloggerDogItemPropertiesSection
         v-if="isBloggerDogContentItem && castedRemoteRecord"
         :item="castedRemoteRecord"
@@ -539,27 +561,6 @@ const {
         :format-duration-seconds="formatDurationSeconds"
       />
 
-      <PropertySection
-        v-if="!hideActions && fileInfo?.kind === 'directory'"
-        key="actions-directory"
-        :title="t('videoEditor.fileManager.actions.title', 'Actions')"
-      >
-        <EntryActions
-          :primary-actions="directoryPrimaryActions"
-          :secondary-actions="isRemoteContent ? [] : directorySecondaryActions"
-        />
-      </PropertySection>
-
-      <PropertySection
-        v-else-if="!hideActions && fileInfo?.kind === 'file'"
-        key="actions-file"
-        :title="t('videoEditor.fileManager.actions.title', 'Actions')"
-      >
-        <EntryActions
-          :primary-actions="filePrimaryActions"
-          :secondary-actions="isRemoteContent ? [] : fileSecondaryActions"
-        />
-      </PropertySection>
 
       <FileGeneralInfoSection
         v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'directory'"

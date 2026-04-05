@@ -11,7 +11,6 @@ import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
-import { BloggerDogVfsAdapter } from '~/file-manager/core/vfs/bloggerdog.adapter';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import type { FsEntry } from '~/types/fs';
 import type { SelectedEntity } from '~/stores/selection.store';
@@ -41,24 +40,23 @@ const persistenceStore = useFileBrowserPersistenceStore();
 const focusStore = useFocusStore();
 provide('fileManagerStore', mainStore);
 
-const bloggerDogVfs = computed(() => {
+const nuxtApp = useNuxtApp();
+const isBloggerDogConfigured = computed(() => {
   const bloggerDogApiUrl = typeof runtimeConfig.public.bloggerDogApiUrl === 'string' 
     ? runtimeConfig.public.bloggerDogApiUrl 
     : '';
   
-  const config = resolveExternalServiceConfig({
+  return !!resolveExternalServiceConfig({
     service: 'files',
     integrations: workspaceStore.userSettings.integrations,
     bloggerDogApiUrl,
     fastcatAccountApiUrl: runtimeConfig.public.fastcatAccountApiUrl as string,
   });
-  
-  if (!config) return null;
+});
 
-  return new BloggerDogVfsAdapter(() => ({
-    baseUrl: config.baseUrl,
-    bearerToken: config.bearerToken
-  }));
+const bloggerDogVfs = computed(() => {
+  if (!isBloggerDogConfigured.value) return null;
+  return (nuxtApp as any).$vfs;
 });
 
 function openIntegrationsSettings() {
@@ -165,7 +163,7 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
                 <ComputerFileManager instance-id="sidebar" hide-focus-frame />
               </template>
               <template v-else>
-                <div v-if="!bloggerDogVfs" class="h-full flex flex-col items-center justify-center p-6 text-center gap-4">
+                <div v-if="!isBloggerDogConfigured" class="h-full flex flex-col items-center justify-center p-6 text-center gap-4">
                   <div class="p-4 rounded-full bg-ui-bg-accent/20">
                     <UIcon name="i-heroicons-cloud-slash" class="w-12 h-12 text-ui-text-dim opacity-50" />
                   </div>

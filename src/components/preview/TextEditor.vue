@@ -79,20 +79,7 @@ async function saveNow() {
   isSaving.value = true;
   saveError.value = null;
   try {
-    const handle = await projectStore.getFileHandleByPath(props.filePath);
-    if (!handle) {
-      saveError.value = 'File handle not found';
-      return;
-    }
-
-    if (typeof (handle as any).createWritable !== 'function') {
-      saveError.value = 'Writing is not supported';
-      return;
-    }
-
-    const writable = await (handle as any).createWritable();
-    await writable.write(content.value);
-    await writable.close();
+    await fm.vfs.writeFile(props.filePath, content.value);
 
     lastSavedContent.value = content.value;
     lastSavedAt.value = new Date();
