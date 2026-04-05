@@ -1,6 +1,6 @@
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
-import { useFocusStore } from '~/stores/focus.store';
+import { useFocusStore, isFileManagerPanelFocus, isFileManagerMainFocus, isFileManagerSidebarFocus } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
@@ -32,11 +32,7 @@ export function useGeneralHotkeys(
   const fileManager = useFileManager();
 
   function isFileManagerFocus() {
-    return (
-      focusStore.effectiveFocus === 'filesBrowser' ||
-      focusStore.effectiveFocus === 'left' ||
-      focusStore.effectiveFocus === 'project'
-    );
+    return isFileManagerPanelFocus(focusStore.effectiveFocus);
   }
 
   function getSelectedFsEntries() {
@@ -391,7 +387,7 @@ export function useGeneralHotkeys(
     },
 
     'general.navigateBack': () => {
-      if (focusStore.effectiveFocus === 'filesBrowser') {
+      if (isFileManagerMainFocus(focusStore.effectiveFocus)) {
         uiStore.fileBrowserNavigateBackTrigger++;
         return true;
       }
@@ -399,7 +395,7 @@ export function useGeneralHotkeys(
     },
 
     'general.navigateUp': () => {
-      if (focusStore.effectiveFocus === 'filesBrowser') {
+      if (isFileManagerMainFocus(focusStore.effectiveFocus)) {
         uiStore.fileBrowserNavigateUpTrigger++;
         return true;
       }
@@ -423,7 +419,7 @@ export function useGeneralHotkeys(
     },
 
     'general.navigateSelectionLeft': (e) => {
-      if (focusStore.effectiveFocus === 'filesBrowser') {
+      if (isFileManagerMainFocus(focusStore.effectiveFocus)) {
         startNavigationHotkeyHold({ dir: 'left', keyCode: e.code });
         return true;
       }
@@ -431,7 +427,7 @@ export function useGeneralHotkeys(
     },
 
     'general.navigateSelectionRight': (e) => {
-      if (focusStore.effectiveFocus === 'filesBrowser') {
+      if (isFileManagerMainFocus(focusStore.effectiveFocus)) {
         startNavigationHotkeyHold({ dir: 'right', keyCode: e.code });
         return true;
       }
@@ -489,11 +485,11 @@ export function useGeneralHotkeys(
         toggleTimelineSelectAll();
         return true;
       }
-      if (focusStore.effectiveFocus === 'filesBrowser') {
+      if (isFileManagerMainFocus(focusStore.effectiveFocus)) {
         uiStore.fileBrowserSelectAllTrigger++;
         return true;
       }
-      if (focusStore.effectiveFocus === 'project' || focusStore.effectiveFocus === 'left') {
+      if (isFileManagerSidebarFocus(focusStore.effectiveFocus)) {
         uiStore.fileTreeSelectAllTrigger++;
         return true;
       }

@@ -23,7 +23,7 @@ import {
 
 import MonitorContainer from '~/components/monitor/MonitorContainer.vue';
 import Timeline from '~/components/layout-panels/Timeline.vue';
-import { useFocusStore } from '~/stores/focus.store';
+import { useFocusStore, isFileManagerPanelFocus } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
 
@@ -266,7 +266,7 @@ function onGlobalKeyDown(e: KeyboardEvent) {
 
   if (projectStore.currentView !== 'files') return;
 
-  if (focusStore.effectiveFocus !== 'filesBrowser') return;
+  if (!isFileManagerPanelFocus(focusStore.effectiveFocus)) return;
 
   e.preventDefault();
   e.stopImmediatePropagation();

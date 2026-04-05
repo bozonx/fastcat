@@ -1,6 +1,7 @@
 import { watch } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { useUiStore } from '~/stores/ui.store';
+import { useFocusStore } from '~/stores/focus.store';
 
 export interface FileManagerPanelPendingActionsOptions {
   openDeleteConfirmModal: (entries: FsEntry[]) => void;
@@ -9,6 +10,7 @@ export interface FileManagerPanelPendingActionsOptions {
   createTimelineInDirectory: (entry: FsEntry) => Promise<void>;
   createMarkdownInDirectory: (entry: FsEntry) => Promise<void>;
   createOtioVersion: (entry: FsEntry) => void | Promise<void>;
+  instanceId: string;
 }
 
 export function useFileManagerPanelPendingActions({
@@ -18,14 +20,19 @@ export function useFileManagerPanelPendingActions({
   createTimelineInDirectory,
   createMarkdownInDirectory,
   createOtioVersion,
+  instanceId,
 }: FileManagerPanelPendingActionsOptions) {
   const uiStore = useUiStore();
+  const focusStore = useFocusStore();
+
+  const isFocused = () => focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`);
 
   watch(
     () => uiStore.pendingFsEntryDelete,
     (value) => {
       const entries = value;
       if (!entries || entries.length === 0) return;
+      if (!isFocused()) return;
       openDeleteConfirmModal(entries);
       uiStore.pendingFsEntryDelete = null;
     },
@@ -36,6 +43,7 @@ export function useFileManagerPanelPendingActions({
     (value) => {
       const entry = value;
       if (!entry) return;
+      if (!isFocused()) return;
       startRename(entry);
       uiStore.pendingFsEntryRename = null;
     },

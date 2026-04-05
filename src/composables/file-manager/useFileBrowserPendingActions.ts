@@ -2,13 +2,16 @@ import { watch } from 'vue';
 import type { Ref } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { useUiStore } from '~/stores/ui.store';
+import { useFocusStore } from '~/stores/focus.store';
 
 export interface FileBrowserPendingActionsOptions {
   folderEntries: Ref<FsEntry[]>;
   startRename: (entry: FsEntry) => void;
   createTimelineInDirectory: (entry: FsEntry) => Promise<void>;
   createMarkdownInDirectory: (entry: FsEntry) => Promise<void>;
+  openDeleteConfirmModal: (entries: FsEntry[]) => void;
   handlePendingRemoteDownloadRequest: () => Promise<void>;
+  instanceId: string;
 }
 
 export function useFileBrowserPendingActions({
@@ -16,9 +19,24 @@ export function useFileBrowserPendingActions({
   startRename,
   createTimelineInDirectory,
   createMarkdownInDirectory,
+  openDeleteConfirmModal,
   handlePendingRemoteDownloadRequest,
+  instanceId,
 }: FileBrowserPendingActionsOptions) {
   const uiStore = useUiStore();
+  const focusStore = useFocusStore();
+
+  watch(
+    () => uiStore.pendingFsEntryDelete,
+    (value) => {
+      const entries = value as FsEntry[] | null;
+      if (!entries || entries.length === 0) return;
+      if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return;
+
+      openDeleteConfirmModal(entries);
+      uiStore.pendingFsEntryDelete = null;
+    },
+  );
 
   watch(
     () => uiStore.pendingFsEntryRename,

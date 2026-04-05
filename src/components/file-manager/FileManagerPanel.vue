@@ -362,6 +362,7 @@ useFileManagerPanelPendingActions({
     await onFileAction('createMarkdown', entry);
   },
   createOtioVersion: (entry) => onFileActionBase('createOtioVersion', entry),
+  instanceId,
 });
 
 useFileManagerPanelBootstrap({

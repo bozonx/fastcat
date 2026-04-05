@@ -42,14 +42,36 @@ export function isPreviewPanelFocus(panelId: string | null | undefined): boolean
   if (!panelId) return false;
   if (panelId === 'monitor' || String(panelId).startsWith('dynamic:monitor:')) return false;
 
+  return isPropertiesPanelFocus(panelId) || isFileManagerPanelFocus(panelId);
+}
+
+export function isFileManagerPanelFocus(panelId: string | null | undefined): boolean {
+  if (!panelId) return false;
+  return isFileManagerSidebarFocus(panelId) || isFileManagerMainFocus(panelId);
+}
+
+export function isFileManagerSidebarFocus(panelId: string | null | undefined): boolean {
+  if (!panelId) return false;
+  const id = String(panelId);
+  return (
+    id === 'left' ||
+    id === 'files-sidebar' ||
+    (id.startsWith('dynamic:file-manager:') && id.endsWith(':sidebar')) ||
+    (id.startsWith('dynamic:fileManager:') && id.endsWith(':sidebar'))
+  );
+}
+
+export function isFileManagerMainFocus(panelId: string | null | undefined): boolean {
+  if (!panelId) return false;
   const id = String(panelId);
   return (
     id === 'project' ||
-    id === 'left' ||
     id === 'right' ||
-    isPropertiesPanelFocus(id) ||
-    (id.startsWith('dynamic:') &&
-      ['media', 'text', 'fileManager', 'library'].includes(id.split(':')[1] || ''))
+    id === 'filesBrowser' ||
+    id === 'files-main' ||
+    (id.startsWith('dynamic:file-manager:') && id.endsWith(':main')) ||
+    (id.startsWith('dynamic:fileManager:') && id.endsWith(':main')) ||
+    (id.startsWith('dynamic:fileManager:') && !id.endsWith(':sidebar'))
   );
 }
 
