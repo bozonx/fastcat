@@ -50,6 +50,7 @@ const props = defineProps<{
   remoteModeOnly?: boolean;
   vfs?: IFileSystemAdapter;
   hideActions?: boolean;
+  hideUpload?: boolean;
   hideFocusFrame?: boolean;
 }>();
 
@@ -403,7 +404,7 @@ function handleContainerClick() {
   if (preventClickClear.value) return;
 
   if (isRemoteMode.value) {
-    if (remoteCurrentFolder.value) {
+    if (remoteCurrentFolder.value && !remoteError.value && isRemoteAvailable.value) {
       setSelectedFsEntry(remoteCurrentFolder.value as unknown as FsEntry);
     } else {
       selectionStore.clearSelection();
@@ -622,6 +623,7 @@ async function onDirectoryUploadChange(e: Event) {
       :is-remote-panel="props.remoteModeOnly"
       :compact="compact"
       :hide-actions="hideActions"
+      :hide-upload="hideUpload"
       @refresh="refreshFileTree"
 
       @open-remote="toggleBloggerDogPanel"
