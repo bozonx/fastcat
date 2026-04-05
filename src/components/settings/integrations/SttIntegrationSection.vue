@@ -41,11 +41,17 @@ const sttSourceLabel = computed(() => {
     service: 'stt',
     integrations: workspaceStore.userSettings.integrations,
     bloggerDogApiUrl: bloggerDogApiUrl.value,
+    fastcatAccountApiUrl: runtimeConfig.public.fastcatAccountApiUrl as string,
   });
   if (!resolved) return t('videoEditor.settings.integrationInactive', 'Not connected');
-  return resolved.source === 'fastcat_publicador'
-    ? t('videoEditor.settings.integrationSourceBloggerDog', 'Through BloggerDog')
-    : t('videoEditor.settings.integrationSourceManual', 'Manual API');
+  if (resolved.source === 'fastcat_publicador') {
+    const isAccount = workspaceStore.userSettings.integrations.fastcatAccount.enabled && 
+                      workspaceStore.userSettings.integrations.fastcatAccount.bearerToken === resolved.bearerToken;
+    return isAccount
+      ? t('videoEditor.settings.fastcatAccountSource', 'Through Fastcat Account')
+      : t('videoEditor.settings.integrationSourceBloggerDog', 'Through BloggerDog');
+  }
+  return t('videoEditor.settings.integrationSourceManual', 'Manual API');
 });
 
 const sttModelsText = computed({
@@ -63,6 +69,7 @@ async function runHealth() {
     service: 'stt',
     integrations: workspaceStore.userSettings.integrations,
     bloggerDogApiUrl: bloggerDogApiUrl.value,
+    fastcatAccountApiUrl: runtimeConfig.public.fastcatAccountApiUrl as string,
   });
 
   if (!resolved) {
@@ -111,7 +118,7 @@ function getHealthTone(status: typeof healthState.status) {
         {{
           t(
             'videoEditor.settings.integrationSttHint',
-            'Manual STT API can work standalone or override BloggerDog for speech recognition.',
+            'Manual STT API can work standalone or override Fastcat Account / BloggerDog for speech recognition.',
           )
         }}
       </div>

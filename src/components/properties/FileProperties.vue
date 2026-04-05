@@ -91,6 +91,7 @@ const sttConfig = computed(() =>
       typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
         ? runtimeConfig.public.bloggerDogApiUrl
         : '',
+    fastcatAccountApiUrl: runtimeConfig.public.fastcatAccountApiUrl as string,
   }),
 );
 
@@ -276,6 +277,11 @@ const {
   bloggerDogApiUrl: computed(() =>
     typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
       ? runtimeConfig.public.bloggerDogApiUrl
+      : '',
+  ),
+  fastcatAccountApiUrl: computed(() =>
+    typeof runtimeConfig.public.fastcatAccountApiUrl === 'string'
+      ? runtimeConfig.public.fastcatAccountApiUrl
       : '',
   ),
   getFileByPath: (path) => projectStore.getFileByPath(path),

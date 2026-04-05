@@ -81,6 +81,7 @@ export function createDefaultUserSettings(): FastCatUserSettings {
     projectDefaults: createDefaultProjectDefaults(),
     video: { ...DEFAULT_USER_SETTINGS.video },
     integrations: {
+      fastcatAccount: { ...DEFAULT_USER_SETTINGS.integrations.fastcatAccount },
       fastcatPublicador: { ...DEFAULT_USER_SETTINGS.integrations.fastcatPublicador },
       manualFilesApi: { ...DEFAULT_USER_SETTINGS.integrations.manualFilesApi },
       manualSttApi: { ...DEFAULT_USER_SETTINGS.integrations.manualSttApi },

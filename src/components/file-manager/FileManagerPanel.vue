@@ -85,6 +85,7 @@ const bloggerDogApiUrl =
 const stt = useFileManagerPanelStt({
   vfs: { getFile: (path) => vfs.getFile(path) },
   bloggerDogApiUrl,
+  fastcatAccountApiUrl: runtimeConfig.public.fastcatAccountApiUrl as string,
   onSuccess: ({ cached, mediaType }) => {
     toast.add({
       title: cached
