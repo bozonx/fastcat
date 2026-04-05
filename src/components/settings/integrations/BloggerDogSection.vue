@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, computed } from 'vue';
+import { reactive, computed, onMounted } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
 import { FASTCAT_PUBLICADOR_APP_NAME } from '~/utils/constants';
@@ -110,6 +110,12 @@ async function runHealth() {
   }
 }
 
+onMounted(() => {
+  if (fastcat.value?.bearerToken) {
+    runHealth();
+  }
+});
+
 function getHealthTone(status: typeof healthState.status) {
   if (status === 'success') return 'text-success-400';
   if (status === 'error') return 'text-error-400';
@@ -126,21 +132,57 @@ function getHealthTone(status: typeof healthState.status) {
           {{ t('videoEditor.settings.bloggerDogIntegrationHint') }}
         </div>
       </div>
-      <div
-        v-if="fastcat?.bearerToken"
-        class="flex items-center gap-1.5 px-2 py-1 rounded-md bg-success-500/10 text-success-400 text-xs font-medium shrink-0"
-      >
-        <UIcon name="i-heroicons-check-circle" class="h-4 w-4" />
-        {{ t('videoEditor.settings.integrationHealthOk', 'Connected') }}
+      <div v-if="fastcat?.bearerToken" class="flex items-center gap-1 shrink-0">
+        <div
+          class="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium"
+          :class="[
+            healthState.status === 'success'
+              ? 'bg-success-500/10 text-success-400'
+              : healthState.status === 'error'
+                ? 'bg-error-500/10 text-error-400'
+                : 'bg-ui-bg-muted/50 text-ui-text-muted',
+          ]"
+        >
+          <UIcon
+            v-if="healthState.status === 'success'"
+            name="i-heroicons-check-circle"
+            class="h-4 w-4"
+          />
+          <UIcon
+            v-else-if="healthState.status === 'error'"
+            name="i-heroicons-exclamation-circle"
+            class="h-4 w-4"
+          />
+          <span v-if="healthState.loading">
+            {{ t('common.loading', 'Checking...') }}
+          </span>
+          <span v-else-if="healthState.status === 'success'">
+            {{ t('videoEditor.settings.integrationHealthOk', 'Connected') }}
+          </span>
+          <span v-else-if="healthState.status === 'error'">
+            {{ t('common.error', 'Error') }}
+          </span>
+          <span v-else>
+            {{ t('videoEditor.settings.integrationStatusWaiting', 'Waiting') }}
+          </span>
+        </div>
+
+        <UButton
+          color="neutral"
+          variant="ghost"
+          size="xs"
+          square
+          :loading="healthState.loading"
+          icon="i-heroicons-arrow-path"
+          @click="runHealth"
+        />
       </div>
     </div>
 
     <!-- NOT CONNECTED STATE -->
     <div v-if="!fastcat?.bearerToken" class="flex flex-col gap-4 mt-2">
       <div class="flex flex-col gap-1 p-2 rounded bg-ui-bg-muted/50 border border-ui-border/50">
-        <div class="text-2xs text-ui-text-muted">
-          API URL: <span class="text-ui-text">{{ bloggerDogApiUrl || '—' }}</span>
-        </div>
+
         <div class="text-2xs text-ui-text-muted">
           UI URL: <span class="text-ui-text">{{ bloggerDogUiUrl || '—' }}</span>
         </div>
@@ -174,20 +216,7 @@ function getHealthTone(status: typeof healthState.status) {
 
     <!-- CONNECTED STATE -->
     <div v-else class="flex flex-col gap-5 mt-2">
-      <div class="flex flex-col gap-1.5 p-3 rounded-lg border border-ui-border bg-ui-bg">
-        <div class="text-2xs uppercase tracking-wider text-ui-text-muted font-bold">
-          {{ t('videoEditor.settings.integrationBaseUrl', 'API URL') }}
-        </div>
-        <div class="text-sm text-ui-text break-all">
-          {{ bloggerDogApiUrl }}
-        </div>
-      </div>
-
       <div class="flex flex-wrap items-center gap-4">
-        <UButton color="neutral" variant="soft" :loading="healthState.loading" @click="runHealth">
-          {{ t('videoEditor.settings.integrationHealthCheck', 'Check health') }}
-        </UButton>
-
         <UButton color="error" variant="ghost" size="sm" @click="disconnectFastCat">
           {{ t('videoEditor.settings.integrationBreakConnection', 'Break connection') }}
         </UButton>
