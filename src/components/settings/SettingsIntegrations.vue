@@ -42,13 +42,26 @@ watch(
 
     const target = (route.query.target || route.query.state) as string;
     
-    if (target === 'fastcat') {
-      workspaceStore.userSettings.integrations.fastcatAccount.bearerToken = token.trim();
-      workspaceStore.userSettings.integrations.fastcatAccount.enabled = true;
-    } else if (target === 'bloggerdog') {
-      workspaceStore.userSettings.integrations.fastcatPublicador.bearerToken = token.trim();
-      workspaceStore.userSettings.integrations.fastcatPublicador.enabled = true;
+    if (!target) {
+      console.warn('[Integrations] Received token but no target/state found in query:', route.query);
     }
+
+    await workspaceStore.batchUpdateUserSettings((draft) => {
+      // If we have an explicit target, use it
+      if (target === 'fastcat') {
+        draft.integrations.fastcatAccount.bearerToken = token.trim();
+        draft.integrations.fastcatAccount.enabled = true;
+      } else if (target === 'bloggerdog') {
+        draft.integrations.fastcatPublicador.bearerToken = token.trim();
+        draft.integrations.fastcatPublicador.enabled = true;
+      } 
+      // Fallback: if only one integration exists or if one is clearly "in progress" 
+      // (but we don't have that state yet). 
+      // For now, let's just log and skip if target is unknown to avoid corruption.
+    }, { immediate: true });
+
+    // Explicitly flush to be 100% sure before showing success
+    await workspaceStore.flushSettingsSaves();
 
     showSuccessMessage.value = true;
 
