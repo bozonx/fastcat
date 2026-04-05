@@ -54,22 +54,6 @@ function normalizeFileType(fileType: string | undefined, file: File): string {
   return 'application/octet-stream';
 }
 
-function replaceFileExtension(fileName: string, extension: string): string {
-  const normalizedExtension = extension.startsWith('.') ? extension : `.${extension}`;
-  const trimmedFileName = fileName.trim();
-
-  if (!trimmedFileName) {
-    return `transcription${normalizedExtension}`;
-  }
-
-  const lastDotIndex = trimmedFileName.lastIndexOf('.');
-  if (lastDotIndex <= 0) {
-    return `${trimmedFileName}${normalizedExtension}`;
-  }
-
-  return `${trimmedFileName.slice(0, lastDotIndex)}${normalizedExtension}`;
-}
-
 async function createCacheKey(params: {
   filePath: string;
   fileName: string;
@@ -104,9 +88,8 @@ function createRequestHeaders(params: {
     params.contentType || params.file?.type || 'application/octet-stream',
   );
 
-  if (params.file?.size) {
-    headers.set('Content-Length', String(params.file.size));
-  }
+  // Note: We don't manually set Content-Length because it's a forbidden header in browsers.
+  // The browser's fetch API will automatically set it correctly for File/Blob bodies.
 
   headers.set('X-File-Name', params.fileName);
   headers.set('X-STT-Restore-Punctuation', String(params.settings.restorePunctuation));
@@ -115,8 +98,14 @@ function createRequestHeaders(params: {
   headers.set('X-STT-Max-Wait-Minutes', '3'); // Default from microservice docs
 
   if (params.bearerToken) {
-    headers.set('Authorization', `Bearer ${params.bearerToken}`);
-    headers.set('X-STT-Api-Key', params.bearerToken);
+    const token = params.bearerToken.trim();
+    const hasBearerPrefix = /^bearer\s+/i.test(token);
+
+    // Set standard Authorization header
+    headers.set('Authorization', hasBearerPrefix ? token : `Bearer ${token}`);
+
+    // Set microservice-specific API Key header (usually expects raw token)
+    headers.set('X-STT-Api-Key', hasBearerPrefix ? token.replace(/^bearer\s+/i, '') : token);
   }
 
   if (params.provider) {
@@ -157,9 +146,7 @@ export async function transcribeAudioFile(
   const provider = normalizeProvider(input.userSettings.integrations.stt.provider);
   const models = normalizeModels(input.userSettings.integrations.stt.models);
   const normalizedFileType = normalizeFileType(input.fileType, file);
-  const requestFileName = normalizedFileType.startsWith('video/')
-    ? replaceFileExtension(input.fileName, 'wav')
-    : input.fileName;
+  const requestFileName = input.fileName;
   const cacheKey = await createCacheKey({
     filePath: input.filePath,
     fileName: requestFileName,
@@ -189,7 +176,14 @@ export async function transcribeAudioFile(
   // Modern STT services (e.g. Whisper) can extract audio from video containers natively.
   // This avoids OOM crashes, UI freezes, and 'failed to fetch' caused by chunked requests or giant Blobs.
   const body: BodyInit = file;
-  const contentType = normalizedFileType;
+  
+  // Use 'application/octet-stream' for video files as recommended for streaming uploads.
+  // For audio files, keep original MIME if it's 'audio/*', otherwise fallback to octet-stream.
+  const contentType = normalizedFileType.startsWith('video/')
+    ? 'application/octet-stream'
+    : normalizedFileType.startsWith('audio/')
+      ? normalizedFileType
+      : 'application/octet-stream';
 
   const headers = createRequestHeaders({
     file,
