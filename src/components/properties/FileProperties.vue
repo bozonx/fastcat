@@ -14,6 +14,7 @@ import MediaPropertiesSection from '~/components/properties/file/MediaProperties
 import ExpandableYamlSection from '~/components/properties/file/ExpandableYamlSection.vue';
 import FileGeneralInfoSection from '~/components/properties/file/FileGeneralInfoSection.vue';
 import FileTimelineUsageSection from '~/components/properties/file/FileTimelineUsageSection.vue';
+import type { RemoteVfsFileEntry } from '~/types/remote-vfs';
 import ImageFilePropertiesSection from '~/components/properties/file/ImageFilePropertiesSection.vue';
 import OtioPropertiesSection from '~/components/properties/file/OtioPropertiesSection.vue';
 import FileProjectRootSection from '~/components/properties/file/FileProjectRootSection.vue';
@@ -495,8 +496,17 @@ const {
 
       <BloggerDogItemPropertiesSection
         v-if="isBloggerDogItem && selectedFsEntry?.remoteData"
-        :item="selectedFsEntry.remoteData"
-      />
+        :item="(selectedFsEntry.remoteData as RemoteVfsFileEntry)"
+      >
+        <template #after-content>
+          <div class="px-2">
+            <EntryActions
+              :primary-actions="filePrimaryActions"
+              :secondary-actions="[]"
+            />
+          </div>
+        </template>
+      </BloggerDogItemPropertiesSection>
 
       <MediaPropertiesSection
         v-if="fileInfo?.kind === 'file' && (isVideoFile || mediaType === 'audio')"
@@ -548,7 +558,7 @@ const {
       </PropertySection>
 
       <PropertySection
-        v-else-if="!hideActions && fileInfo?.kind === 'file'"
+        v-else-if="!hideActions && fileInfo?.kind === 'file' && !isBloggerDogItem"
         :title="t('videoEditor.fileManager.actions.title', 'Actions')"
       >
         <EntryActions
