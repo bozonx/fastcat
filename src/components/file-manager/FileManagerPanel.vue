@@ -385,74 +385,72 @@ useFileManagerPanelBootstrap({
       @change="onDirectoryFileSelect"
     />
 
-    <div class="flex flex-col flex-1 min-h-0">
-      <!-- Actions Toolbar -->
-      <UContextMenu :items="rootContextMenuItems">
-        <div
-          v-if="projectStore.currentProjectName && !props.hideActions"
-          class="flex items-center gap-1 px-2 py-1 bg-ui-bg-accent/30 border-b border-ui-border/50"
-        >
-          <UButton
-            icon="i-heroicons-folder-plus"
-            variant="ghost"
-            color="neutral"
-            size="xs"
-            :title="t('videoEditor.fileManager.actions.createFolder', 'Create Folder')"
-            @click="onFileAction('createFolder', rootEntry)"
-          />
-          <UButton
-            icon="i-heroicons-document-plus"
-            variant="ghost"
-            color="neutral"
-            size="xs"
-            :title="`${t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline')} (In _timelines folder)`"
-            @click="onCreateTimeline"
-          />
-          <UButton
-            icon="i-heroicons-document-text"
-            variant="ghost"
-            color="neutral"
-            size="xs"
-            :title="`${t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document')} (In _documents folder)`"
-            @click="onCreateMarkdown"
-          />
-          <UButton
-            icon="i-heroicons-arrow-up-tray"
-            variant="ghost"
-            color="neutral"
-            size="xs"
-            :title="t('videoEditor.fileManager.actions.uploadFiles', 'Upload files')"
-            @click="triggerFileUpload"
-          />
-        </div>
-      </UContextMenu>
+    <!-- Actions Toolbar -->
+    <UContextMenu :items="rootContextMenuItems">
+      <div
+        v-if="projectStore.currentProjectName && !props.hideActions"
+        class="flex items-center gap-1 px-2 py-1 bg-ui-bg-accent/30 border-b border-ui-border/50"
+      >
+        <UButton
+          icon="i-heroicons-folder-plus"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+          :title="t('videoEditor.fileManager.actions.createFolder', 'Create Folder')"
+          @click="onFileAction('createFolder', rootEntry)"
+        />
+        <UButton
+          icon="i-heroicons-document-plus"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+          :title="`${t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline')} (In _timelines folder)`"
+          @click="onCreateTimeline"
+        />
+        <UButton
+          icon="i-heroicons-document-text"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+          :title="`${t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document')} (In _documents folder)`"
+          @click="onCreateMarkdown"
+        />
+        <UButton
+          icon="i-heroicons-arrow-up-tray"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+          :title="t('videoEditor.fileManager.actions.uploadFiles', 'Upload files')"
+          @click="triggerFileUpload"
+        />
+      </div>
+    </UContextMenu>
 
-      <!-- File List -->
-      <FileManagerFiles
-        :editing-entry-path="editingEntryPath"
-        :folders-only="foldersOnly"
-        :is-files-page="isFilesPage"
-        :instance-id="instanceId"
-        :is-dragging="false"
-        :is-loading="isLoading"
-        :is-api-supported="isApiSupported"
-        :root-entries="rootEntries"
-        :get-file-icon="getFileIcon"
-        :find-entry-by-path="findEntryByPath"
-        :media-cache="fileManager.mediaCache"
-        :move-entry="moveEntry"
-        :copy-entry="copyEntry"
-        :handle-files="handleFiles"
-        :on-copy-entries="(entries) => onFileActionBase('copy', entries)"
-        :on-cut-entries="(entries) => onFileActionBase('cut', entries)"
-        :on-paste-to-entry="(entry) => onFileActionBase('paste', entry)"
-        @commit-rename="commitRename"
-        @stop-rename="stopRename"
-        @toggle="toggleDirectory"
-        @action="onFileAction"
-        @select="handleFileManagerFilesSelect"
-      />
-    </div>
+    <!-- File List -->
+    <FileManagerFiles
+      :editing-entry-path="editingEntryPath"
+      :folders-only="foldersOnly"
+      :is-files-page="isFilesPage"
+      :instance-id="instanceId"
+      :is-dragging="false"
+      :is-loading="isLoading"
+      :is-api-supported="isApiSupported"
+      :root-entries="rootEntries"
+      :get-file-icon="getFileIcon"
+      :find-entry-by-path="findEntryByPath"
+      :media-cache="fileManager.mediaCache"
+      :move-entry="moveEntry"
+      :copy-entry="copyEntry"
+      :handle-files="handleFiles"
+      :on-copy-entries="(entries) => onFileActionBase('copy', entries)"
+      :on-cut-entries="(entries) => onFileActionBase('cut', entries)"
+      :on-paste-to-entry="(entry) => onFileActionBase('paste', entry)"
+      @commit-rename="commitRename"
+      @stop-rename="stopRename"
+      @toggle="toggleDirectory"
+      @action="onFileAction"
+      @select="handleFileManagerFilesSelect"
+    />
 
     <!-- Modals -->
     <FileManagerPanelModals

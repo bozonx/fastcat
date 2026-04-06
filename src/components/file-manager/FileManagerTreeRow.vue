@@ -92,16 +92,11 @@ const emit = defineEmits<{
 
     <!-- Icon -->
     <div
-      class="w-4 h-4 shrink-0 flex items-center justify-center"
+      class="w-4 h-4 shrink-0 flex items-center justify-center relative"
       :class="[meta.isUsedInTimeline ? 'border-b-2 border-red-500' : '']"
+      :title="meta.generatingProxy ? `${meta.proxyProgress ?? 0}%` : undefined"
     >
-      <div
-        v-if="meta.generatingProxy"
-        class="w-4 h-4 shrink-0 relative flex items-center justify-center"
-        :title="`${meta.proxyProgress ?? 0}%`"
-      >
-        <UiProgressSpinner :progress="meta.proxyProgress ?? 0" size="sm" />
-      </div>
+      <UiProgressSpinner v-if="meta.generatingProxy" :progress="meta.proxyProgress ?? 0" size="sm" />
       <UIcon
         v-else
         :name="fileIcon"

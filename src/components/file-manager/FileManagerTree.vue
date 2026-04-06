@@ -576,7 +576,7 @@ const { getContextMenuItems } = useFileContextMenu(
 
 <template>
   <ul class="select-none min-w-full w-max">
-    <template v-for="entry in entries" :key="entry.name">
+    <template v-for="entry in entries" :key="entry.path || entry.name">
       <li v-if="!foldersOnly || entry.kind === 'directory'">
         <!-- Row -->
         <UContextMenu :items="getContextMenuItems(entry)">
