@@ -164,60 +164,58 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
           </UButton>
         </div>
 
-        <div class="flex-1 min-h-0">
-          <FileManagerStoreProvider :store="sidebarStore">
-            <template v-if="persistenceStore.filesPageActiveTab === 'computer'">
-              <ComputerFileManager instance-id="sidebar" hide-focus-frame />
-            </template>
-            <template v-else>
-              <div
-                v-if="!isBloggerDogConfigured"
-                class="h-full flex flex-col items-center justify-center p-6 text-center gap-4"
-              >
-                <div class="p-4 rounded-full bg-ui-bg-accent/20">
-                  <UIcon
-                    name="i-heroicons-cloud-slash"
-                    class="w-12 h-12 text-ui-text-dim opacity-50"
-                  />
-                </div>
-                <div class="space-y-1">
-                  <h3 class="font-medium text-ui-text">
-                    {{
-                      t(
-                        'fastcat.fileManager.remote.not_configured_title',
-                        'BloggerDog not configured',
-                      )
-                    }}
-                  </h3>
-                  <p class="text-sm text-ui-text-dim">
-                    {{
-                      t(
-                        'fastcat.fileManager.remote.not_configured_desc',
-                        'Integrate with BloggerDog to manage your remote content.',
-                      )
-                    }}
-                  </p>
-                </div>
-                <UButton
-                  color="primary"
-                  size="sm"
-                  icon="i-heroicons-cog-6-tooth"
-                  @click="openIntegrationsSettings"
-                >
-                  {{ t('fastcat.fileManager.remote.configure_action', 'Configure Integration') }}
-                </UButton>
+        <FileManagerStoreProvider :store="sidebarStore">
+          <template v-if="persistenceStore.filesPageActiveTab === 'computer'">
+            <ComputerFileManager instance-id="sidebar" hide-focus-frame />
+          </template>
+          <template v-else>
+            <div
+              v-if="!isBloggerDogConfigured"
+              class="h-full flex flex-col items-center justify-center p-6 text-center gap-4"
+            >
+              <div class="p-4 rounded-full bg-ui-bg-accent/20">
+                <UIcon
+                  name="i-heroicons-cloud-slash"
+                  class="w-12 h-12 text-ui-text-dim opacity-50"
+                />
               </div>
-              <FileBrowser
-                v-else
-                :remote-mode-only="true"
-                :vfs="bloggerDogVfs"
-                instance-id="sidebar"
-                hide-focus-frame
-                class="h-full"
-              />
-            </template>
-          </FileManagerStoreProvider>
-        </div>
+              <div class="space-y-1">
+                <h3 class="font-medium text-ui-text">
+                  {{
+                    t(
+                      'fastcat.fileManager.remote.not_configured_title',
+                      'BloggerDog not configured',
+                    )
+                  }}
+                </h3>
+                <p class="text-sm text-ui-text-dim">
+                  {{
+                    t(
+                      'fastcat.fileManager.remote.not_configured_desc',
+                      'Integrate with BloggerDog to manage your remote content.',
+                    )
+                  }}
+                </p>
+              </div>
+              <UButton
+                color="primary"
+                size="sm"
+                icon="i-heroicons-cog-6-tooth"
+                @click="openIntegrationsSettings"
+              >
+                {{ t('fastcat.fileManager.remote.configure_action', 'Configure Integration') }}
+              </UButton>
+            </div>
+            <FileBrowser
+              v-else
+              :remote-mode-only="true"
+              :vfs="bloggerDogVfs"
+              instance-id="sidebar"
+              hide-focus-frame
+              class="h-full"
+            />
+          </template>
+        </FileManagerStoreProvider>
       </div>
     </Pane>
 
@@ -226,49 +224,38 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
       <Splitpanes class="editor-splitpanes h-full" @resized="onMainResized">
         <!-- File Manager (Tree + Browser) -->
         <Pane :size="(sizes?.[0] ?? 0) + (sizes?.[1] ?? 0)" min-size="20">
-          <div
-            class="h-full flex flex-col min-h-0 relative panel-focus-frame"
+          <Splitpanes
+            class="editor-splitpanes h-full w-full relative panel-focus-frame"
             :class="{
               'panel-focus-frame--active': focusStore.isPanelFocused('dynamic:file-manager:main'),
             }"
+            @resized="onBrowserResized"
             @pointerdown.capture="focusStore.setPanelFocus('dynamic:file-manager:main')"
           >
-            <Splitpanes class="editor-splitpanes h-full" @resized="onBrowserResized">
-              <Pane :size="treeRelSize" min-size="10">
-                <FileManagerPanel
-                  folders-only
-                  is-files-page
-                  class="h-full"
-                  instance-id="main"
-                  hide-focus-frame
-                  @select="(entry) => mainStore.openFolder(entry)"
-                />
-              </Pane>
-              <Pane :size="listRelSize" min-size="10">
-                <FileBrowser class="h-full" instance-id="main" hide-focus-frame />
-              </Pane>
-            </Splitpanes>
-          </div>
+            <Pane :size="treeRelSize" min-size="10">
+              <FileManagerPanel
+                folders-only
+                is-files-page
+                class="h-full"
+                instance-id="main"
+                hide-focus-frame
+                @select="(entry) => mainStore.openFolder(entry)"
+              />
+            </Pane>
+            <Pane :size="listRelSize" min-size="10">
+              <FileBrowser class="h-full" instance-id="main" hide-focus-frame />
+            </Pane>
+          </Splitpanes>
         </Pane>
 
         <!-- Properties -->
         <Pane :size="sizes[2]" min-size="10">
-          <div
-            class="h-full flex flex-col min-h-0 relative panel-focus-frame"
-            :class="{
-              'panel-focus-frame--active': focusStore.isPanelFocused(
-                'dynamic:properties:files-main',
-              ),
-            }"
+          <PropertiesPanel
+            :entity="selectedEntity"
+            class="h-full"
+            @clear-selection="emit('clearSelection')"
             @pointerdown.capture="focusStore.setPanelFocus('dynamic:properties:files-main')"
-          >
-            <PropertiesPanel
-              :entity="selectedEntity"
-              :use-external-focus="true"
-              class="h-full"
-              @clear-selection="emit('clearSelection')"
-            />
-          </div>
+          />
         </Pane>
       </Splitpanes>
     </Pane>

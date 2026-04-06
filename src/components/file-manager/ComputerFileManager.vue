@@ -147,32 +147,29 @@ function onSelect(entry: FsEntry) {
 </script>
 
 <template>
-  <div class="h-full w-full computer-file-manager">
-    <Splitpanes class="h-full editor-splitpanes">
-      <Pane size="30" min-size="10" class="border-r border-ui-border">
-        <FileManagerPanel
-          folders-only
-          compact
-          hide-actions
-          :instance-id="instanceId"
-          hide-focus-frame
-          class="h-full"
-          @select="onSelect"
-        />
-      </Pane>
-      <Pane size="70">
-        <FileBrowser 
-            :vfs="vfs!" 
-            :instance-id="instanceId"
-            :hide-focus-frame="props.hideFocusFrame"
-            :root-name="workspaceStore.workspaceProviderId === 'tauri' ? t('fastcat.fileManager.tabs.computer') : t('fastcat.fileManager.tabs.workspace')"
-            hide-upload
-            class="h-full"
-        />
-      </Pane>
-
-    </Splitpanes>
-  </div>
+  <Splitpanes class="h-full w-full editor-splitpanes computer-file-manager">
+    <Pane size="30" min-size="10" class="border-r border-ui-border">
+      <FileManagerPanel
+        folders-only
+        compact
+        hide-actions
+        :instance-id="instanceId"
+        hide-focus-frame
+        class="h-full"
+        @select="onSelect"
+      />
+    </Pane>
+    <Pane size="70">
+      <FileBrowser
+        :vfs="vfs!"
+        :instance-id="instanceId"
+        :hide-focus-frame="props.hideFocusFrame"
+        :root-name="workspaceStore.workspaceProviderId === 'tauri' ? t('fastcat.fileManager.tabs.computer') : t('fastcat.fileManager.tabs.workspace')"
+        hide-upload
+        class="h-full"
+      />
+    </Pane>
+  </Splitpanes>
 </template>
 
 <style scoped>

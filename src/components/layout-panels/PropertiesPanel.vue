@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
-import { useFocusStore } from '~/stores/focus.store';
+import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
@@ -30,6 +30,7 @@ import { useFileConversionStore } from '~/stores/file-conversion.store';
 const props = defineProps<{
   entity?: SelectedEntity | null;
   useExternalFocus?: boolean;
+  focusId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -265,9 +266,9 @@ function onPanelFocusOut() {
   <div
     class="panel-focus-frame flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0 relative"
     :class="{
-      'panel-focus-frame--active': !props.useExternalFocus && focusStore.isPanelFocused('right'),
+      'panel-focus-frame--active': !props.useExternalFocus && focusStore.isPanelFocused((props.focusId as PanelFocusId) || 'right'),
     }"
-    @pointerdown.capture="!props.useExternalFocus && focusStore.setTempFocus('right')"
+    @pointerdown.capture="!props.useExternalFocus && focusStore.setPanelFocus((props.focusId as PanelFocusId) || 'right')"
     @focusin.capture="onPanelFocusIn"
     @focusout.capture="onPanelFocusOut"
   >
