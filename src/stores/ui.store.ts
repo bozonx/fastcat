@@ -69,6 +69,7 @@ export const useUiStore = defineStore('ui', () => {
   const pendingFsEntryCreateMarkdown = ref<FsEntry | null>(null);
   const pendingOtioCreateVersion = ref<FsEntry | null>(null);
   const pendingRemoteDownloadRequest = ref<PendingRemoteDownloadRequest | null>(null);
+  const pendingBloggerDogCreateSubgroup = ref<FsEntry | null>(null);
 
   const fileManagerUpdateCounter = ref(0);
   const isProjectSettingsOpen = ref(false);
@@ -232,6 +233,7 @@ export const useUiStore = defineStore('ui', () => {
     pendingFsEntryCreateTimeline,
     pendingOtioCreateVersion,
     pendingRemoteDownloadRequest,
+    pendingBloggerDogCreateSubgroup,
 
     fsSidebarWidth,
     setFsSidebarWidth,
