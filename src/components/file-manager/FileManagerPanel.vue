@@ -82,17 +82,11 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const stt = useSttTranscription({
   vfs: { getFile: (path) => vfs.getFile(path) },
   fastcatAccountApiUrl: computed(() => runtimeConfig.public.fastcatAccountApiUrl as string),
-  onSuccess: ({ cached, mediaType }) => {
+  onSuccess: ({ mediaType }) => {
     toast.add({
-      title: cached
-        ? t('videoEditor.fileManager.audio.transcriptionCached', 'Using cached transcription')
-        : t('videoEditor.fileManager.audio.transcriptionCompleted', 'Transcription completed'),
-      description: cached
-        ? t(
-            'videoEditor.fileManager.audio.transcriptionCachedDescription',
-            'Cached transcription was loaded from vardata.',
-          )
-        : mediaType === 'video'
+      title: t('videoEditor.fileManager.audio.transcriptionCompleted', 'Transcription completed'),
+      description:
+        mediaType === 'video'
           ? t(
               'videoEditor.fileManager.audio.transcriptionSavedVideoDescription',
               'Video audio track was transcribed and saved to vardata cache.',

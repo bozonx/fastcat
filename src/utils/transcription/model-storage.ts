@@ -51,10 +51,28 @@ export const WHISPER_MODEL_FILES: Record<string, string[]> = {
   ],
 };
 
+/**
+ * Gets a global directory handle for models to avoid project-folder pollution and duplication.
+ * In the browser, this uses the Origin Private File System (OPFS).
+ * If a workspaceHandle is provided and we are not in a browser/OPFS context, it falls back to workspace-local vardata.
+ */
 export async function getSttModelsDir(
-  workspaceHandle: FileSystemDirectoryHandle,
+  workspaceHandle?: FileSystemDirectoryHandle | null,
 ): Promise<FileSystemDirectoryHandle> {
-  const vardata = await workspaceHandle.getDirectoryHandle(WORKSPACE_TEMP_ROOT_DIR_NAME, {
+  let baseHandle: FileSystemDirectoryHandle;
+
+  if (typeof window !== 'undefined' && navigator.storage?.getDirectory) {
+    // Shared storage for the entire Origin (Browser)
+    baseHandle = await navigator.storage.getDirectory();
+  } else if (workspaceHandle) {
+    // Fallback to workspace-local storage
+    baseHandle = workspaceHandle;
+  } else {
+    throw new Error('No storage handle available for models');
+  }
+
+  // Ensure 'vardata/models/stt' structure
+  const vardata = await baseHandle.getDirectoryHandle(WORKSPACE_TEMP_ROOT_DIR_NAME, {
     create: true,
   });
   const models = await vardata.getDirectoryHandle('models', { create: true });
@@ -62,7 +80,7 @@ export async function getSttModelsDir(
 }
 
 async function getModelDir(
-  workspaceHandle: FileSystemDirectoryHandle,
+  workspaceHandle: FileSystemDirectoryHandle | null | undefined,
   modelName: string,
   create = false,
 ): Promise<FileSystemDirectoryHandle | null> {
@@ -76,7 +94,7 @@ async function getModelDir(
 }
 
 export async function isModelDownloaded(
-  workspaceHandle: FileSystemDirectoryHandle,
+  workspaceHandle: FileSystemDirectoryHandle | null | undefined,
   modelName: string,
 ): Promise<boolean> {
   const requiredFiles = WHISPER_MODEL_FILES[modelName];
@@ -111,7 +129,7 @@ export async function isModelDownloaded(
 }
 
 export async function downloadModel(
-  workspaceHandle: FileSystemDirectoryHandle,
+  workspaceHandle: FileSystemDirectoryHandle | null | undefined,
   modelName: string,
   onProgress?: (progress: ModelDownloadProgress) => void,
 ): Promise<void> {
@@ -192,7 +210,7 @@ export async function downloadModel(
 }
 
 export async function getModelFile(
-  workspaceHandle: FileSystemDirectoryHandle,
+  workspaceHandle: FileSystemDirectoryHandle | null | undefined,
   modelName: string,
   fileName: string,
 ): Promise<File> {
