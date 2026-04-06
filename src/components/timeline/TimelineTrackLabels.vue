@@ -9,6 +9,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { trackHasAudio } from '~/utils/audio';
 
 import TimelineTrackLabelItem from '~/components/timeline/TimelineTrackLabelItem.vue';
+import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
 import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
 import { useTrackContextMenu } from '~/composables/timeline/useTrackContextMenu';
 
@@ -172,7 +173,7 @@ const { getTrackContextMenuItems } = useTrackContextMenu({
   onRequestDelete: (track) => requestDeleteTrack(track),
 });
 
-const trackContextMenuRef = ref<any>(null);
+const trackContextMenuRef = ref<InstanceType<typeof UiContextMenuPortal> | null>(null);
 const activeTrackForContextMenu = ref<TimelineTrack | null>(null);
 
 function onTrackContextMenu(e: MouseEvent, track: TimelineTrack) {
@@ -203,7 +204,12 @@ const { emptyAreaContextMenuItems: propertiesContextMenuItems } = useTimelineEmp
       "
     >
       <div class="flex flex-col min-h-full">
-        <UContextMenu ref="trackContextMenuRef" :items="activeTrackContextMenuItems" manual />
+        <UiContextMenuPortal
+          ref="trackContextMenuRef"
+          :items="activeTrackContextMenuItems"
+          :target-el="labelsScrollContainer"
+          manual
+        />
 
         <template v-for="(track, index) in tracks" :key="track.id">
           <TimelineTrackLabelItem

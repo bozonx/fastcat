@@ -1,5 +1,5 @@
 export interface DecodeRequest {
-  type: 'decode' | 'extract-peaks';
+  type: 'decode' | 'extract-peaks' | 'decode-stt';
   id: number;
   sourceKey: string;
   arrayBuffer?: ArrayBuffer;
@@ -7,6 +7,7 @@ export interface DecodeRequest {
   options?: {
     maxLength?: number;
     precision?: number;
+    targetSampleRate?: number; // For decode-stt
   };
 }
 
@@ -20,5 +21,6 @@ export interface DecodeResponse {
     numberOfChannels: number;
     channelBuffers: ArrayBuffer[];
     peaks?: number[][];
+    sttAudio?: Float32Array; // Single mono buffer for Whisper
   };
 }

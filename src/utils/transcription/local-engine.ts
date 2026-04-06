@@ -23,42 +23,6 @@ function getWorker(): Worker {
     return workerInstance;
 }
 
-/**
- * Resamples Float32 audio data using linear interpolation.
- */
-function resample(audio: Float32Array, currentRate: number, targetRate: number): Float32Array {
-    if (currentRate === targetRate) return audio;
-    const ratio = currentRate / targetRate;
-    const newLength = Math.round(audio.length / ratio);
-    const result = new Float32Array(newLength);
-    for (let i = 0; i < newLength; i++) {
-        const pos = i * ratio;
-        const index = Math.floor(pos);
-        const fraction = pos - index;
-        const a = audio[index] || 0;
-        const b = audio[index + 1] || a;
-        result[i] = a + (b - a) * fraction;
-    }
-    return result;
-}
-
-/**
- * Merges multiple audio channels into a single mono channel.
- */
-function toMono(channels: Float32Array[]): Float32Array {
-    if (channels.length === 1) return channels[0]!;
-    const len = channels[0]!.length;
-    const result = new Float32Array(len);
-    for (let i = 0; i < len; i++) {
-        let sum = 0;
-        for (let ch = 0; ch < channels.length; ch++) {
-            sum += channels[ch]![i]!;
-        }
-        result[i] = sum / channels.length;
-    }
-    return result;
-}
-
 export async function transcribeLocally(
     input: TranscriptionRequest,
     onProgress?: (p: LocalTranscriptionProgress) => void
@@ -72,32 +36,29 @@ export async function transcribeLocally(
         throw new Error(`Model ${modelName} is not downloaded. Please go to settings to download it.`);
     }
 
-    // 2. Prepare audio (Decode & Resample)
+    // 2. Prepare audio (Decode, Mono, Resample in Worker)
     onProgress?.({ status: 'decoding' });
     
-    // We reuse the existing audio-decode mechanism (assuming it's available via a helper or direct worker)
-    // For simplicity, we create a temporary worker to decode if we don't have a shared pool.
-    // However, the project has audio-decode.worker.ts. Let's use it.
-    
     const file = input.file instanceof File ? input.file : await input.file.getFile();
-    const arrayBuffer = await file.arrayBuffer();
 
     const decodeWorker = new (await import('~/workers/audio-decode.worker.ts?worker')).default();
-    const decodeResult: any = await new Promise((resolve, reject) => {
+    const finalAudio: Float32Array = await new Promise((resolve, reject) => {
         const id = Math.random();
         decodeWorker.onmessage = (e: any) => {
             if (e.data.id === id) {
-                if (e.data.ok) resolve(e.data.result);
+                if (e.data.ok) resolve(e.data.result.sttAudio);
                 else reject(new Error(e.data.error.message));
                 decodeWorker.terminate();
             }
         };
-        decodeWorker.postMessage({ type: 'decode', id, arrayBuffer }, [arrayBuffer]);
+        // Passing the Blob/File directly - NO arrayBuffer() here!
+        decodeWorker.postMessage({ 
+            type: 'decode-stt', 
+            id, 
+            blob: file, 
+            options: { targetSampleRate: 16000 } 
+        });
     });
-
-    // Convert to Mono 16kHz Float32
-    const mono = toMono(decodeResult.channelBuffers.map((b: any) => new Float32Array(b)));
-    const finalAudio = resample(mono, decodeResult.sampleRate, 16000);
 
     const worker = getWorker();
     const id = ++currentRequestId;

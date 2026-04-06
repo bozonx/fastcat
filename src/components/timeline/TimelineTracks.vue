@@ -18,9 +18,9 @@ import { useTimelineItemResize } from '~/composables/timeline/useTimelineItemRes
 import { useTimelineMarquee } from '~/composables/timeline/useTimelineMarquee';
 import { useFocusStore } from '~/stores/focus.store';
 
-import TimelineClip from './TimelineClip.vue';
 import TimelineGap from './TimelineGap.vue';
 import TimelineSpeedModal from './TimelineSpeedModal.vue';
+import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
 import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
 import { useTrackContextMenu } from '~/composables/timeline/useTrackContextMenu';
 import { useAppClipboard } from '~/composables/useAppClipboard';
@@ -357,7 +357,7 @@ const { getTrackContextMenuItems } = useTrackContextMenu({
   },
 });
 
-const trackContextMenuRef = ref<any>(null);
+const trackContextMenuRef = ref<InstanceType<typeof UiContextMenuPortal> | null>(null);
 const activeTrackForContextMenu = ref<TimelineTrack | null>(null);
 
 function onTrackContextMenu(e: MouseEvent, track: TimelineTrack) {
@@ -494,7 +494,12 @@ function onTrackClick(e: MouseEvent, trackId: string) {
         @save="saveSpeedModal"
       />
 
-      <UContextMenu ref="trackContextMenuRef" :items="activeTrackContextMenuItems" manual />
+      <UiContextMenuPortal
+        ref="trackContextMenuRef"
+        :items="activeTrackContextMenuItems"
+        :target-el="containerRef"
+        manual
+      />
 
       <div
         v-for="trackViewModel in trackViewModels"
