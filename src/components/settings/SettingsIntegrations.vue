@@ -25,7 +25,6 @@ function resetDefaults() {
     fastcatAccount: { ...DEFAULT_USER_SETTINGS.integrations.fastcatAccount },
     fastcatPublicador: { ...DEFAULT_USER_SETTINGS.integrations.fastcatPublicador },
     manualFilesApi: { ...DEFAULT_USER_SETTINGS.integrations.manualFilesApi },
-    manualSttApi: { ...DEFAULT_USER_SETTINGS.integrations.manualSttApi },
     stt: {
       ...DEFAULT_USER_SETTINGS.integrations.stt,
       models: [...DEFAULT_USER_SETTINGS.integrations.stt.models],

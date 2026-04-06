@@ -124,15 +124,10 @@ export function resolveFastCatConnectScopes(params: {
   }
 
   if (params.includeStt) {
-    if (
-      !params.integrations.manualSttApi.enabled ||
-      !params.integrations.manualSttApi.overrideFastCat
-    ) {
-      for (const scope of STT_SCOPES) {
-        scopes.add(scope);
-      }
-      scopes.add('llm:chat');
+    for (const scope of STT_SCOPES) {
+      scopes.add(scope);
     }
+    scopes.add('llm:chat');
   }
 
   return Array.from(scopes);
@@ -147,13 +142,7 @@ export function resolveExternalServiceConfig(params: {
   const { integrations, service, bloggerDogApiUrl, fastcatAccountApiUrl } = params;
   const fastcatAcc = integrations.fastcatAccount;
   const fastcatPub = integrations.fastcatPublicador;
-  const manual = service === 'files' ? integrations.manualFilesApi : integrations.manualSttApi;
   const requiresBearerToken = service === 'files' || service === 'stt';
-
-  const canUseManual =
-    manual.enabled &&
-    manual.baseUrl.trim() &&
-    (!requiresBearerToken || Boolean(manual.bearerToken.trim()));
 
   const canUseFastCatAccount =
     fastcatAcc.enabled &&
@@ -165,7 +154,28 @@ export function resolveExternalServiceConfig(params: {
     bloggerDogApiUrl.trim() &&
     (!requiresBearerToken || Boolean(fastcatPub.bearerToken.trim()));
 
-  // 1. Manual always wins if enabled and manual.overrideFastCat is set
+  // 1. STT always uses FastCat Account if enabled
+  if (service === 'stt') {
+    if (canUseFastCatAccount) {
+      const fastcatExternalApiBaseUrl = getFastCatPublicadorExternalApiBaseUrl(fastcatAccountApiUrl!);
+      return {
+        source: 'fastcat_publicador',
+        baseUrl: joinUrl(fastcatExternalApiBaseUrl, 'external/stt'),
+        bearerToken: fastcatAcc.bearerToken.trim(),
+        healthUrl: getFastCatPublicadorHealthUrl(fastcatAccountApiUrl!),
+      };
+    }
+    return null;
+  }
+
+  // 2. Files logic
+  const manual = integrations.manualFilesApi;
+  const canUseManual =
+    manual.enabled &&
+    manual.baseUrl.trim() &&
+    (!requiresBearerToken || Boolean(manual.bearerToken.trim()));
+
+  // 2a. Manual wins if enabled and manual.overrideFastCat is set
   if (canUseManual && manual.overrideFastCat) {
     return {
       source: 'manual',
@@ -175,18 +185,7 @@ export function resolveExternalServiceConfig(params: {
     };
   }
 
-  // 2. Fastcat Account wins next for STT if enabled (proxi stt)
-  if (canUseFastCatAccount && service === 'stt') {
-    const fastcatExternalApiBaseUrl = getFastCatPublicadorExternalApiBaseUrl(fastcatAccountApiUrl!);
-    return {
-      source: 'fastcat_publicador',
-      baseUrl: joinUrl(fastcatExternalApiBaseUrl, 'external/stt'),
-      bearerToken: fastcatAcc.bearerToken.trim(),
-      healthUrl: getFastCatPublicadorHealthUrl(fastcatAccountApiUrl!),
-    };
-  }
-
-  // 3. Fastcat Publicador (BloggerDog) next (only for files, not for stt)
+  // 2b. FastCat Publicador (BloggerDog)
   if (canUseFastCatPublicador && service === 'files') {
     const fastcatExternalApiBaseUrl = getFastCatPublicadorExternalApiBaseUrl(bloggerDogApiUrl);
     return {
@@ -197,7 +196,7 @@ export function resolveExternalServiceConfig(params: {
     };
   }
 
-  // 4. Manual as fallback if no fastcat configs
+  // 2c. Manual as fallback
   if (canUseManual) {
     return {
       source: 'manual',

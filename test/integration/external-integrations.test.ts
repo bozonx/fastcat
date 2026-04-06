@@ -17,10 +17,10 @@ import {
 describe('external integrations', () => {
   it('builds FastCat Publicador URLs from instance or api base URL', () => {
     expect(getFastCatPublicadorHealthUrl('https://fastcat.example.com')).toBe(
-      'https://fastcat.example.com/api/v1/health',
+      'https://fastcat.example.com/api/v1/external/health',
     );
     expect(getFastCatPublicadorHealthUrl('https://fastcat.example.com/api/v1')).toBe(
-      'https://fastcat.example.com/api/v1/health',
+      'https://fastcat.example.com/api/v1/external/health',
     );
 
     expect(
@@ -28,10 +28,10 @@ describe('external integrations', () => {
         uiUrl: 'https://fastcat.example.com/api/v1',
         name: FASTCAT_PUBLICADOR_APP_NAME,
         redirectUri: 'http://localhost:3000/editor',
-        scopes: ['vfs:read', 'stt:transcribe'],
+        scopes: ['content-library:read', 'stt:transcribe'],
       }),
     ).toBe(
-      'https://fastcat.example.com/integrations/connect?name=FastCat&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Feditor&scopes=vfs%3Aread%2Cstt%3Atranscribe',
+      'https://fastcat.example.com/integrations/connect?name=FastCat&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Feditor&scopes=content-library%3Aread%2Cstt%3Atranscribe',
     );
   });
 
@@ -66,9 +66,9 @@ describe('external integrations', () => {
   it('resolves FastCat connect scopes based on active overrides', () => {
     const integrations = createDefaultUserSettings().integrations;
 
-    expect(resolveFastCatConnectScopes({ integrations })).toEqual([
-      'vfs:read',
-      'vfs:write',
+    expect(resolveFastCatConnectScopes({ integrations, includeStt: true })).toEqual([
+      'content-library:read',
+      'content-library:write',
       'stt:transcribe',
       'llm:chat',
     ]);
@@ -76,12 +76,10 @@ describe('external integrations', () => {
     integrations.manualFilesApi.enabled = true;
     integrations.manualFilesApi.overrideFastCat = true;
 
-    expect(resolveFastCatConnectScopes({ integrations })).toEqual(['stt:transcribe', 'llm:chat']);
-
-    integrations.manualSttApi.enabled = true;
-    integrations.manualSttApi.overrideFastCat = true;
-
-    expect(resolveFastCatConnectScopes({ integrations })).toEqual([]);
+    expect(resolveFastCatConnectScopes({ integrations, includeStt: true })).toEqual([
+      'stt:transcribe',
+      'llm:chat',
+    ]);
   });
 
   it('prefers FastCat Publicador when manual service does not override it', () => {
@@ -89,58 +87,54 @@ describe('external integrations', () => {
     userSettings.integrations.fastcatPublicador.enabled = true;
     userSettings.integrations.fastcatPublicador.bearerToken = 'gp_token';
     userSettings.integrations.manualFilesApi.enabled = true;
-    userSettings.integrations.manualFilesApi.baseUrl = 'https://files.example.com/api/v1/vfs';
+    userSettings.integrations.manualFilesApi.baseUrl = 'https://files.example.com/api/v1/content-library';
     userSettings.integrations.manualFilesApi.bearerToken = 'files_token';
     userSettings.integrations.manualFilesApi.overrideFastCat = false;
 
     const resolved = resolveExternalIntegrations({
       userSettings,
       bloggerDogApiUrl: 'https://fastcat.example.com',
+      fastcatAccountApiUrl: 'https://fastcat-acc.example.com',
     });
 
     expect(resolved.files).toEqual({
       source: 'fastcat_publicador',
-      baseUrl: 'https://fastcat.example.com/api/v1/vfs',
+      baseUrl: 'https://fastcat.example.com/api/v1/external/content-library',
       bearerToken: 'gp_token',
-      healthUrl: 'https://fastcat.example.com/api/v1/health',
+      healthUrl: 'https://fastcat.example.com/api/v1/external/health',
     });
   });
 
-  it('uses manual service when override is enabled', () => {
+  it('uses FastCat Account for STT', () => {
     const integrations = createDefaultUserSettings().integrations;
-    integrations.fastcatPublicador.enabled = true;
-    integrations.fastcatPublicador.bearerToken = 'gp_token';
-    integrations.manualSttApi.enabled = true;
-    integrations.manualSttApi.baseUrl = 'https://stt.example.com/api/v1/stt';
-    integrations.manualSttApi.bearerToken = 'stt_token';
-    integrations.manualSttApi.overrideFastCat = true;
+    integrations.fastcatAccount.enabled = true;
+    integrations.fastcatAccount.bearerToken = 'acc_token';
 
     const resolved = resolveExternalServiceConfig({
       service: 'stt',
       integrations,
       bloggerDogApiUrl: 'https://fastcat.example.com',
+      fastcatAccountApiUrl: 'https://fastcat-acc.example.com',
     });
 
     expect(resolved).toEqual({
-      source: 'manual',
-      baseUrl: 'https://stt.example.com/api/v1/stt',
-      bearerToken: 'stt_token',
-      healthUrl: 'https://stt.example.com/api/v1/health',
+      source: 'fastcat_publicador',
+      baseUrl: 'https://fastcat-acc.example.com/api/v1/external/stt',
+      bearerToken: 'acc_token',
+      healthUrl: 'https://fastcat-acc.example.com/api/v1/external/health',
     });
   });
 
-  it('resolves STT stream URL from the active provider', () => {
+  it('resolves STT stream URL from FastCat Account', () => {
     const userSettings = createDefaultUserSettings();
-    userSettings.integrations.manualSttApi.enabled = true;
-    userSettings.integrations.manualSttApi.baseUrl = 'https://stt.example.com';
-    userSettings.integrations.manualSttApi.bearerToken = 'stt_token';
-    userSettings.integrations.manualSttApi.overrideFastCat = true;
+    userSettings.integrations.fastcatAccount.enabled = true;
+    userSettings.integrations.fastcatAccount.bearerToken = 'acc_token';
 
     expect(
       resolveSttStreamUrl({
         userSettings,
-        bloggerDogApiUrl: 'https://fastcat.example.com',
+        fastcatAccountApiUrl: 'https://fastcat-acc.example.com',
       }),
-    ).toBe('https://stt.example.com/api/v1/transcribe/stream');
+    ).toBe('https://fastcat-acc.example.com/api/v1/transcribe/stream');
   });
 });

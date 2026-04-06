@@ -122,7 +122,7 @@ export async function transcribeAudioFile(
   const resolvedConfig = resolveExternalServiceConfig({
     service: 'stt',
     integrations: input.userSettings.integrations,
-    bloggerDogApiUrl: '', // BloggerDog removed for STT
+    bloggerDogApiUrl: '',
     fastcatAccountApiUrl: input.fastcatAccountApiUrl,
   });
   const endpoint = resolveSttStreamUrl({

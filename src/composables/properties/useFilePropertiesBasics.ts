@@ -73,11 +73,12 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
 
     const baseUrl = uiUrl.endsWith('/') ? uiUrl.slice(0, -1) : uiUrl;
     const remoteId = entry.remoteId || (entry.remoteData as any)?.id;
-    const path = entry.path || '';
+    let normalizedPath = entry.path || '';
+    if (normalizedPath.startsWith('/remote')) normalizedPath = normalizedPath.slice(7) || '/';
 
     let projectPrefix = '';
-    if (path.startsWith('/projects/')) {
-      const parts = path.split('/').filter(Boolean);
+    if (normalizedPath.startsWith('/projects/')) {
+      const parts = normalizedPath.split('/').filter(Boolean);
       if (parts.length >= 2) {
         projectPrefix = `/projects/${parts[1]}`;
       }

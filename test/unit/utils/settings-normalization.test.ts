@@ -117,12 +117,6 @@ describe('settings normalization', () => {
           bearerToken: ' files-token ',
           overrideFastCat: 1,
         },
-        manualSttApi: {
-          enabled: false,
-          baseUrl: 'https://stt.example.com/',
-          bearerToken: ' stt-token ',
-          overrideFastCat: 0,
-        },
         stt: {
           provider: ' assemblyai ',
           models: [' universal-3-pro ', '', 'universal-2'],
@@ -140,11 +134,6 @@ describe('settings normalization', () => {
     expect(normalized.integrations.manualFilesApi.baseUrl).toBe('https://files.example.com/api');
     expect(normalized.integrations.manualFilesApi.bearerToken).toBe('files-token');
     expect(normalized.integrations.manualFilesApi.overrideFastCat).toBe(true);
-
-    expect(normalized.integrations.manualSttApi.enabled).toBe(false);
-    expect(normalized.integrations.manualSttApi.baseUrl).toBe('https://stt.example.com');
-    expect(normalized.integrations.manualSttApi.bearerToken).toBe('stt-token');
-    expect(normalized.integrations.manualSttApi.overrideFastCat).toBe(false);
 
     expect(normalized.integrations.stt.provider).toBe('assemblyai');
     expect(normalized.integrations.stt.models).toEqual(['universal-3-pro', '', 'universal-2']);
