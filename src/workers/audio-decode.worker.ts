@@ -177,9 +177,100 @@ async function extractPeaksFromSource(
   }
 }
 
+function resample(audio: Float32Array, currentRate: number, targetRate: number): Float32Array {
+  if (currentRate === targetRate) return audio;
+  const ratio = currentRate / targetRate;
+  const newLength = Math.round(audio.length / ratio);
+  const result = new Float32Array(newLength);
+  for (let i = 0; i < newLength; i += 1) {
+    const pos = i * ratio;
+    const index = Math.floor(pos);
+    const fraction = pos - index;
+    const a = audio[index] || 0;
+    const b = audio[index + 1] || a;
+    result[i] = a + (b - a) * fraction;
+  }
+  return result;
+}
+
+async function decodeToSttMono(source: Blob | ArrayBuffer, targetSampleRate = 16000) {
+  const blob = source instanceof Blob ? source : new Blob([source]);
+  const input = new Input({ source: new BlobSource(blob), formats: ALL_FORMATS } as any);
+
+  try {
+    const aTrack = await input.getPrimaryAudioTrack();
+    if (!aTrack) {
+      throw new Error('No audio track found in media');
+    }
+    if (!(await aTrack.canDecode())) throw new Error('Audio track cannot be decoded');
+
+    const sink = new AudioSampleSink(aTrack);
+    try {
+      const metaDurationS = await input.computeDuration();
+      const durationS = Number.isFinite(metaDurationS) && metaDurationS > 0 ? metaDurationS : 0;
+
+      const chunks: Float32Array[] = [];
+      let totalSamples = 0;
+      let sourceRate = 48000;
+
+      for await (const sampleRaw of (sink as any).samples(0, durationS || 1e9)) {
+        const sample = sampleRaw as any;
+        try {
+          sourceRate = sample.sampleRate || sourceRate;
+          const frames = Number(sample.numberOfFrames) || 0;
+          const channels = Math.max(1, Number(sample.numberOfChannels) || 1);
+          if (frames <= 0) continue;
+
+          // Process current sample chunk into MONO Float32
+          const monoChunk = new Float32Array(frames);
+          const channelBuffer = new Float32Array(frames);
+          
+          for (let ch = 0; ch < channels; ch += 1) {
+            sample.copyTo(channelBuffer, { format: 'f32-planar', planeIndex: ch });
+            for (let i = 0; i < frames; i += 1) {
+              monoChunk[i] += channelBuffer[i] / channels;
+            }
+          }
+
+          chunks.push(monoChunk);
+          totalSamples += frames;
+        } finally {
+          if (typeof sample.close === 'function') sample.close();
+        }
+      }
+
+      if (totalSamples <= 0) throw new Error('Decoded audio is empty');
+
+      // Combine all chunks into one large mono buffer (still at source rate)
+      const fullMonoSource = new Float32Array(totalSamples);
+      let offset = 0;
+      for (const chunk of chunks) {
+        fullMonoSource.set(chunk, offset);
+        offset += chunk.length;
+      }
+
+      // Resample to target rate (usually 16kHz for Whisper)
+      const sttAudio = resample(fullMonoSource, sourceRate, targetSampleRate);
+
+      return {
+        sampleRate: targetSampleRate,
+        numberOfChannels: 1,
+        sttAudio,
+      };
+    } finally {
+      if (typeof (sink as any).close === 'function') (sink as any).close();
+      if (typeof (sink as any).dispose === 'function') (sink as any).dispose();
+    }
+  } finally {
+    if ('dispose' in input && typeof (input as any).dispose === 'function')
+      (input as any).dispose();
+    else if ('close' in input && typeof (input as any).close === 'function') (input as any).close();
+  }
+}
+
 self.addEventListener('message', async (event: MessageEvent<DecodeRequest>) => {
   const data = event.data;
-  if (!data || (data.type !== 'decode' && data.type !== 'extract-peaks')) return;
+  if (!data || !['decode', 'extract-peaks', 'decode-stt'].includes(data.type)) return;
 
   const response: DecodeResponse = {
     type: 'decode-result',
@@ -203,6 +294,22 @@ self.addEventListener('message', async (event: MessageEvent<DecodeRequest>) => {
 
       (self as any).postMessage(response);
       return;
+    }
+
+    if (data.type === 'decode-stt') {
+        const result = await decodeToSttMono(
+            data.blob ?? data.arrayBuffer ?? new ArrayBuffer(0),
+            data.options?.targetSampleRate || 16000
+        );
+        response.ok = true;
+        response.result = {
+            sampleRate: result.sampleRate,
+            numberOfChannels: 1,
+            channelBuffers: [],
+            sttAudio: result.sttAudio
+        };
+        (self as any).postMessage(response, [result.sttAudio.buffer]);
+        return;
     }
 
     const result = await decodeToFloat32Channels(
