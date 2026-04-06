@@ -92,7 +92,9 @@ const selectionStore = useSelectionStore();
 const clipboardStore = useAppClipboard();
 const { currentDragOperation } = clipboardStore;
 const { loadTimeline } = useProjectActions();
-const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
+const fileManagerStore =
+  (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
+  useFileManagerStore();
 const mediaStore = useMediaStore();
 
 watch(
@@ -204,7 +206,8 @@ function onContainerDragLeave(e: DragEvent) {
 }
 
 function onEntryFocus(_entry: FsEntry) {
-  const focusId = `dynamic:file-manager:${props.instanceId || (props.isFilesPage ? 'filesBrowser' : 'left')}` as PanelFocusId;
+  const focusId =
+    `dynamic:file-manager:${props.instanceId || (props.isFilesPage ? 'filesBrowser' : 'left')}` as PanelFocusId;
   focusStore.setPanelFocus(focusId);
 }
 
@@ -293,14 +296,19 @@ function onRequestDownload(params: { entry: RemoteFsEntry; targetDirPath: string
   uiStore.pendingRemoteDownloadRequest = params;
 }
 
-const { isRootDropOver, isRelevantDrag, onRootDragEnter, onRootDragOver, onRootDragLeave, onRootDrop } = useFileDrop(
-  {
-    resolveEntryByPath: async (path: string) => props.findEntryByPath(path),
-    handleFiles: props.handleFiles,
-    moveEntry: props.moveEntry,
-    copyEntry: props.copyEntry,
-  },
-);
+const {
+  isRootDropOver,
+  isRelevantDrag,
+  onRootDragEnter,
+  onRootDragOver,
+  onRootDragLeave,
+  onRootDrop,
+} = useFileDrop({
+  resolveEntryByPath: async (path: string) => props.findEntryByPath(path),
+  handleFiles: props.handleFiles,
+  moveEntry: props.moveEntry,
+  copyEntry: props.copyEntry,
+});
 
 const rootContextMenuItems = computed(() => {
   if (!projectStore.currentProjectName) return [];
@@ -461,25 +469,24 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
         </div>
 
         <!-- File tree -->
-        <div v-else class="flex flex-col">
-          <FileManagerTree
-            :editing-entry-path="editingEntryPath"
-            :entries="rootEntries"
-            :depth="0"
-            :folders-only="foldersOnly"
-            :is-files-page="isFilesPage"
-            @commit-rename="(entry, name) => emit('commitRename', entry, name)"
-            @stop-rename="emit('stopRename')"
-            @toggle="emit('toggle', $event)"
-            @select="onEntrySelect"
-            @focus="onEntryFocus"
-            @action="(action, entry) => emit('action', action as any, entry)"
-            @request-move="onRequestMove"
-            @request-copy="onRequestCopy"
-            @request-upload="onRequestUpload"
-            @request-download="onRequestDownload"
-          />
-        </div>
+        <FileManagerTree
+          v-else
+          :editing-entry-path="editingEntryPath"
+          :entries="rootEntries"
+          :depth="0"
+          :folders-only="foldersOnly"
+          :is-files-page="isFilesPage"
+          @commit-rename="(entry, name) => emit('commitRename', entry, name)"
+          @stop-rename="emit('stopRename')"
+          @toggle="emit('toggle', $event)"
+          @select="onEntrySelect"
+          @focus="onEntryFocus"
+          @action="(action, entry) => emit('action', action as any, entry)"
+          @request-move="onRequestMove"
+          @request-copy="onRequestCopy"
+          @request-upload="onRequestUpload"
+          @request-download="onRequestDownload"
+        />
 
         <div
           class="flex-1 w-full min-w-full flex items-center justify-center min-h-12 relative"

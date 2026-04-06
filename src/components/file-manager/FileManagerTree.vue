@@ -607,7 +607,7 @@ const { getContextMenuItems } = useFileContextMenu(
         </UContextMenu>
 
         <!-- Children -->
-        <div v-if="entry.kind === 'directory' && entry.expanded && entry.children">
+        <template v-if="entry.kind === 'directory' && entry.expanded && entry.children">
           <FileManagerTree
             :editing-entry-path="editingEntryPath"
             :entries="entry.children"
@@ -625,7 +625,7 @@ const { getContextMenuItems } = useFileContextMenu(
             @request-upload="emit('requestUpload', $event)"
             @request-download="emit('requestDownload', $event)"
           />
-        </div>
+        </template>
       </li>
     </template>
   </ul>
