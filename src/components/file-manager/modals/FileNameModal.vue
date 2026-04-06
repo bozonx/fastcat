@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue';
 import UiModal from '~/components/ui/UiModal.vue';
+import UiFormField from '~/components/ui/UiFormField.vue';
 
 const props = defineProps<{
   title: string;
@@ -44,13 +45,13 @@ function handleCancel() {
     :title="props.title"
   >
     <div class="py-2">
-      <UFormGroup :label="$t('common.name', 'Name')" name="name">
+      <UiFormField :label="$t('common.name', 'Name')">
         <UInput
           ref="inputRef"
           v-model="name"
           @keydown.enter="handleConfirm"
         />
-      </UFormGroup>
+      </UiFormField>
     </div>
 
     <template #footer>
