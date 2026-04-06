@@ -320,6 +320,7 @@ function onTrackPointerDown(e: PointerEvent, trackId: string) {
 
 function onTrackClick(e: MouseEvent, trackId: string) {
   if (!props.isMobile) return;
+  e.stopPropagation();
   // Skip if this was a scroll gesture (significant pointer movement)
   const dx = Math.abs(e.clientX - trackPointerStartX);
   const dy = Math.abs(e.clientY - trackPointerStartY);

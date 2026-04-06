@@ -4,6 +4,7 @@ import { computed, onMounted, onBeforeUnmount } from 'vue';
 import type { TimelineTrack, TimelineMoveItemPayload } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
@@ -28,6 +29,7 @@ export { BASE_PX_PER_SECOND, timeUsToPx, pxToTimeUs, pxToDeltaUs, computeAnchore
 export function useTimelineInteraction(
   scrollEl: Ref<HTMLElement | null>,
   tracks: ComputedRef<TimelineTrack[]>,
+  isExplicitMobile?: Ref<boolean>,
 ) {
   const timelineStore = useTimelineStore();
   const projectStore = useProjectStore();
@@ -49,7 +51,7 @@ export function useTimelineInteraction(
     onGlobalPointerUp: onPlayheadGlobalPointerUp,
   } = useTimelinePlayheadDrag(scrollEl);
 
-  const { selectItem } = useTimelineItemSelection(tracks);
+  const { selectItem } = useTimelineItemSelection(tracks, isExplicitMobile);
 
   const {
     draggingMode,
