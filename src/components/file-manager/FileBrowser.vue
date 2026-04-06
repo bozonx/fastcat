@@ -39,6 +39,7 @@ import FileBrowserBreadcrumbs from '~/components/file-manager/FileBrowserBreadcr
 import FileBrowserViewGrid from '~/components/file-manager/FileBrowserViewGrid.vue';
 import FileBrowserViewList from '~/components/file-manager/FileBrowserViewList.vue';
 import FileBrowserModals from '~/components/file-manager/FileBrowserModals.vue';
+import FileNameModal from '~/components/file-manager/modals/FileNameModal.vue';
 
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
@@ -355,6 +356,43 @@ async function onSubgroupCreateConfirm(name: string) {
   }
 }
 
+// --- Create content item (remote) ---
+const isItemModalOpen = ref(false);
+const pendingItemParent = ref<FsEntry | null>(null);
+
+function handlePendingBloggerDogCreateItem(entry: FsEntry) {
+  pendingItemParent.value = entry;
+  isItemModalOpen.value = true;
+  uiStore.pendingBloggerDogCreateItem = null;
+}
+
+async function onItemCreateConfirm(name: string) {
+  const parent = pendingItemParent.value;
+  if (!parent) return;
+
+  try {
+    const parentPath = parent.path;
+    const finalName = name.includes('.') ? name : `${name}.txt`;
+    const filePath = parentPath === '/' ? `/${finalName}` : `${parentPath}/${finalName}`;
+    
+    // Create empty item by writing an empty blob
+    await vfs.writeFile(filePath, new Blob([], { type: 'text/plain' }));
+    
+    await loadFolderContent();
+    uiStore.notifyFileManagerUpdate();
+  } catch (error) {
+    const toast = useToast();
+    toast.add({
+      color: 'error',
+      title: t('common.error', 'Error'),
+      description: error instanceof Error ? error.message : 'Failed to create item',
+    });
+  } finally {
+    isItemModalOpen.value = false;
+    pendingItemParent.value = null;
+  }
+}
+
 // --- File manager actions (CRUD, rename, delete) ---
 const {
   isDeleteConfirmModalOpen,
@@ -553,6 +591,7 @@ useFileBrowserPendingActions({
   openDeleteConfirmModal,
   instanceId,
   handlePendingBloggerDogCreateSubgroup,
+  handlePendingBloggerDogCreateItem,
   onCreateFolder: (entry) => onFileAction('createFolder', entry),
   handlePendingRemoteDownloadRequest: async () => {
     const request = uiStore.pendingRemoteDownloadRequest;
@@ -904,23 +943,24 @@ async function onDirectoryUploadChange(e: Event) {
 
     <!-- Modals -->
     <FileBrowserModals
+      v-model:is-delete-confirm-modal-open="isDeleteConfirmModalOpen"
+      v-model:transcription-modal-open="transcriptionModalOpen"
+      v-model:transcription-language="transcriptionLanguage"
+      v-model:is-subgroup-modal-open="isSubgroupModalOpen"
+      v-model:is-item-modal-open="isItemModalOpen"
       :delete-targets="deleteTargets"
-      :is-delete-confirm-modal-open="isDeleteConfirmModalOpen"
       :remote-transfer-open="remoteTransferOpen"
       :remote-transfer-progress="remoteTransferProgress"
       :remote-transfer-phase="remoteTransferPhase"
       :remote-transfer-file-name="remoteTransferFileName"
-      :transcription-modal-open="transcriptionModalOpen"
       :is-transcribing="isTranscribing"
       :transcription-error="transcriptionError"
       :transcription-entry="transcriptionEntry"
-      :transcription-language="transcriptionLanguage"
-      @update:is-delete-confirm-modal-open="isDeleteConfirmModalOpen = $event"
-      @update:transcription-modal-open="transcriptionModalOpen = $event"
-      @update:transcription-language="transcriptionLanguage = $event"
       @delete-confirm="handleDeleteConfirm"
-      @cancel-remote-transfer="() => {}"
+      @cancel-remote-transfer="remote.cancelRemoteTransfer"
       @submit-transcription="submitTranscription"
+      @subgroup-confirm="onSubgroupCreateConfirm"
+      @item-confirm="onItemCreateConfirm"
     />
   </div>
 </template>
