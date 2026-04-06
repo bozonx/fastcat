@@ -169,6 +169,7 @@ export function normalizeIntegrationsSettings(raw: unknown): FastCatUserSettings
             .array(z.string().trim())
             .catch([...DEFAULT_USER_SETTINGS.integrations.stt.models]),
           localModel: z.string().trim().catch(DEFAULT_USER_SETTINGS.integrations.stt.localModel),
+          language: z.string().trim().catch(DEFAULT_USER_SETTINGS.integrations.stt.language ?? ''),
           restorePunctuation: z
             .boolean()
             .catch(DEFAULT_USER_SETTINGS.integrations.stt.restorePunctuation),
