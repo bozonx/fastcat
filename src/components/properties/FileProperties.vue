@@ -191,6 +191,7 @@ const {
   isHidden, 
   mediaMeta, 
   selectedPath,
+  isBloggerDogProject,
   isBloggerDogGroup,
   isBloggerDogContentItem,
   bloggerDogDeepLink,
@@ -475,12 +476,32 @@ const isRemoteMode = computed(() => props.selectedFsEntry?.source === 'remote');
 
 const filteredDirectoryPrimaryActions = computed(() => {
   if (!isRemoteContent.value) return directoryPrimaryActions.value;
-  return directoryPrimaryActions.value.filter((a: PrimaryEntryAction) => ['rename', 'delete', 'createSubgroup', 'createContentItem'].includes(a.id));
+
+  let actions = directoryPrimaryActions.value;
+
+  if (isBloggerDogProject.value) {
+    actions = actions.filter((a: PrimaryEntryAction) => !['rename', 'delete'].includes(a.id));
+  }
+
+  if (isBloggerDogContentItem.value) {
+    actions = actions.filter((a: PrimaryEntryAction) => !['createSubgroup', 'createContentItem'].includes(a.id));
+  }
+
+  return actions.filter((a: PrimaryEntryAction) =>
+    ['rename', 'delete', 'createSubgroup', 'createContentItem'].includes(a.id),
+  );
 });
 
 const filteredFilePrimaryActions = computed(() => {
   if (!isRemoteContent.value) return filePrimaryActions.value;
-  return filePrimaryActions.value.filter((a: PrimaryEntryAction) => ['rename', 'delete'].includes(a.id));
+
+  let actions = filePrimaryActions.value;
+
+  if (isBloggerDogContentItem.value) {
+    actions = actions.filter((a: PrimaryEntryAction) => !['createSubgroup', 'createContentItem'].includes(a.id));
+  }
+
+  return actions.filter((a: PrimaryEntryAction) => ['rename', 'delete'].includes(a.id));
 });
 </script>
 
@@ -693,8 +714,32 @@ const filteredFilePrimaryActions = computed(() => {
          </PropertyRow>
       </PropertySection>
 
+      <PropertySection
+        v-if="isBloggerDogProject"
+        :title="generalInfoTitle"
+      >
+         <PropertyRow
+           v-if="selectedPath"
+           :label="t('common.path', 'Путь')"
+           :value="selectedPath"
+         />
+         <PropertyRow
+           v-if="bloggerDogDeepLink"
+           :label="t('common.url', 'URL')"
+         >
+           <a
+             :href="bloggerDogDeepLink"
+             target="_blank"
+             class="text-primary-500 hover:text-primary-400 underline decoration-dotted transition-colors flex items-center gap-1 overflow-hidden"
+           >
+             <span class="truncate">{{ bloggerDogDeepLink.replace(/.*\/projects\//, '/projects/') }}</span>
+             <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 shrink-0" />
+           </a>
+         </PropertyRow>
+      </PropertySection>
+
       <FileGeneralInfoSection
-        v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'directory' && !isRemoteRoot && !isVirtualAll && !isPersonalLibrary && !isProjectLibraries"
+        v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'directory' && !isRemoteRoot && !isVirtualAll && !isPersonalLibrary && !isProjectLibraries && !isBloggerDogProject"
         :title="generalInfoTitle"
         :file-info="fileInfo"
         :selected-path="selectedPath"

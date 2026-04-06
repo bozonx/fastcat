@@ -102,6 +102,28 @@ const selectedEntriesList = computed(() => {
   return [selectedEntity.value.entry];
 });
 
+const isBloggerDogProject = computed(() => {
+  const list = selectedEntriesList.value;
+  if (list.length !== 1) return false;
+  const entry = list[0];
+  if (entry?.source !== 'remote' || entry?.kind !== 'directory') return false;
+  const path = entry.path || '';
+  const parts = path.split('/').filter(Boolean);
+  return parts.length === 2 && parts[0] === 'projects';
+});
+
+const canRename = computed(() => {
+  if (selectedEntriesList.value.length !== 1) return false;
+  if (isBloggerDogProject.value) return false;
+  return true;
+});
+
+const canDelete = computed(() => {
+  if (selectedEntriesList.value.length === 0) return false;
+  if (isBloggerDogProject.value) return false;
+  return true;
+});
+
 const isFullyUnsupported = computed(() => {
   const entry = selectedFsEntry.value?.entry;
   if (!entry || entry.kind !== 'file' || !entry.path) return false;
@@ -257,12 +279,13 @@ function handleAction(actionId: FileAction) {
         <div class="mb-4 pt-1">
           <MobileDrawerToolbar v-if="selectedEntriesList.length > 0" class="-mx-4 border-b border-ui-border mb-2">
             <MobileDrawerToolbarButton
+              v-if="canDelete"
               icon="i-heroicons-trash"
               :label="$t('common.delete', 'Delete')"
               @click="handleAction('delete')"
             />
             <MobileDrawerToolbarButton
-              v-if="selectedEntriesList.length === 1"
+              v-if="canRename"
               icon="i-heroicons-pencil-square"
               :label="$t('common.rename', 'Rename')"
               @click="handleAction('rename')"

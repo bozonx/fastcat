@@ -212,6 +212,7 @@
       "projectLibrariesDesc": "Библиотеки контента конкретных проектов"
     },
     "file": {
+      "bloggerDogProject": "Проект",
       "bloggerDogGroup": "Группа",
       "bloggerDogItem": "Элемент контента",
       "mediaCount": "Количество файлов",
