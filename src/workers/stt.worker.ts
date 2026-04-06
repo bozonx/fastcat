@@ -162,6 +162,9 @@ self.onmessage = async (event) => {
     const { audio, modelName, language, subtask } = data;
 
     try {
+      const durationS = audio.length / 16000;
+      console.log(`[STT Worker] Processing ${modelName}: ${audio.length} samples (${durationS.toFixed(2)}s)`);
+
       const p = await initTranscriber(modelName);
 
       const result = await p(audio, {
@@ -175,6 +178,7 @@ self.onmessage = async (event) => {
         }
       });
 
+      console.log(`[STT Worker] Transcription finished. Total chunks: ${Array.isArray((result as any).chunks) ? (result as any).chunks.length : 'N/A'}`);
       self.postMessage({ type: 'result', id, data: result });
     } catch (err: any) {
       console.error(`[STT Worker] Transcription error:`, err);
