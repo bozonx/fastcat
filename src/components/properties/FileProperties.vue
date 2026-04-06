@@ -597,6 +597,7 @@ const filteredFilePrimaryActions = computed(() => {
       <BloggerDogItemPropertiesSection
         v-if="isBloggerDogContentItem && castedRemoteRecord"
         :item="castedRemoteRecord"
+        :config="remoteFilesConfig!"
       />
 
       <FileProjectRootSection
