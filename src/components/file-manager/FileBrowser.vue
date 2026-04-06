@@ -53,6 +53,7 @@ const props = defineProps<{
   hideUpload?: boolean;
   hideFocusFrame?: boolean;
   rootName?: string;
+  preventOpen?: boolean;
 }>();
 
 const instanceId = props.instanceId || 'default';
@@ -583,6 +584,7 @@ const { handleEntryClick, handleEntryDoubleClick, handleEntryEnter, handleSort, 
     loadParentFolders,
     setSelectedFsEntry,
     onFileAction,
+    preventOpen: props.preventOpen,
   });
 
 async function onDirectoryUploadChange(e: Event) {
