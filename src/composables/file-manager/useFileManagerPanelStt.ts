@@ -3,7 +3,7 @@ import type { FsEntry } from '~/types/fs';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { getMediaTypeFromFilename, getMimeTypeFromFilename } from '~/utils/media-types';
-import { transcribeAudioFile } from '~/utils/transcription/engine';
+import { runTranscriptionTask } from '~/utils/transcription/task-wrapper';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 
 export interface FileManagerPanelSttOptions {
@@ -21,6 +21,7 @@ export function useFileManagerPanelStt({
 }: FileManagerPanelSttOptions) {
   const projectStore = useProjectStore();
   const workspaceStore = useWorkspaceStore();
+  const { t } = useI18n();
 
   const modalOpen = ref(false);
   const language = ref('');
@@ -86,7 +87,8 @@ export function useFileManagerPanelStt({
         ? entry.path
         : `projects/${projectStore.currentProjectName}/${entry.path}`;
 
-      const result = await transcribeAudioFile({
+      modalOpen.value = false;
+      const result = await runTranscriptionTask({
         file,
         filePath: workspacePath,
         fileName: entry.name,
@@ -95,11 +97,14 @@ export function useFileManagerPanelStt({
         fastcatAccountApiUrl,
         userSettings: workspaceStore.userSettings,
         workspaceHandle: workspaceStore.workspaceHandle!,
+        title: t('videoEditor.backgroundTasks.transcriptionTitle', { name: entry.name }, `Transcription: ${entry.name}`),
       });
 
-      modalOpen.value = false;
       onSuccess({ cached: result.cached, mediaType });
     } catch (error: unknown) {
+      if ((error as Error).name === 'AbortError' || (error as Error).message === 'Transcription cancelled') {
+        return;
+      }
       const message = error instanceof Error ? error.message : 'Failed to transcribe media';
       errorMessage.value = message;
       onError(message);

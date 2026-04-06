@@ -222,11 +222,11 @@ watch(
           <UiSelect
             v-model="workspaceStore.userSettings.integrations.stt.localModel"
             :items="[
-              { label: 'Whisper Tiny (Multilingual)', value: 'onnx-community/whisper-tiny' },
-              { label: 'Whisper Base (Multilingual)', value: 'onnx-community/whisper-base' },
-              { label: 'Whisper Small (Multilingual)', value: 'onnx-community/whisper-small' },
-              { label: 'Whisper Medium (Multilingual)', value: 'onnx-community/whisper-medium' },
-              { label: 'Whisper Large v3 Turbo (Multilingual)', value: 'onnx-community/whisper-large-v3-turbo' },
+              { label: 'Whisper Tiny (Multilingual)', value: 'Xenova/whisper-tiny' },
+              { label: 'Whisper Base (Multilingual)', value: 'Xenova/whisper-base' },
+              { label: 'Whisper Small (Multilingual)', value: 'Xenova/whisper-small' },
+              { label: 'Whisper Medium (Multilingual)', value: 'Xenova/whisper-medium' },
+              { label: 'Whisper Large v3 (Multilingual)', value: 'Xenova/whisper-large-v3' },
             ]"
             full-width
           />

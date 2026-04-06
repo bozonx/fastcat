@@ -1,7 +1,7 @@
 import { computed, ref, watch, type Ref } from 'vue';
 import { createTranscriptionCacheRepository } from '~/repositories/transcription-cache.repository';
 import { getMimeTypeFromFilename } from '~/utils/media-types';
-import { transcribeAudioFile } from '~/utils/transcription/engine';
+import { runTranscriptionTask } from '~/utils/transcription/task-wrapper';
 import type { FastCatUserSettings } from '~/utils/settings';
 import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 import type { FsEntry } from '~/types/fs';
@@ -17,7 +17,7 @@ interface UseFilePropertiesTranscriptionOptions {
   currentProjectName: Ref<string | null>;
   getFileByPath: (path: string) => Promise<File | null | undefined>;
   toast: { add: (payload: { title: string; description?: string; color?: string }) => void };
-  t: (key: string, fallback?: string) => string;
+  t: (key: string, ...args: any[]) => string;
 }
 
 function extractTranscriptionText(payload: unknown): string {
@@ -132,7 +132,8 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
         ? selectedEntry.path
         : `projects/${options.currentProjectName.value}/${selectedEntry.path}`;
 
-      const result = await transcribeAudioFile({
+      isTranscriptionModalOpen.value = false;
+      const result = await runTranscriptionTask({
         file,
         filePath: workspacePath,
         fileName: selectedEntry.name,
@@ -141,12 +142,12 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
         fastcatAccountApiUrl: options.fastcatAccountApiUrl.value,
         userSettings: options.userSettings.value,
         workspaceHandle: options.workspaceHandle.value,
+        title: options.t('videoEditor.backgroundTasks.transcriptionTitle', { name: selectedEntry.name }),
       } as any);
 
       latestTranscriptionText.value = extractTranscriptionText(result.record.response);
       latestTranscriptionCacheKey.value = result.cacheKey;
       latestTranscriptionWasCached.value = result.cached;
-      isTranscriptionModalOpen.value = false;
 
       options.toast.add({
         title: result.cached
@@ -170,6 +171,9 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
         color: 'success',
       });
     } catch (error: unknown) {
+      if ((error as Error).name === 'AbortError' || (error as Error).message === 'Transcription cancelled') {
+        return;
+      }
       transcriptionError.value =
         error instanceof Error
           ? error.message
