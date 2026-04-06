@@ -27,15 +27,23 @@ export function createMediaCacheFsModule(deps: {
       workspaceHandle,
       topology: deps.getResolvedStorageTopology(),
       projectId,
-      leafSegments: ['frame-cache'],
+      leafSegments: ['cache'],
       create: true,
     })) as FileSystemDirectoryHandle;
   }
 
   async function ensureFilesMetaDir(): Promise<FileSystemDirectoryHandle | null> {
-    const projectCacheDir = await ensureCacheDir();
-    if (!projectCacheDir) return null;
-    return await projectCacheDir.getDirectoryHandle('files-meta', { create: true });
+    const workspaceHandle = deps.getWorkspaceHandle();
+    const projectId = deps.getProjectId();
+    if (!workspaceHandle || !projectId) return null;
+
+    return (await ensureResolvedProjectTempDir({
+      workspaceHandle,
+      topology: deps.getResolvedStorageTopology(),
+      projectId,
+      leafSegments: ['files-meta'],
+      create: true,
+    })) as FileSystemDirectoryHandle;
   }
 
   async function ensureWaveformsDir(): Promise<FileSystemDirectoryHandle | null> {

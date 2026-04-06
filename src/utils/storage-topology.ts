@@ -2,7 +2,8 @@ import {
   COMMON_ROOT_DIR_NAME,
   DATA_ROOT_DIR_NAME,
   EXPORTS_TMP_ROOT_DIR_NAME,
-  FRAME_CACHE_ROOT_DIR_NAME,
+  CACHE_ROOT_DIR_NAME,
+  FILES_META_ROOT_DIR_NAME,
   IMPORTS_ROOT_DIR_NAME,
   JOBS_ROOT_DIR_NAME,
   PROJECTS_ROOT_DIR_NAME,
@@ -60,7 +61,14 @@ export function getResolvedProjectCacheSegments(
   topology: ResolvedStorageTopology,
   projectId: string,
 ): string[] {
-  return [...getResolvedProjectTempSegments(topology, projectId), FRAME_CACHE_ROOT_DIR_NAME];
+  return [...getResolvedProjectTempSegments(topology, projectId), CACHE_ROOT_DIR_NAME];
+}
+
+export function getResolvedProjectFilesMetaSegments(
+  topology: ResolvedStorageTopology,
+  projectId: string,
+): string[] {
+  return [...getResolvedProjectTempSegments(topology, projectId), FILES_META_ROOT_DIR_NAME];
 }
 
 export function getResolvedProjectThumbnailsSegments(

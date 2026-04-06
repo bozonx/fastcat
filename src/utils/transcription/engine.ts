@@ -5,9 +5,6 @@ import {
 import { resolveExternalServiceConfig, resolveSttStreamUrl } from '~/utils/external-integrations';
 import type { FastCatUserSettings } from '~/utils/settings';
 import { getMimeTypeFromFilename } from '~/utils/media-types';
-
-import type { ResolvedStorageTopology } from '~/utils/storage-topology';
-
 export interface TranscriptionRequest {
   file: File | FileSystemFileHandle;
   filePath: string;
@@ -15,10 +12,8 @@ export interface TranscriptionRequest {
   fileType: string;
   language?: string;
   fastcatAccountApiUrl: string;
-  projectId: string;
   userSettings: FastCatUserSettings;
   workspaceHandle: FileSystemDirectoryHandle;
-  resolvedStorageTopology: ResolvedStorageTopology;
 }
 
 export interface TranscriptionResult {
@@ -154,8 +149,6 @@ export async function transcribeAudioFile(
   const contentType = normalizeFileType(input.fileType, file);
   const cacheRepository = createTranscriptionCacheRepository({
     workspaceDir: input.workspaceHandle,
-    topology: input.resolvedStorageTopology,
-    projectId: input.projectId,
   });
 
   const cacheKey = await createCacheKey({
@@ -169,7 +162,7 @@ export async function transcribeAudioFile(
     endpoint,
   });
 
-  const cachedRecord = await cacheRepository.load(cacheKey);
+  const cachedRecord = await cacheRepository.load({ key: cacheKey, sourcePath: input.filePath });
   if (cachedRecord) {
     return {
       cacheKey,
