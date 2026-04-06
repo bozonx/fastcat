@@ -187,7 +187,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       return entries;
     }
 
-    const remotePath = cached.id.startsWith('/') ? cached.id : `/${cached.id}`;
+    const remotePath = cached.item?.path || (cached.id.startsWith('/') ? cached.id : `/${cached.id}`);
     const response = await fetchRemoteVfsList({
       config,
       path: remotePath,
