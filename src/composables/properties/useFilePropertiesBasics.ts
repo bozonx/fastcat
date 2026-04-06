@@ -43,6 +43,14 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
     );
   });
 
+  const isBloggerDogProject = computed(() => {
+    const entry = options.selectedFsEntry.value;
+    if (entry?.source !== 'remote' || entry?.kind !== 'directory') return false;
+    const path = entry.path || '';
+    const parts = path.split('/').filter(Boolean);
+    return parts.length === 2 && parts[0] === 'projects';
+  });
+
   const isBloggerDogContentItem = computed(() => {
     const entry = options.selectedFsEntry.value;
     return entry?.source === 'remote' && entry?.isContentItem;
@@ -89,14 +97,11 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
       return `${baseUrl}${projectPrefix}/content-library?openItemId=${remoteId}`;
     }
 
+    if (isBloggerDogProject.value) {
+      return `${baseUrl}${projectPrefix}`;
+    }
+
     if (isBloggerDogGroup.value && remoteId) {
-      // If the selected item is the project itself, remoteId is the project ID
-      // and path is /projects/project-id. In this case projectPrefix will be /projects/project-id
-      // but remoteId is also project-id.
-      // But for the project itself, we might want to just open its content library without groupId.
-      if (path.startsWith('/projects/') && path.split('/').filter(Boolean).length === 2) {
-        return `${baseUrl}${projectPrefix}/content-library`;
-      }
       return `${baseUrl}${projectPrefix}/content-library?groupId=${remoteId}`;
     }
 
@@ -108,6 +113,7 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
     const info = options.fileInfo.value;
     if (!info) return '';
     
+    if (isBloggerDogProject.value) return t('fastcat.file.bloggerDogProject', 'Проект');
     if (isBloggerDogGroup.value) return t('fastcat.file.bloggerDogGroup', 'Группа');
     if (isBloggerDogContentItem.value) return t('fastcat.file.bloggerDogItem', 'Элемент контента');
     
