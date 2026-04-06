@@ -1,9 +1,7 @@
 import { computed, ref, watch, type Ref } from 'vue';
-import { createTranscriptionCacheRepository } from '~/repositories/transcription-cache.repository';
 import { getMimeTypeFromFilename } from '~/utils/media-types';
 import { runTranscriptionTask } from '~/utils/transcription/task-wrapper';
 import type { FastCatUserSettings } from '~/utils/settings';
-import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 import type { FsEntry } from '~/types/fs';
 
 interface UseFilePropertiesTranscriptionOptions {
@@ -46,8 +44,6 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
   const isTranscribingAudio = ref(false);
   const transcriptionError = ref('');
   const latestTranscriptionText = ref('');
-  const latestTranscriptionCacheKey = ref('');
-  const latestTranscriptionWasCached = ref(false);
 
   const isSttModelReady = computed(() => {
     const isLocal = options.userSettings.value.integrations.stt.provider === 'local';
@@ -71,45 +67,8 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
     transcriptionLanguage.value = '';
     transcriptionError.value = '';
     latestTranscriptionText.value = '';
-    latestTranscriptionCacheKey.value = '';
-    latestTranscriptionWasCached.value = false;
     isTranscriptionModalOpen.value = false;
     isTranscribingAudio.value = false;
-  }
-
-  async function loadCachedTranscription() {
-    const selectedEntry = options.selectedFsEntry.value;
-    if (
-      !selectedEntry ||
-      selectedEntry.kind !== 'file' ||
-      !options.workspaceHandle.value ||
-      !(options.isAudioFile.value || options.isVideoFile.value)
-    ) {
-      latestTranscriptionText.value = '';
-      latestTranscriptionCacheKey.value = '';
-      latestTranscriptionWasCached.value = false;
-      return;
-    }
-
-    try {
-      const repository = createTranscriptionCacheRepository({
-        workspaceDir: options.workspaceHandle.value,
-      });
-      
-      const workspacePath = selectedEntry.path.startsWith('/') || selectedEntry.path.startsWith('projects/') || !options.currentProjectName.value
-        ? selectedEntry.path
-        : `projects/${options.currentProjectName.value}/${selectedEntry.path}`;
-
-      const records = await repository.list({ sourcePath: workspacePath });
-      const record = records[0];
-      latestTranscriptionText.value = record ? extractTranscriptionText(record.response) : '';
-      latestTranscriptionCacheKey.value = record?.key ?? '';
-      latestTranscriptionWasCached.value = Boolean(record);
-    } catch {
-      latestTranscriptionText.value = '';
-      latestTranscriptionCacheKey.value = '';
-      latestTranscriptionWasCached.value = false;
-    }
   }
 
   function openTranscriptionModal() {
@@ -152,28 +111,17 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
       } as any);
 
       latestTranscriptionText.value = extractTranscriptionText(result.record.response);
-      latestTranscriptionCacheKey.value = result.cacheKey;
-      latestTranscriptionWasCached.value = result.cached;
 
       options.toast.add({
-        title: result.cached
-          ? options.t(
-              'videoEditor.fileManager.audio.transcriptionCached',
-              'Using cached transcription',
-            )
-          : options.t(
-              'videoEditor.fileManager.audio.transcriptionCompleted',
-              'Transcription completed',
-            ),
-        description: result.cached
-          ? options.t(
-              'videoEditor.fileManager.audio.transcriptionCachedDescription',
-              'Cached transcription was loaded from the file directory.',
-            )
-          : options.t(
-              'videoEditor.fileManager.audio.transcriptionSavedDescription',
-              'Transcription was saved next to the source file.',
-            ),
+        title: options.t(
+          'videoEditor.fileManager.audio.transcriptionCompleted',
+          'Transcription completed',
+        ),
+        description: options.t(
+          'videoEditor.fileManager.audio.transcriptionFinishedDescription',
+          'Transcription for {name} has been completed successfully.',
+          { name: selectedEntry.name }
+        ),
         color: 'success',
       });
     } catch (error: unknown) {
@@ -194,9 +142,8 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
 
   watch(
     () => options.selectedFsEntry.value?.path,
-    async () => {
+    () => {
       resetTranscriptionState();
-      await loadCachedTranscription();
     },
     { immediate: true },
   );
@@ -208,8 +155,6 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
     isTranscribingAudio,
     transcriptionError,
     latestTranscriptionText,
-    latestTranscriptionCacheKey,
-    latestTranscriptionWasCached,
     isSttModelReady,
     openTranscriptionModal,
     submitAudioTranscription,

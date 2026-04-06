@@ -487,7 +487,17 @@ const isRemoteAvailable = computed(() => Boolean(remoteFilesConfig.value));
 const isRemoteMode = computed(() => props.selectedFsEntry?.source === 'remote');
 
 const filteredDirectoryPrimaryActions = computed(() => {
-  if (!isRemoteContent.value) return directoryPrimaryActions.value;
+  if (!isRemoteContent.value) {
+    return directoryPrimaryActions.value.filter((a: PrimaryEntryAction) =>
+      !['createSubgroup', 'createContentItem'].includes(a.id),
+    );
+  }
+
+  if (isBloggerDogGroup.value) {
+    return directoryPrimaryActions.value.filter((a: PrimaryEntryAction) =>
+      ['rename', 'delete', 'copy', 'cut', 'createSubgroup', 'createContentItem'].includes(a.id),
+    );
+  }
 
   return directoryPrimaryActions.value.filter((a: PrimaryEntryAction) =>
     ['rename', 'delete', 'copy', 'cut'].includes(a.id),
@@ -495,7 +505,9 @@ const filteredDirectoryPrimaryActions = computed(() => {
 });
 
 const filteredFilePrimaryActions = computed(() => {
-  if (!isRemoteContent.value) return filePrimaryActions.value;
+  if (!isRemoteContent.value) {
+    return filePrimaryActions.value.filter((a: PrimaryEntryAction) => a.id !== 'uploadRemote');
+  }
 
   return filePrimaryActions.value.filter((a: PrimaryEntryAction) =>
     ['rename', 'delete', 'copy', 'cut'].includes(a.id),

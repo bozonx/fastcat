@@ -106,13 +106,6 @@ async function initTranscriber(modelName: string): Promise<AutomaticSpeechRecogn
       transcriber = (await pipeline('automatic-speech-recognition', modelName, {
         device: 'webgpu',
         quantized: true,
-        progress_callback: (progress: { progress?: number }) => {
-          self.postMessage({
-            type: 'progress',
-            id: 0,
-            data: { progress: progress.progress || 0 },
-          } satisfies SttWorkerResponse);
-        },
       } as any)) as AutomaticSpeechRecognitionPipeline;
 
       console.log('[STT Worker] Pipeline initialized with WebGPU');
@@ -131,13 +124,6 @@ async function initTranscriber(modelName: string): Promise<AutomaticSpeechRecogn
   transcriber = (await pipeline('automatic-speech-recognition', modelName, {
     device: 'wasm',
     quantized: true,
-    progress_callback: (progress: { progress?: number }) => {
-      self.postMessage({
-        type: 'progress',
-        id: 0,
-        data: { progress: progress.progress || 0 },
-      } satisfies SttWorkerResponse);
-    },
   } as any)) as AutomaticSpeechRecognitionPipeline;
 
   console.log('[STT Worker] Pipeline initialized with WASM');
@@ -182,6 +168,13 @@ self.onmessage = async (event: MessageEvent<SttWorkerInitMessage | SttWorkerTran
           return_timestamps: 'word',
           chunk_length_s: 30,
           stride_length_s: 5,
+          progress_callback: (progress: { progress?: number }) => {
+            self.postMessage({
+              type: 'progress',
+              id,
+              data: { progress: progress.progress || 0 },
+            } satisfies SttWorkerResponse);
+          },
           callback_function: (output: unknown) => {
             self.postMessage({
               type: 'partial-result',

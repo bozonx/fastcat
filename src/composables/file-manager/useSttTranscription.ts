@@ -9,12 +9,12 @@ import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 export interface UseSttTranscriptionOptions {
   vfs?: { getFile: (path: string) => Promise<File | null> };
   fastcatAccountApiUrl?: Ref<string> | string;
-  onSuccess?: (params: { cached: boolean; mediaType: string }) => void;
+  onSuccess?: (params: { mediaType: string }) => void;
   onError?: (message: string) => void;
 }
 
 export interface SttTranscriptionState {
-  sttConfig: Ref<ResolvedExternalServiceConfig | null>;
+  sttConfig: Ref<any>;
   modalOpen: Ref<boolean>;
   language: Ref<string>;
   errorMessage: Ref<string>;
@@ -121,7 +121,7 @@ export function useSttTranscription(
           : `projects/${projectStore.currentProjectName}/${entry.path}`;
 
       const defaultTitle = `Transcription: ${entry.name}`;
-      const result = await runTranscriptionTask({
+      await runTranscriptionTask({
         file,
         filePath: workspacePath,
         fileName: entry.name,
@@ -138,7 +138,7 @@ export function useSttTranscription(
       });
 
       modalOpen.value = false;
-      options.onSuccess?.({ cached: result.cached, mediaType });
+      options.onSuccess?.({ mediaType });
     } catch (error: unknown) {
       if (
         (error as Error).name === 'AbortError' ||

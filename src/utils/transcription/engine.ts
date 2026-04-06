@@ -1,5 +1,4 @@
 import {
-  createTranscriptionCacheRepository,
   type TranscriptionCacheRecord,
 } from '~/repositories/transcription-cache.repository';
 import { resolveExternalServiceConfig, resolveSttStreamUrl } from '~/utils/external-integrations';
@@ -138,29 +137,6 @@ export async function transcribeAudioFile(
   const language = normalizeLanguage(input.language);
   const models = normalizeModels(input.userSettings.integrations.stt.models);
   const contentType = normalizeFileType(input.fileType, file);
-  const cacheRepository = createTranscriptionCacheRepository({
-    workspaceDir: input.workspaceHandle,
-  });
-
-  const cacheKey = await createCacheKey({
-    filePath: input.filePath,
-    fileName: input.fileName,
-    fileSize: file.size,
-    lastModified: file.lastModified,
-    language,
-    provider,
-    models,
-    endpoint,
-  });
-
-  const cachedRecord = await cacheRepository.load({ key: cacheKey, sourcePath: input.filePath });
-  if (cachedRecord) {
-    return {
-      cacheKey,
-      cached: true,
-      record: cachedRecord,
-    };
-  }
 
   const body = file;
   const headers = createRequestHeaders({
@@ -202,7 +178,7 @@ export async function transcribeAudioFile(
 
   const responsePayload = (await response.json()) as unknown;
   const record: TranscriptionCacheRecord = {
-    key: cacheKey,
+    key: 'transient', // We no longer use keys for persistent caching
     createdAt: new Date().toISOString(),
     sourcePath: input.filePath,
     sourceName: input.fileName,
@@ -214,10 +190,8 @@ export async function transcribeAudioFile(
     response: responsePayload,
   };
 
-  await cacheRepository.save(record);
-
   return {
-    cacheKey,
+    cacheKey: 'transient',
     cached: false,
     record,
   };
