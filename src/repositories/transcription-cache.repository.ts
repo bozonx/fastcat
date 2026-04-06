@@ -3,6 +3,7 @@ import {
   writeJsonToFileHandle,
   type DirectoryHandleLike,
 } from './app-fs.repository';
+import { resolveStorageRootHandle } from '~/utils/storage-handles';
 import { z } from 'zod';
 
 export const TranscriptionCacheRecordSchema = z.object({
@@ -26,28 +27,19 @@ export interface TranscriptionCacheRepository {
   save: (record: TranscriptionCacheRecord) => Promise<void>;
 }
 
-async function ensureDirectoryChain(params: {
-  baseDir: DirectoryHandleLike;
-  segments: string[];
-}): Promise<DirectoryHandleLike | null> {
-  let current: DirectoryHandleLike | null = params.baseDir;
 
-  for (const segment of params.segments) {
-    if (!current) return null;
-    current = await current.getDirectoryHandle(segment, { create: true });
-  }
-
-  return current;
-}
 
 function getPathInfo(sourcePath: string) {
-  const parts = sourcePath.split('/').filter(Boolean);
+  const normalized = sourcePath.replace(/\\/g, '/');
+  const parts = normalized.split('/').filter(Boolean);
   const fileName = parts.pop() ?? '';
-  return { segments: parts, fileName };
+  const dirPath = normalized.substring(0, normalized.lastIndexOf('/') + 1);
+  return { dirPath, fileName };
 }
 
-function getTranscriptionFileName(sourceName: string, key: string) {
-  return `${sourceName}.${key}.stt.json`;
+function getTranscriptionFileName(sourceName: string, _key: string) {
+  // Simplified naming for portability as requested by user
+  return `${sourceName}.stt.json`;
 }
 
 function sortRecordsByCreatedAtDesc(
@@ -65,14 +57,16 @@ function sortRecordsByCreatedAtDesc(
 export function createTranscriptionCacheRepository(params: {
   workspaceDir: DirectoryHandleLike;
 }): TranscriptionCacheRepository {
-  async function getFileDir(sourcePath: string): Promise<DirectoryHandleLike | null> {
-    const { segments } = getPathInfo(sourcePath);
+  async function getFileDir(sourcePath: string, create: boolean = false): Promise<DirectoryHandleLike | null> {
+    const { dirPath } = getPathInfo(sourcePath);
     try {
-      return await ensureDirectoryChain({
-        baseDir: params.workspaceDir,
-        segments,
+      return await resolveStorageRootHandle({
+        workspaceHandle: params.workspaceDir,
+        rootPath: dirPath,
+        create,
       });
-    } catch {
+    } catch (error) {
+      console.warn(`[TranscriptionCache] Failed to resolve directory for ${sourcePath}`, error);
       return null;
     }
   }
@@ -134,8 +128,10 @@ export function createTranscriptionCacheRepository(params: {
     },
 
     async save(record) {
-      const dir = await getFileDir(record.sourcePath);
-      if (!dir) return;
+      const dir = await getFileDir(record.sourcePath, true);
+      if (!dir) {
+         throw new Error(`Failed to access directory for transcription: ${record.sourcePath}`);
+      }
 
       const cacheFileName = getTranscriptionFileName(record.sourceName, record.key);
       const handle = await dir.getFileHandle(cacheFileName, { create: true });

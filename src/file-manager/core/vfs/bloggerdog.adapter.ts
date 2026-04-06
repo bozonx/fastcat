@@ -42,7 +42,8 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
   }
 
   private async ensureParentCache(path: string) {
-    const parts = this.normalizePath(path).split('/').filter(Boolean);
+    const normalizedPath = this.normalizePath(path);
+    const parts = normalizedPath.split('/').filter(Boolean);
     if (parts.length <= 1) {
       if (!this.idCache.has('/')) {
         await this.readDirectory('/');
@@ -51,9 +52,34 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     }
     const parentPath = '/' + parts.slice(0, -1).join('/');
     if (!this.idCache.has(parentPath)) {
-      await this.ensureParentCache(parentPath);
+      try {
+        await this.ensureParentCache(parentPath);
+      } catch {
+         // Parent doesn't exist anymore, maybe due to rename
+         return;
+      }
     }
-    await this.readDirectory(parentPath);
+    try {
+      await this.readDirectory(parentPath);
+    } catch {
+       // Parent content gone
+    }
+  }
+
+  private clearCache(path: string) {
+    const normalizedPath = this.normalizePath(path);
+    const keysToDelete: string[] = [];
+    const prefix = normalizedPath === '/' ? '/' : normalizedPath + '/';
+    
+    for (const key of this.idCache.keys()) {
+      if (key === normalizedPath || key.startsWith(prefix)) {
+        keysToDelete.push(key);
+      }
+    }
+    
+    for (const key of keysToDelete) {
+      this.idCache.delete(key);
+    }
   }
 
 
@@ -120,7 +146,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
         item.media.forEach((media: any, index: number) => {
           const name = getRemoteMediaDisplayName({ entry: item, media, mediaIndex: index });
           const mediaPath = `${path}/${name}`;
-          this.idCache.set(mediaPath, { id: media.id || item.id, type: 'media', item, mediaIndex: index });
+          this.idCache.set(mediaPath, { id: item.id, type: 'media', item, mediaIndex: index });
           
           entries.push({
             name,
@@ -174,14 +200,18 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       const entryPath = normalizedPath === '/' ? `/${name}` : `${normalizedPath}/${name}`;
       this.idCache.set(entryPath, { id: item.id, type: item.type, item });
       
+      const isSimpleFile = item.type === 'file' && item.media?.length === 1 && !item.text?.trim();
+
       entries.push({
         name,
-        kind: item.type === 'file' ? 'directory' : item.type,
+        kind: isSimpleFile ? 'file' : (item.type === 'file' ? 'directory' : item.type),
         path: entryPath,
         parentPath: normalizedPath,
         size: item.type === 'file' ? ((item as RemoteVfsFileEntry).media?.[0]?.size ?? 0) : 0,
         lastModified: (item as any).meta?.updatedAt ? new Date((item as any).meta.updatedAt).getTime() : undefined,
         isContentItem: item.type === 'file',
+        isMediaItem: isSimpleFile,
+        mediaId: isSimpleFile ? (item as RemoteVfsFileEntry).media?.[0]?.id : undefined,
         remoteData: item,
       } as VfsEntry);
     }
@@ -279,7 +309,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     } else {
       await deleteRemoteItem({ config, id: entry.id });
     }
-    this.idCache.delete(path);
+    this.clearCache(path);
   }
 
   async moveEntry(sourcePath: string, targetPath: string): Promise<void> {
@@ -306,7 +336,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       await renameRemoteItem({ config, id: entry.id, name: newName });
     }
     
-    this.idCache.delete(sourcePath);
+    this.clearCache(sourcePath);
     this.idCache.delete('/' + sourceParent);
   }
 
