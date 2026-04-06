@@ -118,6 +118,7 @@ defineExpose({ open, close });
         <button
           v-for="(item, ii) in group"
           :key="ii"
+          v-memo="[item.label, item.icon, item.disabled]"
           class="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-ui-text hover:bg-ui-bg-elevated disabled:opacity-50 disabled:pointer-events-none"
           :disabled="item.disabled"
           @click="

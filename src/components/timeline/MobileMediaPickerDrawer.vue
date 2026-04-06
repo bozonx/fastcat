@@ -8,11 +8,13 @@ import { useMediaStore } from '~/stores/media.store';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import type { FsEntry } from '~/types/fs';
 import MobileFileBrowserGrid from '~/components/file-manager/MobileFileBrowserGrid.vue';
+import { useUiStore } from '~/stores/ui.store';
 
-const props = defineProps<{ isOpen: boolean }>();
+const props = defineProps<{ isOpen: boolean; isReplaceMode?: boolean }>();
 const emit = defineEmits<{ (e: 'close'): void }>();
 
 const { t } = useI18n();
+const uiStore = useUiStore();
 const timelineStore = useTimelineStore();
 const projectStore = useProjectStore();
 const { readDirectory, vfs } = useFileManager();
@@ -46,6 +48,11 @@ const breadcrumbs = computed(() => {
 function isMediaEntry(entry: FsEntry) {
   if (entry.kind === 'directory') return true;
   const type = getMediaTypeFromFilename(entry.name);
+
+  if (props.isReplaceMode && uiStore.mediaReplaceTarget) {
+    return type === uiStore.mediaReplaceTarget.expectedType;
+  }
+
   return ['video', 'audio', 'image', 'timeline'].includes(type);
 }
 
@@ -103,34 +110,47 @@ async function addToTimeline() {
   if (!selectedFiles.value.length || isAdding.value) return;
   isAdding.value = true;
   try {
-    for (const entry of selectedFiles.value) {
-      if (!entry.path) continue;
-      const mediaType = getMediaTypeFromFilename(entry.name);
-      if (mediaType === 'timeline') {
-        await timelineStore.addTimelineClipToTimelineFromPath({
-          trackId: timelineStore.resolveMobileTargetTrackId('video'),
-          name: entry.name,
-          path: entry.path,
-          startUs: timelineStore.currentTime,
-          pseudo: true,
+    if (props.isReplaceMode && uiStore.mediaReplaceTarget) {
+      const targetClip = uiStore.mediaReplaceTarget;
+      const entry = selectedFiles.value[0];
+      if (entry && entry.path) {
+        // Need to update clip properties with new path
+        timelineStore.updateClipProperties(targetClip.trackId, targetClip.itemId, {
+          source: { path: entry.path, offsetUs: 0 }
         });
-      } else {
-        const kind = mediaType === 'audio' ? 'audio' : 'video';
-        const trackId = timelineStore.resolveMobileTargetTrackId(kind);
+        uiStore.mediaReplaceTarget = null;
+        uiStore.isMediaReplaceModalOpen = false;
+      }
+    } else {
+      for (const entry of selectedFiles.value) {
+        if (!entry.path) continue;
+        const mediaType = getMediaTypeFromFilename(entry.name);
+        if (mediaType === 'timeline') {
+          await timelineStore.addTimelineClipToTimelineFromPath({
+            trackId: timelineStore.resolveMobileTargetTrackId('video'),
+            name: entry.name,
+            path: entry.path,
+            startUs: timelineStore.currentTime,
+            pseudo: true,
+          });
+        } else {
+          const kind = mediaType === 'audio' ? 'audio' : 'video';
+          const trackId = timelineStore.resolveMobileTargetTrackId(kind);
 
-        await timelineStore.addClipToTimelineFromPath({
-          trackId,
-          name: entry.name,
-          path: entry.path,
-          startUs: timelineStore.currentTime,
-          pseudo: true,
-        });
+          await timelineStore.addClipToTimelineFromPath({
+            trackId,
+            name: entry.name,
+            path: entry.path,
+            startUs: timelineStore.currentTime,
+            pseudo: true,
+          });
+        }
       }
     }
     selectedFiles.value = [];
     emit('close');
   } catch (err) {
-    console.error('MobileMediaPickerDrawer: addToTimeline failed', err);
+    console.error('MobileMediaPickerDrawer: addToTimeline / replace failed', err);
   } finally {
     isAdding.value = false;
   }
@@ -203,8 +223,13 @@ watch(currentPath, (path) => {
           class="rounded-2xl font-bold shadow-lg shadow-primary-500/20 active:scale-[0.98] transition-all"
           @click="addToTimeline"
         >
-          {{ t('common.addToTimeline', 'Add to timeline') }}
-          <span class="ml-1 opacity-80">({{ selectedFiles.length }})</span>
+          <template v-if="props.isReplaceMode">
+            {{ t('fastcat.clip.replaceMedia', 'Replace Media') }}
+          </template>
+          <template v-else>
+            {{ t('common.addToTimeline', 'Add to timeline') }}
+            <span class="ml-1 opacity-80">({{ selectedFiles.length }})</span>
+          </template>
         </UButton>
       </div>
     </div>

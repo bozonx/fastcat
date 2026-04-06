@@ -370,14 +370,20 @@ function onTrackClick(e: MouseEvent, trackId: string) {
         @save="saveSpeedModal"
       />
 
-      <UContextMenu
-        ref="trackContextMenuRef"
-        :items="activeTrackContextMenuItems"
-        manual
-      />
+      <UContextMenu ref="trackContextMenuRef" :items="activeTrackContextMenuItems" manual />
 
       <template v-for="track in tracks" :key="track.id">
         <div
+          v-memo="[
+            track.id,
+            track.locked,
+            track.color,
+            trackHeights[track.id],
+            timelineStore.hoveredTrackId === track.id,
+            isTrackDirectlySelected(track.id),
+            isTrackVisuallySelected(track.id),
+            visibleItemsByTrack[track.id]?.length,
+          ]"
           :data-track-id="track.id"
           class="flex items-center relative transition-colors border-b border-ui-border"
           :class="[

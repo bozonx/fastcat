@@ -52,6 +52,7 @@ const thumbnailsStripWidthPx = computed(() => props.width + trimOffsetPx.value);
       <img
         v-for="tile in thumbnailTiles"
         :key="tile.key"
+        v-memo="[tile.key, tile.url, tile.leftPx, tile.widthPx]"
         :src="tile.url"
         :alt="t('fastcat.timeline.clipThumbnail')"
         class="absolute top-0 h-full object-cover object-center"
