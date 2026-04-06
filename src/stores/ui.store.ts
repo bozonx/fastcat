@@ -80,6 +80,9 @@ export const useUiStore = defineStore('ui', () => {
   const isTextPresetModalOpen = ref(false);
   const pendingTextPresetClipInfo = ref<{ trackId: string; itemId: string } | null>(null);
 
+  const mediaReplaceTarget = ref<{ trackId: string; itemId: string; expectedType: 'video' | 'image' } | null>(null);
+  const isMediaReplaceModalOpen = ref(false);
+
   function notifyFileManagerUpdate() {
     fileManagerUpdateCounter.value++;
   }
@@ -284,6 +287,8 @@ export const useUiStore = defineStore('ui', () => {
     activeLibraryTab,
     isTextPresetModalOpen,
     pendingTextPresetClipInfo,
+    mediaReplaceTarget,
+    isMediaReplaceModalOpen,
     editorSettingsActiveSection,
     showIntegrationSettings,
   };

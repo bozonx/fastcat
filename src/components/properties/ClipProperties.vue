@@ -170,6 +170,7 @@ const {
   linkedVideoClip,
   isSoloed,
   toggleSolo,
+  handleReplaceMedia,
 } = useClipPropertiesActions({
   clip: clipRef,
   trackKind: clipTrackKind,
@@ -465,6 +466,7 @@ defineExpose({
       @reset-freeze-frame="handleResetFreezeFrame"
       @extract-audio="handleExtractAudio"
       @return-audio="handleReturnAudio"
+      @replace-media="handleReplaceMedia"
     />
 
     <UTabs v-model="activeTab" :items="tabs" variant="link" :content="false" class="mb-2" />

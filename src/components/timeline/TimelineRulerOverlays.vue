@@ -66,6 +66,7 @@ function getMarkerButtonClass(marker: MarkerPoint) {
     <div
       v-for="point in markerPoints.filter((p) => p.isZone)"
       :key="`zone-bg-${point.id}`"
+      v-memo="[point.id, point.x, point.width, point.color, isMarkerSelected(point.id)]"
       class="absolute bottom-0 h-full pointer-events-auto z-10"
       :style="{ left: `${point.x}px`, width: `${point.width}px` }"
       @mouseenter="hoveredMarkerId = point.id"
@@ -105,6 +106,14 @@ function getMarkerButtonClass(marker: MarkerPoint) {
     <div
       v-for="point in markerPoints"
       :key="`marker-${point.id}`"
+      v-memo="[
+        point.id,
+        point.x,
+        point.isZone ? point.width : null,
+        point.color,
+        point.text,
+        isMarkerSelected(point.id),
+      ]"
       class="absolute bottom-0 h-full pointer-events-auto z-30"
       :style="{
         left: `${point.x}px`,

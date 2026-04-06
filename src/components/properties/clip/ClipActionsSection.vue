@@ -41,6 +41,7 @@ const emit = defineEmits<{
   resetFreezeFrame: [];
   extractAudio: [];
   returnAudio: [];
+  replaceMedia: [];
 }>();
 
 const { t } = useI18n();
@@ -200,6 +201,12 @@ const otherActions = computed(() => {
   }
 
   if (props.clip.clipType === 'media') {
+    list.push({
+      id: 'replaceMedia',
+      label: t('fastcat.clip.replaceMedia', 'Replace Media'),
+      icon: 'i-heroicons-arrow-path',
+      onClick: () => emit('replaceMedia'),
+    });
     list.push({
       id: 'showInFileManager',
       label: t('fastcat.clip.showInFileManager', 'Show in File Manager'),

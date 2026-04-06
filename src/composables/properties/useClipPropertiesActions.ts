@@ -38,6 +38,8 @@ interface ProjectStoreActions {
 
 interface UiStoreActions {
   selectedFsEntry: Partial<FsEntry> | null;
+  mediaReplaceTarget: { trackId: string; itemId: string; expectedType: 'video' | 'image' } | null;
+  isMediaReplaceModalOpen: boolean;
 }
 
 interface FilesPageStoreActions {
@@ -371,6 +373,17 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     projectStore.goToCut();
   }
 
+  function handleReplaceMedia() {
+    const clip = options.clip.value;
+    if (clip.clipType !== 'media') return;
+    uiStore.mediaReplaceTarget = {
+      trackId: clip.trackId,
+      itemId: clip.id,
+      expectedType: clip.isImage ? 'image' : 'video'
+    };
+    uiStore.isMediaReplaceModalOpen = true;
+  }
+
   return {
     isFreePosition,
     hasLockedLinkedAudio,
@@ -392,5 +405,6 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     linkedVideoClip,
     isSoloed,
     toggleSolo,
+    handleReplaceMedia,
   };
 }
