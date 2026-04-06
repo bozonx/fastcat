@@ -175,6 +175,7 @@ const {
   goToLinkedVideo,
   linkedAudioClip,
   linkedVideoClip,
+  handleReplaceMedia,
 } = useClipPropertiesActions({
   clip: clip as any,
   trackKind: clipTrackKind as any,
@@ -305,6 +306,12 @@ const otherActions = computed(() => {
   }
 
   if (clip.value.clipType === 'media') {
+    list.push({
+      id: 'replaceMedia',
+      label: t('fastcat.clip.replaceMedia', 'Replace Media'),
+      icon: 'i-heroicons-arrow-path',
+      onClick: handleReplaceMedia,
+    });
     list.push({
       id: 'showInFileManager',
       label: t('fastcat.clip.showInFileManager', 'Show in File Manager'),
