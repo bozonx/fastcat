@@ -28,23 +28,49 @@ env.fetch = async (url: string | URL) => {
     return fetch(url);
   }
 
-  // We expect URLs like "onnx-community_whisper-tiny/config.json"
-  // (We use underscores instead of slashes for directory names in model-storage.ts)
+  // We expect URLs like ".../models/onnx-community/whisper-tiny/config.json"
+  // but we store them as "onnx-community_whisper-tiny/config.json"
   
-  const path = urlStr.replace(/^.*\/models\//, '');
-  const parts = path.split('/');
+  // Extract path after /models/
+  const match = urlStr.match(/\/models\/(.+)$/);
+  if (!match) {
+    return fetch(url);
+  }
+  
+  const fullPath = match[1]!;
+  // We need to escape only the model name part (the first N segments that form the model name)
+  // But wait, our downloader escapes the ENTIRE model name including slashes.
+  // So "onnx-community/whisper-tiny" becomes "onnx-community_whisper-tiny".
+  
+  // Let's find how many segments we need to join with underscores.
+  // We know the model name being loaded.
+  if (!currentModelName) {
+      return fetch(url);
+  }
+
+  const escapedCurrentModelName = currentModelName.replace(/\//g, '_');
+  const filePath = fullPath.substring(currentModelName.length + 1);
   
   try {
-    let currentDir = modelDirHandle;
-    for (let i = 0; i < parts.length - 1; i++) {
-        currentDir = await currentDir.getDirectoryHandle(parts[i]!, { create: false });
+    const modelFolder = await modelDirHandle.getDirectoryHandle(escapedCurrentModelName, { create: false });
+    
+    // filePath might have subfolders (though unlikely for Whisper on local paths)
+    const fileParts = filePath.split('/');
+    let currentDir = modelFolder;
+    for (let i = 0; i < fileParts.length - 1; i++) {
+        currentDir = await currentDir.getDirectoryHandle(fileParts[i]!, { create: false });
     }
-    const fileHandle = await currentDir.getFileHandle(parts.at(-1)!, { create: false });
+    
+    const fileHandle = await currentDir.getFileHandle(fileParts.at(-1)!, { create: false });
     const file = await fileHandle.getFile();
     return new Response(file);
   } catch (err) {
-    console.error(`[STT Worker] Failed to fetch local model file: ${path}`, err);
-    return fetch(url); // Fallback to real fetch if local fails (though it shouldn't if allowRemoteModels=false)
+    console.warn(`[STT Worker] Local file not found: ${fullPath} (mapped to ${escapedCurrentModelName}/${filePath})`, err);
+    // If it's not found locally, and we can't fetch remotely, we should return a real 404 instead of letting it hit Nuxt
+    if (!env.allowRemoteModels) {
+        return new Response('Not Found', { status: 404 });
+    }
+    return fetch(url);
   }
 };
 
@@ -57,6 +83,7 @@ async function initTranscriber(modelName: string) {
   env.localModelPath = '/models/';
 
   try {
+    currentModelName = modelName; // Set it before pipeline starts fetching
     transcriber = (await pipeline('automatic-speech-recognition', modelName, {
       device: 'webgpu', // Try WebGPU first
       // quantization: 'quantized', // We already download quantized files
@@ -65,11 +92,11 @@ async function initTranscriber(modelName: string) {
       },
     })) as AutomaticSpeechRecognitionPipeline;
     
-    currentModelName = modelName;
     return transcriber;
   } catch (err) {
     console.warn('[STT Worker] WebGPU initialization failed, falling back to WASM:', err);
     
+    currentModelName = modelName; // Set it again just in case (should already be set)
     transcriber = (await pipeline('automatic-speech-recognition', modelName, {
       device: 'wasm',
       progress_callback: (progress: any) => {
@@ -77,7 +104,6 @@ async function initTranscriber(modelName: string) {
       },
     })) as AutomaticSpeechRecognitionPipeline;
     
-    currentModelName = modelName;
     return transcriber;
   }
 }

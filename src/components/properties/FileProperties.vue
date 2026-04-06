@@ -573,7 +573,7 @@ const filteredFilePrimaryActions = computed(() => {
       />
 
       <PropertySection
-        v-if="!hideActions && fileInfo && fileInfo.kind === 'directory' && !isRemoteRoot && !isVirtualAll"
+        v-if="!hideActions && fileInfo && fileInfo.kind === 'directory' && !isRemoteRoot && !isVirtualAll && !isPersonalLibrary && !isProjectLibraries"
         key="actions-directory"
         :title="t('videoEditor.fileManager.actions.title', 'Actions')"
       >
@@ -584,7 +584,7 @@ const filteredFilePrimaryActions = computed(() => {
       </PropertySection>
 
       <PropertySection
-        v-else-if="!hideActions && fileInfo?.kind === 'file' && !isVirtualAll"
+        v-else-if="!hideActions && fileInfo?.kind === 'file' && !isVirtualAll && !isPersonalLibrary && !isProjectLibraries"
         key="actions-file"
         :title="t('videoEditor.fileManager.actions.title', 'Actions')"
       >
