@@ -54,7 +54,7 @@ function normalizeFileType(fileType: string | undefined, file: File): string {
   return 'application/octet-stream';
 }
 
-async function createCacheKey(params: {
+export async function createCacheKey(params: {
   filePath: string;
   fileName: string;
   fileSize: number;
@@ -126,6 +126,13 @@ function createRequestHeaders(params: {
 export async function transcribeAudioFile(
   input: TranscriptionRequest,
 ): Promise<TranscriptionResult> {
+  const provider = normalizeProvider(input.userSettings.integrations.stt.provider);
+  
+  if (provider === 'local') {
+    const { transcribeLocally } = await import('./local-engine');
+    return await transcribeLocally(input);
+  }
+
   const resolvedConfig = resolveExternalServiceConfig({
     service: 'stt',
     integrations: input.userSettings.integrations,
@@ -143,13 +150,17 @@ export async function transcribeAudioFile(
 
   const file = input.file instanceof File ? input.file : await input.file.getFile();
   const language = normalizeLanguage(input.language);
-  const provider = normalizeProvider(input.userSettings.integrations.stt.provider);
   const models = normalizeModels(input.userSettings.integrations.stt.models);
-  const normalizedFileType = normalizeFileType(input.fileType, file);
-  const requestFileName = input.fileName;
+  const contentType = normalizeFileType(input.fileType, file);
+  const cacheRepository = createTranscriptionCacheRepository({
+    workspaceDir: input.workspaceHandle,
+    topology: input.resolvedStorageTopology,
+    projectId: input.projectId,
+  });
+
   const cacheKey = await createCacheKey({
     filePath: input.filePath,
-    fileName: requestFileName,
+    fileName: input.fileName,
     fileSize: file.size,
     lastModified: file.lastModified,
     language,
@@ -158,11 +169,6 @@ export async function transcribeAudioFile(
     endpoint,
   });
 
-  const cacheRepository = createTranscriptionCacheRepository({
-    workspaceDir: input.workspaceHandle,
-    topology: input.resolvedStorageTopology,
-    projectId: input.projectId,
-  });
   const cachedRecord = await cacheRepository.load(cacheKey);
   if (cachedRecord) {
     return {
@@ -172,22 +178,10 @@ export async function transcribeAudioFile(
     };
   }
 
-  // Send the original file directly to STT without local WAV extraction.
-  // Modern STT services (e.g. Whisper) can extract audio from video containers natively.
-  // This avoids OOM crashes, UI freezes, and 'failed to fetch' caused by chunked requests or giant Blobs.
-  const body: BodyInit = file;
-
-  // Use 'application/octet-stream' for video files as recommended for streaming uploads.
-  // For audio files, keep original MIME if it's 'audio/*', otherwise fallback to octet-stream.
-  const contentType = normalizedFileType.startsWith('video/')
-    ? 'application/octet-stream'
-    : normalizedFileType.startsWith('audio/')
-      ? normalizedFileType
-      : 'application/octet-stream';
-
+  const body = file;
   const headers = createRequestHeaders({
     file,
-    fileName: requestFileName,
+    fileName: input.fileName,
     language,
     provider,
     models,

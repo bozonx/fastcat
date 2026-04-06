@@ -19,6 +19,7 @@ export interface ManualExternalApiSettings {
 export interface SttIntegrationSettings {
   provider: string;
   models: string[];
+  localModel: string;
   restorePunctuation: boolean;
   formatText: boolean;
   includeWords: boolean;
@@ -277,6 +278,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
     stt: {
       provider: '',
       models: [],
+      localModel: 'onnx-community/whisper-tiny',
       restorePunctuation: true,
       formatText: false,
       includeWords: true,
