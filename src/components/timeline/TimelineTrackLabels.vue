@@ -108,6 +108,25 @@ const selectedTrackId = computed(() => {
   return null;
 });
 
+const trackNumbers = computed<Record<string, number>>(() => {
+  const numbers: Record<string, number> = {};
+  let remainingVideoTracks = props.tracks.filter((track) => track.kind === 'video').length;
+  let audioTrackNumber = 1;
+
+  for (const track of props.tracks) {
+    if (track.kind === 'video') {
+      numbers[track.id] = remainingVideoTracks;
+      remainingVideoTracks -= 1;
+      continue;
+    }
+
+    numbers[track.id] = audioTrackNumber;
+    audioTrackNumber += 1;
+  }
+
+  return numbers;
+});
+
 /**
  * Track is "visually active" when the track itself OR any item (clip/gap/transition) on it is selected.
  * Used for background highlight and border brightness.
@@ -184,21 +203,12 @@ const { emptyAreaContextMenuItems: propertiesContextMenuItems } = useTimelineEmp
       "
     >
       <div class="flex flex-col min-h-full">
-        <UContextMenu
-          ref="trackContextMenuRef"
-          :items="activeTrackContextMenuItems"
-          manual
-        />
+        <UContextMenu ref="trackContextMenuRef" :items="activeTrackContextMenuItems" manual />
 
         <template v-for="(track, index) in tracks" :key="track.id">
           <TimelineTrackLabelItem
             :track="track"
-            :track-number="
-              track.kind === 'video'
-                ? tracks.filter((t) => t.kind === 'video').length -
-                  tracks.filter((t, i) => t.kind === 'video' && i < index).length
-                : tracks.filter((t, i) => t.kind === 'audio' && i < index).length + 1
-            "
+            :track-number="trackNumbers[track.id] ?? index + 1"
             :height="trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT"
             :is-selected="isTrackVisuallySelected(track.id)"
             :is-directly-selected="isTrackDirectlySelected(track.id)"
@@ -222,10 +232,7 @@ const { emptyAreaContextMenuItems: propertiesContextMenuItems } = useTimelineEmp
           />
         </template>
         <div class="w-full flex-1 min-h-7 shrink-0" />
-        <div
-          class="shrink-0"
-          :style="{ height: `calc(4rem + ${scrollbarCompensation || 0}px)` }"
-        />
+        <div class="shrink-0" :style="{ height: `calc(4rem + ${scrollbarCompensation || 0}px)` }" />
       </div>
     </div>
 
