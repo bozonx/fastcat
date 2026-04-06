@@ -205,7 +205,11 @@
       "connection": "Connection",
       "connected": "Established",
       "allContent": "All Content",
-      "virtualAllDesc": "Virtual flat list of all content items"
+      "virtualAllDesc": "Virtual flat list of all content items",
+      "personalLibrary": "Personal Library",
+      "personalLibraryDesc": "Library of your personal content",
+      "projectLibraries": "Project Libraries",
+      "projectLibrariesDesc": "Content libraries for specific projects"
     },
     "file": {
       "bloggerDogGroup": "Group",

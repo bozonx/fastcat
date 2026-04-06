@@ -13,7 +13,14 @@ import {
   toWorkspaceCommonStoragePath,
 } from '~/utils/workspace-common';
 
-export default defineNuxtPlugin(async () => {
+export default defineNuxtPlugin(async (nuxtApp) => {
+  const { $i18n } = nuxtApp;
+  const translate = (key: string, def?: string) => {
+    // If $i18n is not ready, return default
+    if (!$i18n) return def ?? key;
+    return $i18n.t(key) || def || key;
+  };
+
   let adapter: IFileSystemAdapter;
 
   const workspaceStore = useWorkspaceStore();
@@ -58,7 +65,7 @@ export default defineNuxtPlugin(async () => {
           });
           if (!config) throw new Error('BloggerDog not configured');
           return { baseUrl: config.baseUrl, bearerToken: config.bearerToken };
-        }),
+        }, translate),
         stripPrefix: (p) => (p.startsWith('/remote') ? p.slice('/remote'.length) : p),
       },
     ]);
@@ -98,7 +105,7 @@ export default defineNuxtPlugin(async () => {
           });
           if (!config) throw new Error('BloggerDog not configured');
           return { baseUrl: config.baseUrl, bearerToken: config.bearerToken };
-        }),
+        }, translate),
         stripPrefix: (p) => (p.startsWith('/remote') ? p.slice('/remote'.length) : p),
       },
     ]);

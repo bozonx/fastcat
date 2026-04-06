@@ -205,7 +205,11 @@
       "connection": "Соединение",
       "connected": "Установлено",
       "allContent": "Весь контент",
-      "virtualAllDesc": "Виртуальный плосский список всех элементов контента"
+      "virtualAllDesc": "Виртуальный плосский список всех элементов контента",
+      "personalLibrary": "Личная библиотека",
+      "personalLibraryDesc": "Библиотека вашего личного контента",
+      "projectLibraries": "Библиотеки проектов",
+      "projectLibrariesDesc": "Библиотеки контента конкретных проектов"
     },
     "file": {
       "bloggerDogGroup": "Группа",
