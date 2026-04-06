@@ -50,8 +50,11 @@ export function useFileBrowserInteraction({
 
   function handleEntryDoubleClick(entry: FsEntry) {
     if (isRemoteMode.value) {
-      if (entry.kind === 'directory' && isRemoteFsEntry(entry)) {
-        remoteCurrentFolder.value = entry;
+      if (entry.kind === 'directory') {
+        if (remoteCurrentFolder.value) {
+          fileManagerStore.addToHistory(remoteCurrentFolder.value);
+        }
+        remoteCurrentFolder.value = entry as RemoteFsEntry;
         void loadFolderContent();
         void loadParentFolders();
         setSelectedFsEntry(entry);

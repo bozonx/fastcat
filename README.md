@@ -146,7 +146,7 @@ Current implementation scope:
 - `GET /api/v1/health` checks for FastCat Publicador and resolved manual services
 - audio file transcription from the properties panel via `POST .../api/v1/transcribe/stream`
 - shared STT request settings: `provider`, `models`, `restorePunctuation`, `formatText`, `includeWords`
-- transcription cache in `vardata/projects/<projectId>/cache/transcriptions`
+- transcription files are stored next to the source media file as `{filename}.stt.json` (Sidecar pattern)
 
 Provider priority rules:
 
@@ -183,7 +183,8 @@ Behavior:
 - `restorePunctuation` defaults to `true`
 - `formatText` defaults to `false`
 - `includeWords` defaults to `true`
-- successful responses are cached per file/version/request settings in `vardata/projects/<projectId>/cache/transcriptions`
+- transcription files are stored next to the source media file as `{filename}.stt.json` (Sidecar pattern)
+- waveforms and thumbnails are cached in `vardata/cache` or `projects/<projectId>/cache` depending on settings
 
 ### Caption generation from STT cache
 
