@@ -121,7 +121,7 @@ const isCommonPath = computed(() => isWorkspaceCommonPath(props.selectedFsEntry?
 
 const isRemoteRoot = computed(() => {
   const entry = props.selectedFsEntry;
-  return entry?.source === 'remote' && (entry.path === '' || entry.path === '/');
+  return entry?.source === 'remote' && (entry.path === '' || entry.path === '/' || entry.path === '/remote');
 });
 
 function triggerDirectoryUpload() {
@@ -181,7 +181,8 @@ const {
   mediaMeta, 
   selectedPath,
   isBloggerDogGroup,
-  isBloggerDogContentItem
+  isBloggerDogContentItem,
+  bloggerDogDeepLink,
 } = useFilePropertiesBasics({
   selectedFsEntry: selectedFsEntryRef,
   fileInfo,
@@ -541,7 +542,7 @@ const filteredFilePrimaryActions = computed(() => {
       />
 
       <PropertySection
-        v-if="!hideActions && fileInfo?.kind === 'directory' && !isRemoteRoot && !isVirtualAll"
+        v-if="!hideActions && fileInfo && fileInfo.kind === 'directory' && !isRemoteRoot && !isVirtualAll"
         key="actions-directory"
         :title="t('videoEditor.fileManager.actions.title', 'Actions')"
       >
@@ -601,7 +602,7 @@ const filteredFilePrimaryActions = computed(() => {
               icon="i-heroicons-cog-6-tooth"
               size="2xs"
               class="-my-1"
-              @click="uiStore.activeSettingsTab = 'integrations'; uiStore.isProjectSettingsOpen = true"
+              @click="uiStore.showIntegrationSettings()"
             />
           </div>
         </PropertyRow>
@@ -621,8 +622,10 @@ const filteredFilePrimaryActions = computed(() => {
         :title="generalInfoTitle"
         :file-info="fileInfo"
         :selected-path="selectedPath"
+        :path-link="bloggerDogDeepLink"
         :is-hidden="isHidden"
         :format-bytes="formatBytes"
+        :media-count="castedRemoteRecord?.media?.length"
       >
         <template v-if="selectedFsEntry?.source === 'remote' && (selectedFsEntry as any).remoteData?.itemsCount !== undefined">
            <PropertyRow 
@@ -638,8 +641,10 @@ const filteredFilePrimaryActions = computed(() => {
         :title="generalInfoTitle"
         :file-info="fileInfo"
         :selected-path="selectedPath"
+        :path-link="bloggerDogDeepLink"
         :is-hidden="isHidden"
         :format-bytes="formatBytes"
+        :media-count="castedRemoteRecord?.media?.length"
       >
         <template v-if="mediaType === 'text' && lineCount !== null">
           <PropertyRow :label="t('fastcat.file.lineCount', 'Line Count')" :value="lineCount" />

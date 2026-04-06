@@ -1,6 +1,6 @@
 import { computed, type Ref } from 'vue';
 
-interface EntryAction {
+export interface EntryAction {
   id: string;
   icon: string;
   hidden?: boolean;
@@ -8,11 +8,11 @@ interface EntryAction {
   onClick: () => void | Promise<void>;
 }
 
-interface PrimaryEntryAction extends EntryAction {
+export interface PrimaryEntryAction extends EntryAction {
   title: string;
 }
 
-interface SecondaryEntryAction extends EntryAction {
+export interface SecondaryEntryAction extends EntryAction {
   label: string;
   color?: string;
 }

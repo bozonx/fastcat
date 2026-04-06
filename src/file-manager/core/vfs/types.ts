@@ -11,6 +11,8 @@ export interface VfsEntry {
   hasDirectories?: boolean;
   remoteData?: any;
   isContentItem?: boolean;
+  isMediaItem?: boolean;
+  mediaId?: string;
 }
 
 export interface IFileSystemAdapter {
