@@ -6,6 +6,7 @@ export interface RemoteVfsMedia {
   mimeType?: string;
   size?: number;
   title?: string;
+  filename?: string;
   posterUrl?: string;
   thumbnailUrl?: string;
   meta?: Record<string, unknown>;

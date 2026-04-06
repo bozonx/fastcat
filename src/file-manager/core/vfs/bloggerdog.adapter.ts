@@ -269,18 +269,34 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
 
   async writeFile(path: string, data: Blob | Uint8Array | string): Promise<void> {
     const config = this.resolveConfig();
-    const parts = path.split('/').filter(Boolean);
+    const normalizedPath = this.normalizePath(path);
+    const parts = normalizedPath.split('/').filter(Boolean);
     const name = parts.pop();
     if (!name) throw new Error('Invalid file name');
     
-    const parentPath = '/' + parts.join('/');
+    const parentPath = normalizedPath === '/' ? '/' : '/' + parts.join('/');
     let uploadPath = '/virtual-all';
+    let projectId: string | undefined;
+
     if (parentPath !== '/') {
       const cached = await this.getIdForPath(parentPath);
-      if (cached.item?.path) {
+      
+      // If we are in a project folder, path must be /projects/{id}
+      const parentParts = parentPath.split('/').filter(Boolean);
+      const isProjectRoot = parentParts[0] === 'projects' && parentParts.length === 2;
+      
+      if (isProjectRoot) {
+        uploadPath = `/projects/${cached.id}`;
+        projectId = cached.id;
+      } else if (cached.item?.path) {
         uploadPath = cached.item.path;
       } else if (cached.id) {
-        uploadPath = cached.id.startsWith('/') ? cached.id : `/${cached.id}`;
+        // Special case for personal root
+        if (cached.id === 'personal') {
+          uploadPath = '/personal';
+        } else {
+          uploadPath = cached.id.startsWith('/') ? cached.id : `/${cached.id}`;
+        }
       }
     }
     
@@ -296,12 +312,13 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     await uploadFileToRemote({
       config,
       path: uploadPath,
-      file: fileToUpload
+      file: fileToUpload,
+      projectId
     });
     
-    // The uploaded file gets an ID from server, but upload API doesn't return the item in GranPublicador currently (depends on backend).
-    // We should clear the parent cache so it reloads.
-    this.idCache.delete(parentPath);
+    // Clear parent and normalized path for refresh
+    this.clearCache(parentPath);
+    this.idCache.delete(normalizedPath);
   }
 
   async deleteEntry(path: string, recursive?: boolean): Promise<void> {
@@ -310,6 +327,8 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     
     if (entry.type === 'directory') {
       await deleteRemoteCollection({ config, id: entry.id });
+    } else if (entry.type === 'media') {
+      throw new Error('Deleting individual media files from a content item is not supported by BloggerDog API directly. You must delete the entire content item.');
     } else {
       await deleteRemoteItem({ config, id: entry.id });
     }
@@ -318,11 +337,13 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
 
   async moveEntry(sourcePath: string, targetPath: string): Promise<void> {
     const config = this.resolveConfig();
-    const sourceParts = sourcePath.split('/').filter(Boolean);
-    const targetParts = targetPath.split('/').filter(Boolean);
+    const nSource = this.normalizePath(sourcePath);
+    const nTarget = this.normalizePath(targetPath);
+    const sourceParts = nSource.split('/').filter(Boolean);
+    const targetParts = nTarget.split('/').filter(Boolean);
     
-    const sourceParent = sourceParts.slice(0, -1).join('/');
-    const targetParent = targetParts.slice(0, -1).join('/');
+    const sourceParent = '/' + sourceParts.slice(0, -1).join('/');
+    const targetParent = '/' + targetParts.slice(0, -1).join('/');
     
     if (sourceParent !== targetParent) {
       throw new Error('Moving between directories is not fully supported by BloggerDog API directly, only renaming is supported.');
@@ -331,7 +352,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     const newName = targetParts.pop();
     if (!newName) throw new Error('Invalid target name');
     
-    const entry = await this.getIdForPath(sourcePath);
+    const entry = await this.getIdForPath(nSource);
     
     const { renameRemoteCollection, renameRemoteItem, renameRemoteMedia } = await import('~/utils/remote-vfs');
     if (entry.type === 'directory') {
@@ -342,8 +363,8 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       await renameRemoteItem({ config, id: entry.id, name: newName });
     }
     
-    this.clearCache(sourcePath);
-    this.idCache.delete('/' + sourceParent);
+    this.clearCache(nSource);
+    this.idCache.delete(sourceParent);
   }
 
   async copyFile(sourcePath: string, targetPath: string): Promise<void> {

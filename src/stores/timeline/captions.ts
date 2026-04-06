@@ -29,6 +29,8 @@ export interface TimelineCaptionsDeps {
   ) => string[];
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
   getWorkspaceHandle: () => FileSystemDirectoryHandle | null;
+  getProjectId: () => string | null;
+  getCurrentProjectName: () => string | null;
 }
 
 export interface TimelineCaptionsModule {
@@ -45,6 +47,7 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
     batchApplyTimeline,
     requestTimelineSave,
     getWorkspaceHandle,
+    getCurrentProjectName,
   } = params;
 
   function isTrackActiveForCaptions(track: TimelineDocument['tracks'][number]): boolean {
@@ -206,9 +209,16 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
     const recordsByPath = new Map<string, TranscriptionCacheRecord[]>();
 
     const getRecordsForPath = async (path: string) => {
-      if (recordsByPath.has(path)) return recordsByPath.get(path)!;
-      const records = await repository.list({ sourcePath: path });
-      recordsByPath.set(path, records);
+      // Ensure absolute workspace path
+      const projectName = getCurrentProjectName();
+      const workspacePath =
+        path.startsWith('/') || path.startsWith('projects/') || !projectName
+          ? path
+          : `projects/${projectName}/${path}`;
+
+      if (recordsByPath.has(workspacePath)) return recordsByPath.get(workspacePath)!;
+      const records = await repository.list({ sourcePath: workspacePath });
+      recordsByPath.set(workspacePath, records);
       return records;
     };
 
@@ -225,9 +235,16 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
         const mediaType = getMediaTypeFromFilename(sourcePath);
         if (mediaType !== 'video' && mediaType !== 'audio') continue;
 
+        const records = await getRecordsForPath(sourcePath);
+        const projectName = getCurrentProjectName();
+        const workspacePath =
+          sourcePath.startsWith('/') || sourcePath.startsWith('projects/') || !projectName
+            ? sourcePath
+            : `projects/${projectName}/${sourcePath}`;
+
         const record = findMatchingTranscriptionRecord({
-          records: await getRecordsForPath(sourcePath),
-          sourcePath,
+          records,
+          sourcePath: workspacePath,
           language: options?.language,
         });
         if (!record) continue;

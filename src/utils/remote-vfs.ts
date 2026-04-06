@@ -52,8 +52,11 @@ export function getRemoteMediaDisplayName(params: {
   media: RemoteVfsMedia;
   mediaIndex?: number;
 }): string {
+  const mediaFilename = typeof params.media.filename === 'string' ? params.media.filename.trim() : '';
   const mediaTitle = typeof params.media.title === 'string' ? params.media.title.trim() : '';
   const mediaName = typeof params.media.name === 'string' ? params.media.name.trim() : '';
+
+  if (mediaFilename) return normalizeFileName(mediaFilename);
   if (mediaTitle) return normalizeFileName(mediaTitle);
   if (mediaName) return normalizeFileName(mediaName);
 
@@ -495,7 +498,7 @@ export async function renameRemoteMedia(params: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${params.config.bearerToken}`,
     },
-    body: JSON.stringify({ name: params.name }),
+    body: JSON.stringify({ filename: params.name }),
   });
 
   if (!response.ok) {

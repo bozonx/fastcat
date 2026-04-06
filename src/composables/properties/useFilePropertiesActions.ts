@@ -60,6 +60,7 @@ interface UseFilePropertiesActionsOptions {
   createOtioVersion: () => void;
   extractAudio: () => void;
   createSubgroup: () => void;
+  createContentItem: () => void;
   onCopy: () => void;
   onCut: () => void;
   onPaste: () => void;
@@ -108,6 +109,13 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       icon: 'i-heroicons-folder-plus',
       hidden: !options.isRemoteAvailable?.value && !options.isRemoteMode?.value, // Only for remote
       onClick: options.createSubgroup,
+    },
+    {
+      id: 'createContentItem',
+      title: options.t('fastcat.bloggerDog.actions.createItem', 'Создать элемент контента'),
+      icon: 'i-heroicons-document-plus',
+      hidden: !options.isRemoteAvailable?.value && !options.isRemoteMode?.value, // Only for remote
+      onClick: options.createContentItem,
     },
   ]);
 

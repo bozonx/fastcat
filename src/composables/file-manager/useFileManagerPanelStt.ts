@@ -81,9 +81,14 @@ export function useFileManagerPanelStt({
       const file = await vfs.getFile(entry.path);
       if (!file) throw new Error('Failed to access file');
 
+      // Ensure we have a full workspace path for the repository to work correctly from the workspace root
+      const workspacePath = entry.path.startsWith('/') || entry.path.startsWith('projects/') || !projectStore.currentProjectName
+        ? entry.path
+        : `projects/${projectStore.currentProjectName}/${entry.path}`;
+
       const result = await transcribeAudioFile({
         file,
-        filePath: entry.path,
+        filePath: workspacePath,
         fileName: entry.name,
         fileType: getMimeTypeFromFilename(entry.name),
         language: language.value,

@@ -307,14 +307,13 @@ const {
   isVideoFile,
   sttConfig,
   workspaceHandle: computed(() => workspaceStore.workspaceHandle),
-  currentProjectId: computed(() => projectStore.currentProjectId),
-  resolvedStorageTopology: computed(() => workspaceStore.resolvedStorageTopology),
   userSettings: computed(() => workspaceStore.userSettings),
   fastcatAccountApiUrl: computed(() =>
     typeof runtimeConfig.public.fastcatAccountApiUrl === 'string'
       ? runtimeConfig.public.fastcatAccountApiUrl
       : '',
   ),
+  currentProjectName: computed(() => projectStore.currentProjectName),
   getFileByPath: (path) => projectStore.getFileByPath(path),
   toast,
   t,
@@ -461,6 +460,11 @@ const {
     if (!entry || entry.kind !== 'directory') return;
     (uiStore as any).pendingBloggerDogCreateSubgroup = entry;
   },
+  createContentItem: () => {
+    const entry = props.selectedFsEntry;
+    if (!entry || entry.kind !== 'directory') return;
+    (uiStore as any).pendingBloggerDogCreateItem = entry;
+  },
   onCopy,
   onCut,
   onPaste,
@@ -471,7 +475,7 @@ const isRemoteMode = computed(() => props.selectedFsEntry?.source === 'remote');
 
 const filteredDirectoryPrimaryActions = computed(() => {
   if (!isRemoteContent.value) return directoryPrimaryActions.value;
-  return directoryPrimaryActions.value.filter((a: PrimaryEntryAction) => ['rename', 'delete', 'createSubgroup'].includes(a.id));
+  return directoryPrimaryActions.value.filter((a: PrimaryEntryAction) => ['rename', 'delete', 'createSubgroup', 'createContentItem'].includes(a.id));
 });
 
 const filteredFilePrimaryActions = computed(() => {

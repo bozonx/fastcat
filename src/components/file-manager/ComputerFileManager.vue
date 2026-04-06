@@ -24,6 +24,10 @@ const { t } = useI18n();
 const rootEntries = shallowRef<FsEntry[]>([]);
 const sortMode = ref<'name' | 'type'>('name');
 
+// Independent history for computer file manager
+const computerHistoryStack = ref<FsEntry[]>([]);
+const computerFutureStack = ref<FsEntry[]>([]);
+
 const { vfs, rootPath } = useComputerVfs();
 
 // Initialize file manager for computer
@@ -79,11 +83,31 @@ const computerStoreWrapper = computed(() => {
       if (prop === 'selectedFolder') return persistenceStore.computerLastFolder;
       if (prop === 'gridCardSize') return persistenceStore.computerGridCardSize;
       if (prop === 'viewMode') return persistenceStore.computerViewMode;
+      if (prop === 'historyStack') return computerHistoryStack.value;
+      if (prop === 'futureStack') return computerFutureStack.value;
       
       if (prop === 'openFolder') {
-        return (entry: FsEntry | null) => {
+        return (entry: FsEntry | null, options: { skipHistory?: boolean } = {}) => {
+          if (entry && entry.kind === 'directory') {
+            if (!options.skipHistory && persistenceStore.computerLastFolder) {
+              const current = { ...persistenceStore.computerLastFolder };
+              if (current.path !== entry.path || current.source !== entry.source) {
+                computerHistoryStack.value.push(current);
+                computerFutureStack.value = [];
+              }
+            }
+          }
           persistenceStore.setComputerLastFolder(entry);
-          return target.openFolder(entry);
+          return target.openFolder(entry, { skipHistory: true });
+        };
+      }
+
+      if (prop === 'addToHistory') {
+        return (entry: FsEntry) => {
+          const last = computerHistoryStack.value[computerHistoryStack.value.length - 1];
+          if (last && last.path === entry.path && last.source === entry.source) return;
+          computerHistoryStack.value.push({ ...entry });
+          computerFutureStack.value = [];
         };
       }
 
@@ -91,9 +115,9 @@ const computerStoreWrapper = computed(() => {
         return (mode: FileViewMode) => persistenceStore.setComputerViewMode(mode);
       }
 
-      return Reflect.get(target, prop, receiver);
+      return Reflect.get(target, prop);
     },
-    set(target, prop, value, receiver) {
+    set(target, prop, value) {
       if (prop === 'selectedFolder') {
         persistenceStore.setComputerLastFolder(value);
         return true;
@@ -106,7 +130,7 @@ const computerStoreWrapper = computed(() => {
         persistenceStore.setComputerViewMode(value);
         return true;
       }
-      return Reflect.set(target, prop, value, receiver);
+      return Reflect.set(target, prop, value);
     }
   });
 });
@@ -142,7 +166,7 @@ onMounted(async () => {
 
 
 function onSelect(entry: FsEntry) {
-    persistenceStore.setComputerLastFolder(entry);
+  computerStoreWrapper.value.openFolder(entry);
 }
 </script>
 
