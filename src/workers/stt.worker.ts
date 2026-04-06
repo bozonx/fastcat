@@ -5,60 +5,59 @@ import {
 } from '@huggingface/transformers';
 
 // --- Configuration ---
-// We disable remote models and provide a custom fetch to load from our local storage (OPFS/Tauri)
+// Disable built-in caching and remote models
 env.allowRemoteModels = false;
 env.allowLocalModels = true;
+env.useBrowserCache = false;
+env.localModelPath = '/models/';
 
 // This will be set by the main thread
 let modelDirHandle: FileSystemDirectoryHandle | null = null;
 let transcriber: AutomaticSpeechRecognitionPipeline | null = null;
 let currentModelName: string | null = null;
 
-env.fetch = async (url: string | URL) => {
+/**
+ * Brute-force fetch override to intercept model requests
+ */
+const originalFetch = self.fetch;
+self.fetch = (async (url: string | URL, options?: RequestInit) => {
   const urlStr = url.toString();
-  console.log(`[STT Worker] Requesting URL: ${urlStr} (localModelPath: ${env.localModelPath}, currentModelName: ${currentModelName})`);
-
-  if (!modelDirHandle) {
-    console.warn(`[STT Worker] No modelDirHandle set yet, falling back to network for: ${urlStr}`);
-    return fetch(url);
-  }
-
-  // Handle various URL formats from Transformers.js
-  // It could be absolute, relative, or specifically formatted with env.localModelPath
-  let fullPath = '';
-  const modelsPrefix = '/models/';
   
-  if (urlStr.includes(modelsPrefix)) {
-    fullPath = urlStr.substring(urlStr.indexOf(modelsPrefix) + modelsPrefix.length);
-  } else if (currentModelName && urlStr.includes(currentModelName)) {
-    fullPath = urlStr.substring(urlStr.indexOf(currentModelName));
-  } else {
-    // Just try the last parts if nothing else matches
-    const parts = urlStr.split('/');
-    fullPath = parts.slice(-3).join('/'); // Try model_org/model_name/file
+  // Skip internal Vite/HMR or non-model requests
+  if (!urlStr.includes('/models/') && (!currentModelName || !urlStr.includes(currentModelName))) {
+    return originalFetch(url, options);
   }
 
-  if (!currentModelName) {
-      console.warn(`[STT Worker] No currentModelName set yet, falling back to network for: ${urlStr}`);
-      return fetch(url);
+  console.log(`[STT Worker] Intercepted fetch: ${urlStr}`);
+
+  if (!modelDirHandle || !currentModelName) {
+    console.warn('[STT Worker] Handle or model name missing during fetch');
+    return new Response('Not Found', { status: 404 });
   }
 
   const escapedCurrentModelName = currentModelName.replace(/\//g, '_');
   
-  // Try to extract file path relative to model folder
+  // Extract file path from URL
   let filePath = '';
-  if (fullPath.startsWith(currentModelName + '/')) {
-      filePath = fullPath.substring(currentModelName.length + 1);
+  const modelsPrefix = '/models/';
+  if (urlStr.includes(modelsPrefix)) {
+      const fullPath = urlStr.substring(urlStr.indexOf(modelsPrefix) + modelsPrefix.length);
+      if (fullPath.startsWith(currentModelName + '/')) {
+          filePath = fullPath.substring(currentModelName.length + 1);
+      } else {
+          filePath = fullPath.split('/').pop() || '';
+      }
   } else {
-      // Fallback: just take the filename
-      filePath = fullPath.split('/').pop() || '';
+      filePath = urlStr.split('/').pop() || '';
   }
-  
-  console.log(`[STT Worker] Mapped ${urlStr} to: folder=${escapedCurrentModelName}, file=${filePath}`);
+
+  // Clean up filePath (remove query params etc if any)
+  filePath = filePath.split('?')[0]!.split('#')[0]!;
+
+  console.log(`[STT Worker] Mapped to: folder=${escapedCurrentModelName}, file=${filePath}`);
   
   try {
     const modelFolder = await modelDirHandle.getDirectoryHandle(escapedCurrentModelName, { create: false });
-    
     const fileParts = filePath.split('/').filter(Boolean);
     let currentDir = modelFolder;
     for (let i = 0; i < fileParts.length - 1; i++) {
@@ -67,16 +66,13 @@ env.fetch = async (url: string | URL) => {
     
     const fileHandle = await currentDir.getFileHandle(fileParts.at(-1)!, { create: false });
     const file = await fileHandle.getFile();
-    console.log(`[STT Worker] Successfully loaded from cache: ${escapedCurrentModelName}/${filePath}`);
+    console.log(`[STT Worker] Success: ${escapedCurrentModelName}/${filePath}`);
     return new Response(file);
   } catch (err) {
-    console.warn(`[STT Worker] Local file not found: ${escapedCurrentModelName}/${filePath}`, err);
-    if (!env.allowRemoteModels) {
-        return new Response('Not Found', { status: 404 });
-    }
-    return fetch(url);
+    console.warn(`[STT Worker] Not Found in local: ${escapedCurrentModelName}/${filePath}`, err);
+    return new Response('Not Found', { status: 404 });
   }
-};
+}) as any;
 
 async function initTranscriber(modelName: string) {
   if (transcriber && currentModelName === modelName) return transcriber;

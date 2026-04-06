@@ -33,8 +33,16 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     return config;
   }
 
+  private normalizePath(path: string): string {
+    if (!path || path === '/') return '/';
+    let p = path.replace(/\/+/g, '/');
+    if (!p.startsWith('/')) p = '/' + p;
+    if (p.endsWith('/') && p.length > 1) p = p.slice(0, -1);
+    return p;
+  }
+
   private async ensureParentCache(path: string) {
-    const parts = path.split('/').filter(Boolean);
+    const parts = this.normalizePath(path).split('/').filter(Boolean);
     if (parts.length <= 1) {
       if (!this.idCache.has('/')) {
         await this.readDirectory('/');
@@ -49,27 +57,29 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
   }
 
   private getRemotePath(path: string): string {
-    if (path === '/' || path === '') return '/';
-    if (path === '/virtual-all' || path.startsWith('/virtual-all/')) return path;
-    if (path === '/personal') return '/content-library';
-    if (path.startsWith('/personal/')) return '/content-library' + path.slice('/personal'.length);
-    if (path === '/projects' || path.startsWith('/projects/')) return path;
-    return path;
+    const p = this.normalizePath(path);
+    if (p === '/' || p === '') return '/';
+    if (p === '/virtual-all' || p.startsWith('/virtual-all/')) return p;
+    if (p === '/personal') return '/content-library';
+    if (p.startsWith('/personal/')) return '/content-library' + p.slice('/personal'.length);
+    if (p === '/projects' || p.startsWith('/projects/')) return p;
+    return p;
   }
 
   private async getIdForPath(path: string): Promise<{ id: string; type: 'file' | 'directory' | 'media'; item?: any; mediaIndex?: number }> {
-    if (path === '/' || path === '') return { id: 'root', type: 'directory' };
-    if (path === '/virtual-all') return { id: 'virtual-all', type: 'directory' };
-    if (path === '/personal') return { id: 'personal', type: 'directory' };
-    if (path === '/projects') return { id: 'projects', type: 'directory' };
+    const p = this.normalizePath(path);
+    if (p === '/' || p === '') return { id: 'root', type: 'directory' };
+    if (p === '/virtual-all') return { id: 'virtual-all', type: 'directory' };
+    if (p === '/personal') return { id: 'personal', type: 'directory' };
+    if (p === '/projects') return { id: 'projects', type: 'directory' };
     
-    if (!this.idCache.has(path)) {
-      await this.ensureParentCache(path);
+    if (!this.idCache.has(p)) {
+      await this.ensureParentCache(p);
     }
 
-    const cached = this.idCache.get(path);
+    const cached = this.idCache.get(p);
     if (!cached) {
-      throw new Error(`Path not found or not cached: ${path}`);
+      throw new Error(`Path not found or not cached: ${p} (original: ${path})`);
     }
     return cached;
   }
@@ -78,9 +88,10 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     path: string,
     options?: { sortBy?: string; sortOrder?: 'asc' | 'desc' },
   ): Promise<VfsEntry[]> {
+    const normalizedPath = this.normalizePath(path);
     const config = this.resolveConfig();
 
-    if (path === '/' || path === '') {
+    if (normalizedPath === '/' || normalizedPath === '') {
       return [
         {
           name: this.t ? this.t('fastcat.bloggerDog.allContent', 'All Content') : 'All Content',
@@ -107,9 +118,9 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     }
 
     // Ensure path is in cache and we know its type
-    const cached = await this.getIdForPath(path);
+    const cached = await this.getIdForPath(normalizedPath);
     
-    const remotePath = this.getRemotePath(path);
+    const remotePath = this.getRemotePath(normalizedPath);
     if (cached && cached.type === 'file' && cached.item) {
       const entries: VfsEntry[] = [];
       const item = cached.item as RemoteVfsFileEntry;
