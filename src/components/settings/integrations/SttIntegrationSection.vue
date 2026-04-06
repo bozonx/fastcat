@@ -28,25 +28,16 @@ const healthState = reactive({
 const sttMode = computed({
   get: () => {
     if (workspaceStore.userSettings.integrations.stt.provider === 'local') return 'local';
-    if (workspaceStore.userSettings.integrations.manualSttApi.enabled) return 'custom';
     return 'fastcat';
   },
-  set: (val: 'fastcat' | 'custom' | 'local') => {
+  set: (val: 'fastcat' | 'local') => {
     const integrations = workspaceStore.userSettings.integrations;
     if (val === 'local') {
       integrations.stt.provider = 'local';
-      integrations.manualSttApi.enabled = false;
-    } else if (val === 'custom') {
-      if (integrations.stt.provider === 'local') {
-        integrations.stt.provider = '';
-      }
-      integrations.manualSttApi.enabled = true;
-      integrations.manualSttApi.overrideFastCat = true;
     } else {
       if (integrations.stt.provider === 'local') {
         integrations.stt.provider = '';
       }
-      integrations.manualSttApi.enabled = false;
     }
   },
 });
@@ -70,7 +61,7 @@ async function runHealth() {
   const resolved = resolveExternalServiceConfig({
     service: 'stt',
     integrations: workspaceStore.userSettings.integrations,
-    bloggerDogApiUrl: '', // BloggerDog removed for STT
+    bloggerDogApiUrl: '',
     fastcatAccountApiUrl: runtimeConfig.public.fastcatAccountApiUrl as string,
   });
 
@@ -187,20 +178,6 @@ watch(
       <button
         type="button"
         :class="[
-          sttMode === 'custom'
-            ? healthState.status === 'error'
-              ? 'bg-error-500 text-white shadow-sm'
-              : 'bg-primary-500 text-white shadow-sm'
-            : 'text-ui-text-muted hover:text-ui-text',
-        ]"
-        class="flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all"
-        @click="sttMode = 'custom'"
-      >
-        {{ t('videoEditor.settings.sttCustom', 'Custom STT') }}
-      </button>
-      <button
-        type="button"
-        :class="[
           sttMode === 'local'
             ? 'bg-primary-500 text-white shadow-sm'
             : 'text-ui-text-muted hover:text-ui-text',
@@ -264,54 +241,6 @@ watch(
             </div>
             <UProgress :value="downloadState.progress" size="sm" color="primary" />
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Manual STT Form -->
-    <div
-      v-if="sttMode === 'custom'"
-      class="flex flex-col gap-4 border border-ui-border rounded-lg p-4 bg-ui-bg-muted/30"
-    >
-      <UiFormField :label="t('videoEditor.settings.integrationBaseUrl', 'Base URL')">
-        <UiTextInput
-          v-model="workspaceStore.userSettings.integrations.manualSttApi.baseUrl"
-          full-width
-          placeholder="https://api.example.com/api/v1/external/stt"
-        />
-      </UiFormField>
-
-      <UiFormField :label="t('videoEditor.settings.integrationBearerToken', 'Bearer token')">
-        <UiTextInput
-          v-model="workspaceStore.userSettings.integrations.manualSttApi.bearerToken"
-          full-width
-          type="password"
-          autocomplete="off"
-          placeholder="Bearer token"
-        />
-      </UiFormField>
-
-      <div class="flex flex-wrap items-center gap-3 mt-2 border-t border-ui-border pt-4">
-        <UButton
-          color="neutral"
-          variant="soft"
-          size="sm"
-          :loading="healthState.loading"
-          @click="runHealth"
-        >
-          {{ t('videoEditor.settings.integrationHealthCheck', 'Check health') }}
-        </UButton>
-        <div
-          v-if="healthState.status === 'error'"
-          class="text-xs text-error-400"
-        >
-          {{ healthState.message }}
-        </div>
-        <div
-          v-else-if="healthState.status === 'success'"
-          class="text-xs text-success-400"
-        >
-          {{ t('videoEditor.settings.integrationHealthOk', 'Connected') }}
         </div>
       </div>
     </div>

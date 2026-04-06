@@ -90,7 +90,7 @@ const sttConfig = computed(() =>
   resolveExternalServiceConfig({
     service: 'stt',
     integrations: workspaceStore.userSettings.integrations,
-    bloggerDogApiUrl: '', // BloggerDog removed for STT
+    bloggerDogApiUrl: '',
     fastcatAccountApiUrl: runtimeConfig.public.fastcatAccountApiUrl as string,
   }),
 );
@@ -734,9 +734,9 @@ const filteredFilePrimaryActions = computed(() => {
       </PropertySection>
 
       <PropertySection v-if="isBloggerDogProject" :title="generalInfoTitle">
-        <PropertyRow v-if="selectedPath" :label="t('common.path', 'Путь')" :value="selectedPath" />
-        <PropertyRow v-if="bloggerDogDeepLink" :label="t('common.url', 'URL')">
+        <PropertyRow v-if="selectedPath" :label="t('common.path', 'Путь')">
           <a
+            v-if="bloggerDogDeepLink"
             :href="bloggerDogDeepLink"
             target="_blank"
             class="text-primary-500 hover:text-primary-400 underline decoration-dotted transition-colors flex items-center gap-1 overflow-hidden"
@@ -746,6 +746,7 @@ const filteredFilePrimaryActions = computed(() => {
             }}</span>
             <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 shrink-0" />
           </a>
+          <span v-else>{{ selectedPath }}</span>
         </PropertyRow>
       </PropertySection>
 

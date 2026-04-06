@@ -33,7 +33,6 @@ export interface ExternalIntegrationsSettings {
   fastcatAccount: FastCatPublicadorIntegrationSettings;
   fastcatPublicador: FastCatPublicadorIntegrationSettings;
   manualFilesApi: ManualExternalApiSettings;
-  manualSttApi: ManualExternalApiSettings;
   stt: SttIntegrationSettings;
 }
 
@@ -264,12 +263,6 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       bearerToken: '',
     },
     manualFilesApi: {
-      enabled: false,
-      baseUrl: '',
-      bearerToken: '',
-      overrideFastCat: false,
-    },
-    manualSttApi: {
       enabled: false,
       baseUrl: '',
       bearerToken: '',

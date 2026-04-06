@@ -162,14 +162,6 @@ export function normalizeIntegrationsSettings(raw: unknown): FastCatUserSettings
           overrideFastCat: z.coerce.boolean().catch(false),
         })
         .catch(DEFAULT_USER_SETTINGS.integrations.manualFilesApi),
-      manualSttApi: z
-        .object({
-          enabled: z.coerce.boolean().catch(false),
-          baseUrl: z.string().transform(normalizeUrlValue).catch(''),
-          bearerToken: z.string().transform(normalizeTokenValue).catch(''),
-          overrideFastCat: z.coerce.boolean().catch(false),
-        })
-        .catch(DEFAULT_USER_SETTINGS.integrations.manualSttApi),
       stt: z
         .object({
           provider: z.string().trim().catch(DEFAULT_USER_SETTINGS.integrations.stt.provider),
