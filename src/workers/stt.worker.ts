@@ -5,7 +5,7 @@ import type {
   SttWorkerResponse,
 } from '~/utils/transcription/types';
 
-env.allowRemoteModels = true;
+env.allowRemoteModels = false;
 env.allowLocalModels = true;
 env.useBrowserCache = false;
 env.localModelPath = '/models/';
