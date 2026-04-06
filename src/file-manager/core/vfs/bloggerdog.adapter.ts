@@ -201,7 +201,8 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     const entries: VfsEntry[] = [];
     for (const item of response.items) {
       const name = getRemoteEntryDisplayName(item);
-      const entryPath = normalizedPath === '/' ? `/${name}` : `${normalizedPath}/${name}`;
+      const isInsideProjects = normalizedPath === '/projects';
+      const entryPath = normalizedPath === '/' ? `/${name}` : (isInsideProjects ? `${normalizedPath}/${item.id}` : `${normalizedPath}/${name}`);
       this.idCache.set(entryPath, { id: item.id, type: item.type, item });
       
       const isSimpleFile = item.type === 'file' && item.media?.length === 1 && !item.text?.trim();

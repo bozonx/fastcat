@@ -263,7 +263,10 @@ const isMediaFullyUnsupported = computed(
   () => isFormatUnsupported.value || isVideoCodecUnsupported.value || isImageUnsupported.value,
 );
 
-const isRemoteContent = computed(() => isBloggerDogContentItem.value || isBloggerDogGroup.value);
+const isRemoteContent = computed(
+  () =>
+    isBloggerDogContentItem.value || isBloggerDogGroup.value || isBloggerDogProject.value,
+);
 
 const castedRemoteRecord = computed(() => {
   if (!isRemoteContent.value || !props.selectedFsEntry?.remoteData) return null;
@@ -610,7 +613,8 @@ const filteredFilePrimaryActions = computed(() => {
           !isRemoteRoot &&
           !isVirtualAll &&
           !isPersonalLibrary &&
-          !isProjectLibraries
+          !isProjectLibraries &&
+          !isBloggerDogProject
         "
         key="actions-directory"
         :title="t('videoEditor.fileManager.actions.title', 'Actions')"
@@ -627,7 +631,8 @@ const filteredFilePrimaryActions = computed(() => {
           fileInfo?.kind === 'file' &&
           !isVirtualAll &&
           !isPersonalLibrary &&
-          !isProjectLibraries
+          !isProjectLibraries &&
+          !isBloggerDogProject
         "
         key="actions-file"
         :title="t('videoEditor.fileManager.actions.title', 'Actions')"
@@ -736,8 +741,8 @@ const filteredFilePrimaryActions = computed(() => {
             target="_blank"
             class="text-primary-500 hover:text-primary-400 underline decoration-dotted transition-colors flex items-center gap-1 overflow-hidden"
           >
-            <span class="truncate">{{
-              bloggerDogDeepLink.replace(/.*\/projects\//, '/projects/')
+            <span class="truncate">/projects/{{
+              (selectedFsEntry as any).remoteData?.id || selectedFsEntry?.name
             }}</span>
             <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 shrink-0" />
           </a>
