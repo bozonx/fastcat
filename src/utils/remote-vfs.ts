@@ -217,19 +217,43 @@ export async function fetchRemoteVfsList(params: {
   path: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  search?: string;
+  tags?: string[];
+  language?: string;
+  limit?: number;
+  offset?: number;
   signal?: AbortSignal;
 }): Promise<RemoteVfsListResponse> {
   const url = new URL(joinPath(params.config.baseUrl, 'list'));
   url.searchParams.set('path', params.path || '/');
 
   if (params.sortBy) {
-    // Map internal fields to API fields
     const apiSortBy = params.sortBy === 'name' ? 'title' : 'createdAt';
     url.searchParams.set('sortBy', apiSortBy);
   }
 
   if (params.sortOrder) {
     url.searchParams.set('sortOrder', params.sortOrder);
+  }
+
+  if (params.search) {
+    url.searchParams.set('search', params.search);
+  }
+
+  if (params.tags?.length) {
+    url.searchParams.set('tags', params.tags.join(','));
+  }
+
+  if (params.language) {
+    url.searchParams.set('language', params.language);
+  }
+
+  if (params.limit !== undefined) {
+    url.searchParams.set('limit', params.limit.toString());
+  }
+
+  if (params.offset !== undefined) {
+    url.searchParams.set('offset', params.offset.toString());
   }
 
   const response = await fetch(url.toString(), {
@@ -318,8 +342,9 @@ export async function downloadRemoteFile(params: {
 
 export async function uploadFileToRemote(params: {
   config: RemoteVfsClientConfig;
-  collectionId: string;
   file: File;
+  path?: string;
+  projectId?: string;
   signal?: AbortSignal;
   onProgress?: (progress: number) => void;
 }): Promise<void> {
@@ -364,7 +389,12 @@ export async function uploadFileToRemote(params: {
 
     const formData = new FormData();
     formData.append('file', params.file);
-    formData.append('collectionId', params.collectionId);
+    if (params.path) {
+      formData.append('path', params.path);
+    }
+    if (params.projectId) {
+      formData.append('projectId', params.projectId);
+    }
     xhr.send(formData);
   });
 }
@@ -433,6 +463,7 @@ export async function renameRemoteItem(params: {
   id: string;
   name?: string;
   tags?: string[];
+  note?: string;
 }): Promise<void> {
   const response = await fetch(joinPath(params.config.baseUrl, `items/${params.id}`), {
     method: 'PATCH',
@@ -440,7 +471,11 @@ export async function renameRemoteItem(params: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${params.config.bearerToken}`,
     },
-    body: JSON.stringify({ name: params.name, tags: params.tags }),
+    body: JSON.stringify({
+      name: params.name,
+      tags: params.tags,
+      note: params.note,
+    }),
   });
 
   if (!response.ok) {
@@ -469,23 +504,13 @@ export async function deleteRemoteItem(params: {
 export async function searchRemoteVfs(params: {
   config: RemoteVfsClientConfig;
   query: string;
+  path?: string;
   signal?: AbortSignal;
 }): Promise<RemoteVfsListResponse> {
-  const url = new URL(joinPath(params.config.baseUrl, 'search'));
-  url.searchParams.set('query', params.query);
-
-  const response = await fetch(url.toString(), {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${params.config.bearerToken}`,
-    },
+  return await fetchRemoteVfsList({
+    config: params.config,
+    path: params.path || '/virtual-all',
+    search: params.query,
     signal: params.signal,
   });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(body || `Failed to search remote library (${response.status})`);
-  }
-
-  return (await response.json()) as RemoteVfsListResponse;
 }
