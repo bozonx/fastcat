@@ -84,6 +84,9 @@ export const useUiStore = defineStore('ui', () => {
   const mediaReplaceTarget = ref<{ trackId: string; itemId: string; expectedType: 'video' | 'image' } | null>(null);
   const isMediaReplaceModalOpen = ref(false);
 
+  const remoteExchangeModalOpen = ref(false);
+  const remoteExchangeLocalEntry = ref<FsEntry | null>(null);
+
   function notifyFileManagerUpdate() {
     fileManagerUpdateCounter.value++;
   }
@@ -234,6 +237,8 @@ export const useUiStore = defineStore('ui', () => {
     pendingOtioCreateVersion,
     pendingRemoteDownloadRequest,
     pendingBloggerDogCreateSubgroup,
+    remoteExchangeModalOpen,
+    remoteExchangeLocalEntry,
 
     fsSidebarWidth,
     setFsSidebarWidth,

@@ -42,6 +42,7 @@ export type RemoteVfsEntry = RemoteVfsDirectoryEntry | RemoteVfsFileEntry;
 export interface RemoteVfsListResponse {
   type: 'directory';
   items: RemoteVfsEntry[];
+  total?: number;
 }
 
 export interface RemoteVfsHealthResponse {

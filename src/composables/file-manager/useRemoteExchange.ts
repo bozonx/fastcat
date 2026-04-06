@@ -222,27 +222,8 @@ export function useRemoteExchange() {
     const config = remoteFilesConfig.value;
     if (!config || entry.kind !== 'file' || entry.source === 'remote' || !entry.path) return;
 
-    const remoteParentPath = remoteCurrentPath.value || '/';
-    const remoteDirectory = remoteEntries.value.find(
-      (item) => item.type === 'directory' && item.path === remoteParentPath,
-    ) as Extract<RemoteVfsEntry, { type: 'directory' }> | undefined;
-    const collectionId =
-      remoteParentPath === '/'
-        ? 'virtual-all'
-        : remoteDirectory?.id || remoteParentPath.split('/').filter(Boolean).at(-1);
-
-    if (!collectionId) {
-      toast.add({
-        color: 'error',
-        title: t('videoEditor.fileManager.actions.uploadRemote', 'Upload to remote'),
-        description: t(
-          'videoEditor.fileManager.remote.collectionUnavailable',
-          'Remote collection is not available',
-        ),
-      });
-      return;
-    }
-
+    const uploadPath = remoteCurrentPath.value === '/' ? '/virtual-all' : remoteCurrentPath.value;
+    
     const file = await fileManager.vfs.getFile(entry.path);
     if (!file) {
       toast.add({
@@ -265,7 +246,7 @@ export function useRemoteExchange() {
     try {
       await uploadFileToRemote({
         config,
-        collectionId,
+        path: uploadPath,
         file,
         signal: controller.signal,
         onProgress: (progress) => {

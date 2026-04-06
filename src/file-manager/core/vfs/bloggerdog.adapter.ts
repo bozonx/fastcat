@@ -196,13 +196,14 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     if (!name) throw new Error('Invalid file name');
     
     const parentPath = '/' + parts.join('/');
-    let parentId = 'virtual-all';
+    let uploadPath = '/virtual-all';
     if (parentPath !== '/') {
-      const parent = await this.getIdForPath(parentPath);
-      if (parent.type === 'file' || parent.type === 'media') {
-        throw new Error('Cannot upload a file directly inside a Content Item folder.');
+      const cached = await this.getIdForPath(parentPath);
+      if (cached.item?.path) {
+        uploadPath = cached.item.path;
+      } else if (cached.id) {
+        uploadPath = cached.id.startsWith('/') ? cached.id : `/${cached.id}`;
       }
-      parentId = parent.id;
     }
     
     let fileToUpload: File;
@@ -216,7 +217,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     
     await uploadFileToRemote({
       config,
-      collectionId: parentId,
+      path: uploadPath,
       file: fileToUpload
     });
     
