@@ -3,8 +3,6 @@ import {
   writeJsonToFileHandle,
   type DirectoryHandleLike,
 } from './app-fs.repository';
-import type { ResolvedStorageTopology } from '~/utils/storage-topology';
-import { ensureResolvedProjectTempDir } from '~/utils/storage-handles';
 import { z } from 'zod';
 
 export const TranscriptionCacheRecordSchema = z.object({
@@ -23,8 +21,8 @@ export const TranscriptionCacheRecordSchema = z.object({
 export type TranscriptionCacheRecord = z.infer<typeof TranscriptionCacheRecordSchema>;
 
 export interface TranscriptionCacheRepository {
-  load: (key: string) => Promise<TranscriptionCacheRecord | null>;
-  list: () => Promise<TranscriptionCacheRecord[]>;
+  load: (params: { key: string; sourcePath: string }) => Promise<TranscriptionCacheRecord | null>;
+  list: (params: { sourcePath: string }) => Promise<TranscriptionCacheRecord[]>;
   save: (record: TranscriptionCacheRecord) => Promise<void>;
 }
 
@@ -42,6 +40,16 @@ async function ensureDirectoryChain(params: {
   return current;
 }
 
+function getPathInfo(sourcePath: string) {
+  const parts = sourcePath.split('/').filter(Boolean);
+  const fileName = parts.pop() ?? '';
+  return { segments: parts, fileName };
+}
+
+function getTranscriptionFileName(sourceName: string, key: string) {
+  return `${sourceName}.${key}.stt.json`;
+}
+
 function sortRecordsByCreatedAtDesc(
   records: TranscriptionCacheRecord[],
 ): TranscriptionCacheRecord[] {
@@ -56,18 +64,13 @@ function sortRecordsByCreatedAtDesc(
 
 export function createTranscriptionCacheRepository(params: {
   workspaceDir: DirectoryHandleLike;
-  topology: ResolvedStorageTopology;
-  projectId: string;
 }): TranscriptionCacheRepository {
-  async function getCacheDir(): Promise<DirectoryHandleLike | null> {
-    if (!params.projectId.trim()) return null;
+  async function getFileDir(sourcePath: string): Promise<DirectoryHandleLike | null> {
+    const { segments } = getPathInfo(sourcePath);
     try {
-      return await ensureResolvedProjectTempDir({
-        workspaceHandle: params.workspaceDir,
-        topology: params.topology,
-        projectId: params.projectId,
-        leafSegments: ['frame-cache', 'transcriptions'],
-        create: true,
+      return await ensureDirectoryChain({
+        baseDir: params.workspaceDir,
+        segments,
       });
     } catch {
       return null;
@@ -75,18 +78,21 @@ export function createTranscriptionCacheRepository(params: {
   }
 
   return {
-    async load(key) {
-      const cacheDir = await getCacheDir();
-      if (!cacheDir) return null;
+    async load({ key, sourcePath }) {
+      const dir = await getFileDir(sourcePath);
+      if (!dir) return null;
+
+      const { fileName: sourceName } = getPathInfo(sourcePath);
+      const cacheFileName = getTranscriptionFileName(sourceName, key);
 
       try {
-        const handle = await cacheDir.getFileHandle(`${key}.json`, { create: false });
+        const handle = await dir.getFileHandle(cacheFileName, { create: false });
         const raw = await readJsonFromFileHandle<unknown>(handle);
         if (!raw) return null;
 
         const parsed = TranscriptionCacheRecordSchema.safeParse(raw);
         if (!parsed.success) {
-          console.warn(`[TranscriptionCache] Invalid cache record for key ${key}`, parsed.error);
+          console.warn(`[TranscriptionCache] Invalid cache record in file ${cacheFileName}`, parsed.error);
           return null;
         }
         return parsed.data;
@@ -94,38 +100,32 @@ export function createTranscriptionCacheRepository(params: {
         if ((error as { name?: unknown }).name === 'NotFoundError') {
           return null;
         }
-
         throw error;
       }
     },
 
-    async list() {
-      const cacheDir = await getCacheDir();
-      if (!cacheDir?.values) return [];
+    async list({ sourcePath }) {
+      const dir = await getFileDir(sourcePath);
+      if (!dir?.values) return [];
 
+      const { fileName: sourceName } = getPathInfo(sourcePath);
       const records: TranscriptionCacheRecord[] = [];
-      for await (const handle of cacheDir.values()) {
-        if (handle.kind !== 'file' || !handle.name.endsWith('.json')) continue;
+      
+      for await (const handle of dir.values()) {
+        if (handle.kind !== 'file' || !handle.name.endsWith('.stt.json')) continue;
+        if (!handle.name.startsWith(sourceName)) continue;
 
         try {
-          const fileHandle = await cacheDir.getFileHandle(handle.name, { create: false });
+          const fileHandle = await dir.getFileHandle(handle.name, { create: false });
           const raw = await readJsonFromFileHandle<unknown>(fileHandle);
           if (raw) {
             const parsed = TranscriptionCacheRecordSchema.safeParse(raw);
             if (parsed.success) {
               records.push(parsed.data);
-            } else {
-              console.warn(
-                `[TranscriptionCache] Invalid cache record in file ${handle.name}`,
-                parsed.error,
-              );
             }
           }
         } catch (error: unknown) {
-          if ((error as { name?: unknown }).name === 'NotFoundError') {
-            continue;
-          }
-
+          if ((error as { name?: unknown }).name === 'NotFoundError') continue;
           throw error;
         }
       }
@@ -134,10 +134,11 @@ export function createTranscriptionCacheRepository(params: {
     },
 
     async save(record) {
-      const cacheDir = await getCacheDir();
-      if (!cacheDir) return;
+      const dir = await getFileDir(record.sourcePath);
+      if (!dir) return;
 
-      const handle = await cacheDir.getFileHandle(`${record.key}.json`, { create: true });
+      const cacheFileName = getTranscriptionFileName(record.sourceName, record.key);
+      const handle = await dir.getFileHandle(cacheFileName, { create: true });
       await writeJsonToFileHandle({ handle, data: record });
     },
   };

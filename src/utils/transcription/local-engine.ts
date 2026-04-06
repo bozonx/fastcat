@@ -129,8 +129,6 @@ export async function transcribeLocally(
                 }).then(async (cacheKey) => {
                     const cacheRepository = createTranscriptionCacheRepository({
                         workspaceDir: input.workspaceHandle,
-                        topology: input.resolvedStorageTopology,
-                        projectId: input.projectId,
                     });
 
                     const record = {

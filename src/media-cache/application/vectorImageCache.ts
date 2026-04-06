@@ -71,7 +71,7 @@ async function ensureVectorImageCacheRoot(input: {
       workspaceHandle: input.workspaceHandle,
       topology: input.resolvedStorageTopology,
       projectId: input.projectId,
-      leafSegments: ['frame-cache', 'vector_image'],
+      leafSegments: ['cache', 'vector_image'],
       create: input.create,
     })) as FileSystemDirectoryHandle;
   }

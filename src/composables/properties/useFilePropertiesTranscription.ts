@@ -12,8 +12,6 @@ interface UseFilePropertiesTranscriptionOptions {
   isVideoFile: Ref<boolean>;
   sttConfig: Ref<unknown>;
   workspaceHandle: Ref<FileSystemDirectoryHandle | null | undefined>;
-  currentProjectId: Ref<string | null | undefined>;
-  resolvedStorageTopology: Ref<ResolvedStorageTopology>;
   userSettings: Ref<FastCatUserSettings>;
   fastcatAccountApiUrl: Ref<string>;
   getFileByPath: (path: string) => Promise<File | null | undefined>;
@@ -59,7 +57,6 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
       (options.isAudioFile.value || options.isVideoFile.value) &&
       (isLocal || Boolean(options.sttConfig.value)) &&
       Boolean(options.workspaceHandle.value) &&
-      Boolean(options.currentProjectId.value) &&
       Boolean(entry.path)
     );
   });
@@ -79,7 +76,6 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
     if (
       !selectedEntry ||
       selectedEntry.kind !== 'file' ||
-      !options.currentProjectId.value ||
       !options.workspaceHandle.value ||
       !(options.isAudioFile.value || options.isVideoFile.value)
     ) {
@@ -92,11 +88,9 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
     try {
       const repository = createTranscriptionCacheRepository({
         workspaceDir: options.workspaceHandle.value,
-        topology: options.resolvedStorageTopology.value,
-        projectId: options.currentProjectId.value,
       });
-      const records = await repository.list();
-      const record = records.find((item) => item.sourcePath === selectedEntry.path);
+      const records = await repository.list({ sourcePath: selectedEntry.path });
+      const record = records[0];
       latestTranscriptionText.value = record ? extractTranscriptionText(record.response) : '';
       latestTranscriptionCacheKey.value = record?.key ?? '';
       latestTranscriptionWasCached.value = Boolean(record);
@@ -116,10 +110,7 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
   async function submitAudioTranscription() {
     const selectedEntry = options.selectedFsEntry.value;
     if (
-      !selectedEntry ||
-      selectedEntry.kind !== 'file' ||
-      !options.workspaceHandle.value ||
-      !options.currentProjectId.value
+      !options.workspaceHandle.value
     ) {
       return;
     }
@@ -138,10 +129,8 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
         fileType: getMimeTypeFromFilename(selectedEntry.name),
         language: transcriptionLanguage.value,
         fastcatAccountApiUrl: options.fastcatAccountApiUrl.value,
-        projectId: options.currentProjectId.value,
         userSettings: options.userSettings.value,
         workspaceHandle: options.workspaceHandle.value,
-        resolvedStorageTopology: options.resolvedStorageTopology.value,
       } as any);
 
       latestTranscriptionText.value = extractTranscriptionText(result.record.response);
@@ -162,11 +151,11 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
         description: result.cached
           ? options.t(
               'videoEditor.fileManager.audio.transcriptionCachedDescription',
-              'Cached transcription was loaded from vardata.',
+              'Cached transcription was loaded from the file directory.',
             )
           : options.t(
               'videoEditor.fileManager.audio.transcriptionSavedDescription',
-              'Transcription was saved to vardata cache.',
+              'Transcription was saved next to the source file.',
             ),
         color: 'success',
       });

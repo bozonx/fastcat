@@ -29,12 +29,9 @@ export interface TimelineCaptionsDeps {
   ) => string[];
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
   getWorkspaceHandle: () => FileSystemDirectoryHandle | null;
-  getResolvedStorageTopology: () => any;
-  getCurrentProjectId: () => string | null;
 }
 
 export interface TimelineCaptionsModule {
-  listCachedTranscriptions: () => Promise<TranscriptionCacheRecord[]>;
   generateCaptionsFromTimeline: (options: {
     trackId: string;
     settings: CaptionGenerationSettings;
@@ -48,8 +45,6 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
     batchApplyTimeline,
     requestTimelineSave,
     getWorkspaceHandle,
-    getResolvedStorageTopology,
-    getCurrentProjectId,
   } = params;
 
   function isTrackActiveForCaptions(track: TimelineDocument['tracks'][number]): boolean {
@@ -190,19 +185,7 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
     return result;
   }
 
-  async function listCachedTranscriptions(): Promise<TranscriptionCacheRecord[]> {
-    const workspaceHandle = getWorkspaceHandle();
-    const projectId = getCurrentProjectId();
-    if (!workspaceHandle || !projectId) return [];
 
-    const repository = createTranscriptionCacheRepository({
-      workspaceDir: workspaceHandle,
-      topology: getResolvedStorageTopology(),
-      projectId,
-    });
-
-    return await repository.list();
-  }
 
   async function collectTimelineCaptionWords(options?: {
     language?: string;
@@ -213,17 +196,21 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
     }
 
     const workspaceHandle = getWorkspaceHandle();
-    const projectId = getCurrentProjectId();
-    if (!workspaceHandle || !projectId) {
+    if (!workspaceHandle) {
       throw new Error('Project workspace is not available');
     }
 
     const repository = createTranscriptionCacheRepository({
       workspaceDir: workspaceHandle,
-      topology: getResolvedStorageTopology(),
-      projectId,
     });
-    const records = await repository.list();
+    const recordsByPath = new Map<string, TranscriptionCacheRecord[]>();
+
+    const getRecordsForPath = async (path: string) => {
+      if (recordsByPath.has(path)) return recordsByPath.get(path)!;
+      const records = await repository.list({ sourcePath: path });
+      recordsByPath.set(path, records);
+      return records;
+    };
 
     const allWords: TimelineCaptionWord[] = [];
 
@@ -239,7 +226,7 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
         if (mediaType !== 'video' && mediaType !== 'audio') continue;
 
         const record = findMatchingTranscriptionRecord({
-          records,
+          records: await getRecordsForPath(sourcePath),
           sourcePath,
           language: options?.language,
         });
@@ -371,7 +358,6 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
   }
 
   return {
-    listCachedTranscriptions,
     generateCaptionsFromTimeline,
   };
 }
