@@ -5,11 +5,14 @@ import {
 } from '@huggingface/transformers';
 
 // --- Configuration ---
-// Disable built-in caching and remote models
+// Strictly local models
 env.allowRemoteModels = false;
 env.allowLocalModels = true;
 env.useBrowserCache = false;
 env.localModelPath = '/models/';
+
+// Force disable GPU globally to avoid erratic WebGPU adapter failures blocking the worker
+env.backends.onnx.gpu = false;
 
 // This will be set by the main thread
 let modelDirHandle: FileSystemDirectoryHandle | null = null;
@@ -23,9 +26,11 @@ const originalFetch = self.fetch;
 self.fetch = (async (url: string | URL, options?: RequestInit) => {
   const urlStr = url.toString();
   
-  if (!modelDirHandle || !currentModelName) {
+  if (!urlStr.includes('/models/') || !modelDirHandle || !currentModelName) {
     return originalFetch(url, options);
   }
+
+  console.log(`[STT Worker] Intercepted local fetch: ${urlStr}`);
 
   const escapedCurrentModelName = currentModelName.replace(/\//g, '_');
   
@@ -52,63 +57,50 @@ self.fetch = (async (url: string | URL, options?: RequestInit) => {
         currentDir = await currentDir.getDirectoryHandle(fileParts[i]!, { create: false });
     }
     
-    const fileHandle = await currentDir.getFileHandle(fileParts.at(-1)!, { create: false });
+    // Try to get the file exactly as requested
+    let fileHandle: FileSystemFileHandle;
+    try {
+        fileHandle = await currentDir.getFileHandle(fileParts.at(-1)!, { create: false });
+    } catch (e) {
+        // Fallback: if library asks for 'file.onnx', try 'file_quantized.onnx'
+        const lastPart = fileParts.at(-1)!;
+        if (lastPart.endsWith('.onnx') && !lastPart.includes('_quantized')) {
+            const quantizedName = lastPart.replace('.onnx', '_quantized.onnx');
+            fileHandle = await currentDir.getFileHandle(quantizedName, { create: false });
+        } else {
+            throw e;
+        }
+    }
+    
     const file = await fileHandle.getFile();
+    console.log(`[STT Worker] Serving local file: ${escapedCurrentModelName}/${filePath} (size: ${file.size} bytes)`);
     return new Response(file);
   } catch (err) {
-    return originalFetch(url, options);
+    console.warn(`[STT Worker] Local file not found: ${escapedCurrentModelName}/${filePath}`);
+    return new Response('Not Found', { status: 404 });
   }
 }) as any;
 
 async function initTranscriber(modelName: string) {
   if (transcriber && currentModelName === modelName) return transcriber;
 
-  console.log(`[STT Worker] Initializing pipeline for ${modelName}...`);
-  
-  // Update local model path to point to our virtual models directory
-  env.localModelPath = '/models/';
-
-  // Check if WebGPU is supported by the browser before trying
-  const isWebGpuSupported = !!(self.navigator as any).gpu;
-  
-  if (isWebGpuSupported) {
-    try {
-      currentModelName = modelName;
-      transcriber = (await pipeline('automatic-speech-recognition', modelName, {
-        device: 'webgpu',
-        progress_callback: (progress: any) => {
-          self.postMessage({ type: 'progress', data: progress });
-        },
-      })) as AutomaticSpeechRecognitionPipeline;
-      
-      console.log('[STT Worker] Pipeline initialized with WebGPU');
-      return transcriber;
-    } catch (err: any) {
-      console.warn('[STT Worker] WebGPU failed to acquire adapter, falling back to CPU:', err);
-    }
-  } else {
-    console.log('[STT Worker] WebGPU not supported by browser, using CPU');
-  }
-
-  // Fallback to CPU (WASM)
-  transcriber = null;
-  currentModelName = null;
+  console.log(`[STT Worker] Initializing pipeline (FORCED WASM, QUANTIZED) for ${modelName}...`);
   
   try {
-      currentModelName = modelName;
-      transcriber = (await pipeline('automatic-speech-recognition', modelName, {
-          device: 'wasm', 
-          dtype: 'fp32', // More compatible for WASM usually
-          progress_callback: (progress: any) => {
-              self.postMessage({ type: 'progress', data: progress });
-          },
-      })) as AutomaticSpeechRecognitionPipeline;
-      
-      console.log('[STT Worker] Pipeline initialized with WASM');
-      return transcriber;
-  } catch (wasmErr: any) {
-      console.error('[STT Worker] WASM initialization failed:', wasmErr);
-      throw wasmErr;
+    currentModelName = modelName;
+    transcriber = (await pipeline('automatic-speech-recognition', modelName, {
+      device: 'wasm',
+      quantized: true, // IMPORTANT: match our downloaded files
+      progress_callback: (progress: any) => {
+        self.postMessage({ type: 'progress', data: progress });
+      },
+    })) as AutomaticSpeechRecognitionPipeline;
+    
+    console.log('[STT Worker] Pipeline initialized with WASM');
+    return transcriber;
+  } catch (err: any) {
+    console.error('[STT Worker] WASM initialization failed:', err);
+    throw err;
   }
 }
 
