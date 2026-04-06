@@ -308,6 +308,7 @@ const {
   handleFiles: props.handleFiles,
   moveEntry: props.moveEntry,
   copyEntry: props.copyEntry,
+  targetFileManagerInstanceId: props.instanceId ?? null,
 });
 
 const rootContextMenuItems = computed(() => {
@@ -475,6 +476,7 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
           :entries="rootEntries"
           :depth="0"
           :folders-only="foldersOnly"
+          :instance-id="instanceId"
           :is-files-page="isFilesPage"
           @commit-rename="(entry, name) => emit('commitRename', entry, name)"
           @stop-rename="emit('stopRename')"

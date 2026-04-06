@@ -190,6 +190,7 @@ const {
     skipNextUpdateReload.value = true;
     uiStore.notifyFileManagerUpdate();
   },
+  fileManagerInstanceId: instanceId,
 });
 
 // --- Remote ---

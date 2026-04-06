@@ -21,6 +21,7 @@ import type { FsEntry } from '~/types/fs';
 import type { DraggedFileData } from '~/composables/useDraggedFile';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
+import { resolveFileManagerDragOperation } from '~/composables/file-manager/dragOperation';
 
 interface UseFileBrowserDragAndDropOptions {
   findEntryByPath: (path: string) => FsEntry | null;
@@ -30,6 +31,7 @@ interface UseFileBrowserDragAndDropOptions {
   copyEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
   loadFolderContent: () => Promise<void>;
   notifyFileManagerUpdate: () => void;
+  fileManagerInstanceId?: string | null;
 }
 
 export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOptions) {
@@ -71,7 +73,12 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     window.removeEventListener('keydown', onGlobalKeyDown, { capture: true });
   });
   const { setDraggedFile, clearDraggedFile } = useDraggedFile();
-  const { currentDragOperation, setCurrentDragOperation } = useAppClipboard();
+  const {
+    currentDragOperation,
+    dragSourceFileManagerInstanceId,
+    setCurrentDragOperation,
+    setDragSourceFileManagerInstanceId,
+  } = useAppClipboard();
 
   const isDragOverPanel = ref(false);
   const dragOverEntryPath = ref<string | null>(null);
@@ -93,6 +100,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     handleFiles: options.handleFiles,
     moveEntry: options.moveEntry,
     copyEntry: options.copyEntry,
+    targetFileManagerInstanceId: options.fileManagerInstanceId ?? null,
   });
 
   function isCopyModifierActive(event: DragEvent): boolean {
@@ -100,6 +108,14 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   }
 
   function resolveDragOperation(event: DragEvent): 'copy' | 'move' {
+    return resolveFileManagerDragOperation({
+      dragSourceFileManagerInstanceId,
+      isLayer1Active: isCopyModifierActive(event),
+      targetFileManagerInstanceId: options.fileManagerInstanceId ?? null,
+    });
+  }
+
+  function resolveDragStartOperation(event: DragEvent): 'copy' | 'move' {
     return isCopyModifierActive(event) ? 'copy' : 'move';
   }
 
@@ -124,7 +140,8 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
     e.dataTransfer.effectAllowed = 'copyMove';
 
-    const operation = resolveDragOperation(e);
+    const operation = resolveDragStartOperation(e);
+    setDragSourceFileManagerInstanceId(options.fileManagerInstanceId ?? null);
     setCurrentDragOperation(operation);
 
     const movePayload = entriesToMove.map((e) => ({ name: e.name, kind: e.kind, path: e.path }));
@@ -157,6 +174,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     clearDraggedFile();
     uiStore.isFileManagerDragging = false;
     setCurrentDragOperation(null);
+    setDragSourceFileManagerInstanceId(null);
     dragOverEntryPath.value = null;
   }
 
@@ -202,12 +220,8 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       setCurrentDragOperation(resolveDragOperation(e));
     }
     dragOverEntryPath.value = entry.path ?? null;
-    e.dataTransfer!.dropEffect =
-      types.includes('Files') ||
-      types.includes(FILE_MANAGER_COPY_DRAG_TYPE) ||
-      isCopyModifierActive(e)
-        ? 'copy'
-        : 'move';
+    const operation = types.includes('Files') ? 'copy' : resolveDragOperation(e);
+    e.dataTransfer!.dropEffect = operation === 'copy' ? 'copy' : 'move';
   }
 
   function onEntryDragLeave(e: DragEvent, entry: FsEntry) {
@@ -242,7 +256,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
     const internalRaw = copyRaw || moveRaw;
     if (internalRaw) {
-      const shouldCopy = !!copyRaw || isCopyModifierActive(e) || currentDragOperation === 'copy';
+      const shouldCopy = resolveDragOperation(e) === 'copy' || currentDragOperation === 'copy';
       let parsed: unknown = null;
       try {
         parsed = JSON.parse(internalRaw);
@@ -317,12 +331,8 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       ) {
         setCurrentDragOperation(resolveDragOperation(e));
       }
-      e.dataTransfer!.dropEffect =
-        types.includes('Files') ||
-        types.includes(FILE_MANAGER_COPY_DRAG_TYPE) ||
-        isCopyModifierActive(e)
-          ? 'copy'
-          : 'move';
+      const operation = types.includes('Files') ? 'copy' : resolveDragOperation(e);
+      e.dataTransfer!.dropEffect = operation === 'copy' ? 'copy' : 'move';
     }
   }
 
@@ -353,7 +363,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
     const internalRaw = copyRaw || moveRaw;
     if (internalRaw) {
-      const shouldCopy = !!copyRaw || isCopyModifierActive(e) || currentDragOperation === 'copy';
+      const shouldCopy = resolveDragOperation(e) === 'copy' || currentDragOperation === 'copy';
       let parsed: unknown = null;
       try {
         parsed = JSON.parse(internalRaw);

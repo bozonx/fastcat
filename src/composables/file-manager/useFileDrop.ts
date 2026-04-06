@@ -2,25 +2,37 @@ import { ref } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import type { FsEntry } from '~/types/fs';
+import { useAppClipboard } from '~/composables/useAppClipboard';
 import {
   FILE_MANAGER_COPY_DRAG_TYPE,
   FILE_MANAGER_MOVE_DRAG_TYPE,
 } from '~/composables/useDraggedFile';
+import { resolveFileManagerDragOperation } from '~/composables/file-manager/dragOperation';
 
 export interface UseFileDropOptions {
   resolveEntryByPath: (path: string) => Promise<FsEntry | null>;
   handleFiles: (files: FileList | File[], targetDirPath?: string) => Promise<void>;
   moveEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<void>;
   copyEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
+  targetFileManagerInstanceId?: string | null;
 }
 
 export function useFileDrop(options: UseFileDropOptions) {
   const workspaceStore = useWorkspaceStore();
+  const { dragSourceFileManagerInstanceId, setCurrentDragOperation } = useAppClipboard();
   const isRootDropOver = ref(false);
   let rootDragEnterCount = 0;
 
   function isCopyModifierActive(e: DragEvent): boolean {
     return isLayer1Active(e, workspaceStore.userSettings);
+  }
+
+  function resolveOperation(e: DragEvent): 'copy' | 'move' {
+    return resolveFileManagerDragOperation({
+      dragSourceFileManagerInstanceId,
+      isLayer1Active: isCopyModifierActive(e),
+      targetFileManagerInstanceId: options.targetFileManagerInstanceId ?? null,
+    });
   }
 
   function isRelevantDrag(e: DragEvent): boolean {
@@ -44,12 +56,15 @@ export function useFileDrop(options: UseFileDropOptions) {
     if (!isRelevantDrag(e)) return;
 
     e.stopPropagation();
-    e.dataTransfer!.dropEffect =
-      e.dataTransfer?.types.includes('Files') ||
-      e.dataTransfer?.types.includes(FILE_MANAGER_COPY_DRAG_TYPE) ||
-      isCopyModifierActive(e)
-        ? 'copy'
-        : 'move';
+    if (e.dataTransfer?.types.includes('Files')) {
+      setCurrentDragOperation('copy');
+      e.dataTransfer!.dropEffect = 'copy';
+      return;
+    }
+
+    const operation = resolveOperation(e);
+    setCurrentDragOperation(operation);
+    e.dataTransfer!.dropEffect = operation === 'copy' ? 'copy' : 'move';
   }
 
   function onRootDragLeave(e: DragEvent) {
@@ -58,6 +73,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     if (rootDragEnterCount <= 0) {
       rootDragEnterCount = 0;
       isRootDropOver.value = false;
+      setCurrentDragOperation(null);
     }
   }
 
@@ -65,6 +81,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     e.stopPropagation();
     rootDragEnterCount = 0;
     isRootDropOver.value = false;
+    setCurrentDragOperation(null);
 
     // Snapshot data synchronously - dataTransfer becomes empty after any await
     const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
@@ -80,7 +97,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     const internalRaw = copyRaw || moveRaw;
     if (!internalRaw) return;
 
-    const shouldCopy = !!copyRaw || isCopyModifierActive(e);
+    const shouldCopy = resolveOperation(e) === 'copy';
 
     let parsed: unknown = null;
     try {
