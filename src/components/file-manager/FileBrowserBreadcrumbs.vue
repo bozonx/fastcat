@@ -4,10 +4,12 @@ import type { FsEntry } from '~/types/fs';
 defineProps<{
   parentFolders: FsEntry[];
   isAtRoot?: boolean;
+  canNavigateBack?: boolean;
+  canNavigateForward?: boolean;
 }>();
 
 const emit = defineEmits<{
-  (e: 'navigateBack' | 'navigateUp'): void;
+  (e: 'navigateBack' | 'navigateForward' | 'navigateUp'): void;
   (e: 'navigateToFolder', index: number): void;
 }>();
 
@@ -23,7 +25,16 @@ const { t } = useI18n();
       color="neutral"
       size="xs"
       icon="i-heroicons-arrow-left"
+      :disabled="!canNavigateBack"
       @click="emit('navigateBack')"
+    />
+    <UButton
+      variant="ghost"
+      color="neutral"
+      size="xs"
+      icon="i-heroicons-arrow-right"
+      :disabled="!canNavigateForward"
+      @click="emit('navigateForward')"
     />
     <UButton
       variant="ghost"

@@ -146,7 +146,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
         item.media.forEach((media: any, index: number) => {
           const name = getRemoteMediaDisplayName({ entry: item, media, mediaIndex: index });
           const mediaPath = `${path}/${name}`;
-          this.idCache.set(mediaPath, { id: item.id, type: 'media', item, mediaIndex: index });
+          this.idCache.set(mediaPath, { id: media.id || item.id, type: 'media', item, mediaIndex: index });
           
           entries.push({
             name,
@@ -329,9 +329,11 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     
     const entry = await this.getIdForPath(sourcePath);
     
-    const { renameRemoteCollection, renameRemoteItem } = await import('~/utils/remote-vfs');
+    const { renameRemoteCollection, renameRemoteItem, renameRemoteMedia } = await import('~/utils/remote-vfs');
     if (entry.type === 'directory') {
       await renameRemoteCollection({ config, id: entry.id, name: newName });
+    } else if (entry.type === 'media') {
+      await renameRemoteMedia({ config, id: entry.id, name: newName });
     } else {
       await renameRemoteItem({ config, id: entry.id, name: newName });
     }

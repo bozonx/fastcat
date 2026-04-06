@@ -484,6 +484,26 @@ export async function renameRemoteItem(params: {
   }
 }
 
+export async function renameRemoteMedia(params: {
+  config: RemoteVfsClientConfig;
+  id: string;
+  name: string;
+}): Promise<void> {
+  const response = await fetch(joinPath(params.config.baseUrl, `media/${params.id}`), {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${params.config.bearerToken}`,
+    },
+    body: JSON.stringify({ name: params.name }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(body || `Failed to rename media (${response.status})`);
+  }
+}
+
 export async function deleteRemoteItem(params: {
   config: RemoteVfsClientConfig;
   id: string;

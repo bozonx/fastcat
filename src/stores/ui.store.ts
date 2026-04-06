@@ -133,6 +133,7 @@ export const useUiStore = defineStore('ui', () => {
   const fileBrowserSelectAllTrigger = ref(0);
   const fileTreeSelectAllTrigger = ref(0);
   const fileBrowserNavigateBackTrigger = ref(0);
+  const fileBrowserNavigateForwardTrigger = ref(0);
   const fileBrowserNavigateUpTrigger = ref(0);
   const fileBrowserMoveSelectionTrigger = ref<{
     dir: 'up' | 'down' | 'left' | 'right';
@@ -254,6 +255,7 @@ export const useUiStore = defineStore('ui', () => {
     fileBrowserSelectAllTrigger,
     fileTreeSelectAllTrigger,
     fileBrowserNavigateBackTrigger,
+    fileBrowserNavigateForwardTrigger,
     fileBrowserNavigateUpTrigger,
     fileBrowserMoveSelectionTrigger,
 

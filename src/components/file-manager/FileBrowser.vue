@@ -284,6 +284,7 @@ const {
   loadFolderContent,
   loadParentFolders,
   navigateBack,
+  navigateForward,
   navigateUp,
   navigateToFolder,
   tryScrollToPendingEntry,
@@ -619,8 +620,15 @@ watch(
   () => uiStore.fileBrowserNavigateBackTrigger,
   () => {
     if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return;
-    if (isAtRoot.value) return;
     void navigateBack();
+  },
+);
+
+watch(
+  () => uiStore.fileBrowserNavigateForwardTrigger,
+  () => {
+    if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return;
+    void navigateForward();
   },
 );
 
@@ -737,7 +745,10 @@ async function onDirectoryUploadChange(e: Event) {
       v-if="!props.compact"
       :parent-folders="parentFolders"
       :is-at-root="isAtRoot"
+      :can-navigate-back="fileManagerStore.historyStack.length > 0"
+      :can-navigate-forward="fileManagerStore.futureStack.length > 0"
       @navigate-back="navigateBack"
+      @navigate-forward="navigateForward"
       @navigate-up="navigateUp"
       @navigate-to-folder="navigateToFolder"
     />

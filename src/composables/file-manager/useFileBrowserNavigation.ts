@@ -155,22 +155,12 @@ export function useFileBrowserNavigation({
     }
   }
 
-  function navigateToParentByIndex(parentIndex: number): void {
-    const target = parentFolders.value[parentIndex];
-    if (!target) return;
-
-    if (isRemoteMode.value && isRemoteFsEntry(target)) {
-      remoteCurrentFolder.value = target as RemoteFsEntry;
-      void loadFolderContent();
-      void loadParentFolders();
-      return;
-    }
-
-    fileManagerStore.openFolder(target as FsEntry);
-  }
-
   async function navigateToRoot() {
     if (isRemoteMode.value) {
+      // Manual navigation — add to history
+      if (remoteCurrentFolder.value) {
+        fileManagerStore.addToHistory(remoteCurrentFolder.value);
+      }
       remoteCurrentFolder.value = buildRemoteDirectoryEntry('/');
       await loadFolderContent();
       await loadParentFolders();
@@ -178,23 +168,77 @@ export function useFileBrowserNavigation({
     }
     const rootEntry: FsEntry = {
       kind: 'directory',
-      name: '/',
+      name: rootName,
       path: '',
+      source: 'local',
     };
     fileManagerStore.openFolder(rootEntry);
   }
 
   function navigateBack(): void {
-    if (parentFolders.value.length > 1) {
-      navigateToParentByIndex(parentFolders.value.length - 2);
+    if (fileManagerStore.historyStack.length === 0) return;
+
+    const current = isRemoteMode.value
+      ? remoteCurrentFolder.value
+      : fileManagerStore.selectedFolder;
+
+    const prev = fileManagerStore.historyStack.pop()!;
+
+    if (current) {
+      fileManagerStore.futureStack.push({ ...current });
+    }
+
+    if (prev.source === 'remote') {
+      isRemoteMode.value = true;
+      remoteCurrentFolder.value = prev as RemoteFsEntry;
+      void loadFolderContent();
+      void loadParentFolders();
     } else {
-      void navigateToRoot();
+      isRemoteMode.value = false;
+      fileManagerStore.openFolder(prev, { skipHistory: true });
+    }
+  }
+
+  function navigateForward(): void {
+    if (fileManagerStore.futureStack.length === 0) return;
+
+    const current = isRemoteMode.value
+      ? remoteCurrentFolder.value
+      : fileManagerStore.selectedFolder;
+
+    const next = fileManagerStore.futureStack.pop()!;
+
+    if (current) {
+      fileManagerStore.historyStack.push({ ...current });
+    }
+
+    if (next.source === 'remote') {
+      isRemoteMode.value = true;
+      remoteCurrentFolder.value = next as RemoteFsEntry;
+      void loadFolderContent();
+      void loadParentFolders();
+    } else {
+      isRemoteMode.value = false;
+      fileManagerStore.openFolder(next, { skipHistory: true });
     }
   }
 
   function navigateUp(): void {
     if (parentFolders.value.length > 1) {
-      navigateToParentByIndex(parentFolders.value.length - 2);
+      const target = parentFolders.value[parentFolders.value.length - 2];
+      if (target) {
+        if (isRemoteMode.value && (isRemoteFsEntry(target) || target.source === 'remote')) {
+          // Manual navigation — add to history
+          if (remoteCurrentFolder.value) {
+            fileManagerStore.addToHistory(remoteCurrentFolder.value);
+          }
+          remoteCurrentFolder.value = target as RemoteFsEntry;
+          void loadFolderContent();
+          void loadParentFolders();
+        } else {
+          fileManagerStore.openFolder(target as FsEntry);
+        }
+      }
     } else if (parentFolders.value.length === 1) {
       void navigateToRoot();
     }
@@ -205,6 +249,10 @@ export function useFileBrowserNavigation({
     if (!targetFolder) return;
 
     if (isRemoteMode.value && isRemoteFsEntry(targetFolder)) {
+      // Manual navigation — add to history
+      if (remoteCurrentFolder.value) {
+        fileManagerStore.addToHistory(remoteCurrentFolder.value);
+      }
       remoteCurrentFolder.value = targetFolder as RemoteFsEntry;
       void loadFolderContent();
       void loadParentFolders();
@@ -289,6 +337,7 @@ export function useFileBrowserNavigation({
     loadFolderContent,
     loadParentFolders,
     navigateBack,
+    navigateForward,
     navigateUp,
     navigateToFolder,
     navigateToRoot,
