@@ -397,16 +397,15 @@ function onDragVirtualEnd() {
     >
       <UContextMenu :items="emptyAreaContextMenuItems">
         <div
-          class="shrink-0 border-r border-ui-border bg-ui-bg-elevated flex items-center px-2"
+          class="shrink-0 border-r border-ui-border bg-ui-bg-elevated flex items-center px-2 gap-2"
           style="width: 220px"
         >
-          <div class="flex-1 flex items-center">
-            <UiTimecode
-              :model-value="timelineStore.currentTime"
-              wheel-without-focus
-              @update:model-value="timelineStore.setCurrentTimeUs($event)"
-            />
-          </div>
+          <UiTimecode
+            class="flex-1"
+            :model-value="timelineStore.currentTime"
+            wheel-without-focus
+            @update:model-value="timelineStore.setCurrentTimeUs($event)"
+          />
 
           <div class="flex items-center gap-1">
             <UTooltip

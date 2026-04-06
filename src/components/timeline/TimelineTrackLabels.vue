@@ -149,6 +149,19 @@ const { getTrackContextMenuItems } = useTrackContextMenu({
   onRequestDelete: (track) => requestDeleteTrack(track),
 });
 
+const trackContextMenuRef = ref<any>(null);
+const activeTrackForContextMenu = ref<TimelineTrack | null>(null);
+
+function onTrackContextMenu(e: MouseEvent, track: TimelineTrack) {
+  activeTrackForContextMenu.value = track;
+  trackContextMenuRef.value?.open(e);
+}
+
+const activeTrackContextMenuItems = computed(() => {
+  if (!activeTrackForContextMenu.value) return [];
+  return getTrackContextMenuItems(activeTrackForContextMenu.value, props.tracks);
+});
+
 const { emptyAreaContextMenuItems: propertiesContextMenuItems } = useTimelineEmptyAreaContextMenu({
   onZoomToFit: () => props.onZoomToFit?.(),
 });
@@ -168,10 +181,12 @@ const { emptyAreaContextMenuItems: propertiesContextMenuItems } = useTimelineEmp
       >
         <div class="flex flex-col min-h-full">
           <UContextMenu
-            v-for="(track, index) in tracks"
-            :key="track.id"
-            :items="getTrackContextMenuItems(track, tracks)"
-          >
+            ref="trackContextMenuRef"
+            :items="activeTrackContextMenuItems"
+            manual
+          />
+
+          <template v-for="(track, index) in tracks" :key="track.id">
             <TimelineTrackLabelItem
               :track="track"
               :track-number="
@@ -199,8 +214,9 @@ const { emptyAreaContextMenuItems: propertiesContextMenuItems } = useTimelineEmp
               @resize-start="(e: MouseEvent) => onResizeStart(track.id, e)"
               @mouseenter="timelineStore.hoveredTrackId = track.id"
               @mouseleave="timelineStore.hoveredTrackId = null"
+              @contextmenu.prevent.stop="onTrackContextMenu($event, track)"
             />
-          </UContextMenu>
+          </template>
           <div class="w-full flex-1 min-h-7 shrink-0" />
           <div
             class="shrink-0"
