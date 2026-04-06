@@ -260,6 +260,34 @@ function onPanelFocusIn(e: FocusEvent) {
 function onPanelFocusOut() {
   // Keep focus state
 }
+const headerTitle = computed(() => {
+  if (displayMode.value === 'empty') return t('common.properties', 'Properties');
+  if (displayMode.value === 'clip') return selectedClip.value?.name;
+  if (displayMode.value === 'transition') return selectedTransitionClip.value?.name ?? '';
+  if (displayMode.value === 'file' && selectedFsEntry.value) return selectedFsEntry.value.name;
+  if (displayMode.value === 'gap') return t('fastcat.timeline.gap', 'Gap');
+  if (displayMode.value === 'track' && selectedTrack.value) return selectedTrack.value.name;
+  if (displayMode.value === 'timeline') {
+    return selectedFsEntry.value?.name ?? t('fastcat.timeline.properties.title', 'Timeline Properties');
+  }
+  if (displayMode.value === 'project-effect') return t('fastcat.effects.title', 'Effect');
+  if (displayMode.value === 'project-transition') return t('fastcat.transitions.title', 'Transition');
+  if (displayMode.value === 'project-library-item') {
+    const kind = selectedProjectLibraryItem.value?.itemKind;
+    return kind === 'text'
+      ? t('fastcat.library.tabs.texts', 'Text')
+      : kind === 'shape'
+        ? t('fastcat.library.tabs.shapes', 'Shape')
+        : t('fastcat.library.tabs.hud', 'HUD');
+  }
+  if (displayMode.value === 'marker') {
+    return isSelectedMarkerZone.value
+      ? t('fastcat.marker.zoneMarker', 'Zone Marker')
+      : t('fastcat.marker.title', 'Marker');
+  }
+  if (displayMode.value === 'selection-range') return t('fastcat.timeline.selectionRange', 'Selection Range');
+  return t('common.properties', 'Properties');
+});
 </script>
 
 <template>
@@ -279,88 +307,8 @@ function onPanelFocusOut() {
       @dragstart="(e) => $emit('panelDragStart', e)"
     >
       <div class="flex items-center overflow-hidden min-w-0">
-        <template v-if="displayMode !== 'empty'">
-          <span
-            v-if="displayMode === 'clip'"
-            class="ml-2 text-xs text-ui-text-muted font-mono truncate"
-          >
-            {{ selectedClip?.name }}
-          </span>
-          <span
-            v-else-if="displayMode === 'transition'"
-            class="ml-2 text-xs text-ui-text-muted font-mono truncate"
-          >
-            {{ selectedTransitionClip?.kind === 'clip' ? selectedTransitionClip.name : '' }}
-          </span>
-          <span
-            v-else-if="displayMode === 'file' && selectedFsEntry"
-            class="ml-2 text-xs text-ui-text-muted font-mono truncate"
-          >
-            {{ selectedFsEntry.name }}
-          </span>
-          <span
-            v-else-if="displayMode === 'gap'"
-            class="ml-2 text-xs text-ui-text-muted font-mono truncate"
-          >
-            {{ t('fastcat.timeline.gap', 'Gap') }}
-          </span>
-          <span
-            v-else-if="displayMode === 'track' && selectedTrack"
-            class="ml-2 text-xs text-ui-text-muted font-mono truncate"
-          >
-            {{ selectedTrack.name }}
-          </span>
-          <span
-            v-else-if="displayMode === 'timeline'"
-            class="ml-2 text-xs text-ui-text-muted font-mono truncate"
-          >
-            {{
-              selectedFsEntry?.name ?? t('fastcat.timeline.properties.title', 'Timeline Properties')
-            }}
-          </span>
-          <span
-            v-else-if="displayMode === 'project-effect'"
-            class="ml-2 text-xs text-ui-text-muted font-mono truncate"
-          >
-            {{ t('fastcat.effects.title', 'Effect') }}
-          </span>
-          <span
-            v-else-if="displayMode === 'project-transition'"
-            class="ml-2 text-xs text-ui-text-muted font-mono truncate"
-          >
-            {{ t('fastcat.transitions.title', 'Transition') }}
-          </span>
-          <span
-            v-else-if="displayMode === 'project-library-item'"
-            class="ml-2 text-xs text-ui-text-muted font-mono truncate"
-          >
-            {{
-              selectedProjectLibraryItem?.itemKind === 'text'
-                ? t('fastcat.library.tabs.texts', 'Text')
-                : selectedProjectLibraryItem?.itemKind === 'shape'
-                  ? t('fastcat.library.tabs.shapes', 'Shape')
-                  : t('fastcat.library.tabs.hud', 'HUD')
-            }}
-          </span>
-          <span
-            v-else-if="displayMode === 'marker'"
-            class="ml-2 text-xs text-ui-text-muted font-mono truncate"
-          >
-            {{
-              isSelectedMarkerZone
-                ? t('fastcat.marker.zoneMarker', 'Zone Marker')
-                : t('fastcat.marker.title', 'Marker')
-            }}
-          </span>
-          <span
-            v-else-if="displayMode === 'selection-range'"
-            class="ml-2 text-xs text-ui-text-muted font-mono truncate"
-          >
-            {{ t('fastcat.timeline.selectionRange', 'Selection Range') }}
-          </span>
-        </template>
-        <span v-else class="ml-2 text-xs text-ui-text-muted font-mono truncate">
-          {{ t('common.properties', 'Properties') }}
+        <span class="ml-2 text-xs text-ui-text-muted font-mono truncate">
+          {{ headerTitle }}
         </span>
       </div>
       <div v-if="displayMode !== 'empty'" class="flex gap-1 shrink-0 ml-2">

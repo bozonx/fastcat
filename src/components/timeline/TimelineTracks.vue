@@ -53,7 +53,7 @@ const props = defineProps<{
     durationUs: number;
     kind: 'timeline-clip' | 'file';
   } | null;
-  movePreview?: { itemId: string; trackId: string; startUs: number } | null;
+  movePreview?: { itemId: string; trackId: string; startUs: number; isCollision?: boolean } | null;
   slipPreview?: { itemId: string; trackId: string; deltaUs: number; timecode: string } | null;
   draggingMode?: 'move' | 'slip' | 'trim_start' | 'trim_end' | null;
   draggingItemId?: string | null;
@@ -234,6 +234,19 @@ const { getTrackContextMenuItems } = useTrackContextMenu({
   },
 });
 
+const trackContextMenuRef = ref<any>(null);
+const activeTrackForContextMenu = ref<TimelineTrack | null>(null);
+
+function onTrackContextMenu(e: MouseEvent, track: TimelineTrack) {
+  activeTrackForContextMenu.value = track;
+  trackContextMenuRef.value?.open(e);
+}
+
+const activeTrackContextMenuItems = computed(() => {
+  if (!activeTrackForContextMenu.value) return [];
+  return getTrackContextMenuItems(activeTrackForContextMenu.value, props.tracks);
+});
+
 const movePreviewItem = computed(() =>
   props.tracks
     .flatMap((track) => track.items)
@@ -358,11 +371,12 @@ function onTrackClick(e: MouseEvent, trackId: string) {
       />
 
       <UContextMenu
-        v-for="track in tracks"
-        :key="track.id"
-        :items="getTrackContextMenuItems(track, tracks)"
-        :disabled="isMobile"
-      >
+        ref="trackContextMenuRef"
+        :items="activeTrackContextMenuItems"
+        manual
+      />
+
+      <template v-for="track in tracks" :key="track.id">
         <div
           :data-track-id="track.id"
           class="flex items-center relative transition-colors border-b border-ui-border"
@@ -390,7 +404,7 @@ function onTrackClick(e: MouseEvent, trackId: string) {
           @dragover.prevent="emit('dragover', $event, track.id)"
           @dragleave.prevent="emit('dragleave', $event, track.id)"
           @drop.prevent="emit('drop', $event, track.id)"
-          @contextmenu.prevent.stop
+          @contextmenu.prevent.stop="onTrackContextMenu($event, track)"
         >
           <!-- Selection Highlight: bright borders+bg when track directly selected; subtle when clip/gap active -->
           <div
@@ -502,7 +516,7 @@ function onTrackClick(e: MouseEvent, trackId: string) {
             />
           </template>
         </div>
-      </UContextMenu>
+      </template>
       <div class="w-full flex-1 min-h-7" @click="timelineStore.selectTrack(null)" />
       <div class="h-16 shrink-0" />
     </div>
