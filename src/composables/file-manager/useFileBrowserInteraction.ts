@@ -17,6 +17,7 @@ export interface FileBrowserInteractionOptions {
   loadParentFolders: () => Promise<void>;
   setSelectedFsEntry: (entry: FsEntry | null) => void;
   onFileAction: (action: string, entry: FsEntry) => void;
+  preventOpen?: boolean;
 }
 
 export function useFileBrowserInteraction({
@@ -27,6 +28,7 @@ export function useFileBrowserInteraction({
   loadParentFolders,
   setSelectedFsEntry,
   onFileAction,
+  preventOpen
 }: FileBrowserInteractionOptions) {
   const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
   const projectStore = useProjectStore();
@@ -60,6 +62,7 @@ export function useFileBrowserInteraction({
     if (entry.kind === 'directory') {
       fileManagerStore.openFolder(entry);
     } else {
+      if (preventOpen) return;
       if (entry.name.toLowerCase().endsWith('.otio')) {
         const entryPath = entry.path;
         if (!entryPath) return;

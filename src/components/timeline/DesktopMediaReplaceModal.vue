@@ -56,6 +56,7 @@ function handleSelectFile(entry: FsEntry) {
         instance-id="replace-modal" 
         hide-actions
         hide-upload
+        prevent-open
       />
       <!-- If we can't intercept click, we can rely on context menu or file browser selection + a confirm button -->
       <div v-if="uiStore.selectedFsEntry?.kind === 'file'" class="absolute bottom-4 right-4 z-10">
