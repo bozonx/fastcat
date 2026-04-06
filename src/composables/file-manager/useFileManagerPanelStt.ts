@@ -40,9 +40,11 @@ export function useFileManagerPanelStt({
   function isTranscribableMediaFile(entry: FsEntry): boolean {
     if (entry.kind !== 'file' || entry.source === 'remote') return false;
     const mediaType = getMediaTypeFromFilename(entry.name);
+    const isLocal = workspaceStore.userSettings.integrations.stt.provider === 'local';
+
     return (
       (mediaType === 'audio' || mediaType === 'video') &&
-      Boolean(sttConfig.value) &&
+      (isLocal || Boolean(sttConfig.value)) &&
       Boolean(workspaceStore.workspaceHandle) &&
       Boolean(projectStore.currentProjectId) &&
       Boolean(entry.path)

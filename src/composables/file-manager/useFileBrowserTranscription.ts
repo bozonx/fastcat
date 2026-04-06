@@ -39,9 +39,11 @@ export function useFileBrowserTranscription() {
   function isTranscribableMediaFile(entry: FsEntry): boolean {
     if (entry.kind !== 'file' || entry.source === 'remote') return false;
     const type = getMediaTypeFromFilename(entry.name);
+    const isLocal = workspaceStore.userSettings.integrations.stt.provider === 'local';
+
     return (
       (type === 'audio' || type === 'video') &&
-      Boolean(sttConfig.value) &&
+      (isLocal || Boolean(sttConfig.value)) &&
       Boolean(workspaceStore.workspaceHandle) &&
       Boolean(projectStore.currentProjectId) &&
       Boolean(entry.path)

@@ -152,6 +152,16 @@ const isVirtualAll = computed(() => {
   return entry?.source === 'remote' && (entry as any).remoteId === 'virtual-all';
 });
 
+const isPersonalLibrary = computed(() => {
+  const entry = props.selectedFsEntry;
+  return entry?.source === 'remote' && (entry as any).remoteId === 'personal';
+});
+
+const isProjectLibraries = computed(() => {
+  const entry = props.selectedFsEntry;
+  return entry?.source === 'remote' && (entry as any).remoteId === 'projects';
+});
+
 const {
   currentUrl,
   mediaType,
@@ -616,13 +626,70 @@ const filteredFilePrimaryActions = computed(() => {
         v-if="isVirtualAll"
         :title="t('fastcat.bloggerDog.allContent', 'Весь контент')"
       >
-         <div class="text-xs text-ui-text-muted italic px-2 py-1">
+         <div class="text-xs text-ui-text-muted italic px-2 py-1 mb-2">
            {{ t('fastcat.bloggerDog.virtualAllDesc', 'Виртуальный плосский список всех элементов контента') }}
          </div>
+         <PropertyRow
+           v-if="bloggerDogDeepLink"
+           :label="t('fastcat.bloggerDog.connection', 'Соединение')"
+         >
+           <a
+             :href="bloggerDogDeepLink"
+             target="_blank"
+             class="text-primary-500 hover:text-primary-400 flex items-center gap-1 group/link"
+           >
+             {{ t('common.open', 'Открыть') }}
+             <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 opacity-0 group-hover/link:opacity-100 transition-opacity" />
+           </a>
+         </PropertyRow>
+      </PropertySection>
+
+      <PropertySection
+        v-if="isPersonalLibrary"
+        :title="t('fastcat.bloggerDog.personalLibrary', 'Личная библиотека')"
+      >
+         <div class="text-xs text-ui-text-muted italic px-2 py-1 mb-2">
+           {{ t('fastcat.bloggerDog.personalLibraryDesc', 'Библиотека вашего личного контента') }}
+         </div>
+         <PropertyRow
+           v-if="bloggerDogDeepLink"
+           :label="t('fastcat.bloggerDog.connection', 'Библиотека')"
+         >
+           <a
+             :href="bloggerDogDeepLink"
+             target="_blank"
+             class="text-primary-500 hover:text-primary-400 flex items-center gap-1 group/link"
+           >
+             {{ t('common.open', 'Открыть') }}
+             <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 opacity-0 group-hover/link:opacity-100 transition-opacity" />
+           </a>
+         </PropertyRow>
+      </PropertySection>
+
+      <PropertySection
+        v-if="isProjectLibraries"
+        :title="t('fastcat.bloggerDog.projectLibraries', 'Библиотеки проектов')"
+      >
+         <div class="text-xs text-ui-text-muted italic px-2 py-1 mb-2">
+           {{ t('fastcat.bloggerDog.projectLibrariesDesc', 'Библиотеки контента конкретных проектов') }}
+         </div>
+         <PropertyRow
+           v-if="bloggerDogDeepLink"
+           :label="t('fastcat.bloggerDog.connection', 'Проекты')"
+         >
+           <a
+             :href="bloggerDogDeepLink"
+             target="_blank"
+             class="text-primary-500 hover:text-primary-400 flex items-center gap-1 group/link"
+           >
+             {{ t('common.open', 'Открыть') }}
+             <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 opacity-0 group-hover/link:opacity-100 transition-opacity" />
+           </a>
+         </PropertyRow>
       </PropertySection>
 
       <FileGeneralInfoSection
-        v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'directory' && !isRemoteRoot && !isVirtualAll"
+        v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'directory' && !isRemoteRoot && !isVirtualAll && !isPersonalLibrary && !isProjectLibraries"
         :title="generalInfoTitle"
         :file-info="fileInfo"
         :selected-path="selectedPath"

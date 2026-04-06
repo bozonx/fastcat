@@ -51,11 +51,13 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
 
   const canTranscribeMedia = computed(() => {
     const entry = options.selectedFsEntry.value;
+    const isLocal = options.userSettings.value.integrations.stt.provider === 'local';
+    
     return (
       entry?.kind === 'file' &&
       entry?.source !== 'remote' &&
       (options.isAudioFile.value || options.isVideoFile.value) &&
-      Boolean(options.sttConfig.value) &&
+      (isLocal || Boolean(options.sttConfig.value)) &&
       Boolean(options.workspaceHandle.value) &&
       Boolean(options.currentProjectId.value) &&
       Boolean(entry.path)

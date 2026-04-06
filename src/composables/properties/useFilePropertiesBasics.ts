@@ -29,13 +29,17 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
   const isBloggerDogGroup = computed(() => {
     const entry = options.selectedFsEntry.value;
     const path = entry?.path || '';
+    const remoteId = entry?.remoteId || (entry?.remoteData as any)?.id;
+    const isVirtual = ['virtual-all', 'personal', 'projects'].includes(remoteId);
+
     return (
       entry?.source === 'remote' &&
       entry?.kind === 'directory' &&
       !entry?.isContentItem &&
       path !== '/remote' &&
       path !== '/remote/' &&
-      path !== ''
+      path !== '' &&
+      !isVirtual
     );
   });
 
@@ -59,6 +63,14 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
 
     const baseUrl = uiUrl.endsWith('/') ? uiUrl.slice(0, -1) : uiUrl;
     const remoteId = entry.remoteId || (entry.remoteData as any)?.id;
+
+    if ((remoteId === 'virtual-all' || remoteId === 'personal') && !isBloggerDogMedia.value) {
+      return `${baseUrl}/content-library`;
+    }
+
+    if (remoteId === 'projects' && !isBloggerDogMedia.value) {
+      return `${baseUrl}/projects`;
+    }
 
     if (isBloggerDogMedia.value && entry.mediaId) {
       return `${baseUrl}/content-library?mediaId=${entry.mediaId}`;

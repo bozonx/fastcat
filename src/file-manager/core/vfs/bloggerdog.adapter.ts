@@ -16,7 +16,10 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
 
   private idCache = new Map<string, { id: string; type: 'file' | 'directory' | 'media'; item?: any; mediaIndex?: number }>();
 
-  constructor(private getConfig: () => RemoteVfsClientConfig | null) {}
+  constructor(
+    private getConfig: () => RemoteVfsClientConfig | null,
+    private t?: (key: string, def?: string) => string
+  ) {}
 
   async init(): Promise<void> {
     // Lazy init
@@ -45,8 +48,20 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     await this.readDirectory(parentPath);
   }
 
+  private getRemotePath(path: string): string {
+    if (path === '/' || path === '') return '/';
+    if (path === '/virtual-all' || path.startsWith('/virtual-all/')) return path;
+    if (path === '/personal') return '/content-library';
+    if (path.startsWith('/personal/')) return '/content-library' + path.slice('/personal'.length);
+    if (path === '/projects' || path.startsWith('/projects/')) return path;
+    return path;
+  }
+
   private async getIdForPath(path: string): Promise<{ id: string; type: 'file' | 'directory' | 'media'; item?: any; mediaIndex?: number }> {
-    if (path === '/' || path === '') return { id: 'virtual-all', type: 'directory' };
+    if (path === '/' || path === '') return { id: 'root', type: 'directory' };
+    if (path === '/virtual-all') return { id: 'virtual-all', type: 'directory' };
+    if (path === '/personal') return { id: 'personal', type: 'directory' };
+    if (path === '/projects') return { id: 'projects', type: 'directory' };
     
     if (!this.idCache.has(path)) {
       await this.ensureParentCache(path);
@@ -65,10 +80,36 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
   ): Promise<VfsEntry[]> {
     const config = this.resolveConfig();
 
+    if (path === '/' || path === '') {
+      return [
+        {
+          name: this.t ? this.t('fastcat.bloggerDog.allContent', 'All Content') : 'All Content',
+          kind: 'directory',
+          path: '/virtual-all',
+          parentPath: '/',
+          remoteData: { id: 'virtual-all', type: 'directory' } as any,
+        },
+        {
+          name: this.t ? this.t('fastcat.bloggerDog.personalLibrary', 'Personal Library') : 'Personal Library',
+          kind: 'directory',
+          path: '/personal',
+          parentPath: '/',
+          remoteData: { id: 'personal', type: 'directory' } as any,
+        },
+        {
+          name: this.t ? this.t('fastcat.bloggerDog.projectLibraries', 'Project Libraries') : 'Project Libraries',
+          kind: 'directory',
+          path: '/projects',
+          parentPath: '/',
+          remoteData: { id: 'projects', type: 'directory' } as any,
+        },
+      ];
+    }
+
     // Ensure path is in cache and we know its type
     const cached = await this.getIdForPath(path);
     
-    // If it's a file (Content Item), we list its media files or text content as a folder
+    const remotePath = this.getRemotePath(path);
     if (cached && cached.type === 'file' && cached.item) {
       const entries: VfsEntry[] = [];
       const item = cached.item as RemoteVfsFileEntry;
@@ -117,13 +158,13 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
 
     const response = await fetchRemoteVfsList({
       config,
-      path,
+      path: remotePath,
       sortBy: options?.sortBy,
       sortOrder: options?.sortOrder,
     });
     
     // Update cache
-    this.idCache.set(path, { id: path === '/' ? 'virtual-all' : this.idCache.get(path)?.id || '', type: 'directory' });
+    this.idCache.set(path, { id: path === '/' ? 'root' : this.idCache.get(path)?.id || '', type: 'directory' });
 
     const entries: VfsEntry[] = [];
     for (const item of response.items) {
