@@ -1,13 +1,19 @@
 <script setup lang="ts">
-import { reactive, computed } from 'vue';
+import { reactive, computed, ref, onMounted, watch } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 
 import {
   resolveExternalServiceConfig,
   runExternalHealthCheck,
 } from '~/utils/external-integrations';
+import {
+  isModelDownloaded,
+  downloadModel,
+  type ModelDownloadProgress,
+} from '~/utils/transcription/model-storage';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -19,12 +25,28 @@ const healthState = reactive({
   message: '',
 });
 
-const isManualSttEnabled = computed({
-  get: () => workspaceStore.userSettings.integrations.manualSttApi.enabled,
-  set: (val: boolean) => {
-    workspaceStore.userSettings.integrations.manualSttApi.enabled = val;
-    if (val) {
-      workspaceStore.userSettings.integrations.manualSttApi.overrideFastCat = true;
+const sttMode = computed({
+  get: () => {
+    if (workspaceStore.userSettings.integrations.stt.provider === 'local') return 'local';
+    if (workspaceStore.userSettings.integrations.manualSttApi.enabled) return 'custom';
+    return 'fastcat';
+  },
+  set: (val: 'fastcat' | 'custom' | 'local') => {
+    const integrations = workspaceStore.userSettings.integrations;
+    if (val === 'local') {
+      integrations.stt.provider = 'local';
+      integrations.manualSttApi.enabled = false;
+    } else if (val === 'custom') {
+      if (integrations.stt.provider === 'local') {
+        integrations.stt.provider = '';
+      }
+      integrations.manualSttApi.enabled = true;
+      integrations.manualSttApi.overrideFastCat = true;
+    } else {
+      if (integrations.stt.provider === 'local') {
+        integrations.stt.provider = '';
+      }
+      integrations.manualSttApi.enabled = false;
     }
   },
 });
@@ -85,6 +107,54 @@ function getHealthTone(status: typeof healthState.status) {
   if (status === 'error') return 'text-error-400';
   return 'text-ui-text-muted';
 }
+
+const isDownloaded = ref(false);
+const downloadState = reactive({
+  loading: false,
+  progress: 0,
+  file: '',
+  status: '',
+});
+
+async function checkStatus() {
+  if (!workspaceStore.workspaceHandle) return;
+  isDownloaded.value = await isModelDownloaded(
+    workspaceStore.workspaceHandle,
+    workspaceStore.userSettings.integrations.stt.localModel,
+  );
+}
+
+async function startDownload() {
+  if (!workspaceStore.workspaceHandle) return;
+  downloadState.loading = true;
+  try {
+    await downloadModel(
+      workspaceStore.workspaceHandle,
+      workspaceStore.userSettings.integrations.stt.localModel,
+      (p: ModelDownloadProgress) => {
+        downloadState.progress = p.total > 0 ? (p.loaded / p.total) * 100 : 0;
+        downloadState.file = p.file;
+        downloadState.status = p.status;
+      },
+    );
+    await checkStatus();
+  } catch (e) {
+    console.error(e);
+  } finally {
+    downloadState.loading = false;
+  }
+}
+
+onMounted(() => {
+  checkStatus();
+});
+
+watch(
+  () => workspaceStore.userSettings.integrations.stt.localModel,
+  () => {
+    checkStatus();
+  },
+);
 </script>
 
 <template>
@@ -102,14 +172,14 @@ function getHealthTone(status: typeof healthState.status) {
       <button
         type="button"
         :class="[
-          !isManualSttEnabled
-            ? isFastcatConnected 
-              ? 'bg-primary-500 text-white shadow-sm' 
+          sttMode === 'fastcat'
+            ? isFastcatConnected
+              ? 'bg-primary-500 text-white shadow-sm'
               : 'bg-error-500 text-white shadow-sm'
             : 'text-ui-text-muted hover:text-ui-text',
         ]"
         class="flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-2"
-        @click="isManualSttEnabled = false"
+        @click="sttMode = 'fastcat'"
       >
         <UIcon v-if="!isFastcatConnected" name="i-heroicons-link-slash" class="w-3.5 h-3.5" />
         {{ t('videoEditor.settings.sttFastcat', 'FASTCAT STT') }}
@@ -117,22 +187,87 @@ function getHealthTone(status: typeof healthState.status) {
       <button
         type="button"
         :class="[
-          isManualSttEnabled
+          sttMode === 'custom'
             ? healthState.status === 'error'
               ? 'bg-error-500 text-white shadow-sm'
               : 'bg-primary-500 text-white shadow-sm'
             : 'text-ui-text-muted hover:text-ui-text',
         ]"
         class="flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all"
-        @click="isManualSttEnabled = true"
+        @click="sttMode = 'custom'"
       >
         {{ t('videoEditor.settings.sttCustom', 'Custom STT') }}
       </button>
+      <button
+        type="button"
+        :class="[
+          sttMode === 'local'
+            ? 'bg-primary-500 text-white shadow-sm'
+            : 'text-ui-text-muted hover:text-ui-text',
+        ]"
+        class="flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+        @click="sttMode = 'local'"
+      >
+        {{ t('videoEditor.settings.sttLocal', 'Local') }}
+      </button>
+    </div>
+
+    <!-- Local STT Form -->
+    <div
+      v-if="sttMode === 'local'"
+      class="flex flex-col gap-4 border border-ui-border rounded-lg p-4 bg-ui-bg-muted/30"
+    >
+      <div class="flex flex-col gap-4">
+        <UiFormField :label="t('videoEditor.settings.sttLocalModel', 'Whisper Model')">
+          <UiSelect
+            v-model="workspaceStore.userSettings.integrations.stt.localModel"
+            :items="[
+              { label: 'Whisper Tiny (Multilingual)', value: 'onnx-community/whisper-tiny' },
+              { label: 'Whisper Base (Multilingual)', value: 'onnx-community/whisper-base' },
+            ]"
+            full-width
+          />
+        </UiFormField>
+
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <div class="text-xs text-ui-text-muted">
+              {{
+                isDownloaded
+                  ? t('videoEditor.settings.sttModelDownloaded', 'Model is ready for use')
+                  : t('videoEditor.settings.sttModelNotDownloaded', 'Model needs to be downloaded')
+              }}
+            </div>
+            <UButton
+              v-if="!isDownloaded || downloadState.loading"
+              size="sm"
+              color="primary"
+              variant="soft"
+              :loading="downloadState.loading"
+              @click="startDownload"
+            >
+              {{ t('videoEditor.settings.sttDownloadModel', 'Download model') }}
+            </UButton>
+            <div v-else class="text-xs text-success-400 flex items-center gap-1">
+              <UIcon name="i-heroicons-check-circle" class="w-4 h-4" />
+              {{ t('videoEditor.settings.sttModelReady', 'Ready') }}
+            </div>
+          </div>
+
+          <div v-if="downloadState.loading" class="flex flex-col gap-1 mt-2">
+            <div class="flex justify-between text-[10px] text-ui-text-muted uppercase tracking-wider">
+              <span>{{ downloadState.status }}: {{ downloadState.file }}</span>
+              <span>{{ Math.round(downloadState.progress) }}%</span>
+            </div>
+            <UProgress :value="downloadState.progress" size="sm" color="primary" />
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Manual STT Form -->
     <div
-      v-if="isManualSttEnabled"
+      v-if="sttMode === 'custom'"
       class="flex flex-col gap-4 border border-ui-border rounded-lg p-4 bg-ui-bg-muted/30"
     >
       <UiFormField :label="t('videoEditor.settings.integrationBaseUrl', 'Base URL')">
@@ -179,7 +314,7 @@ function getHealthTone(status: typeof healthState.status) {
     </div>
 
     <!-- Shared STT Settings -->
-    <div class="flex flex-col gap-4 pl-1">
+    <div v-if="sttMode !== 'local'" class="flex flex-col gap-4 pl-1">
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <UiFormField :label="t('videoEditor.settings.integrationSttProvider', 'Provider')">
           <UiTextInput

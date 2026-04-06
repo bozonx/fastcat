@@ -22,6 +22,7 @@
     "tauri:build": "tauri build"
   },
   "dependencies": {
+    "@huggingface/transformers": "3.0.0-alpha.19",
     "@nuxt/ui": "^4.5.1",
     "@nuxtjs/i18n": "^10.2.3",
     "@pinia/nuxt": "^0.11.3",
