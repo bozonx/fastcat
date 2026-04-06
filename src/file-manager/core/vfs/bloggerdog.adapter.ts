@@ -87,6 +87,8 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
             parentPath: path,
             size: media.size || 0,
             lastModified: item.meta?.updatedAt ? new Date(item.meta.updatedAt as string).getTime() : undefined,
+            isMediaItem: true,
+            mediaId: media.id,
             remoteData: item,
           });
         });

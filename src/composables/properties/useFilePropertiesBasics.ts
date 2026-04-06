@@ -36,6 +36,37 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
     return entry?.source === 'remote' && entry?.isContentItem;
   });
 
+  const isBloggerDogMedia = computed(() => {
+    const entry = options.selectedFsEntry.value;
+    return entry?.source === 'remote' && entry?.isMediaItem;
+  });
+
+  const runtimeConfig = useRuntimeConfig();
+  const bloggerDogDeepLink = computed(() => {
+    const entry = options.selectedFsEntry.value;
+    if (entry?.source !== 'remote') return null;
+
+    const uiUrl = runtimeConfig.public.bloggerDogUiUrl;
+    if (typeof uiUrl !== 'string' || !uiUrl) return null;
+
+    const baseUrl = uiUrl.endsWith('/') ? uiUrl.slice(0, -1) : uiUrl;
+    const remoteId = entry.remoteId || (entry.remoteData as any)?.id;
+
+    if (isBloggerDogMedia.value && entry.mediaId) {
+      return `${baseUrl}/content-library?mediaId=${entry.mediaId}`;
+    }
+
+    if (isBloggerDogContentItem.value && remoteId) {
+      return `${baseUrl}/content-library?openItemId=${remoteId}`;
+    }
+
+    if (isBloggerDogGroup.value && remoteId) {
+      return `${baseUrl}/content-library?groupId=${remoteId}`;
+    }
+
+    return null;
+  });
+
   const { t } = useI18n();
   const generalInfoTitle = computed(() => {
     const info = options.fileInfo.value;
@@ -73,5 +104,7 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
     selectedPath,
     isBloggerDogGroup,
     isBloggerDogContentItem,
+    isBloggerDogMedia,
+    bloggerDogDeepLink,
   };
 }

@@ -145,9 +145,11 @@ export function useFileBrowserRemote({
           ...entry,
           source: 'remote',
           remotePath: entry.path,
-          remoteId: entry.id || entry.path,
+          remoteId: entry.remoteData?.id || entry.id || entry.path,
           remoteData: entry.remoteData,
           isContentItem: entry.isContentItem,
+          isMediaItem: entry.isMediaItem,
+          mediaId: entry.mediaId,
         };
 
         // Resolve thumbnail for content items or media

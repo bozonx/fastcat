@@ -327,11 +327,11 @@ async function onSubgroupCreateConfirm(name: string) {
     // Navigate to new subgroup
     const newEntry = remote.buildRemoteDirectoryEntry(newCollection.path);
     // Explicitly merge remoteId and other required fields
-    newEntry.remoteId = newCollection.id;
-    newEntry.remotePath = newCollection.path;
     newEntry.remoteData = newCollection;
     
-    await navigation.navigateToFolder(newEntry);
+    remoteCurrentFolder.value = newEntry;
+    await loadFolderContent();
+    await loadParentFolders();
     uiStore.notifyFileManagerUpdate();
   } catch (error) {
     const toast = useToast();
@@ -544,6 +544,7 @@ useFileBrowserPendingActions({
   openDeleteConfirmModal,
   instanceId,
   handlePendingBloggerDogCreateSubgroup,
+  onCreateFolder: (entry) => onFileAction('createFolder', entry),
   handlePendingRemoteDownloadRequest: async () => {
     const request = uiStore.pendingRemoteDownloadRequest;
     if (!request) return;

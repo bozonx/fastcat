@@ -101,11 +101,6 @@ async function copyToClipboard(text: string) {
       </div>
     </div>
 
-    <PropertyRow 
-      v-if="item.media?.length" 
-      :label="t('fastcat.file.mediaCount', 'Количество медиафайлов')" 
-      :value="item.media.length" 
-    />
 
     <!-- Metadata Section (Excluding displayed fields) -->
     <ExpandableYamlSection

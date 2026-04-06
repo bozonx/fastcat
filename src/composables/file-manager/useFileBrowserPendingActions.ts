@@ -12,6 +12,7 @@ export interface FileBrowserPendingActionsOptions {
   openDeleteConfirmModal: (entries: FsEntry[]) => void;
   handlePendingRemoteDownloadRequest: () => Promise<void>;
   handlePendingBloggerDogCreateSubgroup: (entry: FsEntry) => void;
+  onCreateFolder: (entry: FsEntry) => void;
   instanceId: string;
 }
 
@@ -23,6 +24,7 @@ export function useFileBrowserPendingActions({
   openDeleteConfirmModal,
   handlePendingRemoteDownloadRequest,
   handlePendingBloggerDogCreateSubgroup,
+  onCreateFolder,
   instanceId,
 }: FileBrowserPendingActionsOptions) {
   const uiStore = useUiStore();
@@ -96,6 +98,16 @@ export function useFileBrowserPendingActions({
       if (!entry) return;
       if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return;
       handlePendingBloggerDogCreateSubgroup(entry);
+    },
+  );
+
+  watch(
+    () => uiStore.pendingFsEntryCreateFolder,
+    (entry) => {
+      if (!entry) return;
+      if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return;
+      onCreateFolder(entry);
+      uiStore.pendingFsEntryCreateFolder = null;
     },
   );
 }
