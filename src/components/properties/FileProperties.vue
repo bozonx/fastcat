@@ -146,6 +146,11 @@ async function onDirectoryFileSelect(e: Event) {
   uiStore.notifyFileManagerUpdate();
 }
 
+const isVirtualAll = computed(() => {
+  const entry = props.selectedFsEntry;
+  return entry?.source === 'remote' && (entry as any).remoteId === 'virtual-all';
+});
+
 const {
   currentUrl,
   mediaType,
@@ -410,6 +415,8 @@ const {
   isVideoFile,
   isCommonDir: isCommonRoot,
   isCommonPath,
+  isRemoteMode: computed(() => props.selectedFsEntry?.source === 'remote'),
+  isRemoteAvailable: computed(() => Boolean(remoteFilesConfig.value)),
   canCopyOrCut,
   hasClipboardItems,
   triggerDirectoryUpload,
@@ -437,13 +444,22 @@ const {
     uiStore.pendingOtioCreateVersion = props.selectedFsEntry;
   },
   extractAudio: () => extractAudio(props.selectedFsEntry),
+  createSubgroup: () => {
+    const entry = props.selectedFsEntry;
+    if (!entry || entry.kind !== 'directory') return;
+    (uiStore as any).pendingBloggerDogCreateSubgroup = entry;
+  },
+  onCopy,
   onCut,
   onPaste,
 });
 
+const isRemoteAvailable = computed(() => Boolean(remoteFilesConfig.value));
+const isRemoteMode = computed(() => props.selectedFsEntry?.source === 'remote');
+
 const filteredDirectoryPrimaryActions = computed(() => {
   if (!isRemoteContent.value) return directoryPrimaryActions.value;
-  return directoryPrimaryActions.value.filter((a: PrimaryEntryAction) => ['rename', 'delete'].includes(a.id));
+  return directoryPrimaryActions.value.filter((a: PrimaryEntryAction) => ['rename', 'delete', 'createSubgroup'].includes(a.id));
 });
 
 const filteredFilePrimaryActions = computed(() => {
@@ -525,7 +541,7 @@ const filteredFilePrimaryActions = computed(() => {
       />
 
       <PropertySection
-        v-if="!hideActions && fileInfo?.kind === 'directory'"
+        v-if="!hideActions && fileInfo?.kind === 'directory' && !isRemoteRoot && !isVirtualAll"
         key="actions-directory"
         :title="t('videoEditor.fileManager.actions.title', 'Actions')"
       >
@@ -536,7 +552,7 @@ const filteredFilePrimaryActions = computed(() => {
       </PropertySection>
 
       <PropertySection
-        v-else-if="!hideActions && fileInfo?.kind === 'file'"
+        v-else-if="!hideActions && fileInfo?.kind === 'file' && !isVirtualAll"
         key="actions-file"
         :title="t('videoEditor.fileManager.actions.title', 'Actions')"
       >
@@ -572,14 +588,49 @@ const filteredFilePrimaryActions = computed(() => {
       />
 
 
+      <PropertySection
+        v-if="isRemoteRoot"
+        :title="t('fastcat.bloggerDog.contentLibrary', 'Библиотека контента')"
+      >
+        <PropertyRow :label="t('fastcat.bloggerDog.connection', 'Соединение')">
+          <div class="flex items-center gap-2 text-green-400">
+            <span>{{ t('fastcat.bloggerDog.connected', 'Установлено') }}</span>
+            <UButton
+              color="neutral"
+              variant="ghost"
+              icon="i-heroicons-cog-6-tooth"
+              size="2xs"
+              class="-my-1"
+              @click="uiStore.activeSettingsTab = 'integrations'; uiStore.isProjectSettingsOpen = true"
+            />
+          </div>
+        </PropertyRow>
+      </PropertySection>
+
+      <PropertySection
+        v-if="isVirtualAll"
+        :title="t('fastcat.bloggerDog.allContent', 'Весь контент')"
+      >
+         <div class="text-xs text-ui-text-muted italic px-2 py-1">
+           {{ t('fastcat.bloggerDog.virtualAllDesc', 'Виртуальный плосский список всех элементов контента') }}
+         </div>
+      </PropertySection>
+
       <FileGeneralInfoSection
-        v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'directory'"
+        v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'directory' && !isRemoteRoot && !isVirtualAll"
         :title="generalInfoTitle"
         :file-info="fileInfo"
         :selected-path="selectedPath"
         :is-hidden="isHidden"
         :format-bytes="formatBytes"
-      />
+      >
+        <template v-if="selectedFsEntry?.source === 'remote' && (selectedFsEntry as any).remoteData?.itemsCount !== undefined">
+           <PropertyRow 
+             :label="t('fastcat.file.itemsCount', 'Количество элементов')" 
+             :value="(selectedFsEntry as any).remoteData.itemsCount" 
+           />
+        </template>
+      </FileGeneralInfoSection>
 
 
       <FileGeneralInfoSection

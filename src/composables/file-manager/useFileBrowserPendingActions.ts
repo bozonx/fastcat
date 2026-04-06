@@ -11,6 +11,7 @@ export interface FileBrowserPendingActionsOptions {
   createMarkdownInDirectory: (entry: FsEntry) => Promise<void>;
   openDeleteConfirmModal: (entries: FsEntry[]) => void;
   handlePendingRemoteDownloadRequest: () => Promise<void>;
+  handlePendingBloggerDogCreateSubgroup: (entry: FsEntry) => void;
   instanceId: string;
 }
 
@@ -21,6 +22,7 @@ export function useFileBrowserPendingActions({
   createMarkdownInDirectory,
   openDeleteConfirmModal,
   handlePendingRemoteDownloadRequest,
+  handlePendingBloggerDogCreateSubgroup,
   instanceId,
 }: FileBrowserPendingActionsOptions) {
   const uiStore = useUiStore();
@@ -85,6 +87,15 @@ export function useFileBrowserPendingActions({
       } finally {
         uiStore.pendingRemoteDownloadRequest = null;
       }
+    },
+  );
+  
+  watch(
+    () => (uiStore as any).pendingBloggerDogCreateSubgroup,
+    (entry) => {
+      if (!entry) return;
+      if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return;
+      handlePendingBloggerDogCreateSubgroup(entry);
     },
   );
 }

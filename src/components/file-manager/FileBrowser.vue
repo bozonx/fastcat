@@ -25,6 +25,7 @@ import { useFocusableListNavigation } from '~/composables/file-manager/useFocusa
 import { useFileBrowserPendingActions } from '~/composables/file-manager/useFileBrowserPendingActions';
 import { useFileBrowserCreateActions } from '~/composables/file-manager/useFileBrowserCreateActions';
 import { useFileBrowserInteraction } from '~/composables/file-manager/useFileBrowserInteraction';
+import { createRemoteCollection } from '~/utils/remote-vfs';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import type { FsEntry } from '~/types/fs';
@@ -300,6 +301,51 @@ const { createTimelineInDirectory, createMarkdownInDirectory } = useFileBrowserC
   findEntryByPath,
 });
 
+// --- Create subgroup (remote) ---
+const isSubgroupModalOpen = ref(false);
+const pendingSubgroupParent = ref<FsEntry | null>(null);
+
+function handlePendingBloggerDogCreateSubgroup(entry: FsEntry) {
+  pendingSubgroupParent.value = entry;
+  isSubgroupModalOpen.value = true;
+  uiStore.pendingBloggerDogCreateSubgroup = null;
+}
+
+async function onSubgroupCreateConfirm(name: string) {
+  const config = remote.remoteFilesConfig.value;
+  const parent = pendingSubgroupParent.value;
+  if (!config || !parent) return;
+
+  try {
+    const parentId = parent.remoteId;
+    const newCollection = await createRemoteCollection({
+      config,
+      name,
+      parentId,
+    });
+    
+    // Navigate to new subgroup
+    const newEntry = remote.buildRemoteDirectoryEntry(newCollection.path);
+    // Explicitly merge remoteId and other required fields
+    newEntry.remoteId = newCollection.id;
+    newEntry.remotePath = newCollection.path;
+    newEntry.remoteData = newCollection;
+    
+    await navigation.navigateToFolder(newEntry);
+    uiStore.notifyFileManagerUpdate();
+  } catch (error) {
+    const toast = useToast();
+    toast.add({
+      color: 'error',
+      title: t('common.error', 'Error'),
+      description: error instanceof Error ? error.message : 'Failed to create subgroup',
+    });
+  } finally {
+    isSubgroupModalOpen.value = false;
+    pendingSubgroupParent.value = null;
+  }
+}
+
 // --- File manager actions (CRUD, rename, delete) ---
 const {
   isDeleteConfirmModalOpen,
@@ -497,6 +543,7 @@ useFileBrowserPendingActions({
   createMarkdownInDirectory,
   openDeleteConfirmModal,
   instanceId,
+  handlePendingBloggerDogCreateSubgroup,
   handlePendingRemoteDownloadRequest: async () => {
     const request = uiStore.pendingRemoteDownloadRequest;
     if (!request) return;

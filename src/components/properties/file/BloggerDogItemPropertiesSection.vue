@@ -41,6 +41,17 @@ const rawMetaYaml = computed(() => {
     return String(rest);
   }
 });
+
+const toast = useToast();
+
+async function copyToClipboard(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.add({ title: t('common.copiedToClipboard', 'Copied to clipboard') });
+  } catch (e) {
+    console.error('Failed to copy to clipboard', e);
+  }
+}
 </script>
 
 <template>
@@ -90,6 +101,12 @@ const rawMetaYaml = computed(() => {
       </div>
     </div>
 
+    <PropertyRow 
+      v-if="item.media?.length" 
+      :label="t('fastcat.file.mediaCount', 'Количество медиафайлов')" 
+      :value="item.media.length" 
+    />
+
     <!-- Metadata Section (Excluding displayed fields) -->
     <ExpandableYamlSection
       v-if="rawMetaYaml"
@@ -97,7 +114,7 @@ const rawMetaYaml = computed(() => {
       :content="rawMetaYaml"
       :expanded="isMetaExpanded"
       :on-toggle="() => (isMetaExpanded = !isMetaExpanded)"
-      :on-copy="() => {}"
+      :on-copy="copyToClipboard"
     />
 
     <div v-if="$slots['after-content']" class="mt-4 pt-2 border-t border-ui-border">

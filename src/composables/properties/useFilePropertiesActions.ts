@@ -21,6 +21,8 @@ interface UseFilePropertiesActionsOptions {
   t: ReturnType<typeof useI18n>['t'];
   isProjectRootDir: Ref<boolean>;
   isRemoteRoot: Ref<boolean>;
+  isRemoteMode: Ref<boolean>;
+  isRemoteAvailable: Ref<boolean>;
   isFolderWithVideo: Ref<boolean>;
   isGeneratingProxyForFolder: Ref<boolean>;
   canConvertFile: Ref<boolean>;
@@ -57,6 +59,7 @@ interface UseFilePropertiesActionsOptions {
   deleteProxy: () => void;
   createOtioVersion: () => void;
   extractAudio: () => void;
+  createSubgroup: () => void;
   onCopy: () => void;
   onCut: () => void;
   onPaste: () => void;
@@ -98,6 +101,13 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       icon: 'i-heroicons-clipboard',
       disabled: !options.hasClipboardItems.value,
       onClick: options.onPaste,
+    },
+    {
+      id: 'createSubgroup',
+      title: options.t('videoEditor.fileManager.actions.createFolder'),
+      icon: 'i-heroicons-folder-plus',
+      hidden: !options.isRemoteAvailable?.value && !options.isRemoteMode?.value, // Only for remote
+      onClick: options.createSubgroup,
     },
   ]);
 
