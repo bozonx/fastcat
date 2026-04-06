@@ -7,7 +7,10 @@ import {
   FILE_MANAGER_COPY_DRAG_TYPE,
   FILE_MANAGER_MOVE_DRAG_TYPE,
 } from '~/composables/useDraggedFile';
-import { resolveFileManagerDragOperation } from '~/composables/file-manager/dragOperation';
+import {
+  isCrossFileManagerDrag,
+  resolveFileManagerDragOperation,
+} from '~/composables/file-manager/dragOperation';
 
 export interface UseFileDropOptions {
   resolveEntryByPath: (path: string) => Promise<FsEntry | null>;
@@ -97,7 +100,13 @@ export function useFileDrop(options: UseFileDropOptions) {
     const internalRaw = copyRaw || moveRaw;
     if (!internalRaw) return;
 
-    const shouldCopy = resolveOperation(e) === 'copy';
+    const isCrossManagerDrag = isCrossFileManagerDrag({
+      dragSourceFileManagerInstanceId,
+      targetFileManagerInstanceId: options.targetFileManagerInstanceId ?? null,
+    });
+    const shouldCopy = isCrossManagerDrag
+      ? resolveOperation(e) === 'copy'
+      : !!copyRaw || resolveOperation(e) === 'copy';
 
     let parsed: unknown = null;
     try {

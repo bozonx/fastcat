@@ -35,7 +35,10 @@ import { useFileContextMenu } from '~/composables/file-manager/useFileContextMen
 import { isRemoteFsEntry, type RemoteFsEntry } from '~/utils/remote-vfs';
 import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import { isGeneratingProxyInDirectory, folderHasVideos } from '~/utils/fs-entry-utils';
-import { resolveFileManagerDragOperation } from '~/composables/file-manager/dragOperation';
+import {
+  isCrossFileManagerDrag,
+  resolveFileManagerDragOperation,
+} from '~/composables/file-manager/dragOperation';
 
 interface Props {
   editingEntryPath?: string | null;
@@ -499,7 +502,13 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
   const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
   const internalRaw = copyRaw || moveRaw;
   if (internalRaw) {
-    const shouldCopy = resolveDragOperation(e) === 'copy' || operation === 'copy';
+    const isCrossManagerDrag = isCrossFileManagerDrag({
+      dragSourceFileManagerInstanceId,
+      targetFileManagerInstanceId: props.instanceId ?? null,
+    });
+    const shouldCopy = isCrossManagerDrag
+      ? resolveDragOperation(e) === 'copy' || operation === 'copy'
+      : !!copyRaw || resolveDragOperation(e) === 'copy' || operation === 'copy';
     let parsed: any;
     try {
       parsed = JSON.parse(internalRaw);

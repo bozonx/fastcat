@@ -21,7 +21,10 @@ import type { FsEntry } from '~/types/fs';
 import type { DraggedFileData } from '~/composables/useDraggedFile';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
-import { resolveFileManagerDragOperation } from '~/composables/file-manager/dragOperation';
+import {
+  isCrossFileManagerDrag,
+  resolveFileManagerDragOperation,
+} from '~/composables/file-manager/dragOperation';
 
 interface UseFileBrowserDragAndDropOptions {
   findEntryByPath: (path: string) => FsEntry | null;
@@ -256,7 +259,13 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
     const internalRaw = copyRaw || moveRaw;
     if (internalRaw) {
-      const shouldCopy = resolveDragOperation(e) === 'copy' || currentDragOperation === 'copy';
+      const isCrossManagerDrag = isCrossFileManagerDrag({
+        dragSourceFileManagerInstanceId,
+        targetFileManagerInstanceId: options.fileManagerInstanceId ?? null,
+      });
+      const shouldCopy = isCrossManagerDrag
+        ? resolveDragOperation(e) === 'copy' || currentDragOperation === 'copy'
+        : !!copyRaw || resolveDragOperation(e) === 'copy' || currentDragOperation === 'copy';
       let parsed: unknown = null;
       try {
         parsed = JSON.parse(internalRaw);
@@ -363,7 +372,13 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
     const internalRaw = copyRaw || moveRaw;
     if (internalRaw) {
-      const shouldCopy = resolveDragOperation(e) === 'copy' || currentDragOperation === 'copy';
+      const isCrossManagerDrag = isCrossFileManagerDrag({
+        dragSourceFileManagerInstanceId,
+        targetFileManagerInstanceId: options.fileManagerInstanceId ?? null,
+      });
+      const shouldCopy = isCrossManagerDrag
+        ? resolveDragOperation(e) === 'copy' || currentDragOperation === 'copy'
+        : !!copyRaw || resolveDragOperation(e) === 'copy' || currentDragOperation === 'copy';
       let parsed: unknown = null;
       try {
         parsed = JSON.parse(internalRaw);
