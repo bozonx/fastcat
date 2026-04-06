@@ -143,6 +143,17 @@
   background: var(--ui-bg-elevated);
 }
 
+/* Mobile App Container styles */
+.mobile-app-container {
+  touch-action: pan-y;
+}
+
+/* Ensure back-swipe is disabled at the document root level for mobile */
+html.is-mobile-layout,
+body.is-mobile-layout {
+  overscroll-behavior-x: none;
+}
+
 .ui-section {
   display: flex;
   flex-direction: column;

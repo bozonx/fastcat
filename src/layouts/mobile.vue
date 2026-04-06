@@ -5,6 +5,11 @@ import ProjectLockedModal from '~/components/editor/ProjectLockedModal.vue';
 
 const workspaceStore = useWorkspaceStore();
 
+useHead({
+  htmlAttrs: { class: 'is-mobile-layout' },
+  bodyAttrs: { class: 'is-mobile-layout' }
+});
+
 onMounted(async () => {
   if (!workspaceStore.workspaceHandle) {
     await workspaceStore.init();
@@ -13,7 +18,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex h-dvh w-full flex-col bg-zinc-950 text-zinc-200">
+  <div class="mobile-app-container flex h-dvh w-full flex-col bg-zinc-950 text-zinc-200">
     <!-- Main Content Area -->
     <main class="flex-1 min-h-0 overflow-y-auto relative">
       <slot />
