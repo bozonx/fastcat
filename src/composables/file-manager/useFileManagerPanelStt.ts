@@ -88,11 +88,9 @@ export function useFileManagerPanelStt({
         fileType: getMimeTypeFromFilename(entry.name),
         language: language.value,
         fastcatAccountApiUrl,
-        projectId: projectStore.currentProjectId!,
         userSettings: workspaceStore.userSettings,
         workspaceHandle: workspaceStore.workspaceHandle!,
-        resolvedStorageTopology: workspaceStore.resolvedStorageTopology,
-      } as any);
+      });
 
       modalOpen.value = false;
       onSuccess({ cached: result.cached, mediaType });

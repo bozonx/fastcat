@@ -34,8 +34,12 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
   }
 
   private normalizePath(path: string): string {
-    if (!path || path === '/') return '/';
-    let p = path.replace(/\/+/g, '/');
+    let p = path || '/';
+    if (p.startsWith('/remote')) {
+      p = p.slice('/remote'.length) || '/';
+    }
+    if (p === '/' || p === '') return '/';
+    p = p.replace(/\/+/g, '/');
     if (!p.startsWith('/')) p = '/' + p;
     if (p.endsWith('/') && p.length > 1) p = p.slice(0, -1);
     return p;

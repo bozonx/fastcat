@@ -29,6 +29,11 @@ export interface TranscriptionCacheRepository {
 
 
 
+/**
+ * Transcription Cache Repository
+ * Handles persistence of transcription results using a sidecar file pattern.
+ * All transcription files (*.stt.json) are saved in the same directory as the source media file.
+ */
 function getPathInfo(sourcePath: string) {
   const normalized = sourcePath.replace(/\\/g, '/');
   const parts = normalized.split('/').filter(Boolean);

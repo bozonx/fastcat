@@ -292,7 +292,7 @@ const {
 
 const isAtRoot = computed(() => {
   if (isRemoteMode.value) {
-    return !remoteCurrentFolder.value || remoteCurrentFolder.value.remotePath === '/remote';
+    return !remoteCurrentFolder.value || remoteCurrentFolder.value.remotePath === '/remote' || remoteCurrentFolder.value.remotePath === '/';
   } else {
     return !fileManagerStore.selectedFolder || !fileManagerStore.selectedFolder.path;
   }
