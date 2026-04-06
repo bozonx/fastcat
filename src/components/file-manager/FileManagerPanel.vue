@@ -14,7 +14,7 @@ import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
 import { useFileManagerPanelPendingActions } from '~/composables/file-manager/useFileManagerPanelPendingActions';
 import { useFileManagerPanelBootstrap } from '~/composables/file-manager/useFileManagerPanelBootstrap';
-import { useFileManagerPanelStt } from '~/composables/file-manager/useFileManagerPanelStt';
+import { useSttTranscription } from '~/composables/file-manager/useSttTranscription';
 import { useFileManagerPanelActions } from '~/composables/file-manager/useFileManagerPanelActions';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import UiActionButton from '~/components/ui/UiActionButton.vue';
@@ -35,7 +35,6 @@ const props = defineProps<{
 
 const instanceId = props.instanceId || 'left';
 
-
 const emit = defineEmits<{
   (e: 'select', entry: FsEntry): void;
 }>();
@@ -45,7 +44,9 @@ const toast = useToast();
 
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
-const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
+const fileManagerStore =
+  (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
+  useFileManagerStore();
 const focusStore = useFocusStore();
 const uiStore = useUiStore();
 const conversionStore = useFileConversionStore();
@@ -78,9 +79,9 @@ const {
 
 const fileInput = ref<HTMLInputElement | null>(null);
 
-const stt = useFileManagerPanelStt({
+const stt = useSttTranscription({
   vfs: { getFile: (path) => vfs.getFile(path) },
-  fastcatAccountApiUrl: runtimeConfig.public.fastcatAccountApiUrl as string,
+  fastcatAccountApiUrl: computed(() => runtimeConfig.public.fastcatAccountApiUrl as string),
   onSuccess: ({ cached, mediaType }) => {
     toast.add({
       title: cached
@@ -110,7 +111,7 @@ const {
   modalOpen: transcriptionModalOpen,
   language: transcriptionLanguage,
   errorMessage: transcriptionError,
-  isTranscribing: isTranscribing,
+  isTranscribing,
   pendingEntry: transcriptionEntry,
   isTranscribableMediaFile,
   openModal: openTranscriptionModal,
@@ -372,7 +373,8 @@ useFileManagerPanelBootstrap({
     class="flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border transition-colors duration-200 min-w-0 overflow-hidden relative"
     :class="{
       'panel-focus-frame': !props.hideFocusFrame,
-      'panel-focus-frame--active': !props.hideFocusFrame && focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`),
+      'panel-focus-frame--active':
+        !props.hideFocusFrame && focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`),
     }"
     @pointerdown.capture="focusStore.setPanelFocus(`dynamic:file-manager:${instanceId}`)"
   >

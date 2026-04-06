@@ -19,7 +19,7 @@ import {
 } from '~/composables/file-manager/useFileBrowserEntries';
 import { useFileBrowserRemote } from '~/composables/file-manager/useFileBrowserRemote';
 import { useFileBrowserNavigation } from '~/composables/file-manager/useFileBrowserNavigation';
-import { useFileBrowserTranscription } from '~/composables/file-manager/useFileBrowserTranscription';
+import { useSttTranscription } from '~/composables/file-manager/useSttTranscription';
 import { useFileBrowserFileActions } from '~/composables/file-manager/useFileBrowserFileActions';
 import { useFocusableListNavigation } from '~/composables/file-manager/useFocusableListNavigation';
 import { useFileBrowserPendingActions } from '~/composables/file-manager/useFileBrowserPendingActions';
@@ -44,7 +44,7 @@ import FileNameModal from '~/components/file-manager/modals/FileNameModal.vue';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
 const props = defineProps<{
-  // Unique identifier for this file manager instance. 
+  // Unique identifier for this file manager instance.
   // Used for independent focus, state, and selection.
   instanceId?: string;
   isFilesPage?: boolean;
@@ -60,8 +60,9 @@ const props = defineProps<{
 
 const instanceId = props.instanceId || 'default';
 
-
-const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
+const fileManagerStore =
+  (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
+  useFileManagerStore();
 const persistenceStore = useFileBrowserPersistenceStore();
 const selectionStore = useSelectionStore();
 const projectStore = useProjectStore();
@@ -71,6 +72,8 @@ const focusStore = useFocusStore();
 const proxyStore = useProxyStore();
 const clipboardStore = useAppClipboard();
 const { t } = useI18n();
+const toast = useToast();
+const runtimeConfig = useRuntimeConfig();
 
 const fileManager = useFileManager();
 const {
@@ -92,15 +95,51 @@ const vfs = props.vfs || fileManager.vfs;
 const conversionStore = useFileConversionStore();
 
 // --- STT ---
-const stt = useFileBrowserTranscription();
+const stt = useSttTranscription({
+  fastcatAccountApiUrl: computed(() =>
+    typeof runtimeConfig.public.fastcatAccountApiUrl === 'string'
+      ? runtimeConfig.public.fastcatAccountApiUrl
+      : '',
+  ),
+  vfs: props.vfs || fileManager.vfs,
+  onSuccess: ({ cached, mediaType }) => {
+    toast.add({
+      title: cached
+        ? t('videoEditor.fileManager.audio.transcriptionCached', 'Using cached transcription')
+        : t('videoEditor.fileManager.audio.transcriptionCompleted', 'Transcription completed'),
+      description: cached
+        ? t(
+            'videoEditor.fileManager.audio.transcriptionCachedDescription',
+            'Cached transcription was loaded from the file directory.',
+          )
+        : mediaType === 'video'
+          ? t(
+              'videoEditor.fileManager.audio.transcriptionSavedVideoDescription',
+              'Video audio track was transcribed and saved next to the source file.',
+            )
+          : t(
+              'videoEditor.fileManager.audio.transcriptionSavedDescription',
+              'Transcription was saved next to the source file.',
+            ),
+      color: 'success',
+    });
+  },
+  onError: (message) => {
+    toast.add({
+      title: t('videoEditor.fileManager.audio.transcriptionFailed', 'Failed to transcribe media'),
+      description: message,
+      color: 'danger',
+    });
+  },
+});
 const {
-  transcriptionModalOpen,
-  transcriptionLanguage,
-  transcriptionError,
+  modalOpen: transcriptionModalOpen,
+  language: transcriptionLanguage,
+  errorMessage: transcriptionError,
   isTranscribing,
-  transcriptionEntry,
+  pendingEntry: transcriptionEntry,
   isTranscribableMediaFile,
-  openTranscriptionModal,
+  openModal: openTranscriptionModal,
   submitTranscription,
 } = stt;
 
@@ -293,7 +332,11 @@ const {
 
 const isAtRoot = computed(() => {
   if (isRemoteMode.value) {
-    return !remoteCurrentFolder.value || remoteCurrentFolder.value.remotePath === '/remote' || remoteCurrentFolder.value.remotePath === '/';
+    return (
+      !remoteCurrentFolder.value ||
+      remoteCurrentFolder.value.remotePath === '/remote' ||
+      remoteCurrentFolder.value.remotePath === '/'
+    );
   } else {
     return !fileManagerStore.selectedFolder || !fileManagerStore.selectedFolder.path;
   }
@@ -333,12 +376,12 @@ async function onSubgroupCreateConfirm(name: string) {
       name,
       parentId,
     });
-    
+
     // Navigate to new subgroup
     const newEntry = remote.buildRemoteDirectoryEntry(newCollection.path);
     // Explicitly merge remoteId and other required fields
     newEntry.remoteData = newCollection;
-    
+
     remoteCurrentFolder.value = newEntry;
     await loadFolderContent();
     await loadParentFolders();
@@ -374,10 +417,10 @@ async function onItemCreateConfirm(name: string) {
     const parentPath = parent.path;
     const finalName = name.includes('.') ? name : `${name}.txt`;
     const filePath = parentPath === '/' ? `/${finalName}` : `${parentPath}/${finalName}`;
-    
+
     // Create empty item by writing an empty blob
     await vfs.writeFile(filePath, new Blob([], { type: 'text/plain' }));
-    
+
     await loadFolderContent();
     uiStore.notifyFileManagerUpdate();
   } catch (error) {
@@ -740,7 +783,8 @@ async function onDirectoryUploadChange(e: Event) {
     :class="{
       'panel-focus-frame': !props.hideFocusFrame,
       'bg-primary-500/5': isDragOverPanel,
-      'panel-focus-frame--active': !props.hideFocusFrame && focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`),
+      'panel-focus-frame--active':
+        !props.hideFocusFrame && focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`),
     }"
     @pointerdown.capture="focusBrowserPanel"
     @dragover.prevent="onPanelDragOver"
@@ -759,7 +803,6 @@ async function onDirectoryUploadChange(e: Event) {
       :hide-actions="hideActions"
       :hide-upload="hideUpload"
       @refresh="refreshFileTree"
-
       @open-remote="toggleBloggerDogPanel"
       @create-folder="
         () =>
@@ -829,7 +872,10 @@ async function onDirectoryUploadChange(e: Event) {
             class="flex flex-col items-center justify-center flex-1 text-ui-text-dim text-center p-6 gap-6"
           >
             <div class="p-6 rounded-full bg-error-500/10">
-              <UIcon name="i-heroicons-exclamation-circle" class="w-16 h-16 text-error-500 opacity-80" />
+              <UIcon
+                name="i-heroicons-exclamation-circle"
+                class="w-16 h-16 text-error-500 opacity-80"
+              />
             </div>
             <div class="space-y-2 max-w-[320px]">
               <h3 class="text-xl font-semibold text-ui-text">
