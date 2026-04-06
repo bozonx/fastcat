@@ -26,8 +26,6 @@ const model = defineModel<boolean>('toggleValue');
         />
       </div>
     </UiFormSectionHeader>
-    <div class="flex flex-col">
-      <slot />
-    </div>
+    <slot />
   </div>
 </template>

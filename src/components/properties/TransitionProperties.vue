@@ -62,7 +62,6 @@ defineExpose({
 </script>
 
 <template>
-  <div class="w-full flex flex-col gap-2 text-ui-text">
     <ClipTransitionPanel
       v-if="clip"
       ref="panelRef"
@@ -76,5 +75,4 @@ defineExpose({
       :hide-actions="hideActions"
       @update="handleTransitionUpdate"
     />
-  </div>
 </template>
