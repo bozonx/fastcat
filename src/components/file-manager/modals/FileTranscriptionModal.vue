@@ -1,18 +1,16 @@
 <script setup lang="ts">
 import type { FsEntry } from '~/types/fs';
-import UiModal from '~/components/ui/UiModal.vue';
-import UiTextInput from '~/components/ui/UiTextInput.vue';
-import UiFormField from '~/components/ui/UiFormField.vue';
-import { ref, watch, nextTick } from 'vue';
+
+const { t } = useI18n();
 
 const isOpen = defineModel<boolean>('open', { required: true });
+const transcriptionLanguage = defineModel<string>('transcriptionLanguage', { default: '' });
 
 const props = withDefaults(
   defineProps<{
     isTranscribing: boolean;
     transcriptionError: string | null;
     transcriptionEntry?: FsEntry | null;
-    transcriptionLanguage: string;
   }>(),
   {
     transcriptionEntry: null,
@@ -20,29 +18,8 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-  (e: 'update:transcriptionLanguage', value: string): void;
   (e: 'submit'): void;
 }>();
-
-const { t } = useI18n();
-
-const submitButtonRef = ref<HTMLButtonElement | null>(null);
-
-function focusSubmitButton() {
-  const el = submitButtonRef.value;
-  if (!el) return;
-  nextTick(() => {
-    setTimeout(() => {
-      el.focus();
-    }, 0);
-  });
-}
-
-watch(isOpen, (newValue) => {
-  if (newValue) {
-    nextTick(() => focusSubmitButton());
-  }
-});
 </script>
 
 <template>
@@ -69,20 +46,19 @@ watch(isOpen, (newValue) => {
 
       <UiFormField :label="t('videoEditor.fileManager.audio.transcriptionLanguage', 'Language')">
         <UiTextInput
-          :model-value="props.transcriptionLanguage"
+          v-model="transcriptionLanguage"
           :disabled="props.isTranscribing"
           placeholder="en"
           full-width
-          @update:model-value="emit('update:transcriptionLanguage', $event)"
         >
-          <template v-if="props.transcriptionLanguage" #trailing>
+          <template v-if="transcriptionLanguage" #trailing>
             <UButton
               color="neutral"
               variant="link"
               icon="i-heroicons-x-mark-20-solid"
               size="2xs"
               :padded="false"
-              @click="emit('update:transcriptionLanguage', '')"
+              @click="transcriptionLanguage = ''"
             />
           </template>
         </UiTextInput>

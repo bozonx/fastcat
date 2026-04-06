@@ -226,8 +226,8 @@ async function startDownload() {
     </div>
 
     <!-- Shared STT Settings -->
-    <div v-if="sttMode !== 'local'" class="flex flex-col gap-4 pl-1">
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div class="flex flex-col gap-4 pl-1">
+      <div v-if="sttMode !== 'local'" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <UiFormField :label="t('videoEditor.settings.integrationSttProvider', 'Provider')">
           <UiTextInput
             v-model="workspaceStore.userSettings.integrations.stt.provider"
@@ -235,7 +235,7 @@ async function startDownload() {
             placeholder="assemblyai"
           />
         </UiFormField>
-
+ 
         <UiFormField :label="t('videoEditor.settings.integrationSttModels', 'Models')">
           <UiTextInput
             v-model="sttModelsText"
@@ -243,7 +243,9 @@ async function startDownload() {
             placeholder="universal-3-pro, universal-2"
           />
         </UiFormField>
+      </div>
 
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
         <UiFormField :label="t('videoEditor.fileManager.audio.transcriptionLanguage', 'Default language')">
           <UiTextInput
             v-model="workspaceStore.userSettings.integrations.stt.language"
