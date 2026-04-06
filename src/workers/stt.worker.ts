@@ -149,6 +149,8 @@ async function initTranscriber(modelName: string) {
   }
 }
 
+let taskQueue = Promise.resolve();
+
 self.onmessage = async (event) => {
   const { type, data, id } = event.data;
 
@@ -161,28 +163,33 @@ self.onmessage = async (event) => {
   if (type === 'transcribe') {
     const { audio, modelName, language, subtask } = data;
 
-    try {
-      const durationS = audio.length / 16000;
-      console.log(`[STT Worker] Processing ${modelName}: ${audio.length} samples (${durationS.toFixed(2)}s)`);
+    // Queue the transcription task to prevent race conditions
+    taskQueue = taskQueue.then(async () => {
+      try {
+        const durationS = audio.length / 16000;
+        console.log(`[STT Worker] Processing ${modelName}: ${audio.length} samples (${durationS.toFixed(2)}s)`);
 
-      const p = await initTranscriber(modelName);
+        const p = await initTranscriber(modelName);
 
-      const result = await p(audio, {
-        language,
-        subtask: subtask || 'transcribe',
-        return_timestamps: 'word', 
-        chunk_length_s: 30,
-        stride_length_s: 5,
-        callback_function: (output: any) => {
-            self.postMessage({ type: 'partial-result', id, data: output });
-        }
-      });
+        const result = await p(audio, {
+          language,
+          subtask: subtask || 'transcribe',
+          return_timestamps: 'word', 
+          chunk_length_s: 30,
+          stride_length_s: 5,
+          callback_function: (output: any) => {
+              self.postMessage({ type: 'partial-result', id, data: output });
+          }
+        });
 
-      console.log(`[STT Worker] Transcription finished. Total chunks: ${Array.isArray((result as any).chunks) ? (result as any).chunks.length : 'N/A'}`);
-      self.postMessage({ type: 'result', id, data: result });
-    } catch (err: any) {
-      console.error(`[STT Worker] Transcription error:`, err);
-      self.postMessage({ type: 'error', id, error: err.message || String(err) });
-    }
+        console.log(`[STT Worker] Transcription finished. Total chunks: ${Array.isArray((result as any).chunks) ? (result as any).chunks.length : 'N/A'}`);
+        self.postMessage({ type: 'result', id, data: result });
+      } catch (err: any) {
+        console.error(`[STT Worker] Transcription error:`, err);
+        self.postMessage({ type: 'error', id, error: err.message || String(err) });
+      }
+    }).catch(err => {
+      console.error(`[STT Worker] Queue error:`, err);
+    });
   }
 };
