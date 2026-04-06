@@ -4,6 +4,7 @@ import { createWorkspaceSettingsRepository } from '~/repositories/workspace-sett
 import type { WorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
 import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
 import { resolveWorkspaceLocalStorageTopology } from '~/utils/storage-topology';
+import { isModelDownloaded } from '~/utils/transcription/model-storage';
 
 import { createWorkspaceSettingsModule } from '~/stores/workspace/workspaceSettings';
 import { createWorkspaceProjectsModule } from '~/stores/workspace/workspaceProjects';
@@ -81,6 +82,25 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     flushSettingsSaves,
     resetSettingsState,
   } = settingsModule;
+
+  const isSttModelDownloaded = ref(false);
+
+  async function checkSttModelStatus() {
+    if (!workspaceHandle.value) {
+      isSttModelDownloaded.value = false;
+      return;
+    }
+    const model = userSettings.value.integrations.stt.localModel;
+    isSttModelDownloaded.value = await isModelDownloaded(workspaceHandle.value, model);
+  }
+
+  watch(
+    [workspaceHandle, () => userSettings.value.integrations.stt.localModel],
+    () => {
+      checkSttModelStatus();
+    },
+    { immediate: true },
+  );
 
   const resolvedStorageTopology = computed(() =>
     resolveWorkspaceLocalStorageTopology(appSettings.value.paths),
@@ -311,5 +331,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     renameProject,
     recentProjects: skipHydrate(recentProjects),
     updateRecentProject,
+    isSttModelDownloaded,
+    checkSttModelStatus,
   };
 });

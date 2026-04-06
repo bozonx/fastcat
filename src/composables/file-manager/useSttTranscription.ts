@@ -8,13 +8,13 @@ import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 
 export interface UseSttTranscriptionOptions {
   vfs?: { getFile: (path: string) => Promise<File | null> };
-  fastcatAccountApiUrl: Ref<string> | string;
+  fastcatAccountApiUrl?: Ref<string> | string;
   onSuccess?: (params: { cached: boolean; mediaType: string }) => void;
   onError?: (message: string) => void;
 }
 
 export interface SttTranscriptionState {
-  sttConfig: Ref<{ provider: string; bearerToken: string } | null>;
+  sttConfig: Ref<ResolvedExternalServiceConfig | null>;
   modalOpen: Ref<boolean>;
   language: Ref<string>;
   errorMessage: Ref<string>;
@@ -33,10 +33,12 @@ export function useSttTranscription(
   const workspaceStore = useWorkspaceStore();
   const { t } = useI18n();
 
-  const fastcatApiUrl =
-    typeof options.fastcatAccountApiUrl === 'string'
-      ? ref(options.fastcatAccountApiUrl)
-      : options.fastcatAccountApiUrl;
+  const fastcatApiUrl = computed(() => {
+    if (!options.fastcatAccountApiUrl) return '';
+    return typeof options.fastcatAccountApiUrl === 'string'
+      ? options.fastcatAccountApiUrl
+      : options.fastcatAccountApiUrl.value;
+  });
 
   const modalOpen = ref(false);
   const language = ref('');
@@ -60,7 +62,7 @@ export function useSttTranscription(
 
     return (
       (mediaType === 'audio' || mediaType === 'video') &&
-      (isLocal || Boolean(sttConfig.value)) &&
+      (isLocal ? workspaceStore.isSttModelDownloaded : Boolean(sttConfig.value)) &&
       Boolean(workspaceStore.workspaceHandle) &&
       Boolean(projectStore.currentProjectId) &&
       Boolean(entry.path)
@@ -69,7 +71,7 @@ export function useSttTranscription(
 
   function openModal(entry: FsEntry) {
     pendingEntry.value = entry;
-    language.value = '';
+    language.value = workspaceStore.userSettings.integrations.stt.language || '';
     errorMessage.value = '';
     modalOpen.value = true;
   }

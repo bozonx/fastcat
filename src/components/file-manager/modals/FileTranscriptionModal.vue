@@ -74,7 +74,18 @@ watch(isOpen, (newValue) => {
           placeholder="en"
           full-width
           @update:model-value="emit('update:transcriptionLanguage', $event)"
-        />
+        >
+          <template v-if="props.transcriptionLanguage" #trailing>
+            <UButton
+              color="neutral"
+              variant="link"
+              icon="i-heroicons-x-mark-20-solid"
+              size="2xs"
+              :padded="false"
+              @click="emit('update:transcriptionLanguage', '')"
+            />
+          </template>
+        </UiTextInput>
       </UiFormField>
 
       <div v-if="props.transcriptionError" class="text-sm text-error-400">

@@ -99,21 +99,12 @@ function getHealthTone(status: typeof healthState.status) {
   return 'text-ui-text-muted';
 }
 
-const isDownloaded = ref(false);
 const downloadState = reactive({
   loading: false,
   progress: 0,
   file: '',
   status: '',
 });
-
-async function checkStatus() {
-  if (!workspaceStore.workspaceHandle) return;
-  isDownloaded.value = await isModelDownloaded(
-    workspaceStore.workspaceHandle,
-    workspaceStore.userSettings.integrations.stt.localModel,
-  );
-}
 
 async function startDownload() {
   if (!workspaceStore.workspaceHandle) return;
@@ -128,24 +119,13 @@ async function startDownload() {
         downloadState.status = p.status;
       },
     );
-    await checkStatus();
+    await workspaceStore.checkSttModelStatus();
   } catch (e) {
     console.error(e);
   } finally {
     downloadState.loading = false;
   }
 }
-
-onMounted(() => {
-  checkStatus();
-});
-
-watch(
-  () => workspaceStore.userSettings.integrations.stt.localModel,
-  () => {
-    checkStatus();
-  },
-);
 </script>
 
 <template>
@@ -213,13 +193,13 @@ watch(
           <div class="flex items-center justify-between">
             <div class="text-xs text-ui-text-muted">
               {{
-                isDownloaded
+                workspaceStore.isSttModelDownloaded
                   ? t('videoEditor.settings.sttModelDownloaded', 'Model is ready for use')
                   : t('videoEditor.settings.sttModelNotDownloaded', 'Model needs to be downloaded')
               }}
             </div>
             <UButton
-              v-if="!isDownloaded || downloadState.loading"
+              v-if="!workspaceStore.isSttModelDownloaded || downloadState.loading"
               size="sm"
               color="primary"
               variant="soft"
@@ -261,6 +241,14 @@ watch(
             v-model="sttModelsText"
             full-width
             placeholder="universal-3-pro, universal-2"
+          />
+        </UiFormField>
+
+        <UiFormField :label="t('videoEditor.fileManager.audio.transcriptionLanguage', 'Default language')">
+          <UiTextInput
+            v-model="workspaceStore.userSettings.integrations.stt.language"
+            full-width
+            placeholder="en"
           />
         </UiFormField>
       </div>

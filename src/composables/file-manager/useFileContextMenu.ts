@@ -1,5 +1,6 @@
 import type { FsEntry } from '~/types/fs';
 import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
+import { getMediaTypeFromFilename } from '~/utils/media-types';
 
 export type FileAction =
   | 'createFolder'
@@ -259,11 +260,15 @@ export function useFileContextMenu(
       ]);
     }
 
-    if (deps.isTranscribableMediaFile?.(entry)) {
+    const mediaType = entry.kind === 'file' ? getMediaTypeFromFilename(entry.name) : null;
+    const isTranscribableType = mediaType === 'audio' || mediaType === 'video';
+
+    if (isTranscribableType) {
       items.push([
         {
           label: t('videoEditor.fileManager.actions.transcribe', 'Transcribe'),
           icon: 'i-heroicons-microphone',
+          disabled: !deps.isTranscribableMediaFile?.(entry),
           onSelect: () => onAction('transcribe', entry),
         },
       ]);
