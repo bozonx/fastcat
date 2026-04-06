@@ -200,6 +200,20 @@
       "splitOnPunctuation": "Split on punctuation",
       "timelineWideDescription": "The editor will scan all active audio and video media clips on non-muted, visible tracks, load their existing transcription cache, account for trims, and keep only the top visible source on overlaps."
     },
+    "bloggerDog": {
+      "contentLibrary": "Content Library",
+      "connection": "Connection",
+      "connected": "Established",
+      "allContent": "All Content",
+      "virtualAllDesc": "Virtual flat list of all content items"
+    },
+    "file": {
+      "bloggerDogGroup": "Group",
+      "bloggerDogItem": "Content Item",
+      "mediaCount": "Media Count",
+      "itemsCount": "Items Count",
+      "lineCount": "Line Count"
+    },
     "clip": {
       "actions": "Actions",
       "audio": {

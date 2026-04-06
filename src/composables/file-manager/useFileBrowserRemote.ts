@@ -100,8 +100,9 @@ export function useFileBrowserRemote({
     }
     const name =
       normalizedPath === '/remote'
-        ? 'Remote'
-        : normalizedPath.split('/').filter(Boolean).at(-1) || 'Remote';
+        ? t('fastcat.bloggerDog.contentLibrary', 'Библиотека контента')
+        : normalizedPath.split('/').filter(Boolean).at(-1) ||
+          t('fastcat.bloggerDog.contentLibrary', 'Библиотека контента');
     const remoteData: RemoteVfsEntry = {
       id: normalizedPath,
       name,
@@ -181,7 +182,8 @@ export function useFileBrowserRemote({
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
       accum = `${accum}/${part}`;
-      if (i === 0) continue; // Skip single '/remote' for breadcrumbs if needed, or include it
+      // Include the root '/remote' (labeled as BloggerDog) in breadcrumbs for consistency with local explorer
+      // if (i === 0) continue; 
       result.push(buildRemoteDirectoryEntry(accum));
     }
     parentFolders.value = result;

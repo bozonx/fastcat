@@ -28,7 +28,15 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
 
   const isBloggerDogGroup = computed(() => {
     const entry = options.selectedFsEntry.value;
-    return entry?.source === 'remote' && entry?.kind === 'directory' && !entry?.isContentItem;
+    const path = entry?.path || '';
+    return (
+      entry?.source === 'remote' &&
+      entry?.kind === 'directory' &&
+      !entry?.isContentItem &&
+      path !== '/remote' &&
+      path !== '/remote/' &&
+      path !== ''
+    );
   });
 
   const isBloggerDogContentItem = computed(() => {
