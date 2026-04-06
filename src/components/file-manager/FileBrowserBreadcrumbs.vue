@@ -3,12 +3,15 @@ import type { FsEntry } from '~/types/fs';
 
 defineProps<{
   parentFolders: FsEntry[];
+  isAtRoot?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: 'navigateBack' | 'navigateUp'): void;
   (e: 'navigateToFolder', index: number): void;
 }>();
+
+const { t } = useI18n();
 </script>
 
 <template>
@@ -27,6 +30,8 @@ const emit = defineEmits<{
       color="neutral"
       size="xs"
       icon="i-heroicons-arrow-up"
+      :disabled="isAtRoot"
+      :title="t('videoEditor.fileManager.actions.navigateUp', 'Level up')"
       @click="emit('navigateUp')"
     />
 

@@ -121,7 +121,8 @@ const isCommonPath = computed(() => isWorkspaceCommonPath(props.selectedFsEntry?
 
 const isRemoteRoot = computed(() => {
   const entry = props.selectedFsEntry;
-  return entry?.source === 'remote' && (entry.path === '' || entry.path === '/' || entry.path === '/remote');
+  const path = entry?.path || '';
+  return entry?.source === 'remote' && (path === '' || path === '/' || path === '/remote' || path === '/remote/');
 });
 
 function triggerDirectoryUpload() {
@@ -509,7 +510,7 @@ const filteredFilePrimaryActions = computed(() => {
       </ul>
     </div>
     <EntryPreviewBox
-      v-else-if="fileInfo?.kind !== 'directory'"
+      v-else-if="fileInfo?.kind !== 'directory' && !isRemoteRoot"
       :selected-entry-kind="selectedFsEntry?.kind ?? null"
       :is-unknown="isUnknown"
       :is-corrupt="isMediaFullyUnsupported"
@@ -521,6 +522,26 @@ const filteredFilePrimaryActions = computed(() => {
       :is-otio="isOtio"
       :class="mobileTextMode && mediaType === 'text' ? 'flex-1 border-none' : ''"
     />
+
+    <template v-if="isRemoteRoot">
+      <PropertySection
+        :title="t('fastcat.bloggerDog.contentLibrary', 'Библиотека контента')"
+      >
+        <PropertyRow :label="t('fastcat.bloggerDog.connection', 'Соединение')">
+          <div class="flex items-center gap-2 text-green-400">
+            <span>{{ t('fastcat.bloggerDog.connected', 'Установлено') }}</span>
+            <UButton
+              color="neutral"
+              variant="ghost"
+              icon="i-heroicons-cog-6-tooth"
+              size="2xs"
+              class="-my-1"
+              @click="uiStore.showIntegrationSettings()"
+            />
+          </div>
+        </PropertyRow>
+      </PropertySection>
+    </template>
 
     <template v-if="!mobileTextMode || mediaType !== 'text'">
       <ImageFilePropertiesSection
@@ -589,24 +610,7 @@ const filteredFilePrimaryActions = computed(() => {
       />
 
 
-      <PropertySection
-        v-if="isRemoteRoot"
-        :title="t('fastcat.bloggerDog.contentLibrary', 'Библиотека контента')"
-      >
-        <PropertyRow :label="t('fastcat.bloggerDog.connection', 'Соединение')">
-          <div class="flex items-center gap-2 text-green-400">
-            <span>{{ t('fastcat.bloggerDog.connected', 'Установлено') }}</span>
-            <UButton
-              color="neutral"
-              variant="ghost"
-              icon="i-heroicons-cog-6-tooth"
-              size="2xs"
-              class="-my-1"
-              @click="uiStore.showIntegrationSettings()"
-            />
-          </div>
-        </PropertyRow>
-      </PropertySection>
+
 
       <PropertySection
         v-if="isVirtualAll"

@@ -289,6 +289,14 @@ const {
   tryScrollToPendingEntry,
 } = navigation;
 
+const isAtRoot = computed(() => {
+  if (isRemoteMode.value) {
+    return !remoteCurrentFolder.value || remoteCurrentFolder.value.remotePath === '/remote';
+  } else {
+    return !fileManagerStore.selectedFolder || !fileManagerStore.selectedFolder.path;
+  }
+});
+
 // Resolve forward refs
 _loadFolderContent = loadFolderContent;
 
@@ -611,6 +619,7 @@ watch(
   () => uiStore.fileBrowserNavigateBackTrigger,
   () => {
     if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return;
+    if (isAtRoot.value) return;
     void navigateBack();
   },
 );
@@ -619,6 +628,7 @@ watch(
   () => uiStore.fileBrowserNavigateUpTrigger,
   () => {
     if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return;
+    if (isAtRoot.value) return;
     void navigateUp();
   },
 );
@@ -724,11 +734,9 @@ async function onDirectoryUploadChange(e: Event) {
 
     <!-- Navigation bar (Breadcrumbs) -->
     <FileBrowserBreadcrumbs
-      v-if="
-        (isRemoteMode && parentFolders.length > 0) ||
-        (!isRemoteMode && fileManagerStore.selectedFolder)
-      "
+      v-if="!props.compact"
       :parent-folders="parentFolders"
+      :is-at-root="isAtRoot"
       @navigate-back="navigateBack"
       @navigate-up="navigateUp"
       @navigate-to-folder="navigateToFolder"
