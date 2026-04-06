@@ -5,14 +5,15 @@ import {
 } from '@huggingface/transformers';
 
 // --- Configuration ---
-// Strictly local models
-env.allowRemoteModels = false;
+// Allow remote models for internal purposes (engine files), 
+// but our fetch override will force local model files.
+env.allowRemoteModels = true;
 env.allowLocalModels = true;
 env.useBrowserCache = false;
 env.localModelPath = '/models/';
 
-// Force disable GPU globally to avoid erratic WebGPU adapter failures blocking the worker
-env.backends.onnx.gpu = false;
+// Store WebGPU support status
+let isWebGpuAvailable: boolean | null = null;
 
 // This will be set by the main thread
 let modelDirHandle: FileSystemDirectoryHandle | null = null;
@@ -84,23 +85,67 @@ self.fetch = (async (url: string | URL, options?: RequestInit) => {
 async function initTranscriber(modelName: string) {
   if (transcriber && currentModelName === modelName) return transcriber;
 
-  console.log(`[STT Worker] Initializing pipeline (FORCED WASM, QUANTIZED) for ${modelName}...`);
+  console.log(`[STT Worker] Initializing pipeline for ${modelName}...`);
+  
+  // Real async check for WebGPU
+  if (isWebGpuAvailable === null) {
+      const gpu = (self.navigator as any).gpu;
+      if (!gpu) {
+          isWebGpuAvailable = false;
+      } else {
+          try {
+              const adapter = await gpu.requestAdapter();
+              isWebGpuAvailable = !!adapter;
+          } catch (e) {
+              isWebGpuAvailable = false;
+          }
+      }
+      console.log(`[STT Worker] WebGPU support verified: ${isWebGpuAvailable}`);
+  }
+  
+  // Try WebGPU if available
+  if (isWebGpuAvailable) {
+    try {
+      currentModelName = modelName;
+      env.backends.onnx.gpu = true; 
+      
+      transcriber = (await pipeline('automatic-speech-recognition', modelName, {
+        device: 'webgpu',
+        quantized: true, 
+        progress_callback: (progress: any) => {
+          self.postMessage({ type: 'progress', data: progress });
+        },
+      })) as AutomaticSpeechRecognitionPipeline;
+      
+      console.log('[STT Worker] Pipeline initialized with WebGPU');
+      return transcriber;
+    } catch (err: any) {
+      console.warn('[STT Worker] WebGPU initialization failed despite adapter presence, falling back to WASM:', err);
+      isWebGpuAvailable = false; // Disable for future attempts in this session
+    }
+  }
+
+  // Fallback to WASM
+  transcriber = null;
+  currentModelName = null;
   
   try {
-    currentModelName = modelName;
-    transcriber = (await pipeline('automatic-speech-recognition', modelName, {
-      device: 'wasm',
-      quantized: true, // IMPORTANT: match our downloaded files
-      progress_callback: (progress: any) => {
-        self.postMessage({ type: 'progress', data: progress });
-      },
-    })) as AutomaticSpeechRecognitionPipeline;
-    
-    console.log('[STT Worker] Pipeline initialized with WASM');
-    return transcriber;
-  } catch (err: any) {
-    console.error('[STT Worker] WASM initialization failed:', err);
-    throw err;
+      currentModelName = modelName;
+      env.backends.onnx.gpu = false; // Force disable GPU for WASM attempts
+      
+      transcriber = (await pipeline('automatic-speech-recognition', modelName, {
+          device: 'wasm',
+          quantized: true,
+          progress_callback: (progress: any) => {
+              self.postMessage({ type: 'progress', data: progress });
+          },
+      })) as AutomaticSpeechRecognitionPipeline;
+      
+      console.log('[STT Worker] Pipeline initialized with WASM');
+      return transcriber;
+  } catch (wasmErr: any) {
+      console.error('[STT Worker] WASM initialization also failed:', wasmErr);
+      throw wasmErr;
   }
 }
 
