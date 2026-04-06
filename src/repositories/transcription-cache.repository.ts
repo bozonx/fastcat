@@ -42,9 +42,10 @@ function getPathInfo(sourcePath: string) {
   return { dirPath, fileName };
 }
 
-function getTranscriptionFileName(sourceName: string, _key: string) {
-  // Simplified naming for portability as requested by user
-  return `${sourceName}.stt.json`;
+function getTranscriptionFileName(sourceName: string, key: string) {
+  // We include a short hash of the settings to allow multiple transcriptions (e.g. different languages)
+  const hash = key.slice(0, 8);
+  return `${sourceName}.${hash}.stt.json`;
 }
 
 function sortRecordsByCreatedAtDesc(
@@ -83,24 +84,39 @@ export function createTranscriptionCacheRepository(params: {
 
       const { fileName: sourceName } = getPathInfo(sourcePath);
       const cacheFileName = getTranscriptionFileName(sourceName, key);
+      const legacyFileName = `${sourceName}.stt.json`;
 
-      try {
-        const handle = await dir.getFileHandle(cacheFileName, { create: false });
-        const raw = await readJsonFromFileHandle<unknown>(handle);
-        if (!raw) return null;
+      const tryLoad = async (name: string) => {
+        try {
+          const handle = await dir.getFileHandle(name, { create: false });
+          const raw = await readJsonFromFileHandle<unknown>(handle);
+          if (!raw) return null;
 
-        const parsed = TranscriptionCacheRecordSchema.safeParse(raw);
-        if (!parsed.success) {
-          console.warn(`[TranscriptionCache] Invalid cache record in file ${cacheFileName}`, parsed.error);
+          const parsed = TranscriptionCacheRecordSchema.safeParse(raw);
+          if (!parsed.success) {
+            console.warn(`[TranscriptionCache] Invalid cache record in file ${name}`, parsed.error);
+            return null;
+          }
+          
+          // Verify that this specific file actually matches the requested key
+          if (parsed.data.key === key) {
+            return parsed.data;
+          }
           return null;
+        } catch (error: unknown) {
+          if ((error as { name?: unknown }).name === 'NotFoundError') {
+            return null;
+          }
+          throw error;
         }
-        return parsed.data;
-      } catch (error: unknown) {
-        if ((error as { name?: unknown }).name === 'NotFoundError') {
-          return null;
-        }
-        throw error;
-      }
+      };
+
+      // 1. Try modern filename with hash
+      const modern = await tryLoad(cacheFileName);
+      if (modern) return modern;
+
+      // 2. Fallback to legacy filename without hash
+      return await tryLoad(legacyFileName);
     },
 
     async list({ sourcePath }) {

@@ -144,36 +144,7 @@ export async function downloadModel(
     const reader = response.body?.getReader();
     if (!reader) throw new Error('Failed to get response reader');
 
-    const chunks: Uint8Array[] = [];
-    let loaded = 0;
-
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-      loaded += value.length;
-
-      onProgress?.({
-        model: modelName,
-        file: fileName,
-        loaded,
-        total: contentLength,
-        status: 'downloading',
-      });
-    }
-
-    const blob = new Blob(chunks as any);
-
-    onProgress?.({
-      model: modelName,
-      file: fileName,
-      loaded: blob.size,
-      total: blob.size,
-      status: 'saving',
-    });
-
-    // Save to filesystem
+    // Prepare target filesystem handle
     let targetDir: FileSystemDirectoryHandle = dir;
     let targetFileName = fileName;
 
@@ -187,14 +158,34 @@ export async function downloadModel(
 
     const fileHandle = await targetDir.getFileHandle(targetFileName, { create: true });
     const writable = await fileHandle.createWritable();
-    await writable.write(blob);
-    await writable.close();
+
+    try {
+      let loaded = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        await writable.write(value);
+        loaded += value.length;
+
+        onProgress?.({
+          model: modelName,
+          file: fileName,
+          loaded,
+          total: contentLength,
+          status: 'downloading',
+        });
+      }
+    } finally {
+      await writable.close();
+    }
 
     onProgress?.({
       model: modelName,
       file: fileName,
-      loaded: blob.size,
-      total: blob.size,
+      loaded: contentLength,
+      total: contentLength,
       status: 'done',
     });
   }
