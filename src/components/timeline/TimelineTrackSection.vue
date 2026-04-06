@@ -49,9 +49,12 @@ const emit = defineEmits<{
 }>();
 
 const scrollEl = ref<HTMLElement | null>(null);
-const labelsScrollEl = ref<HTMLElement | null>(null);
+const labelsRef = ref<InstanceType<typeof TimelineTrackLabels> | null>(null);
 
-defineExpose({ scrollEl, labelsScrollEl });
+defineExpose({
+  scrollEl,
+  labelsScrollEl: computed(() => labelsRef.value?.labelsScrollContainer ?? null),
+});
 </script>
 
 <template>
@@ -59,20 +62,16 @@ defineExpose({ scrollEl, labelsScrollEl });
     class="flex min-h-[60px] relative"
     :class="kind === 'video' ? 'shrink-0 border-b border-ui-border' : 'flex-1'"
   >
-    <!-- Track Labels -->
-    <div
-      ref="labelsScrollEl"
-      class="shrink-0 border-r border-ui-border overflow-y-auto overflow-x-hidden scroll-sync-hidden timeline-labels-container"
+    <TimelineTrackLabels
+      ref="labelsRef"
+      class="shrink-0 border-r border-ui-border timeline-labels-container"
       :style="{ width: `${TRACK_LABELS_WIDTH}px` }"
+      :tracks="tracks"
+      :track-heights="trackHeights"
+      :on-zoom-to-fit="onZoomToFit"
       @scroll="emit('labelsScroll')"
-    >
-      <TimelineTrackLabels
-        :tracks="tracks"
-        :track-heights="trackHeights"
-        :on-zoom-to-fit="onZoomToFit"
-        @update:track-height="(id: string, h: number) => emit('updateTrackHeight', id, h)"
-      />
-    </div>
+      @update:track-height="(id: string, h: number) => emit('updateTrackHeight', id, h)"
+    />
 
     <!-- Tracks Area -->
     <div class="flex-1 relative min-h-0 min-w-0 overflow-hidden">

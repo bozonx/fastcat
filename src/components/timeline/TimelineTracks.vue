@@ -385,9 +385,15 @@ function onTrackClick(e: MouseEvent, trackId: string) {
               ? 'bg-ui-bg-elevated/50'
               : '',
             track.locked ? 'hatching-diagonal-track bg-black/10' : '',
+            isTrackDirectlySelected(track.id) ? 'track--directly-selected' : '',
+            !isTrackDirectlySelected(track.id) && isTrackVisuallySelected(track.id)
+              ? 'track--visually-selected'
+              : '',
           ]"
           :style="{
             height: `${trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT}px`,
+            '--track-selection-color':
+              track.color && track.color !== '#2a2a2a' ? `${track.color}80` : undefined,
             backgroundColor:
               track.color && track.color !== '#2a2a2a'
                 ? isTrackDirectlySelected(track.id)
@@ -406,26 +412,6 @@ function onTrackClick(e: MouseEvent, trackId: string) {
           @drop.prevent="emit('drop', $event, track.id)"
           @contextmenu.prevent.stop="onTrackContextMenu($event, track)"
         >
-          <!-- Selection Highlight: bright borders+bg when track directly selected; subtle when clip/gap active -->
-          <div
-            v-if="isTrackDirectlySelected(track.id)"
-            class="absolute inset-0 z-0 pointer-events-none border-y-2 border-primary-500/40 bg-primary-500/10 transition-colors"
-            :style="{
-              borderColor:
-                track.color && track.color !== '#2a2a2a' ? `${track.color}80` : undefined,
-              borderTopWidth: '2px',
-              borderBottomWidth: '2px',
-            }"
-          />
-          <div
-            v-else-if="isTrackVisuallySelected(track.id)"
-            class="absolute inset-0 z-0 pointer-events-none border-y border-solid transition-colors"
-            :class="[!track.color || track.color === '#2a2a2a' ? 'border-primary-500/40' : '']"
-            :style="{
-              borderColor:
-                track.color && track.color !== '#2a2a2a' ? `${track.color}80` : undefined,
-            }"
-          />
           <!-- Drop Previews inside track -->
           <div
             v-if="dragPreview && dragPreview.trackId === track.id"
@@ -522,3 +508,35 @@ function onTrackClick(e: MouseEvent, trackId: string) {
     </div>
   </UContextMenu>
 </template>
+
+<style scoped>
+/* Псевдоэлементы для подсветки выбора трека вместо лишних DOM-узлов */
+[data-track-id]::before,
+[data-track-id]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
+  border-style: solid;
+  border-width: 0;
+}
+
+/* Яркая подсветка когда выбран сам хедер трека */
+.track--directly-selected::before {
+  border-top-width: 2px;
+  border-bottom-width: 2px;
+  border-color: var(--track-selection-color, rgba(var(--color-primary-500), 0.4));
+  background-color: rgba(var(--color-primary-500), 0.1);
+}
+
+/* Мягкая подсветка когда выбран клип на треке */
+.track--visually-selected::after {
+  border-top-width: 1px;
+  border-bottom-width: 1px;
+  border-color: var(--track-selection-color, rgba(var(--color-primary-500), 0.4));
+}
+</style>
