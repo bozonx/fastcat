@@ -380,11 +380,10 @@ function onPanelFocusOut() {
     </div>
 
     <!-- Content Area -->
-    <div class="flex-1 min-h-0 bg-ui-bg relative">
-      <div
-        ref="contentRef"
-        class="absolute inset-0 overflow-auto flex flex-col p-2 items-start w-full"
-      >
+    <div
+      ref="contentRef"
+      class="flex-1 min-h-0 bg-ui-bg overflow-auto flex flex-col p-2 items-start w-full"
+    >
         <div
           v-if="displayMode === 'empty'"
           key="empty"
@@ -461,7 +460,6 @@ function onPanelFocusOut() {
           v-else
           class="flex flex-col items-center justify-center h-full text-ui-text-muted"
         ></div>
-      </div>
     </div>
   </div>
 </template>
