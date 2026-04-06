@@ -508,6 +508,12 @@ function onTrackClick(e: MouseEvent, trackId: string) {
           trackViewModel.isDirectlySelected,
           trackViewModel.isVisuallySelected,
           trackViewModel.visibleItems.length,
+          movePreview?.trackId === trackViewModel.track.id ? movePreview.startUs : null,
+          movePreview?.trackId === trackViewModel.track.id ? movePreview.isCollision : null,
+          dragPreview?.trackId === trackViewModel.track.id ? dragPreview.startUs : null,
+          trackViewModel.track.items.some(i => i.id === draggingItemId) ? draggingItemId : null,
+          trackViewModel.track.items.some(i => i.id === movePreview?.itemId) ? movePreview?.startUs : null,
+          trackViewModel.track.items.some(i => i.id === slipPreview?.itemId) ? slipPreview?.deltaUs : null,
         ]"
         :data-track-id="trackViewModel.track.id"
         class="flex items-center relative transition-colors border-b border-ui-border"

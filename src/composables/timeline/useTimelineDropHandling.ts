@@ -415,7 +415,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
 
   const buildDragPreview = useThrottleFn(async (e: DragEvent, trackId: string) => {
     const payload = draggedFile.draggedFile.value;
-    if (!payload) {
+    if (!payload || payload.isExternal) {
       clearDragPreview();
       return null;
     }
@@ -473,9 +473,14 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
 
     if (
       !types.includes('application/json') &&
-      !types.includes('fastcat-item') &&
-      !types.includes('Files')
+      !types.includes('fastcat-item')
     ) {
+      clearDragPreview();
+      return;
+    }
+
+    const payload = draggedFile.draggedFile.value;
+    if (payload?.isExternal) {
       clearDragPreview();
       return;
     }
@@ -532,7 +537,11 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     },
   ) {
     try {
-      const payload = JSON.parse(data) as unknown;
+      const payload = JSON.parse(data) as any;
+      if (payload?.isExternal) {
+        clearDragPreview();
+        return;
+      }
       const items = normalizeDropItems(payload);
       let currentStartUs = startUs;
       let addedCount = 0;

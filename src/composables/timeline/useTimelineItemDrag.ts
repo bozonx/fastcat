@@ -96,6 +96,7 @@ export function useTimelineItemDrag(
     toTrackId: string;
     itemId: string;
     startUs: number;
+    isCollision?: boolean;
   } | null>(null);
 
   const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
@@ -540,62 +541,39 @@ export function useTimelineItemDrag(
         return;
       }
 
-      if (overlapMode === 'pseudo' || dragIsMobileTouch.value) {
-        if (lastDragAppliedCmd.value && dragStartSnapshot.value) {
-          timelineStore.timelineDoc = dragStartSnapshot.value as any;
-          timelineStore.duration = selectTimelineDurationUs(dragStartSnapshot.value as any) as any;
-          lastDragAppliedCmd.value = null;
-          draggingTrackId.value = dragOriginTrackId.value ?? trackId;
-        }
+      if (lastDragAppliedCmd.value && dragStartSnapshot.value) {
+        timelineStore.timelineDoc = dragStartSnapshot.value as any;
+        timelineStore.duration = selectTimelineDurationUs(dragStartSnapshot.value as any) as any;
+        lastDragAppliedCmd.value = null;
+        draggingTrackId.value = dragOriginTrackId.value ?? trackId;
+      }
 
-        let isCollision = false;
-        if (overlapMode !== 'pseudo' && dragStartSnapshot.value) {
-          const targetTrack = dragStartSnapshot.value.tracks.find((t) => t.id === targetTrackId);
-          if (targetTrack) {
-            const endUs = startUs + dragAnchorDurationUs.value;
-            for (const it of targetTrack.items) {
-              if (it.id === itemId) continue;
-              if (it.kind !== 'clip') continue;
-              const itStart = it.timelineRange.startUs;
-              const itEnd = itStart + it.timelineRange.durationUs;
-              if (startUs < itEnd && itStart < endUs) {
-                isCollision = true;
-                break;
-              }
+      let isCollision = false;
+      if (overlapMode !== 'pseudo' && dragStartSnapshot.value) {
+        const targetTrack = dragStartSnapshot.value.tracks.find((t) => t.id === targetTrackId);
+        if (targetTrack) {
+          const endUs = startUs + dragAnchorDurationUs.value;
+          for (const it of targetTrack.items) {
+            if (it.id === itemId) continue;
+            if (it.kind !== 'clip') continue;
+            const itStart = it.timelineRange.startUs;
+            const itEnd = itStart + it.timelineRange.durationUs;
+            if (startUs < itEnd && itStart < endUs) {
+              isCollision = true;
+              break;
             }
           }
         }
-
-        movePreview.value = { itemId, trackId: targetTrackId, startUs, isCollision };
-        pendingMoveCommit.value = {
-          fromTrackId: dragOriginTrackId.value ?? trackId,
-          toTrackId: targetTrackId,
-          itemId,
-          startUs,
-        };
-        return;
       }
 
-      if (movePreview.value) {
-        movePreview.value = null;
-        pendingMoveCommit.value = null;
-      }
-
-      const cmd = {
-        type: 'move_item_to_track',
-        fromTrackId: trackId,
+      movePreview.value = { itemId, trackId: targetTrackId, startUs, isCollision };
+      pendingMoveCommit.value = {
+        fromTrackId: dragOriginTrackId.value ?? trackId,
         toTrackId: targetTrackId,
         itemId,
         startUs,
-        quantizeToFrames: enableFrameSnap,
-        ignoreLinks: isShiftPressed,
-      } as const;
-      const appliedIds = timelineStore.applyTimeline(cmd, { saveMode: 'none', skipHistory: true });
-      if (appliedIds && appliedIds.length > 0) {
-        lastDragAppliedCmd.value = cmd as any;
-        draggingTrackId.value = targetTrackId;
-        hasPendingTimelinePersist.value = true;
-      }
+        isCollision,
+      };
 
       return;
     }
@@ -881,45 +859,40 @@ export function useTimelineItemDrag(
     if (!cancel && draggingMode.value === 'move') {
       const usePseudoOverlap = dragUsePseudoOverlapOverride.value;
       const overlapMode = usePseudoOverlap ? 'pseudo' : settingsStore.overlapMode;
-      const isVisualPseudo = overlapMode === 'pseudo' || dragIsMobileTouch.value;
 
-      if (isVisualPseudo) {
-        const commit = pendingMoveCommit.value;
-        if (commit) {
-          const enableFrameSnap =
-            settingsStore.frameSnapMode === 'frames' &&
-            !dragIsFreeOverride.value &&
-            !dragDisableFrameSnapOverride.value;
+      const commit = pendingMoveCommit.value;
+      if (commit && !commit.isCollision) {
+        const enableFrameSnap =
+          settingsStore.frameSnapMode === 'frames' &&
+          !dragIsFreeOverride.value &&
+          !dragDisableFrameSnapOverride.value;
 
-          // If the actual requested mode is pseudo, place it over.
-          // Otherwise (e.g. mobile touch visual workaround), do a normal track move.
-          if (overlapMode === 'pseudo') {
-            const cmd = {
-              type: 'overlay_place_item',
-              fromTrackId: commit.fromTrackId,
-              toTrackId: commit.toTrackId,
-              itemId: commit.itemId,
-              startUs: commit.startUs,
-              quantizeToFrames: enableFrameSnap,
-              ignoreLinks: usePseudoOverlap,
-            } as const;
-            timelineStore.applyTimeline(cmd as any, { saveMode: 'none', skipHistory: true });
-            lastDragAppliedCmd.value = cmd as any;
-          } else {
-            const cmd = {
-              type: 'move_item_to_track',
-              fromTrackId: commit.fromTrackId,
-              toTrackId: commit.toTrackId,
-              itemId: commit.itemId,
-              startUs: commit.startUs,
-              quantizeToFrames: enableFrameSnap,
-              ignoreLinks: usePseudoOverlap,
-            } as const;
-            timelineStore.applyTimeline(cmd as any, { saveMode: 'none', skipHistory: true });
-            lastDragAppliedCmd.value = cmd as any;
-          }
-          hasPendingTimelinePersist.value = true;
+        if (overlapMode === 'pseudo') {
+          const cmd = {
+            type: 'overlay_place_item',
+            fromTrackId: commit.fromTrackId,
+            toTrackId: commit.toTrackId,
+            itemId: commit.itemId,
+            startUs: commit.startUs,
+            quantizeToFrames: enableFrameSnap,
+            ignoreLinks: usePseudoOverlap,
+          } as const;
+          timelineStore.applyTimeline(cmd as any, { saveMode: 'none', skipHistory: true });
+          lastDragAppliedCmd.value = cmd as any;
+        } else {
+          const cmd = {
+            type: 'move_item_to_track',
+            fromTrackId: commit.fromTrackId,
+            toTrackId: commit.toTrackId,
+            itemId: commit.itemId,
+            startUs: commit.startUs,
+            quantizeToFrames: enableFrameSnap,
+            ignoreLinks: usePseudoOverlap,
+          } as const;
+          timelineStore.applyTimeline(cmd as any, { saveMode: 'none', skipHistory: true });
+          lastDragAppliedCmd.value = cmd as any;
         }
+        hasPendingTimelinePersist.value = true;
       }
     }
 

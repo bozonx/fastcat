@@ -39,6 +39,7 @@ const props = defineProps<{
   onCutEntries?: (entries: FsEntry[]) => void;
   onPasteToEntry?: (entry: FsEntry) => void;
   instanceId?: string;
+  isExternal?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -477,6 +478,7 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
           :depth="0"
           :folders-only="foldersOnly"
           :instance-id="instanceId"
+          :is-external="isExternal"
           :is-files-page="isFilesPage"
           @commit-rename="(entry, name) => emit('commitRename', entry, name)"
           @stop-rename="emit('stopRename')"

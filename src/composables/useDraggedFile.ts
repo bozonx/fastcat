@@ -7,6 +7,7 @@ export interface DraggedFileData {
   operation?: 'copy' | 'move';
   count?: number;
   items?: Array<{ name: string; path?: string; kind: string }>;
+  isExternal?: boolean;
 }
 
 const draggedFile = ref<DraggedFileData | null>(null);
