@@ -26,7 +26,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'pointerdown' | 'start-pan', event: PointerEvent): void;
+  (e: 'pointerdown' | 'start-playhead-drag' | 'start-pan', event: PointerEvent): void;
   (e: 'wheel', event: WheelEvent): void;
   (e: 'dblclick-ruler', timeUs: number): void;
 }>();
