@@ -9,6 +9,7 @@ const transcriptionLanguage = defineModel<string>('transcriptionLanguage', { def
 const props = withDefaults(
   defineProps<{
     isTranscribing: boolean;
+    isModelReady: boolean;
     transcriptionError: string | null;
     transcriptionEntry?: FsEntry | null;
   }>(),
@@ -45,14 +46,16 @@ const emit = defineEmits<{
       </div>
 
       <UiFormField :label="t('videoEditor.fileManager.audio.transcriptionLanguage', 'Language')">
-        <UiTextInput
+        <UInput
           v-model="transcriptionLanguage"
           :disabled="props.isTranscribing"
           placeholder="en"
-          full-width
+          class="w-full"
+          :ui="{ base: 'transition-colors' }"
         >
-          <template v-if="transcriptionLanguage" #trailing>
+          <template #trailing>
             <UButton
+              v-if="transcriptionLanguage"
               color="neutral"
               variant="link"
               icon="i-heroicons-x-mark-20-solid"
@@ -61,7 +64,7 @@ const emit = defineEmits<{
               @click="transcriptionLanguage = ''"
             />
           </template>
-        </UiTextInput>
+        </UInput>
       </UiFormField>
 
       <div v-if="props.transcriptionError" class="text-sm text-error-400">
@@ -80,9 +83,9 @@ const emit = defineEmits<{
           {{ t('common.cancel', 'Cancel') }}
         </UButton>
         <UButton
-          ref="submitButtonRef"
           color="primary"
           :loading="props.isTranscribing"
+          :disabled="!props.isModelReady"
           autofocus
           @click="emit('submit')"
         >

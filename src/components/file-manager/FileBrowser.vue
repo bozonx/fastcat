@@ -137,6 +137,7 @@ const {
   language: transcriptionLanguage,
   errorMessage: transcriptionError,
   isTranscribing,
+  isModelReady: isSttModelReady,
   pendingEntry: transcriptionEntry,
   isTranscribableMediaFile,
   openModal: openTranscriptionModal,
@@ -1000,6 +1001,7 @@ async function onDirectoryUploadChange(e: Event) {
       :remote-transfer-phase="remoteTransferPhase"
       :remote-transfer-file-name="remoteTransferFileName"
       :is-transcribing="isTranscribing"
+      :is-model-ready="isSttModelReady"
       :transcription-error="transcriptionError"
       :transcription-entry="transcriptionEntry"
       @delete-confirm="handleDeleteConfirm"

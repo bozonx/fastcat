@@ -19,6 +19,7 @@ export interface SttTranscriptionState {
   language: Ref<string>;
   errorMessage: Ref<string>;
   isTranscribing: Ref<boolean>;
+  isModelReady: Ref<boolean>;
   pendingEntry: Ref<FsEntry | null>;
   isTranscribableMediaFile: (entry: FsEntry) => boolean;
   openModal: (entry: FsEntry) => void;
@@ -55,14 +56,18 @@ export function useSttTranscription(
     }),
   );
 
+  const isModelReady = computed(() => {
+    const isLocal = workspaceStore.userSettings.integrations.stt.provider === 'local';
+    return isLocal ? workspaceStore.isSttModelDownloaded : Boolean(sttConfig.value);
+  });
+
   function isTranscribableMediaFile(entry: FsEntry): boolean {
     if (entry.kind !== 'file' || entry.source === 'remote') return false;
     const mediaType = getMediaTypeFromFilename(entry.name);
-    const isLocal = workspaceStore.userSettings.integrations.stt.provider === 'local';
 
     return (
       (mediaType === 'audio' || mediaType === 'video') &&
-      (isLocal ? workspaceStore.isSttModelDownloaded : Boolean(sttConfig.value)) &&
+      isModelReady.value &&
       Boolean(workspaceStore.workspaceHandle) &&
       Boolean(projectStore.currentProjectId) &&
       Boolean(entry.path)
@@ -155,6 +160,7 @@ export function useSttTranscription(
     language,
     errorMessage,
     isTranscribing,
+    isModelReady,
     pendingEntry,
     isTranscribableMediaFile,
     openModal,
