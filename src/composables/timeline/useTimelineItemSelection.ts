@@ -9,7 +9,10 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { getLinkedClipGroupItemIds } from '~/timeline/commands/utils';
 
-export function useTimelineItemSelection(tracks: ComputedRef<TimelineTrack[]>, isMobile?: Ref<boolean>) {
+export function useTimelineItemSelection(
+  tracks: ComputedRef<TimelineTrack[]>,
+  isMobile?: Ref<boolean>,
+) {
   const timelineStore = useTimelineStore();
   const projectStore = useProjectStore();
   const selectionStore = useSelectionStore();
@@ -51,7 +54,7 @@ export function useTimelineItemSelection(tracks: ComputedRef<TimelineTrack[]>, i
         selectionStore.selectedEntity?.kind === kind &&
         (kind !== 'gap' || selectionStore.selectedEntity.itemId === itemId);
 
-      if (trackId && isCurrentItemFullySelected && (isMobile?.value || !isTouchPointer)) {
+      if (trackId && isCurrentItemFullySelected && !isMobile?.value && !isTouchPointer) {
         timelineStore.clearSelection();
         timelineStore.selectTrack(trackId);
         selectionStore.selectTimelineTrack(trackId);

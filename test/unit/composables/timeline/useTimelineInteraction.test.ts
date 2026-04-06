@@ -212,4 +212,140 @@ describe('useTimelineInteraction', () => {
 
     wrapper.unmount();
   });
+
+  it('mobile re-tap on the selected clip should keep clip selection instead of switching to track', async () => {
+    const scrollEl = ref<HTMLElement | null>(null);
+    const timelineStore = useTimelineStore() as any;
+    const selectionStore = useSelectionStore();
+
+    timelineStore.timelineDoc = {
+      timebase: { fps: 25 },
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          items: [
+            {
+              kind: 'clip',
+              id: 'clip-1',
+              timelineRange: { startUs: 0, durationUs: 1_000_000 },
+              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+            },
+          ],
+        },
+      ],
+    };
+    timelineStore.selectedItemIds = ['clip-1'];
+    timelineStore.selectedTrackId = null;
+    selectionStore.selectTimelineItem('v1', 'clip-1');
+
+    let selectItemHandler: (event: PointerEvent, itemId: string) => void = () => {};
+
+    const TestComp = defineComponent({
+      setup() {
+        const api = useTimelineInteraction(
+          scrollEl,
+          computed(() => timelineStore.timelineDoc.tracks),
+          ref(true),
+        );
+        selectItemHandler = api.selectItem;
+        return () => h('div');
+      },
+    });
+
+    const wrapper = mount(TestComp);
+
+    selectItemHandler(
+      {
+        shiftKey: false,
+        metaKey: false,
+        ctrlKey: false,
+        pointerType: 'touch',
+      } as PointerEvent,
+      'clip-1',
+    );
+    await nextTick();
+
+    expect(timelineStore.selectedItemIds).toEqual(['clip-1']);
+    expect(timelineStore.selectedTrackId).toBeNull();
+    expect(selectionStore.selectedEntity).toEqual({
+      source: 'timeline',
+      kind: 'clip',
+      trackId: 'v1',
+      itemId: 'clip-1',
+    });
+
+    wrapper.unmount();
+  });
+
+  it('mobile tap on another clip should switch selection to that clip', async () => {
+    const scrollEl = ref<HTMLElement | null>(null);
+    const timelineStore = useTimelineStore() as any;
+    const selectionStore = useSelectionStore();
+
+    timelineStore.timelineDoc = {
+      timebase: { fps: 25 },
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          items: [
+            {
+              kind: 'clip',
+              id: 'clip-1',
+              timelineRange: { startUs: 0, durationUs: 1_000_000 },
+              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+            },
+            {
+              kind: 'clip',
+              id: 'clip-2',
+              timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 },
+              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+            },
+          ],
+        },
+      ],
+    };
+    timelineStore.selectedItemIds = ['clip-1'];
+    timelineStore.selectedTrackId = null;
+    selectionStore.selectTimelineItem('v1', 'clip-1');
+
+    let selectItemHandler: (event: PointerEvent, itemId: string) => void = () => {};
+
+    const TestComp = defineComponent({
+      setup() {
+        const api = useTimelineInteraction(
+          scrollEl,
+          computed(() => timelineStore.timelineDoc.tracks),
+          ref(true),
+        );
+        selectItemHandler = api.selectItem;
+        return () => h('div');
+      },
+    });
+
+    const wrapper = mount(TestComp);
+
+    selectItemHandler(
+      {
+        shiftKey: false,
+        metaKey: false,
+        ctrlKey: false,
+        pointerType: 'touch',
+      } as PointerEvent,
+      'clip-2',
+    );
+    await nextTick();
+
+    expect(timelineStore.selectedItemIds).toEqual(['clip-2']);
+    expect(timelineStore.selectedTrackId).toBeNull();
+    expect(selectionStore.selectedEntity).toEqual({
+      source: 'timeline',
+      kind: 'clip',
+      trackId: 'v1',
+      itemId: 'clip-2',
+    });
+
+    wrapper.unmount();
+  });
 });
