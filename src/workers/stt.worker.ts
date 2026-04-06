@@ -126,7 +126,7 @@ self.onmessage = async (event) => {
       const result = await p(audio, {
         language,
         subtask: subtask || 'transcribe',
-        return_timestamps: 'word', // Word-level timestamps requested
+        return_timestamps: true, // Segment-level timestamps (word-level not supported by this model export)
         chunk_length_s: 30,
         stride_length_s: 5,
         callback_function: (output: any) => {

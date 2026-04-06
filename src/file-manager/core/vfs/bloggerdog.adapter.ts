@@ -59,10 +59,6 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
   private getRemotePath(path: string): string {
     const p = this.normalizePath(path);
     if (p === '/' || p === '') return '/';
-    if (p === '/virtual-all' || p.startsWith('/virtual-all/')) return p;
-    if (p === '/personal') return '/content-library';
-    if (p.startsWith('/personal/')) return '/content-library' + p.slice('/personal'.length);
-    if (p === '/projects' || p.startsWith('/projects/')) return p;
     return p;
   }
 

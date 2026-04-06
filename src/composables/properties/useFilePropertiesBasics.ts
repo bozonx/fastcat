@@ -63,6 +63,15 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
 
     const baseUrl = uiUrl.endsWith('/') ? uiUrl.slice(0, -1) : uiUrl;
     const remoteId = entry.remoteId || (entry.remoteData as any)?.id;
+    const path = entry.path || '';
+
+    let projectPrefix = '';
+    if (path.startsWith('/projects/')) {
+      const parts = path.split('/').filter(Boolean);
+      if (parts.length >= 2) {
+        projectPrefix = `/projects/${parts[1]}`;
+      }
+    }
 
     if ((remoteId === 'virtual-all' || remoteId === 'personal') && !isBloggerDogMedia.value) {
       return `${baseUrl}/content-library`;
@@ -73,15 +82,22 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
     }
 
     if (isBloggerDogMedia.value && entry.mediaId) {
-      return `${baseUrl}/content-library?mediaId=${entry.mediaId}`;
+      return `${baseUrl}${projectPrefix}/content-library?mediaId=${entry.mediaId}`;
     }
 
     if (isBloggerDogContentItem.value && remoteId) {
-      return `${baseUrl}/content-library?openItemId=${remoteId}`;
+      return `${baseUrl}${projectPrefix}/content-library?openItemId=${remoteId}`;
     }
 
     if (isBloggerDogGroup.value && remoteId) {
-      return `${baseUrl}/content-library?groupId=${remoteId}`;
+      // If the selected item is the project itself, remoteId is the project ID
+      // and path is /projects/project-id. In this case projectPrefix will be /projects/project-id
+      // but remoteId is also project-id.
+      // But for the project itself, we might want to just open its content library without groupId.
+      if (path.startsWith('/projects/') && path.split('/').filter(Boolean).length === 2) {
+        return `${baseUrl}${projectPrefix}/content-library`;
+      }
+      return `${baseUrl}${projectPrefix}/content-library?groupId=${remoteId}`;
     }
 
     return null;
