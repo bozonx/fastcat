@@ -265,19 +265,15 @@ function handleAction(actionId: FileAction) {
 </script>
 
 <template>
-  <UiMobileDrawer
-    v-model:open="isOpenLocal"
-    :show-close="false"
-    :ui="{ container: 'h-[85dvh]' }"
-  >
+  <UiMobileDrawer v-model:open="isOpenLocal" :show-close="false" :ui="{ container: 'h-[85dvh]' }">
     <div class="flex flex-col h-full relative overflow-hidden">
       <!-- Scrollable content -->
-      <div
-        class="flex-1 min-h-0 overflow-y-auto px-4 pb-24"
-        data-vaul-no-drag
-      >
+      <div class="flex-1 min-h-0 overflow-y-auto px-4 pb-24" data-vaul-no-drag>
         <div class="mb-4 pt-1">
-          <MobileDrawerToolbar v-if="selectedEntriesList.length > 0" class="-mx-4 border-b border-ui-border mb-2">
+          <MobileDrawerToolbar
+            v-if="selectedEntriesList.length > 0"
+            class="-mx-4 border-b border-ui-border mb-2"
+          >
             <MobileDrawerToolbarButton
               v-if="canDelete"
               icon="i-heroicons-trash"
@@ -301,7 +297,9 @@ function handleAction(actionId: FileAction) {
               @click="handleAction('cut')"
             />
             <MobileDrawerToolbarButton
-              v-if="clipboardStore.hasFileManagerPayload && selectedFsEntry?.entry.kind === 'directory'"
+              v-if="
+                clipboardStore.hasFileManagerPayload && selectedFsEntry?.entry.kind === 'directory'
+              "
               icon="i-heroicons-clipboard"
               :label="$t('common.paste', 'Paste')"
               @click="handleAction('paste')"
@@ -321,13 +319,11 @@ function handleAction(actionId: FileAction) {
             />
           </MobileDrawerToolbar>
 
-          <div v-if="topActions.length > 0" class="py-1 px-3 border border-ui-border rounded-xl bg-zinc-900/40">
-            <PropertyActionList
-              :actions="topActions"
-              vertical
-              variant="ghost"
-              size="md"
-            />
+          <div
+            v-if="topActions.length > 0"
+            class="py-1 px-3 border border-ui-border rounded-xl bg-zinc-900/40"
+          >
+            <PropertyActionList :actions="topActions" vertical variant="ghost" size="md" />
           </div>
         </div>
 

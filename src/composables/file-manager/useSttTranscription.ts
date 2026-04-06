@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue';
+import { ref, computed, type Ref } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -6,22 +6,37 @@ import { getMediaTypeFromFilename, getMimeTypeFromFilename } from '~/utils/media
 import { runTranscriptionTask } from '~/utils/transcription/task-wrapper';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 
-export interface FileManagerPanelSttOptions {
-  vfs: { getFile: (path: string) => Promise<File | null> };
-  fastcatAccountApiUrl: string;
-  onSuccess: (params: { cached: boolean; mediaType: string }) => void;
-  onError: (message: string) => void;
+export interface UseSttTranscriptionOptions {
+  vfs?: { getFile: (path: string) => Promise<File | null> };
+  fastcatAccountApiUrl: Ref<string> | string;
+  onSuccess?: (params: { cached: boolean; mediaType: string }) => void;
+  onError?: (message: string) => void;
 }
 
-export function useFileManagerPanelStt({
-  vfs,
-  fastcatAccountApiUrl,
-  onSuccess,
-  onError,
-}: FileManagerPanelSttOptions) {
+export interface SttTranscriptionState {
+  sttConfig: Ref<{ provider: string; bearerToken: string } | null>;
+  modalOpen: Ref<boolean>;
+  language: Ref<string>;
+  errorMessage: Ref<string>;
+  isTranscribing: Ref<boolean>;
+  pendingEntry: Ref<FsEntry | null>;
+  isTranscribableMediaFile: (entry: FsEntry) => boolean;
+  openModal: (entry: FsEntry) => void;
+  closeModal: () => void;
+  submitTranscription: () => Promise<void>;
+}
+
+export function useSttTranscription(
+  options: UseSttTranscriptionOptions = {},
+): SttTranscriptionState {
   const projectStore = useProjectStore();
   const workspaceStore = useWorkspaceStore();
   const { t } = useI18n();
+
+  const fastcatApiUrl =
+    typeof options.fastcatAccountApiUrl === 'string'
+      ? ref(options.fastcatAccountApiUrl)
+      : options.fastcatAccountApiUrl;
 
   const modalOpen = ref(false);
   const language = ref('');
@@ -33,8 +48,8 @@ export function useFileManagerPanelStt({
     resolveExternalServiceConfig({
       service: 'stt',
       integrations: workspaceStore.userSettings.integrations,
-      bloggerDogApiUrl: '', // BloggerDog removed for STT
-      fastcatAccountApiUrl,
+      bloggerDogApiUrl: '',
+      fastcatAccountApiUrl: fastcatApiUrl.value,
     }),
   );
 
@@ -63,7 +78,7 @@ export function useFileManagerPanelStt({
     modalOpen.value = false;
   }
 
-  async function submitTranscription() {
+  async function submitTranscription(): Promise<void> {
     const entry = pendingEntry.value;
     if (
       !entry ||
@@ -79,35 +94,54 @@ export function useFileManagerPanelStt({
 
     try {
       const mediaType = getMediaTypeFromFilename(entry.name);
-      const file = await vfs.getFile(entry.path);
-      if (!file) throw new Error('Failed to access file');
 
-      // Ensure we have a full workspace path for the repository to work correctly from the workspace root
-      const workspacePath = entry.path.startsWith('/') || entry.path.startsWith('projects/') || !projectStore.currentProjectName
-        ? entry.path
-        : `projects/${projectStore.currentProjectName}/${entry.path}`;
+      let file: File | null = null;
+      if (options.vfs) {
+        file = await options.vfs.getFile(entry.path);
+      } else {
+        file = await projectStore.getFileByPath(entry.path);
+      }
 
-      modalOpen.value = false;
+      if (!file) {
+        throw new Error('Failed to access file');
+      }
+
+      const workspacePath =
+        entry.path.startsWith('/') ||
+        entry.path.startsWith('projects/') ||
+        !projectStore.currentProjectName
+          ? entry.path
+          : `projects/${projectStore.currentProjectName}/${entry.path}`;
+
+      const defaultTitle = `Transcription: ${entry.name}`;
       const result = await runTranscriptionTask({
         file,
         filePath: workspacePath,
         fileName: entry.name,
         fileType: getMimeTypeFromFilename(entry.name),
         language: language.value,
-        fastcatAccountApiUrl,
+        fastcatAccountApiUrl: fastcatApiUrl.value,
         userSettings: workspaceStore.userSettings,
         workspaceHandle: workspaceStore.workspaceHandle!,
-        title: t('videoEditor.backgroundTasks.transcriptionTitle', { name: entry.name }, `Transcription: ${entry.name}`),
+        title: t(
+          'videoEditor.backgroundTasks.transcriptionTitle',
+          { name: entry.name },
+          defaultTitle,
+        ),
       });
 
-      onSuccess({ cached: result.cached, mediaType });
+      modalOpen.value = false;
+      options.onSuccess?.({ cached: result.cached, mediaType });
     } catch (error: unknown) {
-      if ((error as Error).name === 'AbortError' || (error as Error).message === 'Transcription cancelled') {
+      if (
+        (error as Error).name === 'AbortError' ||
+        (error as Error).message === 'Transcription cancelled'
+      ) {
         return;
       }
       const message = error instanceof Error ? error.message : 'Failed to transcribe media';
       errorMessage.value = message;
-      onError(message);
+      options.onError?.(message);
     } finally {
       isTranscribing.value = false;
     }

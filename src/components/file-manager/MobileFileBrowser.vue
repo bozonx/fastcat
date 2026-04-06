@@ -28,7 +28,7 @@ import MobileFileBrowserPasteToolbar from './MobileFileBrowserPasteToolbar.vue';
 import FileDeleteConfirmModal from './modals/FileDeleteConfirmModal.vue';
 import FileSttTranscriptionModal from './modals/FileTranscriptionModal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
-import { useFileBrowserTranscription } from '~/composables/file-manager/useFileBrowserTranscription';
+import { useSttTranscription } from '~/composables/file-manager/useSttTranscription';
 
 const fileManagerStore = useFileManagerStore();
 const projectStore = useProjectStore();
@@ -38,6 +38,7 @@ const clipboardStore = useClipboardStore();
 const toast = useToast();
 const { t } = useI18n();
 const { target: teleportTarget } = useTeleportTarget();
+const runtimeConfig = useRuntimeConfig();
 
 const {
   findEntryByPath,
@@ -140,15 +141,51 @@ const { thumbnails } = useFileManagerThumbnails(sortedEntries, vfs);
 const { compatibility: fileCompatibility } = useFileManagerCompatibility(sortedEntries);
 
 const {
-  transcriptionModalOpen,
-  transcriptionLanguage,
-  transcriptionError,
+  modalOpen: transcriptionModalOpen,
+  language: transcriptionLanguage,
+  errorMessage: transcriptionError,
   isTranscribing,
-  transcriptionEntry,
+  pendingEntry: transcriptionEntry,
   isTranscribableMediaFile,
-  openTranscriptionModal,
+  openModal: openTranscriptionModal,
   submitTranscription,
-} = useFileBrowserTranscription();
+} = useSttTranscription({
+  fastcatAccountApiUrl: computed(() =>
+    typeof runtimeConfig.public.fastcatAccountApiUrl === 'string'
+      ? runtimeConfig.public.fastcatAccountApiUrl
+      : '',
+  ),
+  vfs,
+  onSuccess: ({ cached, mediaType }) => {
+    toast.add({
+      title: cached
+        ? t('videoEditor.fileManager.audio.transcriptionCached', 'Using cached transcription')
+        : t('videoEditor.fileManager.audio.transcriptionCompleted', 'Transcription completed'),
+      description: cached
+        ? t(
+            'videoEditor.fileManager.audio.transcriptionCachedDescription',
+            'Cached transcription was loaded from the file directory.',
+          )
+        : mediaType === 'video'
+          ? t(
+              'videoEditor.fileManager.audio.transcriptionSavedVideoDescription',
+              'Video audio track was transcribed and saved next to the source file.',
+            )
+          : t(
+              'videoEditor.fileManager.audio.transcriptionSavedDescription',
+              'Transcription was saved next to the source file.',
+            ),
+      color: 'success',
+    });
+  },
+  onError: (message) => {
+    toast.add({
+      title: t('videoEditor.fileManager.audio.transcriptionFailed', 'Failed to transcribe media'),
+      description: message,
+      color: 'danger',
+    });
+  },
+});
 
 // Lazily calculate sizes of all folders in current directory
 watch(

@@ -5,24 +5,9 @@ import {
 import { resolveExternalServiceConfig, resolveSttStreamUrl } from '~/utils/external-integrations';
 import type { FastCatUserSettings } from '~/utils/settings';
 import { getMimeTypeFromFilename } from '~/utils/media-types';
-export interface TranscriptionRequest {
-  file: File | FileSystemFileHandle;
-  filePath: string;
-  fileName: string;
-  fileType: string;
-  language?: string;
-  fastcatAccountApiUrl: string;
-  userSettings: FastCatUserSettings;
-  workspaceHandle: FileSystemDirectoryHandle;
-  onProgress?: (progress: number) => void;
-  signal?: AbortSignal;
-}
+import type { TranscriptionRequest, TranscriptionResult } from './types';
 
-export interface TranscriptionResult {
-  cacheKey: string;
-  cached: boolean;
-  record: TranscriptionCacheRecord;
-}
+export type { TranscriptionRequest, TranscriptionResult };
 
 function normalizeLanguage(language?: string): string {
   return typeof language === 'string' ? language.trim() : '';
@@ -124,7 +109,7 @@ export async function transcribeAudioFile(
   input: TranscriptionRequest,
 ): Promise<TranscriptionResult> {
   const provider = normalizeProvider(input.userSettings.integrations.stt.provider);
-  
+
   if (provider === 'local') {
     const { transcribeLocally } = await import('./local-engine');
     return await transcribeLocally(input, (p) => {

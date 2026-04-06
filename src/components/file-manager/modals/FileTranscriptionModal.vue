@@ -3,15 +3,21 @@ import type { FsEntry } from '~/types/fs';
 import UiModal from '~/components/ui/UiModal.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
+import { ref, watch, nextTick } from 'vue';
 
 const isOpen = defineModel<boolean>('open', { required: true });
 
-const props = defineProps<{
-  isTranscribing: boolean;
-  transcriptionError: string | null;
-  transcriptionEntry: FsEntry | null;
-  transcriptionLanguage: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    isTranscribing: boolean;
+    transcriptionError: string | null;
+    transcriptionEntry?: FsEntry | null;
+    transcriptionLanguage: string;
+  }>(),
+  {
+    transcriptionEntry: null,
+  },
+);
 
 const emit = defineEmits<{
   (e: 'update:transcriptionLanguage', value: string): void;
@@ -19,6 +25,24 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+const submitButtonRef = ref<HTMLButtonElement | null>(null);
+
+function focusSubmitButton() {
+  const el = submitButtonRef.value;
+  if (!el) return;
+  nextTick(() => {
+    setTimeout(() => {
+      el.focus();
+    }, 0);
+  });
+}
+
+watch(isOpen, (newValue) => {
+  if (newValue) {
+    nextTick(() => focusSubmitButton());
+  }
+});
 </script>
 
 <template>
@@ -68,7 +92,13 @@ const { t } = useI18n();
         >
           {{ t('common.cancel', 'Cancel') }}
         </UButton>
-        <UButton color="primary" :loading="props.isTranscribing" autofocus @click="emit('submit')">
+        <UButton
+          ref="submitButtonRef"
+          color="primary"
+          :loading="props.isTranscribing"
+          autofocus
+          @click="emit('submit')"
+        >
           {{ t('videoEditor.fileManager.actions.transcribe', 'Transcribe') }}
         </UButton>
       </div>

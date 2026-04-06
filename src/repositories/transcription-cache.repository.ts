@@ -27,8 +27,6 @@ export interface TranscriptionCacheRepository {
   save: (record: TranscriptionCacheRecord) => Promise<void>;
 }
 
-
-
 /**
  * Transcription Cache Repository
  * Handles persistence of transcription results using a sidecar file pattern.
@@ -63,7 +61,10 @@ function sortRecordsByCreatedAtDesc(
 export function createTranscriptionCacheRepository(params: {
   workspaceDir: DirectoryHandleLike;
 }): TranscriptionCacheRepository {
-  async function getFileDir(sourcePath: string, create: boolean = false): Promise<DirectoryHandleLike | null> {
+  async function getFileDir(
+    sourcePath: string,
+    create: boolean = false,
+  ): Promise<DirectoryHandleLike | null> {
     const { dirPath } = getPathInfo(sourcePath);
     try {
       return await resolveStorageRootHandle({
@@ -84,39 +85,31 @@ export function createTranscriptionCacheRepository(params: {
 
       const { fileName: sourceName } = getPathInfo(sourcePath);
       const cacheFileName = getTranscriptionFileName(sourceName, key);
-      const legacyFileName = `${sourceName}.stt.json`;
 
-      const tryLoad = async (name: string) => {
-        try {
-          const handle = await dir.getFileHandle(name, { create: false });
-          const raw = await readJsonFromFileHandle<unknown>(handle);
-          if (!raw) return null;
+      try {
+        const handle = await dir.getFileHandle(cacheFileName, { create: false });
+        const raw = await readJsonFromFileHandle<unknown>(handle);
+        if (!raw) return null;
 
-          const parsed = TranscriptionCacheRecordSchema.safeParse(raw);
-          if (!parsed.success) {
-            console.warn(`[TranscriptionCache] Invalid cache record in file ${name}`, parsed.error);
-            return null;
-          }
-          
-          // Verify that this specific file actually matches the requested key
-          if (parsed.data.key === key) {
-            return parsed.data;
-          }
+        const parsed = TranscriptionCacheRecordSchema.safeParse(raw);
+        if (!parsed.success) {
+          console.warn(
+            `[TranscriptionCache] Invalid cache record in file ${cacheFileName}`,
+            parsed.error,
+          );
           return null;
-        } catch (error: unknown) {
-          if ((error as { name?: unknown }).name === 'NotFoundError') {
-            return null;
-          }
-          throw error;
         }
-      };
 
-      // 1. Try modern filename with hash
-      const modern = await tryLoad(cacheFileName);
-      if (modern) return modern;
-
-      // 2. Fallback to legacy filename without hash
-      return await tryLoad(legacyFileName);
+        if (parsed.data.key === key) {
+          return parsed.data;
+        }
+        return null;
+      } catch (error: unknown) {
+        if ((error as { name?: unknown }).name === 'NotFoundError') {
+          return null;
+        }
+        throw error;
+      }
     },
 
     async list({ sourcePath }) {
@@ -125,7 +118,7 @@ export function createTranscriptionCacheRepository(params: {
 
       const { fileName: sourceName } = getPathInfo(sourcePath);
       const records: TranscriptionCacheRecord[] = [];
-      
+
       for await (const handle of dir.values()) {
         if (handle.kind !== 'file' || !handle.name.endsWith('.stt.json')) continue;
         if (!handle.name.startsWith(sourceName)) continue;
@@ -151,7 +144,7 @@ export function createTranscriptionCacheRepository(params: {
     async save(record) {
       const dir = await getFileDir(record.sourcePath, true);
       if (!dir) {
-         throw new Error(`Failed to access directory for transcription: ${record.sourcePath}`);
+        throw new Error(`Failed to access directory for transcription: ${record.sourcePath}`);
       }
 
       const cacheFileName = getTranscriptionFileName(record.sourceName, record.key);
