@@ -14,6 +14,10 @@ import { useTrackContextMenu } from '~/composables/timeline/useTrackContextMenu'
 
 const { t } = useI18n();
 
+defineOptions({
+  inheritAttrs: false,
+});
+
 const props = defineProps<{
   tracks: TimelineTrack[];
   trackHeights: Record<string, number>;
@@ -170,6 +174,7 @@ const { emptyAreaContextMenuItems: propertiesContextMenuItems } = useTimelineEmp
 <template>
   <UContextMenu :items="propertiesContextMenuItems">
     <div
+      v-bind="$attrs"
       ref="labelsScrollContainer"
       class="h-full overflow-y-scroll overflow-x-hidden labels-scroll-container bg-ui-bg"
       @scroll="emit('scroll', $event)"
