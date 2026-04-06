@@ -14,48 +14,52 @@ let modelDirHandle: FileSystemDirectoryHandle | null = null;
 let transcriber: AutomaticSpeechRecognitionPipeline | null = null;
 let currentModelName: string | null = null;
 
-/**
- * Custom fetch implementation for Transformers.js to load models from FileSystemDirectoryHandle.
- */
 env.fetch = async (url: string | URL) => {
   const urlStr = url.toString();
+  console.log(`[STT Worker] Requesting URL: ${urlStr} (localModelPath: ${env.localModelPath}, currentModelName: ${currentModelName})`);
 
-  // If it's a URL to HF, we try to find it in our local handle
-  // The URL format from Transformers.js is usually: /models/{model_name}/{file_name}
-  // But since we set allowRemoteModels=false, it will use localModelPath.
-  
   if (!modelDirHandle) {
+    console.warn(`[STT Worker] No modelDirHandle set yet, falling back to network for: ${urlStr}`);
     return fetch(url);
   }
 
-  // We expect URLs like ".../models/onnx-community/whisper-tiny/config.json"
-  // but we store them as "onnx-community_whisper-tiny/config.json"
+  // Handle various URL formats from Transformers.js
+  // It could be absolute, relative, or specifically formatted with env.localModelPath
+  let fullPath = '';
+  const modelsPrefix = '/models/';
   
-  // Extract path after /models/
-  const match = urlStr.match(/\/models\/(.+)$/);
-  if (!match) {
-    return fetch(url);
+  if (urlStr.includes(modelsPrefix)) {
+    fullPath = urlStr.substring(urlStr.indexOf(modelsPrefix) + modelsPrefix.length);
+  } else if (currentModelName && urlStr.includes(currentModelName)) {
+    fullPath = urlStr.substring(urlStr.indexOf(currentModelName));
+  } else {
+    // Just try the last parts if nothing else matches
+    const parts = urlStr.split('/');
+    fullPath = parts.slice(-3).join('/'); // Try model_org/model_name/file
   }
-  
-  const fullPath = match[1]!;
-  // We need to escape only the model name part (the first N segments that form the model name)
-  // But wait, our downloader escapes the ENTIRE model name including slashes.
-  // So "onnx-community/whisper-tiny" becomes "onnx-community_whisper-tiny".
-  
-  // Let's find how many segments we need to join with underscores.
-  // We know the model name being loaded.
+
   if (!currentModelName) {
+      console.warn(`[STT Worker] No currentModelName set yet, falling back to network for: ${urlStr}`);
       return fetch(url);
   }
 
   const escapedCurrentModelName = currentModelName.replace(/\//g, '_');
-  const filePath = fullPath.substring(currentModelName.length + 1);
+  
+  // Try to extract file path relative to model folder
+  let filePath = '';
+  if (fullPath.startsWith(currentModelName + '/')) {
+      filePath = fullPath.substring(currentModelName.length + 1);
+  } else {
+      // Fallback: just take the filename
+      filePath = fullPath.split('/').pop() || '';
+  }
+  
+  console.log(`[STT Worker] Mapped ${urlStr} to: folder=${escapedCurrentModelName}, file=${filePath}`);
   
   try {
     const modelFolder = await modelDirHandle.getDirectoryHandle(escapedCurrentModelName, { create: false });
     
-    // filePath might have subfolders (though unlikely for Whisper on local paths)
-    const fileParts = filePath.split('/');
+    const fileParts = filePath.split('/').filter(Boolean);
     let currentDir = modelFolder;
     for (let i = 0; i < fileParts.length - 1; i++) {
         currentDir = await currentDir.getDirectoryHandle(fileParts[i]!, { create: false });
@@ -63,10 +67,10 @@ env.fetch = async (url: string | URL) => {
     
     const fileHandle = await currentDir.getFileHandle(fileParts.at(-1)!, { create: false });
     const file = await fileHandle.getFile();
+    console.log(`[STT Worker] Successfully loaded from cache: ${escapedCurrentModelName}/${filePath}`);
     return new Response(file);
   } catch (err) {
-    console.warn(`[STT Worker] Local file not found: ${fullPath} (mapped to ${escapedCurrentModelName}/${filePath})`, err);
-    // If it's not found locally, and we can't fetch remotely, we should return a real 404 instead of letting it hit Nuxt
+    console.warn(`[STT Worker] Local file not found: ${escapedCurrentModelName}/${filePath}`, err);
     if (!env.allowRemoteModels) {
         return new Response('Not Found', { status: 404 });
     }
