@@ -20,6 +20,7 @@ export interface SttIntegrationSettings {
   provider: string;
   models: string[];
   localModel: string;
+  language: string;
   restorePunctuation: boolean;
   formatText: boolean;
   includeWords: boolean;
@@ -272,6 +273,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       provider: '',
       models: [],
       localModel: 'Xenova/whisper-tiny',
+      language: '',
       restorePunctuation: true,
       formatText: false,
       includeWords: true,

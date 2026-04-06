@@ -322,6 +322,7 @@ const {
   ),
   currentProjectName: computed(() => projectStore.currentProjectName),
   getFileByPath: (path) => projectStore.getFileByPath(path),
+  isSttModelDownloaded: computed(() => workspaceStore.isSttModelDownloaded),
   toast,
   t,
 });

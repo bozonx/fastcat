@@ -16,6 +16,7 @@ interface UseFilePropertiesTranscriptionOptions {
   fastcatAccountApiUrl: Ref<string>;
   currentProjectName: Ref<string | null>;
   getFileByPath: (path: string) => Promise<File | null | undefined>;
+  isSttModelDownloaded: Ref<boolean>;
   toast: { add: (payload: { title: string; description?: string; color?: string }) => void };
   t: (key: string, ...args: any[]) => string;
 }
@@ -56,7 +57,7 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
       entry?.kind === 'file' &&
       entry?.source !== 'remote' &&
       (options.isAudioFile.value || options.isVideoFile.value) &&
-      (isLocal || Boolean(options.sttConfig.value)) &&
+      (isLocal ? options.isSttModelDownloaded.value : Boolean(options.sttConfig.value)) &&
       Boolean(options.workspaceHandle.value) &&
       Boolean(entry.path)
     );
@@ -109,6 +110,7 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
 
   function openTranscriptionModal() {
     if (!canTranscribeMedia.value) return;
+    transcriptionLanguage.value = options.userSettings.value.integrations.stt.language || '';
     transcriptionError.value = '';
     isTranscriptionModalOpen.value = true;
   }
