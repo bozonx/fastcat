@@ -631,15 +631,15 @@ const filteredFilePrimaryActions = computed(() => {
          </div>
          <PropertyRow
            v-if="bloggerDogDeepLink"
-           :label="t('fastcat.bloggerDog.connection', 'Соединение')"
+           :label="t('common.path', 'Путь')"
          >
            <a
              :href="bloggerDogDeepLink"
              target="_blank"
-             class="text-primary-500 hover:text-primary-400 flex items-center gap-1 group/link"
+             class="text-primary-500 hover:text-primary-400 underline decoration-dotted transition-colors flex items-center gap-1 overflow-hidden"
            >
-             {{ t('common.open', 'Открыть') }}
-             <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 opacity-0 group-hover/link:opacity-100 transition-opacity" />
+             <span class="truncate">{{ bloggerDogDeepLink }}</span>
+             <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 shrink-0" />
            </a>
          </PropertyRow>
       </PropertySection>
@@ -653,15 +653,15 @@ const filteredFilePrimaryActions = computed(() => {
          </div>
          <PropertyRow
            v-if="bloggerDogDeepLink"
-           :label="t('fastcat.bloggerDog.connection', 'Библиотека')"
+           :label="t('common.path', 'Путь')"
          >
            <a
              :href="bloggerDogDeepLink"
              target="_blank"
-             class="text-primary-500 hover:text-primary-400 flex items-center gap-1 group/link"
+             class="text-primary-500 hover:text-primary-400 underline decoration-dotted transition-colors flex items-center gap-1 overflow-hidden"
            >
-             {{ t('common.open', 'Открыть') }}
-             <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 opacity-0 group-hover/link:opacity-100 transition-opacity" />
+             <span class="truncate">{{ bloggerDogDeepLink }}</span>
+             <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 shrink-0" />
            </a>
          </PropertyRow>
       </PropertySection>
@@ -675,15 +675,15 @@ const filteredFilePrimaryActions = computed(() => {
          </div>
          <PropertyRow
            v-if="bloggerDogDeepLink"
-           :label="t('fastcat.bloggerDog.connection', 'Проекты')"
+           :label="t('common.path', 'Путь')"
          >
            <a
              :href="bloggerDogDeepLink"
              target="_blank"
-             class="text-primary-500 hover:text-primary-400 flex items-center gap-1 group/link"
+             class="text-primary-500 hover:text-primary-400 underline decoration-dotted transition-colors flex items-center gap-1 overflow-hidden"
            >
-             {{ t('common.open', 'Открыть') }}
-             <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 opacity-0 group-hover/link:opacity-100 transition-opacity" />
+             <span class="truncate">{{ bloggerDogDeepLink }}</span>
+             <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 shrink-0" />
            </a>
          </PropertyRow>
       </PropertySection>
