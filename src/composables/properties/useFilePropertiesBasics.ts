@@ -26,6 +26,15 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
     return value && value !== name.toLowerCase() ? value : value;
   });
 
+  const isBloggerDogProject = computed(() => {
+    const entry = options.selectedFsEntry.value;
+    if (entry?.source !== 'remote' || entry?.kind !== 'directory') return false;
+    let path = entry.path || '';
+    if (path.startsWith('/remote')) path = path.slice(7) || '/';
+    const parts = path.split('/').filter(Boolean);
+    return parts.length === 2 && parts[0] === 'projects';
+  });
+
   const isBloggerDogGroup = computed(() => {
     const entry = options.selectedFsEntry.value;
     const path = entry?.path || '';
@@ -39,16 +48,9 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
       path !== '/remote' &&
       path !== '/remote/' &&
       path !== '' &&
-      !isVirtual
+      !isVirtual &&
+      !isBloggerDogProject.value
     );
-  });
-
-  const isBloggerDogProject = computed(() => {
-    const entry = options.selectedFsEntry.value;
-    if (entry?.source !== 'remote' || entry?.kind !== 'directory') return false;
-    const path = entry.path || '';
-    const parts = path.split('/').filter(Boolean);
-    return parts.length === 2 && parts[0] === 'projects';
   });
 
   const isBloggerDogContentItem = computed(() => {
