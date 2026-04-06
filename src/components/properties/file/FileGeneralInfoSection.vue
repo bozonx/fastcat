@@ -48,7 +48,7 @@ const { t } = useI18n();
         :value="props.formatBytes(props.fileInfo.size)"
       />
       <PropertyRow
-        v-if="props.fileInfo.filesCount !== undefined"
+        v-if="props.fileInfo.filesCount !== undefined && props.mediaCount === undefined"
         :label="t('videoEditor.fileManager.folder.filesCount', 'Files Count')"
         :value="props.fileInfo.filesCount"
       />
