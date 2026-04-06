@@ -33,6 +33,30 @@ const renameValue = ref(props.track.name);
 const renameInput = ref<HTMLInputElement | null>(null);
 const hasClipped = ref(false);
 let clipResetTimeoutId: ReturnType<typeof setTimeout> | null = null;
+let clipResetDeadlineMs = 0;
+
+function clearClipResetTimeout() {
+  if (!clipResetTimeoutId) return;
+  clearTimeout(clipResetTimeoutId);
+  clipResetTimeoutId = null;
+}
+
+function scheduleClipReset() {
+  const remainingMs = clipResetDeadlineMs - Date.now();
+  if (remainingMs <= 0) {
+    hasClipped.value = false;
+    clipResetDeadlineMs = 0;
+    clipResetTimeoutId = null;
+    return;
+  }
+
+  if (clipResetTimeoutId) return;
+
+  clipResetTimeoutId = setTimeout(() => {
+    clipResetTimeoutId = null;
+    scheduleClipReset();
+  }, remainingMs);
+}
 
 const levelPercent = computed(() => getAudioMeterPercent(props.levelDb, -60, 12));
 const levelColorClass = computed(() => getAudioMeterColorClass(props.levelDb));
@@ -77,26 +101,16 @@ watch(
     if (!isAudioClipping(value)) return;
 
     hasClipped.value = true;
-
-    if (clipResetTimeoutId) {
-      clearTimeout(clipResetTimeoutId);
-    }
-
-    clipResetTimeoutId = setTimeout(() => {
-      hasClipped.value = false;
-      clipResetTimeoutId = null;
-    }, 1400);
+    clipResetDeadlineMs = Date.now() + 1400;
+    scheduleClipReset();
   },
 );
 
 function resetClipIndicator(event: MouseEvent) {
   event.stopPropagation();
   hasClipped.value = false;
-
-  if (clipResetTimeoutId) {
-    clearTimeout(clipResetTimeoutId);
-    clipResetTimeoutId = null;
-  }
+  clipResetDeadlineMs = 0;
+  clearClipResetTimeout();
 }
 
 function startRenaming(event: MouseEvent) {
@@ -138,10 +152,8 @@ function toggleTrackLock(e: MouseEvent) {
 
 onBeforeUnmount(() => {
   window.removeEventListener('mousedown', handleOutsideClick);
-  if (clipResetTimeoutId) {
-    clearTimeout(clipResetTimeoutId);
-    clipResetTimeoutId = null;
-  }
+  clearClipResetTimeout();
+  clipResetDeadlineMs = 0;
 });
 </script>
 

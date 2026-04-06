@@ -83,6 +83,7 @@ vi.mock('~/composables/timeline/useTimelineMarquee', () => ({
 describe('TimelineTracks', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockTimelineStore.timelineZoom = 50;
   });
 
   afterEach(() => {
@@ -198,23 +199,84 @@ describe('TimelineTracks', () => {
     expect(component.emitted('long-press-track')).toBeFalsy();
   });
 
-  it('filters visible items by viewport to improve performance', async () => {
+  it('renders only items intersecting the visible viewport while keeping overlapping clips', async () => {
     const component = await mountSuspended(TimelineTracks, {
       props: {
         ...defaultProps,
-        scrollLeft: 1000,
-        viewportWidth: 500,
+        tracks: [
+          {
+            id: 'track-1',
+            kind: 'video',
+            items: [
+              {
+                id: 'clip-overlap',
+                kind: 'clip',
+                timelineRange: { startUs: 0, durationUs: 80_000_000 },
+              },
+              {
+                id: 'clip-hidden-left',
+                kind: 'clip',
+                timelineRange: { startUs: 10_000_000, durationUs: 5_000_000 },
+              },
+              {
+                id: 'clip-visible',
+                kind: 'clip',
+                timelineRange: { startUs: 65_000_000, durationUs: 10_000_000 },
+              },
+            ],
+          },
+        ],
+        trackHeights: { 'track-1': 50 },
+        scrollLeft: 500,
+        viewportWidth: 100,
       },
     });
 
-    // timeUsToPx zoom=1 calculation roughly:
-    // With zoom=1, 1,000,000us = 100px? (Based on earlier tests, actually let's see how timeUsToPx works)
-    // Actually the component just renders what visibleItemsByTrack provides.
-    // If we set viewport and scroll, it should only render items within the range.
-    // Since we mock timeUsToPx or rely on actual, we can just check if clips are rendered.
-    // For small times they will all be at x < 1000, so they might not be rendered if they don't intersect.
-    // Let's just check if it mounts without errors, the exact filtering test might be fragile without mocking geometry.
-    expect(component.exists()).toBe(true);
+    const renderedClipIds = component
+      .findAll('.mock-timeline-clip')
+      .map((clip) => clip.attributes('data-item-id'));
+
+    expect(renderedClipIds).toEqual(['clip-overlap', 'clip-visible']);
+  });
+
+  it('falls back to full visibility filtering when items are not sorted by start time', async () => {
+    const component = await mountSuspended(TimelineTracks, {
+      props: {
+        ...defaultProps,
+        tracks: [
+          {
+            id: 'track-1',
+            kind: 'video',
+            items: [
+              {
+                id: 'clip-visible',
+                kind: 'clip',
+                timelineRange: { startUs: 65_000_000, durationUs: 10_000_000 },
+              },
+              {
+                id: 'clip-overlap',
+                kind: 'clip',
+                timelineRange: { startUs: 0, durationUs: 80_000_000 },
+              },
+              {
+                id: 'clip-hidden-left',
+                kind: 'clip',
+                timelineRange: { startUs: 10_000_000, durationUs: 5_000_000 },
+              },
+            ],
+          },
+        ],
+        trackHeights: { 'track-1': 50 },
+        scrollLeft: 500,
+        viewportWidth: 100,
+      },
+    });
+
+    const renderedClipIds = component
+      .findAll('.mock-timeline-clip')
+      .map((clip) => clip.attributes('data-item-id'));
+
+    expect(renderedClipIds).toEqual(['clip-visible', 'clip-overlap']);
   });
 
   it('displays drag previews when provided', async () => {

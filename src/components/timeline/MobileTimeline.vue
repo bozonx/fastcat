@@ -388,7 +388,7 @@ function onMultiSelectionDrawerClose() {
 
 function onMarkerPropertiesDrawerClose() {
   isMarkerPropertiesDrawerOpen.value = false;
-  
+
   if (suppressDrawerSelectionClear.value) {
     return;
   }
@@ -399,7 +399,7 @@ function onMarkerPropertiesDrawerClose() {
 
 function onSelectionRangeDrawerClose() {
   isSelectionRangeDrawerOpen.value = false;
-  
+
   if (suppressDrawerSelectionClear.value) {
     return;
   }
@@ -410,7 +410,7 @@ function onSelectionRangeDrawerClose() {
 
 function onTransitionDrawerClose() {
   isTransitionDrawerOpen.value = false;
-  
+
   if (suppressDrawerSelectionClear.value) {
     return;
   }
@@ -529,6 +529,38 @@ const MAX_SCROLL_SPEED = 14;
 let edgeScrollRafId = 0;
 let edgeScrollDx = 0;
 let edgeScrollDy = 0;
+let cachedScrollRectEl: HTMLElement | null = null;
+let cachedScrollRect: DOMRect | null = null;
+let scrollRectFrameId = 0;
+
+function clearScrollRectCache() {
+  cachedScrollRectEl = null;
+  cachedScrollRect = null;
+
+  if (scrollRectFrameId !== 0) {
+    cancelAnimationFrame(scrollRectFrameId);
+    scrollRectFrameId = 0;
+  }
+}
+
+function getCachedScrollRect(el: HTMLElement): DOMRect {
+  if (cachedScrollRectEl === el && cachedScrollRect) {
+    return cachedScrollRect;
+  }
+
+  cachedScrollRectEl = el;
+  cachedScrollRect = el.getBoundingClientRect();
+
+  if (scrollRectFrameId === 0) {
+    scrollRectFrameId = requestAnimationFrame(() => {
+      scrollRectFrameId = 0;
+      cachedScrollRectEl = null;
+      cachedScrollRect = null;
+    });
+  }
+
+  return cachedScrollRect;
+}
 
 function stopEdgeScroll() {
   if (edgeScrollRafId) {
@@ -558,7 +590,7 @@ function updateEdgeScroll(e: PointerEvent) {
     return;
   }
 
-  const rect = el.getBoundingClientRect();
+  const rect = getCachedScrollRect(el);
   let dx = 0;
   let dy = 0;
 
@@ -593,6 +625,7 @@ function onMobilePointerMove(e: PointerEvent) {
 }
 
 function onMobilePointerUp(e: PointerEvent) {
+  clearScrollRectCache();
   stopEdgeScroll();
   onGlobalPointerUp(e);
 
@@ -604,6 +637,7 @@ function onMobilePointerUp(e: PointerEvent) {
 }
 
 function onMobilePointerCancel(e: PointerEvent) {
+  clearScrollRectCache();
   stopEdgeScroll();
   // During active drag, pointercancel may fire when Vue destroys the
   // captured clip element on cross-track moves.  Don't end the drag —
@@ -619,7 +653,10 @@ watch(
   },
 );
 
-onBeforeUnmount(stopEdgeScroll);
+onBeforeUnmount(() => {
+  clearScrollRectCache();
+  stopEdgeScroll();
+});
 
 function onStartMoveItem(event: PointerEvent, payload: TimelineMoveItemPayload) {
   startMoveItem(event, {
@@ -684,7 +721,7 @@ function onTouchMove(e: TouchEvent) {
 
     const el = scrollEl.value;
     if (el) {
-      const rect = el.getBoundingClientRect();
+      const rect = getCachedScrollRect(el);
       const midpointX = ((e.touches[0] as Touch).clientX + (e.touches[1] as Touch).clientX) / 2;
       const viewportX = midpointX - rect.left;
       const anchorPx = el.scrollLeft + viewportX;
@@ -707,7 +744,7 @@ function onScrollElWheel(e: WheelEvent) {
   const el = scrollEl.value;
   if (!el) return;
 
-  const rect = el.getBoundingClientRect();
+  const rect = getCachedScrollRect(el);
   const anchorViewportX = e.clientX - rect.left;
   const anchorTimeUs = pxToTimeUs(el.scrollLeft + anchorViewportX, timelineStore.timelineZoom);
 
@@ -766,7 +803,7 @@ function onTimelineClick(e: MouseEvent) {
   if (!el) return;
 
   const tracksHeight = Object.values(trackHeights.value).reduce((a, b) => a + b, 0);
-  const scrollerRectY = el.getBoundingClientRect();
+  const scrollerRectY = getCachedScrollRect(el);
   const y = e.clientY - scrollerRectY.top + el.scrollTop;
   if (y > tracksHeight + 32) {
     timelineStore.selectTimelineProperties();
