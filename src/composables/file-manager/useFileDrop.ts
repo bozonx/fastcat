@@ -20,7 +20,7 @@ export function useFileDrop(options: UseFileDropOptions) {
   let rootDragEnterCount = 0;
 
   function isCopyModifierActive(e: DragEvent): boolean {
-    return !isLayer1Active(e, workspaceStore.userSettings);
+    return isLayer1Active(e, workspaceStore.userSettings);
   }
 
   function isRelevantDrag(e: DragEvent): boolean {

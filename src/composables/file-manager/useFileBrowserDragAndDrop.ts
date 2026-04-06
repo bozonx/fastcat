@@ -19,7 +19,6 @@ import {
 } from '~/composables/useDraggedFile';
 import type { FsEntry } from '~/types/fs';
 import type { DraggedFileData } from '~/composables/useDraggedFile';
-import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 
@@ -36,8 +35,9 @@ interface UseFileBrowserDragAndDropOptions {
 export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOptions) {
   const uiStore = useUiStore();
   const workspaceStore = useWorkspaceStore();
-  const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
-  const fileManager = useFileManager();
+  const fileManagerStore =
+    (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
+    useFileManagerStore();
 
   const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
   const effectiveHotkeys = computed(() =>
@@ -96,7 +96,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   });
 
   function isCopyModifierActive(event: DragEvent): boolean {
-    return !isLayer1Active(event, workspaceStore.userSettings);
+    return isLayer1Active(event, workspaceStore.userSettings);
   }
 
   function resolveDragOperation(event: DragEvent): 'copy' | 'move' {

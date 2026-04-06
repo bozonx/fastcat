@@ -77,6 +77,44 @@ const containerRef = ref<HTMLElement | null>(null);
 
 const { tracks, trackHeights } = toRefs(props);
 
+interface TrackVisibilityIndexEntry {
+  isSortedByStart: boolean;
+  prefixMaxEndPositions: number[];
+  startPositions: number[];
+}
+
+function lowerBound(values: number[], target: number): number {
+  let low = 0;
+  let high = values.length;
+
+  while (low < high) {
+    const mid = Math.floor((low + high) / 2);
+    if (values[mid] < target) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
+  }
+
+  return low;
+}
+
+function upperBound(values: number[], target: number): number {
+  let low = 0;
+  let high = values.length;
+
+  while (low < high) {
+    const mid = Math.floor((low + high) / 2);
+    if (values[mid] <= target) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
+  }
+
+  return low;
+}
+
 /** Pre-calculate pixel geometries for items to avoid recalculating on every scroll/render frame */
 const itemGeometries = computed(() => {
   const zoom = timelineStore.timelineZoom;
@@ -89,6 +127,43 @@ const itemGeometries = computed(() => {
     }
   }
   return map;
+});
+
+const trackVisibilityIndexByTrack = computed<Record<string, TrackVisibilityIndexEntry>>(() => {
+  const result: Record<string, TrackVisibilityIndexEntry> = {};
+  const geos = itemGeometries.value;
+
+  for (const track of props.tracks) {
+    const startPositions: number[] = [];
+    const prefixMaxEndPositions: number[] = [];
+    let isSortedByStart = true;
+    let lastStart = Number.NEGATIVE_INFINITY;
+    let maxEnd = Number.NEGATIVE_INFINITY;
+
+    for (const item of track.items) {
+      const geo = geos.get(item.id);
+      if (!geo) {
+        isSortedByStart = false;
+        break;
+      }
+
+      startPositions.push(geo.startPx);
+      if (geo.startPx < lastStart) {
+        isSortedByStart = false;
+      }
+      lastStart = geo.startPx;
+      maxEnd = Math.max(maxEnd, geo.endPx);
+      prefixMaxEndPositions.push(maxEnd);
+    }
+
+    result[track.id] = {
+      isSortedByStart,
+      prefixMaxEndPositions,
+      startPositions,
+    };
+  }
+
+  return result;
 });
 
 /** Visible range in px with overscan. Falls back to rendering everything if viewport unknown. */
@@ -104,14 +179,32 @@ const visibleItemsByTrack = computed(() => {
   const vStart = visibleStartPx.value;
   const vEnd = visibleEndPx.value;
   const geos = itemGeometries.value;
+  const visibilityIndexByTrack = trackVisibilityIndexByTrack.value;
 
   for (const track of props.tracks) {
     if (vEnd === Infinity) {
       result[track.id] = track.items;
       continue;
     }
-    // Optimization: Items are typically sorted by start time.
-    // We can filter out items that don't intersect the visible window.
+
+    const visibilityIndex = visibilityIndexByTrack[track.id];
+    if (visibilityIndex?.isSortedByStart) {
+      const startIndex = lowerBound(visibilityIndex.prefixMaxEndPositions, vStart);
+      const endIndex = upperBound(visibilityIndex.startPositions, vEnd);
+
+      if (startIndex >= endIndex) {
+        result[track.id] = [];
+        continue;
+      }
+
+      result[track.id] = track.items.slice(startIndex, endIndex).filter((item) => {
+        const geo = geos.get(item.id);
+        if (!geo) return true;
+        return geo.endPx >= vStart && geo.startPx <= vEnd;
+      });
+      continue;
+    }
+
     result[track.id] = track.items.filter((item) => {
       const geo = geos.get(item.id);
       if (!geo) return true;

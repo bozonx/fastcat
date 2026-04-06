@@ -134,6 +134,7 @@ const proxyStore = useProxyStore();
 const selectionStore = useSelectionStore();
 const workspaceStore = useWorkspaceStore();
 const uiStore = useUiStore();
+const { setCurrentDragOperation } = useAppClipboard();
 
 const isDragOver = ref<string | null>(null);
 const dragOperation = ref<'copy' | 'move' | null>(null);
@@ -396,6 +397,7 @@ function onDragStart(e: DragEvent, entry: FsEntry) {
 
   const operation = isLayer1Active(e, workspaceStore.userSettings) ? 'copy' : 'move';
   dragOperation.value = operation;
+  setCurrentDragOperation(operation);
   const movePayload = entriesToMove.map((e) => ({ name: e.name, kind: e.kind, path: e.path }));
   e.dataTransfer?.setData(
     operation === 'copy' ? FILE_MANAGER_COPY_DRAG_TYPE : FILE_MANAGER_MOVE_DRAG_TYPE,
@@ -424,6 +426,7 @@ function onDragStart(e: DragEvent, entry: FsEntry) {
 function onDragEnd() {
   clearDraggedFile();
   dragOperation.value = null;
+  setCurrentDragOperation(null);
 }
 
 function onDragOverDir(e: DragEvent, entry: FsEntry) {
@@ -438,6 +441,7 @@ function onDragOverDir(e: DragEvent, entry: FsEntry) {
       types.includes(FILE_MANAGER_COPY_DRAG_TYPE) || isLayer1Active(e, workspaceStore.userSettings)
         ? 'copy'
         : 'move';
+    setCurrentDragOperation(dragOperation.value);
     e.dataTransfer.dropEffect = dragOperation.value === 'copy' ? 'copy' : 'move';
     return;
   }
@@ -464,6 +468,7 @@ function onDragLeaveDir(e: DragEvent, entry: FsEntry) {
   if (!currentTarget?.contains(relatedTarget)) {
     isDragOver.value = null;
     dragOperation.value = null;
+    setCurrentDragOperation(null);
   }
 }
 
@@ -475,6 +480,7 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
   const operation = dragOperation.value;
   isDragOver.value = null;
   dragOperation.value = null;
+  setCurrentDragOperation(null);
 
   const copyRaw = e.dataTransfer?.getData(FILE_MANAGER_COPY_DRAG_TYPE);
   const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);

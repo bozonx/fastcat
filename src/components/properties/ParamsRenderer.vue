@@ -7,10 +7,12 @@ import UiKnob from '~/components/ui/editor/UiKnob.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import type {
+  ArrayParamControl,
   ButtonGroupParamControl,
   FileParamControl,
   ParamControl,
   ParamOption,
+  ScaleXYParamControl,
   SelectParamControl,
 } from '~/components/properties/params';
 
@@ -45,6 +47,24 @@ const visibleControls = computed(() =>
     (control) => !control.showIf || control.showIf(props.values as Record<string, any>),
   ),
 );
+
+interface ScaleXYControlState {
+  canReset: boolean;
+  isLinked: boolean;
+  label: string;
+  xValue: number;
+  yLabel: string;
+  yValue: number;
+}
+
+interface VisibleControlState {
+  arrayItemsByControl: Map<ArrayParamControl, Record<string, unknown>[]>;
+  scaleXYStateByControl: Map<ScaleXYParamControl, ScaleXYControlState>;
+  selectItemsByControl: Map<
+    SelectParamControl | ButtonGroupParamControl,
+    ReturnType<typeof getSelectItems>
+  >;
+}
 
 function getLabel(control: ParamControl): string {
   if ('labelKey' in control && typeof control.labelKey === 'string') {
@@ -142,6 +162,79 @@ function handleFileDrop(event: DragEvent, control: FileParamControl) {
 }
 function handleAction(action: string, key: string) {
   emit('action', action, key);
+}
+
+const visibleControlState = computed<VisibleControlState>(() => {
+  const arrayItemsByControl = new Map<ArrayParamControl, Record<string, unknown>[]>();
+  const scaleXYStateByControl = new Map<ScaleXYParamControl, ScaleXYControlState>();
+  const selectItemsByControl = new Map<
+    SelectParamControl | ButtonGroupParamControl,
+    ReturnType<typeof getSelectItems>
+  >();
+
+  for (const control of visibleControls.value) {
+    if (control.kind === 'array') {
+      const value = getValue(control.key);
+      arrayItemsByControl.set(
+        control,
+        Array.isArray(value) ? (value as Record<string, unknown>[]) : [],
+      );
+      continue;
+    }
+
+    if (control.kind === 'scale-xy') {
+      const isLinked = Boolean(getValue(control.keyLinked) ?? control.defaultLinked ?? true);
+      const xValue = Number(getValue(control.keyX) ?? control.defaultValueX ?? 100);
+      const yValue = Number(getValue(control.keyY) ?? control.defaultValueY ?? 100);
+
+      scaleXYStateByControl.set(control, {
+        isLinked,
+        xValue,
+        yValue,
+        label: isLinked
+          ? control.labelKey
+            ? t(control.labelKey)
+            : 'Scale'
+          : control.labelXKey
+            ? t(control.labelXKey)
+            : 'Scale X',
+        yLabel: control.labelYKey ? t(control.labelYKey) : 'Scale Y',
+        canReset: isLinked ? xValue !== 100 : xValue !== 100 || yValue !== 100,
+      });
+      continue;
+    }
+
+    if (control.kind === 'select' || control.kind === 'button-group') {
+      selectItemsByControl.set(control, getSelectItems(control));
+    }
+  }
+
+  return {
+    arrayItemsByControl,
+    scaleXYStateByControl,
+    selectItemsByControl,
+  };
+});
+
+function getScaleXYState(control: ScaleXYParamControl): ScaleXYControlState {
+  return (
+    visibleControlState.value.scaleXYStateByControl.get(control) ?? {
+      isLinked: true,
+      xValue: 100,
+      yValue: 100,
+      label: control.labelKey ? t(control.labelKey) : 'Scale',
+      yLabel: control.labelYKey ? t(control.labelYKey) : 'Scale Y',
+      canReset: false,
+    }
+  );
+}
+
+function getArrayItems(control: ArrayParamControl): Record<string, unknown>[] {
+  return visibleControlState.value.arrayItemsByControl.get(control) ?? [];
+}
+
+function getCachedSelectItems(control: SelectParamControl | ButtonGroupParamControl) {
+  return visibleControlState.value.selectItemsByControl.get(control) ?? [];
 }
 
 function handleArrayAdd(control: ParamControl) {
@@ -264,29 +357,12 @@ function handleArrayItemUpdate(
         <div class="flex items-center gap-2">
           <span
             class="flex-1 text-xs text-ui-text-muted"
-            :class="[
-              (getValue(control.keyLinked) ?? control.defaultLinked ?? true)
-                ? 'cursor-pointer'
-                : 'cursor-default',
-            ]"
+            :class="[getScaleXYState(control).isLinked ? 'cursor-pointer' : 'cursor-default']"
           >
-            {{
-              (getValue(control.keyLinked) ?? control.defaultLinked ?? true)
-                ? control.labelKey
-                  ? t(control.labelKey)
-                  : 'Scale'
-                : control.labelXKey
-                  ? t(control.labelXKey)
-                  : 'Scale X'
-            }}
+            {{ getScaleXYState(control).label }}
           </span>
           <UButton
-            v-if="
-              ((getValue(control.keyLinked) ?? control.defaultLinked ?? true) &&
-                getValue(control.keyX) !== 100) ||
-              (!(getValue(control.keyLinked) ?? control.defaultLinked ?? true) &&
-                (getValue(control.keyX) !== 100 || getValue(control.keyY) !== 100))
-            "
+            v-if="getScaleXYState(control).canReset"
             icon="i-heroicons-arrow-path"
             size="2xs"
             variant="ghost"
@@ -305,7 +381,7 @@ function handleArrayItemUpdate(
         <div class="flex items-center gap-2">
           <UiWheelNumberInput
             class="flex-1"
-            :model-value="Number(getValue(control.keyX) ?? control.defaultValueX ?? 100)"
+            :model-value="getScaleXYState(control).xValue"
             :size="size"
             :min="control.min"
             :max="control.max"
@@ -316,7 +392,7 @@ function handleArrayItemUpdate(
               (value: number) => {
                 const numValue = Number(value);
                 updateValue(control.keyX, numValue);
-                if (getValue(control.keyLinked) ?? control.defaultLinked ?? true) {
+                if (getScaleXYState(control).isLinked) {
                   setTimeout(() => {
                     updateValue(control.keyY, numValue);
                   }, 10);
@@ -329,37 +405,26 @@ function handleArrayItemUpdate(
             variant="ghost"
             color="gray"
             :icon="
-              (getValue(control.keyLinked) ?? control.defaultLinked ?? true)
-                ? 'i-heroicons-link'
-                : 'i-heroicons-link-slash'
+              getScaleXYState(control).isLinked ? 'i-heroicons-link' : 'i-heroicons-link-slash'
             "
-            :class="[
-              (getValue(control.keyLinked) ?? control.defaultLinked ?? true)
-                ? 'text-ui-primary'
-                : 'text-ui-text-muted',
-            ]"
+            :class="[getScaleXYState(control).isLinked ? 'text-ui-primary' : 'text-ui-text-muted']"
             @click="
               () => {
-                const isLinked = !(getValue(control.keyLinked) ?? control.defaultLinked ?? true);
+                const isLinked = !getScaleXYState(control).isLinked;
                 updateValue(control.keyLinked, isLinked);
                 if (isLinked) {
                   setTimeout(() => {
-                    updateValue(control.keyY, getValue(control.keyX));
+                    updateValue(control.keyY, getScaleXYState(control).xValue);
                   }, 10);
                 }
               }
             "
           />
         </div>
-        <div
-          v-if="!(getValue(control.keyLinked) ?? control.defaultLinked ?? true)"
-          class="flex flex-col gap-0.5 mt-2"
-        >
-          <span class="text-xs text-ui-text-muted">{{
-            control.labelYKey ? t(control.labelYKey) : 'Scale Y'
-          }}</span>
+        <div v-if="!getScaleXYState(control).isLinked" class="flex flex-col gap-0.5 mt-2">
+          <span class="text-xs text-ui-text-muted">{{ getScaleXYState(control).yLabel }}</span>
           <UiWheelNumberInput
-            :model-value="Number(getValue(control.keyY) ?? control.defaultValueY ?? 100)"
+            :model-value="getScaleXYState(control).yValue"
             :size="size"
             :min="control.min"
             :max="control.max"
@@ -370,7 +435,7 @@ function handleArrayItemUpdate(
               (value: number) => {
                 const numValue = Number(value);
                 updateValue(control.keyY, numValue);
-                if (getValue(control.keyLinked) ?? control.defaultLinked ?? true) {
+                if (getScaleXYState(control).isLinked) {
                   setTimeout(() => {
                     updateValue(control.keyX, numValue);
                   }, 10);
@@ -398,7 +463,7 @@ function handleArrayItemUpdate(
         <span class="text-xs text-ui-text-muted">{{ getLabel(control) }}</span>
         <UiSelect
           :model-value="getValue(control.key) as any"
-          :items="getSelectItems(control)"
+          :items="getCachedSelectItems(control)"
           value-key="value"
           label-key="label"
           :size="size"
@@ -413,7 +478,7 @@ function handleArrayItemUpdate(
         <span class="text-xs text-ui-text-muted">{{ getLabel(control) }}</span>
         <UiButtonGroup
           :model-value="getValue(control.key)"
-          :options="getSelectItems(control)"
+          :options="getCachedSelectItems(control)"
           size="xs"
           :disabled="control.disabled || props.disabled"
           fluid
@@ -528,9 +593,7 @@ function handleArrayItemUpdate(
         </div>
 
         <div
-          v-if="
-            !Array.isArray(getValue(control.key)) || (getValue(control.key) as any[]).length === 0
-          "
+          v-if="getArrayItems(control).length === 0"
           class="text-xs text-ui-text-muted text-center py-2 border border-dashed border-ui-border rounded"
         >
           {{ control.emptyLabelKey ? t(control.emptyLabelKey) : (control.emptyLabel ?? 'Empty') }}
@@ -546,7 +609,7 @@ function handleArrayItemUpdate(
           ]"
         >
           <div
-            v-for="(item, index) in getValue(control.key)"
+            v-for="(item, index) in getArrayItems(control)"
             :key="index"
             class="flex flex-col gap-2 bg-ui-bg-elevated border border-ui-border rounded relative group shrink-0"
             :class="control.layout === 'horizontal' ? 'w-32 snap-center' : 'p-3'"

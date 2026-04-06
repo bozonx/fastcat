@@ -15,6 +15,18 @@ const uiStoreMock = reactive({
   fileTreeSelectAllTrigger: 0,
 });
 
+const workspaceStoreMock = {
+  userSettings: {
+    hotkeys: {
+      layer1: 'Shift',
+      layer2: 'Control',
+      bindings: {},
+    },
+  },
+};
+
+const setCurrentDragOperationMock = vi.fn();
+
 vi.mock('~/utils/media-types', () => ({
   getMediaTypeFromFilename: () => 'video',
   isOpenableProjectFileName: () => false,
@@ -40,6 +52,17 @@ vi.mock('~/stores/selection.store', () => ({
 
 vi.mock('~/stores/ui.store', () => ({
   useUiStore: () => uiStoreMock,
+}));
+
+vi.mock('~/stores/workspace.store', () => ({
+  useWorkspaceStore: () => workspaceStoreMock,
+}));
+
+vi.mock('~/composables/useAppClipboard', () => ({
+  useAppClipboard: () => ({
+    hasFileManagerPayload: false,
+    setCurrentDragOperation: setCurrentDragOperationMock,
+  }),
 }));
 
 vi.mock('~/composables/useDraggedFile', () => ({
@@ -68,6 +91,7 @@ describe('FileManagerTree', () => {
     selectionStoreMock.selectedEntity = null;
     selectionStoreMock.selectFsEntries.mockReset();
     selectionStoreMock.clearSelection.mockReset();
+    setCurrentDragOperationMock.mockReset();
     uiStoreMock.fileTreeSelectAllTrigger = 0;
   });
 
@@ -183,6 +207,82 @@ describe('FileManagerTree', () => {
       sourcePath: '_video/a.mp4',
       targetDirPath: '_video',
     });
+  });
+
+  it('starts drag as copy when layer1 modifier is active', async () => {
+    const file: FsEntry = {
+      name: 'clip.mp4',
+      kind: 'file',
+      path: '_video/clip.mp4',
+    };
+
+    const wrapper = mountTree([file]);
+    const treeItem = wrapper.find('[data-entry-path="_video/clip.mp4"]');
+
+    expect(treeItem.exists()).toBe(true);
+
+    const setData = vi.fn();
+    const dragEvent = {
+      dataTransfer: {
+        effectAllowed: 'uninitialized',
+        setData,
+      },
+      shiftKey: true,
+    } as unknown as DragEvent;
+
+    await treeItem.trigger('dragstart', dragEvent);
+
+    expect(setCurrentDragOperationMock).toHaveBeenCalledWith('copy');
+    expect(setData).toHaveBeenCalledWith(
+      'application/fastcat-copy',
+      JSON.stringify([{ name: 'clip.mp4', kind: 'file', path: '_video/clip.mp4' }]),
+    );
+  });
+
+  it('uses selected entries in drag payload when dragging a selected tree item', async () => {
+    const fileA: FsEntry = {
+      name: 'a.mp4',
+      kind: 'file',
+      path: '_video/a.mp4',
+      parentPath: '_video',
+    };
+    const fileB: FsEntry = {
+      name: 'b.mp4',
+      kind: 'file',
+      path: '_video/b.mp4',
+      parentPath: '_video',
+    };
+
+    selectionStoreMock.selectedEntity = {
+      source: 'fileManager',
+      kind: 'multiple',
+      entries: [fileA, fileB],
+    };
+
+    const wrapper = mountTree([fileA, fileB]);
+    const treeItem = wrapper.find('[data-entry-path="_video/a.mp4"]');
+
+    expect(treeItem.exists()).toBe(true);
+
+    const setData = vi.fn();
+    const dragEvent = {
+      dataTransfer: {
+        effectAllowed: 'uninitialized',
+        setData,
+      },
+      shiftKey: false,
+    } as unknown as DragEvent;
+
+    await treeItem.trigger('dragstart', dragEvent);
+
+    expect(setCurrentDragOperationMock).toHaveBeenCalledWith('move');
+    expect(setData).toHaveBeenCalledWith(
+      'application/fastcat-move',
+      JSON.stringify([
+        { name: 'a.mp4', kind: 'file', path: '_video/a.mp4' },
+        { name: 'b.mp4', kind: 'file', path: '_video/b.mp4' },
+      ]),
+    );
   });
 
   it('emits requestDownload on remote file drop', async () => {
