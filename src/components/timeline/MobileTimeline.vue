@@ -249,7 +249,6 @@ function closeAllDrawers() {
   isMultiSelectionDrawerOpen.value = false;
   isTrimDrawerOpen.value = false;
   isSettingsDrawerOpen.value = false;
-  drawerActiveSnapPoint.value = null;
 }
 
 // Unified selection watcher — opens the correct drawer based on what is selected.
@@ -347,14 +346,12 @@ function onUpdateDrawerOpen(val: boolean) {
     if (timelineStore.selectedTrackId) {
       timelineStore.selectTrack(null);
     }
-    drawerActiveSnapPoint.value = null;
     isLongPress.value = false;
   }
 }
 
 function onClipPropertiesDrawerClose() {
   isClipPropertiesDrawerOpen.value = false;
-  drawerActiveSnapPoint.value = null;
   isLongPress.value = false;
 
   if (suppressDrawerSelectionClear.value) {
@@ -377,7 +374,6 @@ function onClipTrimDrawerClose() {
 
 function onMultiSelectionDrawerClose() {
   isMultiSelectionDrawerOpen.value = false;
-  drawerActiveSnapPoint.value = null;
   isLongPress.value = false;
 
   if (suppressDrawerSelectionClear.value) {
@@ -465,8 +461,6 @@ function handleMobileTimelineItemSelect(ev: PointerEvent, id: string) {
     if (wasLongPress) {
       return;
     }
-
-    drawerActiveSnapPoint.value = null;
 
     const entity = selectionStore.selectedEntity;
     const isGapSelected =
