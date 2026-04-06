@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, nextTick } from 'vue';
+import { computed, ref, watch, nextTick, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -189,6 +189,44 @@ function onTimeRulerPointerDown(e: PointerEvent) {
   onBaseTimeRulerPointerDown(e);
 }
 
+let cachedPointerRectEl: HTMLElement | null = null;
+let cachedPointerRect: DOMRect | null = null;
+let pointerRectFrameId = 0;
+
+function clearPointerRectCache() {
+  cachedPointerRectEl = null;
+  cachedPointerRect = null;
+  if (pointerRectFrameId !== 0) {
+    cancelAnimationFrame(pointerRectFrameId);
+    pointerRectFrameId = 0;
+  }
+}
+
+function getCachedPointerRect(el: HTMLElement): DOMRect {
+  if (cachedPointerRectEl === el && cachedPointerRect) {
+    return cachedPointerRect;
+  }
+
+  cachedPointerRectEl = el;
+  cachedPointerRect = el.getBoundingClientRect();
+
+  if (pointerRectFrameId === 0) {
+    pointerRectFrameId = requestAnimationFrame(() => {
+      pointerRectFrameId = 0;
+      cachedPointerRectEl = null;
+      cachedPointerRect = null;
+    });
+  }
+
+  return cachedPointerRect;
+}
+
+function getTimeUsFromPointerEvent(el: HTMLElement, event: PointerEvent): number {
+  const rect = getCachedPointerRect(el);
+  const x = event.clientX - rect.left + el.scrollLeft;
+  return pxToTimeUs(x, timelineStore.timelineZoom);
+}
+
 function onTimelinePointerMove(e: PointerEvent) {
   const isRuler = (e.target as HTMLElement | null)?.closest('.timeline-ruler-container');
   const settings = isRuler ? rulerMouseSettings.value : timelineMouseSettings.value;
@@ -201,9 +239,7 @@ function onTimelinePointerMove(e: PointerEvent) {
   ) {
     const el = getActiveScrollEl(e) || scrollEl.value;
     if (el) {
-      const rect = el.getBoundingClientRect();
-      const x = e.clientX - rect.left + el.scrollLeft;
-      timelineStore.setCurrentTimeUs(pxToTimeUs(x, timelineStore.timelineZoom));
+      timelineStore.setCurrentTimeUs(getTimeUsFromPointerEvent(el, e));
     }
   }
 
@@ -212,6 +248,7 @@ function onTimelinePointerMove(e: PointerEvent) {
 }
 
 function onTimelinePointerUp(e: PointerEvent) {
+  clearPointerRectCache();
   onBaseGlobalPointerUp(e);
   stopPan(e);
 }
@@ -236,13 +273,15 @@ function onTrackAreaPointerDownCapture(e: PointerEvent) {
     } else if (timelineMouseSettings.value.middleDrag === 'move_playhead') {
       const el = getActiveScrollEl(e) || scrollEl.value;
       if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const x = e.clientX - rect.left + el.scrollLeft;
-      timelineStore.setCurrentTimeUs(pxToTimeUs(x, timelineStore.timelineZoom));
+      timelineStore.setCurrentTimeUs(getTimeUsFromPointerEvent(el, e));
       startPlayheadDrag(e);
     }
   }
 }
+
+onBeforeUnmount(() => {
+  clearPointerRectCache();
+});
 
 function onTrackAreaAuxClick(e: MouseEvent) {
   if (e.button !== 1) return;

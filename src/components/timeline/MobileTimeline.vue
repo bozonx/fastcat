@@ -773,12 +773,6 @@ function onTimelineClick(e: MouseEvent) {
     return;
   }
 
-  closeAllDrawers();
-  timelineStore.clearSelection();
-  timelineStore.selectTrack(null);
-  timelineStore.selectTransition(null);
-  selectionStore.clearSelection();
-
   const scrollX = el.scrollLeft;
   const x = e.clientX - scrollerRectY.left + scrollX;
   timelineStore.setCurrentTimeUs(pxToTimeUs(x, timelineStore.timelineZoom));
