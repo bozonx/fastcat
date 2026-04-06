@@ -165,7 +165,13 @@ export class VideoCompositor {
     if (!this.app?.renderer) return;
 
     const adjustmentClips = active
-      .filter((clip) => clip.clipKind === 'adjustment' && clip.sprite.visible)
+      .filter(
+        (clip) =>
+          clip.clipKind === 'adjustment' &&
+          clip.sprite &&
+          !clip.sprite.destroyed &&
+          clip.sprite.visible,
+      )
       .sort(
         (a, b) => a.layer - b.layer || a.startUs - b.startUs || a.itemId.localeCompare(b.itemId),
       );
@@ -388,7 +394,7 @@ export class VideoCompositor {
 
   private hideAllClipSprites() {
     for (const clip of this.clips) {
-      if (clip.sprite) {
+      if (clip.sprite && !clip.sprite.destroyed) {
         clip.sprite.visible = false;
       }
     }
@@ -698,7 +704,7 @@ export class VideoCompositor {
           timeUs: currentTimeUs,
           lastTimeUs,
           onDeactivate: (clip) => {
-            if (clip.sprite) {
+            if (clip.sprite && !clip.sprite.destroyed) {
               clip.sprite.visible = false;
             }
           },
