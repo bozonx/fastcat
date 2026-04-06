@@ -29,6 +29,7 @@ const props = defineProps<{
   compact?: boolean;
   hideActions?: boolean;
   instanceId?: string;
+  isExternal?: boolean;
   hideFocusFrame?: boolean;
 }>();
 
@@ -432,6 +433,7 @@ useFileManagerPanelBootstrap({
       :folders-only="foldersOnly"
       :is-files-page="isFilesPage"
       :instance-id="instanceId"
+      :is-external="isExternal"
       :is-dragging="false"
       :is-loading="isLoading"
       :is-api-supported="isApiSupported"

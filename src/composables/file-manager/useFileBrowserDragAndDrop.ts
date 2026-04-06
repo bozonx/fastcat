@@ -35,6 +35,7 @@ interface UseFileBrowserDragAndDropOptions {
   loadFolderContent: () => Promise<void>;
   notifyFileManagerUpdate: () => void;
   fileManagerInstanceId?: string | null;
+  isExternal?: boolean;
 }
 
 export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOptions) {
@@ -167,6 +168,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       operation,
       count: entriesToMove.length > 1 ? entriesToMove.length : undefined,
       items: movePayload,
+      isExternal: options.isExternal,
     };
     setDraggedFile(data);
     uiStore.isFileManagerDragging = true;

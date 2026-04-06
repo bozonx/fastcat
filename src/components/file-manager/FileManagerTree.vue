@@ -47,6 +47,7 @@ interface Props {
   foldersOnly?: boolean;
   isFilesPage?: boolean;
   instanceId?: string;
+  isExternal?: boolean;
 }
 
 interface TreeContext {
@@ -428,6 +429,7 @@ function onDragStart(e: DragEvent, entry: FsEntry) {
     operation,
     count: entriesToMove.length > 1 ? entriesToMove.length : undefined,
     items: movePayload,
+    isExternal: props.isExternal,
   };
   setDraggedFile(data);
   e.dataTransfer?.setData('application/json', JSON.stringify(data));
@@ -642,6 +644,7 @@ const { getContextMenuItems } = useFileContextMenu(
             :folders-only="foldersOnly"
             :instance-id="instanceId"
             :is-files-page="isFilesPage"
+            :is-external="isExternal"
             @commit-rename="(entry, name) => emit('commitRename', entry, name)"
             @stop-rename="emit('stopRename')"
             @toggle="emit('toggle', $event)"

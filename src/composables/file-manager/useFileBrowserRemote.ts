@@ -270,6 +270,7 @@ export function useFileBrowserRemote({
         path: entry.path,
         kind: 'file',
         operation: 'copy',
+        isExternal: true,
       };
       e.dataTransfer.setData(REMOTE_FILE_DRAG_TYPE, JSON.stringify(data));
       setDraggedFile(data as any);

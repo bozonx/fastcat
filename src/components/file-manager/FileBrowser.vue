@@ -161,6 +161,8 @@ const skipNextUpdateReload = ref(false);
 // Forward ref — assigned after navigation is created
 let _loadFolderContent: () => Promise<void> = async () => {};
 
+const isExternal = computed(() => !!props.vfs);
+
 const {
   isDragOverPanel,
   dragOverEntryPath,
@@ -170,8 +172,8 @@ const {
   onRootDragOver,
   onRootDragLeave,
   onRootDrop,
-  onEntryDragStart,
-  onEntryDragEnd,
+  onEntryDragStart: onEntryDragStartBase,
+  onEntryDragEnd: onEntryDragEndBase,
   onEntryDragEnter,
   onEntryDragOver,
   onEntryDragLeave,
@@ -191,6 +193,7 @@ const {
     uiStore.notifyFileManagerUpdate();
   },
   fileManagerInstanceId: instanceId,
+  isExternal: isExternal.value,
 });
 
 // --- Remote ---
@@ -208,8 +211,8 @@ const remote = useFileBrowserRemote({
       selectionStore.clearSelection();
     }
   },
-  onEntryDragStart,
-  onEntryDragEnd,
+  onEntryDragStart: (e, entry) => onEntryDragStart(e, entry),
+  onEntryDragEnd: () => onEntryDragEnd(),
   onEntryDragEnter,
   onEntryDragOver,
   onEntryDragLeave,
@@ -221,6 +224,7 @@ const remote = useFileBrowserRemote({
   handleFiles,
   vfs,
 });
+
 const {
   remoteTransferOpen,
   remoteTransferProgress,
@@ -231,7 +235,23 @@ const {
   loadRemoteFolderContent,
   loadRemoteParentFolders,
   remoteError,
+  onBrowserEntryDragStart,
+  onBrowserEntryDragEnd,
 } = remote;
+
+function onEntryDragStart(e: DragEvent, entry: FsEntry) {
+  if (isRemoteMode.value) {
+    return onBrowserEntryDragStart(e, entry);
+  }
+  return onEntryDragStartBase(e, entry);
+}
+
+function onEntryDragEnd() {
+  if (isRemoteMode.value) {
+    return onBrowserEntryDragEnd();
+  }
+  return onEntryDragEndBase();
+}
 
 function toggleBloggerDogPanel() {
   if (!isRemoteAvailable.value) {

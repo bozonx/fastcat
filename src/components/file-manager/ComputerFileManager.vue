@@ -154,6 +154,7 @@ function onSelect(entry: FsEntry) {
         compact
         hide-actions
         :instance-id="instanceId"
+        :is-external="true"
         hide-focus-frame
         class="h-full"
         @select="onSelect"
@@ -163,6 +164,7 @@ function onSelect(entry: FsEntry) {
       <FileBrowser
         :vfs="vfs!"
         :instance-id="instanceId"
+        :is-external="true"
         :hide-focus-frame="props.hideFocusFrame"
         :root-name="workspaceStore.workspaceProviderId === 'tauri' ? t('fastcat.fileManager.tabs.computer') : t('fastcat.fileManager.tabs.workspace')"
         hide-upload
