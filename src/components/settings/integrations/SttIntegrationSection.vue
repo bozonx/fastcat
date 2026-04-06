@@ -224,6 +224,9 @@ watch(
             :items="[
               { label: 'Whisper Tiny (Multilingual)', value: 'onnx-community/whisper-tiny' },
               { label: 'Whisper Base (Multilingual)', value: 'onnx-community/whisper-base' },
+              { label: 'Whisper Small (Multilingual)', value: 'onnx-community/whisper-small' },
+              { label: 'Whisper Medium (Multilingual)', value: 'onnx-community/whisper-medium' },
+              { label: 'Whisper Large v3 Turbo (Multilingual)', value: 'onnx-community/whisper-large-v3-turbo' },
             ]"
             full-width
           />
