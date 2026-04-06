@@ -40,6 +40,12 @@ const safeAddLabel = computed(() => props.addLabel ?? t('fastcat.effects.add', '
 const safeEmptyLabel = computed(() => props.emptyLabel ?? t('fastcat.effects.empty', 'No effects'));
 
 const safeEffects = computed(() => props.effects ?? []);
+const effectsWithManifest = computed(() =>
+  safeEffects.value.map((effect) => ({
+    effect,
+    manifest: getVideoEffectManifest(effect.type),
+  })),
+);
 
 function onDragOver(e: DragEvent) {
   if (e.dataTransfer?.types.includes('fastcat-effect')) {
@@ -125,10 +131,10 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
 
 <template>
   <PropertySection
+    v-model:toggle-value="modelValue"
     :title="safeTitle"
     class="mt-2"
     :has-toggle="props.hasToggle"
-    v-model:toggle-value="modelValue"
     @dragover="onDragOver"
     @drop="onDrop"
   >
@@ -162,7 +168,7 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
       @update:model-value="onUpdateOrder"
     >
       <div
-        v-for="effect in safeEffects"
+        v-for="{ effect, manifest } in effectsWithManifest"
         :key="effect.id"
         class="bg-ui-bg border border-ui-border rounded px-2 py-2"
         :class="{ 'opacity-50 pointer-events-none': props.disabled }"
@@ -180,11 +186,7 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
             @update:model-value="handleUpdateEffect(effect.id, { enabled: $event })"
           />
           <span class="font-medium flex-1 truncate">
-            {{
-              getVideoEffectManifest(effect.type)?.nameKey
-                ? t(getVideoEffectManifest(effect.type)!.nameKey!)
-                : getVideoEffectManifest(effect.type)?.name || effect.type
-            }}
+            {{ manifest?.nameKey ? t(manifest.nameKey) : manifest?.name || effect.type }}
           </span>
           <div class="flex items-center gap-1 shrink-0">
             <UButton
@@ -209,8 +211,8 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
 
         <div class="mt-1 pl-1">
           <ParamsRenderer
-            v-if="getVideoEffectManifest(effect.type)?.controls"
-            :controls="getVideoEffectManifest(effect.type)?.controls ?? []"
+            v-if="manifest?.controls"
+            :controls="manifest?.controls ?? []"
             :values="effect as any"
             :disabled="props.disabled || !effect.enabled"
             @update:value="(key, value) => handleUpdateEffectValue(effect.id, key, value)"

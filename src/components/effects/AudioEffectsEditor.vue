@@ -35,6 +35,19 @@ const newPresetName = ref('');
 const savingEffectId = ref<string | null>(null);
 
 const safeEffects = computed(() => props.effects ?? []);
+const effectsWithManifest = computed(() =>
+  safeEffects.value.map((effect) => ({
+    effect,
+    manifest: getAudioEffectManifest(effect.type),
+  })),
+);
+const activeSettingsEffect = computed(
+  () => safeEffects.value.find((effect) => effect.id === settingsEffectId.value) ?? null,
+);
+const activeSettingsManifest = computed(() => {
+  if (!activeSettingsEffect.value) return null;
+  return getAudioEffectManifest(activeSettingsEffect.value.type);
+});
 
 const availableEffects = computed(() => getAllAudioEffectManifests());
 const basicEffects = computed(() =>
@@ -132,7 +145,7 @@ function handleUpdateEffectValue(effectId: string, key: string, value: unknown) 
   handleUpdateEffect(effectId, { [key]: value } as Partial<AudioClipEffect>);
 }
 
-function handleAction(effectId: string, action: string, key: string) {
+function handleAction(effectId: string, action: string, _key: string) {
   if (action === 'open-settings') {
     settingsEffectId.value = effectId;
   }
@@ -145,10 +158,10 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
 
 <template>
   <PropertySection
+    v-model:toggle-value="modelValue"
     :title="t('fastcat.effects.audioTitle', 'Audio effects')"
     class="mt-2"
     :has-toggle="props.hasToggle"
-    v-model:toggle-value="modelValue"
     @dragover="onDragOver"
     @drop="onDrop"
   >
@@ -183,7 +196,7 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
         @update:model-value="onUpdateOrder"
       >
         <div
-          v-for="effect in safeEffects"
+          v-for="{ effect, manifest } in effectsWithManifest"
           :key="effect.id"
           class="bg-ui-bg border border-ui-border rounded px-2 py-2"
           :class="{ 'opacity-50 pointer-events-none': props.disabled }"
@@ -201,7 +214,7 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
               @update:model-value="handleUpdateEffect(effect.id, { enabled: $event })"
             />
             <span class="font-medium flex-1 truncate">
-              {{ getAudioEffectManifest(effect.type)?.name || effect.type }}
+              {{ manifest?.name || effect.type }}
             </span>
             <div class="flex items-center gap-1 shrink-0">
               <UButton
@@ -226,8 +239,8 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
 
           <div class="mt-1 pl-1">
             <ParamsRenderer
-              v-if="getAudioEffectManifest(effect.type)?.controls"
-              :controls="getAudioEffectManifest(effect.type)?.controls ?? []"
+              v-if="manifest?.controls"
+              :controls="manifest?.controls ?? []"
               :values="effect as any"
               :disabled="props.disabled || !effect.enabled"
               @update:value="
@@ -243,10 +256,8 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
     <EffectSettingsModal
       v-if="settingsEffectId"
       :model-value="true"
-      :effect="safeEffects.find((e) => e.id === settingsEffectId)"
-      :manifest="
-        getAudioEffectManifest(safeEffects.find((e) => e.id === settingsEffectId)?.type ?? '')
-      "
+      :effect="activeSettingsEffect"
+      :manifest="activeSettingsManifest"
       @update:model-value="
         (val) => {
           if (!val) settingsEffectId = null;
