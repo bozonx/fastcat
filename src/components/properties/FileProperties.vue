@@ -197,6 +197,7 @@ const {
   isBloggerDogProject,
   isBloggerDogGroup,
   isBloggerDogContentItem,
+  isBloggerDogMedia,
   bloggerDogDeepLink,
 } = useFilePropertiesBasics({
   selectedFsEntry: selectedFsEntryRef,
@@ -265,7 +266,10 @@ const isMediaFullyUnsupported = computed(
 
 const isRemoteContent = computed(
   () =>
-    isBloggerDogContentItem.value || isBloggerDogGroup.value || isBloggerDogProject.value,
+    isBloggerDogContentItem.value ||
+    isBloggerDogGroup.value ||
+    isBloggerDogProject.value ||
+    isBloggerDogMedia.value,
 );
 
 const castedRemoteRecord = computed(() => {
@@ -485,35 +489,17 @@ const isRemoteMode = computed(() => props.selectedFsEntry?.source === 'remote');
 const filteredDirectoryPrimaryActions = computed(() => {
   if (!isRemoteContent.value) return directoryPrimaryActions.value;
 
-  let actions = directoryPrimaryActions.value;
-
-  if (isBloggerDogProject.value) {
-    actions = actions.filter((a: PrimaryEntryAction) => !['rename', 'delete'].includes(a.id));
-  }
-
-  if (isBloggerDogContentItem.value) {
-    actions = actions.filter(
-      (a: PrimaryEntryAction) => !['createSubgroup', 'createContentItem'].includes(a.id),
-    );
-  }
-
-  return actions.filter((a: PrimaryEntryAction) =>
-    ['rename', 'delete', 'createSubgroup', 'createContentItem'].includes(a.id),
+  return directoryPrimaryActions.value.filter((a: PrimaryEntryAction) =>
+    ['rename', 'delete', 'copy', 'cut'].includes(a.id),
   );
 });
 
 const filteredFilePrimaryActions = computed(() => {
   if (!isRemoteContent.value) return filePrimaryActions.value;
 
-  let actions = filePrimaryActions.value;
-
-  if (isBloggerDogContentItem.value) {
-    actions = actions.filter(
-      (a: PrimaryEntryAction) => !['createSubgroup', 'createContentItem'].includes(a.id),
-    );
-  }
-
-  return actions.filter((a: PrimaryEntryAction) => ['rename', 'delete'].includes(a.id));
+  return filePrimaryActions.value.filter((a: PrimaryEntryAction) =>
+    ['rename', 'delete', 'copy', 'cut'].includes(a.id),
+  );
 });
 </script>
 
