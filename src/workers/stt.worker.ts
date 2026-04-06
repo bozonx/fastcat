@@ -68,29 +68,47 @@ async function initTranscriber(modelName: string) {
   // Update local model path to point to our virtual models directory
   env.localModelPath = '/models/';
 
+  // Check if WebGPU is supported by the browser before trying
+  const isWebGpuSupported = !!(self.navigator as any).gpu;
+  
+  if (isWebGpuSupported) {
+    try {
+      currentModelName = modelName;
+      transcriber = (await pipeline('automatic-speech-recognition', modelName, {
+        device: 'webgpu',
+        progress_callback: (progress: any) => {
+          self.postMessage({ type: 'progress', data: progress });
+        },
+      })) as AutomaticSpeechRecognitionPipeline;
+      
+      console.log('[STT Worker] Pipeline initialized with WebGPU');
+      return transcriber;
+    } catch (err: any) {
+      console.warn('[STT Worker] WebGPU failed to acquire adapter, falling back to CPU:', err);
+    }
+  } else {
+    console.log('[STT Worker] WebGPU not supported by browser, using CPU');
+  }
+
+  // Fallback to CPU (WASM)
+  transcriber = null;
+  currentModelName = null;
+  
   try {
-    currentModelName = modelName; // Set it before pipeline starts fetching
-    transcriber = (await pipeline('automatic-speech-recognition', modelName, {
-      device: 'webgpu', // Try WebGPU first
-      // quantization: 'quantized', // We already download quantized files
-      progress_callback: (progress: any) => {
-        self.postMessage({ type: 'progress', data: progress });
-      },
-    })) as AutomaticSpeechRecognitionPipeline;
-    
-    return transcriber;
-  } catch (err) {
-    console.warn('[STT Worker] WebGPU initialization failed, falling back to WASM:', err);
-    
-    currentModelName = modelName; // Set it again just in case (should already be set)
-    transcriber = (await pipeline('automatic-speech-recognition', modelName, {
-      device: 'wasm',
-      progress_callback: (progress: any) => {
-        self.postMessage({ type: 'progress', data: progress });
-      },
-    })) as AutomaticSpeechRecognitionPipeline;
-    
-    return transcriber;
+      currentModelName = modelName;
+      transcriber = (await pipeline('automatic-speech-recognition', modelName, {
+          device: 'wasm', 
+          dtype: 'fp32', // More compatible for WASM usually
+          progress_callback: (progress: any) => {
+              self.postMessage({ type: 'progress', data: progress });
+          },
+      })) as AutomaticSpeechRecognitionPipeline;
+      
+      console.log('[STT Worker] Pipeline initialized with WASM');
+      return transcriber;
+  } catch (wasmErr: any) {
+      console.error('[STT Worker] WASM initialization failed:', wasmErr);
+      throw wasmErr;
   }
 }
 
