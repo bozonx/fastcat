@@ -86,10 +86,8 @@ export function useFileBrowserTranscription() {
         fileType,
         language: transcriptionLanguage.value,
         fastcatAccountApiUrl: fastcatAccountApiUrl.value,
-        projectId: projectStore.currentProjectId!,
         userSettings: workspaceStore.userSettings,
         workspaceHandle: workspaceStore.workspaceHandle!,
-        resolvedStorageTopology: workspaceStore.resolvedStorageTopology,
       };
 
       const result = await transcribeAudioFile(request);
@@ -102,16 +100,16 @@ export function useFileBrowserTranscription() {
         description: result.cached
           ? t(
               'videoEditor.fileManager.audio.transcriptionCachedDescription',
-              'Cached transcription was loaded from vardata.',
+              'Cached transcription was loaded from the file directory.',
             )
           : mediaType === 'video'
             ? t(
                 'videoEditor.fileManager.audio.transcriptionSavedVideoDescription',
-                'Video audio track was transcribed and saved to vardata cache.',
+                'Video audio track was transcribed and saved next to the source file.',
               )
             : t(
                 'videoEditor.fileManager.audio.transcriptionSavedDescription',
-                'Transcription was saved to vardata cache.',
+                'Transcription was saved next to the source file.',
               ),
         color: 'success',
       });

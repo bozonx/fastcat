@@ -22,6 +22,8 @@ function createFileManagerStoreSetup(contextId: string) {
     const selectionStore = useSelectionStore();
 
     const selectedFolder = ref<FsEntry | null>(null);
+    const historyStack = ref<FsEntry[]>([]);
+    const futureStack = ref<FsEntry[]>([]);
     const folderSizes = ref<Record<string, number>>({});
     const isBloggerDogPanelVisible = ref(readLocalStorageJson(`${STORAGE_KEY}:isBloggerDogPanelVisible`, false));
 
@@ -65,13 +67,28 @@ function createFileManagerStoreSetup(contextId: string) {
       },
     );
 
-    function openFolder(entry: FsEntry | null) {
+    function openFolder(entry: FsEntry | null, options: { skipHistory?: boolean } = {}) {
       if (entry && entry.kind === 'directory') {
+        if (!options.skipHistory && selectedFolder.value) {
+          const current = { ...selectedFolder.value };
+          // Only add to history if path or source changed
+          if (current.path !== entry.path || current.source !== entry.source) {
+            historyStack.value.push(current);
+            futureStack.value = [];
+          }
+        }
         selectedFolder.value = entry;
         selectionStore.selectFsEntry(entry);
       } else {
         selectedFolder.value = null;
       }
+    }
+
+    function addToHistory(entry: FsEntry) {
+      const last = historyStack.value[historyStack.value.length - 1];
+      if (last && last.path === entry.path && last.source === entry.source) return;
+      historyStack.value.push({ ...entry });
+      futureStack.value = [];
     }
 
     function selectItem(entry: FsEntry | null) {
@@ -133,7 +150,10 @@ function createFileManagerStoreSetup(contextId: string) {
       columnWidths,
       folderSizes,
       sortFields,
+      historyStack,
+      futureStack,
       openFolder,
+      addToHistory,
       selectItem,
       clearSelection,
       setViewMode,
