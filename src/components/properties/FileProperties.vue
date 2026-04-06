@@ -18,7 +18,7 @@ import type { RemoteVfsFileEntry } from '~/types/remote-vfs';
 import ImageFilePropertiesSection from '~/components/properties/file/ImageFilePropertiesSection.vue';
 import OtioPropertiesSection from '~/components/properties/file/OtioPropertiesSection.vue';
 import FileProjectRootSection from '~/components/properties/file/FileProjectRootSection.vue';
-import FileTranscriptionModal from '~/components/properties/file/FileTranscriptionModal.vue';
+import FileTranscriptionModal from '~/components/file-manager/modals/FileTranscriptionModal.vue';
 import EntryActions from '~/components/properties/file/EntryActions.vue';
 import BloggerDogItemPropertiesSection from '~/components/properties/file/BloggerDogItemPropertiesSection.vue';
 import { useEntryPreview } from '~/composables/file-manager/useEntryPreview';
@@ -122,7 +122,10 @@ const isCommonPath = computed(() => isWorkspaceCommonPath(props.selectedFsEntry?
 const isRemoteRoot = computed(() => {
   const entry = props.selectedFsEntry;
   const path = entry?.path || '';
-  return entry?.source === 'remote' && (path === '' || path === '/' || path === '/remote' || path === '/remote/');
+  return (
+    entry?.source === 'remote' &&
+    (path === '' || path === '/' || path === '/remote' || path === '/remote/')
+  );
 });
 
 function triggerDirectoryUpload() {
@@ -186,10 +189,10 @@ const {
   onResetPreviewMode: (mode) => emit('update:previewMode', mode),
 });
 
-const { 
-  generalInfoTitle, 
-  isHidden, 
-  mediaMeta, 
+const {
+  generalInfoTitle,
+  isHidden,
+  mediaMeta,
   selectedPath,
   isBloggerDogProject,
   isBloggerDogGroup,
@@ -484,7 +487,9 @@ const filteredDirectoryPrimaryActions = computed(() => {
   }
 
   if (isBloggerDogContentItem.value) {
-    actions = actions.filter((a: PrimaryEntryAction) => !['createSubgroup', 'createContentItem'].includes(a.id));
+    actions = actions.filter(
+      (a: PrimaryEntryAction) => !['createSubgroup', 'createContentItem'].includes(a.id),
+    );
   }
 
   return actions.filter((a: PrimaryEntryAction) =>
@@ -498,7 +503,9 @@ const filteredFilePrimaryActions = computed(() => {
   let actions = filePrimaryActions.value;
 
   if (isBloggerDogContentItem.value) {
-    actions = actions.filter((a: PrimaryEntryAction) => !['createSubgroup', 'createContentItem'].includes(a.id));
+    actions = actions.filter(
+      (a: PrimaryEntryAction) => !['createSubgroup', 'createContentItem'].includes(a.id),
+    );
   }
 
   return actions.filter((a: PrimaryEntryAction) => ['rename', 'delete'].includes(a.id));
@@ -559,9 +566,7 @@ const filteredFilePrimaryActions = computed(() => {
     />
 
     <template v-if="isRemoteRoot">
-      <PropertySection
-        :title="t('fastcat.bloggerDog.contentLibrary', 'Библиотека контента')"
-      >
+      <PropertySection :title="t('fastcat.bloggerDog.contentLibrary', 'Библиотека контента')">
         <PropertyRow :label="t('fastcat.bloggerDog.connection', 'Соединение')">
           <div class="flex items-center gap-2 text-green-400">
             <span>{{ t('fastcat.bloggerDog.connected', 'Установлено') }}</span>
@@ -598,7 +603,15 @@ const filteredFilePrimaryActions = computed(() => {
       />
 
       <PropertySection
-        v-if="!hideActions && fileInfo && fileInfo.kind === 'directory' && !isRemoteRoot && !isVirtualAll && !isPersonalLibrary && !isProjectLibraries"
+        v-if="
+          !hideActions &&
+          fileInfo &&
+          fileInfo.kind === 'directory' &&
+          !isRemoteRoot &&
+          !isVirtualAll &&
+          !isPersonalLibrary &&
+          !isProjectLibraries
+        "
         key="actions-directory"
         :title="t('videoEditor.fileManager.actions.title', 'Actions')"
       >
@@ -609,7 +622,13 @@ const filteredFilePrimaryActions = computed(() => {
       </PropertySection>
 
       <PropertySection
-        v-else-if="!hideActions && fileInfo?.kind === 'file' && !isVirtualAll && !isPersonalLibrary && !isProjectLibraries"
+        v-else-if="
+          !hideActions &&
+          fileInfo?.kind === 'file' &&
+          !isVirtualAll &&
+          !isPersonalLibrary &&
+          !isProjectLibraries
+        "
         key="actions-file"
         :title="t('videoEditor.fileManager.actions.title', 'Actions')"
       >
@@ -645,101 +664,97 @@ const filteredFilePrimaryActions = computed(() => {
         :format-duration-seconds="formatDurationSeconds"
       />
 
-
-
-
       <PropertySection
         v-if="isVirtualAll"
         :title="t('fastcat.bloggerDog.allContent', 'Весь контент')"
       >
-         <div class="text-xs text-ui-text-muted italic px-2 py-1 mb-2">
-           {{ t('fastcat.bloggerDog.virtualAllDesc', 'Виртуальный плосский список всех элементов контента') }}
-         </div>
-         <PropertyRow
-           v-if="bloggerDogDeepLink"
-           :label="t('common.path', 'Путь')"
-         >
-           <a
-             :href="bloggerDogDeepLink"
-             target="_blank"
-             class="text-primary-500 hover:text-primary-400 underline decoration-dotted transition-colors flex items-center gap-1 overflow-hidden"
-           >
-             <span class="truncate">{{ bloggerDogDeepLink }}</span>
-             <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 shrink-0" />
-           </a>
-         </PropertyRow>
+        <div class="text-xs text-ui-text-muted italic px-2 py-1 mb-2">
+          {{
+            t(
+              'fastcat.bloggerDog.virtualAllDesc',
+              'Виртуальный плосский список всех элементов контента',
+            )
+          }}
+        </div>
+        <PropertyRow v-if="bloggerDogDeepLink" :label="t('common.path', 'Путь')">
+          <a
+            :href="bloggerDogDeepLink"
+            target="_blank"
+            class="text-primary-500 hover:text-primary-400 underline decoration-dotted transition-colors flex items-center gap-1 overflow-hidden"
+          >
+            <span class="truncate">{{ bloggerDogDeepLink }}</span>
+            <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 shrink-0" />
+          </a>
+        </PropertyRow>
       </PropertySection>
 
       <PropertySection
         v-if="isPersonalLibrary"
         :title="t('fastcat.bloggerDog.personalLibrary', 'Личная библиотека')"
       >
-         <div class="text-xs text-ui-text-muted italic px-2 py-1 mb-2">
-           {{ t('fastcat.bloggerDog.personalLibraryDesc', 'Библиотека вашего личного контента') }}
-         </div>
-         <PropertyRow
-           v-if="bloggerDogDeepLink"
-           :label="t('common.path', 'Путь')"
-         >
-           <a
-             :href="bloggerDogDeepLink"
-             target="_blank"
-             class="text-primary-500 hover:text-primary-400 underline decoration-dotted transition-colors flex items-center gap-1 overflow-hidden"
-           >
-             <span class="truncate">{{ bloggerDogDeepLink }}</span>
-             <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 shrink-0" />
-           </a>
-         </PropertyRow>
+        <div class="text-xs text-ui-text-muted italic px-2 py-1 mb-2">
+          {{ t('fastcat.bloggerDog.personalLibraryDesc', 'Библиотека вашего личного контента') }}
+        </div>
+        <PropertyRow v-if="bloggerDogDeepLink" :label="t('common.path', 'Путь')">
+          <a
+            :href="bloggerDogDeepLink"
+            target="_blank"
+            class="text-primary-500 hover:text-primary-400 underline decoration-dotted transition-colors flex items-center gap-1 overflow-hidden"
+          >
+            <span class="truncate">{{ bloggerDogDeepLink }}</span>
+            <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 shrink-0" />
+          </a>
+        </PropertyRow>
       </PropertySection>
 
       <PropertySection
         v-if="isProjectLibraries"
         :title="t('fastcat.bloggerDog.projectLibraries', 'Библиотеки проектов')"
       >
-         <div class="text-xs text-ui-text-muted italic px-2 py-1 mb-2">
-           {{ t('fastcat.bloggerDog.projectLibrariesDesc', 'Библиотеки контента конкретных проектов') }}
-         </div>
-         <PropertyRow
-           v-if="bloggerDogDeepLink"
-           :label="t('common.path', 'Путь')"
-         >
-           <a
-             :href="bloggerDogDeepLink"
-             target="_blank"
-             class="text-primary-500 hover:text-primary-400 underline decoration-dotted transition-colors flex items-center gap-1 overflow-hidden"
-           >
-             <span class="truncate">{{ bloggerDogDeepLink }}</span>
-             <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 shrink-0" />
-           </a>
-         </PropertyRow>
+        <div class="text-xs text-ui-text-muted italic px-2 py-1 mb-2">
+          {{
+            t('fastcat.bloggerDog.projectLibrariesDesc', 'Библиотеки контента конкретных проектов')
+          }}
+        </div>
+        <PropertyRow v-if="bloggerDogDeepLink" :label="t('common.path', 'Путь')">
+          <a
+            :href="bloggerDogDeepLink"
+            target="_blank"
+            class="text-primary-500 hover:text-primary-400 underline decoration-dotted transition-colors flex items-center gap-1 overflow-hidden"
+          >
+            <span class="truncate">{{ bloggerDogDeepLink }}</span>
+            <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 shrink-0" />
+          </a>
+        </PropertyRow>
       </PropertySection>
 
-      <PropertySection
-        v-if="isBloggerDogProject"
-        :title="generalInfoTitle"
-      >
-         <PropertyRow
-           v-if="selectedPath"
-           :label="t('common.path', 'Путь')"
-           :value="selectedPath"
-         />
-         <PropertyRow
-           v-if="bloggerDogDeepLink"
-           :label="t('common.url', 'URL')"
-         >
-           <a
-             :href="bloggerDogDeepLink"
-             target="_blank"
-             class="text-primary-500 hover:text-primary-400 underline decoration-dotted transition-colors flex items-center gap-1 overflow-hidden"
-           >
-             <span class="truncate">{{ bloggerDogDeepLink.replace(/.*\/projects\//, '/projects/') }}</span>
-             <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 shrink-0" />
-           </a>
-         </PropertyRow>
+      <PropertySection v-if="isBloggerDogProject" :title="generalInfoTitle">
+        <PropertyRow v-if="selectedPath" :label="t('common.path', 'Путь')" :value="selectedPath" />
+        <PropertyRow v-if="bloggerDogDeepLink" :label="t('common.url', 'URL')">
+          <a
+            :href="bloggerDogDeepLink"
+            target="_blank"
+            class="text-primary-500 hover:text-primary-400 underline decoration-dotted transition-colors flex items-center gap-1 overflow-hidden"
+          >
+            <span class="truncate">{{
+              bloggerDogDeepLink.replace(/.*\/projects\//, '/projects/')
+            }}</span>
+            <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 shrink-0" />
+          </a>
+        </PropertyRow>
       </PropertySection>
 
       <FileGeneralInfoSection
-        v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'directory' && !isRemoteRoot && !isVirtualAll && !isPersonalLibrary && !isProjectLibraries && !isBloggerDogProject"
+        v-if="
+          fileInfo &&
+          !isProjectRootDir &&
+          fileInfo.kind === 'directory' &&
+          !isRemoteRoot &&
+          !isVirtualAll &&
+          !isPersonalLibrary &&
+          !isProjectLibraries &&
+          !isBloggerDogProject
+        "
         :title="generalInfoTitle"
         :file-info="fileInfo"
         :selected-path="selectedPath"
@@ -748,14 +763,18 @@ const filteredFilePrimaryActions = computed(() => {
         :format-bytes="formatBytes"
         :media-count="castedRemoteRecord?.media?.length"
       >
-        <template v-if="selectedFsEntry?.source === 'remote' && (selectedFsEntry as any).remoteData?.itemsCount !== undefined">
-           <PropertyRow 
-             :label="t('fastcat.file.itemsCount', 'Количество элементов')" 
-             :value="(selectedFsEntry as any).remoteData.itemsCount" 
-           />
+        <template
+          v-if="
+            selectedFsEntry?.source === 'remote' &&
+            (selectedFsEntry as any).remoteData?.itemsCount !== undefined
+          "
+        >
+          <PropertyRow
+            :label="t('fastcat.file.itemsCount', 'Количество элементов')"
+            :value="(selectedFsEntry as any).remoteData.itemsCount"
+          />
         </template>
       </FileGeneralInfoSection>
-
 
       <FileGeneralInfoSection
         v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'file'"
@@ -791,9 +810,9 @@ const filteredFilePrimaryActions = computed(() => {
       />
 
       <FileTranscriptionModal
-        v-model:is-transcription-modal-open="isTranscriptionModalOpen"
+        v-model:open="isTranscriptionModalOpen"
         v-model:transcription-language="transcriptionLanguage"
-        :is-transcribing-audio="isTranscribingAudio"
+        :is-transcribing="isTranscribingAudio"
         :transcription-error="transcriptionError"
         @submit="submitAudioTranscription"
       />

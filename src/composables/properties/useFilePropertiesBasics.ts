@@ -112,11 +112,11 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
   const generalInfoTitle = computed(() => {
     const info = options.fileInfo.value;
     if (!info) return '';
-    
+
     if (isBloggerDogProject.value) return t('fastcat.file.bloggerDogProject', 'Проект');
     if (isBloggerDogGroup.value) return t('fastcat.file.bloggerDogGroup', 'Группа');
     if (isBloggerDogContentItem.value) return t('fastcat.file.bloggerDogItem', 'Элемент контента');
-    
+
     if (info.kind === 'directory') return t('common.folder', 'Folder');
     if (options.isOtio.value) return 'OTIO';
 
@@ -144,6 +144,7 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
     isVideoOrAudio,
     mediaMeta,
     selectedPath,
+    isBloggerDogProject,
     isBloggerDogGroup,
     isBloggerDogContentItem,
     isBloggerDogMedia,
