@@ -21,8 +21,8 @@ const XENOVA_FILES = [
   'preprocessor_config.json',
   'tokenizer.json',
   'tokenizer_config.json',
-  'onnx/encoder_model.onnx',
-  'onnx/decoder_model_merged.onnx',
+  'onnx/encoder_model_quantized.onnx',
+  'onnx/decoder_model_merged_quantized.onnx',
 ];
 
 export const WHISPER_MODEL_FILES: Record<string, string[]> = {
