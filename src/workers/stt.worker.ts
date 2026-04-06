@@ -23,21 +23,12 @@ const originalFetch = self.fetch;
 self.fetch = (async (url: string | URL, options?: RequestInit) => {
   const urlStr = url.toString();
   
-  // Skip internal Vite/HMR or non-model requests
-  if (!urlStr.includes('/models/') && (!currentModelName || !urlStr.includes(currentModelName))) {
-    return originalFetch(url, options);
-  }
-
-  console.log(`[STT Worker] Intercepted fetch: ${urlStr}`);
-
   if (!modelDirHandle || !currentModelName) {
-    console.warn('[STT Worker] Handle or model name missing during fetch');
-    return new Response('Not Found', { status: 404 });
+    return originalFetch(url, options);
   }
 
   const escapedCurrentModelName = currentModelName.replace(/\//g, '_');
   
-  // Extract file path from URL
   let filePath = '';
   const modelsPrefix = '/models/';
   if (urlStr.includes(modelsPrefix)) {
@@ -51,11 +42,8 @@ self.fetch = (async (url: string | URL, options?: RequestInit) => {
       filePath = urlStr.split('/').pop() || '';
   }
 
-  // Clean up filePath (remove query params etc if any)
   filePath = filePath.split('?')[0]!.split('#')[0]!;
 
-  console.log(`[STT Worker] Mapped to: folder=${escapedCurrentModelName}, file=${filePath}`);
-  
   try {
     const modelFolder = await modelDirHandle.getDirectoryHandle(escapedCurrentModelName, { create: false });
     const fileParts = filePath.split('/').filter(Boolean);
@@ -66,11 +54,9 @@ self.fetch = (async (url: string | URL, options?: RequestInit) => {
     
     const fileHandle = await currentDir.getFileHandle(fileParts.at(-1)!, { create: false });
     const file = await fileHandle.getFile();
-    console.log(`[STT Worker] Success: ${escapedCurrentModelName}/${filePath}`);
     return new Response(file);
   } catch (err) {
-    console.warn(`[STT Worker] Not Found in local: ${escapedCurrentModelName}/${filePath}`, err);
-    return new Response('Not Found', { status: 404 });
+    return originalFetch(url, options);
   }
 }) as any;
 
@@ -126,19 +112,18 @@ self.onmessage = async (event) => {
       const result = await p(audio, {
         language,
         subtask: subtask || 'transcribe',
-        return_timestamps: 'word', // Word-level timestamps
+        return_timestamps: 'word', 
         chunk_length_s: 30,
         stride_length_s: 5,
         callback_function: (output: any) => {
-            // Optional: send partial results
             self.postMessage({ type: 'partial-result', id, data: output });
         }
       });
 
       self.postMessage({ type: 'result', id, data: result });
     } catch (err: any) {
-      console.error('[STT Worker] Transcription error:', err);
-      self.postMessage({ type: 'error', id, error: err.message });
+      console.error(`[STT Worker] Transcription error:`, err);
+      self.postMessage({ type: 'error', id, error: err.message || String(err) });
     }
   }
 };

@@ -99,23 +99,36 @@ export async function transcribeLocally(
     const mono = toMono(decodeResult.channelBuffers.map((b: any) => new Float32Array(b)));
     const finalAudio = resample(mono, decodeResult.sampleRate, 16000);
 
-    // 3. Transcription via Web Worker
-    onProgress?.({ status: 'initializing' });
     const worker = getWorker();
     const id = ++currentRequestId;
+    const signal = input.signal;
+
+    onProgress?.({ status: 'initializing' });
 
     return new Promise((resolve, reject) => {
+        const abortHandler = () => {
+            worker.removeEventListener('message', handler);
+            reject(new Error('Transcription cancelled'));
+        };
+
+        if (signal?.aborted) {
+            return reject(new Error('Transcription cancelled'));
+        }
+        signal?.addEventListener('abort', abortHandler);
+
         const handler = (event: MessageEvent) => {
             const { type, id: msgId, data, error } = event.data;
             if (msgId !== id) return;
 
             if (type === 'progress') {
+                if (signal?.aborted) return;
                 // data contains progress from HF Transformers.js
                 onProgress?.({ status: 'initializing', progress: data.progress });
             } else if (type === 'result') {
                 worker.removeEventListener('message', handler);
+                signal?.removeEventListener('abort', abortHandler);
                 
-                // Compute cache key
+                if (signal?.aborted) return reject(new Error('Transcription cancelled'));
                 const modelNameForCache = `local-${modelName}`;
                 createCacheKey({
                     filePath: input.filePath,

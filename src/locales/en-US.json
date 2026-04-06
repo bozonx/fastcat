@@ -1079,7 +1079,15 @@
     },
     "backgroundTasks": {
       "empty": "No background tasks",
-      "title": "Background Tasks"
+      "title": "Background Tasks",
+      "types": {
+        "proxy": "Proxy Generation",
+        "conversion": "File Conversion",
+        "file-operation": "File Operation",
+        "transcription": "Transcription",
+        "other": "Other"
+      },
+      "transcriptionTitle": "Transcription: {name}"
     },
     "export": {
       "audioBitrate": "Audio bitrate (kbps)",

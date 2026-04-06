@@ -278,7 +278,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
     stt: {
       provider: '',
       models: [],
-      localModel: 'onnx-community/whisper-tiny',
+      localModel: 'Xenova/whisper-tiny',
       restorePunctuation: true,
       formatText: false,
       includeWords: true,

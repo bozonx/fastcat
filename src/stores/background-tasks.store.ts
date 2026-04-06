@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 
 export type BackgroundTaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
-export type BackgroundTaskType = 'proxy' | 'conversion' | 'file-operation' | 'other';
+export type BackgroundTaskType = 'proxy' | 'conversion' | 'file-operation' | 'transcription' | 'other';
 
 export interface BackgroundTask {
   id: string;

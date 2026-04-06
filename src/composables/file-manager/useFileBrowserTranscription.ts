@@ -3,7 +3,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
-import { transcribeAudioFile } from '~/utils/transcription/engine';
+import { runTranscriptionTask } from '~/utils/transcription/task-wrapper';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import type { FsEntry } from '~/types/fs';
 import type { ExtendedFsEntry } from '~/composables/file-manager/useFileBrowserEntries';
@@ -93,10 +93,11 @@ export function useFileBrowserTranscription() {
         fastcatAccountApiUrl: fastcatAccountApiUrl.value,
         userSettings: workspaceStore.userSettings,
         workspaceHandle: workspaceStore.workspaceHandle!,
+        title: t('videoEditor.backgroundTasks.transcriptionTitle', { name: entry.name }, `Transcription: ${entry.name}`),
       };
 
-      const result = await transcribeAudioFile(request);
       transcriptionModalOpen.value = false;
+      const result = await runTranscriptionTask(request);
 
       toast.add({
         title: result.cached
@@ -119,10 +120,14 @@ export function useFileBrowserTranscription() {
         color: 'success',
       });
     } catch (error: unknown) {
-      transcriptionError.value =
-        error instanceof Error
-          ? error.message
-          : t('videoEditor.fileManager.audio.transcriptionFailed', 'Failed to transcribe media');
+      if ((error as Error).name === 'AbortError' || (error as Error).message === 'Transcription cancelled') {
+        return;
+      }
+      toast.add({
+        title: t('videoEditor.fileManager.audio.transcriptionFailed', 'Failed to transcribe media'),
+        description: (error as Error).message,
+        color: 'danger',
+      });
     } finally {
       isTranscribing.value = false;
     }

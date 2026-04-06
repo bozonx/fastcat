@@ -12,10 +12,25 @@ export interface ModelDownloadProgress {
 const HF_BASE = 'https://huggingface.co';
 
 /**
- * List of files required for Whisper models in Transformers.js v3 (ONNX).
- * We prioritize quantized versions for better performance and smaller size.
+ * List of files required for Whisper models in Transformers.js.
+ * We include both onnx-community and Xenova patterns.
  */
+const XENOVA_FILES = [
+  'config.json',
+  'generation_config.json',
+  'preprocessor_config.json',
+  'tokenizer.json',
+  'tokenizer_config.json',
+  'onnx/encoder_model.onnx',
+  'onnx/decoder_model_merged.onnx',
+];
+
 export const WHISPER_MODEL_FILES: Record<string, string[]> = {
+  'Xenova/whisper-tiny': XENOVA_FILES,
+  'Xenova/whisper-base': XENOVA_FILES,
+  'Xenova/whisper-small': XENOVA_FILES,
+  'Xenova/whisper-medium': XENOVA_FILES,
+  'Xenova/whisper-large-v3': XENOVA_FILES,
   'onnx-community/whisper-tiny': [
     'config.json',
     'generation_config.json',
@@ -49,24 +64,32 @@ export async function getSttModelsDir(
 async function getModelDir(
   workspaceHandle: FileSystemDirectoryHandle,
   modelName: string,
-): Promise<FileSystemDirectoryHandle> {
-  const base = await getSttModelsDir(workspaceHandle);
-  // Replace slashes with underscores for directory names (e.g. onnx-community/whisper-tiny -> onnx-community_whisper-tiny)
-  const dirName = modelName.replace(/\//g, '_');
-  return await base.getDirectoryHandle(dirName, { create: true });
+  create = false,
+): Promise<FileSystemDirectoryHandle | null> {
+  try {
+    const base = await getSttModelsDir(workspaceHandle);
+    const dirName = modelName.replace(/\//g, '_');
+    return await base.getDirectoryHandle(dirName, { create });
+  } catch {
+    return null;
+  }
 }
 
 export async function isModelDownloaded(
   workspaceHandle: FileSystemDirectoryHandle,
   modelName: string,
 ): Promise<boolean> {
+  const requiredFiles = WHISPER_MODEL_FILES[modelName];
+  if (!requiredFiles || requiredFiles.length === 0) {
+    return false;
+  }
+
   try {
-    const dir = await getModelDir(workspaceHandle, modelName);
-    const requiredFiles = WHISPER_MODEL_FILES[modelName] || [];
+    const dir = await getModelDir(workspaceHandle, modelName, false);
+    if (!dir) return false;
 
     for (const file of requiredFiles) {
       try {
-        // Files in subdirectories (like onnx/...) need recursive lookup
         if (file.includes('/')) {
           const parts = file.split('/');
           let current: FileSystemDirectoryHandle = dir;
@@ -92,7 +115,9 @@ export async function downloadModel(
   modelName: string,
   onProgress?: (progress: ModelDownloadProgress) => void,
 ): Promise<void> {
-  const dir = await getModelDir(workspaceHandle, modelName);
+  const dir = await getModelDir(workspaceHandle, modelName, true);
+  if (!dir) throw new Error(`Failed to create directory for model: ${modelName}`);
+  
   const files = WHISPER_MODEL_FILES[modelName];
 
   if (!files) {
@@ -149,7 +174,7 @@ export async function downloadModel(
     });
 
     // Save to filesystem
-    let targetDir = dir;
+    let targetDir: FileSystemDirectoryHandle = dir;
     let targetFileName = fileName;
 
     if (fileName.includes('/')) {
@@ -180,8 +205,10 @@ export async function getModelFile(
   modelName: string,
   fileName: string,
 ): Promise<File> {
-  const dir = await getModelDir(workspaceHandle, modelName);
-  let targetDir = dir;
+  const dir = await getModelDir(workspaceHandle, modelName, false);
+  if (!dir) throw new Error(`Model directory not found: ${modelName}`);
+
+  let targetDir: FileSystemDirectoryHandle = dir;
   let targetFileName = fileName;
 
   if (fileName.includes('/')) {

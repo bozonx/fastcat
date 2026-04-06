@@ -1080,7 +1080,15 @@
     },
     "backgroundTasks": {
       "empty": "Нет фоновых задач",
-      "title": "Фоновые задачи"
+      "title": "Фоновые задачи",
+      "types": {
+        "proxy": "Создание прокси",
+        "conversion": "Конвертация файла",
+        "file-operation": "Файловая операция",
+        "transcription": "Транскрибация",
+        "other": "Другое"
+      },
+      "transcriptionTitle": "Транскрибация: {name}"
     },
     "export": {
       "audioBitrate": "Битрейт аудио (кбит/с)",

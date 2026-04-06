@@ -14,6 +14,8 @@ export interface TranscriptionRequest {
   fastcatAccountApiUrl: string;
   userSettings: FastCatUserSettings;
   workspaceHandle: FileSystemDirectoryHandle;
+  onProgress?: (progress: number) => void;
+  signal?: AbortSignal;
 }
 
 export interface TranscriptionResult {
@@ -125,7 +127,11 @@ export async function transcribeAudioFile(
   
   if (provider === 'local') {
     const { transcribeLocally } = await import('./local-engine');
-    return await transcribeLocally(input);
+    return await transcribeLocally(input, (p) => {
+      if (p.status === 'transcribing' || p.status === 'initializing') {
+        input.onProgress?.(p.progress || 0);
+      }
+    });
   }
 
   const resolvedConfig = resolveExternalServiceConfig({
@@ -193,16 +199,21 @@ export async function transcribeAudioFile(
     });
   }
 
+  input.onProgress?.(0);
+
   const response = await fetch(endpoint, {
     method: 'POST',
     headers,
     body,
+    signal: input.signal,
   });
 
   if (!response.ok) {
     const body = await response.text();
     throw new Error(body || `STT request failed (${response.status})`);
   }
+
+  input.onProgress?.(1);
 
   const responsePayload = (await response.json()) as unknown;
   const record: TranscriptionCacheRecord = {
