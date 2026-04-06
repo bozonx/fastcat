@@ -168,63 +168,61 @@ const { emptyAreaContextMenuItems: propertiesContextMenuItems } = useTimelineEmp
 </script>
 
 <template>
-  <div class="h-full w-full shrink-0 flex flex-col bg-ui-bg">
-    <UContextMenu :items="propertiesContextMenuItems">
-      <div
-        ref="labelsScrollContainer"
-        class="flex-1 overflow-y-scroll overflow-x-hidden labels-scroll-container"
-        @scroll="emit('scroll', $event)"
-        @click="
-          timelineStore.selectTimelineProperties();
-          selectionStore.selectTimelineProperties();
-        "
-      >
-        <div class="flex flex-col min-h-full">
-          <UContextMenu
-            ref="trackContextMenuRef"
-            :items="activeTrackContextMenuItems"
-            manual
-          />
+  <UContextMenu :items="propertiesContextMenuItems">
+    <div
+      ref="labelsScrollContainer"
+      class="h-full overflow-y-scroll overflow-x-hidden labels-scroll-container bg-ui-bg"
+      @scroll="emit('scroll', $event)"
+      @click="
+        timelineStore.selectTimelineProperties();
+        selectionStore.selectTimelineProperties();
+      "
+    >
+      <div class="flex flex-col min-h-full">
+        <UContextMenu
+          ref="trackContextMenuRef"
+          :items="activeTrackContextMenuItems"
+          manual
+        />
 
-          <template v-for="(track, index) in tracks" :key="track.id">
-            <TimelineTrackLabelItem
-              :track="track"
-              :track-number="
-                track.kind === 'video'
-                  ? tracks.filter((t) => t.kind === 'video').length -
-                    tracks.filter((t, i) => t.kind === 'video' && i < index).length
-                  : tracks.filter((t, i) => t.kind === 'audio' && i < index).length + 1
-              "
-              :height="trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT"
-              :is-selected="isTrackVisuallySelected(track.id)"
-              :is-directly-selected="isTrackDirectlySelected(track.id)"
-              :is-hovered="timelineStore.hoveredTrackId === track.id"
-              :is-renaming="timelineStore.renamingTrackId === track.id"
-              :has-audio="trackHasAudio(track, mediaStore.mediaMetadata)"
-              :level-db="timelineStore.audioLevels?.[track.id]?.peakDb"
-              @select="onSelectTrack(track.id)"
-              @middle-click="onMiddleClickTrack(track.id)"
-              @rename="
-                (name: string) => {
-                  timelineStore.renameTrack(track.id, name);
-                  timelineStore.renamingTrackId = null;
-                }
-              "
-              @cancel-rename="timelineStore.renamingTrackId = null"
-              @resize-start="(e: MouseEvent) => onResizeStart(track.id, e)"
-              @mouseenter="timelineStore.hoveredTrackId = track.id"
-              @mouseleave="timelineStore.hoveredTrackId = null"
-              @contextmenu.prevent.stop="onTrackContextMenu($event, track)"
-            />
-          </template>
-          <div class="w-full flex-1 min-h-7 shrink-0" />
-          <div
-            class="shrink-0"
-            :style="{ height: `calc(4rem + ${scrollbarCompensation || 0}px)` }"
+        <template v-for="(track, index) in tracks" :key="track.id">
+          <TimelineTrackLabelItem
+            :track="track"
+            :track-number="
+              track.kind === 'video'
+                ? tracks.filter((t) => t.kind === 'video').length -
+                  tracks.filter((t, i) => t.kind === 'video' && i < index).length
+                : tracks.filter((t, i) => t.kind === 'audio' && i < index).length + 1
+            "
+            :height="trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT"
+            :is-selected="isTrackVisuallySelected(track.id)"
+            :is-directly-selected="isTrackDirectlySelected(track.id)"
+            :is-hovered="timelineStore.hoveredTrackId === track.id"
+            :is-renaming="timelineStore.renamingTrackId === track.id"
+            :has-audio="trackHasAudio(track, mediaStore.mediaMetadata)"
+            :level-db="timelineStore.audioLevels?.[track.id]?.peakDb"
+            @select="onSelectTrack(track.id)"
+            @middle-click="onMiddleClickTrack(track.id)"
+            @rename="
+              (name: string) => {
+                timelineStore.renameTrack(track.id, name);
+                timelineStore.renamingTrackId = null;
+              }
+            "
+            @cancel-rename="timelineStore.renamingTrackId = null"
+            @resize-start="(e: MouseEvent) => onResizeStart(track.id, e)"
+            @mouseenter="timelineStore.hoveredTrackId = track.id"
+            @mouseleave="timelineStore.hoveredTrackId = null"
+            @contextmenu.prevent.stop="onTrackContextMenu($event, track)"
           />
-        </div>
+        </template>
+        <div class="w-full flex-1 min-h-7 shrink-0" />
+        <div
+          class="shrink-0"
+          :style="{ height: `calc(4rem + ${scrollbarCompensation || 0}px)` }"
+        />
       </div>
-    </UContextMenu>
+    </div>
 
     <UiConfirmModal
       v-if="selectedTrack"
@@ -241,7 +239,7 @@ const { emptyAreaContextMenuItems: propertiesContextMenuItems } = useTimelineEmp
       :confirm-text="t('common.delete', 'Delete')"
       @confirm="confirmDelete"
     />
-  </div>
+  </UContextMenu>
 </template>
 
 <style scoped>

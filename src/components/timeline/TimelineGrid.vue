@@ -11,7 +11,6 @@ const props = defineProps<{
 }>();
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
-const containerRef = ref<HTMLElement | null>(null);
 
 const timelineStore = useTimelineStore();
 const projectStore = useProjectStore();
@@ -74,8 +73,8 @@ watch(
   { immediate: true },
 );
 
-// Size from container (which is positioned by parent)
-useResizeObserver(containerRef, (entries) => {
+// Size from canvas element
+useResizeObserver(canvasRef, (entries) => {
   const entry = entries[0];
   if (entry) {
     width.value = entry.contentRect.width;
@@ -211,7 +210,5 @@ function draw() {
 </script>
 
 <template>
-  <div ref="containerRef" class="w-full h-full">
-    <canvas ref="canvasRef" class="w-full h-full" />
-  </div>
+  <canvas ref="canvasRef" class="w-full h-full" />
 </template>

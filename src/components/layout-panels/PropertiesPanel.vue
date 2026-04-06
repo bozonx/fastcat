@@ -306,11 +306,9 @@ const headerTitle = computed(() => {
       draggable="true"
       @dragstart="(e) => $emit('panelDragStart', e)"
     >
-      <div class="flex items-center overflow-hidden min-w-0">
-        <span class="ml-2 text-xs text-ui-text-muted font-mono truncate">
-          {{ headerTitle }}
-        </span>
-      </div>
+      <span class="ml-2 text-xs text-ui-text-muted font-mono truncate min-w-0 flex-1">
+        {{ headerTitle }}
+      </span>
       <div v-if="displayMode !== 'empty'" class="flex gap-1 shrink-0 ml-2">
         <UiButtonGroup
           v-if="displayMode === 'file' && hasProxy"
