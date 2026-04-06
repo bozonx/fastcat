@@ -295,40 +295,49 @@ watch(
 
     // Selection range
     if (entity?.source === 'timeline' && entity.kind === 'selection-range') {
-      closeAllDrawers();
-      isSelectionRangeDrawerOpen.value = true;
+      if (!isSelectionRangeDrawerOpen.value) {
+        closeAllDrawers();
+        isSelectionRangeDrawerOpen.value = true;
+      }
       return;
     }
 
-    // Gap selected — use the selectedGap computed to avoid TS narrowing issues
+    // Gap selected
     if (gap) {
-      closeAllDrawers();
-      isGapPropertiesDrawerOpen.value = true;
+      if (!isGapPropertiesDrawerOpen.value) {
+        closeAllDrawers();
+        isGapPropertiesDrawerOpen.value = true;
+      }
       return;
     }
 
     // Clip(s) selected: only if no gap is active
     if (itemIds.length > 0 && !gap) {
-      closeAllDrawers();
       if (itemIds.length > 1) {
-        isMultiSelectionDrawerOpen.value = true;
+        if (!isMultiSelectionDrawerOpen.value) {
+          closeAllDrawers();
+          isMultiSelectionDrawerOpen.value = true;
+        }
       } else {
-        isClipPropertiesDrawerOpen.value = true;
+        if (!isClipPropertiesDrawerOpen.value) {
+          closeAllDrawers();
+          isClipPropertiesDrawerOpen.value = true;
+        }
       }
       return;
     }
 
     // Track selected (and no clips/gaps)
     if (trackId && itemIds.length === 0 && !gap) {
-      closeAllDrawers();
-      isTrackPropertiesDrawerOpen.value = true;
+      if (!isTrackPropertiesDrawerOpen.value) {
+        closeAllDrawers();
+        isTrackPropertiesDrawerOpen.value = true;
+      }
       return;
     }
 
     // Nothing selected — close all
-    if (!trackId && itemIds.length === 0 && !entity && !transition && !markerId) {
-      closeAllDrawers();
-    }
+    closeAllDrawers();
   },
   { immediate: true, deep: false },
 );
@@ -360,8 +369,10 @@ function onClipPropertiesDrawerClose() {
 
 function onClipTrimDrawerClose() {
   isTrimDrawerOpen.value = false;
-  timelineStore.clearSelection();
-  selectionStore.clearSelection();
+  if (selectionStore.selectedEntity?.kind === 'clip') {
+    timelineStore.clearSelection();
+    selectionStore.clearSelection();
+  }
 }
 
 function onMultiSelectionDrawerClose() {
@@ -381,18 +392,36 @@ function onMultiSelectionDrawerClose() {
 
 function onMarkerPropertiesDrawerClose() {
   isMarkerPropertiesDrawerOpen.value = false;
-  selectionStore.clearSelection();
+  
+  if (suppressDrawerSelectionClear.value) {
+    return;
+  }
+  if (selectionStore.selectedEntity?.kind === 'marker') {
+    selectionStore.clearSelection();
+  }
 }
 
 function onSelectionRangeDrawerClose() {
   isSelectionRangeDrawerOpen.value = false;
-  selectionStore.clearSelection();
+  
+  if (suppressDrawerSelectionClear.value) {
+    return;
+  }
+  if (selectionStore.selectedEntity?.kind === 'selection-range') {
+    selectionStore.clearSelection();
+  }
 }
 
 function onTransitionDrawerClose() {
   isTransitionDrawerOpen.value = false;
-  timelineStore.selectTransition(null);
-  selectionStore.clearSelection();
+  
+  if (suppressDrawerSelectionClear.value) {
+    return;
+  }
+  if (selectionStore.selectedEntity?.kind === 'transition') {
+    timelineStore.selectTransition(null);
+    selectionStore.clearSelection();
+  }
 }
 
 function onGapPropertiesDrawerClose() {
@@ -496,7 +525,7 @@ const {
   onGlobalPointerMove,
   onGlobalPointerUp,
   scheduleDragReapply,
-} = useTimelineInteraction(scrollEl, tracks);
+} = useTimelineInteraction(scrollEl, tracks, ref(true));
 
 // --- Edge auto-scroll during clip drag ---
 

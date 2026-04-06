@@ -9,7 +9,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { getLinkedClipGroupItemIds } from '~/timeline/commands/utils';
 
-export function useTimelineItemSelection(tracks: ComputedRef<TimelineTrack[]>) {
+export function useTimelineItemSelection(tracks: ComputedRef<TimelineTrack[]>, isMobile?: Ref<boolean>) {
   const timelineStore = useTimelineStore();
   const projectStore = useProjectStore();
   const selectionStore = useSelectionStore();
@@ -25,7 +25,9 @@ export function useTimelineItemSelection(tracks: ComputedRef<TimelineTrack[]>) {
       isLayer2Active(e, workspaceStore.userSettings);
 
     const doc = timelineStore.timelineDoc;
-    const groupedIds = doc ? getLinkedClipGroupItemIds(doc, itemId) : [itemId];
+    const item = tracks.value.flatMap((t) => t.items).find((i) => i.id === itemId);
+    const kind = item?.kind ?? 'clip';
+    const groupedIds = doc && kind === 'clip' ? getLinkedClipGroupItemIds(doc, itemId) : [itemId];
     let nextSelectedIds: string[] = [];
 
     if (isMulti) {
@@ -40,16 +42,16 @@ export function useTimelineItemSelection(tracks: ComputedRef<TimelineTrack[]>) {
       timelineStore.selectTimelineItems(nextSelectedIds);
     } else {
       const trackId = tracks.value.find((t) => t.items.some((i) => i.id === itemId))?.id;
-      const isTouchPointer = e.pointerType === 'touch';
+      const isTouchPointer = e.pointerType === 'touch' || (isMobile?.value && e.pointerType === '');
 
-      const isClipCurrentlySelected =
+      const isCurrentItemFullySelected =
         timelineStore.selectedItemIds.length === groupedIds.length &&
         groupedIds.every((id) => timelineStore.selectedItemIds.includes(id)) &&
         selectionStore.selectedEntity?.source === 'timeline' &&
-        (selectionStore.selectedEntity?.kind === 'clip' ||
-          selectionStore.selectedEntity?.kind === 'gap');
+        selectionStore.selectedEntity?.kind === kind &&
+        (kind !== 'gap' || selectionStore.selectedEntity.itemId === itemId);
 
-      if (trackId && isClipCurrentlySelected && !isTouchPointer) {
+      if (trackId && isCurrentItemFullySelected && (isMobile?.value || !isTouchPointer)) {
         timelineStore.clearSelection();
         timelineStore.selectTrack(trackId);
         selectionStore.selectTimelineTrack(trackId);
@@ -58,7 +60,13 @@ export function useTimelineItemSelection(tracks: ComputedRef<TimelineTrack[]>) {
 
       nextSelectedIds = groupedIds;
       timelineStore.selectTrack(null);
-      timelineStore.selectTimelineItems(groupedIds);
+      timelineStore.selectTimelineItems(
+        groupedIds.map((id) => ({
+          trackId: trackId ?? '',
+          itemId: id,
+          kind: kind as 'clip' | 'gap',
+        })),
+      );
     }
 
     const items = tracks.value
