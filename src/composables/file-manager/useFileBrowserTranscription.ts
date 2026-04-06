@@ -79,9 +79,14 @@ export function useFileBrowserTranscription() {
 
       if (!file) throw new Error('Failed to access file for transcription');
 
+      // Ensure we have a full workspace path for the repository to work correctly from the workspace root
+      const workspacePath = entry.path.startsWith('/') || entry.path.startsWith('projects/') || !projectStore.currentProjectName
+        ? entry.path
+        : `projects/${projectStore.currentProjectName}/${entry.path}`;
+
       const request: any = {
         file,
-        filePath: entry.path,
+        filePath: workspacePath,
         fileName: entry.name,
         fileType,
         language: transcriptionLanguage.value,

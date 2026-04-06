@@ -14,6 +14,7 @@ interface UseFilePropertiesTranscriptionOptions {
   workspaceHandle: Ref<FileSystemDirectoryHandle | null | undefined>;
   userSettings: Ref<FastCatUserSettings>;
   fastcatAccountApiUrl: Ref<string>;
+  currentProjectName: Ref<string | null>;
   getFileByPath: (path: string) => Promise<File | null | undefined>;
   toast: { add: (payload: { title: string; description?: string; color?: string }) => void };
   t: (key: string, fallback?: string) => string;
@@ -89,7 +90,12 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
       const repository = createTranscriptionCacheRepository({
         workspaceDir: options.workspaceHandle.value,
       });
-      const records = await repository.list({ sourcePath: selectedEntry.path });
+      
+      const workspacePath = selectedEntry.path.startsWith('/') || selectedEntry.path.startsWith('projects/') || !options.currentProjectName.value
+        ? selectedEntry.path
+        : `projects/${options.currentProjectName.value}/${selectedEntry.path}`;
+
+      const records = await repository.list({ sourcePath: workspacePath });
       const record = records[0];
       latestTranscriptionText.value = record ? extractTranscriptionText(record.response) : '';
       latestTranscriptionCacheKey.value = record?.key ?? '';
@@ -122,9 +128,13 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
       const file = await options.getFileByPath(selectedEntry.path);
       if (!file) throw new Error('Failed to access file');
 
+      const workspacePath = selectedEntry.path.startsWith('/') || selectedEntry.path.startsWith('projects/') || !options.currentProjectName.value
+        ? selectedEntry.path
+        : `projects/${options.currentProjectName.value}/${selectedEntry.path}`;
+
       const result = await transcribeAudioFile({
         file,
-        filePath: selectedEntry.path,
+        filePath: workspacePath,
         fileName: selectedEntry.name,
         fileType: getMimeTypeFromFilename(selectedEntry.name),
         language: transcriptionLanguage.value,

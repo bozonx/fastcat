@@ -206,6 +206,16 @@ export const useTimelineStore = defineStore('timeline', () => {
     editService,
   });
 
+  const captions = createTimelineCaptionsModule({
+    timelineDoc,
+    getWorkspaceHandle: () => workspaceStore.workspaceHandle,
+    getProjectId: () => projectStore.currentProjectId,
+    getCurrentProjectName: () => projectStore.currentProjectName,
+    mediaMetadata,
+    batchApplyTimeline,
+    requestTimelineSave,
+  });
+
   const clips = createTimelineClipsModule({
     timelineDoc,
     selectedItemIds,
@@ -495,16 +505,6 @@ export const useTimelineStore = defineStore('timeline', () => {
     get defaultStaticClipDurationUs() {
       return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
     },
-  });
-
-  const captions = createTimelineCaptionsModule({
-    timelineDoc,
-    mediaMetadata,
-    batchApplyTimeline,
-    requestTimelineSave,
-    getWorkspaceHandle: () => workspaceStore.workspaceHandle,
-    getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
-    getCurrentProjectId: () => projectStore.currentProjectId,
   });
 
   function setTimelineZoomExact(next: number) {
