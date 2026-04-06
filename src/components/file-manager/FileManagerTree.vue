@@ -35,6 +35,7 @@ import { useFileContextMenu } from '~/composables/file-manager/useFileContextMen
 import { isRemoteFsEntry, type RemoteFsEntry } from '~/utils/remote-vfs';
 import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import { isGeneratingProxyInDirectory, folderHasVideos } from '~/utils/fs-entry-utils';
+import { resolveFileManagerDragOperation } from '~/composables/file-manager/dragOperation';
 
 interface Props {
   editingEntryPath?: string | null;
@@ -42,6 +43,7 @@ interface Props {
   depth: number;
   foldersOnly?: boolean;
   isFilesPage?: boolean;
+  instanceId?: string;
 }
 
 interface TreeContext {
@@ -134,7 +136,11 @@ const proxyStore = useProxyStore();
 const selectionStore = useSelectionStore();
 const workspaceStore = useWorkspaceStore();
 const uiStore = useUiStore();
-const { setCurrentDragOperation } = useAppClipboard();
+const {
+  dragSourceFileManagerInstanceId,
+  setCurrentDragOperation,
+  setDragSourceFileManagerInstanceId,
+} = useAppClipboard();
 
 const isDragOver = ref<string | null>(null);
 const dragOperation = ref<'copy' | 'move' | null>(null);
@@ -397,6 +403,7 @@ function onDragStart(e: DragEvent, entry: FsEntry) {
 
   const operation = isLayer1Active(e, workspaceStore.userSettings) ? 'copy' : 'move';
   dragOperation.value = operation;
+  setDragSourceFileManagerInstanceId(props.instanceId ?? null);
   setCurrentDragOperation(operation);
   const movePayload = entriesToMove.map((e) => ({ name: e.name, kind: e.kind, path: e.path }));
   e.dataTransfer?.setData(
@@ -427,6 +434,15 @@ function onDragEnd() {
   clearDraggedFile();
   dragOperation.value = null;
   setCurrentDragOperation(null);
+  setDragSourceFileManagerInstanceId(null);
+}
+
+function resolveDragOperation(e: DragEvent): 'copy' | 'move' {
+  return resolveFileManagerDragOperation({
+    dragSourceFileManagerInstanceId,
+    isLayer1Active: isLayer1Active(e, workspaceStore.userSettings),
+    targetFileManagerInstanceId: props.instanceId ?? null,
+  });
 }
 
 function onDragOverDir(e: DragEvent, entry: FsEntry) {
@@ -437,10 +453,7 @@ function onDragOverDir(e: DragEvent, entry: FsEntry) {
 
   if (types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) || types.includes(FILE_MANAGER_COPY_DRAG_TYPE)) {
     isDragOver.value = entry.path || null;
-    dragOperation.value =
-      types.includes(FILE_MANAGER_COPY_DRAG_TYPE) || isLayer1Active(e, workspaceStore.userSettings)
-        ? 'copy'
-        : 'move';
+    dragOperation.value = resolveDragOperation(e);
     setCurrentDragOperation(dragOperation.value);
     e.dataTransfer.dropEffect = dragOperation.value === 'copy' ? 'copy' : 'move';
     return;
@@ -486,8 +499,7 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
   const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
   const internalRaw = copyRaw || moveRaw;
   if (internalRaw) {
-    const shouldCopy =
-      !!copyRaw || isLayer1Active(e, workspaceStore.userSettings) || operation === 'copy';
+    const shouldCopy = resolveDragOperation(e) === 'copy' || operation === 'copy';
     let parsed: any;
     try {
       parsed = JSON.parse(internalRaw);
@@ -619,6 +631,7 @@ const { getContextMenuItems } = useFileContextMenu(
             :entries="entry.children"
             :depth="depth + 1"
             :folders-only="foldersOnly"
+            :instance-id="instanceId"
             :is-files-page="isFilesPage"
             @commit-rename="(entry, name) => emit('commitRename', entry, name)"
             @stop-rename="emit('stopRename')"

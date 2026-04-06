@@ -7,7 +7,6 @@ import UiKnob from '~/components/ui/editor/UiKnob.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import type {
-  ArrayParamControl,
   ButtonGroupParamControl,
   FileParamControl,
   ParamControl,
@@ -42,12 +41,6 @@ const { t } = useI18n();
 
 const dragOverKey = ref<string | null>(null);
 
-const visibleControls = computed(() =>
-  props.controls.filter(
-    (control) => !control.showIf || control.showIf(props.values as Record<string, any>),
-  ),
-);
-
 interface ScaleXYControlState {
   canReset: boolean;
   isLinked: boolean;
@@ -57,13 +50,20 @@ interface ScaleXYControlState {
   yValue: number;
 }
 
-interface VisibleControlState {
-  arrayItemsByControl: Map<ArrayParamControl, Record<string, unknown>[]>;
-  scaleXYStateByControl: Map<ScaleXYParamControl, ScaleXYControlState>;
-  selectItemsByControl: Map<
-    SelectParamControl | ButtonGroupParamControl,
-    ReturnType<typeof getSelectItems>
-  >;
+interface VisibleControlEntry {
+  actionLabel: string;
+  arrayItems: Record<string, unknown>[];
+  control: ParamControl;
+  disabled: boolean;
+  fileDisplayValue: string;
+  hasValue: boolean;
+  key: string;
+  label: string;
+  numberValue: number;
+  scaleXYState: ScaleXYControlState | null;
+  selectItems: ReturnType<typeof getSelectItems>;
+  stringValue: string;
+  value: unknown;
 }
 
 function getLabel(control: ParamControl): string {
@@ -164,78 +164,83 @@ function handleAction(action: string, key: string) {
   emit('action', action, key);
 }
 
-const visibleControlState = computed<VisibleControlState>(() => {
-  const arrayItemsByControl = new Map<ArrayParamControl, Record<string, unknown>[]>();
-  const scaleXYStateByControl = new Map<ScaleXYParamControl, ScaleXYControlState>();
-  const selectItemsByControl = new Map<
-    SelectParamControl | ButtonGroupParamControl,
-    ReturnType<typeof getSelectItems>
-  >();
-
-  for (const control of visibleControls.value) {
-    if (control.kind === 'array') {
-      const value = getValue(control.key);
-      arrayItemsByControl.set(
-        control,
-        Array.isArray(value) ? (value as Record<string, unknown>[]) : [],
-      );
-      continue;
-    }
-
-    if (control.kind === 'scale-xy') {
-      const isLinked = Boolean(getValue(control.keyLinked) ?? control.defaultLinked ?? true);
-      const xValue = Number(getValue(control.keyX) ?? control.defaultValueX ?? 100);
-      const yValue = Number(getValue(control.keyY) ?? control.defaultValueY ?? 100);
-
-      scaleXYStateByControl.set(control, {
-        isLinked,
-        xValue,
-        yValue,
-        label: isLinked
-          ? control.labelKey
-            ? t(control.labelKey)
-            : 'Scale'
-          : control.labelXKey
-            ? t(control.labelXKey)
-            : 'Scale X',
-        yLabel: control.labelYKey ? t(control.labelYKey) : 'Scale Y',
-        canReset: isLinked ? xValue !== 100 : xValue !== 100 || yValue !== 100,
-      });
-      continue;
-    }
-
-    if (control.kind === 'select' || control.kind === 'button-group') {
-      selectItemsByControl.set(control, getSelectItems(control));
-    }
-  }
+function buildScaleXYState(control: ScaleXYParamControl): ScaleXYControlState {
+  const isLinked = Boolean(getValue(control.keyLinked) ?? control.defaultLinked ?? true);
+  const xValue = Number(getValue(control.keyX) ?? control.defaultValueX ?? 100);
+  const yValue = Number(getValue(control.keyY) ?? control.defaultValueY ?? 100);
 
   return {
-    arrayItemsByControl,
-    scaleXYStateByControl,
-    selectItemsByControl,
+    isLinked,
+    xValue,
+    yValue,
+    label: isLinked
+      ? control.labelKey
+        ? t(control.labelKey)
+        : 'Scale'
+      : control.labelXKey
+        ? t(control.labelXKey)
+        : 'Scale X',
+    yLabel: control.labelYKey ? t(control.labelYKey) : 'Scale Y',
+    canReset: isLinked ? xValue !== 100 : xValue !== 100 || yValue !== 100,
   };
+}
+
+const visibleControlEntries = computed<VisibleControlEntry[]>(() => {
+  const values = props.values as Record<string, unknown>;
+
+  return props.controls
+    .filter((control) => !control.showIf || control.showIf(values))
+    .map((control) => {
+      const label = getLabel(control);
+      const rawValue = 'key' in control ? getValue(control.key) : undefined;
+
+      let numberValue = 0;
+      let stringValue = '';
+      let selectItems: ReturnType<typeof getSelectItems> = [];
+      let fileDisplayValue = '';
+      let actionLabel = label;
+      let arrayItems: Record<string, unknown>[] = [];
+      let scaleXYState: ScaleXYControlState | null = null;
+
+      if (control.kind === 'slider' || control.kind === 'knob') {
+        numberValue = Number(rawValue ?? control.defaultValue ?? control.min);
+      } else if (control.kind === 'number') {
+        numberValue = Number(rawValue ?? control.defaultValue ?? 0);
+      } else if (control.kind === 'scale-xy') {
+        scaleXYState = buildScaleXYState(control);
+      } else if (control.kind === 'select' || control.kind === 'button-group') {
+        selectItems = getSelectItems(control);
+      } else if (control.kind === 'color') {
+        stringValue = String(rawValue ?? '#000000');
+      } else if (control.kind === 'text') {
+        stringValue = String(rawValue ?? '');
+      } else if (control.kind === 'file') {
+        fileDisplayValue = getDisplayFileValue(control);
+      } else if (control.kind === 'action') {
+        actionLabel = control.buttonLabelKey
+          ? t(control.buttonLabelKey)
+          : (control.buttonLabel ?? label);
+      } else if (control.kind === 'array') {
+        arrayItems = Array.isArray(rawValue) ? (rawValue as Record<string, unknown>[]) : [];
+      }
+
+      return {
+        control,
+        key: control.key ?? `${control.kind}-${label}`,
+        label,
+        disabled: Boolean(control.disabled || props.disabled),
+        value: rawValue,
+        numberValue,
+        stringValue,
+        selectItems,
+        fileDisplayValue,
+        actionLabel,
+        arrayItems,
+        scaleXYState,
+        hasValue: rawValue !== undefined && rawValue !== null && rawValue !== '',
+      };
+    });
 });
-
-function getScaleXYState(control: ScaleXYParamControl): ScaleXYControlState {
-  return (
-    visibleControlState.value.scaleXYStateByControl.get(control) ?? {
-      isLinked: true,
-      xValue: 100,
-      yValue: 100,
-      label: control.labelKey ? t(control.labelKey) : 'Scale',
-      yLabel: control.labelYKey ? t(control.labelYKey) : 'Scale Y',
-      canReset: false,
-    }
-  );
-}
-
-function getArrayItems(control: ArrayParamControl): Record<string, unknown>[] {
-  return visibleControlState.value.arrayItemsByControl.get(control) ?? [];
-}
-
-function getCachedSelectItems(control: SelectParamControl | ButtonGroupParamControl) {
-  return visibleControlState.value.selectItemsByControl.get(control) ?? [];
-}
 
 function handleArrayAdd(control: ParamControl) {
   if (control.kind !== 'array') return;
@@ -268,101 +273,89 @@ function handleArrayItemUpdate(
 
 <template>
   <div :class="props.asContents ? 'contents' : 'flex flex-col gap-2'">
-    <template
-      v-for="control in visibleControls"
-      :key="control.key ?? `${control.kind}-${getLabel(control)}`"
-    >
+    <template v-for="entry in visibleControlEntries" :key="entry.key">
       <div
-        v-if="control.kind === 'row'"
+        v-if="entry.control.kind === 'row'"
         class="grid gap-2"
-        :class="control.columns === 1 ? 'grid-cols-1' : 'grid-cols-2'"
+        :class="entry.control.columns === 1 ? 'grid-cols-1' : 'grid-cols-2'"
       >
         <ParamsRenderer
-          :controls="control.controls"
+          :controls="entry.control.controls"
           :values="values"
           :size="size"
           as-contents
-          :force-full-width="!!(control.kind === 'row' && control.columns && control.columns > 1)"
+          :force-full-width="Boolean(entry.control.columns && entry.control.columns > 1)"
           @update:value="(key, value) => updateValue(key, value)"
         />
       </div>
 
-      <div v-else-if="control.kind === 'slider'" class="flex flex-col gap-1">
+      <div v-else-if="entry.control.kind === 'slider'" class="flex flex-col gap-1">
         <div class="flex justify-between text-xs text-ui-text-muted gap-2">
-          <span>{{ getLabel(control) }}</span>
+          <span>{{ entry.label }}</span>
           <span>
-            {{
-              control.format
-                ? control.format(
-                    Number(getValue(control.key) ?? control.defaultValue ?? control.min),
-                  )
-                : (getValue(control.key) ?? control.defaultValue ?? control.min)
-            }}
+            {{ entry.control.format ? entry.control.format(entry.numberValue) : entry.numberValue }}
           </span>
         </div>
         <UiWheelSlider
-          :model-value="Number(getValue(control.key) ?? control.defaultValue ?? control.min)"
-          :min="control.min"
-          :max="control.max"
-          :step="control.step"
-          :default-value="control.defaultValue"
-          :disabled="control.disabled || props.disabled"
-          @update:model-value="(value: number) => updateValue(control.key, value)"
+          :model-value="entry.numberValue"
+          :min="entry.control.min"
+          :max="entry.control.max"
+          :step="entry.control.step"
+          :default-value="entry.control.defaultValue"
+          :disabled="entry.disabled"
+          @update:model-value="(value: number) => updateValue(entry.control.key, value)"
         />
       </div>
 
       <div
-        v-else-if="control.kind === 'knob'"
+        v-else-if="entry.control.kind === 'knob'"
         class="flex flex-col items-center justify-center gap-1.5 py-1"
       >
         <UiKnob
-          :model-value="Number(getValue(control.key) ?? control.defaultValue ?? control.min)"
-          :min="control.min"
-          :max="control.max"
-          :step="control.step"
-          :default-value="control.defaultValue"
-          :disabled="control.disabled || props.disabled"
+          :model-value="entry.numberValue"
+          :min="entry.control.min"
+          :max="entry.control.max"
+          :step="entry.control.step"
+          :default-value="entry.control.defaultValue"
+          :disabled="entry.disabled"
           size="md"
-          @update:model-value="(value: number) => updateValue(control.key, value)"
+          @update:model-value="(value: number) => updateValue(entry.control.key, value)"
         />
         <div class="flex flex-col items-center text-2xs leading-tight">
-          <span class="text-ui-text-muted text-center">{{ getLabel(control) }}</span>
+          <span class="text-ui-text-muted text-center">{{ entry.label }}</span>
           <span class="font-mono text-ui-text">
-            {{
-              control.format
-                ? control.format(
-                    Number(getValue(control.key) ?? control.defaultValue ?? control.min),
-                  )
-                : (getValue(control.key) ?? control.defaultValue ?? control.min)
-            }}
+            {{ entry.control.format ? entry.control.format(entry.numberValue) : entry.numberValue }}
           </span>
         </div>
       </div>
 
-      <div v-else-if="control.kind === 'number'" class="flex flex-col gap-0.5">
-        <span class="text-xs text-ui-text-muted">{{ getLabel(control) }}</span>
+      <div v-else-if="entry.control.kind === 'number'" class="flex flex-col gap-0.5">
+        <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
         <UiWheelNumberInput
-          :model-value="Number(getValue(control.key) ?? control.defaultValue ?? 0)"
+          :model-value="entry.numberValue"
           :size="size"
-          :min="control.min"
-          :max="control.max"
-          :step="control.step ?? 1"
-          :disabled="control.disabled || props.disabled"
+          :min="entry.control.min"
+          :max="entry.control.max"
+          :step="entry.control.step ?? 1"
+          :disabled="entry.disabled"
           :full-width="props.forceFullWidth"
-          @update:model-value="(value: number) => updateValue(control.key, Number(value))"
+          @update:model-value="(value: number) => updateValue(entry.control.key, Number(value))"
         />
       </div>
 
-      <div v-else-if="control.kind === 'scale-xy'" class="flex flex-col gap-2">
+      <div
+        v-else-if="entry.control.kind === 'scale-xy' && entry.scaleXYState"
+        class="flex flex-col gap-2"
+      >
         <div class="flex items-center gap-2">
           <span
             class="flex-1 text-xs text-ui-text-muted"
-            :class="[getScaleXYState(control).isLinked ? 'cursor-pointer' : 'cursor-default']"
+            :class="[entry.scaleXYState.isLinked ? 'cursor-pointer' : 'cursor-default']"
           >
-            {{ getScaleXYState(control).label }}
+            {{ entry.scaleXYState.label }}
           </span>
           <UButton
-            v-if="getScaleXYState(control).canReset"
+            v-if="entry.scaleXYState.canReset"
             icon="i-heroicons-arrow-path"
             size="2xs"
             variant="ghost"
@@ -370,9 +363,9 @@ function handleArrayItemUpdate(
             class="opacity-50 hover:opacity-100 transition-opacity"
             @click="
               () => {
-                updateValue(control.keyX, control.defaultValueX ?? 100);
+                updateValue(entry.control.keyX, entry.control.defaultValueX ?? 100);
                 setTimeout(() => {
-                  updateValue(control.keyY, control.defaultValueY ?? 100);
+                  updateValue(entry.control.keyY, entry.control.defaultValueY ?? 100);
                 }, 10);
               }
             "
@@ -381,20 +374,20 @@ function handleArrayItemUpdate(
         <div class="flex items-center gap-2">
           <UiWheelNumberInput
             class="flex-1"
-            :model-value="getScaleXYState(control).xValue"
+            :model-value="entry.scaleXYState.xValue"
             :size="size"
-            :min="control.min"
-            :max="control.max"
-            :step="control.step ?? 1"
-            :disabled="control.disabled || props.disabled"
+            :min="entry.control.min"
+            :max="entry.control.max"
+            :step="entry.control.step ?? 1"
+            :disabled="entry.disabled"
             full-width
             @update:model-value="
               (value: number) => {
                 const numValue = Number(value);
-                updateValue(control.keyX, numValue);
-                if (getScaleXYState(control).isLinked) {
+                updateValue(entry.control.keyX, numValue);
+                if (entry.scaleXYState?.isLinked) {
                   setTimeout(() => {
-                    updateValue(control.keyY, numValue);
+                    updateValue(entry.control.keyY, numValue);
                   }, 10);
                 }
               }
@@ -404,40 +397,38 @@ function handleArrayItemUpdate(
             size="xs"
             variant="ghost"
             color="gray"
-            :icon="
-              getScaleXYState(control).isLinked ? 'i-heroicons-link' : 'i-heroicons-link-slash'
-            "
-            :class="[getScaleXYState(control).isLinked ? 'text-ui-primary' : 'text-ui-text-muted']"
+            :icon="entry.scaleXYState.isLinked ? 'i-heroicons-link' : 'i-heroicons-link-slash'"
+            :class="[entry.scaleXYState.isLinked ? 'text-ui-primary' : 'text-ui-text-muted']"
             @click="
               () => {
-                const isLinked = !getScaleXYState(control).isLinked;
-                updateValue(control.keyLinked, isLinked);
+                const isLinked = !entry.scaleXYState?.isLinked;
+                updateValue(entry.control.keyLinked, isLinked);
                 if (isLinked) {
                   setTimeout(() => {
-                    updateValue(control.keyY, getScaleXYState(control).xValue);
+                    updateValue(entry.control.keyY, entry.scaleXYState?.xValue);
                   }, 10);
                 }
               }
             "
           />
         </div>
-        <div v-if="!getScaleXYState(control).isLinked" class="flex flex-col gap-0.5 mt-2">
-          <span class="text-xs text-ui-text-muted">{{ getScaleXYState(control).yLabel }}</span>
+        <div v-if="!entry.scaleXYState.isLinked" class="flex flex-col gap-0.5 mt-2">
+          <span class="text-xs text-ui-text-muted">{{ entry.scaleXYState.yLabel }}</span>
           <UiWheelNumberInput
-            :model-value="getScaleXYState(control).yValue"
+            :model-value="entry.scaleXYState.yValue"
             :size="size"
-            :min="control.min"
-            :max="control.max"
-            :step="control.step ?? 1"
-            :disabled="control.disabled || props.disabled"
+            :min="entry.control.min"
+            :max="entry.control.max"
+            :step="entry.control.step ?? 1"
+            :disabled="entry.disabled"
             full-width
             @update:model-value="
               (value: number) => {
                 const numValue = Number(value);
-                updateValue(control.keyY, numValue);
-                if (getScaleXYState(control).isLinked) {
+                updateValue(entry.control.keyY, numValue);
+                if (entry.scaleXYState?.isLinked) {
                   setTimeout(() => {
-                    updateValue(control.keyX, numValue);
+                    updateValue(entry.control.keyX, numValue);
                   }, 10);
                 }
               }
@@ -447,176 +438,188 @@ function handleArrayItemUpdate(
       </div>
 
       <div
-        v-else-if="control.kind === 'toggle' || control.kind === 'boolean'"
+        v-else-if="entry.control.kind === 'toggle' || entry.control.kind === 'boolean'"
         class="flex items-center justify-between gap-3"
       >
-        <span class="text-xs text-ui-text-muted">{{ getLabel(control) }}</span>
+        <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
         <USwitch
-          :model-value="Boolean(getValue(control.key))"
+          :model-value="Boolean(entry.value)"
           size="sm"
-          :disabled="control.disabled || props.disabled"
-          @update:model-value="(value: boolean) => updateValue(control.key, value)"
+          :disabled="entry.disabled"
+          @update:model-value="(value: boolean) => updateValue(entry.control.key, value)"
         />
       </div>
 
-      <div v-else-if="control.kind === 'select'" class="flex flex-col gap-0.5">
-        <span class="text-xs text-ui-text-muted">{{ getLabel(control) }}</span>
+      <div v-else-if="entry.control.kind === 'select'" class="flex flex-col gap-0.5">
+        <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
         <UiSelect
-          :model-value="getValue(control.key) as any"
-          :items="getCachedSelectItems(control)"
+          :model-value="entry.value as any"
+          :items="entry.selectItems"
           value-key="value"
           label-key="label"
           :size="size"
-          :disabled="control.disabled || props.disabled"
+          :disabled="entry.disabled"
           @update:model-value="
-            (value: unknown) => updateValue(control.key, normalizeSelectValue(value))
+            (value: unknown) => updateValue(entry.control.key, normalizeSelectValue(value))
           "
         />
       </div>
 
-      <div v-else-if="control.kind === 'button-group'" class="flex flex-col gap-1">
-        <span class="text-xs text-ui-text-muted">{{ getLabel(control) }}</span>
+      <div v-else-if="entry.control.kind === 'button-group'" class="flex flex-col gap-1">
+        <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
         <UiButtonGroup
-          :model-value="getValue(control.key)"
-          :options="getCachedSelectItems(control)"
+          :model-value="entry.value"
+          :options="entry.selectItems"
           size="xs"
-          :disabled="control.disabled || props.disabled"
+          :disabled="entry.disabled"
           fluid
           @update:model-value="
-            (value: unknown) => updateValue(control.key, normalizeSelectValue(value))
+            (value: unknown) => updateValue(entry.control.key, normalizeSelectValue(value))
           "
         />
       </div>
 
-      <div v-else-if="control.kind === 'color'" class="flex flex-col gap-0.5">
-        <span class="text-xs text-ui-text-muted">{{ getLabel(control) }}</span>
+      <div v-else-if="entry.control.kind === 'color'" class="flex flex-col gap-0.5">
+        <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
         <UColorPicker
-          :model-value="String(getValue(control.key) ?? '#000000')"
+          :model-value="entry.stringValue"
           format="hex"
           :size="size"
-          :disabled="control.disabled || props.disabled"
-          @update:model-value="(value: unknown) => updateValue(control.key, String(value ?? ''))"
+          :disabled="entry.disabled"
+          @update:model-value="
+            (value: unknown) => updateValue(entry.control.key, String(value ?? ''))
+          "
         />
       </div>
 
-      <div v-else-if="control.kind === 'text'" class="flex flex-col gap-0.5">
-        <span class="text-xs text-ui-text-muted">{{ getLabel(control) }}</span>
+      <div v-else-if="entry.control.kind === 'text'" class="flex flex-col gap-0.5">
+        <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
         <UTextarea
-          v-if="control.multiline"
-          :model-value="String(getValue(control.key) ?? '')"
-          :rows="control.rows ?? 4"
-          :placeholder="control.placeholder"
+          v-if="entry.control.multiline"
+          :model-value="entry.stringValue"
+          :rows="entry.control.rows ?? 4"
+          :placeholder="entry.control.placeholder"
           :size="size"
-          :disabled="control.disabled || props.disabled"
+          :disabled="entry.disabled"
           @update:model-value="
-            (value: string | number) => updateValue(control.key, String(value ?? ''))
+            (value: string | number) => updateValue(entry.control.key, String(value ?? ''))
           "
         />
         <UiTextInput
           v-else
-          :model-value="String(getValue(control.key) ?? '')"
-          :placeholder="control.placeholder"
+          :model-value="entry.stringValue"
+          :placeholder="entry.control.placeholder"
           :size="size"
-          :disabled="control.disabled || props.disabled"
+          :disabled="entry.disabled"
           full-width
-          @update:model-value="(value: string) => updateValue(control.key, String(value ?? ''))"
+          @update:model-value="
+            (value: string) => updateValue(entry.control.key, String(value ?? ''))
+          "
         />
       </div>
 
-      <div v-else-if="control.kind === 'file'" class="flex flex-col gap-1">
-        <span class="text-xs text-ui-text-muted">{{ getLabel(control) }}</span>
+      <div v-else-if="entry.control.kind === 'file'" class="flex flex-col gap-1">
+        <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
         <div
           class="flex items-center gap-2 p-2 rounded border border-dashed transition-colors"
           :class="
-            dragOverKey === control.key
+            dragOverKey === entry.control.key
               ? 'border-primary-500 bg-primary-500/10'
               : 'border-ui-border bg-ui-bg-muted'
           "
-          @dragover.prevent.stop="dragOverKey = control.key"
-          @dragleave.prevent.stop="dragOverKey = dragOverKey === control.key ? null : dragOverKey"
-          @drop.prevent.stop="handleFileDrop($event, control)"
+          @dragover.prevent.stop="dragOverKey = entry.control.key"
+          @dragleave.prevent.stop="
+            dragOverKey = dragOverKey === entry.control.key ? null : dragOverKey
+          "
+          @drop.prevent.stop="handleFileDrop($event, entry.control)"
         >
           <div class="flex-1 min-w-0 flex items-center gap-2">
             <UIcon
-              :name="control.icon ?? 'i-heroicons-document'"
+              :name="entry.control.icon ?? 'i-heroicons-document'"
               class="w-4 h-4 text-ui-text-muted shrink-0"
             />
-            <span class="text-xs text-ui-text truncate">{{ getDisplayFileValue(control) }}</span>
+            <span class="text-xs text-ui-text truncate">{{ entry.fileDisplayValue }}</span>
           </div>
           <UButton
-            v-if="getValue(control.key) && !control.disabled"
+            v-if="entry.hasValue && !entry.control.disabled"
             icon="i-heroicons-x-mark"
             size="2xs"
             color="gray"
             variant="ghost"
             @click="
               () => {
-                updateValue(control.key, undefined);
-                if (control.kindKey) updateValue(control.kindKey, undefined);
+                updateValue(entry.control.key, undefined);
+                if (entry.control.kindKey) updateValue(entry.control.kindKey, undefined);
               }
             "
           />
         </div>
       </div>
 
-      <div v-else-if="control.kind === 'action'" class="flex flex-col gap-1">
+      <div v-else-if="entry.control.kind === 'action'" class="flex flex-col gap-1">
         <UButton
-          :icon="control.icon"
-          :disabled="control.disabled || props.disabled"
+          :icon="entry.control.icon"
+          :disabled="entry.disabled"
           :size="size"
           color="white"
           variant="solid"
           class="justify-center w-full"
-          @click="handleAction(control.action, control.key)"
+          @click="handleAction(entry.control.action, entry.control.key)"
         >
-          {{
-            control.buttonLabelKey
-              ? t(control.buttonLabelKey)
-              : (control.buttonLabel ?? getLabel(control))
-          }}
+          {{ entry.actionLabel }}
         </UButton>
       </div>
 
-      <div v-else-if="control.kind === 'array'" class="flex flex-col gap-2">
+      <div v-else-if="entry.control.kind === 'array'" class="flex flex-col gap-2">
         <div class="flex items-center justify-between">
-          <span class="text-xs text-ui-text-muted">{{ getLabel(control) }}</span>
+          <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
           <UButton
             icon="i-heroicons-plus"
             size="2xs"
             color="primary"
             variant="soft"
-            :disabled="control.disabled || props.disabled"
-            @click="handleArrayAdd(control)"
+            :disabled="entry.disabled"
+            @click="handleArrayAdd(entry.control)"
           >
-            {{ control.addLabelKey ? t(control.addLabelKey) : (control.addLabel ?? 'Add') }}
+            {{
+              entry.control.addLabelKey
+                ? t(entry.control.addLabelKey)
+                : (entry.control.addLabel ?? 'Add')
+            }}
           </UButton>
         </div>
 
         <div
-          v-if="getArrayItems(control).length === 0"
+          v-if="entry.arrayItems.length === 0"
           class="text-xs text-ui-text-muted text-center py-2 border border-dashed border-ui-border rounded"
         >
-          {{ control.emptyLabelKey ? t(control.emptyLabelKey) : (control.emptyLabel ?? 'Empty') }}
+          {{
+            entry.control.emptyLabelKey
+              ? t(entry.control.emptyLabelKey)
+              : (entry.control.emptyLabel ?? 'Empty')
+          }}
         </div>
 
         <div
           v-else
           :class="[
             'flex gap-2',
-            control.layout === 'horizontal'
+            entry.control.layout === 'horizontal'
               ? 'flex-row overflow-x-auto pb-2 snap-x snap-mandatory'
               : 'flex-col',
           ]"
         >
           <div
-            v-for="(item, index) in getArrayItems(control)"
+            v-for="(item, index) in entry.arrayItems"
             :key="index"
             class="flex flex-col gap-2 bg-ui-bg-elevated border border-ui-border rounded relative group shrink-0"
-            :class="control.layout === 'horizontal' ? 'w-32 snap-center' : 'p-3'"
+            :class="entry.control.layout === 'horizontal' ? 'w-32 snap-center' : 'p-3'"
           >
             <div
               class="flex items-center justify-between border-b border-ui-border/50 bg-ui-bg-muted/50 rounded-t"
-              :class="control.layout === 'horizontal' ? 'p-1.5' : 'pb-2 mb-1 -mx-3 -mt-3 px-3 pt-2'"
+              :class="
+                entry.control.layout === 'horizontal' ? 'p-1.5' : 'pb-2 mb-1 -mx-3 -mt-3 px-3 pt-2'
+              "
             >
               <span class="text-2xs font-medium text-ui-text-muted uppercase tracking-wider">
                 #{{ Number(index) + 1 }}
@@ -626,19 +629,21 @@ function handleArrayItemUpdate(
                 size="2xs"
                 color="red"
                 variant="ghost"
-                :disabled="control.disabled || props.disabled"
+                :disabled="entry.disabled"
                 class="opacity-0 group-hover:opacity-100 transition-opacity"
-                @click="handleArrayRemove(control, Number(index))"
+                @click="handleArrayRemove(entry.control, Number(index))"
               />
             </div>
-            <div :class="['flex flex-col gap-2', control.layout === 'horizontal' ? 'p-2' : '']">
+            <div
+              :class="['flex flex-col gap-2', entry.control.layout === 'horizontal' ? 'p-2' : '']"
+            >
               <ParamsRenderer
-                :controls="control.itemTemplate"
+                :controls="entry.control.itemTemplate"
                 :values="item"
                 :size="size"
                 as-contents
                 @update:value="
-                  (key, value) => handleArrayItemUpdate(control, Number(index), key, value)
+                  (key, value) => handleArrayItemUpdate(entry.control, Number(index), key, value)
                 "
               />
             </div>

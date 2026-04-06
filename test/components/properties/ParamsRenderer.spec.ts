@@ -11,6 +11,14 @@ vi.mock('~/components/ui/UiWheelNumberInput.vue', () => ({
   },
 }));
 
+vi.mock('~/components/ui/UiWheelSlider.vue', () => ({
+  default: {
+    name: 'UiWheelSlider',
+    template: '<div class="mock-wheel-slider">{{ modelValue }}</div>',
+    props: ['modelValue'],
+  },
+}));
+
 vi.mock('~/components/ui/UiSelect.vue', () => ({
   default: {
     name: 'UiSelect',
@@ -24,6 +32,14 @@ vi.mock('~/components/ui/UiButtonGroup.vue', () => ({
     name: 'UiButtonGroup',
     template: '<div class="mock-button-group">{{ JSON.stringify(options) }}</div>',
     props: ['options', 'modelValue'],
+  },
+}));
+
+vi.mock('~/components/ui/UiTextInput.vue', () => ({
+  default: {
+    name: 'UiTextInput',
+    template: '<div class="mock-text-input">{{ modelValue }}</div>',
+    props: ['modelValue', 'placeholder', 'size'],
   },
 }));
 
@@ -130,5 +146,109 @@ describe('ParamsRenderer', () => {
     expect(component.text()).not.toContain('Empty');
     expect(component.text()).toContain('#1');
     expect(component.text()).toContain('#2');
+  });
+
+  it('precomputes slider display value and updates it when values change', async () => {
+    const component = await mountWithNuxt(ParamsRenderer, {
+      props: {
+        controls: [
+          {
+            kind: 'slider',
+            key: 'opacity',
+            label: 'Opacity',
+            min: 0,
+            max: 100,
+            step: 1,
+            format: (value: number) => `${value}%`,
+          },
+        ],
+        values: {
+          opacity: 25,
+        },
+      },
+    });
+
+    expect(component.text()).toContain('Opacity');
+    expect(component.text()).toContain('25%');
+    expect(component.find('.mock-wheel-slider').text()).toContain('25');
+
+    await component.setProps({
+      values: {
+        opacity: 80,
+      },
+    });
+    await nextTick();
+
+    expect(component.text()).toContain('80%');
+    expect(component.find('.mock-wheel-slider').text()).toContain('80');
+  });
+
+  it('re-evaluates showIf against current values before building visible entries', async () => {
+    const component = await mountWithNuxt(ParamsRenderer, {
+      props: {
+        controls: [
+          {
+            kind: 'toggle',
+            key: 'enabled',
+            label: 'Enabled',
+          },
+          {
+            kind: 'text',
+            key: 'details',
+            label: 'Details',
+            showIf: (values) => Boolean(values.enabled),
+          },
+        ],
+        values: {
+          enabled: false,
+          details: 'Hidden',
+        },
+      },
+    });
+
+    expect(component.text()).toContain('Enabled');
+    expect(component.text()).not.toContain('Details');
+
+    await component.setProps({
+      values: {
+        enabled: true,
+        details: 'Visible',
+      },
+    });
+    await nextTick();
+
+    expect(component.text()).toContain('Details');
+    expect(component.text()).toContain('Visible');
+  });
+
+  it('uses precomputed file state for display and clear button visibility', async () => {
+    const component = await mountWithNuxt(ParamsRenderer, {
+      props: {
+        controls: [
+          {
+            kind: 'file',
+            key: 'mediaPath',
+            label: 'Media',
+            emptyLabel: 'Drop media here',
+          },
+        ],
+        values: {
+          mediaPath: '',
+        },
+      },
+    });
+
+    expect(component.text()).toContain('Drop media here');
+    expect(component.find('button').exists()).toBe(false);
+
+    await component.setProps({
+      values: {
+        mediaPath: '/tmp/video.mp4',
+      },
+    });
+    await nextTick();
+
+    expect(component.text()).toContain('/tmp/video.mp4');
+    expect(component.find('button').exists()).toBe(true);
   });
 });
