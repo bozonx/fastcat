@@ -306,6 +306,7 @@ const {
   latestTranscriptionText,
   latestTranscriptionCacheKey,
   latestTranscriptionWasCached,
+  isSttModelReady,
   openTranscriptionModal,
   submitAudioTranscription,
 } = useFilePropertiesTranscription({
@@ -820,6 +821,7 @@ const filteredFilePrimaryActions = computed(() => {
         v-model:open="isTranscriptionModalOpen"
         v-model:transcription-language="transcriptionLanguage"
         :is-transcribing="isTranscribingAudio"
+        :is-model-ready="isSttModelReady"
         :transcription-error="transcriptionError"
         @submit="submitAudioTranscription"
       />

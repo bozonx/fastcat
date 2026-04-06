@@ -49,15 +49,19 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
   const latestTranscriptionCacheKey = ref('');
   const latestTranscriptionWasCached = ref(false);
 
+  const isSttModelReady = computed(() => {
+    const isLocal = options.userSettings.value.integrations.stt.provider === 'local';
+    return isLocal ? options.isSttModelDownloaded.value : Boolean(options.sttConfig.value);
+  });
+
   const canTranscribeMedia = computed(() => {
     const entry = options.selectedFsEntry.value;
-    const isLocal = options.userSettings.value.integrations.stt.provider === 'local';
     
     return (
       entry?.kind === 'file' &&
       entry?.source !== 'remote' &&
       (options.isAudioFile.value || options.isVideoFile.value) &&
-      (isLocal ? options.isSttModelDownloaded.value : Boolean(options.sttConfig.value)) &&
+      isSttModelReady.value &&
       Boolean(options.workspaceHandle.value) &&
       Boolean(entry.path)
     );
@@ -206,6 +210,7 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
     latestTranscriptionText,
     latestTranscriptionCacheKey,
     latestTranscriptionWasCached,
+    isSttModelReady,
     openTranscriptionModal,
     submitAudioTranscription,
   };

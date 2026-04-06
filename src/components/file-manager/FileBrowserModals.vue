@@ -14,7 +14,8 @@ interface Props {
   remoteTransferFileName: string;
   transcriptionModalOpen: boolean;
   isTranscribing: boolean;
-  transcriptionError: string;
+  isModelReady: boolean;
+  transcriptionError: string | null;
   transcriptionEntry: FsEntry | null;
   transcriptionLanguage: string;
   // Creation modals
@@ -61,6 +62,7 @@ const { t } = useI18n();
   <FileSttTranscriptionModal
     :open="props.transcriptionModalOpen"
     :is-transcribing="props.isTranscribing"
+    :is-model-ready="props.isModelReady"
     :transcription-error="props.transcriptionError"
     :transcription-entry="props.transcriptionEntry"
     :transcription-language="props.transcriptionLanguage"
