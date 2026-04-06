@@ -348,4 +348,71 @@ describe('useTimelineInteraction', () => {
 
     wrapper.unmount();
   });
+
+  it('updates current time in trim mode using scroller geometry without changing pointer semantics', async () => {
+    const scrollEl = ref<HTMLElement | null>(null);
+    const timelineStore = useTimelineStore() as any;
+
+    timelineStore.timelineZoom = 50;
+    timelineStore.isTrimModeActive = true;
+    timelineStore.setCurrentTimeUs = vi.fn();
+    timelineStore.timelineDoc = {
+      timebase: { fps: 25 },
+      tracks: [],
+    };
+
+    const scroller = document.createElement('div');
+    Object.defineProperty(scroller, 'scrollLeft', {
+      value: 120,
+      configurable: true,
+      writable: true,
+    });
+    scroller.getBoundingClientRect = vi.fn(() => ({
+      left: 20,
+      top: 0,
+      right: 320,
+      bottom: 100,
+      width: 300,
+      height: 100,
+      x: 20,
+      y: 0,
+      toJSON: () => ({}),
+    }));
+    scrollEl.value = scroller;
+
+    let pointerMoveHandler: (event: PointerEvent) => void = () => {};
+    let pointerUpHandler: (event?: PointerEvent) => void = () => {};
+
+    const TestComp = defineComponent({
+      setup() {
+        const api = useTimelineInteraction(
+          scrollEl,
+          computed(() => timelineStore.timelineDoc.tracks),
+        );
+        pointerMoveHandler = api.onGlobalPointerMove;
+        pointerUpHandler = api.onGlobalPointerUp;
+        return () => h('div');
+      },
+    });
+
+    const wrapper = mount(TestComp);
+
+    pointerMoveHandler({ clientX: 70 } as PointerEvent);
+
+    expect(timelineStore.setCurrentTimeUs).toHaveBeenCalledWith(pxToTimeUs(170, 50));
+    expect(scroller.getBoundingClientRect).toHaveBeenCalledTimes(1);
+
+    pointerMoveHandler({ clientX: 90 } as PointerEvent);
+
+    expect(timelineStore.setCurrentTimeUs).toHaveBeenLastCalledWith(pxToTimeUs(190, 50));
+    expect(scroller.getBoundingClientRect).toHaveBeenCalledTimes(1);
+
+    pointerUpHandler();
+    pointerMoveHandler({ clientX: 110 } as PointerEvent);
+
+    expect(timelineStore.setCurrentTimeUs).toHaveBeenLastCalledWith(pxToTimeUs(210, 50));
+    expect(scroller.getBoundingClientRect).toHaveBeenCalledTimes(2);
+
+    wrapper.unmount();
+  });
 });

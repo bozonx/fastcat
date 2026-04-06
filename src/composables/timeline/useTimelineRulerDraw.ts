@@ -87,8 +87,16 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
 
     if (w === 0 || h === 0) return;
 
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
+    const targetCanvasWidth = Math.round(w * dpr);
+    const targetCanvasHeight = Math.round(h * dpr);
+
+    if (canvas.width !== targetCanvasWidth) {
+      canvas.width = targetCanvasWidth;
+    }
+    if (canvas.height !== targetCanvasHeight) {
+      canvas.height = targetCanvasHeight;
+    }
+
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
 
