@@ -56,15 +56,10 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     await this.readDirectory(parentPath);
   }
 
-  private getRemotePath(path: string): string {
-    const p = this.normalizePath(path);
-    if (p === '/' || p === '') return '/';
-    return p;
-  }
 
   private async getIdForPath(path: string): Promise<{ id: string; type: 'file' | 'directory' | 'media'; item?: any; mediaIndex?: number }> {
     const p = this.normalizePath(path);
-    if (p === '/' || p === '') return { id: 'root', type: 'directory' };
+    if (p === '/' || p === '') return { id: '/', type: 'directory' };
     if (p === '/virtual-all') return { id: 'virtual-all', type: 'directory' };
     if (p === '/personal') return { id: 'personal', type: 'directory' };
     if (p === '/projects') return { id: 'projects', type: 'directory' };
@@ -116,7 +111,6 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     // Ensure path is in cache and we know its type
     const cached = await this.getIdForPath(normalizedPath);
     
-    const remotePath = this.getRemotePath(normalizedPath);
     if (cached && cached.type === 'file' && cached.item) {
       const entries: VfsEntry[] = [];
       const item = cached.item as RemoteVfsFileEntry;
@@ -163,6 +157,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       return entries;
     }
 
+    const remotePath = cached.id.startsWith('/') ? cached.id : `/${cached.id}`;
     const response = await fetchRemoteVfsList({
       config,
       path: remotePath,
@@ -175,14 +170,15 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
 
     const entries: VfsEntry[] = [];
     for (const item of response.items) {
-      const entryPath = item.path || (path === '/' ? `/${item.name}` : `${path}/${item.name}`);
+      const name = getRemoteEntryDisplayName(item);
+      const entryPath = normalizedPath === '/' ? `/${name}` : `${normalizedPath}/${name}`;
       this.idCache.set(entryPath, { id: item.id, type: item.type, item });
       
       entries.push({
-        name: getRemoteEntryDisplayName(item),
+        name,
         kind: item.type === 'file' ? 'directory' : item.type,
         path: entryPath,
-        parentPath: path,
+        parentPath: normalizedPath,
         size: item.type === 'file' ? ((item as RemoteVfsFileEntry).media?.[0]?.size ?? 0) : 0,
         lastModified: (item as any).meta?.updatedAt ? new Date((item as any).meta.updatedAt).getTime() : undefined,
         isContentItem: item.type === 'file',
