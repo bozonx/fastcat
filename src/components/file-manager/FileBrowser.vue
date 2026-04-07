@@ -277,6 +277,8 @@ const {
   loadRemoteFolderContent,
   loadRemoteParentFolders,
   remoteError,
+  remoteHasMore,
+  isLoadingMore,
   onBrowserEntryDragStart,
   onBrowserEntryDragEnd,
 } = remote;
@@ -601,6 +603,17 @@ const { onKeyDown: onContainerKeyDown, moveSelection } = useFocusableListNavigat
   },
 });
 
+function handleScroll(e: Event) {
+  if (!isRemoteMode.value || !remoteHasMore.value || isLoadingMore.value) return;
+
+  const container = e.target as HTMLElement;
+  const { scrollTop, scrollHeight, clientHeight } = container;
+
+  if (scrollTop + clientHeight >= scrollHeight - 300) {
+    void loadFolderContent({ append: true });
+  }
+}
+
 // --- Grid size ---
 const GRID_SIZES = [80, 100, 130, 160, 200];
 const GRID_SIZE_NAMES = ['xs', 's', 'm', 'l', 'xl'];
@@ -841,6 +854,7 @@ async function onDirectoryUploadChange(e: Event) {
       ref="rootContainer"
       class="flex-1 overflow-auto p-4 content-scrollbar relative"
       tabindex="0"
+      @scroll.passive="handleScroll"
       @click.self="handleContainerClick"
       @keydown="onContainerKeyDown"
       @pointerdown.capture="onMarqueePointerDown"
@@ -975,6 +989,21 @@ async function onDirectoryUploadChange(e: Event) {
             @sort="handleSort"
             @resize-start="onResizeStart"
           />
+
+          <!-- Pagination Loader -->
+          <div
+            v-if="isRemoteMode && (isLoadingMore || remoteHasMore)"
+            class="w-full flex items-center justify-center p-8 min-h-[100px]"
+          >
+            <UIcon
+              v-if="isLoadingMore"
+              name="i-heroicons-arrow-path"
+              class="w-8 h-8 animate-spin text-primary-500/50"
+            />
+            <div v-else class="text-ui-text-dim/30 text-xs font-medium uppercase tracking-widest">
+              {{ t('common.scroll_for_more', 'Scroll for more') }}
+            </div>
+          </div>
         </div>
       </UContextMenu>
     </div>
