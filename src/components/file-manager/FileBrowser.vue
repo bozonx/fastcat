@@ -197,6 +197,29 @@ function setSelectedFsEntry(entry: FsEntry | null) {
   selectionStore.selectFsEntry(entry, instanceId);
 }
 
+// --- Remote ---
+// Forward declaration for DnD wrappers
+let remoteApi: any = null;
+
+async function handleCrossVfsCopyEntry(params: { source: FsEntry; targetDirPath: string }) {
+  if (params.source.source === 'remote') {
+    if (!remoteApi) return;
+    return await remoteApi.performRemoteDownload({
+      entry: params.source as any,
+      targetDirPath: params.targetDirPath,
+    });
+  }
+  return await copyEntry(params);
+}
+
+async function handleCrossVfsMoveEntry(params: { source: FsEntry; targetDirPath: string }) {
+  if (params.source.source === 'remote') {
+    // User requested: "ладно, пока move не делаем, только копирование"
+    return await handleCrossVfsCopyEntry(params);
+  }
+  return await moveEntry(params);
+}
+
 // --- DragAndDrop (needs loadFolderContent forward-ref) ---
 const skipNextUpdateReload = ref(false);
 
@@ -227,8 +250,8 @@ const {
   findEntryByPath,
   resolveEntryByPath,
   handleFiles,
-  moveEntry,
-  copyEntry,
+  moveEntry: handleCrossVfsMoveEntry,
+  copyEntry: handleCrossVfsCopyEntry,
   loadFolderContent: () => _loadFolderContent(),
   notifyFileManagerUpdate: () => {
     skipNextUpdateReload.value = true;
@@ -238,7 +261,6 @@ const {
   isExternal: isExternal.value,
 });
 
-// --- Remote ---
 const remote = useFileBrowserRemote({
   isRemoteMode,
   remoteCurrentFolder,
@@ -266,6 +288,8 @@ const remote = useFileBrowserRemote({
   handleFiles,
   vfs,
 });
+
+remoteApi = remote;
 
 const {
   remoteTransferOpen,
