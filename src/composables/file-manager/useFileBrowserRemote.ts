@@ -15,7 +15,13 @@ import {
 import type { RemoteVfsEntry, RemoteVfsFileEntry } from '~/types/remote-vfs';
 import type { FsEntry } from '~/types/fs';
 import { useProjectStore } from '~/stores/project.store';
-import { REMOTE_FILE_DRAG_TYPE, useDraggedFile } from '~/composables/useDraggedFile';
+import {
+  REMOTE_FILE_DRAG_TYPE,
+  useDraggedFile,
+  FILE_MANAGER_COPY_DRAG_TYPE,
+  INTERNAL_DRAG_TYPE,
+} from '~/composables/useDraggedFile';
+import { useVfs } from '~/composables/useVfs';
 
 export interface UseFileBrowserRemoteOptions {
   isRemoteMode: Ref<boolean>;
@@ -310,7 +316,18 @@ export function useFileBrowserRemote({
 
   function onBrowserEntryDragStart(e: DragEvent, entry: FsEntry) {
     if (isRemoteMode.value && (isRemoteFsEntry(entry) || entry.source === 'remote')) {
-      if (entry.kind !== 'file' || !e.dataTransfer) return;
+      // Restriction from user: "можно только перемещать или копировать файлы, но не группы и не элементы контента"
+      // Groups are !isContentItem and kind === 'directory'. 
+      // Content items are isContentItem === true. 
+      // Media items (drags allowed) are isMediaItem === true AND NOT isContentItem.
+      const isContentItem = (entry as any).isContentItem;
+      const isMediaItem = (entry as any).isMediaItem;
+      
+      // If it's a content item (item-as-folder or item-as-file), we shouldn't allow dragging it.
+      // We only allow dragging media items that are components of content items.
+      if (!isMediaItem || isContentItem || !e.dataTransfer) {
+        return;
+      }
 
       e.dataTransfer.effectAllowed = 'copy';
       const data = {
@@ -320,7 +337,12 @@ export function useFileBrowserRemote({
         operation: 'copy',
         isExternal: true,
       };
+      
+      // Use both types for compatibility with local drop handlers
       e.dataTransfer.setData(REMOTE_FILE_DRAG_TYPE, JSON.stringify(data));
+      e.dataTransfer.setData(FILE_MANAGER_COPY_DRAG_TYPE, JSON.stringify([data]));
+      e.dataTransfer.setData(INTERNAL_DRAG_TYPE, '1');
+      
       setDraggedFile(data as any);
       return;
     }
@@ -334,29 +356,115 @@ export function useFileBrowserRemote({
     return onEntryDragEnd();
   }
   function onBrowserEntryDragEnter(e: DragEvent, entry: FsEntry) {
-    if (!isRemoteMode.value && onEntryDragEnter) return onEntryDragEnter(e, entry);
+    if (!isRemoteMode.value) return onEntryDragEnter?.(e, entry);
+
+    // Drop into remote: only into "element of content"
+    if (!(entry as any).isContentItem || !e.dataTransfer?.types) return;
+    
+    // We only allow dragging files (local) into content items
+    const { draggedFile } = useDraggedFile();
+    if (draggedFile.value && draggedFile.value.kind !== 'file') return;
+
+    e.preventDefault();
   }
   function onBrowserEntryDragOver(e: DragEvent, entry: FsEntry) {
-    if (!isRemoteMode.value) return onEntryDragOver(e, entry);
+    if (!isRemoteMode.value) return onEntryDragOver?.(e, entry);
+
+    // Drop into remote: only into "element of content"
+    if (!(entry as any).isContentItem || !e.dataTransfer?.types) return;
+    
+    const { draggedFile } = useDraggedFile();
+    if (draggedFile.value && draggedFile.value.kind !== 'file') return;
+
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy'; // Move is disabled for now
   }
   function onBrowserEntryDragLeave(e: DragEvent, entry: FsEntry) {
-    if (!isRemoteMode.value) return onEntryDragLeave(e, entry);
+    if (!isRemoteMode.value) return onEntryDragLeave?.(e, entry);
   }
-  function onBrowserEntryDrop(e: DragEvent, entry: FsEntry) {
-    if (!isRemoteMode.value) return onEntryDrop(e, entry);
+  async function onBrowserEntryDrop(e: DragEvent, entry: FsEntry) {
+    if (!isRemoteMode.value) return onEntryDrop?.(e, entry);
+
+    // Only allow drop into content item
+    if (!(entry as any).isContentItem) return;
+    
+    const { draggedFile } = useDraggedFile();
+    if (!draggedFile.value || draggedFile.value.kind !== 'file') {
+      // Also check native files (e.g. from desktop)
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) {
+         e.preventDefault();
+         e.stopPropagation();
+         await handleFiles(files, entry.path);
+      }
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const sourcePath = draggedFile.value.path;
+    const isRemoteSource = draggedFile.value.isExternal; // Dragged from another remote instance or similar?
+
+    if (!isRemoteSource && sourcePath) {
+       // Dragged from local into remote item
+       const localVfs = useVfs();
+       const blob = await localVfs.readFile(sourcePath);
+       const file = new File([blob], draggedFile.value.name, { type: blob.type });
+       
+       await handleFiles([file], entry.path);
+       uiStore.notifyFileManagerUpdate();
+       await loadFolderContent();
+    }
   }
 
   function onBrowserRootDragEnter(e: DragEvent) {
-    if (!isRemoteMode.value && onRootDragEnter) return onRootDragEnter(e);
+    if (!isRemoteMode.value) return onRootDragEnter?.(e);
+    
+    if (remoteCurrentFolder.value && (remoteCurrentFolder.value as any).isContentItem) {
+      e.preventDefault();
+    }
   }
   function onBrowserRootDragOver(e: DragEvent) {
-    if (!isRemoteMode.value) return onRootDragOver(e);
+    if (!isRemoteMode.value) return onRootDragOver?.(e);
+
+    if (remoteCurrentFolder.value && (remoteCurrentFolder.value as any).isContentItem) {
+      e.preventDefault();
+      e.dataTransfer!.dropEffect = 'copy';
+    }
   }
   function onBrowserRootDragLeave(e: DragEvent) {
-    if (!isRemoteMode.value) return onRootDragLeave(e);
+    if (!isRemoteMode.value) return onRootDragLeave?.(e);
   }
-  function onBrowserRootDrop(e: DragEvent) {
-    if (!isRemoteMode.value) return onRootDrop(e);
+  async function onBrowserRootDrop(e: DragEvent) {
+    if (!isRemoteMode.value) return onRootDrop?.(e);
+
+    const target = remoteCurrentFolder.value;
+    if (!target || !(target as any).isContentItem) return;
+
+    // Reuse the same logic as onBrowserEntryDrop
+    const { draggedFile } = useDraggedFile();
+    const files = e.dataTransfer?.files;
+    
+    if (files && files.length > 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      await handleFiles(files, target.path);
+      uiStore.notifyFileManagerUpdate();
+      await loadFolderContent();
+    } else if (draggedFile.value && draggedFile.value.kind === 'file' && !draggedFile.value.isExternal) {
+      e.preventDefault();
+      e.stopPropagation();
+      const sourcePath = draggedFile.value.path;
+      if (sourcePath) {
+        const localVfs = useVfs();
+        const blob = await localVfs.readFile(sourcePath);
+        const file = new File([blob], draggedFile.value.name, { type: blob.type });
+        await handleFiles([file], target.path);
+        uiStore.notifyFileManagerUpdate();
+        await loadFolderContent();
+      }
+    }
   }
 
   watch(
