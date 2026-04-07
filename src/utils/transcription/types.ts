@@ -11,10 +11,20 @@ export interface TranscriptionRequest {
   signal?: AbortSignal;
 }
 
+export interface TranscriptionRecord {
+  createdAt: string;
+  sourcePath: string;
+  sourceName: string;
+  sourceSize: number;
+  sourceLastModified: number;
+  language: string;
+  provider: string;
+  models: string[];
+  response: any;
+}
+
 export interface TranscriptionResult {
-  cacheKey: string;
-  cached: boolean;
-  record: import('~/repositories/transcription-cache.repository').TranscriptionCacheRecord;
+  record: TranscriptionRecord;
 }
 
 export interface LocalTranscriptionProgress {

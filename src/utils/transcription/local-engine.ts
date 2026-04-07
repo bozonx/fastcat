@@ -24,11 +24,26 @@ function getSttWorker(): Worker {
   return sharedSttWorker;
 }
 
+function terminateSttWorker(): void {
+  if (sharedSttWorker) {
+    sharedSttWorker.terminate();
+    sharedSttWorker = null;
+    sttWorkerInitialized = false;
+  }
+}
+
 function getDecodeWorker(): Worker {
   if (!sharedDecodeWorker) {
     sharedDecodeWorker = new AudioDecodeWorker();
   }
   return sharedDecodeWorker;
+}
+
+function terminateDecodeWorker(): void {
+  if (sharedDecodeWorker) {
+    sharedDecodeWorker.terminate();
+    sharedDecodeWorker = null;
+  }
 }
 
 async function decodeAudioForStt(file: File, signal?: AbortSignal): Promise<Float32Array> {
@@ -37,8 +52,7 @@ async function decodeAudioForStt(file: File, signal?: AbortSignal): Promise<Floa
 
   return new Promise((resolve, reject) => {
     const abortHandler = () => {
-      // NOTE: We don't terminate the shared worker, we just reject the promise.
-      // The worker might still finish decoding, but we ignore the result.
+      terminateDecodeWorker();
       reject(new Error('Transcription cancelled'));
     };
 
@@ -136,15 +150,30 @@ export async function transcribeLocally(
 
   onProgress?.({ status: 'initializing' });
 
+  const audioDurationS = finalAudio.length / 16000;
+  
+  // Synthetic progress estimation
+  // Whisper-tiny on modern hardware is roughly 10x-20x realtime. 
+  // We use a conservative factor of 5x to avoid over-promising.
+  const estimatedTimeS = Math.max(2, audioDurationS / 5);
+  let startTime = Date.now();
+  let progressInterval: any = null;
+
   return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      if (progressInterval) clearInterval(progressInterval);
+      signal?.removeEventListener('abort', abortHandler);
+      worker.removeEventListener('message', handler);
+    };
+
     const abortHandler = () => {
-      // NOTE: We don't terminate the shared worker.
-      // We rely on the worker's own task management or just ignore results.
+      cleanup();
+      terminateSttWorker();
       reject(new Error('Transcription cancelled'));
     };
 
     if (signal?.aborted) {
-      reject(new Error('Transcription cancelled'));
+      abortHandler();
       return;
     }
 
@@ -155,10 +184,22 @@ export async function transcribeLocally(
       if (msg.id !== id) return;
 
       if (msg.type === 'progress') {
+        // Model loading progress (0 to 1) - we use it for initializing status
         onProgress?.({ status: 'initializing', progress: msg.data.progress });
+        if (msg.data.progress >= 1) {
+          onProgress?.({ status: 'transcribing', progress: 0 });
+          startTime = Date.now(); // Reset start time for transcription phase
+          
+          if (!progressInterval) {
+            progressInterval = setInterval(() => {
+              const elapsedS = (Date.now() - startTime) / 1000;
+              const progress = Math.min(0.99, elapsedS / estimatedTimeS);
+              onProgress?.({ status: 'transcribing', progress });
+            }, 500);
+          }
+        }
       } else if (msg.type === 'result') {
-        signal?.removeEventListener('abort', abortHandler);
-        worker.removeEventListener('message', handler);
+        cleanup();
 
         if (signal?.aborted) {
           reject(new Error('Transcription cancelled'));
@@ -166,7 +207,6 @@ export async function transcribeLocally(
         }
 
         const record = {
-          key: 'transient',
           createdAt: new Date().toISOString(),
           sourcePath: input.filePath,
           sourceName: input.fileName,
@@ -178,22 +218,15 @@ export async function transcribeLocally(
           response: msg.data,
         };
 
-        resolve({
-          cacheKey: 'transient',
-          cached: false,
-          record,
-        });
+        resolve({ record });
       } else if (msg.type === 'error') {
-        signal?.removeEventListener('abort', abortHandler);
-        worker.removeEventListener('message', handler);
+        cleanup();
         reject(new Error(msg.error || 'Transcription failed'));
       }
     };
 
     worker.addEventListener('message', handler);
 
-    onProgress?.({ status: 'transcribing' });
-    
     worker.postMessage({
       type: 'transcribe',
       id,
