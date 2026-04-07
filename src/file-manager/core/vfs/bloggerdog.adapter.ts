@@ -107,7 +107,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
 
   async readDirectory(
     path: string,
-    options?: { sortBy?: string; sortOrder?: 'asc' | 'desc' },
+    options?: { sortBy?: string; sortOrder?: 'asc' | 'desc'; limit?: number; offset?: number },
   ): Promise<VfsEntry[]> {
     const normalizedPath = this.normalizePath(path);
     const config = this.resolveConfig();
@@ -193,6 +193,8 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       path: remotePath,
       sortBy: options?.sortBy,
       sortOrder: options?.sortOrder,
+      limit: options?.limit,
+      offset: options?.offset,
     });
     
     // Update cache
@@ -221,7 +223,9 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       } as VfsEntry);
     }
     
-    return entries;
+    const result = entries as VfsEntry[] & { total?: number };
+    result.total = response.total;
+    return result;
   }
 
   async createDirectory(path: string): Promise<void> {

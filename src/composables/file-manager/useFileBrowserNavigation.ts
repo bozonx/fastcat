@@ -35,7 +35,7 @@ export function useFileBrowserNavigation({
   folderEntries: Ref<FsEntry[]>;
   supplementEntries: (entries: FsEntry[]) => Promise<ExtendedFsEntry[]>;
   buildRemoteDirectoryEntry: (path: string) => RemoteFsEntry;
-  loadRemoteFolderContent: () => Promise<boolean>;
+  loadRemoteFolderContent: (options?: { append?: boolean }) => Promise<boolean>;
   loadRemoteParentFolders: (parentFolders: Ref<FsEntry[]>) => boolean;
   calculateFolderSize: (path: string) => Promise<void>;
   pendingScrollToEntryPath: Ref<string | null>;
@@ -52,12 +52,12 @@ export function useFileBrowserNavigation({
 
   const parentFolders = ref<FsEntry[]>([]);
 
-  async function loadFolderContent() {
-    const savedScrollTop = pendingScrollToEntryPath.value
+  async function loadFolderContent(options: { append?: boolean } = {}) {
+    const savedScrollTop = pendingScrollToEntryPath.value && !options.append
       ? (rootContainer.value?.scrollTop ?? null)
       : null;
 
-    if (await loadRemoteFolderContent()) {
+    if (await loadRemoteFolderContent(options)) {
       return;
     }
 

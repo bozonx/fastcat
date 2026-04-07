@@ -28,7 +28,7 @@ export interface IFileSystemAdapter {
    */
   readDirectory(
     path: string,
-    options?: { sortBy?: string; sortOrder?: 'asc' | 'desc' },
+    options?: { sortBy?: string; sortOrder?: 'asc' | 'desc'; limit?: number; offset?: number },
   ): Promise<VfsEntry[]>;
 
   /**

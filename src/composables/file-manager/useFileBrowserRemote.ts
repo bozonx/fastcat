@@ -76,6 +76,15 @@ export function useFileBrowserRemote({
   const remoteTransferFileName = ref('');
   const remoteTransferAbortController = ref<AbortController | null>(null);
   const remoteError = ref<string | null>(null);
+  
+  const PAGINATION_LIMIT = 50;
+  const remoteCurrentOffset = ref(0);
+  const remoteTotalItems = ref(0);
+  const isLoadingMore = ref(false);
+
+  const remoteHasMore = computed(() => {
+    return folderEntries.value.length < remoteTotalItems.value;
+  });
 
   const bloggerDogApiUrl = computed(() =>
     typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
@@ -123,12 +132,22 @@ export function useFileBrowserRemote({
     };
   }
 
-  async function loadRemoteFolderContent(): Promise<boolean> {
+  async function loadRemoteFolderContent(options: { append?: boolean } = {}): Promise<boolean> {
     if (!isRemoteMode.value) return false;
 
     if (!remoteCurrentFolder.value || !remoteFilesConfig.value) {
       folderEntries.value = [];
+      remoteTotalItems.value = 0;
+      remoteCurrentOffset.value = 0;
       return true;
+    }
+
+    if (!options.append) {
+      remoteCurrentOffset.value = 0;
+    }
+
+    if (options.append) {
+      isLoadingMore.value = true;
     }
 
     try {
@@ -137,10 +156,20 @@ export function useFileBrowserRemote({
       const items = await vfs.readDirectory(path, {
         sortBy: fileManagerStore.sortOption.field,
         sortOrder: fileManagerStore.sortOption.order,
+        limit: PAGINATION_LIMIT,
+        offset: remoteCurrentOffset.value,
       });
       remoteError.value = null;
+
+      // Update total items count from VFS response (if available)
+      if (typeof (items as any).total === 'number') {
+        remoteTotalItems.value = (items as any).total;
+      } else if (!options.append) {
+        // Fallback for folders that don't support pagination or virtual root folders
+        remoteTotalItems.value = items.length;
+      }
       
-      folderEntries.value = items.map((entry: any) => {
+      const newEntries = items.map((entry: any) => {
         // Ensure entrance into Content Items works by marking them as remote
         const extendedEntry = {
           ...entry,
@@ -164,9 +193,21 @@ export function useFileBrowserRemote({
         }
         return extendedEntry;
       });
+
+      if (options.append) {
+        folderEntries.value = [...folderEntries.value, ...newEntries];
+        remoteCurrentOffset.value += items.length;
+      } else {
+        folderEntries.value = newEntries;
+        remoteCurrentOffset.value = items.length;
+      }
     } catch (error) {
       remoteError.value = error instanceof Error ? error.message : 'Failed to load remote folder';
-      folderEntries.value = [];
+      if (!options.append) {
+        folderEntries.value = [];
+      }
+    } finally {
+      isLoadingMore.value = false;
     }
     return true;
   }
@@ -318,6 +359,16 @@ export function useFileBrowserRemote({
     if (!isRemoteMode.value) return onRootDrop(e);
   }
 
+  watch(
+    () => fileManagerStore.sortOption,
+    () => {
+      if (isRemoteMode.value) {
+        void loadRemoteFolderContent();
+      }
+    },
+    { deep: true },
+  );
+
   return {
     isRemoteMode,
     remoteCurrentFolder,
@@ -326,6 +377,9 @@ export function useFileBrowserRemote({
     remoteTransferPhase,
     remoteTransferFileName,
     remoteError,
+    remoteTotalItems,
+    remoteHasMore,
+    isLoadingMore,
     remoteFilesConfig,
     isRemoteAvailable,
     buildRemoteDirectoryEntry,
