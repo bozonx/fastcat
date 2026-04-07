@@ -5,11 +5,12 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { getMediaTypeFromFilename, getMimeTypeFromFilename } from '~/utils/media-types';
 import { runTranscriptionTask } from '~/utils/transcription/task-wrapper';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
+import { loadTranscriptionSidecar } from '~/utils/transcription/persistence';
 
 export interface UseSttTranscriptionOptions {
   vfs?: { getFile: (path: string) => Promise<File | null> };
   fastcatAccountApiUrl?: Ref<string> | string;
-  onSuccess?: (params: { mediaType: string }) => void;
+  onSuccess?: (params: { mediaType: string; cached: boolean }) => void;
   onError?: (message: string) => void;
 }
 
@@ -102,6 +103,21 @@ export function useSttTranscription(
     try {
       const mediaType = getMediaTypeFromFilename(entry.name);
 
+      const workspacePath =
+        entry.path.startsWith('/') ||
+        entry.path.startsWith('projects/') ||
+        !projectStore.currentProjectName
+          ? entry.path
+          : `projects/${projectStore.currentProjectName}/${entry.path}`;
+
+      // Check if already transcribed (optional logic, but fixes 'cached' parameter mismatch)
+      const existing = await loadTranscriptionSidecar(workspaceStore.workspaceHandle!, workspacePath);
+      if (existing) {
+          modalOpen.value = false;
+          options.onSuccess?.({ mediaType, cached: true });
+          return;
+      }
+
       let file: File | null = null;
       if (options.vfs) {
         file = await options.vfs.getFile(entry.path);
@@ -112,13 +128,6 @@ export function useSttTranscription(
       if (!file) {
         throw new Error('Failed to access file');
       }
-
-      const workspacePath =
-        entry.path.startsWith('/') ||
-        entry.path.startsWith('projects/') ||
-        !projectStore.currentProjectName
-          ? entry.path
-          : `projects/${projectStore.currentProjectName}/${entry.path}`;
 
       const defaultTitle = `Transcription: ${entry.name}`;
       await runTranscriptionTask({
@@ -138,7 +147,7 @@ export function useSttTranscription(
       });
 
       modalOpen.value = false;
-      options.onSuccess?.({ mediaType });
+      options.onSuccess?.({ mediaType, cached: false });
     } catch (error: unknown) {
       if (
         (error as Error).name === 'AbortError' ||
