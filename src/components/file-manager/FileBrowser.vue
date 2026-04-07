@@ -233,16 +233,16 @@ const {
   dragOverEntryPath,
   currentDragOperation,
   isRootDropOver,
-  onRootDragEnter,
-  onRootDragOver,
-  onRootDragLeave,
-  onRootDrop,
   onEntryDragStart: onEntryDragStartBase,
   onEntryDragEnd: onEntryDragEndBase,
-  onEntryDragEnter,
-  onEntryDragOver,
-  onEntryDragLeave,
-  onEntryDrop,
+  onEntryDragEnter: onEntryDragEnterBase,
+  onEntryDragOver: onEntryDragOverBase,
+  onEntryDragLeave: onEntryDragLeaveBase,
+  onEntryDrop: onEntryDropBase,
+  onRootDragEnter: onRootDragEnterBase,
+  onRootDragOver: onRootDragOverBase,
+  onRootDragLeave: onRootDragLeaveBase,
+  onRootDrop: onRootDropBase,
   onPanelDragOver,
   onPanelDragLeave,
   onPanelDrop,
@@ -275,16 +275,16 @@ const remote = useFileBrowserRemote({
       selectionStore.clearSelection();
     }
   },
-  onEntryDragStart: (e, entry) => onEntryDragStart(e, entry),
-  onEntryDragEnd: () => onEntryDragEnd(),
-  onEntryDragEnter,
-  onEntryDragOver,
-  onEntryDragLeave,
-  onEntryDrop,
-  onRootDragEnter,
-  onRootDragOver,
-  onRootDragLeave,
-  onRootDrop,
+  onEntryDragStart: onEntryDragStartBase,
+  onEntryDragEnd: onEntryDragEndBase,
+  onEntryDragEnter: onEntryDragEnterBase,
+  onEntryDragOver: onEntryDragOverBase,
+  onEntryDragLeave: onEntryDragLeaveBase,
+  onEntryDrop: onEntryDropBase,
+  onRootDragEnter: onRootDragEnterBase,
+  onRootDragOver: onRootDragOverBase,
+  onRootDragLeave: onRootDragLeaveBase,
+  onRootDrop: onRootDropBase,
   handleFiles,
   vfs,
 });
@@ -305,20 +305,54 @@ const {
   isLoadingMore,
   onBrowserEntryDragStart,
   onBrowserEntryDragEnd,
+  onBrowserEntryDragEnter,
+  onBrowserEntryDragOver,
+  onBrowserEntryDragLeave,
+  onBrowserEntryDrop,
+  onBrowserRootDragEnter,
+  onBrowserRootDragOver,
+  onBrowserRootDragLeave,
+  onBrowserRootDrop,
 } = remote;
 
 function onEntryDragStart(e: DragEvent, entry: FsEntry) {
-  if (isRemoteMode.value) {
-    return onBrowserEntryDragStart(e, entry);
-  }
-  return onEntryDragStartBase(e, entry);
+  return onBrowserEntryDragStart(e, entry);
 }
 
 function onEntryDragEnd() {
-  if (isRemoteMode.value) {
-    return onBrowserEntryDragEnd();
-  }
-  return onEntryDragEndBase();
+  return onBrowserEntryDragEnd();
+}
+
+function onEntryDragEnter(e: DragEvent, entry: FsEntry) {
+  return onBrowserEntryDragEnter(e, entry);
+}
+
+function onEntryDragOver(e: DragEvent, entry: FsEntry) {
+  return onBrowserEntryDragOver(e, entry);
+}
+
+function onEntryDragLeave(e: DragEvent, entry: FsEntry) {
+  return onBrowserEntryDragLeave(e, entry);
+}
+
+function onEntryDrop(e: DragEvent, entry: FsEntry) {
+  return onBrowserEntryDrop(e, entry);
+}
+
+function onRootDragEnter(e: DragEvent) {
+  return onBrowserRootDragEnter(e);
+}
+
+function onRootDragOver(e: DragEvent) {
+  return onBrowserRootDragOver(e);
+}
+
+function onRootDragLeave(e: DragEvent) {
+  return onBrowserRootDragLeave(e);
+}
+
+function onRootDrop(e: DragEvent) {
+  return onBrowserRootDrop(e);
 }
 
 function toggleBloggerDogPanel() {
@@ -657,6 +691,7 @@ const currentGridSizeName = computed(() => {
 onUnmounted(() => {});
 
 onMounted(async () => {
+  fileManagerStore.fileBrowserContainerRef = rootContainer.value;
   if (props.remoteModeOnly) {
     remoteCurrentFolder.value = buildRemoteDirectoryEntry('/');
     await loadFolderContent();
