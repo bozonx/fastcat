@@ -61,12 +61,12 @@ export async function getSttModelsDir(
 ): Promise<FileSystemDirectoryHandle> {
   let baseHandle: FileSystemDirectoryHandle;
 
-  if (typeof window !== 'undefined' && navigator.storage?.getDirectory) {
-    // Shared storage for the entire Origin (Browser)
-    baseHandle = await navigator.storage.getDirectory();
-  } else if (workspaceHandle) {
-    // Fallback to workspace-local storage
+  if (workspaceHandle) {
+    // Favor workspace-local storage for transparency and disk visibility
     baseHandle = workspaceHandle;
+  } else if (typeof window !== 'undefined' && navigator.storage?.getDirectory) {
+    // Shared storage for the entire Origin (Browser) as fallback
+    baseHandle = await navigator.storage.getDirectory();
   } else {
     throw new Error('No storage handle available for models');
   }

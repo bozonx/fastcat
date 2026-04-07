@@ -1,5 +1,6 @@
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import { transcribeAudioFile, type TranscriptionRequest, type TranscriptionResult } from './engine';
+import { saveTranscriptionSidecar } from './persistence';
 
 export interface TranscriptionTaskOptions extends Omit<TranscriptionRequest, 'onProgress' | 'signal'> {
   title?: string;
@@ -28,6 +29,10 @@ export async function runTranscriptionTask(options: TranscriptionTaskOptions): P
       },
       signal: abortController.signal,
     });
+
+    if (options.workspaceHandle && result.record) {
+      void saveTranscriptionSidecar(options.workspaceHandle, options.filePath, result.record);
+    }
 
     tasksStore.updateTaskStatus(taskId, 'completed');
     return result;

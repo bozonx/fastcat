@@ -1,6 +1,7 @@
 import { computed, ref, watch, type Ref } from 'vue';
 import { getMimeTypeFromFilename } from '~/utils/media-types';
 import { runTranscriptionTask } from '~/utils/transcription/task-wrapper';
+import { loadTranscriptionSidecar } from '~/utils/transcription/persistence';
 import type { FastCatUserSettings } from '~/utils/settings';
 import type { FsEntry } from '~/types/fs';
 
@@ -30,7 +31,7 @@ function extractTranscriptionText(payload: unknown): string {
     }
   }
 
-  const result = data.result;
+  const result = (data as any).result;
   if (result && typeof result === 'object') {
     return extractTranscriptionText(result);
   }
@@ -44,6 +45,13 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
   const isTranscribingAudio = ref(false);
   const transcriptionError = ref('');
   const latestTranscriptionText = ref('');
+  const latestTranscriptionWasCached = ref(false);
+
+  const latestTranscriptionCacheKey = computed(() => {
+    const entry = options.selectedFsEntry.value;
+    if (!entry?.path) return '';
+    return entry.path;
+  });
 
   const isSttModelReady = computed(() => {
     const isLocal = options.userSettings.value.integrations.stt.provider === 'local';
@@ -63,10 +71,39 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
     );
   });
 
+  async function loadExistingTranscription() {
+    const entry = options.selectedFsEntry.value;
+    const workspace = options.workspaceHandle.value;
+    if (!entry?.path || !workspace || entry.source === 'remote') {
+      latestTranscriptionText.value = '';
+      latestTranscriptionWasCached.value = false;
+      return;
+    }
+
+    const workspacePath = entry.path.startsWith('/') || entry.path.startsWith('projects/') || !options.currentProjectName.value
+        ? entry.path
+        : `projects/${options.currentProjectName.value}/${entry.path}`;
+
+    try {
+      const record = await loadTranscriptionSidecar(workspace, workspacePath);
+      if (record) {
+        latestTranscriptionText.value = extractTranscriptionText(record.response);
+        latestTranscriptionWasCached.value = true;
+      } else {
+        latestTranscriptionText.value = '';
+        latestTranscriptionWasCached.value = false;
+      }
+    } catch {
+      latestTranscriptionText.value = '';
+      latestTranscriptionWasCached.value = false;
+    }
+  }
+
   function resetTranscriptionState() {
     transcriptionLanguage.value = '';
     transcriptionError.value = '';
     latestTranscriptionText.value = '';
+    latestTranscriptionWasCached.value = false;
     isTranscriptionModalOpen.value = false;
     isTranscribingAudio.value = false;
   }
@@ -80,11 +117,7 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
 
   async function submitAudioTranscription() {
     const selectedEntry = options.selectedFsEntry.value;
-    if (
-      !options.workspaceHandle.value
-    ) {
-      return;
-    }
+    if (!options.workspaceHandle.value) return;
 
     isTranscribingAudio.value = true;
     transcriptionError.value = '';
@@ -111,6 +144,7 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
       } as any);
 
       latestTranscriptionText.value = extractTranscriptionText(result.record.response);
+      latestTranscriptionWasCached.value = false; // Fresh result
 
       options.toast.add({
         title: options.t(
@@ -142,8 +176,11 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
 
   watch(
     () => options.selectedFsEntry.value?.path,
-    () => {
+    async (newPath) => {
       resetTranscriptionState();
+      if (newPath) {
+        await loadExistingTranscription();
+      }
     },
     { immediate: true },
   );
@@ -155,6 +192,8 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
     isTranscribingAudio,
     transcriptionError,
     latestTranscriptionText,
+    latestTranscriptionCacheKey,
+    latestTranscriptionWasCached,
     isSttModelReady,
     openTranscriptionModal,
     submitAudioTranscription,
