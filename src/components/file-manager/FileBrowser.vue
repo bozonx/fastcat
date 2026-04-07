@@ -82,7 +82,7 @@ const {
   createFolder,
   renameEntry,
   deleteEntry,
-  handleFiles,
+  handleFiles: handleFilesBase,
   moveEntry,
   copyEntry,
   findEntryByPath,
@@ -260,6 +260,28 @@ const {
   fileManagerInstanceId: instanceId,
   isExternal: isExternal.value,
 });
+
+async function handleRemoteFiles(files: File[] | FileList, targetDirPath?: string) {
+  const fileList = files instanceof FileList ? Array.from(files) : files;
+  await handleFilesCommand({
+    files: fileList,
+    targetDirPath,
+    vfs,
+    resolveDefaultTargetDir: () => fileManager.resolveDefaultTargetDir(),
+    runWithUiFeedback: (options) => fileManager.runWithUiFeedback(options),
+    notifyFileManagerUpdate: () => {
+      skipNextUpdateReload.value = true;
+      uiStore.notifyFileManagerUpdate();
+    },
+  });
+}
+
+async function handleFiles(files: File[] | FileList, targetDirPath?: string) {
+  if (isRemoteMode.value) {
+    return handleRemoteFiles(files, targetDirPath);
+  }
+  return handleFilesBase(files, targetDirPath);
+}
 
 const remote = useFileBrowserRemote({
   isRemoteMode,

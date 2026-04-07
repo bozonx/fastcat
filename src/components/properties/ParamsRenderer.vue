@@ -41,31 +41,6 @@ const { t } = useI18n();
 
 const dragOverKey = ref<string | null>(null);
 
-interface ScaleXYControlState {
-  canReset: boolean;
-  isLinked: boolean;
-  label: string;
-  xValue: number;
-  yLabel: string;
-  yValue: number;
-}
-
-interface VisibleControlEntry {
-  actionLabel: string;
-  arrayItems: Record<string, unknown>[];
-  control: ParamControl;
-  disabled: boolean;
-  fileDisplayValue: string;
-  hasValue: boolean;
-  key: string;
-  label: string;
-  numberValue: number;
-  scaleXYState: ScaleXYControlState | null;
-  selectItems: ReturnType<typeof getSelectItems>;
-  stringValue: string;
-  value: unknown;
-}
-
 function getLabel(control: ParamControl): string {
   if ('labelKey' in control && typeof control.labelKey === 'string') {
     return t(control.labelKey);
@@ -134,11 +109,8 @@ function handleFileDrop(event: DragEvent, control: FileParamControl) {
   dragOverKey.value = null;
   const raw = event.dataTransfer?.getData('application/json');
   if (!raw) {
-    // Fallback: Check for files in event.dataTransfer.files
     const files = event.dataTransfer?.files;
     if (files && files.length > 0) {
-      // Assuming we need a path, but browser drag and drop doesn't always give full path.
-      // In electron/tauri it might.
       const file = files[0] as any;
       if (file && file.path) {
         updateValue(control.key, file.path);
@@ -164,7 +136,7 @@ function handleAction(action: string, key: string) {
   emit('action', action, key);
 }
 
-function buildScaleXYState(control: ScaleXYParamControl): ScaleXYControlState {
+function buildScaleXYState(control: ScaleXYParamControl) {
   const isLinked = Boolean(getValue(control.keyLinked) ?? control.defaultLinked ?? true);
   const xValue = Number(getValue(control.keyX) ?? control.defaultValueX ?? 100);
   const yValue = Number(getValue(control.keyY) ?? control.defaultValueY ?? 100);
@@ -185,6 +157,23 @@ function buildScaleXYState(control: ScaleXYParamControl): ScaleXYControlState {
   };
 }
 
+interface VisibleControlEntry {
+  actionLabel: string;
+  arrayItems: Record<string, unknown>[];
+  control: ParamControl;
+  disabled: boolean;
+  fileDisplayValue: string;
+  hasValue: boolean;
+  key: string;
+  kind: ParamControl['kind'];
+  label: string;
+  numberValue: number;
+  scaleXYState: ReturnType<typeof buildScaleXYState> | null;
+  selectItems: ReturnType<typeof getSelectItems>;
+  stringValue: string;
+  value: unknown;
+}
+
 const visibleControlEntries = computed<VisibleControlEntry[]>(() => {
   const values = props.values as Record<string, unknown>;
 
@@ -200,7 +189,7 @@ const visibleControlEntries = computed<VisibleControlEntry[]>(() => {
       let fileDisplayValue = '';
       let actionLabel = label;
       let arrayItems: Record<string, unknown>[] = [];
-      let scaleXYState: ScaleXYControlState | null = null;
+      let scaleXYState: ReturnType<typeof buildScaleXYState> | null = null;
 
       if (control.kind === 'slider' || control.kind === 'knob') {
         numberValue = Number(rawValue ?? control.defaultValue ?? control.min);
@@ -227,6 +216,7 @@ const visibleControlEntries = computed<VisibleControlEntry[]>(() => {
       return {
         control,
         key: control.key ?? `${control.kind}-${label}`,
+        kind: control.kind,
         label,
         disabled: Boolean(control.disabled || props.disabled),
         value: rawValue,
@@ -241,6 +231,41 @@ const visibleControlEntries = computed<VisibleControlEntry[]>(() => {
       };
     });
 });
+
+function getMemoKey(entry: VisibleControlEntry): unknown[] {
+  const base = [entry.key, entry.disabled];
+
+  switch (entry.kind) {
+    case 'slider':
+    case 'knob':
+    case 'number':
+      return [...base, entry.numberValue];
+    case 'scale-xy':
+      return [
+        ...base,
+        entry.scaleXYState?.xValue,
+        entry.scaleXYState?.yValue,
+        entry.scaleXYState?.isLinked,
+      ];
+    case 'select':
+    case 'button-group':
+    case 'toggle':
+    case 'boolean':
+      return [...base, entry.value];
+    case 'color':
+    case 'text':
+      return [...base, entry.stringValue];
+    case 'file':
+      return [...base, entry.fileDisplayValue, entry.hasValue];
+    case 'action':
+      return [...base, entry.actionLabel];
+    case 'array':
+      return [...base, JSON.stringify(entry.arrayItems)];
+    case 'row':
+    default:
+      return base;
+  }
+}
 
 function handleArrayAdd(control: ParamControl) {
   if (control.kind !== 'array') return;
@@ -275,7 +300,8 @@ function handleArrayItemUpdate(
   <div :class="props.asContents ? 'contents' : 'flex flex-col gap-2'">
     <template v-for="entry in visibleControlEntries" :key="entry.key">
       <div
-        v-if="entry.control.kind === 'row'"
+        v-if="entry.kind === 'row'"
+        v-memo="getMemoKey(entry)"
         class="grid gap-2"
         :class="entry.control.columns === 1 ? 'grid-cols-1' : 'grid-cols-2'"
       >
@@ -289,7 +315,11 @@ function handleArrayItemUpdate(
         />
       </div>
 
-      <div v-else-if="entry.control.kind === 'slider'" class="flex flex-col gap-1">
+      <div
+        v-else-if="entry.kind === 'slider'"
+        v-memo="getMemoKey(entry)"
+        class="flex flex-col gap-1"
+      >
         <div class="flex justify-between text-xs text-ui-text-muted gap-2">
           <span>{{ entry.label }}</span>
           <span>
@@ -308,7 +338,8 @@ function handleArrayItemUpdate(
       </div>
 
       <div
-        v-else-if="entry.control.kind === 'knob'"
+        v-else-if="entry.kind === 'knob'"
+        v-memo="getMemoKey(entry)"
         class="flex flex-col items-center justify-center gap-1.5 py-1"
       >
         <UiKnob
@@ -329,7 +360,11 @@ function handleArrayItemUpdate(
         </div>
       </div>
 
-      <div v-else-if="entry.control.kind === 'number'" class="flex flex-col gap-0.5">
+      <div
+        v-else-if="entry.kind === 'number'"
+        v-memo="getMemoKey(entry)"
+        class="flex flex-col gap-0.5"
+      >
         <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
         <UiWheelNumberInput
           :model-value="entry.numberValue"
@@ -344,7 +379,8 @@ function handleArrayItemUpdate(
       </div>
 
       <div
-        v-else-if="entry.control.kind === 'scale-xy' && entry.scaleXYState"
+        v-else-if="entry.kind === 'scale-xy' && entry.scaleXYState"
+        v-memo="getMemoKey(entry)"
         class="flex flex-col gap-2"
       >
         <div class="flex items-center gap-2">
@@ -438,7 +474,8 @@ function handleArrayItemUpdate(
       </div>
 
       <div
-        v-else-if="entry.control.kind === 'toggle' || entry.control.kind === 'boolean'"
+        v-else-if="entry.kind === 'toggle' || entry.kind === 'boolean'"
+        v-memo="getMemoKey(entry)"
         class="flex items-center justify-between gap-3"
       >
         <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
@@ -450,7 +487,11 @@ function handleArrayItemUpdate(
         />
       </div>
 
-      <div v-else-if="entry.control.kind === 'select'" class="flex flex-col gap-0.5">
+      <div
+        v-else-if="entry.kind === 'select'"
+        v-memo="getMemoKey(entry)"
+        class="flex flex-col gap-0.5"
+      >
         <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
         <UiSelect
           :model-value="entry.value as any"
@@ -465,7 +506,11 @@ function handleArrayItemUpdate(
         />
       </div>
 
-      <div v-else-if="entry.control.kind === 'button-group'" class="flex flex-col gap-1">
+      <div
+        v-else-if="entry.kind === 'button-group'"
+        v-memo="getMemoKey(entry)"
+        class="flex flex-col gap-1"
+      >
         <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
         <UiButtonGroup
           :model-value="entry.value"
@@ -479,7 +524,11 @@ function handleArrayItemUpdate(
         />
       </div>
 
-      <div v-else-if="entry.control.kind === 'color'" class="flex flex-col gap-0.5">
+      <div
+        v-else-if="entry.kind === 'color'"
+        v-memo="getMemoKey(entry)"
+        class="flex flex-col gap-0.5"
+      >
         <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
         <UColorPicker
           :model-value="entry.stringValue"
@@ -492,7 +541,11 @@ function handleArrayItemUpdate(
         />
       </div>
 
-      <div v-else-if="entry.control.kind === 'text'" class="flex flex-col gap-0.5">
+      <div
+        v-else-if="entry.kind === 'text'"
+        v-memo="getMemoKey(entry)"
+        class="flex flex-col gap-0.5"
+      >
         <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
         <UTextarea
           v-if="entry.control.multiline"
@@ -518,7 +571,7 @@ function handleArrayItemUpdate(
         />
       </div>
 
-      <div v-else-if="entry.control.kind === 'file'" class="flex flex-col gap-1">
+      <div v-else-if="entry.kind === 'file'" v-memo="getMemoKey(entry)" class="flex flex-col gap-1">
         <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
         <div
           class="flex items-center gap-2 p-2 rounded border border-dashed transition-colors"
@@ -556,7 +609,11 @@ function handleArrayItemUpdate(
         </div>
       </div>
 
-      <div v-else-if="entry.control.kind === 'action'" class="flex flex-col gap-1">
+      <div
+        v-else-if="entry.kind === 'action'"
+        v-memo="getMemoKey(entry)"
+        class="flex flex-col gap-1"
+      >
         <UButton
           :icon="entry.control.icon"
           :disabled="entry.disabled"
@@ -570,7 +627,11 @@ function handleArrayItemUpdate(
         </UButton>
       </div>
 
-      <div v-else-if="entry.control.kind === 'array'" class="flex flex-col gap-2">
+      <div
+        v-else-if="entry.kind === 'array'"
+        v-memo="getMemoKey(entry)"
+        class="flex flex-col gap-2"
+      >
         <div class="flex items-center justify-between">
           <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
           <UButton
