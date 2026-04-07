@@ -10,9 +10,8 @@ import {
   type TimelineCaptionWord,
 } from '~/utils/transcription/captions';
 import {
-  createTranscriptionCacheRepository,
-  type TranscriptionCacheRecord,
-} from '~/repositories/transcription-cache.repository';
+  type TranscriptionRecord,
+} from '~/utils/transcription/types';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
 
@@ -72,10 +71,10 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
   }
 
   function findMatchingTranscriptionRecord(options: {
-    records: TranscriptionCacheRecord[];
+    records: TranscriptionRecord[];
     sourcePath: string;
     language?: string;
-  }): TranscriptionCacheRecord | null {
+  }): TranscriptionRecord | null {
     const meta = mediaMetadata.value[options.sourcePath] ?? null;
 
     return (
@@ -198,15 +197,8 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
       throw new Error('Timeline not loaded');
     }
 
-    const workspaceHandle = getWorkspaceHandle();
-    if (!workspaceHandle) {
-      throw new Error('Project workspace is not available');
-    }
-
-    const repository = createTranscriptionCacheRepository({
-      workspaceDir: workspaceHandle,
-    });
-    const recordsByPath = new Map<string, TranscriptionCacheRecord[]>();
+    // NOTE: Caching was removed. This map will be empty.
+    const recordsByPath = new Map<string, TranscriptionRecord[]>();
 
     const getRecordsForPath = async (path: string) => {
       // Ensure absolute workspace path
@@ -216,10 +208,7 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
           ? path
           : `projects/${projectName}/${path}`;
 
-      if (recordsByPath.has(workspacePath)) return recordsByPath.get(workspacePath)!;
-      const records = await repository.list({ sourcePath: workspacePath });
-      recordsByPath.set(workspacePath, records);
-      return records;
+      return recordsByPath.get(workspacePath) || [];
     };
 
     const allWords: TimelineCaptionWord[] = [];

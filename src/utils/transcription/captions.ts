@@ -1,5 +1,5 @@
 import type { TextClipStyle } from '~/timeline/types';
-import type { TranscriptionCacheRecord } from '~/repositories/transcription-cache.repository';
+import type { TranscriptionRecord } from './types';
 
 export interface TranscriptionWord {
   start: number;
@@ -91,7 +91,7 @@ function normalizeWord(word: any): TranscriptionWord | null {
   };
 }
 
-export function extractTranscriptionWords(record: TranscriptionCacheRecord): TranscriptionWord[] {
+export function extractTranscriptionWords(record: TranscriptionRecord): TranscriptionWord[] {
   const response = record.response as { words?: unknown; chunks?: unknown } | null;
   
   // Whisper v3 uses 'chunks', while some other providers might use 'words'
@@ -302,7 +302,7 @@ export function buildCaptionChunksFromWords(params: {
 }
 
 export function buildCaptionChunks(params: {
-  record: TranscriptionCacheRecord;
+  record: TranscriptionRecord;
   settings: CaptionGenerationSettings;
 }): { chunks: CaptionChunk[]; sourceName: string; sourcePath: string } {
   const words = extractTranscriptionWords(params.record);

@@ -1,6 +1,6 @@
 import {
-  type TranscriptionCacheRecord,
-} from '~/repositories/transcription-cache.repository';
+  type TranscriptionRecord,
+} from './types';
 import { resolveExternalServiceConfig, resolveSttStreamUrl } from '~/utils/external-integrations';
 import type { FastCatUserSettings } from '~/utils/settings';
 import { getMimeTypeFromFilename } from '~/utils/media-types';
@@ -35,23 +35,6 @@ function normalizeFileType(fileType: string | undefined, file: File): string {
   return 'application/octet-stream';
 }
 
-export async function createCacheKey(params: {
-  filePath: string;
-  fileName: string;
-  fileSize: number;
-  lastModified: number;
-  language: string;
-  provider: string;
-  models: string[];
-  endpoint: string;
-}): Promise<string> {
-  const payload = JSON.stringify(params);
-  const encoded = new TextEncoder().encode(payload);
-  const digest = await crypto.subtle.digest('SHA-256', encoded);
-  return Array.from(new Uint8Array(digest))
-    .map((value) => value.toString(16).padStart(2, '0'))
-    .join('');
-}
 
 function createRequestHeaders(params: {
   file: File | null;
@@ -177,8 +160,7 @@ export async function transcribeAudioFile(
   input.onProgress?.(1);
 
   const responsePayload = (await response.json()) as unknown;
-  const record: TranscriptionCacheRecord = {
-    key: 'transient', // We no longer use keys for persistent caching
+  const record: TranscriptionRecord = {
     createdAt: new Date().toISOString(),
     sourcePath: input.filePath,
     sourceName: input.fileName,
@@ -190,9 +172,5 @@ export async function transcribeAudioFile(
     response: responsePayload,
   };
 
-  return {
-    cacheKey: 'transient',
-    cached: false,
-    record,
-  };
+  return { record };
 }
