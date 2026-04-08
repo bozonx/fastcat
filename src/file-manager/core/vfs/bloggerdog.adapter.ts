@@ -280,18 +280,21 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     }
 
     if (normalizedParentPath === '/personal') {
-      // For personal root, parentId is "personal"
-      parentId = 'personal';
+      // For personal root, parentId must be completely excluded (undefined)
+      parentId = undefined;
+      projectId = undefined;
     } else if (
       normalizedParentPath.startsWith('/projects/') &&
       normalizedParentPath.split('/').filter(Boolean).length === 2
     ) {
-      // It's a project root, e.g., /projects/uuid. Parent ID is the projectId itself.
-      parentId = parent.id;
+      // It's a project root, e.g., /projects/uuid. 
+      // To create in project root, parentId must be excluded (undefined), but projectId must be set.
+      parentId = undefined;
       projectId = parent.id;
     } else {
-      // For sub-collections, use the collection UUID
+      // For sub-collections, use the collection UUID as parentId
       parentId = parent.id;
+      projectId = undefined;
     }
 
     const collection = await createRemoteCollection({
