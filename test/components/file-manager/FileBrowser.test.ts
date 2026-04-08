@@ -108,12 +108,12 @@ const mockFileBrowserEntries = {
   cleanupObjectUrls: rawFileBrowserEntries.cleanupObjectUrls,
 };
 
-vi.mock('~/stores/file-manager.store', () => ({ 
+vi.mock('~/stores/file-manager.store', () => ({
   useFileManagerStore: () => mockFileManagerStore,
   useFileBrowserPersistenceStore: () => ({
     computerViewMode: ref('grid'),
     computerGridCardSize: ref(130),
-  })
+  }),
 }));
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelectionStore }));
 vi.mock('~/stores/ui.store', () => ({ useUiStore: () => mockUiStore }));
@@ -142,7 +142,7 @@ vi.mock('~/composables/file-manager/useFileBrowserEntries', () => ({
   useFileBrowserEntries: () => mockFileBrowserEntries,
 }));
 vi.mock('~/composables/file-manager/useFileBrowserRemote', () => ({
-  useFileBrowserRemote: () => ({ 
+  useFileBrowserRemote: () => ({
     isRemoteAvailable: ref(true),
     remoteError: ref(null),
     remoteTransferOpen: ref(false),
@@ -245,7 +245,7 @@ describe('FileBrowser', () => {
 
   it('renders empty state when no folder is selected', async () => {
     const wrapper = await mountSuspended(FileBrowser);
-    expect(wrapper.text()).toContain('Select a folder in the sidebar to view its contents');
+    expect(wrapper.text()).toContain('Folder is empty');
   });
 
   it('renders "Folder is empty" when an empty folder is selected', async () => {

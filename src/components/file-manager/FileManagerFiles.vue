@@ -372,7 +372,7 @@ function selectProjectRoot() {
 
   const rootEntry: FsEntry = {
     kind: 'directory',
-    name: '/',
+    name: name,
     path: '',
   };
 

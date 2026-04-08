@@ -451,6 +451,7 @@ const { createTimelineInDirectory, createMarkdownInDirectory } = useFileBrowserC
   loadFolderContent,
   findEntryByPath,
   instanceId,
+  onFileSelect: (entry) => setSelectedFsEntry(entry),
 });
 
 // --- Create subgroup (remote) ---
@@ -565,6 +566,7 @@ const {
   setFileTreePathExpanded: (path, expanded) => {
     uiStore.setFileTreePathExpanded(path, expanded);
   },
+  onFileSelect: (entry) => setSelectedFsEntry(entry),
   onAfterRename: () => {
     void loadFolderContent();
   },

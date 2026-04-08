@@ -109,6 +109,13 @@ export function useFileManagerActions(actions: FileManagerActions) {
     await actions.reloadDirectory(parentPath);
     stopRename();
     actions.onAfterRename?.();
+
+    // Re-select renamed entry to update UI and property panel
+    const newPath = parentPath ? `${parentPath}/${trimmed}` : trimmed;
+    const newEntry = actions.findEntryByPath(newPath);
+    if (newEntry) {
+      actions.onFileSelect?.(newEntry);
+    }
   }
 
   async function handleCreateAutoFolder(targetDirPath: string, existingNames: string[]) {
@@ -251,21 +258,32 @@ export function useFileManagerActions(actions: FileManagerActions) {
     }
 
     if (uiStore.selectedFsEntry?.path && pathsToDelete.has(uiStore.selectedFsEntry.path)) {
-      uiStore.selectedFsEntry = null;
-    }
-
-    const sel = selectionStore.selectedEntity;
-    if (sel?.source === 'fileManager') {
-      let shouldClear = false;
-      if (sel.kind === 'multiple') {
-        shouldClear = sel.entries.some((e) =>
-          e.path ? pathsToDelete.has(e.path) : namesToDelete.has(e.name),
-        );
+      const currentFolder = fileManagerStore.selectedFolder;
+      if (currentFolder) {
+        actions.onFileSelect?.(currentFolder);
       } else {
-        shouldClear = sel.path ? pathsToDelete.has(sel.path) : namesToDelete.has(sel.name);
-      }
-      if (shouldClear) {
+        uiStore.selectedFsEntry = null;
         selectionStore.clearSelection();
+      }
+    } else {
+      const sel = selectionStore.selectedEntity;
+      if (sel?.source === 'fileManager') {
+        let shouldClear = false;
+        if (sel.kind === 'multiple') {
+          shouldClear = sel.entries.some((e) =>
+            e.path ? pathsToDelete.has(e.path) : namesToDelete.has(e.name),
+          );
+        } else {
+          shouldClear = sel.path ? pathsToDelete.has(sel.path) : namesToDelete.has(sel.name);
+        }
+        if (shouldClear) {
+          const currentFolder = fileManagerStore.selectedFolder;
+          if (currentFolder) {
+            actions.onFileSelect?.(currentFolder);
+          } else {
+            selectionStore.clearSelection();
+          }
+        }
       }
     }
 
@@ -392,6 +410,11 @@ export function useFileManagerActions(actions: FileManagerActions) {
         }
       }
 
+      if (targetDirPath) {
+        actions.setFileTreePathExpanded?.(targetDirPath, true);
+      }
+
+      const pastedPaths: string[] = [];
       for (const item of payload.items) {
         let source = actions.findEntryByPath(item.path);
         if (!source) {
@@ -407,6 +430,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
         } else {
           await actions.moveEntry?.({ source, targetDirPath });
         }
+        pastedPaths.push(targetDirPath ? `${targetDirPath}/${item.name}` : item.name);
       }
 
       if (payload.operation === 'cut') {
@@ -420,6 +444,20 @@ export function useFileManagerActions(actions: FileManagerActions) {
       }
 
       actions.notifyFileManagerUpdate?.();
+
+      // Select pasted entries after directory reload
+      setTimeout(() => {
+        const entries = pastedPaths
+          .map((path) => actions.findEntryByPath(path))
+          .filter((e): e is FsEntry => !!e);
+        if (entries.length > 0) {
+          if (entries.length === 1 && entries[0]) {
+            actions.onFileSelect?.(entries[0]);
+          } else {
+            selectionStore.selectFsEntries(entries);
+          }
+        }
+      }, 50);
     },
   };
 

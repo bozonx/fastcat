@@ -186,6 +186,11 @@ export function useFileBrowserPendingActions({
       }
 
       const targetDirPath = targetEntry.path;
+      if (targetDirPath) {
+        uiStore.setFileTreePathExpanded(targetDirPath, true);
+      }
+
+      const pastedPaths: string[] = [];
       for (const item of payload.items) {
         const source = findEntryByPath(item.path);
         if (!source) continue;
@@ -195,6 +200,7 @@ export function useFileBrowserPendingActions({
         } else {
           await fileManager.moveEntry({ source, targetDirPath });
         }
+        pastedPaths.push(targetDirPath ? `${targetDirPath}/${item.name}` : item.name);
       }
 
       if (payload.operation === 'cut') {
@@ -204,6 +210,16 @@ export function useFileBrowserPendingActions({
       uiStore.pendingFsEntryPaste = null;
       uiStore.notifyFileManagerUpdate();
       await loadFolderContent();
+
+      // Select pasted entries after directory reload
+      setTimeout(() => {
+        const entries = pastedPaths
+          .map((path) => findEntryByPath(path))
+          .filter((e): e is FsEntry => !!e);
+        if (entries.length > 0) {
+          selectionStore.selectFsEntries(entries);
+        }
+      }, 50);
     },
   );
 }
