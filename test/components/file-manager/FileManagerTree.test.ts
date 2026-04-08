@@ -24,8 +24,34 @@ const workspaceStoreMock = {
       layer2: 'Control',
       bindings: {},
     },
+    integrations: {
+      fastcatAccount: {
+        enabled: false,
+        bearerToken: '',
+      },
+      fastcatPublicador: {
+        enabled: false,
+        bearerToken: '',
+      },
+      manualFilesApi: {
+        enabled: false,
+        baseUrl: '',
+        bearerToken: '',
+        overrideFastCat: false,
+      },
+    },
   },
 };
+
+vi.mock('#imports', () => ({
+  useRuntimeConfig: () => ({
+    public: {
+      bloggerDogApiUrl: '',
+    },
+  }),
+}));
+
+vi.stubGlobal('useToast', () => ({ add: vi.fn() }));
 
 const setCurrentDragOperationMock = vi.fn();
 const setDragSourceFileManagerInstanceIdMock = vi.fn((instanceId: string | null) => {

@@ -34,7 +34,7 @@ describe('remote-vfs utils', () => {
     expect(isRemoteFsEntry(entry)).toBe(true);
     expect(entry).toMatchObject({
       name: 'clip.mp4',
-      kind: 'file',
+      kind: 'directory',
       path: '/clips/clip.mp4',
       source: 'remote',
       remoteId: 'file-1',
@@ -42,6 +42,7 @@ describe('remote-vfs utils', () => {
       remoteType: 'file',
       size: 4096,
       mimeType: 'video/mp4',
+      isContentItem: true,
     });
     expect(entry.created).toBe(Date.parse('2024-01-02T03:04:05.000Z'));
   });

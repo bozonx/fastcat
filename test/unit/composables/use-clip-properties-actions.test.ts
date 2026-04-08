@@ -49,7 +49,10 @@ function createOptions(clip: TimelineClipItem) {
     goToFiles: vi.fn(),
     goToCut: vi.fn(),
   };
-  const uiStore = { selectedFsEntry: null as Partial<FsEntry> | null };
+  const uiStore = {
+    selectedFsEntry: null as Partial<FsEntry> | null,
+    notifyFileManagerUpdate: vi.fn(),
+  };
   const selectionStore = { selectFsEntry: vi.fn() };
   const fileManagerStore = { openFolder: vi.fn() };
   const focusStore = { setTempFocus: vi.fn() };

@@ -39,6 +39,7 @@ const uiStore = {
   setFileTreePathExpanded: vi.fn(),
   remoteExchangeLocalEntry: null as any,
   remoteExchangeModalOpen: false,
+  notifyFileManagerUpdate: vi.fn(),
 };
 
 vi.mock('~/stores/project.store', () => ({ useProjectStore: () => projectStore }));
@@ -96,12 +97,7 @@ describe('useFileManagerPanelActions', () => {
     });
 
     expect(createTimelineCommand).toHaveBeenCalledTimes(1);
-    expect(selectionStore.selectFsEntry).toHaveBeenCalledWith(createdEntry, undefined);
-    expect(uiStore.selectedFsEntry).toEqual({
-      kind: 'file',
-      name: 'demo.otio',
-      path: 'timelines/demo.otio',
-    });
+    expect(selectionStore.selectFsEntry).toHaveBeenCalledWith(createdEntry, 'left');
     expect(projectStore.openTimelineFile).toHaveBeenCalledWith('timelines/demo.otio');
     expect(timelineStore.loadTimeline).toHaveBeenCalledTimes(1);
   });

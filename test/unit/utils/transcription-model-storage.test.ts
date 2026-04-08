@@ -21,11 +21,6 @@ vi.mock('~/workers/audio-decode.worker.ts?worker', () => ({
   },
 }));
 
-vi.mock('~/utils/transcription/model-storage', () => ({
-  getSttModelsDir: vi.fn(),
-  isModelDownloaded: vi.fn(),
-}));
-
 vi.mock('~/repositories/transcription-cache.repository', () => ({
   createTranscriptionCacheRepository: () => ({
     save: vi.fn().mockResolvedValue(undefined),
@@ -88,6 +83,7 @@ describe('transcription model-storage', () => {
         name: 'vardata',
         getDirectoryHandle: vi.fn().mockResolvedValue(mockModelsDir),
       };
+
       const mockWorkspace = {
         getDirectoryHandle: vi.fn().mockResolvedValue(mockVardata),
       };
@@ -95,6 +91,7 @@ describe('transcription model-storage', () => {
       const result = await getSttModelsDir(mockWorkspace as any);
 
       expect(mockWorkspace.getDirectoryHandle).toHaveBeenCalledWith('vardata', { create: true });
+      expect(mockVardata.getDirectoryHandle).toHaveBeenCalledWith('models', { create: true });
       expect(mockModelsDir.getDirectoryHandle).toHaveBeenCalledWith('stt', { create: true });
       expect(result).toBe(mockSttDir);
     });
