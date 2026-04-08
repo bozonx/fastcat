@@ -3,6 +3,7 @@ import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 interface FileInfo {
   kind: 'file' | 'directory';
+  name: string;
   size?: number;
   createdAt?: number | string | Date | null;
   lastModified?: number | string | Date | null;
@@ -35,7 +36,7 @@ const { t } = useI18n();
         target="_blank"
         class="text-primary-500 hover:text-primary-400 underline decoration-dotted transition-colors flex items-center gap-1 overflow-hidden"
       >
-        <span class="truncate">{{ props.pathLink }}</span>
+        <span class="truncate">{{ props.fileInfo.name }}</span>
         <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 shrink-0" />
       </NuxtLink>
       <span v-else>
