@@ -206,6 +206,7 @@ export function useEntryPreview(params: {
           path: entry.path,
           size,
           filesCount,
+          lastModified: entry.lastModified,
         };
         return;
       }

@@ -22,7 +22,7 @@ import FileProjectRootSection from '~/components/properties/file/FileProjectRoot
 import FileTranscriptionModal from '~/components/file-manager/modals/FileTranscriptionModal.vue';
 import EntryActions from '~/components/properties/file/EntryActions.vue';
 import BloggerDogItemPropertiesSection from '~/components/properties/file/BloggerDogItemPropertiesSection.vue';
-import BloggerDogCollectionProperties from '~/components/properties/file/BloggerDogCollectionProperties.vue';
+
 import { useEntryPreview } from '~/composables/file-manager/useEntryPreview';
 import { useImageExifInfo } from '~/composables/properties/useImageExifInfo';
 import { useFileTimelineUsage } from '~/composables/properties/useFileTimelineUsage';
@@ -666,11 +666,7 @@ const filteredFilePrimaryActions = computed(() => {
         :config="remoteFilesConfig!"
       />
 
-      <BloggerDogCollectionProperties
-        v-if="isBloggerDogGroup && castedRemoteRecord"
-        :collection="castedRemoteRecord as unknown as RemoteVfsDirectoryEntry"
-        :config="remoteFilesConfig!"
-      />
+
 
       <FileProjectRootSection
         v-if="fileInfo?.kind === 'directory' && isProjectRootDir"
