@@ -26,7 +26,6 @@ interface UseFilePropertiesActionsOptions {
   isFolderWithVideo: Ref<boolean>;
   isGeneratingProxyForFolder: Ref<boolean>;
   canConvertFile: Ref<boolean>;
-  canUploadToRemote: Ref<boolean>;
   canTranscribeMedia: Ref<boolean>;
   isAudioFile: Ref<boolean>;
   canOpenAsPanel: Ref<boolean>;
@@ -49,7 +48,6 @@ interface UseFilePropertiesActionsOptions {
   onRename: () => void;
   onDelete: () => void;
   onConvert: () => void;
-  openRemoteUploadPicker: () => void;
   openTranscriptionModal: () => void;
   openAsPanelCut: () => void;
   openAsPanelSound: () => void;
@@ -190,13 +188,7 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       hidden: !options.canCopyOrCut.value,
       onClick: options.onCut,
     },
-    {
-      id: 'uploadRemote',
-      title: options.t('videoEditor.fileManager.actions.uploadRemote'),
-      icon: 'i-heroicons-cloud-arrow-up',
-      hidden: !options.canUploadToRemote.value,
-      onClick: options.openRemoteUploadPicker,
-    },
+    // uploadRemote removed
   ]);
 
   const fileSecondaryActions = computed<SecondaryEntryAction[]>(() => [

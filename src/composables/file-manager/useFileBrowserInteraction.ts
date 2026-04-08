@@ -91,6 +91,11 @@ export function useFileBrowserInteraction({
   }
 
   function handleSort(field: FileSortField) {
+    if (wasResizing.value) {
+      wasResizing.value = false;
+      return;
+    }
+
     if (fileManagerStore.sortOption.field === field) {
       fileManagerStore.setSortOption({
         field,
@@ -102,11 +107,13 @@ export function useFileBrowserInteraction({
   }
 
   const resizingColumn = ref<string | null>(null);
+  const wasResizing = ref(false);
   const resizeStartX = ref(0);
   const resizeStartWidth = ref(0);
 
   function onResizeStart(e: MouseEvent, column: string) {
     resizingColumn.value = column;
+    wasResizing.value = false;
     resizeStartX.value = e.clientX;
     resizeStartWidth.value = fileManagerStore.columnWidths[column] || 100;
     document.addEventListener('mousemove', onResizeMove);
@@ -116,6 +123,9 @@ export function useFileBrowserInteraction({
   function onResizeMove(e: MouseEvent) {
     if (!resizingColumn.value) return;
     const diff = e.clientX - resizeStartX.value;
+    if (Math.abs(diff) > 2) {
+      wasResizing.value = true;
+    }
     const newWidth = Math.max(60, resizeStartWidth.value + diff);
     fileManagerStore.setColumnWidth(resizingColumn.value, newWidth);
   }

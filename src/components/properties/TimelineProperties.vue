@@ -88,7 +88,6 @@ const { onRename, onDelete } = useFilePropertiesHandlers({
   selectedFsEntry: fsEntryRef,
   mediaType: mediaType,
   textContent: textContent,
-  canUploadToRemote: ref(false),
 });
 
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
@@ -104,16 +103,16 @@ const fileActions = computed(() => {
   return {
     primary: [
       {
-        id: 'rename',
-        title: t('common.rename', 'Rename'),
-        icon: 'i-heroicons-pencil',
-        onClick: onRename,
-      },
-      {
         id: 'delete',
         title: t('common.delete', 'Delete'),
         icon: 'i-heroicons-trash',
         onClick: onDelete,
+      },
+      {
+        id: 'rename',
+        title: t('common.rename', 'Rename'),
+        icon: 'i-heroicons-pencil',
+        onClick: onRename,
       },
     ],
     secondary: [
@@ -256,7 +255,7 @@ const addTrackActions = computed(() => [
         />
         <div
           v-if="!finalIsReadOnly"
-          :class="{ 'mt-1 pt-1 border-t border-ui-border/50': fileActions }"
+          class="mt-1 pt-1"
         >
           <PropertyActionList
             :actions="addTrackActions"
@@ -269,7 +268,7 @@ const addTrackActions = computed(() => [
     </PropertySection>
 
     <!-- Info Section -->
-    <PropertySection v-if="computedSummary" :title="t('common.info', 'Info')">
+    <PropertySection v-if="computedSummary">
       <div class="flex flex-col">
         <PropertyRow
           :label="t('fastcat.timeline.version', 'Version')"

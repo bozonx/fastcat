@@ -120,13 +120,7 @@ export function useFileBrowserFileActions({
       return;
     }
 
-    if (action === 'uploadRemote') {
-      if (entry.kind === 'file' && entry.source !== 'remote') {
-        uiStore.remoteExchangeLocalEntry = entry;
-        uiStore.remoteExchangeModalOpen = true;
-      }
-      return;
-    }
+    // uploadRemote removed
 
     if (action === 'transcribe') {
       openTranscriptionModal(entry);
