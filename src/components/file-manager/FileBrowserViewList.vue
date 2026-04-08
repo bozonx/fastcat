@@ -125,11 +125,11 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
 
 <template>
   <div class="flex flex-col w-full min-w-max">
-    <table class="w-full text-left text-sm border-collapse">
+    <table class="w-full text-left text-xs border-collapse">
       <thead>
         <tr class="text-ui-text-muted border-b border-ui-border">
           <th
-            class="py-2 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
+            class="py-0.5 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
             :style="{ width: `${fileManagerStore.columnWidths.name}px`, minWidth: '60px' }"
             @click="emit('sort', 'name')"
           >
@@ -146,13 +146,15 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
               />
             </div>
             <div
-              class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/50"
+              class="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize hover:bg-primary-500/50 z-10 flex items-center justify-center group"
               @mousedown.stop="emit('resizeStart', $event, 'name')"
-            />
+            >
+              <div class="w-[2px] h-3 bg-ui-border group-hover:bg-primary-400 transition-colors" />
+            </div>
           </th>
 
           <th
-            class="py-2 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
+            class="py-0.5 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
             :style="{ width: `${fileManagerStore.columnWidths.type}px`, minWidth: '60px' }"
             @click="emit('sort', 'type')"
           >
@@ -169,13 +171,15 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
               />
             </div>
             <div
-              class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/50"
+              class="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize hover:bg-primary-500/50 z-10 flex items-center justify-center group"
               @mousedown.stop="emit('resizeStart', $event, 'type')"
-            />
+            >
+              <div class="w-[2px] h-3 bg-ui-border group-hover:bg-primary-400 transition-colors" />
+            </div>
           </th>
 
           <th
-            class="py-2 px-3 font-medium text-right cursor-pointer hover:text-ui-text transition-colors select-none relative"
+            class="py-0.5 px-3 font-medium text-right cursor-pointer hover:text-ui-text transition-colors select-none relative"
             :style="{ width: `${fileManagerStore.columnWidths.size}px`, minWidth: '60px' }"
             @click="emit('sort', 'size')"
           >
@@ -192,13 +196,15 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
               />
             </div>
             <div
-              class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/50"
+              class="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize hover:bg-primary-500/50 z-10 flex items-center justify-center group"
               @mousedown.stop="emit('resizeStart', $event, 'size')"
-            />
+            >
+              <div class="w-[2px] h-3 bg-ui-border group-hover:bg-primary-400 transition-colors" />
+            </div>
           </th>
 
           <th
-            class="py-2 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
+            class="py-0.5 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
             :style="{ width: `${fileManagerStore.columnWidths.created}px`, minWidth: '60px' }"
             @click="emit('sort', 'created')"
           >
@@ -215,13 +221,15 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
               />
             </div>
             <div
-              class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/50"
+              class="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize hover:bg-primary-500/50 z-10 flex items-center justify-center group"
               @mousedown.stop="emit('resizeStart', $event, 'created')"
-            />
+            >
+              <div class="w-[2px] h-3 bg-ui-border group-hover:bg-primary-400 transition-colors" />
+            </div>
           </th>
 
           <th
-            class="py-2 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
+            class="py-0.5 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
             :style="{
               width: `${fileManagerStore.columnWidths.modified}px`,
               minWidth: '60px',
@@ -241,9 +249,11 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
               />
             </div>
             <div
-              class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/50"
+              class="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize hover:bg-primary-500/50 z-10 flex items-center justify-center group"
               @mousedown.stop="emit('resizeStart', $event, 'modified')"
-            />
+            >
+              <div class="w-[2px] h-3 bg-ui-border group-hover:bg-primary-400 transition-colors" />
+            </div>
           </th>
         </tr>
       </thead>
@@ -253,7 +263,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
           <UContextMenu :items="getContextMenuItems(entry)">
             <tr
               :data-entry-path="entry.path ?? null"
-              class="hover:bg-ui-bg-elevated cursor-pointer group border-b border-ui-border/50 transition-colors focus:outline-none"
+              class="hover:bg-ui-bg-elevated cursor-pointer group border-b border-ui-border/30 transition-colors focus:outline-none"
               :class="{
                 'ring-1 ring-(--selection-ring) ring-inset z-10 relative bg-(--selection-range-bg)':
                   isSelected(entry) && editingEntryPath !== entry.path,
@@ -284,7 +294,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
               @dblclick="emit('entryDoubleClick', entry)"
               @keydown.enter.prevent.stop="emit('entryEnter', entry)"
             >
-              <td class="py-2 px-3 flex items-center gap-2">
+              <td class="py-0 px-3 flex items-center gap-2 h-7">
                 <div
                   class="h-4 flex items-center justify-center shrink-0"
                   :class="[
@@ -368,10 +378,16 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
                   {{ entry.name }}
                 </span>
               </td>
-              <td class="py-2 px-3 text-ui-text-muted">
-                {{ entry.kind === 'directory' ? t('common.folder', 'Folder') : entry.mimeType }}
+              <td class="py-0 px-3 text-ui-text-muted">
+                {{
+                  entry.kind === 'directory'
+                    ? t('common.folder', 'Folder')
+                    : entry.mimeType === 'application/octet-stream'
+                      ? ''
+                      : entry.mimeType
+                }}
               </td>
-              <td class="py-2 px-3 text-right text-ui-text-muted">
+              <td class="py-0.5 px-3 text-right text-ui-text-muted">
                 <template v-if="entry.kind === 'file'">
                   {{ formatBytes(entry.size || 0) }}
                 </template>
@@ -389,10 +405,10 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
                 </template>
                 <template v-else> - </template>
               </td>
-              <td class="py-2 px-3 text-ui-text-muted">
+              <td class="py-0 px-3 text-ui-text-muted">
                 {{ formatDate(entry.created) }}
               </td>
-              <td class="py-2 px-3 text-ui-text-muted">
+              <td class="py-0 px-3 text-ui-text-muted">
                 {{ formatDate(entry.lastModified) }}
               </td>
             </tr>

@@ -71,15 +71,11 @@ export function useFileManagerPanelActions({
       });
 
       await reloadDirectory(entry.path || '');
+      uiStore.notifyFileManagerUpdate();
 
       const createdEntry = createdPath ? findEntryByPath(createdPath) : null;
       if (createdEntry) {
-        uiStore.selectedFsEntry = {
-          kind: createdEntry.kind,
-          name: createdEntry.name,
-          path: createdEntry.path,
-        };
-        selectionStore.selectFsEntry(createdEntry);
+        selectionStore.selectFsEntry(createdEntry, 'left');
         onSelect(createdEntry);
       }
 

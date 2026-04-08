@@ -546,7 +546,10 @@ const filteredFilePrimaryActions = computed(() => {
       :file-path="selectedFsEntry?.path"
       :file-name="selectedFsEntry?.name"
       :is-otio="isOtio"
-      :class="mobileTextMode && mediaType === 'text' ? 'flex-1 border-none' : ''"
+      :class="[
+        mobileTextMode && mediaType === 'text' ? 'flex-1 border-none' : '',
+        isUnknown && !isOtio ? 'hidden' : ''
+      ]"
     />
 
     <template v-if="isRemoteRoot">
@@ -772,6 +775,7 @@ const filteredFilePrimaryActions = computed(() => {
         :is-hidden="isHidden"
         :format-bytes="formatBytes"
         :media-count="castedRemoteRecord?.media?.length"
+        :hide-header="(props.selectedFsEntry as any)?.mimeType === 'application/octet-stream'"
       >
         <template v-if="mediaType === 'text' && lineCount !== null">
           <PropertyRow :label="t('fastcat.file.lineCount', 'Line Count')" :value="lineCount" />

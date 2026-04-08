@@ -17,13 +17,14 @@ const props = defineProps<{
   formatBytes: (bytes: number) => string;
   mediaCount?: number;
   pathLink?: string | null;
+  hideHeader?: boolean;
 }>();
 
 const { t } = useI18n();
 </script>
 
 <template>
-  <PropertySection :title="props.title">
+  <PropertySection :title="props.hideHeader ? undefined : props.title">
     <PropertyRow
       v-if="props.selectedPath !== undefined && props.selectedPath !== null"
       :label="t('common.path', 'Path')"

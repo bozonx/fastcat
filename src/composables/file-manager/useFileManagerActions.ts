@@ -59,7 +59,9 @@ interface FileManagerActions {
 }
 
 export function useFileManagerActions(actions: FileManagerActions) {
-  const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
+  const fileManagerStore =
+    (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
+    useFileManagerStore();
   const { t } = useI18n();
   const toast = useToast();
   const uiStore = useUiStore();
@@ -164,6 +166,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
     await actions.vfs.copyFile(entry.path, nextPath);
 
     await actions.loadProjectDirectory();
+    actions.notifyFileManagerUpdate?.();
 
     const newEntry = actions.findEntryByPath(nextPath);
     if (newEntry) {
@@ -187,17 +190,19 @@ export function useFileManagerActions(actions: FileManagerActions) {
     }
   }
 
-  async function createMarkdownInDirectory() {
-    const dirPath = DOCUMENTS_DIR_NAME;
-    await actions.vfs.createDirectory(dirPath);
-    actions.setFileTreePathExpanded?.(dirPath, true);
+  async function createMarkdownInDirectory(targetDir?: string) {
+    const dirPath = targetDir ?? DOCUMENTS_DIR_NAME;
+    if (dirPath) {
+      await actions.vfs.createDirectory(dirPath);
+      actions.setFileTreePathExpanded?.(dirPath, true);
+    }
 
     const existingInFolder = await actions.readDirectory(dirPath);
     const existingNames = existingInFolder.map((e) => e.name);
 
     const fullPath = await createMarkdownCommand({
       vfs: actions.vfs,
-      documentsDirName: dirPath,
+      dirPath,
       existingNames,
     });
 
@@ -341,8 +346,9 @@ export function useFileManagerActions(actions: FileManagerActions) {
       const e = Array.isArray(entry) ? entry[0] : entry;
       if (e) await createOtioVersion(e);
     },
-    createMarkdown: async () => {
-      await createMarkdownInDirectory();
+    createMarkdown: async (entry) => {
+      const e = Array.isArray(entry) ? entry[0] : entry;
+      await createMarkdownInDirectory(e?.kind === 'directory' ? e.path : undefined);
     },
     copy: (entry) => {
       const entries = Array.isArray(entry) ? entry : [entry];

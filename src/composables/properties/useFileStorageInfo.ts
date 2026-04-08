@@ -12,9 +12,7 @@ export function useFileStorageInfo(options: UseFileStorageInfoOptions) {
     const entry = options.selectedFsEntry.value;
     if (!entry || entry.kind !== 'directory') return false;
     const path = typeof entry.path === 'string' ? entry.path : undefined;
-    if (path !== '') return false;
-    if (!options.currentProjectName.value) return false;
-    return entry.name === options.currentProjectName.value;
+    return path === '';
   });
 
   const storageEstimate = ref<{ quota?: number; usage?: number } | null>(null);

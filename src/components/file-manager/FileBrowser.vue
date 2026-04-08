@@ -450,7 +450,7 @@ const { createTimelineInDirectory, createMarkdownInDirectory } = useFileBrowserC
   reloadDirectory,
   loadFolderContent,
   findEntryByPath,
-  instanceId: props.instanceId,
+  instanceId,
 });
 
 // --- Create subgroup (remote) ---
@@ -672,15 +672,15 @@ function handleContainerClick() {
     }
   } else {
     const currentFolder = fileManagerStore.selectedFolder;
-    if (currentFolder) {
-      setSelectedFsEntry(currentFolder);
-    } else {
-      setSelectedFsEntry({
-        kind: 'directory',
-        path: '',
-        name: props.rootName || projectStore.currentProjectName || 'Project',
-      } as FsEntry);
-    }
+    setSelectedFsEntry({
+      kind: 'directory',
+      path: currentFolder?.path ?? '',
+      name:
+        currentFolder?.name ||
+        props.rootName ||
+        projectStore.currentProjectName ||
+        'Project',
+    } as FsEntry);
   }
 }
 
