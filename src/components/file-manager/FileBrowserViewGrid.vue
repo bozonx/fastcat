@@ -6,6 +6,7 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useClipboardPaths } from '~/composables/file-manager/useClipboardIndicator';
 import type { FsEntry } from '~/types/fs';
+import type { getBdPayload } from '~/types/bloggerdog';
 import { WORKSPACE_COMMON_PATH_PREFIX, isWorkspaceCommonPath } from '~/utils/workspace-common';
 import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
 import { useMediaStore } from '~/stores/media.store';
@@ -20,6 +21,14 @@ type ExtendedFsEntry = FsEntry & {
   mimeType?: string;
   created?: number;
 };
+
+function getBdType(entry: FsEntry): string | undefined {
+  return (entry.adapterPayload as ReturnType<typeof getBdPayload>)?.type;
+}
+
+function getBdThumbnail(entry: FsEntry): string | undefined {
+  return (entry.adapterPayload as ReturnType<typeof getBdPayload>)?.thumbnailUrl;
+}
 
 const props = defineProps<{
   entries: ExtendedFsEntry[];
@@ -57,7 +66,9 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
+const fileManagerStore =
+  (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
+  useFileManagerStore();
 const selectionStore = useSelectionStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const proxyStore = useProxyStore();
@@ -77,7 +88,7 @@ function isSelected(entry: FsEntry): boolean {
   const selected = selectionStore.selectedEntity;
   if (!selected || selected.source !== 'fileManager') return false;
   if (selected.instanceId && selected.instanceId !== props.instanceId) return false;
-  
+
   if (selected.kind === 'multiple') {
     return selected.entries.some((e) => e.path === entry.path);
   }
@@ -173,8 +184,11 @@ function handleImageError(entry: ExtendedFsEntry) {
             }}</span>
           </div>
           <img
-            v-else-if="(entry.kind === 'file' || (entry as any).isContentItem) && entry.objectUrl"
-            :src="entry.objectUrl"
+            v-else-if="
+              ((entry.kind === 'file' || getBdType(entry) === 'content-item') && entry.objectUrl) ||
+              getBdThumbnail(entry)
+            "
+            :src="entry.objectUrl || getBdThumbnail(entry)"
             :alt="entry.name"
             class="max-w-full max-h-full object-contain"
             @error="handleImageError(entry)"

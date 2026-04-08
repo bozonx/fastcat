@@ -6,6 +6,7 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useClipboardPaths } from '~/composables/file-manager/useClipboardIndicator';
 import type { FsEntry } from '~/types/fs';
+import type { getBdPayload } from '~/types/bloggerdog';
 import { formatBytes } from '~/utils/format';
 import { WORKSPACE_COMMON_PATH_PREFIX, isWorkspaceCommonPath } from '~/utils/workspace-common';
 import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
@@ -19,6 +20,14 @@ type ExtendedFsEntry = FsEntry & {
   mimeType?: string;
   created?: number;
 };
+
+function getBdType(entry: FsEntry): string | undefined {
+  return (entry.adapterPayload as ReturnType<typeof getBdPayload>)?.type;
+}
+
+function getBdThumbnail(entry: FsEntry): string | undefined {
+  return (entry.adapterPayload as ReturnType<typeof getBdPayload>)?.thumbnailUrl;
+}
 
 const props = defineProps<{
   entries: ExtendedFsEntry[];
@@ -58,7 +67,9 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
+const fileManagerStore =
+  (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
+  useFileManagerStore();
 const selectionStore = useSelectionStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const proxyStore = useProxyStore();
@@ -310,13 +321,15 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
                   />
                   <img
                     v-else-if="
-                      entry.kind === 'file' &&
-                      videoThumbnails &&
-                      entry.path &&
-                      videoThumbnails[entry.path] &&
+                      (entry.kind === 'file' || getBdType(entry) === 'content-item') &&
+                      ((videoThumbnails && entry.path && videoThumbnails[entry.path]) ||
+                        getBdThumbnail(entry)) &&
                       getCompatibilityStatus(entry) === 'ok'
                     "
-                    :src="videoThumbnails[entry.path]"
+                    :src="
+                      (videoThumbnails && entry.path && videoThumbnails[entry.path]) ||
+                      getBdThumbnail(entry)
+                    "
                     :alt="entry.name"
                     class="w-4 h-4 object-cover rounded-sm"
                     @error="handleImageError(entry)"
@@ -447,4 +460,3 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
     </table>
   </div>
 </template>
-

@@ -33,6 +33,10 @@ export function useFileManagerSelection({
       parentPath: entry.parentPath,
       lastModified: entry.lastModified,
       size: entry.size,
+      source: entry.source,
+      remoteId: entry.remoteId,
+      remotePath: entry.remotePath,
+      adapterPayload: entry.adapterPayload,
     };
   }
 

@@ -357,7 +357,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       source: entry.source,
       remoteId: entry.remoteId,
       remotePath: entry.remotePath,
-      remoteData: entry.remoteData,
+      adapterPayload: entry.adapterPayload,
     };
     selectionStore.selectFsEntry(entry);
 

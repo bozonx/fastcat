@@ -10,7 +10,7 @@ export interface FsEntry {
   source?: 'local' | 'remote';
   remoteId?: string;
   remotePath?: string;
-  remoteData?: unknown;
+  adapterPayload?: unknown;
   hasChildren?: boolean;
   hasDirectories?: boolean;
 }

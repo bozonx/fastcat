@@ -14,6 +14,7 @@ const props = defineProps<{
   textContent: string;
   filePath?: string;
   fileName?: string;
+  thumbnailUrl?: string | null;
   focusPanelId?: PanelFocusId;
 }>();
 </script>
@@ -26,15 +27,19 @@ const props = defineProps<{
       props.mediaType === 'text' && !props.isOtio
         ? 'justify-start items-start text-left'
         : 'items-center justify-center',
-      $attrs.class?.includes('flex-1') ? 'flex-1' : 'shrink-0',
+      String($attrs.class ?? '').indexOf('flex-1') !== -1 ? 'flex-1' : 'shrink-0',
     ]"
   >
     <div
       v-if="props.selectedEntryKind === 'directory'"
-      class="flex flex-col items-center gap-3 text-ui-text-muted p-8 w-full h-full justify-center"
+      class="flex flex-col items-center gap-3 text-ui-text-muted w-full h-full justify-center"
+      :class="props.thumbnailUrl ? 'p-0' : 'p-8'"
     >
-      <UIcon name="i-heroicons-folder" class="w-16 h-16" />
-      <p v-if="props.fileName" class="text-sm font-medium text-center truncate w-full px-4">
+      <div v-if="props.thumbnailUrl" class="w-full h-64 bg-black/20 flex items-center justify-center overflow-hidden">
+        <img :src="props.thumbnailUrl" class="max-w-full max-h-full object-contain" />
+      </div>
+      <UIcon v-else name="i-heroicons-folder" class="w-16 h-16" />
+      <p v-if="props.fileName && !props.thumbnailUrl" class="text-sm font-medium text-center truncate w-full px-4">
         {{ props.fileName }}
       </p>
     </div>
@@ -70,7 +75,7 @@ const props = defineProps<{
     <div
       v-else
       class="w-full h-64"
-      :class="$attrs.class?.includes('flex-1') ? 'flex-1 h-full' : 'h-64'"
+      :class="String($attrs.class ?? '').indexOf('flex-1') !== -1 ? 'flex-1 h-full' : 'h-64'"
     >
       <FilePreview
         :url="props.currentUrl"

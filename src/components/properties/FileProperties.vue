@@ -14,13 +14,15 @@ import MediaPropertiesSection from '~/components/properties/file/MediaProperties
 import ExpandableYamlSection from '~/components/properties/file/ExpandableYamlSection.vue';
 import FileGeneralInfoSection from '~/components/properties/file/FileGeneralInfoSection.vue';
 import FileTimelineUsageSection from '~/components/properties/file/FileTimelineUsageSection.vue';
-import type { RemoteVfsFileEntry } from '~/types/remote-vfs';
+import type { RemoteVfsFileEntry, RemoteVfsEntry, RemoteVfsDirectoryEntry } from '~/types/remote-vfs';
+import type { BloggerDogEntryPayload } from '~/types/bloggerdog';
 import ImageFilePropertiesSection from '~/components/properties/file/ImageFilePropertiesSection.vue';
 import OtioPropertiesSection from '~/components/properties/file/OtioPropertiesSection.vue';
 import FileProjectRootSection from '~/components/properties/file/FileProjectRootSection.vue';
 import FileTranscriptionModal from '~/components/file-manager/modals/FileTranscriptionModal.vue';
 import EntryActions from '~/components/properties/file/EntryActions.vue';
 import BloggerDogItemPropertiesSection from '~/components/properties/file/BloggerDogItemPropertiesSection.vue';
+import BloggerDogCollectionProperties from '~/components/properties/file/BloggerDogCollectionProperties.vue';
 import { useEntryPreview } from '~/composables/file-manager/useEntryPreview';
 import { useImageExifInfo } from '~/composables/properties/useImageExifInfo';
 import { useFileTimelineUsage } from '~/composables/properties/useFileTimelineUsage';
@@ -141,7 +143,7 @@ async function onDirectoryFileSelect(e: Event) {
   if (isProjectRootDir.value) {
     await fileManager.handleFiles(files);
   } else {
-    await fileManager.handleFiles(files, entry.path);
+    await fileManager.handleFiles(files, { targetDirPath: entry.path });
   }
   await fileManager.loadProjectDirectory();
   uiStore.notifyFileManagerUpdate();
@@ -175,6 +177,7 @@ const {
   metadataYaml,
   isUnknown,
   isOtio,
+  thumbnailUrl,
 } = useEntryPreview({
   selectedFsEntry: selectedFsEntryRef,
   previewMode: previewModeRef,
@@ -270,8 +273,25 @@ const isRemoteContent = computed(
 );
 
 const castedRemoteRecord = computed(() => {
-  if (!isRemoteContent.value || !props.selectedFsEntry?.remoteData) return null;
-  return props.selectedFsEntry.remoteData as RemoteVfsFileEntry;
+  if (!isRemoteContent.value || !props.selectedFsEntry?.adapterPayload) return null;
+  const payload = props.selectedFsEntry.adapterPayload as BloggerDogEntryPayload;
+  return payload?.remoteData as RemoteVfsEntry | undefined;
+});
+
+const remoteMediaCount = computed(() => {
+  const record = castedRemoteRecord.value;
+  if (record && 'media' in record) {
+    return (record as RemoteVfsFileEntry).media?.length;
+  }
+  return undefined;
+});
+
+const remoteItemsCount = computed(() => {
+  const record = castedRemoteRecord.value;
+  if (record && 'itemsCount' in record) {
+    return (record as RemoteVfsDirectoryEntry).itemsCount;
+  }
+  return undefined;
 });
 
 const showVideoProxyActions = computed(() => {
@@ -464,8 +484,8 @@ const filteredDirectoryPrimaryActions = computed(() => {
   if (isPersonalLibrary.value) return [];
 
   if (!isRemoteContent.value) {
-    return directoryPrimaryActions.value.filter((a: PrimaryEntryAction) =>
-      !['createSubgroup', 'createContentItem'].includes(a.id),
+    return directoryPrimaryActions.value.filter(
+      (a: PrimaryEntryAction) => !['createSubgroup', 'createContentItem'].includes(a.id),
     );
   }
 
@@ -487,7 +507,7 @@ const filteredDirectoryPrimaryActions = computed(() => {
 });
 
 const filteredFilePrimaryActions = computed(() => {
-    return filePrimaryActions.value;
+  return filePrimaryActions.value;
 
   if (isBloggerDogMedia.value) {
     return filePrimaryActions.value.filter((a: PrimaryEntryAction) =>
@@ -550,10 +570,11 @@ const filteredFilePrimaryActions = computed(() => {
       :text-content="textContent"
       :file-path="selectedFsEntry?.path"
       :file-name="selectedFsEntry?.name"
+      :thumbnail-url="thumbnailUrl"
       :is-otio="isOtio"
       :class="[
         mobileTextMode && mediaType === 'text' ? 'flex-1 border-none' : '',
-        isUnknown && !isOtio ? 'hidden' : ''
+        isUnknown && !isOtio ? 'hidden' : '',
       ]"
     />
 
@@ -635,13 +656,19 @@ const filteredFilePrimaryActions = computed(() => {
       >
         <EntryActions
           :primary-actions="filteredFilePrimaryActions"
-          :secondary-actions="isBloggerDogMedia ? [] : (isRemoteContent ? [] : fileSecondaryActions)"
+          :secondary-actions="isBloggerDogMedia ? [] : isRemoteContent ? [] : fileSecondaryActions"
         />
       </PropertySection>
 
       <BloggerDogItemPropertiesSection
         v-if="isBloggerDogContentItem && castedRemoteRecord"
-        :item="castedRemoteRecord"
+        :item="castedRemoteRecord as RemoteVfsFileEntry"
+        :config="remoteFilesConfig!"
+      />
+
+      <BloggerDogCollectionProperties
+        v-if="isBloggerDogGroup && castedRemoteRecord"
+        :collection="castedRemoteRecord as unknown as RemoteVfsDirectoryEntry"
         :config="remoteFilesConfig!"
       />
 
@@ -737,9 +764,9 @@ const filteredFilePrimaryActions = computed(() => {
             target="_blank"
             class="text-primary-500 hover:text-primary-400 underline decoration-dotted transition-colors flex items-center gap-1 overflow-hidden"
           >
-            <span class="truncate">/projects/{{
-              (selectedFsEntry as any).remoteData?.id || selectedFsEntry?.name
-            }}</span>
+            <span class="truncate"
+              >/projects/{{ castedRemoteRecord?.id || selectedFsEntry?.name }}</span
+            >
             <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 shrink-0" />
           </a>
           <span v-else>{{ selectedPath }}</span>
@@ -763,30 +790,29 @@ const filteredFilePrimaryActions = computed(() => {
         :path-link="bloggerDogDeepLink"
         :is-hidden="isHidden"
         :format-bytes="formatBytes"
-        :media-count="castedRemoteRecord?.media?.length"
+        :media-count="remoteMediaCount"
       >
         <template
           v-if="
-            selectedFsEntry?.source === 'remote' &&
-            (selectedFsEntry as any).remoteData?.itemsCount !== undefined
+            selectedFsEntry?.source === 'remote' && remoteItemsCount !== undefined
           "
         >
           <PropertyRow
             :label="t('fastcat.file.itemsCount', 'Количество элементов')"
-            :value="(selectedFsEntry as any).remoteData.itemsCount"
+            :value="remoteItemsCount"
           />
         </template>
       </FileGeneralInfoSection>
 
       <FileGeneralInfoSection
         v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'file'"
-        :title="isBloggerDogMedia ? (selectedFsEntry?.name || generalInfoTitle) : generalInfoTitle"
+        :title="isBloggerDogMedia ? selectedFsEntry?.name || generalInfoTitle : generalInfoTitle"
         :file-info="fileInfo"
         :selected-path="selectedPath"
         :path-link="bloggerDogDeepLink"
         :is-hidden="isHidden"
         :format-bytes="formatBytes"
-        :media-count="castedRemoteRecord?.media?.length"
+        :media-count="remoteMediaCount"
         :hide-header="(props.selectedFsEntry as any)?.mimeType === 'application/octet-stream'"
       >
         <template v-if="mediaType === 'text' && lineCount !== null">
