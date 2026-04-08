@@ -34,7 +34,10 @@ export function useFileManagerPanelPendingActions({
   const isFocusedOrSelected = () => {
     if (focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return true;
     const selected = selectionStore.selectedEntity;
-    return selected?.source === 'fileManager' && (selected as any).instanceId === instanceId;
+    if (selected?.source !== 'fileManager') return false;
+    const selectedInstanceId = (selected as any).instanceId;
+    if (selectedInstanceId) return selectedInstanceId === instanceId;
+    return true;
   };
 
   watch(

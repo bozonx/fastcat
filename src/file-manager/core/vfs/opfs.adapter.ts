@@ -195,7 +195,11 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     }
   }
 
-  async copyFile(sourcePath: string, targetPath: string): Promise<void> {
+  async copyFile(
+    sourcePath: string,
+    targetPath: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<void> {
     const sourceFile = await this.getFile(sourcePath);
     if (!sourceFile) {
       throw new Error(`Source file not found: ${sourcePath}`);
@@ -204,14 +208,19 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     await this.writeFile(targetPath, sourceFile);
   }
 
-  async copyDirectory(sourcePath: string, targetPath: string): Promise<void> {
-    await this.copyDirectoryRecursive(sourcePath, targetPath, 0);
+  async copyDirectory(
+    sourcePath: string,
+    targetPath: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<void> {
+    await this.copyDirectoryRecursive(sourcePath, targetPath, 0, options);
   }
 
   private async copyDirectoryRecursive(
     sourcePath: string,
     targetPath: string,
     depth: number,
+    options?: { signal?: AbortSignal },
   ): Promise<void> {
     if (depth > MAX_COPY_DEPTH) {
       throw new Error(`Maximum copy depth exceeded (${MAX_COPY_DEPTH})`);
@@ -223,14 +232,18 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     for (const entry of entries) {
       const nextTargetPath = `${targetPath}/${entry.name}`;
       if (entry.kind === 'directory') {
-        await this.copyDirectoryRecursive(entry.path, nextTargetPath, depth + 1);
+        await this.copyDirectoryRecursive(entry.path, nextTargetPath, depth + 1, options);
       } else {
-        await this.copyFile(entry.path, nextTargetPath);
+        await this.copyFile(entry.path, nextTargetPath, options);
       }
     }
   }
 
-  async moveEntry(sourcePath: string, targetPath: string): Promise<void> {
+  async moveEntry(
+    sourcePath: string,
+    targetPath: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<void> {
     const sourceHandle = await this.getHandleByPath(sourcePath);
     if (!sourceHandle) throw new Error(`Source not found: ${sourcePath}`);
 

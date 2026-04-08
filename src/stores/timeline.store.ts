@@ -465,7 +465,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     applyTimeline,
     createFallbackTimelineDoc: () => projectStore.createFallbackTimelineDoc(),
     getFileHandleByPath: (path) => projectStore.getFileHandleByPath(path),
-    getFileByPath: (path) => projectStore.getFileByPath(path),
+    getFileByPath: (path) => (nuxtApp as any).$vfs.getFile(path),
     getOrFetchMetadataByPath: (path) => mediaStore.getOrFetchMetadataByPath(path),
     getUserSettings: () => workspaceStore.userSettings,
     getProjectSettings: () => projectStore.projectSettings,

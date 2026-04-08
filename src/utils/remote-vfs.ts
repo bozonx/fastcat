@@ -406,7 +406,6 @@ export async function createRemoteCollection(params: {
   config: RemoteVfsClientConfig;
   name: string;
   parentId?: string;
-  path?: string;
   projectId?: string;
 }): Promise<RemoteVfsDirectoryEntry> {
   const response = await fetch(joinPath(params.config.baseUrl, 'collections'), {
@@ -418,7 +417,6 @@ export async function createRemoteCollection(params: {
     body: JSON.stringify({
       name: params.name,
       parentId: params.parentId,
-      path: params.path,
       projectId: params.projectId,
     }),
   });

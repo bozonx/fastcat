@@ -60,17 +60,17 @@ export interface IFileSystemAdapter {
   /**
    * Renames/moves an entry
    */
-  moveEntry(sourcePath: string, targetPath: string): Promise<void>;
+  moveEntry(sourcePath: string, targetPath: string, options?: { signal?: AbortSignal }): Promise<void>;
 
   /**
    * Copies a file.
    */
-  copyFile(sourcePath: string, targetPath: string): Promise<void>;
+  copyFile(sourcePath: string, targetPath: string, options?: { signal?: AbortSignal }): Promise<void>;
 
   /**
    * Copies a directory recursively.
    */
-  copyDirectory(sourcePath: string, targetPath: string): Promise<void>;
+  copyDirectory(sourcePath: string, targetPath: string, options?: { signal?: AbortSignal }): Promise<void>;
 
   /**
    * Checks if an entry exists
