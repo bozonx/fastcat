@@ -10,10 +10,12 @@ import {
 } from '~/composables/useDraggedFile';
 import type { DraggedFileData } from '~/composables/useDraggedFile';
 import type { FsEntry } from '~/types/fs';
-import { useProxyStore } from '~/stores/proxy.store';
-import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
+import { useSelectionStore } from '~/stores/selection.store';
+import { useVfs } from '~/composables/useVfs';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { resolveExternalServiceConfig } from '~/utils/external-integrations';
+import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import {
   useClipboardPaths,
@@ -32,6 +34,7 @@ import {
 } from '~/utils/media-types';
 import type { FileCompatibilityStatus } from '~/composables/file-manager/useFileManagerCompatibility';
 import { useFileContextMenu } from '~/composables/file-manager/useFileContextMenu';
+import { useFileBrowserRemote } from '~/composables/file-manager/useFileBrowserRemote';
 import { isRemoteFsEntry, type RemoteFsEntry } from '~/utils/remote-vfs';
 import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import { isGeneratingProxyInDirectory, folderHasVideos } from '~/utils/fs-entry-utils';
@@ -575,17 +578,49 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
   });
 }
 
+const vfs = useVfs();
+const runtimeConfig = useRuntimeConfig();
+
+const bloggerDogApiUrl = computed(() =>
+  typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
+    ? runtimeConfig.public.bloggerDogApiUrl
+    : '',
+);
+
+const isRemoteAvailable = computed(() =>
+  Boolean(
+    resolveExternalServiceConfig({
+      service: 'files',
+      integrations: workspaceStore.userSettings.integrations,
+      bloggerDogApiUrl: bloggerDogApiUrl.value,
+    }),
+  ),
+);
+
+const isBloggerDogProject = (entry: FsEntry) => {
+  return entry.path.includes('/projects/') && !entry.path.split('/projects/')[1]?.includes('/');
+};
+
+const isBloggerDogGroup = (entry: FsEntry) => {
+  if (entry.kind !== 'directory') return false;
+  if (!entry.remoteId) return false;
+  return isBloggerDogProject(entry) || entry.path.includes('/projects/');
+};
+
+const isBloggerDogContentItem = (entry: FsEntry) => {
+  return entry.kind === 'file' && !!entry.remoteId;
+};
+
 const { getContextMenuItems } = useFileContextMenu(
   {
     isGeneratingProxyInDirectory: (entry) =>
       isGeneratingProxyInDirectory(entry, proxyStore.generatingProxies),
     folderHasVideos,
-    isOpenableMediaFile,
-    isConvertibleMediaFile,
-    isTranscribableMediaFile,
-    isVideo,
-    getEntryMeta: ctx.getEntryMeta,
-    isFilesPage: props.isFilesPage,
+    isOpenableMediaFile: () => true,
+    isConvertibleMediaFile: () => true,
+    isTranscribableMediaFile: () => true,
+    isVideo: () => false,
+    getEntryMeta: (entry) => ({ hasProxy: false, generatingProxy: false }),
     getSelectedEntries: () => {
       const selected = selectionStore.selectedEntity;
       if (selected?.source === 'fileManager') {
@@ -594,12 +629,15 @@ const { getContextMenuItems } = useFileContextMenu(
       }
       return [];
     },
-    get hasClipboardItems() {
-      const clipboardStore = useAppClipboard();
-      return clipboardStore.hasFileManagerPayload;
-    },
+    isFilesPage: props.isFilesPage,
+    isRemoteAvailable: isRemoteAvailable.value,
+    isBloggerDogProject,
+    isBloggerDogGroup,
+    isBloggerDogContentItem,
   },
-  (action: any, entry: any) => emit('action', action as any, entry),
+  (action, entry) => {
+    emit('action', action as any, entry as any);
+  },
 );
 </script>
 

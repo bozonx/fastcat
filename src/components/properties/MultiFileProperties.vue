@@ -9,8 +9,11 @@ import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { formatBytes } from '~/utils/format';
 import { computeDirectoryStats } from '~/utils/fs';
+import { resolveExternalServiceConfig } from '~/utils/external-integrations';
+import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import EntryActions from '~/components/properties/file/EntryActions.vue';
+import { useI18n } from 'vue-i18n';
 
 const props = defineProps<{
   entries: FsEntry[];
@@ -79,6 +82,17 @@ const isGeneratingProxy = computed(() => {
 
 function onDelete() {
   uiStore.pendingFsEntryDelete = props.entries;
+}
+
+const { extractAudio } = useAudioExtraction();
+
+async function handleExtractAudio() {
+  if (!props.entries.length) return;
+  for (const entry of props.entries) {
+    if (entry.kind === 'file' && getMediaTypeFromFilename(entry.name) === 'video') {
+      await extractAudio(entry);
+    }
+  }
 }
 
 async function onCreateProxy() {
@@ -202,6 +216,13 @@ function onCut() {
             color: 'error',
             hidden: !isGeneratingProxy,
             onClick: onCancelProxy,
+          },
+          {
+            id: 'extractAudio',
+            label: t('videoEditor.fileManager.actions.extractAudio', 'Extract Audio'),
+            icon: 'i-heroicons-musical-note',
+            hidden: !hasVideo,
+            onClick: handleExtractAudio,
           },
           {
             id: 'deleteProxy',

@@ -6,6 +6,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProxyStore } from '~/stores/proxy.store';
+import { useMediaStore } from '~/stores/media.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useFileManagerActions } from '~/composables/file-manager/useFileManagerActions';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
@@ -26,6 +27,7 @@ import { useFileBrowserPendingActions } from '~/composables/file-manager/useFile
 import { useFileBrowserCreateActions } from '~/composables/file-manager/useFileBrowserCreateActions';
 import { useFileBrowserInteraction } from '~/composables/file-manager/useFileBrowserInteraction';
 import { createRemoteCollection } from '~/utils/remote-vfs';
+import { handleFilesCommand } from '~/file-manager/application/fileManagerCommands';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import type { FsEntry } from '~/types/fs';
@@ -59,6 +61,7 @@ const props = defineProps<{
 }>();
 
 const instanceId = props.instanceId || 'default';
+const safeHideFocusFrame = computed(() => props?.hideFocusFrame ?? false);
 
 const fileManagerStore =
   (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
@@ -70,6 +73,7 @@ const projectStore = useProjectStore();
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
 const proxyStore = useProxyStore();
+const mediaStore = useMediaStore();
 const clipboardStore = useAppClipboard();
 const { t } = useI18n();
 const toast = useToast();
@@ -263,17 +267,28 @@ const {
 
 async function handleRemoteFiles(files: File[] | FileList, targetDirPath?: string) {
   const fileList = files instanceof FileList ? Array.from(files) : files;
-  await handleFilesCommand({
-    files: fileList,
-    targetDirPath,
-    vfs,
-    resolveDefaultTargetDir: () => fileManager.resolveDefaultTargetDir(),
-    runWithUiFeedback: (options) => fileManager.runWithUiFeedback(options),
-    notifyFileManagerUpdate: () => {
-      skipNextUpdateReload.value = true;
-      uiStore.notifyFileManagerUpdate();
+  await handleFilesCommand(
+    fileList,
+    { targetDirPath },
+    {
+      vfs,
+      getTargetDirPath: async ({ file }) => await fileManager.resolveDefaultTargetDir({ file }),
+      onSkipProjectFile: ({ file }) => {
+        toast.add({
+          color: 'neutral',
+          title: t('videoEditor.fileManager.skipOtio.title'),
+          description: t('videoEditor.fileManager.skipOtio.description', {
+            fileName: file.name,
+          }),
+        });
+      },
+      onMediaImported: ({ projectRelativePath }) => {
+        // Handle media imported
+        void mediaStore.getOrFetchMetadataByPath(projectRelativePath);
+      },
     },
-  });
+  );
+  uiStore.notifyFileManagerUpdate();
 }
 
 async function handleFiles(files: File[] | FileList, targetDirPath?: string) {
@@ -713,7 +728,6 @@ const currentGridSizeName = computed(() => {
 onUnmounted(() => {});
 
 onMounted(async () => {
-  fileManagerStore.fileBrowserContainerRef = rootContainer.value;
   if (props.remoteModeOnly) {
     remoteCurrentFolder.value = buildRemoteDirectoryEntry('/');
     await loadFolderContent();
@@ -876,10 +890,10 @@ async function onDirectoryUploadChange(e: Event) {
   <div
     class="flex flex-col h-full bg-ui-bg relative overflow-hidden transition-colors duration-150"
     :class="{
-      'panel-focus-frame': !props.hideFocusFrame,
+      'panel-focus-frame': !safeHideFocusFrame,
       'bg-primary-500/5': isDragOverPanel,
       'panel-focus-frame--active':
-        !props.hideFocusFrame && focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`),
+        !safeHideFocusFrame && focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`),
     }"
     @pointerdown.capture="focusBrowserPanel"
     @dragover.prevent="onPanelDragOver"
@@ -888,12 +902,12 @@ async function onDirectoryUploadChange(e: Event) {
   >
     <!-- Toolbar -->
     <FileBrowserToolbar
-      v-if="!(props.remoteModeOnly && (!isRemoteAvailable || remoteError))"
+      v-if="!(remoteModeOnly && (!isRemoteAvailable || remoteError))"
       :grid-sizes="GRID_SIZES"
       :current-grid-size-name="currentGridSizeName"
       :grid-card-size="effectiveGridCardSize"
       :remote-available="isRemoteAvailable"
-      :is-remote-panel="props.remoteModeOnly"
+      :is-remote-panel="remoteModeOnly"
       :compact="compact"
       :hide-actions="hideActions"
       :hide-upload="hideUpload"
@@ -919,7 +933,7 @@ async function onDirectoryUploadChange(e: Event) {
 
     <!-- Navigation bar (Breadcrumbs) -->
     <FileBrowserBreadcrumbs
-      v-if="!props.compact"
+      v-if="!compact"
       :parent-folders="parentFolders"
       :is-at-root="isAtRoot"
       :can-navigate-back="fileManagerStore.historyStack.length > 0"
@@ -986,7 +1000,7 @@ async function onDirectoryUploadChange(e: Event) {
                 color="primary"
                 variant="solid"
                 icon="i-heroicons-arrow-path"
-                @click.stop="loadFolderContent"
+                @click.stop="() => loadFolderContent()"
               >
                 {{ t('common.retry', 'Retry') }}
               </UButton>
@@ -1003,7 +1017,7 @@ async function onDirectoryUploadChange(e: Event) {
 
           <!-- Grid View -->
           <FileBrowserViewGrid
-            v-else-if="props.remoteModeOnly || fileManagerStore.viewMode === 'grid'"
+            v-else-if="remoteModeOnly || fileManagerStore.viewMode === 'grid'"
             :entries="sortedEntries as ExtendedFsEntry[]"
             :is-root-drop-over="isRootDropOver"
             :drag-over-entry-path="dragOverEntryPath"

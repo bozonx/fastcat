@@ -651,6 +651,9 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     readDirectory: service.readDirectory,
     vfs: deps.vfs,
     reloadDirectory,
+    resolveDefaultTargetDir: async (options: { file: File }) =>
+      await resolveDefaultTargetDir(options),
+    runWithUiFeedback,
     async restoreHistory(snapshot: any) {
       if (!snapshot || !snapshot.type) return;
       const op = snapshot;
