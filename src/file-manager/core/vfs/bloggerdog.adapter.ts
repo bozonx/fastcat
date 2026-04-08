@@ -271,23 +271,26 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     const normalizedParentPath = this.normalizePath(parentPath);
 
     let parentId: string | undefined;
-    let pathParam: string | undefined;
     let projectId: string | undefined;
 
-    const virtualRoots = ['virtual-all', 'personal', 'projects', 'root', '/'];
+    // We can't create collections directly in these virtual paths
+    const forbiddenRoots = ['/', 'root', 'projects', 'virtual-all'];
+    if (forbiddenRoots.includes(parent.id)) {
+      throw new Error(`Cannot create directory in ${normalizedParentPath}`);
+    }
 
     if (normalizedParentPath === '/personal') {
-      pathParam = '/personal';
+      // For personal root, parentId is "personal"
+      parentId = 'personal';
     } else if (
       normalizedParentPath.startsWith('/projects/') &&
       normalizedParentPath.split('/').filter(Boolean).length === 2
     ) {
-      // It's a project root, e.g., /projects/uuid
-      pathParam = normalizedParentPath;
+      // It's a project root, e.g., /projects/uuid. Parent ID is the projectId itself.
+      parentId = parent.id;
       projectId = parent.id;
-    } else if (virtualRoots.includes(parent.id)) {
-      pathParam = '/virtual-all';
     } else {
+      // For sub-collections, use the collection UUID
       parentId = parent.id;
     }
 
@@ -295,7 +298,6 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       config,
       name,
       parentId,
-      path: pathParam,
       projectId,
     });
 
@@ -307,7 +309,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     return entries.map((e) => e.name);
   }
 
-  async readFile(path: string): Promise<Blob> {
+  async readFile(path: string, options?: { signal?: AbortSignal }): Promise<Blob> {
     const config = this.resolveConfig();
     const entry = await this.getIdForPath(path);
 
@@ -327,7 +329,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       throw new Error(`Cannot download a collection or item folder directly: ${path}`);
     }
 
-    const res = await fetch(downloadUrl);
+    const res = await fetch(downloadUrl, { signal: options?.signal });
     if (!res.ok) throw new Error(`Failed to download file from remote: ${res.status}`);
     return res.blob();
   }
@@ -402,7 +404,11 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     this.clearCache(path);
   }
 
-  async moveEntry(sourcePath: string, targetPath: string): Promise<void> {
+  async moveEntry(
+    sourcePath: string,
+    targetPath: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<void> {
     const config = this.resolveConfig();
     const nSource = this.normalizePath(sourcePath);
     const nTarget = this.normalizePath(targetPath);
@@ -437,19 +443,28 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     this.idCache.delete(sourceParent);
   }
 
-  async copyFile(sourcePath: string, targetPath: string): Promise<void> {
-    const blob = await this.readFile(sourcePath);
+  async copyFile(
+    sourcePath: string,
+    targetPath: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<void> {
+    const blob = await this.readFile(sourcePath, options);
     await this.writeFile(targetPath, blob);
   }
 
-  async copyDirectory(sourcePath: string, targetPath: string): Promise<void> {
-    await this.copyDirectoryRecursive(sourcePath, targetPath, 0);
+  async copyDirectory(
+    sourcePath: string,
+    targetPath: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<void> {
+    await this.copyDirectoryRecursive(sourcePath, targetPath, 0, options);
   }
 
   private async copyDirectoryRecursive(
     sourcePath: string,
     targetPath: string,
     depth: number,
+    options?: { signal?: AbortSignal },
   ): Promise<void> {
     if (depth > MAX_COPY_DEPTH) {
       throw new Error(`Maximum copy depth exceeded (${MAX_COPY_DEPTH})`);
@@ -479,13 +494,37 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
   async getMetadata(
     path: string,
   ): Promise<{ size: number; lastModified: number; kind: 'file' | 'directory' } | null> {
-    const cache = this.idCache.get(path);
-    if (!cache) return null; // Simplified
-    return {
-      size: 0,
-      lastModified: Date.now(),
-      kind: cache.type === 'directory' ? 'directory' : 'file',
-    };
+    try {
+      const entry = await this.getIdForPath(path);
+      if (!entry) return null;
+
+      let size = 0;
+      let lastModified = Date.now();
+
+      if (entry.type === 'media' && entry.item) {
+        if (entry.mediaIndex === undefined || entry.mediaIndex === -1) {
+          size = ((entry.item as RemoteVfsFileEntry).text || '').length;
+        } else {
+          size = (entry.item as RemoteVfsFileEntry).media?.[entry.mediaIndex]?.size || 0;
+        }
+        lastModified = entry.item.meta?.updatedAt
+          ? new Date(entry.item.meta.updatedAt as string).getTime()
+          : lastModified;
+      } else if (entry.item && entry.type === 'file') {
+        size = (entry.item as RemoteVfsFileEntry).media?.[0]?.size || 0;
+        lastModified = entry.item.meta?.updatedAt
+          ? new Date(entry.item.meta.updatedAt as string).getTime()
+          : lastModified;
+      }
+
+      return {
+        size,
+        lastModified,
+        kind: entry.type === 'directory' ? 'directory' : 'file',
+      };
+    } catch {
+      return null;
+    }
   }
 
   async getObjectUrl(path: string): Promise<string> {
@@ -501,7 +540,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       return getRemoteFileDownloadUrl({
         baseUrl: config.baseUrl,
         entry: entry.item,
-        mediaIndex: entry.mediaIndex,
+        mediaIndex: entry.mediaIndex ?? 0,
       });
     }
 

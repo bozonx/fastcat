@@ -22,7 +22,7 @@ export function useAudioExtraction() {
 
     isExtracting.value = true;
     try {
-      const sourceFile = await projectStore.getFileByPath(entry.path);
+      const sourceFile = await (useNuxtApp() as any).$vfs.getFile(entry.path);
       if (!sourceFile) throw new Error('Failed to access source file');
 
       const { client } = getExportWorkerClient();

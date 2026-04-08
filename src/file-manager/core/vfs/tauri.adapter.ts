@@ -191,7 +191,11 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     });
   }
 
-  async moveEntry(sourcePath: string, targetPath: string): Promise<void> {
+  async moveEntry(
+    sourcePath: string,
+    targetPath: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<void> {
     await this.ensureParentDirectory(targetPath);
     const source = await this.getTauriFsArgs(sourcePath);
     const target = await this.getTauriFsArgs(targetPath);
@@ -201,7 +205,11 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     });
   }
 
-  async copyFile(sourcePath: string, targetPath: string): Promise<void> {
+  async copyFile(
+    sourcePath: string,
+    targetPath: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<void> {
     await this.ensureParentDirectory(targetPath);
     const source = await this.getTauriFsArgs(sourcePath);
     const target = await this.getTauriFsArgs(targetPath);
@@ -211,14 +219,19 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     });
   }
 
-  async copyDirectory(sourcePath: string, targetPath: string): Promise<void> {
-    await this.copyDirectoryRecursive(sourcePath, targetPath, 0);
+  async copyDirectory(
+    sourcePath: string,
+    targetPath: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<void> {
+    await this.copyDirectoryRecursive(sourcePath, targetPath, 0, options);
   }
 
   private async copyDirectoryRecursive(
     sourcePath: string,
     targetPath: string,
     depth: number,
+    options?: { signal?: AbortSignal },
   ): Promise<void> {
     if (depth > MAX_COPY_DEPTH) {
       throw new Error(`Maximum copy depth exceeded (${MAX_COPY_DEPTH})`);
@@ -231,9 +244,9 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
       const nextTargetPath = targetPath ? `${targetPath}/${entry.name}` : entry.name;
 
       if (entry.kind === 'directory') {
-        await this.copyDirectoryRecursive(entry.path, nextTargetPath, depth + 1);
+        await this.copyDirectoryRecursive(entry.path, nextTargetPath, depth + 1, options);
       } else {
-        await this.copyFile(entry.path, nextTargetPath);
+        await this.copyFile(entry.path, nextTargetPath, options);
       }
     }
   }

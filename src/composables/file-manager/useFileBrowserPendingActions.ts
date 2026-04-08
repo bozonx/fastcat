@@ -43,6 +43,12 @@ export function useFileBrowserPendingActions({
   const selectionStore = useSelectionStore();
   const clipboard = useAppClipboard();
 
+  function matchesInstance(selected: any): boolean {
+    if (selected?.source !== 'fileManager') return false;
+    if (selected.instanceId) return selected.instanceId === instanceId;
+    return true;
+  }
+
   watch(
     () => uiStore.pendingFsEntryDelete,
     (value) => {
@@ -50,7 +56,7 @@ export function useFileBrowserPendingActions({
       if (!entries || entries.length === 0) return;
       if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) {
         const selected = selectionStore.selectedEntity;
-        if (selected?.source !== 'fileManager' || (selected as any).instanceId !== instanceId) {
+        if (!matchesInstance(selected)) {
           return;
         }
       }
@@ -66,11 +72,12 @@ export function useFileBrowserPendingActions({
       const entry = value as FsEntry | null;
       if (!entry) return;
       const inCurrentFolder = folderEntries.value.some((e) => e.path === entry.path);
-      const isSelected = selectionStore.selectedEntity?.source === 'fileManager' && 
-                        (selectionStore.selectedEntity as any).entry?.path === entry.path;
-      
+      const selected = selectionStore.selectedEntity;
+      const isSelected =
+        selected?.source === 'fileManager' && (selected as any).entry?.path === entry.path;
+
       if (!inCurrentFolder && !isSelected) return;
-      if (isSelected && (selectionStore.selectedEntity as any).instanceId !== instanceId) return;
+      if (isSelected && !matchesInstance(selected)) return;
       startRename(entry);
       uiStore.pendingFsEntryRename = null;
     },
@@ -81,9 +88,9 @@ export function useFileBrowserPendingActions({
     async (value) => {
       const entry = value as FsEntry | null;
       if (!entry || entry.kind !== 'directory') return;
-      
+
       const selected = selectionStore.selectedEntity;
-      if (selected?.source === 'fileManager' && (selected as any).instanceId !== instanceId) {
+      if (!matchesInstance(selected)) {
         return;
       }
       try {
@@ -101,7 +108,7 @@ export function useFileBrowserPendingActions({
       if (!entry || entry.kind !== 'directory') return;
 
       const selected = selectionStore.selectedEntity;
-      if (selected?.source === 'fileManager' && (selected as any).instanceId !== instanceId) {
+      if (!matchesInstance(selected)) {
         return;
       }
       try {
@@ -123,14 +130,13 @@ export function useFileBrowserPendingActions({
       }
     },
   );
-  
+
   watch(
     () => (uiStore as any).pendingBloggerDogCreateSubgroup,
     (entry) => {
       if (!entry) return;
       if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) {
-        const selected = selectionStore.selectedEntity;
-        if (selected?.source !== 'fileManager' || (selected as any).instanceId !== instanceId) {
+        if (!matchesInstance(selectionStore.selectedEntity)) {
           return;
         }
       }
@@ -143,8 +149,7 @@ export function useFileBrowserPendingActions({
     (entry) => {
       if (!entry) return;
       if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) {
-        const selected = selectionStore.selectedEntity;
-        if (selected?.source !== 'fileManager' || (selected as any).instanceId !== instanceId) {
+        if (!matchesInstance(selectionStore.selectedEntity)) {
           return;
         }
       }
@@ -157,8 +162,7 @@ export function useFileBrowserPendingActions({
     (entry) => {
       if (!entry) return;
       if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) {
-        const selected = selectionStore.selectedEntity;
-        if (selected?.source !== 'fileManager' || (selected as any).instanceId !== instanceId) {
+        if (!matchesInstance(selectionStore.selectedEntity)) {
           return;
         }
       }
@@ -173,8 +177,7 @@ export function useFileBrowserPendingActions({
       if (!targetEntry) return;
 
       if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) {
-        const selected = selectionStore.selectedEntity;
-        if (selected?.source !== 'fileManager' || (selected as any).instanceId !== instanceId) {
+        if (!matchesInstance(selectionStore.selectedEntity)) {
           return;
         }
       }
