@@ -60,6 +60,7 @@ describe('useFileBrowserCreateActions', () => {
     expect(loadFolderContent).toHaveBeenCalled();
     expect(selectionStore.selectFsEntry).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'new.otio' }),
+      undefined,
     );
   });
 
@@ -97,6 +98,7 @@ describe('useFileBrowserCreateActions', () => {
     expect(loadFolderContent).toHaveBeenCalled();
     expect(selectionStore.selectFsEntry).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'doc.md' }),
+      undefined,
     );
   });
 });

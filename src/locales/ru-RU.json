@@ -216,7 +216,7 @@
       "bloggerDogProject": "Проект",
       "bloggerDogGroup": "Группа",
       "bloggerDogItem": "Элемент контента",
-      "mediaCount": "Количество файлов",
+      "mediaCount": "Количество медиа",
       "itemsCount": "Количество элементов",
       "lineCount": "Количество строк"
     },
@@ -1345,6 +1345,10 @@
           "image": "изображений",
           "document": "документов",
           "file": "файлов"
+        },
+        "actions": {
+          "createSubgroup": "Создать подгруппу",
+          "createItem": "Создать элемент контента"
         }
       },
       "upload": {
