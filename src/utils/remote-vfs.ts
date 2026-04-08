@@ -406,6 +406,8 @@ export async function createRemoteCollection(params: {
   config: RemoteVfsClientConfig;
   name: string;
   parentId?: string;
+  path?: string;
+  projectId?: string;
 }): Promise<RemoteVfsDirectoryEntry> {
   const response = await fetch(joinPath(params.config.baseUrl, 'collections'), {
     method: 'POST',
@@ -413,7 +415,12 @@ export async function createRemoteCollection(params: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${params.config.bearerToken}`,
     },
-    body: JSON.stringify({ name: params.name, parentId: params.parentId }),
+    body: JSON.stringify({
+      name: params.name,
+      parentId: params.parentId,
+      path: params.path,
+      projectId: params.projectId,
+    }),
   });
 
   if (!response.ok) {

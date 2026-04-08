@@ -17,7 +17,6 @@ import { useFileManagerPanelBootstrap } from '~/composables/file-manager/useFile
 
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
-import { createRemoteCollection } from '~/utils/remote-vfs';
 import { useSttTranscription } from '~/composables/file-manager/useSttTranscription';
 import { useFileManagerPanelActions } from '~/composables/file-manager/useFileManagerPanelActions';
 import { useAppClipboard } from '~/composables/useAppClipboard';
@@ -379,16 +378,11 @@ const remoteFilesConfig = computed(() =>
 );
 
 async function onSubgroupCreateConfirm(name: string) {
-  const config = remoteFilesConfig.value;
   const parent = pendingSubgroupParent.value;
-  if (!config || !parent) return;
+  if (!parent) return;
 
   try {
-    await createRemoteCollection({
-      config,
-      name,
-      parentId: parent.remoteId,
-    });
+    await vfs.createDirectory(`${parent.path}/${name}`);
     await reloadDirectory(parent.path);
     uiStore.notifyFileManagerUpdate();
   } catch (error) {
