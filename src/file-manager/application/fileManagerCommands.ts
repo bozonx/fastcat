@@ -288,10 +288,10 @@ export async function createTimelineCommand(params: {
 
 export async function createMarkdownCommand(params: {
   vfs: IFileSystemAdapter;
-  documentsDirName: string;
+  dirPath: string;
   existingNames?: string[];
 }): Promise<string> {
-  const basePath = params.documentsDirName;
+  const basePath = params.dirPath;
   if (basePath) {
     await params.vfs.createDirectory(basePath);
   }

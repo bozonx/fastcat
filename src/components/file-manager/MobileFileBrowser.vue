@@ -145,6 +145,7 @@ const {
   language: transcriptionLanguage,
   errorMessage: transcriptionError,
   isTranscribing,
+  isModelReady,
   pendingEntry: transcriptionEntry,
   isTranscribableMediaFile,
   openModal: openTranscriptionModal,
@@ -514,6 +515,7 @@ const menuItems = computed(() => [
     <FileSttTranscriptionModal
       v-model:open="transcriptionModalOpen"
       :is-transcribing="isTranscribing"
+      :is-model-ready="isModelReady"
       :transcription-error="transcriptionError"
       :transcription-entry="transcriptionEntry"
       :transcription-language="transcriptionLanguage"

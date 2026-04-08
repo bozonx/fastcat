@@ -3,6 +3,9 @@ import type { Ref } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
+import { useSelectionStore } from '~/stores/selection.store';
+import { useAppClipboard } from '~/composables/useAppClipboard';
+import type { useFileManager } from '~/composables/file-manager/useFileManager';
 
 export interface FileBrowserPendingActionsOptions {
   folderEntries: Ref<FsEntry[]>;
@@ -14,6 +17,9 @@ export interface FileBrowserPendingActionsOptions {
   handlePendingBloggerDogCreateSubgroup: (entry: FsEntry) => void;
   handlePendingBloggerDogCreateItem: (entry: FsEntry) => void;
   onCreateFolder: (entry: FsEntry) => void;
+  findEntryByPath: (path: string) => FsEntry | null;
+  loadFolderContent: () => Promise<void>;
+  fileManager: ReturnType<typeof useFileManager>;
   instanceId: string;
 }
 
@@ -27,17 +33,27 @@ export function useFileBrowserPendingActions({
   handlePendingBloggerDogCreateSubgroup,
   handlePendingBloggerDogCreateItem,
   onCreateFolder,
+  findEntryByPath,
+  loadFolderContent,
+  fileManager,
   instanceId,
 }: FileBrowserPendingActionsOptions) {
   const uiStore = useUiStore();
   const focusStore = useFocusStore();
+  const selectionStore = useSelectionStore();
+  const clipboard = useAppClipboard();
 
   watch(
     () => uiStore.pendingFsEntryDelete,
     (value) => {
       const entries = value as FsEntry[] | null;
       if (!entries || entries.length === 0) return;
-      if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return;
+      if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) {
+        const selected = selectionStore.selectedEntity;
+        if (selected?.source !== 'fileManager' || (selected as any).instanceId !== instanceId) {
+          return;
+        }
+      }
 
       openDeleteConfirmModal(entries);
       uiStore.pendingFsEntryDelete = null;
@@ -50,7 +66,11 @@ export function useFileBrowserPendingActions({
       const entry = value as FsEntry | null;
       if (!entry) return;
       const inCurrentFolder = folderEntries.value.some((e) => e.path === entry.path);
-      if (!inCurrentFolder) return;
+      const isSelected = selectionStore.selectedEntity?.source === 'fileManager' && 
+                        (selectionStore.selectedEntity as any).entry?.path === entry.path;
+      
+      if (!inCurrentFolder && !isSelected) return;
+      if (isSelected && (selectionStore.selectedEntity as any).instanceId !== instanceId) return;
       startRename(entry);
       uiStore.pendingFsEntryRename = null;
     },
@@ -61,6 +81,11 @@ export function useFileBrowserPendingActions({
     async (value) => {
       const entry = value as FsEntry | null;
       if (!entry || entry.kind !== 'directory') return;
+      
+      const selected = selectionStore.selectedEntity;
+      if (selected?.source === 'fileManager' && (selected as any).instanceId !== instanceId) {
+        return;
+      }
       try {
         await createTimelineInDirectory(entry);
       } finally {
@@ -74,6 +99,11 @@ export function useFileBrowserPendingActions({
     async (value) => {
       const entry = value as FsEntry | null;
       if (!entry || entry.kind !== 'directory') return;
+
+      const selected = selectionStore.selectedEntity;
+      if (selected?.source === 'fileManager' && (selected as any).instanceId !== instanceId) {
+        return;
+      }
       try {
         await createMarkdownInDirectory(entry);
       } finally {
@@ -98,7 +128,12 @@ export function useFileBrowserPendingActions({
     () => (uiStore as any).pendingBloggerDogCreateSubgroup,
     (entry) => {
       if (!entry) return;
-      if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return;
+      if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) {
+        const selected = selectionStore.selectedEntity;
+        if (selected?.source !== 'fileManager' || (selected as any).instanceId !== instanceId) {
+          return;
+        }
+      }
       handlePendingBloggerDogCreateSubgroup(entry);
     },
   );
@@ -107,7 +142,12 @@ export function useFileBrowserPendingActions({
     () => (uiStore as any).pendingBloggerDogCreateItem,
     (entry) => {
       if (!entry) return;
-      if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return;
+      if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) {
+        const selected = selectionStore.selectedEntity;
+        if (selected?.source !== 'fileManager' || (selected as any).instanceId !== instanceId) {
+          return;
+        }
+      }
       handlePendingBloggerDogCreateItem(entry);
     },
   );
@@ -116,9 +156,54 @@ export function useFileBrowserPendingActions({
     () => uiStore.pendingFsEntryCreateFolder,
     (entry) => {
       if (!entry) return;
-      if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return;
+      if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) {
+        const selected = selectionStore.selectedEntity;
+        if (selected?.source !== 'fileManager' || (selected as any).instanceId !== instanceId) {
+          return;
+        }
+      }
       onCreateFolder(entry);
       uiStore.pendingFsEntryCreateFolder = null;
+    },
+  );
+
+  watch(
+    () => uiStore.pendingFsEntryPaste,
+    async (targetEntry) => {
+      if (!targetEntry) return;
+
+      if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) {
+        const selected = selectionStore.selectedEntity;
+        if (selected?.source !== 'fileManager' || (selected as any).instanceId !== instanceId) {
+          return;
+        }
+      }
+
+      const payload = clipboard.clipboardPayload;
+      if (!payload || payload.source !== 'fileManager' || payload.items.length === 0) {
+        uiStore.pendingFsEntryPaste = null;
+        return;
+      }
+
+      const targetDirPath = targetEntry.path;
+      for (const item of payload.items) {
+        const source = findEntryByPath(item.path);
+        if (!source) continue;
+
+        if (payload.operation === 'copy') {
+          await fileManager.copyEntry({ source, targetDirPath });
+        } else {
+          await fileManager.moveEntry({ source, targetDirPath });
+        }
+      }
+
+      if (payload.operation === 'cut') {
+        clipboard.setClipboardPayload(null);
+      }
+
+      uiStore.pendingFsEntryPaste = null;
+      uiStore.notifyFileManagerUpdate();
+      await loadFolderContent();
     },
   );
 }

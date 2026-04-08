@@ -21,7 +21,7 @@ function createFileManagerStoreSetup(contextId: string) {
     const STORAGE_KEY = `fastcat:file-manager-${contextId}`;
     const selectionStore = useSelectionStore();
 
-    const selectedFolder = ref<FsEntry | null>(null);
+    const selectedFolder = ref<FsEntry | null>(readLocalStorageJson(`${STORAGE_KEY}:selectedFolder`, null));
     const historyStack = ref<FsEntry[]>([]);
     const futureStack = ref<FsEntry[]>([]);
     const folderSizes = ref<Record<string, number>>({});
@@ -58,6 +58,7 @@ function createFileManagerStoreSetup(contextId: string) {
     watch(isBloggerDogPanelVisible, (val) =>
       writeLocalStorageJson(`${STORAGE_KEY}:isBloggerDogPanelVisible`, val),
     );
+    watch(selectedFolder, (val) => writeLocalStorageJson(`${STORAGE_KEY}:selectedFolder`, val));
 
     watch(
       columnWidths,

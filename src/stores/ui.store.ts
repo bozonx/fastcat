@@ -71,6 +71,7 @@ export const useUiStore = defineStore('ui', () => {
   const pendingRemoteDownloadRequest = ref<PendingRemoteDownloadRequest | null>(null);
   const pendingBloggerDogCreateSubgroup = ref<FsEntry | null>(null);
   const pendingBloggerDogCreateItem = ref<FsEntry | null>(null);
+  const pendingFsEntryPaste = ref<FsEntry | null>(null);
 
   const fileManagerUpdateCounter = ref(0);
   const isProjectSettingsOpen = ref(false);
@@ -240,6 +241,7 @@ export const useUiStore = defineStore('ui', () => {
     pendingRemoteDownloadRequest,
     pendingBloggerDogCreateSubgroup,
     pendingBloggerDogCreateItem,
+    pendingFsEntryPaste,
     remoteExchangeModalOpen,
     remoteExchangeLocalEntry,
 
