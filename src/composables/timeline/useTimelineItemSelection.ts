@@ -19,7 +19,10 @@ export function useTimelineItemSelection(
   const workspaceStore = useWorkspaceStore();
 
   const canOpenClipProperties = computed(
-    () => projectStore.currentView === 'cut' || projectStore.currentView === 'sound',
+    () =>
+      projectStore.currentView === 'files' ||
+      projectStore.currentView === 'cut' ||
+      projectStore.currentView === 'sound',
   );
 
   function selectItem(e: PointerEvent, itemId: string) {

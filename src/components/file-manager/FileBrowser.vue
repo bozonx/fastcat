@@ -41,7 +41,6 @@ import FileBrowserBreadcrumbs from '~/components/file-manager/FileBrowserBreadcr
 import FileBrowserViewGrid from '~/components/file-manager/FileBrowserViewGrid.vue';
 import FileBrowserViewList from '~/components/file-manager/FileBrowserViewList.vue';
 import FileBrowserModals from '~/components/file-manager/FileBrowserModals.vue';
-import FileNameModal from '~/components/file-manager/modals/FileNameModal.vue';
 
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
@@ -539,6 +538,9 @@ async function onItemCreateConfirm(name: string) {
 // --- File manager actions (CRUD, rename, delete) ---
 const {
   isDeleteConfirmModalOpen,
+  isCreateFolderModalOpen,
+  createFolderDefaultName,
+  confirmCreateFolder,
   editingEntryPath,
   commitRename,
   stopRename,
@@ -1116,6 +1118,8 @@ async function onDirectoryUploadChange(e: Event) {
       v-model:transcription-language="transcriptionLanguage"
       v-model:is-subgroup-modal-open="isSubgroupModalOpen"
       v-model:is-item-modal-open="isItemModalOpen"
+      v-model:is-folder-modal-open="isCreateFolderModalOpen"
+      :folder-default-name="createFolderDefaultName"
       :delete-targets="deleteTargets"
       :remote-transfer-open="remoteTransferOpen"
       :remote-transfer-progress="remoteTransferProgress"
@@ -1130,6 +1134,7 @@ async function onDirectoryUploadChange(e: Event) {
       @submit-transcription="submitTranscription"
       @subgroup-confirm="onSubgroupCreateConfirm"
       @item-confirm="onItemCreateConfirm"
+      @folder-confirm="confirmCreateFolder"
     />
   </div>
 </template>
