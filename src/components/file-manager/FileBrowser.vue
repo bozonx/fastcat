@@ -26,7 +26,6 @@ import { useFocusableListNavigation } from '~/composables/file-manager/useFocusa
 import { useFileBrowserPendingActions } from '~/composables/file-manager/useFileBrowserPendingActions';
 import { useFileBrowserCreateActions } from '~/composables/file-manager/useFileBrowserCreateActions';
 import { useFileBrowserInteraction } from '~/composables/file-manager/useFileBrowserInteraction';
-import { createRemoteCollection } from '~/utils/remote-vfs';
 import { handleFilesCommand } from '~/file-manager/application/fileManagerCommands';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
@@ -464,23 +463,15 @@ function handlePendingBloggerDogCreateSubgroup(entry: FsEntry) {
 }
 
 async function onSubgroupCreateConfirm(name: string) {
-  const config = remote.remoteFilesConfig.value;
   const parent = pendingSubgroupParent.value;
-  if (!config || !parent) return;
+  if (!parent) return;
 
   try {
-    const parentId = parent.remoteId;
-    const newCollection = await createRemoteCollection({
-      config,
-      name,
-      parentId,
-    });
+    const newPath = `${parent.path}/${name}`;
+    await vfs.createDirectory(newPath);
 
     // Navigate to new subgroup
-    const newEntry = remote.buildRemoteDirectoryEntry(newCollection.path);
-    // Explicitly merge remoteId and other required fields
-    newEntry.remoteData = newCollection;
-
+    const newEntry = remote.buildRemoteDirectoryEntry(newPath);
     remoteCurrentFolder.value = newEntry;
     await loadFolderContent();
     await loadParentFolders();

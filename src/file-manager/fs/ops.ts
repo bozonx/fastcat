@@ -1,4 +1,5 @@
 import PQueue from 'p-queue';
+import { MAX_COPY_DEPTH } from '~/file-manager/core/rules';
 
 interface FsDirectoryHandleWithIteration extends FileSystemDirectoryHandle {
   values?: () => AsyncIterable<FileSystemHandle>;
@@ -56,7 +57,13 @@ export async function copyDirectoryRecursive(params: {
   sourceDirHandle: FileSystemDirectoryHandle;
   targetDirHandle: FileSystemDirectoryHandle;
   queue?: PQueue;
+  depth?: number;
 }): Promise<void> {
+  const depth = params.depth ?? 0;
+  if (depth > MAX_COPY_DEPTH) {
+    throw new Error(`Maximum copy depth exceeded (${MAX_COPY_DEPTH})`);
+  }
+
   const iterator = getDirectoryIterator(params.sourceDirHandle);
   if (!iterator) return;
 
@@ -90,6 +97,7 @@ export async function copyDirectoryRecursive(params: {
         sourceDirHandle: handle as FileSystemDirectoryHandle,
         targetDirHandle: nextTargetDir,
         queue,
+        depth: depth + 1,
       });
     }) as Promise<void>;
     tasks.push(nextTargetDirTask);

@@ -1,4 +1,14 @@
-import { ref, shallowRef, computed, toRaw, markRaw, watch, type Ref, inject, type InjectionKey } from 'vue';
+import {
+  ref,
+  shallowRef,
+  computed,
+  toRaw,
+  markRaw,
+  watch,
+  type Ref,
+  inject,
+  type InjectionKey,
+} from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -35,7 +45,10 @@ import {
 import { clearVectorImageRaster } from '~/media-cache/application/vectorImageCache';
 import type { FsEntry } from '~/types/fs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
-import { isMoveAllowed as isMoveAllowedCore } from '~/file-manager/core/rules';
+import {
+  isMoveAllowed as isMoveAllowedCore,
+  isCopyAllowed as isCopyAllowedCore,
+} from '~/file-manager/core/rules';
 import { findEntryByPath as findEntryByPathCore } from '~/file-manager/core/tree';
 import { createFileManagerService } from '~/file-manager/application/fileManagerService';
 import {
@@ -57,6 +70,10 @@ type FileTreeSortMode = 'name' | 'type';
 
 export function isMoveAllowed(params: { sourcePath: string; targetDirPath: string }): boolean {
   return isMoveAllowedCore(params);
+}
+
+export function isCopyAllowed(params: { sourcePath: string; targetDirPath: string }): boolean {
+  return isCopyAllowedCore(params);
 }
 
 export interface FileManagerCreateDeps {
@@ -87,7 +104,6 @@ export interface FileManagerCreateDeps {
   shouldRecordFileManagerHistory: () => boolean;
   hideCommonRoot?: boolean;
 }
-
 
 export function createFileManager(deps: FileManagerCreateDeps) {
   const isLoading = ref(false);
@@ -229,7 +245,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
           autoExpandMediaDirs: true,
         });
         if (!deps.hideCommonRoot) {
-            deps.rootEntries.value = await withWorkspaceCommonRoot(deps.rootEntries.value);
+          deps.rootEntries.value = await withWorkspaceCommonRoot(deps.rootEntries.value);
         }
       },
 
@@ -532,6 +548,8 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     const targetDirPath = params.targetDirPath ?? '';
     if (!sourcePath) return null;
 
+    if (!isCopyAllowed({ sourcePath, targetDirPath })) return null;
+
     await runWithUiFeedback({
       action: async () => {
         const { newPath } = await copyEntryCommand(
@@ -621,7 +639,6 @@ export function createFileManager(deps: FileManagerCreateDeps) {
       deps.rootEntries.value = await withWorkspaceCommonRoot([...deps.rootEntries.value]);
     }
     deps.onDirectoryLoaded?.();
-
   }
 
   return {
@@ -687,7 +704,8 @@ export function createFileManager(deps: FileManagerCreateDeps) {
 const sharedRootEntries = shallowRef<FsEntry[]>([]);
 const sharedSortMode = ref<FileTreeSortMode>('name');
 
-export const FILE_MANAGER_INJECTION_KEY: InjectionKey<ReturnType<typeof createFileManager>> = Symbol('FileManager');
+export const FILE_MANAGER_INJECTION_KEY: InjectionKey<ReturnType<typeof createFileManager>> =
+  Symbol('FileManager');
 
 export function useFileManager(options?: {
   rootEntries?: Ref<FsEntry[]>;
@@ -744,7 +762,6 @@ export function useFileManager(options?: {
       }
     }
   }
-
 
   async function clearVectorCacheForPath(path: string) {
     const projectId = projectStore.currentProjectId;

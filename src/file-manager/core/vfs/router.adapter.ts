@@ -1,4 +1,5 @@
 import type { IFileSystemAdapter, VfsEntry } from './types';
+import { MAX_COPY_DEPTH } from '~/file-manager/core/rules';
 
 export interface VfsRoute {
   prefix: string;
@@ -148,7 +149,8 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
     const readStream = await sourceRoute.adapter.readStream(sourceRoute.mappedPath);
     const writeStream = await targetRoute.adapter.writeStream(targetRoute.mappedPath);
 
-    if (size > 10 * 1024 * 1024) { // > 10MB
+    if (size > 10 * 1024 * 1024) {
+      // > 10MB
       // Import store dynamically to avoid circular dependencies and ensure it's accessed in setup/client Context
       const { useBackgroundTasksStore } = await import('~/stores/background-tasks.store');
       const { useUiStore } = await import('~/stores/ui.store');
@@ -173,16 +175,26 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
       });
 
       // Do NOT await, let it run in background so UI isn't blocked completely
-      readStream.pipeTo(progressStream.writable).then(() => {
-        progressStream.readable.pipeTo(writeStream).then(() => {
-          tasksStore.updateTaskStatus(taskId, 'completed');
-          uiStore.notifyFileManagerUpdate(); // Tell UI to refresh file list
-        }).catch((e) => {
+      readStream
+        .pipeTo(progressStream.writable)
+        .then(() => {
+          progressStream.readable
+            .pipeTo(writeStream)
+            .then(() => {
+              tasksStore.updateTaskStatus(taskId, 'completed');
+              uiStore.notifyFileManagerUpdate(); // Tell UI to refresh file list
+            })
+            .catch((e) => {
+              tasksStore.updateTaskStatus(
+                taskId,
+                'failed',
+                e instanceof Error ? e.message : String(e),
+              );
+            });
+        })
+        .catch((e) => {
           tasksStore.updateTaskStatus(taskId, 'failed', e instanceof Error ? e.message : String(e));
         });
-      }).catch((e) => {
-        tasksStore.updateTaskStatus(taskId, 'failed', e instanceof Error ? e.message : String(e));
-      });
 
       return; // Return immediately to unblock UI interaction
     }
@@ -198,13 +210,24 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
       return sourceRoute.adapter.copyDirectory(sourceRoute.mappedPath, targetRoute.mappedPath);
     }
 
-    // Cross-adapter copy directory
+    await this.copyDirectoryRecursive(sourcePath, targetPath, 0);
+  }
+
+  private async copyDirectoryRecursive(
+    sourcePath: string,
+    targetPath: string,
+    depth: number,
+  ): Promise<void> {
+    if (depth > MAX_COPY_DEPTH) {
+      throw new Error(`Maximum copy depth exceeded (${MAX_COPY_DEPTH})`);
+    }
+
     await this.createDirectory(targetPath);
     const entries = await this.readDirectory(sourcePath);
     for (const entry of entries) {
       const nextTargetPath = `${targetPath}/${entry.name}`;
       if (entry.kind === 'directory') {
-        await this.copyDirectory(entry.path, nextTargetPath);
+        await this.copyDirectoryRecursive(entry.path, nextTargetPath, depth + 1);
       } else {
         await this.copyFile(entry.path, nextTargetPath);
       }

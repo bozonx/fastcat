@@ -1,4 +1,5 @@
 import type { IFileSystemAdapter, VfsEntry } from './types';
+import { MAX_COPY_DEPTH } from '~/file-manager/core/rules';
 
 interface DirectoryHandleWithIteration extends FileSystemDirectoryHandle {
   values?: () => AsyncIterable<FileSystemHandle>;
@@ -204,13 +205,25 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
   }
 
   async copyDirectory(sourcePath: string, targetPath: string): Promise<void> {
+    await this.copyDirectoryRecursive(sourcePath, targetPath, 0);
+  }
+
+  private async copyDirectoryRecursive(
+    sourcePath: string,
+    targetPath: string,
+    depth: number,
+  ): Promise<void> {
+    if (depth > MAX_COPY_DEPTH) {
+      throw new Error(`Maximum copy depth exceeded (${MAX_COPY_DEPTH})`);
+    }
+
     await this.createDirectory(targetPath);
 
     const entries = await this.readDirectory(sourcePath);
     for (const entry of entries) {
       const nextTargetPath = `${targetPath}/${entry.name}`;
       if (entry.kind === 'directory') {
-        await this.copyDirectory(entry.path, nextTargetPath);
+        await this.copyDirectoryRecursive(entry.path, nextTargetPath, depth + 1);
       } else {
         await this.copyFile(entry.path, nextTargetPath);
       }

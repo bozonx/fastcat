@@ -1,7 +1,11 @@
 /** @vitest-environment happy-dom */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
-import { useFileManager, isMoveAllowed } from '~/composables/file-manager/useFileManager';
+import {
+  useFileManager,
+  isMoveAllowed,
+  isCopyAllowed,
+} from '~/composables/file-manager/useFileManager';
 import type { FsEntry } from '~/types/fs';
 
 describe('useFileManager', () => {
@@ -79,6 +83,23 @@ describe('useFileManager', () => {
     expect(isMoveAllowed({ sourcePath: 'a', targetDirPath: '' })).toBe(true);
     expect(isMoveAllowed({ sourcePath: 'a/b/c', targetDirPath: 'a' })).toBe(true);
     expect(isMoveAllowed({ sourcePath: 'a', targetDirPath: 'a/b' })).toBe(false);
+  });
+
+  it('isCopyAllowed should prevent copying directory into itself or descendant', () => {
+    expect(isCopyAllowed({ sourcePath: '_video', targetDirPath: '_video' })).toBe(false);
+    expect(isCopyAllowed({ sourcePath: '_video', targetDirPath: '_video/sub' })).toBe(false);
+    expect(isCopyAllowed({ sourcePath: '_video/sub', targetDirPath: '_video' })).toBe(true);
+  });
+
+  it('isCopyAllowed should allow copying into root', () => {
+    expect(isCopyAllowed({ sourcePath: 'a/b', targetDirPath: '' })).toBe(true);
+  });
+
+  it('isCopyAllowed should handle edge cases', () => {
+    expect(isCopyAllowed({ sourcePath: '', targetDirPath: 'a' })).toBe(true);
+    expect(isCopyAllowed({ sourcePath: 'a', targetDirPath: '' })).toBe(true);
+    expect(isCopyAllowed({ sourcePath: 'a/b/c', targetDirPath: 'a' })).toBe(true);
+    expect(isCopyAllowed({ sourcePath: 'a', targetDirPath: 'a/b' })).toBe(false);
   });
 
   it('should have sortMode with default value', () => {
