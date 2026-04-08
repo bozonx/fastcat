@@ -11,6 +11,8 @@ export interface FileManagerPanelPendingActionsOptions {
   createTimelineInDirectory: (entry: FsEntry) => Promise<void>;
   createMarkdownInDirectory: (entry: FsEntry) => Promise<void>;
   createOtioVersion: (entry: FsEntry) => void | Promise<void>;
+  handlePendingBloggerDogCreateSubgroup: (entry: FsEntry) => void;
+  handlePendingBloggerDogCreateItem: (entry: FsEntry) => void;
   instanceId: string;
 }
 
@@ -21,6 +23,8 @@ export function useFileManagerPanelPendingActions({
   createTimelineInDirectory,
   createMarkdownInDirectory,
   createOtioVersion,
+  handlePendingBloggerDogCreateSubgroup,
+  handlePendingBloggerDogCreateItem,
   instanceId,
 }: FileManagerPanelPendingActionsOptions) {
   const uiStore = useUiStore();
@@ -105,6 +109,24 @@ export function useFileManagerPanelPendingActions({
       } finally {
         uiStore.pendingOtioCreateVersion = null;
       }
+    },
+  );
+
+  watch(
+    () => (uiStore as any).pendingBloggerDogCreateSubgroup,
+    (entry) => {
+      if (!entry || !isFocusedOrSelected()) return;
+      handlePendingBloggerDogCreateSubgroup(entry);
+      (uiStore as any).pendingBloggerDogCreateSubgroup = null;
+    },
+  );
+
+  watch(
+    () => (uiStore as any).pendingBloggerDogCreateItem,
+    (entry) => {
+      if (!entry || !isFocusedOrSelected()) return;
+      handlePendingBloggerDogCreateItem(entry);
+      (uiStore as any).pendingBloggerDogCreateItem = null;
     },
   );
 }
