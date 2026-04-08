@@ -160,7 +160,7 @@ describe('FileManagerFiles', () => {
 
     expect(uiStore.selectedFsEntry?.kind).toBe('directory');
     expect(uiStore.selectedFsEntry?.path).toBe('');
-    expect(uiStore.selectedFsEntry?.name).toBe('/');
+    expect(uiStore.selectedFsEntry?.name).toBe('MyProject');
 
     expect(selectionStore.selectedEntity?.source).toBe('fileManager');
     expect((selectionStore.selectedEntity as any)?.path).toBe('');

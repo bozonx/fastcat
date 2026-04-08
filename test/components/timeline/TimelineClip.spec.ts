@@ -63,7 +63,9 @@ const mockWorkspaceStore = reactive({
 vi.mock('~/stores/timeline.store', () => ({ useTimelineStore: () => mockTimelineStore }));
 vi.mock('~/stores/media.store', () => ({ useMediaStore: () => mockMediaStore }));
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelectionStore }));
-vi.mock('~/stores/ui.store', () => ({ useUiStore: () => ({ triggerScrollToEffects: vi.fn() }) }));
+vi.mock('~/stores/ui.store', () => ({
+  useUiStore: () => ({ triggerScrollToEffects: vi.fn(), notifyFileManagerUpdate: vi.fn() }),
+}));
 vi.mock('~/stores/project.store', () => ({
   useProjectStore: () => ({
     projectSettings: {},
