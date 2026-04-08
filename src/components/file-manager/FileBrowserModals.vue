@@ -3,7 +3,7 @@ import type { FsEntry } from '~/types/fs';
 import FileDeleteConfirmModal from '~/components/file-manager/modals/FileDeleteConfirmModal.vue';
 import FileSttTranscriptionModal from '~/components/file-manager/modals/FileTranscriptionModal.vue';
 import RemoteTransferProgressModal from '~/components/file-manager/RemoteTransferProgressModal.vue';
-import FileNameModal from '~/components/file-manager/modals/FileNameModal.vue';
+import UiEntityCreationModal from '~/components/ui/UiEntityCreationModal.vue';
 
 interface Props {
   deleteTargets: FsEntry[];
@@ -19,6 +19,8 @@ interface Props {
   transcriptionEntry: FsEntry | null;
   transcriptionLanguage: string;
   // Creation modals
+  isFolderModalOpen: boolean;
+  folderDefaultName: string;
   isSubgroupModalOpen: boolean;
   isItemModalOpen: boolean;
 }
@@ -31,11 +33,13 @@ const emit = defineEmits<{
   (e: 'update:transcriptionLanguage', value: string): void;
   (e: 'update:isSubgroupModalOpen', value: boolean): void;
   (e: 'update:isItemModalOpen', value: boolean): void;
+  (e: 'update:isFolderModalOpen', value: boolean): void;
   (e: 'deleteConfirm'): void;
   (e: 'cancelRemoteTransfer'): void;
   (e: 'submitTranscription'): void;
   (e: 'subgroupConfirm', name: string): void;
   (e: 'itemConfirm', name: string): void;
+  (e: 'folderConfirm', name: string): void;
 }>();
 
 const { t } = useI18n();
@@ -71,19 +75,27 @@ const { t } = useI18n();
     @submit="emit('submitTranscription')"
   />
 
-  <FileNameModal
-    :model-value="props.isSubgroupModalOpen"
+  <UiEntityCreationModal
+    :open="props.isFolderModalOpen"
+    :title="t('fastcat.fileManager.actions.createFolder', 'Создать папку')"
+    :default-value="props.folderDefaultName"
+    @update:open="emit('update:isFolderModalOpen', $event)"
+    @confirm="emit('folderConfirm', $event)"
+  />
+
+  <UiEntityCreationModal
+    :open="props.isSubgroupModalOpen"
     :title="t('fastcat.bloggerDog.actions.createFolder', 'Создать подгруппу')"
     :confirm-label="t('common.create', 'Создать')"
-    @update:model-value="emit('update:isSubgroupModalOpen', $event)"
+    @update:open="emit('update:isSubgroupModalOpen', $event)"
     @confirm="emit('subgroupConfirm', $event)"
   />
 
-  <FileNameModal
-    :model-value="props.isItemModalOpen"
+  <UiEntityCreationModal
+    :open="props.isItemModalOpen"
     :title="t('fastcat.bloggerDog.actions.createItem', 'Создать элемент контента')"
     :confirm-label="t('common.create', 'Создать')"
-    @update:model-value="emit('update:isItemModalOpen', $event)"
+    @update:open="emit('update:isItemModalOpen', $event)"
     @confirm="emit('itemConfirm', $event)"
   />
 </template>

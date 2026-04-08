@@ -77,6 +77,10 @@ export function useFileManagerActions(actions: FileManagerActions) {
   const isDeleteConfirmModalOpen = ref(false);
   const deleteTargets = ref<FsEntry[]>([]);
 
+  const isCreateFolderModalOpen = ref(false);
+  const pendingCreateFolderParent = ref<FsEntry | null>(null);
+  const createFolderDefaultName = ref('');
+
   const directoryUploadTarget = ref<FsEntry | null>(null);
   const directoryUploadInput = ref<HTMLInputElement | null>(null);
 
@@ -129,10 +133,27 @@ export function useFileManagerActions(actions: FileManagerActions) {
       index++;
     } while (usedNames.has(newName));
 
-    await actions.createFolder(newName, targetDirPath);
+    createFolderDefaultName.value = newName;
+    pendingCreateFolderParent.value = actions.findEntryByPath(targetDirPath) || {
+      kind: 'directory',
+      name: '',
+      path: targetDirPath,
+    } as FsEntry;
+    isCreateFolderModalOpen.value = true;
+  }
 
-    const createdPath = targetDirPath ? `${targetDirPath}/${newName}` : newName;
+  async function confirmCreateFolder(name: string) {
+    if (!pendingCreateFolderParent.value) return;
+    
+    const targetDirPath = pendingCreateFolderParent.value.path || '';
+    const trimmed = name.trim();
+    if (!trimmed) return;
 
+    await actions.createFolder(trimmed, targetDirPath);
+    
+    const createdPath = targetDirPath ? `${targetDirPath}/${trimmed}` : trimmed;
+    await actions.reloadDirectory(targetDirPath);
+    
     const createdEntry = actions.findEntryByPath(createdPath);
     if (createdEntry) {
       uiStore.selectedFsEntry = {
@@ -144,8 +165,8 @@ export function useFileManagerActions(actions: FileManagerActions) {
       actions.onFileSelect?.(createdEntry);
     }
 
-    // Set editing path so it opens rename mode automatically
-    editingEntryPath.value = createdPath;
+    isCreateFolderModalOpen.value = false;
+    pendingCreateFolderParent.value = null;
   }
 
   async function createOtioVersion(entry: FsEntry) {
@@ -478,6 +499,9 @@ export function useFileManagerActions(actions: FileManagerActions) {
     isDeleteConfirmModalOpen,
     deleteTargets,
     timelinesUsingDeleteTarget,
+    isCreateFolderModalOpen,
+    createFolderDefaultName,
+    confirmCreateFolder,
     directoryUploadTarget,
     directoryUploadInput,
     editingEntryPath,
