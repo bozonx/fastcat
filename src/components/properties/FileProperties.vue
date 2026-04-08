@@ -469,18 +469,30 @@ const filteredDirectoryPrimaryActions = computed(() => {
 
   if (isBloggerDogGroup.value) {
     return directoryPrimaryActions.value.filter((a: PrimaryEntryAction) =>
-      ['rename', 'delete', 'copy', 'cut', 'createSubgroup', 'createContentItem'].includes(a.id),
+      ['rename', 'delete', 'copy', 'cut', 'paste'].includes(a.id),
+    );
+  }
+
+  if (isBloggerDogContentItem.value) {
+    return directoryPrimaryActions.value.filter((a: PrimaryEntryAction) =>
+      ['rename', 'delete', 'copy', 'cut', 'paste'].includes(a.id),
     );
   }
 
   return directoryPrimaryActions.value.filter((a: PrimaryEntryAction) =>
-    ['rename', 'delete', 'copy', 'cut'].includes(a.id),
+    ['rename', 'delete', 'copy', 'cut', 'paste'].includes(a.id),
   );
 });
 
 const filteredFilePrimaryActions = computed(() => {
   if (!isRemoteContent.value) {
     return filePrimaryActions.value.filter((a: PrimaryEntryAction) => a.id !== 'uploadRemote');
+  }
+
+  if (isBloggerDogMedia.value) {
+    return filePrimaryActions.value.filter((a: PrimaryEntryAction) =>
+      ['rename', 'delete', 'copy', 'cut'].includes(a.id),
+    );
   }
 
   return filePrimaryActions.value.filter((a: PrimaryEntryAction) =>
@@ -598,7 +610,7 @@ const filteredFilePrimaryActions = computed(() => {
       >
         <EntryActions
           :primary-actions="filteredDirectoryPrimaryActions"
-          :secondary-actions="isRemoteContent ? [] : directorySecondaryActions"
+          :secondary-actions="isBloggerDogGroup ? directorySecondaryActions.filter(a => ['createSubgroup', 'createContentItem'].includes(a.id)) : (isRemoteContent ? [] : directorySecondaryActions)"
         />
       </PropertySection>
 
@@ -616,7 +628,7 @@ const filteredFilePrimaryActions = computed(() => {
       >
         <EntryActions
           :primary-actions="filteredFilePrimaryActions"
-          :secondary-actions="isRemoteContent ? [] : fileSecondaryActions"
+          :secondary-actions="isBloggerDogMedia ? [] : (isRemoteContent ? [] : fileSecondaryActions)"
         />
       </PropertySection>
 
@@ -761,7 +773,7 @@ const filteredFilePrimaryActions = computed(() => {
 
       <FileGeneralInfoSection
         v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'file'"
-        :title="generalInfoTitle"
+        :title="isBloggerDogMedia ? (selectedFsEntry?.name || generalInfoTitle) : generalInfoTitle"
         :file-info="fileInfo"
         :selected-path="selectedPath"
         :path-link="bloggerDogDeepLink"

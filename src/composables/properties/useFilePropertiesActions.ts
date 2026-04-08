@@ -101,20 +101,6 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       disabled: !options.hasClipboardItems.value,
       onClick: options.onPaste,
     },
-    {
-      id: 'createSubgroup',
-      title: options.t('videoEditor.fileManager.actions.createFolder'),
-      icon: 'i-heroicons-folder-plus',
-      hidden: !options.isRemoteMode?.value, // Only for remote
-      onClick: options.createSubgroup,
-    },
-    {
-      id: 'createContentItem',
-      title: options.t('fastcat.bloggerDog.actions.createItem', 'Создать элемент контента'),
-      icon: 'i-heroicons-document-plus',
-      hidden: !options.isRemoteMode?.value, // Only for remote
-      onClick: options.createContentItem,
-    },
   ]);
 
   const directorySecondaryActions = computed<SecondaryEntryAction[]>(() => [
@@ -141,6 +127,20 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       label: options.t('videoEditor.fileManager.actions.createMarkdown'),
       icon: 'i-heroicons-document-text',
       onClick: options.createMarkdownInFolder,
+    },
+    {
+      id: 'createSubgroup',
+      label: options.t('fastcat.bloggerDog.actions.createSubgroup', 'Создать подгруппу'),
+      icon: 'i-heroicons-folder-plus',
+      hidden: !options.isRemoteMode?.value,
+      onClick: options.createSubgroup,
+    },
+    {
+      id: 'createContentItem',
+      label: options.t('fastcat.bloggerDog.actions.createItem', 'Создать элемент контента'),
+      icon: 'i-heroicons-document-plus',
+      hidden: !options.isRemoteMode?.value,
+      onClick: options.createContentItem,
     },
     {
       id: 'createProxyForAll',
@@ -188,7 +188,6 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       hidden: !options.canCopyOrCut.value,
       onClick: options.onCut,
     },
-    // uploadRemote removed
   ]);
 
   const fileSecondaryActions = computed<SecondaryEntryAction[]>(() => [

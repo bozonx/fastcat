@@ -14,13 +14,6 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const toast = useToast();
-const uiStore = useUiStore();
-
-const isEditing = ref(false);
-const isSaving = ref(false);
-const editName = ref('');
-const editTags = ref('');
-const editNote = ref('');
 
 const tags = computed(() => props.item.tags || []);
 const hasTags = computed(() => tags.value.length > 0);
@@ -41,7 +34,6 @@ const duration = computed(() => {
 const isMetaExpanded = ref(false);
 const rawMetaYaml = computed(() => {
   if (!props.item.meta) return null;
-  // Exclude fields we already display to avoid duplication
   const { duration, updatedAt, note, ...rest } = props.item.meta as any;
   if (Object.keys(rest).length === 0) return null;
   try {
@@ -59,98 +51,17 @@ async function copyToClipboard(text: string) {
     console.error('Failed to copy to clipboard', e);
   }
 }
-
-const startEditing = () => {
-  editName.value = props.item.title || props.item.name || '';
-  editTags.value = tags.value.join(', ');
-  editNote.value = props.item.note || '';
-  isEditing.value = true;
-};
-
-const onSave = async () => {
-  if (isSaving.value || !props.config) return;
-  isSaving.value = true;
-  try {
-    const { renameRemoteItem } = await import('~/utils/remote-vfs');
-    await renameRemoteItem({
-      config: props.config,
-      id: props.item.id,
-      name: editName.value.trim() || undefined,
-      tags: editTags.value.split(',').map((t) => t.trim()).filter(Boolean),
-      note: editNote.value.trim() || '',
-    });
-    
-    toast.add({ title: t('common.saved', 'Saved successfully') });
-    isEditing.value = false;
-    uiStore.notifyFileManagerUpdate();
-  } catch (error) {
-    console.error('[BloggerDog] Failed to update item properties', error);
-    toast.add({ 
-      title: t('common.error', 'Error'), 
-      description: error instanceof Error ? error.message : String(error), 
-      color: 'red' 
-    });
-  } finally {
-    isSaving.value = false;
-  }
-};
 </script>
 
 <template>
   <PropertySection title="BloggerDog">
     <template #header-actions>
       <div class="flex items-center gap-1">
-        <UButton
-          v-if="!isEditing"
-          color="neutral"
-          variant="ghost"
-          icon="i-heroicons-pencil-square"
-          size="2xs"
-          class="-my-1"
-          @click="startEditing"
-        />
         <slot name="header-actions" />
       </div>
     </template>
 
-    <div v-if="isEditing" class="flex flex-col gap-3 py-1">
-      <div class="flex flex-col gap-1">
-        <div class="text-2xs text-ui-text-muted px-1">{{ t('common.name', 'Title') }}</div>
-        <UInput v-model="editName" size="sm" :placeholder="t('common.name', 'Name')" />
-      </div>
-
-      <div class="flex flex-col gap-1">
-        <div class="text-2xs text-ui-text-muted px-1">{{ t('common.tags', 'Tags') }}</div>
-        <UInput v-model="editTags" size="sm" :placeholder="t('common.tags', 'Tags (comma separated)')" />
-      </div>
-
-      <div class="flex flex-col gap-1">
-        <div class="text-2xs text-ui-text-muted px-1">{{ t('common.note', 'Note') }}</div>
-        <UTextarea v-model="editNote" :rows="3" size="sm" :placeholder="t('common.note', 'Note')" />
-      </div>
-
-      <div class="flex items-center gap-2 pt-1 justify-end">
-        <UButton
-          color="neutral"
-          variant="ghost"
-          size="sm"
-          :disabled="isSaving"
-          @click="isEditing = false"
-        >
-          {{ t('common.cancel', 'Cancel') }}
-        </UButton>
-        <UButton
-          color="primary"
-          size="sm"
-          :loading="isSaving"
-          @click="onSave"
-        >
-          {{ t('common.save', 'Save') }}
-        </UButton>
-      </div>
-    </div>
-
-    <template v-else>
+    <template #default>
       <PropertyRow 
         v-if="language" 
         :label="t('common.language', 'Language')" 
@@ -202,10 +113,9 @@ const onSave = async () => {
         :on-toggle="() => (isMetaExpanded = !isMetaExpanded)"
         :on-copy="copyToClipboard"
       />
+      <div v-if="$slots['after-content']" class="mt-4 pt-2 border-t border-ui-border">
+        <slot name="after-content" />
+      </div>
     </template>
-
-    <div v-if="$slots['after-content']" class="mt-4 pt-2 border-t border-ui-border">
-      <slot name="after-content" />
-    </div>
   </PropertySection>
 </template>

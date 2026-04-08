@@ -68,7 +68,7 @@ describe('storage topology', () => {
       'custom-temp-root',
       'projects',
       'project-1',
-      'frame-cache',
+      'cache',
     ]);
     expect(getResolvedProjectWaveformsSegments(resolved, 'project-1')).toEqual([
       'custom-temp-root',

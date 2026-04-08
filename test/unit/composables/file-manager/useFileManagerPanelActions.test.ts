@@ -96,7 +96,7 @@ describe('useFileManagerPanelActions', () => {
     });
 
     expect(createTimelineCommand).toHaveBeenCalledTimes(1);
-    expect(selectionStore.selectFsEntry).toHaveBeenCalledWith(createdEntry);
+    expect(selectionStore.selectFsEntry).toHaveBeenCalledWith(createdEntry, undefined);
     expect(uiStore.selectedFsEntry).toEqual({
       kind: 'file',
       name: 'demo.otio',
