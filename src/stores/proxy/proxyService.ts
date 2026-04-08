@@ -147,7 +147,8 @@ export function createProxyService(params: {
     projectRelativePath: string,
     options?: { signal?: AbortSignal },
   ): Promise<void> {
-    if (!projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`)) return;
+    // Removed restriction to only generate proxies for files in _video directory
+    // if (!projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`)) return;
 
     // Wait if currently generating (e.g. cancellation still in progress)
     if (params.generatingProxies.value.has(projectRelativePath)) return;
@@ -405,7 +406,7 @@ export function createProxyService(params: {
   }
 
   async function deleteProxy(projectRelativePath: string) {
-    if (!projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`)) return;
+    // if (!projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`)) return;
     const dir = await params.ensureProjectProxiesDir();
     if (!dir) return;
 
@@ -450,7 +451,7 @@ export function createProxyService(params: {
   }
 
   async function renameProxy(input: { oldPath: string; newPath: string }) {
-    if (!input.oldPath.startsWith(`${VIDEO_DIR_NAME}/`)) return;
+    // if (!input.oldPath.startsWith(`${VIDEO_DIR_NAME}/`)) return;
     const dir = await params.ensureProjectProxiesDir();
     if (!dir) return;
 
@@ -488,7 +489,7 @@ export function createProxyService(params: {
   async function getProxyFileHandle(
     projectRelativePath: string,
   ): Promise<FileSystemFileHandle | null> {
-    if (!projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`)) return null;
+    // if (!projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`)) return null;
     const dir = await params.ensureProjectProxiesDir();
     if (!dir) return null;
 
@@ -501,7 +502,7 @@ export function createProxyService(params: {
   }
 
   async function getProxyFile(projectRelativePath: string): Promise<File | null> {
-    if (!projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`)) return null;
+    // if (!projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`)) return null;
     const dir = await params.ensureProjectProxiesDir();
     if (!dir) return null;
 

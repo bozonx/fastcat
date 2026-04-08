@@ -181,11 +181,7 @@ export function useFileManagerPanelActions({
       }
     } else if (action === 'convertFile') {
       if (entry.kind === 'file') handleConvert(entry);
-    } else if (action === 'uploadRemote') {
-      if (entry.kind === 'file' && entry.source !== 'remote') {
-        uiStore.remoteExchangeLocalEntry = entry;
-        uiStore.remoteExchangeModalOpen = true;
-      }
+    // uploadRemote removed
     } else if (action === 'transcribe') {
       openTranscriptionModal(entry);
     } else if (action === 'extractAudio') {

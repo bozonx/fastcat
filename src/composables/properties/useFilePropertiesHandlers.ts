@@ -9,7 +9,6 @@ interface UseFilePropertiesHandlersOptions {
   selectedFsEntry: Ref<FsEntry | undefined | null> | ComputedRef<FsEntry | undefined | null>;
   mediaType: Ref<string | null | undefined> | ComputedRef<string | null | undefined>;
   textContent: Ref<string | null | undefined> | ComputedRef<string | null | undefined>;
-  canUploadToRemote: Ref<boolean>;
 }
 
 export function useFilePropertiesHandlers(options: UseFilePropertiesHandlersOptions) {
@@ -94,13 +93,7 @@ export function useFilePropertiesHandlers(options: UseFilePropertiesHandlersOpti
     }
   }
 
-  function openRemoteUploadPicker() {
-    if (!options.canUploadToRemote.value) return;
-    const selectedEntry = options.selectedFsEntry.value;
-    if (!selectedEntry || selectedEntry.kind !== 'file') return;
-    uiStore.remoteExchangeLocalEntry = selectedEntry;
-    uiStore.remoteExchangeModalOpen = true;
-  }
+  // Removed openRemoteUploadPicker as it's not needed anymore
 
   return {
     canOpenAsPanel,
@@ -112,6 +105,6 @@ export function useFilePropertiesHandlers(options: UseFilePropertiesHandlersOpti
     onRename,
     onDelete,
     openAsTextPanel,
-    openRemoteUploadPicker,
+    // openRemoteUploadPicker,
   };
 }

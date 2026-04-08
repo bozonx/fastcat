@@ -81,10 +81,7 @@ const remoteFilesConfig = computed(() =>
   }),
 );
 
-const canUploadToRemote = computed(() => {
-  const entry = props.selectedFsEntry;
-  return entry?.kind === 'file' && entry?.source !== 'remote' && Boolean(remoteFilesConfig.value);
-});
+// canUploadToRemote removed
 
 const sttConfig = computed(() =>
   resolveExternalServiceConfig({
@@ -342,12 +339,10 @@ const {
   onRename,
   onDelete,
   openAsTextPanel,
-  openRemoteUploadPicker,
 } = useFilePropertiesHandlers({
   selectedFsEntry: selectedFsEntryRef,
   mediaType,
   textContent,
-  canUploadToRemote,
 });
 
 const canCopyOrCut = computed(() => {
@@ -408,7 +403,6 @@ const {
   isFolderWithVideo,
   isGeneratingProxyForFolder,
   canConvertFile,
-  canUploadToRemote,
   canTranscribeMedia,
   isAudioFile,
   canOpenAsPanel,
@@ -433,7 +427,6 @@ const {
   onRename,
   onDelete,
   onConvert: () => emit('convert', props.selectedFsEntry),
-  openRemoteUploadPicker,
   openTranscriptionModal,
   openAsPanelCut: () => openAsTextPanel('cut'),
   openAsPanelSound: () => openAsTextPanel('sound'),

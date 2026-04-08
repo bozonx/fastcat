@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import BackgroundTaskToasts from '~/components/file-manager/BackgroundTaskToasts.vue';
-import RemoteFileExchangeModal from '~/components/file-manager/RemoteFileExchangeModal.vue';
+// import RemoteFileExchangeModal from '~/components/file-manager/RemoteFileExchangeModal.vue';
 import DesktopMediaReplaceModal from '~/components/timeline/DesktopMediaReplaceModal.vue';
 import MobileMediaPickerDrawer from '~/components/timeline/MobileMediaPickerDrawer.vue';
 import { usePresetsStore } from '~/stores/presets.store';
@@ -46,7 +46,7 @@ if (colorMode.preference === 'system') {
       <NuxtPage />
     </NuxtLayout>
     <BackgroundTaskToasts />
-    <RemoteFileExchangeModal />
+    <!-- <RemoteFileExchangeModal /> -->
     <DesktopMediaReplaceModal v-if="!isMobileLayout" />
     <MobileMediaPickerDrawer 
       v-if="isMobileLayout" 

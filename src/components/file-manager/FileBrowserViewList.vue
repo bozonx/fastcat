@@ -125,11 +125,11 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
 
 <template>
   <div class="flex flex-col w-full min-w-max">
-    <table class="w-full text-left text-xs border-collapse">
+    <table class="w-full text-left text-sm border-collapse">
       <thead>
         <tr class="text-ui-text-muted border-b border-ui-border">
           <th
-            class="py-0.5 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
+            class="py-1 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
             :style="{ width: `${fileManagerStore.columnWidths.name}px`, minWidth: '60px' }"
             @click="emit('sort', 'name')"
           >
@@ -154,7 +154,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
           </th>
 
           <th
-            class="py-0.5 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
+            class="py-1 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
             :style="{ width: `${fileManagerStore.columnWidths.type}px`, minWidth: '60px' }"
             @click="emit('sort', 'type')"
           >
@@ -179,7 +179,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
           </th>
 
           <th
-            class="py-0.5 px-3 font-medium text-right cursor-pointer hover:text-ui-text transition-colors select-none relative"
+            class="py-1 px-3 font-medium text-right cursor-pointer hover:text-ui-text transition-colors select-none relative"
             :style="{ width: `${fileManagerStore.columnWidths.size}px`, minWidth: '60px' }"
             @click="emit('sort', 'size')"
           >
@@ -204,7 +204,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
           </th>
 
           <th
-            class="py-0.5 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
+            class="py-1 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
             :style="{ width: `${fileManagerStore.columnWidths.created}px`, minWidth: '60px' }"
             @click="emit('sort', 'created')"
           >
@@ -229,7 +229,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
           </th>
 
           <th
-            class="py-0.5 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
+            class="py-1 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
             :style="{
               width: `${fileManagerStore.columnWidths.modified}px`,
               minWidth: '60px',
@@ -294,7 +294,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
               @dblclick="emit('entryDoubleClick', entry)"
               @keydown.enter.prevent.stop="emit('entryEnter', entry)"
             >
-              <td class="py-0 px-3 flex items-center gap-2 h-7">
+              <td class="py-0.5 px-3 flex items-center gap-2 h-8">
                 <div
                   class="h-4 flex items-center justify-center shrink-0"
                   :class="[
@@ -378,7 +378,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
                   {{ entry.name }}
                 </span>
               </td>
-              <td class="py-0 px-3 text-ui-text-muted">
+              <td class="py-0.5 px-3 text-ui-text-muted">
                 {{
                   entry.kind === 'directory'
                     ? t('common.folder', 'Folder')
@@ -405,10 +405,10 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
                 </template>
                 <template v-else> - </template>
               </td>
-              <td class="py-0 px-3 text-ui-text-muted">
+              <td class="py-0.5 px-3 text-ui-text-muted">
                 {{ formatDate(entry.created) }}
               </td>
-              <td class="py-0 px-3 text-ui-text-muted">
+              <td class="py-0.5 px-3 text-ui-text-muted">
                 {{ formatDate(entry.lastModified) }}
               </td>
             </tr>
