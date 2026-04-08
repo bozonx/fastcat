@@ -7,6 +7,7 @@ import { TauriFileSystemAdapter } from '~/file-manager/core/vfs/tauri.adapter';
 import type { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-handle';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { BloggerDogVfsAdapter } from '~/file-manager/core/vfs/bloggerdog.adapter';
+import { useBloggerDogStore } from '~/stores/bloggerdog';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import {
   WORKSPACE_COMMON_PATH_PREFIX,
@@ -14,11 +15,10 @@ import {
 } from '~/utils/workspace-common';
 
 export default defineNuxtPlugin(async (nuxtApp) => {
-  const { $i18n } = nuxtApp;
   const translate = (key: string, def?: string) => {
-    // If $i18n is not ready, return default
-    if (!$i18n) return def ?? key;
-    return $i18n.t(key) || def || key;
+    const i18n = (nuxtApp as any).$i18n;
+    if (!i18n) return def ?? key;
+    return i18n.t(key) || def || key;
   };
 
   let adapter: IFileSystemAdapter;
@@ -53,18 +53,8 @@ export default defineNuxtPlugin(async (nuxtApp) => {
       {
         prefix: '/remote',
         adapter: new BloggerDogVfsAdapter(() => {
-          const bloggerDogApiUrl = typeof useRuntimeConfig().public.bloggerDogApiUrl === 'string'
-            ? useRuntimeConfig().public.bloggerDogApiUrl
-            : '';
-          const fastcatAccountApiUrl = useRuntimeConfig().public.fastcatAccountApiUrl;
-          const config = resolveExternalServiceConfig({
-            service: 'files',
-            integrations: workspaceStore.userSettings.integrations,
-            bloggerDogApiUrl,
-            fastcatAccountApiUrl: typeof fastcatAccountApiUrl === 'string' ? fastcatAccountApiUrl : '',
-          });
-          if (!config) throw new Error('BloggerDog not configured');
-          return { baseUrl: config.baseUrl, bearerToken: config.bearerToken };
+          const bloggerDogStore = useBloggerDogStore();
+          return bloggerDogStore.config;
         }, translate),
         stripPrefix: (p) => (p.startsWith('/remote') ? p.slice('/remote'.length) : p),
       },
@@ -93,18 +83,8 @@ export default defineNuxtPlugin(async (nuxtApp) => {
       {
         prefix: '/remote',
         adapter: new BloggerDogVfsAdapter(() => {
-          const bloggerDogApiUrl = typeof useRuntimeConfig().public.bloggerDogApiUrl === 'string'
-            ? useRuntimeConfig().public.bloggerDogApiUrl
-            : '';
-          const fastcatAccountApiUrl = useRuntimeConfig().public.fastcatAccountApiUrl;
-          const config = resolveExternalServiceConfig({
-            service: 'files',
-            integrations: workspaceStore.userSettings.integrations,
-            bloggerDogApiUrl,
-            fastcatAccountApiUrl: typeof fastcatAccountApiUrl === 'string' ? fastcatAccountApiUrl : '',
-          });
-          if (!config) throw new Error('BloggerDog not configured');
-          return { baseUrl: config.baseUrl, bearerToken: config.bearerToken };
+          const bloggerDogStore = useBloggerDogStore();
+          return bloggerDogStore.config;
         }, translate),
         stripPrefix: (p) => (p.startsWith('/remote') ? p.slice('/remote'.length) : p),
       },
