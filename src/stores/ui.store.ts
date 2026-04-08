@@ -18,7 +18,7 @@ export interface FsEntrySelection {
   source?: 'local' | 'remote';
   remoteId?: string;
   remotePath?: string;
-  remoteData?: unknown;
+  adapterPayload?: unknown;
 }
 
 export interface PendingRemoteDownloadRequest {
@@ -83,7 +83,11 @@ export const useUiStore = defineStore('ui', () => {
   const isTextPresetModalOpen = ref(false);
   const pendingTextPresetClipInfo = ref<{ trackId: string; itemId: string } | null>(null);
 
-  const mediaReplaceTarget = ref<{ trackId: string; itemId: string; expectedType: 'video' | 'image' } | null>(null);
+  const mediaReplaceTarget = ref<{
+    trackId: string;
+    itemId: string;
+    expectedType: 'video' | 'image';
+  } | null>(null);
   const isMediaReplaceModalOpen = ref(false);
 
   const remoteExchangeModalOpen = ref(false);

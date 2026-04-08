@@ -11,6 +11,7 @@ import { computeDirectoryStats } from '~/utils/fs';
 import type { TimelineDocument } from '~/timeline/types';
 import type { FsEntry } from '~/types/fs';
 import type { MediaMetadata } from '~/stores/media.store';
+import { getBdPayload } from '~/types/bloggerdog';
 
 export type PreviewMode = 'original' | 'proxy';
 export type MediaType = 'image' | 'video' | 'audio' | 'text' | 'unknown' | null;
@@ -131,7 +132,8 @@ export function useEntryPreview(params: {
       if (
         mediaType.value === 'video' ||
         mediaType.value === 'audio' ||
-        (mediaType.value === 'image' && fileInfo.value?.metadata?.image?.canDisplay !== false)
+        (mediaType.value === 'image' &&
+          (fileInfo.value?.metadata as any)?.image?.canDisplay !== false)
       ) {
         currentUrl.value = URL.createObjectURL(fileToPlay);
       }
@@ -207,6 +209,9 @@ export function useEntryPreview(params: {
         };
         return;
       }
+
+      const bdPayload = getBdPayload(entry);
+      const thumbnailUrl = ref<string | null>(bdPayload?.thumbnailUrl ?? null);
 
       try {
         const fileExt = entry.name.split('.').pop()?.toLowerCase() || '';
@@ -323,5 +328,8 @@ export function useEntryPreview(params: {
     isOtio,
     ext,
     loadPreviewMedia,
+    thumbnailUrl: computed(
+      () => getBdPayload(params.selectedFsEntry.value ?? {})?.thumbnailUrl ?? null,
+    ),
   };
 }

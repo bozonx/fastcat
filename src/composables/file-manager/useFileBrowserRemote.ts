@@ -14,6 +14,7 @@ import {
 } from '~/utils/remote-vfs';
 import type { RemoteVfsEntry, RemoteVfsFileEntry } from '~/types/remote-vfs';
 import type { FsEntry } from '~/types/fs';
+import type { BloggerDogEntryPayload, getBdPayload } from '~/types/bloggerdog';
 import { useProjectStore } from '~/stores/project.store';
 import {
   REMOTE_FILE_DRAG_TYPE,
@@ -22,6 +23,10 @@ import {
   INTERNAL_DRAG_TYPE,
 } from '~/composables/useDraggedFile';
 import { useVfs } from '~/composables/useVfs';
+
+function getBdType(entry: FsEntry): string | undefined {
+  return (entry.adapterPayload as ReturnType<typeof getBdPayload>)?.type;
+}
 
 export interface UseFileBrowserRemoteOptions {
   isRemoteMode: Ref<boolean>;
@@ -66,7 +71,9 @@ export function useFileBrowserRemote({
   onRootDrop,
   handleFiles,
 }: UseFileBrowserRemoteOptions) {
-  const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
+  const fileManagerStore =
+    (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
+    useFileManagerStore();
   const workspaceStore = useWorkspaceStore();
   const uiStore = useUiStore();
   const runtimeConfig = useRuntimeConfig();
@@ -82,7 +89,7 @@ export function useFileBrowserRemote({
   const remoteTransferFileName = ref('');
   const remoteTransferAbortController = ref<AbortController | null>(null);
   const remoteError = ref<string | null>(null);
-  
+
   const PAGINATION_LIMIT = 50;
   const remoteCurrentOffset = ref(0);
   const remoteTotalItems = ref(0);
@@ -124,6 +131,10 @@ export function useFileBrowserRemote({
       path: normalizedPath,
       type: 'directory',
     };
+    const payload: BloggerDogEntryPayload = {
+      type: 'virtual-folder',
+      remoteData,
+    };
     return {
       name,
       kind: 'directory',
@@ -132,7 +143,7 @@ export function useFileBrowserRemote({
       remoteId: normalizedPath,
       remotePath: normalizedPath,
       remoteType: 'directory',
-      remoteData,
+      adapterPayload: payload,
       mimeType: 'folder',
       size: 0,
     };
@@ -174,29 +185,26 @@ export function useFileBrowserRemote({
         // Fallback for folders that don't support pagination or virtual root folders
         remoteTotalItems.value = items.length;
       }
-      
+
       const newEntries = items.map((entry: any) => {
-        // Ensure entrance into Content Items works by marking them as remote
-        const extendedEntry = {
+        const bdPayload = entry.adapterPayload;
+        const thumbnailUrl = bdPayload?.thumbnailUrl;
+
+        const extendedEntry: any = {
           ...entry,
           source: 'remote',
           remotePath: entry.path,
-          remoteId: entry.remoteData?.id || entry.id || entry.path,
-          remoteData: entry.remoteData,
-          isContentItem: entry.isContentItem,
-          isMediaItem: entry.isMediaItem,
-          mediaId: entry.mediaId,
+          remoteId: bdPayload?.remoteData?.id || entry.id || entry.path,
+          adapterPayload: bdPayload,
         };
 
-        // Resolve thumbnail for content items or media
-        if (extendedEntry.remoteThumbnailUrl || extendedEntry.objectUrl) {
-          if (!extendedEntry.objectUrl && extendedEntry.remoteThumbnailUrl) {
-             extendedEntry.objectUrl = getRemoteThumbnailUrl({
-                baseUrl: remoteFilesConfig.value!.baseUrl,
-                media: { thumbnailUrl: extendedEntry.remoteThumbnailUrl } as any,
-              });
-          }
+        if (thumbnailUrl) {
+          extendedEntry.objectUrl = getRemoteThumbnailUrl({
+            baseUrl: remoteFilesConfig.value!.baseUrl,
+            media: { thumbnailUrl } as any,
+          });
         }
+
         return extendedEntry;
       });
 
@@ -218,7 +226,6 @@ export function useFileBrowserRemote({
     return true;
   }
 
-
   function loadRemoteParentFolders(parentFolders: Ref<FsEntry[]>): boolean {
     if (!isRemoteMode.value) return false;
     const currentPath = remoteCurrentFolder.value?.remotePath || '/remote';
@@ -230,7 +237,7 @@ export function useFileBrowserRemote({
       const part = parts[i];
       accum = `${accum}/${part}`;
       // Include the root '/remote' (labeled as BloggerDog) in breadcrumbs for consistency with local explorer
-      // if (i === 0) continue; 
+      // if (i === 0) continue;
       result.push(buildRemoteDirectoryEntry(accum));
     }
     parentFolders.value = result;
@@ -270,7 +277,9 @@ export function useFileBrowserRemote({
     const config = remoteFilesConfig.value;
     if (!config || params.entry.kind !== 'file') return;
 
-    const remoteFile = params.entry.remoteData as RemoteVfsFileEntry;
+    const remoteFile = (params.entry.adapterPayload as BloggerDogEntryPayload | undefined)
+      ?.remoteData as RemoteVfsFileEntry | undefined;
+    if (!remoteFile) return;
     const downloadUrl = getRemoteFileDownloadUrl({ baseUrl: config.baseUrl, entry: remoteFile });
     if (!downloadUrl) throw new Error('Remote file download URL is missing');
 
@@ -317,12 +326,12 @@ export function useFileBrowserRemote({
   function onBrowserEntryDragStart(e: DragEvent, entry: FsEntry) {
     if (isRemoteMode.value && (isRemoteFsEntry(entry) || entry.source === 'remote')) {
       // Restriction from user: "можно только перемещать или копировать файлы, но не группы и не элементы контента"
-      // Groups are !isContentItem and kind === 'directory'. 
-      // Content items are isContentItem === true. 
+      // Groups are !isContentItem and kind === 'directory'.
+      // Content items are isContentItem === true.
       // Media items (drags allowed) are isMediaItem === true AND NOT isContentItem.
-      const isContentItem = (entry as any).isContentItem;
-      const isMediaItem = (entry as any).isMediaItem;
-      
+      const isContentItem = getBdType(entry) === 'content-item';
+      const isMediaItem = getBdType(entry) === 'media';
+
       // If it's a content item (item-as-folder or item-as-file), we shouldn't allow dragging it.
       // We only allow dragging media items that are components of content items.
       if (!isMediaItem || isContentItem || !e.dataTransfer) {
@@ -337,12 +346,12 @@ export function useFileBrowserRemote({
         operation: 'copy',
         isExternal: true,
       };
-      
+
       // Use both types for compatibility with local drop handlers
       e.dataTransfer.setData(REMOTE_FILE_DRAG_TYPE, JSON.stringify(data));
       e.dataTransfer.setData(FILE_MANAGER_COPY_DRAG_TYPE, JSON.stringify([data]));
       e.dataTransfer.setData(INTERNAL_DRAG_TYPE, '1');
-      
+
       setDraggedFile(data as any);
       return;
     }
@@ -359,8 +368,8 @@ export function useFileBrowserRemote({
     if (!isRemoteMode.value) return onEntryDragEnter?.(e, entry);
 
     // Drop into remote: only into "element of content"
-    if (!(entry as any).isContentItem || !e.dataTransfer?.types) return;
-    
+    if (getBdType(entry) !== 'content-item' || !e.dataTransfer?.types) return;
+
     // We only allow dragging files (local) into content items
     const { draggedFile } = useDraggedFile();
     if (draggedFile.value && draggedFile.value.kind !== 'file') return;
@@ -371,8 +380,8 @@ export function useFileBrowserRemote({
     if (!isRemoteMode.value) return onEntryDragOver?.(e, entry);
 
     // Drop into remote: only into "element of content"
-    if (!(entry as any).isContentItem || !e.dataTransfer?.types) return;
-    
+    if (getBdType(entry) !== 'content-item' || !e.dataTransfer?.types) return;
+
     const { draggedFile } = useDraggedFile();
     if (draggedFile.value && draggedFile.value.kind !== 'file') return;
 
@@ -386,16 +395,16 @@ export function useFileBrowserRemote({
     if (!isRemoteMode.value) return onEntryDrop?.(e, entry);
 
     // Only allow drop into content item
-    if (!(entry as any).isContentItem) return;
-    
+    if (getBdType(entry) !== 'content-item') return;
+
     const { draggedFile } = useDraggedFile();
     if (!draggedFile.value || draggedFile.value.kind !== 'file') {
       // Also check native files (e.g. from desktop)
       const files = e.dataTransfer?.files;
       if (files && files.length > 0) {
-         e.preventDefault();
-         e.stopPropagation();
-         await handleFiles(files, entry.path);
+        e.preventDefault();
+        e.stopPropagation();
+        await handleFiles(files, entry.path);
       }
       return;
     }
@@ -407,28 +416,28 @@ export function useFileBrowserRemote({
     const isRemoteSource = draggedFile.value.isExternal; // Dragged from another remote instance or similar?
 
     if (!isRemoteSource && sourcePath) {
-       // Dragged from local into remote item
-       const localVfs = useVfs();
-       const blob = await localVfs.readFile(sourcePath);
-       const file = new File([blob], draggedFile.value.name, { type: blob.type });
-       
-       await handleFiles([file], entry.path);
-       uiStore.notifyFileManagerUpdate();
-       await loadFolderContent();
+      // Dragged from local into remote item
+      const localVfs = useVfs();
+      const blob = await localVfs.readFile(sourcePath);
+      const file = new File([blob], draggedFile.value.name, { type: blob.type });
+
+      await handleFiles([file], entry.path);
+      uiStore.notifyFileManagerUpdate();
+      await loadFolderContent();
     }
   }
 
   function onBrowserRootDragEnter(e: DragEvent) {
     if (!isRemoteMode.value) return onRootDragEnter?.(e);
-    
-    if (remoteCurrentFolder.value && (remoteCurrentFolder.value as any).isContentItem) {
+
+    if (remoteCurrentFolder.value && getBdType(remoteCurrentFolder.value) === 'content-item') {
       e.preventDefault();
     }
   }
   function onBrowserRootDragOver(e: DragEvent) {
     if (!isRemoteMode.value) return onRootDragOver?.(e);
 
-    if (remoteCurrentFolder.value && (remoteCurrentFolder.value as any).isContentItem) {
+    if (remoteCurrentFolder.value && getBdType(remoteCurrentFolder.value) === 'content-item') {
       e.preventDefault();
       e.dataTransfer!.dropEffect = 'copy';
     }
@@ -440,19 +449,23 @@ export function useFileBrowserRemote({
     if (!isRemoteMode.value) return onRootDrop?.(e);
 
     const target = remoteCurrentFolder.value;
-    if (!target || !(target as any).isContentItem) return;
+    if (!target || getBdType(target) !== 'content-item') return;
 
     // Reuse the same logic as onBrowserEntryDrop
     const { draggedFile } = useDraggedFile();
     const files = e.dataTransfer?.files;
-    
+
     if (files && files.length > 0) {
       e.preventDefault();
       e.stopPropagation();
       await handleFiles(files, target.path);
       uiStore.notifyFileManagerUpdate();
       await loadFolderContent();
-    } else if (draggedFile.value && draggedFile.value.kind === 'file' && !draggedFile.value.isExternal) {
+    } else if (
+      draggedFile.value &&
+      draggedFile.value.kind === 'file' &&
+      !draggedFile.value.isExternal
+    ) {
       e.preventDefault();
       e.stopPropagation();
       const sourcePath = draggedFile.value.path;

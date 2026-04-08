@@ -95,7 +95,7 @@ export function useGlobalDragAndDrop() {
 
     isDropInProgress.value = true;
     try {
-      await fm.handleFiles(files, targetDirPath);
+      await fm.handleFiles(files, { targetDirPath });
       isCurrentDragCancelled.value = false;
     } finally {
       isDropInProgress.value = false;

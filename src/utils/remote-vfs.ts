@@ -7,13 +7,14 @@ import type {
   RemoteVfsListResponse,
   RemoteVfsMedia,
 } from '~/types/remote-vfs';
+import type { BloggerDogEntryPayload } from '~/types/bloggerdog';
 
 export interface RemoteFsEntry extends FsEntry {
   source: 'remote';
   remoteId: string;
   remotePath: string;
   remoteType: 'file' | 'directory';
-  remoteData: RemoteVfsEntry;
+  adapterPayload: BloggerDogEntryPayload;
   size?: number;
   mimeType?: string;
   created?: number;
@@ -52,7 +53,8 @@ export function getRemoteMediaDisplayName(params: {
   media: RemoteVfsMedia;
   mediaIndex?: number;
 }): string {
-  const mediaFilename = typeof params.media.filename === 'string' ? params.media.filename.trim() : '';
+  const mediaFilename =
+    typeof params.media.filename === 'string' ? params.media.filename.trim() : '';
   const mediaTitle = typeof params.media.title === 'string' ? params.media.title.trim() : '';
   const mediaName = typeof params.media.name === 'string' ? params.media.name.trim() : '';
 
@@ -112,10 +114,20 @@ export function toRemoteFsEntry(entry: RemoteVfsEntry): RemoteFsEntry {
   const lastModified = getRemoteEntryUpdatedAt(entry);
   const displayName = getRemoteEntryDisplayName(entry);
 
-  const isBloggerDogContentItem = entry.type === 'file';
+  const isContentItem = entry.type === 'file';
+  const entryKind = isContentItem ? 'directory' : entry.type;
 
-  // For BloggerDog Content Items, we treat them as directories so they can be entered to see media files
-  const entryKind = isBloggerDogContentItem ? 'directory' : entry.type;
+  let thumbnailUrl: string | undefined;
+  if (isContentItem && entry.media?.length) {
+    const firstWithThumb = entry.media.find((m) => m.thumbnailUrl) || entry.media[0];
+    thumbnailUrl = firstWithThumb?.thumbnailUrl;
+  }
+
+  const payload: BloggerDogEntryPayload = {
+    type: isContentItem ? 'content-item' : 'collection',
+    remoteData: entry,
+    thumbnailUrl,
+  };
 
   const result: RemoteFsEntry = {
     name: displayName,
@@ -126,26 +138,11 @@ export function toRemoteFsEntry(entry: RemoteVfsEntry): RemoteFsEntry {
     remoteId: entry.id,
     remotePath: entry.path,
     remoteType: entry.type,
-    remoteData: entry,
+    adapterPayload: payload,
     size,
     created: lastModified,
     mimeType: entry.type === 'directory' ? 'folder' : resolveMediaMimeType(entry.media),
-    ...(isBloggerDogContentItem ? { isContentItem: true } : {}),
   };
-
-  // For content items, expose the first media's thumbnail if available
-  if (isBloggerDogContentItem && entry.media?.length) {
-    const firstMediaWithThumbnail = entry.media.find((m) => m.thumbnailUrl) || entry.media[0];
-    if (firstMediaWithThumbnail?.thumbnailUrl) {
-      (result as any).remoteThumbnailUrl = firstMediaWithThumbnail.thumbnailUrl;
-    }
-    // Also mark if it's primarily text
-    if (!entry.media.length && (entry as any).text?.trim()) {
-      (result as any).isTextContent = true;
-    }
-  } else if (isBloggerDogContentItem && (entry as any).text?.trim()) {
-    (result as any).isTextContent = true;
-  }
 
   return result;
 }
@@ -162,6 +159,19 @@ export function createRemoteMediaFsEntry(params: {
   });
   const remotePath = `${params.item.path}#media-${params.media.id || params.mediaIndex || 0}`;
 
+  const payload: BloggerDogEntryPayload = {
+    type: 'media',
+    remoteData: {
+      ...params.item,
+      name: mediaName,
+      title: mediaName,
+      path: remotePath,
+      media: [params.media],
+    },
+    mediaId: params.media.id,
+    thumbnailUrl: params.media.thumbnailUrl,
+  };
+
   return {
     name: mediaName,
     kind: 'file',
@@ -170,13 +180,7 @@ export function createRemoteMediaFsEntry(params: {
     remoteId: `${params.item.id}:${params.media.id}`,
     remotePath,
     remoteType: 'file',
-    remoteData: {
-      ...params.item,
-      name: mediaName,
-      title: mediaName,
-      path: remotePath,
-      media: [params.media],
-    },
+    adapterPayload: payload,
     size: params.media.size ?? 0,
     mimeType: params.media.mimeType ?? 'application/octet-stream',
   };

@@ -194,7 +194,7 @@ function setSelectedFsEntry(entry: FsEntry | null) {
     source: entry.source ?? 'local',
     remoteId: entry.remoteId,
     remotePath: entry.remotePath,
-    remoteData: entry.remoteData,
+    adapterPayload: entry.adapterPayload,
   };
   selectionStore.selectFsEntry(entry, instanceId);
 }
@@ -670,11 +670,7 @@ function handleContainerClick() {
     setSelectedFsEntry({
       kind: 'directory',
       path: currentFolder?.path ?? '',
-      name:
-        currentFolder?.name ||
-        props.rootName ||
-        projectStore.currentProjectName ||
-        'Project',
+      name: currentFolder?.name || props.rootName || projectStore.currentProjectName || 'Project',
     } as FsEntry);
   }
 }

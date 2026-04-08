@@ -1,4 +1,5 @@
 import { computed, type Ref } from 'vue';
+import { getBdPayload } from '~/types/bloggerdog';
 
 interface UseFilePropertiesBasicsOptions {
   selectedFsEntry: Ref<any>;
@@ -8,6 +9,8 @@ interface UseFilePropertiesBasicsOptions {
 }
 
 export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions) {
+  const bd = computed(() => getBdPayload(options.selectedFsEntry.value ?? {}));
+
   const selectedPath = computed<string | null>(() => {
     const entry = options.selectedFsEntry.value;
     return typeof entry?.path === 'string' && entry.path.length > 0 ? entry.path : null;
@@ -38,13 +41,13 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
   const isBloggerDogGroup = computed(() => {
     const entry = options.selectedFsEntry.value;
     const path = entry?.path || '';
-    const remoteId = entry?.remoteId || (entry?.remoteData as any)?.id;
+    const remoteId = entry?.remoteId || bd.value?.remoteData?.id;
     const isVirtual = ['virtual-all', 'personal', 'projects'].includes(remoteId);
 
     return (
       entry?.source === 'remote' &&
       entry?.kind === 'directory' &&
-      !entry?.isContentItem &&
+      bd.value?.type !== 'content-item' &&
       path !== '/remote' &&
       path !== '/remote/' &&
       path !== '' &&
@@ -53,15 +56,9 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
     );
   });
 
-  const isBloggerDogContentItem = computed(() => {
-    const entry = options.selectedFsEntry.value;
-    return entry?.source === 'remote' && entry?.isContentItem;
-  });
+  const isBloggerDogContentItem = computed(() => bd.value?.type === 'content-item');
 
-  const isBloggerDogMedia = computed(() => {
-    const entry = options.selectedFsEntry.value;
-    return entry?.source === 'remote' && entry?.isMediaItem;
-  });
+  const isBloggerDogMedia = computed(() => bd.value?.type === 'media');
 
   const runtimeConfig = useRuntimeConfig();
   const bloggerDogDeepLink = computed(() => {
@@ -72,7 +69,7 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
     if (typeof uiUrl !== 'string' || !uiUrl) return null;
 
     const baseUrl = uiUrl.endsWith('/') ? uiUrl.slice(0, -1) : uiUrl;
-    const remoteId = entry.remoteId || (entry.remoteData as any)?.id;
+    const remoteId = entry.remoteId || bd.value?.remoteData?.id;
     let normalizedPath = entry.path || '';
     if (normalizedPath.startsWith('/remote')) normalizedPath = normalizedPath.slice(7) || '/';
 
@@ -92,8 +89,8 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
       return `${baseUrl}/projects`;
     }
 
-    if (isBloggerDogMedia.value && entry.mediaId) {
-      return `${baseUrl}${projectPrefix}/content-library?mediaId=${entry.mediaId}`;
+    if (isBloggerDogMedia.value && bd.value?.mediaId) {
+      return `${baseUrl}${projectPrefix}/content-library?mediaId=${bd.value.mediaId}`;
     }
 
     if (isBloggerDogContentItem.value && remoteId) {

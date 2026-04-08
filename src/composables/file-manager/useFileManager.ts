@@ -44,6 +44,7 @@ import {
 } from '~/media-cache/application/proxyThumbnailCommands';
 import { clearVectorImageRaster } from '~/media-cache/application/vectorImageCache';
 import type { FsEntry } from '~/types/fs';
+import { getBdPayload } from '~/types/bloggerdog';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import {
   isMoveAllowed as isMoveAllowedCore,
@@ -639,7 +640,13 @@ export function createFileManager(deps: FileManagerCreateDeps) {
   }
 
   function getFileIcon(entry: FsEntry): string {
-    if ((entry as any).isTextContent) return 'i-heroicons-document-text';
+    const bd = getBdPayload(entry);
+    const isTextContent =
+      bd?.type === 'content-item' &&
+      bd?.remoteData &&
+      'text' in bd.remoteData &&
+      bd.remoteData.text?.trim();
+    if (isTextContent) return 'i-heroicons-document-text';
     if (entry.kind === 'directory') return 'i-heroicons-folder';
     if (entry.name.toLowerCase().endsWith('.otio')) return 'i-heroicons-queue-list';
     const type = getMediaTypeFromFilename(entry.name);

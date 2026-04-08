@@ -10,6 +10,7 @@ import {
 } from '~/composables/useDraggedFile';
 import type { DraggedFileData } from '~/composables/useDraggedFile';
 import type { FsEntry } from '~/types/fs';
+import type { getBdPayload } from '~/types/bloggerdog';
 import { useUiStore } from '~/stores/ui.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useVfs } from '~/composables/useVfs';
@@ -600,18 +601,28 @@ const isRemoteAvailable = computed(() =>
   ),
 );
 
+function getBdType(entry: FsEntry): string | undefined {
+  return (entry.adapterPayload as ReturnType<typeof getBdPayload>)?.type;
+}
+
 const isBloggerDogProject = (entry: FsEntry) => {
-  return entry.path.includes('/projects/') && !entry.path.split('/projects/')[1]?.includes('/');
+  if (entry.source !== 'remote') return false;
+  const path = entry.path || '';
+  return path.includes('/projects/') && !path.split('/projects/')[1]?.includes('/');
 };
 
 const isBloggerDogGroup = (entry: FsEntry) => {
+  if (entry.source !== 'remote') return false;
   if (entry.kind !== 'directory') return false;
-  if (!entry.remoteId) return false;
-  return isBloggerDogProject(entry) || entry.path.includes('/projects/');
+  const bdType = getBdType(entry);
+  if (bdType === 'collection' || bdType === 'virtual-folder') return true;
+  if (isBloggerDogProject(entry)) return true;
+  return entry.path.includes('/projects/');
 };
 
 const isBloggerDogContentItem = (entry: FsEntry) => {
-  return entry.kind === 'file' && !!entry.remoteId;
+  if (entry.source !== 'remote') return false;
+  return getBdType(entry) === 'content-item';
 };
 
 const clipboardStore = useAppClipboard();

@@ -8,9 +8,11 @@ import {
   deleteRemoteItem,
   uploadFileToRemote,
   getRemoteFileDownloadUrl,
+  getRemoteMediaDisplayName,
   type RemoteVfsClientConfig,
 } from '~/utils/remote-vfs';
-import type { RemoteVfsFileEntry } from '~/types/remote-vfs';
+import type { RemoteVfsFileEntry, RemoteVfsEntry } from '~/types/remote-vfs';
+import type { BloggerDogEntryPayload } from '~/types/bloggerdog';
 
 export class BloggerDogVfsAdapter implements IFileSystemAdapter {
   id = 'bloggerdog';
@@ -121,32 +123,33 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     const config = this.resolveConfig();
 
     if (normalizedPath === '/' || normalizedPath === '') {
+      const virtualPayload = (id: string, name: string): VfsEntry => ({
+        name,
+        kind: 'directory',
+        path: id === 'virtual-all' ? '/virtual-all' : id === 'personal' ? '/personal' : '/projects',
+        parentPath: '/',
+        adapterPayload: {
+          type: 'virtual-folder',
+          remoteData: { id, type: 'directory', name, path: '' } as any,
+        } as BloggerDogEntryPayload,
+      });
       return [
-        {
-          name: this.t ? this.t('fastcat.bloggerDog.allContent', 'All Content') : 'All Content',
-          kind: 'directory',
-          path: '/virtual-all',
-          parentPath: '/',
-          remoteData: { id: 'virtual-all', type: 'directory' } as any,
-        },
-        {
-          name: this.t
+        virtualPayload(
+          'virtual-all',
+          this.t ? this.t('fastcat.bloggerDog.allContent', 'All Content') : 'All Content',
+        ),
+        virtualPayload(
+          'personal',
+          this.t
             ? this.t('fastcat.bloggerDog.personalLibrary', 'Personal Library')
             : 'Personal Library',
-          kind: 'directory',
-          path: '/personal',
-          parentPath: '/',
-          remoteData: { id: 'personal', type: 'directory' } as any,
-        },
-        {
-          name: this.t
+        ),
+        virtualPayload(
+          'projects',
+          this.t
             ? this.t('fastcat.bloggerDog.projectLibraries', 'Project Libraries')
             : 'Project Libraries',
-          kind: 'directory',
-          path: '/projects',
-          parentPath: '/',
-          remoteData: { id: 'projects', type: 'directory' } as any,
-        },
+        ),
       ];
     }
 
@@ -169,6 +172,13 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
             mediaIndex: index,
           });
 
+          const mediaPayload: BloggerDogEntryPayload = {
+            type: 'media',
+            remoteData: item,
+            mediaId: media.id,
+            thumbnailUrl: media.thumbnailUrl,
+          };
+
           entries.push({
             name,
             kind: 'file',
@@ -178,9 +188,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
             lastModified: item.meta?.updatedAt
               ? new Date(item.meta.updatedAt as string).getTime()
               : undefined,
-            isMediaItem: true,
-            mediaId: media.id,
-            remoteData: item,
+            adapterPayload: mediaPayload,
           });
         });
       }
@@ -192,6 +200,10 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
         this.idCache.set(textPath, { id: item.id, type: 'media', item, mediaIndex: -1 });
 
         const blob = new Blob([item.text], { type: 'text/plain' });
+        const textPayload: BloggerDogEntryPayload = {
+          type: 'media',
+          remoteData: item,
+        };
         entries.push({
           name: textName,
           kind: 'file',
@@ -201,7 +213,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
           lastModified: item.meta?.updatedAt
             ? new Date(item.meta.updatedAt as string).getTime()
             : undefined,
-          remoteData: item,
+          adapterPayload: textPayload,
         });
       }
 
@@ -239,6 +251,19 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
 
       const isSimpleFile = item.type === 'file' && item.media?.length === 1 && !item.text?.trim();
 
+      const isBloggerDogContentItem = item.type === 'file';
+      const firstMediaWithThumbnail = isBloggerDogContentItem
+        ? (item as RemoteVfsFileEntry).media?.find((m) => m.thumbnailUrl) ||
+          (item as RemoteVfsFileEntry).media?.[0]
+        : null;
+
+      const adapterPayload: BloggerDogEntryPayload = {
+        type: isInsideProjects ? 'project' : item.type === 'file' ? 'content-item' : 'collection',
+        remoteData: item,
+        thumbnailUrl: firstMediaWithThumbnail?.thumbnailUrl,
+        mediaId: isSimpleFile ? (item as RemoteVfsFileEntry).media?.[0]?.id : undefined,
+      };
+
       entries.push({
         name,
         kind: isSimpleFile ? 'file' : item.type === 'file' ? 'directory' : item.type,
@@ -248,10 +273,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
         lastModified: (item as any).meta?.updatedAt
           ? new Date((item as any).meta.updatedAt).getTime()
           : undefined,
-        isContentItem: item.type === 'file',
-        isMediaItem: isSimpleFile,
-        mediaId: isSimpleFile ? (item as RemoteVfsFileEntry).media?.[0]?.id : undefined,
-        remoteData: item,
+        adapterPayload,
       } as VfsEntry);
     }
 
@@ -287,7 +309,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       normalizedParentPath.startsWith('/projects/') &&
       normalizedParentPath.split('/').filter(Boolean).length === 2
     ) {
-      // It's a project root, e.g., /projects/uuid. 
+      // It's a project root, e.g., /projects/uuid.
       // To create in project root, parentId must be excluded (undefined), but projectId must be set.
       parentId = undefined;
       projectId = parent.id;
@@ -361,7 +383,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
         // Saving directly in project root (this case might not happen with parts.pop() above, but for safety)
         uploadPath = `/projects/${projectId}`;
       } else if (normalizedPath.startsWith('/personal') && pathParts.length === 2) {
-         uploadPath = '/personal';
+        uploadPath = '/personal';
       } else if (cached.item?.path) {
         uploadPath = cached.item.path;
       } else if (cached.id) {

@@ -9,10 +9,7 @@ export interface VfsEntry {
   expanded?: boolean;
   hasChildren?: boolean;
   hasDirectories?: boolean;
-  remoteData?: any;
-  isContentItem?: boolean;
-  isMediaItem?: boolean;
-  mediaId?: string;
+  adapterPayload?: unknown;
 }
 
 export interface IFileSystemAdapter {
@@ -60,17 +57,29 @@ export interface IFileSystemAdapter {
   /**
    * Renames/moves an entry
    */
-  moveEntry(sourcePath: string, targetPath: string, options?: { signal?: AbortSignal }): Promise<void>;
+  moveEntry(
+    sourcePath: string,
+    targetPath: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<void>;
 
   /**
    * Copies a file.
    */
-  copyFile(sourcePath: string, targetPath: string, options?: { signal?: AbortSignal }): Promise<void>;
+  copyFile(
+    sourcePath: string,
+    targetPath: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<void>;
 
   /**
    * Copies a directory recursively.
    */
-  copyDirectory(sourcePath: string, targetPath: string, options?: { signal?: AbortSignal }): Promise<void>;
+  copyDirectory(
+    sourcePath: string,
+    targetPath: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<void>;
 
   /**
    * Checks if an entry exists
