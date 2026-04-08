@@ -28,6 +28,7 @@ import MobileFileBrowserPasteToolbar from './MobileFileBrowserPasteToolbar.vue';
 import FileDeleteConfirmModal from './modals/FileDeleteConfirmModal.vue';
 import FileSttTranscriptionModal from './modals/FileTranscriptionModal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
+import UiEntityCreationModal from '~/components/ui/UiEntityCreationModal.vue';
 import { useSttTranscription } from '~/composables/file-manager/useSttTranscription';
 
 const fileManagerStore = useFileManagerStore();
@@ -531,10 +532,10 @@ const menuItems = computed(() => [
     />
 
     <!-- Create Folder Modal -->
-    <UiRenameModal
+    <UiEntityCreationModal
       v-model:open="isCreateFolderModalOpen"
       :title="t('videoEditor.fileManager.actions.createFolder', 'Create Folder')"
-      @rename="onCreateFolderConfirm"
+      @confirm="onCreateFolderConfirm"
     />
 
     <!-- Add to Timeline Modal (Global) -->

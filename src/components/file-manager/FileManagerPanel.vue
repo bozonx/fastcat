@@ -14,13 +14,15 @@ import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
 import { useFileManagerPanelPendingActions } from '~/composables/file-manager/useFileManagerPanelPendingActions';
 import { useFileManagerPanelBootstrap } from '~/composables/file-manager/useFileManagerPanelBootstrap';
+
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { resolveExternalServiceConfig } from '~/utils/external-integrations';
+import { createRemoteCollection } from '~/utils/remote-vfs';
 import { useSttTranscription } from '~/composables/file-manager/useSttTranscription';
 import { useFileManagerPanelActions } from '~/composables/file-manager/useFileManagerPanelActions';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import UiActionButton from '~/components/ui/UiActionButton.vue';
 import { useFileManagerStore, type FileSortField } from '~/stores/file-manager.store';
-import { useWorkspaceStore } from '~/stores/workspace.store';
-import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import { computed } from 'vue';
 
 const props = defineProps<{
@@ -347,6 +349,86 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
   emit('select', entry);
 }
 
+// --- BloggerDog Creation (Sidebar) ---
+const isSubgroupModalOpen = ref(false);
+const pendingSubgroupParent = ref<FsEntry | null>(null);
+
+function handlePendingBloggerDogCreateSubgroup(entry: FsEntry) {
+  pendingSubgroupParent.value = entry;
+  isSubgroupModalOpen.value = true;
+}
+
+const isItemModalOpen = ref(false);
+const pendingItemParent = ref<FsEntry | null>(null);
+
+function handlePendingBloggerDogCreateItem(entry: FsEntry) {
+  pendingItemParent.value = entry;
+  isItemModalOpen.value = true;
+}
+
+const bloggerDogApiUrl = computed(() =>
+  typeof runtimeConfig.public.bloggerDogApiUrl === 'string' ? runtimeConfig.public.bloggerDogApiUrl : '',
+);
+
+const remoteFilesConfig = computed(() =>
+  resolveExternalServiceConfig({
+    service: 'files',
+    integrations: workspaceStore.userSettings.integrations,
+    bloggerDogApiUrl: bloggerDogApiUrl.value,
+  }),
+);
+
+async function onSubgroupCreateConfirm(name: string) {
+  const config = remoteFilesConfig.value;
+  const parent = pendingSubgroupParent.value;
+  if (!config || !parent) return;
+
+  try {
+    await createRemoteCollection({
+      config,
+      name,
+      parentId: parent.remoteId,
+    });
+    await reloadDirectory(parent.path);
+    uiStore.notifyFileManagerUpdate();
+  } catch (error) {
+    toast.add({
+      color: 'error',
+      title: t('common.error', 'Error'),
+      description: error instanceof Error ? error.message : 'Failed to create subgroup',
+    });
+  } finally {
+    isSubgroupModalOpen.value = false;
+    pendingSubgroupParent.value = null;
+  }
+}
+
+async function onItemCreateConfirm(name: string) {
+  const parent = pendingItemParent.value;
+  if (!parent) return;
+
+  try {
+    const parentPath = parent.path;
+    const finalName = name.includes('.') ? name : `${name}.txt`;
+    const filePath = parentPath === '/' ? `/${finalName}` : `${parentPath}/${finalName}`;
+
+    // Create empty item by writing an empty blob
+    await vfs.writeFile(filePath, new Blob([], { type: 'text/plain' }));
+
+    await reloadDirectory(parent.path);
+    uiStore.notifyFileManagerUpdate();
+  } catch (error) {
+    toast.add({
+      color: 'error',
+      title: t('common.error', 'Error'),
+      description: error instanceof Error ? error.message : 'Failed to create item',
+    });
+  } finally {
+    isItemModalOpen.value = false;
+    pendingItemParent.value = null;
+  }
+}
+
 useFileManagerPanelPendingActions({
   openDeleteConfirmModal,
   startRename,
@@ -356,6 +438,8 @@ useFileManagerPanelPendingActions({
     await onFileAction('createMarkdown', entry);
   },
   createOtioVersion: (entry) => onFileActionBase('createOtioVersion', entry),
+  handlePendingBloggerDogCreateSubgroup,
+  handlePendingBloggerDogCreateItem,
   instanceId,
 });
 
@@ -460,6 +544,8 @@ useFileManagerPanelBootstrap({
       :is-delete-confirm-modal-open="isDeleteConfirmModalOpen"
       :transcription-modal-open="transcriptionModalOpen"
       :is-folder-modal-open="isCreateFolderModalOpen"
+      :is-subgroup-modal-open="isSubgroupModalOpen"
+      :is-item-modal-open="isItemModalOpen"
       :folder-default-name="createFolderDefaultName"
       :is-transcribing="isTranscribing"
       :transcription-error="transcriptionError"
@@ -469,9 +555,13 @@ useFileManagerPanelBootstrap({
       @update:transcription-modal-open="transcriptionModalOpen = $event"
       @update:transcription-language="transcriptionLanguage = $event"
       @update:is-folder-modal-open="isCreateFolderModalOpen = $event"
+      @update:is-subgroup-modal-open="isSubgroupModalOpen = $event"
+      @update:is-item-modal-open="isItemModalOpen = $event"
       @delete-confirm="handleDeleteConfirm"
       @submit-transcription="submitTranscription"
       @folder-confirm="confirmCreateFolder"
+      @subgroup-confirm="onSubgroupCreateConfirm"
+      @item-confirm="onItemCreateConfirm"
     />
   </div>
 </template>
