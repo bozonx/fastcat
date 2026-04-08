@@ -29,36 +29,11 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
     return value && value !== name.toLowerCase() ? value : value;
   });
 
-  const isBloggerDogProject = computed(() => {
-    const entry = options.selectedFsEntry.value;
-    if (entry?.source !== 'remote' || entry?.kind !== 'directory') return false;
-    let path = entry.path || '';
-    if (path.startsWith('/remote')) path = path.slice(7) || '/';
-    const parts = path.split('/').filter(Boolean);
-    return parts.length === 2 && parts[0] === 'projects';
-  });
-
-  const isBloggerDogGroup = computed(() => {
-    const entry = options.selectedFsEntry.value;
-    const path = entry?.path || '';
-    const remoteId = entry?.remoteId || bd.value?.remoteData?.id;
-    const isVirtual = ['virtual-all', 'personal', 'projects'].includes(remoteId);
-
-    return (
-      entry?.source === 'remote' &&
-      entry?.kind === 'directory' &&
-      bd.value?.type !== 'content-item' &&
-      path !== '/remote' &&
-      path !== '/remote/' &&
-      path !== '' &&
-      !isVirtual &&
-      !isBloggerDogProject.value
-    );
-  });
-
+  const isBloggerDogProject = computed(() => bd.value?.type === 'project');
+  const isBloggerDogGroup = computed(() => bd.value?.type === 'collection');
   const isBloggerDogContentItem = computed(() => bd.value?.type === 'content-item');
-
   const isBloggerDogMedia = computed(() => bd.value?.type === 'media');
+  const isBloggerDogVirtualFolder = computed(() => bd.value?.type === 'virtual-folder');
 
   const runtimeConfig = useRuntimeConfig();
   const bloggerDogDeepLink = computed(() => {

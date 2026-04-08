@@ -301,16 +301,12 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       throw new Error(`Cannot create directory in ${normalizedParentPath}`);
     }
 
-    if (normalizedParentPath === '/personal') {
-      // For personal root, parentId must be completely excluded (undefined)
+    if (parent.id === 'personal' || parent.type === 'virtual-folder' as any) {
+      // For personal root or virtual-folder, parentId must be completely excluded (undefined)
       parentId = undefined;
       projectId = undefined;
-    } else if (
-      normalizedParentPath.startsWith('/projects/') &&
-      normalizedParentPath.split('/').filter(Boolean).length === 2
-    ) {
-      // It's a project root, e.g., /projects/uuid.
-      // To create in project root, parentId must be excluded (undefined), but projectId must be set.
+    } else if (parent.type === 'project' as any || (parent.item && parent.item.type === 'project')) {
+      // It's a project root
       parentId = undefined;
       projectId = parent.id;
     } else {
