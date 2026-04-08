@@ -13,7 +13,12 @@ const uiStore = reactive({
   pendingOtioCreateVersion: null as any,
 });
 
+const focusStore = reactive({
+  isPanelFocused: vi.fn(() => true),
+});
+
 vi.mock('~/stores/ui.store', () => ({ useUiStore: () => uiStore }));
+vi.mock('~/stores/focus.store', () => ({ useFocusStore: () => focusStore }));
 
 describe('useFileManagerPanelPendingActions', () => {
   let scope: EffectScope;
@@ -43,6 +48,7 @@ describe('useFileManagerPanelPendingActions', () => {
         createTimelineInDirectory: vi.fn(),
         createMarkdownInDirectory: vi.fn(),
         createOtioVersion: vi.fn(),
+        instanceId: 'test',
       });
     });
 
@@ -64,6 +70,7 @@ describe('useFileManagerPanelPendingActions', () => {
         createTimelineInDirectory,
         createMarkdownInDirectory: vi.fn(),
         createOtioVersion: vi.fn(),
+        instanceId: 'test',
       });
     });
 

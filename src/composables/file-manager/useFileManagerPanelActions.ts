@@ -37,7 +37,9 @@ export type PanelFileAction =
   | 'openAsProjectTab'
   | 'uploadRemote'
   | 'transcribe'
-  | 'extractAudio';
+  | 'extractAudio'
+  | 'createSubgroup'
+  | 'createContentItem';
 
 export function useFileManagerPanelActions({
   vfs,
@@ -192,6 +194,10 @@ export function useFileManagerPanelActions({
       openTranscriptionModal(entry);
     } else if (action === 'extractAudio') {
       if (entry.kind === 'file') void extractAudio(entry);
+    } else if (action === 'createSubgroup') {
+      uiStore.pendingBloggerDogCreateSubgroup = entry;
+    } else if (action === 'createContentItem') {
+      uiStore.pendingBloggerDogCreateItem = entry;
     } else {
       onFileActionBase(action as FileActionBase, entry);
     }

@@ -29,6 +29,7 @@ vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: vi.fn(() => ({
     workspaceHandle: {},
     userSettings: { integrations: { stt: { provider: 'local' } } },
+    isSttModelDownloaded: true,
   })),
 }));
 

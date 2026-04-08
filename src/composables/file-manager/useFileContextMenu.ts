@@ -24,7 +24,9 @@ export type FileAction =
   | 'extractAudio'
   | 'copy'
   | 'cut'
-  | 'paste';
+  | 'paste'
+  | 'createSubgroup'
+  | 'createContentItem';
 
 interface ContextMenuDeps {
   isGeneratingProxyInDirectory: (entry: FsEntry) => boolean;
@@ -40,6 +42,10 @@ interface ContextMenuDeps {
   isFilesPage?: boolean;
   getSelectedEntries?: () => FsEntry[];
   hasClipboardItems?: boolean;
+  isRemoteAvailable?: boolean;
+  isBloggerDogProject?: (entry: FsEntry) => boolean;
+  isBloggerDogGroup?: (entry: FsEntry) => boolean;
+  isBloggerDogContentItem?: (entry: FsEntry) => boolean;
 }
 
 export function useFileContextMenu(
@@ -56,11 +62,86 @@ export function useFileContextMenu(
       isMultiSelected &&
       selectedEntries.some((selectedEntry) => selectedEntry.source === 'remote')
     ) {
-      return [];
+      const allRemote = selectedEntries.every((e) => e.source === 'remote');
+      if (!allRemote) return [];
+
+      return [
+        [
+          {
+            label: t('common.copy', 'Copy'),
+            icon: 'i-heroicons-document-duplicate',
+            onSelect: () => onAction('copy', selectedEntries),
+          },
+          {
+            label: t('common.cut', 'Cut'),
+            icon: 'i-heroicons-scissors',
+            onSelect: () => onAction('cut', selectedEntries),
+          },
+        ],
+        [
+          {
+            label: t('common.rename', 'Rename'),
+            icon: 'i-heroicons-pencil',
+            onSelect: () => onAction('rename', selectedEntries[0]!),
+            disabled: selectedEntries.length > 1,
+          },
+          {
+            label: t('common.delete', 'Delete'),
+            icon: 'i-heroicons-trash',
+            color: 'error',
+            onSelect: () => onAction('delete', selectedEntries),
+          },
+        ],
+      ];
     }
 
     if (entry.source === 'remote') {
-      return [];
+      const items: any[][] = [];
+      const isGroup = deps.isBloggerDogGroup?.(entry);
+
+      if (isGroup) {
+        items.push([
+          {
+            label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
+            icon: 'i-heroicons-folder-plus',
+            onSelect: () => onAction('createSubgroup', entry),
+          },
+          {
+            label: t('fastcat.bloggerDog.actions.createItem', 'Создать элемент контента'),
+            icon: 'i-heroicons-document-plus',
+            onSelect: () => onAction('createContentItem', entry),
+          },
+        ]);
+      }
+
+      items.push([
+        {
+          label: t('common.copy', 'Copy'),
+          icon: 'i-heroicons-document-duplicate',
+          onSelect: () => onAction('copy', entry),
+        },
+        {
+          label: t('common.cut', 'Cut'),
+          icon: 'i-heroicons-scissors',
+          onSelect: () => onAction('cut', entry),
+        },
+      ]);
+
+      items.push([
+        {
+          label: t('common.rename', 'Rename'),
+          icon: 'i-heroicons-pencil',
+          onSelect: () => onAction('rename', entry),
+        },
+        {
+          label: t('common.delete', 'Delete'),
+          icon: 'i-heroicons-trash',
+          color: 'error',
+          onSelect: () => onAction('delete', entry),
+        },
+      ]);
+
+      return items;
     }
 
     if (isMultiSelected) {
@@ -255,6 +336,7 @@ export function useFileContextMenu(
         {
           label: t('videoEditor.fileManager.actions.uploadRemote', 'Upload to remote'),
           icon: 'i-heroicons-cloud-arrow-up',
+          hidden: !deps.isRemoteAvailable,
           onSelect: () => onAction('uploadRemote', entry),
         },
       ]);
