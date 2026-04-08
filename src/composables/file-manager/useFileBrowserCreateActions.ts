@@ -13,6 +13,7 @@ export interface FileBrowserCreateActionsOptions {
   reloadDirectory: (path: string) => Promise<void>;
   loadFolderContent: () => Promise<void>;
   findEntryByPath: (path: string) => FsEntry | null;
+  instanceId?: string | null;
 }
 
 export function useFileBrowserCreateActions({
@@ -21,6 +22,7 @@ export function useFileBrowserCreateActions({
   reloadDirectory,
   loadFolderContent,
   findEntryByPath,
+  instanceId,
 }: FileBrowserCreateActionsOptions) {
   const selectionStore = useSelectionStore();
   const uiStore = useUiStore();
@@ -38,7 +40,7 @@ export function useFileBrowserCreateActions({
     uiStore.notifyFileManagerUpdate();
     await loadFolderContent();
     const createdEntry = createdPath ? findEntryByPath(createdPath) : null;
-    if (createdEntry) selectionStore.selectFsEntry(createdEntry);
+    if (createdEntry) selectionStore.selectFsEntry(createdEntry, instanceId ?? undefined);
   }
 
   async function createMarkdownInDirectory(entry: FsEntry) {
@@ -58,7 +60,7 @@ export function useFileBrowserCreateActions({
     await loadFolderContent();
     const createdPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
     const createdEntry = createdPath ? findEntryByPath(createdPath) : null;
-    if (createdEntry) selectionStore.selectFsEntry(createdEntry);
+    if (createdEntry) selectionStore.selectFsEntry(createdEntry, instanceId ?? undefined);
   }
 
   return {

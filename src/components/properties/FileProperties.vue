@@ -389,26 +389,7 @@ function onCut() {
 function onPaste() {
   const entry = props.selectedFsEntry;
   if (!entry || entry.kind !== 'directory') return;
-  const payload = clipboardStore.clipboardPayload;
-  if (!payload || payload.source !== 'fileManager' || payload.items.length === 0) return;
-
-  const targetDirPath = entry.path ?? '';
-  for (const item of payload.items) {
-    const source = fileManager.findEntryByPath(item.path);
-    if (!source) continue;
-
-    if (payload.operation === 'copy') {
-      void fileManager.copyEntry({ source, targetDirPath });
-    } else {
-      void fileManager.moveEntry({ source, targetDirPath });
-    }
-  }
-
-  if (payload.operation === 'cut') {
-    clipboardStore.setClipboardPayload(null);
-  }
-
-  uiStore.notifyFileManagerUpdate();
+  uiStore.pendingFsEntryPaste = entry;
 }
 
 const hasClipboardItems = computed(() => {

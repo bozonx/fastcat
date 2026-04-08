@@ -450,6 +450,7 @@ const { createTimelineInDirectory, createMarkdownInDirectory } = useFileBrowserC
   reloadDirectory,
   loadFolderContent,
   findEntryByPath,
+  instanceId: props.instanceId,
 });
 
 // --- Create subgroup (remote) ---
@@ -732,6 +733,8 @@ onMounted(async () => {
     remoteCurrentFolder.value = buildRemoteDirectoryEntry('/');
     await loadFolderContent();
     await loadRemoteParentFolders(parentFolders);
+  } else if (!fileManagerStore.selectedFolder) {
+    setSelectedFsEntry({ kind: 'directory', path: '', name: 'Root' });
   }
 });
 
@@ -745,6 +748,9 @@ useFileBrowserPendingActions({
   handlePendingBloggerDogCreateSubgroup,
   handlePendingBloggerDogCreateItem,
   onCreateFolder: (entry) => onFileAction('createFolder', entry),
+  findEntryByPath,
+  loadFolderContent,
+  fileManager,
   handlePendingRemoteDownloadRequest: async () => {
     const request = uiStore.pendingRemoteDownloadRequest;
     if (!request) return;
@@ -933,7 +939,7 @@ async function onDirectoryUploadChange(e: Event) {
 
     <!-- Navigation bar (Breadcrumbs) -->
     <FileBrowserBreadcrumbs
-      v-if="!compact"
+      v-if="!(remoteModeOnly && (!isRemoteAvailable || remoteError))"
       :parent-folders="parentFolders"
       :is-at-root="isAtRoot"
       :can-navigate-back="fileManagerStore.historyStack.length > 0"
@@ -964,21 +970,10 @@ async function onDirectoryUploadChange(e: Event) {
       />
       <UContextMenu :items="emptySpaceContextMenuItems" class="min-h-full">
         <div class="min-h-full flex flex-col" @click.self="handleContainerClick">
-          <div
-            v-if="!isRemoteMode && !fileManagerStore.selectedFolder"
-            class="flex flex-col items-center justify-center flex-1 text-ui-text-muted gap-2"
-          >
-            <UIcon name="i-heroicons-folder-open" class="w-12 h-12 opacity-20" />
-            <span>{{
-              t(
-                'videoEditor.fileManager.selectFolderHint',
-                'Select a folder in the sidebar to view its contents',
-              )
-            }}</span>
-          </div>
+
 
           <div
-            v-else-if="isRemoteMode && remoteError"
+            v-if="isRemoteMode && remoteError"
             class="flex flex-col items-center justify-center flex-1 text-ui-text-dim text-center p-6 gap-6"
           >
             <div class="p-6 rounded-full bg-error-500/10">

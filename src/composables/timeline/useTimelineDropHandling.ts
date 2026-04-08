@@ -95,13 +95,27 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
   }) {
     if (params.kind === 'file' && params.path) {
       const meta = await mediaStore.getOrFetchMetadataByPath(params.path);
-      return meta?.duration || workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
+      if (meta?.duration) return meta.duration;
+
+      const type = getMediaTypeFromFilename(params.path);
+      if (type === 'video' || type === 'audio') {
+        // If meta is null or has 0 duration, it might be still loading or failed.
+        // We try one more time or just use a larger fallback if it's clearly a media file.
+        // Actually, let's just return the default if it really failed,
+        // but getOrFetchMetadataByPath should have awaited the extraction.
+      }
+
+      return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
     }
     if (params.kind === 'timeline' && params.path) {
       const file = await fileManager.vfs.getFile(params.path);
       if (file) {
-        const doc = JSON.parse(await file.text());
-        return selectTimelineDurationUs(doc);
+        try {
+          const doc = JSON.parse(await file.text());
+          return selectTimelineDurationUs(doc);
+        } catch {
+          return 0;
+        }
       }
     }
     return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;

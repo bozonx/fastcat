@@ -33,6 +33,11 @@ vi.mock('~/composables/properties/useFilePropertiesBasics', () => ({
     isHidden: ref(false),
     mediaMeta: ref({}),
     selectedPath: ref('/projects/test.mp4'),
+    isBloggerDogProject: ref(false),
+    isBloggerDogGroup: ref(false),
+    isBloggerDogContentItem: ref(false),
+    isBloggerDogMedia: ref(false),
+    bloggerDogDeepLink: ref(null),
   })),
 }));
 
@@ -80,10 +85,10 @@ vi.mock('~/composables/properties/useFilePropertiesHandlers', () => ({
 
 vi.mock('~/composables/properties/useFilePropertiesActions', () => ({
   useFilePropertiesActions: vi.fn(() => ({
-    directoryPrimaryActions: [],
-    directorySecondaryActions: [],
-    filePrimaryActions: [{ id: 'mock', title: 'Mock Action', onClick: vi.fn() }],
-    fileSecondaryActions: [],
+    directoryPrimaryActions: ref([]),
+    directorySecondaryActions: ref([]),
+    filePrimaryActions: ref([{ id: 'mock', title: 'Mock Action', onClick: vi.fn() }]),
+    fileSecondaryActions: ref([]),
   })),
 }));
 
@@ -116,6 +121,7 @@ vi.mock('~/composables/properties/useFilePropertiesTranscription', () => ({
     isTranscriptionModalOpen: ref(false),
     transcriptionLanguage: ref('en'),
     isTranscribingAudio: ref(false),
+    isSttModelReady: ref(true),
     transcriptionError: ref(''),
     latestTranscriptionText: ref(''),
     latestTranscriptionCacheKey: ref(''),
