@@ -461,6 +461,8 @@ const isRemoteAvailable = computed(() => Boolean(remoteFilesConfig.value));
 const isRemoteMode = computed(() => props.selectedFsEntry?.source === 'remote');
 
 const filteredDirectoryPrimaryActions = computed(() => {
+  if (isPersonalLibrary.value) return [];
+
   if (!isRemoteContent.value) {
     return directoryPrimaryActions.value.filter((a: PrimaryEntryAction) =>
       !['createSubgroup', 'createContentItem'].includes(a.id),
@@ -601,7 +603,6 @@ const filteredFilePrimaryActions = computed(() => {
           fileInfo.kind === 'directory' &&
           !isRemoteRoot &&
           !isVirtualAll &&
-          !isPersonalLibrary &&
           !isProjectLibraries &&
           !isBloggerDogProject
         "
@@ -610,7 +611,15 @@ const filteredFilePrimaryActions = computed(() => {
       >
         <EntryActions
           :primary-actions="filteredDirectoryPrimaryActions"
-          :secondary-actions="isBloggerDogGroup ? directorySecondaryActions.filter(a => ['createSubgroup', 'createContentItem'].includes(a.id)) : (isRemoteContent ? [] : directorySecondaryActions)"
+          :secondary-actions="
+            isBloggerDogGroup || isPersonalLibrary
+              ? directorySecondaryActions.filter((a) =>
+                  ['createSubgroup', 'createContentItem'].includes(a.id),
+                )
+              : isRemoteContent
+                ? []
+                : directorySecondaryActions
+          "
         />
       </PropertySection>
 

@@ -237,10 +237,11 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     const parentPath = '/' + parts.join('/');
     const parent = await this.getIdForPath(parentPath);
     
+    const virtualRoots = ['virtual-all', 'personal', 'projects', 'root', '/'];
     const collection = await createRemoteCollection({
       config,
       name,
-      parentId: parent.id === 'virtual-all' ? undefined : parent.id
+      parentId: virtualRoots.includes(parent.id) ? undefined : parent.id
     });
     
     this.idCache.set(path, { id: collection.id, type: 'directory' });

@@ -26,6 +26,8 @@ import ProjectTransitionProperties from '~/components/properties/ProjectTransiti
 import ProjectLibraryProperties from '~/components/properties/ProjectLibraryProperties.vue';
 import type { SelectedEntity } from '~/stores/selection.store';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
+import { usePropertiesPanelPendingActions } from '~/composables/properties/usePropertiesPanelPendingActions';
+import FileDeleteConfirmModal from '~/components/file-manager/modals/FileDeleteConfirmModal.vue';
 
 const props = defineProps<{
   entity?: SelectedEntity | null;
@@ -46,6 +48,12 @@ const selectionStore = useSelectionStore();
 const proxyStore = useProxyStore();
 const fileManager = useFileManager();
 const conversionStore = useFileConversionStore();
+
+const {
+  isDeleteConfirmModalOpen: isPropertiesDeleteModalOpen,
+  deleteTargets: propertiesDeleteTargets,
+  handleDeleteConfirm: handlePropertiesDeleteConfirm,
+} = usePropertiesPanelPendingActions();
 
 function clearAllSelection() {
   selectionStore.clearSelection();
@@ -268,10 +276,13 @@ const headerTitle = computed(() => {
   if (displayMode.value === 'gap') return t('fastcat.timeline.gap', 'Gap');
   if (displayMode.value === 'track' && selectedTrack.value) return selectedTrack.value.name;
   if (displayMode.value === 'timeline') {
-    return selectedFsEntry.value?.name ?? t('fastcat.timeline.properties.title', 'Timeline Properties');
+    return (
+      selectedFsEntry.value?.name ?? t('fastcat.timeline.properties.title', 'Timeline Properties')
+    );
   }
   if (displayMode.value === 'project-effect') return t('fastcat.effects.title', 'Effect');
-  if (displayMode.value === 'project-transition') return t('fastcat.transitions.title', 'Transition');
+  if (displayMode.value === 'project-transition')
+    return t('fastcat.transitions.title', 'Transition');
   if (displayMode.value === 'project-library-item') {
     const kind = selectedProjectLibraryItem.value?.itemKind;
     return kind === 'text'
@@ -285,7 +296,8 @@ const headerTitle = computed(() => {
       ? t('fastcat.marker.zoneMarker', 'Zone Marker')
       : t('fastcat.marker.title', 'Marker');
   }
-  if (displayMode.value === 'selection-range') return t('fastcat.timeline.selectionRange', 'Selection Range');
+  if (displayMode.value === 'selection-range')
+    return t('fastcat.timeline.selectionRange', 'Selection Range');
   return t('common.properties', 'Properties');
 });
 </script>
@@ -294,9 +306,14 @@ const headerTitle = computed(() => {
   <div
     class="panel-focus-frame flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0 relative"
     :class="{
-      'panel-focus-frame--active': !props.useExternalFocus && focusStore.isPanelFocused((props.focusId as PanelFocusId) || 'right'),
+      'panel-focus-frame--active':
+        !props.useExternalFocus &&
+        focusStore.isPanelFocused((props.focusId as PanelFocusId) || 'right'),
     }"
-    @pointerdown.capture="!props.useExternalFocus && focusStore.setPanelFocus((props.focusId as PanelFocusId) || 'right')"
+    @pointerdown.capture="
+      !props.useExternalFocus &&
+      focusStore.setPanelFocus((props.focusId as PanelFocusId) || 'right')
+    "
     @focusin.capture="onPanelFocusIn"
     @focusout.capture="onPanelFocusOut"
   >
@@ -331,82 +348,85 @@ const headerTitle = computed(() => {
       ref="contentRef"
       class="flex-1 min-h-0 bg-ui-bg overflow-auto flex flex-col p-2 items-start w-full"
     >
-        <div
-          v-if="displayMode === 'empty'"
-          key="empty"
-          class="w-full flex items-center justify-center text-ui-text-muted min-h-50"
-        >
-          <p class="text-xs">
-            {{ t('fastcat.preview.noSelection', 'No item selected') }}
-          </p>
-        </div>
+      <div
+        v-if="displayMode === 'empty'"
+        key="empty"
+        class="w-full flex items-center justify-center text-ui-text-muted min-h-50"
+      >
+        <p class="text-xs">
+          {{ t('fastcat.preview.noSelection', 'No item selected') }}
+        </p>
+      </div>
 
-        <TransitionProperties
-          v-else-if="displayMode === 'transition' && selectedTransition && selectedTransitionClip"
-          :transition-selection="selectedTransition"
-          :clip="selectedTransitionClip"
-          :track="selectedTransitionTrack"
-        />
+      <TransitionProperties
+        v-else-if="displayMode === 'transition' && selectedTransition && selectedTransitionClip"
+        :transition-selection="selectedTransition"
+        :clip="selectedTransitionClip"
+        :track="selectedTransitionTrack"
+      />
 
-        <MultiClipProperties
-          v-else-if="displayMode === 'clips' && selectedClips"
-          :items="selectedClips"
-        />
+      <MultiClipProperties
+        v-else-if="displayMode === 'clips' && selectedClips"
+        :items="selectedClips"
+      />
 
-        <ClipProperties
-          v-else-if="displayMode === 'clip' && selectedClip"
-          ref="clipRef"
-          :clip="selectedClip"
-        />
+      <ClipProperties
+        v-else-if="displayMode === 'clip' && selectedClip"
+        ref="clipRef"
+        :clip="selectedClip"
+      />
 
-        <GapProperties
-          v-else-if="displayMode === 'gap' && selectedGap"
-          :track-id="selectedGap.trackId"
-          :item-id="selectedGap.itemId"
-        />
+      <GapProperties
+        v-else-if="displayMode === 'gap' && selectedGap"
+        :track-id="selectedGap.trackId"
+        :item-id="selectedGap.itemId"
+      />
 
-        <TrackProperties
-          v-else-if="displayMode === 'track' && selectedTrack"
-          :track="selectedTrack"
-        />
+      <TrackProperties
+        v-else-if="displayMode === 'track' && selectedTrack"
+        :track="selectedTrack"
+      />
 
-        <FileProperties
-          v-else-if="displayMode === 'file' && selectedFsEntry"
-          :key="selectedFsEntry.path || selectedFsEntry.name"
-          :selected-fs-entry="selectedFsEntry"
-          :has-proxy="hasProxy"
-          :preview-mode="previewMode"
-          @update:preview-mode="(m) => (previewMode = m)"
-          @convert="(entry) => conversionStore.openConversionModal(entry)"
-        />
-        <MultiFileProperties
-          v-else-if="displayMode === 'files' && selectedFsEntries"
-          :entries="selectedFsEntries"
-        />
-        <MarkerProperties
-          v-else-if="displayMode === 'marker' && selectedMarkerId"
-          v-model:marker-id="selectedMarkerId"
-        />
-        <SelectionRangeProperties v-else-if="displayMode === 'selection-range'" />
-        <TimelineProperties v-else-if="displayMode === 'timeline'" :fs-entry="selectedFsEntry" />
-        <ProjectEffectProperties
-          v-else-if="displayMode === 'project-effect' && selectedProjectEffectType"
-          :effect-type="selectedProjectEffectType"
-        />
-        <ProjectTransitionProperties
-          v-else-if="displayMode === 'project-transition' && selectedProjectTransitionType"
-          :transition-type="selectedProjectTransitionType"
-        />
-        <ProjectLibraryProperties
-          v-else-if="displayMode === 'project-library-item' && selectedProjectLibraryItem"
-          :item-kind="selectedProjectLibraryItem.itemKind"
-          :item-id="selectedProjectLibraryItem.itemId"
-          :preset-params="selectedProjectLibraryItem.presetParams"
-        />
-        <div
-          v-else
-          class="flex flex-col items-center justify-center h-full text-ui-text-muted"
-        ></div>
+      <FileProperties
+        v-else-if="displayMode === 'file' && selectedFsEntry"
+        :key="selectedFsEntry.path || selectedFsEntry.name"
+        :selected-fs-entry="selectedFsEntry"
+        :has-proxy="hasProxy"
+        :preview-mode="previewMode"
+        @update:preview-mode="(m) => (previewMode = m)"
+        @convert="(entry) => conversionStore.openConversionModal(entry)"
+      />
+      <MultiFileProperties
+        v-else-if="displayMode === 'files' && selectedFsEntries"
+        :entries="selectedFsEntries"
+      />
+      <MarkerProperties
+        v-else-if="displayMode === 'marker' && selectedMarkerId"
+        v-model:marker-id="selectedMarkerId"
+      />
+      <SelectionRangeProperties v-else-if="displayMode === 'selection-range'" />
+      <TimelineProperties v-else-if="displayMode === 'timeline'" :fs-entry="selectedFsEntry" />
+      <ProjectEffectProperties
+        v-else-if="displayMode === 'project-effect' && selectedProjectEffectType"
+        :effect-type="selectedProjectEffectType"
+      />
+      <ProjectTransitionProperties
+        v-else-if="displayMode === 'project-transition' && selectedProjectTransitionType"
+        :transition-type="selectedProjectTransitionType"
+      />
+      <ProjectLibraryProperties
+        v-else-if="displayMode === 'project-library-item' && selectedProjectLibraryItem"
+        :item-kind="selectedProjectLibraryItem.itemKind"
+        :item-id="selectedProjectLibraryItem.itemId"
+        :preset-params="selectedProjectLibraryItem.presetParams"
+      />
+      <div v-else class="flex flex-col items-center justify-center h-full text-ui-text-muted"></div>
     </div>
+
+    <FileDeleteConfirmModal
+      v-model:open="isPropertiesDeleteModalOpen"
+      :delete-targets="propertiesDeleteTargets"
+      @confirm="handlePropertiesDeleteConfirm"
+    />
   </div>
 </template>
