@@ -85,7 +85,7 @@ const { t } = useI18n();
 
   <UiEntityCreationModal
     :open="props.isSubgroupModalOpen"
-    :title="t('fastcat.bloggerDog.actions.createFolder', 'Создать подгруппу')"
+    :title="t('fastcat.bloggerDog.actions.createSubgroup', 'Создать подгруппу')"
     :confirm-label="t('common.create', 'Создать')"
     @update:open="emit('update:isSubgroupModalOpen', $event)"
     @confirm="emit('subgroupConfirm', $event)"
