@@ -35,7 +35,6 @@ export type PanelFileAction =
   | 'openAsPanelCut'
   | 'openAsPanelSound'
   | 'openAsProjectTab'
-  | 'uploadRemote'
   | 'transcribe'
   | 'extractAudio'
   | 'createSubgroup'
@@ -185,7 +184,6 @@ export function useFileManagerPanelActions({
       }
     } else if (action === 'convertFile') {
       if (entry.kind === 'file') handleConvert(entry);
-      // uploadRemote removed
     } else if (action === 'transcribe') {
       openTranscriptionModal(entry);
     } else if (action === 'extractAudio') {

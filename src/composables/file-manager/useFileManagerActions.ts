@@ -35,7 +35,6 @@ export type FileAction =
   | 'copy'
   | 'cut'
   | 'paste'
-  | 'uploadRemote'
   | 'transcribe';
 
 interface FileManagerActions {

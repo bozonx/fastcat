@@ -348,23 +348,27 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     let uploadPath = '/virtual-all';
     let projectId: string | undefined;
 
+    // Determine if we are in a project path
+    const pathParts = normalizedPath.split('/').filter(Boolean);
+    if (pathParts[0] === 'projects' && pathParts.length >= 2) {
+      projectId = pathParts[1];
+    }
+
     if (parentPath !== '/') {
       const cached = await this.getIdForPath(parentPath);
 
-      // If we are in a project folder, path must be /projects/{id}
-      const parentParts = parentPath.split('/').filter(Boolean);
-      const isProjectRoot = parentParts[0] === 'projects' && parentParts.length === 2;
-
-      if (isProjectRoot) {
-        uploadPath = `/projects/${cached.id}`;
-        projectId = cached.id;
+      if (normalizedPath.startsWith('/projects/') && pathParts.length === 2) {
+        // Saving directly in project root (this case might not happen with parts.pop() above, but for safety)
+        uploadPath = `/projects/${projectId}`;
+      } else if (normalizedPath.startsWith('/personal') && pathParts.length === 2) {
+         uploadPath = '/personal';
       } else if (cached.item?.path) {
         uploadPath = cached.item.path;
       } else if (cached.id) {
-        // Special case for personal root
         if (cached.id === 'personal') {
           uploadPath = '/personal';
         } else {
+          // If it's a collection ID, use it as path (with leading slash for remote API)
           uploadPath = cached.id.startsWith('/') ? cached.id : `/${cached.id}`;
         }
       }

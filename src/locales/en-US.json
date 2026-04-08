@@ -1192,8 +1192,7 @@
         "syncTreeTooltip": "Refresh file tree",
         "title": "Actions",
         "transcribe": "Transcribe",
-        "uploadFiles": "Upload files",
-        "uploadRemote": "Upload from URL"
+        "uploadFiles": "Upload files"
       },
       "audio": {
         "channels": "Channels",

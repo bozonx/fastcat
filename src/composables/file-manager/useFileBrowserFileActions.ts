@@ -120,7 +120,6 @@ export function useFileBrowserFileActions({
       return;
     }
 
-    // uploadRemote removed
 
     if (action === 'transcribe') {
       openTranscriptionModal(entry);

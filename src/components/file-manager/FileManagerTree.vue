@@ -102,7 +102,6 @@ const emit = defineEmits<{
       | 'openAsPanelCut'
       | 'openAsPanelSound'
       | 'openAsProjectTab'
-      | 'uploadRemote'
       | 'transcribe'
       | 'extractAudio'
       | 'paste'

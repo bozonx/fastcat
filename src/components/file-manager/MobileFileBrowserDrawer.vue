@@ -311,12 +311,6 @@ function handleAction(actionId: FileAction) {
               :label="$t('common.toTimeline', 'To timeline')"
               @click="emit('add-to-timeline')"
             />
-            <MobileDrawerToolbarButton
-              v-if="isBloggerdogConnected && selectedFsEntry?.entry.kind === 'file'"
-              icon="i-heroicons-cloud-arrow-up"
-              :label="$t('videoEditor.fileManager.actions.uploadRemote', 'Upload')"
-              @click="handleAction('uploadRemote')"
-            />
           </MobileDrawerToolbar>
 
           <div
