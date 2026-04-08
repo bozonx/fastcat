@@ -105,7 +105,11 @@ const emit = defineEmits<{
       | 'uploadRemote'
       | 'transcribe'
       | 'extractAudio'
-      | 'paste',
+      | 'paste'
+      | 'copy'
+      | 'cut'
+      | 'createSubgroup'
+      | 'createContentItem',
     entry: FsEntry,
   ): void;
   (
@@ -611,6 +615,8 @@ const isBloggerDogContentItem = (entry: FsEntry) => {
   return entry.kind === 'file' && !!entry.remoteId;
 };
 
+const clipboardStore = useAppClipboard();
+
 const { getContextMenuItems } = useFileContextMenu(
   {
     isGeneratingProxyInDirectory: (entry) =>
@@ -620,7 +626,7 @@ const { getContextMenuItems } = useFileContextMenu(
     isConvertibleMediaFile: () => true,
     isTranscribableMediaFile: () => true,
     isVideo: () => false,
-    getEntryMeta: (entry) => ({ hasProxy: false, generatingProxy: false }),
+    getEntryMeta: () => ({ hasProxy: false, generatingProxy: false }),
     getSelectedEntries: () => {
       const selected = selectionStore.selectedEntity;
       if (selected?.source === 'fileManager') {
@@ -634,6 +640,9 @@ const { getContextMenuItems } = useFileContextMenu(
     isBloggerDogProject,
     isBloggerDogGroup,
     isBloggerDogContentItem,
+    get hasClipboardItems() {
+      return clipboardStore.hasFileManagerPayload;
+    },
   },
   (action, entry) => {
     emit('action', action as any, entry as any);

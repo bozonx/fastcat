@@ -103,7 +103,7 @@ export function useFileManagerPanelActions({
         onFileActionBase('delete', entry);
         return;
       }
-      if (['createProxy', 'cancelProxy', 'deleteProxy'].includes(action)) {
+      if (['createProxy', 'cancelProxy', 'deleteProxy', 'copy', 'cut'].includes(action)) {
         onFileActionBase(action as FileActionBase, entry);
         return;
       }
@@ -111,6 +111,10 @@ export function useFileManagerPanelActions({
         for (const e of entry) {
           if (e.kind === 'file') void extractAudio(e);
         }
+        return;
+      }
+      if (action === 'paste') {
+        onFileActionBase('paste', entry[0] ?? { kind: 'directory', name: '', path: '' });
         return;
       }
       return;
@@ -181,7 +185,7 @@ export function useFileManagerPanelActions({
       }
     } else if (action === 'convertFile') {
       if (entry.kind === 'file') handleConvert(entry);
-    // uploadRemote removed
+      // uploadRemote removed
     } else if (action === 'transcribe') {
       openTranscriptionModal(entry);
     } else if (action === 'extractAudio') {
@@ -190,6 +194,8 @@ export function useFileManagerPanelActions({
       uiStore.pendingBloggerDogCreateSubgroup = entry;
     } else if (action === 'createContentItem') {
       uiStore.pendingBloggerDogCreateItem = entry;
+    } else if (action === 'paste') {
+      onFileActionBase('paste', entry);
     } else {
       onFileActionBase(action as FileActionBase, entry);
     }

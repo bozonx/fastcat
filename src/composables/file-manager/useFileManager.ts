@@ -62,6 +62,7 @@ import {
   createTimelineCommand,
   createMarkdownCommand,
   type UploadResult,
+  type HandleFilesDeps,
 } from '~/file-manager/application/fileManagerCommands';
 import { useVfs } from '~/composables/useVfs';
 import { createUiActionRunner } from './useUiActionRunner';
@@ -258,9 +259,18 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     void timelineMediaUsageStore.refreshUsage();
   }
 
-  async function handleFiles(files: FileList | File[], targetDirPath?: string) {
+  async function handleFiles(
+    files: FileList | File[],
+    options?: {
+      targetDirPath?: string;
+      abortSignal?: AbortSignal;
+      onProgress?: HandleFilesDeps['onProgress'];
+    },
+  ) {
     const projectName = deps.getProjectName();
     if (!projectName) return;
+
+    const { targetDirPath, abortSignal, onProgress } = options ?? {};
 
     const uploadResults = await runWithUiFeedback({
       action: async () => {
@@ -268,6 +278,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
           files,
           {
             targetDirPath,
+            abortSignal,
           },
           {
             vfs: deps.vfs,
@@ -284,6 +295,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
             onMediaImported: ({ projectRelativePath }) => {
               deps.onMediaImported({ projectRelativePath });
             },
+            onProgress,
           },
         );
 
@@ -297,6 +309,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
       defaultErrorMessage: 'Failed to upload files',
       toastTitle: 'Upload error',
       toastDescription: () => error.value || 'Failed to upload files',
+      ignoreError: (e: unknown) => e instanceof Error && e.name === 'AbortError',
     });
 
     if (uploadResults && uploadResults.length > 0) {
@@ -540,7 +553,11 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     });
   }
 
-  async function copyEntry(params: { source: FsEntry; targetDirPath: string }) {
+  async function copyEntry(params: {
+    source: FsEntry;
+    targetDirPath: string;
+    abortSignal?: AbortSignal;
+  }) {
     const projectName = deps.getProjectName();
     if (!projectName) return null;
 
@@ -550,12 +567,13 @@ export function createFileManager(deps: FileManagerCreateDeps) {
 
     if (!isCopyAllowed({ sourcePath, targetDirPath })) return null;
 
-    await runWithUiFeedback({
+    return await runWithUiFeedback({
       action: async () => {
         const { newPath } = await copyEntryCommand(
           {
             source: params.source,
             targetDirPath,
+            abortSignal: params.abortSignal,
           },
           {
             vfs: deps.vfs,
@@ -584,9 +602,8 @@ export function createFileManager(deps: FileManagerCreateDeps) {
       defaultErrorMessage: 'Failed to copy',
       toastTitle: 'Copy error',
       toastDescription: () => error.value || 'Failed to copy',
+      ignoreError: (e: unknown) => e instanceof Error && e.name === 'AbortError',
     });
-
-    return true;
   }
 
   async function createTimeline(parentPath?: string): Promise<string | null> {
@@ -610,7 +627,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
       action: async () => {
         const createdPath = await createMarkdownCommand({
           vfs: deps.vfs,
-          documentsDirName: parentPath ?? DOCUMENTS_DIR_NAME,
+          dirPath: parentPath ?? DOCUMENTS_DIR_NAME,
         });
         await reloadDirectory(parentPath ?? DOCUMENTS_DIR_NAME);
         return createdPath;
@@ -668,8 +685,8 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     readDirectory: service.readDirectory,
     vfs: deps.vfs,
     reloadDirectory,
-    resolveDefaultTargetDir: async (options: { file: File }) =>
-      await resolveDefaultTargetDir(options),
+    resolveDefaultTargetDir: async (params: { file: File } | { name: string }) =>
+      await resolveDefaultTargetDir(params),
     runWithUiFeedback,
     async restoreHistory(snapshot: any) {
       if (!snapshot || !snapshot.type) return;

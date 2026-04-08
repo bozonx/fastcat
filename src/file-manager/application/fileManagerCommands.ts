@@ -61,19 +61,26 @@ export interface HandleFilesDeps {
   getTargetDirPath: (params: { file: File }) => Promise<string | null>;
   onSkipProjectFile: (params: { file: File }) => void;
   onMediaImported: (params: { projectRelativePath: string; file: File }) => void;
+  onProgress?: (params: { currentFileIndex: number; totalFiles: number; fileName: string }) => void;
 }
 
 export async function handleFilesCommand(
   files: FileList | File[],
   params: {
     targetDirPath?: string;
+    abortSignal?: AbortSignal;
   },
   deps: HandleFilesDeps,
 ): Promise<UploadResult[]> {
   const queue = new PQueue({ concurrency: 3 });
+  const allFiles = Array.from(files);
+  const totalFiles = allFiles.length;
+  let completedCount = 0;
 
-  const tasks = Array.from(files).map((inputFile) =>
+  const tasks = allFiles.map((inputFile, index) =>
     queue.add(async () => {
+      if (params.abortSignal?.aborted) return;
+
       const file = inputFile;
 
       let finalRelativePathBase = params.targetDirPath || '';
@@ -93,10 +100,38 @@ export async function handleFilesCommand(
         : file.name;
 
       if (await deps.vfs.exists(targetPath)) {
-        throw new Error(`File already exists: ${file.name}`);
+        // Instead of throwing, we can skip or generate unique name. 
+        // For timeline drop, standard behavior in many editors is to auto-rename if it's a conflict
+        // but here we just throw as before, or handle conflict.
+        // Let's stick to existing behavior for now but maybe better to auto-generate name.
+        const uniqueName = await generateUniqueEntryNameWithSuffix({
+          vfs: deps.vfs,
+          dirPath: finalRelativePathBase,
+          name: file.name,
+        });
+        const uniquePath = finalRelativePathBase ? `${finalRelativePathBase}/${uniqueName}` : uniqueName;
+        
+        await deps.vfs.writeFile(uniquePath, file);
+        
+        completedCount++;
+        deps.onProgress?.({ currentFileIndex: completedCount, totalFiles, fileName: file.name });
+
+        const mediaType = getMediaTypeFromFilename(file.name);
+        if (mediaType === 'video' || mediaType === 'audio' || mediaType === 'image') {
+          deps.onMediaImported({ projectRelativePath: uniquePath, file });
+        }
+
+        return {
+          fileName: uniqueName,
+          targetPath: uniquePath,
+          targetDir: finalRelativePathBase,
+        };
       }
 
       await deps.vfs.writeFile(targetPath, file);
+
+      completedCount++;
+      deps.onProgress?.({ currentFileIndex: completedCount, totalFiles, fileName: file.name });
 
       const mediaType = getMediaTypeFromFilename(file.name);
       if (mediaType === 'video' || mediaType === 'audio' || mediaType === 'image') {
@@ -115,8 +150,16 @@ export async function handleFilesCommand(
   return results.filter((r): r is UploadResult => r !== undefined);
 }
 
-export async function resolveDefaultTargetDir(params: { file: File }): Promise<string | null> {
-  const mediaType = getMediaTypeFromFilename(params.file.name);
+export async function resolveDefaultTargetDir(
+  params: { file: File } | { name: string },
+): Promise<string | null> {
+  let fileName: string;
+  if ('file' in params) {
+    fileName = params.file.name;
+  } else {
+    fileName = params.name;
+  }
+  const mediaType = getMediaTypeFromFilename(fileName);
 
   if (mediaType === 'timeline') return null;
 
@@ -224,9 +267,12 @@ export async function copyEntryCommand(
   params: {
     source: FsEntry;
     targetDirPath: string;
+    abortSignal?: AbortSignal;
   },
   deps: CopyEntryDeps,
 ): Promise<{ newPath: string }> {
+  if (params.abortSignal?.aborted) throw new Error('Aborted');
+  
   const sourcePath = params.source.path;
   const targetDirPath = params.targetDirPath ?? '';
   if (!sourcePath) {
