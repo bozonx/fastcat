@@ -574,6 +574,21 @@
         "computer": "Компьютер",
         "workspace": "Воркспейс"
       },
+      "actions": {
+        "importing": "Импорт...",
+        "downloading": "Загрузка..."
+      },
+      "upload": {
+        "autoUploadTitle": "Авто-загрузка",
+        "successTitle": "Загрузка завершена",
+        "summary": "{count} {type} в {folder}",
+        "types": {
+          "video": "видео",
+          "audio": "аудио",
+          "image": "изображений",
+          "file": "файлов"
+        }
+      },
       "remote": {
         "not_configured_title": "BloggerDog не настроен",
         "not_configured_desc": "Интеграция с BloggerDog позволяет управлять вашим удаленным контентом.",
@@ -728,6 +743,8 @@
       "width": "Ширина блока"
     },
     "timeline": {
+      "importFilesCount": "Импорт {count} файлов",
+      "noSupportedFiles": "Нет поддерживаемых файлов для импорта",
       "addAdjustment": "Добавить корректирующий слой",
       "addContent": "Добавить контент",
       "addAdjustmentClip": "Добавить клип корректировки",

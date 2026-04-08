@@ -71,6 +71,13 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
 
   const dragPreview = ref<DragPreview | null>(null);
 
+  // Import/Copy progress state
+  const isImporting = ref(false);
+  const importProgress = ref(0);
+  const importFileName = ref('');
+  const importPhase = ref('');
+  let importAbortController: AbortController | null = null;
+
   function clearDragPreview() {
     dragPreview.value = null;
   }
@@ -484,11 +491,51 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     return preview;
   }, 16);
 
+  function isSupportedExternalFile(file: File): boolean {
+    const type = getMediaTypeFromFilename(file.name);
+    return type === 'video' || type === 'audio' || type === 'image';
+  }
+
+  function isSupportedLibraryItem(item: any): boolean {
+    if (item.kind === 'file' && item.path) {
+      const type = getMediaTypeFromFilename(item.name || item.path);
+      return type === 'video' || type === 'audio' || type === 'image';
+    }
+    return ['adjustment', 'background', 'text', 'shape', 'hud', 'timeline'].includes(item.kind);
+  }
+
   async function onTrackDragOver(e: DragEvent, trackId: string) {
     const types = e.dataTransfer?.types;
     if (!types) {
       clearDragPreview();
       return;
+    }
+
+    // Handle OS files
+    if (types.includes('Files')) {
+      const files = Array.from(e.dataTransfer?.files || []);
+      if (files.length > 0 && files.every(isSupportedExternalFile)) {
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+        
+        // We can't show a full preview for OS files easily because we don't have metadata yet,
+        // but we can show a ghost box with a generic label.
+        const dropPositionUs = getDropPosition(e);
+        if (dropPositionUs !== null) {
+          dragPreview.value = {
+            trackId,
+            startUs: dropPositionUs,
+            label: files.length > 1 ? t('fastcat.timeline.importFilesCount', { count: files.length }) : files[0].name,
+            durationUs: workspaceStore.userSettings.timeline.defaultStaticClipDurationUs,
+            kind: 'file',
+          };
+        }
+        return;
+      } else if (files.length > 0) {
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'none';
+        clearDragPreview();
+        return;
+      }
     }
 
     if (!types.includes('application/json') && !types.includes('fastcat-item')) {
@@ -498,7 +545,25 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
 
     const payload = draggedFile.draggedFile.value;
     if (payload?.isExternal) {
-      clearDragPreview();
+      // Check if it's a supported external item (e.g. from BloggerDog)
+      if (payload.path && isSupportedLibraryItem(payload)) {
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+
+        const dropPositionUs = getDropPosition(e);
+        if (dropPositionUs !== null) {
+          dragPreview.value = {
+            trackId,
+            startUs: dropPositionUs,
+            label: payload.name,
+            durationUs: workspaceStore.userSettings.timeline.defaultStaticClipDurationUs,
+            kind: 'file',
+          };
+        }
+      } else {
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'none';
+        clearDragPreview();
+      }
       return;
     }
 
@@ -525,23 +590,60 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
   async function handleFileDrop(files: File[], trackId: string, startUs: number) {
     if (files.length === 0) return;
 
-    try {
-      // Use handleFiles from fileManager but that uploads only.
-      await fileManager.handleFiles(files);
+    const supportedFiles = files.filter(isSupportedExternalFile);
+    if (supportedFiles.length === 0) {
+      toast.add({
+        color: 'warning',
+        title: t('common.warning'),
+        description: t('fastcat.timeline.noSupportedFiles'),
+      });
+      return;
+    }
 
-      // We don't have the final paths here easily.
-      // The old handleFileDrop implementation in Timeline.vue was more complex.
-      // For now, let's just trigger a legacy refresh or hope the user drag-drops from the project browser instead of OS.
+    try {
+      isImporting.value = true;
+      importProgress.value = 0;
+      importPhase.value = t('videoEditor.fileManager.actions.importing');
+      importAbortController = new AbortController();
+
+      const results = await fileManager.handleFiles(supportedFiles, {
+        abortSignal: importAbortController.signal,
+        onProgress: (p) => {
+          importProgress.value = p.currentFileIndex / p.totalFiles;
+          importFileName.value = p.fileName;
+        },
+      });
+
+      if (importAbortController.signal.aborted) return;
+
+      let currentStartUs = startUs;
+      for (const res of results) {
+        const result = await executeMediaFileDrop(
+          { path: res.targetPath, name: res.fileName },
+          { baseTrackId: trackId, currentStartUs, pseudo: false },
+        );
+        currentStartUs = result.nextStartUs;
+      }
+
+      await timelineStore.requestTimelineSave({ immediate: true });
       void timelineMediaUsageStore.refreshUsage();
     } catch (err: any) {
+      if (err.name === 'AbortError') return;
       toast.add({
         color: 'error',
         title: t('common.error'),
         description: err.message,
       });
     } finally {
+      isImporting.value = false;
+      importAbortController = null;
       clearDragPreview();
     }
+  }
+
+  function cancelImport() {
+    importAbortController?.abort();
+    isImporting.value = false;
   }
 
   async function handleLibraryDrop(
@@ -557,14 +659,46 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
   ) {
     try {
       const payload = JSON.parse(data) as any;
-      if (payload?.isExternal) {
-        clearDragPreview();
-        return;
-      }
       const items = normalizeDropItems(payload);
       let currentStartUs = startUs;
       let addedCount = 0;
       const pseudo = options?.pseudo === true;
+
+      // Handle external (BloggerDog or explicit external mark) import
+      if (payload?.isExternal) {
+        isImporting.value = true;
+        importProgress.value = 0;
+        importPhase.value = t('videoEditor.fileManager.actions.downloading');
+        importAbortController = new AbortController();
+
+        const externalItems = items.filter(isSupportedLibraryItem);
+        for (let i = 0; i < externalItems.length; i++) {
+          if (importAbortController.signal.aborted) break;
+          const item = externalItems[i];
+          importFileName.value = item.name || '';
+          importProgress.value = i / externalItems.length;
+
+          if (item.path?.startsWith('/remote')) {
+            // It's a BloggerDog file, need to copy to local project
+            const targetDir = await fileManager.resolveDefaultTargetDir({ name: item.name || item.path });
+            const resultPath = await fileManager.copyEntry({
+              source: { path: item.path, name: item.name || '', kind: 'file' } as any,
+              targetDirPath: targetDir || 'files',
+              abortSignal: importAbortController.signal,
+            });
+
+            // Re-assign path to the new local path
+            item.path = (resultPath as any).newPath || resultPath;
+          }
+        }
+
+        if (importAbortController.signal.aborted) {
+          isImporting.value = false;
+          return;
+        }
+
+        isImporting.value = false;
+      }
 
       for (const item of items) {
         const strategy = resolveDropStrategy(item);
@@ -602,13 +736,17 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
         void timelineMediaUsageStore.refreshUsage();
       }
     } catch (err: any) {
+      if (err.name === 'AbortError') return;
       toast.add({
         color: 'error',
         title: t('common.error'),
         description: String(err?.message ?? err),
       });
+    } finally {
+      isImporting.value = false;
+      importAbortController = null;
+      clearDragPreview();
     }
-    clearDragPreview();
   }
 
   return {
@@ -619,5 +757,10 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     onTrackDragLeave,
     handleFileDrop,
     handleLibraryDrop,
+    isImporting,
+    importProgress,
+    importFileName,
+    importPhase,
+    cancelImport,
   };
 }

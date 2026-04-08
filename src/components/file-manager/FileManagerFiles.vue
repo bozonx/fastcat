@@ -69,7 +69,11 @@ const emit = defineEmits<{
       | 'uploadRemote'
       | 'transcribe'
       | 'extractAudio'
-      | 'paste',
+      | 'paste'
+      | 'copy'
+      | 'cut'
+      | 'createSubgroup'
+      | 'createContentItem',
     entry: FsEntry,
   ): void;
   (
