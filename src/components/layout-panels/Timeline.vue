@@ -18,7 +18,6 @@ import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
 import TimelineRuler from '~/components/timeline/TimelineRuler.vue';
 import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
 import UiTimecode from '~/components/ui/editor/UiTimecode.vue';
-import RemoteTransferProgressModal from '~/components/file-manager/RemoteTransferProgressModal.vue';
 
 import { useTimelineSectionResize } from '~/composables/timeline/useTimelineSectionResize';
 import { useTimelineHorizontalScrollSync } from '~/composables/timeline/useTimelineHorizontalScrollSync';
@@ -433,7 +432,7 @@ function onDragVirtualEnd() {
       @drag-virtual-end="onDragVirtualEnd"
     />
 
-    <RemoteTransferProgressModal
+    <FileManagerRemoteTransferProgressModal
       :open="isImporting"
       :title="t('videoEditor.fileManager.actions.importing', 'Импорт файлов')"
       :description="t('videoEditor.fileManager.actions.importing', 'Копирование файлов в проект...')"

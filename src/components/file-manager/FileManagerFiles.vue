@@ -66,7 +66,6 @@ const emit = defineEmits<{
       | 'openAsProjectTab'
       | 'createOtioVersion'
       | 'convertFile'
-      | 'uploadRemote'
       | 'transcribe'
       | 'extractAudio'
       | 'paste'

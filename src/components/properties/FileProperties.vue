@@ -487,9 +487,7 @@ const filteredDirectoryPrimaryActions = computed(() => {
 });
 
 const filteredFilePrimaryActions = computed(() => {
-  if (!isRemoteContent.value) {
-    return filePrimaryActions.value.filter((a: PrimaryEntryAction) => a.id !== 'uploadRemote');
-  }
+    return filePrimaryActions.value;
 
   if (isBloggerDogMedia.value) {
     return filePrimaryActions.value.filter((a: PrimaryEntryAction) =>

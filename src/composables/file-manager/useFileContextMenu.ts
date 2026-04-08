@@ -19,7 +19,6 @@ export type FileAction =
   | 'openAsPanelSound'
   | 'openAsProjectTab'
   | 'convertFile'
-  | 'uploadRemote'
   | 'transcribe'
   | 'extractAudio'
   | 'copy'
@@ -327,17 +326,6 @@ export function useFileContextMenu(
           label: t('videoEditor.fileManager.actions.convertFile', 'Convert File'),
           icon: 'i-heroicons-arrow-path',
           onSelect: () => onAction('convertFile', entry),
-        },
-      ]);
-    }
-
-    if (entry.kind === 'file') {
-      items.push([
-        {
-          label: t('videoEditor.fileManager.actions.uploadRemote', 'Upload to remote'),
-          icon: 'i-heroicons-cloud-arrow-up',
-          hidden: !deps.isRemoteAvailable,
-          onSelect: () => onAction('uploadRemote', entry),
         },
       ]);
     }

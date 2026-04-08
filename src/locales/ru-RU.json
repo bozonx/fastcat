@@ -1211,8 +1211,7 @@
         "syncTreeTooltip": "Обновить дерево файлов",
         "title": "Действия",
         "transcribe": "Транскрибировать",
-        "uploadFiles": "Загрузить файлы",
-        "uploadRemote": "Загрузить по ссылке"
+        "uploadFiles": "Загрузить файлы"
       },
       "audio": {
         "channels": "Каналы",
