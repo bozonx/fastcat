@@ -735,6 +735,8 @@ onMounted(async () => {
     await loadRemoteParentFolders(parentFolders);
   } else if (!fileManagerStore.selectedFolder) {
     setSelectedFsEntry({ kind: 'directory', path: '', name: 'Root' });
+  } else {
+    await loadFolderContent();
   }
 });
 
@@ -970,8 +972,6 @@ async function onDirectoryUploadChange(e: Event) {
       />
       <UContextMenu :items="emptySpaceContextMenuItems" class="min-h-full">
         <div class="min-h-full flex flex-col" @click.self="handleContainerClick">
-
-
           <div
             v-if="isRemoteMode && remoteError"
             class="flex flex-col items-center justify-center flex-1 text-ui-text-dim text-center p-6 gap-6"

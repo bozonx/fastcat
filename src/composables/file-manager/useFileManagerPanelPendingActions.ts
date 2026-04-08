@@ -2,6 +2,7 @@ import { watch } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
+import { useSelectionStore } from '~/stores/selection.store';
 
 export interface FileManagerPanelPendingActionsOptions {
   openDeleteConfirmModal: (entries: FsEntry[]) => void;
@@ -24,15 +25,20 @@ export function useFileManagerPanelPendingActions({
 }: FileManagerPanelPendingActionsOptions) {
   const uiStore = useUiStore();
   const focusStore = useFocusStore();
+  const selectionStore = useSelectionStore();
 
-  const isFocused = () => focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`);
+  const isFocusedOrSelected = () => {
+    if (focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return true;
+    const selected = selectionStore.selectedEntity;
+    return selected?.source === 'fileManager' && (selected as any).instanceId === instanceId;
+  };
 
   watch(
     () => uiStore.pendingFsEntryDelete,
     (value) => {
       const entries = value;
       if (!entries || entries.length === 0) return;
-      if (!isFocused()) return;
+      if (!isFocusedOrSelected()) return;
       openDeleteConfirmModal(entries);
       uiStore.pendingFsEntryDelete = null;
     },
@@ -43,7 +49,7 @@ export function useFileManagerPanelPendingActions({
     (value) => {
       const entry = value;
       if (!entry) return;
-      if (!isFocused()) return;
+      if (!isFocusedOrSelected()) return;
       startRename(entry);
       uiStore.pendingFsEntryRename = null;
     },
@@ -54,6 +60,7 @@ export function useFileManagerPanelPendingActions({
     (value) => {
       const entry = value;
       if (!entry || entry.kind !== 'directory') return;
+      if (!isFocusedOrSelected()) return;
       onCreateFolder(entry);
       uiStore.pendingFsEntryCreateFolder = null;
     },
@@ -64,6 +71,7 @@ export function useFileManagerPanelPendingActions({
     async (value) => {
       const entry = value;
       if (!entry || entry.kind !== 'directory') return;
+      if (!isFocusedOrSelected()) return;
       try {
         await createTimelineInDirectory(entry);
       } finally {
@@ -77,6 +85,7 @@ export function useFileManagerPanelPendingActions({
     async (value) => {
       const entry = value;
       if (!entry || entry.kind !== 'directory') return;
+      if (!isFocusedOrSelected()) return;
       try {
         await createMarkdownInDirectory(entry);
       } finally {
@@ -90,6 +99,7 @@ export function useFileManagerPanelPendingActions({
     async (value) => {
       const entry = value;
       if (!entry || entry.kind !== 'file') return;
+      if (!isFocusedOrSelected()) return;
       try {
         await createOtioVersion(entry);
       } finally {

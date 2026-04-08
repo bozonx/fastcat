@@ -3,18 +3,27 @@ import { ref, computed, provide, onMounted, shallowRef } from 'vue';
 import { Pane, Splitpanes } from 'splitpanes';
 import { useComputerVfs } from '~/composables/file-manager/useComputerVfs';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { createFileManager, FILE_MANAGER_INJECTION_KEY } from '~/composables/file-manager/useFileManager';
+import {
+  createFileManager,
+  FILE_MANAGER_INJECTION_KEY,
+} from '~/composables/file-manager/useFileManager';
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import type { FsEntry } from '~/types/fs';
-import { useFileManagerStore, useFileBrowserPersistenceStore, type FileViewMode } from '~/stores/file-manager.store';
+import {
+  useFileManagerStore,
+  useFileBrowserPersistenceStore,
+  type FileViewMode,
+} from '~/stores/file-manager.store';
 
 const props = defineProps<{
-    instanceId?: string;
-    hideFocusFrame?: boolean;
+  instanceId?: string;
+  hideFocusFrame?: boolean;
 }>();
 
-const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
+const fileManagerStore =
+  (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
+  useFileManagerStore();
 const persistenceStore = useFileBrowserPersistenceStore();
 const instanceId = props.instanceId || 'computer';
 const workspaceStore = useWorkspaceStore();
@@ -73,7 +82,6 @@ const fileManager = createFileManager({
   hideCommonRoot: true,
 });
 
-
 const expandedPaths = ref(new Set<string>());
 
 // Decouple computer-specific settings from the main store instance using persistence store
@@ -85,7 +93,7 @@ const computerStoreWrapper = computed(() => {
       if (prop === 'viewMode') return persistenceStore.computerViewMode;
       if (prop === 'historyStack') return computerHistoryStack.value;
       if (prop === 'futureStack') return computerFutureStack.value;
-      
+
       if (prop === 'openFolder') {
         return (entry: FsEntry | null, options: { skipHistory?: boolean } = {}) => {
           if (entry && entry.kind === 'directory') {
@@ -131,7 +139,7 @@ const computerStoreWrapper = computed(() => {
         return true;
       }
       return Reflect.set(target, prop, value);
-    }
+    },
   });
 });
 
@@ -139,31 +147,36 @@ provide('fileManagerStore', computerStoreWrapper.value);
 provide(FILE_MANAGER_INJECTION_KEY, fileManager);
 
 onMounted(async () => {
+  let restored = false;
   if (persistenceStore.computerLastFolder) {
     try {
       // Validate that the folder still exists before trying to open it
       const exists = await vfs.value?.exists(persistenceStore.computerLastFolder.path);
       if (!exists) {
         persistenceStore.setComputerLastFolder(null);
+      } else {
+        computerStoreWrapper.value.openFolder(persistenceStore.computerLastFolder, {
+          skipHistory: true,
+        });
+        restored = true;
       }
     } catch (e) {
       console.warn('Failed to validate last computer folder', e);
       persistenceStore.setComputerLastFolder(null);
     }
   }
-  
+
   await fileManager.loadProjectDirectory();
-  
+
   // If no folder selected or previous one was invalid, open root
-  if (!persistenceStore.computerLastFolder) {
-      computerStoreWrapper.value.openFolder({
-          name: rootPath.value || 'Root',
-          path: rootPath.value,
-          kind: 'directory',
-      });
+  if (!restored) {
+    computerStoreWrapper.value.openFolder({
+      name: rootPath.value || 'Root',
+      path: rootPath.value,
+      kind: 'directory',
+    });
   }
 });
-
 
 function onSelect(entry: FsEntry) {
   computerStoreWrapper.value.openFolder(entry);
@@ -190,7 +203,11 @@ function onSelect(entry: FsEntry) {
         :instance-id="instanceId"
         :is-external="true"
         :hide-focus-frame="props.hideFocusFrame"
-        :root-name="workspaceStore.workspaceProviderId === 'tauri' ? t('fastcat.fileManager.tabs.computer') : t('fastcat.fileManager.tabs.workspace')"
+        :root-name="
+          workspaceStore.workspaceProviderId === 'tauri'
+            ? t('fastcat.fileManager.tabs.computer')
+            : t('fastcat.fileManager.tabs.workspace')
+        "
         hide-upload
         class="h-full"
       />

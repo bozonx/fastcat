@@ -95,7 +95,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
   }) {
     if (params.kind === 'file' && params.path) {
       const meta = await mediaStore.getOrFetchMetadataByPath(params.path);
-      if (meta?.duration) return meta.duration;
+      if (meta?.duration) return Math.floor(meta.duration * 1_000_000);
 
       const type = getMediaTypeFromFilename(params.path);
       if (type === 'video' || type === 'audio') {
@@ -485,10 +485,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       return;
     }
 
-    if (
-      !types.includes('application/json') &&
-      !types.includes('fastcat-item')
-    ) {
+    if (!types.includes('application/json') && !types.includes('fastcat-item')) {
       clearDragPreview();
       return;
     }
