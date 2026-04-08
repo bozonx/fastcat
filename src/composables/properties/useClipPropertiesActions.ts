@@ -40,6 +40,7 @@ interface UiStoreActions {
   selectedFsEntry: Partial<FsEntry> | null;
   mediaReplaceTarget: { trackId: string; itemId: string; expectedType: 'video' | 'image' } | null;
   isMediaReplaceModalOpen: boolean;
+  notifyFileManagerUpdate: () => void;
 }
 
 interface FilesPageStoreActions {
@@ -322,6 +323,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     }
 
     await fileManager.loadProjectDirectory();
+    uiStore.notifyFileManagerUpdate();
 
     const parts = path.split('/').filter(Boolean);
     let currentPath = '';
@@ -379,7 +381,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     uiStore.mediaReplaceTarget = {
       trackId: clip.trackId,
       itemId: clip.id,
-      expectedType: clip.isImage ? 'image' : 'video'
+      expectedType: clip.isImage ? 'image' : 'video',
     };
     uiStore.isMediaReplaceModalOpen = true;
   }

@@ -42,14 +42,15 @@ export function useFileProxyFolder(options: UseFileProxyFolderOptions) {
 
   const isGeneratingProxyForFolder = computed(() => {
     const entry = options.selectedFsEntry.value;
-    if (!entry || entry.kind !== 'directory' || !entry.path) return false;
+    if (!entry || entry.kind !== 'directory' || entry.path === undefined) return false;
 
     const gp = generatingProxies.value;
     if (!gp || gp.size === 0) return false;
 
     const dirPath = entry.path;
+    const prefix = dirPath ? `${dirPath}/` : '';
     for (const p of gp) {
-      if (p.startsWith(`${dirPath}/`)) {
+      if (prefix === '' || p.startsWith(prefix)) {
         return true;
       }
     }
@@ -58,7 +59,7 @@ export function useFileProxyFolder(options: UseFileProxyFolderOptions) {
 
   async function generateProxiesForSelectedFolder() {
     const entry = options.selectedFsEntry.value;
-    if (!entry || entry.kind !== 'directory' || !entry.path) return;
+    if (!entry || entry.kind !== 'directory' || typeof entry.path !== 'string') return;
     const dirHandle = await options.resolveDirectoryHandle(entry.path);
     if (!dirHandle) return;
     await options.proxyStore.generateProxiesForFolder({
@@ -69,11 +70,12 @@ export function useFileProxyFolder(options: UseFileProxyFolderOptions) {
 
   async function stopProxyGenerationForSelectedFolder() {
     const entry = options.selectedFsEntry.value;
-    if (!entry || entry.kind !== 'directory' || !entry.path) return;
+    if (!entry || entry.kind !== 'directory' || typeof entry.path !== 'string') return;
     const dirPath = entry.path;
+    const prefix = dirPath ? `${dirPath}/` : '';
 
     for (const p of generatingProxies.value) {
-      if (p.startsWith(`${dirPath}/`)) {
+      if (prefix === '' || p.startsWith(prefix)) {
         await options.proxyStore.cancelProxyGeneration(p);
       }
     }

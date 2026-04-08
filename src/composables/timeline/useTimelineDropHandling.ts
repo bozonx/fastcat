@@ -455,6 +455,12 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       kind: payload.kind,
       path: payload.path,
     });
+
+    if (!draggedFile.draggedFile.value) {
+      clearDragPreview();
+      return null;
+    }
+
     const pseudo =
       isLayer1Pressed(e, workspaceStore.userSettings) ||
       timelineSettingsStore.overlapMode === 'pseudo';
@@ -533,6 +539,8 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
         title: t('common.error'),
         description: err.message,
       });
+    } finally {
+      clearDragPreview();
     }
   }
 
