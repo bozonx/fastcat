@@ -114,6 +114,9 @@ const {
 
 const {
   isDeleteConfirmModalOpen,
+  isCreateFolderModalOpen,
+  createFolderDefaultName,
+  confirmCreateFolder,
   editingEntryPath,
   commitRename,
   stopRename,
@@ -456,6 +459,8 @@ useFileManagerPanelBootstrap({
       :timelines-using-delete-target="timelinesUsingDeleteTarget"
       :is-delete-confirm-modal-open="isDeleteConfirmModalOpen"
       :transcription-modal-open="transcriptionModalOpen"
+      :is-folder-modal-open="isCreateFolderModalOpen"
+      :folder-default-name="createFolderDefaultName"
       :is-transcribing="isTranscribing"
       :transcription-error="transcriptionError"
       :transcription-entry="transcriptionEntry"
@@ -463,8 +468,10 @@ useFileManagerPanelBootstrap({
       @update:is-delete-confirm-modal-open="isDeleteConfirmModalOpen = $event"
       @update:transcription-modal-open="transcriptionModalOpen = $event"
       @update:transcription-language="transcriptionLanguage = $event"
+      @update:is-folder-modal-open="isCreateFolderModalOpen = $event"
       @delete-confirm="handleDeleteConfirm"
       @submit-transcription="submitTranscription"
+      @folder-confirm="confirmCreateFolder"
     />
   </div>
 </template>

@@ -4,6 +4,7 @@ import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiModal from '~/components/ui/UiModal.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
+import UiEntityCreationModal from '~/components/ui/UiEntityCreationModal.vue';
 
 interface TimelineRef {
   timelineName: string;
@@ -19,6 +20,12 @@ interface Props {
   transcriptionError: string;
   transcriptionEntry: FsEntry | null;
   transcriptionLanguage: string;
+  // Creation modal
+  isFolderModalOpen: boolean;
+  folderDefaultName: string;
+  // BloggerDog Creation
+  isSubgroupModalOpen: boolean;
+  isItemModalOpen: boolean;
 }
 
 const props = defineProps<Props>();
@@ -27,8 +34,14 @@ const emit = defineEmits<{
   (e: 'update:isDeleteConfirmModalOpen', value: boolean): void;
   (e: 'update:transcriptionModalOpen', value: boolean): void;
   (e: 'update:transcriptionLanguage', value: string): void;
+  (e: 'update:isFolderModalOpen', value: boolean): void;
+  (e: 'update:isSubgroupModalOpen', value: boolean): void;
+  (e: 'update:isItemModalOpen', value: boolean): void;
   (e: 'deleteConfirm'): void;
   (e: 'submitTranscription'): void;
+  (e: 'folderConfirm', name: string): void;
+  (e: 'subgroupConfirm', name: string): void;
+  (e: 'itemConfirm', name: string): void;
 }>();
 
 const { t } = useI18n();
@@ -147,4 +160,26 @@ const { t } = useI18n();
       </div>
     </template>
   </UiModal>
+
+  <UiEntityCreationModal
+    :open="props.isFolderModalOpen"
+    :title="t('fastcat.fileManager.actions.createFolder', 'Создать папку')"
+    :default-value="props.folderDefaultName"
+    @update:open="emit('update:isFolderModalOpen', $event)"
+    @confirm="emit('folderConfirm', $event)"
+  />
+
+  <UiEntityCreationModal
+    :open="props.isSubgroupModalOpen"
+    :title="t('fastcat.bloggerDog.actions.createSubgroup', 'Создать подгруппу')"
+    @update:open="emit('update:isSubgroupModalOpen', $event)"
+    @confirm="emit('subgroupConfirm', $event)"
+  />
+
+  <UiEntityCreationModal
+    :open="props.isItemModalOpen"
+    :title="t('fastcat.bloggerDog.actions.createItem', 'Создать элемент контента')"
+    @update:open="emit('update:isItemModalOpen', $event)"
+    @confirm="emit('itemConfirm', $event)"
+  />
 </template>
