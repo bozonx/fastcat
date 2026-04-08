@@ -279,6 +279,7 @@ const castedRemoteRecord = computed(() => {
 });
 
 const remoteMediaCount = computed(() => {
+  if (fileInfo.value?.kind === 'file') return undefined;
   const record = castedRemoteRecord.value;
   if (record && 'media' in record) {
     return (record as RemoteVfsFileEntry).media?.length;
@@ -802,7 +803,7 @@ const filteredFilePrimaryActions = computed(() => {
 
       <FileGeneralInfoSection
         v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'file'"
-        :title="isBloggerDogMedia ? selectedFsEntry?.name || generalInfoTitle : generalInfoTitle"
+        :title="generalInfoTitle"
         :file-info="fileInfo"
         :selected-path="selectedPath"
         :path-link="bloggerDogDeepLink"

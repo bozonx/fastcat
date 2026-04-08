@@ -88,22 +88,15 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
     const info = options.fileInfo.value;
     if (!info) return '';
 
-    if (isBloggerDogProject.value) return t('fastcat.file.bloggerDogProject', 'Проект');
-    if (isBloggerDogGroup.value) return t('fastcat.file.bloggerDogGroup', 'Группа');
-    if (isBloggerDogContentItem.value) return t('fastcat.file.bloggerDogItem', 'Элемент контента');
-
-    if (info.kind === 'directory') return t('common.folder', 'Folder');
-    if (options.isOtio.value) return 'OTIO';
-
-    if (options.mediaType.value === 'text') {
-      const ext = options.fileInfo.value?.ext?.toLowerCase();
-      if (ext === 'json') return 'JSON';
-      if (ext === 'md' || ext === 'markdown') return 'Markdown';
-      if (ext === 'yaml' || ext === 'yml') return 'YAML';
-      return 'Text';
+    if (info.kind === 'directory') {
+      if (isBloggerDogProject.value) return t('fastcat.file.bloggerDogProject', 'Проект');
+      if (isBloggerDogGroup.value) return t('fastcat.file.bloggerDogGroup', 'Группа');
+      if (isBloggerDogContentItem.value) return t('fastcat.file.bloggerDogItem', 'Элемент контента');
+      return t('common.folder', 'Folder');
     }
 
-    return info.mimeType ?? 'File';
+    // For all types of files, show mimeType as the title
+    return info.mimeType ?? t('common.file', 'File');
   });
 
   const mediaMeta = computed(() => options.fileInfo.value?.metadata as any);
