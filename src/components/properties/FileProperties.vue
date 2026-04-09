@@ -603,7 +603,7 @@ const filteredFilePrimaryActions = computed(() => {
 
     <template v-if="!mobileTextMode || mediaType !== 'text'">
       <FileGeneralInfoSection
-        v-if="selectedFsEntry && !isProjectRootDir && fileInfo?.kind === 'file'"
+        v-if="selectedFsEntry && !isProjectRootDir && (fileInfo?.kind === 'file' || selectedFsEntry.kind === 'file')"
         :title="generalInfoTitle"
         :file-info="fileInfo || (selectedFsEntry as any)"
         :selected-path="selectedPath"
@@ -619,7 +619,7 @@ const filteredFilePrimaryActions = computed(() => {
       </FileGeneralInfoSection>
 
       <ImageFilePropertiesSection
-        v-if="fileInfo?.kind === 'file' && mediaType === 'image' && hasImageInfo"
+        v-if="(fileInfo?.kind === 'file' || selectedFsEntry?.kind === 'file') && mediaType === 'image' && hasImageInfo"
         :image-resolution="imageResolution"
         :image-create-date="imageCreateDate"
         :image-location-link="imageLocationLink"
@@ -627,7 +627,7 @@ const filteredFilePrimaryActions = computed(() => {
       />
 
       <MediaPropertiesSection
-        v-if="fileInfo?.kind === 'file' && (isVideoFile || mediaType === 'audio')"
+        v-if="(fileInfo?.kind === 'file' || selectedFsEntry?.kind === 'file') && (isVideoFile || mediaType === 'audio')"
         :media-meta="mediaMeta"
         :format-duration-seconds="formatDurationSeconds"
         :format-bitrate="formatBitrate"
@@ -666,7 +666,7 @@ const filteredFilePrimaryActions = computed(() => {
       <PropertySection
         v-else-if="
           !hideActions &&
-          fileInfo?.kind === 'file' &&
+          (fileInfo?.kind === 'file' || selectedFsEntry?.kind === 'file') &&
           !isVirtualAll &&
           !isPersonalLibrary &&
           !isProjectLibraries &&
@@ -704,7 +704,7 @@ const filteredFilePrimaryActions = computed(() => {
       />
 
       <OtioPropertiesSection
-        v-if="fileInfo?.kind === 'file' && isOtio"
+        v-if="(fileInfo?.kind === 'file' || selectedFsEntry?.kind === 'file') && isOtio"
         :summary="timelineDocSummary"
         :format-duration-seconds="formatDurationSeconds"
       />
@@ -791,7 +791,7 @@ const filteredFilePrimaryActions = computed(() => {
       </PropertySection>
 
       <FileGeneralInfoSection
-        v-if="selectedFsEntry && !isProjectRootDir && fileInfo?.kind === 'directory' && !isRemoteRoot && !isVirtualAll && !isPersonalLibrary && !isProjectLibraries && !isBloggerDogProject"
+        v-if="selectedFsEntry && !isProjectRootDir && (fileInfo?.kind === 'directory' || selectedFsEntry.kind === 'directory') && !isRemoteRoot && !isVirtualAll && !isPersonalLibrary && !isProjectLibraries && !isBloggerDogProject"
         :title="generalInfoTitle"
         :file-info="fileInfo || (selectedFsEntry as any)"
         :selected-path="selectedPath"
@@ -816,7 +816,7 @@ const filteredFilePrimaryActions = computed(() => {
       <!-- General info for files moved to top -->
 
       <ExpandableYamlSection
-        v-if="fileInfo?.kind === 'file' && (isVideoFile || isAudioFile) && metadataYaml && metadataYaml !== '{}\n' && metadataYaml !== '[]\n'"
+        v-if="(fileInfo?.kind === 'file' || selectedFsEntry?.kind === 'file') && (isVideoFile || isAudioFile) && metadataYaml && !['{}', '[]', 'null', ''].includes(metadataYaml.trim())"
         :title="t('common.meta', 'Meta')"
         :content="metadataYaml"
         :expanded="isMetaExpanded"
@@ -825,7 +825,7 @@ const filteredFilePrimaryActions = computed(() => {
       />
 
       <ExpandableYamlSection
-        v-if="fileInfo?.kind === 'file' && mediaType === 'image' && exifYaml && exifYaml !== '{}\n' && exifYaml !== '[]\n'"
+        v-if="(fileInfo?.kind === 'file' || selectedFsEntry?.kind === 'file') && mediaType === 'image' && exifYaml && !['{}', '[]', 'null', ''].includes(exifYaml.trim())"
         title="EXIF"
         :content="exifYaml"
         :expanded="isExifExpanded"

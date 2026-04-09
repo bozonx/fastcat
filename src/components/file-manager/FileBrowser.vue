@@ -882,6 +882,7 @@ const { handleEntryClick, handleEntryDoubleClick, handleEntryEnter, handleSort, 
     setSelectedFsEntry,
     onFileAction,
     preventOpen: props.preventOpen,
+    isExternal: isExternal.value,
   });
 
 async function onDirectoryUploadChange(e: Event) {
