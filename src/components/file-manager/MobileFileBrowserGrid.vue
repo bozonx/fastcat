@@ -246,7 +246,6 @@ onBeforeUnmount(clearLongPress);
               class="truncate text-[12px] font-medium leading-tight mb-0.5 transition-colors"
               :class="[
                 isSelected(entry) ? 'text-selection-accent-400' : '',
-                entry.path && entry.path === projectStore.currentTimelinePath ? 'text-[#60a5fa]!' : '',
                 getCompatibilityStatus(entry) !== 'ok' ? 'text-red-400!' : '',
               ]"
             >

@@ -167,6 +167,9 @@ function handleImageError(entry: ExtendedFsEntry) {
       >
         <div
           class="relative mb-2 w-full aspect-square flex items-center justify-center bg-ui-bg rounded overflow-hidden"
+          :class="{
+            'bg-ui-bg!': entry.path && entry.path === projectStore.currentTimelinePath,
+          }"
         >
           <!-- Fully unsupported / Corrupt: red placeholder instead of thumbnail -->
           <div
@@ -265,9 +268,6 @@ function handleImageError(entry: ExtendedFsEntry) {
             isGeneratingProxyInDirectory(entry)
               ? 'text-amber-400!'
               : '',
-            entry.path && entry.path === projectStore.currentTimelinePath
-              ? 'text-[#60a5fa]!'
-              : '',
             getCompatibilityStatus(entry) !== 'ok' ? 'text-red-400!' : '',
             {
               'text-xs':
@@ -282,6 +282,12 @@ function handleImageError(entry: ExtendedFsEntry) {
               ? 'hover:border-(--selection-accent-500)/50 border-(--selection-accent-500)/35 cursor-text'
               : '',
           ]"
+          :style="{
+            color:
+              entry.path && entry.path === projectStore.currentTimelinePath
+                ? 'var(--selection-accent-400)'
+                : undefined,
+          }"
           :title="entry.name"
           @click="onNameClick($event, entry)"
           @dblclick="onNameDblClick($event, entry)"

@@ -380,9 +380,6 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
                     isGeneratingProxyInDirectory(entry)
                       ? 'text-amber-400!'
                       : '',
-                    entry.path && entry.path === projectStore.currentTimelinePath
-                      ? 'text-[#60a5fa]!'
-                      : '',
                     getCompatibilityStatus(entry) !== 'ok' ? 'text-red-400!' : '',
                     isSelected(entry)
                       ? 'hover:border-(--selection-accent-500)/50 border-(--selection-accent-500)/35 cursor-text'
