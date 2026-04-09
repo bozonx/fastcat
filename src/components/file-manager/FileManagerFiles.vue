@@ -212,11 +212,13 @@ const {
 
 function onContainerDragOver(e: DragEvent) {
   if (!isRelevantDrag(e)) return;
+  onRootDragOver(e);
   autoScrollDragOver(e);
 }
 
-function onContainerDrop() {
+function onContainerDrop(e: DragEvent) {
   autoScrollDrop();
+  onRootDrop(e);
 }
 
 function onContainerDragLeave(e: DragEvent) {

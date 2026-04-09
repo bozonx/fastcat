@@ -685,15 +685,7 @@ const filteredFilePrimaryActions = computed(() => {
       >
         <EntryActions
           :primary-actions="filteredDirectoryPrimaryActions"
-          :secondary-actions="
-            isBloggerDogGroup || isPersonalLibrary
-              ? directorySecondaryActions.filter((a) =>
-                  ['createSubgroup', 'createContentItem'].includes(a.id),
-                )
-              : isRemoteContent
-                ? []
-                : directorySecondaryActions
-          "
+          :secondary-actions="directorySecondaryActions"
         />
       </PropertySection>
 
@@ -711,7 +703,7 @@ const filteredFilePrimaryActions = computed(() => {
       >
         <EntryActions
           :primary-actions="filteredFilePrimaryActions"
-          :secondary-actions="isBloggerDogMedia ? [] : isRemoteContent ? [] : fileSecondaryActions"
+          :secondary-actions="fileSecondaryActions"
         />
       </PropertySection>
 
