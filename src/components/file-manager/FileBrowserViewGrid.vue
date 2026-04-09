@@ -32,7 +32,6 @@ function getBdThumbnail(entry: FsEntry): string | undefined {
 
 const props = defineProps<{
   entries: ExtendedFsEntry[];
-  isRootDropOver: boolean;
   dragOverEntryPath: string | null;
   currentDragOperation: 'copy' | 'move' | null;
   currentGridSizeName: string;
@@ -158,8 +157,8 @@ function handleImageError(entry: ExtendedFsEntry) {
         @dragend="emit('entryDragEnd')"
         @dragenter.prevent="emit('entryDragEnter', $event, entry)"
         @dragover.prevent="emit('entryDragOver', $event, entry)"
-        @dragleave="emit('entryDragLeave', $event, entry)"
-        @drop.prevent="emit('entryDrop', $event, entry)"
+        @dragleave.prevent="emit('entryDragLeave', $event, entry)"
+        @drop.prevent.stop="emit('entryDrop', $event, entry)"
         @click="emit('entryClick', $event, entry)"
         @dblclick="emit('entryDoubleClick', entry)"
         @keydown.enter.prevent.stop="emit('entryEnter', entry)"
@@ -287,33 +286,5 @@ function handleImageError(entry: ExtendedFsEntry) {
       </div>
     </UContextMenu>
 
-    <!-- Root drop zone for grid view -->
-    <div
-      class="w-full flex items-center justify-center min-h-12 mt-2 rounded-lg transition-colors"
-      :class="{
-        'bg-primary-500/10 outline outline-primary-500/40 -outline-offset-1':
-          isRootDropOver && props.currentDragOperation !== 'copy',
-        'bg-emerald-500/10 outline outline-emerald-500/40 -outline-offset-1':
-          isRootDropOver && props.currentDragOperation === 'copy',
-      }"
-      @dragenter.prevent.stop="emit('rootDragEnter', $event)"
-      @dragover.prevent="emit('rootDragOver', $event)"
-      @dragleave.prevent="emit('rootDragLeave', $event)"
-      @drop.prevent="emit('rootDrop', $event)"
-    >
-      <p v-if="isRootDropOver" class="font-medium text-primary-400">
-        {{
-          props.currentDragOperation === 'copy'
-            ? t(
-                'videoEditor.fileManager.actions.dropToRootCopyHint',
-                'Release to copy into the current folder',
-              )
-            : t(
-                'videoEditor.fileManager.actions.dropToRootHint',
-                'Release to upload into the project root',
-              )
-        }}
-      </p>
-    </div>
   </div>
 </template>

@@ -234,7 +234,22 @@ const previewOptions = computed(() => [
   { value: 'proxy', label: t('videoEditor.fileManager.preview.proxy', 'Proxy') },
 ]);
 
+const isExternal = computed(() => {
+  const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
+  if (!entity || entity.source !== 'fileManager') return false;
+
+  // Check explicit flag or instance ID
+  const isExt = (entity as any).isExternal || (entity as any).instanceId === 'computer' || (entity as any).instanceId === 'sidebar';
+  if (isExt) return true;
+
+  // Check if it's from a remote VFS (always external for project purposes)
+  if (entity.kind !== 'multiple' && (entity as any).entry?.source === 'remote') return true;
+
+  return false;
+});
+
 const hasProxy = computed(() => {
+  if (isExternal.value) return false;
   if (displayMode.value !== 'file' || !selectedFsEntry.value || !selectedFsEntry.value.path)
     return false;
   return proxyStore.existingProxies.has(selectedFsEntry.value.path);
@@ -397,13 +412,14 @@ const headerTitle = computed(() => {
         :has-proxy="hasProxy"
         :preview-mode="previewMode"
         :instance-id="selectionStore.selectedEntity?.source === 'fileManager' ? (selectionStore.selectedEntity as any)?.instanceId : undefined"
-        :is-external="selectionStore.selectedEntity?.source === 'fileManager' ? (selectionStore.selectedEntity as any)?.isExternal : false"
+        :is-external="isExternal"
         @update:preview-mode="(m) => (previewMode = m)"
         @convert="(entry) => conversionStore.openConversionModal(entry)"
       />
       <MultiFileProperties
         v-else-if="displayMode === 'files' && selectedFsEntries"
         :entries="selectedFsEntries"
+        :is-external="isExternal"
       />
       <MarkerProperties
         v-else-if="displayMode === 'marker' && selectedMarkerId"

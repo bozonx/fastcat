@@ -922,7 +922,7 @@ async function onDirectoryUploadChange(e: Event) {
     @pointerdown.capture="focusBrowserPanel"
     @dragover.prevent="onPanelDragOver"
     @dragleave="onPanelDragLeave"
-    @drop.prevent="onPanelDrop"
+    @drop.prevent.stop="onPanelDrop"
   >
     <!-- Toolbar -->
     <FileBrowserToolbar
@@ -1030,7 +1030,6 @@ async function onDirectoryUploadChange(e: Event) {
           <FileBrowserViewGrid
             v-else-if="remoteModeOnly || fileManagerStore.viewMode === 'grid'"
             :entries="sortedEntries as ExtendedFsEntry[]"
-            :is-root-drop-over="isRootDropOver"
             :drag-over-entry-path="dragOverEntryPath"
             :current-drag-operation="currentDragOperation"
             :current-grid-size-name="currentGridSizeName"
@@ -1048,10 +1047,6 @@ async function onDirectoryUploadChange(e: Event) {
             @entry-drag-over="onEntryDragOver"
             @entry-drag-leave="onEntryDragLeave"
             @entry-drop="onEntryDrop"
-            @root-drag-enter="onRootDragEnter"
-            @root-drag-over="onRootDragOver"
-            @root-drag-leave="onRootDragLeave"
-            @root-drop="onRootDrop"
             @entry-click="handleEntryClick"
             @entry-double-click="handleEntryDoubleClick"
             @entry-enter="handleEntryEnter"
@@ -1064,7 +1059,6 @@ async function onDirectoryUploadChange(e: Event) {
           <FileBrowserViewList
             v-else
             :entries="sortedEntries as ExtendedFsEntry[]"
-            :is-root-drop-over="isRootDropOver"
             :drag-over-entry-path="dragOverEntryPath"
             :current-drag-operation="currentDragOperation"
             :folder-sizes-loading="folderSizesLoading"
@@ -1082,10 +1076,6 @@ async function onDirectoryUploadChange(e: Event) {
             @entry-drag-over="onEntryDragOver"
             @entry-drag-leave="onEntryDragLeave"
             @entry-drop="onEntryDrop"
-            @root-drag-enter="onRootDragEnter"
-            @root-drag-over="onRootDragOver"
-            @root-drag-leave="onRootDragLeave"
-            @root-drop="onRootDrop"
             @entry-click="handleEntryClick"
             @entry-double-click="handleEntryDoubleClick"
             @entry-enter="handleEntryEnter"
