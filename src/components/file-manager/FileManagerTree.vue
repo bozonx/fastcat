@@ -312,7 +312,6 @@ function getEntryViewModel(entry: FsEntry): EntryViewModel {
     isDot ? 'opacity-30' : '',
     meta.hasProxy && !meta.generatingProxy ? 'text-(--color-success)!' : '',
     meta.generatingProxy || generatingDir ? 'text-amber-400!' : '',
-    entry.path && entry.path === projectStore.currentTimelinePath ? 'text-[#60a5fa]!' : '',
     isCut ? 'opacity-40 line-through decoration-dotted' : '',
     isCopy ? 'text-primary-300!' : '',
     compatibilityStatus !== 'ok' ? 'text-red-400!' : '',
