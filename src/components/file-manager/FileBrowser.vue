@@ -200,7 +200,7 @@ function setSelectedFsEntry(entry: FsEntry | null) {
     remotePath: entry.remotePath,
     adapterPayload: entry.adapterPayload,
   };
-  selectionStore.selectFsEntry(entry, instanceId);
+  selectionStore.selectFsEntry(entry, instanceId, isExternal.value);
 }
 
 // --- Remote ---
@@ -822,7 +822,7 @@ watch(
       return;
     }
 
-    selectionStore.selectFsEntries(visibleItems, instanceId);
+    selectionStore.selectFsEntries(visibleItems, instanceId, isExternal.value);
   },
 );
 
@@ -882,6 +882,7 @@ const { handleEntryClick, handleEntryDoubleClick, handleEntryEnter, handleSort, 
     setSelectedFsEntry,
     onFileAction,
     preventOpen: props.preventOpen,
+    instanceId,
     isExternal: isExternal.value,
   });
 

@@ -34,6 +34,7 @@ vi.mock('~/utils/media-types', () => ({
 vi.mock('~/composables/file-manager/useFileManagerSelection', () => ({
   useFileManagerSelection: ({ onSingleSelect }: any) => ({
     handleEntryClick: (e: any, entry: any) => onSingleSelect(entry),
+    selectSingle: (entry: any) => onSingleSelect(entry),
   }),
 }));
 
@@ -113,5 +114,26 @@ describe('useFileBrowserInteraction', () => {
       'openAsProjectTab',
       expect.objectContaining({ name: 'script.txt' }),
     );
+  });
+
+  it('does not open external otio files as timeline', async () => {
+    const onFileAction = vi.fn();
+    const { handleEntryDoubleClick } = useFileBrowserInteraction({
+      isRemoteMode: ref(false),
+      remoteCurrentFolder: ref(null),
+      sortedEntries: ref([]),
+      loadFolderContent: vi.fn(),
+      loadParentFolders: vi.fn(),
+      setSelectedFsEntry: vi.fn(),
+      onFileAction,
+      isExternal: true,
+    });
+
+    handleEntryDoubleClick({ kind: 'file', name: 'external.otio', path: 'external.otio' } as FsEntry);
+    await Promise.resolve();
+
+    expect(projectStore.openTimelineFile).not.toHaveBeenCalled();
+    expect(timelineStore.loadTimeline).not.toHaveBeenCalled();
+    expect(onFileAction).not.toHaveBeenCalled();
   });
 });

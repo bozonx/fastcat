@@ -151,7 +151,10 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'createProxyForAll',
       label: options.t('videoEditor.fileManager.actions.createProxyForAll'),
       icon: 'i-heroicons-film',
-      hidden: !options.isFolderWithVideo.value || options.isGeneratingProxyForFolder.value,
+      hidden:
+        !options.isFolderWithVideo.value ||
+        options.isGeneratingProxyForFolder.value ||
+        options.isExternal?.value,
       onClick: options.generateProxiesForSelectedFolder,
     },
     {
@@ -159,7 +162,10 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       label: options.t('videoEditor.fileManager.actions.cancelProxyGeneration'),
       icon: 'i-heroicons-x-circle',
       color: 'error',
-      hidden: !options.isFolderWithVideo.value || !options.isGeneratingProxyForFolder.value,
+      hidden:
+        !options.isFolderWithVideo.value ||
+        !options.isGeneratingProxyForFolder.value ||
+        options.isExternal?.value,
       onClick: options.stopProxyGenerationForSelectedFolder,
     },
   ]);

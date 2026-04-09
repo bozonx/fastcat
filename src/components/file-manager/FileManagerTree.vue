@@ -206,7 +206,7 @@ watch(
       selectionStore.clearSelection();
       return;
     }
-    selectionStore.selectFsEntries(siblingEntries);
+    selectionStore.selectFsEntries(siblingEntries, props.instanceId, props.isExternal);
   },
 );
 
