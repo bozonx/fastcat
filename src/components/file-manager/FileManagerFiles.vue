@@ -22,6 +22,7 @@ import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { useVfs } from '~/composables/useVfs';
 import { useFileManagerSelection } from '~/composables/file-manager/useFileManagerSelection';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
+import { FILE_MANAGER_ROOT_SPACER_HEIGHT } from '~/utils/constants';
 
 const props = defineProps<{
   editingEntryPath?: string | null;
@@ -141,6 +142,12 @@ const selectedPath = computed(() => {
 });
 
 const mediaUsageMap = computed(() => timelineMediaUsageStore.mediaPathToTimelines);
+const rootSpacerStyle = {
+  width: '100%',
+  minWidth: '100%',
+  height: FILE_MANAGER_ROOT_SPACER_HEIGHT,
+  flexShrink: 0,
+} as const;
 
 function scrollToSelectedEntry(path: string): boolean {
   const container = scrollEl.value;
@@ -520,17 +527,12 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
           @request-download="onRequestDownload"
         />
 
-        <div class="file-manager-root-spacer relative" @pointerdown.self="selectProjectRoot" />
+        <div
+          class="relative"
+          :style="rootSpacerStyle"
+          @pointerdown.self="selectProjectRoot"
+        />
       </div>
     </UContextMenu>
   </div>
 </template>
-
-<style scoped>
-.file-manager-root-spacer {
-  width: 100%;
-  min-width: 100%;
-  height: 6rem;
-  flex-shrink: 0;
-}
-</style>

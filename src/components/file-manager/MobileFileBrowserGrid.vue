@@ -5,6 +5,7 @@ import { formatBytes } from '~/utils/format';
 import { getMediaTypeFromFilename, getMimeTypeFromFilename } from '~/utils/media-types';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
+import { useProjectStore } from '~/stores/project.store';
 import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
 
 interface ExtendedFsEntry extends FsEntry {
@@ -33,6 +34,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const { getFileIcon } = useFileManager();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
+const projectStore = useProjectStore();
 
 const mediaUsageMap = computed(() => timelineMediaUsageStore.mediaPathToTimelines);
 
@@ -244,6 +246,7 @@ onBeforeUnmount(clearLongPress);
               class="truncate text-[12px] font-medium leading-tight mb-0.5 transition-colors"
               :class="[
                 isSelected(entry) ? 'text-selection-accent-400' : '',
+                entry.path && entry.path === projectStore.currentTimelinePath ? 'text-selection-accent-400!' : '',
                 getCompatibilityStatus(entry) !== 'ok' ? 'text-red-400!' : '',
               ]"
             >

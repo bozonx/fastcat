@@ -3,6 +3,7 @@ import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useProxyStore } from '~/stores/proxy.store';
+import { useProjectStore } from '~/stores/project.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useClipboardPaths } from '~/composables/file-manager/useClipboardIndicator';
 import type { FsEntry } from '~/types/fs';
@@ -71,6 +72,7 @@ const fileManagerStore =
 const selectionStore = useSelectionStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const proxyStore = useProxyStore();
+const projectStore = useProjectStore();
 const fileManager = useFileManager();
 const clipboardPaths = useClipboardPaths();
 
@@ -262,6 +264,9 @@ function handleImageError(entry: ExtendedFsEntry) {
             proxyStore.generatingProxies.has(entry.path || '') ||
             isGeneratingProxyInDirectory(entry)
               ? 'text-amber-400!'
+              : '',
+            entry.path && entry.path === projectStore.currentTimelinePath
+              ? 'text-selection-accent-400!'
               : '',
             getCompatibilityStatus(entry) !== 'ok' ? 'text-red-400!' : '',
             {
