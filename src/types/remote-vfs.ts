@@ -10,6 +10,8 @@ export interface RemoteVfsMedia {
   posterUrl?: string;
   thumbnailUrl?: string;
   meta?: Record<string, unknown>;
+  created?: string;
+  updated?: string;
 }
 
 export interface RemoteVfsBaseEntry {
@@ -19,6 +21,9 @@ export interface RemoteVfsBaseEntry {
   type: 'file' | 'directory';
   path: string;
   parentId?: string;
+  created?: string;
+  updated?: string;
+  meta?: Record<string, unknown>;
 }
 
 export interface RemoteVfsDirectoryEntry extends RemoteVfsBaseEntry {
@@ -32,7 +37,6 @@ export interface RemoteVfsFileEntry extends RemoteVfsBaseEntry {
   tags?: string[];
   language?: string;
   note?: string;
-  meta?: Record<string, unknown>;
   media?: RemoteVfsMedia[];
 }
 

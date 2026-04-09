@@ -25,6 +25,8 @@ import {
   isCrossFileManagerDrag,
   resolveFileManagerDragOperation,
 } from '~/composables/file-manager/dragOperation';
+import { crossVfsCopy, crossVfsMove } from '~/file-manager/core/vfs/crossVfs';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
 interface UseFileBrowserDragAndDropOptions {
   findEntryByPath: (path: string) => FsEntry | null;
@@ -36,6 +38,7 @@ interface UseFileBrowserDragAndDropOptions {
   notifyFileManagerUpdate: () => void;
   fileManagerInstanceId?: string | null;
   isExternal?: boolean;
+  vfs: IFileSystemAdapter;
 }
 
 export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOptions) {
@@ -80,8 +83,10 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   const {
     currentDragOperation,
     dragSourceFileManagerInstanceId,
+    dragSourceVfs,
     setCurrentDragOperation,
     setDragSourceFileManagerInstanceId,
+    setDragSourceVfs,
   } = useAppClipboard();
 
   const isDragOverPanel = ref(false);
@@ -146,6 +151,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
     const operation = resolveDragStartOperation(e);
     setDragSourceFileManagerInstanceId(options.fileManagerInstanceId ?? null);
+    setDragSourceVfs(options.vfs);
     setCurrentDragOperation(operation);
 
     const movePayload = entriesToMove.map((e) => ({ name: e.name, kind: e.kind, path: e.path }));
@@ -180,6 +186,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     uiStore.isFileManagerDragging = false;
     setCurrentDragOperation(null);
     setDragSourceFileManagerInstanceId(null);
+    setDragSourceVfs(null);
     dragOverEntryPath.value = null;
   }
 
@@ -281,23 +288,49 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
       const itemsToMove = Array.isArray(parsed) ? parsed : [parsed];
 
-      for (const item of itemsToMove) {
-        const sourcePath = typeof item?.path === 'string' ? item.path : '';
-        if (!sourcePath || sourcePath === targetPath) continue;
+      if (isCrossManagerDrag && dragSourceVfs) {
+        for (const item of itemsToMove) {
+          const sourcePath = typeof item?.path === 'string' ? item.path : '';
+          if (!sourcePath || sourcePath === targetPath) continue;
 
-        const source = await options.resolveEntryByPath(sourcePath);
-        if (!source) continue;
+          const sourceKind = item?.kind === 'directory' ? 'directory' : 'file';
+          if (shouldCopy) {
+            await crossVfsCopy({
+              sourceVfs: dragSourceVfs,
+              targetVfs: options.vfs,
+              sourcePath,
+              sourceKind,
+              targetDirPath: targetPath,
+            });
+          } else {
+            await crossVfsMove({
+              sourceVfs: dragSourceVfs,
+              targetVfs: options.vfs,
+              sourcePath,
+              sourceKind,
+              targetDirPath: targetPath,
+            });
+          }
+        }
+      } else {
+        for (const item of itemsToMove) {
+          const sourcePath = typeof item?.path === 'string' ? item.path : '';
+          if (!sourcePath || sourcePath === targetPath) continue;
 
-        if (shouldCopy) {
-          await options.copyEntry({
-            source,
-            targetDirPath: targetPath,
-          });
-        } else {
-          await options.moveEntry({
-            source,
-            targetDirPath: targetPath,
-          });
+          const source = await options.resolveEntryByPath(sourcePath);
+          if (!source) continue;
+
+          if (shouldCopy) {
+            await options.copyEntry({
+              source,
+              targetDirPath: targetPath,
+            });
+          } else {
+            await options.moveEntry({
+              source,
+              targetDirPath: targetPath,
+            });
+          }
         }
       }
 
@@ -394,23 +427,49 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
       const itemsToMove = Array.isArray(parsed) ? parsed : [parsed];
 
-      for (const item of itemsToMove) {
-        const sourcePath = typeof item?.path === 'string' ? item.path : '';
-        if (!sourcePath) continue;
+      if (isCrossManagerDrag && dragSourceVfs) {
+        for (const item of itemsToMove) {
+          const sourcePath = typeof item?.path === 'string' ? item.path : '';
+          if (!sourcePath) continue;
 
-        const source = await options.resolveEntryByPath(sourcePath);
-        if (!source) continue;
+          const sourceKind = item?.kind === 'directory' ? 'directory' : 'file';
+          if (shouldCopy) {
+            await crossVfsCopy({
+              sourceVfs: dragSourceVfs,
+              targetVfs: options.vfs,
+              sourcePath,
+              sourceKind,
+              targetDirPath: targetPath,
+            });
+          } else {
+            await crossVfsMove({
+              sourceVfs: dragSourceVfs,
+              targetVfs: options.vfs,
+              sourcePath,
+              sourceKind,
+              targetDirPath: targetPath,
+            });
+          }
+        }
+      } else {
+        for (const item of itemsToMove) {
+          const sourcePath = typeof item?.path === 'string' ? item.path : '';
+          if (!sourcePath) continue;
 
-        if (shouldCopy) {
-          await options.copyEntry({
-            source,
-            targetDirPath: targetPath,
-          });
-        } else {
-          await options.moveEntry({
-            source,
-            targetDirPath: targetPath,
-          });
+          const source = await options.resolveEntryByPath(sourcePath);
+          if (!source) continue;
+
+          if (shouldCopy) {
+            await options.copyEntry({
+              source,
+              targetDirPath: targetPath,
+            });
+          } else {
+            await options.moveEntry({
+              source,
+              targetDirPath: targetPath,
+            });
+          }
         }
       }
 

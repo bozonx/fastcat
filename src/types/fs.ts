@@ -6,6 +6,7 @@ export interface FsEntry {
   children?: FsEntry[];
   expanded?: boolean;
   lastModified?: number;
+  createdAt?: number;
   size?: number;
   source?: 'local' | 'remote';
   remoteId?: string;
