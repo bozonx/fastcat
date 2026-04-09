@@ -95,7 +95,8 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
       return t('common.folder', 'Folder');
     }
 
-    // For all types of files, show mimeType as the title
+    if (options.isOtio.value) return 'OTIO';
+
     return info.mimeType ?? t('common.file', 'File');
   });
 

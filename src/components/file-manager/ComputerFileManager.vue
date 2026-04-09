@@ -30,6 +30,15 @@ const instanceId = props.instanceId || 'computer';
 const workspaceStore = useWorkspaceStore();
 const selectionStore = useSelectionStore();
 const { t } = useI18n();
+const rootSelectionEntry = computed<FsEntry>(() => ({
+  name:
+    workspaceStore.workspaceProviderId === 'tauri'
+      ? t('fastcat.fileManager.tabs.computer')
+      : t('fastcat.fileManager.tabs.workspace'),
+  path: '',
+  kind: 'directory',
+  source: 'local',
+}));
 
 // Create independent state for this instance
 const rootEntries = shallowRef<FsEntry[]>([]);
@@ -114,11 +123,7 @@ onMounted(async () => {
 
   // If no folder selected or previous one was invalid, open root
   if (!restored) {
-    fileManagerStore.openFolder({
-      name: rootPath.value || 'Root',
-      path: rootPath.value,
-      kind: 'directory',
-    });
+    fileManagerStore.openFolder(rootSelectionEntry.value);
   }
 });
 
@@ -137,6 +142,7 @@ function onSelect(entry: FsEntry) {
         hide-actions
         :instance-id="instanceId"
         :is-external="true"
+        :root-selection-entry="rootSelectionEntry"
         hide-focus-frame
         class="h-full"
         @select="onSelect"
@@ -149,9 +155,7 @@ function onSelect(entry: FsEntry) {
         :is-external="true"
         :hide-focus-frame="props.hideFocusFrame"
         :root-name="
-          workspaceStore.workspaceProviderId === 'tauri'
-            ? t('fastcat.fileManager.tabs.computer')
-            : t('fastcat.fileManager.tabs.workspace')
+          rootSelectionEntry.name
         "
         hide-upload
         class="h-full"

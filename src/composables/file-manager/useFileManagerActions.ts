@@ -154,18 +154,19 @@ export function useFileManagerActions(actions: FileManagerActions) {
 
   async function confirmCreateFolder(name: string) {
     if (!pendingCreateFolderParent.value) return;
-    
+
     const targetDirPath = pendingCreateFolderParent.value.path || '';
     const trimmed = name.trim();
     if (!trimmed) return;
 
     await actions.createFolder(trimmed, targetDirPath);
-    
+
     const createdPath = targetDirPath ? `${targetDirPath}/${trimmed}` : trimmed;
     await actions.reloadDirectory(targetDirPath);
-    
+
     const createdEntry = actions.findEntryByPath(createdPath);
     if (createdEntry) {
+      fileManagerStore.openFolder(createdEntry);
       uiStore.selectedFsEntry = {
         kind: createdEntry.kind,
         name: createdEntry.name,

@@ -47,11 +47,6 @@ const { t } = useI18n();
     </PropertyRow>
     <template v-if="props.fileInfo.kind === 'directory'">
       <PropertyRow
-        v-if="props.fileInfo.size !== undefined && props.fileInfo.size > 0 && props.instanceId !== 'computer' && props.instanceId !== 'sidebar' && !props.isExternal"
-        :label="t('common.size', 'Size')"
-        :value="props.formatBytes(props.fileInfo.size)"
-      />
-      <PropertyRow
         v-if="props.fileInfo.filesCount !== undefined && props.mediaCount === undefined && !props.pathLink && props.instanceId !== 'computer' && props.instanceId !== 'sidebar' && !props.isExternal"
         :label="t('videoEditor.fileManager.folder.filesCount', 'Files Count')"
         :value="props.fileInfo.filesCount"
@@ -68,7 +63,7 @@ const { t } = useI18n();
       />
     </template>
     <PropertyRow
-      v-else-if="props.fileInfo.size !== undefined && props.fileInfo.size > 0"
+      v-else-if="props.fileInfo.size !== undefined"
       :label="t('common.size', 'Size')"
       :value="props.formatBytes(props.fileInfo.size)"
     />

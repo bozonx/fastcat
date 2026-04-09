@@ -29,6 +29,7 @@ import {
   isOpenableProjectFileName,
   VIDEO_EXTENSIONS,
   AUDIO_EXTENSIONS,
+  BROWSER_NATIVE_IMAGE_EXTENSIONS,
   IMAGE_EXTENSIONS,
   TEXT_EXTENSIONS,
   TIMELINE_EXTENSIONS,
@@ -337,7 +338,12 @@ function isFullyUnsupported(entry: FsEntry): boolean {
   if (!meta) return false;
   if (meta.error) return true;
   const type = getMediaTypeFromFilename(entry.name);
-  if (type === 'image' && meta.image?.canDisplay === false) return true;
+  if (type === 'image') {
+    const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';
+    if (BROWSER_NATIVE_IMAGE_EXTENSIONS.includes(ext) && meta.image?.canDisplay === false) {
+      return true;
+    }
+  }
   if (type === 'video' && meta.video?.canDecode === false) return true;
   if (type === 'audio' && meta.audio?.canDecode === false) return true;
   return false;

@@ -27,7 +27,7 @@ export async function extractMetadata(
 
   if (isImage) {
     const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
-    let canDisplay = false;
+    let canDisplay: boolean | undefined;
     let width = 0;
     let height = 0;
 
