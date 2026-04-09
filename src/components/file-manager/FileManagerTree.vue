@@ -150,13 +150,7 @@ const proxyStore = useProxyStore();
 const selectionStore = useSelectionStore();
 const workspaceStore = useWorkspaceStore();
 const uiStore = useUiStore();
-const {
-  dragSourceFileManagerInstanceId,
-  dragSourceVfs,
-  setCurrentDragOperation,
-  setDragSourceFileManagerInstanceId,
-  setDragSourceVfs,
-} = useAppClipboard();
+const appClipboard = useAppClipboard();
 
 const isDragOver = ref<string | null>(null);
 const dragOperation = ref<'copy' | 'move' | null>(null);
@@ -419,9 +413,9 @@ function onDragStart(e: DragEvent, entry: FsEntry) {
 
   const operation = isLayer1Active(e, workspaceStore.userSettings) ? 'copy' : 'move';
   dragOperation.value = operation;
-  setDragSourceFileManagerInstanceId(props.instanceId ?? null);
-  setDragSourceVfs(props.vfs ?? null);
-  setCurrentDragOperation(operation);
+  appClipboard.setDragSourceFileManagerInstanceId(props.instanceId ?? null);
+  appClipboard.setDragSourceVfs(props.vfs ?? null);
+  appClipboard.setCurrentDragOperation(operation);
   const movePayload = entriesToMove.map((e) => ({ name: e.name, kind: e.kind, path: e.path }));
   e.dataTransfer?.setData(
     operation === 'copy' ? FILE_MANAGER_COPY_DRAG_TYPE : FILE_MANAGER_MOVE_DRAG_TYPE,
@@ -451,14 +445,14 @@ function onDragStart(e: DragEvent, entry: FsEntry) {
 function onDragEnd() {
   clearDraggedFile();
   dragOperation.value = null;
-  setCurrentDragOperation(null);
-  setDragSourceFileManagerInstanceId(null);
-  setDragSourceVfs(null);
+  appClipboard.setCurrentDragOperation(null);
+  appClipboard.setDragSourceFileManagerInstanceId(null);
+  appClipboard.setDragSourceVfs(null);
 }
 
 function resolveDragOperation(e: DragEvent): 'copy' | 'move' {
   return resolveFileManagerDragOperation({
-    dragSourceFileManagerInstanceId,
+    dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
     isLayer1Active: isLayer1Active(e, workspaceStore.userSettings),
     targetFileManagerInstanceId: props.instanceId ?? null,
   });
@@ -473,7 +467,7 @@ function onDragOverDir(e: DragEvent, entry: FsEntry) {
   if (types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) || types.includes(FILE_MANAGER_COPY_DRAG_TYPE)) {
     isDragOver.value = entry.path || null;
     dragOperation.value = resolveDragOperation(e);
-    setCurrentDragOperation(dragOperation.value);
+    appClipboard.setCurrentDragOperation(dragOperation.value);
     e.dataTransfer.dropEffect = dragOperation.value === 'copy' ? 'copy' : 'move';
     return;
   }
@@ -500,7 +494,7 @@ function onDragLeaveDir(e: DragEvent, entry: FsEntry) {
   if (!currentTarget?.contains(relatedTarget)) {
     isDragOver.value = null;
     dragOperation.value = null;
-    setCurrentDragOperation(null);
+    appClipboard.setCurrentDragOperation(null);
   }
 }
 
@@ -512,14 +506,14 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
   const operation = dragOperation.value;
   isDragOver.value = null;
   dragOperation.value = null;
-  setCurrentDragOperation(null);
+  appClipboard.setCurrentDragOperation(null);
 
   const copyRaw = e.dataTransfer?.getData(FILE_MANAGER_COPY_DRAG_TYPE);
   const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
   const internalRaw = copyRaw || moveRaw;
   if (internalRaw) {
     const isCrossManagerDrag = isCrossFileManagerDrag({
-      dragSourceFileManagerInstanceId,
+      dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
       targetFileManagerInstanceId: props.instanceId ?? null,
     });
     const shouldCopy = isCrossManagerDrag
@@ -534,7 +528,7 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
 
     const itemsToMove = Array.isArray(parsed) ? parsed : [parsed];
 
-    if (isCrossManagerDrag && dragSourceVfs && props.vfs) {
+    if (isCrossManagerDrag && appClipboard.dragSourceVfs && props.vfs) {
       try {
         for (const item of itemsToMove) {
           const sourcePath = typeof item?.path === 'string' ? item.path : '';
@@ -543,7 +537,7 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
           const sourceKind = item?.kind === 'directory' ? 'directory' : 'file';
           if (shouldCopy) {
             await crossVfsCopy({
-              sourceVfs: dragSourceVfs,
+              sourceVfs: appClipboard.dragSourceVfs,
               targetVfs: props.vfs,
               sourcePath,
               sourceKind,
@@ -551,7 +545,7 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
             });
           } else {
             await crossVfsMove({
-              sourceVfs: dragSourceVfs,
+              sourceVfs: appClipboard.dragSourceVfs,
               targetVfs: props.vfs,
               sourcePath,
               sourceKind,

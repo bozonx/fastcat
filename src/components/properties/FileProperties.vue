@@ -40,6 +40,7 @@ import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/wor
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import type { PrimaryEntryAction } from '~/composables/properties/useFilePropertiesActions';
+import type { SecondaryEntryAction } from '~/composables/properties/useFilePropertiesActions';
 import type { FsEntry } from '~/types/fs';
 
 const props = defineProps<{
@@ -47,6 +48,7 @@ const props = defineProps<{
   previewMode: 'original' | 'proxy';
   hasProxy?: boolean;
   instanceId?: string;
+  selectionOrigin?: 'project-manager' | 'workspace-browser' | 'remote-browser';
   isExternal?: boolean;
   isFilesPage?: boolean;
   mobileTextMode?: boolean;
@@ -103,11 +105,19 @@ const uploadInputRef = ref<HTMLInputElement | null>(null);
 const selectedFsEntryRef = computed(() => props.selectedFsEntry);
 const previewModeRef = computed(() => props.previewMode);
 const hasProxyRef = computed(() => props.hasProxy);
+const hasAbsoluteLocalPath = computed(() => {
+  const path = props.selectedFsEntry?.path;
+  if (typeof path !== 'string' || path.length === 0) return false;
+  return path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path);
+});
 const isExternalContext = computed(
   () =>
     props.isExternal ||
+    props.selectionOrigin === 'workspace-browser' ||
+    props.selectionOrigin === 'remote-browser' ||
     props.instanceId === 'computer' ||
     props.instanceId === 'sidebar' ||
+    hasAbsoluteLocalPath.value ||
     props.selectedFsEntry?.source === 'remote',
 );
 const isRootDirectory = computed(() => {
@@ -398,6 +408,7 @@ const {
   selectedFsEntry: selectedFsEntryRef,
   mediaType,
   textContent,
+  isExternalContext,
 });
 
 const canCopyOrCut = computed(() => {
@@ -557,6 +568,17 @@ const filteredFilePrimaryActions = computed(() => {
     ['rename', 'delete', 'copy', 'cut'].includes(a.id),
   );
 });
+
+const filteredFileSecondaryActions = computed<SecondaryEntryAction[]>(() => {
+  if (!isExternalContext.value) return fileSecondaryActions.value;
+
+  return fileSecondaryActions.value.filter(
+    (action) =>
+      action.id !== 'openAsPanelCut' &&
+      action.id !== 'openAsPanelSound' &&
+      action.id !== 'openAsProjectTab',
+  );
+});
 </script>
 
 <template>
@@ -703,7 +725,7 @@ const filteredFilePrimaryActions = computed(() => {
       >
         <EntryActions
           :primary-actions="filteredFilePrimaryActions"
-          :secondary-actions="fileSecondaryActions"
+          :secondary-actions="filteredFileSecondaryActions"
         />
       </PropertySection>
 

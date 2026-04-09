@@ -21,6 +21,7 @@ const {
     sortOption: { field: 'name', order: 'asc' },
     setViewMode: vi.fn(),
     setGridCardSize: vi.fn(),
+    setSelectionContext: vi.fn(),
     openFolder: vi.fn(),
     vfs: {},
     historyStack: [],

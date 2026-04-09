@@ -89,6 +89,32 @@ const listRelSize = computed(() => {
   return ((props.sizes?.[1] ?? 0) / total) * 100;
 });
 
+const normalizedSelectedEntity = computed(() => {
+  const entity = props.selectedEntity;
+  if (!entity || entity.source !== 'fileManager') return entity;
+
+  const instanceId = (entity as any).instanceId;
+  if (instanceId !== 'sidebar') return entity;
+
+  if ((entity as any).entry?.source === 'remote') {
+    return {
+      ...entity,
+      isExternal: true,
+      origin: 'remote-browser' as const,
+    };
+  }
+
+  if (persistenceStore.filesPageActiveTab === 'computer') {
+    return {
+      ...entity,
+      isExternal: true,
+      origin: 'workspace-browser' as const,
+    };
+  }
+
+  return entity;
+});
+
 function onOuterResized(_event: { panes: Array<{ size: number }> }) {
   // Sidebar size is currently not persisted for this view
 }
@@ -251,7 +277,7 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
         <!-- Properties -->
         <Pane :size="sizes[2]" min-size="10">
           <PropertiesPanel
-            :entity="selectedEntity"
+            :entity="normalizedSelectedEntity"
             class="h-full"
             @clear-selection="emit('clearSelection')"
             @pointerdown.capture="focusStore.setPanelFocus('dynamic:properties:files-main')"
