@@ -264,3 +264,13 @@ export const useFilesPageSidebarFileManagerStore = defineStore(
   'filesPageSidebarFileManager',
   createFileManagerStoreSetup('filesPage-sidebar'),
 );
+
+export const useComputerSidebarStore = defineStore(
+  'computerSidebar',
+  createFileManagerStoreSetup('computer-sidebar'),
+);
+
+export const useBloggerDogSidebarStore = defineStore(
+  'bloggerDogSidebar',
+  createFileManagerStoreSetup('bloggerdog-sidebar'),
+);

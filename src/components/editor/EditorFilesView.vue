@@ -7,7 +7,8 @@ import ComputerFileManager from '~/components/file-manager/ComputerFileManager.v
 import PropertiesPanel from '~/components/layout-panels/PropertiesPanel.vue';
 import {
   useFilesPageFileManagerStore,
-  useFilesPageSidebarFileManagerStore,
+  useComputerSidebarStore,
+  useBloggerDogSidebarStore,
   useFileBrowserPersistenceStore,
 } from '~/stores/file-manager.store';
 import FileManagerStoreProvider from '~/components/file-manager/FileManagerStoreProvider.vue';
@@ -38,9 +39,17 @@ const workspaceStore = useWorkspaceStore();
 const uiStore = useUiStore();
 const runtimeConfig = useRuntimeConfig();
 const mainStore = useFilesPageFileManagerStore();
-const sidebarStore = useFilesPageSidebarFileManagerStore();
+const computerSidebarStore = useComputerSidebarStore();
+const bloggerDogSidebarStore = useBloggerDogSidebarStore();
 const persistenceStore = useFileBrowserPersistenceStore();
 const focusStore = useFocusStore();
+
+const activeSidebarStore = computed(() =>
+  persistenceStore.filesPageActiveTab === 'computer'
+    ? computerSidebarStore
+    : bloggerDogSidebarStore,
+);
+
 provide('fileManagerStore', mainStore);
 
 const nuxtApp = useNuxtApp();
@@ -190,7 +199,7 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
           </UButton>
         </div>
 
-        <FileManagerStoreProvider :store="sidebarStore">
+        <FileManagerStoreProvider :store="activeSidebarStore">
           <template v-if="persistenceStore.filesPageActiveTab === 'computer'">
             <ComputerFileManager instance-id="sidebar" hide-focus-frame />
           </template>
