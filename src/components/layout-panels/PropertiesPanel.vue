@@ -430,7 +430,6 @@ const headerTitle = computed(() => {
 
       <FileProperties
         v-else-if="displayMode === 'file' && selectedFsEntry"
-        :key="selectedFsEntry.path || selectedFsEntry.name"
         :selected-fs-entry="selectedFsEntry"
         :has-proxy="hasProxy"
         :preview-mode="previewMode"

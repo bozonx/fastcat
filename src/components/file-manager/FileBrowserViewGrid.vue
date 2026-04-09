@@ -266,7 +266,7 @@ function handleImageError(entry: ExtendedFsEntry) {
               ? 'text-amber-400!'
               : '',
             entry.path && entry.path === projectStore.currentTimelinePath
-              ? 'text-selection-accent-400!'
+              ? 'text-[#60a5fa]!'
               : '',
             getCompatibilityStatus(entry) !== 'ok' ? 'text-red-400!' : '',
             {
