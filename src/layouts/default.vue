@@ -24,6 +24,7 @@ import ProjectLockedModal from '~/components/editor/ProjectLockedModal.vue';
 import EditorSettingsModal from '~/components/settings/EditorSettingsModal.vue';
 import ProjectSettingsModal from '~/components/project-settings/ProjectSettingsModal.vue';
 import FileConversionModal from '~/components/file-manager/FileConversionModal.vue';
+import GlobalDropOverlay from '~/components/file-manager/GlobalDropOverlay.vue';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 
 const { t } = useI18n();
@@ -38,6 +39,8 @@ const {
   onGlobalDragOver,
   onGlobalDragLeave,
   onGlobalDrop,
+  handleAutoFileDrop,
+  handleFolderFileDrop,
 } = useGlobalDragAndDrop();
 const fileManager = useFileManager();
 
@@ -67,6 +70,16 @@ onMounted(async () => {
   }
 });
 
+
+function onOverlayAutoSort(files: File[]) {
+  uiStore.isGlobalDragging = false;
+  handleAutoFileDrop(files);
+}
+
+function onOverlayFolderDrop(files: File[], targetDirPath: string) {
+  uiStore.isGlobalDragging = false;
+  handleFolderFileDrop(files, targetDirPath);
+}
 
 useHead({
   title: t('navigation.fastcat'),
@@ -110,6 +123,13 @@ useHead({
       <ProjectLockedModal />
       <FileConversionModal />
 
+      <!-- Global Drop Overlay -->
+      <GlobalDropOverlay
+        v-if="uiStore.isGlobalDragging && projectStore.currentProjectName && route.path !== '/'"
+        :root-entries="fileManager.rootEntries.value"
+        @drop-to-auto="onOverlayAutoSort"
+        @drop-to-folder="onOverlayFolderDrop"
+      />
     </div>
   </div>
 </template>
