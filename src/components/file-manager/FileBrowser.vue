@@ -34,6 +34,7 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
+import { FILE_MANAGER_ROOT_SPACER_HEIGHT } from '~/utils/constants';
 import {
   isGeneratingProxyInDirectory as hasGeneratingProxyInDirectory,
   folderHasVideos,
@@ -169,6 +170,12 @@ const {
 // --- Scroll helper (used by navigation) ---
 const rootContainer = ref<HTMLElement | null>(null);
 const pendingScrollToEntryPath = ref<string | null>(null);
+const rootSpacerStyle = {
+  width: '100%',
+  minWidth: '100%',
+  height: FILE_MANAGER_ROOT_SPACER_HEIGHT,
+  flexShrink: 0,
+} as const;
 
 function scrollToEntryPath(path: string): boolean {
   const container = rootContainer.value;
@@ -1105,7 +1112,7 @@ async function onDirectoryUploadChange(e: Event) {
             </div>
           </div>
 
-          <div class="file-manager-root-spacer" @click.self="handleContainerClick" />
+          <div :style="rootSpacerStyle" @click.self="handleContainerClick" />
         </div>
       </UContextMenu>
     </div>
@@ -1148,13 +1155,6 @@ async function onDirectoryUploadChange(e: Event) {
 </template>
 
 <style scoped>
-.file-manager-root-spacer {
-  width: 100%;
-  min-width: 100%;
-  height: 6rem;
-  flex-shrink: 0;
-}
-
 .content-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;

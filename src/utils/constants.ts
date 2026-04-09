@@ -38,6 +38,8 @@ export const FILE_MANAGER_THUMBNAILS = {
   MAX_CONCURRENT_TASKS: 3,
 } as const;
 
+export const FILE_MANAGER_ROOT_SPACER_HEIGHT = '6rem';
+
 export const TIMELINE_MANAGER_THUMBNAILS = {
   DIR_NAME: 'timelines',
   MAX_SIZE: 1280,

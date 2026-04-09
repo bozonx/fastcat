@@ -15,6 +15,7 @@ import { useUiStore } from '~/stores/ui.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useVfs } from '~/composables/useVfs';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useProjectStore } from '~/stores/project.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
@@ -150,6 +151,7 @@ const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 const proxyStore = useProxyStore();
 const selectionStore = useSelectionStore();
 const workspaceStore = useWorkspaceStore();
+const projectStore = useProjectStore();
 const uiStore = useUiStore();
 const appClipboard = useAppClipboard();
 
@@ -310,6 +312,7 @@ function getEntryViewModel(entry: FsEntry): EntryViewModel {
     isDot ? 'opacity-30' : '',
     meta.hasProxy && !meta.generatingProxy ? 'text-(--color-success)!' : '',
     meta.generatingProxy || generatingDir ? 'text-amber-400!' : '',
+    entry.path && entry.path === projectStore.currentTimelinePath ? 'text-selection-accent-400!' : '',
     isCut ? 'opacity-40 line-through decoration-dotted' : '',
     isCopy ? 'text-primary-300!' : '',
     compatibilityStatus !== 'ok' ? 'text-red-400!' : '',

@@ -343,7 +343,7 @@ async function onDirectoryFileSelect(e: Event) {
   if (!entry.path) {
     await handleFiles(files);
   } else {
-    await handleFiles(files, entry.path);
+    await handleFiles(files, { targetDirPath: entry.path });
   }
   await loadProjectDirectory({ fullRefresh: true });
   uiStore.notifyFileManagerUpdate();
@@ -508,6 +508,13 @@ useFileManagerPanelBootstrap({
           :title="t('videoEditor.fileManager.actions.uploadFiles', 'Upload files')"
           @click="triggerFileUpload"
         />
+
+        <span
+          v-if="!props.isExternal"
+          class="ml-auto text-[10px] font-bold uppercase tracking-wider text-ui-text-muted/80 px-1 select-none"
+        >
+          {{ t('videoEditor.fileManager.projectRoot.project', 'Project') }}
+        </span>
       </div>
     </UContextMenu>
 
