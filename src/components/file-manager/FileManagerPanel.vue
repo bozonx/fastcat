@@ -48,6 +48,10 @@ const timelineStore = useTimelineStore();
 const fileManagerStore =
   (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
   useFileManagerStore();
+fileManagerStore.setSelectionContext({
+  instanceId,
+  isExternal: props.isExternal,
+});
 const focusStore = useFocusStore();
 const uiStore = useUiStore();
 const conversionStore = useFileConversionStore();

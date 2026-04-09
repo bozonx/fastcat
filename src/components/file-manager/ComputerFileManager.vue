@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, provide, onMounted, shallowRef } from 'vue';
+import { ref, computed, provide, onMounted, shallowRef, inject } from 'vue';
 import { Pane, Splitpanes } from 'splitpanes';
 import { useComputerVfs } from '~/composables/file-manager/useComputerVfs';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -143,6 +143,11 @@ const computerStoreWrapper = computed(() => {
       return Reflect.set(target, prop, value);
     },
   });
+});
+
+computerStoreWrapper.value.setSelectionContext({
+  instanceId,
+  isExternal: true,
 });
 
 provide('fileManagerStore', computerStoreWrapper.value);

@@ -127,6 +127,10 @@ const selectedMarkerId = computed<string | null>(() => {
   if (entity?.source === 'timeline' && entity.kind === 'marker') return entity.markerId;
   return null;
 });
+
+const activeEntity = computed(() => {
+  return props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
+});
 const isSelectedMarkerZone = computed(() => {
   if (!selectedMarkerId.value) return false;
   const marker = timelineStore.getMarkers().find((m) => m.id === selectedMarkerId.value);
@@ -235,17 +239,36 @@ const previewOptions = computed(() => [
 ]);
 
 const isExternal = computed(() => {
-  const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
+  const entity = activeEntity.value;
   if (!entity || entity.source !== 'fileManager') return false;
 
+  if ((entity as any).origin === 'workspace-browser' || (entity as any).origin === 'remote-browser') {
+    return true;
+  }
+
   // Check explicit flag or instance ID
-  const isExt = (entity as any).isExternal || (entity as any).instanceId === 'computer' || (entity as any).instanceId === 'sidebar';
+  const isExt =
+    (entity as any).isExternal ||
+    (entity as any).instanceId === 'computer' ||
+    (entity as any).instanceId === 'sidebar';
   if (isExt) return true;
 
   // Check if it's from a remote VFS (always external for project purposes)
   if (entity.kind !== 'multiple' && (entity as any).entry?.source === 'remote') return true;
 
   return false;
+});
+
+const selectedFileManagerInstanceId = computed(() => {
+  const entity = activeEntity.value;
+  if (!entity || entity.source !== 'fileManager') return undefined;
+  return (entity as any).instanceId as string | undefined;
+});
+
+const selectedFileManagerOrigin = computed(() => {
+  const entity = activeEntity.value;
+  if (!entity || entity.source !== 'fileManager') return undefined;
+  return (entity as any).origin as 'project-manager' | 'workspace-browser' | 'remote-browser' | undefined;
 });
 
 const hasProxy = computed(() => {
@@ -411,7 +434,8 @@ const headerTitle = computed(() => {
         :selected-fs-entry="selectedFsEntry"
         :has-proxy="hasProxy"
         :preview-mode="previewMode"
-        :instance-id="selectionStore.selectedEntity?.source === 'fileManager' ? (selectionStore.selectedEntity as any)?.instanceId : undefined"
+        :instance-id="selectedFileManagerInstanceId"
+        :selection-origin="selectedFileManagerOrigin"
         :is-external="isExternal"
         @update:preview-mode="(m) => (previewMode = m)"
         @convert="(entry) => conversionStore.openConversionModal(entry)"

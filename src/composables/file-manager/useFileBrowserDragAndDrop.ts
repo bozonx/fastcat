@@ -91,14 +91,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     window.removeEventListener('keydown', onGlobalKeyDown, { capture: true });
   });
   const { setDraggedFile, clearDraggedFile } = useDraggedFile();
-  const {
-    currentDragOperation,
-    dragSourceFileManagerInstanceId,
-    dragSourceVfs,
-    setCurrentDragOperation,
-    setDragSourceFileManagerInstanceId,
-    setDragSourceVfs,
-  } = useAppClipboard();
+  const appClipboard = useAppClipboard();
 
   const isDragOverPanel = ref(false);
   const dragOverEntryPath = ref<string | null>(null);
@@ -130,7 +123,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
   function resolveDragOperation(event: DragEvent): 'copy' | 'move' {
     return resolveFileManagerDragOperation({
-      dragSourceFileManagerInstanceId,
+      dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
       isLayer1Active: isCopyModifierActive(event),
       targetFileManagerInstanceId: options.fileManagerInstanceId ?? null,
     });
@@ -162,9 +155,9 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     e.dataTransfer.effectAllowed = 'copyMove';
 
     const operation = resolveDragStartOperation(e);
-    setDragSourceFileManagerInstanceId(options.fileManagerInstanceId ?? null);
-    setDragSourceVfs(options.vfs);
-    setCurrentDragOperation(operation);
+    appClipboard.setDragSourceFileManagerInstanceId(options.fileManagerInstanceId ?? null);
+    appClipboard.setDragSourceVfs(options.vfs);
+    appClipboard.setCurrentDragOperation(operation);
 
     const movePayload = entriesToMove.map((e) => ({ name: e.name, kind: e.kind, path: e.path }));
     e.dataTransfer.setData(
@@ -196,9 +189,9 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   function onEntryDragEnd() {
     clearDraggedFile();
     uiStore.isFileManagerDragging = false;
-    setCurrentDragOperation(null);
-    setDragSourceFileManagerInstanceId(null);
-    setDragSourceVfs(null);
+    appClipboard.setCurrentDragOperation(null);
+    appClipboard.setDragSourceFileManagerInstanceId(null);
+    appClipboard.setDragSourceVfs(null);
     dragOverEntryPath.value = null;
   }
 
@@ -241,7 +234,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
       types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
     ) {
-      setCurrentDragOperation(resolveDragOperation(e));
+      appClipboard.setCurrentDragOperation(resolveDragOperation(e));
     }
     dragOverEntryPath.value = entry.path ?? null;
     const operation = types.includes('Files') ? 'copy' : resolveDragOperation(e);
@@ -281,12 +274,12 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     const internalRaw = copyRaw || moveRaw;
     if (internalRaw) {
       const isCrossManagerDrag = isCrossFileManagerDrag({
-        dragSourceFileManagerInstanceId,
+        dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
         targetFileManagerInstanceId: options.fileManagerInstanceId ?? null,
       });
       const shouldCopy = isCrossManagerDrag
-        ? resolveDragOperation(e) === 'copy' || currentDragOperation === 'copy'
-        : !!copyRaw || resolveDragOperation(e) === 'copy' || currentDragOperation === 'copy';
+        ? resolveDragOperation(e) === 'copy' || appClipboard.currentDragOperation === 'copy'
+        : !!copyRaw || resolveDragOperation(e) === 'copy' || appClipboard.currentDragOperation === 'copy';
       let parsed: unknown = null;
       try {
         parsed = JSON.parse(internalRaw);
@@ -300,7 +293,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
       const itemsToMove = Array.isArray(parsed) ? parsed : [parsed];
 
-      if (isCrossManagerDrag && dragSourceVfs) {
+      if (isCrossManagerDrag && appClipboard.dragSourceVfs) {
         try {
           for (const item of itemsToMove) {
             const sourcePath = typeof item?.path === 'string' ? item.path : '';
@@ -309,7 +302,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
             const sourceKind = item?.kind === 'directory' ? 'directory' : 'file';
             if (shouldCopy) {
               await crossVfsCopy({
-                sourceVfs: dragSourceVfs,
+                sourceVfs: appClipboard.dragSourceVfs,
                 targetVfs: options.vfs,
                 sourcePath,
                 sourceKind,
@@ -317,7 +310,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
               });
             } else {
               await crossVfsMove({
-                sourceVfs: dragSourceVfs,
+                sourceVfs: appClipboard.dragSourceVfs,
                 targetVfs: options.vfs,
                 sourcePath,
                 sourceKind,
@@ -389,7 +382,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
         types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
         types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
       ) {
-        setCurrentDragOperation(resolveDragOperation(e));
+        appClipboard.setCurrentDragOperation(resolveDragOperation(e));
       }
       const operation = types.includes('Files') ? 'copy' : resolveDragOperation(e);
       e.dataTransfer!.dropEffect = operation === 'copy' ? 'copy' : 'move';
@@ -425,12 +418,12 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     const internalRaw = copyRaw || moveRaw;
     if (internalRaw) {
       const isCrossManagerDrag = isCrossFileManagerDrag({
-        dragSourceFileManagerInstanceId,
+        dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
         targetFileManagerInstanceId: options.fileManagerInstanceId ?? null,
       });
       const shouldCopy = isCrossManagerDrag
-        ? resolveDragOperation(e) === 'copy' || currentDragOperation === 'copy'
-        : !!copyRaw || resolveDragOperation(e) === 'copy' || currentDragOperation === 'copy';
+        ? resolveDragOperation(e) === 'copy' || appClipboard.currentDragOperation === 'copy'
+        : !!copyRaw || resolveDragOperation(e) === 'copy' || appClipboard.currentDragOperation === 'copy';
       let parsed: unknown = null;
       try {
         parsed = JSON.parse(internalRaw);
@@ -444,7 +437,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
       const itemsToMove = Array.isArray(parsed) ? parsed : [parsed];
 
-      if (isCrossManagerDrag && dragSourceVfs) {
+      if (isCrossManagerDrag && appClipboard.dragSourceVfs) {
         try {
           for (const item of itemsToMove) {
             const sourcePath = typeof item?.path === 'string' ? item.path : '';
@@ -453,7 +446,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
             const sourceKind = item?.kind === 'directory' ? 'directory' : 'file';
             if (shouldCopy) {
               await crossVfsCopy({
-                sourceVfs: dragSourceVfs,
+                sourceVfs: appClipboard.dragSourceVfs,
                 targetVfs: options.vfs,
                 sourcePath,
                 sourceKind,
@@ -461,7 +454,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
               });
             } else {
               await crossVfsMove({
-                sourceVfs: dragSourceVfs,
+                sourceVfs: appClipboard.dragSourceVfs,
                 targetVfs: options.vfs,
                 sourcePath,
                 sourceKind,
@@ -515,7 +508,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   return {
     isDragOverPanel,
     dragOverEntryPath,
-    currentDragOperation,
+    currentDragOperation: computed(() => appClipboard.currentDragOperation),
     isRootDropOver,
     isRelevantDrag,
     onEntryDragStart,

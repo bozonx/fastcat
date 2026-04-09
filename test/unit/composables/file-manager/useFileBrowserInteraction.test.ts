@@ -8,11 +8,12 @@ import type { FsEntry } from '~/types/fs';
 const filesPageStore = {
   sortOption: { field: 'name', order: 'asc' },
   columnWidths: {} as Record<string, number>,
+  setSelectionContext: vi.fn(),
   setSortOption: vi.fn((option) => {
     filesPageStore.sortOption = option;
   }),
   setColumnWidth: vi.fn(),
-  selectFile: vi.fn(),
+  selectItem: vi.fn(),
   openFolder: vi.fn(),
 };
 

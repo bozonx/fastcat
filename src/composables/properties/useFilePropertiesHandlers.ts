@@ -9,6 +9,7 @@ interface UseFilePropertiesHandlersOptions {
   selectedFsEntry: Ref<FsEntry | undefined | null> | ComputedRef<FsEntry | undefined | null>;
   mediaType: Ref<string | null | undefined> | ComputedRef<string | null | undefined>;
   textContent: Ref<string | null | undefined> | ComputedRef<string | null | undefined>;
+  isExternalContext?: Ref<boolean> | ComputedRef<boolean>;
 }
 
 export function useFilePropertiesHandlers(options: UseFilePropertiesHandlersOptions) {
@@ -16,9 +17,16 @@ export function useFilePropertiesHandlers(options: UseFilePropertiesHandlersOpti
   const uiStore = useUiStore();
   const { addFileTab, setActiveTab } = useProjectTabsStore();
 
+  const hasAbsoluteLocalPath = computed(() => {
+    const path = options.selectedFsEntry.value?.path;
+    if (typeof path !== 'string' || path.length === 0) return false;
+    return path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path);
+  });
+
   const canOpenAsPanel = computed(() => {
     const entry = options.selectedFsEntry.value;
     if (!entry || entry.kind !== 'file') return false;
+    if (options.isExternalContext?.value || hasAbsoluteLocalPath.value) return false;
     return isOpenableProjectFileName(entry.name);
   });
 

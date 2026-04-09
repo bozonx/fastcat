@@ -233,6 +233,10 @@ const skipNextUpdateReload = ref(false);
 let _loadFolderContent: () => Promise<void> = async () => {};
 
 const isExternal = computed(() => !!props.vfs);
+fileManagerStore.setSelectionContext({
+  instanceId,
+  isExternal: isExternal.value,
+});
 
 const {
   isDragOverPanel,

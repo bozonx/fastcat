@@ -8,6 +8,11 @@ export type FileViewMode = 'grid' | 'list';
 export type FileSortField = 'name' | 'type' | 'size' | 'modified' | 'created';
 export type SortOrder = 'asc' | 'desc';
 
+export interface FileManagerSelectionContext {
+  instanceId?: string;
+  isExternal?: boolean;
+}
+
 export interface FileSortOption {
   field: FileSortField;
   order: SortOrder;
@@ -44,6 +49,7 @@ function createFileManagerStoreSetup(contextId: string) {
         modified: 140,
       }),
     );
+    const selectionContext = ref<FileManagerSelectionContext>({});
 
     // Persist settings to localStorage
     watch(viewMode, (val) => writeLocalStorageJson(`${STORAGE_KEY}:viewMode`, val));
@@ -68,7 +74,14 @@ function createFileManagerStoreSetup(contextId: string) {
       },
     );
 
-    function openFolder(entry: FsEntry | null, options: { skipHistory?: boolean } = {}) {
+    function setSelectionContext(context: FileManagerSelectionContext) {
+      selectionContext.value = { ...context };
+    }
+
+    function openFolder(
+      entry: FsEntry | null,
+      options: { skipHistory?: boolean; selectionContext?: FileManagerSelectionContext } = {},
+    ) {
       if (entry && entry.kind === 'directory') {
         if (!options.skipHistory && selectedFolder.value) {
           const current = { ...selectedFolder.value };
@@ -79,7 +92,12 @@ function createFileManagerStoreSetup(contextId: string) {
           }
         }
         selectedFolder.value = entry;
-        selectionStore.selectFsEntry(entry);
+        const nextSelectionContext = options.selectionContext ?? selectionContext.value;
+        selectionStore.selectFsEntry(
+          entry,
+          nextSelectionContext.instanceId,
+          nextSelectionContext.isExternal,
+        );
       } else {
         selectedFolder.value = null;
       }
@@ -92,9 +110,14 @@ function createFileManagerStoreSetup(contextId: string) {
       futureStack.value = [];
     }
 
-    function selectItem(entry: FsEntry | null) {
+    function selectItem(entry: FsEntry | null, context?: FileManagerSelectionContext) {
       if (entry) {
-        selectionStore.selectFsEntry(entry);
+        const nextSelectionContext = context ?? selectionContext.value;
+        selectionStore.selectFsEntry(
+          entry,
+          nextSelectionContext.instanceId,
+          nextSelectionContext.isExternal,
+        );
       } else {
         const selected = selectionStore.selectedEntity;
         if (selected?.source === 'fileManager') {
@@ -156,6 +179,7 @@ function createFileManagerStoreSetup(contextId: string) {
       openFolder,
       addToHistory,
       selectItem,
+      setSelectionContext,
       clearSelection,
       setViewMode,
       setSortOption,

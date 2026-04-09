@@ -3,6 +3,10 @@ import { ref } from 'vue';
 import type { FsEntry } from '~/types/fs';
 
 export type SelectionSource = 'timeline' | 'fileManager' | 'project';
+export type FileManagerSelectionOrigin =
+  | 'project-manager'
+  | 'workspace-browser'
+  | 'remote-browser';
 
 export interface SelectedEntityBase {
   source: SelectionSource;
@@ -74,6 +78,7 @@ export interface SelectedFsEntry extends SelectedEntityBase {
   entry: FsEntry;
   instanceId?: string;
   isExternal?: boolean;
+  origin?: FileManagerSelectionOrigin;
 }
 
 export interface SelectedFsEntries extends SelectedEntityBase {
@@ -82,6 +87,7 @@ export interface SelectedFsEntries extends SelectedEntityBase {
   entries: FsEntry[];
   instanceId?: string;
   isExternal?: boolean;
+  origin?: FileManagerSelectionOrigin;
 }
 
 export interface SelectedTimelineGap extends SelectedEntityBase {
@@ -113,6 +119,18 @@ export type SelectedEntity =
 
 export const useSelectionStore = defineStore('selection', () => {
   const selectedEntity = ref<SelectedEntity | null>(null);
+
+  function resolveFileManagerOrigin(
+    entry: FsEntry,
+    instanceId?: string,
+    isExternal?: boolean,
+  ): FileManagerSelectionOrigin {
+    if (entry.source === 'remote') return 'remote-browser';
+    if (isExternal || instanceId === 'computer' || instanceId === 'sidebar') {
+      return 'workspace-browser';
+    }
+    return 'project-manager';
+  }
 
   function selectTimelineItem(trackId: string, itemId: string, kind: 'clip' | 'gap' = 'clip') {
     selectedEntity.value = {
@@ -186,6 +204,7 @@ export const useSelectionStore = defineStore('selection', () => {
       entry,
       instanceId,
       isExternal,
+      origin: resolveFileManagerOrigin(entry, instanceId, isExternal),
     };
   }
 
@@ -204,6 +223,7 @@ export const useSelectionStore = defineStore('selection', () => {
       entries,
       instanceId,
       isExternal,
+      origin: resolveFileManagerOrigin(entries[0]!, instanceId, isExternal),
     };
   }
 
