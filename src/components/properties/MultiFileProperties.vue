@@ -17,6 +17,7 @@ import { useI18n } from 'vue-i18n';
 
 const props = defineProps<{
   entries: FsEntry[];
+  isExternal?: boolean;
 }>();
 
 const { t } = useI18n();
@@ -203,7 +204,7 @@ function onCut() {
             id: 'createProxy',
             label: t('videoEditor.fileManager.proxy.create', 'Create proxy'),
             icon: 'i-heroicons-film',
-            hidden: !hasVideo || isGeneratingProxy,
+            hidden: props.isExternal || !hasVideo || isGeneratingProxy,
             onClick: onCreateProxy,
           },
           {
@@ -214,7 +215,7 @@ function onCut() {
             ),
             icon: 'i-heroicons-x-circle',
             color: 'error',
-            hidden: !isGeneratingProxy,
+            hidden: props.isExternal || !isGeneratingProxy,
             onClick: onCancelProxy,
           },
           {
@@ -229,7 +230,7 @@ function onCut() {
             label: t('videoEditor.fileManager.proxy.delete', 'Delete proxy'),
             icon: 'i-heroicons-trash',
             color: 'error',
-            hidden: !hasExistingProxy,
+            hidden: props.isExternal || !hasExistingProxy,
             onClick: onDeleteProxy,
           },
         ]"

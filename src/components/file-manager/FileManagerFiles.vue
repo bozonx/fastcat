@@ -36,7 +36,18 @@ const props = defineProps<{
   mediaCache: Pick<ProxyThumbnailService, 'hasProxy'>;
   moveEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<void>;
   copyEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
-  handleFiles: (files: FileList | File[], targetDirPath?: string) => Promise<void>;
+  handleFiles: (
+    files: FileList | File[],
+    options?: {
+      targetDirPath?: string;
+      abortSignal?: AbortSignal;
+      onProgress?: (params: {
+        currentFileIndex: number;
+        totalFiles: number;
+        fileName: string;
+      }) => void;
+    },
+  ) => Promise<void>;
   onCopyEntries?: (entries: FsEntry[]) => void;
   onCutEntries?: (entries: FsEntry[]) => void;
   onPasteToEntry?: (entry: FsEntry) => void;
@@ -295,7 +306,7 @@ async function onRequestCopy(params: { sourcePath: string; targetDirPath: string
 }
 
 async function onRequestUpload(params: { files: File[]; targetDirPath: string }) {
-  await props.handleFiles(params.files, params.targetDirPath);
+  await props.handleFiles(params.files, { targetDirPath: params.targetDirPath });
   uiStore.notifyFileManagerUpdate();
 }
 
@@ -304,7 +315,6 @@ function onRequestDownload(params: { entry: RemoteFsEntry; targetDirPath: string
 }
 
 const {
-  isRootDropOver,
   isRelevantDrag,
   onRootDragEnter,
   onRootDragOver,
@@ -429,7 +439,7 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
     class="flex-1 overflow-auto min-h-0 min-w-0 relative"
     @dragover="onContainerDragOver"
     @dragleave="onContainerDragLeave"
-    @drop.prevent="onContainerDrop"
+    @drop.prevent.stop="onContainerDrop"
     @keydown="onTreeContainerKeyDown"
   >
     <UContextMenu :items="rootContextMenuItems">
@@ -437,16 +447,6 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
         <div
           v-if="rootEntries.length === 0"
           class="flex flex-col items-center justify-center flex-1 w-full gap-3 text-ui-text-disabled px-4 text-center min-h-50 relative"
-          :class="{
-            'bg-primary-500/10 outline outline-primary-500/40 -outline-offset-1':
-              isRootDropOver && currentDragOperation !== 'copy',
-            'bg-emerald-500/10 outline outline-emerald-500/40 -outline-offset-1':
-              isRootDropOver && currentDragOperation === 'copy',
-          }"
-          @dragenter.prevent="onRootDragEnter"
-          @dragover.prevent="onRootDragOver"
-          @dragleave.prevent="onRootDragLeave"
-          @drop.prevent="onRootDrop"
         >
           <UIcon name="i-heroicons-folder-open" class="w-10 h-10" />
           <p class="text-sm">
@@ -456,23 +456,6 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
                 : t(
                     'videoEditor.fileManager.unsupported',
                     'File System Access API is not supported in this browser',
-                  )
-            }}
-          </p>
-          <p
-            v-if="isRootDropOver"
-            class="text-xs font-medium text-center absolute bottom-4"
-            :class="currentDragOperation === 'copy' ? 'text-emerald-400' : 'text-primary-400'"
-          >
-            {{
-              currentDragOperation === 'copy'
-                ? t(
-                    'videoEditor.fileManager.actions.dropToRootCopyHint',
-                    'Release to copy into the project root',
-                  )
-                : t(
-                    'videoEditor.fileManager.actions.dropToRootHint',
-                    'Release to upload into the project root',
                   )
             }}
           </p>
@@ -503,35 +486,7 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
 
         <div
           class="flex-1 w-full min-w-full flex items-center justify-center min-h-12 relative"
-          :class="{
-            'bg-primary-500/10 outline outline-primary-500/40 -outline-offset-1':
-              isRootDropOver && currentDragOperation !== 'copy',
-            'bg-emerald-500/10 outline outline-emerald-500/40 -outline-offset-1':
-              isRootDropOver && currentDragOperation === 'copy',
-          }"
-          @dragenter.prevent="onRootDragEnter"
-          @dragover.prevent="onRootDragOver"
-          @dragleave.prevent="onRootDragLeave"
-          @drop.prevent="onRootDrop"
-          @pointerdown="selectProjectRoot"
         >
-          <p
-            v-if="isRootDropOver"
-            class="text-xs font-medium text-center"
-            :class="currentDragOperation === 'copy' ? 'text-emerald-400' : 'text-primary-400'"
-          >
-            {{
-              currentDragOperation === 'copy'
-                ? t(
-                    'videoEditor.fileManager.actions.dropToRootCopyHint',
-                    'Release to copy into the project root',
-                  )
-                : t(
-                    'videoEditor.fileManager.actions.dropToRootHint',
-                    'Release to upload into the project root',
-                  )
-            }}
-          </p>
         </div>
       </div>
     </UContextMenu>

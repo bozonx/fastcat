@@ -413,6 +413,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   }
 
   async function onPanelDrop(e: DragEvent) {
+    e.stopPropagation();
     panelDragEnterCount = 0;
     isDragOverPanel.value = false;
 

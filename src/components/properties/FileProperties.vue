@@ -104,7 +104,11 @@ const selectedFsEntryRef = computed(() => props.selectedFsEntry);
 const previewModeRef = computed(() => props.previewMode);
 const hasProxyRef = computed(() => props.hasProxy);
 const isExternalContext = computed(
-  () => props.isExternal || props.instanceId === 'computer' || props.instanceId === 'sidebar',
+  () =>
+    props.isExternal ||
+    props.instanceId === 'computer' ||
+    props.instanceId === 'sidebar' ||
+    props.selectedFsEntry?.source === 'remote',
 );
 const isRootDirectory = computed(() => {
   const entry = props.selectedFsEntry;
@@ -506,6 +510,7 @@ const {
   onCopy,
   onCut,
   onPaste,
+  isBloggerDogProject,
   instanceId: computed(() => props.instanceId),
   isExternal: isExternalContext,
 });
