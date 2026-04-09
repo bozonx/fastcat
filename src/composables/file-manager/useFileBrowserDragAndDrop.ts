@@ -31,7 +31,18 @@ import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 interface UseFileBrowserDragAndDropOptions {
   findEntryByPath: (path: string) => FsEntry | null;
   resolveEntryByPath: (path: string) => Promise<FsEntry | null>;
-  handleFiles: (files: File[] | FileList, targetDirPath?: string) => Promise<void>;
+  handleFiles: (
+    files: File[] | FileList,
+    options?: {
+      targetDirPath?: string;
+      abortSignal?: AbortSignal;
+      onProgress?: (params: {
+        currentFileIndex: number;
+        totalFiles: number;
+        fileName: string;
+      }) => void;
+    },
+  ) => Promise<void>;
   moveEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<void>;
   copyEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
   loadFolderContent: () => Promise<void>;
@@ -103,7 +114,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     onRootDragEnter,
     onRootDragOver,
     onRootDragLeave,
-    onRootDrop,
+    onRootDrop: onRootDropBase,
   } = useFileDrop({
     resolveEntryByPath: options.resolveEntryByPath,
     handleFiles: options.handleFiles,
@@ -346,7 +357,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
     if (!hasFiles || droppedFiles.length === 0) return;
 
-    await options.handleFiles(droppedFiles, targetPath);
+    await options.handleFiles(droppedFiles, { targetDirPath: targetPath });
     options.notifyFileManagerUpdate();
     await options.loadFolderContent();
   }
@@ -471,12 +482,12 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
           if (shouldCopy) {
             await options.copyEntry({
               source,
-              targetDirPath: targetPath,
+              targetDirPath: targetFolder?.path ?? '',
             });
           } else {
             await options.moveEntry({
               source,
-              targetDirPath: targetPath,
+              targetDirPath: targetFolder?.path ?? '',
             });
           }
         }
@@ -490,9 +501,14 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
     if (droppedFiles.length === 0) return;
 
-    await options.handleFiles(droppedFiles, targetPath);
+    await options.handleFiles(droppedFiles, { targetDirPath: targetPath });
     options.notifyFileManagerUpdate();
     await options.loadFolderContent();
+  }
+
+  function onRootDrop(e: DragEvent) {
+    const currentPath = fileManagerStore.selectedFolder?.path;
+    return onRootDropBase(e, currentPath);
   }
 
   return {

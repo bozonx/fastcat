@@ -47,7 +47,18 @@ export interface UseFileBrowserRemoteOptions {
   onRootDragOver: (e: DragEvent) => void;
   onRootDragLeave: (e: DragEvent) => void;
   onRootDrop: (e: DragEvent) => void;
-  handleFiles: (files: File[] | FileList, targetDirPath?: string) => Promise<void>;
+  handleFiles: (
+    files: File[] | FileList,
+    options?: {
+      targetDirPath?: string;
+      abortSignal?: AbortSignal;
+      onProgress?: (params: {
+        currentFileIndex: number;
+        totalFiles: number;
+        fileName: string;
+      }) => void;
+    },
+  ) => Promise<void>;
 }
 
 export function useFileBrowserRemote({
@@ -307,7 +318,7 @@ export function useFileBrowserRemote({
       });
 
       remoteTransferPhase.value = t('videoEditor.fileManager.actions.uploadFiles', 'Upload files');
-      await handleFiles([file], params.targetDirPath);
+      await handleFiles([file], { targetDirPath: params.targetDirPath });
       uiStore.notifyFileManagerUpdate();
       await loadFolderContent();
     } finally {
@@ -404,7 +415,7 @@ export function useFileBrowserRemote({
       if (files && files.length > 0) {
         e.preventDefault();
         e.stopPropagation();
-        await handleFiles(files, entry.path);
+        await handleFiles(files, { targetDirPath: entry.path });
       }
       return;
     }
@@ -421,7 +432,7 @@ export function useFileBrowserRemote({
       const blob = await localVfs.readFile(sourcePath);
       const file = new File([blob], draggedFile.value.name, { type: blob.type });
 
-      await handleFiles([file], entry.path);
+      await handleFiles([file], { targetDirPath: entry.path });
       uiStore.notifyFileManagerUpdate();
       await loadFolderContent();
     }
@@ -458,7 +469,7 @@ export function useFileBrowserRemote({
     if (files && files.length > 0) {
       e.preventDefault();
       e.stopPropagation();
-      await handleFiles(files, target.path);
+      await handleFiles(files, { targetDirPath: target.path });
       uiStore.notifyFileManagerUpdate();
       await loadFolderContent();
     } else if (
@@ -473,7 +484,7 @@ export function useFileBrowserRemote({
         const localVfs = useVfs();
         const blob = await localVfs.readFile(sourcePath);
         const file = new File([blob], draggedFile.value.name, { type: blob.type });
-        await handleFiles([file], target.path);
+        await handleFiles([file], { targetDirPath: target.path });
         uiStore.notifyFileManagerUpdate();
         await loadFolderContent();
       }
