@@ -1104,6 +1104,8 @@ async function onDirectoryUploadChange(e: Event) {
               {{ t('common.scroll_for_more', 'Scroll for more') }}
             </div>
           </div>
+
+          <div class="file-manager-root-spacer" @click.self="handleContainerClick" />
         </div>
       </UContextMenu>
     </div>
@@ -1146,6 +1148,13 @@ async function onDirectoryUploadChange(e: Event) {
 </template>
 
 <style scoped>
+.file-manager-root-spacer {
+  width: 100%;
+  min-width: 100%;
+  height: 6rem;
+  flex-shrink: 0;
+}
+
 .content-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;
