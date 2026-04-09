@@ -520,11 +520,17 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
           @request-download="onRequestDownload"
         />
 
-        <div
-          class="w-full min-w-full h-24 shrink-0 relative"
-          @pointerdown.self="selectProjectRoot"
-        />
+        <div class="file-manager-root-spacer relative" @pointerdown.self="selectProjectRoot" />
       </div>
     </UContextMenu>
   </div>
 </template>
+
+<style scoped>
+.file-manager-root-spacer {
+  width: 100%;
+  min-width: 100%;
+  height: 6rem;
+  flex-shrink: 0;
+}
+</style>
