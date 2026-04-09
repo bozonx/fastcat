@@ -157,7 +157,7 @@ export function useFileContextMenu(
         (e) => e.kind === 'file' && deps.getEntryMeta(e).generatingProxy,
       );
 
-      if (hasVideo) {
+      if (hasVideo && !isComputer) {
         if (!generatingProxy) {
           items.push([
             {

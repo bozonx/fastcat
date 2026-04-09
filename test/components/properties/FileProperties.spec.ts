@@ -105,6 +105,14 @@ vi.mock('~/composables/file-manager/useFileManager', () => ({
   })),
 }));
 
+vi.mock('~/composables/file-manager/useComputerVfs', () => ({
+  useComputerVfs: vi.fn(() => ({
+    vfs: ref({
+      getFile: vi.fn(),
+    }),
+  })),
+}));
+
 vi.mock('~/composables/properties/useImageExifInfo', () => ({
   useImageExifInfo: vi.fn(() => ({
     hasImageInfo: ref(false),
@@ -394,5 +402,28 @@ describe('FileProperties.vue', () => {
     });
 
     expect(component.text()).toContain('Timeline 1');
+  });
+
+  it('hides timeline usage section for external files', async () => {
+    const { useFileTimelineUsage } = await import('~/composables/properties/useFileTimelineUsage');
+
+    vi.mocked(useFileTimelineUsage).mockReturnValue({
+      timelinesUsingSelectedFile: ref([
+        { timelinePath: 'timeline1.otio', timelineName: 'Timeline 1' },
+      ]),
+      openTimelineFromUsage: vi.fn(),
+    });
+
+    const component = await mountWithNuxt(FileProperties, {
+      props: {
+        selectedFsEntry: { kind: 'file', name: 'test.mp4', path: '/workspace/test.mp4' } as any,
+        previewMode: 'original',
+        hasProxy: false,
+        instanceId: 'computer',
+        isExternal: true,
+      },
+    });
+
+    expect(component.text()).not.toContain('Timeline 1');
   });
 });

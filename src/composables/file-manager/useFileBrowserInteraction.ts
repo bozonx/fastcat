@@ -18,6 +18,7 @@ export interface FileBrowserInteractionOptions {
   setSelectedFsEntry: (entry: FsEntry | null) => void;
   onFileAction: (action: string, entry: FsEntry) => void;
   preventOpen?: boolean;
+  instanceId?: string;
   isExternal?: boolean;
 }
 
@@ -30,16 +31,19 @@ export function useFileBrowserInteraction({
   setSelectedFsEntry,
   onFileAction,
   preventOpen,
+  instanceId,
   isExternal
 }: FileBrowserInteractionOptions) {
   const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
   const projectStore = useProjectStore();
   const timelineStore = useTimelineStore();
 
-  const { handleEntryClick: handleSelectionClick } = useFileManagerSelection({
+  const { handleEntryClick: handleSelectionClick, selectSingle } = useFileManagerSelection({
     getVisibleEntries: () => sortedEntries.value,
     enforceSameLevel: false,
     onSingleSelect: (entry) => fileManagerStore.selectItem(entry),
+    instanceId,
+    isExternal,
   });
 
   function handleEntryClick(event: MouseEvent, entry: FsEntry) {
@@ -66,6 +70,7 @@ export function useFileBrowserInteraction({
 
     if (entry.kind === 'directory') {
       fileManagerStore.openFolder(entry);
+      setSelectedFsEntry(entry);
     } else {
       if (preventOpen || isExternal) return;
       if (entry.name.toLowerCase().endsWith('.otio')) {
@@ -85,7 +90,7 @@ export function useFileBrowserInteraction({
 
   function handleEntryEnter(entry: FsEntry) {
     if (!isRemoteMode.value) {
-      fileManagerStore.selectItem(entry);
+      selectSingle(entry);
     } else {
       setSelectedFsEntry(entry);
     }

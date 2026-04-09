@@ -34,6 +34,7 @@ import { useFileStorageInfo } from '~/composables/properties/useFileStorageInfo'
 import { useFilePropertiesHandlers } from '~/composables/properties/useFilePropertiesHandlers';
 import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
+import { useComputerVfs } from '~/composables/file-manager/useComputerVfs';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -68,6 +69,7 @@ const workspaceStore = useWorkspaceStore();
 const toast = useToast();
 const { extractAudio } = useAudioExtraction();
 const fileManager = useFileManager();
+const { vfs: computerVfs } = useComputerVfs();
 const runtimeConfig = useRuntimeConfig();
 const clipboardStore = useAppClipboard();
 
@@ -101,12 +103,27 @@ const uploadInputRef = ref<HTMLInputElement | null>(null);
 const selectedFsEntryRef = computed(() => props.selectedFsEntry);
 const previewModeRef = computed(() => props.previewMode);
 const hasProxyRef = computed(() => props.hasProxy);
+const isExternalContext = computed(
+  () => props.isExternal || props.instanceId === 'computer' || props.instanceId === 'sidebar',
+);
+const isRootDirectory = computed(() => {
+  const entry = props.selectedFsEntry;
+  return entry?.kind === 'directory' && (entry.path === '' || entry.path === '/');
+});
+const effectiveVfs = computed(() =>
+  isExternalContext.value ? (computerVfs.value ?? fileManager.vfs) : fileManager.vfs,
+);
 
 const { isProjectRootDir, storageFreeBytes, projectStats } = useFileStorageInfo({
   selectedFsEntry: selectedFsEntryRef,
   currentProjectName: computed(() => projectStore.currentProjectName),
-  getDirectoryHandleByPath: (path) => projectStore.getDirectoryHandleByPath(path),
+  getDirectoryHandleByPath: async (path) =>
+    isExternalContext.value ? null : await projectStore.getDirectoryHandleByPath(path),
 });
+
+const isProjectRootDirInContext = computed(
+  () => isProjectRootDir.value && !isExternalContext.value,
+);
 
 const isCommonRoot = computed(() => {
   const entry = props.selectedFsEntry;
@@ -186,8 +203,19 @@ const {
   hasProxy: hasProxyRef,
   mediaStore,
   proxyStore,
-  getFileByPath: (path) => fileManager.vfs.getFile(path),
-  getDirectoryHandleByPath: (path) => projectStore.getDirectoryHandleByPath(path),
+  getFileByPath: (path) => effectiveVfs.value.getFile(path),
+  getMetadata: async ({ file, path }) => {
+    if (isExternalContext.value) {
+      return await mediaStore.getOrFetchMetadata(file, `external:${path}`, {
+        forceRefresh: true,
+      });
+    }
+    return await mediaStore.getOrFetchMetadataByPath(path, {
+      forceRefresh: true,
+    });
+  },
+  getDirectoryHandleByPath: (path) =>
+    isExternalContext.value ? Promise.resolve(null) : projectStore.getDirectoryHandleByPath(path),
   onResetPreviewMode: (mode) => emit('update:previewMode', mode),
 });
 
@@ -298,7 +326,7 @@ const remoteItemsCount = computed(() => {
 });
 
 const showVideoProxyActions = computed(() => {
-  if (isProjectRootDir.value) return false;
+  if (isRootDirectory.value || isExternalContext.value) return false;
   if (!isVideoFile.value) return false;
   if (!selectedPath.value) return false;
   return true;
@@ -369,7 +397,7 @@ const {
 });
 
 const canCopyOrCut = computed(() => {
-  return !isProjectRootDir.value && !isCommonRoot.value;
+  return !isRootDirectory.value && !isCommonRoot.value;
 });
 
 function onCopy() {
@@ -421,7 +449,7 @@ const {
   fileSecondaryActions,
 } = useFilePropertiesActions({
   t,
-  isProjectRootDir,
+  isProjectRootDir: isRootDirectory,
   isRemoteRoot,
   isFolderWithVideo,
   isGeneratingProxyForFolder,
@@ -479,7 +507,7 @@ const {
   onCut,
   onPaste,
   instanceId: computed(() => props.instanceId),
-  isExternal: computed(() => props.isExternal),
+  isExternal: isExternalContext,
 });
 
 const isRemoteAvailable = computed(() => Boolean(remoteFilesConfig.value));
@@ -603,7 +631,7 @@ const filteredFilePrimaryActions = computed(() => {
 
     <template v-if="!mobileTextMode || mediaType !== 'text'">
       <FileGeneralInfoSection
-        v-if="selectedFsEntry && !isProjectRootDir && (fileInfo?.kind === 'file' || selectedFsEntry.kind === 'file')"
+        v-if="selectedFsEntry && !isProjectRootDirInContext && (fileInfo?.kind === 'file' || selectedFsEntry.kind === 'file')"
         :title="generalInfoTitle"
         :file-info="fileInfo || (selectedFsEntry as any)"
         :selected-path="selectedPath"
@@ -611,6 +639,7 @@ const filteredFilePrimaryActions = computed(() => {
         :format-bytes="formatBytes"
         :media-count="remoteMediaCount"
         :instance-id="props.instanceId"
+        :is-external="isExternalContext"
         :hide-header="(props.selectedFsEntry as any)?.mimeType === 'application/octet-stream'"
       >
         <template v-if="mediaType === 'text' && lineCount !== null">
@@ -690,7 +719,7 @@ const filteredFilePrimaryActions = computed(() => {
 
 
       <FileProjectRootSection
-        v-if="fileInfo?.kind === 'directory' && isProjectRootDir"
+        v-if="fileInfo?.kind === 'directory' && isProjectRootDirInContext"
         :is-project-root-dir="isProjectRootDir"
         :project-name="projectStore.currentProjectName"
         :storage-free-bytes="storageFreeBytes"
@@ -698,7 +727,7 @@ const filteredFilePrimaryActions = computed(() => {
       />
 
       <FileTimelineUsageSection
-        v-if="fileInfo?.kind === 'file' && props.instanceId !== 'computer' && props.instanceId !== 'sidebar'"
+        v-if="fileInfo?.kind === 'file' && !isExternalContext"
         :usages="timelinesUsingSelectedFile"
         :open-timeline-from-usage="openTimelineFromUsage"
       />
@@ -791,7 +820,7 @@ const filteredFilePrimaryActions = computed(() => {
       </PropertySection>
 
       <FileGeneralInfoSection
-        v-if="selectedFsEntry && !isProjectRootDir && (fileInfo?.kind === 'directory' || selectedFsEntry.kind === 'directory') && !isRemoteRoot && !isVirtualAll && !isPersonalLibrary && !isProjectLibraries && !isBloggerDogProject"
+        v-if="selectedFsEntry && !isProjectRootDirInContext && (fileInfo?.kind === 'directory' || selectedFsEntry.kind === 'directory') && !isRemoteRoot && !isVirtualAll && !isPersonalLibrary && !isProjectLibraries && !isBloggerDogProject"
         :title="generalInfoTitle"
         :file-info="fileInfo || (selectedFsEntry as any)"
         :selected-path="selectedPath"
@@ -800,6 +829,7 @@ const filteredFilePrimaryActions = computed(() => {
         :format-bytes="formatBytes"
         :media-count="remoteMediaCount"
         :instance-id="props.instanceId"
+        :is-external="isExternalContext"
       >
         <template
           v-if="

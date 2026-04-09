@@ -55,6 +55,11 @@ export function useEntryPreview(params: {
   };
   proxyStore: { getProxyFile: (path: string) => Promise<File | null> };
   getFileByPath: (path: string) => Promise<File | null>;
+  getMetadata?: (params: {
+    file: File;
+    entry: FsEntry;
+    path: string;
+  }) => Promise<MediaMetadata | null>;
   getDirectoryHandleByPath?: (path: string) => Promise<FileSystemDirectoryHandle | null>;
   onResetPreviewMode: (mode: 'original' | 'proxy') => void;
 }) {
@@ -290,9 +295,15 @@ export function useEntryPreview(params: {
             (mediaType.value === 'video' ||
               mediaType.value === 'audio' ||
               mediaType.value === 'image')
-              ? await params.mediaStore.getOrFetchMetadataByPath(entry.path, {
-                  forceRefresh: true,
-                })
+              ? params.getMetadata
+                ? await params.getMetadata({
+                    file,
+                    entry,
+                    path: entry.path,
+                  })
+                : await params.mediaStore.getOrFetchMetadataByPath(entry.path, {
+                    forceRefresh: true,
+                  })
               : undefined,
         };
 

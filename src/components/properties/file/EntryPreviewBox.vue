@@ -73,6 +73,19 @@ const props = defineProps<{
     </div>
 
     <div
+      v-else-if="!props.mediaType"
+      class="flex flex-col items-center gap-3 text-ui-text-muted p-8 w-full h-full justify-center"
+    >
+      <UIcon name="i-heroicons-document" class="w-16 h-16" />
+      <p class="text-sm font-medium text-center truncate w-full px-4">
+        {{ props.fileName || t('common.loading', 'Loading...') }}
+      </p>
+      <p class="text-xs text-ui-text-muted">
+        {{ t('common.loading', 'Loading...') }}
+      </p>
+    </div>
+
+    <div
       v-else
       class="w-full h-64"
       :class="String($attrs.class ?? '').indexOf('flex-1') !== -1 ? 'flex-1 h-full' : 'h-64'"

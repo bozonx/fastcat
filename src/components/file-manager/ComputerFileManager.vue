@@ -3,6 +3,7 @@ import { ref, computed, provide, onMounted, shallowRef } from 'vue';
 import { Pane, Splitpanes } from 'splitpanes';
 import { useComputerVfs } from '~/composables/file-manager/useComputerVfs';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import {
   createFileManager,
   FILE_MANAGER_INJECTION_KEY,
@@ -27,6 +28,7 @@ const fileManagerStore =
 const persistenceStore = useFileBrowserPersistenceStore();
 const instanceId = props.instanceId || 'computer';
 const workspaceStore = useWorkspaceStore();
+const selectionStore = useSelectionStore();
 const { t } = useI18n();
 
 // Create independent state for this instance
@@ -180,6 +182,7 @@ onMounted(async () => {
 
 function onSelect(entry: FsEntry) {
   computerStoreWrapper.value.openFolder(entry);
+  selectionStore.selectFsEntry(entry, instanceId, true);
 }
 </script>
 
