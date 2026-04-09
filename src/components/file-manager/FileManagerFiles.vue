@@ -336,12 +336,40 @@ const {
 });
 
 const rootContextMenuItems = computed(() => {
+  const rootEntry: FsEntry =
+    props.rootSelectionEntry ||
+    ({
+      kind: 'directory',
+      name: projectStore.currentProjectName || '/',
+      path: '',
+    } as FsEntry);
+
+  if (props.isExternal) {
+    const menu: Record<string, any>[][] = [
+      [
+        {
+          label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
+          icon: 'i-heroicons-folder-plus',
+          onSelect: async () => emit('action', 'createFolder', rootEntry),
+        },
+        {
+          label: t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document'),
+          icon: 'i-heroicons-document-text',
+          onSelect: async () => emit('action', 'createMarkdown', rootEntry),
+        },
+        {
+          label: t('common.paste', 'Paste'),
+          icon: 'i-heroicons-clipboard',
+          disabled: !clipboardStore.hasFileManagerPayload,
+          onSelect: async () => emit('action', 'paste', rootEntry),
+        },
+      ],
+    ];
+
+    return menu;
+  }
+
   if (!projectStore.currentProjectName) return [];
-  const rootEntry: FsEntry = {
-    kind: 'directory',
-    name: '/',
-    path: '',
-  };
 
   const menu: Record<string, any>[][] = [
     [
@@ -493,7 +521,7 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
         />
 
         <div
-          class="flex-1 w-full min-w-full flex items-center justify-center min-h-12 relative"
+          class="w-full min-w-full h-24 shrink-0 relative"
           @pointerdown.self="selectProjectRoot"
         />
       </div>
