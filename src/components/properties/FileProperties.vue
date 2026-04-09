@@ -44,7 +44,9 @@ import type { FsEntry } from '~/types/fs';
 const props = defineProps<{
   selectedFsEntry: FsEntry;
   previewMode: 'original' | 'proxy';
-  hasProxy: boolean;
+  hasProxy?: boolean;
+  instanceId?: string;
+  isExternal?: boolean;
   isFilesPage?: boolean;
   mobileTextMode?: boolean;
   hideActions?: boolean;
@@ -476,6 +478,8 @@ const {
   onCopy,
   onCut,
   onPaste,
+  instanceId: computed(() => props.instanceId),
+  isExternal: computed(() => props.isExternal),
 });
 
 const isRemoteAvailable = computed(() => Boolean(remoteFilesConfig.value));
@@ -598,6 +602,22 @@ const filteredFilePrimaryActions = computed(() => {
     </template>
 
     <template v-if="!mobileTextMode || mediaType !== 'text'">
+      <FileGeneralInfoSection
+        v-if="selectedFsEntry && !isProjectRootDir && fileInfo?.kind === 'file'"
+        :title="generalInfoTitle"
+        :file-info="fileInfo || (selectedFsEntry as any)"
+        :selected-path="selectedPath"
+        :is-hidden="isHidden"
+        :format-bytes="formatBytes"
+        :media-count="remoteMediaCount"
+        :instance-id="props.instanceId"
+        :hide-header="(props.selectedFsEntry as any)?.mimeType === 'application/octet-stream'"
+      >
+        <template v-if="mediaType === 'text' && lineCount !== null">
+          <PropertyRow :label="t('fastcat.file.lineCount', 'Line Count')" :value="lineCount" />
+        </template>
+      </FileGeneralInfoSection>
+
       <ImageFilePropertiesSection
         v-if="fileInfo?.kind === 'file' && mediaType === 'image' && hasImageInfo"
         :image-resolution="imageResolution"
@@ -678,7 +698,7 @@ const filteredFilePrimaryActions = computed(() => {
       />
 
       <FileTimelineUsageSection
-        v-if="fileInfo?.kind === 'file'"
+        v-if="fileInfo?.kind === 'file' && props.instanceId !== 'computer' && props.instanceId !== 'sidebar'"
         :usages="timelinesUsingSelectedFile"
         :open-timeline-from-usage="openTimelineFromUsage"
       />
@@ -771,23 +791,15 @@ const filteredFilePrimaryActions = computed(() => {
       </PropertySection>
 
       <FileGeneralInfoSection
-        v-if="
-          fileInfo &&
-          !isProjectRootDir &&
-          fileInfo.kind === 'directory' &&
-          !isRemoteRoot &&
-          !isVirtualAll &&
-          !isPersonalLibrary &&
-          !isProjectLibraries &&
-          !isBloggerDogProject
-        "
+        v-if="selectedFsEntry && !isProjectRootDir && fileInfo?.kind === 'directory' && !isRemoteRoot && !isVirtualAll && !isPersonalLibrary && !isProjectLibraries && !isBloggerDogProject"
         :title="generalInfoTitle"
-        :file-info="fileInfo"
+        :file-info="fileInfo || (selectedFsEntry as any)"
         :selected-path="selectedPath"
         :path-link="bloggerDogDeepLink"
         :is-hidden="isHidden"
         :format-bytes="formatBytes"
         :media-count="remoteMediaCount"
+        :instance-id="props.instanceId"
       >
         <template
           v-if="
@@ -801,24 +813,10 @@ const filteredFilePrimaryActions = computed(() => {
         </template>
       </FileGeneralInfoSection>
 
-      <FileGeneralInfoSection
-        v-if="fileInfo && !isProjectRootDir && fileInfo.kind === 'file'"
-        :title="generalInfoTitle"
-        :file-info="fileInfo"
-        :selected-path="selectedPath"
-        :path-link="bloggerDogDeepLink"
-        :is-hidden="isHidden"
-        :format-bytes="formatBytes"
-        :media-count="remoteMediaCount"
-        :hide-header="(props.selectedFsEntry as any)?.mimeType === 'application/octet-stream'"
-      >
-        <template v-if="mediaType === 'text' && lineCount !== null">
-          <PropertyRow :label="t('fastcat.file.lineCount', 'Line Count')" :value="lineCount" />
-        </template>
-      </FileGeneralInfoSection>
+      <!-- General info for files moved to top -->
 
       <ExpandableYamlSection
-        v-if="fileInfo?.kind === 'file' && (isVideoFile || isAudioFile) && metadataYaml"
+        v-if="fileInfo?.kind === 'file' && (isVideoFile || isAudioFile) && metadataYaml && metadataYaml !== '{}\n' && metadataYaml !== '[]\n'"
         :title="t('common.meta', 'Meta')"
         :content="metadataYaml"
         :expanded="isMetaExpanded"
@@ -827,7 +825,7 @@ const filteredFilePrimaryActions = computed(() => {
       />
 
       <ExpandableYamlSection
-        v-if="fileInfo?.kind === 'file' && mediaType === 'image' && exifYaml"
+        v-if="fileInfo?.kind === 'file' && mediaType === 'image' && exifYaml && exifYaml !== '{}\n' && exifYaml !== '[]\n'"
         title="EXIF"
         :content="exifYaml"
         :expanded="isExifExpanded"

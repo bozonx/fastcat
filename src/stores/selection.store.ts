@@ -73,6 +73,7 @@ export interface SelectedFsEntry extends SelectedEntityBase {
   name: string;
   entry: FsEntry;
   instanceId?: string;
+  isExternal?: boolean;
 }
 
 export interface SelectedFsEntries extends SelectedEntityBase {
@@ -80,6 +81,7 @@ export interface SelectedFsEntries extends SelectedEntityBase {
   kind: 'multiple';
   entries: FsEntry[];
   instanceId?: string;
+  isExternal?: boolean;
 }
 
 export interface SelectedTimelineGap extends SelectedEntityBase {
@@ -175,7 +177,7 @@ export const useSelectionStore = defineStore('selection', () => {
     };
   }
 
-  function selectFsEntry(entry: FsEntry, instanceId?: string) {
+  function selectFsEntry(entry: FsEntry, instanceId?: string, isExternal?: boolean) {
     selectedEntity.value = {
       source: 'fileManager',
       kind: entry.kind,
@@ -183,16 +185,17 @@ export const useSelectionStore = defineStore('selection', () => {
       name: entry.name,
       entry,
       instanceId,
+      isExternal,
     };
   }
 
-  function selectFsEntries(entries: FsEntry[], instanceId?: string) {
+  function selectFsEntries(entries: FsEntry[], instanceId?: string, isExternal?: boolean) {
     if (entries.length === 0) {
       clearSelection();
       return;
     }
     if (entries.length === 1 && entries[0]) {
-      selectFsEntry(entries[0], instanceId);
+      selectFsEntry(entries[0], instanceId, isExternal);
       return;
     }
     selectedEntity.value = {
@@ -200,6 +203,7 @@ export const useSelectionStore = defineStore('selection', () => {
       kind: 'multiple',
       entries,
       instanceId,
+      isExternal,
     };
   }
 

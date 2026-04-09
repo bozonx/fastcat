@@ -13,6 +13,7 @@ export interface FileManagerSelectionOptions {
   enforceSameLevel?: boolean;
   onSingleSelect?: (entry: FsEntry) => void;
   instanceId?: string;
+  isExternal?: boolean;
 }
 
 export function useFileManagerSelection({
@@ -20,6 +21,7 @@ export function useFileManagerSelection({
   enforceSameLevel = true,
   onSingleSelect,
   instanceId,
+  isExternal,
 }: FileManagerSelectionOptions) {
   const selectionStore = useSelectionStore();
   const uiStore = useUiStore();
@@ -42,7 +44,7 @@ export function useFileManagerSelection({
 
   function selectSingle(entry: FsEntry) {
     setUiEntry(entry);
-    selectionStore.selectFsEntry(entry, instanceId);
+    selectionStore.selectFsEntry(entry, instanceId, isExternal);
     onSingleSelect?.(entry);
   }
 
@@ -53,7 +55,7 @@ export function useFileManagerSelection({
   function handleToggleSelect(entry: FsEntry) {
     const selected = selectionStore.selectedEntity;
     if (!selected || selected.source !== 'fileManager') {
-      selectionStore.selectFsEntries([entry], instanceId);
+      selectionStore.selectFsEntries([entry], instanceId, isExternal);
       return;
     }
 
@@ -67,7 +69,7 @@ export function useFileManagerSelection({
     const existingIndex = currentEntries.findIndex((e) => e.path === entry.path);
     if (existingIndex >= 0) {
       currentEntries.splice(existingIndex, 1);
-      selectionStore.selectFsEntries(currentEntries, instanceId);
+      selectionStore.selectFsEntries(currentEntries, instanceId, isExternal);
       return;
     }
 
@@ -80,7 +82,7 @@ export function useFileManagerSelection({
       }
     }
 
-    selectionStore.selectFsEntries([...currentEntries, entry], instanceId);
+    selectionStore.selectFsEntries([...currentEntries, entry], instanceId, isExternal);
   }
 
   /**
@@ -114,7 +116,7 @@ export function useFileManagerSelection({
       ? visibleEntries.slice(start, end + 1).filter((e) => getParentPath(e) === entryParent)
       : visibleEntries.slice(start, end + 1);
 
-    selectionStore.selectFsEntries(range, instanceId);
+    selectionStore.selectFsEntries(range, instanceId, isExternal);
   }
 
   /**
