@@ -294,11 +294,18 @@ async function handleRemoteFiles(files: File[] | FileList, targetDirPath?: strin
   uiStore.notifyFileManagerUpdate();
 }
 
-async function handleFiles(files: File[] | FileList, targetDirPath?: string) {
+async function handleFiles(
+  files: File[] | FileList,
+  options?: {
+    targetDirPath?: string;
+    abortSignal?: AbortSignal;
+    onProgress?: (params: { currentFileIndex: number; totalFiles: number; fileName: string }) => void;
+  },
+) {
   if (isRemoteMode.value) {
-    return handleRemoteFiles(files, targetDirPath);
+    return handleRemoteFiles(files, options?.targetDirPath);
   }
-  return handleFilesBase(files, targetDirPath);
+  return handleFilesBase(files, options);
 }
 
 const remote = useFileBrowserRemote({
@@ -630,7 +637,7 @@ const { getContextMenuItems } = useFileContextMenu(
     }),
     isFilesPage: props.isFilesPage,
     instanceId: instanceId,
-    isExternal: props.isExternal,
+    isExternal: isExternal.value,
     getSelectedEntries: () => {
       const selected = selectionStore.selectedEntity;
       if (selected?.source === 'fileManager') {
@@ -895,11 +902,7 @@ async function onDirectoryUploadChange(e: Event) {
   if (!entry || entry.kind !== 'directory') return;
   if (files.length === 0) return;
 
-  if (!entry.path) {
-    await handleFiles(files);
-  } else {
-    await handleFiles(files, entry.path);
-  }
+  await handleFiles(files, { targetDirPath: entry.path });
   uiStore.notifyFileManagerUpdate();
   await loadFolderContent();
 }

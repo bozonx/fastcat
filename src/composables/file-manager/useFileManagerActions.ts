@@ -42,7 +42,18 @@ interface FileManagerActions {
   renameEntry: (target: FsEntry, newName: string) => Promise<void>;
   deleteEntry: (target: FsEntry) => Promise<void>;
   loadProjectDirectory: (params?: { fullRefresh?: boolean }) => Promise<void>;
-  handleFiles: (files: File[], targetDirPath?: string) => Promise<void>;
+  handleFiles: (
+    files: File[] | FileList,
+    options?: {
+      targetDirPath?: string;
+      abortSignal?: AbortSignal;
+      onProgress?: (params: {
+        currentFileIndex: number;
+        totalFiles: number;
+        fileName: string;
+      }) => void;
+    },
+  ) => Promise<void>;
   mediaCache: Pick<ProxyThumbnailService, 'ensureProxy' | 'cancelProxy' | 'removeProxy'>;
   vfs: IFileSystemAdapter;
   findEntryByPath: (path: string) => FsEntry | null;

@@ -17,7 +17,18 @@ import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
 export interface UseFileDropOptions {
   resolveEntryByPath: (path: string) => Promise<FsEntry | null>;
-  handleFiles: (files: FileList | File[], targetDirPath?: string) => Promise<void>;
+  handleFiles: (
+    files: FileList | File[],
+    options?: {
+      targetDirPath?: string;
+      abortSignal?: AbortSignal;
+      onProgress?: (params: {
+        currentFileIndex: number;
+        totalFiles: number;
+        fileName: string;
+      }) => void;
+    },
+  ) => Promise<void>;
   moveEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<void>;
   copyEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
   targetFileManagerInstanceId?: string | null;
@@ -86,7 +97,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     }
   }
 
-  async function onRootDrop(e: DragEvent) {
+  async function onRootDrop(e: DragEvent, targetDirPath?: string) {
     e.stopPropagation();
     rootDragEnterCount = 0;
     isRootDropOver.value = false;
@@ -98,7 +109,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
 
     if (hasFiles && droppedFiles.length > 0) {
-      await options.handleFiles(droppedFiles, '');
+      await options.handleFiles(droppedFiles, { targetDirPath });
       return;
     }
 
@@ -163,12 +174,12 @@ export function useFileDrop(options: UseFileDropOptions) {
         if (shouldCopy) {
           await options.copyEntry({
             source,
-            targetDirPath: '',
+            targetDirPath: targetDirPath ?? '',
           });
         } else {
           await options.moveEntry({
             source,
-            targetDirPath: '',
+            targetDirPath: targetDirPath ?? '',
           });
         }
       }

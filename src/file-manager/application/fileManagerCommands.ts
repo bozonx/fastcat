@@ -83,9 +83,9 @@ export async function handleFilesCommand(
 
       const file = inputFile;
 
-      let finalRelativePathBase = params.targetDirPath || '';
+      let finalRelativePathBase: string;
 
-      if (!finalRelativePathBase) {
+      if (params.targetDirPath === undefined) {
         const resolved = await deps.getTargetDirPath({ file });
         if (!resolved) {
           deps.onSkipProjectFile({ file });
@@ -93,6 +93,8 @@ export async function handleFilesCommand(
         }
 
         finalRelativePathBase = resolved;
+      } else {
+        finalRelativePathBase = params.targetDirPath;
       }
 
       const targetPath = finalRelativePathBase
@@ -171,7 +173,8 @@ export async function resolveDefaultTargetDir(
     case 'video':
       return VIDEO_DIR_NAME;
     case 'text': {
-      const ext = params.file.name.split('.').pop()?.toLowerCase();
+      const name = 'file' in params ? params.file.name : params.name;
+      const ext = name.split('.').pop()?.toLowerCase();
       if (ext === 'md' || ext === 'txt') return DOCUMENTS_DIR_NAME;
       return FILES_DIR_NAME;
     }
