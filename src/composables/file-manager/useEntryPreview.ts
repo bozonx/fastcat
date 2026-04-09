@@ -77,6 +77,7 @@ export function useEntryPreview(params: {
     clips: number;
     version: number | null;
   } | null>(null);
+  let loadRequestId = 0;
 
   const exifYaml = computed(() => {
     if (!exifData.value) return null;
@@ -107,58 +108,129 @@ export function useEntryPreview(params: {
     }
   });
 
-  async function loadPreviewMedia() {
-    if (currentUrl.value) {
-      URL.revokeObjectURL(currentUrl.value);
-      currentUrl.value = null;
-    }
+  function applyResolvedState(next: {
+    currentUrl: string | null;
+    mediaType: MediaType;
+    textContent: string;
+    fileInfo: EntryPreviewInfo | null;
+    exifData: unknown | null;
+    imageDimensions: { width: number; height: number } | null;
+    lineCount: number | null;
+    timelineDocSummary: {
+      durationUs: number;
+      videoTracks: number;
+      audioTracks: number;
+      clips: number;
+      version: number | null;
+    } | null;
+  }) {
+    const previousUrl = currentUrl.value;
+    currentUrl.value = next.currentUrl;
+    mediaType.value = next.mediaType;
+    textContent.value = next.textContent;
+    fileInfo.value = next.fileInfo;
+    exifData.value = next.exifData;
+    imageDimensions.value = next.imageDimensions;
+    lineCount.value = next.lineCount;
+    timelineDocSummary.value = next.timelineDocSummary;
 
-    const entry = params.selectedFsEntry.value;
-    if (!entry || entry.kind !== 'file') return;
+    if (previousUrl && previousUrl !== next.currentUrl) {
+      URL.revokeObjectURL(previousUrl);
+    }
+  }
+
+  async function resolvePreviewMediaState(
+    entry: FsEntry | null,
+    resolvedMediaType: MediaType,
+    resolvedFileInfo: EntryPreviewInfo | null,
+  ) {
+    if (!entry || entry.kind !== 'file') {
+      return {
+        currentUrl: null,
+        imageDimensions: null,
+      };
+    }
 
     try {
-      let fileToPlay: File;
+      let fileToPlay: File | null = null;
 
       if (params.previewMode.value === 'proxy' && params.hasProxy.value && entry.path) {
-        const proxyFile = await params.proxyStore.getProxyFile(entry.path);
-        if (proxyFile) {
-          fileToPlay = proxyFile;
-        } else {
-          const file = await params.getFileByPath(entry.path);
-          if (!file) return;
-          fileToPlay = file;
-        }
-      } else {
-        const file = await params.getFileByPath(entry.path);
-        if (!file) return;
-        fileToPlay = file;
+        fileToPlay = await params.proxyStore.getProxyFile(entry.path);
       }
 
+      if (!fileToPlay && entry.path) {
+        fileToPlay = await params.getFileByPath(entry.path);
+      }
+
+      if (!fileToPlay) {
+        return {
+          currentUrl: null,
+          imageDimensions: null,
+        };
+      }
+
+      let nextUrl: string | null = null;
       if (
-        mediaType.value === 'video' ||
-        mediaType.value === 'audio' ||
-        (mediaType.value === 'image' &&
-          (fileInfo.value?.metadata as any)?.image?.canDisplay !== false)
+        resolvedMediaType === 'video' ||
+        resolvedMediaType === 'audio' ||
+        (resolvedMediaType === 'image' &&
+          (resolvedFileInfo?.metadata as any)?.image?.canDisplay !== false)
       ) {
-        currentUrl.value = URL.createObjectURL(fileToPlay);
+        nextUrl = URL.createObjectURL(fileToPlay);
       }
 
-      if (mediaType.value === 'image') {
+      let nextImageDimensions: { width: number; height: number } | null = null;
+      if (resolvedMediaType === 'image') {
         try {
           const bitmap = await createImageBitmap(fileToPlay);
-          if (params.selectedFsEntry.value === entry) {
-            imageDimensions.value = { width: bitmap.width, height: bitmap.height };
-          }
+          nextImageDimensions = { width: bitmap.width, height: bitmap.height };
           bitmap.close();
         } catch {
-          if (params.selectedFsEntry.value === entry) {
-            imageDimensions.value = null;
-          }
+          nextImageDimensions = null;
         }
       }
+
+      return {
+        currentUrl: nextUrl,
+        imageDimensions: nextImageDimensions,
+      };
     } catch (e) {
       console.error('Failed to load preview media:', e);
+      return {
+        currentUrl: null,
+        imageDimensions: null,
+      };
     }
+  }
+
+  async function loadPreviewMedia() {
+    const requestId = ++loadRequestId;
+    const entry = params.selectedFsEntry.value;
+    const nextMediaType = mediaType.value;
+    const nextFileInfo = fileInfo.value;
+    const nextTextContent = textContent.value;
+    const nextExifData = exifData.value;
+    const nextLineCount = lineCount.value;
+    const nextTimelineDocSummary = timelineDocSummary.value;
+    const previewState = await resolvePreviewMediaState(entry, nextMediaType, nextFileInfo);
+
+    if (requestId !== loadRequestId) {
+      if (previewState.currentUrl) {
+        URL.revokeObjectURL(previewState.currentUrl);
+      }
+      return;
+    }
+
+    applyResolvedState({
+      currentUrl: previewState.currentUrl,
+      mediaType: nextMediaType,
+      textContent: nextTextContent,
+      fileInfo: nextFileInfo,
+      exifData: nextExifData,
+      imageDimensions: previewState.imageDimensions,
+      lineCount: nextLineCount,
+      timelineDocSummary: nextTimelineDocSummary,
+    });
   }
 
   watch(
@@ -171,20 +243,22 @@ export function useEntryPreview(params: {
   watch(
     () => params.selectedFsEntry.value,
     async (entry) => {
-      if (currentUrl.value) {
-        URL.revokeObjectURL(currentUrl.value);
-        currentUrl.value = null;
-      }
-      mediaType.value = null;
-      textContent.value = '';
-      fileInfo.value = null;
-      exifData.value = null;
-      imageDimensions.value = null;
-      timelineDocSummary.value = null;
-      lineCount.value = null;
+      const requestId = ++loadRequestId;
       params.onResetPreviewMode('original');
 
-      if (!entry) return;
+      if (!entry) {
+        applyResolvedState({
+          currentUrl: null,
+          mediaType: null,
+          textContent: '',
+          fileInfo: null,
+          exifData: null,
+          imageDimensions: null,
+          lineCount: null,
+          timelineDocSummary: null,
+        });
+        return;
+      }
 
       if (entry.kind === 'directory') {
         let size = 0;
@@ -205,81 +279,101 @@ export function useEntryPreview(params: {
           size = entry.size;
         }
 
-        fileInfo.value = {
-          name: entry.name,
-          kind: 'directory',
-          path: entry.path,
-          size,
-          filesCount,
-          lastModified: entry.lastModified,
-          createdAt: entry.createdAt,
-        };
+        if (requestId !== loadRequestId) return;
+
+        applyResolvedState({
+          currentUrl: null,
+          mediaType: null,
+          textContent: '',
+          fileInfo: {
+            name: entry.name,
+            kind: 'directory',
+            path: entry.path,
+            size,
+            filesCount,
+            lastModified: entry.lastModified,
+            createdAt: entry.createdAt,
+          },
+          exifData: null,
+          imageDimensions: null,
+          lineCount: null,
+          timelineDocSummary: null,
+        });
         return;
       }
-
-      const bdPayload = getBdPayload(entry);
-      const thumbnailUrl = ref<string | null>(bdPayload?.thumbnailUrl ?? null);
 
       try {
         const fileExt = entry.name.split('.').pop()?.toLowerCase() || '';
         const extBasedType = getMediaTypeFromFilename(entry.name);
+        let nextMediaType: MediaType = null;
         if (extBasedType !== 'unknown') {
-          mediaType.value = extBasedType === 'timeline' ? 'text' : extBasedType;
+          nextMediaType = extBasedType === 'timeline' ? 'text' : extBasedType;
         }
 
         const file = await params.getFileByPath(entry.path);
         if (!file) return;
+        if (requestId !== loadRequestId) return;
 
         const textExtensions = TEXT_EXTENSIONS;
+        let nextTextContent = '';
+        let nextLineCount: number | null = null;
+        let nextTimelineDocSummary: {
+          durationUs: number;
+          videoTracks: number;
+          audioTracks: number;
+          clips: number;
+          version: number | null;
+        } | null = null;
 
         if (fileExt === 'otio' || extBasedType === 'timeline') {
-          mediaType.value = 'text';
+          nextMediaType = 'text';
           try {
             const text = await file.text();
-            lineCount.value = text.split('\n').length;
+            if (requestId !== loadRequestId) return;
+            nextLineCount = text.split('\n').length;
             const parsedDoc = parseTimelineFromOtio(text, {
               id: entry.path ?? 'unknown',
               name: entry.name,
               fps: 25,
             });
-            timelineDocSummary.value = computeTimelineSummary(parsedDoc);
+            nextTimelineDocSummary = computeTimelineSummary(parsedDoc);
           } catch {
-            timelineDocSummary.value = null;
+            nextTimelineDocSummary = null;
           }
         } else if (extBasedType === 'image') {
-          mediaType.value = 'image';
+          nextMediaType = 'image';
         } else if (extBasedType === 'video') {
-          mediaType.value = 'video';
+          nextMediaType = 'video';
         } else if (extBasedType === 'audio') {
-          mediaType.value = 'audio';
+          nextMediaType = 'audio';
         } else if (extBasedType === 'text') {
-          mediaType.value = 'text';
+          nextMediaType = 'text';
           const textSlice = file.slice(0, 1024 * 1024);
           const fullText = await textSlice.text();
-          textContent.value = fullText;
-          lineCount.value = fullText.split('\n').length;
+          if (requestId !== loadRequestId) return;
+          nextTextContent = fullText;
+          nextLineCount = fullText.split('\n').length;
           if (file.size > 1024 * 1024) {
-            textContent.value += '\n... (truncated)';
+            nextTextContent += '\n... (truncated)';
           }
         } else {
-          mediaType.value = 'unknown';
+          nextMediaType = 'unknown';
         }
 
-        const selectionKey = entry;
-        if (mediaType.value === 'image') {
+        let nextExifData: unknown | null = null;
+        if (nextMediaType === 'image') {
           try {
             const exifrModule = await import('exifr');
             const data = await exifrModule.parse(file);
-
-            if (params.selectedFsEntry.value !== selectionKey) return;
-            exifData.value = data ?? null;
+            if (requestId !== loadRequestId) return;
+            nextExifData = data ?? null;
           } catch {
-            if (params.selectedFsEntry.value !== selectionKey) return;
-            exifData.value = null;
+            if (requestId !== loadRequestId) return;
+            nextExifData = null;
           }
         }
 
-        fileInfo.value = {
+        const nextFileInfo: EntryPreviewInfo = {
           name: file.name,
           kind: 'file',
           path: entry.path,
@@ -292,9 +386,9 @@ export function useEntryPreview(params: {
           ext: fileExt,
           metadata:
             entry.path &&
-            (mediaType.value === 'video' ||
-              mediaType.value === 'audio' ||
-              mediaType.value === 'image')
+            (nextMediaType === 'video' ||
+              nextMediaType === 'audio' ||
+              nextMediaType === 'image')
               ? params.getMetadata
                 ? await params.getMetadata({
                     file,
@@ -306,14 +400,26 @@ export function useEntryPreview(params: {
                   })
               : undefined,
         };
+        if (requestId !== loadRequestId) return;
 
-        if (
-          mediaType.value === 'image' ||
-          mediaType.value === 'video' ||
-          mediaType.value === 'audio'
-        ) {
-          await loadPreviewMedia();
+        const previewState = await resolvePreviewMediaState(entry, nextMediaType, nextFileInfo);
+        if (requestId !== loadRequestId) {
+          if (previewState.currentUrl) {
+            URL.revokeObjectURL(previewState.currentUrl);
+          }
+          return;
         }
+
+        applyResolvedState({
+          currentUrl: previewState.currentUrl,
+          mediaType: nextMediaType,
+          textContent: nextTextContent,
+          fileInfo: nextFileInfo,
+          exifData: nextExifData,
+          imageDimensions: previewState.imageDimensions,
+          lineCount: nextLineCount,
+          timelineDocSummary: nextTimelineDocSummary,
+        });
       } catch (e) {
         console.error('Failed to preview file:', e);
       }
