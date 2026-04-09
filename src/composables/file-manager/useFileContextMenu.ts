@@ -1,5 +1,5 @@
 import type { FsEntry } from '~/types/fs';
-import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
+import { WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 
 export type FileAction =
@@ -49,75 +49,31 @@ interface ContextMenuDeps {
   isExternal?: boolean;
 }
 
+type ContextMenuItem = {
+  label: string;
+  icon: string;
+  onSelect: () => void;
+  color?: string;
+  disabled?: boolean;
+};
+
 export function useFileContextMenu(
   deps: ContextMenuDeps,
   onAction: (action: FileAction, entry: FsEntry | FsEntry[]) => void,
 ) {
   const { t } = useI18n();
 
-  function getContextMenuItems(entry: FsEntry) {
-    const selectedEntries = deps.getSelectedEntries ? deps.getSelectedEntries() : [];
-    const isMultiSelected = selectedEntries.length > 1;
+  function buildManagementItems(entry: FsEntry): ContextMenuItem[] {
+    const isProjectRoot = entry.kind === 'directory' && (entry.path === '' || entry.path === '/');
+    const isCommonRoot =
+      entry.kind === 'directory' &&
+      (entry.path === WORKSPACE_COMMON_PATH_PREFIX ||
+        (entry.name.toLowerCase() === 'common' && (entry.path === 'common' || entry.path === '')));
 
-    if (
-      isMultiSelected &&
-      selectedEntries.some((selectedEntry) => selectedEntry.source === 'remote')
-    ) {
-      const allRemote = selectedEntries.every((e) => e.source === 'remote');
-      if (!allRemote) return [];
+    const items: ContextMenuItem[] = [];
 
-      return [
-        [
-          {
-            label: t('common.copy', 'Copy'),
-            icon: 'i-heroicons-document-duplicate',
-            onSelect: () => onAction('copy', selectedEntries),
-          },
-          {
-            label: t('common.cut', 'Cut'),
-            icon: 'i-heroicons-scissors',
-            onSelect: () => onAction('cut', selectedEntries),
-          },
-        ],
-        [
-          {
-            label: t('common.rename', 'Rename'),
-            icon: 'i-heroicons-pencil',
-            onSelect: () => onAction('rename', selectedEntries[0]!),
-            disabled: selectedEntries.length > 1,
-          },
-          {
-            label: t('common.delete', 'Delete'),
-            icon: 'i-heroicons-trash',
-            color: 'error',
-            onSelect: () => onAction('delete', selectedEntries),
-          },
-        ],
-      ];
-    }
-
-    const isComputer = deps.isExternal || deps.instanceId === 'computer' || deps.instanceId === 'sidebar';
-
-    if (entry.source === 'remote') {
-      const items: any[][] = [];
-      const isGroup = deps.isBloggerDogGroup?.(entry);
-
-      if (isGroup) {
-        items.push([
-          {
-            label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
-            icon: 'i-heroicons-folder-plus',
-            onSelect: () => onAction('createSubgroup', entry),
-          },
-          {
-            label: t('fastcat.bloggerDog.actions.createItem', 'Создать элемент контента'),
-            icon: 'i-heroicons-document-plus',
-            onSelect: () => onAction('createContentItem', entry),
-          },
-        ]);
-      }
-
-      items.push([
+    if (!isProjectRoot && !isCommonRoot) {
+      items.push(
         {
           label: t('common.copy', 'Copy'),
           icon: 'i-heroicons-document-duplicate',
@@ -128,9 +84,20 @@ export function useFileContextMenu(
           icon: 'i-heroicons-scissors',
           onSelect: () => onAction('cut', entry),
         },
-      ]);
+      );
+    }
 
-      items.push([
+    if (entry.kind === 'directory') {
+      items.push({
+        label: t('common.paste', 'Paste'),
+        icon: 'i-heroicons-clipboard',
+        disabled: !deps.hasClipboardItems,
+        onSelect: () => onAction('paste', entry),
+      });
+    }
+
+    if (!isProjectRoot && !isCommonRoot) {
+      items.push(
         {
           label: t('common.rename', 'Rename'),
           icon: 'i-heroicons-pencil',
@@ -142,103 +109,219 @@ export function useFileContextMenu(
           color: 'error',
           onSelect: () => onAction('delete', entry),
         },
-      ]);
-
-      return items;
+      );
     }
 
-    if (isMultiSelected) {
-      const items = [];
-      const hasVideo = selectedEntries.some((e) => e.kind === 'file' && deps.isVideo(e));
-      const hasProxy = selectedEntries.some(
-        (e) => e.kind === 'file' && deps.getEntryMeta(e).hasProxy,
-      );
-      const generatingProxy = selectedEntries.some(
-        (e) => e.kind === 'file' && deps.getEntryMeta(e).generatingProxy,
-      );
+    return items;
+  }
 
-      if (hasVideo && !isComputer) {
-        if (!generatingProxy) {
-          items.push([
-            {
-              label: t('videoEditor.fileManager.actions.createProxy', 'Create Proxy'),
-              icon: 'i-heroicons-film',
-              onSelect: () => onAction('createProxy', selectedEntries),
-            },
-          ]);
-        }
-        if (generatingProxy) {
-          items.push([
-            {
-              label: t(
-                'videoEditor.fileManager.actions.cancelProxyGeneration',
-                'Cancel proxy generation',
-              ),
-              icon: 'i-heroicons-x-circle',
-              color: 'error',
-              onSelect: () => onAction('cancelProxy', selectedEntries),
-            },
-          ]);
-        }
-        if (hasProxy) {
-          items.push([
-            {
-              label: t('videoEditor.fileManager.actions.deleteProxy', 'Delete Proxy'),
-              icon: 'i-heroicons-trash',
-              color: 'error',
-              onSelect: () => onAction('deleteProxy', selectedEntries),
-            },
-          ]);
-        }
-      }
+  function buildRemoteItems(entry: FsEntry): ContextMenuItem[][] {
+    const isRemoteRoot =
+      entry.source === 'remote' &&
+      (entry.path === '' || entry.path === '/' || entry.path === '/remote' || entry.path === '/remote/');
 
-      if (hasVideo) {
+    if (isRemoteRoot) return [];
+
+    const items: ContextMenuItem[][] = [];
+    const isGroup = deps.isBloggerDogGroup?.(entry);
+    const isContentItem = deps.isBloggerDogContentItem?.(entry);
+
+    if (entry.kind === 'directory') {
+      items.push([
+        {
+          label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
+          icon: 'i-heroicons-folder-plus',
+          onSelect: () => onAction('createFolder', entry),
+        },
+        {
+          label: t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document'),
+          icon: 'i-heroicons-document-text',
+          onSelect: () => onAction('createMarkdown', entry),
+        },
+      ]);
+
+      if (isGroup || isContentItem) {
         items.push([
           {
-            label: t('videoEditor.fileManager.actions.extractAudio', 'Extract Audio'),
-            icon: 'i-heroicons-musical-note',
-            onSelect: () => onAction('extractAudio', selectedEntries),
+            label: t('fastcat.bloggerDog.actions.createSubgroup', 'Создать подгруппу'),
+            icon: 'i-heroicons-folder-plus',
+            onSelect: () => onAction('createSubgroup', entry),
+          },
+          {
+            label: t('fastcat.bloggerDog.actions.createItem', 'Создать элемент контента'),
+            icon: 'i-heroicons-document-plus',
+            onSelect: () => onAction('createContentItem', entry),
+          },
+        ]);
+      }
+    }
+
+    if (entry.kind === 'file') {
+      const mediaType = getMediaTypeFromFilename(entry.name);
+      const isOtioFile = entry.name.toLowerCase().endsWith('.otio');
+
+      if (deps.isConvertibleMediaFile(entry)) {
+        items.push([
+          {
+            label: t('videoEditor.fileManager.actions.convertFile', 'Convert File'),
+            icon: 'i-heroicons-arrow-path',
+            onSelect: () => onAction('convertFile', entry),
           },
         ]);
       }
 
-      items.push([
-        {
-          label: t('common.copy', 'Copy'),
-          icon: 'i-heroicons-document-duplicate',
-          onSelect: () => onAction('copy', selectedEntries),
-        },
-        {
-          label: t('common.cut', 'Cut'),
-          icon: 'i-heroicons-scissors',
-          onSelect: () => onAction('cut', selectedEntries),
-        },
-        {
-          label: t('common.paste', 'Paste'),
-          icon: 'i-heroicons-clipboard',
-          disabled: !deps.hasClipboardItems,
-          onSelect: () => onAction('paste', entry),
-        },
-      ]);
+      if (mediaType === 'audio' || mediaType === 'video') {
+        items.push([
+          {
+            label: t('videoEditor.fileManager.actions.transcribe', 'Transcribe'),
+            icon: 'i-heroicons-microphone',
+            disabled: !deps.isTranscribableMediaFile?.(entry),
+            onSelect: () => onAction('transcribe', entry),
+          },
+        ]);
+      }
 
-      items.push([
-        {
-          label: t('common.delete', 'Delete'),
-          icon: 'i-heroicons-trash',
-          color: 'error',
-          onSelect: () => onAction('delete', selectedEntries),
-        },
-      ]);
+      if (deps.isVideo(entry)) {
+        items.push([
+          {
+            label: t('videoEditor.fileManager.actions.extractAudio', 'Extract Audio'),
+            icon: 'i-heroicons-musical-note',
+            onSelect: () => onAction('extractAudio', entry),
+          },
+        ]);
+      }
 
-      return items;
+      if (isOtioFile) {
+        items.push([
+          {
+            label: t('fastcat.timeline.createVersion', 'Create version'),
+            icon: 'i-heroicons-document-duplicate',
+            onSelect: () => onAction('createOtioVersion', entry),
+          },
+        ]);
+      }
     }
 
-    const items = [];
+    const managementItems = buildManagementItems(entry);
+    if (managementItems.length > 0) {
+      items.push(managementItems);
+    }
+
+    return items;
+  }
+
+  function buildMultiSelectionItems(entry: FsEntry, selectedEntries: FsEntry[]): ContextMenuItem[][] {
+    const items: ContextMenuItem[][] = [];
+    const isComputer = deps.isExternal || deps.instanceId === 'computer' || deps.instanceId === 'sidebar';
+    const hasVideo = selectedEntries.some((selectedEntry) => selectedEntry.kind === 'file' && deps.isVideo(selectedEntry));
+    const hasProxy = selectedEntries.some(
+      (selectedEntry) => selectedEntry.kind === 'file' && deps.getEntryMeta(selectedEntry).hasProxy,
+    );
+    const generatingProxy = selectedEntries.some(
+      (selectedEntry) =>
+        selectedEntry.kind === 'file' && deps.getEntryMeta(selectedEntry).generatingProxy,
+    );
+
+    if (hasVideo && !isComputer) {
+      if (!generatingProxy) {
+        items.push([
+          {
+            label: t('videoEditor.fileManager.actions.createProxy', 'Create Proxy'),
+            icon: 'i-heroicons-film',
+            onSelect: () => onAction('createProxy', selectedEntries),
+          },
+        ]);
+      }
+      if (generatingProxy) {
+        items.push([
+          {
+            label: t(
+              'videoEditor.fileManager.actions.cancelProxyGeneration',
+              'Cancel proxy generation',
+            ),
+            icon: 'i-heroicons-x-circle',
+            color: 'error',
+            onSelect: () => onAction('cancelProxy', selectedEntries),
+          },
+        ]);
+      }
+      if (hasProxy) {
+        items.push([
+          {
+            label: t('videoEditor.fileManager.actions.deleteProxy', 'Delete Proxy'),
+            icon: 'i-heroicons-trash',
+            color: 'error',
+            onSelect: () => onAction('deleteProxy', selectedEntries),
+          },
+        ]);
+      }
+    }
+
+    if (hasVideo) {
+      items.push([
+        {
+          label: t('videoEditor.fileManager.actions.extractAudio', 'Extract Audio'),
+          icon: 'i-heroicons-musical-note',
+          onSelect: () => onAction('extractAudio', selectedEntries),
+        },
+      ]);
+    }
+
+    items.push([
+      {
+        label: t('common.copy', 'Copy'),
+        icon: 'i-heroicons-document-duplicate',
+        onSelect: () => onAction('copy', selectedEntries),
+      },
+      {
+        label: t('common.cut', 'Cut'),
+        icon: 'i-heroicons-scissors',
+        onSelect: () => onAction('cut', selectedEntries),
+      },
+      {
+        label: t('common.paste', 'Paste'),
+        icon: 'i-heroicons-clipboard',
+        disabled: !deps.hasClipboardItems,
+        onSelect: () => onAction('paste', entry),
+      },
+    ]);
+
+    items.push([
+      {
+        label: t('common.delete', 'Delete'),
+        icon: 'i-heroicons-trash',
+        color: 'error',
+        onSelect: () => onAction('delete', selectedEntries),
+      },
+    ]);
+
+    return items;
+  }
+
+  function getContextMenuItems(entry: FsEntry) {
+    const selectedEntries = deps.getSelectedEntries ? deps.getSelectedEntries() : [];
+    const isMultiSelected = selectedEntries.length > 1;
+    const isComputer = deps.isExternal || deps.instanceId === 'computer' || deps.instanceId === 'sidebar';
+    const isProjectRoot = entry.kind === 'directory' && (entry.path === '' || entry.path === '/');
+
+    if (isMultiSelected && selectedEntries.some((selectedEntry) => selectedEntry.source === 'remote')) {
+      const allRemote = selectedEntries.every((selectedEntry) => selectedEntry.source === 'remote');
+      if (!allRemote) return [];
+      return buildMultiSelectionItems(entry, selectedEntries);
+    }
+
+    if (entry.source === 'remote') {
+      return buildRemoteItems(entry);
+    }
+
+    if (isMultiSelected) {
+      return buildMultiSelectionItems(entry, selectedEntries);
+    }
+
+    const items: ContextMenuItem[][] = [];
 
     if (entry.kind === 'directory') {
-      const hasVideos = deps.folderHasVideos(entry);
-
-      const dirItems = [
+      const dirItems: ContextMenuItem[] = [
         {
           label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
           icon: 'i-heroicons-folder-plus',
@@ -269,67 +352,48 @@ export function useFileContextMenu(
 
       items.push(dirItems);
 
-      if (hasVideos && !isComputer) {
-        if (deps.isGeneratingProxyInDirectory(entry)) {
-          items.push([
-            {
-              label: t(
-                'videoEditor.fileManager.actions.cancelProxyGeneration',
-                'Cancel proxy generation',
-              ),
-              icon: 'i-heroicons-x-circle',
-              color: 'error',
-              onSelect: () => onAction('cancelProxyForFolder', entry),
-            },
-          ]);
-        } else {
-          items.push([
-            {
-              label: t(
-                'videoEditor.fileManager.actions.createProxyForAll',
-                'Create proxy for all videos',
-              ),
-              icon: 'i-heroicons-film',
-              onSelect: () => onAction('createProxyForFolder', entry),
-            },
-          ]);
-        }
+      if (deps.folderHasVideos(entry) && !isComputer) {
+        items.push([
+          deps.isGeneratingProxyInDirectory(entry)
+            ? {
+                label: t(
+                  'videoEditor.fileManager.actions.cancelProxyGeneration',
+                  'Cancel proxy generation',
+                ),
+                icon: 'i-heroicons-x-circle',
+                color: 'error',
+                onSelect: () => onAction('cancelProxyForFolder', entry),
+              }
+            : {
+                label: t(
+                  'videoEditor.fileManager.actions.createProxyForAll',
+                  'Create proxy for all videos',
+                ),
+                icon: 'i-heroicons-film',
+                onSelect: () => onAction('createProxyForFolder', entry),
+              },
+        ]);
       }
     }
 
     if (deps.isOpenableMediaFile(entry) && !isComputer) {
-      if (!deps.isFilesPage) {
-        items.push([
-          {
-            label: t('videoEditor.fileManager.actions.openAsPanelCut', 'Open as panel (Editor)'),
-            icon: 'i-heroicons-window',
-            onSelect: () => onAction('openAsPanelCut', entry),
-          },
-          {
-            label: t('videoEditor.fileManager.actions.openAsPanelSound', 'Open as panel (Sound)'),
-            icon: 'i-heroicons-window',
-            onSelect: () => onAction('openAsPanelSound', entry),
-          },
-          {
-            label: t('videoEditor.fileManager.actions.openAsProjectTab', 'Open as project tab'),
-            icon: 'i-heroicons-squares-plus',
-            onSelect: () => onAction('openAsProjectTab', entry),
-          },
-        ]);
-      } else {
-        items.push([
-          {
-            label: t('videoEditor.fileManager.actions.openAsPanelCut', 'Open as panel (Editor)'),
-            icon: 'i-heroicons-window',
-            onSelect: () => onAction('openAsPanelCut', entry),
-          },
-          {
-            label: t('videoEditor.fileManager.actions.openAsPanelSound', 'Open as panel (Sound)'),
-            icon: 'i-heroicons-window',
-            onSelect: () => onAction('openAsPanelSound', entry),
-          },
-        ]);
-      }
+      items.push([
+        {
+          label: t('videoEditor.fileManager.actions.openAsPanelCut', 'Open as panel (Editor)'),
+          icon: 'i-heroicons-window',
+          onSelect: () => onAction('openAsPanelCut', entry),
+        },
+        {
+          label: t('videoEditor.fileManager.actions.openAsPanelSound', 'Open as panel (Sound)'),
+          icon: 'i-heroicons-window',
+          onSelect: () => onAction('openAsPanelSound', entry),
+        },
+        {
+          label: t('videoEditor.fileManager.actions.openAsProjectTab', 'Open as project tab'),
+          icon: 'i-heroicons-squares-plus',
+          onSelect: () => onAction('openAsProjectTab', entry),
+        },
+      ]);
     }
 
     if (deps.isConvertibleMediaFile(entry)) {
@@ -343,9 +407,7 @@ export function useFileContextMenu(
     }
 
     const mediaType = entry.kind === 'file' ? getMediaTypeFromFilename(entry.name) : null;
-    const isTranscribableType = mediaType === 'audio' || mediaType === 'video';
-
-    if (isTranscribableType) {
+    if (mediaType === 'audio' || mediaType === 'video') {
       items.push([
         {
           label: t('videoEditor.fileManager.actions.transcribe', 'Transcribe'),
@@ -356,15 +418,12 @@ export function useFileContextMenu(
       ]);
     }
 
-    if (deps.isVideo(entry)) {
+    if (deps.isVideo(entry) && !isComputer) {
       const meta = deps.getEntryMeta(entry);
-      const hasProxy = meta.hasProxy;
-      const generatingProxy = meta.generatingProxy;
-
-      if (!generatingProxy && !isComputer) {
+      if (!meta.generatingProxy) {
         items.push([
           {
-            label: hasProxy
+            label: meta.hasProxy
               ? t('videoEditor.fileManager.actions.regenerateProxy', 'Regenerate Proxy')
               : t('videoEditor.fileManager.actions.createProxy', 'Create Proxy'),
             icon: 'i-heroicons-film',
@@ -372,8 +431,7 @@ export function useFileContextMenu(
           },
         ]);
       }
-
-      if (generatingProxy && !isComputer) {
+      if (meta.generatingProxy) {
         items.push([
           {
             label: t(
@@ -386,8 +444,7 @@ export function useFileContextMenu(
           },
         ]);
       }
-
-      if (hasProxy && !isComputer) {
+      if (meta.hasProxy) {
         items.push([
           {
             label: t('videoEditor.fileManager.actions.deleteProxy', 'Delete Proxy'),
@@ -409,8 +466,7 @@ export function useFileContextMenu(
       ]);
     }
 
-    const isOtioFile = entry.kind === 'file' && entry.name.toLowerCase().endsWith('.otio');
-    if (isOtioFile && !isComputer) {
+    if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.otio') && !isComputer) {
       items.push([
         {
           label: t('fastcat.timeline.createVersion', 'Create version'),
@@ -420,54 +476,8 @@ export function useFileContextMenu(
       ]);
     }
 
-    const isCommonRoot =
-      entry.kind === 'directory' &&
-      (entry.path === WORKSPACE_COMMON_PATH_PREFIX ||
-        (entry.name.toLowerCase() === 'common' && (entry.path === 'common' || entry.path === '')));
-    const isProjectRoot = entry.kind === 'directory' && (entry.path === '' || entry.path === '/');
-
-    const managementItems = [];
-    if (!isCommonRoot && !isProjectRoot) {
-      managementItems.push(
-        {
-          label: t('common.copy', 'Copy'),
-          icon: 'i-heroicons-document-duplicate',
-          onSelect: () => onAction('copy', entry),
-        },
-        {
-          label: t('common.cut', 'Cut'),
-          icon: 'i-heroicons-scissors',
-          onSelect: () => onAction('cut', entry),
-        },
-      );
-    }
-
-    if (entry.kind === 'directory') {
-      managementItems.push({
-        label: t('common.paste', 'Paste'),
-        icon: 'i-heroicons-clipboard',
-        disabled: !deps.hasClipboardItems,
-        onSelect: () => onAction('paste', entry),
-      });
-    }
-
-    if (!isCommonRoot && !isProjectRoot) {
-      managementItems.push(
-        {
-          label: t('common.rename', 'Rename'),
-          icon: 'i-heroicons-pencil',
-          onSelect: () => onAction('rename', entry),
-        },
-        {
-          label: t('common.delete', 'Delete'),
-          icon: 'i-heroicons-trash',
-          color: 'error',
-          onSelect: () => onAction('delete', entry),
-        },
-      );
-    }
-
-    if (managementItems.length > 0) {
+    const managementItems = buildManagementItems(entry);
+    if (managementItems.length > 0 || isProjectRoot) {
       items.push(managementItems);
     }
 

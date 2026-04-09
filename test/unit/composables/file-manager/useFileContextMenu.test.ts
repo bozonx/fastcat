@@ -71,4 +71,87 @@ describe('useFileContextMenu', () => {
     expect(labels).toContain('Create Proxy');
     expect(labels).toContain('Delete Proxy');
   });
+
+  it('keeps open as project tab in files page context menu', () => {
+    const { getContextMenuItems } = useFileContextMenu(
+      {
+        isGeneratingProxyInDirectory: () => false,
+        folderHasVideos: () => false,
+        isOpenableMediaFile: () => true,
+        isConvertibleMediaFile: () => false,
+        isVideo: () => false,
+        getEntryMeta: () => ({
+          hasProxy: false,
+          generatingProxy: false,
+        }),
+        isFilesPage: true,
+      },
+      vi.fn(),
+    );
+
+    const labels = flattenLabels(
+      getContextMenuItems({
+        kind: 'file',
+        name: 'notes.txt',
+        path: 'docs/notes.txt',
+      }),
+    );
+
+    expect(labels).toContain('Open as project tab');
+  });
+
+  it('shows only workspace-root actions for external root directory', () => {
+    const { getContextMenuItems } = useFileContextMenu(
+      {
+        isGeneratingProxyInDirectory: () => false,
+        folderHasVideos: () => false,
+        isOpenableMediaFile: () => false,
+        isConvertibleMediaFile: () => false,
+        isVideo: () => false,
+        getEntryMeta: () => ({
+          hasProxy: false,
+          generatingProxy: false,
+        }),
+        isExternal: true,
+        hasClipboardItems: true,
+      },
+      vi.fn(),
+    );
+
+    const labels = flattenLabels(
+      getContextMenuItems({
+        kind: 'directory',
+        name: 'Workspace',
+        path: '',
+      }),
+    );
+
+    expect(labels).toEqual(['Create Folder', 'Create Markdown document', 'Paste']);
+  });
+
+  it('hides actions for remote root', () => {
+    const { getContextMenuItems } = useFileContextMenu(
+      {
+        isGeneratingProxyInDirectory: () => false,
+        folderHasVideos: () => false,
+        isOpenableMediaFile: () => false,
+        isConvertibleMediaFile: () => false,
+        isVideo: () => false,
+        getEntryMeta: () => ({
+          hasProxy: false,
+          generatingProxy: false,
+        }),
+      },
+      vi.fn(),
+    );
+
+    expect(
+      getContextMenuItems({
+        kind: 'directory',
+        name: 'Remote',
+        path: '/remote',
+        source: 'remote',
+      }),
+    ).toEqual([]);
+  });
 });
