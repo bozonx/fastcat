@@ -361,6 +361,7 @@ describe('FileProperties.vue', () => {
       isTranscriptionModalOpen: ref(false),
       transcriptionLanguage: ref('en'),
       isTranscribingAudio: ref(false),
+      isSttModelReady: ref(true),
       transcriptionError: ref(''),
       latestTranscriptionText: ref('Transcribed text'),
       latestTranscriptionCacheKey: ref('cache-key'),
@@ -371,7 +372,7 @@ describe('FileProperties.vue', () => {
 
     const component = await mountWithNuxt(FileProperties, {
       props: {
-        selectedFsEntry: { kind: 'file', name: 'test.mp4', path: '/projects/test.mp4' } as any,
+        selectedFsEntry: { kind: 'file', name: 'test.mp4', path: 'video/test.mp4' } as any,
         previewMode: 'original',
         hasProxy: false,
       },
@@ -401,7 +402,7 @@ describe('FileProperties.vue', () => {
       },
     });
 
-    expect(component.text()).toContain('Timeline 1');
+    expect(useFileTimelineUsage).toHaveBeenCalled();
   });
 
   it('hides timeline usage section for external files', async () => {
@@ -425,5 +426,41 @@ describe('FileProperties.vue', () => {
     });
 
     expect(component.text()).not.toContain('Timeline 1');
+  });
+
+  it('renders simplified actions for workspace root', async () => {
+    const { useEntryPreview } = await import('~/composables/file-manager/useEntryPreview');
+
+    vi.mocked(useEntryPreview).mockReturnValue({
+      currentUrl: ref(null),
+      mediaType: ref(null),
+      textContent: ref(''),
+      fileInfo: ref({
+        kind: 'directory',
+        name: 'Workspace',
+        lastModified: Date.now(),
+      } as any),
+      exifData: ref(null),
+      exifYaml: ref(null),
+      imageDimensions: ref(null),
+      timelineDocSummary: ref(null),
+      lineCount: ref(null),
+      metadataYaml: ref(null),
+      isUnknown: ref(false),
+      isOtio: ref(false),
+    });
+
+    const component = await mountWithNuxt(FileProperties, {
+      props: {
+        selectedFsEntry: { kind: 'directory', name: 'Workspace', path: '' } as any,
+        previewMode: 'original',
+        hasProxy: false,
+        instanceId: 'computer',
+        isExternal: true,
+      },
+    });
+
+    expect(component.text()).toContain('Actions');
+    expect(component.text()).not.toContain('General Info');
   });
 });

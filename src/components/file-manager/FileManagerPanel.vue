@@ -32,6 +32,7 @@ const props = defineProps<{
   instanceId?: string;
   isExternal?: boolean;
   hideFocusFrame?: boolean;
+  rootSelectionEntry?: FsEntry | null;
 }>();
 
 const instanceId = props.instanceId || 'left';
@@ -531,6 +532,7 @@ useFileManagerPanelBootstrap({
       :on-copy-entries="(entries) => onFileActionBase('copy', entries)"
       :on-cut-entries="(entries) => onFileActionBase('cut', entries)"
       :on-paste-to-entry="(entry) => onFileActionBase('paste', entry)"
+      :root-selection-entry="props.rootSelectionEntry"
       @commit-rename="commitRename"
       @stop-rename="stopRename"
       @toggle="toggleDirectory"

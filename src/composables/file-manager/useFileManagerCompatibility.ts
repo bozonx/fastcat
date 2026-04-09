@@ -1,6 +1,6 @@
 import { computed, watch, type Ref } from 'vue';
 import { useMediaStore } from '~/stores/media.store';
-import { getMediaTypeFromFilename } from '~/utils/media-types';
+import { BROWSER_NATIVE_IMAGE_EXTENSIONS, getMediaTypeFromFilename } from '~/utils/media-types';
 import type { FsEntry } from '~/types/fs';
 
 export type FileCompatibilityStatus = 'ok' | 'fully_unsupported' | 'audio_unsupported' | 'corrupt';
@@ -10,6 +10,7 @@ export interface FileCompatibility {
 }
 
 function computeStatus(
+  entry: FsEntry,
   path: string,
   mediaType: 'video' | 'audio' | 'image',
   mediaMetadata: Record<string, any>,
@@ -20,7 +21,10 @@ function computeStatus(
   if (!meta) return 'ok';
 
   if (mediaType === 'image') {
-    if (meta.image?.canDisplay === false) return 'corrupt';
+    const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';
+    if (BROWSER_NATIVE_IMAGE_EXTENSIONS.includes(ext) && meta.image?.canDisplay === false) {
+      return 'corrupt';
+    }
     return 'ok';
   }
 
@@ -55,6 +59,7 @@ export function useFileManagerCompatibility(entries: Ref<FsEntry[]>) {
       if (mediaType !== 'video' && mediaType !== 'audio' && mediaType !== 'image') continue;
 
       const status = computeStatus(
+        entry,
         entry.path,
         mediaType,
         mediaStore.mediaMetadata,

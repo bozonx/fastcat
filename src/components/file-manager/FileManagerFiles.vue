@@ -9,7 +9,7 @@ import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useMediaStore } from '~/stores/media.store';
-import { getMediaTypeFromFilename } from '~/utils/media-types';
+import { BROWSER_NATIVE_IMAGE_EXTENSIONS, getMediaTypeFromFilename } from '~/utils/media-types';
 import type { FileCompatibilityStatus } from '~/composables/file-manager/useFileManagerCompatibility';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useFileManagerStore } from '~/stores/file-manager.store';
@@ -54,6 +54,7 @@ const props = defineProps<{
   instanceId?: string;
   isExternal?: boolean;
   vfs?: IFileSystemAdapter;
+  rootSelectionEntry?: FsEntry | null;
 }>();
 
 const emit = defineEmits<{
@@ -256,7 +257,10 @@ function getFileCompatibilityStatus(entry: FsEntry): FileCompatibilityStatus {
   if (!meta) return 'ok';
 
   if (mediaType === 'image') {
-    if (meta.image?.canDisplay === false) return 'fully_unsupported';
+    const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';
+    if (BROWSER_NATIVE_IMAGE_EXTENSIONS.includes(ext) && meta.image?.canDisplay === false) {
+      return 'fully_unsupported';
+    }
     return 'ok';
   }
 
@@ -386,15 +390,17 @@ const rootContextMenuItems = computed(() => {
 });
 
 function selectProjectRoot() {
-  const name = projectStore.currentProjectName;
-  if (!name) return;
+  const rootEntry =
+    props.rootSelectionEntry ??
+    (projectStore.currentProjectName
+      ? ({
+          kind: 'directory',
+          name: projectStore.currentProjectName,
+          path: '',
+        } as FsEntry)
+      : null);
 
-  const rootEntry: FsEntry = {
-    kind: 'directory',
-    name: name,
-    path: '',
-  };
-
+  if (!rootEntry) return;
   selectSingle(rootEntry);
 }
 
@@ -488,8 +494,8 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
 
         <div
           class="flex-1 w-full min-w-full flex items-center justify-center min-h-12 relative"
-        >
-        </div>
+          @pointerdown.self="selectProjectRoot"
+        />
       </div>
     </UContextMenu>
   </div>

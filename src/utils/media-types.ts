@@ -109,8 +109,7 @@ export function getIconForMediaType(type: MediaType): string {
 }
 
 export function isOpenableProjectTextFilename(filename: string): boolean {
-  const ext = filename.split('.').pop()?.toLowerCase() || '';
-  return ext === 'md' || ext === 'txt';
+  return getMediaTypeFromFilename(filename) === 'text';
 }
 
 export function isOpenableProjectFileName(filename: string): boolean {
