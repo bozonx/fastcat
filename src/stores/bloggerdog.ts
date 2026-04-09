@@ -12,6 +12,7 @@ import {
   renameRemoteCollection,
   renameRemoteItem,
   getRemoteThumbnailUrl,
+  createRemoteItem,
   type RemoteVfsClientConfig,
 } from '~/utils/remote-vfs';
 
@@ -100,13 +101,26 @@ export const useBloggerDogStore = defineStore('bloggerDog', () => {
     });
   }
 
-  async function createCollection(name: string, parentId?: string, projectId?: string) {
+  async function createCollection(name: string, parentId?: string) {
     if (!config.value) return;
     return await createRemoteCollection({
       config: config.value,
       name,
       parentId,
-      projectId,
+    });
+  }
+
+  async function createItem(params: {
+    name?: string;
+    tags?: string[];
+    note?: string;
+    language?: string;
+    path?: string;
+  }) {
+    if (!config.value) return;
+    return await createRemoteItem({
+      config: config.value,
+      ...params,
     });
   }
 
@@ -138,6 +152,7 @@ export const useBloggerDogStore = defineStore('bloggerDog', () => {
     loadEntries,
     getThumbnailUrl,
     createCollection,
+    createItem,
     renameEntry,
     deleteEntry,
   };

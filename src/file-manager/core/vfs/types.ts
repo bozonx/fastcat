@@ -4,6 +4,7 @@ export interface VfsEntry {
   path: string;
   parentPath?: string;
   lastModified?: number;
+  createdAt?: number;
   size?: number;
   children?: VfsEntry[];
   expanded?: boolean;
@@ -91,7 +92,7 @@ export interface IFileSystemAdapter {
    */
   getMetadata(
     path: string,
-  ): Promise<{ size: number; lastModified: number; kind: 'file' | 'directory' } | null>;
+  ): Promise<{ size: number; lastModified: number; createdAt?: number; kind: 'file' | 'directory' } | null>;
 
   /**
    * Get an object URL for a file (useful for media playback)

@@ -366,7 +366,9 @@ function handlePendingBloggerDogCreateItem(entry: FsEntry) {
 }
 
 const bloggerDogApiUrl = computed(() =>
-  typeof runtimeConfig.public.bloggerDogApiUrl === 'string' ? runtimeConfig.public.bloggerDogApiUrl : '',
+  typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
+    ? runtimeConfig.public.bloggerDogApiUrl
+    : '',
 );
 
 const remoteFilesConfig = computed(() =>
@@ -521,6 +523,7 @@ useFileManagerPanelBootstrap({
       :move-entry="moveEntry"
       :copy-entry="copyEntry"
       :handle-files="handleFiles"
+      :vfs="vfs"
       :on-copy-entries="(entries) => onFileActionBase('copy', entries)"
       :on-cut-entries="(entries) => onFileActionBase('cut', entries)"
       :on-paste-to-entry="(entry) => onFileActionBase('paste', entry)"

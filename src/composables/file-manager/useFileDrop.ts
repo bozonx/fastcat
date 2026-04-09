@@ -11,6 +11,8 @@ import {
   isCrossFileManagerDrag,
   resolveFileManagerDragOperation,
 } from '~/composables/file-manager/dragOperation';
+import { crossVfsCopy, crossVfsMove } from '~/file-manager/core/vfs/crossVfs';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
 export interface UseFileDropOptions {
   resolveEntryByPath: (path: string) => Promise<FsEntry | null>;
@@ -18,11 +20,13 @@ export interface UseFileDropOptions {
   moveEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<void>;
   copyEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
   targetFileManagerInstanceId?: string | null;
+  vfs: IFileSystemAdapter;
 }
 
 export function useFileDrop(options: UseFileDropOptions) {
   const workspaceStore = useWorkspaceStore();
-  const { dragSourceFileManagerInstanceId, setCurrentDragOperation } = useAppClipboard();
+  const { dragSourceFileManagerInstanceId, dragSourceVfs, setCurrentDragOperation } =
+    useAppClipboard();
   const isRootDropOver = ref(false);
   let rootDragEnterCount = 0;
 
@@ -86,7 +90,6 @@ export function useFileDrop(options: UseFileDropOptions) {
     isRootDropOver.value = false;
     setCurrentDragOperation(null);
 
-    // Snapshot data synchronously - dataTransfer becomes empty after any await
     const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
     const hasFiles = e.dataTransfer?.types.includes('Files') ?? false;
     const copyRaw = e.dataTransfer?.getData(FILE_MANAGER_COPY_DRAG_TYPE);
@@ -118,23 +121,49 @@ export function useFileDrop(options: UseFileDropOptions) {
 
     const itemsToMove = Array.isArray(parsed) ? parsed : [parsed];
 
-    for (const item of itemsToMove) {
-      const sourcePath = typeof item?.path === 'string' ? item.path : '';
-      if (!sourcePath) continue;
+    if (isCrossManagerDrag && dragSourceVfs) {
+      for (const item of itemsToMove) {
+        const sourcePath = typeof item?.path === 'string' ? item.path : '';
+        if (!sourcePath) continue;
 
-      const source = await options.resolveEntryByPath(sourcePath);
-      if (!source) continue;
+        const sourceKind = item?.kind === 'directory' ? 'directory' : 'file';
+        if (shouldCopy) {
+          await crossVfsCopy({
+            sourceVfs: dragSourceVfs,
+            targetVfs: options.vfs,
+            sourcePath,
+            sourceKind,
+            targetDirPath: '',
+          });
+        } else {
+          await crossVfsMove({
+            sourceVfs: dragSourceVfs,
+            targetVfs: options.vfs,
+            sourcePath,
+            sourceKind,
+            targetDirPath: '',
+          });
+        }
+      }
+    } else {
+      for (const item of itemsToMove) {
+        const sourcePath = typeof item?.path === 'string' ? item.path : '';
+        if (!sourcePath) continue;
 
-      if (shouldCopy) {
-        await options.copyEntry({
-          source,
-          targetDirPath: '',
-        });
-      } else {
-        await options.moveEntry({
-          source,
-          targetDirPath: '',
-        });
+        const source = await options.resolveEntryByPath(sourcePath);
+        if (!source) continue;
+
+        if (shouldCopy) {
+          await options.copyEntry({
+            source,
+            targetDirPath: '',
+          });
+        } else {
+          await options.moveEntry({
+            source,
+            targetDirPath: '',
+          });
+        }
       }
     }
   }

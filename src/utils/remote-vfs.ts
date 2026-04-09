@@ -95,12 +95,7 @@ function resolveMediaSize(entry: RemoteVfsEntry): number {
   return entry.media?.[0]?.size ?? 0;
 }
 
-function getRemoteEntryUpdatedAt(entry: RemoteVfsEntry): number | undefined {
-  if (entry.type !== 'file') return undefined;
-  const raw = (entry.meta?.updatedAt ?? entry.meta?.createdAt ?? entry.meta?.date) as
-    | string
-    | number
-    | undefined;
+function parseRemoteDate(raw: string | number | undefined): number | undefined {
   if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
   if (typeof raw === 'string') {
     const value = Date.parse(raw);
@@ -109,9 +104,22 @@ function getRemoteEntryUpdatedAt(entry: RemoteVfsEntry): number | undefined {
   return undefined;
 }
 
+function getRemoteEntryUpdatedAt(entry: RemoteVfsEntry): number | undefined {
+  return (
+    parseRemoteDate(entry.updated) ??
+    parseRemoteDate((entry.meta as any)?.updatedAt ?? (entry.meta as any)?.date) ??
+    getRemoteEntryCreatedAt(entry)
+  );
+}
+
+function getRemoteEntryCreatedAt(entry: RemoteVfsEntry): number | undefined {
+  return parseRemoteDate(entry.created) ?? parseRemoteDate((entry.meta as any)?.createdAt);
+}
+
 export function toRemoteFsEntry(entry: RemoteVfsEntry): RemoteFsEntry {
   const size = resolveMediaSize(entry);
   const lastModified = getRemoteEntryUpdatedAt(entry);
+  const createdAt = getRemoteEntryCreatedAt(entry);
   const displayName = getRemoteEntryDisplayName(entry);
 
   const isContentItem = entry.type === 'file';
@@ -134,13 +142,14 @@ export function toRemoteFsEntry(entry: RemoteVfsEntry): RemoteFsEntry {
     kind: entryKind,
     path: entry.path,
     lastModified,
+    createdAt,
     source: 'remote',
     remoteId: entry.id,
     remotePath: entry.path,
     remoteType: entry.type,
     adapterPayload: payload,
     size,
-    created: lastModified,
+    created: createdAt,
     mimeType: entry.type === 'directory' ? 'folder' : resolveMediaMimeType(entry.media),
   };
 
@@ -182,6 +191,8 @@ export function createRemoteMediaFsEntry(params: {
     remoteType: 'file',
     adapterPayload: payload,
     size: params.media.size ?? 0,
+    lastModified: parseRemoteDate(params.media.updated) ?? parseRemoteDate(params.item.updated),
+    createdAt: parseRemoteDate(params.media.created) ?? parseRemoteDate(params.item.created),
     mimeType: params.media.mimeType ?? 'application/octet-stream',
   };
 }
@@ -360,6 +371,10 @@ export async function uploadFileToRemote(params: {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', url);
     xhr.setRequestHeader('Authorization', `Bearer ${params.config.bearerToken}`);
+    // Passing filename in a header as it is expected by the storage microservice despite
+    // not being explicitly mentioned in the external API documentation snippet.
+    // We encode it to make sure it's ASCII-safe for headers.
+    xhr.setRequestHeader('x-filename', encodeURIComponent(params.file.name));
 
     xhr.upload.onprogress = (event) => {
       if (!event.lengthComputable) return;
@@ -406,11 +421,47 @@ export async function uploadFileToRemote(params: {
   });
 }
 
+export async function createRemoteItem(params: {
+  config: RemoteVfsClientConfig;
+  name?: string;
+  tags?: string[];
+  note?: string;
+  language?: string;
+  path?: string;
+}): Promise<RemoteVfsFileEntry> {
+  const url = new URL(joinPath(params.config.baseUrl, 'items'));
+
+  // If path is provided, we might want to try it as a query parameter
+  // since the docs mention it as "additional field" but the main type is application/json.
+  // In many APIs, path-like destination parameters are allowed in either.
+  // But let's stick to the body if possible.
+  const response = await fetch(url.toString(), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${params.config.bearerToken}`,
+    },
+    body: JSON.stringify({
+      name: params.name,
+      tags: params.tags,
+      note: params.note,
+      language: params.language,
+      path: params.path,
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(body || `Failed to create item (${response.status})`);
+  }
+
+  return (await response.json()) as RemoteVfsFileEntry;
+}
+
 export async function createRemoteCollection(params: {
   config: RemoteVfsClientConfig;
   name: string;
   parentId?: string;
-  projectId?: string;
 }): Promise<RemoteVfsDirectoryEntry> {
   const response = await fetch(joinPath(params.config.baseUrl, 'collections'), {
     method: 'POST',
@@ -421,7 +472,6 @@ export async function createRemoteCollection(params: {
     body: JSON.stringify({
       name: params.name,
       parentId: params.parentId,
-      projectId: params.projectId,
     }),
   });
 

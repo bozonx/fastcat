@@ -207,6 +207,7 @@ export function useEntryPreview(params: {
           size,
           filesCount,
           lastModified: entry.lastModified,
+          createdAt: entry.createdAt,
         };
         return;
       }
@@ -279,8 +280,9 @@ export function useEntryPreview(params: {
           path: entry.path,
           size: file.size,
           createdAt:
-            typeof (entry as any)?.createdAt === 'number' ? (entry as any).createdAt : undefined,
-          lastModified: file.lastModified,
+            entry.createdAt ||
+            (typeof (entry as any)?.createdAt === 'number' ? (entry as any).createdAt : undefined),
+          lastModified: entry.lastModified || file.lastModified,
           mimeType: getMimeTypeFromFilename(file.name),
           ext: fileExt,
           metadata:

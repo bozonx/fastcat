@@ -9,6 +9,8 @@ import {
   uploadFileToRemote,
   getRemoteFileDownloadUrl,
   getRemoteMediaDisplayName,
+  toRemoteFsEntry,
+  createRemoteMediaFsEntry,
   type RemoteVfsClientConfig,
 } from '~/utils/remote-vfs';
 import type { RemoteVfsFileEntry, RemoteVfsEntry } from '~/types/remote-vfs';
@@ -165,6 +167,13 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
         item.media.forEach((media: any, index: number) => {
           const name = getRemoteMediaDisplayName({ entry: item, media, mediaIndex: index });
           const mediaPath = `${path}/${name}`;
+
+          const mediaFsEntry = createRemoteMediaFsEntry({
+            item,
+            media,
+            mediaIndex: index,
+          });
+
           this.idCache.set(mediaPath, {
             id: media.id || item.id,
             type: 'media',
@@ -172,23 +181,11 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
             mediaIndex: index,
           });
 
-          const mediaPayload: BloggerDogEntryPayload = {
-            type: 'media',
-            remoteData: item,
-            mediaId: media.id,
-            thumbnailUrl: media.thumbnailUrl,
-          };
-
           entries.push({
+            ...mediaFsEntry,
             name,
-            kind: 'file',
             path: mediaPath,
             parentPath: path,
-            size: media.size || 0,
-            lastModified: item.meta?.updatedAt
-              ? new Date(item.meta.updatedAt as string).getTime()
-              : undefined,
-            adapterPayload: mediaPayload,
           });
         });
       }
@@ -200,20 +197,19 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
         this.idCache.set(textPath, { id: item.id, type: 'media', item, mediaIndex: -1 });
 
         const blob = new Blob([item.text], { type: 'text/plain' });
-        const textPayload: BloggerDogEntryPayload = {
-          type: 'media',
-          remoteData: item,
-        };
+        const fsEntry = toRemoteFsEntry(item);
+
         entries.push({
+          ...fsEntry,
           name: textName,
           kind: 'file',
           path: textPath,
           parentPath: path,
           size: blob.size,
-          lastModified: item.meta?.updatedAt
-            ? new Date(item.meta.updatedAt as string).getTime()
-            : undefined,
-          adapterPayload: textPayload,
+          adapterPayload: {
+            ...fsEntry.adapterPayload!,
+            type: 'media',
+          },
         });
       }
 
@@ -250,31 +246,15 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       this.idCache.set(entryPath, { id: item.id, type: item.type, item });
 
       const isSimpleFile = item.type === 'file' && item.media?.length === 1 && !item.text?.trim();
-
-      const isBloggerDogContentItem = item.type === 'file';
-      const firstMediaWithThumbnail = isBloggerDogContentItem
-        ? (item as RemoteVfsFileEntry).media?.find((m) => m.thumbnailUrl) ||
-          (item as RemoteVfsFileEntry).media?.[0]
-        : null;
-
-      const adapterPayload: BloggerDogEntryPayload = {
-        type: isInsideProjects ? 'project' : item.type === 'file' ? 'content-item' : 'collection',
-        remoteData: item,
-        thumbnailUrl: firstMediaWithThumbnail?.thumbnailUrl,
-        mediaId: isSimpleFile ? (item as RemoteVfsFileEntry).media?.[0]?.id : undefined,
-      };
+      const fsEntry = toRemoteFsEntry(item);
 
       entries.push({
+        ...fsEntry,
         name,
-        kind: isSimpleFile ? 'file' : item.type === 'file' ? 'directory' : item.type,
+        kind: isSimpleFile ? 'file' : fsEntry.kind,
         path: entryPath,
         parentPath: normalizedPath,
-        size: item.type === 'file' ? ((item as RemoteVfsFileEntry).media?.[0]?.size ?? 0) : 0,
-        lastModified: (item as any).meta?.updatedAt
-          ? new Date((item as any).meta.updatedAt).getTime()
-          : undefined,
-        adapterPayload,
-      } as VfsEntry);
+      });
     }
 
     const result = entries as VfsEntry[] & { total?: number };
@@ -318,8 +298,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     const collection = await createRemoteCollection({
       config,
       name,
-      parentId,
-      projectId,
+      parentId: parentId || projectId, // If projectId is set, use it as parentId
     });
 
     this.idCache.set(path, { id: collection.id, type: 'directory' });

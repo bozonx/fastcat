@@ -37,12 +37,14 @@ import type { FileCompatibilityStatus } from '~/composables/file-manager/useFile
 import { useFileContextMenu } from '~/composables/file-manager/useFileContextMenu';
 import { useFileBrowserRemote } from '~/composables/file-manager/useFileBrowserRemote';
 import { isRemoteFsEntry, type RemoteFsEntry } from '~/utils/remote-vfs';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import { isGeneratingProxyInDirectory, folderHasVideos } from '~/utils/fs-entry-utils';
 import {
   isCrossFileManagerDrag,
   resolveFileManagerDragOperation,
 } from '~/composables/file-manager/dragOperation';
+import { crossVfsCopy, crossVfsMove } from '~/file-manager/core/vfs/crossVfs';
 
 interface Props {
   editingEntryPath?: string | null;
@@ -52,6 +54,7 @@ interface Props {
   isFilesPage?: boolean;
   instanceId?: string;
   isExternal?: boolean;
+  vfs?: IFileSystemAdapter;
 }
 
 interface TreeContext {
@@ -149,8 +152,10 @@ const workspaceStore = useWorkspaceStore();
 const uiStore = useUiStore();
 const {
   dragSourceFileManagerInstanceId,
+  dragSourceVfs,
   setCurrentDragOperation,
   setDragSourceFileManagerInstanceId,
+  setDragSourceVfs,
 } = useAppClipboard();
 
 const isDragOver = ref<string | null>(null);
@@ -415,6 +420,7 @@ function onDragStart(e: DragEvent, entry: FsEntry) {
   const operation = isLayer1Active(e, workspaceStore.userSettings) ? 'copy' : 'move';
   dragOperation.value = operation;
   setDragSourceFileManagerInstanceId(props.instanceId ?? null);
+  setDragSourceVfs(props.vfs ?? null);
   setCurrentDragOperation(operation);
   const movePayload = entriesToMove.map((e) => ({ name: e.name, kind: e.kind, path: e.path }));
   e.dataTransfer?.setData(
@@ -447,6 +453,7 @@ function onDragEnd() {
   dragOperation.value = null;
   setCurrentDragOperation(null);
   setDragSourceFileManagerInstanceId(null);
+  setDragSourceVfs(null);
 }
 
 function resolveDragOperation(e: DragEvent): 'copy' | 'move' {
@@ -526,20 +533,47 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
     }
 
     const itemsToMove = Array.isArray(parsed) ? parsed : [parsed];
-    for (const item of itemsToMove) {
-      const sourcePath = typeof item?.path === 'string' ? item.path : '';
-      if (!sourcePath || sourcePath === entry.path) continue;
 
-      if (shouldCopy) {
-        emit('requestCopy', {
-          sourcePath,
-          targetDirPath: entry.path,
-        });
-      } else {
-        emit('requestMove', {
-          sourcePath,
-          targetDirPath: entry.path,
-        });
+    if (isCrossManagerDrag && dragSourceVfs && props.vfs) {
+      for (const item of itemsToMove) {
+        const sourcePath = typeof item?.path === 'string' ? item.path : '';
+        if (!sourcePath || sourcePath === entry.path) continue;
+
+        const sourceKind = item?.kind === 'directory' ? 'directory' : 'file';
+        if (shouldCopy) {
+          await crossVfsCopy({
+            sourceVfs: dragSourceVfs,
+            targetVfs: props.vfs,
+            sourcePath,
+            sourceKind,
+            targetDirPath: entry.path,
+          });
+        } else {
+          await crossVfsMove({
+            sourceVfs: dragSourceVfs,
+            targetVfs: props.vfs,
+            sourcePath,
+            sourceKind,
+            targetDirPath: entry.path,
+          });
+        }
+      }
+    } else {
+      for (const item of itemsToMove) {
+        const sourcePath = typeof item?.path === 'string' ? item.path : '';
+        if (!sourcePath || sourcePath === entry.path) continue;
+
+        if (shouldCopy) {
+          emit('requestCopy', {
+            sourcePath,
+            targetDirPath: entry.path,
+          });
+        } else {
+          emit('requestMove', {
+            sourcePath,
+            targetDirPath: entry.path,
+          });
+        }
       }
     }
     return;
@@ -702,6 +736,7 @@ const { getContextMenuItems } = useFileContextMenu(
             :instance-id="instanceId"
             :is-files-page="isFilesPage"
             :is-external="isExternal"
+            :vfs="vfs"
             @commit-rename="(entry, name) => emit('commitRename', entry, name)"
             @stop-rename="emit('stopRename')"
             @toggle="emit('toggle', $event)"

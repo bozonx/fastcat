@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
 
 import type { FsEntry } from '~/types/fs';
 import type { TimelineClipItem } from '~/timeline/types';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
 export interface FileManagerClipboardItem {
   path: string;
@@ -36,6 +37,7 @@ export const useClipboardStore = defineStore('clipboard', () => {
   const clipboardPayload = ref<AppClipboardPayload | null>(null);
   const currentDragOperation = ref<'copy' | 'move' | null>(null);
   const dragSourceFileManagerInstanceId = ref<string | null>(null);
+  const dragSourceVfs = shallowRef<IFileSystemAdapter | null>(null);
 
   const hasFileManagerPayload = computed(
     () =>
@@ -62,15 +64,21 @@ export const useClipboardStore = defineStore('clipboard', () => {
     dragSourceFileManagerInstanceId.value = instanceId;
   }
 
+  function setDragSourceVfs(vfs: IFileSystemAdapter | null) {
+    dragSourceVfs.value = vfs;
+  }
+
   return {
     clipboardPayload,
     currentDragOperation,
     dragSourceFileManagerInstanceId,
+    dragSourceVfs,
     hasFileManagerPayload,
     hasTimelinePayload,
     setClipboardPayload,
     clearClipboardPayload,
     setCurrentDragOperation,
     setDragSourceFileManagerInstanceId,
+    setDragSourceVfs,
   };
 });

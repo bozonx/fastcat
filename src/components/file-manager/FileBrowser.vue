@@ -9,6 +9,7 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useFileManagerActions } from '~/composables/file-manager/useFileManagerActions';
+import { useBloggerDogStore } from '~/stores/bloggerdog';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { useFileContextMenu } from '~/composables/file-manager/useFileContextMenu';
 import type { FileAction as ContextMenuFileAction } from '~/composables/file-manager/useFileContextMenu';
@@ -76,6 +77,7 @@ const clipboardStore = useAppClipboard();
 const { t } = useI18n();
 const toast = useToast();
 const runtimeConfig = useRuntimeConfig();
+const bloggerDogStore = useBloggerDogStore();
 
 const fileManager = useFileManager();
 const {
@@ -261,6 +263,7 @@ const {
   },
   fileManagerInstanceId: instanceId,
   isExternal: isExternal.value,
+  vfs,
 });
 
 async function handleRemoteFiles(files: File[] | FileList, targetDirPath?: string) {
@@ -504,12 +507,25 @@ async function onItemCreateConfirm(name: string) {
   if (!parent) return;
 
   try {
-    const parentPath = parent.path;
-    const finalName = name.includes('.') ? name : `${name}.txt`;
-    const filePath = parentPath === '/' ? `/${finalName}` : `${parentPath}/${finalName}`;
+    const parentPayload = (parent as any).adapterPayload as BloggerDogEntryPayload;
+    let remotePath = '/personal';
 
-    // Create empty item by writing an empty blob
-    await vfs.writeFile(filePath, new Blob([], { type: 'text/plain' }));
+    const parentPath = parent.path || '/';
+    const pathParts = parentPath.split('/').filter(Boolean);
+
+    if (parentPath === '/personal' || parentPath === 'personal') {
+      remotePath = '/personal';
+    } else if (pathParts[0] === 'projects' && pathParts.length === 2) {
+      remotePath = `/projects/${pathParts[1]}`;
+    } else if (parentPayload?.remoteData?.id) {
+      const rid = parentPayload.remoteData.id;
+      remotePath = rid.startsWith('/') ? rid : `/${rid}`;
+    }
+
+    await bloggerDogStore.createItem({
+      name,
+      path: remotePath,
+    });
 
     await loadFolderContent();
     uiStore.notifyFileManagerUpdate();

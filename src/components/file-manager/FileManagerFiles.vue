@@ -18,6 +18,7 @@ import FileManagerTree from './FileManagerTree.vue';
 import type { FsEntry } from '~/types/fs';
 import { useFileDrop } from '~/composables/file-manager/useFileDrop';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { useFileManagerSelection } from '~/composables/file-manager/useFileManagerSelection';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
 
@@ -40,6 +41,7 @@ const props = defineProps<{
   onPasteToEntry?: (entry: FsEntry) => void;
   instanceId?: string;
   isExternal?: boolean;
+  vfs?: IFileSystemAdapter;
 }>();
 
 const emit = defineEmits<{
@@ -313,6 +315,7 @@ const {
   moveEntry: props.moveEntry,
   copyEntry: props.copyEntry,
   targetFileManagerInstanceId: props.instanceId ?? null,
+  vfs: props.vfs!,
 });
 
 const rootContextMenuItems = computed(() => {
@@ -483,6 +486,7 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
           :instance-id="instanceId"
           :is-external="isExternal"
           :is-files-page="isFilesPage"
+          :vfs="vfs"
           @commit-rename="(entry, name) => emit('commitRename', entry, name)"
           @stop-rename="emit('stopRename')"
           @toggle="emit('toggle', $event)"
