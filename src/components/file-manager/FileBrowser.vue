@@ -7,7 +7,9 @@ import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useMediaStore } from '~/stores/media.store';
+import type { BloggerDogEntryPayload } from '~/types/bloggerdog';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
+import { useEntryPreview } from '~/composables/file-manager/useEntryPreview';
 import { useFileManagerActions } from '~/composables/file-manager/useFileManagerActions';
 import { useBloggerDogStore } from '~/stores/bloggerdog';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
@@ -627,6 +629,8 @@ const { getContextMenuItems } = useFileContextMenu(
       generatingProxy: entry.path ? proxyStore.generatingProxies.has(entry.path) : false,
     }),
     isFilesPage: props.isFilesPage,
+    instanceId: instanceId,
+    isExternal: props.isExternal,
     getSelectedEntries: () => {
       const selected = selectionStore.selectedEntity;
       if (selected?.source === 'fileManager') {

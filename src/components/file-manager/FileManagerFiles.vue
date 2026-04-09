@@ -19,6 +19,7 @@ import type { FsEntry } from '~/types/fs';
 import { useFileDrop } from '~/composables/file-manager/useFileDrop';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
+import { useVfs } from '~/composables/useVfs';
 import { useFileManagerSelection } from '~/composables/file-manager/useFileManagerSelection';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
 
@@ -315,7 +316,7 @@ const {
   moveEntry: props.moveEntry,
   copyEntry: props.copyEntry,
   targetFileManagerInstanceId: props.instanceId ?? null,
-  vfs: props.vfs!,
+  vfs: props.vfs ?? useVfs(),
 });
 
 const rootContextMenuItems = computed(() => {
@@ -400,6 +401,7 @@ const { handleEntryClick: handleSelectionClick, selectSingle } = useFileManagerS
   getVisibleEntries: () => getVisibleEntries(props.rootEntries),
   onSingleSelect: (entry) => emit('select', entry),
   instanceId: props.instanceId,
+  isExternal: props.isExternal,
 });
 
 async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {

@@ -110,6 +110,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     moveEntry: options.moveEntry,
     copyEntry: options.copyEntry,
     targetFileManagerInstanceId: options.fileManagerInstanceId ?? null,
+    vfs: options.vfs,
   });
 
   function isCopyModifierActive(event: DragEvent): boolean {
@@ -289,28 +290,32 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       const itemsToMove = Array.isArray(parsed) ? parsed : [parsed];
 
       if (isCrossManagerDrag && dragSourceVfs) {
-        for (const item of itemsToMove) {
-          const sourcePath = typeof item?.path === 'string' ? item.path : '';
-          if (!sourcePath || sourcePath === targetPath) continue;
+        try {
+          for (const item of itemsToMove) {
+            const sourcePath = typeof item?.path === 'string' ? item.path : '';
+            if (!sourcePath || sourcePath === targetPath) continue;
 
-          const sourceKind = item?.kind === 'directory' ? 'directory' : 'file';
-          if (shouldCopy) {
-            await crossVfsCopy({
-              sourceVfs: dragSourceVfs,
-              targetVfs: options.vfs,
-              sourcePath,
-              sourceKind,
-              targetDirPath: targetPath,
-            });
-          } else {
-            await crossVfsMove({
-              sourceVfs: dragSourceVfs,
-              targetVfs: options.vfs,
-              sourcePath,
-              sourceKind,
-              targetDirPath: targetPath,
-            });
+            const sourceKind = item?.kind === 'directory' ? 'directory' : 'file';
+            if (shouldCopy) {
+              await crossVfsCopy({
+                sourceVfs: dragSourceVfs,
+                targetVfs: options.vfs,
+                sourcePath,
+                sourceKind,
+                targetDirPath: targetPath,
+              });
+            } else {
+              await crossVfsMove({
+                sourceVfs: dragSourceVfs,
+                targetVfs: options.vfs,
+                sourcePath,
+                sourceKind,
+                targetDirPath: targetPath,
+              });
+            }
           }
+        } catch (err) {
+          console.error('[useFileBrowserDragAndDrop] Cross-VFS operation failed:', err);
         }
       } else {
         for (const item of itemsToMove) {
@@ -428,28 +433,32 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       const itemsToMove = Array.isArray(parsed) ? parsed : [parsed];
 
       if (isCrossManagerDrag && dragSourceVfs) {
-        for (const item of itemsToMove) {
-          const sourcePath = typeof item?.path === 'string' ? item.path : '';
-          if (!sourcePath) continue;
+        try {
+          for (const item of itemsToMove) {
+            const sourcePath = typeof item?.path === 'string' ? item.path : '';
+            if (!sourcePath) continue;
 
-          const sourceKind = item?.kind === 'directory' ? 'directory' : 'file';
-          if (shouldCopy) {
-            await crossVfsCopy({
-              sourceVfs: dragSourceVfs,
-              targetVfs: options.vfs,
-              sourcePath,
-              sourceKind,
-              targetDirPath: targetPath,
-            });
-          } else {
-            await crossVfsMove({
-              sourceVfs: dragSourceVfs,
-              targetVfs: options.vfs,
-              sourcePath,
-              sourceKind,
-              targetDirPath: targetPath,
-            });
+            const sourceKind = item?.kind === 'directory' ? 'directory' : 'file';
+            if (shouldCopy) {
+              await crossVfsCopy({
+                sourceVfs: dragSourceVfs,
+                targetVfs: options.vfs,
+                sourcePath,
+                sourceKind,
+                targetDirPath: targetPath,
+              });
+            } else {
+              await crossVfsMove({
+                sourceVfs: dragSourceVfs,
+                targetVfs: options.vfs,
+                sourcePath,
+                sourceKind,
+                targetDirPath: targetPath,
+              });
+            }
           }
+        } catch (err) {
+          console.error('[useFileBrowserDragAndDrop] Cross-VFS panel operation failed:', err);
         }
       } else {
         for (const item of itemsToMove) {

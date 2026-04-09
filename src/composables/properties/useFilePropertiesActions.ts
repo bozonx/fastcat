@@ -62,6 +62,9 @@ interface UseFilePropertiesActionsOptions {
   onCopy: () => void;
   onCut: () => void;
   onPaste: () => void;
+  isBloggerDogProject: Ref<boolean>;
+  instanceId?: Ref<string | undefined>;
+  isExternal?: Ref<boolean | undefined>;
 }
 
 export function useFilePropertiesActions(options: UseFilePropertiesActionsOptions) {
@@ -108,6 +111,7 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'upload',
       label: options.t('videoEditor.fileManager.actions.uploadFiles'),
       icon: 'i-heroicons-arrow-up-tray',
+      hidden: options.isExternal?.value,
       onClick: options.triggerDirectoryUpload,
     },
     {
@@ -120,6 +124,7 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'createTimeline',
       label: options.t('videoEditor.fileManager.actions.createTimeline'),
       icon: 'i-heroicons-document-plus',
+      hidden: options.isExternal?.value,
       onClick: options.createTimelineInFolder,
     },
     {
@@ -210,21 +215,21 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'openAsPanelCut',
       label: options.t('videoEditor.fileManager.actions.openAsPanelCut'),
       icon: 'i-heroicons-window',
-      hidden: !options.canOpenAsPanel.value,
+      hidden: !options.canOpenAsPanel.value || options.isExternal?.value,
       onClick: options.openAsPanelCut,
     },
     {
       id: 'openAsPanelSound',
       label: options.t('videoEditor.fileManager.actions.openAsPanelSound'),
       icon: 'i-heroicons-window',
-      hidden: !options.canOpenAsPanel.value,
+      hidden: !options.canOpenAsPanel.value || options.isExternal?.value,
       onClick: options.openAsPanelSound,
     },
     {
       id: 'openAsProjectTab',
       label: options.t('videoEditor.fileManager.actions.openAsProjectTab'),
       icon: 'i-heroicons-squares-plus',
-      hidden: !options.canOpenAsProjectTab.value,
+      hidden: !options.canOpenAsProjectTab.value || options.isExternal?.value,
       onClick: options.openAsProjectTab,
     },
     {
@@ -233,7 +238,7 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
         ? options.t('videoEditor.fileManager.proxy.regenerate')
         : options.t('videoEditor.fileManager.proxy.create'),
       icon: options.hasExistingProxyForFile.value ? 'i-heroicons-arrow-path' : 'i-heroicons-film',
-      hidden: !options.showVideoProxyActions.value || options.isGeneratingProxyForFile.value,
+      hidden: !options.showVideoProxyActions.value || options.isGeneratingProxyForFile.value || options.isExternal?.value,
       onClick: options.createProxy,
     },
     {
@@ -241,7 +246,7 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       label: options.t('videoEditor.fileManager.actions.cancelProxyGeneration'),
       icon: 'i-heroicons-x-circle',
       color: 'error',
-      hidden: !options.showVideoProxyActions.value || !options.isGeneratingProxyForFile.value,
+      hidden: !options.showVideoProxyActions.value || !options.isGeneratingProxyForFile.value || options.isExternal?.value,
       onClick: options.cancelProxy,
     },
     {
@@ -249,14 +254,14 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       label: options.t('videoEditor.fileManager.proxy.delete'),
       icon: 'i-heroicons-trash',
       color: 'error',
-      hidden: !options.showVideoProxyActions.value || !options.hasExistingProxyForFile.value,
+      hidden: !options.showVideoProxyActions.value || !options.hasExistingProxyForFile.value || options.isExternal?.value,
       onClick: options.deleteProxy,
     },
     {
       id: 'createOtioVersion',
       label: options.t('fastcat.timeline.createVersion'),
       icon: 'i-heroicons-document-duplicate',
-      hidden: !options.isOtio.value,
+      hidden: !options.isOtio.value || options.isExternal?.value,
       onClick: options.createOtioVersion,
     },
     {

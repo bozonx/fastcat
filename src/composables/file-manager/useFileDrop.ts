@@ -1,5 +1,6 @@
 import { ref } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useUiStore } from '~/stores/ui.store';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import type { FsEntry } from '~/types/fs';
 import { useAppClipboard } from '~/composables/useAppClipboard';
@@ -25,6 +26,7 @@ export interface UseFileDropOptions {
 
 export function useFileDrop(options: UseFileDropOptions) {
   const workspaceStore = useWorkspaceStore();
+  const uiStore = useUiStore();
   const { dragSourceFileManagerInstanceId, dragSourceVfs, setCurrentDragOperation } =
     useAppClipboard();
   const isRootDropOver = ref(false);
@@ -122,28 +124,33 @@ export function useFileDrop(options: UseFileDropOptions) {
     const itemsToMove = Array.isArray(parsed) ? parsed : [parsed];
 
     if (isCrossManagerDrag && dragSourceVfs) {
-      for (const item of itemsToMove) {
-        const sourcePath = typeof item?.path === 'string' ? item.path : '';
-        if (!sourcePath) continue;
+      try {
+        for (const item of itemsToMove) {
+          const sourcePath = typeof item?.path === 'string' ? item.path : '';
+          if (!sourcePath) continue;
 
-        const sourceKind = item?.kind === 'directory' ? 'directory' : 'file';
-        if (shouldCopy) {
-          await crossVfsCopy({
-            sourceVfs: dragSourceVfs,
-            targetVfs: options.vfs,
-            sourcePath,
-            sourceKind,
-            targetDirPath: '',
-          });
-        } else {
-          await crossVfsMove({
-            sourceVfs: dragSourceVfs,
-            targetVfs: options.vfs,
-            sourcePath,
-            sourceKind,
-            targetDirPath: '',
-          });
+          const sourceKind = item?.kind === 'directory' ? 'directory' : 'file';
+          if (shouldCopy) {
+            await crossVfsCopy({
+              sourceVfs: dragSourceVfs,
+              targetVfs: options.vfs,
+              sourcePath,
+              sourceKind,
+              targetDirPath: '',
+            });
+          } else {
+            await crossVfsMove({
+              sourceVfs: dragSourceVfs,
+              targetVfs: options.vfs,
+              sourcePath,
+              sourceKind,
+              targetDirPath: '',
+            });
+          }
         }
+        uiStore.notifyFileManagerUpdate();
+      } catch (err) {
+        console.error('[useFileDrop] Cross-VFS operation failed:', err);
       }
     } else {
       for (const item of itemsToMove) {

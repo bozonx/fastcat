@@ -535,28 +535,33 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
     const itemsToMove = Array.isArray(parsed) ? parsed : [parsed];
 
     if (isCrossManagerDrag && dragSourceVfs && props.vfs) {
-      for (const item of itemsToMove) {
-        const sourcePath = typeof item?.path === 'string' ? item.path : '';
-        if (!sourcePath || sourcePath === entry.path) continue;
+      try {
+        for (const item of itemsToMove) {
+          const sourcePath = typeof item?.path === 'string' ? item.path : '';
+          if (!sourcePath || sourcePath === entry.path) continue;
 
-        const sourceKind = item?.kind === 'directory' ? 'directory' : 'file';
-        if (shouldCopy) {
-          await crossVfsCopy({
-            sourceVfs: dragSourceVfs,
-            targetVfs: props.vfs,
-            sourcePath,
-            sourceKind,
-            targetDirPath: entry.path,
-          });
-        } else {
-          await crossVfsMove({
-            sourceVfs: dragSourceVfs,
-            targetVfs: props.vfs,
-            sourcePath,
-            sourceKind,
-            targetDirPath: entry.path,
-          });
+          const sourceKind = item?.kind === 'directory' ? 'directory' : 'file';
+          if (shouldCopy) {
+            await crossVfsCopy({
+              sourceVfs: dragSourceVfs,
+              targetVfs: props.vfs,
+              sourcePath,
+              sourceKind,
+              targetDirPath: entry.path,
+            });
+          } else {
+            await crossVfsMove({
+              sourceVfs: dragSourceVfs,
+              targetVfs: props.vfs,
+              sourcePath,
+              sourceKind,
+              targetDirPath: entry.path,
+            });
+          }
         }
+        uiStore.notifyFileManagerUpdate();
+      } catch (err) {
+        console.error('[FileManagerTree] Cross-VFS operation failed:', err);
       }
     } else {
       for (const item of itemsToMove) {
@@ -680,7 +685,8 @@ const { getContextMenuItems } = useFileContextMenu(
       return [];
     },
     isFilesPage: props.isFilesPage,
-    isRemoteAvailable: isRemoteAvailable.value,
+    instanceId: props.instanceId,
+    isExternal: props.isExternal,
     isBloggerDogProject,
     isBloggerDogGroup,
     isBloggerDogContentItem,

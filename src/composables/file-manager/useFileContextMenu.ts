@@ -45,6 +45,8 @@ interface ContextMenuDeps {
   isBloggerDogProject?: (entry: FsEntry) => boolean;
   isBloggerDogGroup?: (entry: FsEntry) => boolean;
   isBloggerDogContentItem?: (entry: FsEntry) => boolean;
+  instanceId?: string;
+  isExternal?: boolean;
 }
 
 export function useFileContextMenu(
@@ -93,6 +95,8 @@ export function useFileContextMenu(
         ],
       ];
     }
+
+    const isComputer = deps.isExternal || deps.instanceId === 'computer' || deps.instanceId === 'sidebar';
 
     if (entry.source === 'remote') {
       const items: any[][] = [];
@@ -234,30 +238,38 @@ export function useFileContextMenu(
     if (entry.kind === 'directory') {
       const hasVideos = deps.folderHasVideos(entry);
 
-      items.push([
+      const dirItems = [
         {
           label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
           icon: 'i-heroicons-folder-plus',
           onSelect: () => onAction('createFolder', entry),
         },
-        {
-          label: t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),
-          icon: 'i-heroicons-arrow-up-tray',
-          onSelect: () => onAction('upload', entry),
-        },
-        {
-          label: t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline'),
-          icon: 'i-heroicons-document-plus',
-          onSelect: () => onAction('createTimeline', entry),
-        },
-        {
-          label: t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document'),
-          icon: 'i-heroicons-document-text',
-          onSelect: () => onAction('createMarkdown', entry),
-        },
-      ]);
+      ];
 
-      if (hasVideos) {
+      if (!isComputer) {
+        dirItems.push(
+          {
+            label: t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),
+            icon: 'i-heroicons-arrow-up-tray',
+            onSelect: () => onAction('upload', entry),
+          },
+          {
+            label: t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline'),
+            icon: 'i-heroicons-document-plus',
+            onSelect: () => onAction('createTimeline', entry),
+          },
+        );
+      }
+
+      dirItems.push({
+        label: t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document'),
+        icon: 'i-heroicons-document-text',
+        onSelect: () => onAction('createMarkdown', entry),
+      });
+
+      items.push(dirItems);
+
+      if (hasVideos && !isComputer) {
         if (deps.isGeneratingProxyInDirectory(entry)) {
           items.push([
             {
@@ -285,7 +297,7 @@ export function useFileContextMenu(
       }
     }
 
-    if (deps.isOpenableMediaFile(entry)) {
+    if (deps.isOpenableMediaFile(entry) && !isComputer) {
       if (!deps.isFilesPage) {
         items.push([
           {
@@ -349,7 +361,7 @@ export function useFileContextMenu(
       const hasProxy = meta.hasProxy;
       const generatingProxy = meta.generatingProxy;
 
-      if (!generatingProxy) {
+      if (!generatingProxy && !isComputer) {
         items.push([
           {
             label: hasProxy
@@ -361,7 +373,7 @@ export function useFileContextMenu(
         ]);
       }
 
-      if (generatingProxy) {
+      if (generatingProxy && !isComputer) {
         items.push([
           {
             label: t(
@@ -375,7 +387,7 @@ export function useFileContextMenu(
         ]);
       }
 
-      if (hasProxy) {
+      if (hasProxy && !isComputer) {
         items.push([
           {
             label: t('videoEditor.fileManager.actions.deleteProxy', 'Delete Proxy'),
@@ -398,7 +410,7 @@ export function useFileContextMenu(
     }
 
     const isOtioFile = entry.kind === 'file' && entry.name.toLowerCase().endsWith('.otio');
-    if (isOtioFile) {
+    if (isOtioFile && !isComputer) {
       items.push([
         {
           label: t('fastcat.timeline.createVersion', 'Create version'),

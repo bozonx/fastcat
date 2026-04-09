@@ -179,7 +179,10 @@ const displayMode = computed<
   if (
     entity?.source === 'fileManager' &&
     entity.kind === 'file' &&
-    entity.name?.toLowerCase().endsWith('.otio')
+    entity.name?.toLowerCase().endsWith('.otio') &&
+    entity.instanceId !== 'computer' &&
+    entity.instanceId !== 'sidebar' &&
+    !entity.isExternal
   )
     return 'timeline';
   if (entity?.source === 'fileManager' && (entity.kind === 'file' || entity.kind === 'directory'))
@@ -393,6 +396,8 @@ const headerTitle = computed(() => {
         :selected-fs-entry="selectedFsEntry"
         :has-proxy="hasProxy"
         :preview-mode="previewMode"
+        :instance-id="selectionStore.selectedEntity?.source === 'fileManager' ? (selectionStore.selectedEntity as any)?.instanceId : undefined"
+        :is-external="selectionStore.selectedEntity?.source === 'fileManager' ? (selectionStore.selectedEntity as any)?.isExternal : false"
         @update:preview-mode="(m) => (previewMode = m)"
         @convert="(entry) => conversionStore.openConversionModal(entry)"
       />
