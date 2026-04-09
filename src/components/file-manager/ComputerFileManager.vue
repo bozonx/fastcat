@@ -35,10 +35,6 @@ const { t } = useI18n();
 const rootEntries = shallowRef<FsEntry[]>([]);
 const sortMode = ref<'name' | 'type'>('name');
 
-// Independent history for computer file manager
-const computerHistoryStack = ref<FsEntry[]>([]);
-const computerFutureStack = ref<FsEntry[]>([]);
-
 const { vfs, rootPath } = useComputerVfs();
 
 // Initialize file manager for computer
@@ -86,90 +82,31 @@ const fileManager = createFileManager({
 
 const expandedPaths = ref(new Set<string>());
 
-// Decouple computer-specific settings from the main store instance using persistence store
-const computerStoreWrapper = computed(() => {
-  return new Proxy(fileManagerStore, {
-    get(target, prop, receiver) {
-      if (prop === 'selectedFolder') return persistenceStore.computerLastFolder;
-      if (prop === 'gridCardSize') return persistenceStore.computerGridCardSize;
-      if (prop === 'viewMode') return persistenceStore.computerViewMode;
-      if (prop === 'historyStack') return computerHistoryStack.value;
-      if (prop === 'futureStack') return computerFutureStack.value;
-
-      if (prop === 'openFolder') {
-        return (entry: FsEntry | null, options: { skipHistory?: boolean } = {}) => {
-          if (entry && entry.kind === 'directory') {
-            if (!options.skipHistory && persistenceStore.computerLastFolder) {
-              const current = { ...persistenceStore.computerLastFolder };
-              if (current.path !== entry.path || current.source !== entry.source) {
-                computerHistoryStack.value.push(current);
-                computerFutureStack.value = [];
-              }
-            }
-          }
-          persistenceStore.setComputerLastFolder(entry);
-          return target.openFolder(entry, { skipHistory: true });
-        };
-      }
-
-      if (prop === 'addToHistory') {
-        return (entry: FsEntry) => {
-          const last = computerHistoryStack.value[computerHistoryStack.value.length - 1];
-          if (last && last.path === entry.path && last.source === entry.source) return;
-          computerHistoryStack.value.push({ ...entry });
-          computerFutureStack.value = [];
-        };
-      }
-
-      if (prop === 'setViewMode') {
-        return (mode: FileViewMode) => persistenceStore.setComputerViewMode(mode);
-      }
-
-      return Reflect.get(target, prop);
-    },
-    set(target, prop, value) {
-      if (prop === 'selectedFolder') {
-        persistenceStore.setComputerLastFolder(value);
-        return true;
-      }
-      if (prop === 'gridCardSize') {
-        persistenceStore.setComputerGridCardSize(value);
-        return true;
-      }
-      if (prop === 'viewMode') {
-        persistenceStore.setComputerViewMode(value);
-        return true;
-      }
-      return Reflect.set(target, prop, value);
-    },
-  });
-});
-
-computerStoreWrapper.value.setSelectionContext({
+fileManagerStore.setSelectionContext({
   instanceId,
   isExternal: true,
 });
 
-provide('fileManagerStore', computerStoreWrapper.value);
 provide(FILE_MANAGER_INJECTION_KEY, fileManager);
 
 onMounted(async () => {
   let restored = false;
-  if (persistenceStore.computerLastFolder) {
+
+  // Migration / restoration logic
+  const lastFolder = fileManagerStore.selectedFolder || persistenceStore.computerLastFolder;
+
+  if (lastFolder) {
     try {
       // Validate that the folder still exists before trying to open it
-      const exists = await vfs.value?.exists(persistenceStore.computerLastFolder.path);
-      if (!exists) {
-        persistenceStore.setComputerLastFolder(null);
-      } else {
-        computerStoreWrapper.value.openFolder(persistenceStore.computerLastFolder, {
+      const exists = await vfs.value?.exists(lastFolder.path);
+      if (exists) {
+        fileManagerStore.openFolder(lastFolder, {
           skipHistory: true,
         });
         restored = true;
       }
     } catch (e) {
       console.warn('Failed to validate last computer folder', e);
-      persistenceStore.setComputerLastFolder(null);
     }
   }
 
@@ -177,7 +114,7 @@ onMounted(async () => {
 
   // If no folder selected or previous one was invalid, open root
   if (!restored) {
-    computerStoreWrapper.value.openFolder({
+    fileManagerStore.openFolder({
       name: rootPath.value || 'Root',
       path: rootPath.value,
       kind: 'directory',
@@ -186,7 +123,7 @@ onMounted(async () => {
 });
 
 function onSelect(entry: FsEntry) {
-  computerStoreWrapper.value.openFolder(entry);
+  fileManagerStore.openFolder(entry);
   selectionStore.selectFsEntry(entry, instanceId, true);
 }
 </script>
