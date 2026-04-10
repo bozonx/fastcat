@@ -3,6 +3,14 @@ import { ref } from 'vue';
 import { mountWithNuxt } from '../../utils/mount';
 import FileProperties from '~/components/properties/FileProperties.vue';
 
+vi.mock('~/components/preview/TextEditor.vue', () => ({
+  default: {
+    name: 'TextEditor',
+    props: ['filePath', 'fileName'],
+    template: '<div data-testid="text-editor-stub">{{ fileName }}|{{ filePath }}</div>',
+  },
+}));
+
 // Mock all internal composables used by FileProperties.vue
 vi.mock('~/composables/file-manager/useEntryPreview', () => ({
   useEntryPreview: vi.fn(() => ({
@@ -641,5 +649,84 @@ describe('FileProperties.vue', () => {
 
     expect(component.text()).toContain('Hello');
     expect(component.html()).not.toContain('data-testid="text-editor-stub"');
+  });
+
+  it('renders text editor preview for BloggerDog virtual txt file', async () => {
+    const { useEntryPreview } = await import('~/composables/file-manager/useEntryPreview');
+    const { useFilePropertiesBasics } =
+      await import('~/composables/properties/useFilePropertiesBasics');
+    const { useFilePropertiesActions } =
+      await import('~/composables/properties/useFilePropertiesActions');
+
+    vi.mocked(useEntryPreview).mockReturnValue({
+      currentUrl: ref(null),
+      mediaType: ref('text'),
+      textContent: ref('Body text'),
+      fileInfo: ref({
+        kind: 'file',
+        name: 'Sunset.txt',
+        lastModified: Date.now(),
+      } as any),
+      exifData: ref(null),
+      exifYaml: ref(null),
+      imageDimensions: ref(null),
+      timelineDocSummary: ref(null),
+      lineCount: ref(1),
+      metadataYaml: ref(null),
+      isUnknown: ref(false),
+      isOtio: ref(false),
+      thumbnailUrl: ref(null),
+    } as any);
+
+    vi.mocked(useFilePropertiesBasics).mockReturnValue({
+      generalInfoTitle: 'text/plain',
+      isHidden: ref(false),
+      mediaMeta: ref({}),
+      selectedPath: ref('/personal/item-1/Sunset.txt'),
+      isBloggerDogProject: ref(false),
+      isBloggerDogGroup: ref(false),
+      isBloggerDogContentItem: ref(false),
+      isBloggerDogMedia: ref(true),
+      bloggerDogDeepLink: ref(null),
+    });
+
+    vi.mocked(useFilePropertiesActions).mockReturnValue({
+      directoryPrimaryActions: ref([]),
+      directorySecondaryActions: ref([]),
+      filePrimaryActions: ref([]),
+      fileSecondaryActions: ref([
+        { id: 'openAsPanelCut', label: 'Open in cut', icon: 'i-cut', onClick: vi.fn() },
+        { id: 'openAsProjectTab', label: 'Open as tab', icon: 'i-tab', onClick: vi.fn() },
+      ]),
+    });
+
+    const component = await mountWithNuxt(FileProperties, {
+      props: {
+        selectedFsEntry: {
+          kind: 'file',
+          name: 'Sunset.txt',
+          path: '/personal/item-1/Sunset.txt',
+          source: 'remote',
+          adapterPayload: {
+            type: 'media',
+            remoteData: {
+              id: 'item-1',
+              type: 'file',
+              title: 'Sunset',
+              path: '/personal/item-1',
+              text: 'Body text',
+            },
+          },
+        } as any,
+        previewMode: 'original',
+        hasProxy: false,
+      },
+    });
+
+    expect(component.get('[data-testid="text-editor-stub"]').text()).toContain(
+      'Sunset.txt|/personal/item-1/Sunset.txt',
+    );
+    expect(component.text()).toContain('Open in cut');
+    expect(component.text()).toContain('Open as tab');
   });
 });
