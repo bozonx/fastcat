@@ -519,7 +519,7 @@ async function onItemCreateConfirm(name: string) {
   if (!parent) return;
 
   try {
-    const parentPayload = (parent as any).adapterPayload as BloggerDogEntryPayload;
+    const parentPayload = getBdPayload(parent);
     const remoteData = parentPayload?.remoteData;
 
     let scope: RemoteVfsScope = 'personal';
@@ -527,21 +527,22 @@ async function onItemCreateConfirm(name: string) {
     let groupId: string | undefined;
 
     const parentPath = parent.path || '/';
-    const pathParts = parentPath.split('/').filter(Boolean);
 
-    if (parentPath === '/personal' || parentPath === 'personal') {
-      scope = 'personal';
-    } else if (pathParts[0] === 'projects' && pathParts.length === 2) {
+    if (parentPayload?.type === 'virtual-folder') {
+      const isPersonal = parent.remoteId === 'personal' || parentPath.endsWith('/personal');
+      scope = isPersonal ? 'personal' : 'project';
+      // projectId for project root will be handled if needed, but usually we are in a specific project or personal root
+    } else if (parentPayload?.type === 'project') {
       scope = 'project';
-      projectId = pathParts[1];
-    } else if (remoteData) {
-      scope = remoteData.scope || 'personal';
-      projectId = remoteData.projectId;
-      if (remoteData.type === 'directory') {
-        groupId = remoteData.id;
-      } else if (remoteData.type === 'file') {
-        groupId = (remoteData as any).groupId;
-      }
+      projectId = remoteData?.id;
+    } else if (parentPayload?.type === 'collection') {
+      scope = (remoteData as any)?.scope || 'personal';
+      projectId = (remoteData as any)?.projectId;
+      groupId = remoteData?.id;
+    } else if (parentPayload?.type === 'content-item') {
+      scope = (remoteData as any)?.scope || 'personal';
+      projectId = (remoteData as any)?.projectId;
+      groupId = (remoteData as any)?.groupId || (remoteData as any)?.collectionId;
     }
 
     await bloggerDogStore.createItem({

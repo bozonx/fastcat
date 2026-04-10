@@ -6,6 +6,7 @@ import type {
   RemoteVfsHealthResponse,
   RemoteVfsListResponse,
   RemoteVfsMedia,
+  RemoteVfsMediaRelation,
   RemoteVfsProjectEntry,
   RemoteVfsScope,
 } from '~/types/remote-vfs';
@@ -629,8 +630,8 @@ export async function createRemoteItem(params: {
       title: params.title,
       text: params.text,
       scope: params.scope || 'personal',
-      projectId: params.projectId,
-      groupId: params.groupId,
+      projectId: params.projectId || undefined,
+      groupId: params.groupId || undefined,
       tags: params.tags,
       note: params.note,
     }),
