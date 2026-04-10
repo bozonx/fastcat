@@ -34,6 +34,7 @@ interface ContextMenuDeps {
   isConvertibleMediaFile: (entry: FsEntry) => boolean;
   isTranscribableMediaFile?: (entry: FsEntry) => boolean;
   isVideo: (entry: FsEntry) => boolean;
+  hasAudioTrack?: (entry: FsEntry) => boolean;
   getEntryMeta: (entry: FsEntry) => {
     hasProxy: boolean;
     generatingProxy: boolean;
@@ -176,7 +177,7 @@ export function useFileContextMenu(
         ]);
       }
 
-      if (deps.isVideo(entry)) {
+      if (deps.isVideo(entry) && (!deps.hasAudioTrack || deps.hasAudioTrack(entry))) {
         items.push([
           {
             label: t('videoEditor.fileManager.actions.extractAudio', 'Extract Audio'),
@@ -252,7 +253,7 @@ export function useFileContextMenu(
       }
     }
 
-    if (hasVideo) {
+    if (hasVideo && (!deps.hasAudioTrack || selectedEntries.some((e) => deps.hasAudioTrack?.(e)))) {
       items.push([
         {
           label: t('videoEditor.fileManager.actions.extractAudio', 'Extract Audio'),
@@ -451,7 +452,7 @@ export function useFileContextMenu(
       }
     }
 
-    if (deps.isVideo(entry)) {
+    if (deps.isVideo(entry) && (!deps.hasAudioTrack || deps.hasAudioTrack(entry))) {
       items.push([
         {
           label: t('videoEditor.fileManager.actions.extractAudio', 'Extract Audio'),

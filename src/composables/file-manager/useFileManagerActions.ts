@@ -33,6 +33,7 @@ export type FileAction =
   | 'convertFile'
   | 'openAsPanel'
   | 'openAsProjectTab'
+  | 'extractAudio'
   | 'copy'
   | 'cut'
   | 'paste'
@@ -274,7 +275,11 @@ export function useFileManagerActions(actions: FileManagerActions) {
     const pathsToDelete = new Set(deleteTargets.value.map((t) => t.path).filter(Boolean));
     const namesToDelete = new Set(deleteTargets.value.map((t) => t.name));
 
+    const parentPathsToReload = new Set<string>();
     for (const target of deleteTargets.value) {
+      if (target.path) {
+        parentPathsToReload.add(getParentPath(target.path));
+      }
       await actions.deleteEntry(target);
     }
 
@@ -317,6 +322,12 @@ export function useFileManagerActions(actions: FileManagerActions) {
       }
     }
 
+    // Explicitly reload all affected parent directories and notify UI
+    for (const parentPath of parentPathsToReload) {
+      await actions.reloadDirectory(parentPath);
+    }
+    actions.notifyFileManagerUpdate?.();
+
     actions.onAfterDelete?.();
 
     setTimeout(() => {
@@ -325,6 +336,13 @@ export function useFileManagerActions(actions: FileManagerActions) {
         deleteTargets.value = [];
       }, 300);
     }, 0);
+  }
+
+  function getParentPath(path?: string): string {
+    if (!path) return '';
+    const parts = path.split('/');
+    if (parts.length <= 1) return '';
+    return parts.slice(0, -1).join('/');
   }
 
   const fileActionHandlers: Record<

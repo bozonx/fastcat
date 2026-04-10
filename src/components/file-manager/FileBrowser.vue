@@ -635,6 +635,11 @@ const { getContextMenuItems } = useFileContextMenu(
     },
     isTranscribableMediaFile,
     isVideo,
+    hasAudioTrack: (entry) => {
+      if (entry.kind !== 'file' || !entry.path) return false;
+      const meta = mediaStore.mediaMetadata[entry.path];
+      return !!meta?.audio;
+    },
     getEntryMeta: (entry: FsEntry) => ({
       hasProxy: entry.path ? fileManager.mediaCache.hasProxy(entry.path) : false,
       generatingProxy: entry.path ? proxyStore.generatingProxies.has(entry.path) : false,

@@ -296,6 +296,8 @@ async function copyToClipboard(text: string) {
 
 const isVideoFile = computed(() => mediaType.value === 'video');
 
+const isVideoWithAudio = computed(() => Boolean(mediaMeta.value?.audio));
+
 const isFormatUnsupported = computed(() =>
   Boolean(selectedPath.value && mediaStore.metadataLoadFailed[selectedPath.value]),
 );
@@ -512,6 +514,7 @@ const {
   isGeneratingProxyForFile,
   isOtio,
   isVideoFile,
+  isVideoWithAudio,
   isCommonDir: isCommonRoot,
   isCommonPath,
   isRemoteMode: computed(() => props.selectedFsEntry?.source === 'remote'),
@@ -907,7 +910,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
           !isWorkspaceRootProperties &&
           selectedFsEntry &&
           !isProjectRootDirInContext &&
-          (fileInfo?.kind === 'file' || selectedFsEntry.kind === 'file')
+          selectedFsEntry.kind === 'file'
         "
         :title="generalInfoTitle"
         :file-info="fileInfo || (selectedFsEntry as any)"
@@ -925,7 +928,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
       </FileGeneralInfoSection>
 
       <FileTimelineUsageSection
-        v-if="!isWorkspaceRootProperties && fileInfo?.kind === 'file' && !isExternalContext"
+        v-if="!isWorkspaceRootProperties && selectedFsEntry.kind === 'file' && !isExternalContext"
         :usages="timelinesUsingSelectedFile"
         :open-timeline-from-usage="openTimelineFromUsage"
       />
@@ -935,7 +938,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
           !isWorkspaceRootProperties &&
           selectedFsEntry &&
           !isProjectRootDirInContext &&
-          (fileInfo?.kind === 'directory' || selectedFsEntry.kind === 'directory') &&
+          selectedFsEntry.kind === 'directory' &&
           !isRemoteRoot &&
           !isVirtualAll &&
           !isPersonalLibrary &&
