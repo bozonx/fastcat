@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import ProjectsScreen from '~/components/startup/ProjectsScreen.vue';
+import {
+  readLocalStorageString,
+  writeLocalStorageString,
+  STORAGE_KEYS,
+} from '~/stores/ui/uiLocalStorage';
 
 const { resetProjectState } = useProjectActions();
 const route = useRoute();
@@ -11,11 +16,11 @@ const { isMobile } = useDevice();
 resetProjectState();
 
 onMounted(() => {
-  const ALREADY_LAUNCHED_KEY = 'fastcat:app:already-launched';
-  const alreadyLaunched = localStorage.getItem(ALREADY_LAUNCHED_KEY) === 'true';
+  const alreadyLaunched =
+    readLocalStorageString(STORAGE_KEYS.APP.ALREADY_LAUNCHED) === 'true';
 
   if (!alreadyLaunched) {
-    localStorage.setItem(ALREADY_LAUNCHED_KEY, 'true');
+    writeLocalStorageString(STORAGE_KEYS.APP.ALREADY_LAUNCHED, 'true');
     // Если мобильное устройство и не выбран принудительный десктопный режим
     if (isMobile && route.query.mode !== 'desktop') {
       router.replace('/m');

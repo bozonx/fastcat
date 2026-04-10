@@ -2,6 +2,11 @@ import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 import { getVideoEffectManifest, getAudioEffectManifest, registerEffect } from '~/effects';
 import { getTransitionManifest, registerTransition } from '~/transitions';
+import {
+  readLocalStorageJson,
+  writeLocalStorageJson,
+  STORAGE_KEYS,
+} from '~/stores/ui/uiLocalStorage';
 
 export interface CustomPreset {
   id: string; // Used as the type in registry
@@ -33,48 +38,36 @@ export const usePresetsStore = defineStore('presets', () => {
 
   // Load from localStorage
   function load() {
-    try {
-      const presetsJson = localStorage.getItem('fastcat:presets:custom');
-      if (presetsJson) {
-        customPresets.value = JSON.parse(presetsJson);
-      }
+    customPresets.value = readLocalStorageJson(STORAGE_KEYS.PRESETS.CUSTOM, []);
+    defaultTextPresetId.value = readLocalStorageJson(STORAGE_KEYS.PRESETS.DEFAULT_TEXT, '');
 
-      const defaultTextJson = localStorage.getItem('fastcat:presets:defaultText');
-      if (defaultTextJson) {
-        defaultTextPresetId.value = JSON.parse(defaultTextJson);
-      }
-
-      const collapsedJson = localStorage.getItem('fastcat:presets:collapsed');
-      if (collapsedJson) {
-        const state = JSON.parse(collapsedJson);
-        effectsStandardCollapsed.value = !!state.effectsStandardCollapsed;
-        effectsCustomCollapsed.value = !!state.effectsCustomCollapsed;
-        transitionsStandardCollapsed.value = !!state.transitionsStandardCollapsed;
-        transitionsCustomCollapsed.value = !!state.transitionsCustomCollapsed;
-        audioStandardCollapsed.value = !!state.audioStandardCollapsed;
-        audioCustomCollapsed.value = !!state.audioCustomCollapsed;
-        shapesStandardCollapsed.value = !!state.shapesStandardCollapsed;
-        shapesCustomCollapsed.value = !!state.shapesCustomCollapsed;
-        hudsStandardCollapsed.value = !!state.hudsStandardCollapsed;
-        hudsCustomCollapsed.value = !!state.hudsCustomCollapsed;
-        textsStandardCollapsed.value = !!state.textsStandardCollapsed;
-        textsCustomCollapsed.value = !!state.textsCustomCollapsed;
-      }
-
-      // Register custom presets
-      customPresets.value.forEach((preset) => registerPresetManifest(preset));
-    } catch (e) {
-      console.error('Failed to load custom presets', e);
+    const state = readLocalStorageJson<any>(STORAGE_KEYS.PRESETS.COLLAPSED, null);
+    if (state) {
+      effectsStandardCollapsed.value = !!state.effectsStandardCollapsed;
+      effectsCustomCollapsed.value = !!state.effectsCustomCollapsed;
+      transitionsStandardCollapsed.value = !!state.transitionsStandardCollapsed;
+      transitionsCustomCollapsed.value = !!state.transitionsCustomCollapsed;
+      audioStandardCollapsed.value = !!state.audioStandardCollapsed;
+      audioCustomCollapsed.value = !!state.audioCustomCollapsed;
+      shapesStandardCollapsed.value = !!state.shapesStandardCollapsed;
+      shapesCustomCollapsed.value = !!state.shapesCustomCollapsed;
+      hudsStandardCollapsed.value = !!state.hudsStandardCollapsed;
+      hudsCustomCollapsed.value = !!state.hudsCustomCollapsed;
+      textsStandardCollapsed.value = !!state.textsStandardCollapsed;
+      textsCustomCollapsed.value = !!state.textsCustomCollapsed;
     }
+
+    // Register custom presets
+    customPresets.value.forEach((preset) => registerPresetManifest(preset));
   }
 
   // Save to localStorage
   function savePresets() {
-    localStorage.setItem('fastcat:presets:custom', JSON.stringify(customPresets.value));
+    writeLocalStorageJson(STORAGE_KEYS.PRESETS.CUSTOM, customPresets.value);
   }
 
-  watch(defaultTextPresetId, () => {
-    localStorage.setItem('fastcat:presets:defaultText', JSON.stringify(defaultTextPresetId.value));
+  watch(defaultTextPresetId, (val) => {
+    writeLocalStorageJson(STORAGE_KEYS.PRESETS.DEFAULT_TEXT, val);
   });
 
   watch(
@@ -93,23 +86,20 @@ export const usePresetsStore = defineStore('presets', () => {
       textsCustomCollapsed,
     ],
     () => {
-      localStorage.setItem(
-        'fastcat:presets:collapsed',
-        JSON.stringify({
-          effectsStandardCollapsed: effectsStandardCollapsed.value,
-          effectsCustomCollapsed: effectsCustomCollapsed.value,
-          transitionsStandardCollapsed: transitionsStandardCollapsed.value,
-          transitionsCustomCollapsed: transitionsCustomCollapsed.value,
-          audioStandardCollapsed: audioStandardCollapsed.value,
-          audioCustomCollapsed: audioCustomCollapsed.value,
-          shapesStandardCollapsed: shapesStandardCollapsed.value,
-          shapesCustomCollapsed: shapesCustomCollapsed.value,
-          hudsStandardCollapsed: hudsStandardCollapsed.value,
-          hudsCustomCollapsed: hudsCustomCollapsed.value,
-          textsStandardCollapsed: textsStandardCollapsed.value,
-          textsCustomCollapsed: textsCustomCollapsed.value,
-        }),
-      );
+      writeLocalStorageJson(STORAGE_KEYS.PRESETS.COLLAPSED, {
+        effectsStandardCollapsed: effectsStandardCollapsed.value,
+        effectsCustomCollapsed: effectsCustomCollapsed.value,
+        transitionsStandardCollapsed: transitionsStandardCollapsed.value,
+        transitionsCustomCollapsed: transitionsCustomCollapsed.value,
+        audioStandardCollapsed: audioStandardCollapsed.value,
+        audioCustomCollapsed: audioCustomCollapsed.value,
+        shapesStandardCollapsed: shapesStandardCollapsed.value,
+        shapesCustomCollapsed: shapesCustomCollapsed.value,
+        hudsStandardCollapsed: hudsStandardCollapsed.value,
+        hudsCustomCollapsed: hudsCustomCollapsed.value,
+        textsStandardCollapsed: textsStandardCollapsed.value,
+        textsCustomCollapsed: textsCustomCollapsed.value,
+      });
     },
   );
 
