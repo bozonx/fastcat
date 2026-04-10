@@ -245,4 +245,31 @@ describe('useFileConversionActions', () => {
     );
     expect(mockProjectStore.getFileByPath).not.toHaveBeenCalled();
   });
+
+  it('uses VFS to read image metadata when opening conversion modal', async () => {
+    const props = createProps('image');
+    const { openConversionModal } = useFileConversionActions(props);
+    const mockBitmap = {
+      width: 640,
+      height: 480,
+      close: vi.fn(),
+    };
+    const createImageBitmapMock = vi.fn().mockResolvedValue(mockBitmap);
+
+    vi.stubGlobal('createImageBitmap', createImageBitmapMock);
+    mockFileManager.vfs.getFile.mockResolvedValue(
+      new File(['x'], 'test.png', { type: 'image/png' }),
+    );
+
+    await openConversionModal({ name: 'test.png', path: '/test.png', kind: 'file' } as any);
+
+    expect(mockFileManager.vfs.getFile).toHaveBeenCalledWith('/test.png');
+    expect(mockProjectStore.getFileByPath).not.toHaveBeenCalled();
+    expect(props.imageSettings.width).toBe(640);
+    expect(props.imageSettings.height).toBe(480);
+    expect(props.imageSettings.aspectRatio).toBe(640 / 480);
+    expect(mockBitmap.close).toHaveBeenCalled();
+
+    vi.unstubAllGlobals();
+  });
 });

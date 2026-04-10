@@ -110,7 +110,7 @@ export interface FileManagerCreateDeps {
 export function createFileManager(deps: FileManagerCreateDeps) {
   const isLoading = ref(false);
   const error = ref<string | null>(null);
-  const { t } = useI18n();
+  const t = deps.t;
   const runWithUiFeedback = createUiActionRunner({ isLoading, error }, { toast: deps.toast });
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
 
@@ -743,7 +743,9 @@ export function useFileManager(options?: {
     return injected;
   }
 
-  const { t } = useI18n();
+  const _useNuxtApp: any = (globalThis as any).useNuxtApp || useNuxtApp;
+  const nuxtApp = _useNuxtApp();
+  const t = (nuxtApp as any)?.$i18n?.t || ((key: string) => key);
   const toast = useToast();
   const defaultVfs = useVfs();
   const vfs = options?.vfs || defaultVfs;

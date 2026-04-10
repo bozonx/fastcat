@@ -73,6 +73,18 @@ interface UseFilePropertiesActionsOptions {
 }
 
 export function useFilePropertiesActions(options: UseFilePropertiesActionsOptions) {
+  const isBloggerDogEntity = computed(
+    () =>
+      options.isRemoteMode.value &&
+      Boolean(
+        options.isBloggerDogProject.value ||
+          options.isBloggerDogGroup?.value ||
+          options.isBloggerDogContentItem?.value ||
+          options.isVirtualAll?.value ||
+          options.isPersonalLibrary?.value,
+      ),
+  );
+
   const directoryPrimaryActions = computed<PrimaryEntryAction[]>(() => [
     {
       id: 'delete',
@@ -145,7 +157,9 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'upload',
       label: options.t('videoEditor.fileManager.actions.uploadFiles'),
       icon: 'i-heroicons-arrow-up-tray',
-      hidden: options.isExternal?.value || options.isVirtualAll?.value,
+      // BloggerDog directories must not expose local filesystem actions here.
+      // Do not re-add upload/createTimeline for remote BloggerDog entities.
+      hidden: options.isExternal?.value || isBloggerDogEntity.value,
       onClick: options.triggerDirectoryUpload,
     },
     {
@@ -159,7 +173,7 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'createTimeline',
       label: options.t('videoEditor.fileManager.actions.createTimeline'),
       icon: 'i-heroicons-document-plus',
-      hidden: options.isExternal?.value || options.isVirtualAll?.value,
+      hidden: options.isExternal?.value || isBloggerDogEntity.value,
       onClick: options.createTimelineInFolder,
     },
     {
