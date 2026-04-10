@@ -59,22 +59,18 @@ async function copyToClipboard(text: string) {
         <span class="text-xs px-1">{{ props.item.title || props.item.name }}</span>
       </PropertyRow>
 
-      <PropertyRow 
-        v-if="props.item.language" 
-        :label="t('common.language', 'Language')" 
-        :value="props.item.language" 
+      <PropertyRow
+        v-if="props.item.language"
+        :label="t('common.language', 'Language')"
+        :value="props.item.language"
       />
-      
-      <PropertyRow 
-        v-if="duration" 
-        :label="t('common.duration', 'Duration')" 
-        :value="duration" 
-      />
+
+      <PropertyRow v-if="duration" :label="t('common.duration', 'Duration')" :value="duration" />
 
       <PropertyRow v-if="props.item.tags?.length" :label="t('common.tags', 'Tags')">
         <div class="flex flex-wrap gap-1">
-          <span 
-            v-for="tag in props.item.tags" 
+          <span
+            v-for="tag in props.item.tags"
             :key="tag"
             class="px-1.5 py-0.5 rounded bg-primary-500/10 text-primary-400 text-[10px] font-medium border border-primary-500/20"
           >
@@ -83,7 +79,10 @@ async function copyToClipboard(text: string) {
         </div>
       </PropertyRow>
 
-      <div v-if="props.item.text" class="mt-4 flex flex-col gap-1.5 px-2 -mx-2 py-2 rounded bg-white/5 border border-white/10">
+      <div
+        v-if="props.item.text"
+        class="mt-4 flex flex-col gap-1.5 px-2 -mx-2 py-2 rounded bg-white/5 border border-white/10"
+      >
         <div class="text-2xs text-ui-text-muted">
           <span>{{ t('common.text', 'Text') }}</span>
         </div>
@@ -92,7 +91,10 @@ async function copyToClipboard(text: string) {
         </div>
       </div>
 
-      <div v-if="props.item.note" class="mt-2 flex flex-col gap-1.5 px-2 -mx-2 py-2 rounded bg-white/5 border border-white/10">
+      <div
+        v-if="props.item.note"
+        class="mt-2 flex flex-col gap-1.5 px-2 -mx-2 py-2 rounded bg-white/5 border border-white/10"
+      >
         <div class="text-2xs text-ui-text-muted">
           <span>{{ t('common.note', 'Note') }}</span>
         </div>
@@ -110,11 +112,10 @@ async function copyToClipboard(text: string) {
         :on-toggle="() => (isMetaExpanded = !isMetaExpanded)"
         :on-copy="copyToClipboard"
       />
-      
+
       <div v-if="$slots['after-content']" class="mt-4 pt-2 border-t border-ui-border">
         <slot name="after-content" />
       </div>
     </template>
   </PropertySection>
 </template>
-

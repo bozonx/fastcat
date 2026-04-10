@@ -49,7 +49,7 @@ describe('external integrations', () => {
 
   it('builds STT stream URLs for FastCat proxy and manual gateway', () => {
     expect(getFastCatPublicadorSttStreamUrl('https://fastcat.example.com')).toBe(
-      'https://fastcat.example.com/api/v1/transcribe/stream',
+      'https://fastcat.example.com/api/v1/external/stt/transcribe/stream',
     );
 
     expect(getManualSttStreamUrl('https://stt.example.com')).toBe(
@@ -135,6 +135,6 @@ describe('external integrations', () => {
         userSettings,
         fastcatAccountApiUrl: 'https://fastcat-acc.example.com',
       }),
-    ).toBe('https://fastcat-acc.example.com/api/v1/transcribe/stream');
+    ).toBe('https://fastcat-acc.example.com/api/v1/external/stt/transcribe/stream');
   });
 });

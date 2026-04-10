@@ -78,14 +78,16 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'delete',
       title: options.t('common.delete'),
       icon: 'i-heroicons-trash',
-      hidden: options.isProjectRootDir.value || options.isCommonDir.value || options.isRemoteRoot.value,
+      hidden:
+        options.isProjectRootDir.value || options.isCommonDir.value || options.isRemoteRoot.value,
       onClick: options.onDelete,
     },
     {
       id: 'rename',
       title: options.t('common.rename'),
       icon: 'i-heroicons-pencil',
-      hidden: options.isProjectRootDir.value || options.isCommonDir.value || options.isRemoteRoot.value,
+      hidden:
+        options.isProjectRootDir.value || options.isCommonDir.value || options.isRemoteRoot.value,
       onClick: options.onRename,
     },
     {
@@ -264,7 +266,10 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
         ? options.t('videoEditor.fileManager.proxy.regenerate')
         : options.t('videoEditor.fileManager.proxy.create'),
       icon: options.hasExistingProxyForFile.value ? 'i-heroicons-arrow-path' : 'i-heroicons-film',
-      hidden: !options.showVideoProxyActions.value || options.isGeneratingProxyForFile.value || options.isExternal?.value,
+      hidden:
+        !options.showVideoProxyActions.value ||
+        options.isGeneratingProxyForFile.value ||
+        options.isExternal?.value,
       onClick: options.createProxy,
     },
     {
@@ -272,7 +277,10 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       label: options.t('videoEditor.fileManager.actions.cancelProxyGeneration'),
       icon: 'i-heroicons-x-circle',
       color: 'error',
-      hidden: !options.showVideoProxyActions.value || !options.isGeneratingProxyForFile.value || options.isExternal?.value,
+      hidden:
+        !options.showVideoProxyActions.value ||
+        !options.isGeneratingProxyForFile.value ||
+        options.isExternal?.value,
       onClick: options.cancelProxy,
     },
     {
@@ -280,7 +288,10 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       label: options.t('videoEditor.fileManager.proxy.delete'),
       icon: 'i-heroicons-trash',
       color: 'error',
-      hidden: !options.showVideoProxyActions.value || !options.hasExistingProxyForFile.value || options.isExternal?.value,
+      hidden:
+        !options.showVideoProxyActions.value ||
+        !options.hasExistingProxyForFile.value ||
+        options.isExternal?.value,
       onClick: options.deleteProxy,
     },
     {
@@ -294,7 +305,8 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'extractAudio',
       label: options.t('videoEditor.fileManager.actions.extractAudio'),
       icon: 'i-heroicons-musical-note',
-      hidden: !options.isVideoFile.value || (options.isVideoWithAudio && !options.isVideoWithAudio.value),
+      hidden:
+        !options.isVideoFile.value || (options.isVideoWithAudio && !options.isVideoWithAudio.value),
       onClick: options.extractAudio,
     },
   ]);
