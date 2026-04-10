@@ -7,11 +7,13 @@ import { useUiStore } from '~/stores/ui.store';
 export interface FileManagerPanelBootstrapOptions {
   loadProjectDirectory: () => Promise<void>;
   onRootEntrySelected: (entry: FsEntry) => void;
+  shouldSelectRoot?: () => boolean;
 }
 
 export function useFileManagerPanelBootstrap({
   loadProjectDirectory,
   onRootEntrySelected,
+  shouldSelectRoot,
 }: FileManagerPanelBootstrapOptions) {
   const projectStore = useProjectStore();
   const selectionStore = useSelectionStore();
@@ -28,15 +30,19 @@ export function useFileManagerPanelBootstrap({
 
       await loadProjectDirectory();
 
-      if (name) {
+      if (name && (!uiStore.selectedFsEntry || (shouldSelectRoot && shouldSelectRoot()))) {
         const rootEntry: FsEntry = {
           kind: 'directory',
           name,
           path: '',
         };
-        uiStore.selectedFsEntry = rootEntry;
-        selectionStore.selectFsEntry(rootEntry);
-        onRootEntrySelected(rootEntry);
+
+        // Only proceed with root selection if explicitly allowed or if it's a "clean" state
+        if (!shouldSelectRoot || shouldSelectRoot()) {
+          uiStore.selectedFsEntry = rootEntry;
+          selectionStore.selectFsEntry(rootEntry);
+          onRootEntrySelected(rootEntry);
+        }
       }
     },
     { immediate: true },
