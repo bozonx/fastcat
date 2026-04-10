@@ -11,8 +11,10 @@ import {
   fetchRemoteProjects,
   getRemoteEntryDisplayName,
   getRemoteFileDownloadUrl,
+  getRemoteMediaId,
   getRemoteMediaDisplayName,
   renameRemoteMedia,
+  resolveMediaObject,
   toRemoteFsEntry,
   updateRemoteCollection,
   updateRemoteItem,
@@ -467,8 +469,9 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       item.media.forEach((media, index) => {
         const name = getRemoteMediaDisplayName({ entry: item, media, mediaIndex: index });
         const mediaPath = `${itemPath}/${name}`;
+        const mediaId = getRemoteMediaId(media);
         this.idCache.set(mediaPath, {
-          id: media.id,
+          id: mediaId || media.id,
           type: 'media',
           path: mediaPath,
           scope: item.scope,
@@ -675,10 +678,20 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       entry: entry.item,
       media: entry.media,
       mediaIndex: entry.mediaIndex ?? 0,
-      mediaId: entry.media?.id,
+      mediaId: getRemoteMediaId(entry.media),
     });
 
-    const response = await fetch(downloadUrl, { signal: options?.signal });
+    const config = this.resolveConfig();
+    const requestHeaders =
+      downloadUrl.startsWith(config.baseUrl) ||
+      downloadUrl.startsWith(new URL(config.baseUrl).origin)
+        ? { Authorization: `Bearer ${this.resolveConfig().bearerToken}` }
+        : undefined;
+
+    const response = await fetch(downloadUrl, {
+      signal: options?.signal,
+      headers: requestHeaders,
+    });
     if (!response.ok) {
       throw new Error(`Failed to download file from remote: ${response.status}`);
     }
@@ -926,15 +939,21 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
         }
 
         return {
-          size: entry.media?.size ?? 0,
-          lastModified: entry.media?.updated ? new Date(entry.media.updated).getTime() : now,
+          size:
+            resolveMediaObject(entry.media)?.sizeBytes ??
+            resolveMediaObject(entry.media)?.size ??
+            0,
+          lastModified: resolveMediaObject(entry.media)?.updated
+            ? new Date(resolveMediaObject(entry.media)!.updated!).getTime()
+            : now,
           kind: 'file',
         };
       }
 
       if (entry.type === 'file') {
+        const firstMedia = resolveMediaObject(entry.item?.media?.[0]);
         return {
-          size: entry.item?.media?.[0]?.size ?? 0,
+          size: firstMedia?.sizeBytes ?? firstMedia?.size ?? 0,
           lastModified: entry.item?.updatedAt ? new Date(entry.item.updatedAt).getTime() : now,
           kind: 'directory',
         };
@@ -971,13 +990,8 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       return URL.createObjectURL(new Blob([entry.item.text || ''], { type: 'text/plain' }));
     }
 
-    return getRemoteFileDownloadUrl({
-      baseUrl: this.resolveConfig().baseUrl,
-      entry: entry.item,
-      media: entry.media,
-      mediaIndex: entry.mediaIndex ?? 0,
-      mediaId: entry.media?.id,
-    });
+    const blob = await this.readFile(path);
+    return URL.createObjectURL(blob);
   }
 
   async getFile(path: string): Promise<File | null> {

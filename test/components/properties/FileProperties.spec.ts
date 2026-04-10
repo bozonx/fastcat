@@ -639,6 +639,7 @@ describe('FileProperties.vue', () => {
       },
     });
 
+    expect(component.text()).toContain('Hello');
     expect(component.html()).not.toContain('data-testid="text-editor-stub"');
   });
 });

@@ -78,6 +78,19 @@ async function copyToClipboard(text: string) {
           </span>
         </div>
       </PropertyRow>
+
+      <div
+        v-if="props.item.text !== undefined"
+        class="mt-2 flex flex-col gap-1.5 px-2 -mx-2 py-2 rounded bg-white/5 border border-white/10"
+      >
+        <div class="text-2xs text-ui-text-muted">
+          <span>{{ t('common.text', 'Text') }}</span>
+        </div>
+        <div class="text-xs leading-relaxed whitespace-pre-wrap break-words">
+          {{ props.item.text || '' }}
+        </div>
+      </div>
+
       <div
         v-if="props.item.note"
         class="mt-2 flex flex-col gap-1.5 px-2 -mx-2 py-2 rounded bg-white/5 border border-white/10"

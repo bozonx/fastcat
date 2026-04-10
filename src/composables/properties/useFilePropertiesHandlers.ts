@@ -18,7 +18,10 @@ export function useFilePropertiesHandlers(options: UseFilePropertiesHandlersOpti
   const { addFileTab, setActiveTab } = useProjectTabsStore();
 
   const hasAbsoluteLocalPath = computed(() => {
-    const path = options.selectedFsEntry.value?.path;
+    const entry = options.selectedFsEntry.value;
+    if (entry?.source === 'remote') return false;
+
+    const path = entry?.path;
     if (typeof path !== 'string' || path.length === 0) return false;
     return path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path);
   });
