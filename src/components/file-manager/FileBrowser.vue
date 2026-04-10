@@ -486,7 +486,7 @@ async function onSubgroupCreateConfirm(name: string) {
     await vfs.createDirectory(newPath);
 
     // Navigate to new subgroup
-    const newEntry = remote.buildRemoteDirectoryEntry(newPath);
+    const newEntry = remote.buildRemoteDirectoryEntry(newPath, 'collection');
     remoteCurrentFolder.value = newEntry;
     await loadFolderContent();
     await loadParentFolders();
@@ -554,7 +554,7 @@ async function onItemCreateConfirm(name: string) {
 
     // Navigate into the newly created item
     const newPath = `${parentPath === '/' ? '' : parentPath}/${name}`;
-    const newEntry = remote.buildRemoteDirectoryEntry(newPath);
+    const newEntry = remote.buildRemoteDirectoryEntry(newPath, 'content-item');
     remoteCurrentFolder.value = newEntry;
 
     await loadFolderContent();

@@ -73,17 +73,7 @@ interface UseFilePropertiesActionsOptions {
 }
 
 export function useFilePropertiesActions(options: UseFilePropertiesActionsOptions) {
-  const isBloggerDogEntity = computed(
-    () =>
-      options.isRemoteMode.value &&
-      Boolean(
-        options.isBloggerDogProject.value ||
-          options.isBloggerDogGroup?.value ||
-          options.isBloggerDogContentItem?.value ||
-          options.isVirtualAll?.value ||
-          options.isPersonalLibrary?.value,
-      ),
-  );
+  const isBloggerDogEntity = computed(() => options.isRemoteMode.value);
 
   const directoryPrimaryActions = computed<PrimaryEntryAction[]>(() => [
     {
