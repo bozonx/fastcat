@@ -13,6 +13,10 @@ import {
   resolveFileManagerDragOperation,
   resolveFileManagerDropOperation,
 } from '~/composables/file-manager/dragOperation';
+import {
+  resetFileManagerDragCursor,
+  syncFileManagerDragCursor,
+} from '~/composables/file-manager/dragCursor';
 import { crossVfsCopy, crossVfsMove } from '~/file-manager/core/vfs/crossVfs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
@@ -93,12 +97,14 @@ export function useFileDrop(options: UseFileDropOptions) {
     if (e.dataTransfer?.types.includes('Files')) {
       setCurrentDragOperation('copy');
       e.dataTransfer!.dropEffect = 'copy';
+      syncFileManagerDragCursor({ isDragging: true, operation: 'copy' });
       return;
     }
 
     const operation = resolveOperation(e);
     setCurrentDragOperation(operation);
     e.dataTransfer!.dropEffect = operation === 'copy' ? 'copy' : 'move';
+    syncFileManagerDragCursor({ isDragging: true, operation });
   }
 
   function onRootDragLeave(e: DragEvent) {
@@ -108,6 +114,7 @@ export function useFileDrop(options: UseFileDropOptions) {
       rootDragEnterCount = 0;
       isRootDropOver.value = false;
       setCurrentDragOperation(null);
+      resetFileManagerDragCursor();
     }
   }
 
@@ -116,6 +123,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     rootDragEnterCount = 0;
     isRootDropOver.value = false;
     setCurrentDragOperation(null);
+    resetFileManagerDragCursor();
 
     const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
     const hasFiles = e.dataTransfer?.types.includes('Files') ?? false;

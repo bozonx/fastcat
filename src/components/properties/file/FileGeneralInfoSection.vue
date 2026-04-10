@@ -47,12 +47,17 @@ const { t } = useI18n();
     </PropertyRow>
     <template v-if="props.fileInfo.kind === 'directory'">
       <PropertyRow
+        v-if="props.fileInfo.size !== undefined"
+        :label="t('common.size', 'Size')"
+        :value="props.formatBytes(props.fileInfo.size)"
+      />
+      <PropertyRow
         v-if="props.fileInfo.filesCount !== undefined && props.mediaCount === undefined && !props.pathLink && props.instanceId !== 'computer' && props.instanceId !== 'sidebar' && !props.isExternal"
         :label="t('videoEditor.fileManager.folder.filesCount', 'Files Count')"
         :value="props.fileInfo.filesCount"
       />
       <PropertyRow
-        v-if="props.fileInfo.size === undefined || props.fileInfo.size === 0"
+        v-if="props.fileInfo.size === undefined"
         :label="t('common.type', 'Type')"
         :value="props.title === t('fastcat.file.bloggerDogGroup', 'Группа') ? t('fastcat.file.bloggerDogGroup', 'Группа') : props.title === t('fastcat.file.bloggerDogItem', 'Элемент контента') ? t('fastcat.file.bloggerDogItem', 'Элемент контента') : t('common.folder', 'Folder')"
       />

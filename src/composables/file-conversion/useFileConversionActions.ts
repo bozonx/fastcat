@@ -17,7 +17,7 @@ import {
   resolveAudioOnlyFileExtension,
 } from '~/utils/conversion/helpers';
 import { executeMediaConversion } from '~/utils/conversion/media-conversion';
-import { executeImageConversion } from '~/utils/conversion/image-conversion';
+import { convertImageFile } from '~/utils/conversion/image-conversion';
 import {
   DEFAULT_VIDEO_FORMAT,
   DEFAULT_VIDEO_CODEC,
@@ -386,6 +386,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
     props.conversionError.value = '';
 
     let createdFileName: string | null = null;
+    let createdFilePath: string | null = null;
     let createdDirHandle: FileSystemDirectoryHandle | null = null;
     let dirPath = '';
 
@@ -396,14 +397,15 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
 
       createdFileName = request.newFileName;
       dirPath = request.dirPath;
-      const dirHandle = await projectStore.getDirectoryHandleByPath(dirPath);
-      if (!dirHandle) throw new Error('Target directory not found');
-
-      createdDirHandle = dirHandle;
-
-      const targetHandle = await dirHandle.getFileHandle(request.newFileName, { create: true });
+      createdFilePath = dirPath ? `${dirPath}/${request.newFileName}` : request.newFileName;
 
       if (request.type === 'video' || request.type === 'audio') {
+        const dirHandle = await projectStore.getDirectoryHandleByPath(dirPath);
+        if (!dirHandle) throw new Error('Target directory not found');
+
+        createdDirHandle = dirHandle;
+
+        const targetHandle = await dirHandle.getFileHandle(request.newFileName, { create: true });
         const title = `Converting: ${entry.name}`;
         const bgTaskId = backgroundTasksStore.addTask({
           type: 'conversion',
@@ -450,22 +452,25 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
       } else if (request.type === 'image') {
         // Images convert in foreground
         props.isConverting.value = true;
-        const sourceFile = await projectStore.getFileByPath(entry.path);
+        const sourceFile = await fileManager.vfs.getFile(entry.path);
         if (!sourceFile) throw new Error('Failed to access source file');
 
         try {
-          await executeImageConversion({
+          const blob = await convertImageFile({
             file: sourceFile,
-            targetHandle,
             request,
             taskId,
             isCancelRequested: () => props.isCancelRequested.value,
           });
+          if (!createdFilePath) throw new Error('Failed to resolve target path');
+          await fileManager.vfs.writeFile(createdFilePath, blob);
           props.callbacks?.onSuccess?.('success');
           props.isModalOpen.value = false;
         } catch (err) {
           if (isAbortError(err) || props.isCancelRequested.value) {
-            await removeCreatedFile({ dirHandle: createdDirHandle, fileName: createdFileName });
+            if (createdFilePath) {
+              await fileManager.vfs.deleteEntry(createdFilePath).catch(() => {});
+            }
           } else {
             props.conversionError.value = err instanceof Error ? err.message : String(err);
             props.callbacks?.onError?.(err instanceof Error ? err : new Error(String(err)));

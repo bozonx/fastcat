@@ -16,6 +16,8 @@ const mockProjectStore = {
 const mockFileManager = {
   vfs: {
     getFile: vi.fn(),
+    writeFile: vi.fn(),
+    deleteEntry: vi.fn(),
   },
   reloadDirectory: vi.fn(),
 };
@@ -64,12 +66,17 @@ vi.mock('~/utils/conversion/media-conversion', () => ({
 }));
 
 vi.mock('~/utils/conversion/image-conversion', () => ({
-  executeImageConversion: vi.fn().mockResolvedValue(undefined),
+  convertImageFile: vi.fn().mockResolvedValue(new Blob(['converted'], { type: 'image/webp' })),
 }));
 
 describe('useFileConversionActions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockProjectStore.getFileByPath.mockReset();
+    mockProjectStore.getDirectoryHandleByPath.mockReset();
+    mockFileManager.vfs.getFile.mockReset();
+    mockFileManager.vfs.writeFile.mockReset();
+    mockFileManager.vfs.deleteEntry.mockReset();
   });
 
   const createProps = (mediaTypeVal: 'video' | 'audio' | 'image' | 'unknown') => {
@@ -218,5 +225,24 @@ describe('useFileConversionActions', () => {
         }),
       }),
     );
+  });
+
+  it('uses VFS for image conversion in external file managers', async () => {
+    const props = createProps('image');
+    const { startConversion } = useFileConversionActions(props);
+
+    props.targetEntry.value = { name: 'test.png', path: '/test.png', kind: 'file' } as any;
+    mockFileManager.vfs.getFile.mockResolvedValue(
+      new File(['x'], 'test.png', { type: 'image/png' }),
+    );
+
+    await startConversion();
+
+    expect(mockFileManager.vfs.getFile).toHaveBeenCalledWith('/test.png');
+    expect(mockFileManager.vfs.writeFile).toHaveBeenCalledWith(
+      'test_converted.webp',
+      expect.any(Blob),
+    );
+    expect(mockProjectStore.getFileByPath).not.toHaveBeenCalled();
   });
 });
