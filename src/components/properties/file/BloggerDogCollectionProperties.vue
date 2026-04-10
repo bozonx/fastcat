@@ -30,15 +30,8 @@ const deepLink = computed(() => {
 </script>
 
 <template>
-  <PropertySection :title="t('fastcat.bloggerDog.collectionProperties', 'Свойства коллекции')">
+  <PropertySection :title="t('fastcat.file.bloggerDogGroup', 'Группа')">
     <template #default>
-      <PropertyRow
-        :label="t('fastcat.file.itemsCount', 'Количество элементов')"
-        :value="itemsCount"
-      />
-
-      <PropertyRow v-if="updatedAt" :label="t('common.modified', 'Изменено')" :value="updatedAt" />
-
       <PropertyRow v-if="deepLink" :label="t('common.path', 'Путь')">
         <a
           :href="deepLink"
@@ -49,6 +42,13 @@ const deepLink = computed(() => {
           <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 shrink-0" />
         </a>
       </PropertyRow>
+
+      <PropertyRow
+        :label="t('fastcat.file.itemsCount', 'Количество элементов')"
+        :value="itemsCount"
+      />
+
+      <PropertyRow v-if="updatedAt" :label="t('common.modified', 'Изменено')" :value="updatedAt" />
     </template>
   </PropertySection>
 </template>
