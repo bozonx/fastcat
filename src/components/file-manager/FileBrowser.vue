@@ -520,23 +520,35 @@ async function onItemCreateConfirm(name: string) {
 
   try {
     const parentPayload = (parent as any).adapterPayload as BloggerDogEntryPayload;
-    let remotePath = '/personal';
+    const remoteData = parentPayload?.remoteData;
+
+    let scope: RemoteVfsScope = 'personal';
+    let projectId: string | undefined;
+    let groupId: string | undefined;
 
     const parentPath = parent.path || '/';
     const pathParts = parentPath.split('/').filter(Boolean);
 
     if (parentPath === '/personal' || parentPath === 'personal') {
-      remotePath = '/personal';
+      scope = 'personal';
     } else if (pathParts[0] === 'projects' && pathParts.length === 2) {
-      remotePath = `/projects/${pathParts[1]}`;
-    } else if (parentPayload?.remoteData?.id) {
-      const rid = parentPayload.remoteData.id;
-      remotePath = rid.startsWith('/') ? rid : `/${rid}`;
+      scope = 'project';
+      projectId = pathParts[1];
+    } else if (remoteData) {
+      scope = remoteData.scope || 'personal';
+      projectId = remoteData.projectId;
+      if (remoteData.type === 'directory') {
+        groupId = remoteData.id;
+      } else if (remoteData.type === 'file') {
+        groupId = (remoteData as any).groupId;
+      }
     }
 
     await bloggerDogStore.createItem({
-      name,
-      path: remotePath,
+      title: name,
+      scope,
+      projectId,
+      groupId,
     });
 
     await loadFolderContent();

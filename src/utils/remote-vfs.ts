@@ -569,15 +569,37 @@ export async function uploadFileToRemote(params: {
   });
 }
 
-export async function createRemoteItem(_params: {
+export async function createRemoteItem(params: {
   config: RemoteVfsClientConfig;
-  name?: string;
+  title?: string;
+  text?: string;
+  scope?: RemoteVfsScope;
+  projectId?: string;
+  groupId?: string;
   tags?: string[];
   note?: string;
-  language?: string;
-  path?: string;
 }): Promise<RemoteVfsFileEntry> {
-  throw new Error('Creating empty content items is not supported by the new API');
+  const response = await fetchJson<RemoteVfsFileEntry>(joinPath(params.config.baseUrl, 'items'), {
+    method: 'POST',
+    headers: createAuthorizedHeaders(params.config, {
+      'Content-Type': 'application/json',
+    }),
+    body: JSON.stringify({
+      title: params.title,
+      text: params.text,
+      scope: params.scope || 'personal',
+      projectId: params.projectId,
+      groupId: params.groupId,
+      tags: params.tags,
+      note: params.note,
+    }),
+  });
+
+  return mapItemResponse({
+    ...response,
+    scope: params.scope || 'personal',
+    projectId: params.projectId,
+  });
 }
 
 export async function createRemoteCollection(params: {

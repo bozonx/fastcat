@@ -140,11 +140,13 @@ export const useBloggerDogStore = defineStore('bloggerDog', () => {
   }
 
   async function createItem(params: {
-    name?: string;
+    title?: string;
+    text?: string;
+    scope?: RemoteVfsScope;
+    projectId?: string;
+    groupId?: string;
     tags?: string[];
     note?: string;
-    language?: string;
-    path?: string;
   }) {
     if (!config.value) return;
     return await createRemoteItem({
