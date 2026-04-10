@@ -150,7 +150,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
         DEFAULT_AUDIO_BITRATE_KBPS;
 
       try {
-        const file = await fileManager.vfs.getFile(entry.path);
+        const file = await projectStore.getFileByPath(entry.path);
         if (!file) throw new Error('Failed to access source file');
         const meta = await extractMetadataWithTimeout(file);
 
@@ -252,7 +252,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
       syncAudioOnlyCodecWithFormat();
 
       try {
-        const file = await fileManager.vfs.getFile(entry.path);
+        const file = await projectStore.getFileByPath(entry.path);
         if (!file) throw new Error('Failed to access source file');
         const meta = await extractMetadataWithTimeout(file);
 
@@ -290,7 +290,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
       props.imageSettings.quality = DEFAULT_IMAGE_QUALITY;
 
       try {
-        const file = await fileManager.vfs.getFile(entry.path);
+        const file = await projectStore.getFileByPath(entry.path);
         if (!file) throw new Error('Failed to access source file');
         const bitmap = await createImageBitmap(file);
         if (
@@ -452,7 +452,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
       } else if (request.type === 'image') {
         // Images convert in foreground
         props.isConverting.value = true;
-        const sourceFile = await fileManager.vfs.getFile(entry.path);
+        const sourceFile = await projectStore.getFileByPath(entry.path);
         if (!sourceFile) throw new Error('Failed to access source file');
 
         try {
