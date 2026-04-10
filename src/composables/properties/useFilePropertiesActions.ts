@@ -66,6 +66,8 @@ interface UseFilePropertiesActionsOptions {
   isBloggerDogProject: Ref<boolean>;
   isBloggerDogGroup?: Ref<boolean>;
   isBloggerDogContentItem?: Ref<boolean>;
+  isVirtualAll?: Ref<boolean>;
+  isPersonalLibrary?: Ref<boolean>;
   instanceId?: Ref<string | undefined>;
   isExternal?: Ref<boolean | undefined>;
 }
@@ -121,6 +123,7 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'createSubfolder',
       label: options.t('videoEditor.fileManager.actions.createFolder'),
       icon: 'i-heroicons-folder-plus',
+      hidden: options.isRemoteMode?.value,
       onClick: options.createSubfolder,
     },
     {
@@ -134,20 +137,34 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'createMarkdown',
       label: options.t('videoEditor.fileManager.actions.createMarkdown'),
       icon: 'i-heroicons-document-text',
+      hidden: options.isRemoteMode?.value,
       onClick: options.createMarkdownInFolder,
     },
     {
       id: 'createSubgroup',
       label: options.t('fastcat.bloggerDog.actions.createSubgroup', 'Создать подгруппу'),
       icon: 'i-heroicons-folder-plus',
-      hidden: !options.isRemoteMode?.value || options.isBloggerDogContentItem?.value || options.isRemoteRoot.value,
+      hidden:
+        !options.isRemoteMode?.value ||
+        !(
+          options.isBloggerDogProject?.value ||
+          options.isBloggerDogGroup?.value ||
+          options.isPersonalLibrary?.value
+        ),
       onClick: options.createSubgroup,
     },
     {
       id: 'createContentItem',
       label: options.t('fastcat.bloggerDog.actions.createItem', 'Создать элемент контента'),
       icon: 'i-heroicons-document-plus',
-      hidden: !options.isRemoteMode?.value || options.isBloggerDogContentItem?.value || options.isRemoteRoot.value,
+      hidden:
+        !options.isRemoteMode?.value ||
+        !(
+          options.isBloggerDogProject?.value ||
+          options.isBloggerDogGroup?.value ||
+          options.isPersonalLibrary?.value ||
+          options.isVirtualAll?.value
+        ),
       onClick: options.createContentItem,
     },
     {

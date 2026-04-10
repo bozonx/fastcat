@@ -248,18 +248,9 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
         docId: doc.id,
         timebase: doc.timebase,
         selectionRange: coerceSelectionRange(fastcatMeta?.selectionRange),
-        snapThresholdPx: fastcatMeta?.snapThresholdPx,
-        playheadUs: fastcatMeta?.playheadUs,
-        masterGain: fastcatMeta?.masterGain,
-        masterMuted: fastcatMeta?.masterMuted,
         masterEffects: Array.isArray(fastcatMeta?.masterEffects)
           ? fastcatMeta.masterEffects
           : undefined,
-        zoom: fastcatMeta?.zoom,
-        trackHeights:
-          fastcatMeta?.trackHeights && typeof fastcatMeta.trackHeights === 'object'
-            ? { ...fastcatMeta.trackHeights }
-            : undefined,
       },
     },
   };
@@ -436,7 +427,7 @@ export function parseTimelineFromOtio(
 
   const getTrackIndex = (id: string) => {
     const m = id.match(/^(?:v|a)(\d+)$/);
-    return m ? parseInt(m[1], 10) : null;
+    return m && m[1] ? parseInt(m[1], 10) : null;
   };
 
   video.sort((a, b) => {
@@ -467,15 +458,7 @@ export function parseTimelineFromOtio(
         ? parseOtioMarkers(fastcatMeta.markers)
         : [];
 
-  const playheadUs = fastcatMeta.playheadUs ? Math.round(fastcatMeta.playheadUs) : 0;
-  const snapThresholdPx = fastcatMeta.snapThresholdPx
-    ? Math.round(fastcatMeta.snapThresholdPx)
-    : undefined;
-  const zoom = fastcatMeta.zoom;
-  const masterGain = fastcatMeta.masterGain;
-  const masterMuted = fastcatMeta.masterMuted;
   const masterEffects = fastcatMeta.masterEffects;
-  const trackHeights: Record<string, number> = fastcatMeta.trackHeights ?? {};
 
   const selectionRange =
     fastcatMeta.selectionRange?.startUs !== undefined &&
@@ -496,13 +479,7 @@ export function parseTimelineFromOtio(
         docId,
         timebase,
         markers,
-        playheadUs,
-        snapThresholdPx,
-        zoom,
-        masterGain,
-        masterMuted,
         masterEffects,
-        trackHeights,
         selectionRange,
       },
     };
@@ -521,13 +498,7 @@ export function parseTimelineFromOtio(
         docId,
         timebase,
         markers,
-        playheadUs,
-        snapThresholdPx,
-        zoom,
-        masterGain,
-        masterMuted,
         masterEffects,
-        trackHeights,
         selectionRange,
       },
     },

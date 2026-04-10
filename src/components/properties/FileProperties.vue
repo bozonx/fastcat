@@ -561,6 +561,8 @@ const {
   isBloggerDogProject,
   isBloggerDogGroup,
   isBloggerDogContentItem,
+  isVirtualAll,
+  isPersonalLibrary,
   instanceId: computed(() => props.instanceId),
   isExternal: isExternalContext,
 });

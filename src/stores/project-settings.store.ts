@@ -291,6 +291,30 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     }
   }
 
+  // Watch for volatile timeline UI state changes to ensure they are saved to project.ui.json
+  // even if they are the only fields changing.
+  watch(
+    () => {
+      const timelineStore = useTimelineStore();
+      return [
+        timelineStore.currentTime,
+        timelineStore.timelineZoom,
+        timelineStore.masterGain,
+        timelineStore.audioMuted,
+        timelineStore.trackHeights,
+      ];
+    },
+    () => {
+      if (isLoadingProjectSettings.value) return;
+      markProjectSettingsAsDirty();
+      // We don't need to call requestProjectSettingsSave(immediate: true) here
+      // as markProjectSettingsAsDirty will eventually trigger debounced save
+      // or we can call it without immediate for 500ms debounce.
+      void requestProjectSettingsSave();
+    },
+    { deep: true },
+  );
+
   async function requestProjectSettingsSave(options?: { immediate?: boolean }) {
     await autoSave.requestSave(options);
   }

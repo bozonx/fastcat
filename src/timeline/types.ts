@@ -381,13 +381,7 @@ export interface TimelineFastCatMetadata {
   timebase?: TimelineTimebase;
   markers?: TimelineMarker[];
   selectionRange?: TimelineSelectionRange;
-  playheadUs?: number;
-  masterGain?: number;
-  masterMuted?: boolean;
   masterEffects?: ClipEffect[];
-  snapThresholdPx?: number;
-  zoom?: number;
-  trackHeights?: Record<string, number>;
 }
 
 export interface TimelineMetadata {
