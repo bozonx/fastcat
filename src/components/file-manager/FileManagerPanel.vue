@@ -74,6 +74,7 @@ const {
   deleteEntry,
   renameEntry,
   findEntryByPath,
+  resolveEntryByPath,
   readDirectory,
   reloadDirectory,
   moveEntry,
@@ -531,6 +532,7 @@ useFileManagerPanelBootstrap({
       :root-entries="rootEntries"
       :get-file-icon="getFileIcon"
       :find-entry-by-path="findEntryByPath"
+      :resolve-entry-by-path="resolveEntryByPath"
       :media-cache="fileManager.mediaCache"
       :move-entry="moveEntry"
       :copy-entry="copyEntry"
