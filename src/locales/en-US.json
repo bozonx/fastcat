@@ -210,7 +210,10 @@
       "personalLibrary": "Personal Library",
       "personalLibraryDesc": "Library of your personal content",
       "projectLibraries": "Project Libraries",
-      "projectLibrariesDesc": "Content libraries for specific projects"
+      "projectLibrariesDesc": "Content libraries for specific projects",
+      "actions": {
+        "createGroup": "Create group"
+      }
     },
     "file": {
       "bloggerDogGroup": "Group",

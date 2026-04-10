@@ -463,4 +463,182 @@ describe('FileProperties.vue', () => {
     expect(component.text()).toContain('Actions');
     expect(component.text()).not.toContain('General Info');
   });
+
+  it('renders dedicated actions for BloggerDog virtual roots and project', async () => {
+    const { useEntryPreview } = await import('~/composables/file-manager/useEntryPreview');
+    const { useFilePropertiesBasics } =
+      await import('~/composables/properties/useFilePropertiesBasics');
+    const { useFilePropertiesActions } =
+      await import('~/composables/properties/useFilePropertiesActions');
+
+    vi.mocked(useEntryPreview).mockReturnValue({
+      currentUrl: ref(null),
+      mediaType: ref(null),
+      textContent: ref(''),
+      fileInfo: ref({
+        kind: 'directory',
+        name: 'Remote',
+        lastModified: Date.now(),
+      } as any),
+      exifData: ref(null),
+      exifYaml: ref(null),
+      imageDimensions: ref(null),
+      timelineDocSummary: ref(null),
+      lineCount: ref(null),
+      metadataYaml: ref(null),
+      isUnknown: ref(false),
+      isOtio: ref(false),
+    });
+
+    vi.mocked(useFilePropertiesActions).mockReturnValue({
+      directoryPrimaryActions: ref([
+        { id: 'paste', title: 'Paste', icon: 'i-paste', onClick: vi.fn() },
+      ]),
+      directorySecondaryActions: ref([
+        { id: 'createContentItem', label: 'Create content item', icon: 'i-item', onClick: vi.fn() },
+        { id: 'createSubgroup', label: 'Create subgroup', icon: 'i-group', onClick: vi.fn() },
+      ]),
+      filePrimaryActions: ref([]),
+      fileSecondaryActions: ref([]),
+    });
+
+    vi.mocked(useFilePropertiesBasics).mockReturnValue({
+      generalInfoTitle: 'Project',
+      isHidden: ref(false),
+      mediaMeta: ref({}),
+      selectedPath: ref('/projects/proj-1'),
+      isBloggerDogProject: ref(false),
+      isBloggerDogGroup: ref(false),
+      isBloggerDogContentItem: ref(false),
+      isBloggerDogMedia: ref(false),
+      bloggerDogDeepLink: ref(null),
+    });
+
+    const virtualAll = await mountWithNuxt(FileProperties, {
+      props: {
+        selectedFsEntry: {
+          kind: 'directory',
+          name: 'All Content',
+          path: '/virtual-all',
+          source: 'remote',
+          remoteId: 'virtual-all',
+        } as any,
+        previewMode: 'original',
+        hasProxy: false,
+      },
+    });
+
+    expect(virtualAll.find('button[title="Paste"]').exists()).toBe(true);
+    expect(virtualAll.text()).toContain('Create content item');
+    expect(virtualAll.text()).not.toContain('Create subgroup');
+
+    const personal = await mountWithNuxt(FileProperties, {
+      props: {
+        selectedFsEntry: {
+          kind: 'directory',
+          name: 'Personal',
+          path: '/personal',
+          source: 'remote',
+          remoteId: 'personal',
+        } as any,
+        previewMode: 'original',
+        hasProxy: false,
+      },
+    });
+
+    expect(personal.find('button[title="Paste"]').exists()).toBe(true);
+    expect(personal.text()).not.toContain('Create content item');
+
+    vi.mocked(useFilePropertiesBasics).mockReturnValue({
+      generalInfoTitle: 'Project',
+      isHidden: ref(false),
+      mediaMeta: ref({}),
+      selectedPath: ref('/projects/proj-1'),
+      isBloggerDogProject: ref(true),
+      isBloggerDogGroup: ref(false),
+      isBloggerDogContentItem: ref(false),
+      isBloggerDogMedia: ref(false),
+      bloggerDogDeepLink: ref(null),
+    });
+
+    const project = await mountWithNuxt(FileProperties, {
+      props: {
+        selectedFsEntry: {
+          kind: 'directory',
+          name: 'Project',
+          path: '/projects/proj-1',
+          source: 'remote',
+          remoteId: 'proj-1',
+        } as any,
+        previewMode: 'original',
+        hasProxy: false,
+      },
+    });
+
+    expect(project.find('button[title="Paste"]').exists()).toBe(true);
+    expect(project.text()).toContain('Create content item');
+    expect(project.text()).toContain('fastcat.bloggerDog.actions.createGroup');
+  });
+
+  it('does not render text editor in BloggerDog content item properties', async () => {
+    const { useEntryPreview } = await import('~/composables/file-manager/useEntryPreview');
+    const { useFilePropertiesBasics } =
+      await import('~/composables/properties/useFilePropertiesBasics');
+
+    vi.mocked(useEntryPreview).mockReturnValue({
+      currentUrl: ref(null),
+      mediaType: ref(null),
+      textContent: ref(''),
+      fileInfo: ref({
+        kind: 'directory',
+        name: 'Sunset',
+        lastModified: Date.now(),
+      } as any),
+      exifData: ref(null),
+      exifYaml: ref(null),
+      imageDimensions: ref(null),
+      timelineDocSummary: ref(null),
+      lineCount: ref(null),
+      metadataYaml: ref(null),
+      isUnknown: ref(false),
+      isOtio: ref(false),
+    });
+
+    vi.mocked(useFilePropertiesBasics).mockReturnValue({
+      generalInfoTitle: 'Content Item',
+      isHidden: ref(false),
+      mediaMeta: ref({}),
+      selectedPath: ref('/personal/item-1'),
+      isBloggerDogProject: ref(false),
+      isBloggerDogGroup: ref(false),
+      isBloggerDogContentItem: ref(true),
+      isBloggerDogMedia: ref(false),
+      bloggerDogDeepLink: ref(null),
+    });
+
+    const component = await mountWithNuxt(FileProperties, {
+      props: {
+        selectedFsEntry: {
+          kind: 'directory',
+          name: 'Sunset',
+          path: '/personal/item-1',
+          source: 'remote',
+          adapterPayload: {
+            type: 'content-item',
+            remoteData: {
+              id: 'item-1',
+              type: 'file',
+              title: 'Sunset',
+              path: '/personal/item-1',
+              text: 'Hello',
+            },
+          },
+        } as any,
+        previewMode: 'original',
+        hasProxy: false,
+      },
+    });
+
+    expect(component.html()).not.toContain('data-testid="text-editor-stub"');
+  });
 });
