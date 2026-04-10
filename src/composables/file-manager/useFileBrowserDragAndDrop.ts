@@ -86,15 +86,25 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       uiStore.isFileManagerDragging = false;
       resetFileManagerDragCursor();
       onEntryDragEnd();
+      return;
     }
+
+    syncDragOperationFromKeyboard(e);
+  }
+
+  function onGlobalKeyUp(e: KeyboardEvent) {
+    if (!uiStore.isFileManagerDragging) return;
+    syncDragOperationFromKeyboard(e);
   }
 
   onMounted(() => {
     window.addEventListener('keydown', onGlobalKeyDown, { capture: true });
+    window.addEventListener('keyup', onGlobalKeyUp, { capture: true });
   });
 
   onUnmounted(() => {
     window.removeEventListener('keydown', onGlobalKeyDown, { capture: true });
+    window.removeEventListener('keyup', onGlobalKeyUp, { capture: true });
   });
   const { setDraggedFile, clearDraggedFile } = useDraggedFile();
   const appClipboard = useAppClipboard();
@@ -150,6 +160,20 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
   function resolveDragStartOperation(event: DragEvent): 'copy' | 'move' {
     return isCopyModifierActive(event) ? 'copy' : 'move';
+  }
+
+  function syncDragOperationFromKeyboard(event: KeyboardEvent) {
+    const targetInstanceId = appClipboard.dragTargetFileManagerInstanceId;
+    if (!targetInstanceId) return;
+
+    const operation = resolveFileManagerDragOperation({
+      dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
+      isLayer1Active: isLayer1Active(event, workspaceStore.userSettings),
+      targetFileManagerInstanceId: targetInstanceId,
+    });
+
+    appClipboard.setCurrentDragOperation(operation);
+    syncFileManagerDragCursor({ isDragging: true, operation });
   }
 
   function onEntryDragStart(e: DragEvent, entry: FsEntry) {
@@ -211,6 +235,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     uiStore.isFileManagerDragging = false;
     appClipboard.setCurrentDragOperation(null);
     appClipboard.setDragSourceFileManagerInstanceId(null);
+    appClipboard.setDragTargetFileManagerInstanceId(null);
     appClipboard.setDragSourceVfs(null);
     dragOverEntryPath.value = null;
     resetFileManagerDragCursor();
@@ -257,6 +282,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     ) {
       const nextOperation = resolveDragOperation(e);
       appClipboard.setCurrentDragOperation(nextOperation);
+      appClipboard.setDragTargetFileManagerInstanceId(options.fileManagerInstanceId ?? null);
       syncFileManagerDragCursor({ isDragging: true, operation: nextOperation });
     }
     dragOverEntryPath.value = entry.path ?? null;
@@ -287,6 +313,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     const path = entry.path ?? '';
     entryDragCounters.delete(path);
     dragOverEntryPath.value = null;
+    appClipboard.setDragTargetFileManagerInstanceId(null);
     resetFileManagerDragCursor();
 
     const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
@@ -407,6 +434,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
         types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
       ) {
         appClipboard.setCurrentDragOperation(resolveDragOperation(e));
+        appClipboard.setDragTargetFileManagerInstanceId(options.fileManagerInstanceId ?? null);
       }
       const operation = types.includes('Files') ? 'copy' : resolveDragOperation(e);
       e.dataTransfer!.dropEffect = operation === 'copy' ? 'copy' : 'move';
@@ -434,6 +462,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     e.stopPropagation();
     panelDragEnterCount = 0;
     isDragOverPanel.value = false;
+    appClipboard.setDragTargetFileManagerInstanceId(null);
     resetFileManagerDragCursor();
 
     const targetFolder = fileManagerStore.selectedFolder;
@@ -526,6 +555,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   }
 
   function onRootDrop(e: DragEvent) {
+    appClipboard.setDragTargetFileManagerInstanceId(null);
     resetFileManagerDragCursor();
     const currentPath = fileManagerStore.selectedFolder?.path;
     return onRootDropBase(e, currentPath);
