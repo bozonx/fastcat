@@ -43,9 +43,11 @@ import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import { isGeneratingProxyInDirectory, folderHasVideos } from '~/utils/fs-entry-utils';
 import {
+  getDropTargetEntryPath,
   isCrossFileManagerDrag,
   resolveFileManagerDragOperation,
   resolveFileManagerDropOperation,
+  shouldCancelFileManagerDrop,
 } from '~/composables/file-manager/dragOperation';
 import {
   resetFileManagerDragCursor,
@@ -594,6 +596,14 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
     }
 
     const itemsToMove = Array.isArray(parsed) ? parsed : [parsed];
+    if (
+      shouldCancelFileManagerDrop({
+        items: itemsToMove,
+        targetEntryPath: getDropTargetEntryPath(e) ?? entry.path,
+      })
+    ) {
+      return;
+    }
 
     if (isCrossManagerDrag && appClipboard.dragSourceVfs && props.vfs) {
       try {

@@ -180,4 +180,50 @@ describe('useFileDrop', () => {
     );
     expect(crossVfsMoveMock).not.toHaveBeenCalled();
   });
+
+  it('cancels drop when item is returned onto its own container', async () => {
+    const source: FsEntry = {
+      name: 'clip.mp4',
+      kind: 'file',
+      path: '_video/clip.mp4',
+    };
+    dragSourceFileManagerInstanceIdMock = 'main';
+
+    const moveEntry = vi.fn();
+    const copyEntry = vi.fn();
+
+    const { onRootDrop } = useFileDrop({
+      resolveEntryByPath: vi.fn(async () => source),
+      handleFiles: vi.fn(),
+      moveEntry,
+      copyEntry,
+      targetFileManagerInstanceId: 'main',
+      vfs: {} as any,
+    });
+
+    await onRootDrop(
+      {
+        stopPropagation: vi.fn(),
+        shiftKey: true,
+        dataTransfer: {
+          files: [],
+          types: ['application/fastcat-file-manager-copy'],
+          getData: vi.fn((type: string) =>
+            type === 'application/fastcat-file-manager-copy'
+              ? JSON.stringify([{ path: '_video/clip.mp4' }])
+              : '',
+          ),
+        },
+        target: {
+          closest: () => ({
+            dataset: { entryPath: '_video/clip.mp4' },
+          }),
+        },
+      } as unknown as DragEvent,
+      '_video',
+    );
+
+    expect(moveEntry).not.toHaveBeenCalled();
+    expect(copyEntry).not.toHaveBeenCalled();
+  });
 });

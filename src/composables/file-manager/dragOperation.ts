@@ -50,3 +50,59 @@ export function resolveFileManagerDropOperation(
 
   return params.isLayer1Active ? 'copy' : 'move';
 }
+
+export function shouldCancelFileManagerDrop(params: {
+  items: Array<{ path?: unknown }>;
+  targetEntryPath?: string | null;
+}): boolean {
+  const targetEntryPath =
+    typeof params.targetEntryPath === 'string' ? params.targetEntryPath : '';
+  if (params.items.length === 0) return false;
+  if (!targetEntryPath) return false;
+
+  return params.items.every((item) => {
+    const sourcePath = typeof item?.path === 'string' ? item.path : '';
+    if (!sourcePath) return false;
+    return sourcePath === targetEntryPath;
+  });
+}
+
+export function getDropTargetEntryPath(event: DragEvent): string | null {
+  const hasHTMLElement = typeof HTMLElement !== 'undefined';
+  const readDatasetPath = (value: unknown): string | null => {
+    if (!value || typeof value !== 'object') return null;
+    const dataset = (value as { dataset?: { entryPath?: unknown } }).dataset;
+    return typeof dataset?.entryPath === 'string' && dataset.entryPath.length > 0
+      ? dataset.entryPath
+      : null;
+  };
+  const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
+  for (const node of path) {
+    if (hasHTMLElement && node instanceof HTMLElement) {
+      const entryPath = readDatasetPath(node);
+      if (entryPath) return entryPath;
+    } else {
+      const entryPath = readDatasetPath(node);
+      if (entryPath) return entryPath;
+    }
+  }
+
+  const target = event.target as
+    | (EventTarget & { closest?: (selector: string) => unknown; dataset?: { entryPath?: unknown } })
+    | null;
+
+  const directEntryPath = readDatasetPath(target);
+  if (directEntryPath) {
+    return directEntryPath;
+  }
+
+  if (target && typeof target.closest === 'function') {
+    const container = target.closest('[data-entry-path]');
+    const entryPath = readDatasetPath(container);
+    if (entryPath) {
+      return entryPath;
+    }
+  }
+
+  return null;
+}

@@ -22,9 +22,11 @@ import type { DraggedFileData } from '~/composables/useDraggedFile';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import {
+  getDropTargetEntryPath,
   isCrossFileManagerDrag,
   resolveFileManagerDragOperation,
   resolveFileManagerDropOperation,
+  shouldCancelFileManagerDrop,
 } from '~/composables/file-manager/dragOperation';
 import {
   resetFileManagerDragCursor,
@@ -343,6 +345,9 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       }
 
       const itemsToMove = Array.isArray(parsed) ? parsed : [parsed];
+      if (shouldCancelFileManagerDrop({ items: itemsToMove, targetEntryPath: targetPath })) {
+        return;
+      }
 
       if (isCrossManagerDrag && appClipboard.dragSourceVfs) {
         try {
@@ -490,6 +495,14 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       }
 
       const itemsToMove = Array.isArray(parsed) ? parsed : [parsed];
+      if (
+        shouldCancelFileManagerDrop({
+          items: itemsToMove,
+          targetEntryPath: getDropTargetEntryPath(e),
+        })
+      ) {
+        return;
+      }
 
       if (isCrossManagerDrag && appClipboard.dragSourceVfs) {
         try {
