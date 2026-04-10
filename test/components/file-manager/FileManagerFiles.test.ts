@@ -104,6 +104,9 @@ function createFmProps(params: {
     getFileIcon: () => 'i-heroicons-document',
     findEntryByPath: (path: string) =>
       (params.rootEntries ?? []).find((e) => e.path === path) || null,
+    resolveEntryByPath: vi.fn(async (path: string) =>
+      (params.rootEntries ?? []).find((e) => e.path === path) || null,
+    ),
     mediaCache: { hasProxy: () => false },
     moveEntry: async () => {},
     copyEntry: async () => {},
@@ -191,5 +194,44 @@ describe('FileManagerFiles', () => {
     await nextTick();
 
     expect(uiStore.fileTreeSelectAllTrigger).toBe(initialTrigger + 1);
+  });
+
+  it('falls back to resolveEntryByPath for move requests when source is absent in loaded tree', async () => {
+    const sourceEntry = {
+      name: 'clip.mp4',
+      kind: 'file',
+      path: 'folder/clip.mp4',
+    };
+    const moveEntry = vi.fn(async () => {});
+    const resolveEntryByPath = vi.fn(async (path: string) =>
+      path === sourceEntry.path ? (sourceEntry as any) : null,
+    );
+
+    const wrapper = await mountSuspended(FileManagerFiles, {
+      props: {
+        ...createFmProps({}),
+        rootEntries: [{ name: 'folder', kind: 'directory', path: 'folder' }],
+        moveEntry,
+        resolveEntryByPath,
+      } as any,
+      global: {
+        stubs: {
+          UContextMenu: { template: '<div><slot /></div>' },
+          UIcon: true,
+          FileManagerTree: {
+            template:
+              '<button data-test="tree-move" @click="$emit(\'requestMove\', { sourcePath: \'folder/clip.mp4\', targetDirPath: \'target\' })" />',
+          },
+        },
+      },
+    });
+
+    await wrapper.get('[data-test="tree-move"]').trigger('click');
+
+    expect(resolveEntryByPath).toHaveBeenCalledWith(sourceEntry.path);
+    expect(moveEntry).toHaveBeenCalledWith({
+      source: sourceEntry,
+      targetDirPath: 'target',
+    });
   });
 });

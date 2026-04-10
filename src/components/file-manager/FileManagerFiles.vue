@@ -34,6 +34,7 @@ const props = defineProps<{
   rootEntries: FsEntry[];
   getFileIcon: (entry: FsEntry) => string;
   findEntryByPath: (path: string) => FsEntry | null;
+  resolveEntryByPath?: (path: string) => Promise<FsEntry | null>;
   mediaCache: Pick<ProxyThumbnailService, 'hasProxy'>;
   moveEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<void>;
   copyEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
@@ -299,7 +300,10 @@ function getEntryMeta(entry: FsEntry): {
 }
 
 async function onRequestMove(params: { sourcePath: string; targetDirPath: string }) {
-  const source = props.findEntryByPath(params.sourcePath);
+  const source =
+    props.findEntryByPath(params.sourcePath) ??
+    (await props.resolveEntryByPath?.(params.sourcePath)) ??
+    null;
   if (!source) return;
   await props.moveEntry({
     source,
@@ -309,7 +313,10 @@ async function onRequestMove(params: { sourcePath: string; targetDirPath: string
 }
 
 async function onRequestCopy(params: { sourcePath: string; targetDirPath: string }) {
-  const source = props.findEntryByPath(params.sourcePath);
+  const source =
+    props.findEntryByPath(params.sourcePath) ??
+    (await props.resolveEntryByPath?.(params.sourcePath)) ??
+    null;
   if (!source) return;
   await props.copyEntry({
     source,
@@ -334,7 +341,8 @@ const {
   onRootDragLeave,
   onRootDrop,
 } = useFileDrop({
-  resolveEntryByPath: async (path: string) => props.findEntryByPath(path),
+  resolveEntryByPath: async (path: string) =>
+    props.findEntryByPath(path) ?? (await props.resolveEntryByPath?.(path)) ?? null,
   handleFiles: props.handleFiles,
   moveEntry: props.moveEntry,
   copyEntry: props.copyEntry,
