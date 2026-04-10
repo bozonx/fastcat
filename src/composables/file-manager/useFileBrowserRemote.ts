@@ -6,7 +6,6 @@ import { useUiStore } from '~/stores/ui.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import {
   downloadRemoteFile,
-  fetchRemoteVfsList,
   getRemoteFileDownloadUrl,
   getRemoteThumbnailUrl,
   isRemoteFsEntry,
@@ -131,11 +130,17 @@ export function useFileBrowserRemote({
     if (!normalizedPath.startsWith('/remote')) {
       normalizedPath = `/remote${normalizedPath.startsWith('/') ? '' : '/'}${normalizedPath}`;
     }
+    const leaf = normalizedPath.split('/').filter(Boolean).at(-1);
     const name =
       normalizedPath === '/remote'
         ? t('fastcat.bloggerDog.contentLibrary', 'Библиотека контента')
-        : normalizedPath.split('/').filter(Boolean).at(-1) ||
-          t('fastcat.bloggerDog.contentLibrary', 'Библиотека контента');
+        : normalizedPath === '/remote/virtual-all'
+          ? t('fastcat.bloggerDog.allContent', 'Все элементы')
+          : normalizedPath === '/remote/projects'
+            ? t('fastcat.bloggerDog.projectLibraries', 'Проекты')
+            : normalizedPath === '/remote/personal'
+              ? t('fastcat.bloggerDog.personalLibrary', 'Личная библиотека')
+              : leaf || t('fastcat.bloggerDog.contentLibrary', 'Библиотека контента');
     const remoteData: RemoteVfsEntry = {
       id: normalizedPath,
       name,

@@ -1,11 +1,11 @@
-import type { RemoteVfsEntry } from './remote-vfs';
+import type { RemoteVfsEntry, RemoteVfsProjectEntry } from './remote-vfs';
 
 export type BdEntryType = 'content-item' | 'collection' | 'media' | 'project' | 'virtual-folder';
 
 export interface BloggerDogEntryPayload {
   type: BdEntryType;
   thumbnailUrl?: string;
-  remoteData: RemoteVfsEntry;
+  remoteData: RemoteVfsEntry | RemoteVfsProjectEntry;
   mediaId?: string;
 }
 

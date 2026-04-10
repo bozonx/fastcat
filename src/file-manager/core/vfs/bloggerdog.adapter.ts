@@ -1,28 +1,67 @@
 import type { IFileSystemAdapter, VfsEntry } from './types';
 import { MAX_COPY_DEPTH } from '~/file-manager/core/rules';
 import {
-  fetchRemoteVfsList,
-  getRemoteEntryDisplayName,
   createRemoteCollection,
+  createRemoteMediaFsEntry,
   deleteRemoteCollection,
   deleteRemoteItem,
-  uploadFileToRemote,
+  deleteRemoteMedia,
+  fetchRemoteCollections,
+  fetchRemoteItems,
+  fetchRemoteProjects,
+  getRemoteEntryDisplayName,
   getRemoteFileDownloadUrl,
   getRemoteMediaDisplayName,
+  renameRemoteMedia,
   toRemoteFsEntry,
-  createRemoteMediaFsEntry,
+  updateRemoteCollection,
+  updateRemoteItem,
+  uploadFileToRemote,
   type RemoteVfsClientConfig,
 } from '~/utils/remote-vfs';
-import type { RemoteVfsFileEntry, RemoteVfsEntry } from '~/types/remote-vfs';
+import type {
+  RemoteVfsDirectoryEntry,
+  RemoteVfsFileEntry,
+  RemoteVfsMedia,
+  RemoteVfsProjectEntry,
+  RemoteVfsScope,
+} from '~/types/remote-vfs';
 import type { BloggerDogEntryPayload } from '~/types/bloggerdog';
+
+type CachedNodeType = 'file' | 'directory' | 'media' | 'project' | 'virtual-folder';
+type RootFolderId = 'virtual-all' | 'personal' | 'projects';
+
+interface CachedNode {
+  id: string;
+  type: CachedNodeType;
+  path: string;
+  scope?: RemoteVfsScope;
+  projectId?: string;
+  parentId?: string | null;
+  rootFolderId?: RootFolderId;
+  item?: RemoteVfsFileEntry;
+  collection?: RemoteVfsDirectoryEntry;
+  project?: RemoteVfsProjectEntry;
+  media?: RemoteVfsMedia;
+  mediaIndex?: number;
+}
+
+interface DirectoryContext {
+  scope: RemoteVfsScope;
+  projectId?: string;
+  groupId?: string;
+}
+
+interface ListedEntry {
+  entry: VfsEntry;
+  lastModified: number;
+  createdAt: number;
+}
 
 export class BloggerDogVfsAdapter implements IFileSystemAdapter {
   id = 'bloggerdog';
 
-  private idCache = new Map<
-    string,
-    { id: string; type: 'file' | 'directory' | 'media'; item?: any; mediaIndex?: number }
-  >();
+  private idCache = new Map<string, CachedNode>();
 
   constructor(
     private getConfig: () => RemoteVfsClientConfig | null,
@@ -42,79 +81,436 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
   }
 
   private normalizePath(path: string): string {
-    let p = path || '/';
-    if (p.startsWith('/remote')) {
-      p = p.slice('/remote'.length) || '/';
+    let normalized = path || '/';
+    if (normalized.startsWith('/remote')) {
+      normalized = normalized.slice('/remote'.length) || '/';
     }
-    if (p === '/' || p === '') return '/';
-    p = p.replace(/\/+/g, '/');
-    if (!p.startsWith('/')) p = '/' + p;
-    if (p.endsWith('/') && p.length > 1) p = p.slice(0, -1);
-    return p;
-  }
-
-  private async ensureParentCache(path: string) {
-    const normalizedPath = this.normalizePath(path);
-    const parts = normalizedPath.split('/').filter(Boolean);
-    if (parts.length <= 1) {
-      if (!this.idCache.has('/')) {
-        await this.readDirectory('/');
-      }
-      return;
+    normalized = normalized.replace(/\/+/g, '/');
+    if (!normalized.startsWith('/')) {
+      normalized = `/${normalized}`;
     }
-    const parentPath = '/' + parts.slice(0, -1).join('/');
-    if (!this.idCache.has(parentPath)) {
-      try {
-        await this.ensureParentCache(parentPath);
-      } catch {
-        // Parent doesn't exist anymore, maybe due to rename
-        return;
-      }
+    if (normalized.length > 1 && normalized.endsWith('/')) {
+      normalized = normalized.slice(0, -1);
     }
-    try {
-      await this.readDirectory(parentPath);
-    } catch {
-      // Parent content gone
-    }
+    return normalized || '/';
   }
 
   private clearCache(path: string) {
     const normalizedPath = this.normalizePath(path);
-    const keysToDelete: string[] = [];
-    const prefix = normalizedPath === '/' ? '/' : normalizedPath + '/';
-
-    for (const key of this.idCache.keys()) {
+    const prefix = normalizedPath === '/' ? '/' : `${normalizedPath}/`;
+    for (const key of [...this.idCache.keys()]) {
       if (key === normalizedPath || key.startsWith(prefix)) {
-        keysToDelete.push(key);
+        this.idCache.delete(key);
       }
-    }
-
-    for (const key of keysToDelete) {
-      this.idCache.delete(key);
     }
   }
 
-  private async getIdForPath(path: string): Promise<{
-    id: string;
-    type: 'file' | 'directory' | 'media';
-    item?: any;
-    mediaIndex?: number;
-  }> {
-    const p = this.normalizePath(path);
-    if (p === '/' || p === '') return { id: '/', type: 'directory' };
-    if (p === '/virtual-all') return { id: 'virtual-all', type: 'directory' };
-    if (p === '/personal') return { id: 'personal', type: 'directory' };
-    if (p === '/projects') return { id: 'projects', type: 'directory' };
+  private toDisplayName(name: string | undefined, fallback: string): string {
+    const trimmed = name?.trim();
+    return trimmed || fallback;
+  }
 
-    if (!this.idCache.has(p)) {
-      await this.ensureParentCache(p);
+  private createVirtualRootEntry(id: RootFolderId, name: string): VfsEntry {
+    const path = id === 'virtual-all' ? '/virtual-all' : id === 'personal' ? '/personal' : '/projects';
+    const cachedNode: CachedNode = {
+      id,
+      type: 'virtual-folder',
+      path,
+      rootFolderId: id,
+    };
+    this.idCache.set(path, cachedNode);
+
+    return {
+      name,
+      kind: 'directory',
+      path,
+      parentPath: '/',
+      adapterPayload: {
+        type: 'virtual-folder',
+        remoteData: {
+          id,
+          name,
+          path,
+          type: 'directory',
+        } as any,
+      } as BloggerDogEntryPayload,
+    };
+  }
+
+  private createProjectEntry(project: RemoteVfsProjectEntry): VfsEntry {
+    const path = `/projects/${project.id}`;
+    const entryWithPath: RemoteVfsProjectEntry = {
+      ...project,
+      path,
+      type: 'project',
+    };
+    this.idCache.set(path, {
+      id: project.id,
+      type: 'project',
+      path,
+      scope: 'project',
+      projectId: project.id,
+      project: entryWithPath,
+    });
+
+    return {
+      ...toRemoteFsEntry(entryWithPath),
+      path,
+      parentPath: '/projects',
+    } as VfsEntry;
+  }
+
+  private createCollectionEntry(params: {
+    collection: RemoteVfsDirectoryEntry;
+    path: string;
+    parentPath: string;
+    scope: RemoteVfsScope;
+    projectId?: string;
+  }): VfsEntry {
+    const collectionWithPath: RemoteVfsDirectoryEntry = {
+      ...params.collection,
+      path: params.path,
+      scope: params.scope,
+      projectId: params.projectId,
+    };
+    this.idCache.set(params.path, {
+      id: params.collection.id,
+      type: 'directory',
+      path: params.path,
+      scope: params.scope,
+      projectId: params.projectId,
+      parentId: params.collection.parentId ?? null,
+      collection: collectionWithPath,
+    });
+
+    return {
+      ...toRemoteFsEntry(collectionWithPath),
+      path: params.path,
+      parentPath: params.parentPath,
+      hasChildren: true,
+      hasDirectories: true,
+    } as VfsEntry;
+  }
+
+  private createItemEntry(params: {
+    item: RemoteVfsFileEntry;
+    path: string;
+    parentPath: string;
+    scope: RemoteVfsScope;
+    projectId?: string;
+  }): VfsEntry {
+    const itemWithPath: RemoteVfsFileEntry = {
+      ...params.item,
+      path: params.path,
+      scope: params.scope,
+      projectId: params.projectId,
+    };
+    this.idCache.set(params.path, {
+      id: params.item.id,
+      type: 'file',
+      path: params.path,
+      scope: params.scope,
+      projectId: params.projectId,
+      parentId: params.item.groupId ?? null,
+      item: itemWithPath,
+    });
+
+    const isSimpleFile = itemWithPath.media?.length === 1 && !itemWithPath.text?.trim();
+    return {
+      ...toRemoteFsEntry(itemWithPath),
+      kind: isSimpleFile ? 'file' : 'directory',
+      path: params.path,
+      parentPath: params.parentPath,
+      hasChildren: !isSimpleFile,
+      hasDirectories: false,
+    } as VfsEntry;
+  }
+
+  private toComparableEntry(entry: VfsEntry): ListedEntry {
+    return {
+      entry,
+      lastModified: entry.lastModified ?? 0,
+      createdAt: entry.createdAt ?? 0,
+    };
+  }
+
+  private sortEntries(
+    entries: ListedEntry[],
+    sortBy?: string,
+    sortOrder?: 'asc' | 'desc',
+  ): ListedEntry[] {
+    const direction = sortOrder === 'desc' ? -1 : 1;
+    return [...entries].sort((left, right) => {
+      if (left.entry.kind !== right.entry.kind) {
+        return left.entry.kind === 'directory' ? -1 : 1;
+      }
+
+      if (sortBy === 'created') {
+        return (left.createdAt - right.createdAt) * direction;
+      }
+
+      const leftName = left.entry.name.toLowerCase();
+      const rightName = right.entry.name.toLowerCase();
+      return leftName.localeCompare(rightName) * direction;
+    });
+  }
+
+  private paginateEntries(entries: ListedEntry[], limit?: number, offset?: number): VfsEntry[] {
+    const start = Math.max(offset ?? 0, 0);
+    const end = limit === undefined ? undefined : start + Math.max(limit, 0);
+    return entries.slice(start, end).map((item) => item.entry);
+  }
+
+  private async getIdForPath(path: string): Promise<CachedNode> {
+    const normalizedPath = this.normalizePath(path);
+    if (normalizedPath === '/') {
+      return { id: '/', type: 'virtual-folder', path: '/' };
     }
 
-    const cached = this.idCache.get(p);
+    if (!this.idCache.has(normalizedPath)) {
+      const parentPath = normalizedPath.split('/').slice(0, -1).join('/') || '/';
+      await this.readDirectory(parentPath);
+    }
+
+    const cached = this.idCache.get(normalizedPath);
     if (!cached) {
-      throw new Error(`Path not found or not cached: ${p} (original: ${path})`);
+      throw new Error(`Path not found or not cached: ${normalizedPath}`);
     }
     return cached;
+  }
+
+  private getDirectoryContext(node: CachedNode): DirectoryContext {
+    if (node.type === 'project') {
+      return {
+        scope: 'project',
+        projectId: node.projectId || node.id,
+      };
+    }
+
+    if (node.type === 'directory' && node.collection) {
+      return {
+        scope: node.scope || 'personal',
+        projectId: node.projectId,
+        groupId: node.id,
+      };
+    }
+
+    if (node.type === 'file' && node.item) {
+      return {
+        scope: node.scope || 'personal',
+        projectId: node.projectId,
+        groupId: node.item.groupId ?? undefined,
+      };
+    }
+
+    if (node.rootFolderId === 'personal') {
+      return { scope: 'personal' };
+    }
+
+    throw new Error(`Unsupported remote directory context for path: ${node.path}`);
+  }
+
+  private ensureSameScope(source: CachedNode, target: CachedNode) {
+    if ((source.scope || 'personal') !== (target.scope || 'personal')) {
+      throw new Error('Moving between personal and project libraries is not supported');
+    }
+    if ((source.projectId || '') !== (target.projectId || '')) {
+      throw new Error('Moving between different projects is not supported');
+    }
+  }
+
+  private buildCollectionPath(parentPath: string, collection: RemoteVfsDirectoryEntry): string {
+    const name = this.toDisplayName(getRemoteEntryDisplayName(collection), collection.id);
+    return `${parentPath === '/' ? '' : parentPath}/${name}`;
+  }
+
+  private buildItemPath(parentPath: string, item: RemoteVfsFileEntry): string {
+    const name = this.toDisplayName(getRemoteEntryDisplayName(item), item.id);
+    return `${parentPath === '/' ? '' : parentPath}/${name}`;
+  }
+
+  private async listScopeDirectory(params: {
+    parentPath: string;
+    scope: RemoteVfsScope;
+    projectId?: string;
+    groupId?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    limit?: number;
+    offset?: number;
+  }): Promise<VfsEntry[]> {
+    const [collections, itemsResponse] = await Promise.all([
+      fetchRemoteCollections({
+        config: this.resolveConfig(),
+        scope: params.scope,
+        projectId: params.projectId,
+        parentId: params.groupId,
+        includeChildrenCount: true,
+      }),
+      fetchRemoteItems({
+        config: this.resolveConfig(),
+        scope: params.scope,
+        projectId: params.projectId,
+        groupId: params.groupId,
+        orphansOnly: !params.groupId,
+      }),
+    ]);
+
+    const listedEntries: ListedEntry[] = [];
+
+    for (const collection of collections) {
+      const path = this.buildCollectionPath(params.parentPath, collection);
+      const entry = this.createCollectionEntry({
+        collection,
+        path,
+        parentPath: params.parentPath,
+        scope: params.scope,
+        projectId: params.projectId,
+      });
+      listedEntries.push(this.toComparableEntry(entry));
+    }
+
+    for (const item of itemsResponse.items as RemoteVfsFileEntry[]) {
+      const path = this.buildItemPath(params.parentPath, item);
+      const entry = this.createItemEntry({
+        item,
+        path,
+        parentPath: params.parentPath,
+        scope: params.scope,
+        projectId: params.projectId,
+      });
+      listedEntries.push(this.toComparableEntry(entry));
+    }
+
+    const sorted = this.sortEntries(listedEntries, params.sortBy, params.sortOrder);
+    const paged = this.paginateEntries(sorted, params.limit, params.offset) as VfsEntry[] & {
+      total?: number;
+    };
+    paged.total = sorted.length;
+    return paged;
+  }
+
+  private async listAllVirtualItems(params: {
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    limit?: number;
+    offset?: number;
+  }): Promise<VfsEntry[]> {
+    const config = this.resolveConfig();
+    const projects = await fetchRemoteProjects({ config });
+
+    const responses = await Promise.all([
+      fetchRemoteItems({
+        config,
+        scope: 'personal',
+        orphansOnly: true,
+      }),
+      ...projects.map((project) =>
+        fetchRemoteItems({
+          config,
+          scope: 'project',
+          projectId: project.id,
+          orphansOnly: true,
+        }),
+      ),
+    ]);
+
+    const allItems: Array<{
+      item: RemoteVfsFileEntry;
+      scope: RemoteVfsScope;
+      projectId?: string;
+    }> = [];
+
+    responses.forEach((response, index) => {
+      if (index === 0) {
+        (response.items as RemoteVfsFileEntry[]).forEach((item) => {
+          allItems.push({ item, scope: 'personal' });
+        });
+        return;
+      }
+
+      const project = projects[index - 1]!;
+      (response.items as RemoteVfsFileEntry[]).forEach((item) => {
+        allItems.push({ item, scope: 'project', projectId: project.id });
+      });
+    });
+
+    const listedEntries = allItems.map(({ item, scope, projectId }) => {
+      const path = this.buildItemPath('/virtual-all', item);
+      const entry = this.createItemEntry({
+        item,
+        path,
+        parentPath: '/virtual-all',
+        scope,
+        projectId,
+      });
+      return this.toComparableEntry(entry);
+    });
+
+    const sorted = this.sortEntries(listedEntries, params.sortBy, params.sortOrder);
+    const paged = this.paginateEntries(sorted, params.limit, params.offset) as VfsEntry[] & {
+      total?: number;
+    };
+    paged.total = sorted.length;
+    return paged;
+  }
+
+  private listContentItemMedia(itemPath: string, item: RemoteVfsFileEntry): VfsEntry[] {
+    const entries: VfsEntry[] = [];
+
+    if (item.media?.length) {
+      item.media.forEach((media, index) => {
+        const name = getRemoteMediaDisplayName({ entry: item, media, mediaIndex: index });
+        const mediaPath = `${itemPath}/${name}`;
+        this.idCache.set(mediaPath, {
+          id: media.id,
+          type: 'media',
+          path: mediaPath,
+          scope: item.scope,
+          projectId: item.projectId,
+          item,
+          media,
+          mediaIndex: index,
+        });
+        entries.push({
+          ...createRemoteMediaFsEntry({ item, media, mediaIndex: index }),
+          name,
+          path: mediaPath,
+          parentPath: itemPath,
+        } as VfsEntry);
+      });
+    }
+
+    if (item.text?.trim()) {
+      const textName = `${getRemoteEntryDisplayName(item)}.txt`;
+      const textPath = `${itemPath}/${textName}`;
+      this.idCache.set(textPath, {
+        id: item.id,
+        type: 'media',
+        path: textPath,
+        scope: item.scope,
+        projectId: item.projectId,
+        item,
+        mediaIndex: -1,
+      });
+
+      const blob = new Blob([item.text], { type: 'text/plain' });
+      entries.push({
+        name: textName,
+        kind: 'file',
+        path: textPath,
+        parentPath: itemPath,
+        size: blob.size,
+        lastModified: item.updatedAt ? new Date(item.updatedAt).getTime() : undefined,
+        createdAt: item.createdAt ? new Date(item.createdAt).getTime() : undefined,
+        adapterPayload: {
+          type: 'media',
+          remoteData: item,
+        } as BloggerDogEntryPayload,
+      } as VfsEntry);
+    }
+
+    return entries;
   }
 
   async readDirectory(
@@ -122,329 +518,286 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     options?: { sortBy?: string; sortOrder?: 'asc' | 'desc'; limit?: number; offset?: number },
   ): Promise<VfsEntry[]> {
     const normalizedPath = this.normalizePath(path);
-    const config = this.resolveConfig();
 
-    if (normalizedPath === '/' || normalizedPath === '') {
-      const virtualPayload = (id: string, name: string): VfsEntry => ({
-        name,
-        kind: 'directory',
-        path: id === 'virtual-all' ? '/virtual-all' : id === 'personal' ? '/personal' : '/projects',
-        parentPath: '/',
-        adapterPayload: {
-          type: 'virtual-folder',
-          remoteData: { id, type: 'directory', name, path: '' } as any,
-        } as BloggerDogEntryPayload,
-      });
+    if (normalizedPath === '/') {
       return [
-        virtualPayload(
+        this.createVirtualRootEntry(
           'virtual-all',
-          this.t ? this.t('fastcat.bloggerDog.allContent', 'All Content') : 'All Content',
+          this.t ? this.t('fastcat.bloggerDog.allContent', 'Все элементы') : 'Все элементы',
         ),
-        virtualPayload(
-          'personal',
-          this.t
-            ? this.t('fastcat.bloggerDog.personalLibrary', 'Personal Library')
-            : 'Personal Library',
-        ),
-        virtualPayload(
+        this.createVirtualRootEntry(
           'projects',
-          this.t
-            ? this.t('fastcat.bloggerDog.projectLibraries', 'Project Libraries')
-            : 'Project Libraries',
+          this.t ? this.t('fastcat.bloggerDog.projectLibraries', 'Проекты') : 'Проекты',
+        ),
+        this.createVirtualRootEntry(
+          'personal',
+          this.t ? this.t('fastcat.bloggerDog.personalLibrary', 'Личная библиотека') : 'Личная библиотека',
         ),
       ];
     }
 
-    // Ensure path is in cache and we know its type
-    const cached = await this.getIdForPath(normalizedPath);
-
-    if (cached && cached.type === 'file' && cached.item) {
-      const entries: VfsEntry[] = [];
-      const item = cached.item as RemoteVfsFileEntry;
-
-      // Add media files
-      if (item.media && Array.isArray(item.media)) {
-        item.media.forEach((media: any, index: number) => {
-          const name = getRemoteMediaDisplayName({ entry: item, media, mediaIndex: index });
-          const mediaPath = `${path}/${name}`;
-
-          const mediaFsEntry = createRemoteMediaFsEntry({
-            item,
-            media,
-            mediaIndex: index,
-          });
-
-          this.idCache.set(mediaPath, {
-            id: media.id || item.id,
-            type: 'media',
-            item,
-            mediaIndex: index,
-          });
-
-          entries.push({
-            ...mediaFsEntry,
-            name,
-            path: mediaPath,
-            parentPath: path,
-          });
-        });
-      }
-
-      // Simulate text content as a text file
-      if (item.text?.trim()) {
-        const textName = `${item.title || item.name || 'document'}.txt`;
-        const textPath = `${path}/${textName}`;
-        this.idCache.set(textPath, { id: item.id, type: 'media', item, mediaIndex: -1 });
-
-        const blob = new Blob([item.text], { type: 'text/plain' });
-        const fsEntry = toRemoteFsEntry(item);
-
-        entries.push({
-          ...fsEntry,
-          name: textName,
-          kind: 'file',
-          path: textPath,
-          parentPath: path,
-          size: blob.size,
-          adapterPayload: {
-            ...fsEntry.adapterPayload!,
-            type: 'media',
-          },
-        });
-      }
-
-      return entries;
+    if (normalizedPath === '/projects') {
+      const projects = await fetchRemoteProjects({ config: this.resolveConfig() });
+      const listed = projects.map((project) => this.toComparableEntry(this.createProjectEntry(project)));
+      const sorted = this.sortEntries(listed, options?.sortBy, options?.sortOrder);
+      const paged = this.paginateEntries(sorted, options?.limit, options?.offset) as VfsEntry[] & {
+        total?: number;
+      };
+      paged.total = sorted.length;
+      return paged;
     }
 
-    const remotePath =
-      cached.item?.path || (cached.id.startsWith('/') ? cached.id : `/${cached.id}`);
-    const response = await fetchRemoteVfsList({
-      config,
-      path: remotePath,
-      sortBy: options?.sortBy,
-      sortOrder: options?.sortOrder,
-      limit: options?.limit,
-      offset: options?.offset,
-    });
+    if (normalizedPath === '/virtual-all') {
+      return await this.listAllVirtualItems(options ?? {});
+    }
 
-    // Update cache
-    this.idCache.set(path, {
-      id: path === '/' ? 'root' : this.idCache.get(path)?.id || '',
-      type: 'directory',
-    });
-
-    const entries: VfsEntry[] = [];
-    for (const item of response.items) {
-      const name = getRemoteEntryDisplayName(item);
-      const isInsideProjects = normalizedPath === '/projects';
-      const entryPath =
-        normalizedPath === '/'
-          ? `/${name}`
-          : isInsideProjects
-            ? `${normalizedPath}/${item.id}`
-            : `${normalizedPath}/${name}`;
-      this.idCache.set(entryPath, { id: item.id, type: item.type, item });
-
-      const isSimpleFile = item.type === 'file' && item.media?.length === 1 && !item.text?.trim();
-      const fsEntry = toRemoteFsEntry(item);
-
-      entries.push({
-        ...fsEntry,
-        name,
-        kind: isSimpleFile ? 'file' : fsEntry.kind,
-        path: entryPath,
-        parentPath: normalizedPath,
+    if (normalizedPath === '/personal') {
+      return await this.listScopeDirectory({
+        parentPath: '/personal',
+        scope: 'personal',
+        sortBy: options?.sortBy,
+        sortOrder: options?.sortOrder,
+        limit: options?.limit,
+        offset: options?.offset,
       });
     }
 
-    const result = entries as VfsEntry[] & { total?: number };
-    result.total = response.total;
-    return result;
+    const cached = await this.getIdForPath(normalizedPath);
+
+    if (cached.type === 'project') {
+      return await this.listScopeDirectory({
+        parentPath: normalizedPath,
+        scope: 'project',
+        projectId: cached.projectId || cached.id,
+        sortBy: options?.sortBy,
+        sortOrder: options?.sortOrder,
+        limit: options?.limit,
+        offset: options?.offset,
+      });
+    }
+
+    if (cached.type === 'directory' && cached.collection) {
+      return await this.listScopeDirectory({
+        parentPath: normalizedPath,
+        scope: cached.scope || 'personal',
+        projectId: cached.projectId,
+        groupId: cached.id,
+        sortBy: options?.sortBy,
+        sortOrder: options?.sortOrder,
+        limit: options?.limit,
+        offset: options?.offset,
+      });
+    }
+
+    if (cached.type === 'file' && cached.item) {
+      return this.listContentItemMedia(normalizedPath, cached.item);
+    }
+
+    throw new Error(`Unsupported remote directory: ${normalizedPath}`);
   }
 
   async createDirectory(path: string): Promise<void> {
-    const config = this.resolveConfig();
-    const parts = path.split('/').filter(Boolean);
+    const normalizedPath = this.normalizePath(path);
+    const parts = normalizedPath.split('/').filter(Boolean);
     const name = parts.pop();
-    if (!name) throw new Error('Invalid directory name');
+    if (!name) {
+      throw new Error('Invalid directory name');
+    }
 
-    const parentPath = '/' + parts.join('/');
+    const parentPath = `/${parts.join('/')}` || '/';
     const parent = await this.getIdForPath(parentPath);
-    const normalizedParentPath = this.normalizePath(parentPath);
 
-    let parentId: string | undefined;
-    let projectId: string | undefined;
-
-    // We can't create collections directly in these virtual paths
-    const forbiddenRoots = ['/', 'root', 'projects', 'virtual-all'];
-    if (forbiddenRoots.includes(parent.id)) {
-      throw new Error(`Cannot create directory in ${normalizedParentPath}`);
+    if (parent.path === '/' || parent.rootFolderId === 'projects' || parent.rootFolderId === 'virtual-all') {
+      throw new Error(`Cannot create collection in ${parentPath}`);
     }
 
-    if (parent.id === 'personal' || parent.type === 'virtual-folder' as any) {
-      // For personal root or virtual-folder, parentId must be completely excluded (undefined)
-      parentId = undefined;
-      projectId = undefined;
-    } else if (parent.type === 'project' as any || (parent.item && parent.item.type === 'project')) {
-      // It's a project root
-      parentId = undefined;
-      projectId = parent.id;
-    } else {
-      // For sub-collections, use the collection UUID as parentId
-      parentId = parent.id;
-      projectId = undefined;
-    }
-
+    const context = this.getDirectoryContext(parent);
     const collection = await createRemoteCollection({
-      config,
+      config: this.resolveConfig(),
       name,
-      parentId: parentId || projectId, // If projectId is set, use it as parentId
+      scope: context.scope,
+      projectId: context.projectId,
+      parentId: parent.type === 'directory' ? parent.id : undefined,
     });
 
-    this.idCache.set(path, { id: collection.id, type: 'directory' });
+    this.idCache.set(normalizedPath, {
+      id: collection.id,
+      type: 'directory',
+      path: normalizedPath,
+      scope: context.scope,
+      projectId: context.projectId,
+      parentId: collection.parentId ?? null,
+      collection: {
+        ...collection,
+        path: normalizedPath,
+        scope: context.scope,
+        projectId: context.projectId,
+      },
+    });
   }
 
   async listEntryNames(path: string): Promise<string[]> {
     const entries = await this.readDirectory(path);
-    return entries.map((e) => e.name);
+    return entries.map((entry) => entry.name);
   }
 
   async readFile(path: string, options?: { signal?: AbortSignal }): Promise<Blob> {
-    const config = this.resolveConfig();
     const entry = await this.getIdForPath(path);
 
-    let downloadUrl = '';
-    if (entry.type === 'media' && entry.item) {
-      if (entry.mediaIndex === -1) {
-        const textData = (entry.item as RemoteVfsFileEntry).text || '';
-        return new Blob([textData], { type: 'text/plain' });
-      }
-
-      downloadUrl = getRemoteFileDownloadUrl({
-        baseUrl: config.baseUrl,
-        entry: entry.item,
-        mediaIndex: entry.mediaIndex,
-      });
-    } else {
-      throw new Error(`Cannot download a collection or item folder directly: ${path}`);
+    if (entry.type !== 'media' || !entry.item) {
+      throw new Error(`Cannot download a collection or content item directly: ${path}`);
     }
 
-    const res = await fetch(downloadUrl, { signal: options?.signal });
-    if (!res.ok) throw new Error(`Failed to download file from remote: ${res.status}`);
-    return res.blob();
+    if (entry.mediaIndex === -1) {
+      return new Blob([entry.item.text || ''], { type: 'text/plain' });
+    }
+
+    const downloadUrl = getRemoteFileDownloadUrl({
+      baseUrl: this.resolveConfig().baseUrl,
+      entry: entry.item,
+      media: entry.media,
+      mediaIndex: entry.mediaIndex ?? 0,
+      mediaId: entry.media?.id,
+    });
+
+    const response = await fetch(downloadUrl, { signal: options?.signal });
+    if (!response.ok) {
+      throw new Error(`Failed to download file from remote: ${response.status}`);
+    }
+    return await response.blob();
   }
 
   async writeFile(path: string, data: Blob | Uint8Array | string): Promise<void> {
-    const config = this.resolveConfig();
     const normalizedPath = this.normalizePath(path);
     const parts = normalizedPath.split('/').filter(Boolean);
     const name = parts.pop();
-    if (!name) throw new Error('Invalid file name');
-
-    const parentPath = normalizedPath === '/' ? '/' : '/' + parts.join('/');
-    let uploadPath = '/virtual-all';
-    let projectId: string | undefined;
-
-    // Determine if we are in a project path
-    const pathParts = normalizedPath.split('/').filter(Boolean);
-    if (pathParts[0] === 'projects' && pathParts.length >= 2) {
-      projectId = pathParts[1];
+    if (!name) {
+      throw new Error('Invalid file name');
     }
 
-    if (parentPath !== '/') {
-      const cached = await this.getIdForPath(parentPath);
+    const parentPath = `/${parts.join('/')}` || '/';
+    const parent = await this.getIdForPath(parentPath);
 
-      if (normalizedPath.startsWith('/projects/') && pathParts.length === 2) {
-        // Saving directly in project root (this case might not happen with parts.pop() above, but for safety)
-        uploadPath = `/projects/${projectId}`;
-      } else if (normalizedPath.startsWith('/personal') && pathParts.length === 2) {
-        uploadPath = '/personal';
-      } else if (cached.item?.path) {
-        uploadPath = cached.item.path;
-      } else if (cached.id) {
-        if (cached.id === 'personal') {
-          uploadPath = '/personal';
-        } else {
-          // If it's a collection ID, use it as path (with leading slash for remote API)
-          uploadPath = cached.id.startsWith('/') ? cached.id : `/${cached.id}`;
-        }
-      }
+    if (parent.path === '/' || parent.rootFolderId === 'projects' || parent.rootFolderId === 'virtual-all') {
+      throw new Error(`Cannot upload into ${parentPath}`);
     }
 
+    const context = this.getDirectoryContext(parent);
     let fileToUpload: File;
     if (data instanceof Blob) {
       fileToUpload = new File([data], name, { type: data.type });
     } else if (data instanceof Uint8Array || ArrayBuffer.isView(data)) {
-      fileToUpload = new File([data as any], name, { type: 'application/octet-stream' });
+      fileToUpload = new File([data as BlobPart], name, { type: 'application/octet-stream' });
     } else {
-      fileToUpload = new File([data as BlobPart], name, { type: 'text/plain' });
+      fileToUpload = new File([data], name, { type: 'text/plain' });
     }
 
     await uploadFileToRemote({
-      config,
-      path: uploadPath,
+      config: this.resolveConfig(),
       file: fileToUpload,
-      projectId,
+      scope: context.scope,
+      projectId: context.projectId,
+      groupId: context.groupId,
     });
 
-    // Clear parent and normalized path for refresh
     this.clearCache(parentPath);
     this.idCache.delete(normalizedPath);
   }
 
-  async deleteEntry(path: string, recursive?: boolean): Promise<void> {
-    const config = this.resolveConfig();
+  async deleteEntry(path: string, _recursive?: boolean): Promise<void> {
     const entry = await this.getIdForPath(path);
+    const config = this.resolveConfig();
+
+    if (entry.type === 'virtual-folder' || entry.type === 'project') {
+      throw new Error('Deleting virtual folders and projects is not supported');
+    }
 
     if (entry.type === 'directory') {
       await deleteRemoteCollection({ config, id: entry.id });
     } else if (entry.type === 'media') {
-      throw new Error(
-        'Deleting individual media files from a content item is not supported by BloggerDog API directly. You must delete the entire content item.',
-      );
+      if (entry.mediaIndex === -1) {
+        throw new Error('Deleting text body separately is not supported');
+      }
+      await deleteRemoteMedia({ config, id: entry.id });
     } else {
       await deleteRemoteItem({ config, id: entry.id });
     }
+
     this.clearCache(path);
   }
 
   async moveEntry(
     sourcePath: string,
     targetPath: string,
-    options?: { signal?: AbortSignal },
+    _options?: { signal?: AbortSignal },
   ): Promise<void> {
-    const config = this.resolveConfig();
-    const nSource = this.normalizePath(sourcePath);
-    const nTarget = this.normalizePath(targetPath);
-    const sourceParts = nSource.split('/').filter(Boolean);
-    const targetParts = nTarget.split('/').filter(Boolean);
+    const normalizedSource = this.normalizePath(sourcePath);
+    const normalizedTarget = this.normalizePath(targetPath);
+    const source = await this.getIdForPath(normalizedSource);
 
-    const sourceParent = '/' + sourceParts.slice(0, -1).join('/');
-    const targetParent = '/' + targetParts.slice(0, -1).join('/');
-
-    if (sourceParent !== targetParent) {
-      throw new Error(
-        'Moving between directories is not fully supported by BloggerDog API directly, only renaming is supported.',
-      );
+    if (source.type === 'virtual-folder' || source.type === 'project') {
+      throw new Error('Moving virtual folders and projects is not supported');
     }
 
+    const targetParts = normalizedTarget.split('/').filter(Boolean);
     const newName = targetParts.pop();
-    if (!newName) throw new Error('Invalid target name');
-
-    const entry = await this.getIdForPath(nSource);
-
-    const { renameRemoteCollection, renameRemoteItem, renameRemoteMedia } =
-      await import('~/utils/remote-vfs');
-    if (entry.type === 'directory') {
-      await renameRemoteCollection({ config, id: entry.id, name: newName });
-    } else if (entry.type === 'media') {
-      await renameRemoteMedia({ config, id: entry.id, name: newName });
-    } else {
-      await renameRemoteItem({ config, id: entry.id, name: newName });
+    if (!newName) {
+      throw new Error('Invalid target name');
     }
 
-    this.clearCache(nSource);
-    this.idCache.delete(sourceParent);
+    const targetParentPath = `/${targetParts.join('/')}` || '/';
+    const targetParent = await this.getIdForPath(targetParentPath);
+
+    if (targetParent.path === '/' || targetParent.rootFolderId === 'projects' || targetParent.rootFolderId === 'virtual-all') {
+      throw new Error(`Cannot move into ${targetParentPath}`);
+    }
+
+    this.ensureSameScope(source, targetParent);
+
+    const config = this.resolveConfig();
+
+    if (source.type === 'directory') {
+      const targetParentId =
+        targetParent.type === 'directory'
+          ? targetParent.id
+          : targetParent.type === 'project' || targetParent.rootFolderId === 'personal'
+            ? null
+            : null;
+
+      await updateRemoteCollection({
+        config,
+        id: source.id,
+        title: newName,
+        parentId: targetParentId,
+      });
+    } else if (source.type === 'file') {
+      const targetGroupId =
+        targetParent.type === 'directory'
+          ? targetParent.id
+          : targetParent.type === 'project' || targetParent.rootFolderId === 'personal'
+            ? null
+            : null;
+
+      await updateRemoteItem({
+        config,
+        id: source.id,
+        title: newName,
+        groupId: targetGroupId,
+      });
+    } else {
+      const sourceParentPath = normalizedSource.split('/').slice(0, -1).join('/') || '/';
+      if (sourceParentPath !== targetParentPath) {
+        throw new Error('Moving media between content items is not supported');
+      }
+      await renameRemoteMedia({
+        config,
+        id: source.id,
+        name: newName,
+      });
+    }
+
+    this.clearCache(normalizedSource);
+    this.clearCache(targetParentPath);
   }
 
   async copyFile(
@@ -479,9 +832,9 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     for (const entry of entries) {
       const nextTargetPath = `${targetPath}/${entry.name}`;
       if (entry.kind === 'directory') {
-        await this.copyDirectoryRecursive(entry.path, nextTargetPath, depth + 1);
+        await this.copyDirectoryRecursive(entry.path, nextTargetPath, depth + 1, options);
       } else {
-        await this.copyFile(entry.path, nextTargetPath);
+        await this.copyFile(entry.path, nextTargetPath, options);
       }
     }
   }
@@ -500,31 +853,46 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
   ): Promise<{ size: number; lastModified: number; kind: 'file' | 'directory' } | null> {
     try {
       const entry = await this.getIdForPath(path);
-      if (!entry) return null;
+      const now = Date.now();
 
-      let size = 0;
-      let lastModified = Date.now();
-
-      if (entry.type === 'media' && entry.item) {
-        if (entry.mediaIndex === undefined || entry.mediaIndex === -1) {
-          size = ((entry.item as RemoteVfsFileEntry).text || '').length;
-        } else {
-          size = (entry.item as RemoteVfsFileEntry).media?.[entry.mediaIndex]?.size || 0;
+      if (entry.type === 'media') {
+        if (entry.mediaIndex === -1) {
+          return {
+            size: (entry.item?.text || '').length,
+            lastModified: entry.item?.updatedAt ? new Date(entry.item.updatedAt).getTime() : now,
+            kind: 'file',
+          };
         }
-        lastModified = entry.item.meta?.updatedAt
-          ? new Date(entry.item.meta.updatedAt as string).getTime()
-          : lastModified;
-      } else if (entry.item && entry.type === 'file') {
-        size = (entry.item as RemoteVfsFileEntry).media?.[0]?.size || 0;
-        lastModified = entry.item.meta?.updatedAt
-          ? new Date(entry.item.meta.updatedAt as string).getTime()
-          : lastModified;
+
+        return {
+          size: entry.media?.size ?? 0,
+          lastModified: entry.media?.updated ? new Date(entry.media.updated).getTime() : now,
+          kind: 'file',
+        };
+      }
+
+      if (entry.type === 'file') {
+        return {
+          size: entry.item?.media?.[0]?.size ?? 0,
+          lastModified: entry.item?.updatedAt ? new Date(entry.item.updatedAt).getTime() : now,
+          kind: 'directory',
+        };
+      }
+
+      if (entry.type === 'directory') {
+        return {
+          size: entry.collection?.itemsCount ?? 0,
+          lastModified: entry.collection?.updatedAt
+            ? new Date(entry.collection.updatedAt).getTime()
+            : now,
+          kind: 'directory',
+        };
       }
 
       return {
-        size,
-        lastModified,
-        kind: entry.type === 'directory' ? 'directory' : 'file',
+        size: 0,
+        lastModified: entry.project?.updatedAt ? new Date(entry.project.updatedAt).getTime() : now,
+        kind: 'directory',
       };
     } catch {
       return null;
@@ -532,31 +900,29 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
   }
 
   async getObjectUrl(path: string): Promise<string> {
-    const config = this.resolveConfig();
     const entry = await this.getIdForPath(path);
 
-    if (entry.type === 'media' && entry.item) {
-      if (entry.mediaIndex === -1) {
-        const textData = (entry.item as RemoteVfsFileEntry).text || '';
-        const blob = new Blob([textData], { type: 'text/plain' });
-        return URL.createObjectURL(blob);
-      }
-      return getRemoteFileDownloadUrl({
-        baseUrl: config.baseUrl,
-        entry: entry.item,
-        mediaIndex: entry.mediaIndex ?? 0,
-      });
+    if (entry.type !== 'media' || !entry.item) {
+      throw new Error(`Path is not a valid media file: ${path}`);
     }
 
-    throw new Error(`Path is not a valid media file: ${path}`);
+    if (entry.mediaIndex === -1) {
+      return URL.createObjectURL(new Blob([entry.item.text || ''], { type: 'text/plain' }));
+    }
+
+    return getRemoteFileDownloadUrl({
+      baseUrl: this.resolveConfig().baseUrl,
+      entry: entry.item,
+      media: entry.media,
+      mediaIndex: entry.mediaIndex ?? 0,
+      mediaId: entry.media?.id,
+    });
   }
 
   async getFile(path: string): Promise<File | null> {
-    const parts = path.split('/').filter(Boolean);
-    const name = parts.pop() || 'download';
-
+    const fileName = path.split('/').filter(Boolean).pop() || 'download';
     const blob = await this.readFile(path);
-    return new File([blob], name, { type: blob.type });
+    return new File([blob], fileName, { type: blob.type });
   }
 
   async readStream(path: string): Promise<ReadableStream<Uint8Array>> {
@@ -564,7 +930,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     return blob.stream();
   }
 
-  async writeStream(path: string): Promise<WritableStream<Uint8Array>> {
+  async writeStream(_path: string): Promise<WritableStream<Uint8Array>> {
     throw new Error('writeStream not supported on remote');
   }
 
