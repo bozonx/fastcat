@@ -116,4 +116,33 @@ describe('BloggerDogVfsAdapter', () => {
     );
     expect(blob.type).toBe('image/webp');
   });
+
+  it('rejects creating folders inside a content item', async () => {
+    const adapter = new BloggerDogVfsAdapter(() => ({
+      baseUrl: 'https://example.com/api',
+      bearerToken: 'token',
+    }));
+
+    const item: RemoteVfsFileEntry = {
+      id: 'item-1',
+      type: 'file',
+      name: 'Item',
+      title: 'Item',
+      path: '/personal/item-1',
+      scope: 'personal',
+    };
+
+    const cache = (adapter as unknown as { idCache: Map<string, unknown> }).idCache;
+    cache.set('/personal/item-1', {
+      id: item.id,
+      type: 'file',
+      path: '/personal/item-1',
+      scope: 'personal',
+      item,
+    });
+
+    await expect(adapter.createDirectory('/personal/item-1/New Folder')).rejects.toThrow(
+      'Creating folders inside content items is not supported',
+    );
+  });
 });

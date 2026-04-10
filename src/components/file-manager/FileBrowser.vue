@@ -335,6 +335,7 @@ const remote = useFileBrowserRemote({
   onRootDragOver: onRootDragOverBase,
   onRootDragLeave: onRootDragLeaveBase,
   onRootDrop: onRootDropBase,
+  fileManagerInstanceId: instanceId,
   handleFiles,
   vfs,
 });
