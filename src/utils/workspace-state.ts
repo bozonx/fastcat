@@ -3,6 +3,7 @@ import type { CustomPreset } from './settings/presets';
 export interface WorkspaceState {
   presets: {
     custom: CustomPreset[];
+    defaultTextPresetId: string;
   };
   ui: {
     recentSearchQueries: string[];
@@ -14,6 +15,7 @@ export function createDefaultWorkspaceState(): WorkspaceState {
   return {
     presets: {
       custom: [],
+      defaultTextPresetId: '',
     },
     ui: {
       recentSearchQueries: [],
@@ -32,6 +34,9 @@ export function normalizeWorkspaceState(data: any): WorkspaceState {
   return {
     presets: {
       custom: Array.isArray(data.presets?.custom) ? data.presets.custom : defaults.presets.custom,
+      defaultTextPresetId: typeof data.presets?.defaultTextPresetId === 'string'
+        ? data.presets.defaultTextPresetId
+        : defaults.presets.defaultTextPresetId,
     },
     ui: {
       recentSearchQueries: Array.isArray(data.ui?.recentSearchQueries)
