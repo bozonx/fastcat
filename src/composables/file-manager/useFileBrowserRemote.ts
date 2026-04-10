@@ -97,6 +97,7 @@ export function useFileBrowserRemote({
   const workspaceStore = useWorkspaceStore();
   const uiStore = useUiStore();
   const runtimeConfig = useRuntimeConfig();
+  const toast = useToast();
   const { t } = useI18n();
   const { setDraggedFile } = useDraggedFile();
   const appClipboard = useAppClipboard();
@@ -412,7 +413,10 @@ export function useFileBrowserRemote({
       );
     }
 
-    const sourceVfs = appClipboard.dragSourceVfs ?? rootVfs;
+    const sourceVfs =
+      appClipboard.dragSourceVfs ??
+      appClipboard.getFileManagerVfs(appClipboard.dragSourceFileManagerInstanceId) ??
+      rootVfs;
     const operation = resolveRemoteDropOperation(params.event);
 
     for (const item of items as Array<{ path: string }>) {
@@ -532,21 +536,30 @@ export function useFileBrowserRemote({
     e.preventDefault();
     e.stopPropagation();
 
-    const handledInternalDrop = await handleProjectToRemoteDrop({
-      event: e,
-      targetEntry: entry,
-    });
-    appClipboard.setDragTargetFileManagerInstanceId(null);
-    if (handledInternalDrop) {
-      return;
+    try {
+      const handledInternalDrop = await handleProjectToRemoteDrop({
+        event: e,
+        targetEntry: entry,
+      });
+      if (handledInternalDrop) {
+        return;
+      }
+
+      const files = e.dataTransfer?.files;
+      if (!files || files.length === 0) return;
+
+      await handleFiles(files, { targetDirPath: entry.path });
+      uiStore.notifyFileManagerUpdate();
+      await loadFolderContent();
+    } catch (error) {
+      toast.add({
+        color: 'error',
+        title: t('videoEditor.fileManager.errors.uploadFailedTitle', 'Upload failed'),
+        description: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      appClipboard.setDragTargetFileManagerInstanceId(null);
     }
-
-    const files = e.dataTransfer?.files;
-    if (!files || files.length === 0) return;
-
-    await handleFiles(files, { targetDirPath: entry.path });
-    uiStore.notifyFileManagerUpdate();
-    await loadFolderContent();
   }
 
   function onBrowserRootDragEnter(e: DragEvent) {
@@ -593,21 +606,30 @@ export function useFileBrowserRemote({
     e.preventDefault();
     e.stopPropagation();
 
-    const handledInternalDrop = await handleProjectToRemoteDrop({
-      event: e,
-      targetEntry: target,
-    });
-    appClipboard.setDragTargetFileManagerInstanceId(null);
-    if (handledInternalDrop) {
-      return;
+    try {
+      const handledInternalDrop = await handleProjectToRemoteDrop({
+        event: e,
+        targetEntry: target,
+      });
+      if (handledInternalDrop) {
+        return;
+      }
+
+      const files = e.dataTransfer?.files;
+      if (!files || files.length === 0) return;
+
+      await handleFiles(files, { targetDirPath: target.path });
+      uiStore.notifyFileManagerUpdate();
+      await loadFolderContent();
+    } catch (error) {
+      toast.add({
+        color: 'error',
+        title: t('videoEditor.fileManager.errors.uploadFailedTitle', 'Upload failed'),
+        description: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      appClipboard.setDragTargetFileManagerInstanceId(null);
     }
-
-    const files = e.dataTransfer?.files;
-    if (!files || files.length === 0) return;
-
-    await handleFiles(files, { targetDirPath: target.path });
-    uiStore.notifyFileManagerUpdate();
-    await loadFolderContent();
   }
 
   watch(

@@ -6,6 +6,7 @@ import {
   deleteRemoteCollection,
   deleteRemoteItem,
   deleteRemoteMedia,
+  fetchRemoteItem,
   fetchRemoteCollections,
   fetchRemoteItems,
   fetchRemoteProjects,
@@ -608,7 +609,24 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     }
 
     if (cached.type === 'file' && cached.item) {
-      return this.listContentItemMedia(normalizedPath, cached.item);
+      const freshItem = await fetchRemoteItem({
+        config: this.resolveConfig(),
+        id: cached.id,
+      });
+
+      const refreshedItem: RemoteVfsFileEntry = {
+        ...freshItem,
+        path: normalizedPath,
+        scope: cached.scope || freshItem.scope,
+        projectId: cached.projectId || freshItem.projectId,
+      };
+
+      this.idCache.set(normalizedPath, {
+        ...cached,
+        item: refreshedItem,
+      });
+
+      return this.listContentItemMedia(normalizedPath, refreshedItem);
     }
 
     throw new Error(`Unsupported remote directory: ${normalizedPath}`);

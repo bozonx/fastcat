@@ -1,14 +1,19 @@
 // @vitest-environment node
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RemoteVfsFileEntry } from '~/types/remote-vfs';
 import {
   createRemoteMediaFsEntry,
   getRemoteFileDownloadUrl,
   isRemoteFsEntry,
   toRemoteFsEntry,
+  uploadFileToRemote,
 } from '~/utils/remote-vfs';
 
 describe('remote-vfs utils', () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('converts remote file entry to FsEntry-compatible remote entry', () => {
     const remoteFile: RemoteVfsFileEntry = {
       id: 'file-1',
@@ -64,7 +69,9 @@ describe('remote-vfs utils', () => {
         baseUrl: 'https://fastcat.example.com/api/v1/external/content-library',
         entry: remoteFile,
       }),
-    ).toBe('https://fastcat.example.com/api/v1/external/content-library/media/media-1/file');
+    ).toBe(
+      'https://fastcat.example.com/api/v1/external/content-library/media/media-1/file?download=1',
+    );
   });
 
   it('returns original absolute media url unchanged', () => {
@@ -134,5 +141,60 @@ describe('remote-vfs utils', () => {
     const payload = mediaEntry.adapterPayload;
     expect((payload.remoteData as RemoteVfsFileEntry).media).toHaveLength(1);
     expect((payload.remoteData as RemoteVfsFileEntry).media?.[0]?.id).toBe('media-2');
+  });
+
+  it('sends x-file-size header on upload', async () => {
+    class MockXhr {
+      method = '';
+      url = '';
+      headers: Record<string, string> = {};
+      responseText = '';
+      status = 200;
+      readyState = 0;
+      upload = {
+        onprogress: null as ((event: ProgressEvent<EventTarget>) => void) | null,
+      };
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      onabort: (() => void) | null = null;
+
+      open(method: string, url: string) {
+        this.method = method;
+        this.url = url;
+      }
+
+      setRequestHeader(name: string, value: string) {
+        this.headers[name] = value;
+      }
+
+      send() {
+        this.onload?.();
+      }
+    }
+
+    const xhrInstances: MockXhr[] = [];
+    class MockXhrCtor extends MockXhr {
+      constructor() {
+        super();
+        xhrInstances.push(this);
+      }
+    }
+
+    vi.stubGlobal('XMLHttpRequest', MockXhrCtor);
+
+    const file = new File(['12345'], 'voice.mp3', { type: 'audio/mpeg' });
+
+    await uploadFileToRemote({
+      config: {
+        baseUrl: 'https://fastcat.example.com/api/v1/external/content-library',
+        bearerToken: 'token',
+      },
+      file,
+      scope: 'personal',
+    });
+
+    expect(xhrInstances).toHaveLength(1);
+    expect(xhrInstances[0]?.headers.Authorization).toBe('Bearer token');
+    expect(xhrInstances[0]?.headers['x-file-size']).toBe(String(file.size));
   });
 });

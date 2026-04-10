@@ -163,7 +163,7 @@ const { t } = useI18n();
 
   <UiEntityCreationModal
     :open="props.isFolderModalOpen"
-    :title="t('fastcat.fileManager.actions.createFolder', 'Создать папку')"
+    :title="t('videoEditor.fileManager.actions.createFolder', 'Create folder')"
     :default-value="props.folderDefaultName"
     @update:open="emit('update:isFolderModalOpen', $event)"
     @confirm="emit('folderConfirm', $event)"
@@ -171,14 +171,14 @@ const { t } = useI18n();
 
   <UiEntityCreationModal
     :open="props.isSubgroupModalOpen"
-    :title="t('fastcat.bloggerDog.actions.createSubgroup', 'Создать подгруппу')"
+    :title="t('fastcat.bloggerDog.actions.createSubgroup', 'Create subgroup')"
     @update:open="emit('update:isSubgroupModalOpen', $event)"
     @confirm="emit('subgroupConfirm', $event)"
   />
 
   <UiEntityCreationModal
     :open="props.isItemModalOpen"
-    :title="t('fastcat.bloggerDog.actions.createItem', 'Создать элемент контента')"
+    :title="t('fastcat.bloggerDog.actions.createItem', 'Create content item')"
     @update:open="emit('update:isItemModalOpen', $event)"
     @confirm="emit('itemConfirm', $event)"
   />

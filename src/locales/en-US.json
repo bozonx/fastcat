@@ -212,7 +212,9 @@
       "projectLibraries": "Project Libraries",
       "projectLibrariesDesc": "Content libraries for specific projects",
       "actions": {
-        "createGroup": "Create group"
+        "createGroup": "Create group",
+        "createSubgroup": "Create subgroup",
+        "createItem": "Create content item"
       }
     },
     "file": {

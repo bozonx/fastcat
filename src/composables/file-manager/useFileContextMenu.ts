@@ -153,7 +153,7 @@ export function useFileContextMenu(
       const bdActions: ContextMenuItem[] = [];
       if (isBdProject || isBdGroup || (isBdVirtual && entry.remoteId !== 'projects')) {
         bdActions.push({
-          label: t('fastcat.bloggerDog.actions.createSubgroup', 'Создать подгруппу'),
+          label: t('fastcat.bloggerDog.actions.createSubgroup', 'Create subgroup'),
           icon: 'i-heroicons-folder-plus',
           onSelect: () => onAction('createSubgroup', entry),
         });
@@ -161,7 +161,7 @@ export function useFileContextMenu(
 
       if (isBdProject || isBdGroup || (isBdVirtual && entry.remoteId !== 'projects')) {
         bdActions.push({
-          label: t('fastcat.bloggerDog.actions.createItem', 'Создать элемент контента'),
+          label: t('fastcat.bloggerDog.actions.createItem', 'Create content item'),
           icon: 'i-heroicons-document-plus',
           onSelect: () => onAction('createContentItem', entry),
         });
