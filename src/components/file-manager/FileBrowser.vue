@@ -552,7 +552,13 @@ async function onItemCreateConfirm(name: string) {
       groupId,
     });
 
+    // Navigate into the newly created item
+    const newPath = `${parentPath === '/' ? '' : parentPath}/${name}`;
+    const newEntry = remote.buildRemoteDirectoryEntry(newPath);
+    remoteCurrentFolder.value = newEntry;
+
     await loadFolderContent();
+    await loadParentFolders();
     uiStore.notifyFileManagerUpdate();
   } catch (error) {
     const toast = useToast();
