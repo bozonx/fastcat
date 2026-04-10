@@ -1,3 +1,13 @@
+export interface CustomPreset {
+  id: string; // Used as the type in registry
+  baseType: string;
+  name: string;
+  category: 'effect' | 'transition' | 'shape' | 'hud' | 'text';
+  effectTarget?: 'video' | 'audio';
+  params: Record<string, any>;
+  order: number;
+}
+
 export interface ProjectSettingsPreset {
   id: string;
   name: string;

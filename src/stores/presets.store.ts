@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
+import { useWorkspaceStore } from './workspace.store';
 import { getVideoEffectManifest, getAudioEffectManifest, registerEffect } from '~/effects';
 import { getTransitionManifest, registerTransition } from '~/transitions';
 import {
@@ -19,6 +20,7 @@ export interface CustomPreset {
 }
 
 export const usePresetsStore = defineStore('presets', () => {
+  const workspaceStore = useWorkspaceStore();
   const customPresets = ref<CustomPreset[]>([]);
 
   const defaultTextPresetId = ref<string>('');
@@ -38,7 +40,18 @@ export const usePresetsStore = defineStore('presets', () => {
 
   // Load from localStorage
   function load() {
-    customPresets.value = readLocalStorageJson(STORAGE_KEYS.PRESETS.CUSTOM, []);
+    // 1. Try localStorage (legacy/fallback)
+    const localCustom = readLocalStorageJson<CustomPreset[]>(STORAGE_KEYS.PRESETS.CUSTOM, []);
+
+    // 2. Check workspace state (priority)
+    const workspaceCustom = workspaceStore.workspaceState.presets.custom;
+
+    if (workspaceCustom.length > 0) {
+      customPresets.value = [...workspaceCustom];
+    } else {
+      customPresets.value = localCustom;
+    }
+
     defaultTextPresetId.value = readLocalStorageJson(STORAGE_KEYS.PRESETS.DEFAULT_TEXT, '');
 
     const state = readLocalStorageJson<any>(STORAGE_KEYS.PRESETS.COLLAPSED, null);
@@ -64,6 +77,13 @@ export const usePresetsStore = defineStore('presets', () => {
   // Save to localStorage
   function savePresets() {
     writeLocalStorageJson(STORAGE_KEYS.PRESETS.CUSTOM, customPresets.value);
+
+    // Also sync to workspace state
+    if (workspaceStore.workspaceHandle) {
+      void workspaceStore.batchUpdateWorkspaceState((draft) => {
+        draft.presets.custom = JSON.parse(JSON.stringify(customPresets.value));
+      });
+    }
   }
 
   watch(defaultTextPresetId, (val) => {
@@ -101,6 +121,21 @@ export const usePresetsStore = defineStore('presets', () => {
         textsCustomCollapsed: textsCustomCollapsed.value,
       });
     },
+  );
+
+  // Sync from workspace state when it loads
+  watch(
+    () => workspaceStore.workspaceState.presets.custom,
+    (newPresets) => {
+      if (newPresets && newPresets.length > 0) {
+        // Simple comparison to avoid loops or redundant updates
+        if (JSON.stringify(newPresets) !== JSON.stringify(customPresets.value)) {
+          customPresets.value = [...newPresets];
+          customPresets.value.forEach((preset) => registerPresetManifest(preset));
+        }
+      }
+    },
+    { deep: true },
   );
 
   function registerPresetManifest(preset: CustomPreset) {

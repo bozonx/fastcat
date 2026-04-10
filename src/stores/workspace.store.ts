@@ -10,6 +10,7 @@ import { createWorkspaceSettingsModule } from '~/stores/workspace/workspaceSetti
 import { createWorkspaceProjectsModule } from '~/stores/workspace/workspaceProjects';
 import { createWorkspaceInitModule } from '~/stores/workspace/workspaceInit';
 import { createWorkspaceProvider } from '~/stores/workspace/provider';
+import { createWorkspaceStateModule } from '~/stores/workspace/workspaceState';
 
 import { useProjectStore } from './project.store';
 import { useProxyStore } from './proxy.store';
@@ -76,6 +77,17 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     flushSettingsSaves,
     resetSettingsState,
   } = settingsModule;
+
+  const stateModule = createWorkspaceStateModule({ settingsRepo });
+  const {
+    workspaceState,
+    isSavingWorkspaceState,
+    workspaceStateSaveError,
+    batchUpdateWorkspaceState,
+    loadWorkspaceStateFromDisk,
+    saveWorkspaceStateToDisk,
+    resetWorkspaceState,
+  } = stateModule;
 
   const isSttModelDownloaded = ref(false);
 
@@ -161,6 +173,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       workspaceTopology.projectsDirName,
       workspaceTopology.commonDirName,
       workspaceTopology.tempRootDirName,
+      workspaceTopology.configDirName,
     ];
     for (const folder of folders) {
       if (folder === workspaceTopology.projectsDirName) {
@@ -182,8 +195,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     await loadProjects();
     await loadAppSettingsFromDisk();
     await loadUserSettingsFromDisk();
+    await loadWorkspaceStateFromDisk();
     await saveAppSettingsToDisk();
     await saveUserSettingsToDisk();
+    await saveWorkspaceStateToDisk();
   }
 
   const workspaceInitModule = createWorkspaceInitModule({
@@ -215,6 +230,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     error.value = null;
 
     resetSettingsState();
+    resetWorkspaceState();
 
     workspaceProvider.clearWorkspace().catch(console.warn);
 
@@ -288,15 +304,19 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     appSettings: skipHydrate(appSettings),
     resolvedStorageTopology: skipHydrate(resolvedStorageTopology),
     workspaceSettings: skipHydrate(workspaceSettings),
+    workspaceState: skipHydrate(workspaceState),
     isSavingUserSettings,
     userSettingsSaveError,
     isSavingAppSettings,
     appSettingsSaveError,
     isSavingWorkspaceSettings,
     workspaceSettingsSaveError,
+    isSavingWorkspaceState,
+    workspaceStateSaveError,
     batchUpdateUserSettings,
     batchUpdateAppSettings,
     batchUpdateWorkspaceSettings,
+    batchUpdateWorkspaceState,
     flushSettingsSaves,
     init,
     openWorkspace,
