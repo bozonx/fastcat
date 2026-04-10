@@ -585,7 +585,9 @@ const otherActions = computed(() => {
 </script>
 
 <template>
+  <!-- IMPORTANT: NO LOADING INDICATORS ALLOWED HERE. ALL PROPERTIES MUST LOAD SILENTLY. -->
   <div class="flex flex-col gap-2 w-full text-ui-text">
+
     <PropertySection :title="t('fastcat.clip.actions', 'Actions')">
       <div class="flex flex-col w-full px-3 pb-3">
         <span class="text-sm text-ui-text-muted mb-2">
