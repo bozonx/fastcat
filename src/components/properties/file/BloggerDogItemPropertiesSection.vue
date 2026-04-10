@@ -4,9 +4,7 @@ import type { RemoteVfsFileEntry } from '~/types/remote-vfs';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import ExpandableYamlSection from '~/components/properties/file/ExpandableYamlSection.vue';
-import TextEditor from '~/components/preview/TextEditor.vue';
 import { formatDurationSeconds } from '~/utils/format';
-import { getRemoteEntryDisplayName } from '~/utils/remote-vfs';
 import yaml from 'js-yaml';
 
 const props = defineProps<{
@@ -24,12 +22,6 @@ const duration = computed(() => {
     return formatDurationSeconds(dur);
   }
   return null;
-});
-
-const textFileName = computed(() => `${getRemoteEntryDisplayName(props.item)}.txt`);
-const textFilePath = computed(() => {
-  if (!props.item.path) return null;
-  return `${props.item.path}/${textFileName.value}`;
 });
 
 const isMetaExpanded = ref(false);
@@ -86,16 +78,6 @@ async function copyToClipboard(text: string) {
           </span>
         </div>
       </PropertyRow>
-
-      <div v-if="textFilePath" class="mt-4 flex flex-col gap-2">
-        <div class="text-2xs text-ui-text-muted">
-          <span>{{ t('common.text', 'Text') }}</span>
-        </div>
-        <div class="h-72 overflow-hidden rounded border border-white/10 bg-ui-bg-elevated">
-          <TextEditor :file-path="textFilePath" :file-name="textFileName" />
-        </div>
-      </div>
-
       <div
         v-if="props.item.note"
         class="mt-2 flex flex-col gap-1.5 px-2 -mx-2 py-2 rounded bg-white/5 border border-white/10"

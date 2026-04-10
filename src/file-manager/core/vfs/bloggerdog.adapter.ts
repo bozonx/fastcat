@@ -111,7 +111,8 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
   }
 
   private createVirtualRootEntry(id: RootFolderId, name: string): VfsEntry {
-    const path = id === 'virtual-all' ? '/virtual-all' : id === 'personal' ? '/personal' : '/projects';
+    const path =
+      id === 'virtual-all' ? '/virtual-all' : id === 'personal' ? '/personal' : '/projects';
     const cachedNode: CachedNode = {
       id,
       type: 'virtual-folder',
@@ -540,14 +541,18 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
         ),
         this.createVirtualRootEntry(
           'personal',
-          this.t ? this.t('fastcat.bloggerDog.personalLibrary', 'Личная библиотека') : 'Личная библиотека',
+          this.t
+            ? this.t('fastcat.bloggerDog.personalLibrary', 'Личная библиотека')
+            : 'Личная библиотека',
         ),
       ];
     }
 
     if (normalizedPath === '/projects') {
       const projects = await fetchRemoteProjects({ config: this.resolveConfig() });
-      const listed = projects.map((project) => this.toComparableEntry(this.createProjectEntry(project)));
+      const listed = projects.map((project) =>
+        this.toComparableEntry(this.createProjectEntry(project)),
+      );
       const sorted = this.sortEntries(listed, options?.sortBy, options?.sortOrder);
       const paged = this.paginateEntries(sorted, options?.limit, options?.offset) as VfsEntry[] & {
         total?: number;
@@ -613,10 +618,14 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       throw new Error('Invalid directory name');
     }
 
-    const parentPath = `/${parts.join('/')}` || '/';
+    const parentPath = parts.length > 0 ? `/${parts.join('/')}` : '/';
     const parent = await this.getIdForPath(parentPath);
 
-    if (parent.path === '/' || parent.rootFolderId === 'projects' || parent.rootFolderId === 'virtual-all') {
+    if (
+      parent.path === '/' ||
+      parent.rootFolderId === 'projects' ||
+      parent.rootFolderId === 'virtual-all'
+    ) {
       throw new Error(`Cannot create collection in ${parentPath}`);
     }
 
@@ -709,10 +718,14 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       throw new Error('Invalid file name');
     }
 
-    const parentPath = `/${parts.join('/')}` || '/';
+    const parentPath = parts.length > 0 ? `/${parts.join('/')}` : '/';
     const parent = await this.getIdForPath(parentPath);
 
-    if (parent.path === '/' || parent.rootFolderId === 'projects' || parent.rootFolderId === 'virtual-all') {
+    if (
+      parent.path === '/' ||
+      parent.rootFolderId === 'projects' ||
+      parent.rootFolderId === 'virtual-all'
+    ) {
       throw new Error(`Cannot upload into ${parentPath}`);
     }
 
@@ -750,9 +763,15 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       await deleteRemoteCollection({ config, id: entry.id });
     } else if (entry.type === 'media') {
       if (entry.mediaIndex === -1) {
-        throw new Error('Deleting text body separately is not supported');
+        await updateRemoteItem({
+          config,
+          id: entry.item.id,
+          text: '',
+        });
+        entry.item.text = '';
+      } else {
+        await deleteRemoteMedia({ config, id: entry.id });
       }
-      await deleteRemoteMedia({ config, id: entry.id });
     } else {
       await deleteRemoteItem({ config, id: entry.id });
     }
@@ -779,10 +798,14 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       throw new Error('Invalid target name');
     }
 
-    const targetParentPath = `/${targetParts.join('/')}` || '/';
+    const targetParentPath = targetParts.length > 0 ? `/${targetParts.join('/')}` : '/';
     const targetParent = await this.getIdForPath(targetParentPath);
 
-    if (targetParent.path === '/' || targetParent.rootFolderId === 'projects' || targetParent.rootFolderId === 'virtual-all') {
+    if (
+      targetParent.path === '/' ||
+      targetParent.rootFolderId === 'projects' ||
+      targetParent.rootFolderId === 'virtual-all'
+    ) {
       throw new Error(`Cannot move into ${targetParentPath}`);
     }
 

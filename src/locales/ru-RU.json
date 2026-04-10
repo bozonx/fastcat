@@ -210,7 +210,10 @@
       "personalLibrary": "Личная библиотека",
       "personalLibraryDesc": "Библиотека вашего личного контента",
       "projectLibraries": "Библиотеки проектов",
-      "projectLibrariesDesc": "Библиотеки контента конкретных проектов"
+      "projectLibrariesDesc": "Библиотеки контента конкретных проектов",
+      "actions": {
+        "createGroup": "Создать группу"
+      }
     },
     "file": {
       "bloggerDogProject": "Проект",
