@@ -53,6 +53,7 @@ export interface FetchRemoteCollectionsParams {
   scope: RemoteVfsScope;
   projectId?: string;
   parentId?: string;
+  orphansOnly?: boolean;
   includeChildrenCount?: boolean;
   signal?: AbortSignal;
 }
@@ -376,6 +377,9 @@ export async function fetchRemoteCollections(
   if (params.parentId) {
     url.searchParams.set('parentId', params.parentId);
   }
+  if (params.orphansOnly !== undefined) {
+    url.searchParams.set('orphansOnly', params.orphansOnly ? 'true' : 'false');
+  }
   if (params.includeChildrenCount) {
     url.searchParams.set('includeChildrenCount', 'true');
   }
@@ -406,8 +410,8 @@ export async function fetchRemoteItems(
   if (params.groupId) {
     url.searchParams.set('groupId', params.groupId);
   }
-  if (params.orphansOnly) {
-    url.searchParams.set('orphansOnly', 'true');
+  if (params.orphansOnly !== undefined) {
+    url.searchParams.set('orphansOnly', params.orphansOnly ? 'true' : 'false');
   }
   if (params.limit !== undefined) {
     url.searchParams.set('limit', String(params.limit));

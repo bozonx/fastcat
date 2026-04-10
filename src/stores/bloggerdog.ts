@@ -81,6 +81,7 @@ export const useBloggerDogStore = defineStore('bloggerDog', () => {
           scope,
           projectId: params.projectId,
           parentId: params.groupId,
+          orphansOnly: params.orphansOnly,
           includeChildrenCount: true,
         }),
         fetchRemoteItems({

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, inject } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
@@ -10,7 +10,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useFocusStore } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
-import { useFileManagerStore } from '~/stores/file-manager.store';
+import { useFileManagerStore, type FileManagerStore } from '~/stores/file-manager.store';
 import { BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS } from '~/utils/constants';
 import type {
   AudioClipEffect,
@@ -56,7 +56,7 @@ const fileManager = useFileManager();
 const uiStore = useUiStore();
 const workspaceStore = useWorkspaceStore();
 const focusStore = useFocusStore();
-const fileManagerStore = useFileManagerStore();
+const fileManagerStore = inject('fileManagerStore', useFileManagerStore()) as FileManagerStore;
 const clipboardStore = useAppClipboard();
 
 const { isMobile } = useDevice();

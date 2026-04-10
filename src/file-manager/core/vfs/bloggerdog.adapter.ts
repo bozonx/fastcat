@@ -345,6 +345,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
         scope: params.scope,
         projectId: params.projectId,
         parentId: params.groupId,
+        orphansOnly: !params.groupId,
         includeChildrenCount: true,
       }),
       fetchRemoteItems({
@@ -353,6 +354,10 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
         projectId: params.projectId,
         groupId: params.groupId,
         orphansOnly: !params.groupId,
+        sortBy: params.sortBy,
+        sortOrder: params.sortOrder,
+        limit: params.limit,
+        offset: params.offset,
       }),
     ]);
 
