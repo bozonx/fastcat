@@ -94,6 +94,9 @@ describe('useSelectionStore', () => {
       path: '/test.mp4',
       name: 'test.mp4',
       entry,
+      instanceId: undefined,
+      isExternal: undefined,
+      origin: 'project-manager',
     });
   });
 
@@ -108,6 +111,9 @@ describe('useSelectionStore', () => {
       source: 'fileManager',
       kind: 'multiple',
       entries,
+      instanceId: undefined,
+      isExternal: undefined,
+      origin: 'project-manager',
     });
   });
 

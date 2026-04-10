@@ -70,7 +70,6 @@ export function useSttTranscription(
       (mediaType === 'audio' || mediaType === 'video') &&
       isModelReady.value &&
       Boolean(workspaceStore.workspaceHandle) &&
-      Boolean(projectStore.currentProjectId) &&
       Boolean(entry.path)
     );
   }
@@ -91,8 +90,7 @@ export function useSttTranscription(
     if (
       !entry ||
       entry.kind !== 'file' ||
-      !workspaceStore.workspaceHandle ||
-      !projectStore.currentProjectId
+      !workspaceStore.workspaceHandle
     ) {
       return;
     }
@@ -103,12 +101,7 @@ export function useSttTranscription(
     try {
       const mediaType = getMediaTypeFromFilename(entry.name);
 
-      const workspacePath =
-        entry.path.startsWith('/') ||
-        entry.path.startsWith('projects/') ||
-        !projectStore.currentProjectName
-          ? entry.path
-          : `projects/${projectStore.currentProjectName}/${entry.path}`;
+      const workspacePath = entry.path;
 
       // Check if already transcribed (optional logic, but fixes 'cached' parameter mismatch)
       const existing = await loadTranscriptionSidecar(workspaceStore.workspaceHandle!, workspacePath);

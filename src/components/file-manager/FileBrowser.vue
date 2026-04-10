@@ -192,23 +192,10 @@ function scrollToEntryPath(path: string): boolean {
 // --- setSelectedFsEntry (shared between remote & navigation) ---
 function setSelectedFsEntry(entry: FsEntry | null) {
   if (!entry) {
-    uiStore.selectedFsEntry = null;
     selectionStore.clearSelection();
     return;
   }
-  uiStore.selectedFsEntry = {
-    kind: entry.kind,
-    name: entry.name,
-    path: entry.path,
-    parentPath: entry.parentPath,
-    lastModified: entry.lastModified,
-    size: entry.size,
-    source: entry.source ?? 'local',
-    remoteId: entry.remoteId,
-    remotePath: entry.remotePath,
-    adapterPayload: entry.adapterPayload,
-  };
-  selectionStore.selectFsEntry(entry, instanceId, isExternal.value);
+  selectionStore.selectFsEntryWithUiUpdate(entry, instanceId, isExternal.value);
 }
 
 // --- Remote ---

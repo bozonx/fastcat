@@ -87,29 +87,49 @@ export function createProjectFsModule(params: {
       }
     }
 
-    if (!params.projectsHandle.value || !params.currentProjectName.value) return null;
+    if (params.projectsHandle.value && params.currentProjectName.value) {
+      const parts = normalizedPath.split('/').filter(Boolean);
+      const fileName = parts.pop();
+      if (fileName) {
+        try {
+          const projectDir = await params.projectsHandle.value.getDirectoryHandle(
+            params.currentProjectName.value,
+          );
+          let currentDir = projectDir;
+          for (const dirName of parts) {
+            currentDir = await currentDir.getDirectoryHandle(dirName, {
+              create: input.create ?? false,
+            });
+          }
 
+          return await currentDir.getFileHandle(fileName, {
+            create: input.create ?? false,
+          });
+        } catch {
+          // Fallback to workspace root
+        }
+      }
+    }
+
+    // Fallback: try to resolve from workspace root
+    if (!params.workspaceHandle.value) return null;
     const parts = normalizedPath.split('/').filter(Boolean);
     const fileName = parts.pop();
     if (!fileName) return null;
 
     try {
-      const projectDir = await params.projectsHandle.value.getDirectoryHandle(
-        params.currentProjectName.value,
-      );
-      let currentDir = projectDir;
+      let currentDir = params.workspaceHandle.value;
       for (const dirName of parts) {
         currentDir = await currentDir.getDirectoryHandle(dirName, {
           create: input.create ?? false,
         });
       }
-
       return await currentDir.getFileHandle(fileName, {
         create: input.create ?? false,
       });
     } catch (e: unknown) {
       if ((e as { name?: unknown }).name !== 'NotFoundError') {
-        console.error('Failed to get project file handle by path:', input.relativePath, e);
+        console.error('Failed to get workspace file handle by path:', input.relativePath, e);
       }
       return null;
     }
@@ -169,21 +189,36 @@ export function createProjectFsModule(params: {
       }
     }
 
-    const projectDir = await getProjectDirHandle();
-    if (!projectDir) return null;
+    if (params.projectsHandle.value && params.currentProjectName.value) {
+      try {
+        const projectDir = await params.projectsHandle.value.getDirectoryHandle(
+          params.currentProjectName.value,
+        );
+        let currentDir = projectDir;
+        for (const dirName of normalizedPath.split('/').filter(Boolean)) {
+          currentDir = await currentDir.getDirectoryHandle(dirName, {
+            create: options?.create ?? false,
+          });
+        }
+        return currentDir;
+      } catch {
+        // Fallback to workspace root
+      }
+    }
 
+    // Fallback: try to resolve from workspace root
+    if (!params.workspaceHandle.value) return null;
     try {
-      let currentDir = projectDir;
+      let currentDir = params.workspaceHandle.value;
       for (const dirName of normalizedPath.split('/').filter(Boolean)) {
         currentDir = await currentDir.getDirectoryHandle(dirName, {
           create: options?.create ?? false,
         });
       }
-
       return currentDir;
     } catch (e: unknown) {
       if ((e as { name?: unknown }).name !== 'NotFoundError') {
-        console.error('Failed to get project directory handle by path:', path, e);
+        console.error('Failed to get workspace directory handle by path:', path, e);
       }
       return null;
     }

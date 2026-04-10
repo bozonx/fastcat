@@ -34,7 +34,7 @@ export function useAudioExtraction() {
           getWorkspaceHandle: () => workspaceStore.workspaceHandle,
           getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
           getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
-          getFileByPath: async (path) => projectStore.getFileByPath(path),
+          getFileByPath: async (path) => fileManager.vfs.getFile(path),
           onExportProgress: () => {}, // Not used for extraction yet
         }),
       );

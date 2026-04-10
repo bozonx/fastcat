@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import type { FsEntry } from '~/types/fs';
+import { useUiStore } from './ui.store';
 
 export type SelectionSource = 'timeline' | 'fileManager' | 'project';
 export type FileManagerSelectionOrigin =
@@ -208,6 +209,24 @@ export const useSelectionStore = defineStore('selection', () => {
     };
   }
 
+  function selectFsEntryWithUiUpdate(entry: FsEntry, instanceId?: string, isExternal?: boolean) {
+    const uiStore = useUiStore();
+    selectFsEntry(entry, instanceId, isExternal);
+
+    uiStore.selectedFsEntry = {
+      kind: entry.kind,
+      name: entry.name,
+      path: entry.path,
+      parentPath: entry.parentPath,
+      lastModified: entry.lastModified,
+      size: entry.size,
+      source: entry.source ?? 'local',
+      remoteId: entry.remoteId,
+      remotePath: entry.remotePath,
+      adapterPayload: entry.adapterPayload,
+    };
+  }
+
   function selectFsEntries(entries: FsEntry[], instanceId?: string, isExternal?: boolean) {
     if (entries.length === 0) {
       clearSelection();
@@ -225,6 +244,28 @@ export const useSelectionStore = defineStore('selection', () => {
       isExternal,
       origin: resolveFileManagerOrigin(entries[0]!, instanceId, isExternal),
     };
+  }
+
+  function selectFsEntriesWithUiUpdate(
+    entries: FsEntry[],
+    instanceId?: string,
+    isExternal?: boolean,
+  ) {
+    const uiStore = useUiStore();
+    selectFsEntries(entries, instanceId, isExternal);
+
+    if (entries.length === 1 && entries[0]) {
+      uiStore.selectedFsEntry = {
+        kind: entries[0].kind,
+        name: entries[0].name,
+        path: entries[0].path,
+        source: entries[0].source as 'local' | 'remote',
+      };
+    } else {
+      // For multiple entries, we usually clear the single entry selection in uiStore
+      // or set it to null if that's what the UI expects for "multiple select" properties.
+      uiStore.selectedFsEntry = null;
+    }
   }
 
   function selectTimelineProperties() {
@@ -266,6 +307,8 @@ export const useSelectionStore = defineStore('selection', () => {
 
   function clearSelection() {
     selectedEntity.value = null;
+    const uiStore = useUiStore();
+    uiStore.selectedFsEntry = null;
   }
 
   function isTrackVisuallySelected(trackId: string) {
@@ -291,7 +334,9 @@ export const useSelectionStore = defineStore('selection', () => {
     selectTimelineMarker,
     selectTimelineSelectionRange,
     selectFsEntry,
+    selectFsEntryWithUiUpdate,
     selectFsEntries,
+    selectFsEntriesWithUiUpdate,
     selectTimelineProperties,
     selectProjectEffect,
     selectProjectTransition,

@@ -48,6 +48,8 @@
   width: 100%;
 }
 
+.splitpanes--dragging .splitpanes__pane,
+.splitpanes--resizing .splitpanes__pane,
 .splitpanes--resizing video,
 .splitpanes--resizing canvas,
 .splitpanes--resizing iframe,

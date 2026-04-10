@@ -150,7 +150,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
         DEFAULT_AUDIO_BITRATE_KBPS;
 
       try {
-        const file = await projectStore.getFileByPath(entry.path);
+        const file = await fileManager.vfs.getFile(entry.path);
         if (!file) throw new Error('Failed to access source file');
         const meta = await extractMetadataWithTimeout(file);
 
@@ -252,7 +252,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
       syncAudioOnlyCodecWithFormat();
 
       try {
-        const file = await projectStore.getFileByPath(entry.path);
+        const file = await fileManager.vfs.getFile(entry.path);
         if (!file) throw new Error('Failed to access source file');
         const meta = await extractMetadataWithTimeout(file);
 
@@ -459,7 +459,6 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           const blob = await convertImageFile({
             file: sourceFile,
             request,
-            taskId,
             isCancelRequested: () => props.isCancelRequested.value,
           });
           if (!createdFilePath) throw new Error('Failed to resolve target path');
