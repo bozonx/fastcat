@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted, getCurrentInstance } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useUiStore } from '~/stores/ui.store';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
@@ -45,6 +45,7 @@ export function useFileDrop(options: UseFileDropOptions) {
   const uiStore = useUiStore();
   const { dragSourceFileManagerInstanceId, dragSourceVfs, currentDragOperation, setCurrentDragOperation } =
     useAppClipboard();
+  const appClipboard = useAppClipboard();
   const isRootDropOver = ref(false);
   let rootDragEnterCount = 0;
 
@@ -83,6 +84,34 @@ export function useFileDrop(options: UseFileDropOptions) {
     );
   }
 
+  function syncDragOperationFromKeyboard(event: KeyboardEvent) {
+    if (!uiStore.isFileManagerDragging) return;
+
+    const targetInstanceId = appClipboard.dragTargetFileManagerInstanceId;
+    if (!targetInstanceId) return;
+
+    const operation = resolveFileManagerDragOperation({
+      dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
+      isLayer1Active: isLayer1Active(event, workspaceStore.userSettings),
+      targetFileManagerInstanceId: targetInstanceId,
+    });
+
+    setCurrentDragOperation(operation);
+    syncFileManagerDragCursor({ isDragging: true, operation });
+  }
+
+  if (getCurrentInstance()) {
+    onMounted(() => {
+      window.addEventListener('keydown', syncDragOperationFromKeyboard, { capture: true });
+      window.addEventListener('keyup', syncDragOperationFromKeyboard, { capture: true });
+    });
+
+    onUnmounted(() => {
+      window.removeEventListener('keydown', syncDragOperationFromKeyboard, { capture: true });
+      window.removeEventListener('keyup', syncDragOperationFromKeyboard, { capture: true });
+    });
+  }
+
   function onRootDragEnter(e: DragEvent) {
     if (!isRelevantDrag(e)) return;
     e.preventDefault();
@@ -96,6 +125,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     e.stopPropagation();
     if (e.dataTransfer?.types.includes('Files')) {
       setCurrentDragOperation('copy');
+      appClipboard.setDragTargetFileManagerInstanceId(options.targetFileManagerInstanceId ?? null);
       e.dataTransfer!.dropEffect = 'copy';
       syncFileManagerDragCursor({ isDragging: true, operation: 'copy' });
       return;
@@ -103,6 +133,7 @@ export function useFileDrop(options: UseFileDropOptions) {
 
     const operation = resolveOperation(e);
     setCurrentDragOperation(operation);
+    appClipboard.setDragTargetFileManagerInstanceId(options.targetFileManagerInstanceId ?? null);
     e.dataTransfer!.dropEffect = operation === 'copy' ? 'copy' : 'move';
     syncFileManagerDragCursor({ isDragging: true, operation });
   }
@@ -114,6 +145,7 @@ export function useFileDrop(options: UseFileDropOptions) {
       rootDragEnterCount = 0;
       isRootDropOver.value = false;
       setCurrentDragOperation(null);
+      appClipboard.setDragTargetFileManagerInstanceId(null);
       resetFileManagerDragCursor();
     }
   }
@@ -123,6 +155,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     rootDragEnterCount = 0;
     isRootDropOver.value = false;
     setCurrentDragOperation(null);
+    appClipboard.setDragTargetFileManagerInstanceId(null);
     resetFileManagerDragCursor();
 
     const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];

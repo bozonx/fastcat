@@ -47,7 +47,12 @@ const { t } = useI18n();
     </PropertyRow>
     <template v-if="props.fileInfo.kind === 'directory'">
       <PropertyRow
-        v-if="props.fileInfo.size !== undefined"
+        v-if="
+          props.fileInfo.size !== undefined &&
+          props.instanceId !== 'computer' &&
+          props.instanceId !== 'sidebar' &&
+          !props.isExternal
+        "
         :label="t('common.size', 'Size')"
         :value="props.formatBytes(props.fileInfo.size)"
       />

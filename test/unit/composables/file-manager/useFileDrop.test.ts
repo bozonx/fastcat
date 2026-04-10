@@ -21,6 +21,7 @@ let dragSourceFileManagerInstanceIdMock: string | null = null;
 let dragSourceVfsMock: any = null;
 let currentDragOperationMock: 'copy' | 'move' | null = null;
 const setCurrentDragOperationMock = vi.fn();
+const setDragTargetFileManagerInstanceIdMock = vi.fn();
 
 vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: () => workspaceStoreMock,
@@ -32,6 +33,7 @@ vi.mock('~/composables/useAppClipboard', () => ({
     dragSourceVfs: dragSourceVfsMock,
     currentDragOperation: currentDragOperationMock,
     setCurrentDragOperation: setCurrentDragOperationMock,
+    setDragTargetFileManagerInstanceId: setDragTargetFileManagerInstanceIdMock,
   }),
 }));
 
@@ -46,6 +48,7 @@ describe('useFileDrop', () => {
     dragSourceFileManagerInstanceIdMock = null;
     dragSourceVfsMock = null;
     currentDragOperationMock = null;
+    setDragTargetFileManagerInstanceIdMock.mockReset();
   });
 
   it('moves to root on internal drop within the same file manager by default', async () => {

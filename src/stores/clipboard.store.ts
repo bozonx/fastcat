@@ -37,6 +37,7 @@ export const useClipboardStore = defineStore('clipboard', () => {
   const clipboardPayload = ref<AppClipboardPayload | null>(null);
   const currentDragOperation = ref<'copy' | 'move' | null>(null);
   const dragSourceFileManagerInstanceId = ref<string | null>(null);
+  const dragTargetFileManagerInstanceId = ref<string | null>(null);
   const dragSourceVfs = shallowRef<IFileSystemAdapter | null>(null);
 
   const hasFileManagerPayload = computed(
@@ -64,6 +65,10 @@ export const useClipboardStore = defineStore('clipboard', () => {
     dragSourceFileManagerInstanceId.value = instanceId;
   }
 
+  function setDragTargetFileManagerInstanceId(instanceId: string | null) {
+    dragTargetFileManagerInstanceId.value = instanceId;
+  }
+
   function setDragSourceVfs(vfs: IFileSystemAdapter | null) {
     dragSourceVfs.value = vfs;
   }
@@ -72,6 +77,7 @@ export const useClipboardStore = defineStore('clipboard', () => {
     clipboardPayload,
     currentDragOperation,
     dragSourceFileManagerInstanceId,
+    dragTargetFileManagerInstanceId,
     dragSourceVfs,
     hasFileManagerPayload,
     hasTimelinePayload,
@@ -79,6 +85,7 @@ export const useClipboardStore = defineStore('clipboard', () => {
     clearClipboardPayload,
     setCurrentDragOperation,
     setDragSourceFileManagerInstanceId,
+    setDragTargetFileManagerInstanceId,
     setDragSourceVfs,
   };
 });

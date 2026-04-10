@@ -58,6 +58,7 @@ const setCurrentDragOperationMock = vi.fn();
 const setDragSourceFileManagerInstanceIdMock = vi.fn((instanceId: string | null) => {
   dragSourceFileManagerInstanceIdMock = instanceId;
 });
+const setDragTargetFileManagerInstanceIdMock = vi.fn();
 const setDragSourceVfsMock = vi.fn();
 
 vi.mock('~/utils/media-types', () => ({
@@ -97,6 +98,7 @@ vi.mock('~/composables/useAppClipboard', () => ({
     dragSourceFileManagerInstanceId: dragSourceFileManagerInstanceIdMock,
     setCurrentDragOperation: setCurrentDragOperationMock,
     setDragSourceFileManagerInstanceId: setDragSourceFileManagerInstanceIdMock,
+    setDragTargetFileManagerInstanceId: setDragTargetFileManagerInstanceIdMock,
     setDragSourceVfs: setDragSourceVfsMock,
   }),
 }));
@@ -131,6 +133,7 @@ describe('FileManagerTree', () => {
     dragSourceFileManagerInstanceIdMock = null;
     setCurrentDragOperationMock.mockReset();
     setDragSourceFileManagerInstanceIdMock.mockClear();
+    setDragTargetFileManagerInstanceIdMock.mockClear();
     setDragSourceVfsMock.mockClear();
     uiStoreMock.fileTreeSelectAllTrigger = 0;
     uiStoreMock.isFileManagerDragging = false;

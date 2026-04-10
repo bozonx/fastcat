@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, inject, watch } from 'vue';
+import { ref, inject, watch, onMounted, onUnmounted } from 'vue';
 import type { ComputedRef } from 'vue';
 import {
   useDraggedFile,
@@ -430,6 +430,7 @@ function onDragStart(e: DragEvent, entry: FsEntry) {
   appClipboard.setDragSourceFileManagerInstanceId(props.instanceId ?? null);
   appClipboard.setDragSourceVfs(props.vfs ?? null);
   appClipboard.setCurrentDragOperation(operation);
+  appClipboard.setDragTargetFileManagerInstanceId(props.instanceId ?? null);
   syncFileManagerDragCursor({ isDragging: true, operation });
   const movePayload = entriesToMove.map((e) => ({ name: e.name, kind: e.kind, path: e.path }));
   e.dataTransfer?.setData(
@@ -463,6 +464,7 @@ function onDragEnd() {
   uiStore.isFileManagerDragging = false;
   appClipboard.setCurrentDragOperation(null);
   appClipboard.setDragSourceFileManagerInstanceId(null);
+  appClipboard.setDragTargetFileManagerInstanceId(null);
   appClipboard.setDragSourceVfs(null);
   resetFileManagerDragCursor();
 }
@@ -488,6 +490,31 @@ function resolveDropOperation(
   });
 }
 
+function syncDragOperationFromKeyboard(event: KeyboardEvent) {
+  if (!uiStore.isFileManagerDragging) return;
+  if (appClipboard.dragTargetFileManagerInstanceId !== (props.instanceId ?? null)) return;
+
+  const operation = resolveFileManagerDragOperation({
+    dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
+    isLayer1Active: isLayer1Active(event, workspaceStore.userSettings),
+    targetFileManagerInstanceId: props.instanceId ?? null,
+  });
+
+  dragOperation.value = operation;
+  appClipboard.setCurrentDragOperation(operation);
+  syncFileManagerDragCursor({ isDragging: true, operation });
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', syncDragOperationFromKeyboard, { capture: true });
+  window.addEventListener('keyup', syncDragOperationFromKeyboard, { capture: true });
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', syncDragOperationFromKeyboard, { capture: true });
+  window.removeEventListener('keyup', syncDragOperationFromKeyboard, { capture: true });
+});
+
 function onDragOverDir(e: DragEvent, entry: FsEntry) {
   if (entry.kind !== 'directory') return;
 
@@ -498,6 +525,7 @@ function onDragOverDir(e: DragEvent, entry: FsEntry) {
     isDragOver.value = entry.path || null;
     dragOperation.value = resolveDragOperation(e);
     appClipboard.setCurrentDragOperation(dragOperation.value);
+    appClipboard.setDragTargetFileManagerInstanceId(props.instanceId ?? null);
     e.dataTransfer.dropEffect = dragOperation.value === 'copy' ? 'copy' : 'move';
     syncFileManagerDragCursor({ isDragging: true, operation: dragOperation.value });
     return;
@@ -528,6 +556,7 @@ function onDragLeaveDir(e: DragEvent, entry: FsEntry) {
     isDragOver.value = null;
     dragOperation.value = null;
     appClipboard.setCurrentDragOperation(null);
+    appClipboard.setDragTargetFileManagerInstanceId(null);
     resetFileManagerDragCursor();
   }
 }
@@ -541,6 +570,7 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
   isDragOver.value = null;
   dragOperation.value = null;
   appClipboard.setCurrentDragOperation(null);
+  appClipboard.setDragTargetFileManagerInstanceId(null);
   resetFileManagerDragCursor();
 
   const copyRaw = e.dataTransfer?.getData(FILE_MANAGER_COPY_DRAG_TYPE);
