@@ -161,14 +161,8 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           return;
 
         if (meta?.video) {
-          props.videoSettings.width = Math.max(
-            1,
-            Math.round(Number(meta.video.width) || DEFAULT_VIDEO_WIDTH),
-          );
-          props.videoSettings.height = Math.max(
-            1,
-            Math.round(Number(meta.video.height) || DEFAULT_VIDEO_HEIGHT),
-          );
+          props.videoSettings.width = Math.round((Number(meta.video.width) || DEFAULT_VIDEO_WIDTH) / 2) * 2;
+          props.videoSettings.height = Math.round((Number(meta.video.height) || DEFAULT_VIDEO_HEIGHT) / 2) * 2;
           props.videoSettings.fps = clampPositiveNumber(Number(meta.video.fps), DEFAULT_VIDEO_FPS);
           props.videoSettings.isCustomResolution = true;
 
