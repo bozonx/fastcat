@@ -7,7 +7,7 @@ import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useMediaStore } from '~/stores/media.store';
-import type { BloggerDogEntryPayload } from '~/types/bloggerdog';
+import { getBdPayload, type BloggerDogEntryPayload } from '~/types/bloggerdog';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useEntryPreview } from '~/composables/file-manager/useEntryPreview';
 import { useFileManagerActions } from '~/composables/file-manager/useFileManagerActions';
@@ -659,6 +659,10 @@ const { getContextMenuItems } = useFileContextMenu(
     isFilesPage: props.isFilesPage,
     instanceId: instanceId,
     isExternal: isExternal.value,
+    isBloggerDogProject: (entry: FsEntry) => getBdPayload(entry)?.type === 'project',
+    isBloggerDogGroup: (entry: FsEntry) => getBdPayload(entry)?.type === 'collection',
+    isBloggerDogContentItem: (entry: FsEntry) => getBdPayload(entry)?.type === 'content-item',
+    isBloggerDogVirtualFolder: (entry: FsEntry) => getBdPayload(entry)?.type === 'virtual-folder',
     getSelectedEntries: () => {
       const selected = selectionStore.selectedEntity;
       if (selected?.source === 'fileManager') {

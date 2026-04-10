@@ -7,6 +7,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
+import { getBdPayload } from '~/types/bloggerdog';
 import type { FsEntry } from '~/types/fs';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { generateUniqueFsEntryName } from '~/utils/fs';
@@ -107,6 +108,8 @@ export function useFileManagerActions(actions: FileManagerActions) {
   });
 
   function startRename(entry: FsEntry) {
+    const bdPayload = getBdPayload(entry);
+    if (bdPayload?.type === 'virtual-folder' || bdPayload?.type === 'project') return;
     editingEntryPath.value = entry.path ?? null;
   }
 

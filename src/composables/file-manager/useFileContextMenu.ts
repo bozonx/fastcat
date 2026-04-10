@@ -46,6 +46,7 @@ interface ContextMenuDeps {
   isBloggerDogProject?: (entry: FsEntry) => boolean;
   isBloggerDogGroup?: (entry: FsEntry) => boolean;
   isBloggerDogContentItem?: (entry: FsEntry) => boolean;
+  isBloggerDogVirtualFolder?: (entry: FsEntry) => boolean;
   instanceId?: string;
   isExternal?: boolean;
 }
@@ -71,9 +72,12 @@ export function useFileContextMenu(
       (entry.path === WORKSPACE_COMMON_PATH_PREFIX ||
         (entry.name.toLowerCase() === 'common' && (entry.path === 'common' || entry.path === '')));
 
+    const isBdProject = deps.isBloggerDogProject?.(entry);
+    const isBdVirtual = deps.isBloggerDogVirtualFolder?.(entry);
+
     const items: ContextMenuItem[] = [];
 
-    if (!isProjectRoot && !isCommonRoot) {
+    if (!isProjectRoot && !isCommonRoot && !isBdVirtual && !isBdProject) {
       items.push(
         {
           label: t('common.copy', 'Copy'),
@@ -97,7 +101,7 @@ export function useFileContextMenu(
       });
     }
 
-    if (!isProjectRoot && !isCommonRoot) {
+    if (!isProjectRoot && !isCommonRoot && !isBdVirtual && !isBdProject) {
       items.push(
         {
           label: t('common.rename', 'Rename'),
@@ -117,38 +121,54 @@ export function useFileContextMenu(
   }
 
   function buildRemoteItems(entry: FsEntry): ContextMenuItem[][] {
-    const isRemoteRoot =
-      entry.source === 'remote' &&
-      (entry.path === '' || entry.path === '/' || entry.path === '/remote' || entry.path === '/remote/');
-
-    if (isRemoteRoot) return [];
+    const isBdVirtual = deps.isBloggerDogVirtualFolder?.(entry);
+    const isBdProject = deps.isBloggerDogProject?.(entry);
+    const isBdGroup = deps.isBloggerDogGroup?.(entry);
+    const isBdContentItem = deps.isBloggerDogContentItem?.(entry);
 
     const items: ContextMenuItem[][] = [];
-    const isGroup = deps.isBloggerDogGroup?.(entry);
-    const isContentItem = deps.isBloggerDogContentItem?.(entry);
 
     if (entry.kind === 'directory') {
-      items.push([
-        {
-          label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
-          icon: 'i-heroicons-folder-plus',
-          onSelect: () => onAction('createFolder', entry),
-        },
-        {
-          label: t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document'),
-          icon: 'i-heroicons-document-text',
-          onSelect: () => onAction('createMarkdown', entry),
-        },
-      ]);
+      const dirActions: ContextMenuItem[] = [];
 
-      if (isGroup || isContentItem) {
-        items.push([
+      if (!isBdVirtual) {
+        dirActions.push(
           {
-            label: t('fastcat.bloggerDog.actions.createSubgroup', 'Создать подгруппу'),
+            label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
             icon: 'i-heroicons-folder-plus',
-            onSelect: () => onAction('createSubgroup', entry),
+            onSelect: () => onAction('createFolder', entry),
           },
-        ]);
+          {
+            label: t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document'),
+            icon: 'i-heroicons-document-text',
+            onSelect: () => onAction('createMarkdown', entry),
+          },
+        );
+      }
+
+      if (dirActions.length > 0) {
+        items.push(dirActions);
+      }
+
+      const bdActions: ContextMenuItem[] = [];
+      if (isBdProject || isBdGroup || (isBdVirtual && entry.remoteId !== 'projects')) {
+        bdActions.push({
+          label: t('fastcat.bloggerDog.actions.createSubgroup', 'Создать подгруппу'),
+          icon: 'i-heroicons-folder-plus',
+          onSelect: () => onAction('createSubgroup', entry),
+        });
+      }
+
+      if (isBdProject || isBdGroup || (isBdVirtual && entry.remoteId !== 'projects')) {
+        bdActions.push({
+          label: t('fastcat.bloggerDog.actions.createItem', 'Создать элемент контента'),
+          icon: 'i-heroicons-document-plus',
+          onSelect: () => onAction('createContentItem', entry),
+        });
+      }
+
+      if (bdActions.length > 0) {
+        items.push(bdActions);
       }
     }
 

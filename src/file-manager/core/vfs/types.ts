@@ -26,7 +26,14 @@ export interface IFileSystemAdapter {
    */
   readDirectory(
     path: string,
-    options?: { sortBy?: string; sortOrder?: 'asc' | 'desc'; limit?: number; offset?: number },
+    options?: {
+      sortBy?: string;
+      sortOrder?: 'asc' | 'desc';
+      limit?: number;
+      offset?: number;
+      /** If true, the adapter will check if sub-directories have children to populate hasChildren/hasDirectories. */
+      checkChildren?: boolean;
+    },
   ): Promise<VfsEntry[]>;
 
   /**
