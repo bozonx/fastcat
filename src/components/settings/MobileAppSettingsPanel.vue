@@ -9,6 +9,12 @@ import SettingsVideo from './SettingsVideo.vue';
 import SettingsAudio from './SettingsAudio.vue';
 import SettingsIntegrations from './SettingsIntegrations.vue';
 import SettingsStorage from './SettingsStorage.vue';
+import {
+  readLocalStorageJson,
+  writeLocalStorageJson,
+  removeLocalStorageKey,
+  STORAGE_KEYS,
+} from '~/stores/ui/uiLocalStorage';
 
 type SettingsSection =
   | 'user.general'
@@ -20,37 +26,34 @@ type SettingsSection =
   | 'user.integrations'
   | 'workspace.storage';
 
-const STORAGE_KEY = 'fastcat:settings:active-section';
 const EXPIRATION_MS = 24 * 60 * 60 * 1000;
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 
 function getStoredSection(): SettingsSection {
-  if (typeof window === 'undefined') return 'user.general';
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return 'user.general';
-    const parsed = JSON.parse(raw);
-    if (Date.now() - parsed.timestamp > EXPIRATION_MS) {
-      window.localStorage.removeItem(STORAGE_KEY);
-      return 'user.general';
-    }
-    return parsed.section as SettingsSection;
-  } catch {
+  const parsed = readLocalStorageJson<{ section: SettingsSection; timestamp: number } | null>(
+    STORAGE_KEYS.SETTINGS.ACTIVE_SECTION,
+    null,
+  );
+
+  if (!parsed) return 'user.general';
+
+  if (Date.now() - parsed.timestamp > EXPIRATION_MS) {
+    removeLocalStorageKey(STORAGE_KEYS.SETTINGS.ACTIVE_SECTION);
     return 'user.general';
   }
+
+  return parsed.section;
 }
 
 const activeSection = ref<SettingsSection>(getStoredSection());
 
 watch(activeSection, (section) => {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ section, timestamp: Date.now() }));
-  } catch {
-    // ignore
-  }
+  writeLocalStorageJson(STORAGE_KEYS.SETTINGS.ACTIVE_SECTION, {
+    section,
+    timestamp: Date.now(),
+  });
 });
 
 const sections = computed(() => [

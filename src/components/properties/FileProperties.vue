@@ -752,6 +752,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
         v-if="!isWorkspaceRootProperties && isBloggerDogContentItem && castedRemoteRecord"
         :item="castedRemoteRecord as RemoteVfsFileEntry"
         :config="remoteFilesConfig!"
+        :title="generalInfoTitle"
       />
 
       <PropertySection
@@ -943,7 +944,8 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
           !isVirtualAll &&
           !isPersonalLibrary &&
           !isProjectLibraries &&
-          !isBloggerDogProject
+          !isBloggerDogProject &&
+          !isBloggerDogContentItem
         "
         :title="generalInfoTitle"
         :file-info="fileInfo || (selectedFsEntry as any)"

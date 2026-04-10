@@ -2,7 +2,11 @@ import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { useSelectionStore } from '~/stores/selection.store';
-import { readLocalStorageJson, writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
+import {
+  readLocalStorageJson,
+  writeLocalStorageJson,
+  STORAGE_KEYS,
+} from '~/stores/ui/uiLocalStorage';
 
 export type FileViewMode = 'grid' | 'list';
 export type FileSortField = 'name' | 'type' | 'size' | 'modified' | 'created';
@@ -23,25 +27,35 @@ export type FilesPageTab = 'computer' | 'bloggerdog' | 'fastcat';
 
 function createFileManagerStoreSetup(contextId: string) {
   return () => {
-    const STORAGE_KEY = `fastcat:file-manager-${contextId}`;
     const selectionStore = useSelectionStore();
-
-    const selectedFolder = ref<FsEntry | null>(readLocalStorageJson(`${STORAGE_KEY}:selectedFolder`, null));
+    const selectedFolder = ref<FsEntry | null>(
+      readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'selectedFolder'), null),
+    );
     const historyStack = ref<FsEntry[]>([]);
     const futureStack = ref<FsEntry[]>([]);
     const folderSizes = ref<Record<string, number>>({});
-    const isBloggerDogPanelVisible = ref(readLocalStorageJson(`${STORAGE_KEY}:isBloggerDogPanelVisible`, false));
+    const isBloggerDogPanelVisible = ref(
+      readLocalStorageJson(
+        STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'isBloggerDogPanelVisible'),
+        false,
+      ),
+    );
 
-    const viewMode = ref<FileViewMode>(readLocalStorageJson(`${STORAGE_KEY}:viewMode`, 'grid'));
+    const viewMode = ref<FileViewMode>(
+      readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'viewMode'), 'grid'),
+    );
     const sortOption = ref<FileSortOption>(
-      readLocalStorageJson(`${STORAGE_KEY}:sortOption`, { field: 'name', order: 'asc' }),
+      readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'sortOption'), {
+        field: 'name',
+        order: 'asc',
+      }),
     );
     const gridCardSize = ref<number>(
-      readLocalStorageJson(`${STORAGE_KEY}:gridCardSize`, 80),
+      readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'gridCardSize'), 80),
     );
 
     const columnWidths = ref<Record<string, number>>(
-      readLocalStorageJson(`${STORAGE_KEY}:columnWidths`, {
+      readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'columnWidths'), {
         name: 200,
         type: 100,
         size: 80,
@@ -52,26 +66,27 @@ function createFileManagerStoreSetup(contextId: string) {
     const selectionContext = ref<FileManagerSelectionContext>({});
 
     // Persist settings to localStorage
-    watch(viewMode, (val) => writeLocalStorageJson(`${STORAGE_KEY}:viewMode`, val));
-    watch(
-      sortOption,
-      (val) => writeLocalStorageJson(`${STORAGE_KEY}:sortOption`, val),
-      {
-        deep: true,
-      },
+    watch(viewMode, (val) =>
+      writeLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'viewMode'), val),
     );
-    watch(gridCardSize, (val) => writeLocalStorageJson(`${STORAGE_KEY}:gridCardSize`, val));
+    watch(sortOption, (val) =>
+      writeLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'sortOption'), val),
+    );
+    watch(gridCardSize, (val) =>
+      writeLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'gridCardSize'), val),
+    );
     watch(isBloggerDogPanelVisible, (val) =>
-      writeLocalStorageJson(`${STORAGE_KEY}:isBloggerDogPanelVisible`, val),
+      writeLocalStorageJson(
+        STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'isBloggerDogPanelVisible'),
+        val,
+      ),
     );
-    watch(selectedFolder, (val) => writeLocalStorageJson(`${STORAGE_KEY}:selectedFolder`, val));
+    watch(selectedFolder, (val) =>
+      writeLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'selectedFolder'), val),
+    );
 
-    watch(
-      columnWidths,
-      (val) => writeLocalStorageJson(`${STORAGE_KEY}:columnWidths`, val),
-      {
-        deep: true,
-      },
+    watch(columnWidths, (val) =>
+      writeLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'columnWidths'), val),
     );
 
     function setSelectionContext(context: FileManagerSelectionContext) {
@@ -192,32 +207,36 @@ function createFileManagerStoreSetup(contextId: string) {
 
 export const useFileBrowserPersistenceStore = defineStore('fileBrowserPersistence', () => {
   const bloggerDogGridCardSize = ref<number>(
-    readLocalStorageJson(`fastcat:file-manager:bloggerDogGridCardSize`, 100),
+    readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.PERSISTENCE.BLOGGERDOG_GRID_SIZE, 100),
   );
   const computerGridCardSize = ref<number>(
-    readLocalStorageJson(`fastcat:file-manager:computerGridCardSize`, 100),
+    readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.PERSISTENCE.COMPUTER_GRID_SIZE, 100),
   );
   const computerLastFolder = ref<FsEntry | null>(
-    readLocalStorageJson(`fastcat:file-manager:computerLastFolder`, null),
+    readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.PERSISTENCE.COMPUTER_LAST_FOLDER, null),
   );
   const computerViewMode = ref<FileViewMode>(
-    readLocalStorageJson(`fastcat:file-manager:computerViewMode`, 'list'),
+    readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.PERSISTENCE.COMPUTER_VIEW_MODE, 'list'),
   );
   const filesPageActiveTab = ref<FilesPageTab>(
-    readLocalStorageJson(`fastcat:file-manager:filesPageActiveTab`, 'computer'),
+    readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.PERSISTENCE.ACTIVE_TAB, 'computer'),
   );
 
   watch(bloggerDogGridCardSize, (val) =>
-    writeLocalStorageJson(`fastcat:file-manager:bloggerDogGridCardSize`, val),
+    writeLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.PERSISTENCE.BLOGGERDOG_GRID_SIZE, val),
   );
   watch(computerGridCardSize, (val) =>
-    writeLocalStorageJson(`fastcat:file-manager:computerGridCardSize`, val),
+    writeLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.PERSISTENCE.COMPUTER_GRID_SIZE, val),
   );
   watch(computerLastFolder, (val) =>
-    writeLocalStorageJson(`fastcat:file-manager:computerLastFolder`, val),
+    writeLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.PERSISTENCE.COMPUTER_LAST_FOLDER, val),
   );
-  watch(computerViewMode, (val) => writeLocalStorageJson(`fastcat:file-manager:computerViewMode`, val));
-  watch(filesPageActiveTab, (val) => writeLocalStorageJson(`fastcat:file-manager:filesPageActiveTab`, val));
+  watch(computerViewMode, (val) =>
+    writeLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.PERSISTENCE.COMPUTER_VIEW_MODE, val),
+  );
+  watch(filesPageActiveTab, (val) =>
+    writeLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.PERSISTENCE.ACTIVE_TAB, val),
+  );
 
   function setBloggerDogGridCardSize(size: number) {
     bloggerDogGridCardSize.value = size;

@@ -156,6 +156,21 @@ export const useBloggerDogStore = defineStore('bloggerDog', () => {
     });
   }
 
+  async function updateItem(params: {
+    id: string;
+    title?: string;
+    text?: string;
+    groupId?: string | null;
+    tags?: string[];
+    note?: string;
+  }) {
+    if (!config.value) return;
+    return await updateRemoteItem({
+      config: config.value,
+      ...params,
+    });
+  }
+
   async function renameEntry(id: string, type: 'file' | 'directory', name: string) {
     if (!config.value) return;
     if (type === 'directory') {
@@ -185,6 +200,7 @@ export const useBloggerDogStore = defineStore('bloggerDog', () => {
     getThumbnailUrl,
     createCollection,
     createItem,
+    updateItem,
     renameEntry,
     deleteEntry,
   };

@@ -680,6 +680,7 @@ export async function updateRemoteItem(params: {
   config: RemoteVfsClientConfig;
   id: string;
   title?: string;
+  text?: string;
   groupId?: string | null;
   tags?: string[];
   note?: string;
@@ -691,6 +692,7 @@ export async function updateRemoteItem(params: {
     }),
     body: JSON.stringify({
       title: params.title,
+      text: params.text,
       groupId: params.groupId,
       tags: params.tags,
       note: params.note,

@@ -15,15 +15,15 @@ import { useProjectStore } from './project.store';
 import { useProxyStore } from './proxy.store';
 
 import { getErrorMessage } from '~/utils/errors';
+import {
+  readLocalStorageJson,
+  readLocalStorageString,
+  writeLocalStorageJson,
+  writeLocalStorageString,
+  removeLocalStorageKey,
+  STORAGE_KEYS,
+} from '~/stores/ui/uiLocalStorage';
 
-function readLocalStorageString(key: string): string | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
 
 export interface RecentProject {
   projectName: string;
@@ -46,18 +46,12 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const isInitializing = ref(true);
   const isEphemeral = ref(false);
   const lastProjectName = ref<string | null>(
-    readLocalStorageString('fastcat:workspace:last-opened-project'),
+    readLocalStorageString(STORAGE_KEYS.WORKSPACE.LAST_PROJECT),
   );
 
-  const recentProjects = ref<RecentProject[]>([]);
-  try {
-    const raw = readLocalStorageString('fastcat:workspace:recent-projects');
-    if (raw) {
-      recentProjects.value = JSON.parse(raw);
-    }
-  } catch {
-    // ignore
-  }
+  const recentProjects = ref<RecentProject[]>(
+    readLocalStorageJson(STORAGE_KEYS.WORKSPACE.RECENT_PROJECTS, []),
+  );
 
   const settingsModule = createWorkspaceSettingsModule({ settingsRepo });
   const {
@@ -118,30 +112,18 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     projectsModule;
 
   watch(lastProjectName, (v) => {
-    if (typeof window === 'undefined' || isEphemeral.value) return;
-    try {
-      if (v === null) {
-        window.localStorage.removeItem('fastcat:workspace:last-opened-project');
-      } else {
-        window.localStorage.setItem('fastcat:workspace:last-opened-project', v);
-      }
-    } catch {
-      // ignore
+    if (isEphemeral.value) return;
+    if (v === null) {
+      removeLocalStorageKey(STORAGE_KEYS.WORKSPACE.LAST_PROJECT);
+    } else {
+      writeLocalStorageString(STORAGE_KEYS.WORKSPACE.LAST_PROJECT, v);
     }
   });
 
-  watch(
-    recentProjects,
-    (v) => {
-      if (typeof window === 'undefined' || isEphemeral.value) return;
-      try {
-        window.localStorage.setItem('fastcat:workspace:recent-projects', JSON.stringify(v));
-      } catch {
-        // ignore
-      }
-    },
-    { deep: true },
-  );
+  watch(recentProjects, (v) => {
+    if (isEphemeral.value) return;
+    writeLocalStorageJson(STORAGE_KEYS.WORKSPACE.RECENT_PROJECTS, v);
+  }, { deep: true });
 
   function updateRecentProject(project: Omit<RecentProject, 'updatedAt'>) {
     const now = new Date().toISOString();
