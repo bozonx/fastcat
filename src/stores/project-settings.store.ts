@@ -17,6 +17,16 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { getPlatformSuffix } from '~/stores/ui/uiLocalStorage';
 import type { ProjectMeta } from '~/repositories/project-meta.repository';
 import type { EditorView } from '~/stores/editor-view.store';
+import { useFocusStore } from './focus.store';
+import { useProjectTabsStore } from './project-tabs.store';
+import { useTimelineStore } from './timeline.store';
+import {
+  useFileManagerStore,
+  useFilesPageFileManagerStore,
+  useFilesPageSidebarFileManagerStore,
+  useComputerSidebarStore,
+  useBloggerDogSidebarStore,
+} from './file-manager.store';
 
 interface ProjectSettingsRepo {
   load(): Promise<unknown | null>;
@@ -79,10 +89,44 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
 
         // Save UI session settings
         if (projectUiRepo.value) {
+          const focusStore = useFocusStore();
+          const projectTabsStore = useProjectTabsStore();
+          const timelineStore = useTimelineStore();
+
+          const timelines = { ...projectSettings.value.timelines };
+          timelines.activePath = focusStore.activePanelId === 'timeline' ? focusStore.activeTimelinePath : timelines.activePath;
+          
+          if (focusStore.activeTimelinePath) {
+            timelines.sessions[focusStore.activeTimelinePath] = {
+              playheadUs: timelineStore.currentTime,
+              masterGain: timelineStore.masterGain,
+              masterMuted: timelineStore.audioMuted ?? false,
+              zoom: timelineStore.timelineZoom,
+              trackHeights: { ...timelineStore.trackHeights },
+            };
+          }
+
+          const fileManagerPaths: Record<string, string | null> = {};
+          const fmStores = {
+            editor: useFileManagerStore(),
+            filesPage: useFilesPageFileManagerStore(),
+            'filesPage-sidebar': useFilesPageSidebarFileManagerStore(),
+            'computer-sidebar': useComputerSidebarStore(),
+            'bloggerdog-sidebar': useBloggerDogSidebarStore(),
+          };
+
+          for (const [key, store] of Object.entries(fmStores)) {
+            fileManagerPaths[key] = store.selectedFolder?.path ?? null;
+          }
+
           await projectUiRepo.value.save({
             version: 1,
             monitors: projectSettings.value.monitors,
-            timelines: projectSettings.value.timelines,
+            timelines,
+            ui: {
+              activeTabId: projectTabsStore.activeTabId,
+              fileManagerPaths,
+            },
           });
         }
       } catch (e: unknown) {
@@ -183,11 +227,55 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
             settings.monitors = next;
           }
 
-          if (uiRaw.timelines) settings.timelines = { ...settings.timelines, ...uiRaw.timelines };
+          if (uiRaw.timelines) {
+            settings.timelines = { ...settings.timelines, ...uiRaw.timelines };
+            
+            // Validate openPaths exist and normalize
+            const dir = await getProjectDirHandle.value?.();
+            if (dir) {
+              const validatedPaths: string[] = [];
+              for (const path of settings.timelines.openPaths) {
+                try {
+                  await dir.getFileHandle(path);
+                  validatedPaths.push(path);
+                } catch {
+                   // Skip non-existent files
+                }
+              }
+              settings.timelines.openPaths = validatedPaths;
+            }
+          }
+
+          if (uiRaw.ui) {
+            settings.ui = { ...settings.ui, ...uiRaw.ui };
+          }
         }
       }
 
       projectSettings.value = settings;
+      
+      // Sync loaded state to other stores
+      if (!isLoadingProjectSettings.value) {
+          const projectTabsStore = useProjectTabsStore();
+          if (settings.ui.activeTabId) {
+              projectTabsStore.setActiveTab(settings.ui.activeTabId);
+          }
+          
+          const fmStores = {
+            editor: useFileManagerStore(),
+            filesPage: useFilesPageFileManagerStore(),
+            'filesPage-sidebar': useFilesPageSidebarFileManagerStore(),
+            'computer-sidebar': useComputerSidebarStore(),
+            'bloggerdog-sidebar': useBloggerDogSidebarStore(),
+          };
+
+          for (const [key, store] of Object.entries(fmStores)) {
+            const savedPath = settings.ui.fileManagerPaths[key];
+            if (savedPath && (!store.selectedFolder || store.selectedFolder.path !== savedPath)) {
+                store.openFolderByPath(savedPath);
+            }
+          }
+      }
     } catch (e: unknown) {
       if ((e as { name?: unknown }).name === 'NotFoundError') {
         projectSettings.value = createDefaultProjectSettings(workspaceStore.userSettings);
@@ -226,6 +314,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
         version: 1,
         monitors: initial.monitors,
         timelines: initial.timelines,
+        ui: initial.ui,
       });
     } catch (e) {
       console.warn('Failed to create project settings/ui files', e);

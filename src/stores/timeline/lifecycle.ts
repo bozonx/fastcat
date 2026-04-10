@@ -43,6 +43,7 @@ interface TimelineLifecycleDeps {
   audioMuted: Ref<boolean>;
   audioLevels: Ref<Record<string, { rmsDb: number; peakDb: number }>>;
   timelineZoom: Ref<number>;
+  trackHeights: Ref<Record<string, number>>;
   historyStore: {
     clear: (scope: string) => void;
   };
@@ -54,6 +55,7 @@ interface TimelineLifecycleDeps {
   uiStore: {
     notifyTimelineSave: () => void;
   };
+  getProjectSettings: () => any; // Using any for now to avoid circularity if it happens, but better if we can type it
 }
 
 export interface TimelineLifecycleModule {
@@ -163,6 +165,18 @@ export function createTimelineLifecycleModule(
     deps.historyDebounce.clearPendingDebouncedHistory();
 
     await deps.persistence.loadTimeline();
+
+    // Restore session data from ProjectSettings if available
+    const settings = deps.getProjectSettings();
+    const path = deps.currentTimelinePath.value;
+    if (path && settings?.timelines?.sessions?.[path]) {
+        const session = settings.timelines.sessions[path];
+        deps.currentTime.value = session.playheadUs;
+        deps.masterGain.value = session.masterGain;
+        if (deps.audioMuted) deps.audioMuted.value = session.masterMuted;
+        deps.timelineZoom.value = session.zoom;
+        deps.trackHeights.value = { ...session.trackHeights };
+    }
   }
 
   async function saveTimeline() {
