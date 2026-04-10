@@ -458,6 +458,7 @@ onUnmounted(() => {
 useFileManagerPanelBootstrap({
   loadProjectDirectory,
   onRootEntrySelected: (entry) => emit('select', entry),
+  shouldSelectRoot: () => !fileManagerStore.selectedFolder,
 });
 </script>
 
