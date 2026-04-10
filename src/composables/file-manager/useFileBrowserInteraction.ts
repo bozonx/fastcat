@@ -2,7 +2,6 @@ import { ref, onUnmounted, inject } from 'vue';
 import type { Ref } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
-import { isRemoteFsEntry } from '~/utils/remote-vfs';
 import { isOpenableProjectFileName } from '~/utils/media-types';
 import { useFileManagerStore, type FileSortField } from '~/stores/file-manager.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -32,9 +31,11 @@ export function useFileBrowserInteraction({
   onFileAction,
   preventOpen,
   instanceId,
-  isExternal
+  isExternal,
 }: FileBrowserInteractionOptions) {
-  const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
+  const fileManagerStore =
+    (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
+    useFileManagerStore();
   const projectStore = useProjectStore();
   const timelineStore = useTimelineStore();
 
@@ -64,6 +65,10 @@ export function useFileBrowserInteraction({
         void loadFolderContent();
         void loadParentFolders();
         setSelectedFsEntry(entry);
+      } else {
+        if (preventOpen || isExternal) return;
+        if (!isOpenableProjectFileName(entry.name)) return;
+        onFileAction('openAsProjectTab', entry);
       }
       return;
     }

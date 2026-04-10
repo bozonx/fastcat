@@ -108,9 +108,17 @@ export function getRemoteEntryDisplayName(entry: { name?: string; title?: string
   return title || name || 'Untitled';
 }
 
-function resolveMediaObject(media: RemoteVfsMedia | RemoteVfsMediaRelation | undefined): RemoteVfsMedia | undefined {
+export function resolveMediaObject(
+  media: RemoteVfsMedia | RemoteVfsMediaRelation | undefined,
+): RemoteVfsMedia | undefined {
   if (!media) return undefined;
   return 'media' in media ? media.media : media;
+}
+
+export function getRemoteMediaId(
+  media: RemoteVfsMedia | RemoteVfsMediaRelation | undefined,
+): string | undefined {
+  return resolveMediaObject(media)?.id;
 }
 
 export function getRemoteMediaDisplayName(params: {
@@ -121,8 +129,7 @@ export function getRemoteMediaDisplayName(params: {
   const mediaObj = resolveMediaObject(params.media);
   if (!mediaObj) return 'Untitled Media';
 
-  const mediaFilename =
-    typeof mediaObj.filename === 'string' ? mediaObj.filename.trim() : '';
+  const mediaFilename = typeof mediaObj.filename === 'string' ? mediaObj.filename.trim() : '';
   const mediaTitle = typeof mediaObj.title === 'string' ? mediaObj.title.trim() : '';
   const mediaName = typeof mediaObj.name === 'string' ? mediaObj.name.trim() : '';
 
@@ -157,7 +164,9 @@ export function getRemoteMediaKind(
   return 'unknown';
 }
 
-function resolveMediaMimeType(media: (RemoteVfsMedia | RemoteVfsMediaRelation)[] | undefined): string {
+function resolveMediaMimeType(
+  media: (RemoteVfsMedia | RemoteVfsMediaRelation)[] | undefined,
+): string {
   const first = resolveMediaObject(media?.[0]);
   return first?.mimeType || 'application/octet-stream';
 }
@@ -239,7 +248,8 @@ export function toRemoteFsEntry(entry: RemoteVfsEntry): RemoteFsEntry {
     adapterPayload: payload,
     size,
     created: createdAt,
-    mimeType: isProject || entry.type === 'directory' ? 'folder' : resolveMediaMimeType(entry.media),
+    mimeType:
+      isProject || entry.type === 'directory' ? 'folder' : resolveMediaMimeType(entry.media),
     isContentItem,
   };
 }
@@ -284,8 +294,14 @@ export function createRemoteMediaFsEntry(params: {
     remoteType: 'file',
     adapterPayload: payload,
     size: mediaObj.sizeBytes ?? mediaObj.size ?? 0,
-    lastModified: parseRemoteDate(mediaObj.updatedAt) ?? parseRemoteDate(mediaObj.updated) ?? parseRemoteDate(params.item.updatedAt),
-    createdAt: parseRemoteDate(mediaObj.createdAt) ?? parseRemoteDate(mediaObj.created) ?? parseRemoteDate(params.item.createdAt),
+    lastModified:
+      parseRemoteDate(mediaObj.updatedAt) ??
+      parseRemoteDate(mediaObj.updated) ??
+      parseRemoteDate(params.item.updatedAt),
+    createdAt:
+      parseRemoteDate(mediaObj.createdAt) ??
+      parseRemoteDate(mediaObj.created) ??
+      parseRemoteDate(params.item.createdAt),
     mimeType: mediaObj.mimeType ?? 'application/octet-stream',
   };
 }
@@ -301,7 +317,9 @@ export function getRemoteFileDownloadUrl(params: {
   mediaId?: string;
   mediaIndex?: number;
 }): string {
-  const mediaObj = resolveMediaObject(params.media ?? params.entry?.media?.[params.mediaIndex ?? 0]);
+  const mediaObj = resolveMediaObject(
+    params.media ?? params.entry?.media?.[params.mediaIndex ?? 0],
+  );
   if (mediaObj?.url) {
     if (/^https?:\/\//i.test(mediaObj.url)) return mediaObj.url;
 
@@ -315,7 +333,7 @@ export function getRemoteFileDownloadUrl(params: {
 
   const mediaId = params.mediaId ?? mediaObj?.id;
   if (!mediaId) return '';
-  return joinPath(params.baseUrl, `media/${mediaId}/file`);
+  return joinPath(params.baseUrl, `media/${mediaId}/file?download=1`);
 }
 
 export function getRemoteThumbnailUrl(params: {

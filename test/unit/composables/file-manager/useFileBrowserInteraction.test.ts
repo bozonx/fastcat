@@ -117,6 +117,31 @@ describe('useFileBrowserInteraction', () => {
     );
   });
 
+  it('handleEntryDoubleClick opens remote text files as project tabs', () => {
+    const onFileAction = vi.fn();
+    const { handleEntryDoubleClick } = useFileBrowserInteraction({
+      isRemoteMode: ref(true),
+      remoteCurrentFolder: ref(null),
+      sortedEntries: ref([]),
+      loadFolderContent: vi.fn(),
+      loadParentFolders: vi.fn(),
+      setSelectedFsEntry: vi.fn(),
+      onFileAction,
+    });
+
+    handleEntryDoubleClick({
+      kind: 'file',
+      name: 'script.txt',
+      path: '/personal/item-1/script.txt',
+      source: 'remote',
+    } as FsEntry);
+
+    expect(onFileAction).toHaveBeenCalledWith(
+      'openAsProjectTab',
+      expect.objectContaining({ name: 'script.txt' }),
+    );
+  });
+
   it('does not open external otio files as timeline', async () => {
     const onFileAction = vi.fn();
     const { handleEntryDoubleClick } = useFileBrowserInteraction({
@@ -130,7 +155,11 @@ describe('useFileBrowserInteraction', () => {
       isExternal: true,
     });
 
-    handleEntryDoubleClick({ kind: 'file', name: 'external.otio', path: 'external.otio' } as FsEntry);
+    handleEntryDoubleClick({
+      kind: 'file',
+      name: 'external.otio',
+      path: 'external.otio',
+    } as FsEntry);
     await Promise.resolve();
 
     expect(projectStore.openTimelineFile).not.toHaveBeenCalled();

@@ -58,4 +58,62 @@ describe('BloggerDogVfsAdapter', () => {
     });
     expect(item.text).toBe('');
   });
+
+  it('reads media file with bearer auth and uses nested media id from relation', async () => {
+    const adapter = new BloggerDogVfsAdapter(() => ({
+      baseUrl: 'http://localhost:8080/api/v1/external/content-library',
+      bearerToken: 'token',
+    }));
+
+    const item: RemoteVfsFileEntry = {
+      id: 'item-1',
+      type: 'file',
+      name: 'Item',
+      path: '/personal/item-1',
+      scope: 'personal',
+      media: [
+        {
+          id: 'rel-uuid',
+          mediaId: 'media-uuid',
+          order: 0,
+          media: {
+            id: 'media-uuid',
+            type: 'IMAGE',
+            filename: 'image.webp',
+            mimeType: 'image/webp',
+            sizeBytes: 42,
+          },
+        },
+      ],
+    };
+
+    const cache = (adapter as unknown as { idCache: Map<string, unknown> }).idCache;
+    cache.set('/personal/item-1', {
+      id: item.id,
+      type: 'file',
+      path: '/personal/item-1',
+      scope: 'personal',
+      item,
+    });
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      blob: vi.fn().mockResolvedValue(new Blob(['ok'], { type: 'image/webp' })),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const [mediaEntry] = await adapter.readDirectory('/personal/item-1');
+    const blob = await adapter.readFile(mediaEntry.path);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:8080/api/v1/external/content-library/media/media-uuid/file?download=1',
+      {
+        signal: undefined,
+        headers: {
+          Authorization: 'Bearer token',
+        },
+      },
+    );
+    expect(blob.type).toBe('image/webp');
+  });
 });
