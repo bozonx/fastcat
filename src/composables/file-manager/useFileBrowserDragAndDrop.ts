@@ -66,6 +66,9 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
     useFileManagerStore();
 
+  const { t } = useI18n();
+  const toast = useToast();
+
   const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
   const effectiveHotkeys = computed(() =>
     getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys),
@@ -349,9 +352,6 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
         return;
       }
 
-      const toast = useToast();
-      const { t } = useI18n();
-
       if (isCrossManagerDrag && appClipboard.dragSourceVfs) {
         try {
           for (const item of itemsToMove) {
@@ -520,9 +520,6 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       ) {
         return;
       }
-
-      const toast = useToast();
-      const { t } = useI18n();
 
       if (isCrossManagerDrag && appClipboard.dragSourceVfs) {
         try {
