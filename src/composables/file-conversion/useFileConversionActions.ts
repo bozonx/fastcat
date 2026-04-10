@@ -117,6 +117,17 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
     }
   }
 
+  async function resolveImageSourceFile(path: string): Promise<File | null> {
+    try {
+      const file = await fileManager.vfs.getFile(path);
+      if (file) return file;
+    } catch {
+      // Ignore VFS read errors and fall back to project FS.
+    }
+
+    return await projectStore.getFileByPath(path);
+  }
+
   async function openConversionModal(entry: FsEntry) {
     const requestId = props.conversionModalRequestId.value + 1;
     props.conversionModalRequestId.value = requestId;
@@ -284,7 +295,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
       props.imageSettings.quality = DEFAULT_IMAGE_QUALITY;
 
       try {
-        const file = await projectStore.getFileByPath(entry.path);
+        const file = await resolveImageSourceFile(entry.path);
         if (!file) throw new Error('Failed to access source file');
         const bitmap = await createImageBitmap(file);
         if (
@@ -446,14 +457,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
       } else if (request.type === 'image') {
         // Images convert in foreground
         props.isConverting.value = true;
-        let sourceFile = await projectStore.getFileByPath(entry.path);
-        if (!sourceFile) {
-          try {
-            sourceFile = await fileManager.vfs.getFile(entry.path);
-          } catch {
-            // Ignore VFS error
-          }
-        }
+        const sourceFile = await resolveImageSourceFile(entry.path);
         if (!sourceFile) throw new Error('Failed to access source file');
 
         try {

@@ -620,6 +620,19 @@ const personalLibraryPrimaryActions = computed<PrimaryEntryAction[]>(() =>
   directoryPrimaryActions.value.filter((action) => action.id === 'paste'),
 );
 
+const personalLibrarySecondaryActions = computed<SecondaryEntryAction[]>(() =>
+  directorySecondaryActions.value
+    .filter((action) => action.id === 'createContentItem' || action.id === 'createSubgroup')
+    .map((action) =>
+      action.id === 'createSubgroup'
+        ? {
+            ...action,
+            label: t('fastcat.bloggerDog.actions.createGroup'),
+          }
+        : action,
+    ),
+);
+
 const projectPrimaryActions = computed<PrimaryEntryAction[]>(() =>
   directoryPrimaryActions.value.filter((action) => action.id === 'paste'),
 );
@@ -782,6 +795,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
           fileInfo.kind === 'directory' &&
           !isRemoteRoot &&
           !isVirtualAll &&
+          !isPersonalLibrary &&
           !isProjectLibraries &&
           !isBloggerDogProject
         "
@@ -898,7 +912,10 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
         v-if="!isWorkspaceRootProperties && !hideActions && isPersonalLibrary"
         :title="t('videoEditor.fileManager.actions.title')"
       >
-        <EntryActions :primary-actions="personalLibraryPrimaryActions" :secondary-actions="[]" />
+        <EntryActions
+          :primary-actions="personalLibraryPrimaryActions"
+          :secondary-actions="personalLibrarySecondaryActions"
+        />
       </PropertySection>
 
       <PropertySection
