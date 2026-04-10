@@ -212,7 +212,10 @@ function getRemoteEntryCreatedAt(entry: RemoteVfsEntry): number | undefined {
   );
 }
 
-export function toRemoteFsEntry(entry: RemoteVfsEntry): RemoteFsEntry {
+export function toRemoteFsEntry(
+  entry: RemoteVfsEntry,
+  options?: { baseUrl?: string },
+): RemoteFsEntry {
   const size = resolveMediaSize(entry);
   const lastModified = getRemoteEntryUpdatedAt(entry);
   const createdAt = getRemoteEntryCreatedAt(entry);
@@ -224,9 +227,19 @@ export function toRemoteFsEntry(entry: RemoteVfsEntry): RemoteFsEntry {
   const entryKind = isProject || isContentItem || entry.type === 'directory' ? 'directory' : 'file';
 
   let thumbnailUrl: string | undefined;
-  if (isContentItem && entry.media?.length) {
-    const mediaObj = entry.media.map(resolveMediaObject).find((m) => m?.thumbnailUrl);
-    thumbnailUrl = mediaObj?.thumbnailUrl || resolveMediaObject(entry.media[0])?.thumbnailUrl;
+  if (isContentItem) {
+    const item = entry as RemoteVfsFileEntry;
+    if (item.thumbnail) {
+      thumbnailUrl =
+        options?.baseUrl && item.thumbnail.startsWith('/')
+          ? `${options.baseUrl.replace(/\/+$/, '')}${item.thumbnail}`
+          : item.thumbnail;
+    }
+
+    if (!thumbnailUrl && item.media?.length) {
+      const mediaObj = item.media.map(resolveMediaObject).find((m) => m?.thumbnailUrl);
+      thumbnailUrl = mediaObj?.thumbnailUrl || resolveMediaObject(item.media[0])?.thumbnailUrl;
+    }
   }
 
   const payloadType = isProject ? 'project' : isContentItem ? 'content-item' : 'collection';

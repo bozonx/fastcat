@@ -25,6 +25,7 @@ import type {
   RemoteVfsDirectoryEntry,
   RemoteVfsFileEntry,
   RemoteVfsMedia,
+  RemoteVfsMediaRelation,
   RemoteVfsProjectEntry,
   RemoteVfsScope,
 } from '~/types/remote-vfs';
@@ -44,7 +45,7 @@ interface CachedNode {
   item?: RemoteVfsFileEntry;
   collection?: RemoteVfsDirectoryEntry;
   project?: RemoteVfsProjectEntry;
-  media?: RemoteVfsMedia;
+  media?: RemoteVfsMedia | RemoteVfsMediaRelation;
   mediaIndex?: number;
 }
 
@@ -157,7 +158,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     });
 
     return {
-      ...toRemoteFsEntry(entryWithPath),
+      ...toRemoteFsEntry(entryWithPath, { baseUrl: this.getConfig()?.baseUrl }),
       path,
       parentPath: '/projects',
     } as VfsEntry;
@@ -187,7 +188,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     });
 
     return {
-      ...toRemoteFsEntry(collectionWithPath),
+      ...toRemoteFsEntry(collectionWithPath, { baseUrl: this.getConfig()?.baseUrl }),
       path: params.path,
       parentPath: params.parentPath,
       hasChildren: true,
@@ -219,7 +220,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     });
 
     return {
-      ...toRemoteFsEntry(itemWithPath),
+      ...toRemoteFsEntry(itemWithPath, { baseUrl: this.getConfig()?.baseUrl }),
       kind: 'directory',
       path: params.path,
       parentPath: params.parentPath,
@@ -775,7 +776,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     if (entry.type === 'directory') {
       await deleteRemoteCollection({ config, id: entry.id });
     } else if (entry.type === 'media') {
-      if (entry.mediaIndex === -1) {
+      if (entry.mediaIndex === -1 && entry.item) {
         await updateRemoteItem({
           config,
           id: entry.item.id,

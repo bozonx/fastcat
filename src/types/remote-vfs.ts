@@ -64,6 +64,7 @@ export interface RemoteVfsFileEntry extends RemoteVfsBaseEntry {
   tags?: string[];
   language?: string;
   note?: string;
+  thumbnail?: string;
   groupId?: string | null;
   media?: (RemoteVfsMedia | RemoteVfsMediaRelation)[];
 }
