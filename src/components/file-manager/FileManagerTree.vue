@@ -715,25 +715,30 @@ function getBdType(entry: FsEntry): string | undefined {
   return (entry.adapterPayload as ReturnType<typeof getBdPayload>)?.type;
 }
 
+const isBloggerDogVirtualFolder = (entry: FsEntry) => {
+  return getBdType(entry) === 'virtual-folder';
+};
+
 const isBloggerDogProject = (entry: FsEntry) => {
   if (entry.source !== 'remote') return false;
-  const path = entry.path || '';
-  return path.includes('/projects/') && !path.split('/projects/')[1]?.includes('/');
+  return getBdType(entry) === 'project';
 };
 
 const isBloggerDogGroup = (entry: FsEntry) => {
   if (entry.source !== 'remote') return false;
   if (entry.kind !== 'directory') return false;
-  const bdType = getBdType(entry);
-  if (bdType === 'collection' || bdType === 'virtual-folder') return true;
-  if (isBloggerDogProject(entry)) return true;
-  return entry.path.includes('/projects/');
+  return getBdType(entry) === 'collection';
 };
 
 const isBloggerDogContentItem = (entry: FsEntry) => {
   if (entry.source !== 'remote') return false;
   return getBdType(entry) === 'content-item';
 };
+
+function onRenameClick(entry: FsEntry) {
+  if (isBloggerDogVirtualFolder(entry) || isBloggerDogProject(entry)) return;
+  emit('action', 'rename', entry);
+}
 
 const clipboardStore = useAppClipboard();
 
@@ -761,6 +766,7 @@ const { getContextMenuItems } = useFileContextMenu(
     isBloggerDogProject,
     isBloggerDogGroup,
     isBloggerDogContentItem,
+    isBloggerDogVirtualFolder,
     get hasClipboardItems() {
       return clipboardStore.hasFileManagerPayload;
     },

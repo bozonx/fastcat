@@ -79,7 +79,12 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       title: options.t('common.delete'),
       icon: 'i-heroicons-trash',
       hidden:
-        options.isProjectRootDir.value || options.isCommonDir.value || options.isRemoteRoot.value,
+        options.isProjectRootDir.value ||
+        options.isCommonDir.value ||
+        options.isRemoteRoot.value ||
+        options.isBloggerDogProject.value ||
+        options.isVirtualAll?.value ||
+        options.isPersonalLibrary?.value,
       onClick: options.onDelete,
     },
     {
@@ -87,27 +92,49 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       title: options.t('common.rename'),
       icon: 'i-heroicons-pencil',
       hidden:
-        options.isProjectRootDir.value || options.isCommonDir.value || options.isRemoteRoot.value,
+        options.isProjectRootDir.value ||
+        options.isCommonDir.value ||
+        options.isRemoteRoot.value ||
+        options.isBloggerDogProject.value ||
+        options.isVirtualAll?.value ||
+        options.isPersonalLibrary?.value,
       onClick: options.onRename,
     },
     {
       id: 'copy',
       title: options.t('common.copy'),
       icon: 'i-heroicons-document-duplicate',
-      hidden: !options.canCopyOrCut.value,
+      hidden:
+        !options.canCopyOrCut.value ||
+        options.isVirtualAll?.value ||
+        options.isPersonalLibrary?.value ||
+        options.isBloggerDogProject.value,
       onClick: options.onCopy,
     },
     {
       id: 'cut',
       title: options.t('common.cut'),
       icon: 'i-heroicons-scissors',
-      hidden: !options.canCopyOrCut.value,
+      hidden:
+        !options.canCopyOrCut.value ||
+        options.isVirtualAll?.value ||
+        options.isPersonalLibrary?.value ||
+        options.isBloggerDogProject.value,
       onClick: options.onCut,
     },
     {
       id: 'paste',
       title: options.t('common.paste'),
       icon: 'i-heroicons-clipboard',
+      hidden:
+        !(
+          options.isProjectRootDir.value ||
+          options.isCommonDir.value ||
+          options.isBloggerDogProject.value ||
+          options.isBloggerDogGroup?.value ||
+          options.isVirtualAll?.value ||
+          options.isPersonalLibrary?.value
+        ),
       disabled: !options.hasClipboardItems.value,
       onClick: options.onPaste,
     },
@@ -118,28 +145,28 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'upload',
       label: options.t('videoEditor.fileManager.actions.uploadFiles'),
       icon: 'i-heroicons-arrow-up-tray',
-      hidden: options.isExternal?.value,
+      hidden: options.isExternal?.value || options.isVirtualAll?.value,
       onClick: options.triggerDirectoryUpload,
     },
     {
       id: 'createSubfolder',
       label: options.t('videoEditor.fileManager.actions.createFolder'),
       icon: 'i-heroicons-folder-plus',
-      hidden: options.isRemoteMode?.value,
+      hidden: options.isRemoteMode?.value || options.isVirtualAll?.value,
       onClick: options.createSubfolder,
     },
     {
       id: 'createTimeline',
       label: options.t('videoEditor.fileManager.actions.createTimeline'),
       icon: 'i-heroicons-document-plus',
-      hidden: options.isExternal?.value,
+      hidden: options.isExternal?.value || options.isVirtualAll?.value,
       onClick: options.createTimelineInFolder,
     },
     {
       id: 'createMarkdown',
       label: options.t('videoEditor.fileManager.actions.createMarkdown'),
       icon: 'i-heroicons-document-text',
-      hidden: options.isRemoteMode?.value,
+      hidden: options.isRemoteMode?.value || options.isVirtualAll?.value,
       onClick: options.createMarkdownInFolder,
     },
     {
