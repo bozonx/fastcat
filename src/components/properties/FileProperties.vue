@@ -113,6 +113,9 @@ const selectedFsEntryRef = computed(() => props.selectedFsEntry);
 const previewModeRef = computed(() => props.previewMode);
 const hasProxyRef = computed(() => props.hasProxy);
 const isRemoteEntry = computed(() => props.selectedFsEntry?.source === 'remote');
+const isRemoteFileEntry = computed(
+  () => isRemoteEntry.value && props.selectedFsEntry?.kind === 'file',
+);
 const hasAbsoluteLocalPath = computed(() => {
   if (isRemoteEntry.value) return false;
   const path = props.selectedFsEntry?.path;
@@ -140,6 +143,11 @@ const isWorkspaceRootProperties = computed(
 const effectiveVfs = computed(() =>
   isExternalContext.value ? (computerVfs.value ?? fileManager.vfs) : fileManager.vfs,
 );
+const metadataCacheKey = computed(() => {
+  const path = props.selectedFsEntry?.path;
+  if (!path) return null;
+  return isRemoteFileEntry.value ? `external:${path}` : path;
+});
 
 const { isProjectRootDir, storageFreeBytes, projectStats } = useFileStorageInfo({
   selectedFsEntry: selectedFsEntryRef,
@@ -232,7 +240,7 @@ const {
   proxyStore,
   getFileByPath: (path) => effectiveVfs.value.getFile(path),
   getMetadata: async ({ file, path }) => {
-    if (isExternalContext.value) {
+    if (isExternalContext.value || isRemoteFileEntry.value) {
       return await mediaStore.getOrFetchMetadata(file, `external:${path}`, {
         forceRefresh: true,
       });
@@ -303,7 +311,7 @@ const isVideoFile = computed(() => mediaType.value === 'video');
 const isVideoWithAudio = computed(() => Boolean(mediaMeta.value?.audio));
 
 const isFormatUnsupported = computed(() =>
-  Boolean(selectedPath.value && mediaStore.metadataLoadFailed[selectedPath.value]),
+  Boolean(metadataCacheKey.value && mediaStore.metadataLoadFailed[metadataCacheKey.value]),
 );
 
 const isVideoCodecUnsupported = computed(() => mediaMeta.value?.video?.canDecode === false);
@@ -588,6 +596,8 @@ const filteredFilePrimaryActions = computed(() => {
 });
 
 const filteredFileSecondaryActions = computed<SecondaryEntryAction[]>(() => {
+  if (isRemoteFileEntry.value) return [];
+
   if (!isExternalContext.value) return fileSecondaryActions.value;
 
   return fileSecondaryActions.value.filter(
