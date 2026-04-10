@@ -786,12 +786,14 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
         :item="castedRemoteRecord as RemoteVfsFileEntry"
         :config="remoteFilesConfig!"
         :title="generalInfoTitle"
+        :deep-link="bloggerDogDeepLink"
       />
 
       <BloggerDogCollectionProperties
         v-if="!isWorkspaceRootProperties && isBloggerDogGroup && castedRemoteRecord"
         :collection="castedRemoteRecord as RemoteVfsDirectoryEntry"
         :config="remoteFilesConfig!"
+        :deep-link="bloggerDogDeepLink"
       />
 
       <PropertySection

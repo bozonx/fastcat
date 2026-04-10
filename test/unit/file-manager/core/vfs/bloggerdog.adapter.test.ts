@@ -3,8 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BloggerDogVfsAdapter } from '~/file-manager/core/vfs/bloggerdog.adapter';
 import type { RemoteVfsFileEntry } from '~/types/remote-vfs';
 
-const { updateRemoteItem } = vi.hoisted(() => ({
+const { updateRemoteItem, uploadFileToRemote } = vi.hoisted(() => ({
   updateRemoteItem: vi.fn().mockResolvedValue(undefined),
+  uploadFileToRemote: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('~/utils/remote-vfs', async () => {
@@ -12,6 +13,7 @@ vi.mock('~/utils/remote-vfs', async () => {
   return {
     ...actual,
     updateRemoteItem,
+    uploadFileToRemote,
   };
 });
 
@@ -144,5 +146,47 @@ describe('BloggerDogVfsAdapter', () => {
     await expect(adapter.createDirectory('/personal/item-1/New Folder')).rejects.toThrow(
       'Creating folders inside content items is not supported',
     );
+  });
+
+  it('uploads into an existing content item with itemId', async () => {
+    const adapter = new BloggerDogVfsAdapter(() => ({
+      baseUrl: 'https://example.com/api',
+      bearerToken: 'token',
+    }));
+
+    const item: RemoteVfsFileEntry = {
+      id: 'item-1',
+      type: 'file',
+      name: 'Item',
+      title: 'Item',
+      path: '/personal/item-1',
+      scope: 'personal',
+      groupId: 'group-1',
+      projectId: 'proj-1',
+    };
+
+    const cache = (adapter as unknown as { idCache: Map<string, unknown> }).idCache;
+    cache.set('/personal/item-1', {
+      id: item.id,
+      type: 'file',
+      path: '/personal/item-1',
+      scope: 'project',
+      projectId: 'proj-1',
+      item,
+    });
+
+    await adapter.writeFile('/personal/item-1/example.mp4', new Blob(['ok'], { type: 'video/mp4' }));
+
+    expect(uploadFileToRemote).toHaveBeenCalledWith({
+      config: {
+        baseUrl: 'https://example.com/api',
+        bearerToken: 'token',
+      },
+      file: expect.any(File),
+      scope: 'project',
+      projectId: 'proj-1',
+      groupId: 'group-1',
+      itemId: 'item-1',
+    });
   });
 });

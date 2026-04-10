@@ -569,6 +569,7 @@ export async function uploadFileToRemote(params: {
   scope: RemoteVfsScope;
   projectId?: string;
   groupId?: string;
+  itemId?: string;
   signal?: AbortSignal;
   onProgress?: (progress: number) => void;
 }): Promise<void> {
@@ -619,6 +620,9 @@ export async function uploadFileToRemote(params: {
     }
     if (params.groupId) {
       formData.append('groupId', params.groupId);
+    }
+    if (params.itemId) {
+      formData.append('itemId', params.itemId);
     }
     xhr.send(formData);
   });
@@ -735,6 +739,7 @@ export async function updateRemoteItem(params: {
   groupId?: string | null;
   tags?: string[];
   note?: string;
+  media?: Array<{ mediaId: string; order: number }>;
 }): Promise<void> {
   await fetchJson<void>(joinPath(params.config.baseUrl, `items/${params.id}`), {
     method: 'PATCH',
@@ -747,6 +752,7 @@ export async function updateRemoteItem(params: {
       groupId: params.groupId,
       tags: params.tags,
       note: params.note,
+      media: params.media,
     }),
   });
 }

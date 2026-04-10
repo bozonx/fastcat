@@ -763,6 +763,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       scope: context.scope,
       projectId: context.projectId,
       groupId: context.groupId,
+      itemId: parent.type === 'file' ? parent.id : undefined,
     });
 
     this.clearCache(parentPath);
