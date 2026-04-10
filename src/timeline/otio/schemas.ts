@@ -190,13 +190,7 @@ export const TimelineDocFastCatMetaSchema = z
     docId: z.string().trim().min(1).optional(),
     timebase: z.object({ fps: z.number() }).optional(),
     selectionRange: z.object({ startUs: z.number(), endUs: z.number() }).optional(),
-    snapThresholdPx: z.number().min(1).optional(),
-    playheadUs: z.number().min(0).optional(),
-    masterGain: z.number().optional(),
-    masterMuted: z.boolean().optional(),
     masterEffects: z.array(z.any()).optional(),
-    zoom: z.number().optional(),
-    trackHeights: z.record(z.string(), z.number()).optional(),
     markers: z.array(z.any()).optional(),
   })
   .catch({});
