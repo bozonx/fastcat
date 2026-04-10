@@ -3,9 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BloggerDogVfsAdapter } from '~/file-manager/core/vfs/bloggerdog.adapter';
 import type { RemoteVfsFileEntry } from '~/types/remote-vfs';
 
-const { updateRemoteItem, uploadFileToRemote } = vi.hoisted(() => ({
+const { updateRemoteItem, uploadFileToRemote, fetchRemoteItem } = vi.hoisted(() => ({
   updateRemoteItem: vi.fn().mockResolvedValue(undefined),
   uploadFileToRemote: vi.fn().mockResolvedValue(undefined),
+  fetchRemoteItem: vi.fn(),
 }));
 
 vi.mock('~/utils/remote-vfs', async () => {
@@ -14,12 +15,22 @@ vi.mock('~/utils/remote-vfs', async () => {
     ...actual,
     updateRemoteItem,
     uploadFileToRemote,
+    fetchRemoteItem,
   };
 });
 
 describe('BloggerDogVfsAdapter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    fetchRemoteItem.mockImplementation(async ({ id }) => ({
+      id,
+      type: 'file',
+      name: 'Fetched Item',
+      title: 'Fetched Item',
+      path: `/personal/${id}`,
+      scope: 'personal',
+      media: [],
+    }));
   });
 
   it('clears content item text when deleting its virtual txt file', async () => {
@@ -47,6 +58,10 @@ describe('BloggerDogVfsAdapter', () => {
       item,
     });
 
+    fetchRemoteItem.mockResolvedValue({
+      ...item,
+    });
+
     const [textEntry] = await adapter.readDirectory('/personal/item-1');
     await adapter.deleteEntry(textEntry.path);
 
@@ -58,7 +73,6 @@ describe('BloggerDogVfsAdapter', () => {
       id: 'item-1',
       text: '',
     });
-    expect(item.text).toBe('');
   });
 
   it('reads media file with bearer auth and uses nested media id from relation', async () => {
@@ -104,6 +118,11 @@ describe('BloggerDogVfsAdapter', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
+    fetchRemoteItem.mockResolvedValue({
+      ...item,
+      media: item.media,
+    });
+
     const [mediaEntry] = await adapter.readDirectory('/personal/item-1');
     const blob = await adapter.readFile(mediaEntry.path);
 
@@ -117,6 +136,61 @@ describe('BloggerDogVfsAdapter', () => {
       },
     );
     expect(blob.type).toBe('image/webp');
+  });
+
+  it('refreshes content item before listing its media', async () => {
+    const adapter = new BloggerDogVfsAdapter(() => ({
+      baseUrl: 'https://example.com/api',
+      bearerToken: 'token',
+    }));
+
+    const staleItem: RemoteVfsFileEntry = {
+      id: 'item-1',
+      type: 'file',
+      name: 'Item',
+      title: 'Item',
+      path: '/personal/item-1',
+      scope: 'personal',
+      media: [],
+    };
+
+    const cache = (adapter as unknown as { idCache: Map<string, unknown> }).idCache;
+    cache.set('/personal/item-1', {
+      id: staleItem.id,
+      type: 'file',
+      path: '/personal/item-1',
+      scope: 'personal',
+      item: staleItem,
+    });
+
+    fetchRemoteItem.mockResolvedValue({
+      ...staleItem,
+      media: [
+        {
+          id: 'rel-1',
+          mediaId: 'media-1',
+          order: 0,
+          media: {
+            id: 'media-1',
+            type: 'VIDEO',
+            filename: 'fresh.mp4',
+            mimeType: 'video/mp4',
+            sizeBytes: 10,
+          },
+        },
+      ],
+    });
+
+    const entries = await adapter.readDirectory('/personal/item-1');
+
+    expect(fetchRemoteItem).toHaveBeenCalledWith({
+      config: {
+        baseUrl: 'https://example.com/api',
+        bearerToken: 'token',
+      },
+      id: 'item-1',
+    });
+    expect(entries.some((entry) => entry.name === 'fresh.mp4')).toBe(true);
   });
 
   it('rejects creating folders inside a content item', async () => {

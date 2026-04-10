@@ -502,6 +502,23 @@ export async function fetchRemoteItems(
   };
 }
 
+export async function fetchRemoteItem(params: {
+  config: RemoteVfsClientConfig;
+  id: string;
+  signal?: AbortSignal;
+}): Promise<RemoteVfsFileEntry> {
+  const response = await fetchJson<RemoteVfsFileEntry>(
+    joinPath(params.config.baseUrl, `items/${params.id}`),
+    {
+      method: 'GET',
+      headers: createAuthorizedHeaders(params.config),
+      signal: params.signal,
+    },
+  );
+
+  return mapItemResponse(response);
+}
+
 export async function fetchRemoteHealth(params: {
   url: string;
   bearerToken: string;
@@ -578,6 +595,7 @@ export async function uploadFileToRemote(params: {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', url);
     xhr.setRequestHeader('Authorization', `Bearer ${params.config.bearerToken}`);
+    xhr.setRequestHeader('x-file-size', String(params.file.size));
 
     xhr.upload.onprogress = (event) => {
       if (!event.lengthComputable) return;

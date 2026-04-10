@@ -212,7 +212,9 @@
       "projectLibraries": "Библиотеки проектов",
       "projectLibrariesDesc": "Библиотеки контента конкретных проектов",
       "actions": {
-        "createGroup": "Создать группу"
+        "createGroup": "Создать группу",
+        "createSubgroup": "Создать подгруппу",
+        "createItem": "Создать элемент контента"
       }
     },
     "file": {
