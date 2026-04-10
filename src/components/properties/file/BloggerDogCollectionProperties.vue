@@ -11,6 +11,7 @@ interface DirectoryWithMeta extends RemoteVfsDirectoryEntry {
 const props = defineProps<{
   collection: RemoteVfsDirectoryEntry;
   config: { baseUrl: string; bearerToken: string };
+  deepLink?: string | null;
 }>();
 
 const { t } = useI18n();
@@ -22,7 +23,8 @@ const updatedAt = computed(() => {
   return date ? new Date(date).toLocaleString() : null;
 });
 
-const deepLink = computed(() => {
+const effectiveDeepLink = computed(() => {
+  if (props.deepLink) return props.deepLink;
   if (!props.collection.id) return null;
   const baseUrl = props.config.baseUrl.replace(/\/api\/v1.*$/, '');
   return `${baseUrl}/content-library/collections/${props.collection.id}`;
@@ -32,9 +34,9 @@ const deepLink = computed(() => {
 <template>
   <PropertySection :title="t('fastcat.file.bloggerDogGroup', 'Группа')">
     <template #default>
-      <PropertyRow v-if="deepLink" :label="t('common.path', 'Путь')">
+      <PropertyRow v-if="effectiveDeepLink" :label="t('common.path', 'Путь')">
         <a
-          :href="deepLink"
+          :href="effectiveDeepLink"
           target="_blank"
           class="text-primary-500 hover:text-primary-400 underline decoration-dotted transition-colors flex items-center gap-1 overflow-hidden"
         >

@@ -11,6 +11,7 @@ const props = defineProps<{
   item: RemoteVfsFileEntry;
   config: { baseUrl: string; bearerToken: string };
   title: string;
+  deepLink?: string | null;
 }>();
 
 const { t } = useI18n();
@@ -55,6 +56,17 @@ async function copyToClipboard(text: string) {
     </template>
 
     <template #default>
+      <PropertyRow v-if="props.deepLink" :label="t('common.path', 'Путь')">
+        <a
+          :href="props.deepLink"
+          target="_blank"
+          class="text-primary-500 hover:text-primary-400 underline decoration-dotted transition-colors flex items-center gap-1 overflow-hidden"
+        >
+          <span class="truncate">{{ props.item.title || props.item.name }}</span>
+          <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 shrink-0" />
+        </a>
+      </PropertyRow>
+
       <PropertyRow :label="t('common.title', 'Title')">
         <span class="text-xs px-1">{{ props.item.title || props.item.name }}</span>
       </PropertyRow>
@@ -86,7 +98,7 @@ async function copyToClipboard(text: string) {
         <div class="text-2xs text-ui-text-muted">
           <span>{{ t('common.text', 'Text') }}</span>
         </div>
-        <div class="text-xs leading-relaxed whitespace-pre-wrap break-words">
+        <div class="text-xs leading-relaxed whitespace-pre-wrap wrap-break-word">
           {{ props.item.text || '' }}
         </div>
       </div>
