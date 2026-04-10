@@ -285,13 +285,9 @@ export async function runTranscode(
         : {
             codec: resolvedVideoCodec,
             bitrate: options.bitrate,
-            ...(shouldResizeVideo
-              ? {
-                  width: options.width,
-                  height: options.height,
-                  fit: 'contain',
-                }
-              : {}),
+            width: Math.floor(options.width / 2) * 2,
+            height: Math.floor(options.height / 2) * 2,
+            fit: 'contain',
             ...(shouldChangeFrameRate ? { frameRate: options.fps } : {}),
           };
 
