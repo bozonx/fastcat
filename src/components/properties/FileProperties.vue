@@ -26,6 +26,7 @@ import FileProjectRootSection from '~/components/properties/file/FileProjectRoot
 import FileTranscriptionModal from '~/components/file-manager/modals/FileTranscriptionModal.vue';
 import EntryActions from '~/components/properties/file/EntryActions.vue';
 import BloggerDogItemPropertiesSection from '~/components/properties/file/BloggerDogItemPropertiesSection.vue';
+import BloggerDogCollectionProperties from '~/components/properties/file/BloggerDogCollectionProperties.vue';
 
 import { useEntryPreview } from '~/composables/file-manager/useEntryPreview';
 import { useImageExifInfo } from '~/composables/properties/useImageExifInfo';
@@ -787,6 +788,12 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
         :title="generalInfoTitle"
       />
 
+      <BloggerDogCollectionProperties
+        v-if="!isWorkspaceRootProperties && isBloggerDogGroup && castedRemoteRecord"
+        :collection="castedRemoteRecord as RemoteVfsDirectoryEntry"
+        :config="remoteFilesConfig!"
+      />
+
       <PropertySection
         v-if="
           !isWorkspaceRootProperties &&
@@ -1008,7 +1015,8 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
           !isPersonalLibrary &&
           !isProjectLibraries &&
           !isBloggerDogProject &&
-          !isBloggerDogContentItem
+          !isBloggerDogContentItem &&
+          !isBloggerDogGroup
         "
         :title="generalInfoTitle"
         :file-info="fileInfo || (selectedFsEntry as any)"

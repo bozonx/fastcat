@@ -78,8 +78,12 @@ async function writeTauriConfigJson(filename: string, data: unknown): Promise<vo
 export function createWorkspaceSettingsRepository(input: {
   workspaceDir: DirectoryHandleLike;
 }): WorkspaceSettingsRepository {
-  async function loadSettings(filename: string, legacyFilename?: string): Promise<unknown | null> {
-    if (isTauriRuntime()) {
+  async function loadSettings(
+    filename: string,
+    isGlobal: boolean,
+    legacyFilename?: string,
+  ): Promise<unknown | null> {
+    if (isTauriRuntime() && isGlobal) {
       return await readTauriConfigJson(filename);
     }
 
@@ -101,8 +105,8 @@ export function createWorkspaceSettingsRepository(input: {
     return null;
   }
 
-  async function saveSettings(filename: string, data: unknown): Promise<void> {
-    if (isTauriRuntime()) {
+  async function saveSettings(filename: string, isGlobal: boolean, data: unknown): Promise<void> {
+    if (isTauriRuntime() && isGlobal) {
       await writeTauriConfigJson(filename, data);
       return;
     }
@@ -117,19 +121,19 @@ export function createWorkspaceSettingsRepository(input: {
 
   return {
     async loadUserSettings() {
-      return await loadSettings('user.settings.json', 'user.settings.json');
+      return await loadSettings('user.settings.json', true, 'user.settings.json');
     },
 
     async saveUserSettings(data) {
-      await saveSettings('user.settings.json', data);
+      await saveSettings('user.settings.json', true, data);
     },
 
     async loadAppSettings() {
-      return await loadSettings('app.settings.json', 'workspace.settings.json');
+      return await loadSettings('app.settings.json', false, 'workspace.settings.json');
     },
 
     async saveAppSettings(data) {
-      await saveSettings('app.settings.json', data);
+      await saveSettings('app.settings.json', false, data);
     },
 
     async loadWorkspaceSettings() {
@@ -140,10 +144,10 @@ export function createWorkspaceSettingsRepository(input: {
       await this.saveAppSettings(data);
     },
     async loadWorkspaceState() {
-      return (await loadSettings('workspace-state.json')) as WorkspaceState | null;
+      return (await loadSettings('workspace-state.json', false)) as WorkspaceState | null;
     },
     async saveWorkspaceState(data) {
-      await saveSettings('workspace-state.json', data);
+      await saveSettings('workspace-state.json', false, data);
     },
   };
 }

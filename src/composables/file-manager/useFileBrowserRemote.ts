@@ -161,7 +161,6 @@ export function useFileBrowserRemote({
       remoteType: 'directory',
       adapterPayload: payload,
       mimeType: 'folder',
-      size: 0,
     };
   }
 

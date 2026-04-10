@@ -172,10 +172,10 @@ function resolveMediaMimeType(
   return first?.mimeType || 'application/octet-stream';
 }
 
-function resolveMediaSize(entry: RemoteVfsEntry): number {
-  if (entry.type !== 'file') return 0;
+function resolveMediaSize(entry: RemoteVfsEntry): number | undefined {
+  if (entry.type !== 'file') return undefined;
   const first = resolveMediaObject(entry.media?.[0]);
-  return first?.sizeBytes ?? first?.size ?? 0;
+  return first?.sizeBytes ?? first?.size;
 }
 
 function parseRemoteDate(raw: string | number | undefined): number | undefined {

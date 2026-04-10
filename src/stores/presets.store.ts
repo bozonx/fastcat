@@ -38,21 +38,24 @@ export const usePresetsStore = defineStore('presets', () => {
   const textsStandardCollapsed = ref(false);
   const textsCustomCollapsed = ref(false);
 
-  // Load from localStorage
+  // Load from workspace state
   function load() {
-    // 1. Try localStorage (legacy/fallback)
-    const localCustom = readLocalStorageJson<CustomPreset[]>(STORAGE_KEYS.PRESETS.CUSTOM, []);
-
-    // 2. Check workspace state (priority)
+    // Check workspace state (primary source of truth)
     const workspaceCustom = workspaceStore.workspaceState.presets.custom;
+    const workspaceDefaultText = workspaceStore.workspaceState.presets.defaultTextPresetId;
 
     if (workspaceCustom.length > 0) {
       customPresets.value = [...workspaceCustom];
     } else {
-      customPresets.value = localCustom;
+      // Legacy fallback for old installations
+      customPresets.value = readLocalStorageJson<CustomPreset[]>(STORAGE_KEYS.PRESETS.CUSTOM, []);
     }
 
-    defaultTextPresetId.value = readLocalStorageJson(STORAGE_KEYS.PRESETS.DEFAULT_TEXT, '');
+    if (workspaceDefaultText) {
+      defaultTextPresetId.value = workspaceDefaultText;
+    } else {
+      defaultTextPresetId.value = readLocalStorageJson(STORAGE_KEYS.PRESETS.DEFAULT_TEXT, '');
+    }
 
     const state = readLocalStorageJson<any>(STORAGE_KEYS.PRESETS.COLLAPSED, null);
     if (state) {
@@ -74,20 +77,22 @@ export const usePresetsStore = defineStore('presets', () => {
     customPresets.value.forEach((preset) => registerPresetManifest(preset));
   }
 
-  // Save to localStorage
+  // Save to workspace state
   function savePresets() {
-    writeLocalStorageJson(STORAGE_KEYS.PRESETS.CUSTOM, customPresets.value);
-
-    // Also sync to workspace state
     if (workspaceStore.workspaceHandle) {
       void workspaceStore.batchUpdateWorkspaceState((draft) => {
         draft.presets.custom = JSON.parse(JSON.stringify(customPresets.value));
+        draft.presets.defaultTextPresetId = defaultTextPresetId.value;
       });
     }
+
+    // Also keep in localStorage for now as a fallback/global cache
+    writeLocalStorageJson(STORAGE_KEYS.PRESETS.CUSTOM, customPresets.value);
+    writeLocalStorageJson(STORAGE_KEYS.PRESETS.DEFAULT_TEXT, defaultTextPresetId.value);
   }
 
-  watch(defaultTextPresetId, (val) => {
-    writeLocalStorageJson(STORAGE_KEYS.PRESETS.DEFAULT_TEXT, val);
+  watch(defaultTextPresetId, () => {
+    savePresets();
   });
 
   watch(
@@ -123,16 +128,23 @@ export const usePresetsStore = defineStore('presets', () => {
     },
   );
 
-  // Sync from workspace state when it loads
+  // Sync from workspace state when it loads or changes externally
   watch(
-    () => workspaceStore.workspaceState.presets.custom,
-    (newPresets) => {
+    () => workspaceStore.workspaceState.presets,
+    (presets) => {
+      if (!presets) return;
+      
+      const { custom: newPresets, defaultTextPresetId: newDefaultText } = presets;
+
       if (newPresets && newPresets.length > 0) {
-        // Simple comparison to avoid loops or redundant updates
         if (JSON.stringify(newPresets) !== JSON.stringify(customPresets.value)) {
           customPresets.value = [...newPresets];
           customPresets.value.forEach((preset) => registerPresetManifest(preset));
         }
+      }
+
+      if (newDefaultText !== undefined && newDefaultText !== defaultTextPresetId.value) {
+        defaultTextPresetId.value = newDefaultText;
       }
     },
     { deep: true },
