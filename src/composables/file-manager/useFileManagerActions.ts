@@ -171,12 +171,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
     const createdEntry = actions.findEntryByPath(createdPath);
     if (createdEntry) {
       fileManagerStore.openFolder(createdEntry);
-      uiStore.selectedFsEntry = {
-        kind: createdEntry.kind,
-        name: createdEntry.name,
-        path: createdEntry.path,
-      };
-      selectionStore.selectFsEntry(createdEntry);
+      selectionStore.selectFsEntryWithUiUpdate(createdEntry);
       actions.onFileSelect?.(createdEntry);
     }
 
@@ -213,12 +208,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
 
     const newEntry = actions.findEntryByPath(nextPath);
     if (newEntry) {
-      uiStore.selectedFsEntry = {
-        kind: newEntry.kind,
-        name: newEntry.name,
-        path: newEntry.path,
-      };
-      selectionStore.selectFsEntry(newEntry);
+      selectionStore.selectFsEntryWithUiUpdate(newEntry);
 
       // Open the newly created version
       await projectStore.openTimelineFile(newEntry.path);
@@ -262,12 +252,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
 
       // Select and scroll to new file
       setTimeout(() => {
-        uiStore.selectedFsEntry = {
-          kind: newEntry.kind,
-          name: newEntry.name,
-          path: newEntry.path,
-        };
-        selectionStore.selectFsEntry(newEntry);
+        selectionStore.selectFsEntryWithUiUpdate(newEntry);
         uiStore.triggerScrollToFileTreeEntry(newEntry.path);
       }, 50);
     }
@@ -453,8 +438,9 @@ export function useFileManagerActions(actions: FileManagerActions) {
         reloadDirectory: actions.reloadDirectory,
         notifyFileManagerUpdate: actions.notifyFileManagerUpdate,
         setFileTreePathExpanded: actions.setFileTreePathExpanded,
-        onFileSelect: actions.onFileSelect,
-        onFilesSelect: (entries) => selectionStore.selectFsEntries(entries),
+        onFileSelect: (entry) => selectionStore.selectFsEntryWithUiUpdate(entry, actions.instanceId),
+        onFilesSelect: (entries) =>
+          selectionStore.selectFsEntriesWithUiUpdate(entries, actions.instanceId),
         clearClipboardPayload: () => clipboardStore.clearClipboardPayload(),
       });
     },
