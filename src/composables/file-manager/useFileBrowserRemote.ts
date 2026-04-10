@@ -13,7 +13,7 @@ import {
 } from '~/utils/remote-vfs';
 import type { RemoteVfsEntry, RemoteVfsFileEntry } from '~/types/remote-vfs';
 import type { FsEntry } from '~/types/fs';
-import type { BloggerDogEntryPayload, getBdPayload } from '~/types/bloggerdog';
+import type { BloggerDogEntryPayload, BdEntryType } from '~/types/bloggerdog';
 import { useProjectStore } from '~/stores/project.store';
 import {
   REMOTE_FILE_DRAG_TYPE,
@@ -125,7 +125,7 @@ export function useFileBrowserRemote({
 
   const isRemoteAvailable = computed(() => Boolean(remoteFilesConfig.value));
 
-  function buildRemoteDirectoryEntry(path: string): RemoteFsEntry {
+  function buildRemoteDirectoryEntry(path: string, type: BdEntryType = 'virtual-folder'): RemoteFsEntry {
     let normalizedPath = path || '/';
     if (!normalizedPath.startsWith('/remote')) {
       normalizedPath = `/remote${normalizedPath.startsWith('/') ? '' : '/'}${normalizedPath}`;
@@ -148,7 +148,7 @@ export function useFileBrowserRemote({
       type: 'directory',
     };
     const payload: BloggerDogEntryPayload = {
-      type: 'virtual-folder',
+      type,
       remoteData,
     };
     return {
