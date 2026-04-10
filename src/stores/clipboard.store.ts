@@ -9,6 +9,7 @@ export interface FileManagerClipboardItem {
   path: string;
   kind: FsEntry['kind'];
   name: string;
+  source?: FsEntry['source'];
 }
 
 export interface TimelineClipboardItem {
@@ -23,6 +24,7 @@ export interface FileManagerClipboardPayload {
   source: 'fileManager';
   operation: ClipboardOperation;
   items: FileManagerClipboardItem[];
+  sourceInstanceId?: string;
 }
 
 export interface TimelineClipboardPayload {
@@ -39,6 +41,9 @@ export const useClipboardStore = defineStore('clipboard', () => {
   const dragSourceFileManagerInstanceId = ref<string | null>(null);
   const dragTargetFileManagerInstanceId = ref<string | null>(null);
   const dragSourceVfs = shallowRef<IFileSystemAdapter | null>(null);
+  const fileManagerVfsRegistry = shallowRef<
+    Record<string, { count: number; vfs: IFileSystemAdapter }>
+  >({});
 
   const hasFileManagerPayload = computed(
     () =>
@@ -73,12 +78,48 @@ export const useClipboardStore = defineStore('clipboard', () => {
     dragSourceVfs.value = vfs;
   }
 
+  function registerFileManagerVfs(instanceId: string, vfs: IFileSystemAdapter) {
+    const current = fileManagerVfsRegistry.value[instanceId];
+    fileManagerVfsRegistry.value = {
+      ...fileManagerVfsRegistry.value,
+      [instanceId]: {
+        vfs,
+        count: (current?.count ?? 0) + 1,
+      },
+    };
+  }
+
+  function unregisterFileManagerVfs(instanceId: string) {
+    const nextRegistry = { ...fileManagerVfsRegistry.value };
+    const current = nextRegistry[instanceId];
+    if (!current) {
+      fileManagerVfsRegistry.value = nextRegistry;
+      return;
+    }
+
+    if (current.count <= 1) {
+      delete nextRegistry[instanceId];
+    } else {
+      nextRegistry[instanceId] = {
+        ...current,
+        count: current.count - 1,
+      };
+    }
+    fileManagerVfsRegistry.value = nextRegistry;
+  }
+
+  function getFileManagerVfs(instanceId?: string | null) {
+    if (!instanceId) return null;
+    return fileManagerVfsRegistry.value[instanceId]?.vfs ?? null;
+  }
+
   return {
     clipboardPayload,
     currentDragOperation,
     dragSourceFileManagerInstanceId,
     dragTargetFileManagerInstanceId,
     dragSourceVfs,
+    fileManagerVfsRegistry,
     hasFileManagerPayload,
     hasTimelinePayload,
     setClipboardPayload,
@@ -87,5 +128,8 @@ export const useClipboardStore = defineStore('clipboard', () => {
     setDragSourceFileManagerInstanceId,
     setDragTargetFileManagerInstanceId,
     setDragSourceVfs,
+    registerFileManagerVfs,
+    unregisterFileManagerVfs,
+    getFileManagerVfs,
   };
 });

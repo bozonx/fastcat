@@ -14,7 +14,11 @@ import MediaPropertiesSection from '~/components/properties/file/MediaProperties
 import ExpandableYamlSection from '~/components/properties/file/ExpandableYamlSection.vue';
 import FileGeneralInfoSection from '~/components/properties/file/FileGeneralInfoSection.vue';
 import FileTimelineUsageSection from '~/components/properties/file/FileTimelineUsageSection.vue';
-import type { RemoteVfsFileEntry, RemoteVfsEntry, RemoteVfsDirectoryEntry } from '~/types/remote-vfs';
+import type {
+  RemoteVfsFileEntry,
+  RemoteVfsEntry,
+  RemoteVfsDirectoryEntry,
+} from '~/types/remote-vfs';
 import type { BloggerDogEntryPayload } from '~/types/bloggerdog';
 import ImageFilePropertiesSection from '~/components/properties/file/ImageFilePropertiesSection.vue';
 import OtioPropertiesSection from '~/components/properties/file/OtioPropertiesSection.vue';
@@ -67,6 +71,7 @@ const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
+const selectionStore = useSelectionStore();
 const workspaceStore = useWorkspaceStore();
 const toast = useToast();
 const { extractAudio } = useAudioExtraction();
@@ -125,7 +130,8 @@ const isRootDirectory = computed(() => {
   return entry?.kind === 'directory' && (entry.path === '' || entry.path === '/');
 });
 const isWorkspaceRootProperties = computed(
-  () => isRootDirectory.value && isExternalContext.value && props.selectedFsEntry?.kind === 'directory',
+  () =>
+    isRootDirectory.value && isExternalContext.value && props.selectedFsEntry?.kind === 'directory',
 );
 const effectiveVfs = computed(() =>
   isExternalContext.value ? (computerVfs.value ?? fileManager.vfs) : fileManager.vfs,
@@ -434,6 +440,10 @@ const canCopyOrCut = computed(() => {
 function onCopy() {
   const entry = props.selectedFsEntry;
   if (!entry || !entry.path) return;
+  const sourceInstanceId =
+    selectionStore.selectedEntity?.source === 'fileManager'
+      ? selectionStore.selectedEntity.instanceId
+      : undefined;
   clipboardStore.setClipboardPayload({
     source: 'fileManager',
     operation: 'copy',
@@ -442,14 +452,20 @@ function onCopy() {
         path: entry.path,
         kind: entry.kind,
         name: entry.name,
+        source: entry.source,
       },
     ],
+    sourceInstanceId,
   });
 }
 
 function onCut() {
   const entry = props.selectedFsEntry;
   if (!entry || !entry.path) return;
+  const sourceInstanceId =
+    selectionStore.selectedEntity?.source === 'fileManager'
+      ? selectionStore.selectedEntity.instanceId
+      : undefined;
   clipboardStore.setClipboardPayload({
     source: 'fileManager',
     operation: 'cut',
@@ -458,8 +474,10 @@ function onCut() {
         path: entry.path,
         kind: entry.kind,
         name: entry.name,
+        source: entry.source,
       },
     ],
+    sourceInstanceId,
   });
 }
 
@@ -689,7 +707,12 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
       </PropertySection>
 
       <ImageFilePropertiesSection
-        v-if="!isWorkspaceRootProperties && (fileInfo?.kind === 'file' || selectedFsEntry?.kind === 'file') && mediaType === 'image' && hasImageInfo"
+        v-if="
+          !isWorkspaceRootProperties &&
+          (fileInfo?.kind === 'file' || selectedFsEntry?.kind === 'file') &&
+          mediaType === 'image' &&
+          hasImageInfo
+        "
         :image-resolution="imageResolution"
         :image-create-date="imageCreateDate"
         :image-location-link="imageLocationLink"
@@ -697,7 +720,11 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
       />
 
       <MediaPropertiesSection
-        v-if="!isWorkspaceRootProperties && (fileInfo?.kind === 'file' || selectedFsEntry?.kind === 'file') && (isVideoFile || mediaType === 'audio')"
+        v-if="
+          !isWorkspaceRootProperties &&
+          (fileInfo?.kind === 'file' || selectedFsEntry?.kind === 'file') &&
+          (isVideoFile || mediaType === 'audio')
+        "
         :media-meta="mediaMeta"
         :format-duration-seconds="formatDurationSeconds"
         :format-bitrate="formatBitrate"
@@ -707,7 +734,11 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
       />
 
       <OtioPropertiesSection
-        v-if="!isWorkspaceRootProperties && (fileInfo?.kind === 'file' || selectedFsEntry?.kind === 'file') && isOtio"
+        v-if="
+          !isWorkspaceRootProperties &&
+          (fileInfo?.kind === 'file' || selectedFsEntry?.kind === 'file') &&
+          isOtio
+        "
         :summary="timelineDocSummary"
         :format-duration-seconds="formatDurationSeconds"
       />
@@ -758,7 +789,9 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
       </PropertySection>
 
       <FileProjectRootSection
-        v-if="!isWorkspaceRootProperties && fileInfo?.kind === 'directory' && isProjectRootDirInContext"
+        v-if="
+          !isWorkspaceRootProperties && fileInfo?.kind === 'directory' && isProjectRootDirInContext
+        "
         :is-project-root-dir="isProjectRootDir"
         :project-name="projectStore.currentProjectName"
         :storage-free-bytes="storageFreeBytes"
@@ -847,7 +880,10 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
         </PropertyRow>
       </PropertySection>
 
-      <PropertySection v-if="!isWorkspaceRootProperties && isBloggerDogProject" :title="generalInfoTitle">
+      <PropertySection
+        v-if="!isWorkspaceRootProperties && isBloggerDogProject"
+        :title="generalInfoTitle"
+      >
         <PropertyRow v-if="selectedPath" :label="t('common.path', 'Путь')">
           <a
             v-if="bloggerDogDeepLink"
@@ -865,7 +901,12 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
       </PropertySection>
 
       <FileGeneralInfoSection
-        v-if="!isWorkspaceRootProperties && selectedFsEntry && !isProjectRootDirInContext && (fileInfo?.kind === 'file' || selectedFsEntry.kind === 'file')"
+        v-if="
+          !isWorkspaceRootProperties &&
+          selectedFsEntry &&
+          !isProjectRootDirInContext &&
+          (fileInfo?.kind === 'file' || selectedFsEntry.kind === 'file')
+        "
         :title="generalInfoTitle"
         :file-info="fileInfo || (selectedFsEntry as any)"
         :selected-path="selectedPath"
@@ -888,7 +929,17 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
       />
 
       <FileGeneralInfoSection
-        v-if="!isWorkspaceRootProperties && selectedFsEntry && !isProjectRootDirInContext && (fileInfo?.kind === 'directory' || selectedFsEntry.kind === 'directory') && !isRemoteRoot && !isVirtualAll && !isPersonalLibrary && !isProjectLibraries && !isBloggerDogProject"
+        v-if="
+          !isWorkspaceRootProperties &&
+          selectedFsEntry &&
+          !isProjectRootDirInContext &&
+          (fileInfo?.kind === 'directory' || selectedFsEntry.kind === 'directory') &&
+          !isRemoteRoot &&
+          !isVirtualAll &&
+          !isPersonalLibrary &&
+          !isProjectLibraries &&
+          !isBloggerDogProject
+        "
         :title="generalInfoTitle"
         :file-info="fileInfo || (selectedFsEntry as any)"
         :selected-path="selectedPath"
@@ -899,11 +950,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
         :instance-id="props.instanceId"
         :is-external="isExternalContext"
       >
-        <template
-          v-if="
-            selectedFsEntry?.source === 'remote' && remoteItemsCount !== undefined
-          "
-        >
+        <template v-if="selectedFsEntry?.source === 'remote' && remoteItemsCount !== undefined">
           <PropertyRow
             :label="t('fastcat.file.itemsCount', 'Количество элементов')"
             :value="remoteItemsCount"
@@ -914,7 +961,13 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
       <!-- General info for files moved to top -->
 
       <ExpandableYamlSection
-        v-if="!isWorkspaceRootProperties && (fileInfo?.kind === 'file' || selectedFsEntry?.kind === 'file') && (isVideoFile || isAudioFile) && metadataYaml && !['{}', '[]', 'null', ''].includes(metadataYaml.trim())"
+        v-if="
+          !isWorkspaceRootProperties &&
+          (fileInfo?.kind === 'file' || selectedFsEntry?.kind === 'file') &&
+          (isVideoFile || isAudioFile) &&
+          metadataYaml &&
+          !['{}', '[]', 'null', ''].includes(metadataYaml.trim())
+        "
         :title="t('common.meta', 'Meta')"
         :content="metadataYaml"
         :expanded="isMetaExpanded"
@@ -923,7 +976,13 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
       />
 
       <ExpandableYamlSection
-        v-if="!isWorkspaceRootProperties && (fileInfo?.kind === 'file' || selectedFsEntry?.kind === 'file') && mediaType === 'image' && exifYaml && !['{}', '[]', 'null', ''].includes(exifYaml.trim())"
+        v-if="
+          !isWorkspaceRootProperties &&
+          (fileInfo?.kind === 'file' || selectedFsEntry?.kind === 'file') &&
+          mediaType === 'image' &&
+          exifYaml &&
+          !['{}', '[]', 'null', ''].includes(exifYaml.trim())
+        "
         title="EXIF"
         :content="exifYaml"
         :expanded="isExifExpanded"

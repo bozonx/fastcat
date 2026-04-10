@@ -11,6 +11,7 @@ export interface FileManagerPanelPendingActionsOptions {
   createTimelineInDirectory: (entry: FsEntry) => Promise<void>;
   createMarkdownInDirectory: (entry: FsEntry) => Promise<void>;
   createOtioVersion: (entry: FsEntry) => void | Promise<void>;
+  onPasteTarget: (entry: FsEntry) => Promise<void>;
   handlePendingBloggerDogCreateSubgroup: (entry: FsEntry) => void;
   handlePendingBloggerDogCreateItem: (entry: FsEntry) => void;
   instanceId: string;
@@ -23,6 +24,7 @@ export function useFileManagerPanelPendingActions({
   createTimelineInDirectory,
   createMarkdownInDirectory,
   createOtioVersion,
+  onPasteTarget,
   handlePendingBloggerDogCreateSubgroup,
   handlePendingBloggerDogCreateItem,
   instanceId,
@@ -111,6 +113,20 @@ export function useFileManagerPanelPendingActions({
         await createOtioVersion(entry);
       } finally {
         uiStore.pendingOtioCreateVersion = null;
+      }
+    },
+  );
+
+  watch(
+    () => uiStore.pendingFsEntryPaste,
+    async (value) => {
+      const entry = value;
+      if (!entry || entry.kind !== 'directory') return;
+      if (!isFocusedOrSelected()) return;
+      try {
+        await onPasteTarget(entry);
+      } finally {
+        uiStore.pendingFsEntryPaste = null;
       }
     },
   );

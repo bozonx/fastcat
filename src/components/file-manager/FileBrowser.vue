@@ -98,6 +98,7 @@ const {
 } = fileManager;
 
 const vfs = props.vfs || fileManager.vfs;
+clipboardStore.registerFileManagerVfs(instanceId, vfs);
 
 const conversionStore = useFileConversionStore();
 
@@ -310,7 +311,11 @@ async function handleFiles(
   options?: {
     targetDirPath?: string;
     abortSignal?: AbortSignal;
-    onProgress?: (params: { currentFileIndex: number; totalFiles: number; fileName: string }) => void;
+    onProgress?: (params: {
+      currentFileIndex: number;
+      totalFiles: number;
+      fileName: string;
+    }) => void;
   },
 ) {
   if (isRemoteMode.value) {
@@ -591,6 +596,7 @@ const {
   reloadDirectory: fileManager.reloadDirectory,
   copyEntry,
   moveEntry,
+  instanceId,
   notifyFileManagerUpdate: () => uiStore.notifyFileManagerUpdate(),
   setFileTreePathExpanded: (path, expanded) => {
     uiStore.setFileTreePathExpanded(path, expanded);
@@ -755,7 +761,9 @@ const currentGridSizeName = computed(() => {
 
 // --- Column resize ---
 
-onUnmounted(() => {});
+onUnmounted(() => {
+  clipboardStore.unregisterFileManagerVfs(instanceId);
+});
 
 onMounted(async () => {
   if (props.remoteModeOnly) {
@@ -779,9 +787,9 @@ useFileBrowserPendingActions({
   handlePendingBloggerDogCreateSubgroup,
   handlePendingBloggerDogCreateItem,
   onCreateFolder: (entry) => onFileAction('createFolder', entry),
-  findEntryByPath,
-  loadFolderContent,
-  fileManager,
+  onPasteTarget: async (entry) => {
+    await onFileActionBase('paste', entry);
+  },
   handlePendingRemoteDownloadRequest: async () => {
     const request = uiStore.pendingRemoteDownloadRequest;
     if (!request) return;

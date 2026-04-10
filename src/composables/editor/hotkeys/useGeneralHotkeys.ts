@@ -1,6 +1,11 @@
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
-import { useFocusStore, isFileManagerPanelFocus, isFileManagerMainFocus, isFileManagerSidebarFocus } from '~/stores/focus.store';
+import {
+  useFocusStore,
+  isFileManagerPanelFocus,
+  isFileManagerMainFocus,
+  isFileManagerSidebarFocus,
+} from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
@@ -42,32 +47,50 @@ export function useGeneralHotkeys(
     return [selected.entry];
   }
 
-  function getFileManagerPasteTargetDirPath() {
+  function getFileManagerPasteTargetEntry(): FsEntry {
     if (focusStore.effectiveFocus === 'filesBrowser') {
       const selected = selectionStore.selectedEntity;
       if (selected?.source === 'fileManager' && selected.kind === 'directory') {
-        return selected.entry.path ?? '';
+        return selected.entry;
       }
-      return fileManagerStore.selectedFolder?.path ?? '';
+      return (
+        fileManagerStore.selectedFolder ?? {
+          kind: 'directory',
+          name: projectStore.currentProjectName ?? '',
+          path: '',
+          source: 'local',
+        }
+      );
     }
 
     const selected = selectionStore.selectedEntity;
     if (selected?.source === 'fileManager') {
       if (selected.kind === 'directory') {
-        return selected.entry.path ?? '';
+        return selected.entry;
       }
       if (selected.kind === 'file' || selected.kind === 'multiple') {
         const entry =
           selected.kind === 'multiple' ? (selected.entries[0] as FsEntry) : selected.entry;
         if (entry) {
-          return (
-            entry.parentPath ?? (entry.path ? entry.path.split('/').slice(0, -1).join('/') : '')
-          );
+          const targetPath =
+            entry.parentPath ?? (entry.path ? entry.path.split('/').slice(0, -1).join('/') : '');
+          return {
+            kind: 'directory',
+            name:
+              targetPath.split('/').filter(Boolean).at(-1) ?? projectStore.currentProjectName ?? '',
+            path: targetPath,
+            source: entry.source ?? 'local',
+          };
         }
       }
     }
 
-    return '';
+    return {
+      kind: 'directory',
+      name: projectStore.currentProjectName ?? '',
+      path: '',
+      source: 'local',
+    };
   }
 
   async function handleFileManagerPaste() {
@@ -76,35 +99,7 @@ export function useGeneralHotkeys(
       return false;
     }
 
-    const targetDirPath = getFileManagerPasteTargetDirPath();
-
-    for (const item of payload.items) {
-      const source =
-        fileManager.findEntryByPath(item.path) ??
-        ({
-          path: item.path,
-          kind: item.kind,
-          name: item.name,
-        } as FsEntry);
-
-      if (payload.operation === 'copy') {
-        await fileManager.copyEntry({
-          source,
-          targetDirPath,
-        });
-      } else {
-        await fileManager.moveEntry({
-          source,
-          targetDirPath,
-        });
-      }
-    }
-
-    if (payload.operation === 'cut') {
-      setClipboardPayload(null);
-    }
-
-    uiStore.notifyFileManagerUpdate();
+    uiStore.pendingFsEntryPaste = getFileManagerPasteTargetEntry();
     return true;
   }
 
@@ -276,6 +271,10 @@ export function useGeneralHotkeys(
 
       const entries = getSelectedFsEntries();
       if (entries.length === 0) return false;
+      const sourceInstanceId =
+        selectionStore.selectedEntity?.source === 'fileManager'
+          ? selectionStore.selectedEntity.instanceId
+          : undefined;
 
       setClipboardPayload({
         source: 'fileManager',
@@ -286,7 +285,9 @@ export function useGeneralHotkeys(
             path: entry.path!,
             kind: entry.kind,
             name: entry.name,
+            source: entry.source,
           })),
+        sourceInstanceId,
       });
 
       return true;
@@ -297,6 +298,10 @@ export function useGeneralHotkeys(
 
       const entries = getSelectedFsEntries();
       if (entries.length === 0) return false;
+      const sourceInstanceId =
+        selectionStore.selectedEntity?.source === 'fileManager'
+          ? selectionStore.selectedEntity.instanceId
+          : undefined;
 
       setClipboardPayload({
         source: 'fileManager',
@@ -307,7 +312,9 @@ export function useGeneralHotkeys(
             path: entry.path!,
             kind: entry.kind,
             name: entry.name,
+            source: entry.source,
           })),
+        sourceInstanceId,
       });
 
       return true;

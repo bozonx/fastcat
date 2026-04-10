@@ -136,7 +136,11 @@ vi.mock('~/composables/file-manager/useFileManager', () => ({
   useFileManager: () => mockFileManager,
 }));
 vi.mock('~/composables/useAppClipboard', () => ({
-  useAppClipboard: () => ({ hasFileManagerPayload: false }),
+  useAppClipboard: () => ({
+    hasFileManagerPayload: false,
+    registerFileManagerVfs: vi.fn(),
+    unregisterFileManagerVfs: vi.fn(),
+  }),
 }));
 
 vi.mock('~/composables/file-manager/useFileBrowserEntries', () => ({
