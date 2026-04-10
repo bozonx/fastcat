@@ -7,6 +7,7 @@ export interface RemoteVfsMedia {
   url?: string;
   mimeType?: string;
   size?: number;
+  sizeBytes?: number;
   title?: string;
   filename?: string;
   posterUrl?: string;
@@ -14,6 +15,15 @@ export interface RemoteVfsMedia {
   meta?: Record<string, unknown>;
   created?: string;
   updated?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface RemoteVfsMediaRelation {
+  id: string;
+  mediaId: string;
+  order: number;
+  media: RemoteVfsMedia;
 }
 
 export interface RemoteVfsProjectEntry {
@@ -55,7 +65,7 @@ export interface RemoteVfsFileEntry extends RemoteVfsBaseEntry {
   language?: string;
   note?: string;
   groupId?: string | null;
-  media?: RemoteVfsMedia[];
+  media?: (RemoteVfsMedia | RemoteVfsMediaRelation)[];
 }
 
 export interface RemoteVfsContentItem extends RemoteVfsFileEntry {}

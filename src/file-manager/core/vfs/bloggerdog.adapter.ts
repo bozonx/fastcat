@@ -215,13 +215,12 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       item: itemWithPath,
     });
 
-    const isSimpleFile = itemWithPath.media?.length === 1 && !itemWithPath.text?.trim();
     return {
       ...toRemoteFsEntry(itemWithPath),
-      kind: isSimpleFile ? 'file' : 'directory',
+      kind: 'directory',
       path: params.path,
       parentPath: params.parentPath,
-      hasChildren: !isSimpleFile,
+      hasChildren: true,
       hasDirectories: false,
     } as VfsEntry;
   }
@@ -486,34 +485,33 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       });
     }
 
-    if (item.text?.trim()) {
-      const textName = `${getRemoteEntryDisplayName(item)}.txt`;
-      const textPath = `${itemPath}/${textName}`;
-      this.idCache.set(textPath, {
-        id: item.id,
-        type: 'media',
-        path: textPath,
-        scope: item.scope,
-        projectId: item.projectId,
-        item,
-        mediaIndex: -1,
-      });
+    // Always show text content as a .txt file, even if empty
+    const textName = `${getRemoteEntryDisplayName(item)}.txt`;
+    const textPath = `${itemPath}/${textName}`;
+    this.idCache.set(textPath, {
+      id: item.id,
+      type: 'media',
+      path: textPath,
+      scope: item.scope,
+      projectId: item.projectId,
+      item,
+      mediaIndex: -1,
+    });
 
-      const blob = new Blob([item.text], { type: 'text/plain' });
-      entries.push({
-        name: textName,
-        kind: 'file',
-        path: textPath,
-        parentPath: itemPath,
-        size: blob.size,
-        lastModified: item.updatedAt ? new Date(item.updatedAt).getTime() : undefined,
-        createdAt: item.createdAt ? new Date(item.createdAt).getTime() : undefined,
-        adapterPayload: {
-          type: 'media',
-          remoteData: item,
-        } as BloggerDogEntryPayload,
-      } as VfsEntry);
-    }
+    const blob = new Blob([item.text || ''], { type: 'text/plain' });
+    entries.push({
+      name: textName,
+      kind: 'file',
+      path: textPath,
+      parentPath: itemPath,
+      size: blob.size,
+      lastModified: item.updatedAt ? new Date(item.updatedAt).getTime() : undefined,
+      createdAt: item.createdAt ? new Date(item.createdAt).getTime() : undefined,
+      adapterPayload: {
+        type: 'media',
+        remoteData: item,
+      } as BloggerDogEntryPayload,
+    } as VfsEntry);
 
     return entries;
   }
@@ -674,6 +672,31 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
 
   async writeFile(path: string, data: Blob | Uint8Array | string): Promise<void> {
     const normalizedPath = this.normalizePath(path);
+
+    // Check if we are writing to a virtual text file of a content item
+    const cached = this.idCache.get(normalizedPath);
+    if (cached?.type === 'media' && cached.mediaIndex === -1 && cached.item) {
+      let textContent: string;
+      if (data instanceof Blob) {
+        textContent = await data.text();
+      } else if (data instanceof Uint8Array || ArrayBuffer.isView(data)) {
+        textContent = new TextDecoder().decode(data);
+      } else {
+        textContent = data;
+      }
+
+      await updateRemoteItem({
+        config: this.resolveConfig(),
+        id: cached.item.id,
+        text: textContent,
+      });
+
+      // Update local cache
+      cached.item.text = textContent;
+      this.clearCache(normalizedPath);
+      return;
+    }
+
     const parts = normalizedPath.split('/').filter(Boolean);
     const name = parts.pop();
     if (!name) {
@@ -760,6 +783,10 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     this.ensureSameScope(source, targetParent);
 
     const config = this.resolveConfig();
+
+    if (source.type === 'media' && source.mediaIndex === -1) {
+      throw new Error('Renaming text body separately is not supported');
+    }
 
     if (source.type === 'directory') {
       const targetParentId =

@@ -43,8 +43,10 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
-import type { PrimaryEntryAction } from '~/composables/properties/useFilePropertiesActions';
-import type { SecondaryEntryAction } from '~/composables/properties/useFilePropertiesActions';
+import type {
+  PrimaryEntryAction,
+  SecondaryEntryAction,
+} from '~/composables/properties/useFilePropertiesActions';
 import type { FsEntry } from '~/types/fs';
 
 const props = defineProps<{
@@ -567,9 +569,6 @@ const {
   isExternal: isExternalContext,
 });
 
-const isRemoteAvailable = computed(() => Boolean(remoteFilesConfig.value));
-const isRemoteMode = computed(() => props.selectedFsEntry?.source === 'remote');
-
 const filteredDirectoryPrimaryActions = computed(() => {
   if (isPersonalLibrary.value) return [];
 
@@ -579,35 +578,11 @@ const filteredDirectoryPrimaryActions = computed(() => {
     );
   }
 
-  if (isBloggerDogGroup.value) {
-    return directoryPrimaryActions.value.filter((a: PrimaryEntryAction) =>
-      ['rename', 'delete', 'copy', 'cut', 'paste'].includes(a.id),
-    );
-  }
-
-  if (isBloggerDogContentItem.value) {
-    return directoryPrimaryActions.value.filter((a: PrimaryEntryAction) =>
-      ['rename', 'delete', 'copy', 'cut', 'paste'].includes(a.id),
-    );
-  }
-
-  return directoryPrimaryActions.value.filter((a: PrimaryEntryAction) =>
-    ['rename', 'delete', 'copy', 'cut', 'paste'].includes(a.id),
-  );
+  return directoryPrimaryActions.value;
 });
 
 const filteredFilePrimaryActions = computed(() => {
   return filePrimaryActions.value;
-
-  if (isBloggerDogMedia.value) {
-    return filePrimaryActions.value.filter((a: PrimaryEntryAction) =>
-      ['rename', 'delete', 'copy', 'cut'].includes(a.id),
-    );
-  }
-
-  return filePrimaryActions.value.filter((a: PrimaryEntryAction) =>
-    ['rename', 'delete', 'copy', 'cut'].includes(a.id),
-  );
 });
 
 const filteredFileSecondaryActions = computed<SecondaryEntryAction[]>(() => {
@@ -650,7 +625,6 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
 <template>
   <!-- IMPORTANT: NO LOADING INDICATORS ALLOWED HERE. ALL PROPERTIES MUST LOAD SILENTLY. -->
   <div class="w-full flex flex-col" :class="mobileTextMode ? 'h-full gap-0' : 'gap-4'">
-
     <input
       ref="uploadInputRef"
       type="file"

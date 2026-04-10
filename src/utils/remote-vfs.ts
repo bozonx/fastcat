@@ -108,32 +108,43 @@ export function getRemoteEntryDisplayName(entry: { name?: string; title?: string
   return title || name || 'Untitled';
 }
 
+function resolveMediaObject(media: RemoteVfsMedia | RemoteVfsMediaRelation | undefined): RemoteVfsMedia | undefined {
+  if (!media) return undefined;
+  return 'media' in media ? media.media : media;
+}
+
 export function getRemoteMediaDisplayName(params: {
   entry: Pick<RemoteVfsFileEntry, 'name' | 'title'>;
-  media: RemoteVfsMedia;
+  media: RemoteVfsMedia | RemoteVfsMediaRelation;
   mediaIndex?: number;
 }): string {
+  const mediaObj = resolveMediaObject(params.media);
+  if (!mediaObj) return 'Untitled Media';
+
   const mediaFilename =
-    typeof params.media.filename === 'string' ? params.media.filename.trim() : '';
-  const mediaTitle = typeof params.media.title === 'string' ? params.media.title.trim() : '';
-  const mediaName = typeof params.media.name === 'string' ? params.media.name.trim() : '';
+    typeof mediaObj.filename === 'string' ? mediaObj.filename.trim() : '';
+  const mediaTitle = typeof mediaObj.title === 'string' ? mediaObj.title.trim() : '';
+  const mediaName = typeof mediaObj.name === 'string' ? mediaObj.name.trim() : '';
 
   if (mediaFilename) return normalizeFileName(mediaFilename);
   if (mediaTitle) return normalizeFileName(mediaTitle);
   if (mediaName) return normalizeFileName(mediaName);
 
   const itemName = getRemoteEntryDisplayName(params.entry);
-  const extensionFromMime = params.media.mimeType?.split('/').pop()?.toLowerCase() ?? '';
+  const extensionFromMime = mediaObj.mimeType?.split('/').pop()?.toLowerCase() ?? '';
   const extension =
     extensionFromMime && extensionFromMime !== 'plain' ? `.${extensionFromMime}` : '';
   return normalizeFileName(`${itemName}-${(params.mediaIndex ?? 0) + 1}${extension}`);
 }
 
 export function getRemoteMediaKind(
-  media: RemoteVfsMedia,
+  media: RemoteVfsMedia | RemoteVfsMediaRelation,
 ): 'video' | 'audio' | 'image' | 'text' | 'document' | 'unknown' {
-  const mimeType = media.mimeType?.toLowerCase() ?? '';
-  const mediaType = media.type?.toLowerCase() ?? '';
+  const mediaObj = resolveMediaObject(media);
+  if (!mediaObj) return 'unknown';
+
+  const mimeType = mediaObj.mimeType?.toLowerCase() ?? '';
+  const mediaType = mediaObj.type?.toLowerCase() ?? '';
 
   if (mimeType.startsWith('video/') || mediaType.includes('video')) return 'video';
   if (mimeType.startsWith('audio/') || mediaType.includes('audio')) return 'audio';
@@ -146,13 +157,15 @@ export function getRemoteMediaKind(
   return 'unknown';
 }
 
-function resolveMediaMimeType(media: RemoteVfsMedia[] | undefined): string {
-  return media?.[0]?.mimeType || 'application/octet-stream';
+function resolveMediaMimeType(media: (RemoteVfsMedia | RemoteVfsMediaRelation)[] | undefined): string {
+  const first = resolveMediaObject(media?.[0]);
+  return first?.mimeType || 'application/octet-stream';
 }
 
 function resolveMediaSize(entry: RemoteVfsEntry): number {
   if (entry.type !== 'file') return 0;
-  return entry.media?.[0]?.size ?? 0;
+  const first = resolveMediaObject(entry.media?.[0]);
+  return first?.sizeBytes ?? first?.size ?? 0;
 }
 
 function parseRemoteDate(raw: string | number | undefined): number | undefined {
@@ -202,8 +215,8 @@ export function toRemoteFsEntry(entry: RemoteVfsEntry): RemoteFsEntry {
 
   let thumbnailUrl: string | undefined;
   if (isContentItem && entry.media?.length) {
-    const firstWithThumb = entry.media.find((m) => m.thumbnailUrl) || entry.media[0];
-    thumbnailUrl = firstWithThumb?.thumbnailUrl;
+    const mediaObj = entry.media.map(resolveMediaObject).find((m) => m?.thumbnailUrl);
+    thumbnailUrl = mediaObj?.thumbnailUrl || resolveMediaObject(entry.media[0])?.thumbnailUrl;
   }
 
   const payloadType = isProject ? 'project' : isContentItem ? 'content-item' : 'collection';
@@ -233,15 +246,18 @@ export function toRemoteFsEntry(entry: RemoteVfsEntry): RemoteFsEntry {
 
 export function createRemoteMediaFsEntry(params: {
   item: RemoteVfsFileEntry;
-  media: RemoteVfsMedia;
+  media: RemoteVfsMedia | RemoteVfsMediaRelation;
   mediaIndex?: number;
 }): RemoteFsEntry {
+  const mediaObj = resolveMediaObject(params.media);
+  if (!mediaObj) throw new Error('Invalid media object');
+
   const mediaName = getRemoteMediaDisplayName({
     entry: params.item,
     media: params.media,
     mediaIndex: params.mediaIndex,
   });
-  const remotePath = `${params.item.path ?? `/${params.item.id}`}#media-${params.media.id || params.mediaIndex || 0}`;
+  const remotePath = `${params.item.path ?? `/${params.item.id}`}#media-${mediaObj.id || params.mediaIndex || 0}`;
 
   const payload: BloggerDogEntryPayload = {
     type: 'media',
@@ -250,12 +266,12 @@ export function createRemoteMediaFsEntry(params: {
         ...params.item,
         name: mediaName,
         title: mediaName,
-        media: [params.media],
+        media: [mediaObj],
       },
       remotePath,
     ),
-    mediaId: params.media.id,
-    thumbnailUrl: params.media.thumbnailUrl,
+    mediaId: mediaObj.id,
+    thumbnailUrl: mediaObj.thumbnailUrl,
   };
 
   return {
@@ -263,14 +279,14 @@ export function createRemoteMediaFsEntry(params: {
     kind: 'file',
     path: remotePath,
     source: 'remote',
-    remoteId: `${params.item.id}:${params.media.id}`,
+    remoteId: `${params.item.id}:${mediaObj.id}`,
     remotePath,
     remoteType: 'file',
     adapterPayload: payload,
-    size: params.media.size ?? 0,
-    lastModified: parseRemoteDate(params.media.updated) ?? parseRemoteDate(params.item.updated),
-    createdAt: parseRemoteDate(params.media.created) ?? parseRemoteDate(params.item.created),
-    mimeType: params.media.mimeType ?? 'application/octet-stream',
+    size: mediaObj.sizeBytes ?? mediaObj.size ?? 0,
+    lastModified: parseRemoteDate(mediaObj.updatedAt) ?? parseRemoteDate(mediaObj.updated) ?? parseRemoteDate(params.item.updatedAt),
+    createdAt: parseRemoteDate(mediaObj.createdAt) ?? parseRemoteDate(mediaObj.created) ?? parseRemoteDate(params.item.createdAt),
+    mimeType: mediaObj.mimeType ?? 'application/octet-stream',
   };
 }
 
@@ -281,46 +297,47 @@ export function isRemoteFsEntry(entry: FsEntry | null | undefined): entry is Rem
 export function getRemoteFileDownloadUrl(params: {
   baseUrl: string;
   entry?: RemoteVfsFileEntry;
-  media?: RemoteVfsMedia;
+  media?: RemoteVfsMedia | RemoteVfsMediaRelation;
   mediaId?: string;
   mediaIndex?: number;
 }): string {
-  const media = params.media ?? params.entry?.media?.[params.mediaIndex ?? 0];
-  if (media?.url) {
-    if (/^https?:\/\//i.test(media.url)) return media.url;
+  const mediaObj = resolveMediaObject(params.media ?? params.entry?.media?.[params.mediaIndex ?? 0]);
+  if (mediaObj?.url) {
+    if (/^https?:\/\//i.test(mediaObj.url)) return mediaObj.url;
 
     try {
       const rootBaseUrl = new URL(params.baseUrl).origin;
-      return joinPath(rootBaseUrl, media.url);
+      return joinPath(rootBaseUrl, mediaObj.url);
     } catch {
-      return media.url;
+      return mediaObj.url;
     }
   }
 
-  const mediaId = params.mediaId ?? media?.id;
+  const mediaId = params.mediaId ?? mediaObj?.id;
   if (!mediaId) return '';
   return joinPath(params.baseUrl, `media/${mediaId}/file`);
 }
 
 export function getRemoteThumbnailUrl(params: {
   baseUrl: string;
-  media?: RemoteVfsMedia;
+  media?: RemoteVfsMedia | RemoteVfsMediaRelation;
   mediaId?: string;
   width?: number;
   height?: number;
 }): string {
-  if (params.media?.thumbnailUrl) {
-    if (/^https?:\/\//i.test(params.media.thumbnailUrl)) return params.media.thumbnailUrl;
+  const mediaObj = resolveMediaObject(params.media);
+  if (mediaObj?.thumbnailUrl) {
+    if (/^https?:\/\//i.test(mediaObj.thumbnailUrl)) return mediaObj.thumbnailUrl;
 
     try {
       const rootBaseUrl = new URL(params.baseUrl).origin;
-      return joinPath(rootBaseUrl, params.media.thumbnailUrl);
+      return joinPath(rootBaseUrl, mediaObj.thumbnailUrl);
     } catch {
-      return params.media.thumbnailUrl;
+      return mediaObj.thumbnailUrl;
     }
   }
 
-  const mediaId = params.mediaId ?? params.media?.id;
+  const mediaId = params.mediaId ?? mediaObj?.id;
   if (!mediaId) return '';
 
   const width = params.width ?? 400;

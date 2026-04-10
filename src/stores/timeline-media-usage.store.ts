@@ -3,8 +3,7 @@ import { computed, ref } from 'vue';
 
 import { useProjectStore } from './project.store';
 import { useWorkspaceStore } from './workspace.store';
-import { useNuxtApp } from '#app';
-import { useFileManager } from '~/composables/file-manager/useFileManager';
+import { useVfs } from '~/composables/useVfs';
 
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { createTimelineDocId } from '~/timeline/id';
@@ -32,7 +31,7 @@ export class TimelineScanError extends Error {
 export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', () => {
   const projectStore = useProjectStore();
   const workspaceStore = useWorkspaceStore();
-  const fileManager = useFileManager();
+  const vfs = useVfs();
 
   const scannedMediaUsage = ref<MediaPathToTimelinesMap>({});
   const isLoading = ref(false);
@@ -148,7 +147,7 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
   }
 
   async function readTimelineDocByPath(params: { timelinePath: string }) {
-    const file = await fileManager.vfs.getFile(params.timelinePath);
+    const file = await vfs.getFile(params.timelinePath);
     if (!file) return null;
     const text = await file.text();
 
