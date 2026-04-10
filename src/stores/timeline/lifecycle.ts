@@ -91,26 +91,6 @@ export function createTimelineLifecycleModule(
     { immediate: true, deep: true },
   );
 
-  watch(
-    () => deps.timelineDoc.value?.metadata?.fastcat?.masterMuted,
-    (next) => {
-      if (deps.timelineDoc.value) {
-        deps.audioMuted.value = Boolean(next);
-      }
-    },
-    { flush: 'post' },
-  );
-
-  watch(
-    () => deps.timelineDoc.value?.metadata?.fastcat?.masterGain,
-    (next) => {
-      if (deps.timelineDoc.value && typeof next === 'number') {
-        deps.masterGain.value = next;
-      }
-    },
-    { flush: 'post' },
-  );
-
   function resetTimelineZoom() {
     deps.timelineZoom.value = 50;
   }
