@@ -651,7 +651,7 @@ describe('FileProperties.vue', () => {
     expect(component.html()).not.toContain('data-testid="text-editor-stub"');
   });
 
-  it('renders text editor preview for BloggerDog virtual txt file', async () => {
+  it('renders text editor preview for BloggerDog virtual txt file without extra actions', async () => {
     const { useEntryPreview } = await import('~/composables/file-manager/useEntryPreview');
     const { useFilePropertiesBasics } =
       await import('~/composables/properties/useFilePropertiesBasics');
@@ -726,7 +726,7 @@ describe('FileProperties.vue', () => {
     expect(component.get('[data-testid="text-editor-stub"]').text()).toContain(
       'Sunset.txt|/personal/item-1/Sunset.txt',
     );
-    expect(component.text()).toContain('Open in cut');
-    expect(component.text()).toContain('Open as tab');
+    expect(component.text()).not.toContain('Open in cut');
+    expect(component.text()).not.toContain('Open as tab');
   });
 });
