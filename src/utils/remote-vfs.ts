@@ -88,6 +88,7 @@ function mapCollectionResponse(entry: RemoteVfsDirectoryEntry): RemoteVfsDirecto
     created: entry.created || entry.createdAt,
     updated: entry.updated || entry.updatedAt,
     itemsCount: entry.itemsCount ?? entry.directItemsCount,
+    type: 'directory' as const,
   };
 }
 
@@ -97,6 +98,7 @@ function mapItemResponse(entry: RemoteVfsFileEntry): RemoteVfsFileEntry {
     name: entry.name || entry.title || 'Untitled',
     created: entry.created || entry.createdAt,
     updated: entry.updated || entry.updatedAt,
+    type: 'file' as const,
   };
 }
 
@@ -196,7 +198,7 @@ export function toRemoteFsEntry(entry: RemoteVfsEntry): RemoteFsEntry {
 
   const isProject = entry.type === 'project';
   const isContentItem = entry.type === 'file';
-  const entryKind = isProject || isContentItem ? 'directory' : 'directory';
+  const entryKind = isProject || isContentItem || entry.type === 'directory' ? 'directory' : 'file';
 
   let thumbnailUrl: string | undefined;
   if (isContentItem && entry.media?.length) {

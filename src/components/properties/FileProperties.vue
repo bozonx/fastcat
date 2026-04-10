@@ -559,6 +559,8 @@ const {
   onCut,
   onPaste,
   isBloggerDogProject,
+  isBloggerDogGroup,
+  isBloggerDogContentItem,
   instanceId: computed(() => props.instanceId),
   isExternal: isExternalContext,
 });

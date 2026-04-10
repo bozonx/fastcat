@@ -64,6 +64,8 @@ interface UseFilePropertiesActionsOptions {
   onCut: () => void;
   onPaste: () => void;
   isBloggerDogProject: Ref<boolean>;
+  isBloggerDogGroup?: Ref<boolean>;
+  isBloggerDogContentItem?: Ref<boolean>;
   instanceId?: Ref<string | undefined>;
   isExternal?: Ref<boolean | undefined>;
 }
@@ -138,14 +140,14 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'createSubgroup',
       label: options.t('fastcat.bloggerDog.actions.createSubgroup', 'Создать подгруппу'),
       icon: 'i-heroicons-folder-plus',
-      hidden: !options.isRemoteMode?.value,
+      hidden: !options.isRemoteMode?.value || options.isBloggerDogContentItem?.value || options.isRemoteRoot.value,
       onClick: options.createSubgroup,
     },
     {
       id: 'createContentItem',
       label: options.t('fastcat.bloggerDog.actions.createItem', 'Создать элемент контента'),
       icon: 'i-heroicons-document-plus',
-      hidden: !options.isRemoteMode?.value,
+      hidden: !options.isRemoteMode?.value || options.isBloggerDogContentItem?.value || options.isRemoteRoot.value,
       onClick: options.createContentItem,
     },
     {
