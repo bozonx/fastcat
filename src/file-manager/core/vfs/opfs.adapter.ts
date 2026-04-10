@@ -105,7 +105,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
 
   async readDirectory(
     path: string,
-    _options?: { sortBy?: string; sortOrder?: 'asc' | 'desc' },
+    options?: { sortBy?: string; sortOrder?: 'asc' | 'desc'; checkChildren?: boolean },
   ): Promise<VfsEntry[]> {
     const handle = (await this.getHandleByPath(path, {
       isFile: false,
@@ -118,7 +118,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
       let hasChildren: boolean | undefined;
       let hasDirectories: boolean | undefined;
 
-      if (entryHandle.kind === 'directory') {
+      if (entryHandle.kind === 'directory' && options?.checkChildren) {
         hasChildren = false;
         hasDirectories = false;
         try {
@@ -135,6 +135,9 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
           hasChildren = false;
           hasDirectories = false;
         }
+      } else if (entryHandle.kind === 'directory') {
+        hasChildren = true;
+        hasDirectories = true;
       }
 
       entries.push({

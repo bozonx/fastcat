@@ -31,7 +31,6 @@ export class TimelineScanError extends Error {
 export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', () => {
   const projectStore = useProjectStore();
   const workspaceStore = useWorkspaceStore();
-  const vfs = useVfs();
 
   const scannedMediaUsage = ref<MediaPathToTimelinesMap>({});
   const isLoading = ref(false);
@@ -147,6 +146,11 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
   }
 
   async function readTimelineDocByPath(params: { timelinePath: string }) {
+    const vfs = useVfs();
+    if (!vfs) {
+      console.warn('[TimelineMediaUsage] VFS is not available yet, skipping scan for:', params.timelinePath);
+      return null;
+    }
     const file = await vfs.getFile(params.timelinePath);
     if (!file) return null;
     const text = await file.text();

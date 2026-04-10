@@ -396,6 +396,7 @@ function onEntryEnter(event: KeyboardEvent, entry: FsEntry) {
 
 function onRenameClick(entry: FsEntry) {
   if (entry.path === WORKSPACE_COMMON_PATH_PREFIX) return;
+  if (isBloggerDogVirtualFolder(entry) || isBloggerDogProject(entry)) return;
   emit('action', 'rename', entry);
 }
 
@@ -734,11 +735,6 @@ const isBloggerDogContentItem = (entry: FsEntry) => {
   if (entry.source !== 'remote') return false;
   return getBdType(entry) === 'content-item';
 };
-
-function onRenameClick(entry: FsEntry) {
-  if (isBloggerDogVirtualFolder(entry) || isBloggerDogProject(entry)) return;
-  emit('action', 'rename', entry);
-}
 
 const clipboardStore = useAppClipboard();
 

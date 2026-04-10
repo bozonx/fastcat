@@ -1363,6 +1363,7 @@
           "file": "файлов"
         },
         "actions": {
+          "createGroup": "Создать группу",
           "createSubgroup": "Создать подгруппу",
           "createItem": "Создать элемент контента"
         }
