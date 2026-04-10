@@ -24,6 +24,7 @@ import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import {
   isCrossFileManagerDrag,
   resolveFileManagerDragOperation,
+  resolveFileManagerDropOperation,
 } from '~/composables/file-manager/dragOperation';
 import { crossVfsCopy, crossVfsMove } from '~/file-manager/core/vfs/crossVfs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
@@ -126,6 +127,19 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
       isLayer1Active: isCopyModifierActive(event),
       targetFileManagerInstanceId: options.fileManagerInstanceId ?? null,
+    });
+  }
+
+  function resolveDropOperation(
+    event: DragEvent,
+    fallbackRawOperation: 'copy' | 'move' | null,
+  ): 'copy' | 'move' {
+    return resolveFileManagerDropOperation({
+      dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
+      isLayer1Active: isCopyModifierActive(event),
+      targetFileManagerInstanceId: options.fileManagerInstanceId ?? null,
+      currentDragOperation: appClipboard.currentDragOperation,
+      fallbackRawOperation,
     });
   }
 
@@ -277,9 +291,8 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
         dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
         targetFileManagerInstanceId: options.fileManagerInstanceId ?? null,
       });
-      const shouldCopy = isCrossManagerDrag
-        ? resolveDragOperation(e) === 'copy' || appClipboard.currentDragOperation === 'copy'
-        : !!copyRaw || resolveDragOperation(e) === 'copy' || appClipboard.currentDragOperation === 'copy';
+      const shouldCopy =
+        resolveDropOperation(e, copyRaw ? 'copy' : moveRaw ? 'move' : null) === 'copy';
       let parsed: unknown = null;
       try {
         parsed = JSON.parse(internalRaw);
@@ -421,9 +434,8 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
         dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
         targetFileManagerInstanceId: options.fileManagerInstanceId ?? null,
       });
-      const shouldCopy = isCrossManagerDrag
-        ? resolveDragOperation(e) === 'copy' || appClipboard.currentDragOperation === 'copy'
-        : !!copyRaw || resolveDragOperation(e) === 'copy' || appClipboard.currentDragOperation === 'copy';
+      const shouldCopy =
+        resolveDropOperation(e, copyRaw ? 'copy' : moveRaw ? 'move' : null) === 'copy';
       let parsed: unknown = null;
       try {
         parsed = JSON.parse(internalRaw);

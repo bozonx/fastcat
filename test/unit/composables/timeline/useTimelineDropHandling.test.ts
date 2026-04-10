@@ -8,6 +8,39 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
+const {
+  handleFilesMock,
+  copyEntryMock,
+  resolveDefaultTargetDirMock,
+  crossVfsCopyMock,
+} = vi.hoisted(() => ({
+  handleFilesMock: vi.fn(),
+  copyEntryMock: vi.fn(),
+  resolveDefaultTargetDirMock: vi.fn(),
+  crossVfsCopyMock: vi.fn(),
+}));
+
+const dragSourceVfsMock = { id: 'workspace-vfs' } as any;
+
+vi.mock('~/composables/file-manager/useFileManager', () => ({
+  useFileManager: () => ({
+    handleFiles: handleFilesMock,
+    copyEntry: copyEntryMock,
+    resolveDefaultTargetDir: resolveDefaultTargetDirMock,
+    vfs: { id: 'project-vfs' },
+  }),
+}));
+
+vi.mock('~/composables/useAppClipboard', () => ({
+  useAppClipboard: () => ({
+    dragSourceVfs: dragSourceVfsMock,
+  }),
+}));
+
+vi.mock('~/file-manager/core/vfs/crossVfs', () => ({
+  crossVfsCopy: crossVfsCopyMock,
+}));
+
 vi.stubGlobal('useToast', () => ({
   add: vi.fn(),
 }));
@@ -21,6 +54,13 @@ describe('useTimelineDropHandling', () => {
     const mediaStore = useMediaStore() as any;
     const workspaceStore = useWorkspaceStore() as any;
     const { clearDraggedFile } = useDraggedFile();
+
+    handleFilesMock.mockReset();
+    copyEntryMock.mockReset();
+    resolveDefaultTargetDirMock.mockReset();
+    crossVfsCopyMock.mockReset();
+    resolveDefaultTargetDirMock.mockResolvedValue('_video');
+    crossVfsCopyMock.mockResolvedValue('_video/copied.mp4');
 
     clearDraggedFile();
     timelineStore.timelineZoom = 50;
@@ -152,5 +192,50 @@ describe('useTimelineDropHandling', () => {
 
     expect(api.dragPreview.value).not.toBeNull();
     expect(api.dragPreview.value?.startUs).toBe(1_000_000);
+  });
+
+  it('imports external workspace file to project before creating clip on timeline', async () => {
+    const scrollEl = ref({
+      scrollLeft: 0,
+      getBoundingClientRect: () => ({ left: 0 }),
+    } as unknown as HTMLElement);
+    const { setDraggedFile } = useDraggedFile();
+    const timelineStore = useTimelineStore() as any;
+    timelineStore.addClipToTimelineFromPath = vi.fn().mockResolvedValue({
+      durationUs: 1_500_000,
+      itemId: 'clip-2',
+    });
+
+    const api = useTimelineDropHandling({ scrollEl });
+
+    setDraggedFile({
+      name: 'workspace.mp4',
+      kind: 'file',
+      path: '/workspace/workspace.mp4',
+      isExternal: true,
+    });
+
+    await api.handleLibraryDrop(
+      JSON.stringify({
+        name: 'workspace.mp4',
+        kind: 'file',
+        path: '/workspace/workspace.mp4',
+        isExternal: true,
+      }),
+      'v1',
+      0,
+    );
+
+    expect(crossVfsCopyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourcePath: '/workspace/workspace.mp4',
+        targetDirPath: '_video',
+      }),
+    );
+    expect(timelineStore.addClipToTimelineFromPath).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: '_video/copied.mp4',
+      }),
+    );
   });
 });

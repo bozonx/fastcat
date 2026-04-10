@@ -15,6 +15,8 @@ import { useThrottleFn } from '@vueuse/core';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import { useUiStore } from '~/stores/ui.store';
 import { useTimelineTextPreset } from './useTimelineTextPreset';
+import { useAppClipboard } from '~/composables/useAppClipboard';
+import { crossVfsCopy } from '~/file-manager/core/vfs/crossVfs';
 
 export interface UseTimelineDropHandlingOptions {
   scrollEl: Ref<HTMLElement | null>;
@@ -64,6 +66,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
   const fileManager = useFileManager();
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
   const draggedFile = useDraggedFile();
+  const appClipboard = useAppClipboard();
   const uiStore = useUiStore();
   const toast = useToast();
   const { t } = useI18n();
@@ -499,9 +502,52 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
   function isSupportedLibraryItem(item: any): boolean {
     if (item.kind === 'file' && item.path) {
       const type = getMediaTypeFromFilename(item.name || item.path);
-      return type === 'video' || type === 'audio' || type === 'image';
+      return type === 'video' || type === 'audio' || type === 'image' || type === 'text';
     }
     return ['adjustment', 'background', 'text', 'shape', 'hud', 'timeline'].includes(item.kind);
+  }
+
+  async function importExternalItemToProject(item: TimelineDropItem): Promise<TimelineDropItem> {
+    if (!item.path) return item;
+
+    if (item.path.startsWith('/remote')) {
+      const targetDir = await fileManager.resolveDefaultTargetDir({ name: item.name || item.path });
+      if (!targetDir) return item;
+
+      const resultPath = await fileManager.copyEntry({
+        source: { path: item.path, name: item.name || '', kind: 'file' } as any,
+        targetDirPath: targetDir,
+        abortSignal: importAbortController?.signal ?? undefined,
+      });
+
+      return {
+        ...item,
+        path: (resultPath as any).newPath || resultPath,
+        kind: 'file',
+      };
+    }
+
+    if (!appClipboard.dragSourceVfs) {
+      return item;
+    }
+
+    const targetDir = await fileManager.resolveDefaultTargetDir({ name: item.name || item.path });
+    if (!targetDir) return item;
+
+    const copiedPath = await crossVfsCopy({
+      sourceVfs: appClipboard.dragSourceVfs,
+      targetVfs: fileManager.vfs,
+      sourcePath: item.path,
+      sourceKind: 'file',
+      targetDirPath: targetDir,
+    });
+
+    return {
+      ...item,
+      path: copiedPath,
+      kind: getMediaTypeFromFilename(item.name || copiedPath) === 'timeline' ? 'timeline' : 'file',
+      name: item.name || getWorkspacePathFileName(copiedPath),
+    };
   }
 
   async function onTrackDragOver(e: DragEvent, trackId: string) {
@@ -545,8 +591,13 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
 
     const payload = draggedFile.draggedFile.value;
     if (payload?.isExternal) {
-      // Check if it's a supported external item (e.g. from BloggerDog)
-      if (payload.path && isSupportedLibraryItem(payload)) {
+      const payloadType = getMediaTypeFromFilename(payload.name || payload.path || '');
+      const canImportToTimeline =
+        payload.path &&
+        payloadType !== 'timeline' &&
+        isSupportedLibraryItem({ ...payload, kind: 'file' });
+
+      if (canImportToTimeline) {
         e.preventDefault();
         if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
 
@@ -663,12 +714,12 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       let currentStartUs = startUs;
       let addedCount = 0;
       const pseudo = options?.pseudo === true;
+      let itemsToDrop = items;
 
-      // Handle external (BloggerDog or explicit external mark) import
       if (payload?.isExternal) {
         isImporting.value = true;
         importProgress.value = 0;
-        importPhase.value = t('videoEditor.fileManager.actions.downloading');
+        importPhase.value = t('videoEditor.fileManager.actions.importing');
         importAbortController = new AbortController();
 
         const externalItems = items.filter(isSupportedLibraryItem);
@@ -677,20 +728,9 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
           const item = externalItems[i];
           importFileName.value = item.name || '';
           importProgress.value = i / externalItems.length;
-
-          if (item.path?.startsWith('/remote')) {
-            // It's a BloggerDog file, need to copy to local project
-            const targetDir = await fileManager.resolveDefaultTargetDir({ name: item.name || item.path });
-            const resultPath = await fileManager.copyEntry({
-              source: { path: item.path, name: item.name || '', kind: 'file' } as any,
-              targetDirPath: targetDir || 'files',
-              abortSignal: importAbortController.signal,
-            });
-
-            // Re-assign path to the new local path
-            item.path = (resultPath as any).newPath || resultPath;
-          }
+          externalItems[i] = await importExternalItemToProject(item);
         }
+        itemsToDrop = externalItems;
 
         if (importAbortController.signal.aborted) {
           isImporting.value = false;
@@ -700,7 +740,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
         isImporting.value = false;
       }
 
-      for (const item of items) {
+      for (const item of itemsToDrop) {
         const strategy = resolveDropStrategy(item);
         if (!strategy) {
           continue;

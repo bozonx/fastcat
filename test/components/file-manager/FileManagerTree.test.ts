@@ -57,6 +57,7 @@ const setCurrentDragOperationMock = vi.fn();
 const setDragSourceFileManagerInstanceIdMock = vi.fn((instanceId: string | null) => {
   dragSourceFileManagerInstanceIdMock = instanceId;
 });
+const setDragSourceVfsMock = vi.fn();
 
 vi.mock('~/utils/media-types', () => ({
   getMediaTypeFromFilename: () => 'video',
@@ -95,6 +96,7 @@ vi.mock('~/composables/useAppClipboard', () => ({
     dragSourceFileManagerInstanceId: dragSourceFileManagerInstanceIdMock,
     setCurrentDragOperation: setCurrentDragOperationMock,
     setDragSourceFileManagerInstanceId: setDragSourceFileManagerInstanceIdMock,
+    setDragSourceVfs: setDragSourceVfsMock,
   }),
 }));
 
@@ -128,6 +130,7 @@ describe('FileManagerTree', () => {
     dragSourceFileManagerInstanceIdMock = null;
     setCurrentDragOperationMock.mockReset();
     setDragSourceFileManagerInstanceIdMock.mockClear();
+    setDragSourceVfsMock.mockClear();
     uiStoreMock.fileTreeSelectAllTrigger = 0;
   });
 
@@ -243,6 +246,80 @@ describe('FileManagerTree', () => {
       sourcePath: '_video/a.mp4',
       targetDirPath: '_video',
     });
+  });
+
+  it('uses current modifier state for same-manager drop instead of dragstart mime type', async () => {
+    dragSourceFileManagerInstanceIdMock = 'main';
+
+    const dir: FsEntry = {
+      name: '_video',
+      kind: 'directory',
+      path: '_video',
+      expanded: false,
+    };
+
+    const wrapper = mountTree([dir], 'main');
+    const dropzone = wrapper.findAll('div').find((w) => w.attributes('role') === 'treeitem');
+
+    const mockEvent = {
+      shiftKey: false,
+      dataTransfer: {
+        types: ['application/fastcat-copy'],
+        getData: vi.fn((type) => {
+          if (type === 'application/fastcat-copy') {
+            return JSON.stringify({ path: '_video/a.mp4' });
+          }
+          return '';
+        }),
+      },
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as unknown as DragEvent;
+
+    await dropzone?.trigger('drop', mockEvent);
+
+    expect(wrapper.emitted('requestMove')?.[0]?.[0]).toEqual({
+      sourcePath: '_video/a.mp4',
+      targetDirPath: '_video',
+    });
+    expect(wrapper.emitted('requestCopy')).toBeFalsy();
+  });
+
+  it('defaults to copy across file managers even if drag started as move', async () => {
+    dragSourceFileManagerInstanceIdMock = 'sidebar';
+
+    const dir: FsEntry = {
+      name: '_video',
+      kind: 'directory',
+      path: '_video',
+      expanded: false,
+    };
+
+    const wrapper = mountTree([dir], 'main');
+    const dropzone = wrapper.findAll('div').find((w) => w.attributes('role') === 'treeitem');
+
+    const mockEvent = {
+      shiftKey: false,
+      dataTransfer: {
+        types: ['application/fastcat-move'],
+        getData: vi.fn((type) => {
+          if (type === 'application/fastcat-move') {
+            return JSON.stringify({ path: 'workspace/a.mp4' });
+          }
+          return '';
+        }),
+      },
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as unknown as DragEvent;
+
+    await dropzone?.trigger('drop', mockEvent);
+
+    expect(wrapper.emitted('requestCopy')?.[0]?.[0]).toEqual({
+      sourcePath: 'workspace/a.mp4',
+      targetDirPath: '_video',
+    });
+    expect(wrapper.emitted('requestMove')).toBeFalsy();
   });
 
   it('starts drag as copy when layer1 modifier is active', async () => {
@@ -511,7 +588,11 @@ describe('FileManagerTree', () => {
     uiStoreMock.fileTreeSelectAllTrigger++;
     await Promise.resolve();
 
-    expect(selectionStoreMock.selectFsEntries).toHaveBeenCalledWith([videoA, videoB]);
-    expect(selectionStoreMock.selectFsEntries).not.toHaveBeenCalledWith([videoA, videoB, audioC]);
+    expect(selectionStoreMock.selectFsEntries).toHaveBeenCalledWith([videoA, videoB], 'main', false);
+    expect(selectionStoreMock.selectFsEntries).not.toHaveBeenCalledWith(
+      [videoA, videoB, audioC],
+      'main',
+      false,
+    );
   });
 });

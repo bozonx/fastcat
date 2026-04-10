@@ -6,6 +6,8 @@ import type {
   RemoteVfsHealthResponse,
   RemoteVfsListResponse,
   RemoteVfsMedia,
+  RemoteVfsProjectEntry,
+  RemoteVfsScope,
 } from '~/types/remote-vfs';
 import type { BloggerDogEntryPayload } from '~/types/bloggerdog';
 
@@ -19,6 +21,7 @@ export interface RemoteFsEntry extends FsEntry {
   mimeType?: string;
   created?: number;
   objectUrl?: string;
+  isContentItem?: boolean;
 }
 
 export interface RemoteVfsClientConfig {
@@ -28,6 +31,34 @@ export interface RemoteVfsClientConfig {
 
 export interface RemoteVfsProgressCallbacks {
   onProgress?: (progress: number) => void;
+}
+
+export interface FetchRemoteItemsParams {
+  config: RemoteVfsClientConfig;
+  scope: RemoteVfsScope;
+  projectId?: string;
+  groupId?: string;
+  orphansOnly?: boolean;
+  limit?: number;
+  offset?: number;
+  search?: string;
+  tags?: string[];
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  signal?: AbortSignal;
+}
+
+export interface FetchRemoteCollectionsParams {
+  config: RemoteVfsClientConfig;
+  scope: RemoteVfsScope;
+  projectId?: string;
+  parentId?: string;
+  includeChildrenCount?: boolean;
+  signal?: AbortSignal;
+}
+
+function getProjectsBaseUrl(baseUrl: string): string {
+  return normalizeBaseUrl(baseUrl).replace(/\/content-library$/, '');
 }
 
 function normalizeBaseUrl(baseUrl: string): string {
@@ -42,7 +73,33 @@ function normalizeFileName(value: string): string {
   return value.trim().replace(/[\\/]+/g, '-');
 }
 
-export function getRemoteEntryDisplayName(entry: Pick<RemoteVfsEntry, 'name' | 'title'>): string {
+function withPath<T extends RemoteVfsEntry>(entry: T, path: string): T {
+  return {
+    ...entry,
+    path,
+  };
+}
+
+function mapCollectionResponse(entry: RemoteVfsDirectoryEntry): RemoteVfsDirectoryEntry {
+  return {
+    ...entry,
+    name: entry.name || entry.title || 'Untitled',
+    created: entry.created || entry.createdAt,
+    updated: entry.updated || entry.updatedAt,
+    itemsCount: entry.itemsCount ?? entry.directItemsCount,
+  };
+}
+
+function mapItemResponse(entry: RemoteVfsFileEntry): RemoteVfsFileEntry {
+  return {
+    ...entry,
+    name: entry.name || entry.title || 'Untitled',
+    created: entry.created || entry.createdAt,
+    updated: entry.updated || entry.updatedAt,
+  };
+}
+
+export function getRemoteEntryDisplayName(entry: { name?: string; title?: string }): string {
   const title = typeof entry.title === 'string' ? entry.title.trim() : '';
   const name = typeof entry.name === 'string' ? entry.name.trim() : '';
   return title || name || 'Untitled';
@@ -105,15 +162,28 @@ function parseRemoteDate(raw: string | number | undefined): number | undefined {
 }
 
 function getRemoteEntryUpdatedAt(entry: RemoteVfsEntry): number | undefined {
+  if (entry.type === 'project') {
+    return parseRemoteDate(entry.updatedAt) ?? parseRemoteDate(entry.createdAt);
+  }
+
   return (
     parseRemoteDate(entry.updated) ??
+    parseRemoteDate(entry.updatedAt) ??
     parseRemoteDate((entry.meta as any)?.updatedAt ?? (entry.meta as any)?.date) ??
     getRemoteEntryCreatedAt(entry)
   );
 }
 
 function getRemoteEntryCreatedAt(entry: RemoteVfsEntry): number | undefined {
-  return parseRemoteDate(entry.created) ?? parseRemoteDate((entry.meta as any)?.createdAt);
+  if (entry.type === 'project') {
+    return parseRemoteDate(entry.createdAt);
+  }
+
+  return (
+    parseRemoteDate(entry.created) ??
+    parseRemoteDate(entry.createdAt) ??
+    parseRemoteDate((entry.meta as any)?.createdAt)
+  );
 }
 
 export function toRemoteFsEntry(entry: RemoteVfsEntry): RemoteFsEntry {
@@ -121,9 +191,11 @@ export function toRemoteFsEntry(entry: RemoteVfsEntry): RemoteFsEntry {
   const lastModified = getRemoteEntryUpdatedAt(entry);
   const createdAt = getRemoteEntryCreatedAt(entry);
   const displayName = getRemoteEntryDisplayName(entry);
+  const path = entry.path ?? `/${entry.id}`;
 
+  const isProject = entry.type === 'project';
   const isContentItem = entry.type === 'file';
-  const entryKind = isContentItem ? 'directory' : entry.type;
+  const entryKind = isProject || isContentItem ? 'directory' : 'directory';
 
   let thumbnailUrl: string | undefined;
   if (isContentItem && entry.media?.length) {
@@ -131,29 +203,29 @@ export function toRemoteFsEntry(entry: RemoteVfsEntry): RemoteFsEntry {
     thumbnailUrl = firstWithThumb?.thumbnailUrl;
   }
 
+  const payloadType = isProject ? 'project' : isContentItem ? 'content-item' : 'collection';
   const payload: BloggerDogEntryPayload = {
-    type: isContentItem ? 'content-item' : 'collection',
+    type: payloadType,
     remoteData: entry,
     thumbnailUrl,
   };
 
-  const result: RemoteFsEntry = {
+  return {
     name: displayName,
     kind: entryKind,
-    path: entry.path,
+    path,
     lastModified,
     createdAt,
     source: 'remote',
     remoteId: entry.id,
-    remotePath: entry.path,
-    remoteType: entry.type,
+    remotePath: path,
+    remoteType: 'directory',
     adapterPayload: payload,
     size,
     created: createdAt,
-    mimeType: entry.type === 'directory' ? 'folder' : resolveMediaMimeType(entry.media),
+    mimeType: isProject || entry.type === 'directory' ? 'folder' : resolveMediaMimeType(entry.media),
+    isContentItem,
   };
-
-  return result;
 }
 
 export function createRemoteMediaFsEntry(params: {
@@ -166,17 +238,19 @@ export function createRemoteMediaFsEntry(params: {
     media: params.media,
     mediaIndex: params.mediaIndex,
   });
-  const remotePath = `${params.item.path}#media-${params.media.id || params.mediaIndex || 0}`;
+  const remotePath = `${params.item.path ?? `/${params.item.id}`}#media-${params.media.id || params.mediaIndex || 0}`;
 
   const payload: BloggerDogEntryPayload = {
     type: 'media',
-    remoteData: {
-      ...params.item,
-      name: mediaName,
-      title: mediaName,
-      path: remotePath,
-      media: [params.media],
-    },
+    remoteData: withPath(
+      {
+        ...params.item,
+        name: mediaName,
+        title: mediaName,
+        media: [params.media],
+      },
+      remotePath,
+    ),
     mediaId: params.media.id,
     thumbnailUrl: params.media.thumbnailUrl,
   };
@@ -203,91 +277,174 @@ export function isRemoteFsEntry(entry: FsEntry | null | undefined): entry is Rem
 
 export function getRemoteFileDownloadUrl(params: {
   baseUrl: string;
-  entry: RemoteVfsFileEntry;
+  entry?: RemoteVfsFileEntry;
+  media?: RemoteVfsMedia;
+  mediaId?: string;
   mediaIndex?: number;
 }): string {
-  const media = params.entry.media?.[params.mediaIndex ?? 0];
-  if (!media?.url) return '';
-  if (/^https?:\/\//i.test(media.url)) return media.url;
+  const media = params.media ?? params.entry?.media?.[params.mediaIndex ?? 0];
+  if (media?.url) {
+    if (/^https?:\/\//i.test(media.url)) return media.url;
 
-  try {
-    const rootBaseUrl = new URL(params.baseUrl).origin;
-    return joinPath(rootBaseUrl, media.url);
-  } catch {
-    return media.url;
+    try {
+      const rootBaseUrl = new URL(params.baseUrl).origin;
+      return joinPath(rootBaseUrl, media.url);
+    } catch {
+      return media.url;
+    }
   }
+
+  const mediaId = params.mediaId ?? media?.id;
+  if (!mediaId) return '';
+  return joinPath(params.baseUrl, `media/${mediaId}/file`);
 }
 
-export function getRemoteThumbnailUrl(params: { baseUrl: string; media: RemoteVfsMedia }): string {
-  if (!params.media.thumbnailUrl) return '';
-  if (/^https?:\/\//i.test(params.media.thumbnailUrl)) return params.media.thumbnailUrl;
+export function getRemoteThumbnailUrl(params: {
+  baseUrl: string;
+  media?: RemoteVfsMedia;
+  mediaId?: string;
+  width?: number;
+  height?: number;
+}): string {
+  if (params.media?.thumbnailUrl) {
+    if (/^https?:\/\//i.test(params.media.thumbnailUrl)) return params.media.thumbnailUrl;
 
-  try {
-    const rootBaseUrl = new URL(params.baseUrl).origin;
-    return joinPath(rootBaseUrl, params.media.thumbnailUrl);
-  } catch {
-    return params.media.thumbnailUrl;
+    try {
+      const rootBaseUrl = new URL(params.baseUrl).origin;
+      return joinPath(rootBaseUrl, params.media.thumbnailUrl);
+    } catch {
+      return params.media.thumbnailUrl;
+    }
   }
+
+  const mediaId = params.mediaId ?? params.media?.id;
+  if (!mediaId) return '';
+
+  const width = params.width ?? 400;
+  const height = params.height ?? 400;
+  return joinPath(params.baseUrl, `media/${mediaId}/thumbnail?w=${width}&h=${height}`);
 }
 
-export async function fetchRemoteVfsList(params: {
+async function fetchJson<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
+  const response = await fetch(input, init);
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(body || `Request failed (${response.status})`);
+  }
+
+  return (await response.json()) as T;
+}
+
+function createAuthorizedHeaders(
+  config: RemoteVfsClientConfig,
+  extra: Record<string, string> = {},
+): HeadersInit {
+  return {
+    Authorization: `Bearer ${config.bearerToken}`,
+    ...extra,
+  };
+}
+
+export async function fetchRemoteProjects(params: {
   config: RemoteVfsClientConfig;
-  path: string;
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
-  search?: string;
-  tags?: string[];
-  language?: string;
-  limit?: number;
-  offset?: number;
   signal?: AbortSignal;
-}): Promise<RemoteVfsListResponse> {
-  const url = new URL(joinPath(params.config.baseUrl, 'list'));
-  url.searchParams.set('path', params.path || '/');
+}): Promise<RemoteVfsProjectEntry[]> {
+  const response = await fetchJson<Omit<RemoteVfsProjectEntry, 'type'>[]>(
+    joinPath(getProjectsBaseUrl(params.config.baseUrl), 'projects'),
+    {
+      method: 'GET',
+      headers: createAuthorizedHeaders(params.config),
+      signal: params.signal,
+    },
+  );
 
-  if (params.sortBy) {
-    const apiSortBy = params.sortBy === 'name' ? 'title' : 'createdAt';
-    url.searchParams.set('sortBy', apiSortBy);
+  return response.map((project) => ({
+    ...project,
+    type: 'project',
+  }));
+}
+
+export async function fetchRemoteCollections(
+  params: FetchRemoteCollectionsParams,
+): Promise<RemoteVfsDirectoryEntry[]> {
+  const url = new URL(joinPath(params.config.baseUrl, 'collections'));
+  url.searchParams.set('scope', params.scope);
+  if (params.projectId) {
+    url.searchParams.set('projectId', params.projectId);
+  }
+  if (params.parentId) {
+    url.searchParams.set('parentId', params.parentId);
+  }
+  if (params.includeChildrenCount) {
+    url.searchParams.set('includeChildrenCount', 'true');
   }
 
+  const response = await fetchJson<RemoteVfsDirectoryEntry[]>(url, {
+    method: 'GET',
+    headers: createAuthorizedHeaders(params.config),
+    signal: params.signal,
+  });
+
+  return response.map((entry) =>
+    mapCollectionResponse({
+      ...entry,
+      scope: params.scope,
+      projectId: params.projectId,
+    }),
+  );
+}
+
+export async function fetchRemoteItems(
+  params: FetchRemoteItemsParams,
+): Promise<RemoteVfsListResponse> {
+  const url = new URL(joinPath(params.config.baseUrl, 'items'));
+  url.searchParams.set('scope', params.scope);
+  if (params.projectId) {
+    url.searchParams.set('projectId', params.projectId);
+  }
+  if (params.groupId) {
+    url.searchParams.set('groupId', params.groupId);
+  }
+  if (params.orphansOnly) {
+    url.searchParams.set('orphansOnly', 'true');
+  }
+  if (params.limit !== undefined) {
+    url.searchParams.set('limit', String(params.limit));
+  }
+  if (params.offset !== undefined) {
+    url.searchParams.set('offset', String(params.offset));
+  }
+  if (params.search) {
+    url.searchParams.set('search', params.search);
+  }
+  if (params.tags?.length) {
+    url.searchParams.set('tags', params.tags.join(','));
+  }
+  if (params.sortBy) {
+    url.searchParams.set('sortBy', params.sortBy === 'name' ? 'title' : params.sortBy);
+  }
   if (params.sortOrder) {
     url.searchParams.set('sortOrder', params.sortOrder);
   }
 
-  if (params.search) {
-    url.searchParams.set('search', params.search);
-  }
-
-  if (params.tags?.length) {
-    url.searchParams.set('tags', params.tags.join(','));
-  }
-
-  if (params.language) {
-    url.searchParams.set('language', params.language);
-  }
-
-  if (params.limit !== undefined) {
-    url.searchParams.set('limit', params.limit.toString());
-  }
-
-  if (params.offset !== undefined) {
-    url.searchParams.set('offset', params.offset.toString());
-  }
-
-  const response = await fetch(url.toString(), {
+  const response = await fetchJson<{ items: RemoteVfsFileEntry[]; total: number }>(url, {
     method: 'GET',
-    headers: {
-      Authorization: `Bearer ${params.config.bearerToken}`,
-    },
+    headers: createAuthorizedHeaders(params.config),
     signal: params.signal,
   });
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(body || `Failed to load remote directory (${response.status})`);
-  }
-
-  return (await response.json()) as RemoteVfsListResponse;
+  return {
+    type: 'directory',
+    items: response.items.map((entry) =>
+      mapItemResponse({
+        ...entry,
+        scope: params.scope,
+        projectId: params.projectId,
+      }),
+    ),
+    total: response.total,
+  };
 }
 
 export async function fetchRemoteHealth(params: {
@@ -295,20 +452,13 @@ export async function fetchRemoteHealth(params: {
   bearerToken: string;
   signal?: AbortSignal;
 }): Promise<RemoteVfsHealthResponse> {
-  const response = await fetch(params.url, {
+  return await fetchJson<RemoteVfsHealthResponse>(params.url, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${params.bearerToken}`,
     },
     signal: params.signal,
   });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(body || `Remote health failed (${response.status})`);
-  }
-
-  return (await response.json()) as RemoteVfsHealthResponse;
 }
 
 export async function downloadRemoteFile(params: {
@@ -361,8 +511,9 @@ export async function downloadRemoteFile(params: {
 export async function uploadFileToRemote(params: {
   config: RemoteVfsClientConfig;
   file: File;
-  path?: string;
+  scope: RemoteVfsScope;
   projectId?: string;
+  groupId?: string;
   signal?: AbortSignal;
   onProgress?: (progress: number) => void;
 }): Promise<void> {
@@ -371,10 +522,6 @@ export async function uploadFileToRemote(params: {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', url);
     xhr.setRequestHeader('Authorization', `Bearer ${params.config.bearerToken}`);
-    // Passing filename in a header as it is expected by the storage microservice despite
-    // not being explicitly mentioned in the external API documentation snippet.
-    // We encode it to make sure it's ASCII-safe for headers.
-    xhr.setRequestHeader('x-filename', encodeURIComponent(params.file.name));
 
     xhr.upload.onprogress = (event) => {
       if (!event.lengthComputable) return;
@@ -411,17 +558,18 @@ export async function uploadFileToRemote(params: {
 
     const formData = new FormData();
     formData.append('file', params.file);
-    if (params.path) {
-      formData.append('path', params.path);
-    }
+    formData.append('scope', params.scope);
     if (params.projectId) {
       formData.append('projectId', params.projectId);
+    }
+    if (params.groupId) {
+      formData.append('groupId', params.groupId);
     }
     xhr.send(formData);
   });
 }
 
-export async function createRemoteItem(params: {
+export async function createRemoteItem(_params: {
   config: RemoteVfsClientConfig;
   name?: string;
   tags?: string[];
@@ -429,58 +577,55 @@ export async function createRemoteItem(params: {
   language?: string;
   path?: string;
 }): Promise<RemoteVfsFileEntry> {
-  const url = new URL(joinPath(params.config.baseUrl, 'items'));
-
-  // If path is provided, we might want to try it as a query parameter
-  // since the docs mention it as "additional field" but the main type is application/json.
-  // In many APIs, path-like destination parameters are allowed in either.
-  // But let's stick to the body if possible.
-  const response = await fetch(url.toString(), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${params.config.bearerToken}`,
-    },
-    body: JSON.stringify({
-      name: params.name,
-      tags: params.tags,
-      note: params.note,
-      language: params.language,
-      path: params.path,
-    }),
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(body || `Failed to create item (${response.status})`);
-  }
-
-  return (await response.json()) as RemoteVfsFileEntry;
+  throw new Error('Creating empty content items is not supported by the new API');
 }
 
 export async function createRemoteCollection(params: {
   config: RemoteVfsClientConfig;
   name: string;
+  scope: RemoteVfsScope;
+  projectId?: string;
   parentId?: string;
 }): Promise<RemoteVfsDirectoryEntry> {
-  const response = await fetch(joinPath(params.config.baseUrl, 'collections'), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${params.config.bearerToken}`,
+  const response = await fetchJson<RemoteVfsDirectoryEntry>(
+    joinPath(params.config.baseUrl, 'collections'),
+    {
+      method: 'POST',
+      headers: createAuthorizedHeaders(params.config, {
+        'Content-Type': 'application/json',
+      }),
+      body: JSON.stringify({
+        title: params.name,
+        scope: params.scope,
+        projectId: params.projectId,
+        parentId: params.parentId,
+      }),
     },
+  );
+
+  return mapCollectionResponse({
+    ...response,
+    scope: params.scope,
+    projectId: params.projectId,
+  });
+}
+
+export async function updateRemoteCollection(params: {
+  config: RemoteVfsClientConfig;
+  id: string;
+  title?: string;
+  parentId?: string | null;
+}): Promise<void> {
+  await fetchJson<void>(joinPath(params.config.baseUrl, `collections/${params.id}`), {
+    method: 'PATCH',
+    headers: createAuthorizedHeaders(params.config, {
+      'Content-Type': 'application/json',
+    }),
     body: JSON.stringify({
-      name: params.name,
+      title: params.title,
       parentId: params.parentId,
     }),
   });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(body || `Failed to create collection (${response.status})`);
-  }
-
-  return (await response.json()) as RemoteVfsDirectoryEntry;
 }
 
 export async function renameRemoteCollection(params: {
@@ -488,36 +633,43 @@ export async function renameRemoteCollection(params: {
   id: string;
   name: string;
 }): Promise<void> {
-  const response = await fetch(joinPath(params.config.baseUrl, `collections/${params.id}`), {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${params.config.bearerToken}`,
-    },
-    body: JSON.stringify({ name: params.name }),
+  await updateRemoteCollection({
+    config: params.config,
+    id: params.id,
+    title: params.name,
   });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(body || `Failed to rename collection (${response.status})`);
-  }
 }
 
 export async function deleteRemoteCollection(params: {
   config: RemoteVfsClientConfig;
   id: string;
 }): Promise<void> {
-  const response = await fetch(joinPath(params.config.baseUrl, `collections/${params.id}`), {
+  await fetchJson<void>(joinPath(params.config.baseUrl, `collections/${params.id}`), {
     method: 'DELETE',
-    headers: {
-      Authorization: `Bearer ${params.config.bearerToken}`,
-    },
+    headers: createAuthorizedHeaders(params.config),
   });
+}
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(body || `Failed to delete collection (${response.status})`);
-  }
+export async function updateRemoteItem(params: {
+  config: RemoteVfsClientConfig;
+  id: string;
+  title?: string;
+  groupId?: string | null;
+  tags?: string[];
+  note?: string;
+}): Promise<void> {
+  await fetchJson<void>(joinPath(params.config.baseUrl, `items/${params.id}`), {
+    method: 'PATCH',
+    headers: createAuthorizedHeaders(params.config, {
+      'Content-Type': 'application/json',
+    }),
+    body: JSON.stringify({
+      title: params.title,
+      groupId: params.groupId,
+      tags: params.tags,
+      note: params.note,
+    }),
+  });
 }
 
 export async function renameRemoteItem(params: {
@@ -527,23 +679,13 @@ export async function renameRemoteItem(params: {
   tags?: string[];
   note?: string;
 }): Promise<void> {
-  const response = await fetch(joinPath(params.config.baseUrl, `items/${params.id}`), {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${params.config.bearerToken}`,
-    },
-    body: JSON.stringify({
-      name: params.name,
-      tags: params.tags,
-      note: params.note,
-    }),
+  await updateRemoteItem({
+    config: params.config,
+    id: params.id,
+    title: params.name,
+    tags: params.tags,
+    note: params.note,
   });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(body || `Failed to update item (${response.status})`);
-  }
 }
 
 export async function renameRemoteMedia(params: {
@@ -551,47 +693,43 @@ export async function renameRemoteMedia(params: {
   id: string;
   name: string;
 }): Promise<void> {
-  const response = await fetch(joinPath(params.config.baseUrl, `media/${params.id}`), {
+  await fetchJson<void>(joinPath(params.config.baseUrl, `media/${params.id}`), {
     method: 'PATCH',
-    headers: {
+    headers: createAuthorizedHeaders(params.config, {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${params.config.bearerToken}`,
-    },
+    }),
     body: JSON.stringify({ filename: params.name }),
   });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(body || `Failed to rename media (${response.status})`);
-  }
 }
 
 export async function deleteRemoteItem(params: {
   config: RemoteVfsClientConfig;
   id: string;
 }): Promise<void> {
-  const response = await fetch(joinPath(params.config.baseUrl, `items/${params.id}`), {
+  await fetchJson<void>(joinPath(params.config.baseUrl, `items/${params.id}`), {
     method: 'DELETE',
-    headers: {
-      Authorization: `Bearer ${params.config.bearerToken}`,
-    },
+    headers: createAuthorizedHeaders(params.config),
   });
+}
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(body || `Failed to delete item (${response.status})`);
-  }
+export async function deleteRemoteMedia(params: {
+  config: RemoteVfsClientConfig;
+  id: string;
+}): Promise<void> {
+  await fetchJson<void>(joinPath(params.config.baseUrl, `media/${params.id}`), {
+    method: 'DELETE',
+    headers: createAuthorizedHeaders(params.config),
+  });
 }
 
 export async function searchRemoteVfs(params: {
   config: RemoteVfsClientConfig;
   query: string;
-  path?: string;
   signal?: AbortSignal;
 }): Promise<RemoteVfsListResponse> {
-  return await fetchRemoteVfsList({
+  return await fetchRemoteItems({
     config: params.config,
-    path: params.path || '/virtual-all',
+    scope: 'personal',
     search: params.query,
     signal: params.signal,
   });

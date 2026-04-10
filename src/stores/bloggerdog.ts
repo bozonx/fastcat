@@ -1,18 +1,25 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { BdPagination } from '~/types/bloggerdog';
-import type { RemoteVfsEntry, RemoteVfsMedia } from '~/types/remote-vfs';
+import type {
+  RemoteVfsDirectoryEntry,
+  RemoteVfsEntry,
+  RemoteVfsFileEntry,
+  RemoteVfsMedia,
+  RemoteVfsScope,
+} from '~/types/remote-vfs';
 import { useWorkspaceStore } from './workspace.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import {
-  fetchRemoteVfsList,
   createRemoteCollection,
+  createRemoteItem,
   deleteRemoteCollection,
   deleteRemoteItem,
+  fetchRemoteCollections,
+  fetchRemoteItems,
+  getRemoteThumbnailUrl,
   renameRemoteCollection,
   renameRemoteItem,
-  getRemoteThumbnailUrl,
-  createRemoteItem,
   type RemoteVfsClientConfig,
 } from '~/utils/remote-vfs';
 
@@ -51,7 +58,10 @@ export const useBloggerDogStore = defineStore('bloggerDog', () => {
 
   async function loadEntries(
     params: {
-      path?: string;
+      scope?: RemoteVfsScope;
+      projectId?: string;
+      groupId?: string;
+      orphansOnly?: boolean;
       limit?: number;
       offset?: number;
       sortBy?: string;
@@ -64,18 +74,30 @@ export const useBloggerDogStore = defineStore('bloggerDog', () => {
     error.value = null;
 
     try {
-      const response = await fetchRemoteVfsList({
-        config: config.value,
-        path: params.path || '/',
-        limit: params.limit ?? pagination.value.limit,
-        offset: params.offset ?? pagination.value.offset,
-        sortBy: params.sortBy,
-        sortOrder: params.sortOrder,
-      });
+      const scope = params.scope ?? 'personal';
+      const [collections, items] = await Promise.all([
+        fetchRemoteCollections({
+          config: config.value,
+          scope,
+          projectId: params.projectId,
+          parentId: params.groupId,
+          includeChildrenCount: true,
+        }),
+        fetchRemoteItems({
+          config: config.value,
+          scope,
+          projectId: params.projectId,
+          groupId: params.groupId,
+          orphansOnly: params.orphansOnly,
+          limit: params.limit ?? pagination.value.limit,
+          offset: params.offset ?? pagination.value.offset,
+          sortBy: params.sortBy,
+          sortOrder: params.sortOrder,
+        }),
+      ]);
 
-      entries.value = response.items;
-      totalEntries.value = response.total ?? response.items.length;
-
+      entries.value = [...collections, ...(items.items as RemoteVfsFileEntry[])];
+      totalEntries.value = collections.length + (items.total ?? items.items.length);
       pagination.value = {
         total: totalEntries.value,
         limit: params.limit ?? pagination.value.limit,
@@ -90,10 +112,10 @@ export const useBloggerDogStore = defineStore('bloggerDog', () => {
   }
 
   function getThumbnailUrl(entry: RemoteVfsEntry): string | null {
-    if (entry.type !== 'file' || !('media' in entry) || !entry.media?.length) return null;
+    if (entry.type !== 'file' || !entry.media?.length || !config.value) return null;
 
-    const media = entry.media.find((m: RemoteVfsMedia) => m.thumbnailUrl) || entry.media[0];
-    if (!media || !config.value) return null;
+    const media = entry.media.find((candidate: RemoteVfsMedia) => candidate.thumbnailUrl) || entry.media[0];
+    if (!media) return null;
 
     return getRemoteThumbnailUrl({
       baseUrl: config.value.baseUrl,
@@ -101,12 +123,19 @@ export const useBloggerDogStore = defineStore('bloggerDog', () => {
     });
   }
 
-  async function createCollection(name: string, parentId?: string) {
+  async function createCollection(params: {
+    name: string;
+    scope: RemoteVfsScope;
+    projectId?: string;
+    parentId?: string;
+  }) {
     if (!config.value) return;
     return await createRemoteCollection({
       config: config.value,
-      name,
-      parentId,
+      name: params.name,
+      scope: params.scope,
+      projectId: params.projectId,
+      parentId: params.parentId,
     });
   }
 

@@ -11,6 +11,7 @@ import {
 import {
   isCrossFileManagerDrag,
   resolveFileManagerDragOperation,
+  resolveFileManagerDropOperation,
 } from '~/composables/file-manager/dragOperation';
 import { crossVfsCopy, crossVfsMove } from '~/file-manager/core/vfs/crossVfs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
@@ -38,7 +39,7 @@ export interface UseFileDropOptions {
 export function useFileDrop(options: UseFileDropOptions) {
   const workspaceStore = useWorkspaceStore();
   const uiStore = useUiStore();
-  const { dragSourceFileManagerInstanceId, dragSourceVfs, setCurrentDragOperation } =
+  const { dragSourceFileManagerInstanceId, dragSourceVfs, currentDragOperation, setCurrentDragOperation } =
     useAppClipboard();
   const isRootDropOver = ref(false);
   let rootDragEnterCount = 0;
@@ -52,6 +53,19 @@ export function useFileDrop(options: UseFileDropOptions) {
       dragSourceFileManagerInstanceId,
       isLayer1Active: isCopyModifierActive(e),
       targetFileManagerInstanceId: options.targetFileManagerInstanceId ?? null,
+    });
+  }
+
+  function resolveDropOperation(
+    e: DragEvent,
+    fallbackRawOperation: 'copy' | 'move' | null,
+  ): 'copy' | 'move' {
+    return resolveFileManagerDropOperation({
+      dragSourceFileManagerInstanceId,
+      isLayer1Active: isCopyModifierActive(e),
+      targetFileManagerInstanceId: options.targetFileManagerInstanceId ?? null,
+      currentDragOperation,
+      fallbackRawOperation,
     });
   }
 
@@ -120,9 +134,8 @@ export function useFileDrop(options: UseFileDropOptions) {
       dragSourceFileManagerInstanceId,
       targetFileManagerInstanceId: options.targetFileManagerInstanceId ?? null,
     });
-    const shouldCopy = isCrossManagerDrag
-      ? resolveOperation(e) === 'copy'
-      : !!copyRaw || resolveOperation(e) === 'copy';
+    const shouldCopy =
+      resolveDropOperation(e, copyRaw ? 'copy' : moveRaw ? 'move' : null) === 'copy';
 
     let parsed: unknown = null;
     try {
@@ -147,7 +160,7 @@ export function useFileDrop(options: UseFileDropOptions) {
               targetVfs: options.vfs,
               sourcePath,
               sourceKind,
-              targetDirPath: '',
+              targetDirPath: targetDirPath ?? '',
             });
           } else {
             await crossVfsMove({
@@ -155,7 +168,7 @@ export function useFileDrop(options: UseFileDropOptions) {
               targetVfs: options.vfs,
               sourcePath,
               sourceKind,
-              targetDirPath: '',
+              targetDirPath: targetDirPath ?? '',
             });
           }
         }

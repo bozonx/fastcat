@@ -45,6 +45,7 @@ import { isGeneratingProxyInDirectory, folderHasVideos } from '~/utils/fs-entry-
 import {
   isCrossFileManagerDrag,
   resolveFileManagerDragOperation,
+  resolveFileManagerDropOperation,
 } from '~/composables/file-manager/dragOperation';
 import { crossVfsCopy, crossVfsMove } from '~/file-manager/core/vfs/crossVfs';
 
@@ -466,6 +467,19 @@ function resolveDragOperation(e: DragEvent): 'copy' | 'move' {
   });
 }
 
+function resolveDropOperation(
+  e: DragEvent,
+  fallbackRawOperation: 'copy' | 'move' | null,
+): 'copy' | 'move' {
+  return resolveFileManagerDropOperation({
+    dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
+    isLayer1Active: isLayer1Active(e, workspaceStore.userSettings),
+    targetFileManagerInstanceId: props.instanceId ?? null,
+    currentDragOperation: appClipboard.currentDragOperation,
+    fallbackRawOperation,
+  });
+}
+
 function onDragOverDir(e: DragEvent, entry: FsEntry) {
   if (entry.kind !== 'directory') return;
 
@@ -524,9 +538,11 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
       dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
       targetFileManagerInstanceId: props.instanceId ?? null,
     });
-    const shouldCopy = isCrossManagerDrag
-      ? resolveDragOperation(e) === 'copy' || operation === 'copy'
-      : !!copyRaw || resolveDragOperation(e) === 'copy' || operation === 'copy';
+    const shouldCopy =
+      resolveDropOperation(
+        e,
+        operation ?? (copyRaw ? 'copy' : moveRaw ? 'move' : null),
+      ) === 'copy';
     let parsed: any;
     try {
       parsed = JSON.parse(internalRaw);

@@ -147,11 +147,6 @@ export function useFileContextMenu(
             icon: 'i-heroicons-folder-plus',
             onSelect: () => onAction('createSubgroup', entry),
           },
-          {
-            label: t('fastcat.bloggerDog.actions.createItem', 'Создать элемент контента'),
-            icon: 'i-heroicons-document-plus',
-            onSelect: () => onAction('createContentItem', entry),
-          },
         ]);
       }
     }
