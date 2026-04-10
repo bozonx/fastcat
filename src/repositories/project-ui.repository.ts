@@ -20,14 +20,30 @@ const MonitorSettingsSchema = z.object({
   toolbarPosition: z.enum(['top', 'bottom', 'left', 'right']).catch('bottom'),
 });
 
+const TimelineSessionSchema = z.object({
+  playheadUs: z.coerce.number().catch(0),
+  masterGain: z.coerce.number().catch(1),
+  masterMuted: z.coerce.boolean().catch(false),
+  zoom: z.coerce.number().catch(1),
+  trackHeights: z.record(z.string(), z.coerce.number()).catch({}),
+});
+
 export const ProjectUiSettingsSchema = z.object({
   version: z.coerce.number().catch(1),
   monitors: z.record(z.string(), MonitorSettingsSchema).catch({}),
   timelines: z
     .object({
       openPaths: z.array(z.string()).catch([]),
+      activePath: z.string().nullable().catch(null),
+      sessions: z.record(z.string(), TimelineSessionSchema).catch({}),
     })
-    .catch({ openPaths: [] }),
+    .catch({ openPaths: [], activePath: null, sessions: {} }),
+  ui: z
+    .object({
+      activeTabId: z.string().nullable().catch(null),
+      fileManagerPaths: z.record(z.string(), z.string().nullable()).catch({}),
+    })
+    .catch({ activeTabId: null, fileManagerPaths: {} }),
 });
 
 export type ProjectUiSettings = z.infer<typeof ProjectUiSettingsSchema>;

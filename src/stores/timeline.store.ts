@@ -422,6 +422,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     audioMuted,
     audioLevels,
     timelineZoom,
+    trackHeights,
     historyStore,
     historyDebounce,
     selection,
@@ -429,6 +430,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     timelineMediaUsageStore,
     getOrFetchMetadataByPath: (path) => mediaStore.getOrFetchMetadataByPath(path),
     uiStore,
+    getProjectSettings: () => projectStore.projectSettings,
   });
 
   const dispatcher = createTimelineDispatcherModule({

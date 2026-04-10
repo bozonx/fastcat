@@ -198,6 +198,7 @@ export const useFocusStore = defineStore('focus', () => {
   const isPropertiesFocus = computed(() => isPropertiesPanelFocus(effectiveFocus.value));
 
   return {
+    activeTimelinePath,
     activePanelId,
     mainFocus,
     tempFocus,

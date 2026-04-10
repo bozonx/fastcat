@@ -330,15 +330,18 @@ export const useProjectStore = defineStore('project', () => {
 
     await loadProjectSettings();
 
-    // If no timelines are open, open the last one from meta or default
+    // If no timelines are open, open the last one from settings or default
     const openPaths = projectSettings.value.timelines.openPaths;
+    const activePathInSettings = projectSettings.value.timelines.activePath;
+
     if (openPaths.length === 0) {
       const lastPath =
+        activePathInSettings ||
         metaModule.projectMeta.value?.lastOpenedTimelinePath ||
         `${TIMELINES_DIR_NAME}/${name}_001.otio`;
       await openTimelineFile(lastPath);
     } else {
-      const lastPath = metaModule.projectMeta.value?.lastOpenedTimelinePath;
+      const lastPath = activePathInSettings || metaModule.projectMeta.value?.lastOpenedTimelinePath;
       if (lastPath && openPaths.includes(lastPath)) {
         await openTimelineFile(lastPath);
       } else {

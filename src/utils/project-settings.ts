@@ -21,6 +21,14 @@ export interface MonitorSettings {
   toolbarPosition: 'top' | 'bottom' | 'left' | 'right';
 }
 
+export interface TimelineSessionState {
+  playheadUs: number;
+  masterGain: number;
+  masterMuted: boolean;
+  zoom: number;
+  trackHeights: Record<string, number>;
+}
+
 export interface FastCatProjectSettings {
   version: number;
   project: {
@@ -51,9 +59,15 @@ export interface FastCatProjectSettings {
   monitors: Record<string, MonitorSettings>;
   timelines: {
     openPaths: string[];
+    activePath: string | null;
+    sessions: Record<string, TimelineSessionState>;
   };
   transitions: {
     defaultDurationUs: number;
+  };
+  ui: {
+    activeTabId: string | null;
+    fileManagerPaths: Record<string, string | null>;
   };
 }
 
@@ -102,9 +116,15 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
   },
   timelines: {
     openPaths: [],
+    activePath: null,
+    sessions: {},
   },
   transitions: {
     defaultDurationUs: 2_000_000,
+  },
+  ui: {
+    activeTabId: null,
+    fileManagerPaths: {},
   },
 };
 
@@ -164,9 +184,15 @@ export function createDefaultProjectSettings(
     },
     timelines: {
       openPaths: [],
+      activePath: null,
+      sessions: {},
     },
     transitions: {
       defaultDurationUs: DEFAULT_PROJECT_SETTINGS.transitions.defaultDurationUs,
+    },
+    ui: {
+      activeTabId: null,
+      fileManagerPaths: {},
     },
   };
 }
@@ -182,6 +208,14 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
     zoom: z.coerce.number().min(0.05).max(20).catch(dm.zoom),
     showGrid: z.coerce.boolean().catch(dm.showGrid),
     toolbarPosition: z.enum(['top', 'bottom', 'left', 'right']).catch(dm.toolbarPosition),
+  });
+
+  const sessionSchema = z.object({
+    playheadUs: z.coerce.number().catch(0),
+    masterGain: z.coerce.number().catch(1),
+    masterMuted: z.coerce.boolean().catch(false),
+    zoom: z.coerce.number().catch(1),
+    trackHeights: z.record(z.string(), z.coerce.number()).catch({}),
   });
 
   return z
@@ -258,6 +292,8 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
       timelines: z
         .object({
           openPaths: z.array(z.string()).catch([]),
+          activePath: z.string().nullable().catch(null),
+          sessions: z.record(z.string(), sessionSchema).catch({}),
         })
         .catch(defaults.timelines),
       transitions: z
@@ -265,6 +301,12 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
           defaultDurationUs: z.coerce.number().min(1).catch(defaults.transitions.defaultDurationUs),
         })
         .catch(defaults.transitions),
+      ui: z
+        .object({
+          activeTabId: z.string().nullable().catch(null),
+          fileManagerPaths: z.record(z.string(), z.string().nullable()).catch({}),
+        })
+        .catch(defaults.ui),
     })
     .catch(defaults);
 }

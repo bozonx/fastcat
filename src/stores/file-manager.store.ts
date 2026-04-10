@@ -118,6 +118,23 @@ function createFileManagerStoreSetup(contextId: string) {
       }
     }
 
+    function openFolderByPath(path: string | null) {
+      if (!path) {
+        selectedFolder.value = null;
+        return;
+      }
+      
+      const parts = path.split('/').filter(Boolean);
+      const name = parts.length > 0 ? parts[parts.length - 1]! : (contextId === 'computer-sidebar' ? 'Computer' : 'Project');
+
+      openFolder({
+        name,
+        kind: 'directory',
+        path: path,
+        source: contextId === 'bloggerdog-sidebar' ? 'remote' : 'local',
+      }, { skipHistory: true });
+    }
+
     function addToHistory(entry: FsEntry) {
       const last = historyStack.value[historyStack.value.length - 1];
       if (last && last.path === entry.path && last.source === entry.source) return;
@@ -192,6 +209,7 @@ function createFileManagerStoreSetup(contextId: string) {
       historyStack,
       futureStack,
       openFolder,
+      openFolderByPath,
       addToHistory,
       selectItem,
       setSelectionContext,

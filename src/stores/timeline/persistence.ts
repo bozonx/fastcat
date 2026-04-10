@@ -105,13 +105,6 @@ export function createTimelinePersistenceModule(
           ...(docRaw.metadata ?? {}),
           fastcat: {
             ...(docRaw.metadata?.fastcat ?? {}),
-            playheadUs: deps.currentTime.value,
-            masterGain: deps.masterGain.value,
-            zoom: deps.timelineZoom.value,
-            trackHeights: { ...deps.trackHeights.value },
-            ...(suffix ? { [`zoom${suffix}`]: deps.timelineZoom.value } : {}),
-            ...(suffix ? { [`trackHeights${suffix}`]: { ...deps.trackHeights.value } } : {}),
-            ...(deps.audioMuted ? { masterMuted: deps.audioMuted.value } : {}),
           },
         },
       };
@@ -221,42 +214,15 @@ export function createTimelinePersistenceModule(
       if (requestId !== loadTimelineRequestId) return;
       deps.timelineDoc.value = parsed;
 
-      if (
-        typeof parsed.metadata?.fastcat?.playheadUs === 'number' &&
-        Number.isFinite(parsed.metadata.fastcat.playheadUs)
-      ) {
-        deps.currentTime.value = parsed.metadata.fastcat.playheadUs;
-      }
-      if (
-        typeof parsed.metadata?.fastcat?.masterGain === 'number' &&
-        Number.isFinite(parsed.metadata.fastcat.masterGain)
-      ) {
-        deps.masterGain.value = parsed.metadata.fastcat.masterGain;
-      } else {
-        deps.masterGain.value = 1;
-      }
+      if (requestId !== loadTimelineRequestId) return;
+      deps.timelineDoc.value = parsed;
 
-      if (deps.audioMuted) {
-        deps.audioMuted.value = Boolean(parsed.metadata?.fastcat?.masterMuted);
-      }
-
-      const suffix = getPlatformSuffix();
-      const zoomKey = suffix ? `zoom${suffix}` : 'zoom';
-      const storedZoom =
-        (parsed.metadata?.fastcat as any)?.[zoomKey] ?? parsed.metadata?.fastcat?.zoom;
-
-      if (typeof storedZoom === 'number' && Number.isFinite(storedZoom)) {
-        deps.timelineZoom.value = storedZoom;
-      }
-
-      const trackHeightsKey = suffix ? `trackHeights${suffix}` : 'trackHeights';
-      const storedTrackHeights =
-        (parsed.metadata?.fastcat as any)?.[trackHeightsKey] ??
-        parsed.metadata?.fastcat?.trackHeights;
-
-      if (storedTrackHeights && typeof storedTrackHeights === 'object') {
-        deps.trackHeights.value = { ...storedTrackHeights };
-      }
+      // Reset to defaults or let the caller restore from ProjectSettings
+      deps.currentTime.value = 0;
+      deps.masterGain.value = 1;
+      if (deps.audioMuted) deps.audioMuted.value = false;
+      deps.timelineZoom.value = 50;
+      deps.trackHeights.value = {};
     } catch (e: unknown) {
       console.warn('Failed to load timeline file, fallback to default', e);
       if (requestId !== loadTimelineRequestId) return;
