@@ -494,9 +494,9 @@ export function createFileManager(deps: FileManagerCreateDeps) {
 
     if (!isMoveAllowed({ sourcePath, targetDirPath })) return;
 
-    await runWithUiFeedback({
+    return await runWithUiFeedback({
       action: async () => {
-        await moveEntryCommand(
+        const { newPath } = await moveEntryCommand(
           {
             source: params.source,
             targetDirPath,
@@ -547,6 +547,8 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         await reloadDirectory(sourceParentPath);
         await reloadDirectory(targetDirPath);
         await triggerMediaIntegrityCheck();
+
+        return newPath;
       },
       defaultErrorMessage: 'Failed to move',
       toastTitle: 'Move error',

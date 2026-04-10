@@ -9,6 +9,7 @@ import type { TimelineCommand } from '~/timeline/commands';
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
 import type { FsEntry } from '~/types/fs';
 import { normalizeWorkspaceFilePath } from '~/utils/workspace-common';
+import { revealFileManagerEntry } from '~/composables/file-manager/revealFileManagerEntry';
 
 interface TimelineStoreActions {
   timelineDoc: TimelineDocument | null;
@@ -41,6 +42,7 @@ interface UiStoreActions {
   mediaReplaceTarget: { trackId: string; itemId: string; expectedType: 'video' | 'image' } | null;
   isMediaReplaceModalOpen: boolean;
   notifyFileManagerUpdate: () => void;
+  triggerScrollToFileTreeEntry: (path: string) => void;
 }
 
 interface FilesPageStoreActions {
@@ -313,55 +315,38 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
   async function handleSelectInFileManager() {
     const clip = options.clip.value;
     if (clip.clipType !== 'media' || !clip.source?.path) return;
-    const path = normalizeWorkspaceFilePath(clip.source.path);
-    const parentPath = path.split('/').slice(0, -1).join('/');
-
-    if (projectStore.currentView && projectStore.currentView !== 'files') {
-      setActiveTab('files');
-    } else {
-      projectStore.goToFiles();
-    }
-
-    await fileManager.loadProjectDirectory();
-    uiStore.notifyFileManagerUpdate();
-
-    const parts = path.split('/').filter(Boolean);
-    let currentPath = '';
-    for (let i = 0; i < parts.length - 1; i += 1) {
-      const p = parts[i];
-      if (!p) continue;
-      currentPath = currentPath ? `${currentPath}/${p}` : p;
-      const dirEntry = fileManager.findEntryByPath(currentPath);
-      if (dirEntry && dirEntry.kind === 'directory' && !dirEntry.expanded) {
-        await fileManager.toggleDirectory(dirEntry);
-      }
-    }
-
-    const entry = fileManager.findEntryByPath(path);
-    if (!entry) return;
-
-    if (parentPath) {
-      const parentEntry = fileManager.findEntryByPath(parentPath);
-      if (parentEntry && parentEntry.kind === 'directory') {
-        fileManagerStore.openFolder(parentEntry);
-      }
-    }
-
-    uiStore.selectedFsEntry = {
-      kind: entry.kind,
-      name: entry.name,
-      path: entry.path,
-      parentPath: entry.parentPath,
-      lastModified: entry.lastModified,
-      size: entry.size,
-      source: entry.source,
-      remoteId: entry.remoteId,
-      remotePath: entry.remotePath,
-      adapterPayload: entry.adapterPayload,
-    };
-    selectionStore.selectFsEntry(entry);
-
-    focusStore.setTempFocus('left');
+    await revealFileManagerEntry({
+      path: normalizeWorkspaceFilePath(clip.source.path),
+      beforeReveal: async () => {
+        if (projectStore.currentView && projectStore.currentView !== 'files') {
+          setActiveTab('files');
+        } else {
+          projectStore.goToFiles();
+        }
+      },
+      loadProjectDirectory: fileManager.loadProjectDirectory,
+      notifyFileManagerUpdate: uiStore.notifyFileManagerUpdate,
+      findEntryByPath: fileManager.findEntryByPath,
+      toggleDirectory: fileManager.toggleDirectory,
+      openFolder: fileManagerStore.openFolder,
+      setSelectedFsEntry: (entry) => {
+        uiStore.selectedFsEntry = {
+          kind: entry.kind,
+          name: entry.name,
+          path: entry.path,
+          parentPath: entry.parentPath,
+          lastModified: entry.lastModified,
+          size: entry.size,
+          source: entry.source,
+          remoteId: entry.remoteId,
+          remotePath: entry.remotePath,
+          adapterPayload: entry.adapterPayload,
+        };
+      },
+      selectEntry: (entry) => selectionStore.selectFsEntry(entry),
+      scrollToEntry: (path) => uiStore.triggerScrollToFileTreeEntry(path),
+      focusFileManager: () => focusStore.setTempFocus('left'),
+    });
   }
 
   async function handleOpenNestedTimeline() {

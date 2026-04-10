@@ -102,7 +102,7 @@ export async function handleFilesCommand(
         : file.name;
 
       if (await deps.vfs.exists(targetPath)) {
-        // Instead of throwing, we can skip or generate unique name. 
+        // Instead of throwing, we can skip or generate unique name.
         // For timeline drop, standard behavior in many editors is to auto-rename if it's a conflict
         // but here we just throw as before, or handle conflict.
         // Let's stick to existing behavior for now but maybe better to auto-generate name.
@@ -111,10 +111,12 @@ export async function handleFilesCommand(
           dirPath: finalRelativePathBase,
           name: file.name,
         });
-        const uniquePath = finalRelativePathBase ? `${finalRelativePathBase}/${uniqueName}` : uniqueName;
-        
+        const uniquePath = finalRelativePathBase
+          ? `${finalRelativePathBase}/${uniqueName}`
+          : uniqueName;
+
         await deps.vfs.writeFile(uniquePath, file);
-        
+
         completedCount++;
         deps.onProgress?.({ currentFileIndex: completedCount, totalFiles, fileName: file.name });
 
@@ -239,10 +241,12 @@ export async function moveEntryCommand(
     targetDirPath: string;
   },
   deps: MoveEntryDeps,
-): Promise<void> {
+): Promise<{ newPath: string }> {
   const sourcePath = params.source.path;
   const targetDirPath = params.targetDirPath ?? '';
-  if (!sourcePath) return;
+  if (!sourcePath) {
+    throw new Error('Source path is required');
+  }
   const newName = await generateUniqueEntryNameWithSuffix({
     vfs: deps.vfs,
     dirPath: targetDirPath,
@@ -254,10 +258,11 @@ export async function moveEntryCommand(
 
   if (params.source.kind === 'file') {
     await deps.onFileMoved?.({ oldPath: sourcePath, newPath });
-    return;
+    return { newPath };
   }
 
   await deps.onDirectoryMoved?.({ oldPath: sourcePath, newPath });
+  return { newPath };
 }
 
 export interface CopyEntryDeps {
@@ -275,7 +280,7 @@ export async function copyEntryCommand(
   deps: CopyEntryDeps,
 ): Promise<{ newPath: string }> {
   if (params.abortSignal?.aborted) throw new Error('Aborted');
-  
+
   const sourcePath = params.source.path;
   const targetDirPath = params.targetDirPath ?? '';
   if (!sourcePath) {

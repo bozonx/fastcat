@@ -15,6 +15,7 @@ import { DOCUMENTS_DIR_NAME } from '~/utils/constants';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
+import { executeFileManagerPaste } from '~/composables/file-manager/executeFileManagerPaste';
 
 export type FileAction =
   | 'createFolder'
@@ -66,6 +67,7 @@ interface FileManagerActions {
   onFileSelect?: (entry: FsEntry) => void;
   copyEntry?: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
   moveEntry?: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
+  instanceId?: string;
 }
 
 export function useFileManagerActions(actions: FileManagerActions) {
@@ -144,11 +146,13 @@ export function useFileManagerActions(actions: FileManagerActions) {
     } while (usedNames.has(newName));
 
     createFolderDefaultName.value = newName;
-    pendingCreateFolderParent.value = actions.findEntryByPath(targetDirPath) || {
-      kind: 'directory',
-      name: '',
-      path: targetDirPath,
-    } as FsEntry;
+    pendingCreateFolderParent.value =
+      actions.findEntryByPath(targetDirPath) ||
+      ({
+        kind: 'directory',
+        name: '',
+        path: targetDirPath,
+      } as FsEntry);
     isCreateFolderModalOpen.value = true;
   }
 
@@ -411,7 +415,9 @@ export function useFileManagerActions(actions: FileManagerActions) {
           path: e.path!,
           kind: e.kind,
           name: e.name,
+          source: e.source,
         })),
+        sourceInstanceId: actions.instanceId,
       });
     },
     cut: (entry) => {
@@ -425,71 +431,32 @@ export function useFileManagerActions(actions: FileManagerActions) {
           path: e.path!,
           kind: e.kind,
           name: e.name,
+          source: e.source,
         })),
+        sourceInstanceId: actions.instanceId,
       });
     },
     paste: async (entry) => {
       const payload = clipboardStore.clipboardPayload;
       if (!payload || payload.source !== 'fileManager' || payload.items.length === 0) return;
 
-      const e = Array.isArray(entry) ? entry[0] : entry;
-      let targetDirPath = '';
-      if (e) {
-        if (e.kind === 'directory') {
-          targetDirPath = e.path ?? '';
-        } else {
-          targetDirPath = e.parentPath ?? (e.path ? e.path.split('/').slice(0, -1).join('/') : '');
-        }
-      }
+      if (!actions.copyEntry || !actions.moveEntry) return;
 
-      if (targetDirPath) {
-        actions.setFileTreePathExpanded?.(targetDirPath, true);
-      }
-
-      const pastedPaths: string[] = [];
-      for (const item of payload.items) {
-        let source = actions.findEntryByPath(item.path);
-        if (!source) {
-          source = {
-            path: item.path,
-            kind: item.kind,
-            name: item.name,
-          } as FsEntry;
-        }
-
-        if (payload.operation === 'copy') {
-          await actions.copyEntry?.({ source, targetDirPath });
-        } else {
-          await actions.moveEntry?.({ source, targetDirPath });
-        }
-        pastedPaths.push(targetDirPath ? `${targetDirPath}/${item.name}` : item.name);
-      }
-
-      if (payload.operation === 'cut') {
-        clipboardStore.setClipboardPayload(null);
-      }
-
-      if (targetDirPath !== undefined) {
-        await actions.reloadDirectory(targetDirPath);
-      } else {
-        await actions.loadProjectDirectory();
-      }
-
-      actions.notifyFileManagerUpdate?.();
-
-      // Select pasted entries after directory reload
-      setTimeout(() => {
-        const entries = pastedPaths
-          .map((path) => actions.findEntryByPath(path))
-          .filter((e): e is FsEntry => !!e);
-        if (entries.length > 0) {
-          if (entries.length === 1 && entries[0]) {
-            actions.onFileSelect?.(entries[0]);
-          } else {
-            selectionStore.selectFsEntries(entries);
-          }
-        }
-      }, 50);
+      await executeFileManagerPaste({
+        payload,
+        targetEntry: entry,
+        targetVfs: actions.vfs,
+        getSourceVfs: (instanceId) => clipboardStore.getFileManagerVfs(instanceId),
+        findEntryByPath: actions.findEntryByPath,
+        copyEntry: async (params) => (await actions.copyEntry?.(params)) ?? null,
+        moveEntry: async (params) => (await actions.moveEntry?.(params)) ?? null,
+        reloadDirectory: actions.reloadDirectory,
+        notifyFileManagerUpdate: actions.notifyFileManagerUpdate,
+        setFileTreePathExpanded: actions.setFileTreePathExpanded,
+        onFileSelect: actions.onFileSelect,
+        onFilesSelect: (entries) => selectionStore.selectFsEntries(entries),
+        clearClipboardPayload: () => clipboardStore.clearClipboardPayload(),
+      });
     },
   };
 

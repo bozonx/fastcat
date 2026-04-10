@@ -26,6 +26,7 @@ const proxyStore = useProxyStore();
 const projectStore = useProjectStore();
 const fileManager = useFileManager();
 const clipboardStore = useAppClipboard();
+const selectionStore = useSelectionStore();
 
 const totalSize = ref(0);
 
@@ -125,6 +126,10 @@ function onDeleteProxy() {
 function onCopy() {
   const validEntries = props.entries.filter((e) => Boolean(e.path));
   if (validEntries.length === 0) return;
+  const sourceInstanceId =
+    selectionStore.selectedEntity?.source === 'fileManager'
+      ? selectionStore.selectedEntity.instanceId
+      : undefined;
   clipboardStore.setClipboardPayload({
     source: 'fileManager',
     operation: 'copy',
@@ -132,13 +137,19 @@ function onCopy() {
       path: e.path!,
       kind: e.kind,
       name: e.name,
+      source: e.source,
     })),
+    sourceInstanceId,
   });
 }
 
 function onCut() {
   const validEntries = props.entries.filter((e) => Boolean(e.path));
   if (validEntries.length === 0) return;
+  const sourceInstanceId =
+    selectionStore.selectedEntity?.source === 'fileManager'
+      ? selectionStore.selectedEntity.instanceId
+      : undefined;
   clipboardStore.setClipboardPayload({
     source: 'fileManager',
     operation: 'cut',
@@ -146,7 +157,9 @@ function onCut() {
       path: e.path!,
       kind: e.kind,
       name: e.name,
+      source: e.source,
     })),
+    sourceInstanceId,
   });
 }
 </script>

@@ -52,6 +52,7 @@ function createOptions(clip: TimelineClipItem) {
   const uiStore = {
     selectedFsEntry: null as Partial<FsEntry> | null,
     notifyFileManagerUpdate: vi.fn(),
+    triggerScrollToFileTreeEntry: vi.fn(),
   };
   const selectionStore = { selectFsEntry: vi.fn() };
   const fileManagerStore = { openFolder: vi.fn() };
@@ -203,6 +204,7 @@ describe('useClipPropertiesActions', () => {
       remoteData: undefined,
     });
     expect(focusStore.setTempFocus).toHaveBeenCalledWith('left');
+    expect(uiStore.triggerScrollToFileTreeEntry).toHaveBeenCalledWith('media/nested/clip.mp4');
   });
 
   it('opens nested timeline using full file-manager flow', async () => {

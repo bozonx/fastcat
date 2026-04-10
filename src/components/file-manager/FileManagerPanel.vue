@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, inject } from 'vue';
+import { ref, inject, onUnmounted } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
@@ -60,6 +60,7 @@ const { extractAudio } = useAudioExtraction();
 const { addFileTab, setActiveTab } = useProjectTabsStore();
 const runtimeConfig = useRuntimeConfig();
 const workspaceStore = useWorkspaceStore();
+const clipboardStore = useAppClipboard();
 
 const fileManager = useFileManager();
 
@@ -83,6 +84,7 @@ const {
   getFileIcon,
   vfs,
 } = fileManager;
+clipboardStore.registerFileManagerVfs(instanceId, vfs);
 
 const fileInput = ref<HTMLInputElement | null>(null);
 
@@ -148,6 +150,7 @@ const {
   reloadDirectory,
   copyEntry,
   moveEntry,
+  instanceId,
   notifyFileManagerUpdate: () => uiStore.notifyFileManagerUpdate(),
   setFileTreePathExpanded: (path, expanded) => uiStore.setFileTreePathExpanded(path, expanded),
   onFileSelect: (entry) => emit('select', entry),
@@ -440,9 +443,16 @@ useFileManagerPanelPendingActions({
     await onFileAction('createMarkdown', entry);
   },
   createOtioVersion: (entry) => onFileActionBase('createOtioVersion', entry),
+  onPasteTarget: async (entry) => {
+    await onFileActionBase('paste', entry);
+  },
   handlePendingBloggerDogCreateSubgroup,
   handlePendingBloggerDogCreateItem,
   instanceId,
+});
+
+onUnmounted(() => {
+  clipboardStore.unregisterFileManagerVfs(instanceId);
 });
 
 useFileManagerPanelBootstrap({

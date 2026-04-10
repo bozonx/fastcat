@@ -4,8 +4,6 @@ import type { FsEntry } from '~/types/fs';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import { useAppClipboard } from '~/composables/useAppClipboard';
-import type { useFileManager } from '~/composables/file-manager/useFileManager';
 
 export interface FileBrowserPendingActionsOptions {
   folderEntries: Ref<FsEntry[]>;
@@ -17,9 +15,7 @@ export interface FileBrowserPendingActionsOptions {
   handlePendingBloggerDogCreateSubgroup: (entry: FsEntry) => void;
   handlePendingBloggerDogCreateItem: (entry: FsEntry) => void;
   onCreateFolder: (entry: FsEntry) => void;
-  findEntryByPath: (path: string) => FsEntry | null;
-  loadFolderContent: () => Promise<void>;
-  fileManager: ReturnType<typeof useFileManager>;
+  onPasteTarget: (entry: FsEntry) => Promise<void>;
   instanceId: string;
 }
 
@@ -33,15 +29,12 @@ export function useFileBrowserPendingActions({
   handlePendingBloggerDogCreateSubgroup,
   handlePendingBloggerDogCreateItem,
   onCreateFolder,
-  findEntryByPath,
-  loadFolderContent,
-  fileManager,
+  onPasteTarget,
   instanceId,
 }: FileBrowserPendingActionsOptions) {
   const uiStore = useUiStore();
   const focusStore = useFocusStore();
   const selectionStore = useSelectionStore();
-  const clipboard = useAppClipboard();
 
   function matchesInstance(selected: any): boolean {
     if (selected?.source !== 'fileManager') return false;
@@ -182,47 +175,11 @@ export function useFileBrowserPendingActions({
         }
       }
 
-      const payload = clipboard.clipboardPayload;
-      if (!payload || payload.source !== 'fileManager' || payload.items.length === 0) {
+      try {
+        await onPasteTarget(targetEntry);
+      } finally {
         uiStore.pendingFsEntryPaste = null;
-        return;
       }
-
-      const targetDirPath = targetEntry.path;
-      if (targetDirPath) {
-        uiStore.setFileTreePathExpanded(targetDirPath, true);
-      }
-
-      const pastedPaths: string[] = [];
-      for (const item of payload.items) {
-        const source = findEntryByPath(item.path);
-        if (!source) continue;
-
-        if (payload.operation === 'copy') {
-          await fileManager.copyEntry({ source, targetDirPath });
-        } else {
-          await fileManager.moveEntry({ source, targetDirPath });
-        }
-        pastedPaths.push(targetDirPath ? `${targetDirPath}/${item.name}` : item.name);
-      }
-
-      if (payload.operation === 'cut') {
-        clipboard.setClipboardPayload(null);
-      }
-
-      uiStore.pendingFsEntryPaste = null;
-      uiStore.notifyFileManagerUpdate();
-      await loadFolderContent();
-
-      // Select pasted entries after directory reload
-      setTimeout(() => {
-        const entries = pastedPaths
-          .map((path) => findEntryByPath(path))
-          .filter((e): e is FsEntry => !!e);
-        if (entries.length > 0) {
-          selectionStore.selectFsEntries(entries);
-        }
-      }, 50);
     },
   );
 }
