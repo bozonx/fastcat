@@ -75,7 +75,9 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
 
   async function readDirectory(path = ''): Promise<FsEntry[]> {
     try {
-      const entries = await deps.vfs.readDirectory(path);
+      // By default, we skip expensive checkChildren (hasChildren/hasDirectories) to avoid O(N^2) performance hits.
+      // The tree will assume folders might have children (show chevron) until they are opened.
+      const entries = await deps.vfs.readDirectory(path, { checkChildren: false });
 
       const normalizedEntries = entries
         .filter((entry) => deps.showHiddenFiles() || !entry.name.startsWith('.'))
@@ -90,8 +92,9 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
               parentPath: entry.parentPath,
               lastModified: entry.lastModified,
               size: entry.size,
-              hasChildren: entry.hasChildren,
-              hasDirectories: entry.hasDirectories,
+              // If adapter didn't check children, we assume true for directories to show the chevron.
+              hasChildren: entry.kind === 'directory' ? (entry.hasChildren ?? true) : false,
+              hasDirectories: entry.kind === 'directory' ? (entry.hasDirectories ?? true) : false,
             }) satisfies FsEntry,
         );
 

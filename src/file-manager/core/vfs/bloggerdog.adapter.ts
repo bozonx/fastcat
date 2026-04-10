@@ -518,7 +518,13 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
 
   async readDirectory(
     path: string,
-    options?: { sortBy?: string; sortOrder?: 'asc' | 'desc'; limit?: number; offset?: number },
+    options?: {
+      sortBy?: string;
+      sortOrder?: 'asc' | 'desc';
+      limit?: number;
+      offset?: number;
+      checkChildren?: boolean;
+    },
   ): Promise<VfsEntry[]> {
     const normalizedPath = this.normalizePath(path);
 

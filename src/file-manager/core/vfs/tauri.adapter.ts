@@ -120,10 +120,10 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
 
   async readDirectory(
     path: string,
-    _options?: { sortBy?: string; sortOrder?: 'asc' | 'desc' },
+    options?: { sortBy?: string; sortOrder?: 'asc' | 'desc'; checkChildren?: boolean },
   ): Promise<VfsEntry[]> {
-    const { tauriPath, options } = await this.getTauriFsArgs(path);
-    const entries = await readDir(tauriPath, options);
+    const { tauriPath, options: tauriOptions } = await this.getTauriFsArgs(path);
+    const entries = await readDir(tauriPath, tauriOptions);
 
     const normalizedPath = this.normalizePath(path);
     return await Promise.all(
@@ -133,7 +133,8 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
 
         let hasChildren: boolean | undefined;
         let hasDirectories: boolean | undefined;
-        if (entry.isDirectory) {
+
+        if (entry.isDirectory && options?.checkChildren) {
           try {
             const { tauriPath: childTauriPath, options: childOptions } =
               await this.getTauriFsArgs(entryPath);
@@ -144,6 +145,11 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
             hasChildren = false;
             hasDirectories = false;
           }
+        } else if (entry.isDirectory) {
+          // Default to assume it might have children to show chevron,
+          // avoiding the O(N^2) check unless explicitly requested.
+          hasChildren = true;
+          hasDirectories = true;
         }
 
         return {

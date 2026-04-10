@@ -31,24 +31,21 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: FileSyst
   watch(
     entries,
     async (currentEntries) => {
-      if (!projectStore.currentProjectId) {
-        thumbnails.value = {};
-        cleanupAll();
-        return;
-      }
-
       const projectId = projectStore.currentProjectId;
+      const workspaceHandle = useWorkspaceStore().workspaceHandle;
+
       const newHashes = new Set<string>();
       const validPaths = new Set(currentEntries.map((e) => e.path).filter(Boolean));
 
       // 1. Cleanup thumbnails for entries no longer in currentEntries
       Object.keys(thumbnails.value).forEach((path) => {
         if (!validPaths.has(path)) {
-          delete thumbnails.value[path];
+          const url = thumbnails.value[path];
           if (activeImageUrls.has(path)) {
             URL.revokeObjectURL(activeImageUrls.get(path)!);
             activeImageUrls.delete(path);
           }
+          delete thumbnails.value[path];
         }
       });
 
@@ -59,8 +56,17 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: FileSyst
           const type = getMediaTypeFromFilename(entry.name);
           const isTimeline = entry.name.toLowerCase().endsWith('.otio');
 
-          if (type === 'video' || isTimeline) {
-            if (mediaStore.metadataLoadFailed[path]) continue;
+          // Skip if already has thumbnail
+          if (thumbnails.value[path]) continue;
+
+          if (projectId && workspaceHandle && (type === 'video' || isTimeline)) {
+            // Timeline previews are NOT supported in external FM (without projectId context)
+            // But here we have projectId, so it's likely the project FM or a compatible view.
+            if (mediaStore.metadataLoadFailed[path]) {
+              // Re-check failed metadata if we are rendering it again
+              void mediaStore.getOrFetchMetadataByPath(path);
+              continue;
+            }
 
             const hash = getFileThumbnailHash({
               projectId,
@@ -68,25 +74,22 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: FileSyst
             });
             newHashes.add(hash);
 
-            if (!thumbnails.value[path]) {
-              activeHashes.add(hash);
-              fileThumbnailGenerator.addTask({
-                id: hash,
-                projectId,
-                projectRelativePath: path,
-                onComplete: (url: string) => {
-                  if (isUnmounted) return;
-                  // Use spread to trigger reactivity
-                  thumbnails.value = {
-                    ...thumbnails.value,
-                    [path]: url,
-                  };
-                },
-              });
-            }
+            activeHashes.add(hash);
+            fileThumbnailGenerator.addTask({
+              id: hash,
+              projectId,
+              projectRelativePath: path,
+              onComplete: (url: string) => {
+                if (isUnmounted) return;
+                thumbnails.value = {
+                  ...thumbnails.value,
+                  [path]: url,
+                };
+              },
+            });
           } else if (vfs && type === 'image') {
             const ext = entry.name.split('.').pop()?.toLowerCase();
-            if (ext && SUPPORTED_IMAGE_EXTS.includes(ext) && !thumbnails.value[path]) {
+            if (ext && SUPPORTED_IMAGE_EXTS.includes(ext)) {
               try {
                 const file = await vfs.getFile(path);
                 if (file && !isUnmounted) {

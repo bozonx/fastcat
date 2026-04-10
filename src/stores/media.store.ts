@@ -106,13 +106,20 @@ export const useMediaStore = defineStore('media', () => {
       if (mediaMetadata.value[cacheKey]) {
         const cached = mediaMetadata.value[cacheKey]!;
         if (cached.source.size === file.size && cached.source.lastModified === file.lastModified) {
-          return cached;
+          // If it previously failed (error: true), we might want to retry if it's being requested again.
+          // To prevent infinite retry loops in a single render cycle, we check if there's a pending request.
+          if (!cached.error) {
+            return cached;
+          }
         }
       }
 
       if (pendingRequests.has(cacheKey)) {
         return pendingRequests.get(cacheKey)!;
       }
+    } else {
+      // If forceRefresh is true, we clear the failure state for this path
+      delete metadataLoadFailed.value[cacheKey];
     }
 
     const requestPromise = (async () => {

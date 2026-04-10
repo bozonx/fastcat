@@ -349,6 +349,9 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
         return;
       }
 
+      const toast = useToast();
+      const { t } = useI18n();
+
       if (isCrossManagerDrag && appClipboard.dragSourceVfs) {
         try {
           for (const item of itemsToMove) {
@@ -376,26 +379,40 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
           }
         } catch (err) {
           console.error('[useFileBrowserDragAndDrop] Cross-VFS operation failed:', err);
+          toast.add({
+            color: 'error',
+            title: t('videoEditor.fileManager.errors.crossVfsFailedTitle', 'Transfer failed'),
+            description: err instanceof Error ? err.message : String(err),
+          });
         }
       } else {
-        for (const item of itemsToMove) {
-          const sourcePath = typeof item?.path === 'string' ? item.path : '';
-          if (!sourcePath || sourcePath === targetPath) continue;
+        try {
+          for (const item of itemsToMove) {
+            const sourcePath = typeof item?.path === 'string' ? item.path : '';
+            if (!sourcePath || sourcePath === targetPath) continue;
 
-          const source = await options.resolveEntryByPath(sourcePath);
-          if (!source) continue;
+            const source = await options.resolveEntryByPath(sourcePath);
+            if (!source) continue;
 
-          if (shouldCopy) {
-            await options.copyEntry({
-              source,
-              targetDirPath: targetPath,
-            });
-          } else {
-            await options.moveEntry({
-              source,
-              targetDirPath: targetPath,
-            });
+            if (shouldCopy) {
+              await options.copyEntry({
+                source,
+                targetDirPath: targetPath,
+              });
+            } else {
+              await options.moveEntry({
+                source,
+                targetDirPath: targetPath,
+              });
+            }
           }
+        } catch (err) {
+          console.error('[useFileBrowserDragAndDrop] D&D operation failed:', err);
+          toast.add({
+            color: 'error',
+            title: t('videoEditor.fileManager.errors.dragDropFailedTitle', 'Operation failed'),
+            description: err instanceof Error ? err.message : String(err),
+          });
         }
       }
 
@@ -504,6 +521,9 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
         return;
       }
 
+      const toast = useToast();
+      const { t } = useI18n();
+
       if (isCrossManagerDrag && appClipboard.dragSourceVfs) {
         try {
           for (const item of itemsToMove) {
@@ -531,26 +551,40 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
           }
         } catch (err) {
           console.error('[useFileBrowserDragAndDrop] Cross-VFS panel operation failed:', err);
+          toast.add({
+            color: 'error',
+            title: t('videoEditor.fileManager.errors.crossVfsFailedTitle', 'Transfer failed'),
+            description: err instanceof Error ? err.message : String(err),
+          });
         }
       } else {
-        for (const item of itemsToMove) {
-          const sourcePath = typeof item?.path === 'string' ? item.path : '';
-          if (!sourcePath) continue;
+        try {
+          for (const item of itemsToMove) {
+            const sourcePath = typeof item?.path === 'string' ? item.path : '';
+            if (!sourcePath) continue;
 
-          const source = await options.resolveEntryByPath(sourcePath);
-          if (!source) continue;
+            const source = await options.resolveEntryByPath(sourcePath);
+            if (!source) continue;
 
-          if (shouldCopy) {
-            await options.copyEntry({
-              source,
-              targetDirPath: targetFolder?.path ?? '',
-            });
-          } else {
-            await options.moveEntry({
-              source,
-              targetDirPath: targetFolder?.path ?? '',
-            });
+            if (shouldCopy) {
+              await options.copyEntry({
+                source,
+                targetDirPath: targetFolder?.path ?? '',
+              });
+            } else {
+              await options.moveEntry({
+                source,
+                targetDirPath: targetFolder?.path ?? '',
+              });
+            }
           }
+        } catch (err) {
+          console.error('[useFileBrowserDragAndDrop] D&D panel operation failed:', err);
+          toast.add({
+            color: 'error',
+            title: t('videoEditor.fileManager.errors.dragDropFailedTitle', 'Operation failed'),
+            description: err instanceof Error ? err.message : String(err),
+          });
         }
       }
 

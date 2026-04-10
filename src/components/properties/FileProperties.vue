@@ -596,6 +596,35 @@ const filteredFileSecondaryActions = computed<SecondaryEntryAction[]>(() => {
   );
 });
 
+const virtualAllPrimaryActions = computed<PrimaryEntryAction[]>(() =>
+  directoryPrimaryActions.value.filter((action) => action.id === 'paste'),
+);
+
+const virtualAllSecondaryActions = computed<SecondaryEntryAction[]>(() =>
+  directorySecondaryActions.value.filter((action) => action.id === 'createContentItem'),
+);
+
+const personalLibraryPrimaryActions = computed<PrimaryEntryAction[]>(() =>
+  directoryPrimaryActions.value.filter((action) => action.id === 'paste'),
+);
+
+const projectPrimaryActions = computed<PrimaryEntryAction[]>(() =>
+  directoryPrimaryActions.value.filter((action) => action.id === 'paste'),
+);
+
+const projectSecondaryActions = computed<SecondaryEntryAction[]>(() =>
+  directorySecondaryActions.value
+    .filter((action) => action.id === 'createContentItem' || action.id === 'createSubgroup')
+    .map((action) =>
+      action.id === 'createSubgroup'
+        ? {
+            ...action,
+            label: t('fastcat.bloggerDog.actions.createGroup'),
+          }
+        : action,
+    ),
+);
+
 const workspaceRootPrimaryActions = computed<PrimaryEntryAction[]>(() => [
   {
     id: 'paste',
@@ -825,6 +854,16 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
       </PropertySection>
 
       <PropertySection
+        v-if="!isWorkspaceRootProperties && !hideActions && isVirtualAll"
+        :title="t('videoEditor.fileManager.actions.title')"
+      >
+        <EntryActions
+          :primary-actions="virtualAllPrimaryActions"
+          :secondary-actions="virtualAllSecondaryActions"
+        />
+      </PropertySection>
+
+      <PropertySection
         v-if="!isWorkspaceRootProperties && isPersonalLibrary"
         :title="t('fastcat.bloggerDog.personalLibrary', 'Личная библиотека')"
       >
@@ -841,6 +880,16 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
             <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 shrink-0" />
           </a>
         </PropertyRow>
+      </PropertySection>
+
+      <PropertySection
+        v-if="!isWorkspaceRootProperties && !hideActions && isPersonalLibrary"
+        :title="t('videoEditor.fileManager.actions.title')"
+      >
+        <EntryActions
+          :primary-actions="personalLibraryPrimaryActions"
+          :secondary-actions="[]"
+        />
       </PropertySection>
 
       <PropertySection
@@ -882,6 +931,16 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
           </a>
           <span v-else>{{ selectedPath }}</span>
         </PropertyRow>
+      </PropertySection>
+
+      <PropertySection
+        v-if="!isWorkspaceRootProperties && !hideActions && isBloggerDogProject"
+        :title="t('videoEditor.fileManager.actions.title')"
+      >
+        <EntryActions
+          :primary-actions="projectPrimaryActions"
+          :secondary-actions="projectSecondaryActions"
+        />
       </PropertySection>
 
       <FileGeneralInfoSection
