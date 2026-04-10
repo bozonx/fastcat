@@ -246,17 +246,19 @@ export function useEntryPreview(params: {
       const requestId = ++loadRequestId;
       params.onResetPreviewMode('original');
 
+      // Clear previous state immediately to avoid showing stale data during async load
+      applyResolvedState({
+        currentUrl: null,
+        mediaType: null,
+        textContent: '',
+        fileInfo: null,
+        exifData: null,
+        imageDimensions: null,
+        lineCount: null,
+        timelineDocSummary: null,
+      });
+
       if (!entry) {
-        applyResolvedState({
-          currentUrl: null,
-          mediaType: null,
-          textContent: '',
-          fileInfo: null,
-          exifData: null,
-          imageDimensions: null,
-          lineCount: null,
-          timelineDocSummary: null,
-        });
         return;
       }
 

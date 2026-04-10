@@ -92,6 +92,15 @@ export function useAudioExtraction() {
       await fileManager.reloadDirectory(dirPath);
       const uiStore = useUiStore();
       uiStore.notifyFileManagerUpdate();
+
+      // Find and select the newly created audio file
+      setTimeout(() => {
+        const newEntry = fileManager.findEntryByPath(targetPath);
+        if (newEntry) {
+          const selectionStore = useSelectionStore();
+          selectionStore.selectFsEntryWithUiUpdate(newEntry);
+        }
+      }, 150);
     } catch (err: any) {
       console.error('Audio extraction failed', err);
       toast.add({

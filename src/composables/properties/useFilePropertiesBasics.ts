@@ -85,7 +85,7 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
 
   const { t } = useI18n();
   const generalInfoTitle = computed(() => {
-    const info = options.fileInfo.value;
+    const info = options.fileInfo.value || options.selectedFsEntry.value;
     if (!info) return '';
 
     if (info.kind === 'directory') {

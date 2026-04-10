@@ -446,7 +446,14 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
       } else if (request.type === 'image') {
         // Images convert in foreground
         props.isConverting.value = true;
-        const sourceFile = await projectStore.getFileByPath(entry.path);
+        let sourceFile = await projectStore.getFileByPath(entry.path);
+        if (!sourceFile) {
+          try {
+            sourceFile = await fileManager.vfs.getFile(entry.path);
+          } catch {
+            // Ignore VFS error
+          }
+        }
         if (!sourceFile) throw new Error('Failed to access source file');
 
         try {

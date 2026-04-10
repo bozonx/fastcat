@@ -35,6 +35,7 @@ interface UseFilePropertiesActionsOptions {
   isGeneratingProxyForFile: Ref<boolean>;
   isOtio: Ref<boolean>;
   isVideoFile: Ref<boolean>;
+  isVideoWithAudio: Ref<boolean>;
   isCommonDir: Ref<boolean>;
   isCommonPath: Ref<boolean>;
   canCopyOrCut: Ref<boolean>;
@@ -274,7 +275,7 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'extractAudio',
       label: options.t('videoEditor.fileManager.actions.extractAudio'),
       icon: 'i-heroicons-musical-note',
-      hidden: !options.isVideoFile.value,
+      hidden: !options.isVideoFile.value || (options.isVideoWithAudio && !options.isVideoWithAudio.value),
       onClick: options.extractAudio,
     },
   ]);
