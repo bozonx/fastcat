@@ -112,20 +112,22 @@ const uploadInputRef = ref<HTMLInputElement | null>(null);
 const selectedFsEntryRef = computed(() => props.selectedFsEntry);
 const previewModeRef = computed(() => props.previewMode);
 const hasProxyRef = computed(() => props.hasProxy);
+const isRemoteEntry = computed(() => props.selectedFsEntry?.source === 'remote');
 const hasAbsoluteLocalPath = computed(() => {
+  if (isRemoteEntry.value) return false;
   const path = props.selectedFsEntry?.path;
   if (typeof path !== 'string' || path.length === 0) return false;
   return path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path);
 });
 const isExternalContext = computed(
   () =>
-    props.isExternal ||
-    props.selectionOrigin === 'workspace-browser' ||
-    props.selectionOrigin === 'remote-browser' ||
-    props.instanceId === 'computer' ||
-    props.instanceId === 'sidebar' ||
-    hasAbsoluteLocalPath.value ||
-    props.selectedFsEntry?.source === 'remote',
+    (!isRemoteEntry.value && props.isExternal) ||
+    (!isRemoteEntry.value &&
+      (props.selectionOrigin === 'workspace-browser' ||
+        props.selectionOrigin === 'remote-browser' ||
+        props.instanceId === 'computer' ||
+        props.instanceId === 'sidebar' ||
+        hasAbsoluteLocalPath.value)),
 );
 const isRootDirectory = computed(() => {
   const entry = props.selectedFsEntry;
@@ -886,10 +888,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
         v-if="!isWorkspaceRootProperties && !hideActions && isPersonalLibrary"
         :title="t('videoEditor.fileManager.actions.title')"
       >
-        <EntryActions
-          :primary-actions="personalLibraryPrimaryActions"
-          :secondary-actions="[]"
-        />
+        <EntryActions :primary-actions="personalLibraryPrimaryActions" :secondary-actions="[]" />
       </PropertySection>
 
       <PropertySection
