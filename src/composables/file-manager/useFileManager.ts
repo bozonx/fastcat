@@ -643,12 +643,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
 
   function getFileIcon(entry: FsEntry): string {
     const bd = getBdPayload(entry);
-    const isTextContent =
-      bd?.type === 'content-item' &&
-      bd?.remoteData &&
-      'text' in bd.remoteData &&
-      bd.remoteData.text?.trim();
-    if (isTextContent) return 'i-heroicons-document-text';
+    if (bd?.type === 'content-item') return 'i-heroicons-document-text';
     if (entry.kind === 'directory') return 'i-heroicons-folder';
     if (entry.name.toLowerCase().endsWith('.otio')) return 'i-heroicons-queue-list';
     const type = getMediaTypeFromFilename(entry.name);
