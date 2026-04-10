@@ -641,7 +641,9 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
 </script>
 
 <template>
+  <!-- IMPORTANT: NO LOADING INDICATORS ALLOWED HERE. ALL PROPERTIES MUST LOAD SILENTLY. -->
   <div class="w-full flex flex-col" :class="mobileTextMode ? 'h-full gap-0' : 'gap-4'">
+
     <input
       ref="uploadInputRef"
       type="file"

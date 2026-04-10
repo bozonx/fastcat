@@ -72,18 +72,12 @@ const props = defineProps<{
       </p>
     </div>
 
+    <!-- No loading state here to avoid flickering. While properties are loading, nothing should happen in the UI. -->
     <div
       v-else-if="!props.mediaType"
-      class="flex flex-col items-center gap-3 text-ui-text-muted p-8 w-full h-full justify-center"
-    >
-      <UIcon name="i-heroicons-document" class="w-16 h-16" />
-      <p class="text-sm font-medium text-center truncate w-full px-4">
-        {{ props.fileName || t('common.loading', 'Loading...') }}
-      </p>
-      <p class="text-xs text-ui-text-muted">
-        {{ t('common.loading', 'Loading...') }}
-      </p>
-    </div>
+      class="w-full h-full min-h-12"
+    ></div>
+
 
     <div
       v-else

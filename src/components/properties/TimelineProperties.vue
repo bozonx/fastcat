@@ -241,7 +241,9 @@ const addTrackActions = computed(() => [
 </script>
 
 <template>
+  <!-- IMPORTANT: NO LOADING INDICATORS ALLOWED HERE. ALL PROPERTIES MUST LOAD SILENTLY. -->
   <div class="w-full flex flex-col gap-3">
+
     <!-- Actions (merge file and timeline actions) -->
     <PropertySection
       v-if="fileActions || !finalIsReadOnly"

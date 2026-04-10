@@ -385,10 +385,13 @@ const headerTitle = computed(() => {
     </div>
 
     <!-- Content Area -->
+    <!-- IMPORTANT: NEVER ADD LOADING SPINNERS OR "LOADING..." TEXT HERE. -->
+    <!-- ALL PROPERTIES MUST LOAD SILENTLY WITHOUT ANY FLICKERING OR VISUAL INDICATORS WHILE WAITING. -->
     <div
       ref="contentRef"
       class="flex-1 min-h-0 bg-ui-bg overflow-auto flex flex-col p-2 items-start w-full"
     >
+
       <div
         v-if="displayMode === 'empty'"
         key="empty"
