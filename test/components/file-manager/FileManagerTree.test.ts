@@ -544,6 +544,40 @@ describe('FileManagerTree', () => {
     });
   });
 
+  it('cancels tree drop when item is returned onto its own container', async () => {
+    dragSourceFileManagerInstanceIdMock = 'main';
+
+    const dir: FsEntry = {
+      name: '_video',
+      kind: 'directory',
+      path: '_video',
+      expanded: false,
+    };
+
+    const wrapper = mountTree([dir], 'main');
+    const dropzone = wrapper.findAll('div').find((w) => w.attributes('role') === 'treeitem');
+
+    const mockEvent = {
+      shiftKey: true,
+      dataTransfer: {
+        types: ['application/fastcat-copy'],
+        getData: vi.fn((type) => {
+          if (type === 'application/fastcat-copy') {
+            return JSON.stringify({ path: '_video', kind: 'directory' });
+          }
+          return '';
+        }),
+      },
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as unknown as DragEvent;
+
+    await dropzone?.trigger('drop', mockEvent);
+
+    expect(wrapper.emitted('requestMove')).toBeFalsy();
+    expect(wrapper.emitted('requestCopy')).toBeFalsy();
+  });
+
   it('selects only siblings for select all hotkey', async () => {
     const videoA: FsEntry = {
       name: 'a.mp4',

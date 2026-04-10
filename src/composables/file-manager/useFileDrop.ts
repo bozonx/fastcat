@@ -9,9 +9,11 @@ import {
   FILE_MANAGER_MOVE_DRAG_TYPE,
 } from '~/composables/useDraggedFile';
 import {
+  getDropTargetEntryPath,
   isCrossFileManagerDrag,
   resolveFileManagerDragOperation,
   resolveFileManagerDropOperation,
+  shouldCancelFileManagerDrop,
 } from '~/composables/file-manager/dragOperation';
 import {
   resetFileManagerDragCursor,
@@ -187,6 +189,14 @@ export function useFileDrop(options: UseFileDropOptions) {
     }
 
     const itemsToMove = Array.isArray(parsed) ? parsed : [parsed];
+    if (
+      shouldCancelFileManagerDrop({
+        items: itemsToMove,
+        targetEntryPath: getDropTargetEntryPath(e),
+      })
+    ) {
+      return;
+    }
 
     if (isCrossManagerDrag && dragSourceVfs) {
       try {
