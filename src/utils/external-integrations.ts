@@ -75,7 +75,12 @@ export function getFastCatPublicadorHealthUrl(baseUrl: string): string {
 
 export function getFastCatPublicadorSttStreamUrl(baseUrl: string): string {
   const externalApiBaseUrl = getFastCatPublicadorExternalApiBaseUrl(baseUrl);
-  return externalApiBaseUrl ? joinUrl(externalApiBaseUrl, 'transcribe/stream') : '';
+  return externalApiBaseUrl ? joinUrl(externalApiBaseUrl, 'external/stt/transcribe/stream') : '';
+}
+
+export function getFastCatPublicadorLlmChatUrl(baseUrl: string): string {
+  const externalApiBaseUrl = getFastCatPublicadorExternalApiBaseUrl(baseUrl);
+  return externalApiBaseUrl ? joinUrl(externalApiBaseUrl, 'external/llm/chat') : '';
 }
 
 export function getManualServiceHealthUrl(baseUrl: string): string {
