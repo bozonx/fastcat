@@ -3,6 +3,7 @@ import type {
   FastCatUserSettings,
   FastCatWorkspaceSettings,
 } from '~/utils/settings';
+import type { WorkspaceState } from '~/utils/workspace-state';
 import {
   ensureAppFileHandle,
   readJsonFromFileHandle,
@@ -18,6 +19,8 @@ export interface WorkspaceSettingsRepository {
   saveAppSettings(data: FastCatAppSettings): Promise<void>;
   loadWorkspaceSettings(): Promise<unknown | null>;
   saveWorkspaceSettings(data: FastCatWorkspaceSettings): Promise<void>;
+  loadWorkspaceState(): Promise<WorkspaceState | null>;
+  saveWorkspaceState(data: WorkspaceState): Promise<void>;
 }
 
 async function readWorkspaceJson(input: {
@@ -135,6 +138,12 @@ export function createWorkspaceSettingsRepository(input: {
 
     async saveWorkspaceSettings(data) {
       await this.saveAppSettings(data);
+    },
+    async loadWorkspaceState() {
+      return (await loadSettings('workspace-state.json')) as WorkspaceState | null;
+    },
+    async saveWorkspaceState(data) {
+      await saveSettings('workspace-state.json', data);
     },
   };
 }
