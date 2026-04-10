@@ -10,7 +10,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useFocusStore } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
-import { useFileManagerStore, type FileManagerStore } from '~/stores/file-manager.store';
+import { useFileManagerStore, useFilesPageFileManagerStore, type FileManagerStore } from '~/stores/file-manager.store';
 import { BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS } from '~/utils/constants';
 import type {
   AudioClipEffect,
@@ -56,7 +56,8 @@ const fileManager = useFileManager();
 const uiStore = useUiStore();
 const workspaceStore = useWorkspaceStore();
 const focusStore = useFocusStore();
-const fileManagerStore = inject('fileManagerStore', useFileManagerStore()) as FileManagerStore;
+const fileManagerStore = inject('fileManagerStore', useFileManagerStore()) as any;
+const filesPageStore = useFilesPageFileManagerStore();
 const clipboardStore = useAppClipboard();
 
 const { isMobile } = useDevice();

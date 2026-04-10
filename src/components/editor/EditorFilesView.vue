@@ -77,7 +77,7 @@ function openIntegrationsSettings() {
 }
 
 onMounted(() => {
-  if (!mainStore.selectedFolder) {
+  if (!mainStore.selectedFolder && !uiStore.selectedFsEntry) {
     mainStore.openFolder({
       name: projectStore.currentProjectName || 'Project',
       path: '',
