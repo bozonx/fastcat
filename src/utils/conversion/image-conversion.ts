@@ -14,6 +14,28 @@ export async function executeImageConversion(params: {
   taskId: string;
   isCancelRequested: () => boolean;
 }) {
+  const blob = await convertImageFile({
+    file: params.file,
+    request: params.request,
+    isCancelRequested: params.isCancelRequested,
+  });
+
+  const writable = await params.targetHandle.createWritable();
+
+  if (params.isCancelRequested()) {
+    await writable.abort();
+    throwCancelError();
+  }
+
+  await writable.write(blob);
+  await writable.close();
+}
+
+export async function convertImageFile(params: {
+  file: File;
+  request: ConversionRequest;
+  isCancelRequested: () => boolean;
+}): Promise<Blob> {
   if (params.isCancelRequested()) {
     throwCancelError();
   }
@@ -61,15 +83,7 @@ export async function executeImageConversion(params: {
       throwCancelError();
     }
 
-    const writable = await params.targetHandle.createWritable();
-
-    if (params.isCancelRequested()) {
-      await writable.abort();
-      throwCancelError();
-    }
-
-    await writable.write(blob);
-    await writable.close();
+    return blob;
   } finally {
     bitmap.close();
   }

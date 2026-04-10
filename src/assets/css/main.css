@@ -148,6 +148,29 @@
   touch-action: pan-y;
 }
 
+html.fastcat-file-manager-dragging,
+body.fastcat-file-manager-dragging,
+html.fastcat-file-manager-dragging *,
+body.fastcat-file-manager-dragging * {
+  cursor: inherit !important;
+}
+
+html.fastcat-file-manager-drag-copy,
+body.fastcat-file-manager-drag-copy {
+  cursor:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23111418' d='M5 3h10l4 4v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z'/%3E%3Cpath fill='%23fff' d='M15 3v4h4z'/%3E%3Cpath fill='%2322c55e' d='M16 14h-2v-2h-2v2h-2v2h2v2h2v-2h2z'/%3E%3C/svg%3E")
+      6 4,
+    copy !important;
+}
+
+html.fastcat-file-manager-drag-move,
+body.fastcat-file-manager-drag-move {
+  cursor:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23111418' d='M5 3h10l4 4v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z'/%3E%3Cpath fill='%23fff' d='M15 3v4h4z'/%3E%3Cpath fill='%23f59e0b' d='M12 10l3 3h-2v3h-2v-3H9z'/%3E%3C/svg%3E")
+      6 4,
+    move !important;
+}
+
 /* Ensure back-swipe is disabled at the document root level for mobile */
 html.is-mobile-layout,
 body.is-mobile-layout {

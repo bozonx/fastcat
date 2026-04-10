@@ -15,6 +15,7 @@ const selectionStoreMock = {
 
 const uiStoreMock = reactive({
   fileTreeSelectAllTrigger: 0,
+  isFileManagerDragging: false,
 });
 
 const workspaceStoreMock = {
@@ -132,6 +133,7 @@ describe('FileManagerTree', () => {
     setDragSourceFileManagerInstanceIdMock.mockClear();
     setDragSourceVfsMock.mockClear();
     uiStoreMock.fileTreeSelectAllTrigger = 0;
+    uiStoreMock.isFileManagerDragging = false;
   });
 
   it('renders root entries', () => {
@@ -345,6 +347,7 @@ describe('FileManagerTree', () => {
 
     await treeItem.trigger('dragstart', dragEvent);
 
+    expect(uiStoreMock.isFileManagerDragging).toBe(true);
     expect(setDragSourceFileManagerInstanceIdMock).toHaveBeenCalledWith('main');
     expect(setCurrentDragOperationMock).toHaveBeenCalledWith('copy');
     expect(setData).toHaveBeenCalledWith(

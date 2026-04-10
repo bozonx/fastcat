@@ -47,6 +47,10 @@ import {
   resolveFileManagerDragOperation,
   resolveFileManagerDropOperation,
 } from '~/composables/file-manager/dragOperation';
+import {
+  resetFileManagerDragCursor,
+  syncFileManagerDragCursor,
+} from '~/composables/file-manager/dragCursor';
 import { crossVfsCopy, crossVfsMove } from '~/file-manager/core/vfs/crossVfs';
 
 interface Props {
@@ -422,9 +426,11 @@ function onDragStart(e: DragEvent, entry: FsEntry) {
 
   const operation = isLayer1Active(e, workspaceStore.userSettings) ? 'copy' : 'move';
   dragOperation.value = operation;
+  uiStore.isFileManagerDragging = true;
   appClipboard.setDragSourceFileManagerInstanceId(props.instanceId ?? null);
   appClipboard.setDragSourceVfs(props.vfs ?? null);
   appClipboard.setCurrentDragOperation(operation);
+  syncFileManagerDragCursor({ isDragging: true, operation });
   const movePayload = entriesToMove.map((e) => ({ name: e.name, kind: e.kind, path: e.path }));
   e.dataTransfer?.setData(
     operation === 'copy' ? FILE_MANAGER_COPY_DRAG_TYPE : FILE_MANAGER_MOVE_DRAG_TYPE,
@@ -454,9 +460,11 @@ function onDragStart(e: DragEvent, entry: FsEntry) {
 function onDragEnd() {
   clearDraggedFile();
   dragOperation.value = null;
+  uiStore.isFileManagerDragging = false;
   appClipboard.setCurrentDragOperation(null);
   appClipboard.setDragSourceFileManagerInstanceId(null);
   appClipboard.setDragSourceVfs(null);
+  resetFileManagerDragCursor();
 }
 
 function resolveDragOperation(e: DragEvent): 'copy' | 'move' {
@@ -491,12 +499,14 @@ function onDragOverDir(e: DragEvent, entry: FsEntry) {
     dragOperation.value = resolveDragOperation(e);
     appClipboard.setCurrentDragOperation(dragOperation.value);
     e.dataTransfer.dropEffect = dragOperation.value === 'copy' ? 'copy' : 'move';
+    syncFileManagerDragCursor({ isDragging: true, operation: dragOperation.value });
     return;
   }
 
   if (types.includes(REMOTE_FILE_DRAG_TYPE)) {
     isDragOver.value = entry.path || null;
     e.dataTransfer.dropEffect = 'copy';
+    syncFileManagerDragCursor({ isDragging: true, operation: 'copy' });
     return;
   }
 
@@ -504,6 +514,7 @@ function onDragOverDir(e: DragEvent, entry: FsEntry) {
   if (types.includes('Files')) {
     isDragOver.value = entry.path || null;
     e.dataTransfer.dropEffect = 'copy';
+    syncFileManagerDragCursor({ isDragging: true, operation: 'copy' });
   }
 }
 
@@ -517,6 +528,7 @@ function onDragLeaveDir(e: DragEvent, entry: FsEntry) {
     isDragOver.value = null;
     dragOperation.value = null;
     appClipboard.setCurrentDragOperation(null);
+    resetFileManagerDragCursor();
   }
 }
 
@@ -529,6 +541,7 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
   isDragOver.value = null;
   dragOperation.value = null;
   appClipboard.setCurrentDragOperation(null);
+  resetFileManagerDragCursor();
 
   const copyRaw = e.dataTransfer?.getData(FILE_MANAGER_COPY_DRAG_TYPE);
   const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
