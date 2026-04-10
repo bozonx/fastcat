@@ -633,6 +633,10 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       throw new Error(`Cannot create collection in ${parentPath}`);
     }
 
+    if (parent.type === 'file') {
+      throw new Error('Creating folders inside content items is not supported');
+    }
+
     const context = this.getDirectoryContext(parent);
     const collection = await createRemoteCollection({
       config: this.resolveConfig(),
