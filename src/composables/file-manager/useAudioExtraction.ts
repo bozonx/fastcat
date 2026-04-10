@@ -22,7 +22,7 @@ export function useAudioExtraction() {
 
     isExtracting.value = true;
     try {
-      const sourceFile = await (useNuxtApp() as any).$vfs.getFile(entry.path);
+      const sourceFile = await projectStore.getFileByPath(entry.path);
       if (!sourceFile) throw new Error('Failed to access source file');
 
       const { client } = getExportWorkerClient();
@@ -34,7 +34,7 @@ export function useAudioExtraction() {
           getWorkspaceHandle: () => workspaceStore.workspaceHandle,
           getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
           getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
-          getFileByPath: async (path) => fileManager.vfs.getFile(path),
+          getFileByPath: async (path) => projectStore.getFileByPath(path),
           onExportProgress: () => {}, // Not used for extraction yet
         }),
       );
