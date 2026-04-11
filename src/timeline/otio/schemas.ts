@@ -189,7 +189,6 @@ export const TimelineDocFastCatMetaSchema = z
     version: z.number().optional(),
     docId: z.string().trim().min(1).optional(),
     timebase: z.object({ fps: z.number() }).optional(),
-    selectionRange: z.object({ startUs: z.number(), endUs: z.number() }).optional(),
     masterEffects: z.array(z.any()).optional(),
     markers: z.array(z.any()).optional(),
   })

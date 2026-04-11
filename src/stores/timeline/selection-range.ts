@@ -1,5 +1,5 @@
 import { ref, type Ref } from 'vue';
-import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types';
+import type { TimelineDocument, TimelineSelectionRange, TimelineMetadata } from '~/timeline/types';
 import type { createTimelineMarkerService } from '~/timeline/application/timelineMarkerService';
 import type { createTimelineTrimmingModule } from './trimming';
 import { TIMELINE_RULER_CONSTANTS } from '~/utils/constants';
@@ -8,6 +8,7 @@ import type { TimelineCommand } from '~/timeline/commands';
 export interface TimelineSelectionRangeDeps {
   timelineDoc: Ref<TimelineDocument | null>;
   currentTime: Ref<number>;
+  selectionRange: Ref<TimelineSelectionRange | null>;
   isSelectionRangeSelected: () => boolean;
   selectTimelineSelectionRange: () => void;
   clearSelection: () => void;
@@ -49,7 +50,7 @@ export function createTimelineSelectionRangeModule(
   const previewRange = ref<TimelineSelectionRange | null>(null);
 
   function getSelectionRange(): TimelineSelectionRange | null {
-    const range = previewRange.value || timelineDoc.value?.metadata?.fastcat?.selectionRange;
+    const range = previewRange.value || params.selectionRange.value;
     if (!range) return null;
     if (!Number.isFinite(range.startUs) || !Number.isFinite(range.endUs)) return null;
 
@@ -68,32 +69,18 @@ export function createTimelineSelectionRangeModule(
     previewRange.value = range;
   }
 
-  function updateSelectionRange(range: TimelineSelectionRange | null, options?: any) {
+  function updateSelectionRange(range: TimelineSelectionRange | null, _options?: any) {
     previewRange.value = null;
 
     if (!range) {
-      applyTimeline(
-        {
-          type: 'update_timeline_properties',
-          properties: { selectionRange: undefined },
-        },
-        options,
-      );
+      params.selectionRange.value = null;
       return;
     }
 
-    applyTimeline(
-      {
-        type: 'update_timeline_properties',
-        properties: {
-          selectionRange: {
-            startUs: Math.max(0, Math.round(range.startUs)),
-            endUs: Math.max(Math.round(range.startUs), Math.round(range.endUs)),
-          },
-        },
-      },
-      options,
-    );
+    params.selectionRange.value = {
+      startUs: Math.max(0, Math.round(range.startUs)),
+      endUs: Math.max(Math.round(range.startUs), Math.round(range.endUs)),
+    };
   }
 
   function createSelectionRangeAtPlayhead(durationUs?: number) {

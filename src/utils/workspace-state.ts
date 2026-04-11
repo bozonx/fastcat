@@ -4,6 +4,7 @@ export interface WorkspaceState {
   presets: {
     custom: CustomPreset[];
     defaultTextPresetId: string;
+    collapsed: Record<string, boolean>;
   };
   ui: {
     recentSearchQueries: string[];
@@ -16,6 +17,7 @@ export function createDefaultWorkspaceState(): WorkspaceState {
     presets: {
       custom: [],
       defaultTextPresetId: '',
+      collapsed: {},
     },
     ui: {
       recentSearchQueries: [],
@@ -37,6 +39,9 @@ export function normalizeWorkspaceState(data: any): WorkspaceState {
       defaultTextPresetId: typeof data.presets?.defaultTextPresetId === 'string'
         ? data.presets.defaultTextPresetId
         : defaults.presets.defaultTextPresetId,
+      collapsed: (data.presets?.collapsed && typeof data.presets.collapsed === 'object')
+        ? data.presets.collapsed
+        : defaults.presets.collapsed,
     },
     ui: {
       recentSearchQueries: Array.isArray(data.ui?.recentSearchQueries)

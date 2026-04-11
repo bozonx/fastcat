@@ -101,6 +101,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   const scrollResetTicket = ref(0);
   const scrollToPlayheadRequest = ref(0);
   const trackHeights = ref<Record<string, number>>({});
+  const selectionRange = ref<TimelineSelectionRange | null>(null);
 
   const fps = computed(() => {
     if (timelineDoc.value) return getDocFps(timelineDoc.value);
@@ -422,6 +423,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     audioLevels,
     timelineZoom,
     trackHeights,
+    selectionRange,
     historyStore,
     historyDebounce,
     selection,
@@ -492,9 +494,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     t,
   });
 
-  const selectionRange = createTimelineSelectionRangeModule({
+  const selectionRangeModule = createTimelineSelectionRangeModule({
     timelineDoc,
     currentTime,
+    selectionRange,
     isSelectionRangeSelected: () =>
       selectionStore.selectedEntity?.source === 'timeline' &&
       selectionStore.selectedEntity.kind === 'selection-range',
@@ -597,10 +600,10 @@ export const useTimelineStore = defineStore('timeline', () => {
   return {
     timelineDoc,
     markers: computed(() => markerService.getMarkers()),
-    selectionRange: computed(() => selectionRange.getSelectionRange()),
+    selectionRange: computed(() => selectionRangeModule.getSelectionRange()),
     getMarkers: markerService.getMarkers,
-    getSelectionRange: selectionRange.getSelectionRange,
-    setPreviewSelectionRange: selectionRange.setPreviewSelectionRange,
+    getSelectionRange: selectionRangeModule.getSelectionRange,
+    setPreviewSelectionRange: selectionRangeModule.setPreviewSelectionRange,
     timelineViewportWidth,
     scrollResetTicket,
     scrollToPlayheadRequest,
@@ -689,19 +692,19 @@ export const useTimelineStore = defineStore('timeline', () => {
       }
     },
     addZoneMarkerAtPlayhead: markerService.addZoneMarkerAtPlayhead,
-    createSelectionRangeAtPlayhead: selectionRange.createSelectionRangeAtPlayhead,
-    createSelectionRange: selectionRange.createSelectionRange,
+    createSelectionRangeAtPlayhead: selectionRangeModule.createSelectionRangeAtPlayhead,
+    createSelectionRange: selectionRangeModule.createSelectionRange,
     updateMarker: markerService.updateMarker,
     removeMarker: markerService.removeMarker,
-    updateSelectionRange: selectionRange.updateSelectionRange,
-    removeSelectionRange: selectionRange.removeSelectionRange,
+    updateSelectionRange: selectionRangeModule.updateSelectionRange,
+    removeSelectionRange: selectionRangeModule.removeSelectionRange,
     convertMarkerToZone: markerService.convertMarkerToZone,
     convertZoneToMarker: markerService.convertZoneToMarker,
-    convertMarkerToSelectionRange: selectionRange.convertMarkerToSelectionRange,
-    createSelectionRangeFromMarker: selectionRange.createSelectionRangeFromMarker,
-    convertSelectionRangeToMarker: selectionRange.convertSelectionRangeToMarker,
-    isSelectionRangeSelected: selectionRange.isSelectionRangeSelected,
-    rippleTrimSelectionRange: selectionRange.rippleTrimSelectionRange,
+    convertMarkerToSelectionRange: selectionRangeModule.convertMarkerToSelectionRange,
+    createSelectionRangeFromMarker: selectionRangeModule.createSelectionRangeFromMarker,
+    convertSelectionRangeToMarker: selectionRangeModule.convertSelectionRangeToMarker,
+    isSelectionRangeSelected: selectionRangeModule.isSelectionRangeSelected,
+    rippleTrimSelectionRange: selectionRangeModule.rippleTrimSelectionRange,
     moveItemToTrack: commands.moveItemToTrack,
     extractAudioToTrack: commands.extractAudioToTrack,
     returnAudioToVideo: commands.returnAudioToVideo,

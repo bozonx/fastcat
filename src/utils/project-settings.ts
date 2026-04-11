@@ -27,6 +27,7 @@ export interface TimelineSessionState {
   masterMuted: boolean;
   zoom: number;
   trackHeights: Record<string, number>;
+  selectionRange?: { startUs: number; endUs: number };
 }
 
 export interface FastCatProjectSettings {
@@ -59,7 +60,6 @@ export interface FastCatProjectSettings {
   monitors: Record<string, MonitorSettings>;
   timelines: {
     openPaths: string[];
-    activePath: string | null;
     sessions: Record<string, TimelineSessionState>;
   };
   transitions: {
@@ -116,7 +116,6 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
   },
   timelines: {
     openPaths: [],
-    activePath: null,
     sessions: {},
   },
   transitions: {
@@ -184,7 +183,6 @@ export function createDefaultProjectSettings(
     },
     timelines: {
       openPaths: [],
-      activePath: null,
       sessions: {},
     },
     transitions: {
@@ -216,6 +214,7 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
     masterMuted: z.coerce.boolean().catch(false),
     zoom: z.coerce.number().catch(1),
     trackHeights: z.record(z.string(), z.coerce.number()).catch({}),
+    selectionRange: z.object({ startUs: z.number(), endUs: z.number() }).optional(),
   });
 
   return z
@@ -292,7 +291,6 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
       timelines: z
         .object({
           openPaths: z.array(z.string()).catch([]),
-          activePath: z.string().nullable().catch(null),
           sessions: z.record(z.string(), sessionSchema).catch({}),
         })
         .catch(defaults.timelines),

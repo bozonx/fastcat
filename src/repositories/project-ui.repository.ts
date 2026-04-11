@@ -26,6 +26,13 @@ const TimelineSessionSchema = z.object({
   masterMuted: z.coerce.boolean().catch(false),
   zoom: z.coerce.number().catch(1),
   trackHeights: z.record(z.string(), z.coerce.number()).catch({}),
+  selectionRange: z
+    .object({
+      startUs: z.number(),
+      endUs: z.number(),
+    })
+    .optional()
+    .catch(undefined),
 });
 
 export const ProjectUiSettingsSchema = z.object({
@@ -34,10 +41,9 @@ export const ProjectUiSettingsSchema = z.object({
   timelines: z
     .object({
       openPaths: z.array(z.string()).catch([]),
-      activePath: z.string().nullable().catch(null),
       sessions: z.record(z.string(), TimelineSessionSchema).catch({}),
     })
-    .catch({ openPaths: [], activePath: null, sessions: {} }),
+    .catch({ openPaths: [], sessions: {} }),
   ui: z
     .object({
       activeTabId: z.string().nullable().catch(null),

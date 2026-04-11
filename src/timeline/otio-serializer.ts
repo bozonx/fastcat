@@ -247,7 +247,6 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
         version: 1,
         docId: doc.id,
         timebase: doc.timebase,
-        selectionRange: coerceSelectionRange(fastcatMeta?.selectionRange),
         masterEffects: Array.isArray(fastcatMeta?.masterEffects)
           ? fastcatMeta.masterEffects
           : undefined,
@@ -460,15 +459,6 @@ export function parseTimelineFromOtio(
 
   const masterEffects = fastcatMeta.masterEffects;
 
-  const selectionRange =
-    fastcatMeta.selectionRange?.startUs !== undefined &&
-    fastcatMeta.selectionRange?.endUs !== undefined
-      ? coerceSelectionRange({
-          startUs: fastcatMeta.selectionRange.startUs,
-          endUs: fastcatMeta.selectionRange.endUs,
-        })
-      : undefined;
-
   if (normalizedTracks.length === 0) {
     const base = createDefaultTimelineDocument({ id: docId, name, fps: timebase.fps });
     base.metadata = {
@@ -480,7 +470,6 @@ export function parseTimelineFromOtio(
         timebase,
         markers,
         masterEffects,
-        selectionRange,
       },
     };
     return base;
@@ -499,7 +488,6 @@ export function parseTimelineFromOtio(
         timebase,
         markers,
         masterEffects,
-        selectionRange,
       },
     },
   };

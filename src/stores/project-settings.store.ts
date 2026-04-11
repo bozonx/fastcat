@@ -94,7 +94,6 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
           const timelineStore = useTimelineStore();
 
           const timelines = { ...projectSettings.value.timelines };
-          timelines.activePath = focusStore.activePanelId === 'timeline' ? focusStore.activeTimelinePath : timelines.activePath;
           
           if (focusStore.activeTimelinePath) {
             timelines.sessions[focusStore.activeTimelinePath] = {
@@ -103,6 +102,9 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
               masterMuted: timelineStore.audioMuted ?? false,
               zoom: timelineStore.timelineZoom,
               trackHeights: { ...timelineStore.trackHeights },
+              selectionRange: timelineStore.selectionRange
+                ? { ...timelineStore.selectionRange }
+                : undefined,
             };
           }
 
@@ -122,7 +124,10 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
           await projectUiRepo.value.save({
             version: 1,
             monitors: projectSettings.value.monitors,
-            timelines,
+            timelines: {
+              openPaths: timelines.openPaths,
+              sessions: timelines.sessions,
+            },
             ui: {
               activeTabId: projectTabsStore.activeTabId,
               fileManagerPaths,
@@ -302,6 +307,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
         timelineStore.masterGain,
         timelineStore.audioMuted,
         timelineStore.trackHeights,
+        timelineStore.selectionRange,
       ];
     },
     () => {
@@ -337,7 +343,10 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
       await projectUiRepo.value.save({
         version: 1,
         monitors: initial.monitors,
-        timelines: initial.timelines,
+        timelines: {
+          openPaths: initial.timelines.openPaths,
+          sessions: initial.timelines.sessions,
+        },
         ui: initial.ui,
       });
     } catch (e) {
