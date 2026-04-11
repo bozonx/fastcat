@@ -9,6 +9,7 @@ import ExportForm from '~/components/export/ExportForm.vue';
 import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 import { loadExternalAssets, type ExternalAsset } from '~/utils/external-assets.service';
 import { useMediaStore } from '~/stores/media.store';
+import { useProjectActions } from '~/composables/editor/useProjectActions';
 
 const props = defineProps<{
   assets?: ExternalAsset[];
@@ -21,6 +22,7 @@ const workspaceStore = useWorkspaceStore();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
+const { openProject, loadTimeline } = useProjectActions();
 
 const emit = defineEmits<{
   (e: 'exported', data: any): void;
@@ -55,8 +57,11 @@ async function initEmbedded() {
     // Check if project already exists, otherwise create it
     if (!workspaceStore.projects.includes(defaultProjectName)) {
       await projectStore.createProject(defaultProjectName);
+      if (projectStore.currentTimelinePath) {
+        await loadTimeline(projectStore.currentTimelinePath);
+      }
     } else {
-      await projectStore.openProject(defaultProjectName);
+      await openProject(defaultProjectName);
     }
   }
 

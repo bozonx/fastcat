@@ -190,8 +190,6 @@ async function navigateToParentFolder() {
 }
 
 const {
-  cutPanelsLayoutKey,
-  soundPanelsLayoutKey,
   draggingPanelId,
   dragOverPanelId,
   dropPosition,
@@ -333,7 +331,6 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
           <EditorCutView
             v-else-if="activeEditorView === 'cut'"
             :columns="projectStore.cutPanels"
-            :layout-key="cutPanelsLayoutKey"
             :top-sizes="topSplitSizes"
             :dragging-panel-id="draggingPanelId"
             :drag-over-panel-id="dragOverPanelId"
@@ -359,7 +356,6 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
             v-else-if="activeEditorView === 'sound'"
             :sizes="soundSizes"
             :columns="projectStore.soundPanels"
-            :layout-key="soundPanelsLayoutKey"
             :top-sizes="soundTopSplitSizes"
             :dragging-panel-id="draggingPanelId"
             :drag-over-panel-id="dragOverPanelId"

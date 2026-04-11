@@ -67,17 +67,7 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
   const dragOverPanelId = ref<string | null>(null);
   const dropPosition = ref<'left' | 'right' | 'top' | 'bottom' | null>(null);
 
-  const cutPanelsLayoutKey = computed(() =>
-    JSON.stringify(
-      projectStore.cutPanels.map((c) => ({ id: c.id, rows: c.panels.map((p) => p.id) })),
-    ),
-  );
 
-  const soundPanelsLayoutKey = computed(() =>
-    JSON.stringify(
-      projectStore.soundPanels.map((c) => ({ id: c.id, rows: c.panels.map((p) => p.id) })),
-    ),
-  );
 
   const verticalSplitSizesKey = computed(
     () =>
@@ -448,8 +438,6 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
   }
 
   return {
-    cutPanelsLayoutKey,
-    soundPanelsLayoutKey,
     draggingPanelId,
     dragOverPanelId,
     dropPosition,

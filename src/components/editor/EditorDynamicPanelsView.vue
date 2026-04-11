@@ -13,7 +13,6 @@ interface SplitResizeEvent {
 interface Props {
   view: 'cut' | 'sound';
   columns: PanelColumn[];
-  layoutKey: string;
   topSizes: number[];
   getVerticalSize: (
     colId: string,
@@ -91,7 +90,6 @@ const splitterMenuItems = computed(() => [
       manual
     />
     <Splitpanes
-      :key="layoutKey"
       class="editor-splitpanes"
       @resized="(event: SplitResizeEvent) => emit('topResize', event)"
       @contextmenu="onContextMenu($event, null)"
@@ -103,7 +101,6 @@ const splitterMenuItems = computed(() => [
         min-size="5"
       >
         <Splitpanes
-          :key="`${col.id}-${col.panels.map((panel) => panel.id).join('|')}`"
           horizontal
           class="editor-splitpanes"
           @resized="(event: SplitResizeEvent) => emit('verticalResize', event, col.id, view)"
