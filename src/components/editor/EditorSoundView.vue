@@ -12,7 +12,6 @@ interface SplitResizeEvent {
 interface Props {
   sizes: number[];
   columns: PanelColumn[];
-  layoutKey: string;
   topSizes: number[];
   draggingPanelId: string | null;
   dragOverPanelId: string | null;
@@ -69,7 +68,6 @@ provide('fileManagerStore', useFileManagerStore());
         right-panel-type="monitor"
         view="sound"
         :columns="columns"
-        :layout-key="layoutKey"
         :top-sizes="topSizes"
         :dragging-panel-id="draggingPanelId"
         :drag-over-panel-id="dragOverPanelId"
