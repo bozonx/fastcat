@@ -597,6 +597,17 @@ export const useTimelineStore = defineStore('timeline', () => {
     }
   }
 
+  watch(
+    currentTimelinePath,
+    async (newPath) => {
+      if (newPath) {
+        await loadTimeline();
+        void lifecycle.loadTimelineMetadata();
+      }
+    },
+    { immediate: true },
+  );
+
   return {
     timelineDoc,
     markers: computed(() => markerService.getMarkers()),

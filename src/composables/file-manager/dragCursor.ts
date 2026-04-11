@@ -9,6 +9,13 @@ let dragOverlayIcon: HTMLSpanElement | null = null;
 let dragOverlayLabel: HTMLSpanElement | null = null;
 let overlayListenersRegistered = false;
 
+function getCursorStyle(operation: 'copy' | 'move' | 'cancel' | null): string {
+  if (operation === 'copy') return 'copy';
+  if (operation === 'cancel') return 'not-allowed';
+  if (operation === 'move') return 'move';
+  return '';
+}
+
 function getOverlayMarkup(operation: 'copy' | 'move' | 'cancel' | null) {
   if (operation === 'copy') return '+';
   if (operation === 'cancel') return 'x';
@@ -114,6 +121,11 @@ function updateClassList(
     FILE_MANAGER_DRAG_CANCEL_CLASS,
     params.isDragging && params.operation === 'cancel',
   );
+  if (params.isDragging) {
+    target.style.setProperty('cursor', getCursorStyle(params.operation), 'important');
+  } else {
+    target.style.removeProperty('cursor');
+  }
 }
 
 export function syncFileManagerDragCursor(params: {

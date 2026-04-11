@@ -17,7 +17,7 @@ export interface FileManagerDraggedItem {
 export type FileManagerDragCursorOperation = 'copy' | 'move' | 'cancel';
 
 export interface ResolveFileManagerDropOperationParams extends ResolveFileManagerDragOperationParams {
-  currentDragOperation?: 'copy' | 'move' | null;
+  currentDragOperation?: FileManagerDragCursorOperation | null;
   fallbackRawOperation?: 'copy' | 'move' | null;
 }
 
@@ -51,7 +51,7 @@ export function resolveFileManagerDropOperation(
     return resolveFileManagerDragOperation(params);
   }
 
-  if (params.currentDragOperation) {
+  if (params.currentDragOperation === 'copy' || params.currentDragOperation === 'move') {
     return params.currentDragOperation;
   }
 
