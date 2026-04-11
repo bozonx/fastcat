@@ -120,22 +120,22 @@ async function resetToDefaults() {
   <UiModal
     v-model:open="isOpen"
     :title="
-      t('videoEditor.projectSettings.title', 'Project Settings') +
+      t('videoEditor.projectSettings.title') +
       (projectStore.currentProjectName ? ': ' + projectStore.currentProjectName : '')
     "
     :ui="{ content: 'sm:max-w-lg max-h-[90vh]', body: 'overflow-y-auto' }"
   >
     <UiConfirmModal
       v-model:open="isClearProjectVardataConfirmOpen"
-      :title="t('videoEditor.projectSettings.clearTempTitle', 'Clear temporary files')"
+      :title="t('videoEditor.projectSettings.clearTempTitle')"
       :description="
         t(
           'videoEditor.projectSettings.clearTempDescription',
           'This will delete generated proxies, thumbnails and cached data for this project.',
         )
       "
-      :confirm-text="t('videoEditor.projectSettings.clearTempConfirm', 'Clear')"
-      :cancel-text="t('common.cancel', 'Cancel')"
+      :confirm-text="t('videoEditor.projectSettings.clearTempConfirm')"
+      :cancel-text="t('common.cancel')"
       color="warning"
       icon="i-heroicons-trash"
       @confirm="confirmClearProjectVardata"
@@ -143,15 +143,15 @@ async function resetToDefaults() {
 
     <UiConfirmModal
       v-model:open="isClearBackupsConfirmOpen"
-      :title="t('videoEditor.projectSettings.clearBackupsTitle', 'Clear timeline backups')"
+      :title="t('videoEditor.projectSettings.clearBackupsTitle')"
       :description="
         t(
           'videoEditor.projectSettings.clearBackupsDescription',
           'This will delete all auto-saved timeline backups for this project. This action cannot be undone.',
         )
       "
-      :confirm-text="t('videoEditor.projectSettings.clearTempConfirm', 'Clear')"
-      :cancel-text="t('common.cancel', 'Cancel')"
+      :confirm-text="t('videoEditor.projectSettings.clearTempConfirm')"
+      :cancel-text="t('common.cancel')"
       color="warning"
       icon="i-heroicons-trash"
       @confirm="confirmClearBackups"
@@ -159,15 +159,15 @@ async function resetToDefaults() {
 
     <UiConfirmModal
       v-model:open="isDeleteProjectConfirmOpen"
-      :title="t('videoEditor.projectSettings.deleteProjectConfirmTitle', 'Delete Project?')"
+      :title="t('videoEditor.projectSettings.deleteProjectConfirmTitle')"
       :description="
         t(
           'videoEditor.projectSettings.deleteProjectConfirmDescription',
           'This will permanently delete the project folder and all its contents. This action cannot be undone.',
         )
       "
-      :confirm-text="t('videoEditor.projectSettings.deleteProjectAction', 'Delete')"
-      :cancel-text="t('common.cancel', 'Cancel')"
+      :confirm-text="t('videoEditor.projectSettings.deleteProjectAction')"
+      :cancel-text="t('common.cancel')"
       color="error"
       icon="i-heroicons-trash"
       @confirm="confirmDeleteProject"
@@ -175,15 +175,15 @@ async function resetToDefaults() {
 
     <UiConfirmModal
       v-model:open="isResetConfirmOpen"
-      :title="t('videoEditor.projectSettings.resetConfirmTitle', 'Reset to defaults?')"
+      :title="t('videoEditor.projectSettings.resetConfirmTitle')"
       :description="
         t(
           'videoEditor.projectSettings.resetConfirmDescription',
           'This will restore all project settings to the default values from your workspace settings.',
         )
       "
-      :confirm-text="t('videoEditor.projectSettings.reset', 'Reset to Defaults')"
-      :cancel-text="t('common.cancel', 'Cancel')"
+      :confirm-text="t('videoEditor.projectSettings.reset')"
+      :cancel-text="t('common.cancel')"
       color="warning"
       icon="i-heroicons-exclamation-triangle"
       @confirm="resetToDefaults"
@@ -205,14 +205,14 @@ async function resetToDefaults() {
       <div class="h-px bg-ui-border"></div>
 
       <div class="space-y-2 pt-2 px-0">
-        <UiFormSectionHeader :title="t('videoEditor.projectSettings.metadata', 'Metadata')" />
+        <UiFormSectionHeader :title="t('videoEditor.projectSettings.metadata')" />
         <MetadataSettings />
       </div>
 
       <div class="h-px bg-ui-border"></div>
 
       <div class="space-y-2 pt-2 px-0">
-        <UiFormSectionHeader :title="t('videoEditor.projectSettings.storage', 'Storage')" />
+        <UiFormSectionHeader :title="t('videoEditor.projectSettings.storage')" />
         <StorageSettings
           @clear-temp="isClearProjectVardataConfirmOpen = true"
           @clear-backups="isClearBackupsConfirmOpen = true"
@@ -226,13 +226,13 @@ async function resetToDefaults() {
         <UButton
           variant="ghost"
           color="neutral"
-          :label="t('videoEditor.projectSettings.reset', 'Reset to Defaults')"
+          :label="t('videoEditor.projectSettings.reset')"
           @click="isResetConfirmOpen = true"
         />
         <UButton
           variant="ghost"
           color="neutral"
-          :label="t('common.close', 'Close')"
+          :label="t('common.close')"
           @click="isOpen = false"
         />
       </div>

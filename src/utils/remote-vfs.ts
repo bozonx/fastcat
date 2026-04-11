@@ -432,7 +432,7 @@ export async function fetchRemoteCollections(
     url.searchParams.set('orphansOnly', params.orphansOnly ? 'true' : 'false');
   }
   if (params.includeChildrenCount) {
-    url.searchParams.set('includeChildrenCount', 'true');
+    url.searchParams.set('includeChildrenCount');
   }
 
   const response = await fetchJson<RemoteVfsDirectoryEntry[]>(url, {

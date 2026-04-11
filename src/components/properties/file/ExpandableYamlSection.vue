@@ -19,7 +19,7 @@ const { t } = useI18n();
         size="xs"
         variant="ghost"
         color="neutral"
-        :label="props.expanded ? t('common.hide', 'Hide') : t('common.show', 'Show')"
+        :label="props.expanded ? t('common.hide') : t('common.show')"
         @click="props.onToggle"
       />
       <UButton
@@ -28,7 +28,7 @@ const { t } = useI18n();
         variant="ghost"
         color="neutral"
         icon="i-heroicons-clipboard-document"
-        :title="t('common.copy', 'Copy')"
+        :title="t('common.copy')"
         @click="props.onCopy(props.content)"
       />
     </div>

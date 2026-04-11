@@ -66,7 +66,7 @@ async function handleStealLock() {
 <template>
   <UiModal
     v-model:open="isOpen"
-    :title="t('videoEditor.project.lockedTitle', 'Project Open in Another Tab')"
+    :title="t('videoEditor.project.lockedTitle')"
     :prevent-close="true"
     :close-button="false"
     :ui="modalUi"
@@ -75,7 +75,7 @@ async function handleStealLock() {
       <div class="flex items-center gap-3 text-amber-500 mb-2">
         <UIcon name="i-heroicons-exclamation-triangle" class="w-6 h-6 shrink-0" />
         <h3 class="font-bold">
-          {{ t('videoEditor.project.lockedStatus', 'Concurrent Editing Detected') }}
+          {{ t('videoEditor.project.lockedStatus') }}
         </h3>
       </div>
 
@@ -106,7 +106,7 @@ async function handleStealLock() {
           :disabled="isStealing"
           @click="handleClose"
         >
-          {{ t('videoEditor.project.lockedAcknowledge', 'View Mode') }}
+          {{ t('videoEditor.project.lockedAcknowledge') }}
         </UButton>
         <UButton
           color="primary"
@@ -115,7 +115,7 @@ async function handleStealLock() {
           :loading="isStealing"
           @click="handleStealLock"
         >
-          {{ t('videoEditor.project.takeControl', 'Take Control Here') }}
+          {{ t('videoEditor.project.takeControl') }}
         </UButton>
       </div>
     </template>

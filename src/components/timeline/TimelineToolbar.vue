@@ -58,13 +58,13 @@ const trimMenuItems = computed(() => {
   return [
     [
       {
-        label: t('fastcat.timeline.rippleTrimLeft', 'Ripple trim left'),
+        label: t('fastcat.timeline.rippleTrimLeft'),
         icon: 'i-heroicons-arrow-left',
         disabled: isNoClipSelected,
         onSelect: () => timelineStore.rippleTrimLeft(),
       },
       {
-        label: t('fastcat.timeline.rippleTrimRight', 'Ripple trim right'),
+        label: t('fastcat.timeline.rippleTrimRight'),
         icon: 'i-heroicons-arrow-right',
         disabled: isNoClipSelected,
         onSelect: () => timelineStore.rippleTrimRight(),
@@ -134,9 +134,9 @@ function toggleTrimMode(event?: MouseEvent) {
 
 const textPresetItems = computed(() => {
   const standard = [
-    { id: 'default', label: t('fastcat.library.texts.default', 'Default') },
-    { id: 'title', label: t('fastcat.library.texts.title', 'Title') },
-    { id: 'subtitle', label: t('fastcat.library.texts.subtitle', 'Subtitle') },
+    { id: 'default', label: t('fastcat.library.texts.default') },
+    { id: 'title', label: t('fastcat.library.texts.title') },
+    { id: 'subtitle', label: t('fastcat.library.texts.subtitle') },
   ];
 
   const custom = presetsStore.customPresets
@@ -198,7 +198,7 @@ function addTextClip(event?: MouseEvent) {
 const textContextMenuItems = computed(() => [
   [
     {
-      label: t('fastcat.library.texts.watchPresets', 'View presets'),
+      label: t('fastcat.library.texts.watchPresets'),
       icon: 'i-heroicons-sparkles',
       onSelect: () => {
         uiStore.activeLibraryTab = 'texts';
@@ -297,7 +297,7 @@ function onToolbarContextMenu(e: MouseEvent) {
           </UiTooltip>
         </UFieldGroup>
 
-        <UiTooltip :text="t('videoEditor.settings.snappingTitle', 'Snapping settings')">
+        <UiTooltip :text="t('videoEditor.settings.snappingTitle')">
           <UButton
             size="xs"
             variant="ghost"
@@ -323,13 +323,13 @@ function onToolbarContextMenu(e: MouseEvent) {
           </UiTooltip>
         </UFieldGroup>
 
-        <UiTooltip :text="t('fastcat.timeline.trim', 'Trim')">
+        <UiTooltip :text="t('fastcat.timeline.trim')">
           <UiSplitDropdownButton
             size="xs"
             :variant="timelineStore.isTrimModeActive ? 'solid' : 'ghost'"
             :color="timelineStore.isTrimModeActive ? 'primary' : 'neutral'"
             icon="i-heroicons-scissors"
-            :ariaLabel="t('fastcat.timeline.trim', 'Trim')"
+            :ariaLabel="t('fastcat.timeline.trim')"
             :items="trimMenuItems"
             button-class="hover:bg-ui-bg-hover/60"
             caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
@@ -339,7 +339,7 @@ function onToolbarContextMenu(e: MouseEvent) {
         </UiTooltip>
 
         <div v-if="timelineStore.isAnyTrackSoloed" class="ml-2 flex items-center">
-          <UiTooltip :text="t('fastcat.timeline.clearSolos', 'Clear all solos')">
+          <UiTooltip :text="t('fastcat.timeline.clearSolos')">
             <UButton
               size="xs"
               color="amber"
@@ -353,14 +353,14 @@ function onToolbarContextMenu(e: MouseEvent) {
                 }
               "
             >
-              {{ t('fastcat.timeline.soloActive', 'SOLO ACTIVE') }}
+              {{ t('fastcat.timeline.soloActive') }}
             </UButton>
           </UiTooltip>
         </div>
         <div class="w-px h-4 bg-ui-border mx-1 opacity-50" />
 
         <UiTooltip
-          :text="`${t('fastcat.timeline.addAdjustment')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
+          :text="`${t('fastcat.timeline.addAdjustment')} (${t('fastcat.timeline.dragToTimeline')})`"
         >
           <div draggable="true" @dragstart="onDragStart($event, 'adjustment')" @dragend="onDragEnd">
             <UButton
@@ -380,7 +380,7 @@ function onToolbarContextMenu(e: MouseEvent) {
         </UiTooltip>
 
         <UiTooltip
-          :text="`${t('fastcat.timeline.addBackground')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')})`"
+          :text="`${t('fastcat.timeline.addBackground')} (${t('fastcat.timeline.dragToTimeline')})`"
         >
           <div draggable="true" @dragstart="onDragStart($event, 'background')" @dragend="onDragEnd">
             <UButton
@@ -400,7 +400,7 @@ function onToolbarContextMenu(e: MouseEvent) {
         </UiTooltip>
 
         <UiTooltip
-          :text="`${t('fastcat.timeline.addText')} (${t('fastcat.timeline.dragToTimeline', 'drag to timeline')}). ${t('fastcat.timeline.shiftForPresets', 'Hold {key} to choose preset after insertion').replace('{key}', layer1Label)}`"
+          :text="`${t('fastcat.timeline.addText')} (${t('fastcat.timeline.dragToTimeline')}). ${t('fastcat.timeline.shiftForPresets').replace('{key}', layer1Label)}`"
         >
           <UContextMenu :items="textContextMenuItems">
             <div
@@ -430,7 +430,7 @@ function onToolbarContextMenu(e: MouseEvent) {
 
         <!-- Marker controls -->
         <div class="flex items-center gap-1">
-          <UiTooltip :text="t('fastcat.timeline.previousMarker', 'Previous marker')">
+          <UiTooltip :text="t('fastcat.timeline.previousMarker')">
             <UButton
               size="xs"
               variant="ghost"
@@ -441,7 +441,7 @@ function onToolbarContextMenu(e: MouseEvent) {
             />
           </UiTooltip>
 
-          <UiTooltip :text="t('fastcat.timeline.addMarker', 'Add marker')">
+          <UiTooltip :text="t('fastcat.timeline.addMarker')">
             <UButton
               size="xs"
               variant="ghost"
@@ -452,7 +452,7 @@ function onToolbarContextMenu(e: MouseEvent) {
             />
           </UiTooltip>
 
-          <UiTooltip :text="t('fastcat.timeline.nextMarker', 'Next marker')">
+          <UiTooltip :text="t('fastcat.timeline.nextMarker')">
             <UButton
               size="xs"
               variant="ghost"
@@ -467,7 +467,7 @@ function onToolbarContextMenu(e: MouseEvent) {
 
       <!-- Right column: Zoom controls -->
       <div class="w-[240px] flex items-center gap-2 pl-4 border-l border-ui-border/30">
-        <UiTooltip :text="t('fastcat.timeline.zoomToFit', 'Fit to zoom')">
+        <UiTooltip :text="t('fastcat.timeline.zoomToFit')">
           <UButton
             size="xs"
             color="neutral"

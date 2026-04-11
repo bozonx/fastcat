@@ -102,7 +102,7 @@ function getDisplayFileValue(control: FileParamControl): string {
     return t(control.emptyLabelKey);
   }
 
-  return t('fastcat.hudClip.emptyLayer', 'Drop media here');
+  return t('fastcat.hudClip.emptyLayer');
 }
 
 function handleFileDrop(event: DragEvent, control: FileParamControl) {

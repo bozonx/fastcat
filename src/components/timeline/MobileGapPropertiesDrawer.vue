@@ -61,7 +61,7 @@ const trackExtraActions = computed(() => {
   if (track.value.kind === 'video') {
     list.push({
       id: 'generate-captions',
-      label: t('fastcat.captions.generate', 'Generate captions'),
+      label: t('fastcat.captions.generate'),
       icon: 'i-heroicons-chat-bubble-bottom-center-text',
       onClick: () => (isGenerateCaptionsOpen.value = true),
     });
@@ -81,7 +81,7 @@ const trackExtraActions = computed(() => {
         <MobileDrawerToolbar class="-mx-4 mb-2">
           <MobileDrawerToolbarButton
             icon="i-heroicons-trash"
-            :label="t('common.delete', 'Delete')"
+            :label="t('common.delete')"
             @click="deleteGap"
           />
         </MobileDrawerToolbar>
@@ -98,13 +98,13 @@ const trackExtraActions = computed(() => {
 
       <div class="mb-6">
         <p class="text-xs text-ui-text-muted">
-          {{ t('fastcat.timeline.gapDescription', 'An empty gap in the track timeline.') }}
+          {{ t('fastcat.timeline.gapDescription') }}
         </p>
       </div>
 
       <div v-if="track">
         <div class="mb-2 text-xs font-bold text-ui-text-muted uppercase tracking-wider">
-          {{ t('fastcat.timeline.trackProperties', 'Track Properties') }}
+          {{ t('fastcat.timeline.trackProperties') }}
         </div>
         <TrackProperties :track="track" hide-actions />
       </div>

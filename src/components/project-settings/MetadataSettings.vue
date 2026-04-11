@@ -49,20 +49,20 @@ const metaDescription = computed({
 
 <template>
   <div v-if="projectStore.projectSettings" class="space-y-4">
-    <UiFormField :label="t('videoEditor.export.metadataTitle', 'Title')">
+    <UiFormField :label="t('videoEditor.export.metadataTitle')">
       <UiTextInput v-model="metaTitle" full-width />
     </UiFormField>
 
     <div class="grid grid-cols-2 gap-4">
-      <UiFormField :label="t('videoEditor.export.metadataAuthor', 'Author')">
+      <UiFormField :label="t('videoEditor.export.metadataAuthor')">
         <UiTextInput v-model="metaAuthor" full-width />
       </UiFormField>
-      <UiFormField :label="t('videoEditor.export.metadataTags', 'Tags')">
+      <UiFormField :label="t('videoEditor.export.metadataTags')">
         <UiTextInput v-model="metaTagsString" full-width />
       </UiFormField>
     </div>
 
-    <UiFormField :label="t('videoEditor.export.metadataDescription', 'Description')">
+    <UiFormField :label="t('videoEditor.export.metadataDescription')">
       <UTextarea v-model="metaDescription" :rows="2" class="w-full" />
     </UiFormField>
   </div>

@@ -410,12 +410,12 @@ const formatDate = (dateStr?: string) => {
               ? 'i-heroicons-chevron-down-20-solid'
               : 'i-heroicons-chevron-right-20-solid'
           "
-          :label="t('videoEditor.projectSettings.advanced', 'Advanced Settings')"
+          :label="t('videoEditor.projectSettings.advanced')"
         />
 
         <template #content>
           <div class="pt-4 border-t border-ui-border mt-2">
-            <UiFormField :label="t('videoEditor.export.presetLabel', 'Preset')" class="mb-4">
+            <UiFormField :label="t('videoEditor.export.presetLabel')" class="mb-4">
               <UiSelect
                 v-model="projectCreationSettings.presetId"
                 :items="projectPresetOptions"

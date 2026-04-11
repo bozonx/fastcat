@@ -195,7 +195,7 @@ function handleExported(data: any) {
         @click="isExportDrawerOpen = true"
       >
         <UIcon name="i-heroicons-arrow-up-tray" class="w-4 h-4" />
-        {{ t('videoEditor.export.title', 'Export') }}
+        {{ t('videoEditor.export.title') }}
       </button>
     </header>
 
@@ -215,7 +215,7 @@ function handleExported(data: any) {
     <!-- Export Drawer -->
     <UiMobileDrawer
       v-model:open="isExportDrawerOpen"
-      :title="t('videoEditor.export.title', 'Export')"
+      :title="t('videoEditor.export.title')"
       :snap-points="[0.9]"
       direction="bottom"
     >
@@ -227,7 +227,7 @@ function handleExported(data: any) {
     <!-- Loading Overlay -->
     <div v-if="workspaceStore.isLoading" class="absolute inset-0 bg-black/60 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-4">
       <div class="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      <span class="text-sm font-medium animate-pulse">{{ t('common.loading', 'Loading...') }}</span>
+      <span class="text-sm font-medium animate-pulse">{{ t('common.loading') }}</span>
     </div>
   </div>
   

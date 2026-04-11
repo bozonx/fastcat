@@ -422,7 +422,7 @@ onUnmounted(() => {
 
       <div class="flex items-center justify-between gap-3">
         <div class="flex items-center gap-3">
-          <UTooltip :text="getHotkeyTitle(t('fastcat.preview.play', 'Play'), 'playback.toggle')">
+          <UTooltip :text="getHotkeyTitle(t('fastcat.preview.play'), 'playback.toggle')">
             <UButton
               size="sm"
               variant="solid"
@@ -452,7 +452,7 @@ onUnmounted(() => {
           />
           <UTooltip
             :text="
-              getHotkeyTitle(t('fastcat.preview.fullscreen', 'Fullscreen'), 'general.fullscreen')
+              getHotkeyTitle(t('fastcat.preview.fullscreen'), 'general.fullscreen')
             "
           >
             <UButton

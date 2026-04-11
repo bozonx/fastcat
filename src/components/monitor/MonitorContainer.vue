@@ -37,7 +37,7 @@ async function createNewTimeline() {
     await loadTimeline(createdPath);
     toast.add({
       color: 'success',
-      title: t('timelineCreation.successTitle', 'Timeline created'),
+      title: t('timelineCreation.successTitle'),
       description: createdPath,
     });
   }
@@ -342,7 +342,7 @@ watch(viewportRef, (vp) => {
             <UiTooltip
               :text="
                 getHotkeyTitle(
-                  t('fastcat.monitor.exitFullscreen', 'Exit fullscreen'),
+                  t('fastcat.monitor.exitFullscreen'),
                   'general.fullscreen',
                 )
               "
@@ -352,7 +352,7 @@ watch(viewportRef, (vp) => {
                 color="neutral"
                 variant="solid"
                 icon="lucide:minimize"
-                :aria-label="t('fastcat.monitor.exitFullscreen', 'Exit fullscreen')"
+                :aria-label="t('fastcat.monitor.exitFullscreen')"
                 @click="exitBrowserFullscreen()"
               />
             </UiTooltip>
@@ -360,7 +360,7 @@ watch(viewportRef, (vp) => {
           <template v-else>
             <UiTooltip
               :text="
-                getHotkeyTitle(t('fastcat.monitor.fullscreen', 'Fullscreen'), 'general.fullscreen')
+                getHotkeyTitle(t('fastcat.monitor.fullscreen'), 'general.fullscreen')
               "
             >
               <UiActionButton
@@ -368,13 +368,13 @@ watch(viewportRef, (vp) => {
                 color="neutral"
                 variant="ghost"
                 icon="lucide:maximize"
-                :aria-label="t('fastcat.monitor.fullscreen', 'Fullscreen')"
+                :aria-label="t('fastcat.monitor.fullscreen')"
                 @click="enterBrowserFullscreen()"
               />
             </UiTooltip>
           </template>
 
-          <UiTooltip :text="t('fastcat.monitor.resetZoom', 'Reset zoom')">
+          <UiTooltip :text="t('fastcat.monitor.resetZoom')">
             <UiActionButton
               size="xs"
               color="neutral"
@@ -386,7 +386,7 @@ watch(viewportRef, (vp) => {
             />
           </UiTooltip>
 
-          <UiTooltip :text="t('fastcat.monitor.useProxy', 'Use proxy')">
+          <UiTooltip :text="t('fastcat.monitor.useProxy')">
             <UiToggleButton
               v-if="projectStore.activeMonitor"
               :model-value="useProxyInMonitor"
@@ -406,8 +406,8 @@ watch(viewportRef, (vp) => {
           <UiTooltip
             :text="
               previewEffectsEnabled
-                ? t('fastcat.monitor.previewWithEffects', 'Preview with effects')
-                : t('fastcat.monitor.previewWithoutEffects', 'Preview without effects')
+                ? t('fastcat.monitor.previewWithEffects')
+                : t('fastcat.monitor.previewWithoutEffects')
             "
           >
             <UiToggleButton
@@ -428,14 +428,14 @@ watch(viewportRef, (vp) => {
 
           <!-- Playback buttons — wheel on play button changes speed -->
           <UiTooltip
-            :text="getHotkeyTitle(t('fastcat.monitor.rewind', 'Rewind'), 'playback.toStart')"
+            :text="getHotkeyTitle(t('fastcat.monitor.rewind'), 'playback.toStart')"
           >
             <UButton
               size="md"
               variant="ghost"
               color="neutral"
               icon="i-lucide-skip-back"
-              :aria-label="t('fastcat.monitor.rewind', 'Rewind')"
+              :aria-label="t('fastcat.monitor.rewind')"
               :disabled="!canInteractPlayback"
               @click="
                 (e) => {
@@ -447,13 +447,13 @@ watch(viewportRef, (vp) => {
             />
           </UiTooltip>
 
-          <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.play', 'Play'), 'playback.toggle')">
+          <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.play'), 'playback.toggle')">
             <UButton
               size="md"
               variant="solid"
               color="neutral"
               class="relative overflow-hidden min-w-8 px-1.5"
-              :aria-label="t('fastcat.monitor.play', 'Play')"
+              :aria-label="t('fastcat.monitor.play')"
               :disabled="!canInteractPlayback"
               @click="
                 (e) => {
@@ -485,13 +485,13 @@ watch(viewportRef, (vp) => {
             </UButton>
           </UiTooltip>
 
-          <UiTooltip :text="t('fastcat.monitor.end', 'End')">
+          <UiTooltip :text="t('fastcat.monitor.end')">
             <UButton
               size="md"
               variant="ghost"
               color="neutral"
               icon="i-lucide-skip-forward"
-              :aria-label="t('fastcat.monitor.end', 'End')"
+              :aria-label="t('fastcat.monitor.end')"
               :disabled="!canInteractPlayback"
               @click="
                 (e) => {
@@ -514,7 +514,7 @@ watch(viewportRef, (vp) => {
               color="neutral"
               variant="ghost"
               icon="i-heroicons-ellipsis-horizontal"
-              :title="t('common.more', 'More')"
+              :title="t('common.more')"
             />
           </UDropdownMenu>
         </div>

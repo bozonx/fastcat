@@ -68,17 +68,17 @@ const activeTab = ref('clip');
 
 const tabs = computed(() => [
   {
-    label: t('fastcat.clip.tabs.clip', 'Clip'),
+    label: t('fastcat.clip.tabs.clip'),
     value: 'clip',
     icon: 'i-heroicons-film',
   },
   {
-    label: t('fastcat.clip.tabs.video', 'Video'),
+    label: t('fastcat.clip.tabs.video'),
     value: 'video',
     icon: 'i-heroicons-sparkles',
   },
   {
-    label: t('fastcat.clip.tabs.audio', 'Audio'),
+    label: t('fastcat.clip.tabs.audio'),
     value: 'audio',
     icon: 'i-heroicons-speaker-wave',
   },
@@ -562,9 +562,9 @@ defineExpose({
         <EffectsEditor
           v-model:toggle-value="isVideoEffectsEnabled"
           :effects="clipVideoEffects"
-          :title="t('fastcat.effects.videoTitle', 'Video effects')"
-          :add-label="t('fastcat.effects.add', 'Add')"
-          :empty-label="t('fastcat.effects.empty', 'No effects')"
+          :title="t('fastcat.effects.videoTitle')"
+          :add-label="t('fastcat.effects.add')"
+          :empty-label="t('fastcat.effects.empty')"
           :has-toggle="true"
           :disabled="!isVideoEffectsEnabled"
           @update:effects="handleUpdateClipEffects"
@@ -609,7 +609,7 @@ defineExpose({
     <UiRenameModal
       :open="isUiRenameModalOpen"
       :current-name="clip.name"
-      :title="t('fastcat.clip.rename', 'Rename clip')"
+      :title="t('fastcat.clip.rename')"
       @update:open="isUiRenameModalOpen = $event"
       @rename="
         (name) => {

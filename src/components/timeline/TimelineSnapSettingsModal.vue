@@ -13,7 +13,7 @@ const { t } = useI18n();
 <template>
   <UiModal
     v-model:open="isOpen"
-    :title="t('videoEditor.settings.snappingTitle', 'Snapping')"
+    :title="t('videoEditor.settings.snappingTitle')"
     :ui="{
       content: 'sm:max-w-lg',
     }"

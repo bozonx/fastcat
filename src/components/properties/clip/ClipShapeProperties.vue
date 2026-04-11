@@ -26,14 +26,14 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <PropertySection :title="t('fastcat.shapeClip.shape', 'Shape')">
+  <PropertySection :title="t('fastcat.shapeClip.shape')">
     <div class="flex flex-col gap-2">
       <div v-if="!hidePresets" class="flex flex-col gap-1 pb-2 border-b border-ui-border mb-1">
         <div class="flex items-center justify-between">
           <div
             class="text-[10px] font-medium uppercase tracking-wider text-ui-text-muted opacity-70"
           >
-            {{ t('fastcat.effects.presetsTitle', 'Presets') }}
+            {{ t('fastcat.effects.presetsTitle') }}
           </div>
           <UButton
             icon="i-heroicons-bookmark"
@@ -42,13 +42,13 @@ const { t } = useI18n();
             color="white"
             @click="emit('savePreset')"
           >
-            {{ t('fastcat.presets.saveAsPreset', 'Save') }}
+            {{ t('fastcat.presets.saveAsPreset') }}
           </UButton>
         </div>
         <div class="flex gap-2">
           <UiSelect
             :items="props.presets"
-            :placeholder="t('fastcat.effects.loadPresetPlaceholder', 'Load preset...')"
+            :placeholder="t('fastcat.effects.loadPresetPlaceholder')"
             class="flex-1"
             size="xs"
             full-width
@@ -59,19 +59,19 @@ const { t } = useI18n();
         </div>
       </div>
 
-      <PropertyField :label="t('fastcat.shapeClip.type', 'Type')">
+      <PropertyField :label="t('fastcat.shapeClip.type')">
         <UiSelect
           :model-value="String(clip.shapeType ?? 'square')"
           :items="[
-            { value: 'square', label: t('fastcat.shapeClip.types.square', 'Square') },
-            { value: 'circle', label: t('fastcat.shapeClip.types.circle', 'Circle') },
-            { value: 'triangle', label: t('fastcat.shapeClip.types.triangle', 'Triangle') },
-            { value: 'star', label: t('fastcat.shapeClip.types.star', 'Star') },
-            { value: 'bang', label: t('fastcat.shapeClip.types.bang', 'Bang') },
-            { value: 'cloud', label: t('fastcat.shapeClip.types.cloud', 'Cloud') },
+            { value: 'square', label: t('fastcat.shapeClip.types.square') },
+            { value: 'circle', label: t('fastcat.shapeClip.types.circle') },
+            { value: 'triangle', label: t('fastcat.shapeClip.types.triangle') },
+            { value: 'star', label: t('fastcat.shapeClip.types.star') },
+            { value: 'bang', label: t('fastcat.shapeClip.types.bang') },
+            { value: 'cloud', label: t('fastcat.shapeClip.types.cloud') },
             {
               value: 'speech_bubble',
-              label: t('fastcat.shapeClip.types.speechBubble', 'Speech Bubble'),
+              label: t('fastcat.shapeClip.types.speechBubble'),
             },
           ]"
           value-key="value"
@@ -83,7 +83,7 @@ const { t } = useI18n();
         />
       </PropertyField>
 
-      <PropertyField :label="t('fastcat.shapeClip.fillColor', 'Fill Color')">
+      <PropertyField :label="t('fastcat.shapeClip.fillColor')">
         <UColorPicker
           :model-value="String(clip.fillColor ?? '#ffffff')"
           format="hex"
@@ -92,7 +92,7 @@ const { t } = useI18n();
         />
       </PropertyField>
 
-      <PropertyField :label="t('fastcat.shapeClip.strokeColor', 'Stroke Color')">
+      <PropertyField :label="t('fastcat.shapeClip.strokeColor')">
         <UColorPicker
           :model-value="String(clip.strokeColor ?? '#000000')"
           format="hex"
@@ -101,7 +101,7 @@ const { t } = useI18n();
         />
       </PropertyField>
 
-      <PropertyField :label="t('fastcat.shapeClip.strokeWidth', 'Stroke Width')">
+      <PropertyField :label="t('fastcat.shapeClip.strokeWidth')">
         <UiWheelNumberInput
           :model-value="Number(clip.strokeWidth ?? 0)"
           size="sm"

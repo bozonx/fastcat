@@ -52,7 +52,7 @@ async function generateCaptions() {
 
     toast.add({
       color: 'success',
-      title: t('fastcat.captions.generated', 'Captions generated'),
+      title: t('fastcat.captions.generated'),
       description: t('fastcat.captions.generatedDescription', {
         addedCount: result.addedCount,
         sourceCount: result.sourceCount,
@@ -63,7 +63,7 @@ async function generateCaptions() {
   } catch (error: unknown) {
     toast.add({
       color: 'error',
-      title: t('common.error', 'Error'),
+      title: t('common.error'),
       description: error instanceof Error ? error.message : 'Failed to generate captions',
     });
   } finally {
@@ -104,7 +104,7 @@ const handleAfterEnter = () => {
 <template>
   <UiModal
     v-model:open="isOpen"
-    :title="t('fastcat.captions.modalTitle', 'Generate captions')"
+    :title="t('fastcat.captions.modalTitle')"
     :description="
       t(
         'fastcat.captions.modalDescription',
@@ -127,28 +127,28 @@ const handleAfterEnter = () => {
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div class="flex flex-col gap-1.5">
           <span class="text-xs text-ui-text-muted">
-            {{ t('fastcat.captions.maxWordsPerClip', 'Max words per clip') }}
+            {{ t('fastcat.captions.maxWordsPerClip') }}
           </span>
           <UiWheelNumberInput v-model="settings.maxWordsPerClip" :min="1" :max="20" />
         </div>
 
         <div class="flex flex-col gap-1.5">
           <span class="text-xs text-ui-text-muted">
-            {{ t('fastcat.captions.maxDurationMs', 'Max clip duration, ms') }}
+            {{ t('fastcat.captions.maxDurationMs') }}
           </span>
           <UiWheelNumberInput v-model="settings.maxDurationMs" :min="100" :step="50" />
         </div>
 
         <div class="flex flex-col gap-1.5">
           <span class="text-xs text-ui-text-muted">
-            {{ t('fastcat.captions.silenceGapMs', 'Split on silence gap, ms') }}
+            {{ t('fastcat.captions.silenceGapMs') }}
           </span>
           <UiWheelNumberInput v-model="settings.silenceGapMs" :min="0" :step="10" />
         </div>
 
         <div class="flex flex-col gap-1.5">
           <span class="text-xs text-ui-text-muted">
-            {{ t('videoEditor.fileManager.audio.transcriptionLanguage', 'Language') }}
+            {{ t('videoEditor.fileManager.audio.transcriptionLanguage') }}
           </span>
           <UiTextInput
             v-model="settings.language"
@@ -161,7 +161,7 @@ const handleAfterEnter = () => {
         <div class="flex items-end">
           <UCheckbox
             :model-value="settings.splitOnPunctuation"
-            :label="t('fastcat.captions.splitOnPunctuation', 'Split on punctuation')"
+            :label="t('fastcat.captions.splitOnPunctuation')"
             @update:model-value="(value) => (settings.splitOnPunctuation = Boolean(value))"
           />
         </div>
@@ -171,7 +171,7 @@ const handleAfterEnter = () => {
     <template #footer>
       <div class="flex justify-end gap-2 w-full">
         <UButton color="neutral" variant="ghost" @click="isOpen = false">
-          {{ t('common.cancel', 'Cancel') }}
+          {{ t('common.cancel') }}
         </UButton>
         <UButton
           ref="generateButtonRef"
@@ -180,7 +180,7 @@ const handleAfterEnter = () => {
           autofocus
           @click="generateCaptions"
         >
-          {{ t('fastcat.captions.generate', 'Generate captions') }}
+          {{ t('fastcat.captions.generate') }}
         </UButton>
       </div>
     </template>

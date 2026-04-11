@@ -17,7 +17,7 @@ const { t } = useI18n();
 <template>
   <PropertySection
     v-if="props.usages.length > 0"
-    :title="t('fastcat.preview.usedInTimelines', 'Used in timelines')"
+    :title="t('fastcat.preview.usedInTimelines')"
   >
     <div class="flex flex-wrap gap-1 mt-1">
       <UButton

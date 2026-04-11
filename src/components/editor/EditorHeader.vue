@@ -95,7 +95,7 @@ const menuItems = computed(() => {
           "
           @click="projectStore.goToFiles()"
         >
-          {{ t('videoEditor.fileManager.tabs.files', 'Files') }}
+          {{ t('videoEditor.fileManager.tabs.files') }}
         </button>
         <button
           class="px-3 py-1 rounded text-sm font-medium transition-colors"
@@ -106,7 +106,7 @@ const menuItems = computed(() => {
           "
           @click="projectStore.goToCut()"
         >
-          {{ t('videoEditor.timeline.tabs.cut', 'Cut') }}
+          {{ t('videoEditor.timeline.tabs.cut') }}
         </button>
         <button
           class="px-3 py-1 rounded text-sm font-medium transition-colors"
@@ -117,7 +117,7 @@ const menuItems = computed(() => {
           "
           @click="projectStore.goToSound()"
         >
-          {{ t('videoEditor.timeline.tabs.sound', 'Sound') }}
+          {{ t('videoEditor.timeline.tabs.sound') }}
         </button>
         <button
           class="px-3 py-1 rounded text-sm font-medium transition-colors"
@@ -128,7 +128,7 @@ const menuItems = computed(() => {
           "
           @click="projectStore.goToExport()"
         >
-          {{ t('videoEditor.export.title', 'Export') }}
+          {{ t('videoEditor.export.title') }}
         </button>
       </div>
 

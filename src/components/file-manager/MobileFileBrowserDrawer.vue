@@ -187,7 +187,7 @@ const topActions = computed(() => {
   if (canConvert.value) {
     actions.push({
       id: 'convert',
-      label: t('videoEditor.fileManager.actions.convertFile', 'Convert'),
+      label: t('videoEditor.fileManager.actions.convertFile'),
       icon: 'lucide:replace',
       onClick: () => {
         conversionStore.openConversionModal(entry);
@@ -199,7 +199,7 @@ const topActions = computed(() => {
   if (isVideo.value || isAudio.value) {
     actions.push({
       id: 'transcribe',
-      label: t('videoEditor.fileManager.actions.transcribe', 'Transcribe'),
+      label: t('videoEditor.fileManager.actions.transcribe'),
       icon: 'i-heroicons-language',
       onClick: () => handleAction('transcribe'),
     });
@@ -213,21 +213,21 @@ const topActions = computed(() => {
     if (isGenerating) {
       actions.push({
         id: 'cancelProxy',
-        label: t('videoEditor.fileManager.actions.cancelProxyGeneration', 'Cancel Proxy'),
+        label: t('videoEditor.fileManager.actions.cancelProxyGeneration'),
         icon: 'i-heroicons-no-symbol',
         onClick: () => proxyStore.cancelProxyGeneration(path),
       });
     } else if (hasProxy) {
       actions.push({
         id: 'deleteProxy',
-        label: t('videoEditor.fileManager.actions.deleteProxy', 'Delete Proxy'),
+        label: t('videoEditor.fileManager.actions.deleteProxy'),
         icon: 'i-heroicons-trash',
         onClick: () => proxyStore.deleteProxy(path),
       });
     } else {
       actions.push({
         id: 'createProxy',
-        label: t('videoEditor.fileManager.actions.createProxy', 'Create Proxy'),
+        label: t('videoEditor.fileManager.actions.createProxy'),
         icon: 'i-heroicons-video-camera',
         onClick: async () => {
           const handle = await projectStore.getFileHandleByPath(path);
@@ -243,7 +243,7 @@ const topActions = computed(() => {
   if (isVideo.value) {
     actions.push({
       id: 'extract-audio',
-      label: t('videoEditor.fileManager.actions.extractAudio', 'Extract audio'),
+      label: t('videoEditor.fileManager.actions.extractAudio'),
       icon: 'i-heroicons-musical-note',
       onClick: () => extractAudio(entry),
     });
@@ -277,23 +277,23 @@ function handleAction(actionId: FileAction) {
             <MobileDrawerToolbarButton
               v-if="canDelete"
               icon="i-heroicons-trash"
-              :label="$t('common.delete', 'Delete')"
+              :label="$t('common.delete')"
               @click="handleAction('delete')"
             />
             <MobileDrawerToolbarButton
               v-if="canRename"
               icon="i-heroicons-pencil-square"
-              :label="$t('common.rename', 'Rename')"
+              :label="$t('common.rename')"
               @click="handleAction('rename')"
             />
             <MobileDrawerToolbarButton
               icon="i-heroicons-document-duplicate"
-              :label="$t('common.copy', 'Copy')"
+              :label="$t('common.copy')"
               @click="handleAction('copy')"
             />
             <MobileDrawerToolbarButton
               icon="i-heroicons-scissors"
-              :label="$t('common.cut', 'Cut')"
+              :label="$t('common.cut')"
               @click="handleAction('cut')"
             />
             <MobileDrawerToolbarButton
@@ -301,14 +301,14 @@ function handleAction(actionId: FileAction) {
                 clipboardStore.hasFileManagerPayload && selectedFsEntry?.entry.kind === 'directory'
               "
               icon="i-heroicons-clipboard"
-              :label="$t('common.paste', 'Paste')"
+              :label="$t('common.paste')"
               @click="handleAction('paste')"
             />
             <MobileDrawerToolbarButton
               v-if="canAddToTimeline"
               success
               icon="lucide:plus"
-              :label="$t('common.toTimeline', 'To timeline')"
+              :label="$t('common.toTimeline')"
               @click="emit('add-to-timeline')"
             />
           </MobileDrawerToolbar>

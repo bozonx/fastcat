@@ -225,7 +225,7 @@ function confirmRename() {
             <span
               class="text-xs font-bold text-zinc-100 uppercase tracking-widest mb-1 text-center w-full truncate"
             >
-              {{ $t('fastcat.audioMixer.master', 'Master') }}
+              {{ $t('fastcat.audioMixer.master') }}
             </span>
             <span class="text-[10px] text-zinc-500 font-mono">{{
               formatDb(timelineStore.audioLevels?.master?.peakDb)
@@ -368,7 +368,7 @@ function confirmRename() {
       <div class="flex gap-2 pt-4 mt-1 border-t border-zinc-800/50 shrink-0">
         <UButton
           icon="i-heroicons-musical-note"
-          :label="$t('fastcat.timeline.addAudioTrack', 'Add Audio Track')"
+          :label="$t('fastcat.timeline.addAudioTrack')"
           variant="soft"
           color="neutral"
           size="sm"

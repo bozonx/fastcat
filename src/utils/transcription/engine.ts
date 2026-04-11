@@ -59,7 +59,7 @@ function createRequestHeaders(params: {
   headers.set('X-STT-Restore-Punctuation', String(params.settings.restorePunctuation));
   headers.set('X-STT-Format-Text', String(params.settings.formatText));
   headers.set('X-STT-Include-Words', String(params.settings.includeWords));
-  headers.set('X-STT-Max-Wait-Minutes', '3'); // Default from microservice docs
+  headers.set('X-STT-Max-Wait-Minutes'); // Default from microservice docs
 
   if (params.bearerToken) {
     const token = params.bearerToken.trim();

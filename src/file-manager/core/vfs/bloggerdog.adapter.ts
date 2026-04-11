@@ -538,16 +538,16 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       return [
         this.createVirtualRootEntry(
           'virtual-all',
-          this.t ? this.t('fastcat.bloggerDog.allContent', 'Все элементы') : 'Все элементы',
+          this.t ? this.t('fastcat.bloggerDog.allContent') : 'Все элементы',
         ),
         this.createVirtualRootEntry(
           'projects',
-          this.t ? this.t('fastcat.bloggerDog.projectLibraries', 'Проекты') : 'Проекты',
+          this.t ? this.t('fastcat.bloggerDog.projectLibraries') : 'Проекты',
         ),
         this.createVirtualRootEntry(
           'personal',
           this.t
-            ? this.t('fastcat.bloggerDog.personalLibrary', 'Личная библиотека')
+            ? this.t('fastcat.bloggerDog.personalLibrary')
             : 'Личная библиотека',
         ),
       ];

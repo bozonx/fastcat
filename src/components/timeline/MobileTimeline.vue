@@ -864,7 +864,7 @@ async function onClipAction(payload: TimelineClipActionPayload) {
     await timelineStore.requestTimelineSave({ immediate: true });
   } catch (err: unknown) {
     toast.add({
-      title: t('common.error', 'Error'),
+      title: t('common.error'),
       description: err instanceof Error ? err.message : String(err ?? ''),
       icon: 'i-heroicons-exclamation-triangle',
       color: 'error',
@@ -920,17 +920,17 @@ onBeforeUnmount(() => {
           <MobileDrawerToolbar class="-mx-4 border-b border-ui-border mb-2">
             <MobileDrawerToolbarButton
               icon="i-heroicons-trash"
-              :label="t('common.delete', 'Delete')"
+              :label="t('common.delete')"
               @click="handleDelete"
             />
             <MobileDrawerToolbarButton
               icon="i-heroicons-document-duplicate"
-              :label="t('common.copy', 'Copy')"
+              :label="t('common.copy')"
               @click="handleCopyClips"
             />
             <MobileDrawerToolbarButton
               icon="i-heroicons-scissors"
-              :label="t('common.cut', 'Cut')"
+              :label="t('common.cut')"
               @click="handleCutClips"
             />
             <MobileDrawerToolbarButton
@@ -938,8 +938,8 @@ onBeforeUnmount(() => {
               :icon="allDisabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
               :label="
                 allDisabled
-                  ? t('fastcat.timeline.enable', 'Enable')
-                  : t('fastcat.timeline.disable', 'Disable')
+                  ? t('fastcat.timeline.enable')
+                  : t('fastcat.timeline.disable')
               "
               @click="toggleDisabled"
             />
@@ -948,8 +948,8 @@ onBeforeUnmount(() => {
               :icon="allMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
               :label="
                 allMuted
-                  ? t('fastcat.timeline.unmute', 'Unmute')
-                  : t('fastcat.timeline.mute', 'Mute')
+                  ? t('fastcat.timeline.unmute')
+                  : t('fastcat.timeline.mute')
               "
               @click="toggleMuted"
             />
@@ -957,8 +957,8 @@ onBeforeUnmount(() => {
               :icon="allSoloed ? 'i-heroicons-musical-note-solid' : 'i-heroicons-musical-note'"
               :label="
                 allSoloed
-                  ? t('fastcat.timeline.unsolo', 'Unsolo')
-                  : t('fastcat.timeline.solo', 'Solo')
+                  ? t('fastcat.timeline.unsolo')
+                  : t('fastcat.timeline.solo')
               "
               @click="toggleSolo"
             />
@@ -966,15 +966,15 @@ onBeforeUnmount(() => {
               :icon="allLocked ? 'i-heroicons-lock-closed' : 'i-heroicons-lock-open'"
               :label="
                 allLocked
-                  ? t('fastcat.timeline.unlock', 'Unlock')
-                  : t('fastcat.timeline.lock', 'Lock')
+                  ? t('fastcat.timeline.unlock')
+                  : t('fastcat.timeline.lock')
               "
               @click="toggleLocked"
             />
             <div class="w-px h-6 bg-ui-border mx-1 shrink-0" />
             <MobileDrawerToolbarButton
               icon="i-heroicons-x-mark"
-              :label="t('common.clearSelection', 'Clear')"
+              :label="t('common.clearSelection')"
               @click="onMultiSelectionDrawerClose"
             />
           </MobileDrawerToolbar>
@@ -1130,7 +1130,7 @@ onBeforeUnmount(() => {
           size="xl"
           class="rounded-full shadow-2xl w-14 h-14 flex items-center justify-center bg-ui-action hover:bg-ui-action-hover text-white border-none shadow-ui-action/20"
           :ui="{ icon: 'w-7 h-7' }"
-          :aria-label="t('fastcat.timeline.addContent', 'Add content')"
+          :aria-label="t('fastcat.timeline.addContent')"
           @click="isAddContentDrawerOpen = true"
         />
       </div>

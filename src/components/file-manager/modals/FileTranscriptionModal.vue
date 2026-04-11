@@ -26,7 +26,7 @@ const emit = defineEmits<{
 <template>
   <UiModal
     v-model:open="isOpen"
-    :title="t('videoEditor.fileManager.actions.transcribe', 'Transcribe')"
+    :title="t('videoEditor.fileManager.actions.transcribe')"
     :close-button="!props.isTranscribing"
     :prevent-close="props.isTranscribing"
     :ui="{ content: 'sm:max-w-lg', body: 'overflow-y-auto' }"
@@ -45,7 +45,7 @@ const emit = defineEmits<{
         {{ props.transcriptionEntry.name }}
       </div>
 
-      <UiFormField :label="t('videoEditor.fileManager.audio.transcriptionLanguage', 'Language')">
+      <UiFormField :label="t('videoEditor.fileManager.audio.transcriptionLanguage')">
         <UInput
           v-model="transcriptionLanguage"
           :disabled="props.isTranscribing"
@@ -80,7 +80,7 @@ const emit = defineEmits<{
           :disabled="props.isTranscribing"
           @click="isOpen = false"
         >
-          {{ t('common.cancel', 'Cancel') }}
+          {{ t('common.cancel') }}
         </UButton>
         <UButton
           color="primary"
@@ -89,7 +89,7 @@ const emit = defineEmits<{
           autofocus
           @click="emit('submit')"
         >
-          {{ t('videoEditor.fileManager.actions.transcribe', 'Transcribe') }}
+          {{ t('videoEditor.fileManager.actions.transcribe') }}
         </UButton>
       </div>
     </template>

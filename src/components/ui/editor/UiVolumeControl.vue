@@ -148,8 +148,8 @@ onBeforeUnmount(() => {
         "
         :aria-label="
           isMuted
-            ? t('fastcat.monitor.audioUnmute', 'Unmute')
-            : t('fastcat.monitor.audioMute', 'Mute')
+            ? t('fastcat.monitor.audioUnmute')
+            : t('fastcat.monitor.audioMute')
         "
         @click="toggleMute"
       />
@@ -163,7 +163,7 @@ onBeforeUnmount(() => {
       :default-value="1"
       :model-value="isMuted ? 0 : volume"
       slider-class="w-20"
-      :aria-label="t('fastcat.monitor.audioVolume', 'Audio volume')"
+      :aria-label="t('fastcat.monitor.audioVolume')"
       :wheel-without-focus="wheelWithoutFocus"
       @update:model-value="onVolumeUpdate"
     />
@@ -198,8 +198,8 @@ onBeforeUnmount(() => {
         "
         :aria-label="
           isMuted
-            ? t('fastcat.monitor.audioUnmute', 'Unmute')
-            : t('fastcat.monitor.audioMute', 'Mute')
+            ? t('fastcat.monitor.audioUnmute')
+            : t('fastcat.monitor.audioMute')
         "
         class="pointer-events-none"
       />
@@ -251,8 +251,8 @@ onBeforeUnmount(() => {
                 "
                 :aria-label="
                   isMuted
-                    ? t('fastcat.monitor.audioUnmute', 'Unmute')
-                    : t('fastcat.monitor.audioMute', 'Mute')
+                    ? t('fastcat.monitor.audioUnmute')
+                    : t('fastcat.monitor.audioMute')
                 "
                 @click="toggleMute"
               />

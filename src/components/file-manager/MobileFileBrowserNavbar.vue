@@ -48,7 +48,7 @@ const projectStore = useProjectStore();
 
     <div class="flex-1 overflow-x-hidden">
       <div v-if="isSelectionMode" class="font-medium text-sm px-2 truncate">
-        {{ selectedCount }} {{ t('common.selected', 'Selected') }}
+        {{ selectedCount }} {{ t('common.selected') }}
         <span v-if="totalSelectedSize > 0" class="ml-1 text-zinc-400 font-normal">
           ({{ formatBytes(totalSelectedSize) }})
         </span>

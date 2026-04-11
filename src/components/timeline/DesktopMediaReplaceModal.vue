@@ -47,7 +47,7 @@ function handleSelectFile(entry: FsEntry) {
 <template>
   <UiModal
     v-model:open="isOpen"
-    :title="t('fastcat.clip.replaceMedia', 'Replace Media')"
+    :title="t('fastcat.clip.replaceMedia')"
     :ui="{ width: 'max-w-4xl sm:max-w-6xl', height: 'h-[80vh]' }"
   >
     <!-- Wait, we can't easily intercept FileBrowser clicks without modifying it. -->
@@ -66,7 +66,7 @@ function handleSelectFile(entry: FsEntry) {
           size="lg"
           @click="handleSelectFile(uiStore.selectedFsEntry as FsEntry)"
         >
-          {{ t('fastcat.clip.replaceMedia', 'Replace Media') }}
+          {{ t('fastcat.clip.replaceMedia') }}
         </UButton>
       </div>
     </div>

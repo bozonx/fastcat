@@ -46,10 +46,10 @@ function applyProjectPreset(presetId: string) {
 <template>
   <SettingsSection
     v-if="projectStore.projectSettings"
-    :title="t('videoEditor.projectSettings.resolutionAndFps', 'Resolution & FPS')"
+    :title="t('videoEditor.projectSettings.resolutionAndFps')"
     :summary="resolutionSummary"
   >
-    <UiFormField :label="t('videoEditor.export.presetLabel', 'Preset')">
+    <UiFormField :label="t('videoEditor.export.presetLabel')">
       <UiSelect
         v-model="workspaceStore.userSettings.projectPresets.selectedPresetId"
         :items="projectPresetOptions"

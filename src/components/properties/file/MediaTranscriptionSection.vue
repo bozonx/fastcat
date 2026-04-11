@@ -14,8 +14,8 @@ const { t } = useI18n();
       <span class="text-xs text-ui-text-muted self-center">
         {{
           props.latestTranscriptionWasCached
-            ? t('videoEditor.fileManager.audio.transcriptionCached', 'Loaded from cache')
-            : t('videoEditor.fileManager.audio.transcriptionSaved', 'Saved to cache')
+            ? t('videoEditor.fileManager.audio.transcriptionCached')
+            : t('videoEditor.fileManager.audio.transcriptionSaved')
         }}
       </span>
     </div>

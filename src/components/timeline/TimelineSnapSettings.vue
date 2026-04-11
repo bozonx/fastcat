@@ -42,17 +42,17 @@ const playhead = computed({
   <div class="flex flex-col gap-6">
     <div>
       <h3 class="text-lg font-medium text-ui-text">
-        {{ t('videoEditor.settings.snappingTitle', 'Snapping') }}
+        {{ t('videoEditor.settings.snappingTitle') }}
       </h3>
       <p class="text-sm text-ui-text-muted mt-1">
-        {{ t('videoEditor.settings.snappingDescription', 'Configure timeline snapping behavior.') }}
+        {{ t('videoEditor.settings.snappingDescription') }}
       </p>
     </div>
 
     <div class="space-y-4 max-w-xl">
       <UiSliderInput
         v-model="snapThresholdPx"
-        :label="t('videoEditor.settings.snapThresholdDefault', 'Snap threshold default')"
+        :label="t('videoEditor.settings.snapThresholdDefault')"
         :min="1"
         :max="100"
         :step="1"
@@ -62,26 +62,26 @@ const playhead = computed({
 
       <div class="pt-4 space-y-4">
         <h4 class="text-sm font-medium text-ui-text">
-          {{ t('videoEditor.settings.snapToTargets', 'Snap to') }}
+          {{ t('videoEditor.settings.snapToTargets') }}
         </h4>
 
         <UCheckbox
           v-model="timelineEdges"
-          :label="t('videoEditor.settings.snapToTimelineEdges', 'Timeline start and end')"
+          :label="t('videoEditor.settings.snapToTimelineEdges')"
         />
 
-        <UCheckbox v-model="clips" :label="t('videoEditor.settings.snapToClips', 'Clips')" />
+        <UCheckbox v-model="clips" :label="t('videoEditor.settings.snapToClips')" />
 
-        <UCheckbox v-model="markers" :label="t('videoEditor.settings.snapToMarkers', 'Markers')" />
+        <UCheckbox v-model="markers" :label="t('videoEditor.settings.snapToMarkers')" />
 
         <UCheckbox
           v-model="selection"
-          :label="t('videoEditor.settings.snapToSelection', 'Selection')"
+          :label="t('videoEditor.settings.snapToSelection')"
         />
 
         <UCheckbox
           v-model="playhead"
-          :label="t('videoEditor.settings.snapToPlayhead', 'Playhead')"
+          :label="t('videoEditor.settings.snapToPlayhead')"
         />
       </div>
     </div>

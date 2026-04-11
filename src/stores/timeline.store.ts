@@ -44,6 +44,7 @@ import { useFocusStore } from './focus.store';
 import { useUiStore } from './ui.store';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { MAX_TIMELINE_ZOOM_POSITION, MIN_TIMELINE_ZOOM_POSITION } from '~/utils/zoom';
+import { TIMELINE_DEFAULTS } from '~/utils/constants';
 import { useNuxtApp } from '#app';
 import { useTimelineMediaUsageStore } from './timeline-media-usage.store';
 
@@ -57,12 +58,13 @@ export const useTimelineStore = defineStore('timeline', () => {
   const workspaceStore = useWorkspaceStore();
   const proxyStore = useProxyStore();
   const selectionStore = useSelectionStore();
-  const focusStore = useFocusStore();
   const uiStore = useUiStore();
+  const focusStore = useFocusStore();
   const nuxtApp = useNuxtApp();
   const toast = nuxtApp.$notificationService as AppNotificationService;
   const { t } = nuxtApp.$i18nService as I18nService;
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
+
 
   const historyDebounce = createTimelineHistoryDebounceModule({ historyStore });
 
@@ -84,17 +86,17 @@ export const useTimelineStore = defineStore('timeline', () => {
   const timelineSaveError = ref<string | null>(null);
 
   const isPlaying = ref(false);
-  const playbackSpeed = ref(1);
+  const playbackSpeed = ref(TIMELINE_DEFAULTS.PLAYBACK_SPEED);
   const currentTime = ref(0);
   const duration = ref(0);
-  const masterGain = ref(1);
+  const masterGain = ref(TIMELINE_DEFAULTS.MASTER_GAIN);
   const audioMuted = ref(false);
   const audioLevels = ref<Record<string, { rmsDb: number; peakDb: number }>>({});
 
   // Provide getter/setter for reactivity since Vue does not always catch dynamic property additions deeply out of the box in setup
   const playbackGestureHandler = ref<((nextPlaying: boolean) => void) | null>(null);
 
-  const timelineZoom = ref(50);
+  const timelineZoom = ref<number>(TIMELINE_DEFAULTS.ZOOM);
   const timelineViewportWidth = ref(0);
   const scrollResetTicket = ref(0);
   const scrollToPlayheadRequest = ref(0);
@@ -102,7 +104,7 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   const fps = computed(() => {
     if (timelineDoc.value) return getDocFps(timelineDoc.value);
-    return 30;
+    return TIMELINE_DEFAULTS.FPS;
   });
 
   const selectedItemIds = ref<string[]>([]);
@@ -172,7 +174,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     audioMuted,
     duration,
     playbackGestureHandler,
-    getDocFps: () => (timelineDoc.value ? getDocFps(timelineDoc.value) : 30),
+    getDocFps: () => (timelineDoc.value ? getDocFps(timelineDoc.value) : TIMELINE_DEFAULTS.FPS),
     setCurrentTimeUs: (nextTimeUs) => lifecycle.setCurrentTimeUs(nextTimeUs),
   });
 
@@ -399,11 +401,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     } catch (e) {
       console.error('Failed to create timeline backup', e);
       toast.add({
-        title: t('videoEditor.timeline.backupError', 'Failed to create timeline backup'),
-        description: t(
-          'videoEditor.timeline.backupErrorDesc',
-          'Your data is safe, butautomatic backup failed',
-        ),
+        title: t('videoEditor.timeline.backupError'),
+        description: t('videoEditor.timeline.backupErrorDesc'),
         color: 'warning',
       });
     }
@@ -535,10 +534,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     } catch (e) {
       console.error('Failed to save timeline before creating version', e);
       toast.add({
-        title: t(
-          'videoEditor.timeline.versionSaveError',
-          'Failed to save current timeline before creating version',
-        ),
+        title: t('videoEditor.timeline.versionSaveError'),
         color: 'error',
       });
       return;
@@ -578,7 +574,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       await writable.close();
 
       toast.add({
-        title: t('videoEditor.timeline.versionCreated', 'Version created: {name}', {
+        title: t('videoEditor.timeline.versionCreated', {
           name: nextName,
         }),
         color: 'success',
@@ -592,7 +588,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     } catch (e) {
       console.error('Failed to duplicate timeline', e);
       toast.add({
-        title: t('common.saveError', 'Save error'),
+        title: t('common.saveError'),
         color: 'error',
       });
     }

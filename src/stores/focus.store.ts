@@ -18,10 +18,6 @@ export type PanelFocusId =
 export type AnyPanelFocus = PanelFocusId;
 
 const MAIN_PANEL_IDS: MainPanelFocus[] = ['monitor', 'timeline'];
-const LEGACY_TEMP_PANEL_MAP: Record<Exclude<TempPanelFocus, 'none'>, PanelFocusId> = {
-  left: 'left',
-  right: 'right',
-};
 
 function isMainPanelFocus(panelId: string | null | undefined): panelId is MainPanelFocus {
   return panelId === 'monitor' || panelId === 'timeline';
@@ -54,7 +50,6 @@ export function isFileManagerSidebarFocus(panelId: string | null | undefined): b
   if (!panelId) return false;
   const id = String(panelId);
   return (
-    id === 'left' ||
     id === 'files-sidebar' ||
     (id.startsWith('dynamic:file-manager:') && id.endsWith(':sidebar')) ||
     (id.startsWith('dynamic:fileManager:') && id.endsWith(':sidebar'))
@@ -65,9 +60,6 @@ export function isFileManagerMainFocus(panelId: string | null | undefined): bool
   if (!panelId) return false;
   const id = String(panelId);
   return (
-    id === 'project' ||
-    id === 'right' ||
-    id === 'filesBrowser' ||
     id === 'files-main' ||
     (id.startsWith('dynamic:file-manager:') && id.endsWith(':main')) ||
     (id.startsWith('dynamic:fileManager:') && id.endsWith(':main')) ||
@@ -89,8 +81,8 @@ export function isTimelineHotkeyPanelFocus(panelId: string | null | undefined): 
 }
 
 function toLegacyTempFocus(panelId: string | null | undefined): TempPanelFocus {
-  if (panelId === 'left') return 'left';
-  if (panelId === 'right') return 'right';
+  if (panelId === 'files-sidebar') return 'left';
+  if (panelId === 'files-main') return 'right';
   return 'none';
 }
 
@@ -159,7 +151,7 @@ export const useFocusStore = defineStore('focus', () => {
   }
 
   function setTempFocus(next: Exclude<TempPanelFocus, 'none'>) {
-    setPanelFocus(LEGACY_TEMP_PANEL_MAP[next]);
+    setPanelFocus(next === 'left' ? 'files-sidebar' : 'files-main');
   }
 
   function clearTempFocus() {

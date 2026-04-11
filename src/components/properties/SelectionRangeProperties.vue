@@ -63,7 +63,7 @@ function handleDelete() {
 const commonActions = computed(() => [
   {
     id: 'delete',
-    title: t('common.delete', 'Delete'),
+    title: t('common.delete'),
     icon: 'i-heroicons-trash',
     onClick: handleDelete,
   },
@@ -72,13 +72,13 @@ const commonActions = computed(() => [
 const mainActions = computed(() => [
   {
     id: 'convert',
-    label: t('fastcat.timeline.convertSelectionToZoneMarker', 'Convert to zone marker'),
+    label: t('fastcat.timeline.convertSelectionToZoneMarker'),
     icon: 'i-heroicons-bookmark-square',
     onClick: handleConvertToMarker,
   },
   {
     id: 'ripple-trim',
-    label: t('fastcat.timeline.rippleTrimSelection', 'Ripple trim selection'),
+    label: t('fastcat.timeline.rippleTrimSelection'),
     icon: 'i-heroicons-scissors',
     color: 'warning' as const,
     onClick: handleRippleTrim,
@@ -88,7 +88,7 @@ const mainActions = computed(() => [
 
 <template>
   <div v-if="selectionRange" class="w-full flex flex-col gap-2 text-ui-text">
-    <PropertySection v-if="!hideActions" :title="t('fastcat.selectionRange.actions', 'Actions')">
+    <PropertySection v-if="!hideActions" :title="t('fastcat.selectionRange.actions')">
       <div class="flex flex-col w-full">
         <PropertyActionList
           :actions="commonActions"
@@ -103,15 +103,15 @@ const mainActions = computed(() => [
       </div>
     </PropertySection>
 
-    <PropertySection :title="t('fastcat.selectionRange.info', 'Selection Range')">
+    <PropertySection :title="t('fastcat.selectionRange.info')">
       <PropertyTimecode
-        :label="t('common.start', 'Start Time')"
+        :label="t('common.start')"
         :model-value="selectionRange.startUs"
         @update:model-value="handleUpdateStartTime"
       />
 
       <PropertyTimecode
-        :label="t('common.end', 'End Time')"
+        :label="t('common.end')"
         :model-value="selectionRange.endUs"
         @update:model-value="handleUpdateEndTime"
       />

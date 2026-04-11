@@ -112,17 +112,17 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
     return [
       [
         {
-          label: t('common.close', 'Close'),
+          label: t('common.close'),
           icon: 'i-heroicons-x-mark',
           onSelect: () => removeFileTab(activeTabId),
         },
         {
-          label: t('videoEditor.projectTabs.closeOthers', 'Close Others'),
+          label: t('videoEditor.projectTabs.closeOthers'),
           icon: 'i-heroicons-minus-circle',
           onSelect: () => removeOtherFileTabs(activeTabId),
         },
         {
-          label: t('videoEditor.projectTabs.closeAll', 'Close All'),
+          label: t('videoEditor.projectTabs.closeAll'),
           icon: 'i-heroicons-x-circle',
           onSelect: () => removeAllFileTabs(),
         },
@@ -351,7 +351,7 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
     return [
       [
         {
-          label: t('common.detach', 'Detach'),
+          label: t('common.detach'),
           icon: 'i-heroicons-arrow-turn-down-right',
           disabled: isFilesTab,
           kbds: isFilesTab ? [] : undefined,

@@ -17,19 +17,19 @@ const clipboardStore = useClipboardStore();
     <div class="px-4 py-1.5 text-[10px] font-medium text-zinc-500 uppercase tracking-wider border-b border-zinc-800/50">
       {{
         clipboardStore.clipboardPayload?.operation === 'cut'
-          ? t('common.cut', 'Cut')
-          : t('common.copied', 'Copied')
+          ? t('common.cut')
+          : t('common.copied')
       }}: {{ clipboardStore.clipboardPayload?.items.length }}
     </div>
     <MobileDrawerToolbar>
       <MobileDrawerToolbarButton
         icon="i-heroicons-clipboard-document-check"
-        :label="t('common.paste', 'Paste')"
+        :label="t('common.paste')"
         @click="emit('paste')"
       />
       <MobileDrawerToolbarButton
         icon="i-heroicons-x-mark"
-        :label="t('common.cancel', 'Cancel')"
+        :label="t('common.cancel')"
         @click="emit('cancel')"
       />
     </MobileDrawerToolbar>

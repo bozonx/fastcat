@@ -109,7 +109,7 @@ function onNameClick(event: MouseEvent, entry: FsEntry) {
 
   if (event.detail === 1) {
     renameTimer = setTimeout(() => {
-      emit('fileAction', 'rename', entry);
+      emit('fileAction', entry);
     }, 250);
   }
 }

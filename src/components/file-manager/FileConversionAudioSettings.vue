@@ -29,13 +29,13 @@ const audioReverse = defineModel<boolean>('audioReverse', { default: false });
 const { t } = useI18n();
 
 const audioChannelsOptions = computed(() => {
-  const options = [{ value: 1, label: t('videoEditor.audio.mono', 'Mono') }];
+  const options = [{ value: 1, label: t('videoEditor.audio.mono') }];
 
   const original = props.originalChannels || 2;
   if (original === 1) return options;
 
   if (original === 2) {
-    options.push({ value: 2, label: t('videoEditor.audio.stereo', 'Stereo') });
+    options.push({ value: 2, label: t('videoEditor.audio.stereo') });
   } else {
     options.push({
       value: original,
@@ -51,8 +51,8 @@ const sampleRateOptions = computed(() => {
   const original = originalRaw === null || originalRaw === undefined ? null : Number(originalRaw);
   const originalLabel =
     original === null
-      ? t('videoEditor.audio.original', 'Original')
-      : `${t('videoEditor.audio.original', 'Original')} (${Math.round(original)})`;
+      ? t('videoEditor.audio.original')
+      : `${t('videoEditor.audio.original')} (${Math.round(original)})`;
 
   return [
     ...(props.allowOriginalSampleRate ? [{ value: 0, label: originalLabel }] : []),
@@ -67,7 +67,7 @@ const sampleRateOptions = computed(() => {
   <div class="space-y-4">
     <div class="flex flex-col gap-2">
       <label class="text-xs text-ui-text-muted font-medium">
-        {{ t('videoEditor.audio.channels', 'Channels') }}
+        {{ t('videoEditor.audio.channels') }}
       </label>
       <UiButtonGroup
         v-model="audioChannels"
@@ -79,7 +79,7 @@ const sampleRateOptions = computed(() => {
     <div :class="props.hideSampleRate ? 'flex flex-col gap-2' : 'grid grid-cols-2 gap-3'">
       <div class="flex flex-col gap-2">
         <label class="text-xs text-ui-text-muted font-medium">
-          {{ t('videoEditor.export.audioBitrate', 'Audio bitrate (Kbps)') }}
+          {{ t('videoEditor.export.audioBitrate') }}
         </label>
         <UiWheelNumberInput
           v-model="audioBitrateKbps"
@@ -92,7 +92,7 @@ const sampleRateOptions = computed(() => {
 
       <div v-if="!props.hideSampleRate" class="flex flex-col gap-2">
         <label class="text-xs text-ui-text-muted font-medium">
-          {{ t('videoEditor.audio.sampleRate', 'Sample Rate') }}
+          {{ t('videoEditor.audio.sampleRate') }}
         </label>
         <UiSelect
           v-model.number="audioSampleRate"
@@ -110,7 +110,7 @@ const sampleRateOptions = computed(() => {
         class="text-xs text-ui-text-muted font-medium cursor-pointer"
         @click="!props.disabled && (audioReverse = !audioReverse)"
       >
-        {{ t('videoEditor.audio.reverse', 'Reverse audio') }}
+        {{ t('videoEditor.audio.reverse') }}
       </label>
       <USwitch v-model="audioReverse" :disabled="props.disabled" />
     </div>

@@ -244,7 +244,7 @@ defineExpose({
           variant="ghost"
           size="xs"
           icon="i-heroicons-bookmark"
-          :title="t('fastcat.effects.saveAsPreset', 'Save as preset')"
+          :title="t('fastcat.effects.saveAsPreset')"
           @click="isSaveModalOpen = true"
         />
         <UButton
@@ -406,23 +406,23 @@ defineExpose({
 
     <UiModal
       v-model:open="isSaveModalOpen"
-      :title="t('fastcat.effects.savePresetTitle', 'Save Preset')"
+      :title="t('fastcat.effects.savePresetTitle')"
     >
       <div class="flex flex-col gap-4">
-        <UiFormField :label="t('common.name', 'Name')">
+        <UiFormField :label="t('common.name')">
           <UiTextInput
             v-model="newPresetName"
-            :placeholder="t('fastcat.effects.presetNamePlaceholder', 'My Custom Preset')"
+            :placeholder="t('fastcat.effects.presetNamePlaceholder')"
             autofocus
             @keyup.enter="handleSavePreset"
           />
         </UiFormField>
         <div class="flex justify-end gap-2">
           <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">
-            {{ t('common.cancel', 'Cancel') }}
+            {{ t('common.cancel') }}
           </UButton>
           <UButton color="primary" :disabled="!newPresetName.trim()" @click="handleSavePreset">
-            {{ t('common.save', 'Save') }}
+            {{ t('common.save') }}
           </UButton>
         </div>
       </div>

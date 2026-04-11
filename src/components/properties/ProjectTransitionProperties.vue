@@ -62,7 +62,7 @@ const actions = computed(() => {
   if (manifest.value?.isCustom) {
     list.push({
       id: 'update-preset',
-      label: t('common.save', 'Save'),
+      label: t('common.save'),
       icon: 'i-heroicons-check',
       onClick: handleUpdatePreset,
     });
@@ -70,8 +70,8 @@ const actions = computed(() => {
   list.push({
     id: 'save-as-preset',
     label: manifest.value?.isCustom
-      ? t('fastcat.effects.saveAsNew', 'Save as new')
-      : t('fastcat.effects.saveAsPreset', 'Save as preset'),
+      ? t('fastcat.effects.saveAsNew')
+      : t('fastcat.effects.saveAsPreset'),
     icon: 'i-heroicons-bookmark',
     onClick: () => (isSaveModalOpen.value = true),
   });
@@ -94,7 +94,7 @@ const actions = computed(() => {
         @update:param="handleUpdateParam"
       />
       <div v-else class="text-xs text-ui-text-muted text-center py-2">
-        {{ t('fastcat.transitions.noSettings', 'No settings available') }}
+        {{ t('fastcat.transitions.noSettings') }}
       </div>
     </div>
 
@@ -102,24 +102,24 @@ const actions = computed(() => {
 
     <UiModal
       v-model:open="isSaveModalOpen"
-      :title="t('fastcat.effects.savePresetTitle', 'Save Preset')"
+      :title="t('fastcat.effects.savePresetTitle')"
     >
       <template #body>
         <div class="flex flex-col gap-4">
-          <UiFormField :label="t('common.name', 'Name')">
+          <UiFormField :label="t('common.name')">
             <UiTextInput
               v-model="newPresetName"
-              :placeholder="t('fastcat.effects.presetNamePlaceholder', 'My Custom Preset')"
+              :placeholder="t('fastcat.effects.presetNamePlaceholder')"
               autofocus
               @keyup.enter="handleSavePreset"
             />
           </UiFormField>
           <div class="flex justify-end gap-2">
             <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">
-              {{ t('common.cancel', 'Cancel') }}
+              {{ t('common.cancel') }}
             </UButton>
             <UButton color="primary" :disabled="!newPresetName.trim()" @click="handleSavePreset">
-              {{ t('common.save', 'Save') }}
+              {{ t('common.save') }}
             </UButton>
           </div>
         </div>
@@ -127,6 +127,6 @@ const actions = computed(() => {
     </UiModal>
   </div>
   <div v-else class="text-ui-text-muted text-center text-sm p-4">
-    {{ t('common.notFound', 'Not found') }}
+    {{ t('common.notFound') }}
   </div>
 </template>

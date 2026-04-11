@@ -19,9 +19,9 @@ const presetsStore = usePresetsStore();
 const isOpen = defineModel<boolean>('open', { default: false });
 
 const standardPresets = [
-  { id: 'default', name: t('fastcat.library.texts.default', 'Default'), icon: 'i-heroicons-document-text' },
-  { id: 'title', name: t('fastcat.library.texts.title', 'Title'), icon: 'i-heroicons-h1' },
-  { id: 'subtitle', name: t('fastcat.library.texts.subtitle', 'Subtitle'), icon: 'i-heroicons-h2' },
+  { id: 'default', name: t('fastcat.library.texts.default'), icon: 'i-heroicons-document-text' },
+  { id: 'title', name: t('fastcat.library.texts.title'), icon: 'i-heroicons-h1' },
+  { id: 'subtitle', name: t('fastcat.library.texts.subtitle'), icon: 'i-heroicons-h2' },
 ];
 
 const customPresets = computed(() => {
@@ -40,7 +40,7 @@ function selectPreset(id: string) {
 <template>
   <UiModal
     v-model:open="isOpen"
-    :title="t('fastcat.library.texts.selectPreset', 'Select text preset')"
+    :title="t('fastcat.library.texts.selectPreset')"
     @close="emit('close')"
   >
     <div class="flex flex-col gap-6">

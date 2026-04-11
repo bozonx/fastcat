@@ -157,8 +157,8 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       const toast = useToast();
       toast.add({
         color: 'error',
-        title: t('fastcat.monitor.playbackStopped', 'Playback Stopped'),
-        description: t('fastcat.monitor.layoutError', 'Failed to update timeline layout.'),
+        title: t('fastcat.monitor.playbackStopped'),
+        description: t('fastcat.monitor.layoutError'),
       });
       timelineStore.isPlaying = false;
       scheduleBuild();
@@ -301,7 +301,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       const toast = useToast();
       toast.add({
         color: 'error',
-        title: t('fastcat.monitor.previewError', 'Preview Error'),
+        title: t('fastcat.monitor.previewError'),
         description: e.message || t('fastcat.monitor.loadError'),
       });
     } finally {

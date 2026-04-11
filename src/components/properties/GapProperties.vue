@@ -37,10 +37,10 @@ function deleteGap() {
 <template>
   <div class="w-full flex flex-col gap-2 text-ui-text">
     <!-- Gap actions panel -->
-    <PropertySection v-if="!hideActions" :title="t('fastcat.timeline.gap', 'Gap')">
+    <PropertySection v-if="!hideActions" :title="t('fastcat.timeline.gap')">
       <div class="px-3 pb-3">
         <p class="text-xs text-ui-text-muted mb-3">
-          {{ t('fastcat.timeline.gapDescription', 'An empty gap in the track timeline.') }}
+          {{ t('fastcat.timeline.gapDescription') }}
         </p>
         <UButton
           color="error"
@@ -50,7 +50,7 @@ function deleteGap() {
           class="w-full justify-center"
           @click="deleteGap"
         >
-          {{ t('fastcat.timeline.deleteGap', 'Delete Gap') }}
+          {{ t('fastcat.timeline.deleteGap') }}
         </UButton>
       </div>
     </PropertySection>

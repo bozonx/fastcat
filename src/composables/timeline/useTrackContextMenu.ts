@@ -56,8 +56,8 @@ export function useTrackContextMenu(
         },
         {
           label: track.locked
-            ? t('fastcat.track.unlock', 'Unlock track')
-            : t('fastcat.track.lock', 'Lock track'),
+            ? t('fastcat.track.unlock')
+            : t('fastcat.track.lock'),
           icon: track.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
           onSelect: () => {
             timelineStore.updateTrackProperties(track.id, { locked: !track.locked });
@@ -71,13 +71,13 @@ export function useTrackContextMenu(
       ],
       [
         {
-          label: t('fastcat.track.moveUp', 'Move track up'),
+          label: t('fastcat.track.moveUp'),
           icon: 'i-heroicons-arrow-up',
           disabled: tracks.filter((t) => t.kind === track.kind)[0]?.id === track.id,
           onSelect: () => timelineStore.moveTrackUp(track.id),
         },
         {
-          label: t('fastcat.track.moveDown', 'Move track down'),
+          label: t('fastcat.track.moveDown'),
           icon: 'i-heroicons-arrow-down',
           disabled: tracks.filter((t) => t.kind === track.kind).slice(-1)[0]?.id === track.id,
           onSelect: () => timelineStore.moveTrackDown(track.id),

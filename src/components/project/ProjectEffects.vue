@@ -120,7 +120,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
         "
         @click="activeTab = 'video'"
       >
-        {{ t('fastcat.effects.tabs.video', 'Video') }}
+        {{ t('fastcat.effects.tabs.video') }}
       </button>
       <button
         class="px-3 py-1.5 rounded-t-lg transition-colors border border-b-0 border-transparent font-medium"
@@ -131,7 +131,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
         "
         @click="activeTab = 'transitions'"
       >
-        {{ t('fastcat.effects.tabs.transitions', 'Transitions') }}
+        {{ t('fastcat.effects.tabs.transitions') }}
       </button>
       <button
         class="px-3 py-1.5 rounded-t-lg transition-colors border border-b-0 border-transparent font-medium"
@@ -142,7 +142,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
         "
         @click="activeTab = 'audio'"
       >
-        {{ t('fastcat.effects.tabs.audio', 'Audio') }}
+        {{ t('fastcat.effects.tabs.audio') }}
       </button>
     </div>
 
@@ -353,7 +353,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
 
             <div v-if="hasAudioEffects(nonBasicAudioEffects)">
               <h4 class="text-xs uppercase tracking-wide text-ui-text-muted mb-2">
-                {{ t('fastcat.effects.groups.artistic', 'Artistic') }}
+                {{ t('fastcat.effects.groups.artistic') }}
               </h4>
               <div class="grid grid-cols-1 gap-2">
                 <EffectCard

@@ -20,13 +20,13 @@ const isEnabled = defineModel<boolean>('enabled', { default: true });
   <PropertySection
     v-if="props.clipType !== 'adjustment'"
     v-model:toggle-value="isEnabled"
-    :title="t('fastcat.clip.opacity', 'Opacity')"
+    :title="t('fastcat.clip.opacity')"
     has-toggle
   >
     <template #header-actions>
       <button
         class="flex items-center gap-1 text-2xs text-ui-text-muted hover:text-ui-text disabled:opacity-50"
-        :title="t('common.actions.reset', 'Reset')"
+        :title="t('common.actions.reset')"
         :disabled="!isEnabled"
         @click="emit('updateOpacity', 1)"
       >

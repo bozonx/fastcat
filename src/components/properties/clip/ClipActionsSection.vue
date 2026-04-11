@@ -86,33 +86,33 @@ const commonActions = computed(() => {
   const actions = [
     {
       id: 'delete',
-      title: t('common.delete', 'Delete'),
+      title: t('common.delete'),
       icon: 'i-heroicons-trash',
       onClick: () => emit('delete'),
     },
     {
       id: 'rename',
-      title: t('common.rename', 'Rename'),
+      title: t('common.rename'),
       icon: 'i-heroicons-pencil',
       onClick: () => emit('rename'),
     },
     {
       id: 'copy',
-      title: t('common.copy', 'Copy'),
+      title: t('common.copy'),
       icon: 'i-heroicons-document-duplicate',
       onClick: () => emit('copy'),
     },
     {
       id: 'cut',
-      title: t('common.cut', 'Cut'),
+      title: t('common.cut'),
       icon: 'i-heroicons-scissors',
       onClick: () => emit('cut'),
     },
     {
       id: 'toggle-disabled',
       title: props.clip.disabled
-        ? t('fastcat.timeline.enableClip', 'Enable clip')
-        : t('fastcat.timeline.disableClip', 'Disable clip'),
+        ? t('fastcat.timeline.enableClip')
+        : t('fastcat.timeline.disableClip'),
       icon: props.clip.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
       onClick: () => emit('toggleDisabled'),
     },
@@ -122,8 +122,8 @@ const commonActions = computed(() => {
     actions.push({
       id: 'toggle-muted',
       title: props.clip.audioMuted
-        ? t('fastcat.timeline.unmuteClip', 'Unmute clip')
-        : t('fastcat.timeline.muteClip', 'Mute clip'),
+        ? t('fastcat.timeline.unmuteClip')
+        : t('fastcat.timeline.muteClip'),
       icon: props.clip.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark',
       onClick: () => emit('toggleMuted'),
     });
@@ -131,8 +131,8 @@ const commonActions = computed(() => {
     actions.push({
       id: 'toggle-solo',
       title: props.isSoloed
-        ? t('fastcat.timeline.unsolo', 'Unsolo')
-        : t('fastcat.timeline.solo', 'Solo'),
+        ? t('fastcat.timeline.unsolo')
+        : t('fastcat.timeline.solo'),
       icon: props.isSoloed ? 'i-heroicons-star-solid' : 'i-heroicons-star',
       onClick: () => emit('toggleSolo'),
     });
@@ -141,8 +141,8 @@ const commonActions = computed(() => {
   actions.push({
     id: 'toggle-locked',
     title: props.clip.locked
-      ? t('fastcat.timeline.unlockClip', 'Unlock clip')
-      : t('fastcat.timeline.lockClip', 'Lock clip'),
+      ? t('fastcat.timeline.unlockClip')
+      : t('fastcat.timeline.lockClip'),
     icon: props.clip.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
     onClick: () => emit('toggleLocked'),
   });
@@ -156,7 +156,7 @@ const otherActions = computed(() => {
   if (props.isFreePosition) {
     list.push({
       id: 'quantize',
-      label: t('fastcat.timeline.quantize', 'Quantize to frames'),
+      label: t('fastcat.timeline.quantize'),
       icon: 'i-heroicons-squares-2x2',
       onClick: () => emit('quantize'),
     });
@@ -165,7 +165,7 @@ const otherActions = computed(() => {
   if (props.linkedAudioClip) {
     list.push({
       id: 'goToLinkedAudio',
-      label: t('fastcat.clip.goToLinkedAudio', 'Go to linked audio'),
+      label: t('fastcat.clip.goToLinkedAudio'),
       icon: 'i-heroicons-speaker-wave',
       color: 'primary' as const,
       onClick: () => emit('goToLinkedAudio'),
@@ -175,7 +175,7 @@ const otherActions = computed(() => {
   if (props.linkedVideoClip) {
     list.push({
       id: 'goToLinkedVideo',
-      label: t('fastcat.clip.goToLinkedVideo', 'Go to linked video'),
+      label: t('fastcat.clip.goToLinkedVideo'),
       icon: 'i-heroicons-film',
       color: 'primary' as const,
       onClick: () => emit('goToLinkedVideo'),
@@ -185,7 +185,7 @@ const otherActions = computed(() => {
   if (props.hasLockedLinkedAudio || props.isLockedLinkedAudioClip) {
     list.push({
       id: 'unlinkAudio',
-      label: t('fastcat.timeline.unlinkAudio', 'Unlink audio'),
+      label: t('fastcat.timeline.unlinkAudio'),
       icon: 'i-heroicons-link-slash',
       onClick: () => emit('unlinkAudio'),
     });
@@ -194,7 +194,7 @@ const otherActions = computed(() => {
   if (props.isInLinkedGroup) {
     list.push({
       id: 'removeFromGroup',
-      label: t('fastcat.timeline.removeFromGroup', 'Remove from group'),
+      label: t('fastcat.timeline.removeFromGroup'),
       icon: 'i-heroicons-link-slash',
       onClick: () => emit('removeFromGroup'),
     });
@@ -203,13 +203,13 @@ const otherActions = computed(() => {
   if (props.clip.clipType === 'media') {
     list.push({
       id: 'replaceMedia',
-      label: t('fastcat.clip.replaceMedia', 'Replace Media'),
+      label: t('fastcat.clip.replaceMedia'),
       icon: 'i-heroicons-arrow-path',
       onClick: () => emit('replaceMedia'),
     });
     list.push({
       id: 'showInFileManager',
-      label: t('fastcat.clip.showInFileManager', 'Show in File Manager'),
+      label: t('fastcat.clip.showInFileManager'),
       icon: 'i-heroicons-folder-open',
       onClick: () => emit('showInFileManager'),
     });
@@ -218,7 +218,7 @@ const otherActions = computed(() => {
   if (props.clip.clipType === 'timeline') {
     list.push({
       id: 'goToTimeline',
-      label: t('fastcat.clip.goToTimeline', 'Go to timeline'),
+      label: t('fastcat.clip.goToTimeline'),
       icon: 'i-heroicons-arrow-right-circle',
       onClick: () => emit('goToTimeline'),
     });
@@ -229,8 +229,8 @@ const otherActions = computed(() => {
       id: 'toggleAudioWaveformMode',
       label:
         (props.clip.audioWaveformMode || 'half') === 'full'
-          ? t('fastcat.clip.halfWaveform', 'Half Waveform')
-          : t('fastcat.clip.fullWaveform', 'Full Waveform'),
+          ? t('fastcat.clip.halfWaveform')
+          : t('fastcat.clip.fullWaveform'),
       icon: 'i-heroicons-chart-bar',
       onClick: () => emit('toggleAudioWaveformMode'),
     });
@@ -241,8 +241,8 @@ const otherActions = computed(() => {
       id: 'toggleShowWaveform',
       label:
         props.clip.showWaveform === false
-          ? t('fastcat.clip.showWaveform', 'Show Waveform')
-          : t('fastcat.clip.hideWaveform', 'Hide Waveform'),
+          ? t('fastcat.clip.showWaveform')
+          : t('fastcat.clip.hideWaveform'),
       icon: 'i-heroicons-eye',
       onClick: () => emit('toggleShowWaveform'),
     });
@@ -253,8 +253,8 @@ const otherActions = computed(() => {
       id: 'toggleShowThumbnails',
       label:
         props.clip.showThumbnails === false
-          ? t('fastcat.clip.showThumbnails', 'Show Thumbnails')
-          : t('fastcat.clip.hideThumbnails', 'Hide Thumbnails'),
+          ? t('fastcat.clip.showThumbnails')
+          : t('fastcat.clip.hideThumbnails'),
       icon: 'i-heroicons-photo',
       onClick: () => emit('toggleShowThumbnails'),
     });
@@ -263,7 +263,7 @@ const otherActions = computed(() => {
   if (isMediaVideoClip.value && !hasFreezeFrame.value) {
     list.push({
       id: 'freezeFrame',
-      label: t('fastcat.timeline.freezeFrame', 'Freeze Frame'),
+      label: t('fastcat.timeline.freezeFrame'),
       icon: 'i-heroicons-pause-circle',
       onClick: () => emit('freezeFrame'),
     });
@@ -272,7 +272,7 @@ const otherActions = computed(() => {
   if (isMediaVideoClip.value && hasFreezeFrame.value) {
     list.push({
       id: 'resetFreezeFrame',
-      label: t('fastcat.timeline.resetFreezeFrame', 'Reset Freeze Frame'),
+      label: t('fastcat.timeline.resetFreezeFrame'),
       icon: 'i-heroicons-play-circle',
       onClick: () => emit('resetFreezeFrame'),
     });
@@ -281,7 +281,7 @@ const otherActions = computed(() => {
   if (canExtractAudio.value) {
     list.push({
       id: 'extractAudio',
-      label: t('fastcat.timeline.extractAudio', 'Extract Audio'),
+      label: t('fastcat.timeline.extractAudio'),
       icon: 'i-heroicons-musical-note',
       onClick: () => emit('extractAudio'),
     });
@@ -290,7 +290,7 @@ const otherActions = computed(() => {
   if (hasReturnFromVideoClip.value || hasReturnFromLockedAudioClip.value) {
     list.push({
       id: 'returnAudio',
-      label: t('fastcat.timeline.returnAudio', 'Return Audio'),
+      label: t('fastcat.timeline.returnAudio'),
       icon: 'i-heroicons-arrow-uturn-left',
       onClick: () => emit('returnAudio'),
     });
@@ -301,7 +301,7 @@ const otherActions = computed(() => {
 </script>
 
 <template>
-  <PropertySection :title="t('fastcat.clip.actions', 'Actions')">
+  <PropertySection :title="t('fastcat.clip.actions')">
     <div class="flex flex-col w-full">
       <PropertyActionList
         :actions="commonActions"

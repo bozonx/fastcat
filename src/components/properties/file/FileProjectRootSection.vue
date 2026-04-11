@@ -32,21 +32,21 @@ function openProjectSettings() {
 <template>
   <PropertySection
     v-if="props.isProjectRootDir"
-    :title="t('videoEditor.fileManager.projectRoot.title', 'Project root')"
+    :title="t('videoEditor.fileManager.projectRoot.title')"
   >
     <PropertyRow
       v-if="props.projectStats?.size !== undefined"
-      :label="t('common.size', 'Size')"
+      :label="t('common.size')"
       :value="formatBytes(props.projectStats!.size)"
     />
 
     <PropertyRow
       v-if="props.storageFreeBytes !== null"
-      :label="t('videoEditor.fileManager.projectRoot.freeSpace', 'Free space')"
+      :label="t('videoEditor.fileManager.projectRoot.freeSpace')"
       :value="formatBytes(props.storageFreeBytes)"
     />
 
-    <PropertyRow :label="t('videoEditor.fileManager.projectRoot.parameters', 'Parameters')">
+    <PropertyRow :label="t('videoEditor.fileManager.projectRoot.parameters')">
       <div class="flex items-center gap-2">
         <span>{{ projectParams }}</span>
         <UButton
@@ -54,7 +54,7 @@ function openProjectSettings() {
           color="gray"
           variant="ghost"
           size="xs"
-          :title="t('common.edit', 'Edit')"
+          :title="t('common.edit')"
           class="opacity-60 hover:opacity-100"
           @click="openProjectSettings"
         />

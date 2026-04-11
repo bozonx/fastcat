@@ -434,8 +434,8 @@ function onDragVirtualEnd() {
 
     <FileManagerRemoteTransferProgressModal
       :open="isImporting"
-      :title="t('videoEditor.fileManager.actions.importing', 'Импорт файлов')"
-      :description="t('videoEditor.fileManager.actions.importing', 'Копирование файлов в проект...')"
+      :title="t('videoEditor.fileManager.actions.importing')"
+      :description="t('videoEditor.fileManager.actions.importing')"
       :progress="importProgress"
       :phase="importPhase"
       :file-name="importFileName"
@@ -464,7 +464,7 @@ function onDragVirtualEnd() {
           <div class="flex items-center gap-1">
             <UTooltip
               v-if="anyLocked"
-              :text="t('fastcat.track.resetLocked', 'Unlock all tracks')"
+              :text="t('fastcat.track.resetLocked')"
               :shortcuts="['L']"
             >
               <UButton
@@ -479,7 +479,7 @@ function onDragVirtualEnd() {
             </UTooltip>
             <UTooltip
               v-if="anyHidden"
-              :text="t('fastcat.track.resetHidden', 'Show all hidden tracks')"
+              :text="t('fastcat.track.resetHidden')"
               :shortcuts="['H']"
             >
               <UButton
@@ -494,7 +494,7 @@ function onDragVirtualEnd() {
             </UTooltip>
             <UTooltip
               v-if="anyMuted"
-              :text="t('fastcat.track.resetMuted', 'Unmute all tracks')"
+              :text="t('fastcat.track.resetMuted')"
               :shortcuts="['M']"
             >
               <UButton
@@ -509,7 +509,7 @@ function onDragVirtualEnd() {
             </UTooltip>
             <UTooltip
               v-if="isAnyTrackSoloed"
-              :text="t('fastcat.track.resetSolo', 'Unsolo all tracks')"
+              :text="t('fastcat.track.resetSolo')"
               :shortcuts="['S']"
             >
               <UButton

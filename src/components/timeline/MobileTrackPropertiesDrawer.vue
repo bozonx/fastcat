@@ -142,7 +142,7 @@ const extraActions = computed(() => {
   if (selectedTrack.value.kind === 'video') {
     list.push({
       id: 'generate-captions',
-      label: t('fastcat.captions.generate', 'Generate captions'),
+      label: t('fastcat.captions.generate'),
       icon: 'i-heroicons-chat-bubble-bottom-center-text',
       onClick: () => (isGenerateCaptionsOpen.value = true),
     });
@@ -163,14 +163,14 @@ const extraActions = computed(() => {
           <!-- Delete -->
           <MobileDrawerToolbarButton
             icon="i-heroicons-trash"
-            :label="t('common.delete', 'Delete')"
+            :label="t('common.delete')"
             @click="requestDeleteTrack"
           />
 
           <!-- Rename -->
           <MobileDrawerToolbarButton
             icon="i-heroicons-pencil-square"
-            :label="t('common.rename', 'Rename')"
+            :label="t('common.rename')"
             @click="isTrackRenameOpen = true"
           />
 
@@ -179,8 +179,8 @@ const extraActions = computed(() => {
             :icon="selectedTrack?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
             :label="
               selectedTrack?.locked
-                ? t('fastcat.track.unlock', 'Unlock')
-                : t('fastcat.track.lock', 'Lock')
+                ? t('fastcat.track.unlock')
+                : t('fastcat.track.lock')
             "
             :active="selectedTrack?.locked"
             @click="toggleTrackLock"
@@ -192,8 +192,8 @@ const extraActions = computed(() => {
             :icon="selectedTrack?.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
             :label="
               selectedTrack?.videoHidden
-                ? t('fastcat.timeline.showTrack', 'Show')
-                : t('fastcat.timeline.hideTrack', 'Hide')
+                ? t('fastcat.timeline.showTrack')
+                : t('fastcat.timeline.hideTrack')
             "
             :active="selectedTrack?.videoHidden"
             @click="toggleTrackVideoHidden"
@@ -206,8 +206,8 @@ const extraActions = computed(() => {
             "
             :label="
               selectedTrack?.audioMuted
-                ? t('fastcat.track.unmute', 'Unmute')
-                : t('fastcat.track.mute', 'Mute')
+                ? t('fastcat.track.unmute')
+                : t('fastcat.track.mute')
             "
             :active="selectedTrack?.audioMuted"
             @click="toggleTrackMute"
@@ -216,7 +216,7 @@ const extraActions = computed(() => {
           <!-- Solo -->
           <MobileDrawerToolbarButton
             icon="i-heroicons-musical-note"
-            :label="t('fastcat.track.solo', 'Solo')"
+            :label="t('fastcat.track.solo')"
             :active="selectedTrack?.audioSolo"
             @click="toggleTrackSolo"
           />
@@ -224,7 +224,7 @@ const extraActions = computed(() => {
           <!-- Move Up -->
           <MobileDrawerToolbarButton
             icon="i-heroicons-arrow-up"
-            :label="t('fastcat.track.moveUp', 'Move up')"
+            :label="t('fastcat.track.moveUp')"
             :disabled="isTrackFirstOfKind"
             @click="moveSelectedTrackUp"
           />
@@ -232,7 +232,7 @@ const extraActions = computed(() => {
           <!-- Move Down -->
           <MobileDrawerToolbarButton
             icon="i-heroicons-arrow-down"
-            :label="t('fastcat.track.moveDown', 'Move down')"
+            :label="t('fastcat.track.moveDown')"
             :disabled="isTrackLastOfKind"
             @click="moveSelectedTrackDown"
           />
@@ -280,7 +280,7 @@ const extraActions = computed(() => {
 
     <UiConfirmModal
       v-model:open="isTrackDeleteConfirmOpen"
-      :title="t('fastcat.timeline.deleteTrackTitle', 'Delete track?')"
+      :title="t('fastcat.timeline.deleteTrackTitle')"
       :description="
         t(
           'fastcat.timeline.deleteTrackDescription',
@@ -289,14 +289,14 @@ const extraActions = computed(() => {
       "
       color="primary"
       icon="i-heroicons-exclamation-triangle"
-      :confirm-text="t('common.delete', 'Delete')"
+      :confirm-text="t('common.delete')"
       @confirm="confirmDeleteTrack"
     />
 
     <UiRenameModal
       :open="isTrackRenameOpen"
       :current-name="selectedTrack?.name || ''"
-      :title="t('fastcat.timeline.renameTrack', 'Rename track')"
+      :title="t('fastcat.timeline.renameTrack')"
       @update:open="isTrackRenameOpen = $event"
       @rename="
         (name) => {

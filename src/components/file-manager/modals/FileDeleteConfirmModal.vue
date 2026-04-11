@@ -18,7 +18,7 @@ const { t } = useI18n();
 <template>
   <UiConfirmModal
     v-model:open="isOpen"
-    :title="t('videoEditor.fileManager.delete.confirmTitle', 'Delete Items')"
+    :title="t('videoEditor.fileManager.delete.confirmTitle')"
     :description="
       t(
         'common.confirmDelete',
@@ -34,7 +34,7 @@ const { t } = useI18n();
         {{ props.deleteTargets[0]?.name }}
       </div>
       <div v-else-if="props.deleteTargets.length > 1" class="mt-2 text-sm font-medium text-ui-text">
-        {{ props.deleteTargets.length }} {{ t('common.itemsSelected', 'items selected') }}
+        {{ props.deleteTargets.length }} {{ t('common.itemsSelected') }}
       </div>
       <div
         v-if="props.deleteTargets.length === 1 && props.deleteTargets[0]?.path"
@@ -42,8 +42,8 @@ const { t } = useI18n();
       >
         {{
           props.deleteTargets[0].kind === 'directory'
-            ? t('common.folder', 'Folder')
-            : t('common.file', 'File')
+            ? t('common.folder')
+            : t('common.file')
         }}:
         {{ props.deleteTargets[0].path }}
       </div>

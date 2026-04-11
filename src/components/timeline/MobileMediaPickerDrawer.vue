@@ -187,7 +187,7 @@ watch(currentPath, (path) => {
           {{
             breadcrumbs.length
               ? breadcrumbs[breadcrumbs.length - 1]!.name
-              : t('videoEditor.fileManager.root', 'Files')
+              : t('videoEditor.fileManager.root')
           }}
         </span>
         <span
@@ -224,10 +224,10 @@ watch(currentPath, (path) => {
           @click="addToTimeline"
         >
           <template v-if="props.isReplaceMode">
-            {{ t('fastcat.clip.replaceMedia', 'Replace Media') }}
+            {{ t('fastcat.clip.replaceMedia') }}
           </template>
           <template v-else>
-            {{ t('common.addToTimeline', 'Add to timeline') }}
+            {{ t('common.addToTimeline') }}
             <span class="ml-1 opacity-80">({{ selectedFiles.length }})</span>
           </template>
         </UButton>

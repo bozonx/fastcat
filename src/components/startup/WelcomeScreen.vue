@@ -54,7 +54,7 @@ const isTauriWorkspace = computed(() => workspaceStore.workspaceProviderId === '
         color="primary"
         icon="i-heroicons-folder-open"
         class="w-full justify-center transition-all hover:scale-[1.02]"
-        :label="t('fastcat.welcome.openWorkspace', 'Select Workspace Folder')"
+        :label="t('fastcat.welcome.openWorkspace')"
         :loading="workspaceStore.isLoading"
         :disabled="workspaceStore.isLoading"
         @click="workspaceStore.openWorkspace"

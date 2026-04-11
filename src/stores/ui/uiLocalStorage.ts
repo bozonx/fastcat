@@ -14,6 +14,11 @@ export const STORAGE_KEYS = {
   SETTINGS: {
     ACTIVE_SECTION: 'fastcat:settings:active-section',
   },
+  UI: {
+    SHOW_HIDDEN_FILES: 'fastcat:ui:show-hidden-files',
+    MONITOR_VOLUME: 'fastcat:ui:monitor-volume',
+    MONITOR_MUTED: 'fastcat:ui:monitor-muted',
+  },
   FILE_MANAGER: {
     PERSISTENCE: {
       BLOGGERDOG_GRID_SIZE: 'fastcat:file-manager:bloggerDogGridCardSize',

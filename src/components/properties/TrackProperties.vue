@@ -177,13 +177,13 @@ const isSolo = computed({
 const mainActions = computed(() => [
   {
     id: 'rename',
-    title: t('common.rename', 'Rename'),
+    title: t('common.rename'),
     icon: 'i-heroicons-pencil',
     onClick: () => (timelineStore.renamingTrackId = props.track.id),
   },
   {
     id: 'delete',
-    title: t('common.delete', 'Delete'),
+    title: t('common.delete'),
     icon: 'i-heroicons-trash',
     onClick: requestDeleteTrack,
   },
@@ -200,7 +200,7 @@ const extraActions = computed(() => {
   if (props.track.kind === 'video') {
     list.push({
       id: 'generate-captions',
-      label: t('fastcat.captions.generate', 'Generate captions'),
+      label: t('fastcat.captions.generate'),
       icon: 'i-heroicons-chat-bubble-bottom-center-text',
       onClick: () => (isGenerateCaptionsOpen.value = true),
     });
@@ -217,7 +217,7 @@ const extraActions = computed(() => {
   if (!isFirst) {
     list.push({
       id: 'move-up',
-      label: t('fastcat.track.moveUp', 'Move track up'),
+      label: t('fastcat.track.moveUp'),
       icon: 'i-heroicons-arrow-up',
       onClick: () => timelineStore.moveTrackUp(props.track.id),
     });
@@ -226,7 +226,7 @@ const extraActions = computed(() => {
   if (!isLast) {
     list.push({
       id: 'move-down',
-      label: t('fastcat.track.moveDown', 'Move track down'),
+      label: t('fastcat.track.moveDown'),
       icon: 'i-heroicons-arrow-down',
       onClick: () => timelineStore.moveTrackDown(props.track.id),
     });
@@ -242,7 +242,7 @@ const clipCount = computed(
 
 <template>
   <div class="w-full flex flex-col gap-2">
-    <PropertySection v-if="!hideActions" :title="t('fastcat.track.actions', 'Actions')">
+    <PropertySection v-if="!hideActions" :title="t('fastcat.track.actions')">
       <div class="flex flex-col w-full gap-3">
         <!-- Direct Actions Row (Matched with Header style) -->
         <div class="flex items-center gap-1.5 py-1">
@@ -306,14 +306,14 @@ const clipCount = computed(
               icon="i-heroicons-pencil"
               size="sm"
               color="neutral"
-              :title="t('common.rename', 'Rename')"
+              :title="t('common.rename')"
               @click="timelineStore.renamingTrackId = props.track.id"
             />
             <UiActionButton
               icon="i-heroicons-trash"
               size="sm"
               color="neutral"
-              :title="t('common.delete', 'Delete')"
+              :title="t('common.delete')"
               @click="requestDeleteTrack"
             />
           </div>
@@ -325,15 +325,15 @@ const clipCount = computed(
       </div>
     </PropertySection>
 
-    <PropertySection :title="t('fastcat.track.info', 'Track Information')">
-      <PropertyRow :label="t('fastcat.track.clipsCount', 'Clips count')" :value="clipCount" />
+    <PropertySection :title="t('fastcat.track.info')">
+      <PropertyRow :label="t('fastcat.track.clipsCount')" :value="clipCount" />
     </PropertySection>
 
-    <PropertySection :title="t('common.properties', 'Properties')">
+    <PropertySection :title="t('common.properties')">
       <div class="flex flex-col w-full gap-4 py-1">
         <!-- Color Selection (Shared) -->
         <div class="flex flex-col gap-2">
-          <UiFormSectionHeader :title="t('fastcat.track.color', 'Color')" />
+          <UiFormSectionHeader :title="t('fastcat.track.color')" />
           <UiColorPicker
             :model-value="trackColor"
             mode="track"
@@ -348,7 +348,7 @@ const clipCount = computed(
           <div v-if="track.kind === 'video'" class="flex flex-col gap-3">
             <div class="flex flex-col gap-1">
               <span class="text-xs text-ui-text-muted font-medium">{{
-                t('fastcat.track.blendMode', 'Blend mode')
+                t('fastcat.track.blendMode')
               }}</span>
               <UiSelect
                 :model-value="trackBlendMode"
@@ -366,7 +366,7 @@ const clipCount = computed(
 
             <UiSliderInput
               v-model="trackOpacity"
-              :label="t('fastcat.track.opacity', 'Opacity')"
+              :label="t('fastcat.track.opacity')"
               unit="%"
               :min="0"
               :max="1"
@@ -380,7 +380,7 @@ const clipCount = computed(
           <div v-if="track.kind === 'audio' || track.kind === 'video'" class="flex flex-col gap-3">
             <UiSliderInput
               v-model="trackAudioGain"
-              :label="t('fastcat.track.audio.volume', 'Volume')"
+              :label="t('fastcat.track.audio.volume')"
               :min="0"
               :max="2"
               :step="0.001"
@@ -391,7 +391,7 @@ const clipCount = computed(
 
             <UiSliderInput
               v-model="trackAudioBalance"
-              :label="t('fastcat.track.audio.balance', 'Balance')"
+              :label="t('fastcat.track.audio.balance')"
               :min="-1"
               :max="1"
               :step="0.01"
@@ -406,8 +406,8 @@ const clipCount = computed(
       v-if="track.kind === 'video'"
       :effects="trackVideoEffects"
       :title="`${t('fastcat.effects.tabs.video')} ${t('fastcat.effects.title').toLowerCase()}`"
-      :add-label="t('fastcat.effects.add', 'Add')"
-      :empty-label="t('fastcat.effects.empty', 'No effects')"
+      :add-label="t('fastcat.effects.add')"
+      :empty-label="t('fastcat.effects.empty')"
       @update:effects="handleUpdateTrackEffects"
     />
 
@@ -419,12 +419,12 @@ const clipCount = computed(
 
     <UiConfirmModal
       v-model:open="isDeleteConfirmOpen"
-      :title="t('fastcat.timeline.deleteTrack', 'Delete track')"
+      :title="t('fastcat.timeline.deleteTrack')"
       :description="
-        t('fastcat.timeline.deleteTrackConfirm', 'This track contains clips. Delete it?')
+        t('fastcat.timeline.deleteTrackConfirm')
       "
       color="error"
-      :confirm-text="t('common.delete', 'Delete')"
+      :confirm-text="t('common.delete')"
       @confirm="confirmDeleteTrack"
     />
 

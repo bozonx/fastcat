@@ -62,11 +62,11 @@ function removePreset() {
   <div class="flex flex-col gap-6">
     <div class="flex items-center justify-between gap-3">
       <div class="text-sm font-medium text-ui-text">
-        {{ t('videoEditor.settings.userProject', 'Project presets') }}
+        {{ t('videoEditor.settings.userProject') }}
       </div>
       <div class="flex items-center gap-2">
         <UButton size="xs" color="neutral" variant="ghost" @click="addPreset">
-          {{ t('common.create', 'Create') }}
+          {{ t('common.create') }}
         </UButton>
         <UButton
           size="xs"
@@ -75,12 +75,12 @@ function removePreset() {
           :disabled="workspaceStore.userSettings.projectPresets.items.length <= 1"
           @click="removePreset"
         >
-          {{ t('common.delete', 'Delete') }}
+          {{ t('common.delete') }}
         </UButton>
       </div>
     </div>
 
-    <UiFormField :label="t('videoEditor.export.presetLabel', 'Preset')">
+    <UiFormField :label="t('videoEditor.export.presetLabel')">
       <UiSelect
         v-model="workspaceStore.userSettings.projectPresets.selectedPresetId"
         :items="presetOptions"
@@ -90,7 +90,7 @@ function removePreset() {
       />
     </UiFormField>
 
-    <UiFormField :label="t('common.name', 'Name')">
+    <UiFormField :label="t('common.name')">
       <UiTextInput v-model="selectedPreset.name" full-width />
     </UiFormField>
 

@@ -85,7 +85,7 @@ export function useAudioExtraction() {
       await client.extractAudio(entry.path, targetPath);
 
       toast.add({
-        title: t('videoEditor.fileManager.extractAudio.success', 'Audio extracted successfully'),
+        title: t('videoEditor.fileManager.extractAudio.success'),
         color: 'success',
       });
 
@@ -104,7 +104,7 @@ export function useAudioExtraction() {
     } catch (err: any) {
       console.error('Audio extraction failed', err);
       toast.add({
-        title: t('videoEditor.fileManager.extractAudio.failed', 'Failed to extract audio'),
+        title: t('videoEditor.fileManager.extractAudio.failed'),
         description: err.message,
         color: 'error',
       });

@@ -41,7 +41,7 @@ const mockClip = computed(() => {
   if (props.itemKind === 'text') {
     return {
       ...base,
-      text: params.value.text ?? t('fastcat.timeline.textClipDefaultText', 'Text'),
+      text: params.value.text ?? t('fastcat.timeline.textClipDefaultText'),
       style: params.value.style ?? {},
     };
   } else if (props.itemKind === 'shape') {
@@ -170,7 +170,7 @@ const actions = computed(() => {
   if (isCustom.value) {
     list.push({
       id: 'update-preset',
-      label: t('common.save', 'Save'),
+      label: t('common.save'),
       icon: 'i-heroicons-check',
       onClick: handleUpdatePreset,
     });
@@ -178,8 +178,8 @@ const actions = computed(() => {
   list.push({
     id: 'save-as-preset',
     label: isCustom.value
-      ? t('fastcat.effects.saveAsNew', 'Save as new')
-      : t('fastcat.effects.saveAsPreset', 'Save as preset'),
+      ? t('fastcat.effects.saveAsNew')
+      : t('fastcat.effects.saveAsPreset'),
     icon: 'i-heroicons-bookmark',
     onClick: () => (isSaveModalOpen.value = true),
   });
@@ -238,13 +238,13 @@ const actions = computed(() => {
 
     <UiModal
       v-model:open="isSaveModalOpen"
-      :title="t('fastcat.effects.savePresetTitle', 'Save Preset')"
+      :title="t('fastcat.effects.savePresetTitle')"
     >
       <div class="flex flex-col gap-4">
-        <UiFormField :label="t('common.name', 'Name')">
+        <UiFormField :label="t('common.name')">
           <UiTextInput
             v-model="newPresetName"
-            :placeholder="t('fastcat.effects.presetNamePlaceholder', 'My Custom Preset')"
+            :placeholder="t('fastcat.effects.presetNamePlaceholder')"
             autofocus
             @keyup.enter="handleSavePreset"
           />
@@ -252,10 +252,10 @@ const actions = computed(() => {
       </div>
       <template #footer>
         <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">
-          {{ t('common.cancel', 'Cancel') }}
+          {{ t('common.cancel') }}
         </UButton>
         <UButton color="primary" :disabled="!newPresetName.trim()" @click="handleSavePreset">
-          {{ t('common.save', 'Save') }}
+          {{ t('common.save') }}
         </UButton>
       </template>
     </UiModal>

@@ -25,15 +25,15 @@ function resetDefaults() {
   <div class="flex flex-col gap-6">
     <UiConfirmModal
       v-model:open="isResetConfirmOpen"
-      :title="t('videoEditor.settings.resetAudioSettingsConfirmTitle', 'Reset audio settings?')"
+      :title="t('videoEditor.settings.resetAudioSettingsConfirmTitle')"
       :description="
         t(
           'videoEditor.settings.resetAudioSettingsConfirmDesc',
           'This will restore all audio settings to their default values.',
         )
       "
-      :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction', 'Reset')"
-      :cancel-text="t('common.cancel', 'Cancel')"
+      :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction')"
+      :cancel-text="t('common.cancel')"
       color="warning"
       icon="i-heroicons-exclamation-triangle"
       @confirm="resetDefaults"
@@ -41,24 +41,24 @@ function resetDefaults() {
 
     <div class="flex items-center justify-between gap-3">
       <div class="text-sm font-medium text-ui-text">
-        {{ t('videoEditor.settings.userAudio', 'Audio') }}
+        {{ t('videoEditor.settings.userAudio') }}
       </div>
       <UButton size="xs" color="neutral" variant="ghost" @click="isResetConfirmOpen = true">
-        {{ t('videoEditor.settings.resetDefaults', 'Reset to defaults') }}
+        {{ t('videoEditor.settings.resetDefaults') }}
       </UButton>
     </div>
 
     <UiFormField
-      :label="t('videoEditor.settings.audioScrubbingTitle', 'Audio Scrubbing')"
+      :label="t('videoEditor.settings.audioScrubbingTitle')"
       :help="
-        t('videoEditor.settings.audioScrubbingHint', 'Play audio while scrubbing the timeline.')
+        t('videoEditor.settings.audioScrubbingHint')
       "
     >
       <USwitch v-model="workspaceStore.userSettings.projectDefaults.audioScrubbingEnabled" />
     </UiFormField>
 
     <UiFormField
-      :label="t('videoEditor.settings.defaultAudioFadeCurveTitle', 'Default Fade Curve')"
+      :label="t('videoEditor.settings.defaultAudioFadeCurveTitle')"
       :help="
         t(
           'videoEditor.settings.defaultAudioFadeCurveHint',
@@ -70,17 +70,17 @@ function resetDefaults() {
         v-model="workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve"
         :options="[
           {
-            label: t('fastcat.clip.audioFade.curve.logarithmic', 'Logarithmic'),
+            label: t('fastcat.clip.audioFade.curve.logarithmic'),
             value: 'logarithmic',
           },
-          { label: t('fastcat.clip.audioFade.curve.linear', 'Linear'), value: 'linear' },
+          { label: t('fastcat.clip.audioFade.curve.linear'), value: 'linear' },
         ]"
       />
     </UiFormField>
 
     <UiFormField
       :label="
-        t('videoEditor.settings.projectAudioDeclickTitle', 'Audio De-click Duration') + ' (ms)'
+        t('videoEditor.settings.projectAudioDeclickTitle') + ' (ms)'
       "
       :help="
         t(

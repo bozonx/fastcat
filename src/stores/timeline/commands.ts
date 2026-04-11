@@ -114,7 +114,7 @@ export function createTimelineCommandsModule(params: TimelineCommandsDeps): Time
     updateProjectSettings,
     showFpsWarning: (fileFps, projectFps) => {
       toast.add({
-        title: t('videoEditor.timeline.fpsMismatch', 'FPS mismatch'),
+        title: t('videoEditor.timeline.fpsMismatch'),
         description: t('videoEditor.timeline.fpsMismatchDesc', { fileFps, projectFps }),
         color: 'warning',
         actions: [

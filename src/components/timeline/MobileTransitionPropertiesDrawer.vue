@@ -68,7 +68,7 @@ const extraActions = computed(() => {
   return [
     {
       id: 'save-preset',
-      label: t('fastcat.effects.saveAsPreset', 'Save as preset'),
+      label: t('fastcat.effects.saveAsPreset'),
       icon: 'i-heroicons-bookmark',
       onClick: () => {
         transitionPropertiesRef.value?.openSaveModal();
@@ -89,7 +89,7 @@ const extraActions = computed(() => {
         <MobileDrawerToolbar class="-mx-4 mb-2">
           <MobileDrawerToolbarButton
             icon="i-heroicons-trash"
-            :label="t('common.delete', 'Delete')"
+            :label="t('common.delete')"
             @click="handleDeleteTransition"
           />
         </MobileDrawerToolbar>

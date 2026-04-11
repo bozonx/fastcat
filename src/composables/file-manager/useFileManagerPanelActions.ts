@@ -87,11 +87,11 @@ export function useFileManagerPanelActions({
       console.error('[FileManagerPanel] Failed to create timeline', e);
       toast.add({
         color: 'error',
-        title: t('timelineCreation.errorTitle', 'Timeline error'),
+        title: t('timelineCreation.errorTitle'),
         description:
           e instanceof Error
             ? e.message
-            : t('timelineCreation.failed', 'Failed to create timeline'),
+            : t('timelineCreation.failed'),
       });
     }
   }

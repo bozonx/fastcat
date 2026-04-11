@@ -60,7 +60,7 @@ function focusMainBus() {
   >
     <div class="px-4 py-2 border-b border-ui-border bg-ui-bg-elevated shrink-0">
       <h3 class="font-medium text-sm text-ui-text">
-        {{ t('fastcat.audioMixer.title', 'Mixer') }}
+        {{ t('fastcat.audioMixer.title') }}
       </h3>
     </div>
 

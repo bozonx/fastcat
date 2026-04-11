@@ -30,11 +30,11 @@ const props = withDefaults(
 const { t } = useI18n();
 
 const formatOptions = [
-  { value: '480p', label: t('videoEditor.resolution.preset.480p', '480p (Preview)') },
-  { value: '720p', label: t('videoEditor.resolution.preset.720p', '720p (HD)') },
-  { value: '1080p', label: t('videoEditor.resolution.preset.1080p', '1080p (FHD)') },
-  { value: '2.7k', label: t('videoEditor.resolution.preset.2.7k', '2.7K (QHD)') },
-  { value: '4k', label: t('videoEditor.resolution.preset.4k', '4K (UHD)') },
+  { value: '480p', label: t('videoEditor.resolution.preset.480p') },
+  { value: '720p', label: t('videoEditor.resolution.preset.720p') },
+  { value: '1080p', label: t('videoEditor.resolution.preset.1080p') },
+  { value: '2.7k', label: t('videoEditor.resolution.preset.2.7k') },
+  { value: '4k', label: t('videoEditor.resolution.preset.4k') },
 ];
 
 const sampleRateOptions = [
@@ -47,21 +47,21 @@ const orientationOptions = [
   {
     value: 'landscape',
     icon: 'i-heroicons-computer-desktop',
-    title: t('videoEditor.resolution.landscape', 'Landscape'),
+    title: t('videoEditor.resolution.landscape'),
   },
   {
     value: 'portrait',
     icon: 'i-heroicons-device-phone-mobile',
-    title: t('videoEditor.resolution.portrait', 'Portrait'),
+    title: t('videoEditor.resolution.portrait'),
   },
 ];
 
 const aspectRatioOptions = [
-  { value: '16:9', label: t('videoEditor.resolution.aspect.16_9', '16:9') },
-  { value: '9:16', label: t('videoEditor.resolution.aspect.9_16', '9:16') },
-  { value: '4:3', label: t('videoEditor.resolution.aspect.4_3', '4:3') },
-  { value: '1:1', label: t('videoEditor.resolution.aspect.1_1', '1:1') },
-  { value: '21:9', label: t('videoEditor.resolution.aspect.21_9', '21:9') },
+  { value: '16:9', label: t('videoEditor.resolution.aspect.16_9') },
+  { value: '9:16', label: t('videoEditor.resolution.aspect.9_16') },
+  { value: '4:3', label: t('videoEditor.resolution.aspect.4_3') },
+  { value: '1:1', label: t('videoEditor.resolution.aspect.1_1') },
+  { value: '21:9', label: t('videoEditor.resolution.aspect.21_9') },
 ];
 
 const bases: Record<string, number> = {
@@ -129,7 +129,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
 
 <template>
   <div class="flex flex-col gap-4">
-    <UiFormField :label="t('videoEditor.resolution.customResolution', 'Custom Resolution')">
+    <UiFormField :label="t('videoEditor.resolution.customResolution')">
       <USwitch v-model="localIsCustom" :disabled="disabled" />
     </UiFormField>
 
@@ -137,7 +137,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
     <template v-if="!localIsCustom">
       <div class="flex flex-wrap gap-2">
         <UiFormField
-          :label="t('videoEditor.resolution.orientation', 'Orientation')"
+          :label="t('videoEditor.resolution.orientation')"
           class="w-20 shrink-0"
         >
           <UiButtonGroup
@@ -150,7 +150,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
         </UiFormField>
 
         <UiFormField
-          :label="t('videoEditor.resolution.aspectRatio', 'Aspect Ratio')"
+          :label="t('videoEditor.resolution.aspectRatio')"
           class="w-20 shrink-0"
         >
           <UiSelect
@@ -165,7 +165,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
           />
         </UiFormField>
 
-        <UiFormField :label="t('videoEditor.resolution.format', 'Format')" class="w-28">
+        <UiFormField :label="t('videoEditor.resolution.format')" class="w-28">
           <UiSelect
             v-model="localFormat"
             :items="formatOptions"
@@ -179,7 +179,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
         </UiFormField>
 
         <UiFormField
-          :label="t('videoEditor.resolution.finalResolution', 'Final Resolution:')"
+          :label="t('videoEditor.resolution.finalResolution')"
           class="flex-1 shrink-0"
         >
           <div
@@ -194,7 +194,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
     <!-- Custom Mode -->
     <template v-else>
       <div class="grid grid-cols-2 gap-4">
-        <UiFormField :label="t('videoEditor.export.width', 'Width')" class="flex-1">
+        <UiFormField :label="t('videoEditor.export.width')" class="flex-1">
           <UiWheelNumberInput
             v-model="localWidth"
             :min="2"
@@ -203,7 +203,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
             full-width
           />
         </UiFormField>
-        <UiFormField :label="t('videoEditor.export.height', 'Height')" class="flex-1">
+        <UiFormField :label="t('videoEditor.export.height')" class="flex-1">
           <UiWheelNumberInput
             v-model="localHeight"
             :min="2"
@@ -216,8 +216,8 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
       <div class="text-xs text-ui-text-muted flex justify-end">
         {{
           localOrientation === 'portrait'
-            ? t('videoEditor.resolution.portrait', 'Portrait')
-            : t('videoEditor.resolution.landscape', 'Landscape')
+            ? t('videoEditor.resolution.portrait')
+            : t('videoEditor.resolution.landscape')
         }}
       </div>
     </template>
@@ -228,12 +228,12 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
         props.showAudioSettings ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : 'flex flex-col gap-2'
       "
     >
-      <UiFormField :label="t('videoEditor.export.fps', 'FPS')">
+      <UiFormField :label="t('videoEditor.export.fps')">
         <UiFpsInputWithPresets v-model="localFps" :disabled="disabled" />
       </UiFormField>
 
       <template v-if="props.showAudioSettings">
-        <UiFormField :label="t('videoEditor.audio.sampleRate', 'Sample Rate')">
+        <UiFormField :label="t('videoEditor.audio.sampleRate')">
           <UiSelect
             v-model.number="localSampleRate"
             :items="sampleRateOptions"

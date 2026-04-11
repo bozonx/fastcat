@@ -301,7 +301,7 @@ const {
 async function copyToClipboard(text: string) {
   try {
     await navigator.clipboard.writeText(text);
-    toast.add({ title: t('common.copiedToClipboard', 'Copied to clipboard') });
+    toast.add({ title: t('common.copiedToClipboard') });
   } catch (e) {
     console.error('Failed to copy to clipboard', e);
   }
@@ -654,7 +654,7 @@ const projectSecondaryActions = computed<SecondaryEntryAction[]>(() =>
 const workspaceRootPrimaryActions = computed<PrimaryEntryAction[]>(() => [
   {
     id: 'paste',
-    title: t('common.paste', 'Paste'),
+    title: t('common.paste'),
     icon: 'i-heroicons-clipboard',
     disabled: !hasClipboardItems.value,
     onClick: onPaste,
@@ -736,7 +736,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
       <PropertySection
         v-if="isWorkspaceRootProperties"
         key="actions-workspace-root"
-        :title="t('videoEditor.fileManager.actions.title', 'Actions')"
+        :title="t('videoEditor.fileManager.actions.title')"
       >
         <EntryActions
           :primary-actions="workspaceRootPrimaryActions"
@@ -809,7 +809,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
           !isBloggerDogProject
         "
         key="actions-directory"
-        :title="t('videoEditor.fileManager.actions.title', 'Actions')"
+        :title="t('videoEditor.fileManager.actions.title')"
       >
         <EntryActions
           :primary-actions="filteredDirectoryPrimaryActions"
@@ -828,7 +828,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
           !isBloggerDogProject
         "
         key="actions-file"
-        :title="t('videoEditor.fileManager.actions.title', 'Actions')"
+        :title="t('videoEditor.fileManager.actions.title')"
       >
         <EntryActions
           :primary-actions="filteredFilePrimaryActions"
@@ -847,10 +847,10 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
       />
 
       <template v-if="isRemoteRoot">
-        <PropertySection :title="t('fastcat.bloggerDog.contentLibrary', 'Библиотека контента')">
-          <PropertyRow :label="t('fastcat.bloggerDog.connection', 'Соединение')">
+        <PropertySection :title="t('fastcat.bloggerDog.contentLibrary')">
+          <PropertyRow :label="t('fastcat.bloggerDog.connection')">
             <div class="flex items-center gap-2 text-green-400">
-              <span>{{ t('fastcat.bloggerDog.connected', 'Установлено') }}</span>
+              <span>{{ t('fastcat.bloggerDog.connected') }}</span>
               <UButton
                 color="neutral"
                 variant="ghost"
@@ -866,7 +866,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
 
       <PropertySection
         v-if="!isWorkspaceRootProperties && isVirtualAll"
-        :title="t('fastcat.bloggerDog.allContent', 'Весь контент')"
+        :title="t('fastcat.bloggerDog.allContent')"
       >
         <div class="text-xs text-ui-text-muted italic px-2 py-1 mb-2">
           {{
@@ -876,7 +876,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
             )
           }}
         </div>
-        <PropertyRow v-if="bloggerDogDeepLink" :label="t('common.path', 'Путь')">
+        <PropertyRow v-if="bloggerDogDeepLink" :label="t('common.path')">
           <a
             :href="bloggerDogDeepLink"
             target="_blank"
@@ -900,12 +900,12 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
 
       <PropertySection
         v-if="!isWorkspaceRootProperties && isPersonalLibrary"
-        :title="t('fastcat.bloggerDog.personalLibrary', 'Личная библиотека')"
+        :title="t('fastcat.bloggerDog.personalLibrary')"
       >
         <div class="text-xs text-ui-text-muted italic px-2 py-1 mb-2">
-          {{ t('fastcat.bloggerDog.personalLibraryDesc', 'Библиотека вашего личного контента') }}
+          {{ t('fastcat.bloggerDog.personalLibraryDesc') }}
         </div>
-        <PropertyRow v-if="bloggerDogDeepLink" :label="t('common.path', 'Путь')">
+        <PropertyRow v-if="bloggerDogDeepLink" :label="t('common.path')">
           <a
             :href="bloggerDogDeepLink"
             target="_blank"
@@ -929,14 +929,14 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
 
       <PropertySection
         v-if="!isWorkspaceRootProperties && isProjectLibraries"
-        :title="t('fastcat.bloggerDog.projectLibraries', 'Библиотеки проектов')"
+        :title="t('fastcat.bloggerDog.projectLibraries')"
       >
         <div class="text-xs text-ui-text-muted italic px-2 py-1 mb-2">
           {{
-            t('fastcat.bloggerDog.projectLibrariesDesc', 'Библиотеки контента конкретных проектов')
+            t('fastcat.bloggerDog.projectLibrariesDesc')
           }}
         </div>
-        <PropertyRow v-if="bloggerDogDeepLink" :label="t('common.path', 'Путь')">
+        <PropertyRow v-if="bloggerDogDeepLink" :label="t('common.path')">
           <a
             :href="bloggerDogDeepLink"
             target="_blank"
@@ -952,7 +952,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
         v-if="!isWorkspaceRootProperties && isBloggerDogProject"
         :title="generalInfoTitle"
       >
-        <PropertyRow v-if="selectedPath" :label="t('common.path', 'Путь')">
+        <PropertyRow v-if="selectedPath" :label="t('common.path')">
           <a
             v-if="bloggerDogDeepLink"
             :href="bloggerDogDeepLink"
@@ -996,7 +996,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
         :hide-header="(props.selectedFsEntry as any)?.mimeType === 'application/octet-stream'"
       >
         <template v-if="mediaType === 'text' && lineCount !== null">
-          <PropertyRow :label="t('fastcat.file.lineCount', 'Line Count')" :value="lineCount" />
+          <PropertyRow :label="t('fastcat.file.lineCount')" :value="lineCount" />
         </template>
       </FileGeneralInfoSection>
 
@@ -1032,7 +1032,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
       >
         <template v-if="selectedFsEntry?.source === 'remote' && remoteItemsCount !== undefined">
           <PropertyRow
-            :label="t('fastcat.file.itemsCount', 'Количество элементов')"
+            :label="t('fastcat.file.itemsCount')"
             :value="remoteItemsCount"
           />
         </template>
@@ -1048,7 +1048,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
           metadataYaml &&
           !['{}', '[]', 'null', ''].includes(metadataYaml.trim())
         "
-        :title="t('common.meta', 'Meta')"
+        :title="t('common.meta')"
         :content="metadataYaml"
         :expanded="isMetaExpanded"
         :on-toggle="() => (isMetaExpanded = !isMetaExpanded)"

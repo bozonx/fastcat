@@ -133,7 +133,7 @@ function getFolderIcon(name: string): string {
           :class="isDropOverAuto ? 'text-primary-400' : 'text-ui-text-muted'"
         />
         <h3 class="text-lg font-semibold text-ui-text mb-3 text-center">
-          {{ t('videoEditor.fileManager.dropOverlay.autoTitle', 'Auto-sort upload') }}
+          {{ t('videoEditor.fileManager.dropOverlay.autoTitle') }}
         </h3>
         <p class="text-sm text-ui-text-muted text-center mb-5 max-w-xs leading-relaxed">
           {{
@@ -147,25 +147,25 @@ function getFolderIcon(name: string): string {
           <div class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-ui-bg-accent/40">
             <UIcon name="i-heroicons-film" class="w-4 h-4 text-violet-400 shrink-0" />
             <span class="text-xs text-ui-text-muted">
-              {{ t('videoEditor.fileManager.dropOverlay.autoVideo', 'Video → _video') }}
+              {{ t('videoEditor.fileManager.dropOverlay.autoVideo') }}
             </span>
           </div>
           <div class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-ui-bg-accent/40">
             <UIcon name="i-heroicons-photo" class="w-4 h-4 text-sky-400 shrink-0" />
             <span class="text-xs text-ui-text-muted">
-              {{ t('videoEditor.fileManager.dropOverlay.autoImages', 'Images → _images') }}
+              {{ t('videoEditor.fileManager.dropOverlay.autoImages') }}
             </span>
           </div>
           <div class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-ui-bg-accent/40">
             <UIcon name="i-heroicons-musical-note" class="w-4 h-4 text-emerald-400 shrink-0" />
             <span class="text-xs text-ui-text-muted">
-              {{ t('videoEditor.fileManager.dropOverlay.autoAudio', 'Audio → _audio') }}
+              {{ t('videoEditor.fileManager.dropOverlay.autoAudio') }}
             </span>
           </div>
           <div class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-ui-bg-accent/40">
             <UIcon name="i-heroicons-document" class="w-4 h-4 text-amber-400 shrink-0" />
             <span class="text-xs text-ui-text-muted">
-              {{ t('videoEditor.fileManager.dropOverlay.autoFiles', 'Other files → _files') }}
+              {{ t('videoEditor.fileManager.dropOverlay.autoFiles') }}
             </span>
           </div>
         </div>
@@ -174,7 +174,7 @@ function getFolderIcon(name: string): string {
       <!-- Right column: Folder tree -->
       <div class="flex-1 flex flex-col p-6 min-h-0 overflow-hidden">
         <h3 class="text-lg font-semibold text-ui-text mb-1 text-center">
-          {{ t('videoEditor.fileManager.dropOverlay.folderTitle', 'Upload to folder') }}
+          {{ t('videoEditor.fileManager.dropOverlay.folderTitle') }}
         </h3>
         <p class="text-xs text-ui-text-muted mb-4 text-center">
           {{
@@ -224,7 +224,7 @@ function getFolderIcon(name: string): string {
           >
             <UIcon name="i-heroicons-folder-open" class="w-8 h-8 mb-2" />
             <p class="text-xs">
-              {{ t('videoEditor.fileManager.empty', 'No files in this project') }}
+              {{ t('videoEditor.fileManager.empty') }}
             </p>
           </div>
         </div>

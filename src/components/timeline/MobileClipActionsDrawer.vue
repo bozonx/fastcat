@@ -69,8 +69,8 @@ const actions = computed(() => {
   if (hasAudio) {
     list.push({
       label: clip.value.audioMuted
-        ? t('fastcat.timeline.unmuteClip', 'Unmute')
-        : t('fastcat.timeline.muteClip', 'Mute'),
+        ? t('fastcat.timeline.unmuteClip')
+        : t('fastcat.timeline.muteClip'),
       icon: clip.value.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark',
       action: async () => {
         timelineStore.updateClipProperties(track.value!.id, clip.value!.id, {
@@ -84,8 +84,8 @@ const actions = computed(() => {
   // Lock/Unlock
   list.push({
     label: clip.value.locked
-      ? t('fastcat.timeline.unlockClip', 'Unlock')
-      : t('fastcat.timeline.lockClip', 'Lock'),
+      ? t('fastcat.timeline.unlockClip')
+      : t('fastcat.timeline.lockClip'),
     icon: clip.value.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
     action: async () => {
       timelineStore.updateClipProperties(track.value!.id, clip.value!.id, {
@@ -97,7 +97,7 @@ const actions = computed(() => {
 
   // Trim/Duration
   list.push({
-    label: t('fastcat.timeline.trimMode', 'Trim'),
+    label: t('fastcat.timeline.trimMode'),
     icon: 'i-heroicons-arrows-right-left',
     disabled: isLocked.value,
     action: () => {
@@ -109,7 +109,7 @@ const actions = computed(() => {
   // Speed
   const currentSpeed = clip.value.speed ?? 1;
   list.push({
-    label: `${t('fastcat.timeline.speed', 'Speed')} (${currentSpeed.toFixed(2)}x)`,
+    label: `${t('fastcat.timeline.speed')} (${currentSpeed.toFixed(2)}x)`,
     icon: 'i-heroicons-forward',
     disabled: isLocked.value,
     action: () => {
@@ -129,7 +129,7 @@ const actions = computed(() => {
     !(clip.value as any).audioFromVideoDisabled;
   if (canExtract) {
     list.push({
-      label: t('fastcat.timeline.extractAudio', 'Extract Audio'),
+      label: t('fastcat.timeline.extractAudio'),
       icon: 'i-heroicons-musical-note',
       disabled: isLocked.value,
       action: async () => {
@@ -146,8 +146,8 @@ const actions = computed(() => {
   // Disable/Enable
   list.push({
     label: clip.value.disabled
-      ? t('fastcat.timeline.enableClip', 'Enable')
-      : t('fastcat.timeline.disableClip', 'Disable'),
+      ? t('fastcat.timeline.enableClip')
+      : t('fastcat.timeline.disableClip'),
     icon: clip.value.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
     action: async () => {
       timelineStore.updateClipProperties(track.value!.id, clip.value!.id, {
@@ -159,7 +159,7 @@ const actions = computed(() => {
 
   // Delete
   list.push({
-    label: t('fastcat.timeline.delete', 'Delete'),
+    label: t('fastcat.timeline.delete'),
     icon: 'i-heroicons-trash',
     color: 'error',
     disabled: isLocked.value,
@@ -176,7 +176,7 @@ const actions = computed(() => {
 <template>
   <UiMobileDrawer
     v-model:open="isOpenLocal"
-    :title="$t('fastcat.timeline.clipActions', 'Clip Actions')"
+    :title="$t('fastcat.timeline.clipActions')"
   >
     <div class="px-4 py-4 grid grid-cols-3 gap-3">
       <button

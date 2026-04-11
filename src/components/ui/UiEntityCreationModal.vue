@@ -56,13 +56,13 @@ function handleCancel() {
   >
     <div class="py-2 px-1">
       <form @submit.prevent="handleConfirm">
-        <UiFormField :label="label || t('common.name', 'Name')">
+        <UiFormField :label="label || t('common.name')">
           <UInput
             ref="inputRef"
             v-model="name"
             class="w-full"
             data-primary-focus="true"
-            :placeholder="placeholder || t('common.namePlaceholder', 'Enter name...')"
+            :placeholder="placeholder || t('common.namePlaceholder')"
             :disabled="loading"
             autocomplete="off"
           />
@@ -78,7 +78,7 @@ function handleCancel() {
           :disabled="loading"
           @click="handleCancel"
         >
-          {{ t('common.cancel', 'Cancel') }}
+          {{ t('common.cancel') }}
         </UButton>
         <UButton
           color="primary"
@@ -86,7 +86,7 @@ function handleCancel() {
           :loading="loading"
           @click="handleConfirm"
         >
-          {{ confirmLabel || t('common.confirm', 'Confirm') }}
+          {{ confirmLabel || t('common.confirm') }}
         </UButton>
       </div>
     </template>

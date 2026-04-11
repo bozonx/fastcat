@@ -52,10 +52,10 @@ function clearCache() {
   <div class="flex flex-col gap-6">
     <UiConfirmModal
       v-model:open="isResetConfirmOpen"
-      :title="t('videoEditor.settings.resetGeneralSettingsConfirmTitle', 'Reset general settings?')"
+      :title="t('videoEditor.settings.resetGeneralSettingsConfirmTitle')"
       :description="t('videoEditor.settings.resetGeneralSettingsConfirmDesc')"
-      :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction', 'Reset')"
-      :cancel-text="t('common.cancel', 'Cancel')"
+      :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction')"
+      :cancel-text="t('common.cancel')"
       color="warning"
       icon="i-heroicons-exclamation-triangle"
       @confirm="resetGeneralDefaults"
@@ -63,14 +63,14 @@ function clearCache() {
 
     <div class="flex items-center justify-between gap-3 px-1">
       <div class="font-semibold text-ui-text">
-        {{ t('videoEditor.settings.userGeneral', 'General') }}
+        {{ t('videoEditor.settings.userGeneral') }}
       </div>
       <UButton size="xs" color="neutral" variant="ghost" @click="isResetConfirmOpen = true">
-        {{ t('videoEditor.settings.resetDefaults', 'Reset to defaults') }}
+        {{ t('videoEditor.settings.resetDefaults') }}
       </UButton>
     </div>
 
-    <UiFormField :label="t('videoEditor.settings.uiLanguage', 'Interface language')">
+    <UiFormField :label="t('videoEditor.settings.uiLanguage')">
       <UiSelect
         v-model="workspaceStore.userSettings.locale"
         :items="[
@@ -89,7 +89,7 @@ function clearCache() {
       />
     </UiFormField>
 
-    <UiFormField :label="t('videoEditor.settings.uiInterfaceScale', 'Interface scale (px)')">
+    <UiFormField :label="t('videoEditor.settings.uiInterfaceScale')">
       <UiScaleSlider v-model="workspaceStore.userSettings.ui.interfaceScale" :min="10" :max="20" />
     </UiFormField>
 
@@ -97,14 +97,14 @@ function clearCache() {
       <label class="flex items-center gap-2 cursor-pointer">
         <UCheckbox v-model="workspaceStore.userSettings.openLastProjectOnStart" />
         <span class="text-ui-text">
-          {{ t('videoEditor.settings.openLastProjectOnStart', 'Open last project on start') }}
+          {{ t('videoEditor.settings.openLastProjectOnStart') }}
         </span>
       </label>
     </UiFormField>
 
     <UiFormField
       :label="
-        t('videoEditor.settings.defaultTransitionDuration', 'Default transition duration (s)')
+        t('videoEditor.settings.defaultTransitionDuration')
       "
     >
       <UiWheelNumberInput
@@ -122,11 +122,11 @@ function clearCache() {
       />
     </UiFormField>
 
-    <UiAccordion :title="t('videoEditor.settings.advancedSection', 'Advanced')">
+    <UiAccordion :title="t('videoEditor.settings.advancedSection')">
       <div class="flex flex-col gap-6 pt-2">
         <UiFormField
           :label="
-            t('videoEditor.settings.defaultStaticClipDuration', 'Default static clip duration (s)')
+            t('videoEditor.settings.defaultStaticClipDuration')
           "
           :help="t('videoEditor.settings.defaultStaticClipDurationHint')"
         >
@@ -148,7 +148,7 @@ function clearCache() {
         </UiFormField>
 
         <UiFormField
-          :label="t('videoEditor.settings.stopFramesQuality', 'Stop frame quality')"
+          :label="t('videoEditor.settings.stopFramesQuality')"
           :help="t('videoEditor.settings.stopFramesQualityHint')"
         >
           <UiWheelNumberInput
@@ -161,7 +161,7 @@ function clearCache() {
         </UiFormField>
 
         <UiFormField
-          :label="t('videoEditor.settings.mediaTaskConcurrency', 'Media tasks concurrency')"
+          :label="t('videoEditor.settings.mediaTaskConcurrency')"
           :help="t('videoEditor.settings.mediaTaskConcurrencyHelp')"
         >
           <UiWheelNumberInput
@@ -174,7 +174,7 @@ function clearCache() {
         </UiFormField>
 
         <UiFormField
-          :label="t('videoEditor.settings.historyMaxEntries', 'Undo history limit')"
+          :label="t('videoEditor.settings.historyMaxEntries')"
           :help="t('videoEditor.settings.historyMaxEntriesHelp')"
         >
           <UiWheelNumberInput
@@ -187,8 +187,8 @@ function clearCache() {
         </UiFormField>
 
         <UiFormField
-          :label="t('videoEditor.settings.backupInterval', 'Auto-backup interval (minutes)')"
-          :help="t('videoEditor.settings.backupIntervalHelp', '0 to disable auto-backup')"
+          :label="t('videoEditor.settings.backupInterval')"
+          :help="t('videoEditor.settings.backupIntervalHelp')"
         >
           <UiWheelNumberInput
             v-model="workspaceStore.userSettings.backup.intervalMinutes"
@@ -200,8 +200,8 @@ function clearCache() {
         </UiFormField>
 
         <UiFormField
-          :label="t('videoEditor.settings.backupCount', 'Number of backups to keep')"
-          :help="t('videoEditor.settings.backupCountHelp', 'Maximum number of auto-backups retained per timeline')"
+          :label="t('videoEditor.settings.backupCount')"
+          :help="t('videoEditor.settings.backupCountHelp')"
         >
           <UiWheelNumberInput
             v-model="workspaceStore.userSettings.backup.count"
@@ -215,21 +215,21 @@ function clearCache() {
         <label class="flex items-center gap-3 cursor-pointer">
           <UCheckbox v-model="workspaceStore.userSettings.deleteWithoutConfirmation" />
           <span class="text-ui-text">
-            {{ t('videoEditor.settings.deleteWithoutConfirmation', 'Delete without confirmation') }}
+            {{ t('videoEditor.settings.deleteWithoutConfirmation') }}
           </span>
         </label>
 
         <div class="flex items-center justify-between gap-3 pt-2">
           <div class="flex flex-col gap-0.5">
             <div class="font-medium text-ui-text">
-              {{ t('videoEditor.settings.clearUiCache', 'Clear UI cache') }}
+              {{ t('videoEditor.settings.clearUiCache') }}
             </div>
             <div class="text-xs text-ui-text-muted">
               {{ t('videoEditor.settings.clearUiCacheDesc') }}
             </div>
           </div>
           <UButton size="xs" color="error" variant="soft" @click="clearCache">
-            {{ t('videoEditor.settings.clearCacheAction', 'Clear cache') }}
+            {{ t('videoEditor.settings.clearCacheAction') }}
           </UButton>
         </div>
       </div>

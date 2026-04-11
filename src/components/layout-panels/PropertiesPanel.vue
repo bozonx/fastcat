@@ -234,8 +234,8 @@ const selectedFsEntries = computed(() => {
 const previewMode = ref<'original' | 'proxy'>('original');
 
 const previewOptions = computed(() => [
-  { value: 'original', label: t('videoEditor.fileManager.preview.original', 'Original') },
-  { value: 'proxy', label: t('videoEditor.fileManager.preview.proxy', 'Proxy') },
+  { value: 'original', label: t('videoEditor.fileManager.preview.original') },
+  { value: 'proxy', label: t('videoEditor.fileManager.preview.proxy') },
 ]);
 
 const isExternal = computed(() => {
@@ -310,36 +310,36 @@ function onPanelFocusOut() {
   // Keep focus state
 }
 const headerTitle = computed(() => {
-  if (displayMode.value === 'empty') return t('common.properties', 'Properties');
+  if (displayMode.value === 'empty') return t('common.properties');
   if (displayMode.value === 'clip') return selectedClip.value?.name;
   if (displayMode.value === 'transition') return selectedTransitionClip.value?.name ?? '';
   if (displayMode.value === 'file' && selectedFsEntry.value) return selectedFsEntry.value.name;
-  if (displayMode.value === 'gap') return t('fastcat.timeline.gap', 'Gap');
+  if (displayMode.value === 'gap') return t('fastcat.timeline.gap');
   if (displayMode.value === 'track' && selectedTrack.value) return selectedTrack.value.name;
   if (displayMode.value === 'timeline') {
     return (
-      selectedFsEntry.value?.name ?? t('fastcat.timeline.properties.title', 'Timeline Properties')
+      selectedFsEntry.value?.name ?? t('fastcat.timeline.properties.title')
     );
   }
-  if (displayMode.value === 'project-effect') return t('fastcat.effects.title', 'Effect');
+  if (displayMode.value === 'project-effect') return t('fastcat.effects.title');
   if (displayMode.value === 'project-transition')
-    return t('fastcat.transitions.title', 'Transition');
+    return t('fastcat.transitions.title');
   if (displayMode.value === 'project-library-item') {
     const kind = selectedProjectLibraryItem.value?.itemKind;
     return kind === 'text'
-      ? t('fastcat.library.tabs.texts', 'Text')
+      ? t('fastcat.library.tabs.texts')
       : kind === 'shape'
-        ? t('fastcat.library.tabs.shapes', 'Shape')
-        : t('fastcat.library.tabs.hud', 'HUD');
+        ? t('fastcat.library.tabs.shapes')
+        : t('fastcat.library.tabs.hud');
   }
   if (displayMode.value === 'marker') {
     return isSelectedMarkerZone.value
-      ? t('fastcat.marker.zoneMarker', 'Zone Marker')
-      : t('fastcat.marker.title', 'Marker');
+      ? t('fastcat.marker.zoneMarker')
+      : t('fastcat.marker.title');
   }
   if (displayMode.value === 'selection-range')
-    return t('fastcat.timeline.selectionRange', 'Selection Range');
-  return t('common.properties', 'Properties');
+    return t('fastcat.timeline.selectionRange');
+  return t('common.properties');
 });
 </script>
 
@@ -376,7 +376,7 @@ const headerTitle = computed(() => {
         <button
           type="button"
           class="inline-flex items-center justify-center h-7 w-7 rounded-md text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50 transition-colors"
-          :title="t('common.clearSelection', 'Clear')"
+          :title="t('common.clearSelection')"
           @click="clearAllSelection"
         >
           <UIcon name="i-heroicons-x-mark" class="w-4 h-4" />
@@ -398,7 +398,7 @@ const headerTitle = computed(() => {
         class="w-full flex items-center justify-center text-ui-text-muted min-h-50"
       >
         <p class="text-xs">
-          {{ t('fastcat.preview.noSelection', 'No item selected') }}
+          {{ t('fastcat.preview.noSelection') }}
         </p>
       </div>
 

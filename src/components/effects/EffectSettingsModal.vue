@@ -306,7 +306,7 @@ onBeforeUnmount(() => {
 <template>
   <UiModal
     v-model:open="isOpen"
-    :title="manifest?.name ?? t('fastcat.effects.settings', 'Settings')"
+    :title="manifest?.name ?? t('fastcat.effects.settings')"
     :ui="{ content: 'sm:max-w-2xl' }"
   >
     <div v-if="settingsControls.length > 0" class="max-h-[60vh] overflow-y-auto pr-2 space-y-4">
@@ -335,12 +335,12 @@ onBeforeUnmount(() => {
       />
     </div>
     <div v-else class="text-center text-sm text-ui-text-muted py-8">
-      {{ t('fastcat.effects.noSettings', 'No additional settings available.') }}
+      {{ t('fastcat.effects.noSettings') }}
     </div>
     <template #footer>
       <div class="flex justify-end w-full">
         <UButton color="primary" autofocus @click="handleClose">
-          {{ t('common.done', 'Done') }}
+          {{ t('common.done') }}
         </UButton>
       </div>
     </template>

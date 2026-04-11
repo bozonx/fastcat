@@ -50,7 +50,7 @@ const { t } = useI18n();
 <template>
   <UiConfirmModal
     :open="props.isDeleteConfirmModalOpen"
-    :title="t('common.delete', 'Delete')"
+    :title="t('common.delete')"
     :description="
       t(
         'common.confirmDelete',
@@ -67,7 +67,7 @@ const { t } = useI18n();
         {{ props.deleteTargets[0]?.name }}
       </div>
       <div v-else-if="props.deleteTargets.length > 1" class="mt-2 text-sm font-medium text-ui-text">
-        {{ props.deleteTargets.length }} {{ t('common.itemsSelected', 'items selected') }}
+        {{ props.deleteTargets.length }} {{ t('common.itemsSelected') }}
       </div>
       <div
         v-if="props.deleteTargets.length === 1 && props.deleteTargets[0]?.path"
@@ -75,8 +75,8 @@ const { t } = useI18n();
       >
         {{
           props.deleteTargets[0].kind === 'directory'
-            ? t('common.folder', 'Folder')
-            : t('common.file', 'File')
+            ? t('common.folder')
+            : t('common.file')
         }}
         ·
         {{ props.deleteTargets[0].path }}
@@ -87,7 +87,7 @@ const { t } = useI18n();
         class="mt-3 p-2 rounded border border-red-500/40 bg-red-500/10"
       >
         <div class="text-xs font-semibold text-red-400">
-          {{ t('videoEditor.fileManager.delete.usedWarning', 'This file is used in timelines:') }}
+          {{ t('videoEditor.fileManager.delete.usedWarning') }}
         </div>
         <div class="mt-1 flex flex-col gap-1">
           <div
@@ -105,7 +105,7 @@ const { t } = useI18n();
 
   <UiModal
     :open="props.transcriptionModalOpen"
-    :title="t('videoEditor.fileManager.actions.transcribe', 'Transcribe')"
+    :title="t('videoEditor.fileManager.actions.transcribe')"
     :close-button="!props.isTranscribing"
     :prevent-close="props.isTranscribing"
     :ui="{ content: 'sm:max-w-lg', body: 'overflow-y-auto' }"
@@ -125,7 +125,7 @@ const { t } = useI18n();
         {{ props.transcriptionEntry.name }}
       </div>
 
-      <UiFormField :label="t('videoEditor.fileManager.audio.transcriptionLanguage', 'Language')">
+      <UiFormField :label="t('videoEditor.fileManager.audio.transcriptionLanguage')">
         <UiTextInput
           :model-value="props.transcriptionLanguage"
           :disabled="props.isTranscribing"
@@ -148,14 +148,14 @@ const { t } = useI18n();
           :disabled="props.isTranscribing"
           @click="emit('update:transcriptionModalOpen', false)"
         >
-          {{ t('common.cancel', 'Cancel') }}
+          {{ t('common.cancel') }}
         </UButton>
         <UButton
           color="primary"
           :loading="props.isTranscribing"
           @click="emit('submitTranscription')"
         >
-          {{ t('videoEditor.fileManager.actions.transcribe', 'Transcribe') }}
+          {{ t('videoEditor.fileManager.actions.transcribe') }}
         </UButton>
       </div>
     </template>
@@ -163,7 +163,7 @@ const { t } = useI18n();
 
   <UiEntityCreationModal
     :open="props.isFolderModalOpen"
-    :title="t('videoEditor.fileManager.actions.createFolder', 'Create folder')"
+    :title="t('videoEditor.fileManager.actions.createFolder')"
     :default-value="props.folderDefaultName"
     @update:open="emit('update:isFolderModalOpen', $event)"
     @confirm="emit('folderConfirm', $event)"
@@ -171,14 +171,14 @@ const { t } = useI18n();
 
   <UiEntityCreationModal
     :open="props.isSubgroupModalOpen"
-    :title="t('fastcat.bloggerDog.actions.createSubgroup', 'Create subgroup')"
+    :title="t('fastcat.bloggerDog.actions.createSubgroup')"
     @update:open="emit('update:isSubgroupModalOpen', $event)"
     @confirm="emit('subgroupConfirm', $event)"
   />
 
   <UiEntityCreationModal
     :open="props.isItemModalOpen"
-    :title="t('fastcat.bloggerDog.actions.createItem', 'Create content item')"
+    :title="t('fastcat.bloggerDog.actions.createItem')"
     @update:open="emit('update:isItemModalOpen', $event)"
     @confirm="emit('itemConfirm', $event)"
   />

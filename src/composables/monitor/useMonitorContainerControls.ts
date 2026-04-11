@@ -283,7 +283,7 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
   const contextMenuItems = computed(() => [
     [
       {
-        label: options.t('fastcat.monitor.playbackSpeed', 'Playback Speed'),
+        label: options.t('fastcat.monitor.playbackSpeed'),
         icon: 'i-heroicons-forward',
         children: [
           ...negativeSpeedOptions.map((opt) => ({
@@ -344,7 +344,7 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
         onSelect: options.toggleGrid,
       },
       {
-        label: options.t('fastcat.monitor.showTimecode', 'Show Timecode'),
+        label: options.t('fastcat.monitor.showTimecode'),
         icon: 'i-heroicons-clock',
         type: 'checkbox' as const,
         checked: showTimecode.value,
@@ -355,14 +355,14 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
       ...(options.isMobile
         ? [
             {
-              label: options.t('fastcat.monitor.previewWithEffects', 'Preview Effects'),
+              label: options.t('fastcat.monitor.previewWithEffects'),
               icon: 'i-heroicons-sparkles',
               type: 'checkbox' as const,
               checked: options.previewEffectsEnabled.value,
               onSelect: togglePreviewEffects,
             },
             {
-              label: options.t('fastcat.monitor.useProxy', 'Use Proxy'),
+              label: options.t('fastcat.monitor.useProxy'),
               icon: 'i-heroicons-bolt',
               type: 'checkbox' as const,
               checked: options.useProxyInMonitor.value,

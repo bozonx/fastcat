@@ -100,7 +100,7 @@ function getTitleParts(cmdId: HotkeyCommandId) {
                     variant="link"
                     icon="i-heroicons-x-mark"
                     class="p-0! h-4 w-4 opacity-40 hover:opacity-100 transition-opacity"
-                    :aria-label="t('common.remove', 'Remove')"
+                    :aria-label="t('common.remove')"
                     @click="emit('remove', cmd.id, combo)"
                   />
                 </div>
@@ -120,7 +120,7 @@ function getTitleParts(cmdId: HotkeyCommandId) {
                 v-if="capturingCommandId === cmd.id"
                 class="mt-1 text-3xs text-primary-500 font-bold uppercase tracking-wider animate-pulse"
               >
-                {{ t('videoEditor.settings.hotkeysCapturing', 'Listening') }}
+                {{ t('videoEditor.settings.hotkeysCapturing') }}
               </div>
             </td>
             <td class="p-3 py-2.5 align-middle">
@@ -142,7 +142,7 @@ function getTitleParts(cmdId: HotkeyCommandId) {
                   icon="i-heroicons-arrow-uturn-left"
                   class="h-6 w-6 rounded-full shrink-0 justify-center opacity-0 focus-visible:opacity-100 group-hover:opacity-100 transition-opacity"
                   :disabled="capturingCommandId !== null"
-                  :aria-label="t('videoEditor.settings.hotkeysResetCommand', 'Reset')"
+                  :aria-label="t('videoEditor.settings.hotkeysResetCommand')"
                   @click="emit('reset', cmd.id)"
                 />
               </div>

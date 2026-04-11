@@ -44,11 +44,11 @@ const audioGainDb = computed({
 
 const fadeCurveOptions = [
   {
-    label: t('fastcat.clip.audioFade.curve.linear', 'Linear'),
+    label: t('fastcat.clip.audioFade.curve.linear'),
     value: 'linear',
   },
   {
-    label: t('fastcat.clip.audioFade.curve.logarithmic', 'Logarithmic'),
+    label: t('fastcat.clip.audioFade.curve.logarithmic'),
     value: 'logarithmic',
   },
 ];
@@ -61,13 +61,13 @@ const fadeCurveOptions = [
       (props.selectedTrackKind === 'audio' || props.selectedTrackKind === 'video')
     "
     v-model:toggle-value="isEnabled"
-    :title="t('fastcat.clip.audioFade.title', 'Audio fades')"
+    :title="t('fastcat.clip.audioFade.title')"
     has-toggle
   >
     <template #header-actions>
       <button
         class="flex items-center gap-1 text-2xs text-ui-text-muted hover:text-ui-text disabled:opacity-50"
-        :title="t('common.actions.reset', 'Reset')"
+        :title="t('common.actions.reset')"
         :disabled="!isEnabled"
         @click="
           () => {
@@ -87,7 +87,7 @@ const fadeCurveOptions = [
       <div class="flex-1 flex flex-col gap-4">
         <UiSliderInput
           v-if="props.canEditAudioBalance"
-          :label="t('fastcat.clip.audio.balance', 'Balance')"
+          :label="t('fastcat.clip.audio.balance')"
           :model-value="props.audioBalance"
           :min="-1"
           :max="1"
@@ -101,7 +101,7 @@ const fadeCurveOptions = [
           <!-- Fade In -->
           <div class="flex flex-col gap-1">
             <span class="text-xs text-ui-text-muted font-medium">{{
-              t('fastcat.clip.audioFade.in', 'Fade in')
+              t('fastcat.clip.audioFade.in')
             }}</span>
             <div class="flex flex-col gap-1.5">
               <UiWheelNumberInput
@@ -136,7 +136,7 @@ const fadeCurveOptions = [
           <!-- Fade Out -->
           <div class="flex flex-col gap-1">
             <span class="text-xs text-ui-text-muted font-medium">{{
-              t('fastcat.clip.audioFade.out', 'Fade out')
+              t('fastcat.clip.audioFade.out')
             }}</span>
             <div class="flex flex-col gap-1.5">
               <UiWheelNumberInput
@@ -178,7 +178,7 @@ const fadeCurveOptions = [
         <div class="flex flex-col items-end px-1 h-8 justify-center">
           <span
             class="text-[10px] uppercase font-bold text-ui-text-muted/70 leading-tight line-clamp-1"
-            >{{ t('fastcat.clip.audio.volume', 'Volume') }}</span
+            >{{ t('fastcat.clip.audio.volume') }}</span
           >
           <span
             class="text-xs font-mono text-ui-text-muted cursor-pointer hover:text-primary-400 tabular-nums whitespace-nowrap"

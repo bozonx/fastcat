@@ -74,15 +74,15 @@ export function useTimelineTextPreset() {
   const textPresetMenuItems = computed(() => {
     const standard = [
       {
-        label: t('fastcat.library.texts.default', 'Default'),
+        label: t('fastcat.library.texts.default'),
         onSelect: () => applyTextPreset('default'),
       },
       {
-        label: t('fastcat.library.texts.title', 'Title'),
+        label: t('fastcat.library.texts.title'),
         onSelect: () => applyTextPreset('title'),
       },
       {
-        label: t('fastcat.library.texts.subtitle', 'Subtitle'),
+        label: t('fastcat.library.texts.subtitle'),
         onSelect: () => applyTextPreset('subtitle'),
       },
     ];

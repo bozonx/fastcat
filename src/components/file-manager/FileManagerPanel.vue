@@ -93,7 +93,7 @@ const stt = useSttTranscription({
   fastcatAccountApiUrl: computed(() => runtimeConfig.public.fastcatAccountApiUrl as string),
   onSuccess: ({ mediaType }) => {
     toast.add({
-      title: t('videoEditor.fileManager.audio.transcriptionCompleted', 'Transcription completed'),
+      title: t('videoEditor.fileManager.audio.transcriptionCompleted'),
       description:
         mediaType === 'video'
           ? t(
@@ -188,29 +188,29 @@ const rootContextMenuItems = computed(() => {
   const menu: any[][] = [
     [
       {
-        label: t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),
+        label: t('videoEditor.fileManager.actions.uploadFiles'),
         icon: 'i-heroicons-arrow-up-tray',
         onSelect: () => onFileAction('upload', rootEntry),
       },
       {
-        label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
+        label: t('videoEditor.fileManager.actions.createFolder'),
         icon: 'i-heroicons-folder-plus',
         onSelect: () => onFileAction('createFolder', rootEntry),
       },
       {
-        label: t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline'),
+        label: t('videoEditor.fileManager.actions.createTimeline'),
         icon: 'i-heroicons-document-plus',
         onSelect: () => onFileAction('createTimeline', rootEntry),
       },
       {
-        label: t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document'),
+        label: t('videoEditor.fileManager.actions.createMarkdown'),
         icon: 'i-heroicons-document-text',
         onSelect: () => onFileAction('createMarkdown', rootEntry),
       },
     ],
     [
       {
-        label: t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree'),
+        label: t('videoEditor.fileManager.actions.syncTreeTooltip'),
         icon: 'i-heroicons-arrow-path',
         disabled: isLoading.value,
         onSelect: () => onFileAction('refresh', rootEntry),
@@ -222,7 +222,7 @@ const rootContextMenuItems = computed(() => {
   if (clipboardStore.hasFileManagerPayload) {
     if (menu[0]) {
       menu[0].push({
-        label: t('common.paste', 'Paste'),
+        label: t('common.paste'),
         icon: 'i-heroicons-clipboard',
         onSelect: () => onFileActionBase('paste', rootEntry),
       });
@@ -234,11 +234,11 @@ const rootContextMenuItems = computed(() => {
 
 // toolbarMenuItems removed
 const sortFields: { label: string; value: FileSortField }[] = [
-  { label: t('common.name', 'Name'), value: 'name' },
-  { label: t('common.type', 'Type'), value: 'type' },
-  { label: t('common.size', 'Size'), value: 'size' },
-  { label: t('common.created', 'Created'), value: 'created' },
-  { label: t('common.modified', 'Modified'), value: 'modified' },
+  { label: t('common.name'), value: 'name' },
+  { label: t('common.type'), value: 'type' },
+  { label: t('common.size'), value: 'size' },
+  { label: t('common.created'), value: 'created' },
+  { label: t('common.modified'), value: 'modified' },
 ];
 
 const menuItems = computed(() => {
@@ -246,15 +246,15 @@ const menuItems = computed(() => {
 
   const commonActions = [
     {
-      label: t('common.refresh', 'Refresh'),
+      label: t('common.refresh'),
       icon: 'i-heroicons-arrow-path',
       disabled: isLoading.value,
       onSelect: () => loadProjectDirectory({ fullRefresh: true }),
     },
     {
       label: uiStore.showHiddenFiles
-        ? t('videoEditor.fileManager.actions.hideHiddenFiles', 'Hide hidden files')
-        : t('videoEditor.fileManager.actions.showHiddenFiles', 'Show hidden files'),
+        ? t('videoEditor.fileManager.actions.hideHiddenFiles')
+        : t('videoEditor.fileManager.actions.showHiddenFiles'),
       icon: uiStore.showHiddenFiles ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
       onSelect: () => {
         uiStore.showHiddenFiles = !uiStore.showHiddenFiles;
@@ -276,8 +276,8 @@ const menuItems = computed(() => {
   const orderToggle = [
     {
       label: isAsc
-        ? t('common.toSortDesc', 'To descending')
-        : t('common.toSortAsc', 'To ascending'),
+        ? t('common.toSortDesc')
+        : t('common.toSortAsc'),
       icon: isAsc ? 'i-heroicons-bars-arrow-down' : 'i-heroicons-bars-arrow-up',
       onSelect: () => {
         fileManagerStore.sortOption.order = isAsc ? 'desc' : 'asc';
@@ -399,7 +399,7 @@ async function onSubgroupCreateConfirm(name: string) {
   } catch (error) {
     toast.add({
       color: 'error',
-      title: t('common.error', 'Error'),
+      title: t('common.error'),
       description: error instanceof Error ? error.message : 'Failed to create subgroup',
     });
   } finally {
@@ -425,7 +425,7 @@ async function onItemCreateConfirm(name: string) {
   } catch (error) {
     toast.add({
       color: 'error',
-      title: t('common.error', 'Error'),
+      title: t('common.error'),
       description: error instanceof Error ? error.message : 'Failed to create item',
     });
   } finally {
@@ -493,7 +493,7 @@ useFileManagerPanelBootstrap({
           variant="ghost"
           color="neutral"
           size="xs"
-          :title="t('videoEditor.fileManager.actions.createFolder', 'Create Folder')"
+          :title="t('videoEditor.fileManager.actions.createFolder')"
           @click="onFileAction('createFolder', rootEntry)"
         />
         <UButton
@@ -501,7 +501,7 @@ useFileManagerPanelBootstrap({
           variant="ghost"
           color="neutral"
           size="xs"
-          :title="`${t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline')} (In _timelines folder)`"
+          :title="`${t('videoEditor.fileManager.actions.createTimeline')} (In _timelines folder)`"
           @click="onCreateTimeline"
         />
         <UButton
@@ -509,7 +509,7 @@ useFileManagerPanelBootstrap({
           variant="ghost"
           color="neutral"
           size="xs"
-          :title="`${t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document')} (In _documents folder)`"
+          :title="`${t('videoEditor.fileManager.actions.createMarkdown')} (In _documents folder)`"
           @click="onCreateMarkdown"
         />
         <UButton
@@ -517,7 +517,7 @@ useFileManagerPanelBootstrap({
           variant="ghost"
           color="neutral"
           size="xs"
-          :title="t('videoEditor.fileManager.actions.uploadFiles', 'Upload files')"
+          :title="t('videoEditor.fileManager.actions.uploadFiles')"
           @click="triggerFileUpload"
         />
 
@@ -525,7 +525,7 @@ useFileManagerPanelBootstrap({
           v-if="!props.isExternal"
           class="ml-auto text-[10px] font-bold uppercase tracking-wider text-ui-text-muted/80 px-1 select-none"
         >
-          {{ t('videoEditor.fileManager.projectRoot.project', 'Project') }}
+          {{ t('videoEditor.fileManager.projectRoot.project') }}
         </span>
       </div>
     </UContextMenu>

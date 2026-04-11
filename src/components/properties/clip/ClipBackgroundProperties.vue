@@ -13,7 +13,7 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <PropertySection :title="t('common.color', 'Color')">
+  <PropertySection :title="t('common.color')">
     <div class="flex items-center justify-between gap-3">
       <span class="font-mono text-xs text-ui-text">{{ clip.backgroundColor }}</span>
       <UColorPicker

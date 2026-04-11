@@ -381,7 +381,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
           console.error('[useFileBrowserDragAndDrop] Cross-VFS operation failed:', err);
           toast.add({
             color: 'error',
-            title: t('videoEditor.fileManager.errors.crossVfsFailedTitle', 'Transfer failed'),
+            title: t('videoEditor.fileManager.errors.crossVfsFailedTitle'),
             description: err instanceof Error ? err.message : String(err),
           });
         }
@@ -410,7 +410,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
           console.error('[useFileBrowserDragAndDrop] D&D operation failed:', err);
           toast.add({
             color: 'error',
-            title: t('videoEditor.fileManager.errors.dragDropFailedTitle', 'Operation failed'),
+            title: t('videoEditor.fileManager.errors.dragDropFailedTitle'),
             description: err instanceof Error ? err.message : String(err),
           });
         }
@@ -550,7 +550,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
           console.error('[useFileBrowserDragAndDrop] Cross-VFS panel operation failed:', err);
           toast.add({
             color: 'error',
-            title: t('videoEditor.fileManager.errors.crossVfsFailedTitle', 'Transfer failed'),
+            title: t('videoEditor.fileManager.errors.crossVfsFailedTitle'),
             description: err instanceof Error ? err.message : String(err),
           });
         }
@@ -579,7 +579,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
           console.error('[useFileBrowserDragAndDrop] D&D panel operation failed:', err);
           toast.add({
             color: 'error',
-            title: t('videoEditor.fileManager.errors.dragDropFailedTitle', 'Operation failed'),
+            title: t('videoEditor.fileManager.errors.dragDropFailedTitle'),
             description: err instanceof Error ? err.message : String(err),
           });
         }

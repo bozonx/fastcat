@@ -67,7 +67,7 @@ const presetOptions = computed(() => {
     value: p.id,
     label: p.name,
   }));
-  return [...items, { value: 'custom', label: t('videoEditor.export.preset.custom', 'Custom') }];
+  return [...items, { value: 'custom', label: t('videoEditor.export.preset.custom') }];
 });
 
 function applyPreset(presetId: string) {
@@ -90,7 +90,7 @@ function applyPreset(presetId: string) {
 
 <template>
   <div class="flex flex-col gap-6">
-    <UiFormField v-if="props.showPresets" :label="t('videoEditor.export.presetLabel', 'Preset')">
+    <UiFormField v-if="props.showPresets" :label="t('videoEditor.export.presetLabel')">
       <div class="flex items-center gap-2">
         <UiSelect
           v-model="preset"

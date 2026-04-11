@@ -113,8 +113,8 @@ const stt = useSttTranscription({
   onSuccess: ({ cached, mediaType }) => {
     toast.add({
       title: cached
-        ? t('videoEditor.fileManager.audio.transcriptionCached', 'Using cached transcription')
-        : t('videoEditor.fileManager.audio.transcriptionCompleted', 'Transcription completed'),
+        ? t('videoEditor.fileManager.audio.transcriptionCached')
+        : t('videoEditor.fileManager.audio.transcriptionCompleted'),
       description: cached
         ? t(
             'videoEditor.fileManager.audio.transcriptionCachedDescription',
@@ -134,7 +134,7 @@ const stt = useSttTranscription({
   },
   onError: (message) => {
     toast.add({
-      title: t('videoEditor.fileManager.audio.transcriptionFailed', 'Failed to transcribe media'),
+      title: t('videoEditor.fileManager.audio.transcriptionFailed'),
       description: message,
       color: 'danger',
     });
@@ -496,7 +496,7 @@ async function onSubgroupCreateConfirm(name: string) {
     const toast = useToast();
     toast.add({
       color: 'error',
-      title: t('common.error', 'Error'),
+      title: t('common.error'),
       description: error instanceof Error ? error.message : 'Failed to create subgroup',
     });
   } finally {
@@ -565,7 +565,7 @@ async function onItemCreateConfirm(name: string) {
     const toast = useToast();
     toast.add({
       color: 'error',
-      title: t('common.error', 'Error'),
+      title: t('common.error'),
       description: error instanceof Error ? error.message : 'Failed to create item',
     });
   } finally {
@@ -816,7 +816,7 @@ useFileBrowserPendingActions({
         const toast = useToast();
         toast.add({
           color: 'error',
-          title: t('common.error', 'Error'),
+          title: t('common.error'),
           description: error instanceof Error ? error.message : 'Remote download failed',
         });
       }
@@ -1039,7 +1039,7 @@ async function onDirectoryUploadChange(e: Event) {
             </div>
             <div class="space-y-2 max-w-[320px]">
               <h3 class="text-xl font-semibold text-ui-text">
-                {{ t('fastcat.fileManager.remote.load_error_title', 'Connection Error') }}
+                {{ t('fastcat.fileManager.remote.load_error_title') }}
               </h3>
               <p class="text-sm text-ui-text-dim leading-relaxed">
                 {{ remoteError }}
@@ -1052,7 +1052,7 @@ async function onDirectoryUploadChange(e: Event) {
                 icon="i-heroicons-arrow-path"
                 @click.stop="() => loadFolderContent()"
               >
-                {{ t('common.retry', 'Retry') }}
+                {{ t('common.retry') }}
               </UButton>
             </div>
           </div>
@@ -1062,7 +1062,7 @@ async function onDirectoryUploadChange(e: Event) {
             class="flex flex-col items-center justify-center flex-1 text-ui-text-muted gap-2"
           >
             <UIcon name="i-heroicons-inbox" class="w-12 h-12 opacity-20" />
-            <span>{{ t('common.empty', 'Folder is empty') }}</span>
+            <span>{{ t('common.empty') }}</span>
           </div>
 
           <!-- Grid View -->
@@ -1136,7 +1136,7 @@ async function onDirectoryUploadChange(e: Event) {
               class="w-8 h-8 animate-spin text-primary-500/50"
             />
             <div v-else class="text-ui-text-dim/30 text-xs font-medium uppercase tracking-widest">
-              {{ t('common.scroll_for_more', 'Scroll for more') }}
+              {{ t('common.scroll_for_more') }}
             </div>
           </div>
 

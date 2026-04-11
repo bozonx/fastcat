@@ -55,8 +55,8 @@ const { t } = useI18n();
 
   <RemoteTransferProgressModal
     :open="props.remoteTransferOpen"
-    :title="t('videoEditor.fileManager.actions.downloadFiles', 'Download files')"
-    :description="t('videoEditor.fileManager.actions.downloadFiles', 'Download files')"
+    :title="t('videoEditor.fileManager.actions.downloadFiles')"
+    :description="t('videoEditor.fileManager.actions.downloadFiles')"
     :progress="props.remoteTransferProgress"
     :phase="props.remoteTransferPhase"
     :file-name="props.remoteTransferFileName"
@@ -77,7 +77,7 @@ const { t } = useI18n();
 
   <UiEntityCreationModal
     :open="props.isFolderModalOpen"
-    :title="t('videoEditor.fileManager.actions.createFolder', 'Create folder')"
+    :title="t('videoEditor.fileManager.actions.createFolder')"
     :default-value="props.folderDefaultName"
     @update:open="emit('update:isFolderModalOpen', $event)"
     @confirm="emit('folderConfirm', $event)"
@@ -85,16 +85,16 @@ const { t } = useI18n();
 
   <UiEntityCreationModal
     :open="props.isSubgroupModalOpen"
-    :title="t('fastcat.bloggerDog.actions.createSubgroup', 'Create subgroup')"
-    :confirm-label="t('common.create', 'Create')"
+    :title="t('fastcat.bloggerDog.actions.createSubgroup')"
+    :confirm-label="t('common.create')"
     @update:open="emit('update:isSubgroupModalOpen', $event)"
     @confirm="emit('subgroupConfirm', $event)"
   />
 
   <UiEntityCreationModal
     :open="props.isItemModalOpen"
-    :title="t('fastcat.bloggerDog.actions.createItem', 'Create content item')"
-    :confirm-label="t('common.create', 'Create')"
+    :title="t('fastcat.bloggerDog.actions.createItem')"
+    :confirm-label="t('common.create')"
     @update:open="emit('update:isItemModalOpen', $event)"
     @confirm="emit('itemConfirm', $event)"
   />

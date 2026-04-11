@@ -238,7 +238,7 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
                 icon="i-heroicons-cog-6-tooth"
                 @click="openIntegrationsSettings"
               >
-                {{ t('fastcat.fileManager.remote.configure_action', 'Configure Integration') }}
+                {{ t('fastcat.fileManager.remote.configure_action') }}
               </UButton>
             </div>
             <FileBrowser

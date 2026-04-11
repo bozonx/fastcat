@@ -122,7 +122,7 @@ function onNameClick(event: MouseEvent, entry: FsEntry) {
 
   if (event.detail === 1) {
     renameTimer = setTimeout(() => {
-      emit('fileAction', 'rename', entry);
+      emit('fileAction', entry);
     }, 250);
   }
 }
@@ -143,10 +143,10 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
           <th
             class="py-1 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
             :style="{ width: `${fileManagerStore.columnWidths.name}px`, minWidth: '60px' }"
-            @click="emit('sort', 'name')"
+            @click="emit('sort')"
           >
             <div class="flex items-center gap-1">
-              {{ t('common.name', 'Name') }}
+              {{ t('common.name') }}
               <UIcon
                 v-if="fileManagerStore.sortOption.field === 'name'"
                 :name="
@@ -168,10 +168,10 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
           <th
             class="py-1 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
             :style="{ width: `${fileManagerStore.columnWidths.type}px`, minWidth: '60px' }"
-            @click="emit('sort', 'type')"
+            @click="emit('sort')"
           >
             <div class="flex items-center gap-1">
-              {{ t('common.type', 'Type') }}
+              {{ t('common.type') }}
               <UIcon
                 v-if="fileManagerStore.sortOption.field === 'type'"
                 :name="
@@ -193,10 +193,10 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
           <th
             class="py-1 px-3 font-medium text-right cursor-pointer hover:text-ui-text transition-colors select-none relative"
             :style="{ width: `${fileManagerStore.columnWidths.size}px`, minWidth: '60px' }"
-            @click="emit('sort', 'size')"
+            @click="emit('sort')"
           >
             <div class="flex items-center justify-end gap-1">
-              {{ t('common.size', 'Size') }}
+              {{ t('common.size') }}
               <UIcon
                 v-if="fileManagerStore.sortOption.field === 'size'"
                 :name="
@@ -218,10 +218,10 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
           <th
             class="py-1 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
             :style="{ width: `${fileManagerStore.columnWidths.created}px`, minWidth: '60px' }"
-            @click="emit('sort', 'created')"
+            @click="emit('sort')"
           >
             <div class="flex items-center gap-1">
-              {{ t('common.created', 'Created') }}
+              {{ t('common.created') }}
               <UIcon
                 v-if="fileManagerStore.sortOption.field === 'created'"
                 :name="
@@ -246,10 +246,10 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
               width: `${fileManagerStore.columnWidths.modified}px`,
               minWidth: '60px',
             }"
-            @click="emit('sort', 'modified')"
+            @click="emit('sort')"
           >
             <div class="flex items-center gap-1">
-              {{ t('common.modified', 'Modified') }}
+              {{ t('common.modified') }}
               <UIcon
                 v-if="fileManagerStore.sortOption.field === 'modified'"
                 :name="
@@ -395,7 +395,7 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
               <td class="py-0.5 px-3 text-ui-text-muted">
                 {{
                   entry.kind === 'directory'
-                    ? t('common.folder', 'Folder')
+                    ? t('common.folder')
                     : entry.mimeType === 'application/octet-stream'
                       ? ''
                       : entry.mimeType

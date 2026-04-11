@@ -170,13 +170,13 @@ function onCut() {
       <div class="flex flex-col items-center justify-center">
         <UIcon name="i-heroicons-document-duplicate" class="w-8 h-8 text-ui-text-muted mb-2" />
         <span class="text-sm font-medium"
-          >{{ entries.length }} {{ t('common.itemsSelected', 'items selected') }}</span
+          >{{ entries.length }} {{ t('common.itemsSelected') }}</span
         >
       </div>
 
       <div class="border-t border-ui-border pt-3 flex flex-col gap-1">
         <div v-if="totalSize > 0" class="flex justify-between text-xs">
-          <span class="text-ui-text-muted">{{ t('common.totalSize', 'Total Size') }}</span>
+          <span class="text-ui-text-muted">{{ t('common.totalSize') }}</span>
           <span class="text-ui-text font-mono">{{ formatBytes(totalSize) }}</span>
         </div>
         <div
@@ -190,24 +190,24 @@ function onCut() {
       </div>
     </div>
 
-    <PropertySection :title="t('videoEditor.fileManager.actions.title', 'Actions')">
+    <PropertySection :title="t('videoEditor.fileManager.actions.title')">
       <EntryActions
         :primary-actions="[
           {
             id: 'copy',
-            title: t('common.copy', 'Copy'),
+            title: t('common.copy'),
             icon: 'i-heroicons-document-duplicate',
             onClick: onCopy,
           },
           {
             id: 'cut',
-            title: t('common.cut', 'Cut'),
+            title: t('common.cut'),
             icon: 'i-heroicons-scissors',
             onClick: onCut,
           },
           {
             id: 'delete',
-            title: t('common.delete', 'Delete'),
+            title: t('common.delete'),
             icon: 'i-heroicons-trash',
             onClick: onDelete,
           },
@@ -215,7 +215,7 @@ function onCut() {
         :secondary-actions="[
           {
             id: 'createProxy',
-            label: t('videoEditor.fileManager.proxy.create', 'Create proxy'),
+            label: t('videoEditor.fileManager.proxy.create'),
             icon: 'i-heroicons-film',
             hidden: props.isExternal || !hasVideo || isGeneratingProxy,
             onClick: onCreateProxy,
@@ -233,14 +233,14 @@ function onCut() {
           },
           {
             id: 'extractAudio',
-            label: t('videoEditor.fileManager.actions.extractAudio', 'Extract Audio'),
+            label: t('videoEditor.fileManager.actions.extractAudio'),
             icon: 'i-heroicons-musical-note',
             hidden: !hasVideo,
             onClick: handleExtractAudio,
           },
           {
             id: 'deleteProxy',
-            label: t('videoEditor.fileManager.proxy.delete', 'Delete proxy'),
+            label: t('videoEditor.fileManager.proxy.delete'),
             icon: 'i-heroicons-trash',
             color: 'error',
             hidden: props.isExternal || !hasExistingProxy,

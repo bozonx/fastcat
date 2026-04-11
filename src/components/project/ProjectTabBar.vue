@@ -138,7 +138,7 @@ function handleStaticTabDragStart(event: DragEvent, tab: AnyProjectTab) {
 
             <button
               class="ml-0.5 p-0.5 rounded hover:bg-red-500/15 hover:text-red-400 transition-colors"
-              :title="t('common.close', 'Close')"
+              :title="t('common.close')"
               @click.stop="tabsStore.removeFileTab(tab.id)"
             >
               <UIcon name="i-heroicons-x-mark" class="w-3 h-3" />
@@ -153,7 +153,7 @@ function handleStaticTabDragStart(event: DragEvent, tab: AnyProjectTab) {
       class="flex items-center gap-1 px-2 text-2xs text-primary-400 font-semibold uppercase tracking-wider shrink-0 pointer-events-none"
     >
       <UIcon name="i-heroicons-arrow-down-tray" class="w-3.5 h-3.5" />
-      {{ t('videoEditor.projectTabs.dropHint', 'Add as tab') }}
+      {{ t('videoEditor.projectTabs.dropHint') }}
     </div>
   </div>
 </template>

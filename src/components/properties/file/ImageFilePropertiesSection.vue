@@ -15,13 +15,13 @@ const { t } = useI18n();
   <PropertySection>
     <PropertyRow
       v-if="props.imageResolution"
-      :label="t('videoEditor.fileManager.image.resolution', 'Resolution')"
+      :label="t('videoEditor.fileManager.image.resolution')"
       :value="props.imageResolution"
     />
     <PropertyRow v-if="props.imageCreateDate" label="CreateDate" :value="props.imageCreateDate" />
     <PropertyRow
       v-if="props.imageLocationLink"
-      :label="t('videoEditor.fileManager.image.location', 'Location')"
+      :label="t('videoEditor.fileManager.image.location')"
     >
       <a
         class="text-primary-500 hover:underline break-all"
@@ -34,7 +34,7 @@ const { t } = useI18n();
     </PropertyRow>
     <PropertyRow
       v-if="props.imageCameraMake"
-      :label="t('videoEditor.fileManager.image.camera', 'Camera')"
+      :label="t('videoEditor.fileManager.image.camera')"
       :value="props.imageCameraMake"
     />
   </PropertySection>
