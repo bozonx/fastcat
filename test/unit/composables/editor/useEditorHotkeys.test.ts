@@ -14,6 +14,22 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useClipboardStore } from '~/stores/clipboard.store';
 
+const mockWorkspaceStore = {
+  userSettings: {
+    hotkeys: {
+      layer1: 'Shift',
+      layer2: 'Control',
+      bindings: {
+        'general.focus': ['Tab'],
+        'general.copy': ['Ctrl+C'],
+      },
+    },
+    timeline: {
+      defaultStaticClipDurationUs: 5000000,
+    },
+  },
+};
+
 vi.mock('~/composables/editor/useProjectActions', () => ({
   useProjectActions: () => ({
     openProjectTab: vi.fn(),
@@ -22,21 +38,7 @@ vi.mock('~/composables/editor/useProjectActions', () => ({
 }));
 
 vi.mock('~/stores/workspace.store', () => ({
-  useWorkspaceStore: vi.fn(() => ({
-    userSettings: {
-      hotkeys: {
-        layer1: 'Shift',
-        layer2: 'Control',
-        bindings: {
-          'general.focus': ['Tab'],
-          'general.copy': ['Ctrl+C'],
-        },
-      },
-      timeline: {
-        defaultStaticClipDurationUs: 5000000,
-      },
-    },
-  })),
+  useWorkspaceStore: vi.fn(() => mockWorkspaceStore),
 }));
 
 vi.mock('#app', () => ({
@@ -72,6 +74,10 @@ describe('useEditorHotkeys', () => {
     localStorage.clear();
     pressedKeyCodes.clear();
     useClipboardStore().clearClipboardPayload();
+    mockWorkspaceStore.userSettings.hotkeys.bindings = {
+      'general.focus': ['Tab'],
+      'general.copy': ['Ctrl+C'],
+    };
     wrapper = undefined;
   });
 
@@ -82,6 +88,24 @@ describe('useEditorHotkeys', () => {
   });
 
   it('toggles focus on Tab when editor is in cut view', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+
+    projectStore.setView('cut');
+    expect(focusStore.activePanelId).toBe('timeline');
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', code: 'Tab', bubbles: true }));
+
+    expect(focusStore.activePanelId).toBe('monitor');
+  });
+
+  it('toggles focus on Tab even when general.focus is bound to another shortcut', async () => {
+    mockWorkspaceStore.userSettings.hotkeys.bindings = {
+      'general.focus': ['/'],
+      'general.copy': ['Ctrl+C'],
+    };
+
     wrapper = mount(HotkeysHarness);
     const focusStore = useFocusStore();
     const projectStore = useProjectStore();
