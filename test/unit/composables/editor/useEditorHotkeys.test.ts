@@ -11,6 +11,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useClipboardStore } from '~/stores/clipboard.store';
 
@@ -292,6 +293,123 @@ describe('useEditorHotkeys', () => {
         },
       ],
       sourceInstanceId: 'detached-files',
+    });
+  });
+
+  it('supports copy and cut from file properties focus for file manager selection', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const selectionStore = useSelectionStore();
+    const clipboardStore = useClipboardStore();
+
+    projectStore.setView('cut');
+    focusStore.setPanelFocus('dynamic:properties:files-main');
+    selectionStore.selectFsEntry(
+      {
+        kind: 'file',
+        name: 'clip.mp4',
+        path: 'media/clip.mp4',
+        parentPath: 'media',
+        source: 'local',
+      } as any,
+      'main',
+    );
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'c',
+        code: 'KeyC',
+        ctrlKey: true,
+        bubbles: true,
+      }),
+    );
+
+    expect(clipboardStore.clipboardPayload).toEqual({
+      source: 'fileManager',
+      operation: 'copy',
+      items: [
+        {
+          path: 'media/clip.mp4',
+          kind: 'file',
+          name: 'clip.mp4',
+          source: 'local',
+        },
+      ],
+      sourceInstanceId: 'main',
+    });
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'x',
+        code: 'KeyX',
+        ctrlKey: true,
+        bubbles: true,
+      }),
+    );
+
+    expect(clipboardStore.clipboardPayload).toEqual({
+      source: 'fileManager',
+      operation: 'cut',
+      items: [
+        {
+          path: 'media/clip.mp4',
+          kind: 'file',
+          name: 'clip.mp4',
+          source: 'local',
+        },
+      ],
+      sourceInstanceId: 'main',
+    });
+  });
+
+  it('routes paste from file properties focus to the selected directory', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const selectionStore = useSelectionStore();
+    const clipboardStore = useClipboardStore();
+    const uiStore = useUiStore();
+
+    projectStore.setView('cut');
+    focusStore.setPanelFocus('dynamic:properties:files-main');
+    selectionStore.selectFsEntry(
+      {
+        kind: 'directory',
+        name: 'assets',
+        path: 'assets',
+        source: 'local',
+      } as any,
+      'main',
+    );
+    clipboardStore.setClipboardPayload({
+      source: 'fileManager',
+      operation: 'copy',
+      items: [
+        {
+          path: 'media/clip.mp4',
+          kind: 'file',
+          name: 'clip.mp4',
+          source: 'local',
+        },
+      ],
+      sourceInstanceId: 'main',
+    });
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'v',
+        code: 'KeyV',
+        ctrlKey: true,
+        bubbles: true,
+      }),
+    );
+
+    expect(uiStore.pendingFsEntryPaste).toEqual({
+      kind: 'directory',
+      name: 'assets',
+      path: 'assets',
+      source: 'local',
     });
   });
 });

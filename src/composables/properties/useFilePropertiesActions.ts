@@ -129,14 +129,7 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       title: options.t('common.paste'),
       icon: 'i-heroicons-clipboard',
       hidden:
-        !(
-          options.isProjectRootDir.value ||
-          options.isCommonDir.value ||
-          options.isBloggerDogProject.value ||
-          options.isBloggerDogGroup?.value ||
-          options.isVirtualAll?.value ||
-          options.isPersonalLibrary?.value
-        ),
+        options.isRemoteRoot.value || options.isBloggerDogContentItem?.value === true,
       disabled: !options.hasClipboardItems.value,
       onClick: options.onPaste,
     },

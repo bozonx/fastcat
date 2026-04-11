@@ -1,8 +1,20 @@
+import {
+  FILE_MANAGER_COPY_DRAG_TYPE,
+  FILE_MANAGER_MOVE_DRAG_TYPE,
+} from '~/composables/useDraggedFile';
+
 export interface ResolveFileManagerDragOperationParams {
   dragSourceFileManagerInstanceId?: string | null;
   isLayer1Active: boolean;
   targetFileManagerInstanceId?: string | null;
 }
+
+export interface FileManagerDraggedItem {
+  path?: unknown;
+  kind?: unknown;
+}
+
+export type FileManagerDragCursorOperation = 'copy' | 'move' | 'cancel';
 
 export interface ResolveFileManagerDropOperationParams
   extends ResolveFileManagerDragOperationParams {
@@ -105,4 +117,28 @@ export function getDropTargetEntryPath(event: DragEvent): string | null {
   }
 
   return null;
+}
+
+export function getDraggedFileManagerItems(event: DragEvent): FileManagerDraggedItem[] {
+  const copyRaw = event.dataTransfer?.getData(FILE_MANAGER_COPY_DRAG_TYPE);
+  const moveRaw = event.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
+  const internalRaw = copyRaw || moveRaw;
+  if (!internalRaw) return [];
+
+  try {
+    const parsed: unknown = JSON.parse(internalRaw);
+    return Array.isArray(parsed) ? parsed : [parsed];
+  } catch {
+    return [];
+  }
+}
+
+export function isFileManagerDropCancellationTarget(params: {
+  event: DragEvent;
+  targetEntryPath?: string | null;
+}): boolean {
+  return shouldCancelFileManagerDrop({
+    items: getDraggedFileManagerItems(params.event),
+    targetEntryPath: params.targetEntryPath,
+  });
 }

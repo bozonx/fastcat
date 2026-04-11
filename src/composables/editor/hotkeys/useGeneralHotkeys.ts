@@ -31,13 +31,16 @@ export function useGeneralHotkeys(
 
   const { createStopFrameSnapshot, createNewTimeline } = useMonitorActions();
   const fileManagerStore = useFileManagerStore();
-  const { clipboardPayload, setClipboardPayload } = useAppClipboard();
+  const clipboardStore = useAppClipboard();
   const { loadTimeline } = useProjectActions();
 
   const fileManager = useFileManager();
 
   function isFileManagerFocus() {
-    return isFileManagerPanelFocus(focusStore.effectiveFocus);
+    return (
+      isFileManagerPanelFocus(focusStore.effectiveFocus) ||
+      (focusStore.isPropertiesFocus && selectionStore.selectedEntity?.source === 'fileManager')
+    );
   }
 
   function getSelectedFsEntries() {
@@ -93,8 +96,8 @@ export function useGeneralHotkeys(
     };
   }
 
-  async function handleFileManagerPaste() {
-    const payload = clipboardPayload;
+  function handleFileManagerPaste() {
+    const payload = clipboardStore.clipboardPayload;
     if (!payload || payload.source !== 'fileManager' || payload.items.length === 0) {
       return false;
     }
@@ -276,7 +279,7 @@ export function useGeneralHotkeys(
           ? selectionStore.selectedEntity.instanceId
           : undefined;
 
-      setClipboardPayload({
+      clipboardStore.setClipboardPayload({
         source: 'fileManager',
         operation: 'copy',
         items: entries
@@ -303,7 +306,7 @@ export function useGeneralHotkeys(
           ? selectionStore.selectedEntity.instanceId
           : undefined;
 
-      setClipboardPayload({
+      clipboardStore.setClipboardPayload({
         source: 'fileManager',
         operation: 'cut',
         items: entries
@@ -322,8 +325,7 @@ export function useGeneralHotkeys(
 
     'general.paste': () => {
       if (!isFileManagerFocus()) return false;
-      void handleFileManagerPaste();
-      return true;
+      return handleFileManagerPaste();
     },
 
     'general.delete': () => {
