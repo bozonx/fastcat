@@ -82,6 +82,18 @@ export function useEditorHotkeys() {
   function onGlobalKeydown(e: KeyboardEvent) {
     if (e.defaultPrevented) return;
 
+    if (e.key === 'Tab' && e.code === 'Tab' && canHandleFocusTab()) {
+      if (e.repeat) return;
+      if (isEditableTarget(e.target) || isEditableTarget(document.activeElement)) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      (e as any).stopImmediatePropagation?.();
+      focusStore.handleFocusHotkey();
+      suppressedKeyupCodes.add(e.code);
+      return;
+    }
+
     // 1. Get literal combo (physical keys without virtual layers)
     const literalCombo = hotkeyFromKeyboardEvent(e);
     // 2. Get layered combo (with virtual layers applied)
