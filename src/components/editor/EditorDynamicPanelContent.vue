@@ -115,6 +115,7 @@ const detachedStaticPanelContextMenuItems = computed(() => {
   <PropertiesPanel
     v-else-if="panel.type === 'properties'"
     class="h-full"
+    :focus-id="focusPanelId"
     :use-external-focus="true"
     @panel-drag-start="onDragStart"
   />

@@ -232,6 +232,7 @@ const selectedFsEntries = computed(() => {
 });
 
 const previewMode = ref<'original' | 'proxy'>('original');
+const panelFocusId = computed<PanelFocusId>(() => (props.focusId as PanelFocusId) || 'properties');
 
 const previewOptions = computed(() => [
   { value: 'original', label: t('videoEditor.fileManager.preview.original') },
@@ -303,7 +304,7 @@ watch(displayMode, (val) => {
 
 function onPanelFocusIn(e: FocusEvent) {
   if (!isEditableTarget(e.target)) return;
-  focusStore.setTempFocus('right');
+  focusStore.setPanelFocus(panelFocusId.value);
 }
 
 function onPanelFocusOut() {
@@ -348,12 +349,10 @@ const headerTitle = computed(() => {
     class="panel-focus-frame flex flex-col h-full bg-ui-bg-elevated border-r border-ui-border min-w-0 relative"
     :class="{
       'panel-focus-frame--active':
-        !props.useExternalFocus &&
-        focusStore.isPanelFocused((props.focusId as PanelFocusId) || 'right'),
+        !props.useExternalFocus && focusStore.isPanelFocused(panelFocusId),
     }"
     @pointerdown.capture="
-      !props.useExternalFocus &&
-      focusStore.setPanelFocus((props.focusId as PanelFocusId) || 'right')
+      !props.useExternalFocus && focusStore.setPanelFocus(panelFocusId)
     "
     @focusin.capture="onPanelFocusIn"
     @focusout.capture="onPanelFocusOut"

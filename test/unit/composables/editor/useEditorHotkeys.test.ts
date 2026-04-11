@@ -12,6 +12,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useClipboardStore } from '~/stores/clipboard.store';
 
 vi.mock('~/composables/editor/useProjectActions', () => ({
   useProjectActions: () => ({
@@ -28,6 +29,7 @@ vi.mock('~/stores/workspace.store', () => ({
         layer2: 'Control',
         bindings: {
           'general.focus': ['Tab'],
+          'general.copy': ['Ctrl+C'],
         },
       },
       timeline: {
@@ -69,6 +71,7 @@ describe('useEditorHotkeys', () => {
     setActivePinia(createPinia());
     localStorage.clear();
     pressedKeyCodes.clear();
+    useClipboardStore().clearClipboardPayload();
     wrapper = undefined;
   });
 
@@ -103,6 +106,33 @@ describe('useEditorHotkeys', () => {
     );
 
     expect(focusStore.activePanelId).toBe('timeline');
+  });
+
+  it('preserves native Tab navigation inside editable elements', async () => {
+    wrapper = mount(HotkeysHarness, { attachTo: document.body });
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      code: 'Tab',
+      bubbles: true,
+      cancelable: true,
+    });
+
+    input.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(focusStore.activePanelId).toBe('timeline');
+
+    input.remove();
   });
 
   it('blocks timeline hotkeys when editable element is active', async () => {
@@ -189,5 +219,55 @@ describe('useEditorHotkeys', () => {
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 't', code: 'KeyT', bubbles: true }));
     expect(settingsStore.toolbarSnapMode).toBe('snap');
+  });
+
+  it('prioritizes file manager copy when a file manager panel is focused', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const selectionStore = useSelectionStore();
+    const timelineStore = useTimelineStore() as any;
+    const clipboardStore = useClipboardStore();
+
+    projectStore.setView('cut');
+    focusStore.setPanelFocus('dynamic:file-manager:detached-files');
+    selectionStore.selectFsEntry(
+      {
+        kind: 'file',
+        name: 'clip.mp4',
+        path: 'media/clip.mp4',
+        parentPath: 'media',
+        source: 'local',
+      } as any,
+      'detached-files',
+    );
+
+    timelineStore.selectedItemIds = ['timeline-clip-1'];
+    const copySelectedClipsSpy = vi.fn(() => []);
+    timelineStore.copySelectedClips = copySelectedClipsSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'c',
+        code: 'KeyC',
+        ctrlKey: true,
+        bubbles: true,
+      }),
+    );
+
+    expect(copySelectedClipsSpy).not.toHaveBeenCalled();
+    expect(clipboardStore.clipboardPayload).toEqual({
+      source: 'fileManager',
+      operation: 'copy',
+      items: [
+        {
+          path: 'media/clip.mp4',
+          kind: 'file',
+          name: 'clip.mp4',
+          source: 'local',
+        },
+      ],
+      sourceInstanceId: 'detached-files',
+    });
   });
 });
