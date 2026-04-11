@@ -14,7 +14,7 @@ const props = defineProps<{
   entry: FsEntry;
   depth: number;
   isDragOver: boolean;
-  dragOperation?: 'copy' | 'move' | null;
+  dragOperation?: 'copy' | 'move' | 'cancel' | null;
   editingEntryPath?: string | null;
   existingNames: string[];
   fileIcon: string;
@@ -54,7 +54,10 @@ const emit = defineEmits<{
       isDragOver && props.dragOperation === 'copy'
         ? 'bg-emerald-500/15 outline outline-emerald-500 -outline-offset-1'
         : '',
-      isDragOver && props.dragOperation !== 'copy'
+      isDragOver && props.dragOperation === 'cancel'
+        ? 'bg-red-500/12 outline outline-red-500 -outline-offset-1'
+        : '',
+      isDragOver && props.dragOperation !== 'copy' && props.dragOperation !== 'cancel'
         ? 'bg-primary-500/20 outline outline-primary-500 -outline-offset-1'
         : '',
       selected && editingEntryPath !== entry.path
@@ -96,7 +99,11 @@ const emit = defineEmits<{
       :class="[meta.isUsedInTimeline ? 'border-b-2 border-red-500' : '']"
       :title="meta.generatingProxy ? `${meta.proxyProgress ?? 0}%` : undefined"
     >
-      <UiProgressSpinner v-if="meta.generatingProxy" :progress="meta.proxyProgress ?? 0" size="sm" />
+      <UiProgressSpinner
+        v-if="meta.generatingProxy"
+        :progress="meta.proxyProgress ?? 0"
+        size="sm"
+      />
       <UIcon
         v-else
         :name="fileIcon"

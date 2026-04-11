@@ -171,6 +171,14 @@ body.fastcat-file-manager-drag-move {
     move !important;
 }
 
+html.fastcat-file-manager-drag-cancel,
+body.fastcat-file-manager-drag-cancel {
+  cursor:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23111418' d='M5 3h10l4 4v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z'/%3E%3Cpath fill='%23fff' d='M15 3v4h4z'/%3E%3Cpath fill='%23ef4444' d='M10.586 10.586L12 12l1.414-1.414l1.414 1.414L13.414 13.414l1.414 1.414l-1.414 1.414L12 14.828l-1.414 1.414l-1.414-1.414l1.414-1.414L9.172 12z'/%3E%3C/svg%3E")
+      6 4,
+    not-allowed !important;
+}
+
 /* Ensure back-swipe is disabled at the document root level for mobile */
 html.is-mobile-layout,
 body.is-mobile-layout {

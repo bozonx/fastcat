@@ -6,6 +6,7 @@ import type { FsEntry } from '~/types/fs';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
 
 let dragSourceFileManagerInstanceIdMock: string | null = null;
+let currentDragOperationMock: 'copy' | 'move' | 'cancel' | null = null;
 
 const selectionStoreMock = {
   selectedEntity: null as any,
@@ -54,7 +55,9 @@ vi.mock('#imports', () => ({
 
 vi.stubGlobal('useToast', () => ({ add: vi.fn() }));
 
-const setCurrentDragOperationMock = vi.fn();
+const setCurrentDragOperationMock = vi.fn((operation: 'copy' | 'move' | 'cancel' | null) => {
+  currentDragOperationMock = operation;
+});
 const setDragSourceFileManagerInstanceIdMock = vi.fn((instanceId: string | null) => {
   dragSourceFileManagerInstanceIdMock = instanceId;
 });
@@ -95,6 +98,7 @@ vi.mock('~/stores/workspace.store', () => ({
 vi.mock('~/composables/useAppClipboard', () => ({
   useAppClipboard: () => ({
     hasFileManagerPayload: false,
+    currentDragOperation: currentDragOperationMock,
     dragSourceFileManagerInstanceId: dragSourceFileManagerInstanceIdMock,
     setCurrentDragOperation: setCurrentDragOperationMock,
     setDragSourceFileManagerInstanceId: setDragSourceFileManagerInstanceIdMock,
@@ -131,6 +135,7 @@ describe('FileManagerTree', () => {
     selectionStoreMock.selectFsEntries.mockReset();
     selectionStoreMock.clearSelection.mockReset();
     dragSourceFileManagerInstanceIdMock = null;
+    currentDragOperationMock = null;
     setCurrentDragOperationMock.mockReset();
     setDragSourceFileManagerInstanceIdMock.mockClear();
     setDragTargetFileManagerInstanceIdMock.mockClear();
@@ -578,6 +583,39 @@ describe('FileManagerTree', () => {
     expect(wrapper.emitted('requestCopy')).toBeFalsy();
   });
 
+  it('shows cancel operation on dragover when item returns to its source container', async () => {
+    dragSourceFileManagerInstanceIdMock = 'main';
+
+    const dir: FsEntry = {
+      name: '_video',
+      kind: 'directory',
+      path: '_video',
+      expanded: false,
+    };
+
+    const wrapper = mountTree([dir], 'main');
+    const dropzone = wrapper.findAll('div').find((w) => w.attributes('role') === 'treeitem');
+
+    const dataTransfer = {
+      types: ['application/fastcat-copy'],
+      dropEffect: 'copy',
+      getData: vi.fn((type) => {
+        if (type === 'application/fastcat-copy') {
+          return JSON.stringify({ path: '_video', kind: 'directory' });
+        }
+        return '';
+      }),
+    };
+
+    await dropzone?.trigger('dragover', {
+      dataTransfer,
+      preventDefault: vi.fn(),
+    } as unknown as DragEvent);
+
+    expect(setCurrentDragOperationMock).toHaveBeenCalledWith('cancel');
+    expect(dataTransfer.dropEffect).toBe('none');
+  });
+
   it('selects only siblings for select all hotkey', async () => {
     const videoA: FsEntry = {
       name: 'a.mp4',
@@ -628,7 +666,11 @@ describe('FileManagerTree', () => {
     uiStoreMock.fileTreeSelectAllTrigger++;
     await Promise.resolve();
 
-    expect(selectionStoreMock.selectFsEntries).toHaveBeenCalledWith([videoA, videoB], 'main', false);
+    expect(selectionStoreMock.selectFsEntries).toHaveBeenCalledWith(
+      [videoA, videoB],
+      'main',
+      false,
+    );
     expect(selectionStoreMock.selectFsEntries).not.toHaveBeenCalledWith(
       [videoA, videoB, audioC],
       'main',

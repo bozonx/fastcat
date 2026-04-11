@@ -45,8 +45,12 @@ export interface UseFileDropOptions {
 export function useFileDrop(options: UseFileDropOptions) {
   const workspaceStore = useWorkspaceStore();
   const uiStore = useUiStore();
-  const { dragSourceFileManagerInstanceId, dragSourceVfs, currentDragOperation, setCurrentDragOperation } =
-    useAppClipboard();
+  const {
+    dragSourceFileManagerInstanceId,
+    dragSourceVfs,
+    currentDragOperation,
+    setCurrentDragOperation,
+  } = useAppClipboard();
   const appClipboard = useAppClipboard();
   const isRootDropOver = ref(false);
   let rootDragEnterCount = 0;
@@ -88,6 +92,7 @@ export function useFileDrop(options: UseFileDropOptions) {
 
   function syncDragOperationFromKeyboard(event: KeyboardEvent) {
     if (!uiStore.isFileManagerDragging) return;
+    if (appClipboard.currentDragOperation === 'cancel') return;
 
     const targetInstanceId = appClipboard.dragTargetFileManagerInstanceId;
     if (!targetInstanceId) return;

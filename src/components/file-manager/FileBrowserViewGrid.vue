@@ -34,7 +34,7 @@ function getBdThumbnail(entry: FsEntry): string | undefined {
 const props = defineProps<{
   entries: ExtendedFsEntry[];
   dragOverEntryPath: string | null;
-  currentDragOperation: 'copy' | 'move' | null;
+  currentDragOperation: 'copy' | 'move' | 'cancel' | null;
   currentGridSizeName: string;
   currentGridCardSize: number;
   editingEntryPath: string | null;
@@ -147,8 +147,10 @@ function handleImageError(entry: ExtendedFsEntry) {
             entry.path && timelineMediaUsageStore.mediaPathToTimelines[entry.path]?.length,
           'opacity-30': entry.name.startsWith('.'),
           'opacity-50': isCutEntry(entry),
+          'ring-2 ring-red-500 bg-red-500/10':
+            dragOverEntryPath === (entry.path ?? null) && props.currentDragOperation === 'cancel',
           'ring-2 ring-primary-500 bg-primary-500/20':
-            dragOverEntryPath === (entry.path ?? null) && props.currentDragOperation !== 'copy',
+            dragOverEntryPath === (entry.path ?? null) && props.currentDragOperation === 'move',
           'ring-2 ring-emerald-500 bg-emerald-500/15':
             dragOverEntryPath === (entry.path ?? null) && props.currentDragOperation === 'copy',
         }"
@@ -296,6 +298,5 @@ function handleImageError(entry: ExtendedFsEntry) {
         </span>
       </div>
     </UContextMenu>
-
   </div>
 </template>

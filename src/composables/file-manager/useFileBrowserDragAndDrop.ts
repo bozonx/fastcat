@@ -23,6 +23,7 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import {
   getDropTargetEntryPath,
+  isFileManagerDropCancellationTarget,
   isCrossFileManagerDrag,
   resolveFileManagerDragOperation,
   resolveFileManagerDropOperation,
@@ -168,6 +169,8 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   }
 
   function syncDragOperationFromKeyboard(event: KeyboardEvent) {
+    if (appClipboard.currentDragOperation === 'cancel') return;
+
     const targetInstanceId = appClipboard.dragTargetFileManagerInstanceId;
     if (!targetInstanceId) return;
 
@@ -236,6 +239,9 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   }
 
   function onEntryDragEnd() {
+    entryDragCounters.clear();
+    panelDragEnterCount = 0;
+    isDragOverPanel.value = false;
     clearDraggedFile();
     uiStore.isFileManagerDragging = false;
     appClipboard.setCurrentDragOperation(null);
@@ -246,12 +252,15 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     resetFileManagerDragCursor();
   }
 
+  function cancelCurrentDrag() {
+    onEntryDragEnd();
+  }
+
   function isDropTargetDir(entry: FsEntry): boolean {
     return entry.kind === 'directory';
   }
 
   function onEntryDragEnter(e: DragEvent, entry: FsEntry) {
-    if (!isDropTargetDir(entry)) return;
     if (!e.dataTransfer?.types) return;
 
     const types = e.dataTransfer.types;
@@ -268,10 +277,17 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     const count = (entryDragCounters.get(path) || 0) + 1;
     entryDragCounters.set(path, count);
     dragOverEntryPath.value = path;
+
+    if (!isDropTargetDir(entry)) {
+      if (!isFileManagerDropCancellationTarget({ event: e, targetEntryPath: path })) {
+        entryDragCounters.delete(path);
+        dragOverEntryPath.value = null;
+      }
+      return;
+    }
   }
 
   function onEntryDragOver(e: DragEvent, entry: FsEntry) {
-    if (!isDropTargetDir(entry)) return;
     const types = e.dataTransfer?.types;
     if (!types) return;
     if (
@@ -281,6 +297,18 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     ) {
       return;
     }
+    const targetPath = entry.path ?? null;
+    if (isFileManagerDropCancellationTarget({ event: e, targetEntryPath: targetPath })) {
+      dragOverEntryPath.value = targetPath;
+      appClipboard.setCurrentDragOperation('cancel');
+      appClipboard.setDragTargetFileManagerInstanceId(options.fileManagerInstanceId ?? null);
+      e.dataTransfer!.dropEffect = 'none';
+      syncFileManagerDragCursor({ isDragging: true, operation: 'cancel' });
+      return;
+    }
+
+    if (!isDropTargetDir(entry)) return;
+
     if (
       types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
       types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
@@ -312,8 +340,14 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   }
 
   async function onEntryDrop(e: DragEvent, entry: FsEntry) {
-    if (!isDropTargetDir(entry)) return;
     e.stopPropagation();
+
+    if (isFileManagerDropCancellationTarget({ event: e, targetEntryPath: entry.path })) {
+      cancelCurrentDrag();
+      return;
+    }
+
+    if (!isDropTargetDir(entry)) return;
 
     const path = entry.path ?? '';
     entryDragCounters.delete(path);

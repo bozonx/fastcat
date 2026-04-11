@@ -44,6 +44,7 @@ import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/wor
 import { isGeneratingProxyInDirectory, folderHasVideos } from '~/utils/fs-entry-utils';
 import {
   getDropTargetEntryPath,
+  isFileManagerDropCancellationTarget,
   isCrossFileManagerDrag,
   resolveFileManagerDragOperation,
   resolveFileManagerDropOperation,
@@ -163,7 +164,7 @@ const uiStore = useUiStore();
 const appClipboard = useAppClipboard();
 
 const isDragOver = ref<string | null>(null);
-const dragOperation = ref<'copy' | 'move' | null>(null);
+const dragOperation = ref<'copy' | 'move' | 'cancel' | null>(null);
 
 watch(
   () => uiStore.fileTreeSelectAllTrigger,
@@ -463,6 +464,7 @@ function onDragStart(e: DragEvent, entry: FsEntry) {
 
 function onDragEnd() {
   clearDraggedFile();
+  isDragOver.value = null;
   dragOperation.value = null;
   uiStore.isFileManagerDragging = false;
   appClipboard.setCurrentDragOperation(null);
@@ -495,6 +497,7 @@ function resolveDropOperation(
 
 function syncDragOperationFromKeyboard(event: KeyboardEvent) {
   if (!uiStore.isFileManagerDragging) return;
+  if (appClipboard.currentDragOperation === 'cancel') return;
   if (appClipboard.dragTargetFileManagerInstanceId !== (props.instanceId ?? null)) return;
 
   const operation = resolveFileManagerDragOperation({
@@ -526,6 +529,14 @@ function onDragOverDir(e: DragEvent, entry: FsEntry) {
 
   if (types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) || types.includes(FILE_MANAGER_COPY_DRAG_TYPE)) {
     isDragOver.value = entry.path || null;
+    if (isFileManagerDropCancellationTarget({ event: e, targetEntryPath: entry.path })) {
+      dragOperation.value = 'cancel';
+      appClipboard.setCurrentDragOperation('cancel');
+      appClipboard.setDragTargetFileManagerInstanceId(props.instanceId ?? null);
+      e.dataTransfer.dropEffect = 'none';
+      syncFileManagerDragCursor({ isDragging: true, operation: 'cancel' });
+      return;
+    }
     dragOperation.value = resolveDragOperation(e);
     appClipboard.setCurrentDragOperation(dragOperation.value);
     appClipboard.setDragTargetFileManagerInstanceId(props.instanceId ?? null);
@@ -569,6 +580,16 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
 
   e.stopPropagation();
 
+  if (
+    isFileManagerDropCancellationTarget({
+      event: e,
+      targetEntryPath: getDropTargetEntryPath(e) ?? entry.path,
+    })
+  ) {
+    onDragEnd();
+    return;
+  }
+
   const operation = dragOperation.value;
   isDragOver.value = null;
   dragOperation.value = null;
@@ -585,10 +606,7 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
       targetFileManagerInstanceId: props.instanceId ?? null,
     });
     const shouldCopy =
-      resolveDropOperation(
-        e,
-        operation ?? (copyRaw ? 'copy' : moveRaw ? 'move' : null),
-      ) === 'copy';
+      resolveDropOperation(e, operation ?? (copyRaw ? 'copy' : moveRaw ? 'move' : null)) === 'copy';
     let parsed: any;
     try {
       parsed = JSON.parse(internalRaw);
