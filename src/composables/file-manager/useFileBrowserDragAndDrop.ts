@@ -127,7 +127,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     isRootDropOver,
     isRelevantDrag,
     onRootDragEnter,
-    onRootDragOver,
+    onRootDragOver: onRootDragOverBase,
     onRootDragLeave,
     onRootDrop: onRootDropBase,
   } = useFileDrop({
@@ -279,6 +279,15 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     entryDragCounters.set(path, count);
     dragOverEntryPath.value = path;
 
+    if (
+      isFileManagerDropCancellationTarget({ event: e, targetEntryPath: path, targetDirPath: path })
+    ) {
+      appClipboard.setCurrentDragOperation('cancel');
+      appClipboard.setDragTargetFileManagerInstanceId(options.fileManagerInstanceId ?? null);
+      e.dataTransfer!.dropEffect = 'none';
+      syncFileManagerDragCursor({ isDragging: true, operation: 'cancel' });
+    }
+
     if (!isDropTargetDir(entry)) {
       if (!isFileManagerDropCancellationTarget({ event: e, targetEntryPath: path })) {
         entryDragCounters.delete(path);
@@ -299,7 +308,13 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       return;
     }
     const targetPath = entry.path ?? null;
-    if (isFileManagerDropCancellationTarget({ event: e, targetEntryPath: targetPath })) {
+    if (
+      isFileManagerDropCancellationTarget({
+        event: e,
+        targetEntryPath: targetPath,
+        targetDirPath: targetPath,
+      })
+    ) {
       dragOverEntryPath.value = targetPath;
       appClipboard.setCurrentDragOperation('cancel');
       appClipboard.setDragTargetFileManagerInstanceId(options.fileManagerInstanceId ?? null);
@@ -343,7 +358,13 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   async function onEntryDrop(e: DragEvent, entry: FsEntry) {
     e.stopPropagation();
 
-    if (isFileManagerDropCancellationTarget({ event: e, targetEntryPath: entry.path })) {
+    if (
+      isFileManagerDropCancellationTarget({
+        event: e,
+        targetEntryPath: entry.path,
+        targetDirPath: entry.path,
+      })
+    ) {
       cancelCurrentDrag();
       return;
     }
@@ -486,6 +507,19 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
     ) {
       isDragOverPanel.value = true;
+      const targetPath = fileManagerStore.selectedFolder?.path ?? '';
+      if (
+        isFileManagerDropCancellationTarget({
+          event: e,
+          targetDirPath: targetPath,
+        })
+      ) {
+        appClipboard.setCurrentDragOperation('cancel');
+        appClipboard.setDragTargetFileManagerInstanceId(options.fileManagerInstanceId ?? null);
+        e.dataTransfer!.dropEffect = 'none';
+        syncFileManagerDragCursor({ isDragging: true, operation: 'cancel' });
+        return;
+      }
       if (
         types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
         types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
@@ -524,6 +558,16 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
     const targetFolder = fileManagerStore.selectedFolder;
     const targetPath = targetFolder?.path ?? '';
+
+    if (
+      isFileManagerDropCancellationTarget({
+        event: e,
+        targetDirPath: targetPath,
+      })
+    ) {
+      cancelCurrentDrag();
+      return;
+    }
 
     const copyRaw = e.dataTransfer?.getData(FILE_MANAGER_COPY_DRAG_TYPE);
     const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
@@ -633,10 +677,37 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     await options.loadFolderContent();
   }
 
+  function onRootDragOver(e: DragEvent) {
+    const currentPath = fileManagerStore.selectedFolder?.path ?? '';
+    if (
+      isFileManagerDropCancellationTarget({
+        event: e,
+        targetDirPath: currentPath,
+      })
+    ) {
+      appClipboard.setCurrentDragOperation('cancel');
+      appClipboard.setDragTargetFileManagerInstanceId(options.fileManagerInstanceId ?? null);
+      e.dataTransfer!.dropEffect = 'none';
+      syncFileManagerDragCursor({ isDragging: true, operation: 'cancel' });
+      return;
+    }
+
+    onRootDragOverBase(e);
+  }
+
   function onRootDrop(e: DragEvent) {
     appClipboard.setDragTargetFileManagerInstanceId(null);
     resetFileManagerDragCursor();
     const currentPath = fileManagerStore.selectedFolder?.path;
+    if (
+      isFileManagerDropCancellationTarget({
+        event: e,
+        targetDirPath: currentPath,
+      })
+    ) {
+      cancelCurrentDrag();
+      return;
+    }
     return onRootDropBase(e, currentPath);
   }
 

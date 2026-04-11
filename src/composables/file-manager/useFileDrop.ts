@@ -11,6 +11,7 @@ import {
 import {
   getDropTargetEntryPath,
   isCrossFileManagerDrag,
+  isFileManagerDropCancellationTarget,
   resolveFileManagerDragOperation,
   resolveFileManagerDropOperation,
   shouldCancelFileManagerDrop,
@@ -135,6 +136,14 @@ export function useFileDrop(options: UseFileDropOptions) {
       appClipboard.setDragTargetFileManagerInstanceId(options.targetFileManagerInstanceId ?? null);
       e.dataTransfer!.dropEffect = 'copy';
       syncFileManagerDragCursor({ isDragging: true, operation: 'copy' });
+      return;
+    }
+
+    if (isFileManagerDropCancellationTarget({ event: e, targetDirPath: undefined })) {
+      setCurrentDragOperation('cancel');
+      appClipboard.setDragTargetFileManagerInstanceId(options.targetFileManagerInstanceId ?? null);
+      e.dataTransfer!.dropEffect = 'none';
+      syncFileManagerDragCursor({ isDragging: true, operation: 'cancel' });
       return;
     }
 

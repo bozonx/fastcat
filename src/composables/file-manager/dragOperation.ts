@@ -77,6 +77,26 @@ export function shouldCancelFileManagerDrop(params: {
   });
 }
 
+export function shouldCancelFileManagerDropToDirectory(params: {
+  items: Array<{ path?: unknown }>;
+  targetDirPath?: string | null;
+}): boolean {
+  const targetDirPath = typeof params.targetDirPath === 'string' ? params.targetDirPath : '';
+  if (params.items.length === 0) return false;
+
+  return params.items.every((item) => {
+    const sourcePath = typeof item?.path === 'string' ? item.path : '';
+    if (!sourcePath) return false;
+
+    const normalizedSourcePath = sourcePath.replace(/\/+$/, '');
+    const lastSlashIndex = normalizedSourcePath.lastIndexOf('/');
+    const sourceParentPath =
+      lastSlashIndex >= 0 ? normalizedSourcePath.slice(0, lastSlashIndex) : '';
+
+    return sourceParentPath === targetDirPath;
+  });
+}
+
 export function getDropTargetEntryPath(event: DragEvent): string | null {
   const hasHTMLElement = typeof HTMLElement !== 'undefined';
   const readDatasetPath = (value: unknown): string | null => {
@@ -134,9 +154,18 @@ export function getDraggedFileManagerItems(event: DragEvent): FileManagerDragged
 export function isFileManagerDropCancellationTarget(params: {
   event: DragEvent;
   targetEntryPath?: string | null;
+  targetDirPath?: string | null;
 }): boolean {
-  return shouldCancelFileManagerDrop({
-    items: getDraggedFileManagerItems(params.event),
-    targetEntryPath: params.targetEntryPath,
-  });
+  const items = getDraggedFileManagerItems(params.event);
+
+  return (
+    shouldCancelFileManagerDrop({
+      items,
+      targetEntryPath: params.targetEntryPath,
+    }) ||
+    shouldCancelFileManagerDropToDirectory({
+      items,
+      targetDirPath: params.targetDirPath,
+    })
+  );
 }

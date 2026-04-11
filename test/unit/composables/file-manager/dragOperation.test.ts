@@ -96,4 +96,34 @@ describe('dragOperation', () => {
       }),
     ).toBe(false);
   });
+
+  it('detects cancellation target when dragging back into the same directory', () => {
+    expect(
+      isFileManagerDropCancellationTarget({
+        event: {
+          dataTransfer: {
+            getData: (type: string) =>
+              type === 'application/fastcat-file-manager-move'
+                ? JSON.stringify([{ path: '_video/clip.mp4', kind: 'file' }])
+                : '',
+          },
+        } as unknown as DragEvent,
+        targetDirPath: '_video',
+      }),
+    ).toBe(true);
+
+    expect(
+      isFileManagerDropCancellationTarget({
+        event: {
+          dataTransfer: {
+            getData: (type: string) =>
+              type === 'application/fastcat-file-manager-move'
+                ? JSON.stringify([{ path: '_video/clip.mp4', kind: 'file' }])
+                : '',
+          },
+        } as unknown as DragEvent,
+        targetDirPath: '_audio',
+      }),
+    ).toBe(false);
+  });
 });

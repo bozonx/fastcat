@@ -202,7 +202,7 @@ describe('FileManagerTree', () => {
         types: ['application/fastcat-move'],
         getData: vi.fn((type) => {
           if (type === 'application/fastcat-move') {
-            return JSON.stringify({ path: '_video/a.mp4' });
+            return JSON.stringify({ path: '_audio/a.mp4' });
           }
           return '';
         }),
@@ -216,7 +216,7 @@ describe('FileManagerTree', () => {
     const emitted = wrapper.emitted('requestMove');
     expect(emitted?.length).toBe(1);
     expect(emitted?.[0]?.[0]).toEqual({
-      sourcePath: '_video/a.mp4',
+      sourcePath: '_audio/a.mp4',
       targetDirPath: '_video',
     });
   });
@@ -239,7 +239,7 @@ describe('FileManagerTree', () => {
         types: ['application/fastcat-copy'],
         getData: vi.fn((type) => {
           if (type === 'application/fastcat-copy') {
-            return JSON.stringify({ path: '_video/a.mp4' });
+            return JSON.stringify({ path: '_audio/a.mp4' });
           }
           return '';
         }),
@@ -253,7 +253,7 @@ describe('FileManagerTree', () => {
     const emitted = wrapper.emitted('requestCopy');
     expect(emitted?.length).toBe(1);
     expect(emitted?.[0]?.[0]).toEqual({
-      sourcePath: '_video/a.mp4',
+      sourcePath: '_audio/a.mp4',
       targetDirPath: '_video',
     });
   });
@@ -277,7 +277,7 @@ describe('FileManagerTree', () => {
         types: ['application/fastcat-copy'],
         getData: vi.fn((type) => {
           if (type === 'application/fastcat-copy') {
-            return JSON.stringify({ path: '_video/a.mp4' });
+            return JSON.stringify({ path: '_audio/a.mp4' });
           }
           return '';
         }),
@@ -289,7 +289,7 @@ describe('FileManagerTree', () => {
     await dropzone?.trigger('drop', mockEvent);
 
     expect(wrapper.emitted('requestMove')?.[0]?.[0]).toEqual({
-      sourcePath: '_video/a.mp4',
+      sourcePath: '_audio/a.mp4',
       targetDirPath: '_video',
     });
     expect(wrapper.emitted('requestCopy')).toBeFalsy();
@@ -490,7 +490,7 @@ describe('FileManagerTree', () => {
         types: ['application/fastcat-move'],
         getData: vi.fn((type) => {
           if (type === 'application/fastcat-move') {
-            return JSON.stringify({ path: '_video/a.mp4' });
+            return JSON.stringify({ path: '_audio/a.mp4' });
           }
           return '';
         }),
@@ -504,7 +504,7 @@ describe('FileManagerTree', () => {
     const emitted = wrapper.emitted('requestCopy');
     expect(emitted?.length).toBe(1);
     expect(emitted?.[0]?.[0]).toEqual({
-      sourcePath: '_video/a.mp4',
+      sourcePath: '_audio/a.mp4',
       targetDirPath: '_video',
     });
   });
@@ -530,7 +530,7 @@ describe('FileManagerTree', () => {
         types: ['application/fastcat-move'],
         getData: vi.fn((type) => {
           if (type === 'application/fastcat-move') {
-            return JSON.stringify({ path: '_video/a.mp4' });
+            return JSON.stringify({ path: '_audio/a.mp4' });
           }
           return '';
         }),
@@ -544,7 +544,7 @@ describe('FileManagerTree', () => {
     const emitted = wrapper.emitted('requestMove');
     expect(emitted?.length).toBe(1);
     expect(emitted?.[0]?.[0]).toEqual({
-      sourcePath: '_video/a.mp4',
+      sourcePath: '_audio/a.mp4',
       targetDirPath: '_video',
     });
   });
