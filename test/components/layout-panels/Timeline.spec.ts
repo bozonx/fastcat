@@ -89,32 +89,4 @@ describe('Timeline Component', () => {
     await timecode.vm.$emit('update:modelValue', 20_000_000);
     expect(timelineStore.setCurrentTimeUs).toHaveBeenCalledWith(20_000_000);
   });
-
-  it('renders desktop track sections for legacy OTIO track kinds', async () => {
-    const timelineStore = useTimelineStore();
-    timelineStore.timelineDoc = {
-      tracks: [
-        {
-          id: 'v1',
-          kind: 'Video',
-          locked: false,
-          items: [],
-          name: 'Video 1',
-        },
-        {
-          id: 'a1',
-          kind: 'Audio',
-          locked: false,
-          items: [],
-          name: 'Audio 1',
-        },
-      ],
-    } as any;
-
-    const component = await mountSuspended(Timeline);
-
-    expect(component.findAllComponents({ name: 'TimelineTrackSection' }).length).toBe(2);
-    expect(component.text()).toContain('Video 1');
-    expect(component.text()).toContain('Audio 1');
-  });
 });

@@ -19,6 +19,7 @@ import {
   toTimeRange,
   trackKindToOtioKind,
   trackKindFromOtioKind,
+  normalizeTrackKind,
   assertTimelineTimebase,
   coerceId,
   coerceName,
@@ -296,10 +297,7 @@ export function parseTimelineFromOtio(
       trackFastCatMeta.id,
       `${otioTrack.kind === 'Audio' ? 'a' : 'v'}${trackIndex + 1}`,
     );
-    const kind =
-      trackFastCatMeta.kind === 'audio' || trackFastCatMeta.kind === 'video'
-        ? trackFastCatMeta.kind
-        : trackKindFromOtioKind(otioTrack.kind);
+    const kind = normalizeTrackKind(trackFastCatMeta.kind) ?? trackKindFromOtioKind(otioTrack.kind);
     const name = coerceName(
       trackFastCatMeta?.name ?? otioTrack.name,
       kind === 'audio' ? `Audio ${trackIndex + 1}` : `Video ${trackIndex + 1}`,

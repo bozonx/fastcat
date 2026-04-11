@@ -217,7 +217,6 @@ export function createTimelinePersistenceModule(
       if (requestId !== loadTimelineRequestId) return;
       deps.timelineDoc.value = parsed;
 
-      // Reset to defaults or let the caller restore from ProjectSettings
       deps.currentTime.value = 0;
       deps.masterGain.value = 1;
       if (deps.audioMuted) deps.audioMuted.value = false;

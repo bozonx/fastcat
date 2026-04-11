@@ -51,14 +51,6 @@ const videoSectionRef = ref<InstanceType<typeof TimelineTrackSection> | null>(nu
 const audioSectionRef = ref<InstanceType<typeof TimelineTrackSection> | null>(null);
 const menuRef = ref<InstanceType<typeof UiContextMenuPortal> | null>(null);
 
-function normalizeTrackKind(kind: unknown): TimelineTrack['kind'] | null {
-  if (kind === 'video' || kind === 'audio') return kind;
-  if (typeof kind !== 'string') return null;
-  const normalized = kind.toLowerCase();
-  if (normalized === 'video' || normalized === 'audio') return normalized;
-  return null;
-}
-
 // --- Derived scroll elements (from TimelineTrackSection via defineExpose) ---
 // Vue unwraps refs exposed via defineExpose, so .scrollEl is HTMLElement | null directly
 const videoScrollEl = computed(() => videoSectionRef.value?.scrollEl ?? null);
@@ -68,14 +60,7 @@ const audioLabelsScrollEl = computed(() => audioSectionRef.value?.labelsScrollEl
 const scrollEl = videoScrollEl;
 
 // --- Data ---
-const tracks = computed<TimelineTrack[]>(() =>
-  ((timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? []).flatMap((track) => {
-    const kind = normalizeTrackKind(track.kind);
-    if (!kind) return [];
-    if (track.kind === kind) return [track];
-    return [{ ...track, kind }];
-  }),
-);
+const tracks = computed(() => (timelineStore.timelineDoc?.tracks as TimelineTrack[]) ?? []);
 const videoTracks = computed(() => tracks.value.filter((t) => t.kind === 'video'));
 const audioTracks = computed(() => tracks.value.filter((t) => t.kind === 'audio'));
 const canEditClipContent = computed(() => ['cut', 'files', 'sound'].includes(currentView.value));
