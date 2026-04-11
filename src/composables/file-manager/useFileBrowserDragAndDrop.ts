@@ -208,7 +208,9 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     const operation = resolveDragStartOperation(e);
     appClipboard.setDragSourceFileManagerInstanceId(options.fileManagerInstanceId ?? null);
     appClipboard.setDragSourceVfs(options.vfs);
+    appClipboard.setDragTargetFileManagerInstanceId(options.fileManagerInstanceId ?? null);
     appClipboard.setCurrentDragOperation(operation);
+    uiStore.isFileManagerDragging = true;
     syncFileManagerDragCursor({ isDragging: true, operation });
 
     const movePayload = entriesToMove.map((e) => ({ name: e.name, kind: e.kind, path: e.path }));
@@ -234,7 +236,6 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       isExternal: options.isExternal,
     };
     setDraggedFile(data);
-    uiStore.isFileManagerDragging = true;
     e.dataTransfer?.setData('application/json', JSON.stringify(data));
   }
 
