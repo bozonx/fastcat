@@ -33,7 +33,7 @@ function getBdThumbnail(entry: FsEntry): string | undefined {
 const props = defineProps<{
   entries: ExtendedFsEntry[];
   dragOverEntryPath: string | null;
-  currentDragOperation: 'copy' | 'move' | null;
+  currentDragOperation: 'copy' | 'move' | 'cancel' | null;
   folderSizesLoading: Record<string, boolean>;
   folderSizes: Record<string, number>;
   editingEntryPath: string | null;
@@ -287,9 +287,12 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
                 'text-amber-400!':
                   proxyStore.generatingProxies.has(entry.path || '') ||
                   isGeneratingProxyInDirectory(entry),
+                'outline-2 outline-red-500 -outline-offset-2 bg-red-500/10!':
+                  dragOverEntryPath === (entry.path ?? null) &&
+                  props.currentDragOperation === 'cancel',
                 'outline-2 outline-primary-500 -outline-offset-2 bg-primary-500/10!':
                   dragOverEntryPath === (entry.path ?? null) &&
-                  props.currentDragOperation !== 'copy',
+                  props.currentDragOperation === 'move',
                 'outline-2 outline-emerald-500 -outline-offset-2 bg-emerald-500/10!':
                   dragOverEntryPath === (entry.path ?? null) &&
                   props.currentDragOperation === 'copy',
@@ -428,7 +431,6 @@ function onNameDblClick(event: MouseEvent, entry: FsEntry) {
             </tr>
           </UContextMenu>
         </template>
-
       </tbody>
     </table>
   </div>

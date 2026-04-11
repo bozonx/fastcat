@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  isFileManagerDropCancellationTarget,
   isCrossFileManagerDrag,
   resolveFileManagerDragOperation,
 } from '~/composables/file-manager/dragOperation';
@@ -64,5 +65,35 @@ describe('dragOperation', () => {
         isLayer1Active: true,
       }),
     ).toBe('move');
+  });
+
+  it('detects cancellation target when dragging back onto the source entry', () => {
+    expect(
+      isFileManagerDropCancellationTarget({
+        event: {
+          dataTransfer: {
+            getData: (type: string) =>
+              type === 'application/fastcat-file-manager-move'
+                ? JSON.stringify([{ path: '_video/clip.mp4', kind: 'file' }])
+                : '',
+          },
+        } as unknown as DragEvent,
+        targetEntryPath: '_video/clip.mp4',
+      }),
+    ).toBe(true);
+
+    expect(
+      isFileManagerDropCancellationTarget({
+        event: {
+          dataTransfer: {
+            getData: (type: string) =>
+              type === 'application/fastcat-file-manager-move'
+                ? JSON.stringify([{ path: '_video/clip.mp4', kind: 'file' }])
+                : '',
+          },
+        } as unknown as DragEvent,
+        targetEntryPath: '_video',
+      }),
+    ).toBe(false);
   });
 });

@@ -1,6 +1,7 @@
 const FILE_MANAGER_DRAGGING_CLASS = 'fastcat-file-manager-dragging';
 const FILE_MANAGER_DRAG_COPY_CLASS = 'fastcat-file-manager-drag-copy';
 const FILE_MANAGER_DRAG_MOVE_CLASS = 'fastcat-file-manager-drag-move';
+const FILE_MANAGER_DRAG_CANCEL_CLASS = 'fastcat-file-manager-drag-cancel';
 const FILE_MANAGER_DRAG_OVERLAY_ID = 'fastcat-file-manager-drag-overlay';
 
 let dragOverlay: HTMLDivElement | null = null;
@@ -8,8 +9,10 @@ let dragOverlayIcon: HTMLSpanElement | null = null;
 let dragOverlayLabel: HTMLSpanElement | null = null;
 let overlayListenersRegistered = false;
 
-function getOverlayMarkup(operation: 'copy' | 'move' | null) {
-  return operation === 'copy' ? '+' : '↕';
+function getOverlayMarkup(operation: 'copy' | 'move' | 'cancel' | null) {
+  if (operation === 'copy') return '+';
+  if (operation === 'cancel') return 'x';
+  return '^';
 }
 
 function ensureDragOverlay() {
@@ -59,13 +62,15 @@ function ensureDragOverlay() {
   return overlay;
 }
 
-function updateDragOverlayOperation(operation: 'copy' | 'move' | null) {
+function updateDragOverlayOperation(operation: 'copy' | 'move' | 'cancel' | null) {
   const overlay = ensureDragOverlay();
   if (!overlay || !dragOverlayIcon || !dragOverlayLabel) return;
 
   dragOverlayIcon.textContent = getOverlayMarkup(operation);
-  dragOverlayIcon.style.background = operation === 'copy' ? '#22c55e' : '#f59e0b';
-  dragOverlayLabel.textContent = operation === 'copy' ? 'Copy' : 'Move';
+  dragOverlayIcon.style.background =
+    operation === 'copy' ? '#22c55e' : operation === 'cancel' ? '#ef4444' : '#f59e0b';
+  dragOverlayLabel.textContent =
+    operation === 'copy' ? 'Copy' : operation === 'cancel' ? 'Cancel' : 'Move';
 }
 
 function updateDragOverlayPosition(x: number, y: number) {
@@ -94,7 +99,7 @@ function unregisterOverlayListeners() {
 
 function updateClassList(
   target: HTMLElement,
-  params: { isDragging: boolean; operation: 'copy' | 'move' | null },
+  params: { isDragging: boolean; operation: 'copy' | 'move' | 'cancel' | null },
 ) {
   target.classList.toggle(FILE_MANAGER_DRAGGING_CLASS, params.isDragging);
   target.classList.toggle(
@@ -105,11 +110,15 @@ function updateClassList(
     FILE_MANAGER_DRAG_MOVE_CLASS,
     params.isDragging && params.operation === 'move',
   );
+  target.classList.toggle(
+    FILE_MANAGER_DRAG_CANCEL_CLASS,
+    params.isDragging && params.operation === 'cancel',
+  );
 }
 
 export function syncFileManagerDragCursor(params: {
   isDragging: boolean;
-  operation: 'copy' | 'move' | null;
+  operation: 'copy' | 'move' | 'cancel' | null;
 }) {
   if (typeof document === 'undefined') return;
 

@@ -16,8 +16,7 @@ export interface FileManagerDraggedItem {
 
 export type FileManagerDragCursorOperation = 'copy' | 'move' | 'cancel';
 
-export interface ResolveFileManagerDropOperationParams
-  extends ResolveFileManagerDragOperationParams {
+export interface ResolveFileManagerDropOperationParams extends ResolveFileManagerDragOperationParams {
   currentDragOperation?: 'copy' | 'move' | null;
   fallbackRawOperation?: 'copy' | 'move' | null;
 }
@@ -30,8 +29,8 @@ export function isCrossFileManagerDrag(
 ): boolean {
   return Boolean(
     params.dragSourceFileManagerInstanceId &&
-      params.targetFileManagerInstanceId &&
-      params.dragSourceFileManagerInstanceId !== params.targetFileManagerInstanceId,
+    params.targetFileManagerInstanceId &&
+    params.dragSourceFileManagerInstanceId !== params.targetFileManagerInstanceId,
   );
 }
 
@@ -67,8 +66,7 @@ export function shouldCancelFileManagerDrop(params: {
   items: Array<{ path?: unknown }>;
   targetEntryPath?: string | null;
 }): boolean {
-  const targetEntryPath =
-    typeof params.targetEntryPath === 'string' ? params.targetEntryPath : '';
+  const targetEntryPath = typeof params.targetEntryPath === 'string' ? params.targetEntryPath : '';
   if (params.items.length === 0) return false;
   if (!targetEntryPath) return false;
 

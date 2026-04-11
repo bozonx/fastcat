@@ -4,6 +4,7 @@ import { computed, ref, shallowRef } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import type { TimelineClipItem } from '~/timeline/types';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
+import type { FileManagerDragCursorOperation } from '~/composables/file-manager/dragOperation';
 
 export interface FileManagerClipboardItem {
   path: string;
@@ -37,7 +38,7 @@ export type AppClipboardPayload = FileManagerClipboardPayload | TimelineClipboar
 
 export const useClipboardStore = defineStore('clipboard', () => {
   const clipboardPayload = ref<AppClipboardPayload | null>(null);
-  const currentDragOperation = ref<'copy' | 'move' | null>(null);
+  const currentDragOperation = ref<FileManagerDragCursorOperation | null>(null);
   const dragSourceFileManagerInstanceId = ref<string | null>(null);
   const dragTargetFileManagerInstanceId = ref<string | null>(null);
   const dragSourceVfs = shallowRef<IFileSystemAdapter | null>(null);
@@ -62,7 +63,7 @@ export const useClipboardStore = defineStore('clipboard', () => {
     clipboardPayload.value = null;
   }
 
-  function setCurrentDragOperation(operation: 'copy' | 'move' | null) {
+  function setCurrentDragOperation(operation: FileManagerDragCursorOperation | null) {
     currentDragOperation.value = operation;
   }
 
