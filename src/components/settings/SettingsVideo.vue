@@ -79,15 +79,15 @@ function resetDefaults() {
   <div class="flex flex-col gap-6">
     <UiConfirmModal
       v-model:open="isResetConfirmOpen"
-      :title="t('videoEditor.settings.resetVideoSettingsConfirmTitle', 'Reset video settings?')"
+      :title="t('videoEditor.settings.resetVideoSettingsConfirmTitle')"
       :description="
         t(
           'videoEditor.settings.resetVideoSettingsConfirmDesc',
           'This will restore all video performance settings to their default values.',
         )
       "
-      :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction', 'Reset')"
-      :cancel-text="t('common.cancel', 'Cancel')"
+      :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction')"
+      :cancel-text="t('common.cancel')"
       color="warning"
       icon="i-heroicons-exclamation-triangle"
       @confirm="resetDefaults"
@@ -95,23 +95,23 @@ function resetDefaults() {
 
     <div class="flex items-center justify-between gap-3">
       <div class="text-sm font-medium text-ui-text">
-        {{ t('videoEditor.settings.video.performance', 'Performance') }}
+        {{ t('videoEditor.settings.video.performance') }}
       </div>
       <div class="flex items-center gap-2">
         <UButton size="xs" color="neutral" variant="ghost" @click="isResetConfirmOpen = true">
-          {{ t('videoEditor.settings.resetDefaults', 'Reset to defaults') }}
+          {{ t('videoEditor.settings.resetDefaults') }}
         </UButton>
       </div>
     </div>
 
     <div class="flex flex-col gap-3">
       <div class="text-sm font-medium text-ui-text-muted">
-        {{ t('videoEditor.settings.video.accelerationDiagnostics', 'Acceleration diagnostics') }}
+        {{ t('videoEditor.settings.video.accelerationDiagnostics') }}
       </div>
 
       <div class="flex flex-col gap-4">
         <UiFormField
-          :label="t('videoEditor.settings.videoFrameCacheMb', 'Video frame cache (MB)')"
+          :label="t('videoEditor.settings.videoFrameCacheMb')"
           :help="
             t(
               'videoEditor.settings.videoFrameCacheMbHelp',

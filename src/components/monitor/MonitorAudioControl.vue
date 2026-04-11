@@ -22,12 +22,12 @@ const { t } = useI18n();
     :compact="compact"
     orientation="vertical"
     :max="2"
-    :mute-tooltip="getHotkeyTitle(t('fastcat.monitor.toggleMute', 'Toggle mute'), 'general.mute')"
+    :mute-tooltip="getHotkeyTitle(t('fastcat.monitor.toggleMute'), 'general.mute')"
     :volume-up-tooltip="
-      getHotkeyTitle(t('fastcat.monitor.volumeUp', 'Volume up'), 'general.volumeUp')
+      getHotkeyTitle(t('fastcat.monitor.volumeUp'), 'general.volumeUp')
     "
     :volume-down-tooltip="
-      getHotkeyTitle(t('fastcat.monitor.volumeDown', 'Volume down'), 'general.volumeDown')
+      getHotkeyTitle(t('fastcat.monitor.volumeDown'), 'general.volumeDown')
     "
   />
 </template>

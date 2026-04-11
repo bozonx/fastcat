@@ -458,35 +458,35 @@ const commonActions = computed(() => {
   const actions = [
     {
       id: 'copy',
-      title: t('common.copy', 'Copy'),
+      title: t('common.copy'),
       icon: 'i-heroicons-document-duplicate',
       onClick: handleCopyClips,
     },
     {
       id: 'cut',
-      title: t('common.cut', 'Cut'),
+      title: t('common.cut'),
       icon: 'i-heroicons-scissors',
       onClick: handleCutClips,
     },
     {
       id: 'delete',
-      title: t('common.delete', 'Delete'),
+      title: t('common.delete'),
       icon: 'i-heroicons-trash',
       onClick: handleDelete,
     },
     {
       id: 'toggle-disabled',
       title: allDisabled.value
-        ? t('fastcat.timeline.enableClips', 'Enable clips')
-        : t('fastcat.timeline.disableClips', 'Disable clips'),
+        ? t('fastcat.timeline.enableClips')
+        : t('fastcat.timeline.disableClips'),
       icon: allDisabled.value ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
       onClick: toggleDisabled,
     },
     {
       id: 'toggle-locked',
       title: allLocked.value
-        ? t('fastcat.timeline.unlockClips', 'Unlock clips')
-        : t('fastcat.timeline.lockClips', 'Lock clips'),
+        ? t('fastcat.timeline.unlockClips')
+        : t('fastcat.timeline.lockClips'),
       icon: allLocked.value ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
       onClick: toggleLocked,
     },
@@ -496,8 +496,8 @@ const commonActions = computed(() => {
     actions.push({
       id: 'toggle-muted',
       title: allMuted.value
-        ? t('fastcat.timeline.unmuteClips', 'Unmute clips')
-        : t('fastcat.timeline.muteClips', 'Mute clips'),
+        ? t('fastcat.timeline.unmuteClips')
+        : t('fastcat.timeline.muteClips'),
       icon: allMuted.value ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark',
       onClick: toggleMuted,
     });
@@ -517,7 +517,7 @@ const otherActions = computed(() => {
 
   result.push({
     id: 'group',
-    label: t('fastcat.timeline.groupClips', 'Group clips'),
+    label: t('fastcat.timeline.groupClips'),
     icon: 'i-heroicons-link',
     hidden: props.items.length < 2,
     onClick: handleGroupSelected,
@@ -525,7 +525,7 @@ const otherActions = computed(() => {
 
   result.push({
     id: 'ungroup',
-    label: t('fastcat.timeline.ungroupClips', 'Ungroup clips'),
+    label: t('fastcat.timeline.ungroupClips'),
     icon: 'i-heroicons-link-slash',
     hidden: !hasGroupedClip.value,
     onClick: handleUngroupSelected,
@@ -534,7 +534,7 @@ const otherActions = computed(() => {
   if (hasFreeClip.value) {
     result.push({
       id: 'quantize',
-      label: t('fastcat.timeline.quantize', 'Quantize to frames'),
+      label: t('fastcat.timeline.quantize'),
       icon: 'i-heroicons-squares-2x2',
       onClick: handleQuantizeSelected,
     });
@@ -543,7 +543,7 @@ const otherActions = computed(() => {
   if (hasLockedLinks.value) {
     result.push({
       id: 'unlink-audio',
-      label: t('fastcat.timeline.unlinkAudio', 'Unlink audio'),
+      label: t('fastcat.timeline.unlinkAudio'),
       icon: 'i-heroicons-link-slash',
       onClick: handleUnlinkSelected,
     });
@@ -553,8 +553,8 @@ const otherActions = computed(() => {
     result.push({
       id: 'toggle-waveform',
       label: isWaveformShown.value
-        ? t('fastcat.timeline.hideWaveform', 'Hide Waveform')
-        : t('fastcat.timeline.showWaveform', 'Show Waveform'),
+        ? t('fastcat.timeline.hideWaveform')
+        : t('fastcat.timeline.showWaveform'),
       icon: isWaveformShown.value ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
       onClick: toggleShowWaveform,
     });
@@ -562,8 +562,8 @@ const otherActions = computed(() => {
     result.push({
       id: 'waveform-mode',
       label: isWaveformFull.value
-        ? t('fastcat.timeline.waveformHalf', 'Waveform: Half')
-        : t('fastcat.timeline.waveformFull', 'Waveform: Full'),
+        ? t('fastcat.timeline.waveformHalf')
+        : t('fastcat.timeline.waveformFull'),
       icon: 'i-heroicons-chart-bar',
       onClick: toggleWaveformMode,
     });
@@ -573,8 +573,8 @@ const otherActions = computed(() => {
     result.push({
       id: 'toggle-thumbnails',
       label: isThumbnailsShown.value
-        ? t('fastcat.timeline.hideThumbnails', 'Hide Thumbnails')
-        : t('fastcat.timeline.showThumbnails', 'Show Thumbnails'),
+        ? t('fastcat.timeline.hideThumbnails')
+        : t('fastcat.timeline.showThumbnails'),
       icon: isThumbnailsShown.value ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
       onClick: toggleShowThumbnails,
     });
@@ -588,7 +588,7 @@ const otherActions = computed(() => {
   <!-- IMPORTANT: NO LOADING INDICATORS ALLOWED HERE. ALL PROPERTIES MUST LOAD SILENTLY. -->
   <div class="flex flex-col gap-2 w-full text-ui-text">
 
-    <PropertySection :title="t('fastcat.clip.actions', 'Actions')">
+    <PropertySection :title="t('fastcat.clip.actions')">
       <div class="flex flex-col w-full px-3 pb-3">
         <span class="text-sm text-ui-text-muted mb-2">
           {{ selectedCountLabel }}
@@ -607,14 +607,14 @@ const otherActions = computed(() => {
       </div>
     </PropertySection>
 
-    <PropertySection :title="t('fastcat.clip.info', 'Clip Info')">
+    <PropertySection :title="t('fastcat.clip.info')">
       <PropertyTimecode
-        :label="t('common.duration', 'Duration')"
+        :label="t('common.duration')"
         :model-value="firstClip?.timelineRange.durationUs ?? 0"
         @update:model-value="handleSetUniformDuration"
       />
 
-      <PropertyField :label="t('fastcat.timeline.durationShift', 'Duration Shift')" class="mt-2">
+      <PropertyField :label="t('fastcat.timeline.durationShift')" class="mt-2">
         <UiTimecode
           :model-value="durationShiftAccumulator"
           allow-negative
@@ -622,7 +622,7 @@ const otherActions = computed(() => {
         />
       </PropertyField>
 
-      <PropertyField :label="t('fastcat.timeline.startShift', 'Start Shift')" class="mt-2">
+      <PropertyField :label="t('fastcat.timeline.startShift')" class="mt-2">
         <UiTimecode
           :model-value="startShiftAccumulator"
           allow-negative
@@ -630,7 +630,7 @@ const otherActions = computed(() => {
         />
       </PropertyField>
 
-      <PropertyField :label="t('fastcat.timeline.endShift', 'End Shift')" class="mt-2">
+      <PropertyField :label="t('fastcat.timeline.endShift')" class="mt-2">
         <UiTimecode
           :model-value="endShiftAccumulator"
           allow-negative
@@ -659,7 +659,7 @@ const otherActions = computed(() => {
     >
       <div class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{
-          t('fastcat.clip.blendMode.title', 'Blend Mode')
+          t('fastcat.clip.blendMode.title')
         }}</span>
         <UiSelect
           v-model="batchBlendMode"
@@ -671,7 +671,7 @@ const otherActions = computed(() => {
       </div>
 
       <UiSliderInput
-        :label="t('fastcat.clip.opacity', 'Opacity')"
+        :label="t('fastcat.clip.opacity')"
         unit="%"
         :model-value="batchOpacity"
         :min="0"

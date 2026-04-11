@@ -22,7 +22,7 @@ function formatTime(timestamp: number) {
 <template>
   <UiModal
     :open="open"
-    :title="t('videoEditor.backgroundTasks.title', 'Background Tasks')"
+    :title="t('videoEditor.backgroundTasks.title')"
     size="3xl"
     @update:open="emit('update:open', $event)"
   >
@@ -33,7 +33,7 @@ function formatTime(timestamp: number) {
         variant="ghost"
         color="neutral"
         icon="i-heroicons-trash"
-        :label="t('common.clear', 'Clear')"
+        :label="t('common.clear')"
         @click="backgroundTasksStore.clearCompletedTasks()"
       />
     </template>
@@ -43,7 +43,7 @@ function formatTime(timestamp: number) {
         v-if="backgroundTasksStore.tasks.length === 0"
         class="text-center text-ui-text-muted py-8"
       >
-        {{ t('videoEditor.backgroundTasks.empty', 'No background tasks') }}
+        {{ t('videoEditor.backgroundTasks.empty') }}
       </div>
 
       <div v-else class="flex flex-col gap-2">
@@ -95,7 +95,7 @@ function formatTime(timestamp: number) {
               color="neutral"
               variant="ghost"
               size="xs"
-              :title="t('common.cancel', 'Cancel')"
+              :title="t('common.cancel')"
               @click="backgroundTasksStore.cancelTask(task.id)"
             />
             <UButton
@@ -104,7 +104,7 @@ function formatTime(timestamp: number) {
               color="neutral"
               variant="ghost"
               size="xs"
-              :title="t('common.remove', 'Remove')"
+              :title="t('common.remove')"
               @click="backgroundTasksStore.removeTask(task.id)"
             />
           </div>

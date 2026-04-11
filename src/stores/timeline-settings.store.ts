@@ -44,15 +44,6 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
     'bottom',
   );
 
-  const legacyToolbarMoveMode = useLocalStorage<string>(
-    'fastcat:timeline:toolbar-move-mode',
-    'snap',
-  );
-  const legacyToolbarMoveModeEnabled = useLocalStorage<boolean>(
-    'fastcat:timeline:toolbar-move-mode-enabled',
-    false,
-  );
-
   if (overlapMode.value !== 'none' && overlapMode.value !== 'pseudo') {
     overlapMode.value = DEFAULT_SNAP_SETTINGS.overlapMode;
   }
@@ -65,29 +56,6 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
     clipSnapMode.value = DEFAULT_SNAP_SETTINGS.clipSnapMode;
   }
 
-  if (
-    legacyToolbarMoveMode.value === 'snap' ||
-    legacyToolbarMoveMode.value === 'free_mode' ||
-    legacyToolbarMoveMode.value === 'pseudo_overlap' ||
-    legacyToolbarMoveMode.value === 'copy' ||
-    legacyToolbarMoveMode.value === 'slip'
-  ) {
-    if (legacyToolbarMoveMode.value === 'snap' || legacyToolbarMoveMode.value === 'free_mode') {
-      toolbarSnapMode.value = legacyToolbarMoveMode.value;
-    }
-
-    if (
-      legacyToolbarMoveMode.value === 'pseudo_overlap' ||
-      legacyToolbarMoveMode.value === 'copy' ||
-      legacyToolbarMoveMode.value === 'slip'
-    ) {
-      toolbarDragMode.value = legacyToolbarMoveMode.value;
-      toolbarDragModeEnabled.value = legacyToolbarMoveModeEnabled.value;
-    }
-
-    legacyToolbarMoveMode.value = 'snap';
-    legacyToolbarMoveModeEnabled.value = false;
-  }
 
   if (
     toolbarSnapMode.value !== 'snap' &&

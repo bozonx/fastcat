@@ -97,7 +97,7 @@ async function runHealth() {
       bearerToken: fastcat.value?.bearerToken || '',
     });
     healthState.status = 'success';
-    healthState.message = `${t('videoEditor.settings.integrationHealthOk', 'OK')} (${result.status})`;
+    healthState.message = `${t('videoEditor.settings.integrationHealthOk')} (${result.status})`;
   } catch (error: unknown) {
     healthState.status = 'error';
     healthState.message = error instanceof Error ? error.message : 'Health check failed';
@@ -134,7 +134,7 @@ function getHealthTone(status: typeof healthState.status) {
             target="_blank"
             class="text-xs text-primary-400 hover:underline inline-flex items-center gap-1"
           >
-            {{ t('videoEditor.settings.integrationManualLink', 'Open BloggerDog site') }}
+            {{ t('videoEditor.settings.integrationManualLink') }}
             <UIcon name="i-heroicons-arrow-top-right-on-square" class="h-3 w-3" />
           </a>
         </div>
@@ -163,16 +163,16 @@ function getHealthTone(status: typeof healthState.status) {
               class="h-4 w-4"
             />
             <span v-if="healthState.loading">
-              {{ t('common.loading', 'Checking...') }}
+              {{ t('common.loading') }}
             </span>
             <span v-else-if="healthState.status === 'success'">
-              {{ t('videoEditor.settings.integrationHealthOk', 'Connected') }}
+              {{ t('videoEditor.settings.integrationHealthOk') }}
             </span>
             <span v-else-if="healthState.status === 'error'">
-              {{ t('common.error', 'Error') }}
+              {{ t('common.error') }}
             </span>
             <span v-else>
-              {{ t('videoEditor.settings.integrationStatusWaiting', 'Waiting') }}
+              {{ t('videoEditor.settings.integrationStatusWaiting') }}
             </span>
           </div>
 
@@ -194,7 +194,7 @@ function getHealthTone(status: typeof healthState.status) {
           size="xs"
           @click="disconnectFastCat"
         >
-          {{ t('videoEditor.settings.integrationBreakConnection', 'Break connection') }}
+          {{ t('videoEditor.settings.integrationBreakConnection') }}
         </UButton>
       </div>
     </div>
@@ -208,7 +208,7 @@ function getHealthTone(status: typeof healthState.status) {
           :disabled="!bloggerDogUiUrl"
           @click="startFastCatConnect"
         >
-          {{ t('videoEditor.settings.bloggerDogConnectAction', 'Connect to BloggerDog') }}
+          {{ t('videoEditor.settings.bloggerDogConnectAction') }}
         </UButton>
       </div>
     </div>

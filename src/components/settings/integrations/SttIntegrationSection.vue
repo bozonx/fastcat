@@ -84,7 +84,7 @@ async function runHealth() {
       bearerToken: resolved.bearerToken,
     });
     healthState.status = 'success';
-    healthState.message = `${t('videoEditor.settings.integrationHealthOk', 'OK')} (${result.status})`;
+    healthState.message = `${t('videoEditor.settings.integrationHealthOk')} (${result.status})`;
   } catch (error: unknown) {
     healthState.status = 'error';
     healthState.message = error instanceof Error ? error.message : 'Health check failed';
@@ -132,10 +132,10 @@ async function startDownload() {
   <div class="flex flex-col gap-4 border border-ui-border rounded-lg p-4">
     <div class="flex flex-col gap-1">
       <div class="text-sm font-medium text-ui-text">
-        {{ t('videoEditor.settings.sttTranscriptionSettings', 'Transcription settings') }}
+        {{ t('videoEditor.settings.sttTranscriptionSettings') }}
       </div>
       <div class="text-xs text-ui-text-muted">
-        {{ t('videoEditor.settings.sttTranscriptionDescription', 'Configure speech-to-text integration and defaults.') }}
+        {{ t('videoEditor.settings.sttTranscriptionDescription') }}
       </div>
     </div>
 
@@ -153,7 +153,7 @@ async function startDownload() {
         @click="sttMode = 'fastcat'"
       >
         <UIcon v-if="!isFastcatConnected" name="i-heroicons-link-slash" class="w-3.5 h-3.5" />
-        {{ t('videoEditor.settings.sttFastcat', 'FASTCAT STT') }}
+        {{ t('videoEditor.settings.sttFastcat') }}
       </button>
       <button
         type="button"
@@ -165,7 +165,7 @@ async function startDownload() {
         class="flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all"
         @click="sttMode = 'local'"
       >
-        {{ t('videoEditor.settings.sttLocal', 'Local') }}
+        {{ t('videoEditor.settings.sttLocal') }}
       </button>
     </div>
 
@@ -175,7 +175,7 @@ async function startDownload() {
       class="flex flex-col gap-4 border border-ui-border rounded-lg p-4 bg-ui-bg-muted/30"
     >
       <div class="flex flex-col gap-4">
-        <UiFormField :label="t('videoEditor.settings.sttLocalModel', 'Whisper Model')">
+        <UiFormField :label="t('videoEditor.settings.sttLocalModel')">
           <UiSelect
             v-model="workspaceStore.userSettings.integrations.stt.localModel"
             :items="[
@@ -194,8 +194,8 @@ async function startDownload() {
             <div class="text-xs text-ui-text-muted">
               {{
                 workspaceStore.isSttModelDownloaded
-                  ? t('videoEditor.settings.sttModelDownloaded', 'Model is ready for use')
-                  : t('videoEditor.settings.sttModelNotDownloaded', 'Model needs to be downloaded')
+                  ? t('videoEditor.settings.sttModelDownloaded')
+                  : t('videoEditor.settings.sttModelNotDownloaded')
               }}
             </div>
             <UButton
@@ -206,11 +206,11 @@ async function startDownload() {
               :loading="downloadState.loading"
               @click="startDownload"
             >
-              {{ t('videoEditor.settings.sttDownloadModel', 'Download model') }}
+              {{ t('videoEditor.settings.sttDownloadModel') }}
             </UButton>
             <div v-else class="text-xs text-success-400 flex items-center gap-1">
               <UIcon name="i-heroicons-check-circle" class="w-4 h-4" />
-              {{ t('videoEditor.settings.sttModelReady', 'Ready') }}
+              {{ t('videoEditor.settings.sttModelReady') }}
             </div>
           </div>
 
@@ -228,7 +228,7 @@ async function startDownload() {
     <!-- Shared STT Settings -->
     <div class="flex flex-col gap-4 pl-1">
       <div v-if="sttMode !== 'local'" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <UiFormField :label="t('videoEditor.settings.integrationSttProvider', 'Provider')">
+        <UiFormField :label="t('videoEditor.settings.integrationSttProvider')">
           <UiTextInput
             v-model="workspaceStore.userSettings.integrations.stt.provider"
             full-width
@@ -236,7 +236,7 @@ async function startDownload() {
           />
         </UiFormField>
  
-        <UiFormField :label="t('videoEditor.settings.integrationSttModels', 'Models')">
+        <UiFormField :label="t('videoEditor.settings.integrationSttModels')">
           <UiTextInput
             v-model="sttModelsText"
             full-width
@@ -246,7 +246,7 @@ async function startDownload() {
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-        <UiFormField :label="t('videoEditor.fileManager.audio.transcriptionLanguage', 'Default language')">
+        <UiFormField :label="t('videoEditor.fileManager.audio.transcriptionLanguage')">
           <UiTextInput
             v-model="workspaceStore.userSettings.integrations.stt.language"
             full-width

@@ -50,7 +50,7 @@ const props = defineProps<{
     >
       <UIcon name="i-heroicons-queue-list" class="w-16 h-16" />
       <p class="text-sm font-medium text-center truncate w-full px-4">
-        {{ props.fileName || t('fastcat.timeline.project', 'Timeline Project') }}
+        {{ props.fileName || t('fastcat.timeline.project') }}
       </p>
     </div>
 
@@ -67,7 +67,7 @@ const props = defineProps<{
         {{
           props.isCorrupt
             ? t('videoEditor.fileManager.compatibility.corruptTitle')
-            : t('fastcat.preview.unsupported', 'Unsupported file format for visual preview')
+            : t('fastcat.preview.unsupported')
         }}
       </p>
     </div>

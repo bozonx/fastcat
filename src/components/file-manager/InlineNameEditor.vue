@@ -103,8 +103,8 @@ function finish() {
   if (!name) {
     toast.add({
       color: 'error',
-      title: t('common.rename', 'Rename'),
-      description: t('common.validation.required', 'Name is required.'),
+      title: t('common.rename'),
+      description: t('common.validation.required'),
     });
     emit('cancel');
     return;
@@ -113,8 +113,8 @@ function finish() {
   if (invalidCharsRegex.test(name)) {
     toast.add({
       color: 'error',
-      title: t('common.rename', 'Rename'),
-      description: t('common.validation.invalidName', 'Name contains invalid characters.'),
+      title: t('common.rename'),
+      description: t('common.validation.invalidName'),
     });
     emit('cancel');
     return;
@@ -123,8 +123,8 @@ function finish() {
   if (name !== props.initialName && props.existingNames.includes(name)) {
     toast.add({
       color: 'error',
-      title: t('common.rename', 'Rename'),
-      description: t('common.validation.exists', 'Name already exists.'),
+      title: t('common.rename'),
+      description: t('common.validation.exists'),
     });
     emit('cancel');
     return;

@@ -103,14 +103,14 @@ function clampNumber(value: number, min: number, max: number): number {
   <PropertySection
     v-if="canEditTransform || props.canEditReversed"
     v-model:toggle-value="isEnabled"
-    :title="t('fastcat.clip.transform.title', 'Transform')"
+    :title="t('fastcat.clip.transform.title')"
     has-toggle
   >
     <template #header-actions>
       <button
         v-if="canEditTransform"
         class="flex items-center gap-1 text-2xs text-ui-text-muted hover:text-ui-text disabled:opacity-50"
-        :title="t('fastcat.clip.transform.resetAll', 'Reset All')"
+        :title="t('fastcat.clip.transform.resetAll')"
         :disabled="!isEnabled"
         @click="resetAll"
       >
@@ -124,7 +124,7 @@ function clampNumber(value: number, min: number, max: number): number {
         <div class="space-y-1">
           <div class="flex items-center justify-between">
             <span class="text-xs text-ui-text-muted">{{
-              t('fastcat.clip.transform.anchor', 'Anchor')
+              t('fastcat.clip.transform.anchor')
             }}</span>
             <button
               class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text disabled:opacity-50"
@@ -166,7 +166,7 @@ function clampNumber(value: number, min: number, max: number): number {
         <!-- Reflect -->
         <div class="flex items-center gap-2">
           <span class="text-xs text-ui-text-muted mr-1">{{
-            t('fastcat.clip.transform.reflect', 'Reflect:')
+            t('fastcat.clip.transform.reflect')
           }}</span>
           <UButton
             icon="i-heroicons-arrows-right-left"
@@ -174,7 +174,7 @@ function clampNumber(value: number, min: number, max: number): number {
             color="neutral"
             variant="ghost"
             class="text-ui-text-muted hover:text-ui-text"
-            :title="t('fastcat.clip.transform.flipHorizontal', 'Flip Horizontal')"
+            :title="t('fastcat.clip.transform.flipHorizontal')"
             :disabled="!isEnabled"
             @click="toggleFlipHorizontal"
           />
@@ -184,7 +184,7 @@ function clampNumber(value: number, min: number, max: number): number {
             color="neutral"
             variant="ghost"
             class="text-ui-text-muted hover:text-ui-text"
-            :title="t('fastcat.clip.transform.flipVertical', 'Flip Vertical')"
+            :title="t('fastcat.clip.transform.flipVertical')"
             :disabled="!isEnabled"
             @click="toggleFlipVertical"
           />
@@ -194,8 +194,8 @@ function clampNumber(value: number, min: number, max: number): number {
           <div class="flex items-center justify-between">
             <span class="text-xs text-ui-text-muted">{{
               transformScaleLinked
-                ? t('fastcat.clip.transform.scale', 'Scale (%)')
-                : t('fastcat.clip.transform.scaleX', 'Scale X (%)')
+                ? t('fastcat.clip.transform.scale')
+                : t('fastcat.clip.transform.scaleX')
             }}</span>
             <button
               class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text disabled:opacity-50"
@@ -246,7 +246,7 @@ function clampNumber(value: number, min: number, max: number): number {
         <div class="flex flex-col gap-0.5">
           <div class="flex items-center justify-between">
             <span class="text-xs text-ui-text-muted">{{
-              t('fastcat.clip.transform.rotation', 'Rotation (deg)')
+              t('fastcat.clip.transform.rotation')
             }}</span>
             <button
               class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text disabled:opacity-50"
@@ -269,7 +269,7 @@ function clampNumber(value: number, min: number, max: number): number {
         <div class="space-y-1">
           <div class="flex items-center justify-between">
             <span class="text-xs text-ui-text-muted">{{
-              t('fastcat.clip.transform.position', 'Position (px)')
+              t('fastcat.clip.transform.position')
             }}</span>
             <button
               class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text disabled:opacity-50"
@@ -316,7 +316,7 @@ function clampNumber(value: number, min: number, max: number): number {
         <div class="space-y-1 border-t border-ui-border pt-2 mt-2">
           <div class="flex items-center justify-between">
             <span class="text-xs font-semibold text-ui-text uppercase tracking-wide">
-              {{ t('fastcat.clip.transform.crop', 'Crop (px)') }}
+              {{ t('fastcat.clip.transform.crop') }}
             </span>
             <button
               class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text disabled:opacity-50"
@@ -329,7 +329,7 @@ function clampNumber(value: number, min: number, max: number): number {
           <div class="grid grid-cols-2 gap-x-4 gap-y-2">
             <div class="flex flex-col gap-0.5">
               <span class="text-xs text-ui-text-muted">{{
-                t('fastcat.clip.transform.cropTop', 'Top')
+                t('fastcat.clip.transform.cropTop')
               }}</span>
               <UiWheelNumberInput
                 v-model="cropTopPx"
@@ -344,7 +344,7 @@ function clampNumber(value: number, min: number, max: number): number {
             </div>
             <div class="flex flex-col gap-0.5">
               <span class="text-xs text-ui-text-muted">{{
-                t('fastcat.clip.transform.cropBottom', 'Bottom')
+                t('fastcat.clip.transform.cropBottom')
               }}</span>
               <UiWheelNumberInput
                 v-model="cropBottomPx"
@@ -359,7 +359,7 @@ function clampNumber(value: number, min: number, max: number): number {
             </div>
             <div class="flex flex-col gap-0.5">
               <span class="text-xs text-ui-text-muted">{{
-                t('fastcat.clip.transform.cropLeft', 'Left')
+                t('fastcat.clip.transform.cropLeft')
               }}</span>
               <UiWheelNumberInput
                 v-model="cropLeftPx"
@@ -374,7 +374,7 @@ function clampNumber(value: number, min: number, max: number): number {
             </div>
             <div class="flex flex-col gap-0.5">
               <span class="text-xs text-ui-text-muted">{{
-                t('fastcat.clip.transform.cropRight', 'Right')
+                t('fastcat.clip.transform.cropRight')
               }}</span>
               <UiWheelNumberInput
                 v-model="cropRightPx"

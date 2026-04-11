@@ -28,7 +28,7 @@ const { t } = useI18n();
     <div v-if="!hidePresets" class="flex flex-col gap-1 pb-2 border-b border-ui-border mb-4">
       <div class="flex items-center justify-between">
         <div class="text-[10px] font-medium uppercase tracking-wider text-ui-text-muted opacity-70">
-          {{ t('fastcat.effects.presetsTitle', 'Presets') }}
+          {{ t('fastcat.effects.presetsTitle') }}
         </div>
         <UButton
           icon="i-heroicons-bookmark"
@@ -37,7 +37,7 @@ const { t } = useI18n();
           color="white"
           @click="emit('savePreset')"
         >
-          {{ t('fastcat.presets.saveAsPreset', 'Save') }}
+          {{ t('fastcat.presets.saveAsPreset') }}
         </UButton>
       </div>
       <div class="flex gap-2">

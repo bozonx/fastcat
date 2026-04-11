@@ -157,7 +157,7 @@ onBeforeUnmount(clearLongPress);
     >
       <Icon name="lucide:folder-open" class="w-12 h-12 mb-2" />
       <p class="text-sm">
-        {{ t('videoEditor.fileManager.empty', 'No files in this project') }}
+        {{ t('videoEditor.fileManager.empty') }}
       </p>
     </div>
 
@@ -257,7 +257,7 @@ onBeforeUnmount(clearLongPress);
               <span class="truncate pr-2 text-zinc-400">
                 {{
                   entry.kind === 'directory'
-                    ? t('common.folder', 'Folder')
+                    ? t('common.folder')
                     : getFileTypeLabel(entry)
                 }}
               </span>

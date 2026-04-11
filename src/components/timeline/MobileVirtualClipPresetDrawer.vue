@@ -23,9 +23,9 @@ const isOpenLocal = computed({
 });
 
 const drawerTitle = computed(() => {
-  if (props.type === 'text') return t('fastcat.timeline.text', 'Text');
-  if (props.type === 'shape') return t('fastcat.timeline.shape', 'Shape');
-  return t('fastcat.timeline.hud', 'HUD');
+  if (props.type === 'text') return t('fastcat.timeline.text');
+  if (props.type === 'shape') return t('fastcat.timeline.shape');
+  return t('fastcat.timeline.hud');
 });
 
 interface PresetItem {
@@ -39,12 +39,12 @@ interface PresetItem {
 const textStandard: PresetItem[] = [
   {
     id: 'default',
-    name: t('fastcat.library.texts.default', 'Default'),
+    name: t('fastcat.library.texts.default'),
     icon: 'i-heroicons-document-text',
     apply: () => {
       const trackId = timelineStore.resolveMobileTargetTrackId('video');
       timelineStore.addTextClipAtPlayhead({
-        text: t('fastcat.timeline.textClipDefaultText', 'Text'),
+        text: t('fastcat.timeline.textClipDefaultText'),
         style: { fontSize: 64, color: '#ffffff', fontFamily: 'sans-serif' } as TextClipStyle,
         pseudo: true,
         trackId,
@@ -53,7 +53,7 @@ const textStandard: PresetItem[] = [
   },
   {
     id: 'title',
-    name: t('fastcat.library.texts.title', 'Title'),
+    name: t('fastcat.library.texts.title'),
     icon: 'i-heroicons-h1',
     apply: () => {
       const trackId = timelineStore.resolveMobileTargetTrackId('video');
@@ -72,7 +72,7 @@ const textStandard: PresetItem[] = [
   },
   {
     id: 'subtitle',
-    name: t('fastcat.library.texts.subtitle', 'Subtitle'),
+    name: t('fastcat.library.texts.subtitle'),
     icon: 'i-heroicons-h2',
     apply: () => {
       const trackId = timelineStore.resolveMobileTargetTrackId('video');
@@ -94,7 +94,7 @@ const textStandard: PresetItem[] = [
 const shapeStandard: PresetItem[] = [
   {
     id: 'square',
-    name: t('fastcat.library.shapes.square', 'Square'),
+    name: t('fastcat.library.shapes.square'),
     icon: 'i-heroicons-stop',
     apply: () => {
       const trackId = timelineStore.resolveMobileTargetTrackId('video');
@@ -109,7 +109,7 @@ const shapeStandard: PresetItem[] = [
   },
   {
     id: 'circle',
-    name: t('fastcat.library.shapes.circle', 'Circle'),
+    name: t('fastcat.library.shapes.circle'),
     icon: 'i-ph-circle',
     apply: () => {
       const trackId = timelineStore.resolveMobileTargetTrackId('video');
@@ -124,7 +124,7 @@ const shapeStandard: PresetItem[] = [
   },
   {
     id: 'triangle',
-    name: t('fastcat.library.shapes.triangle', 'Triangle'),
+    name: t('fastcat.library.shapes.triangle'),
     icon: 'i-ph-triangle',
     apply: () => {
       const trackId = timelineStore.resolveMobileTargetTrackId('video');
@@ -139,7 +139,7 @@ const shapeStandard: PresetItem[] = [
   },
   {
     id: 'star',
-    name: t('fastcat.library.shapes.star', 'Star'),
+    name: t('fastcat.library.shapes.star'),
     icon: 'i-heroicons-star',
     apply: () => {
       const trackId = timelineStore.resolveMobileTargetTrackId('video');
@@ -154,7 +154,7 @@ const shapeStandard: PresetItem[] = [
   },
   {
     id: 'cloud',
-    name: t('fastcat.library.shapes.cloud', 'Cloud'),
+    name: t('fastcat.library.shapes.cloud'),
     icon: 'i-heroicons-cloud',
     apply: () => {
       const trackId = timelineStore.resolveMobileTargetTrackId('video');
@@ -169,7 +169,7 @@ const shapeStandard: PresetItem[] = [
   },
   {
     id: 'speech_bubble',
-    name: t('fastcat.library.shapes.speech_bubble', 'Speech Bubble'),
+    name: t('fastcat.library.shapes.speech_bubble'),
     icon: 'i-heroicons-chat-bubble-left',
     apply: () => {
       const trackId = timelineStore.resolveMobileTargetTrackId('video');
@@ -184,7 +184,7 @@ const shapeStandard: PresetItem[] = [
   },
   {
     id: 'bang',
-    name: t('fastcat.library.shapes.bang', 'Bang'),
+    name: t('fastcat.library.shapes.bang'),
     icon: 'i-heroicons-bolt',
     apply: () => {
       const trackId = timelineStore.resolveMobileTargetTrackId('video');
@@ -202,7 +202,7 @@ const shapeStandard: PresetItem[] = [
 const hudStandard: PresetItem[] = [
   {
     id: 'media_frame',
-    name: t('fastcat.library.huds.media_frame', 'Media Frame'),
+    name: t('fastcat.library.huds.media_frame'),
     icon: 'i-heroicons-photo',
     apply: () => {
       const trackId = timelineStore.resolveMobileTargetTrackId('video');
@@ -287,7 +287,7 @@ function selectPreset(item: PresetItem) {
     <div class="px-4 pb-8 overflow-y-auto">
       <!-- Standard presets -->
       <p class="text-xs font-semibold uppercase tracking-widest text-ui-text-muted px-1 mt-1 mb-3">
-        {{ t('fastcat.effects.groups.standard', 'Standard') }}
+        {{ t('fastcat.effects.groups.standard') }}
       </p>
 
       <div class="grid grid-cols-3 gap-2">
@@ -306,7 +306,7 @@ function selectPreset(item: PresetItem) {
       <template v-if="customItems.length > 0">
         <div class="h-px bg-ui-border my-4" />
         <p class="text-xs font-semibold uppercase tracking-widest text-ui-text-muted px-1 mb-3">
-          {{ t('fastcat.effects.groups.custom', 'Custom') }}
+          {{ t('fastcat.effects.groups.custom') }}
         </p>
         <div class="grid grid-cols-3 gap-2">
           <button

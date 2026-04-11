@@ -261,7 +261,7 @@ const otherActions = computed(() => {
   if (isFreePosition.value) {
     list.push({
       id: 'quantize',
-      label: t('fastcat.timeline.quantize', 'Quantize to frames'),
+      label: t('fastcat.timeline.quantize'),
       icon: 'i-heroicons-squares-2x2',
       onClick: handleQuantizeClip,
     });
@@ -270,7 +270,7 @@ const otherActions = computed(() => {
   if (linkedAudioClip.value) {
     list.push({
       id: 'goToLinkedAudio',
-      label: t('fastcat.clip.goToLinkedAudio', 'Go to linked audio'),
+      label: t('fastcat.clip.goToLinkedAudio'),
       icon: 'i-heroicons-speaker-wave',
       color: 'primary',
       onClick: goToLinkedAudio,
@@ -280,7 +280,7 @@ const otherActions = computed(() => {
   if (linkedVideoClip.value) {
     list.push({
       id: 'goToLinkedVideo',
-      label: t('fastcat.clip.goToLinkedVideo', 'Go to linked video'),
+      label: t('fastcat.clip.goToLinkedVideo'),
       icon: 'i-heroicons-film',
       color: 'primary',
       onClick: goToLinkedVideo,
@@ -290,7 +290,7 @@ const otherActions = computed(() => {
   if (hasLockedLinkedAudio.value || isLockedLinkedAudioClip.value) {
     list.push({
       id: 'unlinkAudio',
-      label: t('fastcat.timeline.unlinkAudio', 'Unlink audio'),
+      label: t('fastcat.timeline.unlinkAudio'),
       icon: 'i-heroicons-link-slash',
       onClick: handleUnlinkAudio,
     });
@@ -299,7 +299,7 @@ const otherActions = computed(() => {
   if (isInLinkedGroup.value) {
     list.push({
       id: 'removeFromGroup',
-      label: t('fastcat.timeline.removeFromGroup', 'Remove from group'),
+      label: t('fastcat.timeline.removeFromGroup'),
       icon: 'i-heroicons-link-slash',
       onClick: handleRemoveFromGroup,
     });
@@ -308,13 +308,13 @@ const otherActions = computed(() => {
   if (clip.value.clipType === 'media') {
     list.push({
       id: 'replaceMedia',
-      label: t('fastcat.clip.replaceMedia', 'Replace Media'),
+      label: t('fastcat.clip.replaceMedia'),
       icon: 'i-heroicons-arrow-path',
       onClick: handleReplaceMedia,
     });
     list.push({
       id: 'showInFileManager',
-      label: t('fastcat.clip.showInFileManager', 'Show in File Manager'),
+      label: t('fastcat.clip.showInFileManager'),
       icon: 'i-heroicons-folder-open',
       onClick: handleSelectInFileManager,
     });
@@ -323,7 +323,7 @@ const otherActions = computed(() => {
   if (clip.value.clipType === 'timeline') {
     list.push({
       id: 'goToTimeline',
-      label: t('fastcat.clip.goToTimeline', 'Go to timeline'),
+      label: t('fastcat.clip.goToTimeline'),
       icon: 'i-heroicons-arrow-right-circle',
       onClick: handleOpenNestedTimeline,
     });
@@ -334,8 +334,8 @@ const otherActions = computed(() => {
       id: 'toggleAudioWaveformMode',
       label:
         (clip.value.audioWaveformMode || 'half') === 'full'
-          ? t('fastcat.clip.halfWaveform', 'Half Waveform')
-          : t('fastcat.clip.fullWaveform', 'Full Waveform'),
+          ? t('fastcat.clip.halfWaveform')
+          : t('fastcat.clip.fullWaveform'),
       icon: 'i-heroicons-chart-bar',
       onClick: toggleAudioWaveformMode,
     });
@@ -346,8 +346,8 @@ const otherActions = computed(() => {
       id: 'toggleShowWaveform',
       label:
         clip.value.showWaveform === false
-          ? t('fastcat.clip.showWaveform', 'Show Waveform')
-          : t('fastcat.clip.hideWaveform', 'Hide Waveform'),
+          ? t('fastcat.clip.showWaveform')
+          : t('fastcat.clip.hideWaveform'),
       icon: 'i-heroicons-eye',
       onClick: toggleShowWaveform,
     });
@@ -358,8 +358,8 @@ const otherActions = computed(() => {
       id: 'toggleShowThumbnails',
       label:
         clip.value.showThumbnails === false
-          ? t('fastcat.clip.showThumbnails', 'Show Thumbnails')
-          : t('fastcat.clip.hideThumbnails', 'Hide Thumbnails'),
+          ? t('fastcat.clip.showThumbnails')
+          : t('fastcat.clip.hideThumbnails'),
       icon: 'i-heroicons-photo',
       onClick: toggleShowThumbnails,
     });
@@ -368,7 +368,7 @@ const otherActions = computed(() => {
   if (isMediaVideoClip.value && !hasFreezeFrame.value) {
     list.push({
       id: 'freezeFrame',
-      label: t('fastcat.timeline.freezeFrame', 'Freeze Frame'),
+      label: t('fastcat.timeline.freezeFrame'),
       icon: 'i-heroicons-pause-circle',
       onClick: handleFreezeFrame,
     });
@@ -377,7 +377,7 @@ const otherActions = computed(() => {
   if (isMediaVideoClip.value && hasFreezeFrame.value) {
     list.push({
       id: 'resetFreezeFrame',
-      label: t('fastcat.timeline.resetFreezeFrame', 'Reset Freeze Frame'),
+      label: t('fastcat.timeline.resetFreezeFrame'),
       icon: 'i-heroicons-play-circle',
       onClick: handleResetFreezeFrame,
     });
@@ -386,7 +386,7 @@ const otherActions = computed(() => {
   if (canExtractAudio.value) {
     list.push({
       id: 'extractAudio',
-      label: t('fastcat.timeline.extractAudio', 'Extract Audio'),
+      label: t('fastcat.timeline.extractAudio'),
       icon: 'i-heroicons-musical-note',
       onClick: handleExtractAudio,
     });
@@ -395,7 +395,7 @@ const otherActions = computed(() => {
   if (hasReturnFromVideoClip.value || hasReturnFromLockedAudioClip.value) {
     list.push({
       id: 'returnAudio',
-      label: t('fastcat.timeline.returnAudio', 'Return Audio'),
+      label: t('fastcat.timeline.returnAudio'),
       icon: 'i-heroicons-arrow-uturn-left',
       onClick: handleReturnAudio,
     });
@@ -416,27 +416,27 @@ const otherActions = computed(() => {
         <MobileDrawerToolbar class="-mx-4 mb-2">
           <MobileDrawerToolbarButton
             icon="i-heroicons-trash"
-            :label="t('common.delete', 'Delete')"
+            :label="t('common.delete')"
             :disabled="isLocked"
             @click="requestDelete"
           />
 
           <MobileDrawerToolbarButton
             icon="i-heroicons-pencil"
-            :label="t('common.rename', 'Rename')"
+            :label="t('common.rename')"
             :disabled="isLocked"
             @click="isRenameModalOpen = true"
           />
 
           <MobileDrawerToolbarButton
             icon="i-heroicons-document-duplicate"
-            :label="t('common.copy', 'Copy')"
+            :label="t('common.copy')"
             @click="handleCopy"
           />
 
           <MobileDrawerToolbarButton
             icon="i-heroicons-scissors"
-            :label="t('common.cut', 'Cut')"
+            :label="t('common.cut')"
             :disabled="isLocked"
             @click="handleCut"
           />
@@ -444,7 +444,7 @@ const otherActions = computed(() => {
           <MobileDrawerToolbarButton
             primary
             icon="i-heroicons-arrows-right-left"
-            :label="t('fastcat.timeline.trimMode', 'Trim')"
+            :label="t('fastcat.timeline.trimMode')"
             :disabled="isLocked"
             @click="$emit('open-trim-drawer')"
           />
@@ -453,8 +453,8 @@ const otherActions = computed(() => {
             :icon="clip?.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
             :label="
               clip?.disabled
-                ? t('fastcat.timeline.enableClip', 'Enable')
-                : t('fastcat.timeline.disableClip', 'Disable')
+                ? t('fastcat.timeline.enableClip')
+                : t('fastcat.timeline.disableClip')
             "
             :active="clip?.disabled"
             @click="toggleDisabled"
@@ -465,8 +465,8 @@ const otherActions = computed(() => {
               :icon="clip?.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
               :label="
                 clip?.audioMuted
-                  ? t('fastcat.timeline.unmuteClip', 'Unmute')
-                  : t('fastcat.timeline.muteClip', 'Mute')
+                  ? t('fastcat.timeline.unmuteClip')
+                  : t('fastcat.timeline.muteClip')
               "
               :active="clip?.audioMuted"
               @click="toggleMuted"
@@ -474,7 +474,7 @@ const otherActions = computed(() => {
 
             <MobileDrawerToolbarButton
               :icon="isSoloed ? 'i-heroicons-musical-note-solid' : 'i-heroicons-musical-note'"
-              :label="isSoloed ? t('fastcat.timeline.unsolo', 'Unsolo') : t('fastcat.timeline.solo', 'Solo')"
+              :label="isSoloed ? t('fastcat.timeline.unsolo') : t('fastcat.timeline.solo')"
               :active="isSoloed"
               @click="toggleSolo"
             />
@@ -484,8 +484,8 @@ const otherActions = computed(() => {
             :icon="clip?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
             :label="
               clip?.locked
-                ? t('fastcat.timeline.unlockClip', 'Unlock')
-                : t('fastcat.timeline.lockClip', 'Lock')
+                ? t('fastcat.timeline.unlockClip')
+                : t('fastcat.timeline.lockClip')
             "
             :active="clip?.locked"
             @click="toggleLocked"
@@ -493,7 +493,7 @@ const otherActions = computed(() => {
 
           <MobileDrawerToolbarButton
             icon="i-heroicons-backspace"
-            :label="t('fastcat.timeline.rippleDelete', 'Ripple delete')"
+            :label="t('fastcat.timeline.rippleDelete')"
             :disabled="isLocked"
             @click="requestRippleDelete"
           />
@@ -515,7 +515,7 @@ const otherActions = computed(() => {
     <UiRenameModal
       :open="isRenameModalOpen"
       :current-name="clip?.name ?? ''"
-      :title="t('fastcat.clip.rename', 'Rename clip')"
+      :title="t('fastcat.clip.rename')"
       @update:open="isRenameModalOpen = $event"
       @rename="handleRename"
     />

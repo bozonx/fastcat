@@ -363,20 +363,20 @@ const rootContextMenuItems = computed(() => {
     const menu: Record<string, any>[][] = [
       [
         {
-          label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
+          label: t('videoEditor.fileManager.actions.createFolder'),
           icon: 'i-heroicons-folder-plus',
-          onSelect: async () => emit('action', 'createFolder', rootEntry),
+          onSelect: async () => emit('action', rootEntry),
         },
         {
-          label: t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document'),
+          label: t('videoEditor.fileManager.actions.createMarkdown'),
           icon: 'i-heroicons-document-text',
-          onSelect: async () => emit('action', 'createMarkdown', rootEntry),
+          onSelect: async () => emit('action', rootEntry),
         },
         {
-          label: t('common.paste', 'Paste'),
+          label: t('common.paste'),
           icon: 'i-heroicons-clipboard',
           disabled: !clipboardStore.hasFileManagerPayload,
-          onSelect: async () => emit('action', 'paste', rootEntry),
+          onSelect: async () => emit('action', rootEntry),
         },
       ],
     ];
@@ -389,32 +389,32 @@ const rootContextMenuItems = computed(() => {
   const menu: Record<string, any>[][] = [
     [
       {
-        label: t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),
+        label: t('videoEditor.fileManager.actions.uploadFiles'),
         icon: 'i-heroicons-arrow-up-tray',
-        onSelect: async () => emit('action', 'upload', rootEntry),
+        onSelect: async () => emit('action', rootEntry),
       },
       {
-        label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
+        label: t('videoEditor.fileManager.actions.createFolder'),
         icon: 'i-heroicons-folder-plus',
-        onSelect: async () => emit('action', 'createFolder', rootEntry),
+        onSelect: async () => emit('action', rootEntry),
       },
       {
-        label: t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline'),
+        label: t('videoEditor.fileManager.actions.createTimeline'),
         icon: 'i-heroicons-document-plus',
-        onSelect: async () => emit('action', 'createTimeline', rootEntry),
+        onSelect: async () => emit('action', rootEntry),
       },
       {
-        label: t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document'),
+        label: t('videoEditor.fileManager.actions.createMarkdown'),
         icon: 'i-heroicons-document-text',
-        onSelect: async () => emit('action', 'createMarkdown', rootEntry),
+        onSelect: async () => emit('action', rootEntry),
       },
     ],
     [
       {
-        label: t('videoEditor.fileManager.actions.syncTreeTooltip', 'Refresh file tree'),
+        label: t('videoEditor.fileManager.actions.syncTreeTooltip'),
         icon: 'i-heroicons-arrow-path',
         disabled: props.isLoading,
-        onSelect: () => emit('action', 'refresh', rootEntry),
+        onSelect: () => emit('action', rootEntry),
       },
     ],
   ];
@@ -422,9 +422,9 @@ const rootContextMenuItems = computed(() => {
   if (clipboardStore.hasFileManagerPayload) {
     if (menu[0]) {
       menu[0].push({
-        label: t('common.paste', 'Paste'),
+        label: t('common.paste'),
         icon: 'i-heroicons-clipboard',
-        onSelect: async () => emit('action', 'paste', rootEntry),
+        onSelect: async () => emit('action', rootEntry),
       });
     }
   }
@@ -503,7 +503,7 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
           <p class="text-sm">
             {{
               isApiSupported
-                ? t('videoEditor.fileManager.empty', 'No files in this project')
+                ? t('videoEditor.fileManager.empty')
                 : t(
                     'videoEditor.fileManager.unsupported',
                     'File System Access API is not supported in this browser',

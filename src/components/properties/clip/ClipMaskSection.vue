@@ -66,13 +66,13 @@ function handleUpdate(key: string, value: unknown) {
 <template>
   <PropertySection
     v-model:toggle-value="isEnabled"
-    :title="t('fastcat.clip.mask.title', 'Mask')"
+    :title="t('fastcat.clip.mask.title')"
     has-toggle
   >
     <template #header-actions>
       <button
         class="flex items-center gap-1 text-2xs text-ui-text-muted hover:text-ui-text disabled:opacity-50"
-        :title="t('common.actions.reset', 'Reset')"
+        :title="t('common.actions.reset')"
         :disabled="!isEnabled"
         @click="emit('updateMask', undefined)"
       >

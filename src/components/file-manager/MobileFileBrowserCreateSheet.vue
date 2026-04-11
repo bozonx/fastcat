@@ -24,7 +24,7 @@ const isOpen = computed({
 </script>
 
 <template>
-  <UiMobileDrawer v-model:open="isOpen" :title="t('common.create', 'Create')">
+  <UiMobileDrawer v-model:open="isOpen" :title="t('common.create')">
     <div class="flex flex-col gap-6 px-4 pt-2 pb-10">
       <!-- Block 1: Create in selected folder -->
       <div class="flex flex-col gap-3">
@@ -48,7 +48,7 @@ const isOpen = computed({
               <Icon name="lucide:upload-cloud" class="w-5 h-5 text-indigo-400" />
             </div>
             <span class="text-sm font-medium text-zinc-200">{{
-              t('videoEditor.fileManager.actions.uploadFiles', 'Upload Files')
+              t('videoEditor.fileManager.actions.uploadFiles')
             }}</span>
             <Icon name="lucide:chevron-right" class="w-4 h-4 ml-auto opacity-20" />
           </button>
@@ -63,7 +63,7 @@ const isOpen = computed({
               <Icon name="lucide:folder-plus" class="w-5 h-5 text-emerald-400" />
             </div>
             <span class="text-sm font-medium text-zinc-200">{{
-              t('videoEditor.fileManager.actions.createFolder', 'Create Folder')
+              t('videoEditor.fileManager.actions.createFolder')
             }}</span>
             <Icon name="lucide:chevron-right" class="w-4 h-4 ml-auto opacity-20" />
           </button>
@@ -78,7 +78,7 @@ const isOpen = computed({
               <Icon name="lucide:file-text" class="w-5 h-5 text-blue-400" />
             </div>
             <span class="text-sm font-medium text-zinc-200">{{
-              t('common.textDocument', 'Text Document')
+              t('common.textDocument')
             }}</span>
             <Icon name="lucide:chevron-right" class="w-4 h-4 ml-auto opacity-20" />
           </button>
@@ -93,7 +93,7 @@ const isOpen = computed({
               <Icon name="lucide:film" class="w-5 h-5 text-orange-400" />
             </div>
             <span class="text-sm font-medium text-zinc-200">{{
-              t('common.timeline', 'Timeline')
+              t('common.timeline')
             }}</span>
             <Icon name="lucide:chevron-right" class="w-4 h-4 ml-auto opacity-20" />
           </button>
@@ -117,10 +117,10 @@ const isOpen = computed({
             <Icon name="lucide:upload" class="w-6 h-6 text-primary-400" />
             <div class="flex flex-col items-start">
               <span class="font-bold text-primary-100 text-base leading-tight">{{
-                t('videoEditor.fileManager.actions.uploadFiles', 'Upload Files')
+                t('videoEditor.fileManager.actions.uploadFiles')
               }}</span>
               <span class="text-[10px] text-primary-400/80 font-medium tracking-tight uppercase">{{
-                t('common.autoRecognition', 'Auto recognition')
+                t('common.autoRecognition')
               }}</span>
             </div>
           </button>
@@ -135,7 +135,7 @@ const isOpen = computed({
               <Icon name="lucide:film" class="w-6 h-6 text-orange-500" />
             </div>
             <span class="text-xs font-bold text-zinc-200 uppercase tracking-tight">{{
-              t('common.timeline', 'Timeline')
+              t('common.timeline')
             }}</span>
             <span class="text-[10px] text-orange-400/60 font-medium leading-none">{{
               t('common.inDirTimelines')
@@ -153,7 +153,7 @@ const isOpen = computed({
             </div>
             <span
               class="text-xs font-bold text-zinc-200 uppercase tracking-tight text-nowrap whitespace-nowrap overflow-hidden text-ellipsis w-full px-1"
-              >{{ t('common.textDocument', 'Text Doc') }}</span
+              >{{ t('common.textDocument') }}</span
             >
             <span class="text-[10px] text-blue-400/60 font-medium leading-none">{{
               t('common.inDirDocuments')

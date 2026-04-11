@@ -27,7 +27,7 @@ const { t } = useI18n();
       color="neutral"
       :size="size"
       class="relative"
-      :title="t('videoEditor.backgroundTasks.title', 'Background Tasks')"
+      :title="t('videoEditor.backgroundTasks.title')"
       @click="isModalOpen = true"
     >
       <UiProgressSpinner

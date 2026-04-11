@@ -159,7 +159,7 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
 <template>
   <PropertySection
     v-model:toggle-value="modelValue"
-    :title="t('fastcat.effects.audioTitle', 'Audio effects')"
+    :title="t('fastcat.effects.audioTitle')"
     class="mt-2"
     :has-toggle="props.hasToggle"
     @dragover="onDragOver"
@@ -174,7 +174,7 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
         :disabled="props.disabled"
         @click="isSelectModalOpen = true"
       >
-        {{ t('fastcat.effects.add', 'Add') }}
+        {{ t('fastcat.effects.add') }}
       </UButton>
     </template>
 
@@ -184,7 +184,7 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
         class="text-xs text-ui-text-muted text-center py-2"
         :class="{ 'opacity-50': props.disabled }"
       >
-        {{ t('fastcat.effects.empty', 'No effects') }}
+        {{ t('fastcat.effects.empty') }}
       </div>
 
       <VueDraggable
@@ -222,7 +222,7 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
                 variant="ghost"
                 color="primary"
                 icon="i-heroicons-bookmark"
-                :title="t('fastcat.effects.saveAsPreset', 'Save as preset')"
+                :title="t('fastcat.effects.saveAsPreset')"
                 :disabled="props.disabled"
                 @click="openSaveModal(effect.id)"
               />
@@ -270,24 +270,24 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
 
     <UiModal
       v-model:open="isSaveModalOpen"
-      :title="t('fastcat.effects.savePresetTitle', 'Save Preset')"
+      :title="t('fastcat.effects.savePresetTitle')"
     >
       <template #body>
         <div class="flex flex-col gap-4">
-          <UiFormField :label="t('common.name', 'Name')">
+          <UiFormField :label="t('common.name')">
             <UInput
               v-model="newPresetName"
-              :placeholder="t('fastcat.effects.presetNamePlaceholder', 'My Custom Preset')"
+              :placeholder="t('fastcat.effects.presetNamePlaceholder')"
               autofocus
               @keyup.enter="handleSavePreset"
             />
           </UiFormField>
           <div class="flex justify-end gap-2">
             <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">
-              {{ t('common.cancel', 'Cancel') }}
+              {{ t('common.cancel') }}
             </UButton>
             <UButton color="primary" :disabled="!newPresetName.trim()" @click="handleSavePreset">
-              {{ t('common.save', 'Save') }}
+              {{ t('common.save') }}
             </UButton>
           </div>
         </div>

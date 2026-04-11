@@ -23,15 +23,15 @@ function resetDefaults() {
   <div class="flex flex-col gap-6">
     <UiConfirmModal
       v-model:open="isResetConfirmOpen"
-      :title="t('videoEditor.settings.resetProxySettingsConfirmTitle', 'Reset proxy settings?')"
+      :title="t('videoEditor.settings.resetProxySettingsConfirmTitle')"
       :description="
         t(
           'videoEditor.settings.resetProxySettingsConfirmDesc',
           'This will restore all proxy settings to their default values.',
         )
       "
-      :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction', 'Reset')"
-      :cancel-text="t('common.cancel', 'Cancel')"
+      :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction')"
+      :cancel-text="t('common.cancel')"
       color="warning"
       icon="i-heroicons-exclamation-triangle"
       @confirm="resetDefaults"
@@ -39,10 +39,10 @@ function resetDefaults() {
 
     <div class="flex items-center justify-between gap-3">
       <div class="text-sm font-medium text-ui-text">
-        {{ t('videoEditor.settings.userProxy', 'Proxy') }}
+        {{ t('videoEditor.settings.userProxy') }}
       </div>
       <UButton size="xs" color="neutral" variant="ghost" @click="isResetConfirmOpen = true">
-        {{ t('videoEditor.settings.resetDefaults', 'Reset to defaults') }}
+        {{ t('videoEditor.settings.resetDefaults') }}
       </UButton>
     </div>
 

@@ -30,7 +30,7 @@ const { t } = useI18n();
   <PropertySection :title="props.hideHeader ? undefined : props.title">
     <PropertyRow
       v-if="props.selectedPath !== undefined && props.selectedPath !== null"
-      :label="t('common.path', 'Path')"
+      :label="t('common.path')"
     >
       <NuxtLink
         v-if="props.pathLink"
@@ -53,47 +53,47 @@ const { t } = useI18n();
           props.instanceId !== 'sidebar' &&
           !props.isExternal
         "
-        :label="t('common.size', 'Size')"
+        :label="t('common.size')"
         :value="props.formatBytes(props.fileInfo.size)"
       />
       <PropertyRow
         v-if="props.fileInfo.filesCount !== undefined && props.mediaCount === undefined && !props.pathLink && props.instanceId !== 'computer' && props.instanceId !== 'sidebar' && !props.isExternal"
-        :label="t('videoEditor.fileManager.folder.filesCount', 'Files Count')"
+        :label="t('videoEditor.fileManager.folder.filesCount')"
         :value="props.fileInfo.filesCount"
       />
       <PropertyRow
         v-if="props.fileInfo.size === undefined"
-        :label="t('common.type', 'Type')"
-        :value="props.title === t('fastcat.file.bloggerDogGroup', 'Группа') ? t('fastcat.file.bloggerDogGroup', 'Группа') : props.title === t('fastcat.file.bloggerDogItem', 'Элемент контента') ? t('fastcat.file.bloggerDogItem', 'Элемент контента') : t('common.folder', 'Folder')"
+        :label="t('common.type')"
+        :value="props.title === t('fastcat.file.bloggerDogGroup') ? t('fastcat.file.bloggerDogGroup') : props.title === t('fastcat.file.bloggerDogItem') ? t('fastcat.file.bloggerDogItem') : t('common.folder')"
       />
       <PropertyRow
         v-if="props.mediaCount !== undefined"
-        :label="t('fastcat.file.mediaCount', 'Количество файлов')"
+        :label="t('fastcat.file.mediaCount')"
         :value="props.mediaCount"
       />
     </template>
     <PropertyRow
       v-else-if="props.fileInfo.size !== undefined"
-      :label="t('common.size', 'Size')"
+      :label="t('common.size')"
       :value="props.formatBytes(props.fileInfo.size)"
     />
     <PropertyRow
       v-if="props.fileInfo.kind === 'file' && props.mediaCount !== undefined"
-      :label="t('fastcat.file.mediaCount', 'Количество файлов')"
+      :label="t('fastcat.file.mediaCount')"
       :value="props.mediaCount"
     />
     <slot />
     <PropertyRow
       v-if="props.fileInfo.createdAt || props.fileInfo.lastModified"
-      :label="t('common.created', 'Created')"
+      :label="t('common.created')"
       :value="new Date(props.fileInfo.createdAt ?? props.fileInfo.lastModified!).toLocaleString()"
     />
     <PropertyRow
       v-if="props.fileInfo.lastModified"
-      :label="t('common.updated', 'Updated')"
+      :label="t('common.updated')"
       :value="new Date(props.fileInfo.lastModified).toLocaleString()"
     />
-    <PropertyRow v-if="props.isHidden" :label="t('common.hidden', 'Hidden')" value="Yes" />
+    <PropertyRow v-if="props.isHidden" :label="t('common.hidden')" value="Yes" />
     <div v-if="$slots['after-content']" class="mt-4 pt-2 border-t border-ui-border">
       <slot name="after-content" />
     </div>

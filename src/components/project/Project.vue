@@ -38,35 +38,35 @@ const { activateProjectFocus, activeFileTab, activeStaticComponent } = useProjec
 onMounted(() => {
   registerProjectTab({
     id: 'files',
-    label: t('videoEditor.fileManager.tabs.files', 'Files'),
+    label: t('videoEditor.fileManager.tabs.files'),
     icon: 'i-heroicons-folder',
     component: markRaw(ProjectFilesTab),
   });
 
   registerProjectTab({
     id: 'history',
-    label: t('videoEditor.fileManager.tabs.history', 'History'),
+    label: t('videoEditor.fileManager.tabs.history'),
     icon: 'i-heroicons-clock',
     component: markRaw(ProjectHistory),
   });
 
   registerProjectTab({
     id: 'effects',
-    label: t('videoEditor.fileManager.tabs.effects', 'Effects'),
+    label: t('videoEditor.fileManager.tabs.effects'),
     icon: 'i-heroicons-sparkles',
     component: markRaw(ProjectEffects),
   });
 
   registerProjectTab({
     id: 'library',
-    label: t('videoEditor.fileManager.tabs.library', 'Library'),
+    label: t('videoEditor.fileManager.tabs.library'),
     icon: 'i-heroicons-rectangle-group',
     component: markRaw(ProjectLibrary),
   });
 
   registerProjectTab({
     id: 'markers',
-    label: t('videoEditor.fileManager.tabs.markers', 'Markers'),
+    label: t('videoEditor.fileManager.tabs.markers'),
     icon: 'i-heroicons-tag',
     component: markRaw(ProjectMarkers),
   });

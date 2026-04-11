@@ -26,7 +26,7 @@ const clipItem = computed(() =>
     >
       <UIcon name="i-heroicons-exclamation-triangle" class="w-5 h-5 text-white mb-1" />
       <span v-if="clipWidthPx > 60" class="text-2xs font-bold uppercase tracking-wider text-white">
-        {{ t('fastcat.timeline.noMedia', 'No media') }}
+        {{ t('fastcat.timeline.noMedia') }}
       </span>
     </div>
 

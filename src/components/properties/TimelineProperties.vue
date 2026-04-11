@@ -104,13 +104,13 @@ const fileActions = computed(() => {
     primary: [
       {
         id: 'delete',
-        title: t('common.delete', 'Delete'),
+        title: t('common.delete'),
         icon: 'i-heroicons-trash',
         onClick: onDelete,
       },
       {
         id: 'rename',
-        title: t('common.rename', 'Rename'),
+        title: t('common.rename'),
         icon: 'i-heroicons-pencil',
         onClick: onRename,
       },
@@ -118,7 +118,7 @@ const fileActions = computed(() => {
     secondary: [
       {
         id: 'createOtioVersion',
-        label: t('fastcat.timeline.createVersion', 'Create version'),
+        label: t('fastcat.timeline.createVersion'),
         icon: 'i-heroicons-document-duplicate',
         onClick: () => {
           uiStore.pendingOtioCreateVersion = props.fsEntry!;
@@ -227,13 +227,13 @@ function handleAddAudioTrack() {
 const addTrackActions = computed(() => [
   {
     id: 'add-video',
-    label: t('fastcat.timeline.addVideoTrack', 'Add video track'),
+    label: t('fastcat.timeline.addVideoTrack'),
     icon: 'i-heroicons-video-camera',
     onClick: handleAddVideoTrack,
   },
   {
     id: 'add-audio',
-    label: t('fastcat.timeline.addAudioTrack', 'Add audio track'),
+    label: t('fastcat.timeline.addAudioTrack'),
     icon: 'i-heroicons-musical-note',
     onClick: handleAddAudioTrack,
   },
@@ -247,7 +247,7 @@ const addTrackActions = computed(() => [
     <!-- Actions (merge file and timeline actions) -->
     <PropertySection
       v-if="fileActions || !finalIsReadOnly"
-      :title="t('videoEditor.fileManager.actions.title', 'Actions')"
+      :title="t('videoEditor.fileManager.actions.title')"
     >
       <div class="flex flex-col gap-2">
         <EntryActions
@@ -273,23 +273,23 @@ const addTrackActions = computed(() => [
     <PropertySection v-if="computedSummary">
       <div class="flex flex-col">
         <PropertyRow
-          :label="t('fastcat.timeline.version', 'Version')"
+          :label="t('fastcat.timeline.version')"
           :value="computedSummary.version ?? '-'"
         />
         <PropertyRow
-          :label="t('common.duration', 'Duration')"
+          :label="t('common.duration')"
           :value="formatDurationSeconds((computedSummary.durationUs ?? 0) / 1_000_000)"
         />
         <PropertyRow
-          :label="t('videoEditor.fileManager.otio.videoTracks', 'Video tracks')"
+          :label="t('videoEditor.fileManager.otio.videoTracks')"
           :value="computedSummary.videoTracks ?? '-'"
         />
         <PropertyRow
-          :label="t('videoEditor.fileManager.otio.audioTracks', 'Audio tracks')"
+          :label="t('videoEditor.fileManager.otio.audioTracks')"
           :value="computedSummary.audioTracks ?? '-'"
         />
         <PropertyRow
-          :label="t('videoEditor.fileManager.otio.clips', 'Clips')"
+          :label="t('videoEditor.fileManager.otio.clips')"
           :value="computedSummary.clips ?? '-'"
         />
       </div>
@@ -316,7 +316,7 @@ const addTrackActions = computed(() => [
     <!-- Settings (No title, includes Master Volume) -->
     <PropertySection v-if="!finalIsReadOnly">
       <div class="flex flex-col gap-3 py-1">
-        <PropertyRow :label="t('videoEditor.hotkeys.general.mute', 'Mute')">
+        <PropertyRow :label="t('videoEditor.hotkeys.general.mute')">
           <div class="flex justify-end w-full">
             <USwitch
               size="sm"
@@ -330,7 +330,7 @@ const addTrackActions = computed(() => [
 
         <UiSliderInput
           v-model="masterGain"
-          :label="t('fastcat.track.audio.volume', 'Volume')"
+          :label="t('fastcat.track.audio.volume')"
           :min="0"
           :max="2"
           :step="0.001"
@@ -353,7 +353,7 @@ const addTrackActions = computed(() => [
         class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
       >
         <div class="text-2xs text-primary-400 font-medium uppercase tracking-wider">
-          {{ t('fastcat.effects.dropHint', 'Drop effect here') }}
+          {{ t('fastcat.effects.dropHint') }}
         </div>
       </div>
     </div>

@@ -22,34 +22,34 @@ const { t } = useI18n();
     <MobileDrawerToolbar>
       <MobileDrawerToolbarButton
         icon="i-heroicons-trash"
-        :label="t('common.delete', 'Delete')"
-        @click="emit('action', 'delete', props.selectedEntries)"
+        :label="t('common.delete')"
+        @click="emit('action', props.selectedEntries)"
       />
 
       <MobileDrawerToolbarButton
         v-if="selectedEntries.length === 1"
         icon="i-heroicons-pencil-square"
-        :label="t('common.rename', 'Rename')"
-        @click="emit('action', 'rename', props.selectedEntries[0]!)"
+        :label="t('common.rename')"
+        @click="emit('action', props.selectedEntries[0]!)"
       />
 
       <MobileDrawerToolbarButton
         icon="i-heroicons-document-duplicate"
-        :label="t('common.copy', 'Copy')"
-        @click="emit('action', 'copy', props.selectedEntries)"
+        :label="t('common.copy')"
+        @click="emit('action', props.selectedEntries)"
       />
 
       <MobileDrawerToolbarButton
         icon="i-heroicons-scissors"
-        :label="t('common.cut', 'Cut')"
-        @click="emit('action', 'cut', props.selectedEntries)"
+        :label="t('common.cut')"
+        @click="emit('action', props.selectedEntries)"
       />
 
       <MobileDrawerToolbarButton
         v-if="canAddToTimeline"
         success
         icon="lucide:plus"
-        :label="t('common.toTimeline', 'To timeline')"
+        :label="t('common.toTimeline')"
         @click="emit('add-to-timeline')"
       />
     </MobileDrawerToolbar>

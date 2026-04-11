@@ -245,7 +245,7 @@ const { emptyAreaContextMenuItems: propertiesContextMenuItems } = useTimelineEmp
     <UiConfirmModal
       v-if="selectedTrack"
       v-model:open="isConfirmDeleteOpen"
-      :title="t('fastcat.timeline.deleteTrackTitle', 'Delete track?')"
+      :title="t('fastcat.timeline.deleteTrackTitle')"
       :description="
         t(
           'fastcat.timeline.deleteTrackDescription',
@@ -254,7 +254,7 @@ const { emptyAreaContextMenuItems: propertiesContextMenuItems } = useTimelineEmp
       "
       color="error"
       icon="i-heroicons-exclamation-triangle"
-      :confirm-text="t('common.delete', 'Delete')"
+      :confirm-text="t('common.delete')"
       @confirm="confirmDelete"
     />
   </UContextMenu>

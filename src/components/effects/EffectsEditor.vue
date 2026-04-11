@@ -35,9 +35,9 @@ const isSaveModalOpen = ref(false);
 const newPresetName = ref('');
 const savingEffectId = ref<string | null>(null);
 
-const safeTitle = computed(() => props.title ?? t('fastcat.effects.title', 'Effects'));
-const safeAddLabel = computed(() => props.addLabel ?? t('fastcat.effects.add', 'Add'));
-const safeEmptyLabel = computed(() => props.emptyLabel ?? t('fastcat.effects.empty', 'No effects'));
+const safeTitle = computed(() => props.title ?? t('fastcat.effects.title'));
+const safeAddLabel = computed(() => props.addLabel ?? t('fastcat.effects.add'));
+const safeEmptyLabel = computed(() => props.emptyLabel ?? t('fastcat.effects.empty'));
 
 const safeEffects = computed(() => props.effects ?? []);
 const effectsWithManifest = computed(() =>
@@ -194,7 +194,7 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
               variant="ghost"
               color="primary"
               icon="i-heroicons-bookmark"
-              :title="t('fastcat.effects.saveAsPreset', 'Save as preset')"
+              :title="t('fastcat.effects.saveAsPreset')"
               :disabled="props.disabled"
               @click="openSaveModal(effect.id)"
             />
@@ -225,24 +225,24 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
 
     <UiModal
       v-model:open="isSaveModalOpen"
-      :title="t('fastcat.effects.savePresetTitle', 'Save Preset')"
+      :title="t('fastcat.effects.savePresetTitle')"
     >
       <template #body>
         <div class="flex flex-col gap-4">
-          <UiFormField :label="t('common.name', 'Name')">
+          <UiFormField :label="t('common.name')">
             <UiTextInput
               v-model="newPresetName"
-              :placeholder="t('fastcat.effects.presetNamePlaceholder', 'My Custom Preset')"
+              :placeholder="t('fastcat.effects.presetNamePlaceholder')"
               autofocus
               @keyup.enter="handleSavePreset"
             />
           </UiFormField>
           <div class="flex justify-end gap-2">
             <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">
-              {{ t('common.cancel', 'Cancel') }}
+              {{ t('common.cancel') }}
             </UButton>
             <UButton color="primary" :disabled="!newPresetName.trim()" @click="handleSavePreset">
-              {{ t('common.save', 'Save') }}
+              {{ t('common.save') }}
             </UButton>
           </div>
         </div>

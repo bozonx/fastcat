@@ -21,11 +21,11 @@ const audioDeclickDurationMs = computed({
 <template>
   <SettingsSection
     v-if="projectStore.projectSettings"
-    :title="t('videoEditor.projectSettings.advanced', 'Advanced')"
-    :summary="t('videoEditor.projectSettings.advanced', 'Advanced')"
+    :title="t('videoEditor.projectSettings.advanced')"
+    :summary="t('videoEditor.projectSettings.advanced')"
   >
     <UiFormField
-      :label="t('videoEditor.settings.audioDeclickDuration', 'Audio De-click Duration') + ' (ms)'"
+      :label="t('videoEditor.settings.audioDeclickDuration') + ' (ms)'"
       :help="
         t(
           'videoEditor.settings.audioDeclickDurationHelp',

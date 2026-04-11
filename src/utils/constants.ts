@@ -79,3 +79,9 @@ export const TRACK_COLOR_PRESETS = [
   '#bd10e0', // Purple
   '#9013fe', // Violet
 ];
+export const TIMELINE_DEFAULTS = {
+  FPS: 30,
+  ZOOM: 50,
+  MASTER_GAIN: 1,
+  PLAYBACK_SPEED: 1,
+} as const;

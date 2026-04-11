@@ -26,7 +26,7 @@ const standardTexts = [
     name: 'Default',
     icon: 'i-heroicons-document-text',
     params: {
-      text: t('fastcat.timeline.textClipDefaultText', 'Text'),
+      text: t('fastcat.timeline.textClipDefaultText'),
       style: { fontSize: 64, color: '#ffffff', fontFamily: 'sans-serif' },
     },
   },
@@ -161,7 +161,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
         "
         @click="activeTab = 'texts'"
       >
-        {{ t('fastcat.library.tabs.texts', 'Texts') }}
+        {{ t('fastcat.library.tabs.texts') }}
       </button>
       <button
         class="px-3 py-1.5 rounded-t-lg transition-colors border border-b-0 border-transparent font-medium"
@@ -172,7 +172,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
         "
         @click="activeTab = 'shapes'"
       >
-        {{ t('fastcat.library.tabs.shapes', 'Shapes') }}
+        {{ t('fastcat.library.tabs.shapes') }}
       </button>
       <button
         class="px-3 py-1.5 rounded-t-lg transition-colors border border-b-0 border-transparent font-medium"
@@ -183,7 +183,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
         "
         @click="activeTab = 'hud'"
       >
-        {{ t('fastcat.library.tabs.hud', 'HUD') }}
+        {{ t('fastcat.library.tabs.hud') }}
       </button>
     </div>
 
@@ -221,7 +221,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
                 :color="presetsStore.defaultTextPresetId === text.type ? 'yellow' : 'neutral'"
                 variant="ghost"
                 size="xs"
-                :title="t('fastcat.library.texts.setAsDefault', 'Set as default')"
+                :title="t('fastcat.library.texts.setAsDefault')"
                 @click.stop="presetsStore.defaultTextPresetId = text.type"
               />
             </div>
@@ -283,7 +283,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
                       :color="presetsStore.defaultTextPresetId === text.id ? 'yellow' : 'neutral'"
                       variant="ghost"
                       size="xs"
-                      :title="t('fastcat.library.texts.setAsDefault', 'Set as default')"
+                      :title="t('fastcat.library.texts.setAsDefault')"
                       @click.stop="presetsStore.defaultTextPresetId = text.id"
                     />
                     <UButton

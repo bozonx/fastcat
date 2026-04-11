@@ -154,11 +154,11 @@ async function handleAdd() {
 </script>
 
 <template>
-  <UiMobileDrawer v-model:open="isOpen" :title="t('common.addToTimeline', 'Add to timeline')">
+  <UiMobileDrawer v-model:open="isOpen" :title="t('common.addToTimeline')">
     <div class="px-4 pt-2 pb-8 space-y-6">
       <div class="p-4 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-inner">
         <p class="text-xs font-medium text-zinc-500 uppercase tracking-widest">
-          {{ t('mobileFiles.insertAfter', 'Insert after playhead') }}
+          {{ t('mobileFiles.insertAfter') }}
         </p>
         <p class="text-2xl font-mono font-bold text-primary-400 mt-1">
           {{ currentTimeLabel }}
@@ -176,10 +176,10 @@ async function handleAdd() {
       <div class="space-y-3">
         <div class="flex items-center justify-between px-1">
           <p class="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-            {{ t('mobileFiles.chooseTargetTrack', 'Target Track') }}
+            {{ t('mobileFiles.chooseTargetTrack') }}
           </p>
           <span class="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-500 font-medium">
-            {{ entries.length }} {{ t('common.items', 'items') }}
+            {{ entries.length }} {{ t('common.items') }}
           </span>
         </div>
 
@@ -219,8 +219,8 @@ async function handleAdd() {
                 <p class="text-[10px] font-medium opacity-60 uppercase tracking-tighter">
                   {{
                     track.kind === 'video'
-                      ? t('common.video', 'Video Track')
-                      : t('common.audio', 'Audio Track')
+                      ? t('common.video')
+                      : t('common.audio')
                   }}
                 </p>
               </div>
@@ -262,10 +262,10 @@ async function handleAdd() {
                   class="font-bold text-sm"
                   :class="selectedTrackId === 'new' ? 'text-white' : 'text-zinc-200'"
                 >
-                  {{ t('mobileFiles.createNewTrack', 'Create New Track') }}
+                  {{ t('mobileFiles.createNewTrack') }}
                 </p>
                 <p class="text-[10px] font-medium opacity-60 uppercase tracking-tighter">
-                  {{ t('mobileFiles.newTrackHint', 'Create and add here') }}
+                  {{ t('mobileFiles.newTrackHint') }}
                 </p>
               </div>
             </div>
@@ -293,7 +293,7 @@ async function handleAdd() {
           class="rounded-2xl h-14 font-bold shadow-lg shadow-primary-500/20 active:scale-[0.98] transition-all"
           @click="handleAdd"
         >
-          {{ t('common.add', 'Add to Timeline') }}
+          {{ t('common.add') }}
         </UButton>
       </div>
     </div>

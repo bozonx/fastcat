@@ -37,7 +37,7 @@ const exportSummary = computed(() => {
 
   const aBitrate = `${e.audioBitrateKbps || 0} Kb/s`;
 
-  return `${t('videoEditor.projectSettings.export', 'Export')}: ${format} ${vCodec} ${vBitrate} | ${aCodec} ${aBitrate}`;
+  return `${t('videoEditor.projectSettings.export')}: ${format} ${vCodec} ${vBitrate} | ${aCodec} ${aBitrate}`;
 });
 
 const exportPresetOptions = computed(() =>
@@ -70,10 +70,10 @@ function applyExportPreset(presetId: string) {
 <template>
   <SettingsSection
     v-if="projectStore.projectSettings"
-    :title="t('videoEditor.projectSettings.export', 'Export')"
+    :title="t('videoEditor.projectSettings.export')"
     :summary="exportSummary"
   >
-    <UiFormField :label="t('videoEditor.export.presetLabel', 'Preset')">
+    <UiFormField :label="t('videoEditor.export.presetLabel')">
       <UiSelect
         v-model="workspaceStore.userSettings.exportPresets.selectedPresetId"
         :items="exportPresetOptions"

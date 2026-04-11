@@ -80,7 +80,7 @@ function addAudioTrack() {
     <div class="px-4 pb-8 flex flex-col gap-3">
       <!-- Virtual clip types -->
       <p class="text-xs font-semibold uppercase tracking-widest text-ui-text-muted px-1 mt-1">
-        {{ t('fastcat.timeline.virtualClips', 'Virtual clips') }}
+        {{ t('fastcat.timeline.virtualClips') }}
       </p>
 
       <div class="grid grid-cols-3 gap-2">
@@ -90,7 +90,7 @@ function addAudioTrack() {
         >
           <UIcon name="lucide:sliders-horizontal" class="w-6 h-6 text-blue-400" />
           <span class="text-xs font-medium leading-tight text-ui-text">
-            {{ t('fastcat.timeline.adjustment', 'Adjustment') }}
+            {{ t('fastcat.timeline.adjustment') }}
           </span>
         </button>
 
@@ -100,7 +100,7 @@ function addAudioTrack() {
         >
           <UIcon name="lucide:square" class="w-6 h-6 text-emerald-400" />
           <span class="text-xs font-medium leading-tight text-ui-text">
-            {{ t('fastcat.timeline.background', 'Background') }}
+            {{ t('fastcat.timeline.background') }}
           </span>
         </button>
 
@@ -110,7 +110,7 @@ function addAudioTrack() {
         >
           <UIcon name="lucide:type" class="w-6 h-6 text-purple-400" />
           <span class="text-xs font-medium leading-tight text-ui-text">
-            {{ t('fastcat.timeline.text', 'Text') }}
+            {{ t('fastcat.timeline.text') }}
           </span>
         </button>
 
@@ -120,7 +120,7 @@ function addAudioTrack() {
         >
           <UIcon name="lucide:shapes" class="w-6 h-6 text-orange-400" />
           <span class="text-xs font-medium leading-tight text-ui-text">
-            {{ t('fastcat.timeline.shape', 'Shape') }}
+            {{ t('fastcat.timeline.shape') }}
           </span>
         </button>
 
@@ -130,7 +130,7 @@ function addAudioTrack() {
         >
           <UIcon name="lucide:layout-template" class="w-6 h-6 text-cyan-400" />
           <span class="text-xs font-medium leading-tight text-ui-text">
-            {{ t('fastcat.timeline.hud', 'HUD') }}
+            {{ t('fastcat.timeline.hud') }}
           </span>
         </button>
       </div>
@@ -139,7 +139,7 @@ function addAudioTrack() {
 
       <!-- Media -->
       <p class="text-xs font-semibold uppercase tracking-widest text-ui-text-muted px-1">
-        {{ t('fastcat.timeline.media', 'Media') }}
+        {{ t('fastcat.timeline.media') }}
       </p>
 
       <button
@@ -151,10 +151,10 @@ function addAudioTrack() {
         </div>
         <div class="flex flex-col min-w-0">
           <span class="text-sm font-semibold text-ui-text">
-            {{ t('videoEditor.fileManager.upload.title', 'Upload') }}
+            {{ t('videoEditor.fileManager.upload.title') }}
           </span>
           <span class="text-xs text-ui-text-muted leading-tight">
-            {{ t('fastcat.timeline.uploadAutoHint', 'Files are automatically sorted') }}
+            {{ t('fastcat.timeline.uploadAutoHint') }}
           </span>
         </div>
         <UIcon name="lucide:chevron-right" class="w-4 h-4 text-ui-text-muted ml-auto shrink-0" />
@@ -169,10 +169,10 @@ function addAudioTrack() {
         </div>
         <div class="flex flex-col min-w-0">
           <span class="text-sm font-semibold text-ui-text">
-            {{ t('fastcat.timeline.fromProjectFiles', 'From project files') }}
+            {{ t('fastcat.timeline.fromProjectFiles') }}
           </span>
           <span class="text-xs text-ui-text-muted leading-tight">
-            {{ t('fastcat.timeline.fromProjectFilesHint', 'Browse and select media') }}
+            {{ t('fastcat.timeline.fromProjectFilesHint') }}
           </span>
         </div>
         <UIcon name="lucide:chevron-right" class="w-4 h-4 text-ui-text-muted ml-auto shrink-0" />
@@ -182,7 +182,7 @@ function addAudioTrack() {
 
       <!-- Tracks -->
       <p class="text-xs font-semibold uppercase tracking-widest text-ui-text-muted px-1">
-        {{ t('common.tracks', 'Tracks') }}
+        {{ t('common.tracks') }}
       </p>
 
       <div class="grid grid-cols-2 gap-2">
@@ -192,7 +192,7 @@ function addAudioTrack() {
         >
           <UIcon name="lucide:video" class="w-6 h-6 text-rose-400" />
           <span class="text-xs font-medium leading-tight text-ui-text">
-            {{ t('fastcat.timeline.addVideoTrack', 'Add video track') }}
+            {{ t('fastcat.timeline.addVideoTrack') }}
           </span>
         </button>
 
@@ -202,7 +202,7 @@ function addAudioTrack() {
         >
           <UIcon name="lucide:music" class="w-6 h-6 text-indigo-400" />
           <span class="text-xs font-medium leading-tight text-ui-text">
-            {{ t('fastcat.timeline.addAudioTrack', 'Add audio track') }}
+            {{ t('fastcat.timeline.addAudioTrack') }}
           </span>
         </button>
       </div>

@@ -46,13 +46,13 @@ const imageStyle = computed(() => ({
 const contextMenuItems = computed(() => [
   [
     {
-      label: t('fastcat.preview.fitToWindow', 'Fit to Window'),
+      label: t('fastcat.preview.fitToWindow'),
       icon: 'i-heroicons-arrows-pointing-in',
       onSelect: () => fitToContainer(),
       click: () => fitToContainer(),
     },
     {
-      label: t('fastcat.preview.resetZoom', 'Reset Zoom & Pan'),
+      label: t('fastcat.preview.resetZoom'),
       icon: 'i-heroicons-arrow-path',
       onSelect: () => reset(),
       click: () => reset(),

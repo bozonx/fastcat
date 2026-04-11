@@ -20,7 +20,7 @@ const { t } = useI18n();
 <template>
   <UiEntityCreationModal
     v-model:open="isOpen"
-    :title="title || t('common.rename', 'Rename')"
+    :title="title || t('common.rename')"
     :default-value="props.initialName ?? props.currentName"
     :loading="props.loading"
     @confirm="emit('rename', $event)"

@@ -43,8 +43,8 @@ function onVolumeUpdate(v: number | undefined) {
         class="p-1 h-full aspect-square rounded-full shadow-md m-0 flex items-center justify-center bg-ui-bg-elevated/50"
         :aria-label="
           monitorMuted
-            ? t('fastcat.monitor.audioUnmute', 'Unmute')
-            : t('fastcat.monitor.audioMute', 'Mute')
+            ? t('fastcat.monitor.audioUnmute')
+            : t('fastcat.monitor.audioMute')
         "
       />
 

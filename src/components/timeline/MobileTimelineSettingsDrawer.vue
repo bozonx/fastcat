@@ -61,36 +61,36 @@ function handleAddAudioTrack() {
   >
     <div class="px-4 pb-8 flex flex-col gap-6">
       <div class="flex items-center gap-2 pt-2">
-        <div class="text-ui-text font-bold text-xl">{{ t('videoEditor.timeline.settings', 'Timeline settings') }}</div>
+        <div class="text-ui-text font-bold text-xl">{{ t('videoEditor.timeline.settings') }}</div>
       </div>
       
       <!-- Info Section -->
       <div v-if="summary" class="flex flex-col gap-1 rounded-2xl bg-ui-bg p-4 border border-ui-border">
         <div class="text-xs font-bold text-ui-text-muted uppercase tracking-widest mb-2">
-          {{ t('common.info', 'Info') }}
+          {{ t('common.info') }}
         </div>
         <PropertyRow
-          :label="t('fastcat.timeline.version', 'Version')"
+          :label="t('fastcat.timeline.version')"
           :value="summary.version"
         />
         <div class="h-px bg-ui-border/50 my-1" />
         <PropertyRow
-          :label="t('common.duration', 'Duration')"
+          :label="t('common.duration')"
           :value="formatDurationSeconds((summary.durationUs ?? 0) / 1_000_000)"
         />
         <div class="h-px bg-ui-border/50 my-1" />
         <PropertyRow
-          :label="t('videoEditor.fileManager.otio.videoTracks', 'Video tracks')"
+          :label="t('videoEditor.fileManager.otio.videoTracks')"
           :value="summary.videoTracks"
         />
         <div class="h-px bg-ui-border/50 my-1" />
         <PropertyRow
-          :label="t('videoEditor.fileManager.otio.audioTracks', 'Audio tracks')"
+          :label="t('videoEditor.fileManager.otio.audioTracks')"
           :value="summary.audioTracks"
         />
         <div class="h-px bg-ui-border/50 my-1" />
         <PropertyRow
-          :label="t('videoEditor.fileManager.otio.clips', 'Clips')"
+          :label="t('videoEditor.fileManager.otio.clips')"
           :value="summary.clips"
         />
       </div>
@@ -98,7 +98,7 @@ function handleAddAudioTrack() {
       <!-- Actions Section -->
       <div class="flex flex-col gap-3">
         <div class="text-xs font-bold text-ui-text-muted uppercase tracking-widest px-1">
-          {{ t('videoEditor.fileManager.actions.title', 'Actions') }}
+          {{ t('videoEditor.fileManager.actions.title') }}
         </div>
         
         <div class="grid grid-cols-2 gap-3">
@@ -107,11 +107,11 @@ function handleAddAudioTrack() {
             color="neutral"
             variant="soft"
             size="md"
-            :title="t('fastcat.timeline.addVideoTrack', 'Add video track')"
+            :title="t('fastcat.timeline.addVideoTrack')"
             class="justify-center"
             @click="handleAddVideoTrack"
           >
-            {{ t('fastcat.timeline.addVideoTrack', 'Add video') }}
+            {{ t('fastcat.timeline.addVideoTrack') }}
           </UiActionButton>
           
           <UiActionButton
@@ -119,11 +119,11 @@ function handleAddAudioTrack() {
             color="neutral"
             variant="soft"
             size="md"
-            :title="t('fastcat.timeline.addAudioTrack', 'Add audio track')"
+            :title="t('fastcat.timeline.addAudioTrack')"
             class="justify-center"
             @click="handleAddAudioTrack"
           >
-            {{ t('fastcat.timeline.addAudioTrack', 'Add audio') }}
+            {{ t('fastcat.timeline.addAudioTrack') }}
           </UiActionButton>
         </div>
 
@@ -132,11 +132,11 @@ function handleAddAudioTrack() {
           color="primary"
           variant="solid"
           size="md"
-          :title="t('fastcat.timeline.createVersion', 'Create version')"
+          :title="t('fastcat.timeline.createVersion')"
           class="w-full justify-center"
           @click="handleDuplicate"
         >
-          {{ t('fastcat.timeline.createVersion', 'Create version') }}
+          {{ t('fastcat.timeline.createVersion') }}
         </UiActionButton>
       </div>
     </div>

@@ -92,10 +92,10 @@ watch(
         <div class="flex items-center justify-between gap-3">
           <div class="flex flex-col gap-1 min-w-0">
             <div class="font-medium text-ui-text">
-              {{ t('videoEditor.projectSettings.projectStorage', 'Project files') }}
+              {{ t('videoEditor.projectSettings.projectStorage') }}
             </div>
             <div class="text-sm text-ui-text-muted">
-              {{ t('common.size', 'Size') }}:
+              {{ t('common.size') }}:
               <span v-if="projectStats" class="text-ui-text font-medium">
                 {{ formatBytes(projectStats.size) }}
               </span>
@@ -111,7 +111,7 @@ watch(
       <div class="flex items-center justify-between gap-3 p-3 rounded border border-ui-border">
         <div class="flex flex-col gap-1 min-w-0">
           <div class="font-medium text-ui-text">
-            {{ t('videoEditor.projectSettings.clearTemp', 'Clear temporary files') }}
+            {{ t('videoEditor.projectSettings.clearTemp') }}
           </div>
           <div class="text-sm text-ui-text-muted mb-1">
             {{
@@ -122,7 +122,7 @@ watch(
             }}
           </div>
           <div class="text-xs flex items-center gap-1.5">
-            <span class="text-ui-text-muted">{{ t('common.size', 'Size') }}:</span>
+            <span class="text-ui-text-muted">{{ t('common.size') }}:</span>
             <span v-if="vardataStats" class="text-ui-text font-medium">
               {{ formatBytes(vardataStats.size) }}
             </span>
@@ -136,7 +136,7 @@ watch(
           variant="soft"
           icon="i-heroicons-trash"
           :disabled="!projectStore.currentProjectId"
-          :label="t('videoEditor.projectSettings.clearTempAction', 'Clear')"
+          :label="t('videoEditor.projectSettings.clearTempAction')"
           @click="emit('clearTemp')"
         />
       </div>
@@ -145,7 +145,7 @@ watch(
       <div class="flex items-center justify-between gap-3 p-3 rounded border border-ui-border">
         <div class="flex flex-col gap-1 min-w-0">
           <div class="font-medium text-ui-text">
-            {{ t('videoEditor.projectSettings.clearBackups', 'Clear timeline backups') }}
+            {{ t('videoEditor.projectSettings.clearBackups') }}
           </div>
           <div class="text-sm text-ui-text-muted mb-1">
             {{
@@ -156,7 +156,7 @@ watch(
             }}
           </div>
           <div class="text-xs flex items-center gap-1.5">
-            <span class="text-ui-text-muted">{{ t('common.size', 'Size') }}:</span>
+            <span class="text-ui-text-muted">{{ t('common.size') }}:</span>
             <span v-if="backupStats" class="text-ui-text font-medium">
               {{ formatBytes(backupStats.size) }}
             </span>
@@ -170,7 +170,7 @@ watch(
           variant="soft"
           icon="i-heroicons-trash"
           :disabled="!projectStore.currentProjectId || (backupStats?.size === 0)"
-          :label="t('videoEditor.projectSettings.clearTempAction', 'Clear')"
+          :label="t('videoEditor.projectSettings.clearTempAction')"
           @click="emit('clearBackups')"
         />
       </div>
@@ -181,7 +181,7 @@ watch(
       >
         <div class="flex flex-col gap-1 min-w-0">
           <div class="font-medium text-error-400">
-            {{ t('videoEditor.projectSettings.deleteProject', 'Delete Project') }}
+            {{ t('videoEditor.projectSettings.deleteProject') }}
           </div>
           <div class="text-sm text-error-400/70">
             {{
@@ -197,7 +197,7 @@ watch(
           color="error"
           variant="solid"
           icon="i-heroicons-trash"
-          :label="t('videoEditor.projectSettings.deleteProjectAction', 'Delete')"
+          :label="t('videoEditor.projectSettings.deleteProjectAction')"
           @click="emit('deleteProject')"
         />
       </div>

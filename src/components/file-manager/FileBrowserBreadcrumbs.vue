@@ -42,7 +42,7 @@ const { t } = useI18n();
       size="xs"
       icon="i-heroicons-arrow-up"
       :disabled="isAtRoot"
-      :title="t('videoEditor.fileManager.actions.navigateUp', 'Level up')"
+      :title="t('videoEditor.fileManager.actions.navigateUp')"
       @click="emit('navigateUp')"
     />
 

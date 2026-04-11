@@ -54,7 +54,7 @@ const progressPercent = computed(() =>
 
     <template #footer>
       <UButton color="error" variant="soft" @click="emit('cancel')">
-        {{ t('common.cancel', 'Cancel') }}
+        {{ t('common.cancel') }}
       </UButton>
     </template>
   </UiModal>

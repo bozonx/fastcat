@@ -80,12 +80,12 @@ export function useFileContextMenu(
     if (!isProjectRoot && !isCommonRoot && !isBdVirtual && !isBdProject) {
       items.push(
         {
-          label: t('common.copy', 'Copy'),
+          label: t('common.copy'),
           icon: 'i-heroicons-document-duplicate',
           onSelect: () => onAction('copy', entry),
         },
         {
-          label: t('common.cut', 'Cut'),
+          label: t('common.cut'),
           icon: 'i-heroicons-scissors',
           onSelect: () => onAction('cut', entry),
         },
@@ -94,7 +94,7 @@ export function useFileContextMenu(
 
     if (entry.kind === 'directory') {
       items.push({
-        label: t('common.paste', 'Paste'),
+        label: t('common.paste'),
         icon: 'i-heroicons-clipboard',
         disabled: !deps.hasClipboardItems,
         onSelect: () => onAction('paste', entry),
@@ -104,12 +104,12 @@ export function useFileContextMenu(
     if (!isProjectRoot && !isCommonRoot && !isBdVirtual && !isBdProject) {
       items.push(
         {
-          label: t('common.rename', 'Rename'),
+          label: t('common.rename'),
           icon: 'i-heroicons-pencil',
           onSelect: () => onAction('rename', entry),
         },
         {
-          label: t('common.delete', 'Delete'),
+          label: t('common.delete'),
           icon: 'i-heroicons-trash',
           color: 'error',
           onSelect: () => onAction('delete', entry),
@@ -134,12 +134,12 @@ export function useFileContextMenu(
       if (!isBdVirtual) {
         dirActions.push(
           {
-            label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
+            label: t('videoEditor.fileManager.actions.createFolder'),
             icon: 'i-heroicons-folder-plus',
             onSelect: () => onAction('createFolder', entry),
           },
           {
-            label: t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document'),
+            label: t('videoEditor.fileManager.actions.createMarkdown'),
             icon: 'i-heroicons-document-text',
             onSelect: () => onAction('createMarkdown', entry),
           },
@@ -153,7 +153,7 @@ export function useFileContextMenu(
       const bdActions: ContextMenuItem[] = [];
       if (isBdProject || isBdGroup || (isBdVirtual && entry.remoteId !== 'projects')) {
         bdActions.push({
-          label: t('fastcat.bloggerDog.actions.createSubgroup', 'Create subgroup'),
+          label: t('fastcat.bloggerDog.actions.createSubgroup'),
           icon: 'i-heroicons-folder-plus',
           onSelect: () => onAction('createSubgroup', entry),
         });
@@ -161,7 +161,7 @@ export function useFileContextMenu(
 
       if (isBdProject || isBdGroup || (isBdVirtual && entry.remoteId !== 'projects')) {
         bdActions.push({
-          label: t('fastcat.bloggerDog.actions.createItem', 'Create content item'),
+          label: t('fastcat.bloggerDog.actions.createItem'),
           icon: 'i-heroicons-document-plus',
           onSelect: () => onAction('createContentItem', entry),
         });
@@ -179,7 +179,7 @@ export function useFileContextMenu(
       if (deps.isConvertibleMediaFile(entry)) {
         items.push([
           {
-            label: t('videoEditor.fileManager.actions.convertFile', 'Convert File'),
+            label: t('videoEditor.fileManager.actions.convertFile'),
             icon: 'i-heroicons-arrow-path',
             onSelect: () => onAction('convertFile', entry),
           },
@@ -189,7 +189,7 @@ export function useFileContextMenu(
       if (mediaType === 'audio' || mediaType === 'video') {
         items.push([
           {
-            label: t('videoEditor.fileManager.actions.transcribe', 'Transcribe'),
+            label: t('videoEditor.fileManager.actions.transcribe'),
             icon: 'i-heroicons-microphone',
             disabled: !deps.isTranscribableMediaFile?.(entry),
             onSelect: () => onAction('transcribe', entry),
@@ -200,7 +200,7 @@ export function useFileContextMenu(
       if (deps.isVideo(entry) && (!deps.hasAudioTrack || deps.hasAudioTrack(entry))) {
         items.push([
           {
-            label: t('videoEditor.fileManager.actions.extractAudio', 'Extract Audio'),
+            label: t('videoEditor.fileManager.actions.extractAudio'),
             icon: 'i-heroicons-musical-note',
             onSelect: () => onAction('extractAudio', entry),
           },
@@ -210,7 +210,7 @@ export function useFileContextMenu(
       if (isOtioFile) {
         items.push([
           {
-            label: t('fastcat.timeline.createVersion', 'Create version'),
+            label: t('fastcat.timeline.createVersion'),
             icon: 'i-heroicons-document-duplicate',
             onSelect: () => onAction('createOtioVersion', entry),
           },
@@ -242,7 +242,7 @@ export function useFileContextMenu(
       if (!generatingProxy) {
         items.push([
           {
-            label: t('videoEditor.fileManager.actions.createProxy', 'Create Proxy'),
+            label: t('videoEditor.fileManager.actions.createProxy'),
             icon: 'i-heroicons-film',
             onSelect: () => onAction('createProxy', selectedEntries),
           },
@@ -264,7 +264,7 @@ export function useFileContextMenu(
       if (hasProxy) {
         items.push([
           {
-            label: t('videoEditor.fileManager.actions.deleteProxy', 'Delete Proxy'),
+            label: t('videoEditor.fileManager.actions.deleteProxy'),
             icon: 'i-heroicons-trash',
             color: 'error',
             onSelect: () => onAction('deleteProxy', selectedEntries),
@@ -276,7 +276,7 @@ export function useFileContextMenu(
     if (hasVideo && (!deps.hasAudioTrack || selectedEntries.some((e) => deps.hasAudioTrack?.(e)))) {
       items.push([
         {
-          label: t('videoEditor.fileManager.actions.extractAudio', 'Extract Audio'),
+          label: t('videoEditor.fileManager.actions.extractAudio'),
           icon: 'i-heroicons-musical-note',
           onSelect: () => onAction('extractAudio', selectedEntries),
         },
@@ -285,17 +285,17 @@ export function useFileContextMenu(
 
     items.push([
       {
-        label: t('common.copy', 'Copy'),
+        label: t('common.copy'),
         icon: 'i-heroicons-document-duplicate',
         onSelect: () => onAction('copy', selectedEntries),
       },
       {
-        label: t('common.cut', 'Cut'),
+        label: t('common.cut'),
         icon: 'i-heroicons-scissors',
         onSelect: () => onAction('cut', selectedEntries),
       },
       {
-        label: t('common.paste', 'Paste'),
+        label: t('common.paste'),
         icon: 'i-heroicons-clipboard',
         disabled: !deps.hasClipboardItems,
         onSelect: () => onAction('paste', entry),
@@ -304,7 +304,7 @@ export function useFileContextMenu(
 
     items.push([
       {
-        label: t('common.delete', 'Delete'),
+        label: t('common.delete'),
         icon: 'i-heroicons-trash',
         color: 'error',
         onSelect: () => onAction('delete', selectedEntries),
@@ -339,7 +339,7 @@ export function useFileContextMenu(
     if (entry.kind === 'directory') {
       const dirItems: ContextMenuItem[] = [
         {
-          label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
+          label: t('videoEditor.fileManager.actions.createFolder'),
           icon: 'i-heroicons-folder-plus',
           onSelect: () => onAction('createFolder', entry),
         },
@@ -348,12 +348,12 @@ export function useFileContextMenu(
       if (!isComputer) {
         dirItems.push(
           {
-            label: t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),
+            label: t('videoEditor.fileManager.actions.uploadFiles'),
             icon: 'i-heroicons-arrow-up-tray',
             onSelect: () => onAction('upload', entry),
           },
           {
-            label: t('videoEditor.fileManager.actions.createTimeline', 'Create Timeline'),
+            label: t('videoEditor.fileManager.actions.createTimeline'),
             icon: 'i-heroicons-document-plus',
             onSelect: () => onAction('createTimeline', entry),
           },
@@ -361,7 +361,7 @@ export function useFileContextMenu(
       }
 
       dirItems.push({
-        label: t('videoEditor.fileManager.actions.createMarkdown', 'Create Markdown document'),
+        label: t('videoEditor.fileManager.actions.createMarkdown'),
         icon: 'i-heroicons-document-text',
         onSelect: () => onAction('createMarkdown', entry),
       });
@@ -395,17 +395,17 @@ export function useFileContextMenu(
     if (deps.isOpenableMediaFile(entry) && !isComputer) {
       items.push([
         {
-          label: t('videoEditor.fileManager.actions.openAsPanelCut', 'Open as panel (Editor)'),
+          label: t('videoEditor.fileManager.actions.openAsPanelCut'),
           icon: 'i-heroicons-window',
           onSelect: () => onAction('openAsPanelCut', entry),
         },
         {
-          label: t('videoEditor.fileManager.actions.openAsPanelSound', 'Open as panel (Sound)'),
+          label: t('videoEditor.fileManager.actions.openAsPanelSound'),
           icon: 'i-heroicons-window',
           onSelect: () => onAction('openAsPanelSound', entry),
         },
         {
-          label: t('videoEditor.fileManager.actions.openAsProjectTab', 'Open as project tab'),
+          label: t('videoEditor.fileManager.actions.openAsProjectTab'),
           icon: 'i-heroicons-squares-plus',
           onSelect: () => onAction('openAsProjectTab', entry),
         },
@@ -415,7 +415,7 @@ export function useFileContextMenu(
     if (deps.isConvertibleMediaFile(entry)) {
       items.push([
         {
-          label: t('videoEditor.fileManager.actions.convertFile', 'Convert File'),
+          label: t('videoEditor.fileManager.actions.convertFile'),
           icon: 'i-heroicons-arrow-path',
           onSelect: () => onAction('convertFile', entry),
         },
@@ -426,7 +426,7 @@ export function useFileContextMenu(
     if (mediaType === 'audio' || mediaType === 'video') {
       items.push([
         {
-          label: t('videoEditor.fileManager.actions.transcribe', 'Transcribe'),
+          label: t('videoEditor.fileManager.actions.transcribe'),
           icon: 'i-heroicons-microphone',
           disabled: !deps.isTranscribableMediaFile?.(entry),
           onSelect: () => onAction('transcribe', entry),
@@ -440,8 +440,8 @@ export function useFileContextMenu(
         items.push([
           {
             label: meta.hasProxy
-              ? t('videoEditor.fileManager.actions.regenerateProxy', 'Regenerate Proxy')
-              : t('videoEditor.fileManager.actions.createProxy', 'Create Proxy'),
+              ? t('videoEditor.fileManager.actions.regenerateProxy')
+              : t('videoEditor.fileManager.actions.createProxy'),
             icon: 'i-heroicons-film',
             onSelect: () => onAction('createProxy', entry),
           },
@@ -463,7 +463,7 @@ export function useFileContextMenu(
       if (meta.hasProxy) {
         items.push([
           {
-            label: t('videoEditor.fileManager.actions.deleteProxy', 'Delete Proxy'),
+            label: t('videoEditor.fileManager.actions.deleteProxy'),
             icon: 'i-heroicons-trash',
             color: 'error',
             onSelect: () => onAction('deleteProxy', entry),
@@ -475,7 +475,7 @@ export function useFileContextMenu(
     if (deps.isVideo(entry) && (!deps.hasAudioTrack || deps.hasAudioTrack(entry))) {
       items.push([
         {
-          label: t('videoEditor.fileManager.actions.extractAudio', 'Extract Audio'),
+          label: t('videoEditor.fileManager.actions.extractAudio'),
           icon: 'i-heroicons-musical-note',
           onSelect: () => onAction('extractAudio', entry),
         },
@@ -485,7 +485,7 @@ export function useFileContextMenu(
     if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.otio') && !isComputer) {
       items.push([
         {
-          label: t('fastcat.timeline.createVersion', 'Create version'),
+          label: t('fastcat.timeline.createVersion'),
           icon: 'i-heroicons-document-duplicate',
           onSelect: () => onAction('createOtioVersion', entry),
         },

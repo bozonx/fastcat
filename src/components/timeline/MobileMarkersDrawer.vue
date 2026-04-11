@@ -44,14 +44,14 @@ function handleAddMarker() {
     <div class="px-4 py-4 flex flex-col gap-4">
       <div class="flex items-center justify-between">
         <h3 class="text-lg font-bold text-ui-text">
-          {{ t('videoEditor.fileManager.history.markers', 'Markers') }}
+          {{ t('videoEditor.fileManager.history.markers') }}
         </h3>
         <UiActionButton
           icon="lucide:plus"
           size="sm"
           color="primary"
           variant="soft"
-          :title="t('fastcat.timeline.addMarker', 'Add marker')"
+          :title="t('fastcat.timeline.addMarker')"
           @click="handleAddMarker"
         />
       </div>
@@ -64,7 +64,7 @@ function handleAddMarker() {
           <UIcon name="lucide:map-pin" class="w-8 h-8 opacity-40" />
         </div>
         <span class="text-sm">
-          {{ t('videoEditor.fileManager.markers.empty', 'No markers yet') }}
+          {{ t('videoEditor.fileManager.markers.empty') }}
         </span>
       </div>
 
@@ -81,7 +81,7 @@ function handleAddMarker() {
           ></div>
           <div class="flex-1 min-w-0">
             <div class="text-sm font-medium truncate text-ui-text">
-              {{ marker.text || t('fastcat.marker.marker', 'Marker') }}
+              {{ marker.text || t('fastcat.marker.marker') }}
             </div>
             <div class="text-[10px] text-ui-text-muted font-mono mt-0.5 opacity-70">
               <UiTimecode :model-value="marker.timeUs" disabled />

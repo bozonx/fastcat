@@ -36,7 +36,7 @@ const transitionOptions = computed(() =>
   <PropertySection
     v-if="props.isVideoTrack"
     v-model:toggle-value="isEnabled"
-    :title="t('fastcat.timeline.transitions', 'Transitions')"
+    :title="t('fastcat.timeline.transitions')"
     has-toggle
   >
     <div class="grid grid-cols-2 gap-2" :class="{ 'opacity-50 pointer-events-none': !isEnabled }">
@@ -46,7 +46,7 @@ const transitionOptions = computed(() =>
             v-if="props.transitionIn"
             class="p-0 h-auto font-mono text-2xs font-medium uppercase text-blue-500 hover:text-blue-400"
             :disabled="!isEnabled"
-            @click="emit('selectEdge', 'in')"
+            @click="emit('selectEdge')"
           >
             IN {{ props.transitionIn.type }}
           </button>
@@ -55,7 +55,7 @@ const transitionOptions = computed(() =>
             type="button"
             class="text-2xs font-medium text-ui-text-muted uppercase text-left"
             :disabled="!isEnabled"
-            @click="emit('selectEdge', 'in')"
+            @click="emit('selectEdge')"
           >
             IN
           </button>
@@ -65,7 +65,7 @@ const transitionOptions = computed(() =>
             variant="ghost"
             :icon="props.transitionIn ? 'i-heroicons-trash' : 'i-heroicons-plus-circle'"
             :disabled="!isEnabled"
-            @click="emit('toggle', 'in')"
+            @click="emit('toggle')"
           />
         </div>
 
@@ -112,7 +112,7 @@ const transitionOptions = computed(() =>
             v-if="props.transitionOut"
             class="p-0 h-auto font-mono text-2xs font-medium uppercase text-blue-500 hover:text-blue-400"
             :disabled="!isEnabled"
-            @click="emit('selectEdge', 'out')"
+            @click="emit('selectEdge')"
           >
             OUT {{ props.transitionOut.type }}
           </button>
@@ -121,7 +121,7 @@ const transitionOptions = computed(() =>
             type="button"
             class="text-2xs font-medium text-ui-text-muted uppercase text-left"
             :disabled="!isEnabled"
-            @click="emit('selectEdge', 'out')"
+            @click="emit('selectEdge')"
           >
             OUT
           </button>
@@ -131,7 +131,7 @@ const transitionOptions = computed(() =>
             variant="ghost"
             :icon="props.transitionOut ? 'i-heroicons-trash' : 'i-heroicons-plus-circle'"
             :disabled="!isEnabled"
-            @click="emit('toggle', 'out')"
+            @click="emit('toggle')"
           />
         </div>
 

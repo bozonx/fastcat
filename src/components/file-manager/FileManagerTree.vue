@@ -397,7 +397,7 @@ function onEntryEnter(event: KeyboardEvent, entry: FsEntry) {
 function onRenameClick(entry: FsEntry) {
   if (entry.path === WORKSPACE_COMMON_PATH_PREFIX) return;
   if (isBloggerDogVirtualFolder(entry) || isBloggerDogProject(entry)) return;
-  emit('action', 'rename', entry);
+  emit('action', entry);
 }
 
 function onCaretClick(e: MouseEvent, entry: FsEntry) {

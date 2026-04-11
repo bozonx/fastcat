@@ -93,15 +93,15 @@ watch(
       color="success"
       variant="soft"
       icon="i-heroicons-check-circle"
-      :title="t('videoEditor.settings.integrationSuccessTitle', 'Successfully connected!')"
-      :description="t('videoEditor.settings.integrationSuccessDesc', 'You can safely close this tab now.')"
+      :title="t('videoEditor.settings.integrationSuccessTitle')"
+      :description="t('videoEditor.settings.integrationSuccessDesc')"
       class="mb-2"
     />
 
     <UiConfirmModal
       v-model:open="isResetConfirmOpen"
       :title="
-        t('videoEditor.settings.resetIntegrationsSettingsConfirmTitle', 'Reset integrations?')
+        t('videoEditor.settings.resetIntegrationsSettingsConfirmTitle')
       "
       :description="
         t(
@@ -109,8 +109,8 @@ watch(
           'This will restore all integration settings to their default values.',
         )
       "
-      :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction', 'Reset')"
-      :cancel-text="t('common.cancel', 'Cancel')"
+      :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction')"
+      :cancel-text="t('common.cancel')"
       color="warning"
       icon="i-heroicons-exclamation-triangle"
       @confirm="resetDefaults"
@@ -118,10 +118,10 @@ watch(
 
     <div class="flex items-center justify-between gap-3 px-1">
       <div class="font-semibold text-ui-text">
-        {{ t('videoEditor.settings.userIntegrations', 'Integrations') }}
+        {{ t('videoEditor.settings.userIntegrations') }}
       </div>
       <UButton size="xs" color="neutral" variant="ghost" @click="isResetConfirmOpen = true">
-        {{ t('videoEditor.settings.resetDefaults', 'Reset to defaults') }}
+        {{ t('videoEditor.settings.resetDefaults') }}
       </UButton>
     </div>
 

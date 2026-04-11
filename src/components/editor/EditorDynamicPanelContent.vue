@@ -66,8 +66,8 @@ const customPanelContextMenuItems = computed(() => {
   const moveTargetView = props.view === 'sound' ? 'cut' : 'sound';
   const moveLabel =
     props.view === 'sound'
-      ? t('fastcat.dynamicPanels.moveToCutWindow', 'Move to edit window')
-      : t('fastcat.dynamicPanels.moveToSoundWindow', 'Move to sound window');
+      ? t('fastcat.dynamicPanels.moveToCutWindow')
+      : t('fastcat.dynamicPanels.moveToSoundWindow');
 
   return [
     [
@@ -79,7 +79,7 @@ const customPanelContextMenuItems = computed(() => {
     ],
     [
       {
-        label: t('common.close', 'Close'),
+        label: t('common.close'),
         icon: 'i-heroicons-x-mark',
         onSelect: onClose,
       },
@@ -95,7 +95,7 @@ const detachedStaticPanelContextMenuItems = computed(() => {
   return [
     [
       {
-        label: t('fastcat.dynamicPanels.returnToProjectPanel', 'Return to project panel'),
+        label: t('fastcat.dynamicPanels.returnToProjectPanel'),
         icon: 'i-heroicons-arrow-uturn-left',
         onSelect: onClose,
       },
@@ -209,7 +209,7 @@ const detachedStaticPanelContextMenuItems = computed(() => {
     class="h-full w-full bg-ui-bg-elevated flex flex-col relative border border-ui-border"
   >
     <EditorPanelHeader
-      :title="panel.title || t('videoEditor.fileManager.tabs.markers', 'Markers')"
+      :title="panel.title || t('videoEditor.fileManager.tabs.markers')"
       icon="i-heroicons-tag"
       :context-menu-items="detachedStaticPanelContextMenuItems"
       @drag-start="onDragStart"

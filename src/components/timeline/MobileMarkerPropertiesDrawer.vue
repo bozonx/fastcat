@@ -72,8 +72,8 @@ const mainActions = computed<any[]>(() => {
   list.push({
     id: 'convert',
     label: isZone.value
-      ? t('fastcat.timeline.convertZoneToMarker', 'Convert to normal marker')
-      : t('fastcat.timeline.convertMarkerToZone', 'Convert to zone marker'),
+      ? t('fastcat.timeline.convertZoneToMarker')
+      : t('fastcat.timeline.convertMarkerToZone'),
     icon: 'i-heroicons-arrows-right-left',
     onClick: handleConvertMarker,
   });
@@ -82,13 +82,13 @@ const mainActions = computed<any[]>(() => {
     list.push(
       {
         id: 'convert-to-selection',
-        label: t('fastcat.timeline.convertZoneToSelection', 'Convert to selection area'),
+        label: t('fastcat.timeline.convertZoneToSelection'),
         icon: 'i-heroicons-rectangle-group',
         onClick: handleConvertToSelectionRange,
       },
       {
         id: 'create-selection',
-        label: t('fastcat.timeline.createSelectionFromZone', 'Create selection area'),
+        label: t('fastcat.timeline.createSelectionFromZone'),
         icon: 'i-heroicons-sparkles',
         color: 'secondary' as const,
         onClick: handleCreateSelectionRange,
@@ -110,7 +110,7 @@ const mainActions = computed<any[]>(() => {
         <MobileDrawerToolbar class="-mx-4 mb-2">
           <MobileDrawerToolbarButton
             icon="i-heroicons-trash"
-            :label="t('common.delete', 'Delete')"
+            :label="t('common.delete')"
             @click="confirmDelete"
           />
         </MobileDrawerToolbar>

@@ -28,7 +28,7 @@ watch(
 
       if (task.type === 'conversion') {
         toast.add({
-          title: t('videoEditor.fileManager.convert.success', 'File converted successfully'),
+          title: t('videoEditor.fileManager.convert.success'),
           description: task.title,
           color: 'success',
         });
@@ -38,7 +38,7 @@ watch(
 
       if (task.type === 'proxy') {
         toast.add({
-          title: t('videoEditor.fileManager.proxy.success', 'Proxy created successfully'),
+          title: t('videoEditor.fileManager.proxy.success'),
           description: task.title,
           color: 'success',
         });

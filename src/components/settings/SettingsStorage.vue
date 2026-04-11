@@ -25,11 +25,11 @@ const isDesktopPortableMode = computed(() => isDesktopTauri.value && isPortableM
 
 const placementModeOptions = computed(() => [
   {
-    label: t('videoEditor.settings.storageModeSystemDefault', 'System default'),
+    label: t('videoEditor.settings.storageModeSystemDefault'),
     value: 'system-default',
   },
   {
-    label: t('videoEditor.settings.storageModePortable', 'Workspace portable'),
+    label: t('videoEditor.settings.storageModePortable'),
     value: 'portable',
   },
 ]);
@@ -46,7 +46,7 @@ const workspaceFolderLabel = computed(() => {
     | (FileSystemDirectoryHandle & { path?: string })
     | null;
   if (!handle) {
-    return t('videoEditor.settings.workspaceFolderNotSelected', 'Workspace folder is not selected');
+    return t('videoEditor.settings.workspaceFolderNotSelected');
   }
 
   if (typeof handle.path === 'string' && handle.path.trim().length > 0) {
@@ -149,16 +149,16 @@ function resetPathDefaults() {
   <div class="flex flex-col gap-6">
     <div class="flex items-center justify-between gap-3">
       <div class="text-sm font-medium text-ui-text">
-        {{ t('videoEditor.settings.workspaceStorage', 'Storage') }}
+        {{ t('videoEditor.settings.workspaceStorage') }}
       </div>
       <UButton size="xs" color="neutral" variant="ghost" @click="resetPathDefaults">
-        {{ t('videoEditor.settings.resetDefaults', 'Reset paths') }}
+        {{ t('videoEditor.settings.resetDefaults') }}
       </UButton>
     </div>
 
     <UiFormField
       v-if="isDesktopTauri"
-      :label="t('videoEditor.settings.storageMode', 'Storage mode')"
+      :label="t('videoEditor.settings.storageMode')"
       :help="
         t(
           'videoEditor.settings.storageModeHelp',
@@ -180,7 +180,7 @@ function resetPathDefaults() {
     >
       <div class="flex flex-col gap-1 min-w-0">
         <div class="text-sm font-medium text-ui-text">
-          {{ t('videoEditor.settings.workspaceFolder', 'Workspace folder') }}
+          {{ t('videoEditor.settings.workspaceFolder') }}
         </div>
         <div class="text-xs text-ui-text-muted break-all">
           {{ workspaceFolderLabel }}
@@ -191,14 +191,14 @@ function resetPathDefaults() {
         color="neutral"
         variant="soft"
         icon="i-heroicons-folder-open"
-        :label="t('videoEditor.settings.selectWorkspaceFolder', 'Choose folder')"
+        :label="t('videoEditor.settings.selectWorkspaceFolder')"
         @click="pickWorkspaceFolder"
       />
     </div>
 
     <div v-if="isDesktopSystemMode" class="grid grid-cols-1 gap-4 md:grid-cols-2">
       <UiFormField
-        :label="t('videoEditor.settings.contentRootPath', 'Content root path')"
+        :label="t('videoEditor.settings.contentRootPath')"
         :help="
           t(
             'videoEditor.settings.contentRootPathHelp',
@@ -218,7 +218,7 @@ function resetPathDefaults() {
       </UiFormField>
 
       <UiFormField
-        :label="t('videoEditor.settings.dataRootPath', 'Data root path')"
+        :label="t('videoEditor.settings.dataRootPath')"
         :help="
           t(
             'videoEditor.settings.dataRootPathHelp',
@@ -238,7 +238,7 @@ function resetPathDefaults() {
       </UiFormField>
 
       <UiFormField
-        :label="t('videoEditor.settings.tempRootPath', 'Temporary data path')"
+        :label="t('videoEditor.settings.tempRootPath')"
         :help="
           t(
             'videoEditor.settings.tempRootPathHelp',
@@ -258,7 +258,7 @@ function resetPathDefaults() {
       </UiFormField>
 
       <UiFormField
-        :label="t('videoEditor.settings.proxiesRootPath', 'Proxy files path')"
+        :label="t('videoEditor.settings.proxiesRootPath')"
         :help="
           t(
             'videoEditor.settings.proxiesRootPathHelp',
@@ -278,7 +278,7 @@ function resetPathDefaults() {
       </UiFormField>
 
       <UiFormField
-        :label="t('videoEditor.settings.ephemeralTmpRootPath', 'Ephemeral tmp path')"
+        :label="t('videoEditor.settings.ephemeralTmpRootPath')"
         :help="
           t(
             'videoEditor.settings.ephemeralTmpRootPathHelp',
@@ -300,7 +300,7 @@ function resetPathDefaults() {
 
     <div v-if="isDesktopPortableMode" class="grid grid-cols-1 gap-4 md:grid-cols-2">
       <UiFormField
-        :label="t('videoEditor.settings.ephemeralTmpRootPath', 'Ephemeral tmp path')"
+        :label="t('videoEditor.settings.ephemeralTmpRootPath')"
         :help="
           t(
             'videoEditor.settings.portableEphemeralTmpRootPathHelp',
@@ -322,7 +322,7 @@ function resetPathDefaults() {
 
     <div v-if="isBrowserWorkspaceMode" class="grid grid-cols-1 gap-4 md:grid-cols-2">
       <UiFormField
-        :label="t('videoEditor.settings.ephemeralTmpRootPath', 'Ephemeral tmp path')"
+        :label="t('videoEditor.settings.ephemeralTmpRootPath')"
         :help="
           t(
             'videoEditor.settings.browserEphemeralTmpRootPathHelp',
@@ -348,15 +348,15 @@ function resetPathDefaults() {
 
     <UiConfirmModal
       v-model:open="isClearWorkspaceVardataConfirmOpen"
-      :title="t('videoEditor.settings.clearTempWorkspaceTitle', 'Clear temporary files')"
+      :title="t('videoEditor.settings.clearTempWorkspaceTitle')"
       :description="
         t(
           'videoEditor.settings.clearTempWorkspaceDescription',
           'This will delete all generated proxies, thumbnails and cached data in this workspace.',
         )
       "
-      :confirm-text="t('videoEditor.settings.clearTempWorkspaceConfirm', 'Clear')"
-      :cancel-text="t('common.cancel', 'Cancel')"
+      :confirm-text="t('videoEditor.settings.clearTempWorkspaceConfirm')"
+      :cancel-text="t('common.cancel')"
       color="warning"
       icon="i-heroicons-trash"
       @confirm="confirmClearWorkspaceVardata"
@@ -368,7 +368,7 @@ function resetPathDefaults() {
     >
       <div class="flex flex-col gap-1 min-w-0">
         <div class="text-sm font-medium text-ui-text">
-          {{ t('videoEditor.settings.clearTempWorkspace', 'Clear temporary files') }}
+          {{ t('videoEditor.settings.clearTempWorkspace') }}
         </div>
         <div class="text-xs text-ui-text-muted">
           {{
@@ -384,7 +384,7 @@ function resetPathDefaults() {
         color="warning"
         variant="soft"
         icon="i-heroicons-trash"
-        :label="t('videoEditor.settings.clearTempWorkspaceAction', 'Clear')"
+        :label="t('videoEditor.settings.clearTempWorkspaceAction')"
         @click="isClearWorkspaceVardataConfirmOpen = true"
       />
     </div>

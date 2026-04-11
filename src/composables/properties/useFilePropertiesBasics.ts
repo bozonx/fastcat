@@ -89,15 +89,15 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
     if (!info) return '';
 
     if (info.kind === 'directory') {
-      if (isBloggerDogProject.value) return t('fastcat.file.bloggerDogProject', 'Проект');
-      if (isBloggerDogGroup.value) return t('fastcat.file.bloggerDogGroup', 'Группа');
-      if (isBloggerDogContentItem.value) return t('fastcat.file.bloggerDogItem', 'Элемент контента');
-      return t('common.folder', 'Folder');
+      if (isBloggerDogProject.value) return t('fastcat.file.bloggerDogProject');
+      if (isBloggerDogGroup.value) return t('fastcat.file.bloggerDogGroup');
+      if (isBloggerDogContentItem.value) return t('fastcat.file.bloggerDogItem');
+      return t('common.folder');
     }
 
     if (options.isOtio.value) return 'OTIO';
 
-    return info.mimeType ?? t('common.file', 'File');
+    return info.mimeType ?? t('common.file');
   });
 
   const mediaMeta = computed(() => options.fileInfo.value?.metadata as any);

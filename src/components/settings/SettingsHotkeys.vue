@@ -61,9 +61,9 @@ function getCommandTitle(cmdId: HotkeyCommandId): string {
 
 function getCommandGroupTitle(groupId: string): string {
   const titles: Record<string, string> = {
-    general: t('videoEditor.settings.hotkeysGroupGeneral', 'General'),
-    playback: t('videoEditor.settings.hotkeysGroupPlayback', 'Playback'),
-    timeline: t('videoEditor.settings.hotkeysGroupTimeline', 'Timeline'),
+    general: t('videoEditor.settings.hotkeysGroupGeneral'),
+    playback: t('videoEditor.settings.hotkeysGroupPlayback'),
+    timeline: t('videoEditor.settings.hotkeysGroupTimeline'),
   };
   return titles[groupId] || groupId;
 }
@@ -176,12 +176,12 @@ defineExpose({ finishCapture, isDuplicateConfirmOpen });
   <div class="flex flex-col gap-6">
     <UiConfirmModal
       v-model:open="isDuplicateConfirmOpen"
-      :title="t('videoEditor.settings.hotkeysDuplicateTitle', 'Duplicate hotkey')"
+      :title="t('videoEditor.settings.hotkeysDuplicateTitle')"
       :description="duplicateWarningText"
-      :confirm-text="t('videoEditor.settings.hotkeysDuplicateConfirm', 'Add anyway')"
-      :secondary-text="t('videoEditor.settings.hotkeysDuplicateReplace', 'Replace')"
+      :confirm-text="t('videoEditor.settings.hotkeysDuplicateConfirm')"
+      :secondary-text="t('videoEditor.settings.hotkeysDuplicateReplace')"
       secondary-color="warning"
-      :cancel-text="t('common.cancel', 'Cancel')"
+      :cancel-text="t('common.cancel')"
       color="warning"
       icon="i-heroicons-exclamation-triangle"
       @confirm="confirmAddDuplicate"
@@ -190,10 +190,10 @@ defineExpose({ finishCapture, isDuplicateConfirmOpen });
 
     <UiConfirmModal
       v-model:open="isResetAllHotkeysConfirmOpen"
-      :title="t('videoEditor.settings.hotkeysResetAllConfirmTitle', 'Reset all hotkeys?')"
+      :title="t('videoEditor.settings.hotkeysResetAllConfirmTitle')"
       :description="t('videoEditor.settings.hotkeysResetAllConfirmDesc')"
-      :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction', 'Reset')"
-      :cancel-text="t('common.cancel', 'Cancel')"
+      :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction')"
+      :cancel-text="t('common.cancel')"
       color="warning"
       icon="i-heroicons-exclamation-triangle"
       @confirm="confirmResetAllHotkeys"
@@ -201,7 +201,7 @@ defineExpose({ finishCapture, isDuplicateConfirmOpen });
 
     <UiConfirmModal
       v-model:open="isResetCommandConfirmOpen"
-      :title="t('videoEditor.settings.hotkeysResetCommandConfirmTitle', 'Reset hotkey?')"
+      :title="t('videoEditor.settings.hotkeysResetCommandConfirmTitle')"
       :description="
         resetCommandConfirmTarget
           ? t('videoEditor.settings.hotkeysResetCommandConfirmDesc', {
@@ -209,8 +209,8 @@ defineExpose({ finishCapture, isDuplicateConfirmOpen });
             })
           : ''
       "
-      :confirm-text="t('videoEditor.settings.hotkeysResetCommandConfirmAction', 'Reset')"
-      :cancel-text="t('common.cancel', 'Cancel')"
+      :confirm-text="t('videoEditor.settings.hotkeysResetCommandConfirmAction')"
+      :cancel-text="t('common.cancel')"
       color="warning"
       icon="i-heroicons-exclamation-triangle"
       @confirm="confirmResetCommandHotkeys"
@@ -218,7 +218,7 @@ defineExpose({ finishCapture, isDuplicateConfirmOpen });
 
     <div class="flex items-center justify-between gap-3 px-1">
       <div class="text-sm font-semibold text-ui-text">
-        {{ t('videoEditor.settings.userHotkeys', 'Hotkeys') }}
+        {{ t('videoEditor.settings.userHotkeys') }}
       </div>
       <UButton
         size="xs"
@@ -227,7 +227,7 @@ defineExpose({ finishCapture, isDuplicateConfirmOpen });
         :disabled="isCapturingHotkey"
         @click="isResetAllHotkeysConfirmOpen = true"
       >
-        {{ t('videoEditor.settings.hotkeysResetAll', 'Reset all') }}
+        {{ t('videoEditor.settings.hotkeysResetAll') }}
       </UButton>
       <div v-if="isCapturingHotkey" class="text-xs text-primary-500 font-medium animate-pulse">
         {{
@@ -246,13 +246,13 @@ defineExpose({ finishCapture, isDuplicateConfirmOpen });
     <div class="px-1">
       <UiSearchInput
         v-model="searchQuery"
-        :placeholder="t('common.search', 'Search')"
+        :placeholder="t('common.search')"
         :disabled="isCapturingHotkey"
       />
     </div>
 
     <div v-if="hotkeyGroups.length === 0" class="px-1 py-8 text-center text-sm text-ui-text-muted">
-      {{ t('common.noResults', 'No results found') }}
+      {{ t('common.noResults') }}
     </div>
 
     <div v-else class="flex flex-col gap-8">

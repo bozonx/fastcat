@@ -64,8 +64,8 @@ export function useMobileFileBrowserCreate({
       projectStore.setView('cut');
 
       toast.add({
-        title: t('common.success', 'Success'),
-        description: t('timelineCreation.successTitle', 'Timeline created'),
+        title: t('common.success'),
+        description: t('timelineCreation.successTitle'),
         color: 'success',
       });
     }

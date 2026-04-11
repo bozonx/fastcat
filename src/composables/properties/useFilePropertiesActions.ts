@@ -175,7 +175,7 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
     },
     {
       id: 'createSubgroup',
-      label: options.t('fastcat.bloggerDog.actions.createSubgroup', 'Create subgroup'),
+      label: options.t('fastcat.bloggerDog.actions.createSubgroup'),
       icon: 'i-heroicons-folder-plus',
       hidden:
         !options.isRemoteMode?.value ||
@@ -188,7 +188,7 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
     },
     {
       id: 'createContentItem',
-      label: options.t('fastcat.bloggerDog.actions.createItem', 'Create content item'),
+      label: options.t('fastcat.bloggerDog.actions.createItem'),
       icon: 'i-heroicons-document-plus',
       hidden:
         !options.isRemoteMode?.value ||

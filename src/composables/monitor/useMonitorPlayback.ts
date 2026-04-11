@@ -314,7 +314,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
             if (elapsedMs > 500 && audioDeltaMs < elapsedMs * 0.7) {
               toast.add({
                 color: 'warning',
-                title: t('fastcat.monitor.playbackThrottled', 'Playback Throttled'),
+                title: t('fastcat.monitor.playbackThrottled'),
                 description: t(
                   'fastcat.monitor.playbackThrottledDetail',
                   'The browser slowed down background playback. Return to this tab for smooth editing.',

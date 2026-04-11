@@ -113,7 +113,7 @@ function handleCreateSelectionRange() {
 const commonActions = computed(() => [
   {
     id: 'delete',
-    title: t('common.delete', 'Delete'),
+    title: t('common.delete'),
     icon: 'i-heroicons-trash',
     onClick: handleDeleteMarker,
   },
@@ -124,8 +124,8 @@ const mainActions = computed<any[]>(() => {
     {
       id: 'convert',
       label: isZone.value
-        ? t('fastcat.timeline.convertZoneToMarker', 'Convert to normal marker')
-        : t('fastcat.timeline.convertMarkerToZone', 'Convert to zone marker'),
+        ? t('fastcat.timeline.convertZoneToMarker')
+        : t('fastcat.timeline.convertMarkerToZone'),
       icon: 'i-heroicons-arrows-right-left',
       onClick: handleConvertMarker,
     },
@@ -135,13 +135,13 @@ const mainActions = computed<any[]>(() => {
     list.push(
       {
         id: 'convert-to-selection',
-        label: t('fastcat.timeline.convertZoneToSelection', 'Convert to selection area'),
+        label: t('fastcat.timeline.convertZoneToSelection'),
         icon: 'i-heroicons-rectangle-group',
         onClick: handleConvertToSelectionRange,
       },
       {
         id: 'create-selection',
-        label: t('fastcat.timeline.createSelectionFromZone', 'Create selection area'),
+        label: t('fastcat.timeline.createSelectionFromZone'),
         icon: 'i-heroicons-sparkles',
         color: 'secondary' as const,
         onClick: handleCreateSelectionRange,
@@ -154,7 +154,7 @@ const mainActions = computed<any[]>(() => {
 
 <template>
   <div v-if="marker" class="w-full flex flex-col gap-2 text-ui-text">
-    <PropertySection v-if="!hideActions" :title="t('fastcat.marker.actions', 'Actions')">
+    <PropertySection v-if="!hideActions" :title="t('fastcat.marker.actions')">
       <div class="flex flex-col w-full">
         <PropertyActionList
           :actions="commonActions"
@@ -169,9 +169,9 @@ const mainActions = computed<any[]>(() => {
       </div>
     </PropertySection>
 
-    <PropertySection :title="t('fastcat.marker.info', 'Marker Info')">
+    <PropertySection :title="t('fastcat.marker.info')">
       <div class="flex flex-col gap-0.5 mt-2">
-        <span class="text-xs text-ui-text-muted">{{ t('fastcat.marker.text', 'Text') }}</span>
+        <span class="text-xs text-ui-text-muted">{{ t('fastcat.marker.text') }}</span>
         <UTextarea
           ref="textareaRef"
           :model-value="marker.text"
@@ -184,13 +184,13 @@ const mainActions = computed<any[]>(() => {
 
       <div class="flex flex-col gap-0.5 mt-2">
         <span class="text-xs text-ui-text-muted">{{
-          isZone ? t('common.start', 'Start Time') : t('common.position', 'Position')
+          isZone ? t('common.start') : t('common.position')
         }}</span>
         <UiTimecode :model-value="marker.timeUs" @update:model-value="handleUpdateStartTime" />
       </div>
 
       <div v-if="isZone" class="flex flex-col gap-0.5 mt-2">
-        <span class="text-xs text-ui-text-muted">{{ t('common.end', 'End Time') }}</span>
+        <span class="text-xs text-ui-text-muted">{{ t('common.end') }}</span>
         <UiTimecode
           :model-value="marker.timeUs + (marker.durationUs || 0)"
           @update:model-value="handleUpdateEndTime"
@@ -198,7 +198,7 @@ const mainActions = computed<any[]>(() => {
       </div>
 
       <div class="flex flex-col gap-2 mt-4 pb-2">
-        <span class="text-xs text-ui-text-muted">{{ t('common.color', 'Color') }}</span>
+        <span class="text-xs text-ui-text-muted">{{ t('common.color') }}</span>
         <UiColorPicker
           :model-value="marker.color ?? '#eab308'"
           mode="marker"

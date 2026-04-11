@@ -161,8 +161,8 @@ const {
   onSuccess: ({ cached, mediaType }) => {
     toast.add({
       title: cached
-        ? t('videoEditor.fileManager.audio.transcriptionCached', 'Using cached transcription')
-        : t('videoEditor.fileManager.audio.transcriptionCompleted', 'Transcription completed'),
+        ? t('videoEditor.fileManager.audio.transcriptionCached')
+        : t('videoEditor.fileManager.audio.transcriptionCompleted'),
       description: cached
         ? t(
             'videoEditor.fileManager.audio.transcriptionCachedDescription',
@@ -182,7 +182,7 @@ const {
   },
   onError: (message) => {
     toast.add({
-      title: t('videoEditor.fileManager.audio.transcriptionFailed', 'Failed to transcribe media'),
+      title: t('videoEditor.fileManager.audio.transcriptionFailed'),
       description: message,
       color: 'danger',
     });
@@ -250,8 +250,8 @@ async function handleAddSelectionToTimeline() {
 
 function onAddedToTimeline() {
   toast.add({
-    title: t('common.success', 'Success'),
-    description: t('common.addedToTimeline', 'Added to timeline'),
+    title: t('common.success'),
+    description: t('common.addedToTimeline'),
     color: 'success',
   });
   closeAllUI();
@@ -285,13 +285,13 @@ async function onRenameConfirm(newName: string) {
     await renameEntry(entryToRename.value, newName);
     await loadFolderContent();
     toast.add({
-      title: t('common.success', 'Success'),
-      description: t('common.saveSuccess', 'Saved successfully'),
+      title: t('common.success'),
+      description: t('common.saveSuccess'),
       color: 'success',
     });
   } catch (err: any) {
     toast.add({
-      title: t('common.error', 'Error'),
+      title: t('common.error'),
       description: String(err?.message || err),
       color: 'error',
     });
@@ -349,20 +349,20 @@ const menuItems = computed(() => [
   [
     {
       label: isSelectionMode.value
-        ? t('common.cancelSelection', 'Cancel Selection')
-        : t('common.selectItems', 'Select Items'),
+        ? t('common.cancelSelection')
+        : t('common.selectItems'),
       icon: isSelectionMode.value ? 'lucide:x-circle' : 'lucide:check-square',
       onSelect: toggleSelectionMode,
     },
   ],
   [
     {
-      label: t('videoEditor.fileManager.actions.uploadFiles', 'Upload files'),
+      label: t('videoEditor.fileManager.actions.uploadFiles'),
       icon: 'i-heroicons-arrow-up-tray',
       onSelect: triggerFileUpload,
     },
     {
-      label: t('videoEditor.fileManager.actions.createFolder', 'Create Folder'),
+      label: t('videoEditor.fileManager.actions.createFolder'),
       icon: 'i-heroicons-folder-plus',
       onSelect: handleCreateFolderRequest,
     },
@@ -372,8 +372,8 @@ const menuItems = computed(() => [
     {
       label:
         fileManagerStore.sortOption.order === 'asc'
-          ? t('common.sortOrder.asc', 'Ascending')
-          : t('common.sortOrder.desc', 'Descending'),
+          ? t('common.sortOrder.asc')
+          : t('common.sortOrder.desc'),
       icon: fileManagerStore.sortOption.order === 'asc' ? 'lucide:sort-asc' : 'lucide:sort-desc',
       onSelect: () => {
         fileManagerStore.sortOption.order =
@@ -383,7 +383,7 @@ const menuItems = computed(() => [
   ],
   [
     {
-      label: t('common.refresh', 'Refresh'),
+      label: t('common.refresh'),
       icon: 'i-heroicons-arrow-path',
       onSelect: async () => {
         const path = fileManagerStore.selectedFolder?.path || '';
@@ -395,8 +395,8 @@ const menuItems = computed(() => [
   [
     {
       label: uiStore.showHiddenFiles
-        ? t('common.hideHiddenFiles', 'Hide Hidden Files')
-        : t('common.showHiddenFiles', 'Show Hidden Files'),
+        ? t('common.hideHiddenFiles')
+        : t('common.showHiddenFiles'),
       icon: uiStore.showHiddenFiles ? 'lucide:eye-off' : 'lucide:eye',
       onSelect: () => {
         uiStore.showHiddenFiles = !uiStore.showHiddenFiles;
@@ -534,7 +534,7 @@ const menuItems = computed(() => [
     <!-- Create Folder Modal -->
     <UiEntityCreationModal
       v-model:open="isCreateFolderModalOpen"
-      :title="t('videoEditor.fileManager.actions.createFolder', 'Create Folder')"
+      :title="t('videoEditor.fileManager.actions.createFolder')"
       @confirm="onCreateFolderConfirm"
     />
 

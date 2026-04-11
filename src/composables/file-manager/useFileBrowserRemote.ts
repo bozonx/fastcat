@@ -148,14 +148,14 @@ export function useFileBrowserRemote({
     const leaf = normalizedPath.split('/').filter(Boolean).at(-1);
     const name =
       normalizedPath === '/remote'
-        ? t('fastcat.bloggerDog.contentLibrary', 'Библиотека контента')
+        ? t('fastcat.bloggerDog.contentLibrary')
         : normalizedPath === '/remote/virtual-all'
-          ? t('fastcat.bloggerDog.allContent', 'Все элементы')
+          ? t('fastcat.bloggerDog.allContent')
           : normalizedPath === '/remote/projects'
-            ? t('fastcat.bloggerDog.projectLibraries', 'Проекты')
+            ? t('fastcat.bloggerDog.projectLibraries')
             : normalizedPath === '/remote/personal'
-              ? t('fastcat.bloggerDog.personalLibrary', 'Личная библиотека')
-              : leaf || t('fastcat.bloggerDog.contentLibrary', 'Библиотека контента');
+              ? t('fastcat.bloggerDog.personalLibrary')
+              : leaf || t('fastcat.bloggerDog.contentLibrary');
     const remoteData: RemoteVfsEntry = {
       id: normalizedPath,
       name,
@@ -336,7 +336,7 @@ export function useFileBrowserRemote({
         type: blob.type || params.entry.mimeType || 'application/octet-stream',
       });
 
-      remoteTransferPhase.value = t('videoEditor.fileManager.actions.uploadFiles', 'Upload files');
+      remoteTransferPhase.value = t('videoEditor.fileManager.actions.uploadFiles');
       await handleFiles([file], { targetDirPath: params.targetDirPath });
       uiStore.notifyFileManagerUpdate();
       await loadFolderContent();
@@ -554,7 +554,7 @@ export function useFileBrowserRemote({
     } catch (error) {
       toast.add({
         color: 'error',
-        title: t('videoEditor.fileManager.errors.uploadFailedTitle', 'Upload failed'),
+        title: t('videoEditor.fileManager.errors.uploadFailedTitle'),
         description: error instanceof Error ? error.message : String(error),
       });
     } finally {
@@ -624,7 +624,7 @@ export function useFileBrowserRemote({
     } catch (error) {
       toast.add({
         color: 'error',
-        title: t('videoEditor.fileManager.errors.uploadFailedTitle', 'Upload failed'),
+        title: t('videoEditor.fileManager.errors.uploadFailedTitle'),
         description: error instanceof Error ? error.message : String(error),
       });
     } finally {

@@ -43,7 +43,7 @@ const snapModeOptions = computed<SnapOption[]>(() => [
   {
     value: 'snap',
     icon: 'i-heroicons-link',
-    label: t('fastcat.timeline.snapMode', 'Snap mode'),
+    label: t('fastcat.timeline.snapMode'),
     description: t('fastcat.timeline.snapModeFullDescription'),
   },
   {
@@ -223,7 +223,7 @@ function handleRippleTrimRight() {
           color="neutral"
           size="sm"
           :disabled="rippleTrimDisabled"
-          :title="t('fastcat.timeline.rippleTrimLeft', 'Ripple trim left')"
+          :title="t('fastcat.timeline.rippleTrimLeft')"
           @click="handleRippleTrimLeft"
         />
         <UiActionButton
@@ -231,7 +231,7 @@ function handleRippleTrimRight() {
           color="neutral"
           size="sm"
           :disabled="rippleTrimDisabled"
-          :title="t('fastcat.timeline.rippleTrimRight', 'Ripple trim right')"
+          :title="t('fastcat.timeline.rippleTrimRight')"
           @click="handleRippleTrimRight"
         />
       </div>
@@ -241,14 +241,14 @@ function handleRippleTrimRight() {
           icon="lucide:history"
           color="neutral"
           size="sm"
-          :title="t('common.history', 'History')"
+          :title="t('common.history')"
           @click="isHistoryDrawerOpen = true"
         />
         <UiActionButton
           icon="lucide:map-pin"
           color="neutral"
           size="sm"
-          :title="t('common.markers', 'Markers')"
+          :title="t('common.markers')"
           @click="isMarkersDrawerOpen = true"
         />
       </div>
@@ -311,7 +311,7 @@ function handleRippleTrimRight() {
       <!-- Snap threshold -->
       <UiSliderInput
         v-model="snapThresholdPx"
-        :label="t('videoEditor.settings.snapThresholdDefault', 'Snap threshold')"
+        :label="t('videoEditor.settings.snapThresholdDefault')"
         :min="1"
         :max="100"
         :step="1"
@@ -322,24 +322,24 @@ function handleRippleTrimRight() {
       <!-- Snap targets -->
       <div class="flex flex-col gap-3">
         <p class="text-sm font-medium text-ui-text">
-          {{ t('videoEditor.settings.snapToTargets', 'Snap to') }}
+          {{ t('videoEditor.settings.snapToTargets') }}
         </p>
         <UCheckbox
           v-model="snapToTimelineEdges"
-          :label="t('videoEditor.settings.snapToTimelineEdges', 'Timeline start and end')"
+          :label="t('videoEditor.settings.snapToTimelineEdges')"
         />
-        <UCheckbox v-model="snapToClips" :label="t('videoEditor.settings.snapToClips', 'Clips')" />
+        <UCheckbox v-model="snapToClips" :label="t('videoEditor.settings.snapToClips')" />
         <UCheckbox
           v-model="snapToMarkers"
-          :label="t('videoEditor.settings.snapToMarkers', 'Markers')"
+          :label="t('videoEditor.settings.snapToMarkers')"
         />
         <UCheckbox
           v-model="snapToSelection"
-          :label="t('videoEditor.settings.snapToSelection', 'Selection')"
+          :label="t('videoEditor.settings.snapToSelection')"
         />
         <UCheckbox
           v-model="snapToPlayhead"
-          :label="t('videoEditor.settings.snapToPlayhead', 'Playhead')"
+          :label="t('videoEditor.settings.snapToPlayhead')"
         />
       </div>
     </div>

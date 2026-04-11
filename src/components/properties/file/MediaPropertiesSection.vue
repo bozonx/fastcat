@@ -20,17 +20,17 @@ const { t } = useI18n();
 <template>
   <PropertySection>
     <PropertyRow
-      :label="t('common.duration', 'Duration')"
+      :label="t('common.duration')"
       :value="props.formatDurationSeconds(props.mediaMeta?.duration)"
     />
     <MediaMetadataList :media-meta="props.mediaMeta" />
     <PropertyRow
-      :label="t('videoEditor.fileManager.video.container', 'Container')"
+      :label="t('videoEditor.fileManager.video.container')"
       :value="props.mediaMeta?.container ?? '-'"
     />
     <PropertyRow
       v-if="props.mediaMeta?.video"
-      :label="t('videoEditor.fileManager.video.videoCodec', 'Video codec')"
+      :label="t('videoEditor.fileManager.video.videoCodec')"
     >
       {{ props.mediaMeta?.video?.parsedCodec ?? props.mediaMeta?.video?.codec ?? '-' }}
       <span v-if="props.mediaMeta?.video?.bitrate">
@@ -42,7 +42,7 @@ const { t } = useI18n();
     </PropertyRow>
     <PropertyRow
       v-if="props.mediaMeta?.audio"
-      :label="t('videoEditor.fileManager.video.audioCodec', 'Audio codec')"
+      :label="t('videoEditor.fileManager.video.audioCodec')"
     >
       {{ props.mediaMeta?.audio?.parsedCodec ?? props.mediaMeta?.audio?.codec ?? '-' }}
       <span v-if="props.mediaMeta?.audio?.bitrate">

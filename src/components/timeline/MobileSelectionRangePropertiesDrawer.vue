@@ -52,13 +52,13 @@ const mainActions = computed(() => {
   return [
     {
       id: 'convert',
-      label: t('fastcat.timeline.convertSelectionToZoneMarker', 'Convert to zone marker'),
+      label: t('fastcat.timeline.convertSelectionToZoneMarker'),
       icon: 'i-heroicons-bookmark-square',
       onClick: handleConvertToMarker,
     },
     {
       id: 'ripple-trim',
-      label: t('fastcat.timeline.rippleTrimSelection', 'Ripple trim selection'),
+      label: t('fastcat.timeline.rippleTrimSelection'),
       icon: 'i-heroicons-scissors',
       color: 'warning' as const,
       onClick: handleRippleTrim,
@@ -78,7 +78,7 @@ const mainActions = computed(() => {
         <MobileDrawerToolbar class="-mx-4 mb-2">
           <MobileDrawerToolbarButton
             icon="i-heroicons-trash"
-            :label="t('common.delete', 'Delete')"
+            :label="t('common.delete')"
             @click="handleDelete"
           />
         </MobileDrawerToolbar>

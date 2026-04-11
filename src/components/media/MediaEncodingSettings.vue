@@ -123,8 +123,8 @@ watch(videoCodec, () => {
 });
 
 const audioCodecOptions = [
-  { value: 'aac', label: t('videoEditor.export.codec.aac', 'AAC') },
-  { value: 'opus', label: t('videoEditor.export.codec.opus', 'Opus') },
+  { value: 'aac', label: t('videoEditor.export.codec.aac') },
+  { value: 'opus', label: t('videoEditor.export.codec.opus') },
 ];
 
 const bitrateModeOptions = [
@@ -153,7 +153,7 @@ watch(
 
 <template>
   <div class="flex flex-col gap-4">
-    <UiFormField :label="t('videoEditor.export.outputFormat', 'Output format')">
+    <UiFormField :label="t('videoEditor.export.outputFormat')">
       <UiButtonGroup
         v-model="outputFormat"
         :options="props.formatOptions as any"
@@ -169,7 +169,7 @@ watch(
 
     <UiFormField
       v-if="outputFormat === 'mp4'"
-      :label="t('videoEditor.export.videoCodec', 'Video codec')"
+      :label="t('videoEditor.export.videoCodec')"
     >
       <div class="w-full">
         <UiSelect
@@ -193,9 +193,9 @@ watch(
     </UiFormField>
 
     <UiFormField
-      :label="t('videoEditor.export.videoBitrate', 'Video bitrate (Mbps)')"
+      :label="t('videoEditor.export.videoBitrate')"
       :help="
-        t('videoEditor.export.videoBitrateHelp', 'Higher bitrate = better quality and larger file')
+        t('videoEditor.export.videoBitrateHelp')
       "
     >
       <UiWheelNumberInput
@@ -207,7 +207,7 @@ watch(
       />
     </UiFormField>
 
-    <UiFormField :label="t('videoEditor.export.bitrateMode', 'Bitrate Mode')">
+    <UiFormField :label="t('videoEditor.export.bitrateMode')">
       <UiButtonGroup
         v-model="bitrateMode"
         :options="bitrateModeOptions"
@@ -221,7 +221,7 @@ watch(
     </UiFormField>
 
     <UiFormField
-      :label="t('videoEditor.export.keyframeInterval', 'Keyframe Interval (GOP Size, sec)')"
+      :label="t('videoEditor.export.keyframeInterval')"
     >
       <UiWheelNumberInput
         v-model="keyframeIntervalSec"
@@ -235,7 +235,7 @@ watch(
     <UCheckbox
       v-if="outputFormat === 'webm'"
       v-model="exportAlpha"
-      :label="t('videoEditor.export.exportAlpha', 'Export Alpha Channel')"
+      :label="t('videoEditor.export.exportAlpha')"
       :disabled="props.disabled"
       :ui="{ label: 'text-sm text-ui-text-muted' }"
       class="cursor-pointer"
@@ -245,7 +245,7 @@ watch(
 
     <UCheckbox
       v-model="excludeAudio"
-      :label="t('videoEditor.export.excludeAudio', 'Exclude audio')"
+      :label="t('videoEditor.export.excludeAudio')"
       :disabled="isAudioDisabled"
       :ui="{ label: 'text-sm text-ui-text-muted' }"
       class="cursor-pointer"
@@ -254,7 +254,7 @@ watch(
     <div v-if="!excludeAudio && !props.hideAudioBitrate" class="flex flex-col gap-4">
       <UiFormField
         v-if="outputFormat === 'mp4' && !props.showAudioAdvanced"
-        :label="t('videoEditor.export.audioCodec', 'Audio codec')"
+        :label="t('videoEditor.export.audioCodec')"
       >
         <div class="w-full">
           <UiButtonGroup
@@ -279,7 +279,7 @@ watch(
 
       <UiFormField
         v-else
-        :label="t('videoEditor.export.audioBitrate', 'Audio bitrate (Kbps)')"
+        :label="t('videoEditor.export.audioBitrate')"
         :help="
           t(
             'videoEditor.export.audioBitrateHelp',
@@ -299,17 +299,17 @@ watch(
     <template v-if="props.showMetadata">
       <div class="h-px bg-ui-border my-2"></div>
 
-      <UiFormSectionHeader :title="t('videoEditor.export.metadata', 'Metadata')" />
+      <UiFormSectionHeader :title="t('videoEditor.export.metadata')" />
 
-      <UiFormField :label="t('videoEditor.export.metadataTitle', 'Title')">
+      <UiFormField :label="t('videoEditor.export.metadataTitle')">
         <UiTextInput v-model="metadataTitle" size="sm" :disabled="props.disabled" full-width />
       </UiFormField>
 
-      <UiFormField :label="t('videoEditor.export.metadataAuthor', 'Author')">
+      <UiFormField :label="t('videoEditor.export.metadataAuthor')">
         <UiTextInput v-model="metadataAuthor" size="sm" :disabled="props.disabled" full-width />
       </UiFormField>
 
-      <UiFormField :label="t('videoEditor.export.metadataDescription', 'Description')">
+      <UiFormField :label="t('videoEditor.export.metadataDescription')">
         <UTextarea
           v-model="metadataDescription"
           size="sm"
@@ -319,7 +319,7 @@ watch(
         />
       </UiFormField>
 
-      <UiFormField :label="t('videoEditor.export.metadataTags', 'Tags')">
+      <UiFormField :label="t('videoEditor.export.metadataTags')">
         <UiTextInput v-model="metadataTags" size="sm" :disabled="props.disabled" full-width />
       </UiFormField>
     </template>

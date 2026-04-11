@@ -35,11 +35,11 @@ const uiStore = useUiStore();
 
 
 const sortFields: { label: string; value: FileSortField }[] = [
-  { label: t('common.name', 'Name'), value: 'name' },
-  { label: t('common.type', 'Type'), value: 'type' },
-  { label: t('common.size', 'Size'), value: 'size' },
-  { label: t('common.created', 'Created'), value: 'created' },
-  { label: t('common.modified', 'Modified'), value: 'modified' },
+  { label: t('common.name'), value: 'name' },
+  { label: t('common.type'), value: 'type' },
+  { label: t('common.size'), value: 'size' },
+  { label: t('common.created'), value: 'created' },
+  { label: t('common.modified'), value: 'modified' },
 ];
 
 const toolbarMenuItems = computed(() => {
@@ -48,7 +48,7 @@ const toolbarMenuItems = computed(() => {
   // 1. Actions group
   const actions = [
     {
-      label: t('common.refresh', 'Refresh'),
+      label: t('common.refresh'),
       icon: 'i-heroicons-arrow-path',
       onSelect: () => emit('refresh'),
     },
@@ -57,8 +57,8 @@ const toolbarMenuItems = computed(() => {
   if (!props.isRemotePanel) {
     actions.push({
       label: uiStore.showHiddenFiles
-        ? t('videoEditor.fileManager.actions.hideHiddenFiles', 'Hide hidden files')
-        : t('videoEditor.fileManager.actions.showHiddenFiles', 'Show hidden files'),
+        ? t('videoEditor.fileManager.actions.hideHiddenFiles')
+        : t('videoEditor.fileManager.actions.showHiddenFiles'),
       icon: uiStore.showHiddenFiles ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
       onSelect: () => {
         uiStore.showHiddenFiles = !uiStore.showHiddenFiles;
@@ -90,7 +90,7 @@ const toolbarMenuItems = computed(() => {
     // 3. Sort Order Section
     items.push([
       {
-        label: t('common.sortOrder.asc', 'Ascending'),
+        label: t('common.sortOrder.asc'),
         icon: fileManagerStore.sortOption.order === 'asc' ? 'i-heroicons-check' : undefined,
         onSelect: () => {
           fileManagerStore.sortOption.order = 'asc';
@@ -98,7 +98,7 @@ const toolbarMenuItems = computed(() => {
         },
       },
       {
-        label: t('common.sortOrder.desc', 'Descending'),
+        label: t('common.sortOrder.desc'),
         icon: fileManagerStore.sortOption.order === 'desc' ? 'i-heroicons-check' : undefined,
         onSelect: () => {
           fileManagerStore.sortOption.order = 'desc';
@@ -148,7 +148,7 @@ const toolbarMenuItems = computed(() => {
         variant="ghost"
         color="neutral"
         size="sm"
-        :title="t('videoEditor.fileManager.actions.createFolder', 'Create Folder')"
+        :title="t('videoEditor.fileManager.actions.createFolder')"
         @click="emit('createFolder')"
       />
       <UiActionButton
@@ -157,7 +157,7 @@ const toolbarMenuItems = computed(() => {
         variant="ghost"
         color="neutral"
         size="sm"
-        :title="t('videoEditor.fileManager.actions.uploadFiles', 'Upload files')"
+        :title="t('videoEditor.fileManager.actions.uploadFiles')"
         @click="emit('upload')"
       />
 
@@ -166,7 +166,7 @@ const toolbarMenuItems = computed(() => {
     <div
       v-if="props.isRemotePanel || fileManagerStore.viewMode === 'grid'"
       class="flex items-center gap-2 ml-2 w-24"
-      :title="`${t('videoEditor.fileManager.cardScale', 'Card scale')}: ${currentGridSizeName}`"
+      :title="`${t('videoEditor.fileManager.cardScale')}: ${currentGridSizeName}`"
     >
       <UiWheelSlider
         :model-value="gridSizes.indexOf(props.gridCardSize)"

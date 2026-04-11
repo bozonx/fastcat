@@ -40,7 +40,7 @@ const rawMetaYaml = computed(() => {
 async function copyToClipboard(text: string) {
   try {
     await navigator.clipboard.writeText(text);
-    toast.add({ title: t('common.copiedToClipboard', 'Copied to clipboard') });
+    toast.add({ title: t('common.copiedToClipboard') });
   } catch (e) {
     console.error('Failed to copy to clipboard', e);
   }
@@ -56,7 +56,7 @@ async function copyToClipboard(text: string) {
     </template>
 
     <template #default>
-      <PropertyRow v-if="props.deepLink" :label="t('common.path', 'Путь')">
+      <PropertyRow v-if="props.deepLink" :label="t('common.path')">
         <a
           :href="props.deepLink"
           target="_blank"
@@ -67,19 +67,19 @@ async function copyToClipboard(text: string) {
         </a>
       </PropertyRow>
 
-      <PropertyRow :label="t('common.title', 'Title')">
+      <PropertyRow :label="t('common.title')">
         <span class="text-xs px-1">{{ props.item.title || props.item.name }}</span>
       </PropertyRow>
 
       <PropertyRow
         v-if="props.item.language"
-        :label="t('common.language', 'Language')"
+        :label="t('common.language')"
         :value="props.item.language"
       />
 
-      <PropertyRow v-if="duration" :label="t('common.duration', 'Duration')" :value="duration" />
+      <PropertyRow v-if="duration" :label="t('common.duration')" :value="duration" />
 
-      <PropertyRow v-if="props.item.tags?.length" :label="t('common.tags', 'Tags')">
+      <PropertyRow v-if="props.item.tags?.length" :label="t('common.tags')">
         <div class="flex flex-wrap gap-1">
           <span
             v-for="tag in props.item.tags"
@@ -96,7 +96,7 @@ async function copyToClipboard(text: string) {
         class="mt-2 flex flex-col gap-1.5 px-2 -mx-2 py-2 rounded bg-white/5 border border-white/10"
       >
         <div class="text-2xs text-ui-text-muted">
-          <span>{{ t('common.text', 'Text') }}</span>
+          <span>{{ t('common.text') }}</span>
         </div>
         <div class="text-xs leading-relaxed whitespace-pre-wrap wrap-break-word">
           {{ props.item.text || '' }}
@@ -108,7 +108,7 @@ async function copyToClipboard(text: string) {
         class="mt-2 flex flex-col gap-1.5 px-2 -mx-2 py-2 rounded bg-white/5 border border-white/10"
       >
         <div class="text-2xs text-ui-text-muted">
-          <span>{{ t('common.note', 'Note') }}</span>
+          <span>{{ t('common.note') }}</span>
         </div>
         <div class="text-xs leading-relaxed whitespace-pre-wrap">
           {{ props.item.note }}
@@ -118,7 +118,7 @@ async function copyToClipboard(text: string) {
       <!-- Metadata Section -->
       <ExpandableYamlSection
         v-if="rawMetaYaml"
-        :title="t('common.meta', 'Meta (YAML)')"
+        :title="t('common.meta')"
         :content="rawMetaYaml"
         :expanded="isMetaExpanded"
         :on-toggle="() => (isMetaExpanded = !isMetaExpanded)"

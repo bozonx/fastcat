@@ -25,9 +25,9 @@ const isAudioEnabled = defineModel<boolean>('audioEnabled', { default: true });
   <EffectsEditor
     v-model:toggle-value="isVideoEnabled"
     :effects="props.videoEffects"
-    :title="t('fastcat.effects.videoTitle', 'Video effects')"
-    :add-label="t('fastcat.effects.add', 'Add')"
-    :empty-label="t('fastcat.effects.empty', 'No effects')"
+    :title="t('fastcat.effects.videoTitle')"
+    :add-label="t('fastcat.effects.add')"
+    :empty-label="t('fastcat.effects.empty')"
     :has-toggle="true"
     :disabled="!isVideoEnabled"
     @update:effects="emit('updateVideoEffects', $event)"

@@ -385,7 +385,7 @@ const containerHeightClass = computed(() => {
             color="neutral"
             :icon="isFullscreen ? 'lucide:minimize' : 'lucide:maximize'"
             class="p-1.5"
-            :aria-label="t('fastcat.monitor.fullscreen', 'Fullscreen')"
+            :aria-label="t('fastcat.monitor.fullscreen')"
             @click="toggleFullscreen"
           />
 
@@ -395,7 +395,7 @@ const containerHeightClass = computed(() => {
             color="neutral"
             icon="i-heroicons-bookmark"
             class="p-1.5"
-            :aria-label="t('fastcat.timeline.addMarker', 'Add marker')"
+            :aria-label="t('fastcat.timeline.addMarker')"
             @click="handleMarkerClick"
             @pointerdown="startMarkerLongPress"
             @pointerup="stopMarkerLongPress"
@@ -418,7 +418,7 @@ const containerHeightClass = computed(() => {
               color="neutral"
               class="font-mono tabular-nums text-[10px] min-w-10 justify-center h-6 px-1 text-ui-text-muted hover:text-ui-text"
               :label="speedButtonLabel"
-              :aria-label="t('fastcat.monitor.playbackSpeed', 'Playback speed')"
+              :aria-label="t('fastcat.monitor.playbackSpeed')"
             />
           </UDropdownMenu>
         </div>
@@ -432,7 +432,7 @@ const containerHeightClass = computed(() => {
             color="neutral"
             icon="lucide:skip-back"
             class="p-1"
-            :aria-label="t('fastcat.monitor.rewind', 'Home')"
+            :aria-label="t('fastcat.monitor.rewind')"
             :disabled="!canInteractPlayback"
             @click="rewindToStart"
           />
@@ -448,7 +448,7 @@ const containerHeightClass = computed(() => {
                 : 'h-full aspect-square rounded-full',
             ]"
             :ui="{ icon: 'w-8 h-8' }"
-            :aria-label="t('fastcat.monitor.play', 'Play')"
+            :aria-label="t('fastcat.monitor.play')"
             :disabled="!canInteractPlayback"
             @click="togglePlayback"
           />
@@ -460,7 +460,7 @@ const containerHeightClass = computed(() => {
               color="neutral"
               icon="lucide:ellipsis"
               class="p-1.5"
-              :aria-label="t('common.more', 'More')"
+              :aria-label="t('common.more')"
             />
           </UDropdownMenu>
         </div>
@@ -469,7 +469,7 @@ const containerHeightClass = computed(() => {
     <!-- Markers drawer (long-press on marker button) -->
     <UiMobileDrawer
       v-model:open="isMarkersDrawerOpen"
-      :title="t('videoEditor.fileManager.tabs.markers', 'Markers')"
+      :title="t('videoEditor.fileManager.tabs.markers')"
       :snap-points="[0.4, 0.85]"
       direction="bottom"
     >

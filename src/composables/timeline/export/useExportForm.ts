@@ -258,7 +258,7 @@ export function useExportForm() {
 
         if (exportWarnings.value.length > 0) {
           toast.add({
-            title: t('videoEditor.export.warningTitle', 'Export warnings'),
+            title: t('videoEditor.export.warningTitle'),
             description: exportWarnings.value[0]!,
             color: 'warning',
             icon: 'i-heroicons-exclamation-triangle',
@@ -266,7 +266,7 @@ export function useExportForm() {
         }
 
         toast.add({
-          title: t('videoEditor.export.successTitle', 'Export successful'),
+          title: t('videoEditor.export.successTitle'),
           description: t('videoEditor.export.successDesc', {
             file: outputFilename.value,
           }),
@@ -291,10 +291,10 @@ export function useExportForm() {
     } catch (err: unknown) {
       console.error('Export failed:', err);
       if (err instanceof Error && err.name === 'AbortError') {
-        exportError.value = t('videoEditor.export.errorCancelled', 'Export was cancelled');
+        exportError.value = t('videoEditor.export.errorCancelled');
       } else {
         exportError.value =
-          err instanceof Error ? err.message : t('videoEditor.export.error', 'Export failed');
+          err instanceof Error ? err.message : t('videoEditor.export.error');
       }
     } finally {
       isExporting.value = false;
@@ -304,11 +304,11 @@ export function useExportForm() {
   }
 
   function getPhaseLabel() {
-    if (exportPhase.value === 'encoding') return t('videoEditor.export.phaseEncoding', 'Encoding');
-    if (exportPhase.value === 'saving') return t('videoEditor.export.phaseSaving', 'Saving');
+    if (exportPhase.value === 'encoding') return t('videoEditor.export.phaseEncoding');
+    if (exportPhase.value === 'saving') return t('videoEditor.export.phaseSaving');
     if (exportPhase.value === 'preparing')
-      return t('videoEditor.export.phasePreparing', 'Preparing');
-    return t('videoEditor.export.processing', 'Processing');
+      return t('videoEditor.export.phasePreparing');
+    return t('videoEditor.export.processing');
   }
 
   return {

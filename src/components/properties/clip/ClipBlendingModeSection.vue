@@ -22,15 +22,15 @@ const isEnabled = defineModel<boolean>('enabled', { default: true });
   <PropertySection
     v-if="props.clipType !== 'adjustment'"
     v-model:toggle-value="isEnabled"
-    :title="t('fastcat.clip.blendMode.title', 'Blend mode')"
+    :title="t('fastcat.clip.blendMode.title')"
     has-toggle
   >
     <template #header-actions>
       <button
         class="flex items-center gap-1 text-2xs text-ui-text-muted hover:text-ui-text disabled:opacity-50"
-        :title="t('common.actions.reset', 'Reset')"
+        :title="t('common.actions.reset')"
         :disabled="!isEnabled"
-        @click="emit('updateBlendMode', 'normal')"
+        @click="emit('updateBlendMode')"
       >
         <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
       </button>

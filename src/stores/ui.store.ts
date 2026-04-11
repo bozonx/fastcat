@@ -3,7 +3,11 @@ import { ref, watch } from 'vue';
 
 import { useProjectStore } from './project.store';
 
-import { readLocalStorageJson, writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
+import {
+  readLocalStorageJson,
+  writeLocalStorageJson,
+  STORAGE_KEYS,
+} from '~/stores/ui/uiLocalStorage';
 import { createUiFileTreePersistenceModule } from '~/stores/ui/uiFileTreePersistence';
 import type { FsEntry } from '~/types/fs';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
@@ -29,15 +33,15 @@ export interface PendingRemoteDownloadRequest {
 export const useUiStore = defineStore('ui', () => {
   const workspaceStore = useWorkspaceStore();
   const selectedFsEntry = ref<FsEntrySelection | null>(null);
-  const showHiddenFiles = ref(readLocalStorageJson('fastcat:ui:show-hidden-files', false));
-  const monitorVolume = ref(readLocalStorageJson('fastcat:ui:monitor-volume', 1));
-  const monitorMuted = ref(readLocalStorageJson('fastcat:ui:monitor-muted', false));
+  const showHiddenFiles = ref(readLocalStorageJson(STORAGE_KEYS.UI.SHOW_HIDDEN_FILES, false));
+  const monitorVolume = ref(readLocalStorageJson(STORAGE_KEYS.UI.MONITOR_VOLUME, 1));
+  const monitorMuted = ref(readLocalStorageJson(STORAGE_KEYS.UI.MONITOR_MUTED, false));
 
   watch(
     () => showHiddenFiles.value,
     (val) => {
       if (workspaceStore.isEphemeral) return;
-      writeLocalStorageJson('fastcat:ui:show-hidden-files', val);
+      writeLocalStorageJson(STORAGE_KEYS.UI.SHOW_HIDDEN_FILES, val);
     },
   );
 
@@ -45,7 +49,7 @@ export const useUiStore = defineStore('ui', () => {
     () => monitorVolume.value,
     (val) => {
       if (workspaceStore.isEphemeral) return;
-      writeLocalStorageJson('fastcat:ui:monitor-volume', val);
+      writeLocalStorageJson(STORAGE_KEYS.UI.MONITOR_VOLUME, val);
     },
   );
 
@@ -53,7 +57,7 @@ export const useUiStore = defineStore('ui', () => {
     () => monitorMuted.value,
     (val) => {
       if (workspaceStore.isEphemeral) return;
-      writeLocalStorageJson('fastcat:ui:monitor-muted', val);
+      writeLocalStorageJson(STORAGE_KEYS.UI.MONITOR_MUTED, val);
     },
   );
 
@@ -78,7 +82,9 @@ export const useUiStore = defineStore('ui', () => {
   const isEditorSettingsOpen = ref(false);
   const editorSettingsActiveSection = ref<string>('user.general');
   const activeModalsCount = ref(0);
-  const activeLibraryTab = ref<'texts' | 'shapes' | 'hud'>('texts');
+
+  const DEFAULT_LIBRARY_TAB = 'texts';
+  const activeLibraryTab = ref<'texts' | 'shapes' | 'hud'>(DEFAULT_LIBRARY_TAB);
 
   const isTextPresetModalOpen = ref(false);
   const pendingTextPresetClipInfo = ref<{ trackId: string; itemId: string } | null>(null);

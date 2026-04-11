@@ -32,9 +32,9 @@ const effectiveDeepLink = computed(() => {
 </script>
 
 <template>
-  <PropertySection :title="t('fastcat.file.bloggerDogGroup', 'Группа')">
+  <PropertySection :title="t('fastcat.file.bloggerDogGroup')">
     <template #default>
-      <PropertyRow v-if="effectiveDeepLink" :label="t('common.path', 'Путь')">
+      <PropertyRow v-if="effectiveDeepLink" :label="t('common.path')">
         <a
           :href="effectiveDeepLink"
           target="_blank"
@@ -46,11 +46,11 @@ const effectiveDeepLink = computed(() => {
       </PropertyRow>
 
       <PropertyRow
-        :label="t('fastcat.file.itemsCount', 'Количество элементов')"
+        :label="t('fastcat.file.itemsCount')"
         :value="itemsCount"
       />
 
-      <PropertyRow v-if="updatedAt" :label="t('common.modified', 'Изменено')" :value="updatedAt" />
+      <PropertyRow v-if="updatedAt" :label="t('common.modified')" :value="updatedAt" />
     </template>
   </PropertySection>
 </template>

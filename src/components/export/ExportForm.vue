@@ -104,7 +104,7 @@ const encodingSummary = computed(() => {
 
   const aBitrate = `${audioBitrateKbps.value || 0} Kb/s`;
 
-  return `${t('videoEditor.projectSettings.export', 'Export')}: ${format} ${vCodec} ${vBitrate} | ${aCodec} ${aBitrate}`;
+  return `${t('videoEditor.projectSettings.export')}: ${format} ${vCodec} ${vBitrate} | ${aCodec} ${aBitrate}`;
 });
 
 function focusExportForm() {
@@ -159,7 +159,7 @@ async function onConfirm() {
     <div class="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 flex flex-col min-h-0">
       <div class="mb-6 flex items-center justify-between shrink-0">
         <h2 class="text-xl font-semibold text-ui-text">
-          {{ t('videoEditor.export.title', 'Export') }}
+          {{ t('videoEditor.export.title') }}
         </h2>
       </div>
 
@@ -178,7 +178,7 @@ async function onConfirm() {
               />
               <div class="flex flex-col min-w-0">
                 <span class="font-medium text-ui-text">
-                  {{ t('videoEditor.export.onlySelectionRange', 'Export only selected zone') }}
+                  {{ t('videoEditor.export.onlySelectionRange') }}
                 </span>
                 <span class="text-sm text-ui-text-muted">
                   {{
@@ -195,14 +195,14 @@ async function onConfirm() {
 
         <div class="flex flex-col gap-1.5">
           <UiFormField
-            :label="t('videoEditor.export.filename', 'Filename')"
+            :label="t('videoEditor.export.filename')"
             :error="filenameError ?? undefined"
           >
             <UiTextInput
               v-model="outputFilename"
               full-width
               :disabled="isExporting"
-              :placeholder="t('videoEditor.export.filenamePlaceholder', 'e.g. video.mp4')"
+              :placeholder="t('videoEditor.export.filenamePlaceholder')"
             />
           </UiFormField>
           <div class="text-sm text-ui-text-muted flex items-center gap-1.5 mt-1">
@@ -228,7 +228,7 @@ async function onConfirm() {
           >
             <div class="flex items-center gap-2">
               <h3 v-show="isResolutionExpanded" class="font-semibold text-ui-text">
-                {{ t('videoEditor.projectSettings.resolutionAndFps', 'Resolution & FPS') }}
+                {{ t('videoEditor.projectSettings.resolutionAndFps') }}
               </h3>
               <span v-show="!isResolutionExpanded" class="text-ui-text-muted font-normal">
                 {{ resolutionSummary }}
@@ -268,7 +268,7 @@ async function onConfirm() {
           >
             <div class="flex items-center gap-2">
               <h3 v-show="isEncodingExpanded" class="font-semibold text-ui-text">
-                {{ t('videoEditor.export.encodingSettings', 'Encoding Settings') }}
+                {{ t('videoEditor.export.encodingSettings') }}
               </h3>
               <span v-show="!isEncodingExpanded" class="text-ui-text-muted font-normal">
                 {{ encodingSummary }}
@@ -313,18 +313,18 @@ async function onConfirm() {
         <div class="h-px bg-ui-border"></div>
 
         <div class="space-y-4">
-          <UiFormSectionHeader :title="t('videoEditor.export.metadata', 'Metadata')" />
+          <UiFormSectionHeader :title="t('videoEditor.export.metadata')" />
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <UiFormField :label="t('videoEditor.export.metadataTitle', 'Title')">
+            <UiFormField :label="t('videoEditor.export.metadataTitle')">
               <UiTextInput v-model="metadataTitle" :disabled="isExporting" full-width />
             </UiFormField>
-            <UiFormField :label="t('videoEditor.export.metadataAuthor', 'Author')">
+            <UiFormField :label="t('videoEditor.export.metadataAuthor')">
               <UiTextInput v-model="metadataAuthor" :disabled="isExporting" full-width />
             </UiFormField>
           </div>
 
-          <UiFormField :label="t('videoEditor.export.metadataDescription', 'Description')">
+          <UiFormField :label="t('videoEditor.export.metadataDescription')">
             <UTextarea
               v-model="metadataDescription"
               :disabled="isExporting"
@@ -333,7 +333,7 @@ async function onConfirm() {
             />
           </UiFormField>
 
-          <UiFormField :label="t('videoEditor.export.metadataTags', 'Tags')">
+          <UiFormField :label="t('videoEditor.export.metadataTags')">
             <UiTextInput v-model="metadataTags" :disabled="isExporting" full-width />
           </UiFormField>
         </div>
@@ -348,7 +348,7 @@ async function onConfirm() {
         >
           <UCheckbox v-model="saveAsDefaults" :disabled="isExporting || !isSettingsDirty" />
           <span class="text-ui-text text-sm">{{
-            t('videoEditor.export.saveAsDefault', 'Save as project settings')
+            t('videoEditor.export.saveAsDefault')
           }}</span>
         </label>
 
@@ -387,14 +387,14 @@ async function onConfirm() {
             v-if="isSettingsDirty && !isExporting"
             color="neutral"
             variant="ghost"
-            :label="t('common.actions.reset', 'Reset')"
+            :label="t('common.actions.reset')"
             @click="initializeExportForm"
           />
           <UButton
             v-if="isExporting"
             color="neutral"
             variant="ghost"
-            :label="t('common.cancel', 'Cancel')"
+            :label="t('common.cancel')"
             :loading="cancelRequested"
             :disabled="cancelRequested"
             @click="cancelExport"
@@ -404,8 +404,8 @@ async function onConfirm() {
             variant="solid"
             :label="
               isExporting
-                ? t('videoEditor.export.exporting', 'Exporting...')
-                : t('videoEditor.export.startExport', 'Export')
+                ? t('videoEditor.export.exporting')
+                : t('videoEditor.export.startExport')
             "
             :loading="isExporting"
             :disabled="isExporting || !!filenameError || !outputFilename.trim()"

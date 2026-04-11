@@ -33,27 +33,27 @@ const { t } = useI18n();
 <template>
   <PropertySection
     v-if="props.showSource && props.clip.clipType === 'media'"
-    :title="t('common.source', 'Source File')"
+    :title="t('common.source')"
   >
-    <PropertyRow :label="t('common.path', 'Path')" :value="props.clip.source.path" />
+    <PropertyRow :label="t('common.path')" :value="props.clip.source.path" />
     <MediaMetadataList :media-meta="props.mediaMeta as any" />
   </PropertySection>
 
   <PropertySection v-if="props.showInfo" class="hidden md:block">
     <PropertyTimecode
-      :label="t('common.duration', 'Duration')"
+      :label="t('common.duration')"
       :model-value="props.clip.timelineRange.durationUs"
       @update:model-value="emit('updateDuration', $event)"
     />
 
     <PropertyTimecode
-      :label="t('common.start', 'Start Time')"
+      :label="t('common.start')"
       :model-value="props.clip.timelineRange.startUs"
       @update:model-value="emit('updateStartTime', $event)"
     />
 
     <PropertyTimecode
-      :label="t('common.end', 'End Time')"
+      :label="t('common.end')"
       :model-value="props.clip.timelineRange.startUs + props.clip.timelineRange.durationUs"
       @update:model-value="emit('updateEndTime', $event)"
     />

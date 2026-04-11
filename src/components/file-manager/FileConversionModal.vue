@@ -24,7 +24,7 @@ onMounted(() => {
   fileConversionStore.callbacks.onSuccess = (type, bgTaskTitle) => {
     if (type === 'bgTaskAdded') {
       toast.add({
-        title: t('videoEditor.fileManager.convert.bgTaskAdded', 'Conversion started in background'),
+        title: t('videoEditor.fileManager.convert.bgTaskAdded'),
         description: bgTaskTitle,
         color: 'neutral',
       });
@@ -32,14 +32,14 @@ onMounted(() => {
   };
   fileConversionStore.callbacks.onError = (error) => {
     toast.add({
-      title: t('videoEditor.fileManager.convert.failed', 'Conversion failed to start'),
+      title: t('videoEditor.fileManager.convert.failed'),
       description: error.message,
       color: 'error',
     });
   };
   fileConversionStore.callbacks.onWarning = (message) => {
     toast.add({
-      title: t('videoEditor.fileManager.convert.metadataWarning', 'Source metadata is unavailable'),
+      title: t('videoEditor.fileManager.convert.metadataWarning'),
       description: message,
       color: 'warning',
     });
@@ -127,12 +127,12 @@ const isFormValid = computed(() => {
   >
     <div class="flex flex-col gap-6">
       <template v-if="mediaType === 'video'">
-        {{ t('videoEditor.fileManager.convert.targetFile', 'Converting:') }}
+        {{ t('videoEditor.fileManager.convert.targetFile') }}
         <span class="font-mono text-ui-text">{{ fileName }}</span>
       </template>
 
       <div class="text-sm text-ui-text-muted">
-        {{ t('videoEditor.fileManager.convert.outputFile', 'Output:') }}
+        {{ t('videoEditor.fileManager.convert.outputFile') }}
         <span class="font-mono text-ui-text">{{ outputFileName }}</span>
       </div>
 
@@ -177,7 +177,7 @@ const isFormValid = computed(() => {
         <div class="space-y-4">
           <div class="flex flex-col gap-2">
             <label class="text-xs text-ui-text-muted font-medium">
-              {{ t('videoEditor.export.outputFormat', 'Output format') }}
+              {{ t('videoEditor.export.outputFormat') }}
             </label>
             <UiButtonGroup v-model="audio.onlyFormat" :options="audioFormatOptions as any" />
           </div>
@@ -199,14 +199,14 @@ const isFormValid = computed(() => {
         <div class="space-y-4">
           <div class="flex flex-col gap-2">
             <label class="text-xs text-ui-text-muted font-medium">
-              {{ t('videoEditor.fileManager.convert.imageFormat', 'Format') }}
+              {{ t('videoEditor.fileManager.convert.imageFormat') }}
             </label>
             <div class="text-sm font-medium text-ui-text">WebP</div>
           </div>
 
           <div class="flex flex-col gap-2">
             <label class="text-xs text-ui-text-muted font-medium">
-              {{ t('videoEditor.fileManager.convert.imageQuality', 'Quality (0-100)') }}
+              {{ t('videoEditor.fileManager.convert.imageQuality') }}
             </label>
             <UiWheelNumberInput v-model="image.quality" :min="1" :max="100" :step="1" />
           </div>
@@ -239,7 +239,7 @@ const isFormValid = computed(() => {
     <template #footer>
       <div class="flex items-center justify-end gap-3 mt-4">
         <UButton variant="ghost" color="neutral" @click="isOpen = false">
-          {{ t('common.cancel', 'Cancel') }}
+          {{ t('common.cancel') }}
         </UButton>
         <UButton
           color="primary"
@@ -247,7 +247,7 @@ const isFormValid = computed(() => {
           :disabled="!isFormValid"
           @click="startConversion"
         >
-          {{ t('videoEditor.export.convert', 'Convert') }}
+          {{ t('videoEditor.export.convert') }}
         </UButton>
       </div>
     </template>

@@ -36,15 +36,15 @@ function handleResetDefaults() {
   <div class="flex flex-col gap-6">
     <UiConfirmModal
       v-model:open="isResetConfirmOpen"
-      :title="t('videoEditor.settings.resetMouseSettingsConfirmTitle', 'Reset mouse settings?')"
+      :title="t('videoEditor.settings.resetMouseSettingsConfirmTitle')"
       :description="
         t(
           'videoEditor.settings.resetMouseSettingsConfirmDesc',
           'This will restore all mouse actions to their default values.',
         )
       "
-      :confirm-text="t('videoEditor.settings.resetMouseSettingsConfirmAction', 'Reset')"
-      :cancel-text="t('common.cancel', 'Cancel')"
+      :confirm-text="t('videoEditor.settings.resetMouseSettingsConfirmAction')"
+      :cancel-text="t('common.cancel')"
       color="warning"
       icon="i-heroicons-exclamation-triangle"
       @confirm="handleResetDefaults"
@@ -52,10 +52,10 @@ function handleResetDefaults() {
 
     <div class="flex items-center justify-between gap-3 px-1">
       <div class="text-sm font-semibold text-ui-text">
-        {{ t('videoEditor.settings.userMouse', 'Mouse') }}
+        {{ t('videoEditor.settings.userMouse') }}
       </div>
       <UButton size="xs" color="neutral" variant="ghost" @click="isResetConfirmOpen = true">
-        {{ t('videoEditor.settings.resetDefaults', 'Reset to defaults') }}
+        {{ t('videoEditor.settings.resetDefaults') }}
       </UButton>
     </div>
 

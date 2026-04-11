@@ -22,14 +22,14 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <PropertySection :title="t('fastcat.textClip.text', 'Text')">
+  <PropertySection :title="t('fastcat.textClip.text')">
     <div class="flex flex-col gap-2">
       <div v-if="!hidePresets" class="flex flex-col gap-1 pb-2 border-b border-ui-border mb-1">
         <div class="flex items-center justify-between">
           <div
             class="text-[10px] font-medium uppercase tracking-wider text-ui-text-muted opacity-70"
           >
-            {{ t('fastcat.effects.presetsTitle', 'Presets') }}
+            {{ t('fastcat.effects.presetsTitle') }}
           </div>
           <UButton
             icon="i-heroicons-bookmark"
@@ -38,13 +38,13 @@ const { t } = useI18n();
             color="white"
             @click="emit('savePreset')"
           >
-            {{ t('fastcat.presets.saveAsPreset', 'Save') }}
+            {{ t('fastcat.presets.saveAsPreset') }}
           </UButton>
         </div>
         <div class="flex gap-2">
           <UiSelect
             :items="props.presets"
-            :placeholder="t('fastcat.effects.loadPresetPlaceholder', 'Load preset...')"
+            :placeholder="t('fastcat.effects.loadPresetPlaceholder')"
             class="flex-1"
             size="xs"
             full-width
@@ -61,7 +61,7 @@ const { t } = useI18n();
         @update:model-value="emit('updateText', String($event))"
       />
 
-      <PropertyField :label="t('fastcat.textClip.fontFamily', 'Font family')">
+      <PropertyField :label="t('fastcat.textClip.fontFamily')">
         <UiSelect
           :model-value="String(clip.style?.fontFamily ?? 'sans-serif')"
           :items="[
@@ -89,7 +89,7 @@ const { t } = useI18n();
       </PropertyField>
 
       <div class="grid grid-cols-2 gap-2">
-        <PropertyField :label="t('fastcat.textClip.fontSize', 'Font size')">
+        <PropertyField :label="t('fastcat.textClip.fontSize')">
           <UiWheelNumberInput
             :model-value="Number(clip.style?.fontSize ?? 64)"
             size="sm"
@@ -99,7 +99,7 @@ const { t } = useI18n();
             @update:model-value="(v: any) => emit('updateTextStyle', { fontSize: Number(v) })"
           />
         </PropertyField>
-        <PropertyField :label="t('fastcat.textClip.fontWeight', 'Font weight')">
+        <PropertyField :label="t('fastcat.textClip.fontWeight')">
           <UiSelect
             :model-value="String(clip.style?.fontWeight ?? '700')"
             :items="
@@ -120,7 +120,7 @@ const { t } = useI18n();
       </div>
 
       <div class="grid grid-cols-2 gap-2">
-        <PropertyField :label="t('common.color', 'Color')">
+        <PropertyField :label="t('common.color')">
           <UColorPicker
             :model-value="String(clip.style?.color ?? '#ffffff')"
             format="hex"
@@ -128,7 +128,7 @@ const { t } = useI18n();
             @update:model-value="(v: any) => emit('updateTextStyle', { color: String(v) })"
           />
         </PropertyField>
-        <PropertyField :label="t('fastcat.textClip.backgroundColor', 'Background')">
+        <PropertyField :label="t('fastcat.textClip.backgroundColor')">
           <UColorPicker
             :model-value="String(clip.style?.backgroundColor ?? '')"
             format="hex"
@@ -140,7 +140,7 @@ const { t } = useI18n();
         </PropertyField>
       </div>
 
-      <PropertyField :label="t('fastcat.textClip.width', 'Text width (0 - auto)')">
+      <PropertyField :label="t('fastcat.textClip.width')">
         <UiWheelNumberInput
           :model-value="Number(clip.style?.width ?? 0)"
           size="sm"
@@ -152,7 +152,7 @@ const { t } = useI18n();
         />
       </PropertyField>
 
-      <PropertyField :label="t('fastcat.textClip.align', 'Align')">
+      <PropertyField :label="t('fastcat.textClip.align')">
         <UiSelect
           :model-value="String(clip.style?.align ?? 'center')"
           :items="[
@@ -167,7 +167,7 @@ const { t } = useI18n();
         />
       </PropertyField>
 
-      <PropertyField :label="t('fastcat.textClip.verticalAlign', 'Vertical align')">
+      <PropertyField :label="t('fastcat.textClip.verticalAlign')">
         <UiSelect
           :model-value="String(clip.style?.verticalAlign ?? 'middle')"
           :items="[
@@ -183,7 +183,7 @@ const { t } = useI18n();
       </PropertyField>
 
       <div class="grid grid-cols-2 gap-2">
-        <PropertyField :label="t('fastcat.textClip.lineHeight', 'Line height')">
+        <PropertyField :label="t('fastcat.textClip.lineHeight')">
           <UiWheelNumberInput
             :model-value="Number(clip.style?.lineHeight ?? 1.2)"
             size="sm"
@@ -192,7 +192,7 @@ const { t } = useI18n();
             @update:model-value="(v: any) => emit('updateTextStyle', { lineHeight: Number(v) })"
           />
         </PropertyField>
-        <PropertyField :label="t('fastcat.textClip.letterSpacing', 'Letter spacing')">
+        <PropertyField :label="t('fastcat.textClip.letterSpacing')">
           <UiWheelNumberInput
             :model-value="Number(clip.style?.letterSpacing ?? 0)"
             size="sm"
@@ -203,7 +203,7 @@ const { t } = useI18n();
         </PropertyField>
       </div>
 
-      <PropertyField :label="t('fastcat.textClip.padding', 'Padding')">
+      <PropertyField :label="t('fastcat.textClip.padding')">
         <UiWheelNumberInput
           :model-value="
             (() => {
