@@ -1,6 +1,6 @@
 import { watch, type Ref } from 'vue';
 
-import type { TimelineDocument } from '~/timeline/types';
+import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types';
 import type { MediaPathToTimelinesMap } from '~/utils/timeline-media-usage';
 import { computeMediaUsageByTimelineDocs } from '~/utils/timeline-media-usage';
 import { generateTimelineThumbnail } from '~/timeline/timeline-thumbnail';
@@ -44,6 +44,7 @@ interface TimelineLifecycleDeps {
   audioLevels: Ref<Record<string, { rmsDb: number; peakDb: number }>>;
   timelineZoom: Ref<number>;
   trackHeights: Ref<Record<string, number>>;
+  selectionRange: Ref<TimelineSelectionRange | null>;
   historyStore: {
     clear: (scope: string) => void;
   };
@@ -118,6 +119,7 @@ export function createTimelineLifecycleModule(
     deps.audioMuted.value = false;
     deps.audioLevels.value = {};
     deps.timelineZoom.value = 50;
+    deps.selectionRange.value = null;
     deps.selection.clearSelection();
     deps.selection.selectTrack(null);
     deps.historyStore.clear('timeline');
@@ -156,6 +158,7 @@ export function createTimelineLifecycleModule(
         if (deps.audioMuted) deps.audioMuted.value = session.masterMuted;
         deps.timelineZoom.value = session.zoom;
         deps.trackHeights.value = { ...session.trackHeights };
+        deps.selectionRange.value = session.selectionRange ? { ...session.selectionRange } : null;
     }
   }
 

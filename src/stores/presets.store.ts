@@ -4,8 +4,6 @@ import { useWorkspaceStore } from './workspace.store';
 import { getVideoEffectManifest, getAudioEffectManifest, registerEffect } from '~/effects';
 import { getTransitionManifest, registerTransition } from '~/transitions';
 import {
-  readLocalStorageJson,
-  writeLocalStorageJson,
   STORAGE_KEYS,
 } from '~/stores/ui/uiLocalStorage';
 
@@ -38,21 +36,21 @@ export const usePresetsStore = defineStore('presets', () => {
   const textsStandardCollapsed = ref(false);
   const textsCustomCollapsed = ref(false);
 
-  // Load from workspace state
-  // Load from workspace state
   function load() {
+    // Check workspace state (primary source of truth)
     const workspaceCustom = workspaceStore.workspaceState.presets.custom;
     const workspaceDefaultText = workspaceStore.workspaceState.presets.defaultTextPresetId;
 
     if (workspaceCustom.length > 0) {
       customPresets.value = [...workspaceCustom];
     }
+
     if (workspaceDefaultText) {
       defaultTextPresetId.value = workspaceDefaultText;
     }
 
-    const state = readLocalStorageJson<any>(STORAGE_KEYS.PRESETS.COLLAPSED, null);
-    if (state) {
+    const state = workspaceStore.workspaceState.presets.collapsed;
+    if (state && Object.keys(state).length > 0) {
       effectsStandardCollapsed.value = !!state.effectsStandardCollapsed;
       effectsCustomCollapsed.value = !!state.effectsCustomCollapsed;
       transitionsStandardCollapsed.value = !!state.transitionsStandardCollapsed;
@@ -77,6 +75,20 @@ export const usePresetsStore = defineStore('presets', () => {
       void workspaceStore.batchUpdateWorkspaceState((draft) => {
         draft.presets.custom = JSON.parse(JSON.stringify(customPresets.value));
         draft.presets.defaultTextPresetId = defaultTextPresetId.value;
+        draft.presets.collapsed = {
+          effectsStandardCollapsed: effectsStandardCollapsed.value,
+          effectsCustomCollapsed: effectsCustomCollapsed.value,
+          transitionsStandardCollapsed: transitionsStandardCollapsed.value,
+          transitionsCustomCollapsed: transitionsCustomCollapsed.value,
+          audioStandardCollapsed: audioStandardCollapsed.value,
+          audioCustomCollapsed: audioCustomCollapsed.value,
+          shapesStandardCollapsed: shapesStandardCollapsed.value,
+          shapesCustomCollapsed: shapesCustomCollapsed.value,
+          hudsStandardCollapsed: hudsStandardCollapsed.value,
+          hudsCustomCollapsed: hudsCustomCollapsed.value,
+          textsStandardCollapsed: textsStandardCollapsed.value,
+          textsCustomCollapsed: textsCustomCollapsed.value,
+        };
       });
     }
   }
@@ -101,20 +113,7 @@ export const usePresetsStore = defineStore('presets', () => {
       textsCustomCollapsed,
     ],
     () => {
-      writeLocalStorageJson(STORAGE_KEYS.PRESETS.COLLAPSED, {
-        effectsStandardCollapsed: effectsStandardCollapsed.value,
-        effectsCustomCollapsed: effectsCustomCollapsed.value,
-        transitionsStandardCollapsed: transitionsStandardCollapsed.value,
-        transitionsCustomCollapsed: transitionsCustomCollapsed.value,
-        audioStandardCollapsed: audioStandardCollapsed.value,
-        audioCustomCollapsed: audioCustomCollapsed.value,
-        shapesStandardCollapsed: shapesStandardCollapsed.value,
-        shapesCustomCollapsed: shapesCustomCollapsed.value,
-        hudsStandardCollapsed: hudsStandardCollapsed.value,
-        hudsCustomCollapsed: hudsCustomCollapsed.value,
-        textsStandardCollapsed: textsStandardCollapsed.value,
-        textsCustomCollapsed: textsCustomCollapsed.value,
-      });
+      savePresets();
     },
   );
 
@@ -124,7 +123,7 @@ export const usePresetsStore = defineStore('presets', () => {
     (presets) => {
       if (!presets) return;
       
-      const { custom: newPresets, defaultTextPresetId: newDefaultText } = presets;
+      const { custom: newPresets, defaultTextPresetId: newDefaultText, collapsed: newCollapsed } = presets;
 
       if (newPresets && newPresets.length > 0) {
         if (JSON.stringify(newPresets) !== JSON.stringify(customPresets.value)) {
@@ -135,6 +134,21 @@ export const usePresetsStore = defineStore('presets', () => {
 
       if (newDefaultText !== undefined && newDefaultText !== defaultTextPresetId.value) {
         defaultTextPresetId.value = newDefaultText;
+      }
+
+      if (newCollapsed) {
+        effectsStandardCollapsed.value = !!newCollapsed.effectsStandardCollapsed;
+        effectsCustomCollapsed.value = !!newCollapsed.effectsCustomCollapsed;
+        transitionsStandardCollapsed.value = !!newCollapsed.transitionsStandardCollapsed;
+        transitionsCustomCollapsed.value = !!newCollapsed.transitionsCustomCollapsed;
+        audioStandardCollapsed.value = !!newCollapsed.audioStandardCollapsed;
+        audioCustomCollapsed.value = !!newCollapsed.audioCustomCollapsed;
+        shapesStandardCollapsed.value = !!newCollapsed.shapesStandardCollapsed;
+        shapesCustomCollapsed.value = !!newCollapsed.shapesCustomCollapsed;
+        hudsStandardCollapsed.value = !!newCollapsed.hudsStandardCollapsed;
+        hudsCustomCollapsed.value = !!newCollapsed.hudsCustomCollapsed;
+        textsStandardCollapsed.value = !!newCollapsed.textsStandardCollapsed;
+        textsCustomCollapsed.value = !!newCollapsed.textsCustomCollapsed;
       }
     },
     { deep: true },

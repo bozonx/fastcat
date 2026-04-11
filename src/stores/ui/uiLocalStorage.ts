@@ -7,8 +7,6 @@ export const STORAGE_KEYS = {
     RECENT_PROJECTS: 'fastcat:workspace:recent-projects',
   },
   PRESETS: {
-    CUSTOM: 'fastcat:presets:custom',
-    DEFAULT_TEXT: 'fastcat:presets:defaultText',
     COLLAPSED: 'fastcat:presets:collapsed',
   },
   SETTINGS: {
@@ -21,11 +19,11 @@ export const STORAGE_KEYS = {
   },
   FILE_MANAGER: {
     PERSISTENCE: {
-      BLOGGERDOG_GRID_SIZE: 'fastcat:file-manager:bloggerDogGridCardSize',
-      COMPUTER_GRID_SIZE: 'fastcat:file-manager:computerGridCardSize',
-      COMPUTER_LAST_FOLDER: 'fastcat:file-manager:computerLastFolder',
-      COMPUTER_VIEW_MODE: 'fastcat:file-manager:computerViewMode',
-      ACTIVE_TAB: 'fastcat:file-manager:filesPageActiveTab',
+      BLOGGERDOG_GRID_SIZE: 'fastcat:file-manager:bloggerdog-grid-size',
+      COMPUTER_GRID_SIZE: 'fastcat:file-manager:computer-grid-size',
+      COMPUTER_LAST_FOLDER: 'fastcat:file-manager:computer-last-folder',
+      COMPUTER_VIEW_MODE: 'fastcat:file-manager:computer-view-mode',
+      ACTIVE_TAB: 'fastcat:file-manager:active-tab',
     },
     // Pattern: fastcat:file-manager-${contextId}:${prop}
     contextKey: (contextId: string, prop: string) => `fastcat:file-manager-${contextId}:${prop}`,

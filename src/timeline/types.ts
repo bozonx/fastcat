@@ -380,7 +380,6 @@ export interface TimelineFastCatMetadata {
   docId?: string;
   timebase?: TimelineTimebase;
   markers?: TimelineMarker[];
-  selectionRange?: TimelineSelectionRange;
   masterEffects?: ClipEffect[];
 }
 
