@@ -63,8 +63,8 @@ describe('FocusStore', () => {
     store.setMainFocus('timeline');
     store.setTempFocus('left');
 
-    expect(store.activePanelId).toBe('left');
-    expect(store.effectiveFocus).toBe('left');
+    expect(store.activePanelId).toBe('files-sidebar');
+    expect(store.effectiveFocus).toBe('files-sidebar');
   });
 
   it('tracks last non-main panel and can restore it', () => {
@@ -95,6 +95,17 @@ describe('FocusStore', () => {
     expect(store.canUsePreviewHotkeys).toBe(false);
 
     store.setPanelFocus('project');
+    expect(store.canUsePlaybackHotkeys).toBe(true);
+    expect(store.canUseTimelineHotkeys).toBe(false);
+    expect(store.canUsePreviewHotkeys).toBe(true);
+    expect(store.isPropertiesFocus).toBe(false);
+
+    store.setPanelFocus('dynamic:properties:files-main');
+    expect(store.canUseTimelineHotkeys).toBe(false);
+    expect(store.canUsePreviewHotkeys).toBe(true);
+    expect(store.isPropertiesFocus).toBe(true);
+
+    store.setPanelFocus('dynamic:file-manager:detached-files');
     expect(store.canUsePlaybackHotkeys).toBe(true);
     expect(store.canUseTimelineHotkeys).toBe(false);
     expect(store.canUsePreviewHotkeys).toBe(true);

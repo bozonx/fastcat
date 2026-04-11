@@ -170,7 +170,10 @@ export function isPreviewLikeFocus(focusId: AnyPanelFocus): boolean {
     focusId === 'left' ||
     focusId === 'right' ||
     focusId === 'project' ||
-    focusId === 'filesBrowser'
+    focusId === 'filesBrowser' ||
+    focusId === 'properties' ||
+    focusId === 'files-sidebar' ||
+    focusId === 'files-main'
   ) {
     return true;
   }
@@ -178,7 +181,14 @@ export function isPreviewLikeFocus(focusId: AnyPanelFocus): boolean {
   if (String(focusId).startsWith('dynamic:')) {
     const parts = String(focusId).split(':');
     const type = parts[1];
-    return type === 'media' || type === 'text' || type === 'fileManager' || type === 'library';
+    return (
+      type === 'media' ||
+      type === 'text' ||
+      type === 'fileManager' ||
+      type === 'file-manager' ||
+      type === 'library' ||
+      type === 'properties'
+    );
   }
 
   return false;

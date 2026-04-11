@@ -287,6 +287,7 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
         <Pane :size="sizes[2]" min-size="10">
           <PropertiesPanel
             :entity="normalizedSelectedEntity"
+            focus-id="dynamic:properties:files-main"
             class="h-full"
             @clear-selection="emit('clearSelection')"
             @pointerdown.capture="focusStore.setPanelFocus('dynamic:properties:files-main')"

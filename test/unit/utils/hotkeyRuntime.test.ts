@@ -132,6 +132,9 @@ describe('hotkey runtime', () => {
   it('detects preview-like focus ids', () => {
     expect(isPreviewLikeFocus('project')).toBe(true);
     expect(isPreviewLikeFocus('left')).toBe(true);
+    expect(isPreviewLikeFocus('properties')).toBe(true);
+    expect(isPreviewLikeFocus('dynamic:properties:files-main')).toBe(true);
+    expect(isPreviewLikeFocus('dynamic:file-manager:panel-1')).toBe(true);
     expect(isPreviewLikeFocus('dynamic:media:panel-1')).toBe(true);
     expect(isPreviewLikeFocus('timeline')).toBe(false);
   });

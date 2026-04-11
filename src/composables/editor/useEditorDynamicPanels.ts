@@ -112,6 +112,9 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
   function getDynamicPanelFocusId(panelId: string) {
     const panel = getPanelById(panelId);
     if (!panel) return `dynamic:unknown:${panelId}` as const;
+    if (panel.type === 'fileManager') {
+      return `dynamic:file-manager:${panelId}` as const;
+    }
     return `dynamic:${panel.type}:${panelId}` as const;
   }
 
