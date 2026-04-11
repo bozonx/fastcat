@@ -529,7 +529,13 @@ function onDragOverDir(e: DragEvent, entry: FsEntry) {
 
   if (types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) || types.includes(FILE_MANAGER_COPY_DRAG_TYPE)) {
     isDragOver.value = entry.path || null;
-    if (isFileManagerDropCancellationTarget({ event: e, targetEntryPath: entry.path })) {
+    if (
+      isFileManagerDropCancellationTarget({
+        event: e,
+        targetEntryPath: entry.path,
+        targetDirPath: entry.path,
+      })
+    ) {
       dragOperation.value = 'cancel';
       appClipboard.setCurrentDragOperation('cancel');
       appClipboard.setDragTargetFileManagerInstanceId(props.instanceId ?? null);
@@ -584,6 +590,7 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
     isFileManagerDropCancellationTarget({
       event: e,
       targetEntryPath: getDropTargetEntryPath(e) ?? entry.path,
+      targetDirPath: entry.path,
     })
   ) {
     onDragEnd();
