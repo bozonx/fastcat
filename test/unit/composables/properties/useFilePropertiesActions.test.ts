@@ -94,4 +94,29 @@ describe('useFilePropertiesActions', () => {
       directorySecondaryActions.value.find((action) => action.id === 'createContentItem')?.hidden,
     ).toBe(false);
   });
+
+  it('shows paste for a regular local directory when clipboard has file manager items', () => {
+    const options = createOptions();
+
+    const { directoryPrimaryActions } = useFilePropertiesActions(options);
+
+    expect(directoryPrimaryActions.value.find((action) => action.id === 'paste')?.hidden).toBe(
+      false,
+    );
+    expect(directoryPrimaryActions.value.find((action) => action.id === 'paste')?.disabled).toBe(
+      false,
+    );
+  });
+
+  it('hides paste for remote root directories', () => {
+    const options = createOptions();
+    options.isRemoteMode.value = true;
+    options.isRemoteRoot.value = true;
+
+    const { directoryPrimaryActions } = useFilePropertiesActions(options);
+
+    expect(directoryPrimaryActions.value.find((action) => action.id === 'paste')?.hidden).toBe(
+      true,
+    );
+  });
 });
