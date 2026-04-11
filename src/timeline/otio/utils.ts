@@ -54,8 +54,18 @@ export function trackKindToOtioKind(kind: TrackKind): 'Video' | 'Audio' {
   return kind === 'audio' ? 'Audio' : 'Video';
 }
 
+export function normalizeTrackKind(kind: unknown): TrackKind | null {
+  if (kind === 'audio' || kind === 'video') return kind;
+  if (typeof kind !== 'string') return null;
+
+  const normalized = kind.trim().toLowerCase();
+  if (normalized === 'audio' || normalized === 'video') return normalized;
+
+  return null;
+}
+
 export function trackKindFromOtioKind(kind: unknown): TrackKind {
-  return kind === 'Audio' ? 'audio' : 'video';
+  return normalizeTrackKind(kind) ?? 'video';
 }
 
 export function assertTimelineTimebase(raw: unknown): TimelineTimebase {

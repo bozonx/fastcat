@@ -162,6 +162,44 @@ describe('timeline/otio-serializer: transitions', () => {
     expect((parsed.metadata?.fastcat?.markers as any)[0].id).toBe('old-m1');
   });
 
+  it('normalizes legacy track kinds during OTIO parse', () => {
+    const raw = {
+      OTIO_SCHEMA: 'Timeline.1',
+      name: 'Legacy kinds',
+      tracks: {
+        OTIO_SCHEMA: 'Stack.1',
+        name: 'tracks',
+        children: [
+          {
+            OTIO_SCHEMA: 'Track.1',
+            name: 'Video 1',
+            kind: 'Video',
+            children: [],
+            metadata: { fastcat: { id: 'v1', kind: 'Video' } },
+          },
+          {
+            OTIO_SCHEMA: 'Track.1',
+            name: 'Audio 1',
+            kind: 'audio',
+            children: [],
+            metadata: { fastcat: { id: 'a1', kind: 'Audio' } },
+          },
+        ],
+      },
+      metadata: { fastcat: { docId: 'legacy-kinds', timebase: { fps: 25 } } },
+    };
+
+    const parsed = parseTimelineFromOtio(JSON.stringify(raw), {
+      id: 'legacy-kinds',
+      name: 'Legacy kinds',
+      fps: 25,
+    });
+
+    expect(parsed.tracks).toHaveLength(2);
+    expect(parsed.tracks[0]?.kind).toBe('video');
+    expect(parsed.tracks[1]?.kind).toBe('audio');
+  });
+
   it('preserves transition params, mode and curve through OTIO round-trip', () => {
     const doc: TimelineDocument = {
       ...makeDoc(),
