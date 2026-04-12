@@ -729,6 +729,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
       :file-name="selectedFsEntry?.name"
       :thumbnail-url="thumbnailUrl"
       :is-otio="isOtio"
+      :vfs="effectiveVfs"
       :class="[mobileTextMode && mediaType === 'text' ? 'flex-1 border-none' : '']"
     />
 

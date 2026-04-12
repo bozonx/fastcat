@@ -42,6 +42,7 @@ const props = defineProps<{
   filePath?: string;
   fileName?: string;
   focusPanelId?: PanelFocusId;
+  vfs?: any;
 }>();
 
 const isMediaModalOpen = ref(false);
@@ -165,6 +166,7 @@ onUnmounted(() => {
       :file-name="props.fileName"
       :initial-content="props.textContent || ''"
       :focus-panel-id="props.focusPanelId"
+      :vfs="props.vfs"
       class="w-full h-full"
     />
 
