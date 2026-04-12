@@ -18,7 +18,7 @@ import {
 } from './constants';
 import type { ExportOptions } from '~/composables/timeline/export/types';
 
-const METADATA_TIMEOUT_MS = 15000;
+const METADATA_TIMEOUT_MS = 30000;
 
 export async function executeMediaConversion(params: {
   request: ConversionRequest;

@@ -79,7 +79,7 @@ export async function extractMetadata(
       };
 
       if (vTrack) {
-        const stats = await vTrack.computePacketStats(100);
+        const stats = await vTrack.computePacketStats(50);
         const codecParam = await vTrack.getCodecParameterString();
         const colorSpace =
           typeof vTrack.getColorSpace === 'function' ? await vTrack.getColorSpace() : undefined;
@@ -101,7 +101,7 @@ export async function extractMetadata(
       }
 
       if (aTrack) {
-        const stats = await aTrack.computePacketStats(250);
+        const stats = await aTrack.computePacketStats(100);
         const codecParam = await aTrack.getCodecParameterString();
         const canDecodeAudio = await aTrack.canDecode();
         meta.audio = {
