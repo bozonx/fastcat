@@ -33,6 +33,7 @@ const {
   const rawSelectionStore = {
     selectedEntity: null as any,
     selectFsEntry: vi.fn(),
+    selectFsEntryWithUiUpdate: vi.fn(),
     selectFsEntries: vi.fn(),
     clearSelection: vi.fn(),
   };
@@ -42,6 +43,7 @@ const {
     fileManagerUpdateCounter: 0,
     fileBrowserSelectAllTrigger: 0,
     fileBrowserNavigateBackTrigger: 0,
+    fileBrowserNavigateForwardTrigger: 0,
     fileBrowserNavigateUpTrigger: 0,
     fileBrowserMoveSelectionTrigger: { dir: 'up', timestamp: 0 },
     showHiddenFiles: false,
@@ -78,6 +80,7 @@ const {
     folderSizesLoading: {},
     sortedEntries: [],
     videoThumbnails: {},
+    fileCompatibility: {},
     calculateFolderSize: vi.fn(),
     supplementEntries: vi.fn(async (e: any) => e),
     cleanupObjectUrls: vi.fn(),
@@ -104,6 +107,7 @@ const mockFileBrowserEntries = {
   folderSizesLoading: ref(rawFileBrowserEntries.folderSizesLoading),
   sortedEntries: ref(rawFileBrowserEntries.sortedEntries),
   videoThumbnails: ref(rawFileBrowserEntries.videoThumbnails),
+  fileCompatibility: ref(rawFileBrowserEntries.fileCompatibility),
   calculateFolderSize: rawFileBrowserEntries.calculateFolderSize,
   supplementEntries: rawFileBrowserEntries.supplementEntries,
   cleanupObjectUrls: rawFileBrowserEntries.cleanupObjectUrls,
@@ -114,6 +118,7 @@ vi.mock('~/stores/file-manager.store', () => ({
   useFileBrowserPersistenceStore: () => ({
     computerViewMode: ref('grid'),
     computerGridCardSize: ref(130),
+    bloggerDogGridCardSize: ref(130),
   }),
 }));
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelectionStore }));
@@ -152,7 +157,7 @@ vi.mock('~/composables/file-manager/useFileBrowserRemote', () => ({
     remoteError: ref(null),
     remoteTransferOpen: ref(false),
     remoteTransferProgress: ref(0),
-    remoteTransferPhase: ref(null),
+    remoteTransferPhase: ref(''),
     remoteTransferFileName: ref(''),
     buildRemoteDirectoryEntry: vi.fn(),
     loadRemoteFolderContent: vi.fn(),
@@ -169,15 +174,21 @@ vi.mock('~/composables/file-manager/useFileBrowserRemote', () => ({
     onBrowserRootDragOver: vi.fn(),
     onBrowserRootDragLeave: vi.fn(),
     onBrowserRootDrop: vi.fn(),
+    createAdapter: vi.fn(() => ({})),
+    cancelRemoteTransfer: vi.fn(),
+    performRemoteDownload: vi.fn(),
   }),
 }));
 vi.mock('~/composables/file-manager/useFileBrowserNavigation', () => ({
   useFileBrowserNavigation: () => ({
     parentFolders: ref([]),
     loadFolderContent: vi.fn(),
+    loadParentFolders: vi.fn(),
     navigateBack: vi.fn(),
+    navigateForward: vi.fn(),
     navigateUp: vi.fn(),
     navigateToFolder: vi.fn(),
+    tryScrollToPendingEntry: vi.fn(),
   }),
 }));
 vi.mock('~/composables/file-manager/useSttTranscription', () => ({
@@ -207,7 +218,13 @@ vi.mock('~/composables/file-manager/useFileBrowserCreateActions', () => ({
   useFileBrowserCreateActions: () => ({}),
 }));
 vi.mock('~/composables/file-manager/useFileBrowserInteraction', () => ({
-  useFileBrowserInteraction: () => ({}),
+  useFileBrowserInteraction: () => ({
+    handleEntryClick: vi.fn(),
+    handleEntryDoubleClick: vi.fn(),
+    handleEntryEnter: vi.fn(),
+    handleSort: vi.fn(),
+    onResizeStart: vi.fn(),
+  }),
 }));
 vi.mock('~/composables/file-manager/useFileBrowserDragAndDrop', () => ({
   useFileBrowserDragAndDrop: () => ({
@@ -232,7 +249,13 @@ vi.mock('~/composables/file-manager/useFileBrowserDragAndDrop', () => ({
   }),
 }));
 vi.mock('~/composables/file-manager/useFileBrowserMarquee', () => ({
-  useFileBrowserMarquee: () => ({ marqueeStyle: ref(null) }),
+  useFileBrowserMarquee: () => ({
+    marqueeStyle: ref(null),
+    preventClickClear: ref(false),
+    onMarqueePointerDown: vi.fn(),
+    onMarqueePointerMove: vi.fn(),
+    onMarqueePointerUp: vi.fn(),
+  }),
 }));
 vi.mock('~/composables/file-manager/useFileContextMenu', () => ({
   useFileContextMenu: () => ({ getContextMenuItems: vi.fn(() => []) }),
@@ -250,13 +273,13 @@ describe('FileBrowser', () => {
 
   it('renders empty state when no folder is selected', async () => {
     const wrapper = await mountSuspended(FileBrowser);
-    expect(wrapper.text()).toContain('Folder is empty');
+    expect(wrapper.text()).toContain('common.empty');
   });
 
   it('renders "Folder is empty" when an empty folder is selected', async () => {
     mockFileManagerStore.selectedFolder = { name: 'Empty', kind: 'directory', path: 'empty' };
     const wrapper = await mountSuspended(FileBrowser);
-    expect(wrapper.text()).toContain('Folder is empty');
+    expect(wrapper.text()).toContain('common.empty');
   });
 
   it('renders entries and toolbars when folder is selected', async () => {
