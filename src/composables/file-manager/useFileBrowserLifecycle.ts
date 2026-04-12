@@ -2,6 +2,7 @@ import { nextTick, onMounted, onUnmounted, watch } from 'vue';
 import type { Ref } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
+import { useFileBrowserBulkSelection } from '~/composables/file-manager/useFileBrowserBulkSelection';
 
 interface MoveSelectionTrigger {
   dir: 'up' | 'down' | 'left' | 'right';
@@ -55,6 +56,28 @@ interface UseFileBrowserLifecycleParams {
 
 export function useFileBrowserLifecycle(params: UseFileBrowserLifecycleParams) {
   const panelId = `dynamic:file-manager:${params.instanceId}`;
+  const bulkSelection = useFileBrowserBulkSelection({
+    getVisibleEntries: () => params.sortedEntries.value,
+    getSelectedEntries: () => {
+      const selected = params.selectionStore.selectedEntity as {
+        source?: string;
+        kind?: string;
+        entries?: FsEntry[];
+        entry?: FsEntry;
+      } | null;
+
+      if (selected?.source !== 'fileManager') return [];
+      if (selected.kind === 'multiple') return selected.entries ?? [];
+      return selected.entry ? [selected.entry] : [];
+    },
+    selectEntries: (entries, instanceId, isExternal) => {
+      params.selectionStore.selectFsEntries(entries, instanceId!, isExternal!);
+    },
+    clearSelection: params.selectionStore.clearSelection,
+    getUsedPaths: () => new Set(),
+    instanceId: params.instanceId,
+    isExternal: params.isExternal,
+  });
 
   async function refreshFileTree() {
     if (params.isRemoteMode.value) {
@@ -110,38 +133,7 @@ export function useFileBrowserLifecycle(params: UseFileBrowserLifecycleParams) {
     () => {
       if (!params.focusStore.isPanelFocused(panelId)) return;
       if (params.isRemoteMode.value) return;
-
-      const visibleItems = params.sortedEntries.value;
-      const selected = params.selectionStore.selectedEntity as
-        | {
-            source?: string;
-            kind?: string;
-            entries?: FsEntry[];
-            entry?: FsEntry;
-          }
-        | null;
-
-      const selectedPaths =
-        selected?.source === 'fileManager'
-          ? selected.kind === 'multiple'
-            ? selected.entries?.map((entry) => entry.path) || []
-            : selected.entry
-              ? [selected.entry.path]
-              : []
-          : [];
-      const visiblePaths = visibleItems.map((entry) => entry.path);
-
-      const isAllSelected =
-        visibleItems.length > 0 &&
-        selectedPaths.length === visiblePaths.length &&
-        visiblePaths.every((path) => selectedPaths.includes(path));
-
-      if (isAllSelected) {
-        params.selectionStore.clearSelection();
-        return;
-      }
-
-      params.selectionStore.selectFsEntries(visibleItems, params.instanceId, params.isExternal);
+      bulkSelection.selectAll();
     },
   );
 

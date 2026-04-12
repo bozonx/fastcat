@@ -29,6 +29,7 @@ import { useFileBrowserCreateActions } from '~/composables/file-manager/useFileB
 import { useFileBrowserInteraction } from '~/composables/file-manager/useFileBrowserInteraction';
 import { useFileBrowserRemoteCreate } from '~/composables/file-manager/useFileBrowserRemoteCreate';
 import { useFileBrowserLifecycle } from '~/composables/file-manager/useFileBrowserLifecycle';
+import { useFileBrowserBulkSelection } from '~/composables/file-manager/useFileBrowserBulkSelection';
 import { handleFilesCommand } from '~/file-manager/application/fileManagerCommands';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import type { FsEntry } from '~/types/fs';
@@ -39,6 +40,7 @@ import {
   isGeneratingProxyInDirectory as hasGeneratingProxyInDirectory,
   folderHasVideos,
 } from '~/utils/fs-entry-utils';
+import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import FileBrowserToolbar from '~/components/file-manager/FileBrowserToolbar.vue';
 import FileBrowserBreadcrumbs from '~/components/file-manager/FileBrowserBreadcrumbs.vue';
 import FileBrowserContent from '~/components/file-manager/FileBrowserContent.vue';
@@ -75,6 +77,7 @@ const uiStore = useUiStore();
 const focusStore = useFocusStore();
 const proxyStore = useProxyStore();
 const mediaStore = useMediaStore();
+const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const clipboardStore = useAppClipboard();
 const { t } = useI18n();
 const toast = useToast();
@@ -202,6 +205,28 @@ function setSelectedFsEntry(entry: FsEntry | null) {
   selectionStore.selectFsEntryWithUiUpdate(entry, instanceId, isExternal.value);
 }
 
+function getSelectedEntries(): FsEntry[] {
+  const selectedEntity = selectionStore.selectedEntity;
+  if (!selectedEntity || selectedEntity.source !== 'fileManager') return [];
+  if (selectedEntity.kind === 'multiple') return selectedEntity.entries;
+  return [selectedEntity.entry];
+}
+
+const isExternal = computed(() => !!props.vfs);
+
+const bulkSelection = useFileBrowserBulkSelection({
+  getVisibleEntries: () => sortedEntries.value,
+  getSelectedEntries,
+  selectEntries: (entries, nextInstanceId, nextIsExternal) => {
+    selectionStore.selectFsEntries(entries, nextInstanceId, nextIsExternal);
+  },
+  clearSelection: selectionStore.clearSelection,
+  getUsedPaths: () => new Set(Object.keys(timelineMediaUsageStore.mediaPathToTimelines)),
+  refreshUsage: async () => await timelineMediaUsageStore.refreshUsage(),
+  instanceId,
+  isExternal: isExternal.value,
+});
+
 // --- Remote ---
 // Forward declaration for DnD wrappers
 let remoteApi: any = null;
@@ -231,7 +256,6 @@ const skipNextUpdateReload = ref(false);
 // Forward ref — assigned after navigation is created
 let _loadFolderContent: () => Promise<void> = async () => {};
 
-const isExternal = computed(() => !!props.vfs);
 fileManagerStore.setSelectionContext({
   instanceId,
   isExternal: isExternal.value,
@@ -830,6 +854,9 @@ async function onDirectoryUploadChange(e: Event) {
               ({ kind: 'directory', path: '', name: '' } as FsEntry),
           )
       "
+      @select-all="bulkSelection.selectAll"
+      @select-unused="bulkSelection.selectUnused"
+      @invert-selection="bulkSelection.invertSelection"
     />
 
     <!-- Navigation bar (Breadcrumbs) -->
