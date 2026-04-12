@@ -16,6 +16,7 @@ const props = defineProps<{
   fileName?: string;
   thumbnailUrl?: string | null;
   focusPanelId?: PanelFocusId;
+  vfs?: any;
 }>();
 </script>
 
@@ -91,6 +92,7 @@ const props = defineProps<{
         :file-path="props.filePath"
         :file-name="props.fileName"
         :focus-panel-id="props.focusPanelId"
+        :vfs="props.vfs"
       />
     </div>
   </div>

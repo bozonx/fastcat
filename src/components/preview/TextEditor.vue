@@ -9,11 +9,14 @@ const props = defineProps<{
   filePath: string;
   fileName?: string;
   focusPanelId?: PanelFocusId;
+  vfs?: any; // IFileSystemAdapter is not directly imported in some components, using any for simplicity or we can import it
 }>();
 
 const projectStore = useProjectStore();
 const focusStore = useFocusStore();
 const fm = useFileManager();
+
+const effectiveVfs = computed(() => props.vfs ?? fm.vfs);
 
 const content = ref('');
 const isSaving = ref(false);
@@ -37,7 +40,7 @@ async function loadContent() {
   saveError.value = null;
   
   try {
-    const blob = await fm.vfs.readFile(props.filePath);
+    const blob = await effectiveVfs.value.readFile(props.filePath);
     const text = await blob.text();
     content.value = text;
     lastSavedContent.value = text;
@@ -79,7 +82,7 @@ async function saveNow() {
   isSaving.value = true;
   saveError.value = null;
   try {
-    await fm.vfs.writeFile(props.filePath, content.value);
+    await effectiveVfs.value.writeFile(props.filePath, content.value);
 
     lastSavedContent.value = content.value;
     lastSavedAt.value = new Date();
