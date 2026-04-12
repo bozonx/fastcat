@@ -53,7 +53,7 @@ describe('bloggerdog file manager rules', () => {
     });
 
     expect(canCopyCutBloggerDogEntry(mediaEntry)).toBe(true);
-    expect(canCopyCutBloggerDogEntry(textWrapperEntry)).toBe(false);
+    expect(canCopyCutBloggerDogEntry(textWrapperEntry)).toBe(true);
     expect(canCopyCutBloggerDogEntry(contentItemEntry)).toBe(false);
   });
 

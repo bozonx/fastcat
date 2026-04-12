@@ -19,6 +19,8 @@ import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { executeFileManagerPaste } from '~/composables/file-manager/executeFileManagerPaste';
 import {
   canCopyCutBloggerDogEntry,
+  getBloggerDogTextWrapperRenameResult,
+  isBloggerDogTextWrapper,
   canPasteIntoBloggerDogEntry,
   canTransferClipboardItemToOrFromBloggerDog,
 } from '~/utils/bloggerdog-file-manager';
@@ -129,14 +131,21 @@ export function useFileManagerActions(actions: FileManagerActions) {
       return;
     }
 
+    const textWrapperRenameResult = isBloggerDogTextWrapper(entry)
+      ? getBloggerDogTextWrapperRenameResult(entry, trimmed)
+      : null;
     await actions.renameEntry(entry, trimmed);
-    const parentPath = entry.parentPath ?? entry.path?.split('/').slice(0, -1).join('') ?? '';
+    const parentPath =
+      textWrapperRenameResult?.reloadDirPath ??
+      entry.parentPath ??
+      entry.path?.split('/').slice(0, -1).join('/') ??
+      '';
     await actions.reloadDirectory(parentPath);
     stopRename();
     actions.onAfterRename?.();
 
     // Re-select renamed entry to update UI and property panel
-    const newPath = parentPath ? `${parentPath}/${trimmed}` : trimmed;
+    const newPath = textWrapperRenameResult?.newPath ?? (parentPath ? `${parentPath}/${trimmed}` : trimmed);
     const newEntry = actions.findEntryByPath(newPath);
     if (newEntry) {
       actions.onFileSelect?.(newEntry);

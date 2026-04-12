@@ -47,6 +47,10 @@ import type { FsEntry } from '~/types/fs';
 import { getBdPayload } from '~/types/bloggerdog';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import {
+  getBloggerDogTextWrapperRenameResult,
+  isBloggerDogTextWrapper,
+} from '~/utils/bloggerdog-file-manager';
+import {
   isMoveAllowed as isMoveAllowedCore,
   isCopyAllowed as isCopyAllowedCore,
 } from '~/file-manager/core/rules';
@@ -445,7 +449,10 @@ export function createFileManager(deps: FileManagerCreateDeps) {
   async function renameEntry(target: FsEntry, newName: string) {
     const oldPath = target.path;
     const parentPath = oldPath ? oldPath.split('/').slice(0, -1).join('/') : '';
-    const newPath = oldPath ? (parentPath ? `${parentPath}/${newName}` : newName) : '';
+    const textWrapperRenameResult = isBloggerDogTextWrapper(target)
+      ? getBloggerDogTextWrapperRenameResult(target, newName)
+      : null;
+    const newPath = textWrapperRenameResult?.newPath ?? (oldPath ? (parentPath ? `${parentPath}/${newName}` : newName) : '');
 
     await runWithUiFeedback({
       action: async () => {
@@ -471,7 +478,8 @@ export function createFileManager(deps: FileManagerCreateDeps) {
           await deps.onEntryPathChanged?.({ oldPath, newPath });
         }
 
-        const parentPathForRename = getParentPath(target.path);
+        const parentPathForRename =
+          textWrapperRenameResult?.reloadDirPath ?? getParentPath(target.path);
         await reloadDirectory(parentPathForRename);
         await triggerMediaIntegrityCheck();
       },

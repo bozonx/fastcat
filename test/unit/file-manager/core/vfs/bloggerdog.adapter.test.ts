@@ -222,6 +222,51 @@ describe('BloggerDogVfsAdapter', () => {
     );
   });
 
+  it('renames virtual txt file by renaming the content item title', async () => {
+    const adapter = new BloggerDogVfsAdapter(() => ({
+      baseUrl: 'https://example.com/api',
+      bearerToken: 'token',
+    }));
+
+    const item: RemoteVfsFileEntry = {
+      id: 'item-1',
+      type: 'file',
+      name: 'Sunset',
+      title: 'Sunset',
+      path: '/personal/Sunset',
+      scope: 'personal',
+      text: 'Hello',
+    };
+
+    const cache = (adapter as unknown as { idCache: Map<string, unknown> }).idCache;
+    cache.set('/personal/Sunset/Sunset.txt', {
+      id: item.id,
+      type: 'media',
+      path: '/personal/Sunset/Sunset.txt',
+      scope: 'personal',
+      item,
+      mediaIndex: -1,
+    });
+    cache.set('/personal/Sunset', {
+      id: item.id,
+      type: 'file',
+      path: '/personal/Sunset',
+      scope: 'personal',
+      item,
+    });
+
+    await adapter.moveEntry('/personal/Sunset/Sunset.txt', '/personal/Sunset/Renamed.txt');
+
+    expect(updateRemoteItem).toHaveBeenCalledWith({
+      config: {
+        baseUrl: 'https://example.com/api',
+        bearerToken: 'token',
+      },
+      id: 'item-1',
+      title: 'Renamed',
+    });
+  });
+
   it('uploads into an existing content item with itemId', async () => {
     const adapter = new BloggerDogVfsAdapter(() => ({
       baseUrl: 'https://example.com/api',

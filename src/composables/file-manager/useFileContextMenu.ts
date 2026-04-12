@@ -83,19 +83,16 @@ export function useFileContextMenu(
     const isBdGroup = deps.isBloggerDogGroup?.(entry);
     const isBdContentItem = deps.isBloggerDogContentItem?.(entry);
     const isBdMedia = deps.isBloggerDogMedia?.(entry);
-    const isBdText = deps.isBloggerDogTextWrapper?.(entry);
-
     const items: ContextMenuItem[] = [];
 
-    // Copy/Cut: forbidden for virtual folders, projects, groups, content items, and text wrappers.
+    // Copy/Cut: forbidden for virtual folders, projects, groups and content items.
     const canCopyCut =
       !isProjectRoot &&
       !isCommonRoot &&
       !isBdVirtual &&
       !isBdProject &&
       !isBdGroup &&
-      !isBdContentItem &&
-      !isBdText;
+      !isBdContentItem;
 
     if (canCopyCut) {
       items.push(

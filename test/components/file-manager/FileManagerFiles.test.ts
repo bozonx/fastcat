@@ -198,7 +198,6 @@ describe('FileManagerFiles', () => {
 
     focusStore.setPanelFocus('files-sidebar');
     await nextTick();
-    await nextTick();
 
     window.dispatchEvent(
       new KeyboardEvent('keydown', {

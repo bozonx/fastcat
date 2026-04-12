@@ -1,3 +1,4 @@
+import { nextTick } from 'vue';
 import { crossVfsCopy, crossVfsMove } from '~/file-manager/core/vfs/crossVfs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import type { FileManagerClipboardPayload } from '~/stores/clipboard.store';
@@ -103,18 +104,19 @@ export async function executeFileManagerPaste(options: ExecuteFileManagerPasteOp
   await options.reloadDirectory(targetDirPath);
   options.notifyFileManagerUpdate?.();
 
-  setTimeout(() => {
-    const entries = pastedPaths
-      .map((path) => options.findEntryByPath(path))
-      .filter((entry): entry is FsEntry => Boolean(entry));
+  await nextTick();
 
-    if (entries.length === 0) return;
+  const entries = pastedPaths
+    .map((path) => options.findEntryByPath(path))
+    .filter((entry): entry is FsEntry => Boolean(entry));
 
-    if (entries.length === 1) {
-      options.onFileSelect?.(entries[0]);
-      return;
-    }
+  if (entries.length === 0) return;
 
-    options.onFilesSelect?.(entries);
-  }, 50);
+  if (entries.length === 1) {
+    const firstEntry = entries[0]!;
+    options.onFileSelect?.(firstEntry);
+    return;
+  }
+
+  options.onFilesSelect?.(entries);
 }

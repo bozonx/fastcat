@@ -78,7 +78,7 @@ describe('ClipTransitions', () => {
 
     const transitionIn = component.find('button');
     await transitionIn.trigger('click');
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await component.vm.$nextTick();
 
     expect(component.emitted('select')).toBeTruthy();
     expect(component.emitted('select')![0][1]).toEqual({

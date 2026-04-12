@@ -660,7 +660,7 @@ describe('FileProperties.vue', () => {
     expect(component.html()).not.toContain('data-testid="text-editor-stub"');
   });
 
-  it('renders text editor preview for BloggerDog virtual txt file without extra actions', async () => {
+  it('renders text editor preview for BloggerDog virtual txt file with file management actions', async () => {
     const { useEntryPreview } = await import('~/composables/file-manager/useEntryPreview');
     const { useFilePropertiesBasics } =
       await import('~/composables/properties/useFilePropertiesBasics');
@@ -702,7 +702,12 @@ describe('FileProperties.vue', () => {
     vi.mocked(useFilePropertiesActions).mockReturnValue({
       directoryPrimaryActions: ref([]),
       directorySecondaryActions: ref([]),
-      filePrimaryActions: ref([]),
+      filePrimaryActions: ref([
+        { id: 'delete', title: 'Delete', icon: 'i-delete', onClick: vi.fn() },
+        { id: 'rename', title: 'Rename', icon: 'i-rename', onClick: vi.fn() },
+        { id: 'copy', title: 'Copy', icon: 'i-copy', onClick: vi.fn() },
+        { id: 'cut', title: 'Cut', icon: 'i-cut', onClick: vi.fn() },
+      ]),
       fileSecondaryActions: ref([
         { id: 'openAsPanelCut', label: 'Open in cut', icon: 'i-cut', onClick: vi.fn() },
         { id: 'openAsProjectTab', label: 'Open as tab', icon: 'i-tab', onClick: vi.fn() },
@@ -735,6 +740,10 @@ describe('FileProperties.vue', () => {
     expect(component.get('[data-testid="text-editor-stub"]').text()).toContain(
       'Sunset.txt|/personal/item-1/Sunset.txt',
     );
+    expect(component.find('button[title="Delete"]').exists()).toBe(true);
+    expect(component.find('button[title="Rename"]').exists()).toBe(true);
+    expect(component.find('button[title="Copy"]').exists()).toBe(true);
+    expect(component.find('button[title="Cut"]').exists()).toBe(true);
     expect(component.text()).not.toContain('Open in cut');
     expect(component.text()).not.toContain('Open as tab');
   });

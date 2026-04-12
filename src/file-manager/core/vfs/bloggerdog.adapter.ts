@@ -1,5 +1,6 @@
 import type { IFileSystemAdapter, VfsEntry } from './types';
 import { MAX_COPY_DEPTH } from '~/file-manager/core/rules';
+import { normalizeBloggerDogTextWrapperTitle } from '~/utils/bloggerdog-file-manager';
 import {
   createRemoteCollection,
   createRemoteMediaFsEntry,
@@ -850,8 +851,28 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
 
     const config = this.resolveConfig();
 
+    const sourceParentPath = normalizedSource.split('/').slice(0, -1).join('/') || '/';
+
     if (source.type === 'media' && source.mediaIndex === -1) {
-      throw new Error('Renaming text body separately is not supported');
+      if (sourceParentPath !== targetParentPath) {
+        throw new Error('Moving text wrappers between content items is not supported');
+      }
+
+      const nextTitle = normalizeBloggerDogTextWrapperTitle(newName);
+      if (!nextTitle) {
+        throw new Error('Invalid target name');
+      }
+
+      await updateRemoteItem({
+        config,
+        id: source.item!.id,
+        title: nextTitle,
+      });
+
+      const contentItemParentPath = sourceParentPath.split('/').slice(0, -1).join('/') || '/';
+      this.clearCache(sourceParentPath);
+      this.clearCache(contentItemParentPath);
+      return;
     }
 
     if (source.type === 'directory') {
@@ -883,7 +904,6 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
         groupId: targetGroupId,
       });
     } else {
-      const sourceParentPath = normalizedSource.split('/').slice(0, -1).join('/') || '/';
       if (sourceParentPath !== targetParentPath) {
         throw new Error('Moving media between content items is not supported');
       }
