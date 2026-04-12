@@ -263,89 +263,75 @@ export function useFileManagerActions(actions: FileManagerActions) {
   }
 
   async function openDeleteConfirmModal(entries: FsEntry[]) {
+    const deleteSnapshot = entries.map((entry) => ({ ...entry }));
     if (workspaceStore.userSettings.deleteWithoutConfirmation) {
-      deleteTargets.value = entries;
+      deleteTargets.value = deleteSnapshot;
       await handleDeleteConfirm();
       return;
     }
-    deleteTargets.value = entries;
+    deleteTargets.value = deleteSnapshot;
     isDeleteConfirmModalOpen.value = true;
   }
 
   async function handleDeleteConfirm() {
     if (deleteTargets.value.length === 0) return;
 
-    const pathsToDelete = new Set(deleteTargets.value.map((t) => t.path).filter(Boolean));
-    const namesToDelete = new Set(deleteTargets.value.map((t) => t.name));
+    const targetsToDelete = deleteTargets.value.map((target) => ({ ...target }));
+    const pathsToDelete = new Set(targetsToDelete.map((target) => target.path).filter(Boolean));
+    const namesToDelete = new Set(targetsToDelete.map((target) => target.name));
 
-    const parentPathsToReload = new Set<string>();
-    for (const target of deleteTargets.value) {
-      if (target.path) {
-        parentPathsToReload.add(getParentPath(target.path));
-      }
-      await actions.deleteEntry(target);
-    }
+    isDeleteConfirmModalOpen.value = false;
+    deleteTargets.value = [];
 
-    if (uiStore.selectedFsEntry?.path && pathsToDelete.has(uiStore.selectedFsEntry.path)) {
-      const currentFolder = fileManagerStore.selectedFolder;
-      if (currentFolder) {
-        actions.onFileSelect?.(currentFolder);
-      } else {
-        uiStore.selectedFsEntry = null;
-        selectionStore.clearSelection();
+    try {
+      for (const target of targetsToDelete) {
+        await actions.deleteEntry(target);
       }
-    } else {
-      const sel = selectionStore.selectedEntity;
-      if (sel?.source === 'fileManager') {
-        let shouldClear = false;
-        if (sel.kind === 'multiple') {
-          shouldClear = sel.entries.some((e) =>
-            e.path ? pathsToDelete.has(e.path) : namesToDelete.has(e.name),
-          );
+
+      if (uiStore.selectedFsEntry?.path && pathsToDelete.has(uiStore.selectedFsEntry.path)) {
+        const currentFolder = fileManagerStore.selectedFolder;
+        if (currentFolder) {
+          actions.onFileSelect?.(currentFolder);
         } else {
-          shouldClear = sel.path ? pathsToDelete.has(sel.path) : namesToDelete.has(sel.name);
+          uiStore.selectedFsEntry = null;
+          selectionStore.clearSelection();
         }
-        if (shouldClear) {
-          const currentFolder = fileManagerStore.selectedFolder;
-          if (currentFolder) {
-            actions.onFileSelect?.(currentFolder);
+      } else {
+        const sel = selectionStore.selectedEntity;
+        if (sel?.source === 'fileManager') {
+          let shouldClear = false;
+          if (sel.kind === 'multiple') {
+            shouldClear = sel.entries.some((entry) =>
+              entry.path ? pathsToDelete.has(entry.path) : namesToDelete.has(entry.name),
+            );
           } else {
-            selectionStore.clearSelection();
+            shouldClear = sel.path ? pathsToDelete.has(sel.path) : namesToDelete.has(sel.name);
+          }
+          if (shouldClear) {
+            const currentFolder = fileManagerStore.selectedFolder;
+            if (currentFolder) {
+              actions.onFileSelect?.(currentFolder);
+            } else {
+              selectionStore.clearSelection();
+            }
           }
         }
       }
-    }
 
-    for (const path of pathsToDelete) {
-      if (path?.toLowerCase().endsWith('.otio')) {
-        if (projectStore.currentTimelinePath === path) {
-          await projectStore.closeTimelineFile(path);
+      for (const path of pathsToDelete) {
+        if (path?.toLowerCase().endsWith('.otio')) {
+          if (projectStore.currentTimelinePath === path) {
+            await projectStore.closeTimelineFile(path);
+          }
+          removeFileTabByPath(path);
         }
-        removeFileTabByPath(path);
       }
+
+      actions.notifyFileManagerUpdate?.();
+      actions.onAfterDelete?.();
+    } finally {
+      deleteTargets.value = [];
     }
-
-    // Explicitly reload all affected parent directories and notify UI
-    for (const parentPath of parentPathsToReload) {
-      await actions.reloadDirectory(parentPath);
-    }
-    actions.notifyFileManagerUpdate?.();
-
-    actions.onAfterDelete?.();
-
-    setTimeout(() => {
-      isDeleteConfirmModalOpen.value = false;
-      setTimeout(() => {
-        deleteTargets.value = [];
-      }, 300);
-    }, 0);
-  }
-
-  function getParentPath(path?: string): string {
-    if (!path) return '';
-    const parts = path.split('/');
-    if (parts.length <= 1) return '';
-    return parts.slice(0, -1).join('/');
   }
 
   const fileActionHandlers: Record<
@@ -459,7 +445,8 @@ export function useFileManagerActions(actions: FileManagerActions) {
         reloadDirectory: actions.reloadDirectory,
         notifyFileManagerUpdate: actions.notifyFileManagerUpdate,
         setFileTreePathExpanded: actions.setFileTreePathExpanded,
-        onFileSelect: (entry) => selectionStore.selectFsEntryWithUiUpdate(entry, actions.instanceId),
+        onFileSelect: (entry) =>
+          selectionStore.selectFsEntryWithUiUpdate(entry, actions.instanceId),
         onFilesSelect: (entries) =>
           selectionStore.selectFsEntriesWithUiUpdate(entries, actions.instanceId),
         clearClipboardPayload: () => clipboardStore.clearClipboardPayload(),
