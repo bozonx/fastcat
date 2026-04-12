@@ -1,4 +1,4 @@
-import { ref, inject } from 'vue';
+import { ref, inject, nextTick } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
@@ -64,6 +64,19 @@ export function useAudioExtraction() {
 
     isExtracting.value = true;
     try {
+      const selectedEntityBeforeNavigation = selectionStore.selectedEntity;
+      const selectionContext = {
+        instanceId:
+          context.instanceId ??
+          (selectedEntityBeforeNavigation?.source === 'fileManager'
+            ? selectedEntityBeforeNavigation.instanceId
+            : undefined),
+        isExternal:
+          context.isExternal ??
+          (selectedEntityBeforeNavigation?.source === 'fileManager'
+            ? selectedEntityBeforeNavigation.isExternal
+            : undefined),
+      };
       const vfs = fileManager.vfs;
       const isExternal = context.isExternal === true;
 
@@ -182,27 +195,36 @@ export function useAudioExtraction() {
           : (projectStore.currentProjectName ?? '/'),
         parentPath: dirPath ? dirPath.split('/').slice(0, -1).join('/') || undefined : undefined,
       };
-      fileManagerStore.openFolder(folderEntry, { skipHistory: !dirPath });
+      fileManagerStore.openFolder(folderEntry, {
+        skipHistory: !dirPath,
+        selectionContext,
+      });
 
       uiStore.notifyFileManagerUpdate();
+      await nextTick();
 
       const newEntry =
         fileManager.findEntryByPath(targetPath) ??
-        (await fileManager.resolveEntryByPath(targetPath));
-      if (newEntry) {
-        const selectedEntity = selectionStore.selectedEntity;
-        const nextInstanceId =
-          context.instanceId ??
-          (selectedEntity?.source === 'fileManager' ? selectedEntity.instanceId : undefined);
-        const nextIsExternal =
-          context.isExternal ??
-          (selectedEntity?.source === 'fileManager' ? selectedEntity.isExternal : undefined);
+        (await fileManager.resolveEntryByPath(targetPath)) ??
+        ({
+          kind: 'file',
+          name: newFileName,
+          path: targetPath,
+          parentPath: dirPath || undefined,
+          source: entry.source ?? 'local',
+        } as FsEntry);
 
-        selectionStore.selectFsEntryWithUiUpdate(newEntry, nextInstanceId, nextIsExternal);
-
-        // Scroll the tree view to make the new entry visible
-        uiStore.triggerScrollToFileTreeEntry(targetPath);
+      selectionStore.selectFsEntryWithUiUpdate(
+        newEntry,
+        selectionContext.instanceId,
+        selectionContext.isExternal,
+      );
+      if (typeof fileManagerStore.selectItem === 'function') {
+        fileManagerStore.selectItem(newEntry, selectionContext);
       }
+
+      // Scroll the tree view to make the new entry visible
+      uiStore.triggerScrollToFileTreeEntry(targetPath);
     } catch (err: any) {
       console.error('Audio extraction failed', err);
       toast.add({
