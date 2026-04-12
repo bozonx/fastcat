@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { useFileBrowserPersistenceStore } from '~/stores/file-manager.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 
@@ -12,7 +11,6 @@ import SttIntegrationSection from './integrations/SttIntegrationSection.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
-const fileBrowserPersistence = useFileBrowserPersistenceStore();
 const route = useRoute();
 const router = useRouter();
 
@@ -79,7 +77,9 @@ watch(
   () => workspaceStore.userSettings?.integrations?.fastcatAccount?.bearerToken,
   (token) => {
     if (token && token.trim().length > 0) {
-      fileBrowserPersistence.setFilesPageActiveTab('fastcat');
+      workspaceStore.batchUpdateWorkspaceState((draft) => {
+        draft.fileBrowser.activeTab = 'fastcat';
+      });
     }
   }
 );

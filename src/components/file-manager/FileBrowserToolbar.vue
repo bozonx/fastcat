@@ -2,7 +2,6 @@
 import { computed, inject } from 'vue';
 import {
   useFileManagerStore,
-  useFileBrowserPersistenceStore,
   type FileSortField,
 } from '~/stores/file-manager.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -37,7 +36,6 @@ const { t } = useI18n();
 const fileManagerStore =
   (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
   useFileManagerStore();
-const persistenceStore = useFileBrowserPersistenceStore();
 const uiStore = useUiStore();
 
 const sortFields: { label: string; value: FileSortField }[] = [
@@ -201,11 +199,7 @@ const toolbarMenuItems = computed(() => {
         @update:model-value="
           (v: number) => {
             const size = gridSizes[v] || 80;
-            if (props.isRemotePanel) {
-              persistenceStore.setBloggerDogGridCardSize(size);
-            } else {
-              fileManagerStore.setGridCardSize(size);
-            }
+            fileManagerStore.setGridCardSize(size);
           }
         "
       />

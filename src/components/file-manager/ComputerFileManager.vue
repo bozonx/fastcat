@@ -13,7 +13,6 @@ import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import type { FsEntry } from '~/types/fs';
 import {
   useFileManagerStore,
-  useFileBrowserPersistenceStore,
   type FileViewMode,
 } from '~/stores/file-manager.store';
 
@@ -25,7 +24,6 @@ const props = defineProps<{
 const fileManagerStore =
   (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
   useFileManagerStore();
-const persistenceStore = useFileBrowserPersistenceStore();
 const instanceId = props.instanceId || 'computer';
 const workspaceStore = useWorkspaceStore();
 const selectionStore = useSelectionStore();
@@ -98,22 +96,21 @@ fileManagerStore.setSelectionContext({
 
 provide(FILE_MANAGER_INJECTION_KEY, fileManager);
 
-// Persist the last visited folder for session restoration
-watch(
-  () => fileManagerStore.selectedFolder,
-  (folder) => persistenceStore.setComputerLastFolder(folder),
-);
+// Persistence of the last visited folder is now handled internally by fileManagerStore + WorkspaceStore
 
 onMounted(async () => {
   let restored = false;
 
-  const lastFolder = persistenceStore.computerLastFolder;
-  if (lastFolder) {
+  // Restore last folder from workspace state if available
+  const contextId = 'editor'; // or whatever the store context is
+  const lastPath = workspaceStore.workspaceState.fileBrowser.instances[contextId]?.lastPath;
+  
+  if (lastPath) {
     try {
       // Validate the folder still exists before restoring navigation
-      const exists = await vfs.value?.exists(lastFolder.path);
+      const exists = await vfs.value?.exists(lastPath);
       if (exists) {
-        fileManagerStore.openFolder(lastFolder, { skipHistory: true });
+        fileManagerStore.openFolderByPath(lastPath);
         restored = true;
       }
     } catch (e) {

@@ -9,7 +9,6 @@ import {
   useFilesPageFileManagerStore,
   useComputerSidebarStore,
   useBloggerDogSidebarStore,
-  useFileBrowserPersistenceStore,
 } from '~/stores/file-manager.store';
 import FileManagerStoreProvider from '~/components/file-manager/FileManagerStoreProvider.vue';
 import { useProjectStore } from '~/stores/project.store';
@@ -41,14 +40,19 @@ const runtimeConfig = useRuntimeConfig();
 const mainStore = useFilesPageFileManagerStore();
 const computerSidebarStore = useComputerSidebarStore();
 const bloggerDogSidebarStore = useBloggerDogSidebarStore();
-const persistenceStore = useFileBrowserPersistenceStore();
 const focusStore = useFocusStore();
 
 const activeSidebarStore = computed(() =>
-  persistenceStore.filesPageActiveTab === 'computer'
+  workspaceStore.workspaceState.fileBrowser.activeTab === 'computer'
     ? computerSidebarStore
     : bloggerDogSidebarStore,
 );
+
+function setFilesPageActiveTab(tab: 'computer' | 'bloggerdog' | 'fastcat') {
+  workspaceStore.batchUpdateWorkspaceState((draft) => {
+    draft.fileBrowser.activeTab = tab;
+  });
+}
 
 provide('fileManagerStore', mainStore);
 
@@ -113,7 +117,7 @@ const normalizedSelectedEntity = computed(() => {
     };
   }
 
-  if (persistenceStore.filesPageActiveTab === 'computer') {
+  if (workspaceStore.workspaceState.fileBrowser.activeTab === 'computer') {
     return {
       ...entity,
       isExternal: true,
@@ -176,11 +180,11 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
       >
         <div class="flex items-center gap-1 p-2 border-b border-ui-border bg-ui-bg-accent/10">
           <UButton
-            :color="persistenceStore.filesPageActiveTab === 'computer' ? 'primary' : 'neutral'"
-            :variant="persistenceStore.filesPageActiveTab === 'computer' ? 'soft' : 'ghost'"
+            :color="workspaceStore.workspaceState.fileBrowser.activeTab === 'computer' ? 'primary' : 'neutral'"
+            :variant="workspaceStore.workspaceState.fileBrowser.activeTab === 'computer' ? 'soft' : 'ghost'"
             size="xs"
             class="flex-1 justify-center truncate"
-            @click="persistenceStore.setFilesPageActiveTab('computer')"
+            @click="setFilesPageActiveTab('computer')"
           >
             {{
               workspaceStore.workspaceProviderId === 'tauri'
@@ -189,18 +193,18 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
             }}
           </UButton>
           <UButton
-            :color="persistenceStore.filesPageActiveTab === 'bloggerdog' ? 'primary' : 'neutral'"
-            :variant="persistenceStore.filesPageActiveTab === 'bloggerdog' ? 'soft' : 'ghost'"
+            :color="workspaceStore.workspaceState.fileBrowser.activeTab === 'bloggerdog' ? 'primary' : 'neutral'"
+            :variant="workspaceStore.workspaceState.fileBrowser.activeTab === 'bloggerdog' ? 'soft' : 'ghost'"
             size="xs"
             class="flex-1 justify-center truncate"
-            @click="persistenceStore.setFilesPageActiveTab('bloggerdog')"
+            @click="setFilesPageActiveTab('bloggerdog')"
           >
             Bloggerdog
           </UButton>
         </div>
 
         <FileManagerStoreProvider :store="activeSidebarStore">
-          <template v-if="persistenceStore.filesPageActiveTab === 'computer'">
+          <template v-if="workspaceStore.workspaceState.fileBrowser.activeTab === 'computer'">
             <ComputerFileManager instance-id="sidebar" hide-focus-frame />
           </template>
           <template v-else>
