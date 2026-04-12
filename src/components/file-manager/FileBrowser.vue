@@ -25,6 +25,7 @@ import { useFileBrowserRemote } from '~/composables/file-manager/useFileBrowserR
 import { useFileBrowserNavigation } from '~/composables/file-manager/useFileBrowserNavigation';
 import { useSttTranscription } from '~/composables/file-manager/useSttTranscription';
 import { useFileBrowserFileActions } from '~/composables/file-manager/useFileBrowserFileActions';
+import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
 import { useFocusableListNavigation } from '~/composables/file-manager/useFocusableListNavigation';
 import { useFileBrowserPendingActions } from '~/composables/file-manager/useFileBrowserPendingActions';
 import { useFileBrowserCreateActions } from '~/composables/file-manager/useFileBrowserCreateActions';
@@ -101,6 +102,7 @@ const vfs = props.vfs || fileManager.vfs;
 clipboardStore.registerFileManagerVfs(instanceId, vfs);
 
 const conversionStore = useFileConversionStore();
+const { extractAudio } = useAudioExtraction();
 
 // --- STT ---
 const stt = useSttTranscription({
@@ -624,6 +626,7 @@ const { onFileAction } = useFileBrowserFileActions({
   onFileActionBase,
   conversionStore,
   openTranscriptionModal,
+  extractAudio: (entry) => extractAudio(entry, { instanceId, isExternal: isExternal.value }),
   vfs,
 });
 

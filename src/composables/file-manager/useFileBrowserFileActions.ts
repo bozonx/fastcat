@@ -2,7 +2,6 @@ import type { Ref } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
-import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
 import type { FsEntry } from '~/types/fs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
@@ -15,6 +14,7 @@ export function useFileBrowserFileActions({
   onFileActionBase,
   conversionStore,
   openTranscriptionModal,
+  extractAudio,
   vfs,
 }: {
   folderEntries: Ref<FsEntry[]>;
@@ -26,13 +26,13 @@ export function useFileBrowserFileActions({
   ) => Promise<void>;
   conversionStore: { openConversionModal: (entry: FsEntry) => void };
   openTranscriptionModal: (entry: FsEntry) => void;
+  extractAudio: (entry: FsEntry) => Promise<void>;
   vfs: IFileSystemAdapter;
 }) {
   const projectStore = useProjectStore();
   const uiStore = useUiStore();
   const proxyStore = useProxyStore();
   const { addFileTab, setActiveTab } = useProjectTabsStore();
-  const { extractAudio } = useAudioExtraction();
 
   function handleBatchAction(action: string, entries: FsEntry[]): boolean {
     const delegated: FmFileAction[] = [
