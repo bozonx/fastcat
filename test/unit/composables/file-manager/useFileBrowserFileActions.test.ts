@@ -114,4 +114,23 @@ describe('useFileBrowserFileActions', () => {
 
     expect(uiStore.pendingFsEntryCreateTimeline).toBe(entry);
   });
+
+  it('passes external context into file conversion modal', async () => {
+    const openConversionModal = vi.fn();
+    const { onFileAction } = useFileBrowserFileActions({
+      folderEntries: ref([]),
+      loadFolderContent: vi.fn(),
+      onFileActionBase: vi.fn(),
+      conversionStore: { openConversionModal },
+      openTranscriptionModal: vi.fn(),
+      extractAudio: audioExtraction.extractAudio,
+      vfs: {} as any,
+      isExternal: true,
+    });
+
+    const entry = { kind: 'file', name: 'test.mp4', path: '/test.mp4' } as FsEntry;
+    await onFileAction('convertFile', entry);
+
+    expect(openConversionModal).toHaveBeenCalledWith(entry, { isExternal: true });
+  });
 });

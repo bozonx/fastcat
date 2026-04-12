@@ -25,11 +25,54 @@ export async function executeMediaConversion(params: {
   targetHandle: FileSystemFileHandle;
   taskId: string;
   backgroundTaskId: string;
+  isExternal: boolean;
   isCancelRequested: () => boolean;
 }) {
   const projectStore = useProjectStore();
   const workspaceStore = useWorkspaceStore();
   const backgroundTasksStore = useBackgroundTasksStore();
+
+  async function getWorkspaceFileHandle(
+    path: string,
+    options?: { create?: boolean },
+  ): Promise<FileSystemFileHandle | null> {
+    const workspaceHandle = workspaceStore.workspaceHandle;
+    if (!workspaceHandle) return null;
+
+    const parts = path.split('/').filter(Boolean);
+    const fileName = parts.pop();
+    if (!fileName) return null;
+
+    try {
+      let currentDir = workspaceHandle;
+      for (const part of parts) {
+        currentDir = await currentDir.getDirectoryHandle(part, {
+          create: options?.create ?? false,
+        });
+      }
+
+      return await currentDir.getFileHandle(fileName, {
+        create: options?.create ?? false,
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  async function getSourceFile(path: string): Promise<File | null> {
+    if (params.isExternal) {
+      const workspaceFileHandle = await getWorkspaceFileHandle(path);
+      if (workspaceFileHandle) {
+        try {
+          return await workspaceFileHandle.getFile();
+        } catch {
+          // Fall through to projectStore fallback below.
+        }
+      }
+    }
+
+    return await projectStore.getFileByPath(path);
+  }
 
   return addMediaTask(
     async () => {
@@ -55,8 +98,11 @@ export async function executeMediaConversion(params: {
           getCurrentProjectId: () => projectStore.currentProjectId,
           getWorkspaceHandle: () => workspaceStore.workspaceHandle,
           getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
-          getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
-          getFileByPath: async (path) => projectStore.getFileByPath(path),
+          getFileHandleByPath: async (path) =>
+            params.isExternal
+              ? ((await getWorkspaceFileHandle(path)) ?? projectStore.getFileHandleByPath(path))
+              : projectStore.getFileHandleByPath(path),
+          getFileByPath: async (path) => await getSourceFile(path),
           onExportProgress: () => {},
         }),
       );
@@ -76,7 +122,7 @@ export async function executeMediaConversion(params: {
       });
 
       try {
-        const sourceFile = await projectStore.getFileByPath(params.request.entry.path);
+        const sourceFile = await getSourceFile(params.request.entry.path);
         if (!sourceFile) throw new Error('Failed to access source file');
 
         const meta = await Promise.race([

@@ -190,7 +190,7 @@ const topActions = computed(() => {
       label: t('videoEditor.fileManager.actions.convertFile'),
       icon: 'lucide:replace',
       onClick: () => {
-        conversionStore.openConversionModal(entry);
+        conversionStore.openConversionModal(entry, { isExternal: true });
       },
     });
   }

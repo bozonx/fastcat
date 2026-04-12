@@ -52,6 +52,21 @@ vi.mock('~/stores/workspace.store', () => ({
         defaultStaticClipDurationUs: 5000000,
       },
     },
+    workspaceState: {
+      fileBrowser: {
+        activeTab: 'computer',
+        instances: new Proxy(
+          {},
+          {
+            get: () => ({
+              viewMode: 'list',
+              sortOption: { field: 'name', order: 'asc' },
+              gridCardSize: 64,
+            }),
+          },
+        ),
+      },
+    },
   })),
 }));
 
@@ -175,11 +190,13 @@ describe('FileManagerFiles', () => {
       rootEntries: [{ name: 'a' }] as any,
     });
 
+    useEditorHotkeys();
+
     const uiStore = useUiStore();
     const focusStore = useFocusStore();
     const initialTrigger = uiStore.fileTreeSelectAllTrigger;
 
-    focusStore.setPanelFocus('left');
+    focusStore.setPanelFocus('files-sidebar');
     await nextTick();
     await nextTick();
 

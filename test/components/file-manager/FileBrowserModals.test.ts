@@ -12,6 +12,11 @@ describe('FileBrowserModals', () => {
       props: {
         isDeleteConfirmModalOpen: true,
         deleteTargets: [{ name: 'test.mp4', path: 'test.mp4', kind: 'file' }] as any,
+        isModelReady: true,
+        isFolderModalOpen: false,
+        folderDefaultName: 'New folder',
+        isSubgroupModalOpen: false,
+        isItemModalOpen: false,
         remoteTransferOpen: false,
         remoteTransferProgress: 0,
         remoteTransferPhase: '',
@@ -44,6 +49,11 @@ describe('FileBrowserModals', () => {
           { name: '1.mp4', path: '1.mp4', kind: 'file' },
           { name: '2.mp4', path: '2.mp4', kind: 'file' },
         ] as any,
+        isModelReady: true,
+        isFolderModalOpen: false,
+        folderDefaultName: 'New folder',
+        isSubgroupModalOpen: false,
+        isItemModalOpen: false,
         remoteTransferOpen: false,
         remoteTransferProgress: 0,
         remoteTransferPhase: '',
@@ -65,6 +75,6 @@ describe('FileBrowserModals', () => {
       },
     });
 
-    expect(wrapper.text()).toContain('2 items selected');
+    expect(wrapper.text()).toContain('2 common.itemsSelected');
   });
 });

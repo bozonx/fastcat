@@ -13,6 +13,10 @@ const mockProjectStore = {
   getDirectoryHandleByPath: vi.fn(),
 };
 
+const mockWorkspaceStore = {
+  workspaceHandle: null,
+};
+
 const mockFileManager = {
   vfs: {
     getFile: vi.fn(),
@@ -35,6 +39,10 @@ const mockBackgroundTasksStore = {
 
 vi.mock('~/stores/project.store', () => ({
   useProjectStore: () => mockProjectStore,
+}));
+
+vi.mock('~/stores/workspace.store', () => ({
+  useWorkspaceStore: () => mockWorkspaceStore,
 }));
 
 vi.mock('~/stores/background-tasks.store', () => ({
@@ -82,6 +90,7 @@ describe('useFileConversionActions', () => {
   const createProps = (mediaTypeVal: 'video' | 'audio' | 'image' | 'unknown') => {
     return {
       targetEntry: ref(null),
+      targetIsExternal: ref(false),
       mediaType: ref(mediaTypeVal) as any,
       videoSettings: {
         format: 'mp4',
@@ -240,7 +249,7 @@ describe('useFileConversionActions', () => {
 
     expect(mockFileManager.vfs.getFile).toHaveBeenCalledWith('/test.png');
     expect(mockFileManager.vfs.writeFile).toHaveBeenCalledWith(
-      'test_converted.webp',
+      '/test_converted.webp',
       expect.any(Blob),
     );
     expect(mockProjectStore.getFileByPath).not.toHaveBeenCalled();

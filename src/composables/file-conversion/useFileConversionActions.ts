@@ -2,12 +2,12 @@ import type { Ref, ComputedRef } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { useProjectStore } from '~/stores/project.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { getExportWorkerClient, restartExportWorker } from '~/utils/video-editor/worker-client';
 import type { ConversionRequest } from '~/types/conversion';
-import { dirname } from '~/utils/path';
 import {
   clampPositiveNumber,
   createConversionTaskId,
@@ -35,6 +35,7 @@ const METADATA_TIMEOUT_MS = 15000;
 
 interface UseFileConversionActionsProps {
   targetEntry: Ref<FsEntry | null>;
+  targetIsExternal: Ref<boolean>;
   mediaType: ComputedRef<'video' | 'audio' | 'image' | 'text' | 'timeline' | 'unknown' | null>;
   videoSettings: {
     format: 'mp4' | 'webm' | 'mkv';
@@ -85,9 +86,63 @@ interface UseFileConversionActionsProps {
 
 export function useFileConversionActions(props: UseFileConversionActionsProps) {
   const projectStore = useProjectStore();
+  const workspaceStore = useWorkspaceStore();
   const fileManager = useFileManager();
   const uiStore = useUiStore();
   const backgroundTasksStore = useBackgroundTasksStore();
+
+  function getSiblingTarget(
+    entryPath: string,
+    fileName: string,
+  ): { dirPath: string; filePath: string } {
+    const separatorIndex = entryPath.lastIndexOf('/');
+    if (separatorIndex < 0) {
+      return {
+        dirPath: '',
+        filePath: fileName,
+      };
+    }
+
+    if (separatorIndex === 0) {
+      return {
+        dirPath: '/',
+        filePath: `/${fileName}`,
+      };
+    }
+
+    const dirPath = entryPath.slice(0, separatorIndex);
+    return {
+      dirPath,
+      filePath: `${dirPath}/${fileName}`,
+    };
+  }
+
+  async function getWorkspaceFileHandle(
+    path: string,
+    options?: { create?: boolean },
+  ): Promise<FileSystemFileHandle | null> {
+    const workspaceHandle = workspaceStore.workspaceHandle;
+    if (!workspaceHandle) return null;
+
+    const parts = path.split('/').filter(Boolean);
+    const fileName = parts.pop();
+    if (!fileName) return null;
+
+    try {
+      let currentDir = workspaceHandle;
+      for (const part of parts) {
+        currentDir = await currentDir.getDirectoryHandle(part, {
+          create: options?.create ?? false,
+        });
+      }
+
+      return await currentDir.getFileHandle(fileName, {
+        create: options?.create ?? false,
+      });
+    } catch {
+      return null;
+    }
+  }
 
   function syncAudioOnlyCodecWithFormat() {
     props.audioSettings.onlyCodec = props.audioSettings.onlyFormat;
@@ -128,10 +183,11 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
     return await projectStore.getFileByPath(path);
   }
 
-  async function openConversionModal(entry: FsEntry) {
+  async function openConversionModal(entry: FsEntry, options?: { isExternal?: boolean }) {
     const requestId = props.conversionModalRequestId.value + 1;
     props.conversionModalRequestId.value = requestId;
     props.targetEntry.value = entry;
+    props.targetIsExternal.value = options?.isExternal === true;
 
     const mediaCategory = getMediaTypeFromFilename(entry.name);
 
@@ -172,8 +228,10 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           return;
 
         if (meta?.video) {
-          props.videoSettings.width = Math.round((Number(meta.video.width) || DEFAULT_VIDEO_WIDTH) / 2) * 2;
-          props.videoSettings.height = Math.round((Number(meta.video.height) || DEFAULT_VIDEO_HEIGHT) / 2) * 2;
+          props.videoSettings.width =
+            Math.round((Number(meta.video.width) || DEFAULT_VIDEO_WIDTH) / 2) * 2;
+          props.videoSettings.height =
+            Math.round((Number(meta.video.height) || DEFAULT_VIDEO_HEIGHT) / 2) * 2;
           props.videoSettings.fps = clampPositiveNumber(Number(meta.video.fps), DEFAULT_VIDEO_FPS);
           props.videoSettings.isCustomResolution = true;
 
@@ -337,12 +395,12 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
         ? props.audioSettings.originalSampleRate
         : clampPositiveNumber(Number(props.audioSettings.sampleRate), 0);
 
-    const dirPath = dirname(entry.path);
+    const target = getSiblingTarget(entry.path, `${baseName}_converted.${newExt}`);
 
     const request: ConversionRequest = {
       entry,
       type,
-      dirPath,
+      dirPath: target.dirPath,
       newFileName: `${baseName}_converted.${newExt}`,
       sharedAudio: {
         channels: props.audioSettings.channels,
@@ -399,18 +457,24 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
       const entry = props.targetEntry.value;
       const request = buildConversionRequest(entry);
       const taskId = createConversionTaskId();
+      const target = getSiblingTarget(entry.path, request.newFileName);
 
       createdFileName = request.newFileName;
       dirPath = request.dirPath;
-      createdFilePath = dirPath ? `${dirPath}/${request.newFileName}` : request.newFileName;
+      createdFilePath = target.filePath;
 
       if (request.type === 'video' || request.type === 'audio') {
-        const dirHandle = await projectStore.getDirectoryHandleByPath(dirPath);
-        if (!dirHandle) throw new Error('Target directory not found');
+        const targetHandle = props.targetIsExternal.value
+          ? await getWorkspaceFileHandle(createdFilePath, { create: true })
+          : await (async () => {
+              const dirHandle = await projectStore.getDirectoryHandleByPath(dirPath);
+              if (!dirHandle) return null;
 
-        createdDirHandle = dirHandle;
+              createdDirHandle = dirHandle;
+              return await dirHandle.getFileHandle(request.newFileName, { create: true });
+            })();
+        if (!targetHandle) throw new Error('Target directory not found');
 
-        const targetHandle = await dirHandle.getFileHandle(request.newFileName, { create: true });
         const title = `Converting: ${entry.name}`;
         const bgTaskId = backgroundTasksStore.addTask({
           type: 'conversion',
@@ -431,6 +495,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           targetHandle,
           taskId,
           backgroundTaskId: bgTaskId,
+          isExternal: props.targetIsExternal.value,
           isCancelRequested: () => {
             const task = backgroundTasksStore.tasks.find((item) => item.id === bgTaskId);
             return task?.status === 'cancelled';
