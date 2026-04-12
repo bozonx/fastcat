@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mount } from '@vue/test-utils';
-import { reactive, ref } from 'vue';
+import { reactive } from 'vue';
 import FileBrowserViewList from '~/components/file-manager/FileBrowserViewList.vue';
 
 const mockFilesPageStore = reactive({
@@ -29,11 +29,27 @@ const mockFileManager = {
   mediaCache: { hasProxy: vi.fn(() => false) },
 };
 
+const mockProjectStore = reactive({
+  currentTimelinePath: null as string | null,
+});
+
+const mockFileManagerStore = reactive({
+  columnWidths: { name: 200, type: 100, size: 80, created: 140, modified: 140 },
+  sortOption: { field: 'name', order: 'asc' },
+});
+
 vi.mock('~/stores/files-page.store', () => ({ useFilesPageStore: () => mockFilesPageStore }));
+vi.mock('~/stores/file-manager.store', () => ({
+  useFileManagerStore: () => mockFileManagerStore,
+}));
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelectionStore }));
 vi.mock('~/stores/proxy.store', () => ({ useProxyStore: () => mockProxyStore }));
 vi.mock('~/stores/timeline-media-usage.store', () => ({
   useTimelineMediaUsageStore: () => mockTimelineMediaUsageStore,
+}));
+vi.mock('~/stores/project.store', () => ({ useProjectStore: () => mockProjectStore }));
+vi.mock('~/stores/media.store', () => ({
+  useMediaStore: () => ({ metadataLoadFailed: {} }),
 }));
 vi.mock('~/composables/file-manager/useFileManager', () => ({
   useFileManager: () => mockFileManager,
@@ -48,6 +64,10 @@ describe('FileBrowserViewList', () => {
     mockSelectionStore.selectedEntity = null;
     mockProxyStore.generatingProxies.clear();
     mockProxyStore.proxyProgress.clear();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('renders entries in a table', () => {
@@ -118,5 +138,85 @@ describe('FileBrowserViewList', () => {
 
     const tr = wrapper.find('tr[data-entry-path="test.mp4"]');
     expect(tr.classes()).toContain('ring-1');
+  });
+
+  it('starts rename on single click on selected entry name', async () => {
+    vi.useFakeTimers();
+
+    const entry = { name: 'test.mp4', kind: 'file', path: 'test.mp4', size: 1024 };
+    mockSelectionStore.selectedEntity = {
+      source: 'fileManager',
+      kind: 'file',
+      path: 'test.mp4',
+      entry,
+    };
+
+    const wrapper = mount(FileBrowserViewList, {
+      props: {
+        entries: [entry] as any,
+        dragOverEntryPath: null,
+        currentDragOperation: null,
+        folderSizesLoading: {},
+        folderSizes: {},
+        editingEntryPath: null,
+        folderEntriesNames: [],
+        getContextMenuItems: () => [],
+        isGeneratingProxyInDirectory: () => false,
+      },
+      global: {
+        stubs: {
+          UContextMenu: { template: '<div><slot /></div>' },
+          UIcon: true,
+          UiProgressSpinner: true,
+          InlineNameEditor: true,
+        },
+      },
+    });
+
+    await wrapper.find('span[title="test.mp4"]').trigger('click', { detail: 1 });
+    vi.advanceTimersByTime(250);
+
+    expect(wrapper.emitted('fileAction')).toEqual([[ 'rename', entry ]]);
+  });
+
+  it('does not start rename on double click on selected entry name', async () => {
+    vi.useFakeTimers();
+
+    const entry = { name: 'test.mp4', kind: 'file', path: 'test.mp4', size: 1024 };
+    mockSelectionStore.selectedEntity = {
+      source: 'fileManager',
+      kind: 'file',
+      path: 'test.mp4',
+      entry,
+    };
+
+    const wrapper = mount(FileBrowserViewList, {
+      props: {
+        entries: [entry] as any,
+        dragOverEntryPath: null,
+        currentDragOperation: null,
+        folderSizesLoading: {},
+        folderSizes: {},
+        editingEntryPath: null,
+        folderEntriesNames: [],
+        getContextMenuItems: () => [],
+        isGeneratingProxyInDirectory: () => false,
+      },
+      global: {
+        stubs: {
+          UContextMenu: { template: '<div><slot /></div>' },
+          UIcon: true,
+          UiProgressSpinner: true,
+          InlineNameEditor: true,
+        },
+      },
+    });
+
+    const name = wrapper.find('span[title="test.mp4"]');
+    await name.trigger('click', { detail: 1 });
+    await name.trigger('dblclick');
+    vi.advanceTimersByTime(250);
+
+    expect(wrapper.emitted('fileAction')).toBeUndefined();
   });
 });

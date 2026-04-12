@@ -109,12 +109,12 @@ function onNameClick(event: MouseEvent, entry: FsEntry) {
 
   if (event.detail === 1) {
     renameTimer = setTimeout(() => {
-      emit('fileAction', entry);
+      emit('fileAction', 'rename', entry);
     }, 250);
   }
 }
 
-function onNameDblClick(event: MouseEvent, entry: FsEntry) {
+function onNameDblClick() {
   if (renameTimer) {
     clearTimeout(renameTimer);
     renameTimer = null;

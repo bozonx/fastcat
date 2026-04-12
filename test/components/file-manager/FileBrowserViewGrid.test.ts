@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mount } from '@vue/test-utils';
-import { reactive, ref } from 'vue';
+import { reactive } from 'vue';
 import FileBrowserViewGrid from '~/components/file-manager/FileBrowserViewGrid.vue';
 
 const mockFilesPageStore = reactive({
@@ -28,12 +28,23 @@ const mockFileManager = {
   mediaCache: { hasProxy: vi.fn(() => false) },
 };
 
+const mockProjectStore = reactive({
+  currentTimelinePath: null as string | null,
+});
+
+const mockFileManagerStore = reactive({});
+
 vi.mock('~/stores/files-page.store', () => ({ useFilesPageStore: () => mockFilesPageStore }));
+vi.mock('~/stores/file-manager.store', () => ({
+  useFileManagerStore: () => mockFileManagerStore,
+}));
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelectionStore }));
 vi.mock('~/stores/proxy.store', () => ({ useProxyStore: () => mockProxyStore }));
 vi.mock('~/stores/timeline-media-usage.store', () => ({
   useTimelineMediaUsageStore: () => mockTimelineMediaUsageStore,
 }));
+vi.mock('~/stores/project.store', () => ({ useProjectStore: () => mockProjectStore }));
+vi.mock('~/stores/media.store', () => ({ useMediaStore: () => ({}) }));
 vi.mock('~/composables/file-manager/useFileManager', () => ({
   useFileManager: () => mockFileManager,
 }));
@@ -47,6 +58,10 @@ describe('FileBrowserViewGrid', () => {
     mockSelectionStore.selectedEntity = null;
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('renders entries in a grid', () => {
     const entry = { name: 'test.mp4', kind: 'file', path: 'test.mp4', size: 1024 };
 
@@ -57,6 +72,7 @@ describe('FileBrowserViewGrid', () => {
         dragOverEntryPath: null,
         currentDragOperation: null,
         currentGridSizeName: 'm',
+        currentGridCardSize: 130,
         editingEntryPath: null,
         folderEntriesNames: [],
         getContextMenuItems: () => [],
@@ -92,6 +108,7 @@ describe('FileBrowserViewGrid', () => {
         dragOverEntryPath: null,
         currentDragOperation: null,
         currentGridSizeName: 'm',
+        currentGridCardSize: 130,
         editingEntryPath: null,
         folderEntriesNames: [],
         getContextMenuItems: () => [],
@@ -109,5 +126,85 @@ describe('FileBrowserViewGrid', () => {
 
     const el = wrapper.find('[data-entry-path="test.mp4"]');
     expect(el.classes()).toContain('ring-1');
+  });
+
+  it('starts rename on single click on selected entry name', async () => {
+    vi.useFakeTimers();
+
+    const entry = { name: 'test.mp4', kind: 'file', path: 'test.mp4', size: 1024 };
+    mockSelectionStore.selectedEntity = {
+      source: 'fileManager',
+      kind: 'file',
+      path: 'test.mp4',
+      entry,
+    };
+
+    const wrapper = mount(FileBrowserViewGrid, {
+      props: {
+        entries: [entry] as any,
+        dragOverEntryPath: null,
+        currentDragOperation: null,
+        currentGridSizeName: 'm',
+        currentGridCardSize: 130,
+        editingEntryPath: null,
+        folderEntriesNames: [],
+        getContextMenuItems: () => [],
+        isGeneratingProxyInDirectory: () => false,
+      },
+      global: {
+        stubs: {
+          UContextMenu: { template: '<div><slot /></div>' },
+          UIcon: true,
+          UiProgressSpinner: true,
+          InlineNameEditor: true,
+        },
+      },
+    });
+
+    await wrapper.find('span[title="test.mp4"]').trigger('click', { detail: 1 });
+    vi.advanceTimersByTime(250);
+
+    expect(wrapper.emitted('fileAction')).toEqual([[ 'rename', entry ]]);
+  });
+
+  it('does not start rename on double click on selected entry name', async () => {
+    vi.useFakeTimers();
+
+    const entry = { name: 'test.mp4', kind: 'file', path: 'test.mp4', size: 1024 };
+    mockSelectionStore.selectedEntity = {
+      source: 'fileManager',
+      kind: 'file',
+      path: 'test.mp4',
+      entry,
+    };
+
+    const wrapper = mount(FileBrowserViewGrid, {
+      props: {
+        entries: [entry] as any,
+        dragOverEntryPath: null,
+        currentDragOperation: null,
+        currentGridSizeName: 'm',
+        currentGridCardSize: 130,
+        editingEntryPath: null,
+        folderEntriesNames: [],
+        getContextMenuItems: () => [],
+        isGeneratingProxyInDirectory: () => false,
+      },
+      global: {
+        stubs: {
+          UContextMenu: { template: '<div><slot /></div>' },
+          UIcon: true,
+          UiProgressSpinner: true,
+          InlineNameEditor: true,
+        },
+      },
+    });
+
+    const name = wrapper.find('span[title="test.mp4"]');
+    await name.trigger('click', { detail: 1 });
+    await name.trigger('dblclick');
+    vi.advanceTimersByTime(250);
+
+    expect(wrapper.emitted('fileAction')).toBeUndefined();
   });
 });
