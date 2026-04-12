@@ -7,16 +7,25 @@ import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 
+interface AudioExtractionSelectionContext {
+  instanceId?: string;
+  isExternal?: boolean;
+}
+
 export function useAudioExtraction() {
   const { t } = useI18n();
   const projectStore = useProjectStore();
   const workspaceStore = useWorkspaceStore();
   const fileManager = useFileManager();
   const toast = useToast();
+  const selectionStore = useSelectionStore();
 
   const isExtracting = ref(false);
 
-  async function extractAudio(entry: FsEntry) {
+  async function extractAudio(
+    entry: FsEntry,
+    context: AudioExtractionSelectionContext = {},
+  ) {
     if (isExtracting.value) return;
     if (!entry.path) return;
 
@@ -93,14 +102,19 @@ export function useAudioExtraction() {
       const uiStore = useUiStore();
       uiStore.notifyFileManagerUpdate();
 
-      // Find and select the newly created audio file
-      setTimeout(() => {
-        const newEntry = fileManager.findEntryByPath(targetPath);
-        if (newEntry) {
-          const selectionStore = useSelectionStore();
-          selectionStore.selectFsEntryWithUiUpdate(newEntry);
-        }
-      }, 150);
+      const newEntry =
+        fileManager.findEntryByPath(targetPath) ?? (await fileManager.resolveEntryByPath(targetPath));
+      if (newEntry) {
+        const selectedEntity = selectionStore.selectedEntity;
+        const nextInstanceId =
+          context.instanceId ??
+          (selectedEntity?.source === 'fileManager' ? selectedEntity.instanceId : undefined);
+        const nextIsExternal =
+          context.isExternal ??
+          (selectedEntity?.source === 'fileManager' ? selectedEntity.isExternal : undefined);
+
+        selectionStore.selectFsEntryWithUiUpdate(newEntry, nextInstanceId, nextIsExternal);
+      }
     } catch (err: any) {
       console.error('Audio extraction failed', err);
       toast.add({
