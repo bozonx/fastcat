@@ -3,10 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { useUiStore } from '~/stores/ui.store';
 
+const mockProjectStore = {
+  currentProjectId: 'p',
+};
+
 vi.mock('~/stores/project.store', () => ({
-  useProjectStore: () => ({
-    currentProjectId: 'p',
-  }),
+  useProjectStore: () => mockProjectStore,
 }));
 
 describe('ui.store file tree expanded paths', () => {
@@ -18,6 +20,7 @@ describe('ui.store file tree expanded paths', () => {
 
   it('removes descendants when collapsing a path', async () => {
     const ui = useUiStore();
+    ui.restoreFileTreeStateOnce(); // Initialize context for 'p' (from mock)
 
     ui.setFileTreePathExpanded('a', true);
     ui.setFileTreePathExpanded('a/b', true);
@@ -28,7 +31,7 @@ describe('ui.store file tree expanded paths', () => {
 
     expect(Object.keys(ui.fileTreeExpandedPaths)).toEqual(['x']);
 
-    vi.runAllTimers();
+    await vi.runAllTimersAsync();
 
     const raw = localStorage.getItem('fastcat:ui:file-tree:p');
     expect(raw).toBeTypeOf('string');
@@ -38,25 +41,24 @@ describe('ui.store file tree expanded paths', () => {
 
   it('isolates state between projects', async () => {
     const ui = useUiStore();
-    const projectStore = (await import('~/stores/project.store')).useProjectStore();
 
     // Project A
-    (projectStore as any).currentProjectId = 'project-a';
+    mockProjectStore.currentProjectId = 'project-a';
     ui.restoreFileTreeStateOnce(); // Initialize context for Project A
     ui.setFileTreePathExpanded('folder-a', true);
-    vi.runAllTimers();
+    await vi.runAllTimersAsync();
     
     const rawA = localStorage.getItem('fastcat:ui:file-tree:project-a');
     expect(rawA).not.toBeNull();
     expect(rawA).toContain('folder-a');
 
     // Project B
-    (projectStore as any).currentProjectId = 'project-b';
+    mockProjectStore.currentProjectId = 'project-b';
     ui.restoreFileTreeStateOnce(); // Emulate context switch, should clear memory state
     
     expect(ui.fileTreeExpandedPaths).toEqual({});
     ui.setFileTreePathExpanded('folder-b', true);
-    vi.runAllTimers();
+    await vi.runAllTimersAsync();
     
     const rawB = localStorage.getItem('fastcat:ui:file-tree:project-b');
     expect(rawB).not.toBeNull();
