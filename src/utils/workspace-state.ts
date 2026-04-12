@@ -1,5 +1,15 @@
 import type { CustomPreset } from './settings/presets';
 
+export interface FileBrowserInstanceState {
+  viewMode: 'grid' | 'list';
+  sortOption: {
+    field: 'name' | 'type' | 'size' | 'modified' | 'created';
+    order: 'asc' | 'desc';
+  };
+  gridCardSize: number;
+  lastPath?: string;
+}
+
 export interface WorkspaceState {
   presets: {
     custom: CustomPreset[];
@@ -9,6 +19,9 @@ export interface WorkspaceState {
   ui: {
     recentSearchQueries: string[];
     pinnedItems: string[];
+  };
+  fileBrowser: {
+    instances: Record<string, FileBrowserInstanceState>;
   };
 }
 
@@ -22,6 +35,9 @@ export function createDefaultWorkspaceState(): WorkspaceState {
     ui: {
       recentSearchQueries: [],
       pinnedItems: [],
+    },
+    fileBrowser: {
+      instances: {},
     },
   };
 }
@@ -50,6 +66,11 @@ export function normalizeWorkspaceState(data: any): WorkspaceState {
       pinnedItems: Array.isArray(data.ui?.pinnedItems)
         ? data.ui.pinnedItems
         : defaults.ui.pinnedItems,
+    },
+    fileBrowser: {
+      instances: (data.fileBrowser?.instances && typeof data.fileBrowser.instances === 'object')
+        ? data.fileBrowser.instances
+        : defaults.fileBrowser.instances,
     },
   };
 }

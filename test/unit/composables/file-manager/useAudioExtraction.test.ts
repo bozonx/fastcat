@@ -65,6 +65,7 @@ const fileManager = {
 
 const fileManagerStore = {
   openFolder: vi.fn(),
+  selectItem: vi.fn(),
 };
 
 vi.mock('~/utils/video-editor/worker-client', () => ({
@@ -126,6 +127,7 @@ describe('useAudioExtraction', () => {
     extractAudio.mockResolvedValue(undefined);
     workspaceStore.workspaceHandle = null;
     fileManagerStore.openFolder.mockReset();
+    fileManagerStore.selectItem.mockReset();
     selectionStore.selectedEntity = {
       source: 'fileManager',
       kind: 'file',
@@ -149,6 +151,10 @@ describe('useAudioExtraction', () => {
 
     expect(extractAudio).toHaveBeenCalledWith('media/clip.mp4', 'media/clip_extracted.m4a');
     expect(fileManager.reloadDirectory).toHaveBeenCalledWith('media');
+    expect(fileManagerStore.selectItem).toHaveBeenCalledWith(newEntry, {
+      instanceId: 'computer',
+      isExternal: true,
+    });
     expect(selectionStore.selectFsEntryWithUiUpdate).toHaveBeenCalledWith(
       newEntry,
       'computer',
@@ -191,8 +197,37 @@ describe('useAudioExtraction', () => {
     });
     expect(projectStore.getDirectoryHandleByPath).not.toHaveBeenCalled();
     expect(extractAudio).toHaveBeenCalledWith('media/clip.mp4', 'media/clip_extracted.m4a');
+    expect(fileManagerStore.selectItem).toHaveBeenCalledWith(newEntry, {
+      instanceId: 'computer',
+      isExternal: true,
+    });
     expect(selectionStore.selectFsEntryWithUiUpdate).toHaveBeenCalledWith(
       newEntry,
+      'computer',
+      true,
+    );
+  });
+
+  it('falls back to selecting the created audio file when tree refresh has not resolved it yet', async () => {
+    fileManager.findEntryByPath.mockReturnValueOnce(null);
+    fileManager.resolveEntryByPath.mockResolvedValueOnce(null);
+
+    const entry: FsEntry = {
+      kind: 'file',
+      name: 'clip.mp4',
+      path: 'media/clip.mp4',
+    };
+
+    const composable = useAudioExtraction();
+    await composable.extractAudio(entry, { isExternal: true, instanceId: 'computer' });
+
+    expect(selectionStore.selectFsEntryWithUiUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'file',
+        name: 'clip_extracted.m4a',
+        path: 'media/clip_extracted.m4a',
+        parentPath: 'media',
+      }),
       'computer',
       true,
     );

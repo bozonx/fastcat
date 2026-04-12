@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import {
   readLocalStorageJson,
   writeLocalStorageJson,
@@ -27,25 +28,34 @@ export type FilesPageTab = 'computer' | 'bloggerdog' | 'fastcat';
 function createFileManagerStoreSetup(contextId: string) {
   return () => {
     const selectionStore = useSelectionStore();
+    const workspaceStore = useWorkspaceStore();
+
     const selectedFolder = ref<FsEntry | null>(null);
     const historyStack = ref<FsEntry[]>([]);
     const futureStack = ref<FsEntry[]>([]);
     const folderSizes = ref<Record<string, number>>({});
     const isBloggerDogPanelVisible = ref(false);
 
+    // Load from WorkspaceState with localStorage fallback for migration
+    const workspaceInstance = computed(() => workspaceStore.workspaceState.fileBrowser.instances[contextId]);
+
     const viewMode = ref<FileViewMode>(
-      readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'viewMode'), 'grid'),
+      workspaceInstance.value?.viewMode ??
+      readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'viewMode'), 'grid')
     );
     const sortOption = ref<FileSortOption>(
+      workspaceInstance.value?.sortOption ??
       readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'sortOption'), {
         field: 'name',
         order: 'asc',
-      }),
+      })
     );
     const gridCardSize = ref<number>(
-      readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'gridCardSize'), 80),
+      workspaceInstance.value?.gridCardSize ??
+      readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'gridCardSize'), 80)
     );
 
+    // Keep column widths in localStorage as they are machine/resolution dependent
     const columnWidths = ref<Record<string, number>>(
       readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'columnWidths'), {
         name: 200,
@@ -57,19 +67,44 @@ function createFileManagerStoreSetup(contextId: string) {
     );
     const selectionContext = ref<FileManagerSelectionContext>({});
 
-    // Persist user preferences to localStorage (not navigation state)
-    watch(viewMode, (val) =>
-      writeLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'viewMode'), val),
-    );
-    watch(sortOption, (val) =>
-      writeLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'sortOption'), val),
-    );
-    watch(gridCardSize, (val) =>
-      writeLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'gridCardSize'), val),
-    );
+    // Watch for internal changes and update WorkspaceState
+    watch([viewMode, sortOption, gridCardSize, () => selectedFolder.value?.path], () => {
+      workspaceStore.batchUpdateWorkspaceState((draft) => {
+        if (!draft.fileBrowser.instances[contextId]) {
+          draft.fileBrowser.instances[contextId] = {
+            viewMode: viewMode.value,
+            sortOption: sortOption.value,
+            gridCardSize: gridCardSize.value,
+          };
+        }
+        const instance = draft.fileBrowser.instances[contextId]!;
+        instance.viewMode = viewMode.value;
+        instance.sortOption = sortOption.value;
+        instance.gridCardSize = gridCardSize.value;
+        if (selectedFolder.value?.path) {
+          instance.lastPath = selectedFolder.value.path;
+        }
+      });
+    }, { deep: true });
+
+    // Sync from WorkspaceState (e.g. if loaded from disk later or another component updates it)
+    watch(workspaceInstance, (val) => {
+      if (!val) return;
+      if (val.viewMode !== viewMode.value) viewMode.value = val.viewMode;
+      if (val.gridCardSize !== gridCardSize.value) gridCardSize.value = val.gridCardSize;
+      // We don't force-update sortOption here to avoid infinite loops or jitter, 
+      // but if needed we could implement a shallow compare
+    }, { deep: true });
+
+    // Still persist columnWidths to localStorage
     watch(columnWidths, (val) =>
       writeLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'columnWidths'), val),
     );
+
+    // Initial folder load from workspace
+    if (workspaceInstance.value?.lastPath && !selectedFolder.value) {
+      // Logic to restore folder by path will happen in the component or via openFolderByPath
+    }
 
     function setSelectionContext(context: FileManagerSelectionContext) {
       selectionContext.value = { ...context };
@@ -213,72 +248,8 @@ function createFileManagerStoreSetup(contextId: string) {
   };
 }
 
-export const useFileBrowserPersistenceStore = defineStore('fileBrowserPersistence', () => {
-  const bloggerDogGridCardSize = ref<number>(
-    readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.PERSISTENCE.BLOGGERDOG_GRID_SIZE, 100),
-  );
-  const computerGridCardSize = ref<number>(
-    readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.PERSISTENCE.COMPUTER_GRID_SIZE, 100),
-  );
-  const computerLastFolder = ref<FsEntry | null>(
-    readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.PERSISTENCE.COMPUTER_LAST_FOLDER, null),
-  );
-  const computerViewMode = ref<FileViewMode>(
-    readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.PERSISTENCE.COMPUTER_VIEW_MODE, 'list'),
-  );
-  const filesPageActiveTab = ref<FilesPageTab>(
-    readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.PERSISTENCE.ACTIVE_TAB, 'computer'),
-  );
-
-  watch(bloggerDogGridCardSize, (val) =>
-    writeLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.PERSISTENCE.BLOGGERDOG_GRID_SIZE, val),
-  );
-  watch(computerGridCardSize, (val) =>
-    writeLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.PERSISTENCE.COMPUTER_GRID_SIZE, val),
-  );
-  watch(computerLastFolder, (val) =>
-    writeLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.PERSISTENCE.COMPUTER_LAST_FOLDER, val),
-  );
-  watch(computerViewMode, (val) =>
-    writeLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.PERSISTENCE.COMPUTER_VIEW_MODE, val),
-  );
-  watch(filesPageActiveTab, (val) =>
-    writeLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.PERSISTENCE.ACTIVE_TAB, val),
-  );
-
-  function setBloggerDogGridCardSize(size: number) {
-    bloggerDogGridCardSize.value = size;
-  }
-
-  function setComputerGridCardSize(size: number) {
-    computerGridCardSize.value = size;
-  }
-
-  function setComputerLastFolder(entry: FsEntry | null) {
-    computerLastFolder.value = entry;
-  }
-
-  function setComputerViewMode(mode: FileViewMode) {
-    computerViewMode.value = mode;
-  }
-
-  function setFilesPageActiveTab(tab: FilesPageTab) {
-    filesPageActiveTab.value = tab;
-  }
-
-  return {
-    bloggerDogGridCardSize,
-    computerGridCardSize,
-    computerLastFolder,
-    computerViewMode,
-    filesPageActiveTab,
-    setBloggerDogGridCardSize,
-    setComputerGridCardSize,
-    setComputerLastFolder,
-    setComputerViewMode,
-    setFilesPageActiveTab,
-  };
-});
+// Legacy useFileBrowserPersistenceStore was removed. 
+// Use individual fileManager stores and WorkspaceStore instead.
 
 export type FileManagerStore = ReturnType<ReturnType<typeof createFileManagerStoreSetup>>;
 
