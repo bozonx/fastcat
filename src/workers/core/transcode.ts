@@ -184,6 +184,18 @@ export async function runTranscode(
   });
   const output = new Output({ target, format });
 
+  // WORKAROUND: mediabunny's Conversion._processVideoTrack accidentally passes rotation synchronously
+  // to addVideoTrack before its async block resets outputTrackRotation to 0.
+  // When exporting to MKV, this causes a crash since MKV doesn't support rotation metadata.
+  // We intercept addVideoTrack and strip the rotation.
+  const originalAddVideoTrack = (output as any).addVideoTrack.bind(output);
+  (output as any).addVideoTrack = (source: any, metadata: any = {}) => {
+    if (metadata.rotation && !(format as any).supportsVideoRotationMetadata) {
+      metadata.rotation = 0;
+    }
+    return originalAddVideoTrack(source, metadata);
+  };
+
   let conversionProcess: any = null;
   let outputCancelled = false;
 
