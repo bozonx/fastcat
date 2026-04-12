@@ -236,4 +236,45 @@ describe('useFileDrop', () => {
     expect(moveEntry).not.toHaveBeenCalled();
     expect(copyEntry).not.toHaveBeenCalled();
   });
+
+  it('prioritizes internal file-manager payload over native Files on drop', async () => {
+    const source: FsEntry = {
+      name: 'clip.mp4',
+      kind: 'file',
+      path: '_video/clip.mp4',
+    };
+    dragSourceFileManagerInstanceIdMock = 'main';
+
+    const handleFiles = vi.fn();
+    const moveEntry = vi.fn();
+
+    const { onRootDrop } = useFileDrop({
+      resolveEntryByPath: vi.fn(async () => source),
+      handleFiles,
+      moveEntry,
+      copyEntry: vi.fn(),
+      targetFileManagerInstanceId: 'main',
+      vfs: {} as any,
+    });
+
+    await onRootDrop({
+      stopPropagation: vi.fn(),
+      shiftKey: false,
+      dataTransfer: {
+        files: [{ name: 'clip.mp4' }],
+        types: ['Files', 'application/fastcat-file-manager-move'],
+        getData: vi.fn((type: string) =>
+          type === 'application/fastcat-file-manager-move'
+            ? JSON.stringify([{ path: '_video/clip.mp4' }])
+            : '',
+        ),
+      },
+    } as unknown as DragEvent);
+
+    expect(moveEntry).toHaveBeenCalledWith({
+      source,
+      targetDirPath: '',
+    });
+    expect(handleFiles).not.toHaveBeenCalled();
+  });
 });

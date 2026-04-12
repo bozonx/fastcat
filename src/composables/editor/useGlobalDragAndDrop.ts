@@ -3,6 +3,7 @@ import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
+import { hasInternalFileManagerDragType } from '~/composables/file-manager/dragOperation';
 import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import {
@@ -49,12 +50,13 @@ export function useGlobalDragAndDrop() {
   // Web Drop
   function onGlobalDragOver(e: DragEvent) {
     if (isCurrentDragCancelled.value) return;
+    if (uiStore.isFileManagerDragging) return;
 
     const types = e.dataTransfer?.types;
     if (!types) return;
 
     const typesArr = Array.from(types);
-    if (typesArr.includes('application/fastcat-internal-file')) return;
+    if (hasInternalFileManagerDragType(typesArr)) return;
 
     if (typesArr.includes('Files')) {
       e.preventDefault();
@@ -106,6 +108,10 @@ export function useGlobalDragAndDrop() {
     // The overlay handles drops via its own events, so the global drop
     // is only for fallback when overlay is not shown
     if (isDropInProgress.value) return;
+    if (uiStore.isFileManagerDragging || hasInternalFileManagerDragType(e.dataTransfer?.types)) {
+      uiStore.isGlobalDragging = false;
+      return;
+    }
     isDropInProgress.value = true;
 
     try {

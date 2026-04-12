@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import type { FsEntry } from '~/types/fs';
+import { hasInternalFileManagerDragType } from '~/composables/file-manager/dragOperation';
 import { WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import GlobalDropOverlayTree from '~/components/file-manager/GlobalDropOverlayTree.vue';
 
@@ -44,6 +45,7 @@ const projectFolders = computed(() =>
 
 // Auto-sort zone handlers
 function onAutoZoneDragOver(e: DragEvent) {
+  if (hasInternalFileManagerDragType(e.dataTransfer?.types)) return;
   if (!e.dataTransfer?.types.includes('Files')) return;
   e.preventDefault();
   e.stopPropagation();
@@ -59,6 +61,7 @@ function onAutoZoneDragLeave(e: DragEvent) {
 }
 
 function onAutoZoneDrop(e: DragEvent) {
+  if (hasInternalFileManagerDragType(e.dataTransfer?.types)) return;
   e.preventDefault();
   e.stopPropagation();
   isDropOverAuto.value = false;
@@ -70,6 +73,7 @@ function onAutoZoneDrop(e: DragEvent) {
 
 // Folder drop handlers
 function onFolderDragOver(e: DragEvent, path: string) {
+  if (hasInternalFileManagerDragType(e.dataTransfer?.types)) return;
   if (!e.dataTransfer?.types.includes('Files')) return;
   e.preventDefault();
   e.stopPropagation();
@@ -86,6 +90,7 @@ function onFolderDragLeave(e: DragEvent, path: string) {
 }
 
 function onFolderDrop(e: DragEvent, path: string) {
+  if (hasInternalFileManagerDragType(e.dataTransfer?.types)) return;
   e.preventDefault();
   e.stopPropagation();
   dropOverFolderPath.value = null;
