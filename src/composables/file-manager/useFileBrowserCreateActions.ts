@@ -55,7 +55,7 @@ export function useFileBrowserCreateActions({
     }
     const existingInFolder = await readDirectory(entry.path);
     const existingNames = existingInFolder.map((e) => e.name);
-    const createdFileName = await createMarkdownCommand({
+    const createdPath = await createMarkdownCommand({
       vfs,
       dirPath: entry.path,
       existingNames,
@@ -63,7 +63,6 @@ export function useFileBrowserCreateActions({
     await reloadDirectory(entry.path || '');
     uiStore.notifyFileManagerUpdate();
     await loadFolderContent();
-    const createdPath = entry.path ? `${entry.path}/${createdFileName}` : createdFileName;
     const createdEntry = createdPath ? findEntryByPath(createdPath) : null;
     if (createdEntry) {
       if (onFileSelect) onFileSelect(createdEntry);
