@@ -10,6 +10,7 @@ import {
 } from '~/composables/useDraggedFile';
 import {
   getDropTargetEntryPath,
+  hasInternalFileManagerDragType,
   isCrossFileManagerDrag,
   isFileManagerDropCancellationTarget,
   resolveFileManagerDragOperation,
@@ -131,7 +132,10 @@ export function useFileDrop(options: UseFileDropOptions) {
     if (!isRelevantDrag(e)) return;
 
     e.stopPropagation();
-    if (e.dataTransfer?.types.includes('Files')) {
+    if (
+      !hasInternalFileManagerDragType(e.dataTransfer?.types) &&
+      e.dataTransfer?.types.includes('Files')
+    ) {
       setCurrentDragOperation('copy');
       appClipboard.setDragTargetFileManagerInstanceId(options.targetFileManagerInstanceId ?? null);
       e.dataTransfer!.dropEffect = 'copy';
@@ -178,8 +182,9 @@ export function useFileDrop(options: UseFileDropOptions) {
     const hasFiles = e.dataTransfer?.types.includes('Files') ?? false;
     const copyRaw = e.dataTransfer?.getData(FILE_MANAGER_COPY_DRAG_TYPE);
     const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
+    const hasInternalDrag = hasInternalFileManagerDragType(e.dataTransfer?.types);
 
-    if (hasFiles && droppedFiles.length > 0) {
+    if (!hasInternalDrag && hasFiles && droppedFiles.length > 0) {
       await options.handleFiles(droppedFiles, { targetDirPath });
       return;
     }

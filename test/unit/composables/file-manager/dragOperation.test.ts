@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  hasInternalFileManagerDragType,
   isFileManagerDropCancellationTarget,
   isCrossFileManagerDrag,
   resolveFileManagerDragOperation,
@@ -125,5 +126,16 @@ describe('dragOperation', () => {
         targetDirPath: '_audio',
       }),
     ).toBe(false);
+  });
+
+  it('detects internal file-manager drag types even when Files is present', () => {
+    expect(
+      hasInternalFileManagerDragType([
+        'Files',
+        'application/fastcat-file-manager-move',
+      ]),
+    ).toBe(true);
+
+    expect(hasInternalFileManagerDragType(['Files'])).toBe(false);
   });
 });

@@ -1,4 +1,5 @@
 import {
+  INTERNAL_DRAG_TYPE,
   FILE_MANAGER_COPY_DRAG_TYPE,
   FILE_MANAGER_MOVE_DRAG_TYPE,
 } from '~/composables/useDraggedFile';
@@ -60,6 +61,19 @@ export function resolveFileManagerDropOperation(
   }
 
   return params.isLayer1Active ? 'copy' : 'move';
+}
+
+export function hasInternalFileManagerDragType(
+  types: ArrayLike<string> | readonly string[] | null | undefined,
+): boolean {
+  if (!types) return false;
+
+  const dragTypes = Array.from(types);
+  return (
+    dragTypes.includes(INTERNAL_DRAG_TYPE) ||
+    dragTypes.includes(FILE_MANAGER_COPY_DRAG_TYPE) ||
+    dragTypes.includes(FILE_MANAGER_MOVE_DRAG_TYPE)
+  );
 }
 
 export function shouldCancelFileManagerDrop(params: {
