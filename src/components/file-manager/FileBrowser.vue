@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, inject } from 'vue';
 import type { ComponentPublicInstance } from 'vue';
-import { useFileManagerStore, useFileBrowserPersistenceStore } from '~/stores/file-manager.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -69,7 +69,6 @@ const safeHideFocusFrame = computed(() => props?.hideFocusFrame ?? false);
 const fileManagerStore =
   (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
   useFileManagerStore();
-const persistenceStore = useFileBrowserPersistenceStore();
 const selectionStore = useSelectionStore();
 const projectStore = useProjectStore();
 
@@ -710,7 +709,6 @@ const GRID_SIZES = [80, 100, 130, 160, 200];
 const GRID_SIZE_NAMES = ['xs', 's', 'm', 'l', 'xl'];
 
 const effectiveGridCardSize = computed(() => {
-  if (props.remoteModeOnly) return persistenceStore.bloggerDogGridCardSize;
   return fileManagerStore.gridCardSize;
 });
 

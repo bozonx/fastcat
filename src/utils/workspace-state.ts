@@ -22,6 +22,7 @@ export interface WorkspaceState {
   };
   fileBrowser: {
     instances: Record<string, FileBrowserInstanceState>;
+    activeTab: 'computer' | 'bloggerdog' | 'fastcat';
   };
 }
 
@@ -38,6 +39,7 @@ export function createDefaultWorkspaceState(): WorkspaceState {
     },
     fileBrowser: {
       instances: {},
+      activeTab: 'computer',
     },
   };
 }
@@ -71,6 +73,9 @@ export function normalizeWorkspaceState(data: any): WorkspaceState {
       instances: (data.fileBrowser?.instances && typeof data.fileBrowser.instances === 'object')
         ? data.fileBrowser.instances
         : defaults.fileBrowser.instances,
+      activeTab: ['computer', 'bloggerdog', 'fastcat'].includes(data.fileBrowser?.activeTab)
+        ? data.fileBrowser.activeTab
+        : defaults.fileBrowser.activeTab,
     },
   };
 }

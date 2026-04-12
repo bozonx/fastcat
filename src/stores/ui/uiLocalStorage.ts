@@ -18,13 +18,6 @@ export const STORAGE_KEYS = {
     MONITOR_MUTED: 'fastcat:ui:monitor-muted',
   },
   FILE_MANAGER: {
-    PERSISTENCE: {
-      BLOGGERDOG_GRID_SIZE: 'fastcat:file-manager:bloggerdog-grid-size',
-      COMPUTER_GRID_SIZE: 'fastcat:file-manager:computer-grid-size',
-      COMPUTER_LAST_FOLDER: 'fastcat:file-manager:computer-last-folder',
-      COMPUTER_VIEW_MODE: 'fastcat:file-manager:computer-view-mode',
-      ACTIVE_TAB: 'fastcat:file-manager:active-tab',
-    },
     // Pattern: fastcat:file-manager-${contextId}:${prop}
     contextKey: (contextId: string, prop: string) => `fastcat:file-manager-${contextId}:${prop}`,
   },
