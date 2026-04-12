@@ -9,6 +9,7 @@ import { useProxyStore } from '~/stores/proxy.store';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
+import { useComputerVfs } from '~/composables/file-manager/useComputerVfs';
 
 import ClipProperties from '~/components/properties/ClipProperties.vue';
 import TrackProperties from '~/components/properties/TrackProperties.vue';
@@ -47,6 +48,7 @@ const focusStore = useFocusStore();
 const selectionStore = useSelectionStore();
 const proxyStore = useProxyStore();
 const fileManager = useFileManager();
+const { vfs: computerVfs } = useComputerVfs();
 const conversionStore = useFileConversionStore();
 
 const {
@@ -437,7 +439,14 @@ const headerTitle = computed(() => {
         :selection-origin="selectedFileManagerOrigin"
         :is-external="isExternal"
         @update:preview-mode="(m) => (previewMode = m)"
-        @convert="(entry) => conversionStore.openConversionModal(entry, { isExternal })"
+        @convert="
+          (entry) =>
+            conversionStore.openConversionModal(entry, {
+              isExternal,
+              vfs: isExternal ? (computerVfs ?? null) : fileManager.vfs,
+              reloadDirectory: fileManager.reloadDirectory,
+            })
+        "
       />
       <MultiFileProperties
         v-else-if="displayMode === 'files' && selectedFsEntries"

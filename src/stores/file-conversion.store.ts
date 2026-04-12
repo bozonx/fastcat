@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, shallowRef } from 'vue';
 import type { FsEntry } from '~/types/fs';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { useFileConversionSettings } from '~/composables/file-conversion/useFileConversionSettings';
 import { useFileConversionActions } from '~/composables/file-conversion/useFileConversionActions';
@@ -11,6 +12,8 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
   const conversionError = ref('');
   const targetEntry = ref<FsEntry | null>(null);
   const targetIsExternal = ref(false);
+  const targetVfs = shallowRef<IFileSystemAdapter | null>(null);
+  const targetReloadDirectory = shallowRef<((path: string) => Promise<void>) | null>(null);
   const isCancelRequested = ref(false);
   const conversionModalRequestId = ref(0);
   const sourceHasAudio = ref(true);
@@ -35,6 +38,8 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
   const { openConversionModal, startConversion, cancelConversion } = useFileConversionActions({
     targetEntry,
     targetIsExternal,
+    targetVfs,
+    targetReloadDirectory,
     mediaType,
     videoSettings: video,
     audioSettings: audio,
@@ -54,6 +59,8 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
     conversionError,
     targetEntry,
     targetIsExternal,
+    targetVfs,
+    targetReloadDirectory,
     mediaType,
     sourceHasAudio,
 

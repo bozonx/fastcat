@@ -131,6 +131,13 @@ describe('useFileBrowserFileActions', () => {
     const entry = { kind: 'file', name: 'test.mp4', path: '/test.mp4' } as FsEntry;
     await onFileAction('convertFile', entry);
 
-    expect(openConversionModal).toHaveBeenCalledWith(entry, { isExternal: true });
+    expect(openConversionModal).toHaveBeenCalledWith(
+      entry,
+      expect.objectContaining({
+        isExternal: true,
+        vfs: {},
+        reloadDirectory: expect.any(Function),
+      }),
+    );
   });
 });

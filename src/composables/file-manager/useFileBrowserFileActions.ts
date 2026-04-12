@@ -26,7 +26,14 @@ export function useFileBrowserFileActions({
     getExistingNames?: () => string[],
   ) => Promise<void>;
   conversionStore: {
-    openConversionModal: (entry: FsEntry, options?: { isExternal?: boolean }) => void;
+    openConversionModal: (
+      entry: FsEntry,
+      options?: {
+        isExternal?: boolean;
+        vfs?: IFileSystemAdapter | null;
+        reloadDirectory?: ((path: string) => Promise<void>) | null;
+      },
+    ) => void;
   };
   openTranscriptionModal: (entry: FsEntry) => void;
   extractAudio: (entry: FsEntry) => Promise<void>;
@@ -120,7 +127,13 @@ export function useFileBrowserFileActions({
     }
 
     if (action === 'convertFile') {
-      if (entry.kind === 'file') conversionStore.openConversionModal(entry, { isExternal });
+      if (entry.kind === 'file') {
+        conversionStore.openConversionModal(entry, {
+          isExternal,
+          vfs,
+          reloadDirectory: loadFolderContent,
+        });
+      }
       return;
     }
 
