@@ -168,7 +168,11 @@ const { handleFileAction: onFileAction, createTimelineInDirectory } = useFileMan
   setActiveTab,
   onSelect: (entry) => emit('select', entry),
   handleConvert: (entry: FsEntry) => {
-    conversionStore.openConversionModal(entry, { isExternal: props.isExternal });
+    conversionStore.openConversionModal(entry, {
+      isExternal: props.isExternal,
+      vfs,
+      reloadDirectory: fileManager.reloadDirectory,
+    });
   },
 });
 

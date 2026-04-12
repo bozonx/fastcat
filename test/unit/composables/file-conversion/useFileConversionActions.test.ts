@@ -91,6 +91,8 @@ describe('useFileConversionActions', () => {
     return {
       targetEntry: ref(null),
       targetIsExternal: ref(false),
+      targetVfs: ref(null),
+      targetReloadDirectory: ref(null),
       mediaType: ref(mediaTypeVal) as any,
       videoSettings: {
         format: 'mp4',
@@ -241,6 +243,7 @@ describe('useFileConversionActions', () => {
     const { startConversion } = useFileConversionActions(props);
 
     props.targetEntry.value = { name: 'test.png', path: '/test.png', kind: 'file' } as any;
+    props.targetVfs.value = mockFileManager.vfs as any;
     mockFileManager.vfs.getFile.mockResolvedValue(
       new File(['x'], 'test.png', { type: 'image/png' }),
     );
@@ -266,6 +269,7 @@ describe('useFileConversionActions', () => {
     const createImageBitmapMock = vi.fn().mockResolvedValue(mockBitmap);
 
     vi.stubGlobal('createImageBitmap', createImageBitmapMock);
+    props.targetVfs.value = mockFileManager.vfs as any;
     mockFileManager.vfs.getFile.mockResolvedValue(
       new File(['x'], 'test.png', { type: 'image/png' }),
     );

@@ -1,5 +1,6 @@
 import type { Ref, ComputedRef } from 'vue';
 import type { FsEntry } from '~/types/fs';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -36,6 +37,8 @@ const METADATA_TIMEOUT_MS = 15000;
 interface UseFileConversionActionsProps {
   targetEntry: Ref<FsEntry | null>;
   targetIsExternal: Ref<boolean>;
+  targetVfs: Ref<IFileSystemAdapter | null>;
+  targetReloadDirectory: Ref<((path: string) => Promise<void>) | null>;
   mediaType: ComputedRef<'video' | 'audio' | 'image' | 'text' | 'timeline' | 'unknown' | null>;
   videoSettings: {
     format: 'mp4' | 'webm' | 'mkv';
@@ -173,6 +176,16 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
   }
 
   async function resolveImageSourceFile(path: string): Promise<File | null> {
+    const targetVfs = props.targetVfs.value;
+    if (targetVfs) {
+      try {
+        const file = await targetVfs.getFile(path);
+        if (file) return file;
+      } catch {
+        // Ignore VFS read errors and fall back to other sources.
+      }
+    }
+
     try {
       const file = await fileManager.vfs.getFile(path);
       if (file) return file;
@@ -183,11 +196,20 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
     return await projectStore.getFileByPath(path);
   }
 
-  async function openConversionModal(entry: FsEntry, options?: { isExternal?: boolean }) {
+  async function openConversionModal(
+    entry: FsEntry,
+    options?: {
+      isExternal?: boolean;
+      vfs?: IFileSystemAdapter | null;
+      reloadDirectory?: ((path: string) => Promise<void>) | null;
+    },
+  ) {
     const requestId = props.conversionModalRequestId.value + 1;
     props.conversionModalRequestId.value = requestId;
     props.targetEntry.value = entry;
     props.targetIsExternal.value = options?.isExternal === true;
+    props.targetVfs.value = options?.vfs ?? null;
+    props.targetReloadDirectory.value = options?.reloadDirectory ?? null;
 
     const mediaCategory = getMediaTypeFromFilename(entry.name);
 
@@ -532,13 +554,15 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
             isCancelRequested: () => props.isCancelRequested.value,
           });
           if (!createdFilePath) throw new Error('Failed to resolve target path');
-          await fileManager.vfs.writeFile(createdFilePath, blob);
+          await (props.targetVfs.value ?? fileManager.vfs).writeFile(createdFilePath, blob);
           props.callbacks?.onSuccess?.('success');
           props.isModalOpen.value = false;
         } catch (err) {
           if (isAbortError(err) || props.isCancelRequested.value) {
             if (createdFilePath) {
-              await fileManager.vfs.deleteEntry(createdFilePath).catch(() => {});
+              await (props.targetVfs.value ?? fileManager.vfs)
+                .deleteEntry(createdFilePath)
+                .catch(() => {});
             }
           } else {
             props.conversionError.value = err instanceof Error ? err.message : String(err);
@@ -546,7 +570,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           }
         } finally {
           props.isConverting.value = false;
-          await fileManager.reloadDirectory(dirPath);
+          await (props.targetReloadDirectory.value ?? fileManager.reloadDirectory)(dirPath);
           uiStore.notifyFileManagerUpdate();
         }
       }

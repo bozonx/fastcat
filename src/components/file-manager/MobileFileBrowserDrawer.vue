@@ -14,6 +14,7 @@ import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
+import { useComputerVfs } from '~/composables/file-manager/useComputerVfs';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useMediaStore } from '~/stores/media.store';
@@ -41,6 +42,7 @@ const conversionStore = useFileConversionStore();
 const proxyStore = useProxyStore();
 const projectStore = useProjectStore();
 const { extractAudio } = useAudioExtraction();
+const { vfs: computerVfs } = useComputerVfs();
 const runtimeConfig = useRuntimeConfig();
 const workspaceStore = useWorkspaceStore();
 
@@ -190,7 +192,10 @@ const topActions = computed(() => {
       label: t('videoEditor.fileManager.actions.convertFile'),
       icon: 'lucide:replace',
       onClick: () => {
-        conversionStore.openConversionModal(entry, { isExternal: true });
+        conversionStore.openConversionModal(entry, {
+          isExternal: true,
+          vfs: computerVfs.value,
+        });
       },
     });
   }
