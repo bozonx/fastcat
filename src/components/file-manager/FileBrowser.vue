@@ -34,6 +34,8 @@ import { handleFilesCommand } from '~/file-manager/application/fileManagerComman
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import type { FsEntry } from '~/types/fs';
+import type { RemoteFsEntry } from '~/utils/remote-vfs';
+import type { RemoteVfsScope } from '~/types/remote-vfs';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
 import { FILE_MANAGER_ROOT_SPACER_HEIGHT } from '~/utils/constants';
 import {
@@ -351,8 +353,6 @@ const {
   remoteTransferFileName,
   isRemoteAvailable,
   buildRemoteDirectoryEntry,
-  loadRemoteFolderContent,
-  loadRemoteParentFolders,
   remoteError,
   remoteHasMore,
   isLoadingMore,
@@ -366,6 +366,7 @@ const {
   onBrowserRootDragOver,
   onBrowserRootDragLeave,
   onBrowserRootDrop,
+  createAdapter,
 } = remote;
 
 function onEntryDragStart(e: DragEvent, entry: FsEntry) {
@@ -423,9 +424,7 @@ const navigation = useFileBrowserNavigation({
   remoteCurrentFolder,
   folderEntries,
   supplementEntries,
-  buildRemoteDirectoryEntry,
-  loadRemoteFolderContent,
-  loadRemoteParentFolders,
+  sourceAdapter: createAdapter(),
   calculateFolderSize,
   pendingScrollToEntryPath,
   scrollToEntryPath,
@@ -788,7 +787,7 @@ onMounted(async () => {
   if (props.remoteModeOnly) {
     remoteCurrentFolder.value = buildRemoteDirectoryEntry('/');
     await loadFolderContent();
-    await loadRemoteParentFolders(parentFolders);
+    await loadParentFolders();
   } else if (!fileManagerStore.selectedFolder) {
     setSelectedFsEntry({ kind: 'directory', path: '', name: 'Root' });
   } else {

@@ -1,5 +1,6 @@
 import { ref, computed, watch, inject } from 'vue';
 import type { Ref } from 'vue';
+import type { IFileBrowserSourceAdapter } from '~/composables/file-manager/IFileBrowserSourceAdapter';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -642,6 +643,14 @@ export function useFileBrowserRemote({
     { deep: true },
   );
 
+  function createAdapter(): IFileBrowserSourceAdapter {
+    return {
+      loadFolder: loadRemoteFolderContent,
+      buildParentFolders: loadRemoteParentFolders,
+      buildEntry: buildRemoteDirectoryEntry,
+    };
+  }
+
   return {
     isRemoteMode,
     remoteCurrentFolder,
@@ -671,5 +680,6 @@ export function useFileBrowserRemote({
     onBrowserRootDragOver,
     onBrowserRootDragLeave,
     onBrowserRootDrop,
+    createAdapter,
   };
 }

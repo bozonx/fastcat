@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { ref, inject } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
@@ -21,6 +21,12 @@ export function useAudioExtraction() {
   const toast = useToast();
   const selectionStore = useSelectionStore();
 
+  // Resolve the correct file manager store for the current context.
+  // ComputerFileManager injects its own sidebar store; other contexts use the global one.
+  const fileManagerStore =
+    (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ??
+    useFileManagerStore();
+
   const isExtracting = ref(false);
 
   async function extractAudio(entry: FsEntry, context: AudioExtractionSelectionContext = {}) {
@@ -29,19 +35,26 @@ export function useAudioExtraction() {
 
     isExtracting.value = true;
     try {
-      const sourceFile = await projectStore.getFileByPath(entry.path);
+      // Use the injected VFS so workspace file manager paths resolve correctly
+      const vfs = fileManager.vfs;
+
+      const sourceFile = await vfs.getFile(entry.path);
       if (!sourceFile) throw new Error('Failed to access source file');
 
       const { client } = getExportWorkerClient();
 
-      // Need to set host API for the worker to access files
+      // Provide the worker with VFS-based file access to support any file manager context
       setExportHostApi(
         createVideoCoreHostApi({
           getCurrentProjectId: () => projectStore.currentProjectId,
           getWorkspaceHandle: () => workspaceStore.workspaceHandle,
           getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
-          getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
-          getFileByPath: async (path) => projectStore.getFileByPath(path),
+          getFileHandleByPath: async (path: string) =>
+            ({
+              getFile: () => vfs.getFile(path),
+              createWritable: () => vfs.writeStream(path),
+            }) as any,
+          getFileByPath: async (path: string) => vfs.getFile(path),
           onExportProgress: () => {}, // Not used for extraction yet
         }),
       );
@@ -64,30 +77,15 @@ export function useAudioExtraction() {
       const dirPath = entry.path.split('/').slice(0, -1).join('/');
       const baseName = entry.name.replace(/\.[^.]+$/, '');
 
-      const dirHandle = await projectStore.getDirectoryHandleByPath(dirPath);
-      if (!dirHandle) throw new Error('Target directory not found');
-
+      // Check for naming conflicts via VFS (works for both project and workspace file managers)
       let newFileName = `${baseName}_extracted.${ext}`;
       let counter = 2;
-
-      while (true) {
-        try {
-          await dirHandle.getFileHandle(newFileName, { create: false });
-          // If we are here, the file exists
-          newFileName = `${baseName}_extracted (${counter}).${ext}`;
-          counter++;
-        } catch (err: any) {
-          if (err.name === 'NotFoundError') {
-            break;
-          }
-          throw err;
-        }
+      while (await vfs.exists(dirPath ? `${dirPath}/${newFileName}` : newFileName)) {
+        newFileName = `${baseName}_extracted (${counter}).${ext}`;
+        counter++;
       }
 
       const targetPath = dirPath ? `${dirPath}/${newFileName}` : newFileName;
-
-      // Ensure target file is created
-      await dirHandle.getFileHandle(newFileName, { create: true });
 
       await client.extractAudio(entry.path, targetPath);
 
@@ -97,7 +95,6 @@ export function useAudioExtraction() {
       });
 
       const uiStore = useUiStore();
-      const fileManagerStore = useFileManagerStore();
 
       // Expand the parent directory in the tree view before reloading
       if (dirPath) {

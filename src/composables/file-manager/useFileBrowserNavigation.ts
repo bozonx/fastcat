@@ -6,6 +6,7 @@ import { useUiStore } from '~/stores/ui.store';
 import type { FsEntry } from '~/types/fs';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
 import { isRemoteFsEntry } from '~/utils/remote-vfs';
+import type { IFileBrowserSourceAdapter } from '~/composables/file-manager/IFileBrowserSourceAdapter';
 import {
   stripWorkspaceCommonPathPrefix,
   WORKSPACE_COMMON_DIR_NAME,
@@ -19,9 +20,7 @@ export function useFileBrowserNavigation({
   remoteCurrentFolder,
   folderEntries,
   supplementEntries,
-  buildRemoteDirectoryEntry,
-  loadRemoteFolderContent,
-  loadRemoteParentFolders,
+  sourceAdapter,
   calculateFolderSize,
   pendingScrollToEntryPath,
   scrollToEntryPath,
@@ -34,9 +33,7 @@ export function useFileBrowserNavigation({
   remoteCurrentFolder: Ref<RemoteFsEntry | null>;
   folderEntries: Ref<FsEntry[]>;
   supplementEntries: (entries: FsEntry[]) => Promise<ExtendedFsEntry[]>;
-  buildRemoteDirectoryEntry: (path: string) => RemoteFsEntry;
-  loadRemoteFolderContent: (options?: { append?: boolean }) => Promise<boolean>;
-  loadRemoteParentFolders: (parentFolders: Ref<FsEntry[]>) => boolean;
+  sourceAdapter: IFileBrowserSourceAdapter;
   calculateFolderSize: (path: string) => Promise<void>;
   pendingScrollToEntryPath: Ref<string | null>;
   scrollToEntryPath: (path: string) => boolean;
@@ -46,18 +43,21 @@ export function useFileBrowserNavigation({
   readDirectory: (path: string | undefined) => Promise<FsEntry[]>;
   rootName: string;
 }) {
-  const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
+  const fileManagerStore =
+    (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
+    useFileManagerStore();
   const projectStore = useProjectStore();
   const uiStore = useUiStore();
 
   const parentFolders = ref<FsEntry[]>([]);
 
   async function loadFolderContent(options: { append?: boolean } = {}) {
-    const savedScrollTop = pendingScrollToEntryPath.value && !options.append
-      ? (rootContainer.value?.scrollTop ?? null)
-      : null;
+    const savedScrollTop =
+      pendingScrollToEntryPath.value && !options.append
+        ? (rootContainer.value?.scrollTop ?? null)
+        : null;
 
-    if (await loadRemoteFolderContent(options)) {
+    if (await sourceAdapter.loadFolder(options)) {
       return;
     }
 
@@ -105,7 +105,7 @@ export function useFileBrowserNavigation({
   async function loadParentFolders() {
     parentFolders.value = [];
 
-    if (loadRemoteParentFolders(parentFolders)) return;
+    if (sourceAdapter.buildParentFolders(parentFolders)) return;
 
     const selectedFolderPath = fileManagerStore.selectedFolder?.path;
 
@@ -161,7 +161,7 @@ export function useFileBrowserNavigation({
       if (remoteCurrentFolder.value) {
         fileManagerStore.addToHistory(remoteCurrentFolder.value);
       }
-      remoteCurrentFolder.value = buildRemoteDirectoryEntry('/');
+      remoteCurrentFolder.value = sourceAdapter.buildEntry('/') as RemoteFsEntry;
       await loadFolderContent();
       await loadParentFolders();
       return;

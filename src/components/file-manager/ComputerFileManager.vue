@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, provide, onMounted, shallowRef, inject } from 'vue';
+import { ref, computed, provide, onMounted, watch, shallowRef, inject } from 'vue';
 import { Pane, Splitpanes } from 'splitpanes';
 import { useComputerVfs } from '~/composables/file-manager/useComputerVfs';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -98,20 +98,22 @@ fileManagerStore.setSelectionContext({
 
 provide(FILE_MANAGER_INJECTION_KEY, fileManager);
 
+// Persist the last visited folder for session restoration
+watch(
+  () => fileManagerStore.selectedFolder,
+  (folder) => persistenceStore.setComputerLastFolder(folder),
+);
+
 onMounted(async () => {
   let restored = false;
 
-  // Migration / restoration logic
-  const lastFolder = fileManagerStore.selectedFolder || persistenceStore.computerLastFolder;
-
+  const lastFolder = persistenceStore.computerLastFolder;
   if (lastFolder) {
     try {
-      // Validate that the folder still exists before trying to open it
+      // Validate the folder still exists before restoring navigation
       const exists = await vfs.value?.exists(lastFolder.path);
       if (exists) {
-        fileManagerStore.openFolder(lastFolder, {
-          skipHistory: true,
-        });
+        fileManagerStore.openFolder(lastFolder, { skipHistory: true });
         restored = true;
       }
     } catch (e) {
@@ -121,7 +123,6 @@ onMounted(async () => {
 
   await fileManager.loadProjectDirectory();
 
-  // If no folder selected or previous one was invalid, open root
   if (!restored) {
     fileManagerStore.openFolder(rootSelectionEntry.value);
   }
