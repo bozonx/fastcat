@@ -245,7 +245,7 @@ const topActions = computed(() => {
       id: 'extract-audio',
       label: t('videoEditor.fileManager.actions.extractAudio'),
       icon: 'i-heroicons-musical-note',
-      onClick: () => extractAudio(entry),
+      onClick: () => extractAudio(entry, { isExternal: true }),
     });
   }
 

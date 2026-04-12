@@ -92,7 +92,7 @@ async function handleExtractAudio() {
   if (!props.entries.length) return;
   for (const entry of props.entries) {
     if (entry.kind === 'file' && getMediaTypeFromFilename(entry.name) === 'video') {
-      await extractAudio(entry);
+      await extractAudio(entry, { isExternal: props.isExternal });
     }
   }
 }
