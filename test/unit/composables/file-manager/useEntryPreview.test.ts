@@ -65,8 +65,8 @@ describe('useEntryPreview', () => {
       selectedFsEntry.value = newEntry;
       await nextTick();
 
-      expect(preview.fileInfo.value?.name).toBe('old.txt');
-      expect(preview.textContent.value).toContain('old content');
+      expect(preview.fileInfo.value).toBeNull();
+      expect(preview.textContent.value).toBe('');
 
       nextFileDeferred.resolve(new File(['new content'], 'new.txt', { type: 'text/plain' }));
       await flushAsyncState();

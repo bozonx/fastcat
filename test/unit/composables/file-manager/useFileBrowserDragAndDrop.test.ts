@@ -30,6 +30,8 @@ const appClipboardMock = {
   setCurrentDragOperation: vi.fn((value: 'copy' | 'move' | 'cancel' | null) => {
     appClipboardMock.currentDragOperation = value;
   }),
+  setDraggedItems: vi.fn(),
+  clearDraggedItems: vi.fn(),
 };
 
 const setDraggedFileMock = vi.fn();
@@ -44,6 +46,11 @@ vi.mock('~/stores/workspace.store', () => ({
     userSettings: {
       hotkeys: {
         layer1: 'Shift',
+      },
+    },
+    workspaceState: {
+      fileBrowser: {
+        instances: {},
       },
     },
   }),

@@ -15,6 +15,11 @@ const workspaceStoreMock = {
       layer1: 'Shift',
     },
   },
+  workspaceState: {
+    fileBrowser: {
+      instances: {},
+    },
+  },
 };
 
 const uiStoreMock = {

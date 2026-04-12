@@ -53,6 +53,54 @@ vi.mock('#i18n', () => ({
   useSwitchLocalePath: vi.fn(() => (locale: string) => locale),
 }));
 
+vi.mock('~/stores/workspace.store', () => ({
+  useWorkspaceStore: vi.fn(() => ({
+    isEphemeral: false,
+    workspaceHandle: null,
+    isSttModelDownloaded: false,
+    userSettings: {
+      timeline: {
+        defaultStaticClipDurationUs: 5_000_000,
+      },
+      hotkeys: {
+        layer1: 'Shift',
+        layer2: 'Control',
+        bindings: {},
+      },
+      integrations: {
+        fastcatAccount: { enabled: false, bearerToken: '' },
+        fastcatPublicador: { enabled: false, bearerToken: '' },
+        manualFilesApi: {
+          enabled: false,
+          baseUrl: '',
+          bearerToken: '',
+          overrideFastCat: false,
+        },
+        stt: {
+          provider: '',
+          models: [],
+          localModel: 'Xenova/whisper-tiny',
+          language: '',
+          restorePunctuation: true,
+          formatText: false,
+          includeWords: true,
+        },
+      },
+      mouse: {
+        monitor: {
+          wheel: 'zoom',
+        },
+      },
+    },
+    workspaceState: {
+      fileBrowser: {
+        instances: {},
+      },
+    },
+    batchUpdateUserSettings: vi.fn(),
+  })),
+}));
+
 const { createNuxtMock } = vi.hoisted(() => ({
   createNuxtMock: vi.fn(() => ({
     $notificationService: { add: vi.fn() },

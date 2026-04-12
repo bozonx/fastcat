@@ -537,6 +537,17 @@ function onDragOverDir(e: DragEvent, entry: FsEntry) {
   if (!types) return;
 
   if (types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) || types.includes(FILE_MANAGER_COPY_DRAG_TYPE)) {
+    // Basic restriction: internal dragging of files within Bloggerdog is not supported.
+    const isSourceBd = appClipboard.dragSourceVfs?.id === 'bloggerdog';
+    const isTargetBd = props.vfs?.id === 'bloggerdog';
+    if (isSourceBd && isTargetBd) {
+      const draggedItems = appClipboard.draggedItems;
+      const hasFiles = draggedItems.some((item) => item.kind === 'file');
+      if (hasFiles) {
+        return;
+      }
+    }
+
     isDragOver.value = entry.path || null;
     if (isCancel) {
       dragOperation.value = 'cancel';
@@ -765,6 +776,18 @@ const isBloggerDogContentItem = (entry: FsEntry) => {
   return getBdType(entry) === 'content-item';
 };
 
+const isBloggerDogMediaFile = (entry: FsEntry) => {
+  if (entry.source !== 'remote') return false;
+  const payload = entry.adapterPayload as any;
+  return payload?.type === 'media' && !!payload?.mediaId;
+};
+
+const isBloggerDogTextWrapper = (entry: FsEntry) => {
+  if (entry.source !== 'remote') return false;
+  const payload = entry.adapterPayload as any;
+  return payload?.type === 'media' && !payload?.mediaId;
+};
+
 const clipboardStore = useAppClipboard();
 
 const { getContextMenuItems } = useFileContextMenu(
@@ -792,6 +815,8 @@ const { getContextMenuItems } = useFileContextMenu(
     isBloggerDogGroup,
     isBloggerDogContentItem,
     isBloggerDogVirtualFolder,
+    isBloggerDogMedia: isBloggerDogMediaFile,
+    isBloggerDogTextWrapper,
     get hasClipboardItems() {
       return clipboardStore.hasFileManagerPayload;
     },

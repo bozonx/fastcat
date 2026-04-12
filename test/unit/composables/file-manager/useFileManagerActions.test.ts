@@ -52,6 +52,11 @@ const workspaceStore = {
   userSettings: {
     deleteWithoutConfirmation: false,
   },
+  workspaceState: {
+    fileBrowser: {
+      instances: {},
+    },
+  },
 };
 
 const selectionStore: SelectionStoreMock = {

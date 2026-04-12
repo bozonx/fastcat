@@ -332,6 +332,14 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
       types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
     ) {
+      // Bloggerdog internal drag restriction
+      if (options.vfs.id === 'bloggerdog' && appClipboard.dragSourceVfs?.id === 'bloggerdog') {
+        const draggedItems = appClipboard.draggedItems;
+        if (draggedItems.some((i) => i.kind === 'file')) {
+          return;
+        }
+      }
+
       const nextOperation = resolveDragOperation(e);
       appClipboard.setCurrentDragOperation(nextOperation);
       appClipboard.setDragTargetFileManagerInstanceId(options.fileManagerInstanceId ?? null);
@@ -527,6 +535,14 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
         types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
         types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
       ) {
+        // Bloggerdog internal drag restriction
+        if (options.vfs.id === 'bloggerdog' && appClipboard.dragSourceVfs?.id === 'bloggerdog') {
+          const draggedItems = appClipboard.draggedItems;
+          if (draggedItems.some((i) => i.kind === 'file')) {
+            return;
+          }
+        }
+
         appClipboard.setCurrentDragOperation(resolveDragOperation(e));
         appClipboard.setDragTargetFileManagerInstanceId(options.fileManagerInstanceId ?? null);
       }

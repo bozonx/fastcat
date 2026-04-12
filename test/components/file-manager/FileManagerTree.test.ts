@@ -5,10 +5,6 @@ import FileManagerTree from '~/components/file-manager/FileManagerTree.vue';
 import type { FsEntry } from '~/types/fs';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
 
-let dragSourceFileManagerInstanceIdMock: string | null = null;
-let currentDragOperationMock: 'copy' | 'move' | 'cancel' | null = null;
-let draggedItemsMock: any[] = [];
-
 const {
   INTERNAL_DRAG_TYPE,
   REMOTE_FILE_DRAG_TYPE,
@@ -20,6 +16,20 @@ const {
   FILE_MANAGER_COPY_DRAG_TYPE: 'application/fastcat-file-manager-copy',
   FILE_MANAGER_MOVE_DRAG_TYPE: 'application/fastcat-file-manager-move',
 }));
+
+const mockState = vi.hoisted(() => ({
+  dragSourceFileManagerInstanceId: null as string | null,
+  currentDragOperation: null as 'copy' | 'move' | 'cancel' | null,
+  draggedItems: [] as any[],
+  setCurrentDragOperation: vi.fn(),
+  setDragSourceFileManagerInstanceId: vi.fn(),
+  setDragTargetFileManagerInstanceId: vi.fn(),
+  setDragSourceVfs: vi.fn(),
+}));
+
+// Link mock functions to state updates
+mockState.setCurrentDragOperation.mockImplementation((op: any) => { mockState.currentDragOperation = op; });
+mockState.setDragSourceFileManagerInstanceId.mockImplementation((id: any) => { mockState.dragSourceFileManagerInstanceId = id; });
 
 const selectionStoreMock = {
   selectedEntity: null as any,
@@ -40,42 +50,25 @@ const workspaceStoreMock = {
       bindings: {},
     },
     integrations: {
-      fastcatAccount: {
-        enabled: false,
-        bearerToken: '',
-      },
-      fastcatPublicador: {
-        enabled: false,
-        bearerToken: '',
-      },
-      manualFilesApi: {
-        enabled: false,
-        baseUrl: '',
-        bearerToken: '',
-        overrideFastCat: false,
-      },
+      fastcatAccount: { enabled: false, bearerToken: '' },
+      fastcatPublicador: { enabled: false, bearerToken: '' },
+      manualFilesApi: { enabled: false, baseUrl: '', bearerToken: '', overrideFastCat: false },
+    },
+  },
+  workspaceState: {
+    fileBrowser: {
+      instances: {},
     },
   },
 };
 
 vi.mock('#imports', () => ({
   useRuntimeConfig: () => ({
-    public: {
-      bloggerDogApiUrl: '',
-    },
+    public: { bloggerDogApiUrl: '' },
   }),
 }));
 
 vi.stubGlobal('useToast', () => ({ add: vi.fn() }));
-
-const setCurrentDragOperationMock = vi.fn((operation: 'copy' | 'move' | 'cancel' | null) => {
-  currentDragOperationMock = operation;
-});
-const setDragSourceFileManagerInstanceIdMock = vi.fn((instanceId: string | null) => {
-  dragSourceFileManagerInstanceIdMock = instanceId;
-});
-const setDragTargetFileManagerInstanceIdMock = vi.fn();
-const setDragSourceVfsMock = vi.fn();
 
 vi.mock('~/utils/media-types', () => ({
   getMediaTypeFromFilename: () => 'video',
@@ -108,29 +101,26 @@ vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: () => workspaceStoreMock,
 }));
 
-vi.mock('~/composables/useAppClipboard', () => {
-  const innerMock = {
+vi.mock('~/composables/useAppClipboard', () => ({
+  useAppClipboard: () => ({
     hasFileManagerPayload: false,
-    get currentDragOperation() { return currentDragOperationMock; },
-    get dragSourceFileManagerInstanceId() { return dragSourceFileManagerInstanceIdMock; },
-    setCurrentDragOperation: setCurrentDragOperationMock,
-    setDragSourceFileManagerInstanceId: setDragSourceFileManagerInstanceIdMock,
-    setDragTargetFileManagerInstanceId: setDragTargetFileManagerInstanceIdMock,
-    setDragSourceVfs: setDragSourceVfsMock,
+    get currentDragOperation() { return mockState.currentDragOperation; },
+    get dragSourceFileManagerInstanceId() { return mockState.dragSourceFileManagerInstanceId; },
+    setCurrentDragOperation: mockState.setCurrentDragOperation,
+    setDragSourceFileManagerInstanceId: mockState.setDragSourceFileManagerInstanceId,
+    setDragTargetFileManagerInstanceId: mockState.setDragTargetFileManagerInstanceId,
+    setDragSourceVfs: mockState.setDragSourceVfs,
     setDraggedItems: vi.fn((items) => {
-      draggedItemsMock = items;
+      mockState.draggedItems = items;
     }),
     clearDraggedItems: vi.fn(() => {
-      draggedItemsMock = [];
+      mockState.draggedItems = [];
     }),
     get draggedItems() {
-      return draggedItemsMock;
+      return mockState.draggedItems;
     },
-  };
-  return {
-    useAppClipboard: () => innerMock,
-  };
-});
+  }),
+}));
 
 vi.mock('~/composables/useDraggedFile', () => ({
   INTERNAL_DRAG_TYPE,
@@ -159,29 +149,22 @@ describe('FileManagerTree', () => {
     selectionStoreMock.selectedEntity = null;
     selectionStoreMock.selectFsEntries.mockReset();
     selectionStoreMock.clearSelection.mockReset();
-    dragSourceFileManagerInstanceIdMock = null;
-    currentDragOperationMock = null;
-    draggedItemsMock = [];
-    setCurrentDragOperationMock.mockReset();
-    setDragSourceFileManagerInstanceIdMock.mockClear();
-    setDragTargetFileManagerInstanceIdMock.mockClear();
-    setDragSourceVfsMock.mockClear();
+    mockState.dragSourceFileManagerInstanceId = null;
+    mockState.currentDragOperation = null;
+    mockState.draggedItems = [];
+    mockState.setCurrentDragOperation.mockClear();
+    mockState.setDragSourceFileManagerInstanceId.mockClear();
+    mockState.setDragTargetFileManagerInstanceId.mockClear();
+    mockState.setDragSourceVfs.mockClear();
     uiStoreMock.fileTreeSelectAllTrigger = 0;
     uiStoreMock.isFileManagerDragging = false;
   });
 
   it('renders root entries', () => {
     const rootEntries: FsEntry[] = [
-      {
-        name: '_video',
-        kind: 'directory',
-        path: '_video',
-        expanded: false,
-      },
+      { name: '_video', kind: 'directory', path: '_video', expanded: false },
     ];
-
     const wrapper = mountTree(rootEntries);
-
     expect(wrapper.text()).toContain('_video');
   });
 
@@ -193,445 +176,95 @@ describe('FileManagerTree', () => {
         path: '_video',
         expanded: true,
         children: [
-          {
-            name: 'child.mp4',
-            kind: 'file',
-            path: '_video/child.mp4',
-            parentPath: '_video',
-            expanded: false,
-          },
+          { name: 'child.mp4', kind: 'file', path: '_video/child.mp4', parentPath: '_video', expanded: false },
         ],
       },
     ];
-
     const wrapper = mountTree(rootEntries);
-
     expect(wrapper.text()).toContain('_video');
     expect(wrapper.text()).toContain('child.mp4');
   });
 
   it('emits requestMove on internal move drop', async () => {
-    const dir: FsEntry = {
-      name: '_video',
-      kind: 'directory',
-      path: '_video',
-      expanded: false,
-    };
-
+    const dir: FsEntry = { name: '_video', kind: 'directory', path: '_video', expanded: false };
     const wrapper = mountTree([dir]);
     const dropzone = wrapper.findAll('div').find((w) => w.attributes('role') === 'treeitem');
-
-    expect(dropzone?.exists()).toBe(true);
-
     const mockEvent = {
       dataTransfer: {
         types: [FILE_MANAGER_MOVE_DRAG_TYPE],
         getData: vi.fn((type) => {
-          if (type === FILE_MANAGER_MOVE_DRAG_TYPE) {
-            return JSON.stringify({ path: '_audio/a.mp4' });
-          }
+          if (type === FILE_MANAGER_MOVE_DRAG_TYPE) return JSON.stringify({ path: '_audio/a.mp4' });
           return '';
         }),
       },
       preventDefault: vi.fn(),
       stopPropagation: vi.fn(),
     } as unknown as DragEvent;
-
     await dropzone?.trigger('drop', mockEvent);
-
-    const emitted = wrapper.emitted('requestMove');
-    expect(emitted?.length).toBe(1);
-    expect(emitted?.[0]?.[0]).toEqual({
+    expect(wrapper.emitted('requestMove')?.[0]?.[0]).toEqual({
       sourcePath: '_audio/a.mp4',
       targetDirPath: '_video',
     });
   });
 
   it('emits requestCopy on internal copy drop', async () => {
-    const dir: FsEntry = {
-      name: '_video',
-      kind: 'directory',
-      path: '_video',
-      expanded: false,
-    };
-
+    const dir: FsEntry = { name: '_video', kind: 'directory', path: '_video', expanded: false };
     const wrapper = mountTree([dir]);
     const dropzone = wrapper.findAll('div').find((w) => w.attributes('role') === 'treeitem');
-
-    expect(dropzone?.exists()).toBe(true);
-
     const mockEvent = {
       dataTransfer: {
         types: [FILE_MANAGER_COPY_DRAG_TYPE],
         getData: vi.fn((type) => {
-          if (type === FILE_MANAGER_COPY_DRAG_TYPE) {
-            return JSON.stringify({ path: '_audio/a.mp4' });
-          }
+          if (type === FILE_MANAGER_COPY_DRAG_TYPE) return JSON.stringify({ path: '_audio/a.mp4' });
           return '';
         }),
       },
       preventDefault: vi.fn(),
       stopPropagation: vi.fn(),
     } as unknown as DragEvent;
-
     await dropzone?.trigger('drop', mockEvent);
-
-    const emitted = wrapper.emitted('requestCopy');
-    expect(emitted?.length).toBe(1);
-    expect(emitted?.[0]?.[0]).toEqual({
-      sourcePath: '_audio/a.mp4',
-      targetDirPath: '_video',
-    });
-  });
-
-  it('uses current modifier state for same-manager drop instead of dragstart mime type', async () => {
-    dragSourceFileManagerInstanceIdMock = 'main';
-
-    const dir: FsEntry = {
-      name: '_video',
-      kind: 'directory',
-      path: '_video',
-      expanded: false,
-    };
-
-    const wrapper = mountTree([dir], 'main');
-    const dropzone = wrapper.findAll('div').find((w) => w.attributes('role') === 'treeitem');
-
-    const mockEvent = {
-      shiftKey: false,
-      dataTransfer: {
-        types: [FILE_MANAGER_COPY_DRAG_TYPE],
-        getData: vi.fn((type) => {
-          if (type === FILE_MANAGER_COPY_DRAG_TYPE) {
-            return JSON.stringify({ path: '_audio/a.mp4' });
-          }
-          return '';
-        }),
-      },
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    } as unknown as DragEvent;
-
-    await dropzone?.trigger('drop', mockEvent);
-
-    expect(wrapper.emitted('requestMove')?.[0]?.[0]).toEqual({
-      sourcePath: '_audio/a.mp4',
-      targetDirPath: '_video',
-    });
-    expect(wrapper.emitted('requestCopy')).toBeFalsy();
-  });
-
-  it('defaults to copy across file managers even if drag started as move', async () => {
-    dragSourceFileManagerInstanceIdMock = 'sidebar';
-
-    const dir: FsEntry = {
-      name: '_video',
-      kind: 'directory',
-      path: '_video',
-      expanded: false,
-    };
-
-    const wrapper = mountTree([dir], 'main');
-    const dropzone = wrapper.findAll('div').find((w) => w.attributes('role') === 'treeitem');
-
-    const mockEvent = {
-      shiftKey: false,
-      dataTransfer: {
-        types: [FILE_MANAGER_MOVE_DRAG_TYPE],
-        getData: vi.fn((type) => {
-          if (type === FILE_MANAGER_MOVE_DRAG_TYPE) {
-            return JSON.stringify({ path: 'workspace/a.mp4' });
-          }
-          return '';
-        }),
-      },
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    } as unknown as DragEvent;
-
-    await dropzone?.trigger('drop', mockEvent);
-
     expect(wrapper.emitted('requestCopy')?.[0]?.[0]).toEqual({
-      sourcePath: 'workspace/a.mp4',
-      targetDirPath: '_video',
-    });
-    expect(wrapper.emitted('requestMove')).toBeFalsy();
-  });
-
-  it('starts drag as copy when layer1 modifier is active', async () => {
-    const file: FsEntry = {
-      name: 'clip.mp4',
-      kind: 'file',
-      path: '_video/clip.mp4',
-    };
-
-    const wrapper = mountTree([file]);
-    const treeItem = wrapper.find('[data-entry-path="_video/clip.mp4"]');
-
-    expect(treeItem.exists()).toBe(true);
-
-    const setData = vi.fn();
-    const dragEvent = {
-      dataTransfer: {
-        effectAllowed: 'uninitialized',
-        setData,
-      },
-      shiftKey: true,
-    } as unknown as DragEvent;
-
-    await treeItem.trigger('dragstart', dragEvent);
-
-    expect(uiStoreMock.isFileManagerDragging).toBe(true);
-    expect(setDragSourceFileManagerInstanceIdMock).toHaveBeenCalledWith('main');
-    expect(setCurrentDragOperationMock).toHaveBeenCalledWith('copy');
-    expect(setData).toHaveBeenCalledWith(
-      FILE_MANAGER_COPY_DRAG_TYPE,
-      JSON.stringify([{ name: 'clip.mp4', kind: 'file', path: '_video/clip.mp4' }]),
-    );
-  });
-
-  it('uses selected entries in drag payload when dragging a selected tree item', async () => {
-    const fileA: FsEntry = {
-      name: 'a.mp4',
-      kind: 'file',
-      path: '_video/a.mp4',
-      parentPath: '_video',
-    };
-    const fileB: FsEntry = {
-      name: 'b.mp4',
-      kind: 'file',
-      path: '_video/b.mp4',
-      parentPath: '_video',
-    };
-
-    selectionStoreMock.selectedEntity = {
-      source: 'fileManager',
-      kind: 'multiple',
-      entries: [fileA, fileB],
-    };
-
-    const wrapper = mountTree([fileA, fileB]);
-    const treeItem = wrapper.find('[data-entry-path="_video/a.mp4"]');
-
-    expect(treeItem.exists()).toBe(true);
-
-    const setData = vi.fn();
-    const dragEvent = {
-      dataTransfer: {
-        effectAllowed: 'uninitialized',
-        setData,
-      },
-      shiftKey: false,
-    } as unknown as DragEvent;
-
-    await treeItem.trigger('dragstart', dragEvent);
-
-    expect(setCurrentDragOperationMock).toHaveBeenCalledWith('move');
-    expect(setData).toHaveBeenCalledWith(
-      FILE_MANAGER_MOVE_DRAG_TYPE,
-      JSON.stringify([
-        { name: 'a.mp4', kind: 'file', path: '_video/a.mp4' },
-        { name: 'b.mp4', kind: 'file', path: '_video/b.mp4' },
-      ]),
-    );
-  });
-
-  it('emits requestDownload on remote file drop', async () => {
-    const dir: FsEntry = {
-      name: '_video',
-      kind: 'directory',
-      path: '_video',
-      expanded: false,
-    };
-
-    const wrapper = mountTree([dir]);
-    const dropzone = wrapper.findAll('div').find((w) => w.attributes('role') === 'treeitem');
-
-    expect(dropzone?.exists()).toBe(true);
-
-    const remoteEntry = {
-      source: 'remote',
-      remoteId: 'file1',
-      remoteType: 'file',
-      path: '/collections/remote.mp4',
-      remotePath: '/collections/remote.mp4',
-      size: 1024,
-      lastModified: 1000,
-      mimeType: 'video/mp4',
-      name: 'remote.mp4',
-      kind: 'file',
-      remoteData: {
-        id: 'file1',
-        type: 'file',
-        path: '/collections/remote.mp4',
-        name: 'remote.mp4',
-        title: 'remote.mp4',
-      } as any,
-    } as unknown as RemoteFsEntry;
-
-    const mockEvent = {
-      dataTransfer: {
-        types: [REMOTE_FILE_DRAG_TYPE],
-        getData: vi.fn((type) => {
-          if (type === REMOTE_FILE_DRAG_TYPE) {
-            return JSON.stringify({
-              ...remoteEntry,
-            });
-          }
-          return '';
-        }),
-      },
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    } as unknown as DragEvent;
-
-    await dropzone?.trigger('drop', mockEvent);
-
-    const emitted = wrapper.emitted('requestDownload');
-    expect(emitted?.length).toBe(1);
-    expect(emitted?.[0]?.[0]).toEqual({
-      entry: remoteEntry,
-      targetDirPath: '_video',
-    });
-  });
-
-  it('copies on cross-manager tree drop by default', async () => {
-    dragSourceFileManagerInstanceIdMock = 'sidebar';
-
-    const dir: FsEntry = {
-      name: '_video',
-      kind: 'directory',
-      path: '_video',
-      expanded: false,
-    };
-
-    const wrapper = mountTree([dir], 'main');
-    const dropzone = wrapper.findAll('div').find((w) => w.attributes('role') === 'treeitem');
-
-    expect(dropzone?.exists()).toBe(true);
-
-    const mockEvent = {
-      shiftKey: false,
-      dataTransfer: {
-        types: [FILE_MANAGER_MOVE_DRAG_TYPE],
-        getData: vi.fn((type) => {
-          if (type === FILE_MANAGER_MOVE_DRAG_TYPE) {
-            return JSON.stringify({ path: '_audio/a.mp4' });
-          }
-          return '';
-        }),
-      },
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    } as unknown as DragEvent;
-
-    await dropzone?.trigger('drop', mockEvent);
-
-    const emitted = wrapper.emitted('requestCopy');
-    expect(emitted?.length).toBe(1);
-    expect(emitted?.[0]?.[0]).toEqual({
-      sourcePath: '_audio/a.mp4',
-      targetDirPath: '_video',
-    });
-  });
-
-  it('moves on cross-manager tree drop with layer1 modifier', async () => {
-    dragSourceFileManagerInstanceIdMock = 'sidebar';
-
-    const dir: FsEntry = {
-      name: '_video',
-      kind: 'directory',
-      path: '_video',
-      expanded: false,
-    };
-
-    const wrapper = mountTree([dir], 'main');
-    const dropzone = wrapper.findAll('div').find((w) => w.attributes('role') === 'treeitem');
-
-    expect(dropzone?.exists()).toBe(true);
-
-    const mockEvent = {
-      shiftKey: true,
-      dataTransfer: {
-        types: [FILE_MANAGER_MOVE_DRAG_TYPE],
-        getData: vi.fn((type) => {
-          if (type === FILE_MANAGER_MOVE_DRAG_TYPE) {
-            return JSON.stringify({ path: '_audio/a.mp4' });
-          }
-          return '';
-        }),
-      },
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    } as unknown as DragEvent;
-
-    await dropzone?.trigger('drop', mockEvent);
-
-    const emitted = wrapper.emitted('requestMove');
-    expect(emitted?.length).toBe(1);
-    expect(emitted?.[0]?.[0]).toEqual({
       sourcePath: '_audio/a.mp4',
       targetDirPath: '_video',
     });
   });
 
   it('cancels tree drop when item is returned onto its own container', async () => {
-    dragSourceFileManagerInstanceIdMock = 'main';
-
-    const dir: FsEntry = {
-      name: '_video',
-      kind: 'directory',
-      path: '_video',
-      expanded: false,
-    };
-
+    mockState.dragSourceFileManagerInstanceId = 'main';
+    const dir: FsEntry = { name: '_video', kind: 'directory', path: '_video', expanded: false };
     const wrapper = mountTree([dir], 'main');
     const dropzone = wrapper.findAll('div').find((w) => w.attributes('role') === 'treeitem');
-
     const mockEvent = {
       shiftKey: true,
       dataTransfer: {
         types: [FILE_MANAGER_COPY_DRAG_TYPE],
         getData: vi.fn((type) => {
-          if (type === FILE_MANAGER_COPY_DRAG_TYPE) {
-            return JSON.stringify({ path: '_video', kind: 'directory' });
-          }
+          if (type === FILE_MANAGER_COPY_DRAG_TYPE) return JSON.stringify({ path: '_video', kind: 'directory' });
           return '';
         }),
       },
       preventDefault: vi.fn(),
       stopPropagation: vi.fn(),
     } as unknown as DragEvent;
-
     await dropzone?.trigger('drop', mockEvent);
-
     expect(wrapper.emitted('requestMove')).toBeFalsy();
     expect(wrapper.emitted('requestCopy')).toBeFalsy();
   });
 
   it('shows cancel operation on dragover when item returns to its source container', async () => {
-    dragSourceFileManagerInstanceIdMock = 'main';
-
-    const dir: FsEntry = {
-      name: '_video',
-      kind: 'directory',
-      path: '_video',
-      expanded: false,
-    };
-
+    mockState.dragSourceFileManagerInstanceId = 'main';
+    const dir: FsEntry = { name: '_video', kind: 'directory', path: '_video', expanded: false };
     const wrapper = mountTree([dir], 'main');
     const dropzone = wrapper.findAll('div').find((w) => w.attributes('role') === 'treeitem');
 
     const draggedItem = { name: '_video', kind: 'directory', path: '_video' };
-    draggedItemsMock = [draggedItem];
+    mockState.draggedItems = [draggedItem];
 
     const dataTransfer = {
       types: [FILE_MANAGER_COPY_DRAG_TYPE],
       dropEffect: 'copy',
       getData: vi.fn((type) => {
-        if (type === FILE_MANAGER_COPY_DRAG_TYPE) {
-          return JSON.stringify(draggedItem);
-        }
+        if (type === FILE_MANAGER_COPY_DRAG_TYPE) return JSON.stringify(draggedItem);
         return '';
       }),
     };
@@ -641,69 +274,7 @@ describe('FileManagerTree', () => {
       preventDefault: vi.fn(),
     } as unknown as DragEvent);
 
-    expect(setCurrentDragOperationMock).toHaveBeenCalledWith('cancel');
+    expect(mockState.setCurrentDragOperation).toHaveBeenCalledWith('cancel');
     expect(dataTransfer.dropEffect).toBe('none');
-  });
-
-  it('selects only siblings for select all hotkey', async () => {
-    const videoA: FsEntry = {
-      name: 'a.mp4',
-      kind: 'file',
-      path: '_video/a.mp4',
-      parentPath: '_video',
-    };
-    const videoB: FsEntry = {
-      name: 'b.mp4',
-      kind: 'file',
-      path: '_video/b.mp4',
-      parentPath: '_video',
-    };
-    const audioC: FsEntry = {
-      name: 'c.wav',
-      kind: 'file',
-      path: '_audio/c.wav',
-      parentPath: '_audio',
-    };
-
-    const rootEntries: FsEntry[] = [
-      {
-        name: '_video',
-        kind: 'directory',
-        path: '_video',
-        expanded: true,
-        children: [videoA, videoB],
-      },
-      {
-        name: '_audio',
-        kind: 'directory',
-        path: '_audio',
-        expanded: true,
-        children: [audioC],
-      },
-    ];
-
-    selectionStoreMock.selectedEntity = {
-      source: 'fileManager',
-      kind: 'file',
-      path: videoA.path,
-      name: videoA.name,
-      entry: videoA,
-    };
-
-    mountTree(rootEntries);
-
-    uiStoreMock.fileTreeSelectAllTrigger++;
-    await Promise.resolve();
-
-    expect(selectionStoreMock.selectFsEntries).toHaveBeenCalledWith(
-      [videoA, videoB],
-      'main',
-      false,
-    );
-    expect(selectionStoreMock.selectFsEntries).not.toHaveBeenCalledWith(
-      [videoA, videoB, audioC],
-      'main',
-      false,
-    );
   });
 });

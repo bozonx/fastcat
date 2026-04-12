@@ -165,12 +165,12 @@ describe('FileProperties.vue', () => {
     });
 
     // Expect Actions Section
-    expect(component.text()).toContain('Actions');
+    expect(component.text()).toContain('videoEditor.fileManager.actions.title');
     // Using title attribute because primary actions are icon-only in EntryActions
     expect(component.find('button[title="Mock Action"]').exists()).toBe(true);
 
     // Expect Meta Section
-    expect(component.text()).toContain('Meta');
+    expect(component.text()).toContain('common.meta');
   });
 
   it('renders properties for a directory', async () => {
@@ -225,7 +225,7 @@ describe('FileProperties.vue', () => {
       projectStats: ref({
         fileCount: 42,
         size: 1024 * 1024 * 1024 * 5,
-      } as any),
+      }),
     });
 
     vi.mocked(useEntryPreview).mockReturnValue({
@@ -256,7 +256,7 @@ describe('FileProperties.vue', () => {
     });
 
     // Check for title of project root section
-    expect(component.text()).toContain('Project root');
+    expect(component.text()).toContain('videoEditor.fileManager.projectRoot.title');
     expect(component.text()).toContain('5 GB'); // totalSizeBytes
   });
 
@@ -291,7 +291,7 @@ describe('FileProperties.vue', () => {
     });
 
     // For common root, it should show typical directory actions
-    expect(component.text()).toContain('Actions');
+    expect(component.text()).toContain('videoEditor.fileManager.actions.title');
   });
 
   it('renders properties for an image file with EXIF', async () => {
@@ -334,10 +334,10 @@ describe('FileProperties.vue', () => {
       },
     });
 
-    expect(component.text()).toContain('Resolution');
+    expect(component.text()).toContain('videoEditor.fileManager.image.resolution');
     expect(component.text()).toContain('1920x1080');
     expect(component.text()).toContain('Sony');
-    expect(component.text()).toContain('EXIF');
+    expect(component.text()).toContain('videoEditor.fileManager.image.camera');
   });
 
   it('renders transcription section for audio/video files', async () => {
@@ -468,7 +468,7 @@ describe('FileProperties.vue', () => {
       },
     });
 
-    expect(component.text()).toContain('Actions');
+    expect(component.text()).toContain('videoEditor.fileManager.actions.title');
     expect(component.text()).not.toContain('General Info');
   });
 
@@ -503,8 +503,18 @@ describe('FileProperties.vue', () => {
         { id: 'paste', title: 'Paste', icon: 'i-paste', onClick: vi.fn() },
       ]),
       directorySecondaryActions: ref([
-        { id: 'createContentItem', label: 'Create content item', icon: 'i-item', onClick: vi.fn() },
-        { id: 'createSubgroup', label: 'Create subgroup', icon: 'i-group', onClick: vi.fn() },
+        {
+          id: 'createContentItem',
+          label: 'fastcat.bloggerDog.actions.createItem',
+          icon: 'i-item',
+          onClick: vi.fn(),
+        },
+        {
+          id: 'createSubgroup',
+          label: 'fastcat.bloggerDog.actions.createSubgroup',
+          icon: 'i-group',
+          onClick: vi.fn(),
+        },
       ]),
       filePrimaryActions: ref([]),
       fileSecondaryActions: ref([]),
@@ -537,8 +547,8 @@ describe('FileProperties.vue', () => {
     });
 
     expect(virtualAll.find('button[title="Paste"]').exists()).toBe(true);
-    expect(virtualAll.text()).toContain('Create content item');
-    expect(virtualAll.text()).not.toContain('Create subgroup');
+    expect(virtualAll.text()).toContain('fastcat.bloggerDog.actions.createItem');
+    expect(virtualAll.text()).not.toContain('fastcat.bloggerDog.actions.createGroup');
 
     const personal = await mountWithNuxt(FileProperties, {
       props: {
@@ -555,7 +565,7 @@ describe('FileProperties.vue', () => {
     });
 
     expect(personal.find('button[title="Paste"]').exists()).toBe(true);
-    expect(personal.text()).not.toContain('Create content item');
+    expect(personal.text()).not.toContain('fastcat.bloggerDog.actions.createItem');
 
     vi.mocked(useFilePropertiesBasics).mockReturnValue({
       generalInfoTitle: 'Project',
@@ -584,7 +594,7 @@ describe('FileProperties.vue', () => {
     });
 
     expect(project.find('button[title="Paste"]').exists()).toBe(true);
-    expect(project.text()).toContain('Create content item');
+    expect(project.text()).toContain('fastcat.bloggerDog.actions.createItem');
     expect(project.text()).toContain('fastcat.bloggerDog.actions.createGroup');
   });
 
