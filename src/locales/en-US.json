@@ -1049,7 +1049,7 @@
       "channels": "Channels",
       "channelsCount": "{n} channels",
       "mono": "Mono",
-      "original": "Original Audio",
+      "original": "Original",
       "reverse": "Reverse",
       "sampleRate": "Sample Rate",
       "stereo": "Stereo"
