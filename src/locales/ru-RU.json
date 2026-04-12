@@ -1,4 +1,13 @@
 {
+  "": {
+    "audio-tracks-scroll": "Audio-tracks-scroll",
+    "cursor-ew-resize": "Cursor-ew-resize",
+    "cursor-ns-resize": "Cursor-ns-resize",
+    "splitpanes__splitter": "Splitpanes  splitter",
+    "timeline-labels-container": "Timeline-labels-container",
+    "timeline-ruler-container": "Timeline-ruler-container",
+    "video-tracks-scroll": "Video-tracks-scroll"
+  },
   "common": {
     "actions": {
       "reset": "Сбросить",
@@ -6,13 +15,17 @@
     },
     "active": "Активные",
     "add": "Добавить",
+    "addToTimeline": "Добавить на таймлайн",
+    "addedToTimeline": "Addedtotimeline",
     "all": "Все",
     "allLanguages": "Все языки",
     "apply": "Применить",
     "areYouSure": "Вы уверены?",
     "audio": "Аудио",
+    "autoRecognition": "Авто распознавание по типу",
     "back": "Назад",
     "cancel": "Отмена",
+    "cancelSelection": "Cancelselection",
     "clear": "Очистить",
     "clearSelection": "Очистить",
     "close": "Закрыть",
@@ -21,18 +34,19 @@
     "configure": "Настроить",
     "confirm": "Подтвердить",
     "confirmDelete": "Вы уверены, что хотите удалить это? Это действие нельзя отменить.",
-    "copy": "Копировать",
+    "copied": "Copied",
     "copiedToClipboard": "Скопировано в буфер обмена",
-    "cut": "Вырезать",
+    "copy": "Копировать",
     "create": "Создать",
+    "createInFolder": "Создать в папке",
     "created": "Создано",
     "createdAt": "Дата создания",
     "current": "Текущая",
     "custom": "Свой",
+    "cut": "Вырезать",
     "danger_zone": "Опасная зона",
     "default": "По умолчанию",
     "delete": "Удалить",
-    "deleteError": "Ошибка удаления",
     "deleteForever": "Удалить навсегда",
     "description": "Описание",
     "detach": "Открепить",
@@ -47,7 +61,9 @@
     "endOfList": "Больше ничего нет",
     "error": "Ошибка",
     "expand": "Развернуть",
+    "export": "Экспорт",
     "file": "Файл",
+    "files": "Файлы",
     "filesCount": "Файлов",
     "folder": "Папка",
     "folderBaseName": "Папка",
@@ -55,7 +71,12 @@
     "hidden": "Скрыт",
     "hide": "Скрыть",
     "hideArchived": "Скрыть архивные",
+    "hideHiddenFiles": "Скрыть скрытые файлы",
+    "history": "History",
     "imagePreview": "Предпросмотр изображения",
+    "inDirDocuments": "В _documents/",
+    "inDirTimelines": "В _timelines/",
+    "info": "Info",
     "inlineMarkdownHelp": "Разрешена только inline-разметка (жирный, курсив, ссылки). Блочные элементы (заголовки, списки, цитаты) не поддерживаются.",
     "items": "Элементы",
     "itemsSelected": "Выбрано: {count}",
@@ -65,6 +86,7 @@
     "level": "Уровень",
     "loadMore": "Загрузить ещё",
     "loading": "Загрузка...",
+    "markers": "Markers",
     "meta": "Мета (YAML)",
     "modified": "Изменён",
     "more": "Ещё",
@@ -77,9 +99,14 @@
     "noData": "Нет данных",
     "noResults": "Нет результатов",
     "none": "Нет",
+    "notFound": "Notfound",
+    "note": "Note",
     "open": "Открыть",
     "optional": "Необязательно",
     "pan": "Панорама",
+    "panCenter": "Центр",
+    "panLeft": "Слева {value}%",
+    "panRight": "Справа {value}%",
     "paste": "Вставить",
     "path": "Путь",
     "peak": "Пик",
@@ -87,8 +114,10 @@
     "prev": "Назад",
     "preview": "Предпросмотр",
     "properties": "Свойства",
+    "quickCreateDefault": "Быстрое создание",
     "recent": "Недавние",
     "redo": "Вернуть",
+    "refresh": "Обновить",
     "remove": "Удалить",
     "rename": "Переименовать",
     "reset": "Сбросить",
@@ -102,12 +131,16 @@
     "saveSuccess": "Успешно сохранено",
     "saved": "Сохранено",
     "saving": "Сохранение...",
+    "scroll_for_more": "Листайте для загрузки",
     "search": "Поиск",
     "select": "Выбрать",
     "selectAll": "Выбрать все",
+    "selectItems": "Selectitems",
     "selected": "Выбрано: {count}",
+    "settings": "Настройки",
     "show": "Показать",
     "showArchived": "Показать архивные",
+    "showHiddenFiles": "Показать скрытые файлы",
     "size": "Размер",
     "skip": "Пропустить",
     "sortBy": "Сортировка",
@@ -115,6 +148,7 @@
       "asc": "По возрастанию",
       "desc": "По убыванию"
     },
+    "sound": "Звук",
     "source": "Источник",
     "stale": "Неактивны",
     "start": "Начало",
@@ -124,10 +158,14 @@
     "success": "Успешно",
     "tags": "Теги",
     "text": "Текст",
+    "textDocument": "Текстовый документ",
+    "timeline": "Таймлайн",
     "title": "Заголовок",
     "toHome": "На главную",
+    "toSortAsc": "По возрастанию",
+    "toSortDesc": "По убыванию",
+    "toTimeline": "На таймлайн",
     "toggleMute": "Вкл/выкл звук",
-    "scroll_for_more": "Листайте для загрузки",
     "totalSize": "Общий размер",
     "tracks": "Дорожки",
     "type": "Тип",
@@ -142,19 +180,7 @@
       "invalidName": "Имя содержит недопустимые символы",
       "required": "Имя обязательно"
     },
-    "showHiddenFiles": "Показать скрытые файлы",
-    "hideHiddenFiles": "Скрыть скрытые файлы",
-    "createInFolder": "Создать в папке",
-    "quickCreateDefault": "Быстрое создание",
-    "autoRecognition": "Авто распознавание по типу",
-    "inDirTimelines": "В _timelines/",
-    "inDirDocuments": "В _documents/",
-    "refresh": "Обновить",
-    "toSortDesc": "По убыванию",
-    "toSortAsc": "По возрастанию",
     "video": "Видео",
-    "timeline": "Таймлайн",
-    "textDocument": "Текстовый документ",
     "view": "Просмотреть",
     "viewAll": "Смотреть все",
     "viewMode": {
@@ -162,32 +188,30 @@
       "list": "Список"
     },
     "warning": "Предупреждение",
-    "yes": "Да",
-    "panCenter": "Центр",
-    "panLeft": "Слева {value}%",
-    "panRight": "Справа {value}%",
-    "addToTimeline": "Добавить на таймлайн",
-    "toTimeline": "На таймлайн",
-    "files": "Файлы",
-    "sound": "Звук",
-    "export": "Экспорт",
-    "settings": "Настройки"
+    "yes": "Да"
   },
-  "errors": {
-    "notFound": "Не найдено"
-  },
+  "errors": {},
   "fastcat": {
     "audioMixer": {
-      "audio": "Аудио",
       "main": "MAIN",
       "master": "Мастер",
-      "mute": "M",
-      "solo": "S",
-      "title": "Микшер",
-      "video": "Видео",
-      "output": "выход",
-      "tracksHint": "Настройте уровень, панораму, беззвучный и соло режим для каждой дорожки",
-      "noTracks": "Звуковых дорожек пока нет."
+      "title": "Микшер"
+    },
+    "bloggerDog": {
+      "actions": {
+        "createGroup": "Создать группу",
+        "createItem": "Создать элемент контента",
+        "createSubgroup": "Создать подгруппу"
+      },
+      "allContent": "Весь контент",
+      "connected": "Установлено",
+      "connection": "Соединение",
+      "contentLibrary": "Библиотека контента",
+      "personalLibrary": "Личная библиотека",
+      "personalLibraryDesc": "Библиотека вашего личного контента",
+      "projectLibraries": "Библиотеки проектов",
+      "projectLibrariesDesc": "Библиотеки контента конкретных проектов",
+      "virtualAllDesc": "Виртуальный плосский список всех элементов контента"
     },
     "captions": {
       "generate": "Создать субтитры",
@@ -201,30 +225,6 @@
       "splitOnPunctuation": "Разделять по пунктуации",
       "timelineWideDescription": "Редактор просканирует все активные аудио- и видеоклипы на невыключенных видимых дорожках, загрузит существующий кэш транскрипции, учтет обрезку и сохранит только верхний видимый источник при перекрытиях."
     },
-    "bloggerDog": {
-      "contentLibrary": "Библиотека контента",
-      "connection": "Соединение",
-      "connected": "Установлено",
-      "allContent": "Весь контент",
-      "virtualAllDesc": "Виртуальный плосский список всех элементов контента",
-      "personalLibrary": "Личная библиотека",
-      "personalLibraryDesc": "Библиотека вашего личного контента",
-      "projectLibraries": "Библиотеки проектов",
-      "projectLibrariesDesc": "Библиотеки контента конкретных проектов",
-      "actions": {
-        "createGroup": "Создать группу",
-        "createSubgroup": "Создать подгруппу",
-        "createItem": "Создать элемент контента"
-      }
-    },
-    "file": {
-      "bloggerDogProject": "Проект",
-      "bloggerDogGroup": "Группа",
-      "bloggerDogItem": "Элемент контента",
-      "mediaCount": "Количество медиа",
-      "itemsCount": "Количество элементов",
-      "lineCount": "Количество строк"
-    },
     "clip": {
       "actions": "Действия",
       "audio": {
@@ -232,39 +232,58 @@
         "volume": "Громкость"
       },
       "audioFade": {
-        "in": "Фейд в начале",
-        "out": "Фейд в конце",
-        "title": "Фейды звука",
         "curve": {
           "linear": "Линейная",
           "logarithmic": "Логарифмическая"
-        }
+        },
+        "in": "Фейд в начале",
+        "out": "Фейд в конце",
+        "title": "Фейды звука"
       },
       "blendMode": {
-        "title": "Режим наложения",
         "add": "Добавление",
         "darken": "Затемнение",
         "lighten": "Осветление",
         "multiply": "Умножение",
         "normal": "Обычный",
-        "screen": "Экран"
+        "screen": "Экран",
+        "title": "Режим наложения"
       },
       "cloudType": "Тип облаков",
       "fullWaveform": "Полная вейвформа",
+      "goToLinkedAudio": "Gotolinkedaudio",
+      "goToLinkedVideo": "Gotolinkedvideo",
+      "goToTimeline": "Перейти к таймлайну",
       "halfWaveform": "Половина вейвформы",
       "hideThumbnails": "Скрыть миниатюры",
       "hideWaveform": "Скрыть вейвформу",
       "info": "Информация о клипе",
+      "mask": {
+        "dropFile": "Перетащите файл маски сюда",
+        "file": "Файл маски",
+        "invert": "Инвертировать",
+        "mode": "Режим маски",
+        "modeAlpha": "Alpha (Прозрачность)",
+        "modeLuma": "Luma (Яркость)",
+        "title": "Маска"
+      },
       "opacity": "Прозрачность",
       "pointerDirection": "Направление указателя",
       "rays": "Лучи",
       "rename": "Переименовать клип",
-      "reversed": "Обратное воспроизведение",
-      "speedMultiplier": "Скорость",
+      "replaceMedia": "Replacemedia",
       "showInFileManager": "Показать в файловом менеджере",
-      "goToTimeline": "Перейти к таймлайну",
       "showThumbnails": "Показать миниатюры",
       "showWaveform": "Показать вейвформу",
+      "speed": {
+        "title": "Title"
+      },
+      "speedMultiplier": "Скорость",
+      "tabs": {
+        "audio": "Аудио",
+        "clip": "Клип",
+        "video": "Видео"
+      },
       "transform": {
         "anchor": "Точка привязки",
         "anchorPreset": {
@@ -275,100 +294,48 @@
           "topLeft": "Верх лево",
           "topRight": "Верх право"
         },
-        "anchorX": "Точка X (0..1)",
-        "anchorY": "Точка Y (0..1)",
-        "flipHorizontal": "Отразить по горизонтали",
-        "flipVertical": "Отразить по вертикали",
-        "paramContentMode": "Режим контента",
-        "positionX": "Позиция X (px)",
-        "positionY": "Позиция Y (px)",
-        "rotation": "Поворот (градусы)",
-        "scale": "Масштаб (%)",
-        "scaleX": "Масштаб X (%)",
-        "scaleY": "Масштаб Y (%)",
         "crop": "Обрезка (px)",
-        "cropTop": "Сверху",
         "cropBottom": "Снизу",
         "cropLeft": "Слева",
         "cropRight": "Справа",
+        "cropTop": "Сверху",
+        "flipHorizontal": "Отразить по горизонтали",
+        "flipVertical": "Отразить по вертикали",
         "position": "Позиция (px)",
         "reflect": "Отражение",
         "resetAll": "Сбросить всё",
+        "rotation": "Поворот (градусы)",
+        "scale": "Масштаб (%)",
+        "scaleX": "Масштаб X (%)",
         "title": "Трансформация"
-      },
-      "mask": {
-        "title": "Маска",
-        "file": "Файл маски",
-        "dropFile": "Перетащите файл маски сюда",
-        "mode": "Режим маски",
-        "modeAlpha": "Alpha (Прозрачность)",
-        "modeLuma": "Luma (Яркость)",
-        "invert": "Инвертировать"
-      },
-      "tabs": {
-        "clip": "Клип",
-        "video": "Видео",
-        "audio": "Аудио"
       }
     },
     "dynamicPanels": {
       "moveToCutWindow": "Перенести в окно монтажа",
       "moveToSoundWindow": "Перенести в окно звука",
-      "projectFiles": "Файлы проекта",
       "returnToProjectPanel": "Вернуться к панели проекта"
-    },
-    "library": {
-      "tabs": {
-        "texts": "Тексты",
-        "shapes": "Фигуры",
-        "hud": "HUD"
-      },
-      "texts": {
-        "default": "Стандартный",
-        "title": "Заголовок",
-        "subtitle": "Подзаголовок",
-        "setAsDefault": "Сделать стандартным",
-        "selectPreset": "Выберите текстовый пресет",
-        "watchPresets": "Смотреть пресеты"
-      },
-      "shapes": {
-        "square": "Квадрат",
-        "circle": "Круг",
-        "triangle": "Треугольник",
-        "star": "Звезда",
-        "bang": "Вспышка",
-        "cloud": "Облако",
-        "speech_bubble": "Облако диалога"
-      },
-      "huds": {
-        "media_frame": "Рамка медиа"
-      }
-    },
-    "presets": {
-      "enterName": "Введите название пресета",
-      "saveAsPreset": "Сохранить как пресет"
     },
     "effects": {
       "add": "Добавить",
-      "audioTitle": "Аудиоэффекты",
-      "videoTitle": "Видеоэффекты",
       "addEffect": "Добавить эфф.",
-      "clipTitle": "Эффекты клипа",
-      "presetNamePlaceholder": "Мой пресет",
-      "saveAsPreset": "Сохранить как пресет",
-      "savePresetTitle": "Сохранение пресета",
+      "audioTitle": "Аудиоэффекты",
       "dropHint": "Перетащите эффекты сюда",
       "effectsCount": "{count} эфф.",
       "empty": "Эффектов нет",
-      "loadPresetPlaceholder": "Загрузить пресет...",
-      "noPresets": "Пресеты не найдены",
-      "presetsTitle": "Пресеты",
       "groups": {
         "artistic": "Художественные",
         "custom": "Свои",
         "standard": "Стандартные"
       },
+      "loadPresetPlaceholder": "Загрузить пресет...",
       "masterTitle": "Мастер-эффекты",
+      "noSettings": "Nosettings",
+      "presetNamePlaceholder": "Мой пресет",
+      "presetsTitle": "Пресеты",
+      "saveAsNew": "Saveasnew",
+      "saveAsPreset": "Сохранить как пресет",
+      "savePresetTitle": "Сохранение пресета",
+      "settings": "Settings",
       "tabs": {
         "audio": "Аудио",
         "transitions": "Переходы",
@@ -376,63 +343,62 @@
       },
       "title": "Эффекты",
       "trackAudioTitle": "Эффекты аудио дорожки: {name}",
-      "trackTitle": "Эффекты дорожки",
       "video": {
         "advancedBloom": {
-          "name": "Свечение (Продвинутое)",
           "description": "Продвинутый эффект свечения с настройкой порога и яркости",
+          "name": "Свечение (Продвинутое)",
           "params": {
-            "threshold": "Порог",
             "bloomScale": "Сила свечения",
-            "brightness": "Яркость",
             "blur": "Размытие",
-            "quality": "Качество"
+            "brightness": "Яркость",
+            "quality": "Качество",
+            "threshold": "Порог"
           }
         },
         "ascii": {
-          "name": "ASCII Art",
           "description": "Эффект ASCII символов",
+          "name": "ASCII Art",
           "params": {
             "size": "Размер"
           }
         },
         "backdropBlur": {
-          "name": "Размытие фона",
           "description": "Размытие всего, что находится позади объекта",
+          "name": "Размытие фона",
           "params": {
-            "strength": "Сила",
-            "quality": "Качество"
+            "quality": "Качество",
+            "strength": "Сила"
           }
         },
         "bevel": {
-          "name": "Скос (Фаска)",
           "description": "Эффект объемной рамки (фаски)",
+          "name": "Скос (Фаска)",
           "params": {
-            "rotation": "Угол",
-            "thickness": "Толщина",
             "lightAlpha": "Прозрачность света",
-            "shadowAlpha": "Прозрачность тени"
+            "rotation": "Угол",
+            "shadowAlpha": "Прозрачность тени",
+            "thickness": "Толщина"
           }
         },
         "bloom": {
-          "name": "Свечение (Bloom)",
           "description": "Эффект размытого свечения",
+          "name": "Свечение (Bloom)",
           "params": {
-            "strength": "Сила",
-            "quality": "Качество"
+            "quality": "Качество",
+            "strength": "Сила"
           }
         },
         "blur": {
-          "name": "Размытие",
           "description": "Размытие по Гауссу",
+          "name": "Размытие",
           "params": {
-            "strength": "Сила",
-            "quality": "Качество"
+            "quality": "Качество",
+            "strength": "Сила"
           }
         },
         "bulgePinch": {
-          "name": "Искажение (Выпуклость)",
           "description": "Эффект выпуклости или сжатия (эффект рыбьего глаза)",
+          "name": "Искажение (Выпуклость)",
           "params": {
             "centerX": "Центр X",
             "centerY": "Центр Y",
@@ -441,8 +407,8 @@
           }
         },
         "color-adjustment": {
-          "name": "Цветокоррекция",
           "description": "Настройка яркости, контрастности и насыщенности",
+          "name": "Цветокоррекция",
           "params": {
             "brightness": "Яркость",
             "contrast": "Контрастность",
@@ -450,172 +416,197 @@
           }
         },
         "colorGradient": {
-          "name": "Цветовой градиент",
           "description": "Наложение цветового градиента",
-          "params": {
-            "type": "Линейный",
-            "angle": "Угол",
-            "alpha": "Прозрачность",
-            "maxColors": "Кол-во цветов (0=Безлимит)",
-            "replace": "Заменить цвет"
-          },
+          "name": "Цветовой градиент",
           "options": {
+            "conic": "Конический",
             "linear": "Линейный",
-            "radial": "Радиальный",
-            "conic": "Конический"
+            "radial": "Радиальный"
+          },
+          "params": {
+            "alpha": "Прозрачность",
+            "angle": "Угол",
+            "maxColors": "Кол-во цветов (0=Безлимит)",
+            "replace": "Заменить цвет",
+            "type": "Линейный"
           }
         },
         "colorMap": {
-          "name": "Цветовая карта",
           "description": "Применение цветовой карты (LUT)",
+          "name": "Цветовая карта",
           "params": {
             "mix": "Интенсивность",
             "nearest": "Режим Nearest"
           }
         },
         "colorMatrix": {
-          "name": "Цветовой фильтр",
           "description": "Готовые цветовые пресеты",
+          "name": "Цветовой фильтр",
+          "options": {
+            "blackAndWhite": "Ч/Б",
+            "browni": "Брауни",
+            "kodachrome": "Кодахром",
+            "lsd": "LSD",
+            "negative": "Негатив",
+            "none": "Нет",
+            "polaroid": "Полароид",
+            "sepia": "Сепия",
+            "technicolor": "Техниколор",
+            "vintage": "Винтаж"
+          },
           "params": {
             "filterType": "Фильтр",
             "intensity": "Интенсивность"
-          },
-          "options": {
-            "none": "Нет",
-            "sepia": "Сепия",
-            "negative": "Негатив",
-            "blackAndWhite": "Ч/Б",
-            "browni": "Брауни",
-            "vintage": "Винтаж",
-            "kodachrome": "Кодахром",
-            "technicolor": "Техниколор",
-            "polaroid": "Полароид",
-            "lsd": "LSD"
           }
         },
         "colorOverlay": {
-          "name": "Наложение цвета",
           "description": "Заливка сплошным цветом",
+          "name": "Наложение цвета",
           "params": {
             "alpha": "Прозрачность"
           }
         },
         "colorReplace": {
-          "name": "Замена цвета",
           "description": "Замена одного цвета на другой",
+          "name": "Замена цвета",
           "params": {
             "tolerance": "Допуск"
           }
         },
         "convolution": {
-          "name": "Свертка",
           "description": "Применение матрицы свертки (Convolution Matrix)",
+          "name": "Свертка",
           "params": {
-            "width": "Ширина",
-            "height": "Высота"
+            "height": "Высота",
+            "width": "Ширина"
           }
         },
         "crossHatch": {
-          "name": "Штриховка",
-          "description": "Эффект перекрестной штриховки"
+          "description": "Эффект перекрестной штриховки",
+          "name": "Штриховка"
         },
         "crt": {
-          "name": "ЭЛТ Монитор",
           "description": "Эффект старого телевизора",
+          "name": "ЭЛТ Монитор",
           "params": {
             "curvature": "Искажение",
-            "lineWidth": "Толщина линий",
             "lineContrast": "Контраст линий",
-            "verticalLine": "Вертикальные линии",
+            "lineWidth": "Толщина линий",
             "noise": "Шум",
             "noiseSize": "Размер шума",
+            "verticalLine": "Вертикальные линии",
             "vignetting": "Виньетка",
             "vignettingAlpha": "Прозрачность виньетки",
             "vignettingBlur": "Размытие виньетки"
           }
         },
         "displacement": {
-          "name": "Искажение",
           "description": "Эффект смещения/волн",
+          "name": "Искажение",
           "params": {
             "scaleX": "Смещение X",
             "scaleY": "Смещение Y"
           }
         },
         "dot": {
-          "name": "Точки (Полутон)",
           "description": "Эффект растровой печати",
+          "name": "Точки (Полутон)",
           "params": {
-            "scale": "Масштаб",
             "angle": "Угол",
-            "grayscale": "Ч/Б"
+            "grayscale": "Ч/Б",
+            "scale": "Масштаб"
           }
         },
         "dropShadow": {
-          "name": "Тень",
           "description": "Эффект падающей тени",
+          "name": "Тень",
           "params": {
-            "offsetX": "Смещение X",
-            "offsetY": "Смещение Y",
             "alpha": "Прозрачность",
             "blur": "Размытие",
+            "offsetX": "Смещение X",
+            "offsetY": "Смещение Y",
             "quality": "Качество",
             "shadowOnly": "Только тень"
           }
         },
         "noise": {
-          "name": "Шум",
           "description": "Эффект зернистости пленки",
+          "name": "Шум",
           "params": {
             "noise": "Интенсивность",
             "seed": "Зерно"
           }
         }
-      }
+      },
+      "videoTitle": "Видеоэффекты"
+    },
+    "file": {
+      "bloggerDogGroup": "Группа",
+      "bloggerDogItem": "Элемент контента",
+      "bloggerDogProject": "Проект",
+      "itemsCount": "Количество элементов",
+      "lineCount": "Количество строк",
+      "mediaCount": "Количество медиа"
     },
     "fileManager": {
-      "unsupported": "API доступа к файловой системе не поддерживается в этом браузере",
+      "actions": {},
+      "remote": {
+        "configure_action": "Настроить интеграцию",
+        "load_error_title": "Ошибка подключения",
+        "not_configured_desc": "Интеграция с BloggerDog позволяет управлять вашим удаленным контентом.",
+        "not_configured_title": "BloggerDog не настроен"
+      },
       "tabs": {
         "computer": "Компьютер",
         "workspace": "Воркспейс"
       },
-      "actions": {
-        "importing": "Импорт...",
-        "downloading": "Загрузка..."
-      },
+      "unsupported": "API доступа к файловой системе не поддерживается в этом браузере",
       "upload": {
-        "autoUploadTitle": "Авто-загрузка",
-        "successTitle": "Загрузка завершена",
-        "summary": "{count} {type} в {folder}",
-        "types": {
-          "video": "видео",
-          "audio": "аудио",
-          "image": "изображений",
-          "file": "файлов"
-        }
-      },
-      "remote": {
-        "not_configured_title": "BloggerDog не настроен",
-        "not_configured_desc": "Интеграция с BloggerDog позволяет управлять вашим удаленным контентом.",
-        "configure_action": "Настроить интеграцию",
-        "load_error_title": "Ошибка подключения"
+        "types": {}
       }
     },
-
     "hudClip": {
       "background": "Фон",
       "content": "Содержимое",
-      "frame": "Рамка",
       "emptyLayer": "Пустой слой",
+      "frame": "Рамка",
       "hud": "HUD",
       "type": "Тип",
       "types": {
         "mediaFrame": "Медиарамка"
       }
     },
+    "library": {
+      "huds": {
+        "media_frame": "Рамка медиа"
+      },
+      "shapes": {
+        "bang": "Вспышка",
+        "circle": "Круг",
+        "cloud": "Облако",
+        "speech_bubble": "Облако диалога",
+        "square": "Квадрат",
+        "star": "Звезда",
+        "triangle": "Треугольник"
+      },
+      "tabs": {
+        "hud": "HUD",
+        "shapes": "Фигуры",
+        "texts": "Тексты"
+      },
+      "texts": {
+        "default": "Стандартный",
+        "selectPreset": "Выберите текстовый пресет",
+        "setAsDefault": "Сделать стандартным",
+        "subtitle": "Подзаголовок",
+        "title": "Заголовок",
+        "watchPresets": "Смотреть пресеты"
+      }
+    },
     "marker": {
       "actions": "Действия",
       "info": "Инфо маркера",
+      "marker": "Marker",
       "text": "Текст",
       "title": "Маркер",
       "zoneMarker": "Маркер-зона"
@@ -624,67 +615,53 @@
       "audioMute": "Выключить звук",
       "audioUnmute": "Включить звук",
       "audioVolume": "Громкость аудио",
-      "volumeUp": "Увеличить громкость",
-      "volumeDown": "Уменьшить громкость",
-      "toggleMute": "Включить/выключить звук",
       "center": "По центру",
-      "empty": "Нет выбранных клипов",
-      "fullscreen": "Полноэкранный режим",
+      "end": "В конец",
       "exitFullscreen": "Выйти из полноэкранного режима",
-      "hideGrid": "Скрыть сетку",
+      "fullscreen": "Полноэкранный режим",
+      "layoutError": "Layouterror",
       "loadError": "Ошибка загрузки таймлайна",
       "play": "Воспроизвести",
-      "playBackward": "Воспроизведение назад",
       "playbackSpeed": "Скорость воспроизведения",
+      "playbackStopped": "Playbackstopped",
+      "playbackThrottled": "Playbackthrottled",
+      "previewError": "Previewerror",
       "previewWithEffects": "Предпросмотр с эффектами",
       "previewWithoutEffects": "Предпросмотр без эффектов",
-      "projectResolutionHint": "Разрешение проекта",
       "resetZoom": "Сбросить зум (100%)",
-      "fitZoom": "Вписать в окно",
-      "end": "В конец",
       "rewind": "В начало",
       "showGrid": "Показать сетку",
-      "snapshot": "Снимок",
-      "useProxy": "Использовать прокси",
-      "enableProxy": "Включить прокси",
-      "disableProxy": "Выключить прокси",
       "showTimecode": "Показать таймкод",
-      "hideTimecode": "Скрыть таймкод",
-      "toolbarTop": "Панель сверху",
-      "toolbarRight": "Панель справа",
+      "snapshot": "Снимок",
+      "toggleMute": "Включить/выключить звук",
       "toolbarBottom": "Панель снизу",
       "toolbarLeft": "Панель слева",
-      "withEffects": "С эффектами",
-      "withoutEffects": "Без эффектов"
+      "toolbarRight": "Панель справа",
+      "toolbarTop": "Панель сверху",
+      "useProxy": "Использовать прокси",
+      "volumeDown": "Уменьшить громкость",
+      "volumeUp": "Увеличить громкость"
+    },
+    "presets": {
+      "saveAsPreset": "Сохранить как пресет"
     },
     "preview": {
       "audioTrack": "Аудиодорожка",
-      "noSelection": "Ничего не выбрано",
-      "renameClip": "Переименовать клип",
       "fitToWindow": "Вписать в окно",
-      "resetZoom": "Сбросить зум и панораму",
-      "play": "Воспроизвести",
       "fullscreen": "Полноэкранный режим",
+      "noSelection": "Ничего не выбрано",
+      "play": "Воспроизвести",
+      "resetZoom": "Сбросить зум и панораму",
       "unsupported": "Неподдерживаемый формат файла для предпросмотра",
-      "usedInTimelines": "Используется в таймлайнах",
-      "zoomIn": "Увеличить",
-      "zoomOut": "Уменьшить"
+      "usedInTimelines": "Используется в таймлайнах"
     },
     "projects": {
       "autoDetectHint": "Разрешение и частота кадров проекта будут автоматически определены из первого видео, добавленного на таймлайн.",
       "changeWorkspace": "Сменить рабочую область",
-      "continueWorking": "Продолжить работу",
-      "mobileView": "Управление проектами не оптимизировано для маленьких экранов. Пожалуйста, используйте настольный браузер.",
       "newProject": "Новый проект",
       "noProjectsFound": "Проекты не найдены",
-      "openLast": "Открыть проект",
-      "openLastProject": "Открыть последний проект",
       "projectNamePlaceholder": "Название проекта",
-      "recent": "Недавно открыто",
-      "recentProjects": "Недавние проекты",
-      "renameProject": "Переименовать проект",
       "searchPlaceholder": "Поиск проектов...",
-      "switchToDesktop": "Переключиться на настольный вид",
       "switchToMobile": "Переключиться на мобильный вид",
       "title": "Проекты"
     },
@@ -739,7 +716,9 @@
     "textClip": {
       "align": "Выравнивание",
       "backgroundColor": "Фон",
+      "fontFamily": "Fontfamily",
       "fontSize": "Размер шрифта",
+      "fontWeight": "Fontweight",
       "letterSpacing": "Межбуквенный интервал",
       "lineHeight": "Высота строки",
       "padding": "Отступы",
@@ -748,34 +727,24 @@
       "width": "Ширина блока"
     },
     "timeline": {
-      "importFilesCount": "Импорт {count} файлов",
-      "noSupportedFiles": "Нет поддерживаемых файлов для импорта",
       "addAdjustment": "Добавить корректирующий слой",
-      "addContent": "Добавить контент",
-      "addAdjustmentClip": "Добавить клип корректировки",
       "addAudioTrack": "Добавить аудиодорожку",
-      "addAudioTrackAbove": "Добавить аудиодорожку сверху",
-      "addAudioTrackBelow": "Добавить аудиодорожку снизу",
       "addBackground": "Добавить фоновый слой",
-      "addBackgroundClip": "Добавить фон",
+      "addContent": "Добавить контент",
+      "addMarker": "Добавить маркер",
       "addMarkerAtPlayhead": "Добавить маркер на курсор",
       "addText": "Добавить текст",
-      "addTextClip": "Добавить текстовый клип",
       "addTransitionIn": "Добавить переход в начале",
       "addTransitionOut": "Добавить переход в конце",
       "addVideoTrack": "Добавить видеодорожку",
-      "addVideoTrackAbove": "Добавить видеодорожку сверху",
-      "addVideoTrackBelow": "Добавить видеодорожку снизу",
       "addZoneMarkerAtPlayhead": "Добавить маркер зоны на курсор",
-      "text": "Текст",
-      "shape": "Фигура",
-      "hud": "HUD",
-      "adjustmentClipDefaultName": "Корректирующий слой",
-      "backgroundClipDefaultName": "Фоновый цвет",
-      "clipSnapOff": "Без привязки к клипам",
-      "clipSnapOn": "Привязка к клипам",
-      "clipSnapOffFrames": "Без привязки (кадры)",
+      "adjustment": "Adjustment",
+      "audioTracks": "Audiotracks",
+      "background": "Background",
+      "clearSolos": "Сбросить соло",
+      "clipActions": "Clipactions",
       "clipThumbnail": "Миниатюра клипа",
+      "clipsCount": "Clipscount",
       "convertMarkerToZone": "Преобразовать в маркер зоны",
       "convertSelectionToZoneMarker": "Преобразовать в маркер зоны",
       "convertZoneToMarker": "Преобразовать в обычный маркер",
@@ -784,100 +753,96 @@
       "createSelectionFromZone": "Создать выделение из зоны",
       "createVersion": "Создать версию",
       "delete": "Удалить",
+      "deleteGap": "Deletegap",
       "deleteMarker": "Удалить маркер",
-      "deleteClipTitle": "Удалить клип?",
-      "deleteClipDescription": "Это действие нельзя отменить.",
-      "rippleDelete": "Удалить со сдвигом",
-      "rippleDeleteTitle": "Удалить клип со сдвигом?",
-      "rippleDeleteDescription": "Это действие удалит клип и сдвинет весь последующий контент. Это действие нельзя отменить.",
       "deleteTrack": "Удалить дорожку",
       "deleteTrackConfirm": "Дорожка не пуста. Удалить?",
       "deleteTrackDescription": "Дорожка не пустая. Это действие нельзя отменить.",
       "deleteTrackTitle": "Удалить дорожку?",
+      "disable": "Disable",
       "disableClip": "Отключить клип",
-      "hideTrack": "Скрыть",
-      "showTrack": "Показать",
       "disableClips": "Отключить клипы",
+      "dragToTimeline": "перетащите на таймлайн",
+      "duration": "Duration",
       "durationShift": "Изменение конца",
-      "trimMode": "Длительность",
-      "trimStart": "Начало",
-      "trimEnd": "Конец",
-      "trimHint": "Тяните для изменения",
+      "enable": "Enable",
       "enableClip": "Включить клип",
       "enableClips": "Включить клипы",
+      "end": "End",
+      "endShift": "Endshift",
       "extractAudio": "Вынести аудио на аудио дорожку",
-      "fpsMismatch": "Несоответствие FPS",
-      "fpsMismatchDesc": "FPS файла {fileFps} отличается от настроек проекта {projectFps}.",
-      "frameSnapOff": "Свободное перемещение",
-      "frameSnapOn": "Привязка к кадрам",
       "freezeFrame": "Заморозить кадр",
+      "fromProjectFiles": "Fromprojectfiles",
+      "fromProjectFilesHint": "Fromprojectfileshint",
+      "gap": "Промежуток",
+      "gapDescription": "Пустой промежуток на временной шкале.",
+      "group": "Group",
       "groupClips": "Сгруппировать клипы",
       "hideThumbnails": "Скрыть миниатюры",
+      "hideTrack": "Скрыть",
       "hideWaveform": "Скрыть вейвформу",
+      "hud": "HUD",
+      "importFilesCount": "Импорт {count} файлов",
+      "lock": "Lock",
       "lockClip": "Заблокировать клип",
+      "lockClips": "Lockclips",
       "marker": "Маркер",
-      "multipleSelection": "Множественное выделение",
-      "selectedClipsCount": "Выделено {count} клипов",
+      "media": "Media",
+      "moveMode": "Режим перемещения",
+      "moveModeNormalDescription": "Обычное перемещение (без наложения)",
+      "moveModePseudoDescription": "Режим псевдо-наложения (обрезает нижние клипы)",
+      "moveModeSlipDescription": "Прокрутка содержимого (внутри клипа)",
+      "mute": "Mute",
       "muteClip": "Выключить звук",
       "muteClips": "Выключить звук клипов",
+      "negativeSpeedAudioUnsupportedDescription": "Negativespeedaudiounsupporteddescription",
+      "negativeSpeedAudioUnsupportedTitle": "Negativespeedaudiounsupportedtitle",
+      "nextMarker": "Следующий маркер",
       "noMedia": "Нет медиа",
-      "overlayModeNone": "Обычный режим",
-      "overlayModePseudo": "Режим наложения",
+      "noSupportedFiles": "Нет поддерживаемых файлов для импорта",
+      "previousMarker": "Предыдущий маркер",
+      "project": "Project",
       "properties": {
-        "actions": "Действия",
-        "masterVolume": "Общая громкость",
-        "overlapMode": "Режим наложения",
-        "snapToClips": "Привязка к клипам",
-        "snapToFrames": "Привязка к кадрам",
         "snapSettings": "Настройки привязок",
-        "title": "Настройки таймлайна",
-        "zoom": "Масштаб"
+        "title": "Настройки таймлайна"
       },
       "quantize": "Привязать к кадрам",
-      "zoomToFit": "Вписать всё",
       "removeFromGroup": "Удалить из группы",
       "removeTransitionIn": "Убрать переход в начале",
       "removeTransitionOut": "Убрать переход в конце",
       "renameTrack": "Переименовать дорожку",
       "resetFreezeFrame": "Сбросить заморозку кадра",
       "returnAudio": "Вернуть аудио в видео клип",
+      "rippleDelete": "Удалить со сдвигом",
       "rippleTrimLeft": "Обрезать слева со сдвигом",
       "rippleTrimRight": "Обрезать справа со сдвигом",
       "rippleTrimSelection": "Удалить выделение со сдвигом",
-      "slipMode": "Прокрутка содержимого",
+      "selectedClipsCount": "Выделено {count} клипов",
       "selectionEndHandle": "Конец области выделения",
+      "selectionRange": "Область выделения",
       "selectionStartHandle": "Начало области выделения",
+      "shape": "Фигура",
+      "shiftForPresets": "Удерживайте Shift при вставке для выбора пресета",
       "showThumbnails": "Показать миниатюры",
+      "showTrack": "Показать",
       "showWaveform": "Показать вейвформу",
+      "snapMode": "Режим привязки",
+      "snapModeFramesDescription": "Привязка только к границам кадров",
+      "snapModeFreeDescription": "Свободное перемещение (без привязки)",
+      "snapModeFullDescription": "Привязка к клипам, плейхеду и маркерам",
+      "solo": "Solo",
+      "soloActive": "СОЛО АКТИВНО",
       "speed": "Скорость...",
       "speedModalDescription": "Изменить скорость воспроизведения выбранного клипа. Высота звука не изменяется.",
       "speedModalTitle": "Скорость клипа",
+      "speedTooLowDescription": "Speedtoolowdescription",
+      "speedTooLowTitle": "Speedtoolowtitle",
       "speedValue": "Скорость",
-      "splitClips": "Разрезать клипы по курсору",
-      "textClipDefaultName": "Текст",
+      "start": "Start",
+      "startShift": "Startshift",
+      "text": "Текст",
       "textClipDefaultText": "Текст",
-      "shiftForPresets": "Удерживайте Shift при вставке для выбора пресета",
-      "toggleTrackMute": "Вкл/выкл звук дорожки",
-      "toggleTrackSolo": "Соло дорожки",
-      "toggleTrackVisibility": "Показать/скрыть дорожку",
-      "dragToTimeline": "перетащите на таймлайн",
-      "selectionRange": "Область выделения",
-      "soloActive": "СОЛО АКТИВНО",
-      "clearSolos": "Сбросить соло",
-      "snapMode": "Режим привязки",
-      "previousMarker": "Предыдущий маркер",
-      "addMarker": "Добавить маркер",
-      "nextMarker": "Следующий маркер",
-      "gap": "Промежуток",
-      "gapDescription": "Пустой промежуток на временной шкале.",
       "trackProperties": "Свойства дорожки",
-      "snapModeFullDescription": "Привязка к клипам, плейхеду и маркерам",
-      "snapModeFramesDescription": "Привязка только к границам кадров",
-      "snapModeFreeDescription": "Свободное перемещение (без привязки)",
-      "moveMode": "Режим перемещения",
-      "moveModeNormalDescription": "Обычное перемещение (без наложения)",
-      "moveModePseudoDescription": "Режим псевдо-наложения (обрезает нижние клипы)",
-      "moveModeSlipDescription": "Прокрутка содержимого (внутри клипа)",
       "transition": {
         "actionFall": "Падение",
         "actionRise": "Поднимается",
@@ -888,7 +853,6 @@
         "anchorTopRight": "Top Right",
         "barnDoorModeClose": "Закрытие",
         "barnDoorModeOpen": "Открытие",
-        "bloom": "Свечение (Bloom)",
         "blurModeFixed": "Фиксированное",
         "blurModeScaled": "Масштабируемое",
         "blurQualityHigh": "Высокое",
@@ -897,15 +861,9 @@
         "blurQualityUltra": "Ультра",
         "brightnessModeBloom": "Bloom",
         "brightnessModeNormal": "Обычная",
-        "card-swap": "Смена карточек",
         "contentModeReveal": "Reveal",
         "contentModeZoom": "Zoom",
-        "cube": "Куб",
         "curve": "Кривая",
-        "curveEaseIn": "Медленное начало (Ease In)",
-        "curveEaseOut": "Медленное завершение (Ease Out)",
-        "curveLinear": "Линейная",
-        "curveSmooth": "Сглаженная (Smooth)",
         "curveParamBulge": "Сила изгиба",
         "curveParamOffset": "Смещение центра",
         "depthDirectionBackward": "Назад (от зрителя)",
@@ -922,16 +880,12 @@
         "directionUp": "Вверх",
         "directionVertical": "Вертикально",
         "duration": "Длительность (секунды)",
-        "errorClipHeadHandleTooShort": "Начало клипа слишком короткое для перехода (нужно {needSeconds}с, есть {haveSeconds}с)",
-        "errorClipTailHandleTooShort": "Хвост клипа слишком короткий для перехода (нужно {needSeconds}с, есть {haveSeconds}с)",
         "errorClipTooShort": "Клип слишком короткий для перехода (нужно {need}с, есть {have}с)",
         "errorGapBetweenClips": "Зазор между клипами ({gapSeconds}с) мешает смешиванию",
         "errorNextHandleTooShort": "Начало следующего клипа слишком короткое (нужно {needSeconds}с, есть {haveSeconds}с)",
         "errorNoNextClip": "Нет следующего клипа для перехода",
         "errorNoPreviousClip": "Нет предыдущего клипа для перехода",
-        "errorPrevClipTooShort": "Предыдущий клип слишком короткий для перехода (нужно {need}с, есть {have}с)",
         "errorPrevHandleTooShort": "Хвост предыдущего клипа слишком короткий (нужно {needSeconds}с, есть {haveSeconds}с)",
-        "falling-card": "Падающая карта",
         "modeBloom": "Свечение (Bloom)",
         "modeFixed": "Фиксированный",
         "modeNormal": "Обычный",
@@ -947,7 +901,6 @@
         "paramBlur": "Размытие при масштабировании",
         "paramBlurMode": "Масштабирование размытия",
         "paramBlurQuality": "Качество размытия",
-        "paramBlurRampDuration": "Blur ramp duration (ms)",
         "paramBrightness": "Уровень яркости",
         "paramBrightnessMode": "Режим яркости",
         "paramCardSwapMode": "Режим смены",
@@ -994,50 +947,53 @@
       },
       "transitions": "Переходы",
       "trim": "Обрезать",
-      "trimOptions": "Настройки обрезки",
+      "trimEnd": "Конец",
+      "trimHint": "Тяните для изменения",
+      "trimMode": "Длительность",
+      "trimStart": "Начало",
+      "ungroup": "Ungroup",
       "ungroupClips": "Разгруппировать клипы",
       "unlinkAudio": "Открепить аудио",
+      "unlock": "Unlock",
       "unlockClip": "Разблокировать клип",
+      "unlockClips": "Unlockclips",
+      "unmute": "Unmute",
       "unmuteClip": "Включить звук",
       "unmuteClips": "Включить звук клипов",
+      "unsolo": "Unsolo",
+      "uploadAutoHint": "Uploadautohint",
       "version": "Версия",
+      "videoTracks": "Videotracks",
+      "virtualClips": "Virtualclips",
       "waveformFull": "Полная вейвформа",
       "waveformHalf": "Половина вейвформы",
       "zoneMarkerEnd": "Конец зоны",
-      "zoneMarkerStart": "Начало зоны"
+      "zoneMarkerStart": "Начало зоны",
+      "zoomToFit": "Вписать всё"
     },
     "track": {
       "actions": "Действия",
-      "color": "Цвет",
-      "moveUp": "Переместить выше",
-      "moveDown": "Переместить ниже",
-      "info": "Инфо дорожки",
-      "clipsCount": "Количество клипов",
       "audio": {
         "balance": "Баланс",
-        "title": "Аудио дорожки",
         "volume": "Громкость"
       },
       "blendMode": "Режим наложения",
+      "clipsCount": "Количество клипов",
+      "color": "Цвет",
+      "info": "Инфо дорожки",
       "lock": "Заблокировать дорожку",
-      "locked": "Дорожка заблокирована",
+      "moveDown": "Переместить ниже",
+      "moveUp": "Переместить выше",
       "mute": "Звук",
-      "unmute": "Вкл. звук",
-      "solo": "Соло",
       "opacity": "Прозрачность",
-      "unlock": "Разблокировать дорожку",
-      "unlocked": "Дорожка разблокирована",
-      "video": {
-        "title": "Видеодорожки"
-      },
       "resetHidden": "Показать все скрытые дорожки",
+      "resetLocked": "Разблокировать все дорожки",
       "resetMuted": "Включить звук на всех дорожках",
       "resetSolo": "Выключить соло на всех дорожках",
-      "resetLocked": "Разблокировать все дорожки"
-    },
-    "welcome": {
-      "openWorkspace": "Выбрать папку рабочей области",
-      "selectFolder": "Выберите папку рабочей области на вашем компьютере. В этой папке будут храниться все ваши файлы проектов, медиа-прокси и кэш."
+      "solo": "Соло",
+      "unlock": "Разблокировать дорожку",
+      "unmute": "Вкл. звук",
+      "video": {}
     },
     "transitions": {
       "barn-door": {
@@ -1070,49 +1026,59 @@
       "falling-card": {
         "name": "Falling Card"
       },
+      "noSettings": "Nosettings",
       "rectangle": {
         "name": "Rectangle"
       },
       "slide": {
         "name": "Slide"
       },
+      "title": "Title",
       "wipe": {
         "name": "Wipe"
       },
       "zoom": {
         "name": "Zoom"
       }
+    },
+    "welcome": {
+      "openWorkspace": "Выбрать папку рабочей области"
     }
   },
-  "form": {
-    "resetConfirm": "Вы уверены, что хотите сбросить все изменения? Форма вернется к последнему сохраненному состоянию.",
-    "unsavedChanges": "Несохраненные изменения"
+  "form": {},
+  "mobileFiles": {
+    "chooseTargetTrack": "Choosetargettrack",
+    "createNewTrack": "Createnewtrack",
+    "insertAfter": "Insertafter",
+    "newTrackHint": "Newtrackhint"
   },
   "navigation": {
     "fastcat": "Видеоредактор",
     "settings": "Настройки"
   },
+  "pixi": {
+    "js": "Js"
+  },
+  "timelineCreation": {
+    "errorTitle": "Ошибка таймлайна",
+    "failed": "Не удалось создать таймлайн",
+    "successTitle": "Таймлайн создан"
+  },
   "videoEditor": {
     "audio": {
-      "audioSettings": "Настройки аудио",
       "channels": "Каналы",
       "channelsCount": "{n} канала(ов)",
       "mono": "Моно",
       "original": "Оригинальное аудио",
+      "reverse": "Reverse",
       "sampleRate": "Частота дискретизации",
       "stereo": "Стерео"
     },
     "backgroundTasks": {
       "empty": "Нет фоновых задач",
       "title": "Фоновые задачи",
-      "types": {
-        "proxy": "Создание прокси",
-        "conversion": "Конвертация файла",
-        "file-operation": "Файловая операция",
-        "transcription": "Транскрибация",
-        "other": "Другое"
-      },
-      "transcriptionTitle": "Транскрибация: {name}"
+      "transcriptionTitle": "Транскрибация: {name}",
+      "types": {}
     },
     "export": {
       "audioBitrate": "Битрейт аудио (кбит/с)",
@@ -1132,17 +1098,13 @@
       "encodingSettings": "Настройки кодирования",
       "error": "Ошибка экспорта",
       "errorCancelled": "Экспорт был отменен",
-      "estimatedQuality": "Примерное качество",
       "excludeAudio": "Без звука",
       "exportAlpha": "Экспорт альфа-канала",
-      "exportProject": "Экспорт проекта",
       "exporting": "Экспорт...",
       "filename": "Имя файла",
       "filenamePlaceholder": "например, video.mp4",
       "fps": "Кадров в секунду",
       "height": "Высота",
-      "hideAdvanced": "Скрыть расширенные настройки",
-      "keepAppOpenHint": "Не закрывайте приложение и не выключайте экран до завершения экспорта",
       "keyframeInterval": "Интервал ключевых кадров (GOP, сек)",
       "metadata": "Метаданные",
       "metadataAuthor": "Автор",
@@ -1155,24 +1117,15 @@
       "phasePreparing": "Подготовка проекта...",
       "phaseSaving": "Сохранение в библиотеку...",
       "preset": {
-        "custom": "Свой",
-        "high": "Высокое качество",
-        "lossless": "Без потерь (визуально)",
-        "optimal": "Оптимально",
-        "social": "Социальные сети"
+        "custom": "Свой"
       },
       "presetLabel": "Пресет",
       "processing": "Обработка...",
-      "resolution": "Разрешение",
       "saveAsDefault": "Сохранить как настройки проекта",
       "saveLocationNote": "Файл будет сохранен в папку export/ в директории вашего проекта",
-      "saveWorkDescription": "Сохраните вашу работу в видеофайл",
-      "savedTo": "Сохранено в {location}",
-      "showAdvanced": "Показать расширенные настройки",
       "startExport": "Экспорт",
       "successDesc": "Таймлайн экспортирован в {file}",
       "successTitle": "Экспорт завершен успешно",
-      "summary": "Сводка",
       "title": "Экспорт",
       "videoBitrate": "Битрейт видео (Мбит/с)",
       "videoBitrateHelp": "Примерный целевой битрейт. Чем выше, тем лучше качество и больше размер файла.",
@@ -1180,16 +1133,7 @@
       "warningTitle": "Предупреждения при экспорте",
       "width": "Ширина"
     },
-    "timeline": {
-      "versionCreated": "Версия создана: {name}",
-      "tabs": {
-        "cut": "Монтаж",
-        "sound": "Звук"
-      }
-    },
     "fileManager": {
-      "bloggerDogIntegration": "Интеграция BloggerDog",
-      "selectFolderHint": "Выберите папку в боковой панели, чтобы просмотреть её содержимое",
       "actions": {
         "cancelProxyGeneration": "Отменить генерацию прокси",
         "convertFile": "Конвертировать файл",
@@ -1200,13 +1144,10 @@
         "createTimeline": "Создать таймлайн",
         "deleteProxy": "Удалить прокси",
         "downloadFiles": "Скачать файлы",
-        "dropFilesGlobalDescription": "Отпустите файлы, чтобы автоматически сохранить их в папку источников",
-        "dropFilesHere": "Отпустите файлы здесь",
-        "dropToFolderHint": "Перетащите в файловый менеджер слева, чтобы загрузить в конкретную папку",
-        "dropToRootHint": "Отпустите — файл будет загружен в корень",
-        "dropZone": "Переместить в папку",
         "extractAudio": "Извлечь аудио",
         "hideHiddenFiles": "Скрыть скрытые файлы",
+        "importing": "Importing",
+        "navigateUp": "Navigateup",
         "openAsPanel": "Открыть как панель",
         "openAsPanelCut": "Открыть как панель (Редактор)",
         "openAsPanelSound": "Открыть как панель (Звук)",
@@ -1219,33 +1160,39 @@
         "uploadFiles": "Загрузить файлы"
       },
       "audio": {
-        "channels": "Каналы",
-        "codec": "Аудио кодек",
-        "format": "Формат",
+        "sound": "Sound",
+        "transcriptionAudioFailed": "Не удалось транскрибировать аудио",
         "transcriptionCached": "Используется кэшированная транскрипция",
-        "transcriptionCompleted": "Транскрибация завершена",
-        "transcriptionHint": "Отправьте текущий аудиофайл в настроенный сервис STT. Язык указывать необязательно.",
         "transcriptionCachedDescription": "Кэшированная транскрипция была загружена из папки файла.",
-        "transcriptionLanguage": "Язык",
-        "transcriptionSavedDescription": "Транскрипция была сохранена рядом с исходным файлом.",
-        "transcriptionSavedVideoDescription": "Аудиодорожка видео была транскрибирована и сохранена рядом с файлом.",
-        "transcriptionSaved": "Транскрипция сохранена",
-        "transcriptionSubmit": "Транскрибировать",
+        "transcriptionCompleted": "Транскрибация завершена",
         "transcriptionFailed": "Не удалось транскрибировать медиа",
-        "transcriptionAudioFailed": "Не удалось транскрибировать аудио"
+        "transcriptionHint": "Отправьте текущий аудиофайл в настроенный сервис STT. Язык указывать необязательно.",
+        "transcriptionLanguage": "Язык",
+        "transcriptionSaved": "Транскрипция сохранена",
+        "transcriptionSavedDescription": "Транскрипция была сохранена рядом с исходным файлом.",
+        "transcriptionSavedVideoDescription": "Аудиодорожка видео была транскрибирована и сохранена рядом с файлом."
       },
       "cardScale": "Масштаб карточек",
       "commonFolder": "Общие файлы",
+      "compatibility": {
+        "audioCodecUnsupported": "Аудио кодек не поддерживается",
+        "corrupt": "Файл испорчен",
+        "corruptTitle": "Этот файл поврежден или не поддерживается",
+        "formatUnsupported": "Формат файла не распознан или не поддерживается",
+        "imageFormatUnsupported": "Формат изображения не поддерживается браузером",
+        "unsupported": "Не поддерживается",
+        "unsupportedTitle": "Этот файл невозможно отобразить",
+        "videoCodecUnsupported": "Видео кодек не поддерживается"
+      },
       "convert": {
-        "cancelled": "Конвертация отменена",
+        "bgTaskAdded": "Bgtaskadded",
+        "failed": "Failed",
         "imageFormat": "Формат изображения",
         "imageQuality": "Качество изображения",
+        "metadataWarning": "Metadatawarning",
         "outputFile": "Выходной файл",
-        "parameters": "Параметры конвертации",
-        "start": "Конвертировать",
         "success": "Файл успешно конвертирован",
-        "targetFile": "Целевой файл",
-        "title": "Конвертация файла"
+        "targetFile": "Целевой файл"
       },
       "delete": {
         "confirmTitle": "Удаление элементов",
@@ -1262,6 +1209,11 @@
         "folderTitle": "Загрузка в папку"
       },
       "empty": "В этом проекте нет файлов",
+      "errors": {
+        "crossVfsFailedTitle": "Crossvfsfailedtitle",
+        "dragDropFailedTitle": "Dragdropfailedtitle",
+        "uploadFailedTitle": "Uploadfailedtitle"
+      },
       "extractAudio": {
         "failed": "Ошибка при извлечении аудио",
         "success": "Аудио успешно извлечено"
@@ -1270,57 +1222,55 @@
         "filesCount": "Количество файлов"
       },
       "history": {
-        "title": "История",
+        "actions": {
+          "redo": "Redo",
+          "undo": "Undo"
+        },
         "empty": "История пуста. Начните редактирование, чтобы записать действия.",
         "entries": {
-          "createFolder": "Создать папку",
-          "renameEntry": "Переименовать",
-          "moveEntry": "Переместить",
           "addClip": "Добавить клип",
-          "removeItem": "Удалить элемент",
+          "addMarker": "Добавить маркер",
+          "addTrack": "Добавить дорожку",
+          "createFolder": "Создать папку",
           "deleteItems": "Удалить элементы",
+          "deleteTrack": "Удалить дорожку",
+          "extractAudio": "Извлечь аудио",
+          "moveEntry": "Переместить",
           "moveItem": "Переместить элемент",
           "moveItems": "Переместить элементы",
-          "trimClip": "Обрезать клип",
+          "multipleActions": "Несколько действий",
           "placeClip": "Разместить клип",
-          "splitClip": "Разрезать клип",
-          "splitAllClips": "Разрезать все клипы",
-          "splitSelectedClips": "Разрезать выбранные клипы",
-          "renameClip": "Переименовать клип",
-          "updateClip": "Обновить клип",
-          "updateTransition": "Обновить переход",
-          "addMarker": "Добавить маркер",
-          "updateMarker": "Обновить маркер",
+          "removeItem": "Удалить элемент",
           "removeMarker": "Удалить маркер",
-          "addTrack": "Добавить дорожку",
+          "renameClip": "Переименовать клип",
+          "renameEntry": "Переименовать",
           "renameTrack": "Переименовать дорожку",
-          "integrationAutoConnect": "Автоматически подключаться при запуске",
-          "integrationConnectAction": "Подключить через BloggerDog",
-          "integrationManualLink": "Открыть BloggerDog для ручного получения токена",
-          "bloggerDogIntegrationHint": "Подключитесь через BloggerDog для доступа к API файлов и транскрипции.",
-          "deleteTrack": "Удалить дорожку",
           "reorderTracks": "Переупорядочить дорожки",
-          "updateTrack": "Обновить дорожку",
-          "extractAudio": "Извлечь аудио",
           "returnAudio": "Вернуть аудио",
-          "updateMasterGain": "Изменить общую громкость",
+          "splitAllClips": "Разрезать все клипы",
+          "splitClip": "Разрезать клип",
+          "splitSelectedClips": "Разрезать выбранные клипы",
           "toggleMute": "Переключить беззвучный режим",
+          "trimClip": "Обрезать клип",
+          "updateClip": "Обновить клип",
           "updateEffects": "Обновить эффекты",
+          "updateMarker": "Обновить маркер",
+          "updateMasterGain": "Изменить общую громкость",
           "updateTimelineProperties": "Обновить параметры таймлайна",
-          "multipleActions": "Несколько действий"
+          "updateTrack": "Обновить дорожку",
+          "updateTransition": "Обновить переход"
         },
-        "recent": "Недавние",
-    "redo": "Вернуть",
-        "undo": "Отменить"
+        "markers": "Markers",
+        "title": "История"
       },
       "image": {
         "camera": "Камера",
         "location": "Местоположение",
         "resolution": "Разрешение"
       },
-      "info": {
-        "metadata": "Метаданные",
-        "title": "Информация о файле"
+      "info": {},
+      "markers": {
+        "empty": "Empty"
       },
       "otio": {
         "audioTracks": "Аудио дорожки",
@@ -1340,60 +1290,19 @@
       "proxy": {
         "create": "Создать прокси",
         "delete": "Удалить прокси",
-        "regenerate": "Перегенерировать прокси"
+        "regenerate": "Перегенерировать прокси",
+        "success": "Success"
       },
       "remote": {
-        "exchange": "Токен авторизации",
-        "exchangeDescription": "Введите токен с платформы FastCat для доступа к вашим удаленным файлам.",
-        "not_configured": "Интеграция BloggerDog не настроена",
-        "loadFailed": "Не удалось загрузить удалённую библиотеку",
-        "collectionUnavailable": "Удалённая коллекция недоступна",
-        "search": "Поиск в библиотеке...",
-        "createFolder": "Создать коллекцию",
-        "deleteEntry": "Удалить контент",
-        "renameEntry": "Переименовать",
-        "noSearchResults": "Ничего не найдено",
-        "tags": "Теги",
-        "searchFailed": "Ошибка поиска",
-        "localFileUnavailable": "Не удалось получить доступ к локальному файлу",
-        "uploadFailed": "Ошибка загрузки",
-        "successTitle": "Загрузка завершена",
-        "autoUploadTitle": "Автоматическая сортировка завершена",
-        "summary": "{count} {type} в {folder}",
-        "types": {
-          "video": "видео",
-          "audio": "аудио",
-          "image": "изображений",
-          "document": "документов",
-          "file": "файлов"
-        },
-        "actions": {
-          "createGroup": "Создать группу",
-          "createSubgroup": "Создать подгруппу",
-          "createItem": "Создать элемент контента"
-        }
+        "actions": {},
+        "types": {}
       },
-      "upload": {
-        "autoUploadTitle": "Автоматическая загрузка завершена",
-        "successTitle": "Загрузка завершена",
-        "summary": "{count} {type} в папку {folder}",
-        "types": {
-          "video": "видео",
-          "audio": "аудио",
-          "image": "изображений",
-          "text": "документов",
-          "timeline": "таймлайнов",
-          "unknown": "файлов"
-        }
-      },
+      "root": "Root",
       "skipOtio": {
-        "title": "Пропущенные файлы проекта",
-        "description": "{fileName} является файлом проекта и не может быть импортирован таким образом. Используйте «Создать Таймлайн»."
+        "description": "{fileName} является файлом проекта и не может быть импортирован таким образом. Используйте «Создать Таймлайн».",
+        "title": "Пропущенные файлы проекта"
       },
-      "sort": {
-        "name": "По имени",
-        "type": "По типу"
-      },
+      "sort": {},
       "tabs": {
         "effects": "Эффекты",
         "files": "Файлы",
@@ -1402,15 +1311,12 @@
         "markers": "Маркеры"
       },
       "unsupported": "API доступа к файловой системе не поддерживается в этом браузере",
-      "compatibility": {
-        "audioCodecUnsupported": "Аудио кодек не поддерживается",
-        "formatUnsupported": "Формат файла не распознан или не поддерживается",
-        "imageFormatUnsupported": "Формат изображения не поддерживается браузером",
-        "corrupt": "Файл испорчен",
-        "corruptTitle": "Этот файл поврежден или не поддерживается",
-        "unsupported": "Не поддерживается",
-        "unsupportedTitle": "Этот файл невозможно отобразить",
-        "videoCodecUnsupported": "Видео кодек не поддерживается"
+      "upload": {
+        "autoUploadTitle": "Автоматическая загрузка завершена",
+        "successTitle": "Загрузка завершена",
+        "summary": "{count} {type} в папку {folder}",
+        "title": "Title",
+        "types": {}
       },
       "video": {
         "audioCodec": "Аудио кодек",
@@ -1422,89 +1328,30 @@
     },
     "hotkeys": {
       "general": {
-        "addMarker": "Добавить маркер на курсор",
-        "delete": "Удалить",
-        "deselect": "Снять выделение",
-        "focus": "Фокус",
-        "fullscreen": "Полноэкранный режим",
-        "mute": "Вкл/Выкл звук монитора",
-        "recent": "Недавние",
-    "redo": "Вернуть",
-        "rename": "Переименовать",
-        "tab1": "Вкладка 1",
-        "tab2": "Вкладка 2",
-        "tab3": "Вкладка 3",
-        "tab4": "Вкладка 4",
-        "tab5": "Вкладка 5",
-        "tab6": "Вкладка 6",
-        "tab7": "Вкладка 7",
-        "tab8": "Вкладка 8",
-        "tab9": "Вкладка 9",
-        "undo": "Отменить",
-        "volumeDown": "Уменьшить громкость монитора",
-        "volumeUp": "Увеличить громкость монитора",
-        "zoomIn": "Увеличить масштаб",
-        "zoomOut": "Уменьшить масштаб",
-        "zoomReset": "Сбросить масштаб",
-        "snapshot": "Создать снимок с монитора",
-        "newTimeline": "Создать новый таймлайн"
+        "mute": "Вкл/Выкл звук монитора"
       },
-      "playback": {
-        "backward0_5": "Назад x0.5 (только монитор)",
-        "backward0_75": "Назад x0.75 (только монитор)",
-        "backward1": "Назад x1 (только монитор)",
-        "backward1_25": "Назад x1.25 (только монитор)",
-        "backward1_5": "Назад x1.5 (только монитор)",
-        "backward1_75": "Назад x1.75 (только монитор)",
-        "backward2": "Назад x2 (только монитор)",
-        "backward3": "Назад x3 (только монитор)",
-        "backward5": "Назад x5 (только монитор)",
-        "forward0_5": "Вперёд x0.5",
-        "forward0_75": "Вперёд x0.75",
-        "forward1_25": "Вперёд x1.25",
-        "forward1_5": "Вперёд x1.5",
-        "forward1_75": "Вперёд x1.75",
-        "forward2": "Вперёд x2",
-        "forward3": "Вперёд x3",
-        "forward5": "Вперёд x5",
-        "toEnd": "В конец",
-        "toStart": "В начало",
-        "toggle": "Воспроизведение / Пауза",
-        "toggle1": "Воспроизведение / Пауза (1x)"
-      },
-      "timeline": {
-        "advancedRippleTrimLeft": "Расширенная обрезка со сдвигом (все дорожки, лево)",
-        "advancedRippleTrimRight": "Расширенная обрезка со сдвигом (все дорожки, право)",
-        "jumpNextBoundary": "Перейти к следующей границе клипа",
-        "jumpNextBoundaryTrack": "Перейти к след. границе (текущая дорожка)",
-        "jumpPrevBoundary": "Перейти к предыдущей границе клипа",
-        "jumpPrevBoundaryTrack": "Перейти к пред. границе (текущая дорожка)",
-        "rippleDelete": "Удалить со сдвигом",
-        "rippleTrimLeft": "Обрезать до курсора со сдвигом (удалить левую часть)",
-        "rippleTrimRight": "Обрезать до курсора со сдвигом (удалить правую часть)",
-        "splitAllAtPlayhead": "Разрезать всё по курсору",
-        "splitAtPlayhead": "Разрезать по курсору",
-        "toggleDisableClip": "Включить/выключить клип",
-        "toggleMuteClip": "Вкл/выкл звук клипа",
-        "toggleMuteTrack": "Вкл/выкл звук дорожки",
-        "toggleSoloTrack": "Соло дорожки",
-        "toggleVisibilityTrack": "Вкл/выкл видимость дорожки",
-        "trimToPlayheadLeft": "Обрезать до курсора (удалить левую часть)",
-        "trimToPlayheadRight": "Обрезать до курсора (удалить правую часть)"
+      "playback": {},
+      "timeline": {}
+    },
+    "library": {
+      "texts": {
+        "subtitle": "Subtitle",
+        "title": "Title"
       }
     },
-    "preview": {
-      "openInModal": "Открыть в модальном окне"
-    },
+    "preview": {},
     "project": {
       "lockedAcknowledge": "Понятно, только чтение",
       "lockedDescription": "Этот проект в данный момент открыт в другой вкладке или окне браузера. Одновременное редактирование одного и того же проекта не поддерживается и может привести к потере данных или конфликтам.",
+      "lockedStatus": "Lockedstatus",
       "lockedSuggestion": "Вы можете продолжить в режиме «Только чтение», чтобы просмотреть проект, но мы рекомендуем вернуться в первоначальную вкладку для редактирования.",
-      "lockedTitle": "Проект заблокирован"
+      "lockedTitle": "Проект заблокирован",
+      "takeControl": "Takecontrol"
     },
     "projectSettings": {
-      "applied": "Настройки проекта применены",
-      "apply": "Применить настройки",
+      "advanced": "Advanced",
+      "clearBackups": "Clearbackups",
+      "clearBackupsTitle": "Clearbackupstitle",
       "clearTemp": "Очистить временные файлы",
       "clearTempAction": "Очистить",
       "clearTempConfirm": "Очистить",
@@ -1515,16 +1362,17 @@
       "deleteProjectConfirmTitle": "Удалить проект?",
       "export": "Экспорт",
       "metadata": "Метаданные",
-      "note": "Настройки сохраняются в .fastcat/project.settings.json",
+      "projectStorage": "Файлы проекта",
       "reset": "Сбросить по умолчанию",
       "resetConfirmDescription": "Это вернет все настройки текущего проекта к значениям по умолчанию из настроек рабочей области.",
       "resetConfirmTitle": "Сбросить на настройки по умолчанию?",
-      "projectStorage": "Файлы проекта",
       "resolutionAndFps": "Разрешение и FPS",
       "storage": "Хранилище",
       "title": "Настройки проекта"
     },
     "projectTabs": {
+      "closeAll": "Closeall",
+      "closeOthers": "Closeothers",
       "dropHint": "Добавить как вкладку"
     },
     "resolution": {
@@ -1543,28 +1391,29 @@
       "orientation": "Ориентация",
       "portrait": "Портрет",
       "preset": {
+        "1080p": "1080p (FHD)",
         "2": {
           "7k": "2.7K (QHD)"
         },
-        "1080p": "1080p (FHD)",
         "480p": "480p (Предпросмотр)",
         "4k": "4K (UHD)",
         "720p": "720p (HD)"
       }
     },
     "settings": {
-      "quick": "Быстрые",
-      "timeline": "Таймлайн",
-      "project": "Проект",
-      "app": "Приложение",
-      "actionCopy": "Копировать клип",
-      "actionFreeMode": "Свободный режим",
-      "actionPseudoOverlap": "Псевдо-наложение",
       "advancedSection": "Расширенные",
+      "app": "Приложение",
+      "audioDeclickDuration": "Длительность деклика",
+      "audioScrubbingHint": "Воспроизводить звук при перемещении по таймлайну вручную.",
+      "audioScrubbingTitle": "Скраббинг аудио",
       "autoCreateProxies": "Автоматически создавать прокси при добавлении медиа на таймлайн",
+      "backupCount": "Количество бэкапов",
+      "backupCountHelp": "Сколько последних версий проекта хранить",
+      "backupInterval": "Интервал автосохранения",
+      "backupIntervalHelp": "Интервал в минутах между созданием автоматических бэкапов",
+      "bloggerDogConnectAction": "Подключить через BloggerDog",
+      "bloggerDogIntegrationHint": "Подключитесь через BloggerDog для доступа к API файлов и транскрипции.",
       "browserEphemeralTmpRootPathHelp": "Оставьте пустым, чтобы использовать временное расположение рантайма, если оно поддерживается. В браузерном workspace-режиме пересоздаваемый кэш всегда хранится внутри выбранной папки workspace.",
-      "cacheLimit": "Лимит хранилища кэша (ГБ)",
-      "cacheLimitHelp": "Общий лимит для кэшированных данных в этой рабочей области",
       "clearCacheAction": "Очистить кэш",
       "clearTempWorkspace": "Очистить временные файлы рабочей области",
       "clearTempWorkspaceAction": "Очистить",
@@ -1574,12 +1423,18 @@
       "clearTempWorkspaceTitle": "Очистка временных файлов",
       "clearUiCache": "Очистить кэш интерфейса",
       "clearUiCacheDesc": "Сбрасывает разметку, размеры панелей и другие предпочтения интерфейса.",
-      "codecUnsupportedDesc": "Ваш браузер не поддерживает аппаратное ускорение для этого кодека. Производительность может быть снижена.",
-      "codecUnsupportedTitle": "Кодек не поддерживается",
+      "contentRootPath": "Путь к контенту",
+      "dataRootPath": "Путь к данным",
+      "defaultAudioFadeCurveHint": "Кривая по умолчанию, используемая при ручном создании фейдов. (De-click всегда использует короткое линейное затухание).",
+      "defaultAudioFadeCurveTitle": "Тип кривой затухания",
+      "defaultStaticClipDuration": "Длительность стат. клипов",
+      "defaultStaticClipDurationHint": "Длительность по умолчанию для изображений и фигур (сек)",
       "defaultTransitionDuration": "Длительность перехода по умолчанию (сек)",
       "deleteWithoutConfirmation": "Удалять без подтверждения",
       "ephemeralTmpRootPath": "Путь для ephemeral tmp",
       "ephemeralTmpRootPathHelp": "Короткоживущие временные файлы задач. Оставьте пустым, чтобы использовать системную временную папку.",
+      "fastcatAccountConnectAction": "Подключить аккаунт Fastcat",
+      "fastcatAccountIntegrationHint": "Подключитесь к вашему аккаунту Fastcat для доступа к облачным сервисам и STT.",
       "historyMaxEntries": "Лимит истории отмены",
       "historyMaxEntriesHelp": "Максимальное количество шагов undo/redo, хранящихся в памяти",
       "hotkeysCaptureHint": "Ожидание комбинации клавиш (Esc для отмены)",
@@ -1587,10 +1442,10 @@
       "hotkeysDuplicateConfirm": "Всё равно добавить",
       "hotkeysDuplicateReplace": "Заменить",
       "hotkeysDuplicateTitle": "Дубликат горячей клавиши",
+      "hotkeysDuplicateWarning": "Это сочетание клавиш уже используется",
       "hotkeysGroupGeneral": "Общие",
       "hotkeysGroupPlayback": "Воспроизведение",
       "hotkeysGroupTimeline": "Таймлайн",
-      "hotkeysHardcodedHint": "Некоторые клавиши остаются захардкоженными в специфичных контекстах: Escape для закрытия окон и стандартные клавиши проводника (Alt, Arrows, Enter) в панелях выбора файлов.",
       "hotkeysLayer1": "Модификатор 1 (для действий мыши и хоткеев)",
       "hotkeysLayer2": "Модификатор 2 (для действий мыши и хоткеев)",
       "hotkeysLayersHint": "Эти клавиши задают два слоя модификаторов в редакторе: таймлайн, монитор и файловый менеджер (колесо, клик, перетаскивание, копирование при перетаскивании). Для горячих клавиш встроенные сочетания, записанные как Shift+… или Ctrl+…, сопоставляются с Модификатором 1 вместо Shift и Модификатором 2 вместо Ctrl, пока вы не назначите своё сочетание здесь.",
@@ -1602,76 +1457,47 @@
       "hotkeysResetCommandConfirmAction": "Сбросить",
       "hotkeysResetCommandConfirmDesc": "Вы уверены, что хотите сбросить горячую клавишу для выбранной команды?",
       "hotkeysResetCommandConfirmTitle": "Сбросить горячую клавишу?",
-      "integrationActiveSource": "Активный источник: {name}",
-      "integrationAutoConnect": "Автоматически подключаться при запуске",
-      "integrationDisconnect": "Отключить",
       "integrationBreakConnection": "Разорвать связь",
-      "fastcatAccountConnectAction": "Подключить аккаунт Fastcat",
-      "bloggerDogConnectAction": "Подключить через BloggerDog",
-      "integrationHealthCheck": "Проверить соединение",
       "integrationHealthOk": "Соединение установлено",
       "integrationHealthUnavailable": "Активная интеграция для этого сервиса не настроена.",
-      "integrationInactive": "Не подключен",
-      "integrationOverrideFastCat": "Переопределить настройки BloggerDog",
-      "integrationScopes": "Области доступа (Scopes)",
-      "integrationSourceBloggerDog": "Через BloggerDog",
-      "integrationSourceManual": "Ручной API",
+      "integrationManualLink": "Integrationmanuallink",
       "integrationStatusWaiting": "Ожидание проверки",
-      "sttFastcat": "FASTCAT STT",
-      "sttLocal": "Локальное (Whisper)",
-      "sttLocalModel": "Модель Whisper",
-      "sttModelDownloaded": "Модель загружена и готова к использованию",
-      "sttModelNotDownloaded": "Модель необходимо загрузить",
-      "sttDownloadModel": "Скачать модель",
-      "sttModelReady": "Готова",
-      "sttApi": "API STT",
-      "sttTranscriptionSettings": "Настройки транскрибации",
-      "sttTranscriptionDescription": "Настройте интеграцию и параметры распознавания речи по умолчанию.",
-      "fastcatAccountIntegrationHint": "Подключитесь к вашему аккаунту Fastcat для доступа к облачным сервисам и STT.",
-      "fastcatAccountSource": "Через аккаунт Fastcat",
-      "bloggerDogIntegrationHint": "Подключитесь через BloggerDog для доступа к API файлов и транскрипции.",
-      "integrationSuccessTitle": "Подключение успешно!",
-      "integrationSuccessDesc": "Теперь вы можете спокойно закрыть эту вкладку.",
       "integrationSttModels": "Модели",
       "integrationSttProvider": "Провайдер",
+      "integrationSuccessDesc": "Теперь вы можете спокойно закрыть эту вкладку.",
+      "integrationSuccessTitle": "Подключение успешно!",
+      "mediaTaskConcurrency": "Конкурентность медиа-задач",
+      "mediaTaskConcurrencyHelp": "Ограничивает количество одновременно выполняемых тяжелых операций (генерация прокси, миниатюр, конвертация).",
       "mouseActionAddMarker": "Добавить маркер",
-      "mouseActionAddMarkerAndEdit": "Добавить и редактировать маркер",
       "mouseActionCenter": "Центрировать",
       "mouseActionClearSelection": "Сбросить выделение",
       "mouseActionCopy": "Копировать клип",
       "mouseActionFit": "Вписать в окно",
       "mouseActionFitZoom": "Вписать всё",
       "mouseActionFreeMode": "Свободный режим",
+      "mouseActionMoveClips": "Перемещение клипов",
       "mouseActionMovePlayhead": "Перемещение плейхеда",
       "mouseActionNone": "Нет",
       "mouseActionPan": "Панорама",
       "mouseActionPseudoOverlap": "Псевдо-наложение",
       "mouseActionResetZoom": "Сбросить зум",
       "mouseActionResetZoomCenter": "Сбросить зум и центрировать",
-      "mouseActionSelectItem": "Выделить клип (по умолчанию)",
-      "mouseActionSelectMultiple": "Выделить несколько клипов (по умолчанию)",
       "mouseActionResizeTrack": "Изменить высоту дорожки",
       "mouseActionScrollHorizontal": "Горизонтальная прокрутка",
       "mouseActionScrollVertical": "Вертикальная прокрутка",
       "mouseActionSeek": "Установить плейхед",
       "mouseActionSeekFrame": "Перемотка (1 кадр)",
       "mouseActionSeekSecond": "Перемотка (1 секунда)",
+      "mouseActionSelectAllClips": "Выбрать все клипы на дорожке",
       "mouseActionSelectArea": "Выделение области",
+      "mouseActionSelectItem": "Выделить клип (по умолчанию)",
+      "mouseActionSelectMultiple": "Выделить несколько клипов (по умолчанию)",
+      "mouseActionSelectTrack": "Выбрать дорожку",
       "mouseActionToggleClipMoveMode": "Переключить режим перемещения",
       "mouseActionToggleSnap": "Переключить привязку",
       "mouseActionZoom": "Зум",
       "mouseActionZoomHorizontal": "Горизонтальный зум",
       "mouseActionZoomVertical": "Вертикальный зум",
-      "mouseHardcodedDblClickMonitor": "Двойной клик в мониторе: сбросить зум и центрировать",
-      "mouseHardcodedDblClickTrackHeader": "Двойной клик по заголовку дорожки: выбрать все клипы на дорожке",
-      "mouseHardcodedLeftClick": "Одинарный клик левой кнопкой мыши: выбор объекта",
-      "mouseHardcodedLeftDrag": "Перетаскивание левой кнопкой мыши: перемещение клипов (на пустой области — выделение прямоугольником)",
-      "mouseHardcodedRazorClick": "Режим лезвия — Клик: разрезать клип по курсору",
-      "mouseHardcodedRazorCtrlClick": "Режим лезвия — {modifier2} + Клик: обрезать правую часть клипа",
-      "mouseHardcodedRazorShiftClick": "Режим лезвия — {modifier1} + Клик: обрезать левую часть клипа",
-      "mouseHardcodedShiftClick": "Одинарный клик + {modifier1}: выбор нескольких объектов",
-      "mouseHardcodedShiftDrag": "Перетаскивание клипов + {modifier1}: дублирование (в разработке)",
-      "mouseHardcodedTitle": "Зафиксированные функции",
       "mouseHorizontalMovement": "Горизонтальное движение мышкой",
       "mouseMonitor": "Монитор",
       "mouseMonitorDoubleClick": "Двойной клик в мониторе",
@@ -1699,42 +1525,42 @@
       "mouseTrackHeadersClick": "Одиночный клик",
       "mouseTrackHeadersDoubleClick": "Двойной клик",
       "mouseTrackHeadersMiddleClick": "Одиночный клик средней кнопкой",
-      "mouseActionMoveClips": "Перемещение клипов",
-      "mouseActionSelectTrack": "Выбрать дорожку",
-      "mouseActionSelectAllClips": "Выбрать все клипы на дорожке",
       "openLastProjectOnStart": "Открывать последний проект при запуске",
       "portableEphemeralTmpRootPathHelp": "В переносимом режиме кэш проекта хранится внутри workspace. Оставьте это поле пустым, чтобы короткоживущие временные файлы задач использовали системную временную папку.",
+      "project": "Проект",
+      "projectAudioDeclickHint": "Микро-фейды (линейные), накладываемые на края всех клипов для устранения щелчков. 0 отключает их.",
+      "projectAudioDeclickTitle": "Длительность De-click",
+      "proxiesRootPath": "Путь к прокси",
       "proxyAudioBitrate": "Битрейт аудио (кбит/с)",
-      "mediaTaskConcurrency": "Конкурентность медиа-задач",
-      "mediaTaskConcurrencyHelp": "Ограничивает количество одновременно выполняемых тяжелых операций (генерация прокси, миниатюр, конвертация).",
       "proxyCopyOpusAudio": "Копировать Opus аудио напрямую без перекодирования",
       "proxyCopyOpusAudioHelp": "Включение этой опции позволит пропустить перекодирование аудио, если исходный файл уже содержит аудио в формате Opus. Это сохраняет качество и экономит время.",
       "proxyInfo": "Прокси-файлы используются для улучшения производительности воспроизведения в редакторе. Они генерируются в формате MP4 (H264 или AV1) с аудиокодеком Opus.",
-      "proxyLimit": "Лимит хранилища прокси (ГБ)",
-      "proxyLimitHelp": "Общий лимит для всех прокси-файлов в этой рабочей области",
       "proxyMaxPixels": "Макс. разрешение",
-      "proxyResolution": "Разрешение",
       "proxyVideoBitrate": "Битрейт видео (Мбит/с)",
-      "proxyVideoBitrateHelp": "Более высокий битрейт означает лучшее качество, но больший размер файла",
       "proxyVideoCodec": "Кодек",
       "resetAudioSettingsConfirmDesc": "Это вернет все настройки аудио к значениям по умолчанию.",
       "resetAudioSettingsConfirmTitle": "Сбросить настройки аудио?",
       "resetDefaults": "Сбросить настройки",
-      "resetExportSettingsConfirmDesc": "Это вернет все настройки экспорта к значениям по умолчанию.",
-      "resetExportSettingsConfirmTitle": "Сбросить настройки экспорта?",
       "resetGeneralSettingsConfirmDesc": "Это вернет все общие настройки к значениям по умолчанию.",
       "resetGeneralSettingsConfirmTitle": "Сбросить общие настройки?",
       "resetIntegrationsSettingsConfirmDesc": "Это вернет все настройки интеграций к значениям по умолчанию.",
       "resetIntegrationsSettingsConfirmTitle": "Сбросить настройки интеграций?",
-      "resetProjectDefaultSettingsConfirmDesc": "Это вернет настройки проекта по умолчанию к значениям по умолчанию.",
-      "resetProjectDefaultSettingsConfirmTitle": "Сбросить настройки проекта?",
+      "resetMouseSettingsConfirmAction": "Сбросить",
+      "resetMouseSettingsConfirmTitle": "Сбросить настройки мыши?",
       "resetProxySettingsConfirmDesc": "Это вернет все настройки прокси к значениям по умолчанию.",
       "resetProxySettingsConfirmTitle": "Сбросить настройки прокси?",
-      "resetStorageSettingsConfirmDesc": "Это вернет лимиты хранилища к значениям по умолчанию.",
-      "resetStorageSettingsConfirmTitle": "Сбросить настройки хранилища?",
       "resetVideoSettingsConfirmDesc": "Это вернет настройки производительности видео к значениям по умолчанию.",
       "resetVideoSettingsConfirmTitle": "Сбросить настройки видео?",
       "selectWorkspaceFolder": "Выбрать папку",
+      "snapThresholdDefault": "Порог привязки (px)",
+      "snapToClips": "Клипам",
+      "snapToMarkers": "Маркерам",
+      "snapToPlayhead": "Плейхеду",
+      "snapToSelection": "Выделению",
+      "snapToTargets": "Привязываться к",
+      "snapToTimelineEdges": "Началу и концу таймлайна",
+      "snappingDescription": "Настройка поведения привязки на таймлайне.",
+      "snappingTitle": "Привязка",
       "stopFramesQuality": "Качество снимка кадра",
       "stopFramesQualityHint": "Качество WebP (1-100)",
       "storageMode": "Режим хранения",
@@ -1742,16 +1568,20 @@
       "storageModePortable": "Переносимый workspace",
       "storageModeSystemDefault": "Системный по умолчанию",
       "storagePathEnvironmentHint": "В браузерном workspace-режиме проекты, общие файлы и пересоздаваемый кэш хранятся внутри выбранной папки workspace. Здесь настраиваются только папка workspace и override для ephemeral tmp.",
-      "thumbnailsLimit": "Лимит хранилища миниатюр (ГБ)",
-      "thumbnailsLimitHelp": "Общий лимит для сгенерированных миниатюр в этой рабочей области",
-      "title": "Настройки редактора",
+      "sttDownloadModel": "Скачать модель",
+      "sttFastcat": "FASTCAT STT",
+      "sttLocal": "Локальное (Whisper)",
+      "sttLocalModel": "Модель Whisper",
+      "sttModelDownloaded": "Модель загружена и готова к использованию",
+      "sttModelNotDownloaded": "Модель необходимо загрузить",
+      "sttModelReady": "Готова",
+      "sttTranscriptionDescription": "Настройте интеграцию и параметры распознавания речи по умолчанию.",
+      "sttTranscriptionSettings": "Настройки транскрибации",
+      "tempRootPath": "Путь к временным файлам",
+      "title": "Настройки",
+      "uiInterfaceScale": "Масштаб интерфейса (px)",
+      "uiLanguage": "Язык интерфейса",
       "userAudio": "Аудио",
-      "projectAudioDeclickTitle": "Длительность De-click",
-      "projectAudioDeclickHint": "Микро-фейды (линейные), накладываемые на края всех клипов для устранения щелчков. 0 отключает их.",
-      "audioScrubbingTitle": "Скраббинг аудио",
-      "audioScrubbingHint": "Воспроизводить звук при перемещении по таймлайну вручную.",
-      "defaultAudioFadeCurveTitle": "Тип кривой затухания",
-      "defaultAudioFadeCurveHint": "Кривая по умолчанию, используемая при ручном создании фейдов. (De-click всегда использует короткое линейное затухание).",
       "userExport": "Пресеты экспорта",
       "userGeneral": "Главное",
       "userHotkeys": "Горячие клавиши",
@@ -1759,47 +1589,31 @@
       "userMouse": "Мышь",
       "userProject": "Пресеты проектов",
       "userProxy": "Прокси",
-      "userSavedNote": "Сохранено в .fastcat/user.settings.json",
       "userSection": "Пользовательские настройки",
       "userVideo": "Видео",
       "video": {
-        "enableFfmpeg": "Использовать FFmpeg",
-        "enableFfmpegHelp": "Включает использование FFmpeg для некоторых операций обработки видео",
-        "gpuSupport": "Поддержка GPU",
-        "notSupported": "Не поддерживается",
-        "performance": "Производительность",
-        "supported": "Поддерживается",
-        "webcodecs": "WebCodecs",
-        "webgl": "WebGL",
-        "webgpu": "WebGPU"
+        "accelerationDiagnostics": "Accelerationdiagnostics",
+        "performance": "Производительность"
       },
       "videoFrameCacheMb": "Кэш видеокадров (МБ)",
       "videoFrameCacheMbHelp": "Максимальный объем оперативной памяти для декодированных кадров предпросмотра. Установите 0 для отключения кэша.",
       "workspaceFolder": "Папка workspace",
       "workspaceFolderNotSelected": "Папка workspace не выбрана",
-      "workspaceSavedNote": "Сохранено в .fastcat/workspace.settings.json",
       "workspaceSection": "Настройки приложения",
-      "workspaceStorage": "Хранилище",
-      "uiInterfaceScale": "Масштаб интерфейса (px)",
-      "uiLanguage": "Язык интерфейса",
-      "snappingTitle": "Привязка",
-      "snappingDescription": "Настройка поведения привязки на таймлайне.",
-      "snapThresholdDefault": "Порог привязки (px)",
-      "snapToTargets": "Привязываться к",
-      "snapToTimelineEdges": "Началу и концу таймлайна",
-      "snapToClips": "Клипам",
-      "snapToMarkers": "Маркерам",
-      "snapToSelection": "Выделению",
-      "snapToPlayhead": "Плейхеду"
+      "workspaceStorage": "Хранилище"
+    },
+    "timeline": {
+      "backupError": "Backuperror",
+      "backupErrorDesc": "Backuperrordesc",
+      "fpsMismatch": "Fpsmismatch",
+      "fpsMismatchDesc": "Fpsmismatchdesc",
+      "settings": "Settings",
+      "tabs": {
+        "cut": "Монтаж",
+        "sound": "Звук"
+      },
+      "versionCreated": "Версия создана: {name}",
+      "versionSaveError": "Versionsaveerror"
     }
-  },
-  "mobileFiles": {
-    "noSuitableTrack": "Подходящая дорожка не найдена",
-    "unknownFileType": "Неизвестный тип файла"
-  },
-  "timelineCreation": {
-    "errorTitle": "Ошибка таймлайна",
-    "failed": "Не удалось создать таймлайн",
-    "successTitle": "Таймлайн создан"
   }
 }
