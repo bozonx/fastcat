@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted, onMounted, nextTick, inject } from 'vue';
+import { ref, computed, inject } from 'vue';
+import type { ComponentPublicInstance } from 'vue';
 import { useFileManagerStore, useFileBrowserPersistenceStore } from '~/stores/file-manager.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -7,9 +8,8 @@ import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useMediaStore } from '~/stores/media.store';
-import { getBdPayload, type BloggerDogEntryPayload } from '~/types/bloggerdog';
+import { getBdPayload } from '~/types/bloggerdog';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
-import { useEntryPreview } from '~/composables/file-manager/useEntryPreview';
 import { useFileManagerActions } from '~/composables/file-manager/useFileManagerActions';
 import { useBloggerDogStore } from '~/stores/bloggerdog';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
@@ -17,10 +17,7 @@ import { useFileContextMenu } from '~/composables/file-manager/useFileContextMen
 import type { FileAction as ContextMenuFileAction } from '~/composables/file-manager/useFileContextMenu';
 import { useFileBrowserDragAndDrop } from '~/composables/file-manager/useFileBrowserDragAndDrop';
 import { useFileBrowserMarquee } from '~/composables/file-manager/useFileBrowserMarquee';
-import {
-  useFileBrowserEntries,
-  type ExtendedFsEntry,
-} from '~/composables/file-manager/useFileBrowserEntries';
+import { useFileBrowserEntries } from '~/composables/file-manager/useFileBrowserEntries';
 import { useFileBrowserRemote } from '~/composables/file-manager/useFileBrowserRemote';
 import { useFileBrowserNavigation } from '~/composables/file-manager/useFileBrowserNavigation';
 import { useSttTranscription } from '~/composables/file-manager/useSttTranscription';
@@ -30,12 +27,12 @@ import { useFocusableListNavigation } from '~/composables/file-manager/useFocusa
 import { useFileBrowserPendingActions } from '~/composables/file-manager/useFileBrowserPendingActions';
 import { useFileBrowserCreateActions } from '~/composables/file-manager/useFileBrowserCreateActions';
 import { useFileBrowserInteraction } from '~/composables/file-manager/useFileBrowserInteraction';
+import { useFileBrowserRemoteCreate } from '~/composables/file-manager/useFileBrowserRemoteCreate';
+import { useFileBrowserLifecycle } from '~/composables/file-manager/useFileBrowserLifecycle';
 import { handleFilesCommand } from '~/file-manager/application/fileManagerCommands';
 import { useAppClipboard } from '~/composables/useAppClipboard';
-import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import type { FsEntry } from '~/types/fs';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
-import type { RemoteVfsScope } from '~/types/remote-vfs';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
 import { FILE_MANAGER_ROOT_SPACER_HEIGHT } from '~/utils/constants';
 import {
@@ -44,8 +41,7 @@ import {
 } from '~/utils/fs-entry-utils';
 import FileBrowserToolbar from '~/components/file-manager/FileBrowserToolbar.vue';
 import FileBrowserBreadcrumbs from '~/components/file-manager/FileBrowserBreadcrumbs.vue';
-import FileBrowserViewGrid from '~/components/file-manager/FileBrowserViewGrid.vue';
-import FileBrowserViewList from '~/components/file-manager/FileBrowserViewList.vue';
+import FileBrowserContent from '~/components/file-manager/FileBrowserContent.vue';
 import FileBrowserModals from '~/components/file-manager/FileBrowserModals.vue';
 
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
@@ -182,6 +178,10 @@ const rootSpacerStyle = {
   flexShrink: 0,
 } as const;
 
+function setRootContainerRef(element: Element | ComponentPublicInstance | null) {
+  rootContainer.value = element instanceof HTMLElement ? element : null;
+}
+
 function scrollToEntryPath(path: string): boolean {
   const container = rootContainer.value;
   if (!container) return false;
@@ -241,7 +241,6 @@ const {
   isDragOverPanel,
   dragOverEntryPath,
   currentDragOperation,
-  isRootDropOver,
   onEntryDragStart: onEntryDragStartBase,
   onEntryDragEnd: onEntryDragEndBase,
   onEntryDragEnter: onEntryDragEnterBase,
@@ -469,111 +468,30 @@ const { createTimelineInDirectory, createMarkdownInDirectory } = useFileBrowserC
   onFileSelect: (entry) => setSelectedFsEntry(entry),
 });
 
-// --- Create subgroup (remote) ---
-const isSubgroupModalOpen = ref(false);
-const pendingSubgroupParent = ref<FsEntry | null>(null);
-
-function handlePendingBloggerDogCreateSubgroup(entry: FsEntry) {
-  pendingSubgroupParent.value = entry;
-  isSubgroupModalOpen.value = true;
-  uiStore.pendingBloggerDogCreateSubgroup = null;
-}
-
-async function onSubgroupCreateConfirm(name: string) {
-  const parent = pendingSubgroupParent.value;
-  if (!parent) return;
-
-  try {
-    const newPath = `${parent.path}/${name}`;
-    await vfs.createDirectory(newPath);
-
-    // Navigate to new subgroup
-    const newEntry = remote.buildRemoteDirectoryEntry(newPath, 'collection');
-    remoteCurrentFolder.value = newEntry;
-    await loadFolderContent();
-    await loadParentFolders();
-    uiStore.notifyFileManagerUpdate();
-  } catch (error) {
-    const toast = useToast();
-    toast.add({
-      color: 'error',
-      title: t('common.error'),
-      description: error instanceof Error ? error.message : 'Failed to create subgroup',
-    });
-  } finally {
-    isSubgroupModalOpen.value = false;
-    pendingSubgroupParent.value = null;
-  }
-}
-
-// --- Create content item (remote) ---
-const isItemModalOpen = ref(false);
-const pendingItemParent = ref<FsEntry | null>(null);
-
-function handlePendingBloggerDogCreateItem(entry: FsEntry) {
-  pendingItemParent.value = entry;
-  isItemModalOpen.value = true;
-  uiStore.pendingBloggerDogCreateItem = null;
-}
-
-async function onItemCreateConfirm(name: string) {
-  const parent = pendingItemParent.value;
-  if (!parent) return;
-
-  try {
-    const parentPayload = getBdPayload(parent);
-    const remoteData = parentPayload?.remoteData;
-
-    let scope: RemoteVfsScope = 'personal';
-    let projectId: string | undefined;
-    let groupId: string | undefined;
-
-    const parentPath = parent.path || '/';
-
-    if (parentPayload?.type === 'virtual-folder') {
-      const isPersonal = parent.remoteId === 'personal' || parentPath.endsWith('/personal');
-      scope = isPersonal ? 'personal' : 'project';
-      // projectId for project root will be handled if needed, but usually we are in a specific project or personal root
-    } else if (parentPayload?.type === 'project') {
-      scope = 'project';
-      projectId = remoteData?.id;
-    } else if (parentPayload?.type === 'collection') {
-      scope = (remoteData as any)?.scope || 'personal';
-      projectId = (remoteData as any)?.projectId;
-      groupId = remoteData?.id;
-    } else if (parentPayload?.type === 'content-item') {
-      scope = (remoteData as any)?.scope || 'personal';
-      projectId = (remoteData as any)?.projectId;
-      groupId = (remoteData as any)?.groupId || (remoteData as any)?.collectionId;
-    }
-
-    await bloggerDogStore.createItem({
-      title: name,
-      scope,
-      projectId,
-      groupId,
-    });
-
-    // Navigate into the newly created item
-    const newPath = `${parentPath === '/' ? '' : parentPath}/${name}`;
-    const newEntry = remote.buildRemoteDirectoryEntry(newPath, 'content-item');
-    remoteCurrentFolder.value = newEntry;
-
-    await loadFolderContent();
-    await loadParentFolders();
-    uiStore.notifyFileManagerUpdate();
-  } catch (error) {
-    const toast = useToast();
-    toast.add({
-      color: 'error',
-      title: t('common.error'),
-      description: error instanceof Error ? error.message : 'Failed to create item',
-    });
-  } finally {
-    isItemModalOpen.value = false;
-    pendingItemParent.value = null;
-  }
-}
+const {
+  isSubgroupModalOpen,
+  isItemModalOpen,
+  handlePendingBloggerDogCreateSubgroup,
+  handlePendingBloggerDogCreateItem,
+  onSubgroupCreateConfirm,
+  onItemCreateConfirm,
+} = useFileBrowserRemoteCreate({
+  vfs,
+  bloggerDogStore,
+  buildRemoteDirectoryEntry,
+  remoteCurrentFolder,
+  loadFolderContent,
+  loadParentFolders,
+  notifyFileManagerUpdate: () => uiStore.notifyFileManagerUpdate(),
+  clearPendingCreateSubgroup: () => {
+    uiStore.pendingBloggerDogCreateSubgroup = null;
+  },
+  clearPendingCreateItem: () => {
+    uiStore.pendingBloggerDogCreateItem = null;
+  },
+  t,
+  toast,
+});
 
 // --- File manager actions (CRUD, rename, delete) ---
 const {
@@ -777,24 +695,6 @@ const currentGridSizeName = computed(() => {
   return GRID_SIZE_NAMES[index] || 'm';
 });
 
-// --- Column resize ---
-
-onUnmounted(() => {
-  clipboardStore.unregisterFileManagerVfs(instanceId);
-});
-
-onMounted(async () => {
-  if (props.remoteModeOnly) {
-    remoteCurrentFolder.value = buildRemoteDirectoryEntry('/');
-    await loadFolderContent();
-    await loadParentFolders();
-  } else if (!fileManagerStore.selectedFolder) {
-    setSelectedFsEntry({ kind: 'directory', path: '', name: 'Root' });
-  } else {
-    await loadFolderContent();
-  }
-});
-
 useFileBrowserPendingActions({
   folderEntries,
   startRename,
@@ -811,11 +711,11 @@ useFileBrowserPendingActions({
   handlePendingRemoteDownloadRequest: async () => {
     const request = uiStore.pendingRemoteDownloadRequest;
     if (!request) return;
+
     try {
       await remote.performRemoteDownload(request);
     } catch (error) {
       if ((error as Error | undefined)?.name !== 'AbortError') {
-        const toast = useToast();
         toast.add({
           color: 'error',
           title: t('common.error'),
@@ -826,93 +726,33 @@ useFileBrowserPendingActions({
   },
 });
 
-watch(
-  () => uiStore.fileManagerUpdateCounter,
-  async () => {
-    if (skipNextUpdateReload.value) {
-      skipNextUpdateReload.value = false;
-      return;
-    }
-    await loadFolderContent();
-    if (!pendingScrollToEntryPath.value) return;
-    await nextTick();
-    tryScrollToPendingEntry();
-  },
-);
-
-watch(
-  () => uiStore.fileBrowserSelectAllTrigger,
-  () => {
-    if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return;
-    if (isRemoteMode.value) return;
-
-    const visibleItems = sortedEntries.value;
-    const selected = selectionStore.selectedEntity;
-    const selectedPaths =
-      selected?.source === 'fileManager'
-        ? selected.kind === 'multiple'
-          ? selected.entries.map((entry) => entry.path)
-          : [selected.entry.path]
-        : [];
-    const visiblePaths = visibleItems.map((entry) => entry.path);
-
-    const isAllSelected =
-      visibleItems.length > 0 &&
-      selectedPaths.length === visiblePaths.length &&
-      visiblePaths.every((path) => selectedPaths.includes(path));
-
-    if (isAllSelected) {
-      selectionStore.clearSelection();
-      return;
-    }
-
-    selectionStore.selectFsEntries(visibleItems, instanceId, isExternal.value);
-  },
-);
-
-watch(
-  () => uiStore.fileBrowserNavigateBackTrigger,
-  () => {
-    if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return;
-    void navigateBack();
-  },
-);
-
-watch(
-  () => uiStore.fileBrowserNavigateForwardTrigger,
-  () => {
-    if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return;
-    void navigateForward();
-  },
-);
-
-watch(
-  () => uiStore.fileBrowserNavigateUpTrigger,
-  () => {
-    if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return;
-    if (isAtRoot.value) return;
-    void navigateUp();
-  },
-);
-
-watch(
-  () => uiStore.fileBrowserMoveSelectionTrigger,
-  (trigger) => {
-    if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return;
-    moveSelection(trigger.dir);
-  },
-);
-
-// --- Refresh ---
-
-async function refreshFileTree() {
-  if (isRemoteMode.value) {
-    await loadFolderContent();
-    return;
-  }
-  folderSizes.value = {};
-  await loadProjectDirectory({ fullRefresh: true } as any);
-}
+const { refreshFileTree } = useFileBrowserLifecycle({
+  remoteModeOnly: props.remoteModeOnly,
+  isRemoteMode,
+  isAtRoot,
+  remoteCurrentFolder,
+  buildRemoteDirectoryEntry,
+  fileManagerStore,
+  selectionStore,
+  focusStore,
+  uiStore,
+  clipboardStore,
+  instanceId,
+  isExternal: isExternal.value,
+  sortedEntries,
+  pendingScrollToEntryPath,
+  skipNextUpdateReload,
+  loadFolderContent,
+  loadParentFolders,
+  tryScrollToPendingEntry,
+  navigateBack,
+  navigateForward,
+  navigateUp,
+  moveSelection,
+  loadProjectDirectory,
+  folderSizes,
+  setSelectedFsEntry,
+});
 
 // --- Entry interaction ---
 
@@ -1005,147 +845,57 @@ async function onDirectoryUploadChange(e: Event) {
       @navigate-to-folder="navigateToFolder"
     />
 
-    <!-- Main Content -->
-    <div
-      ref="rootContainer"
-      class="flex-1 overflow-auto p-4 content-scrollbar relative"
-      tabindex="0"
-      @scroll.passive="handleScroll"
-      @dragenter.prevent="onRootDragEnter"
-      @dragover.prevent="onRootDragOver"
-      @dragleave.prevent="onRootDragLeave"
-      @drop.prevent="onRootDrop"
-      @click.self="handleContainerClick"
-      @keydown="onContainerKeyDown"
-      @pointerdown.capture="onMarqueePointerDown"
-      @pointermove="onMarqueePointerMove"
-      @pointerup="onMarqueePointerUp"
-      @pointercancel="onMarqueePointerUp"
-    >
-      <div
-        v-if="marqueeStyle"
-        class="absolute border border-primary-400 bg-primary-400/15 rounded-sm pointer-events-none"
-        :style="marqueeStyle"
-      />
-      <UContextMenu :items="emptySpaceContextMenuItems" class="min-h-full">
-        <div class="min-h-full flex flex-col" @click.self="handleContainerClick">
-          <div
-            v-if="isRemoteMode && remoteError"
-            class="flex flex-col items-center justify-center flex-1 text-ui-text-dim text-center p-6 gap-6"
-          >
-            <div class="p-6 rounded-full bg-error-500/10">
-              <UIcon
-                name="i-heroicons-exclamation-circle"
-                class="w-16 h-16 text-error-500 opacity-80"
-              />
-            </div>
-            <div class="space-y-2 max-w-[320px]">
-              <h3 class="text-xl font-semibold text-ui-text">
-                {{ t('fastcat.fileManager.remote.load_error_title') }}
-              </h3>
-              <p class="text-sm text-ui-text-dim leading-relaxed">
-                {{ remoteError }}
-              </p>
-            </div>
-            <div class="flex gap-3">
-              <UButton
-                color="primary"
-                variant="solid"
-                icon="i-heroicons-arrow-path"
-                @click.stop="() => loadFolderContent()"
-              >
-                {{ t('common.retry') }}
-              </UButton>
-            </div>
-          </div>
-
-          <div
-            v-else-if="folderEntries.length === 0"
-            class="flex flex-col items-center justify-center flex-1 text-ui-text-muted gap-2"
-          >
-            <UIcon name="i-heroicons-inbox" class="w-12 h-12 opacity-20" />
-            <span>{{ t('common.empty') }}</span>
-          </div>
-
-          <!-- Grid View -->
-          <FileBrowserViewGrid
-            v-else-if="remoteModeOnly || fileManagerStore.viewMode === 'grid'"
-            :entries="sortedEntries as ExtendedFsEntry[]"
-            :drag-over-entry-path="dragOverEntryPath"
-            :current-drag-operation="currentDragOperation"
-            :current-grid-size-name="currentGridSizeName"
-            :current-grid-card-size="effectiveGridCardSize"
-            :editing-entry-path="editingEntryPath"
-            :folder-entries-names="folderEntries.map((e) => e.name)"
-            :get-context-menu-items="getContextMenuItems"
-            :is-generating-proxy-in-directory="isDirectoryGeneratingProxy"
-            :video-thumbnails="videoThumbnails"
-            :file-compatibility="fileCompatibility"
-            :instance-id="instanceId"
-            @entry-drag-start="onEntryDragStart"
-            @entry-drag-end="onEntryDragEnd"
-            @entry-drag-enter="onEntryDragEnter"
-            @entry-drag-over="onEntryDragOver"
-            @entry-drag-leave="onEntryDragLeave"
-            @entry-drop="onEntryDrop"
-            @entry-click="handleEntryClick"
-            @entry-double-click="handleEntryDoubleClick"
-            @entry-enter="handleEntryEnter"
-            @commit-rename="commitRename"
-            @stop-rename="stopRename"
-            @file-action="onFileAction"
-          />
-
-          <!-- List View -->
-          <FileBrowserViewList
-            v-else
-            :entries="sortedEntries as ExtendedFsEntry[]"
-            :drag-over-entry-path="dragOverEntryPath"
-            :current-drag-operation="currentDragOperation"
-            :folder-sizes-loading="folderSizesLoading"
-            :folder-sizes="folderSizes"
-            :editing-entry-path="editingEntryPath"
-            :folder-entries-names="folderEntries.map((e) => e.name)"
-            :get-context-menu-items="getContextMenuItems"
-            :is-generating-proxy-in-directory="isDirectoryGeneratingProxy"
-            :video-thumbnails="videoThumbnails"
-            :file-compatibility="fileCompatibility"
-            :instance-id="instanceId"
-            @entry-drag-start="onEntryDragStart"
-            @entry-drag-end="onEntryDragEnd"
-            @entry-drag-enter="onEntryDragEnter"
-            @entry-drag-over="onEntryDragOver"
-            @entry-drag-leave="onEntryDragLeave"
-            @entry-drop="onEntryDrop"
-            @entry-click="handleEntryClick"
-            @entry-double-click="handleEntryDoubleClick"
-            @entry-enter="handleEntryEnter"
-            @commit-rename="commitRename"
-            @stop-rename="stopRename"
-            @file-action="onFileAction"
-            @sort="handleSort"
-            @resize-start="onResizeStart"
-          />
-
-          <!-- Pagination Loader -->
-          <div
-            v-if="isRemoteMode && (isLoadingMore || remoteHasMore)"
-            class="w-full flex items-center justify-center p-8 min-h-[100px]"
-          >
-            <UIcon
-              v-if="isLoadingMore"
-              name="i-heroicons-arrow-path"
-              class="w-8 h-8 animate-spin text-primary-500/50"
-            />
-            <div v-else class="text-ui-text-dim/30 text-xs font-medium uppercase tracking-widest">
-              {{ t('common.scroll_for_more') }}
-            </div>
-          </div>
-
-          <div :style="rootSpacerStyle" @click.self="handleContainerClick" />
-        </div>
-      </UContextMenu>
-    </div>
+    <FileBrowserContent
+      :set-root-container-ref="setRootContainerRef"
+      :marquee-style="marqueeStyle"
+      :empty-space-context-menu-items="emptySpaceContextMenuItems"
+      :is-remote-mode="isRemoteMode"
+      :remote-error="remoteError"
+      :folder-entries-length="folderEntries.length"
+      :sorted-entries="sortedEntries"
+      :drag-over-entry-path="dragOverEntryPath"
+      :current-drag-operation="currentDragOperation"
+      :current-grid-size-name="currentGridSizeName"
+      :effective-grid-card-size="effectiveGridCardSize"
+      :editing-entry-path="editingEntryPath"
+      :folder-entry-names="folderEntries.map((entry) => entry.name)"
+      :get-context-menu-items="getContextMenuItems"
+      :is-directory-generating-proxy="isDirectoryGeneratingProxy"
+      :video-thumbnails="videoThumbnails"
+      :file-compatibility="fileCompatibility"
+      :instance-id="instanceId"
+      :folder-sizes-loading="folderSizesLoading"
+      :folder-sizes="folderSizes"
+      :show-grid-view="remoteModeOnly || fileManagerStore.viewMode === 'grid'"
+      :is-loading-more="isLoadingMore"
+      :remote-has-more="remoteHasMore"
+      :root-spacer-style="rootSpacerStyle"
+      @scroll="handleScroll"
+      @root-drag-enter="onRootDragEnter"
+      @root-drag-over="onRootDragOver"
+      @root-drag-leave="onRootDragLeave"
+      @root-drop="onRootDrop"
+      @container-click="handleContainerClick"
+      @container-keydown="onContainerKeyDown"
+      @marquee-pointer-down="onMarqueePointerDown"
+      @marquee-pointer-move="onMarqueePointerMove"
+      @marquee-pointer-up="onMarqueePointerUp"
+      @retry-remote-load="loadFolderContent"
+      @entry-drag-start="onEntryDragStart"
+      @entry-drag-end="onEntryDragEnd"
+      @entry-drag-enter="onEntryDragEnter"
+      @entry-drag-over="onEntryDragOver"
+      @entry-drag-leave="onEntryDragLeave"
+      @entry-drop="onEntryDrop"
+      @entry-click="handleEntryClick"
+      @entry-double-click="handleEntryDoubleClick"
+      @entry-enter="handleEntryEnter"
+      @commit-rename="commitRename"
+      @stop-rename="stopRename"
+      @file-action="onFileAction"
+      @sort="handleSort"
+      @resize-start="onResizeStart"
+    />
 
     <!-- Hidden input for directory upload -->
     <input
@@ -1183,23 +933,3 @@ async function onDirectoryUploadChange(e: Event) {
     />
   </div>
 </template>
-
-<style scoped>
-.content-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-.content-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.content-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(var(--color-neutral-500), 0.1);
-  border-radius: 3px;
-}
-
-.content-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--color-neutral-500), 0.2);
-}
-</style>

@@ -38,7 +38,11 @@ export function useAudioExtraction() {
       // Use the injected VFS so workspace file manager paths resolve correctly
       const vfs = fileManager.vfs;
 
-      const sourceFile = await vfs.getFile(entry.path);
+      // projectStore.getFileByPath returns a live File (no full memory copy) and has
+      // workspace-root fallback; vfs.getFile is used as a fallback for files outside
+      // the project scope (e.g. arbitrary workspace paths in ComputerFileManager).
+      const sourceFile =
+        (await projectStore.getFileByPath(entry.path)) ?? (await vfs.getFile(entry.path));
       if (!sourceFile) throw new Error('Failed to access source file');
 
       const { client } = getExportWorkerClient();
