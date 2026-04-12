@@ -47,19 +47,17 @@ export function useAudioExtraction() {
 
       const { client } = getExportWorkerClient();
 
-      // Provide the worker with VFS-based file access to support any file manager context
+      // Worker host API must return native FileSystemFileHandle (clonable via postMessage).
+      // The target file is pre-created via VFS in the correct directory below, so
+      // projectStore's workspace-root fallback will locate it during extraction.
       setExportHostApi(
         createVideoCoreHostApi({
           getCurrentProjectId: () => projectStore.currentProjectId,
           getWorkspaceHandle: () => workspaceStore.workspaceHandle,
           getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
-          getFileHandleByPath: async (path: string) =>
-            ({
-              getFile: () => vfs.getFile(path),
-              createWritable: () => vfs.writeStream(path),
-            }) as any,
-          getFileByPath: async (path: string) => vfs.getFile(path),
-          onExportProgress: () => {}, // Not used for extraction yet
+          getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
+          getFileByPath: async (path) => projectStore.getFileByPath(path),
+          onExportProgress: () => {},
         }),
       );
 
@@ -90,6 +88,11 @@ export function useAudioExtraction() {
       }
 
       const targetPath = dirPath ? `${dirPath}/${newFileName}` : newFileName;
+
+      // Pre-create the target file via VFS in the correct directory.
+      // This ensures projectStore.getFileHandleByPath finds it via workspace-root
+      // fallback instead of creating it in the project directory.
+      await vfs.writeFile(targetPath, new Blob([]));
 
       await client.extractAudio(entry.path, targetPath);
 
