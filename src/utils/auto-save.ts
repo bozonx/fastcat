@@ -48,6 +48,7 @@ export function createAutoSave(options: AutoSaveOptions) {
 
   function reset() {
     clearPersistTimeout();
+    saveQueue.clear();
     currentRevision = 0;
     savedRevision = 0;
     options.onStateChange?.({ isDirty: isDirty() });
