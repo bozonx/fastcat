@@ -19,6 +19,7 @@ import type { ProjectMeta } from '~/repositories/project-meta.repository';
 import type { EditorView } from '~/stores/editor-view.store';
 import { useFocusStore } from './focus.store';
 import { useProjectTabsStore } from './project-tabs.store';
+import { useTimelineSettingsStore } from './timeline-settings.store';
 import { useTimelineStore } from './timeline.store';
 import {
   useFileManagerStore,
@@ -121,6 +122,8 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
             fileManagerPaths[key] = store.selectedFolder?.path ?? null;
           }
 
+          const timelineSettingsStore = useTimelineSettingsStore();
+
           await projectUiRepo.value.save({
             version: 1,
             monitors: projectSettings.value.monitors,
@@ -128,8 +131,17 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
               openPaths: timelines.openPaths,
               sessions: timelines.sessions,
             },
+            timeline: {
+              frameSnapMode: timelineSettingsStore.frameSnapMode,
+              clipSnapMode: timelineSettingsStore.clipSnapMode,
+              toolbarSnapMode: timelineSettingsStore.toolbarSnapMode,
+              toolbarDragMode: timelineSettingsStore.toolbarDragMode,
+              toolbarDragModeEnabled: timelineSettingsStore.toolbarDragModeEnabled,
+            },
             ui: {
               activeTabId: projectTabsStore.activeTabId,
+              fileTabs: projectTabsStore.fileTabs,
+              staticTabsOrder: projectTabsStore.staticTabsOrder,
               fileManagerPaths,
             },
           });
@@ -254,6 +266,10 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
           if (uiRaw.ui) {
             settings.ui = { ...settings.ui, ...uiRaw.ui };
           }
+
+          if (uiRaw.timeline) {
+            settings.timeline = { ...settings.timeline, ...uiRaw.timeline };
+          }
         }
       }
 
@@ -262,8 +278,12 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
       // Sync loaded state to other stores
       if (!isLoadingProjectSettings.value) {
           const projectTabsStore = useProjectTabsStore();
-          if (settings.ui.activeTabId) {
-              projectTabsStore.setActiveTab(settings.ui.activeTabId);
+          if (settings.ui.activeTabId || settings.ui.fileTabs.length > 0) {
+              projectTabsStore.setTabsState({
+                  activeTabId: settings.ui.activeTabId,
+                  fileTabs: settings.ui.fileTabs,
+                  staticTabsOrder: settings.ui.staticTabsOrder,
+              });
           }
           
           const fmStores = {
@@ -347,6 +367,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
           openPaths: initial.timelines.openPaths,
           sessions: initial.timelines.sessions,
         },
+        timeline: initial.timeline,
         ui: initial.ui,
       });
     } catch (e) {

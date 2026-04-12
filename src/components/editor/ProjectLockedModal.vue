@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import UiModal from '~/components/ui/UiModal.vue';
 
@@ -111,6 +111,7 @@ async function handleStealLock() {
         <UButton
           color="primary"
           variant="solid"
+          data-primary-focus="true"
           :class="isMobile ? 'h-14 rounded-2xl order-1 sm:order-2' : ''"
           :loading="isStealing"
           @click="handleStealLock"

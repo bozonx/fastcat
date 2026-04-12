@@ -17,6 +17,7 @@ const MonitorSettingsSchema = z.object({
   panY: z.coerce.number().catch(0),
   zoom: z.coerce.number().min(0.05).max(20).catch(1),
   showGrid: z.coerce.boolean().catch(false),
+  showTimecode: z.coerce.boolean().catch(true),
   toolbarPosition: z.enum(['top', 'bottom', 'left', 'right']).catch('bottom'),
 });
 
@@ -35,6 +36,14 @@ const TimelineSessionSchema = z.object({
     .catch(undefined),
 });
 
+const ProjectFileTabSchema = z.object({
+  id: z.string(),
+  filePath: z.string(),
+  fileName: z.string(),
+  mediaType: z.enum(['video', 'audio', 'image', 'text', 'unknown']).nullable().catch(null),
+  icon: z.string(),
+});
+
 export const ProjectUiSettingsSchema = z.object({
   version: z.coerce.number().catch(1),
   monitors: z.record(z.string(), MonitorSettingsSchema).catch({}),
@@ -44,12 +53,23 @@ export const ProjectUiSettingsSchema = z.object({
       sessions: z.record(z.string(), TimelineSessionSchema).catch({}),
     })
     .catch({ openPaths: [], sessions: {} }),
+  timeline: z
+    .object({
+      frameSnapMode: z.enum(['free', 'frames']).catch('frames'),
+      clipSnapMode: z.enum(['none', 'clips']).catch('clips'),
+      toolbarSnapMode: z.enum(['snap', 'no_snap', 'free_mode']).catch('snap'),
+      toolbarDragMode: z.enum(['pseudo_overlap', 'copy', 'slip']).catch('pseudo_overlap'),
+      toolbarDragModeEnabled: z.boolean().catch(false),
+    })
+    .optional(),
   ui: z
     .object({
       activeTabId: z.string().nullable().catch(null),
+      fileTabs: z.array(ProjectFileTabSchema).catch([]),
+      staticTabsOrder: z.array(z.string()).catch([]),
       fileManagerPaths: z.record(z.string(), z.string().nullable()).catch({}),
     })
-    .catch({ activeTabId: null, fileManagerPaths: {} }),
+    .catch({ activeTabId: null, fileTabs: [], staticTabsOrder: [], fileManagerPaths: {} }),
 });
 
 export type ProjectUiSettings = z.infer<typeof ProjectUiSettingsSchema>;
