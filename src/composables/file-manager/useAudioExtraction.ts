@@ -6,6 +6,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 
 interface AudioExtractionSelectionContext {
   instanceId?: string;
@@ -22,10 +23,7 @@ export function useAudioExtraction() {
 
   const isExtracting = ref(false);
 
-  async function extractAudio(
-    entry: FsEntry,
-    context: AudioExtractionSelectionContext = {},
-  ) {
+  async function extractAudio(entry: FsEntry, context: AudioExtractionSelectionContext = {}) {
     if (isExtracting.value) return;
     if (!entry.path) return;
 
@@ -98,12 +96,32 @@ export function useAudioExtraction() {
         color: 'success',
       });
 
-      await fileManager.reloadDirectory(dirPath);
       const uiStore = useUiStore();
+      const fileManagerStore = useFileManagerStore();
+
+      // Expand the parent directory in the tree view before reloading
+      if (dirPath) {
+        uiStore.setFileTreePathExpanded(dirPath, true);
+      }
+
+      await fileManager.reloadDirectory(dirPath);
+
+      // Navigate the flat file browser to the directory containing the new file
+      const folderEntry: FsEntry = {
+        kind: 'directory',
+        path: dirPath,
+        name: dirPath
+          ? (dirPath.split('/').pop() ?? dirPath)
+          : (projectStore.currentProjectName ?? '/'),
+        parentPath: dirPath ? dirPath.split('/').slice(0, -1).join('/') || undefined : undefined,
+      };
+      fileManagerStore.openFolder(folderEntry, { skipHistory: !dirPath });
+
       uiStore.notifyFileManagerUpdate();
 
       const newEntry =
-        fileManager.findEntryByPath(targetPath) ?? (await fileManager.resolveEntryByPath(targetPath));
+        fileManager.findEntryByPath(targetPath) ??
+        (await fileManager.resolveEntryByPath(targetPath));
       if (newEntry) {
         const selectedEntity = selectionStore.selectedEntity;
         const nextInstanceId =
@@ -114,6 +132,9 @@ export function useAudioExtraction() {
           (selectedEntity?.source === 'fileManager' ? selectedEntity.isExternal : undefined);
 
         selectionStore.selectFsEntryWithUiUpdate(newEntry, nextInstanceId, nextIsExternal);
+
+        // Scroll the tree view to make the new entry visible
+        uiStore.triggerScrollToFileTreeEntry(targetPath);
       }
     } catch (err: any) {
       console.error('Audio extraction failed', err);
