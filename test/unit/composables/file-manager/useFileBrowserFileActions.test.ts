@@ -42,9 +42,6 @@ vi.mock('~/stores/proxy.store', () => ({ useProxyStore: () => proxyStore }));
 vi.mock('~/stores/project-tabs.store', () => ({
   useProjectTabsStore: () => projectTabsStore,
 }));
-vi.mock('~/composables/file-manager/useAudioExtraction', () => ({
-  useAudioExtraction: () => audioExtraction,
-}));
 vi.mock('~/utils/media-types', () => ({
   getMediaTypeFromFilename: vi.fn((name: string) => (name.endsWith('.mp4') ? 'video' : 'unknown')),
   isOpenableProjectFileName: vi.fn((name: string) => !name.startsWith('.')),
@@ -67,8 +64,9 @@ describe('useFileBrowserFileActions', () => {
       folderEntries: ref([]),
       loadFolderContent: vi.fn(),
       onFileActionBase,
-      fileConversion: { openConversionModal: vi.fn() } as any,
+      conversionStore: { openConversionModal: vi.fn() } as any,
       openTranscriptionModal: vi.fn(),
+      extractAudio: audioExtraction.extractAudio,
       vfs: {} as any,
     });
 
@@ -85,8 +83,9 @@ describe('useFileBrowserFileActions', () => {
       folderEntries: ref([{ name: 'existing' } as FsEntry]),
       loadFolderContent,
       onFileActionBase,
-      fileConversion: {} as any,
+      conversionStore: {} as any,
       openTranscriptionModal: vi.fn(),
+      extractAudio: audioExtraction.extractAudio,
       vfs: {} as any,
     });
 
@@ -104,8 +103,9 @@ describe('useFileBrowserFileActions', () => {
       folderEntries: ref([]),
       loadFolderContent: vi.fn(),
       onFileActionBase: vi.fn(),
-      fileConversion: {} as any,
+      conversionStore: {} as any,
       openTranscriptionModal: vi.fn(),
+      extractAudio: audioExtraction.extractAudio,
       vfs: {} as any,
     });
 

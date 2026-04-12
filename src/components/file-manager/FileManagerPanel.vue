@@ -163,7 +163,7 @@ const { handleFileAction: onFileAction, createTimelineInDirectory } = useFileMan
   findEntryByPath,
   onFileActionBase: onFileActionBase as any,
   openTranscriptionModal,
-  extractAudio,
+  extractAudio: (entry) => extractAudio(entry, { instanceId, isExternal: props.isExternal }),
   addFileTab,
   setActiveTab,
   onSelect: (entry) => emit('select', entry),
