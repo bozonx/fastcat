@@ -36,6 +36,10 @@ import {
 } from '~/composables/file-manager/dragCursor';
 import { crossVfsCopy, crossVfsMove } from '~/file-manager/core/vfs/crossVfs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
+import {
+  canPasteIntoBloggerDogEntry,
+  canTransferClipboardItemToOrFromBloggerDog,
+} from '~/utils/bloggerdog-file-manager';
 
 interface UseFileBrowserDragAndDropOptions {
   findEntryByPath: (path: string) => FsEntry | null;
@@ -167,6 +171,21 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
   function resolveDragStartOperation(event: DragEvent): 'copy' | 'move' {
     return isCopyModifierActive(event) ? 'copy' : 'move';
+  }
+
+  function isBloggerDogTransferAllowed(params: {
+    items: Array<{ kind?: FsEntry['kind']; name?: string }>;
+    targetEntry: FsEntry | null | undefined;
+    sourceVfs: IFileSystemAdapter | null | undefined;
+  }): boolean {
+    const involvesBloggerDog =
+      options.vfs?.id === 'bloggerdog' || params.sourceVfs?.id === 'bloggerdog';
+    if (!involvesBloggerDog) return true;
+    if (options.vfs?.id === 'bloggerdog' && !canPasteIntoBloggerDogEntry(params.targetEntry)) {
+      return false;
+    }
+
+    return params.items.every((item) => canTransferClipboardItemToOrFromBloggerDog(item));
   }
 
   function syncDragOperationFromKeyboard(event: KeyboardEvent) {
@@ -332,6 +351,20 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
       types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
     ) {
+      if (
+        !isBloggerDogTransferAllowed({
+          items: appClipboard.draggedItems,
+          targetEntry: entry,
+          sourceVfs: appClipboard.dragSourceVfs,
+        })
+      ) {
+        appClipboard.setCurrentDragOperation('cancel');
+        appClipboard.setDragTargetFileManagerInstanceId(options.fileManagerInstanceId ?? null);
+        e.dataTransfer!.dropEffect = 'none';
+        syncFileManagerDragCursor({ isDragging: true, operation: 'cancel' });
+        return;
+      }
+
       // Bloggerdog internal drag restriction
       if (options.vfs.id === 'bloggerdog' && appClipboard.dragSourceVfs?.id === 'bloggerdog') {
         const draggedItems = appClipboard.draggedItems;
@@ -416,6 +449,15 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
       const itemsToMove = Array.isArray(parsed) ? parsed : [parsed];
       if (shouldCancelFileManagerDrop({ items: itemsToMove, targetEntryPath: targetPath })) {
+        return;
+      }
+      if (
+        !isBloggerDogTransferAllowed({
+          items: itemsToMove,
+          targetEntry: entry,
+          sourceVfs: appClipboard.dragSourceVfs,
+        })
+      ) {
         return;
       }
 
@@ -535,6 +577,20 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
         types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
         types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
       ) {
+        if (
+          !isBloggerDogTransferAllowed({
+            items: appClipboard.draggedItems,
+            targetEntry: targetFolder,
+            sourceVfs: appClipboard.dragSourceVfs,
+          })
+        ) {
+          appClipboard.setCurrentDragOperation('cancel');
+          appClipboard.setDragTargetFileManagerInstanceId(options.fileManagerInstanceId ?? null);
+          e.dataTransfer!.dropEffect = 'none';
+          syncFileManagerDragCursor({ isDragging: true, operation: 'cancel' });
+          return;
+        }
+
         // Bloggerdog internal drag restriction
         if (options.vfs.id === 'bloggerdog' && appClipboard.dragSourceVfs?.id === 'bloggerdog') {
           const draggedItems = appClipboard.draggedItems;
@@ -614,6 +670,15 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
         shouldCancelFileManagerDrop({
           items: itemsToMove,
           targetEntryPath: getDropTargetEntryPath(e),
+        })
+      ) {
+        return;
+      }
+      if (
+        !isBloggerDogTransferAllowed({
+          items: itemsToMove,
+          targetEntry: targetFolder,
+          sourceVfs: appClipboard.dragSourceVfs,
         })
       ) {
         return;
@@ -699,6 +764,20 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   function onRootDragOver(e: DragEvent) {
     const currentPath = fileManagerStore.selectedFolder?.path ?? '';
     if (
+      !isBloggerDogTransferAllowed({
+        items: appClipboard.draggedItems,
+        targetEntry: fileManagerStore.selectedFolder,
+        sourceVfs: appClipboard.dragSourceVfs,
+      })
+    ) {
+      appClipboard.setCurrentDragOperation('cancel');
+      appClipboard.setDragTargetFileManagerInstanceId(options.fileManagerInstanceId ?? null);
+      e.dataTransfer!.dropEffect = 'none';
+      syncFileManagerDragCursor({ isDragging: true, operation: 'cancel' });
+      return;
+    }
+
+    if (
       isCancellationZone({
         items: appClipboard.draggedItems,
         targetDirPath: currentPath,
@@ -718,6 +797,16 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     appClipboard.setDragTargetFileManagerInstanceId(null);
     resetFileManagerDragCursor();
     const currentPath = fileManagerStore.selectedFolder?.path;
+    if (
+      !isBloggerDogTransferAllowed({
+        items: appClipboard.draggedItems,
+        targetEntry: fileManagerStore.selectedFolder,
+        sourceVfs: appClipboard.dragSourceVfs,
+      })
+    ) {
+      cancelCurrentDrag();
+      return;
+    }
     if (
       isFileManagerDropCancellationTarget({
         event: e,

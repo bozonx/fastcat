@@ -499,9 +499,7 @@ describe('FileProperties.vue', () => {
     });
 
     vi.mocked(useFilePropertiesActions).mockReturnValue({
-      directoryPrimaryActions: ref([
-        { id: 'paste', title: 'Paste', icon: 'i-paste', onClick: vi.fn() },
-      ]),
+      directoryPrimaryActions: ref([]),
       directorySecondaryActions: ref([
         {
           id: 'createContentItem',
@@ -546,7 +544,7 @@ describe('FileProperties.vue', () => {
       },
     });
 
-    expect(virtualAll.find('button[title="Paste"]').exists()).toBe(true);
+    expect(virtualAll.find('button[title="Paste"]').exists()).toBe(false);
     expect(virtualAll.text()).toContain('fastcat.bloggerDog.actions.createItem');
     expect(virtualAll.text()).not.toContain('fastcat.bloggerDog.actions.createGroup');
 
@@ -564,8 +562,9 @@ describe('FileProperties.vue', () => {
       },
     });
 
-    expect(personal.find('button[title="Paste"]').exists()).toBe(true);
-    expect(personal.text()).not.toContain('fastcat.bloggerDog.actions.createItem');
+    expect(personal.find('button[title="Paste"]').exists()).toBe(false);
+    expect(personal.text()).toContain('fastcat.bloggerDog.actions.createItem');
+    expect(personal.text()).toContain('fastcat.bloggerDog.actions.createSubgroup');
 
     vi.mocked(useFilePropertiesBasics).mockReturnValue({
       generalInfoTitle: 'Project',
@@ -593,9 +592,9 @@ describe('FileProperties.vue', () => {
       },
     });
 
-    expect(project.find('button[title="Paste"]').exists()).toBe(true);
+    expect(project.find('button[title="Paste"]').exists()).toBe(false);
     expect(project.text()).toContain('fastcat.bloggerDog.actions.createItem');
-    expect(project.text()).toContain('fastcat.bloggerDog.actions.createGroup');
+    expect(project.text()).toContain('fastcat.bloggerDog.actions.createSubgroup');
   });
 
   it('does not render text editor in BloggerDog content item properties', async () => {

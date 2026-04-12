@@ -129,6 +129,10 @@ describe('useFileManagerActions', () => {
     projectTabsStore.removeFileTabByPath.mockClear();
     fileManagerStore.selectedFolder = null;
     fileManagerStore.openFolder.mockClear();
+    clipboardStore.clipboardPayload = null;
+    clipboardStore.setClipboardPayload.mockReset();
+    clipboardStore.clearClipboardPayload.mockReset();
+    clipboardStore.getFileManagerVfs.mockReset();
   });
 
   function createComposable(overrides: Partial<Parameters<typeof useFileManagerActions>[0]> = {}) {
@@ -197,5 +201,66 @@ describe('useFileManagerActions', () => {
 
     resolveDelete?.();
     await pendingDelete;
+  });
+
+  it('does not put BloggerDog content items into clipboard', () => {
+    const api = createComposable();
+
+    api.onFileAction('copy', {
+      kind: 'directory',
+      name: 'Item',
+      path: '/personal/item-1',
+      source: 'remote',
+      adapterPayload: {
+        type: 'content-item',
+        remoteData: { id: 'item-1' },
+      },
+    });
+
+    expect(clipboardStore.setClipboardPayload).not.toHaveBeenCalled();
+  });
+
+  it('does not paste into BloggerDog groups', async () => {
+    const copyEntry = vi.fn();
+    const moveEntry = vi.fn();
+    clipboardStore.clipboardPayload = {
+      source: 'fileManager',
+      operation: 'copy',
+      sourceInstanceId: 'project',
+      items: [
+        {
+          path: 'assets/clip.mp4',
+          kind: 'file',
+          name: 'clip.mp4',
+          source: 'local',
+        },
+      ],
+    };
+    clipboardStore.getFileManagerVfs.mockReturnValue({ id: 'project-vfs' });
+
+    const api = createComposable({
+      vfs: {
+        id: 'bloggerdog',
+        listEntryNames: vi.fn().mockResolvedValue([]),
+        copyFile: vi.fn().mockResolvedValue(undefined),
+        createDirectory: vi.fn().mockResolvedValue(undefined),
+      } as unknown as IFileSystemAdapter,
+      copyEntry,
+      moveEntry,
+    });
+
+    await api.onFileAction('paste', {
+      kind: 'directory',
+      name: 'Group',
+      path: '/personal/group-1',
+      source: 'remote',
+      adapterPayload: {
+        type: 'collection',
+        remoteData: { id: 'group-1' },
+      },
+    });
+
+    expect(copyEntry).not.toHaveBeenCalled();
+    expect(moveEntry).not.toHaveBeenCalled();
   });
 });
