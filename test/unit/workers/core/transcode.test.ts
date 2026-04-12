@@ -5,16 +5,19 @@ import { runTranscode } from '~/workers/core/transcode';
 // Mock mediabunny dynamic import
 const mockMediabunny = {
   Output: vi.fn().mockImplementation(function () {
-    return {};
+    return {
+      addVideoTrack: vi.fn().mockReturnValue({}),
+      addAudioTrack: vi.fn().mockReturnValue({}),
+    };
   }),
   Mp4OutputFormat: vi.fn().mockImplementation(function () {
-    return {};
+    return { supportsVideoRotationMetadata: true };
   }),
   WebMOutputFormat: vi.fn().mockImplementation(function () {
-    return {};
+    return { supportsVideoRotationMetadata: true };
   }),
   MkvOutputFormat: vi.fn().mockImplementation(function () {
-    return {};
+    return { supportsVideoRotationMetadata: false };
   }),
   StreamTarget: vi.fn().mockImplementation(function () {
     return {};

@@ -32,7 +32,7 @@ describe('useFilePropertiesBasics', () => {
       isOtio: ref(false),
       mediaType: ref(null),
     });
-    expect(api1.generalInfoTitle.value).toBe('Folder');
+    expect(api1.generalInfoTitle.value).toBe('common.folder');
 
     const api2 = useFilePropertiesBasics({
       selectedFsEntry: ref({}),

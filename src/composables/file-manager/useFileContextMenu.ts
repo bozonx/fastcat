@@ -47,6 +47,8 @@ interface ContextMenuDeps {
   isBloggerDogGroup?: (entry: FsEntry) => boolean;
   isBloggerDogContentItem?: (entry: FsEntry) => boolean;
   isBloggerDogVirtualFolder?: (entry: FsEntry) => boolean;
+  isBloggerDogMedia?: (entry: FsEntry) => boolean;
+  isBloggerDogTextWrapper?: (entry: FsEntry) => boolean;
   instanceId?: string;
   isExternal?: boolean;
 }
@@ -74,10 +76,24 @@ export function useFileContextMenu(
 
     const isBdProject = deps.isBloggerDogProject?.(entry);
     const isBdVirtual = deps.isBloggerDogVirtualFolder?.(entry);
+    const isBdGroup = deps.isBloggerDogGroup?.(entry);
+    const isBdContentItem = deps.isBloggerDogContentItem?.(entry);
+    const isBdMedia = deps.isBloggerDogMedia?.(entry);
+    const isBdText = deps.isBloggerDogTextWrapper?.(entry);
 
     const items: ContextMenuItem[] = [];
 
-    if (!isProjectRoot && !isCommonRoot && !isBdVirtual && !isBdProject) {
+    // Copy/Cut: forbidden for virtual folders, projects, groups, content items, and text wrappers.
+    const canCopyCut =
+      !isProjectRoot &&
+      !isCommonRoot &&
+      !isBdVirtual &&
+      !isBdProject &&
+      !isBdGroup &&
+      !isBdContentItem &&
+      !isBdText;
+
+    if (canCopyCut) {
       items.push(
         {
           label: t('common.copy'),
@@ -92,7 +108,11 @@ export function useFileContextMenu(
       );
     }
 
-    if (entry.kind === 'directory') {
+    // Paste: only for Content Item (can paste media into it) or Project Folders (not BD).
+    const canPaste =
+      (entry.kind === 'directory' && !isBdGroup && !isBdVirtual && !isBdProject) || isBdContentItem;
+
+    if (canPaste) {
       items.push({
         label: t('common.paste'),
         icon: 'i-heroicons-clipboard',
@@ -125,10 +145,11 @@ export function useFileContextMenu(
     const isBdProject = deps.isBloggerDogProject?.(entry);
     const isBdGroup = deps.isBloggerDogGroup?.(entry);
     const isBdContentItem = deps.isBloggerDogContentItem?.(entry);
+    const isBdMedia = deps.isBloggerDogMedia?.(entry);
 
     const items: ContextMenuItem[][] = [];
 
-    if (entry.kind === 'directory') {
+    if (entry.kind === 'directory' && !isBdContentItem) {
       const dirActions: ContextMenuItem[] = [];
 
       if (!isBdVirtual) {
@@ -151,7 +172,15 @@ export function useFileContextMenu(
       }
 
       const bdActions: ContextMenuItem[] = [];
-      if (isBdProject || isBdGroup || (isBdVirtual && entry.remoteId !== 'projects')) {
+      // Personal root, Project root, or Group can have sub-groups and items.
+      const canCreateSubgroup =
+        isBdProject || isBdGroup || (isBdVirtual && entry.remoteId === 'personal');
+      const canCreateItem =
+        isBdProject ||
+        isBdGroup ||
+        (isBdVirtual && (entry.remoteId === 'personal' || entry.remoteId === 'virtual-all'));
+
+      if (canCreateSubgroup) {
         bdActions.push({
           label: t('fastcat.bloggerDog.actions.createSubgroup'),
           icon: 'i-heroicons-folder-plus',
@@ -159,7 +188,7 @@ export function useFileContextMenu(
         });
       }
 
-      if (isBdProject || isBdGroup || (isBdVirtual && entry.remoteId !== 'projects')) {
+      if (canCreateItem) {
         bdActions.push({
           label: t('fastcat.bloggerDog.actions.createItem'),
           icon: 'i-heroicons-document-plus',
@@ -172,49 +201,53 @@ export function useFileContextMenu(
       }
     }
 
-    if (entry.kind === 'file') {
-      const mediaType = getMediaTypeFromFilename(entry.name);
-      const isOtioFile = entry.name.toLowerCase().endsWith('.otio');
+    if (entry.kind === 'file' || isBdMedia) {
+      // BD Media files should only have Management Items (Delete, Rename, Copy, Cut).
+      // We skip expensive media actions for them unless they are explicitly allowed.
+      if (!isBdMedia) {
+        const mediaType = getMediaTypeFromFilename(entry.name);
+        const isOtioFile = entry.name.toLowerCase().endsWith('.otio');
 
-      if (deps.isConvertibleMediaFile(entry)) {
-        items.push([
-          {
-            label: t('videoEditor.fileManager.actions.convertFile'),
-            icon: 'i-heroicons-arrow-path',
-            onSelect: () => onAction('convertFile', entry),
-          },
-        ]);
-      }
+        if (deps.isConvertibleMediaFile(entry)) {
+          items.push([
+            {
+              label: t('videoEditor.fileManager.actions.convertFile'),
+              icon: 'i-heroicons-arrow-path',
+              onSelect: () => onAction('convertFile', entry),
+            },
+          ]);
+        }
 
-      if (mediaType === 'audio' || mediaType === 'video') {
-        items.push([
-          {
-            label: t('videoEditor.fileManager.actions.transcribe'),
-            icon: 'i-heroicons-microphone',
-            disabled: !deps.isTranscribableMediaFile?.(entry),
-            onSelect: () => onAction('transcribe', entry),
-          },
-        ]);
-      }
+        if (mediaType === 'audio' || mediaType === 'video') {
+          items.push([
+            {
+              label: t('videoEditor.fileManager.actions.transcribe'),
+              icon: 'i-heroicons-microphone',
+              disabled: !deps.isTranscribableMediaFile?.(entry),
+              onSelect: () => onAction('transcribe', entry),
+            },
+          ]);
+        }
 
-      if (deps.isVideo(entry) && (!deps.hasAudioTrack || deps.hasAudioTrack(entry))) {
-        items.push([
-          {
-            label: t('videoEditor.fileManager.actions.extractAudio'),
-            icon: 'i-heroicons-musical-note',
-            onSelect: () => onAction('extractAudio', entry),
-          },
-        ]);
-      }
+        if (deps.isVideo(entry) && (!deps.hasAudioTrack || deps.hasAudioTrack(entry))) {
+          items.push([
+            {
+              label: t('videoEditor.fileManager.actions.extractAudio'),
+              icon: 'i-heroicons-musical-note',
+              onSelect: () => onAction('extractAudio', entry),
+            },
+          ]);
+        }
 
-      if (isOtioFile) {
-        items.push([
-          {
-            label: t('fastcat.timeline.createVersion'),
-            icon: 'i-heroicons-document-duplicate',
-            onSelect: () => onAction('createOtioVersion', entry),
-          },
-        ]);
+        if (isOtioFile) {
+          items.push([
+            {
+              label: t('fastcat.timeline.createVersion'),
+              icon: 'i-heroicons-document-duplicate',
+              onSelect: () => onAction('createOtioVersion', entry),
+            },
+          ]);
+        }
       }
     }
 

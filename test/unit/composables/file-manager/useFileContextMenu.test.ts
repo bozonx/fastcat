@@ -43,10 +43,10 @@ describe('useFileContextMenu', () => {
 
     const labels = flattenLabels(getContextMenuItems(videoEntry));
 
-    expect(labels).not.toContain('Create Proxy');
-    expect(labels).not.toContain('Delete Proxy');
-    expect(labels).not.toContain('Cancel proxy generation');
-    expect(labels).toContain('Extract Audio');
+    expect(labels).not.toContain('videoEditor.fileManager.actions.createProxy');
+    expect(labels).not.toContain('videoEditor.fileManager.actions.deleteProxy');
+    expect(labels).not.toContain('videoEditor.fileManager.actions.cancelProxyGeneration');
+    expect(labels).toContain('videoEditor.fileManager.actions.extractAudio');
   });
 
   it('keeps proxy actions for project multi-selection', () => {
@@ -68,8 +68,8 @@ describe('useFileContextMenu', () => {
 
     const labels = flattenLabels(getContextMenuItems(videoEntry));
 
-    expect(labels).toContain('Create Proxy');
-    expect(labels).toContain('Delete Proxy');
+    expect(labels).toContain('videoEditor.fileManager.actions.createProxy');
+    expect(labels).toContain('videoEditor.fileManager.actions.deleteProxy');
   });
 
   it('keeps open as project tab in files page context menu', () => {
@@ -97,7 +97,7 @@ describe('useFileContextMenu', () => {
       }),
     );
 
-    expect(labels).toContain('Open as project tab');
+    expect(labels).toContain('videoEditor.fileManager.actions.openAsProjectTab');
   });
 
   it('shows only workspace-root actions for external root directory', () => {
@@ -126,7 +126,11 @@ describe('useFileContextMenu', () => {
       }),
     );
 
-    expect(labels).toEqual(['Create Folder', 'Create Markdown document', 'Paste']);
+    expect(labels).toEqual([
+      'videoEditor.fileManager.actions.createFolder',
+      'videoEditor.fileManager.actions.createMarkdown',
+      'common.paste',
+    ]);
   });
 
   it('hides actions for remote root', () => {
@@ -141,6 +145,7 @@ describe('useFileContextMenu', () => {
           hasProxy: false,
           generatingProxy: false,
         }),
+        isBloggerDogVirtualFolder: (e: FsEntry) => e.path === '/remote',
       },
       vi.fn(),
     );

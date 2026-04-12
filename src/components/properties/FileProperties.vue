@@ -627,7 +627,7 @@ const personalLibraryPrimaryActions = computed<PrimaryEntryAction[]>(() =>
 
 const personalLibrarySecondaryActions = computed<SecondaryEntryAction[]>(() =>
   directorySecondaryActions.value
-    .filter((action) => action.id === 'createContentItem' || action.id === 'createSubgroup')
+    .filter((action) => action.id === 'createSubgroup')
     .map((action) =>
       action.id === 'createSubgroup'
         ? {

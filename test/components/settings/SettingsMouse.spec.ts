@@ -7,6 +7,11 @@ import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 const mockWorkspaceStore = {
   userSettings: reactive(JSON.parse(JSON.stringify(DEFAULT_USER_SETTINGS))),
   batchUpdateUserSettings: vi.fn(),
+  workspaceState: {
+    fileBrowser: {
+      instances: {},
+    },
+  },
 };
 
 vi.mock('~/stores/workspace.store', () => ({
@@ -19,8 +24,8 @@ describe('SettingsMouse', () => {
   it('renders mouse sections and reset button', async () => {
     const wrapper = await mountSuspended(SettingsMouse);
 
-    expect(wrapper.text()).toContain('Mouse');
-    expect(wrapper.text()).toContain('Reset to defaults');
+    expect(wrapper.text()).toContain('videoEditor.settings.userMouse');
+    expect(wrapper.text()).toContain('videoEditor.settings.resetDefaults');
     expect(wrapper.text()).toContain('videoEditor.settings.mouseRuler');
     expect(wrapper.text()).toContain('videoEditor.settings.mouseTimeline');
   });

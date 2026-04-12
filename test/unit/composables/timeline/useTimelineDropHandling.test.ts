@@ -8,6 +8,24 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
+vi.mock('~/stores/workspace.store', () => ({
+  useWorkspaceStore: vi.fn(() => ({
+    userSettings: {
+      timeline: {
+        defaultStaticClipDurationUs: 5_000_000,
+      },
+      hotkeys: {
+        layer1: 'Shift',
+      },
+    },
+    workspaceState: {
+      fileBrowser: {
+        instances: {},
+      },
+    },
+  })),
+}));
+
 const {
   handleFilesMock,
   copyEntryMock,

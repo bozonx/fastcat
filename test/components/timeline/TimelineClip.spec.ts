@@ -58,13 +58,22 @@ const mockWorkspaceStore = reactive({
       defaultTransitionDurationUs: 1000000,
     },
   },
+  workspaceState: {
+    fileBrowser: {
+      instances: {},
+    },
+  },
 });
 
 vi.mock('~/stores/timeline.store', () => ({ useTimelineStore: () => mockTimelineStore }));
 vi.mock('~/stores/media.store', () => ({ useMediaStore: () => mockMediaStore }));
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelectionStore }));
 vi.mock('~/stores/ui.store', () => ({
-  useUiStore: () => ({ triggerScrollToEffects: vi.fn(), notifyFileManagerUpdate: vi.fn() }),
+  useUiStore: () => ({
+    triggerScrollToEffects: vi.fn(),
+    notifyFileManagerUpdate: vi.fn(),
+    triggerScrollToFileTreeEntry: vi.fn(),
+  }),
 }));
 vi.mock('~/stores/project.store', () => ({
   useProjectStore: () => ({
@@ -140,6 +149,7 @@ describe('TimelineClip', () => {
     isMovePreviewCurrentItem: false,
     selectedTransition: null,
     resizeVolume: null,
+    isMobile: false,
   };
 
   it('calculates position and width correctly based on time and zoom', async () => {

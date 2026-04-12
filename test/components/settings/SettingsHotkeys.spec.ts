@@ -8,6 +8,11 @@ import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 const mockWorkspaceStore = {
   userSettings: reactive(JSON.parse(JSON.stringify(DEFAULT_USER_SETTINGS))),
   batchUpdateUserSettings: vi.fn(),
+  workspaceState: {
+    fileBrowser: {
+      instances: {},
+    },
+  },
 };
 
 vi.mock('~/stores/workspace.store', () => ({
@@ -22,7 +27,7 @@ describe('SettingsHotkeys', () => {
 
     expect(wrapper.find('input[type="text"]').exists()).toBe(true);
     // Should have some group titles
-    expect(wrapper.text()).toContain('General');
+    expect(wrapper.text()).toContain('videoEditor.settings.hotkeysGroupGeneral');
   });
 
   it('filters results based on search query', async () => {
@@ -31,7 +36,7 @@ describe('SettingsHotkeys', () => {
 
     // Type something that doesn't exist
     await searchInput.setValue('non-existent-command-xyz');
-    expect(wrapper.text()).toContain('No results found');
+    expect(wrapper.text()).toContain('common.noResults');
 
     // Type something that exists (all keys are mocked to be their translation key)
     // Part of the translation key for any command

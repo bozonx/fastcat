@@ -615,6 +615,14 @@ const { getContextMenuItems } = useFileContextMenu(
     isBloggerDogGroup: (entry: FsEntry) => getBdPayload(entry)?.type === 'collection',
     isBloggerDogContentItem: (entry: FsEntry) => getBdPayload(entry)?.type === 'content-item',
     isBloggerDogVirtualFolder: (entry: FsEntry) => getBdPayload(entry)?.type === 'virtual-folder',
+    isBloggerDogMedia: (entry: FsEntry) => {
+      const payload = getBdPayload(entry);
+      return payload?.type === 'media' && !!payload?.mediaId;
+    },
+    isBloggerDogTextWrapper: (entry: FsEntry) => {
+      const payload = getBdPayload(entry);
+      return payload?.type === 'media' && !payload?.mediaId;
+    },
     getSelectedEntries: () => {
       const selected = selectionStore.selectedEntity;
       if (selected?.source === 'fileManager') {

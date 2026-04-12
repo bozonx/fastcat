@@ -27,6 +27,11 @@ const projectStore = {
 const workspaceStore = {
   workspaceHandle: null,
   resolvedStorageTopology: null,
+  workspaceState: {
+    fileBrowser: {
+      instances: {},
+    },
+  },
 };
 
 const uiStore = {

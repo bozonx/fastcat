@@ -17,6 +17,12 @@ vi.mock('~/stores/workspace.store', () => ({
       optimization: { proxyConcurrency: 2 },
       timeline: { defaultStaticClipDurationUs: 5000000, snapThresholdPx: 8 },
     },
+    workspaceState: {
+      fileBrowser: {
+        instances: {},
+      },
+    },
+    batchUpdateWorkspaceState: vi.fn(),
     loadProjects: vi.fn(),
   })),
 }));
