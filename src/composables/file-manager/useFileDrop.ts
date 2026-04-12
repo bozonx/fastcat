@@ -23,6 +23,10 @@ import {
 } from '~/composables/file-manager/dragCursor';
 import { crossVfsCopy, crossVfsMove } from '~/file-manager/core/vfs/crossVfs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
+import {
+  canPasteIntoBloggerDogEntry,
+  canTransferClipboardItemToOrFromBloggerDog,
+} from '~/utils/bloggerdog-file-manager';
 
 export interface UseFileDropOptions {
   resolveEntryByPath: (path: string) => Promise<FsEntry | null>;
@@ -92,6 +96,26 @@ export function useFileDrop(options: UseFileDropOptions) {
     );
   }
 
+  async function isBloggerDogTransferAllowed(params: {
+    items: Array<{ kind?: FsEntry['kind']; name?: string }>;
+    targetDirPath?: string;
+  }): Promise<boolean> {
+    const involvesBloggerDog =
+      options.vfs?.id === 'bloggerdog' || dragSourceVfs?.id === 'bloggerdog';
+    if (!involvesBloggerDog) return true;
+
+    if (options.vfs?.id === 'bloggerdog' && params.targetDirPath) {
+      const targetEntry = params.targetDirPath
+        ? await options.resolveEntryByPath(params.targetDirPath)
+        : null;
+      if (!canPasteIntoBloggerDogEntry(targetEntry)) {
+        return false;
+      }
+    }
+
+    return params.items.every((item) => canTransferClipboardItemToOrFromBloggerDog(item));
+  }
+
   function syncDragOperationFromKeyboard(event: KeyboardEvent) {
     if (!uiStore.isFileManagerDragging) return;
     if (appClipboard.currentDragOperation === 'cancel') return;
@@ -128,7 +152,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     isRootDropOver.value = true;
   }
 
-  function onRootDragOver(e: DragEvent) {
+  async function onRootDragOver(e: DragEvent) {
     if (!isRelevantDrag(e)) return;
 
     e.stopPropagation();
@@ -144,6 +168,18 @@ export function useFileDrop(options: UseFileDropOptions) {
     }
 
     if (isFileManagerDropCancellationTarget({ event: e, targetDirPath: undefined })) {
+      setCurrentDragOperation('cancel');
+      appClipboard.setDragTargetFileManagerInstanceId(options.targetFileManagerInstanceId ?? null);
+      e.dataTransfer!.dropEffect = 'none';
+      syncFileManagerDragCursor({ isDragging: true, operation: 'cancel' });
+      return;
+    }
+
+    if (
+      !(await isBloggerDogTransferAllowed({
+        items: appClipboard.draggedItems,
+      }))
+    ) {
       setCurrentDragOperation('cancel');
       appClipboard.setDragTargetFileManagerInstanceId(options.targetFileManagerInstanceId ?? null);
       e.dataTransfer!.dropEffect = 'none';
@@ -214,6 +250,9 @@ export function useFileDrop(options: UseFileDropOptions) {
         targetEntryPath: getDropTargetEntryPath(e),
       })
     ) {
+      return;
+    }
+    if (!(await isBloggerDogTransferAllowed({ items: itemsToMove, targetDirPath }))) {
       return;
     }
 

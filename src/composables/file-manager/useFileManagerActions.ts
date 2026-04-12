@@ -17,6 +17,11 @@ import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { executeFileManagerPaste } from '~/composables/file-manager/executeFileManagerPaste';
+import {
+  canCopyCutBloggerDogEntry,
+  canPasteIntoBloggerDogEntry,
+  canTransferClipboardItemToOrFromBloggerDog,
+} from '~/utils/bloggerdog-file-manager';
 
 export type FileAction =
   | 'createFolder'
@@ -398,7 +403,10 @@ export function useFileManagerActions(actions: FileManagerActions) {
     },
     copy: (entry) => {
       const entries = Array.isArray(entry) ? entry : [entry];
-      const validEntries = entries.filter((e) => typeof e.path === 'string');
+      const validEntries = entries.filter(
+        (e) => typeof e.path === 'string' && canCopyCutBloggerDogEntry(e),
+      );
+      if (validEntries.length !== entries.length) return;
       if (validEntries.length === 0) return;
       clipboardStore.setClipboardPayload({
         source: 'fileManager',
@@ -414,7 +422,10 @@ export function useFileManagerActions(actions: FileManagerActions) {
     },
     cut: (entry) => {
       const entries = Array.isArray(entry) ? entry : [entry];
-      const validEntries = entries.filter((e) => typeof e.path === 'string');
+      const validEntries = entries.filter(
+        (e) => typeof e.path === 'string' && canCopyCutBloggerDogEntry(e),
+      );
+      if (validEntries.length !== entries.length) return;
       if (validEntries.length === 0) return;
       clipboardStore.setClipboardPayload({
         source: 'fileManager',
@@ -431,8 +442,20 @@ export function useFileManagerActions(actions: FileManagerActions) {
     paste: async (entry) => {
       const payload = clipboardStore.clipboardPayload;
       if (!payload || payload.source !== 'fileManager' || payload.items.length === 0) return;
+      const targetEntry = Array.isArray(entry) ? entry[0] : entry;
+      if (targetEntry?.source === 'remote' && !canPasteIntoBloggerDogEntry(targetEntry)) return;
 
       if (!actions.copyEntry || !actions.moveEntry) return;
+      const sourceVfs = clipboardStore.getFileManagerVfs(payload.sourceInstanceId);
+      const involvesBloggerDog =
+        actions.vfs.id === 'bloggerdog' || sourceVfs?.id === 'bloggerdog';
+
+      if (
+        involvesBloggerDog &&
+        !payload.items.every((item) => canTransferClipboardItemToOrFromBloggerDog(item))
+      ) {
+        return;
+      }
 
       await executeFileManagerPaste({
         payload,

@@ -44,6 +44,13 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
+import {
+  canCopyCutBloggerDogEntry,
+  canPasteIntoBloggerDogEntry,
+  isBloggerDogAllContentRoot,
+  isBloggerDogPersonalLibraryRoot,
+  isBloggerDogProjectLibrariesRoot,
+} from '~/utils/bloggerdog-file-manager';
 import type {
   PrimaryEntryAction,
   SecondaryEntryAction,
@@ -205,18 +212,15 @@ async function onDirectoryFileSelect(e: Event) {
 }
 
 const isVirtualAll = computed(() => {
-  const entry = props.selectedFsEntry;
-  return entry?.source === 'remote' && (entry as any).remoteId === 'virtual-all';
+  return isBloggerDogAllContentRoot(props.selectedFsEntry);
 });
 
 const isPersonalLibrary = computed(() => {
-  const entry = props.selectedFsEntry;
-  return entry?.source === 'remote' && (entry as any).remoteId === 'personal';
+  return isBloggerDogPersonalLibraryRoot(props.selectedFsEntry);
 });
 
 const isProjectLibraries = computed(() => {
-  const entry = props.selectedFsEntry;
-  return entry?.source === 'remote' && (entry as any).remoteId === 'projects';
+  return isBloggerDogProjectLibrariesRoot(props.selectedFsEntry);
 });
 
 const {
@@ -449,7 +453,8 @@ const {
 });
 
 const canCopyOrCut = computed(() => {
-  return !isRootDirectory.value && !isCommonRoot.value;
+  if (isRootDirectory.value || isCommonRoot.value) return false;
+  return canCopyCutBloggerDogEntry(props.selectedFsEntry);
 });
 
 function onCopy() {
@@ -499,6 +504,7 @@ function onCut() {
 function onPaste() {
   const entry = props.selectedFsEntry;
   if (!entry || entry.kind !== 'directory') return;
+  if (entry.source === 'remote' && !canPasteIntoBloggerDogEntry(entry)) return;
   uiStore.pendingFsEntryPaste = entry;
 }
 
@@ -626,16 +632,9 @@ const personalLibraryPrimaryActions = computed<PrimaryEntryAction[]>(() =>
 );
 
 const personalLibrarySecondaryActions = computed<SecondaryEntryAction[]>(() =>
-  directorySecondaryActions.value
-    .filter((action) => action.id === 'createSubgroup')
-    .map((action) =>
-      action.id === 'createSubgroup'
-        ? {
-            ...action,
-            label: t('fastcat.bloggerDog.actions.createGroup'),
-          }
-        : action,
-    ),
+  directorySecondaryActions.value.filter(
+    (action) => action.id === 'createSubgroup' || action.id === 'createContentItem',
+  ),
 );
 
 const projectPrimaryActions = computed<PrimaryEntryAction[]>(() =>
@@ -643,16 +642,9 @@ const projectPrimaryActions = computed<PrimaryEntryAction[]>(() =>
 );
 
 const projectSecondaryActions = computed<SecondaryEntryAction[]>(() =>
-  directorySecondaryActions.value
-    .filter((action) => action.id === 'createContentItem' || action.id === 'createSubgroup')
-    .map((action) =>
-      action.id === 'createSubgroup'
-        ? {
-            ...action,
-            label: t('fastcat.bloggerDog.actions.createGroup'),
-          }
-        : action,
-    ),
+  directorySecondaryActions.value.filter(
+    (action) => action.id === 'createContentItem' || action.id === 'createSubgroup',
+  ),
 );
 
 const workspaceRootPrimaryActions = computed<PrimaryEntryAction[]>(() => [

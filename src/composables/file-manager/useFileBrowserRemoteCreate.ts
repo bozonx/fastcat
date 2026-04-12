@@ -86,7 +86,11 @@ export function useFileBrowserRemoteCreate(params: UseFileBrowserRemoteCreatePar
       let groupId: string | undefined;
 
       if (parentPayload?.type === 'virtual-folder') {
-        const isPersonal = parent.remoteId === 'personal' || parentPath.endsWith('/personal');
+        const isPersonal =
+          parent.remoteId === 'personal' ||
+          parent.remoteId === 'virtual-all' ||
+          parentPath.endsWith('/personal') ||
+          parentPath.endsWith('/virtual-all');
         scope = isPersonal ? 'personal' : 'project';
       } else if (parentPayload?.type === 'project') {
         scope = 'project';

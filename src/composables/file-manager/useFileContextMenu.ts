@@ -1,6 +1,10 @@
 import type { FsEntry } from '~/types/fs';
 import { WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
+import {
+  canCopyCutBloggerDogEntry,
+  canPasteIntoBloggerDogEntry,
+} from '~/utils/bloggerdog-file-manager';
 
 export type FileAction =
   | 'createFolder'
@@ -316,24 +320,35 @@ export function useFileContextMenu(
       ]);
     }
 
-    items.push([
-      {
-        label: t('common.copy'),
-        icon: 'i-heroicons-document-duplicate',
-        onSelect: () => onAction('copy', selectedEntries),
-      },
-      {
-        label: t('common.cut'),
-        icon: 'i-heroicons-scissors',
-        onSelect: () => onAction('cut', selectedEntries),
-      },
-      {
+    const managementItems: ContextMenuItem[] = [];
+    if (selectedEntries.every((selectedEntry) => canCopyCutBloggerDogEntry(selectedEntry))) {
+      managementItems.push(
+        {
+          label: t('common.copy'),
+          icon: 'i-heroicons-document-duplicate',
+          onSelect: () => onAction('copy', selectedEntries),
+        },
+        {
+          label: t('common.cut'),
+          icon: 'i-heroicons-scissors',
+          onSelect: () => onAction('cut', selectedEntries),
+        },
+      );
+    }
+
+    const canPaste = entry.source === 'remote' ? canPasteIntoBloggerDogEntry(entry) : true;
+    if (canPaste) {
+      managementItems.push({
         label: t('common.paste'),
         icon: 'i-heroicons-clipboard',
         disabled: !deps.hasClipboardItems,
         onSelect: () => onAction('paste', entry),
-      },
-    ]);
+      });
+    }
+
+    if (managementItems.length > 0) {
+      items.push(managementItems);
+    }
 
     items.push([
       {

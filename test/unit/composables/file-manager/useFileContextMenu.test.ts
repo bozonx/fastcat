@@ -159,4 +159,106 @@ describe('useFileContextMenu', () => {
       }),
     ).toEqual([]);
   });
+
+  it('shows paste only for BloggerDog content items and not for roots or groups', () => {
+    const { getContextMenuItems } = useFileContextMenu(
+      {
+        isGeneratingProxyInDirectory: () => false,
+        folderHasVideos: () => false,
+        isOpenableMediaFile: () => false,
+        isConvertibleMediaFile: () => false,
+        isVideo: () => false,
+        getEntryMeta: () => ({
+          hasProxy: false,
+          generatingProxy: false,
+        }),
+        hasClipboardItems: true,
+        isBloggerDogVirtualFolder: (entry: FsEntry) =>
+          entry.source === 'remote' && entry.adapterPayload === 'virtual-folder',
+        isBloggerDogGroup: (entry: FsEntry) =>
+          entry.source === 'remote' && entry.adapterPayload === 'collection',
+        isBloggerDogContentItem: (entry: FsEntry) =>
+          entry.source === 'remote' && entry.adapterPayload === 'content-item',
+      },
+      vi.fn(),
+    );
+
+    const rootLabels = flattenLabels(
+      getContextMenuItems({
+        kind: 'directory',
+        name: 'Personal',
+        path: '/personal',
+        source: 'remote',
+        adapterPayload: 'virtual-folder' as any,
+      }),
+    );
+    const groupLabels = flattenLabels(
+      getContextMenuItems({
+        kind: 'directory',
+        name: 'Group',
+        path: '/personal/group-1',
+        source: 'remote',
+        adapterPayload: 'collection' as any,
+      }),
+    );
+    const contentItemLabels = flattenLabels(
+      getContextMenuItems({
+        kind: 'directory',
+        name: 'Item',
+        path: '/personal/item-1',
+        source: 'remote',
+        adapterPayload: 'content-item' as any,
+      }),
+    );
+
+    expect(rootLabels).not.toContain('common.paste');
+    expect(groupLabels).not.toContain('common.paste');
+    expect(contentItemLabels).toContain('common.paste');
+  });
+
+  it('hides copy and cut for BloggerDog groups in multi-selection menu', () => {
+    const groupEntry: FsEntry = {
+      kind: 'directory',
+      name: 'Group',
+      path: '/personal/group-1',
+      source: 'remote',
+      adapterPayload: {
+        type: 'collection',
+        remoteData: { id: 'group-1' },
+      },
+    };
+    const { getContextMenuItems } = useFileContextMenu(
+      {
+        isGeneratingProxyInDirectory: () => false,
+        folderHasVideos: () => false,
+        isOpenableMediaFile: () => false,
+        isConvertibleMediaFile: () => false,
+        isVideo: () => false,
+        getEntryMeta: () => ({
+          hasProxy: false,
+          generatingProxy: false,
+        }),
+        hasClipboardItems: true,
+        getSelectedEntries: () => [
+          groupEntry,
+          {
+            ...groupEntry,
+            path: '/personal/group-2',
+            adapterPayload: {
+              type: 'collection',
+              remoteData: { id: 'group-2' },
+            },
+          },
+        ],
+        isBloggerDogGroup: (entry: FsEntry) =>
+          entry.source === 'remote' && entry.adapterPayload === 'collection',
+      },
+      vi.fn(),
+    );
+
+    const labels = flattenLabels(getContextMenuItems(groupEntry));
+
+    expect(labels).not.toContain('common.copy');
+    expect(labels).not.toContain('common.cut');
+  });
 });
