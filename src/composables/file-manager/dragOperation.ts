@@ -145,7 +145,9 @@ export function getDraggedFileManagerItems(event: DragEvent): FileManagerDragged
 
   try {
     const parsed: unknown = JSON.parse(internalRaw);
-    return Array.isArray(parsed) ? parsed : [parsed];
+    return Array.isArray(parsed)
+      ? (parsed as FileManagerDraggedItem[])
+      : [(parsed as FileManagerDraggedItem)];
   } catch {
     return [];
   }
@@ -165,6 +167,30 @@ export function isFileManagerDropCancellationTarget(params: {
     }) ||
     shouldCancelFileManagerDropToDirectory({
       items,
+      targetDirPath: params.targetDirPath,
+    })
+  );
+}
+
+/**
+ * Checks if target is cancellation zone using in-memory items.
+ * Unlike isFileManagerDropCancellationTarget, this works during dragover
+ * events where getData() returns empty string per HTML5 spec.
+ */
+export function isCancellationZone(params: {
+  items: FileManagerDraggedItem[];
+  targetEntryPath?: string | null;
+  targetDirPath?: string | null;
+}): boolean {
+  if (params.items.length === 0) return false;
+
+  return (
+    shouldCancelFileManagerDrop({
+      items: params.items,
+      targetEntryPath: params.targetEntryPath,
+    }) ||
+    shouldCancelFileManagerDropToDirectory({
+      items: params.items,
       targetDirPath: params.targetDirPath,
     })
   );

@@ -4,7 +4,10 @@ import { computed, ref, shallowRef } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import type { TimelineClipItem } from '~/timeline/types';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
-import type { FileManagerDragCursorOperation } from '~/composables/file-manager/dragOperation';
+import type {
+  FileManagerDragCursorOperation,
+  FileManagerDraggedItem,
+} from '~/composables/file-manager/dragOperation';
 
 export interface FileManagerClipboardItem {
   path: string;
@@ -42,6 +45,7 @@ export const useClipboardStore = defineStore('clipboard', () => {
   const dragSourceFileManagerInstanceId = ref<string | null>(null);
   const dragTargetFileManagerInstanceId = ref<string | null>(null);
   const dragSourceVfs = shallowRef<IFileSystemAdapter | null>(null);
+  const draggedItems = ref<FileManagerDraggedItem[]>([]);
   const fileManagerVfsRegistry = shallowRef<
     Record<string, { count: number; vfs: IFileSystemAdapter }>
   >({});
@@ -77,6 +81,14 @@ export const useClipboardStore = defineStore('clipboard', () => {
 
   function setDragSourceVfs(vfs: IFileSystemAdapter | null) {
     dragSourceVfs.value = vfs;
+  }
+
+  function setDraggedItems(items: FileManagerDraggedItem[]) {
+    draggedItems.value = items;
+  }
+
+  function clearDraggedItems() {
+    draggedItems.value = [];
   }
 
   function registerFileManagerVfs(instanceId: string, vfs: IFileSystemAdapter) {
@@ -120,6 +132,7 @@ export const useClipboardStore = defineStore('clipboard', () => {
     dragSourceFileManagerInstanceId,
     dragTargetFileManagerInstanceId,
     dragSourceVfs,
+    draggedItems,
     fileManagerVfsRegistry,
     hasFileManagerPayload,
     hasTimelinePayload,
@@ -129,6 +142,8 @@ export const useClipboardStore = defineStore('clipboard', () => {
     setDragSourceFileManagerInstanceId,
     setDragTargetFileManagerInstanceId,
     setDragSourceVfs,
+    setDraggedItems,
+    clearDraggedItems,
     registerFileManagerVfs,
     unregisterFileManagerVfs,
     getFileManagerVfs,
