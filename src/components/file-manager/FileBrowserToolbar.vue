@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, inject } from 'vue';
-import { useFileManagerStore, useFileBrowserPersistenceStore, type FileSortField } from '~/stores/file-manager.store';
+import {
+  useFileManagerStore,
+  useFileBrowserPersistenceStore,
+  type FileSortField,
+} from '~/stores/file-manager.store';
 import { useUiStore } from '~/stores/ui.store';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
@@ -18,21 +22,23 @@ const props = defineProps<{
   hideUpload?: boolean;
 }>();
 
-
 const emit = defineEmits<{
   (e: 'refresh'): void;
   (e: 'openRemote'): void;
   (e: 'closeRemote'): void;
   (e: 'createFolder'): void;
   (e: 'upload'): void;
+  (e: 'selectAll'): void;
+  (e: 'selectUnused'): void;
+  (e: 'invertSelection'): void;
 }>();
 
 const { t } = useI18n();
-const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
+const fileManagerStore =
+  (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
+  useFileManagerStore();
 const persistenceStore = useFileBrowserPersistenceStore();
 const uiStore = useUiStore();
-
-
 
 const sortFields: { label: string; value: FileSortField }[] = [
   { label: t('common.name'), value: 'name' },
@@ -67,6 +73,26 @@ const toolbarMenuItems = computed(() => {
   }
 
   items.push(actions);
+
+  if (!props.isRemotePanel) {
+    items.push([
+      {
+        label: t('common.selectAll'),
+        icon: 'i-heroicons-check-circle',
+        onSelect: () => emit('selectAll'),
+      },
+      {
+        label: t('common.selectUnused'),
+        icon: 'i-heroicons-circle-stack',
+        onSelect: () => emit('selectUnused'),
+      },
+      {
+        label: t('common.invertSelection'),
+        icon: 'i-heroicons-arrow-path-rounded-square',
+        onSelect: () => emit('invertSelection'),
+      },
+    ]);
+  }
 
   // 2. Sort Fields Section
   const allowedFields = props.isRemotePanel
@@ -116,8 +142,6 @@ const toolbarMenuItems = computed(() => {
   <div
     class="flex items-center gap-4 px-4 py-2 border-b border-ui-border shrink-0 bg-ui-bg-elevated/50"
   >
-
-
     <div v-if="!isRemotePanel" class="flex items-center gap-1">
       <UiToggleButton
         :model-value="fileManagerStore.viewMode === 'grid'"
@@ -160,7 +184,6 @@ const toolbarMenuItems = computed(() => {
         :title="t('videoEditor.fileManager.actions.uploadFiles')"
         @click="emit('upload')"
       />
-
     </div>
 
     <div
@@ -191,7 +214,11 @@ const toolbarMenuItems = computed(() => {
     <div class="ml-auto flex items-center gap-2">
       <div v-if="toolbarMenuItems.length > 0" class="w-px h-4 bg-ui-border mx-1"></div>
 
-      <UDropdownMenu v-if="toolbarMenuItems.length > 0" :items="toolbarMenuItems" :ui="{ content: 'w-56' }">
+      <UDropdownMenu
+        v-if="toolbarMenuItems.length > 0"
+        :items="toolbarMenuItems"
+        :ui="{ content: 'w-56' }"
+      >
         <UiActionButton
           icon="i-heroicons-ellipsis-horizontal"
           variant="ghost"

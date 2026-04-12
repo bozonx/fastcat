@@ -7,9 +7,10 @@ import MobileFileBrowser from '~/components/file-manager/MobileFileBrowser.vue';
 
 // --- Mocks ---
 
-const mockFilesPageStore = reactive({
+const mockFileManagerStore = reactive({
   selectedFolder: { name: 'Root', path: '' } as any,
-  selectFolder: vi.fn(),
+  openFolder: vi.fn(),
+  folderSizes: {},
   sortFields: [],
   sortOption: { field: 'name', order: 'asc' },
 });
@@ -21,6 +22,7 @@ const mockProjectStore = reactive({
 
 const mockSelectionStore = reactive({
   selectedEntity: null as any,
+  selectFsEntries: vi.fn(),
   clearSelection: vi.fn(),
 });
 
@@ -33,11 +35,20 @@ const mockClipboardStore = reactive({
   clearClipboardPayload: vi.fn(),
 });
 
-vi.mock('~/stores/files-page.store', () => ({ useFilesPageStore: () => mockFilesPageStore }));
+vi.mock('~/stores/file-manager.store', () => ({
+  useFileManagerStore: () => mockFileManagerStore,
+}));
 vi.mock('~/stores/project.store', () => ({ useProjectStore: () => mockProjectStore }));
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelectionStore }));
 vi.mock('~/stores/ui.store', () => ({ useUiStore: () => mockUiStore }));
 vi.mock('~/stores/clipboard.store', () => ({ useClipboardStore: () => mockClipboardStore }));
+vi.mock('~/stores/timeline-media-usage.store', () => ({
+  useTimelineMediaUsageStore: () => ({
+    mediaPathToTimelines: {},
+    refreshUsage: vi.fn(async () => {}),
+    setLiveUsage: vi.fn(),
+  }),
+}));
 
 // Mock composables to avoid side effects and complex setup
 vi.mock('~/composables/file-manager/useFileManager', () => ({
@@ -47,6 +58,15 @@ vi.mock('~/composables/file-manager/useFileManager', () => ({
     findEntryByPath: vi.fn(),
     mediaCache: {},
     vfs: { getMetadata: vi.fn() },
+    handleFiles: vi.fn(),
+    createFolder: vi.fn(),
+    createTimeline: vi.fn(),
+    createMarkdown: vi.fn(),
+    reloadDirectory: vi.fn(),
+    deleteEntry: vi.fn(),
+    renameEntry: vi.fn(),
+    copyEntry: vi.fn(),
+    moveEntry: vi.fn(),
   }),
 }));
 
@@ -98,15 +118,16 @@ vi.mock('~/composables/file-manager/useFileManagerActions', () => ({
   }),
 }));
 
-vi.mock('~/composables/file-manager/useFileBrowserTranscription', () => ({
-  useFileBrowserTranscription: () => ({
-    transcriptionModalOpen: ref(false),
-    transcriptionLanguage: ref('en'),
-    transcriptionError: ref(null),
+vi.mock('~/composables/file-manager/useSttTranscription', () => ({
+  useSttTranscription: () => ({
+    modalOpen: ref(false),
+    language: ref('en'),
+    errorMessage: ref(null),
     isTranscribing: ref(false),
-    transcriptionEntry: ref(null),
+    isModelReady: ref(true),
+    pendingEntry: ref(null),
     isTranscribableMediaFile: vi.fn(() => false),
-    openTranscriptionModal: vi.fn(),
+    openModal: vi.fn(),
     submitTranscription: vi.fn(),
   }),
 }));
@@ -122,6 +143,7 @@ vi.mock('~/components/file-manager/MobileFileBrowserPasteToolbar.vue', () => ({
 describe('MobileFileBrowser', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSelectionStore.selectedEntity = null;
   });
 
   it('renders navbar and grid', async () => {
@@ -154,5 +176,30 @@ describe('MobileFileBrowser', () => {
     // FAB is teleported to body, so we might not find it in wrapper if not careful,
     // but mountSuspended should handle it for common cases or we check the component existence.
     // Actually it's in a Teleport, so it might not be in wrapper.html().
+  });
+
+  it('passes bulk selection actions to the navbar menu', async () => {
+    const wrapper = await mountSuspended(MobileFileBrowser, {
+      global: {
+        stubs: {
+          MobileFileBrowserNavbar: {
+            name: 'MobileFileBrowserNavbar',
+            props: ['menuItems'],
+            template: '<div id="navbar-mock" />',
+          },
+          MobileFileBrowserGrid: { template: '<div id="grid-mock" />' },
+          Teleport: true,
+        },
+      },
+    });
+
+    const navbar = wrapper.findComponent({ name: 'MobileFileBrowserNavbar' });
+    const menuItems = navbar.props('menuItems') as Array<Array<{ label: string }>>;
+
+    expect(menuItems[1]?.map((item) => item.label)).toEqual([
+      'common.selectAll',
+      'common.selectUnused',
+      'common.invertSelection',
+    ]);
   });
 });

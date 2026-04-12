@@ -30,12 +30,15 @@ import FileSttTranscriptionModal from './modals/FileTranscriptionModal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import UiEntityCreationModal from '~/components/ui/UiEntityCreationModal.vue';
 import { useSttTranscription } from '~/composables/file-manager/useSttTranscription';
+import { useFileBrowserBulkSelection } from '~/composables/file-manager/useFileBrowserBulkSelection';
+import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 
 const fileManagerStore = useFileManagerStore();
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
 const uiStore = useUiStore();
 const clipboardStore = useClipboardStore();
+const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const toast = useToast();
 const { t } = useI18n();
 const { target: teleportTarget } = useTeleportTarget();
@@ -330,6 +333,23 @@ async function handleDrawerAction(action: FileAction, entry: FsEntry | FsEntry[]
   await onFileAction(action, entry);
 }
 
+const bulkSelection = useFileBrowserBulkSelection({
+  getVisibleEntries: () => sortedEntries.value,
+  getSelectedEntries: () => selectedEntries.value,
+  selectEntries: (entries) => {
+    selectionStore.selectFsEntries(entries);
+    isSelectionMode.value = entries.length > 0;
+    isDrawerOpen.value = false;
+  },
+  clearSelection: () => {
+    selectionStore.clearSelection();
+    isSelectionMode.value = false;
+    isDrawerOpen.value = false;
+  },
+  getUsedPaths: () => new Set(Object.keys(timelineMediaUsageStore.mediaPathToTimelines)),
+  refreshUsage: async () => await timelineMediaUsageStore.refreshUsage(),
+});
+
 async function wrappedHandleDeleteConfirm() {
   await handleDeleteConfirm();
   closeAllUI();
@@ -348,11 +368,26 @@ const sortItems = computed(() =>
 const menuItems = computed(() => [
   [
     {
-      label: isSelectionMode.value
-        ? t('common.cancelSelection')
-        : t('common.selectItems'),
+      label: isSelectionMode.value ? t('common.cancelSelection') : t('common.selectItems'),
       icon: isSelectionMode.value ? 'lucide:x-circle' : 'lucide:check-square',
       onSelect: toggleSelectionMode,
+    },
+  ],
+  [
+    {
+      label: t('common.selectAll'),
+      icon: 'i-heroicons-check-circle',
+      onSelect: bulkSelection.selectAll,
+    },
+    {
+      label: t('common.selectUnused'),
+      icon: 'i-heroicons-circle-stack',
+      onSelect: bulkSelection.selectUnused,
+    },
+    {
+      label: t('common.invertSelection'),
+      icon: 'i-heroicons-arrow-path-rounded-square',
+      onSelect: bulkSelection.invertSelection,
     },
   ],
   [
@@ -394,9 +429,7 @@ const menuItems = computed(() => [
   ],
   [
     {
-      label: uiStore.showHiddenFiles
-        ? t('common.hideHiddenFiles')
-        : t('common.showHiddenFiles'),
+      label: uiStore.showHiddenFiles ? t('common.hideHiddenFiles') : t('common.showHiddenFiles'),
       icon: uiStore.showHiddenFiles ? 'lucide:eye-off' : 'lucide:eye',
       onSelect: () => {
         uiStore.showHiddenFiles = !uiStore.showHiddenFiles;

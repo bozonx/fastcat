@@ -136,6 +136,13 @@ vi.mock('~/stores/media.store', () => ({
 vi.mock('~/stores/project.store', () => ({
   useProjectStore: () => ({ currentProjectName: 'test', currentProjectId: 'test' }),
 }));
+vi.mock('~/stores/timeline-media-usage.store', () => ({
+  useTimelineMediaUsageStore: () => ({
+    mediaPathToTimelines: {},
+    refreshUsage: vi.fn(async () => {}),
+    setLiveUsage: vi.fn(),
+  }),
+}));
 
 vi.mock('~/composables/file-manager/useFileManager', () => ({
   useFileManager: () => mockFileManager,

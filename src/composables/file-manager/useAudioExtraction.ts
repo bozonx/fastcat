@@ -29,34 +29,90 @@ export function useAudioExtraction() {
 
   const isExtracting = ref(false);
 
+  // Resolve a native FileSystemFileHandle directly from the workspace root handle.
+  // Bypasses projectStore entirely so workspace-relative paths never accidentally
+  // resolve to the project directory. Returns clonable handles for postMessage.
+  async function getWorkspaceFileHandle(
+    path: string,
+    options?: { create?: boolean },
+  ): Promise<FileSystemFileHandle | null> {
+    const wsHandle = workspaceStore.workspaceHandle;
+    if (!wsHandle) return null;
+
+    const parts = path.split('/').filter(Boolean);
+    const fileName = parts.pop();
+    if (!fileName) return null;
+
+    try {
+      let currentDir: FileSystemDirectoryHandle = wsHandle;
+      for (const part of parts) {
+        currentDir = await currentDir.getDirectoryHandle(part, {
+          create: options?.create ?? false,
+        });
+      }
+      return await currentDir.getFileHandle(fileName, {
+        create: options?.create ?? false,
+      });
+    } catch {
+      return null;
+    }
+  }
+
   async function extractAudio(entry: FsEntry, context: AudioExtractionSelectionContext = {}) {
     if (isExtracting.value) return;
     if (!entry.path) return;
 
     isExtracting.value = true;
     try {
-      // Use the injected VFS so workspace file manager paths resolve correctly
       const vfs = fileManager.vfs;
+      const isExternal = context.isExternal === true;
 
-      // projectStore.getFileByPath returns a live File (no full memory copy) and has
-      // workspace-root fallback; vfs.getFile is used as a fallback for files outside
-      // the project scope (e.g. arbitrary workspace paths in ComputerFileManager).
-      const sourceFile =
-        (await projectStore.getFileByPath(entry.path)) ?? (await vfs.getFile(entry.path));
+      // For workspace file manager (isExternal), resolve from workspace root directly.
+      // For project file manager, use projectStore which resolves from project dir.
+      let sourceFile: File | null = null;
+      if (isExternal) {
+        const handle = await getWorkspaceFileHandle(entry.path);
+        if (handle) {
+          try {
+            sourceFile = await handle.getFile();
+          } catch {
+            /* fall through */
+          }
+        }
+      }
+      if (!sourceFile) {
+        sourceFile = await projectStore.getFileByPath(entry.path);
+      }
       if (!sourceFile) throw new Error('Failed to access source file');
 
       const { client } = getExportWorkerClient();
 
       // Worker host API must return native FileSystemFileHandle (clonable via postMessage).
-      // The target file is pre-created via VFS in the correct directory below, so
-      // projectStore's workspace-root fallback will locate it during extraction.
+      // For workspace context: resolve from workspace root directly to avoid
+      // projectStore resolving into the project directory.
+      // For project context: use projectStore (original behavior).
       setExportHostApi(
         createVideoCoreHostApi({
           getCurrentProjectId: () => projectStore.currentProjectId,
           getWorkspaceHandle: () => workspaceStore.workspaceHandle,
           getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
-          getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
-          getFileByPath: async (path) => projectStore.getFileByPath(path),
+          getFileHandleByPath: async (path) =>
+            isExternal
+              ? ((await getWorkspaceFileHandle(path)) ?? projectStore.getFileHandleByPath(path))
+              : projectStore.getFileHandleByPath(path),
+          getFileByPath: async (path) => {
+            if (isExternal) {
+              const handle = await getWorkspaceFileHandle(path);
+              if (handle) {
+                try {
+                  return await handle.getFile();
+                } catch {
+                  /* fall through */
+                }
+              }
+            }
+            return projectStore.getFileByPath(path);
+          },
           onExportProgress: () => {},
         }),
       );
@@ -89,10 +145,17 @@ export function useAudioExtraction() {
 
       const targetPath = dirPath ? `${dirPath}/${newFileName}` : newFileName;
 
-      // Pre-create the target file via VFS in the correct directory.
-      // This ensures projectStore.getFileHandleByPath finds it via workspace-root
-      // fallback instead of creating it in the project directory.
-      await vfs.writeFile(targetPath, new Blob([]));
+      // Pre-create the target file in the correct directory.
+      // Workspace context: create via workspace handle directly.
+      // Project context: create via projectStore.
+      if (isExternal) {
+        await getWorkspaceFileHandle(targetPath, { create: true });
+      } else {
+        const dirHandle = await projectStore.getDirectoryHandleByPath(dirPath);
+        if (dirHandle) {
+          await dirHandle.getFileHandle(newFileName, { create: true });
+        }
+      }
 
       await client.extractAudio(entry.path, targetPath);
 
