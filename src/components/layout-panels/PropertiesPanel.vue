@@ -243,7 +243,10 @@ const isExternal = computed(() => {
   const entity = activeEntity.value;
   if (!entity || entity.source !== 'fileManager') return false;
 
-  if ((entity as any).origin === 'workspace-browser' || (entity as any).origin === 'remote-browser') {
+  if (
+    (entity as any).origin === 'workspace-browser' ||
+    (entity as any).origin === 'remote-browser'
+  ) {
     return true;
   }
 
@@ -269,7 +272,11 @@ const selectedFileManagerInstanceId = computed(() => {
 const selectedFileManagerOrigin = computed(() => {
   const entity = activeEntity.value;
   if (!entity || entity.source !== 'fileManager') return undefined;
-  return (entity as any).origin as 'project-manager' | 'workspace-browser' | 'remote-browser' | undefined;
+  return (entity as any).origin as
+    | 'project-manager'
+    | 'workspace-browser'
+    | 'remote-browser'
+    | undefined;
 });
 
 const hasProxy = computed(() => {
@@ -318,13 +325,10 @@ const headerTitle = computed(() => {
   if (displayMode.value === 'gap') return t('fastcat.timeline.gap');
   if (displayMode.value === 'track' && selectedTrack.value) return selectedTrack.value.name;
   if (displayMode.value === 'timeline') {
-    return (
-      selectedFsEntry.value?.name ?? t('fastcat.timeline.properties.title')
-    );
+    return selectedFsEntry.value?.name ?? t('fastcat.timeline.properties.title');
   }
   if (displayMode.value === 'project-effect') return t('fastcat.effects.title');
-  if (displayMode.value === 'project-transition')
-    return t('fastcat.transitions.title');
+  if (displayMode.value === 'project-transition') return t('fastcat.transitions.title');
   if (displayMode.value === 'project-library-item') {
     const kind = selectedProjectLibraryItem.value?.itemKind;
     return kind === 'text'
@@ -334,12 +338,9 @@ const headerTitle = computed(() => {
         : t('fastcat.library.tabs.hud');
   }
   if (displayMode.value === 'marker') {
-    return isSelectedMarkerZone.value
-      ? t('fastcat.marker.zoneMarker')
-      : t('fastcat.marker.title');
+    return isSelectedMarkerZone.value ? t('fastcat.marker.zoneMarker') : t('fastcat.marker.title');
   }
-  if (displayMode.value === 'selection-range')
-    return t('fastcat.timeline.selectionRange');
+  if (displayMode.value === 'selection-range') return t('fastcat.timeline.selectionRange');
   return t('common.properties');
 });
 </script>
@@ -351,9 +352,7 @@ const headerTitle = computed(() => {
       'panel-focus-frame--active':
         !props.useExternalFocus && focusStore.isPanelFocused(panelFocusId),
     }"
-    @pointerdown.capture="
-      !props.useExternalFocus && focusStore.setPanelFocus(panelFocusId)
-    "
+    @pointerdown.capture="!props.useExternalFocus && focusStore.setPanelFocus(panelFocusId)"
     @focusin.capture="onPanelFocusIn"
     @focusout.capture="onPanelFocusOut"
   >
@@ -390,7 +389,6 @@ const headerTitle = computed(() => {
       ref="contentRef"
       class="flex-1 min-h-0 bg-ui-bg overflow-auto flex flex-col p-2 items-start w-full"
     >
-
       <div
         v-if="displayMode === 'empty'"
         key="empty"
@@ -439,7 +437,7 @@ const headerTitle = computed(() => {
         :selection-origin="selectedFileManagerOrigin"
         :is-external="isExternal"
         @update:preview-mode="(m) => (previewMode = m)"
-        @convert="(entry) => conversionStore.openConversionModal(entry)"
+        @convert="(entry) => conversionStore.openConversionModal(entry, { isExternal })"
       />
       <MultiFileProperties
         v-else-if="displayMode === 'files' && selectedFsEntries"

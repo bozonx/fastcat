@@ -568,6 +568,7 @@ const { onFileAction } = useFileBrowserFileActions({
   openTranscriptionModal,
   extractAudio: (entry) => extractAudio(entry, { instanceId, isExternal: isExternal.value }),
   vfs,
+  isExternal: isExternal.value,
 });
 
 function isVideo(entry: FsEntry): boolean {

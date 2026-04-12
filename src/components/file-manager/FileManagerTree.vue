@@ -525,20 +525,20 @@ onUnmounted(() => {
 });
 
 function onDragOverDir(e: DragEvent, entry: FsEntry) {
-  if (entry.kind !== 'directory') return;
+  const isCancel = isCancellationZone({
+    items: appClipboard.draggedItems,
+    targetEntryPath: entry.path,
+    targetDirPath: entry.path,
+  });
+
+  if (entry.kind !== 'directory' && !isCancel) return;
 
   const types = e.dataTransfer?.types;
   if (!types) return;
 
   if (types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) || types.includes(FILE_MANAGER_COPY_DRAG_TYPE)) {
     isDragOver.value = entry.path || null;
-    if (
-      isCancellationZone({
-        items: appClipboard.draggedItems,
-        targetEntryPath: entry.path,
-        targetDirPath: entry.path,
-      })
-    ) {
+    if (isCancel) {
       dragOperation.value = 'cancel';
       appClipboard.setCurrentDragOperation('cancel');
       appClipboard.setDragTargetFileManagerInstanceId(props.instanceId ?? null);

@@ -10,6 +10,7 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
   const isConverting = ref(false);
   const conversionError = ref('');
   const targetEntry = ref<FsEntry | null>(null);
+  const targetIsExternal = ref(false);
   const isCancelRequested = ref(false);
   const conversionModalRequestId = ref(0);
   const sourceHasAudio = ref(true);
@@ -33,6 +34,7 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
 
   const { openConversionModal, startConversion, cancelConversion } = useFileConversionActions({
     targetEntry,
+    targetIsExternal,
     mediaType,
     videoSettings: video,
     audioSettings: audio,
@@ -51,6 +53,7 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
     isConverting,
     conversionError,
     targetEntry,
+    targetIsExternal,
     mediaType,
     sourceHasAudio,
 

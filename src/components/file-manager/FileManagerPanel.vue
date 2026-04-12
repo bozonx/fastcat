@@ -168,7 +168,7 @@ const { handleFileAction: onFileAction, createTimelineInDirectory } = useFileMan
   setActiveTab,
   onSelect: (entry) => emit('select', entry),
   handleConvert: (entry: FsEntry) => {
-    conversionStore.openConversionModal(entry);
+    conversionStore.openConversionModal(entry, { isExternal: props.isExternal });
   },
 });
 
@@ -275,9 +275,7 @@ const menuItems = computed(() => {
   const isAsc = fileManagerStore.sortOption.order === 'asc';
   const orderToggle = [
     {
-      label: isAsc
-        ? t('common.toSortDesc')
-        : t('common.toSortAsc'),
+      label: isAsc ? t('common.toSortDesc') : t('common.toSortAsc'),
       icon: isAsc ? 'i-heroicons-bars-arrow-down' : 'i-heroicons-bars-arrow-up',
       onSelect: () => {
         fileManagerStore.sortOption.order = isAsc ? 'desc' : 'asc';

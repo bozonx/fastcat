@@ -7,6 +7,19 @@ import type { RemoteFsEntry } from '~/utils/remote-vfs';
 
 let dragSourceFileManagerInstanceIdMock: string | null = null;
 let currentDragOperationMock: 'copy' | 'move' | 'cancel' | null = null;
+let draggedItemsMock: any[] = [];
+
+const {
+  INTERNAL_DRAG_TYPE,
+  REMOTE_FILE_DRAG_TYPE,
+  FILE_MANAGER_COPY_DRAG_TYPE,
+  FILE_MANAGER_MOVE_DRAG_TYPE,
+} = vi.hoisted(() => ({
+  INTERNAL_DRAG_TYPE: 'application/fastcat-internal-file',
+  REMOTE_FILE_DRAG_TYPE: 'application/fastcat-remote-file',
+  FILE_MANAGER_COPY_DRAG_TYPE: 'application/fastcat-file-manager-copy',
+  FILE_MANAGER_MOVE_DRAG_TYPE: 'application/fastcat-file-manager-move',
+}));
 
 const selectionStoreMock = {
   selectedEntity: null as any,
@@ -104,14 +117,23 @@ vi.mock('~/composables/useAppClipboard', () => ({
     setDragSourceFileManagerInstanceId: setDragSourceFileManagerInstanceIdMock,
     setDragTargetFileManagerInstanceId: setDragTargetFileManagerInstanceIdMock,
     setDragSourceVfs: setDragSourceVfsMock,
+    setDraggedItems: vi.fn((items) => {
+      draggedItemsMock = items;
+    }),
+    clearDraggedItems: vi.fn(() => {
+      draggedItemsMock = [];
+    }),
+    get draggedItems() {
+      return draggedItemsMock;
+    },
   }),
 }));
 
 vi.mock('~/composables/useDraggedFile', () => ({
-  INTERNAL_DRAG_TYPE: 'application/fastcat-fs-entry',
-  REMOTE_FILE_DRAG_TYPE: 'application/fastcat-remote-file',
-  FILE_MANAGER_COPY_DRAG_TYPE: 'application/fastcat-copy',
-  FILE_MANAGER_MOVE_DRAG_TYPE: 'application/fastcat-move',
+  INTERNAL_DRAG_TYPE,
+  REMOTE_FILE_DRAG_TYPE,
+  FILE_MANAGER_COPY_DRAG_TYPE,
+  FILE_MANAGER_MOVE_DRAG_TYPE,
   useDraggedFile: () => ({
     draggedFile: null,
     setDraggedFile: vi.fn(),
@@ -136,6 +158,7 @@ describe('FileManagerTree', () => {
     selectionStoreMock.clearSelection.mockReset();
     dragSourceFileManagerInstanceIdMock = null;
     currentDragOperationMock = null;
+    draggedItemsMock = [];
     setCurrentDragOperationMock.mockReset();
     setDragSourceFileManagerInstanceIdMock.mockClear();
     setDragTargetFileManagerInstanceIdMock.mockClear();
@@ -199,9 +222,9 @@ describe('FileManagerTree', () => {
 
     const mockEvent = {
       dataTransfer: {
-        types: ['application/fastcat-move'],
+        types: [FILE_MANAGER_MOVE_DRAG_TYPE],
         getData: vi.fn((type) => {
-          if (type === 'application/fastcat-move') {
+          if (type === FILE_MANAGER_MOVE_DRAG_TYPE) {
             return JSON.stringify({ path: '_audio/a.mp4' });
           }
           return '';
@@ -236,9 +259,9 @@ describe('FileManagerTree', () => {
 
     const mockEvent = {
       dataTransfer: {
-        types: ['application/fastcat-copy'],
+        types: [FILE_MANAGER_COPY_DRAG_TYPE],
         getData: vi.fn((type) => {
-          if (type === 'application/fastcat-copy') {
+          if (type === FILE_MANAGER_COPY_DRAG_TYPE) {
             return JSON.stringify({ path: '_audio/a.mp4' });
           }
           return '';
@@ -274,9 +297,9 @@ describe('FileManagerTree', () => {
     const mockEvent = {
       shiftKey: false,
       dataTransfer: {
-        types: ['application/fastcat-copy'],
+        types: [FILE_MANAGER_COPY_DRAG_TYPE],
         getData: vi.fn((type) => {
-          if (type === 'application/fastcat-copy') {
+          if (type === FILE_MANAGER_COPY_DRAG_TYPE) {
             return JSON.stringify({ path: '_audio/a.mp4' });
           }
           return '';
@@ -311,9 +334,9 @@ describe('FileManagerTree', () => {
     const mockEvent = {
       shiftKey: false,
       dataTransfer: {
-        types: ['application/fastcat-move'],
+        types: [FILE_MANAGER_MOVE_DRAG_TYPE],
         getData: vi.fn((type) => {
-          if (type === 'application/fastcat-move') {
+          if (type === FILE_MANAGER_MOVE_DRAG_TYPE) {
             return JSON.stringify({ path: 'workspace/a.mp4' });
           }
           return '';
@@ -359,7 +382,7 @@ describe('FileManagerTree', () => {
     expect(setDragSourceFileManagerInstanceIdMock).toHaveBeenCalledWith('main');
     expect(setCurrentDragOperationMock).toHaveBeenCalledWith('copy');
     expect(setData).toHaveBeenCalledWith(
-      'application/fastcat-copy',
+      FILE_MANAGER_COPY_DRAG_TYPE,
       JSON.stringify([{ name: 'clip.mp4', kind: 'file', path: '_video/clip.mp4' }]),
     );
   });
@@ -402,7 +425,7 @@ describe('FileManagerTree', () => {
 
     expect(setCurrentDragOperationMock).toHaveBeenCalledWith('move');
     expect(setData).toHaveBeenCalledWith(
-      'application/fastcat-move',
+      FILE_MANAGER_MOVE_DRAG_TYPE,
       JSON.stringify([
         { name: 'a.mp4', kind: 'file', path: '_video/a.mp4' },
         { name: 'b.mp4', kind: 'file', path: '_video/b.mp4' },
@@ -445,9 +468,9 @@ describe('FileManagerTree', () => {
 
     const mockEvent = {
       dataTransfer: {
-        types: ['application/fastcat-remote-file'],
+        types: [REMOTE_FILE_DRAG_TYPE],
         getData: vi.fn((type) => {
-          if (type === 'application/fastcat-remote-file') {
+          if (type === REMOTE_FILE_DRAG_TYPE) {
             return JSON.stringify({
               ...remoteEntry,
             });
@@ -487,9 +510,9 @@ describe('FileManagerTree', () => {
     const mockEvent = {
       shiftKey: false,
       dataTransfer: {
-        types: ['application/fastcat-move'],
+        types: [FILE_MANAGER_MOVE_DRAG_TYPE],
         getData: vi.fn((type) => {
-          if (type === 'application/fastcat-move') {
+          if (type === FILE_MANAGER_MOVE_DRAG_TYPE) {
             return JSON.stringify({ path: '_audio/a.mp4' });
           }
           return '';
@@ -527,9 +550,9 @@ describe('FileManagerTree', () => {
     const mockEvent = {
       shiftKey: true,
       dataTransfer: {
-        types: ['application/fastcat-move'],
+        types: [FILE_MANAGER_MOVE_DRAG_TYPE],
         getData: vi.fn((type) => {
-          if (type === 'application/fastcat-move') {
+          if (type === FILE_MANAGER_MOVE_DRAG_TYPE) {
             return JSON.stringify({ path: '_audio/a.mp4' });
           }
           return '';
@@ -565,9 +588,9 @@ describe('FileManagerTree', () => {
     const mockEvent = {
       shiftKey: true,
       dataTransfer: {
-        types: ['application/fastcat-copy'],
+        types: [FILE_MANAGER_COPY_DRAG_TYPE],
         getData: vi.fn((type) => {
-          if (type === 'application/fastcat-copy') {
+          if (type === FILE_MANAGER_COPY_DRAG_TYPE) {
             return JSON.stringify({ path: '_video', kind: 'directory' });
           }
           return '';
@@ -597,10 +620,10 @@ describe('FileManagerTree', () => {
     const dropzone = wrapper.findAll('div').find((w) => w.attributes('role') === 'treeitem');
 
     const dataTransfer = {
-      types: ['application/fastcat-copy'],
+      types: [FILE_MANAGER_COPY_DRAG_TYPE],
       dropEffect: 'copy',
       getData: vi.fn((type) => {
-        if (type === 'application/fastcat-copy') {
+        if (type === FILE_MANAGER_COPY_DRAG_TYPE) {
           return JSON.stringify({ path: '_video', kind: 'directory' });
         }
         return '';

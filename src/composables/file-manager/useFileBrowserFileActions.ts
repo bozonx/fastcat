@@ -16,6 +16,7 @@ export function useFileBrowserFileActions({
   openTranscriptionModal,
   extractAudio,
   vfs,
+  isExternal,
 }: {
   folderEntries: Ref<FsEntry[]>;
   loadFolderContent: () => Promise<void>;
@@ -24,10 +25,13 @@ export function useFileBrowserFileActions({
     entry: FsEntry | FsEntry[],
     getExistingNames?: () => string[],
   ) => Promise<void>;
-  conversionStore: { openConversionModal: (entry: FsEntry) => void };
+  conversionStore: {
+    openConversionModal: (entry: FsEntry, options?: { isExternal?: boolean }) => void;
+  };
   openTranscriptionModal: (entry: FsEntry) => void;
   extractAudio: (entry: FsEntry) => Promise<void>;
   vfs: IFileSystemAdapter;
+  isExternal?: boolean;
 }) {
   const projectStore = useProjectStore();
   const uiStore = useUiStore();
@@ -116,10 +120,9 @@ export function useFileBrowserFileActions({
     }
 
     if (action === 'convertFile') {
-      if (entry.kind === 'file') conversionStore.openConversionModal(entry);
+      if (entry.kind === 'file') conversionStore.openConversionModal(entry, { isExternal });
       return;
     }
-
 
     if (action === 'transcribe') {
       openTranscriptionModal(entry);

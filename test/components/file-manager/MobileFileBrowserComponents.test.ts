@@ -103,9 +103,9 @@ describe('MobileFileBrowserSelectionToolbar', () => {
       },
     });
 
-    expect(wrapper.text()).toContain('Delete');
-    expect(wrapper.text()).toContain('Copy');
-    expect(wrapper.text()).toContain('To timeline');
+    expect(wrapper.text()).toContain('common.delete');
+    expect(wrapper.text()).toContain('common.copy');
+    expect(wrapper.text()).toContain('common.toTimeline');
   });
 
   it('emits action event when buttons are clicked', async () => {

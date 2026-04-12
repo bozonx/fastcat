@@ -21,8 +21,8 @@ describe('GlobalDropOverlay', () => {
       },
     });
 
-    expect(wrapper.text()).toContain('Auto-sort upload');
-    expect(wrapper.text()).toContain('Upload to folder');
+    expect(wrapper.text()).toContain('videoEditor.fileManager.dropOverlay.autoTitle');
+    expect(wrapper.text()).toContain('videoEditor.fileManager.dropOverlay.folderTitle');
   });
 
   it('detects drag over auto-sort zone', async () => {

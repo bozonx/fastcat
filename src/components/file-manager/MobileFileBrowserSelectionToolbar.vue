@@ -23,26 +23,26 @@ const { t } = useI18n();
       <MobileDrawerToolbarButton
         icon="i-heroicons-trash"
         :label="t('common.delete')"
-        @click="emit('action', props.selectedEntries)"
+        @click="emit('action', 'delete', props.selectedEntries)"
       />
 
       <MobileDrawerToolbarButton
         v-if="selectedEntries.length === 1"
         icon="i-heroicons-pencil-square"
         :label="t('common.rename')"
-        @click="emit('action', props.selectedEntries[0]!)"
+        @click="emit('action', 'rename', props.selectedEntries[0]!)"
       />
 
       <MobileDrawerToolbarButton
         icon="i-heroicons-document-duplicate"
         :label="t('common.copy')"
-        @click="emit('action', props.selectedEntries)"
+        @click="emit('action', 'copy', props.selectedEntries)"
       />
 
       <MobileDrawerToolbarButton
         icon="i-heroicons-scissors"
         :label="t('common.cut')"
-        @click="emit('action', props.selectedEntries)"
+        @click="emit('action', 'cut', props.selectedEntries)"
       />
 
       <MobileDrawerToolbarButton
