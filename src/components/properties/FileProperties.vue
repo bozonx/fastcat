@@ -557,7 +557,11 @@ const {
   createOtioVersion: () => {
     uiStore.pendingOtioCreateVersion = props.selectedFsEntry;
   },
-  extractAudio: () => extractAudio(props.selectedFsEntry),
+  extractAudio: () =>
+    extractAudio(props.selectedFsEntry, {
+      instanceId: props.instanceId,
+      isExternal: isExternalContext.value,
+    }),
   createSubgroup: () => {
     const entry = props.selectedFsEntry;
     if (!entry || entry.kind !== 'directory') return;

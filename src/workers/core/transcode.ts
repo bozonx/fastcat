@@ -289,6 +289,7 @@ export async function runTranscode(
             height: Math.floor(options.height / 2) * 2,
             fit: 'contain',
             ...(shouldChangeFrameRate ? { frameRate: options.fps } : {}),
+            allowRotationMetadata: (format as any).supportsVideoRotationMetadata ?? true,
           };
 
     const audioConfig =
