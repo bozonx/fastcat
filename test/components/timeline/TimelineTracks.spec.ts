@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { reactive, nextTick } from 'vue';
+import { reactive, nextTick, toRef } from 'vue';
+import { defineStore } from 'pinia';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
 
 vi.mock('~/components/timeline/TimelineClip.vue', () => ({
@@ -21,46 +22,53 @@ vi.mock('~/components/timeline/TimelineSpeedModal.vue', () => ({
   default: { name: 'TimelineSpeedModal', template: '<div></div>' },
 }));
 
-const mockTimelineStore = reactive({
-  timelineZoom: 1,
-  duration: 10000000,
-  currentTime: 0,
-  selectedTrackId: null,
-  hoveredTrackId: null,
-  getSelectionRange: () => null,
-  selectTrack: vi.fn(),
-  clearSelection: vi.fn(),
-  selectTimelineProperties: vi.fn(),
+const selectTrackSpy = vi.fn();
+const clearSelectionSpy = vi.fn();
+const selectTimelinePropertiesSpy = vi.fn();
+const selectTimelineTrackSpy = vi.fn();
+
+const useMockTimelineStore = defineStore('timeline-mock', {
+  state: () => ({
+    timelineZoom: 1,
+    duration: 10000000,
+    currentTime: 0,
+    selectedTrackId: null as string | null,
+    hoveredTrackId: null as string | null,
+    selectedTransition: null as any,
+  }),
+  actions: {
+    getSelectionRange: () => null,
+    selectTrack: selectTrackSpy,
+    clearSelection: clearSelectionSpy,
+    selectTimelineProperties: selectTimelinePropertiesSpy,
+  }
 });
 
-const mockSelectionStore = reactive({
-  isTrackVisuallySelected: (id: string) => id === 'selected-track',
-  clearSelection: vi.fn(),
-  selectedEntity: null,
-  selectTimelineTrack: vi.fn(),
-  selectTimelineProperties: vi.fn(),
+const useMockSelectionStore = defineStore('selection-mock', {
+  state: () => ({
+    selectedEntity: null as any,
+  }),
+  actions: {
+    isTrackVisuallySelected: (id: string) => id === 'selected-track',
+    clearSelection: clearSelectionSpy,
+    selectTimelineTrack: selectTimelineTrackSpy,
+    selectTimelineProperties: selectTimelinePropertiesSpy,
+  }
 });
 
 const mockMediaStore = reactive({
   mediaMetadata: {},
 });
 
-vi.mock('~/stores/timeline.store', () => ({ useTimelineStore: () => mockTimelineStore }));
-vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelectionStore }));
-vi.mock('~/stores/media.store', () => ({ useMediaStore: () => mockMediaStore }));
+vi.mock('~/stores/timeline.store', () => ({ useTimelineStore: () => useMockTimelineStore() }));
+vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => useMockSelectionStore() }));
+vi.mock('~/stores/media.store', () => ({ 
+  useMediaStore: () => ({
+    mediaMetadata: {},
+  }) 
+}));
 
-vi.mock('pinia', async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    ...actual,
-    storeToRefs: (store) => {
-      // Just return the store itself since it's already a reactive object or mock
-      return {
-        selectedTransition: { value: null },
-      };
-    },
-  };
-});
+// Pinia is already initialized in vitest.setup.ts
 
 // Mock Composables used inside TimelineTracks
 vi.mock('~/composables/timeline/useTimelineItemResize', () => ({
@@ -83,7 +91,8 @@ vi.mock('~/composables/timeline/useTimelineMarquee', () => ({
 describe('TimelineTracks', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockTimelineStore.timelineZoom = 50;
+    const timelineStore = useMockTimelineStore();
+    timelineStore.timelineZoom = 50;
   });
 
   afterEach(() => {
@@ -146,7 +155,7 @@ describe('TimelineTracks', () => {
     const bottomSpacer = component.find('.flex-1.min-h-7');
     await bottomSpacer.trigger('click');
 
-    expect(mockTimelineStore.selectTrack).toHaveBeenCalledWith(null);
+    expect(selectTrackSpy).toHaveBeenCalledWith(null);
   });
 
   it('selects mobile track on tap without long press flow', async () => {
@@ -171,10 +180,10 @@ describe('TimelineTracks', () => {
     });
 
     await nextTick();
-
-    expect(mockTimelineStore.selectTrack).toHaveBeenCalledWith('track-1');
-    expect(mockSelectionStore.selectTimelineTrack).toHaveBeenCalledWith('track-1');
-    expect(mockTimelineStore.clearSelection).toHaveBeenCalled();
+    
+    expect(selectTrackSpy).toHaveBeenCalledWith('track-1');
+    expect(selectTimelineTrackSpy).toHaveBeenCalledWith('track-1');
+    expect(clearSelectionSpy).toHaveBeenCalled();
   });
 
   it('does not emit mobile track long press event', async () => {

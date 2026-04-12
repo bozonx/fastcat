@@ -29,32 +29,38 @@ const clipboardStore = useAppClipboard();
 const selectionStore = useSelectionStore();
 
 const totalSize = ref(0);
+const isCalculatingSize = ref(false);
 
 watch(
   () => props.entries,
   async (entries) => {
+    isCalculatingSize.value = true;
     let size = 0;
-    for (const e of entries) {
-      if (e.kind === 'file' && e.path) {
-        const file = await fileManager.vfs.getFile(e.path);
-        if (file) {
-          size += file.size;
-        }
-      } else if (e.kind === 'directory' && e.path) {
-        try {
-          const handle = await projectStore.getDirectoryHandleByPath(e.path);
-          if (handle) {
-            const stats = await computeDirectoryStats(handle);
-            if (stats) {
-              size += stats.size;
-            }
+    try {
+      for (const e of entries) {
+        if (e.kind === 'file' && e.path) {
+          const file = await fileManager.vfs.getFile(e.path);
+          if (file) {
+            size += file.size;
           }
-        } catch (err) {
-          console.warn('Failed to calculate directory size for properties:', e.path, err);
+        } else if (e.kind === 'directory' && e.path) {
+          try {
+            const handle = await projectStore.getDirectoryHandleByPath(e.path);
+            if (handle) {
+              const stats = await computeDirectoryStats(handle);
+              if (stats) {
+                size += stats.size;
+              }
+            }
+          } catch (err) {
+            console.warn('Failed to calculate directory size for properties:', e.path, err);
+          }
         }
       }
+      totalSize.value = size;
+    } finally {
+      isCalculatingSize.value = false;
     }
-    totalSize.value = size;
   },
   { immediate: true, deep: true },
 );
@@ -175,9 +181,12 @@ function onCut() {
       </div>
 
       <div class="border-t border-ui-border pt-3 flex flex-col gap-1">
-        <div v-if="totalSize > 0" class="flex justify-between text-xs">
+        <div v-if="totalSize > 0 || isCalculatingSize" class="flex justify-between text-xs">
           <span class="text-ui-text-muted">{{ t('common.totalSize') }}</span>
-          <span class="text-ui-text font-mono">{{ formatBytes(totalSize) }}</span>
+          <span v-if="isCalculatingSize" class="text-ui-text italic opacity-70"
+            >{{ t('common.calculating', 'Calculating...') }}...</span
+          >
+          <span v-else class="text-ui-text font-mono">{{ formatBytes(totalSize) }}</span>
         </div>
         <div
           v-for="(count, type) in typeBreakdown"

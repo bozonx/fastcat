@@ -51,7 +51,7 @@ export function isBloggerDogProjectLibrariesRoot(entry: FsEntry | null | undefin
 
 export function canCopyCutBloggerDogEntry(entry: FsEntry | null | undefined): boolean {
   if (!isBloggerDogEntry(entry)) return true;
-  return isBloggerDogMediaEntry(entry);
+  return isBloggerDogMediaEntry(entry) || isBloggerDogTextWrapper(entry);
 }
 
 export function canPasteIntoBloggerDogEntry(entry: FsEntry | null | undefined): boolean {
@@ -95,4 +95,31 @@ export function canTransferFsEntryToOrFromBloggerDog(entry: FsEntry | null | und
   }
 
   return isMediaFileName(entry.name);
+}
+
+function getParentPath(path: string): string {
+  return path.split('/').slice(0, -1).join('/');
+}
+
+export function normalizeBloggerDogTextWrapperTitle(name: string): string {
+  const trimmed = name.trim();
+  if (trimmed.toLowerCase().endsWith('.txt')) {
+    return trimmed.slice(0, -4).trim();
+  }
+  return trimmed;
+}
+
+export function getBloggerDogTextWrapperRenameResult(entry: FsEntry, nextName: string): {
+  reloadDirPath: string;
+  newPath: string;
+} {
+  const itemPath = entry.parentPath ?? getParentPath(entry.path);
+  const reloadDirPath = getParentPath(itemPath);
+  const title = normalizeBloggerDogTextWrapperTitle(nextName);
+  const nextItemPath = reloadDirPath ? `${reloadDirPath}/${title}` : title;
+
+  return {
+    reloadDirPath,
+    newPath: `${nextItemPath}/${title}.txt`,
+  };
 }

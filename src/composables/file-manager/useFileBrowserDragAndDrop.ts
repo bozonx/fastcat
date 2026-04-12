@@ -560,6 +560,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
     ) {
       isDragOverPanel.value = true;
+      const targetFolder = fileManagerStore.selectedFolder;
       const targetPath = fileManagerStore.selectedFolder?.path ?? '';
       if (
         isCancellationZone({

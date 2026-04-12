@@ -25,7 +25,7 @@ describe('MultiFileProperties.vue', () => {
       },
     });
 
-    expect(component.text()).toContain('3 items selected');
+    expect(component.text()).toContain('3 common.itemsSelected');
     expect(component.text()).toContain('video');
     expect(component.text()).toContain('image');
     expect(component.text()).toContain('folder');
@@ -39,8 +39,10 @@ describe('MultiFileProperties.vue', () => {
     });
 
     // Wait for watcher to finish async size calculation
-    await component.vm.$nextTick();
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    while (component.vm.isCalculatingSize) {
+      await component.vm.$nextTick();
+      await new Promise((resolve) => setTimeout(resolve, 0)); // Still need a tiny yield to let the await in the component proceed
+    }
     await component.vm.$nextTick();
 
     expect(component.text()).toContain('2 KB'); // 1024 + 1024 bytes (2 files)
@@ -53,10 +55,12 @@ describe('MultiFileProperties.vue', () => {
       },
     });
 
-    expect(component.text()).toContain('Actions');
+    expect(component.text()).toContain('videoEditor.fileManager.actions.title');
     // Primary actions have title but no label text
-    expect(component.find('button[title="Copy"]').exists()).toBe(true);
-    expect(component.find('button[title="Cut"]').exists()).toBe(true);
-    expect(component.find('button[title="Delete"]').exists()).toBe(true);
+    expect(component.find('button[title="common.copy"]').exists()).toBe(true);
+    expect(component.find('button[title="common.cut"]').exists()).toBe(true);
+    expect(component.find('button[title="common.delete"]').exists()).toBe(true);
+    expect(component.text()).toContain('videoEditor.fileManager.proxy.create');
+    expect(component.text()).toContain('videoEditor.fileManager.actions.extractAudio');
   });
 });

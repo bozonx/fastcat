@@ -18,10 +18,6 @@ describe('executeFileManagerPaste', () => {
     vi.clearAllMocks();
     crossVfsCopy.mockResolvedValue('assets/copied.mp4');
     crossVfsMove.mockResolvedValue('assets/moved.mp4');
-    vi.stubGlobal('setTimeout', (fn: (...args: any[]) => void) => {
-      fn();
-      return 0 as any;
-    });
   });
 
   afterEach(() => {
