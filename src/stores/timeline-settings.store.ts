@@ -12,37 +12,44 @@ export type ToolbarDragMode = 'pseudo_overlap' | 'copy' | 'slip';
 export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
   const workspaceStore = useWorkspaceStore();
 
-  const timelineStore = useTimelineStore();
+  const projectSettingsStore = useProjectSettingsStore();
 
   const overlapMode = ref<OverlapMode>(DEFAULT_SNAP_SETTINGS.overlapMode);
 
-  const frameSnapMode = useLocalStorage<FrameSnapMode>(
-    'fastcat:timeline:frame-snap-mode',
-    DEFAULT_SNAP_SETTINGS.frameSnapMode,
-  );
+  const frameSnapMode = computed({
+    get: () => projectSettingsStore.projectSettings.timeline.frameSnapMode,
+    set: (v) => {
+      projectSettingsStore.projectSettings.timeline.frameSnapMode = v;
+    },
+  });
 
-  const clipSnapMode = useLocalStorage<ClipSnapMode>(
-    'fastcat:timeline:clip-snap-mode',
-    DEFAULT_SNAP_SETTINGS.clipSnapMode,
-  );
+  const clipSnapMode = computed({
+    get: () => projectSettingsStore.projectSettings.timeline.clipSnapMode,
+    set: (v) => {
+      projectSettingsStore.projectSettings.timeline.clipSnapMode = v;
+    },
+  });
 
-  const toolbarSnapMode = useLocalStorage<ToolbarSnapMode>(
-    'fastcat:timeline:toolbar-snap-mode',
-    'snap',
-  );
-  const toolbarDragMode = useLocalStorage<ToolbarDragMode>(
-    'fastcat:timeline:toolbar-drag-mode',
-    'pseudo_overlap',
-  );
-  const toolbarDragModeEnabled = useLocalStorage<boolean>(
-    'fastcat:timeline:toolbar-drag-mode-enabled',
-    false,
-  );
+  const toolbarSnapMode = computed({
+    get: () => projectSettingsStore.projectSettings.timeline.toolbarSnapMode,
+    set: (v) => {
+      projectSettingsStore.projectSettings.timeline.toolbarSnapMode = v;
+    },
+  });
+  const toolbarDragMode = computed({
+    get: () => projectSettingsStore.projectSettings.timeline.toolbarDragMode,
+    set: (v) => {
+      projectSettingsStore.projectSettings.timeline.toolbarDragMode = v;
+    },
+  });
+  const toolbarDragModeEnabled = computed({
+    get: () => projectSettingsStore.projectSettings.timeline.toolbarDragModeEnabled,
+    set: (v) => {
+      projectSettingsStore.projectSettings.timeline.toolbarDragModeEnabled = v;
+    },
+  });
 
-  const landscapeDrawerPosition = useLocalStorage<'right' | 'bottom'>(
-    'fastcat:timeline:landscape-drawer-position',
-    'bottom',
-  );
+  const landscapeDrawerPosition = ref<'right' | 'bottom'>('bottom');
 
   if (overlapMode.value !== 'none' && overlapMode.value !== 'pseudo') {
     overlapMode.value = DEFAULT_SNAP_SETTINGS.overlapMode;

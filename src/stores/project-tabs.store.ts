@@ -27,28 +27,30 @@ export function isFileTab(tab: AnyProjectTab): tab is ProjectFileTab {
 }
 
 export const useProjectTabsStore = defineStore('projectTabs', () => {
-  const STATIC_TABS_ORDER_KEY = 'fastcat-project-tabs-order';
-  const FILE_TABS_KEY = 'fastcat-project-file-tabs';
-
-  const registeredTabs = ref<ProjectTab[]>([]);
-
-  /** Order of static tab IDs (persisted) */
-  const staticTabsOrder = ref<string[]>(readLocalStorageJson<string[]>(STATIC_TABS_ORDER_KEY, []));
+  /** Order of static tab IDs (persisted in project.ui.json) */
+  const staticTabsOrder = ref<string[]>([]);
 
   /** Static tabs that are currently detached as panels (hidden from tab bar) */
   const hiddenStaticTabs = ref<Set<string>>(new Set());
 
-  /** File tabs added by drag-drop (persisted, no FileSystemHandle — resolved at runtime) */
-  const fileTabs = ref<ProjectFileTab[]>(readLocalStorageJson<ProjectFileTab[]>(FILE_TABS_KEY, []));
+  /** File tabs added by drag-drop (persisted in project.ui.json) */
+  const fileTabs = ref<ProjectFileTab[]>([]);
 
   /** Shared active tab ID across all consumers */
   const activeTabId = ref<string | null>(null);
 
-  watch(staticTabsOrder, (val) => writeLocalStorageJson(STATIC_TABS_ORDER_KEY, val), {
-    deep: true,
-  });
+  const registeredTabs = ref<ProjectTab[]>([]);
 
-  watch(fileTabs, (val) => writeLocalStorageJson(FILE_TABS_KEY, val), { deep: true });
+  /** Sets the tabs state (called from projectSettings store when project is loaded) */
+  function setTabsState(params: {
+    fileTabs?: ProjectFileTab[];
+    staticTabsOrder?: string[];
+    activeTabId?: string | null;
+  }) {
+    if (params.fileTabs) fileTabs.value = params.fileTabs;
+    if (params.staticTabsOrder) staticTabsOrder.value = params.staticTabsOrder;
+    if (params.activeTabId !== undefined) activeTabId.value = params.activeTabId;
+  }
 
   function registerProjectTab(tab: ProjectTab) {
     if (!registeredTabs.value.find((t) => t.id === tab.id)) {
@@ -208,6 +210,8 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
     removeOtherFileTabs,
     removeAllFileTabs,
     hideStaticTab,
-    showStaticTab,
+    staticTabsOrder,
+    fileTabs,
+    setTabsState,
   };
 });

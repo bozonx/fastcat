@@ -18,6 +18,7 @@ export interface MonitorSettings {
   panY: number;
   zoom: number;
   showGrid: boolean;
+  showTimecode: boolean;
   toolbarPosition: 'top' | 'bottom' | 'left' | 'right';
 }
 
@@ -67,7 +68,16 @@ export interface FastCatProjectSettings {
   };
   ui: {
     activeTabId: string | null;
+    fileTabs: any[]; // ProjectFileTab[]
+    staticTabsOrder: string[];
     fileManagerPaths: Record<string, string | null>;
+  };
+  timeline: {
+    frameSnapMode: 'free' | 'frames';
+    clipSnapMode: 'none' | 'clips';
+    toolbarSnapMode: 'snap' | 'no_snap' | 'free_mode';
+    toolbarDragMode: 'pseudo_overlap' | 'copy' | 'slip';
+    toolbarDragModeEnabled: boolean;
   };
 }
 
@@ -79,6 +89,7 @@ export const DEFAULT_MONITOR_SETTINGS: MonitorSettings = {
   panY: 0,
   zoom: 1,
   showGrid: false,
+  showTimecode: true,
   toolbarPosition: 'bottom',
 };
 
@@ -123,7 +134,16 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
   },
   ui: {
     activeTabId: null,
+    fileTabs: [],
+    staticTabsOrder: [],
     fileManagerPaths: {},
+  },
+  timeline: {
+    frameSnapMode: 'frames',
+    clipSnapMode: 'clips',
+    toolbarSnapMode: 'snap',
+    toolbarDragMode: 'pseudo_overlap',
+    toolbarDragModeEnabled: false,
   },
 };
 
@@ -190,8 +210,11 @@ export function createDefaultProjectSettings(
     },
     ui: {
       activeTabId: null,
+      fileTabs: [],
+      staticTabsOrder: [],
       fileManagerPaths: {},
     },
+    timeline: { ...DEFAULT_PROJECT_SETTINGS.timeline },
   };
 }
 
@@ -205,6 +228,7 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
     panY: z.coerce.number().catch(dm.panY),
     zoom: z.coerce.number().min(0.05).max(20).catch(dm.zoom),
     showGrid: z.coerce.boolean().catch(dm.showGrid),
+    showTimecode: z.coerce.boolean().catch(dm.showTimecode ?? true),
     toolbarPosition: z.enum(['top', 'bottom', 'left', 'right']).catch(dm.toolbarPosition),
   });
 
@@ -302,9 +326,24 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
       ui: z
         .object({
           activeTabId: z.string().nullable().catch(null),
+          fileTabs: z.array(z.any()).catch([]),
+          staticTabsOrder: z.array(z.string()).catch([]),
           fileManagerPaths: z.record(z.string(), z.string().nullable()).catch({}),
         })
         .catch(defaults.ui),
+      timeline: z
+        .object({
+          frameSnapMode: z.enum(['free', 'frames']).catch(defaults.timeline.frameSnapMode),
+          clipSnapMode: z.enum(['none', 'clips']).catch(defaults.timeline.clipSnapMode),
+          toolbarSnapMode: z
+            .enum(['snap', 'no_snap', 'free_mode'])
+            .catch(defaults.timeline.toolbarSnapMode),
+          toolbarDragMode: z
+            .enum(['pseudo_overlap', 'copy', 'slip'])
+            .catch(defaults.timeline.toolbarDragMode),
+          toolbarDragModeEnabled: z.coerce.boolean().catch(defaults.timeline.toolbarDragModeEnabled),
+        })
+        .catch(defaults.timeline),
     })
     .catch(defaults);
 }

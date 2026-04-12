@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref, computed, nextTick } from 'vue';
 /**
  * Unified Modal Component
  *
@@ -60,7 +61,10 @@ const modalUi = computed(() => {
 
 const modalContent = {
   onOpenAutoFocus: (event: Event) => {
-    event.preventDefault();
+    const focused = focusPreferredElement();
+    if (focused) {
+      event.preventDefault();
+    }
   },
 };
 
@@ -76,27 +80,23 @@ function isFocusableElement(element: HTMLElement) {
   return element.tabIndex >= 0;
 }
 
-function focusPreferredElement() {
+function focusPreferredElement(): boolean {
   const container = contentRef.value;
   if (!container) {
-    return;
+    return false;
   }
 
   const target = container.querySelector<HTMLElement>('[data-primary-focus="true"], [autofocus]');
 
   if (!target || !isFocusableElement(target)) {
-    return;
+    return false;
   }
 
-  nextTick(() => {
-    setTimeout(() => {
-      target.focus();
-    }, 0);
-  });
+  target.focus();
+  return true;
 }
 
 function handleAfterEnter() {
-  focusPreferredElement();
   emit('after:enter');
 }
 
