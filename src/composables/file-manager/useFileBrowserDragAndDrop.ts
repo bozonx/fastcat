@@ -24,6 +24,7 @@ import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import {
   getDropTargetEntryPath,
   isFileManagerDropCancellationTarget,
+  isCancellationZone,
   isCrossFileManagerDrag,
   resolveFileManagerDragOperation,
   resolveFileManagerDropOperation,
@@ -218,6 +219,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       operation === 'copy' ? FILE_MANAGER_COPY_DRAG_TYPE : FILE_MANAGER_MOVE_DRAG_TYPE,
       JSON.stringify(movePayload),
     );
+    appClipboard.setDraggedItems(movePayload);
     // Mark as internal so the global overlay is not shown
     e.dataTransfer?.setData(INTERNAL_DRAG_TYPE, '1');
 
@@ -249,6 +251,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     appClipboard.setDragSourceFileManagerInstanceId(null);
     appClipboard.setDragTargetFileManagerInstanceId(null);
     appClipboard.setDragSourceVfs(null);
+    appClipboard.clearDraggedItems();
     dragOverEntryPath.value = null;
     resetFileManagerDragCursor();
   }
@@ -280,7 +283,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     dragOverEntryPath.value = path;
 
     if (
-      isFileManagerDropCancellationTarget({ event: e, targetEntryPath: path, targetDirPath: path })
+      isCancellationZone({ items: appClipboard.draggedItems, targetEntryPath: path, targetDirPath: path })
     ) {
       appClipboard.setCurrentDragOperation('cancel');
       appClipboard.setDragTargetFileManagerInstanceId(options.fileManagerInstanceId ?? null);
@@ -289,7 +292,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     }
 
     if (!isDropTargetDir(entry)) {
-      if (!isFileManagerDropCancellationTarget({ event: e, targetEntryPath: path })) {
+      if (!isCancellationZone({ items: appClipboard.draggedItems, targetEntryPath: path })) {
         entryDragCounters.delete(path);
         dragOverEntryPath.value = null;
       }
@@ -309,8 +312,8 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     }
     const targetPath = entry.path ?? null;
     if (
-      isFileManagerDropCancellationTarget({
-        event: e,
+      isCancellationZone({
+        items: appClipboard.draggedItems,
         targetEntryPath: targetPath,
         targetDirPath: targetPath,
       })
@@ -509,8 +512,8 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       isDragOverPanel.value = true;
       const targetPath = fileManagerStore.selectedFolder?.path ?? '';
       if (
-        isFileManagerDropCancellationTarget({
-          event: e,
+        isCancellationZone({
+          items: appClipboard.draggedItems,
           targetDirPath: targetPath,
         })
       ) {
@@ -680,8 +683,8 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   function onRootDragOver(e: DragEvent) {
     const currentPath = fileManagerStore.selectedFolder?.path ?? '';
     if (
-      isFileManagerDropCancellationTarget({
-        event: e,
+      isCancellationZone({
+        items: appClipboard.draggedItems,
         targetDirPath: currentPath,
       })
     ) {

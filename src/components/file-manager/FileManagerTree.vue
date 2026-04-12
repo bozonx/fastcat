@@ -46,6 +46,7 @@ import {
   getDropTargetEntryPath,
   isFileManagerDropCancellationTarget,
   isCrossFileManagerDrag,
+  isCancellationZone,
   resolveFileManagerDragOperation,
   resolveFileManagerDropOperation,
   shouldCancelFileManagerDrop,
@@ -398,7 +399,7 @@ function onEntryEnter(event: KeyboardEvent, entry: FsEntry) {
 function onRenameClick(entry: FsEntry) {
   if (entry.path === WORKSPACE_COMMON_PATH_PREFIX) return;
   if (isBloggerDogVirtualFolder(entry) || isBloggerDogProject(entry)) return;
-  emit('action', entry);
+  emit('action', 'rename', entry);
 }
 
 function onCaretClick(e: MouseEvent, entry: FsEntry) {
@@ -437,6 +438,7 @@ function onDragStart(e: DragEvent, entry: FsEntry) {
   appClipboard.setDragTargetFileManagerInstanceId(props.instanceId ?? null);
   syncFileManagerDragCursor({ isDragging: true, operation });
   const movePayload = entriesToMove.map((e) => ({ name: e.name, kind: e.kind, path: e.path }));
+  appClipboard.setDraggedItems(movePayload);
   e.dataTransfer?.setData(
     operation === 'copy' ? FILE_MANAGER_COPY_DRAG_TYPE : FILE_MANAGER_MOVE_DRAG_TYPE,
     JSON.stringify(movePayload),
@@ -471,6 +473,7 @@ function onDragEnd() {
   appClipboard.setDragSourceFileManagerInstanceId(null);
   appClipboard.setDragTargetFileManagerInstanceId(null);
   appClipboard.setDragSourceVfs(null);
+  appClipboard.clearDraggedItems();
   resetFileManagerDragCursor();
 }
 
@@ -530,8 +533,8 @@ function onDragOverDir(e: DragEvent, entry: FsEntry) {
   if (types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) || types.includes(FILE_MANAGER_COPY_DRAG_TYPE)) {
     isDragOver.value = entry.path || null;
     if (
-      isFileManagerDropCancellationTarget({
-        event: e,
+      isCancellationZone({
+        items: appClipboard.draggedItems,
         targetEntryPath: entry.path,
         targetDirPath: entry.path,
       })
@@ -612,8 +615,9 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
       dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
       targetFileManagerInstanceId: props.instanceId ?? null,
     });
+    const fallbackOp = operation === 'cancel' ? null : operation;
     const shouldCopy =
-      resolveDropOperation(e, operation ?? (copyRaw ? 'copy' : moveRaw ? 'move' : null)) === 'copy';
+      resolveDropOperation(e, fallbackOp ?? (copyRaw ? 'copy' : moveRaw ? 'move' : null)) === 'copy';
     let parsed: any;
     try {
       parsed = JSON.parse(internalRaw);
