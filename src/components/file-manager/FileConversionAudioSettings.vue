@@ -28,6 +28,19 @@ const audioReverse = defineModel<boolean>('audioReverse', { default: false });
 
 const { t } = useI18n();
 
+function formatSampleRateLabel(sampleRate: number | null) {
+  if (sampleRate === null) {
+    return t('videoEditor.audio.original');
+  }
+
+  const kilohertz = sampleRate / 1000;
+  const formattedKilohertz = Number.isInteger(kilohertz)
+    ? String(kilohertz)
+    : kilohertz.toFixed(1).replace(/\.0$/, '');
+
+  return `${t('videoEditor.audio.original')} (${formattedKilohertz} kHz)`;
+}
+
 const audioChannelsOptions = computed(() => {
   const options = [{ value: 1, label: t('videoEditor.audio.mono') }];
 
@@ -49,17 +62,30 @@ const audioChannelsOptions = computed(() => {
 const sampleRateOptions = computed(() => {
   const originalRaw = props.originalSampleRate;
   const original = originalRaw === null || originalRaw === undefined ? null : Number(originalRaw);
-  const originalLabel =
-    original === null
-      ? t('videoEditor.audio.original')
-      : `${t('videoEditor.audio.original')} (${Math.round(original)})`;
 
   return [
-    ...(props.allowOriginalSampleRate ? [{ value: 0, label: originalLabel }] : []),
+    ...(props.allowOriginalSampleRate ? [{ value: 0, label: formatSampleRateLabel(original) }] : []),
     { value: 44100, label: '44.1 kHz' },
     { value: 48000, label: '48 kHz' },
     { value: 96000, label: '96 kHz' },
   ];
+});
+
+const selectedSampleRateOption = computed({
+  get: () => {
+    const currentValue = Number(audioSampleRate.value);
+    return (
+      sampleRateOptions.value.find((option) => option.value === currentValue) ?? currentValue
+    );
+  },
+  set: (value: unknown) => {
+    if (typeof value === 'object' && value !== null && 'value' in value) {
+      audioSampleRate.value = Number(value.value) || 0;
+      return;
+    }
+
+    audioSampleRate.value = Number(value) || 0;
+  },
 });
 </script>
 
@@ -95,9 +121,10 @@ const sampleRateOptions = computed(() => {
           {{ t('videoEditor.audio.sampleRate') }}
         </label>
         <UiSelect
-          v-model.number="audioSampleRate"
+          v-model="selectedSampleRateOption"
           :items="sampleRateOptions"
           :disabled="props.disabled"
+          :searchable="false"
           size="sm"
           full-width
           value-key="value"

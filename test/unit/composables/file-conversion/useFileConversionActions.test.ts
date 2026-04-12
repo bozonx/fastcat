@@ -258,6 +258,55 @@ describe('useFileConversionActions', () => {
     expect(mockProjectStore.getFileByPath).not.toHaveBeenCalled();
   });
 
+  it('defaults video conversion sample rate to original option', async () => {
+    const props = createProps('video');
+    const { openConversionModal } = useFileConversionActions(props);
+    const workerClientModule = await import('~/utils/video-editor/worker-client');
+
+    vi.mocked(workerClientModule.getExportWorkerClient).mockReturnValue({
+      client: {
+        extractMetadata: vi.fn().mockResolvedValue({
+          video: { width: 1920, height: 1080, fps: 30 },
+          audio: { channels: 2, sampleRate: 48000 },
+        }),
+        cancelExport: vi.fn(),
+      },
+    } as any);
+
+    mockProjectStore.getFileByPath.mockResolvedValue(
+      new File(['x'], 'clip.mp4', { type: 'video/mp4' }),
+    );
+
+    await openConversionModal({ name: 'clip.mp4', path: '/clip.mp4', kind: 'file' } as any);
+
+    expect(props.audioSettings.originalSampleRate).toBe(48000);
+    expect(props.audioSettings.sampleRate).toBe(0);
+  });
+
+  it('defaults audio conversion sample rate to original option', async () => {
+    const props = createProps('audio');
+    const { openConversionModal } = useFileConversionActions(props);
+    const workerClientModule = await import('~/utils/video-editor/worker-client');
+
+    vi.mocked(workerClientModule.getExportWorkerClient).mockReturnValue({
+      client: {
+        extractMetadata: vi.fn().mockResolvedValue({
+          audio: { channels: 2, sampleRate: 48000 },
+        }),
+        cancelExport: vi.fn(),
+      },
+    } as any);
+
+    mockProjectStore.getFileByPath.mockResolvedValue(
+      new File(['x'], 'track.mp3', { type: 'audio/mpeg' }),
+    );
+
+    await openConversionModal({ name: 'track.mp3', path: '/track.mp3', kind: 'file' } as any);
+
+    expect(props.audioSettings.originalSampleRate).toBe(48000);
+    expect(props.audioSettings.sampleRate).toBe(0);
+  });
+
   it('uses VFS to read image metadata when opening conversion modal', async () => {
     const props = createProps('image');
     const { openConversionModal } = useFileConversionActions(props);

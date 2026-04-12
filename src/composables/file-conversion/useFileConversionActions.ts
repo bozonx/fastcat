@@ -302,8 +302,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
             1,
             Math.round(Number(meta.audio.sampleRate) || 0),
           );
-          // Auto-select sample rate from meta
-          props.audioSettings.sampleRate = props.audioSettings.originalSampleRate || 0;
+          props.audioSettings.sampleRate = 0;
           props.audioSettings.onlyBitrateKbps = meta.audio.bitrate
             ? Math.round(meta.audio.bitrate / 1000)
             : 0;
@@ -354,7 +353,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
             1,
             Math.round(Number(meta.audio.sampleRate) || 0),
           );
-          props.audioSettings.sampleRate = props.audioSettings.originalSampleRate || 0;
+          props.audioSettings.sampleRate = 0;
           props.audioSettings.onlyBitrateKbps = meta.audio.bitrate
             ? Math.round(meta.audio.bitrate / 1000)
             : 0;

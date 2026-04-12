@@ -108,11 +108,11 @@ vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: () => workspaceStoreMock,
 }));
 
-vi.mock('~/composables/useAppClipboard', () => ({
-  useAppClipboard: () => ({
+vi.mock('~/composables/useAppClipboard', () => {
+  const innerMock = {
     hasFileManagerPayload: false,
-    currentDragOperation: currentDragOperationMock,
-    dragSourceFileManagerInstanceId: dragSourceFileManagerInstanceIdMock,
+    get currentDragOperation() { return currentDragOperationMock; },
+    get dragSourceFileManagerInstanceId() { return dragSourceFileManagerInstanceIdMock; },
     setCurrentDragOperation: setCurrentDragOperationMock,
     setDragSourceFileManagerInstanceId: setDragSourceFileManagerInstanceIdMock,
     setDragTargetFileManagerInstanceId: setDragTargetFileManagerInstanceIdMock,
@@ -126,8 +126,11 @@ vi.mock('~/composables/useAppClipboard', () => ({
     get draggedItems() {
       return draggedItemsMock;
     },
-  }),
-}));
+  };
+  return {
+    useAppClipboard: () => innerMock,
+  };
+});
 
 vi.mock('~/composables/useDraggedFile', () => ({
   INTERNAL_DRAG_TYPE,
@@ -619,12 +622,15 @@ describe('FileManagerTree', () => {
     const wrapper = mountTree([dir], 'main');
     const dropzone = wrapper.findAll('div').find((w) => w.attributes('role') === 'treeitem');
 
+    const draggedItem = { name: '_video', kind: 'directory', path: '_video' };
+    draggedItemsMock = [draggedItem];
+
     const dataTransfer = {
       types: [FILE_MANAGER_COPY_DRAG_TYPE],
       dropEffect: 'copy',
       getData: vi.fn((type) => {
         if (type === FILE_MANAGER_COPY_DRAG_TYPE) {
-          return JSON.stringify({ path: '_video', kind: 'directory' });
+          return JSON.stringify(draggedItem);
         }
         return '';
       }),
