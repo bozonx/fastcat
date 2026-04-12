@@ -24,22 +24,14 @@ export interface FileSortOption {
 
 export type FilesPageTab = 'computer' | 'bloggerdog' | 'fastcat';
 
-
 function createFileManagerStoreSetup(contextId: string) {
   return () => {
     const selectionStore = useSelectionStore();
-    const selectedFolder = ref<FsEntry | null>(
-      readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'selectedFolder'), null),
-    );
+    const selectedFolder = ref<FsEntry | null>(null);
     const historyStack = ref<FsEntry[]>([]);
     const futureStack = ref<FsEntry[]>([]);
     const folderSizes = ref<Record<string, number>>({});
-    const isBloggerDogPanelVisible = ref(
-      readLocalStorageJson(
-        STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'isBloggerDogPanelVisible'),
-        false,
-      ),
-    );
+    const isBloggerDogPanelVisible = ref(false);
 
     const viewMode = ref<FileViewMode>(
       readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'viewMode'), 'grid'),
@@ -65,7 +57,7 @@ function createFileManagerStoreSetup(contextId: string) {
     );
     const selectionContext = ref<FileManagerSelectionContext>({});
 
-    // Persist settings to localStorage
+    // Persist user preferences to localStorage (not navigation state)
     watch(viewMode, (val) =>
       writeLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'viewMode'), val),
     );
@@ -75,16 +67,6 @@ function createFileManagerStoreSetup(contextId: string) {
     watch(gridCardSize, (val) =>
       writeLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'gridCardSize'), val),
     );
-    watch(isBloggerDogPanelVisible, (val) =>
-      writeLocalStorageJson(
-        STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'isBloggerDogPanelVisible'),
-        val,
-      ),
-    );
-    watch(selectedFolder, (val) =>
-      writeLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'selectedFolder'), val),
-    );
-
     watch(columnWidths, (val) =>
       writeLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'columnWidths'), val),
     );
@@ -123,16 +105,24 @@ function createFileManagerStoreSetup(contextId: string) {
         selectedFolder.value = null;
         return;
       }
-      
-      const parts = path.split('/').filter(Boolean);
-      const name = parts.length > 0 ? parts[parts.length - 1]! : (contextId === 'computer-sidebar' ? 'Computer' : 'Project');
 
-      openFolder({
-        name,
-        kind: 'directory',
-        path: path,
-        source: contextId === 'bloggerdog-sidebar' ? 'remote' : 'local',
-      }, { skipHistory: true });
+      const parts = path.split('/').filter(Boolean);
+      const name =
+        parts.length > 0
+          ? parts[parts.length - 1]!
+          : contextId === 'computer-sidebar'
+            ? 'Computer'
+            : 'Project';
+
+      openFolder(
+        {
+          name,
+          kind: 'directory',
+          path: path,
+          source: contextId === 'bloggerdog-sidebar' ? 'remote' : 'local',
+        },
+        { skipHistory: true },
+      );
     }
 
     function addToHistory(entry: FsEntry) {
@@ -292,7 +282,10 @@ export const useFileBrowserPersistenceStore = defineStore('fileBrowserPersistenc
 
 export type FileManagerStore = ReturnType<ReturnType<typeof createFileManagerStoreSetup>>;
 
-export const useFileManagerStore = defineStore('fileManager', createFileManagerStoreSetup('editor'));
+export const useFileManagerStore = defineStore(
+  'fileManager',
+  createFileManagerStoreSetup('editor'),
+);
 export const useFilesPageFileManagerStore = defineStore(
   'filesPageFileManager',
   createFileManagerStoreSetup('filesPage'),
