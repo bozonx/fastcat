@@ -18,12 +18,6 @@ vi.mock('@vueuse/core', async () => {
   };
 });
 
-vi.mock('~/stores/timeline-settings.store', () => ({
-  useTimelineSettingsStore: () => ({
-    landscapeDrawerPosition: 'right' as const,
-  }),
-}));
-
 describe('MobileTimelineDrawer', () => {
   beforeEach(() => {
     mockWidth.value = 390;
@@ -65,7 +59,7 @@ describe('MobileTimelineDrawer', () => {
     expect(wrapper.emitted('update:activeSnapPoint')?.at(-1)).toEqual([0.92]);
   });
 
-  it('keeps toolbar snap when explicitly enabled', async () => {
+  it('opens in toolbar mode when toolbar snap is enabled', async () => {
     const wrapper = await mountSuspended(MobileTimelineDrawer, {
       props: {
         open: true,
@@ -98,6 +92,80 @@ describe('MobileTimelineDrawer', () => {
     const drawer = wrapper.findComponent({ name: 'UiMobileDrawer' });
 
     expect(drawer.props('snapPoints')).toEqual(['116px', 0.92]);
+    expect(wrapper.emitted('update:activeSnapPoint')?.at(-1)).toEqual(['116px']);
+  });
+
+  it('can open immediately in full mode when requested', async () => {
+    const wrapper = await mountSuspended(MobileTimelineDrawer, {
+      props: {
+        open: true,
+        withToolbarSnap: true,
+        initialMode: 'full',
+      },
+      slots: {
+        default: '<div class="drawer-body">Body</div>',
+      },
+      global: {
+        stubs: {
+          UiMobileDrawer: {
+            name: 'UiMobileDrawer',
+            props: [
+              'open',
+              'activeSnapPoint',
+              'direction',
+              'snapPoints',
+              'modal',
+              'overlay',
+              'withHandle',
+              'showClose',
+              'ui',
+            ],
+            template: '<div class="ui-mobile-drawer-stub" />',
+          },
+        },
+      },
+    });
+
     expect(wrapper.emitted('update:activeSnapPoint')?.at(-1)).toEqual([0.92]);
+  });
+
+  it('always opens as a right drawer in landscape without snap points', async () => {
+    mockWidth.value = 844;
+    mockHeight.value = 390;
+
+    const wrapper = await mountSuspended(MobileTimelineDrawer, {
+      props: {
+        open: true,
+        withToolbarSnap: true,
+      },
+      slots: {
+        default: '<div class="drawer-body">Body</div>',
+      },
+      global: {
+        stubs: {
+          UiMobileDrawer: {
+            name: 'UiMobileDrawer',
+            props: [
+              'open',
+              'activeSnapPoint',
+              'direction',
+              'snapPoints',
+              'modal',
+              'overlay',
+              'withHandle',
+              'showClose',
+              'ui',
+            ],
+            template: '<div class="ui-mobile-drawer-stub" />',
+          },
+        },
+      },
+    });
+
+    const drawer = wrapper.findComponent({ name: 'UiMobileDrawer' });
+
+    expect(drawer.props('direction')).toBe('right');
+    expect(drawer.props('snapPoints')).toBeUndefined();
+    expect(wrapper.emitted('update:activeSnapPoint')).toBeFalsy();
   });
 });

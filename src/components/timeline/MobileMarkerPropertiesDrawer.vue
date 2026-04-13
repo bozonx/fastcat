@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useSelectionStore } from '~/stores/selection.store';
 import MarkerProperties from '~/components/properties/MarkerProperties.vue';
 import MobileTimelineDrawer from './MobileTimelineDrawer.vue';
 import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
@@ -23,7 +22,6 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
-const selectionStore = useSelectionStore();
 
 const isOpenLocal = computed({
   get: () => props.isOpen,
@@ -103,25 +101,25 @@ const mainActions = computed<any[]>(() => {
   <MobileTimelineDrawer
     v-model:open="isOpenLocal"
     v-model:active-snap-point="activeSnapPoint"
-    force-landscape-direction="bottom"
+    with-toolbar-snap
   >
-    <div class="px-4 pb-8 flex flex-col gap-5">
-      <div class="pt-1">
-        <MobileDrawerToolbar class="-mx-4 mb-2">
-          <MobileDrawerToolbarButton
-            icon="i-heroicons-trash"
-            :label="t('common.delete')"
-            @click="confirmDelete"
-          />
-        </MobileDrawerToolbar>
+    <template #toolbar>
+      <MobileDrawerToolbar class="border-b border-ui-border">
+        <MobileDrawerToolbarButton
+          icon="i-heroicons-trash"
+          :label="t('common.delete')"
+          @click="confirmDelete"
+        />
+      </MobileDrawerToolbar>
+    </template>
 
-        <div v-if="mainActions.length > 0" class="py-1 px-3 border border-ui-border rounded-xl bg-zinc-900/40">
-          <PropertyActionList
-            :actions="mainActions"
-            vertical
-            variant="ghost"
-            size="md"
-          />
+    <div class="px-4 pb-8 pt-4 flex flex-col gap-5">
+      <div>
+        <div
+          v-if="mainActions.length > 0"
+          class="py-1 px-3 border border-ui-border rounded-xl bg-zinc-900/40"
+        >
+          <PropertyActionList :actions="mainActions" vertical variant="ghost" size="md" />
         </div>
       </div>
 

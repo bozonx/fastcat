@@ -112,7 +112,7 @@ function onMove(e: TouchEvent) {
       if ('vibrate' in navigator) {
         // navigator.vibrate(1); // Very subtle. Might be annoying during fluid drag.
       }
-    } catch (err) {
+    } catch {
       // Ignore trim errors during drag (e.g. hitting limit)
     }
   }
@@ -131,7 +131,7 @@ function close() {
 </script>
 
 <template>
-  <MobileTimelineDrawer v-model:open="isOpenLocal" force-landscape-direction="bottom">
+  <MobileTimelineDrawer v-model:open="isOpenLocal">
     <template #header>
       <div class="flex items-center gap-2">
         <div class="w-7 h-7 rounded bg-blue-500/20 flex items-center justify-center shrink-0">

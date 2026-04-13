@@ -2,7 +2,6 @@
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import ClipProperties from '~/components/properties/ClipProperties.vue';
@@ -11,7 +10,6 @@ import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
-import { useMediaStore } from '~/stores/media.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useFocusStore } from '~/stores/focus.store';
@@ -26,16 +24,13 @@ const props = defineProps<{
 const activeSnapPoint = defineModel<string | number | null>('activeSnapPoint', { default: null });
 
 const emit = defineEmits<{
-  (e: 'close'): void;
-  (e: 'open-trim-drawer'): void;
+  (e: 'close' | 'open-trim-drawer'): void;
 }>();
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
-const workspaceStore = useWorkspaceStore();
 const clipboardStore = useAppClipboard();
-const mediaStore = useMediaStore();
 const uiStore = useUiStore();
 const fileManagerStore = useFileManagerStore();
 const focusStore = useFocusStore();
@@ -162,7 +157,6 @@ const {
   hasLockedLinkedAudio,
   isLockedLinkedAudioClip,
   isInLinkedGroup,
-  handleDeleteClip,
   handleUnlinkAudio,
   handleQuantizeClip,
   handleRemoveFromGroup,
@@ -409,103 +403,95 @@ const otherActions = computed(() => {
   <MobileTimelineDrawer
     v-model:open="isOpenLocal"
     v-model:active-snap-point="activeSnapPoint"
-    force-landscape-direction="bottom"
+    with-toolbar-snap
   >
-    <div v-if="clip" class="px-4 pb-8">
-      <div class="mb-4 pt-1">
-        <MobileDrawerToolbar class="-mx-4 mb-2">
-          <MobileDrawerToolbarButton
-            icon="i-heroicons-trash"
-            :label="t('common.delete')"
-            :disabled="isLocked"
-            @click="requestDelete"
-          />
+    <template #toolbar>
+      <MobileDrawerToolbar class="border-b border-ui-border">
+        <MobileDrawerToolbarButton
+          icon="i-heroicons-trash"
+          :label="t('common.delete')"
+          :disabled="isLocked"
+          @click="requestDelete"
+        />
 
-          <MobileDrawerToolbarButton
-            icon="i-heroicons-pencil"
-            :label="t('common.rename')"
-            :disabled="isLocked"
-            @click="isRenameModalOpen = true"
-          />
+        <MobileDrawerToolbarButton
+          icon="i-heroicons-pencil"
+          :label="t('common.rename')"
+          :disabled="isLocked"
+          @click="isRenameModalOpen = true"
+        />
 
-          <MobileDrawerToolbarButton
-            icon="i-heroicons-document-duplicate"
-            :label="t('common.copy')"
-            @click="handleCopy"
-          />
+        <MobileDrawerToolbarButton
+          icon="i-heroicons-document-duplicate"
+          :label="t('common.copy')"
+          @click="handleCopy"
+        />
 
-          <MobileDrawerToolbarButton
-            icon="i-heroicons-scissors"
-            :label="t('common.cut')"
-            :disabled="isLocked"
-            @click="handleCut"
-          />
+        <MobileDrawerToolbarButton
+          icon="i-heroicons-scissors"
+          :label="t('common.cut')"
+          :disabled="isLocked"
+          @click="handleCut"
+        />
 
-          <MobileDrawerToolbarButton
-            primary
-            icon="i-heroicons-arrows-right-left"
-            :label="t('fastcat.timeline.trimMode')"
-            :disabled="isLocked"
-            @click="$emit('open-trim-drawer')"
-          />
+        <MobileDrawerToolbarButton
+          primary
+          icon="i-heroicons-arrows-right-left"
+          :label="t('fastcat.timeline.trimMode')"
+          :disabled="isLocked"
+          @click="$emit('open-trim-drawer')"
+        />
 
+        <MobileDrawerToolbarButton
+          :icon="clip?.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
+          :label="
+            clip?.disabled ? t('fastcat.timeline.enableClip') : t('fastcat.timeline.disableClip')
+          "
+          :active="clip?.disabled"
+          @click="toggleDisabled"
+        />
+
+        <template v-if="hasAudio">
           <MobileDrawerToolbarButton
-            :icon="clip?.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
+            :icon="clip?.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
             :label="
-              clip?.disabled
-                ? t('fastcat.timeline.enableClip')
-                : t('fastcat.timeline.disableClip')
+              clip?.audioMuted ? t('fastcat.timeline.unmuteClip') : t('fastcat.timeline.muteClip')
             "
-            :active="clip?.disabled"
-            @click="toggleDisabled"
-          />
-
-          <template v-if="hasAudio">
-            <MobileDrawerToolbarButton
-              :icon="clip?.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
-              :label="
-                clip?.audioMuted
-                  ? t('fastcat.timeline.unmuteClip')
-                  : t('fastcat.timeline.muteClip')
-              "
-              :active="clip?.audioMuted"
-              @click="toggleMuted"
-            />
-
-            <MobileDrawerToolbarButton
-              :icon="isSoloed ? 'i-heroicons-musical-note-solid' : 'i-heroicons-musical-note'"
-              :label="isSoloed ? t('fastcat.timeline.unsolo') : t('fastcat.timeline.solo')"
-              :active="isSoloed"
-              @click="toggleSolo"
-            />
-          </template>
-
-          <MobileDrawerToolbarButton
-            :icon="clip?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
-            :label="
-              clip?.locked
-                ? t('fastcat.timeline.unlockClip')
-                : t('fastcat.timeline.lockClip')
-            "
-            :active="clip?.locked"
-            @click="toggleLocked"
+            :active="clip?.audioMuted"
+            @click="toggleMuted"
           />
 
           <MobileDrawerToolbarButton
-            icon="i-heroicons-backspace"
-            :label="t('fastcat.timeline.rippleDelete')"
-            :disabled="isLocked"
-            @click="requestRippleDelete"
+            :icon="isSoloed ? 'i-heroicons-musical-note-solid' : 'i-heroicons-musical-note'"
+            :label="isSoloed ? t('fastcat.timeline.unsolo') : t('fastcat.timeline.solo')"
+            :active="isSoloed"
+            @click="toggleSolo"
           />
-        </MobileDrawerToolbar>
+        </template>
 
-        <div v-if="otherActions.length > 0" class="py-1 px-3 border border-ui-border rounded-xl bg-zinc-900/40">
-          <PropertyActionList
-            :actions="otherActions"
-            vertical
-            variant="ghost"
-            size="md"
-          />
+        <MobileDrawerToolbarButton
+          :icon="clip?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
+          :label="clip?.locked ? t('fastcat.timeline.unlockClip') : t('fastcat.timeline.lockClip')"
+          :active="clip?.locked"
+          @click="toggleLocked"
+        />
+
+        <MobileDrawerToolbarButton
+          icon="i-heroicons-backspace"
+          :label="t('fastcat.timeline.rippleDelete')"
+          :disabled="isLocked"
+          @click="requestRippleDelete"
+        />
+      </MobileDrawerToolbar>
+    </template>
+
+    <div v-if="clip" class="px-4 pb-8 pt-4">
+      <div class="mb-4">
+        <div
+          v-if="otherActions.length > 0"
+          class="py-1 px-3 border border-ui-border rounded-xl bg-zinc-900/40"
+        >
+          <PropertyActionList :actions="otherActions" vertical variant="ghost" size="md" />
         </div>
       </div>
 

@@ -176,6 +176,7 @@ describe('UiMobileDrawer', () => {
 
     expect(wrapper.find('.body-slot').exists()).toBe(true);
     expect(wrapper.find('.overflow-y-auto').exists()).toBe(true);
+    expect(wrapper.find('[data-vaul-no-drag]').exists()).toBe(true);
     expect(wrapper.emitted('update:open')).toBeFalsy();
     expect(wrapper.emitted('update:activeSnapPoint')).toBeFalsy();
   });

@@ -913,74 +913,58 @@ onBeforeUnmount(() => {
     <MobileTimelineDrawer
       v-model:open="isMultiSelectionDrawerOpen"
       v-model:active-snap-point="drawerActiveSnapPoint"
-      force-landscape-direction="bottom"
+      with-toolbar-snap
       @update:open="(value) => !value && onMultiSelectionDrawerClose()"
     >
-      <div v-if="selectedClips" class="px-4 pb-8">
-        <div class="mb-4 pt-1">
-          <MobileDrawerToolbar class="-mx-4 border-b border-ui-border mb-2">
-            <MobileDrawerToolbarButton
-              icon="i-heroicons-trash"
-              :label="t('common.delete')"
-              @click="handleDelete"
-            />
-            <MobileDrawerToolbarButton
-              icon="i-heroicons-document-duplicate"
-              :label="t('common.copy')"
-              @click="handleCopyClips"
-            />
-            <MobileDrawerToolbarButton
-              icon="i-heroicons-scissors"
-              :label="t('common.cut')"
-              @click="handleCutClips"
-            />
-            <MobileDrawerToolbarButton
-              v-if="hasVideoOrImage"
-              :icon="allDisabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
-              :label="
-                allDisabled
-                  ? t('fastcat.timeline.enable')
-                  : t('fastcat.timeline.disable')
-              "
-              @click="toggleDisabled"
-            />
-            <MobileDrawerToolbarButton
-              v-if="hasAudioOrVideoWithAudio"
-              :icon="allMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
-              :label="
-                allMuted
-                  ? t('fastcat.timeline.unmute')
-                  : t('fastcat.timeline.mute')
-              "
-              @click="toggleMuted"
-            />
-            <MobileDrawerToolbarButton
-              :icon="allSoloed ? 'i-heroicons-musical-note-solid' : 'i-heroicons-musical-note'"
-              :label="
-                allSoloed
-                  ? t('fastcat.timeline.unsolo')
-                  : t('fastcat.timeline.solo')
-              "
-              @click="toggleSolo"
-            />
-            <MobileDrawerToolbarButton
-              :icon="allLocked ? 'i-heroicons-lock-closed' : 'i-heroicons-lock-open'"
-              :label="
-                allLocked
-                  ? t('fastcat.timeline.unlock')
-                  : t('fastcat.timeline.lock')
-              "
-              @click="toggleLocked"
-            />
-            <div class="w-px h-6 bg-ui-border mx-1 shrink-0" />
-            <MobileDrawerToolbarButton
-              icon="i-heroicons-x-mark"
-              :label="t('common.clearSelection')"
-              @click="onMultiSelectionDrawerClose"
-            />
-          </MobileDrawerToolbar>
-        </div>
+      <template #toolbar>
+        <MobileDrawerToolbar class="border-b border-ui-border">
+          <MobileDrawerToolbarButton
+            icon="i-heroicons-trash"
+            :label="t('common.delete')"
+            @click="handleDelete"
+          />
+          <MobileDrawerToolbarButton
+            icon="i-heroicons-document-duplicate"
+            :label="t('common.copy')"
+            @click="handleCopyClips"
+          />
+          <MobileDrawerToolbarButton
+            icon="i-heroicons-scissors"
+            :label="t('common.cut')"
+            @click="handleCutClips"
+          />
+          <MobileDrawerToolbarButton
+            v-if="hasVideoOrImage"
+            :icon="allDisabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
+            :label="allDisabled ? t('fastcat.timeline.enable') : t('fastcat.timeline.disable')"
+            @click="toggleDisabled"
+          />
+          <MobileDrawerToolbarButton
+            v-if="hasAudioOrVideoWithAudio"
+            :icon="allMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
+            :label="allMuted ? t('fastcat.timeline.unmute') : t('fastcat.timeline.mute')"
+            @click="toggleMuted"
+          />
+          <MobileDrawerToolbarButton
+            :icon="allSoloed ? 'i-heroicons-musical-note-solid' : 'i-heroicons-musical-note'"
+            :label="allSoloed ? t('fastcat.timeline.unsolo') : t('fastcat.timeline.solo')"
+            @click="toggleSolo"
+          />
+          <MobileDrawerToolbarButton
+            :icon="allLocked ? 'i-heroicons-lock-closed' : 'i-heroicons-lock-open'"
+            :label="allLocked ? t('fastcat.timeline.unlock') : t('fastcat.timeline.lock')"
+            @click="toggleLocked"
+          />
+          <div class="w-px h-6 bg-ui-border mx-1 shrink-0" />
+          <MobileDrawerToolbarButton
+            icon="i-heroicons-x-mark"
+            :label="t('common.clearSelection')"
+            @click="onMultiSelectionDrawerClose"
+          />
+        </MobileDrawerToolbar>
+      </template>
 
+      <div v-if="selectedClips" class="px-4 pb-8 pt-4">
         <MultiClipProperties :items="selectedClips" />
       </div>
     </MobileTimelineDrawer>
@@ -1038,8 +1022,8 @@ onBeforeUnmount(() => {
 
     <!-- Timeline Settings Drawer -->
     <MobileTimelineSettingsDrawer
-      :is-open="isSettingsDrawerOpen"
       v-model:active-snap-point="drawerActiveSnapPoint"
+      :is-open="isSettingsDrawerOpen"
       @close="
         () => {
           isSettingsDrawerOpen = false;

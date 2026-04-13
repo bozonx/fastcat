@@ -24,6 +24,7 @@ const audioEngineInstances: Array<{
 vi.mock('~/utils/video-editor/worker-client', () => ({
   getPreviewWorkerClient: () => ({ client: mockClient, worker: {} }),
   setPreviewHostApi: vi.fn(),
+  setProxyHostApi: vi.fn(),
 }));
 
 vi.mock('~/stores/workspace.store', () => ({
@@ -31,6 +32,7 @@ vi.mock('~/stores/workspace.store', () => ({
     userSettings: {
       optimization: { videoFrameCacheMb: 256 },
       projectDefaults: { audioDeclickDurationUs: 5000 },
+      timeline: { defaultStaticClipDurationUs: 5000000 },
     },
     workspaceHandle: null,
   }),

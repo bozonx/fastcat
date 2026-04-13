@@ -15,9 +15,12 @@ const mockTimelineStore = reactive({
   rippleTrimRight: vi.fn(),
   selectedItemIds: [] as string[],
   getHotkeyTargetClip: vi.fn((): any => null),
+  timelineZoom: 100,
+  setTimelineZoom: vi.fn(),
+  currentTime: 0,
 });
 
-const mockSettingsStore = {
+const mockSettingsStore = reactive({
   toolbarSnapMode: 'snap',
   toolbarDragMode: 'pseudo_overlap',
   toolbarDragModeEnabled: true,
@@ -25,7 +28,8 @@ const mockSettingsStore = {
   cycleToolbarSnapMode: vi.fn(),
   selectToolbarDragMode: vi.fn(),
   toggleSelectedToolbarDragMode: vi.fn(),
-};
+  isSnapSettingsModalOpen: false,
+});
 
 vi.mock('~/stores/timeline.store', () => ({
   useTimelineStore: () => mockTimelineStore,

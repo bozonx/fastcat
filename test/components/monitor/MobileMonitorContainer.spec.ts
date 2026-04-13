@@ -149,11 +149,11 @@ describe('MobileMonitorContainer', () => {
     expect(wrapper.find('.viewport-stub').exists()).toBe(true);
     expect(wrapper.find('.audio-control-stub').exists()).toBe(true);
 
-    // Check playback buttons - aria-label uses i18n fallback
-    const playPauseBtn = wrapper.find('[aria-label="Play"]');
+    // Check playback buttons - aria-label uses i18n keys
+    const playPauseBtn = wrapper.find('[aria-label="fastcat.monitor.play"]');
     expect(playPauseBtn.exists()).toBe(true);
 
-    const rewindBtn = wrapper.find('[aria-label="Home"]');
+    const rewindBtn = wrapper.find('[aria-label="fastcat.monitor.rewind"]');
     expect(rewindBtn.exists()).toBe(true);
   });
 
@@ -165,7 +165,7 @@ describe('MobileMonitorContainer', () => {
       },
     });
 
-    const fullscreenBtn = wrapper.find('[aria-label="Fullscreen"]');
+    const fullscreenBtn = wrapper.find('[aria-label="fastcat.monitor.fullscreen"]');
     if (!fullscreenBtn.exists()) {
       // Skip if button not found
       expect(true).toBe(true);
@@ -200,7 +200,7 @@ describe('MobileMonitorContainer', () => {
     // In the setup above, canInteractPlayback is true because of safeDurationUs: ref(1000000)
     // and useMonitorRuntime mock.
     // Let's check the play button
-    const playBtn = wrapper.find('[aria-label="Play"]');
+    const playBtn = wrapper.find('[aria-label="fastcat.monitor.play"]');
     expect(playBtn.attributes('disabled')).toBeUndefined(); // null or undefined means not disabled
   });
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useWindowSize } from '@vueuse/core';
 import { useTeleportTarget } from '~/composables/ui/useTeleportTarget';
 
@@ -101,6 +101,10 @@ const containerClasses = computed(() => {
 
   const heightClass = props.isFullHeight ? 'h-[95dvh]' : 'max-h-[85dvh]';
   return `${base} ${heightClass} w-full border-t border-zinc-800/80 ${bgColor} rounded-t-2xl ${props.ui.container || ''}`;
+});
+
+const bodyClasses = computed(() => {
+  return `flex-1 min-h-0 overflow-y-auto pb-safe custom-scrollbar ${props.ui.body || ''}`;
 });
 
 // --- Non-modal Backdrop Logic (for interactive drawers like timeline) ---
@@ -269,6 +273,7 @@ watch(isOpen, (val) => {
           v-if="props.title || $slots.header || props.showClose"
           class="shrink-0 pt-3 pb-3 px-5 border-b border-white/5 flex items-center justify-between gap-4"
           :class="props.ui.header"
+          data-vaul-no-drag
         >
           <div class="flex-1 min-w-0">
             <slot name="header">
@@ -295,11 +300,7 @@ watch(isOpen, (val) => {
         </div>
 
         <!-- Main Body -->
-        <div
-          ref="bodyRef"
-          class="flex-1 overflow-y-auto pb-safe custom-scrollbar"
-          :class="props.ui.body"
-        >
+        <div ref="bodyRef" data-vaul-no-drag :class="bodyClasses">
           <slot />
         </div>
 
@@ -308,6 +309,7 @@ watch(isOpen, (val) => {
           v-if="$slots.footer"
           class="shrink-0 px-5 py-4 border-t border-zinc-800/60"
           :class="props.ui.footer"
+          data-vaul-no-drag
         >
           <slot name="footer" />
         </div>

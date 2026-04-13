@@ -61,7 +61,7 @@ describe('bloggerdog file manager rules', () => {
     expect(canCutBloggerDogEntry(contentItemEntry)).toBe(false);
   });
 
-  it('allows paste only into BloggerDog content items', () => {
+  it('allows paste into BloggerDog content items and groups', () => {
     const contentItemEntry = createBloggerDogEntry({
       kind: 'directory',
       name: 'Item',
@@ -76,7 +76,7 @@ describe('bloggerdog file manager rules', () => {
     });
 
     expect(canPasteIntoBloggerDogEntry(contentItemEntry)).toBe(true);
-    expect(canPasteIntoBloggerDogEntry(groupEntry)).toBe(false);
+    expect(canPasteIntoBloggerDogEntry(groupEntry)).toBe(true);
   });
 
   it('allows BloggerDog cross-transfer only for media files', () => {

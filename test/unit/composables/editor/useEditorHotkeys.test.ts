@@ -17,6 +17,9 @@ import { useClipboardStore } from '~/stores/clipboard.store';
 
 const mockWorkspaceStore = {
   userSettings: {
+    history: {
+      maxEntries: 100,
+    },
     hotkeys: {
       layer1: 'Shift',
       layer2: 'Control',
@@ -29,6 +32,12 @@ const mockWorkspaceStore = {
       defaultStaticClipDurationUs: 5000000,
     },
   },
+  workspaceState: {
+    fileBrowser: {
+      instances: {},
+    },
+  },
+  batchUpdateWorkspaceState: vi.fn(),
 };
 
 vi.mock('~/composables/editor/useProjectActions', () => ({
@@ -63,7 +72,9 @@ vi.mock('#app', () => ({
 const HotkeysHarness = defineComponent({
   setup() {
     useEditorHotkeys();
-    return () => h('div');
+  },
+  render() {
+    return h('div');
   },
 });
 

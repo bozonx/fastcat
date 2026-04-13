@@ -81,7 +81,7 @@ describe('useProjectTabs', () => {
 
       expect(items).toHaveLength(1);
       expect(items[0]).toHaveLength(1);
-      expect(items[0]![0]!.label).toBe('Detach');
+      expect(items[0]![0]!.label).toBe('common.detach');
       expect(items[0]![0]!.disabled).toBe(true);
     });
 
@@ -91,7 +91,7 @@ describe('useProjectTabs', () => {
 
       expect(items).toHaveLength(1);
       expect(items[0]).toHaveLength(1);
-      expect(items[0]![0]!.label).toBe('Detach');
+      expect(items[0]![0]!.label).toBe('common.detach');
       expect(items[0]![0]!.disabled).toBe(false);
     });
   });
