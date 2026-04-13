@@ -150,8 +150,12 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
   }
 
   async function resolveNestedTimeline(path: string, name: string) {
+    console.log('DEBUG: resolveNestedTimeline path:', path);
     const file = await deps.getFileByPath(path);
-    if (!file) throw new Error('Failed to access file');
+    if (!file) {
+      console.log('DEBUG: getFileByPath returned null for:', path);
+      throw new Error('Failed to access file');
+    }
     const text = await file.text();
     const doc = deps.parseTimelineFromOtio(text, { id: 'nested', name, fps: 25 });
 

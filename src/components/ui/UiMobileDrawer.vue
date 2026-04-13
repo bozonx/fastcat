@@ -91,6 +91,19 @@ const isExpanded = computed(() => {
   return activeSnapPoint.value === lastPoint;
 });
 
+/**
+ * Compute max-height from the largest snap point.
+ * vaul-vue renders the DrawerContent at full viewport height and translates it,
+ * so without this constraint the container overflows behind the screen edge.
+ */
+const maxContentHeight = computed(() => {
+  if (!props.snapPoints?.length) return undefined;
+  if (effectiveDirection.value !== 'bottom' && effectiveDirection.value !== 'top') return undefined;
+  const lastPoint = props.snapPoints[props.snapPoints.length - 1];
+  if (typeof lastPoint === 'number') return `${lastPoint * 100}dvh`;
+  return undefined;
+});
+
 /** Responsive container logic */
 const containerClasses = computed(() => {
   const base =
@@ -103,7 +116,7 @@ const containerClasses = computed(() => {
   }
 
   const heightClass = props.snapPoints?.length
-    ? 'h-full max-h-dvh'
+    ? 'h-full'
     : props.isFullHeight
       ? 'h-[95dvh]'
       : 'max-h-[85dvh]';
@@ -131,13 +144,17 @@ const isBackdropInteractive = computed(
 );
 
 const containerStyle = computed(() => {
-  if (!backdropDragOffset.value || effectiveDirection.value !== 'bottom' || !isExpanded.value) {
-    return undefined;
+  const style: Record<string, string> = {};
+
+  if (maxContentHeight.value) {
+    style.maxHeight = maxContentHeight.value;
   }
 
-  return {
-    transform: `translate3d(0, ${backdropDragOffset.value}px, 0)`,
-  };
+  if (backdropDragOffset.value && effectiveDirection.value === 'bottom' && isExpanded.value) {
+    style.transform = `translate3d(0, ${backdropDragOffset.value}px, 0)`;
+  }
+
+  return Object.keys(style).length ? style : undefined;
 });
 
 const bodyRef = ref<HTMLElement | null>(null);
@@ -238,10 +255,11 @@ watch(isOpen, (val) => {
   <Teleport v-if="!props.modal" :to="effectiveTeleportTarget">
     <div
       class="fixed inset-0 bg-zinc-950/40 backdrop-blur-[2px] transition-all duration-300 z-[calc(var(--z-fixed)-1)]"
-      :class="[
-        isOpen && props.overlay && isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none',
-        isOpen && isExpanded ? 'pointer-events-auto' : 'pointer-events-none',
-      ]"
+      :class="
+        isOpen && isExpanded
+          ? ['pointer-events-auto', props.overlay ? 'opacity-100' : 'opacity-0']
+          : 'opacity-0 pointer-events-none'
+      "
       :style="{ touchAction: isBackdropInteractive ? 'none' : 'auto' }"
       @touchstart.passive="onBackdropTouchStart"
       @touchmove.passive="onBackdropTouchMove"

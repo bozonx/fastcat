@@ -42,22 +42,30 @@ vi.mock('~/stores/media.store', () => ({
 }));
 
 describe('TimelineStore', () => {
+  let store: any;
+
   beforeEach(() => {
     setActivePinia(createPinia());
+    store = useTimelineStore();
     projectStoreMock.getFileHandleByPath.mockReset();
+    projectStoreMock.getFileByPath.mockReset().mockImplementation(async () => ({
+      type: 'image/jpeg',
+      size: 100,
+      lastModified: 1,
+      text: async () => '{}',
+    } as any));
+    store = useTimelineStore();
     mediaStoreMock.getOrFetchMetadataByPath.mockReset();
     mediaStoreMock.getOrFetchMetadata.mockReset();
   });
 
   it('initializes with default state', () => {
-    const store = useTimelineStore();
     expect(store.timelineDoc).toBeNull();
     expect(store.isPlaying).toBe(false);
     expect(store.masterGain).toBe(1);
   });
 
   it('manages item selection', () => {
-    const store = useTimelineStore();
     store.toggleSelection('item-1');
     expect(store.selectedItemIds).toEqual(['item-1']);
 
@@ -70,7 +78,6 @@ describe('TimelineStore', () => {
   });
 
   it('sets audio volume and unmutes when positive', () => {
-    const store = useTimelineStore();
     store.audioMuted = true;
 
     // The store no longer mutates state directly for masterGain, it applies a command.
@@ -81,7 +88,6 @@ describe('TimelineStore', () => {
   });
 
   it('toggles playback', () => {
-    const store = useTimelineStore();
     const handler = vi.fn();
     store.setPlaybackGestureHandler(handler);
 
@@ -95,8 +101,6 @@ describe('TimelineStore', () => {
   });
 
   it('allows negative playback speed and clamps magnitude', () => {
-    const store = useTimelineStore();
-
     store.setPlaybackSpeed(-2);
     expect(store.playbackSpeed).toBe(-2);
 
@@ -108,7 +112,6 @@ describe('TimelineStore', () => {
   });
 
   it('resets state correctly', () => {
-    const store = useTimelineStore();
     store.isPlaying = true;
     store.currentTime = 100;
     store.timelineZoom = 80;
@@ -121,8 +124,6 @@ describe('TimelineStore', () => {
   });
 
   it('sets freeze frame from playhead when playhead is inside clip', () => {
-    const store = useTimelineStore();
-
     store.timelineDoc = createTestTimeline()
       .withTrack('v1')
       .withClip('c1', 'v1', { startUs: 1_000_000, durationUs: 2_000_000 })
@@ -137,8 +138,6 @@ describe('TimelineStore', () => {
   });
 
   it('sets freeze frame to first frame when playhead is outside clip', () => {
-    const store = useTimelineStore();
-
     store.timelineDoc = {
       OTIO_SCHEMA: 'Timeline.1',
       id: 'doc-1',
@@ -174,8 +173,6 @@ describe('TimelineStore', () => {
   });
 
   it('resets freeze frame', () => {
-    const store = useTimelineStore();
-
     store.timelineDoc = {
       OTIO_SCHEMA: 'Timeline.1',
       id: 'doc-1',
@@ -212,7 +209,6 @@ describe('TimelineStore', () => {
   it('debounces history entries when requested', () => {
     vi.useFakeTimers();
 
-    const store = useTimelineStore();
     const historyStore = useHistoryStore();
 
     store.timelineDoc = projectStoreMock.createFallbackTimelineDoc() as any;
@@ -235,8 +231,6 @@ describe('TimelineStore', () => {
   });
 
   it('jumps to previous/next clip boundary (all tracks)', () => {
-    const store = useTimelineStore();
-
     store.timelineDoc = {
       OTIO_SCHEMA: 'Timeline.1',
       id: 'doc-1',
@@ -273,8 +267,6 @@ describe('TimelineStore', () => {
   });
 
   it('jumps to previous/next clip boundary (current track only)', () => {
-    const store = useTimelineStore();
-
     store.timelineDoc = {
       OTIO_SCHEMA: 'Timeline.1',
       id: 'doc-1',
@@ -329,8 +321,6 @@ describe('TimelineStore', () => {
   });
 
   it('splits a selected clip at playhead', async () => {
-    const store = useTimelineStore();
-
     store.timelineDoc = {
       OTIO_SCHEMA: 'Timeline.1',
       id: 'doc-1',
@@ -369,8 +359,6 @@ describe('TimelineStore', () => {
   });
 
   it('trims left/right to playhead without ripple', async () => {
-    const store = useTimelineStore();
-
     store.timelineDoc = {
       OTIO_SCHEMA: 'Timeline.1',
       id: 'doc-1',
@@ -447,8 +435,6 @@ describe('TimelineStore', () => {
   });
 
   it('toggles disable and mute on target clip', async () => {
-    const store = useTimelineStore();
-
     store.timelineDoc = {
       OTIO_SCHEMA: 'Timeline.1',
       id: 'doc-1',
@@ -493,8 +479,6 @@ describe('TimelineStore', () => {
   });
 
   it('adds image source to video track with default image duration', async () => {
-    const store = useTimelineStore();
-
     store.timelineDoc = {
       OTIO_SCHEMA: 'Timeline.1',
       id: 'doc-1',
@@ -536,8 +520,6 @@ describe('TimelineStore', () => {
   });
 
   it('adds nested timeline clip from .otio path and blocks self-drop', async () => {
-    const store = useTimelineStore();
-
     store.timelineDoc = {
       OTIO_SCHEMA: 'Timeline.1',
       id: 'doc-1',
@@ -604,14 +586,16 @@ describe('TimelineStore', () => {
       2,
     );
 
-    projectStoreMock.getFileByPath.mockImplementation(async (path: string) => {
-      if (path === 'nested.otio') {
+    projectStoreMock.getFileByPath.mockImplementation(async (p: string) => {
+      console.log('DEBUG: Mock getFileByPath called with:', p);
+      if (p.includes('nested.otio')) {
         return {
           text: async () => otio,
-        };
+        } as any;
       }
       return null;
     });
+    store = useTimelineStore();
 
     await store.addTimelineClipToTimelineFromPath({
       trackId: 'v1',
@@ -640,7 +624,7 @@ describe('TimelineStore', () => {
   });
 
   it('rejects nested timeline without audio on audio track and allows moving nested timeline to audio track', async () => {
-    const store = useTimelineStore();
+    store = useTimelineStore();
 
     store.timelineDoc = {
       OTIO_SCHEMA: 'Timeline.1',
@@ -752,17 +736,18 @@ describe('TimelineStore', () => {
       if (path === 'video-only.otio') {
         return {
           text: async () => videoOnlyNestedOtio,
-        };
+        } as any;
       }
 
       if (path === 'nested-av.otio') {
         return {
           text: async () => avNestedOtio,
-        };
+        } as any;
       }
 
       return null;
     });
+    store = useTimelineStore();
 
     await expect(
       store.addTimelineClipToTimelineFromPath({
@@ -801,7 +786,7 @@ describe('TimelineStore', () => {
   });
 
   it('rejects transitive circular nested timeline dependency', async () => {
-    const store = useTimelineStore();
+    store = useTimelineStore();
 
     store.timelineDoc = {
       OTIO_SCHEMA: 'Timeline.1',
@@ -869,6 +854,7 @@ describe('TimelineStore', () => {
 
       return null;
     });
+    store = useTimelineStore();
 
     await expect(
       store.addTimelineClipToTimelineFromPath({
