@@ -61,6 +61,23 @@ vi.mock('~/stores/workspace.store', () => ({
     userSettings: {
       timeline: {
         defaultStaticClipDurationUs: 5_000_000,
+        snapThresholdPx: 10,
+        snapping: {
+          timelineEdges: true,
+          playhead: true,
+          markers: true,
+          clips: true,
+          selection: true,
+        },
+      },
+      history: {
+        maxEntries: 100,
+      },
+      projectDefaults: {
+        audioScrubbingEnabled: true,
+      },
+      ui: {
+        interfaceScale: 1,
       },
       hotkeys: {
         layer1: 'Shift',
@@ -90,14 +107,23 @@ vi.mock('~/stores/workspace.store', () => ({
         monitor: {
           wheel: 'zoom',
         },
+        ruler: {
+          shiftClick: 'playSelection',
+        },
       },
     },
     workspaceState: {
       fileBrowser: {
         instances: {},
       },
+      presets: {
+        custom: [],
+        defaultText: '',
+      },
     },
     batchUpdateUserSettings: vi.fn(),
+    batchUpdateWorkspaceState: vi.fn(),
+    init: vi.fn(),
   })),
 }));
 
@@ -109,6 +135,10 @@ const { createNuxtMock } = vi.hoisted(() => ({
       getMetadata: vi.fn(),
       getFile: vi.fn(),
       readDirectory: vi.fn(),
+      listEntryNames: vi.fn().mockResolvedValue([]),
+      copyFile: vi.fn().mockResolvedValue(undefined),
+      createDirectory: vi.fn().mockResolvedValue(undefined),
+      readFile: vi.fn().mockResolvedValue(new Uint8Array()),
     },
     _route: {
       path: '/',
@@ -156,6 +186,12 @@ vi.mock('#ui/composables/useToast', () => {
     toastMaxInjectionKey,
   };
 });
+
+vi.mock('~/utils/video-editor/worker-client', () => ({
+  getPreviewWorkerClient: () => ({ client: {}, worker: {} }),
+  setPreviewHostApi: vi.fn(),
+  setProxyHostApi: vi.fn(),
+}));
 
 vi.mock('#ui/utils', () => ({
   get: vi.fn(),

@@ -4,6 +4,8 @@ import { setActivePinia, createPinia } from 'pinia';
 import { nextTick } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
+vi.unmock('~/stores/workspace.store');
+
 describe('WorkspaceStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia());

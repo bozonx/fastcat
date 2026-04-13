@@ -40,12 +40,6 @@ const selectedTrack = computed(() => {
   return tracks.value.find((t) => t.id === timelineStore.selectedTrackId) || null;
 });
 
-const selectedTrackNumber = computed(() => {
-  if (!selectedTrack.value) return 1;
-  const filtered = tracks.value.filter((t) => t.kind === selectedTrack.value!.kind);
-  return filtered.indexOf(selectedTrack.value) + 1;
-});
-
 const isTrackFirstOfKind = computed(() => {
   if (!selectedTrack.value) return true;
   return (
@@ -155,100 +149,81 @@ const extraActions = computed(() => {
   <MobileTimelineDrawer
     v-model:open="isOpenLocal"
     v-model:active-snap-point="activeSnapPoint"
-    force-landscape-direction="bottom"
+    with-toolbar-snap
   >
-    <div v-if="selectedTrack" class="px-4 pb-8 flex flex-col gap-4">
-      <div class="pt-1">
-        <MobileDrawerToolbar class="-mx-4 mb-2">
-          <!-- Delete -->
-          <MobileDrawerToolbarButton
-            icon="i-heroicons-trash"
-            :label="t('common.delete')"
-            @click="requestDeleteTrack"
-          />
+    <template #toolbar>
+      <MobileDrawerToolbar class="border-b border-ui-border">
+        <MobileDrawerToolbarButton
+          icon="i-heroicons-trash"
+          :label="t('common.delete')"
+          @click="requestDeleteTrack"
+        />
 
-          <!-- Rename -->
-          <MobileDrawerToolbarButton
-            icon="i-heroicons-pencil-square"
-            :label="t('common.rename')"
-            @click="isTrackRenameOpen = true"
-          />
+        <MobileDrawerToolbarButton
+          icon="i-heroicons-pencil-square"
+          :label="t('common.rename')"
+          @click="isTrackRenameOpen = true"
+        />
 
-          <!-- Lock / Unlock -->
-          <MobileDrawerToolbarButton
-            :icon="selectedTrack?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
-            :label="
-              selectedTrack?.locked
-                ? t('fastcat.track.unlock')
-                : t('fastcat.track.lock')
-            "
-            :active="selectedTrack?.locked"
-            @click="toggleTrackLock"
-          />
+        <MobileDrawerToolbarButton
+          :icon="selectedTrack?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
+          :label="selectedTrack?.locked ? t('fastcat.track.unlock') : t('fastcat.track.lock')"
+          :active="selectedTrack?.locked"
+          @click="toggleTrackLock"
+        />
 
-          <!-- Hide / Show (video only) -->
-          <MobileDrawerToolbarButton
-            v-if="selectedTrack?.kind === 'video'"
-            :icon="selectedTrack?.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
-            :label="
-              selectedTrack?.videoHidden
-                ? t('fastcat.timeline.showTrack')
-                : t('fastcat.timeline.hideTrack')
-            "
-            :active="selectedTrack?.videoHidden"
-            @click="toggleTrackVideoHidden"
-          />
+        <MobileDrawerToolbarButton
+          v-if="selectedTrack?.kind === 'video'"
+          :icon="selectedTrack?.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
+          :label="
+            selectedTrack?.videoHidden
+              ? t('fastcat.timeline.showTrack')
+              : t('fastcat.timeline.hideTrack')
+          "
+          :active="selectedTrack?.videoHidden"
+          @click="toggleTrackVideoHidden"
+        />
 
-          <!-- Mute / Unmute -->
-          <MobileDrawerToolbarButton
-            :icon="
-              selectedTrack?.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'
-            "
-            :label="
-              selectedTrack?.audioMuted
-                ? t('fastcat.track.unmute')
-                : t('fastcat.track.mute')
-            "
-            :active="selectedTrack?.audioMuted"
-            @click="toggleTrackMute"
-          />
+        <MobileDrawerToolbarButton
+          :icon="
+            selectedTrack?.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'
+          "
+          :label="selectedTrack?.audioMuted ? t('fastcat.track.unmute') : t('fastcat.track.mute')"
+          :active="selectedTrack?.audioMuted"
+          @click="toggleTrackMute"
+        />
 
-          <!-- Solo -->
-          <MobileDrawerToolbarButton
-            icon="i-heroicons-musical-note"
-            :label="t('fastcat.track.solo')"
-            :active="selectedTrack?.audioSolo"
-            @click="toggleTrackSolo"
-          />
+        <MobileDrawerToolbarButton
+          icon="i-heroicons-musical-note"
+          :label="t('fastcat.track.solo')"
+          :active="selectedTrack?.audioSolo"
+          @click="toggleTrackSolo"
+        />
 
-          <!-- Move Up -->
-          <MobileDrawerToolbarButton
-            icon="i-heroicons-arrow-up"
-            :label="t('fastcat.track.moveUp')"
-            :disabled="isTrackFirstOfKind"
-            @click="moveSelectedTrackUp"
-          />
+        <MobileDrawerToolbarButton
+          icon="i-heroicons-arrow-up"
+          :label="t('fastcat.track.moveUp')"
+          :disabled="isTrackFirstOfKind"
+          @click="moveSelectedTrackUp"
+        />
 
-          <!-- Move Down -->
-          <MobileDrawerToolbarButton
-            icon="i-heroicons-arrow-down"
-            :label="t('fastcat.track.moveDown')"
-            :disabled="isTrackLastOfKind"
-            @click="moveSelectedTrackDown"
-          />
-        </MobileDrawerToolbar>
+        <MobileDrawerToolbarButton
+          icon="i-heroicons-arrow-down"
+          :label="t('fastcat.track.moveDown')"
+          :disabled="isTrackLastOfKind"
+          @click="moveSelectedTrackDown"
+        />
+      </MobileDrawerToolbar>
+    </template>
 
-        <div v-if="extraActions.length > 0" class="py-1 px-3 border border-ui-border rounded-xl bg-zinc-900/40">
-          <PropertyActionList
-            :actions="extraActions"
-            vertical
-            variant="ghost"
-            size="md"
-          />
-        </div>
+    <div v-if="selectedTrack" class="px-4 pb-8 pt-4 flex flex-col gap-4">
+      <div
+        v-if="extraActions.length > 0"
+        class="py-1 px-3 border border-ui-border rounded-xl bg-zinc-900/40"
+      >
+        <PropertyActionList :actions="extraActions" vertical variant="ghost" size="md" />
       </div>
 
-      <!-- Track volume slider -->
       <div
         class="flex items-center gap-3 rounded-xl bg-zinc-900/80 border border-zinc-800 px-3 py-2.5"
       >

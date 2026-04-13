@@ -93,12 +93,14 @@ async function handleDuplicate() {
 }
 
 function handleAddVideoTrack() {
-  const idx = (timelineStore.timelineDoc?.tracks.filter((tr) => tr.kind === 'video').length ?? 0) + 1;
+  const idx =
+    (timelineStore.timelineDoc?.tracks.filter((tr) => tr.kind === 'video').length ?? 0) + 1;
   timelineStore.addTrack('video', `Video ${idx}`);
 }
 
 function handleAddAudioTrack() {
-  const idx = (timelineStore.timelineDoc?.tracks.filter((tr) => tr.kind === 'audio').length ?? 0) + 1;
+  const idx =
+    (timelineStore.timelineDoc?.tracks.filter((tr) => tr.kind === 'audio').length ?? 0) + 1;
   timelineStore.addTrack('audio', `Audio ${idx}`);
 }
 
@@ -129,7 +131,6 @@ const timelineActions = computed(() => [
   <MobileTimelineDrawer
     v-model:open="isOpenLocal"
     v-model:active-snap-point="activeSnapPoint"
-    force-landscape-direction="bottom"
     @update:open="!$event && emit('close')"
   >
     <div class="px-4 pb-8 flex flex-col gap-6 pt-2">
@@ -139,23 +140,18 @@ const timelineActions = computed(() => [
 
       <!-- Actions Section -->
       <div class="py-1 px-3 border border-ui-border rounded-xl bg-zinc-900/40">
-        <PropertyActionList
-          :actions="timelineActions"
-          vertical
-          variant="ghost"
-          size="md"
-        />
+        <PropertyActionList :actions="timelineActions" vertical variant="ghost" size="md" />
       </div>
 
       <!-- Info Section -->
-      <div v-if="summary" class="flex flex-col gap-1 rounded-2xl bg-ui-bg p-4 border border-ui-border">
+      <div
+        v-if="summary"
+        class="flex flex-col gap-1 rounded-2xl bg-ui-bg p-4 border border-ui-border"
+      >
         <div class="text-xs font-bold text-ui-text-muted uppercase tracking-widest mb-2">
           {{ t('common.info') }}
         </div>
-        <PropertyRow
-          :label="t('fastcat.timeline.version')"
-          :value="summary.version"
-        />
+        <PropertyRow :label="t('fastcat.timeline.version')" :value="summary.version" />
         <div class="h-px bg-ui-border/50 my-1" />
         <PropertyRow
           :label="t('common.duration')"
@@ -172,10 +168,7 @@ const timelineActions = computed(() => [
           :value="summary.audioTracks"
         />
         <div class="h-px bg-ui-border/50 my-1" />
-        <PropertyRow
-          :label="t('videoEditor.fileManager.otio.clips')"
-          :value="summary.clips"
-        />
+        <PropertyRow :label="t('videoEditor.fileManager.otio.clips')" :value="summary.clips" />
       </div>
 
       <!-- Master Volume -->

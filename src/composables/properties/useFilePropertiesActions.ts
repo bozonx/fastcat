@@ -131,7 +131,12 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       icon: 'i-heroicons-clipboard',
       hidden:
         options.isRemoteMode.value
-          ? options.isBloggerDogContentItem?.value !== true
+          ? !(
+              options.isBloggerDogContentItem?.value ||
+              options.isBloggerDogProject?.value ||
+              options.isBloggerDogGroup?.value ||
+              options.isPersonalLibrary?.value
+            )
           : options.isRemoteRoot.value,
       disabled: !options.hasClipboardItems.value,
       onClick: options.onPaste,

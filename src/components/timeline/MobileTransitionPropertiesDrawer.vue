@@ -82,25 +82,25 @@ const extraActions = computed(() => {
   <MobileTimelineDrawer
     v-model:open="isOpenLocal"
     v-model:active-snap-point="activeSnapPoint"
-    force-landscape-direction="bottom"
+    with-toolbar-snap
   >
-    <div class="px-4 pb-8">
-      <div class="mb-4 pt-1">
-        <MobileDrawerToolbar class="-mx-4 mb-2">
-          <MobileDrawerToolbarButton
-            icon="i-heroicons-trash"
-            :label="t('common.delete')"
-            @click="handleDeleteTransition"
-          />
-        </MobileDrawerToolbar>
+    <template #toolbar>
+      <MobileDrawerToolbar class="border-b border-ui-border">
+        <MobileDrawerToolbarButton
+          icon="i-heroicons-trash"
+          :label="t('common.delete')"
+          @click="handleDeleteTransition"
+        />
+      </MobileDrawerToolbar>
+    </template>
 
-        <div v-if="extraActions.length > 0" class="py-1 px-3 border border-ui-border rounded-xl bg-zinc-900/40">
-          <PropertyActionList
-            :actions="extraActions"
-            vertical
-            variant="ghost"
-            size="md"
-          />
+    <div class="px-4 pb-8 pt-4">
+      <div class="mb-4">
+        <div
+          v-if="extraActions.length > 0"
+          class="py-1 px-3 border border-ui-border rounded-xl bg-zinc-900/40"
+        >
+          <PropertyActionList :actions="extraActions" vertical variant="ghost" size="md" />
         </div>
       </div>
 

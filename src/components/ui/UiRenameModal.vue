@@ -23,6 +23,6 @@ const { t } = useI18n();
     :title="title || t('common.rename')"
     :default-value="props.initialName ?? props.currentName"
     :loading="props.loading"
-    @confirm="emit('rename', $event)"
+    @confirm="emit('rename', $event); isOpen = false"
   />
 </template>

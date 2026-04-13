@@ -60,7 +60,12 @@ export function canCutBloggerDogEntry(entry: FsEntry | null | undefined): boolea
 }
 
 export function canPasteIntoBloggerDogEntry(entry: FsEntry | null | undefined): boolean {
-  return isBloggerDogContentItem(entry);
+  return (
+    isBloggerDogContentItem(entry) ||
+    isBloggerDogGroup(entry) ||
+    isBloggerDogProject(entry) ||
+    isBloggerDogPersonalLibraryRoot(entry)
+  );
 }
 
 export function canCreateSubgroupInBloggerDogEntry(entry: FsEntry | null | undefined): boolean {
