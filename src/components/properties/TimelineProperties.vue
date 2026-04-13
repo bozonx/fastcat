@@ -172,12 +172,6 @@ const masterAudioEffects = computed(() =>
   ),
 );
 
-const masterMuted = computed({
-  get: () => Boolean(timelineStore.timelineDoc?.metadata?.fastcat?.masterMuted),
-  set: (muted: boolean) => {
-    timelineStore.setMasterMuted(muted);
-  },
-});
 
 const timelineZoom = computed({
   get: () => timelineStore.timelineZoom,
@@ -316,21 +310,10 @@ const addTrackActions = computed(() => [
     <!-- Settings (No title, includes Master Volume) -->
     <PropertySection v-if="!finalIsReadOnly">
       <div class="flex flex-col gap-3 py-1">
-        <PropertyRow :label="t('videoEditor.hotkeys.general.mute')">
-          <div class="flex justify-end w-full">
-            <USwitch
-              size="sm"
-              :model-value="masterMuted"
-              @update:model-value="masterMuted = $event"
-            />
-          </div>
-        </PropertyRow>
-
-        <div class="h-px bg-ui-border opacity-30 my-0.5" />
 
         <UiSliderInput
           v-model="masterGain"
-          :label="t('fastcat.track.audio.volume')"
+          :label="t('fastcat.timeline.properties.masterVolume')"
           :min="0"
           :max="2"
           :step="0.001"

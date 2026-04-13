@@ -381,6 +381,8 @@ export interface TimelineFastCatMetadata {
   timebase?: TimelineTimebase;
   markers?: TimelineMarker[];
   masterEffects?: ClipEffect[];
+  masterGain?: number;
+  masterMuted?: boolean;
 }
 
 export interface TimelineMetadata {

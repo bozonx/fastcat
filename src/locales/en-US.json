@@ -759,7 +759,7 @@
       "project": "Project",
       "properties": {
         "actions": "Actions",
-        "masterVolume": "Master Volume",
+        "masterVolume": "Master track volume",
         "overlapMode": "Overlap Mode",
         "snapSettings": "Snapping settings",
         "snapToClips": "Snap to clips",
