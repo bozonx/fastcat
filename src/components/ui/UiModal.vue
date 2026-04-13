@@ -48,7 +48,9 @@ const { t } = useI18n();
 
 const modalUi = computed(() => {
   return {
-    content: `bg-ui-bg-elevated shadow-xl overflow-hidden rounded-[var(--radius-ui-lg)] border border-ui-border flex flex-col max-h-[90vh] min-h-0 w-full ${props.ui?.content || ''}`,
+    overlay: `z-[var(--z-modal-backdrop)] ${String(props.ui?.overlay || '')}`.trim(),
+    content:
+      `z-[var(--z-modal)] bg-ui-bg-elevated shadow-xl overflow-hidden rounded-[var(--radius-ui-lg)] border border-ui-border flex flex-col max-h-[90vh] min-h-0 w-full ${props.ui?.content || ''}`.trim(),
     header: `px-4 py-3 border-b border-ui-border flex items-center justify-between shrink-0 ${props.ui?.header || ''}`,
     body: `px-4 py-4 w-full overflow-y-auto flex-auto custom-scrollbar ${props.ui?.body || ''}`,
     footer: `px-4 py-3 bg-ui-bg border-t border-ui-border flex justify-end gap-2 shrink-0 ${props.ui?.footer || ''}`,

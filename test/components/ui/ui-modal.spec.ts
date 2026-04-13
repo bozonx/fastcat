@@ -2,6 +2,21 @@ import { describe, it, expect, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import UiModal from '~/components/ui/UiModal.vue';
 
+const modalStub = {
+  name: 'UModal',
+  props: [
+    'open',
+    'content',
+    'dismissible',
+    'title',
+    'description',
+    'ariaDescribedby',
+    'close',
+    'ui',
+  ],
+  template: '<div class="u-modal-stub"><slot name="body" /></div>',
+};
+
 describe('UiModal', () => {
   it('renders correctly when open', async () => {
     const component = await mountSuspended(UiModal, {
@@ -37,5 +52,27 @@ describe('UiModal', () => {
     expect(component.exists()).toBe(true);
     expect(component.vm.$slots.header).toBeDefined();
     expect(component.vm.$slots.footer).toBeDefined();
+  });
+
+  it('applies modal z-index classes above drawers', async () => {
+    const component = await mountSuspended(UiModal, {
+      props: {
+        open: true,
+      },
+      slots: {
+        default: 'Body',
+      },
+      global: {
+        stubs: {
+          UModal: modalStub,
+        },
+      },
+    });
+
+    const modal = component.findComponent(modalStub);
+    const ui = modal.props('ui') as Record<string, string>;
+
+    expect(ui.overlay).toContain('z-[var(--z-modal-backdrop)]');
+    expect(ui.content).toContain('z-[var(--z-modal)]');
   });
 });
