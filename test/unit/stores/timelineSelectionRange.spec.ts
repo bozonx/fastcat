@@ -33,10 +33,12 @@ describe('timeline-selection-range', () => {
       rippleDeleteRange: vi.fn(),
     };
     applyTimeline = vi.fn();
+    const selectionRangeRef = ref<TimelineSelectionRange | null>(null);
 
     selectionRange = createTimelineSelectionRangeModule({
       timelineDoc,
       currentTime,
+      selectionRange: selectionRangeRef,
       isSelectionRangeSelected,
       selectTimelineSelectionRange,
       clearSelection,
@@ -53,26 +55,14 @@ describe('timeline-selection-range', () => {
 
   it('updates selection range', () => {
     selectionRange.updateSelectionRange({ startUs: 1000000, endUs: 3000000 });
-    expect(applyTimeline).toHaveBeenCalledWith(
-      {
-        type: 'update_timeline_properties',
-        properties: { selectionRange: { startUs: 1000000, endUs: 3000000 } },
-      },
-      undefined,
-    );
+    expect(selectionRange.getSelectionRange()).toEqual({ startUs: 1000000, endUs: 3000000 });
   });
 
   it('removes selection range', () => {
     isSelectionRangeSelected.mockReturnValue(true);
     selectionRange.removeSelectionRange();
 
-    expect(applyTimeline).toHaveBeenCalledWith(
-      {
-        type: 'update_timeline_properties',
-        properties: { selectionRange: undefined },
-      },
-      undefined,
-    );
+    expect(selectionRange.getSelectionRange()).toBeNull();
     expect(clearSelection).toHaveBeenCalled();
   });
 
@@ -80,13 +70,7 @@ describe('timeline-selection-range', () => {
     currentTime.value = 2000000;
     selectionRange.createSelectionRangeAtPlayhead();
 
-    expect(applyTimeline).toHaveBeenCalledWith(
-      {
-        type: 'update_timeline_properties',
-        properties: { selectionRange: { startUs: 2000000, endUs: 7000000 } },
-      },
-      undefined,
-    );
+    expect(selectionRange.getSelectionRange()).toEqual({ startUs: 2000000, endUs: 7000000 });
     expect(selectTimelineSelectionRange).toHaveBeenCalled();
   });
 });

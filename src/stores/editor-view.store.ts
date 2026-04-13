@@ -169,6 +169,7 @@ export function createEditorViewModule(
   watch(
     () => [projectIdRef.value, cutPanelsKey.value, getProjectOrientation()] as const,
     ([projectId, key, orientation]) => {
+      if (!projectId || !key || !orientation) return;
       if (!projectId) {
         // Reset so that the next project open applies defaults when no stored data exists.
         isInitialized.value = false;

@@ -152,6 +152,7 @@ describe('useFileManagerActions', () => {
         copyFile: vi.fn().mockResolvedValue(undefined),
         createDirectory: vi.fn().mockResolvedValue(undefined),
         readFile: vi.fn().mockResolvedValue(new Uint8Array()),
+        writeFile: vi.fn().mockResolvedValue(undefined),
       } as unknown as IFileSystemAdapter,
       findEntryByPath: vi.fn().mockReturnValue(null),
       readDirectory: vi.fn().mockResolvedValue([]),
@@ -276,7 +277,7 @@ describe('useFileManagerActions', () => {
     clipboardStore.getFileManagerVfs.mockReturnValue({
       id: 'project-vfs',
       readFile: vi.fn().mockResolvedValue(new Uint8Array()),
-      writeFile: vi.fn(),
+      writeFile: vi.fn().mockResolvedValue(undefined),
     });
 
     const api = createComposable({
@@ -285,6 +286,8 @@ describe('useFileManagerActions', () => {
         listEntryNames: vi.fn().mockResolvedValue([]),
         copyFile: vi.fn().mockResolvedValue(undefined),
         createDirectory: vi.fn().mockResolvedValue(undefined),
+        readFile: vi.fn().mockResolvedValue(new Uint8Array()),
+        writeFile: vi.fn().mockResolvedValue(undefined),
       } as unknown as IFileSystemAdapter,
       copyEntry,
       moveEntry,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useWindowSize } from '@vueuse/core';
 import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 
@@ -33,6 +33,23 @@ const activeSnapPoint = defineModel<string | number | null>('activeSnapPoint', {
 const { width, height } = useWindowSize();
 const isLandscape = computed(() => width.value > height.value);
 
+const safeAreaBottom = ref(0);
+onMounted(() => {
+  const el = document.createElement('div');
+  el.style.position = 'fixed';
+  el.style.bottom = '0';
+  el.style.height = 'env(safe-area-inset-bottom, 0px)';
+  el.style.visibility = 'hidden';
+  document.body.appendChild(el);
+  safeAreaBottom.value = el.offsetHeight;
+  document.body.removeChild(el);
+});
+
+const effectiveToolbarSnapHeight = computed(() => {
+  const base = parseInt(props.toolbarSnapHeight) || 108;
+  return `${base + safeAreaBottom.value}px`;
+});
+
 const SNAP_FULL_PORTRAIT = 0.92;
 const effectiveDirection = computed<'bottom' | 'right'>(() =>
   isLandscape.value ? 'right' : 'bottom',
@@ -43,7 +60,7 @@ const snapFull = computed(() => SNAP_FULL_PORTRAIT);
 const snapPoints = computed(() =>
   effectiveDirection.value === 'bottom'
     ? props.withToolbarSnap
-      ? [props.toolbarSnapHeight, snapFull.value]
+      ? [effectiveToolbarSnapHeight.value, snapFull.value]
       : [snapFull.value]
     : undefined,
 );

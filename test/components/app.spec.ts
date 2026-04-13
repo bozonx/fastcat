@@ -10,6 +10,52 @@ vi.mock('#imports', () => ({
   useHead: vi.fn(),
 }));
 
+vi.mock('~/stores/project-settings.store', () => ({
+  useProjectSettingsStore: vi.fn(() => ({
+    projectSettings: {
+      project: {
+        width: 1920,
+        height: 1080,
+        fps: 25,
+        resolutionFormat: '1080p',
+        orientation: 'landscape',
+        sampleRate: 48000,
+        isAutoSettings: false,
+        isCustomResolution: false,
+      },
+      monitors: {
+        cut: { orientation: 'landscape' },
+        sound: { orientation: 'landscape' },
+        export: { orientation: 'landscape' },
+      },
+      timelines: { openPaths: [], sessions: {} },
+      transitions: { defaultDurationUs: 2000000 },
+      ui: { activeTabId: null, fileTabs: [], staticTabsOrder: [], fileManagerPaths: {} },
+    },
+  })),
+}));
+
+vi.mock('~/stores/project.store', () => ({
+  useProjectStore: vi.fn(() => ({
+    currentProjectName: 'test-project',
+    currentProjectId: 'test-id',
+    currentView: 'cut',
+  })),
+}));
+
+vi.mock('~/stores/workspace.store', () => ({
+  useWorkspaceStore: vi.fn(() => ({
+    init: vi.fn().mockResolvedValue(undefined),
+    workspaceHandle: { kind: 'directory', name: 'test', path: '/' },
+    userSettings: {
+      projectDefaults: { defaultAudioFadeCurve: 'linear' },
+      optimization: { autoCreateProxies: false },
+      timeline: { defaultStaticClipDurationUs: 5000000 },
+    },
+    projects: [],
+  })),
+}));
+
 describe('App Smoke Test', () => {
   it('can mount the app root component', async () => {
     const component = await mountWithNuxt(App);

@@ -99,6 +99,24 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
     },
   );
 
+  const cutPanelsLayoutKey = computed(() =>
+    JSON.stringify(
+      projectStore.cutPanels.map((col) => ({
+        id: col.id,
+        rows: col.panels.map((p) => p.id),
+      })),
+    ),
+  );
+
+  const soundPanelsLayoutKey = computed(() =>
+    JSON.stringify(
+      projectStore.soundPanels.map((col) => ({
+        id: col.id,
+        rows: col.panels.map((p) => p.id),
+      })),
+    ),
+  );
+
   function getDynamicPanelFocusId(panelId: string) {
     const panel = getPanelById(panelId);
     if (!panel) return `dynamic:unknown:${panelId}` as const;
@@ -455,5 +473,7 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
     onDrop,
     onVerticalSplitResize,
     resetVerticalSizes,
+    cutPanelsLayoutKey,
+    soundPanelsLayoutKey,
   };
 }

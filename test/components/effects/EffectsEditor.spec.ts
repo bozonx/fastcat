@@ -56,7 +56,7 @@ describe('EffectsEditor', () => {
       props: { effects: [] },
     });
 
-    expect(component.text()).toContain('No effects');
+    expect(component.text()).toContain('fastcat.effects.empty');
   });
 
   it('renders correctly with effects', async () => {

@@ -14,7 +14,7 @@ vi.mock('~/workers/stt.worker.ts?worker', () => {
       removeEventListener = vi.fn();
       onmessage = null;
       onerror = null;
-    };
+    } as any;
   };
 });
 
@@ -25,7 +25,7 @@ vi.mock('~/workers/audio-decode.worker.ts?worker', () => {
       terminate = vi.fn();
       onmessage: ((e: MessageEvent) => void) | null = null;
       onerror: ((e: ErrorEvent) => void) | null = null;
-    },
+    } as any,
   };
 });
 
@@ -34,13 +34,7 @@ vi.mock('~/utils/transcription/model-storage', () => ({
   isModelDownloaded: mockIsModelDownloaded,
 }));
 
-vi.mock('~/repositories/transcription-cache.repository', () => ({
-  createTranscriptionCacheRepository: () => ({
-    save: vi.fn().mockResolvedValue(undefined),
-    load: vi.fn().mockResolvedValue(null),
-    list: vi.fn().mockResolvedValue([]),
-  }),
-}));
+
 
 describe('transcription local-engine', () => {
   beforeEach(() => {
