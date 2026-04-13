@@ -185,7 +185,12 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       return false;
     }
 
-    return params.items.every((item) => canTransferClipboardItemToOrFromBloggerDog(item));
+    return params.items.every((item) =>
+      canTransferClipboardItemToOrFromBloggerDog(item, {
+        sourceIsBloggerDog: params.sourceVfs?.id === 'bloggerdog',
+        targetIsBloggerDog: options.vfs?.id === 'bloggerdog',
+      }),
+    );
   }
 
   function syncDragOperationFromKeyboard(event: KeyboardEvent) {

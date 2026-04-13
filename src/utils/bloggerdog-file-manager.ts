@@ -49,9 +49,14 @@ export function isBloggerDogProjectLibrariesRoot(entry: FsEntry | null | undefin
   return isBloggerDogVirtualFolder(entry) && entry?.remoteId === 'projects';
 }
 
-export function canCopyCutBloggerDogEntry(entry: FsEntry | null | undefined): boolean {
+export function canCopyBloggerDogEntry(entry: FsEntry | null | undefined): boolean {
   if (!isBloggerDogEntry(entry)) return true;
   return isBloggerDogMediaEntry(entry) || isBloggerDogTextWrapper(entry);
+}
+
+export function canCutBloggerDogEntry(entry: FsEntry | null | undefined): boolean {
+  if (!isBloggerDogEntry(entry)) return true;
+  return isBloggerDogMediaEntry(entry);
 }
 
 export function canPasteIntoBloggerDogEntry(entry: FsEntry | null | undefined): boolean {
@@ -83,15 +88,32 @@ export function isMediaFileName(name: string | null | undefined): boolean {
 
 export function canTransferClipboardItemToOrFromBloggerDog(
   item: Pick<FileManagerClipboardItem, 'kind' | 'name'> | null | undefined,
+  params?: {
+    sourceIsBloggerDog?: boolean;
+    targetIsBloggerDog?: boolean;
+  },
 ): boolean {
-  return item?.kind === 'file' && isMediaFileName(item.name);
+  if (item?.kind !== 'file') return false;
+
+  if (params?.sourceIsBloggerDog && !params?.targetIsBloggerDog) {
+    return isMediaFileName(item.name) || getMediaTypeFromFilename(item.name) === 'text';
+  }
+
+  return isMediaFileName(item.name);
 }
 
-export function canTransferFsEntryToOrFromBloggerDog(entry: FsEntry | null | undefined): boolean {
+export function canTransferFsEntryToOrFromBloggerDog(
+  entry: FsEntry | null | undefined,
+  params?: {
+    sourceIsBloggerDog?: boolean;
+    targetIsBloggerDog?: boolean;
+  },
+): boolean {
   if (!entry || entry.kind !== 'file') return false;
 
   if (isBloggerDogEntry(entry)) {
-    return isBloggerDogMediaEntry(entry);
+    if (isBloggerDogMediaEntry(entry)) return true;
+    return Boolean(params?.sourceIsBloggerDog && !params?.targetIsBloggerDog && isBloggerDogTextWrapper(entry));
   }
 
   return isMediaFileName(entry.name);

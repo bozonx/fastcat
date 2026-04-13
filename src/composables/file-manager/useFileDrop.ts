@@ -113,7 +113,12 @@ export function useFileDrop(options: UseFileDropOptions) {
       }
     }
 
-    return params.items.every((item) => canTransferClipboardItemToOrFromBloggerDog(item));
+    return params.items.every((item) =>
+      canTransferClipboardItemToOrFromBloggerDog(item, {
+        sourceIsBloggerDog: dragSourceVfs?.id === 'bloggerdog',
+        targetIsBloggerDog: options.vfs?.id === 'bloggerdog',
+      }),
+    );
   }
 
   function syncDragOperationFromKeyboard(event: KeyboardEvent) {

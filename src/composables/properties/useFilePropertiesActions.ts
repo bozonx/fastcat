@@ -39,6 +39,7 @@ interface UseFilePropertiesActionsOptions {
   isCommonDir: Ref<boolean>;
   isCommonPath: Ref<boolean>;
   canCopyOrCut: Ref<boolean>;
+  canCut?: Ref<boolean>;
   hasClipboardItems: Ref<boolean>;
   triggerDirectoryUpload: () => void;
   createSubfolder: () => void;
@@ -118,7 +119,7 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       title: options.t('common.cut'),
       icon: 'i-heroicons-scissors',
       hidden:
-        !options.canCopyOrCut.value ||
+        !(options.canCut?.value ?? options.canCopyOrCut.value) ||
         options.isVirtualAll?.value ||
         options.isPersonalLibrary?.value ||
         options.isBloggerDogProject.value,
@@ -244,7 +245,7 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'cut',
       title: options.t('common.cut'),
       icon: 'i-heroicons-scissors',
-      hidden: !options.canCopyOrCut.value,
+      hidden: !(options.canCut?.value ?? options.canCopyOrCut.value),
       onClick: options.onCut,
     },
   ]);

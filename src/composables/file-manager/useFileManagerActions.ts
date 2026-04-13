@@ -18,7 +18,8 @@ import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { executeFileManagerPaste } from '~/composables/file-manager/executeFileManagerPaste';
 import {
-  canCopyCutBloggerDogEntry,
+  canCopyBloggerDogEntry,
+  canCutBloggerDogEntry,
   getBloggerDogTextWrapperRenameResult,
   isBloggerDogTextWrapper,
   canPasteIntoBloggerDogEntry,
@@ -413,7 +414,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
     copy: (entry) => {
       const entries = Array.isArray(entry) ? entry : [entry];
       const validEntries = entries.filter(
-        (e) => typeof e.path === 'string' && canCopyCutBloggerDogEntry(e),
+        (e) => typeof e.path === 'string' && canCopyBloggerDogEntry(e),
       );
       if (validEntries.length !== entries.length) return;
       if (validEntries.length === 0) return;
@@ -432,7 +433,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
     cut: (entry) => {
       const entries = Array.isArray(entry) ? entry : [entry];
       const validEntries = entries.filter(
-        (e) => typeof e.path === 'string' && canCopyCutBloggerDogEntry(e),
+        (e) => typeof e.path === 'string' && canCutBloggerDogEntry(e),
       );
       if (validEntries.length !== entries.length) return;
       if (validEntries.length === 0) return;

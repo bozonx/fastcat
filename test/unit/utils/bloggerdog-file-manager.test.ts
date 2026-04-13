@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  canCopyCutBloggerDogEntry,
+  canCopyBloggerDogEntry,
+  canCutBloggerDogEntry,
   canPasteIntoBloggerDogEntry,
   canTransferClipboardItemToOrFromBloggerDog,
   canTransferFsEntryToOrFromBloggerDog,
@@ -31,7 +32,7 @@ function createBloggerDogEntry(params: {
 }
 
 describe('bloggerdog file manager rules', () => {
-  it('allows copy/cut only for BloggerDog media files', () => {
+  it('allows copy for BloggerDog media and text wrapper, but cut only for media', () => {
     const mediaEntry = createBloggerDogEntry({
       kind: 'file',
       name: 'clip.mp4',
@@ -52,9 +53,12 @@ describe('bloggerdog file manager rules', () => {
       payloadType: 'content-item',
     });
 
-    expect(canCopyCutBloggerDogEntry(mediaEntry)).toBe(true);
-    expect(canCopyCutBloggerDogEntry(textWrapperEntry)).toBe(true);
-    expect(canCopyCutBloggerDogEntry(contentItemEntry)).toBe(false);
+    expect(canCopyBloggerDogEntry(mediaEntry)).toBe(true);
+    expect(canCopyBloggerDogEntry(textWrapperEntry)).toBe(true);
+    expect(canCopyBloggerDogEntry(contentItemEntry)).toBe(false);
+    expect(canCutBloggerDogEntry(mediaEntry)).toBe(true);
+    expect(canCutBloggerDogEntry(textWrapperEntry)).toBe(false);
+    expect(canCutBloggerDogEntry(contentItemEntry)).toBe(false);
   });
 
   it('allows paste only into BloggerDog content items', () => {
@@ -102,22 +106,61 @@ describe('bloggerdog file manager rules', () => {
       source: 'local',
     };
 
-    expect(canTransferFsEntryToOrFromBloggerDog(remoteMediaEntry)).toBe(true);
-    expect(canTransferFsEntryToOrFromBloggerDog(remoteTextWrapper)).toBe(false);
-    expect(canTransferFsEntryToOrFromBloggerDog(localMediaEntry)).toBe(true);
-    expect(canTransferFsEntryToOrFromBloggerDog(localTextEntry)).toBe(false);
+    expect(
+      canTransferFsEntryToOrFromBloggerDog(remoteMediaEntry, {
+        sourceIsBloggerDog: true,
+        targetIsBloggerDog: false,
+      }),
+    ).toBe(true);
+    expect(
+      canTransferFsEntryToOrFromBloggerDog(remoteTextWrapper, {
+        sourceIsBloggerDog: true,
+        targetIsBloggerDog: false,
+      }),
+    ).toBe(true);
+    expect(
+      canTransferFsEntryToOrFromBloggerDog(localMediaEntry, {
+        sourceIsBloggerDog: false,
+        targetIsBloggerDog: true,
+      }),
+    ).toBe(true);
+    expect(
+      canTransferFsEntryToOrFromBloggerDog(localTextEntry, {
+        sourceIsBloggerDog: false,
+        targetIsBloggerDog: true,
+      }),
+    ).toBe(false);
     expect(
       canTransferClipboardItemToOrFromBloggerDog({
         kind: 'file',
         name: 'audio.mp3',
         path: 'audio.mp3',
+      }, {
+        sourceIsBloggerDog: true,
+        targetIsBloggerDog: false,
       }),
+    ).toBe(true);
+    expect(
+      canTransferClipboardItemToOrFromBloggerDog(
+        {
+          kind: 'file',
+          name: 'script.txt',
+          path: 'script.txt',
+        },
+        {
+          sourceIsBloggerDog: true,
+          targetIsBloggerDog: false,
+        },
+      ),
     ).toBe(true);
     expect(
       canTransferClipboardItemToOrFromBloggerDog({
         kind: 'directory',
         name: 'group',
         path: 'group',
+      }, {
+        sourceIsBloggerDog: true,
+        targetIsBloggerDog: false,
       }),
     ).toBe(false);
   });

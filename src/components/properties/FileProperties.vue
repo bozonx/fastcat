@@ -45,11 +45,13 @@ import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/wor
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import {
-  canCopyCutBloggerDogEntry,
+  canCopyBloggerDogEntry,
+  canCutBloggerDogEntry,
   canPasteIntoBloggerDogEntry,
   isBloggerDogAllContentRoot,
   isBloggerDogPersonalLibraryRoot,
   isBloggerDogProjectLibrariesRoot,
+  isBloggerDogTextWrapper,
 } from '~/utils/bloggerdog-file-manager';
 import type {
   PrimaryEntryAction,
@@ -452,9 +454,14 @@ const {
   isExternalContext,
 });
 
-const canCopyOrCut = computed(() => {
+const canCopy = computed(() => {
   if (isRootDirectory.value || isCommonRoot.value) return false;
-  return canCopyCutBloggerDogEntry(props.selectedFsEntry);
+  return canCopyBloggerDogEntry(props.selectedFsEntry);
+});
+
+const canCut = computed(() => {
+  if (isRootDirectory.value || isCommonRoot.value) return false;
+  return canCutBloggerDogEntry(props.selectedFsEntry);
 });
 
 function onCopy() {
@@ -538,7 +545,8 @@ const {
   isCommonPath,
   isRemoteMode: computed(() => props.selectedFsEntry?.source === 'remote'),
   isRemoteAvailable: computed(() => Boolean(remoteFilesConfig.value)),
-  canCopyOrCut,
+  canCopyOrCut: canCopy,
+  canCut,
   hasClipboardItems,
   triggerDirectoryUpload,
   createSubfolder,
@@ -603,6 +611,10 @@ const filteredDirectoryPrimaryActions = computed(() => {
 });
 
 const filteredFilePrimaryActions = computed(() => {
+  if (isBloggerDogTextWrapper(props.selectedFsEntry)) {
+    return filePrimaryActions.value.filter((action) => action.id === 'copy');
+  }
+
   return filePrimaryActions.value;
 });
 

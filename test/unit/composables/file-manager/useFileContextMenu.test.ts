@@ -261,4 +261,40 @@ describe('useFileContextMenu', () => {
     expect(labels).not.toContain('common.copy');
     expect(labels).not.toContain('common.cut');
   });
+
+  it('shows only copy for BloggerDog virtual text wrapper', () => {
+    const entry: FsEntry = {
+      kind: 'file',
+      name: 'Item.txt',
+      path: '/personal/item-1/Item.txt',
+      source: 'remote',
+      adapterPayload: {
+        type: 'media',
+        remoteData: { id: 'item-1' },
+      } as any,
+    };
+    const { getContextMenuItems } = useFileContextMenu(
+      {
+        isGeneratingProxyInDirectory: () => false,
+        folderHasVideos: () => false,
+        isOpenableMediaFile: () => false,
+        isConvertibleMediaFile: () => false,
+        isVideo: () => false,
+        getEntryMeta: () => ({
+          hasProxy: false,
+          generatingProxy: false,
+        }),
+        isBloggerDogTextWrapper: (candidate: FsEntry) =>
+          candidate.path === '/personal/item-1/Item.txt',
+      },
+      vi.fn(),
+    );
+
+    const labels = flattenLabels(getContextMenuItems(entry));
+
+    expect(labels).toContain('common.copy');
+    expect(labels).not.toContain('common.cut');
+    expect(labels).not.toContain('common.rename');
+    expect(labels).not.toContain('common.delete');
+  });
 });
