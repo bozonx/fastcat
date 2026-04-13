@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useWindowSize } from '@vueuse/core';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
@@ -7,6 +7,8 @@ import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 interface Props {
   /** Snap height showing only the toolbar (portrait mode) */
   toolbarSnapHeight?: string;
+  /** Enables an intermediate snap point that leaves only the toolbar visible */
+  withToolbarSnap?: boolean;
   /** Force specific direction in landscape (overrides user preference) */
   forceLandscapeDirection?: 'bottom' | 'right';
   /** Show close button */
@@ -15,6 +17,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   toolbarSnapHeight: '116px',
+  withToolbarSnap: false,
   forceLandscapeDirection: undefined,
   showClose: false,
 });
@@ -50,7 +53,11 @@ const snapFull = computed(() =>
 );
 
 const snapPoints = computed(() =>
-  effectiveDirection.value === 'bottom' ? [props.toolbarSnapHeight, snapFull.value] : undefined,
+  effectiveDirection.value === 'bottom'
+    ? props.withToolbarSnap
+      ? [props.toolbarSnapHeight, snapFull.value]
+      : [snapFull.value]
+    : undefined,
 );
 
 const showPositionToggle = computed(() => isLandscape.value && !props.forceLandscapeDirection);
@@ -59,6 +66,18 @@ function toggleLandscapePosition() {
   settingsStore.landscapeDrawerPosition =
     settingsStore.landscapeDrawerPosition === 'right' ? 'bottom' : 'right';
 }
+
+watch(
+  [isOpen, snapPoints],
+  ([open, points]) => {
+    if (!open || !points?.length) return;
+
+    if (!points.includes(activeSnapPoint.value as string | number)) {
+      activeSnapPoint.value = points[points.length - 1] as string | number;
+    }
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
