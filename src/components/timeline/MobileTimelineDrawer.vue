@@ -15,7 +15,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  toolbarSnapHeight: '116px',
+  toolbarSnapHeight: '108px',
   withToolbarSnap: false,
   initialMode: 'toolbar',
   showClose: false,
@@ -59,10 +59,10 @@ const initialSnapPoint = computed<string | number | null>(() => {
 
 watch(
   [isOpen, snapPoints, initialSnapPoint],
-  ([open, points, nextInitialSnapPoint]) => {
+  ([open, points, nextInitialSnapPoint], [prevOpen]) => {
     if (!open || !points?.length) return;
 
-    if (!points.includes(activeSnapPoint.value as string | number)) {
+    if (!prevOpen || !points.includes(activeSnapPoint.value as string | number)) {
       activeSnapPoint.value = nextInitialSnapPoint;
     }
   },
@@ -77,7 +77,7 @@ watch(
     :direction="effectiveDirection"
     :snap-points="snapPoints"
     :modal="false"
-    :overlay="false"
+    :overlay="true"
     :with-handle="true"
     :show-close="props.showClose"
     :ui="{

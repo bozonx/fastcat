@@ -72,12 +72,7 @@ function handleCancel() {
 
     <template #footer>
       <div class="flex justify-end gap-2 w-full">
-        <UButton
-          color="neutral"
-          variant="ghost"
-          :disabled="loading"
-          @click="handleCancel"
-        >
+        <UButton color="neutral" variant="ghost" :disabled="loading" @click="handleCancel">
           {{ t('common.cancel') }}
         </UButton>
         <UButton
