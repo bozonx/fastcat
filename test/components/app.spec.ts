@@ -12,6 +12,7 @@ vi.mock('#imports', () => ({
 
 vi.mock('~/stores/project-settings.store', () => ({
   useProjectSettingsStore: vi.fn(() => ({
+    projects: [],
     projectSettings: {
       project: {
         width: 1920,
@@ -29,6 +30,13 @@ vi.mock('~/stores/project-settings.store', () => ({
         export: { orientation: 'landscape' },
       },
       timelines: { openPaths: [], sessions: {} },
+      timeline: {
+        frameSnapMode: 'frames',
+        clipSnapMode: 'clips',
+        toolbarSnapMode: 'snap',
+        toolbarDragMode: 'pseudo_overlap',
+        toolbarDragModeEnabled: false,
+      },
       transitions: { defaultDurationUs: 2000000 },
       ui: { activeTabId: null, fileTabs: [], staticTabsOrder: [], fileManagerPaths: {} },
     },
@@ -40,19 +48,36 @@ vi.mock('~/stores/project.store', () => ({
     currentProjectName: 'test-project',
     currentProjectId: 'test-id',
     currentView: 'cut',
+    currentTimelinePath: 'timeline.otio',
+    getFileByPath: vi.fn(),
+    closeProject: vi.fn().mockResolvedValue(undefined),
   })),
 }));
 
 vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: vi.fn(() => ({
     init: vi.fn().mockResolvedValue(undefined),
+    resetWorkspace: vi.fn().mockResolvedValue(undefined),
     workspaceHandle: { kind: 'directory', name: 'test', path: '/' },
     userSettings: {
       projectDefaults: { defaultAudioFadeCurve: 'linear' },
       optimization: { autoCreateProxies: false },
-      timeline: { defaultStaticClipDurationUs: 5000000 },
+      timeline: { defaultStaticClipDurationUs: 5000000, snapThresholdPx: 10 },
+      projectPresets: { items: [] },
+    },
+    workspaceState: {
+      fileBrowser: {
+        instances: {},
+      },
+      presets: {
+        custom: [],
+        defaultText: '',
+      },
     },
     projects: [],
+    recentProjects: [],
+    error: null,
+    isLoading: false,
   })),
 }));
 

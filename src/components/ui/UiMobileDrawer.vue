@@ -100,7 +100,7 @@ const maxContentHeight = computed(() => {
   if (!props.snapPoints?.length) return undefined;
   if (effectiveDirection.value !== 'bottom' && effectiveDirection.value !== 'top') return undefined;
   const lastPoint = props.snapPoints[props.snapPoints.length - 1];
-  if (typeof lastPoint === 'number') return `${lastPoint * 100}dvh`;
+  if (typeof lastPoint === 'number') return `${Math.floor(height.value * lastPoint)}px`;
   return undefined;
 });
 
@@ -192,7 +192,6 @@ function onBackdropTouchEnd(e: TouchEvent) {
 
   if (dy > 50 && dy > adx * 1.5) {
     e.preventDefault();
-    backdropDragOffset.value = 0;
     requestClose();
     return;
   }
@@ -234,6 +233,7 @@ function onSnapPointChange(val: string | number) {
 watch(isOpen, (val) => {
   if (!val) {
     activeSnapPoint.value = null;
+    backdropDragOffset.value = 0;
   } else {
     // Focus management
     nextTick(() => {
@@ -280,7 +280,7 @@ watch(isOpen, (val) => {
     :modal="props.modal"
     :overlay="props.modal && props.overlay"
     :handle="false"
-    :ui="{ content: 'z-[var(--z-fixed)] shadow-none ring-0' }"
+    :ui="{ content: 'z-[var(--z-fixed)] shadow-none ring-0 bg-transparent' }"
     @update:active-snap-point="onSnapPointChange"
   >
     <template #content>
