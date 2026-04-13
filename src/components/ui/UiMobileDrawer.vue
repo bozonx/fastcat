@@ -91,7 +91,7 @@ const isExpanded = computed(() => {
 /** Responsive container logic */
 const containerClasses = computed(() => {
   const base =
-    'flex flex-col relative overflow-hidden shadow-2xl transition-all duration-300 pointer-events-auto z-50 antialiased transform-gpu';
+    'flex flex-col relative overflow-hidden shadow-2xl transition-all duration-300 pointer-events-auto z-[var(--z-fixed)] antialiased transform-gpu';
   const bgColor = 'bg-zinc-900/98 backdrop-blur-xl ring-1 ring-white/10';
 
   if (effectiveDirection.value === 'right' || effectiveDirection.value === 'left') {
@@ -200,7 +200,7 @@ watch(isOpen, (val) => {
 <template>
   <Teleport v-if="!props.modal" :to="effectiveTeleportTarget">
     <div
-      class="fixed inset-0 bg-zinc-950/40 backdrop-blur-[2px] transition-all duration-300 z-40"
+      class="fixed inset-0 bg-zinc-950/40 backdrop-blur-[2px] transition-all duration-300 z-[calc(var(--z-fixed)-1)]"
       :class="[
         isOpen && (props.modal || isExpanded) ? 'opacity-100' : 'opacity-0 pointer-events-none',
         props.modal || isBackdropInteractive ? 'pointer-events-auto' : 'pointer-events-none',
@@ -225,7 +225,7 @@ watch(isOpen, (val) => {
     :modal="props.modal"
     :overlay="props.modal && props.overlay"
     :handle="false"
-    :ui="{ content: 'z-50 shadow-none ring-0' }"
+    :ui="{ content: 'z-[var(--z-fixed)] shadow-none ring-0' }"
     @update:active-snap-point="onSnapPointChange"
   >
     <template #content>

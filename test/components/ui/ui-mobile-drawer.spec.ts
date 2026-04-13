@@ -3,6 +3,27 @@ import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { ref } from 'vue';
 import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 
+const drawerStub = {
+  name: 'UDrawer',
+  props: [
+    'open',
+    'direction',
+    'title',
+    'description',
+    'snapPoints',
+    'activeSnapPoint',
+    'dismissible',
+    'shouldScaleBackground',
+    'modal',
+    'overlay',
+    'handle',
+    'handleOnly',
+    'ui',
+  ],
+  emits: ['update:open', 'update:active-snap-point'],
+  template: '<div class="udrawer-stub"><slot name="content" /></div>',
+};
+
 const mockWidth = ref(390);
 const mockHeight = ref(844);
 
@@ -38,25 +59,7 @@ describe('UiMobileDrawer', () => {
       },
       global: {
         stubs: {
-          UDrawer: {
-            props: [
-              'open',
-              'direction',
-              'title',
-              'description',
-              'snapPoints',
-              'activeSnapPoint',
-              'dismissible',
-              'shouldScaleBackground',
-              'modal',
-              'overlay',
-              'handle',
-              'handleOnly',
-              'ui',
-            ],
-            emits: ['update:open', 'update:active-snap-point'],
-            template: '<div class="udrawer-stub"><slot name="content" /></div>',
-          },
+          UDrawer: drawerStub,
         },
       },
     });
@@ -85,25 +88,7 @@ describe('UiMobileDrawer', () => {
       },
       global: {
         stubs: {
-          UDrawer: {
-            props: [
-              'open',
-              'direction',
-              'title',
-              'description',
-              'snapPoints',
-              'activeSnapPoint',
-              'dismissible',
-              'shouldScaleBackground',
-              'modal',
-              'overlay',
-              'handle',
-              'handleOnly',
-              'ui',
-            ],
-            emits: ['update:open', 'update:active-snap-point'],
-            template: '<div class="udrawer-stub"><slot name="content" /></div>',
-          },
+          UDrawer: drawerStub,
         },
       },
     });
@@ -129,25 +114,7 @@ describe('UiMobileDrawer', () => {
       },
       global: {
         stubs: {
-          UDrawer: {
-            props: [
-              'open',
-              'direction',
-              'title',
-              'description',
-              'snapPoints',
-              'activeSnapPoint',
-              'dismissible',
-              'shouldScaleBackground',
-              'modal',
-              'overlay',
-              'handle',
-              'handleOnly',
-              'ui',
-            ],
-            emits: ['update:open', 'update:active-snap-point'],
-            template: '<div class="udrawer-stub"><slot name="content" /></div>',
-          },
+          UDrawer: drawerStub,
         },
       },
     });
@@ -177,25 +144,7 @@ describe('UiMobileDrawer', () => {
       },
       global: {
         stubs: {
-          UDrawer: {
-            props: [
-              'open',
-              'direction',
-              'title',
-              'description',
-              'snapPoints',
-              'activeSnapPoint',
-              'dismissible',
-              'shouldScaleBackground',
-              'modal',
-              'overlay',
-              'handle',
-              'handleOnly',
-              'ui',
-            ],
-            emits: ['update:open', 'update:active-snap-point'],
-            template: '<div class="udrawer-stub"><slot name="content" /></div>',
-          },
+          UDrawer: drawerStub,
         },
       },
     });
@@ -220,25 +169,7 @@ describe('UiMobileDrawer', () => {
       },
       global: {
         stubs: {
-          UDrawer: {
-            props: [
-              'open',
-              'direction',
-              'title',
-              'description',
-              'snapPoints',
-              'activeSnapPoint',
-              'dismissible',
-              'shouldScaleBackground',
-              'modal',
-              'overlay',
-              'handle',
-              'handleOnly',
-              'ui',
-            ],
-            emits: ['update:open', 'update:active-snap-point'],
-            template: '<div class="udrawer-stub"><slot name="content" /></div>',
-          },
+          UDrawer: drawerStub,
         },
       },
     });
@@ -247,5 +178,29 @@ describe('UiMobileDrawer', () => {
     expect(wrapper.find('.overflow-y-auto').exists()).toBe(true);
     expect(wrapper.emitted('update:open')).toBeFalsy();
     expect(wrapper.emitted('update:activeSnapPoint')).toBeFalsy();
+  });
+
+  it('uses a drawer z-index below app modals', async () => {
+    const wrapper = await mountSuspended(UiMobileDrawer, {
+      props: {
+        open: true,
+        direction: 'bottom',
+      },
+      slots: {
+        default: '<div class="body-slot">Body</div>',
+      },
+      global: {
+        stubs: {
+          UDrawer: drawerStub,
+        },
+      },
+    });
+
+    const drawer = wrapper.findComponent(drawerStub);
+
+    expect(drawer.props('ui')).toMatchObject({
+      content: 'z-[var(--z-fixed)] shadow-none ring-0',
+    });
+    expect(wrapper.html()).toContain('z-[var(--z-fixed)]');
   });
 });
