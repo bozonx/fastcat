@@ -2,7 +2,8 @@ import type { FsEntry } from '~/types/fs';
 import { WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import {
-  canCopyCutBloggerDogEntry,
+  canCopyBloggerDogEntry,
+  canCutBloggerDogEntry,
   canPasteIntoBloggerDogEntry,
 } from '~/utils/bloggerdog-file-manager';
 
@@ -82,31 +83,41 @@ export function useFileContextMenu(
     const isBdVirtual = deps.isBloggerDogVirtualFolder?.(entry);
     const isBdGroup = deps.isBloggerDogGroup?.(entry);
     const isBdContentItem = deps.isBloggerDogContentItem?.(entry);
-    const isBdMedia = deps.isBloggerDogMedia?.(entry);
+    const isBdText = deps.isBloggerDogTextWrapper?.(entry);
     const items: ContextMenuItem[] = [];
 
-    // Copy/Cut: forbidden for virtual folders, projects, groups and content items.
-    const canCopyCut =
+    const canCopy =
       !isProjectRoot &&
       !isCommonRoot &&
       !isBdVirtual &&
       !isBdProject &&
       !isBdGroup &&
-      !isBdContentItem;
+      !isBdContentItem &&
+      canCopyBloggerDogEntry(entry);
 
-    if (canCopyCut) {
-      items.push(
-        {
-          label: t('common.copy'),
-          icon: 'i-heroicons-document-duplicate',
-          onSelect: () => onAction('copy', entry),
-        },
-        {
-          label: t('common.cut'),
-          icon: 'i-heroicons-scissors',
-          onSelect: () => onAction('cut', entry),
-        },
-      );
+    if (canCopy) {
+      items.push({
+        label: t('common.copy'),
+        icon: 'i-heroicons-document-duplicate',
+        onSelect: () => onAction('copy', entry),
+      });
+    }
+
+    const canCut =
+      !isProjectRoot &&
+      !isCommonRoot &&
+      !isBdVirtual &&
+      !isBdProject &&
+      !isBdGroup &&
+      !isBdContentItem &&
+      canCutBloggerDogEntry(entry);
+
+    if (canCut) {
+      items.push({
+        label: t('common.cut'),
+        icon: 'i-heroicons-scissors',
+        onSelect: () => onAction('cut', entry),
+      });
     }
 
     // Paste: only for Content Item (can paste media into it) or Project Folders (not BD).
@@ -122,7 +133,7 @@ export function useFileContextMenu(
       });
     }
 
-    if (!isProjectRoot && !isCommonRoot && !isBdVirtual && !isBdProject) {
+    if (!isProjectRoot && !isCommonRoot && !isBdVirtual && !isBdProject && !isBdText) {
       items.push(
         {
           label: t('common.rename'),
@@ -318,19 +329,20 @@ export function useFileContextMenu(
     }
 
     const managementItems: ContextMenuItem[] = [];
-    if (selectedEntries.every((selectedEntry) => canCopyCutBloggerDogEntry(selectedEntry))) {
-      managementItems.push(
-        {
-          label: t('common.copy'),
-          icon: 'i-heroicons-document-duplicate',
-          onSelect: () => onAction('copy', selectedEntries),
-        },
-        {
-          label: t('common.cut'),
-          icon: 'i-heroicons-scissors',
-          onSelect: () => onAction('cut', selectedEntries),
-        },
-      );
+    if (selectedEntries.every((selectedEntry) => canCopyBloggerDogEntry(selectedEntry))) {
+      managementItems.push({
+        label: t('common.copy'),
+        icon: 'i-heroicons-document-duplicate',
+        onSelect: () => onAction('copy', selectedEntries),
+      });
+    }
+
+    if (selectedEntries.every((selectedEntry) => canCutBloggerDogEntry(selectedEntry))) {
+      managementItems.push({
+        label: t('common.cut'),
+        icon: 'i-heroicons-scissors',
+        onSelect: () => onAction('cut', selectedEntries),
+      });
     }
 
     const canPaste = entry.source === 'remote' ? canPasteIntoBloggerDogEntry(entry) : true;

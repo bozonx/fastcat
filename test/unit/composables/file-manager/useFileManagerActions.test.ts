@@ -220,6 +220,42 @@ describe('useFileManagerActions', () => {
     expect(clipboardStore.setClipboardPayload).not.toHaveBeenCalled();
   });
 
+  it('allows copy but not cut for BloggerDog virtual text wrapper', async () => {
+    const api = createComposable();
+    const entry: FsEntry = {
+      kind: 'file',
+      name: 'Item.txt',
+      path: '/personal/item-1/Item.txt',
+      source: 'remote',
+      adapterPayload: {
+        type: 'media',
+        remoteData: { id: 'item-1' },
+      },
+    };
+
+    await api.onFileAction('copy', entry);
+
+    expect(clipboardStore.setClipboardPayload).toHaveBeenCalledWith({
+      source: 'fileManager',
+      operation: 'copy',
+      items: [
+        {
+          path: '/personal/item-1/Item.txt',
+          kind: 'file',
+          name: 'Item.txt',
+          source: 'remote',
+        },
+      ],
+      sourceInstanceId: undefined,
+    });
+
+    clipboardStore.setClipboardPayload.mockReset();
+
+    await api.onFileAction('cut', entry);
+
+    expect(clipboardStore.setClipboardPayload).not.toHaveBeenCalled();
+  });
+
   it('does not paste into BloggerDog groups', async () => {
     const copyEntry = vi.fn();
     const moveEntry = vi.fn();

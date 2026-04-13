@@ -8,17 +8,35 @@ export interface CrossVfsCopyOptions {
   targetDirPath: string;
 }
 
+function sanitizeLocalEntryName(name: string): string {
+  const sanitized = name
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-')
+    .replace(/[. ]+$/g, '')
+    .trim();
+
+  return sanitized || 'untitled';
+}
+
+function normalizeTargetEntryName(name: string, targetVfs: IFileSystemAdapter): string {
+  if (targetVfs.id === 'bloggerdog') {
+    return name;
+  }
+
+  return sanitizeLocalEntryName(name);
+}
+
 async function generateUniqueName(
   name: string,
   targetVfs: IFileSystemAdapter,
   targetDirPath: string,
 ): Promise<string> {
+  const normalizedName = normalizeTargetEntryName(name, targetVfs);
   const existingNames = await targetVfs.listEntryNames(targetDirPath || '');
-  if (!existingNames.includes(name)) return name;
+  if (!existingNames.includes(normalizedName)) return normalizedName;
 
-  const lastDotIndex = name.lastIndexOf('.');
-  const baseName = lastDotIndex > 0 ? name.slice(0, lastDotIndex) : name;
-  const extension = lastDotIndex > 0 ? name.slice(lastDotIndex) : '';
+  const lastDotIndex = normalizedName.lastIndexOf('.');
+  const baseName = lastDotIndex > 0 ? normalizedName.slice(0, lastDotIndex) : normalizedName;
+  const extension = lastDotIndex > 0 ? normalizedName.slice(lastDotIndex) : '';
 
   let counter = 1;
   while (true) {
@@ -41,7 +59,8 @@ async function copyDirectoryRecursive(
   const entries = await sourceVfs.readDirectory(sourcePath);
 
   for (const entry of entries) {
-    const nextTargetPath = `${targetPath}/${entry.name}`;
+    const nextTargetName = await generateUniqueName(entry.name, targetVfs, targetPath);
+    const nextTargetPath = `${targetPath}/${nextTargetName}`;
     if (entry.kind === 'directory') {
       await copyDirectoryRecursive(sourceVfs, targetVfs, entry.path, nextTargetPath, depth + 1);
     } else {

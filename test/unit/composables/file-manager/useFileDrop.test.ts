@@ -196,6 +196,46 @@ describe('useFileDrop', () => {
     expect(crossVfsMoveMock).not.toHaveBeenCalled();
   });
 
+  it('allows copying BloggerDog virtual txt file into project file manager', async () => {
+    dragSourceFileManagerInstanceIdMock = 'sidebar';
+    dragSourceVfsMock = { id: 'bloggerdog' };
+    currentDragOperationMock = 'copy';
+
+    const { onRootDrop } = useFileDrop({
+      resolveEntryByPath: vi.fn(),
+      handleFiles: vi.fn(),
+      moveEntry: vi.fn(),
+      copyEntry: vi.fn(),
+      targetFileManagerInstanceId: 'main',
+      vfs: { id: 'target' } as any,
+    });
+
+    await onRootDrop(
+      {
+        stopPropagation: vi.fn(),
+        shiftKey: false,
+        dataTransfer: {
+          files: [],
+          types: ['application/fastcat-file-manager-copy'],
+          getData: vi.fn((type: string) =>
+            type === 'application/fastcat-file-manager-copy'
+              ? JSON.stringify([{ path: '/personal/item-1/Item.txt', kind: 'file', name: 'Item.txt' }])
+              : '',
+          ),
+        },
+      } as unknown as DragEvent,
+      'documents',
+    );
+
+    expect(crossVfsCopyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceVfs: { id: 'bloggerdog' },
+        sourcePath: '/personal/item-1/Item.txt',
+        targetDirPath: 'documents',
+      }),
+    );
+  });
+
   it('cancels drop when item is returned onto its own container', async () => {
     const source: FsEntry = {
       name: 'clip.mp4',
