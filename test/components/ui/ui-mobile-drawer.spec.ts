@@ -200,7 +200,7 @@ describe('UiMobileDrawer', () => {
     const drawer = wrapper.findComponent(drawerStub);
 
     expect(drawer.props('ui')).toMatchObject({
-      content: 'z-[var(--z-fixed)] shadow-none ring-0',
+      content: 'z-[var(--z-fixed)] shadow-none ring-0 bg-transparent',
     });
     expect(wrapper.html()).toContain('z-[var(--z-fixed)]');
   });

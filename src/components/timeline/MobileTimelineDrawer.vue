@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useWindowSize } from '@vueuse/core';
 import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 
@@ -85,6 +85,25 @@ watch(
   },
   { immediate: true },
 );
+
+/**
+ * Swipe down from expanded mode should close the drawer entirely,
+ * not transition to the toolbar snap point.
+ */
+watch(activeSnapPoint, (newVal, oldVal) => {
+  if (!isOpen.value || !props.withToolbarSnap) return;
+  const points = snapPoints.value;
+  if (!points || points.length < 2) return;
+
+  const fullSnap = points[points.length - 1];
+  const toolbarSnap = points[0];
+
+  if (oldVal === fullSnap && newVal === toolbarSnap) {
+    nextTick(() => {
+      isOpen.value = false;
+    });
+  }
+});
 </script>
 
 <template>
