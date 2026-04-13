@@ -759,7 +759,7 @@
       "project": "Проект",
       "properties": {
         "actions": "Действия",
-        "masterVolume": "Общая громкость",
+        "masterVolume": "Громкость мастер трека",
         "overlapMode": "Режим наложения",
         "snapSettings": "Настройки привязок",
         "snapToClips": "Привязка к клипам",
