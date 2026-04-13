@@ -1,17 +1,12 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import MobileTimelineDrawer from './MobileTimelineDrawer.vue';
-import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
-import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import EffectsEditor from '~/components/effects/EffectsEditor.vue';
 import AudioEffectsEditor from '~/components/effects/AudioEffectsEditor.vue';
-import UiRenameModal from '~/components/ui/UiRenameModal.vue';
+import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useProjectStore } from '~/stores/project.store';
-import { useFileManager } from '~/composables/file-manager/useFileManager';
-import { useFilePropertiesHandlers } from '~/composables/properties/useFilePropertiesHandlers';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import { formatDurationSeconds } from '~/utils/format';
 import type { VideoClipEffect, AudioClipEffect } from '~/timeline/types';
@@ -20,26 +15,21 @@ const props = defineProps<{
   isOpen: boolean;
 }>();
 
+const activeSnapPoint = defineModel<string | number | null>('activeSnapPoint', { default: null });
+
 const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
-const projectStore = useProjectStore();
-const fileManager = useFileManager();
 
-const currentTimelineEntry = computed(() => {
-  if (!projectStore.currentTimelinePath) return null;
-  return fileManager.vfs.getFile(projectStore.currentTimelinePath);
+const isOpenLocal = computed({
+  get: () => props.isOpen,
+  set: (val) => {
+    if (!val) emit('close');
+  },
 });
-
-const { onRename, onDelete } = useFilePropertiesHandlers({
-  selectedFsEntry: currentTimelineEntry,
-  mediaType: ref('otio'), // It's a timeline
-});
-
-const isRenameModalOpen = ref(false);
 
 const summary = computed(() => {
   const doc = timelineStore.timelineDoc;
@@ -111,46 +101,52 @@ function handleAddAudioTrack() {
   const idx = (timelineStore.timelineDoc?.tracks.filter((tr) => tr.kind === 'audio').length ?? 0) + 1;
   timelineStore.addTrack('audio', `Audio ${idx}`);
 }
+
+const timelineActions = computed(() => [
+  {
+    id: 'add-video',
+    label: t('fastcat.timeline.addVideoTrack'),
+    icon: 'i-heroicons-video-camera',
+    onClick: handleAddVideoTrack,
+  },
+  {
+    id: 'add-audio',
+    label: t('fastcat.timeline.addAudioTrack'),
+    icon: 'i-heroicons-musical-note',
+    onClick: handleAddAudioTrack,
+  },
+  {
+    id: 'create-version',
+    label: t('fastcat.timeline.createVersion'),
+    icon: 'i-heroicons-document-duplicate',
+    onClick: handleDuplicate,
+    color: 'primary' as const,
+  },
+]);
 </script>
 
 <template>
   <MobileTimelineDrawer
-    :open="isOpen"
+    v-model:open="isOpenLocal"
+    v-model:active-snap-point="activeSnapPoint"
     force-landscape-direction="bottom"
     @update:open="!$event && emit('close')"
   >
-    <template #toolbar>
-      <MobileDrawerToolbar class="-mx-4 mb-2">
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-pencil"
-          :label="t('common.rename')"
-          @click="isRenameModalOpen = true"
-        />
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-trash"
-          :label="t('common.delete')"
-          @click="onDelete"
-        />
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-video-camera"
-          :label="t('fastcat.timeline.addVideoTrack')"
-          @click="handleAddVideoTrack"
-        />
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-musical-note"
-          :label="t('fastcat.timeline.addAudioTrack')"
-          @click="handleAddAudioTrack"
-        />
-        <MobileDrawerToolbarButton
-          primary
-          icon="i-heroicons-document-duplicate"
-          :label="t('fastcat.timeline.createVersion')"
-          @click="handleDuplicate"
-        />
-      </MobileDrawerToolbar>
-    </template>
+    <div class="px-4 pb-8 flex flex-col gap-6 pt-2">
+      <div class="flex items-center gap-2">
+        <div class="text-ui-text font-bold text-xl">{{ t('videoEditor.timeline.settings') }}</div>
+      </div>
 
-    <div class="px-4 pb-8 flex flex-col gap-6">
+      <!-- Actions Section -->
+      <div class="py-1 px-3 border border-ui-border rounded-xl bg-zinc-900/40">
+        <PropertyActionList
+          :actions="timelineActions"
+          vertical
+          variant="ghost"
+          size="md"
+        />
+      </div>
+
       <!-- Info Section -->
       <div v-if="summary" class="flex flex-col gap-1 rounded-2xl bg-ui-bg p-4 border border-ui-border">
         <div class="text-xs font-bold text-ui-text-muted uppercase tracking-widest mb-2">
@@ -210,13 +206,5 @@ function handleAddAudioTrack() {
         />
       </div>
     </div>
-
-    <UiRenameModal
-      :open="isRenameModalOpen"
-      :current-name="currentTimelineEntry?.name ?? ''"
-      :title="t('common.rename')"
-      @update:open="isRenameModalOpen = $event"
-      @rename="onRename"
-    />
   </MobileTimelineDrawer>
 </template>

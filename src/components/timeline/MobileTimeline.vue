@@ -281,6 +281,7 @@ watch(
     // Timeline Properties selected
     if (entity?.kind === 'timeline-properties' && entity.source === 'timeline') {
       closeAllDrawers();
+      drawerActiveSnapPoint.value = 0.92;
       isSettingsDrawerOpen.value = true;
       return;
     }
@@ -1038,6 +1039,7 @@ onBeforeUnmount(() => {
     <!-- Timeline Settings Drawer -->
     <MobileTimelineSettingsDrawer
       :is-open="isSettingsDrawerOpen"
+      v-model:active-snap-point="drawerActiveSnapPoint"
       @close="
         () => {
           isSettingsDrawerOpen = false;
