@@ -96,7 +96,7 @@ const isExpanded = computed(() => {
  * vaul-vue renders the DrawerContent at full viewport height and translates it,
  * so without this constraint the container overflows behind the screen edge.
  */
-const maxContentHeight = computed(() => {
+const snapContentHeight = computed(() => {
   if (!props.snapPoints?.length) return undefined;
   if (effectiveDirection.value !== 'bottom' && effectiveDirection.value !== 'top') return undefined;
   const lastPoint = props.snapPoints[props.snapPoints.length - 1];
@@ -116,11 +116,11 @@ const containerClasses = computed(() => {
   }
 
   const heightClass = props.snapPoints?.length
-    ? 'h-full'
+    ? ''
     : props.isFullHeight
       ? 'h-[95dvh]'
       : 'max-h-[85dvh]';
-  return `${base} ${heightClass} w-full border-t border-zinc-800/80 ${bgColor} rounded-t-2xl ${props.ui.container || ''}`;
+  return `${base} ${heightClass} w-full border-t border-zinc-800/80 ${bgColor} rounded-t-2xl ${props.ui.container || ''}`.replace(/  +/g, ' ');
 });
 
 const bodyClasses = computed(() => {
@@ -146,8 +146,8 @@ const isBackdropInteractive = computed(
 const containerStyle = computed(() => {
   const style: Record<string, string> = {};
 
-  if (maxContentHeight.value) {
-    style.maxHeight = maxContentHeight.value;
+  if (snapContentHeight.value) {
+    style.height = snapContentHeight.value;
   }
 
   if (backdropDragOffset.value && effectiveDirection.value === 'bottom' && isExpanded.value) {
@@ -158,6 +158,46 @@ const containerStyle = computed(() => {
 });
 
 const bodyRef = ref<HTMLElement | null>(null);
+
+/**
+ * Handle swipe detection — works alongside vaul-vue (NO data-vaul-no-drag).
+ * We record touch start/end Y on the handle. After vaul-vue processes its
+ * release (pointerup → nextTick), we check whether vaul-vue snapped back
+ * without closing. If the user intended a downward swipe from toolbar mode,
+ * we close. If upward — we expand.
+ */
+const hSwipeStartY = ref(0);
+const hSwipeEndY = ref(0);
+let hSwipeTimer: ReturnType<typeof setTimeout> | null = null;
+
+function onHandleTouchStart(e: TouchEvent) {
+  const t = e.touches[0];
+  if (t) {
+    hSwipeStartY.value = t.clientY;
+    hSwipeEndY.value = t.clientY;
+  }
+}
+
+function onHandleTouchEnd(e: TouchEvent) {
+  const t = e.changedTouches[0];
+  if (t) hSwipeEndY.value = t.clientY;
+
+  if (hSwipeTimer) clearTimeout(hSwipeTimer);
+  hSwipeTimer = setTimeout(() => {
+    if (!isOpen.value) return;
+    const dy = hSwipeEndY.value - hSwipeStartY.value;
+    const THRESHOLD = 15;
+    if (Math.abs(dy) < THRESHOLD) return;
+
+    if (dy > 0 && !isExpanded.value) {
+      requestClose();
+    } else if (dy < -THRESHOLD && !isExpanded.value && props.snapPoints?.length) {
+      activeSnapPoint.value = props.snapPoints[props.snapPoints.length - 1] as string | number;
+    }
+    hSwipeStartY.value = 0;
+    hSwipeEndY.value = 0;
+  }, 80);
+}
 
 function onBackdropTouchStart(e: TouchEvent) {
   if (!isBackdropInteractive.value) return;
@@ -230,10 +270,29 @@ function onSnapPointChange(val: string | number) {
   activeSnapPoint.value = val;
 }
 
+// --- Backdrop visibility (debounced to avoid flash on re-open) ---
+const isBackdropVisible = ref(false);
+let backdropShowTimer: ReturnType<typeof setTimeout> | null = null;
+
+watch([isOpen, isExpanded], ([open, expanded]) => {
+  if (backdropShowTimer) {
+    clearTimeout(backdropShowTimer);
+    backdropShowTimer = null;
+  }
+  if (open && expanded) {
+    backdropShowTimer = setTimeout(() => {
+      isBackdropVisible.value = true;
+    }, 80);
+  } else {
+    isBackdropVisible.value = false;
+  }
+});
+
 watch(isOpen, (val) => {
   if (!val) {
     activeSnapPoint.value = null;
     backdropDragOffset.value = 0;
+    if (hSwipeTimer) clearTimeout(hSwipeTimer);
   } else {
     // Focus management
     nextTick(() => {
@@ -256,7 +315,7 @@ watch(isOpen, (val) => {
     <div
       class="fixed inset-0 bg-zinc-950/40 backdrop-blur-[2px] transition-all duration-300 z-[calc(var(--z-fixed)-1)]"
       :class="
-        isOpen && isExpanded
+        isBackdropVisible
           ? ['pointer-events-auto', props.overlay ? 'opacity-100' : 'opacity-0']
           : 'opacity-0 pointer-events-none'
       "
@@ -292,6 +351,8 @@ watch(isOpen, (val) => {
           "
           class="shrink-0 relative z-10 cursor-pointer group"
           @click.stop="onHandleTap"
+          @touchstart.passive="onHandleTouchStart"
+          @touchend="onHandleTouchEnd"
         >
           <div class="flex justify-center py-2.5">
             <div
