@@ -91,8 +91,8 @@ describe('MobileTimelineDrawer', () => {
 
     const drawer = wrapper.findComponent({ name: 'UiMobileDrawer' });
 
-    expect(drawer.props('snapPoints')).toEqual(['116px', 0.92]);
-    expect(wrapper.emitted('update:activeSnapPoint')?.at(-1)).toEqual(['116px']);
+    expect(drawer.props('snapPoints')).toEqual(['108px', 0.92]);
+    expect(wrapper.emitted('update:activeSnapPoint')?.at(-1)).toEqual(['108px']);
   });
 
   it('can open immediately in full mode when requested', async () => {

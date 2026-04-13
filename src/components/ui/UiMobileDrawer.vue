@@ -53,6 +53,9 @@ const props = withDefaults(defineProps<Props>(), {
 });
 const isOpen = defineModel<boolean>('open', { default: false });
 const activeSnapPoint = defineModel<string | number | null>('activeSnapPoint', { default: null });
+const emit = defineEmits<{
+  (e: 'close'): void;
+}>();
 
 const { target: effectiveTeleportTarget } = useTeleportTarget();
 
@@ -99,7 +102,11 @@ const containerClasses = computed(() => {
     return `${base} max-h-dvh h-screen w-[50vw] sm:w-[40vw] ml-auto ${sideBorder} border-zinc-800/80 ${bgColor} ${props.ui.container || ''}`;
   }
 
-  const heightClass = props.isFullHeight ? 'h-[95dvh]' : 'max-h-[85dvh]';
+  const heightClass = props.snapPoints?.length
+    ? 'h-full max-h-dvh'
+    : props.isFullHeight
+      ? 'h-[95dvh]'
+      : 'max-h-[85dvh]';
   return `${base} ${heightClass} w-full border-t border-zinc-800/80 ${bgColor} rounded-t-2xl ${props.ui.container || ''}`;
 });
 
@@ -113,6 +120,7 @@ const bdStartY = ref(0);
 const bdStartX = ref(0);
 const bdDy = ref(0);
 const bdDx = ref(0);
+const backdropDragOffset = ref(0);
 
 const isBackdropInteractive = computed(
   () =>
@@ -122,50 +130,75 @@ const isBackdropInteractive = computed(
     (effectiveDirection.value === 'bottom' || effectiveDirection.value === 'top'),
 );
 
+const containerStyle = computed(() => {
+  if (!backdropDragOffset.value || effectiveDirection.value !== 'bottom' || !isExpanded.value) {
+    return undefined;
+  }
+
+  return {
+    transform: `translate3d(0, ${backdropDragOffset.value}px, 0)`,
+  };
+});
+
 const bodyRef = ref<HTMLElement | null>(null);
 
 function onBackdropTouchStart(e: TouchEvent) {
+  if (!isBackdropInteractive.value) return;
   const t = e.touches[0];
   if (!t) return;
   bdStartY.value = t.clientY;
   bdStartX.value = t.clientX;
   bdDy.value = 0;
   bdDx.value = 0;
+  backdropDragOffset.value = 0;
 }
 
 function onBackdropTouchMove(e: TouchEvent) {
+  if (!isBackdropInteractive.value) return;
   const t = e.touches[0];
   if (!t) return;
   bdDy.value = t.clientY - bdStartY.value;
   bdDx.value = t.clientX - bdStartX.value;
+  backdropDragOffset.value = Math.max(0, bdDy.value);
 }
 
 function onBackdropTouchEnd(e: TouchEvent) {
+  if (!isBackdropInteractive.value) return;
   const dy = bdDy.value;
   const adx = Math.abs(bdDx.value);
 
   if (Math.abs(dy) < 10 && adx < 10) {
-    isOpen.value = false;
+    backdropDragOffset.value = 0;
+    requestClose();
     return;
   }
 
   if (dy > 50 && dy > adx * 1.5) {
     e.preventDefault();
-    isOpen.value = false;
+    backdropDragOffset.value = 0;
+    requestClose();
+    return;
   }
+
+  backdropDragOffset.value = 0;
 }
 
 function onBackdropClick() {
-  if (!props.modal) isOpen.value = false;
+  if (!props.modal) requestClose();
 }
 
 function onClose() {
+  requestClose();
+}
+
+function requestClose() {
   isOpen.value = false;
+  emit('close');
 }
 
 function onHandleTap() {
   if (isExpanded.value) {
-    isOpen.value = false;
+    requestClose();
     return;
   }
 
@@ -206,8 +239,8 @@ watch(isOpen, (val) => {
     <div
       class="fixed inset-0 bg-zinc-950/40 backdrop-blur-[2px] transition-all duration-300 z-[calc(var(--z-fixed)-1)]"
       :class="[
-        isOpen && (props.modal || isExpanded) ? 'opacity-100' : 'opacity-0 pointer-events-none',
-        props.modal || isBackdropInteractive ? 'pointer-events-auto' : 'pointer-events-none',
+        isOpen && props.overlay && isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none',
+        isOpen && isExpanded ? 'pointer-events-auto' : 'pointer-events-none',
       ]"
       :style="{ touchAction: isBackdropInteractive ? 'none' : 'auto' }"
       @touchstart.passive="onBackdropTouchStart"
@@ -233,7 +266,7 @@ watch(isOpen, (val) => {
     @update:active-snap-point="onSnapPointChange"
   >
     <template #content>
-      <div :class="containerClasses">
+      <div :class="containerClasses" :style="containerStyle">
         <!-- Vertical mode: drag handle -->
         <div
           v-if="
