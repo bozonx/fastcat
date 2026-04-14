@@ -15,9 +15,12 @@ import {
   useFileManagerActions,
   type FileAction,
 } from '~/composables/file-manager/useFileManagerActions';
+import { useBloggerDogStore } from '~/stores/bloggerdog';
+import { useFileBrowserRemoteCreate } from '~/composables/file-manager/useFileBrowserRemoteCreate';
 import { useMobileFileBrowserNavigation } from '~/composables/file-manager/useMobileFileBrowserNavigation';
 import { useMobileFileBrowserSelection } from '~/composables/file-manager/useMobileFileBrowserSelection';
 import { useMobileFileBrowserCreate } from '~/composables/file-manager/useMobileFileBrowserCreate';
+import { useFileBrowserFileActions } from '~/composables/file-manager/useFileBrowserFileActions';
 import type { FsEntry } from '~/types/fs';
 import MobileFileBrowserGrid from './MobileFileBrowserGrid.vue';
 import MobileFileBrowserDrawer from './MobileFileBrowserDrawer.vue';
@@ -32,6 +35,9 @@ import UiEntityCreationModal from '~/components/ui/UiEntityCreationModal.vue';
 import { useSttTranscription } from '~/composables/file-manager/useSttTranscription';
 import { useFileBrowserBulkSelection } from '~/composables/file-manager/useFileBrowserBulkSelection';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
+import { useFileConversionStore } from '~/stores/file-conversion.store';
+import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
+import { useProxyStore } from '~/stores/proxy.store';
 
 const fileManagerStore = useFileManagerStore();
 const projectStore = useProjectStore();
@@ -93,7 +99,8 @@ const {
   createFolder,
   createTimeline,
   createMarkdown,
-  handleFiles,
+  handleFiles: (files: File[], targetPath: string) =>
+    handleFiles(files, { targetDirPath: targetPath }),
   loadFolderContent,
 });
 
@@ -118,23 +125,64 @@ async function onCreateTextFile(targetPath?: string) {
   }
 }
 
-const { onFileAction, isDeleteConfirmModalOpen, deleteTargets, handleDeleteConfirm } =
-  useFileManagerActions({
-    createFolder,
-    renameEntry,
-    deleteEntry,
-    loadProjectDirectory: async () => {
-      await loadFolderContent();
-    },
-    handleFiles,
-    mediaCache,
-    vfs,
-    findEntryByPath,
-    readDirectory,
-    reloadDirectory,
-    copyEntry,
-    moveEntry,
-  });
+const bloggerDogStore = useBloggerDogStore();
+
+const {
+  isSubgroupModalOpen,
+  isItemModalOpen,
+  handlePendingBloggerDogCreateSubgroup,
+  handlePendingBloggerDogCreateItem,
+  onSubgroupCreateConfirm,
+  onItemCreateConfirm,
+} = useFileBrowserRemoteCreate({
+  vfs,
+  bloggerDogStore,
+  buildRemoteDirectoryEntry: (path) =>
+    ({
+      path,
+      kind: 'directory',
+      name: path.split('/').pop() || '',
+      source: 'remote',
+    }) as any,
+  remoteCurrentFolder: ref(null),
+  loadFolderContent,
+  loadParentFolders: async () => {},
+  notifyFileManagerUpdate: () => uiStore.notifyFileManagerUpdate(),
+  clearPendingCreateSubgroup: () => {
+    uiStore.pendingBloggerDogCreateSubgroup = null;
+  },
+  clearPendingCreateItem: () => {
+    uiStore.pendingBloggerDogCreateItem = null;
+  },
+  t,
+  toast,
+});
+
+const {
+  onFileAction: onFileActionInternal,
+  isDeleteConfirmModalOpen,
+  deleteTargets,
+  handleDeleteConfirm,
+} = useFileManagerActions({
+  createFolder,
+  renameEntry,
+  deleteEntry,
+  loadProjectDirectory: async () => {
+    await loadFolderContent();
+  },
+  handleFiles,
+  mediaCache,
+  vfs,
+  findEntryByPath,
+  readDirectory,
+  reloadDirectory,
+  copyEntry,
+  moveEntry,
+});
+
+const conversionStore = useFileConversionStore();
+const { extractAudio } = useAudioExtraction();
+const proxyStore = useProxyStore();
 
 const selectedEntry = computed(() =>
   selectedEntries.value.length === 1 ? selectedEntries.value[0] : null,
@@ -190,6 +238,17 @@ const {
       color: 'danger',
     });
   },
+});
+
+const { onFileAction } = useFileBrowserFileActions({
+  folderEntries: entries,
+  loadFolderContent,
+  onFileActionBase: onFileActionInternal,
+  conversionStore,
+  openTranscriptionModal,
+  extractAudio: (entry) => extractAudio(entry),
+  vfs,
+  isExternal: false,
 });
 
 // Lazily calculate sizes of all folders in current directory
@@ -330,6 +389,34 @@ async function handleDrawerAction(action: FileAction, entry: FsEntry | FsEntry[]
     closeAllUI();
   }
 
+  if (action === 'createTimeline') {
+    const e = Array.isArray(entry) ? entry[0] : entry;
+    if (e?.kind === 'directory') await onCreateTimeline(e.path);
+    closeAllUI();
+    return;
+  }
+
+  if (action === 'createMarkdown') {
+    const e = Array.isArray(entry) ? entry[0] : entry;
+    if (e?.kind === 'directory') await onCreateTextFile(e.path);
+    closeAllUI();
+    return;
+  }
+
+  if (action === 'createSubgroup') {
+    const e = Array.isArray(entry) ? entry[0] : entry;
+    if (e) handlePendingBloggerDogCreateSubgroup(e);
+    closeAllUI();
+    return;
+  }
+
+  if (action === 'createContentItem') {
+    const e = Array.isArray(entry) ? entry[0] : entry;
+    if (e) handlePendingBloggerDogCreateItem(e);
+    closeAllUI();
+    return;
+  }
+
   await onFileAction(action, entry);
 }
 
@@ -400,6 +487,16 @@ const menuItems = computed(() => [
       label: t('videoEditor.fileManager.actions.createFolder'),
       icon: 'i-heroicons-folder-plus',
       onSelect: handleCreateFolderRequest,
+    },
+    {
+      label: t('videoEditor.fileManager.actions.createTimeline'),
+      icon: 'i-heroicons-document-plus',
+      onSelect: onCreateTimeline,
+    },
+    {
+      label: t('videoEditor.fileManager.actions.createMarkdown'),
+      icon: 'i-heroicons-document-text',
+      onSelect: () => onCreateTextFile(),
     },
   ],
   [...sortItems.value],
@@ -576,6 +673,20 @@ const menuItems = computed(() => [
       v-model:open="isAddToTimelineModalOpen"
       :entries="addToTimelineEntries"
       @added="onAddedToTimeline"
+    />
+
+    <!-- BloggerDog Subgroup Modal -->
+    <UiEntityCreationModal
+      v-model:open="isSubgroupModalOpen"
+      :title="t('fastcat.bloggerDog.actions.createSubgroup')"
+      @confirm="onSubgroupCreateConfirm"
+    />
+
+    <!-- BloggerDog Content Item Modal -->
+    <UiEntityCreationModal
+      v-model:open="isItemModalOpen"
+      :title="t('fastcat.bloggerDog.actions.createItem')"
+      @confirm="onItemCreateConfirm"
     />
   </div>
 </template>

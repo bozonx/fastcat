@@ -141,6 +141,16 @@ export function useFileBrowserFileActions({
       openTranscriptionModal(entry);
       return;
     }
+    
+    if (action === 'createSubgroup') {
+      if (entry.kind === 'directory') (uiStore as any).pendingBloggerDogCreateSubgroup = entry;
+      return;
+    }
+
+    if (action === 'createContentItem') {
+      if (entry.kind === 'directory') (uiStore as any).pendingBloggerDogCreateItem = entry;
+      return;
+    }
 
     if (action === 'extractAudio') {
       if (entry.kind === 'file') void extractAudio(entry);

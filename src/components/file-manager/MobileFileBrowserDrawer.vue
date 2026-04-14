@@ -22,6 +22,8 @@ import { useI18n } from 'vue-i18n';
 
 import { useRuntimeConfig } from 'nuxt/app';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
+import { isGeneratingProxyInDirectory, folderHasVideos } from '~/utils/fs-entry-utils';
+import { getBdPayload } from '~/types/bloggerdog';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -125,6 +127,25 @@ const canDelete = computed(() => {
   if (isBloggerDogProject.value) return false;
   return true;
 });
+
+const isOtioFile = computed(() => {
+  return selectedFsEntry.value?.entry.name.toLowerCase().endsWith('.otio') ?? false;
+});
+
+const isBdVirtual = computed(() =>
+  selectedFsEntry.value
+    ? getBdPayload(selectedFsEntry.value.entry)?.type === 'virtual-folder'
+    : false,
+);
+const isBdProject = computed(() =>
+  selectedFsEntry.value ? getBdPayload(selectedFsEntry.value.entry)?.type === 'project' : false,
+);
+const isBdGroup = computed(() =>
+  selectedFsEntry.value ? getBdPayload(selectedFsEntry.value.entry)?.type === 'collection' : false,
+);
+const isBdContentItem = computed(() =>
+  selectedFsEntry.value ? getBdPayload(selectedFsEntry.value.entry)?.type === 'content-item' : false,
+);
 
 const isFullyUnsupported = computed(() => {
   const entry = selectedFsEntry.value?.entry;
@@ -254,13 +275,97 @@ const topActions = computed(() => {
     });
   }
 
+  // Create OTIO Version
+  if (isOtioFile.value) {
+    actions.push({
+      id: 'createOtioVersion',
+      label: t('fastcat.timeline.createVersion'),
+      icon: 'i-heroicons-document-duplicate',
+      onClick: () => handleAction('createOtioVersion'),
+    });
+  }
+
+  // Directory actions
+  if (entry.kind === 'directory') {
+    actions.push({
+      id: 'createFolder',
+      label: t('videoEditor.fileManager.actions.createFolder'),
+      icon: 'i-heroicons-folder-plus',
+      onClick: () => handleAction('createFolder'),
+    });
+    actions.push({
+      id: 'upload',
+      label: t('videoEditor.fileManager.actions.uploadFiles'),
+      icon: 'i-heroicons-arrow-up-tray',
+      onClick: () => handleAction('upload'),
+    });
+    actions.push({
+      id: 'createTimeline',
+      label: t('videoEditor.fileManager.actions.createTimeline'),
+      icon: 'i-heroicons-document-plus',
+      onClick: () => handleAction('createTimeline'),
+    });
+    actions.push({
+      id: 'createMarkdown',
+      label: t('videoEditor.fileManager.actions.createMarkdown'),
+      icon: 'i-heroicons-document-text',
+      onClick: () => handleAction('createMarkdown'),
+    });
+
+    // Proxy for folder
+    if (folderHasVideos(entry)) {
+      if (isGeneratingProxyInDirectory(entry, proxyStore.generatingProxies)) {
+        actions.push({
+          id: 'cancelProxyForFolder',
+          label: t('videoEditor.fileManager.actions.cancelProxyGeneration'),
+          icon: 'i-heroicons-x-circle',
+          color: 'error',
+          onClick: () => handleAction('cancelProxyForFolder'),
+        });
+      } else {
+        actions.push({
+          id: 'createProxyForFolder',
+          label: t('videoEditor.fileManager.actions.createProxyForAll'),
+          icon: 'i-heroicons-film',
+          onClick: () => handleAction('createProxyForFolder'),
+        });
+      }
+    }
+
+    // BloggerDog specific creations
+    const canCreateSubgroup =
+      isBdProject.value || isBdGroup.value || (isBdVirtual.value && entry.remoteId === 'personal');
+    const canCreateItem =
+      isBdProject.value ||
+      isBdGroup.value ||
+      (isBdVirtual.value && (entry.remoteId === 'personal' || entry.remoteId === 'virtual-all'));
+
+    if (canCreateSubgroup) {
+      actions.push({
+        id: 'createSubgroup',
+        label: t('fastcat.bloggerDog.actions.createSubgroup'),
+        icon: 'i-heroicons-folder-plus',
+        onClick: () => handleAction('createSubgroup'),
+      });
+    }
+
+    if (canCreateItem) {
+      actions.push({
+        id: 'createContentItem',
+        label: t('fastcat.bloggerDog.actions.createItem'),
+        icon: 'i-heroicons-document-plus',
+        onClick: () => handleAction('createContentItem'),
+      });
+    }
+  }
+
   return actions;
 });
 
 function handleAction(actionId: FileAction) {
   if (onAction?.value) {
     const list = selectedEntriesList.value;
-    if (actionId === 'rename' && list.length === 1 && list[0]) {
+    if (list.length === 1 && list[0]) {
       void onAction.value(actionId, list[0]);
     } else if (list.length > 0) {
       void onAction.value(actionId, list);
