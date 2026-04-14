@@ -263,7 +263,10 @@ function onToolbarContextMenu(e: MouseEvent) {
       @contextmenu="onToolbarContextMenu"
     >
       <!-- Left column: Main actions -->
-      <div class="flex-1 flex items-center justify-center gap-2">
+      <div
+        class="flex-1 flex items-center justify-center gap-2"
+        @click.self="timelineStore.selectTimelineProperties()"
+      >
         <UFieldGroup class="inline-flex">
           <UiTooltip :text="t('fastcat.timeline.snapModeFullDescription')">
             <UButton
@@ -466,7 +469,10 @@ function onToolbarContextMenu(e: MouseEvent) {
       </div>
 
       <!-- Right column: Zoom controls -->
-      <div class="w-[240px] flex items-center gap-2 pl-4 border-l border-ui-border/30">
+      <div
+        class="w-[240px] flex items-center gap-2 pl-4 border-l border-ui-border/30"
+        @click.self="timelineStore.selectTimelineProperties()"
+      >
         <UiTooltip :text="t('fastcat.timeline.zoomToFit')">
           <UButton
             size="xs"

@@ -43,7 +43,7 @@ const menuItems = computed(() => {
         size="sm"
         variant="ghost"
         color="neutral"
-        icon="i-heroicons-arrow-left"
+        icon="i-heroicons-home"
         class="shrink-0"
         to="/"
       />

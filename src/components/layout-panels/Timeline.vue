@@ -448,6 +448,7 @@ function onDragVirtualEnd() {
     <!-- Row 2: Ruler with playhead timecode -->
     <div
       class="flex shrink-0 h-8 border-b border-ui-border"
+      @click.self="timelineStore.selectTimelineProperties()"
       @pointermove="onTimelinePointerMove"
       @pointerup="onTimelinePointerUp"
       @pointercancel="onTimelinePointerUp"
@@ -456,6 +457,7 @@ function onDragVirtualEnd() {
         <div
           class="shrink-0 border-r border-ui-border bg-ui-bg-elevated flex items-center px-2 gap-2"
           style="width: 220px"
+          @click.self="timelineStore.selectTimelineProperties()"
         >
           <UiTimecode
             class="flex-1"
