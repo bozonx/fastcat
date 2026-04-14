@@ -202,17 +202,25 @@ describe('useTimelineItemDrag', () => {
     );
 
     expect(pasteClipsMock).toHaveBeenCalledTimes(1);
+    const moveCall = applyTimelineMock.mock.calls.find(
+      ([cmd]) => cmd?.type === 'move_item_to_track',
+    )?.[0];
+    expect(moveCall).toBeTruthy();
     expect(pasteClipsMock).toHaveBeenCalledWith(
       [
         expect.objectContaining({
           sourceTrackId: 'track-1',
           clip: expect.objectContaining({
             id: 'clip-1',
+            timelineRange: expect.objectContaining({
+              startUs: 1_000_000,
+            }),
           }),
         }),
       ],
       expect.objectContaining({
         targetTrackId: 'track-1',
+        insertStartUs: moveCall.startUs,
       }),
     );
     expect(requestTimelineSaveMock).toHaveBeenCalledWith({ immediate: true });

@@ -65,7 +65,7 @@ vi.mock('~/stores/workspace.store', () => ({
         snapping: {
           timelineEdges: true,
           playhead: true,
-          playheadClick: false,
+          playheadClick: true,
           markers: true,
           clips: true,
           selection: true,

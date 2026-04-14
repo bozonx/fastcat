@@ -1,12 +1,5 @@
 import { onUnmounted, ref, type Ref, computed } from 'vue';
-import {
-  pxToTimeUs,
-  pxToDeltaUs,
-  timeUsToPx,
-  pickBestSnapCandidateUs,
-  zoomToPxPerSecond,
-} from '~/utils/timeline/geometry';
-import { TIMELINE_RULER_CONSTANTS } from '~/utils/constants';
+import { pxToDeltaUs, pickBestSnapCandidateUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { quantizeTimeUsToFrames } from '~/timeline/commands/utils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
@@ -27,12 +20,7 @@ interface UseTimelineRulerMarkerDragOptions {
   markers: Ref<MarkerLike[]>;
   zoom: Ref<number>;
   fps: Ref<number>;
-  selectMarker: (
-    markerId: string,
-    e?: MouseEvent,
-    part?: 'left' | 'right',
-    movePlayhead?: boolean,
-  ) => void;
+  selectMarker: (markerId: string, e?: MouseEvent, part?: 'left' | 'right') => void;
   updateMarker: (markerId: string, patch: { timeUs?: number; durationUs?: number }) => void;
   computeSnapTargets?: () => number[];
   snapThresholdPx?: Ref<number>;
@@ -203,8 +191,7 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
     if (event.button !== 0) return;
 
     event.stopPropagation();
-    // Select marker but do not move playhead so it doesn't snap to playhead immediately
-    options.selectMarker(markerId, undefined, part, false);
+    options.selectMarker(markerId, undefined, part);
 
     const marker = options.markers.value.find((item) => item.id === markerId);
     if (!marker) return;

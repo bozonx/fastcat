@@ -119,4 +119,10 @@ describe('timelineInteractionUtils', () => {
 
     expect(result).toBe(1_030_000);
   });
+
+  it('enables playhead click snapping by default in user settings', async () => {
+    const { DEFAULT_USER_SETTINGS } = await import('~/utils/settings/defaults');
+
+    expect(DEFAULT_USER_SETTINGS.timeline.snapping.playheadClick).toBe(true);
+  });
 });

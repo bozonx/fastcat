@@ -220,7 +220,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       markers: true,
       selection: true,
       playhead: true,
-      playheadClick: false,
+      playheadClick: true,
     },
   },
   stopFrames: {
