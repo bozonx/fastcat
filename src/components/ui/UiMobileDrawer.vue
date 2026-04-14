@@ -339,7 +339,7 @@ watch(isOpen, (val) => {
     :modal="props.modal"
     :overlay="props.modal && props.overlay"
     :handle="false"
-    :ui="{ content: 'z-[var(--z-fixed)] shadow-none ring-0 bg-transparent' }"
+    :ui="{ content: 'z-[var(--z-fixed)] shadow-none ring-0 bg-transparent mt-0' }"
     @update:active-snap-point="onSnapPointChange"
   >
     <template #content>
