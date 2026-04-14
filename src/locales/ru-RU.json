@@ -1619,6 +1619,7 @@
       "snapToClips": "Клипам",
       "snapToMarkers": "Маркерам",
       "snapToPlayhead": "Плейхеду",
+      "snapPlayheadOnClick": "Привязывать playhead",
       "snapToSelection": "Выделению",
       "snapToTargets": "Привязываться к",
       "snapToTimelineEdges": "Началу и концу таймлайна",

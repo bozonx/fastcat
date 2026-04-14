@@ -55,6 +55,9 @@ export function normalizeTimelineSettings(raw: unknown): FastCatUserSettings['ti
           markers: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.markers),
           selection: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.selection),
           playhead: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.playhead),
+          playheadClick: z
+            .boolean()
+            .catch(DEFAULT_USER_SETTINGS.timeline.snapping.playheadClick),
         })
         .catch(DEFAULT_USER_SETTINGS.timeline.snapping),
     })

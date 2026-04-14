@@ -5,7 +5,12 @@ import type {
   TimelineSelectionRange,
 } from '~/timeline/types';
 
-import { sanitizeSnapTargetsUs } from '~/utils/timeline/geometry';
+import {
+  pickBestSnapCandidateUs,
+  sanitizeSnapTargetsUs,
+  zoomToPxPerSecond,
+} from '~/utils/timeline/geometry';
+import type { FastCatUserSettings } from '~/utils/settings';
 
 export interface TimelineMoveOperation {
   fromTrackId: string;
@@ -68,6 +73,50 @@ export function computeSnapTargetsUs(params: {
   }
 
   return sanitizeSnapTargetsUs(targets);
+}
+
+export interface ResolvePlayheadClickTimeUsParams {
+  rawTimeUs: number;
+  zoom: number;
+  snapThresholdPx: number;
+  toolbarSnapMode: 'snap' | 'no_snap' | 'free_mode';
+  snapping: FastCatUserSettings['timeline']['snapping'];
+  tracks: TimelineTrack[];
+  markers: TimelineMarker[];
+  durationUs: number | null;
+  selectionRangeUs?: TimelineSelectionRange | null;
+}
+
+export function resolvePlayheadClickTimeUs(params: ResolvePlayheadClickTimeUsParams): number {
+  const rawTimeUs = Math.max(0, Math.round(params.rawTimeUs));
+
+  if (!params.snapping.playheadClick || params.toolbarSnapMode !== 'snap') {
+    return rawTimeUs;
+  }
+
+  const targetsUs = computeSnapTargetsUs({
+    tracks: params.tracks,
+    includeTimelineStart: params.snapping.timelineEdges,
+    includeTimelineEndUs: params.snapping.timelineEdges ? params.durationUs : null,
+    includePlayheadUs: null,
+    includeMarkers: params.snapping.markers,
+    markers: params.markers,
+    includeClips: params.snapping.clips,
+    selectionRangeUs: params.snapping.selection ? params.selectionRangeUs : null,
+  });
+
+  if (targetsUs.length === 0) {
+    return rawTimeUs;
+  }
+
+  const thresholdUs = Math.round((params.snapThresholdPx / zoomToPxPerSecond(params.zoom)) * 1e6);
+  const snap = pickBestSnapCandidateUs({
+    rawUs: rawTimeUs,
+    thresholdUs,
+    targetsUs,
+  });
+
+  return snap.distUs < thresholdUs ? snap.snappedUs : rawTimeUs;
 }
 
 export function getSelectedMovableItemIds(params: {

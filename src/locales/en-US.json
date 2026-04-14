@@ -1619,6 +1619,7 @@
       "snapToClips": "Clips",
       "snapToMarkers": "Markers",
       "snapToPlayhead": "Playhead",
+      "snapPlayheadOnClick": "Snap playhead on click",
       "snapToSelection": "Selection",
       "snapToTargets": "Snap to",
       "snapToTimelineEdges": "Timeline start and end",
