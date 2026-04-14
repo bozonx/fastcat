@@ -34,11 +34,7 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
   function onScroll() {
     if (options.scrollEl.value) {
       options.scrollLeft.value = options.scrollEl.value.scrollLeft;
-      if (drawRafId !== null) {
-        cancelAnimationFrame(drawRafId);
-        drawRafId = null;
-      }
-      draw();
+      scheduleDraw();
     }
   }
 

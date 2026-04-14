@@ -53,11 +53,7 @@ onMounted(() => {
 function onScroll() {
   if (props.scrollEl) {
     scrollLeft.value = props.scrollEl.scrollLeft;
-    if (drawRafId !== null) {
-      cancelAnimationFrame(drawRafId);
-      drawRafId = null;
-    }
-    draw();
+    scheduleDraw();
   }
 }
 
