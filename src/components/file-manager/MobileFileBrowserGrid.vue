@@ -7,6 +7,8 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useProjectStore } from '~/stores/project.store';
 import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
+import { useProxyStore } from '~/stores/proxy.store';
+import { isGeneratingProxyInDirectory } from '~/utils/fs-entry-utils';
 
 interface ExtendedFsEntry extends FsEntry {
   objectUrl?: string;
@@ -35,12 +37,25 @@ const { t } = useI18n();
 const { getFileIcon } = useFileManager();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const projectStore = useProjectStore();
+const proxyStore = useProxyStore();
 
 const mediaUsageMap = computed(() => timelineMediaUsageStore.mediaPathToTimelines);
 
 function isEntryUsed(entry: FsEntry) {
   if (entry.kind !== 'file' || !entry.path) return false;
   return Boolean(mediaUsageMap.value[entry.path]?.length);
+}
+
+function hasProxy(entry: FsEntry) {
+  return entry.kind === 'file' && Boolean(entry.path) && proxyStore.existingProxies.has(entry.path);
+}
+
+function isGeneratingProxy(entry: FsEntry) {
+  if (entry.kind === 'file') {
+    return Boolean(entry.path) && proxyStore.generatingProxies.has(entry.path);
+  }
+
+  return isGeneratingProxyInDirectory(entry, proxyStore.generatingProxies);
 }
 
 const longPressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
@@ -215,6 +230,8 @@ onBeforeUnmount(clearLongPress);
                 class="opacity-40 transition-transform"
                 :class="[
                   entry.kind === 'directory' ? 'w-32 h-32 text-blue-400' : 'w-10 h-10',
+                  hasProxy(entry) && !isGeneratingProxy(entry) ? 'text-(--color-success)!' : '',
+                  isGeneratingProxy(entry) ? 'text-amber-400!' : '',
                   isSelected(entry) ? 'scale-110' : '',
                 ]"
               />
@@ -245,7 +262,11 @@ onBeforeUnmount(clearLongPress);
             <div
               class="truncate text-[12px] font-medium leading-tight mb-0.5 transition-colors"
               :class="[
-                isSelected(entry) ? 'text-selection-accent-400' : '',
+                isSelected(entry) && !hasProxy(entry) && !isGeneratingProxy(entry)
+                  ? 'text-selection-accent-400'
+                  : '',
+                hasProxy(entry) && !isGeneratingProxy(entry) ? 'text-(--color-success)!' : '',
+                isGeneratingProxy(entry) ? 'text-amber-400!' : '',
                 getCompatibilityStatus(entry) !== 'ok' ? 'text-red-400!' : '',
               ]"
             >

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, toRefs } from 'vue';
+import { computed, ref, toRefs, watch } from 'vue';
 import { useSelectionStore } from '~/stores/selection.store';
 import FileProperties from '~/components/properties/FileProperties.vue';
 import MultiFileProperties from '~/components/properties/MultiFileProperties.vue';
@@ -19,6 +19,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useMediaStore } from '~/stores/media.store';
 import { useI18n } from 'vue-i18n';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 
 import { useRuntimeConfig } from 'nuxt/app';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
@@ -45,6 +46,7 @@ const proxyStore = useProxyStore();
 const projectStore = useProjectStore();
 const { extractAudio } = useAudioExtraction();
 const { vfs: computerVfs } = useComputerVfs();
+const { readDirectory } = useFileManager();
 const runtimeConfig = useRuntimeConfig();
 const workspaceStore = useWorkspaceStore();
 
@@ -199,10 +201,34 @@ const hasExistingProxy = computed(() => {
   return proxyStore.existingProxies.has(selectedFsEntry.value.path);
 });
 
+const hasDirectVideoChildren = ref(false);
+
+watch(
+  selectedFsEntry,
+  async (selected) => {
+    if (!selected || selected.entry.kind !== 'directory') {
+      hasDirectVideoChildren.value = false;
+      return;
+    }
+
+    if (folderHasVideos(selected.entry)) {
+      hasDirectVideoChildren.value = true;
+      return;
+    }
+
+    const folderPath = selected.entry.path ?? '';
+    const children = await readDirectory(folderPath).catch(() => []);
+    hasDirectVideoChildren.value = children.some(
+      (child) => child.kind === 'file' && getMediaTypeFromFilename(child.name) === 'video',
+    );
+  },
+  { immediate: true },
+);
+
 const topActions = computed(() => {
   const entry = selectedFsEntry.value?.entry;
   const path = selectedFsEntry.value?.path;
-  if (!entry || !path) return [];
+  if (!entry) return [];
 
   const actions: any[] = [];
 
@@ -232,7 +258,7 @@ const topActions = computed(() => {
   }
 
   // Proxy (Video only)
-  if (isVideo.value) {
+  if (isVideo.value && path) {
     const isGenerating = proxyStore.generatingProxies.has(path);
     const hasProxy = proxyStore.existingProxies.has(path);
 
@@ -245,22 +271,23 @@ const topActions = computed(() => {
       });
     } else if (hasProxy) {
       actions.push({
+        id: 'regenerateProxy',
+        label: t('videoEditor.fileManager.actions.regenerateProxy'),
+        icon: 'i-heroicons-arrow-path',
+        onClick: () => handleAction('createProxy'),
+      });
+      actions.push({
         id: 'deleteProxy',
         label: t('videoEditor.fileManager.actions.deleteProxy'),
         icon: 'i-heroicons-trash',
-        onClick: () => proxyStore.deleteProxy(path),
+        onClick: () => handleAction('deleteProxy'),
       });
     } else {
       actions.push({
         id: 'createProxy',
         label: t('videoEditor.fileManager.actions.createProxy'),
         icon: 'i-heroicons-video-camera',
-        onClick: async () => {
-          const handle = await projectStore.getFileHandleByPath(path);
-          if (handle) {
-            await proxyStore.generateProxy(handle, path);
-          }
-        },
+        onClick: () => handleAction('createProxy'),
       });
     }
   }
@@ -313,7 +340,7 @@ const topActions = computed(() => {
     });
 
     // Proxy for folder
-    if (folderHasVideos(entry)) {
+    if (hasDirectVideoChildren.value) {
       if (isGeneratingProxyInDirectory(entry, proxyStore.generatingProxies)) {
         actions.push({
           id: 'cancelProxyForFolder',
@@ -435,7 +462,7 @@ function handleAction(actionId: FileAction) {
           <FileProperties
             :selected-fs-entry="selectedFsEntry.entry"
             preview-mode="original"
-            :has-proxy="false"
+            :has-proxy="hasExistingProxy"
             :mobile-text-mode="isTextDocument"
             :hide-actions="selectedFsEntry.entry.kind === 'file'"
           />
