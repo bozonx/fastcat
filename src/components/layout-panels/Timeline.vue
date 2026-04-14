@@ -153,6 +153,7 @@ const {
   draggingItemId,
   movePreview,
   slipPreview,
+  trimPreview,
   onTimeRulerPointerDown: onBaseTimeRulerPointerDown,
   startPlayheadDrag,
   isDraggingPlayhead,
@@ -462,11 +463,7 @@ function onDragVirtualEnd() {
           />
 
           <div class="flex items-center gap-1">
-            <UTooltip
-              v-if="anyLocked"
-              :text="t('fastcat.track.resetLocked')"
-              :shortcuts="['L']"
-            >
+            <UTooltip v-if="anyLocked" :text="t('fastcat.track.resetLocked')" :shortcuts="['L']">
               <UButton
                 icon="i-heroicons-lock-closed"
                 color="primary"
@@ -477,11 +474,7 @@ function onDragVirtualEnd() {
                 @click="timelineStore.unlockAllTracks()"
               />
             </UTooltip>
-            <UTooltip
-              v-if="anyHidden"
-              :text="t('fastcat.track.resetHidden')"
-              :shortcuts="['H']"
-            >
+            <UTooltip v-if="anyHidden" :text="t('fastcat.track.resetHidden')" :shortcuts="['H']">
               <UButton
                 icon="i-heroicons-eye-slash"
                 color="white"
@@ -492,11 +485,7 @@ function onDragVirtualEnd() {
                 @click="timelineStore.showAllTracks()"
               />
             </UTooltip>
-            <UTooltip
-              v-if="anyMuted"
-              :text="t('fastcat.track.resetMuted')"
-              :shortcuts="['M']"
-            >
+            <UTooltip v-if="anyMuted" :text="t('fastcat.track.resetMuted')" :shortcuts="['M']">
               <UButton
                 icon="i-heroicons-speaker-x-mark"
                 color="error"
@@ -572,6 +561,7 @@ function onDragVirtualEnd() {
         :drag-preview="dragPreview"
         :move-preview="movePreview"
         :slip-preview="slipPreview"
+        :trim-preview="trimPreview"
         :dragging-mode="draggingMode"
         :dragging-item-id="draggingItemId"
         :scroll-left="scrollLeftRef"
@@ -610,6 +600,7 @@ function onDragVirtualEnd() {
         :drag-preview="dragPreview"
         :move-preview="movePreview"
         :slip-preview="slipPreview"
+        :trim-preview="trimPreview"
         :dragging-mode="draggingMode"
         :dragging-item-id="draggingItemId"
         :scroll-left="scrollLeftRef"

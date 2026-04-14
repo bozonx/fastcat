@@ -27,6 +27,13 @@ const props = defineProps<{
   } | null;
   movePreview?: { itemId: string; trackId: string; startUs: number } | null;
   slipPreview?: { itemId: string; trackId: string; deltaUs: number; timecode: string } | null;
+  trimPreview?: {
+    itemId: string;
+    trackId: string;
+    startUs: number;
+    durationUs: number;
+    edge: 'start' | 'end';
+  } | null;
   draggingMode?: 'move' | 'slip' | 'trim_start' | 'trim_end' | null;
   draggingItemId?: string | null;
   scrollLeft?: number;
@@ -94,6 +101,7 @@ defineExpose({
           :drag-preview="dragPreview"
           :move-preview="movePreview"
           :slip-preview="slipPreview"
+          :trim-preview="trimPreview"
           :dragging-mode="draggingMode"
           :dragging-item-id="draggingItemId"
           :scroll-left="scrollLeft"

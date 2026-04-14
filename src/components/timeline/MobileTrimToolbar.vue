@@ -2,38 +2,55 @@
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
-import { useWorkspaceStore } from '~/stores/workspace.store';
-import {
-  pickBestSnapCandidateUs,
-  zoomToPxPerSecond,
-} from '~/utils/timeline/geometry';
-import { computeSnapTargetsUs } from '~/composables/timeline/timelineInteractionUtils';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
+
+const props = defineProps<{
+  trimPreview?: {
+    itemId: string;
+    trackId: string;
+    startUs: number;
+    durationUs: number;
+    edge: 'start' | 'end';
+  } | null;
+}>();
 
 const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'back'): void;
+  (
+    e: 'trim-start',
+    payload: {
+      trackId: string;
+      itemId: string;
+      edge: 'start' | 'end';
+      clientX: number;
+      clientY: number;
+    },
+  ): void;
+  (e: 'trim-move', payload: { clientX: number; clientY: number }): void;
+  (e: 'trim-end', payload: { clientX: number; clientY: number }): void;
 }>();
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
-const settingsStore = useTimelineSettingsStore();
 const selectionStore = useSelectionStore();
-const workspaceStore = useWorkspaceStore();
+
+const activeEdge = ref<'start' | 'end' | null>(null);
 
 const currentClipAndTrack = computed(() => {
   const entity = selectionStore.selectedEntity;
   if (entity?.source !== 'timeline' || entity.kind !== 'clip') return null;
-  const trackId = entity.trackId;
-  const itemId = entity.itemId;
 
-  const track = timelineStore.timelineDoc?.tracks?.find((t) => t.id === trackId) as
+  const track = timelineStore.timelineDoc?.tracks?.find((item) => item.id === entity.trackId) as
     | TimelineTrack
     | undefined;
   if (!track) return null;
-  const item = track.items.find((i) => i.id === itemId) as TimelineClipItem | undefined;
+
+  const item = track.items.find((clip) => clip.id === entity.itemId) as
+    | TimelineClipItem
+    | undefined;
   if (!item || item.kind !== 'clip') return null;
+
   return { track, item };
 });
 
@@ -52,113 +69,78 @@ function formatTC(us: number) {
   return `${pad(hh)}:${pad(mm)}:${pad(ss)}:${pad(ff)}`;
 }
 
-const timeData = computed(() => {
-  if (!currentClipAndTrack.value) return null;
-  const clip = currentClipAndTrack.value.item;
-  const s = clip.timelineRange.startUs;
-  const d = clip.timelineRange.durationUs;
+const effectiveRange = computed(() => {
+  const clipContext = currentClipAndTrack.value;
+  if (!clipContext) return null;
+
+  if (
+    props.trimPreview &&
+    props.trimPreview.itemId === clipContext.item.id &&
+    props.trimPreview.trackId === clipContext.track.id
+  ) {
+    return {
+      startUs: props.trimPreview.startUs,
+      durationUs: props.trimPreview.durationUs,
+    };
+  }
+
   return {
-    start: formatTC(s),
-    duration: formatTC(d),
-    end: formatTC(s + d),
+    startUs: clipContext.item.timelineRange.startUs,
+    durationUs: clipContext.item.timelineRange.durationUs,
   };
 });
 
-const startX = ref(0);
-const activeEdge = ref<'start' | 'end' | null>(null);
-const accumulatedDeltaUs = ref(0);
-const lastAppliedDeltaUs = ref(0);
-const anchorEdgeUs = ref(0);
-const snapTargetsUs = ref<number[]>([]);
+const timeData = computed(() => {
+  if (!effectiveRange.value) return null;
+  const startUs = effectiveRange.value.startUs;
+  const durationUs = effectiveRange.value.durationUs;
 
-function onStart(edge: 'start' | 'end', e: TouchEvent) {
-  const touch = e.touches[0];
-  if (!touch || !currentClipAndTrack.value) return;
+  return {
+    start: formatTC(startUs),
+    duration: formatTC(durationUs),
+    end: formatTC(startUs + durationUs),
+  };
+});
 
-  const clip = currentClipAndTrack.value.item;
-  startX.value = touch.clientX;
-  activeEdge.value = edge;
-  accumulatedDeltaUs.value = 0;
-  lastAppliedDeltaUs.value = 0;
-  anchorEdgeUs.value =
-    edge === 'start'
-      ? clip.timelineRange.startUs
-      : clip.timelineRange.startUs + clip.timelineRange.durationUs;
-
-  const snapSettings = workspaceStore.userSettings.timeline.snapping;
-  snapTargetsUs.value = computeSnapTargetsUs({
-    tracks: timelineStore.timelineDoc?.tracks || [],
-    excludeItemId: clip.id,
-    includeTimelineStart: snapSettings.timelineEdges,
-    includeTimelineEndUs: snapSettings.timelineEdges ? timelineStore.duration : null,
-    includePlayheadUs: snapSettings.playhead ? timelineStore.currentTime : null,
-    includeMarkers: snapSettings.markers,
-    markers: timelineStore.getMarkers(),
-    includeClips: snapSettings.clips,
-  });
-
-  timelineStore.setCurrentTimeUs(anchorEdgeUs.value);
+function getTouchPoint(event: TouchEvent): { clientX: number; clientY: number } | null {
+  const touch = event.touches[0] ?? event.changedTouches[0];
+  if (!touch) return null;
+  return { clientX: touch.clientX, clientY: touch.clientY };
 }
 
-function onMove(e: TouchEvent) {
-  if (!activeEdge.value || !currentClipAndTrack.value) return;
-  const touch = e.touches[0];
+function onStart(edge: 'start' | 'end', event: TouchEvent) {
+  const clipContext = currentClipAndTrack.value;
+  const touch = getTouchPoint(event);
+  if (!clipContext || !touch) return;
+
+  event.preventDefault();
+  activeEdge.value = edge;
+  emit('trim-start', {
+    trackId: clipContext.track.id,
+    itemId: clipContext.item.id,
+    edge,
+    clientX: touch.clientX,
+    clientY: touch.clientY,
+  });
+}
+
+function onMove(event: TouchEvent) {
+  if (!activeEdge.value) return;
+  const touch = getTouchPoint(event);
   if (!touch) return;
 
-  const dx = touch.clientX - startX.value;
-  const zoom = timelineStore.timelineZoom;
-  const pps = zoomToPxPerSecond(zoom);
-  const rawDeltaUs = (dx / pps) * 1e6;
-
-  let targetUs = anchorEdgeUs.value + rawDeltaUs;
-
-  if (settingsStore.toolbarSnapMode === 'snap') {
-    const thresholdUs = (settingsStore.snapThresholdPx / pps) * 1e6;
-    const snap = pickBestSnapCandidateUs({
-      rawUs: targetUs,
-      thresholdUs,
-      targetsUs: snapTargetsUs.value,
-    });
-    if (snap.distUs < thresholdUs) {
-      targetUs = snap.snappedUs;
-    }
-  }
-
-  if (settingsStore.frameSnapMode === 'frames') {
-    const frameSizeUs = 1_000_000 / fps.value;
-    targetUs = Math.round(targetUs / frameSizeUs) * frameSizeUs;
-  }
-
-  const desiredTotalDeltaUs = targetUs - anchorEdgeUs.value;
-  const diffUs = desiredTotalDeltaUs - lastAppliedDeltaUs.value;
-
-  if (Math.abs(diffUs) >= 1) {
-    try {
-      timelineStore.trimItem({
-        trackId: currentClipAndTrack.value.track.id,
-        itemId: currentClipAndTrack.value.item.id,
-        edge: activeEdge.value,
-        deltaUs: diffUs,
-        quantizeToFrames: settingsStore.frameSnapMode === 'frames',
-      });
-
-      lastAppliedDeltaUs.value += diffUs;
-
-      const clip = currentClipAndTrack.value.item;
-      const nextTimeUs =
-        activeEdge.value === 'start'
-          ? clip.timelineRange.startUs
-          : clip.timelineRange.startUs + clip.timelineRange.durationUs;
-      timelineStore.setCurrentTimeUs(nextTimeUs);
-    } catch (err) {
-      // Ignore
-    }
-  }
+  event.preventDefault();
+  emit('trim-move', touch);
 }
 
-function onEnd() {
+function onEnd(event: TouchEvent) {
+  if (!activeEdge.value) return;
+  const touch = getTouchPoint(event);
   activeEdge.value = null;
-  timelineStore.requestTimelineSave({ immediate: true });
+  if (!touch) return;
+
+  event.preventDefault();
+  emit('trim-end', touch);
 }
 </script>
 
@@ -166,9 +148,7 @@ function onEnd() {
   <div
     class="fixed bottom-0 left-0 right-0 z-60 bg-zinc-950/95 backdrop-blur border-t border-zinc-900 px-2 pt-3 pb-safe select-none shadow-2xl rounded-t-2xl slide-up outline outline-white/5"
   >
-    <!-- Combined control area -->
     <div class="flex items-center gap-1 mb-3 px-1">
-      <!-- Back button -->
       <UButton
         icon="i-heroicons-chevron-left"
         variant="ghost"
@@ -178,11 +158,12 @@ function onEnd() {
         @click="emit('back')"
       />
 
-      <!-- Triple Info View -->
       <div v-if="timeData" class="flex-1 flex justify-between items-center px-2">
         <div class="flex flex-col items-center">
-          <span class="text-[7px] text-zinc-500 uppercase font-black leading-none mb-1 tracking-tighter">
-             {{ t('fastcat.timeline.start') }}
+          <span
+            class="text-[7px] text-zinc-500 uppercase font-black leading-none mb-1 tracking-tighter"
+          >
+            {{ t('fastcat.timeline.start') }}
           </span>
           <span class="text-[10px] font-mono font-bold text-zinc-400 tabular-nums leading-none">
             {{ timeData.start }}
@@ -192,8 +173,10 @@ function onEnd() {
         <div class="w-px h-6 bg-zinc-800/60"></div>
 
         <div class="flex flex-col items-center">
-          <span class="text-[7px] text-zinc-500 uppercase font-black leading-none mb-1 tracking-tighter">
-             {{ t('fastcat.timeline.duration') }}
+          <span
+            class="text-[7px] text-zinc-500 uppercase font-black leading-none mb-1 tracking-tighter"
+          >
+            {{ t('fastcat.timeline.duration') }}
           </span>
           <span class="text-[10px] font-mono font-bold text-blue-400 tabular-nums leading-none">
             {{ timeData.duration }}
@@ -203,8 +186,10 @@ function onEnd() {
         <div class="w-px h-6 bg-zinc-800/60"></div>
 
         <div class="flex flex-col items-center">
-          <span class="text-[7px] text-zinc-500 uppercase font-black leading-none mb-1 tracking-tighter">
-             {{ t('fastcat.timeline.end') }}
+          <span
+            class="text-[7px] text-zinc-500 uppercase font-black leading-none mb-1 tracking-tighter"
+          >
+            {{ t('fastcat.timeline.end') }}
           </span>
           <span class="text-[10px] font-mono font-bold text-zinc-400 tabular-nums leading-none">
             {{ timeData.end }}
@@ -212,7 +197,6 @@ function onEnd() {
         </div>
       </div>
 
-      <!-- Close and deselect -->
       <UButton
         icon="i-heroicons-x-mark"
         variant="ghost"
@@ -223,16 +207,15 @@ function onEnd() {
       />
     </div>
 
-    <!-- Main controls -->
     <div
       class="flex h-20 bg-zinc-900/60 rounded-xl border border-zinc-800/80 overflow-hidden divide-x divide-zinc-800 shadow-inner mb-2"
     >
-      <!-- Left side area -->
       <div
         class="flex-1 flex flex-col items-center justify-center touch-none active:bg-blue-500/10 transition-colors"
         @touchstart="onStart('start', $event)"
         @touchmove="onMove"
         @touchend="onEnd"
+        @touchcancel="onEnd"
       >
         <span class="text-[9px] uppercase font-black text-zinc-600 mb-1 leading-none">
           {{ t('fastcat.timeline.trimStart') }}
@@ -246,15 +229,14 @@ function onEnd() {
         </div>
       </div>
 
-      <!-- Center divider marker -->
       <div class="w-px h-10 self-center bg-zinc-800/20"></div>
 
-      <!-- Right side area -->
       <div
         class="flex-1 flex flex-col items-center justify-center touch-none active:bg-blue-500/10 transition-colors"
         @touchstart="onStart('end', $event)"
         @touchmove="onMove"
         @touchend="onEnd"
+        @touchcancel="onEnd"
       >
         <span class="text-[9px] uppercase font-black text-zinc-600 mb-1 leading-none">
           {{ t('fastcat.timeline.trimEnd') }}
@@ -269,31 +251,10 @@ function onEnd() {
       </div>
     </div>
 
-    <!-- Hidden Hint: Clip name at the very bottom -->
     <div v-if="currentClipAndTrack" class="px-2 pb-1 flex justify-center">
-       <span class="text-[8px] text-zinc-700 uppercase font-bold tracking-[0.2em] truncate">
-         {{ currentClipAndTrack.item.name }}
-       </span>
+      <span class="text-[8px] text-zinc-700 uppercase font-bold tracking-[0.2em] truncate">
+        {{ currentClipAndTrack.item.name }}
+      </span>
     </div>
   </div>
 </template>
-
-<style scoped>
-.slide-up {
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-@keyframes slideUp {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-.touch-none {
-  touch-action: none;
-}
-.tabular-nums {
-  font-variant-numeric: tabular-nums;
-}
-</style>
