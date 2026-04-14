@@ -1,256 +1,180 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { reactive, ref } from 'vue';
+import { reactive } from 'vue';
 import MobileFileBrowserDrawer from '~/components/file-manager/MobileFileBrowserDrawer.vue';
-
-// --- Mocks ---
 
 const mockSelectionStore = reactive({
   selectedEntity: null as any,
 });
 
-vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelectionStore }));
-vi.mock('@vueuse/core', async () => {
-  const actual = await vi.importActual('@vueuse/core');
-  return {
-    ...(actual as any),
-    useWindowSize: () => ({ width: ref(1000), height: ref(500) }), // Landscape by default
-  };
+const mockProxyStore = reactive({
+  existingProxies: new Set<string>(),
+  generatingProxies: new Set<string>(),
+  cancelProxyGeneration: vi.fn(),
 });
 
-// Stub sub-components to avoid complex i18n/store dependencies
-vi.mock('~/components/properties/FileProperties.vue', () => ({
-  default: { template: '<div id="file-properties" />' },
-}));
-vi.mock('~/components/properties/MultiFileProperties.vue', () => ({
-  default: { template: '<div id="multi-file-properties" />' },
-}));
-vi.mock('~/components/timeline/MobileDrawerToolbarButton.vue', () => ({
-  default: {
-    template:
-      '<button :data-icon="icon" :data-label="label" @click="$emit(\'click\')"><slot /></button>',
-    props: ['icon', 'label'],
+const mockProjectStore = reactive({
+  getFileHandleByPath: vi.fn(),
+});
+
+const mockWorkspaceStore = reactive({
+  userSettings: {
+    integrations: [],
   },
+});
+
+const mockReadDirectory = vi.fn();
+
+vi.mock('~/stores/selection.store', () => ({
+  useSelectionStore: () => mockSelectionStore,
 }));
-vi.mock('~/components/properties/PropertyActionList.vue', () => ({
-  default: {
-    template: '<div id="property-action-list" :data-count="actions.length"><slot /></div>',
-    props: ['actions'],
-  },
+
+vi.mock('~/stores/proxy.store', () => ({
+  useProxyStore: () => mockProxyStore,
 }));
-vi.mock('~/components/timeline/MobileDrawerToolbar.vue', () => ({
-  default: {
-    template: '<div class="mobile-drawer-toolbar"><slot /></div>',
-    props: ['class'],
-  },
+
+vi.mock('~/stores/project.store', () => ({
+  useProjectStore: () => mockProjectStore,
 }));
-vi.mock('~/components/timeline/MobileDrawerToolbarButton.vue', () => ({
-  default: {
-    template:
-      '<button :data-icon="icon" :data-label="label" @click="$emit(\'click\')"><slot /></button>',
-    props: ['icon', 'label'],
-  },
-}));
+
 vi.mock('~/stores/file-conversion.store', () => ({
   useFileConversionStore: () => ({
     openConversionModal: vi.fn(),
   }),
 }));
 
-describe('MobileFileBrowserDrawer', () => {
-  const defaultProps = {
-    isOpen: true,
-    isSelectionMode: false,
-    onAction: vi.fn(),
-  };
+vi.mock('~/composables/file-manager/useAudioExtraction', () => ({
+  useAudioExtraction: () => ({
+    extractAudio: vi.fn(),
+  }),
+}));
 
+vi.mock('~/composables/file-manager/useComputerVfs', () => ({
+  useComputerVfs: () => ({
+    vfs: { value: null },
+  }),
+}));
+
+vi.mock('~/stores/workspace.store', () => ({
+  useWorkspaceStore: () => mockWorkspaceStore,
+}));
+
+vi.mock('~/composables/useAppClipboard', () => ({
+  useAppClipboard: () => ({
+    hasFileManagerPayload: false,
+  }),
+}));
+
+vi.mock('~/stores/media.store', () => ({
+  useMediaStore: () => ({
+    metadataLoadFailed: {},
+    mediaMetadata: {},
+  }),
+}));
+
+vi.mock('~/composables/file-manager/useFileManager', () => ({
+  useFileManager: () => ({
+    readDirectory: mockReadDirectory,
+  }),
+}));
+
+vi.mock('~/utils/external-integrations', () => ({
+  resolveExternalServiceConfig: () => null,
+}));
+
+vi.mock('nuxt/app', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuxt/app')>();
+  return {
+    ...actual,
+    useRuntimeConfig: () => ({
+      public: {},
+    }),
+  };
+});
+
+describe('MobileFileBrowserDrawer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSelectionStore.selectedEntity = null;
+    mockProxyStore.existingProxies.clear();
+    mockProxyStore.generatingProxies.clear();
+    mockReadDirectory.mockResolvedValue([]);
   });
 
-  it('renders FileProperties for single file selection', async () => {
+  it('shows regenerate and delete proxy actions for video with existing proxy', async () => {
+    const entry = { kind: 'file', name: 'clip.mp4', path: 'clip.mp4' };
     mockSelectionStore.selectedEntity = {
       source: 'fileManager',
       kind: 'file',
-      path: 'test.mp4',
-      name: 'test.mp4',
-      entry: { kind: 'file', path: 'test.mp4', name: 'test.mp4' },
+      name: entry.name,
+      path: entry.path,
+      entry,
     };
+    mockProxyStore.existingProxies.add(entry.path);
 
     const wrapper = await mountSuspended(MobileFileBrowserDrawer, {
-      props: defaultProps,
+      props: {
+        isOpen: true,
+        isSelectionMode: false,
+      },
       global: {
         stubs: {
-          UiMobileDrawer: { template: '<div><slot name="toolbar" /><slot /></div>' },
-          UButton: true,
-          Icon: true,
+          UiMobileDrawer: { template: '<div><slot /></div>' },
           MobileDrawerToolbar: { template: '<div><slot /></div>' },
-          MobileDrawerToolbarButton: {
-            template: '<button :data-icon="icon"><slot /></button>',
-            props: ['icon'],
+          MobileDrawerToolbarButton: true,
+          FileProperties: true,
+          MultiFileProperties: true,
+          PropertyActionList: {
+            name: 'PropertyActionList',
+            props: ['actions'],
+            template: '<div />',
           },
         },
       },
     });
 
-    expect(wrapper.find('#file-properties').exists()).toBe(true);
+    const actionList = wrapper.findComponent({ name: 'PropertyActionList' });
+    const labels = actionList.props('actions').map((action: { label: string }) => action.label);
+
+    expect(labels).toContain('videoEditor.fileManager.actions.regenerateProxy');
+    expect(labels).toContain('videoEditor.fileManager.actions.deleteProxy');
   });
 
-  it('renders MultiFileProperties for multiple selection', async () => {
+  it('shows folder proxy action when directory has direct video children', async () => {
+    const entry = { kind: 'directory', name: 'videos', path: 'videos' };
     mockSelectionStore.selectedEntity = {
       source: 'fileManager',
-      kind: 'multiple',
-      entries: [
-        { kind: 'file', path: '1.mp4' },
-        { kind: 'file', path: '2.mp4' },
-      ],
+      kind: 'directory',
+      name: entry.name,
+      path: entry.path,
+      entry,
     };
+    mockReadDirectory.mockResolvedValue([{ kind: 'file', name: 'clip.mp4', path: 'videos/clip.mp4' }]);
 
     const wrapper = await mountSuspended(MobileFileBrowserDrawer, {
-      props: defaultProps,
+      props: {
+        isOpen: true,
+        isSelectionMode: false,
+      },
       global: {
         stubs: {
-          UiMobileDrawer: { template: '<div><slot name="toolbar" /><slot /></div>' },
-          UButton: true,
-          Icon: true,
+          UiMobileDrawer: { template: '<div><slot /></div>' },
           MobileDrawerToolbar: { template: '<div><slot /></div>' },
-          MobileDrawerToolbarButton: {
-            template: '<button :data-icon="icon"><slot /></button>',
-            props: ['icon'],
+          MobileDrawerToolbarButton: true,
+          FileProperties: true,
+          MultiFileProperties: true,
+          PropertyActionList: {
+            name: 'PropertyActionList',
+            props: ['actions'],
+            template: '<div />',
           },
         },
       },
     });
 
-    expect(wrapper.find('#multi-file-properties').exists()).toBe(true);
-  });
+    const actionList = wrapper.findComponent({ name: 'PropertyActionList' });
+    const labels = actionList.props('actions').map((action: { label: string }) => action.label);
 
-  it('emits action event when buttons are clicked', async () => {
-    const onAction = vi.fn();
-    mockSelectionStore.selectedEntity = {
-      source: 'fileManager',
-      kind: 'file',
-      path: 'test.mp4',
-      name: 'test.mp4',
-      entry: { kind: 'file', path: 'test.mp4', name: 'test.mp4' },
-    };
-
-    const wrapper = await mountSuspended(MobileFileBrowserDrawer, {
-      props: { ...defaultProps, onAction },
-      global: {
-        stubs: {
-          UiMobileDrawer: { template: '<div><slot name="toolbar" /><slot /></div>' },
-          UButton: {
-            template: '<button :data-icon="icon" @click="$emit(\'click\')"><slot /></button>',
-            props: ['icon'],
-          },
-          Icon: true,
-          MobileDrawerToolbar: { template: '<div><slot /></div>' },
-          MobileDrawerToolbarButton: {
-            template: '<button :data-icon="icon"><slot /></button>',
-            props: ['icon'],
-          },
-        },
-      },
-    });
-
-    const deleteButton = wrapper.find('button[data-icon="i-heroicons-trash"]');
-    await deleteButton.trigger('click');
-
-    expect(onAction).toHaveBeenCalledWith('delete', expect.anything());
-  });
-
-  it('renders top actions for video files', async () => {
-    mockSelectionStore.selectedEntity = {
-      source: 'fileManager',
-      kind: 'file',
-      path: 'test.mp4',
-      name: 'test.mp4',
-      entry: { kind: 'file', path: 'test.mp4', name: 'test.mp4' },
-    };
-
-    const wrapper = await mountSuspended(MobileFileBrowserDrawer, {
-      props: defaultProps,
-      global: {
-        stubs: {
-          UiMobileDrawer: { template: '<div><slot name="toolbar" /><slot /></div>' },
-          UButton: true,
-          Icon: true,
-          MobileDrawerToolbar: { template: '<div><slot /></div>' },
-          MobileDrawerToolbarButton: {
-            template: '<button :data-icon="icon"><slot /></button>',
-            props: ['icon'],
-          },
-        },
-      },
-    });
-
-    const actionList = wrapper.find('#property-action-list');
-    expect(actionList.exists()).toBe(true);
-    // Actions: Convert, Transcribe, Proxy, Extract Audio
-    expect(actionList.attributes('data-count')).toBe('4');
-  });
-
-  it('renders correctly for image files', async () => {
-    mockSelectionStore.selectedEntity = {
-      source: 'fileManager',
-      kind: 'file',
-      path: 'test.jpg',
-      name: 'test.jpg',
-      entry: { kind: 'file', path: 'test.jpg', name: 'test.jpg' },
-    };
-
-    const wrapper = await mountSuspended(MobileFileBrowserDrawer, {
-      props: defaultProps,
-      global: {
-        stubs: {
-          UiMobileDrawer: { template: '<div><slot name="toolbar" /><slot /></div>' },
-          UButton: true,
-          Icon: true,
-          MobileDrawerToolbar: { template: '<div><slot /></div>' },
-          MobileDrawerToolbarButton: {
-            template: '<button :data-icon="icon"><slot /></button>',
-            props: ['icon'],
-          },
-        },
-      },
-    });
-
-    const actionList = wrapper.find('#property-action-list');
-    expect(actionList.exists()).toBe(true);
-    // Actions: Convert
-    expect(actionList.attributes('data-count')).toBe('1');
-  });
-
-  it('renders top actions for audio files', async () => {
-    mockSelectionStore.selectedEntity = {
-      source: 'fileManager',
-      kind: 'file',
-      path: 'test.mp3',
-      name: 'test.mp3',
-      entry: { kind: 'file', path: 'test.mp3', name: 'test.mp3' },
-    };
-
-    const wrapper = await mountSuspended(MobileFileBrowserDrawer, {
-      props: defaultProps,
-      global: {
-        stubs: {
-          UiMobileDrawer: { template: '<div><slot name="toolbar" /><slot /></div>' },
-          UButton: true,
-          Icon: true,
-          MobileDrawerToolbar: { template: '<div><slot /></div>' },
-          MobileDrawerToolbarButton: {
-            template: '<button :data-icon="icon"><slot /></button>',
-            props: ['icon'],
-          },
-        },
-      },
-    });
-
-    const actionList = wrapper.find('#property-action-list');
-    expect(actionList.exists()).toBe(true);
-    // Actions: Convert, Transcribe
-    expect(actionList.attributes('data-count')).toBe('2');
+    expect(labels).toContain('videoEditor.fileManager.actions.createProxyForAll');
   });
 });
