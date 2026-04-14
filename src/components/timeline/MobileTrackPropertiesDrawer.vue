@@ -8,7 +8,6 @@ import GenerateCaptionsModal from '~/components/properties/GenerateCaptionsModal
 import MobileTimelineDrawer from './MobileTimelineDrawer.vue';
 import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
-import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -54,23 +53,15 @@ const isTrackLastOfKind = computed(() => {
   return kindTracks[kindTracks.length - 1]?.id === selectedTrack.value.id;
 });
 
-const trackGain = computed(() => {
-  if (!selectedTrack.value) return 100;
-  const gain =
-    typeof selectedTrack.value.audioGain === 'number' ? selectedTrack.value.audioGain : 1;
-  return Math.round(Math.max(0, Math.min(4, gain)) * 100);
+const sameKindTracks = computed(() => {
+  if (!selectedTrack.value) return [];
+  return tracks.value.filter((track) => track.kind === selectedTrack.value!.kind);
 });
+
+const nextTrackIndex = computed(() => sameKindTracks.value.length + 1);
 
 const isTrackDeleteConfirmOpen = ref(false);
 const isTrackRenameOpen = ref(false);
-
-function handleTrackGainInput(event: Event) {
-  if (!selectedTrack.value) return;
-  const val = (event.target as HTMLInputElement).valueAsNumber;
-  timelineStore.updateTrackProperties(selectedTrack.value.id, {
-    audioGain: Math.max(0, Math.min(4, val / 100)),
-  });
-}
 
 function toggleTrackLock() {
   if (!selectedTrack.value) return;
@@ -110,11 +101,17 @@ function moveSelectedTrackDown() {
   timelineStore.moveTrackDown(selectedTrack.value.id);
 }
 
+function createTrack(options: { insertBeforeId?: string; insertAfterId?: string }) {
+  if (!selectedTrack.value) return;
+  const nextName = `${selectedTrack.value.kind === 'video' ? 'Video' : 'Audio'} ${nextTrackIndex.value}`;
+  timelineStore.addTrack(selectedTrack.value.kind, nextName, options);
+}
+
 function requestDeleteTrack() {
   if (!selectedTrack.value) return;
   const skipConfirm = workspaceStore.userSettings.deleteWithoutConfirmation;
   if (selectedTrack.value.items.length === 0 || skipConfirm) {
-    timelineStore.deleteTrack(selectedTrack.value.id);
+    timelineStore.deleteTrack(selectedTrack.value.id, { allowNonEmpty: true });
     emit('close');
   } else {
     isTrackDeleteConfirmOpen.value = true;
@@ -132,7 +129,13 @@ const isGenerateCaptionsOpen = ref(false);
 
 const extraActions = computed(() => {
   if (!selectedTrack.value) return [];
-  const list: any[] = [];
+  const list: Array<{
+    id: string;
+    label: string;
+    icon: string;
+    onClick: () => void;
+    disabled?: boolean;
+  }> = [];
   if (selectedTrack.value.kind === 'video') {
     list.push({
       id: 'generate-captions',
@@ -141,6 +144,46 @@ const extraActions = computed(() => {
       onClick: () => (isGenerateCaptionsOpen.value = true),
     });
   }
+
+  list.push(
+    {
+      id: 'create-above',
+      label: t(
+        `fastcat.timeline.add${selectedTrack.value.kind === 'video' ? 'Video' : 'Audio'}TrackAbove`,
+      ),
+      icon:
+        selectedTrack.value.kind === 'video'
+          ? 'i-heroicons-video-camera'
+          : 'i-heroicons-musical-note',
+      onClick: () => createTrack({ insertBeforeId: selectedTrack.value!.id }),
+    },
+    {
+      id: 'create-below',
+      label: t(
+        `fastcat.timeline.add${selectedTrack.value.kind === 'video' ? 'Video' : 'Audio'}TrackBelow`,
+      ),
+      icon:
+        selectedTrack.value.kind === 'video'
+          ? 'i-heroicons-video-camera'
+          : 'i-heroicons-musical-note',
+      onClick: () => createTrack({ insertAfterId: selectedTrack.value!.id }),
+    },
+    {
+      id: 'move-up',
+      label: t('fastcat.track.moveUp'),
+      icon: 'i-heroicons-arrow-up',
+      disabled: isTrackFirstOfKind.value,
+      onClick: moveSelectedTrackUp,
+    },
+    {
+      id: 'move-down',
+      label: t('fastcat.track.moveDown'),
+      icon: 'i-heroicons-arrow-down',
+      disabled: isTrackLastOfKind.value,
+      onClick: moveSelectedTrackDown,
+    },
+  );
+
   return list;
 });
 </script>
@@ -199,48 +242,18 @@ const extraActions = computed(() => {
           :active="selectedTrack?.audioSolo"
           @click="toggleTrackSolo"
         />
-
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-arrow-up"
-          :label="t('fastcat.track.moveUp')"
-          :disabled="isTrackFirstOfKind"
-          @click="moveSelectedTrackUp"
-        />
-
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-arrow-down"
-          :label="t('fastcat.track.moveDown')"
-          :disabled="isTrackLastOfKind"
-          @click="moveSelectedTrackDown"
-        />
       </MobileDrawerToolbar>
     </template>
 
     <div v-if="selectedTrack" class="px-4 pb-8 pt-4 flex flex-col gap-4">
-      <div
-        v-if="extraActions.length > 0"
-        class="py-1 px-3 border border-ui-border rounded-xl bg-zinc-900/40"
-      >
-        <PropertyActionList :actions="extraActions" vertical variant="ghost" size="md" />
-      </div>
-
-      <div
-        class="flex items-center gap-3 rounded-xl bg-zinc-900/80 border border-zinc-800 px-3 py-2.5"
-      >
-        <UIcon name="i-heroicons-speaker-wave" class="w-4 h-4 text-zinc-400 shrink-0" />
-        <span class="text-xs text-zinc-400 font-mono w-8 tabular-nums text-right shrink-0">
-          {{ trackGain }}
-        </span>
-        <input
-          :value="trackGain"
-          type="range"
-          min="0"
-          max="400"
-          step="1"
-          class="flex-1 accent-primary-500"
-          :disabled="Boolean(selectedTrack.audioMuted)"
-          :class="{ 'opacity-40 pointer-events-none': selectedTrack.audioMuted }"
-          @input="handleTrackGainInput"
+      <div v-if="extraActions.length > 0" class="grid grid-cols-2 gap-3">
+        <MobileDrawerToolbarButton
+          v-for="action in extraActions"
+          :key="action.id"
+          :icon="action.icon"
+          :label="action.label"
+          :disabled="action.disabled"
+          @click="action.onClick"
         />
       </div>
 
@@ -256,13 +269,8 @@ const extraActions = computed(() => {
     <UiConfirmModal
       v-model:open="isTrackDeleteConfirmOpen"
       :title="t('fastcat.timeline.deleteTrackTitle')"
-      :description="
-        t(
-          'fastcat.timeline.deleteTrackDescription',
-          'Track is not empty. This action cannot be undone.',
-        )
-      "
-      color="primary"
+      :description="t('fastcat.timeline.deleteTrackDescription')"
+      color="error"
       icon="i-heroicons-exclamation-triangle"
       :confirm-text="t('common.delete')"
       @confirm="confirmDeleteTrack"
