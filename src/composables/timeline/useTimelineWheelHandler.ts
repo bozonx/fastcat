@@ -12,6 +12,7 @@ import { useTimelineZoom } from '~/composables/timeline/useTimelineZoom';
 import type { TimelineTrack } from '~/timeline/types';
 
 export interface UseTimelineWheelHandlerOptions {
+  horizontalScrollEl: Ref<HTMLElement | null>;
   videoScrollEl: Ref<HTMLElement | null>;
   audioScrollEl: Ref<HTMLElement | null>;
   videoLabelsScrollEl?: Ref<HTMLElement | null>;
@@ -22,6 +23,7 @@ export interface UseTimelineWheelHandlerOptions {
 }
 
 export function useTimelineWheelHandler({
+  horizontalScrollEl,
   videoScrollEl,
   audioScrollEl,
   videoLabelsScrollEl,
@@ -59,8 +61,39 @@ export function useTimelineWheelHandler({
   ) {
     if (category !== 'timeline') return false;
     if (action === 'scroll_vertical') return !isSecondaryWheel(e);
-    if (action === 'scroll_horizontal') return isSecondaryWheel(e);
     return false;
+  }
+
+  function getZoomAnchorViewportX(params: {
+    event: WheelEvent;
+    category: keyof FastCatUserSettings['mouse'];
+    activeEl: HTMLElement;
+  }): number {
+    if (params.category === 'ruler' && rulerContainerRef.value) {
+      const rect = rulerContainerRef.value.getBoundingClientRect();
+      return params.event.clientX - rect.left;
+    }
+
+    const target = params.event.target as HTMLElement | null;
+    if (target?.closest('.timeline-labels-container')) {
+      const viewportWidth = horizontalScrollEl.value?.clientWidth ?? 0;
+      return viewportWidth / 2;
+    }
+
+    const rect = params.activeEl.getBoundingClientRect();
+    return params.event.clientX - rect.left;
+  }
+
+  function getZoomStep(delta: number): number {
+    const direction = delta > 0 ? -1 : 1;
+    const magnitude = Math.abs(delta);
+
+    if (magnitude < 4) return direction * 0.6;
+    if (magnitude < 12) return direction * 1.2;
+    if (magnitude < 40) return direction * 2;
+    if (magnitude < 100) return direction * 3;
+
+    return direction * 4;
   }
 
   function updateTrackHeight(trackId: string, height: number) {
@@ -110,19 +143,22 @@ export function useTimelineWheelHandler({
 
     if (action === 'scroll_horizontal') {
       e.preventDefault();
-      activeEl.scrollLeft += delta;
+      horizontalScrollEl.value?.scrollBy({ left: delta });
       return;
     }
 
     if (action === 'zoom_horizontal') {
       e.preventDefault();
-      const rect = activeEl.getBoundingClientRect();
-      const anchorViewportX = e.clientX - rect.left;
+      const anchorViewportX = getZoomAnchorViewportX({
+        event: e,
+        category,
+        activeEl,
+      });
       const anchorTimeUs = pxToTimeUs(
-        activeEl.scrollLeft + anchorViewportX,
+        (horizontalScrollEl.value?.scrollLeft ?? 0) + anchorViewportX,
         timelineStore.timelineZoom,
       );
-      handleZoomWheel(delta > 0 ? -5 : 5, { anchorTimeUs, anchorViewportX });
+      handleZoomWheel(getZoomStep(delta), { anchorTimeUs, anchorViewportX });
       return;
     }
 

@@ -10,9 +10,9 @@ import type { TimelineTrack } from '~/timeline/types';
 import { resolvePlayheadClickTimeUs } from './timelineInteractionUtils';
 
 export interface UseTimelineClickActionsOptions {
+  horizontalScrollEl: Ref<HTMLElement | null>;
   videoScrollEl: Ref<HTMLElement | null>;
   audioScrollEl: Ref<HTMLElement | null>;
-  rulerScrollEl: Ref<HTMLElement | null>;
   scrollEl: Ref<HTMLElement | null>;
   videoTracks: Ref<TimelineTrack[]>;
   audioTracks: Ref<TimelineTrack[]>;
@@ -20,9 +20,9 @@ export interface UseTimelineClickActionsOptions {
 }
 
 export function useTimelineClickActions({
+  horizontalScrollEl,
   videoScrollEl,
   audioScrollEl: _audioScrollEl,
-  rulerScrollEl,
   scrollEl,
   videoTracks,
   audioTracks,
@@ -72,7 +72,7 @@ export function useTimelineClickActions({
       const el = getActiveScrollEl(e as PointerEvent) || scrollEl.value;
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      const x = e.clientX - rect.left + el.scrollLeft;
+      const x = e.clientX - rect.left + (horizontalScrollEl.value?.scrollLeft ?? 0);
       const rawTimeUs = pxToTimeUs(x, timelineStore.timelineZoom);
       timelineStore.setCurrentTimeUs(getSnappedPlayheadTimeUs(rawTimeUs));
       return;
@@ -81,7 +81,7 @@ export function useTimelineClickActions({
       const el = getActiveScrollEl(e as PointerEvent) || scrollEl.value;
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      const x = e.clientX - rect.left + el.scrollLeft;
+      const x = e.clientX - rect.left + (horizontalScrollEl.value?.scrollLeft ?? 0);
       const timeUs = pxToTimeUs(x, timelineStore.timelineZoom);
       timelineStore.applyTimeline({
         type: 'add_marker',
@@ -134,9 +134,10 @@ export function useTimelineClickActions({
 
   function executeTimelineRulerAction(action: string, e: MouseEvent) {
     if (action === 'none') return;
-    const el = rulerScrollEl.value;
+    const el = horizontalScrollEl.value;
     if (!el) return;
-    const rect = el.getBoundingClientRect();
+    const rect = (e.currentTarget as HTMLElement | null)?.getBoundingClientRect();
+    if (!rect) return;
     const x = e.clientX - rect.left + el.scrollLeft;
     const rawTimeUs = pxToTimeUs(x, timelineStore.timelineZoom);
     const timeUs = getSnappedPlayheadTimeUs(rawTimeUs);

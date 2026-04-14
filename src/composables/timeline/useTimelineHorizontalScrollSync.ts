@@ -3,11 +3,11 @@ import { useResizeObserver } from '@vueuse/core';
 import { useTimelineStore } from '~/stores/timeline.store';
 
 export interface UseTimelineHorizontalScrollSyncElements {
-  video: Ref<HTMLElement | null>;
-  audio: Ref<HTMLElement | null>;
-  ruler: Ref<HTMLElement | null>;
+  master: Ref<HTMLElement | null>;
   videoLabels: Ref<HTMLElement | null>;
   audioLabels: Ref<HTMLElement | null>;
+  video: Ref<HTMLElement | null>;
+  audio: Ref<HTMLElement | null>;
 }
 
 export function useTimelineHorizontalScrollSync(els: UseTimelineHorizontalScrollSyncElements) {
@@ -17,27 +17,13 @@ export function useTimelineHorizontalScrollSync(els: UseTimelineHorizontalScroll
   const scrollbarHeight = ref(0);
   const viewportWidth = ref(0);
 
-  let isSyncingHorizontal = false;
-
-  function syncHorizontal(source: HTMLElement) {
-    if (isSyncingHorizontal) return;
-    isSyncingHorizontal = true;
-    requestAnimationFrame(() => {
-      const sl = source.scrollLeft;
-      const targets = [els.video.value, els.audio.value, els.ruler.value];
-      for (const el of targets) {
-        if (el && el !== source && el.scrollLeft !== sl) {
-          el.scrollLeft = sl;
-        }
-      }
-      scrollLeftRef.value = sl;
-      isSyncingHorizontal = false;
-    });
+  function onMasterScroll() {
+    if (!els.master.value) return;
+    scrollLeftRef.value = els.master.value.scrollLeft;
   }
 
   function onVideoScroll() {
     if (!els.video.value) return;
-    syncHorizontal(els.video.value);
     if (els.videoLabels.value) {
       els.videoLabels.value.scrollTop = els.video.value.scrollTop;
     }
@@ -45,14 +31,9 @@ export function useTimelineHorizontalScrollSync(els: UseTimelineHorizontalScroll
 
   function onAudioScroll() {
     if (!els.audio.value) return;
-    syncHorizontal(els.audio.value);
     if (els.audioLabels.value) {
       els.audioLabels.value.scrollTop = els.audio.value.scrollTop;
     }
-  }
-
-  function onRulerScroll() {
-    if (els.ruler.value) syncHorizontal(els.ruler.value);
   }
 
   function onVideoLabelsScroll() {
@@ -67,20 +48,30 @@ export function useTimelineHorizontalScrollSync(els: UseTimelineHorizontalScroll
     }
   }
 
-  // Track scrollbar height from the audio section (only one with visible horizontal scrollbar)
-  useResizeObserver(els.audio, () => {
-    if (!els.audio.value) return;
-    scrollbarHeight.value = els.audio.value.offsetHeight - els.audio.value.clientHeight;
-    viewportWidth.value = els.audio.value.clientWidth;
+  useResizeObserver(els.master, () => {
+    if (!els.master.value) return;
+    scrollbarHeight.value = els.master.value.offsetHeight - els.master.value.clientHeight;
+    viewportWidth.value = els.master.value.clientWidth;
     timelineStore.timelineViewportWidth = viewportWidth.value;
   });
 
   watch(
+    els.master,
+    (el) => {
+      if (!el) return;
+      scrollLeftRef.value = el.scrollLeft;
+      scrollbarHeight.value = el.offsetHeight - el.clientHeight;
+      viewportWidth.value = el.clientWidth;
+      timelineStore.timelineViewportWidth = viewportWidth.value;
+    },
+    { immediate: true },
+  );
+
+  watch(
     () => timelineStore.scrollResetTicket,
     () => {
-      for (const el of [els.video.value, els.audio.value, els.ruler.value]) {
-        if (el) el.scrollLeft = 0;
-      }
+      if (els.master.value) els.master.value.scrollLeft = 0;
+      scrollLeftRef.value = 0;
     },
   );
 
@@ -88,9 +79,9 @@ export function useTimelineHorizontalScrollSync(els: UseTimelineHorizontalScroll
     scrollLeftRef,
     scrollbarHeight,
     viewportWidth,
+    onMasterScroll,
     onVideoScroll,
     onAudioScroll,
-    onRulerScroll,
     onVideoLabelsScroll,
     onAudioLabelsScroll,
   };

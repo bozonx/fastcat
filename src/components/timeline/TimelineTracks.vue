@@ -303,6 +303,12 @@ const timelineWidthPx = computed(() => {
   return timeUsToPx(maxUs, timelineStore.timelineZoom);
 });
 
+const timelineContentStyle = computed(() => ({
+  minWidth: `max(100%, ${timelineWidthPx.value}px)`,
+  transform: `translate3d(-${props.scrollLeft ?? 0}px, 0, 0)`,
+  willChange: 'transform',
+}));
+
 const selectionRangeStyle = computed(() => {
   const range = timelineStore.getSelectionRange();
   if (!range) return null;
@@ -473,7 +479,7 @@ function onTrackClick(e: MouseEvent, trackId: string) {
     <div
       ref="containerRef"
       class="flex flex-col min-h-full relative"
-      :style="{ minWidth: `max(100%, ${timelineWidthPx}px)` }"
+      :style="timelineContentStyle"
       @pointerdown="
         focusStore.setPanelFocus('timeline');
         if (shouldStartMarquee($event)) {
