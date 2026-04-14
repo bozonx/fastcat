@@ -233,6 +233,25 @@ const clipCount = computed(
     <PropertySection v-if="!hideActions" :title="t('fastcat.track.actions')">
       <div class="flex flex-col w-full gap-3">
         <div class="flex items-center gap-1.5 py-1">
+          <div class="flex items-center gap-1">
+            <UiActionButton
+              icon="i-heroicons-trash"
+              size="sm"
+              color="neutral"
+              :title="t('common.delete')"
+              @click="requestDeleteTrack"
+            />
+            <UiActionButton
+              icon="i-heroicons-pencil"
+              size="sm"
+              color="neutral"
+              :title="t('common.rename')"
+              @click="timelineStore.renamingTrackId = props.track.id"
+            />
+          </div>
+
+          <div class="h-4 w-px bg-ui-border mx-1 opacity-50" />
+
           <UiToggleButton
             v-if="track.kind === 'video'"
             :model-value="props.track.videoHidden || false"
@@ -286,25 +305,6 @@ const clipCount = computed(
             title="Toggle lock"
             @click="isLocked = !isLocked"
           />
-
-          <div class="h-4 w-px bg-ui-border mx-1 opacity-50" />
-
-          <div class="flex items-center gap-1">
-            <UiActionButton
-              icon="i-heroicons-trash"
-              size="sm"
-              color="neutral"
-              :title="t('common.delete')"
-              @click="requestDeleteTrack"
-            />
-            <UiActionButton
-              icon="i-heroicons-pencil"
-              size="sm"
-              color="neutral"
-              :title="t('common.rename')"
-              @click="timelineStore.renamingTrackId = props.track.id"
-            />
-          </div>
         </div>
 
         <div v-if="extraActions.length > 0" class="pt-1">
