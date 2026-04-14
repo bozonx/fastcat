@@ -141,22 +141,10 @@ function deleteMarker(markerId: string) {
   timelineStore.removeMarker(markerId);
 }
 
-function selectMarker(markerId: string, e?: MouseEvent, part: 'left' | 'right' = 'left') {
+function selectMarker(markerId: string, e?: MouseEvent) {
   // Always stop propagation so the ruler's own click/pointerdown actions are not triggered
   e?.stopPropagation();
   selectionStore.selectTimelineMarker(markerId);
-
-  // Move playhead only on double-click (dblclick handler passes undefined for e)
-  if (e !== undefined) return;
-
-  const marker = timelineStore.markers.find((m) => m.id === markerId);
-  if (marker) {
-    if (part === 'right' && marker.durationUs !== undefined) {
-      timelineStore.setCurrentTimeUs(marker.timeUs + marker.durationUs);
-    } else {
-      timelineStore.setCurrentTimeUs(marker.timeUs);
-    }
-  }
 }
 
 function selectSelectionRange(e?: MouseEvent) {

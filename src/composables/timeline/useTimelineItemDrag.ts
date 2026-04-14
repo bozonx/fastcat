@@ -764,20 +764,20 @@ export function useTimelineItemDrag(
     } | null = null;
 
     if (shouldCopyDraggedClip) {
-      const doc = timelineStore.timelineDoc;
       const movedItemId = draggingItemId.value;
-      const movedTrackId = draggingTrackId.value;
+      const commit = pendingMoveCommit.value;
+      const snapshot = dragStartSnapshot.value;
 
-      if (doc && movedItemId && movedTrackId && timelineStore.selectedItemIds.length === 1) {
-        const track = doc.tracks.find((item) => item.id === movedTrackId) ?? null;
+      if (snapshot && movedItemId && commit && timelineStore.selectedItemIds.length === 1) {
+        const track = snapshot.tracks.find((item) => item.id === commit.fromTrackId) ?? null;
         const clip =
           track?.items.find((item) => item.kind === 'clip' && item.id === movedItemId) ?? null;
         if (clip && clip.kind === 'clip') {
           copiedSingleClipPayload = {
-            sourceTrackId: dragOriginTrackId.value ?? movedTrackId,
+            sourceTrackId: commit.fromTrackId,
             clip: cloneValue(clip),
-            targetTrackId: movedTrackId,
-            targetStartUs: clip.timelineRange.startUs,
+            targetTrackId: commit.toTrackId,
+            targetStartUs: commit.startUs,
           };
         }
       }
