@@ -16,7 +16,6 @@ import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
-import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import GenerateCaptionsModal from '~/components/properties/GenerateCaptionsModal.vue';
 
@@ -127,12 +126,6 @@ function handleUpdateTrackAudioEffects(effects: AudioClipEffect[]) {
   });
 }
 
-function handleRenameTrack(newName: string) {
-  const next = newName.trim();
-  if (!next) return;
-  timelineStore.renameTrack(props.track.id, next);
-}
-
 function requestDeleteTrack() {
   const skipConfirm = workspaceStore.userSettings.deleteWithoutConfirmation;
   if (canDeleteWithoutConfirm.value || skipConfirm) {
@@ -157,37 +150,21 @@ const isLocked = computed({
   set: (val: boolean) => timelineStore.updateTrackProperties(props.track.id, { locked: val }),
 });
 
-const isMuted = computed({
-  get: () =>
-    props.track.kind === 'video' ? props.track.videoHidden : (props.track.audioMuted ?? false),
-  set: (val: boolean) => {
-    if (props.track.kind === 'video') {
-      timelineStore.updateTrackProperties(props.track.id, { videoHidden: val });
-    } else {
-      timelineStore.updateTrackProperties(props.track.id, { audioMuted: val });
-    }
-  },
-});
-
 const isSolo = computed({
   get: () => props.track.audioSolo ?? false,
   set: (val: boolean) => timelineStore.updateTrackProperties(props.track.id, { audioSolo: val }),
 });
 
-const mainActions = computed(() => [
-  {
-    id: 'rename',
-    title: t('common.rename'),
-    icon: 'i-heroicons-pencil',
-    onClick: () => (timelineStore.renamingTrackId = props.track.id),
-  },
-  {
-    id: 'delete',
-    title: t('common.delete'),
-    icon: 'i-heroicons-trash',
-    onClick: requestDeleteTrack,
-  },
-]);
+const sameKindTracks = computed(() =>
+  (timelineStore.timelineDoc?.tracks ?? []).filter((track) => track.kind === props.track.kind),
+);
+
+const nextTrackIndex = computed(() => sameKindTracks.value.length + 1);
+
+function createTrack(options: { insertBeforeId?: string; insertAfterId?: string }) {
+  const nextName = `${props.track.kind === 'video' ? 'Video' : 'Audio'} ${nextTrackIndex.value}`;
+  timelineStore.addTrack(props.track.kind, nextName, options);
+}
 
 const extraActions = computed(() => {
   const list: Array<{
@@ -206,13 +183,24 @@ const extraActions = computed(() => {
     });
   }
 
+  list.push(
+    {
+      id: 'create-above',
+      label: t(`fastcat.timeline.add${props.track.kind === 'video' ? 'Video' : 'Audio'}TrackAbove`),
+      icon: props.track.kind === 'video' ? 'i-heroicons-video-camera' : 'i-heroicons-musical-note',
+      onClick: () => createTrack({ insertBeforeId: props.track.id }),
+    },
+    {
+      id: 'create-below',
+      label: t(`fastcat.timeline.add${props.track.kind === 'video' ? 'Video' : 'Audio'}TrackBelow`),
+      icon: props.track.kind === 'video' ? 'i-heroicons-video-camera' : 'i-heroicons-musical-note',
+      onClick: () => createTrack({ insertAfterId: props.track.id }),
+    },
+  );
+
   // Track reordering actions
-  const isFirst =
-    timelineStore.timelineDoc?.tracks.filter((t) => t.kind === props.track.kind)[0]?.id ===
-    props.track.id;
-  const isLast =
-    timelineStore.timelineDoc?.tracks.filter((t) => t.kind === props.track.kind).slice(-1)[0]
-      ?.id === props.track.id;
+  const isFirst = sameKindTracks.value[0]?.id === props.track.id;
+  const isLast = sameKindTracks.value.at(-1)?.id === props.track.id;
 
   if (!isFirst) {
     list.push({
@@ -244,7 +232,6 @@ const clipCount = computed(
   <div class="w-full flex flex-col gap-2">
     <PropertySection v-if="!hideActions" :title="t('fastcat.track.actions')">
       <div class="flex flex-col w-full gap-3">
-        <!-- Direct Actions Row (Matched with Header style) -->
         <div class="flex items-center gap-1.5 py-1">
           <UiToggleButton
             v-if="track.kind === 'video'"
@@ -252,8 +239,8 @@ const clipCount = computed(
             icon="i-heroicons-eye"
             active-icon="i-heroicons-eye-slash"
             inactive-color="neutral"
-            active-color="warning"
-            :active-bg="'#facc15'"
+            active-color="primary"
+            :active-bg="'#ffffff'"
             :active-text="'#000000'"
             title="Toggle visibility"
             @click="
@@ -294,7 +281,8 @@ const clipCount = computed(
             active-icon="i-heroicons-lock-closed"
             inactive-color="neutral"
             active-color="primary"
-            active-variant="soft"
+            :active-bg="'#3b82f6'"
+            :active-text="'#ffffff'"
             title="Toggle lock"
             @click="isLocked = !isLocked"
           />
@@ -303,18 +291,18 @@ const clipCount = computed(
 
           <div class="flex items-center gap-1">
             <UiActionButton
-              icon="i-heroicons-pencil"
-              size="sm"
-              color="neutral"
-              :title="t('common.rename')"
-              @click="timelineStore.renamingTrackId = props.track.id"
-            />
-            <UiActionButton
               icon="i-heroicons-trash"
               size="sm"
               color="neutral"
               :title="t('common.delete')"
               @click="requestDeleteTrack"
+            />
+            <UiActionButton
+              icon="i-heroicons-pencil"
+              size="sm"
+              color="neutral"
+              :title="t('common.rename')"
+              @click="timelineStore.renamingTrackId = props.track.id"
             />
           </div>
         </div>
@@ -325,80 +313,74 @@ const clipCount = computed(
       </div>
     </PropertySection>
 
-    <PropertySection :title="t('fastcat.track.info')">
+    <PropertySection>
       <PropertyRow :label="t('fastcat.track.clipsCount')" :value="clipCount" />
     </PropertySection>
 
-    <PropertySection :title="t('common.properties')">
+    <PropertySection :title="t('fastcat.track.color')">
+      <UiColorPicker
+        :model-value="trackColor"
+        mode="track"
+        @update:model-value="(v) => (trackColor = v)"
+      />
+    </PropertySection>
+
+    <PropertySection v-if="track.kind === 'video'" :title="t('common.properties')">
       <div class="flex flex-col w-full gap-4 py-1">
-        <!-- Color Selection (Shared) -->
-        <div class="flex flex-col gap-2">
-          <UiFormSectionHeader :title="t('fastcat.track.color')" />
-          <UiColorPicker
-            :model-value="trackColor"
-            mode="track"
-            @update:model-value="(v) => (trackColor = v)"
+        <div class="flex flex-col gap-1">
+          <span class="text-xs text-ui-text-muted font-medium">{{
+            t('fastcat.track.blendMode')
+          }}</span>
+          <UiSelect
+            :model-value="trackBlendMode"
+            :items="blendModeOptions"
+            value-key="value"
+            label-key="label"
+            size="sm"
+            @update:model-value="
+              (v: unknown) =>
+                (trackBlendMode =
+                  (v as { value: TimelineBlendMode })?.value ?? (v as TimelineBlendMode))
+            "
           />
         </div>
 
-        <div class="h-px bg-ui-border opacity-30 my-1" />
+        <UiSliderInput
+          v-model="trackOpacity"
+          :label="t('fastcat.track.opacity')"
+          unit="%"
+          :min="0"
+          :max="1"
+          :step="0.01"
+          :default-value="1"
+        />
+      </div>
+    </PropertySection>
 
-        <!-- Track Composition & Media Settings -->
-        <div class="flex flex-col gap-4">
-          <div v-if="track.kind === 'video'" class="flex flex-col gap-3">
-            <div class="flex flex-col gap-1">
-              <span class="text-xs text-ui-text-muted font-medium">{{
-                t('fastcat.track.blendMode')
-              }}</span>
-              <UiSelect
-                :model-value="trackBlendMode"
-                :items="blendModeOptions"
-                value-key="value"
-                label-key="label"
-                size="sm"
-                @update:model-value="
-                  (v: unknown) =>
-                    (trackBlendMode =
-                      (v as { value: TimelineBlendMode })?.value ?? (v as TimelineBlendMode))
-                "
-              />
-            </div>
+    <PropertySection
+      v-if="track.kind === 'audio' || track.kind === 'video'"
+      :title="t('videoEditor.audio.sound')"
+    >
+      <div class="flex flex-col w-full gap-3 py-1">
+        <UiSliderInput
+          v-model="trackAudioGain"
+          :label="t('fastcat.track.audio.volume')"
+          :min="0"
+          :max="2"
+          :step="0.001"
+          :wheel-step-multiplier="10"
+          :default-value="1"
+          unit="x"
+        />
 
-            <UiSliderInput
-              v-model="trackOpacity"
-              :label="t('fastcat.track.opacity')"
-              unit="%"
-              :min="0"
-              :max="1"
-              :step="0.01"
-              :default-value="1"
-            />
-
-            <div class="h-px bg-ui-border opacity-30 my-1" />
-          </div>
-
-          <div v-if="track.kind === 'audio' || track.kind === 'video'" class="flex flex-col gap-3">
-            <UiSliderInput
-              v-model="trackAudioGain"
-              :label="t('fastcat.track.audio.volume')"
-              :min="0"
-              :max="2"
-              :step="0.001"
-              :wheel-step-multiplier="10"
-              :default-value="1"
-              unit="x"
-            />
-
-            <UiSliderInput
-              v-model="trackAudioBalance"
-              :label="t('fastcat.track.audio.balance')"
-              :min="-1"
-              :max="1"
-              :step="0.01"
-              :default-value="0"
-            />
-          </div>
-        </div>
+        <UiSliderInput
+          v-model="trackAudioBalance"
+          :label="t('fastcat.track.audio.balance')"
+          :min="-1"
+          :max="1"
+          :step="0.01"
+          :default-value="0"
+        />
       </div>
     </PropertySection>
 
@@ -420,9 +402,7 @@ const clipCount = computed(
     <UiConfirmModal
       v-model:open="isDeleteConfirmOpen"
       :title="t('fastcat.timeline.deleteTrack')"
-      :description="
-        t('fastcat.timeline.deleteTrackConfirm')
-      "
+      :description="t('fastcat.timeline.deleteTrackConfirm')"
       color="error"
       :confirm-text="t('common.delete')"
       @confirm="confirmDeleteTrack"
