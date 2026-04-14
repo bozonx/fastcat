@@ -98,6 +98,11 @@ const snapToPlayhead = computed({
   set: (val: boolean) => (workspaceStore.userSettings.timeline.snapping.playhead = val),
 });
 
+const snapPlayheadOnClick = computed({
+  get: () => workspaceStore.userSettings.timeline.snapping.playheadClick,
+  set: (val: boolean) => (workspaceStore.userSettings.timeline.snapping.playheadClick = val),
+});
+
 const isPseudoOverlapMode = computed(
   () => settingsStore.toolbarDragModeEnabled && settingsStore.toolbarDragMode === 'pseudo_overlap',
 );
@@ -274,11 +279,7 @@ function handleRippleTrimRight() {
   </div>
 
   <!-- Snap mode drawer -->
-  <UiMobileDrawer
-    v-model:open="isSnapDrawerOpen"
-    :show-close="false"
-    direction="bottom"
-  >
+  <UiMobileDrawer v-model:open="isSnapDrawerOpen" :show-close="false" direction="bottom">
     <div class="px-4 pb-6 flex flex-col gap-5">
       <!-- Snap mode selector -->
       <div class="flex flex-col gap-2">
@@ -329,17 +330,13 @@ function handleRippleTrimRight() {
           :label="t('videoEditor.settings.snapToTimelineEdges')"
         />
         <UCheckbox v-model="snapToClips" :label="t('videoEditor.settings.snapToClips')" />
+        <UCheckbox v-model="snapToMarkers" :label="t('videoEditor.settings.snapToMarkers')" />
+        <UCheckbox v-model="snapToSelection" :label="t('videoEditor.settings.snapToSelection')" />
+        <UCheckbox v-model="snapToPlayhead" :label="t('videoEditor.settings.snapToPlayhead')" />
+
         <UCheckbox
-          v-model="snapToMarkers"
-          :label="t('videoEditor.settings.snapToMarkers')"
-        />
-        <UCheckbox
-          v-model="snapToSelection"
-          :label="t('videoEditor.settings.snapToSelection')"
-        />
-        <UCheckbox
-          v-model="snapToPlayhead"
-          :label="t('videoEditor.settings.snapToPlayhead')"
+          v-model="snapPlayheadOnClick"
+          :label="t('videoEditor.settings.snapPlayheadOnClick')"
         />
       </div>
     </div>

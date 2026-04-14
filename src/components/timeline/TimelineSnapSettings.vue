@@ -36,6 +36,11 @@ const playhead = computed({
   get: () => workspaceStore.userSettings.timeline.snapping.playhead,
   set: (val: boolean) => (workspaceStore.userSettings.timeline.snapping.playhead = val),
 });
+
+const playheadClick = computed({
+  get: () => workspaceStore.userSettings.timeline.snapping.playheadClick,
+  set: (val: boolean) => (workspaceStore.userSettings.timeline.snapping.playheadClick = val),
+});
 </script>
 
 <template>
@@ -65,24 +70,17 @@ const playhead = computed({
           {{ t('videoEditor.settings.snapToTargets') }}
         </h4>
 
-        <UCheckbox
-          v-model="timelineEdges"
-          :label="t('videoEditor.settings.snapToTimelineEdges')"
-        />
+        <UCheckbox v-model="timelineEdges" :label="t('videoEditor.settings.snapToTimelineEdges')" />
 
         <UCheckbox v-model="clips" :label="t('videoEditor.settings.snapToClips')" />
 
         <UCheckbox v-model="markers" :label="t('videoEditor.settings.snapToMarkers')" />
 
-        <UCheckbox
-          v-model="selection"
-          :label="t('videoEditor.settings.snapToSelection')"
-        />
+        <UCheckbox v-model="selection" :label="t('videoEditor.settings.snapToSelection')" />
 
-        <UCheckbox
-          v-model="playhead"
-          :label="t('videoEditor.settings.snapToPlayhead')"
-        />
+        <UCheckbox v-model="playhead" :label="t('videoEditor.settings.snapToPlayhead')" />
+
+        <UCheckbox v-model="playheadClick" :label="t('videoEditor.settings.snapPlayheadOnClick')" />
       </div>
     </div>
   </div>

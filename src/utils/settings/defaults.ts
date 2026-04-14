@@ -53,6 +53,7 @@ export interface FastCatUserSettings {
       markers: boolean;
       selection: boolean;
       playhead: boolean;
+      playheadClick: boolean;
     };
   };
   stopFrames: {
@@ -219,6 +220,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       markers: true,
       selection: true,
       playhead: true,
+      playheadClick: false,
     },
   },
   stopFrames: {
@@ -356,4 +358,3 @@ export const DEFAULT_APP_SETTINGS: FastCatAppSettings = {
 };
 
 export const DEFAULT_WORKSPACE_SETTINGS: FastCatWorkspaceSettings = DEFAULT_APP_SETTINGS;
-

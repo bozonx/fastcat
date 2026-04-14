@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue';
+import { ref, computed } from 'vue';
 /**
  * Unified Modal Component
  *
@@ -18,6 +18,7 @@ interface Props {
   preventClose?: boolean;
   /** Nuxt UI modal configuration */
   ui?: {
+    overlay?: string;
     content?: string;
     body?: string;
     header?: string;
@@ -47,17 +48,19 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const modalUi = computed(() => {
+  const userUi = props.ui ?? {};
+
   return {
-    overlay: `z-[var(--z-modal-backdrop)] ${String(props.ui?.overlay || '')}`.trim(),
+    ...userUi,
+    overlay: `z-[var(--z-modal-backdrop)] ${String(userUi.overlay || '')}`.trim(),
     content:
-      `z-[var(--z-modal)] bg-ui-bg-elevated shadow-xl overflow-hidden rounded-[var(--radius-ui-lg)] border border-ui-border flex flex-col max-h-[90vh] min-h-0 w-full ${props.ui?.content || ''}`.trim(),
-    header: `px-4 py-3 border-b border-ui-border flex items-center justify-between shrink-0 ${props.ui?.header || ''}`,
-    body: `px-4 py-4 w-full overflow-y-auto flex-auto custom-scrollbar ${props.ui?.body || ''}`,
-    footer: `px-4 py-3 bg-ui-bg border-t border-ui-border flex justify-end gap-2 shrink-0 ${props.ui?.footer || ''}`,
-    title: `text-base font-semibold text-ui-text truncate ${props.ui?.title || ''}`,
-    description: `mt-1 text-sm text-ui-text-muted ${props.ui?.description || ''}`,
-    close: `-mr-2 ml-4 ${props.ui?.close || ''}`,
-    ...props.ui,
+      `z-[var(--z-modal)] bg-ui-bg-elevated shadow-xl overflow-hidden rounded-[var(--radius-ui-lg)] border border-ui-border flex flex-col max-h-[90vh] min-h-0 w-full ${userUi.content || ''}`.trim(),
+    header: `px-4 py-3 border-b border-ui-border flex items-center justify-between shrink-0 ${userUi.header || ''}`,
+    body: `px-4 py-4 w-full overflow-y-auto flex-auto custom-scrollbar ${userUi.body || ''}`,
+    footer: `px-4 py-3 bg-ui-bg border-t border-ui-border flex justify-end gap-2 shrink-0 ${userUi.footer || ''}`,
+    title: `text-base font-semibold text-ui-text truncate ${userUi.title || ''}`,
+    description: `mt-1 text-sm text-ui-text-muted ${userUi.description || ''}`,
+    close: `-mr-2 ml-4 ${userUi.close || ''}`,
   } as Record<string, unknown>;
 });
 

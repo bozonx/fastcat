@@ -196,4 +196,17 @@ describe('settings normalization', () => {
     expect(normalized.mouse.monitor.wheelShift).toBe('scroll_horizontal');
     expect(normalized.mouse.monitor.middleClick).toBe('none');
   });
+
+  it('normalizes playhead click snapping settings', () => {
+    const normalized = normalizeUserSettings({
+      timeline: {
+        snapping: {
+          playheadClick: true,
+        },
+      },
+    });
+
+    expect(normalized.timeline.snapping.playheadClick).toBe(true);
+    expect(normalized.timeline.snapping.playhead).toBe(true);
+  });
 });

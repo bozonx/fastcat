@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import UiModal from '~/components/ui/UiModal.vue';
 
@@ -74,5 +74,33 @@ describe('UiModal', () => {
 
     expect(ui.overlay).toContain('z-[var(--z-modal-backdrop)]');
     expect(ui.content).toContain('z-[var(--z-modal)]');
+  });
+
+  it('preserves base z-index when custom ui content classes are passed', async () => {
+    const component = await mountSuspended(UiModal, {
+      props: {
+        open: true,
+        ui: {
+          content: 'sm:max-w-lg',
+          overlay: 'bg-black/80',
+        },
+      },
+      slots: {
+        default: 'Body',
+      },
+      global: {
+        stubs: {
+          UModal: modalStub,
+        },
+      },
+    });
+
+    const modal = component.findComponent(modalStub);
+    const ui = modal.props('ui') as Record<string, string>;
+
+    expect(ui.overlay).toContain('z-[var(--z-modal-backdrop)]');
+    expect(ui.overlay).toContain('bg-black/80');
+    expect(ui.content).toContain('z-[var(--z-modal)]');
+    expect(ui.content).toContain('sm:max-w-lg');
   });
 });

@@ -2,10 +2,12 @@ import { computed, type Ref } from 'vue';
 import { useEventListener } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { pxToTimeUs } from '~/utils/timeline/geometry';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import type { TimelineTrack } from '~/timeline/types';
+import { resolvePlayheadClickTimeUs } from './timelineInteractionUtils';
 
 export interface UseTimelineClickActionsOptions {
   videoScrollEl: Ref<HTMLElement | null>;
@@ -19,7 +21,7 @@ export interface UseTimelineClickActionsOptions {
 
 export function useTimelineClickActions({
   videoScrollEl,
-  audioScrollEl,
+  audioScrollEl: _audioScrollEl,
   rulerScrollEl,
   scrollEl,
   videoTracks,
@@ -27,11 +29,30 @@ export function useTimelineClickActions({
   getActiveScrollEl,
 }: UseTimelineClickActionsOptions) {
   const timelineStore = useTimelineStore();
+  const timelineSettingsStore = useTimelineSettingsStore();
   const workspaceStore = useWorkspaceStore();
 
   const { trackHeights } = storeToRefs(timelineStore);
   const timelineMouseSettings = computed(() => workspaceStore.userSettings.mouse.timeline);
   const rulerMouseSettings = computed(() => workspaceStore.userSettings.mouse.ruler);
+
+  function getSnappedPlayheadTimeUs(rawTimeUs: number) {
+    const timelineEndUs = Number.isFinite(timelineStore.duration)
+      ? Math.max(0, Math.round(timelineStore.duration))
+      : null;
+
+    return resolvePlayheadClickTimeUs({
+      rawTimeUs,
+      zoom: timelineStore.timelineZoom,
+      snapThresholdPx: workspaceStore.userSettings.timeline.snapThresholdPx,
+      toolbarSnapMode: timelineSettingsStore.toolbarSnapMode,
+      snapping: workspaceStore.userSettings.timeline.snapping,
+      tracks: [...videoTracks.value, ...audioTracks.value],
+      markers: timelineStore.markers,
+      durationUs: timelineEndUs,
+      selectionRangeUs: timelineStore.selectionRange,
+    });
+  }
 
   function handleTimelineClickAction(action: string, e: PointerEvent | MouseEvent) {
     if (action === 'none') return;
@@ -52,7 +73,8 @@ export function useTimelineClickActions({
       if (!el) return;
       const rect = el.getBoundingClientRect();
       const x = e.clientX - rect.left + el.scrollLeft;
-      timelineStore.setCurrentTimeUs(pxToTimeUs(x, timelineStore.timelineZoom));
+      const rawTimeUs = pxToTimeUs(x, timelineStore.timelineZoom);
+      timelineStore.setCurrentTimeUs(getSnappedPlayheadTimeUs(rawTimeUs));
       return;
     }
     if (action === 'add_marker') {
@@ -116,7 +138,8 @@ export function useTimelineClickActions({
     if (!el) return;
     const rect = el.getBoundingClientRect();
     const x = e.clientX - rect.left + el.scrollLeft;
-    const timeUs = pxToTimeUs(x, timelineStore.timelineZoom);
+    const rawTimeUs = pxToTimeUs(x, timelineStore.timelineZoom);
+    const timeUs = getSnappedPlayheadTimeUs(rawTimeUs);
 
     if (action === 'seek') {
       timelineStore.setCurrentTimeUs(timeUs);

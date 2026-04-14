@@ -11,7 +11,10 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineInteraction } from '~/composables/timeline/useTimelineInteraction';
+import { resolvePlayheadClickTimeUs } from '~/composables/timeline/timelineInteractionUtils';
 import {
   computeAnchoredScrollLeft,
   timeUsToPx,
@@ -52,9 +55,11 @@ const { t } = useI18n();
 const toast = useToast();
 
 const timelineStore = useTimelineStore();
+const timelineSettingsStore = useTimelineSettingsStore();
 const focusStore = useFocusStore();
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
+const workspaceStore = useWorkspaceStore();
 const mediaStore = useMediaStore();
 const clipboardStore = useAppClipboard();
 
@@ -797,7 +802,23 @@ function onTimelineClick(e: MouseEvent) {
 
   const scrollX = el.scrollLeft;
   const x = e.clientX - scrollerRectY.left + scrollX;
-  timelineStore.setCurrentTimeUs(pxToTimeUs(x, timelineStore.timelineZoom));
+  const rawTimeUs = pxToTimeUs(x, timelineStore.timelineZoom);
+  const timelineEndUs = Number.isFinite(timelineStore.duration)
+    ? Math.max(0, Math.round(timelineStore.duration))
+    : null;
+  const timeUs = resolvePlayheadClickTimeUs({
+    rawTimeUs,
+    zoom: timelineStore.timelineZoom,
+    snapThresholdPx: workspaceStore.userSettings.timeline.snapThresholdPx,
+    toolbarSnapMode: timelineSettingsStore.toolbarSnapMode,
+    snapping: workspaceStore.userSettings.timeline.snapping,
+    tracks: timelineStore.timelineDoc?.tracks ?? [],
+    markers: timelineStore.markers,
+    durationUs: timelineEndUs,
+    selectionRangeUs: timelineStore.selectionRange,
+  });
+
+  timelineStore.setCurrentTimeUs(timeUs);
 }
 
 // Ensure the playhead starts in view if zooming happens from other causes

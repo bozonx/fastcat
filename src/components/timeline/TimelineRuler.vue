@@ -15,7 +15,10 @@ import { useTimelineRulerMarkerDrag } from '~/composables/timeline/useTimelineRu
 import { useTimelineRulerSelectionDrag } from '~/composables/timeline/useTimelineRulerSelectionDrag';
 import { useTimelineRulerDraw } from '~/composables/timeline/useTimelineRulerDraw';
 import { useTimelineRulerInteractions } from '~/composables/timeline/useTimelineRulerInteractions';
-import { computeSnapTargetsUs } from '~/composables/timeline/timelineInteractionUtils';
+import {
+  computeSnapTargetsUs,
+  resolvePlayheadClickTimeUs,
+} from '~/composables/timeline/timelineInteractionUtils';
 import { pxToTimeUs } from '~/utils/timeline/geometry';
 
 const { t } = useI18n();
@@ -56,7 +59,6 @@ const subTickWidth = 0.8;
 
 const fps = computed(() => projectStore.projectSettings.project.fps || 30);
 const zoom = computed(() => timelineStore.timelineZoom);
-const currentTime = computed(() => timelineStore.currentTime);
 
 function getTimeUsFromRulerClientEvent(event: MouseEvent | PointerEvent): number {
   const rect = containerRef.value?.getBoundingClientRect();
@@ -66,6 +68,24 @@ function getTimeUsFromRulerClientEvent(event: MouseEvent | PointerEvent): number
 }
 
 const snapThresholdPx = computed(() => workspaceStore.userSettings.timeline.snapThresholdPx);
+
+function getSnappedPlayheadTimeUs(rawTimeUs: number) {
+  const timelineEndUs = Number.isFinite(timelineStore.duration)
+    ? Math.max(0, Math.round(timelineStore.duration))
+    : null;
+
+  return resolvePlayheadClickTimeUs({
+    rawTimeUs,
+    zoom: zoom.value,
+    snapThresholdPx: snapThresholdPx.value,
+    toolbarSnapMode: timelineSettingsStore.toolbarSnapMode,
+    snapping: workspaceStore.userSettings.timeline.snapping,
+    tracks: timelineStore.timelineDoc?.tracks ?? [],
+    markers: timelineStore.markers,
+    durationUs: timelineEndUs,
+    selectionRangeUs: isDraggingSelectionRange.value ? null : timelineStore.selectionRange,
+  });
+}
 
 function computeSnapTargets() {
   const snapSettings = workspaceStore.userSettings.timeline.snapping;
@@ -168,7 +188,7 @@ const { onMarkerPointerDown, displayMarkers, draggedMarkerId } = useTimelineRule
 
 const {
   isDraggingSelectionRange,
-  isCreatingSelectionRange,
+  isCreatingSelectionRange: _isCreatingSelectionRange,
   startSelectionRangeDrag,
   startSelectionRangeCreate,
   suppressNextRulerClick,
@@ -237,6 +257,7 @@ const {
   isDraggingSelectionRange,
   suppressNextRulerClick,
   startSelectionRangeCreate,
+  resolvePlayheadClickTimeUs: getSnappedPlayheadTimeUs,
   emit,
 });
 
@@ -305,7 +326,7 @@ function onMobilePointerDown(event: PointerEvent) {
 
   mobileScrubActive.value = true;
   containerRef.value?.setPointerCapture(event.pointerId);
-  timelineStore.setCurrentTimeUs(getTimeUsFromMouseEvent(event));
+  timelineStore.setCurrentTimeUs(getSnappedPlayheadTimeUs(getTimeUsFromMouseEvent(event)));
 }
 
 function onMobilePointerMove(event: PointerEvent) {

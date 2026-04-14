@@ -207,6 +207,8 @@ export function useTimelineItemDrag(
 
   function bindDragSession() {
     bindSession({
+      onPointerMove: onGlobalPointerMove,
+      onPointerUp: onGlobalPointerUp,
       onKeyDown: onGlobalKeyDown,
       onKeyUp: onGlobalKeyUp,
     });

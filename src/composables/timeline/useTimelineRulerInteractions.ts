@@ -37,6 +37,7 @@ interface UseTimelineRulerInteractionsOptions {
   isDraggingSelectionRange: Ref<boolean>;
   suppressNextRulerClick: Ref<boolean>;
   startSelectionRangeCreate: (event: PointerEvent) => void;
+  resolvePlayheadClickTimeUs?: (rawTimeUs: number) => number;
   emit: {
     (e: 'pointerdown' | 'start-playhead-drag' | 'start-pan', event: PointerEvent): void;
     (e: 'wheel', event: WheelEvent): void;
@@ -66,7 +67,9 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
     if (action === 'none') return;
 
     if (action === 'seek') {
-      options.timelineStore.setCurrentTimeUs(getTimeUsFromMouseEvent(event as MouseEvent));
+      const rawTimeUs = getTimeUsFromMouseEvent(event as MouseEvent);
+      const timeUs = options.resolvePlayheadClickTimeUs?.(rawTimeUs) ?? rawTimeUs;
+      options.timelineStore.setCurrentTimeUs(timeUs);
       return;
     }
 
@@ -154,7 +157,9 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
     }
 
     if (action === 'move_playhead') {
-      options.timelineStore.setCurrentTimeUs(getTimeUsFromMouseEvent(event));
+      const rawTimeUs = getTimeUsFromMouseEvent(event);
+      const timeUs = options.resolvePlayheadClickTimeUs?.(rawTimeUs) ?? rawTimeUs;
+      options.timelineStore.setCurrentTimeUs(timeUs);
       options.emit('start-playhead-drag', event);
       return;
     }
