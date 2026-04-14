@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, toRefs, type CSSProperties, onBeforeUnmount } from 'vue';
+import { ref, computed, toRefs, shallowRef, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -38,7 +38,8 @@ const { selectedTransition } = storeToRefs(timelineStore);
 
 const { isTrackVisuallySelected } = selectionStore;
 
-const OVERSCAN_PX = 300;
+const OVERSCAN_PX = 480;
+const MIN_VISIBILITY_CHUNK_PX = 256;
 
 const props = defineProps<{
   tracks: TimelineTrack[];
@@ -173,18 +174,39 @@ const trackVisibilityIndexByTrack = computed<Record<string, TrackVisibilityIndex
   return result;
 });
 
-/** Visible range in px with overscan. Falls back to rendering everything if viewport unknown. */
-const visibleStartPx = computed(() => Math.max(0, (props.scrollLeft ?? 0) - OVERSCAN_PX));
-const visibleEndPx = computed(() => {
-  const vw = props.viewportWidth ?? 0;
-  if (vw <= 0) return Infinity;
-  return (props.scrollLeft ?? 0) + vw + OVERSCAN_PX;
+const renderWindowPx = shallowRef({ start: 0, end: Infinity as number });
+
+function updateRenderWindow() {
+  const scrollLeft = props.scrollLeft ?? 0;
+  const viewportWidth = props.viewportWidth ?? 0;
+
+  if (viewportWidth <= 0) {
+    renderWindowPx.value = { start: 0, end: Infinity };
+    return;
+  }
+
+  const chunkSize = Math.max(MIN_VISIBILITY_CHUNK_PX, Math.round(viewportWidth / 2));
+  const desiredStart = Math.max(0, scrollLeft - OVERSCAN_PX);
+  const desiredEnd = scrollLeft + viewportWidth + OVERSCAN_PX;
+  const currentWindow = renderWindowPx.value;
+
+  if (desiredStart >= currentWindow.start && desiredEnd <= currentWindow.end) {
+    return;
+  }
+
+  const nextStart = Math.max(0, Math.floor(desiredStart / chunkSize) * chunkSize);
+  const nextEnd = Math.ceil(desiredEnd / chunkSize) * chunkSize;
+  renderWindowPx.value = { start: nextStart, end: nextEnd };
+}
+
+watch(() => [props.scrollLeft ?? 0, props.viewportWidth ?? 0], updateRenderWindow, {
+  immediate: true,
 });
 
 const visibleItemsByTrack = computed(() => {
   const result: Record<string, TimelineTrackItem[]> = {};
-  const vStart = visibleStartPx.value;
-  const vEnd = visibleEndPx.value;
+  const vStart = renderWindowPx.value.start;
+  const vEnd = renderWindowPx.value.end;
   const geos = itemGeometries.value;
   const visibilityIndexByTrack = trackVisibilityIndexByTrack.value;
 
@@ -251,17 +273,6 @@ const trackViewModels = computed(() => {
   });
 });
 
-function placeholderStyle(item: TimelineTrackItem): CSSProperties {
-  const geo = itemGeometries.value.get(item.id);
-  if (!geo) return { display: 'none' };
-  return {
-    position: 'absolute',
-    left: `${geo.startPx}px`,
-    width: `${geo.widthPx}px`,
-    top: 0,
-    bottom: 0,
-  };
-}
 const { isMarqueeSelecting, marqueeStyle, startMarquee } = useTimelineMarquee(
   containerRef,
   tracks,
