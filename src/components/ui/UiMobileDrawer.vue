@@ -112,7 +112,7 @@ const containerClasses = computed(() => {
 
   if (effectiveDirection.value === 'right' || effectiveDirection.value === 'left') {
     const sideBorder = effectiveDirection.value === 'right' ? 'border-l' : 'border-r';
-    return `${base} max-h-dvh h-screen w-[50vw] sm:w-[40vw] ml-auto ${sideBorder} border-zinc-800/80 ${bgColor} ${props.ui.container || ''}`;
+    return `${base} max-h-dvh h-screen w-[55vw] sm:w-[45vw] ml-auto ${sideBorder} border-zinc-800/80 ${bgColor} ${props.ui.container || ''}`;
   }
 
   const heightClass = props.snapPoints?.length
@@ -133,42 +133,42 @@ const bdStartY = ref(0);
 const bdStartX = ref(0);
 const bdDy = ref(0);
 const bdDx = ref(0);
-const backdropDragOffset = ref(0);
+
+const containerRef = ref<HTMLElement | null>(null);
 
 const isBackdropInteractive = computed(
   () =>
     !props.modal &&
     isOpen.value &&
     isExpanded.value &&
-    (effectiveDirection.value === 'bottom' || effectiveDirection.value === 'top'),
+    (effectiveDirection.value === 'bottom' ||
+      effectiveDirection.value === 'top' ||
+      effectiveDirection.value === 'right' ||
+      effectiveDirection.value === 'left'),
 );
 
-const containerStyle = computed(() => {
-  const style: Record<string, string> = {};
+const containerStyle = computed(() =>
+  snapContentHeight.value ? { height: snapContentHeight.value } : undefined,
+);
 
-  if (snapContentHeight.value) {
-    style.height = snapContentHeight.value;
+function applyDragTransform(dx: number, dy: number) {
+  if (!containerRef.value) return;
+  if (dx !== 0 || dy !== 0) {
+    containerRef.value.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+  } else {
+    containerRef.value.style.removeProperty('transform');
   }
-
-  if (backdropDragOffset.value && effectiveDirection.value === 'bottom' && isExpanded.value) {
-    style.transform = `translate3d(0, ${backdropDragOffset.value}px, 0)`;
-  }
-
-  return Object.keys(style).length ? style : undefined;
-});
+}
 
 const bodyRef = ref<HTMLElement | null>(null);
 
 /**
  * Handle swipe detection — works alongside vaul-vue (NO data-vaul-no-drag).
- * We record touch start/end Y on the handle. After vaul-vue processes its
- * release (pointerup → nextTick), we check whether vaul-vue snapped back
- * without closing. If the user intended a downward swipe from toolbar mode,
- * we close. If upward — we expand.
+ * Acts immediately on touchend so the close/expand fires before vaul-vue
+ * snaps back, giving a smooth animation from the release position.
  */
 const hSwipeStartY = ref(0);
 const hSwipeEndY = ref(0);
-let hSwipeTimer: ReturnType<typeof setTimeout> | null = null;
 
 function onHandleTouchStart(e: TouchEvent) {
   const t = e.touches[0];
@@ -182,21 +182,19 @@ function onHandleTouchEnd(e: TouchEvent) {
   const t = e.changedTouches[0];
   if (t) hSwipeEndY.value = t.clientY;
 
-  if (hSwipeTimer) clearTimeout(hSwipeTimer);
-  hSwipeTimer = setTimeout(() => {
-    if (!isOpen.value) return;
-    const dy = hSwipeEndY.value - hSwipeStartY.value;
-    const THRESHOLD = 15;
-    if (Math.abs(dy) < THRESHOLD) return;
+  if (!isOpen.value) return;
+  const dy = hSwipeEndY.value - hSwipeStartY.value;
+  const THRESHOLD = 15;
+  hSwipeStartY.value = 0;
+  hSwipeEndY.value = 0;
 
-    if (dy > 0 && !isExpanded.value) {
-      requestClose();
-    } else if (dy < -THRESHOLD && !isExpanded.value && props.snapPoints?.length) {
-      activeSnapPoint.value = props.snapPoints[props.snapPoints.length - 1] as string | number;
-    }
-    hSwipeStartY.value = 0;
-    hSwipeEndY.value = 0;
-  }, 80);
+  if (Math.abs(dy) < THRESHOLD) return;
+
+  if (dy > 0 && !isExpanded.value) {
+    requestClose();
+  } else if (dy < -THRESHOLD && !isExpanded.value && props.snapPoints?.length) {
+    activeSnapPoint.value = props.snapPoints[props.snapPoints.length - 1] as string | number;
+  }
 }
 
 function onBackdropTouchStart(e: TouchEvent) {
@@ -207,7 +205,6 @@ function onBackdropTouchStart(e: TouchEvent) {
   bdStartX.value = t.clientX;
   bdDy.value = 0;
   bdDx.value = 0;
-  backdropDragOffset.value = 0;
 }
 
 function onBackdropTouchMove(e: TouchEvent) {
@@ -216,27 +213,53 @@ function onBackdropTouchMove(e: TouchEvent) {
   if (!t) return;
   bdDy.value = t.clientY - bdStartY.value;
   bdDx.value = t.clientX - bdStartX.value;
-  backdropDragOffset.value = Math.max(0, bdDy.value);
+
+  const dir = effectiveDirection.value;
+  if (dir === 'bottom') {
+    applyDragTransform(0, Math.max(0, bdDy.value));
+  } else if (dir === 'right') {
+    applyDragTransform(Math.max(0, bdDx.value), 0);
+  } else if (dir === 'left') {
+    applyDragTransform(Math.min(0, bdDx.value), 0);
+  }
 }
 
 function onBackdropTouchEnd(e: TouchEvent) {
   if (!isBackdropInteractive.value) return;
+  applyDragTransform(0, 0);
+
   const dy = bdDy.value;
-  const adx = Math.abs(bdDx.value);
+  const dx = bdDx.value;
+  const dir = effectiveDirection.value;
 
-  if (Math.abs(dy) < 10 && adx < 10) {
-    backdropDragOffset.value = 0;
-    requestClose();
-    return;
+  if (dir === 'bottom' || dir === 'top') {
+    if (Math.abs(dy) < 10 && Math.abs(dx) < 10) {
+      requestClose();
+      return;
+    }
+    if (dy > 50 && dy > Math.abs(dx) * 1.5) {
+      if (e.cancelable) e.preventDefault();
+      requestClose();
+    }
+  } else if (dir === 'right') {
+    if (Math.abs(dy) < 10 && Math.abs(dx) < 10) {
+      requestClose();
+      return;
+    }
+    if (dx > 50) {
+      if (e.cancelable) e.preventDefault();
+      requestClose();
+    }
+  } else if (dir === 'left') {
+    if (Math.abs(dy) < 10 && Math.abs(dx) < 10) {
+      requestClose();
+      return;
+    }
+    if (dx < -50) {
+      if (e.cancelable) e.preventDefault();
+      requestClose();
+    }
   }
-
-  if (dy > 50 && dy > adx * 1.5) {
-    e.preventDefault();
-    requestClose();
-    return;
-  }
-
-  backdropDragOffset.value = 0;
 }
 
 function onBackdropClick() {
@@ -291,8 +314,7 @@ watch([isOpen, isExpanded], ([open, expanded]) => {
 watch(isOpen, (val) => {
   if (!val) {
     activeSnapPoint.value = null;
-    backdropDragOffset.value = 0;
-    if (hSwipeTimer) clearTimeout(hSwipeTimer);
+    applyDragTransform(0, 0);
   } else {
     // Focus management
     nextTick(() => {
@@ -343,7 +365,7 @@ watch(isOpen, (val) => {
     @update:active-snap-point="onSnapPointChange"
   >
     <template #content>
-      <div :class="containerClasses" :style="containerStyle">
+      <div ref="containerRef" :class="containerClasses" :style="containerStyle">
         <!-- Vertical mode: drag handle -->
         <div
           v-if="
@@ -366,13 +388,11 @@ watch(isOpen, (val) => {
           v-if="
             (effectiveDirection === 'right' || effectiveDirection === 'left') && props.withHandle
           "
-          class="absolute top-0 bottom-0 flex flex-col items-center justify-center pointer-events-none"
+          class="absolute top-0 bottom-0 flex flex-col items-center justify-center cursor-pointer pointer-events-auto"
           :class="effectiveDirection === 'right' ? 'left-0 w-6' : 'right-0 w-6'"
+          @click.stop="onHandleTap"
         >
-          <div
-            class="w-1 h-12 rounded-full bg-zinc-700/60 cursor-pointer pointer-events-auto"
-            @click.stop="onHandleTap"
-          />
+          <div class="w-1 h-12 rounded-full bg-zinc-700/60 transition-colors hover:bg-zinc-500/60" />
         </div>
 
         <!-- Optional Toolbar (stays visible at first snap point) -->

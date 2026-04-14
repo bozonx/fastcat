@@ -337,6 +337,7 @@ const clipCount = computed(
             value-key="value"
             label-key="label"
             size="sm"
+            :searchable="false"
             @update:model-value="
               (v: unknown) =>
                 (trackBlendMode =
