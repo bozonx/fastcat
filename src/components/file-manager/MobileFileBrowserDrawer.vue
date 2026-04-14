@@ -4,17 +4,13 @@ import { useSelectionStore } from '~/stores/selection.store';
 import FileProperties from '~/components/properties/FileProperties.vue';
 import MultiFileProperties from '~/components/properties/MultiFileProperties.vue';
 import { isOpenableProjectFileName, getMediaTypeFromFilename } from '~/utils/media-types';
-import type { FileAction } from '~/composables/file-manager/useFileManagerActions';
+import type { FileAction as FileManagerAction } from '~/composables/file-manager/useFileManagerActions';
 import type { SelectedFsEntry, SelectedFsEntries } from '~/stores/selection.store';
 import type { FsEntry } from '~/types/fs';
 import MobileDrawerToolbar from '~/components/timeline/MobileDrawerToolbar.vue';
 import MobileDrawerToolbarButton from '~/components/timeline/MobileDrawerToolbarButton.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
-import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { useProxyStore } from '~/stores/proxy.store';
-import { useProjectStore } from '~/stores/project.store';
-import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
-import { useComputerVfs } from '~/composables/file-manager/useComputerVfs';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useMediaStore } from '~/stores/media.store';
@@ -25,11 +21,24 @@ import { useRuntimeConfig } from 'nuxt/app';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import { isGeneratingProxyInDirectory, folderHasVideos } from '~/utils/fs-entry-utils';
 import { getBdPayload } from '~/types/bloggerdog';
+import {
+  canCopyBloggerDogEntry,
+  canCutBloggerDogEntry,
+  canPasteIntoBloggerDogEntry,
+  isBloggerDogTextWrapper,
+} from '~/utils/bloggerdog-file-manager';
+import { WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
+
+type DrawerAction =
+  | FileManagerAction
+  | 'openAsPanelCut'
+  | 'openAsPanelSound'
+  | 'openAsProjectTab';
 
 const props = defineProps<{
   isOpen: boolean;
   isSelectionMode: boolean;
-  onAction?: (action: FileAction, entry: FsEntry | FsEntry[]) => Promise<void>;
+  onAction?: (action: DrawerAction, entry: FsEntry | FsEntry[]) => Promise<void>;
 }>();
 
 const { isOpen, isSelectionMode, onAction } = toRefs(props);
@@ -41,26 +50,23 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const selectionStore = useSelectionStore();
-const conversionStore = useFileConversionStore();
 const proxyStore = useProxyStore();
-const projectStore = useProjectStore();
-const { extractAudio } = useAudioExtraction();
-const { vfs: computerVfs } = useComputerVfs();
 const { readDirectory } = useFileManager();
 const runtimeConfig = useRuntimeConfig();
 const workspaceStore = useWorkspaceStore();
+const mediaStore = useMediaStore();
 
-const isBloggerdogConnected = computed(() => {
-  const cfg = resolveExternalServiceConfig({
-    service: 'files',
+const sttConfig = computed(() =>
+  resolveExternalServiceConfig({
+    service: 'stt',
     integrations: workspaceStore.userSettings.integrations,
-    bloggerDogApiUrl:
-      typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
-        ? runtimeConfig.public.bloggerDogApiUrl
+    bloggerDogApiUrl: '',
+    fastcatAccountApiUrl:
+      typeof runtimeConfig.public.fastcatAccountApiUrl === 'string'
+        ? runtimeConfig.public.fastcatAccountApiUrl
         : '',
-  });
-  return Boolean(cfg);
-});
+  }),
+);
 
 const clipboardStore = useAppClipboard();
 
@@ -73,10 +79,6 @@ const isOpenLocal = computed({
       emit('close');
     }
   },
-});
-
-const isMultiple = computed(() => {
-  return selectedEntity.value?.source === 'fileManager' && selectedEntity.value.kind === 'multiple';
 });
 
 const selectedFsEntry = computed(() => {
@@ -120,14 +122,13 @@ const isBloggerDogProject = computed(() => {
 
 const canRename = computed(() => {
   if (selectedEntriesList.value.length !== 1) return false;
-  if (isBloggerDogProject.value) return false;
-  return true;
+  return !isProjectRoot.value && !isCommonRoot.value && !isBdVirtual.value && !isBdProject.value && !isBdText.value;
 });
 
 const canDelete = computed(() => {
   if (selectedEntriesList.value.length === 0) return false;
-  if (isBloggerDogProject.value) return false;
-  return true;
+  if (selectedEntriesList.value.length > 1) return true;
+  return !isProjectRoot.value && !isCommonRoot.value && !isBdVirtual.value && !isBdProject.value && !isBdText.value;
 });
 
 const isOtioFile = computed(() => {
@@ -148,11 +149,26 @@ const isBdGroup = computed(() =>
 const isBdContentItem = computed(() =>
   selectedFsEntry.value ? getBdPayload(selectedFsEntry.value.entry)?.type === 'content-item' : false,
 );
+const isBdText = computed(() =>
+  selectedFsEntry.value ? isBloggerDogTextWrapper(selectedFsEntry.value.entry) : false,
+);
+const isProjectRoot = computed(() => {
+  const entry = selectedFsEntry.value?.entry;
+  return entry?.kind === 'directory' && (entry.path === '' || entry.path === '/');
+});
+const isCommonRoot = computed(() => {
+  const entry = selectedFsEntry.value?.entry;
+  if (!entry || entry.kind !== 'directory') return false;
+  return (
+    entry.path === WORKSPACE_COMMON_PATH_PREFIX ||
+    (entry.name.toLowerCase() === 'common' && (entry.path === 'common' || entry.path === ''))
+  );
+});
+const isRemoteEntry = computed(() => selectedFsEntry.value?.entry.source === 'remote');
 
 const isFullyUnsupported = computed(() => {
   const entry = selectedFsEntry.value?.entry;
   if (!entry || entry.kind !== 'file' || !entry.path) return false;
-  const mediaStore = useMediaStore();
   if (mediaStore.metadataLoadFailed[entry.path]) return true;
   const meta = mediaStore.mediaMetadata[entry.path];
   if (!meta) return false;
@@ -167,6 +183,7 @@ const isFullyUnsupported = computed(() => {
 const canAddToTimeline = computed(() => {
   if (isSelectionMode.value) return false;
   if (!selectedEntity.value || selectedEntity.value.kind !== 'file') return false;
+  if (selectedEntity.value.entry.source === 'remote') return false;
   if (isFullyUnsupported.value) return false;
   return isOpenableProjectFileName(selectedEntity.value.name);
 });
@@ -176,12 +193,6 @@ const canConvert = computed(() => {
   if (isFullyUnsupported.value) return false;
   const type = getMediaTypeFromFilename(selectedFsEntry.value.entry.name);
   return ['video', 'audio', 'image'].includes(type);
-});
-
-const isImage = computed(() => {
-  if (!selectedFsEntry.value || selectedFsEntry.value.entry.kind !== 'file') return false;
-  const type = getMediaTypeFromFilename(selectedFsEntry.value.entry.name);
-  return type === 'image';
 });
 
 const isVideo = computed(() => {
@@ -199,6 +210,85 @@ const isAudio = computed(() => {
 const hasExistingProxy = computed(() => {
   if (!selectedFsEntry.value || !selectedFsEntry.value.path) return false;
   return proxyStore.existingProxies.has(selectedFsEntry.value.path);
+});
+
+const hasAudioTrack = computed(() => {
+  const entry = selectedFsEntry.value?.entry;
+  if (!entry || entry.kind !== 'file' || !entry.path) return false;
+  return Boolean(mediaStore.mediaMetadata[entry.path]?.audio);
+});
+
+const canOpenInPanels = computed(() => {
+  const entry = selectedFsEntry.value?.entry;
+  if (!entry || entry.kind !== 'file' || entry.source === 'remote') return false;
+  if (isFullyUnsupported.value) return false;
+  return isOpenableProjectFileName(entry.name);
+});
+
+const canTranscribe = computed(() => {
+  const entry = selectedFsEntry.value?.entry;
+  if (!entry || entry.kind !== 'file' || entry.source === 'remote') return false;
+  const mediaType = getMediaTypeFromFilename(entry.name);
+  const isMedia = mediaType === 'audio' || mediaType === 'video';
+  if (!isMedia) return false;
+
+  const isLocal = workspaceStore.userSettings.integrations.stt.provider === 'local';
+  const isModelReady = isLocal ? workspaceStore.isSttModelDownloaded : Boolean(sttConfig.value);
+
+  return isModelReady && Boolean(workspaceStore.workspaceHandle) && Boolean(entry.path);
+});
+
+const canCopySelection = computed(() =>
+  selectedEntriesList.value.length > 0 &&
+  selectedEntriesList.value.every((entry) => {
+    const payload = getBdPayload(entry);
+    return (
+      !(entry.kind === 'directory' && (entry.path === '' || entry.path === '/')) &&
+      !(
+        entry.kind === 'directory' &&
+        (entry.path === WORKSPACE_COMMON_PATH_PREFIX ||
+          (entry.name.toLowerCase() === 'common' &&
+            (entry.path === 'common' || entry.path === '')))
+      ) &&
+      payload?.type !== 'virtual-folder' &&
+      payload?.type !== 'project' &&
+      payload?.type !== 'collection' &&
+      payload?.type !== 'content-item' &&
+      canCopyBloggerDogEntry(entry)
+    );
+  }),
+);
+
+const canCutSelection = computed(() =>
+  selectedEntriesList.value.length > 0 &&
+  selectedEntriesList.value.every((entry) => {
+    const payload = getBdPayload(entry);
+    return (
+      !(entry.kind === 'directory' && (entry.path === '' || entry.path === '/')) &&
+      !(
+        entry.kind === 'directory' &&
+        (entry.path === WORKSPACE_COMMON_PATH_PREFIX ||
+          (entry.name.toLowerCase() === 'common' &&
+            (entry.path === 'common' || entry.path === '')))
+      ) &&
+      payload?.type !== 'virtual-folder' &&
+      payload?.type !== 'project' &&
+      payload?.type !== 'collection' &&
+      payload?.type !== 'content-item' &&
+      canCutBloggerDogEntry(entry)
+    );
+  }),
+);
+
+const canPasteIntoSelection = computed(() => {
+  const entry = selectedFsEntry.value?.entry;
+  if (!entry || !clipboardStore.hasFileManagerPayload) return false;
+  if (entry.source === 'remote') return canPasteIntoBloggerDogEntry(entry);
+
+  return (
+    (entry.kind === 'directory' && !isBdGroup.value && !isBdVirtual.value && !isBdProject.value) ||
+    isBdContentItem.value
+  );
 });
 
 const hasDirectVideoChildren = ref(false);
@@ -238,12 +328,7 @@ const topActions = computed(() => {
       id: 'convert',
       label: t('videoEditor.fileManager.actions.convertFile'),
       icon: 'lucide:replace',
-      onClick: () => {
-        conversionStore.openConversionModal(entry, {
-          isExternal: true,
-          vfs: computerVfs.value,
-        });
-      },
+      onClick: () => handleAction('convertFile'),
     });
   }
 
@@ -253,6 +338,7 @@ const topActions = computed(() => {
       id: 'transcribe',
       label: t('videoEditor.fileManager.actions.transcribe'),
       icon: 'i-heroicons-language',
+      disabled: !canTranscribe.value,
       onClick: () => handleAction('transcribe'),
     });
   }
@@ -293,12 +379,12 @@ const topActions = computed(() => {
   }
 
   // Extract Audio (Video only)
-  if (isVideo.value) {
+  if (isVideo.value && hasAudioTrack.value) {
     actions.push({
       id: 'extract-audio',
       label: t('videoEditor.fileManager.actions.extractAudio'),
       icon: 'i-heroicons-musical-note',
-      onClick: () => extractAudio(entry, { isExternal: true }),
+      onClick: () => handleAction('extractAudio'),
     });
   }
 
@@ -312,35 +398,79 @@ const topActions = computed(() => {
     });
   }
 
+  if (canOpenInPanels.value) {
+    actions.push(
+      {
+        id: 'openAsPanelCut',
+        label: t('videoEditor.fileManager.actions.openAsPanelCut'),
+        icon: 'i-heroicons-window',
+        onClick: () => handleAction('openAsPanelCut'),
+      },
+      {
+        id: 'openAsPanelSound',
+        label: t('videoEditor.fileManager.actions.openAsPanelSound'),
+        icon: 'i-heroicons-window',
+        onClick: () => handleAction('openAsPanelSound'),
+      },
+      {
+        id: 'openAsProjectTab',
+        label: t('videoEditor.fileManager.actions.openAsProjectTab'),
+        icon: 'i-heroicons-squares-plus',
+        onClick: () => handleAction('openAsProjectTab'),
+      },
+    );
+  }
+
   // Directory actions
   if (entry.kind === 'directory') {
-    actions.push({
-      id: 'createFolder',
-      label: t('videoEditor.fileManager.actions.createFolder'),
-      icon: 'i-heroicons-folder-plus',
-      onClick: () => handleAction('createFolder'),
-    });
-    actions.push({
-      id: 'upload',
-      label: t('videoEditor.fileManager.actions.uploadFiles'),
-      icon: 'i-heroicons-arrow-up-tray',
-      onClick: () => handleAction('upload'),
-    });
-    actions.push({
-      id: 'createTimeline',
-      label: t('videoEditor.fileManager.actions.createTimeline'),
-      icon: 'i-heroicons-document-plus',
-      onClick: () => handleAction('createTimeline'),
-    });
-    actions.push({
-      id: 'createMarkdown',
-      label: t('videoEditor.fileManager.actions.createMarkdown'),
-      icon: 'i-heroicons-document-text',
-      onClick: () => handleAction('createMarkdown'),
-    });
+    if (!isRemoteEntry.value) {
+      actions.push(
+        {
+          id: 'createFolder',
+          label: t('videoEditor.fileManager.actions.createFolder'),
+          icon: 'i-heroicons-folder-plus',
+          onClick: () => handleAction('createFolder'),
+        },
+        {
+          id: 'upload',
+          label: t('videoEditor.fileManager.actions.uploadFiles'),
+          icon: 'i-heroicons-arrow-up-tray',
+          onClick: () => handleAction('upload'),
+        },
+        {
+          id: 'createTimeline',
+          label: t('videoEditor.fileManager.actions.createTimeline'),
+          icon: 'i-heroicons-document-plus',
+          onClick: () => handleAction('createTimeline'),
+        },
+        {
+          id: 'createMarkdown',
+          label: t('videoEditor.fileManager.actions.createMarkdown'),
+          icon: 'i-heroicons-document-text',
+          onClick: () => handleAction('createMarkdown'),
+        },
+      );
+    } else if (!isBdContentItem.value) {
+      if (!isBdVirtual.value) {
+        actions.push(
+          {
+            id: 'createFolder',
+            label: t('videoEditor.fileManager.actions.createFolder'),
+            icon: 'i-heroicons-folder-plus',
+            onClick: () => handleAction('createFolder'),
+          },
+          {
+            id: 'createMarkdown',
+            label: t('videoEditor.fileManager.actions.createMarkdown'),
+            icon: 'i-heroicons-document-text',
+            onClick: () => handleAction('createMarkdown'),
+          },
+        );
+      }
+    }
 
     // Proxy for folder
-    if (hasDirectVideoChildren.value) {
+    if (hasDirectVideoChildren.value && !isRemoteEntry.value) {
       if (isGeneratingProxyInDirectory(entry, proxyStore.generatingProxies)) {
         actions.push({
           id: 'cancelProxyForFolder',
@@ -389,7 +519,7 @@ const topActions = computed(() => {
   return actions;
 });
 
-function handleAction(actionId: FileAction) {
+function handleAction(actionId: DrawerAction) {
   if (onAction?.value) {
     const list = selectedEntriesList.value;
     if (list.length === 1 && list[0]) {
@@ -424,19 +554,19 @@ function handleAction(actionId: FileAction) {
               @click="handleAction('rename')"
             />
             <MobileDrawerToolbarButton
+              v-if="canCopySelection"
               icon="i-heroicons-document-duplicate"
               :label="$t('common.copy')"
               @click="handleAction('copy')"
             />
             <MobileDrawerToolbarButton
+              v-if="canCutSelection"
               icon="i-heroicons-scissors"
               :label="$t('common.cut')"
               @click="handleAction('cut')"
             />
             <MobileDrawerToolbarButton
-              v-if="
-                clipboardStore.hasFileManagerPayload && selectedFsEntry?.entry.kind === 'directory'
-              "
+              v-if="canPasteIntoSelection"
               icon="i-heroicons-clipboard"
               :label="$t('common.paste')"
               @click="handleAction('paste')"

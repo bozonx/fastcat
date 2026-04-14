@@ -22,7 +22,7 @@ const model = defineModel<boolean>('toggleValue');
           v-if="props.hasToggle"
           v-model="model"
           size="xs"
-          color="red"
+          color="error"
         />
       </div>
     </UiFormSectionHeader>

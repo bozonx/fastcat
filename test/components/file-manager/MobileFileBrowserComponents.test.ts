@@ -4,6 +4,23 @@ import MobileFileBrowserNavbar from '~/components/file-manager/MobileFileBrowser
 import MobileFileBrowserCreateSheet from '~/components/file-manager/MobileFileBrowserCreateSheet.vue';
 import MobileFileBrowserSelectionToolbar from '~/components/file-manager/MobileFileBrowserSelectionToolbar.vue';
 
+const mockProxyStore = {
+  existingProxies: new Set<string>(),
+  generatingProxies: new Set<string>(),
+};
+
+const mockMediaStore = {
+  mediaMetadata: {} as Record<string, { audio?: unknown }>,
+};
+
+vi.mock('~/stores/proxy.store', () => ({
+  useProxyStore: () => mockProxyStore,
+}));
+
+vi.mock('~/stores/media.store', () => ({
+  useMediaStore: () => mockMediaStore,
+}));
+
 describe('MobileFileBrowserNavbar', () => {
   const defaultProps = {
     isSelectionMode: false,
@@ -95,6 +112,12 @@ describe('MobileFileBrowserCreateSheet', () => {
 describe('MobileFileBrowserSelectionToolbar', () => {
   const entries = [{ name: 'f1', kind: 'file', path: 'f1' }] as any[];
 
+  beforeEach(() => {
+    mockProxyStore.existingProxies.clear();
+    mockProxyStore.generatingProxies.clear();
+    mockMediaStore.mediaMetadata = {};
+  });
+
   it('renders action buttons', async () => {
     const wrapper = await mountSuspended(MobileFileBrowserSelectionToolbar, {
       props: { selectedEntries: entries, canAddToTimeline: true },
@@ -106,6 +129,32 @@ describe('MobileFileBrowserSelectionToolbar', () => {
     expect(wrapper.text()).toContain('common.delete');
     expect(wrapper.text()).toContain('common.copy');
     expect(wrapper.text()).toContain('common.toTimeline');
+  });
+
+  it('renders proxy and extract audio actions for selected videos', async () => {
+    const videoEntries = [{ name: 'clip.mp4', kind: 'file', path: 'clip.mp4' }] as any[];
+    mockProxyStore.existingProxies.add('clip.mp4');
+    mockMediaStore.mediaMetadata = {
+      'clip.mp4': { audio: {} },
+    };
+
+    const wrapper = await mountSuspended(MobileFileBrowserSelectionToolbar, {
+      props: { selectedEntries: videoEntries, canAddToTimeline: false },
+      global: {
+        stubs: {
+          MobileDrawerToolbar: { template: '<div><slot /></div>' },
+          MobileDrawerToolbarButton: {
+            props: ['label'],
+            template: '<button>{{ label }}</button>',
+          },
+          Icon: true,
+        },
+      },
+    });
+
+    expect(wrapper.text()).toContain('videoEditor.fileManager.actions.createProxy');
+    expect(wrapper.text()).toContain('videoEditor.fileManager.actions.deleteProxy');
+    expect(wrapper.text()).toContain('videoEditor.fileManager.actions.extractAudio');
   });
 
   it('emits action event when buttons are clicked', async () => {
