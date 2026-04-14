@@ -11,6 +11,8 @@ import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
 
 const props = defineProps<{
   isOpen: boolean;
+  trackId?: string | null;
+  gapItemId?: string | null;
 }>();
 
 const activeSnapPoint = defineModel<string | number | null>('activeSnapPoint', { default: null });
@@ -34,10 +36,14 @@ const tracks = computed(
   () => (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [],
 );
 
+const selectedTrackId = computed(() => props.trackId ?? timelineStore.selectedTrackId);
+
 const selectedTrack = computed(() => {
-  if (!timelineStore.selectedTrackId) return null;
-  return tracks.value.find((t) => t.id === timelineStore.selectedTrackId) || null;
+  if (!selectedTrackId.value) return null;
+  return tracks.value.find((t) => t.id === selectedTrackId.value) || null;
 });
+
+const isGapMode = computed(() => Boolean(props.gapItemId));
 
 const isTrackFirstOfKind = computed(() => {
   if (!selectedTrack.value) return true;
@@ -125,6 +131,18 @@ function confirmDeleteTrack() {
   emit('close');
 }
 
+function deleteGap() {
+  if (!selectedTrack.value || !props.gapItemId) return;
+
+  timelineStore.applyTimeline({
+    type: 'delete_items',
+    trackId: selectedTrack.value.id,
+    itemIds: [props.gapItemId],
+  });
+  timelineStore.clearSelection();
+  emit('close');
+}
+
 const isGenerateCaptionsOpen = ref(false);
 
 const extraActions = computed(() => {
@@ -198,7 +216,14 @@ const extraActions = computed(() => {
       <MobileDrawerToolbar class="border-b border-ui-border">
         <MobileDrawerToolbarButton
           icon="i-heroicons-trash"
-          :label="t('common.delete')"
+          :label="isGapMode ? t('fastcat.timeline.deleteGap') : t('common.delete')"
+          @click="isGapMode ? deleteGap() : requestDeleteTrack()"
+        />
+
+        <MobileDrawerToolbarButton
+          v-if="isGapMode"
+          icon="i-heroicons-trash"
+          :label="t('fastcat.timeline.deleteTrack')"
           @click="requestDeleteTrack"
         />
 

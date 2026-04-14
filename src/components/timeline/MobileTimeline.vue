@@ -39,7 +39,6 @@ import MobileAddContentDrawer from './MobileAddContentDrawer.vue';
 import MobileVirtualClipPresetDrawer from './MobileVirtualClipPresetDrawer.vue';
 import MobileMarkerPropertiesDrawer from './MobileMarkerPropertiesDrawer.vue';
 import MobileTransitionPropertiesDrawer from './MobileTransitionPropertiesDrawer.vue';
-import MobileGapPropertiesDrawer from './MobileGapPropertiesDrawer.vue';
 import MobileSelectionRangePropertiesDrawer from './MobileSelectionRangePropertiesDrawer.vue';
 import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
@@ -76,7 +75,6 @@ const isClipPropertiesDrawerOpen = ref(false);
 const isMarkerPropertiesDrawerOpen = ref(false);
 const isSelectionRangeDrawerOpen = ref(false);
 const isTransitionDrawerOpen = ref(false);
-const isGapPropertiesDrawerOpen = ref(false);
 const isMultiSelectionDrawerOpen = ref(false);
 const isAddContentDrawerOpen = ref(false);
 const isTrimDrawerOpen = ref(false);
@@ -245,7 +243,6 @@ function closeAllDrawers() {
   isMarkerPropertiesDrawerOpen.value = false;
   isSelectionRangeDrawerOpen.value = false;
   isTransitionDrawerOpen.value = false;
-  isGapPropertiesDrawerOpen.value = false;
   isMultiSelectionDrawerOpen.value = false;
   isTrimDrawerOpen.value = false;
   isSettingsDrawerOpen.value = false;
@@ -304,9 +301,9 @@ watch(
 
     // Gap selected
     if (gap) {
-      if (!isGapPropertiesDrawerOpen.value) {
+      if (!isTrackPropertiesDrawerOpen.value) {
         closeAllDrawers();
-        isGapPropertiesDrawerOpen.value = true;
+        isTrackPropertiesDrawerOpen.value = true;
       }
       return;
     }
@@ -417,19 +414,6 @@ function onTransitionDrawerClose() {
   }
   if (selectionStore.selectedEntity?.kind === 'transition') {
     timelineStore.selectTransition(null);
-    selectionStore.clearSelection();
-  }
-}
-
-function onGapPropertiesDrawerClose() {
-  isGapPropertiesDrawerOpen.value = false;
-
-  if (suppressDrawerSelectionClear.value) {
-    return;
-  }
-
-  if (selectionStore.selectedEntity?.kind === 'gap') {
-    timelineStore.clearSelection();
     selectionStore.clearSelection();
   }
 }
@@ -973,10 +957,15 @@ onBeforeUnmount(() => {
     <MobileTrackPropertiesDrawer
       v-model:active-snap-point="drawerActiveSnapPoint"
       :is-open="isTrackPropertiesDrawerOpen"
+      :track-id="selectedGap?.trackId ?? null"
+      :gap-item-id="selectedGap?.itemId ?? null"
       @close="
         () => {
           onUpdateDrawerOpen(false);
-          if (selectionStore.selectedEntity?.kind === 'track') {
+          if (selectionStore.selectedEntity?.kind === 'gap') {
+            timelineStore.clearSelection();
+            selectionStore.clearSelection();
+          } else if (selectionStore.selectedEntity?.kind === 'track') {
             selectionStore.clearSelection();
           }
         }
@@ -1008,16 +997,6 @@ onBeforeUnmount(() => {
       :clip="selectedTransitionContext.clip"
       :track="selectedTransitionContext.track"
       @close="onTransitionDrawerClose"
-    />
-
-    <!-- Gap Properties Drawer -->
-    <MobileGapPropertiesDrawer
-      v-if="selectedGap"
-      v-model:active-snap-point="drawerActiveSnapPoint"
-      :is-open="isGapPropertiesDrawerOpen"
-      :track-id="selectedGap.trackId"
-      :item-id="selectedGap.itemId"
-      @close="onGapPropertiesDrawerClose"
     />
 
     <!-- Timeline Settings Drawer -->
