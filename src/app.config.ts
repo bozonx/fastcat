@@ -3,6 +3,13 @@ export default defineAppConfig({
     colors: {
       primary: 'zinc',
       neutral: 'zinc',
+      red: 'red',
+      green: 'green',
+      amber: 'amber',
+      blue: 'blue',
+      yellow: 'yellow',
+      success: 'green',
+      warning: 'amber',
     },
     icons: {
       loading: 'i-lucide-loader-circle',
