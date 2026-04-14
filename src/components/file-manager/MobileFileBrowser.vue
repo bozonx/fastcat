@@ -13,7 +13,7 @@ import { useTeleportTarget } from '~/composables/ui/useTeleportTarget';
 import { isOpenableProjectFileName } from '~/utils/media-types';
 import {
   useFileManagerActions,
-  type FileAction,
+  type FileAction as FileManagerAction,
 } from '~/composables/file-manager/useFileManagerActions';
 import { useBloggerDogStore } from '~/stores/bloggerdog';
 import { useFileBrowserRemoteCreate } from '~/composables/file-manager/useFileBrowserRemoteCreate';
@@ -38,6 +38,12 @@ import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store'
 import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
 import { useProxyStore } from '~/stores/proxy.store';
+
+type MobileDrawerAction =
+  | FileManagerAction
+  | 'openAsPanelCut'
+  | 'openAsPanelSound'
+  | 'openAsProjectTab';
 
 const fileManagerStore = useFileManagerStore();
 const projectStore = useProjectStore();
@@ -362,7 +368,7 @@ async function onRenameConfirm(newName: string) {
   }
 }
 
-async function handleDrawerAction(action: FileAction, entry: FsEntry | FsEntry[]) {
+async function handleDrawerAction(action: MobileDrawerAction, entry: FsEntry | FsEntry[]) {
   if (['copy', 'cut'].includes(action)) {
     closeAllUI();
   }

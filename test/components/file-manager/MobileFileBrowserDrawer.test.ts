@@ -19,8 +19,14 @@ const mockProjectStore = reactive({
 
 const mockWorkspaceStore = reactive({
   userSettings: {
-    integrations: [],
+    integrations: {
+      stt: {
+        provider: 'remote',
+      },
+    },
   },
+  isSttModelDownloaded: false,
+  workspaceHandle: null,
 });
 
 const mockReadDirectory = vi.fn();
