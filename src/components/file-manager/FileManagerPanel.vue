@@ -490,14 +490,7 @@ useFileManagerPanelBootstrap({
         v-if="projectStore.currentProjectName && !props.hideActions"
         class="flex items-center gap-1 px-2 py-1 bg-ui-bg-accent/30 border-b border-ui-border/50"
       >
-        <UButton
-          icon="i-heroicons-folder-plus"
-          variant="ghost"
-          color="neutral"
-          size="xs"
-          :title="t('videoEditor.fileManager.actions.createFolder')"
-          @click="onFileAction('createFolder', rootEntry)"
-        />
+
         <UButton
           icon="i-heroicons-document-plus"
           variant="ghost"
