@@ -53,7 +53,7 @@ function onUpdate(val: unknown) {
     :multiple="props.multiple"
     :search-input="props.searchable ? (props.searchInput ?? true) : false"
     :class="props.fullWidth ? 'w-full' : 'w-auto min-w-20'"
-    :ui="{ content: 'min-w-48' }"
+    :ui="{ content: 'min-w-48 z-[calc(var(--z-fixed)+20)]' }"
     @update:model-value="onUpdate"
   >
     <template v-for="(_, slot) in $slots" #[slot]="slotProps">
