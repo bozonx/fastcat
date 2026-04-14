@@ -14,7 +14,7 @@ vi.mock('~/workers/stt.worker.ts?worker', () => {
       removeEventListener = vi.fn();
       onmessage = null;
       onerror = null;
-    } as any;
+    } as any,
   };
 });
 

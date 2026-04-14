@@ -57,6 +57,14 @@ export interface TimelineSlipPreview {
   timecode: string;
 }
 
+export interface TimelineTrimPreview {
+  itemId: string;
+  trackId: string;
+  startUs: number;
+  durationUs: number;
+  edge: 'start' | 'end';
+}
+
 export function useTimelineItemDrag(
   scrollEl: Ref<HTMLElement | null>,
   tracks: ComputedRef<TimelineTrack[]>,
@@ -91,12 +99,21 @@ export function useTimelineItemDrag(
 
   const movePreview = ref<TimelineMovePreview | null>(null);
   const slipPreview = ref<TimelineSlipPreview | null>(null);
+  const trimPreview = ref<TimelineTrimPreview | null>(null);
   const pendingMoveCommit = ref<{
     fromTrackId: string;
     toTrackId: string;
     itemId: string;
     startUs: number;
     isCollision?: boolean;
+  } | null>(null);
+  const pendingTrimCommit = ref<{
+    trackId: string;
+    itemId: string;
+    edge: 'start' | 'end';
+    deltaUs: number;
+    quantizeToFrames: boolean;
+    commandType: 'trim_item' | 'overlay_trim_item';
   } | null>(null);
 
   const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
@@ -295,6 +312,8 @@ export function useTimelineItemDrag(
     };
     pendingMoveCommit.value = null;
     slipPreview.value = null;
+    trimPreview.value = null;
+    pendingTrimCommit.value = null;
 
     (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
     bindDragSession();
@@ -352,6 +371,20 @@ export function useTimelineItemDrag(
     dragStartSnapshot.value = timelineStore.timelineDoc;
     lastDragAppliedCmd.value = null;
     dragCancelRequested.value = false;
+    movePreview.value = null;
+    pendingMoveCommit.value = null;
+    slipPreview.value = null;
+    trimPreview.value =
+      currentItem?.kind === 'clip'
+        ? {
+            itemId: input.itemId,
+            trackId: input.trackId,
+            startUs: currentItem.timelineRange.startUs,
+            durationUs: currentItem.timelineRange.durationUs,
+            edge: input.edge,
+          }
+        : null;
+    pendingTrimCommit.value = null;
 
     if (e.pointerType !== 'touch') {
       (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
@@ -690,25 +723,32 @@ export function useTimelineItemDrag(
       ? quantizeDeltaUsToFrames(desiredDeltaUs, fps)
       : Math.round(desiredDeltaUs);
 
-    const nextStepDeltaUs = desiredQuantizedDeltaUs - dragLastAppliedQuantizedDeltaUs.value;
     lastDragClientX.value = clientX;
-    if (nextStepDeltaUs === 0) return;
     dragLastAppliedQuantizedDeltaUs.value = desiredQuantizedDeltaUs;
 
+    const nextStartUs =
+      mode === 'trim_start' ? anchorStartUs + desiredQuantizedDeltaUs : anchorStartUs;
+    const nextDurationUs =
+      mode === 'trim_start'
+        ? anchorDurationUs - desiredQuantizedDeltaUs
+        : anchorDurationUs + desiredQuantizedDeltaUs;
     const cmdEdge = mode === 'trim_start' ? 'start' : 'end';
-    const cmdType = overlapMode === 'pseudo' ? 'overlay_trim_item' : 'trim_item';
 
-    const cmd = {
-      type: cmdType as any,
+    trimPreview.value = {
+      itemId,
+      trackId,
+      startUs: Math.max(0, Math.round(nextStartUs)),
+      durationUs: Math.max(0, Math.round(nextDurationUs)),
+      edge: cmdEdge,
+    };
+    pendingTrimCommit.value = {
       trackId,
       itemId,
       edge: cmdEdge,
-      deltaUs: nextStepDeltaUs,
+      deltaUs: desiredQuantizedDeltaUs,
       quantizeToFrames: enableFrameSnap,
-    } as any;
-    timelineStore.applyTimeline(cmd, { saveMode: 'none', skipHistory: true });
-    lastDragAppliedCmd.value = cmd as any;
-    hasPendingTimelinePersist.value = true;
+      commandType: overlapMode === 'pseudo' ? 'overlay_trim_item' : 'trim_item',
+    };
   }
 
   function scheduleDragApply() {
@@ -898,6 +938,23 @@ export function useTimelineItemDrag(
       }
     }
 
+    if (!cancel && (draggingMode.value === 'trim_start' || draggingMode.value === 'trim_end')) {
+      const commit = pendingTrimCommit.value;
+      if (commit && commit.deltaUs !== 0) {
+        const cmd = {
+          type: commit.commandType,
+          trackId: commit.trackId,
+          itemId: commit.itemId,
+          edge: commit.edge,
+          deltaUs: commit.deltaUs,
+          quantizeToFrames: commit.quantizeToFrames,
+        } as const;
+        timelineStore.applyTimeline(cmd as any, { saveMode: 'none', skipHistory: true });
+        lastDragAppliedCmd.value = cmd as any;
+        hasPendingTimelinePersist.value = true;
+      }
+    }
+
     const snapshot = cloneValue(dragStartSnapshot.value);
     const appliedCmd = lastDragAppliedCmd.value;
     if (!cancel && snapshot && appliedCmd) {
@@ -939,6 +996,8 @@ export function useTimelineItemDrag(
     movePreview.value = null;
     pendingMoveCommit.value = null;
     slipPreview.value = null;
+    trimPreview.value = null;
+    pendingTrimCommit.value = null;
 
     dragStartSnapshot.value = null;
     lastDragAppliedCmd.value = null;
@@ -959,6 +1018,7 @@ export function useTimelineItemDrag(
     draggingItemId,
     movePreview,
     slipPreview,
+    trimPreview,
     startMoveItem,
     startTrimItem,
     onGlobalPointerMove,

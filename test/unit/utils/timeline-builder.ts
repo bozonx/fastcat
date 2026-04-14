@@ -72,6 +72,50 @@ export class TimelineBuilder {
   }
 }
 
-export function createTestTimeline() {
-  return new TimelineBuilder();
+export type TestTimelineConfig = {
+  id?: string;
+  name?: string;
+  fps?: number;
+  tracks?: Array<{
+    id: string;
+    kind?: 'video' | 'audio';
+    name?: string;
+    clips?: Array<{
+      id: string;
+      startUs?: number;
+      durationUs: number;
+      sourceDurationUs?: number;
+      clipType?: 'media' | 'adjustment' | 'background' | 'text' | 'timeline';
+      disabled?: boolean;
+      audioGain?: number;
+      freezeFrameSourceUs?: number;
+      freezeFrame?: { sourceTimeUs: number };
+    }>;
+  }>;
+};
+
+export function createTestTimeline(config?: TestTimelineConfig) {
+  const builder = new TimelineBuilder(config?.id, config?.name, config?.fps);
+
+  if (config?.tracks) {
+    for (const trackDef of config.tracks) {
+      builder.withTrack(trackDef.id, trackDef.kind, trackDef.name);
+      if (trackDef.clips) {
+        for (const clipDef of trackDef.clips) {
+          builder.withClip(clipDef.id, trackDef.id, clipDef);
+          // Manually add freezeFrame if provided since builder.withClip might not set everything
+          if (clipDef.freezeFrame) {
+            const track = (builder as any).doc.tracks.find((t: any) => t.id === trackDef.id);
+            const clip = track.items.find((i: any) => i.id === clipDef.id);
+            if (clip) {
+              clip.freezeFrame = clipDef.freezeFrame;
+            }
+          }
+        }
+      }
+    }
+    return builder.build();
+  }
+
+  return builder as any;
 }

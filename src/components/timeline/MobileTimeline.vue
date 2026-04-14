@@ -127,6 +127,16 @@ const selectedGap = computed(() => {
   return { trackId: entity.trackId, itemId: entity.itemId };
 });
 
+const selectedClipContext = computed(() => {
+  const entity = selectionStore.selectedEntity;
+  if (entity?.source !== 'timeline' || entity.kind !== 'clip') return null;
+  const track = tracks.value.find((item) => item.id === entity.trackId);
+  if (!track) return null;
+  const clip = track.items.find((item) => item.id === entity.itemId);
+  if (!clip || clip.kind !== 'clip') return null;
+  return { track, clip };
+});
+
 const selectedClips = computed(() => {
   const items = timelineStore.selectedItemIds.flatMap((itemId) => {
     const track = tracks.value.find((t) => t.items.some((it) => it.id === itemId));
@@ -502,6 +512,7 @@ const {
   draggingMode,
   draggingItemId,
   movePreview,
+  trimPreview,
   onTimeRulerPointerDown,
   selectItem,
   startMoveItem,
@@ -658,6 +669,68 @@ function onStartMoveItem(event: PointerEvent, payload: TimelineMoveItemPayload) 
 
 function onStartTrimItem(event: PointerEvent, payload: TimelineTrimItemPayload) {
   startTrimItem(event, payload);
+}
+
+function createSyntheticTouchPointerEvent(position: {
+  clientX: number;
+  clientY: number;
+  currentTarget?: EventTarget | null;
+}): PointerEvent {
+  return {
+    button: 0,
+    buttons: 1,
+    clientX: position.clientX,
+    clientY: position.clientY,
+    pointerId: 1,
+    pointerType: 'touch',
+    currentTarget: position.currentTarget ?? scrollEl.value,
+    preventDefault: () => {},
+    stopPropagation: () => {},
+  } as PointerEvent;
+}
+
+function onTrimToolbarStart(payload: {
+  trackId: string;
+  itemId: string;
+  edge: 'start' | 'end';
+  clientX: number;
+  clientY: number;
+}) {
+  const clipContext = selectedClipContext.value;
+  if (!clipContext) return;
+
+  startTrimItem(
+    createSyntheticTouchPointerEvent({
+      clientX: payload.clientX,
+      clientY: payload.clientY,
+    }),
+    {
+      trackId: payload.trackId,
+      itemId: payload.itemId,
+      edge: payload.edge,
+      startUs: clipContext.clip.timelineRange.startUs,
+    },
+  );
+}
+
+function onTrimToolbarMove(payload: { clientX: number; clientY: number }) {
+  if (!draggingMode.value) return;
+  onGlobalPointerMove(
+    createSyntheticTouchPointerEvent({
+      clientX: payload.clientX,
+      clientY: payload.clientY,
+    }),
+  );
+}
+
+function onTrimToolbarEnd(payload: { clientX: number; clientY: number }) {
+  if (!draggingMode.value) return;
+  onGlobalPointerUp(
+    createSyntheticTouchPointerEvent({
+      clientX: payload.clientX,
+      clientY: payload.clientY,
+    }),
+  );
 }
 
 function getViewportWidth(): number {
@@ -907,11 +980,15 @@ onBeforeUnmount(() => {
 
     <MobileTrimToolbar
       v-if="isTrimDrawerOpen"
+      :trim-preview="trimPreview"
       @back="
         isTrimDrawerOpen = false;
         isClipPropertiesDrawerOpen = true;
       "
       @close="onClipTrimDrawerClose"
+      @trim-start="onTrimToolbarStart"
+      @trim-move="onTrimToolbarMove"
+      @trim-end="onTrimToolbarEnd"
     />
 
     <!-- Multi Selection Drawer -->
@@ -1088,6 +1165,7 @@ onBeforeUnmount(() => {
             :dragging-mode="draggingMode"
             :dragging-item-id="draggingItemId"
             :move-preview="movePreview"
+            :trim-preview="trimPreview"
             is-mobile
             @select-item="handleMobileTimelineItemSelect"
             @start-move-item="onStartMoveItem"

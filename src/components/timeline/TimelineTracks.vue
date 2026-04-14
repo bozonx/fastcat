@@ -55,6 +55,13 @@ const props = defineProps<{
   } | null;
   movePreview?: { itemId: string; trackId: string; startUs: number; isCollision?: boolean } | null;
   slipPreview?: { itemId: string; trackId: string; deltaUs: number; timecode: string } | null;
+  trimPreview?: {
+    itemId: string;
+    trackId: string;
+    startUs: number;
+    durationUs: number;
+    edge: 'start' | 'end';
+  } | null;
   draggingMode?: 'move' | 'slip' | 'trim_start' | 'trim_end' | null;
   draggingItemId?: string | null;
   isMobile?: boolean;
@@ -375,6 +382,11 @@ const movePreviewItem = computed(() =>
     .flatMap((track) => track.items)
     .find((item) => item.id === props.movePreview?.itemId),
 );
+const trimPreviewItem = computed(() =>
+  props.tracks
+    .flatMap((track) => track.items)
+    .find((item) => item.id === props.trimPreview?.itemId),
+);
 
 function selectTransition(
   e: MouseEvent | PointerEvent,
@@ -516,9 +528,19 @@ function onTrackClick(e: MouseEvent, trackId: string) {
           movePreview?.trackId === trackViewModel.track.id ? movePreview.startUs : null,
           movePreview?.trackId === trackViewModel.track.id ? movePreview.isCollision : null,
           dragPreview?.trackId === trackViewModel.track.id ? dragPreview.startUs : null,
-          trackViewModel.track.items.some(i => i.id === draggingItemId) ? draggingItemId : null,
-          trackViewModel.track.items.some(i => i.id === movePreview?.itemId) ? movePreview?.startUs : null,
-          trackViewModel.track.items.some(i => i.id === slipPreview?.itemId) ? slipPreview?.deltaUs : null,
+          trackViewModel.track.items.some((i) => i.id === draggingItemId) ? draggingItemId : null,
+          trackViewModel.track.items.some((i) => i.id === movePreview?.itemId)
+            ? movePreview?.startUs
+            : null,
+          trackViewModel.track.items.some((i) => i.id === slipPreview?.itemId)
+            ? slipPreview?.deltaUs
+            : null,
+          trackViewModel.track.items.some((i) => i.id === trimPreview?.itemId)
+            ? trimPreview?.startUs
+            : null,
+          trackViewModel.track.items.some((i) => i.id === trimPreview?.itemId)
+            ? trimPreview?.durationUs
+            : null,
         ]"
         :data-track-id="trackViewModel.track.id"
         class="flex items-center relative transition-colors border-b border-ui-border"
@@ -583,6 +605,30 @@ function onTrackClick(e: MouseEvent, trackId: string) {
           :resize-volume="null"
         />
 
+        <TimelineClip
+          v-if="trimPreview && trimPreview.trackId === trackViewModel.track.id && trimPreviewItem"
+          class="opacity-60 pointer-events-none z-40!"
+          :track="trackViewModel.track"
+          :item="
+            {
+              ...trimPreviewItem,
+              id: 'preview-' + trimPreviewItem.id,
+              timelineRange: {
+                ...trimPreviewItem.timelineRange,
+                startUs: trimPreview.startUs,
+                durationUs: trimPreview.durationUs,
+              },
+            } as any
+          "
+          :track-height="trackViewModel.height"
+          :can-edit-clip-content="false"
+          :is-dragging-current-item="false"
+          :is-move-preview-current-item="false"
+          :is-trim-preview-current-item="false"
+          :selected-transition="null"
+          :resize-volume="null"
+        />
+
         <template v-for="item in trackViewModel.visibleItems" :key="item.id">
           <TimelineGap
             v-if="item.kind === 'gap'"
@@ -602,6 +648,7 @@ function onTrackClick(e: MouseEvent, trackId: string) {
             :can-edit-clip-content="canEditClipContent"
             :is-dragging-current-item="draggingItemId === item.id"
             :is-move-preview-current-item="movePreview?.itemId === item.id"
+            :is-trim-preview-current-item="trimPreview?.itemId === item.id"
             :selected-transition="selectedTransition"
             :resize-volume="resizeVolume"
             :scroll-left="scrollLeft"
