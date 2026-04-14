@@ -70,7 +70,7 @@ export function useTimelineHorizontalScrollSync(els: UseTimelineHorizontalScroll
   watch(
     () => timelineStore.scrollResetTicket,
     () => {
-      if (els.master.value) els.master.value.scrollLeft = 0;
+      if (els.master?.value) els.master.value.scrollLeft = 0;
       scrollLeftRef.value = 0;
     },
   );
