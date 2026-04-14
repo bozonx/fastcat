@@ -11,7 +11,7 @@ import { useDraggedFile } from '~/composables/useDraggedFile';
 
 import type { TimelineClipActionPayload, TimelineTrack } from '~/timeline/types';
 import { timeUsToPx, pxToTimeUs } from '~/utils/timeline/geometry';
-import { isLayer1Active, isLayer1Pressed } from '~/utils/hotkeys/layerUtils';
+import { isLayer1Pressed } from '~/utils/hotkeys/layerUtils';
 
 import TimelineTrackSection from '~/components/timeline/TimelineTrackSection.vue';
 import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
@@ -45,7 +45,7 @@ const { trackHeights } = storeToRefs(timelineStore);
 
 // --- Template refs ---
 const containerRef = ref<HTMLElement | null>(null);
-const rulerScrollEl = ref<HTMLElement | null>(null);
+const masterScrollEl = ref<HTMLElement | null>(null);
 const rulerContainerRef = ref<HTMLElement | null>(null);
 const videoSectionRef = ref<InstanceType<typeof TimelineTrackSection> | null>(null);
 const audioSectionRef = ref<InstanceType<typeof TimelineTrackSection> | null>(null);
@@ -57,7 +57,7 @@ const videoScrollEl = computed(() => videoSectionRef.value?.scrollEl ?? null);
 const audioScrollEl = computed(() => audioSectionRef.value?.scrollEl ?? null);
 const videoLabelsScrollEl = computed(() => videoSectionRef.value?.labelsScrollEl ?? null);
 const audioLabelsScrollEl = computed(() => audioSectionRef.value?.labelsScrollEl ?? null);
-const scrollEl = videoScrollEl;
+const scrollEl = masterScrollEl;
 
 // --- Data ---
 const tracks = computed(() => (timelineStore.timelineDoc?.tracks as TimelineTrack[]) ?? []);
@@ -86,25 +86,27 @@ const {
   scrollLeftRef,
   scrollbarHeight,
   viewportWidth,
+  onMasterScroll,
   onVideoScroll,
   onAudioScroll,
-  onRulerScroll,
   onVideoLabelsScroll,
   onAudioLabelsScroll,
 } = useTimelineHorizontalScrollSync({
+  master: masterScrollEl,
   video: videoScrollEl,
   audio: audioScrollEl,
-  ruler: rulerScrollEl,
   videoLabels: videoLabelsScrollEl,
   audioLabels: audioLabelsScrollEl,
 });
 
 const { isPanning, hasPanned, getActiveScrollEl, startPan, onPanMove, stopPan } = useTimelinePan({
+  horizontalScrollEl: masterScrollEl,
   videoScrollEl,
   audioScrollEl,
 });
 
 const { fitTimelineZoom } = useTimelineWheelHandler({
+  horizontalScrollEl: masterScrollEl,
   videoScrollEl,
   audioScrollEl,
   videoLabelsScrollEl,
@@ -115,9 +117,9 @@ const { fitTimelineZoom } = useTimelineWheelHandler({
 });
 
 const { onTimelineClick, handleTimelineClickAction } = useTimelineClickActions({
+  horizontalScrollEl: masterScrollEl,
   videoScrollEl,
   audioScrollEl,
-  rulerScrollEl,
   scrollEl,
   videoTracks,
   audioTracks,
@@ -229,7 +231,7 @@ function getCachedPointerRect(el: HTMLElement): DOMRect {
 
 function getTimeUsFromPointerEvent(el: HTMLElement, event: PointerEvent): number {
   const rect = getCachedPointerRect(el);
-  const x = event.clientX - rect.left + el.scrollLeft;
+  const x = event.clientX - rect.left + (masterScrollEl.value?.scrollLeft ?? 0);
   return pxToTimeUs(x, timelineStore.timelineZoom);
 }
 
@@ -521,22 +523,16 @@ function onDragVirtualEnd() {
         <UContextMenu :items="emptyAreaContextMenuItems">
           <TimelineRuler
             class="absolute inset-0 h-full border-b border-ui-border bg-ui-bg-elevated cursor-pointer"
-            :scroll-el="rulerScrollEl"
+            :scroll-el="masterScrollEl"
             @pointerdown="onTimeRulerPointerDown"
             @start-playhead-drag="startPlayheadDrag"
             @start-pan="startPan"
           />
         </UContextMenu>
         <div
-          ref="rulerScrollEl"
-          class="absolute inset-0 overflow-x-scroll overflow-y-hidden scroll-sync-hidden pointer-events-none"
-          @scroll="onRulerScroll"
-        >
-          <div
-            :style="{ ...timelineWidthStyle, paddingRight: `${scrollbarHeight}px` }"
-            class="h-full"
-          />
-        </div>
+          class="absolute inset-0 pointer-events-none"
+          :style="{ paddingRight: `${scrollbarHeight}px` }"
+        />
       </div>
     </div>
 
@@ -558,6 +554,7 @@ function onDragVirtualEnd() {
         :tracks="videoTracks"
         :track-heights="trackHeights"
         :can-edit-clip-content="canEditClipContent"
+        :horizontal-scroll-el="masterScrollEl"
         :drag-preview="dragPreview"
         :move-preview="movePreview"
         :slip-preview="slipPreview"
@@ -597,6 +594,7 @@ function onDragVirtualEnd() {
         :tracks="audioTracks"
         :track-heights="trackHeights"
         :can-edit-clip-content="canEditClipContent"
+        :horizontal-scroll-el="masterScrollEl"
         :drag-preview="dragPreview"
         :move-preview="movePreview"
         :slip-preview="slipPreview"
@@ -618,15 +616,36 @@ function onDragVirtualEnd() {
         @clip-action="onClipAction"
         @update-track-height="updateTrackHeight"
       />
+
+      <div
+        ref="masterScrollEl"
+        class="timeline-master-scroll shrink-0 overflow-x-auto overflow-y-hidden"
+        @scroll="onMasterScroll"
+      >
+        <div :style="timelineWidthStyle" class="h-px" />
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.scroll-sync-hidden {
-  scrollbar-width: none;
+.timeline-master-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ui-border-accent, #666) transparent;
 }
-.scroll-sync-hidden::-webkit-scrollbar {
-  display: none;
+.timeline-master-scroll::-webkit-scrollbar {
+  height: 10px;
+}
+.timeline-master-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.timeline-master-scroll::-webkit-scrollbar-thumb {
+  background: var(--ui-border, #444);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.timeline-master-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--ui-border-accent, #666);
 }
 </style>

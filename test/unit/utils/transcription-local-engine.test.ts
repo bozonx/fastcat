@@ -1,98 +1,60 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { ref } from 'vue';
 
-const mockTranscribeLocally = vi.fn();
-const mockIsModelDownloaded = vi.fn();
+// Mock dependencies of local-engine
 const mockGetSttModelsDir = vi.fn();
-
-vi.mock('~/workers/stt.worker.ts?worker', () => {
-  return {
-    default: class MockWorker {
-      postMessage = vi.fn();
-      terminate = vi.fn();
-      addEventListener = vi.fn();
-      removeEventListener = vi.fn();
-      onmessage = null;
-      onerror = null;
-    } as any,
-  };
-});
-
-vi.mock('~/workers/audio-decode.worker.ts?worker', () => {
-  return {
-    default: class MockAudioDecodeWorker {
-      postMessage = vi.fn();
-      terminate = vi.fn();
-      onmessage: ((e: MessageEvent) => void) | null = null;
-      onerror: ((e: ErrorEvent) => void) | null = null;
-    } as any,
-  };
-});
+const mockIsModelDownloaded = vi.fn();
 
 vi.mock('~/utils/transcription/model-storage', () => ({
   getSttModelsDir: mockGetSttModelsDir,
   isModelDownloaded: mockIsModelDownloaded,
 }));
 
+vi.mock('~/workers/stt.worker.ts?worker', () => ({
+  default: class MockWorker {
+    postMessage = vi.fn();
+    terminate = vi.fn();
+    addEventListener = vi.fn();
+    removeEventListener = vi.fn();
+    onmessage: ((e: MessageEvent) => void) | null = null;
+    onerror: ((e: ErrorEvent) => void) | null = null;
+  },
+}));
 
+vi.mock('~/workers/audio-decode.worker.ts?worker', () => ({
+  default: class MockAudioDecodeWorker {
+    postMessage = vi.fn();
+    terminate = vi.fn();
+    addEventListener = vi.fn();
+    removeEventListener = vi.fn();
+    onmessage: ((e: MessageEvent) => void) | null = null;
+    onerror: ((e: ErrorEvent) => void) | null = null;
+  },
+}));
 
 describe('transcription local-engine', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsModelDownloaded.mockResolvedValue(true);
+    mockGetSttModelsDir.mockResolvedValue({} as any);
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
+  it('fails if model is not downloaded', async () => {
+    const { transcribeLocally } = await import('~/utils/transcription/local-engine');
+    mockIsModelDownloaded.mockResolvedValue(false);
+
+    const request: any = {
+      file: new File([], 'test.mp3'),
+      workspaceHandle: {},
+      userSettings: { integrations: { stt: { localModel: 'test' } } },
+    };
+
+    await expect(transcribeLocally(request)).rejects.toThrow(/not downloaded/);
   });
 
-  describe('isModelDownloaded', () => {
-    it('returns true when all required files exist', async () => {
-      const { isModelDownloaded } = await import('~/utils/transcription/model-storage');
-      
-      const mockDirHandle = {
-        getDirectoryHandle: vi.fn().mockResolvedValue({
-          getDirectoryHandle: vi.fn().mockResolvedValue({
-            getFileHandle: vi.fn().mockResolvedValue({}),
-          }),
-          getFileHandle: vi.fn().mockResolvedValue({}),
-        }),
-      };
-
-      const result = await isModelDownloaded(
-        mockDirHandle as any,
-        'Xenova/whisper-tiny',
-      );
-
-      expect(result).toBe(true);
-    });
-
-    it('returns false when model name is unknown', async () => {
-      const { isModelDownloaded } = await import('~/utils/transcription/model-storage');
-      
-      const mockDirHandle = {} as FileSystemDirectoryHandle;
-
-      const result = await isModelDownloaded(mockDirHandle, 'unknown-model');
-
-      expect(result).toBe(false);
-    });
-  });
-
-  describe('getSttModelsDir', () => {
-    it('creates directory structure', async () => {
-      const { getSttModelsDir } = await import('~/utils/transcription/model-storage');
-      
-      const mockModelsDir = {};
-      const mockVardata = {
-        getDirectoryHandle: vi.fn().mockResolvedValue(mockModelsDir),
-      };
-      const mockWorkspace = {
-        getDirectoryHandle: vi.fn().mockResolvedValue(mockVardata),
-      };
-
-      await getSttModelsDir(mockWorkspace as any);
-
-      expect(mockWorkspace.getDirectoryHandle).toHaveBeenCalledWith('vardata', { create: true });
-      expect(mockVardata.getDirectoryHandle).toHaveBeenCalledWith('models', { create: true });
-    });
+  it('can be imported and functions exist', async () => {
+    const module = await import('~/utils/transcription/local-engine');
+    expect(module.transcribeLocally).toBeDefined();
   });
 });

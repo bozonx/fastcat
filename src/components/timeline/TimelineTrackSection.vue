@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import type {
   TimelineTrack,
   TimelineClipActionPayload,
@@ -13,11 +13,12 @@ import TimelinePlayheadOverlay from '~/components/timeline/TimelinePlayheadOverl
 
 const TRACK_LABELS_WIDTH = 220;
 
-const props = defineProps<{
+defineProps<{
   kind: 'video' | 'audio';
   tracks: TimelineTrack[];
   trackHeights: Record<string, number>;
   canEditClipContent: boolean;
+  horizontalScrollEl: HTMLElement | null;
   dragPreview?: {
     trackId: string;
     startUs: number;
@@ -82,14 +83,17 @@ defineExpose({
 
     <!-- Tracks Area -->
     <div class="flex-1 relative min-h-0 min-w-0 overflow-hidden">
-      <TimelineGrid class="absolute inset-0 pointer-events-none z-0" :scroll-el="scrollEl" />
+      <TimelineGrid
+        class="absolute inset-0 pointer-events-none z-0"
+        :scroll-el="horizontalScrollEl"
+      />
       <div
         ref="scrollEl"
         class="w-full h-full relative z-10"
         :class="
           kind === 'video'
-            ? 'overflow-y-auto overflow-x-scroll scroll-sync-hidden video-tracks-scroll'
-            : 'overflow-auto audio-tracks-scroll timeline-scroll-el'
+            ? 'overflow-y-auto overflow-x-hidden video-tracks-scroll'
+            : 'overflow-y-auto overflow-x-hidden audio-tracks-scroll'
         "
         @click="emit('click', $event)"
         @scroll="emit('scroll')"
@@ -118,41 +122,8 @@ defineExpose({
       </div>
       <TimelinePlayheadOverlay
         class="absolute inset-0 pointer-events-none z-20"
-        :scroll-el="scrollEl"
+        :scroll-el="horizontalScrollEl"
       />
     </div>
   </div>
 </template>
-
-<style scoped>
-.scroll-sync-hidden {
-  scrollbar-width: none;
-}
-.scroll-sync-hidden::-webkit-scrollbar {
-  display: none;
-}
-
-.timeline-scroll-el {
-  scrollbar-width: thin;
-  scrollbar-color: var(--ui-border-accent, #666) transparent;
-}
-.timeline-scroll-el::-webkit-scrollbar {
-  height: 10px;
-  width: 10px;
-}
-.timeline-scroll-el::-webkit-scrollbar-track {
-  background: transparent;
-}
-.timeline-scroll-el::-webkit-scrollbar-thumb {
-  background: var(--ui-border, #444);
-  border-radius: 5px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
-}
-.timeline-scroll-el::-webkit-scrollbar-thumb:hover {
-  background: var(--ui-border-accent, #666);
-  border-radius: 5px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
-}
-</style>
