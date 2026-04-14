@@ -108,7 +108,7 @@ function computeSnapTargets() {
   });
 }
 
-const { scheduleDraw } = useTimelineRulerDraw({
+const { canvasStyle, scheduleDraw } = useTimelineRulerDraw({
   containerRef,
   canvasRef,
   scrollEl: computed(() => props.scrollEl),
@@ -346,7 +346,11 @@ function onMobilePointerUp() {
       @pointercancel="isMobile ? onMobilePointerUp() : onRulerPointerCancel()"
       @mouseleave="hoveredMarkerId = null"
     >
-      <canvas ref="canvasRef" class="absolute top-0 left-0 w-full h-full pointer-events-none" />
+      <canvas
+        ref="canvasRef"
+        class="absolute top-0 left-0 pointer-events-none"
+        :style="canvasStyle"
+      />
 
       <div
         v-if="currentFrameHighlightStyle"

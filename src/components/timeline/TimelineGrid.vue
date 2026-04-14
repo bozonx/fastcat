@@ -10,6 +10,7 @@ const props = defineProps<{
   scrollEl: HTMLElement | null;
 }>();
 
+const containerRef = ref<HTMLElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 
 const timelineStore = useTimelineStore();
@@ -19,10 +20,34 @@ const workspaceStore = useWorkspaceStore();
 const width = ref(0);
 const height = ref(0);
 const scrollLeft = ref(0);
+const renderStartPx = ref(0);
+const renderWidthPx = ref(0);
 
 let tickColor = 'rgba(255, 255, 255, 0.06)';
 let majorTickColor = 'rgba(255, 255, 255, 0.12)';
 let drawRafId: number | null = null;
+
+const canvasStyle = computed(() => ({
+  width: `${renderWidthPx.value || width.value}px`,
+  height: '100%',
+  transform: `translate3d(${renderStartPx.value - scrollLeft.value}px, 0, 0)`,
+  willChange: 'transform',
+}));
+
+function shouldRedrawForScroll(nextScrollLeft: number) {
+  const viewportWidth = width.value;
+  const bufferedWidth = renderWidthPx.value;
+
+  if (viewportWidth <= 0 || bufferedWidth <= 0) return true;
+
+  const renderEndPx = renderStartPx.value + bufferedWidth;
+  const thresholdPx = Math.max(128, Math.round((bufferedWidth - viewportWidth) / 4));
+
+  return (
+    nextScrollLeft < renderStartPx.value + thresholdPx ||
+    nextScrollLeft + viewportWidth > renderEndPx - thresholdPx
+  );
+}
 
 function scheduleDraw() {
   if (drawRafId !== null) return;
@@ -52,8 +77,11 @@ onMounted(() => {
 
 function onScroll() {
   if (props.scrollEl) {
-    scrollLeft.value = props.scrollEl.scrollLeft;
-    scheduleDraw();
+    const nextScrollLeft = props.scrollEl.scrollLeft;
+    scrollLeft.value = nextScrollLeft;
+    if (shouldRedrawForScroll(nextScrollLeft)) {
+      scheduleDraw();
+    }
   }
 }
 
@@ -69,8 +97,7 @@ watch(
   { immediate: true },
 );
 
-// Size from canvas element
-useResizeObserver(canvasRef, (entries) => {
+useResizeObserver(containerRef, (entries) => {
   const entry = entries[0];
   if (entry) {
     width.value = entry.contentRect.width;
@@ -92,7 +119,7 @@ onUnmounted(() => {
 const fps = computed(() => projectStore.projectSettings.project.fps || 30);
 const zoom = computed(() => timelineStore.timelineZoom);
 
-watch([fps, zoom, width, height, scrollLeft], () => {
+watch([fps, zoom, width, height], () => {
   scheduleDraw();
 });
 
@@ -108,19 +135,26 @@ function draw() {
 
   if (w === 0 || h === 0) return;
 
-  canvas.width = w * dpr;
+  const bufferPx = Math.max(512, Math.round(w));
+  const nextRenderStartPx = Math.max(0, scrollLeft.value - bufferPx);
+  const nextRenderWidthPx = w + bufferPx * 2;
+
+  renderStartPx.value = nextRenderStartPx;
+  renderWidthPx.value = nextRenderWidthPx;
+
+  canvas.width = nextRenderWidthPx * dpr;
   canvas.height = h * dpr;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.scale(dpr, dpr);
-  ctx.clearRect(0, 0, w, h);
+  ctx.clearRect(0, 0, nextRenderWidthPx, h);
 
   const currentZoom = zoom.value;
   const currentFps = fps.value;
   const pxPerSec = zoomToPxPerSecond(currentZoom);
   const pxPerFrame = pxPerSec / currentFps;
 
-  const startPx = scrollLeft.value;
-  const endPx = startPx + w;
+  const startPx = nextRenderStartPx;
+  const endPx = startPx + nextRenderWidthPx;
   const startUs = pxToTimeUs(startPx, currentZoom);
   const endUs = pxToTimeUs(endPx, currentZoom);
 
@@ -146,7 +180,7 @@ function draw() {
   ctx.beginPath();
   for (let s = startS; s <= endS; s += mainStepS) {
     const x = Math.round(timeUsToPx(s * 1_000_000, currentZoom) - startPx) + 0.5;
-    if (x >= -1 && x <= w + 1) {
+    if (x >= -1 && x <= nextRenderWidthPx + 1) {
       ctx.moveTo(x, 0);
       ctx.lineTo(x, h);
     }
@@ -175,7 +209,7 @@ function draw() {
           Math.round(
             timeUsToPx(s * 1_000_000 + (f * 1_000_000) / currentFps, currentZoom) - startPx,
           ) + 0.5;
-        if (frameX >= -1 && frameX <= w + 1) {
+        if (frameX >= -1 && frameX <= nextRenderWidthPx + 1) {
           ctx.moveTo(frameX, 0);
           ctx.lineTo(frameX, h);
         }
@@ -192,7 +226,7 @@ function draw() {
 
       for (let sub = s + subStepS; sub < s + mainStepS; sub += subStepS) {
         const subX = Math.round(timeUsToPx(sub * 1_000_000, currentZoom) - startPx) + 0.5;
-        if (subX >= -1 && subX <= w + 1) {
+        if (subX >= -1 && subX <= nextRenderWidthPx + 1) {
           ctx.moveTo(subX, 0);
           ctx.lineTo(subX, h);
         }
@@ -206,5 +240,7 @@ function draw() {
 </script>
 
 <template>
-  <canvas ref="canvasRef" class="w-full h-full" />
+  <div ref="containerRef" class="w-full h-full overflow-hidden">
+    <canvas ref="canvasRef" class="absolute top-0 left-0" :style="canvasStyle" />
+  </div>
 </template>

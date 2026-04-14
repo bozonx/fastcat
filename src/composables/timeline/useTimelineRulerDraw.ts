@@ -1,4 +1,4 @@
-import { watch, type Ref } from 'vue';
+import { computed, ref, watch, type Ref } from 'vue';
 import { useResizeObserver } from '@vueuse/core';
 import { pxToTimeUs, timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { formatRulerTime } from './useTimelineRulerPresentation';
@@ -21,7 +21,31 @@ interface TimelineRulerDrawOptions {
 }
 
 export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
+  const renderStartPx = ref(0);
+  const renderWidthPx = ref(0);
   let drawRafId: number | null = null;
+
+  const canvasStyle = computed(() => ({
+    width: `${renderWidthPx.value || options.width.value}px`,
+    height: '100%',
+    transform: `translate3d(${renderStartPx.value - options.scrollLeft.value}px, 0, 0)`,
+    willChange: 'transform',
+  }));
+
+  function shouldRedrawForScroll(nextScrollLeft: number) {
+    const viewportWidth = options.width.value;
+    const bufferedWidth = renderWidthPx.value;
+
+    if (viewportWidth <= 0 || bufferedWidth <= 0) return true;
+
+    const renderEndPx = renderStartPx.value + bufferedWidth;
+    const thresholdPx = Math.max(128, Math.round((bufferedWidth - viewportWidth) / 4));
+
+    return (
+      nextScrollLeft < renderStartPx.value + thresholdPx ||
+      nextScrollLeft + viewportWidth > renderEndPx - thresholdPx
+    );
+  }
 
   function scheduleDraw() {
     if (drawRafId !== null) return;
@@ -33,8 +57,11 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
 
   function onScroll() {
     if (options.scrollEl.value) {
-      options.scrollLeft.value = options.scrollEl.value.scrollLeft;
-      scheduleDraw();
+      const nextScrollLeft = options.scrollEl.value.scrollLeft;
+      options.scrollLeft.value = nextScrollLeft;
+      if (shouldRedrawForScroll(nextScrollLeft)) {
+        scheduleDraw();
+      }
     }
   }
 
@@ -83,7 +110,14 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
 
     if (w === 0 || h === 0) return;
 
-    const targetCanvasWidth = Math.round(w * dpr);
+    const bufferPx = Math.max(512, Math.round(w));
+    const nextRenderStartPx = Math.max(0, options.scrollLeft.value - bufferPx);
+    const nextRenderWidthPx = w + bufferPx * 2;
+
+    renderStartPx.value = nextRenderStartPx;
+    renderWidthPx.value = nextRenderWidthPx;
+
+    const targetCanvasWidth = Math.round(nextRenderWidthPx * dpr);
     const targetCanvasHeight = Math.round(h * dpr);
 
     if (canvas.width !== targetCanvasWidth) {
@@ -96,7 +130,7 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
 
-    ctx.clearRect(0, 0, w, h);
+    ctx.clearRect(0, 0, nextRenderWidthPx, h);
 
     const currentZoom = options.zoom.value;
     const currentFps = options.fps.value;
@@ -106,8 +140,8 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
     const scale = options.interfaceScale.value / 14;
     const isMobile = options.isMobile?.value;
 
-    const startPx = options.scrollLeft.value;
-    const endPx = startPx + w;
+    const startPx = nextRenderStartPx;
+    const endPx = startPx + nextRenderWidthPx;
     const startUs = pxToTimeUs(startPx, currentZoom);
     const endUs = pxToTimeUs(endPx, currentZoom);
 
@@ -139,7 +173,7 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
     for (let s = startS; s <= endS; s += mainStepS) {
       const x = Math.round(timeUsToPx(s * 1_000_000, currentZoom) - startPx) + 0.5;
 
-      if (x >= -50 && x <= w + 50) {
+      if (x >= -50 && x <= nextRenderWidthPx + 50) {
         ctx.moveTo(x, h - majorTickHeight);
         ctx.lineTo(x, h);
         ctx.fillText(formatRulerTime(s * 1_000_000, currentFps), x, textTopOffset);
@@ -163,7 +197,7 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
             Math.round(
               timeUsToPx(s * 1_000_000 + (f * 1_000_000) / currentFps, currentZoom) - startPx,
             ) + 0.5;
-          if (frameX >= -50 && frameX <= w + 50) {
+          if (frameX >= -50 && frameX <= nextRenderWidthPx + 50) {
             ctx.moveTo(frameX, h - subTickHeight);
             ctx.lineTo(frameX, h);
           }
@@ -176,7 +210,7 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
 
         for (let sub = s + subStepS; sub < s + mainStepS; sub += subStepS) {
           const subX = Math.round(timeUsToPx(sub * 1_000_000, currentZoom) - startPx) + 0.5;
-          if (subX >= -50 && subX <= w + 50) {
+          if (subX >= -50 && subX <= nextRenderWidthPx + 50) {
             ctx.moveTo(subX, h - subTickHeight);
             ctx.lineTo(subX, h);
           }
@@ -189,6 +223,7 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
   }
 
   return {
+    canvasStyle,
     scheduleDraw,
   };
 }
