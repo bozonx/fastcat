@@ -178,7 +178,7 @@ describe('useExportForm', () => {
     expect(form.selectedExportRangeId.value).toBe('selection');
   });
 
-  it('использует весь таймлайн по умолчанию, если нет активной зоны или выделения', async () => {
+  it('выбирает область выделения по умолчанию, даже если на таймлайне выбран клип', async () => {
     selectionRangeMock.value = { startUs: 2_000_000, endUs: 6_000_000 };
     selectedEntityMock.value = {
       source: 'timeline',
@@ -190,7 +190,7 @@ describe('useExportForm', () => {
     const form = useExportForm();
     await form.initializeExportForm();
 
-    expect(form.selectedExportRangeId.value).toBe('timeline');
+    expect(form.selectedExportRangeId.value).toBe('selection');
   });
 
   it('передает диапазон выбранного маркера-зоны в экспорт', async () => {

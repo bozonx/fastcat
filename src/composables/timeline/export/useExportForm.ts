@@ -198,12 +198,7 @@ export function useExportForm() {
       }
     }
 
-    if (
-      selectionRange.value &&
-      (!selectedEntity ||
-        selectedEntity.source !== 'timeline' ||
-        selectedEntity.kind === 'selection-range')
-    ) {
+    if (selectionRange.value) {
       return 'selection';
     }
 
