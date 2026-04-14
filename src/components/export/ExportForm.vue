@@ -63,9 +63,10 @@ const {
   metadataAuthor,
   metadataTags,
 
-  exportOnlySelectionRange,
+  selectedExportRangeId,
   saveAsDefaults,
-  hasSelectionRange,
+  exportRangeOptions,
+  hasSelectableExportRanges,
   isSettingsDirty,
 
   initializeExportForm,
@@ -165,32 +166,53 @@ async function onConfirm() {
 
       <div class="flex flex-col gap-6 max-w-2xl flex-1 shrink-0">
         <div
-          v-if="hasSelectionRange"
-          class="rounded-lg border border-violet-400/40 bg-violet-500/10 px-4 py-3"
+          v-if="hasSelectableExportRanges"
+          class="rounded-lg border border-violet-400/40 bg-violet-500/10 px-4 py-4"
         >
-          <label class="flex items-center gap-3 cursor-pointer">
-            <UCheckbox v-model="exportOnlySelectionRange" :disabled="isExporting" />
-            <div class="flex items-center gap-2 min-w-0">
-              <UIcon
-                name="i-heroicons-exclamation-triangle-solid"
-                class="h-5 w-5 shrink-0"
-                :class="exportOnlySelectionRange ? 'text-yellow-400' : 'text-ui-text-dimmed'"
-              />
-              <div class="flex flex-col min-w-0">
-                <span class="font-medium text-ui-text">
-                  {{ t('videoEditor.export.onlySelectionRange') }}
-                </span>
-                <span class="text-sm text-ui-text-muted">
-                  {{
-                    t(
-                      'videoEditor.export.onlySelectionRangeHelp',
-                      'When enabled, export uses only the current selection zone. Disable to export the whole timeline.',
-                    )
-                  }}
-                </span>
+          <div class="flex items-start gap-2 mb-3">
+            <UIcon
+              name="i-heroicons-exclamation-triangle-solid"
+              class="h-5 w-5 shrink-0 text-yellow-400 mt-0.5"
+            />
+            <div class="min-w-0">
+              <div class="font-medium text-ui-text">
+                {{ t('videoEditor.export.rangeSourceTitle') }}
+              </div>
+              <div class="text-sm text-ui-text-muted">
+                {{ t('videoEditor.export.rangeSourceHelp') }}
               </div>
             </div>
-          </label>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label
+              v-for="option in exportRangeOptions"
+              :key="option.id"
+              class="flex items-start gap-3 rounded-md border border-transparent px-3 py-2 transition-colors"
+              :class="
+                selectedExportRangeId === option.id
+                  ? 'bg-violet-500/10 border-violet-400/30'
+                  : 'hover:bg-white/5'
+              "
+            >
+              <input
+                v-model="selectedExportRangeId"
+                type="radio"
+                name="export-range"
+                :value="option.id"
+                :disabled="isExporting"
+                class="mt-1 h-4 w-4 shrink-0 accent-violet-400"
+              />
+              <div class="min-w-0">
+                <div class="font-medium text-ui-text">
+                  {{ option.label }}
+                </div>
+                <div v-if="option.description" class="text-sm text-ui-text-muted truncate">
+                  {{ option.description }}
+                </div>
+              </div>
+            </label>
+          </div>
         </div>
 
         <div class="flex flex-col gap-1.5">
@@ -208,12 +230,7 @@ async function onConfirm() {
           <div class="text-sm text-ui-text-muted flex items-center gap-1.5 mt-1">
             <UIcon name="i-heroicons-information-circle" class="w-4 h-4 shrink-0" />
             <span class="leading-relaxed">
-              {{
-                t(
-                  'videoEditor.export.saveLocationNote',
-                  'File will be saved to the export/ folder in your project directory',
-                )
-              }}
+              {{ t('videoEditor.export.saveLocationNote') }}
             </span>
           </div>
         </div>

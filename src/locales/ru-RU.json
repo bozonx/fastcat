@@ -1101,8 +1101,11 @@
       },
       "presetLabel": "Пресет",
       "processing": "Обработка...",
+      "rangeSourceHelp": "Выберите, какая часть таймлайна будет использована при экспорте.",
+      "rangeSourceTitle": "Что экспортировать",
       "saveAsDefault": "Сохранить как настройки проекта",
       "saveLocationNote": "Файл будет сохранен в папку export/ в директории вашего проекта",
+      "selection": "Выделение",
       "startExport": "Экспорт",
       "successDesc": "Таймлайн экспортирован в {file}",
       "successTitle": "Экспорт завершен успешно",
@@ -1111,7 +1114,9 @@
       "videoBitrateHelp": "Примерный целевой битрейт. Чем выше, тем лучше качество и больше размер файла.",
       "videoCodec": "Видео кодек",
       "warningTitle": "Предупреждения при экспорте",
-      "width": "Ширина"
+      "wholeTimeline": "Весь таймлайн",
+      "width": "Ширина",
+      "zoneMarker": "Зона {index}"
     },
     "fileManager": {
       "actions": {

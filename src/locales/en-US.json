@@ -1101,8 +1101,11 @@
       },
       "presetLabel": "Preset",
       "processing": "Processing...",
+      "rangeSourceHelp": "Choose which part of the timeline should be used for export.",
+      "rangeSourceTitle": "What to export",
       "saveAsDefault": "Save as project settings",
       "saveLocationNote": "File will be saved to the export/ folder in your project directory",
+      "selection": "Selection",
       "startExport": "Export",
       "successDesc": "Timeline exported to {file}",
       "successTitle": "Export successful",
@@ -1111,7 +1114,9 @@
       "videoBitrateHelp": "Approximate target bitrate. Higher values produce better quality and larger files.",
       "videoCodec": "Video codec",
       "warningTitle": "Export warnings",
-      "width": "Width"
+      "wholeTimeline": "Whole Timeline",
+      "width": "Width",
+      "zoneMarker": "Zone {index}"
     },
     "fileManager": {
       "actions": {
