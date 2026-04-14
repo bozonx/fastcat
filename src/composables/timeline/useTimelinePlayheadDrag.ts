@@ -17,6 +17,7 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
   const isDraggingPlayhead = ref(false);
   const startDragTimeUs = ref<number | null>(null);
   const startDragPos = ref({ x: 0, y: 0 });
+  const dragOriginRect = ref<DOMRect | null>(null);
   const hasPlayheadMoved = ref(false);
   const workspaceStore = useWorkspaceStore();
 
@@ -64,6 +65,7 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
     isDraggingPlayhead.value = true;
     hasPlayheadMoved.value = false;
     startDragPos.value = { x: e.clientX, y: e.clientY };
+    dragOriginRect.value = (e.currentTarget as HTMLElement | null)?.getBoundingClientRect() ?? null;
     (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
     window.addEventListener('keydown', onGlobalKeyDown);
   }
@@ -93,7 +95,7 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
       hasPlayheadMoved.value = true;
     }
 
-    const scrollerRect = scrollEl.value?.getBoundingClientRect();
+    const scrollerRect = dragOriginRect.value;
     if (!scrollerRect) return true;
     const scrollX = scrollEl.value?.scrollLeft ?? 0;
     const x = e.clientX - scrollerRect.left + scrollX;
@@ -107,12 +109,9 @@ export function useTimelinePlayheadDrag(scrollEl: Ref<HTMLElement | null>) {
       (e.currentTarget as HTMLElement | null)?.releasePointerCapture(e.pointerId);
     }
 
-    if (hasPlayheadMoved.value && startDragTimeUs.value !== null) {
-      timelineStore.setCurrentTimeUs(startDragTimeUs.value);
-    }
-
     isDraggingPlayhead.value = false;
     startDragTimeUs.value = null;
+    dragOriginRect.value = null;
     window.removeEventListener('keydown', onGlobalKeyDown);
   }
 
