@@ -1,6 +1,8 @@
 import { computed, ref, watch } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import type { TimelineSelectionRange } from '~/timeline/types';
 import {
   useTimelineExport,
   sanitizeBaseName,
@@ -8,13 +10,21 @@ import {
   getExt,
 } from '~/composables/timeline/export';
 
+export interface ExportRangeOption {
+  id: string;
+  label: string;
+  description?: string;
+  range?: TimelineSelectionRange;
+}
+
 export function useExportForm() {
   const { t } = useI18n();
   const toast = useToast();
   const projectStore = useProjectStore();
   const timelineStore = useTimelineStore();
+  const selectionStore = useSelectionStore();
 
-  const exportOnlySelectionRange = ref(true);
+  const selectedExportRangeId = ref('timeline');
   const saveAsDefaults = ref(false);
 
   const {
@@ -65,7 +75,51 @@ export function useExportForm() {
   const initialSavedSettingsSnapshot = ref('');
 
   const selectionRange = computed(() => timelineStore.getSelectionRange());
-  const hasSelectionRange = computed(() => Boolean(selectionRange.value));
+  const zoneMarkers = computed(() =>
+    [...timelineStore.getMarkers()]
+      .filter((marker) => Number.isFinite(marker.durationUs) && Number(marker.durationUs) > 0)
+      .sort((a, b) => a.timeUs - b.timeUs),
+  );
+  const exportRangeOptions = computed<ExportRangeOption[]>(() => {
+    const options: ExportRangeOption[] = [
+      {
+        id: 'timeline',
+        label: t('videoEditor.export.wholeTimeline'),
+      },
+    ];
+
+    if (selectionRange.value) {
+      options.push({
+        id: 'selection',
+        label: t('videoEditor.export.selection'),
+        range: selectionRange.value,
+      });
+    }
+
+    zoneMarkers.value.forEach((marker, index) => {
+      const text = marker.text.trim();
+      options.push({
+        id: `marker:${marker.id}`,
+        label: t('videoEditor.export.zoneMarker', { index: index + 1 }),
+        description: text || undefined,
+        range: {
+          startUs: Math.max(0, Math.round(marker.timeUs)),
+          endUs: Math.max(
+            Math.round(marker.timeUs),
+            Math.round(marker.timeUs + (marker.durationUs ?? 0)),
+          ),
+        },
+      });
+    });
+
+    return options;
+  });
+  const hasSelectableExportRanges = computed(() => exportRangeOptions.value.length > 1);
+  const selectedExportRange = computed(
+    () =>
+      exportRangeOptions.value.find((option) => option.id === selectedExportRangeId.value) ??
+      exportRangeOptions.value[0],
+  );
   const savedSettingsSnapshot = computed(() =>
     JSON.stringify({
       width: normalizedExportWidth.value,
@@ -102,6 +156,35 @@ export function useExportForm() {
     saveAsDefaults.value = false;
   });
 
+  watch(exportRangeOptions, (options) => {
+    if (options.some((option) => option.id === selectedExportRangeId.value)) return;
+    selectedExportRangeId.value = 'timeline';
+  });
+
+  function resolveDefaultExportRangeId() {
+    const selectedEntity = selectionStore.selectedEntity;
+
+    if (selectedEntity?.source === 'timeline' && selectedEntity.kind === 'marker') {
+      const selectedZoneMarker = zoneMarkers.value.find(
+        (marker) => marker.id === selectedEntity.markerId,
+      );
+      if (selectedZoneMarker) {
+        return `marker:${selectedZoneMarker.id}`;
+      }
+    }
+
+    if (
+      selectionRange.value &&
+      (!selectedEntity ||
+        selectedEntity.source !== 'timeline' ||
+        selectedEntity.kind === 'selection-range')
+    ) {
+      return 'selection';
+    }
+
+    return 'timeline';
+  }
+
   async function initializeExportForm() {
     exportError.value = null;
     exportWarnings.value = [];
@@ -111,7 +194,7 @@ export function useExportForm() {
     isExporting.value = false;
     cancelRequested.value = false;
     saveAsDefaults.value = false;
-    exportOnlySelectionRange.value = !!timelineStore.timelineDoc?.metadata?.fastcat?.selectionRange;
+    selectedExportRangeId.value = resolveDefaultExportRangeId();
 
     await loadCodecSupport();
 
@@ -243,10 +326,7 @@ export function useExportForm() {
               author: metadataAuthor.value,
               tags: metadataTags.value,
             },
-            exportRangeUs:
-              hasSelectionRange.value && exportOnlySelectionRange.value
-                ? (selectionRange.value ?? undefined)
-                : undefined,
+            exportRangeUs: selectedExportRange.value?.range,
           },
           fileHandle,
           (progress) => {
@@ -347,9 +427,11 @@ export function useExportForm() {
     videoCodecSupport,
     isLoadingCodecSupport,
 
-    exportOnlySelectionRange,
+    selectedExportRangeId,
+    selectedExportRange,
     saveAsDefaults,
-    hasSelectionRange,
+    exportRangeOptions,
+    hasSelectableExportRanges,
     isSettingsDirty,
 
     initializeExportForm,
