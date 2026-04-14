@@ -78,6 +78,7 @@ const historyStoreMock = {
   push: vi.fn(),
   undo: vi.fn(),
   redo: vi.fn(),
+  clear: vi.fn(),
   registerStateGetter: vi.fn(),
 };
 
@@ -189,7 +190,7 @@ describe('TimelineStore', () => {
     
     await store.setClipFreezeFrameFromPlayhead({ trackId: 'v1', itemId: 'c1' });
 
-    const clip = store.timelineDoc.tracks[0].items[0];
+    const clip = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c1');
     expect(clip.freezeFrameSourceUs).toBe(2_000_000);
   });
 
@@ -207,7 +208,7 @@ describe('TimelineStore', () => {
     store.currentTime = 0;
     await store.setClipFreezeFrameFromPlayhead({ trackId: 'v1', itemId: 'c1' });
 
-    const clip = store.timelineDoc.tracks[0].items[0];
+    const clip = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c1');
     expect(clip.freezeFrameSourceUs).toBe(0);
   });
 
@@ -223,7 +224,7 @@ describe('TimelineStore', () => {
     });
     store.timelineDoc = timeline;
     await store.resetClipFreezeFrame({ trackId: 'v1', itemId: 'c1' });
-    const clip = store.timelineDoc.tracks[0].items[0];
+    const clip = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c1');
     expect(clip.freezeFrameSourceUs).toBeUndefined();
   });
 
@@ -285,12 +286,17 @@ describe('TimelineStore', () => {
     store.timelineDoc = timeline;
 
     store.currentTime = 2_000_000;
-    await store.trimToPlayheadLeftNoRipple({ trackId: 'v1', itemId: 'c1' });
-    expect(store.timelineDoc.tracks[0].items[0].timelineRange.startUs).toBe(2_000_000);
+    let clip = store.timelineDoc.tracks[0].items.find((it: any) => it.kind === 'clip');
+    await store.trimToPlayheadLeftNoRipple({ trackId: 'v1', itemId: clip.id });
+    
+    clip = store.timelineDoc.tracks[0].items.find((it: any) => it.kind === 'clip');
+    expect(clip.timelineRange.startUs).toBe(2_000_000);
 
     store.currentTime = 8_000_000;
-    await store.trimToPlayheadRightNoRipple({ trackId: 'v1', itemId: 'c1' });
-    expect(store.timelineDoc.tracks[0].items[0].timelineRange.durationUs).toBe(6_000_000);
+    await store.trimToPlayheadRightNoRipple({ trackId: 'v1', itemId: clip.id });
+    
+    clip = store.timelineDoc.tracks[0].items.find((it: any) => it.kind === 'clip');
+    expect(clip.timelineRange.durationUs).toBe(6_000_000);
   });
 
   it('adds image source to video track', async () => {
