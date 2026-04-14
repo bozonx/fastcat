@@ -161,6 +161,31 @@ export function useExportForm() {
     selectedExportRangeId.value = 'timeline';
   });
 
+  watch(
+    () => selectionStore.selectedEntity,
+    (selectedEntity) => {
+      if (isExporting.value) return;
+
+      if (selectedEntity?.source === 'timeline' && selectedEntity.kind === 'marker') {
+        const selectedZoneMarker = zoneMarkers.value.find(
+          (marker) => marker.id === selectedEntity.markerId,
+        );
+        if (selectedZoneMarker) {
+          selectedExportRangeId.value = `marker:${selectedZoneMarker.id}`;
+        }
+        return;
+      }
+
+      if (
+        selectedEntity?.source === 'timeline' &&
+        selectedEntity.kind === 'selection-range' &&
+        selectionRange.value
+      ) {
+        selectedExportRangeId.value = 'selection';
+      }
+    },
+  );
+
   function resolveDefaultExportRangeId() {
     const selectedEntity = selectionStore.selectedEntity;
 

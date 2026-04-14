@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import { useExportForm } from '~/composables/timeline/export/useExportForm';
 
 const selectionRangeMock = ref<{ startUs: number; endUs: number } | null>(null);
@@ -212,5 +212,32 @@ describe('useExportForm', () => {
         endUs: 4_000_000,
       },
     });
+  });
+
+  it('синхронизирует radio с выбором зоны и области выделения после открытия формы', async () => {
+    selectionRangeMock.value = { startUs: 2_000_000, endUs: 6_000_000 };
+    markersMock.value = [{ id: 'zone-1', timeUs: 1_500_000, durationUs: 2_500_000, text: '' }];
+
+    const form = useExportForm();
+    await form.initializeExportForm();
+
+    expect(form.selectedExportRangeId.value).toBe('selection');
+
+    selectedEntityMock.value = {
+      source: 'timeline',
+      kind: 'marker',
+      markerId: 'zone-1',
+    };
+    await nextTick();
+
+    expect(form.selectedExportRangeId.value).toBe('marker:zone-1');
+
+    selectedEntityMock.value = {
+      source: 'timeline',
+      kind: 'selection-range',
+    };
+    await nextTick();
+
+    expect(form.selectedExportRangeId.value).toBe('selection');
   });
 });
