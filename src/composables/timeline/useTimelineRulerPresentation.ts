@@ -1,6 +1,8 @@
 import { computed, type Ref } from 'vue';
 import { timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 
+import { formatTimecode } from '~/utils/timecode';
+
 interface MarkerLike {
   id: string;
   timeUs: number;
@@ -37,15 +39,7 @@ export function truncateRulerTooltip(text: string): string {
 }
 
 export function formatRulerTime(us: number, fpsValue: number): string {
-  const totalFrames = Math.round((us / 1_000_000) * fpsValue);
-  const ff = totalFrames % fpsValue;
-  const totalSeconds = Math.floor(us / 1_000_000);
-  const ss = totalSeconds % 60;
-  const mm = Math.floor(totalSeconds / 60) % 60;
-  const hh = Math.floor(totalSeconds / 3600);
-
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return `${pad(hh)}:${pad(mm)}:${pad(ss)}:${pad(ff)}`;
+  return formatTimecode(us, fpsValue);
 }
 
 export function useTimelineRulerPresentation(options: UseTimelineRulerPresentationOptions) {

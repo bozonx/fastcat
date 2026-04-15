@@ -4,6 +4,8 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 
+import { formatTimecode } from '~/utils/timecode';
+
 const props = withDefaults(
   defineProps<{
     modelValue: number; // Time in microseconds
@@ -29,22 +31,6 @@ const localValue = ref('');
 const wrapperRef = ref<HTMLElement | null>(null);
 
 let lastCommittedValue = props.modelValue;
-
-// Format microseconds to HH:MM:SS:FF
-function formatTimecode(us: number, fpsValue: number): string {
-  const isNegative = us < 0;
-  const absUs = Math.abs(us);
-  const totalFrames = Math.round((absUs / 1_000_000) * fpsValue);
-  const ff = totalFrames % fpsValue;
-  const totalSeconds = Math.floor(absUs / 1_000_000);
-  const ss = totalSeconds % 60;
-  const mm = Math.floor(totalSeconds / 60) % 60;
-  const hh = Math.floor(totalSeconds / 3600);
-
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const formatted = `${pad(hh)}:${pad(mm)}:${pad(ss)}:${pad(ff)}`;
-  return isNegative ? `-${formatted}` : formatted;
-}
 
 // Parse HH:MM:SS:FF or MM:SS:FF or SS:FF or just SS to microseconds
 function parseTimecode(tc: string, fpsValue: number): number {

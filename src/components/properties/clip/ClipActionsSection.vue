@@ -9,7 +9,7 @@ interface ActionItem {
   title?: string;
   icon: string;
   onClick: () => void;
-  color?: string;
+  color?: 'neutral' | 'error' | 'success' | 'warning' | 'info' | 'primary' | 'secondary' | 'danger';
 }
 
 const props = defineProps<{
