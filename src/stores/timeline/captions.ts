@@ -10,6 +10,7 @@ import {
   type TimelineCaptionWord,
 } from '~/utils/transcription/captions';
 import type { TranscriptionRecord } from '~/utils/transcription/types';
+import { loadTranscriptionSidecar } from '~/utils/transcription/persistence';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
 
@@ -193,7 +194,6 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
       throw new Error('Timeline not loaded');
     }
 
-    // NOTE: Caching was removed. This map will be empty.
     const recordsByPath = new Map<string, TranscriptionRecord[]>();
 
     const getRecordsForPath = async (path: string) => {
@@ -204,7 +204,18 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
           ? path
           : `projects/${projectName}/${path}`;
 
-      return recordsByPath.get(workspacePath) || [];
+      let records = recordsByPath.get(workspacePath);
+      if (!records) {
+        const handle = getWorkspaceHandle();
+        if (handle) {
+          const record = await loadTranscriptionSidecar(handle, workspacePath);
+          records = record ? [record] : [];
+        } else {
+          records = [];
+        }
+        recordsByPath.set(workspacePath, records);
+      }
+      return records;
     };
 
     const allWords: TimelineCaptionWord[] = [];
