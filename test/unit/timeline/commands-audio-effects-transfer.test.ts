@@ -94,6 +94,16 @@ describe('timeline/commands audio effects transfer', () => {
         preDelay: 0.01,
       },
     ]);
+    expect(videoClip && videoClip.kind === 'clip' ? videoClip.linkedGroupId : undefined).toBe(
+      'clip-1',
+    );
+    expect(audioClip && audioClip.kind === 'clip' ? audioClip.linkedGroupId : undefined).toBe(
+      'clip-1',
+    );
+    expect(audioClip && audioClip.kind === 'clip' ? audioClip.linkedVideoClipId : undefined).toBe(
+      'clip-1',
+    );
+    expect(audioClip && audioClip.kind === 'clip' ? audioClip.lockToLinkedVideo : false).toBe(true);
   });
 
   it('returns audio effects back to linked video clip', () => {

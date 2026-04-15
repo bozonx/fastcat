@@ -41,7 +41,7 @@ const useMockTimelineStore = defineStore('timeline-mock', {
     selectTrack: selectTrackSpy,
     clearSelection: clearSelectionSpy,
     selectTimelineProperties: selectTimelinePropertiesSpy,
-  }
+  },
 });
 
 const useMockSelectionStore = defineStore('selection-mock', {
@@ -53,7 +53,7 @@ const useMockSelectionStore = defineStore('selection-mock', {
     clearSelection: clearSelectionSpy,
     selectTimelineTrack: selectTimelineTrackSpy,
     selectTimelineProperties: selectTimelinePropertiesSpy,
-  }
+  },
 });
 
 const mockMediaStore = reactive({
@@ -62,10 +62,10 @@ const mockMediaStore = reactive({
 
 vi.mock('~/stores/timeline.store', () => ({ useTimelineStore: () => useMockTimelineStore() }));
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => useMockSelectionStore() }));
-vi.mock('~/stores/media.store', () => ({ 
+vi.mock('~/stores/media.store', () => ({
   useMediaStore: () => ({
     mediaMetadata: {},
-  }) 
+  }),
 }));
 
 // Pinia is already initialized in vitest.setup.ts
@@ -180,7 +180,7 @@ describe('TimelineTracks', () => {
     });
 
     await nextTick();
-    
+
     expect(selectTrackSpy).toHaveBeenCalledWith('track-1');
     expect(selectTimelineTrackSpy).toHaveBeenCalledWith('track-1');
     expect(clearSelectionSpy).toHaveBeenCalled();
@@ -245,7 +245,7 @@ describe('TimelineTracks', () => {
       .findAll('.mock-timeline-clip')
       .map((clip) => clip.attributes('data-item-id'));
 
-    expect(renderedClipIds).toEqual(['clip-overlap', 'clip-visible']);
+    expect(renderedClipIds).toEqual(['clip-overlap', 'clip-hidden-left', 'clip-visible']);
   });
 
   it('falls back to full visibility filtering when items are not sorted by start time', async () => {
@@ -285,7 +285,7 @@ describe('TimelineTracks', () => {
       .findAll('.mock-timeline-clip')
       .map((clip) => clip.attributes('data-item-id'));
 
-    expect(renderedClipIds).toEqual(['clip-visible', 'clip-overlap']);
+    expect(renderedClipIds).toEqual(['clip-visible', 'clip-overlap', 'clip-hidden-left']);
   });
 
   it('displays drag previews when provided', async () => {
@@ -305,5 +305,34 @@ describe('TimelineTracks', () => {
     const preview = component.find('[data-track-id="track-1"] .absolute.top-0\\.5');
     expect(preview.exists()).toBe(true);
     expect(preview.text()).toContain('Dragging Clip');
+  });
+
+  it('renders preview ghosts for every clip in a moved group', async () => {
+    const component = await mountSuspended(TimelineTracks, {
+      props: {
+        ...defaultProps,
+        movePreview: [
+          {
+            itemId: 'clip-1',
+            trackId: 'track-1',
+            startUs: 500000,
+            isCollision: false,
+          },
+          {
+            itemId: 'clip-2',
+            trackId: 'track-2',
+            startUs: 1500000,
+            isCollision: false,
+          },
+        ],
+      },
+    });
+
+    const renderedClipIds = component
+      .findAll('.mock-timeline-clip')
+      .map((clip) => clip.attributes('data-item-id'));
+
+    expect(renderedClipIds).toContain('preview-clip-1');
+    expect(renderedClipIds).toContain('preview-clip-2');
   });
 });

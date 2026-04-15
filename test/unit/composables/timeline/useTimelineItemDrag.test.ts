@@ -135,6 +135,41 @@ describe('useTimelineItemDrag', () => {
               isImage: false,
               locked: false,
             },
+            {
+              id: 'clip-2',
+              kind: 'clip',
+              clipType: 'media',
+              name: 'Clip 2',
+              source: { path: 'clip-2.mp4' },
+              sourceRange: { startUs: 0, durationUs: 2_000_000 },
+              sourceDurationUs: 2_000_000,
+              timelineRange: { startUs: 7_000_000, durationUs: 2_000_000 },
+              speed: 1,
+              isImage: false,
+              locked: false,
+              linkedGroupId: 'group-1',
+            },
+          ],
+        },
+        {
+          id: 'track-2',
+          kind: 'audio',
+          locked: false,
+          items: [
+            {
+              id: 'clip-a1',
+              kind: 'clip',
+              clipType: 'media',
+              name: 'Clip A1',
+              source: { path: 'clip-a1.wav' },
+              sourceRange: { startUs: 0, durationUs: 5_000_000 },
+              sourceDurationUs: 5_000_000,
+              timelineRange: { startUs: 1_000_000, durationUs: 5_000_000 },
+              speed: 1,
+              isImage: false,
+              locked: false,
+              linkedGroupId: 'group-1',
+            },
           ],
         },
       ],
@@ -199,9 +234,7 @@ describe('useTimelineItemDrag', () => {
     } as PointerEvent);
 
     expect(pasteClipsMock).toHaveBeenCalledTimes(1);
-    const moveCall = applyTimelineMock.mock.calls.find(
-      ([cmd]) => cmd?.type === 'move_item_to_track',
-    )?.[0];
+    const moveCall = applyTimelineMock.mock.calls.find(([cmd]) => cmd?.type === 'move_items')?.[0];
     expect(moveCall).toBeTruthy();
     expect(pasteClipsMock).toHaveBeenCalledWith(
       [
@@ -217,7 +250,101 @@ describe('useTimelineItemDrag', () => {
       ],
       expect.objectContaining({
         targetTrackId: 'track-1',
-        insertStartUs: moveCall.startUs,
+        insertStartUs: moveCall.moves[0].startUs,
+      }),
+    );
+    expect(requestTimelineSaveMock).toHaveBeenCalledWith({ immediate: true });
+  });
+
+  it('uses preview ghosts for grouped clips and commits the move on release', () => {
+    timelineStoreMock.selectedItemIds = ['clip-2', 'clip-a1'];
+
+    const scrollEl = ref({
+      scrollLeft: 0,
+    } as HTMLElement);
+    const tracks = computed(() => timelineStoreMock.timelineDoc.tracks);
+    const { startMoveItem, movePreview } = useTimelineItemDrag(scrollEl, tracks);
+
+    const pointerTarget = {
+      setPointerCapture: vi.fn(),
+      releasePointerCapture: vi.fn(),
+    };
+
+    startMoveItem(
+      {
+        button: 0,
+        buttons: 1,
+        clientX: 100,
+        clientY: 20,
+        pointerId: 11,
+        pointerType: 'mouse',
+        currentTarget: pointerTarget,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as PointerEvent,
+      {
+        trackId: 'track-1',
+        itemId: 'clip-2',
+        startUs: 7_000_000,
+        mode: 'move',
+      },
+    );
+
+    const handlers = bindSessionMock.mock.calls[0]?.[0];
+
+    handlers.onPointerMove({
+      buttons: 1,
+      button: 0,
+      clientX: 120,
+      clientY: 20,
+    } as PointerEvent);
+
+    expect(applyTimelineMock).not.toHaveBeenCalled();
+    expect(batchApplyTimelineMock).not.toHaveBeenCalled();
+    expect(movePreview.value).toEqual([
+      {
+        itemId: 'clip-2',
+        trackId: 'track-1',
+        startUs: 9_000_000,
+        isCollision: false,
+      },
+      {
+        itemId: 'clip-a1',
+        trackId: 'track-2',
+        startUs: 3_000_000,
+        isCollision: false,
+      },
+    ]);
+
+    handlers.onPointerUp({
+      button: 0,
+      clientX: 120,
+      clientY: 20,
+      pointerId: 11,
+      currentTarget: pointerTarget,
+    } as PointerEvent);
+
+    expect(applyTimelineMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'move_items',
+        moves: expect.arrayContaining([
+          expect.objectContaining({
+            fromTrackId: 'track-1',
+            toTrackId: 'track-1',
+            itemId: 'clip-2',
+            startUs: 9_000_000,
+          }),
+          expect.objectContaining({
+            fromTrackId: 'track-2',
+            toTrackId: 'track-2',
+            itemId: 'clip-a1',
+            startUs: 3_000_000,
+          }),
+        ]),
+      }),
+      expect.objectContaining({
+        saveMode: 'none',
+        skipHistory: true,
       }),
     );
     expect(requestTimelineSaveMock).toHaveBeenCalledWith({ immediate: true });
