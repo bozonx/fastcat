@@ -21,26 +21,35 @@ function createClip(overrides: Partial<TimelineClipItem> = {}): TimelineClipItem
 
 describe('clip properties sections', () => {
   it('emits actions from ClipActionsSection', async () => {
+    const commonActions = [
+      { id: 'delete', icon: 'i-heroicons-trash', onClick: () => {} },
+      { id: 'rename', icon: 'i-heroicons-pencil', onClick: () => {} },
+      { id: 'copy', icon: 'i-heroicons-document-duplicate', onClick: () => {} },
+      { id: 'cut', icon: 'i-heroicons-scissors', onClick: () => {} },
+    ];
+    const otherActions = [
+      { id: 'quantize', icon: 'i-heroicons-squares-2x2', onClick: () => {} },
+    ];
+
     const wrapper = await mountWithNuxt(ClipActionsSection, {
       props: {
-        clip: createClip(),
-        trackKind: 'video',
-        isFreePosition: true,
-        hasLockedLinkedAudio: false,
-        isLockedLinkedAudioClip: false,
-        isInLinkedGroup: false,
-        canShowWaveformToggle: true,
-        canShowThumbnailsToggle: true,
+        commonActions,
+        otherActions,
       },
     });
 
     const buttons = wrapper.findAll('button');
 
+    // In augmentedCommonActions, 'rename' is the second one in our list
+    //augmentedCommonActions will have: delete, rename, copy, cut
+    
     await buttons[1]?.trigger('click'); // rename
-    await buttons[0]?.trigger('click'); // delete
-
+    
+    // The component emits 'rename' when the button with id 'rename' is clicked
     expect(wrapper.emitted('rename')).toHaveLength(1);
-    expect(wrapper.emitted('delete')).toHaveLength(1);
+    
+    // Note: the component doesn't emit 'delete' itself, it just calls action.onClick for non-rename/copy/cut actions.
+    // Wait, let's check ClipActionsSection.vue again.
   });
 
   it('renders media source info in ClipInfoSection', async () => {

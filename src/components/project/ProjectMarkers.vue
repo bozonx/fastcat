@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { formatTimecode } from '~/utils/timecode';
 import MarkerThumbnail from '~/components/project/MarkerThumbnail.vue';
 
 defineProps<{
@@ -20,20 +21,8 @@ const markers = computed(() => timelineStore.markers);
 /**
  * Formats microseconds to HH:MM:SS:FF
  */
-function formatTimecode(us: number): string {
-  const fpsValue = fps.value;
-  const isNegative = us < 0;
-  const absUs = Math.abs(us);
-  const totalFrames = Math.round((absUs / 1_000_000) * fpsValue);
-  const ff = totalFrames % fpsValue;
-  const totalSeconds = Math.floor(absUs / 1_000_000);
-  const ss = totalSeconds % 60;
-  const mm = Math.floor(totalSeconds / 60) % 60;
-  const hh = Math.floor(totalSeconds / 3600);
-
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const formatted = `${pad(hh)}:${pad(mm)}:${pad(ss)}:${pad(ff)}`;
-  return isNegative ? `-${formatted}` : formatted;
+function formatMarkerTimecode(us: number): string {
+  return formatTimecode(us, fps.value);
 }
 
 const sortedMarkers = computed(() => {
@@ -85,10 +74,10 @@ function handleMarkerClick(marker: { id: string; timeUs: number }) {
               </div>
             </td>
             <td class="px-4 py-3 font-mono text-[10px] text-ui-text-muted tabular-nums">
-              {{ formatTimecode(marker.timeUs) }}
+              {{ formatMarkerTimecode(marker.timeUs) }}
             </td>
             <td class="px-4 py-3 font-mono text-[10px] text-ui-text-muted tabular-nums">
-              {{ marker.durationUs ? formatTimecode(marker.timeUs + marker.durationUs) : '—' }}
+              {{ marker.durationUs ? formatMarkerTimecode(marker.timeUs + marker.durationUs) : '—' }}
             </td>
             <td class="px-4 py-3">
               <div

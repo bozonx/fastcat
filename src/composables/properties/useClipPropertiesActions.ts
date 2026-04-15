@@ -27,7 +27,7 @@ interface TimelineStoreActions {
   updateTrackProperties: (trackId: string, patch: Record<string, any>) => any;
   deleteFirstSelectedItem: () => void;
   rippleDeleteFirstSelectedItem: () => void;
-  pasteClips: (items: any[], options?: { insertStartUs?: number }) => string[];
+  pasteClips: (items: any[], options?: { insertStartUs?: number }) => { trackId: string; itemId: string }[];
 }
 
 interface ProjectStoreActions {
