@@ -1,0 +1,12 @@
+node_modules
+.nuxt
+dist
+.output
+.git
+.github
+.gemini
+.windsurf
+*.log
+.env
+.env.*
+!.env.production.example
