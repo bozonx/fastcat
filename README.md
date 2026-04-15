@@ -50,6 +50,20 @@ pnpm tauri:dev
 pnpm tauri:build
 ```
 
+## Docker
+
+You can run the application using Docker and Docker Compose:
+
+```bash
+# Build and start the container
+docker compose up -d --build
+
+# View logs
+docker compose logs -f
+```
+
+The application will be available at `http://localhost:3000`.
+
 ## Desktop (Tauri)
 
 - Desktop mode uses Tauri 2 with `@tauri-apps/plugin-fs` for file system access.
