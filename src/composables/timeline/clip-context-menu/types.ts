@@ -43,12 +43,7 @@ export interface UseClipContextMenuOptions {
   clearSelection: () => void;
   selectTimelineTransition: (trackId: string, itemId: string, edge: 'in' | 'out') => void;
   emitOpenSpeedModal: (payload: { trackId: string; itemId: string; speed: number }) => void;
-  emitClipAction: (payload: {
-    action: 'extractAudio' | 'returnAudio' | 'freezeFrame' | 'resetFreezeFrame';
-    trackId: string;
-    itemId: string;
-    videoItemId?: string;
-  }) => void;
+  emitClipAction: (payload: import('~/timeline/types').TimelineClipActionPayload) => void;
   copySelectedClips: () => void;
   cutSelectedClips: () => void;
   pasteClips: (insertStartUs?: number) => string[];

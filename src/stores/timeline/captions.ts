@@ -9,9 +9,7 @@ import {
   type CaptionGenerationSettings,
   type TimelineCaptionWord,
 } from '~/utils/transcription/captions';
-import {
-  type TranscriptionRecord,
-} from '~/utils/transcription/types';
+import type { TranscriptionRecord } from '~/utils/transcription/types';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
 
@@ -186,8 +184,6 @@ export function createTimelineCaptionsModule(params: TimelineCaptionsDeps): Time
 
     return result;
   }
-
-
 
   async function collectTimelineCaptionWords(options?: {
     language?: string;

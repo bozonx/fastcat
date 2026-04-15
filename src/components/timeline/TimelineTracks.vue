@@ -20,9 +20,11 @@ import { useFocusStore } from '~/stores/focus.store';
 
 import TimelineGap from './TimelineGap.vue';
 import TimelineSpeedModal from './TimelineSpeedModal.vue';
+import AutoMontageModal from './AutoMontageModal.vue';
 import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
 import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
 import { useTrackContextMenu } from '~/composables/timeline/useTrackContextMenu';
+import { useSilenceTrimming } from '~/composables/timeline/useSilenceTrimming';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
@@ -96,7 +98,7 @@ function lowerBound(values: number[], target: number): number {
 
   while (low < high) {
     const mid = Math.floor((low + high) / 2);
-    if (values[mid] < target) {
+    if (values[mid]! < target) {
       low = mid + 1;
     } else {
       high = mid;
@@ -112,7 +114,7 @@ function upperBound(values: number[], target: number): number {
 
   while (low < high) {
     const mid = Math.floor((low + high) / 2);
-    if (values[mid] <= target) {
+    if (values[mid]! <= target) {
       low = mid + 1;
     } else {
       high = mid;
@@ -306,6 +308,53 @@ const selectionRangeStyle = computed(() => {
   };
 });
 
+// Auto Montage State
+const autoMontageModal = ref<{ open: boolean; itemIds: string[] } | null>(null);
+const { applySilenceTrimming } = useSilenceTrimming();
+
+async function applyAutoMontage(settings: {
+  trimStart: boolean;
+  trimEnd: boolean;
+  trimMiddle: boolean;
+  mode: 'cut' | 'mark';
+}) {
+  if (!autoMontageModal.value) return;
+  await applySilenceTrimming({
+    clipIds: autoMontageModal.value.itemIds,
+    settings,
+  });
+}
+
+const uiStore = useUiStore();
+
+watch(
+  () => uiStore.openAutoMontageTrigger,
+  (val) => {
+    if (!val) return;
+    autoMontageModal.value = {
+      open: true,
+      itemIds: val.itemIds,
+    };
+  },
+);
+
+function openAutoMontage(payload: TimelineClipActionPayload) {
+  const entity = selectionStore.selectedEntity;
+  let itemIds: string[] = [payload.itemId];
+
+  if (entity?.source === 'timeline' && entity.kind === 'clips') {
+    const ids = entity.items.map((it) => it.itemId);
+    if (ids.includes(payload.itemId)) {
+      itemIds = ids;
+    }
+  }
+
+  autoMontageModal.value = {
+    open: true,
+    itemIds,
+  };
+}
+
 // Speed Modal State
 const speedModal = ref<{ open: boolean; trackId: string; itemId: string; speed: number } | null>(
   null,
@@ -392,7 +441,7 @@ const movePreviewItemsByTrack = computed(() => {
     if (!result[preview.trackId]) {
       result[preview.trackId] = [];
     }
-    result[preview.trackId].push({ preview, item });
+    result[preview.trackId]!.push({ preview, item });
   }
 
   return result;
@@ -535,6 +584,12 @@ function onTrackClick(e: MouseEvent, trackId: string) {
         v-model:speed="speedModal.speed"
         :has-audio="speedModalTargetHasAudio"
         @save="saveSpeedModal"
+      />
+
+      <AutoMontageModal
+        v-if="autoMontageModal"
+        v-model:open="autoMontageModal.open"
+        @apply="applyAutoMontage"
       />
 
       <UiContextMenuPortal
@@ -697,7 +752,9 @@ function onTrackClick(e: MouseEvent, trackId: string) {
             @select-transition="selectTransition"
             @clip-action="
               (p) => {
-                if (p.action === ('longPress' as any)) {
+                if (p.action === 'openAutoMontage') {
+                  openAutoMontage(p);
+                } else if (p.action === ('longPress' as any)) {
                   emit('long-press-item', p.itemId);
                 } else {
                   emit('clipAction', p);

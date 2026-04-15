@@ -178,6 +178,7 @@ interface TimelineClipBase {
 
   speedActive?: boolean;
   audioFadesActive?: boolean;
+  ignored?: boolean;
 }
 
 export interface TimelineMediaClipItem extends TimelineClipBase {
@@ -303,10 +304,14 @@ export interface TimelineTransitionSelection {
 }
 
 export interface TimelineClipActionPayload {
-  action: 'extractAudio' | 'returnAudio' | 'freezeFrame' | 'resetFreezeFrame';
+  action: 'extractAudio' | 'returnAudio' | 'freezeFrame' | 'resetFreezeFrame' | 'openAutoMontage';
   trackId: string;
   itemId: string;
   videoItemId?: string;
+}
+
+export interface TimelineOpenAutoMontageModalPayload {
+  itemIds: string[];
 }
 
 export interface TimelineOpenSpeedModalPayload {

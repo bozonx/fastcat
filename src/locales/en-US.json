@@ -162,6 +162,19 @@
       "splitOnPunctuation": "Split on punctuation",
       "timelineWideDescription": "The editor will scan all active audio and video media clips on non-muted, visible tracks, load their existing transcription cache, account for trims, and keep only the top visible source on overlaps."
     },
+    "autoMontage": {
+      "title": "Auto Montage (Silence Trimming)",
+      "description": "Automatically cut clips based on recognized speech",
+      "trimStart": "Trim start until the first word",
+      "trimEnd": "Trim end after the last word",
+      "trimMiddle": "Trim pauses in the middle (empty spaces)",
+      "mode": "Mode",
+      "modeCut": "Cut",
+      "modeMark": "Mark",
+      "apply": "Apply",
+      "noTranscription": "Some clips are missing transcription. Please 'Transcribe speech' first.",
+      "historyLabel": "Silence trimming"
+    },
     "clip": {
       "actions": "Actions",
       "audio": {

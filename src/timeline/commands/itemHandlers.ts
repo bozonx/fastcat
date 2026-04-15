@@ -5,3 +5,4 @@ export * from './item/properties';
 export * from './item/remove';
 export * from './item/move';
 export * from './item/trim';
+export * from './item/autoTrimPauses';

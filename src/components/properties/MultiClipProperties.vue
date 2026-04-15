@@ -17,6 +17,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useUiStore } from '~/stores/ui.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS } from '~/utils/constants';
 import { DEFAULT_TRANSITION_CURVE, DEFAULT_TRANSITION_MODE } from '~/transitions';
@@ -32,6 +33,7 @@ const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
 const workspaceStore = useWorkspaceStore();
 const selectionStore = useSelectionStore();
+const uiStore = useUiStore();
 const clipboardStore = useAppClipboard();
 
 function handleCopyClips() {
@@ -484,9 +486,7 @@ const commonActions = computed(() => {
     },
     {
       id: 'toggle-locked',
-      title: allLocked.value
-        ? t('fastcat.timeline.unlockClips')
-        : t('fastcat.timeline.lockClips'),
+      title: allLocked.value ? t('fastcat.timeline.unlockClips') : t('fastcat.timeline.lockClips'),
       icon: allLocked.value ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
       onClick: toggleLocked,
     },
@@ -495,9 +495,7 @@ const commonActions = computed(() => {
   if (hasAudioOrVideoWithAudio.value) {
     actions.push({
       id: 'toggle-muted',
-      title: allMuted.value
-        ? t('fastcat.timeline.unmuteClips')
-        : t('fastcat.timeline.muteClips'),
+      title: allMuted.value ? t('fastcat.timeline.unmuteClips') : t('fastcat.timeline.muteClips'),
       icon: allMuted.value ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark',
       onClick: toggleMuted,
     });
@@ -551,6 +549,13 @@ const otherActions = computed(() => {
 
   if (hasAudioOrVideoWithAudio.value) {
     result.push({
+      id: 'autoMontage',
+      label: t('fastcat.timeline.autoMontage.title'),
+      icon: 'i-heroicons-sparkles',
+      onClick: () => uiStore.triggerOpenAutoMontage(props.items.map((it) => it.itemId)),
+    });
+
+    result.push({
       id: 'toggle-waveform',
       label: isWaveformShown.value
         ? t('fastcat.timeline.hideWaveform')
@@ -587,7 +592,6 @@ const otherActions = computed(() => {
 <template>
   <!-- IMPORTANT: NO LOADING INDICATORS ALLOWED HERE. ALL PROPERTIES MUST LOAD SILENTLY. -->
   <div class="flex flex-col gap-2 w-full text-ui-text">
-
     <PropertySection :title="t('fastcat.clip.actions')">
       <div class="flex flex-col w-full px-3 pb-3">
         <span class="text-sm text-ui-text-muted mb-2">
@@ -658,9 +662,7 @@ const otherActions = computed(() => {
       class="space-y-1.5 bg-ui-bg-elevated p-2 rounded border border-ui-border"
     >
       <div class="flex flex-col gap-0.5">
-        <span class="text-xs text-ui-text-muted">{{
-          t('fastcat.clip.blendMode.title')
-        }}</span>
+        <span class="text-xs text-ui-text-muted">{{ t('fastcat.clip.blendMode.title') }}</span>
         <UiSelect
           v-model="batchBlendMode"
           :items="blendModeOptions"

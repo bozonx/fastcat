@@ -42,6 +42,7 @@ const emit = defineEmits<{
   extractAudio: [];
   returnAudio: [];
   replaceMedia: [];
+  autoMontage: [];
 }>();
 
 const { t } = useI18n();
@@ -206,6 +207,13 @@ const otherActions = computed(() => {
       label: t('fastcat.clip.replaceMedia'),
       icon: 'i-heroicons-arrow-path',
       onClick: () => emit('replaceMedia'),
+    });
+    list.push({
+      id: 'autoMontage',
+      label: t('fastcat.timeline.autoMontage.title'),
+      icon: 'i-heroicons-sparkles',
+      color: 'primary' as const,
+      onClick: () => emit('autoMontage'),
     });
     list.push({
       id: 'showInFileManager',

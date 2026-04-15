@@ -152,13 +152,13 @@ export function createTimelineLifecycleModule(
     const settings = deps.getProjectSettings();
     const path = deps.currentTimelinePath.value;
     if (path && settings?.timelines?.sessions?.[path]) {
-        const session = settings.timelines.sessions[path];
-        deps.currentTime.value = session.playheadUs;
-        deps.masterGain.value = session.masterGain;
-        if (deps.audioMuted) deps.audioMuted.value = session.masterMuted;
-        deps.timelineZoom.value = session.zoom;
-        deps.trackHeights.value = { ...session.trackHeights };
-        deps.selectionRange.value = session.selectionRange ? { ...session.selectionRange } : null;
+      const session = settings.timelines.sessions[path];
+      deps.currentTime.value = session.playheadUs;
+      deps.masterGain.value = session.masterGain;
+      if (deps.audioMuted) deps.audioMuted.value = session.masterMuted;
+      deps.timelineZoom.value = session.zoom;
+      deps.trackHeights.value = { ...session.trackHeights };
+      deps.selectionRange.value = session.selectionRange ? { ...session.selectionRange } : null;
     }
   }
 
