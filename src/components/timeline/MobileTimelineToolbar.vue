@@ -5,33 +5,35 @@ import type { ToolbarSnapMode } from '~/stores/timeline-settings.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useAppClipboard } from '~/composables/useAppClipboard';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
-import MobileTrackMixerDrawer from './MobileTrackMixerDrawer.vue';
-import MobileHistoryDrawer from './MobileHistoryDrawer.vue';
-import MobileMarkersDrawer from './MobileMarkersDrawer.vue';
 import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 
 const timelineStore = useTimelineStore();
 const settingsStore = useTimelineSettingsStore();
 const workspaceStore = useWorkspaceStore();
+const clipboardStore = useAppClipboard();
 
 const { t } = useI18n();
 
 const { selectedItemIds } = storeToRefs(timelineStore);
 
 const hasSelection = computed(() => selectedItemIds.value.length > 0);
+const hasClipboard = computed(() => clipboardStore.hasTimelinePayload);
 
-const isTrackMixerDrawerOpen = ref(false);
-const isHistoryDrawerOpen = ref(false);
-const isMarkersDrawerOpen = ref(false);
 const isSnapDrawerOpen = ref(false);
 
 const longPressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const IS_LONG_PRESS_MS = 500;
 const wasLastPressLong = ref(false);
 
-// Snap mode options
+const emit = defineEmits<{
+  (e: 'open-track-mixer'): void;
+  (e: 'open-history'): void;
+  (e: 'open-markers'): void;
+}>();
 
+// Snap mode options
 interface SnapOption {
   value: ToolbarSnapMode;
   icon: string;
@@ -66,8 +68,7 @@ const currentSnapOption = computed(
     snapModeOptions.value[0]!,
 );
 
-// Snap detail settings (same as SettingsSnapping.vue)
-
+// Snap detail settings
 const snapThresholdPx = computed({
   get: () => workspaceStore.userSettings.timeline.snapThresholdPx,
   set: (val: number) => settingsStore.setGlobalSnapThresholdPx(val),
@@ -121,7 +122,7 @@ function startLongPress() {
   wasLastPressLong.value = false;
   if (longPressTimer.value) clearTimeout(longPressTimer.value);
   longPressTimer.value = setTimeout(() => {
-    isHistoryDrawerOpen.value = true;
+    emit('open-history');
     wasLastPressLong.value = true;
     longPressTimer.value = null;
     if (navigator.vibrate) navigator.vibrate(50);
@@ -151,6 +152,14 @@ function handleUndo() {
 function handleRedo() {
   if (wasLastPressLong.value) return;
   timelineStore.redoTimeline();
+}
+
+function handlePaste() {
+  const payload = clipboardStore.clipboardPayload;
+  if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
+  const playheadUs = timelineStore.currentTime;
+  timelineStore.pasteClips(payload.items, { insertStartUs: playheadUs });
+  if (payload.operation === 'cut') clipboardStore.setClipboardPayload(null);
 }
 
 function handleRippleTrimLeft() {
@@ -192,7 +201,7 @@ function handleRippleTrimRight() {
         />
       </div>
 
-      <!-- Snap mode: single button shows active icon, opens settings drawer -->
+      <!-- Snap mode -->
       <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1 shrink-0">
         <UiActionButton
           :icon="currentSnapOption.icon"
@@ -224,6 +233,15 @@ function handleRippleTrimRight() {
           @click="handleSplit"
         />
         <UiActionButton
+          v-if="hasClipboard"
+          icon="i-heroicons-clipboard-document-check"
+          color="primary"
+          variant="soft"
+          size="sm"
+          title="Paste"
+          @click="handlePaste"
+        />
+        <UiActionButton
           icon="i-heroicons-arrow-left"
           color="neutral"
           size="sm"
@@ -247,14 +265,14 @@ function handleRippleTrimRight() {
           color="neutral"
           size="sm"
           :title="t('common.history')"
-          @click="isHistoryDrawerOpen = true"
+          @click="emit('open-history')"
         />
         <UiActionButton
           icon="lucide:map-pin"
           color="neutral"
           size="sm"
           :title="t('common.markers')"
-          @click="isMarkersDrawerOpen = true"
+          @click="emit('open-markers')"
         />
       </div>
     </MobileDrawerToolbar>
@@ -265,7 +283,7 @@ function handleRippleTrimRight() {
         color="neutral"
         size="sm"
         title="Mixer & Tracks"
-        @click="isTrackMixerDrawerOpen = true"
+        @click="emit('open-track-mixer')"
       />
       <UiActionButton
         icon="lucide:settings"
@@ -281,7 +299,6 @@ function handleRippleTrimRight() {
   <!-- Snap mode drawer -->
   <UiMobileDrawer v-model:open="isSnapDrawerOpen" :show-close="false" direction="bottom">
     <div class="px-4 pb-6 flex flex-col gap-5">
-      <!-- Snap mode selector -->
       <div class="flex flex-col gap-2">
         <button
           v-for="opt in snapModeOptions"
@@ -309,7 +326,6 @@ function handleRippleTrimRight() {
 
       <div class="h-px bg-ui-border" />
 
-      <!-- Snap threshold -->
       <UiSliderInput
         v-model="snapThresholdPx"
         :label="t('videoEditor.settings.snapThresholdDefault')"
@@ -320,7 +336,6 @@ function handleRippleTrimRight() {
         unit="px"
       />
 
-      <!-- Snap targets -->
       <div class="flex flex-col gap-3">
         <p class="text-sm font-medium text-ui-text">
           {{ t('videoEditor.settings.snapToTargets') }}
@@ -333,7 +348,6 @@ function handleRippleTrimRight() {
         <UCheckbox v-model="snapToMarkers" :label="t('videoEditor.settings.snapToMarkers')" />
         <UCheckbox v-model="snapToSelection" :label="t('videoEditor.settings.snapToSelection')" />
         <UCheckbox v-model="snapToPlayhead" :label="t('videoEditor.settings.snapToPlayhead')" />
-
         <UCheckbox
           v-model="snapPlayheadOnClick"
           :label="t('videoEditor.settings.snapPlayheadOnClick')"
@@ -341,13 +355,4 @@ function handleRippleTrimRight() {
       </div>
     </div>
   </UiMobileDrawer>
-
-  <MobileTrackMixerDrawer
-    :is-open="isTrackMixerDrawerOpen"
-    @close="isTrackMixerDrawerOpen = false"
-  />
-
-  <MobileHistoryDrawer :is-open="isHistoryDrawerOpen" @close="isHistoryDrawerOpen = false" />
-
-  <MobileMarkersDrawer :is-open="isMarkersDrawerOpen" @close="isMarkersDrawerOpen = false" />
 </template>

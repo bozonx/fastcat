@@ -47,6 +47,9 @@ import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
 import MobileTrimToolbar from './MobileTrimToolbar.vue';
 import MobileTimelineSettingsDrawer from './MobileTimelineSettingsDrawer.vue';
+import MobileTrackMixerDrawer from './MobileTrackMixerDrawer.vue';
+import MobileHistoryDrawer from './MobileHistoryDrawer.vue';
+import MobileMarkersDrawer from './MobileMarkersDrawer.vue';
 import { useTeleportTarget } from '~/composables/ui/useTeleportTarget';
 
 const { target: teleportTarget } = useTeleportTarget();
@@ -85,6 +88,9 @@ const isAddContentDrawerOpen = ref(false);
 const isTrimDrawerOpen = ref(false);
 const isVirtualClipPresetDrawerOpen = ref(false);
 const isSettingsDrawerOpen = ref(false);
+const isTrackMixerDrawerOpen = ref(false);
+const isHistoryDrawerOpen = ref(false);
+const isMarkersDrawerOpen = ref(false);
 const virtualClipPresetType = ref<'text' | 'shape' | 'hud'>('text');
 const drawerActiveSnapPoint = ref<string | number | null>(null);
 const isLongPress = ref(false);
@@ -966,7 +972,11 @@ onBeforeUnmount(() => {
     @pointerup="onMobilePointerUp"
     @pointercancel="onMobilePointerCancel"
   >
-    <MobileTimelineToolbar />
+    <MobileTimelineToolbar
+      @open-track-mixer="isTrackMixerDrawerOpen = true"
+      @open-history="isHistoryDrawerOpen = true"
+      @open-markers="isMarkersDrawerOpen = true"
+    />
 
     <MobileClipPropertiesDrawer
       v-model:active-snap-point="drawerActiveSnapPoint"
@@ -1124,6 +1134,15 @@ onBeforeUnmount(() => {
       :type="virtualClipPresetType"
       @close="isVirtualClipPresetDrawerOpen = false"
     />
+
+    <MobileTrackMixerDrawer
+      :is-open="isTrackMixerDrawerOpen"
+      @close="isTrackMixerDrawerOpen = false"
+    />
+
+    <MobileHistoryDrawer :is-open="isHistoryDrawerOpen" @close="isHistoryDrawerOpen = false" />
+
+    <MobileMarkersDrawer :is-open="isMarkersDrawerOpen" @close="isMarkersDrawerOpen = false" />
 
     <!-- Tracks area -->
     <div class="flex-1 relative overflow-hidden">

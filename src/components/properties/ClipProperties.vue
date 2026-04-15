@@ -184,6 +184,8 @@ const {
   isSoloed,
   toggleSolo,
   handleReplaceMedia,
+  otherActionsList,
+  commonActionsList,
 } = useClipPropertiesActions({
   clip: clipRef,
   trackKind: clipTrackKind,
@@ -446,41 +448,11 @@ defineExpose({
   <div class="w-full flex flex-col gap-2 text-ui-text">
     <ClipActionsSection
       v-if="!hideActions"
-      :clip="clip"
-      :track-kind="clipTrackKind"
-      :is-free-position="isFreePosition"
-      :has-locked-linked-audio="hasLockedLinkedAudio"
-      :is-locked-linked-audio-clip="isLockedLinkedAudioClip"
-      :is-in-linked-group="isInLinkedGroup"
-      :can-show-waveform-toggle="canEditAudioGain"
-      :can-show-thumbnails-toggle="canEditAudioGain"
-      :linked-audio-clip="linkedAudioClip"
-      :linked-video-clip="linkedVideoClip"
-      :is-soloed="isSoloed"
+      :common-actions="commonActionsList"
+      :other-actions="otherActionsList"
       @rename="isUiRenameModalOpen = true"
       @copy="handleCopyClip"
       @cut="handleCutClip"
-      @delete="handleDeleteClip"
-      @quantize="handleQuantizeClip"
-      @unlink-audio="handleUnlinkAudio"
-      @remove-from-group="handleRemoveFromGroup"
-      @show-in-file-manager="handleSelectInFileManager"
-      @go-to-timeline="handleOpenNestedTimeline"
-      @toggle-show-waveform="toggleShowWaveform"
-      @toggle-show-thumbnails="toggleShowThumbnails"
-      @toggle-audio-waveform-mode="toggleAudioWaveformMode"
-      @go-to-linked-audio="goToLinkedAudio"
-      @go-to-linked-video="goToLinkedVideo"
-      @toggle-disabled="handleToggleDisabled"
-      @toggle-locked="handleToggleLocked"
-      @toggle-muted="handleToggleMuted"
-      @toggle-solo="toggleSolo"
-      @freeze-frame="handleFreezeFrame"
-      @reset-freeze-frame="handleResetFreezeFrame"
-      @extract-audio="handleExtractAudio"
-      @return-audio="handleReturnAudio"
-      @replace-media="handleReplaceMedia"
-      @auto-montage="uiStore.triggerOpenAutoMontage([clip.id])"
     />
 
     <UTabs v-model="activeTab" :items="tabs" variant="link" :content="false" class="mb-2" />
