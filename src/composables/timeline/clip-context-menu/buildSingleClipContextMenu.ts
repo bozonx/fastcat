@@ -261,6 +261,19 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     });
   }
 
+  if (clipItem.clipType === 'media') {
+    mainGroup.push({
+      label: options.t('fastcat.timeline.autoMontage.title'),
+      icon: 'i-heroicons-sparkles',
+      onSelect: () =>
+        options.emitClipAction({
+          action: 'openAutoMontage',
+          trackId: track.id,
+          itemId: clipItem.id,
+        }),
+    });
+  }
+
   return mainGroup;
 }
 

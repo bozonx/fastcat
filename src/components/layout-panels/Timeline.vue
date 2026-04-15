@@ -38,6 +38,7 @@ const workspaceStore = useWorkspaceStore();
 const focusStore = useFocusStore();
 const timelineSettingsStore = useTimelineSettingsStore();
 const projectStore = useProjectStore();
+const selectionStore = useSelectionStore();
 const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 
 const { currentProjectId, currentView } = storeToRefs(projectStore);
@@ -455,9 +456,12 @@ function onDragVirtualEnd() {
     >
       <UContextMenu :items="emptyAreaContextMenuItems">
         <div
-          class="shrink-0 border-r border-ui-border bg-ui-bg-elevated flex items-center px-2 gap-2"
+          class="shrink-0 border-r border-ui-border bg-ui-bg-elevated flex items-center px-2 gap-2 cursor-pointer"
           style="width: 220px"
-          @click.self="timelineStore.selectTimelineProperties()"
+          @click="
+            timelineStore.selectTimelineProperties();
+            selectionStore.selectTimelineProperties();
+          "
         >
           <UiTimecode
             class="flex-1"

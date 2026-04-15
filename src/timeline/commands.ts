@@ -35,6 +35,7 @@ import {
   overlayTrimItem,
   trimItem,
   splitItem,
+  autoTrimPauses,
   updateClipProperties,
   updateClipTransition,
 } from './commands/itemHandlers';
@@ -372,7 +373,18 @@ export type TimelineCommand =
   | UpdateMasterGainCommand
   | UpdateMasterMutedCommand
   | UpdateMasterEffectsCommand
-  | UpdateTimelinePropertiesCommand;
+  | UpdateTimelinePropertiesCommand
+  | AutoTrimPausesCommand;
+
+export interface AutoTrimPausesCommand {
+  type: 'auto_trim_pauses';
+  clips: {
+    trackId: string;
+    itemId: string;
+    pauses: { startUs: number; endUs: number }[];
+  }[];
+  mode: 'cut' | 'mark';
+}
 
 export interface TimelineCommandResult {
   next: TimelineDocument;
@@ -483,6 +495,8 @@ export function applyTimelineCommand(
           },
         },
       };
+    case 'auto_trim_pauses':
+      return autoTrimPauses(doc, cmd);
     default: {
       const _exhaustiveCheck: never = cmd;
       throw new Error(`Unhandled timeline command type: ${(_exhaustiveCheck as any).type}`);

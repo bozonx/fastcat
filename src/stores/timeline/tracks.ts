@@ -122,7 +122,7 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
     const count = sameKindTracks.length + 1;
     const trackId = kind === 'video' ? `v${count}` : `a${count}`;
     const name = kind === 'video' ? `Video ${count}` : `Audio ${count}`;
-    
+
     addTrack(kind, name);
     return trackId;
   }

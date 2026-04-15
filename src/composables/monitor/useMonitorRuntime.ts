@@ -132,6 +132,10 @@ export function useMonitorRuntime() {
     });
   });
 
+  watch(timecodeEl, (el) => {
+    setTimecodeEl(el);
+  });
+
   const { isSavingStopFrame, createStopFrameSnapshot, saveTimelineThumbnail } = useMonitorSnapshot({
     projectStore,
     timelineStore,

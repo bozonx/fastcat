@@ -206,6 +206,20 @@ export function buildMultiSelectionContextMenu(
     });
   }
 
+  if (state.hasAudioOrVideoWithAudio && state.itemsToUpdate.length > 0) {
+    const first = state.itemsToUpdate[0]!;
+    mainGroup.push({
+      label: options.t('fastcat.timeline.autoMontage.title'),
+      icon: 'i-heroicons-sparkles',
+      onSelect: () =>
+        options.emitClipAction({
+          action: 'openAutoMontage',
+          trackId: first.trackId,
+          itemId: first.itemId,
+        }),
+    });
+  }
+
   const actionGroup: ContextMenuGroup = [
     {
       label: options.t('common.copy'),

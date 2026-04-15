@@ -29,6 +29,7 @@ export const TIMELINE_COMMAND_LABEL_KEYS: Record<TimelineCommand['type'], string
   update_master_muted: 'videoEditor.fileManager.history.entries.toggleMute',
   update_master_effects: 'videoEditor.fileManager.history.entries.updateEffects',
   update_timeline_properties: 'videoEditor.fileManager.history.entries.updateTimelineProperties',
+  auto_trim_pauses: 'fastcat.timeline.autoMontage.historyLabel',
 };
 
 export const TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY =

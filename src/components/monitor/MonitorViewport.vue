@@ -156,14 +156,13 @@ defineExpose({
         <span
           v-if="showTimecode"
           ref="timecodeEl"
-          class="absolute text-xs text-ui-text-muted font-mono tabular-nums bg-ui-bg-elevated/85 backdrop-blur-sm px-2 py-1 rounded transition-all duration-300 select-none"
+          class="absolute text-xs text-ui-text-muted font-mono tabular-nums bg-ui-bg-elevated/85 backdrop-blur-sm px-2 py-1 rounded transition-all duration-300 select-none min-h-7"
           :class="[
             effectiveFullscreen ? 'bottom-24 right-8' : 'bottom-3 right-3',
             effectiveFullscreen && isIdle ? 'opacity-0' : 'opacity-100',
             timecodeOffsetClass,
           ]"
         >
-          00:00:00:00 / 00:00:00:00
         </span>
 
         <!-- Slot for absolute-positioned overlays above the transformed workspace (empty state, loading) -->

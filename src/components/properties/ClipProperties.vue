@@ -10,7 +10,11 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useFocusStore } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
-import { useFileManagerStore, useFilesPageFileManagerStore, type FileManagerStore } from '~/stores/file-manager.store';
+import {
+  useFileManagerStore,
+  useFilesPageFileManagerStore,
+  type FileManagerStore,
+} from '~/stores/file-manager.store';
 import { BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS } from '~/utils/constants';
 import type {
   AudioClipEffect,
@@ -86,30 +90,38 @@ const tabs = computed(() => [
 
 const isOpacityEnabled = computed({
   get: () => props.clip.opacityActive !== false,
-  set: (val) => timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { opacityActive: val })
+  set: (val) =>
+    timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { opacityActive: val }),
 });
 const isBlendingEnabled = computed({
   get: () => props.clip.blendModeActive !== false,
-  set: (val) => timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { blendModeActive: val })
+  set: (val) =>
+    timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { blendModeActive: val }),
 });
 const isMaskEnabled = computed({
   get: () => props.clip.maskActive !== false,
-  set: (val) => timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { maskActive: val })
+  set: (val) =>
+    timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { maskActive: val }),
 });
 const isAudioFadesEnabled = computed({
   get: () => props.clip.audioFadesActive !== false,
-  set: (val) => timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { audioFadesActive: val })
+  set: (val) =>
+    timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
+      audioFadesActive: val,
+    }),
 });
 const isTransitionsEnabled = ref(true); // Transitions logic not explicitly requested to change
 const isVideoEffectsEnabled = ref(true); // effects not explicitly requested
 const isAudioEffectsEnabled = ref(true); // effects not explicitly requested
 const isTransformEnabled = computed({
   get: () => props.clip.transformActive !== false,
-  set: (val) => timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { transformActive: val })
+  set: (val) =>
+    timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { transformActive: val }),
 });
 const isSpeedEnabled = computed({
   get: () => props.clip.speedActive !== false,
-  set: (val) => timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { speedActive: val })
+  set: (val) =>
+    timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { speedActive: val }),
 });
 
 const clipRef = computed(() => props.clip);
@@ -468,6 +480,7 @@ defineExpose({
       @extract-audio="handleExtractAudio"
       @return-audio="handleReturnAudio"
       @replace-media="handleReplaceMedia"
+      @auto-montage="uiStore.triggerOpenAutoMontage([clip.id])"
     />
 
     <UTabs v-model="activeTab" :items="tabs" variant="link" :content="false" class="mb-2" />
@@ -503,7 +516,9 @@ defineExpose({
         v-model:enabled="isSpeedEnabled"
         :clip="clip"
         :can-edit-reversed="canEditReversed"
-        @update-speed="(speed: number) => timelineStore.updateClipProperties(clip.trackId, clip.id, { speed })"
+        @update-speed="
+          (speed: number) => timelineStore.updateClipProperties(clip.trackId, clip.id, { speed })
+        "
       />
 
       <ClipTransformSection

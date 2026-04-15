@@ -527,6 +527,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
           ? 'opacity-40'
           : '',
         isMediaMissing ? 'bg-red-600! border-red-800! text-white!' : '',
+        !isMediaMissing && clipItem && clipItem.ignored ? 'bg-red-500/40! border-red-400!' : '',
         !isMediaMissing && isUnsupported ? 'bg-amber-600/50! border-amber-700!' : '',
         (clipItem && Boolean(clipItem.locked)) || track.locked ? 'cursor-not-allowed' : '',
         isMobile ? 'touch-none' : '',
@@ -690,13 +691,13 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
         <div
           class="absolute left-0 top-0 bottom-0 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors group/trim"
           :style="{ zIndex: 'var(--z-clip-trim)' }"
-          :class="isMobile ? 'w-4' : 'w-1.5'"
+          :class="isMobile ? 'w-4' : 'w-4'"
           @pointerdown="onTrimHandlePointerDown($event, 'start')"
         />
         <div
           class="absolute right-0 top-0 bottom-0 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors group/trim"
           :style="{ zIndex: 'var(--z-clip-trim)' }"
-          :class="isMobile ? 'w-4' : 'w-1.5'"
+          :class="isMobile ? 'w-4' : 'w-4'"
           @pointerdown="onTrimHandlePointerDown($event, 'end')"
         />
       </template>

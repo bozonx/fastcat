@@ -232,6 +232,12 @@ export const useUiStore = defineStore('ui', () => {
     timelineSaveTrigger.value++;
   }
 
+  const openAutoMontageTrigger = ref<{ itemIds: string[]; timestamp: number } | null>(null);
+
+  function triggerOpenAutoMontage(itemIds: string[]) {
+    openAutoMontageTrigger.value = { itemIds, timestamp: Date.now() };
+  }
+
   function showIntegrationSettings() {
     editorSettingsActiveSection.value = 'user.integrations';
     isEditorSettingsOpen.value = true;
@@ -314,5 +320,7 @@ export const useUiStore = defineStore('ui', () => {
     isMediaReplaceModalOpen,
     editorSettingsActiveSection,
     showIntegrationSettings,
+    openAutoMontageTrigger,
+    triggerOpenAutoMontage,
   };
 });
