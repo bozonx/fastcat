@@ -4,7 +4,15 @@ services:
     container_name: fastcat
     restart: always
     working_dir: /app
-    command: sh -c "npm install && npm run prod"
+    command: >
+      sh -c "
+      npm install &&
+      if [ \"$NUXT_PUBLIC_DEV_MODE\" = \"true\" ]; then
+        npm run dev;
+      else
+        npm run prod;
+      fi
+      "
     ports:
       - "${PORT:-3000}:${PORT:-3000}"
     volumes:
