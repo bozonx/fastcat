@@ -26,7 +26,7 @@ defineProps<{
     durationUs: number;
     kind: 'timeline-clip' | 'file';
   } | null;
-  movePreview?: { itemId: string; trackId: string; startUs: number } | null;
+  movePreview?: { itemId: string; trackId: string; startUs: number; isCollision?: boolean }[];
   slipPreview?: { itemId: string; trackId: string; deltaUs: number; timecode: string } | null;
   trimPreview?: {
     itemId: string;

@@ -97,14 +97,16 @@ export function useTimelineItemDrag(
   const pendingDragClientX = ref<number | null>(null);
   const pendingDragClientY = ref<number | null>(null);
 
-  const movePreview = ref<TimelineMovePreview | null>(null);
+  const movePreview = ref<TimelineMovePreview[]>([]);
   const slipPreview = ref<TimelineSlipPreview | null>(null);
   const trimPreview = ref<TimelineTrimPreview | null>(null);
   const pendingMoveCommit = ref<{
-    fromTrackId: string;
-    toTrackId: string;
-    itemId: string;
-    startUs: number;
+    moves: Array<{
+      fromTrackId: string;
+      toTrackId: string;
+      itemId: string;
+      startUs: number;
+    }>;
     isCollision?: boolean;
   } | null>(null);
   const pendingTrimCommit = ref<{
@@ -305,11 +307,7 @@ export function useTimelineItemDrag(
     lastDragAppliedCmd.value = null;
     dragCancelRequested.value = false;
 
-    movePreview.value = {
-      itemId,
-      trackId,
-      startUs,
-    };
+    movePreview.value = [{ itemId, trackId, startUs }];
     pendingMoveCommit.value = null;
     slipPreview.value = null;
     trimPreview.value = null;
@@ -371,7 +369,7 @@ export function useTimelineItemDrag(
     dragStartSnapshot.value = timelineStore.timelineDoc;
     lastDragAppliedCmd.value = null;
     dragCancelRequested.value = false;
-    movePreview.value = null;
+    movePreview.value = [];
     pendingMoveCommit.value = null;
     slipPreview.value = null;
     trimPreview.value =
@@ -529,7 +527,6 @@ export function useTimelineItemDrag(
       const isMulti = selectedMovableItemIds.includes(itemId) && selectedMovableItemIds.length > 1;
 
       if (isMulti && dragStartSnapshot.value) {
-        // Fallback for multi-item drag — just let it mutate (less common on mobile anyway)
         const deltaUs = startUs - dragAnchorStartUs.value;
         const moves = buildMultiItemMoves({
           currentTracks: tracks.value,
@@ -541,36 +538,39 @@ export function useTimelineItemDrag(
         });
 
         if (moves.length > 0) {
-          if (overlapMode === 'pseudo') {
-            const cmds = moves.map((move) => ({
-              type: 'overlay_place_item' as const,
-              fromTrackId: move.fromTrackId,
-              toTrackId: move.toTrackId,
-              itemId: move.itemId,
-              startUs: move.startUs,
-              quantizeToFrames: enableFrameSnap,
-              ignoreLinks: isShiftPressed,
-            }));
-
-            timelineStore.batchApplyTimeline(cmds as any, {
-              saveMode: 'none',
-              skipHistory: true,
-            });
-            lastDragAppliedCmd.value = (cmds[cmds.length - 1] ?? null) as any;
-          } else {
-            const cmd = {
-              type: 'move_items',
-              moves,
-              quantizeToFrames: enableFrameSnap,
-              ignoreLinks: isShiftPressed,
-            } as const;
-
-            timelineStore.applyTimeline(cmd as any, { saveMode: 'none', skipHistory: true });
-            lastDragAppliedCmd.value = cmd as any;
+          let isCollision = false;
+          if (overlapMode !== 'pseudo' && dragStartSnapshot.value) {
+            const movingIds = new Set(moves.map((move) => move.itemId));
+            for (const move of moves) {
+              const targetTrack = dragStartSnapshot.value.tracks.find(
+                (t) => t.id === move.toTrackId,
+              );
+              const previewItem = dragStartSnapshot.value.tracks
+                .flatMap((track) => track.items)
+                .find((trackItem) => trackItem.id === move.itemId);
+              if (!targetTrack || !previewItem || previewItem.kind !== 'clip') continue;
+              const endUs = move.startUs + previewItem.timelineRange.durationUs;
+              for (const it of targetTrack.items) {
+                if (movingIds.has(it.id) || it.kind !== 'clip') continue;
+                const itStart = it.timelineRange.startUs;
+                const itEnd = itStart + it.timelineRange.durationUs;
+                if (move.startUs < itEnd && itStart < endUs) {
+                  isCollision = true;
+                  break;
+                }
+              }
+              if (isCollision) break;
+            }
           }
 
+          movePreview.value = moves.map((move) => ({
+            itemId: move.itemId,
+            trackId: move.toTrackId,
+            startUs: move.startUs,
+            isCollision,
+          }));
+          pendingMoveCommit.value = { moves, isCollision };
           draggingTrackId.value = targetTrackId;
-          hasPendingTimelinePersist.value = true;
         }
 
         return;
@@ -601,12 +601,16 @@ export function useTimelineItemDrag(
         }
       }
 
-      movePreview.value = { itemId, trackId: targetTrackId, startUs, isCollision };
+      movePreview.value = [{ itemId, trackId: targetTrackId, startUs, isCollision }];
       pendingMoveCommit.value = {
-        fromTrackId: dragOriginTrackId.value ?? trackId,
-        toTrackId: targetTrackId,
-        itemId,
-        startUs,
+        moves: [
+          {
+            fromTrackId: dragOriginTrackId.value ?? trackId,
+            toTrackId: targetTrackId,
+            itemId,
+            startUs,
+          },
+        ],
         isCollision,
       };
 
@@ -808,16 +812,23 @@ export function useTimelineItemDrag(
       const commit = pendingMoveCommit.value;
       const snapshot = dragStartSnapshot.value;
 
-      if (snapshot && movedItemId && commit && timelineStore.selectedItemIds.length === 1) {
-        const track = snapshot.tracks.find((item) => item.id === commit.fromTrackId) ?? null;
+      if (
+        snapshot &&
+        movedItemId &&
+        commit &&
+        commit.moves.length === 1 &&
+        timelineStore.selectedItemIds.length === 1
+      ) {
+        const move = commit.moves[0];
+        const track = snapshot.tracks.find((item) => item.id === move.fromTrackId) ?? null;
         const clip =
           track?.items.find((item) => item.kind === 'clip' && item.id === movedItemId) ?? null;
         if (clip && clip.kind === 'clip') {
           copiedSingleClipPayload = {
-            sourceTrackId: commit.fromTrackId,
+            sourceTrackId: move.fromTrackId,
             clip: cloneValue(clip),
-            targetTrackId: commit.toTrackId,
-            targetStartUs: commit.startUs,
+            targetTrackId: move.toTrackId,
+            targetStartUs: move.startUs,
           };
         }
       }
@@ -832,36 +843,35 @@ export function useTimelineItemDrag(
       const doc = timelineStore.timelineDoc;
       if (doc) {
         const movedVideoIds: string[] = [];
-        const movedPrimaryId = draggingItemId.value;
-        const movedPrimaryTrackId = draggingTrackId.value;
+        const moves = pendingMoveCommit.value?.moves ?? [];
 
-        if (movedPrimaryId && movedPrimaryTrackId) {
-          const tr = doc.tracks.find((t) => t.id === movedPrimaryTrackId);
-          const it = tr?.items.find((x) => x.id === movedPrimaryId);
-          if (it && it.kind === 'clip') {
-            if (tr?.kind === 'video') {
-              movedVideoIds.push(it.id);
-            }
+        for (const move of moves) {
+          const tr = doc.tracks.find((t) => t.id === move.fromTrackId);
+          const it = tr?.items.find((x) => x.id === move.itemId);
+          if (!it || it.kind !== 'clip') continue;
 
-            if (
-              tr?.kind === 'audio' &&
-              Boolean((it as any).linkedVideoClipId) &&
-              Boolean((it as any).lockToLinkedVideo)
-            ) {
-              timelineStore.applyTimeline(
-                {
-                  type: 'update_clip_properties',
-                  trackId: tr.id,
-                  itemId: it.id,
-                  properties: {
-                    linkedVideoClipId: undefined,
-                    lockToLinkedVideo: false,
-                  },
-                } as any,
-                { saveMode: 'none', skipHistory: true },
-              );
-              hasPendingTimelinePersist.value = true;
-            }
+          if (tr?.kind === 'video') {
+            movedVideoIds.push(it.id);
+          }
+
+          if (
+            tr?.kind === 'audio' &&
+            Boolean((it as any).linkedVideoClipId) &&
+            Boolean((it as any).lockToLinkedVideo)
+          ) {
+            timelineStore.applyTimeline(
+              {
+                type: 'update_clip_properties',
+                trackId: tr.id,
+                itemId: it.id,
+                properties: {
+                  linkedVideoClipId: undefined,
+                  lockToLinkedVideo: false,
+                },
+              } as any,
+              { saveMode: 'none', skipHistory: true },
+            );
+            hasPendingTimelinePersist.value = true;
           }
         }
 
@@ -903,31 +913,28 @@ export function useTimelineItemDrag(
       const overlapMode = usePseudoOverlap ? 'pseudo' : settingsStore.overlapMode;
 
       const commit = pendingMoveCommit.value;
-      if (commit && !commit.isCollision) {
+      if (commit && commit.moves.length > 0 && !commit.isCollision) {
         const enableFrameSnap =
           settingsStore.frameSnapMode === 'frames' &&
           !dragIsFreeOverride.value &&
           !dragDisableFrameSnapOverride.value;
 
         if (overlapMode === 'pseudo') {
-          const cmd = {
-            type: 'overlay_place_item',
-            fromTrackId: commit.fromTrackId,
-            toTrackId: commit.toTrackId,
-            itemId: commit.itemId,
-            startUs: commit.startUs,
+          const cmds = commit.moves.map((move) => ({
+            type: 'overlay_place_item' as const,
+            fromTrackId: move.fromTrackId,
+            toTrackId: move.toTrackId,
+            itemId: move.itemId,
+            startUs: move.startUs,
             quantizeToFrames: enableFrameSnap,
             ignoreLinks: usePseudoOverlap,
-          } as const;
-          timelineStore.applyTimeline(cmd as any, { saveMode: 'none', skipHistory: true });
-          lastDragAppliedCmd.value = cmd as any;
+          }));
+          timelineStore.batchApplyTimeline(cmds as any, { saveMode: 'none', skipHistory: true });
+          lastDragAppliedCmd.value = (cmds[cmds.length - 1] ?? null) as any;
         } else {
           const cmd = {
-            type: 'move_item_to_track',
-            fromTrackId: commit.fromTrackId,
-            toTrackId: commit.toTrackId,
-            itemId: commit.itemId,
-            startUs: commit.startUs,
+            type: 'move_items',
+            moves: commit.moves,
             quantizeToFrames: enableFrameSnap,
             ignoreLinks: usePseudoOverlap,
           } as const;
@@ -993,7 +1000,7 @@ export function useTimelineItemDrag(
     pendingDragClientX.value = null;
     pendingDragClientY.value = null;
 
-    movePreview.value = null;
+    movePreview.value = [];
     pendingMoveCommit.value = null;
     slipPreview.value = null;
     trimPreview.value = null;

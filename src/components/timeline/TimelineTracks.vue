@@ -53,7 +53,7 @@ const props = defineProps<{
     durationUs: number;
     kind: 'timeline-clip' | 'file';
   } | null;
-  movePreview?: { itemId: string; trackId: string; startUs: number; isCollision?: boolean } | null;
+  movePreview?: { itemId: string; trackId: string; startUs: number; isCollision?: boolean }[];
   slipPreview?: { itemId: string; trackId: string; deltaUs: number; timecode: string } | null;
   trimPreview?: {
     itemId: string;
@@ -371,11 +371,48 @@ const activeTrackContextMenuItems = computed(() => {
   return getTrackContextMenuItems(activeTrackForContextMenu.value, props.tracks);
 });
 
-const movePreviewItem = computed(() =>
-  props.tracks
-    .flatMap((track) => track.items)
-    .find((item) => item.id === props.movePreview?.itemId),
+const movePreviewItemsByTrack = computed(() => {
+  const previews = props.movePreview ?? [];
+  const itemMap = new Map<string, TimelineTrackItem>();
+
+  for (const track of props.tracks) {
+    for (const item of track.items) {
+      itemMap.set(item.id, item);
+    }
+  }
+
+  const result: Record<
+    string,
+    Array<{ preview: (typeof previews)[number]; item: TimelineTrackItem }>
+  > = {};
+
+  for (const preview of previews) {
+    const item = itemMap.get(preview.itemId);
+    if (!item) continue;
+    if (!result[preview.trackId]) {
+      result[preview.trackId] = [];
+    }
+    result[preview.trackId].push({ preview, item });
+  }
+
+  return result;
+});
+const movePreviewIds = computed(
+  () => new Set((props.movePreview ?? []).map((preview) => preview.itemId)),
 );
+const movePreviewMemoByTrack = computed(() => {
+  const result: Record<string, string> = {};
+
+  for (const preview of props.movePreview ?? []) {
+    if (!result[preview.trackId]) {
+      result[preview.trackId] = '';
+    }
+    result[preview.trackId] +=
+      `${preview.itemId}:${preview.startUs}:${preview.isCollision ? 1 : 0}|`;
+  }
+
+  return result;
+});
 const trimPreviewItem = computed(() =>
   props.tracks
     .flatMap((track) => track.items)
@@ -519,12 +556,11 @@ function onTrackClick(e: MouseEvent, trackId: string) {
           trackViewModel.isDirectlySelected,
           trackViewModel.isVisuallySelected,
           trackViewModel.visibleItems.length,
-          movePreview?.trackId === trackViewModel.track.id ? movePreview.startUs : null,
-          movePreview?.trackId === trackViewModel.track.id ? movePreview.isCollision : null,
+          movePreviewMemoByTrack[trackViewModel.track.id] ?? null,
           dragPreview?.trackId === trackViewModel.track.id ? dragPreview.startUs : null,
           trackViewModel.track.items.some((i) => i.id === draggingItemId) ? draggingItemId : null,
-          trackViewModel.track.items.some((i) => i.id === movePreview?.itemId)
-            ? movePreview?.startUs
+          trackViewModel.track.items.some((i) => movePreviewIds.has(i.id))
+            ? (movePreviewMemoByTrack[trackViewModel.track.id] ?? null)
             : null,
           trackViewModel.track.items.some((i) => i.id === slipPreview?.itemId)
             ? slipPreview?.deltaUs
@@ -580,21 +616,24 @@ function onTrackClick(e: MouseEvent, trackId: string) {
         </div>
 
         <TimelineClip
-          v-if="movePreview && movePreview.trackId === trackViewModel.track.id && movePreviewItem"
+          v-for="{ preview, item: previewItem } in movePreviewItemsByTrack[
+            trackViewModel.track.id
+          ] ?? []"
+          :key="`preview-${preview.itemId}`"
           class="opacity-60 pointer-events-none z-40!"
           :track="trackViewModel.track"
           :item="
             {
-              ...movePreviewItem,
-              id: 'preview-' + movePreviewItem.id,
-              timelineRange: { ...movePreviewItem.timelineRange, startUs: movePreview.startUs },
+              ...previewItem,
+              id: 'preview-' + previewItem.id,
+              timelineRange: { ...previewItem.timelineRange, startUs: preview.startUs },
             } as any
           "
           :track-height="trackViewModel.height"
           :can-edit-clip-content="false"
           :is-dragging-current-item="false"
           :is-move-preview-current-item="true"
-          :is-move-preview-collision="movePreview.isCollision"
+          :is-move-preview-collision="preview.isCollision"
           :selected-transition="null"
           :resize-volume="null"
         />
@@ -641,7 +680,7 @@ function onTrackClick(e: MouseEvent, trackId: string) {
             :track-height="trackViewModel.height"
             :can-edit-clip-content="canEditClipContent"
             :is-dragging-current-item="draggingItemId === item.id"
-            :is-move-preview-current-item="movePreview?.itemId === item.id"
+            :is-move-preview-current-item="movePreviewIds.has(item.id)"
             :is-trim-preview-current-item="trimPreview?.itemId === item.id"
             :selected-transition="selectedTransition"
             :resize-volume="resizeVolume"
