@@ -1,0 +1,19 @@
+services:
+  fastcat:
+    image: node:24-alpine
+    container_name: fastcat
+    working_dir: /app
+    command: sh -c "npm install && npm run prod"
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+    environment:
+      - NUXT_PUBLIC_DEV_MODE=false
+      - NUXT_APP_BASE_URL=https://video-editor.example.com
+      - NUXT_PUBLIC_BLOGGER_DOG_API_URL=https://api.bloggerdog.pro
+      - NUXT_PUBLIC_BLOGGER_DOG_UI_URL=https://bloggerdog.pro
+      - NUXT_PUBLIC_FASTCAT_ACCOUNT_API_URL=https://user-account.fastcat.video
+      - NUXT_PUBLIC_FASTCAT_ACCOUNT_UI_URL=https://user-account.fastcat.video/ui
+      - PORT=3000
+    restart: always
