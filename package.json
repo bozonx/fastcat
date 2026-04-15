@@ -19,7 +19,9 @@
     "test:unit:coverage": "vitest run --coverage",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "start": "nuxt preview",
+    "prod": "pnpm build && pnpm start"
   },
   "dependencies": {
     "@huggingface/transformers": "3.0.0-alpha.19",
