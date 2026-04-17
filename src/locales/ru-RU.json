@@ -10,6 +10,7 @@
     "autoRecognition": "Авто распознавание по типу",
     "cancel": "Отмена",
     "cancelSelection": "Отменить выделение",
+    "calculating": "Вычисление",
     "clear": "Очистить",
     "clearSelection": "Очистить",
     "close": "Закрыть",
@@ -711,6 +712,19 @@
       "createSelectionArea": "Создать область выделения",
       "createSelectionFromZone": "Создать выделение из зоны",
       "createVersion": "Создать версию",
+      "autoMontage": {
+        "title": "Авто монтаж (Обрезка пауз)",
+        "description": "Автоматическая нарезка клипа на основе распознанной речи",
+        "trimStart": "Обрезка в начале до первого слова",
+        "trimEnd": "Обрезка в конце после последнего слова",
+        "trimMiddle": "Обрезка пауз в середине (пустые места)",
+        "mode": "Режим",
+        "modeCut": "Вырезать",
+        "modeMark": "Пометить",
+        "apply": "Применить",
+        "noTranscription": "Для некоторых клипов отсутствует транскрибация. Сначала выполните 'Распознать речь'.",
+        "historyLabel": "Обрезка пауз"
+      },
       "delete": "Удалить",
       "deleteClipDescription": "Это действие нельзя отменить.",
       "deleteClipTitle": "Удалить клип?",
@@ -768,6 +782,7 @@
       "noSupportedFiles": "Нет поддерживаемых файлов для импорта",
       "overlayModeNone": "Обычный режим",
       "overlayModePseudo": "Режим наложения",
+      "pasteAtPlayhead": "Вставить на позицию курсора",
       "previousMarker": "Предыдущий маркер",
       "project": "Проект",
       "properties": {
@@ -1065,6 +1080,7 @@
       "original": "Оригинал",
       "reverse": "Реверс",
       "sampleRate": "Частота дискретизации",
+      "sound": "Звук",
       "stereo": "Стерео"
     },
     "backgroundTasks": {
@@ -1696,5 +1712,9 @@
       "versionCreated": "Версия создана: {name}",
       "versionSaveError": "Ошибка сохранения версии"
     }
+  },
+  "navigation": {
+    "fastcat": "Видеоредактор",
+    "settings": "Настройки"
   }
 }
