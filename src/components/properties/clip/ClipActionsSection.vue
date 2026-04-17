@@ -10,6 +10,7 @@ interface ActionItem {
   icon: string;
   onClick: () => void;
   color?: 'neutral' | 'error' | 'success' | 'warning' | 'info' | 'primary' | 'secondary' | 'danger';
+  variant?: 'solid' | 'outline' | 'soft' | 'ghost' | 'subtle' | 'link';
 }
 
 const props = defineProps<{
@@ -27,28 +28,34 @@ const { t } = useI18n();
 
 const augmentedCommonActions = computed(() => {
   return props.commonActions.map((action) => {
+    const baseAction = {
+      ...action,
+      label: undefined,
+      title: action.title || action.label,
+    };
+
     if (action.id === 'rename') {
-      return { ...action, onClick: () => emit('rename') };
+      return { ...baseAction, onClick: () => emit('rename') };
     }
     if (action.id === 'copy') {
-      return { ...action, onClick: () => emit('copy') };
+      return { ...baseAction, onClick: () => emit('copy') };
     }
     if (action.id === 'cut') {
-      return { ...action, onClick: () => emit('cut') };
+      return { ...baseAction, onClick: () => emit('cut') };
     }
-    return action;
+    return baseAction;
   });
 });
 </script>
 
 <template>
   <PropertySection :title="t('fastcat.clip.actions')">
-    <div class="flex flex-col w-full">
+    <div class="flex flex-col w-full px-3 pb-3">
       <PropertyActionList
         :actions="augmentedCommonActions"
         :vertical="false"
         justify="start"
-        variant="ghost"
+        variant="soft"
         size="sm"
         class="mb-2"
       />

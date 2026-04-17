@@ -27,7 +27,10 @@ interface TimelineStoreActions {
   updateTrackProperties: (trackId: string, patch: Record<string, any>) => any;
   deleteFirstSelectedItem: () => void;
   rippleDeleteFirstSelectedItem: () => void;
-  pasteClips: (items: any[], options?: { insertStartUs?: number }) => { trackId: string; itemId: string }[];
+  pasteClips: (
+    items: any[],
+    options?: { insertStartUs?: number },
+  ) => { trackId: string; itemId: string }[];
 }
 
 interface ProjectStoreActions {
@@ -208,7 +211,9 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
   });
 
   const hasReturnFromVideoClip = computed(() => {
-    return options.trackKind.value === 'video' && Boolean(options.clip.value.audioFromVideoDisabled);
+    return (
+      options.trackKind.value === 'video' && Boolean(options.clip.value.audioFromVideoDisabled)
+    );
   });
 
   const hasReturnFromLockedAudioClip = computed(() => {
@@ -440,7 +445,10 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     const playheadUs = timelineStore.currentTime;
     const clipStartUs = options.clip.value.timelineRange.startUs;
     const relativeUs = playheadUs - clipStartUs;
-    const clampedUs = Math.max(0, Math.min(relativeUs, options.clip.value.timelineRange.durationUs));
+    const clampedUs = Math.max(
+      0,
+      Math.min(relativeUs, options.clip.value.timelineRange.durationUs),
+    );
     timelineStore.updateClipProperties(options.clip.value.trackId, options.clip.value.id, {
       freezeFrameSourceUs: Math.round(clampedUs),
     });
@@ -646,6 +654,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
         id: 'delete',
         label: t('common.delete'),
         icon: 'i-heroicons-trash',
+        color: 'danger',
         onClick: handleDeleteClip,
       },
       {
@@ -678,6 +687,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
           ? t('fastcat.timeline.enableClip')
           : t('fastcat.timeline.disableClip'),
         icon: options.clip.value.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
+        color: options.clip.value.disabled ? 'warning' : 'neutral',
         onClick: handleToggleDisabled,
       },
     ];
@@ -688,7 +698,10 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
         label: options.clip.value.audioMuted
           ? t('fastcat.timeline.unmuteClip')
           : t('fastcat.timeline.muteClip'),
-        icon: options.clip.value.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark',
+        icon: options.clip.value.audioMuted
+          ? 'i-heroicons-speaker-wave'
+          : 'i-heroicons-speaker-x-mark',
+        color: options.clip.value.audioMuted ? 'warning' : 'neutral',
         onClick: handleToggleMuted,
       });
 
@@ -696,14 +709,18 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
         id: 'toggle-solo',
         label: isSoloed.value ? t('fastcat.timeline.unsolo') : t('fastcat.timeline.solo'),
         icon: isSoloed.value ? 'i-heroicons-star-solid' : 'i-heroicons-star',
+        color: isSoloed.value ? 'primary' : 'neutral',
         onClick: toggleSolo,
       });
     }
 
     actions.push({
       id: 'toggle-locked',
-      label: options.clip.value.locked ? t('fastcat.timeline.unlockClip') : t('fastcat.timeline.lockClip'),
+      label: options.clip.value.locked
+        ? t('fastcat.timeline.unlockClip')
+        : t('fastcat.timeline.lockClip'),
       icon: options.clip.value.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
+      color: options.clip.value.locked ? 'secondary' : 'neutral',
       onClick: handleToggleLocked,
     });
 
