@@ -22,13 +22,13 @@ function createClip(overrides: Partial<TimelineClipItem> = {}): TimelineClipItem
 describe('clip properties sections', () => {
   it('emits actions from ClipActionsSection', async () => {
     const commonActions = [
-      { id: 'delete', icon: 'i-heroicons-trash', onClick: () => {} },
-      { id: 'rename', icon: 'i-heroicons-pencil', onClick: () => {} },
-      { id: 'copy', icon: 'i-heroicons-document-duplicate', onClick: () => {} },
-      { id: 'cut', icon: 'i-heroicons-scissors', onClick: () => {} },
+      { id: 'delete', label: 'Delete', icon: 'i-heroicons-trash', onClick: () => {} },
+      { id: 'rename', label: 'Rename', icon: 'i-heroicons-pencil', onClick: () => {} },
+      { id: 'copy', label: 'Copy', icon: 'i-heroicons-document-duplicate', onClick: () => {} },
+      { id: 'cut', label: 'Cut', icon: 'i-heroicons-scissors', onClick: () => {} },
     ];
     const otherActions = [
-      { id: 'quantize', icon: 'i-heroicons-squares-2x2', onClick: () => {} },
+      { id: 'quantize', label: 'Quantize', icon: 'i-heroicons-squares-2x2', onClick: () => {} },
     ];
 
     const wrapper = await mountWithNuxt(ClipActionsSection, {
@@ -40,16 +40,14 @@ describe('clip properties sections', () => {
 
     const buttons = wrapper.findAll('button');
 
-    // In augmentedCommonActions, 'rename' is the second one in our list
-    //augmentedCommonActions will have: delete, rename, copy, cut
-    
-    await buttons[1]?.trigger('click'); // rename
-    
-    // The component emits 'rename' when the button with id 'rename' is clicked
+    expect(buttons[0]?.text()).toBe('');
+    expect(buttons[1]?.attributes('title')).toBe('Rename');
+    expect(wrapper.text()).toContain('Quantize');
+    expect(wrapper.text()).not.toContain('Rename');
+
+    await buttons[1]?.trigger('click');
+
     expect(wrapper.emitted('rename')).toHaveLength(1);
-    
-    // Note: the component doesn't emit 'delete' itself, it just calls action.onClick for non-rename/copy/cut actions.
-    // Wait, let's check ClipActionsSection.vue again.
   });
 
   it('renders media source info in ClipInfoSection', async () => {
