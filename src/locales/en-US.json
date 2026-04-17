@@ -10,6 +10,7 @@
     "autoRecognition": "Auto recognition by type",
     "cancel": "Cancel",
     "cancelSelection": "Cancel selection",
+    "calculating": "Calculating",
     "clear": "Clear",
     "clearSelection": "Clear",
     "close": "Close",
@@ -711,6 +712,19 @@
       "createSelectionArea": "Create selection area",
       "createSelectionFromZone": "Create selection from zone",
       "createVersion": "Create version",
+      "autoMontage": {
+        "title": "Auto Montage (Silence Trimming)",
+        "description": "Automatically cut clips based on recognized speech",
+        "trimStart": "Trim start until the first word",
+        "trimEnd": "Trim end after the last word",
+        "trimMiddle": "Trim pauses in the middle (empty spaces)",
+        "mode": "Mode",
+        "modeCut": "Cut",
+        "modeMark": "Mark",
+        "apply": "Apply",
+        "noTranscription": "Some clips are missing transcription. Please 'Transcribe speech' first.",
+        "historyLabel": "Silence trimming"
+      },
       "delete": "Delete",
       "deleteClipDescription": "This action cannot be undone.",
       "deleteClipTitle": "Delete clip?",
@@ -768,6 +782,7 @@
       "noSupportedFiles": "No supported files",
       "overlayModeNone": "Normal mode",
       "overlayModePseudo": "Pseudo-overlay mode",
+      "pasteAtPlayhead": "Paste at playhead",
       "previousMarker": "Previous marker",
       "project": "Project",
       "properties": {
@@ -1065,6 +1080,7 @@
       "original": "Original",
       "reverse": "Reverse",
       "sampleRate": "Sample Rate",
+      "sound": "Sound",
       "stereo": "Stereo"
     },
     "backgroundTasks": {
@@ -1696,5 +1712,9 @@
       "versionCreated": "Version created: {name}",
       "versionSaveError": "Version save error"
     }
+  },
+  "navigation": {
+    "fastcat": "Video Editor",
+    "settings": "Settings"
   }
 }
