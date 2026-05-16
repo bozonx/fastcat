@@ -106,7 +106,12 @@ const clipboardStore = useAppClipboard();
 const isHovered = ref(false);
 
 const clipWidthPx = computed(() =>
-  Math.max(2, timeUsToPx(props.item.timelineRange.durationUs, timelineStore.timelineZoom)),
+  Math.round(
+    Math.max(2, timeUsToPx(props.item.timelineRange.durationUs, timelineStore.timelineZoom)),
+  ),
+);
+const clipLeftPx = computed(() =>
+  Math.round(timeUsToPx(props.item.timelineRange.startUs, timelineStore.timelineZoom)),
 );
 const currentSlipPreview = computed(() => {
   if (!props.slipPreview || props.slipPreview.itemId !== props.item.id) return null;
@@ -501,7 +506,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
       :data-gap-id="item.kind === 'gap' ? item.id : undefined"
       class="absolute top-0.5 bottom-0.5 rounded flex flex-col text-xs text-(--clip-text) select-none transition-shadow group/clip"
       :style="{
-        left: `${timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom)}px`,
+        left: `${clipLeftPx}px`,
         width: `${clipWidthPx}px`,
         zIndex: isHovered
           ? 'var(--z-clip-handles)'

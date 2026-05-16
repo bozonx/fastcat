@@ -37,6 +37,73 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     return doc.tracks.find((t) => t.id === trackId) ?? null;
   }
 
+  /**
+   * Remove/shrink markers that overlap the cut range [rangeStartUs, rangeEndUs], and shift all
+   * markers that start at or after rangeEndUs left by (rangeEndUs - rangeStartUs).
+   * Pass `options` so the marker edits share the same history/save batch as the geometry edits.
+   */
+  function rippleMarkers(
+    rangeStartUs: number,
+    rangeEndUs: number,
+    options: ApplyTimelineOptions,
+  ) {
+    if (!(rangeEndUs > rangeStartUs)) return;
+    const deltaUs = rangeEndUs - rangeStartUs;
+    const doc = deps.getDoc();
+    if (!doc) return;
+    const markers = (doc.metadata?.fastcat?.markers ?? []) as Array<{
+      id: string;
+      timeUs: number;
+      durationUs?: number;
+    }>;
+    if (markers.length === 0) return;
+
+    const cmds: TimelineCommand[] = [];
+    for (const m of markers) {
+      const mStart = m.timeUs;
+      const mEnd = m.timeUs + Math.max(0, m.durationUs ?? 0);
+      if (mEnd <= rangeStartUs) continue;
+      if (mStart >= rangeEndUs) {
+        cmds.push({ type: 'update_marker', id: m.id, timeUs: Math.max(0, mStart - deltaUs) });
+        continue;
+      }
+      if (mStart >= rangeStartUs && mEnd <= rangeEndUs) {
+        cmds.push({ type: 'remove_marker', id: m.id });
+        continue;
+      }
+      if (mStart < rangeStartUs && mEnd > rangeEndUs) {
+        cmds.push({
+          type: 'update_marker',
+          id: m.id,
+          timeUs: mStart,
+          durationUs: Math.max(0, (m.durationUs ?? 0) - deltaUs),
+        });
+        continue;
+      }
+      if (mStart < rangeStartUs) {
+        cmds.push({
+          type: 'update_marker',
+          id: m.id,
+          timeUs: mStart,
+          durationUs: Math.max(0, rangeStartUs - mStart),
+        });
+        continue;
+      }
+      // Head overlap: marker starts inside the range, extends past it.
+      const newStart = Math.max(0, rangeStartUs);
+      const newEnd = Math.max(newStart, mEnd - deltaUs);
+      cmds.push({
+        type: 'update_marker',
+        id: m.id,
+        timeUs: newStart,
+        durationUs: Math.max(0, newEnd - newStart),
+      });
+    }
+    if (cmds.length > 0) {
+      deps.batchApplyTimeline(cmds, options);
+    }
+  }
+
   function rippleDeleteRange(input: RippleDeleteRangeParams, options?: ApplyTimelineOptions) {
     const doc = deps.getDoc();
     if (!doc) return;
@@ -85,10 +152,11 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       deps.batchApplyTimeline(splitCmdsStart, batchOptions);
     }
 
-    // Phase 2: delete clips in range
+    // Phase 2: delete clips that lie entirely (or all but an epsilon) within the cut range.
     const updated = deps.getDoc();
     if (!updated) return;
 
+    const EPSILON = 10;
     const deleteCmds: TimelineCommand[] = [];
     for (const track of updated.tracks) {
       if (!trackIdSet.has(track.id)) continue;
@@ -100,8 +168,12 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
         if (it.kind !== 'clip') continue;
         if (it.locked) continue;
         const itStart = it.timelineRange.startUs;
-        const center = itStart + it.timelineRange.durationUs / 2;
-        if (center >= startUs && center <= endUs) {
+        const itEnd = itStart + it.timelineRange.durationUs;
+        // After the splits at startUs and endUs every survivor either lies entirely
+        // inside or entirely outside [startUs, endUs]. Use the actual edges (with
+        // epsilon) instead of the midpoint — the midpoint heuristic fails when the
+        // split was quantized to a frame boundary.
+        if (itStart >= startUs - EPSILON && itEnd <= endUs + EPSILON) {
           toDelete.push(it.id);
         }
       }
@@ -114,11 +186,10 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       deps.batchApplyTimeline(deleteCmds, batchOptions);
     }
 
-    // Phase 3: shift clips after the deleted range
+    // Phase 3: shift clips after the deleted range, preserving frame alignment.
     const afterDelete = deps.getDoc();
     if (!afterDelete) return;
 
-    const EPSILON = 10;
     const moveCmds: TimelineCommand[] = [];
     for (const track of afterDelete.tracks) {
       if (!trackIdSet.has(track.id)) continue;
@@ -138,7 +209,8 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
             trackId: track.id,
             itemId: clip.id,
             startUs: Math.max(0, clipStart - deltaUs),
-            quantizeToFrames: false,
+            // Quantize so the ripple keeps clips on frame boundaries.
+            quantizeToFrames: true,
           });
         }
       }
@@ -146,6 +218,9 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     if (moveCmds.length > 0) {
       deps.batchApplyTimeline(moveCmds, batchOptions);
     }
+
+    // Phase 4: update markers in the same way the clips were moved.
+    rippleMarkers(startUs, endUs, batchOptions);
   }
 
   async function rippleTrimRight() {
@@ -196,11 +271,18 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
           trackId: target.trackId,
           itemId: clip.id,
           startUs: Math.max(0, clip.timelineRange.startUs - deltaUs),
-          quantizeToFrames: false,
+          quantizeToFrames: true,
         },
         { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
       );
     }
+
+    // rippleTrimRight removes [cutUs, endUs] of timeline space.
+    rippleMarkers(cutUs, cutUs + deltaUs, {
+      saveMode: 'none',
+      historyMode: 'debounced',
+      historyDebounceMs: 100,
+    });
 
     await deps.requestTimelineSave({ immediate: true });
   }
@@ -253,11 +335,18 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
           trackId: target.trackId,
           itemId: clip.id,
           startUs: Math.max(0, clip.timelineRange.startUs - deltaUs),
-          quantizeToFrames: false,
+          quantizeToFrames: true,
         },
         { saveMode: 'none', historyMode: 'debounced', historyDebounceMs: 100 },
       );
     }
+
+    // rippleTrimLeft removes [startUs, cutUs] of timeline space.
+    rippleMarkers(startUs, startUs + deltaUs, {
+      saveMode: 'none',
+      historyMode: 'debounced',
+      historyDebounceMs: 100,
+    });
 
     await deps.requestTimelineSave({ immediate: true });
   }

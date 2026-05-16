@@ -73,9 +73,10 @@ export function overlayTrimItem(
     ? quantizeDeltaUsToFrames(deltaCandidate, fps, 'round')
     : deltaCandidate;
   const speed = typeof moved.speed === 'number' && Number.isFinite(moved.speed) ? moved.speed : 1;
+  const absSpeed = Math.abs(speed) || 1;
   const sourceDeltaUs = shouldQuantizeToFrames
-    ? quantizeDeltaUsToFrames(Math.round(deltaUs * speed), fps, 'round')
-    : Math.round(deltaUs * speed);
+    ? quantizeDeltaUsToFrames(Math.round(deltaUs * absSpeed), fps, 'round')
+    : Math.round(deltaUs * absSpeed);
 
   const prevTimelineStartUs = Math.max(0, Math.round(moved.timelineRange.startUs));
   const prevTimelineDurationUs = Math.max(0, Math.round(moved.timelineRange.durationUs));
@@ -102,7 +103,7 @@ export function overlayTrimItem(
     nextSourceStartUs = clampInt(unclampedSourceStartUs, minSourceStartUs, prevSourceEndUs);
     const appliedDeltaUs = nextSourceStartUs - prevSourceStartUs;
 
-    const appliedTimelineDeltaUs = speed > 0 ? Math.round(appliedDeltaUs / speed) : 0;
+    const appliedTimelineDeltaUs = Math.round(appliedDeltaUs / absSpeed);
     nextTimelineStartUs = Math.max(0, prevTimelineStartUs + appliedTimelineDeltaUs);
     nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs - appliedTimelineDeltaUs);
     nextSourceEndUs = prevSourceEndUs;
@@ -111,7 +112,7 @@ export function overlayTrimItem(
     nextSourceEndUs = clampInt(unclampedSourceEndUs, prevSourceStartUs, maxSourceEndUs);
     const appliedDeltaUs = nextSourceEndUs - prevSourceEndUs;
 
-    const appliedTimelineDeltaUs = speed > 0 ? Math.round(appliedDeltaUs / speed) : 0;
+    const appliedTimelineDeltaUs = Math.round(appliedDeltaUs / absSpeed);
     nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs + appliedTimelineDeltaUs);
     nextTimelineStartUs = prevTimelineStartUs;
     nextSourceStartUs = prevSourceStartUs;
@@ -166,16 +167,20 @@ export function overlayTrimItem(
       continue;
     }
 
+    const itSpeed = typeof it.speed === 'number' && Number.isFinite(it.speed) ? it.speed : 1;
+    const itAbsSpeed = Math.abs(itSpeed) || 1;
+
     // Overlaps only on the left side: trim end of existing clip
     if (itStart < startUs && itEnd > startUs && itEnd <= endUs) {
       const newDuration = shouldQuantizeToFrames
         ? quantizeTimeUsToFrames(startUs - itStart, fps, 'floor')
         : Math.max(0, Math.round(startUs - itStart));
       if (newDuration > 0) {
+        const newSourceDuration = Math.max(0, Math.round(newDuration * itAbsSpeed));
         nextItems.push({
           ...it,
           timelineRange: { startUs: itStart, durationUs: newDuration },
-          sourceRange: { ...it.sourceRange, durationUs: newDuration },
+          sourceRange: { ...it.sourceRange, durationUs: newSourceDuration },
         });
       }
       continue;
@@ -184,6 +189,7 @@ export function overlayTrimItem(
     // Overlaps only on the right side: trim start of existing clip
     if (itStart >= startUs && itStart < endUs && itEnd > endUs) {
       const trimDelta = endUs - itStart;
+      const sourceTrimDelta = Math.max(0, Math.round(trimDelta * itAbsSpeed));
       const newStart = shouldQuantizeToFrames
         ? quantizeTimeUsToFrames(endUs, fps, 'ceil')
         : Math.max(0, Math.round(endUs));
@@ -191,8 +197,15 @@ export function overlayTrimItem(
         ? quantizeTimeUsToFrames(itEnd - endUs, fps, 'floor')
         : Math.max(0, Math.round(itEnd - endUs));
       if (newDuration > 0) {
+        const newSourceDuration = Math.max(
+          0,
+          Math.min(
+            Math.round(newDuration * itAbsSpeed),
+            it.sourceRange.durationUs - sourceTrimDelta,
+          ),
+        );
         const newSourceStartUs = Math.min(
-          it.sourceRange.startUs + trimDelta,
+          it.sourceRange.startUs + sourceTrimDelta,
           it.sourceRange.startUs + it.sourceRange.durationUs,
         );
         nextItems.push({
@@ -200,7 +213,7 @@ export function overlayTrimItem(
           timelineRange: { startUs: newStart, durationUs: newDuration },
           sourceRange: {
             startUs: newSourceStartUs,
-            durationUs: Math.max(0, it.sourceRange.durationUs - trimDelta),
+            durationUs: newSourceDuration,
           },
         });
       }
@@ -213,14 +226,16 @@ export function overlayTrimItem(
         ? quantizeTimeUsToFrames(startUs - itStart, fps, 'floor')
         : Math.max(0, Math.round(startUs - itStart));
       if (leftDuration > 0) {
+        const leftSourceDuration = Math.max(0, Math.round(leftDuration * itAbsSpeed));
         nextItems.push({
           ...it,
           timelineRange: { startUs: itStart, durationUs: leftDuration },
-          sourceRange: { ...it.sourceRange, durationUs: leftDuration },
+          sourceRange: { ...it.sourceRange, durationUs: leftSourceDuration },
         });
       }
 
       const rightTrimDelta = endUs - itStart;
+      const rightSourceTrimDelta = Math.max(0, Math.round(rightTrimDelta * itAbsSpeed));
       const rightStart = shouldQuantizeToFrames
         ? quantizeTimeUsToFrames(endUs, fps, 'ceil')
         : Math.max(0, Math.round(endUs));
@@ -228,8 +243,15 @@ export function overlayTrimItem(
         ? quantizeTimeUsToFrames(itEnd - endUs, fps, 'floor')
         : Math.max(0, Math.round(itEnd - endUs));
       if (rightDuration > 0) {
+        const rightSourceDuration = Math.max(
+          0,
+          Math.min(
+            Math.round(rightDuration * itAbsSpeed),
+            it.sourceRange.durationUs - rightSourceTrimDelta,
+          ),
+        );
         const rightSourceStartUs = Math.min(
-          it.sourceRange.startUs + rightTrimDelta,
+          it.sourceRange.startUs + rightSourceTrimDelta,
           it.sourceRange.startUs + it.sourceRange.durationUs,
         );
         nextItems.push({
@@ -238,7 +260,7 @@ export function overlayTrimItem(
           timelineRange: { startUs: rightStart, durationUs: rightDuration },
           sourceRange: {
             startUs: rightSourceStartUs,
-            durationUs: Math.max(0, it.sourceRange.durationUs - rightTrimDelta),
+            durationUs: rightSourceDuration,
           },
         });
       }

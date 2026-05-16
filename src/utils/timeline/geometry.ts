@@ -61,13 +61,15 @@ export function computeAnchoredScrollLeft(params: {
   return Math.max(0, nextScrollLeft);
 }
 
+/**
+ * Sanitize fps preserving non-integer rates (29.97, 23.976, 59.94 …) so NTSC timebases survive.
+ * Clamped to [1, 240] and quantized to 3 decimals; mirror of `sanitizeFps` in commands/utils.
+ */
 export function sanitizeFps(value: unknown): number {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return 30;
-  const rounded = Math.round(parsed);
-  if (rounded < 1) return 1;
-  if (rounded > 240) return 240;
-  return rounded;
+  const clamped = Math.min(240, Math.max(1, parsed));
+  return Math.round(clamped * 1000) / 1000;
 }
 
 export function quantizeDeltaUsToFrames(deltaUs: number, fps: number): number {

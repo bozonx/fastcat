@@ -169,9 +169,10 @@ describe('TimelineClip', () => {
     expect(clipDiv.exists()).toBe(true);
 
     const style = clipDiv.attributes('style');
-    // timeUsToPx calculation: startUs=1000000 -> 100px. durationUs=5000000 -> 500px
-    const expectedLeft = timeUsToPx(1000000, 1);
-    const expectedWidth = Math.max(2, timeUsToPx(5000000, 1));
+    // Position/width are pixel-snapped (Math.round) so the browser doesn't smear
+    // edges across two physical pixels at non-integer zoom.
+    const expectedLeft = Math.round(timeUsToPx(1000000, 1));
+    const expectedWidth = Math.round(Math.max(2, timeUsToPx(5000000, 1)));
 
     expect(style).toContain(`left: ${expectedLeft}px`);
     expect(style).toContain(`width: ${expectedWidth}px`);

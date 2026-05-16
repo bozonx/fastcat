@@ -33,6 +33,7 @@ import {
   quantizeDeltaUsToFrames,
   clampInt,
   quantizeRangeToFrames,
+  autoAdaptClipTransitions,
 } from '../utils';
 import { normalizeBalance, normalizeGain } from '~/utils/audio/envelope';
 import {
@@ -127,6 +128,8 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
     sourceRange: { startUs: leftSourceStartUs, durationUs: leftSourceDurationUs },
     transitionOut: undefined,
     effects: item.effects ? cloneEffects(item.effects) : undefined,
+    // Drop linkedGroupId on both halves: split breaks the original logical group.
+    linkedGroupId: undefined,
   };
 
   // TODO(keyframes): shift keyframes relative time in rightItem's effects by localCutUs
@@ -186,17 +189,49 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
           const rightAudioDurationUs = Math.max(0, audioEndUs - atUs);
           const audioSpeed =
             typeof it.speed === 'number' && Number.isFinite(it.speed) ? (it.speed as number) : 1;
-          const audioLocalCutUs = Math.max(0, Math.round((atUs - audioStartUs) * audioSpeed));
+          const audioAbsSpeed = Math.abs(audioSpeed);
+          const audioLocalCutUs = Math.max(
+            0,
+            Math.round((atUs - audioStartUs) * audioAbsSpeed),
+          );
+
+          let leftAudioSourceStartUs: number;
+          let leftAudioSourceDurationUs: number;
+          let rightAudioSourceStartUs: number;
+          let rightAudioSourceDurationUs: number;
+
+          if (audioSpeed >= 0) {
+            leftAudioSourceStartUs = Math.round(it.sourceRange.startUs);
+            leftAudioSourceDurationUs = Math.max(0, audioLocalCutUs);
+            rightAudioSourceStartUs = Math.max(
+              0,
+              Math.round(it.sourceRange.startUs) + audioLocalCutUs,
+            );
+            rightAudioSourceDurationUs = Math.max(
+              0,
+              Math.round(it.sourceRange.durationUs) - audioLocalCutUs,
+            );
+          } else {
+            const audioSourceDurationUs = Math.round(it.sourceRange.durationUs);
+            leftAudioSourceStartUs = Math.max(
+              0,
+              Math.round(it.sourceRange.startUs) + audioSourceDurationUs - audioLocalCutUs,
+            );
+            leftAudioSourceDurationUs = Math.max(0, audioLocalCutUs);
+            rightAudioSourceStartUs = Math.round(it.sourceRange.startUs);
+            rightAudioSourceDurationUs = Math.max(0, audioSourceDurationUs - audioLocalCutUs);
+          }
 
           const leftAudio: TimelineClipItem = {
             ...it,
             timelineRange: { startUs: audioStartUs, durationUs: leftAudioDurationUs },
             sourceRange: {
-              startUs: it.sourceRange.startUs,
-              durationUs: Math.max(0, audioLocalCutUs),
+              startUs: leftAudioSourceStartUs,
+              durationUs: leftAudioSourceDurationUs,
             },
             transitionOut: undefined,
             effects: it.effects ? cloneEffects(it.effects) : undefined,
+            linkedGroupId: undefined,
           };
 
           // TODO(keyframes): shift keyframes relative time in rightAudio's effects by audioLocalCutUs
@@ -206,8 +241,8 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
             trackId: t.id,
             timelineRange: { startUs: atUs, durationUs: rightAudioDurationUs },
             sourceRange: {
-              startUs: Math.max(0, Math.round(it.sourceRange.startUs) + audioLocalCutUs),
-              durationUs: Math.max(0, Math.round(it.sourceRange.durationUs) - audioLocalCutUs),
+              startUs: rightAudioSourceStartUs,
+              durationUs: rightAudioSourceDurationUs,
             },
             linkedGroupId: undefined,
             linkedVideoClipId: rightItemId,
@@ -224,9 +259,15 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
 
       if (!changed) return t;
       patched.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-      return { ...t, items: normalizeGaps(doc, t.id, patched, { quantizeToFrames: false }) };
+      return {
+        ...t,
+        items: normalizeGaps(doc, t.id, patched, { quantizeToFrames: shouldQuantizeToFrames }),
+      };
     });
   }
+
+  // After split clip durations may shrink — adapt transitions/fades that exceed the new size.
+  nextTracks = nextTracks.map((t) => ({ ...t, items: autoAdaptClipTransitions(t.items) }));
 
   return { next: { ...doc, tracks: nextTracks } };
 }

@@ -10,13 +10,16 @@ export const FALLBACK_FPS = 30;
 export const MIN_FPS = 1;
 export const MAX_FPS = 240;
 
+/**
+ * Sanitize fps preserving non-integer rates required for NTSC (29.97, 23.976, 59.94, …).
+ * We clamp to a reasonable range and quantize to 3 decimal places to keep the value finite
+ * and free of float noise without forcing integer-only fps.
+ */
 export function sanitizeFps(value: unknown): number {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return FALLBACK_FPS;
-  const rounded = Math.round(parsed);
-  if (rounded < MIN_FPS) return MIN_FPS;
-  if (rounded > MAX_FPS) return MAX_FPS;
-  return rounded;
+  const clamped = Math.min(MAX_FPS, Math.max(MIN_FPS, parsed));
+  return Math.round(clamped * 1000) / 1000;
 }
 
 export function getDocFps(doc: TimelineDocument): number {
@@ -147,6 +150,13 @@ export function rangesOverlap(aStart: number, aEnd: number, bStart: number, bEnd
   return aStart < bEnd && bStart < aEnd;
 }
 
+/**
+ * Tolerance in microseconds for "touching" boundaries. Two clips whose ends differ by no more than
+ * this amount are considered adjacent (not overlapping). Prevents spurious overlap errors from
+ * sub-microsecond quantization drift on non-integer FPS or repeated round-trips.
+ */
+export const OVERLAP_EPSILON_US = 1;
+
 export function assertNoOverlap(
   track: TimelineTrack,
   movedItemId: string,
@@ -160,7 +170,11 @@ export function assertNoOverlap(
     if (it.kind !== 'clip') continue;
     const itStart = it.timelineRange.startUs;
     const itEnd = itStart + it.timelineRange.durationUs;
-    if (rangesOverlap(startUs, endUs, itStart, itEnd)) {
+    // Allow a tiny epsilon of overlap caused by quantization rounding.
+    if (
+      rangesOverlap(startUs, endUs, itStart, itEnd) &&
+      Math.min(endUs, itEnd) - Math.max(startUs, itStart) > OVERLAP_EPSILON_US
+    ) {
       throw new Error('Item overlaps with another item');
     }
   }
@@ -237,16 +251,20 @@ export function sliceTrackItemsForOverlay(
       continue;
     }
 
+    const itSpeed = typeof it.speed === 'number' && Number.isFinite(it.speed) ? it.speed : 1;
+    const itAbsSpeed = Math.abs(itSpeed) || 1;
+
     // Overlaps only on the left side: trim end of existing clip
     if (itStart < startUs && itEnd > startUs && itEnd <= endUs) {
       const newDuration = shouldQuantizeToFrames
         ? quantizeTimeUsToFrames(startUs - itStart, fps, 'floor')
         : Math.max(0, Math.round(startUs - itStart));
       if (newDuration > 0) {
+        const newSourceDuration = Math.max(0, Math.round(newDuration * itAbsSpeed));
         nextItems.push({
           ...it,
           timelineRange: { startUs: itStart, durationUs: newDuration },
-          sourceRange: { ...it.sourceRange, durationUs: newDuration },
+          sourceRange: { ...it.sourceRange, durationUs: newSourceDuration },
         });
       }
       continue;
@@ -255,6 +273,7 @@ export function sliceTrackItemsForOverlay(
     // Overlaps only on the right side: trim start of existing clip
     if (itStart >= startUs && itStart < endUs && itEnd > endUs) {
       const trimDelta = endUs - itStart;
+      const sourceTrimDelta = Math.max(0, Math.round(trimDelta * itAbsSpeed));
       const newStart = shouldQuantizeToFrames
         ? quantizeTimeUsToFrames(endUs, fps, 'ceil')
         : Math.max(0, Math.round(endUs));
@@ -262,8 +281,15 @@ export function sliceTrackItemsForOverlay(
         ? quantizeTimeUsToFrames(itEnd - endUs, fps, 'floor')
         : Math.max(0, Math.round(itEnd - endUs));
       if (newDuration > 0) {
+        const newSourceDuration = Math.max(
+          0,
+          Math.min(
+            Math.round(newDuration * itAbsSpeed),
+            it.sourceRange.durationUs - sourceTrimDelta,
+          ),
+        );
         const newSourceStartUs = Math.min(
-          it.sourceRange.startUs + trimDelta,
+          it.sourceRange.startUs + sourceTrimDelta,
           it.sourceRange.startUs + it.sourceRange.durationUs,
         );
         nextItems.push({
@@ -271,7 +297,7 @@ export function sliceTrackItemsForOverlay(
           timelineRange: { startUs: newStart, durationUs: newDuration },
           sourceRange: {
             startUs: newSourceStartUs,
-            durationUs: Math.max(0, it.sourceRange.durationUs - trimDelta),
+            durationUs: newSourceDuration,
           },
         });
       }
@@ -284,13 +310,15 @@ export function sliceTrackItemsForOverlay(
         ? quantizeTimeUsToFrames(startUs - itStart, fps, 'floor')
         : Math.max(0, Math.round(startUs - itStart));
       if (leftDuration > 0) {
+        const leftSourceDuration = Math.max(0, Math.round(leftDuration * itAbsSpeed));
         nextItems.push({
           ...it,
           timelineRange: { startUs: itStart, durationUs: leftDuration },
-          sourceRange: { ...it.sourceRange, durationUs: leftDuration },
+          sourceRange: { ...it.sourceRange, durationUs: leftSourceDuration },
         });
       }
       const rightTrimDelta = endUs - itStart;
+      const rightSourceTrimDelta = Math.max(0, Math.round(rightTrimDelta * itAbsSpeed));
       const rightStart = shouldQuantizeToFrames
         ? quantizeTimeUsToFrames(endUs, fps, 'ceil')
         : Math.max(0, Math.round(endUs));
@@ -298,8 +326,15 @@ export function sliceTrackItemsForOverlay(
         ? quantizeTimeUsToFrames(itEnd - endUs, fps, 'floor')
         : Math.max(0, Math.round(itEnd - endUs));
       if (rightDuration > 0) {
+        const rightSourceDuration = Math.max(
+          0,
+          Math.min(
+            Math.round(rightDuration * itAbsSpeed),
+            it.sourceRange.durationUs - rightSourceTrimDelta,
+          ),
+        );
         const rightSourceStartUs = Math.min(
-          it.sourceRange.startUs + rightTrimDelta,
+          it.sourceRange.startUs + rightSourceTrimDelta,
           it.sourceRange.startUs + it.sourceRange.durationUs,
         );
         nextItems.push({
@@ -308,7 +343,7 @@ export function sliceTrackItemsForOverlay(
           timelineRange: { startUs: rightStart, durationUs: rightDuration },
           sourceRange: {
             startUs: rightSourceStartUs,
-            durationUs: Math.max(0, it.sourceRange.durationUs - rightTrimDelta),
+            durationUs: rightSourceDuration,
           },
         });
       }
@@ -362,24 +397,11 @@ export function normalizeGaps(
 
     if (current.transitionIn && !current.transitionIn.isOverridden) {
       current.transitionIn.mode = isAdjacentLeft ? 'adjacent' : 'transparent';
-    } else if (current.transitionIn) {
-      const expectedMode = isAdjacentLeft ? 'adjacent' : 'transparent';
-      const actualMode = current.transitionIn.mode ?? 'transparent';
-      if (actualMode === expectedMode) {
-        current.transitionIn.isOverridden = false;
-        current.transitionIn.mode = expectedMode;
-      }
     }
+    // If isOverridden is set, keep both the mode and the flag exactly as the user picked them.
 
     if (current.transitionOut && !current.transitionOut.isOverridden) {
       current.transitionOut.mode = isAdjacentRight ? 'adjacent' : 'transparent';
-    } else if (current.transitionOut) {
-      const expectedMode = isAdjacentRight ? 'adjacent' : 'transparent';
-      const actualMode = current.transitionOut.mode ?? 'transparent';
-      if (actualMode === expectedMode) {
-        current.transitionOut.isOverridden = false;
-        current.transitionOut.mode = expectedMode;
-      }
     }
   }
 

@@ -46,7 +46,9 @@ describe('TimelineEditService', () => {
       getCurrentTime: vi.fn(() => 0),
       applyTimeline: vi.fn(),
       batchApplyTimeline: vi.fn((cmds: TimelineCommand[]) => {
-        // Simple mock implementation: Phase 1 sends splits, Phase 2 sends deletes
+        // Reasonably faithful mock: split actually shortens the source clip
+        // and inserts a tail. Phase 2 of rippleDeleteRange depends on clips
+        // being fully inside [startUs, endUs], which only holds after splits.
         for (const cmd of cmds) {
           if (cmd.type === 'delete_items') {
             const track = (mockDoc.tracks as any[]).find((t) => t.id === cmd.trackId);
@@ -55,17 +57,25 @@ describe('TimelineEditService', () => {
             }
           }
           if (cmd.type === 'split_item') {
-            // For split at endUs (15s), we need a clip that starts there to be moved in Phase 3
-            if (cmd.atUs === 15_000_000) {
-              const track = (mockDoc.tracks as any[]).find((t) => t.id === cmd.trackId);
-              if (track) {
-                track.items.push({
-                  id: 'c2_tail',
-                  kind: 'clip',
-                  timelineRange: { startUs: 15_000_000, durationUs: 5_000_000 },
-                } as any);
-              }
-            }
+            const track = (mockDoc.tracks as any[]).find((t) => t.id === cmd.trackId);
+            if (!track) continue;
+            const idx = track.items.findIndex((it: any) => it.id === cmd.itemId);
+            if (idx === -1) continue;
+            const item = track.items[idx];
+            const start = item.timelineRange.startUs;
+            const end = start + item.timelineRange.durationUs;
+            const atUs = (cmd as any).atUs;
+            if (!(atUs > start && atUs < end)) continue;
+            const left = {
+              ...item,
+              timelineRange: { startUs: start, durationUs: atUs - start },
+            };
+            const right = {
+              ...item,
+              id: `${item.id}_tail_${atUs}`,
+              timelineRange: { startUs: atUs, durationUs: end - atUs },
+            };
+            track.items.splice(idx, 1, left, right);
           }
         }
       }),

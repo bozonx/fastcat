@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeUnmount } from 'vue';
 import type {
   TimelineTrack,
   TimelineTrackItem,
@@ -215,11 +215,17 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
   return 'var(--clip-lower-tri)';
 }
 
+// Active pointer-drag cleanup, so unmounting mid-drag doesn't leak window listeners.
+let activeCleanup: (() => void) | null = null;
+
 function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') {
   if (props.isMobile) return;
   if (!props.canEdit || props.clip.locked || props.track.locked) return;
   e.stopPropagation();
   e.preventDefault();
+
+  // If a previous drag is still pending, drop its listeners first.
+  if (activeCleanup) activeCleanup();
 
   const startX = e.clientX;
   const startY = e.clientY;
@@ -245,12 +251,21 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
     window.removeEventListener('pointermove', onPointerMove);
     window.removeEventListener('pointerup', onPointerUp);
     window.removeEventListener('pointercancel', onPointerUp);
+    if (activeCleanup === cleanup) activeCleanup = null;
   };
 
+  activeCleanup = cleanup;
   window.addEventListener('pointermove', onPointerMove);
   window.addEventListener('pointerup', onPointerUp);
   window.addEventListener('pointercancel', onPointerUp);
 }
+
+onBeforeUnmount(() => {
+  if (activeCleanup) {
+    activeCleanup();
+    activeCleanup = null;
+  }
+});
 </script>
 
 <template>

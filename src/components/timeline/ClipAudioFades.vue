@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeUnmount } from 'vue';
 import type { TimelineTrack, TimelineClipItem, TimelineTrackItem } from '~/timeline/types';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 import { CLIP_AUDIO_GAIN_MAX } from '~/utils/audio/envelope';
@@ -68,12 +68,17 @@ function getFadeHandlePositionPx(edge: 'in' | 'out') {
   return Math.max(0, Math.min(props.clipWidthPx, props.clipWidthPx - fadePx));
 }
 
+// Track the in-progress drag so we can drop window listeners on unmount.
+let activeFadeCleanup: (() => void) | null = null;
+
 function onFadeHandlePointerDown(
   event: PointerEvent,
   payload: { edge: 'in' | 'out'; durationUs: number },
 ) {
   event.stopPropagation();
   event.preventDefault();
+
+  if (activeFadeCleanup) activeFadeCleanup();
 
   const startX = event.clientX;
   const startY = event.clientY;
@@ -83,6 +88,7 @@ function onFadeHandlePointerDown(
     window.removeEventListener('pointermove', onPointerMove);
     window.removeEventListener('pointerup', onPointerUp);
     window.removeEventListener('pointercancel', onPointerUp);
+    if (activeFadeCleanup === cleanup) activeFadeCleanup = null;
   };
 
   const onPointerMove = (moveEvent: PointerEvent) => {
@@ -103,10 +109,18 @@ function onFadeHandlePointerDown(
     }
   };
 
+  activeFadeCleanup = cleanup;
   window.addEventListener('pointermove', onPointerMove);
   window.addEventListener('pointerup', onPointerUp);
   window.addEventListener('pointercancel', onPointerUp);
 }
+
+onBeforeUnmount(() => {
+  if (activeFadeCleanup) {
+    activeFadeCleanup();
+    activeFadeCleanup = null;
+  }
+});
 
 const GAIN_MAX = 4;
 const volumeY = computed(() => {

@@ -1,12 +1,9 @@
-import type { TimelineDocument, TimelineClipItem, TimelineTrack } from '../types';
+import type { TimelineDocument } from '../types';
 import type { TimelineCommand } from '../commands';
-import { quantizeTimeUsToFrames, getDocFps, usToFrame, frameToUs } from '../commands/utils';
+import { quantizeTimeUsToFrames, getDocFps } from '../commands/utils';
 
 export function computeCutUs(doc: TimelineDocument, atUs: number): number {
-  const fps = getDocFps(doc);
-  const q = quantizeTimeUsToFrames(Number(atUs), fps, 'round');
-  const frame = usToFrame(q, fps, 'round');
-  return frameToUs(frame, fps);
+  return quantizeTimeUsToFrames(Number(atUs), getDocFps(doc), 'round');
 }
 
 export function buildSplitClipCommands(

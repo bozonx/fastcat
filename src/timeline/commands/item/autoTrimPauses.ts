@@ -1,6 +1,15 @@
-import type { TimelineDocument, TimelineMediaClipItem } from '../../types';
+import type { TimelineDocument, TimelineMediaClipItem, TimelineTrackItem } from '../../types';
 import type { AutoTrimPausesCommand, TimelineCommandResult } from '../../commands';
-import { getTrackById, nextItemId, normalizeGaps, getDocFps, quantizeRangeToFrames, usToFrame, frameToUs } from '../utils';
+import {
+  getTrackById,
+  nextItemId,
+  normalizeGaps,
+  getDocFps,
+  quantizeRangeToFrames,
+  usToFrame,
+  frameToUs,
+  autoAdaptClipTransitions,
+} from '../utils';
 
 /**
  * Atomic command handler for automatic silence trimming across multiple clips.
@@ -55,11 +64,11 @@ export function autoTrimPauses(doc: TimelineDocument, cmd: AutoTrimPausesCommand
 
       if (!(quantizedAtUs > startUs && quantizedAtUs < endUs)) continue;
 
-      const leftDurationUs = quantizedAtUs - startUs;
-      const rightDurationUs = endUs - quantizedAtUs;
-      const speed = item.speed ?? 1;
-      const absSpeed = Math.abs(speed);
-      const localCutUs = Math.round((quantizedAtUs - startUs) * absSpeed);
+      const leftDurationUs = Math.max(0, quantizedAtUs - startUs);
+      const rightDurationUs = Math.max(0, endUs - quantizedAtUs);
+      const speed = typeof item.speed === 'number' && Number.isFinite(item.speed) ? item.speed : 1;
+      const absSpeed = Math.abs(speed) || 1;
+      const localCutUs = Math.max(0, Math.round((quantizedAtUs - startUs) * absSpeed));
 
       const rightItemId = nextItemId(target.trackId, 'clip');
 
@@ -68,30 +77,39 @@ export function autoTrimPauses(doc: TimelineDocument, cmd: AutoTrimPausesCommand
       let rightSourceStartUs: number;
       let rightSourceDurationUs: number;
 
+      const sourceDurationUs = Math.max(0, Math.round(item.sourceRange.durationUs));
+      const safeLocalCutUs = Math.min(localCutUs, sourceDurationUs);
+
       if (speed >= 0) {
-        leftSourceStartUs = Math.round(item.sourceRange.startUs);
-        leftSourceDurationUs = localCutUs;
-        rightSourceStartUs = Math.round(item.sourceRange.startUs) + localCutUs;
-        rightSourceDurationUs = Math.round(item.sourceRange.durationUs) - localCutUs;
+        leftSourceStartUs = Math.max(0, Math.round(item.sourceRange.startUs));
+        leftSourceDurationUs = safeLocalCutUs;
+        rightSourceStartUs = Math.max(0, Math.round(item.sourceRange.startUs) + safeLocalCutUs);
+        rightSourceDurationUs = Math.max(0, sourceDurationUs - safeLocalCutUs);
       } else {
-        const sourceDurationUs = Math.round(item.sourceRange.durationUs);
-        leftSourceStartUs = Math.round(item.sourceRange.startUs) + sourceDurationUs - localCutUs;
-        leftSourceDurationUs = localCutUs;
-        rightSourceStartUs = Math.round(item.sourceRange.startUs);
-        rightSourceDurationUs = sourceDurationUs - localCutUs;
+        leftSourceStartUs = Math.max(
+          0,
+          Math.round(item.sourceRange.startUs) + sourceDurationUs - safeLocalCutUs,
+        );
+        leftSourceDurationUs = safeLocalCutUs;
+        rightSourceStartUs = Math.max(0, Math.round(item.sourceRange.startUs));
+        rightSourceDurationUs = Math.max(0, sourceDurationUs - safeLocalCutUs);
       }
 
-      const leftPatched = {
+      const leftPatched: TimelineMediaClipItem = {
         ...item,
         timelineRange: { startUs, durationUs: leftDurationUs },
         sourceRange: { startUs: leftSourceStartUs, durationUs: leftSourceDurationUs },
+        transitionOut: undefined,
+        linkedGroupId: undefined,
       };
 
-      const rightItem = {
+      const rightItem: TimelineMediaClipItem = {
         ...item,
         id: rightItemId,
         timelineRange: { startUs: quantizedAtUs, durationUs: rightDurationUs },
         sourceRange: { startUs: rightSourceStartUs, durationUs: rightSourceDurationUs },
+        transitionIn: undefined,
+        linkedGroupId: undefined,
       };
 
       // Check if Right Item is silence
@@ -121,32 +139,45 @@ export function autoTrimPauses(doc: TimelineDocument, cmd: AutoTrimPausesCommand
       else itemsToMarkSilence.push(currentItemId);
     }
 
-    // Apply marked/cut actions
+    // Apply marked/cut actions — only on the target track to avoid touching unrelated tracks.
     if (cmd.mode === 'mark') {
       const silenceSet = new Set(itemsToMarkSilence);
       nextDoc = {
         ...nextDoc,
-        tracks: nextDoc.tracks.map(t => ({
-          ...t,
-          items: t.items.map(it => silenceSet.has(it.id) ? { ...it, ignored: true } as any : it)
-        }))
+        tracks: nextDoc.tracks.map((t) =>
+          t.id === target.trackId
+            ? {
+                ...t,
+                items: t.items.map((it) =>
+                  silenceSet.has(it.id) && it.kind === 'clip'
+                    ? ({ ...it, ignored: true } as TimelineTrackItem)
+                    : it,
+                ),
+              }
+            : t,
+        ),
       };
     } else {
       const deleteSet = new Set(itemsToDelete);
       nextDoc = {
         ...nextDoc,
-        tracks: nextDoc.tracks.map(t => {
-           const nextItems = t.items.filter(it => !deleteSet.has(it.id));
-           return { ...t, items: normalizeGaps(nextDoc, t.id, nextItems, { quantizeToFrames: true }) };
-        })
+        tracks: nextDoc.tracks.map((t) => {
+          if (t.id !== target.trackId) return t;
+          const nextItems = t.items.filter((it) => !deleteSet.has(it.id));
+          return {
+            ...t,
+            items: normalizeGaps(nextDoc, t.id, nextItems, { quantizeToFrames: true }),
+          };
+        }),
       };
     }
-    
-    // Since some items might have been deleted, we should be careful with allCreatedItemIds.
-    // We only return IDs that exist in the final doc and are not ignored if mode is mark?
-    // User expects to see the resulting "speech" clips selected?
-    // Actually, usually after Auto Montage we might want to keep the speech clips selected.
   }
+
+  // Shrink fades/transitions that may now exceed the new (shorter) clip durations.
+  nextDoc = {
+    ...nextDoc,
+    tracks: nextDoc.tracks.map((t) => ({ ...t, items: autoAdaptClipTransitions(t.items) })),
+  };
 
   return { next: nextDoc };
 }

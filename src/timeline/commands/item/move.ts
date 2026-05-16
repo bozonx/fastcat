@@ -83,7 +83,19 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
     if (linkedIds.length > 0) {
       const currentStartUs = Math.max(0, Math.round(Number(item.timelineRange.startUs)));
       const requestedStartUs = Math.max(0, Math.round(Number(cmd.startUs)));
-      const deltaUs = requestedStartUs - currentStartUs;
+      const rawDeltaUs = requestedStartUs - currentStartUs;
+
+      // Collect everyone we are about to move so we can clamp delta against the leftmost member,
+      // otherwise a negative shift would clamp individual members to 0 and break group geometry.
+      const memberStarts: number[] = [];
+      for (const track of doc.tracks) {
+        for (const trackItem of track.items) {
+          if (!linkedIds.includes(trackItem.id) && trackItem.id !== item.id) continue;
+          memberStarts.push(Math.max(0, Math.round(Number(trackItem.timelineRange.startUs))));
+        }
+      }
+      const minMemberStartUs = memberStarts.length > 0 ? Math.min(...memberStarts) : 0;
+      const deltaUs = rawDeltaUs < 0 ? Math.max(rawDeltaUs, -minMemberStartUs) : rawDeltaUs;
 
       const moves: Array<{
         fromTrackId: string;
@@ -99,12 +111,20 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
             fromTrackId: track.id,
             toTrackId: track.id,
             itemId: trackItem.id,
-            startUs: Math.max(0, Math.round(Number(trackItem.timelineRange.startUs)) + deltaUs),
+            startUs: Math.max(
+              0,
+              Math.round(Number(trackItem.timelineRange.startUs)) + deltaUs,
+            ),
           });
         }
       }
 
       if (moves.length > 1) {
+        // Sort moves so we never collide with an item that hasn't moved yet:
+        //   - if moving right (delta > 0): move the rightmost first
+        //   - if moving left  (delta <= 0): move the leftmost first
+        moves.sort((a, b) => (deltaUs > 0 ? b.startUs - a.startUs : a.startUs - b.startUs));
+
         let currentDoc = doc;
         for (const move of moves) {
           const res = moveItemToTrack(currentDoc, {

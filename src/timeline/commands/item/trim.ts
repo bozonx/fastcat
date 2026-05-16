@@ -178,7 +178,8 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
       ...audio,
       timelineRange: { startUs: nextTimelineStartUs, durationUs: nextTimelineDurationUs },
       sourceRange: { startUs: nextSourceStartUs, durationUs: nextSourceDurationUs },
-      sourceDurationUs: item.sourceDurationUs,
+      // Keep audio's own sourceDurationUs — overriding with the video's value can corrupt the audio
+      // clip when the linked audio comes from a different source file.
     }));
   }
 
