@@ -322,15 +322,17 @@ describe('AudioEngine', () => {
   });
 
   it('does not schedule stale playback after stopping while decode is in flight', async () => {
-    workerResponseDelayMs = 20;
+    workerResponseDelayMs = 50;
     const engine = new AudioEngine();
     await engine.init();
 
     await engine.loadClips([createClip()]);
-    await engine.play(0);
+    // Kick off play but don't await — we want to call stop() while play() is
+    // still awaiting the first chunk inside prepareForPlayback.
+    const playPromise = engine.play(0);
     engine.stop();
-
-    await new Promise<void>((resolve) => setTimeout(resolve, 40));
+    await playPromise;
+    await new Promise<void>((resolve) => setTimeout(resolve, 100));
 
     expect(audioContextInstance?.createdSources.length).toBe(0);
   });
@@ -476,6 +478,39 @@ describe('AudioEngine', () => {
     audioContextInstance.currentTime = 5.5;
     const tickedUs = engine.getCurrentTimeUs();
     expect(tickedUs).toBeGreaterThan(2_000_000);
+  });
+
+  it('schedules early chunk sources before later chunks finish decoding', async () => {
+    // 15s clip → needs chunks 0, 1, 2. prefetchHeadChunks warms 0 and 1
+    // (in parallel, capped by maxDecodeConcurrency=2). Chunk 2 only starts
+    // decoding once the streaming loop reaches it.
+    workerResponseDelayMs = 100;
+    const engine = new AudioEngine();
+    await engine.init();
+
+    const clip = createClip({
+      durationUs: 15_000_000,
+      sourceRangeDurationUs: 15_000_000,
+      sourceDurationUs: 15_000_000,
+    });
+    await engine.loadClips([clip]);
+
+    if (!audioContextInstance) throw new Error('AudioContext not initialized');
+    audioContextInstance.currentTime = 100;
+
+    await engine.play(0);
+
+    // Once play() resolves (after chunk 0 is ready), the prefetched chunks
+    // (0 and 1) get scheduled almost immediately. Chunk 2 is still decoding
+    // and shouldn't have a source yet — that's the streaming win: long clips
+    // don't wait for the *whole* range.
+    await new Promise<void>((resolve) => setTimeout(resolve, 10));
+    expect(audioContextInstance.createdSources.length).toBeGreaterThanOrEqual(1);
+    expect(audioContextInstance.createdSources.length).toBeLessThan(3);
+
+    // After the remaining chunk decode (~100ms), all three sources exist.
+    await new Promise<void>((resolve) => setTimeout(resolve, 300));
+    expect(audioContextInstance.createdSources.length).toBe(3);
   });
 
   it('decodes the correct chunk when playback starts in the middle of the source', async () => {

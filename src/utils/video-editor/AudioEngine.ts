@@ -1041,17 +1041,13 @@ export class AudioEngine {
     if (!this.ctx || !this.masterGain) return false;
     if (this.scheduler.getGlobalSpeed() <= 0) return false; // No backward playback
 
-    const chunks = await this.getDecodedChunks(clip);
-
-    if (chunks.length === 0) return false;
-    if (generation !== this.scheduleGeneration) return false;
-    if (!this.scheduler.isPlayingActive()) return false;
+    const sourceKey = clip.sourcePath;
+    if (!sourceKey) return false;
 
     const clipStartS = clip.startUs / 1_000_000;
     const clipDurationS = clip.durationUs / 1_000_000;
     const clipEndS = clipStartS + clipDurationS;
     const currentTimeS = this.getCurrentTimeS();
-
     if (clipEndS <= currentTimeS) return false;
 
     const window = this.buildClipPlaybackWindow(
@@ -1060,6 +1056,19 @@ export class AudioEngine {
       this.scheduler.getGlobalSpeed(),
     );
     if (!window) return false;
+
+    const currentSourceTimeS =
+      window.effectiveSourceStartS + window.currentClipLocalS * window.clipSpeed;
+    const firstChunkIndex = this.getChunkIndex(Math.max(0, currentSourceTimeS));
+
+    // Decode only the first chunk before starting playback. Subsequent
+    // chunks are decoded and scheduled in the background as they become
+    // available — that way long clips don't block the kickoff waiting for
+    // every chunk in the range to come back from the worker.
+    const firstChunk = await this.ensureChunkDecoded(sourceKey, clip.fileHandle, firstChunkIndex);
+    if (!firstChunk) return false;
+    if (generation !== this.scheduleGeneration) return false;
+    if (!this.scheduler.isPlayingActive()) return false;
 
     // Anchor scheduling to the scheduler's kickoff time, not raw ctx.currentTime.
     // During the kickoff window the kickoff is in the future, so all initial
@@ -1072,17 +1081,219 @@ export class AudioEngine {
     );
     const playStartS =
       currentTimeS < window.effectiveStartS
-        ? audioNowS +
-          (window.effectiveStartS - currentTimeS) / this.scheduler.getGlobalSpeed()
+        ? audioNowS + (window.effectiveStartS - currentTimeS) / this.scheduler.getGlobalSpeed()
         : audioNowS;
 
-    await this.playClipSegment(
+    const sourceEndS = currentSourceTimeS + window.remainingInClipS * window.clipSpeed;
+    const lastChunkIndex = this.getChunkIndex(Math.max(currentSourceTimeS, sourceEndS - 1e-6));
+
+    this.streamClipPlayback({
       clip,
-      chunks,
-      { ...window, startAtS: playStartS },
-      { requirePlayingActive: true },
-    );
+      sourceKey,
+      generation,
+      window,
+      playStartS,
+      currentSourceTimeS,
+      firstChunkIndex,
+      lastChunkIndex,
+      firstChunk,
+    });
+
     return true;
+  }
+
+  private streamClipPlayback(args: {
+    clip: AudioEngineClip;
+    sourceKey: string;
+    generation: number;
+    window: ClipPlaybackWindow;
+    playStartS: number;
+    currentSourceTimeS: number;
+    firstChunkIndex: number;
+    lastChunkIndex: number;
+    firstChunk: AudioChunk;
+  }) {
+    if (!this.ctx || !this.masterGain) return;
+
+    const {
+      clip,
+      sourceKey,
+      generation,
+      window,
+      playStartS,
+      currentSourceTimeS,
+      firstChunkIndex,
+      lastChunkIndex,
+      firstChunk,
+    } = args;
+
+    // Per-clip audio graph (shared by every chunk source we schedule below).
+    const clipInputNode = this.ctx.createGain();
+    const clipGain = this.ctx.createGain();
+    const { destroy: destroyEffects } = this.graphBuilder.buildClipGraph({
+      audioContext: this.ctx,
+      sourceNode: clipInputNode,
+      audioBalance: window.audioBalance,
+      effects: clip.audioEffects ?? [],
+      clipGain,
+      masterGain: this.masterGain,
+      trackId: clip.trackId,
+      analyserNodes: this.analyserNodes,
+    });
+
+    const totalSafeDurationS = window.remainingInClipS * window.clipSpeed;
+    const playedClipDurationS = totalSafeDurationS / window.effectiveSpeed;
+    const endAtS = playStartS + playedClipDurationS;
+
+    // Fade envelope on clipGain — set up once for the whole clip.
+    const gainAtClipTime = (tClipS: number) =>
+      getGainAtClipTime({
+        clipDurationS: window.clipDurationS,
+        fadeInS: window.fadeInS,
+        fadeOutS: window.fadeOutS,
+        fadeInCurve: window.fadeInCurve,
+        fadeOutCurve: window.fadeOutCurve,
+        baseGain: window.audioGain,
+        tClipS,
+      });
+
+    const t0 = window.currentClipLocalS;
+    const t1 = window.currentClipLocalS + playedClipDurationS;
+    const gainParam: any = clipGain.gain;
+
+    gainParam.cancelScheduledValues?.(this.ctx.currentTime);
+    gainParam.setValueAtTime?.(gainAtClipTime(t0), playStartS);
+
+    if (window.fadeInS > 0 && t0 < window.fadeInS && t1 > 0) {
+      const rampEndClipS = Math.min(window.fadeInS, t1);
+      const rampEndAtS = playStartS + (rampEndClipS - t0);
+      gainParam.linearRampToValueAtTime?.(gainAtClipTime(rampEndClipS), rampEndAtS);
+    }
+
+    const outStartClipS = window.clipDurationS - window.fadeOutS;
+    if (window.fadeOutS > 0 && t1 > outStartClipS) {
+      const rampStartClipS = Math.max(outStartClipS, t0);
+      const rampStartAtS = playStartS + (rampStartClipS - t0);
+      gainParam.setValueAtTime?.(gainAtClipTime(rampStartClipS), rampStartAtS);
+      gainParam.linearRampToValueAtTime?.(gainAtClipTime(t1), Math.max(rampStartAtS, endAtS));
+    }
+
+    // Streaming state shared across chunk schedules.
+    const targetNodeSet = this.activePlaybackCollection.nodes;
+    const targetCleanupMap = this.activePlaybackCollection.cleanups;
+    const state = {
+      scheduledCtxTimeS: playStartS,
+      currentSourceTimeS,
+      remainingToPlayS: totalSafeDurationS,
+      chunkNodes: [] as AudioBufferSourceNode[],
+      scheduledTotal: 0,
+      endedTotal: 0,
+      streamingDone: false,
+      teardownDone: false,
+    };
+
+    const teardown = () => {
+      if (state.teardownDone) return;
+      state.teardownDone = true;
+      destroyEffects();
+      try {
+        clipInputNode.disconnect();
+      } catch {}
+      for (const node of state.chunkNodes) {
+        targetNodeSet.delete(node);
+        targetCleanupMap.delete(node);
+        try {
+          node.disconnect();
+        } catch {}
+      }
+    };
+
+    const maybeTeardown = () => {
+      if (state.streamingDone && state.endedTotal >= state.scheduledTotal) {
+        teardown();
+      }
+    };
+
+    const scheduleSource = (chunk: AudioChunk) => {
+      if (!this.ctx || state.teardownDone) return;
+      if (state.remainingToPlayS <= 0) return;
+
+      const chunkStartS = chunk.startTimeS;
+      const chunkEndS = chunk.startTimeS + chunk.durationS;
+      if (state.currentSourceTimeS >= chunkEndS) return;
+
+      const offsetInChunkS = Math.max(0, state.currentSourceTimeS - chunkStartS);
+      const availableInChunkS = chunk.durationS - offsetInChunkS;
+      const playDurationS = Math.min(state.remainingToPlayS, availableInChunkS);
+      if (playDurationS <= 0) return;
+
+      const sourceNode = this.ctx.createBufferSource();
+      sourceNode.buffer = chunk.buffer;
+      if (sourceNode.playbackRate) {
+        sourceNode.playbackRate.value = window.effectiveSpeed;
+      }
+      sourceNode.connect(clipInputNode);
+      sourceNode.start(state.scheduledCtxTimeS, offsetInChunkS, playDurationS);
+
+      state.chunkNodes.push(sourceNode);
+      state.scheduledTotal += 1;
+      targetNodeSet.add(sourceNode);
+      // Every chunk node maps to the same teardown function. Stop() iterates
+      // these via stopNodeCollection — teardown is idempotent via the flag.
+      targetCleanupMap.set(sourceNode, teardown);
+
+      sourceNode.onended = () => {
+        targetNodeSet.delete(sourceNode);
+        targetCleanupMap.delete(sourceNode);
+        state.endedTotal += 1;
+        maybeTeardown();
+      };
+
+      state.scheduledCtxTimeS += playDurationS / window.effectiveSpeed;
+      state.currentSourceTimeS += playDurationS;
+      state.remainingToPlayS -= playDurationS;
+    };
+
+    // Schedule the first chunk synchronously so audio can start at kickoff.
+    scheduleSource(firstChunk);
+
+    if (state.scheduledTotal === 0) {
+      teardown();
+      return;
+    }
+
+    // Stream the rest of the chunks one-by-one as their decode completes.
+    void (async () => {
+      for (let i = firstChunkIndex + 1; i <= lastChunkIndex; i += 1) {
+        if (state.teardownDone) return;
+        if (state.remainingToPlayS <= 0) break;
+        if (generation !== this.scheduleGeneration) {
+          teardown();
+          return;
+        }
+        if (!this.scheduler.isPlayingActive()) {
+          teardown();
+          return;
+        }
+
+        const chunk = await this.ensureChunkDecoded(sourceKey, clip.fileHandle, i);
+        if (state.teardownDone) return;
+        if (generation !== this.scheduleGeneration) {
+          teardown();
+          return;
+        }
+        if (!this.scheduler.isPlayingActive()) {
+          teardown();
+          return;
+        }
+        if (!chunk) continue;
+
+        scheduleSource(chunk);
+      }
+
+      state.streamingDone = true;
+      maybeTeardown();
+    })();
   }
 
   private stopNodeCollection(
