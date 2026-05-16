@@ -5,6 +5,7 @@ import {
   normalizeUserSettings,
   normalizeWorkspaceSettings,
 } from '~/utils/settings';
+import { normalizeLocale } from '~/utils/settings/normalizers/shared';
 import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
 
 describe('settings normalization', () => {
@@ -48,6 +49,37 @@ describe('settings normalization', () => {
     expect(normalizeUserSettings({ locale: 'en' }).locale).toBe('en-US');
     expect(normalizeUserSettings({ locale: 'en-US' }).locale).toBe('en-US');
     expect(normalizeUserSettings({ locale: 'fr' }).locale).toBe('en-US');
+  });
+
+  describe('normalizeLocale helper', () => {
+    it('maps short language codes to full BCP-47 tags used by i18n', () => {
+      expect(normalizeLocale({ locale: 'en' })).toBe('en-US');
+      expect(normalizeLocale({ locale: 'ru' })).toBe('ru-RU');
+    });
+
+    it('passes through already-tagged locales unchanged', () => {
+      expect(normalizeLocale({ locale: 'en-US' })).toBe('en-US');
+      expect(normalizeLocale({ locale: 'ru-RU' })).toBe('ru-RU');
+    });
+
+    it('falls back to the default locale for unsupported values', () => {
+      expect(normalizeLocale({ locale: 'fr-FR' })).toBe('en-US');
+      expect(normalizeLocale({ locale: 'de' })).toBe('en-US');
+      expect(normalizeLocale({ locale: '' })).toBe('en-US');
+      expect(normalizeLocale({})).toBe('en-US');
+      expect(normalizeLocale({ locale: null })).toBe('en-US');
+      expect(normalizeLocale({ locale: undefined })).toBe('en-US');
+      expect(normalizeLocale({ locale: 123 })).toBe('en-US');
+    });
+
+    it('reads legacy "language" and "lang" keys when locale is missing', () => {
+      expect(normalizeLocale({ language: 'ru' })).toBe('ru-RU');
+      expect(normalizeLocale({ lang: 'en' })).toBe('en-US');
+    });
+
+    it('prefers explicit "locale" over fallback aliases', () => {
+      expect(normalizeLocale({ locale: 'ru', language: 'en', lang: 'fr' })).toBe('ru-RU');
+    });
   });
 
   it('normalizes stopFrames quality percent', () => {
