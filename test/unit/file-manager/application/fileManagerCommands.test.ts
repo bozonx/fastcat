@@ -63,6 +63,7 @@ describe('fileManagerCommands', () => {
     const vfs = {
       exists: vi.fn(async () => false),
       writeFile: vi.fn(async () => undefined),
+      writeStream: vi.fn(async () => new WritableStream()),
     };
 
     await handleFilesCommand(
@@ -76,7 +77,8 @@ describe('fileManagerCommands', () => {
       },
     );
 
-    expect(vfs.writeFile).toHaveBeenCalledWith('images/logo.svg', file);
+    expect(vfs.writeStream).toHaveBeenCalledWith('images/logo.svg');
+    expect(vfs.writeFile).not.toHaveBeenCalled();
     expect(onMediaImported).toHaveBeenCalledWith({ projectRelativePath: 'images/logo.svg', file });
   });
 

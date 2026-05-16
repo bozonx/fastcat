@@ -64,6 +64,20 @@ export interface HandleFilesDeps {
   onProgress?: (params: { currentFileIndex: number; totalFiles: number; fileName: string }) => void;
 }
 
+async function writeImportedFile(params: {
+  vfs: IFileSystemAdapter;
+  targetPath: string;
+  file: File;
+  abortSignal?: AbortSignal;
+}): Promise<void> {
+  if (params.abortSignal?.aborted) {
+    throw new DOMException('The operation was aborted.', 'AbortError');
+  }
+
+  const writable = await params.vfs.writeStream(params.targetPath);
+  await params.file.stream().pipeTo(writable, { signal: params.abortSignal });
+}
+
 export async function handleFilesCommand(
   files: FileList | File[],
   params: {
@@ -115,7 +129,12 @@ export async function handleFilesCommand(
           ? `${finalRelativePathBase}/${uniqueName}`
           : uniqueName;
 
-        await deps.vfs.writeFile(uniquePath, file);
+        await writeImportedFile({
+          vfs: deps.vfs,
+          targetPath: uniquePath,
+          file,
+          abortSignal: params.abortSignal,
+        });
 
         completedCount++;
         deps.onProgress?.({ currentFileIndex: completedCount, totalFiles, fileName: file.name });
@@ -132,7 +151,12 @@ export async function handleFilesCommand(
         };
       }
 
-      await deps.vfs.writeFile(targetPath, file);
+      await writeImportedFile({
+        vfs: deps.vfs,
+        targetPath,
+        file,
+        abortSignal: params.abortSignal,
+      });
 
       completedCount++;
       deps.onProgress?.({ currentFileIndex: completedCount, totalFiles, fileName: file.name });
