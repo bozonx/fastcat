@@ -2,7 +2,11 @@ import { AudioSampleSink, BlobSource, Input, ALL_FORMATS } from 'mediabunny';
 
 import type { DecodeRequest, DecodeResponse } from '../utils/audio/types';
 
-async function decodeToFloat32Channels(source: Blob | ArrayBuffer) {
+async function decodeToFloat32Channels(
+  source: Blob | ArrayBuffer,
+  rangeStartTimeS = 0,
+  rangeDurationS?: number,
+) {
   const blob = source instanceof Blob ? source : new Blob([source]);
   const input = new Input({ source: new BlobSource(blob), formats: ALL_FORMATS } as any);
 
@@ -22,11 +26,15 @@ async function decodeToFloat32Channels(source: Blob | ArrayBuffer) {
 
       let sampleRate = 48000;
       let numberOfChannels = 2;
+      let actualStartTimeS: number | undefined;
 
       const channelChunks: Float32Array[][] = [];
       let totalFrames = 0;
 
-      for await (const sampleRaw of (sink as any).samples(0, durationS || 1e9)) {
+      const decodeStartS = rangeStartTimeS;
+      const decodeEndS = rangeDurationS ? rangeStartTimeS + rangeDurationS : durationS || 1e9;
+
+      for await (const sampleRaw of (sink as any).samples(decodeStartS, decodeEndS)) {
         const sample = sampleRaw as any;
         try {
           sampleRate = sample.sampleRate;
@@ -36,10 +44,15 @@ async function decodeToFloat32Channels(source: Blob | ArrayBuffer) {
             channelChunks.length = 0;
             for (let ch = 0; ch < numberOfChannels; ch += 1) channelChunks.push([]);
             totalFrames = 0;
+            actualStartTimeS = undefined;
           }
 
           const frames = Number(sample.numberOfFrames) || 0;
           if (frames > 0) {
+            if (actualStartTimeS === undefined) {
+              const ts = Number(sample.timestamp);
+              actualStartTimeS = Number.isFinite(ts) ? ts : decodeStartS;
+            }
             for (let ch = 0; ch < numberOfChannels; ch += 1) {
               const bytesNeeded = sample.allocationSize({ format: 'f32-planar', planeIndex: ch });
               const chunk = new Float32Array(bytesNeeded / 4);
@@ -72,6 +85,10 @@ async function decodeToFloat32Channels(source: Blob | ArrayBuffer) {
         sampleRate,
         numberOfChannels,
         channelBuffers,
+        startTimeS: decodeStartS,
+        actualStartTimeS: actualStartTimeS ?? decodeStartS,
+        durationS: totalFrames / sampleRate,
+        totalFrames,
       };
     } finally {
       if (typeof (sink as any).close === 'function') (sink as any).close();
@@ -224,7 +241,7 @@ async function decodeToSttMono(source: Blob | ArrayBuffer, targetSampleRate = 16
           // Process current sample chunk into MONO Float32
           const monoChunk = new Float32Array(frames);
           const channelBuffer = new Float32Array(frames);
-          
+
           for (let ch = 0; ch < channels; ch += 1) {
             sample.copyTo(channelBuffer, { format: 'f32-planar', planeIndex: ch });
             for (let i = 0; i < frames; i += 1) {
@@ -270,7 +287,8 @@ async function decodeToSttMono(source: Blob | ArrayBuffer, targetSampleRate = 16
 
 self.addEventListener('message', async (event: MessageEvent<DecodeRequest>) => {
   const data = event.data;
-  if (!data || !['decode', 'extract-peaks', 'decode-stt'].includes(data.type)) return;
+  if (!data || !['decode', 'extract-peaks', 'decode-stt', 'decode-range'].includes(data.type))
+    return;
 
   const response: DecodeResponse = {
     type: 'decode-result',
@@ -297,19 +315,35 @@ self.addEventListener('message', async (event: MessageEvent<DecodeRequest>) => {
     }
 
     if (data.type === 'decode-stt') {
-        const result = await decodeToSttMono(
-            data.blob ?? data.arrayBuffer ?? new ArrayBuffer(0),
-            data.options?.targetSampleRate || 16000
-        );
-        response.ok = true;
-        response.result = {
-            sampleRate: result.sampleRate,
-            numberOfChannels: 1,
-            channelBuffers: [],
-            sttAudio: result.sttAudio
-        };
-        (self as any).postMessage(response, [result.sttAudio.buffer]);
-        return;
+      const result = await decodeToSttMono(
+        data.blob ?? data.arrayBuffer ?? new ArrayBuffer(0),
+        data.options?.targetSampleRate || 16000,
+      );
+      response.ok = true;
+      response.result = {
+        sampleRate: result.sampleRate,
+        numberOfChannels: 1,
+        channelBuffers: [],
+        sttAudio: result.sttAudio,
+      };
+      (self as any).postMessage(response, [result.sttAudio.buffer]);
+      return;
+    }
+
+    if (data.type === 'decode-range') {
+      const result = await decodeToFloat32Channels(
+        data.arrayBuffer ?? data.blob ?? new ArrayBuffer(0),
+        data.startTimeS ?? 0,
+        data.durationS,
+      );
+
+      response.ok = true;
+      response.result = {
+        ...result,
+      };
+
+      (self as any).postMessage(response, [...result.channelBuffers]);
+      return;
     }
 
     const result = await decodeToFloat32Channels(

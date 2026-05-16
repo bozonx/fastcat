@@ -1,5 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import { MAX_AUDIO_FILE_BYTES } from '~/utils/constants';
+
 import {
   getGainAtClipTime,
   normalizeBalance,
@@ -11,6 +11,7 @@ import { AudioScheduler } from '~/utils/video-editor/AudioScheduler';
 
 import type { DecodeRequest, DecodeResponse } from '~/utils/audio/types';
 import type {
+  AudioChunk,
   AudioEngineClip,
   AudioNodeCollection,
   ClipPlaybackWindow,
@@ -22,8 +23,13 @@ const logger = createDevLogger('AudioEngine');
 
 export class AudioEngine {
   private ctx: AudioContext | null = null;
-  private decodedCache = new Map<string, AudioBuffer | null>();
-  private decodeInFlight = new Map<string, Promise<AudioBuffer | null>>();
+  private readonly chunkSizeS = 5;
+  private readonly maxChunkCount = 50;
+  private chunkCache = new Map<string, AudioChunk[]>();
+  private chunkDecodeInFlight = new Map<string, Promise<AudioChunk | null>>();
+  private failedChunkKeys = new Set<string>();
+  private chunkLruKeys: string[] = [];
+  private fileBlobCache = new Map<string, Blob>();
   private activeNodes = new Set<AudioBufferSourceNode>();
   private activeCleanups = new Map<AudioBufferSourceNode, () => void>();
   private activeScrubNodes = new Set<AudioBufferSourceNode>();
@@ -125,6 +131,33 @@ export class AudioEngine {
     });
   }
 
+  private decodeRangeInWorker(
+    source: Blob | ArrayBuffer,
+    sourceKey: string,
+    startTimeS: number,
+    durationS: number,
+  ) {
+    const worker = this.ensureDecodeWorker();
+    return new Promise<DecodeResponse['result']>((resolve, reject) => {
+      const id = ++this.decodeCallId;
+      this.decodePending.set(id, { resolve, reject });
+      const req: DecodeRequest = {
+        type: 'decode-range',
+        id,
+        sourceKey,
+        startTimeS,
+        durationS,
+      };
+      if (source instanceof ArrayBuffer) {
+        req.arrayBuffer = source;
+        worker.postMessage(req, [source]);
+      } else {
+        req.blob = source;
+        worker.postMessage(req);
+      }
+    });
+  }
+
   private async withDecodeSlot<T>(task: () => Promise<T>): Promise<T> {
     if (this.decodeInFlightCount >= this.maxDecodeConcurrency) {
       await new Promise<void>((resolve) => this.decodeQueue.push(resolve));
@@ -136,6 +169,81 @@ export class AudioEngine {
       this.decodeInFlightCount = Math.max(0, this.decodeInFlightCount - 1);
       const next = this.decodeQueue.shift();
       if (next) next();
+    }
+  }
+
+  private getChunkIndex(timeS: number): number {
+    return Math.floor(timeS / this.chunkSizeS);
+  }
+
+  private getChunkKey(sourceKey: string, chunkIndex: number): string {
+    return `${sourceKey}:${chunkIndex}`;
+  }
+
+  private touchLru(chunkKey: string) {
+    const idx = this.chunkLruKeys.indexOf(chunkKey);
+    if (idx >= 0) {
+      this.chunkLruKeys.splice(idx, 1);
+    }
+    this.chunkLruKeys.push(chunkKey);
+  }
+
+  private collectPinnedBuffers(): Set<AudioBuffer> {
+    const pinned = new Set<AudioBuffer>();
+    for (const node of this.activeNodes) {
+      if (node.buffer) pinned.add(node.buffer);
+    }
+    for (const node of this.activeScrubNodes) {
+      if (node.buffer) pinned.add(node.buffer);
+    }
+    return pinned;
+  }
+
+  private evictOldestChunksIfNeeded() {
+    if (this.chunkLruKeys.length <= this.maxChunkCount) return;
+
+    const pinned = this.collectPinnedBuffers();
+    let i = 0;
+    while (this.chunkLruKeys.length > this.maxChunkCount && i < this.chunkLruKeys.length) {
+      const oldestKey = this.chunkLruKeys[i];
+      if (!oldestKey) {
+        i += 1;
+        continue;
+      }
+
+      const colonIdx = oldestKey.lastIndexOf(':');
+      if (colonIdx < 0) {
+        this.chunkLruKeys.splice(i, 1);
+        continue;
+      }
+
+      const sourceKey = oldestKey.slice(0, colonIdx);
+      const chunkIndex = parseInt(oldestKey.slice(colonIdx + 1), 10);
+
+      const chunks = this.chunkCache.get(sourceKey);
+      if (!chunks) {
+        this.chunkLruKeys.splice(i, 1);
+        continue;
+      }
+
+      const idx = chunks.findIndex((c) => c.chunkIndex === chunkIndex);
+      if (idx < 0) {
+        this.chunkLruKeys.splice(i, 1);
+        continue;
+      }
+
+      const chunk = chunks[idx];
+      if (chunk && pinned.has(chunk.buffer)) {
+        // Currently feeding an active source node — keep it, look further.
+        i += 1;
+        continue;
+      }
+
+      chunks.splice(idx, 1);
+      if (chunks.length === 0) {
+        this.chunkCache.delete(sourceKey);
+      }
+      this.chunkLruKeys.splice(i, 1);
     }
   }
 
@@ -223,14 +331,31 @@ export class AudioEngine {
     );
     this.currentClips = clips;
     this.cleanupCache();
+    await this.prefetchHeadChunks(clips);
+  }
 
-    // Best-effort prefetch: decode lazily and yield between tasks to avoid blocking UI.
-    // Decoding is still async and browser-implemented; we just avoid a tight loop.
+  private async prefetchHeadChunks(clips: AudioEngineClip[]) {
+    // Best-effort warm-up: decode the first two chunks of every clip so the
+    // scheduler doesn't have to wait on the decode worker the moment playback
+    // starts. Clamps to the clip's source range so we don't ask for data that
+    // isn't part of the clip. Yields between launches so we don't block the UI.
+    const chunksAhead = 2;
     for (const clip of clips) {
       const sourceKey = clip.sourcePath;
       if (!sourceKey) continue;
-      if (this.decodedCache.has(sourceKey)) continue;
-      void this.ensureDecoded(sourceKey, clip.fileHandle);
+
+      const startOffsetS = clip.sourceStartUs / 1_000_000;
+      const sourceEndS = startOffsetS + clip.sourceRangeDurationUs / 1_000_000;
+      const startChunkIndex = this.getChunkIndex(startOffsetS);
+      const lastChunkIndex = this.getChunkIndex(Math.max(startOffsetS, sourceEndS - 1e-6));
+      for (let offset = 0; offset < chunksAhead; offset += 1) {
+        const targetIndex = startChunkIndex + offset;
+        if (targetIndex > lastChunkIndex) break;
+        const chunkKey = this.getChunkKey(sourceKey, targetIndex);
+        if (this.chunkCache.get(sourceKey)?.some((c) => c.chunkIndex === targetIndex)) continue;
+        if (this.chunkDecodeInFlight.has(chunkKey)) continue;
+        void this.ensureChunkDecoded(sourceKey, clip.fileHandle, targetIndex);
+      }
       await new Promise<void>((resolve) => setTimeout(resolve, 0));
     }
   }
@@ -238,6 +363,7 @@ export class AudioEngine {
   updateTimelineLayout(clips: AudioEngineClip[]) {
     this.currentClips = clips;
     this.cleanupCache();
+    void this.prefetchHeadChunks(clips);
     if (this.scheduler.isPlayingActive()) {
       // Re-evaluate playing nodes
       const currentTimeUs = this.getCurrentTimeUs();
@@ -249,9 +375,21 @@ export class AudioEngine {
 
   private cleanupCache() {
     const activePaths = new Set(this.currentClips.map((c) => c.sourcePath).filter(Boolean));
-    for (const key of this.decodedCache.keys()) {
+    for (const key of this.chunkCache.keys()) {
       if (!activePaths.has(key)) {
-        this.decodedCache.delete(key);
+        this.chunkCache.delete(key);
+        this.chunkLruKeys = this.chunkLruKeys.filter((k) => !k.startsWith(`${key}:`));
+      }
+    }
+    for (const key of this.failedChunkKeys) {
+      const sourceKey = key.slice(0, key.lastIndexOf(':'));
+      if (!activePaths.has(sourceKey)) {
+        this.failedChunkKeys.delete(key);
+      }
+    }
+    for (const key of this.fileBlobCache.keys()) {
+      if (!activePaths.has(key)) {
+        this.fileBlobCache.delete(key);
       }
     }
   }
@@ -286,49 +424,63 @@ export class AudioEngine {
     };
   }
 
-  private async ensureDecoded(sourceKey: string, fileHandle: FileSystemFileHandle) {
-    const existing = this.decodeInFlight.get(sourceKey);
-    if (existing) return existing;
+  private async ensureChunkDecoded(
+    sourceKey: string,
+    fileHandle: FileSystemFileHandle,
+    chunkIndex: number,
+  ): Promise<AudioChunk | null> {
+    const chunkKey = this.getChunkKey(sourceKey, chunkIndex);
 
-    if (this.decodedCache.has(sourceKey)) {
-      const cached = this.decodedCache.get(sourceKey);
-      // null means decode failed previously, not in-progress
-      return cached ?? null;
+    if (this.failedChunkKeys.has(chunkKey)) {
+      return null;
+    }
+
+    const inFlight = this.chunkDecodeInFlight.get(chunkKey);
+    if (inFlight) {
+      return inFlight;
+    }
+
+    const existingChunks = this.chunkCache.get(sourceKey);
+    if (existingChunks) {
+      const cached = existingChunks.find((c) => c.chunkIndex === chunkIndex);
+      if (cached) {
+        this.touchLru(chunkKey);
+        return cached;
+      }
     }
 
     const task = this.withDecodeSlot(async () => {
       try {
-        const file = await fileHandle.getFile();
-        if (file.size > MAX_AUDIO_FILE_BYTES) {
-          throw new Error('Audio file is too large to decode in memory');
+        let blob = this.fileBlobCache.get(sourceKey);
+        if (!blob) {
+          blob = await fileHandle.getFile();
+          this.fileBlobCache.set(sourceKey, blob);
         }
-        const arrayBuffer = await file.arrayBuffer();
         if (!this.ctx) return null;
 
-        const decoded = await this.decodeInWorker(arrayBuffer, sourceKey);
-        if (!decoded) {
-          console.warn(`[AudioEngine] Worker returned null for ${sourceKey}`);
-          return null;
-        }
-        if (!decoded.channelBuffers?.length) {
-          console.warn(`[AudioEngine] Worker returned empty channels for ${sourceKey}`);
+        const requestedStartTimeS = chunkIndex * this.chunkSizeS;
+        const decoded = await this.decodeRangeInWorker(
+          blob,
+          sourceKey,
+          requestedStartTimeS,
+          this.chunkSizeS,
+        );
+
+        if (!decoded || !decoded.channelBuffers?.length) {
+          console.warn(`[AudioEngine] Worker returned null for chunk ${chunkKey}`);
           return null;
         }
 
         const numChannels = Math.max(1, Math.round(Number(decoded.numberOfChannels) || 1));
         const sampleRate = Math.max(8000, Math.round(Number(decoded.sampleRate) || 48000));
-        const first = decoded.channelBuffers[0];
-        if (!first) {
-          console.warn(`[AudioEngine] First channel buffer is undefined for ${sourceKey}`);
-          return null;
-        }
-        const frames = Math.floor(first.byteLength / Float32Array.BYTES_PER_ELEMENT);
-        if (frames <= 0) {
-          console.warn(`[AudioEngine] Decoded audio has 0 frames for ${sourceKey}`);
+        const totalFrames = decoded.totalFrames ?? 0;
+
+        if (totalFrames <= 0) {
+          console.warn(`[AudioEngine] Decoded audio chunk has 0 frames for ${chunkKey}`);
           return null;
         }
 
-        const audioBuffer = this.ctx.createBuffer(numChannels, frames, sampleRate);
+        const audioBuffer = this.ctx.createBuffer(numChannels, totalFrames, sampleRate);
         for (let ch = 0; ch < numChannels; ch += 1) {
           const buf = decoded.channelBuffers[ch];
           if (!buf) continue;
@@ -336,44 +488,78 @@ export class AudioEngine {
           audioBuffer.copyToChannel(data, ch, 0);
         }
 
+        const chunk: AudioChunk = {
+          chunkIndex,
+          startTimeS: decoded.actualStartTimeS ?? requestedStartTimeS,
+          durationS: totalFrames / sampleRate,
+          buffer: audioBuffer,
+        };
+
+        let sourceChunks = this.chunkCache.get(sourceKey);
+        if (!sourceChunks) {
+          sourceChunks = [];
+          this.chunkCache.set(sourceKey, sourceChunks);
+        }
+        sourceChunks.push(chunk);
+        sourceChunks.sort((a, b) => a.chunkIndex - b.chunkIndex);
+
+        this.touchLru(chunkKey);
+        this.evictOldestChunksIfNeeded();
+
         logger.info(
-          `Successfully decoded ${sourceKey}: ${numChannels}ch, ${sampleRate}Hz, ${frames} frames`,
+          `Decoded chunk ${chunkKey}: ${numChannels}ch, ${sampleRate}Hz, ${totalFrames} frames`,
         );
-        this.decodedCache.set(sourceKey, audioBuffer);
-        return audioBuffer;
+        return chunk;
       } catch (err) {
         const name = (err as any)?.name;
-        if (name !== 'NoAudioTrackError' && name !== 'UnsupportedFormatError') {
-          console.warn('[AudioEngine] Failed to decode audio', err);
+        // Only permanent failures should block retries. Transient errors
+        // (e.g. blob read interrupted) deserve another shot the next time the
+        // chunk is requested.
+        if (name === 'NoAudioTrackError' || name === 'UnsupportedFormatError') {
+          this.failedChunkKeys.add(chunkKey);
+        } else {
+          console.warn(`[AudioEngine] Failed to decode chunk ${chunkKey}`, err);
         }
-        this.decodedCache.set(sourceKey, null);
         return null;
       } finally {
-        this.decodeInFlight.delete(sourceKey);
+        this.chunkDecodeInFlight.delete(chunkKey);
       }
     });
 
-    this.decodeInFlight.set(sourceKey, task);
+    this.chunkDecodeInFlight.set(chunkKey, task);
     return task;
   }
 
-  private async getDecodedBuffer(clip: AudioEngineClip) {
+  private async getChunksForRange(
+    sourceKey: string,
+    fileHandle: FileSystemFileHandle,
+    startTimeS: number,
+    durationS: number,
+  ): Promise<AudioChunk[]> {
+    if (durationS <= 0) return [];
+
+    const startIndex = this.getChunkIndex(startTimeS);
+    const endIndex = this.getChunkIndex(startTimeS + durationS);
+
+    const requests: Promise<AudioChunk | null>[] = [];
+    for (let i = startIndex; i <= endIndex; i++) {
+      requests.push(this.ensureChunkDecoded(sourceKey, fileHandle, i));
+    }
+
+    // Concurrency is still bounded by withDecodeSlot; Promise.all just lets
+    // the worker pick up the next index as soon as a slot frees up.
+    const settled = await Promise.all(requests);
+    return settled.filter((chunk): chunk is AudioChunk => chunk != null);
+  }
+
+  private async getDecodedChunks(clip: AudioEngineClip): Promise<AudioChunk[]> {
     const sourceKey = clip.sourcePath;
-    if (!sourceKey) {
-      return null;
-    }
+    if (!sourceKey) return [];
 
-    const buffer = this.decodedCache.get(sourceKey) ?? null;
-    if (buffer) {
-      return buffer;
-    }
+    const startOffsetS = clip.sourceStartUs / 1_000_000;
+    const durationS = clip.sourceRangeDurationUs / 1_000_000;
 
-    const inFlight = this.decodeInFlight.get(sourceKey);
-    if (inFlight) {
-      return await inFlight;
-    }
-
-    return await this.ensureDecoded(sourceKey, clip.fileHandle);
+    return this.getChunksForRange(sourceKey, clip.fileHandle, startOffsetS, durationS);
   }
 
   private buildClipPlaybackWindow(clip: AudioEngineClip, currentTimeS: number, speed: number) {
@@ -460,15 +646,17 @@ export class AudioEngine {
 
   private async playClipSegment(
     clip: AudioEngineClip,
-    buffer: AudioBuffer,
+    chunks: AudioChunk[],
     window: ClipPlaybackWindow,
     options?: {
       maxPlaybackDurationS?: number;
       nodeSet?: Set<AudioBufferSourceNode>;
       cleanupMap?: Map<AudioBufferSourceNode, () => void>;
+      requirePlayingActive?: boolean;
     },
   ) {
-    if (!this.ctx || !this.masterGain) return;
+    if (!this.ctx || !this.masterGain || chunks.length === 0) return;
+    if (options?.requirePlayingActive && !this.scheduler.isPlayingActive()) return;
 
     const currentSourceTimeS =
       window.effectiveSourceStartS + window.currentClipLocalS * window.clipSpeed;
@@ -484,12 +672,17 @@ export class AudioEngine {
       safeBufferOffsetS = 0;
     }
 
-    const epsilon = 1 / Math.max(1, Math.round(buffer.sampleRate || 48000));
-    if (safeBufferOffsetS >= buffer.duration) {
-      safeBufferOffsetS = Math.max(0, buffer.duration - epsilon);
+    const sampleRate = Math.max(1, Math.round(chunks[0]?.buffer?.sampleRate || 48000));
+    const epsilon = 1 / sampleRate;
+
+    const lastChunk = chunks[chunks.length - 1];
+    const maxSourceTimeS = lastChunk ? lastChunk.startTimeS + lastChunk.durationS : 0;
+
+    if (safeBufferOffsetS >= maxSourceTimeS) {
+      safeBufferOffsetS = Math.max(0, maxSourceTimeS - epsilon);
     }
 
-    const remainingInBufferS = Math.max(0, buffer.duration - safeBufferOffsetS);
+    const remainingInBufferS = Math.max(0, maxSourceTimeS - safeBufferOffsetS);
     safeDurationToPlayS = Math.min(
       Math.max(safeDurationToPlayS, epsilon),
       Math.max(remainingInBufferS, epsilon),
@@ -499,17 +692,14 @@ export class AudioEngine {
       return;
     }
 
-    const sourceNode = this.ctx.createBufferSource();
-    sourceNode.buffer = buffer;
-    if (sourceNode.playbackRate) {
-      sourceNode.playbackRate.value = window.effectiveSpeed;
-    }
-
+    // Create a single clip input node that all chunk sources feed into.
+    // The graph builder wires effects and panner from this node to clipGain.
+    const clipInputNode = this.ctx.createGain();
     const clipGain = this.ctx.createGain();
 
     const { destroy: destroyEffects } = this.graphBuilder.buildClipGraph({
       audioContext: this.ctx,
-      sourceNode,
+      sourceNode: clipInputNode,
       audioBalance: window.audioBalance,
       effects: clip.audioEffects ?? [],
       clipGain,
@@ -555,21 +745,83 @@ export class AudioEngine {
       gainParam.linearRampToValueAtTime?.(gainAtClipTime(t1), Math.max(rampStartAtS, endAtS));
     }
 
-    sourceNode.start(startAtS, safeBufferOffsetS, safeDurationToPlayS);
+    let scheduledTimeS = startAtS;
+    let remainingToPlayS = safeDurationToPlayS;
+    let currentOffsetS = safeBufferOffsetS;
+    const chunkNodes: AudioBufferSourceNode[] = [];
+
+    for (const chunk of chunks) {
+      if (remainingToPlayS <= 0) break;
+
+      const chunkStartS = chunk.startTimeS;
+      const chunkEndS = chunk.startTimeS + chunk.durationS;
+
+      if (currentOffsetS >= chunkEndS) continue;
+
+      const offsetInChunkS = Math.max(0, currentOffsetS - chunkStartS);
+      const availableInChunkS = chunk.durationS - offsetInChunkS;
+      const playDurationS = Math.min(remainingToPlayS, availableInChunkS);
+
+      if (playDurationS <= 0) continue;
+
+      const sourceNode = this.ctx.createBufferSource();
+
+      sourceNode.buffer = chunk.buffer;
+      if (sourceNode.playbackRate) {
+        sourceNode.playbackRate.value = window.effectiveSpeed;
+      }
+
+      sourceNode.connect(clipInputNode);
+
+      const actualPlayDurationS = playDurationS / window.effectiveSpeed;
+      sourceNode.start(scheduledTimeS, offsetInChunkS, playDurationS);
+
+      chunkNodes.push(sourceNode);
+
+      scheduledTimeS += actualPlayDurationS;
+      remainingToPlayS -= playDurationS;
+      currentOffsetS += playDurationS;
+    }
 
     const targetNodeSet = options?.nodeSet ?? this.activePlaybackCollection.nodes;
     const targetCleanupMap = options?.cleanupMap ?? this.activePlaybackCollection.cleanups;
-    targetNodeSet.add(sourceNode);
-    targetCleanupMap.set(sourceNode, destroyEffects);
 
-    sourceNode.onended = () => {
-      targetNodeSet.delete(sourceNode);
-      const cleanup = targetCleanupMap.get(sourceNode);
-      if (cleanup) {
-        cleanup();
-        targetCleanupMap.delete(sourceNode);
+    const cleanupAll = () => {
+      destroyEffects();
+      try {
+        clipInputNode.disconnect();
+      } catch {}
+      for (const node of chunkNodes) {
+        targetNodeSet.delete(node);
+        try {
+          node.disconnect();
+        } catch {}
       }
     };
+
+    if (chunkNodes.length === 0) {
+      cleanupAll();
+      return;
+    }
+
+    const lastIndex = chunkNodes.length - 1;
+    for (let i = 0; i < chunkNodes.length; i++) {
+      const node = chunkNodes[i];
+      if (!node) continue;
+      targetNodeSet.add(node);
+
+      node.onended = () => {
+        targetNodeSet.delete(node);
+        if (i === lastIndex) {
+          cleanupAll();
+        }
+      };
+    }
+
+    const lastNode = chunkNodes[lastIndex];
+    if (lastNode) {
+      targetCleanupMap.set(lastNode, cleanupAll);
+    }
   }
 
   private scheduleLookahead() {
@@ -649,8 +901,8 @@ export class AudioEngine {
         continue;
       }
 
-      const buffer = await this.getDecodedBuffer(clip);
-      if (!buffer) {
+      const chunks = await this.getDecodedChunks(clip);
+      if (chunks.length === 0) {
         continue;
       }
 
@@ -666,7 +918,7 @@ export class AudioEngine {
 
       await this.playClipSegment(
         clip,
-        buffer,
+        chunks,
         { ...window, remainingInClipS: clippedDurationS },
         {
           maxPlaybackDurationS,
@@ -738,8 +990,9 @@ export class AudioEngine {
     if (!this.ctx || !this.masterGain) return false;
     if (this.scheduler.getGlobalSpeed() <= 0) return false; // No backward playback
 
-    const buffer = await this.getDecodedBuffer(clip);
-    if (!buffer) return false;
+    const chunks = await this.getDecodedChunks(clip);
+
+    if (chunks.length === 0) return false;
     if (generation !== this.scheduleGeneration) return false;
     if (!this.scheduler.isPlayingActive()) return false;
 
@@ -763,7 +1016,12 @@ export class AudioEngine {
           (window.effectiveStartS - currentTimeS) / this.scheduler.getGlobalSpeed()
         : this.ctx.currentTime;
 
-    await this.playClipSegment(clip, buffer, { ...window, startAtS: playStartS });
+    await this.playClipSegment(
+      clip,
+      chunks,
+      { ...window, startAtS: playStartS },
+      { requirePlayingActive: true },
+    );
     return true;
   }
 
@@ -801,8 +1059,11 @@ export class AudioEngine {
       this.ctx.close();
       this.ctx = null;
     }
-    this.decodedCache.clear();
-    this.decodeInFlight.clear();
+    this.chunkCache.clear();
+    this.chunkDecodeInFlight.clear();
+    this.failedChunkKeys.clear();
+    this.chunkLruKeys = [];
+    this.fileBlobCache.clear();
     this.analyserNodes.clear();
 
     if (this.decodeWorker) {

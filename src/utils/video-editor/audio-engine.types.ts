@@ -42,6 +42,20 @@ export interface AudioEngineClip {
   audioEffects?: AudioClipEffect[];
 }
 
+export interface AudioChunk {
+  // Index of the chunk in the source file (source time / chunkSize, floored).
+  // Cache lookups use this rather than startTimeS to avoid drift when the
+  // decoder yields the first sample slightly before/after the theoretical
+  // boundary.
+  chunkIndex: number;
+  // Source-file time of the first decoded sample in `buffer`. May lag the
+  // theoretical chunk boundary (chunkIndex * chunkSize) by up to one keyframe
+  // interval because mediabunny seeks to the nearest key packet.
+  startTimeS: number;
+  durationS: number;
+  buffer: AudioBuffer;
+}
+
 export interface AudioNodeCollection {
   nodes: Set<AudioBufferSourceNode>;
   cleanups: Map<AudioBufferSourceNode, () => void>;

@@ -8,11 +8,13 @@ interface WorkerMessageEvent<T> {
 }
 
 interface DecodeRequest {
-  type: 'decode' | 'extract-peaks';
+  type: 'decode' | 'extract-peaks' | 'decode-range';
   id: number;
   sourceKey: string;
   arrayBuffer?: ArrayBuffer;
   blob?: Blob;
+  startTimeS?: number;
+  durationS?: number;
 }
 
 interface DecodeResponse {
@@ -24,13 +26,17 @@ interface DecodeResponse {
     sampleRate: number;
     numberOfChannels: number;
     channelBuffers: ArrayBuffer[];
+    startTimeS?: number;
+    actualStartTimeS?: number;
+    durationS?: number;
+    totalFrames?: number;
   };
 }
 
 class WorkerMock {
   private listeners: Record<string, Array<(event: WorkerMessageEvent<any>) => void>> = {};
   public postMessage = vi.fn((payload: DecodeRequest) => {
-    const response = createWorkerResponse(payload.id);
+    const response = createWorkerResponse(payload);
     const emitResponse = () => {
       this.emit('message', { data: response });
     };
@@ -79,6 +85,7 @@ class AudioBufferMock {
 
 class AudioBufferSourceNodeMock {
   buffer: AudioBufferMock | null = null;
+  playbackRate = { value: 1 };
   connect = vi.fn();
   start = vi.fn();
   stop = vi.fn();
@@ -127,25 +134,39 @@ class AudioContextMock {
 let workerInstance: WorkerMock | null = null;
 let audioContextInstance: AudioContextMock | null = null;
 let workerOk = true;
+let workerErrorName: string | undefined = undefined;
 let workerResponseDelayMs = 0;
+// Chunk size matches AudioEngine.chunkSizeS. Each mocked decode-range chunk
+// returns this many seconds of (silent) audio.
+const CHUNK_SECONDS = 5;
+const CHUNK_FRAMES = CHUNK_SECONDS * 48_000;
 
-function createWorkerResponse(id: number): DecodeResponse {
+function createWorkerResponse(payload: DecodeRequest): DecodeResponse {
   if (!workerOk) {
     return {
       type: 'decode-result',
-      id,
+      id: payload.id,
       ok: false,
-      error: { message: 'Decode failed' },
+      error: { name: workerErrorName, message: 'Decode failed' },
     };
   }
+
+  const isRange = payload.type === 'decode-range';
+  const startTimeS = isRange ? (payload.startTimeS ?? 0) : 0;
+  const durationS = isRange ? (payload.durationS ?? CHUNK_SECONDS) : CHUNK_SECONDS;
+  const frames = isRange ? Math.round(durationS * 48_000) : CHUNK_FRAMES;
   return {
     type: 'decode-result',
-    id,
+    id: payload.id,
     ok: true,
     result: {
       sampleRate: 48_000,
       numberOfChannels: 1,
-      channelBuffers: [new Float32Array([0, 0, 0, 0]).buffer],
+      channelBuffers: [new Float32Array(frames).buffer],
+      startTimeS,
+      actualStartTimeS: startTimeS,
+      durationS,
+      totalFrames: frames,
     },
   };
 }
@@ -176,6 +197,7 @@ function createClip(overrides: Partial<Parameters<AudioEngine['loadClips']>[0][n
 describe('AudioEngine', () => {
   beforeEach(() => {
     workerOk = true;
+    workerErrorName = undefined;
     workerResponseDelayMs = 0;
     workerInstance = null;
     audioContextInstance = null;
@@ -255,6 +277,7 @@ describe('AudioEngine', () => {
     audioContextInstance.currentTime = 10;
 
     await engine.play(0);
+    await new Promise<void>((resolve) => setTimeout(resolve, 10));
 
     expect(audioContextInstance.createdSources.length).toBe(1);
     const source = audioContextInstance.createdSources[0];
@@ -339,8 +362,9 @@ describe('AudioEngine', () => {
     expect(engine.getCurrentTimeUs()).toBe(0);
   });
 
-  it('keeps failed decode cached as null', async () => {
+  it('does not retry permanent decode failures', async () => {
     workerOk = false;
+    workerErrorName = 'UnsupportedFormatError';
     const engine = new AudioEngine();
     await engine.init();
 
@@ -355,5 +379,84 @@ describe('AudioEngine', () => {
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
     expect(workerInstance?.postMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries transient decode failures the next time the chunk is requested', async () => {
+    workerOk = false;
+    workerErrorName = undefined;
+    const engine = new AudioEngine();
+    await engine.init();
+
+    const clip = createClip();
+    await engine.loadClips([clip]);
+
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    workerOk = true;
+    await engine.loadClips([clip]);
+
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    expect(workerInstance?.postMessage).toHaveBeenCalledTimes(2);
+  });
+
+  it('decodes every chunk needed for a multi-chunk clip', async () => {
+    // Clip covers 12s of source — needs chunks 0, 1, and 2 (5s each).
+    const engine = new AudioEngine();
+    await engine.init();
+
+    const clip = createClip({
+      durationUs: 12_000_000,
+      sourceRangeDurationUs: 12_000_000,
+      sourceDurationUs: 12_000_000,
+    });
+    await engine.loadClips([clip]);
+
+    if (!audioContextInstance) throw new Error('AudioContext not initialized');
+    audioContextInstance.currentTime = 100;
+
+    await engine.play(0);
+    await new Promise<void>((resolve) => setTimeout(resolve, 20));
+
+    const rangeRequests = workerInstance?.postMessage.mock.calls
+      .map(([req]) => req as DecodeRequest)
+      .filter((req) => req.type === 'decode-range');
+    expect(rangeRequests?.length).toBe(3);
+    expect(rangeRequests?.map((r) => r.startTimeS)).toEqual([0, 5, 10]);
+
+    // One AudioBufferSourceNode per chunk, all wired into the clip input gain.
+    expect(audioContextInstance.createdSources.length).toBe(3);
+    for (const source of audioContextInstance.createdSources) {
+      expect(source.start).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it('decodes the correct chunk when playback starts in the middle of the source', async () => {
+    // Clip uses source seconds 7..12, so the first chunk needed is index 1
+    // (covers 5..10s in source time).
+    const engine = new AudioEngine();
+    await engine.init();
+
+    const clip = createClip({
+      durationUs: 5_000_000,
+      sourceStartUs: 7_000_000,
+      sourceRangeDurationUs: 5_000_000,
+      sourceDurationUs: 20_000_000,
+    });
+    await engine.loadClips([clip]);
+
+    if (!audioContextInstance) throw new Error('AudioContext not initialized');
+    audioContextInstance.currentTime = 100;
+
+    await engine.play(0);
+    await new Promise<void>((resolve) => setTimeout(resolve, 20));
+
+    const rangeRequests = workerInstance?.postMessage.mock.calls
+      .map(([req]) => req as DecodeRequest)
+      .filter((req) => req.type === 'decode-range');
+    expect(rangeRequests?.map((r) => r.startTimeS).sort((a, b) => (a ?? 0) - (b ?? 0))).toEqual([
+      5, 10,
+    ]);
+    expect(audioContextInstance.createdSources.length).toBe(2);
   });
 });

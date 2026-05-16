@@ -4,7 +4,7 @@ import type { AudioClipEffect } from '~/timeline/types';
 
 export interface BuildClipAudioGraphParams {
   audioContext: AudioContext;
-  sourceNode: AudioBufferSourceNode;
+  sourceNode: AudioNode;
   audioBalance: number;
   effects: AudioClipEffect[];
   clipGain: GainNode;
