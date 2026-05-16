@@ -1,10 +1,19 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
-import { join, extname, basename } from 'node:path';
+import { join, extname } from 'node:path';
 
 const LOCALE_FILES = {
   en: 'src/locales/en-US.json',
   ru: 'src/locales/ru-RU.json',
 };
+
+const GENERATED_LOCALE_FILES = {
+  en: 'src/locales/en-US.ts',
+  ru: 'src/locales/ru-RU.ts',
+};
+
+function serializeLocaleModule(locale) {
+  return `export default ${JSON.stringify(locale, null, 2)};\n`;
+}
 
 async function flattenObject(obj, prefix = '') {
   let keys = {};
@@ -33,9 +42,19 @@ async function getFiles(dir) {
 async function check() {
   const locales = {};
   const localeKeys = {};
+  let error = false;
+
   for (const [lang, path] of Object.entries(LOCALE_FILES)) {
     locales[lang] = JSON.parse(await readFile(path, 'utf8'));
     localeKeys[lang] = await flattenObject(locales[lang]);
+
+    const generatedPath = GENERATED_LOCALE_FILES[lang];
+    const generatedContent = await readFile(generatedPath, 'utf8');
+    const expectedContent = serializeLocaleModule(locales[lang]);
+    if (generatedContent !== expectedContent) {
+      console.error(`${generatedPath} is out of sync with ${path}`);
+      error = true;
+    }
   }
 
   const allLocaleKeys = new Set([...Object.keys(localeKeys.en), ...Object.keys(localeKeys.ru)]);
@@ -88,8 +107,6 @@ async function check() {
       if (prefix) usedDynamicPrefixes.add(prefix);
     }
   }
-
-  let error = false;
 
   const potentiallyUnused = [...allLocaleKeys]
     .filter((k) => !usedKeys.has(k) && ![...usedDynamicPrefixes].some((p) => k.startsWith(p)))
