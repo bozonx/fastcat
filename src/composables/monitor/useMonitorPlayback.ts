@@ -217,11 +217,16 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
         setLocalTimeFromStore();
         resetMonitorPlaybackLoopState(playbackLoopState);
 
-        audioEngine.play(localCurrentTimeUs, timelineStore.playbackSpeed);
-
-        playbackLoopId = requestAnimationFrame((ts) => {
-          playbackLoopState.lastFrameTimeMs = ts;
-          updatePlayback(ts);
+        // Await the engine so the first chunk(s) under the playhead are
+        // decoded and the first source nodes are armed at the kickoff time
+        // before we let the render loop start ticking — this keeps audio and
+        // video aligned from the very first frame.
+        void audioEngine.play(localCurrentTimeUs, timelineStore.playbackSpeed).then(() => {
+          if (isUnmounted || !isPlaying.value) return;
+          playbackLoopId = requestAnimationFrame((ts) => {
+            playbackLoopState.lastFrameTimeMs = ts;
+            updatePlayback(ts);
+          });
         });
       } else {
         audioEngine.stopScrubPreview();

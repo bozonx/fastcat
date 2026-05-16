@@ -431,6 +431,53 @@ describe('AudioEngine', () => {
     }
   });
 
+  it('schedules the first source at the future kickoff time, not at ctx.currentTime', async () => {
+    const engine = new AudioEngine();
+    await engine.init();
+
+    const clip = createClip();
+    await engine.loadClips([clip]);
+
+    if (!audioContextInstance) throw new Error('AudioContext not initialized');
+    audioContextInstance.currentTime = 5;
+
+    await engine.play(0);
+    await new Promise<void>((resolve) => setTimeout(resolve, 20));
+
+    const source = audioContextInstance.createdSources[0];
+    const startArgs = source?.start.mock.calls[0];
+    // First arg is `when` in AudioContext time. Must be strictly greater than
+    // currentTime so audio kicks off after the latency window (KICKOFF_LATENCY_S).
+    expect(startArgs?.[0]).toBeGreaterThan(5);
+  });
+
+  it('keeps getCurrentTimeUs clamped to the requested start until kickoff is reached', async () => {
+    const engine = new AudioEngine();
+    await engine.init();
+
+    const clip = createClip({
+      durationUs: 5_000_000,
+      sourceRangeDurationUs: 5_000_000,
+      sourceDurationUs: 5_000_000,
+    });
+    await engine.loadClips([clip]);
+
+    if (!audioContextInstance) throw new Error('AudioContext not initialized');
+    audioContextInstance.currentTime = 5;
+
+    await engine.play(2_000_000);
+
+    // Right after play, ctx.currentTime is still < kickoff (which is +150ms).
+    // The timeline clock should therefore report exactly the requested time
+    // so the renderer paints the right frame instead of overshooting.
+    expect(engine.getCurrentTimeUs()).toBe(2_000_000);
+
+    // Advance ctx clock past the kickoff window — timeline should now tick.
+    audioContextInstance.currentTime = 5.5;
+    const tickedUs = engine.getCurrentTimeUs();
+    expect(tickedUs).toBeGreaterThan(2_000_000);
+  });
+
   it('decodes the correct chunk when playback starts in the middle of the source', async () => {
     // Clip uses source seconds 7..12, so the first chunk needed is index 1
     // (covers 5..10s in source time).

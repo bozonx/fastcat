@@ -4,12 +4,22 @@ export interface AudioSchedulerOptions {
   onStopNodes: () => void;
 }
 
+// Time we hold off before audio actually starts emitting sound, to absorb
+// worker-decode jitter and let the very first audio source schedule into the
+// future. Web Audio source nodes scheduled at a ctx time in the past would
+// glitch or get dropped; scheduling at ctx.currentTime + this delta gives us
+// a stable kickoff for synchronous video/audio start.
+const KICKOFF_LATENCY_S = 0.15;
+
 export class AudioScheduler {
   private readonly getContext: AudioSchedulerOptions['getContext'];
   private readonly onScheduleLookahead: AudioSchedulerOptions['onScheduleLookahead'];
   private readonly onStopNodes: AudioSchedulerOptions['onStopNodes'];
   private isPlaying = false;
   private baseTimeS = 0;
+  // ctx.currentTime at which the timeline clock starts ticking — set to a
+  // small time in the future on play/seek/speed change so the engine has a
+  // window to schedule the first source nodes synchronously.
   private playbackContextTimeS = 0;
   private globalSpeed = 1;
   private scheduledClipIds = new Set<string>();
@@ -38,7 +48,7 @@ export class AudioScheduler {
       });
     }
 
-    this.playbackContextTimeS = ctx.currentTime;
+    this.playbackContextTimeS = ctx.currentTime + KICKOFF_LATENCY_S;
 
     if (this.globalSpeed > 0) {
       this.startLookahead();
@@ -74,7 +84,7 @@ export class AudioScheduler {
     this.stopLookahead();
     this.scheduledClipIds.clear();
     this.baseTimeS = currentTimeS;
-    this.playbackContextTimeS = ctx.currentTime;
+    this.playbackContextTimeS = ctx.currentTime + KICKOFF_LATENCY_S;
 
     if (this.globalSpeed > 0) {
       this.startLookahead();
@@ -95,7 +105,7 @@ export class AudioScheduler {
       return;
     }
 
-    this.playbackContextTimeS = ctx.currentTime;
+    this.playbackContextTimeS = ctx.currentTime + KICKOFF_LATENCY_S;
 
     if (this.globalSpeed > 0) {
       this.onScheduleLookahead();
@@ -114,7 +124,10 @@ export class AudioScheduler {
       return this.baseTimeS;
     }
 
-    return this.baseTimeS + (ctx.currentTime - this.playbackContextTimeS) * this.globalSpeed;
+    // Clamp at 0 — before kickoff the timeline is held at baseTimeS so the
+    // monitor renders the requested frame instead of jumping backwards.
+    const elapsed = Math.max(0, ctx.currentTime - this.playbackContextTimeS);
+    return this.baseTimeS + elapsed * this.globalSpeed;
   }
 
   getCurrentTimeUs(): number {
@@ -127,6 +140,13 @@ export class AudioScheduler {
 
   getBaseTimeS() {
     return this.baseTimeS;
+  }
+
+  // ctx.currentTime at which the timeline clock starts advancing. Returns the
+  // last value set on play/seek/setGlobalSpeed; callers use this as the
+  // synchronised kickoff point when scheduling BufferSourceNode.start().
+  getPlaybackStartCtxTimeS() {
+    return this.playbackContextTimeS;
   }
 
   isPlayingActive() {

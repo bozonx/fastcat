@@ -855,9 +855,60 @@ export class AudioEngine {
 
   async play(timeUs: number, speed = 1) {
     this.scheduleGeneration += 1;
+    const generation = this.scheduleGeneration;
     this.schedulingClipIds.clear();
     this.stopScrubPreview();
+
+    // Resume the context before decoding so createBuffer() is available; this
+    // can take ~100ms on Safari/iOS, hence we do it before measuring kickoff.
+    if (this.ctx?.state === 'suspended') {
+      await this.ctx.resume().catch((err) => {
+        console.warn('[AudioEngine] play: Failed to resume AudioContext', err);
+      });
+    }
+
+    // Synchronously decode the chunk(s) under the playhead for every clip
+    // currently overlapping `timeUs`, so the first source nodes can be
+    // scheduled the moment scheduler.play() returns.
+    await this.prepareForPlayback(timeUs);
+
+    // Bail out if the user pressed Stop while we were awaiting decode.
+    if (generation !== this.scheduleGeneration) return;
+
     await this.scheduler.play(timeUs, speed);
+  }
+
+  private async prepareForPlayback(timeUs: number): Promise<void> {
+    if (!this.ctx) return;
+
+    const timeS = timeUs / 1_000_000;
+    const LOOKAHEAD_S = 0.5;
+    const windowEndS = timeS + LOOKAHEAD_S;
+
+    const activeClips = this.currentClips.filter((clip) => {
+      const startS = clip.startUs / 1_000_000;
+      const endS = startS + clip.durationUs / 1_000_000;
+      return endS > timeS && startS <= windowEndS;
+    });
+
+    if (activeClips.length === 0) return;
+
+    const decodes = activeClips.map(async (clip) => {
+      const sourceKey = clip.sourcePath;
+      if (!sourceKey) return;
+
+      const clipStartS = clip.startUs / 1_000_000;
+      const clipLocalS = Math.max(0, timeS - clipStartS);
+      const clipSpeed =
+        typeof clip.speed === 'number' && Number.isFinite(clip.speed) && clip.speed > 0
+          ? Math.min(10, clip.speed)
+          : 1;
+      const sourceTimeS = clip.sourceStartUs / 1_000_000 + clipLocalS * clipSpeed;
+      const chunkIndex = this.getChunkIndex(sourceTimeS);
+      await this.ensureChunkDecoded(sourceKey, clip.fileHandle, chunkIndex);
+    });
+
+    await Promise.all(decodes);
   }
 
   stop() {
@@ -1010,11 +1061,20 @@ export class AudioEngine {
     );
     if (!window) return false;
 
+    // Anchor scheduling to the scheduler's kickoff time, not raw ctx.currentTime.
+    // During the kickoff window the kickoff is in the future, so all initial
+    // source nodes start together at that exact moment — that's the sync
+    // point shared with the video render loop (which reads getCurrentTimeS
+    // and stays at baseTimeS until kickoff is reached).
+    const audioNowS = Math.max(
+      this.ctx.currentTime,
+      this.scheduler.getPlaybackStartCtxTimeS(),
+    );
     const playStartS =
       currentTimeS < window.effectiveStartS
-        ? this.ctx.currentTime +
+        ? audioNowS +
           (window.effectiveStartS - currentTimeS) / this.scheduler.getGlobalSpeed()
-        : this.ctx.currentTime;
+        : audioNowS;
 
     await this.playClipSegment(
       clip,
