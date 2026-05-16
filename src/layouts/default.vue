@@ -25,6 +25,7 @@ import EditorSettingsModal from '~/components/settings/EditorSettingsModal.vue';
 import ProjectSettingsModal from '~/components/project-settings/ProjectSettingsModal.vue';
 import FileConversionModal from '~/components/file-manager/FileConversionModal.vue';
 import GlobalDropOverlay from '~/components/file-manager/GlobalDropOverlay.vue';
+import FileManagerRemoteTransferProgressModal from '~/components/file-manager/RemoteTransferProgressModal.vue';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 
 const { t } = useI18n();
@@ -41,6 +42,11 @@ const {
   onGlobalDrop,
   handleAutoFileDrop,
   handleFolderFileDrop,
+  isUploading,
+  uploadProgress,
+  uploadFileName,
+  uploadPhase,
+  cancelUpload,
 } = useGlobalDragAndDrop();
 const fileManager = useFileManager();
 
@@ -122,6 +128,15 @@ useHead({
       <ProjectSettingsModal v-model:open="uiStore.isProjectSettingsOpen" />
       <ProjectLockedModal />
       <FileConversionModal />
+      <FileManagerRemoteTransferProgressModal
+        :open="isUploading"
+        :title="t('videoEditor.fileManager.actions.importing')"
+        :description="t('videoEditor.fileManager.actions.importing')"
+        :progress="uploadProgress"
+        :phase="uploadPhase"
+        :file-name="uploadFileName"
+        @cancel="cancelUpload"
+      />
 
       <!-- Global Drop Overlay -->
       <GlobalDropOverlay

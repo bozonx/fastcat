@@ -11,6 +11,8 @@ import PQueue from 'p-queue';
 import { generateUniqueFsEntryName } from '~/utils/fs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 
+export const LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES = 100 * 1024 * 1024;
+
 function splitFileName(name: string): { baseName: string; extension: string } {
   const lastDotIndex = name.lastIndexOf('.');
   if (lastDotIndex <= 0 || lastDotIndex === name.length - 1) {
@@ -61,7 +63,15 @@ export interface HandleFilesDeps {
   getTargetDirPath: (params: { file: File }) => Promise<string | null>;
   onSkipProjectFile: (params: { file: File }) => void;
   onMediaImported: (params: { projectRelativePath: string; file: File }) => void;
-  onProgress?: (params: { currentFileIndex: number; totalFiles: number; fileName: string }) => void;
+  onProgress?: (params: {
+    currentFileIndex: number;
+    totalFiles: number;
+    fileName: string;
+    currentFileBytes?: number;
+    totalFileBytes?: number;
+    loadedBytes?: number;
+    totalBytes?: number;
+  }) => void;
 }
 
 async function writeImportedFile(params: {
@@ -69,13 +79,26 @@ async function writeImportedFile(params: {
   targetPath: string;
   file: File;
   abortSignal?: AbortSignal;
+  onChunk?: (bytes: number) => void;
 }): Promise<void> {
   if (params.abortSignal?.aborted) {
     throw new DOMException('The operation was aborted.', 'AbortError');
   }
 
   const writable = await params.vfs.writeStream(params.targetPath);
-  await params.file.stream().pipeTo(writable, { signal: params.abortSignal });
+  let currentFileBytes = 0;
+  const progressStream = new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, controller) {
+      currentFileBytes += chunk.byteLength;
+      params.onChunk?.(currentFileBytes);
+      controller.enqueue(chunk);
+    },
+  });
+
+  await params.file
+    .stream()
+    .pipeThrough(progressStream, { signal: params.abortSignal })
+    .pipeTo(writable, { signal: params.abortSignal });
 }
 
 export async function handleFilesCommand(
@@ -89,7 +112,30 @@ export async function handleFilesCommand(
   const queue = new PQueue({ concurrency: 3 });
   const allFiles = Array.from(files);
   const totalFiles = allFiles.length;
+  const totalBytes = allFiles.reduce((acc, file) => acc + file.size, 0);
+  const fileLoadedBytes = new Map<number, number>();
   let completedCount = 0;
+
+  function reportProgress(params: {
+    fileIndex: number;
+    file: File;
+    currentFileBytes?: number;
+  }) {
+    if (params.currentFileBytes !== undefined) {
+      fileLoadedBytes.set(params.fileIndex, params.currentFileBytes);
+    }
+
+    const loadedBytes = Array.from(fileLoadedBytes.values()).reduce((acc, value) => acc + value, 0);
+    deps.onProgress?.({
+      currentFileIndex: completedCount,
+      totalFiles,
+      fileName: params.file.name,
+      currentFileBytes: params.currentFileBytes,
+      totalFileBytes: params.file.size,
+      loadedBytes,
+      totalBytes,
+    });
+  }
 
   const tasks = allFiles.map((inputFile, index) =>
     queue.add(async () => {
@@ -134,10 +180,14 @@ export async function handleFilesCommand(
           targetPath: uniquePath,
           file,
           abortSignal: params.abortSignal,
+          onChunk: (currentFileBytes) => {
+            reportProgress({ fileIndex: index, file, currentFileBytes });
+          },
         });
 
+        fileLoadedBytes.set(index, file.size);
         completedCount++;
-        deps.onProgress?.({ currentFileIndex: completedCount, totalFiles, fileName: file.name });
+        reportProgress({ fileIndex: index, file, currentFileBytes: file.size });
 
         const mediaType = getMediaTypeFromFilename(file.name);
         if (mediaType === 'video' || mediaType === 'audio' || mediaType === 'image') {
@@ -156,10 +206,14 @@ export async function handleFilesCommand(
         targetPath,
         file,
         abortSignal: params.abortSignal,
+        onChunk: (currentFileBytes) => {
+          reportProgress({ fileIndex: index, file, currentFileBytes });
+        },
       });
 
+      fileLoadedBytes.set(index, file.size);
       completedCount++;
-      deps.onProgress?.({ currentFileIndex: completedCount, totalFiles, fileName: file.name });
+      reportProgress({ fileIndex: index, file, currentFileBytes: file.size });
 
       const mediaType = getMediaTypeFromFilename(file.name);
       if (mediaType === 'video' || mediaType === 'audio' || mediaType === 'image') {

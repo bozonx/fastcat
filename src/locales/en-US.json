@@ -1144,6 +1144,7 @@
         "extractAudio": "Extract Audio",
         "hideHiddenFiles": "Hide hidden files",
         "importing": "Importing",
+        "importingFile": "Importing {fileName}",
         "navigateUp": "Go up",
         "openAsPanelCut": "Open as panel (Editor)",
         "openAsPanelSound": "Open as panel (Sound)",

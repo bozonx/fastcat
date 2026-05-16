@@ -1144,6 +1144,7 @@
         "extractAudio": "Извлечь аудио",
         "hideHiddenFiles": "Скрыть скрытые файлы",
         "importing": "Импорт",
+        "importingFile": "Импорт {fileName}",
         "navigateUp": "Наверх",
         "openAsPanelCut": "Открыть как панель (Редактор)",
         "openAsPanelSound": "Открыть как панель (Звук)",

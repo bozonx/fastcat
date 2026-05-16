@@ -17,6 +17,7 @@ import { useUiStore } from '~/stores/ui.store';
 import { useTimelineTextPreset } from './useTimelineTextPreset';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { crossVfsCopy } from '~/file-manager/core/vfs/crossVfs';
+import { LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES } from '~/file-manager/application/fileManagerCommands';
 
 export interface UseTimelineDropHandlingOptions {
   scrollEl: Ref<HTMLElement | null>;
@@ -568,10 +569,11 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
         // but we can show a ghost box with a generic label.
         const dropPositionUs = getDropPosition(e);
         if (dropPositionUs !== null) {
+          const fileLabel = files.length > 1 ? t('fastcat.timeline.importFilesCount', { count: files.length }) : (files[0]?.name ?? '');
           dragPreview.value = {
             trackId,
             startUs: dropPositionUs,
-            label: files.length > 1 ? t('fastcat.timeline.importFilesCount', { count: files.length }) : files[0].name,
+            label: fileLabel,
             durationUs: workspaceStore.userSettings.timeline.defaultStaticClipDurationUs,
             kind: 'file',
           };
@@ -651,21 +653,28 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       return;
     }
 
+    const totalBytes = supportedFiles.reduce((acc, file) => acc + file.size, 0);
+    const useBackgroundTask = totalBytes >= LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES;
+
     try {
-      isImporting.value = true;
+      isImporting.value = !useBackgroundTask;
       importProgress.value = 0;
       importPhase.value = t('videoEditor.fileManager.actions.importing');
       importAbortController = new AbortController();
 
       const results = await fileManager.handleFiles(supportedFiles, {
         abortSignal: importAbortController.signal,
+        backgroundMode: useBackgroundTask ? 'auto' : 'never',
         onProgress: (p) => {
-          importProgress.value = p.currentFileIndex / p.totalFiles;
+          const total = p.totalBytes ?? supportedFiles.reduce((acc, file) => acc + file.size, 0);
+          importProgress.value =
+            total > 0 ? (p.loadedBytes ?? 0) / total : p.currentFileIndex / p.totalFiles;
           importFileName.value = p.fileName;
         },
       });
 
       if (importAbortController.signal.aborted) return;
+      if (!results) return;
 
       let currentStartUs = startUs;
       for (const res of results) {
@@ -726,6 +735,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
         for (let i = 0; i < externalItems.length; i++) {
           if (importAbortController.signal.aborted) break;
           const item = externalItems[i];
+          if (!item) continue;
           importFileName.value = item.name || '';
           importProgress.value = i / externalItems.length;
           externalItems[i] = await importExternalItemToProject(item);

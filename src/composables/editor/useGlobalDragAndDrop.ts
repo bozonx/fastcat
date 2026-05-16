@@ -11,6 +11,7 @@ import {
   createHotkeyLookup,
   isCommandMatched,
 } from '~/utils/hotkeys/runtime';
+import { LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES } from '~/file-manager/application/fileManagerCommands';
 
 const isDropInProgress = ref(false);
 const isCurrentDragCancelled = ref(false);
@@ -20,6 +21,7 @@ export function useGlobalDragAndDrop() {
   const workspaceStore = useWorkspaceStore();
   const projectStore = useProjectStore();
   const fm = useFileManager();
+  const { t } = useI18n();
 
   const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
   const effectiveHotkeys = computed(() =>
@@ -27,6 +29,56 @@ export function useGlobalDragAndDrop() {
   );
   const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
   const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
+  const isUploading = ref(false);
+  const uploadProgress = ref(0);
+  const uploadFileName = ref('');
+  const uploadPhase = ref('');
+  let uploadAbortController: AbortController | null = null;
+
+  function shouldUseBackgroundTask(files: File[]) {
+    const totalBytes = files.reduce((acc, file) => acc + file.size, 0);
+    return totalBytes >= LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES;
+  }
+
+  async function handleDroppedFiles(files: File[], targetDirPath?: string) {
+    if (isDropInProgress.value) return;
+    if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;
+
+    const useBackgroundTask = shouldUseBackgroundTask(files);
+
+    isDropInProgress.value = true;
+    uploadAbortController = new AbortController();
+    isUploading.value = !useBackgroundTask;
+    uploadProgress.value = 0;
+    uploadPhase.value = t('videoEditor.fileManager.actions.importing');
+    uploadFileName.value = '';
+
+    try {
+      await fm.handleFiles(files, {
+        targetDirPath,
+        abortSignal: uploadAbortController.signal,
+        backgroundMode: useBackgroundTask ? 'auto' : 'never',
+        onProgress: (progress) => {
+          const total = progress.totalBytes ?? files.reduce((acc, file) => acc + file.size, 0);
+          uploadProgress.value =
+            total > 0
+              ? (progress.loadedBytes ?? 0) / total
+              : progress.currentFileIndex / progress.totalFiles;
+          uploadFileName.value = progress.fileName;
+        },
+      });
+      isCurrentDragCancelled.value = false;
+    } finally {
+      isDropInProgress.value = false;
+      isUploading.value = false;
+      uploadAbortController = null;
+    }
+  }
+
+  function cancelUpload() {
+    uploadAbortController?.abort();
+    isUploading.value = false;
+  }
 
   function onGlobalKeyDown(e: KeyboardEvent) {
     if (!uiStore.isGlobalDragging) return;
@@ -76,32 +128,14 @@ export function useGlobalDragAndDrop() {
    * The overlay intercepts drops to specific folders via events.
    */
   async function handleAutoFileDrop(files: File[]) {
-    if (isDropInProgress.value) return;
-    if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;
-
-    isDropInProgress.value = true;
-    try {
-      await fm.handleFiles(files);
-      isCurrentDragCancelled.value = false;
-    } finally {
-      isDropInProgress.value = false;
-    }
+    await handleDroppedFiles(files);
   }
 
   /**
    * Handles file drop to specific folder.
    */
   async function handleFolderFileDrop(files: File[], targetDirPath: string) {
-    if (isDropInProgress.value) return;
-    if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;
-
-    isDropInProgress.value = true;
-    try {
-      await fm.handleFiles(files, { targetDirPath });
-      isCurrentDragCancelled.value = false;
-    } finally {
-      isDropInProgress.value = false;
-    }
+    await handleDroppedFiles(files, targetDirPath);
   }
 
   async function onGlobalDrop(e: DragEvent) {
@@ -112,7 +146,6 @@ export function useGlobalDragAndDrop() {
       uiStore.isGlobalDragging = false;
       return;
     }
-    isDropInProgress.value = true;
 
     try {
       uiStore.isGlobalDragging = false;
@@ -120,11 +153,9 @@ export function useGlobalDragAndDrop() {
 
       const files = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
       if (files.length === 0) return;
-      if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;
-
-      await fm.handleFiles(files);
+      await handleDroppedFiles(files);
     } finally {
-      isDropInProgress.value = false;
+      uiStore.isGlobalDragging = false;
     }
   }
 
@@ -204,5 +235,10 @@ export function useGlobalDragAndDrop() {
     onGlobalDrop,
     handleAutoFileDrop,
     handleFolderFileDrop,
+    isUploading,
+    uploadProgress,
+    uploadFileName,
+    uploadPhase,
+    cancelUpload,
   };
 }
