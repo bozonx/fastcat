@@ -1,5 +1,5 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
-import { join, extname } from 'node:path';
+import { join, extname, basename } from 'node:path';
 
 const LOCALE_FILES = {
   en: 'src/locales/en-US.json',
@@ -25,7 +25,7 @@ async function getFiles(dir) {
     subdirs.map(async (subdir) => {
       const res = join(dir, subdir);
       return (await stat(res)).isDirectory() ? getFiles(res) : res;
-    })
+    }),
   );
   return files.flat();
 }
@@ -42,46 +42,84 @@ async function check() {
   const usedKeys = new Set();
   const usedDynamicPrefixes = new Set();
 
-  const files = (await getFiles('src')).filter(f => ['.vue', '.ts', '.js'].includes(extname(f)));
-  const keyPrefixes = ['common.', 'fastcat.', 'videoEditor.', 'form.', 'mobileFiles.', 'errors.', 'timelineCreation.'];
+  const files = (await getFiles('src')).filter((f) => ['.vue', '.ts', '.js'].includes(extname(f)));
+  const keyPrefixes = [
+    'common.',
+    'fastcat.',
+    'videoEditor.',
+    'form.',
+    'mobileFiles.',
+    'errors.',
+    'timelineCreation.',
+    'navigation.',
+  ];
 
   for (const file of files) {
     const content = await readFile(file, 'utf8');
+
+    // 1. Any string literal that looks like a translation key (catches keys passed
+    //    as plain strings to historyStore.push, object mappings, etc.)
     const anyKeyRegex = /['"]([a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)+)['"]/g;
     let match;
     while ((match = anyKeyRegex.exec(content)) !== null) {
       const key = match[1];
-      if (keyPrefixes.some(p => key.startsWith(p))) usedKeys.add(key);
+      if (keyPrefixes.some((p) => key.startsWith(p))) usedKeys.add(key);
     }
-    const dynamicRegex = /\b\$?t\s*\(\s*`([^`$]+)\.?\$\{/g;
-    while ((match = dynamicRegex.exec(content)) !== null) usedDynamicPrefixes.add(match[1]);
-    const vtRegex = /v-t="'([^']+)'"/g;
+
+    // 2. Explicit translation calls: t('key') / $t('key')
+    const tRegex = /\bt\(\s*['"]([a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)+)['"]/g;
+    while ((match = tRegex.exec(content)) !== null) usedKeys.add(match[1]);
+    const $tRegex = /\$t\(\s*['"]([a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)+)['"]/g;
+    while ((match = $tRegex.exec(content)) !== null) usedKeys.add(match[1]);
+
+    // 3. v-t directive
+    const vtRegex = /v-t\s*=\s*['"]([a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)+)['"]/g;
     while ((match = vtRegex.exec(content)) !== null) usedKeys.add(match[1]);
+
+    // 4. Manifest / config keys that reference translations
+    const keyPropRegex =
+      /(?:nameKey|labelKey|descriptionKey|emptyLabelKey|labelXKey|labelYKey)\s*:\s*['"]([a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)+)['"]/g;
+    while ((match = keyPropRegex.exec(content)) !== null) usedKeys.add(match[1]);
+
+    // 5. Dynamic prefixes like t(`prefix.${var}`)
+    const dynamicRegex = /\b\$?t\s*\(\s*`([^`$]+)\.?\$\{/g;
+    while ((match = dynamicRegex.exec(content)) !== null) {
+      const prefix = match[1].replace(/\.$/, '');
+      if (prefix) usedDynamicPrefixes.add(prefix);
+    }
   }
 
   let error = false;
 
-  const potentiallyUnused = [...allLocaleKeys].filter(k => !usedKeys.has(k) && ![...usedDynamicPrefixes].some(p => k.startsWith(p))).sort();
+  const potentiallyUnused = [...allLocaleKeys]
+    .filter((k) => !usedKeys.has(k) && ![...usedDynamicPrefixes].some((p) => k.startsWith(p)))
+    .sort();
   if (potentiallyUnused.length > 0) {
     console.error('--- Potentially Unused Keys ---');
-    potentiallyUnused.forEach(k => console.error(k));
+    potentiallyUnused.forEach((k) => console.error(k));
     error = true;
   }
 
-  const missingInLocales = [...usedKeys].filter(k => !allLocaleKeys.has(k)).sort();
+  const missingInLocales = [...usedKeys].filter((k) => !allLocaleKeys.has(k)).sort();
   if (missingInLocales.length > 0) {
     console.error('\n--- Missing in Locales ---');
-    missingInLocales.forEach(k => console.error(k));
+    missingInLocales.forEach((k) => console.error(k));
     error = true;
   }
 
-  const onlyInEn = [...Object.keys(localeKeys.en)].filter(k => !localeKeys.ru[k]);
-  const onlyInRu = [...Object.keys(localeKeys.ru)].filter(k => !localeKeys.en[k]);
+  const onlyInEn = [...Object.keys(localeKeys.en)].filter((k) => !localeKeys.ru[k]);
+  const onlyInRu = [...Object.keys(localeKeys.ru)].filter((k) => !localeKeys.en[k]);
 
   if (onlyInEn.length > 0 || onlyInRu.length > 0) {
     console.error('\n--- Inconsistency between EN and RU ---');
-    if (onlyInEn.length > 0) { console.error('Only in EN:'); onlyInEn.sort().forEach(k => console.error(`  - ${k}`)); }
-    if (onlyInRu.length > 0) { console.error('Only in RU:'); onlyInRu.sort().forEach(k => console.error(`  - ${k}`)); }
+    if (onlyInEn.length > 0) {
+      console.error('Only in EN:');
+      onlyInEn.sort().forEach((k) => console.error(`  - ${k}`));
+    }
+    if (onlyInRu.length > 0) {
+      console.error('Only in RU:');
+      onlyInRu.sort().forEach((k) => console.error(`  - ${k}`));
+    }
     error = true;
   }
 

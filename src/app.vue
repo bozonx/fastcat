@@ -15,11 +15,23 @@ const isMobileLayout = computed(() => route.path === '/m' || route.path.startsWi
 
 const colorMode = useColorMode();
 const presetsStore = usePresetsStore();
+const runtimeConfig = useRuntimeConfig();
+
+function preventContextMenu(e: MouseEvent) {
+  e.preventDefault();
+}
 
 // Load presets on startup
 onMounted(() => {
   presetsStore.load();
-  window.addEventListener('contextmenu', (e) => e.preventDefault());
+  const shouldBlock = String(runtimeConfig.public.blockContextMenu).toLowerCase() !== 'false';
+  if (shouldBlock) {
+    window.addEventListener('contextmenu', preventContextMenu);
+  }
+});
+
+onUnmounted(() => {
+  window.removeEventListener('contextmenu', preventContextMenu);
 });
 
 const workspaceStore = useWorkspaceStore();

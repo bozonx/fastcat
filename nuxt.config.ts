@@ -51,6 +51,7 @@ export default defineNuxtConfig({
       bloggerDogUiUrl: '',
       fastcatAccountApiUrl: '',
       fastcatAccountUiUrl: '',
+      blockContextMenu: true,
     },
   },
 
