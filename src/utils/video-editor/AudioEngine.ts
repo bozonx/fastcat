@@ -54,6 +54,7 @@ export class AudioEngine {
   private readonly maxDecodeConcurrency = 2;
   private currentMasterVolume = 1;
   private currentMonitorVolume = 1;
+  private schedulingClipIds = new Set<string>();
 
   private analyserNodes = new Map<string, AnalyserNode>(); // map by trackId or "master"
   private analyserData = new Float32Array(2048);
@@ -578,13 +579,20 @@ export class AudioEngine {
 
     for (const clip of this.currentClips) {
       if (this.scheduler.hasScheduledClip(clip.id)) continue;
+      if (this.schedulingClipIds.has(clip.id)) continue;
 
       const clipStartS = clip.startUs / 1_000_000;
       const clipEndS = clipStartS + clip.durationUs / 1_000_000;
 
       if (clipStartS <= endS && clipEndS >= currentS) {
-        this.scheduler.markClipScheduled(clip.id);
-        void this.scheduleClip(clip, currentS);
+        this.schedulingClipIds.add(clip.id);
+        void this.scheduleClip(clip).then((scheduled) => {
+          if (scheduled) {
+            this.scheduler.markClipScheduled(clip.id);
+          }
+        }).finally(() => {
+          this.schedulingClipIds.delete(clip.id);
+        });
       }
     }
   }
@@ -714,26 +722,26 @@ export class AudioEngine {
     };
   }
 
-  private async scheduleClip(clip: AudioEngineClip, _triggerTimeS: number) {
-    if (!this.ctx || !this.masterGain) return;
-    if (this.scheduler.getGlobalSpeed() <= 0) return; // No backward playback
+  private async scheduleClip(clip: AudioEngineClip): Promise<boolean> {
+    if (!this.ctx || !this.masterGain) return false;
+    if (this.scheduler.getGlobalSpeed() <= 0) return false; // No backward playback
 
     const buffer = await this.getDecodedBuffer(clip);
-    if (!buffer) return;
+    if (!buffer) return false;
 
     const clipStartS = clip.startUs / 1_000_000;
     const clipDurationS = clip.durationUs / 1_000_000;
     const clipEndS = clipStartS + clipDurationS;
     const currentTimeS = this.getCurrentTimeS();
 
-    if (clipEndS <= currentTimeS) return;
+    if (clipEndS <= currentTimeS) return false;
 
     const window = this.buildClipPlaybackWindow(
       clip,
       currentTimeS,
       this.scheduler.getGlobalSpeed(),
     );
-    if (!window) return;
+    if (!window) return false;
 
     const playStartS =
       currentTimeS < window.effectiveStartS
@@ -742,6 +750,7 @@ export class AudioEngine {
         : this.ctx.currentTime;
 
     await this.playClipSegment(clip, buffer, { ...window, startAtS: playStartS });
+    return true;
   }
 
   private stopNodeCollection(

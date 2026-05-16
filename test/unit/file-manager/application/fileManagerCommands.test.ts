@@ -82,6 +82,106 @@ describe('fileManagerCommands', () => {
     expect(onMediaImported).toHaveBeenCalledWith({ projectRelativePath: 'images/logo.svg', file });
   });
 
+  it('handleFilesCommand reports byte progress while streaming imported files', async () => {
+    const firstFile = new File(['12345'], 'first.mp4', { type: 'video/mp4' });
+    const secondFile = new File(['abcdef'], 'second.mp4', { type: 'video/mp4' });
+    const progress = vi.fn();
+    const written = new Map<string, number>();
+
+    const vfs = {
+      exists: vi.fn(async () => false),
+      writeStream: vi.fn(async (path: string) => {
+        let size = 0;
+        return new WritableStream<Uint8Array>({
+          write(chunk) {
+            size += chunk.byteLength;
+          },
+          close() {
+            written.set(path, size);
+          },
+        });
+      }),
+    };
+
+    const results = await handleFilesCommand(
+      [firstFile, secondFile],
+      {},
+      {
+        vfs: vfs as any,
+        getTargetDirPath: async () => 'video',
+        onSkipProjectFile: vi.fn(),
+        onMediaImported: vi.fn(),
+        onProgress: progress,
+      },
+    );
+
+    expect(results).toEqual([
+      { fileName: 'first.mp4', targetPath: 'video/first.mp4', targetDir: 'video' },
+      { fileName: 'second.mp4', targetPath: 'video/second.mp4', targetDir: 'video' },
+    ]);
+    expect(written.get('video/first.mp4')).toBe(firstFile.size);
+    expect(written.get('video/second.mp4')).toBe(secondFile.size);
+    expect(progress).toHaveBeenCalled();
+
+    const lastProgress = progress.mock.calls.at(-1)?.[0];
+    expect(lastProgress).toMatchObject({
+      currentFileIndex: 2,
+      totalFiles: 2,
+      loadedBytes: firstFile.size + secondFile.size,
+      totalBytes: firstFile.size + secondFile.size,
+    });
+  });
+
+  it('handleFilesCommand streams to a generated unique path when the target exists', async () => {
+    const file = new File(['video'], 'clip.mp4', { type: 'video/mp4' });
+    const vfs = {
+      exists: vi.fn(async (path: string) => path === 'video/clip.mp4'),
+      writeStream: vi.fn(async () => new WritableStream()),
+    };
+
+    const [result] = await handleFilesCommand(
+      [file],
+      {},
+      {
+        vfs: vfs as any,
+        getTargetDirPath: async () => 'video',
+        onSkipProjectFile: vi.fn(),
+        onMediaImported: vi.fn(),
+      },
+    );
+
+    expect(vfs.writeStream).toHaveBeenCalledWith('video/clip (1).mp4');
+    expect(result).toEqual({
+      fileName: 'clip (1).mp4',
+      targetPath: 'video/clip (1).mp4',
+      targetDir: 'video',
+    });
+  });
+
+  it('handleFilesCommand rejects before opening a write stream when aborted', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const vfs = {
+      exists: vi.fn(async () => false),
+      writeStream: vi.fn(async () => new WritableStream()),
+    };
+
+    await expect(
+      handleFilesCommand(
+        [new File(['x'], 'clip.mp4', { type: 'video/mp4' })],
+        { abortSignal: controller.signal },
+        {
+          vfs: vfs as any,
+          getTargetDirPath: async () => 'video',
+          onSkipProjectFile: vi.fn(),
+          onMediaImported: vi.fn(),
+        },
+      ),
+    ).resolves.toEqual([]);
+
+    expect(vfs.writeStream).not.toHaveBeenCalled();
+  });
+
   it('deleteEntryCommand calls removeEntry and onFileDeleted for files with path', async () => {
     const parent = createDirHandleMock();
     const { entry } = createFileEntry({ name: 'a.mp4', path: 'video/a.mp4', parent });
