@@ -31,9 +31,16 @@ class WorkerMock {
   private listeners: Record<string, Array<(event: WorkerMessageEvent<any>) => void>> = {};
   public postMessage = vi.fn((payload: DecodeRequest) => {
     const response = createWorkerResponse(payload.id);
-    queueMicrotask(() => {
+    const emitResponse = () => {
       this.emit('message', { data: response });
-    });
+    };
+
+    if (workerResponseDelayMs > 0) {
+      setTimeout(emitResponse, workerResponseDelayMs);
+      return;
+    }
+
+    queueMicrotask(emitResponse);
   });
 
   public addEventListener(event: string, handler: (event: WorkerMessageEvent<any>) => void) {
@@ -120,6 +127,7 @@ class AudioContextMock {
 let workerInstance: WorkerMock | null = null;
 let audioContextInstance: AudioContextMock | null = null;
 let workerOk = true;
+let workerResponseDelayMs = 0;
 
 function createWorkerResponse(id: number): DecodeResponse {
   if (!workerOk) {
@@ -168,6 +176,7 @@ function createClip(overrides: Partial<Parameters<AudioEngine['loadClips']>[0][n
 describe('AudioEngine', () => {
   beforeEach(() => {
     workerOk = true;
+    workerResponseDelayMs = 0;
     workerInstance = null;
     audioContextInstance = null;
 
@@ -287,6 +296,20 @@ describe('AudioEngine', () => {
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
     expect(audioContextInstance?.createdSources.length).toBeGreaterThan(initialSources);
+  });
+
+  it('does not schedule stale playback after stopping while decode is in flight', async () => {
+    workerResponseDelayMs = 20;
+    const engine = new AudioEngine();
+    await engine.init();
+
+    await engine.loadClips([createClip()]);
+    await engine.play(0);
+    engine.stop();
+
+    await new Promise<void>((resolve) => setTimeout(resolve, 40));
+
+    expect(audioContextInstance?.createdSources.length).toBe(0);
   });
 
   it('plays forward scrub preview without enabling playback state', async () => {

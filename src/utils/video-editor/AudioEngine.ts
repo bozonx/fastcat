@@ -55,6 +55,7 @@ export class AudioEngine {
   private currentMasterVolume = 1;
   private currentMonitorVolume = 1;
   private schedulingClipIds = new Set<string>();
+  private scheduleGeneration = 0;
 
   private analyserNodes = new Map<string, AnalyserNode>(); // map by trackId or "master"
   private analyserData = new Float32Array(2048);
@@ -585,24 +586,31 @@ export class AudioEngine {
       const clipEndS = clipStartS + clip.durationUs / 1_000_000;
 
       if (clipStartS <= endS && clipEndS >= currentS) {
+        const generation = this.scheduleGeneration;
         this.schedulingClipIds.add(clip.id);
-        void this.scheduleClip(clip).then((scheduled) => {
-          if (scheduled) {
-            this.scheduler.markClipScheduled(clip.id);
-          }
-        }).finally(() => {
-          this.schedulingClipIds.delete(clip.id);
-        });
+        void this.scheduleClip(clip, generation)
+          .then((scheduled) => {
+            if (scheduled) {
+              this.scheduler.markClipScheduled(clip.id);
+            }
+          })
+          .finally(() => {
+            this.schedulingClipIds.delete(clip.id);
+          });
       }
     }
   }
 
   async play(timeUs: number, speed = 1) {
+    this.scheduleGeneration += 1;
+    this.schedulingClipIds.clear();
     this.stopScrubPreview();
     await this.scheduler.play(timeUs, speed);
   }
 
   stop() {
+    this.scheduleGeneration += 1;
+    this.schedulingClipIds.clear();
     this.stopScrubPreview();
     this.scheduler.stop();
   }
@@ -674,10 +682,14 @@ export class AudioEngine {
   }
 
   setGlobalSpeed(speed: number) {
+    this.scheduleGeneration += 1;
+    this.schedulingClipIds.clear();
     this.scheduler.setGlobalSpeed(speed);
   }
 
   seek(timeUs: number) {
+    this.scheduleGeneration += 1;
+    this.schedulingClipIds.clear();
     this.scheduler.seek(timeUs);
   }
 
@@ -722,12 +734,14 @@ export class AudioEngine {
     };
   }
 
-  private async scheduleClip(clip: AudioEngineClip): Promise<boolean> {
+  private async scheduleClip(clip: AudioEngineClip, generation: number): Promise<boolean> {
     if (!this.ctx || !this.masterGain) return false;
     if (this.scheduler.getGlobalSpeed() <= 0) return false; // No backward playback
 
     const buffer = await this.getDecodedBuffer(clip);
     if (!buffer) return false;
+    if (generation !== this.scheduleGeneration) return false;
+    if (!this.scheduler.isPlayingActive()) return false;
 
     const clipStartS = clip.startUs / 1_000_000;
     const clipDurationS = clip.durationUs / 1_000_000;

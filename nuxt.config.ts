@@ -1,5 +1,26 @@
 import { defineNuxtConfig } from 'nuxt/config';
 
+function unwrapI18nJsonResource() {
+  return {
+    name: 'fastcat:unwrap-i18n-json-resource',
+    enforce: 'post' as const,
+    transform(code: string, id: string) {
+      if (!id.includes('/locales/') || !id.includes('.json?import')) return;
+
+      const match = code.match(/^export default \/\* #__PURE__ \*\/ JSON\.parse\(([\s\S]+)\)$/);
+      if (!match) return;
+
+      const generatedResource = JSON.parse(match[1]) as string;
+      if (!generatedResource.startsWith('const resource = ')) return;
+
+      return {
+        code: generatedResource,
+        map: null,
+      };
+    },
+  };
+}
+
 export default defineNuxtConfig({
   ssr: false,
   srcDir: 'src/',
@@ -56,6 +77,10 @@ export default defineNuxtConfig({
   },
 
   vite: {
+    json: {
+      stringify: false,
+    },
+    plugins: [unwrapI18nJsonResource()],
     worker: {
       format: 'es',
     },

@@ -321,9 +321,6 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
 
   onBeforeUnmount(() => {
     isUnmounted = true;
-    if (clipHash.value) {
-      thumbnailGenerator.cancelTask(clipHash.value);
-    }
 
     if (imageUrl.value) {
       URL.revokeObjectURL(imageUrl.value);

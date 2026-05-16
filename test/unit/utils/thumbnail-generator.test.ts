@@ -8,6 +8,24 @@ import { getFileThumbnailHash, fileThumbnailGenerator } from '~/utils/file-thumb
 
 const mockFile = new File([], 'test.mp4');
 
+interface CacheBackedGenerator {
+  cache: Map<string, unknown>;
+}
+
+interface TimelineThumbnailGeneratorInternals extends CacheBackedGenerator {
+  onCacheHit: (
+    task: {
+      id: string;
+      projectId: string;
+      projectRelativePath: string;
+      duration: number;
+      onProgress?: (progress: number, url: string, time: number) => void;
+      onComplete?: () => void;
+    },
+    urls: Map<number, string>,
+  ) => void;
+}
+
 vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: vi.fn(),
 }));
@@ -25,7 +43,7 @@ describe('Thumbnail Generators', () => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
 
-    (useWorkspaceStore as any).mockReturnValue({
+    vi.mocked(useWorkspaceStore).mockReturnValue({
       workspaceHandle: (function () {
         const h = { getDirectoryHandle: vi.fn(), removeEntry: vi.fn() };
         h.getDirectoryHandle.mockResolvedValue(h);
@@ -37,7 +55,7 @@ describe('Thumbnail Generators', () => {
       },
     });
 
-    (useProjectStore as any).mockReturnValue({
+    vi.mocked(useProjectStore).mockReturnValue({
       currentProjectId: 'test-project',
       getFileByPath: vi.fn().mockResolvedValue(mockFile),
       getFileHandleByPath: vi.fn().mockResolvedValue({}),
@@ -83,8 +101,10 @@ describe('Thumbnail Generators', () => {
   describe('fileThumbnailGenerator', () => {
     it('should clear internal cache for a specific file', async () => {
       // Mocking internal cache for the purpose of the test
-      (fileThumbnailGenerator as any).cache.set('test-hash', 'test-url');
-      expect((fileThumbnailGenerator as any).cache.has('test-hash')).toBe(true);
+      const generator = fileThumbnailGenerator as unknown as CacheBackedGenerator;
+
+      generator.cache.set('test-hash', 'test-url');
+      expect(generator.cache.has('test-hash')).toBe(true);
 
       await fileThumbnailGenerator.clearThumbnail({
         projectId: 'p1',
@@ -97,21 +117,59 @@ describe('Thumbnail Generators', () => {
         projectRelativePath: 'test.mp4',
       });
 
-      expect((fileThumbnailGenerator as any).cache.has(hash)).toBe(false);
+      expect(generator.cache.has(hash)).toBe(false);
     });
   });
 
   describe('thumbnailGenerator (timeline)', () => {
     it('should clear internal cache and folder for project hash', async () => {
-      (thumbnailGenerator as any).cache.set('timeline-hash', ['url1', 'url2']);
-      expect((thumbnailGenerator as any).cache.has('timeline-hash')).toBe(true);
+      const generator = thumbnailGenerator as unknown as CacheBackedGenerator;
+
+      generator.cache.set(
+        'timeline-hash',
+        new Map([
+          [0, 'url1'],
+          [4, 'url2'],
+        ]),
+      );
+      expect(generator.cache.has('timeline-hash')).toBe(true);
 
       await thumbnailGenerator.clearThumbnails({
         projectId: 'p1',
         hash: 'timeline-hash',
       });
 
-      expect((thumbnailGenerator as any).cache.has('timeline-hash')).toBe(false);
+      expect(generator.cache.has('timeline-hash')).toBe(false);
+    });
+
+    it('should replay cached thumbnails sorted by capture time', () => {
+      const progress = vi.fn();
+      const complete = vi.fn();
+
+      const generator = thumbnailGenerator as unknown as TimelineThumbnailGeneratorInternals;
+
+      generator.onCacheHit(
+        {
+          id: 'timeline-hash',
+          projectId: 'p1',
+          projectRelativePath: 'test.mp4',
+          duration: 12,
+          onProgress: progress,
+          onComplete: complete,
+        },
+        new Map([
+          [8, 'url-8'],
+          [0, 'url-0'],
+          [4, 'url-4'],
+        ]),
+      );
+
+      expect(progress.mock.calls.map((call) => [call[1], call[2]])).toEqual([
+        ['url-0', 0],
+        ['url-4', 4],
+        ['url-8', 8],
+      ]);
+      expect(complete).toHaveBeenCalledOnce();
     });
   });
 });
