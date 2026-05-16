@@ -5,7 +5,7 @@
   "identifier": "com.bozonx.fastcat",
   "build": {
     "frontendDist": "../.output/public",
-    "devUrl": "http://localhost:3000",
+    "devUrl": "http://localhost:3009",
     "beforeDevCommand": "pnpm dev",
     "beforeBuildCommand": "pnpm generate"
   },
