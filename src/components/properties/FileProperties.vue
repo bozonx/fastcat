@@ -246,6 +246,7 @@ const {
   mediaStore,
   proxyStore,
   getFileByPath: (path) => effectiveVfs.value.getFile(path),
+  getObjectUrlByPath: (path) => effectiveVfs.value.getObjectUrl(path),
   getMetadata: async ({ file, path }) => {
     if (isExternalContext.value || isRemoteFileEntry.value) {
       return await mediaStore.getOrFetchMetadata(file, `external:${path}`, {
@@ -941,9 +942,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
         :title="t('fastcat.bloggerDog.projectLibraries')"
       >
         <div class="text-xs text-ui-text-muted italic px-2 py-1 mb-2">
-          {{
-            t('fastcat.bloggerDog.projectLibrariesDesc')
-          }}
+          {{ t('fastcat.bloggerDog.projectLibrariesDesc') }}
         </div>
         <PropertyRow v-if="bloggerDogDeepLink" :label="t('common.path')">
           <a
@@ -1040,10 +1039,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
         :is-external="isExternalContext"
       >
         <template v-if="selectedFsEntry?.source === 'remote' && remoteItemsCount !== undefined">
-          <PropertyRow
-            :label="t('fastcat.file.itemsCount')"
-            :value="remoteItemsCount"
-          />
+          <PropertyRow :label="t('fastcat.file.itemsCount')" :value="remoteItemsCount" />
         </template>
       </FileGeneralInfoSection>
 

@@ -55,6 +55,7 @@ export function useEntryPreview(params: {
   };
   proxyStore: { getProxyFile: (path: string) => Promise<File | null> };
   getFileByPath: (path: string) => Promise<File | null>;
+  getObjectUrlByPath?: (path: string) => Promise<string | null>;
   getMetadata?: (params: {
     file: File;
     entry: FsEntry;
@@ -158,25 +159,30 @@ export function useEntryPreview(params: {
         fileToPlay = await params.proxyStore.getProxyFile(entry.path);
       }
 
-      if (!fileToPlay && entry.path) {
-        fileToPlay = await params.getFileByPath(entry.path);
+      const isVideoOrAudio = resolvedMediaType === 'video' || resolvedMediaType === 'audio';
+      const isImage =
+        resolvedMediaType === 'image' &&
+        (resolvedFileInfo?.metadata as any)?.image?.canDisplay !== false;
+
+      let nextUrl: string | null = null;
+
+      if (isVideoOrAudio && !fileToPlay && params.getObjectUrlByPath && entry.path) {
+        nextUrl = await params.getObjectUrlByPath(entry.path);
+      } else {
+        if (!fileToPlay && entry.path) {
+          fileToPlay = await params.getFileByPath(entry.path);
+        }
+
+        if (fileToPlay && (isVideoOrAudio || isImage)) {
+          nextUrl = URL.createObjectURL(fileToPlay);
+        }
       }
 
-      if (!fileToPlay) {
+      if (!fileToPlay && !nextUrl) {
         return {
           currentUrl: null,
           imageDimensions: null,
         };
-      }
-
-      let nextUrl: string | null = null;
-      if (
-        resolvedMediaType === 'video' ||
-        resolvedMediaType === 'audio' ||
-        (resolvedMediaType === 'image' &&
-          (resolvedFileInfo?.metadata as any)?.image?.canDisplay !== false)
-      ) {
-        nextUrl = URL.createObjectURL(fileToPlay);
       }
 
       let nextImageDimensions: { width: number; height: number } | null = null;
@@ -388,9 +394,7 @@ export function useEntryPreview(params: {
           ext: fileExt,
           metadata:
             entry.path &&
-            (nextMediaType === 'video' ||
-              nextMediaType === 'audio' ||
-              nextMediaType === 'image')
+            (nextMediaType === 'video' || nextMediaType === 'audio' || nextMediaType === 'image')
               ? params.getMetadata
                 ? await params.getMetadata({
                     file,

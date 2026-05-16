@@ -60,6 +60,13 @@ async function loadFile() {
           currentUrl.value = URL.createObjectURL(proxyFile);
           return;
         }
+
+        // Use streaming URL for large video/audio files in Tauri
+        const streamingUrl = await fileManager.vfs.getObjectUrl(props.filePath).catch(() => null);
+        if (streamingUrl) {
+          currentUrl.value = streamingUrl;
+          return;
+        }
       }
       currentUrl.value = URL.createObjectURL(file);
     }

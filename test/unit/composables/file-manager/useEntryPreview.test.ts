@@ -4,7 +4,9 @@ import { useEntryPreview } from '~/composables/file-manager/useEntryPreview';
 import type { FsEntry } from '~/types/fs';
 
 function flushAsyncState() {
-  return Promise.resolve().then(() => Promise.resolve()).then(() => nextTick());
+  return Promise.resolve()
+    .then(() => Promise.resolve())
+    .then(() => nextTick());
 }
 
 function createDeferred<T>() {
@@ -16,6 +18,47 @@ function createDeferred<T>() {
 }
 
 describe('useEntryPreview', () => {
+  it('uses getObjectUrlByPath for video/audio instead of loading the full file', async () => {
+    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const entry: FsEntry = {
+        kind: 'file',
+        name: 'video.mp4',
+        path: 'video.mp4',
+        source: 'local',
+      };
+
+      const selectedFsEntry = ref<FsEntry | null>(entry);
+      const getFileByPath = vi
+        .fn()
+        .mockResolvedValue(new File([], 'video.mp4', { type: 'video/mp4' }));
+      const getObjectUrlByPath = vi.fn().mockResolvedValue('asset://localhost/video.mp4');
+
+      const preview = useEntryPreview({
+        selectedFsEntry,
+        previewMode: ref<'original' | 'proxy'>('original'),
+        hasProxy: ref(false),
+        mediaStore: {
+          getOrFetchMetadataByPath: async () => null,
+        },
+        proxyStore: {
+          getProxyFile: async () => null,
+        },
+        getFileByPath,
+        getObjectUrlByPath,
+        onResetPreviewMode: () => {},
+      });
+
+      await flushAsyncState();
+
+      expect(preview.mediaType.value).toBe('video');
+      expect(preview.currentUrl.value).toBe('asset://localhost/video.mp4');
+      expect(getObjectUrlByPath).toHaveBeenCalledWith('video.mp4');
+    } finally {
+      consoleWarnSpy.mockRestore();
+    }
+  });
+
   it('keeps the previous file info until the next entry is fully resolved', async () => {
     const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {

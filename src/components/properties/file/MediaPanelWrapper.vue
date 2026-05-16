@@ -28,6 +28,14 @@ async function loadPreviewMedia() {
   if (!props.filePath) return;
 
   try {
+    if (props.mediaType === 'video' || props.mediaType === 'audio') {
+      const streamingUrl = await fileManager.vfs.getObjectUrl(props.filePath).catch(() => null);
+      if (streamingUrl) {
+        currentUrl.value = streamingUrl;
+        return;
+      }
+    }
+
     const fileToPlay = await fileManager.vfs.getFile(props.filePath);
     if (!fileToPlay) return;
     if (props.mediaType === 'image' || props.mediaType === 'video' || props.mediaType === 'audio') {

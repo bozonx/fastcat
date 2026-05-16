@@ -1,6 +1,7 @@
 import type { IFileSystemAdapter, VfsEntry } from './types';
 import { MAX_COPY_DEPTH } from '~/file-manager/core/rules';
 
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { appDataDir, join } from '@tauri-apps/api/path';
 import {
   BaseDirectory,
@@ -280,8 +281,8 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
   }
 
   async getObjectUrl(path: string): Promise<string> {
-    const blob = await this.readFile(path);
-    return URL.createObjectURL(blob);
+    const absolutePath = await this.resolveStreamPath(path);
+    return convertFileSrc(absolutePath);
   }
 
   async getFile(path: string): Promise<File | null> {

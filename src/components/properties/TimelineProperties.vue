@@ -67,6 +67,7 @@ const { timelineDocSummary, fileInfo, currentUrl, isUnknown, mediaType, textCont
     mediaStore,
     proxyStore,
     getFileByPath: (path) => fileManager.vfs.getFile(path),
+    getObjectUrlByPath: (path) => fileManager.vfs.getObjectUrl(path),
     onResetPreviewMode: () => {},
   });
 
@@ -172,7 +173,6 @@ const masterAudioEffects = computed(() =>
   ),
 );
 
-
 const timelineZoom = computed({
   get: () => timelineStore.timelineZoom,
   set: (value: number) => {
@@ -237,7 +237,6 @@ const addTrackActions = computed(() => [
 <template>
   <!-- IMPORTANT: NO LOADING INDICATORS ALLOWED HERE. ALL PROPERTIES MUST LOAD SILENTLY. -->
   <div class="w-full flex flex-col gap-3">
-
     <!-- Actions (merge file and timeline actions) -->
     <PropertySection
       v-if="fileActions || !finalIsReadOnly"
@@ -249,10 +248,7 @@ const addTrackActions = computed(() => [
           :primary-actions="fileActions.primary"
           :secondary-actions="fileActions.secondary"
         />
-        <div
-          v-if="!finalIsReadOnly"
-          class="mt-1 pt-1"
-        >
+        <div v-if="!finalIsReadOnly" class="mt-1 pt-1">
           <PropertyActionList
             :actions="addTrackActions"
             :vertical="false"
@@ -310,7 +306,6 @@ const addTrackActions = computed(() => [
     <!-- Settings (No title, includes Master Volume) -->
     <PropertySection v-if="!finalIsReadOnly">
       <div class="flex flex-col gap-3 py-1">
-
         <UiSliderInput
           v-model="masterGain"
           :label="t('fastcat.timeline.properties.masterVolume')"
