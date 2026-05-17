@@ -196,15 +196,7 @@ export function parseClipItem(input: {
   // Time effects: parse LinearTimeWarp / FreezeFrame if present
   const timeEffects = parseTimeEffects((otio.effects as unknown[]) ?? []);
 
-  // Handle disabled state: Clip.2 enabled=false, or legacy ignored=true
-  const isDisabled = otio.enabled === false || fastcatMeta.flags?.ignored === true;
-  if (fastcatMeta.flags?.ignored === true && report) {
-    report.warn(
-      'legacy_ignored',
-      `Clip "${id}" has legacy ignored flag; treating as disabled.`,
-      `tracks[${trackId}].children[${index}]`,
-    );
-  }
+  const isDisabled = otio.enabled === false;
 
   // Roundtrip ranges override source/timeline ranges if present
   const roundtripTimelineRange = fastcatMeta.roundtrip?.timelineRange;

@@ -71,20 +71,10 @@ export function parseEffects(raw: unknown[]): ClipEffect[] {
           : '';
     if (!id || !type) continue;
 
-    // New explicit params shape takes priority
-    const explicitParams =
+    const params =
       effectMeta.params && typeof effectMeta.params === 'object'
         ? (effectMeta.params as Record<string, unknown>)
         : {};
-
-    // Legacy flat shape: spread everything except known keys
-    const legacyParams = Object.fromEntries(
-      Object.entries(effectMeta).filter(
-        ([k]) => !['id', 'type', 'enabled', 'target', 'params'].includes(k),
-      ),
-    );
-
-    const params = Object.keys(explicitParams).length > 0 ? explicitParams : legacyParams;
 
     result.push({
       id,

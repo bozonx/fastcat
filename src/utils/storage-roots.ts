@@ -1,6 +1,4 @@
 export const FASTCAT_CONFIG_DIR_NAME = '.fastcat-config';
-export const LEGACY_WORKSPACE_CONFIG_DIR_NAME = '.fastcat-workspace';
-
 export const FASTCAT_CONTENT_ROOT_DIR_NAME = 'FastCat';
 export const WORKSPACE_TEMP_ROOT_DIR_NAME = 'vardata';
 
@@ -46,7 +44,6 @@ export interface WorkspaceStorageTopology {
   tempRootDirName: string;
   tempProjectsDirName: string;
   configDirName: string;
-  legacyConfigDirName: string;
 }
 
 export function getWorkspaceStorageTopology(): WorkspaceStorageTopology {
@@ -56,6 +53,5 @@ export function getWorkspaceStorageTopology(): WorkspaceStorageTopology {
     tempRootDirName: WORKSPACE_TEMP_ROOT_DIR_NAME,
     tempProjectsDirName: WORKSPACE_TEMP_PROJECTS_DIR_NAME,
     configDirName: FASTCAT_CONFIG_DIR_NAME,
-    legacyConfigDirName: LEGACY_WORKSPACE_CONFIG_DIR_NAME,
   };
 }

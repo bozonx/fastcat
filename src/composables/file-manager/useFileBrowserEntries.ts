@@ -1,4 +1,4 @@
-import { ref, computed, watch, inject } from 'vue';
+import { ref, computed, watch, inject, onScopeDispose } from 'vue';
 import type { Ref } from 'vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -33,6 +33,11 @@ export function useFileBrowserEntries({
   const folderSizesLoading = ref<Record<string, boolean>>({});
   const sizeCalcQueue = new PQueue({ concurrency: 5 });
 
+  onScopeDispose(() => {
+    sizeCalcQueue.clear();
+    sizeCalcQueue.pause();
+  });
+
   async function calculateFolderSize(path: string, handle?: FileSystemDirectoryHandle) {
     if (folderSizes.value[path] !== undefined || folderSizesLoading.value[path]) return;
 
@@ -44,7 +49,6 @@ export function useFileBrowserEntries({
         let totalSize = 0;
 
         async function calc(dirHandle: FileSystemDirectoryHandle) {
-          // @ts-expect-error Types for FileSystemDirectoryHandle values iterator may be incomplete
           for await (const entry of dirHandle.values()) {
             if (entry.kind === 'file') {
               try {

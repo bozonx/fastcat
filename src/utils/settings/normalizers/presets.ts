@@ -11,8 +11,7 @@ import {
 } from '../presets';
 
 export function getProjectInput(raw: Record<string, unknown>): Record<string, unknown> {
-  const legacyExportInput = raw.exportDefaults ?? raw.export ?? null;
-  const projectDefaults = raw.projectDefaults ?? legacyExportInput ?? {};
+  const projectDefaults = raw.projectDefaults ?? {};
   return typeof projectDefaults === 'object' && projectDefaults !== null
     ? (projectDefaults as Record<string, unknown>)
     : {};
@@ -21,8 +20,7 @@ export function getProjectInput(raw: Record<string, unknown>): Record<string, un
 export function getExportEncodingInput(raw: Record<string, unknown>): Record<string, unknown> {
   const exportDefaults =
     raw.exportDefaults && typeof raw.exportDefaults === 'object' ? raw.exportDefaults : {};
-  const legacyExport = raw.export && typeof raw.export === 'object' ? raw.export : {};
-  const enc = (exportDefaults as any).encoding ?? (legacyExport as any).encoding ?? {};
+  const enc = (exportDefaults as any).encoding ?? {};
   return typeof enc === 'object' && enc !== null ? (enc as Record<string, unknown>) : {};
 }
 

@@ -23,7 +23,7 @@ export const STORAGE_KEYS = {
   },
 } as const;
 
-export function isMobilePlatform(): boolean {
+function isMobilePlatform(): boolean {
   if (typeof window === 'undefined' || !window.location) return false;
   return window.location.pathname.startsWith('/m');
 }
@@ -79,23 +79,13 @@ export function writeLocalStorageString(key: string, value: string) {
   }
 }
 
-export function removeLocalStorageKey(key: string) {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.removeItem(key);
-  } catch {
-    return;
-  }
-}
-
 export function clearUiCache() {
   if (typeof window === 'undefined') return;
   try {
     const keysToRemove: string[] = [];
     for (let i = 0; i < window.localStorage.length; i++) {
       const key = window.localStorage.key(i);
-      // We keep 'fastcat-' for legacy if any, but standard is 'fastcat:'
-      if (key && (key.startsWith('fastcat:') || key.startsWith('fastcat-'))) {
+      if (key && key.startsWith('fastcat:')) {
         keysToRemove.push(key);
       }
     }

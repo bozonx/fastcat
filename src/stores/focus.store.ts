@@ -2,7 +2,6 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
 export type MainPanelFocus = 'monitor' | 'timeline';
-export type TempPanelFocus = 'none' | 'left' | 'right';
 export type PanelFocusId =
   | MainPanelFocus
   | 'left'
@@ -84,12 +83,6 @@ export function isTimelineHotkeyPanelFocus(panelId: string | null | undefined): 
   return panelId === 'timeline' || panelId === 'audioMixer';
 }
 
-function toLegacyTempFocus(panelId: string | null | undefined): TempPanelFocus {
-  if (panelId === 'files-sidebar') return 'left';
-  if (panelId === 'files-main') return 'right';
-  return 'none';
-}
-
 export const useFocusStore = defineStore('focus', () => {
   const activeTimelinePath = ref<string | null>(null);
 
@@ -105,7 +98,6 @@ export const useFocusStore = defineStore('focus', () => {
     return lastCutMainPanelId.value;
   });
 
-  const tempFocus = computed<TempPanelFocus>(() => toLegacyTempFocus(activePanelId.value));
   const effectiveFocus = computed<AnyPanelFocus>(() => activePanelId.value);
 
   function syncMainFocusToTimeline(nextMainFocus: MainPanelFocus) {
@@ -154,12 +146,12 @@ export const useFocusStore = defineStore('focus', () => {
     setMainFocus(mainFocus.value === 'monitor' ? 'timeline' : 'monitor');
   }
 
-  function setTempFocus(next: Exclude<TempPanelFocus, 'none'>) {
-    setPanelFocus(next === 'left' ? 'files-sidebar' : 'files-main');
+  function setTempFocus(next: 'files-sidebar' | 'files-main') {
+    setPanelFocus(next);
   }
 
   function clearTempFocus() {
-    if (tempFocus.value === 'none') return;
+    if (activePanelId.value !== 'files-sidebar' && activePanelId.value !== 'files-main') return;
     activePanelId.value = lastCutMainPanelId.value;
   }
 
@@ -197,7 +189,6 @@ export const useFocusStore = defineStore('focus', () => {
     activeTimelinePath,
     activePanelId,
     mainFocus,
-    tempFocus,
     effectiveFocus,
     lastCutMainPanelId,
     lastNonMainPanelId,

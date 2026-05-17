@@ -426,20 +426,14 @@ export function normalizeProjectSettings(
     return defaults;
   }
 
-  // Handle legacy mappings before passing to zod
   const input = raw as Record<string, any>;
-  const legacyExportInput = input.exportDefaults ?? input.export ?? {};
 
   const mappedInput: Record<string, any> = {
     ...input,
-    project:
-      typeof input.project === 'object'
-        ? input.project
-        : typeof input.export === 'object'
-          ? input.export
-          : {},
+    project: typeof input.project === 'object' ? input.project : {},
     exportDefaults: {
-      encoding: typeof legacyExportInput.encoding === 'object' ? legacyExportInput.encoding : {},
+      encoding:
+        typeof input.exportDefaults?.encoding === 'object' ? input.exportDefaults.encoding : {},
     },
   };
 

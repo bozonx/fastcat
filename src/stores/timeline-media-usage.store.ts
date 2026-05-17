@@ -18,7 +18,7 @@ interface FsDirectoryHandleWithIteration extends FileSystemDirectoryHandle {
   entries?: () => AsyncIterable<[string, FileSystemHandle]>;
 }
 
-export class TimelineScanError extends Error {
+class TimelineScanError extends Error {
   constructor(
     public readonly code: 'PROJECT_TOO_LARGE' | 'DIR_UNAVAILABLE' | 'UNKNOWN',
     message: string,
@@ -148,7 +148,10 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
   async function readTimelineDocByPath(params: { timelinePath: string }) {
     const vfs = useVfs();
     if (!vfs) {
-      console.warn('[TimelineMediaUsage] VFS is not available yet, skipping scan for:', params.timelinePath);
+      console.warn(
+        '[TimelineMediaUsage] VFS is not available yet, skipping scan for:',
+        params.timelinePath,
+      );
       return null;
     }
     const file = await vfs.getFile(params.timelinePath);

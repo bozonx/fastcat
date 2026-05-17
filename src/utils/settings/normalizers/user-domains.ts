@@ -32,8 +32,6 @@ export function normalizeDeleteWithoutConfirmation(raw: unknown): boolean {
 }
 
 export function normalizeTimelineSettings(raw: unknown): FastCatUserSettings['timeline'] {
-  const legacySnap = (raw as any)?.snapThresholdPx;
-
   const schema = z
     .object({
       snapThresholdPx: z.coerce
@@ -55,22 +53,13 @@ export function normalizeTimelineSettings(raw: unknown): FastCatUserSettings['ti
           markers: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.markers),
           selection: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.selection),
           playhead: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.playhead),
-          playheadClick: z
-            .boolean()
-            .catch(DEFAULT_USER_SETTINGS.timeline.snapping.playheadClick),
+          playheadClick: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.playheadClick),
         })
         .catch(DEFAULT_USER_SETTINGS.timeline.snapping),
     })
     .catch(DEFAULT_USER_SETTINGS.timeline);
 
-  const tl = schema.parse((raw as any)?.timeline);
-  if (legacySnap !== undefined && (raw as any)?.timeline?.snapThresholdPx === undefined) {
-    const parsedLegacy = z.coerce.number().min(1).safeParse(legacySnap);
-    if (parsedLegacy.success) {
-      tl.snapThresholdPx = parsedLegacy.data;
-    }
-  }
-  return tl;
+  return schema.parse((raw as any)?.timeline);
 }
 
 export function normalizeStopFramesSettings(raw: unknown): FastCatUserSettings['stopFrames'] {
@@ -172,7 +161,10 @@ export function normalizeIntegrationsSettings(raw: unknown): FastCatUserSettings
             .array(z.string().trim())
             .catch([...DEFAULT_USER_SETTINGS.integrations.stt.models]),
           localModel: z.string().trim().catch(DEFAULT_USER_SETTINGS.integrations.stt.localModel),
-          language: z.string().trim().catch(DEFAULT_USER_SETTINGS.integrations.stt.language ?? ''),
+          language: z
+            .string()
+            .trim()
+            .catch(DEFAULT_USER_SETTINGS.integrations.stt.language ?? ''),
           restorePunctuation: z
             .boolean()
             .catch(DEFAULT_USER_SETTINGS.integrations.stt.restorePunctuation),

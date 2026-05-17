@@ -37,22 +37,24 @@ function createFileManagerStoreSetup(contextId: string) {
     const isBloggerDogPanelVisible = ref(false);
 
     // Load from WorkspaceState with localStorage fallback for migration
-    const workspaceInstance = computed(() => workspaceStore.workspaceState.fileBrowser.instances[contextId]);
+    const workspaceInstance = computed(
+      () => workspaceStore.workspaceState.fileBrowser.instances[contextId],
+    );
 
     const viewMode = ref<FileViewMode>(
       workspaceInstance.value?.viewMode ??
-      readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'viewMode'), 'grid')
+        readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'viewMode'), 'grid'),
     );
     const sortOption = ref<FileSortOption>(
       workspaceInstance.value?.sortOption ??
-      readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'sortOption'), {
-        field: 'name',
-        order: 'asc',
-      })
+        readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'sortOption'), {
+          field: 'name',
+          order: 'asc',
+        }),
     );
     const gridCardSize = ref<number>(
       workspaceInstance.value?.gridCardSize ??
-      readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'gridCardSize'), 80)
+        readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'gridCardSize'), 80),
     );
 
     // Keep column widths in localStorage as they are machine/resolution dependent
@@ -68,33 +70,41 @@ function createFileManagerStoreSetup(contextId: string) {
     const selectionContext = ref<FileManagerSelectionContext>({});
 
     // Watch for internal changes and update WorkspaceState
-    watch([viewMode, sortOption, gridCardSize, () => selectedFolder.value?.path], () => {
-      workspaceStore.batchUpdateWorkspaceState((draft) => {
-        if (!draft.fileBrowser.instances[contextId]) {
-          draft.fileBrowser.instances[contextId] = {
-            viewMode: viewMode.value,
-            sortOption: sortOption.value,
-            gridCardSize: gridCardSize.value,
-          };
-        }
-        const instance = draft.fileBrowser.instances[contextId]!;
-        instance.viewMode = viewMode.value;
-        instance.sortOption = sortOption.value;
-        instance.gridCardSize = gridCardSize.value;
-        if (selectedFolder.value?.path) {
-          instance.lastPath = selectedFolder.value.path;
-        }
-      });
-    }, { deep: true });
+    watch(
+      [viewMode, sortOption, gridCardSize, () => selectedFolder.value?.path],
+      () => {
+        workspaceStore.batchUpdateWorkspaceState((draft) => {
+          if (!draft.fileBrowser.instances[contextId]) {
+            draft.fileBrowser.instances[contextId] = {
+              viewMode: viewMode.value,
+              sortOption: sortOption.value,
+              gridCardSize: gridCardSize.value,
+            };
+          }
+          const instance = draft.fileBrowser.instances[contextId]!;
+          instance.viewMode = viewMode.value;
+          instance.sortOption = sortOption.value;
+          instance.gridCardSize = gridCardSize.value;
+          if (selectedFolder.value?.path) {
+            instance.lastPath = selectedFolder.value.path;
+          }
+        });
+      },
+      { deep: true },
+    );
 
     // Sync from WorkspaceState (e.g. if loaded from disk later or another component updates it)
-    watch(workspaceInstance, (val) => {
-      if (!val) return;
-      if (val.viewMode !== viewMode.value) viewMode.value = val.viewMode;
-      if (val.gridCardSize !== gridCardSize.value) gridCardSize.value = val.gridCardSize;
-      // We don't force-update sortOption here to avoid infinite loops or jitter, 
-      // but if needed we could implement a shallow compare
-    }, { deep: true });
+    watch(
+      workspaceInstance,
+      (val) => {
+        if (!val) return;
+        if (val.viewMode !== viewMode.value) viewMode.value = val.viewMode;
+        if (val.gridCardSize !== gridCardSize.value) gridCardSize.value = val.gridCardSize;
+        // We don't force-update sortOption here to avoid infinite loops or jitter,
+        // but if needed we could implement a shallow compare
+      },
+      { deep: true },
+    );
 
     // Still persist columnWidths to localStorage
     watch(columnWidths, (val) =>
@@ -247,9 +257,6 @@ function createFileManagerStoreSetup(contextId: string) {
     };
   };
 }
-
-// Legacy useFileBrowserPersistenceStore was removed. 
-// Use individual fileManager stores and WorkspaceStore instead.
 
 export type FileManagerStore = ReturnType<ReturnType<typeof createFileManagerStoreSetup>>;
 

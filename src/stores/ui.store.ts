@@ -44,6 +44,7 @@ export const useUiStore = defineStore('ui', () => {
     () => showHiddenFiles.value,
     (val) => {
       if (workspaceStore.isEphemeral) return;
+      if (workspaceStore.workspaceState?.ui?.showHiddenFiles === val) return;
       void workspaceStore.batchUpdateWorkspaceState((draft) => {
         draft.ui.showHiddenFiles = val;
       });

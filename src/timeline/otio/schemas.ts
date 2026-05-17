@@ -337,19 +337,3 @@ export const TimelineDocFastCatMetaSchema = z
       .optional(),
   })
   .catch({});
-
-// Legacy flat document schema (pre-grouping)
-export const TimelineDocFastCatMetaLegacySchema = z
-  .object({
-    version: z.number().optional(),
-    docId: z.string().trim().min(1).optional(),
-    timebase: z.object({ fps: z.number() }).optional(),
-    audio: z
-      .object({
-        masterGain: z.number().min(0).max(10).optional(),
-        masterMuted: z.boolean().optional(),
-        masterEffects: z.array(ClipEffectFastCatSchema).optional(),
-      })
-      .optional(),
-  })
-  .catch({});

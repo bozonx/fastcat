@@ -11,7 +11,6 @@ describe('FocusStore', () => {
   it('defaults to timeline main focus', () => {
     const store = useFocusStore();
     expect(store.mainFocus).toBe('timeline');
-    expect(store.tempFocus).toBe('none');
     expect(store.activePanelId).toBe('timeline');
     expect(store.effectiveFocus).toBe('timeline');
   });
@@ -57,11 +56,11 @@ describe('FocusStore', () => {
     expect(store.mainFocus).toBe('timeline');
   });
 
-  it('legacy temporary left focus stays active', () => {
+  it('temporary sidebar focus stays active', () => {
     const store = useFocusStore();
 
     store.setMainFocus('timeline');
-    store.setTempFocus('left');
+    store.setTempFocus('files-sidebar');
 
     expect(store.activePanelId).toBe('files-sidebar');
     expect(store.effectiveFocus).toBe('files-sidebar');
@@ -116,15 +115,14 @@ describe('FocusStore', () => {
     expect(store.canUsePreviewHotkeys).toBe(false);
   });
 
-  it('clearTempFocus restores last cut main panel only for legacy temp panels', () => {
+  it('clearTempFocus restores last cut main panel only for temp panels', () => {
     const store = useFocusStore();
 
     store.setMainFocus('timeline');
-    store.setTempFocus('right');
+    store.setTempFocus('files-main');
     store.clearTempFocus();
 
     expect(store.activePanelId).toBe('timeline');
-    expect(store.tempFocus).toBe('none');
   });
 
   it('restores saved main focus when timeline path changes while main panel is active', () => {

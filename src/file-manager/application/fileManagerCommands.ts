@@ -42,7 +42,7 @@ async function generateUniqueEntryNameWithSuffix(params: {
   }
 
   let counter = 1;
-  while (true) {
+  while (counter < 10000) {
     candidateName = `${baseName} (${counter})${extension}`;
     candidatePath = params.dirPath ? `${params.dirPath}/${candidateName}` : candidateName;
     if (!(await params.vfs.exists(candidatePath))) {
@@ -50,6 +50,7 @@ async function generateUniqueEntryNameWithSuffix(params: {
     }
     counter++;
   }
+  throw new Error('Unable to generate unique entry name: too many conflicts');
 }
 
 export interface UploadResult {

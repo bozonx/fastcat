@@ -35,6 +35,7 @@ export class AudioScheduler {
   private globalSpeed = 1;
   private scheduledClipIds = new Set<string>();
   private scheduleTimer: ReturnType<typeof setInterval> | null = null;
+  private destroyed = false;
 
   constructor(options: AudioSchedulerOptions) {
     this.getContext = options.getContext;
@@ -44,6 +45,12 @@ export class AudioScheduler {
   }
 
   async play(timeUs: number, speed = 1) {
+    if (this.destroyed) {
+      if (import.meta.dev) {
+        console.warn('[AudioScheduler] play() called on destroyed instance');
+      }
+      return;
+    }
     this.isPlaying = true;
     this.globalSpeed = speed;
     this.baseTimeS = timeUs / 1_000_000;
@@ -104,6 +111,12 @@ export class AudioScheduler {
   }
 
   seek(timeUs: number) {
+    if (this.destroyed) {
+      if (import.meta.dev) {
+        console.warn('[AudioScheduler] seek() called on destroyed instance');
+      }
+      return;
+    }
     if (!this.isPlaying) {
       return;
     }
@@ -125,6 +138,13 @@ export class AudioScheduler {
   }
 
   destroy() {
+    if (this.destroyed) {
+      if (import.meta.dev) {
+        console.warn('[AudioScheduler] destroy() called twice');
+      }
+      return;
+    }
+    this.destroyed = true;
     this.stopLookahead();
     this.scheduledClipIds.clear();
     this.isPlaying = false;
@@ -178,6 +198,12 @@ export class AudioScheduler {
   }
 
   private startLookahead() {
+    if (this.destroyed) {
+      if (import.meta.dev) {
+        console.warn('[AudioScheduler] startLookahead() called on destroyed instance');
+      }
+      return;
+    }
     this.stopLookahead();
     this.onScheduleLookahead();
     this.scheduleTimer = setInterval(() => this.onScheduleLookahead(), 50);

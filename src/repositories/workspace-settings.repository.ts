@@ -10,7 +10,7 @@ import {
   writeJsonToFileHandle,
   type DirectoryHandleLike,
 } from './app-fs.repository';
-import { FASTCAT_CONFIG_DIR_NAME, LEGACY_WORKSPACE_CONFIG_DIR_NAME } from '~/utils/storage-roots';
+import { FASTCAT_CONFIG_DIR_NAME } from '~/utils/storage-roots';
 
 const isDevMode = (): boolean => import.meta.dev;
 
@@ -114,31 +114,16 @@ export function createWorkspaceSettingsRepository(input: {
   workspaceDir: DirectoryHandleLike;
   fastcatDevDir?: string;
 }): WorkspaceSettingsRepository {
-  async function loadSettings(
-    filename: string,
-    isGlobal: boolean,
-    legacyFilename?: string,
-  ): Promise<unknown | null> {
+  async function loadSettings(filename: string, isGlobal: boolean): Promise<unknown | null> {
     if (isTauriRuntime() && isGlobal) {
       return await readTauriConfigJson(filename, input.fastcatDevDir);
     }
 
-    const currentConfig = await readWorkspaceJson({
+    return await readWorkspaceJson({
       workspaceDir: input.workspaceDir,
       filename,
       folderName: FASTCAT_CONFIG_DIR_NAME,
     });
-    if (currentConfig) return currentConfig;
-
-    if (legacyFilename) {
-      return await readWorkspaceJson({
-        workspaceDir: input.workspaceDir,
-        filename: legacyFilename,
-        folderName: LEGACY_WORKSPACE_CONFIG_DIR_NAME,
-      });
-    }
-
-    return null;
   }
 
   async function saveSettings(filename: string, isGlobal: boolean, data: unknown): Promise<void> {
@@ -157,7 +142,7 @@ export function createWorkspaceSettingsRepository(input: {
 
   return {
     async loadUserSettings() {
-      return await loadSettings('user.settings.json', true, 'user.settings.json');
+      return await loadSettings('user.settings.json', true);
     },
 
     async saveUserSettings(data) {
@@ -165,7 +150,7 @@ export function createWorkspaceSettingsRepository(input: {
     },
 
     async loadAppSettings() {
-      return await loadSettings('app.settings.json', false, 'workspace.settings.json');
+      return await loadSettings('app.settings.json', false);
     },
 
     async saveAppSettings(data) {

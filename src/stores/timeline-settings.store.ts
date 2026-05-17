@@ -4,6 +4,7 @@ import type { OverlapMode, FrameSnapMode, ClipSnapMode } from '~/utils/timeline-
 import { DEFAULT_SNAP_SETTINGS } from '~/utils/timeline-modes';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useProjectSettingsStore } from '~/stores/project-settings.store';
 
 export type ToolbarSnapMode = 'snap' | 'no_snap' | 'free_mode';
 export type ToolbarDragMode = 'pseudo_overlap' | 'copy' | 'slip';
@@ -61,7 +62,6 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
   if (clipSnapMode.value !== 'none' && clipSnapMode.value !== 'clips') {
     clipSnapMode.value = DEFAULT_SNAP_SETTINGS.clipSnapMode;
   }
-
 
   if (
     toolbarSnapMode.value !== 'snap' &&

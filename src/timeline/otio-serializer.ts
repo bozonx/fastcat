@@ -42,7 +42,6 @@ import {
 import { parseGapItem, parseClipItem, parseItemSequenceDurationUs } from './otio/items';
 import {
   TimelineDocFastCatMetaSchema,
-  TimelineDocFastCatMetaLegacySchema,
   TimelineTrackFastCatMetaSchema,
   TimelineClipFastCatMetaSchema,
 } from './otio/schemas';
@@ -430,7 +429,7 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
 }
 
 // ---------------------------------------------------------------------------
-// Document metadata parsing (grouped + legacy fallback)
+// Document metadata parsing
 // ---------------------------------------------------------------------------
 
 function parseDocumentMetadata(raw: unknown): {
@@ -443,28 +442,13 @@ function parseDocumentMetadata(raw: unknown): {
   version?: number;
 } {
   const grouped = TimelineDocFastCatMetaSchema.parse(raw);
-
-  // New grouped format
-  if (grouped.schema || grouped.document) {
-    return {
-      docId: coerceId(grouped.document?.docId ?? grouped.docId, ''),
-      timebase: grouped.document?.timebase ?? grouped.timebase,
-      masterGain: grouped.audio?.masterGain,
-      masterMuted: grouped.audio?.masterMuted,
-      masterEffects: grouped.audio?.masterEffects,
-      version: grouped.version,
-    };
-  }
-
-  // Legacy flat format
-  const legacy = TimelineDocFastCatMetaLegacySchema.parse(raw);
   return {
-    docId: legacy.docId,
-    timebase: legacy.timebase,
-    masterGain: legacy.audio?.masterGain,
-    masterMuted: legacy.audio?.masterMuted,
-    masterEffects: legacy.audio?.masterEffects,
-    version: legacy.version,
+    docId: coerceId(grouped.document?.docId ?? grouped.docId, ''),
+    timebase: grouped.document?.timebase ?? grouped.timebase,
+    masterGain: grouped.audio?.masterGain,
+    masterMuted: grouped.audio?.masterMuted,
+    masterEffects: grouped.audio?.masterEffects,
+    version: grouped.version,
   };
 }
 

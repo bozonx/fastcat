@@ -7,7 +7,7 @@ import type { ProjectUiLayoutState } from '~/utils/project-settings';
 
 export type EditorView = 'files' | 'cut' | 'sound' | 'export' | 'fullscreen' | 'settings';
 
-export interface ViewConfig {
+interface ViewConfig {
   timelineHeight: number;
 }
 
@@ -63,7 +63,7 @@ export function buildDefaultCutPanelsForOrientation(
   ];
 }
 
-export interface CreateEditorViewModuleOptions {
+interface CreateEditorViewModuleOptions {
   getProjectOrientation: () => 'landscape' | 'portrait';
   getLayout?: () => ProjectUiLayoutState | null | undefined;
   updateLayout?: (updater: (layout: ProjectUiLayoutState) => void) => void;

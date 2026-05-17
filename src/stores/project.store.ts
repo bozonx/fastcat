@@ -85,10 +85,9 @@ export const useProjectStore = defineStore('project', () => {
     currentTimelinePath.value = null;
     currentFileName.value = null;
     isReadOnly.value = false;
-    await projectLock.releaseLock();
-    clearProjectMetaState();
 
-    // Reset dependent stores when a project is closed
+    // Reset dependent stores before async gap to prevent stale debounced
+    // history timeouts from firing while the timeline document is gone.
     const mediaStore = useMediaStore();
     const timelineStore = useTimelineStore();
     const selectionStore = useSelectionStore();
@@ -100,6 +99,9 @@ export const useProjectStore = defineStore('project', () => {
     selectionStore.clearSelection();
     fileManagerStore.resetFileManagerState();
     historyStore.clear('timeline');
+
+    await projectLock.releaseLock();
+    clearProjectMetaState();
   }
 
   const timelinesModule = createProjectTimelinesModule({
