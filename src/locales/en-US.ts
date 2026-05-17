@@ -1688,6 +1688,8 @@ export default {
       "backupErrorDesc": "Failed to create a project backup.",
       "fpsMismatch": "FPS Mismatch",
       "fpsMismatchDesc": "Timeline FPS does not match project settings.",
+      "autoSettingsApplied": "Project settings updated",
+      "autoSettingsAppliedDesc": "Resolution {width}x{height}, {fps} FPS",
       "settings": "Timeline settings",
       "tabs": {
         "cut": "Cut",

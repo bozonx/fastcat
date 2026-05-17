@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveProjectPreset } from '~/utils/settings';
@@ -41,6 +41,23 @@ function applyProjectPreset(presetId: string) {
   projectStore.projectSettings.project.isCustomResolution = preset.isCustomResolution;
   projectStore.projectSettings.project.sampleRate = preset.sampleRate;
 }
+
+watch(
+  () => projectStore.projectSettings?.project,
+  (newVal, oldVal) => {
+    if (!newVal || !oldVal) return;
+    const changed =
+      newVal.width !== oldVal.width ||
+      newVal.height !== oldVal.height ||
+      newVal.fps !== oldVal.fps ||
+      newVal.sampleRate !== oldVal.sampleRate ||
+      newVal.orientation !== oldVal.orientation;
+    if (changed && newVal.isAutoSettings) {
+      newVal.isAutoSettings = false;
+    }
+  },
+  { deep: true },
+);
 </script>
 
 <template>

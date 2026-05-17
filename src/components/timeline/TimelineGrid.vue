@@ -6,8 +6,8 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { pxToTimeUs, timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { useResizeObserver } from '@vueuse/core';
 
-const props = defineProps<{
-  scrollEl: HTMLElement | null;
+defineProps<{
+  scrollEl?: HTMLElement | null;
 }>();
 
 const containerRef = ref<HTMLElement | null>(null);
@@ -19,7 +19,7 @@ const workspaceStore = useWorkspaceStore();
 
 const width = ref(0);
 const height = ref(0);
-const scrollLeft = ref(0);
+const scrollLeft = computed(() => timelineStore.timelineScrollLeftPx);
 const renderStartPx = ref(0);
 const renderWidthPx = ref(0);
 
@@ -75,23 +75,11 @@ onMounted(() => {
   }
 });
 
-function onScroll() {
-  if (props.scrollEl) {
-    const nextScrollLeft = props.scrollEl.scrollLeft;
-    scrollLeft.value = nextScrollLeft;
+watch(
+  scrollLeft,
+  (nextScrollLeft) => {
     if (shouldRedrawForScroll(nextScrollLeft)) {
       scheduleDraw();
-    }
-  }
-}
-
-watch(
-  () => props.scrollEl,
-  (el, oldEl) => {
-    if (oldEl) oldEl.removeEventListener('scroll', onScroll);
-    if (el) {
-      el.addEventListener('scroll', onScroll, { passive: true });
-      onScroll();
     }
   },
   { immediate: true },
@@ -107,9 +95,6 @@ useResizeObserver(containerRef, (entries) => {
 });
 
 onUnmounted(() => {
-  if (props.scrollEl) {
-    props.scrollEl.removeEventListener('scroll', onScroll);
-  }
   if (drawRafId !== null) {
     cancelAnimationFrame(drawRafId);
     drawRafId = null;

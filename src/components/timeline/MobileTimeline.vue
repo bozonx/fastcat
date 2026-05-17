@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import type {
   TimelineClipActionPayload,
@@ -164,6 +164,22 @@ function handleCutClips() {
 }
 
 const scrollEl = ref<HTMLElement | null>(null);
+
+// Keep the store's scroll position in sync with the mobile scrollEl so ruler/grid/playhead align.
+watch(
+  scrollEl,
+  (el, _oldEl, onCleanup) => {
+    if (!el) return;
+    const onScroll = () => {
+      timelineStore.timelineScrollLeftPx = el.scrollLeft;
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    timelineStore.timelineScrollLeftPx = el.scrollLeft;
+    onCleanup(() => el.removeEventListener('scroll', onScroll));
+  },
+  { immediate: true },
+);
+
 const lastPointerType = ref('');
 const clickStartX = ref(0);
 const clickStartY = ref(0);

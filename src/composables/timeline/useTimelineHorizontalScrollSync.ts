@@ -1,4 +1,4 @@
-import { ref, watch, type Ref } from 'vue';
+import { computed, ref, watch, type Ref } from 'vue';
 import { useResizeObserver } from '@vueuse/core';
 import { useTimelineStore } from '~/stores/timeline.store';
 
@@ -13,13 +13,19 @@ export interface UseTimelineHorizontalScrollSyncElements {
 export function useTimelineHorizontalScrollSync(els: UseTimelineHorizontalScrollSyncElements) {
   const timelineStore = useTimelineStore();
 
-  const scrollLeftRef = ref(0);
+  // Single source of truth lives in the store so ruler/grid/playhead/tracks never disagree.
+  const scrollLeftRef = computed({
+    get: () => timelineStore.timelineScrollLeftPx,
+    set: (v: number) => {
+      timelineStore.timelineScrollLeftPx = v;
+    },
+  });
   const scrollbarHeight = ref(0);
   const viewportWidth = ref(0);
 
   function onMasterScroll() {
     if (!els.master.value) return;
-    scrollLeftRef.value = els.master.value.scrollLeft;
+    timelineStore.timelineScrollLeftPx = els.master.value.scrollLeft;
   }
 
   function onVideoScroll() {
@@ -59,7 +65,7 @@ export function useTimelineHorizontalScrollSync(els: UseTimelineHorizontalScroll
     els.master,
     (el) => {
       if (!el) return;
-      scrollLeftRef.value = el.scrollLeft;
+      timelineStore.timelineScrollLeftPx = el.scrollLeft;
       scrollbarHeight.value = el.offsetHeight - el.clientHeight;
       viewportWidth.value = el.clientWidth;
       timelineStore.timelineViewportWidth = viewportWidth.value;
@@ -71,7 +77,7 @@ export function useTimelineHorizontalScrollSync(els: UseTimelineHorizontalScroll
     () => timelineStore.scrollResetTicket,
     () => {
       if (els.master?.value) els.master.value.scrollLeft = 0;
-      scrollLeftRef.value = 0;
+      timelineStore.timelineScrollLeftPx = 0;
     },
   );
 

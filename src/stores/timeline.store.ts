@@ -98,6 +98,7 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   const timelineZoom = ref<number>(TIMELINE_DEFAULTS.ZOOM);
   const timelineViewportWidth = ref(0);
+  const timelineScrollLeftPx = ref(0);
   const scrollResetTicket = ref(0);
   const scrollToPlayheadRequest = ref(0);
   const trackHeights = ref<Record<string, number>>({});
@@ -605,6 +606,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     getSelectionRange: selectionRangeModule.getSelectionRange,
     setPreviewSelectionRange: selectionRangeModule.setPreviewSelectionRange,
     timelineViewportWidth,
+    timelineScrollLeftPx,
     scrollResetTicket,
     scrollToPlayheadRequest,
     requestScrollToPlayhead: () => {

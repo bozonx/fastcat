@@ -1,12 +1,12 @@
 import { computed, ref, watch, type Ref } from 'vue';
 import { useResizeObserver } from '@vueuse/core';
+import { useTimelineStore } from '~/stores/timeline.store';
 import { pxToTimeUs, timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { formatRulerTime } from './useTimelineRulerPresentation';
 
 interface TimelineRulerDrawOptions {
   containerRef: Ref<HTMLElement | null>;
   canvasRef: Ref<HTMLCanvasElement | null>;
-  scrollEl: Ref<HTMLElement | null>;
   width: Ref<number>;
   height: Ref<number>;
   scrollLeft: Ref<number>;
@@ -21,6 +21,7 @@ interface TimelineRulerDrawOptions {
 }
 
 export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
+  const timelineStore = useTimelineStore();
   const renderStartPx = ref(0);
   const renderWidthPx = ref(0);
   let drawRafId: number | null = null;
@@ -55,25 +56,12 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
     });
   }
 
-  function onScroll() {
-    if (options.scrollEl.value) {
-      const nextScrollLeft = options.scrollEl.value.scrollLeft;
+  watch(
+    () => timelineStore.timelineScrollLeftPx,
+    (nextScrollLeft) => {
       options.scrollLeft.value = nextScrollLeft;
       if (shouldRedrawForScroll(nextScrollLeft)) {
         scheduleDraw();
-      }
-    }
-  }
-
-  watch(
-    options.scrollEl,
-    (el, oldEl) => {
-      if (oldEl) {
-        oldEl.removeEventListener('scroll', onScroll);
-      }
-      if (el) {
-        el.addEventListener('scroll', onScroll, { passive: true });
-        onScroll();
       }
     },
     { immediate: true },
@@ -89,9 +77,6 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
   });
 
   onUnmounted(() => {
-    if (options.scrollEl.value) {
-      options.scrollEl.value.removeEventListener('scroll', onScroll);
-    }
     if (drawRafId !== null) {
       cancelAnimationFrame(drawRafId);
       drawRafId = null;

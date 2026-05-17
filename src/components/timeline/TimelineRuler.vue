@@ -111,7 +111,6 @@ function computeSnapTargets() {
 const { canvasStyle, scheduleDraw } = useTimelineRulerDraw({
   containerRef,
   canvasRef,
-  scrollEl: computed(() => props.scrollEl),
   width,
   height,
   scrollLeft,

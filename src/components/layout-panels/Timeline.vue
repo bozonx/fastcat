@@ -533,7 +533,7 @@ function onDragVirtualEnd() {
       </UContextMenu>
       <div
         ref="rulerContainerRef"
-        class="flex-1 relative z-10 timeline-ruler-container overflow-hidden"
+        class="flex-1 min-w-0 relative z-10 timeline-ruler-container overflow-hidden"
       >
         <UContextMenu :items="emptyAreaContextMenuItems">
           <TimelineRuler

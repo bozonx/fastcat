@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineHoverState } from '~/composables/timeline/useTimelineHoverState';
 import { timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 
-const props = defineProps<{ scrollEl: HTMLElement | null }>();
+defineProps<{ scrollEl?: HTMLElement | null }>();
 
 const timelineStore = useTimelineStore();
 const projectStore = useProjectStore();
@@ -14,24 +14,9 @@ const selectionStore = useSelectionStore();
 const { hoveredMarkerId } = useTimelineHoverState();
 
 const fps = computed(() => projectStore.projectSettings.project.fps || 30);
-const scrollLeft = ref(0);
-
-watch(
-  () => props.scrollEl,
-  (el, _oldEl, onCleanup) => {
-    if (!el) return;
-    const onScroll = () => {
-      scrollLeft.value = el.scrollLeft;
-    };
-    el.addEventListener('scroll', onScroll, { passive: true });
-    scrollLeft.value = el.scrollLeft;
-    onCleanup(() => el.removeEventListener('scroll', onScroll));
-  },
-  { immediate: true },
-);
 
 function viewportX(absolutePx: number): number {
-  return Math.round(absolutePx - scrollLeft.value);
+  return Math.round(absolutePx - timelineStore.timelineScrollLeftPx);
 }
 
 const playheadTransform = computed(() => {

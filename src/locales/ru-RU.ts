@@ -1688,6 +1688,8 @@ export default {
       "backupErrorDesc": "Не удалось создать резервную копию проекта.",
       "fpsMismatch": "Несоответствие FPS",
       "fpsMismatchDesc": "FPS таймлайна не соответствует настройкам проекта.",
+      "autoSettingsApplied": "Параметры проекта обновлены",
+      "autoSettingsAppliedDesc": "Разрешение {width}x{height}, {fps} FPS",
       "settings": "Настройки таймлайна",
       "tabs": {
         "cut": "Монтаж",
