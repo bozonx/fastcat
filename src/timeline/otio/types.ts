@@ -10,6 +10,11 @@ export interface OtioTimeRange {
   duration: OtioRationalTime;
 }
 
+export interface OtioColor {
+  OTIO_SCHEMA: 'Color.1';
+  rgb: [number, number, number];
+}
+
 export interface OtioExternalReference {
   OTIO_SCHEMA: 'ExternalReference.1';
   target_url: string;
@@ -31,6 +36,23 @@ export interface OtioEffect {
   enabled: boolean;
   metadata?: Record<string, unknown>;
 }
+
+export interface OtioLinearTimeWarp {
+  OTIO_SCHEMA: 'LinearTimeWarp.1';
+  name: string;
+  effect_name: string;
+  time_scalar: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface OtioFreezeFrame {
+  OTIO_SCHEMA: 'FreezeFrame.1';
+  name: string;
+  effect_name: string;
+  metadata?: Record<string, unknown>;
+}
+
+export type OtioTimeEffect = OtioLinearTimeWarp | OtioFreezeFrame;
 
 export interface OtioMarker {
   OTIO_SCHEMA: 'Marker.2';
@@ -62,6 +84,19 @@ export interface OtioClip {
   metadata?: Record<string, unknown>;
 }
 
+export interface OtioClipV2 {
+  OTIO_SCHEMA: 'Clip.2';
+  name: string;
+  media_reference: OtioMediaReference;
+  source_range: OtioTimeRange;
+  enabled?: boolean;
+  effects?: OtioEffect[];
+  markers?: OtioMarker[];
+  metadata?: Record<string, unknown>;
+}
+
+export type OtioAnyClip = OtioClip | OtioClipV2;
+
 export interface OtioGap {
   OTIO_SCHEMA: 'Gap.1';
   name: string;
@@ -70,7 +105,7 @@ export interface OtioGap {
   metadata?: Record<string, unknown>;
 }
 
-export type OtioTrackChild = OtioClip | OtioGap | OtioTransition;
+export type OtioTrackChild = OtioAnyClip | OtioGap | OtioTransition;
 
 export interface OtioTrack {
   OTIO_SCHEMA: 'Track.1';
@@ -79,6 +114,7 @@ export interface OtioTrack {
   children: OtioTrackChild[];
   effects?: OtioEffect[];
   markers?: OtioMarker[];
+  color?: OtioColor;
   metadata?: Record<string, unknown>;
 }
 

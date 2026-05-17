@@ -150,7 +150,7 @@ export function autoTrimPauses(doc: TimelineDocument, cmd: AutoTrimPausesCommand
                 ...t,
                 items: t.items.map((it) =>
                   silenceSet.has(it.id) && it.kind === 'clip'
-                    ? ({ ...it, ignored: true } as TimelineTrackItem)
+                    ? ({ ...it, disabled: true } as TimelineTrackItem)
                     : it,
                 ),
               }

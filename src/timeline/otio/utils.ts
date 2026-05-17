@@ -6,7 +6,7 @@ import type {
   TimelineBlendMode,
   ClipAnchorPreset,
 } from '../types';
-import type { OtioRationalTime, OtioTimeRange } from './types';
+import type { OtioRationalTime, OtioTimeRange, OtioColor } from './types';
 
 export const TIME_RATE_US = 1_000_000;
 
@@ -245,4 +245,79 @@ export function safeFastCatMetadata(raw: unknown): Record<string, unknown> {
 
 export function isOtioPath(value: unknown): value is string {
   return typeof value === 'string' && value.trim().toLowerCase().endsWith('.otio');
+}
+
+// ---------------------------------------------------------------------------
+// Color helpers
+// ---------------------------------------------------------------------------
+
+export function hexToRgbNormalized(hex: string | undefined): [number, number, number] | null {
+  if (!hex || typeof hex !== 'string') return null;
+  const clean = hex.replace('#', '');
+  if (clean.length !== 6 && clean.length !== 3) return null;
+  const full =
+    clean.length === 3
+      ? `${clean[0]}${clean[0]}${clean[1]}${clean[1]}${clean[2]}${clean[2]}`
+      : clean;
+  const r = parseInt(full.substring(0, 2), 16);
+  const g = parseInt(full.substring(2, 4), 16);
+  const b = parseInt(full.substring(4, 6), 16);
+  if (!Number.isFinite(r) || !Number.isFinite(g) || !Number.isFinite(b)) return null;
+  return [r / 255, g / 255, b / 255];
+}
+
+export function rgbNormalizedToHex(rgb: [number, number, number] | undefined): string | null {
+  if (!rgb || !Array.isArray(rgb) || rgb.length < 3) return null;
+  const toHex = (n: number) => {
+    const v = Math.max(0, Math.min(1, n));
+    const int = Math.round(v * 255);
+    return int.toString(16).padStart(2, '0');
+  };
+  return `#${toHex(rgb[0])}${toHex(rgb[1])}${toHex(rgb[2])}`;
+}
+
+export function toOtioColor(hex: string | undefined): OtioColor | undefined {
+  const rgb = hexToRgbNormalized(hex);
+  if (!rgb) return undefined;
+  return { OTIO_SCHEMA: 'Color.1', rgb };
+}
+
+export function fromOtioColor(raw: unknown): string | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const obj = raw as Record<string, unknown>;
+  if (obj.OTIO_SCHEMA !== 'Color.1') return undefined;
+  const rgb = obj.rgb;
+  if (!Array.isArray(rgb) || rgb.length < 3) return undefined;
+  return rgbNormalizedToHex(rgb as [number, number, number]) ?? undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Validation report
+// ---------------------------------------------------------------------------
+
+export interface OtioValidationWarning {
+  type: string;
+  message: string;
+  path?: string;
+}
+
+export class OtioValidationReport {
+  warnings: OtioValidationWarning[] = [];
+
+  warn(type: string, message: string, path?: string) {
+    this.warnings.push({ type, message, path });
+  }
+
+  hasWarnings(): boolean {
+    return this.warnings.length > 0;
+  }
+
+  log(): void {
+    if (this.warnings.length === 0) return;
+
+    console.warn(`[fastcat:otio] Import produced ${this.warnings.length} warning(s):`);
+    for (const w of this.warnings) {
+      console.warn(`  [${w.type}] ${w.message}${w.path ? ` at ${w.path}` : ''}`);
+    }
+  }
 }

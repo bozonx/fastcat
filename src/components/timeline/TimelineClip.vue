@@ -532,7 +532,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
           ? 'opacity-40'
           : '',
         isMediaMissing ? 'bg-red-600! border-red-800! text-white!' : '',
-        !isMediaMissing && clipItem && clipItem.ignored ? 'bg-red-500/40! border-red-400!' : '',
+        !isMediaMissing && clipItem && clipItem.disabled ? 'bg-red-500/40! border-red-400!' : '',
         !isMediaMissing && isUnsupported ? 'bg-amber-600/50! border-amber-700!' : '',
         (clipItem && Boolean(clipItem.locked)) || track.locked ? 'cursor-not-allowed' : '',
         isMobile ? 'touch-none' : '',

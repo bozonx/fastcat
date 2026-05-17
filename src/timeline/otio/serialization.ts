@@ -1,6 +1,12 @@
 import type { ClipEffect, TimelineMarker, ClipTransition } from '../types';
 import type { EffectTarget } from '../../effects/core/registry';
-import type { OtioEffect, OtioMarker, OtioTransition } from './types';
+import type {
+  OtioEffect,
+  OtioMarker,
+  OtioTransition,
+  OtioLinearTimeWarp,
+  OtioFreezeFrame,
+} from './types';
 import {
   toTimeRange,
   fromTimeRange,
@@ -17,24 +23,31 @@ import { normalizeTransitionCurve, normalizeTransitionMode } from '~/transitions
 
 export function serializeEffects(effects: ClipEffect[] | undefined): OtioEffect[] | undefined {
   if (!Array.isArray(effects) || effects.length === 0) return undefined;
-  return effects.map((e) => ({
-    OTIO_SCHEMA: 'Effect.1' as const,
-    name: e.type,
-    effect_name: `fastcat:${e.type}`,
-    enabled: e.enabled !== false,
-    metadata: {
-      fastcat: {
-        effect: {
-          id: e.id,
-          type: e.type,
-          target: e.target,
-          params: Object.fromEntries(
-            Object.entries(e).filter(([k]) => !['id', 'type', 'enabled', 'target'].includes(k)),
-          ),
+  return effects.map((e) => {
+    const { id, type, enabled, target, params: explicitParams, ...rest } = e;
+    const params =
+      explicitParams && typeof explicitParams === 'object' && Object.keys(explicitParams).length > 0
+        ? explicitParams
+        : Object.keys(rest).length > 0
+          ? rest
+          : undefined;
+    return {
+      OTIO_SCHEMA: 'Effect.1' as const,
+      name: type,
+      effect_name: `fastcat:${type}`,
+      enabled: enabled !== false,
+      metadata: {
+        fastcat: {
+          effect: {
+            id,
+            type,
+            target,
+            ...(params ? { params } : {}),
+          },
         },
       },
-    },
-  }));
+    };
+  });
 }
 
 export function parseEffects(raw: unknown[]): ClipEffect[] {
@@ -48,6 +61,7 @@ export function parseEffects(raw: unknown[]): ClipEffect[] {
       fastcatMeta.effect && typeof fastcatMeta.effect === 'object'
         ? (fastcatMeta.effect as Record<string, unknown>)
         : {};
+
     const id = coerceId(effectMeta.id ?? e.name, '');
     const type =
       typeof effectMeta.type === 'string'
@@ -56,17 +70,127 @@ export function parseEffects(raw: unknown[]): ClipEffect[] {
           ? e.effect_name.replace(/^fastcat:/, '')
           : '';
     if (!id || !type) continue;
-    const params =
-      effectMeta.params && typeof effectMeta.params === 'object' ? effectMeta.params : {};
+
+    // New explicit params shape takes priority
+    const explicitParams =
+      effectMeta.params && typeof effectMeta.params === 'object'
+        ? (effectMeta.params as Record<string, unknown>)
+        : {};
+
+    // Legacy flat shape: spread everything except known keys
+    const legacyParams = Object.fromEntries(
+      Object.entries(effectMeta).filter(
+        ([k]) => !['id', 'type', 'enabled', 'target', 'params'].includes(k),
+      ),
+    );
+
+    const params = Object.keys(explicitParams).length > 0 ? explicitParams : legacyParams;
+
     result.push({
       id,
       type,
       enabled: e.enabled !== false,
       target: effectMeta.target as EffectTarget | undefined,
-      ...params,
+      ...(Object.keys(params).length > 0 ? params : {}),
     });
   }
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// Time effects serialization helpers
+// ---------------------------------------------------------------------------
+
+export function serializeTimeEffects(input: {
+  speed?: number;
+  speedActive?: boolean;
+  freezeFrameSourceUs?: number;
+  fps?: number;
+}): (OtioLinearTimeWarp | OtioFreezeFrame)[] | undefined {
+  const result: (OtioLinearTimeWarp | OtioFreezeFrame)[] = [];
+
+  if (input.speedActive && input.speed !== undefined && input.speed !== 1) {
+    result.push({
+      OTIO_SCHEMA: 'LinearTimeWarp.1',
+      name: 'speed',
+      effect_name: 'LinearTimeWarp',
+      time_scalar: input.speed,
+      metadata: {
+        fastcat: {
+          effect: {
+            id: 'speed',
+            type: 'LinearTimeWarp',
+            target: 'video' as const,
+            params: { speed: input.speed },
+          },
+        },
+      },
+    });
+  }
+
+  if (input.freezeFrameSourceUs !== undefined && input.freezeFrameSourceUs >= 0) {
+    result.push({
+      OTIO_SCHEMA: 'FreezeFrame.1',
+      name: 'freeze_frame',
+      effect_name: 'FreezeFrame',
+      metadata: {
+        fastcat: {
+          effect: {
+            id: 'freezeFrame',
+            type: 'FreezeFrame',
+            target: 'video' as const,
+            params: { freezeFrameSourceUs: input.freezeFrameSourceUs },
+          },
+        },
+      },
+    });
+  }
+
+  return result.length > 0 ? result : undefined;
+}
+
+export function parseTimeEffects(raw: unknown[]): {
+  speed?: number;
+  speedActive?: boolean;
+  freezeFrameSourceUs?: number;
+} {
+  let speed: number | undefined;
+  let speedActive = false;
+  let freezeFrameSourceUs: number | undefined;
+
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const e = item as Record<string, unknown>;
+    const schema = e.OTIO_SCHEMA;
+
+    if (schema === 'LinearTimeWarp.1') {
+      const scalar = Number(e.time_scalar);
+      if (Number.isFinite(scalar)) {
+        speed = scalar;
+        speedActive = true;
+      }
+      continue;
+    }
+
+    if (schema === 'FreezeFrame.1') {
+      const fastcatMeta = safeFastCatMetadata(e.metadata);
+      const effectMeta =
+        fastcatMeta.effect && typeof fastcatMeta.effect === 'object'
+          ? (fastcatMeta.effect as Record<string, unknown>)
+          : {};
+      const params =
+        effectMeta.params && typeof effectMeta.params === 'object'
+          ? (effectMeta.params as Record<string, unknown>)
+          : {};
+      const us = Number(params.freezeFrameSourceUs);
+      if (Number.isFinite(us) && us >= 0) {
+        freezeFrameSourceUs = Math.round(us);
+      }
+      continue;
+    }
+  }
+
+  return { speed, speedActive, freezeFrameSourceUs };
 }
 
 // ---------------------------------------------------------------------------
@@ -157,7 +281,7 @@ function transitionTypeToOtio(type: string): string {
 
 function transitionTypeFromOtio(otioType: string): string {
   if (otioType === 'SMPTE_Dissolve') return 'dissolve';
-  if (otioType.startsWith('fastcat:')) return otioType.slice(5);
+  if (otioType.startsWith('fastcat:')) return otioType.slice(8);
   return otioType;
 }
 
@@ -169,15 +293,20 @@ export function buildOtioTransition(
     itemId: string;
     edge: 'in' | 'out';
   },
+  offsets?: {
+    inOffsetUs: number;
+    outOffsetUs: number;
+  },
 ): OtioTransition | null {
   if (!transition.type || !transition.durationUs) return null;
-  const halfUs = Math.round(transition.durationUs / 2);
+  const inUs = offsets?.inOffsetUs ?? Math.round(transition.durationUs / 2);
+  const outUs = offsets?.outOffsetUs ?? Math.round(transition.durationUs - inUs);
   return {
     OTIO_SCHEMA: 'Transition.1',
     name,
     transition_type: transitionTypeToOtio(transition.type),
-    in_offset: toRationalTime(halfUs, fps),
-    out_offset: toRationalTime(transition.durationUs - halfUs, fps),
+    in_offset: toRationalTime(inUs, fps),
+    out_offset: toRationalTime(outUs, fps),
     parameters: transition.params ?? {},
     metadata: {
       fastcat: {

@@ -1,5 +1,5 @@
 import type { TimelineClipItem, TimelineGapItem, ClipTransition } from '../types';
-import type { OtioClip, OtioGap } from './types';
+import type { OtioAnyClip } from './types';
 import {
   fromTimeRange,
   safeFastCatMetadata,
@@ -9,8 +9,9 @@ import {
   fromRationalTimeUs,
   coerceTransform,
   coerceBlendMode,
+  type OtioValidationReport,
 } from './utils';
-import { parseEffects, parseFastCatTransition } from './serialization';
+import { parseEffects, parseFastCatTransition, parseTimeEffects } from './serialization';
 import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
 import { TimelineClipFastCatMetaSchema } from './schemas';
 
@@ -21,10 +22,97 @@ import { TimelineClipFastCatMetaSchema } from './schemas';
 export function parseItemSequenceDurationUs(child: any): number {
   if (!child || typeof child !== 'object') return 0;
   const schema = child.OTIO_SCHEMA;
-  if (schema === 'Gap.1' || schema === 'Clip.1') {
+  if (schema === 'Gap.1' || schema === 'Clip.1' || schema === 'Clip.2') {
     return Math.max(0, fromRationalTimeUs(child?.source_range?.duration));
   }
   return 0;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers for backward-compatible metadata reading
+// ---------------------------------------------------------------------------
+
+function parseDiscriminatedTypeData(raw: unknown):
+  | { kind: 'background'; color?: string }
+  | { kind: 'text'; text?: string; style?: unknown }
+  | {
+      kind: 'shape';
+      type?: string;
+      fillColor?: string;
+      strokeColor?: string;
+      strokeWidth?: number;
+      config?: unknown;
+    }
+  | { kind: 'hud'; type?: string; background?: unknown; content?: unknown; frame?: unknown }
+  | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const obj = raw as Record<string, unknown>;
+  const kind = obj.kind;
+
+  if (kind === 'background') {
+    return { kind: 'background', color: typeof obj.color === 'string' ? obj.color : undefined };
+  }
+  if (kind === 'text') {
+    return {
+      kind: 'text',
+      text: typeof obj.text === 'string' ? obj.text : undefined,
+      style: obj.style,
+    };
+  }
+  if (kind === 'shape') {
+    return {
+      kind: 'shape',
+      type: typeof obj.type === 'string' ? obj.type : undefined,
+      fillColor: typeof obj.fillColor === 'string' ? obj.fillColor : undefined,
+      strokeColor: typeof obj.strokeColor === 'string' ? obj.strokeColor : undefined,
+      strokeWidth: typeof obj.strokeWidth === 'number' ? obj.strokeWidth : undefined,
+      config: obj.config,
+    };
+  }
+  if (kind === 'hud') {
+    return {
+      kind: 'hud',
+      type: typeof obj.type === 'string' ? obj.type : undefined,
+      background: obj.background,
+      content: obj.content,
+      frame: obj.frame,
+    };
+  }
+
+  // Legacy non-discriminated fallback
+  if (obj.background && typeof obj.background === 'object') {
+    return {
+      kind: 'background',
+      color: (obj.background as Record<string, unknown>).color as string | undefined,
+    };
+  }
+  if (obj.text && typeof obj.text === 'object') {
+    const textObj = obj.text as Record<string, unknown>;
+    return { kind: 'text', text: textObj.text as string | undefined, style: textObj.style };
+  }
+  if (obj.shape && typeof obj.shape === 'object') {
+    const shapeObj = obj.shape as Record<string, unknown>;
+    return {
+      kind: 'shape',
+      type: shapeObj.type as string | undefined,
+      fillColor: shapeObj.fillColor as string | undefined,
+      strokeColor: shapeObj.strokeColor as string | undefined,
+      strokeWidth: shapeObj.strokeWidth as number | undefined,
+      config: shapeObj.config,
+    };
+  }
+  if (obj.hud && typeof obj.hud === 'object') {
+    const hudObj = obj.hud as Record<string, unknown>;
+    return {
+      kind: 'hud',
+      type: hudObj.type as string | undefined,
+      background: hudObj.background,
+      content: hudObj.content,
+      frame: hudObj.frame,
+    };
+  }
+
+  return undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -33,14 +121,24 @@ export function parseItemSequenceDurationUs(child: any): number {
 
 export function parseClipItem(input: {
   trackId: string;
-  otio: OtioClip;
+  otio: OtioAnyClip;
   index: number;
   occupiedIds: Set<string>;
   fallbackStartUs: number;
   transitionIn?: ClipTransition;
   transitionOut?: ClipTransition;
+  report?: OtioValidationReport;
 }): TimelineClipItem {
-  const { trackId, otio, index, occupiedIds, fallbackStartUs, transitionIn, transitionOut } = input;
+  const {
+    trackId,
+    otio,
+    index,
+    occupiedIds,
+    fallbackStartUs,
+    transitionIn,
+    transitionOut,
+    report,
+  } = input;
   const sourceRange = fromTimeRange(otio.source_range);
   const name = coerceName(otio.name, `clip_${index + 1}`);
 
@@ -56,7 +154,14 @@ export function parseClipItem(input: {
       ? fromTimeRange(ref.available_range)
       : null;
 
-  const fastcatMeta = TimelineClipFastCatMetaSchema.parse(safeFastCatMetadata(otio.metadata));
+  const rawFastcat = safeFastCatMetadata(otio.metadata);
+
+  // Try new grouped schema first, fallback to legacy flat schema
+  const fastcatMeta = TimelineClipFastCatMetaSchema.parse(rawFastcat);
+
+  // If the new schema returned empty but raw has data, it might be old flat format.
+  // The schema already handles this because the structure is similar.
+  // However, for the document-level grouping, we handle it separately in otio-serializer.ts.
 
   const clipType = fastcatMeta.clipType ?? (isOtioPath(path) ? 'timeline' : 'media');
 
@@ -88,19 +193,50 @@ export function parseClipItem(input: {
   const otioEffects =
     Array.isArray(otio.effects) && otio.effects.length > 0 ? parseEffects(otio.effects) : undefined;
 
+  // Time effects: parse LinearTimeWarp / FreezeFrame if present
+  const timeEffects = parseTimeEffects((otio.effects as unknown[]) ?? []);
+
+  // Handle disabled state: Clip.2 enabled=false, or legacy ignored=true
+  const isDisabled = otio.enabled === false || fastcatMeta.flags?.ignored === true;
+  if (fastcatMeta.flags?.ignored === true && report) {
+    report.warn(
+      'legacy_ignored',
+      `Clip "${id}" has legacy ignored flag; treating as disabled.`,
+      `tracks[${trackId}].children[${index}]`,
+    );
+  }
+
+  // Roundtrip ranges override source/timeline ranges if present
+  const roundtripTimelineRange = fastcatMeta.roundtrip?.timelineRange;
+  const roundtripSourceRange = fastcatMeta.roundtrip?.sourceRange;
+
+  const finalTimelineRange = roundtripTimelineRange
+    ? {
+        startUs: Math.round(roundtripTimelineRange.startUs),
+        durationUs: Math.round(roundtripTimelineRange.durationUs),
+      }
+    : { startUs: timelineStartUs, durationUs: sourceRange.durationUs };
+
+  const finalSourceRange = roundtripSourceRange
+    ? {
+        startUs: Math.round(roundtripSourceRange.startUs),
+        durationUs: Math.round(roundtripSourceRange.durationUs),
+      }
+    : sourceRange;
+
   const base = {
     kind: 'clip' as const,
     clipType,
     id,
     trackId,
     name,
-    disabled: otio.enabled === false ? true : undefined,
+    disabled: isDisabled ? true : undefined,
     locked: fastcatMeta.flags?.locked,
     sourceDurationUs,
-    timelineRange: { startUs: timelineStartUs, durationUs: sourceRange.durationUs },
-    sourceRange,
-    speed: fastcatMeta.playback?.speed,
-    speedActive: fastcatMeta.flags?.speedActive,
+    timelineRange: finalTimelineRange,
+    sourceRange: finalSourceRange,
+    speed: timeEffects.speed ?? fastcatMeta.playback?.speed,
+    speedActive: timeEffects.speedActive ?? fastcatMeta.flags?.speedActive,
     audioGain: fastcatMeta.audio?.gain,
     audioBalance: fastcatMeta.audio?.balance,
     audioFadeInUs:
@@ -119,9 +255,11 @@ export function parseClipItem(input: {
     showWaveform: fastcatMeta.audio?.showWaveform,
     audioFromVideoDisabled: Boolean(fastcatMeta.audio?.fromVideoDisabled),
     freezeFrameSourceUs:
-      clipType === 'media' && fastcatMeta.playback?.freezeFrameSourceUs !== undefined
-        ? Math.round(fastcatMeta.playback.freezeFrameSourceUs)
-        : undefined,
+      clipType === 'media' && timeEffects.freezeFrameSourceUs !== undefined
+        ? Math.round(timeEffects.freezeFrameSourceUs)
+        : fastcatMeta.playback?.freezeFrameSourceUs !== undefined
+          ? Math.round(fastcatMeta.playback.freezeFrameSourceUs)
+          : undefined,
     opacity: fastcatMeta.visual?.opacity,
     opacityActive: fastcatMeta.flags?.opacityActive,
     blendMode: coerceBlendMode(fastcatMeta.visual?.blendMode),
@@ -138,14 +276,19 @@ export function parseClipItem(input: {
     transformActive: fastcatMeta.flags?.transformActive,
     mask: fastcatMeta.mask as any,
     maskActive: fastcatMeta.flags?.maskActive,
-    ignored: fastcatMeta.flags?.ignored,
   };
 
+  const typeData = parseDiscriminatedTypeData(fastcatMeta.typeData);
+
   if (clipType === 'background') {
+    const bgColor =
+      typeData?.kind === 'background'
+        ? sanitizeTimelineColor(typeData.color, '#000000')
+        : sanitizeTimelineColor(fastcatMeta.typeData?.background?.color, '#000000');
     return {
       ...base,
       clipType: 'background',
-      backgroundColor: sanitizeTimelineColor(fastcatMeta.typeData?.background?.color, '#000000'),
+      backgroundColor: bgColor,
     };
   }
 
@@ -158,44 +301,47 @@ export function parseClipItem(input: {
       ...base,
       clipType: 'text',
       sourceDurationUs,
-      timelineRange: { startUs: timelineStartUs, durationUs: sourceRange.durationUs },
-      sourceRange,
-      text: fastcatMeta.typeData?.text?.text ?? 'Text',
-      style: fastcatMeta.typeData?.text?.style,
+      timelineRange: finalTimelineRange,
+      sourceRange: finalSourceRange,
+      text:
+        typeData?.kind === 'text'
+          ? (typeData.text ?? 'Text')
+          : (fastcatMeta.typeData?.text?.text ?? 'Text'),
+      style: typeData?.kind === 'text' ? typeData.style : fastcatMeta.typeData?.text?.style,
     };
   }
 
   if (clipType === 'shape') {
+    const shapeData = typeData?.kind === 'shape' ? typeData : fastcatMeta.typeData?.shape;
     return {
       ...base,
       clipType: 'shape',
       sourceDurationUs,
-      timelineRange: { startUs: timelineStartUs, durationUs: sourceRange.durationUs },
-      sourceRange,
-      shapeType: fastcatMeta.typeData?.shape?.type ?? 'square',
+      timelineRange: finalTimelineRange,
+      sourceRange: finalSourceRange,
+      shapeType: (shapeData?.type ?? 'square') as any,
       fillColor:
-        fastcatMeta.typeData?.shape?.fillColor &&
-        fastcatMeta.typeData.shape.fillColor.trim().length > 0
-          ? fastcatMeta.typeData.shape.fillColor
+        shapeData?.fillColor && shapeData.fillColor.trim().length > 0
+          ? shapeData.fillColor
           : '#ffffff',
       strokeColor:
-        fastcatMeta.typeData?.shape?.strokeColor &&
-        fastcatMeta.typeData.shape.strokeColor.trim().length > 0
-          ? fastcatMeta.typeData.shape.strokeColor
+        shapeData?.strokeColor && shapeData.strokeColor.trim().length > 0
+          ? shapeData.strokeColor
           : '#000000',
-      strokeWidth: fastcatMeta.typeData?.shape?.strokeWidth ?? 0,
-      shapeConfig: fastcatMeta.typeData?.shape?.config,
+      strokeWidth: shapeData?.strokeWidth ?? 0,
+      shapeConfig: shapeData?.config as any,
     };
   }
 
   if (clipType === 'hud') {
+    const hudData = typeData?.kind === 'hud' ? typeData : fastcatMeta.typeData?.hud;
     return {
       ...base,
       clipType: 'hud',
-      hudType: fastcatMeta.typeData?.hud?.type ?? 'media_frame',
-      background: fastcatMeta.typeData?.hud?.background,
-      content: fastcatMeta.typeData?.hud?.content,
-      frame: fastcatMeta.typeData?.hud?.frame,
+      hudType: (hudData?.type ?? 'media_frame') as any,
+      background: hudData?.background as any,
+      content: hudData?.content as any,
+      frame: hudData?.frame as any,
     };
   }
 
@@ -208,7 +354,7 @@ export function parseClipItem(input: {
 
 export function parseGapItem(input: {
   trackId: string;
-  otio: OtioGap;
+  otio: { source_range: any; metadata?: unknown };
   index: number;
   occupiedIds: Set<string>;
   fallbackStartUs: number;

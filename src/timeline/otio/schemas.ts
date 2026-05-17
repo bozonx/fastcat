@@ -1,4 +1,5 @@
 import { z } from 'zod';
+
 export const ClipScaleSchema = z.object({
   x: z.number().catch(1),
   y: z.number().catch(1),
@@ -57,7 +58,7 @@ export const TextClipStyleSchema = z.object({
   lineHeight: z.number().optional(),
   letterSpacing: z.number().optional(),
   backgroundColor: z.string().optional(),
-  padding: z.any().optional(), // Can be number or object
+  padding: z.any().optional(),
 });
 
 export const ShapeConfigSchema = z.object({
@@ -86,6 +87,15 @@ export const ClipTransitionFastCatSchema = z.object({
   params: z.record(z.string(), z.unknown()).optional(),
 });
 
+export const ClipEffectParamsSchema = z.object({
+  id: z.string().trim().min(1),
+  type: z.string().trim().min(1),
+  enabled: z.boolean().optional(),
+  target: z.enum(['video', 'audio']).optional(),
+  params: z.record(z.string(), z.unknown()).optional(),
+});
+
+// Legacy flat effect schema (spread params)
 export const ClipEffectFastCatSchema = z
   .object({
     id: z.string().trim().min(1),
@@ -126,6 +136,7 @@ export const TimelineClipTypeSchema = z.enum([
   'shape',
   'hud',
 ]);
+
 export const TimelineBlendModeSchema = z.enum([
   'normal',
   'add',
@@ -134,7 +145,83 @@ export const TimelineBlendModeSchema = z.enum([
   'darken',
   'lighten',
 ]);
+
 export const AudioFadeCurveSchema = z.enum(['linear', 'logarithmic']);
+
+// ---------------------------------------------------------------------------
+// Discriminated typeData schemas
+// ---------------------------------------------------------------------------
+
+export const TypeDataBackgroundSchema = z.object({
+  kind: z.literal('background'),
+  color: z.string().optional(),
+});
+
+export const TypeDataTextSchema = z.object({
+  kind: z.literal('text'),
+  text: z.string().optional(),
+  style: TextClipStyleSchema.optional(),
+});
+
+export const TypeDataShapeSchema = z.object({
+  kind: z.literal('shape'),
+  type: z
+    .enum(['square', 'circle', 'triangle', 'star', 'cloud', 'speech_bubble', 'bang'])
+    .optional(),
+  fillColor: z.string().optional(),
+  strokeColor: z.string().optional(),
+  strokeWidth: z.number().min(0).optional(),
+  config: ShapeConfigSchema.optional(),
+});
+
+export const TypeDataHudSchema = z.object({
+  kind: z.literal('hud'),
+  type: z.enum(['media_frame']).optional(),
+  background: HudMediaParamsSchema.optional(),
+  content: HudMediaParamsSchema.optional(),
+  frame: HudMediaParamsSchema.optional(),
+});
+
+export const TypeDataDiscriminatedSchema = z.discriminatedUnion('kind', [
+  TypeDataBackgroundSchema,
+  TypeDataTextSchema,
+  TypeDataShapeSchema,
+  TypeDataHudSchema,
+]);
+
+// Legacy non-discriminated typeData schema (for backward-compatible parsing)
+export const TypeDataLegacySchema = z.object({
+  background: z.object({ color: z.string().optional() }).optional(),
+  text: z.object({ text: z.string().optional(), style: TextClipStyleSchema.optional() }).optional(),
+  shape: z
+    .object({
+      type: z
+        .enum(['square', 'circle', 'triangle', 'star', 'cloud', 'speech_bubble', 'bang'])
+        .optional(),
+      fillColor: z.string().optional(),
+      strokeColor: z.string().optional(),
+      strokeWidth: z.number().min(0).optional(),
+      config: ShapeConfigSchema.optional(),
+    })
+    .optional(),
+  hud: z
+    .object({
+      type: z.enum(['media_frame']).optional(),
+      background: HudMediaParamsSchema.optional(),
+      content: HudMediaParamsSchema.optional(),
+      frame: HudMediaParamsSchema.optional(),
+    })
+    .optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Grouped metadata schemas (new format)
+// ---------------------------------------------------------------------------
+
+export const TimelineClipRoundtripSchema = z.object({
+  timelineRange: z.object({ startUs: z.number(), durationUs: z.number() }).optional(),
+  sourceRange: z.object({ startUs: z.number(), durationUs: z.number() }).optional(),
+});
 
 export const TimelineClipFastCatMetaSchema = z
   .object({
@@ -182,7 +269,6 @@ export const TimelineClipFastCatMetaSchema = z
         opacityActive: z.boolean().optional(),
         blendModeActive: z.boolean().optional(),
         maskActive: z.boolean().optional(),
-        ignored: z.boolean().optional(),
       })
       .optional(),
     links: z
@@ -200,33 +286,8 @@ export const TimelineClipFastCatMetaSchema = z
         out: ClipTransitionFastCatSchema.optional(),
       })
       .optional(),
-    typeData: z
-      .object({
-        background: z.object({ color: z.string().optional() }).optional(),
-        text: z
-          .object({ text: z.string().optional(), style: TextClipStyleSchema.optional() })
-          .optional(),
-        shape: z
-          .object({
-            type: z
-              .enum(['square', 'circle', 'triangle', 'star', 'cloud', 'speech_bubble', 'bang'])
-              .optional(),
-            fillColor: z.string().optional(),
-            strokeColor: z.string().optional(),
-            strokeWidth: z.number().min(0).optional(),
-            config: ShapeConfigSchema.optional(),
-          })
-          .optional(),
-        hud: z
-          .object({
-            type: z.enum(['media_frame']).optional(),
-            background: HudMediaParamsSchema.optional(),
-            content: HudMediaParamsSchema.optional(),
-            frame: HudMediaParamsSchema.optional(),
-          })
-          .optional(),
-      })
-      .optional(),
+    typeData: z.unknown().optional(),
+    roundtrip: TimelineClipRoundtripSchema.optional(),
   })
   .catch({});
 
@@ -255,6 +316,30 @@ export const TimelineTrackFastCatMetaSchema = z
   .catch({});
 
 export const TimelineDocFastCatMetaSchema = z
+  .object({
+    schema: z.string().optional(),
+    version: z.number().optional(),
+    docId: z.string().trim().min(1).optional(),
+    timebase: z.object({ fps: z.number() }).optional(),
+    audio: z
+      .object({
+        masterGain: z.number().min(0).max(10).optional(),
+        masterMuted: z.boolean().optional(),
+        masterEffects: z.array(ClipEffectFastCatSchema).optional(),
+      })
+      .optional(),
+    document: z
+      .object({
+        docId: z.string().trim().min(1).optional(),
+        timebase: z.object({ fps: z.number() }).optional(),
+        markers: z.array(z.any()).optional(),
+      })
+      .optional(),
+  })
+  .catch({});
+
+// Legacy flat document schema (pre-grouping)
+export const TimelineDocFastCatMetaLegacySchema = z
   .object({
     version: z.number().optional(),
     docId: z.string().trim().min(1).optional(),

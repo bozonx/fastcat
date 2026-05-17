@@ -61,8 +61,8 @@ describe('timeline/otio-serializer: transitions', () => {
     const trackChildren = raw.tracks.children[0].children as any[];
     const schemas = trackChildren.map((c: any) => c.OTIO_SCHEMA);
 
-    // Expected order: Transition.1 (in), Clip.1, Transition.1 (out)
-    expect(schemas).toEqual(['Transition.1', 'Clip.1', 'Transition.1']);
+    // Expected order: Transition.1 (in), Clip.2 (disabled), Transition.1 (out)
+    expect(schemas).toEqual(['Transition.1', 'Clip.2', 'Transition.1']);
 
     const tIn = trackChildren[0];
     expect(tIn.transition_type).toBe('SMPTE_Dissolve');
@@ -502,7 +502,9 @@ describe('timeline/otio-serializer: transitions', () => {
     };
 
     const raw = JSON.parse(serializeTimelineToOtio(doc));
-    const clipNode = raw.tracks.children[0].children.find((c: any) => c.OTIO_SCHEMA === 'Clip.1');
+    const clipNode = raw.tracks.children[0].children.find(
+      (c: any) => c.OTIO_SCHEMA === 'Clip.1' || c.OTIO_SCHEMA === 'Clip.2',
+    );
 
     expect(Array.isArray(clipNode.effects)).toBe(true);
     expect(clipNode.effects).toHaveLength(2);
@@ -583,7 +585,9 @@ describe('timeline/otio-serializer: transitions', () => {
     };
 
     const raw = JSON.parse(serializeTimelineToOtio(doc));
-    const clipNode = raw.tracks.children[0].children.find((c: any) => c.OTIO_SCHEMA === 'Clip.1');
+    const clipNode = raw.tracks.children[0].children.find(
+      (c: any) => c.OTIO_SCHEMA === 'Clip.1' || c.OTIO_SCHEMA === 'Clip.2',
+    );
 
     expect(clipNode.media_reference.OTIO_SCHEMA).toBe('ExternalReference.1');
     expect(clipNode.media_reference.available_range).toBeDefined();
@@ -716,7 +720,9 @@ describe('timeline/otio-serializer: transitions', () => {
     };
 
     const raw = JSON.parse(serializeTimelineToOtio(doc));
-    const clipNode = raw.tracks.children[0].children.find((c: any) => c.OTIO_SCHEMA === 'Clip.1');
+    const clipNode = raw.tracks.children[0].children.find(
+      (c: any) => c.OTIO_SCHEMA === 'Clip.1' || c.OTIO_SCHEMA === 'Clip.2',
+    );
 
     expect(clipNode.media_reference.OTIO_SCHEMA).toBe('MissingReference.1');
   });
@@ -821,7 +827,7 @@ describe('timeline/otio-serializer: transitions', () => {
 
     const serialized = serializeTimelineToOtio(doc);
     const raw = JSON.parse(serialized);
-    expect(raw.metadata.fastcat.timebase.fps).toBe(29.97);
+    expect(raw.metadata.fastcat.document.timebase.fps).toBe(29.97);
 
     const parsed = parseTimelineFromOtio(serialized, { id: 'doc-ntsc', name: 'NTSC', fps: 29.97 });
     expect(parsed.timebase.fps).toBe(29.97);
@@ -854,7 +860,9 @@ describe('timeline/otio-serializer: transitions', () => {
     };
 
     const raw = JSON.parse(serializeTimelineToOtio(doc));
-    const clipNode = raw.tracks.children[0].children.find((c: any) => c.OTIO_SCHEMA === 'Clip.1');
+    const clipNode = raw.tracks.children[0].children.find(
+      (c: any) => c.OTIO_SCHEMA === 'Clip.1' || c.OTIO_SCHEMA === 'Clip.2',
+    );
     const rate = clipNode.source_range.duration.rate;
 
     expect(rate).toBe(24);
@@ -1011,7 +1019,7 @@ describe('timeline/otio-serializer: transitions', () => {
               linkedVideoClipId: 'linked-v1',
               lockToLinkedVideo: true,
               isImage: true,
-              ignored: true,
+              disabled: true,
             },
           ],
         },
@@ -1024,15 +1032,25 @@ describe('timeline/otio-serializer: transitions', () => {
     expect(raw.metadata.fastcat.audio.masterMuted).toBe(true);
     expect(raw.metadata.fastcat.masterGain).toBeUndefined();
 
-    const clipNode = raw.tracks.children[0].children.find((c: any) => c.OTIO_SCHEMA === 'Clip.1');
+    const clipNode = raw.tracks.children[0].children.find(
+      (c: any) => c.OTIO_SCHEMA === 'Clip.1' || c.OTIO_SCHEMA === 'Clip.2',
+    );
     expect(clipNode.metadata.fastcat.audio.gain).toBe(1.1);
     expect(clipNode.metadata.fastcat.visual.opacity).toBe(0.4);
-    expect(clipNode.metadata.fastcat.flags.transformActive).toBe(true);
+    expect(clipNode.metadata.fastcat.flags.transformActive).toBeUndefined();
     expect(clipNode.metadata.fastcat.transform.crop).toEqual({
       top: 10,
       bottom: 20,
       left: 30,
       right: 40,
+    });
+    expect(clipNode.metadata.fastcat.roundtrip.timelineRange).toEqual({
+      startUs: 0,
+      durationUs: 5_000_000,
+    });
+    expect(clipNode.metadata.fastcat.roundtrip.sourceRange).toEqual({
+      startUs: 0,
+      durationUs: 5_000_000,
     });
 
     const parsed = parseTimelineFromOtio(JSON.stringify(raw), {
@@ -1057,14 +1075,18 @@ describe('timeline/otio-serializer: transitions', () => {
     expect(parsedTrack.audioBalance).toBe(-0.25);
     expect(parsedTrack.color).toBe('#123456');
     expect(parsedTrack.locked).toBe(true);
+    // UI-state is no longer written to the portable OTIO document,
+    // but speedActive is restored from the canonical LinearTimeWarp effect.
     expect(parsedClip.speedActive).toBe(true);
-    expect(parsedClip.audioFadesActive).toBe(true);
-    expect(parsedClip.showThumbnails).toBe(false);
-    expect(parsedClip.opacityActive).toBe(true);
-    expect(parsedClip.blendModeActive).toBe(true);
-    expect(parsedClip.transformActive).toBe(true);
-    expect(parsedClip.maskActive).toBe(true);
-    expect(parsedClip.ignored).toBe(true);
+    expect(parsedClip.audioFadesActive).toBeUndefined();
+    expect(parsedClip.showThumbnails).toBeUndefined();
+    expect(parsedClip.opacityActive).toBeUndefined();
+    expect(parsedClip.blendModeActive).toBeUndefined();
+    expect(parsedClip.transformActive).toBeUndefined();
+    expect(parsedClip.maskActive).toBeUndefined();
+    // disabled/ignored unified: ignored was removed, disabled is used instead
+    expect(parsedClip.disabled).toBe(true);
+    expect(parsedClip.ignored).toBeUndefined();
     expect(parsedClip.transform.crop).toEqual({ top: 10, bottom: 20, left: 30, right: 40 });
   });
 });

@@ -178,7 +178,6 @@ interface TimelineClipBase {
 
   speedActive?: boolean;
   audioFadesActive?: boolean;
-  ignored?: boolean;
 }
 
 export interface TimelineMediaClipItem extends TimelineClipBase {
