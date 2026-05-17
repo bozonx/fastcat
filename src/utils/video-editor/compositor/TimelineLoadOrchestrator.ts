@@ -32,6 +32,7 @@ export interface TimelineLoadOrchestratorContext {
 
 export interface TimelineLoadOrchestratorCallbacks {
   checkCancel?: () => boolean;
+  abortSignal?: AbortSignal;
   destroyClip: (clip: CompositorClip) => void;
   getExistingClipById: (itemId: string) => CompositorClip | undefined;
   getFallbackTrackId: (clipData: any) => string | null;
@@ -296,10 +297,6 @@ export class TimelineLoadOrchestrator {
     }
 
     try {
-      const abortController = new AbortController();
-      if (callbacks.checkCancel?.()) {
-        abortController.abort();
-      }
       const loadedVideo = await this.context.mediaClipLoader.loadVideoRuntime({
         mediabunny,
         file,
@@ -308,7 +305,7 @@ export class TimelineLoadOrchestrator {
         requestedSourceDurationUs,
         requestedSourceRangeDurationUs,
         startUs,
-        abortSignal: abortController.signal,
+        abortSignal: callbacks.abortSignal,
       });
       if (!loadedVideo) {
         return { sequentialTimeUs };

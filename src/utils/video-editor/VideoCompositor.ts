@@ -72,6 +72,7 @@ export class VideoCompositor {
   private stageSortDirty = true;
   private activeSortDirty = true;
   private timelineMutation: Promise<unknown> | null = null;
+  private timelineLoadAbortController: AbortController | null = null;
   private clipPreferBitmapFallback = new Map<string, boolean>();
   private videoFrameCache = new VideoFrameCache(
     Math.max(0, Number(VIDEO_CORE_LIMITS.MAX_VIDEO_FRAME_CACHE_MB) || 0) * 1024 * 1024,
@@ -598,13 +599,24 @@ export class VideoCompositor {
   ): Promise<number> {
     if (!this.app) throw new Error('VideoCompositor not initialized');
 
-    const mutation = this.loadTimelineLocked(timelineClips, deps, checkCancel);
+    this.timelineLoadAbortController?.abort();
+    const abortController = new AbortController();
+    this.timelineLoadAbortController = abortController;
+    const mutation = this.loadTimelineLocked(
+      timelineClips,
+      deps,
+      checkCancel,
+      abortController.signal,
+    );
     this.timelineMutation = mutation;
     try {
       return await mutation;
     } finally {
       if (this.timelineMutation === mutation) {
         this.timelineMutation = null;
+      }
+      if (this.timelineLoadAbortController === abortController) {
+        this.timelineLoadAbortController = null;
       }
     }
   }
@@ -624,7 +636,9 @@ export class VideoCompositor {
       }) => Promise<FileSystemFileHandle | null>;
     },
     checkCancel?: () => boolean,
+    abortSignal?: AbortSignal,
   ): Promise<number> {
+    const isCancelled = () => abortSignal?.aborted === true || checkCancel?.() === true;
     const meta = timelineClips.find((x) => x && typeof x === 'object' && x.kind === 'meta');
     const nextMaster = meta ? (this.toVideoEffects((meta as any).masterEffects) ?? null) : null;
     this.masterEffects = nextMaster;
@@ -642,7 +656,8 @@ export class VideoCompositor {
         ALL_FORMATS,
       },
       callbacks: {
-        checkCancel,
+        checkCancel: isCancelled,
+        abortSignal,
         destroyClip: (clip) => this.destroyClip(clip),
         getExistingClipById: (itemId) => this.clipById.get(itemId),
         getFallbackTrackId: (clipData) =>
@@ -656,7 +671,7 @@ export class VideoCompositor {
         toVideoEffects: (value) => this.toVideoEffects(value),
       },
     });
-    if (checkCancel?.()) {
+    if (isCancelled()) {
       for (const clip of nextClips) {
         if (!this.clipById.has(clip.itemId)) {
           this.destroyClip(clip);
